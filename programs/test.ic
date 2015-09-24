@@ -1,3 +1,4 @@
+// Computes the factorial of an unsigned integer
 factorial : (n : uint) -> uint = {
   return case {
     n < 2  =>  1

@@ -159,5 +159,17 @@ AST::Node Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
+  // It's a line-comment if it has at least two characters and the first two
+  // characters are forward slashes
+  if (token.size() >= 2 && token[0] == '/' && token[1] == '/') {
+    // drop the first two characters.
+    token = token.substr(2);
+    do {
+      token += static_cast<char>(file_.get());
+      peek = file_.peek();
+    } while (!isnewline(peek));
+    return AST::Node(AST::Node::comment, token);
+  }
+
   return AST::Node(AST::Node::operat, token);
 }
