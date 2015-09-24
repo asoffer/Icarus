@@ -153,7 +153,11 @@ AST::Node Lexer::next_operator() {
       }
   }
 
-  file_.get();
+  std::string token;
+  do {
+    token += static_cast<char>(file_.get());
+    peek = file_.peek();
+  } while (std::ispunct(peek));
 
-  return AST::Node(AST::Node::operat, "??");
+  return AST::Node(AST::Node::operat, token);
 }
