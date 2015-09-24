@@ -7,8 +7,8 @@
 /* class Lexer
  *
  * This class takes a file name in its only constructor. The contents of the
- * file are read character by character and separated into tokens according to
- * syntax of Icarus.
+ * file are read character by character and separated into tokens
+ * according to syntax of Icarus.
  */
 class Lexer {
   public:

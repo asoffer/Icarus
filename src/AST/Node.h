@@ -12,7 +12,9 @@ namespace AST {
         identifier,
         integer, real,
         operat,
-        left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket
+        left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
+        reserved_if, reserved_else, reserved_case, reserved_loop,
+        reserved_while, reserved_break, reserved_continue, reserved_return
       };
 
       static Node eof_node();

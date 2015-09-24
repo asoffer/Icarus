@@ -18,11 +18,24 @@ std::map<Node::Type, std::string> debug_map = {
   { Node::Type::left_brace, "Left Brace" },
   { Node::Type::right_brace, "Right Brace" },
   { Node::Type::left_bracket, "Left Bracket" },
-  { Node::Type::right_bracket, "Right Bracket" }
+  { Node::Type::right_bracket, "Right Bracket" },
+  { Node::reserved_if, "If" },
+  { Node::reserved_else, "Else" },
+  { Node::reserved_case, "Case" },
+  { Node::reserved_loop, "Loop" },
+  { Node::reserved_while, "While" },
+  { Node::reserved_break, "Break" },
+  { Node::reserved_continue, "Continue" },
+  { Node::reserved_return, "Return" }
 };
 
 std::ostream& operator<<(std::ostream& os, const Node& node) {
-  return os << "[" << debug_map[node.type_] << ": " << node.token_ << "]";
+  os << "[" << debug_map[node.type_];
+
+  if (!node.token_.empty())
+    os << ": " << node.token_;
+
+  return os << "]";
 }
 #endif
 

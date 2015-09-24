@@ -1,4 +1,5 @@
 #include "Lexer.h"
+#include <map>
 
 bool isnewline(int n) {
   return n == '\n' || n == '\r';
@@ -63,13 +64,32 @@ AST::Node Lexer::next_word() {
     peek = file_.peek();
   } while (std::isalnum(peek) || peek == '_');
 
+  // TODO(andy) This should definitely be moved somewhere more central
+  // eventually
+  static std::map<std::string, AST::Node::Type> reserved_words = {
+    { "if",       AST::Node::reserved_if },
+    { "else",     AST::Node::reserved_else },
+    { "case",     AST::Node::reserved_case },
+    { "loop",     AST::Node::reserved_loop },
+    { "while",    AST::Node::reserved_while },
+    { "break",    AST::Node::reserved_break },
+    { "continue", AST::Node::reserved_continue },
+    { "return",   AST::Node::reserved_return }
+  };
+
+  for (const auto& res : reserved_words) {
+    if (res.first == token) {
+      return AST::Node(res.second);
+    }
+  }
+
   return AST::Node(AST::Node::identifier, token);
 }
 
 AST::Node Lexer::next_number() {
 #ifdef DEBUG
   if (!std::isdigit(file_.peek()))
-    throw "Non-digit character encountered as first character in next_word.";
+    throw "Non-digit character encountered as first character in next_number.";
 #endif
 
   std::string token;
@@ -93,7 +113,47 @@ AST::Node Lexer::next_number() {
 }
 
 AST::Node Lexer::next_operator() {
-  // TODO(andy) fill out this stub
+  int peek = file_.peek();
+#ifdef DEBUG
+  if (!std::ispunct(peek))
+    throw "Non-punct character encountered as first character in next_operator.";
+#endif
+
+  // first look for (){}[]
+  switch (peek) {
+    case static_cast<int>('('):
+      {
+        file_.get();
+        return AST::Node(AST::Node::left_paren);
+      }
+    case static_cast<int>(')'):
+      {
+        file_.get();
+        return AST::Node(AST::Node::right_paren);
+      }
+    case static_cast<int>('{'):
+      {
+        file_.get();
+        return AST::Node(AST::Node::left_brace);
+      }
+    case static_cast<int>('}'):
+      {
+        file_.get();
+        return AST::Node(AST::Node::right_brace);
+      }
+    case static_cast<int>('['):
+      {
+        file_.get();
+        return AST::Node(AST::Node::left_bracket);
+      }
+    case static_cast<int>(']'):
+      {
+        file_.get();
+        return AST::Node(AST::Node::right_bracket);
+      }
+  }
+
   file_.get();
+
   return AST::Node(AST::Node::operat, "??");
 }
