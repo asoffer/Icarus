@@ -17,10 +17,15 @@ namespace AST {
         reserved_while, reserved_break, reserved_continue, reserved_return
       };
 
-      static Node eof_node();
-      static Node newline_node();
+      static inline Node eof_node() { return Node(eof, ""); }
+      static inline Node newline_node() { return Node(newline, ""); }
+
+      inline Type node_type() const { return type_; }
+
 
       Node(Type type = unknown, const std::string& token = "");
+
+
 
 #ifdef DEBUG
     friend std::ostream& operator<<(std::ostream& os, const Node& node);
@@ -30,14 +35,6 @@ namespace AST {
       Type type_;
       std::string token_;
   };
-
-  inline Node Node::eof_node() {
-    return Node(eof, "");
-  }
-
-  inline Node Node::newline_node() {
-    return Node(newline, "");
-  }
 
 }  // namespace AST
 
