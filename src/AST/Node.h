@@ -10,7 +10,7 @@ namespace AST {
       enum Type {
         unknown, eof, newline, comment,
         identifier,
-        integer,
+        integer, real,
         operat,
         left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket
       };

@@ -11,6 +11,7 @@ std::map<Node::Type, std::string> debug_map = {
   { Node::comment, "Comment" },
   { Node::identifier, "Identifier" },
   { Node::integer, "Integer" },
+  { Node::real, "Real" },
   { Node::operat, "Operator" },
   { Node::Type::left_paren, "Left Paren" },
   { Node::Type::right_paren, "Right Paren" },

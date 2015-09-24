@@ -67,9 +67,29 @@ AST::Node Lexer::next_word() {
 }
 
 AST::Node Lexer::next_number() {
-  // TODO(andy) fill out this stub
-  file_.get();
-  return AST::Node(AST::Node::integer, "??");
+#ifdef DEBUG
+  if (!std::isdigit(file_.peek()))
+    throw "Non-digit character encountered as first character in next_word.";
+#endif
+
+  std::string token;
+
+  int peek;
+  do {
+    token += static_cast<char>(file_.get());
+    peek = file_.peek();
+  } while (std::isdigit(peek));
+
+  if (peek != static_cast<int>('.')) {
+    return AST::Node(AST::Node::integer, token);
+  }
+
+  do {
+    token += static_cast<char>(file_.get());
+    peek = file_.peek();
+  } while (std::isdigit(peek));
+
+  return AST::Node(AST::Node::real, token);
 }
 
 AST::Node Lexer::next_operator() {
