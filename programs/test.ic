@@ -1,0 +1,7 @@
+factorial : (n : uint) -> uint = {
+  return case {
+    n < 2  =>  1
+    else   =>  n * factorial(n - 1)
+  }
+}
+
