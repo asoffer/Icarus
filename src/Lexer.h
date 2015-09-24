@@ -25,14 +25,13 @@ class Lexer {
 
     Lexer() = delete;
 
-
     AST::Node next_word();
     AST::Node next_number();
     AST::Node next_operator();
 };
 
 inline Lexer::operator bool () const {
-  return !file_.eof();
+  return !file_.eof() && !file_.fail();
 }
 
 #endif

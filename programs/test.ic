@@ -4,4 +4,3 @@ factorial : (n : uint) -> uint = {
     else   =>  n * factorial(n - 1)
   }
 }
-
