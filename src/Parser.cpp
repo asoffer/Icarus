@@ -93,10 +93,13 @@ void Parser::init_rules() {
         Node::paren_expression, Node::operat, Node::paren_expression
         }, AST::Binop::build));
 
-  // TODO(andy) write explicit operator for this
   rules_.push_back(Rule(Node::expression, {
         Node::expression, Node::left_paren, Node::expression, Node::right_paren
         }, AST::Binop::build_paren_operator));
+
+  rules_.push_back(Rule(Node::expression, {
+        Node::expression, Node::left_bracket, Node::expression, Node::right_bracket
+        }, AST::Binop::build_bracket_operator));
 
   rules_.push_back(Rule(Node::key_value_pair, {
         Node::expression, Node::key_value_joiner, Node::expression

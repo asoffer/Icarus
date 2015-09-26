@@ -76,9 +76,14 @@ namespace AST {
 
   class Binop : public Expression {
     public:
+      // It's not clear it's okay to pass the string by reference if it's
+      // referencing something in the node. Probably not worth trying because
+      // this is highly unlikely to be a bottleneck.
+      static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
+
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_paren_operator(NPtrVec&& nodes);
-
+      static NPtr build_bracket_operator(NPtrVec&& nodes);
 
       NPtr fix_tree_precedence(bool return_ptr);
 
@@ -93,21 +98,18 @@ namespace AST {
   };
 
   inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
-    auto binop_ptr = new Binop;
-    binop_ptr->lhs_ =
-      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[0].release()));
+    return Binop::build_operator(std::forward<NPtrVec>(nodes), "()");
+  }
 
-    binop_ptr->rhs_ =
-      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[2].release()));
-
-    binop_ptr->token_ = "()";
-    binop_ptr->type_ = operat;
-    binop_ptr->precedence_ = prec_map["()"];
-
-    return binop_ptr->fix_tree_precedence(true);
+  inline NPtr Binop::build_bracket_operator(NPtrVec&& nodes) {
+    return Binop::build_operator(std::forward<NPtrVec>(nodes), "[]");
   }
 
   inline NPtr Binop::build(NPtrVec&& nodes) {
+    return Binop::build_operator(std::forward<NPtrVec>(nodes), nodes[1]->token());
+  }
+
+  inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
     auto binop_ptr = new Binop;
     binop_ptr->lhs_ =
       std::unique_ptr<Expression>(static_cast<Expression*>(nodes[0].release()));
@@ -115,9 +117,9 @@ namespace AST {
     binop_ptr->rhs_ =
       std::unique_ptr<Expression>(static_cast<Expression*>(nodes[2].release()));
 
-    binop_ptr->token_ = nodes[1]->token();
+    binop_ptr->token_ = op_symbol;
     binop_ptr->type_ = operat;
-    binop_ptr->precedence_ = prec_map[nodes[1]->token()];
+    binop_ptr->precedence_ = prec_map[op_symbol];
 
     return binop_ptr->fix_tree_precedence(true);
   }

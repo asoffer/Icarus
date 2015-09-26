@@ -2,7 +2,6 @@
 
 namespace AST {
   std::map<std::string, size_t> prec_map = {
-    { "()", 1 },
     { ":",  2 },
     { "=>", 3 },
     { "->", 3 },
@@ -16,7 +15,9 @@ namespace AST {
     { "-",  5 },
     { "*",  6 },
     { "/",  6 },
-    { "%",  6 }
+    { "%",  6 },
+    { "[]", 10 },
+    { "()", 10 }
   };
 
   NPtr Binop::fix_tree_precedence(bool return_ptr) {
