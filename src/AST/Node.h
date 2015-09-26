@@ -1,11 +1,13 @@
-#ifndef AST_NODE_H
-#define AST_NODE_H
+#ifndef ICARUS_AST_NODE_H
+#define ICARUS_AST_NODE_H
 
 #include <string>
 #include <iostream>
 
 namespace AST {
   class Node {
+    friend class Expression;
+
     public:
       enum Type {
         unknown, eof, newline, comment,
@@ -22,6 +24,8 @@ namespace AST {
       static inline Node newline_node() { return Node(newline, ""); }
 
       inline Type node_type() const { return type_; }
+      inline void set_node_type(Type t) { type_ = t; }
+
 
       Node(Type type = unknown, const std::string& token = "");
 
@@ -29,11 +33,11 @@ namespace AST {
       friend std::ostream& operator<<(std::ostream& os, const Node& node);
 #endif
 
-    private:
+    protected:
       Type type_;
       std::string token_;
   };
 
 }  // namespace AST
 
-#endif  // AST_NODE_H
+#endif  // ICARUS_AST_NODE_H

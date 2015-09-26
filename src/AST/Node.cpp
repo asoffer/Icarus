@@ -13,6 +13,7 @@ std::map<Node::Type, std::string> debug_map = {
   { Node::integer, "Integer" },
   { Node::real, "Real" },
   { Node::operat, "Operator" },
+  { Node::expression, "Expression" },
   { Node::Type::left_paren, "Left Paren" },
   { Node::Type::right_paren, "Right Paren" },
   { Node::Type::left_brace, "Left Brace" },

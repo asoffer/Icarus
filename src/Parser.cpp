@@ -1,4 +1,5 @@
 #include "Parser.h"
+#include "AST/Expression.h"
 
 Parser::Parser(const char* filename) : lexer_(filename) {
   init_rules();
@@ -11,6 +12,10 @@ void Parser::parse() {
 
     // Otherwise shift
     shift();
+  }
+
+  for (const auto& node_ptr : stack_) {
+    std::cout << *node_ptr << std::endl;
   }
 }
 
@@ -40,14 +45,13 @@ bool Parser::reduce() {
   if (matched_rule_ptr == nullptr) return false;
 
   matched_rule_ptr->apply(stack_);
-
   return true;
 }
 
 void Parser::init_rules() {
   using AST::Node;
 
-//  rules_.push_back(Rule(Node::expression, {
-//        Node::identifier
-//        }, AST::Expression::from_identifier));
+  rules_.push_back(Rule(Node::expression, {
+        Node::identifier
+        }, AST::Expression::from_identifier));
 }

@@ -35,8 +35,6 @@ inline void Parser::shift() {
   if (next_node_ptr->node_type() == AST::Node::comment)
     return;
 
-  std::cout << *next_node_ptr << std::endl;
-
   stack_.push_back(std::move(next_node_ptr));
 }
 

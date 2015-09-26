@@ -1,9 +1,8 @@
 #include "Rule.h"
 
 Rule::Rule(
-    AST::Node::Type output,
-    const std::vector<AST::Node::Type>& input)
-: output_(output), input_(input)
+    AST::Node::Type output, const std::vector<AST::Node::Type>& input, fnptr fn)
+: output_(output), input_(input), fn_(fn)
 {
 
 }
@@ -25,7 +24,18 @@ bool Rule::match(const std::vector<NPtr>& node_stack) const {
   return true;
 }
 
-void Rule::apply(std::vector<NPtr>&/* node_stack */) const {
-  // TODO(andy) implement this
-  // node_stack commented out to avoid -Werror=unused-parameter annoyances
+void Rule::apply(std::vector<NPtr>& node_stack) const {
+  // Make a vector for the rule function to take as input. It will begin with
+  // size() unique_ptrs.
+  std::vector<NPtr> nodes_to_reduce(size());
+
+  for (int i = static_cast<int>(size()) - 1; i >= 0; --i) {
+    nodes_to_reduce[i] = std::move(node_stack.back());
+    node_stack.pop_back();
+  }
+
+  auto new_ptr = fn_(std::move(nodes_to_reduce));
+  new_ptr->set_node_type(output_);
+
+  node_stack.push_back(std::move(fn_(std::move(nodes_to_reduce))));
 }
