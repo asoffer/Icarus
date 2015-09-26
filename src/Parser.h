@@ -20,6 +20,8 @@ class Parser {
     void shift();
     bool reduce();
 
+    void init_rules();
+
     std::vector<Rule> rules_;
     std::vector<NPtr> stack_;
     Lexer lexer_;
@@ -28,6 +30,10 @@ class Parser {
 inline void Parser::shift() {
   NPtr next_node_ptr(new AST::Node);
   lexer_ >> *next_node_ptr;
+
+  // Never shift comments onto the stack
+  if (next_node_ptr->node_type() == AST::Node::comment)
+    return;
 
   std::cout << *next_node_ptr << std::endl;
 
