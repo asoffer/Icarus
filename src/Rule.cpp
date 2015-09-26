@@ -2,9 +2,8 @@
 
 Rule::Rule(
     AST::Node::Type output,
-    const std::vector<AST::Node::Type>& input,
-    int prec)
-: output_(output), input_(input), precedence_(prec)
+    const std::vector<AST::Node::Type>& input)
+: output_(output), input_(input)
 {
 
 }

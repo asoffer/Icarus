@@ -9,9 +9,9 @@ class Rule {
   public:
     typedef std::unique_ptr<AST::Node> NPtr;
 
-    Rule(AST::Node::Type output, const std::vector<AST::Node::Type>& input, int prec);
+    Rule(AST::Node::Type output, const std::vector<AST::Node::Type>& input);
 
-    inline int precedence() const { return precedence_; }
+    inline size_t size() const { return input_.size(); }
 
     bool match(const std::vector<NPtr>& node_stack) const;
     void apply(std::vector<NPtr>& node_stack) const;
@@ -19,7 +19,6 @@ class Rule {
   private:
     AST::Node::Type output_;
     std::vector<AST::Node::Type> input_;
-    int precedence_;
 };
 
 #endif  // ICARUS_RULE_H

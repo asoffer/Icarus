@@ -20,7 +20,7 @@ bool Parser::reduce() {
   for (const Rule& rule : rules_) {
     // If we've already found a rule, ignore rules of lower precedence
     if (matched_rule_ptr != nullptr &&
-        matched_rule_ptr->precedence() > rule.precedence()) {
+        matched_rule_ptr->size() > rule.size()) {
       continue;
     }
 
@@ -28,8 +28,8 @@ bool Parser::reduce() {
     if (rule.match(stack_)) {
 #ifdef DEBUG
       if (matched_rule_ptr != nullptr &&
-          rule.precedence() == matched_rule_ptr->precedence()) {
-        throw "Two rules matched with the same precedence level";
+          rule.size() == matched_rule_ptr->size()) {
+        throw "Two rules matched with the same size";
       }
 #endif
 
@@ -49,5 +49,5 @@ void Parser::init_rules() {
 
 //  rules_.push_back(Rule(Node::expression, {
 //        Node::identifier
-//        }, 0, AST::Expression::from_identifier));
+//        }, AST::Expression::from_identifier));
 }
