@@ -3,8 +3,7 @@
 
 namespace AST {
 
-#ifdef DEBUG
-std::map<Node::Type, std::string> debug_map = {
+std::map<Node::Type, std::string> Node::debug_map = {
   { Node::unknown, "Unknown" },
   { Node::eof, "EOF" },
   { Node::newline, "Newline" },
@@ -31,14 +30,21 @@ std::map<Node::Type, std::string> debug_map = {
 };
 
 std::ostream& operator<<(std::ostream& os, const Node& node) {
-  os << "[" << debug_map[node.type_];
-
-  if (!node.token_.empty())
-    os << ": " << node.token_;
-
-  return os << "]";
+  return os << node.to_string(0);
 }
-#endif
+
+std::string Node::to_string(size_t n) const {
+  std::string output;
+  for (size_t i = 0; i < n; ++i) {
+    output += "  ";
+  }
+
+  output = "[" + debug_map[type_];
+
+  if (!token_.empty())
+    output += ": " + token_;
+  return output + "]";
+}
 
   Node::Node(Node::Type type, const std::string& token) : type_(type), token_(token) {
   }

@@ -37,5 +37,5 @@ void Rule::apply(std::vector<NPtr>& node_stack) const {
   auto new_ptr = fn_(std::move(nodes_to_reduce));
   new_ptr->set_node_type(output_);
 
-  node_stack.push_back(std::move(fn_(std::move(nodes_to_reduce))));
+  node_stack.push_back(std::move(new_ptr));
 }
