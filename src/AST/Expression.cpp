@@ -2,20 +2,21 @@
 
 namespace AST {
   std::map<std::string, size_t> prec_map = {
-    { ":",  1 },
-    { "=>", 2 },
-    { "->", 2 },
-    { "<",  3 },
-    { ">",  3 },
-    { "<=", 3 },
-    { ">=", 3 },
-    { "==", 3 },
-    { "!=", 3 },
-    { "+",  4 },
-    { "-",  4 },
-    { "*",  5 },
-    { "/",  5 },
-    { "%",  5 }
+    { "()", 1 },
+    { ":",  2 },
+    { "=>", 3 },
+    { "->", 3 },
+    { "<",  4 },
+    { ">",  4 },
+    { "<=", 4 },
+    { ">=", 4 },
+    { "==", 4 },
+    { "!=", 4 },
+    { "+",  5 },
+    { "-",  5 },
+    { "*",  6 },
+    { "/",  6 },
+    { "%",  6 }
   };
 
   NPtr Binop::fix_tree_precedence(bool return_ptr) {
@@ -49,7 +50,7 @@ namespace AST {
       spaces += "  ";
     }
  
-    return spaces + "<" + Node::debug_map[base_type_] + ": " + token_ + ">";
+    return spaces + "<" + Node::debug_map[base_type_] + ": " + token_ + ">\n";
   }
 
   std::string Binop::to_string(size_t n) const {
@@ -57,9 +58,9 @@ namespace AST {
     for (size_t i = 0; i < n; ++i) {
       output += "  ";
     }
-    output += "<Binop: '" + token_ + "'>\n";
+    output += "<Binop: '" + (token_ == "" ? Node::debug_map[type_] : token_) + "'>\n";
 
-    output += lhs_->to_string(n + 1) + "\n";
+    output += lhs_->to_string(n + 1);
     output += rhs_->to_string(n + 1);
 
     return output;

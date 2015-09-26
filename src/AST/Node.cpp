@@ -12,6 +12,8 @@ std::map<Node::Type, std::string> Node::debug_map = {
   { Node::integer, "Integer" },
   { Node::real, "Real" },
   { Node::operat, "Operator" },
+  { Node::key_value_joiner, "=>" },
+  { Node::key_value_pair, "( => )" },
   { Node::expression, "Expression" },
   { Node::Type::left_paren, "Left Paren" },
   { Node::Type::right_paren, "Right Paren" },
@@ -39,11 +41,11 @@ std::string Node::to_string(size_t n) const {
     output += "  ";
   }
 
-  output = "[" + debug_map[type_];
+  output += "[" + debug_map[type_];
 
   if (!token_.empty())
     output += ": " + token_;
-  return output + "]";
+  return output + "]\n";
 }
 
   Node::Node(Node::Type type, const std::string& token) : type_(type), token_(token) {

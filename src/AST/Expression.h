@@ -77,6 +77,8 @@ namespace AST {
   class Binop : public Expression {
     public:
       static NPtr build(NPtrVec&& nodes);
+      static NPtr build_paren_operator(NPtrVec&& nodes);
+
 
       NPtr fix_tree_precedence(bool return_ptr);
 
@@ -89,6 +91,21 @@ namespace AST {
       std::unique_ptr<Expression> lhs_;
       std::unique_ptr<Expression> rhs_;
   };
+
+  inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
+    auto binop_ptr = new Binop;
+    binop_ptr->lhs_ =
+      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[0].release()));
+
+    binop_ptr->rhs_ =
+      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[2].release()));
+
+    binop_ptr->token_ = "()";
+    binop_ptr->type_ = operat;
+    binop_ptr->precedence_ = prec_map["()"];
+
+    return binop_ptr->fix_tree_precedence(true);
+  }
 
   inline NPtr Binop::build(NPtrVec&& nodes) {
     auto binop_ptr = new Binop;

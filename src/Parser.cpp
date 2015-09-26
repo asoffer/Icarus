@@ -10,7 +10,7 @@ void Parser::parse() {
     // Reduce if you can
     while (reduce()) {
 //      for (const auto& node_ptr : stack_) {
-//        std::cout << *node_ptr << std::endl;
+//        std::cout << *node_ptr;
 //      }
 //      std::cout << std::endl;
     }
@@ -18,13 +18,13 @@ void Parser::parse() {
     // Otherwise shift
     shift();
 //    for (const auto& node_ptr : stack_) {
-//      std::cout << *node_ptr << std::endl;
+//      std::cout << *node_ptr;
 //    }
 //    std::cout << std::endl;
   }
 
   for (const auto& node_ptr : stack_) {
-    std::cout << *node_ptr << std::endl;
+    std::cout << *node_ptr;
   }
   std::cout << std::endl;
 }
@@ -73,7 +73,6 @@ void Parser::init_rules() {
         Node::real
         }, AST::Terminal::build_real));
 
-
   rules_.push_back(Rule(Node::paren_expression, {
         Node::left_paren, Node::expression, Node::right_paren
         }, AST::Expression::parenthesize));
@@ -97,5 +96,21 @@ void Parser::init_rules() {
   // TODO(andy) write explicit operator for this
   rules_.push_back(Rule(Node::expression, {
         Node::expression, Node::left_paren, Node::expression, Node::right_paren
+        }, AST::Binop::build_paren_operator));
+
+  rules_.push_back(Rule(Node::key_value_pair, {
+        Node::expression, Node::key_value_joiner, Node::expression
         }, AST::Binop::build));
+
+  rules_.push_back(Rule(Node::key_value_pair, {
+        Node::reserved_else, Node::key_value_joiner, Node::expression
+        }, AST::Binop::build));
+
+//  rules_.push_back(Rule(Node::key_value_pair_list, {
+//        Node::key_value_pair, Node::newline
+//        }, AST::___));
+//
+//  rules_.push_back(Rule(Node::key_value_pair_list, {
+//        Node::key_value_pair_list, Node::key_value_pair, Node::newline
+//        }, AST::___));
 }
