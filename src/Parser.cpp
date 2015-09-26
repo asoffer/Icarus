@@ -21,7 +21,6 @@ void Parser::parse() {
 //      std::cout << *node_ptr << std::endl;
 //    }
 //    std::cout << std::endl;
-//
   }
 
   for (const auto& node_ptr : stack_) {
@@ -54,7 +53,6 @@ bool Parser::reduce() {
 
   if (matched_rule_ptr == nullptr) return false;
 
-  // std::cout << "match!!" << matched_rule_ptr->size() << std::endl;
   matched_rule_ptr->apply(stack_);
 
   return true;
@@ -65,11 +63,16 @@ void Parser::init_rules() {
 
   rules_.push_back(Rule(Node::expression, {
         Node::identifier
-        }, AST::Expression::from_identifier));
+        }, AST::Terminal::build_identifier));
 
   rules_.push_back(Rule(Node::expression, {
         Node::integer
-        }, AST::Expression::from_identifier)); // TODO rename from_identifier
+        }, AST::Terminal::build_integer));
+
+  rules_.push_back(Rule(Node::expression, {
+        Node::real
+        }, AST::Terminal::build_real));
+
 
   rules_.push_back(Rule(Node::paren_expression, {
         Node::left_paren, Node::expression, Node::right_paren
@@ -91,8 +94,8 @@ void Parser::init_rules() {
         Node::paren_expression, Node::operat, Node::paren_expression
         }, AST::Binop::build));
 
+  // TODO(andy) write explicit operator for this
   rules_.push_back(Rule(Node::expression, {
         Node::expression, Node::left_paren, Node::expression, Node::right_paren
         }, AST::Binop::build));
-
 }

@@ -7,10 +7,10 @@
 #include "Lexer.h"
 #include "Rule.h"
 #include "AST/Node.h"
+#include "typedefs.h"
 
 class Parser {
   public:
-    typedef std::unique_ptr<AST::Node> NPtr;
 
     Parser(const char* filename);
 

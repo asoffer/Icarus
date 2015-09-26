@@ -9,6 +9,7 @@ namespace AST {
 }
 
 typedef std::unique_ptr<AST::Node> NPtr;
-typedef NPtr (*fnptr)(std::vector<NPtr>&&);
+typedef std::vector<NPtr> NPtrVec;
+typedef NPtr (*fnptr)(NPtrVec&&);
 
 #endif  // ICARUS_TYPEDEFS_H
