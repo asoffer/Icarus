@@ -93,8 +93,8 @@ namespace AST {
 
     private:
       Binop() {}
-      std::unique_ptr<Expression> lhs_;
-      std::unique_ptr<Expression> rhs_;
+      EPtr lhs_;
+      EPtr rhs_;
   };
 
   inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
@@ -112,10 +112,10 @@ namespace AST {
   inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
     auto binop_ptr = new Binop;
     binop_ptr->lhs_ =
-      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[0].release()));
+      EPtr(static_cast<Expression*>(nodes[0].release()));
 
     binop_ptr->rhs_ =
-      std::unique_ptr<Expression>(static_cast<Expression*>(nodes[2].release()));
+      EPtr(static_cast<Expression*>(nodes[2].release()));
 
     binop_ptr->token_ = op_symbol;
     binop_ptr->type_ = operat;

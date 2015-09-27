@@ -1,5 +1,8 @@
 #include "Parser.h"
 #include "AST/Expression.h"
+#include "AST/KVPairList.h"
+#include "AST/Case.h"
+
 
 Parser::Parser(const char* filename) : lexer_(filename) {
   init_rules();
@@ -102,18 +105,22 @@ void Parser::init_rules() {
         }, AST::Binop::build_bracket_operator));
 
   rules_.push_back(Rule(Node::key_value_pair, {
-        Node::expression, Node::key_value_joiner, Node::expression
+        Node::expression, Node::key_value_joiner, Node::expression, Node::newline
         }, AST::Binop::build));
 
   rules_.push_back(Rule(Node::key_value_pair, {
-        Node::reserved_else, Node::key_value_joiner, Node::expression
+        Node::reserved_else, Node::key_value_joiner, Node::expression, Node::newline
         }, AST::Binop::build));
 
-//  rules_.push_back(Rule(Node::key_value_pair_list, {
-//        Node::key_value_pair, Node::newline
-//        }, AST::___));
-//
-//  rules_.push_back(Rule(Node::key_value_pair_list, {
-//        Node::key_value_pair_list, Node::key_value_pair, Node::newline
-//        }, AST::___));
+  rules_.push_back(Rule(Node::key_value_pair_list, {
+        Node::key_value_pair
+        }, AST::KVPairList::build_one));
+
+  rules_.push_back(Rule(Node::key_value_pair_list, {
+        Node::key_value_pair_list, Node::key_value_pair
+        }, AST::KVPairList::build_more));
+
+  rules_.push_back(Rule(Node::expression, {
+        Node::reserved_case, Node::left_brace, Node::newline, Node::key_value_pair_list, Node::right_brace
+        }, AST::Case::build));
 }

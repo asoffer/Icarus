@@ -29,9 +29,9 @@ namespace AST {
 
     auto lhs_ptr = static_cast<Binop*>(lhs_.release());
 
-    lhs_ = std::unique_ptr<Expression>(lhs_ptr->rhs_.release());
+    lhs_ = EPtr(lhs_ptr->rhs_.release());
 
-    lhs_ptr->rhs_ = std::unique_ptr<Expression>(this);
+    lhs_ptr->rhs_ = EPtr(this);
 
     // Recurse
     // TODO(andy) it would be faster to find the correct place to insert and
