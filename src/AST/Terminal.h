@@ -20,7 +20,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
 
-    private:
+    protected:
       Node::Type base_type_;
       Terminal() {}
   };
@@ -34,10 +34,6 @@ namespace AST {
     return NPtr(term_ptr);
   }
 
-  inline NPtr Terminal::build_identifier(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), identifier);
-  }
-
   inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), integer);
   }
@@ -47,12 +43,7 @@ namespace AST {
   }
 
   inline std::set<std::string> Terminal::identifiers() const {
-    if (base_type_ == Node::identifier) {
-      return { token() };
-    } else {
-      return std::set<std::string>();
-    }
+    return std::set<std::string>();
   }
-
 }  // namespace AST
 #endif  // ICARUS_AST_TERMINAL_H

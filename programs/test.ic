@@ -1,4 +1,2 @@
-factorial := (n : uint) -> case {
-  n < 2  =>  1
-  else   =>  n * factorial(n - 1)
-}
+n : int = 3
+n + 4

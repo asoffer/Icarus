@@ -2,6 +2,7 @@
 #include "AST/Node.h"
 #include "AST/Expression.h"
 #include "AST/Terminal.h"
+#include "AST/Identifier.h"
 #include "AST/Binop.h"
 #include "AST/KVPairList.h"
 #include "AST/Case.h"
@@ -27,12 +28,12 @@ void Parser::parse() {
       shift();
     }
 
-//  for (const auto& node_ptr : stack_) {
-//    std::cout << *node_ptr;
-//  }
-//  std::cout << std::endl;
-//  std::string s;
-//  std::cin >> s;
+  for (const auto& node_ptr : stack_) {
+    std::cout << *node_ptr;
+  }
+  std::cout << std::endl;
+  std::string s;
+  std::cin >> s;
 
   }
   // Finish up any more reductions that can be made
@@ -105,7 +106,7 @@ void Parser::init_rules() {
 
   rules_.push_back(Rule(Node::expression, {
         Node::identifier
-        }, AST::Terminal::build_identifier));
+        }, AST::Identifier::build));
 
   rules_.push_back(Rule(Node::expression, {
         Node::integer

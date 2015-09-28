@@ -7,10 +7,12 @@
 namespace AST {
   class Node;
   class Expression;
+  class Identifier;
 }
 
 typedef std::unique_ptr<AST::Node> NPtr;
 typedef std::unique_ptr<AST::Expression> EPtr;
+typedef std::unique_ptr<AST::Identifier> IdPtr;
 typedef std::vector<NPtr> NPtrVec;
 typedef NPtr (*fnptr)(NPtrVec&&);
 
