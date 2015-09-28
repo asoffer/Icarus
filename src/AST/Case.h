@@ -11,7 +11,8 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-       virtual std::string to_string(size_t n) const;
+      virtual std::set<std::string> identifiers() const;
+      virtual std::string to_string(size_t n) const;
 
     private:
        Case() {}

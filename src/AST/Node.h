@@ -34,10 +34,9 @@ namespace AST {
       Node(Type type = unknown, const std::string& token = "");
       virtual ~Node(){}
 
-#ifdef DEBUG
-      friend std::ostream& operator<<(std::ostream& os, const Node& node);
       virtual std::string to_string(size_t n) const;
-#endif
+
+      friend std::ostream& operator<<(std::ostream& os, const Node& node);
 
     protected:
       Type type_;

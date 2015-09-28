@@ -14,6 +14,7 @@ namespace AST {
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
 
+      virtual std::set<std::string> identifiers() const;
       virtual std::string to_string(size_t n) const;
 
     private:

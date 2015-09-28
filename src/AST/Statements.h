@@ -9,6 +9,7 @@ namespace AST {
   class Statements : public Node {
     public:
       static NPtr build_one(NPtrVec&& nodes);
+      static NPtr build_more(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
 
@@ -23,6 +24,14 @@ namespace AST {
 
     return NPtr(output);
   }
+
+  inline NPtr Statements::build_more(NPtrVec&& nodes) {
+    auto output = static_cast<Statements*>(nodes[0].release());
+    output->statements_.emplace_back(static_cast<Expression*>(nodes[1].release()));
+
+    return NPtr(output);
+  }
+
 }  // namespace AST
 
 #endif  // ICARUS_AST_STATEMENTS_H

@@ -9,4 +9,14 @@ namespace AST {
 
     return output;
   }
+
+  std::set<std::string> KVPairList::identifiers() const {
+    std::set<std::string> output;
+    for (const auto& pair : kv_pairs_) {
+      auto id_set = pair->identifiers();
+      output.insert(id_set.begin(), id_set.end());
+    }
+
+    return output;
+  }
 }  // namespace AST

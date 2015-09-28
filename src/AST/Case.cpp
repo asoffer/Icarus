@@ -7,10 +7,18 @@ namespace AST {
       output += "  ";
     }
 
-    output += "<Case>\n";
+    output += "<Case>\t\t{ ";
+    for (const auto& id : identifiers()) {
+      output += id + " ";
+    }
+
+    output += "}\n";
     output += pairs_->to_string(n);
 
     return output;
   }
 
+  std::set<std::string> Case::identifiers() const {
+    return pairs_->identifiers();
+  } 
 }  // namespace AST

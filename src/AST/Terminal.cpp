@@ -7,6 +7,11 @@ namespace AST {
       spaces += "  ";
     }
  
-    return spaces + "<" + Node::debug_map[base_type_] + ": " + token_ + ">\n";
+    auto output = spaces + "<" + Node::debug_map[base_type_] + ": " + token_ + ">\t\t{ ";
+    for (const auto& id : identifiers()) {
+      output += id + " ";
+    }
+
+    return output + "}\n";
   }
 }  // namespace AST

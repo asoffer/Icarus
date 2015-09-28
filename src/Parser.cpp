@@ -8,8 +8,8 @@
 #include "AST/Statements.h"
 
 
-NPtr ignore_extra_newlines(NPtrVec&& nodes) {
-  return std::move(nodes[0]);
+template <size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
+  return std::move(nodes[N]);
 }
 
 Parser::Parser(const char* filename) : lexer_(filename) {
@@ -27,19 +27,21 @@ void Parser::parse() {
       shift();
     }
 
-    for (const auto& node_ptr : stack_) {
-      std::cout << *node_ptr;
-    }
-    std::cout << std::endl;
-  }
+//  for (const auto& node_ptr : stack_) {
+//    std::cout << *node_ptr;
+//  }
+//  std::cout << std::endl;
+//  std::string s;
+//  std::cin >> s;
 
-  // Finish up any more reductions that can be made
-  while (reduce()) {
-    for (const auto& node_ptr : stack_) {
-      std::cout << *node_ptr;
-    }
-    std::cout << std::endl;
   }
+  // Finish up any more reductions that can be made
+  while (reduce());
+
+  for (const auto& node_ptr : stack_) {
+    std::cout << *node_ptr;
+  }
+  std::cout << std::endl;
 }
 
 bool Parser::should_shift() {
@@ -135,11 +137,11 @@ void Parser::init_rules() {
 
   rules_.push_back(Rule(Node::key_value_pair, {
         Node::reserved_else, Node::key_value_joiner, Node::expression, Node::newline
-        }, AST::Binop::build));
+        }, AST::Binop::build_else_kv));
 
   rules_.push_back(Rule(Node::key_value_pair, {
         Node::key_value_pair, Node::newline
-        }, ignore_extra_newlines));
+        }, drop_all_but<0>));
 
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair
@@ -147,7 +149,7 @@ void Parser::init_rules() {
 
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair_list, Node::newline
-        }, ignore_extra_newlines));
+        }, drop_all_but<0>));
 
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair_list, Node::key_value_pair
@@ -157,15 +159,24 @@ void Parser::init_rules() {
         Node::reserved_case, Node::left_brace, Node::newline, Node::key_value_pair_list, Node::right_brace
         }, AST::Case::build));
 
-  rules_.push_back(Rule(Node::newline, {
-        Node::newline, Node::newline
-        }, ignore_extra_newlines));
-
   rules_.push_back(Rule(Node::statements, {
         Node::expression, Node::newline
         }, AST::Statements::build_one));
 
   rules_.push_back(Rule(Node::statements, {
+        Node::statements, Node::expression, Node::newline
+        }, AST::Statements::build_more));
+
+  rules_.push_back(Rule(Node::newline, {
+        Node::newline, Node::newline
+        }, drop_all_but<0>));
+
+  // Disregard blank lines surrounding statements
+  rules_.push_back(Rule(Node::statements, {
         Node::statements, Node::newline
-        }, ignore_extra_newlines));
+        }, drop_all_but<0>));
+
+  rules_.push_back(Rule(Node::statements, {
+        Node::newline, Node::statements
+        }, drop_all_but<1>));
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <iostream>
 #include <map>
+#include <set>
 #include <utility>
 #include "typedefs.h"
 #include "AST/Node.h"
@@ -21,6 +22,9 @@ namespace AST {
       static NPtr parenthesize(NPtrVec&& nodes);
 
       size_t precedence() const;
+
+      // TODO change this to a more optimal encoding
+      virtual std::set<std::string> identifiers() const = 0;
 
       virtual ~Expression(){}
 
