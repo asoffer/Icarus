@@ -28,6 +28,7 @@ class Lexer {
     AST::Node next_word();
     AST::Node next_number();
     AST::Node next_operator();
+    AST::Node next_string_literal();
 };
 
 inline Lexer::operator bool () const {

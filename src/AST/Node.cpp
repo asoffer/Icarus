@@ -11,6 +11,7 @@ std::map<Node::Type, std::string> Node::debug_map = {
   { Node::identifier, "Identifier" },
   { Node::integer, "Integer" },
   { Node::real, "Real" },
+  { Node::string_literal, "String" },
   { Node::operat, "Operator" },
   { Node::key_value_joiner, "=>" },
   { Node::key_value_pair, "( => )" },

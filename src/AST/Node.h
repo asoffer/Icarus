@@ -11,7 +11,7 @@ namespace AST {
       enum Type {
         unknown, eof, newline, comment,
         identifier,
-        integer, real,
+        integer, real, string_literal,
         operat,
         key_value_joiner, key_value_pair, key_value_pair_list,
         expression, paren_expression,
@@ -25,6 +25,8 @@ namespace AST {
 
       static inline Node eof_node() { return Node(eof, ""); }
       static inline Node newline_node() { return Node(newline, ""); }
+      static inline Node string_literal_node(const std::string& str_lit) { return Node(string_literal, str_lit); }
+
 
       inline Type node_type() const { return type_; }
       inline void set_node_type(Type t) { type_ = t; }

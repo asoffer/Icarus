@@ -1,2 +1,6 @@
-n : int = 3
-n + 4
+fizz_buzz := (n : uint) -> case {
+  n % 15 == 0  =>  "fizzbuzz"
+  n % 3 == 0   =>  "fizz"
+  n % 5 == 0   =>  "buzz"
+  else         =>  n :> string
+}

@@ -2,7 +2,7 @@
 #include <map>
 
 bool isnewline(int n) {
-  return n == '\n' || n == '\r';
+  return n == static_cast<int>('\n') || n == static_cast<int>('\r');
 }
 
 Lexer::Lexer(const char* file_name) :
@@ -119,7 +119,7 @@ AST::Node Lexer::next_operator() {
     throw "Non-punct character encountered as first character in next_operator.";
 #endif
 
-  // first look for (){}[]
+  // first look for (){}[] or "
   switch (peek) {
     case static_cast<int>('('):
       {
@@ -151,6 +151,11 @@ AST::Node Lexer::next_operator() {
         file_.get();
         return AST::Node(AST::Node::right_bracket);
       }
+    case static_cast<int>('"'):
+      {
+        file_.get();
+        return next_string_literal();
+      }
   }
 
   std::string token;
@@ -177,4 +182,51 @@ AST::Node Lexer::next_operator() {
   }
 
   return AST::Node(AST::Node::operat, token);
+}
+
+AST::Node Lexer::next_string_literal() {
+  int peek = file_.peek();
+  std::string str_lit = "";
+
+  while (!(peek == static_cast<int>('"') || isnewline(peek))) {
+    // Escaped characters
+    if (peek == static_cast<int>('\\')) {
+      file_.get();
+      peek = file_.peek();
+      switch (peek) {
+        case '\\':
+          str_lit += '\\';
+          break;
+        case '"':
+          str_lit += '"';
+          break;
+        case 'n':
+          str_lit += '\n';
+          break;
+        case 'r':
+          str_lit += '\r';
+          break;
+        case 't':
+          str_lit += '\t';
+          break;
+        default:
+          // TODO Error invalid escaped character
+          break;
+      }
+      file_.get();
+    } else {
+      str_lit += static_cast<char>(file_.get());
+    }
+
+    peek = file_.peek();
+  }
+
+  if (peek == static_cast<int>('"')) {
+    file_.get();
+  }
+  else {
+    // TODO error: you forgot to end the string
+  }
+
+  return AST::Node::string_literal_node(str_lit);
 }

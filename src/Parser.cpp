@@ -32,9 +32,8 @@ void Parser::parse() {
     std::cout << *node_ptr;
   }
   std::cout << std::endl;
-  std::string s;
-  std::cin >> s;
-
+//  std::string s;
+//  std::cin >> s;
   }
   // Finish up any more reductions that can be made
   while (reduce());
@@ -53,6 +52,7 @@ bool Parser::should_shift() {
   if (stack_.back()->node_type() == AST::Node::identifier
       || stack_.back()->node_type() == AST::Node::integer
       || stack_.back()->node_type() == AST::Node::real
+      || stack_.back()->node_type() == AST::Node::string_literal
       || stack_.back()->node_type() == AST::Node::right_paren) {
     return false;
   }
@@ -115,6 +115,10 @@ void Parser::init_rules() {
   rules_.push_back(Rule(Node::expression, {
         Node::real
         }, AST::Terminal::build_real));
+
+  rules_.push_back(Rule(Node::expression, {
+        Node::string_literal
+        }, AST::Terminal::build_string_literal));
 
   rules_.push_back(Rule(Node::expression, {
         Node::left_paren, Node::expression, Node::right_paren

@@ -12,7 +12,7 @@ namespace AST {
 
     public:
       static NPtr build(NPtrVec&& nodes, Node::Type t);
-      static NPtr build_identifier(NPtrVec&& nodes);
+      static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_integer(NPtrVec&& nodes);
       static NPtr build_real(NPtrVec&& nodes);
 
@@ -32,6 +32,10 @@ namespace AST {
     term_ptr->precedence_ = prec_max;
 
     return NPtr(term_ptr);
+  }
+
+  inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), string_literal);
   }
 
   inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
