@@ -1,35 +1,73 @@
 #include "Parser.h"
+#include "AST/Node.h"
 #include "AST/Expression.h"
+#include "AST/Terminal.h"
+#include "AST/Binop.h"
 #include "AST/KVPairList.h"
 #include "AST/Case.h"
+#include "AST/Statements.h"
 
+
+NPtr ignore_extra_newlines(NPtrVec&& nodes) {
+  return std::move(nodes[0]);
+}
 
 Parser::Parser(const char* filename) : lexer_(filename) {
   init_rules();
+
+  lookahead_ = NPtr(new AST::Node);
+  *lookahead_ = AST::Node::newline_node();
 }
 
 void Parser::parse() {
   while (lexer_) {
-    // Reduce if you can
-    while (reduce()) {
-//      for (const auto& node_ptr : stack_) {
-//        std::cout << *node_ptr;
-//      }
-//      std::cout << std::endl;
+    if (should_shift()) {
+      shift();
+    } else if (!reduce()) {
+      shift();
     }
 
-    // Otherwise shift
-    shift();
-//    for (const auto& node_ptr : stack_) {
-//      std::cout << *node_ptr;
-//    }
-//    std::cout << std::endl;
+    for (const auto& node_ptr : stack_) {
+      std::cout << *node_ptr;
+    }
+    std::cout << std::endl;
   }
 
-  for (const auto& node_ptr : stack_) {
-    std::cout << *node_ptr;
+  // Finish up any more reductions that can be made
+  while (reduce()) {
+    for (const auto& node_ptr : stack_) {
+      std::cout << *node_ptr;
+    }
+    std::cout << std::endl;
   }
-  std::cout << std::endl;
+}
+
+bool Parser::should_shift() {
+  // Shift if the stack is empty
+  if (stack_.size() == 0) return true;
+
+  // Reduce terminals
+  if (stack_.back()->node_type() == AST::Node::identifier
+      || stack_.back()->node_type() == AST::Node::integer
+      || stack_.back()->node_type() == AST::Node::real
+      || stack_.back()->node_type() == AST::Node::right_paren) {
+    return false;
+  }
+
+  // For function calls, shift the parentheses on
+  if (stack_.back()->node_type() == AST::Node::expression
+      && lookahead_->node_type() == AST::Node::left_paren) {
+    return true;
+  }
+
+  if (lookahead_->node_type() == AST::Node::operat
+      && stack_.size() >= 2
+      && stack_[stack_.size() - 2]->node_type() == AST::Node::operat) {
+    // TODO worry about associtavitiy
+    return AST::prec_map[stack_[stack_.size() - 2]->token()] < AST::prec_map[lookahead_->token()];
+  }
+
+  return false;
 }
 
 bool Parser::reduce() {
@@ -57,7 +95,6 @@ bool Parser::reduce() {
   if (matched_rule_ptr == nullptr) return false;
 
   matched_rule_ptr->apply(stack_);
-
   return true;
 }
 
@@ -76,24 +113,12 @@ void Parser::init_rules() {
         Node::real
         }, AST::Terminal::build_real));
 
-  rules_.push_back(Rule(Node::paren_expression, {
+  rules_.push_back(Rule(Node::expression, {
         Node::left_paren, Node::expression, Node::right_paren
         }, AST::Expression::parenthesize));
 
   rules_.push_back(Rule(Node::expression, {
         Node::expression, Node::operat, Node::expression
-        }, AST::Binop::build));
-
-  rules_.push_back(Rule(Node::expression, {
-        Node::paren_expression, Node::operat, Node::expression
-        }, AST::Binop::build));
-
-  rules_.push_back(Rule(Node::expression, {
-        Node::expression, Node::operat, Node::paren_expression
-        }, AST::Binop::build));
-
-  rules_.push_back(Rule(Node::expression, {
-        Node::paren_expression, Node::operat, Node::paren_expression
         }, AST::Binop::build));
 
   rules_.push_back(Rule(Node::expression, {
@@ -112,9 +137,17 @@ void Parser::init_rules() {
         Node::reserved_else, Node::key_value_joiner, Node::expression, Node::newline
         }, AST::Binop::build));
 
+  rules_.push_back(Rule(Node::key_value_pair, {
+        Node::key_value_pair, Node::newline
+        }, ignore_extra_newlines));
+
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair
         }, AST::KVPairList::build_one));
+
+  rules_.push_back(Rule(Node::key_value_pair_list, {
+        Node::key_value_pair_list, Node::newline
+        }, ignore_extra_newlines));
 
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair_list, Node::key_value_pair
@@ -123,4 +156,16 @@ void Parser::init_rules() {
   rules_.push_back(Rule(Node::expression, {
         Node::reserved_case, Node::left_brace, Node::newline, Node::key_value_pair_list, Node::right_brace
         }, AST::Case::build));
+
+  rules_.push_back(Rule(Node::newline, {
+        Node::newline, Node::newline
+        }, ignore_extra_newlines));
+
+  rules_.push_back(Rule(Node::statements, {
+        Node::expression, Node::newline
+        }, AST::Statements::build_one));
+
+  rules_.push_back(Rule(Node::statements, {
+        Node::statements, Node::newline
+        }, ignore_extra_newlines));
 }

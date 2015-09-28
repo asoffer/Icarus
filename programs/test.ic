@@ -1,5 +1,6 @@
-// Computes the factorial of an unsigned integer
 factorial := (n : uint) -> case {
-    n < 2  =>  1
-    else   =>  n * factorial(n - 1)
+  n < 2  =>  1
+  else   =>  n * factorial(n - 1)
 }
+
+is_zero := (n : uint) -> n == 0

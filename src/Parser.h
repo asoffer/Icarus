@@ -17,6 +17,7 @@ class Parser {
     void parse();
 
   private:
+    bool should_shift();
     void shift();
     bool reduce();
 
@@ -24,6 +25,7 @@ class Parser {
 
     std::vector<Rule> rules_;
     std::vector<NPtr> stack_;
+    NPtr lookahead_;
     Lexer lexer_;
 };
 
@@ -32,10 +34,13 @@ inline void Parser::shift() {
   lexer_ >> *next_node_ptr;
 
   // Never shift comments onto the stack
-  if (next_node_ptr->node_type() == AST::Node::comment)
+  if (next_node_ptr->node_type() == AST::Node::comment) {
+    shift();
     return;
+  }
 
-  stack_.push_back(std::move(next_node_ptr));
+  stack_.push_back(std::move(lookahead_));
+  lookahead_ = std::move(next_node_ptr);
 }
 
 #endif  // ICARUS_PARSER_H
