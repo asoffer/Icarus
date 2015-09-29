@@ -21,4 +21,12 @@ namespace AST {
   std::set<std::string> Case::identifiers() const {
     return pairs_->identifiers();
   } 
+
+  void Case::register_declared_variables() {
+    pairs_->verify_no_declarations();
+  }
+
+  void Case::verify_no_declarations() const {
+    pairs_->verify_no_declarations();
+  }
 }  // namespace AST

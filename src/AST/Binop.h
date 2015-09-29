@@ -20,8 +20,11 @@ namespace AST {
       static NPtr build_bracket_operator(NPtrVec&& nodes);
 
       virtual std::set<std::string> identifiers() const;
-
+      virtual void verify_no_declarations() const;
       virtual std::string to_string(size_t n) const;
+      virtual void separate_declarations_and_assignments();
+      virtual bool is_binop() { return true; }
+
 
       virtual ~Binop(){}
 
@@ -56,7 +59,7 @@ namespace AST {
       EPtr(static_cast<Expression*>(nodes[2].release()));
 
     binop_ptr->token_ = "=>";
-    binop_ptr->type_ = operat;
+    binop_ptr->type_ = generic_operator;
     binop_ptr->precedence_ = prec_map["=>"];
 
     return NPtr(binop_ptr);
@@ -71,7 +74,7 @@ namespace AST {
       EPtr(static_cast<Expression*>(nodes[2].release()));
 
     binop_ptr->token_ = op_symbol;
-    binop_ptr->type_ = operat;
+    binop_ptr->type_ = generic_operator;
     binop_ptr->precedence_ = prec_map[op_symbol];
 
     return NPtr(binop_ptr);

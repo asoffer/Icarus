@@ -19,4 +19,10 @@ namespace AST {
 
     return output;
   }
+
+  void KVPairList::verify_no_declarations() const {
+    for (const auto& pair : kv_pairs_) {
+      pair->verify_no_declarations();
+    }
+  }
 }  // namespace AST

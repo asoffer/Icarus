@@ -13,4 +13,11 @@ namespace AST {
     }
     return output;
   }
+
+  void Statements::separate_declarations_and_assignments() {
+    for(const auto& stmt : statements_) {
+      stmt->separate_declarations_and_assignments();
+    }
+  }
+
 }  // namespace AST

@@ -12,8 +12,8 @@ namespace AST {
         unknown, eof, newline, comment,
         identifier,
         integer, real, string_literal,
-        operat,
-        key_value_joiner, key_value_pair, key_value_pair_list,
+        generic_operator, declaration, assignment, key_value_joiner,
+        key_value_pair, key_value_pair_list,
         expression, paren_expression,
         statements,
         left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
@@ -30,6 +30,9 @@ namespace AST {
 
       inline Type node_type() const { return type_; }
       inline void set_node_type(Type t) { type_ = t; }
+
+      virtual bool is_binop() { return false; }
+      virtual void separate_declarations_and_assignments();
 
       inline std::string token() const { return token_; }
 

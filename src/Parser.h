@@ -14,7 +14,7 @@ class Parser {
 
     Parser(const char* filename);
 
-    void parse();
+    NPtr parse();
 
   private:
     bool should_shift();

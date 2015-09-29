@@ -16,6 +16,7 @@ namespace AST {
 
       virtual std::set<std::string> identifiers() const;
       virtual std::string to_string(size_t n) const;
+      void verify_no_declarations() const;
 
     private:
       KVPairList() {}

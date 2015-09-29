@@ -17,8 +17,9 @@ namespace AST {
       static NPtr build_real(NPtrVec&& nodes);
 
       virtual std::set<std::string> identifiers() const;
-
+      virtual void verify_no_declarations() const;
       virtual std::string to_string(size_t n) const;
+      virtual void separate_declarations_and_assignments(){}
 
     protected:
       Node::Type base_type_;
@@ -49,5 +50,8 @@ namespace AST {
   inline std::set<std::string> Terminal::identifiers() const {
     return std::set<std::string>();
   }
+
+  inline void Terminal::verify_no_declarations() const {}
+
 }  // namespace AST
 #endif  // ICARUS_AST_TERMINAL_H

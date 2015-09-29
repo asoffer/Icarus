@@ -23,8 +23,10 @@ namespace AST {
 
       size_t precedence() const;
 
-      // TODO change this to a more optimal encoding
+      virtual void verify_no_declarations() const = 0;
       virtual std::set<std::string> identifiers() const = 0;
+
+      virtual void separate_declarations_and_assignments() = 0;
 
       virtual ~Expression(){}
 

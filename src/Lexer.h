@@ -1,5 +1,5 @@
-#ifndef LEXER_H
-#define LEXER_H
+#ifndef ICARUS_LEXER_H
+#define ICARUS_LEXER_H
 
 #include <fstream>
 #include "AST/Node.h"
@@ -35,4 +35,4 @@ inline Lexer::operator bool () const {
   return !file_.eof() && !file_.fail();
 }
 
-#endif
+#endif  // ICARUS_LEXER_H

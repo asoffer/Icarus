@@ -12,6 +12,8 @@ namespace AST {
       static NPtr build_more(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
+      virtual std::set<std::string> identifiers() const;
+      virtual void separate_declarations_and_assignments();
 
     private:
       Statements() {}
@@ -31,6 +33,17 @@ namespace AST {
 
     return NPtr(output);
   }
+
+  inline std::set<std::string> Statements::identifiers() const {
+    std::set<std::string> output;
+    for (const auto& st : statements_) {
+      auto id_set = st->identifiers();
+      output.insert(id_set.begin(), id_set.end());
+    }
+
+    return output;
+  }
+
 
 }  // namespace AST
 

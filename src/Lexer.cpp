@@ -176,12 +176,18 @@ AST::Node Lexer::next_operator() {
     return AST::Node(AST::Node::comment, token);
   }
 
+//  if (token == ":") {
+//    return AST::Node(AST::Node::declaration, "");
+//  } else if (token == "=") {
+//    return AST::Node(AST::Node::assignment, "");
+//  }
+
   if (token.size() >= 2 && token[0] == '=' && token[1] == '>') {
     token = token.substr(2);
     return AST::Node(AST::Node::key_value_joiner, "");
   }
 
-  return AST::Node(AST::Node::operat, token);
+  return AST::Node(AST::Node::generic_operator, token);
 }
 
 AST::Node Lexer::next_string_literal() {

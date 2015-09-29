@@ -19,4 +19,22 @@ namespace AST {
 
     return output;
   }
+
+  void Binop::separate_declarations_and_assignments() {
+    if (token_ == "=" && lhs_->is_binop() && static_cast<Binop*>(lhs_.get())->token_ == ":") {
+      std::cout << "######" << std::endl;
+      std::cout << to_string(0) << std::endl;
+      std::cout << "######" << std::endl;
+    }
+  }
+
+  void Binop::verify_no_declarations() const {
+    if (token_ != ":") {
+      lhs_->verify_no_declarations();
+      rhs_->verify_no_declarations();
+    }
+    else {
+      throw "Found a declaration in a bad place";
+    }
+  }
 }  // namespace AST

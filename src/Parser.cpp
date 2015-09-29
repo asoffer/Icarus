@@ -6,8 +6,9 @@
 #include "AST/Binop.h"
 #include "AST/KVPairList.h"
 #include "AST/Case.h"
+#include "AST/Scope.h"
+#include "AST/AnonymousScope.h"
 #include "AST/Statements.h"
-
 
 template <size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
   return std::move(nodes[N]);
@@ -20,7 +21,7 @@ Parser::Parser(const char* filename) : lexer_(filename) {
   *lookahead_ = AST::Node::newline_node();
 }
 
-void Parser::parse() {
+NPtr Parser::parse() {
   while (lexer_) {
     if (should_shift()) {
       shift();
@@ -28,10 +29,10 @@ void Parser::parse() {
       shift();
     }
 
-  for (const auto& node_ptr : stack_) {
-    std::cout << *node_ptr;
-  }
-  std::cout << std::endl;
+//  for (const auto& node_ptr : stack_) {
+//    std::cout << *node_ptr;
+//  }
+//  std::cout << std::endl;
 //  std::string s;
 //  std::cin >> s;
   }
@@ -42,6 +43,11 @@ void Parser::parse() {
     std::cout << *node_ptr;
   }
   std::cout << std::endl;
+
+  // FIXME does it exist? is there only one?
+  NPtr back = std::move(stack_.back());
+  stack_.pop_back();
+  return back;
 }
 
 bool Parser::should_shift() {
@@ -63,9 +69,9 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (lookahead_->node_type() == AST::Node::operat
+  if (lookahead_->node_type() == AST::Node::generic_operator
       && stack_.size() >= 2
-      && stack_[stack_.size() - 2]->node_type() == AST::Node::operat) {
+      && stack_[stack_.size() - 2]->node_type() == AST::Node::generic_operator) {
     // TODO worry about associtavitiy
     return AST::prec_map[stack_[stack_.size() - 2]->token()] < AST::prec_map[lookahead_->token()];
   }
@@ -124,8 +130,12 @@ void Parser::init_rules() {
         Node::left_paren, Node::expression, Node::right_paren
         }, AST::Expression::parenthesize));
 
+//  rules_.push_back(Rule(Node::expression, {
+//        Node::identifier, Node::declaration, Node::expression, Node::assignment, Node::expression
+//        }, ));
+
   rules_.push_back(Rule(Node::expression, {
-        Node::expression, Node::operat, Node::expression
+        Node::expression, Node::generic_operator, Node::expression
         }, AST::Binop::build));
 
   rules_.push_back(Rule(Node::expression, {
@@ -159,6 +169,10 @@ void Parser::init_rules() {
   rules_.push_back(Rule(Node::key_value_pair_list, {
         Node::key_value_pair_list, Node::key_value_pair
         }, AST::KVPairList::build_more));
+
+  rules_.push_back(Rule(Node::expression, {
+        Node::left_brace, Node::statements, Node::right_brace
+        }, AST::AnonymousScope::build));
 
   rules_.push_back(Rule(Node::expression, {
         Node::reserved_case, Node::left_brace, Node::newline, Node::key_value_pair_list, Node::right_brace
