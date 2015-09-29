@@ -3,37 +3,6 @@
 
 namespace AST {
 
-  std::map<Node::Type, std::string> Node::debug_map = {
-    { Node::unknown, "Unknown" },
-    { Node::eof, "EOF" },
-    { Node::newline, "Newline" },
-    { Node::comment, "Comment" },
-    { Node::identifier, "Identifier" },
-    { Node::integer, "Integer" },
-    { Node::real, "Real" },
-    { Node::string_literal, "String" },
-    { Node::generic_operator, "Operator" },
-    { Node::declaration, ":" },
-    { Node::assignment, "=" },
-    { Node::key_value_joiner, "=>" },
-    { Node::key_value_pair, "( => )" },
-    { Node::expression, "Expression" },
-    { Node::Type::left_paren, "Left Paren" },
-    { Node::Type::right_paren, "Right Paren" },
-    { Node::Type::left_brace, "Left Brace" },
-    { Node::Type::right_brace, "Right Brace" },
-    { Node::Type::left_bracket, "Left Bracket" },
-    { Node::Type::right_bracket, "Right Bracket" },
-    { Node::reserved_if, "If" },
-    { Node::reserved_else, "Else" },
-    { Node::reserved_case, "Case" },
-    { Node::reserved_loop, "Loop" },
-    { Node::reserved_while, "While" },
-    { Node::reserved_break, "Break" },
-    { Node::reserved_continue, "Continue" },
-    { Node::reserved_return, "Return" }
-  };
-
   std::ostream& operator<<(std::ostream& os, const Node& node) {
     return os << node.to_string(0);
   }
@@ -44,14 +13,14 @@ namespace AST {
       output += "  ";
     }
 
-    output += "[" + debug_map[type_];
+    output += "[" + Language::show_name.at(type_);
 
     if (!token_.empty())
       output += ": " + token_;
     return output + "]\n";
   }
 
-  Node::Node(Node::Type type, const std::string& token) : type_(type), token_(token) {
+  Node::Node(Language::NodeType type, const std::string& token) : type_(type), token_(token) {
   }
 
 

@@ -1,25 +1,38 @@
 #include "Lexer.h"
+#include "Language.h"
 #include <map>
 
+// Local function for recognizing newlines a la std::isalpha, etc.
 bool isnewline(int n) {
   return n == static_cast<int>('\n') || n == static_cast<int>('\r');
 }
 
+// Lexer constructors:
+//
+// Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(const char* file_name) :
   file_name_(file_name),
   file_(file_name, std::ifstream::in) {
   }
 
-Lexer::~Lexer() {
-  file_.close();
-}
+Lexer::Lexer(const std::string& file_name) : Lexer(file_name.c_str()) {}
 
+// Lexer destructor:
+//
+// Closes the file opened by the constructor
+Lexer::~Lexer() { file_.close(); }
+
+// Get the next token
 Lexer& operator>>(Lexer& lexer, AST::Node& node) {
   int peek;
 
 restart:
+  // This label is used in the case that a space/tab character is encountered.
+  // It allows us to repeat until we find a non-space/tab character.
+
   peek = lexer.file_.peek();
 
+  // Delegate based on the next character in the file stream
   if (peek == EOF) {
     node = AST::Node::eof_node();
   }
@@ -28,6 +41,7 @@ restart:
     lexer.file_.get();
   }
   else if (std::isspace(peek)) {
+    // Ignore space/tab characters by restarting
     lexer.file_.get();
     goto restart;
   }
@@ -49,175 +63,191 @@ restart:
   return lexer;
 }
 
-
+// The next token begins with an alpha character meaning that it is either a
+// reserved word or an identifier.
 AST::Node Lexer::next_word() {
 #ifdef DEBUG
+  // Sanity check:
+  // We only call this function if the top character is an alpha character
   if (!std::isalpha(file_.peek()))
     throw "Non-alpha character encountered as first character in next_word.";
 #endif
 
+  // Used to store the word
   std::string token;
 
+  // Repeatedly add characters to the word so long as the word only uses
+  // characters in the range a-z, A-Z, 0-9, and _ (and starts with an alpha
+  // character).
   int peek;
   do {
     token += static_cast<char>(file_.get());
     peek = file_.peek();
   } while (std::isalnum(peek) || peek == '_');
 
-  // TODO(andy) This should definitely be moved somewhere more central
-  // eventually
-  static std::map<std::string, AST::Node::Type> reserved_words = {
-    { "if",       AST::Node::reserved_if },
-    { "else",     AST::Node::reserved_else },
-    { "case",     AST::Node::reserved_case },
-    { "loop",     AST::Node::reserved_loop },
-    { "while",    AST::Node::reserved_while },
-    { "break",    AST::Node::reserved_break },
-    { "continue", AST::Node::reserved_continue },
-    { "return",   AST::Node::reserved_return }
-  };
-
-  for (const auto& res : reserved_words) {
+  // Check if the word is reserved and if so, build the appropriate Node
+  for (const auto& res : Language::reserved_words) {
     if (res.first == token) {
       return AST::Node(res.second);
     }
   }
 
-  return AST::Node(AST::Node::identifier, token);
+  // If it's not a reserved word, it's an identifier
+  return AST::Node(Language::identifier, token);
 }
 
 AST::Node Lexer::next_number() {
 #ifdef DEBUG
+  // Sanity check:
+  // We only call this function if the top character is a number character
   if (!std::isdigit(file_.peek()))
     throw "Non-digit character encountered as first character in next_number.";
 #endif
 
+  // Used to store the number
   std::string token;
 
+  // Add digits
   int peek;
   do {
     token += static_cast<char>(file_.get());
     peek = file_.peek();
   } while (std::isdigit(peek));
 
+  // If the next character is not a period, we're looking at an integer and can
+  // return
   if (peek != static_cast<int>('.')) {
-    return AST::Node(AST::Node::integer, token);
+    return AST::Node(Language::integer, token);
   }
 
+  // If the next character was a period, this is a non-integer. Add the period
+  // and keep going with more digits.
   do {
     token += static_cast<char>(file_.get());
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  return AST::Node(AST::Node::real, token);
+  return AST::Node(Language::real, token);
 }
 
 AST::Node Lexer::next_operator() {
+  // Sanity check:
+  // We only call this function if the top character is punctuation
   int peek = file_.peek();
 #ifdef DEBUG
   if (!std::ispunct(peek))
     throw "Non-punct character encountered as first character in next_operator.";
 #endif
 
-  // first look for (){}[] or "
+  // In general, we're going to take all punctuation characters, lump them
+  // together, and call that an operator. However, some operators are just one
+  // character and should be taken by themselves.
+  //
+  // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
+  // encountered should be considered on their own.
   switch (peek) {
     case static_cast<int>('('):
       {
         file_.get();
-        return AST::Node(AST::Node::left_paren);
+        return AST::Node(Language::left_paren);
       }
     case static_cast<int>(')'):
       {
         file_.get();
-        return AST::Node(AST::Node::right_paren);
+        return AST::Node(Language::right_paren);
       }
     case static_cast<int>('{'):
       {
         file_.get();
-        return AST::Node(AST::Node::left_brace);
+        return AST::Node(Language::left_brace);
       }
     case static_cast<int>('}'):
       {
         file_.get();
-        return AST::Node(AST::Node::right_brace);
+        return AST::Node(Language::right_brace);
       }
     case static_cast<int>('['):
       {
         file_.get();
-        return AST::Node(AST::Node::left_bracket);
+        return AST::Node(Language::left_bracket);
       }
     case static_cast<int>(']'):
       {
         file_.get();
-        return AST::Node(AST::Node::right_bracket);
+        return AST::Node(Language::right_bracket);
       }
     case static_cast<int>('"'):
       {
         file_.get();
         return next_string_literal();
       }
+      // TODO(andy) single-quote character
   }
 
+  // If the first character isn't one of the specific ones mentioned above, read
+  // in as many characters as possible.
+  //
+  // TODO it's possible to write 'a+=-b' and this will be lexed as a +=- b
+  // rather than a += - b. This needs to be fixed.
   std::string token;
   do {
     token += static_cast<char>(file_.get());
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  // It's a line-comment if it has at least two characters and the first two
-  // characters are forward slashes
-  if (token.size() >= 2 && token[0] == '/' && token[1] == '/') {
-    // drop the first two characters.
+  // If it's exactly one character in length, there's nothing more to do
+  if (token.size() == 1) {
+    return AST::Node(Language::generic_operator, token);
+  }
+
+  // If the first two characters are '//', then it's a single-line comment
+  if (token[0] == '/' && token[1] == '/') {
+    // From here on, the token represents not the // operator, but the text of
+    // the comment. Thus, we drop the first two characters
     token = token.substr(2);
+
+    // Add characters while we're not looking at a newline
     do {
       token += static_cast<char>(file_.get());
       peek = file_.peek();
     } while (!isnewline(peek));
-    return AST::Node(AST::Node::comment, token);
+
+    return AST::Node(Language::comment, token);
   }
 
-//  if (token == ":") {
-//    return AST::Node(AST::Node::declaration, "");
-//  } else if (token == "=") {
-//    return AST::Node(AST::Node::assignment, "");
-//  }
-
-  if (token.size() >= 2 && token[0] == '=' && token[1] == '>') {
-    token = token.substr(2);
-    return AST::Node(AST::Node::key_value_joiner, "");
+  // If the first two characters are '=>' use the key_value_joiner
+  // FIXME , this simply ignores punctuation following '=>'
+  if (token[0] == '=' && token[1] == '>') {
+    return AST::Node(Language::key_value_joiner, "=>");
   }
 
-  return AST::Node(AST::Node::generic_operator, token);
+  return AST::Node(Language::generic_operator, token);
 }
 
 AST::Node Lexer::next_string_literal() {
   int peek = file_.peek();
   std::string str_lit = "";
 
+  // Repeat until you see a double-quote to end the string, or a newline
+  // (which designates an error where they forgot to end the string)
   while (!(peek == static_cast<int>('"') || isnewline(peek))) {
-    // Escaped characters
+    // If you see a backslash, the next character is escaped
     if (peek == static_cast<int>('\\')) {
       file_.get();
       peek = file_.peek();
       switch (peek) {
         case '\\':
-          str_lit += '\\';
-          break;
+          str_lit += '\\'; break;
         case '"':
-          str_lit += '"';
-          break;
+          str_lit += '"'; break;
         case 'n':
-          str_lit += '\n';
-          break;
+          str_lit += '\n'; break;
         case 'r':
-          str_lit += '\r';
-          break;
+          str_lit += '\r'; break;
         case 't':
-          str_lit += '\t';
-          break;
+          str_lit += '\t'; break;
         default:
-          // TODO Error invalid escaped character
-          break;
+          break; // TODO Error invalid escaped character
       }
       file_.get();
     } else {
@@ -228,6 +258,7 @@ AST::Node Lexer::next_string_literal() {
   }
 
   if (peek == static_cast<int>('"')) {
+    // Ignore the last quotation mark if it exists
     file_.get();
   }
   else {

@@ -10,14 +10,10 @@
 #include "AST/Node.h"
 
 namespace AST {
-  extern std::map<std::string, size_t> prec_map;
-
   class Expression : public Node {
     friend class Binop;
 
     public:
-      static constexpr size_t prec_max = 100;
-
       static NPtr from_identifier(NPtrVec&& nodes);
       static NPtr parenthesize(NPtrVec&& nodes);
 
@@ -38,7 +34,7 @@ namespace AST {
 
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
     auto expr_ptr = static_cast<Expression*>(nodes[1].release());
-    expr_ptr->precedence_ = prec_max;
+    expr_ptr->precedence_ = Language::op_prec.at("MAX");
     return NPtr(expr_ptr);
   }
 

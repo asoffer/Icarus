@@ -5,6 +5,7 @@
 #include "AST/Node.h"
 #include "AST/Terminal.h"
 #include "typedefs.h"
+#include "Language.h"
 
 namespace AST {
   class Binop : public Expression {
@@ -49,9 +50,9 @@ namespace AST {
   inline NPtr Binop::build_else_kv(NPtrVec&& nodes) {
     auto binop_ptr = new Binop;
     auto else_ptr = new Terminal;
-    else_ptr->base_type_ = Node::reserved_else;
+    else_ptr->base_type_ = Language::reserved_else;
     else_ptr->token_ = "else";
-    else_ptr->precedence_ = prec_max;
+    else_ptr->precedence_ = Language::op_prec.at("MAX");
 
     binop_ptr->lhs_ = EPtr(else_ptr);
 
@@ -59,8 +60,7 @@ namespace AST {
       EPtr(static_cast<Expression*>(nodes[2].release()));
 
     binop_ptr->token_ = "=>";
-    binop_ptr->type_ = generic_operator;
-    binop_ptr->precedence_ = prec_map["=>"];
+    binop_ptr->type_ = Language::generic_operator;
 
     return NPtr(binop_ptr);
   }
@@ -74,8 +74,9 @@ namespace AST {
       EPtr(static_cast<Expression*>(nodes[2].release()));
 
     binop_ptr->token_ = op_symbol;
-    binop_ptr->type_ = generic_operator;
-    binop_ptr->precedence_ = prec_map[op_symbol];
+    binop_ptr->type_ = Language::generic_operator;
+
+    binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
 
     return NPtr(binop_ptr);
   }

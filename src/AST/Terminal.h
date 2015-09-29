@@ -2,16 +2,17 @@
 #define ICARUS_AST_TERMINAL_H
 
 #include <set>
-#include "Expression.h"
-#include "Node.h"
+#include "AST/Expression.h"
+#include "AST/Node.h"
 #include "typedefs.h"
+#include "Language.h"
 
 namespace AST {
   class Terminal : public Expression {
     friend class Binop;
 
     public:
-      static NPtr build(NPtrVec&& nodes, Node::Type t);
+      static NPtr build(NPtrVec&& nodes, Language::NodeType t);
       static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_integer(NPtrVec&& nodes);
       static NPtr build_real(NPtrVec&& nodes);
@@ -22,29 +23,29 @@ namespace AST {
       virtual void separate_declarations_and_assignments(){}
 
     protected:
-      Node::Type base_type_;
+      Language::NodeType base_type_;
       Terminal() {}
   };
 
-  inline NPtr Terminal::build(NPtrVec&& nodes, Node::Type t) {
+  inline NPtr Terminal::build(NPtrVec&& nodes, Language::NodeType t) {
     auto term_ptr = new Terminal;
     term_ptr->base_type_ = t;
     term_ptr->token_ = nodes[0]->token();
-    term_ptr->precedence_ = prec_max;
+    term_ptr->precedence_ = Language::op_prec.at("MAX");
 
     return NPtr(term_ptr);
   }
 
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), string_literal);
+    return build(std::forward<NPtrVec>(nodes), Language::string_literal);
   }
 
   inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), integer);
+    return build(std::forward<NPtrVec>(nodes), Language::integer);
   }
 
   inline NPtr Terminal::build_real(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), real);
+    return build(std::forward<NPtrVec>(nodes), Language::real);
   }
 
   inline std::set<std::string> Terminal::identifiers() const {

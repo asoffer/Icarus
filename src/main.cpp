@@ -10,11 +10,11 @@ int main(int argc, char *argv[]) {
     std::cerr
       << "Provide exactly one argument for the file name."
       << std::endl;
-      return 1;
+    return 1;
   }
 
-  Parser parser(argv[1]);
 
+  Parser parser(argv[1]);
   NPtr root = parser.parse();
   root->separate_declarations_and_assignments();
 

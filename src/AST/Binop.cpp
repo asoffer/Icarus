@@ -6,7 +6,7 @@ namespace AST {
     for (size_t i = 0; i < n; ++i) {
       output += "  ";
     }
-    output += "<Binop: '" + (token_ == "" ? Node::debug_map[type_] : token_) + "', prec: " + std::to_string(precedence_) + ">\t\t{ ";
+    output += "<Binop: '" + (token_ == "" ? Language::show_name.at(type_) : token_) + "', prec: " + std::to_string(precedence_) + ">\t\t{ ";
 
     for (const auto& id : identifiers()) {
       output += id + " ";

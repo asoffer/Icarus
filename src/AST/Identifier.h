@@ -4,6 +4,7 @@
 #include <map>
 #include "AST/Node.h"
 #include "AST/Terminal.h"
+#include "Language.h"
 
 namespace AST {
   class Identifier : public Terminal {
@@ -19,9 +20,9 @@ namespace AST {
 
   inline NPtr Identifier::build(NPtrVec&& nodes) {
     auto id_ptr = new Identifier;
-    id_ptr->base_type_ = identifier;
+    id_ptr->base_type_ = Language::identifier;
     id_ptr->token_ = nodes[0]->token();
-    id_ptr->precedence_ = prec_max;
+    id_ptr->precedence_ = Language::op_prec.at("MAX");
 
     return NPtr(id_ptr);
   }

@@ -29,12 +29,12 @@ NPtr Parser::parse() {
       shift();
     }
 
-//  for (const auto& node_ptr : stack_) {
-//    std::cout << *node_ptr;
-//  }
-//  std::cout << std::endl;
-//  std::string s;
-//  std::cin >> s;
+//      for (const auto& node_ptr : stack_) {
+//        std::cout << *node_ptr;
+//      }
+//      std::cout << std::endl;
+//      std::string s;
+//      std::cin >> s;
   }
   // Finish up any more reductions that can be made
   while (reduce());
@@ -55,25 +55,26 @@ bool Parser::should_shift() {
   if (stack_.size() == 0) return true;
 
   // Reduce terminals
-  if (stack_.back()->node_type() == AST::Node::identifier
-      || stack_.back()->node_type() == AST::Node::integer
-      || stack_.back()->node_type() == AST::Node::real
-      || stack_.back()->node_type() == AST::Node::string_literal
-      || stack_.back()->node_type() == AST::Node::right_paren) {
+  if (stack_.back()->node_type() == Language::identifier
+      || stack_.back()->node_type() == Language::integer
+      || stack_.back()->node_type() == Language::real
+      || stack_.back()->node_type() == Language::string_literal
+      || stack_.back()->node_type() == Language::right_paren) {
     return false;
   }
 
   // For function calls, shift the parentheses on
-  if (stack_.back()->node_type() == AST::Node::expression
-      && lookahead_->node_type() == AST::Node::left_paren) {
+  if (stack_.back()->node_type() == Language::expression
+      && lookahead_->node_type() == Language::left_paren) {
     return true;
   }
 
-  if (lookahead_->node_type() == AST::Node::generic_operator
+  if (lookahead_->node_type() == Language::generic_operator
       && stack_.size() >= 2
-      && stack_[stack_.size() - 2]->node_type() == AST::Node::generic_operator) {
+      && stack_[stack_.size() - 2]->node_type() == Language::generic_operator) {
     // TODO worry about associtavitiy
-    return AST::prec_map[stack_[stack_.size() - 2]->token()] < AST::prec_map[lookahead_->token()];
+
+    return Language::op_prec.at(stack_[stack_.size() - 2]->token()) < Language::op_prec.at(lookahead_->token());
   }
 
   return false;
@@ -108,94 +109,94 @@ bool Parser::reduce() {
 }
 
 void Parser::init_rules() {
-  using AST::Node;
+  using Language::NodeType;
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::identifier
+  rules_.push_back(Rule(Language::expression, {
+        Language::identifier
         }, AST::Identifier::build));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::integer
+  rules_.push_back(Rule(Language::expression, {
+        Language::integer
         }, AST::Terminal::build_integer));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::real
+  rules_.push_back(Rule(Language::expression, {
+        Language::real
         }, AST::Terminal::build_real));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::string_literal
+  rules_.push_back(Rule(Language::expression, {
+        Language::string_literal
         }, AST::Terminal::build_string_literal));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::left_paren, Node::expression, Node::right_paren
+  rules_.push_back(Rule(Language::expression, {
+        Language::left_paren, Language::expression, Language::right_paren
         }, AST::Expression::parenthesize));
 
-//  rules_.push_back(Rule(Node::expression, {
-//        Node::identifier, Node::declaration, Node::expression, Node::assignment, Node::expression
-//        }, ));
+  //  rules_.push_back(Rule(Language::expression, {
+  //        Language::identifier, Language::declaration, Language::expression, Language::assignment, Language::expression
+  //        }, ));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::expression, Node::generic_operator, Node::expression
+  rules_.push_back(Rule(Language::expression, {
+        Language::expression, Language::generic_operator, Language::expression
         }, AST::Binop::build));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::expression, Node::left_paren, Node::expression, Node::right_paren
+  rules_.push_back(Rule(Language::expression, {
+        Language::expression, Language::left_paren, Language::expression, Language::right_paren
         }, AST::Binop::build_paren_operator));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::expression, Node::left_bracket, Node::expression, Node::right_bracket
+  rules_.push_back(Rule(Language::expression, {
+        Language::expression, Language::left_bracket, Language::expression, Language::right_bracket
         }, AST::Binop::build_bracket_operator));
 
-  rules_.push_back(Rule(Node::key_value_pair, {
-        Node::expression, Node::key_value_joiner, Node::expression, Node::newline
+  rules_.push_back(Rule(Language::key_value_pair, {
+        Language::expression, Language::key_value_joiner, Language::expression, Language::newline
         }, AST::Binop::build));
 
-  rules_.push_back(Rule(Node::key_value_pair, {
-        Node::reserved_else, Node::key_value_joiner, Node::expression, Node::newline
+  rules_.push_back(Rule(Language::key_value_pair, {
+        Language::reserved_else, Language::key_value_joiner, Language::expression, Language::newline
         }, AST::Binop::build_else_kv));
 
-  rules_.push_back(Rule(Node::key_value_pair, {
-        Node::key_value_pair, Node::newline
+  rules_.push_back(Rule(Language::key_value_pair, {
+        Language::key_value_pair, Language::newline
         }, drop_all_but<0>));
 
-  rules_.push_back(Rule(Node::key_value_pair_list, {
-        Node::key_value_pair
+  rules_.push_back(Rule(Language::key_value_pair_list, {
+        Language::key_value_pair
         }, AST::KVPairList::build_one));
 
-  rules_.push_back(Rule(Node::key_value_pair_list, {
-        Node::key_value_pair_list, Node::newline
+  rules_.push_back(Rule(Language::key_value_pair_list, {
+        Language::key_value_pair_list, Language::newline
         }, drop_all_but<0>));
 
-  rules_.push_back(Rule(Node::key_value_pair_list, {
-        Node::key_value_pair_list, Node::key_value_pair
+  rules_.push_back(Rule(Language::key_value_pair_list, {
+        Language::key_value_pair_list, Language::key_value_pair
         }, AST::KVPairList::build_more));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::left_brace, Node::statements, Node::right_brace
+  rules_.push_back(Rule(Language::expression, {
+        Language::left_brace, Language::statements, Language::right_brace
         }, AST::AnonymousScope::build));
 
-  rules_.push_back(Rule(Node::expression, {
-        Node::reserved_case, Node::left_brace, Node::newline, Node::key_value_pair_list, Node::right_brace
+  rules_.push_back(Rule(Language::expression, {
+        Language::reserved_case, Language::left_brace, Language::newline, Language::key_value_pair_list, Language::right_brace
         }, AST::Case::build));
 
-  rules_.push_back(Rule(Node::statements, {
-        Node::expression, Node::newline
+  rules_.push_back(Rule(Language::statements, {
+        Language::expression, Language::newline
         }, AST::Statements::build_one));
 
-  rules_.push_back(Rule(Node::statements, {
-        Node::statements, Node::expression, Node::newline
+  rules_.push_back(Rule(Language::statements, {
+        Language::statements, Language::expression, Language::newline
         }, AST::Statements::build_more));
 
-  rules_.push_back(Rule(Node::newline, {
-        Node::newline, Node::newline
+  rules_.push_back(Rule(Language::newline, {
+        Language::newline, Language::newline
         }, drop_all_but<0>));
 
   // Disregard blank lines surrounding statements
-  rules_.push_back(Rule(Node::statements, {
-        Node::statements, Node::newline
+  rules_.push_back(Rule(Language::statements, {
+        Language::statements, Language::newline
         }, drop_all_but<0>));
 
-  rules_.push_back(Rule(Node::statements, {
-        Node::newline, Node::statements
+  rules_.push_back(Rule(Language::statements, {
+        Language::newline, Language::statements
         }, drop_all_but<1>));
 }

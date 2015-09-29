@@ -8,6 +8,7 @@
 #include "Rule.h"
 #include "AST/Node.h"
 #include "typedefs.h"
+#include "Language.h"
 
 class Parser {
   public:
@@ -34,7 +35,7 @@ inline void Parser::shift() {
   lexer_ >> *next_node_ptr;
 
   // Never shift comments onto the stack
-  if (next_node_ptr->node_type() == AST::Node::comment) {
+  if (next_node_ptr->node_type() == Language::comment) {
     shift();
     return;
   }

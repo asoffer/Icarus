@@ -5,10 +5,11 @@
 #include <memory>
 #include "typedefs.h"
 #include "AST/Node.h"
+#include "Language.h"
 
 class Rule {
   public:
-    Rule(AST::Node::Type output, const std::vector<AST::Node::Type>& input, fnptr fn);
+    Rule(Language::NodeType output, const std::vector<Language::NodeType>& input, fnptr fn);
 
     inline size_t size() const { return input_.size(); }
 
@@ -16,8 +17,8 @@ class Rule {
     void apply(std::vector<NPtr>& node_stack) const;
 
   private:
-    AST::Node::Type output_;
-    std::vector<AST::Node::Type> input_;
+    Language::NodeType output_;
+    std::vector<Language::NodeType> input_;
     fnptr fn_;
 };
 

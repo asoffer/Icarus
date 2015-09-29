@@ -7,7 +7,7 @@ namespace AST {
       spaces += "  ";
     }
  
-    auto output = spaces + "<" + Node::debug_map[base_type_] + ": " + token_ + ">\t\t{ ";
+    auto output = spaces + "<" + Language::show_name.at(base_type_) + ": " + token_ + ">\t\t{ ";
     for (const auto& id : identifiers()) {
       output += id + " ";
     }

@@ -2,10 +2,10 @@
 #define ICARUS_AST_ANONYMOUS_SCOPE_H
 
 #include <set>
-#include "Expression.h"
-#include "Node.h"
-#include "Statements.h"
-#include "Scope.h"
+#include "AST/Expression.h"
+#include "AST/Node.h"
+#include "AST/Statements.h"
+#include "AST/Scope.h"
 #include "typedefs.h"
 
 namespace AST {

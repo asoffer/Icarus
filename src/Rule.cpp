@@ -1,10 +1,9 @@
 #include "Rule.h"
 
-Rule::Rule(
-    AST::Node::Type output, const std::vector<AST::Node::Type>& input, fnptr fn)
+Rule::Rule(Language::NodeType output,
+    const std::vector<Language::NodeType>& input, fnptr fn)
 : output_(output), input_(input), fn_(fn)
 {
-
 }
 
 bool Rule::match(const std::vector<NPtr>& node_stack) const {
