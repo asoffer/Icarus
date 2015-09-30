@@ -7,26 +7,12 @@ namespace AST {
       output += "  ";
     }
 
-    output += "<Case>\t\t{ ";
-    for (const auto& id : identifiers()) {
-      output += id + " ";
-    }
-
-    output += "}\n";
-    output += pairs_->to_string(n);
-
-    return output;
+    return output + "<Case>\n" + pairs_->to_string(n);
   }
 
-  std::set<std::string> Case::identifiers() const {
-    return pairs_->identifiers();
-  } 
-
-  void Case::register_declared_variables() {
-    pairs_->verify_no_declarations();
+  void Case::join_identifiers(Scope* scope) {
+    pairs_->join_identifiers(scope);
   }
 
-  void Case::verify_no_declarations() const {
-    pairs_->verify_no_declarations();
-  }
+
 }  // namespace AST

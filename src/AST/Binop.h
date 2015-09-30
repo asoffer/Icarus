@@ -1,8 +1,8 @@
 #ifndef ICARUS_AST_BINOP_H
 #define ICARUS_AST_BINOP_H
 
-#include "Expression.h"
 #include "AST/Node.h"
+#include "AST/Expression.h"
 #include "AST/Terminal.h"
 #include "typedefs.h"
 #include "Language.h"
@@ -20,11 +20,9 @@ namespace AST {
       static NPtr build_paren_operator(NPtrVec&& nodes);
       static NPtr build_bracket_operator(NPtrVec&& nodes);
 
-      virtual std::set<std::string> identifiers() const;
-      virtual void verify_no_declarations() const;
+      virtual void join_identifiers(Scope* scope);
       virtual std::string to_string(size_t n) const;
-      virtual void separate_declarations_and_assignments();
-      virtual bool is_binop() { return true; }
+      virtual bool is_binop() const { return true; }
 
 
       virtual ~Binop(){}
@@ -79,14 +77,6 @@ namespace AST {
     binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
 
     return NPtr(binop_ptr);
-  }
-
-  inline std::set<std::string> Binop::identifiers() const {
-    std::set<std::string> lhs_set = lhs_->identifiers();
-    std::set<std::string> rhs_set = rhs_->identifiers();
-    lhs_set.insert(rhs_set.begin(), rhs_set.end());
-
-    return lhs_set;
   }
 }  // namespace AST
 

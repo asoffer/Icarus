@@ -1,13 +1,14 @@
 #ifndef ICARUS_AST_TERMINAL_H
 #define ICARUS_AST_TERMINAL_H
 
-#include <set>
-#include "AST/Expression.h"
 #include "AST/Node.h"
+#include "AST/Expression.h"
 #include "typedefs.h"
 #include "Language.h"
 
 namespace AST {
+  class Scope;
+
   class Terminal : public Expression {
     friend class Binop;
 
@@ -17,8 +18,7 @@ namespace AST {
       static NPtr build_integer(NPtrVec&& nodes);
       static NPtr build_real(NPtrVec&& nodes);
 
-      virtual std::set<std::string> identifiers() const;
-      virtual void verify_no_declarations() const;
+      virtual void join_identifiers(Scope*) {}
       virtual std::string to_string(size_t n) const;
       virtual void separate_declarations_and_assignments(){}
 
@@ -47,12 +47,6 @@ namespace AST {
   inline NPtr Terminal::build_real(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Language::real);
   }
-
-  inline std::set<std::string> Terminal::identifiers() const {
-    return std::set<std::string>();
-  }
-
-  inline void Terminal::verify_no_declarations() const {}
 
 }  // namespace AST
 #endif  // ICARUS_AST_TERMINAL_H

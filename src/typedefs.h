@@ -11,7 +11,7 @@ namespace AST {
 }
 
 typedef std::unique_ptr<AST::Node> NPtr;
-typedef std::unique_ptr<AST::Expression> EPtr;
+typedef std::shared_ptr<AST::Expression> EPtr;
 typedef std::shared_ptr<AST::Identifier> IdPtr;
 typedef std::vector<NPtr> NPtrVec;
 typedef NPtr (*fnptr)(NPtrVec&&);

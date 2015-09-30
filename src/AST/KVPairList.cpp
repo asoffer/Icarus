@@ -10,19 +10,11 @@ namespace AST {
     return output;
   }
 
-  std::set<std::string> KVPairList::identifiers() const {
-    std::set<std::string> output;
+  void KVPairList::join_identifiers(Scope* scope) {
     for (const auto& pair : kv_pairs_) {
-      auto id_set = pair->identifiers();
-      output.insert(id_set.begin(), id_set.end());
-    }
-
-    return output;
-  }
-
-  void KVPairList::verify_no_declarations() const {
-    for (const auto& pair : kv_pairs_) {
-      pair->verify_no_declarations();
+      pair->join_identifiers(scope);
     }
   }
+
+
 }  // namespace AST

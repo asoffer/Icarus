@@ -1,6 +1,7 @@
 #ifndef ICARUS_AST_SCOPE_H
 #define ICARUS_AST_SCOPE_H
 
+#include <string>
 #include <map>
 #include <vector>
 #include "typedefs.h"
@@ -10,8 +11,12 @@ namespace AST {
     public:
       static std::vector<Scope*> all_scopes;
 
-      virtual void register_declared_variables() = 0;
+      //virtual void register_declared_variables() = 0;
       virtual std::string to_string(size_t n) const = 0;
+      void join_identifiers();
+      virtual void join_identifiers(Scope*) = 0;
+
+      IdPtr identifier(const std::string& token_string);
 
       Scope() {
         all_scopes.push_back(this);

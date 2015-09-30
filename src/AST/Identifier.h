@@ -1,7 +1,6 @@
 #ifndef ICARUS_IDENTIFIER_H
 #define ICARUS_IDENTIFIER_H
 
-#include <map>
 #include "AST/Node.h"
 #include "AST/Terminal.h"
 #include "Language.h"
@@ -11,20 +10,19 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      virtual std::string to_string(size_t n) const;
-      virtual std::set<std::string> identifiers() const;
+      virtual bool is_identifier() const { return true; }
 
-    private:
-      Identifier() {}
+      virtual std::string to_string(size_t n) const;
+
+      Identifier(const std::string& token_string) {
+        token_ = token_string;
+        base_type_ = Language::identifier;
+        precedence_ = Language::op_prec.at("MAX");
+      }
   };
 
   inline NPtr Identifier::build(NPtrVec&& nodes) {
-    auto id_ptr = new Identifier;
-    id_ptr->base_type_ = Language::identifier;
-    id_ptr->token_ = nodes[0]->token();
-    id_ptr->precedence_ = Language::op_prec.at("MAX");
-
-    return NPtr(id_ptr);
+    return NPtr(new Identifier(nodes[0]->token()));
   }
 
   inline std::string Identifier::to_string(size_t n) const {
@@ -34,10 +32,6 @@ namespace AST {
     }
  
     return spaces + "<Identifier: " + token() + ">\n";
-  }
-
-  inline std::set<std::string> Identifier::identifiers() const {
-    return { token() };
   }
 
 }  // namespace AST

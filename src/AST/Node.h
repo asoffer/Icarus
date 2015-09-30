@@ -3,10 +3,11 @@
 
 #include <string>
 #include <iostream>
-#include <map>
 #include "Language.h"
 
 namespace AST {
+  class Scope;
+
   class Node {
     public:
       static inline Node eof_node() {
@@ -23,9 +24,13 @@ namespace AST {
       inline void set_node_type(Language::NodeType t) { type_ = t; }
 
       virtual bool is_binop() { return false; }
-      virtual void separate_declarations_and_assignments();
+      virtual void join_identifiers(Scope*) {};
 
       inline std::string token() const { return token_; }
+      inline void set_token(const std::string& token_string) {
+        token_ = token_string;
+      }
+
 
       Node(Language::NodeType type = Language::unknown, const std::string& token = "");
       virtual ~Node(){}

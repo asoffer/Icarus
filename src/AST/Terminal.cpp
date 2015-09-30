@@ -7,11 +7,6 @@ namespace AST {
       spaces += "  ";
     }
  
-    auto output = spaces + "<" + Language::show_name.at(base_type_) + ": " + token_ + ">\t\t{ ";
-    for (const auto& id : identifiers()) {
-      output += id + " ";
-    }
-
-    return output + "}\n";
+    return spaces + "<" + Language::show_name.at(base_type_) + ": " + token_ + ">\n";
   }
 }  // namespace AST

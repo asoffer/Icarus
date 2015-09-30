@@ -4,20 +4,15 @@
 #include <memory>
 #include "typedefs.h"
 #include "AST/Node.h"
-#include "AST/Scope.h"
 #include "AST/KVPairList.h"
 
 namespace AST {
-  class Case : public Expression, Scope {
+  class Case : public Expression {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      virtual std::set<std::string> identifiers() const;
       virtual std::string to_string(size_t n) const;
-
-      virtual void register_declared_variables();
-      virtual void verify_no_declarations() const;
-      virtual void separate_declarations_and_assignments() {}
+      virtual void join_identifiers(Scope* scope);
 
     private:
        Case() {}

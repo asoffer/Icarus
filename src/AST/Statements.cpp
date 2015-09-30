@@ -14,10 +14,11 @@ namespace AST {
     return output;
   }
 
-  void Statements::separate_declarations_and_assignments() {
-    for(const auto& stmt : statements_) {
-      stmt->separate_declarations_and_assignments();
+  void Statements::join_identifiers(Scope* scope) {
+    for (auto& eptr : statements_) {
+      eptr->join_identifiers(scope);
     }
   }
+
 
 }  // namespace AST

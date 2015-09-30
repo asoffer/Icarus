@@ -1,13 +1,10 @@
 #ifndef ICARUS_AST_EXPRESSION_H
 #define ICARUS_AST_EXPRESSION_H
 
-#include <string>
 #include <iostream>
-#include <map>
-#include <set>
-#include <utility>
 #include "typedefs.h"
 #include "AST/Node.h"
+#include "AST/Scope.h"
 
 namespace AST {
   class Expression : public Node {
@@ -19,10 +16,10 @@ namespace AST {
 
       size_t precedence() const;
 
-      virtual void verify_no_declarations() const = 0;
-      virtual std::set<std::string> identifiers() const = 0;
+      virtual void join_identifiers(Scope* scope) = 0;
 
-      virtual void separate_declarations_and_assignments() = 0;
+      virtual bool is_identifier() const { return false; }
+      virtual bool is_binop() const { return false; }
 
       virtual ~Expression(){}
 

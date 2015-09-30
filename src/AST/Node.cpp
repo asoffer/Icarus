@@ -1,4 +1,3 @@
-#include <map>
 #include "AST/Node.h"
 
 namespace AST {
@@ -23,6 +22,4 @@ namespace AST {
   Node::Node(Language::NodeType type, const std::string& token) : type_(type), token_(token) {
   }
 
-
-  void Node::separate_declarations_and_assignments() {}
 }  // namespace AST

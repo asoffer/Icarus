@@ -1,7 +1,6 @@
 #ifndef ICARUS_AST_ANONYMOUS_SCOPE_H
 #define ICARUS_AST_ANONYMOUS_SCOPE_H
 
-#include <set>
 #include "AST/Expression.h"
 #include "AST/Node.h"
 #include "AST/Statements.h"
@@ -13,11 +12,8 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      virtual std::set<std::string> identifiers() const;
-      virtual void verify_no_declarations() const;
       virtual std::string to_string(size_t n) const;
-      virtual void register_declared_variables();
-      virtual void separate_declarations_and_assignments();
+      virtual void join_identifiers(Scope* scope);
 
     protected:
       std::unique_ptr<Statements> statements_;

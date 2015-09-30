@@ -171,9 +171,9 @@ void Parser::init_rules() {
         Language::key_value_pair_list, Language::key_value_pair
         }, AST::KVPairList::build_more));
 
-  rules_.push_back(Rule(Language::expression, {
-        Language::left_brace, Language::statements, Language::right_brace
-        }, AST::AnonymousScope::build));
+//  rules_.push_back(Rule(Language::expression, {
+//        Language::left_brace, Language::statements, Language::right_brace
+//        }, AST::AnonymousScope::build));
 
   rules_.push_back(Rule(Language::expression, {
         Language::reserved_case, Language::left_brace, Language::newline, Language::key_value_pair_list, Language::right_brace

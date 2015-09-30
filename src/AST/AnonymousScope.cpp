@@ -11,20 +11,8 @@ namespace AST {
 
     return output + statements_->to_string(n + 1);
   }
-  void AnonymousScope::verify_no_declarations() const {
-    // FIXME need to implement
-  }
 
-  std::set<std::string> AnonymousScope::identifiers() const {
-    return statements_->identifiers();
-  }
-
-  void AnonymousScope::register_declared_variables() {
-    // FIXME TODO
-  }
-
-  void AnonymousScope::separate_declarations_and_assignments() {
-    std::cout << "!!" << std::endl;
-    // FIXME TODO
+  void AnonymousScope::join_identifiers(Scope* scope) {
+    statements_->join_identifiers(scope);
   }
 }  // namespace AST

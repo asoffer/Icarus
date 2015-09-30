@@ -16,10 +16,11 @@ int main(int argc, char *argv[]) {
 
   Parser parser(argv[1]);
   NPtr root = parser.parse();
-  root->separate_declarations_and_assignments();
 
-  for(const auto& scope : AST::Scope::all_scopes) {
-    scope->register_declared_variables();
+  for (const auto& sc : AST::Scope::all_scopes) {
+    sc->join_identifiers(*AST::Scope::all_scopes.begin());
+    //sc->change();
+    std::cout << sc->to_string(2) << std::endl;
   }
 
   return 0;
