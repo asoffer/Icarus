@@ -7,7 +7,7 @@
 #include "AST/KVPairList.h"
 
 namespace AST {
-  class Case : public Expression {
+  class Case : public Expression, Scope {
     public:
       static NPtr build(NPtrVec&& nodes);
 

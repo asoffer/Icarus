@@ -20,23 +20,27 @@ namespace AST {
         return Node(Language::string_literal, str_lit);
       }
 
-      inline Language::NodeType node_type() const { return type_; }
-      inline void set_node_type(Language::NodeType t) { type_ = t; }
+      Language::NodeType node_type() const { return type_; }
+      void set_node_type(Language::NodeType t) { type_ = t; }
 
-      virtual bool is_binop() { return false; }
-      virtual void join_identifiers(Scope*) {};
-
-      inline std::string token() const { return token_; }
-      inline void set_token(const std::string& token_string) {
+      std::string token() const { return token_; }
+      void set_token(const std::string& token_string) {
         token_ = token_string;
       }
 
 
-      Node(Language::NodeType type = Language::unknown, const std::string& token = "");
+      virtual void join_identifiers(Scope*) {};
+      virtual bool is_identifier() const { return false; }
+      virtual bool is_binop() const { return false; }
+
+
+      Node(Language::NodeType type = Language::unknown,
+          const std::string& token = "");
+
       virtual ~Node(){}
 
-      virtual std::string to_string(size_t n) const;
 
+      virtual std::string to_string(size_t n) const;
       friend std::ostream& operator<<(std::ostream& os, const Node& node);
 
     protected:

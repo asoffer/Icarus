@@ -22,9 +22,6 @@ class Parser {
     void shift();
     bool reduce();
 
-    void init_rules();
-
-    std::vector<Rule> rules_;
     std::vector<NPtr> stack_;
     NPtr lookahead_;
     Lexer lexer_;

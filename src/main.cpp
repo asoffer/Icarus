@@ -19,7 +19,6 @@ int main(int argc, char *argv[]) {
 
   for (const auto& sc : AST::Scope::all_scopes) {
     sc->join_identifiers(*AST::Scope::all_scopes.begin());
-    //sc->change();
     std::cout << sc->to_string(2) << std::endl;
   }
 

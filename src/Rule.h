@@ -3,15 +3,14 @@
 
 #include <vector>
 #include <memory>
-#include "typedefs.h"
-#include "AST/Node.h"
 #include "Language.h"
+#include "typedefs.h"
 
 class Rule {
   public:
     Rule(Language::NodeType output, const std::vector<Language::NodeType>& input, fnptr fn);
 
-    inline size_t size() const { return input_.size(); }
+    size_t size() const { return input_.size(); }
 
     bool match(const std::vector<NPtr>& node_stack) const;
     void apply(std::vector<NPtr>& node_stack) const;
@@ -21,5 +20,9 @@ class Rule {
     std::vector<Language::NodeType> input_;
     fnptr fn_;
 };
+
+namespace Language {
+  extern const std::vector<Rule> rules;
+}  // namespace Language
 
 #endif  // ICARUS_RULE_H

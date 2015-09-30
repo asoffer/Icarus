@@ -19,8 +19,8 @@ namespace AST {
       static NPtr build_real(NPtrVec&& nodes);
 
       virtual void join_identifiers(Scope*) {}
+
       virtual std::string to_string(size_t n) const;
-      virtual void separate_declarations_and_assignments(){}
 
     protected:
       Language::NodeType base_type_;

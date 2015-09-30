@@ -11,15 +11,11 @@ namespace AST {
     friend class Binop;
 
     public:
-      static NPtr from_identifier(NPtrVec&& nodes);
       static NPtr parenthesize(NPtrVec&& nodes);
 
-      size_t precedence() const;
+      size_t precedence() const { return precedence_; }
 
       virtual void join_identifiers(Scope* scope) = 0;
-
-      virtual bool is_identifier() const { return false; }
-      virtual bool is_binop() const { return false; }
 
       virtual ~Expression(){}
 
@@ -33,10 +29,6 @@ namespace AST {
     auto expr_ptr = static_cast<Expression*>(nodes[1].release());
     expr_ptr->precedence_ = Language::op_prec.at("MAX");
     return NPtr(expr_ptr);
-  }
-
-  inline size_t Expression::precedence() const {
-    return precedence_;
   }
 
 }  // namespace AST
