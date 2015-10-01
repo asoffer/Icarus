@@ -28,11 +28,9 @@ namespace AST {
         token_ = token_string;
       }
 
-
       virtual void join_identifiers(Scope*) {};
       virtual bool is_identifier() const { return false; }
       virtual bool is_binop() const { return false; }
-
 
       Node(Language::NodeType type = Language::unknown,
           const std::string& token = "");

@@ -23,6 +23,8 @@ class Lexer {
     // Returns true precisely when we have not yet reached EOF
     operator bool () const { return !file_.eof() && !file_.fail(); }
 
+    std::string filename() const { return std::string(file_name_); }
+
   private:
     const char* file_name_;
     std::ifstream file_;

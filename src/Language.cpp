@@ -5,6 +5,8 @@
 #include "AST/Terminal.h"
 #include "AST/Identifier.h"
 #include "AST/Binop.h"
+#include "AST/Declaration.h"
+#include "AST/Assignment.h"
 #include "AST/KVPairList.h"
 #include "AST/Case.h"
 #include "AST/Scope.h"
@@ -27,9 +29,9 @@ namespace Language {
     { real, "Real" },
     { string_literal, "String" },
     { generic_operator, "Operator" },
-    { declaration, ":" },
-    { assignment, "=" },
-    { key_value_joiner, "=>" },
+    { decl_operator, ":" },
+    { assign_operator, "=" },
+    { fat_arrow, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
     { left_paren, "Left Paren" },
@@ -82,6 +84,7 @@ namespace Language {
   };
 
   const std::vector<Rule> rules = {
+    /* Begin literals */
     Rule(expression,
         { identifier },
         AST::Identifier::build),
@@ -97,7 +100,31 @@ namespace Language {
     Rule(expression,
         { string_literal },
         AST::Terminal::build_string_literal),
+    /* End literals */
+    
 
+    /* Begin declaration */
+    Rule(declaration,
+        { identifier, decl_operator, expression },
+        AST::Declaration::build),
+
+    Rule(expression,
+        { left_paren, declaration, right_paren },
+        AST::Expression::parenthesize),
+    /* End declaration */
+
+
+    /* Begin assignment */
+    Rule(assignment,
+        { expression, assign_operator, expression },
+        AST::Assignment::build),
+
+    Rule(assignment,
+        { declaration, assign_operator, expression },
+        AST::Assignment::build),
+    /* End assignment */
+
+    /* Begin expression */
     Rule(expression,
         { left_paren, expression, right_paren },
         AST::Expression::parenthesize),
@@ -105,7 +132,10 @@ namespace Language {
     Rule(expression,
         { expression, generic_operator, expression },
         AST::Binop::build),
+    /* End expression */
 
+
+    /* Begin paren/bracket operators */
     Rule(expression,
         { expression, left_paren, expression, right_paren },
         AST::Binop::build_paren_operator),
@@ -113,13 +143,43 @@ namespace Language {
     Rule(expression,
         { expression, left_bracket, expression, right_bracket },
         AST::Binop::build_bracket_operator),
+    /* End paren/bracket operators */
 
+
+    /* Begin statements */
+    Rule(statements,
+        { assignment, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { declaration, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { expression, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { statements, expression, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { newline, statements },
+        drop_all_but<1>),
+
+    Rule(statements,
+        { statements, newline },
+        drop_all_but<0>),
+    /* End statements */
+
+
+    /* Begin case statements */
     Rule(key_value_pair,
-        { expression, key_value_joiner, expression, newline },
+        { expression, fat_arrow, expression, newline },
         AST::Binop::build),
 
     Rule(key_value_pair,
-        { reserved_else, key_value_joiner, expression, newline },
+        { reserved_else, fat_arrow, expression, newline },
         AST::Binop::build_else_kv),
 
     Rule(key_value_pair,
@@ -139,32 +199,19 @@ namespace Language {
         AST::KVPairList::build_more),
 
     Rule(expression,
-        { left_brace, statements, right_brace },
-        AST::AnonymousScope::build),
-
-    Rule(expression,
         { reserved_case, left_brace, newline, key_value_pair_list, right_brace },
         AST::Case::build),
+    /* End case statements */
 
-    Rule(statements,
-        { expression, newline },
-        AST::Statements::build_one),
 
-    Rule(statements,
-        { statements, expression, newline },
-        AST::Statements::build_more),
-
+    /* Begin miscellaneous */
     Rule(newline,
         { newline, newline },
         drop_all_but<0>),
 
-    // Disregard blank lines surrounding statements
-    Rule(statements,
-        { statements, newline },
-        drop_all_but<0>),
-
-    Rule(statements,
-        { newline, statements },
-        drop_all_but<1>)
+    Rule(expression,
+        { left_brace, statements, right_brace },
+        AST::AnonymousScope::build),
+    /* End miscellaneous */ 
   };
 }  // namespace Language

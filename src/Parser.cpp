@@ -13,14 +13,16 @@ NPtr Parser::parse() {
     } else if (!reduce()) {
       shift();
     }
-
-//      for (const auto& node_ptr : stack_) {
-//        std::cout << *node_ptr;
-//      }
-//      std::cout << std::endl;
-//      std::string s;
-//      std::cin >> s;
+#if 0
+    for (const auto& node_ptr : stack_) {
+      std::cout << *node_ptr;
+    }
+    std::cout << std::endl;
+    std::string s;
+    std::cin >> s;
+#endif
   }
+  
   // Finish up any more reductions that can be made
   while (reduce());
 
@@ -36,8 +38,13 @@ NPtr Parser::parse() {
 }
 
 bool Parser::should_shift() {
-  // Shift if the stack is empty
-  if (stack_.size() == 0) return true;
+  if (stack_.empty()) return true;
+
+  // If we see an identifier followed by a decl_operator, shift
+  if (stack_.back()->node_type() == Language::identifier
+      && lookahead_->node_type() == Language::decl_operator) {
+    return true;
+  }
 
   // Reduce terminals
   if (stack_.back()->node_type() == Language::identifier
@@ -49,14 +56,14 @@ bool Parser::should_shift() {
   }
 
   // For function calls, shift the parentheses on
-  if (stack_.back()->node_type() == Language::expression
+  if (Language::is_expression(stack_.back()->node_type())
       && lookahead_->node_type() == Language::left_paren) {
     return true;
   }
 
-  if (lookahead_->node_type() == Language::generic_operator
+  if (Language::is_operator(lookahead_->node_type())
       && stack_.size() >= 2
-      && stack_[stack_.size() - 2]->node_type() == Language::generic_operator) {
+      && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
     // TODO worry about associtavitiy
 
     return Language::op_prec.at(stack_[stack_.size() - 2]->token()) < Language::op_prec.at(lookahead_->token());
@@ -90,5 +97,6 @@ bool Parser::reduce() {
   if (matched_rule_ptr == nullptr) return false;
 
   matched_rule_ptr->apply(stack_);
+
   return true;
 }

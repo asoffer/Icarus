@@ -30,7 +30,7 @@ void Rule::apply(std::vector<NPtr>& node_stack) const {
   std::vector<NPtr> nodes_to_reduce(size());
 
   for (int i = static_cast<int>(size()) - 1; i >= 0; --i) {
-    nodes_to_reduce[i] = std::move(node_stack.back());
+    nodes_to_reduce[ static_cast<size_t>(i) ] = std::move(node_stack.back());
     node_stack.pop_back();
   }
 

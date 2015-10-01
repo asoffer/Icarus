@@ -33,6 +33,7 @@ inline void Parser::shift() {
 
   // Never shift comments onto the stack
   if (next_node_ptr->node_type() == Language::comment) {
+
     shift();
     return;
   }

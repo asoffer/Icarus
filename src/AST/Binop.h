@@ -27,7 +27,7 @@ namespace AST {
 
       virtual ~Binop(){}
 
-    private:
+    protected:
       Binop() {}
       EPtr lhs_;
       EPtr rhs_;

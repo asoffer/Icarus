@@ -16,6 +16,7 @@ namespace AST {
 
     if (!token_.empty())
       output += ": " + token_;
+
     return output + "]\n";
   }
 

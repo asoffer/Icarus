@@ -6,9 +6,10 @@ namespace Language {
     unknown, eof, newline, comment,
     identifier,
     integer, real, string_literal,
-    generic_operator, declaration, assignment, key_value_joiner,
+    generic_operator, decl_operator, assign_operator, fat_arrow,
     key_value_pair, key_value_pair_list,
     expression, paren_expression,
+    declaration, paren_declaration, assignment,
     statements,
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     reserved_if, reserved_else, reserved_case, reserved_loop,
@@ -23,6 +24,14 @@ namespace Language {
 #include "Rule.h"
 
 namespace Language {
+  inline bool is_expression(NodeType t) {
+    return t == expression || t == declaration || t == assignment;
+  }
+  inline bool is_operator(NodeType t) {
+    return t == generic_operator || t == decl_operator|| t == assign_operator;
+  }
+
+
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;
   extern const std::map<std::string, size_t> op_prec;

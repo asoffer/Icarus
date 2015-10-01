@@ -195,6 +195,13 @@ AST::Node Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
+  // If it's ':' or '=' treat them specially
+  if (token == ":") {
+    return AST::Node(Language::decl_operator, ":");
+  } else if (token == "=") {
+    return AST::Node(Language::assign_operator, "=");
+  }
+
   // If it's exactly one character in length, there's nothing more to do
   if (token.size() == 1) {
     return AST::Node(Language::generic_operator, token);
@@ -215,10 +222,10 @@ AST::Node Lexer::next_operator() {
     return AST::Node(Language::comment, token);
   }
 
-  // If the first two characters are '=>' use the key_value_joiner
+  // If the first two characters are '=>' use the fat-arrow
   // FIXME , this simply ignores punctuation following '=>'
   if (token[0] == '=' && token[1] == '>') {
-    return AST::Node(Language::key_value_joiner, "=>");
+    return AST::Node(Language::fat_arrow, "=>");
   }
 
   return AST::Node(Language::generic_operator, token);

@@ -6,7 +6,7 @@ SOURCES := $(shell find src -name *.cpp 2>/dev/null)
 OBJECTS := $(patsubst src/%.cpp,build/%.o,$(SOURCES))
 DEPENDS := $(SOURCES:src/%.cpp=build/%.d)
 
-COMPILER := g++
+COMPILER := clang++
 BUILD_FLAGS := -g -O0 -D DEBUG
 STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror
