@@ -7,10 +7,14 @@
 
 namespace AST {
   class Declaration : public Binop {
+    friend class Scope;
+
     public:
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
+      virtual void verify_types();
+      virtual void find_all_decls(Scope* scope);
 
       virtual ~Declaration(){}
 

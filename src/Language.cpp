@@ -27,6 +27,7 @@ namespace Language {
     { identifier, "Identifier" },
     { integer, "Integer" },
     { real, "Real" },
+    { type_literal, "Type" },
     { string_literal, "String" },
     { generic_operator, "Operator" },
     { decl_operator, ":" },
@@ -50,6 +51,15 @@ namespace Language {
     { reserved_return, "Return" }
   };
 
+
+  const std::map<std::string, AST::Type> type_literals = {
+    { "bool",   AST::t_bool },
+    { "char",   AST::t_char },
+    { "int",    AST::t_int },
+    { "real",   AST::t_real },
+    { "string", AST::t_string }
+  };
+
   const std::map<std::string, NodeType> reserved_words = {
     { "if",       reserved_if },
     { "else",     reserved_else },
@@ -65,6 +75,7 @@ namespace Language {
     { "=",  1 },
     { ":=", 2 },
     { ":",  2 },
+    { ":>", 2 },
     { "=>", 3 },
     { "->", 3 },
     { "<",  4 },
@@ -73,11 +84,16 @@ namespace Language {
     { ">=", 4 },
     { "==", 4 },
     { "!=", 4 },
-    { "+",  5 },
-    { "-",  5 },
-    { "*",  6 },
-    { "/",  6 },
-    { "%",  6 },
+    { "+=", 5 },
+    { "-=", 5 },
+    { "*=", 6 },
+    { "/=", 6 },
+    { "%=", 6 },
+    { "+",  7 },
+    { "-",  7 },
+    { "*",  8 },
+    { "/",  8 },
+    { "%",  8 },
     { "[]", 10 },
     { "()", 10 },
     { "MAX", 1000 }
@@ -100,6 +116,10 @@ namespace Language {
     Rule(expression,
         { string_literal },
         AST::Terminal::build_string_literal),
+
+    Rule(expression,
+        { type_literal },
+        AST::Terminal::build_type_literal),
     /* End literals */
     
 
@@ -124,6 +144,7 @@ namespace Language {
         AST::Assignment::build),
     /* End assignment */
 
+
     /* Begin expression */
     Rule(expression,
         { left_paren, expression, right_paren },
@@ -146,6 +167,13 @@ namespace Language {
     /* End paren/bracket operators */
 
 
+    /* Begin return statements */
+    Rule(statements,
+        { reserved_return, expression },
+        AST::Statements::build_one),
+    /* End return statements */
+
+
     /* Begin statements */
     Rule(statements,
         { assignment, newline },
@@ -161,6 +189,14 @@ namespace Language {
 
     Rule(statements,
         { statements, expression, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, assignment, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, declaration, newline },
         AST::Statements::build_more),
 
     Rule(statements,

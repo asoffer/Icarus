@@ -13,6 +13,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void find_all_decls(Scope*) { // TODO
+      }
 
     private:
        Case() {}

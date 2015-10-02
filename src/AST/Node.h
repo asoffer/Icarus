@@ -28,8 +28,11 @@ namespace AST {
         token_ = token_string;
       }
 
-      virtual void join_identifiers(Scope*) {};
-      virtual bool is_identifier() const { return false; }
+      virtual void join_identifiers(Scope*) {}
+      virtual void verify_types() {}
+      virtual void find_all_decls(Scope*) {}
+
+      virtual bool is_identifier() const { return type_ == Language::identifier; }
       virtual bool is_binop() const { return false; }
 
       Node(Language::NodeType type = Language::unknown,

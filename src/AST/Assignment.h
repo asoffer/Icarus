@@ -12,6 +12,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
 
+      virtual void verify_types();
+
       virtual ~Assignment(){}
 
     private:

@@ -14,6 +14,18 @@ namespace AST {
     return output;
   }
 
+  void Statements::find_all_decls(Scope* scope) {
+    for (auto& eptr : statements_) {
+      eptr->find_all_decls(scope);
+    }
+  }
+ 
+  void Statements::verify_types() {
+    for (auto& eptr : statements_) {
+      eptr->verify_types();
+    }
+  }
+ 
   void Statements::join_identifiers(Scope* scope) {
     for (auto& eptr : statements_) {
       eptr->join_identifiers(scope);

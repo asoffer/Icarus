@@ -26,10 +26,12 @@ NPtr Parser::parse() {
   // Finish up any more reductions that can be made
   while (reduce());
 
+#if 0
   for (const auto& node_ptr : stack_) {
     std::cout << *node_ptr;
   }
   std::cout << std::endl;
+#endif
 
   // FIXME does it exist? is there only one?
   NPtr back = std::move(stack_.back());

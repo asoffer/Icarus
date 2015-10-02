@@ -15,4 +15,11 @@ namespace AST {
   void AnonymousScope::join_identifiers(Scope* scope) {
     statements_->join_identifiers(scope);
   }
+
+  void AnonymousScope::verify_types() {
+    statements_->verify_types();
+  }
+   void AnonymousScope::find_all_decls(Scope* scope) {
+    statements_->find_all_decls(scope);
+   } 
 }  // namespace AST

@@ -19,8 +19,16 @@ int main(int argc, char *argv[]) {
 
   for (const auto& sc : AST::Scope::all_scopes) {
     sc->join_identifiers(*AST::Scope::all_scopes.begin());
-    std::cout << sc->to_string(2) << std::endl;
+    sc->find_all_decls(*AST::Scope::all_scopes.begin());
+
+    if (sc->log_undeclared_identifiers()) {
+      return 0;
+    }
   }
+
+  root->verify_types();
+  //std::cout << root->to_string(0) << std::endl;
+
 
   return 0;
 }

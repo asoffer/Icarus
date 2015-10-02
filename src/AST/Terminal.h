@@ -13,39 +13,45 @@ namespace AST {
     friend class Binop;
 
     public:
-      static NPtr build(NPtrVec&& nodes, Language::NodeType t);
+      static NPtr build(NPtrVec&& nodes, Type t);
+      static NPtr build_type_literal(NPtrVec&& nodes);
       static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_integer(NPtrVec&& nodes);
       static NPtr build_real(NPtrVec&& nodes);
 
       virtual void join_identifiers(Scope*) {}
+      virtual void verify_types();
+
 
       virtual std::string to_string(size_t n) const;
 
     protected:
-      Language::NodeType base_type_;
       Terminal() {}
   };
 
-  inline NPtr Terminal::build(NPtrVec&& nodes, Language::NodeType t) {
+  inline NPtr Terminal::build(NPtrVec&& nodes, Type t) {
     auto term_ptr = new Terminal;
-    term_ptr->base_type_ = t;
+    term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence_ = Language::op_prec.at("MAX");
 
     return NPtr(term_ptr);
   }
 
+  inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), t_type);
+  }
+
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Language::string_literal);
+    return build(std::forward<NPtrVec>(nodes), t_string);
   }
 
   inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Language::integer);
+    return build(std::forward<NPtrVec>(nodes), t_int);
   }
 
   inline NPtr Terminal::build_real(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Language::real);
+    return build(std::forward<NPtrVec>(nodes), t_real);
   }
 
 }  // namespace AST

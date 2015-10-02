@@ -1,11 +1,13 @@
 #ifndef ICARUS_LANGUAGE_H
 #define ICARUS_LANGUAGE_H
 
+#include "AST/Type.h"
+
 namespace Language {
   enum NodeType {
     unknown, eof, newline, comment,
     identifier,
-    integer, real, string_literal,
+    integer, real, string_literal, type_literal,
     generic_operator, decl_operator, assign_operator, fat_arrow,
     key_value_pair, key_value_pair_list,
     expression, paren_expression,
@@ -32,10 +34,11 @@ namespace Language {
   }
 
 
+  // kloodge: int is really AST::Type, but circular include dependencies :(. FIXME
+  extern const std::map<std::string, AST::Type> type_literals;
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;
   extern const std::map<std::string, size_t> op_prec;
-  // Vector of rules is declared in the Rule header
 
 }  // namespace Language
 

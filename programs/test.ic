@@ -1,6 +1,7 @@
-factorial : (n : uint) -> uint = {
-  case {
-    n < 2  =>  1
-    else   =>  n * factorial(n - 1)
-  }
+{
+  b : int = 3 + n
+ 
+  b : int = 3 + n
+  b *= 2
+  b += n
 }

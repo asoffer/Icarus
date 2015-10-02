@@ -92,7 +92,13 @@ AST::Node Lexer::next_word() {
     }
   }
 
-  // If it's not a reserved word, it's an identifier
+  for (const auto& type_lit : Language::type_literals) {
+    if (type_lit.first == token) {
+      return AST::Node(Language::type_literal, token);
+    }
+  }
+
+  // It's an identifier
   return AST::Node(Language::identifier, token);
 }
 

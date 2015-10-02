@@ -9,6 +9,9 @@
 namespace AST {
   class Expression : public Node {
     friend class Binop;
+    friend class Declaration;
+    friend class Assignment;
+    friend class Scope;
 
     public:
       static NPtr parenthesize(NPtrVec&& nodes);
@@ -16,13 +19,16 @@ namespace AST {
       size_t precedence() const { return precedence_; }
 
       virtual void join_identifiers(Scope* scope) = 0;
+      virtual void verify_types() {}
+      virtual void find_all_decls(Scope*) {}
 
       virtual ~Expression(){}
 
     protected:
-      Expression() {}
+      Expression() : expr_type_(t_unknown) {}
 
       size_t precedence_;
+      Type expr_type_;
   };
 
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {

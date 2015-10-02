@@ -21,6 +21,9 @@ namespace AST {
       static NPtr build_bracket_operator(NPtrVec&& nodes);
 
       virtual void join_identifiers(Scope* scope);
+      virtual void verify_types();
+      virtual void find_all_decls(Scope* scope);
+
       virtual std::string to_string(size_t n) const;
       virtual bool is_binop() const { return true; }
 
@@ -48,7 +51,7 @@ namespace AST {
   inline NPtr Binop::build_else_kv(NPtrVec&& nodes) {
     auto binop_ptr = new Binop;
     auto else_ptr = new Terminal;
-    else_ptr->base_type_ = Language::reserved_else;
+    else_ptr->expr_type_ = t_bool;
     else_ptr->token_ = "else";
     else_ptr->precedence_ = Language::op_prec.at("MAX");
 
