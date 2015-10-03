@@ -51,7 +51,7 @@ namespace AST {
   inline NPtr Binop::build_else_kv(NPtrVec&& nodes) {
     auto binop_ptr = new Binop;
     auto else_ptr = new Terminal;
-    else_ptr->expr_type_ = t_bool;
+    else_ptr->expr_type_ = Type::Bool;
     else_ptr->token_ = "else";
     else_ptr->precedence_ = Language::op_prec.at("MAX");
 

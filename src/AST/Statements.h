@@ -7,6 +7,8 @@
 
 namespace AST {
   class Statements : public Node {
+    friend class AnonymousScope;
+
     public:
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
@@ -15,6 +17,8 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
+
+      inline size_t size() { return statements_.size(); }
 
     private:
       Statements() {}

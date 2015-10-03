@@ -16,7 +16,7 @@ namespace AST {
 
       Identifier(const std::string& token_string) {
         token_ = token_string;
-        expr_type_ = t_unknown;
+        expr_type_ = Type::Unknown;
         precedence_ = Language::op_prec.at("MAX");
       }
   };
@@ -31,7 +31,7 @@ namespace AST {
       spaces += "  ";
     }
  
-    return spaces + "<Identifier (" + std::to_string(expr_type_) + "): " + token() + ">\n";
+    return spaces + "<Identifier (" + expr_type_.to_string() + "): " + token() + ">\n";
   }
 
 }  // namespace AST

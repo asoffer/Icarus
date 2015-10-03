@@ -5,6 +5,7 @@
 #include "typedefs.h"
 #include "AST/Node.h"
 #include "AST/Scope.h"
+#include "Type.h"
 
 namespace AST {
   class Expression : public Node {
@@ -25,7 +26,7 @@ namespace AST {
       virtual ~Expression(){}
 
     protected:
-      Expression() : expr_type_(t_unknown) {}
+      Expression() {}
 
       size_t precedence_;
       Type expr_type_;

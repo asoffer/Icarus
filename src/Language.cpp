@@ -51,15 +51,6 @@ namespace Language {
     { reserved_return, "Return" }
   };
 
-
-  const std::map<std::string, AST::Type> type_literals = {
-    { "bool",   AST::t_bool },
-    { "char",   AST::t_char },
-    { "int",    AST::t_int },
-    { "real",   AST::t_real },
-    { "string", AST::t_string }
-  };
-
   const std::map<std::string, NodeType> reserved_words = {
     { "if",       reserved_if },
     { "else",     reserved_else },

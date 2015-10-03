@@ -3,6 +3,7 @@
 #include "Parser.h"
 #include "AST/Node.h"
 #include "AST/Scope.h"
+#include "AST/AnonymousScope.h"
 #include "typedefs.h"
 
 int main(int argc, char *argv[]) {
@@ -15,20 +16,17 @@ int main(int argc, char *argv[]) {
 
 
   Parser parser(argv[1]);
-  NPtr root = parser.parse();
+  auto global_scope = AST::AnonymousScope::build_empty();
+  global_scope->add_statements(parser.parse());
 
-  for (const auto& sc : AST::Scope::all_scopes) {
-    sc->join_identifiers(*AST::Scope::all_scopes.begin());
-    sc->find_all_decls(*AST::Scope::all_scopes.begin());
+  global_scope->join_identifiers_in_scope();
+  global_scope->find_decls_in_scope();
 
-    if (sc->log_undeclared_identifiers()) {
-      return 0;
-    }
+  if (global_scope->log_undeclared_identifiers()) {
+    return 0;
   }
-
-  root->verify_types();
-  //std::cout << root->to_string(0) << std::endl;
-
+  global_scope->verify_types();
+  std::cout << global_scope->to_string(0) << std::endl;
 
   return 0;
 }

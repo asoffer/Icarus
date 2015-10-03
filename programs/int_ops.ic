@@ -1,0 +1,12 @@
+// This program is valid because all identifiers are declared. The fact that
+// they are declared after usage is irrelevant. This is allowed in much the same
+// way that functions can be called without forward declarations.
+
+a = 5
+b = 3
+
+a += b
+b += a * b
+
+b : int
+a : int

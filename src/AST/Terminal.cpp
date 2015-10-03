@@ -10,6 +10,6 @@ namespace AST {
       spaces += "  ";
     }
  
-    return spaces + "<Terminal (" + std::to_string(expr_type_) + "): " + token_ + ">\n";
+    return spaces + "<Terminal (" + expr_type_.to_string() + "): " + token_ + ">\n";
   }
 }  // namespace AST

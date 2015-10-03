@@ -15,7 +15,8 @@ namespace AST {
       static std::vector<Scope*> all_scopes;
 
       virtual std::string to_string(size_t n) const = 0;
-      void join_identifiers();
+      inline void join_identifiers_in_scope() { join_identifiers(this); }
+      inline void find_decls_in_scope() { find_all_decls(this); }
       void show_identifiers() const;
       bool log_undeclared_identifiers() const;
       void register_declaration(Declaration*);

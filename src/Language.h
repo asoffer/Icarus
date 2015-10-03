@@ -1,7 +1,7 @@
 #ifndef ICARUS_LANGUAGE_H
 #define ICARUS_LANGUAGE_H
 
-#include "AST/Type.h"
+#include "Type.h"
 
 namespace Language {
   enum NodeType {
@@ -33,9 +33,6 @@ namespace Language {
     return t == generic_operator || t == decl_operator|| t == assign_operator;
   }
 
-
-  // kloodge: int is really AST::Type, but circular include dependencies :(. FIXME
-  extern const std::map<std::string, AST::Type> type_literals;
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;
   extern const std::map<std::string, size_t> op_prec;

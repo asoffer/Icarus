@@ -14,7 +14,7 @@ namespace AST {
     for (size_t i = 0; i < n; ++i) {
       output += "  ";
     }
-    output += "<Declaration (" + std::to_string(expr_type_) + ")>\n";
+    output += "<Declaration (" + expr_type_.to_string() + ")>\n";
     output += lhs_->to_string(n + 1);
     output += rhs_->to_string(n + 1);
 

@@ -7,7 +7,7 @@ namespace AST {
     for (size_t i = 0; i < n; ++i) {
       output += "  ";
     }
-    output += "<Binop (" + std::to_string(expr_type_) + "): '" + (token_ == "" ? Language::show_name.at(type_) : token_) + "', prec: " + std::to_string(precedence_) + ">\n";
+    output += "<Binop (" + expr_type_.to_string() + "): '" + (token_ == "" ? Language::show_name.at(type_) : token_) + "', prec: " + std::to_string(precedence_) + ">\n";
 
     output += lhs_->to_string(n + 1);
     output += rhs_->to_string(n + 1);
@@ -27,26 +27,26 @@ namespace AST {
     lhs_->verify_types();
     rhs_->verify_types();
 
-    if (lhs_->expr_type_ == type_error || rhs_->expr_type_ == type_error) {
+    if (lhs_->expr_type_ == Type::TypeError || rhs_->expr_type_ == Type::TypeError) {
       // An error was already found in the types, so just pass silently
-      expr_type_ = type_error;
+      expr_type_ = Type::TypeError;
       return;
     }
 
     if (token_ == "=>") {
-      if (lhs_->expr_type_ != t_bool)
-        expr_type_ = type_error;
+      if (lhs_->expr_type_ != Type::Bool)
+        expr_type_ = Type::TypeError;
 
     } else if (token_ == ":>") {
-      expr_type_ = Language::type_literals.at(rhs_->token());
+      expr_type_ = Type::Literals.at(rhs_->token());
 
     } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
         token_ == ">=" || token_ == "==" || token_ == "!=") {
       if (lhs_->expr_type_ != rhs_->expr_type_) {
-        expr_type_ = type_error;
+        expr_type_ = Type::TypeError;
 
       } else {
-        expr_type_ = t_bool;
+        expr_type_ = Type::Bool;
       }
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
@@ -54,7 +54,7 @@ namespace AST {
     }
     else {
       // TODO give a type-mismatch error here
-      expr_type_ = type_error;
+      expr_type_ = Type::TypeError;
     }
   }
 
@@ -67,7 +67,8 @@ namespace AST {
     }
 
     if (rhs_->is_identifier()) {
-      rhs_ = std::static_pointer_cast<Expression>(scope->identifier(rhs_->token()));
+      auto id_ptr = scope->identifier(rhs_->token());
+      rhs_ = std::static_pointer_cast<Expression>(id_ptr);
     } else {
       rhs_->join_identifiers(scope);
     }

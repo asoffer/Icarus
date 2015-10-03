@@ -39,19 +39,19 @@ namespace AST {
   }
 
   inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), t_type);
+    return build(std::forward<NPtrVec>(nodes), Type::Type_);
   }
 
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), t_string);
+    return build(std::forward<NPtrVec>(nodes), Type::String);
   }
 
   inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), t_int);
+    return build(std::forward<NPtrVec>(nodes), Type::Int);
   }
 
   inline NPtr Terminal::build_real(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), t_real);
+    return build(std::forward<NPtrVec>(nodes), Type::Real);
   }
 
 }  // namespace AST

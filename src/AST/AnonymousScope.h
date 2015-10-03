@@ -8,19 +8,31 @@
 #include "typedefs.h"
 
 namespace AST {
-  class AnonymousScope : public Expression, Scope {
+  class AnonymousScope : public Expression, public Scope {
     public:
       static NPtr build(NPtrVec&& nodes);
+      static std::unique_ptr<AnonymousScope> build_empty();
+
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
 
+      void add_statements(NPtr&& stmts_ptr);
+
     protected:
-      std::unique_ptr<Statements> statements_;
       AnonymousScope() {}
+      std::unique_ptr<Statements> statements_;
   };
+
+
+  inline std::unique_ptr<AnonymousScope> AnonymousScope::build_empty() {
+    std::unique_ptr<AnonymousScope> anon_scope(new AnonymousScope);
+    anon_scope->statements_ = std::unique_ptr<Statements>(new Statements);
+
+    return anon_scope;
+  }
 
   inline NPtr AnonymousScope::build(NPtrVec&& nodes) {
     auto anon_scope = new AnonymousScope;
