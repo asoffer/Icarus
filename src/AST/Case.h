@@ -15,6 +15,9 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void find_all_decls(Scope*) { // TODO
       }
+      virtual void verify_types() { // TODO
+      }
+
 
     private:
        Case() {}

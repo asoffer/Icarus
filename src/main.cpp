@@ -19,14 +19,8 @@ int main(int argc, char *argv[]) {
   auto global_scope = AST::AnonymousScope::build_empty();
   global_scope->add_statements(parser.parse());
 
-  global_scope->join_identifiers_in_scope();
-  global_scope->find_decls_in_scope();
+  global_scope->verify_scope();
 
-  if (global_scope->log_undeclared_identifiers()) {
-    return 0;
-  }
-
-  global_scope->verify_types();
   std::cout << global_scope->to_string(0) << std::endl;
 
   return 0;

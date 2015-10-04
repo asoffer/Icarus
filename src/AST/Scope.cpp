@@ -16,6 +16,19 @@ namespace AST {
     return id_map_[token_string] = IdPtr(new Identifier(token_string));
   }
 
+  void Scope::verify_scope() {
+    join_identifiers(this);
+    find_all_decls(this);
+
+    // Find and log all undeclared identifers. If you find any, log them and
+    // stop checking the current scope. There is no more useful information to
+    // be found.
+    if (log_undeclared_identifiers()) return;
+
+    verify_types();
+  }
+
+
   void Scope::show_identifiers() const {
     for (const auto& ids : id_map_) {
       std::cout << ids.first << std::endl;
