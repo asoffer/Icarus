@@ -1,0 +1,7 @@
+temp : int = 40
+
+case {
+  temp = 32   =>  "ice"
+  temp < 212  =>  "water"
+  else        =>  "vapor"
+}

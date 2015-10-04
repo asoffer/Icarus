@@ -201,29 +201,34 @@ namespace Language {
 
 
     /* Begin case statements */
-    Rule(key_value_pair,
+    Rule(key_value_pair_list,
         { expression, rocket_operator, expression, newline },
-        AST::Binop::build),
-
-    Rule(key_value_pair,
-        { reserved_else, rocket_operator, expression, newline },
-        AST::Binop::build_else_kv),
-
-    Rule(key_value_pair,
-        { key_value_pair, newline },
-        drop_all_but<0>),
+        AST::KVPairList::build_one),
 
     Rule(key_value_pair_list,
-        { key_value_pair },
+        { key_value_pair_list, expression, rocket_operator, expression, newline },
+        AST::KVPairList::build_more),
+
+    Rule(key_value_pair_list,
+        { reserved_else, rocket_operator, expression, newline },
         AST::KVPairList::build_one),
+
+    Rule(key_value_pair_list,
+        { key_value_pair_list, reserved_else, rocket_operator, expression, newline },
+        AST::KVPairList::build_more),
+
+    Rule(key_value_pair_list,
+        { assignment, rocket_operator, expression, newline },
+        AST::KVPairList::build_one_assignment_error),
+
+    Rule(key_value_pair_list,
+        { assignment, expression, rocket_operator, expression, newline },
+        AST::KVPairList::build_more_assignment_error),
+
 
     Rule(key_value_pair_list,
         { key_value_pair_list, newline },
         drop_all_but<0>),
-
-    Rule(key_value_pair_list,
-        { key_value_pair_list, key_value_pair },
-        AST::KVPairList::build_more),
 
     Rule(expression,
         { reserved_case, left_brace, newline, key_value_pair_list, right_brace },

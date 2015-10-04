@@ -10,7 +10,7 @@ namespace AST {
   class Scope;
 
   class Terminal : public Expression {
-    friend class Binop;
+    friend class KVPairList;
 
     public:
       static NPtr build(NPtrVec&& nodes, Type t);

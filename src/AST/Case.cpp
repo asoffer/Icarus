@@ -7,11 +7,15 @@ namespace AST {
       output += "  ";
     }
 
-    return output + "<Case>\n" + pairs_->to_string(n);
+    return output + "<Case>\n" + pairs_->to_string(n + 1);
   }
 
   void Case::join_identifiers(Scope* scope) {
     pairs_->join_identifiers(scope);
+  }
+
+  void Case::verify_types() {
+    pairs_->verify_types_with_key(Type::Bool);
   }
 
 

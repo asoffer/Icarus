@@ -9,6 +9,7 @@
 
 namespace AST {
   class Expression : public Node {
+    friend class KVPairList;
     friend class Binop;
     friend class Declaration;
     friend class Assignment;
@@ -21,6 +22,8 @@ namespace AST {
 
       virtual void join_identifiers(Scope* scope) = 0;
       virtual void verify_types() {}
+      virtual void verify_type_is(Type t);
+
       virtual void find_all_decls(Scope*) {}
 
       virtual ~Expression(){}
@@ -36,6 +39,18 @@ namespace AST {
     auto expr_ptr = static_cast<Expression*>(nodes[1].release());
     expr_ptr->precedence_ = Language::op_prec.at("MAX");
     return NPtr(expr_ptr);
+  }
+
+
+  inline void Expression::verify_type_is(Type t) {
+    verify_types();
+
+    if (expr_type_ != t) {
+      // TODO: give some context for this error message. Why must this be the type?
+      // So far the only instance where this is called is for case statements,
+      std::cerr << "Type of `____` must be " << t.to_string() << ", but " << expr_type_.to_string() << " found instead." << std::endl;
+      expr_type_ = t;
+    }
   }
 
 }  // namespace AST
