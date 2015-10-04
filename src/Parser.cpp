@@ -53,6 +53,7 @@ bool Parser::should_shift() {
       || stack_.back()->node_type() == Language::integer
       || stack_.back()->node_type() == Language::real
       || stack_.back()->node_type() == Language::string_literal
+      || stack_.back()->node_type() == Language::type_literal
       || stack_.back()->node_type() == Language::right_paren) {
     return false;
   }

@@ -8,7 +8,7 @@ namespace Language {
     unknown, eof, newline, comment,
     identifier,
     integer, real, string_literal, type_literal,
-    generic_operator, decl_operator, assign_operator, fat_arrow,
+    generic_operator, decl_operator, assign_operator, rocket_operator,
     key_value_pair, key_value_pair_list,
     expression, paren_expression,
     declaration, paren_declaration, assignment,

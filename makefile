@@ -28,6 +28,11 @@ build/%.o: src/%.cpp
 $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(OBJECTS) -o $@
 
+unity:
+	@rm -f build/unity.cpp
+	@printf '$(patsubst src/%.cpp,#include "%.cpp"\n,$(SOURCES))' > build/unity.cpp
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) build/unity.cpp -o $(TARGET)
+
 clean:
 	@rm -f $(TARGET) $(OBJECTS) $(DEPENDS)
 

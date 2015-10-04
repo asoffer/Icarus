@@ -1,8 +1,13 @@
 #include "Type.h"
+#include "AST/Expression.h"
 
 std::vector<std::string> Type::type_strings = {
-  "type_error", "?unknown?", "bool", "char", "int", "real", "string", "type", "uint", "void"
+  "type_error", "??", "bool", "char", "int", "real", "string", "type", "uint", "void"
 };
+
+Type Type::build(const AST::Expression* expr_ptr) {
+  return Type::Literals.at(expr_ptr->token());
+}
 
 const Type Type::Unknown(t_unknown);
 const Type Type::TypeError(t_type_error);

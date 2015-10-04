@@ -5,6 +5,10 @@
 #include <string>
 #include <map>
 
+namespace AST {
+  class Expression;
+}  // namespace AST
+
 class Type {
   private:
     enum PrimEnum {
@@ -13,6 +17,7 @@ class Type {
 
   public:
     Type(PrimEnum p = t_unknown) : prim_type_(p) {}
+    static Type build(const AST::Expression* expr_ptr);
 
     virtual std::string serialize() const {
       return std::to_string(prim_type_);

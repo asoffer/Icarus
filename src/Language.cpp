@@ -32,7 +32,7 @@ namespace Language {
     { generic_operator, "Operator" },
     { decl_operator, ":" },
     { assign_operator, "=" },
-    { fat_arrow, "=>" },
+    { rocket_operator, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
     { left_paren, "Left Paren" },
@@ -135,7 +135,7 @@ namespace Language {
         AST::Assignment::build),
     /* End assignment */
 
-
+    
     /* Begin expression */
     Rule(expression,
         { left_paren, expression, right_paren },
@@ -202,11 +202,11 @@ namespace Language {
 
     /* Begin case statements */
     Rule(key_value_pair,
-        { expression, fat_arrow, expression, newline },
+        { expression, rocket_operator, expression, newline },
         AST::Binop::build),
 
     Rule(key_value_pair,
-        { reserved_else, fat_arrow, expression, newline },
+        { reserved_else, rocket_operator, expression, newline },
         AST::Binop::build_else_kv),
 
     Rule(key_value_pair,

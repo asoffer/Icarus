@@ -25,6 +25,7 @@ int main(int argc, char *argv[]) {
   if (global_scope->log_undeclared_identifiers()) {
     return 0;
   }
+
   global_scope->verify_types();
   std::cout << global_scope->to_string(0) << std::endl;
 
