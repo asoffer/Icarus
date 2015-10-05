@@ -29,6 +29,8 @@ $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(OBJECTS) -o $@
 
 unity:
+	@mkdir -p build
+	@mkdir -p bin
 	@rm -f build/unity.cpp
 	@printf '$(patsubst src/%.cpp,#include "%.cpp"\n,$(SOURCES))' > build/unity.cpp
 	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) build/unity.cpp -o $(TARGET)
