@@ -1,0 +1,6 @@
+factorial : (n : int) -> int = {
+  return case {
+    n <= 2  => 1
+    else    => n * factorial(n - 1)
+  }
+}

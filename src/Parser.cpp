@@ -1,5 +1,5 @@
 #include "Parser.h"
-#include "AST/Node.h"
+#include "AST.h"
 
 Parser::Parser(const char* filename) : lexer_(filename) {
   lookahead_ = NPtr(new AST::Node);

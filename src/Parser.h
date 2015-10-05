@@ -6,7 +6,7 @@
 
 #include "Lexer.h"
 #include "Rule.h"
-#include "AST/Node.h"
+#include "AST.h"
 #include "typedefs.h"
 #include "Language.h"
 

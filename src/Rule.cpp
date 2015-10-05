@@ -1,5 +1,5 @@
 #include "Rule.h"
-#include "AST/Node.h"
+#include "AST.h"
 
 Rule::Rule(Language::NodeType output,
     const std::vector<Language::NodeType>& input, fnptr fn)

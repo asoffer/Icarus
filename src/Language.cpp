@@ -1,17 +1,6 @@
 #include "Language.h"
 
-#include "AST/Node.h"
-#include "AST/Expression.h"
-#include "AST/Terminal.h"
-#include "AST/Identifier.h"
-#include "AST/Binop.h"
-#include "AST/Declaration.h"
-#include "AST/Assignment.h"
-#include "AST/KVPairList.h"
-#include "AST/Case.h"
-#include "AST/Scope.h"
-#include "AST/AnonymousScope.h"
-#include "AST/Statements.h"
+#include "AST.h"
 
 // This is intentionally not accessible in other translation units.
 template <size_t N> NPtr drop_all_but(NPtrVec&& nodes) {

@@ -1,5 +1,5 @@
 #include "Type.h"
-#include "AST/Expression.h"
+#include "AST.h"
 
 std::vector<std::string> Type::type_strings = {
   "type_error", "??", "bool", "char", "int", "real", "string", "type", "uint", "void"

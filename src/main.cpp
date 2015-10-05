@@ -1,9 +1,7 @@
 #include <iostream>
 
 #include "Parser.h"
-#include "AST/Node.h"
-#include "AST/Scope.h"
-#include "AST/AnonymousScope.h"
+#include "AST.h"
 #include "typedefs.h"
 
 int main(int argc, char *argv[]) {

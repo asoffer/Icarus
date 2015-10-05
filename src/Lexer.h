@@ -3,7 +3,7 @@
 
 #include <fstream>
 #include <string>
-#include "AST/Node.h"
+#include "AST.h"
 
 // class Lexer:
 //
