@@ -38,19 +38,26 @@ namespace AST {
         expr_type_ = Type::TypeError;
 
     } else if (token_ == ":>") {
+      // TODO verify that this cast is possible
       expr_type_ = Type::Literals.at(rhs_->token());
 
     } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
         token_ == ">=" || token_ == "==" || token_ == "!=") {
       if (lhs_->expr_type_ != rhs_->expr_type_) {
-        expr_type_ = Type::TypeError;
-
-      } else {
-        expr_type_ = Type::Bool;
+        // If the types don't match give an error message. We can continue
+        // because the result must be a bool
+        std::cerr
+          << "Type mismatch for comparison operator" << token_ << " ("
+          << lhs_->expr_type_.to_string() << " and "
+          << rhs_->expr_type_.to_string() << ")" << std::endl;
       }
+
+      expr_type_ = Type::Bool;
+
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
       expr_type_ = lhs_->expr_type_;
+
     }
     else {
       // TODO give a type-mismatch error here
