@@ -14,12 +14,16 @@ int main(int argc, char *argv[]) {
 
 
   Parser parser(argv[1]);
+
   auto global_scope = AST::AnonymousScope::build_empty();
+
   global_scope->add_statements(parser.parse());
+  global_scope->register_scopes();
 
-  global_scope->verify_scope();
-
-  std::cout << global_scope->to_string(0) << std::endl;
-
+  for (auto& s : AST::Scope::scope_registry) {
+    s->verify_scope();
+//    std::cout << s->to_string(0) << std::endl;
+  }
+ 
   return 0;
 }

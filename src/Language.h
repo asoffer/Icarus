@@ -7,11 +7,12 @@ namespace Language {
   enum NodeType {
     unknown, eof, newline, comment,
     identifier,
-    integer, real, string_literal, type_literal,
-    generic_operator, decl_operator, assign_operator, rocket_operator,
+    integer, real, string_literal, type_literal, fn_literal, // 9
+    generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 14
     key_value_pair, key_value_pair_list,
-    expression, paren_expression,
-    declaration, paren_declaration, assignment,
+    expression, paren_expression, fn_expression, scope,  // 20
+    declaration, paren_declaration, fn_declaration,
+    assignment, fn_assignment,
     statements,
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     reserved_if, reserved_else, reserved_case, reserved_loop,
@@ -27,10 +28,12 @@ namespace Language {
 
 namespace Language {
   inline bool is_expression(NodeType t) {
-    return t == expression || t == declaration || t == assignment;
+    return t == expression || t == declaration
+      || t == fn_declaration || t == assignment;
   }
   inline bool is_operator(NodeType t) {
-    return t == generic_operator || t == decl_operator|| t == assign_operator;
+    return t == generic_operator || t == decl_operator
+      || t == assign_operator || t == fn_arrow;
   }
 
   extern const std::map<NodeType, std::string> show_name;

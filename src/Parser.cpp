@@ -72,6 +72,12 @@ bool Parser::should_shift() {
     return Language::op_prec.at(stack_[stack_.size() - 2]->token()) < Language::op_prec.at(lookahead_->token());
   }
 
+  // If we're defining a function with braces don't stop early.
+  if (stack_.back()->node_type() == Language::fn_expression
+      && lookahead_->node_type() == Language::left_brace) {
+    return true;
+  }
+
   return false;
 }
 

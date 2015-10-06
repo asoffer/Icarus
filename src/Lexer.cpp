@@ -236,6 +236,11 @@ AST::Node Lexer::next_operator() {
     return AST::Node(Language::rocket_operator, "=>");
   }
 
+  if (token[0] == '-' && token[1] == '>') {
+    return AST::Node(Language::fn_arrow, "->");
+  }
+
+
   return AST::Node(Language::generic_operator, token);
 }
 

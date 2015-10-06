@@ -14,6 +14,7 @@
 namespace AST {
   class Scope;
   class Declaration;
+  class AnonymousScope;
 
   class Node {
     public:
@@ -36,12 +37,16 @@ namespace AST {
       }
 
       virtual std::string to_string(size_t n) const;
+
+      // Do all nodes need this?
       virtual void join_identifiers(Scope*) {}
       virtual void verify_types() {}
       virtual void find_all_decls(Scope*) {}
+      virtual void register_scopes() {}
 
       virtual bool is_identifier() const { return type_ == Language::identifier; }
       virtual bool is_binop() const { return false; }
+      virtual bool is_declaration() const { return false; }
 
       Node(Language::NodeType type = Language::unknown,
           const std::string& token = "") : type_(type), token_(token) {}
@@ -59,6 +64,36 @@ namespace AST {
   };
 
 
+
+  class Scope {
+    public:
+      static std::vector<Scope*> scope_registry;
+
+      virtual std::string to_string(size_t n) const = 0;
+
+      void verify_scope();
+
+      void show_identifiers() const;
+      void register_declaration(Declaration*);
+
+      virtual void join_identifiers(Scope*) = 0;
+      virtual void find_all_decls(Scope*) = 0;
+      virtual void verify_types() = 0;
+      virtual void register_scopes();
+
+      IdPtr identifier(const std::string& token_string);
+
+      Scope() {}
+
+    private:
+      bool log_undeclared_identifiers() const;
+
+      std::map<std::string, IdPtr> id_map_;
+      //std::set<Declaration> decls_;
+  };
+
+
+
   class Expression : public Node {
     friend class KVPairList;
     friend class Binop;
@@ -73,6 +108,7 @@ namespace AST {
 
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void verify_types() = 0;
+    virtual void register_scopes() = 0;
     virtual void verify_type_is(Type t);
 
     virtual void find_all_decls(Scope*) {}
@@ -105,40 +141,9 @@ namespace AST {
   }
 
 
-
-  class Scope {
-    public:
-      static std::vector<Scope*> all_scopes;
-
-      virtual std::string to_string(size_t n) const = 0;
-
-      void verify_scope();
-
-      void show_identifiers() const;
-      void register_declaration(Declaration*);
-
-      virtual void join_identifiers(Scope*) = 0;
-      virtual void find_all_decls(Scope*) = 0;
-      virtual void verify_types() = 0;
-
-      IdPtr identifier(const std::string& token_string);
-
-      Scope() {
-        // FIXME this is dangerous, what if a Scope goes out of scope? dangling
-        // pointer!
-        all_scopes.push_back(this);
-      }
-
-    private:
-      bool log_undeclared_identifiers() const;
-
-      std::map<std::string, IdPtr> id_map_;
-      //std::set<Declaration> decls_;
-  };
-
-
   class Binop : public Expression {
     friend class KVPairList;
+    friend class FunctionLiteral;
 
     public:
     // It's not clear it's okay to pass the string by reference if it's
@@ -153,6 +158,7 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
+    virtual void register_scopes();
 
     virtual std::string to_string(size_t n) const;
     virtual bool is_binop() const { return true; }
@@ -206,6 +212,7 @@ namespace AST {
     static NPtr build_real(NPtrVec&& nodes);
 
     virtual void join_identifiers(Scope*) {}
+    virtual void register_scopes() {};
     virtual void verify_types();
 
 
@@ -284,6 +291,8 @@ namespace AST {
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
 
+    virtual bool is_declaration() const { return true; }
+
     virtual ~Declaration(){}
 
     private:
@@ -318,6 +327,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void register_scopes();
+
 
       virtual Type verify_types_with_key(Type key_type);
 
@@ -344,6 +355,7 @@ namespace AST {
     auto val_ptr =
       static_cast<Expression*>(nodes[2].release());
 
+    // NOTE: EPtr is a shared_ptr, we want unique_ptr<Expression>
     pair_list->kv_pairs_.emplace_back(
         std::unique_ptr<Expression>(key_ptr),
         std::unique_ptr<Expression>(val_ptr));
@@ -427,8 +439,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
-      virtual void find_all_decls(Scope*) { // TODO
-      }
+      virtual void find_all_decls(Scope*);
+      virtual void register_scopes();
       virtual void verify_types();
 
     private:
@@ -447,7 +459,9 @@ namespace AST {
 
   class Identifier : public Terminal {
     public:
-      static NPtr build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes) {
+        return NPtr(new Identifier(nodes[0]->token()));
+      }
 
       virtual bool is_identifier() const { return true; }
 
@@ -460,18 +474,7 @@ namespace AST {
       }
   };
 
-  inline NPtr Identifier::build(NPtrVec&& nodes) {
-    return NPtr(new Identifier(nodes[0]->token()));
-  }
 
-  inline std::string Identifier::to_string(size_t n) const {
-    std::string spaces;
-    for (size_t i = 0; i < n; ++i) {
-      spaces += "  ";
-    }
- 
-    return spaces + "<Identifier (" + expr_type_.to_string() + "): " + token() + ">\n";
-  }
 
 
   class Statements : public Node {
@@ -485,6 +488,7 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
+      virtual void register_scopes();
 
       inline size_t size() { return statements_.size(); }
 
@@ -509,8 +513,9 @@ namespace AST {
 
 
 
-
   class AnonymousScope : public Expression, public Scope {
+    friend class FunctionLiteral;
+
     public:
       static NPtr build(NPtrVec&& nodes);
       static std::unique_ptr<AnonymousScope> build_empty();
@@ -520,6 +525,8 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
+      virtual void register_scopes();
+
 
       void add_statements(NPtr&& stmts_ptr);
 
@@ -543,6 +550,53 @@ namespace AST {
 
     return NPtr(anon_scope);
   }
+
+
+
+  class FunctionLiteral : public AnonymousScope {
+    public:
+      static NPtr build(NPtrVec&& nodes) {
+        auto fn_lit = new FunctionLiteral;
+
+        auto anon_scope_ptr = static_cast<AnonymousScope*>(nodes[1].release());
+        fn_lit->statements_ = std::move(anon_scope_ptr->statements_);
+        delete anon_scope_ptr;
+
+
+        auto binop_ptr = static_cast<Binop*>(nodes[0].release());
+
+        fn_lit->return_type_ = std::move(binop_ptr->rhs_);
+
+
+        // TODO What if the fn_expression is more complicated, like a function
+        // of the form (int -> int) -> int? I'm not sure how robust this is
+        if (!binop_ptr->lhs_->is_declaration()) {
+          // TODO Is this error message correct?
+          std::cerr
+            << "No input parameters named in function declaration"
+            << std::endl;
+        } else {
+          // TODO This assumes a single declaration, not a comma-separated list
+          fn_lit->inputs_.push_back(
+              std::static_pointer_cast<Declaration>(binop_ptr->lhs_));
+        }
+
+        delete binop_ptr;
+
+        return NPtr(fn_lit);
+      }
+
+      virtual void find_all_decls(Scope*);
+      virtual void join_identifiers(Scope* scope);
+
+      virtual std::string to_string(size_t n) const;
+
+    private:
+      std::vector<DeclPtr> inputs_;
+      EPtr return_type_;
+
+      FunctionLiteral() {}
+  };
 
 
 }  // namespace AST

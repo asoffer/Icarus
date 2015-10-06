@@ -36,6 +36,10 @@ namespace AST {
     return tabs(n) + "<Terminal (" + expr_type_.to_string() + "): " + token_ + ">\n";
   }
 
+  std::string Identifier::to_string(size_t n) const {
+    return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): " + token() + ">\n";
+  }
+
   std::string AnonymousScope::to_string(size_t n) const {
     return tabs(n) + "<AnonymousScope>\n" + statements_->to_string(n + 1);
   }
@@ -82,6 +86,13 @@ namespace AST {
   }
 
 
+  std::string FunctionLiteral::to_string(size_t n) const {
+    std::string output = tabs(n) + "<FunctionnLiteral>\n";
+    for (const auto& decl : inputs_) {
+      output += decl->to_string(n + 1);
+    }
+    return output + tabs(n + 1) + "Body:\n" + statements_->to_string(n + 2);
+  }
 
   /****************************************
    *           JOIN IDENTIFIERS           *
@@ -89,6 +100,7 @@ namespace AST {
 
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
+
       auto id_ptr = scope->identifier(lhs_->token());
       lhs_ = std::static_pointer_cast<Expression>(id_ptr);
     } else {
@@ -104,6 +116,9 @@ namespace AST {
   }
 
   void AnonymousScope::join_identifiers(Scope* scope) {
+    // Do not allow higher scopes to see inside
+    if (scope != this) return;
+
     statements_->join_identifiers(scope);
   }
 
@@ -129,7 +144,52 @@ namespace AST {
     }
   }
 
+  void FunctionLiteral::join_identifiers(Scope* scope) {
+    // Do not allow higher scopes to see inside
+    if (scope != this) return;
 
+    for (const auto decl : inputs_) {
+      decl->join_identifiers(scope);
+    }
+    statements_->join_identifiers(scope);
+  }
+
+
+
+   /****************************************
+   *            REGISTER SCOPE            *
+   ****************************************/
+  void Scope::register_scopes() {
+    scope_registry.push_back(this);
+  }
+
+  void Binop::register_scopes() {
+    lhs_->register_scopes();
+    rhs_->register_scopes();
+  }
+
+  void Case::register_scopes() {
+    pairs_->register_scopes();
+  }
+
+  void KVPairList::register_scopes() {
+    for (const auto& kv : kv_pairs_) {
+      kv.first->register_scopes();
+      kv.second->register_scopes();
+    }
+  }
+
+  void AnonymousScope::register_scopes() {
+    Scope::register_scopes();
+    statements_->register_scopes();
+  }
+
+  
+  void Statements::register_scopes() {
+    for (const auto& stmt : statements_) {
+      stmt->register_scopes();
+    }
+  }
 
   /****************************************
    *            FIND ALL DECLS            *
@@ -144,6 +204,18 @@ namespace AST {
     statements_->find_all_decls(scope);
   } 
 
+  void FunctionLiteral::find_all_decls(Scope* scope) {
+    // Do not allow higher scopes to see inside
+    if (scope != this) return;
+
+    for (const auto & decl : inputs_) {
+      decl->find_all_decls(scope);
+    }
+
+    // Call parent
+    AnonymousScope::find_all_decls(scope);
+  } 
+
   void Declaration::find_all_decls(Scope* scope) {
     scope->register_declaration(this);
   }
@@ -154,7 +226,9 @@ namespace AST {
     }
   }
 
-
+  void Case::find_all_decls(Scope*) { // TODO
+  }
+ 
 
   /* BINOP */
   void Binop::verify_types() {
@@ -263,7 +337,7 @@ namespace AST {
 
     // TODO guess what type was intended
     if (value_types.size() != 1) {
-      std::cout << "Type error: Value do not match in key-value pairs" << std::endl;
+      std::cerr << "Type error: Value do not match in key-value pairs" << std::endl;
       return Type::TypeError;
     }
 
@@ -273,7 +347,7 @@ namespace AST {
   }
 
   /* SCOPE */
-  std::vector<Scope*> Scope::all_scopes = {};
+  std::vector<Scope*> Scope::scope_registry;
 
   IdPtr Scope::identifier(const std::string& token_string) {
 
@@ -294,7 +368,7 @@ namespace AST {
     // be found.
     if (log_undeclared_identifiers()) return;
 
-    verify_types();
+    //verify_types();
   }
 
 
@@ -305,11 +379,12 @@ namespace AST {
   }
 
   void Scope::register_declaration(Declaration* decl) {
-    auto id_ptr = id_map_[decl->lhs_->token()];
+    auto id_ptr = id_map_.at(decl->lhs_->token());
     if (id_ptr->expr_type_ != Type::Unknown) {
       std::cerr << "Identifier redeclared in scope: `" << id_ptr->token() << "`" << std::endl;
     }
 
+    // FIXME only works for literals
     id_ptr->expr_type_ =
       Type::Literals.at(decl->rhs_->token());
   }

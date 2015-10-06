@@ -21,6 +21,7 @@ namespace Language {
     { generic_operator, "Operator" },
     { decl_operator, ":" },
     { assign_operator, "=" },
+    { fn_arrow, "->" },
     { rocket_operator, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
@@ -100,6 +101,14 @@ namespace Language {
     Rule(expression,
         { type_literal },
         AST::Terminal::build_type_literal),
+
+    Rule(fn_literal,
+        { fn_expression, scope },
+        AST::FunctionLiteral::build),
+
+    Rule(expression,
+        { fn_literal },
+        drop_all_but<0>),
     /* End literals */
     
 
@@ -108,6 +117,11 @@ namespace Language {
         { identifier, decl_operator, expression },
         AST::Declaration::build),
 
+    Rule(fn_declaration,
+        { identifier, decl_operator, fn_expression },
+        AST::Declaration::build),
+
+    // TODO Should this be an expression or declaration
     Rule(expression,
         { left_paren, declaration, right_paren },
         AST::Expression::parenthesize),
@@ -122,6 +136,36 @@ namespace Language {
     Rule(assignment,
         { declaration, assign_operator, expression },
         AST::Assignment::build),
+
+    Rule(fn_assignment,
+        { fn_declaration, assign_operator, expression },
+        AST::Assignment::build),
+
+    Rule(assignment,
+        { expression, assign_operator, fn_expression },
+        AST::Assignment::build),
+
+    Rule(assignment,
+        { declaration, assign_operator, fn_expression },
+        AST::Assignment::build),
+
+    Rule(fn_assignment,
+        { fn_declaration, assign_operator, fn_expression },
+        AST::Assignment::build),
+
+    Rule(assignment,
+        { expression, assign_operator, fn_literal },
+        AST::Assignment::build),
+
+    Rule(assignment,
+        { declaration, assign_operator, fn_literal },
+        AST::Assignment::build),
+
+    Rule(fn_assignment,
+        { fn_declaration, assign_operator, fn_literal },
+        AST::Assignment::build),
+
+
     /* End assignment */
 
     
@@ -130,8 +174,20 @@ namespace Language {
         { left_paren, expression, right_paren },
         AST::Expression::parenthesize),
 
+    Rule(fn_expression,
+        { left_paren, fn_expression, right_paren },
+        AST::Expression::parenthesize),
+
     Rule(expression,
         { expression, generic_operator, expression },
+        AST::Binop::build),
+
+    Rule(expression,
+        { fn_expression },
+        drop_all_but<0>),
+
+    Rule(fn_expression,
+        { expression, fn_arrow, expression },
         AST::Binop::build),
     /* End expression */
 
@@ -160,7 +216,15 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { fn_assignment, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { declaration, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { fn_declaration, newline },
         AST::Statements::build_one),
 
     Rule(statements,
@@ -176,7 +240,15 @@ namespace Language {
         AST::Statements::build_more),
 
     Rule(statements,
+        { statements, fn_assignment, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
         { statements, declaration, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, fn_declaration, newline },
         AST::Statements::build_more),
 
     Rule(statements,
@@ -230,7 +302,7 @@ namespace Language {
         { newline, newline },
         drop_all_but<0>),
 
-    Rule(expression,
+    Rule(scope,
         { left_brace, statements, right_brace },
         AST::AnonymousScope::build),
     /* End miscellaneous */ 

@@ -2,8 +2,6 @@
 // they are declared after usage is irrelevant. This is allowed in much the same
 // way that functions can be called without forward declarations.
 
-foo bar
-
 a = 5
 b = 3
 
