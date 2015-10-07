@@ -42,7 +42,7 @@ namespace AST {
       virtual void join_identifiers(Scope*) {}
       virtual void verify_types() {}
       virtual void find_all_decls(Scope*) {}
-      virtual void register_scopes() {}
+      virtual void register_scopes(Scope*) {}
 
       virtual bool is_identifier() const { return type_ == Language::identifier; }
       virtual bool is_binop() const { return false; }
@@ -72,6 +72,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const = 0;
 
       void verify_scope();
+      void verify_no_shadowing();
 
       void show_identifiers() const;
       void register_declaration(Declaration*);
@@ -79,17 +80,18 @@ namespace AST {
       virtual void join_identifiers(Scope*) = 0;
       virtual void find_all_decls(Scope*) = 0;
       virtual void verify_types() = 0;
-      virtual void register_scopes();
+      virtual void register_scopes(Scope* parent_scope);
 
-      IdPtr identifier(const std::string& token_string);
+      IdPtr get_identifier(const std::string& token_string);
 
-      Scope() {}
+      Scope() : parent_(nullptr) {}
 
     private:
       bool log_undeclared_identifiers() const;
 
       std::map<std::string, IdPtr> id_map_;
-      //std::set<Declaration> decls_;
+      Scope* parent_;
+      std::set<Declaration*> decl_registry_;
   };
 
 
@@ -108,7 +110,7 @@ namespace AST {
 
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void verify_types() = 0;
-    virtual void register_scopes() = 0;
+    virtual void register_scopes(Scope*) = 0;
     virtual void verify_type_is(Type t);
 
     virtual void find_all_decls(Scope*) {}
@@ -158,7 +160,7 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
-    virtual void register_scopes();
+    virtual void register_scopes(Scope* parent_scope);
 
     virtual std::string to_string(size_t n) const;
     virtual bool is_binop() const { return true; }
@@ -212,7 +214,7 @@ namespace AST {
     static NPtr build_real(NPtrVec&& nodes);
 
     virtual void join_identifiers(Scope*) {}
-    virtual void register_scopes() {};
+    virtual void register_scopes(Scope*) {};
     virtual void verify_types();
 
 
@@ -287,6 +289,8 @@ namespace AST {
     public:
     static NPtr build(NPtrVec&& nodes);
 
+    std::string identifier() const { return lhs_->token(); }
+
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
@@ -327,7 +331,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
-      virtual void register_scopes();
+      virtual void register_scopes(Scope* parent_scope);
 
 
       virtual Type verify_types_with_key(Type key_type);
@@ -440,7 +444,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void find_all_decls(Scope*);
-      virtual void register_scopes();
+      virtual void register_scopes(Scope* parent_scope);
       virtual void verify_types();
 
     private:
@@ -488,7 +492,7 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
-      virtual void register_scopes();
+      virtual void register_scopes(Scope* parent_scope);
 
       inline size_t size() { return statements_.size(); }
 
@@ -525,7 +529,7 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
-      virtual void register_scopes();
+      virtual void register_scopes(Scope* parent_scope);
 
 
       void add_statements(NPtr&& stmts_ptr);
@@ -587,6 +591,7 @@ namespace AST {
       }
 
       virtual void find_all_decls(Scope*);
+      virtual void register_scopes(Scope* scope);
       virtual void join_identifiers(Scope* scope);
 
       virtual std::string to_string(size_t n) const;

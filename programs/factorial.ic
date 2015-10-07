@@ -1,10 +1,7 @@
 // Intentionally missing return statement because we don't treat it
 // appropriately yet.
 
-// There are two instances of undeclared identifiers here (both of `factorial`).
-// The inner scope does not yet know to look to higher scopes, so even if we
-// declared factorial before defining it, the second instance would still be an
-// undeclared identifier. This will hopefully soon be fixed.
+factorial : int -> int
 factorial = (n : int) -> int {
    case {
     n < 2  =>  1

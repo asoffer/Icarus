@@ -18,7 +18,7 @@ int main(int argc, char *argv[]) {
   auto global_scope = AST::AnonymousScope::build_empty();
 
   global_scope->add_statements(parser.parse());
-  global_scope->register_scopes();
+  global_scope->register_scopes(nullptr);
 
   for (auto& s : AST::Scope::scope_registry) {
     s->verify_scope();

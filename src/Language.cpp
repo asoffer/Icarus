@@ -232,6 +232,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { scope, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { statements, expression, newline },
         AST::Statements::build_more),
 
@@ -249,6 +253,10 @@ namespace Language {
 
     Rule(statements,
         { statements, fn_declaration, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, scope, newline },
         AST::Statements::build_more),
 
     Rule(statements,

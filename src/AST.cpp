@@ -100,16 +100,17 @@ namespace AST {
 
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
-
-      auto id_ptr = scope->identifier(lhs_->token());
+      auto id_ptr = scope->get_identifier(lhs_->token());
       lhs_ = std::static_pointer_cast<Expression>(id_ptr);
+
     } else {
       lhs_->join_identifiers(scope);
     }
 
     if (rhs_->is_identifier()) {
-      auto id_ptr = scope->identifier(rhs_->token());
+      auto id_ptr = scope->get_identifier(rhs_->token());
       rhs_ = std::static_pointer_cast<Expression>(id_ptr);
+
     } else {
       rhs_->join_identifiers(scope);
     }
@@ -136,7 +137,7 @@ namespace AST {
   void Statements::join_identifiers(Scope* scope) {
     for (auto& eptr : statements_) {
       if (eptr->is_identifier()) {
-        auto id_ptr = scope->identifier(eptr->token());
+        auto id_ptr = scope->get_identifier(eptr->token());
         eptr = std::static_pointer_cast<Expression>(id_ptr);
       }
 
@@ -159,37 +160,54 @@ namespace AST {
    /****************************************
    *            REGISTER SCOPE            *
    ****************************************/
-  void Scope::register_scopes() {
+  void Scope::register_scopes(Scope* parent_scope) {
+    // TODO is this correct?
+    if (this != parent_scope) {
+      parent_ = parent_scope;
+    }
     scope_registry.push_back(this);
   }
 
-  void Binop::register_scopes() {
-    lhs_->register_scopes();
-    rhs_->register_scopes();
+  void Binop::register_scopes(Scope* parent_scope) {
+    lhs_->register_scopes(parent_scope);
+    rhs_->register_scopes(parent_scope);
   }
 
-  void Case::register_scopes() {
-    pairs_->register_scopes();
+  void Case::register_scopes(Scope* parent_scope) {
+    pairs_->register_scopes(parent_scope);
   }
 
-  void KVPairList::register_scopes() {
+  void KVPairList::register_scopes(Scope* parent_scope) {
     for (const auto& kv : kv_pairs_) {
-      kv.first->register_scopes();
-      kv.second->register_scopes();
+      kv.first->register_scopes(parent_scope);
+      kv.second->register_scopes(parent_scope);
     }
   }
 
-  void AnonymousScope::register_scopes() {
-    Scope::register_scopes();
-    statements_->register_scopes();
+  void AnonymousScope::register_scopes(Scope* parent_scope) {
+    Scope::register_scopes(parent_scope);
+    statements_->register_scopes(this);
   }
 
   
-  void Statements::register_scopes() {
+  void Statements::register_scopes(Scope* parent_scope) {
     for (const auto& stmt : statements_) {
-      stmt->register_scopes();
+      stmt->register_scopes(parent_scope);
     }
   }
+
+  void FunctionLiteral::register_scopes(Scope* parent_scope) {
+    // This calls Scope::register_scope
+    AnonymousScope::register_scopes(parent_scope);
+
+    // FIXME This is almost certainly unnecessary as scopes probably cannot be
+    // contained inside a declaration.
+    for (const auto& decl : inputs_) {
+      decl->register_scopes(this);
+    }
+
+  }
+
 
   /****************************************
    *            FIND ALL DECLS            *
@@ -349,24 +367,32 @@ namespace AST {
   /* SCOPE */
   std::vector<Scope*> Scope::scope_registry;
 
-  IdPtr Scope::identifier(const std::string& token_string) {
-
-    auto iter = id_map_.find(token_string);
-    if (iter != id_map_.end()) {
-      return iter->second;
+  IdPtr Scope::get_identifier(const std::string& token_string) {
+    Scope* search_scope = this;
+    while (search_scope != nullptr) {
+      auto iter = search_scope->id_map_.find(token_string);
+      if (iter != search_scope->id_map_.end()) {
+        return iter->second;
+      }
+      search_scope = search_scope->parent_;
     }
 
+    std::cerr << "Undeclared identifier `" << token_string << "`." << std::endl;
+    
+    // Do I really want to return something in this insatnce?
     return id_map_[token_string] = IdPtr(new Identifier(token_string));
   }
 
+
   void Scope::verify_scope() {
-    join_identifiers(this);
     find_all_decls(this);
+    verify_no_shadowing();
+    join_identifiers(this);
 
     // Find and log all undeclared identifers. If you find any, log them and
     // stop checking the current scope. There is no more useful information to
     // be found.
-    if (log_undeclared_identifiers()) return;
+    // if (log_undeclared_identifiers()) return;
 
     //verify_types();
   }
@@ -379,14 +405,30 @@ namespace AST {
   }
 
   void Scope::register_declaration(Declaration* decl) {
-    auto id_ptr = id_map_.at(decl->lhs_->token());
-    if (id_ptr->expr_type_ != Type::Unknown) {
-      std::cerr << "Identifier redeclared in scope: `" << id_ptr->token() << "`" << std::endl;
+    std::string str = decl->identifier();
+    auto id_ptr = id_map_.find(str);
+    if (id_ptr != id_map_.end()) {
+      std::cerr << "Identifier already declared in scope: `" << id_ptr->first << "`"
+        << std::endl;
     }
 
-    // FIXME only works for literals
-    id_ptr->expr_type_ =
-      Type::Literals.at(decl->rhs_->token());
+    id_map_[str] = IdPtr(new Identifier(str));
+  }
+
+  void Scope::verify_no_shadowing() {
+    if (parent_ == nullptr) return;
+    
+    for (const auto& id : id_map_) {
+      Scope* check_against = parent_;
+      while (check_against != nullptr) {
+        auto id_ptr = check_against->id_map_.find(id.first);
+        if (id_ptr != check_against->id_map_.end()) {
+          std::cerr << "Identifier shadowed: `" << id.first << "`" << std::endl;
+        }
+
+        check_against = check_against->parent_;
+      }
+    }
   }
 
   bool Scope::log_undeclared_identifiers() const {
