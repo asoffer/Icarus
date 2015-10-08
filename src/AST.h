@@ -87,11 +87,9 @@ namespace AST {
       Scope() : parent_(nullptr) {}
 
     private:
-      bool log_undeclared_identifiers() const;
-
       std::map<std::string, IdPtr> id_map_;
       Scope* parent_;
-      std::set<Declaration*> decl_registry_;
+      std::map<std::string, EPtr> decl_registry_;
   };
 
 
@@ -111,6 +109,8 @@ namespace AST {
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void verify_types() = 0;
     virtual void register_scopes(Scope*) = 0;
+    virtual Type interpret_as_type() const = 0;
+
     virtual void verify_type_is(Type t);
 
     virtual void find_all_decls(Scope*) {}
@@ -160,6 +160,8 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
+    virtual Type interpret_as_type() const;
+
     virtual void register_scopes(Scope* parent_scope);
 
     virtual std::string to_string(size_t n) const;
@@ -216,6 +218,7 @@ namespace AST {
     virtual void join_identifiers(Scope*) {}
     virtual void register_scopes(Scope*) {};
     virtual void verify_types();
+    virtual Type interpret_as_type() const;
 
 
     virtual std::string to_string(size_t n) const;
@@ -290,6 +293,7 @@ namespace AST {
     static NPtr build(NPtrVec&& nodes);
 
     std::string identifier() const { return lhs_->token(); }
+    EPtr declared_type() const { return rhs_; }
 
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
@@ -446,6 +450,7 @@ namespace AST {
       virtual void find_all_decls(Scope*);
       virtual void register_scopes(Scope* parent_scope);
       virtual void verify_types();
+      virtual Type interpret_as_type() const;
 
     private:
       Case() {}
@@ -460,7 +465,6 @@ namespace AST {
   }
 
 
-
   class Identifier : public Terminal {
     public:
       static NPtr build(NPtrVec&& nodes) {
@@ -471,13 +475,14 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
 
+      virtual void verify_types();
+
       Identifier(const std::string& token_string) {
         token_ = token_string;
         expr_type_ = Type::Unknown;
         precedence_ = Language::op_prec.at("MAX");
       }
   };
-
 
 
 
@@ -524,13 +529,12 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       static std::unique_ptr<AnonymousScope> build_empty();
 
-
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
       virtual void register_scopes(Scope* parent_scope);
-
+      virtual Type interpret_as_type() const;
 
       void add_statements(NPtr&& stmts_ptr);
 
@@ -593,6 +597,9 @@ namespace AST {
       virtual void find_all_decls(Scope*);
       virtual void register_scopes(Scope* scope);
       virtual void join_identifiers(Scope* scope);
+      virtual void verify_types();
+      virtual Type interpret_as_type() const;
+
 
       virtual std::string to_string(size_t n) const;
 

@@ -22,8 +22,11 @@ int main(int argc, char *argv[]) {
 
   for (auto& s : AST::Scope::scope_registry) {
     s->verify_scope();
-//    std::cout << s->to_string(0) << std::endl;
   }
+
+  global_scope->verify_types();
+
+  //std::cout << global_scope->to_string(0) << std::endl;
  
   return 0;
 }

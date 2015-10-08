@@ -87,7 +87,7 @@ namespace AST {
 
 
   std::string FunctionLiteral::to_string(size_t n) const {
-    std::string output = tabs(n) + "<FunctionnLiteral>\n";
+    std::string output = tabs(n) + "<FunctionLiteral>\n";
     for (const auto& decl : inputs_) {
       output += decl->to_string(n + 1);
     }
@@ -246,9 +246,65 @@ namespace AST {
 
   void Case::find_all_decls(Scope*) { // TODO
   }
- 
 
-  /* BINOP */
+  /****************************************
+   *           INTERPRET AS TYPE          *
+   ****************************************/
+
+  Type Binop::interpret_as_type() const {
+    if (token() == "->") {
+      return Type::Function(
+          lhs_->interpret_as_type(),
+          rhs_->interpret_as_type());
+    }
+
+    // TODO more cases here probably
+
+    return Type::TypeError;
+  }
+
+  Type Terminal::interpret_as_type() const {
+    if (expr_type_ == Type::Type_) {
+
+      if (token() == "bool") return Type::Bool;
+      if (token() == "char") return Type::Char;
+      if (token() == "int") return Type::Int;
+      if (token() == "real") return Type::Real;
+      if (token() == "string") return Type::String;
+      if (token() == "type") return Type::Type_;
+      if (token() == "uint") return Type::UInt;
+      if (token() == "void") return Type::Void;
+
+      std::cerr << "I don't think " << token() << " is not a type!" << std::endl;
+
+      return Type::TypeError;
+    }
+
+    std::cerr << token() + " is not a type!" << std::endl;
+
+    return Type::TypeError;
+  }
+
+  Type AnonymousScope::interpret_as_type() const {
+    throw "Stub, this shouldn't be possible";
+    return Type::TypeError;
+  }
+
+  Type FunctionLiteral::interpret_as_type() const {
+    throw "Stub, this shouldn't be possible";
+    return Type::TypeError;
+  }
+
+  Type Case::interpret_as_type() const {
+    throw "Stub, this shouldn't be possible";
+    return Type::TypeError;
+  }
+
+
+  /****************************************
+   *             VERIFY TYPES             *
+   ****************************************/
+ 
   void Binop::verify_types() {
     // FIXME this is ugly, but "worse is better"
     // TODO make this better
@@ -269,6 +325,24 @@ namespace AST {
     } else if (token_ == ":>") {
       // TODO verify that this cast is possible
       expr_type_ = Type::Literals.at(rhs_->token());
+
+    } else if (token_ == "()") {
+      expr_type_ = Type::TypeError;
+      if (!lhs_->expr_type_.is_function()) {
+        std::cerr << "Identifier `" << token_ << "` is not a function." << std::endl;
+        return;
+      }
+
+      Type in_type = lhs_->expr_type_.input_type();
+
+      if (in_type != rhs_->expr_type_) {
+        std::cerr << "Type mismatch on function arguments" << std::endl;
+        return;
+      }
+
+      expr_type_ = lhs_->expr_type_.return_type();
+      
+      return;
 
     } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
         token_ == ">=" || token_ == "==" || token_ == "!=") {
@@ -294,10 +368,90 @@ namespace AST {
     }
   }
 
-
-  /* TERMINAL */
-  void Terminal::verify_types() {
+  void Declaration::verify_types() {
+    lhs_->verify_types();
+    rhs_->verify_types();
+    expr_type_ = lhs_->expr_type_;
   }
+
+  void Terminal::verify_types() {}
+
+  void Identifier::verify_types() {
+    // TODO id verify
+  }
+
+  void AnonymousScope::verify_types() {
+    statements_->verify_types();
+  }
+
+  void FunctionLiteral::verify_types() {
+    for (const auto& decl : inputs_) {
+      decl->verify_types();
+    }
+    AnonymousScope::verify_types();
+
+    // FIXME if there are many inputs, we just take the first one. Obviously
+    // wrong
+    expr_type_ = Type::Function(
+        inputs_.front()->expr_type_,
+        return_type_->interpret_as_type());
+  }
+
+  void Assignment::verify_types() {
+    Binop::verify_types();
+    expr_type_ = Type::TypeError;
+
+    if (lhs_->expr_type_ == Type::TypeError) return;
+    if (rhs_->expr_type_ == Type::TypeError) return;
+
+    if (lhs_->expr_type_ != rhs_->expr_type_) {
+      std::cerr
+        << "Type mismatch:"
+        << lhs_->expr_type_.to_string() << " and"
+        << rhs_->expr_type_.to_string() << std::endl;
+    }
+    expr_type_ = Type::Void;
+  }
+
+  void Case::verify_types() {
+    pairs_->verify_types_with_key(Type::Bool);
+  }
+
+  // Verifies that all keys have the same given type `key_type` and that all
+  // values have the same (but unspecified) type.
+  Type KVPairList::verify_types_with_key(Type key_type) {
+    std::set<Type> value_types;
+
+    for (const auto& kv : kv_pairs_) {
+      kv.first->verify_type_is(key_type);
+      kv.second->verify_types();
+
+      value_types.insert(kv.second->expr_type_);
+    }
+
+
+    // TODO guess what type was intended
+    if (value_types.size() != 1) {
+      std::cerr << "Type error: Values do not match in key-value pairs" << std::endl;
+      return Type::TypeError;
+    }
+
+    // FIXME this paradigm fits really well with Case statements but not
+    // KVPairLists so much
+    return Type::Unknown;//*value_types.begin();
+  }
+
+  void Statements::verify_types() {
+    for (auto& eptr : statements_) {
+      eptr->verify_types();
+    }
+  }
+
+
+
+  /****************************************
+   *            MISCELLANEOUS             *
+   ****************************************/
 
 
   /* ANONYMOUS SCOPE */
@@ -308,60 +462,6 @@ namespace AST {
     for (size_t i = 0; i < stmts->size(); ++i) {
       statements_->statements_.push_back(std::move(stmts->statements_[i]));
     }
-  }
-
-  void AnonymousScope::verify_types() {
-    statements_->verify_types();
-  }
-  /* DECLARATION */
-  void Declaration::verify_types() {
-    expr_type_ = lhs_->expr_type_;
-  }
-
-
-  /* ASSIGNMENT */
-  void Assignment::verify_types() {
-    Binop::verify_types();
-
-    if (lhs_->expr_type_ == Type::TypeError) return;
-    if (rhs_->expr_type_ == Type::TypeError) return;
-
-    if (lhs_->expr_type_ != rhs_->expr_type_) {
-      std::cout << "!!!" << std::endl;
-      // TODO Give some error about assignment type-mismatch
-    }
-    expr_type_ = Type::Void;
-  }
-
-  /* CASE */
-  void Case::verify_types() {
-    pairs_->verify_types_with_key(Type::Bool);
-  }
-
-  /* KVPAIRLIST */
-
-  // Verifies that all keys have the same given type `key_type` and that all
-  // values have the same (but unspecified type.
-  Type KVPairList::verify_types_with_key(Type key_type) {
-    std::set<Type> value_types;
-
-    for (const auto& kv : kv_pairs_) {
-      kv.first->verify_type_is(key_type);
-      kv.second->verify_types();
-
-      //value_types.insert(kv->verify_value_type());
-    }
-
-
-    // TODO guess what type was intended
-    if (value_types.size() != 1) {
-      std::cerr << "Type error: Value do not match in key-value pairs" << std::endl;
-      return Type::TypeError;
-    }
-
-    // FIXME this paradigm fits really well with Case statements but not
-    // KVPairLists so much
-    return Type::Unknown;//*value_types.begin();
   }
 
   /* SCOPE */
@@ -380,6 +480,7 @@ namespace AST {
     std::cerr << "Undeclared identifier `" << token_string << "`." << std::endl;
     
     // Do I really want to return something in this insatnce?
+    std::cout << "***** THIS IS BAD *****" << std::endl;
     return id_map_[token_string] = IdPtr(new Identifier(token_string));
   }
 
@@ -389,12 +490,13 @@ namespace AST {
     verify_no_shadowing();
     join_identifiers(this);
 
-    // Find and log all undeclared identifers. If you find any, log them and
-    // stop checking the current scope. There is no more useful information to
-    // be found.
-    // if (log_undeclared_identifiers()) return;
-
-    //verify_types();
+    // Determine types for each declared variable
+    // Current working assumption is that a type declaration doesn't depend on
+    // any other.
+    // TODO: remove that assumption
+    for (const auto& kv : decl_registry_) {
+      id_map_[kv.first]->expr_type_ = kv.second->interpret_as_type();
+    }
   }
 
 
@@ -412,6 +514,7 @@ namespace AST {
         << std::endl;
     }
 
+    decl_registry_[str] = decl->declared_type();
     id_map_[str] = IdPtr(new Identifier(str));
   }
 
@@ -428,24 +531,6 @@ namespace AST {
 
         check_against = check_against->parent_;
       }
-    }
-  }
-
-  bool Scope::log_undeclared_identifiers() const {
-    bool found_undeclared_ident = false;
-    for (const auto& ident : id_map_) {
-      if (ident.second->expr_type_ == Type::Unknown) {
-        std::cerr << "Undeclared identifier: `" << ident.first << "`" << std::endl;
-        found_undeclared_ident = true;
-      }
-    }
-    return found_undeclared_ident;
-  }
-
-  /* STATEMENTS */
-  void Statements::verify_types() {
-    for (auto& eptr : statements_) {
-      eptr->verify_types();
     }
   }
 
