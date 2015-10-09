@@ -187,7 +187,11 @@ AST::Node Lexer::next_operator() {
         file_.get();
         return next_string_literal();
       }
-      // TODO(andy) single-quote character
+    case static_cast<int>('\''):
+      {
+        file_.get();
+        return next_char_literal();
+      }
   }
 
   if (peek == static_cast<int>('/')) {
@@ -256,7 +260,14 @@ AST::Node Lexer::next_string_literal() {
         case 't':
           str_lit += '\t'; break;
         default:
-          break; // TODO Error invalid escaped character
+          {
+            std::cerr
+              << "The specified character is not an escape character."
+              << std::endl;
+
+            str_lit += static_cast<char>(peek);
+            break;
+          }
       }
       file_.get();
     } else {
@@ -275,6 +286,70 @@ AST::Node Lexer::next_string_literal() {
   }
 
   return AST::Node::string_literal_node(str_lit);
+}
+
+AST::Node Lexer::next_char_literal() {
+  int peek = file_.peek();
+
+  char output_char;
+
+  // TODO 
+  // 1. deal with the case of a tab character literally between single quotes.
+  // 2. robust error handling
+  switch(peek) {
+    case static_cast<int>('\n'):
+    case static_cast<int>('\r'):
+      {
+        std::cerr << "Cannot use newline inside a character-literal." << std::endl;
+        return AST::Node(Language::newline);
+      }
+    case static_cast<int>('\\'):
+      {
+        file_.get();
+        peek = file_.peek();
+        if (peek == static_cast<int>('\'')) {
+          output_char = '\'';
+
+        } else if (peek == static_cast<int>('\"')) {
+          std::cerr << "Warning: the character '\"' does not need to be escaped." << std::endl;
+          output_char = '\"';
+
+        } else if (peek == '\\') {
+          output_char = '\\';
+
+        } else if (peek == 't') {
+          output_char = '\t';
+
+        } else if (peek == 'n') {
+          output_char = '\n';
+
+        } else if (peek == 'r') {
+          output_char = '\r';
+
+        } else {
+          std::cerr
+            << "The specified character is not an escape character."
+            << std::endl;
+          output_char = static_cast<char>(peek);
+        }
+        break;
+      }
+    default:
+      {
+        output_char = static_cast<char>(peek);
+      }
+  }
+
+  file_.get();
+  peek = file_.peek();
+
+  if (peek == static_cast<int>('\'')) {
+    file_.get();
+  } else {
+    std::cerr << "Character literal must be followed by a single-quote." << std::endl;
+  }
+
+  return AST::Node(Language::character_literal, std::string(1, output_char));
 }
 
 AST::Node Lexer::next_given_slash() {

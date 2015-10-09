@@ -35,6 +35,7 @@ class Lexer {
     AST::Node next_number();
     AST::Node next_operator();
     AST::Node next_string_literal();
+    AST::Node next_char_literal();
     AST::Node next_given_slash();
 };
 

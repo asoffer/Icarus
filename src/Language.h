@@ -7,10 +7,10 @@ namespace Language {
   enum NodeType {
     unknown, eof, newline, comment,
     identifier,
-    integer, real, string_literal, type_literal, fn_literal, // 9
-    generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 14
+    integer, real, character_literal, string_literal, type_literal, fn_literal, // 10
+    generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 15
     key_value_pair, key_value_pair_list,
-    expression, paren_expression, fn_expression, scope,  // 20
+    expression, paren_expression, fn_expression, scope,  // 21
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
     statements,

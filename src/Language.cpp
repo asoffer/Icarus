@@ -17,6 +17,7 @@ namespace Language {
     { integer, "Integer" },
     { real, "Real" },
     { type_literal, "Type" },
+    { character_literal, "Character" },
     { string_literal, "String" },
     { generic_operator, "Operator" },
     { decl_operator, ":" },
