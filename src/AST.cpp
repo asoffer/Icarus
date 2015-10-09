@@ -32,12 +32,29 @@ namespace AST {
     return output;
   }
 
+  std::string ChainOp::to_string(size_t n) const {
+    std::string output = tabs(n) + "<Chain: ";
+    for (const auto& op : ops_) {
+      output += op->token() + " ";
+    }
+
+    output += ", prec: " + std::to_string(precedence()) + ">\n";
+
+    for (const auto& expr : exprs_) {
+      output += expr->to_string(n + 1);
+    }
+
+    return output;
+  }
+
   std::string Terminal::to_string(size_t n) const {
-    return tabs(n) + "<Terminal (" + expr_type_.to_string() + "): " + token_ + ">\n";
+    return tabs(n) + "<Terminal (" + expr_type_.to_string() + "): "
+      + token_ + ">\n";
   }
 
   std::string Identifier::to_string(size_t n) const {
-    return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): " + token() + ">\n";
+    return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): "
+      + token() + ">\n";
   }
 
   std::string AnonymousScope::to_string(size_t n) const {
@@ -116,6 +133,19 @@ namespace AST {
     }
   }
 
+
+  void ChainOp::join_identifiers(Scope* scope) {
+    for (auto& expr : exprs_) {
+      if (expr->is_identifier()) {
+        auto id_ptr = scope->get_identifier(expr->token());
+        expr = std::static_pointer_cast<Expression>(id_ptr);
+
+      } else {
+        expr->join_identifiers(scope);
+      }
+    }
+  }
+
   void AnonymousScope::join_identifiers(Scope* scope) {
     // Do not allow higher scopes to see inside
     if (scope != this) return;
@@ -173,6 +203,12 @@ namespace AST {
     rhs_->register_scopes(parent_scope);
   }
 
+  void ChainOp::register_scopes(Scope* parent_scope) {
+    for (auto& expr : exprs_) {
+      expr->register_scopes(parent_scope);
+    }
+  }
+
   void Case::register_scopes(Scope* parent_scope) {
     pairs_->register_scopes(parent_scope);
   }
@@ -216,6 +252,12 @@ namespace AST {
   void Binop::find_all_decls(Scope* scope) {
     lhs_->find_all_decls(scope);
     rhs_->find_all_decls(scope);
+  }
+
+  void ChainOp::find_all_decls(Scope* scope) {
+    for (auto& expr : exprs_) {
+      expr->find_all_decls(scope);
+    }
   }
 
   void AnonymousScope::find_all_decls(Scope* scope) {
@@ -263,6 +305,12 @@ namespace AST {
     return Type::TypeError;
   }
 
+
+  Type ChainOp::interpret_as_type() const {
+    return Type::TypeError;
+  }
+
+
   Type Terminal::interpret_as_type() const {
     if (expr_type_ == Type::Type_) {
 
@@ -275,7 +323,9 @@ namespace AST {
       if (token() == "uint") return Type::UInt;
       if (token() == "void") return Type::Void;
 
-      std::cerr << "I don't think " << token() << " is not a type!" << std::endl;
+      std::cerr
+        << "I don't think " << token()
+        << " is a type!" << std::endl;
 
       return Type::TypeError;
     }
@@ -312,7 +362,8 @@ namespace AST {
     lhs_->verify_types();
     rhs_->verify_types();
 
-    if (lhs_->expr_type_ == Type::TypeError || rhs_->expr_type_ == Type::TypeError) {
+    if (lhs_->expr_type_ == Type::TypeError
+        || rhs_->expr_type_ == Type::TypeError) {
       // An error was already found in the types, so just pass silently
       expr_type_ = Type::TypeError;
       return;
@@ -329,7 +380,9 @@ namespace AST {
     } else if (token_ == "()") {
       expr_type_ = Type::TypeError;
       if (!lhs_->expr_type_.is_function()) {
-        std::cerr << "Identifier `" << token_ << "` is not a function." << std::endl;
+        std::cerr
+          << "Identifier `" << token_
+          << "` is not a function." << std::endl;
         return;
       }
 
@@ -366,6 +419,25 @@ namespace AST {
       // TODO give a type-mismatch error here
       expr_type_ = Type::TypeError;
     }
+  }
+
+
+  void ChainOp::verify_types() {
+    std::set<Type> expr_types;
+
+    for (const auto& expr : exprs_) {
+      expr_types.insert(expr->expr_type_);
+    }
+
+    if (expr_types.size() == 1) {
+      // FIXME assuming this is only used for booleans currently.
+      expr_type_ = Type::Bool;
+    }
+
+    // TODO guess what type was intended
+    std::cerr
+      << "Type error: Values do not match in ChainOp"
+      << std::endl;
   }
 
   void Declaration::verify_types() {
@@ -432,7 +504,8 @@ namespace AST {
 
     // TODO guess what type was intended
     if (value_types.size() != 1) {
-      std::cerr << "Type error: Values do not match in key-value pairs" << std::endl;
+      std::cerr
+        << "Type error: Values do not match in key-value pairs" << std::endl;
       return Type::TypeError;
     }
 
@@ -456,7 +529,8 @@ namespace AST {
 
   /* ANONYMOUS SCOPE */
   void AnonymousScope::add_statements(NPtr&& stmts_ptr) {
-    auto stmts = std::unique_ptr<Statements>(static_cast<Statements*>(stmts_ptr.release()));
+    auto stmts = std::unique_ptr<Statements>(
+        static_cast<Statements*>(stmts_ptr.release()));
     statements_->statements_.reserve( statements_->size() + stmts->size() );
 
     for (size_t i = 0; i < stmts->size(); ++i) {
@@ -477,7 +551,9 @@ namespace AST {
       search_scope = search_scope->parent_;
     }
 
-    std::cerr << "Undeclared identifier `" << token_string << "`." << std::endl;
+    std::cerr
+      << "Undeclared identifier `" << token_string << "`."
+      << std::endl;
     
     // Do I really want to return something in this insatnce?
     std::cout << "***** THIS IS BAD *****" << std::endl;
@@ -510,7 +586,8 @@ namespace AST {
     std::string str = decl->identifier();
     auto id_ptr = id_map_.find(str);
     if (id_ptr != id_map_.end()) {
-      std::cerr << "Identifier already declared in scope: `" << id_ptr->first << "`"
+      std::cerr
+        << "Identifier already declared in scope: `" << id_ptr->first << "`"
         << std::endl;
     }
 
@@ -526,7 +603,9 @@ namespace AST {
       while (check_against != nullptr) {
         auto id_ptr = check_against->id_map_.find(id.first);
         if (id_ptr != check_against->id_map_.end()) {
-          std::cerr << "Identifier shadowed: `" << id.first << "`" << std::endl;
+          std::cerr
+            << "Identifier shadowed: `" << id.first << "`"
+            << std::endl;
         }
 
         check_against = check_against->parent_;

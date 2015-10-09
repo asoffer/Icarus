@@ -1,0 +1,11 @@
+// Intentionally missing return statement because we don't treat it
+// appropriately yet.
+
+water_state : real -> string
+water_state = (temp : real) -> string {
+   case {
+    temp < 32         =>  "solid"
+    32 <= temp < 212  =>  "liquid"
+    else              =>  "gas"
+  }
+}

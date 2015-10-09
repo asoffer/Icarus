@@ -44,8 +44,11 @@ namespace AST {
       virtual void find_all_decls(Scope*) {}
       virtual void register_scopes(Scope*) {}
 
-      virtual bool is_identifier() const { return type_ == Language::identifier; }
+      virtual bool is_identifier() const {
+        return type_ == Language::identifier;
+      }
       virtual bool is_binop() const { return false; }
+      virtual bool is_chain_op() const { return false; }
       virtual bool is_declaration() const { return false; }
 
       Node(Language::NodeType type = Language::unknown,
@@ -54,7 +57,9 @@ namespace AST {
       virtual ~Node(){}
 
 
-      inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
+      inline friend std::ostream& operator<<(
+          std::ostream& os, const Node& node) {
+
         return os << node.to_string(0);
       }
 
@@ -97,6 +102,7 @@ namespace AST {
   class Expression : public Node {
     friend class KVPairList;
     friend class Binop;
+    friend class ChainOp;
     friend class Declaration;
     friend class Assignment;
     friend class Scope;
@@ -135,9 +141,12 @@ namespace AST {
     verify_types();
 
     if (expr_type_ != t) {
-      // TODO: give some context for this error message. Why must this be the type?
-      // So far the only instance where this is called is for case statements,
-      std::cerr << "Type of `____` must be " << t.to_string() << ", but " << expr_type_.to_string() << " found instead." << std::endl;
+      // TODO: give some context for this error message. Why must this be the
+      // type?  So far the only instance where this is called is for case
+      // statements,
+      std::cerr
+        << "Type of `____` must be " << t.to_string() << ", but "
+        << expr_type_.to_string() << " found instead." << std::endl;
       expr_type_ = t;
     }
   }
@@ -185,7 +194,9 @@ namespace AST {
   }
 
   inline NPtr Binop::build(NPtrVec&& nodes) {
-    return Binop::build_operator(std::forward<NPtrVec>(nodes), nodes[1]->token());
+    return Binop::build_operator(
+        std::forward<NPtrVec>(nodes),
+        nodes[1]->token());
   }
 
   inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
@@ -205,6 +216,61 @@ namespace AST {
   }
 
 
+
+  class ChainOp : public Expression {
+    public:
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual void join_identifiers(Scope* scope);
+      virtual void verify_types();
+      virtual void find_all_decls(Scope* scope);
+      virtual Type interpret_as_type() const;
+
+      virtual void register_scopes(Scope* parent_scope);
+
+      virtual std::string to_string(size_t n) const;
+      virtual bool is_chain_op() const { return true; }
+
+    private:
+      std::vector<NPtr> ops_;
+      std::vector<EPtr> exprs_;
+  };
+
+  inline NPtr ChainOp::build(NPtrVec&& nodes) {
+    std::unique_ptr<ChainOp> chain_ptr(nullptr);
+
+    // Add to a chain so long as the precedence levels match. The only thing at
+    // that precedence level should be the operators which can be chained.
+    bool use_old_chain_op = nodes[0]->is_chain_op();
+    if (use_old_chain_op) {
+     ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
+
+     if (lhs_ptr->precedence() != Language::op_prec.at(nodes[1]->token())) {
+       use_old_chain_op = false;
+     }
+    }
+    if (use_old_chain_op) {
+      chain_ptr = std::unique_ptr<ChainOp>(
+          static_cast<ChainOp*>(nodes[0].release()));
+
+    } else {
+      chain_ptr = std::unique_ptr<ChainOp>(new ChainOp);
+      chain_ptr->exprs_.emplace_back(
+          static_cast<Expression*>(nodes[0].release()));
+      chain_ptr->precedence_ = Language::op_prec.at(nodes[1]->token());
+    }
+
+    chain_ptr->ops_.push_back(std::move(nodes[1]));
+
+    chain_ptr->exprs_.emplace_back(
+        static_cast<Expression*>(nodes[2].release()));
+
+    return NPtr(chain_ptr.release());
+  }
+
+
+
+
   class Terminal : public Expression {
     friend class KVPairList;
 
@@ -212,8 +278,9 @@ namespace AST {
     static NPtr build(NPtrVec&& nodes, Type t);
     static NPtr build_type_literal(NPtrVec&& nodes);
     static NPtr build_string_literal(NPtrVec&& nodes);
-    static NPtr build_integer(NPtrVec&& nodes);
-    static NPtr build_real(NPtrVec&& nodes);
+    static NPtr build_integer_literal(NPtrVec&& nodes);
+    static NPtr build_real_literal(NPtrVec&& nodes);
+    static NPtr build_character_literal(NPtrVec&& nodes);
 
     virtual void join_identifiers(Scope*) {}
     virtual void register_scopes(Scope*) {};
@@ -244,14 +311,17 @@ namespace AST {
     return build(std::forward<NPtrVec>(nodes), Type::String);
   }
 
-  inline NPtr Terminal::build_integer(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Int);
   }
 
-  inline NPtr Terminal::build_real(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Real);
   }
 
+  inline NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), Type::Char);
+  }
 
 
   class Assignment : public Binop {
@@ -460,7 +530,8 @@ namespace AST {
   inline NPtr Case::build(NPtrVec&& nodes) {
     auto output = new Case;
     output->pairs_ =
-      std::unique_ptr<KVPairList>(static_cast<KVPairList*>(nodes[3].release()));
+      std::unique_ptr<KVPairList>(
+          static_cast<KVPairList*>(nodes[3].release()));
     return NPtr(output);
   }
 
@@ -490,32 +561,34 @@ namespace AST {
     friend class AnonymousScope;
 
     public:
-      static NPtr build_one(NPtrVec&& nodes);
-      static NPtr build_more(NPtrVec&& nodes);
+    static NPtr build_one(NPtrVec&& nodes);
+    static NPtr build_more(NPtrVec&& nodes);
 
-      virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
-      virtual void verify_types();
-      virtual void find_all_decls(Scope* scope);
-      virtual void register_scopes(Scope* parent_scope);
+    virtual std::string to_string(size_t n) const;
+    virtual void join_identifiers(Scope* scope);
+    virtual void verify_types();
+    virtual void find_all_decls(Scope* scope);
+    virtual void register_scopes(Scope* parent_scope);
 
-      inline size_t size() { return statements_.size(); }
+    inline size_t size() { return statements_.size(); }
 
     private:
-      Statements() {}
-      std::vector<EPtr> statements_;
+    Statements() {}
+    std::vector<EPtr> statements_;
   };
 
   inline NPtr Statements::build_one(NPtrVec&& nodes) {
     auto output = new Statements;
-    output->statements_.emplace_back(static_cast<Expression*>(nodes[0].release()));
+    output->statements_.emplace_back(
+        static_cast<Expression*>(nodes[0].release()));
 
     return NPtr(output);
   }
 
   inline NPtr Statements::build_more(NPtrVec&& nodes) {
     auto output = static_cast<Statements*>(nodes[0].release());
-    output->statements_.emplace_back(static_cast<Expression*>(nodes[1].release()));
+    output->statements_.emplace_back(
+        static_cast<Expression*>(nodes[1].release()));
 
     return NPtr(output);
   }
@@ -526,21 +599,21 @@ namespace AST {
     friend class FunctionLiteral;
 
     public:
-      static NPtr build(NPtrVec&& nodes);
-      static std::unique_ptr<AnonymousScope> build_empty();
+    static NPtr build(NPtrVec&& nodes);
+    static std::unique_ptr<AnonymousScope> build_empty();
 
-      virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
-      virtual void verify_types();
-      virtual void find_all_decls(Scope* scope);
-      virtual void register_scopes(Scope* parent_scope);
-      virtual Type interpret_as_type() const;
+    virtual std::string to_string(size_t n) const;
+    virtual void join_identifiers(Scope* scope);
+    virtual void verify_types();
+    virtual void find_all_decls(Scope* scope);
+    virtual void register_scopes(Scope* parent_scope);
+    virtual Type interpret_as_type() const;
 
-      void add_statements(NPtr&& stmts_ptr);
+    void add_statements(NPtr&& stmts_ptr);
 
     protected:
-      AnonymousScope() {}
-      std::unique_ptr<Statements> statements_;
+    AnonymousScope() {}
+    std::unique_ptr<Statements> statements_;
   };
 
   inline std::unique_ptr<AnonymousScope> AnonymousScope::build_empty() {
@@ -553,8 +626,8 @@ namespace AST {
   inline NPtr AnonymousScope::build(NPtrVec&& nodes) {
     auto anon_scope = new AnonymousScope;
 
-    anon_scope->statements_ =
-      std::unique_ptr<Statements>(static_cast<Statements*>(nodes[1].release()));
+    anon_scope->statements_ = std::unique_ptr<Statements>(
+        static_cast<Statements*>(nodes[1].release()));
 
     return NPtr(anon_scope);
   }

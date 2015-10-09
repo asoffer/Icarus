@@ -1,0 +1,6 @@
+char_val : char -> int
+is_digit : char -> bool
+
+is_digit = (c: char) -> bool {
+  char_val('0') <= char_val(c) <= char_val('9')
+}

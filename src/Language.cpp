@@ -90,11 +90,11 @@ namespace Language {
 
     Rule(expression,
         { integer_literal },
-        AST::Terminal::build_integer),
+        AST::Terminal::build_integer_literal),
 
     Rule(expression,
         { real_literal },
-        AST::Terminal::build_real),
+        AST::Terminal::build_real_literal),
 
     Rule(expression,
         { string_literal },
@@ -103,6 +103,10 @@ namespace Language {
     Rule(expression,
         { type_literal },
         AST::Terminal::build_type_literal),
+
+    Rule(expression,
+        { character_literal },
+        AST::Terminal::build_character_literal),
 
     Rule(fn_literal,
         { fn_expression, scope },
@@ -186,7 +190,7 @@ namespace Language {
 
     Rule(expression,
         { expression, binary_boolean_operator, expression },
-        AST::Binop::build),
+        AST::ChainOp::build),
 
     Rule(expression,
         { fn_expression },
