@@ -2,7 +2,7 @@
 // appropriately yet.
 
 factorial : int -> int
-factorial = (n : char) -> int {
+factorial = (n : int) -> int {
    case {
     n < 2  =>  1
     else   =>  n * factorial(n - 1)

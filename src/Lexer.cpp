@@ -4,7 +4,7 @@
 
 // Local function for recognizing newlines a la std::isalpha, etc.
 bool isnewline(int n) {
-  return n == static_cast<int>('\n') || n == static_cast<int>('\r');
+  return n == '\n' || n == '\r';
 }
 
 // Lexer constructors:
@@ -122,7 +122,7 @@ AST::Node Lexer::next_number() {
 
   // If the next character is not a period, we're looking at an integer and can
   // return
-  if (peek != static_cast<int>('.')) {
+  if (peek != '.') {
     return AST::Node(Language::integer, token);
   }
 
@@ -152,87 +152,136 @@ AST::Node Lexer::next_operator() {
   // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
   // encountered should be considered on their own.
   switch (peek) {
-    case static_cast<int>('('):
+    case '(':
       {
         file_.get();
         return AST::Node(Language::left_paren);
       }
-    case static_cast<int>(')'):
+    case ')':
       {
         file_.get();
         return AST::Node(Language::right_paren);
       }
-    case static_cast<int>('{'):
+    case '{':
       {
         file_.get();
         return AST::Node(Language::left_brace);
       }
-    case static_cast<int>('}'):
+    case '}':
       {
         file_.get();
         return AST::Node(Language::right_brace);
       }
-    case static_cast<int>('['):
+    case '[':
       {
         file_.get();
         return AST::Node(Language::left_bracket);
       }
-    case static_cast<int>(']'):
+    case ']':
       {
         file_.get();
         return AST::Node(Language::right_bracket);
       }
-    case static_cast<int>('"'):
+    case '"':
       {
         file_.get();
         return next_string_literal();
       }
-    case static_cast<int>('\''):
+    case '\'':
       {
         file_.get();
         return next_char_literal();
       }
   }
 
-  if (peek == static_cast<int>('/')) {
+  if (peek == '/') {
     return next_given_slash();
   }
+
+  // Cannot have '-' in this list because of '->'
+  switch (peek) {
+    case '+':
+    case '*':
+    case '/':
+    case '%':
+      {
+        char lead_char = static_cast<char>(peek);
+        file_.get();
+        peek = file_.peek();
+
+        if (peek == '=') {
+          file_.get();
+          return AST::Node(Language::generic_operator,
+              std::string(1, lead_char) + "=");
+        } else {
+          return AST::Node(Language::generic_operator,
+              std::string(1, lead_char));
+        }
+        break;
+      }
+    default:;
+  }
+
+  if (peek == ':') {
+    file_.get();
+    peek = file_.peek();
+
+    if (peek == '=') {
+      file_.get();
+      return AST::Node(Language::generic_operator, ":=");
+    } else {
+      return AST::Node(Language::decl_operator, ":");
+    }
+  }
+
+  if (peek == '!') {
+    file_.get();
+    peek = file_.peek();
+
+    if (peek == '=') {
+      file_.get();
+      return AST::Node(Language::generic_operator, "!=");
+    } else {
+      return AST::Node(Language::unary_operator, "!");
+    }
+  }
+
+
+  if (peek == '-' || peek == '=') {
+    char lead_char = static_cast<char>(peek);
+    file_.get();
+    peek = file_.peek();
+
+    if (peek == '=') {
+      file_.get();
+      return AST::Node(Language::generic_operator,
+            std::string(1, lead_char) + "=");
+      
+    } else if (peek == '>') {
+      file_.get();
+      if (lead_char == '-') {
+        return AST::Node(Language::fn_arrow, "->");
+      } else {
+        return AST::Node(Language::rocket_operator, "=>");
+      }
+    } else {
+      if (lead_char == '-') {
+        return AST::Node(Language::generic_operator, "-");
+      } else {
+        return AST::Node(Language::assign_operator, "=");
+      }
+    }
+  }
+
 
   // If the first character isn't one of the specific ones mentioned above, read
   // in as many characters as possible.
   //
-  // TODO it's possible to write 'a+=-b' and this will be lexed as a +=- b
-  // rather than a += - b. This needs to be fixed.
   std::string token;
   do {
     token += static_cast<char>(file_.get());
     peek = file_.peek();
   } while (std::ispunct(peek));
-
-  // If it's ':' or '=' treat them specially
-  if (token == ":") {
-    return AST::Node(Language::decl_operator, ":");
-
-  } else if (token == "=") {
-    return AST::Node(Language::assign_operator, "=");
-
-  }
-
-  // If it's exactly one character in length, there's nothing more to do
-  if (token.size() == 1) {
-    return AST::Node(Language::generic_operator, token);
-  }
-
-  // If the first two characters are '=>' use the rocket
-  // FIXME , this simply ignores punctuation following '=>'
-  if (token[0] == '=' && token[1] == '>') {
-    return AST::Node(Language::rocket_operator, "=>");
-  }
-
-  if (token[0] == '-' && token[1] == '>') {
-    return AST::Node(Language::fn_arrow, "->");
-  }
-
 
   return AST::Node(Language::generic_operator, token);
 }
@@ -243,9 +292,9 @@ AST::Node Lexer::next_string_literal() {
 
   // Repeat until you see a double-quote to end the string, or a newline
   // (which designates an error where they forgot to end the string)
-  while (!(peek == static_cast<int>('"') || isnewline(peek))) {
+  while (!(peek == '"' || isnewline(peek))) {
     // If you see a backslash, the next character is escaped
-    if (peek == static_cast<int>('\\')) {
+    if (peek == '\\') {
       file_.get();
       peek = file_.peek();
       switch (peek) {
@@ -277,7 +326,7 @@ AST::Node Lexer::next_string_literal() {
     peek = file_.peek();
   }
 
-  if (peek == static_cast<int>('"')) {
+  if (peek == '"') {
     // Ignore the last quotation mark if it exists
     file_.get();
   }
@@ -297,20 +346,20 @@ AST::Node Lexer::next_char_literal() {
   // 1. deal with the case of a tab character literally between single quotes.
   // 2. robust error handling
   switch(peek) {
-    case static_cast<int>('\n'):
-    case static_cast<int>('\r'):
+    case '\n':
+    case '\r':
       {
         std::cerr << "Cannot use newline inside a character-literal." << std::endl;
         return AST::Node(Language::newline);
       }
-    case static_cast<int>('\\'):
+    case '\\':
       {
         file_.get();
         peek = file_.peek();
-        if (peek == static_cast<int>('\'')) {
+        if (peek == '\'') {
           output_char = '\'';
 
-        } else if (peek == static_cast<int>('\"')) {
+        } else if (peek == '\"') {
           std::cerr << "Warning: the character '\"' does not need to be escaped." << std::endl;
           output_char = '\"';
 
@@ -343,7 +392,7 @@ AST::Node Lexer::next_char_literal() {
   file_.get();
   peek = file_.peek();
 
-  if (peek == static_cast<int>('\'')) {
+  if (peek == '\'') {
     file_.get();
   } else {
     std::cerr << "Character literal must be followed by a single-quote." << std::endl;
@@ -355,7 +404,7 @@ AST::Node Lexer::next_char_literal() {
 AST::Node Lexer::next_given_slash() {
   int peek = file_.peek();
 #ifdef DEBUG
-  if (peek != static_cast<int>('/'))
+  if (peek != '/')
     throw "Non-punct character encountered as first character in next_operator.";
 #endif
 
@@ -363,7 +412,7 @@ AST::Node Lexer::next_given_slash() {
   peek = file_.peek();
 
   // If the first two characters are '//', then it's a single-line comment
-  if (peek == static_cast<int>('/')) {
+  if (peek == '/') {
     std::string token = "";
 
     // Add characters while we're not looking at a newline
@@ -377,7 +426,7 @@ AST::Node Lexer::next_given_slash() {
 
   // If the first two characters are '/*' then start a multi-line comment.
   // Multi-line comments should nest
-  if (peek == static_cast<int>('*')) {
+  if (peek == '*') {
     size_t comment_layer = 1;
     
     // This is intentionally not set to '/' (which must be the character
@@ -395,10 +444,10 @@ AST::Node Lexer::next_given_slash() {
         return AST::Node(Language::comment, "");
       }
 
-      if (prepeek == static_cast<int>('/') && peek == static_cast<int>('*')) {
+      if (prepeek == '/' && peek == '*') {
         ++comment_layer;
 
-      } else if (prepeek == static_cast<int>('*') && peek == static_cast<int>('/')) {
+      } else if (prepeek == '*' && peek == '/') {
         --comment_layer;
       }
     }
@@ -406,7 +455,7 @@ AST::Node Lexer::next_given_slash() {
     return AST::Node(Language::comment, "MULTILINE COMMENT");
   }
 
-  if (peek == static_cast<int>('=')) {
+  if (peek == '=') {
     return AST::Node(Language::generic_operator, "=");
   }
 

@@ -8,9 +8,9 @@ namespace Language {
     unknown, eof, newline, comment,
     identifier,
     integer, real, character_literal, string_literal, type_literal, fn_literal, // 10
-    generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 15
+    unary_operator, generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 16
     key_value_pair, key_value_pair_list,
-    expression, paren_expression, fn_expression, scope,  // 21
+    expression, paren_expression, fn_expression, scope,  // 22
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
     statements,
