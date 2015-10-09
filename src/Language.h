@@ -7,14 +7,25 @@ namespace Language {
   enum NodeType {
     unknown, eof, newline, comment,
     identifier,
-    integer, real, character_literal, string_literal, type_literal, fn_literal, // 10
-    unary_operator, generic_operator, decl_operator, assign_operator, fn_arrow, rocket_operator, // 16
+
+    // Literals
+    integer_literal, real_literal, character_literal, string_literal,
+    type_literal, fn_literal,
+
+    // Operators
+    unary_operator, generic_operator, binary_boolean_operator, decl_operator,
+    assign_operator, fn_arrow, rocket_operator,
+
     key_value_pair, key_value_pair_list,
-    expression, paren_expression, fn_expression, scope,  // 22
+    expression, paren_expression, fn_expression, scope,
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
     statements,
+
+    // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
+
+    // Reserved words
     reserved_if, reserved_else, reserved_case, reserved_loop,
     reserved_while, reserved_break, reserved_continue, reserved_return
   };

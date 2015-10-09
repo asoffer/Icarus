@@ -50,8 +50,9 @@ bool Parser::should_shift() {
 
   // Reduce terminals
   if (stack_.back()->node_type() == Language::identifier
-      || stack_.back()->node_type() == Language::integer
-      || stack_.back()->node_type() == Language::real
+      || stack_.back()->node_type() == Language::integer_literal
+      || stack_.back()->node_type() == Language::real_literal
+      || stack_.back()->node_type() == Language::character_literal
       || stack_.back()->node_type() == Language::string_literal
       || stack_.back()->node_type() == Language::type_literal
       || stack_.back()->node_type() == Language::right_paren) {

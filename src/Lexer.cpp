@@ -123,7 +123,7 @@ AST::Node Lexer::next_number() {
   // If the next character is not a period, we're looking at an integer and can
   // return
   if (peek != '.') {
-    return AST::Node(Language::integer, token);
+    return AST::Node(Language::integer_literal, token);
   }
 
   // If the next character was a period, this is a non-integer. Add the period
@@ -133,7 +133,7 @@ AST::Node Lexer::next_number() {
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  return AST::Node(Language::real, token);
+  return AST::Node(Language::real_literal, token);
 }
 
 AST::Node Lexer::next_operator() {
@@ -199,27 +199,34 @@ AST::Node Lexer::next_operator() {
   }
 
   // Cannot have '-' in this list because of '->'
+  char lead_char = 0;
+  Language::NodeType node_type;
   switch (peek) {
     case '+':
     case '*':
     case '/':
     case '%':
-      {
-        char lead_char = static_cast<char>(peek);
-        file_.get();
-        peek = file_.peek();
+      lead_char = static_cast<char>(peek);
+      node_type = Language::generic_operator;
+      break;
+    case '<':
+    case '>':
+      lead_char = static_cast<char>(peek);
+      node_type = Language::binary_boolean_operator;
+      break;
+    default:
+      lead_char = 0;
+      break;
+  }
 
-        if (peek == '=') {
-          file_.get();
-          return AST::Node(Language::generic_operator,
-              std::string(1, lead_char) + "=");
-        } else {
-          return AST::Node(Language::generic_operator,
-              std::string(1, lead_char));
-        }
-        break;
-      }
-    default:;
+  if (lead_char != 0) {
+    file_.get();
+    peek = file_.peek();
+
+    if (peek == '=') file_.get();
+
+    return AST::Node(node_type,
+        std::string(1, lead_char) + (peek == '=' ? "=" : ""));
   }
 
   if (peek == ':') {
@@ -229,6 +236,11 @@ AST::Node Lexer::next_operator() {
     if (peek == '=') {
       file_.get();
       return AST::Node(Language::generic_operator, ":=");
+
+    } else if (peek == '>') {
+      file_.get();
+      return AST::Node(Language::generic_operator, ":>");
+ 
     } else {
       return AST::Node(Language::decl_operator, ":");
     }
@@ -240,7 +252,7 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::Node(Language::generic_operator, "!=");
+      return AST::Node(Language::binary_boolean_operator, "!=");
     } else {
       return AST::Node(Language::unary_operator, "!");
     }
@@ -331,7 +343,7 @@ AST::Node Lexer::next_string_literal() {
     file_.get();
   }
   else {
-    // TODO error: you forgot to end the string
+    std::cerr << "Newline encountered inside string literal."  << std::endl;
   }
 
   return AST::Node::string_literal_node(str_lit);

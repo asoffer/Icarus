@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
 
     global_scope->verify_types();
 
-    //std::cout << global_scope->to_string(0) << std::endl;
+    std::cout << global_scope->to_string(0) << std::endl;
 
   } else {
     std::cerr << "Invalid flag" << std::endl;

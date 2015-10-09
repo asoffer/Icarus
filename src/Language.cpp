@@ -14,12 +14,13 @@ namespace Language {
     { newline, "Newline" },
     { comment, "Comment" },
     { identifier, "Identifier" },
-    { integer, "Integer" },
-    { real, "Real" },
+    { integer_literal, "Integer" },
+    { real_literal, "Real" },
     { type_literal, "Type" },
     { character_literal, "Character" },
     { string_literal, "String" },
     { generic_operator, "Operator" },
+    { binary_boolean_operator, "BinOperator" },
     { decl_operator, ":" },
     { assign_operator, "=" },
     { fn_arrow, "->" },
@@ -88,11 +89,11 @@ namespace Language {
         AST::Identifier::build),
 
     Rule(expression,
-        { integer },
+        { integer_literal },
         AST::Terminal::build_integer),
 
     Rule(expression,
-        { real },
+        { real_literal },
         AST::Terminal::build_real),
 
     Rule(expression,
@@ -181,6 +182,10 @@ namespace Language {
 
     Rule(expression,
         { expression, generic_operator, expression },
+        AST::Binop::build),
+
+    Rule(expression,
+        { expression, binary_boolean_operator, expression },
         AST::Binop::build),
 
     Rule(expression,
