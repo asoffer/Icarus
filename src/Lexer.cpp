@@ -190,6 +190,10 @@ AST::Node Lexer::next_operator() {
       // TODO(andy) single-quote character
   }
 
+  if (peek == static_cast<int>('/')) {
+    return next_given_slash();
+  }
+
   // If the first character isn't one of the specific ones mentioned above, read
   // in as many characters as possible.
   //
@@ -213,21 +217,6 @@ AST::Node Lexer::next_operator() {
   // If it's exactly one character in length, there's nothing more to do
   if (token.size() == 1) {
     return AST::Node(Language::generic_operator, token);
-  }
-
-  // If the first two characters are '//', then it's a single-line comment
-  if (token[0] == '/' && token[1] == '/') {
-    // From here on, the token represents not the // operator, but the text of
-    // the comment. Thus, we drop the first two characters
-    token = token.substr(2);
-
-    // Add characters while we're not looking at a newline
-    do {
-      token += static_cast<char>(file_.get());
-      peek = file_.peek();
-    } while (!isnewline(peek));
-
-    return AST::Node(Language::comment, token);
   }
 
   // If the first two characters are '=>' use the rocket
@@ -286,4 +275,65 @@ AST::Node Lexer::next_string_literal() {
   }
 
   return AST::Node::string_literal_node(str_lit);
+}
+
+AST::Node Lexer::next_given_slash() {
+  int peek = file_.peek();
+#ifdef DEBUG
+  if (peek != static_cast<int>('/'))
+    throw "Non-punct character encountered as first character in next_operator.";
+#endif
+
+  file_.get();
+  peek = file_.peek();
+
+  // If the first two characters are '//', then it's a single-line comment
+  if (peek == static_cast<int>('/')) {
+    std::string token = "";
+
+    // Add characters while we're not looking at a newline
+    do {
+      token += static_cast<char>(file_.get());
+      peek = file_.peek();
+    } while (!isnewline(peek));
+
+    return AST::Node(Language::comment, token);
+  }
+
+  // If the first two characters are '/*' then start a multi-line comment.
+  // Multi-line comments should nest
+  if (peek == static_cast<int>('*')) {
+    size_t comment_layer = 1;
+    
+    // This is intentionally not set to '/' (which must be the character
+    // preceeding peek at this point because we don't want to count it in the
+    // loop moer than once). 
+    int prepeek = 0;
+
+    while (comment_layer != 0) {
+      prepeek = peek;
+      peek = file_.get();
+
+      if (!*this) {
+        // If we're at the end of the stream
+        std::cerr << "File ended during multi-line comment." << std::endl;
+        return AST::Node(Language::comment, "");
+      }
+
+      if (prepeek == static_cast<int>('/') && peek == static_cast<int>('*')) {
+        ++comment_layer;
+
+      } else if (prepeek == static_cast<int>('*') && peek == static_cast<int>('/')) {
+        --comment_layer;
+      }
+    }
+
+    return AST::Node(Language::comment, "MULTILINE COMMENT");
+  }
+
+  if (peek == static_cast<int>('=')) {
+    return AST::Node(Language::generic_operator, "=");
+  }
+
+  return AST::Node(Language::generic_operator, "/");
 }
