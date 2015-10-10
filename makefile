@@ -11,7 +11,7 @@ BUILD_FLAGS := -g -O0 -D DEBUG
 STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror
 OPTS = -iquote$(shell pwd)/src
-
+LLVM = $(shell llvm-config --cxxflags --ldflags --system-libs --libs core)
 all: $(TARGET)
 
 .PHONY: release
@@ -33,7 +33,7 @@ unity:
 	@mkdir -p bin
 	@rm -f build/unity.cpp
 	@printf '$(patsubst src/%.cpp,#include "%.cpp"\n,$(SOURCES))' > build/unity.cpp
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) build/unity.cpp -o $(TARGET)
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM) build/unity.cpp -o $(TARGET)
 
 clean:
 	@rm -f $(TARGET) $(OBJECTS) $(DEPENDS)

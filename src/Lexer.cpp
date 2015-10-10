@@ -56,7 +56,7 @@ restart:
   }
 #ifdef DEBUG
   else {
-    throw "Lexer found a control character.";
+    std::cerr << "FATAL: Lexer found a control character." << std::endl;
   }
 #endif
 
@@ -70,7 +70,7 @@ AST::Node Lexer::next_word() {
   // Sanity check:
   // We only call this function if the top character is an alpha character
   if (!std::isalpha(file_.peek()))
-    throw "Non-alpha character encountered as first character in next_word.";
+    std::cerr << "FATAL: Non-alpha character encountered as first character in next_word." << std::endl;
 #endif
 
   // Used to store the word
@@ -107,7 +107,7 @@ AST::Node Lexer::next_number() {
   // Sanity check:
   // We only call this function if the top character is a number character
   if (!std::isdigit(file_.peek()))
-    throw "Non-digit character encountered as first character in next_number.";
+    std::cerr << "FATAL: Non-digit character encountered as first character in next_number." << std::endl;
 #endif
 
   // Used to store the number
@@ -142,7 +142,7 @@ AST::Node Lexer::next_operator() {
   int peek = file_.peek();
 #ifdef DEBUG
   if (!std::ispunct(peek))
-    throw "Non-punct character encountered as first character in next_operator.";
+    std::cerr << "FATAL: Non-punct character encountered as first character in next_operator." << std::endl;
 #endif
 
   // In general, we're going to take all punctuation characters, lump them
@@ -417,7 +417,7 @@ AST::Node Lexer::next_given_slash() {
   int peek = file_.peek();
 #ifdef DEBUG
   if (peek != '/')
-    throw "Non-punct character encountered as first character in next_operator.";
+    std::cerr << "FATAL: Non-punct character encountered as first character in next_operator." << std::endl;
 #endif
 
   file_.get();

@@ -42,7 +42,8 @@ const std::map<std::string, Type> Type::Literals = {
 
 Type Type::return_type() const {
 #if DEBUG
-  if (!is_function()) throw "This isn't a function!";
+  if (!is_function())
+    std::cerr << "FATAL: This isn't a function!" << std::endl;
 #endif
 
   size_t end_of_first_pos = 0;
@@ -68,7 +69,8 @@ Type Type::return_type() const {
 
 Type Type::input_type() const {
 #if DEBUG
-  if (!is_function()) throw "This isn't a function!";
+  if (!is_function()) 
+    std::cerr << "FATAL: This isn't a function!" << std::endl;
 #endif
 
   size_t end_of_first_pos = 0;

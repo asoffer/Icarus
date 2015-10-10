@@ -96,7 +96,7 @@ bool Parser::reduce() {
 #ifdef DEBUG
       if (matched_rule_ptr != nullptr &&
           rule.size() == matched_rule_ptr->size()) {
-        throw "Two rules matched with the same size";
+        std::cerr << "FATAL: Two rules matched with the same size" << std::endl;
       }
 #endif
 

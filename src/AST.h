@@ -7,11 +7,19 @@
 #include <set>
 #include <vector>
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
+
 #include "Language.h"
 #include "Type.h"
 #include "typedefs.h"
 
 namespace AST {
+  std::unique_ptr<llvm::Module> TheModule;
+
   class Scope;
   class Declaration;
   class AnonymousScope;
@@ -43,6 +51,7 @@ namespace AST {
       virtual void verify_types() {}
       virtual void find_all_decls(Scope*) {}
       virtual void register_scopes(Scope*) {}
+
 
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
@@ -90,6 +99,7 @@ namespace AST {
       IdPtr get_identifier(const std::string& token_string);
 
       Scope() : parent_(nullptr) {}
+      virtual ~Scope() {}
 
     private:
       std::map<std::string, IdPtr> id_map_;
@@ -118,6 +128,8 @@ namespace AST {
     virtual Type interpret_as_type() const = 0;
 
     virtual void verify_type_is(Type t);
+
+    virtual llvm::Value* generate_code(Scope*) = 0;
 
     virtual void find_all_decls(Scope*) {}
 
@@ -173,6 +185,8 @@ namespace AST {
 
     virtual void register_scopes(Scope* parent_scope);
 
+    virtual llvm::Value* generate_code(Scope*);
+
     virtual std::string to_string(size_t n) const;
     virtual bool is_binop() const { return true; }
 
@@ -227,6 +241,8 @@ namespace AST {
       virtual Type interpret_as_type() const;
 
       virtual void register_scopes(Scope* parent_scope);
+
+      virtual llvm::Value* generate_code(Scope*);
 
       virtual std::string to_string(size_t n) const;
       virtual bool is_chain_op() const { return true; }
@@ -287,6 +303,7 @@ namespace AST {
     virtual void verify_types();
     virtual Type interpret_as_type() const;
 
+    virtual llvm::Value* generate_code(Scope*);
 
     virtual std::string to_string(size_t n) const;
 
@@ -332,6 +349,8 @@ namespace AST {
 
       virtual void verify_types();
 
+      virtual llvm::Value* generate_code(Scope*);
+
       virtual ~Assignment(){}
 
     private:
@@ -368,6 +387,8 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
+
+    virtual llvm::Value* generate_code(Scope*);
 
     virtual bool is_declaration() const { return true; }
 
@@ -522,6 +543,8 @@ namespace AST {
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
+      virtual llvm::Value* generate_code(Scope*);
+
     private:
       Case() {}
       std::unique_ptr<KVPairList> pairs_;
@@ -543,10 +566,10 @@ namespace AST {
       }
 
       virtual bool is_identifier() const { return true; }
-
       virtual std::string to_string(size_t n) const;
 
       virtual void verify_types();
+      virtual llvm::Value* generate_code(Scope*);
 
       Identifier(const std::string& token_string) {
         token_ = token_string;
@@ -608,6 +631,8 @@ namespace AST {
     virtual void find_all_decls(Scope* scope);
     virtual void register_scopes(Scope* parent_scope);
     virtual Type interpret_as_type() const;
+
+    virtual llvm::Value* generate_code(Scope*);
 
     void add_statements(NPtr&& stmts_ptr);
 
@@ -673,6 +698,7 @@ namespace AST {
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
+      virtual llvm::Value* generate_code(Scope*);
 
       virtual std::string to_string(size_t n) const;
 

@@ -1,6 +1,9 @@
 #include "AST.h"
 
 namespace AST {
+  llvm::IRBuilder<> Builder(llvm::getGlobalContext());
+
+
   /****************************************
    *       PRINTING AND TO_STRING()       *
    ****************************************/
@@ -336,17 +339,17 @@ namespace AST {
   }
 
   Type AnonymousScope::interpret_as_type() const {
-    throw "Stub, this shouldn't be possible";
+    // throw "Stub, this shouldn't be possible";
     return Type::TypeError;
   }
 
   Type FunctionLiteral::interpret_as_type() const {
-    throw "Stub, this shouldn't be possible";
+    // throw "Stub, this shouldn't be possible";
     return Type::TypeError;
   }
 
   Type Case::interpret_as_type() const {
-    throw "Stub, this shouldn't be possible";
+    // throw "Stub, this shouldn't be possible";
     return Type::TypeError;
   }
 
@@ -399,6 +402,8 @@ namespace AST {
 
     } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
         token_ == ">=" || token_ == "==" || token_ == "!=") {
+      // TODO is this else-if block necessary anymore??
+ 
       if (lhs_->expr_type_ != rhs_->expr_type_) {
         // If the types don't match give an error message. We can continue
         // because the result must be a bool
@@ -520,6 +525,66 @@ namespace AST {
     }
   }
 
+
+  /****************************************
+   *            GENERATE CODE             *
+   ****************************************/
+
+  llvm::Value* Identifier::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* Terminal::generate_code(Scope* scope) {
+    // TODO Do I want to use string-to-X functions, or should I roll my own?
+    //
+    // The benefits are clear, but this ties me to using the same representation
+    // that C++ uses.
+
+    if (expr_type_ == Type::UInt) {
+      // TODO Start with 64-bit, change later
+      return llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(64, std::stoul(token()), false));
+ 
+    } else if (expr_type_ == Type::Int) {
+      // TODO Start with 64-bit, change later
+      return llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(64, std::stoul(token()), true));
+ 
+    } else if (expr_type_ == Type::Real) {
+      return llvm::ConstantFP::get(llvm::getGlobalContext(),
+          llvm::APFloat(std::stod(token())));
+    }
+
+    return nullptr;
+  }
+
+  llvm::Value* Binop::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* ChainOp::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* AnonymousScope::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* Assignment::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* Declaration::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* Case::generate_code(Scope* scope) {
+    return nullptr;
+  }
 
 
   /****************************************
