@@ -651,22 +651,43 @@ namespace AST {
     // The benefits are clear, but this ties me to using the same representation
     // that C++ uses.
 
-    if (expr_type_ == Type::UInt) {
-      // TODO Start with 64-bit, change later
+    if (expr_type_ == Type::Unknown || expr_type_ == Type::TypeError) {
+      return nullptr;
+
+    } else if (expr_type_ == Type::Bool) {
+      // A bool is an unsigned 1-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(64, std::stoul(token()), false));
- 
+          llvm::APInt(1, token() == "true" ? 1 : 0, false));
+
+    } else if (expr_type_ == Type::Char) {
+      // A character is an unsigend 8-bit integer
+      return llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(8, token() == "true" ? 1 : 0, false));
+
     } else if (expr_type_ == Type::Int) {
-      // TODO Start with 64-bit, change later
+      // An int is a 64-bit signed integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(64, std::stoul(token()), true));
  
     } else if (expr_type_ == Type::Real) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
           llvm::APFloat(std::stod(token())));
-    }
 
-    return nullptr;
+    } else if (expr_type_ == Type::String) {
+      // TODO String should not be a primitive type
+      return nullptr; 
+
+    } else if (expr_type_ == Type::Type_) {
+      return nullptr;
+
+    } else if (expr_type_ == Type::UInt) {
+      // A uint is a 64-bit unsigned integer
+      return llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(64, std::stoul(token()), false));
+    } else {
+      std::cerr << "FATAL: Terminal type is not a primitive type" << std::endl;
+      return nullptr;
+    }
   }
 
   llvm::Value* Unop::generate_code(Scope* scope) {
@@ -793,13 +814,13 @@ namespace AST {
   }
 
   void Scope::generate_stack_variables() {
+    // TODO declare local variables on the stack but, but not function arguments
+    // TODO declare the correct type (currently always a real)
     for (const auto& kv : decl_registry_) {
-      if (kv.second->interpret_as_type() == Type::Real) {
-        id_map_[kv.first]->val_ = builder.CreateAlloca(
-            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-            nullptr,
-            kv.first.c_str());
-      }
+      id_map_[kv.first]->val_ = builder.CreateAlloca(
+          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+          nullptr,
+          kv.first.c_str());
     }
   }
 
@@ -818,7 +839,6 @@ namespace AST {
     statements_->statements_.reserve( statements_->size() + stmts->size() );
 
     for (size_t i = 0; i < stmts->size(); ++i) {
-      std::cout << stmts->statements_[i]->to_string(3) << std::endl;
       statements_->statements_.push_back(std::move(stmts->statements_[i]));
     }
   }

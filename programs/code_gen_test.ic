@@ -3,3 +3,7 @@
   s = r * 2.1 * 1.1
   return s
 }
+
+(x: real) -> real {
+  return x
+}
