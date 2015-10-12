@@ -18,8 +18,6 @@
 #include "typedefs.h"
 
 namespace AST {
-  std::unique_ptr<llvm::Module> TheModule;
-
   class Scope;
   class Declaration;
   class AnonymousScope;
@@ -80,6 +78,9 @@ namespace AST {
 
 
   class Scope {
+    friend class Identifier;
+    friend class Assignment;
+
     public:
       static std::vector<Scope*> scope_registry;
 
@@ -98,13 +99,19 @@ namespace AST {
 
       IdPtr get_identifier(const std::string& token_string);
 
-      Scope() : parent_(nullptr) {}
+      Scope() : block_(nullptr), parent_(nullptr) {}
       virtual ~Scope() {}
 
-    private:
-      std::map<std::string, IdPtr> id_map_;
-      Scope* parent_;
+      void generate_stack_variables();
+
+    protected:
+      llvm::BasicBlock* block_;
       std::map<std::string, EPtr> decl_registry_;
+      std::map<std::string, IdPtr> id_map_;
+
+    private:
+      Scope* parent_;
+
   };
 
 
@@ -560,6 +567,9 @@ namespace AST {
 
 
   class Identifier : public Terminal {
+    friend class Scope;
+    friend class Assignment;
+
     public:
       static NPtr build(NPtrVec&& nodes) {
         return NPtr(new Identifier(nodes[0]->token()));
@@ -571,11 +581,14 @@ namespace AST {
       virtual void verify_types();
       virtual llvm::Value* generate_code(Scope*);
 
-      Identifier(const std::string& token_string) {
+      Identifier(const std::string& token_string) : val_(nullptr) {
         token_ = token_string;
         expr_type_ = Type::Unknown;
         precedence_ = Language::op_prec.at("MAX");
       }
+
+    private:
+      llvm::AllocaInst* val_;
   };
 
 

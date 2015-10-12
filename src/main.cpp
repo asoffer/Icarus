@@ -39,17 +39,7 @@ int main(int argc, char *argv[]) {
 
     std::cout << global_scope->to_string(0) << std::endl;
 
-    AST::TheModule = llvm::make_unique<llvm::Module>(
-        "icarus program", llvm::getGlobalContext());
-
-    std::cout
-      << "========================================"
-      << "========================================" << std::endl;
-    AST::TheModule->dump();
-
-    std::cout
-      << "========================================"
-      << "========================================" << std::endl;
+    global_scope->generate_code(global_scope.get());
 
   } else {
     std::cerr << "Invalid flag" << std::endl;
