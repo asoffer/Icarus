@@ -55,6 +55,7 @@ namespace Language {
   };
 
   const std::map<std::string, size_t> op_prec = {
+    { "return", 1 },
     { "=",  1 },
     { ":=", 2 },
     { ":",  2 },
@@ -192,6 +193,10 @@ namespace Language {
         { expression, binary_boolean_operator, expression },
         AST::ChainOp::build),
 
+    Rule(return_expression,
+        { reserved_return, expression },
+        AST::Unop::build),
+
     Rule(expression,
         { fn_expression },
         drop_all_but<0>),
@@ -211,13 +216,6 @@ namespace Language {
         { expression, left_bracket, expression, right_bracket },
         AST::Binop::build_bracket_operator),
     /* End paren/bracket operators */
-
-
-    /* Begin return statements */
-    Rule(statements,
-        { reserved_return, expression },
-        AST::Statements::build_one),
-    /* End return statements */
 
 
     /* Begin statements */
@@ -242,6 +240,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { return_expression, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { scope, newline },
         AST::Statements::build_one),
 
@@ -263,6 +265,10 @@ namespace Language {
 
     Rule(statements,
         { statements, fn_declaration, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, return_expression, newline },
         AST::Statements::build_more),
 
     Rule(statements,

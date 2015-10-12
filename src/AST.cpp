@@ -27,6 +27,13 @@ namespace AST {
     return output + "]\n";
   }
 
+  std::string Unop::to_string(size_t n) const {
+    return tabs(n) + "<Unop (" + expr_type_.to_string() + "): '"
+      + (token_ == "" ? Language::show_name.at(type_) : token_)
+      + "', prec: " + std::to_string(precedence_) + ">\n"
+      + expr_->to_string(n + 1);
+  }
+
   std::string Binop::to_string(size_t n) const {
     std::string output = 
       tabs(n) + "<Binop (" + expr_type_.to_string() + "): '"
@@ -122,6 +129,16 @@ namespace AST {
    *           JOIN IDENTIFIERS           *
    ****************************************/
 
+  void Unop::join_identifiers(Scope* scope) {
+    if (expr_->is_identifier()) {
+      auto id_ptr = scope->get_identifier(expr_->token());
+      expr_ = std::static_pointer_cast<Expression>(id_ptr);
+
+    } else {
+      expr_->join_identifiers(scope);
+    }
+  }
+
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
       auto id_ptr = scope->get_identifier(lhs_->token());
@@ -205,6 +222,10 @@ namespace AST {
     scope_registry.push_back(this);
   }
 
+  void Unop::register_scopes(Scope* parent_scope) {
+    expr_->register_scopes(parent_scope);
+  }
+
   void Binop::register_scopes(Scope* parent_scope) {
     lhs_->register_scopes(parent_scope);
     rhs_->register_scopes(parent_scope);
@@ -256,6 +277,10 @@ namespace AST {
    *            FIND ALL DECLS            *
    ****************************************/
 
+  void Unop::find_all_decls(Scope* scope) {
+    expr_->find_all_decls(scope);
+  }
+
   void Binop::find_all_decls(Scope* scope) {
     lhs_->find_all_decls(scope);
     rhs_->find_all_decls(scope);
@@ -300,6 +325,11 @@ namespace AST {
    *           INTERPRET AS TYPE          *
    ****************************************/
 
+  Type Unop::interpret_as_type() const {
+    // TODO Implement this
+    return Type::TypeError;
+  }
+
   Type Binop::interpret_as_type() const {
     if (token() == "->") {
       return Type::Function(
@@ -308,7 +338,6 @@ namespace AST {
     }
 
     // TODO more cases here probably
-
     return Type::TypeError;
   }
 
@@ -362,6 +391,54 @@ namespace AST {
    *             VERIFY TYPES             *
    ****************************************/
  
+  void Unop::verify_types() {
+    expr_->verify_types();
+
+    // Even if there was previously a type_error on the return line, we still
+    // know that `return foo` should have void type
+    if (token_ == "return") {
+      expr_type_ = Type::Void;
+      return;
+    }
+
+    if (expr_->expr_type_ == Type::TypeError) {
+      expr_type_ = Type::TypeError;
+      return;
+    }
+
+    if (token_ == "-") {
+      if (expr_->expr_type_ == Type::UInt) {
+        // TODO Warning/Error? signed conversion cast?
+        expr_type_ = Type::Int;
+
+      } else if (expr_->expr_type_ == Type::Int) {
+        expr_type_ = Type::Int;
+
+      } else if(expr_->expr_type_ == Type::Real) {
+        expr_type_ = Type::Real;
+
+      } else {
+        // TODO there are probably more cases here
+        expr_type_ = Type::TypeError;
+      }
+
+    } else if (token_ == "!") {
+      if (expr_->expr_type_ != Type::Bool) {
+        expr_type_ = Type::TypeError;
+
+      } else {
+        expr_type_ = Type::Bool;
+      }
+    }
+
+
+    // TODO there are more unary operators to verify.
+    // @ - dereferencing
+    // & - indirection
+    //
+  }
+
+
   void Binop::verify_types() {
     // FIXME this is ugly, but "worse is better"
     // TODO make this better
@@ -473,10 +550,40 @@ namespace AST {
 
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
+    Type return_type_as_type = return_type_->interpret_as_type();
+
     expr_type_ = Type::Function(
         inputs_.front()->expr_type_,
-        return_type_->interpret_as_type());
+        return_type_as_type);
+
+    std::set<Type> return_types;
+    collect_return_types(&return_types);
+
+    if (return_type_as_type == Type::Void) {
+      if (!return_types.empty()) {
+        std::cerr << "Function declared void but returns a value." << std::endl;
+      }
+      return;
+    }
+
+    if (return_types.empty()) {
+      // If you get here, the return type isn't void so no return statements is
+      // an error.
+      //
+      // TODO better error message. Repalec 'non-void' with some information
+      // about the type.
+      std::cerr << "Non-void function has no return statement." << std::endl;
+
+    } else if (return_types.size() > 1) {
+      std::cerr << "Too many return types" << std::endl;
+
+    } else if (*return_types.begin() != return_type_as_type) {
+      std::cerr
+        << "Return type does not match function declared return type"
+        << std::endl;
+    }
   }
+
 
   void Assignment::verify_types() {
     Binop::verify_types();
@@ -558,6 +665,12 @@ namespace AST {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
           llvm::APFloat(std::stod(token())));
     }
+
+    return nullptr;
+  }
+
+  llvm::Value* Unop::generate_code(Scope* scope) {
+    expr_->generate_code(scope);
 
     return nullptr;
   }
@@ -710,6 +823,18 @@ namespace AST {
 
     for (size_t i = 0; i < stmts->size(); ++i) {
       statements_->statements_.push_back(std::move(stmts->statements_[i]));
+    }
+  }
+
+  void AnonymousScope::collect_return_types(std::set<Type>* return_exprs) const {
+    for (const auto& stmt : statements_->statements_) {
+      // TODO When we start having loops/conditionals, this won't cut it. We'll
+      // need to dive deeper into the scopes
+      if (!stmt->is_return()) continue;
+
+      // Safe because, to pass is_return(), it must be a pointer to a Unop.
+      auto unop_ptr = static_cast<Unop*>(stmt.get());
+      return_exprs->insert(unop_ptr->expr_->type());
     }
   }
 

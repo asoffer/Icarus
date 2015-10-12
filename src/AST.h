@@ -54,6 +54,10 @@ namespace AST {
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
       }
+
+      bool is_return() const {
+        return node_type() == Language::return_expression;
+      }
       virtual bool is_binop() const { return false; }
       virtual bool is_chain_op() const { return false; }
       virtual bool is_declaration() const { return false; }
@@ -118,6 +122,7 @@ namespace AST {
 
   class Expression : public Node {
     friend class KVPairList;
+    friend class Unop;
     friend class Binop;
     friend class ChainOp;
     friend class Declaration;
@@ -133,6 +138,7 @@ namespace AST {
     virtual void verify_types() = 0;
     virtual void register_scopes(Scope*) = 0;
     virtual Type interpret_as_type() const = 0;
+    virtual Type type() const { return expr_type_; }
 
     virtual void verify_type_is(Type t);
 
@@ -170,15 +176,53 @@ namespace AST {
     }
   }
 
+  // TODO: This only represents a left unary operator for now
+  class Unop : public Expression {
+    friend class AnonymousScope;
+
+    public:
+    static NPtr build(NPtrVec&& nodes);
+
+    virtual void join_identifiers(Scope* scope);
+    virtual void verify_types();
+    virtual void find_all_decls(Scope* scope);
+    virtual Type interpret_as_type() const;
+    virtual void register_scopes(Scope* parent_scope);
+
+    virtual std::string to_string(size_t n) const;
+
+    virtual llvm::Value* generate_code(Scope*);
+
+    private:
+    EPtr expr_;
+  };
+
+
+  inline NPtr Unop::build(NPtrVec&& nodes) {
+    auto unop_ptr = new Unop;
+    unop_ptr->expr_ =
+      EPtr(static_cast<Expression*>(nodes[1].release()));
+
+    unop_ptr->type_ = Language::expression;
+    if (nodes[0]->node_type() == Language::reserved_return) {
+      unop_ptr->token_ = "return";
+    } else {
+      unop_ptr->token_ = nodes[0]->token();
+    }
+
+    unop_ptr->precedence_ = Language::op_prec.at(unop_ptr->token());
+
+    return NPtr(unop_ptr);
+
+  }
+
+
 
   class Binop : public Expression {
     friend class KVPairList;
     friend class FunctionLiteral;
 
     public:
-    // It's not clear it's okay to pass the string by reference if it's
-    // referencing something in the node. Probably not worth trying because
-    // this is highly unlikely to be a bottleneck.
     static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
 
     static NPtr build(NPtrVec&& nodes);
@@ -633,6 +677,7 @@ namespace AST {
 
   class AnonymousScope : public Expression, public Scope {
     friend class FunctionLiteral;
+    friend class Unop;
 
     public:
     static NPtr build(NPtrVec&& nodes);
@@ -650,6 +695,8 @@ namespace AST {
     void add_statements(NPtr&& stmts_ptr);
 
     protected:
+    void collect_return_types(std::set<Type>* return_exprs) const;
+
     AnonymousScope() {}
     std::unique_ptr<Statements> statements_;
   };
