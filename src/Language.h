@@ -40,11 +40,12 @@ namespace Language {
 namespace Language {
   inline bool is_expression(NodeType t) {
     return t == expression || t == declaration
-      || t == fn_declaration || t == assignment;
+      || t == fn_declaration || t == assignment || t == return_expression;
   }
+
   inline bool is_operator(NodeType t) {
     return t == generic_operator || t == decl_operator
-      || t == assign_operator || t == fn_arrow;
+      || t == assign_operator || t == fn_arrow || t == reserved_return;
   }
 
   extern const std::map<NodeType, std::string> show_name;

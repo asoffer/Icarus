@@ -88,7 +88,7 @@ AST::Node Lexer::next_word() {
   // Check if the word is reserved and if so, build the appropriate Node
   for (const auto& res : Language::reserved_words) {
     if (res.first == token) {
-      return AST::Node(res.second);
+      return AST::Node(res.second, token);
     }
   }
 

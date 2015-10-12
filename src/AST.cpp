@@ -670,9 +670,12 @@ namespace AST {
   }
 
   llvm::Value* Unop::generate_code(Scope* scope) {
-    expr_->generate_code(scope);
+    llvm::Value* val = expr_->generate_code(scope);
 
-    return nullptr;
+    if (is_return()) {
+      builder.CreateRet(val);
+    }
+    return val;
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
@@ -711,9 +714,8 @@ namespace AST {
     for (auto& stmt : statements_->statements_) {
       stmt->generate_code(scope);
     }
-
     // FIXME this is just for testing
-    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(1.3));
+    return nullptr;
   }
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
@@ -729,7 +731,7 @@ namespace AST {
 
       // TODO: pick a name for this anonymous function
       llvm::Function* fn = llvm::Function::Create(
-          fn_type, llvm::Function::ExternalLinkage, "__anon_fn", nullptr);
+          fn_type, llvm::Function::InternalLinkage, "__anon_fn", nullptr);
 
       size_t index = 0;
       for (auto& arg : fn->args()) {
@@ -746,24 +748,17 @@ namespace AST {
 
       Scope::generate_stack_variables();
 
-      llvm::Value* ret_val = AnonymousScope::generate_code(this);
-      if (ret_val != nullptr) {
-        builder.CreateRet(ret_val);
+      AnonymousScope::generate_code(this);
 
-        std::cout
-          << "========================================"
-          << "========================================" << std::endl;
-        fn->dump();
-        std::cout
-          << "========================================"
-          << "========================================" << std::endl;
+      std::cout
+        << "========================================"
+        << "========================================" << std::endl;
+      fn->dump();
+      std::cout
+        << "========================================"
+        << "========================================" << std::endl;
 
-        return fn;
-      }
-
-      // Error reading
-      fn->eraseFromParent();
-      return nullptr;
+      return fn;
     }
 
     return nullptr;
@@ -819,9 +814,11 @@ namespace AST {
   void AnonymousScope::add_statements(NPtr&& stmts_ptr) {
     auto stmts = std::unique_ptr<Statements>(
         static_cast<Statements*>(stmts_ptr.release()));
+
     statements_->statements_.reserve( statements_->size() + stmts->size() );
 
     for (size_t i = 0; i < stmts->size(); ++i) {
+      std::cout << stmts->statements_[i]->to_string(3) << std::endl;
       statements_->statements_.push_back(std::move(stmts->statements_[i]));
     }
   }

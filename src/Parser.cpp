@@ -69,7 +69,6 @@ bool Parser::should_shift() {
       && stack_.size() >= 2
       && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
     // TODO worry about associtavitiy
-
     return Language::op_prec.at(stack_[stack_.size() - 2]->token()) < Language::op_prec.at(lookahead_->token());
   }
 
