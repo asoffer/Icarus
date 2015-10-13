@@ -11,7 +11,8 @@ BUILD_FLAGS := -g -O0 -D DEBUG
 STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror
 OPTS = -iquote$(shell pwd)/src
-LLVM = $(shell llvm-config --cxxflags --ldflags --system-libs --libs core)
+LLVM_CXX = $(shell llvm-config --cxxflags)
+LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs core)
 all: $(TARGET)
 
 .PHONY: release
@@ -20,13 +21,13 @@ release: $(TARGET)
 
 build/%.o: src/%.cpp
 	@mkdir -p $(@D)
-	@$(COMPILER) -MM $(STDS) $(OPTS) src/$*.cpp -MF build/$*.d
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cpp -o build/$*.o
+	@$(COMPILER) -MM $(STDS) $(OPTS) $(LLVM_CXX) src/$*.cpp -MF build/$*.d
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM_CXX) -c src/$*.cpp -o build/$*.o
 
 -include $(DEPENDS)
 
 $(TARGET): $(OBJECTS)
-	@$(COMPILER) $(OBJECTS) -o $@
+	@$(COMPILER) $(LLVM_LINK) $(OBJECTS) -o $@
 
 unity:
 	@mkdir -p build
@@ -43,3 +44,5 @@ help:
 	@echo "SOURCES : $(SOURCES)"
 	@echo "OBJECTS : $(OBJECTS)"
 	@echo "DEPENDS : $(DEPENDS)"
+	@echo "LLVM_CXX : $(LLVM_CXX)"
+	@echo "LLVM_LINK : $(LLVM_LINK)"
