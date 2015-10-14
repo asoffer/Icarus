@@ -629,7 +629,7 @@ namespace AST {
       }
 
     private:
-      llvm::Value* val_;
+      llvm::AllocaInst* val_;
   };
 
 

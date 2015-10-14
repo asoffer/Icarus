@@ -2,6 +2,7 @@
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
+    // FIXME
     return builder.CreateLoad(val_, token().c_str());
   }
 
@@ -60,12 +61,8 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
-    std::cout << ">>> " << to_string(4) << std::endl;
     llvm::Value* lhs_val = lhs_->generate_code(scope);
-    std::cout << "<<<" << std::endl;
     llvm::Value* rhs_val = rhs_->generate_code(scope);
-    std::cout << "<==" << std::endl;
-
 
     if (lhs_val == nullptr || rhs_val == nullptr) {
       return nullptr;

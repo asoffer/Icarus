@@ -30,7 +30,6 @@ namespace AST {
     }
   }
 
-
   void Scope::register_input(Declaration* decl) {
     std::string str = decl->identifier();
     auto id_ptr = decl_registry_.find(str);
@@ -132,11 +131,18 @@ namespace AST {
   void Scope::generate_stack_variables(llvm::Function* fn) {
     // TODO declare the correct type (currently always a real)
     for (auto& arg : fn->args()) {
-      inputs_[arg.getName()]->val_ = &arg;
+      
+      inputs_[arg.getName()]->val_ = builder.CreateAlloca(
+          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+          nullptr,
+          arg.getName());
+
+
+      builder.CreateStore(&arg, inputs_[arg.getName()]->val_);
+
     }
 
     for (const auto& kv : locals_) {
-      // TODO reimplement this
       kv.second->val_ = builder.CreateAlloca(
           llvm::Type::getDoubleTy(llvm::getGlobalContext()),
           nullptr,

@@ -3,7 +3,7 @@
 
 factorial : int -> int
 factorial = (n : int) -> int {
-   case {
+   return case {
     n < 2  =>  1
     else   =>  n * factorial(n - 1)
   }

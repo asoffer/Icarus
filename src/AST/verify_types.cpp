@@ -128,12 +128,13 @@ namespace AST {
     if (expr_types.size() == 1) {
       // FIXME assuming this is only used for booleans currently.
       expr_type_ = Type::Bool;
-    }
 
-    // TODO guess what type was intended
-    std::cerr
-      << "Type error: Values do not match in ChainOp"
-      << std::endl;
+    } else {
+      // TODO guess what type was intended
+      std::cerr
+        << "Type error: Values do not match in ChainOp"
+        << std::endl;
+    }
   }
 
   void Declaration::verify_types() {
@@ -224,7 +225,7 @@ namespace AST {
   }
 
   void Case::verify_types() {
-    pairs_->verify_types_with_key(Type::Bool);
+    expr_type_ = pairs_->verify_types_with_key(Type::Bool);
   }
 
   // Verifies that all keys have the same given type `key_type` and that all
@@ -249,7 +250,7 @@ namespace AST {
 
     // FIXME this paradigm fits really well with Case statements but not
     // KVPairLists so much
-    return Type::Unknown;//*value_types.begin();
+    return *value_types.begin();
   }
 
   void Statements::verify_types() {
