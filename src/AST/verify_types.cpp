@@ -148,26 +148,22 @@ namespace AST {
     // TODO id verify
   }
 
-  void AnonymousScope::verify_types() {
-    statements_->verify_types();
-  }
-
   void FunctionLiteral::verify_types() {
-    for (const auto& decl : inputs_) {
-      decl->verify_types();
+    for (const auto& kv : fn_scope_.decl_registry_) {
+      kv.second->verify_types();
     }
-    AnonymousScope::verify_types();
+    statements_->verify_types();
 
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
     Type return_type_as_type = return_type_->interpret_as_type();
 
     expr_type_ = Type::Function(
-        inputs_.front()->expr_type_,
+        fn_scope_.inputs_.begin()->second->type(),
         return_type_as_type);
 
     std::set<Type> return_types;
-    collect_return_types(&return_types);
+    statements_->collect_return_types(&return_types);
 
     if (return_type_as_type == Type::Void) {
       if (!return_types.empty()) {
@@ -189,10 +185,26 @@ namespace AST {
 
     } else if (*return_types.begin() != return_type_as_type) {
       std::cerr
-        << "Return type does not match function declared return type"
+        << "Return type does not match function declared return type: "
+        << return_types.begin()->to_string()
+        << " vs. "
+        << return_type_as_type.to_string()
         << std::endl;
     }
   }
+
+  void Statements::collect_return_types(std::set<Type>* return_exprs) const {
+    for (const auto& stmt : statements_) {
+      // TODO When we start having loops/conditionals, this won't cut it. We'll
+      // need to dive deeper into the scopes
+      if (!stmt->is_return()) continue;
+
+      // Safe because, to pass is_return(), it must be a pointer to a Unop.
+      auto unop_ptr = static_cast<Unop*>(stmt.get());
+      return_exprs->insert(unop_ptr->expr_->type());
+    }
+  }
+
 
 
   void Assignment::verify_types() {

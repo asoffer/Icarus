@@ -26,20 +26,24 @@ int main(int argc, char *argv[]) {
   } else if (std::strcmp(argv[1], "-p") == 0) {
     Parser parser(argv[2]);
 
-    auto global_scope = AST::AnonymousScope::build_empty();
+    // TODO write the language rules to guarantee that the parser produces a
+    // Statements node at top level.
+    std::unique_ptr<AST::Statements> global_statements(
+        static_cast<AST::Statements*>(parser.parse().release()));
 
-    global_scope->add_statements(parser.parse());
-    global_scope->register_scopes(nullptr);
+    AST::Scope* global_scope = AST::Scope::make_global();
+    global_statements->find_all_decls(global_scope);
+    global_statements->join_identifiers(global_scope);
+    global_scope->verify_no_shadowing();
 
-    for (auto& s : AST::Scope::scope_registry) {
-      s->verify_scope();
-    }
+    // TODO verify_scope no longer a decent name
+    global_scope->verify_scope();
+    global_statements->verify_types();
 
-    global_scope->verify_types();
+    std::cout << global_statements->to_string(0) << std::endl;
 
-    std::cout << global_scope->to_string(0) << std::endl;
+    global_statements->generate_code(global_scope);
 
-    global_scope->generate_code(global_scope.get());
 
   } else {
     std::cerr << "Invalid flag" << std::endl;

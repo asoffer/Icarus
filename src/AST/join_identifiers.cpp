@@ -42,13 +42,6 @@ namespace AST {
     }
   }
 
-  void AnonymousScope::join_identifiers(Scope* scope) {
-    // Do not allow higher scopes to see inside
-    if (scope != this) return;
-
-    statements_->join_identifiers(scope);
-  }
-
   void Case::join_identifiers(Scope* scope) {
     pairs_->join_identifiers(scope);
   }
@@ -71,14 +64,8 @@ namespace AST {
     }
   }
 
-  void FunctionLiteral::join_identifiers(Scope* scope) {
-    // Do not allow higher scopes to see inside
-    if (scope != this) return;
-
-    for (const auto decl : inputs_) {
-      decl->join_identifiers(scope);
-    }
-    statements_->join_identifiers(scope);
+  void FunctionLiteral::join_identifiers(Scope*) {
+    statements_->join_identifiers(&fn_scope_);
   }
 
 }  // namespace AST

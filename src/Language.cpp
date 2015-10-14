@@ -110,7 +110,7 @@ namespace Language {
         AST::Terminal::build_character_literal),
 
     Rule(fn_literal,
-        { fn_expression, scope },
+        { fn_expression, left_brace, statements, right_brace },
         AST::FunctionLiteral::build),
 
     Rule(expression,
@@ -243,9 +243,9 @@ namespace Language {
         { return_expression, newline },
         AST::Statements::build_one),
 
-    Rule(statements,
-        { scope, newline },
-        AST::Statements::build_one),
+//    Rule(statements,
+//        { scope, newline },
+//        AST::Statements::build_one),
 
     Rule(statements,
         { statements, expression, newline },
@@ -271,9 +271,9 @@ namespace Language {
         { statements, return_expression, newline },
         AST::Statements::build_more),
 
-    Rule(statements,
-        { statements, scope, newline },
-        AST::Statements::build_more),
+//    Rule(statements,
+//        { statements, scope, newline },
+//        AST::Statements::build_more),
 
     Rule(statements,
         { newline, statements },
@@ -326,9 +326,9 @@ namespace Language {
         { newline, newline },
         drop_all_but<0>),
 
-    Rule(scope,
-        { left_brace, statements, right_brace },
-        AST::AnonymousScope::build),
+//    Rule(scope,
+//        { left_brace, statements, right_brace },
+//        AST::AnonymousScope::build),
     /* End miscellaneous */ 
   };
 }  // namespace Language

@@ -16,24 +16,16 @@ namespace AST {
     }
   }
 
-  void AnonymousScope::find_all_decls(Scope* scope) {
-    statements_->find_all_decls(scope);
-  } 
+//  void AnonymousScope::find_all_decls(Scope* scope) {
+//    statements_->find_all_decls(scope);
+//  } 
 
-  void FunctionLiteral::find_all_decls(Scope* scope) {
-    // Do not allow higher scopes to see inside
-    if (scope != this) return;
-
-    for (const auto & decl : inputs_) {
-      decl->find_all_decls(scope);
-    }
-
-    // Call parent
-    AnonymousScope::find_all_decls(scope);
+  void FunctionLiteral::find_all_decls(Scope*) {
+    statements_->find_all_decls(&fn_scope_);
   } 
 
   void Declaration::find_all_decls(Scope* scope) {
-    scope->register_declaration(this);
+    scope->register_local(this);
   }
 
   void Statements::find_all_decls(Scope* scope) {

@@ -1,8 +1,6 @@
 #include "AST.h"
 
 namespace AST {
-  llvm::IRBuilder<> builder(llvm::getGlobalContext());
-
   llvm::Value* Identifier::generate_code(Scope* scope) {
     return builder.CreateLoad(val_, token().c_str());
   }
@@ -62,8 +60,12 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
+    std::cout << ">>> " << to_string(4) << std::endl;
     llvm::Value* lhs_val = lhs_->generate_code(scope);
+    std::cout << "<<<" << std::endl;
     llvm::Value* rhs_val = rhs_->generate_code(scope);
+    std::cout << "<==" << std::endl;
+
 
     if (lhs_val == nullptr || rhs_val == nullptr) {
       return nullptr;
@@ -89,15 +91,15 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* ChainOp::generate_code(Scope* scope) {
+
+  llvm::Value* Statements::generate_code(Scope* scope) {
+    for (auto& stmt : statements_) {
+      stmt->generate_code(scope);
+    }
     return nullptr;
   }
 
-  llvm::Value* AnonymousScope::generate_code(Scope* scope) {
-    for (auto& stmt : statements_->statements_) {
-      stmt->generate_code(scope);
-    }
-    // FIXME this is just for testing
+  llvm::Value* ChainOp::generate_code(Scope* scope) {
     return nullptr;
   }
 
@@ -116,22 +118,22 @@ namespace AST {
       llvm::Function* fn = llvm::Function::Create(
           fn_type, llvm::Function::InternalLinkage, "__anon_fn", nullptr);
 
-      size_t index = 0;
+      auto iter = fn_scope_.inputs_.begin();
       for (auto& arg : fn->args()) {
-        arg.setName(inputs_[index]->identifier());
-        ++index;
+        arg.setName(iter->first);
+        ++iter;
       }
 
       // TODO Is this possible, check with LLVM
       if (fn == nullptr) return nullptr;
 
       // Create a new basic block to start insertion into.
-      block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", fn);
-      builder.SetInsertPoint(block_);
+      fn_scope_.block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", fn);
+      builder.SetInsertPoint(fn_scope_.block_);
 
-      Scope::generate_stack_variables();
+      fn_scope_.generate_stack_variables(fn);
 
-      AnonymousScope::generate_code(this);
+      statements_->generate_code(&fn_scope_);
 
       std::cout
         << "========================================"
@@ -155,7 +157,7 @@ namespace AST {
       if (val == nullptr) return nullptr;
 
       // Look up the name.
-      llvm::Value* var = scope->id_map_[lhs_->token()]->val_;
+      llvm::Value* var = scope->get_identifier(lhs_->token())->val_;
       if (var == nullptr) {
         return nullptr;
       }
@@ -175,15 +177,4 @@ namespace AST {
     return nullptr;
   }
 
-  void Scope::generate_stack_variables() {
-    // TODO declare local variables on the stack but, but not function arguments
-    // TODO declare the correct type (currently always a real)
-    for (const auto& kv : decl_registry_) {
-      id_map_[kv.first]->val_ = builder.CreateAlloca(
-          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-          nullptr,
-          kv.first.c_str());
-    }
-  }
-
-}  // namespace ASt
+}  // namespace AST

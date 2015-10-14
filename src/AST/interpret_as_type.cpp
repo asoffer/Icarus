@@ -47,10 +47,10 @@ namespace AST {
     return Type::TypeError;
   }
 
-  Type AnonymousScope::interpret_as_type() const {
-    // throw "Stub, this shouldn't be possible";
-    return Type::TypeError;
-  }
+//  Type AnonymousScope::interpret_as_type() const {
+//    // throw "Stub, this shouldn't be possible";
+//    return Type::TypeError;
+//  }
 
   Type FunctionLiteral::interpret_as_type() const {
     // throw "Stub, this shouldn't be possible";

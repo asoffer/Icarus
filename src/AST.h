@@ -19,9 +19,12 @@
 #include "typedefs.h"
 
 namespace AST {
+  extern llvm::IRBuilder<> builder;
+
+
   class Scope;
   class Declaration;
-  class AnonymousScope;
+  //class AnonymousScope;
 
   class Node {
     public:
@@ -49,7 +52,6 @@ namespace AST {
       virtual void join_identifiers(Scope*) {}
       virtual void verify_types() {}
       virtual void find_all_decls(Scope*) {}
-      virtual void register_scopes(Scope*) {}
 
 
       virtual bool is_identifier() const {
@@ -83,40 +85,49 @@ namespace AST {
 
 
   class Scope {
+    friend class FunctionLiteral;
+    // TODO do these need to be friends still?
     friend class Identifier;
     friend class Assignment;
 
     public:
-      static std::vector<Scope*> scope_registry;
+    static std::vector<Scope*> scope_registry;
 
-      virtual std::string to_string(size_t n) const = 0;
+    Scope();
+    static Scope* make_global();
 
-      void verify_scope();
-      void verify_no_shadowing();
+    void verify_scope();
+    void verify_no_shadowing() const;
 
-      void show_identifiers() const;
-      void register_declaration(Declaration*);
 
-      virtual void join_identifiers(Scope*) = 0;
-      virtual void find_all_decls(Scope*) = 0;
-      virtual void verify_types() = 0;
-      virtual void register_scopes(Scope* parent_scope);
+    void register_input(Declaration*);
+    void register_local(Declaration*);
+    void attach_to_parent(Scope* parent_scope);
 
-      IdPtr get_identifier(const std::string& token_string);
+    IdPtr get_identifier(const std::string& token_string);
 
-      Scope() : block_(nullptr), parent_(nullptr) {}
-      virtual ~Scope() {}
+    void generate_stack_variables(llvm::Function* fn);
 
-      void generate_stack_variables();
-
-    protected:
-      llvm::BasicBlock* block_;
-      std::map<std::string, EPtr> decl_registry_;
-      std::map<std::string, IdPtr> id_map_;
 
     private:
-      Scope* parent_;
+    // TODO should this be here? Maybe move it to FunctionLiteral?
+    llvm::BasicBlock* block_;
 
+    // A lookup for all of the inputs to this scope. If this is not a
+    // function, inputs_ will be empty.
+    std::map<std::string, IdPtr> inputs_;
+
+    // A lookup for all the local variables. Every local variable will also be
+    // declared in this scope and therefore have an entry in decl_registry_ as
+    // well.
+    std::map<std::string, IdPtr> locals_;
+
+    // A registry of all declarations made in this scope and not in any deeper
+    // scope
+    std::map<std::string, EPtr> decl_registry_;
+
+    Scope* parent_;
+    std::vector<Scope*> children_;
   };
 
 
@@ -137,7 +148,6 @@ namespace AST {
 
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void verify_types() = 0;
-    virtual void register_scopes(Scope*) = 0;
     virtual Type interpret_as_type() const = 0;
     virtual Type type() const { return expr_type_; }
 
@@ -179,7 +189,7 @@ namespace AST {
 
   // TODO: This only represents a left unary operator for now
   class Unop : public Expression {
-    friend class AnonymousScope;
+    friend class Statements;
 
     public:
     static NPtr build(NPtrVec&& nodes);
@@ -188,7 +198,6 @@ namespace AST {
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
-    virtual void register_scopes(Scope* parent_scope);
 
     virtual std::string to_string(size_t n) const;
 
@@ -234,8 +243,6 @@ namespace AST {
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
-
-    virtual void register_scopes(Scope* parent_scope);
 
     virtual llvm::Value* generate_code(Scope*);
 
@@ -291,8 +298,6 @@ namespace AST {
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
       virtual Type interpret_as_type() const;
-
-      virtual void register_scopes(Scope* parent_scope);
 
       virtual llvm::Value* generate_code(Scope*);
 
@@ -351,7 +356,6 @@ namespace AST {
     static NPtr build_character_literal(NPtrVec&& nodes);
 
     virtual void join_identifiers(Scope*) {}
-    virtual void register_scopes(Scope*) {};
     virtual void verify_types();
     virtual Type interpret_as_type() const;
 
@@ -478,8 +482,6 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
-      virtual void register_scopes(Scope* parent_scope);
-
 
       virtual Type verify_types_with_key(Type key_type);
 
@@ -506,7 +508,6 @@ namespace AST {
     auto val_ptr =
       static_cast<Expression*>(nodes[2].release());
 
-    // NOTE: EPtr is a shared_ptr, we want unique_ptr<Expression>
     pair_list->kv_pairs_.emplace_back(
         std::unique_ptr<Expression>(key_ptr),
         std::unique_ptr<Expression>(val_ptr));
@@ -545,10 +546,8 @@ namespace AST {
 
     // TODO this is mostly the same code as Binop::build_operator
     auto binop_ptr = new Binop;
-    binop_ptr->lhs_ =
-      std::static_pointer_cast<Expression>(assignment_node->lhs_);
-    binop_ptr->rhs_ =
-      std::static_pointer_cast<Expression>(assignment_node->rhs_);
+    binop_ptr->lhs_ = std::move(assignment_node->lhs_);
+    binop_ptr->rhs_ = std::move(assignment_node->rhs_);
 
     binop_ptr->token_ = "==";
     binop_ptr->type_ = Language::generic_operator;
@@ -568,10 +567,8 @@ namespace AST {
 
     // TODO this is mostly the same code as Binop::build_operator
     auto binop_ptr = new Binop;
-    binop_ptr->lhs_ =
-      std::static_pointer_cast<Expression>(assignment_node->lhs_);
-    binop_ptr->rhs_ =
-      std::static_pointer_cast<Expression>(assignment_node->rhs_);
+    binop_ptr->lhs_ = std::move(assignment_node->lhs_);
+    binop_ptr->rhs_ = std::move(assignment_node->rhs_);
 
     binop_ptr->token_ = "==";
     binop_ptr->type_ = Language::generic_operator;
@@ -591,7 +588,6 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void find_all_decls(Scope*);
-      virtual void register_scopes(Scope* parent_scope);
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
@@ -633,13 +629,13 @@ namespace AST {
       }
 
     private:
-      llvm::AllocaInst* val_;
+      llvm::Value* val_;
   };
 
 
 
   class Statements : public Node {
-    friend class AnonymousScope;
+    //friend class AnonymousScope;
 
     public:
     static NPtr build_one(NPtrVec&& nodes);
@@ -649,7 +645,8 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
-    virtual void register_scopes(Scope* parent_scope);
+    void collect_return_types(std::set<Type>* return_exprs) const;
+    llvm::Value* generate_code(Scope* scope);
 
     inline size_t size() { return statements_.size(); }
 
@@ -675,7 +672,7 @@ namespace AST {
   }
 
 
-
+/*
   class AnonymousScope : public Expression, public Scope {
     friend class FunctionLiteral;
     friend class Unop;
@@ -688,7 +685,6 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
-    virtual void register_scopes(Scope* parent_scope);
     virtual Type interpret_as_type() const;
 
     virtual llvm::Value* generate_code(Scope*);
@@ -696,7 +692,6 @@ namespace AST {
     void add_statements(NPtr&& stmts_ptr);
 
     protected:
-    void collect_return_types(std::set<Type>* return_exprs) const;
 
     AnonymousScope() {}
     std::unique_ptr<Statements> statements_;
@@ -717,23 +712,22 @@ namespace AST {
 
     return NPtr(anon_scope);
   }
+*/
 
 
-
-  class FunctionLiteral : public AnonymousScope {
+  class FunctionLiteral : public Expression {
     public:
       static NPtr build(NPtrVec&& nodes) {
         auto fn_lit = new FunctionLiteral;
 
-        auto anon_scope_ptr = static_cast<AnonymousScope*>(nodes[1].release());
-        fn_lit->statements_ = std::move(anon_scope_ptr->statements_);
-        delete anon_scope_ptr;
+        auto stmts_ptr = static_cast<Statements*>(nodes[2].release());
+        fn_lit->statements_ = std::unique_ptr<Statements>(stmts_ptr);
 
+        // TODO scopes inside these statements should point to fn_scope_.
 
         auto binop_ptr = static_cast<Binop*>(nodes[0].release());
 
         fn_lit->return_type_ = std::move(binop_ptr->rhs_);
-
 
         // TODO What if the fn_expression is more complicated, like a function
         // of the form (int -> int) -> int? I'm not sure how robust this is
@@ -744,8 +738,12 @@ namespace AST {
             << std::endl;
         } else {
           // TODO This assumes a single declaration, not a comma-separated list
-          fn_lit->inputs_.push_back(
-              std::static_pointer_cast<Declaration>(binop_ptr->lhs_));
+          auto decl_ptr = std::static_pointer_cast<Declaration>(binop_ptr->lhs_);
+
+          fn_lit->fn_scope_.inputs_[decl_ptr->identifier()] =
+            IdPtr(new Identifier(decl_ptr->identifier()));
+
+          fn_lit->fn_scope_.decl_registry_[decl_ptr->identifier()] = decl_ptr->declared_type();
         }
 
         delete binop_ptr;
@@ -754,7 +752,6 @@ namespace AST {
       }
 
       virtual void find_all_decls(Scope*);
-      virtual void register_scopes(Scope* scope);
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual Type interpret_as_type() const;
@@ -764,12 +761,15 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
 
     private:
-      std::vector<DeclPtr> inputs_;
+      Scope fn_scope_;
       EPtr return_type_;
+      std::unique_ptr<Statements> statements_;
 
       FunctionLiteral() {}
+      virtual ~FunctionLiteral() {}
   };
 
+  
 
 }  // namespace AST
 

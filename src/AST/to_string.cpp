@@ -60,10 +60,6 @@ namespace AST {
       + token() + ">\n";
   }
 
-  std::string AnonymousScope::to_string(size_t n) const {
-    return tabs(n) + "<AnonymousScope>\n" + statements_->to_string(n + 1);
-  }
-
   std::string Declaration::to_string(size_t n) const {
     return tabs(n)
       + "<Declaration (" + expr_type_.to_string() + ")>\n"
@@ -107,8 +103,8 @@ namespace AST {
 
   std::string FunctionLiteral::to_string(size_t n) const {
     std::string output = tabs(n) + "<FunctionLiteral>\n";
-    for (const auto& decl : inputs_) {
-      output += decl->to_string(n + 1);
+    for (const auto& kv : fn_scope_.inputs_) {
+      output += kv.second->to_string(n + 1);
     }
     return output + tabs(n + 1) + "Body:\n" + statements_->to_string(n + 2);
   }
