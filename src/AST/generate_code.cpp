@@ -23,7 +23,7 @@ namespace AST {
     } else if (expr_type_ == Type::Char) {
       // A character is an unsigend 8-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(8, token() == "true" ? 1 : 0, false));
+          llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
     } else if (expr_type_ == Type::Int) {
       // An int is a 64-bit signed integer

@@ -86,9 +86,6 @@ namespace AST {
 
   class Scope {
     friend class FunctionLiteral;
-    // TODO do these need to be friends still?
-    friend class Identifier;
-    friend class Assignment;
 
     public:
     static std::vector<Scope*> scope_registry;
