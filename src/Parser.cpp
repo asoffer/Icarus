@@ -65,11 +65,18 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (Language::is_operator(lookahead_->node_type())
+  if (Language::is_binary_operator(lookahead_->node_type())
       && stack_.size() >= 2
       && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
-    // TODO worry about associtavitiy
-    return Language::op_prec.at(stack_[stack_.size() - 2]->token()) < Language::op_prec.at(lookahead_->token());
+
+    auto lhs_prec = Language::op_prec.at(stack_[stack_.size() - 2]-> token());
+    auto rhs_prec = Language::op_prec.at(lookahead_->token());
+
+    if (lhs_prec != rhs_prec)
+      return lhs_prec < rhs_prec;
+
+    // Shift for right-associative
+    return (lhs_prec & 3) == right_assoc;
   }
 
   // If we're defining a function with braces don't stop early.

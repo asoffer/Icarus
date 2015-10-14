@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 
 #include "Parser.h"
 #include "AST.h"
@@ -13,7 +14,17 @@ int main(int argc, char *argv[]) {
 
   }
 
-  // TODO check if file exists
+  // Check if file exists
+  std::ifstream infile(argv[2]);
+  if (!infile.good()) {
+    std::cerr
+      << "File '"
+      << argv[2]
+      << "' does not exist or cannot be accessed."
+      << std::endl;
+    return 2;
+  }
+
 
   if (std::strcmp(argv[1], "-l") == 0) {
     Lexer lexer(argv[2]);
@@ -36,8 +47,7 @@ int main(int argc, char *argv[]) {
     global_statements->join_identifiers(global_scope);
     global_scope->verify_no_shadowing();
 
-    // TODO verify_scope no longer a decent name
-    global_scope->verify_scope();
+    global_scope->determine_declared_types();
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;

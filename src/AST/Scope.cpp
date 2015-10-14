@@ -86,9 +86,9 @@ namespace AST {
   }
 
   // TODO Make this iterative instead of recursive
-  void Scope::verify_scope() {
+  void Scope::determine_declared_types() {
     for (const auto& scope_ptr : children_) {
-      scope_ptr->verify_scope();
+      scope_ptr->determine_declared_types();
     }
 
     // Determine types for each declared variable

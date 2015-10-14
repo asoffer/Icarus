@@ -96,7 +96,7 @@ namespace AST {
     Scope();
     static Scope* make_global();
 
-    void verify_scope();
+    void determine_declared_types();
     void verify_no_shadowing() const;
 
 

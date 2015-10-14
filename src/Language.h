@@ -37,15 +37,25 @@ namespace Language {
 
 #include "Rule.h"
 
+// Constants for associativity
+constexpr size_t left_assoc = 0;
+constexpr size_t right_assoc = 1;
+constexpr size_t non_assoc = 2;
+constexpr size_t chain_assoc = 3;
+
 namespace Language {
   inline bool is_expression(NodeType t) {
     return t == expression || t == declaration
       || t == fn_declaration || t == assignment || t == return_expression;
   }
 
-  inline bool is_operator(NodeType t) {
+  inline bool is_binary_operator(NodeType t) {
     return t == generic_operator || t == decl_operator
-      || t == assign_operator || t == fn_arrow || t == reserved_return;
+      || t == assign_operator || t == fn_arrow;
+  }
+
+  inline bool is_operator(NodeType t) {
+    return is_binary_operator(t) || t == reserved_return;
   }
 
   extern const std::map<NodeType, std::string> show_name;
