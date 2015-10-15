@@ -77,11 +77,15 @@ namespace AST {
     } else if (expr_type_ == Type::Real) {
       if (token() == "+") {
         return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
+        
       } else if (token() == "-") {
         return builder.CreateFSub(lhs_val, rhs_val, "subtmp");
+
       } else if (token() == "*") {
         return builder.CreateFMul(lhs_val, rhs_val, "multmp");
+
       }
+
     } else if (expr_type_ == Type::UInt) {
     }
 

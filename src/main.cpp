@@ -42,8 +42,10 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<AST::Statements> global_statements(
         static_cast<AST::Statements*>(parser.parse().release()));
 
+
     AST::Scope* global_scope = AST::Scope::make_global();
     global_statements->find_all_decls(global_scope);
+
     global_statements->join_identifiers(global_scope);
     global_scope->verify_no_shadowing();
 
@@ -53,7 +55,6 @@ int main(int argc, char *argv[]) {
     std::cout << global_statements->to_string(0) << std::endl;
 
     global_statements->generate_code(global_scope);
-
 
   } else {
     std::cerr << "Invalid flag" << std::endl;

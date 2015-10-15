@@ -15,20 +15,20 @@ class Parser {
 
     Parser(const char* filename);
 
-    NPtr parse();
+    std::unique_ptr<AST::Node> parse();
 
   private:
     bool should_shift();
     void shift();
     bool reduce();
 
-    std::vector<NPtr> stack_;
-    NPtr lookahead_;
+    std::vector<std::unique_ptr<AST::Node>> stack_;
+    std::unique_ptr<AST::Node> lookahead_;
     Lexer lexer_;
 };
 
 inline void Parser::shift() {
-  NPtr next_node_ptr(new AST::Node);
+  std::unique_ptr<AST::Node> next_node_ptr(new AST::Node);
   lexer_ >> *next_node_ptr;
 
   // Never shift comments onto the stack

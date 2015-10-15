@@ -11,6 +11,17 @@ namespace AST {
     }
   }
 
+  void While::join_identifiers(Scope* scope) {
+    if (cond_->is_identifier()) {
+      auto id_ptr = scope->get_identifier(cond_->token());
+      cond_ = std::static_pointer_cast<Expression>(id_ptr);
+    } else {
+      cond_->join_identifiers(scope);
+    }
+
+    statements_->join_identifiers(&body_scope_);
+  }
+
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
       auto id_ptr = scope->get_identifier(lhs_->token());
@@ -57,7 +68,7 @@ namespace AST {
     for (auto& eptr : statements_) {
       if (eptr->is_identifier()) {
         auto id_ptr = scope->get_identifier(eptr->token());
-        eptr = std::static_pointer_cast<Expression>(id_ptr);
+        eptr = std::static_pointer_cast<Node>(id_ptr);
       }
 
       eptr->join_identifiers(scope);

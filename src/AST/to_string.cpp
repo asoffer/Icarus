@@ -16,6 +16,12 @@ namespace AST {
     return output + "]\n";
   }
 
+  std::string While::to_string(size_t n) const {
+    return tabs(n) + "<While>\n"
+      + cond_->to_string(n + 1)
+      + statements_->to_string(n + 1);
+  }
+
   std::string Unop::to_string(size_t n) const {
     return tabs(n) + "<Unop (" + expr_type_.to_string() + "): '"
       + (token_ == "" ? Language::show_name.at(type_) : token_)

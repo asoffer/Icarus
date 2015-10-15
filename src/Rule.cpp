@@ -7,7 +7,7 @@ Rule::Rule(Language::NodeType output,
 {
 }
 
-bool Rule::match(const std::vector<NPtr>& node_stack) const {
+bool Rule::match(const std::vector<std::unique_ptr<AST::Node>>& node_stack) const {
   if (input_.size() > node_stack.size()) return false;
 
   size_t stack_index = node_stack.size() - 1;
@@ -24,10 +24,10 @@ bool Rule::match(const std::vector<NPtr>& node_stack) const {
   return true;
 }
 
-void Rule::apply(std::vector<NPtr>& node_stack) const {
+void Rule::apply(std::vector<std::unique_ptr<AST::Node>>& node_stack) const {
   // Make a vector for the rule function to take as input. It will begin with
   // size() unique_ptrs.
-  std::vector<NPtr> nodes_to_reduce(size());
+  std::vector<std::unique_ptr<AST::Node>> nodes_to_reduce(size());
 
   for (int i = static_cast<int>(size()) - 1; i >= 0; --i) {
     nodes_to_reduce[ static_cast<size_t>(i) ] = std::move(node_stack.back());

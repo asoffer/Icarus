@@ -1,5 +1,11 @@
-(r: real) -> real {
+while 1 {
+  a : int
+  a = 3
+  b : int
+  b = 3
+}
 
+(r: real) -> real {
   s : real
   s = r * 2.1 * 1.1
 

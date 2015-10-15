@@ -2,11 +2,11 @@
 #include "AST.h"
 
 Parser::Parser(const char* filename) : lexer_(filename) {
-  lookahead_ = NPtr(new AST::Node);
+  lookahead_ = std::unique_ptr<AST::Node>(new AST::Node);
   *lookahead_ = AST::Node::newline_node();
 }
 
-NPtr Parser::parse() {
+std::unique_ptr<AST::Node> Parser::parse() {
   while (lexer_) {
     if (should_shift()) {
       shift();
@@ -34,7 +34,7 @@ NPtr Parser::parse() {
 #endif
 
   // FIXME does it exist? is there only one?
-  NPtr back = std::move(stack_.back());
+  std::unique_ptr<AST::Node> back = std::move(stack_.back());
   stack_.pop_back();
   return back;
 }

@@ -3,7 +3,7 @@
 #include "AST.h"
 
 // This is intentionally not accessible in other translation units.
-template <size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
+template <size_t N> std::unique_ptr<AST::Node> drop_all_but(NPtrVec&& nodes) {
   return std::move(nodes[N]);
 }
 
@@ -22,6 +22,7 @@ namespace Language {
     { generic_operator, "Operator" },
     { binary_boolean_operator, "BinOperator" },
     { decl_operator, ":" },
+    { decl_assign_operator, ":=" },
     { assign_operator, "=" },
     { fn_arrow, "->" },
     { rocket_operator, "=>" },
@@ -241,6 +242,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { while_statement, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { return_expression, newline },
         AST::Statements::build_one),
 
@@ -266,6 +271,10 @@ namespace Language {
 
     Rule(statements,
         { statements, fn_declaration, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, while_statement, newline },
         AST::Statements::build_more),
 
     Rule(statements,
@@ -321,6 +330,13 @@ namespace Language {
         AST::Case::build),
     /* End case statements */
 
+
+    /* Begin while loop */
+    Rule(while_statement,
+        { reserved_while, expression, left_brace, statements, right_brace },
+        AST::While::build),
+
+    /* End while loop */
 
     /* Begin miscellaneous */
     Rule(newline,

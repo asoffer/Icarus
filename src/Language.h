@@ -14,13 +14,13 @@ namespace Language {
 
     // Operators
     unary_operator, generic_operator, binary_boolean_operator, decl_operator,
-    assign_operator, fn_arrow, rocket_operator,
+    decl_assign_operator, assign_operator, fn_arrow, rocket_operator,
 
     key_value_pair, key_value_pair_list,
     expression, paren_expression, fn_expression, scope, return_expression,
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
-    statements,
+    statements, while_statement,
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
@@ -50,8 +50,8 @@ namespace Language {
   }
 
   inline bool is_binary_operator(NodeType t) {
-    return t == generic_operator || t == decl_operator
-      || t == assign_operator || t == fn_arrow;
+    return t == generic_operator || t == decl_operator || t == assign_operator
+      || t == decl_assign_operator || t == fn_arrow;
   }
 
   inline bool is_operator(NodeType t) {
