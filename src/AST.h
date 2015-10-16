@@ -24,7 +24,7 @@ namespace AST {
 
   class Scope;
   class Declaration;
-  //class AnonymousScope;
+  class Statements;
 
   class Node {
     public:
@@ -51,6 +51,7 @@ namespace AST {
       virtual void join_identifiers(Scope*) {}
       virtual void verify_types() {}
       virtual void find_all_decls(Scope*) {}
+      virtual void add_to_scope(Scope*) {}
       virtual llvm::Value* generate_code(Scope*) { return nullptr; }
 
       virtual bool is_identifier() const {
@@ -87,10 +88,10 @@ namespace AST {
     friend class FunctionLiteral;
 
     public:
-    static std::vector<Scope*> scope_registry;
+    static Scope Global;
+    Scope() : block_(nullptr), parent_(nullptr) {}
 
-    Scope();
-    static Scope* make_global();
+    static void init_global_scope(Statements* stmts);
 
     void determine_declared_types();
     void verify_no_shadowing() const;
@@ -103,7 +104,6 @@ namespace AST {
     IdPtr get_identifier(const std::string& token_string);
 
     void generate_stack_variables(llvm::Function* fn);
-
 
     private:
     // TODO should this be here? Maybe move it to FunctionLiteral?
@@ -135,7 +135,6 @@ namespace AST {
     friend class ChainOp;
     friend class Declaration;
     friend class Assignment;
-    friend class Scope;
 
     public:
     static std::unique_ptr<Node> parenthesize(NPtrVec&& nodes);
@@ -145,6 +144,7 @@ namespace AST {
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void verify_types() = 0;
     virtual Type interpret_as_type() const = 0;
+    // virtual void register_identifiers(DeclPtr) const = 0;
     virtual Type type() const { return expr_type_; }
 
     virtual void verify_type_is(Type t);
@@ -195,6 +195,8 @@ namespace AST {
     virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
 
+    // virtual void register_identifiers(DeclPtr) const;
+
     virtual std::string to_string(size_t n) const;
 
     virtual llvm::Value* generate_code(Scope*);
@@ -239,7 +241,7 @@ namespace AST {
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
-
+    // virtual void register_identifiers(DeclPtr) const;
     virtual llvm::Value* generate_code(Scope*);
 
     virtual std::string to_string(size_t n) const;
@@ -293,6 +295,7 @@ namespace AST {
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
       virtual void find_all_decls(Scope* scope);
+      // virtual void register_identifiers(DeclPtr) const;
       virtual Type interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope*);
@@ -354,7 +357,7 @@ namespace AST {
     virtual void join_identifiers(Scope*) {}
     virtual void verify_types();
     virtual Type interpret_as_type() const;
-
+    // virtual void register_identifiers(DeclPtr) const;
     virtual llvm::Value* generate_code(Scope*);
 
     virtual std::string to_string(size_t n) const;
@@ -440,6 +443,7 @@ namespace AST {
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
     virtual void join_identifiers(Scope* scope);
+    // virtual void register_identifiers(DeclPtr) const;
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
 
@@ -455,6 +459,7 @@ namespace AST {
 
     EPtr id_;
     EPtr decl_type_;
+    std::vector<IdPtr> needed_for_;
   };
 
   inline std::unique_ptr<Node> Declaration::build(NPtrVec&& nodes) {
@@ -590,6 +595,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void find_all_decls(Scope*);
+      // virtual void register_identifiers(DeclPtr) const;
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
@@ -637,7 +643,6 @@ namespace AST {
 
 
   class Statements : public Node {
-    //friend class AnonymousScope;
 
     public:
     static std::unique_ptr<Node> build_one(NPtrVec&& nodes);
@@ -647,6 +652,12 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
+    virtual void add_to_scope(Scope* scope) {
+      for (auto& stmt : statements_) {
+        stmt->add_to_scope(scope);
+      }
+    }
+
     void collect_return_types(std::set<Type>* return_exprs) const;
     llvm::Value* generate_code(Scope* scope);
 
@@ -670,49 +681,6 @@ namespace AST {
 
     return std::unique_ptr<Node>(output);
   }
-
-
-/*
-  class AnonymousScope : public Expression, public Scope {
-    friend class FunctionLiteral;
-    friend class Unop;
-
-    public:
-    static std::unique_ptr<Node> build(NPtrVec&& nodes);
-    static std::unique_ptr<AnonymousScope> build_empty();
-
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
-    virtual void verify_types();
-    virtual void find_all_decls(Scope* scope);
-    virtual Type interpret_as_type() const;
-
-    virtual llvm::Value* generate_code(Scope*);
-
-    void add_statements(NPtr&& stmts_ptr);
-
-    protected:
-
-    AnonymousScope() {}
-    std::unique_ptr<Statements> statements_;
-  };
-
-  inline std::unique_ptr<AnonymousScope> AnonymousScope::build_empty() {
-    std::unique_ptr<AnonymousScope> anon_scope(new AnonymousScope);
-    anon_scope->statements_ = std::unique_ptr<Statements>(new Statements);
-
-    return anon_scope;
-  }
-
-  inline std::unique_ptr<Node> AnonymousScope::build(NPtrVec&& nodes) {
-    auto anon_scope = new AnonymousScope;
-
-    anon_scope->statements_ = std::unique_ptr<Statements>(
-        static_cast<Statements*>(nodes[1].release()));
-
-    return std::unique_ptr<Node>(anon_scope);
-  }
-*/
 
 
   class FunctionLiteral : public Expression {
@@ -755,6 +723,10 @@ namespace AST {
       virtual void find_all_decls(Scope*);
       virtual void join_identifiers(Scope* scope);
       virtual void verify_types();
+      virtual void add_to_scope(Scope* scope) {
+        fn_scope_.attach_to_parent(scope);
+      }
+      // virtual void register_identifiers(DeclPtr) const;
       virtual Type interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope*);

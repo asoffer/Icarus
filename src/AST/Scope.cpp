@@ -1,26 +1,10 @@
 #include "AST.h"
 
 namespace AST {
-  // TODO shared_ptr of scopes is probably safer
-  std::vector<Scope*> Scope::scope_registry;
+  Scope Scope::Global;
 
-  Scope::Scope() : block_(nullptr), parent_(nullptr) {
-    scope_registry.push_back(this);
-  }
-
-  Scope* Scope::make_global() {
-    // Automatically gets added to the registry
-    Scope* global = new Scope;
-
-    for (const auto& scope_ptr : scope_registry) {
-      if (scope_ptr == global) continue;
-
-      if (scope_ptr->parent_ == nullptr) {
-        scope_ptr->attach_to_parent(global);
-      } 
-    }
-
-    return global;
+  void Scope::init_global_scope(AST::Statements* stmts) {
+    stmts->add_to_scope(&Global);
   }
 
   void Scope::attach_to_parent(Scope* parent_scope) {

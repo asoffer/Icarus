@@ -42,19 +42,22 @@ int main(int argc, char *argv[]) {
     std::unique_ptr<AST::Statements> global_statements(
         static_cast<AST::Statements*>(parser.parse().release()));
 
+    // Make all the top-level scopes children of a global scope 
+    AST::Scope::init_global_scope(global_statements.get());
 
-    AST::Scope* global_scope = AST::Scope::make_global();
-    global_statements->find_all_decls(global_scope);
 
-    global_statements->join_identifiers(global_scope);
-    global_scope->verify_no_shadowing();
+    global_statements->find_all_decls(&AST::Scope::Global);
 
-    global_scope->determine_declared_types();
+    global_statements->join_identifiers(&AST::Scope::Global);
+    AST::Scope::Global.verify_no_shadowing();
+
+
+    AST::Scope::Global.determine_declared_types();
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
 
-    global_statements->generate_code(global_scope);
+    global_statements->generate_code(&AST::Scope::Global);
 
   } else {
     std::cerr << "Invalid flag" << std::endl;
