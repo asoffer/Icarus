@@ -138,9 +138,9 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-    lhs_->verify_types();
-    rhs_->verify_types();
-    expr_type_ = lhs_->expr_type_;
+    id_->verify_types();
+    decl_type_->verify_types();
+    expr_type_ = id_->expr_type_;
   }
 
   void Terminal::verify_types() {}

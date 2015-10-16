@@ -427,18 +427,21 @@ namespace AST {
 
 
 
-  class Declaration : public Binop {
+  class Declaration : public Expression {
     friend class Scope;
 
     public:
     static std::unique_ptr<Node> build(NPtrVec&& nodes);
 
-    std::string identifier() const { return lhs_->token(); }
-    EPtr declared_type() const { return rhs_; }
+    std::string identifier_string() const { return id_->token(); }
+    EPtr declared_type() const { return decl_type_; }
 
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
     virtual void find_all_decls(Scope* scope);
+    virtual void join_identifiers(Scope* scope);
+    virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
+
 
     virtual llvm::Value* generate_code(Scope*);
 
@@ -446,16 +449,20 @@ namespace AST {
 
     virtual ~Declaration(){}
 
+
     private:
     Declaration() {}
+
+    EPtr id_;
+    EPtr decl_type_;
   };
 
   inline std::unique_ptr<Node> Declaration::build(NPtrVec&& nodes) {
     auto decl_ptr = new Declaration;
-    decl_ptr->lhs_ =
+    decl_ptr->id_ =
       EPtr(static_cast<Expression*>(nodes[0].release()));
 
-    decl_ptr->rhs_ =
+    decl_ptr->decl_type_ =
       EPtr(static_cast<Expression*>(nodes[2].release()));
 
     decl_ptr->token_ = ":";
@@ -465,7 +472,6 @@ namespace AST {
 
     return std::unique_ptr<Node>(decl_ptr);
   }
-
 
 
   class KVPairList : public Node {
@@ -734,10 +740,11 @@ namespace AST {
           // TODO This assumes a single declaration, not a comma-separated list
           auto decl_ptr = std::static_pointer_cast<Declaration>(binop_ptr->lhs_);
 
-          fn_lit->fn_scope_.inputs_[decl_ptr->identifier()] =
-            IdPtr(new Identifier(decl_ptr->identifier()));
+          fn_lit->fn_scope_.inputs_[decl_ptr->identifier_string()] =
+            IdPtr(new Identifier(decl_ptr->identifier_string()));
 
-          fn_lit->fn_scope_.decl_registry_[decl_ptr->identifier()] = decl_ptr->declared_type();
+          fn_lit->fn_scope_.decl_registry_[decl_ptr->identifier_string()] =
+            decl_ptr->declared_type();
         }
 
         delete binop_ptr;

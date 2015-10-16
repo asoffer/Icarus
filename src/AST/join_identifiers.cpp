@@ -40,6 +40,17 @@ namespace AST {
     }
   }
 
+  void Declaration::join_identifiers(Scope* scope) {
+    id_ = scope->get_identifier(identifier_string());
+
+    if (decl_type_->is_identifier()) {
+      auto id_ptr = scope->get_identifier(decl_type_->token());
+      decl_type_ = std::static_pointer_cast<Expression>(id_ptr);
+
+    } else {
+      decl_type_->join_identifiers(scope);
+    }
+  }
 
   void ChainOp::join_identifiers(Scope* scope) {
     for (auto& expr : exprs_) {

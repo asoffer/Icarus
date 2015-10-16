@@ -69,8 +69,8 @@ namespace AST {
   std::string Declaration::to_string(size_t n) const {
     return tabs(n)
       + "<Declaration (" + expr_type_.to_string() + ")>\n"
-      + lhs_->to_string(n + 1)
-      + rhs_->to_string(n + 1);
+      + id_->to_string(n + 1)
+      + decl_type_->to_string(n + 1);
   }
 
   std::string Assignment::to_string(size_t n) const {

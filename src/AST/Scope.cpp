@@ -31,7 +31,7 @@ namespace AST {
   }
 
   void Scope::register_input(Declaration* decl) {
-    std::string str = decl->identifier();
+    std::string str = decl->identifier_string();
     auto id_ptr = decl_registry_.find(str);
     if (id_ptr != decl_registry_.end()) {
       std::cerr
@@ -44,7 +44,7 @@ namespace AST {
   }
 
   void Scope::register_local(Declaration* decl) {
-    std::string str = decl->identifier();
+    std::string str = decl->identifier_string();
     auto id_ptr = decl_registry_.find(str);
     if (id_ptr != decl_registry_.end()) {
       std::cerr
