@@ -6,7 +6,6 @@
 namespace ScopeDB {
 
   std::vector<int> parent_;
-  std::map<IdPtr, size_t> declared_in_;
   std::map<IdPtr, DeclPtr> decl_of_;
   std::map<IdPtr, std::set<IdPtr>> needed_for_;
   std::vector<std::map<std::string, IdPtr>> ids_in_scope_;
@@ -71,15 +70,40 @@ namespace ScopeDB {
   }
 
   void determine_declared_types() {
-    for (const auto& foo : declared_in_) {
-      std::cout << foo.first->token() << std::endl;
+    for (const auto& foo : decl_registry_) {
+      std::cout << foo->identifier_string() << std::endl;
     }
   }
 
   DeclPtr make_declaration() {
-    std::cout << "** " << decl_registry_.size();
     DeclPtr d(new AST::Declaration);
     decl_registry_.push_back(d);
     return d;
   }
+
+  void fill_db() {
+    for (const auto& decl_ptr : decl_registry_) {
+      IdPtr decl_id = decl_ptr->declared_identifier();
+      decl_of_[decl_id] = decl_ptr;
+
+      // Build up needed_for_ with empty sets
+      needed_for_[decl_id] = std::set<IdPtr>();
+    }
+
+    // For each declared identifier, look through the identifiers which go into
+    // it's type declaration. And add an IdPtr for this to each of there
+    // needed_for_ sets
+    for (const auto& decl_ptr : decl_registry_) {
+      IdPtr decl_id = decl_ptr->declared_identifier();
+      EPtr decl_type = decl_ptr->declared_type();
+
+      if (decl_type->is_identifier()) {
+        needed_for_[std::static_pointer_cast<AST::Identifier>(decl_type)]
+          .insert(decl_id);
+      } else {
+        decl_type->needed_for(decl_id);
+      }
+    }
+  }
+
 }  // namespace ScopeDB

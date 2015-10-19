@@ -52,6 +52,8 @@ int main(int argc, char *argv[]) {
 
 
     global_statements->join_identifiers(global_scope_id);
+    ScopeDB::fill_db();
+
     // ScopeDB::verify_no_shadowing();
     //global_statements->populate_declaration_dependencies();
     //ScopeDB::determine_declared_types();
