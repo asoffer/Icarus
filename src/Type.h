@@ -15,6 +15,8 @@ class Type {
       t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_string, t_type, t_uint, t_void, t_fn
     };
 
+    static std::vector<std::string> type_strings;
+
   public:
     Type(PrimEnum p = t_unknown) : rpn_type_(1, p) {}
     static Type build(const AST::Expression* expr_ptr);
@@ -56,7 +58,6 @@ class Type {
   private:
     friend struct std::less<Type>;
 
-    static std::vector<std::string> type_strings;
 
     // Store the type in reverse polish notation, so char -> int gets stored as
     // char int ->

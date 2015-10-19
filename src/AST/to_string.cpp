@@ -1,4 +1,5 @@
 #include "AST.h"
+#include "Type.h"
 
 namespace AST {
   std::string tabs(size_t n) {

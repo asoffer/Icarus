@@ -3,7 +3,7 @@
 #include "AST.h"
 
 // This is intentionally not accessible in other translation units.
-template <size_t N> std::unique_ptr<AST::Node> drop_all_but(NPtrVec&& nodes) {
+template<size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
   return std::move(nodes[N]);
 }
 

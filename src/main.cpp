@@ -4,6 +4,12 @@
 #include "Parser.h"
 #include "AST.h"
 #include "typedefs.h"
+#include "ScopeDB.h"
+
+// GENERAL TODO LIST:
+// * populate_declaration_dependencies runs over the whole AST. This seems like
+// overkill. Shouldn't we just record pointers to all declarations and then
+// iterate over those?
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
@@ -39,25 +45,23 @@ int main(int argc, char *argv[]) {
 
     // TODO write the language rules to guarantee that the parser produces a
     // Statements node at top level.
-    std::unique_ptr<AST::Statements> global_statements(
-        static_cast<AST::Statements*>(parser.parse().release()));
+    auto global_statements =
+        std::static_pointer_cast<AST::Statements>(parser.parse());
 
-    // Make all the top-level scopes children of a global scope 
-    AST::Scope::init_global_scope(global_statements.get());
-
-
-    global_statements->find_all_decls(&AST::Scope::Global);
-
-    global_statements->join_identifiers(&AST::Scope::Global);
-    AST::Scope::Global.verify_no_shadowing();
+    size_t global_scope_id = ScopeDB::add_global();
 
 
-    AST::Scope::Global.determine_declared_types();
-    global_statements->verify_types();
+    global_statements->join_identifiers(global_scope_id);
+    // ScopeDB::verify_no_shadowing();
+    //global_statements->populate_declaration_dependencies();
+    //ScopeDB::determine_declared_types();
+
+//    global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
 
-    global_statements->generate_code(&AST::Scope::Global);
+    //global_statements->generate_code(&AST::Scope::Global);
+    std::cout << "-------------------- CLEANUP --------------------" << std::endl;
 
   } else {
     std::cerr << "Invalid flag" << std::endl;

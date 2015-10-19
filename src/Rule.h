@@ -12,8 +12,8 @@ class Rule {
 
     size_t size() const { return input_.size(); }
 
-    bool match(const std::vector<std::unique_ptr<AST::Node>>& node_stack) const;
-    void apply(std::vector<std::unique_ptr<AST::Node>>& node_stack) const;
+    bool match(const NPtrVec& node_stack) const;
+    void apply(NPtrVec& node_stack) const;
 
   private:
     Language::NodeType output_;

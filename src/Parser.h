@@ -15,14 +15,14 @@ class Parser {
 
     Parser(const char* filename);
 
-    std::unique_ptr<AST::Node> parse();
+    NPtr parse();
 
   private:
     bool should_shift();
     void shift();
     bool reduce();
 
-    std::vector<std::unique_ptr<AST::Node>> stack_;
+    NPtrVec stack_;
     std::unique_ptr<AST::Node> lookahead_;
     Lexer lexer_;
 };

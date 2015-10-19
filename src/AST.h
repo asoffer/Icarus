@@ -17,6 +17,10 @@
 #include "Language.h"
 #include "Type.h"
 #include "typedefs.h"
+#include "ScopeDB.h"
+
+// TODO using std::move with std::shared_ptr in many of these cases seems to be
+// a good idea
 
 namespace AST {
   extern llvm::IRBuilder<> builder;
@@ -48,9 +52,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
 
-      virtual void join_identifiers(Scope*) {}
+      virtual void join_identifiers(size_t scope_id_num) {}
       virtual void verify_types() {}
-      virtual void find_all_decls(Scope*) {}
       virtual void add_to_scope(Scope*) {}
       virtual llvm::Value* generate_code(Scope*) { return nullptr; }
 
@@ -137,11 +140,11 @@ namespace AST {
     friend class Assignment;
 
     public:
-    static std::unique_ptr<Node> parenthesize(NPtrVec&& nodes);
+    static NPtr parenthesize(NPtrVec&& nodes);
 
     size_t precedence() const { return precedence_; }
 
-    virtual void join_identifiers(Scope* scope) = 0;
+    virtual void join_identifiers(size_t scope_id_num) = 0;
     virtual void verify_types() = 0;
     virtual Type interpret_as_type() const = 0;
     // virtual void register_identifiers(DeclPtr) const = 0;
@@ -150,8 +153,6 @@ namespace AST {
     virtual void verify_type_is(Type t);
 
     virtual llvm::Value* generate_code(Scope*) = 0;
-
-    virtual void find_all_decls(Scope*) {}
 
     virtual ~Expression(){}
 
@@ -162,10 +163,10 @@ namespace AST {
     Type expr_type_;
   };
 
-  inline std::unique_ptr<Node> Expression::parenthesize(NPtrVec&& nodes) {
-    auto expr_ptr = static_cast<Expression*>(nodes[1].release());
+  inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
+    auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
     expr_ptr->precedence_ = Language::op_prec.at("MAX");
-    return std::unique_ptr<Node>(expr_ptr);
+    return expr_ptr;
   }
 
 
@@ -188,11 +189,10 @@ namespace AST {
     friend class Statements;
 
     public:
-    static std::unique_ptr<Node> build(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes);
 
-    virtual void join_identifiers(Scope* scope);
+    virtual void join_identifiers(size_t scope_id_num);
     virtual void verify_types();
-    virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
 
     // virtual void register_identifiers(DeclPtr) const;
@@ -206,10 +206,9 @@ namespace AST {
   };
 
 
-  inline std::unique_ptr<Node> Unop::build(NPtrVec&& nodes) {
+  inline NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = new Unop;
-    unop_ptr->expr_ =
-      EPtr(static_cast<Expression*>(nodes[1].release()));
+    unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
 
     unop_ptr->type_ = Language::expression;
     if (nodes[0]->node_type() == Language::reserved_return) {
@@ -220,8 +219,7 @@ namespace AST {
 
     unop_ptr->precedence_ = Language::op_prec.at(unop_ptr->token());
 
-    return std::unique_ptr<Node>(unop_ptr);
-
+    return NPtr(unop_ptr);
   }
 
 
@@ -231,15 +229,14 @@ namespace AST {
     friend class FunctionLiteral;
 
     public:
-    static std::unique_ptr<Node> build_operator(NPtrVec&& nodes, std::string op_symbol);
+    static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
 
-    static std::unique_ptr<Node> build(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_paren_operator(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_bracket_operator(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes);
+    static NPtr build_paren_operator(NPtrVec&& nodes);
+    static NPtr build_bracket_operator(NPtrVec&& nodes);
 
-    virtual void join_identifiers(Scope* scope);
+    virtual void join_identifiers(size_t scope_id_num);
     virtual void verify_types();
-    virtual void find_all_decls(Scope* scope);
     virtual Type interpret_as_type() const;
     // virtual void register_identifiers(DeclPtr) const;
     virtual llvm::Value* generate_code(Scope*);
@@ -256,45 +253,44 @@ namespace AST {
     EPtr rhs_;
   };
 
-  inline std::unique_ptr<Node> Binop::build_paren_operator(NPtrVec&& nodes) {
+  inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
     return Binop::build_operator(std::forward<NPtrVec>(nodes), "()");
   }
 
-  inline std::unique_ptr<Node> Binop::build_bracket_operator(NPtrVec&& nodes) {
+  inline NPtr Binop::build_bracket_operator(NPtrVec&& nodes) {
     return Binop::build_operator(std::forward<NPtrVec>(nodes), "[]");
   }
 
-  inline std::unique_ptr<Node> Binop::build(NPtrVec&& nodes) {
+  inline NPtr Binop::build(NPtrVec&& nodes) {
     return Binop::build_operator(
         std::forward<NPtrVec>(nodes),
         nodes[1]->token());
   }
 
-  inline std::unique_ptr<Node> Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
+  inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
     auto binop_ptr = new Binop;
     binop_ptr->lhs_ =
-      EPtr(static_cast<Expression*>(nodes[0].release()));
+      std::static_pointer_cast<Expression>(nodes[0]);
 
     binop_ptr->rhs_ =
-      EPtr(static_cast<Expression*>(nodes[2].release()));
+      std::static_pointer_cast<Expression>(nodes[2]);
 
     binop_ptr->token_ = op_symbol;
     binop_ptr->type_ = Language::generic_operator;
 
     binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
 
-    return std::unique_ptr<Node>(binop_ptr);
+    return NPtr(binop_ptr);
   }
 
 
 
   class ChainOp : public Expression {
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes);
 
-      virtual void join_identifiers(Scope* scope);
+      virtual void join_identifiers(size_t scope_id_num);
       virtual void verify_types();
-      virtual void find_all_decls(Scope* scope);
       // virtual void register_identifiers(DeclPtr) const;
       virtual Type interpret_as_type() const;
 
@@ -308,36 +304,35 @@ namespace AST {
       std::vector<EPtr> exprs_;
   };
 
-  inline std::unique_ptr<Node> ChainOp::build(NPtrVec&& nodes) {
-    std::unique_ptr<ChainOp> chain_ptr(nullptr);
+  inline NPtr ChainOp::build(NPtrVec&& nodes) {
+    std::shared_ptr<ChainOp> chain_ptr(nullptr);
 
     // Add to a chain so long as the precedence levels match. The only thing at
     // that precedence level should be the operators which can be chained.
     bool use_old_chain_op = nodes[0]->is_chain_op();
     if (use_old_chain_op) {
-     ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
+      ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
 
-     if (lhs_ptr->precedence() != Language::op_prec.at(nodes[1]->token())) {
-       use_old_chain_op = false;
-     }
+      if (lhs_ptr->precedence() != Language::op_prec.at(nodes[1]->token())) {
+        use_old_chain_op = false;
+      }
     }
+
     if (use_old_chain_op) {
-      chain_ptr = std::unique_ptr<ChainOp>(
-          static_cast<ChainOp*>(nodes[0].release()));
+      chain_ptr = std::static_pointer_cast<ChainOp>(nodes[0]);
 
     } else {
-      chain_ptr = std::unique_ptr<ChainOp>(new ChainOp);
-      chain_ptr->exprs_.emplace_back(
-          static_cast<Expression*>(nodes[0].release()));
+      chain_ptr = std::shared_ptr<ChainOp>(new ChainOp);
+      chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence_ = Language::op_prec.at(nodes[1]->token());
     }
 
-    chain_ptr->ops_.push_back(std::move(nodes[1]));
+    chain_ptr->ops_.push_back(nodes[1]);
 
-    chain_ptr->exprs_.emplace_back(
-        static_cast<Expression*>(nodes[2].release()));
+    chain_ptr->exprs_.push_back(
+        std::static_pointer_cast<Expression>(nodes[2]));
 
-    return std::unique_ptr<Node>(chain_ptr.release());
+    return std::static_pointer_cast<Node>(chain_ptr);
   }
 
 
@@ -347,14 +342,14 @@ namespace AST {
     friend class KVPairList;
 
     public:
-    static std::unique_ptr<Node> build(NPtrVec&& nodes, Type t);
-    static std::unique_ptr<Node> build_type_literal(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_string_literal(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_integer_literal(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_real_literal(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_character_literal(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes, Type t);
+    static NPtr build_type_literal(NPtrVec&& nodes);
+    static NPtr build_string_literal(NPtrVec&& nodes);
+    static NPtr build_integer_literal(NPtrVec&& nodes);
+    static NPtr build_real_literal(NPtrVec&& nodes);
+    static NPtr build_character_literal(NPtrVec&& nodes);
 
-    virtual void join_identifiers(Scope*) {}
+    virtual void join_identifiers(size_t scope_id_num) {}
     virtual void verify_types();
     virtual Type interpret_as_type() const;
     // virtual void register_identifiers(DeclPtr) const;
@@ -366,39 +361,39 @@ namespace AST {
     Terminal() {}
   };
 
-  inline std::unique_ptr<Node> Terminal::build(NPtrVec&& nodes, Type t) {
+  inline NPtr Terminal::build(NPtrVec&& nodes, Type t) {
     auto term_ptr = new Terminal;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence_ = Language::op_prec.at("MAX");
 
-    return std::unique_ptr<Node>(term_ptr);
+    return NPtr(term_ptr);
   }
 
-  inline std::unique_ptr<Node> Terminal::build_type_literal(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Type_);
   }
 
-  inline std::unique_ptr<Node> Terminal::build_string_literal(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::String);
   }
 
-  inline std::unique_ptr<Node> Terminal::build_integer_literal(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Int);
   }
 
-  inline std::unique_ptr<Node> Terminal::build_real_literal(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Real);
   }
 
-  inline std::unique_ptr<Node> Terminal::build_character_literal(NPtrVec&& nodes) {
+  inline NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::Char);
   }
 
 
   class Assignment : public Binop {
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
 
@@ -412,20 +407,17 @@ namespace AST {
       Assignment() {}
   };
 
-  inline std::unique_ptr<Node> Assignment::build(NPtrVec&& nodes) {
+  inline NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = new Assignment;
-    assign_ptr->lhs_ =
-      EPtr(static_cast<Expression*>(nodes[0].release()));
-
-    assign_ptr->rhs_ =
-      EPtr(static_cast<Expression*>(nodes[2].release()));
+    assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
+    assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     assign_ptr->token_ = ":";
     assign_ptr->type_ = Language::assign_operator;
 
     assign_ptr->precedence_ = Language::op_prec.at("=");
 
-    return std::unique_ptr<Node>(assign_ptr);
+    return NPtr(assign_ptr);
   }
 
 
@@ -434,15 +426,14 @@ namespace AST {
     friend class Scope;
 
     public:
-    static std::unique_ptr<Node> build(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes);
 
     std::string identifier_string() const { return id_->token(); }
     EPtr declared_type() const { return decl_type_; }
 
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
-    virtual void find_all_decls(Scope* scope);
-    virtual void join_identifiers(Scope* scope);
+    virtual void join_identifiers(size_t scope_id_num);
     // virtual void register_identifiers(DeclPtr) const;
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
@@ -454,41 +445,39 @@ namespace AST {
     virtual ~Declaration(){}
 
 
-    private:
     Declaration() {}
+
+    private:
 
     EPtr id_;
     EPtr decl_type_;
-    std::vector<IdPtr> needed_for_;
   };
 
-  inline std::unique_ptr<Node> Declaration::build(NPtrVec&& nodes) {
-    auto decl_ptr = new Declaration;
-    decl_ptr->id_ =
-      EPtr(static_cast<Expression*>(nodes[0].release()));
+  inline NPtr Declaration::build(NPtrVec&& nodes) {
+    auto decl_ptr = ScopeDB::make_declaration();
 
-    decl_ptr->decl_type_ =
-      EPtr(static_cast<Expression*>(nodes[2].release()));
+    decl_ptr->id_ = std::static_pointer_cast<Expression>(nodes[0]);
+    decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->token_ = ":";
     decl_ptr->type_ = Language::decl_operator;
 
     decl_ptr->precedence_ = Language::op_prec.at(":");
 
-    return std::unique_ptr<Node>(decl_ptr);
+    return std::static_pointer_cast<Node>(decl_ptr);
   }
 
 
   class KVPairList : public Node {
     public:
-      static std::unique_ptr<Node> build_one(NPtrVec&& nodes);
-      static std::unique_ptr<Node> build_more(NPtrVec&& nodes);
-      static std::unique_ptr<Node> build_one_assignment_error(NPtrVec&& nodes);
-      static std::unique_ptr<Node> build_more_assignment_error(NPtrVec&& nodes);
+      static NPtr build_one(NPtrVec&& nodes);
+      static NPtr build_more(NPtrVec&& nodes);
+      static NPtr build_one_assignment_error(NPtrVec&& nodes);
+      static NPtr build_more_assignment_error(NPtrVec&& nodes);
 
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
+      virtual void join_identifiers(size_t scope_id_num);
 
       virtual Type verify_types_with_key(Type key_type);
 
@@ -498,90 +487,82 @@ namespace AST {
       std::vector<std::pair<EPtr, EPtr>> kv_pairs_;
   };
 
-  inline std::unique_ptr<Node> KVPairList::build_one(NPtrVec&& nodes) {
+  inline NPtr KVPairList::build_one(NPtrVec&& nodes) {
     auto pair_list = new KVPairList;
-    Expression* key_ptr;
+    EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
-      key_ptr = new Terminal;
+      key_ptr = EPtr(new Terminal);
       key_ptr->expr_type_ = Type::Bool;
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
 
     } else {
-      key_ptr = static_cast<Expression*>(nodes[0].release());
+      key_ptr = std::static_pointer_cast<Expression>(nodes[0]);
     }
 
-    auto val_ptr =
-      static_cast<Expression*>(nodes[2].release());
+    auto val_ptr = std::static_pointer_cast<Expression>(nodes[2]);
 
-    pair_list->kv_pairs_.emplace_back(
-        std::unique_ptr<Expression>(key_ptr),
-        std::unique_ptr<Expression>(val_ptr));
-    return std::unique_ptr<Node>(pair_list);
+    pair_list->kv_pairs_.emplace_back(key_ptr, val_ptr);
+    return NPtr(pair_list);
   }
 
-  inline std::unique_ptr<Node> KVPairList::build_more(NPtrVec&& nodes) {
-    auto pair_list = static_cast<KVPairList*>(nodes[0].release());
-    Expression* key_ptr;
+  inline NPtr KVPairList::build_more(NPtrVec&& nodes) {
+    auto pair_list = std::static_pointer_cast<KVPairList>(nodes[0]);
+    EPtr key_ptr;
 
     if (nodes[1]->node_type() == Language::reserved_else) {
-      key_ptr = new Terminal;
+      key_ptr = EPtr(new Terminal);
       key_ptr->expr_type_ = Type::Bool;
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
 
     } else {
-      key_ptr = static_cast<Expression*>(nodes[1].release());
+      key_ptr = std::static_pointer_cast<Expression>(nodes[1]);
     }
 
-    auto val_ptr =
-      static_cast<Expression*>(nodes[3].release());
+    auto val_ptr = std::static_pointer_cast<Expression>(nodes[3]);
 
-    pair_list->kv_pairs_.emplace_back(
-        std::unique_ptr<Expression>(key_ptr),
-        std::unique_ptr<Expression>(val_ptr));
+    pair_list->kv_pairs_.emplace_back(key_ptr, val_ptr);
 
-    return std::unique_ptr<Node>(pair_list);
+    return pair_list;
   }
 
-  inline std::unique_ptr<Node> KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
+  inline NPtr KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
     std::cerr << "You probably meant `==` instead of `=`" << std::endl;
 
-    std::unique_ptr<Assignment> assignment_node(
-        static_cast<Assignment*>(nodes[0].release()));
+    auto assignment_node = std::static_pointer_cast<Assignment>(nodes[0]);
 
     // TODO this is mostly the same code as Binop::build_operator
     auto binop_ptr = new Binop;
-    binop_ptr->lhs_ = std::move(assignment_node->lhs_);
-    binop_ptr->rhs_ = std::move(assignment_node->rhs_);
+    binop_ptr->lhs_ = assignment_node->lhs_;
+    binop_ptr->rhs_ = assignment_node->rhs_;
 
     binop_ptr->token_ = "==";
     binop_ptr->type_ = Language::generic_operator;
     binop_ptr->precedence_ = Language::op_prec.at("==");
 
-    nodes[0] = std::unique_ptr<Node>(binop_ptr);
+    nodes[0] = NPtr(binop_ptr);
 
 
     return build_one(std::forward<NPtrVec>(nodes));
   }
 
-  inline std::unique_ptr<Node> KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
+  inline NPtr KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
     std::cerr << "You probably meant `==` instead of `=`" << std::endl;
 
-    std::unique_ptr<Assignment> assignment_node(
-        static_cast<Assignment*>(nodes[1].release()));
+    auto assignment_node = std::static_pointer_cast<Assignment>(nodes[1]);
 
     // TODO this is mostly the same code as Binop::build_operator
     auto binop_ptr = new Binop;
-    binop_ptr->lhs_ = std::move(assignment_node->lhs_);
-    binop_ptr->rhs_ = std::move(assignment_node->rhs_);
+    binop_ptr->lhs_ = assignment_node->lhs_;
+    binop_ptr->rhs_ = assignment_node->rhs_;
 
     binop_ptr->token_ = "==";
     binop_ptr->type_ = Language::generic_operator;
     binop_ptr->precedence_ = Language::op_prec.at("==");
 
-    nodes[0] = std::unique_ptr<Node>(binop_ptr);
+    nodes[0] = NPtr(binop_ptr);
 
     return build_more(std::forward<NPtrVec>(nodes));
   }
@@ -590,11 +571,10 @@ namespace AST {
 
   class Case : public Expression {
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
-      virtual void find_all_decls(Scope*);
+      virtual void join_identifiers(size_t scope_id_num);
       // virtual void register_identifiers(DeclPtr) const;
       virtual void verify_types();
       virtual Type interpret_as_type() const;
@@ -603,15 +583,13 @@ namespace AST {
 
     private:
       Case() {}
-      std::unique_ptr<KVPairList> pairs_;
+      std::shared_ptr<KVPairList> pairs_;
   };
 
-  inline std::unique_ptr<Node> Case::build(NPtrVec&& nodes) {
+  inline NPtr Case::build(NPtrVec&& nodes) {
     auto output = new Case;
-    output->pairs_ =
-      std::unique_ptr<KVPairList>(
-          static_cast<KVPairList*>(nodes[3].release()));
-    return std::unique_ptr<Node>(output);
+    output->pairs_ = std::static_pointer_cast<KVPairList>(nodes[3]);
+    return NPtr(output);
   }
 
 
@@ -620,8 +598,8 @@ namespace AST {
     friend class Assignment;
 
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes) {
-        return std::unique_ptr<Node>(new Identifier(nodes[0]->token()));
+      static NPtr build(NPtrVec&& nodes) {
+        return NPtr(new Identifier(nodes[0]->token()));
       }
 
       virtual bool is_identifier() const { return true; }
@@ -645,13 +623,12 @@ namespace AST {
   class Statements : public Node {
 
     public:
-    static std::unique_ptr<Node> build_one(NPtrVec&& nodes);
-    static std::unique_ptr<Node> build_more(NPtrVec&& nodes);
+    static NPtr build_one(NPtrVec&& nodes);
+    static NPtr build_more(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
+    virtual void join_identifiers(size_t scope_id_num);
     virtual void verify_types();
-    virtual void find_all_decls(Scope* scope);
     virtual void add_to_scope(Scope* scope) {
       for (auto& stmt : statements_) {
         stmt->add_to_scope(scope);
@@ -668,33 +645,31 @@ namespace AST {
     std::vector<NPtr> statements_;
   };
 
-  inline std::unique_ptr<Node> Statements::build_one(NPtrVec&& nodes) {
+  inline NPtr Statements::build_one(NPtrVec&& nodes) {
     auto output = new Statements;
-    output->statements_.emplace_back(nodes[0].release());
+    output->statements_.push_back(std::move(nodes[0]));
 
-    return std::unique_ptr<Node>(output);
+    return NPtr(output);
   }
 
-  inline std::unique_ptr<Node> Statements::build_more(NPtrVec&& nodes) {
-    auto output = static_cast<Statements*>(nodes[0].release());
-    output->statements_.emplace_back(nodes[1].release());
+  inline NPtr Statements::build_more(NPtrVec&& nodes) {
+    auto output = std::static_pointer_cast<Statements>(nodes[0]);
+    output->statements_.push_back(std::move(nodes[1]));
 
-    return std::unique_ptr<Node>(output);
+    return NPtr(output);
   }
 
 
   class FunctionLiteral : public Expression {
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes) {
+      static NPtr build(NPtrVec&& nodes) {
         auto fn_lit = new FunctionLiteral;
 
-        auto stmts_ptr = static_cast<Statements*>(nodes[2].release());
-        fn_lit->statements_ = std::unique_ptr<Statements>(stmts_ptr);
+        fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
 
         // TODO scopes inside these statements should point to fn_scope_.
 
-        auto binop_ptr = static_cast<Binop*>(nodes[0].release());
-
+        auto binop_ptr = std::static_pointer_cast<Binop>(nodes[0]);
         fn_lit->return_type_ = std::move(binop_ptr->rhs_);
 
         // TODO What if the fn_expression is more complicated, like a function
@@ -708,20 +683,17 @@ namespace AST {
           // TODO This assumes a single declaration, not a comma-separated list
           auto decl_ptr = std::static_pointer_cast<Declaration>(binop_ptr->lhs_);
 
-          fn_lit->fn_scope_.inputs_[decl_ptr->identifier_string()] =
-            IdPtr(new Identifier(decl_ptr->identifier_string()));
+          // fn_lit->fn_scope_.inputs_[decl_ptr->identifier_string()] =
+          //   IdPtr(new Identifier(decl_ptr->identifier_string()));
 
-          fn_lit->fn_scope_.decl_registry_[decl_ptr->identifier_string()] =
-            decl_ptr->declared_type();
+          // fn_lit->fn_scope_.decl_registry_[decl_ptr->identifier_string()] =
+          //   decl_ptr->declared_type();
         }
 
-        delete binop_ptr;
-
-        return std::unique_ptr<Node>(fn_lit);
+        return NPtr(fn_lit);
       }
 
-      virtual void find_all_decls(Scope*);
-      virtual void join_identifiers(Scope* scope);
+      virtual void join_identifiers(size_t scope_id_num);
       virtual void verify_types();
       virtual void add_to_scope(Scope* scope) {
         fn_scope_.attach_to_parent(scope);
@@ -733,32 +705,33 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
 
+      virtual ~FunctionLiteral() {}
+
     private:
+      size_t scope_id_;
       Scope fn_scope_;
       EPtr return_type_;
-      std::unique_ptr<Statements> statements_;
+      std::shared_ptr<Statements> statements_;
 
       FunctionLiteral() {}
-      virtual ~FunctionLiteral() {}
   };
 
   
   class While : public Node {
     public:
-      static std::unique_ptr<Node> build(NPtrVec&& nodes) {
+      static NPtr build(NPtrVec&& nodes) {
         auto while_stmt = new While;
-        while_stmt->cond_ = EPtr(static_cast<Expression*>(nodes[1].release()));
-        while_stmt->statements_ = std::unique_ptr<Statements>(
-            static_cast<Statements*>(nodes[3].release()));
-        return std::unique_ptr<Node>(while_stmt);
+        while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+        while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+        return NPtr(while_stmt);
       }
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
+      virtual void join_identifiers(size_t scope_id_num);
  
     private:
       EPtr cond_;
-      std::unique_ptr<Statements> statements_;
+      std::shared_ptr<Statements> statements_;
       Scope body_scope_;
   };
 
