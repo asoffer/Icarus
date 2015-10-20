@@ -150,17 +150,17 @@ namespace AST {
   }
 
   void FunctionLiteral::verify_types() {
-    for (const auto& kv : fn_scope_.decl_registry_) {
-      kv.second->verify_types();
+    for (const auto& kv : inputs_) {
+      kv->verify_types();
     }
     statements_->verify_types();
-
+/*
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
     Type return_type_as_type = return_type_->interpret_as_type();
 
     expr_type_ = Type::Function(
-        fn_scope_.inputs_.begin()->second->type(),
+        inputs_.front()->type(),
         return_type_as_type);
 
     std::set<Type> return_types;
@@ -192,6 +192,7 @@ namespace AST {
         << return_type_as_type.to_string()
         << std::endl;
     }
+    */
   }
 
   void Statements::collect_return_types(std::set<Type>* return_exprs) const {

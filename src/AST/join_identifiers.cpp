@@ -81,6 +81,9 @@ namespace AST {
   }
 
   void FunctionLiteral::join_identifiers(size_t) {
+    for (auto& in : inputs_) {
+      in->join_identifiers(scope_id_);
+    }
     statements_->join_identifiers(scope_id_);
   }
 

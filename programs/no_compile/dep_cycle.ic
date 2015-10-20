@@ -1,0 +1,9 @@
+c : d + e
+a : b
+d : f
+b : c
+e : f
+f : int
+x : foo
+foo : bar
+bar : foo

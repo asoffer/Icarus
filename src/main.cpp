@@ -54,12 +54,12 @@ int main(int argc, char *argv[]) {
     global_statements->join_identifiers(global_scope_id);
 
     ScopeDB::fill_db();
+    ScopeDB::assign_decl_order();
 
-    // ScopeDB::verify_no_shadowing();
-    //global_statements->populate_declaration_dependencies();
-    //ScopeDB::determine_declared_types();
+    ScopeDB::verify_no_shadowing();
+    ScopeDB::determine_declared_types();
 
-//    global_statements->verify_types();
+    global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
 

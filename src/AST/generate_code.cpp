@@ -1,5 +1,5 @@
 #include "AST.h"
-
+/*
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
     // FIXME
@@ -177,5 +177,6 @@ namespace AST {
   llvm::Value* Case::generate_code(Scope* scope) {
     return nullptr;
   }
-
 }  // namespace AST
+
+*/

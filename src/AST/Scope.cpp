@@ -1,5 +1,5 @@
 #include "AST.h"
-
+/*
 namespace AST {
   Scope Scope::Global;
 
@@ -135,3 +135,4 @@ namespace AST {
   }
 
 }  // namespace AST
+*/

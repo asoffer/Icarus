@@ -66,7 +66,7 @@ namespace AST {
     std::stringstream ss;
     ss << this;
     return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): "
-      + token() + " @ " + ss.str() + ">\n";
+      + token() + ">\n";
   }
 
   std::string Declaration::to_string(size_t n) const {
@@ -112,8 +112,8 @@ namespace AST {
 
   std::string FunctionLiteral::to_string(size_t n) const {
     std::string output = tabs(n) + "<FunctionLiteral>\n";
-    for (const auto& kv : fn_scope_.inputs_) {
-      output += kv.second->to_string(n + 1);
+    for (const auto& kv : inputs_) {
+      output += kv->to_string(n + 1);
     }
     return output + tabs(n + 1) + "Body:\n" + statements_->to_string(n + 2);
   }
