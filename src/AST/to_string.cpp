@@ -1,6 +1,6 @@
 #include "AST.h"
 #include "Type.h"
-
+#include <sstream>
 namespace AST {
   std::string tabs(size_t n) {
     // Tabs are two spaces
@@ -63,8 +63,10 @@ namespace AST {
   }
 
   std::string Identifier::to_string(size_t n) const {
+    std::stringstream ss;
+    ss << this;
     return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): "
-      + token() + ">\n";
+      + token() + " @ " + ss.str() + ">\n";
   }
 
   std::string Declaration::to_string(size_t n) const {

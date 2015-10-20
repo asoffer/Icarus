@@ -84,6 +84,7 @@ namespace ScopeDB {
   void fill_db() {
     for (const auto& decl_ptr : decl_registry_) {
       IdPtr decl_id = decl_ptr->declared_identifier();
+      std::cout << decl_id->token() << " -> " << decl_id.get() << std::endl;
       decl_of_[decl_id] = decl_ptr;
 
       // Build up needed_for_ with empty sets
@@ -93,8 +94,10 @@ namespace ScopeDB {
     // For each declared identifier, look through the identifiers which go into
     // it's type declaration. And add an IdPtr for this to each of there
     // needed_for_ sets
+
     for (const auto& decl_ptr : decl_registry_) {
       IdPtr decl_id = decl_ptr->declared_identifier();
+
       EPtr decl_type = decl_ptr->declared_type();
 
       if (decl_type->is_identifier()) {

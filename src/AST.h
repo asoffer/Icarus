@@ -32,12 +32,8 @@ namespace AST {
 
   class Node {
     public:
-      static inline Node eof_node() {
-        return Node(Language::eof, "");
-      }
-      static inline Node newline_node() {
-        return Node(Language::newline, "");
-      }
+      static inline Node eof_node() { return Node(Language::eof, ""); }
+      static inline Node newline_node() { return Node(Language::newline, ""); }
       static inline Node string_literal_node(const std::string& str_lit) { 
         return Node(Language::string_literal, str_lit);
       }
@@ -51,8 +47,8 @@ namespace AST {
       }
 
       virtual std::string to_string(size_t n) const;
-
       virtual void join_identifiers(size_t scope_id_num) {}
+
       virtual void verify_types() {}
       virtual void add_to_scope(Scope*) {}
       virtual llvm::Value* generate_code(Scope*) { return nullptr; }
@@ -144,8 +140,10 @@ namespace AST {
 
     size_t precedence() const { return precedence_; }
 
+    virtual std::string to_string(size_t n) const = 0;
     virtual void join_identifiers(size_t scope_id_num) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
+
     virtual void verify_types() = 0;
     virtual Type interpret_as_type() const = 0;
     virtual Type type() const { return expr_type_; }
@@ -457,10 +455,10 @@ namespace AST {
     IdPtr declared_identifier() const { return id_; }
     EPtr declared_type() const { return decl_type_; }
 
+    virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(size_t scope_id_num);
     virtual void needed_for(IdPtr id_ptr) const;
 
-    virtual std::string to_string(size_t n) const;
     virtual void verify_types();
 
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
@@ -476,7 +474,6 @@ namespace AST {
     Declaration() {}
 
     private:
-
     IdPtr id_;
     EPtr decl_type_;
   };
@@ -484,7 +481,7 @@ namespace AST {
   inline NPtr Declaration::build(NPtrVec&& nodes) {
     auto decl_ptr = ScopeDB::make_declaration();
 
-    decl_ptr->id_ = std::static_pointer_cast<Identifier>(nodes[0]);
+    decl_ptr->id_ = IdPtr(new Identifier(nodes[0]->token()));
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->token_ = ":";

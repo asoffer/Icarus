@@ -34,7 +34,7 @@ namespace AST {
   }
 
   void Declaration::join_identifiers(size_t scope_id_num) {
-    auto id_ = ScopeDB::identifier(scope_id_num, identifier_string());
+    id_ = ScopeDB::identifier(scope_id_num, identifier_string());
 
     if (decl_type_->is_identifier()) {
       auto id_ptr = ScopeDB::identifier(scope_id_num, decl_type_->token());
@@ -43,6 +43,7 @@ namespace AST {
     } else {
       decl_type_->join_identifiers(scope_id_num);
     }
+
   }
 
   void ChainOp::join_identifiers(size_t scope_id_num) {

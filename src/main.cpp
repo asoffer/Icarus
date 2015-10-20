@@ -52,6 +52,7 @@ int main(int argc, char *argv[]) {
 
 
     global_statements->join_identifiers(global_scope_id);
+
     ScopeDB::fill_db();
 
     // ScopeDB::verify_no_shadowing();
