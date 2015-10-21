@@ -2,41 +2,43 @@
 #include "AST.h"
 
 Parser::Parser(const char* filename) : lexer_(filename) {
+  // Start the lookahead with a newline token
   lookahead_.reset(new AST::Node);
   *lookahead_ = AST::Node::newline_node();
 }
 
 NPtr Parser::parse() {
-  while (lexer_) {
-    if (should_shift()) {
-      shift();
-    } else if (!reduce()) {
+  while (lookahead_->node_type() != Language::eof) {
+    if (should_shift() || !reduce()) {
       shift();
     }
-#if 0
+
+#if 1
+    // Clear the screen
+    std::cout << "\033[2J\033[1;1H" << std::endl;
     for (const auto& node_ptr : stack_) {
       std::cout << *node_ptr;
     }
     std::cout << std::endl;
-    std::string s;
-    std::cin >> s;
+    std::cin.ignore(1);
 #endif
+
   }
   
   // Finish up any more reductions that can be made
   while (reduce());
 
-#if 0
-  for (const auto& node_ptr : stack_) {
-    std::cout << *node_ptr;
+  // It is impossible for the stack to be empty because the lookahead_ starts
+  // with newline and we continue until it's equal to EOF. Thus, at least one
+  // token is shifted onto the stack and each stack operation preserves the
+  // non-empty invariant.
+  if (stack_.size() > 1) {
+    std::cerr
+      << "Parser found several nodes at root level. Handling just the first tree."
+      << std::endl;
   }
-  std::cout << std::endl;
-#endif
 
-  // FIXME does it exist? is there only one?
-  NPtr back = std::move(stack_.back());
-  stack_.pop_back();
-  return back;
+ return stack_.back();
 }
 
 bool Parser::should_shift() {
@@ -49,14 +51,16 @@ bool Parser::should_shift() {
   }
 
   // Reduce terminals
-  if (stack_.back()->node_type() == Language::identifier
-      || stack_.back()->node_type() == Language::integer_literal
-      || stack_.back()->node_type() == Language::real_literal
-      || stack_.back()->node_type() == Language::character_literal
-      || stack_.back()->node_type() == Language::string_literal
-      || stack_.back()->node_type() == Language::type_literal
-      || stack_.back()->node_type() == Language::right_paren) {
-    return false;
+  switch (stack_.back()->node_type()) {
+    case Language::identifier:
+    case Language::integer_literal:
+    case Language::real_literal:
+    case Language::character_literal:
+    case Language::string_literal:
+    case Language::type_literal:
+    case Language::right_paren:
+      return false;
+    default:;
   }
 
   // For function calls, shift the parentheses on

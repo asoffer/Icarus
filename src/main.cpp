@@ -17,7 +17,6 @@ int main(int argc, char *argv[]) {
       << "Provide exactly one flag and one argument for the file name."
       << std::endl;
     return 1;
-
   }
 
   // Check if file exists
