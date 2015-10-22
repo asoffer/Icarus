@@ -13,13 +13,12 @@ NPtr Parser::parse() {
       shift();
     }
 
-#if 1
+#if 0
     // Clear the screen
     std::cout << "\033[2J\033[1;1H" << std::endl;
     for (const auto& node_ptr : stack_) {
       std::cout << *node_ptr;
     }
-    std::cout << std::endl;
     std::cin.ignore(1);
 #endif
 

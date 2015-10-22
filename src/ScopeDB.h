@@ -8,28 +8,56 @@
 
 #include "typedefs.h"
 
+// TODO Figure out what you need from this.
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
+
+namespace AST {
+  class FunctionLiteral;
+  extern llvm::IRBuilder<> builder;
+}
+
 namespace ScopeDB {
-  // Entry is the id-number for the parent scope, -1 if no parent exists
-  extern std::vector<int> parent_;
+  class Scope {
+    public:
+      friend void fill_db();
+      friend void assign_decl_order();
+      friend class AST::FunctionLiteral;
 
-  // TODO are these first two necessary?
-  extern std::map<IdPtr, DeclPtr> decl_of_;
+      static void verify_no_shadowing();
+      static void determine_declared_types();
 
-  extern std::vector<DeclPtr> decl_registry_;
+      static Scope* build();
+      static Scope* build_global();
+      static size_t num_scopes();
+      void set_parent(Scope* parent);
+      IdPtr identifier(const std::string& id_string);
+
+
+    private:
+      Scope() : parent_(nullptr), block_(nullptr) {}
+      Scope(const Scope&) = delete;
+      Scope(Scope&&) = delete;
+
+      Scope* parent_;
+      std::map<std::string, IdPtr> ids_;
+      std::vector<DeclPtr> ordered_decls_;
+      llvm::BasicBlock* block_;
+
+      // Important invariant: A pointer only ever points to scopes held in
+      // higehr indices. The global (root) scope must be the last scope.
+      static std::vector<Scope*> registry_;
+  };
 
   // To each IdPtr we associate a set holding IdPtrs for which it is needed
-  extern std::map<IdPtr, std::set<IdPtr>> needs_;
-  extern std::vector<std::map<std::string, IdPtr>> ids_in_scope_;
-  extern std::map<IdPtr, size_t> scope_containing_;
-  extern std::vector<std::vector<DeclPtr>> decl_order_in_scope_;
+  extern std::map<IdPtr, std::set<IdPtr>> dependencies_;
+  extern std::map<IdPtr, Scope*> scope_containing_;
+  extern std::map<IdPtr, DeclPtr> decl_of_;
+  extern std::vector<DeclPtr> decl_registry_;
 
-  extern void set_parent(size_t child_id, size_t parent_id);
-  extern size_t add_scope();
-  extern size_t add_global();
-  extern size_t num_scopes();
-
-  extern IdPtr identifier(size_t scope_id, std::string id_string);
-  extern void verify_no_shadowing();
   extern void determine_declared_types();
   extern DeclPtr make_declaration();
 

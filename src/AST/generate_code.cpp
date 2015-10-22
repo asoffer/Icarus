@@ -1,5 +1,5 @@
 #include "AST.h"
-/*
+
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
     // FIXME
@@ -115,26 +115,64 @@ namespace AST {
           { llvm::Type::getDoubleTy(llvm::getGlobalContext()) },
           false);
 
+
       // TODO: pick a name for this anonymous function
       llvm::Function* fn = llvm::Function::Create(
           fn_type, llvm::Function::InternalLinkage, "__anon_fn", nullptr);
 
-      auto iter = fn_scope_.inputs_.begin();
+      auto iter = inputs_.begin();
       for (auto& arg : fn->args()) {
-        arg.setName(iter->first);
+        arg.setName((*iter)->identifier_string());
         ++iter;
       }
+
 
       // TODO Is this possible, check with LLVM
       if (fn == nullptr) return nullptr;
 
       // Create a new basic block to start insertion into.
-      fn_scope_.block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", fn);
-      builder.SetInsertPoint(fn_scope_.block_);
+      fn_scope_->block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", fn);
+      builder.SetInsertPoint(fn_scope_->block_);
 
-      fn_scope_.generate_stack_variables(fn);
+      // TODO declare the correct type (currently always a real)
+      // TODO verify that args are iterated over in the order they appear.
+      iter = inputs_.begin();
+      for (auto& arg : fn->args()) {
+        (*iter)->declared_identifier()->val_ = AST::builder.CreateAlloca(
+            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+            nullptr,
+            arg.getName());
 
-      statements_->generate_code(&fn_scope_);
+
+        AST::builder.CreateStore(&arg, (*iter)->declared_identifier()->val_);
+        ++iter;
+      }
+
+      // FIXME this is the wrong thing to iterate over because it includes the
+      // inputs
+      for (const auto& decl_ptr : fn_scope_->ordered_decls_) {
+        auto id_str = decl_ptr->identifier_string();
+
+        // There are so few inputs in the general case that this is likely more
+        // efficient than a map
+        // TODO verify this.
+        bool found_in_inputs = false;
+        for (const auto& input_decl : inputs_) {
+          if (id_str == input_decl->identifier_string()){
+            found_in_inputs = true;
+            break;
+          }
+        }
+
+        if (found_in_inputs) continue;
+
+        decl_ptr->declared_identifier()->val_ = AST::builder.CreateAlloca(
+            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+            nullptr,
+            id_str.c_str());
+      }
+
+      statements_->generate_code(fn_scope_);
 
       std::cout
         << "========================================"
@@ -158,7 +196,7 @@ namespace AST {
       if (val == nullptr) return nullptr;
 
       // Look up the name.
-      llvm::Value* var = scope->get_identifier(lhs_->token())->val_;
+      llvm::Value* var = scope->identifier(lhs_->token())->val_;
       if (var == nullptr) {
         return nullptr;
       }
@@ -178,5 +216,3 @@ namespace AST {
     return nullptr;
   }
 }  // namespace AST
-
-*/

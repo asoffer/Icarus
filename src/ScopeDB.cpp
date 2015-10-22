@@ -6,97 +6,80 @@
 #include "AST.h"
 
 namespace ScopeDB {
-
-  std::vector<int> parent_;
-  std::map<IdPtr, DeclPtr> decl_of_;
-  std::map<IdPtr, std::set<IdPtr>> needs_;
-  std::vector<std::map<std::string, IdPtr>> ids_in_scope_;
-  std::vector<DeclPtr> decl_registry_;
-  std::vector<std::vector<DeclPtr>> decl_order_in_scope_;
-  std::map<IdPtr, size_t> scope_containing_;
-
-  size_t add_scope() {
-    parent_.push_back(-1);
-    ids_in_scope_.push_back({});
-    return parent_.size() - 1;
+  Scope* Scope::build() {
+    registry_.push_back(new Scope);
+    return registry_.back();
   }
 
-  size_t num_scopes() {
-    return parent_.size();
-  }
-
-  void set_parent(size_t child_id, size_t parent_id) {
-    // TODO Is it possible to have so many scopes that this cast becomes
-    // problematic?
-    parent_[child_id] = static_cast<int>(parent_id);
-  }
-
-  size_t add_global() {
-    // TODO Is it possible to have so many scopes that this cast becomes
-    // problematic?
-    size_t parent_size = parent_.size();
-    for (size_t i = 0; i < parent_size; ++i) {
-      if (parent_[i] == -1) {
-        parent_[i] = static_cast<int>(parent_size);
-      }
+  Scope* Scope::build_global() {
+    auto scope_ptr = new Scope;
+    for (auto& ptr : registry_) {
+      ptr->parent_ = scope_ptr;
     }
-    return add_scope();
+
+    registry_.push_back(scope_ptr);
+    return registry_.back();
   }
 
-  IdPtr identifier(size_t scope_id, std::string id_string) {
-    auto iter = ids_in_scope_[scope_id].find(id_string);
-    if (iter != ids_in_scope_[scope_id].end()) {
-      return ids_in_scope_[scope_id][id_string];
+  size_t Scope::num_scopes() {
+    return registry_.size();
+  }
+
+  void Scope::set_parent(Scope* parent) {
+    parent_ = parent;
+  }
+
+  IdPtr Scope::identifier(const std::string& id_string) {
+    auto iter = ids_.find(id_string);
+    if (iter != ids_.end()) {
+      return iter->second;
     }
 
     // No such identifier has been seen yet, create a new IdPtr and return it.
+    IdPtr id_ptr = ids_[id_string] = IdPtr(new AST::Identifier(id_string));
+    ids_[id_string] = id_ptr;
 
-    IdPtr id_ptr = ids_in_scope_[scope_id][id_string] =
-      IdPtr(new AST::Identifier(id_string));
-    ids_in_scope_[scope_id][id_string] = id_ptr;
-
-    scope_containing_[id_ptr] = scope_id;
+    scope_containing_[id_ptr] = this;
 
     return id_ptr;
   }
 
-  void verify_no_shadowing() {
-    for (size_t i = 0; i < parent_.size(); ++i) {
-      if (parent_[i] == -1) continue;
+  void Scope::determine_declared_types() {
+    for (auto scope_ptr : registry_) {
+      for (auto decl_ptr : scope_ptr->ordered_decls_) {
+        decl_ptr->declared_identifier()->expr_type_ =
+          decl_ptr->declared_type()->interpret_as_type();
+      }
+    }
+  }
 
-      // If you get here, parent_[i] is non-negative, so this cast is safe.
-      size_t check_against = static_cast<size_t>(i);
+  std::map<IdPtr, DeclPtr> decl_of_;
+  std::map<IdPtr, std::set<IdPtr>> dependencies_;
+  std::vector<DeclPtr> decl_registry_;
+  std::map<IdPtr, Scope*> scope_containing_;
+
+  std::vector<Scope*> Scope::registry_;
+
+  void Scope::verify_no_shadowing() {
+    for (auto scope_ptr : registry_) {
+      if (scope_ptr->parent_ == nullptr) continue;
+
+      Scope* check_against = scope_ptr;
       do {
-        // If you get here you either just entered the loop, or you came from
-        // the while condition. In both cases we have checked that
-        // parent_[check_against] != -1.
-        check_against = static_cast<size_t>(parent_[check_against]);
+        check_against = check_against->parent_;
 
-        for (const auto id : ids_in_scope_[i]) {
-          auto found_iter = ids_in_scope_[check_against].find(id.first);
-          if (found_iter != ids_in_scope_[check_against].end()) {
+        for (const auto id : scope_ptr->ids_) {
+          auto found_iter = check_against->ids_.find(id.first);
+          if (found_iter != check_against->ids_.end()) {
             std::cerr
               << "Identifier shadowed: `" << id.first << "`"
               << std::endl;
           }
         }
-      } while(parent_[check_against] != -1);
+      } while (check_against->parent_ != nullptr);
     }
   }
 
-  void determine_declared_types() {
-    size_t num_of_scopes = num_scopes();
-    for (size_t i = 0; i < num_of_scopes; ++i) {
-      size_t num_decls = decl_order_in_scope_[i].size();
-      for (size_t j = 0; j < num_decls; ++j) {
-        decl_order_in_scope_[i][j]->declared_identifier()->expr_type_ =
-          decl_order_in_scope_[i][j]->declared_type()->interpret_as_type();
-
-        std::cout << decl_order_in_scope_[i][j]->identifier_string() << std::endl;
-      }
-      std::cout << "-----" << std::endl;
-    }
-  }
 
   DeclPtr make_declaration() {
     DeclPtr d(new AST::Declaration);
@@ -105,20 +88,21 @@ namespace ScopeDB {
   }
 
   void fill_db() {
-    decl_order_in_scope_.clear();
-    decl_order_in_scope_.resize(num_scopes());
+    for (auto scope_ptr : Scope::registry_) {
+      scope_ptr->ordered_decls_.clear();
+    }
 
     for (const auto& decl_ptr : decl_registry_) {
       IdPtr decl_id = decl_ptr->declared_identifier();
       decl_of_[decl_id] = decl_ptr;
 
-      // Build up needs_ starting with empty sets
-      needs_[decl_id] = std::set<IdPtr>();
+      // Build up dependencies_ starting with empty sets
+      dependencies_[decl_id] = std::set<IdPtr>();
     }
 
     // For each declared identifier, look through the identifiers which go into
     // it's type declaration. And add an IdPtr for this to each of there
-    // needs_ sets
+    // dependencies_ sets
 
     for (const auto& decl_ptr : decl_registry_) {
       IdPtr decl_id = decl_ptr->declared_identifier();
@@ -126,7 +110,7 @@ namespace ScopeDB {
       EPtr decl_type = decl_ptr->declared_type();
 
       if (decl_type->is_identifier()) {
-        needs_[decl_id]
+        dependencies_[decl_id]
           .insert(std::static_pointer_cast<AST::Identifier>(decl_type));
 
       } else {
@@ -136,17 +120,18 @@ namespace ScopeDB {
   }
 
   void assign_decl_order() {
+    // Counts the number of times a given IdPtr is an immediate dependency of
+    // something else. So a value of zero means that nothing depends on it.
     std::map<IdPtr, size_t> num_immediate_dep_refs;
 
     // Char just used as a mask
     std::map<IdPtr, char> already_seen;
 
-
     std::stack<IdPtr> id_stack;
 
     // Push back all the sources
-    for (const auto& kv : needs_) {
-      // Ensure each identifier is present
+    for (const auto& kv : dependencies_) {
+      // Ensure each identifier is present in the map
       num_immediate_dep_refs[kv.first];
       already_seen[kv.first] = 0x00;
 
@@ -168,6 +153,7 @@ namespace ScopeDB {
     size_t num_seen = 0;
 
 
+    // Preallocate a vector of the right size
     std::vector<IdPtr> topo_order(already_seen.size(), nullptr);
 
     while (!id_stack.empty()) {
@@ -187,7 +173,7 @@ namespace ScopeDB {
       }
 
       already_seen[id_ptr] = 0x01;
-      for (const auto& dep : needs_[id_ptr]) {
+      for (const auto& dep : dependencies_[id_ptr]) {
         if ((already_seen[dep] & 2) == 2) continue;
 
         if ((already_seen[dep] & 1) == 1) {
@@ -207,7 +193,7 @@ namespace ScopeDB {
     }
 
     for (const auto& id_ptr : topo_order) {
-      decl_order_in_scope_[scope_containing_[id_ptr]]
+      scope_containing_[id_ptr]->ordered_decls_
         .push_back(decl_of_[id_ptr]);
     }
 

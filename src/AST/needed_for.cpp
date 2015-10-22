@@ -3,7 +3,7 @@
 namespace AST {
   void Unop::needed_for(IdPtr id_ptr) const {
     if (expr_->is_identifier()) {
-      ScopeDB::needs_[id_ptr]
+      ScopeDB::dependencies_[id_ptr]
         .insert(std::static_pointer_cast<Identifier>(expr_));
 
     } else {
@@ -13,7 +13,7 @@ namespace AST {
 
   void Binop::needed_for(IdPtr id_ptr) const {
     if (lhs_->is_identifier()) {
-        ScopeDB::needs_[id_ptr]
+        ScopeDB::dependencies_[id_ptr]
           .insert(std::static_pointer_cast<Identifier>(lhs_));
 
     } else {
@@ -21,7 +21,7 @@ namespace AST {
     }
 
     if (rhs_->is_identifier()) {
-        ScopeDB::needs_[id_ptr]
+        ScopeDB::dependencies_[id_ptr]
           .insert(std::static_pointer_cast<Identifier>(rhs_));
 
     } else {
@@ -32,7 +32,7 @@ namespace AST {
   void ChainOp::needed_for(IdPtr id_ptr) const {
     for (auto& expr : exprs_) {
       if (expr->is_identifier()) {
-        ScopeDB::needs_[id_ptr]
+        ScopeDB::dependencies_[id_ptr]
           .insert(std::static_pointer_cast<Identifier>(expr));
 
       } else {

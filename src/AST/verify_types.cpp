@@ -154,7 +154,7 @@ namespace AST {
       kv->verify_types();
     }
     statements_->verify_types();
-/*
+
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
     Type return_type_as_type = return_type_->interpret_as_type();
@@ -192,7 +192,6 @@ namespace AST {
         << return_type_as_type.to_string()
         << std::endl;
     }
-    */
   }
 
   void Statements::collect_return_types(std::set<Type>* return_exprs) const {

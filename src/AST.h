@@ -20,10 +20,9 @@
 #include "ScopeDB.h"
 
 namespace AST {
+  using ::ScopeDB::Scope;
   extern llvm::IRBuilder<> builder;
 
-
-  class Scope;
   class Declaration;
   class Statements;
 
@@ -44,11 +43,10 @@ namespace AST {
       }
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(size_t scope_id_num) {}
+      virtual void join_identifiers(Scope* scope) {}
 
       virtual void verify_types() {}
-      //virtual void add_to_scope(Scope*) {}
-      //virtual llvm::Value* generate_code(Scope*) { return nullptr; }
+      virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
 
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
@@ -79,52 +77,8 @@ namespace AST {
   };
 
 
-/*
-  class Scope {
-    friend class FunctionLiteral;
-
-    public:
-    static Scope Global;
-    Scope() : block_(nullptr), parent_(nullptr) {}
-
-    static void init_global_scope(Statements* stmts);
-
-    void determine_declared_types();
-    void verify_no_shadowing() const;
-
-
-    void register_input(Declaration*);
-    void register_local(Declaration*);
-    //void attach_to_parent(Scope* parent_scope);
-
-    IdPtr get_identifier(const std::string& token_string);
-
-    //void generate_stack_variables(llvm::Function* fn);
-
-    private:
-    // TODO should this be here? Maybe move it to FunctionLiteral?
-    llvm::BasicBlock* block_;
-
-    // A lookup for all of the inputs to this scope. If this is not a
-    // function, inputs_ will be empty.
-    std::map<std::string, IdPtr> inputs_;
-
-    // A lookup for all the local variables. Every local variable will also be
-    // declared in this scope and therefore have an entry in decl_registry_ as
-    // well.
-    std::map<std::string, IdPtr> locals_;
-
-    // A registry of all declarations made in this scope and not in any deeper
-    // scope
-    std::map<std::string, EPtr> decl_registry_;
-
-    //Scope* parent_;
-    std::vector<Scope*> children_;
-  };
-
-*/
-
   class Expression : public Node {
+    friend void ::ScopeDB::Scope::determine_declared_types();
     friend class KVPairList;
     friend class Unop;
     friend class Binop;
@@ -139,7 +93,7 @@ namespace AST {
     size_t precedence() const { return precedence_; }
 
     virtual std::string to_string(size_t n) const = 0;
-    virtual void join_identifiers(size_t scope_id_num) = 0;
+    virtual void join_identifiers(Scope* scope) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
 
     virtual void verify_types() = 0;
@@ -148,7 +102,7 @@ namespace AST {
 
     virtual void verify_type_is(Type t);
 
-    //virtual llvm::Value* generate_code(Scope*) = 0;
+    virtual llvm::Value* generate_code(Scope* scope) = 0;
 
     virtual ~Expression(){}
 
@@ -187,7 +141,7 @@ namespace AST {
     public:
     static NPtr build(NPtrVec&& nodes);
 
-    virtual void join_identifiers(size_t scope_id_num);
+    virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
 
     virtual void verify_types();
@@ -195,7 +149,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const;
 
-    //virtual llvm::Value* generate_code(Scope*);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     private:
     EPtr expr_;
@@ -231,11 +185,11 @@ namespace AST {
     static NPtr build_paren_operator(NPtrVec&& nodes);
     static NPtr build_bracket_operator(NPtrVec&& nodes);
 
-    virtual void join_identifiers(size_t scope_id_num);
+    virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
     virtual Type interpret_as_type() const;
-    //virtual llvm::Value* generate_code(Scope*);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     virtual std::string to_string(size_t n) const;
     virtual bool is_binop() const { return true; }
@@ -285,12 +239,12 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      virtual void join_identifiers(size_t scope_id_num);
+      virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
-      //virtual llvm::Value* generate_code(Scope*);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual std::string to_string(size_t n) const;
       virtual bool is_chain_op() const { return true; }
@@ -345,11 +299,11 @@ namespace AST {
     static NPtr build_real_literal(NPtrVec&& nodes);
     static NPtr build_character_literal(NPtrVec&& nodes);
 
-    virtual void join_identifiers(size_t scope_id_num) {}
+    virtual void join_identifiers(Scope* scope) {}
     virtual void needed_for(IdPtr id_ptr) const {};
     virtual void verify_types();
     virtual Type interpret_as_type() const;
-    //virtual llvm::Value* generate_code(Scope*);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     virtual std::string to_string(size_t n) const;
 
@@ -395,7 +349,7 @@ namespace AST {
 
       virtual void verify_types();
 
-      //virtual llvm::Value* generate_code(Scope*);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual ~Assignment(){}
 
@@ -418,7 +372,6 @@ namespace AST {
 
 
   class Identifier : public Terminal {
-    friend class Scope;
     friend class Assignment;
 
     public:
@@ -430,7 +383,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
 
       virtual void verify_types();
-      //virtual llvm::Value* generate_code(Scope*);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       Identifier(const std::string& token_string) : val_(nullptr) {
         token_ = token_string;
@@ -438,13 +391,11 @@ namespace AST {
         precedence_ = Language::op_prec.at("MAX");
       }
 
-    private:
       llvm::AllocaInst* val_;
   };
 
 
   class Declaration : public Expression {
-    friend class Scope;
     friend void ScopeDB::determine_declared_types();
 
     public:
@@ -455,7 +406,7 @@ namespace AST {
     EPtr declared_type() const { return decl_type_; }
 
     virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(size_t scope_id_num);
+    virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
 
     virtual void verify_types();
@@ -463,7 +414,7 @@ namespace AST {
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
 
-    //virtual llvm::Value* generate_code(Scope*);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     virtual bool is_declaration() const { return true; }
 
@@ -501,7 +452,7 @@ namespace AST {
 
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(size_t scope_id_num);
+      virtual void join_identifiers(Scope* scope);
 
       virtual Type verify_types_with_key(Type key_type);
 
@@ -597,14 +548,14 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      virtual void join_identifiers(size_t scope_id_num);
+      virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
 
       virtual std::string to_string(size_t n) const;
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
-      //virtual llvm::Value* generate_code(Scope*);
+      virtual llvm::Value* generate_code(Scope* scope);
 
     private:
       Case() {}
@@ -627,16 +578,10 @@ namespace AST {
     static NPtr build_more(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(size_t scope_id_num);
+    virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
-    // virtual void add_to_scope(Scope* scope) {
-    //   for (auto& stmt : statements_) {
-    //     stmt->add_to_scope(scope);
-    //   }
-    // }
-
     void collect_return_types(std::set<Type>* return_exprs) const;
-    //llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     inline size_t size() { return statements_.size(); }
 
@@ -689,25 +634,27 @@ namespace AST {
         return NPtr(fn_lit);
       }
 
-      virtual void join_identifiers(size_t scope_id_num);
+      virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
 
       virtual void verify_types();
       virtual Type interpret_as_type() const;
 
-      //virtual llvm::Value* generate_code(Scope*);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual std::string to_string(size_t n) const;
 
       virtual ~FunctionLiteral() {}
 
     private:
-      size_t scope_id_;
+      Scope* fn_scope_;
       EPtr return_type_;
+
       std::vector<DeclPtr> inputs_;
+
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() : scope_id_(ScopeDB::add_scope()) {}
+      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()) {}
   };
 
   
@@ -721,7 +668,7 @@ namespace AST {
       }
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(size_t scope_id_num);
+      virtual void join_identifiers(Scope* scope);
  
     private:
       EPtr cond_;

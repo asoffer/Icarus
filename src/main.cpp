@@ -47,22 +47,22 @@ int main(int argc, char *argv[]) {
     auto global_statements =
         std::static_pointer_cast<AST::Statements>(parser.parse());
 
-    size_t global_scope_id = ScopeDB::add_global();
+    ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
 
 
-    global_statements->join_identifiers(global_scope_id);
+    global_statements->join_identifiers(global_scope);
 
     ScopeDB::fill_db();
     ScopeDB::assign_decl_order();
 
-    ScopeDB::verify_no_shadowing();
-    ScopeDB::determine_declared_types();
+    ScopeDB::Scope::verify_no_shadowing();
+    ScopeDB::Scope::determine_declared_types();
 
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
 
-    //global_statements->generate_code(&AST::Scope::Global);
+    global_statements->generate_code(global_scope);
     std::cout << "-------------------- CLEANUP --------------------" << std::endl;
 
   } else {
