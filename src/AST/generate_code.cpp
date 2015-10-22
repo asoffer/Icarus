@@ -118,7 +118,7 @@ namespace AST {
 
       // TODO: pick a name for this anonymous function
       llvm::Function* fn = llvm::Function::Create(
-          fn_type, llvm::Function::InternalLinkage, "__anon_fn", nullptr);
+          fn_type, llvm::Function::InternalLinkage, std::string("__anon_fn") + std::to_string(function_counter++), nullptr);
 
       auto iter = inputs_.begin();
       for (auto& arg : fn->args()) {

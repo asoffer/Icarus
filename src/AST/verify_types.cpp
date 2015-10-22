@@ -212,8 +212,8 @@ namespace AST {
     Binop::verify_types();
     expr_type_ = Type::TypeError;
 
-    if (lhs_->expr_type_ == Type::TypeError) return;
-    if (rhs_->expr_type_ == Type::TypeError) return;
+    if (lhs_->expr_type_ == Type::TypeError ||
+        rhs_->expr_type_ == Type::TypeError) return;
 
     if (lhs_->expr_type_ != rhs_->expr_type_) {
       std::cerr
@@ -259,4 +259,9 @@ namespace AST {
     }
   }
 
+
+  void While::verify_types() {
+    cond_->verify_type_is(Type::Bool);
+    statements_->verify_types();
+  }
 }  // namespace AST

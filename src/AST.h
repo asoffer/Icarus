@@ -22,6 +22,7 @@
 namespace AST {
   using ::ScopeDB::Scope;
   extern llvm::IRBuilder<> builder;
+  extern size_t function_counter;
 
   class Declaration;
   class Statements;

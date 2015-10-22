@@ -173,8 +173,6 @@ namespace Language {
     Rule(fn_assignment,
         { fn_declaration, assign_operator, fn_literal },
         AST::Assignment::build),
-
-
     /* End assignment */
 
     
@@ -249,10 +247,6 @@ namespace Language {
         { return_expression, newline },
         AST::Statements::build_one),
 
-//    Rule(statements,
-//        { scope, newline },
-//        AST::Statements::build_one),
-
     Rule(statements,
         { statements, expression, newline },
         AST::Statements::build_more),
@@ -280,10 +274,6 @@ namespace Language {
     Rule(statements,
         { statements, return_expression, newline },
         AST::Statements::build_more),
-
-//    Rule(statements,
-//        { statements, scope, newline },
-//        AST::Statements::build_more),
 
     Rule(statements,
         { newline, statements },
@@ -335,17 +325,13 @@ namespace Language {
     Rule(while_statement,
         { reserved_while, expression, left_brace, statements, right_brace },
         AST::While::build),
-
     /* End while loop */
+
 
     /* Begin miscellaneous */
     Rule(newline,
         { newline, newline },
         drop_all_but<0>),
-
-//    Rule(scope,
-//        { left_brace, statements, right_brace },
-//        AST::AnonymousScope::build),
     /* End miscellaneous */ 
   };
 }  // namespace Language
