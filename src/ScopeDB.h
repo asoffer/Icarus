@@ -37,6 +37,7 @@ namespace ScopeDB {
       static size_t num_scopes();
 
       void set_parent(Scope* parent);
+      Scope* parent() { return parent_; }
       IdPtr identifier(const std::string& id_string);
       void allocate();
 
@@ -46,7 +47,6 @@ namespace ScopeDB {
 
     private:
       Scope() : parent_(nullptr), entry_block_(nullptr) {
-        std::cout << "***" << global_function << std::endl;
         entry_block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", global_function);
       }
 

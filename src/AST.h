@@ -46,8 +46,7 @@ namespace AST {
       virtual void join_identifiers(Scope* scope) {}
       virtual void verify_types() {}
 
-      virtual llvm::Value* generate_code(Scope* scope,
-          llvm::IRBuilder<>& builder) { return nullptr; }
+      virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
 
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
@@ -103,8 +102,7 @@ namespace AST {
     virtual Type type() const { return expr_type_; }
 
 
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder) = 0;
+    virtual llvm::Value* generate_code(Scope* scope) = 0;
 
     virtual ~Expression(){}
 
@@ -151,8 +149,7 @@ namespace AST {
     virtual Type interpret_as_type() const;
 
 
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     private:
     EPtr expr_;
@@ -194,8 +191,7 @@ namespace AST {
     virtual void verify_types();
 
     virtual Type interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     virtual bool is_binop() const { return true; }
 
@@ -251,8 +247,7 @@ namespace AST {
 
       virtual Type interpret_as_type() const;
 
-      virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual bool is_chain_op() const { return true; }
 
@@ -312,8 +307,7 @@ namespace AST {
     virtual void verify_types();
 
     virtual Type interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     protected:
     Terminal() {}
@@ -356,8 +350,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void verify_types();
 
-      virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual ~Assignment(){}
 
@@ -391,8 +384,7 @@ namespace AST {
       virtual void verify_types();
 
       virtual bool is_identifier() const { return true; }
-      virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       Identifier(const std::string& token_string) : alloca_(nullptr) {
         token_ = token_string;
@@ -422,8 +414,7 @@ namespace AST {
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
 
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     virtual bool is_declaration() const { return true; }
 
@@ -563,8 +554,7 @@ namespace AST {
       virtual void verify_types();
 
       virtual Type interpret_as_type() const;
-      virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+      virtual llvm::Value* generate_code(Scope* scope);
 
     private:
       Case() {}
@@ -591,8 +581,7 @@ namespace AST {
     virtual void verify_types();
 
     void collect_return_types(std::set<Type>* return_exprs) const;
-    virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+    virtual llvm::Value* generate_code(Scope* scope);
 
     inline size_t size() { return statements_.size(); }
 
@@ -652,8 +641,7 @@ namespace AST {
 
       virtual Type interpret_as_type() const;
 
-      virtual llvm::Value* generate_code(Scope* scope,
-        llvm::IRBuilder<>& builder);
+      virtual llvm::Value* generate_code(Scope* scope);
 
       virtual ~FunctionLiteral() {}
 

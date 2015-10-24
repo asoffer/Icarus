@@ -1,15 +1,14 @@
 #include "AST.h"
 
 extern llvm::Module* global_module;
+extern llvm::IRBuilder<> builder;
 
 namespace AST {
-  llvm::Value* Identifier::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
-
-    // TODO alloc names not auto-avoiding collisions
+  llvm::Value* Identifier::generate_code(Scope* scope) {
     return builder.CreateLoad(alloca_, token());
   }
 
-  llvm::Value* Terminal::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* Terminal::generate_code(Scope* scope) {
     // TODO Do I want to use string-to-X functions, or should I roll my own?
     //
     // The benefits are clear, but this ties me to using the same representation
@@ -54,19 +53,19 @@ namespace AST {
     }
   }
 
-  llvm::Value* Unop::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
-//    llvm::Value* val = expr_->generate_code(scope, builder);
-//
-//    if (is_return()) {
-//      builder.CreateRet(val);
-//    }
-//    return val;
+  llvm::Value* Unop::generate_code(Scope* scope) {
+    llvm::Value* val = expr_->generate_code(scope);
+
+    if (is_return()) {
+      builder.CreateRet(val);
+    }
+
     return nullptr;
   }
 
-  llvm::Value* Binop::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
-    llvm::Value* lhs_val = lhs_->generate_code(scope, builder);
-    llvm::Value* rhs_val = rhs_->generate_code(scope, builder);
+  llvm::Value* Binop::generate_code(Scope* scope) {
+    llvm::Value* lhs_val = lhs_->generate_code(scope);
+    llvm::Value* rhs_val = rhs_->generate_code(scope);
 
     if (lhs_val == nullptr || rhs_val == nullptr) {
       return nullptr;
@@ -97,30 +96,49 @@ namespace AST {
   }
 
 
-  llvm::Value* Statements::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* Statements::generate_code(Scope* scope) {
     for (auto& stmt : statements_) {
       // We pre-allocate declarations at the beginning of each block, so we
       // don't need to do that here.
       if (stmt->is_declaration()) continue;
 
-      stmt->generate_code(scope, builder);
+      stmt->generate_code(scope);
     }
     return nullptr;
   }
 
-  llvm::Value* ChainOp::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* ChainOp::generate_code(Scope* scope) {
     return nullptr;
   }
 
-  llvm::Value* FunctionLiteral::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
-    return nullptr;
+  llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
+    builder.SetInsertPoint(fn_scope_->entry());
+
+    llvm::FunctionType* fn_type =
+      llvm::FunctionType::get(
+          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+          llvm::Type::getDoubleTy(llvm::getGlobalContext()), false);
+
+    llvm::Function* fn = llvm::Function::Create(fn_type,
+        llvm::Function::ExternalLinkage, "__global_function", nullptr);
+
+    fn_scope_->entry()->removeFromParent();
+    fn_scope_->entry()->insertInto(fn);
+    fn_scope_->allocate();
+
+    statements_->generate_code(fn_scope_);
+
+    fn->dump();
+
+    builder.SetInsertPoint(scope->entry());
+    return fn;
   }
 
-  llvm::Value* Assignment::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* Assignment::generate_code(Scope* scope) {
     llvm::Value* var;
     llvm::Value* val;
 
-    val = rhs_->generate_code(scope, builder);
+    val = rhs_->generate_code(scope);
     if (val == nullptr) return nullptr;
 
     if (lhs_->is_identifier()) {
@@ -133,7 +151,7 @@ namespace AST {
       //   x : int
       //   y : &x
       //   @y = 3  // <--- HERE
-      var = lhs_->generate_code(scope, builder);
+      var = lhs_->generate_code(scope);
     }
     if (var == nullptr) return nullptr;
 
@@ -142,11 +160,11 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* Declaration::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* Declaration::generate_code(Scope* scope) {
     return nullptr;
   }
 
-  llvm::Value* Case::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+  llvm::Value* Case::generate_code(Scope* scope) {
     return nullptr;
   }
 }  // namespace AST

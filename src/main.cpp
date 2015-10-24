@@ -8,6 +8,7 @@
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
+extern llvm::IRBuilder<> builder;
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
@@ -41,13 +42,13 @@ int main(int argc, char *argv[]) {
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
-    llvm::FunctionType* void_to_void =
+    llvm::FunctionType* int_to_int =
       llvm::FunctionType::get(
           llvm::Type::getInt32Ty(llvm::getGlobalContext()),
           llvm::Type::getInt32Ty(llvm::getGlobalContext()), false);
 
-    global_function = llvm::Function::Create(void_to_void,
-        llvm::Function::InternalLinkage, "__global_function", nullptr);
+    global_function = llvm::Function::Create(int_to_int,
+        llvm::Function::ExternalLinkage, "__global_function", nullptr);
 
 
 
@@ -72,12 +73,11 @@ int main(int argc, char *argv[]) {
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
-    llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
-    global_builder.SetInsertPoint(global_scope->entry());
+    builder.SetInsertPoint(global_scope->entry());
 
     global_scope->allocate();
 
-    global_statements->generate_code(global_scope, global_builder);
+    global_statements->generate_code(global_scope);
 
     global_module->dump();
 global_scope->entry()->dump();

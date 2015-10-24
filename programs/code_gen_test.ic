@@ -1,6 +1,10 @@
 r : real
 s : real
 
+(x: real) -> real {
+  return x * x
+}
+
 r = 3.0
 s = 2.1
 r = r + s + r * s
