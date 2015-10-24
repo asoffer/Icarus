@@ -1,12 +1,15 @@
 #include "AST.h"
 
+extern llvm::Module* global_module;
+
 namespace AST {
-  llvm::Value* Identifier::generate_code(Scope* scope) {
-    // FIXME
-    return builder.CreateLoad(val_, token().c_str());
+  llvm::Value* Identifier::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+
+    // TODO alloc names not auto-avoiding collisions
+    return builder.CreateLoad(alloca_, token());
   }
 
-  llvm::Value* Terminal::generate_code(Scope* scope) {
+  llvm::Value* Terminal::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
     // TODO Do I want to use string-to-X functions, or should I roll my own?
     //
     // The benefits are clear, but this ties me to using the same representation
@@ -29,7 +32,7 @@ namespace AST {
       // An int is a 64-bit signed integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(64, std::stoul(token()), true));
- 
+
     } else if (expr_type_ == Type::Real) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
           llvm::APFloat(std::stod(token())));
@@ -51,18 +54,19 @@ namespace AST {
     }
   }
 
-  llvm::Value* Unop::generate_code(Scope* scope) {
-    llvm::Value* val = expr_->generate_code(scope);
-
-    if (is_return()) {
-      builder.CreateRet(val);
-    }
-    return val;
+  llvm::Value* Unop::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+//    llvm::Value* val = expr_->generate_code(scope, builder);
+//
+//    if (is_return()) {
+//      builder.CreateRet(val);
+//    }
+//    return val;
+    return nullptr;
   }
 
-  llvm::Value* Binop::generate_code(Scope* scope) {
-    llvm::Value* lhs_val = lhs_->generate_code(scope);
-    llvm::Value* rhs_val = rhs_->generate_code(scope);
+  llvm::Value* Binop::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+    llvm::Value* lhs_val = lhs_->generate_code(scope, builder);
+    llvm::Value* rhs_val = rhs_->generate_code(scope, builder);
 
     if (lhs_val == nullptr || rhs_val == nullptr) {
       return nullptr;
@@ -77,7 +81,7 @@ namespace AST {
     } else if (expr_type_ == Type::Real) {
       if (token() == "+") {
         return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
-        
+
       } else if (token() == "-") {
         return builder.CreateFSub(lhs_val, rhs_val, "subtmp");
 
@@ -93,126 +97,56 @@ namespace AST {
   }
 
 
-  llvm::Value* Statements::generate_code(Scope* scope) {
+  llvm::Value* Statements::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
     for (auto& stmt : statements_) {
-      stmt->generate_code(scope);
+      // We pre-allocate declarations at the beginning of each block, so we
+      // don't need to do that here.
+      if (stmt->is_declaration()) continue;
+
+      stmt->generate_code(scope, builder);
     }
     return nullptr;
   }
 
-  llvm::Value* ChainOp::generate_code(Scope* scope) {
+  llvm::Value* ChainOp::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
     return nullptr;
   }
 
-  llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
-    // TODO: do this for real.
-    // This is just to see if we can get it working
+  llvm::Value* FunctionLiteral::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+    return nullptr;
+  }
 
-    if (expr_type_ == Type::Function(Type::Real, Type::Real)) {
-      llvm::FunctionType *fn_type = llvm::FunctionType::get(
-          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-          // vector with 1 double type
-          { llvm::Type::getDoubleTy(llvm::getGlobalContext()) },
-          false);
+  llvm::Value* Assignment::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
+    llvm::Value* var;
+    llvm::Value* val;
 
+    val = rhs_->generate_code(scope, builder);
+    if (val == nullptr) return nullptr;
 
-      // TODO: pick a name for this anonymous function
-      llvm::Function* fn = llvm::Function::Create(
-          fn_type, llvm::Function::InternalLinkage, std::string("__anon_fn") + std::to_string(function_counter++), nullptr);
-
-      auto iter = inputs_.begin();
-      for (auto& arg : fn->args()) {
-        arg.setName((*iter)->identifier_string());
-        ++iter;
-      }
-
-
-      // TODO Is this possible, check with LLVM
-      if (fn == nullptr) return nullptr;
-
-      // Create a new basic block to start insertion into.
-      fn_scope_->block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", fn);
-      builder.SetInsertPoint(fn_scope_->block_);
-
-      // TODO declare the correct type (currently always a real)
-      // TODO verify that args are iterated over in the order they appear.
-      iter = inputs_.begin();
-      for (auto& arg : fn->args()) {
-        (*iter)->declared_identifier()->val_ = AST::builder.CreateAlloca(
-            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-            nullptr,
-            arg.getName());
-
-
-        AST::builder.CreateStore(&arg, (*iter)->declared_identifier()->val_);
-        ++iter;
-      }
-
-      // FIXME this is the wrong thing to iterate over because it includes the
-      // inputs
-      for (const auto& decl_ptr : fn_scope_->ordered_decls_) {
-        auto id_str = decl_ptr->identifier_string();
-
-        // There are so few inputs in the general case that this is likely more
-        // efficient than a map
-        // TODO verify this.
-        bool found_in_inputs = false;
-        for (const auto& input_decl : inputs_) {
-          if (id_str == input_decl->identifier_string()){
-            found_in_inputs = true;
-            break;
-          }
-        }
-
-        if (found_in_inputs) continue;
-
-        decl_ptr->declared_identifier()->val_ = AST::builder.CreateAlloca(
-            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-            nullptr,
-            id_str.c_str());
-      }
-
-      statements_->generate_code(fn_scope_);
-
-      std::cout
-        << "========================================"
-        << "========================================" << std::endl;
-      fn->dump();
-      std::cout
-        << "========================================"
-        << "========================================" << std::endl;
-
-      return fn;
+    if (lhs_->is_identifier()) {
+      auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+      var = id_ptr->alloca_;
+    } else {
+      // TODO This situation could also come up for instance if I assign through
+      // a pointer (or any lvalue that isnt an identifier.
+      // Example:
+      //   x : int
+      //   y : &x
+      //   @y = 3  // <--- HERE
+      var = lhs_->generate_code(scope, builder);
     }
+    if (var == nullptr) return nullptr;
+
+    builder.CreateStore(val, var);
 
     return nullptr;
   }
 
-
-  llvm::Value* Assignment::generate_code(Scope* scope) {
-    if (rhs_->expr_type_ == Type::Real) {
-      llvm::Value* val = rhs_->generate_code(scope);
-
-      if (val == nullptr) return nullptr;
-
-      // Look up the name.
-      llvm::Value* var = scope->identifier(lhs_->token())->val_;
-      if (var == nullptr) {
-        return nullptr;
-      }
-
-      builder.CreateStore(val, var);
-      return val;
-    }
-
+  llvm::Value* Declaration::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
     return nullptr;
   }
 
-  llvm::Value* Declaration::generate_code(Scope* scope) {
-    return nullptr;
-  }
-
-  llvm::Value* Case::generate_code(Scope* scope) {
+  llvm::Value* Case::generate_code(Scope* scope, llvm::IRBuilder<>& builder) {
     return nullptr;
   }
 }  // namespace AST

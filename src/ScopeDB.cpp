@@ -8,6 +8,7 @@
 namespace ScopeDB {
   Scope* Scope::build() {
     registry_.push_back(new Scope);
+
     return registry_.back();
   }
 
@@ -29,6 +30,19 @@ namespace ScopeDB {
     parent_ = parent;
   }
 
+  void Scope::allocate() {
+    llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
+
+    for (const auto& decl_ptr : ordered_decls_) {
+      decl_ptr->declared_identifier()->alloca_ =
+        temp_builder.CreateAlloca(
+            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+            nullptr, decl_ptr->identifier_string());
+    }
+  }
+
+  // TODO have a getter-only version for when we know we've passed the
+  // verification step
   IdPtr Scope::identifier(const std::string& id_string) {
     auto iter = ids_.find(id_string);
     if (iter != ids_.end()) {

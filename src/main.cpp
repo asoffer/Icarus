@@ -6,10 +6,8 @@
 #include "typedefs.h"
 #include "ScopeDB.h"
 
-// GENERAL TODO LIST:
-// * populate_declaration_dependencies runs over the whole AST. This seems like
-// overkill. Shouldn't we just record pointers to all declarations and then
-// iterate over those?
+extern llvm::Module* global_module;
+extern llvm::Function* global_function;
 
 int main(int argc, char *argv[]) {
   if (argc != 3) {
@@ -40,6 +38,19 @@ int main(int argc, char *argv[]) {
     }
 
   } else if (std::strcmp(argv[1], "-p") == 0) {
+    // Init global module, function, etc.
+    global_module = new llvm::Module("global_module", llvm::getGlobalContext());
+
+    llvm::FunctionType* void_to_void =
+      llvm::FunctionType::get(
+          llvm::Type::getInt32Ty(llvm::getGlobalContext()),
+          llvm::Type::getInt32Ty(llvm::getGlobalContext()), false);
+
+    global_function = llvm::Function::Create(void_to_void,
+        llvm::Function::InternalLinkage, "__global_function", nullptr);
+
+
+
     Parser parser(argv[2]);
 
     // TODO write the language rules to guarantee that the parser produces a
@@ -61,8 +72,16 @@ int main(int argc, char *argv[]) {
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
+    llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
+    global_builder.SetInsertPoint(global_scope->entry());
 
-    global_statements->generate_code(global_scope);
+    global_scope->allocate();
+
+    global_statements->generate_code(global_scope, global_builder);
+
+    global_module->dump();
+global_scope->entry()->dump();
+
     std::cout << "-------------------- CLEANUP --------------------" << std::endl;
 
   } else {

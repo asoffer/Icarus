@@ -21,7 +21,6 @@
 
 namespace AST {
   using ::ScopeDB::Scope;
-  extern llvm::IRBuilder<> builder;
   extern size_t function_counter;
 
   class Declaration;
@@ -45,9 +44,10 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope) {}
-
       virtual void verify_types() {}
-      virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
+
+      virtual llvm::Value* generate_code(Scope* scope,
+          llvm::IRBuilder<>& builder) { return nullptr; }
 
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
@@ -96,14 +96,15 @@ namespace AST {
     virtual std::string to_string(size_t n) const = 0;
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
-
     virtual void verify_types() = 0;
+    virtual void verify_type_is(Type t);
+
     virtual Type interpret_as_type() const = 0;
     virtual Type type() const { return expr_type_; }
 
-    virtual void verify_type_is(Type t);
 
-    virtual llvm::Value* generate_code(Scope* scope) = 0;
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder) = 0;
 
     virtual ~Expression(){}
 
@@ -142,15 +143,16 @@ namespace AST {
     public:
     static NPtr build(NPtrVec&& nodes);
 
+    virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
-
     virtual void verify_types();
+
     virtual Type interpret_as_type() const;
 
-    virtual std::string to_string(size_t n) const;
 
-    virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
     private:
     EPtr expr_;
@@ -186,13 +188,15 @@ namespace AST {
     static NPtr build_paren_operator(NPtrVec&& nodes);
     static NPtr build_bracket_operator(NPtrVec&& nodes);
 
+    virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
-    virtual Type interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope);
 
-    virtual std::string to_string(size_t n) const;
+    virtual Type interpret_as_type() const;
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
+
     virtual bool is_binop() const { return true; }
 
 
@@ -240,14 +244,16 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
+      virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
+
       virtual Type interpret_as_type() const;
 
-      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
-      virtual std::string to_string(size_t n) const;
       virtual bool is_chain_op() const { return true; }
 
     private:
@@ -300,13 +306,14 @@ namespace AST {
     static NPtr build_real_literal(NPtrVec&& nodes);
     static NPtr build_character_literal(NPtrVec&& nodes);
 
+    virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope) {}
     virtual void needed_for(IdPtr id_ptr) const {};
     virtual void verify_types();
-    virtual Type interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope);
 
-    virtual std::string to_string(size_t n) const;
+    virtual Type interpret_as_type() const;
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
     protected:
     Terminal() {}
@@ -347,10 +354,10 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
-
       virtual void verify_types();
 
-      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
       virtual ~Assignment(){}
 
@@ -380,19 +387,20 @@ namespace AST {
         return NPtr(new Identifier(nodes[0]->token()));
       }
 
-      virtual bool is_identifier() const { return true; }
       virtual std::string to_string(size_t n) const;
-
       virtual void verify_types();
-      virtual llvm::Value* generate_code(Scope* scope);
 
-      Identifier(const std::string& token_string) : val_(nullptr) {
+      virtual bool is_identifier() const { return true; }
+      virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
+
+      Identifier(const std::string& token_string) : alloca_(nullptr) {
         token_ = token_string;
         expr_type_ = Type::Unknown;
         precedence_ = Language::op_prec.at("MAX");
       }
 
-      llvm::AllocaInst* val_;
+      llvm::AllocaInst* alloca_;
   };
 
 
@@ -409,13 +417,13 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
-
     virtual void verify_types();
 
     virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
 
-    virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
     virtual bool is_declaration() const { return true; }
 
@@ -454,7 +462,6 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
-
       virtual Type verify_types_with_key(Type key_type);
 
     private:
@@ -554,9 +561,10 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void verify_types();
-      virtual Type interpret_as_type() const;
 
-      virtual llvm::Value* generate_code(Scope* scope);
+      virtual Type interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
     private:
       Case() {}
@@ -581,8 +589,10 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
+
     void collect_return_types(std::set<Type>* return_exprs) const;
-    virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
     inline size_t size() { return statements_.size(); }
 
@@ -635,15 +645,15 @@ namespace AST {
         return NPtr(fn_lit);
       }
 
+      virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
-
       virtual void verify_types();
+
       virtual Type interpret_as_type() const;
 
-      virtual llvm::Value* generate_code(Scope* scope);
-
-      virtual std::string to_string(size_t n) const;
+      virtual llvm::Value* generate_code(Scope* scope,
+        llvm::IRBuilder<>& builder);
 
       virtual ~FunctionLiteral() {}
 
@@ -652,10 +662,11 @@ namespace AST {
       EPtr return_type_;
 
       std::vector<DeclPtr> inputs_;
+      llvm::BasicBlock* entry_block_;
 
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()) {}
+      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()), entry_block_(nullptr) {}
   };
 
   
@@ -670,7 +681,8 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
- 
+      virtual void verify_types();
+
     private:
       EPtr cond_;
       std::shared_ptr<Statements> statements_;

@@ -1,10 +1,7 @@
-(r: real) -> real {
-  s : real
-  s = r * 2.1 * 1.1
+r : real
+s : real
 
-  return s
-}
-
-(x: real) -> real {
-  return x * x
-}
+r = 3.0
+s = 2.1
+r = r + s + r * s
+s = r

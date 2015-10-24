@@ -15,9 +15,11 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+extern llvm::Function* global_function;
+#include <iostream>
+
 namespace AST {
   class FunctionLiteral;
-  extern llvm::IRBuilder<> builder;
 }
 
 namespace ScopeDB {
@@ -33,19 +35,29 @@ namespace ScopeDB {
       static Scope* build();
       static Scope* build_global();
       static size_t num_scopes();
+
       void set_parent(Scope* parent);
       IdPtr identifier(const std::string& id_string);
+      void allocate();
 
+      llvm::BasicBlock* entry() {
+        return entry_block_;
+      }
 
     private:
-      Scope() : parent_(nullptr), block_(nullptr) {}
+      Scope() : parent_(nullptr), entry_block_(nullptr) {
+        std::cout << "***" << global_function << std::endl;
+        entry_block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", global_function);
+      }
+
       Scope(const Scope&) = delete;
       Scope(Scope&&) = delete;
 
       Scope* parent_;
+      llvm::BasicBlock* entry_block_;
+
       std::map<std::string, IdPtr> ids_;
       std::vector<DeclPtr> ordered_decls_;
-      llvm::BasicBlock* block_;
 
       // Important invariant: A pointer only ever points to scopes held in
       // higehr indices. The global (root) scope must be the last scope.

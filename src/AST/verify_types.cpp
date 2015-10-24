@@ -75,7 +75,7 @@ namespace AST {
       expr_type_ = Type::TypeError;
       if (!lhs_->expr_type_.is_function()) {
         std::cerr
-          << "Identifier `" << token_
+          << "Identifier `" << lhs_->token()
           << "` is not a function." << std::endl;
         return;
       }
