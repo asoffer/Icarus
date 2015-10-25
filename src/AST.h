@@ -78,14 +78,13 @@ namespace AST {
 
 
   class Expression : public Node {
-    friend void ::ScopeDB::Scope::determine_declared_types();
+    friend void ScopeDB::Scope::determine_declared_types();
     friend class KVPairList;
     friend class Unop;
     friend class Binop;
     friend class ChainOp;
     friend class Declaration;
     friend class Assignment;
-    friend void ScopeDB::determine_declared_types();
 
     public:
     static NPtr parenthesize(NPtrVec&& nodes);
@@ -96,10 +95,10 @@ namespace AST {
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
     virtual void verify_types() = 0;
-    virtual void verify_type_is(Type t);
+    virtual void verify_type_is(Type* t);
 
-    virtual Type interpret_as_type() const = 0;
-    virtual Type type() const { return expr_type_; }
+    virtual Type* interpret_as_type() const = 0;
+    virtual Type* type() const { return expr_type_; }
 
 
     virtual llvm::Value* generate_code(Scope* scope) = 0;
@@ -107,10 +106,10 @@ namespace AST {
     virtual ~Expression(){}
 
     protected:
-    Expression() {}
+    Expression() : expr_type_(Type::get_unknown()) {}
 
     size_t precedence_;
-    Type expr_type_;
+    Type* expr_type_;
   };
 
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
@@ -120,7 +119,7 @@ namespace AST {
   }
 
 
-  inline void Expression::verify_type_is(Type t) {
+  inline void Expression::verify_type_is(Type *t) {
     verify_types();
 
     if (expr_type_ != t) {
@@ -128,8 +127,8 @@ namespace AST {
       // type?  So far the only instance where this is called is for case
       // statements,
       std::cerr
-        << "Type of `____` must be " << t.to_string() << ", but "
-        << expr_type_.to_string() << " found instead." << std::endl;
+        << "Type of `____` must be " << t->to_string() << ", but "
+        << expr_type_->to_string() << " found instead." << std::endl;
       expr_type_ = t;
     }
   }
@@ -146,7 +145,7 @@ namespace AST {
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
 
-    virtual Type interpret_as_type() const;
+    virtual Type* interpret_as_type() const;
 
 
     virtual llvm::Value* generate_code(Scope* scope);
@@ -190,7 +189,7 @@ namespace AST {
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
 
-    virtual Type interpret_as_type() const;
+    virtual Type* interpret_as_type() const;
     virtual llvm::Value* generate_code(Scope* scope);
 
     virtual bool is_binop() const { return true; }
@@ -245,7 +244,7 @@ namespace AST {
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
-      virtual Type interpret_as_type() const;
+      virtual Type* interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope* scope);
 
@@ -294,7 +293,7 @@ namespace AST {
     friend class KVPairList;
 
     public:
-    static NPtr build(NPtrVec&& nodes, Type t);
+    static NPtr build(NPtrVec&& nodes, Type* t);
     static NPtr build_type_literal(NPtrVec&& nodes);
     static NPtr build_string_literal(NPtrVec&& nodes);
     static NPtr build_integer_literal(NPtrVec&& nodes);
@@ -306,14 +305,14 @@ namespace AST {
     virtual void needed_for(IdPtr id_ptr) const {};
     virtual void verify_types();
 
-    virtual Type interpret_as_type() const;
+    virtual Type* interpret_as_type() const;
     virtual llvm::Value* generate_code(Scope* scope);
 
     protected:
     Terminal() {}
   };
 
-  inline NPtr Terminal::build(NPtrVec&& nodes, Type t) {
+  inline NPtr Terminal::build(NPtrVec&& nodes, Type* t) {
     auto term_ptr = new Terminal;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
@@ -323,23 +322,24 @@ namespace AST {
   }
 
   inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::Type_);
+    return build(std::forward<NPtrVec>(nodes), Type::get_type());
   }
 
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::String);
+    // FIXME implement strings
+    return build(std::forward<NPtrVec>(nodes), Type::get_type_error());
   }
 
   inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::Int);
+    return build(std::forward<NPtrVec>(nodes), Type::get_int());
   }
 
   inline NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::Real);
+    return build(std::forward<NPtrVec>(nodes), Type::get_real());
   }
 
   inline NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::Char);
+    return build(std::forward<NPtrVec>(nodes), Type::get_char());
   }
 
 
@@ -388,7 +388,7 @@ namespace AST {
 
       Identifier(const std::string& token_string) : alloca_(nullptr) {
         token_ = token_string;
-        expr_type_ = Type::Unknown;
+        expr_type_ = Type::get_unknown();
         precedence_ = Language::op_prec.at("MAX");
       }
 
@@ -397,35 +397,33 @@ namespace AST {
 
 
   class Declaration : public Expression {
-    friend void ScopeDB::determine_declared_types();
-
     public:
-    static NPtr build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes);
 
-    std::string identifier_string() const { return id_->token(); }
-    IdPtr declared_identifier() const { return id_; }
-    EPtr declared_type() const { return decl_type_; }
+      std::string identifier_string() const { return id_->token(); }
+      IdPtr declared_identifier() const { return id_; }
+      EPtr declared_type() const { return decl_type_; }
 
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
-    virtual void needed_for(IdPtr id_ptr) const;
-    virtual void verify_types();
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void verify_types();
 
-    virtual Type interpret_as_type() const { return decl_type_->interpret_as_type(); }
-
-
-    virtual llvm::Value* generate_code(Scope* scope);
-
-    virtual bool is_declaration() const { return true; }
-
-    virtual ~Declaration(){}
+      virtual Type* interpret_as_type() const { return decl_type_->interpret_as_type(); }
 
 
-    Declaration() {}
+      virtual llvm::Value* generate_code(Scope* scope);
+
+      virtual bool is_declaration() const { return true; }
+
+      virtual ~Declaration(){}
+
+
+      Declaration() {}
 
     private:
-    IdPtr id_;
-    EPtr decl_type_;
+      IdPtr id_;
+      EPtr decl_type_;
   };
 
   inline NPtr Declaration::build(NPtrVec&& nodes) {
@@ -453,7 +451,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
-      virtual Type verify_types_with_key(Type key_type);
+      virtual Type* verify_types_with_key(Type* key_type);
 
     private:
       KVPairList() {}
@@ -467,7 +465,7 @@ namespace AST {
 
     if (nodes[0]->node_type() == Language::reserved_else) {
       key_ptr = EPtr(new Terminal);
-      key_ptr->expr_type_ = Type::Bool;
+      key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
 
@@ -487,7 +485,7 @@ namespace AST {
 
     if (nodes[1]->node_type() == Language::reserved_else) {
       key_ptr = EPtr(new Terminal);
-      key_ptr->expr_type_ = Type::Bool;
+      key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
 
@@ -553,7 +551,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void verify_types();
 
-      virtual Type interpret_as_type() const;
+      virtual Type* interpret_as_type() const;
       virtual llvm::Value* generate_code(Scope* scope);
 
     private:
@@ -580,7 +578,7 @@ namespace AST {
     virtual void join_identifiers(Scope* scope);
     virtual void verify_types();
 
-    void collect_return_types(std::set<Type>* return_exprs) const;
+    void collect_return_types(std::set<Type*>* return_exprs) const;
     virtual llvm::Value* generate_code(Scope* scope);
 
     inline size_t size() { return statements_.size(); }
@@ -639,7 +637,7 @@ namespace AST {
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
-      virtual Type interpret_as_type() const;
+      virtual Type* interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope* scope);
 

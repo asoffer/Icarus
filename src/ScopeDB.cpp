@@ -36,7 +36,7 @@ namespace ScopeDB {
     for (const auto& decl_ptr : ordered_decls_) {
       decl_ptr->declared_identifier()->alloca_ =
         temp_builder.CreateAlloca(
-            llvm::Type::getDoubleTy(llvm::getGlobalContext()),
+            decl_ptr->declared_identifier()->type()->llvm(),
             nullptr, decl_ptr->identifier_string());
     }
   }

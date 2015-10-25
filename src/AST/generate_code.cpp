@@ -14,36 +14,33 @@ namespace AST {
     // The benefits are clear, but this ties me to using the same representation
     // that C++ uses.
 
-    if (expr_type_ == Type::Unknown || expr_type_ == Type::TypeError) {
+    // TODO move this to Type
+    if (expr_type_ == Type::get_unknown() || expr_type_ == Type::get_type_error()) {
       return nullptr;
 
-    } else if (expr_type_ == Type::Bool) {
+    } else if (expr_type_ == Type::get_bool()) {
       // A bool is an unsigned 1-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(1, token() == "true" ? 1 : 0, false));
 
-    } else if (expr_type_ == Type::Char) {
+    } else if (expr_type_ == Type::get_char()) {
       // A character is an unsigend 8-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
-    } else if (expr_type_ == Type::Int) {
+    } else if (expr_type_ == Type::get_int()) {
       // An int is a 64-bit signed integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(64, std::stoul(token()), true));
 
-    } else if (expr_type_ == Type::Real) {
+    } else if (expr_type_ == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
           llvm::APFloat(std::stod(token())));
 
-    } else if (expr_type_ == Type::String) {
-      // TODO String should not be a primitive type
-      return nullptr; 
-
-    } else if (expr_type_ == Type::Type_) {
+    } else if (expr_type_ == Type::get_type()) {
       return nullptr;
 
-    } else if (expr_type_ == Type::UInt) {
+    } else if (expr_type_ == Type::get_uint()) {
       // A uint is a 64-bit unsigned integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(64, std::stoul(token()), false));
@@ -71,13 +68,13 @@ namespace AST {
       return nullptr;
     }
 
-    if (expr_type_ == Type::Int) {
+    if (expr_type_ == Type::get_int()) {
       if (token() == "+") {
       } else if (token() == "-") {
       } else if (token() == "*") {
       } else if (token() == "/") {
       }
-    } else if (expr_type_ == Type::Real) {
+    } else if (expr_type_ == Type::get_real()) {
       if (token() == "+") {
         return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
 
@@ -89,7 +86,7 @@ namespace AST {
 
       }
 
-    } else if (expr_type_ == Type::UInt) {
+    } else if (expr_type_ == Type::get_uint()) {
     }
 
     return nullptr;
@@ -114,12 +111,10 @@ namespace AST {
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
     builder.SetInsertPoint(fn_scope_->entry());
 
-    llvm::FunctionType* fn_type =
-      llvm::FunctionType::get(
-          llvm::Type::getDoubleTy(llvm::getGlobalContext()),
-          llvm::Type::getDoubleTy(llvm::getGlobalContext()), false);
+    auto fn_type = Type::get_function(Type::get_real(), Type::get_real());
 
-    llvm::Function* fn = llvm::Function::Create(fn_type,
+    llvm::Function* fn = llvm::Function::Create(
+        fn_type->llvm(),
         llvm::Function::ExternalLinkage, "__global_function", nullptr);
 
     fn_scope_->entry()->removeFromParent();

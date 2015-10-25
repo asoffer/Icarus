@@ -7,37 +7,37 @@ namespace AST {
     // Even if there was previously a type_error on the return line, we still
     // know that `return foo` should have void type
     if (token_ == "return") {
-      expr_type_ = Type::Void;
+      expr_type_ = Type::get_void();
       return;
     }
 
-    if (expr_->expr_type_ == Type::TypeError) {
-      expr_type_ = Type::TypeError;
+    if (expr_->expr_type_ == Type::get_type_error()) {
+      expr_type_ = Type::get_type_error();
       return;
     }
 
     if (token_ == "-") {
-      if (expr_->expr_type_ == Type::UInt) {
+      if (expr_->expr_type_ == Type::get_uint()) {
         // TODO Warning/Error? signed conversion cast?
-        expr_type_ = Type::Int;
+        expr_type_ = Type::get_int();
 
-      } else if (expr_->expr_type_ == Type::Int) {
-        expr_type_ = Type::Int;
+      } else if (expr_->expr_type_ == Type::get_int()) {
+        expr_type_ = Type::get_int();
 
-      } else if(expr_->expr_type_ == Type::Real) {
-        expr_type_ = Type::Real;
+      } else if(expr_->expr_type_ == Type::get_real()) {
+        expr_type_ = Type::get_real();
 
       } else {
         // TODO there are probably more cases here
-        expr_type_ = Type::TypeError;
+        expr_type_ = Type::get_type_error();
       }
 
     } else if (token_ == "!") {
-      if (expr_->expr_type_ != Type::Bool) {
-        expr_type_ = Type::TypeError;
+      if (expr_->expr_type_ != Type::get_bool()) {
+        expr_type_ = Type::get_type_error();
 
       } else {
-        expr_type_ = Type::Bool;
+        expr_type_ = Type::get_bool();
       }
     }
 
@@ -56,38 +56,34 @@ namespace AST {
     lhs_->verify_types();
     rhs_->verify_types();
 
-    if (lhs_->expr_type_ == Type::TypeError
-        || rhs_->expr_type_ == Type::TypeError) {
+    if (lhs_->expr_type_ == Type::get_type_error()
+        || rhs_->expr_type_ == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
-      expr_type_ = Type::TypeError;
+      expr_type_ = Type::get_type_error();
       return;
     }
 
     if (token_ == "=>") {
-      if (lhs_->expr_type_ != Type::Bool)
-        expr_type_ = Type::TypeError;
-
-    } else if (token_ == ":>") {
-      // TODO verify that this cast is possible
-      expr_type_ = Type::Literals.at(rhs_->token());
+      if (lhs_->expr_type_ != Type::get_bool())
+        expr_type_ = Type::get_type_error();
 
     } else if (token_ == "()") {
-      expr_type_ = Type::TypeError;
-      if (!lhs_->expr_type_.is_function()) {
+      expr_type_ = Type::get_type_error();
+      if (!lhs_->expr_type_->is_function()) {
         std::cerr
           << "Identifier `" << lhs_->token()
           << "` is not a function." << std::endl;
         return;
       }
 
-      Type in_type = lhs_->expr_type_.input_type();
+      Type* in_type = static_cast<Function*>(lhs_->expr_type_)->argument_type();
 
       if (in_type != rhs_->expr_type_) {
         std::cerr << "Type mismatch on function arguments" << std::endl;
         return;
       }
 
-      expr_type_ = lhs_->expr_type_.return_type();
+      expr_type_ = static_cast<Function*>(lhs_->expr_type_)->return_type();
       
       return;
 
@@ -100,11 +96,11 @@ namespace AST {
         // because the result must be a bool
         std::cerr
           << "Type mismatch for comparison operator" << token_ << " ("
-          << lhs_->expr_type_.to_string() << " and "
-          << rhs_->expr_type_.to_string() << ")" << std::endl;
+          << lhs_->expr_type_->to_string() << " and "
+          << rhs_->expr_type_->to_string() << ")" << std::endl;
       }
 
-      expr_type_ = Type::Bool;
+      expr_type_ = Type::get_bool();
 
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
@@ -113,13 +109,13 @@ namespace AST {
     }
     else {
       // TODO give a type-mismatch error here
-      expr_type_ = Type::TypeError;
+      expr_type_ = Type::get_type_error();
     }
   }
 
 
   void ChainOp::verify_types() {
-    std::set<Type> expr_types;
+    std::set<Type*> expr_types;
 
     for (const auto& expr : exprs_) {
       expr_types.insert(expr->expr_type_);
@@ -127,7 +123,7 @@ namespace AST {
 
     if (expr_types.size() == 1) {
       // FIXME assuming this is only used for booleans currently.
-      expr_type_ = Type::Bool;
+      expr_type_ = Type::get_bool();
 
     } else {
       // TODO guess what type was intended
@@ -157,16 +153,16 @@ namespace AST {
 
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
-    Type return_type_as_type = return_type_->interpret_as_type();
+    Type* return_type_as_type = return_type_->interpret_as_type();
 
-    expr_type_ = Type::Function(
+    expr_type_ = Type::get_function(
         inputs_.front()->type(),
         return_type_as_type);
 
-    std::set<Type> return_types;
+    std::set<Type*> return_types;
     statements_->collect_return_types(&return_types);
 
-    if (return_type_as_type == Type::Void) {
+    if (return_type_as_type == Type::get_void()) {
       if (!return_types.empty()) {
         std::cerr << "Function declared void but returns a value." << std::endl;
       }
@@ -187,14 +183,14 @@ namespace AST {
     } else if (*return_types.begin() != return_type_as_type) {
       std::cerr
         << "Return type does not match function declared return type: "
-        << return_types.begin()->to_string()
+        << (*return_types.begin())->to_string()
         << " vs. "
-        << return_type_as_type.to_string()
+        << return_type_as_type->to_string()
         << std::endl;
     }
   }
 
-  void Statements::collect_return_types(std::set<Type>* return_exprs) const {
+  void Statements::collect_return_types(std::set<Type*>* return_exprs) const {
     for (const auto& stmt : statements_) {
       // TODO When we start having loops/conditionals, this won't cut it. We'll
       // need to dive deeper into the scopes
@@ -210,28 +206,28 @@ namespace AST {
 
   void Assignment::verify_types() {
     Binop::verify_types();
-    expr_type_ = Type::TypeError;
+    expr_type_ = Type::get_type_error();
 
-    if (lhs_->expr_type_ == Type::TypeError ||
-        rhs_->expr_type_ == Type::TypeError) return;
+    if (lhs_->expr_type_ == Type::get_type_error() ||
+        rhs_->expr_type_ == Type::get_type_error()) return;
 
     if (lhs_->expr_type_ != rhs_->expr_type_) {
       std::cerr
         << "Type mismatch:"
-        << lhs_->expr_type_.to_string() << " and"
-        << rhs_->expr_type_.to_string() << std::endl;
+        << lhs_->expr_type_->to_string() << " and"
+        << rhs_->expr_type_->to_string() << std::endl;
     }
-    expr_type_ = Type::Void;
+    expr_type_ = Type::get_void();
   }
 
   void Case::verify_types() {
-    expr_type_ = pairs_->verify_types_with_key(Type::Bool);
+    expr_type_ = pairs_->verify_types_with_key(Type::get_bool());
   }
 
   // Verifies that all keys have the same given type `key_type` and that all
   // values have the same (but unspecified) type.
-  Type KVPairList::verify_types_with_key(Type key_type) {
-    std::set<Type> value_types;
+  Type* KVPairList::verify_types_with_key(Type* key_type) {
+    std::set<Type*> value_types;
 
     for (const auto& kv : kv_pairs_) {
       kv.first->verify_type_is(key_type);
@@ -245,7 +241,7 @@ namespace AST {
     if (value_types.size() != 1) {
       std::cerr
         << "Type error: Values do not match in key-value pairs" << std::endl;
-      return Type::TypeError;
+      return Type::get_type_error();
     }
 
     // FIXME this paradigm fits really well with Case statements but not
@@ -261,7 +257,7 @@ namespace AST {
 
 
   void While::verify_types() {
-    cond_->verify_type_is(Type::Bool);
+    cond_->verify_type_is(Type::get_bool());
     statements_->verify_types();
   }
 }  // namespace AST

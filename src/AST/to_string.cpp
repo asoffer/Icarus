@@ -1,6 +1,6 @@
 #include "AST.h"
 #include "Type.h"
-#include <sstream>
+
 namespace AST {
   std::string tabs(size_t n) {
     // Tabs are two spaces
@@ -24,7 +24,7 @@ namespace AST {
   }
 
   std::string Unop::to_string(size_t n) const {
-    return tabs(n) + "<Unop (" + expr_type_.to_string() + "): '"
+    return tabs(n) + "<Unop " + expr_type_->to_string() + ": '"
       + (token_ == "" ? Language::show_name.at(type_) : token_)
       + "', prec: " + std::to_string(precedence_) + ">\n"
       + expr_->to_string(n + 1);
@@ -32,7 +32,7 @@ namespace AST {
 
   std::string Binop::to_string(size_t n) const {
     std::string output = 
-      tabs(n) + "<Binop (" + expr_type_.to_string() + "): '"
+      tabs(n) + "<Binop " + expr_type_->to_string() + ": '"
       + (token_ == "" ? Language::show_name.at(type_) : token_)
       + "', prec: " + std::to_string(precedence_) + ">\n";
 
@@ -58,27 +58,27 @@ namespace AST {
   }
 
   std::string Terminal::to_string(size_t n) const {
-    return tabs(n) + "<Terminal (" + expr_type_.to_string() + "): "
+    return tabs(n) + "<Terminal " + expr_type_->to_string() + ": "
       + token_ + ">\n";
   }
 
   std::string Identifier::to_string(size_t n) const {
     std::stringstream ss;
     ss << this;
-    return tabs(n) + "<Identifier (" + expr_type_.to_string() + "): "
+    return tabs(n) + "<Identifier " + expr_type_->to_string() + ": "
       + token() + ">\n";
   }
 
   std::string Declaration::to_string(size_t n) const {
     return tabs(n)
-      + "<Declaration (" + expr_type_.to_string() + ")>\n"
+      + "<Declaration " + expr_type_->to_string() + ">\n"
       + id_->to_string(n + 1)
       + decl_type_->to_string(n + 1);
   }
 
   std::string Assignment::to_string(size_t n) const {
     return tabs(n)
-      + "<Assignment (" + expr_type_.to_string() + ")>\n"
+      + "<Assignment " + expr_type_->to_string() + ">\n"
       + lhs_->to_string(n + 1)
       + rhs_->to_string(n + 1);
   }

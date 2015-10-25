@@ -4,90 +4,148 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <sstream>
+
+#include "llvm/IR/IRBuilder.h"
 
 namespace AST {
   class Expression;
 }  // namespace AST
 
-class Type {
-  private:
-    enum PrimEnum {
-      t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_string, t_type, t_uint, t_void, t_fn
-    };
+class Function;
+class Pointer;
 
+class Type {
+  public:
+    static Type* get_type_error();
+    static Type* get_unknown();
+    static Type* get_bool();
+    static Type* get_char();
+    static Type* get_int();
+    static Type* get_real();
+    static Type* get_type();
+    static Type* get_uint();
+    static Type* get_void();
+
+    static Function* get_function(Type* in, Type* out);
+    static Type* get_pointer(Type* t);
+    static Type* get_tuple(std::vector<Type*> types);
+
+
+    static std::map<std::string, Type*> literals;
     static std::vector<std::string> type_strings;
 
+    virtual std::string to_string() const = 0;
+
+    virtual bool is_function() const { return false; }
+
+    llvm::Type* llvm() const { return llvm_type_; }
+
+    virtual ~Type() {}
+
+  protected:
+    llvm::Type* llvm_type_;
+};
+
+class Primitive : public Type {
   public:
-    Type(PrimEnum p = t_unknown) : rpn_type_(1, p) {}
-    static Type build(const AST::Expression* expr_ptr);
-
-    std::string serialize() const {
-      std::string output;
-      for (const auto& pe : rpn_type_) {
-        output += " " + type_strings[pe];
-      }
-      return output;
-    }
-
-    std::string to_string() const {
-      return serialize();
-    }
-
-    bool is_function() const {
-      return rpn_type_.back() == t_fn;
-    }
-
-    Type return_type() const;
-    Type input_type() const;
-
-    static const Type Unknown;
-    static const Type TypeError;
-    static const Type Bool;
-    static const Type Char;
-    static const Type Int;
-    static const Type Real;
-    static const Type String; //TODO this is not really primitive
-    static const Type Type_;
-    static const Type UInt;
-    static const Type Void;
-
-    static const Type Function(Type in, Type out);
-
-    static const std::map<std::string, Type> Literals;
+    friend class Type;
+    virtual ~Primitive() {}
+    virtual std::string to_string() const { return Type::type_strings[prim_type_]; }
 
   private:
-    friend struct std::less<Type>;
+    static constexpr size_t num_primitive_types_ = 9;
 
+    enum PrimitiveEnum {
+      t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_type, t_uint, t_void
+    };
 
-    // Store the type in reverse polish notation, so char -> int gets stored as
-    // char int ->
-    // { t_char, t_int, t_fn }
-    std::vector<PrimEnum> rpn_type_;
+    PrimitiveEnum prim_type_;
+
+    Primitive(PrimitiveEnum pe);
+
+    static Primitive primitive_types_[ num_primitive_types_ ];
+    static llvm::Type* llvm_types_[ num_primitive_types_ ];
 };
 
-inline bool operator==(const Type& lhs, const Type& rhs) {
-  return lhs.serialize() == rhs.serialize();
-}
+class Function : public Type {
+  public:
+    friend class Type;
+    virtual bool is_function() const { return true; }
+    Type* argument_type() const { return input_type_; }
+    Type* return_type() const { return output_type_; }
 
-inline bool operator!=(const Type& lhs, const Type& rhs) {
-  return !(lhs == rhs);
-}
+    llvm::FunctionType* llvm() const {
+      return static_cast<llvm::FunctionType*>(llvm_type_);
+    }
 
-// For putting in ordered containers
-namespace std {
-  template<> struct less<Type> {
-    bool operator()(const Type& lhs, const Type& rhs) {
-      if (lhs.rpn_type_.size() < rhs.rpn_type_.size()) return true;
-      if (lhs.rpn_type_.size() < rhs.rpn_type_.size()) return false;
+    virtual std::string to_string() const {
+      return "("
+        + argument_type()->to_string()
+        + " -> "
+        + return_type()->to_string()
+        + ")";
+    }
 
-      for (size_t i = 0; i < lhs.rpn_type_.size(); ++i) {
-        if (lhs.rpn_type_[i] < rhs.rpn_type_[i]) return true;
-        if (lhs.rpn_type_[i] < rhs.rpn_type_[i]) return false;
+    virtual ~Function() {}
+
+  private:
+    Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
+      // TODO should I expand an input tuple into a vector?
+      std::vector<llvm::Type*> input_list(1, input_type_->llvm());
+      llvm_type_ = llvm::FunctionType::get( output_type_->llvm(),
+          input_list, false);
+    }
+
+    Type* input_type_;
+    Type* output_type_;
+
+    static std::vector<Function*> fn_types_;
+};
+
+  class Pointer : public Type {
+    public:
+      friend class Type;
+      virtual std::string to_string() const {
+        return "&" + pointee_type_->to_string();
       }
 
-      return false;
-    }
+      virtual ~Pointer() {}
+
+    private:
+      Pointer(Type* t) : pointee_type_(t) {}
+      Type* pointee_type_;
+
+      static std::vector<Pointer*> pointer_types_;
   };
-};
+
+
+  class Tuple : public Type {
+    public:
+      friend class Type;
+
+      virtual std::string to_string() const {
+        std::stringstream ss;
+
+        auto iter = tuple_types_.begin();
+        ss << (*iter)->to_string();
+        while (iter != tuple_types_.end()) {
+          ss << ", ";
+          ss << (*iter)->to_string();
+          ++iter;
+        }
+
+        return ss.str();
+      }
+
+      virtual ~Tuple() {}
+
+    private:
+      Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+
+      std::vector<Type*> entry_types_;
+
+      static std::vector<Tuple*> tuple_types_;
+  };
 
 #endif

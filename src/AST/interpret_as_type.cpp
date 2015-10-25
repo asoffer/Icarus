@@ -1,65 +1,64 @@
 #include "AST.h"
 
 namespace AST {
-  Type Unop::interpret_as_type() const {
+  Type* Unop::interpret_as_type() const {
     // TODO Implement this
-    return Type::TypeError;
+    return Type::get_type_error();
   }
 
-  Type Binop::interpret_as_type() const {
+  Type* Binop::interpret_as_type() const {
     if (token() == "->") {
-      return Type::Function(
+      return Type::get_function(
           lhs_->interpret_as_type(),
           rhs_->interpret_as_type());
     }
 
     // TODO more cases here probably
-    return Type::TypeError;
+    return Type::get_type_error();
   }
 
 
-  Type ChainOp::interpret_as_type() const {
-    return Type::TypeError;
+  Type* ChainOp::interpret_as_type() const {
+    return Type::get_type_error();
   }
 
 
-  Type Terminal::interpret_as_type() const {
-    if (expr_type_ == Type::Type_) {
+  Type* Terminal::interpret_as_type() const {
+    if (expr_type_ == Type::get_type()) {
 
-      if (token() == "bool") return Type::Bool;
-      if (token() == "char") return Type::Char;
-      if (token() == "int") return Type::Int;
-      if (token() == "real") return Type::Real;
-      if (token() == "string") return Type::String;
-      if (token() == "type") return Type::Type_;
-      if (token() == "uint") return Type::UInt;
-      if (token() == "void") return Type::Void;
+      if (token() == "bool") return Type::get_bool();
+      if (token() == "char") return Type::get_char();
+      if (token() == "int") return Type::get_int();
+      if (token() == "real") return Type::get_real();
+      if (token() == "type") return Type::get_type();
+      if (token() == "uint") return Type::get_uint();
+      if (token() == "void") return Type::get_void();
 
       std::cerr
         << "I don't think " << token()
         << " is a type!" << std::endl;
 
-      return Type::TypeError;
+      return Type::get_type_error();
     }
 
     std::cerr << token() + " is not a type!" << std::endl;
 
-    return Type::TypeError;
+    return Type::get_type_error();
   }
 
 //  Type AnonymousScope::interpret_as_type() const {
 //    // throw "Stub, this shouldn't be possible";
-//    return Type::TypeError;
+//    return Type::get_type_error();
 //  }
 
-  Type FunctionLiteral::interpret_as_type() const {
+  Type* FunctionLiteral::interpret_as_type() const {
     // throw "Stub, this shouldn't be possible";
-    return Type::TypeError;
+    return Type::get_type_error();
   }
 
-  Type Case::interpret_as_type() const {
+  Type* Case::interpret_as_type() const {
     // throw "Stub, this shouldn't be possible";
-    return Type::TypeError;
+    return Type::get_type_error();
   }
 
 }  // namespace AST

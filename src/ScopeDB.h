@@ -70,7 +70,6 @@ namespace ScopeDB {
   extern std::map<IdPtr, DeclPtr> decl_of_;
   extern std::vector<DeclPtr> decl_registry_;
 
-  extern void determine_declared_types();
   extern DeclPtr make_declaration();
 
   extern void fill_db();

@@ -92,7 +92,7 @@ AST::Node Lexer::next_word() {
     }
   }
 
-  for (const auto& type_lit : Type::Literals) {
+  for (const auto& type_lit : Type::literals) {
     if (type_lit.first == token) {
       return AST::Node(Language::type_literal, token);
     }
