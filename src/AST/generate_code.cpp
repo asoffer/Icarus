@@ -29,9 +29,9 @@ namespace AST {
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
     } else if (expr_type_ == Type::get_int()) {
-      // An int is a 64-bit signed integer
+      // An int is a 32-bit signed integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(64, std::stoul(token()), true));
+          llvm::APInt(32, std::stoul(token()), true));
 
     } else if (expr_type_ == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
@@ -43,7 +43,7 @@ namespace AST {
     } else if (expr_type_ == Type::get_uint()) {
       // A uint is a 64-bit unsigned integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(64, std::stoul(token()), false));
+          llvm::APInt(32, std::stoul(token()), false));
     } else {
       std::cerr << "FATAL: Terminal type is not a primitive type" << std::endl;
       return nullptr;
@@ -70,10 +70,86 @@ namespace AST {
 
     if (expr_type_ == Type::get_int()) {
       if (token() == "+") {
+        return builder.CreateAdd(lhs_val, rhs_val, "addtmp");
+
       } else if (token() == "-") {
+        return builder.CreateSub(lhs_val, rhs_val, "subtmp");
+
       } else if (token() == "*") {
+        return builder.CreateMul(lhs_val, rhs_val, "multmp");
+
       } else if (token() == "/") {
+        return builder.CreateSDiv(lhs_val, rhs_val, "divtmp");
+
+      } else if (token() == "%") {
+        return builder.CreateSRem(lhs_val, rhs_val, "divrem");
+
+      } else if (token() == "+=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateAdd(lhs_val, rhs_val, "addtmp"), var);
+        return nullptr;
+
+      } else if (token() == "-=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateSub(lhs_val, rhs_val, "subtmp"), var);
+        return nullptr;
+
+      } else if (token() == "*=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateMul(lhs_val, rhs_val, "multmp"), var);
+        return nullptr;
+
+      } else if (token() == "/=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateSDiv(lhs_val, rhs_val, "divtmp"), var);
+        return nullptr;
+      
+      } else if (token() == "%=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateSRem(lhs_val, rhs_val, "remtmp"), var);
+        return nullptr;
       }
+
     } else if (expr_type_ == Type::get_real()) {
       if (token() == "+") {
         return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
@@ -84,7 +160,63 @@ namespace AST {
       } else if (token() == "*") {
         return builder.CreateFMul(lhs_val, rhs_val, "multmp");
 
+      } else if (token() == "/") {
+        return builder.CreateFDiv(lhs_val, rhs_val, "divtmp");
+
+      } else if (token() == "+=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), var);
+        return nullptr;
+
+      } else if (token() == "-=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), var);
+        return nullptr;
+
+      } else if (token() == "*=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), var);
+        return nullptr;
+
+      } else if (token() == "/=") {
+        llvm::AllocaInst* var = nullptr;
+        if (lhs_->is_identifier()) {
+          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+          var = id_ptr->alloca_;
+        }
+
+        // TODO remove this/robustify it
+        if (var == nullptr) return nullptr;
+
+        builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), var);
+        return nullptr;
       }
+
+
 
     } else if (expr_type_ == Type::get_uint()) {
     }
@@ -148,8 +280,8 @@ namespace AST {
       //   @y = 3  // <--- HERE
       var = lhs_->generate_code(scope);
     }
-    if (var == nullptr) return nullptr;
 
+    if (var == nullptr) return nullptr;
     builder.CreateStore(val, var);
 
     return nullptr;

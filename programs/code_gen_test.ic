@@ -1,10 +1,18 @@
-n = 17
-r = 3.0
-s = 2.1
-r = s + r * s + r
-s = r
+// square
+(x : real) -> real {
+  return x * x
+}
 
-main: real -> real
-r : real
-s : real
-n : int
+(x : real) -> real {
+  y : real
+  y = 3.0
+  y += x
+  y = y / 2.0
+  return y * y
+}
+
+(n : int) -> int {
+  n *= n
+  n += n
+  return n + 3
+}
