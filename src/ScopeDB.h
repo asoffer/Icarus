@@ -15,7 +15,6 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-extern llvm::Function* global_function;
 #include <iostream>
 
 namespace AST {
@@ -45,10 +44,13 @@ namespace ScopeDB {
         return entry_block_;
       }
 
-    private:
-      Scope() : parent_(nullptr), entry_block_(nullptr) {
-        entry_block_ = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry", global_function);
+      void set_entry(llvm::BasicBlock* bb) {
+        entry_block_ = bb;
       }
+
+    private:
+      // TODO Do I need this constructor?
+      Scope() : parent_(nullptr), entry_block_(nullptr) {}
 
       Scope(const Scope&) = delete;
       Scope(Scope&&) = delete;

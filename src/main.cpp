@@ -3,6 +3,7 @@
 
 #include "Parser.h"
 #include "AST.h"
+#include "Type.h"
 #include "typedefs.h"
 #include "ScopeDB.h"
 
@@ -42,14 +43,9 @@ int main(int argc, char *argv[]) {
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
-    llvm::FunctionType* int_to_int =
-      llvm::FunctionType::get(
-          llvm::Type::getInt32Ty(llvm::getGlobalContext()),
-          llvm::Type::getInt32Ty(llvm::getGlobalContext()), false);
-
-    global_function = llvm::Function::Create(int_to_int,
+    global_function = llvm::Function::Create(
+        Type::get_function(Type::get_int(), Type::get_int())->llvm(),
         llvm::Function::ExternalLinkage, "__global_function", nullptr);
-
 
 
     Parser parser(argv[2]);
@@ -60,7 +56,6 @@ int main(int argc, char *argv[]) {
         std::static_pointer_cast<AST::Statements>(parser.parse());
 
     ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
-
 
     global_statements->join_identifiers(global_scope);
 
@@ -73,6 +68,10 @@ int main(int argc, char *argv[]) {
     global_statements->verify_types();
 
     std::cout << global_statements->to_string(0) << std::endl;
+
+    global_scope->set_entry(llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "entry", global_function));
+
     builder.SetInsertPoint(global_scope->entry());
 
     global_scope->allocate();
@@ -80,7 +79,6 @@ int main(int argc, char *argv[]) {
     global_statements->generate_code(global_scope);
 
     global_module->dump();
-global_scope->entry()->dump();
 
     std::cout << "-------------------- CLEANUP --------------------" << std::endl;
 

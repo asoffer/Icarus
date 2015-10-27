@@ -2,14 +2,16 @@
 
 #include <iostream>
 #include <stack>
+#include <algorithm>
 
 #include "AST.h"
 
 namespace ScopeDB {
   Scope* Scope::build() {
-    registry_.push_back(new Scope);
+    Scope* new_scope = new Scope;
+    registry_.push_back(new_scope);
 
-    return registry_.back();
+    return new_scope;
   }
 
   Scope* Scope::build_global() {

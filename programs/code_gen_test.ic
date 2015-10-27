@@ -1,4 +1,3 @@
-// square
 (x : real) -> real {
   return x * x
 }

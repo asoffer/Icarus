@@ -641,6 +641,8 @@ namespace AST {
 
       virtual llvm::Value* generate_code(Scope* scope);
 
+      virtual llvm::Function* llvm_function() const { return llvm_function_; }
+
       virtual ~FunctionLiteral() {}
 
     private:
@@ -648,11 +650,10 @@ namespace AST {
       EPtr return_type_;
 
       std::vector<DeclPtr> inputs_;
-      llvm::BasicBlock* entry_block_;
-
+      llvm::Function* llvm_function_;
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()), entry_block_(nullptr) {}
+      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()), llvm_function_(nullptr) {}
   };
 
   

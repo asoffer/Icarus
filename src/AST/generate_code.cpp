@@ -241,24 +241,48 @@ namespace AST {
   }
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
+
+    llvm_function_ = llvm::Function::Create(
+        static_cast<llvm::FunctionType*>(expr_type_->llvm()),
+        llvm::Function::ExternalLinkage, "__anon_fn", global_module);
+
+
+    // Name the inputs
+    auto input_iter = inputs_.begin();
+    for (auto& arg : llvm_function_->args()) {
+      arg.setName((*input_iter)->identifier_string());
+      ++input_iter;
+    }
+
+
+
+    fn_scope_->set_entry(llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "entry", llvm_function_));
+
     builder.SetInsertPoint(fn_scope_->entry());
 
-    auto fn_type = Type::get_function(Type::get_real(), Type::get_real());
-
-    llvm::Function* fn = llvm::Function::Create(
-        fn_type->llvm(),
-        llvm::Function::ExternalLinkage, "__global_function", nullptr);
-
     fn_scope_->entry()->removeFromParent();
-    fn_scope_->entry()->insertInto(fn);
+    fn_scope_->entry()->insertInto(llvm_function_);
     fn_scope_->allocate();
+    
+    // Because all variables in this scope, including inputs, are allocated, we
+    // go through the inputs and store in the allocated location. While this is
+    // not an optimized way to do things, we trust mem2reg to optimize this
+    // away.
+    //
+    // TODO implement a mem2reg pass.
+
+    input_iter = inputs_.begin();
+    for (auto& arg : llvm_function_->args()) {
+      builder.CreateStore(&arg,
+          (*input_iter)->declared_identifier()->alloca_);
+      ++input_iter;
+    }
 
     statements_->generate_code(fn_scope_);
 
-    fn->dump();
-
-    builder.SetInsertPoint(scope->entry());
-    return fn;
+    builder.SetInsertPoint(fn_scope_->entry());
+    return llvm_function_;
   }
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
