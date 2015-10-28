@@ -36,9 +36,18 @@ namespace ScopeDB {
     llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
 
     for (const auto& decl_ptr : ordered_decls_) {
+      auto decl_type = decl_ptr->declared_identifier()->type();
+
+      // TODO for now functions are treated as constant, and don't need to be
+      // declared in a scope.
+      //
+      // What happens if you try to reassign? This almost certainly leads to a
+      // bug.
+      if (decl_type->is_function()) continue;
+
       decl_ptr->declared_identifier()->alloca_ =
         temp_builder.CreateAlloca(
-            decl_ptr->declared_identifier()->type()->llvm(),
+            decl_type->llvm(),
             nullptr, decl_ptr->identifier_string());
     }
   }

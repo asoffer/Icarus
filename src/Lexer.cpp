@@ -92,6 +92,8 @@ AST::Node Lexer::next_word() {
     }
   }
 
+  // Check if the word is a type primitive/literal and if so, build the
+  // appropriate Node.
   for (const auto& type_lit : Type::literals) {
     if (type_lit.first == token) {
       return AST::Node(Language::type_literal, token);
@@ -101,6 +103,7 @@ AST::Node Lexer::next_word() {
   // It's an identifier
   return AST::Node(Language::identifier, token);
 }
+
 
 AST::Node Lexer::next_number() {
 #ifdef DEBUG
@@ -135,6 +138,7 @@ AST::Node Lexer::next_number() {
 
   return AST::Node(Language::real_literal, token);
 }
+
 
 AST::Node Lexer::next_operator() {
   // Sanity check:
@@ -285,10 +289,8 @@ AST::Node Lexer::next_operator() {
     }
   }
 
-
   // If the first character isn't one of the specific ones mentioned above, read
   // in as many characters as possible.
-  //
   std::string token;
   do {
     token += static_cast<char>(file_.get());

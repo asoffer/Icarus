@@ -113,7 +113,9 @@ class Function : public Type {
       virtual ~Pointer() {}
 
     private:
-      Pointer(Type* t) : pointee_type_(t) {}
+      Pointer(Type* t) : pointee_type_(t) {
+        llvm_type_ = llvm::PointerType::get(t->llvm(), 0);
+      }
       Type* pointee_type_;
 
       static std::vector<Pointer*> pointer_types_;

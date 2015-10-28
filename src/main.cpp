@@ -1,11 +1,15 @@
 #include <iostream>
 #include <fstream>
+#include <string>
 
 #include "Parser.h"
 #include "AST.h"
 #include "Type.h"
 #include "typedefs.h"
 #include "ScopeDB.h"
+
+#include "llvm/Support/raw_ostream.h"
+#include "llvm/Support/raw_os_ostream.h"
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
@@ -45,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     global_function = llvm::Function::Create(
         Type::get_function(Type::get_int(), Type::get_int())->llvm(),
-        llvm::Function::ExternalLinkage, "__global_function", nullptr);
+        llvm::Function::ExternalLinkage, "main", global_module);
 
 
     Parser parser(argv[2]);
@@ -67,7 +71,7 @@ int main(int argc, char *argv[]) {
 
     global_statements->verify_types();
 
-    std::cout << global_statements->to_string(0) << std::endl;
+    // std::cout << global_statements->to_string(0) << std::endl;
 
     global_scope->set_entry(llvm::BasicBlock::Create(
           llvm::getGlobalContext(), "entry", global_function));
@@ -78,9 +82,13 @@ int main(int argc, char *argv[]) {
 
     global_statements->generate_code(global_scope);
 
+    builder.SetInsertPoint(global_scope->entry());
+    builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(32, 0, false)));
+
     global_module->dump();
 
-    std::cout << "-------------------- CLEANUP --------------------" << std::endl;
+    // std::cout << "-------------------- CLEANUP --------------------" << std::endl;
 
   } else {
     std::cerr << "Invalid flag" << std::endl;

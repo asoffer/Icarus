@@ -259,6 +259,7 @@ namespace AST {
     fn_scope_->set_entry(llvm::BasicBlock::Create(
           llvm::getGlobalContext(), "entry", llvm_function_));
 
+    auto old_block = builder.GetInsertBlock();
     builder.SetInsertPoint(fn_scope_->entry());
 
     fn_scope_->entry()->removeFromParent();
@@ -282,6 +283,8 @@ namespace AST {
     statements_->generate_code(fn_scope_);
 
     builder.SetInsertPoint(fn_scope_->entry());
+
+    builder.SetInsertPoint(old_block);
     return llvm_function_;
   }
 
@@ -293,6 +296,13 @@ namespace AST {
     if (val == nullptr) return nullptr;
 
     if (lhs_->is_identifier()) {
+
+      // Treat functions special
+      if (rhs_->type()->is_function()) {
+        val->setName(lhs_->token());
+        return nullptr;
+      }
+
       auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
       var = id_ptr->alloca_;
     } else {
