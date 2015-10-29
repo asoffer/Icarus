@@ -55,6 +55,10 @@ namespace AST {
       bool is_return() const {
         return node_type() == Language::return_expression;
       }
+      bool is_print() const {
+        return node_type() == Language::print_expression;
+      }
+ 
       virtual bool is_binop() const { return false; }
       virtual bool is_chain_op() const { return false; }
       virtual bool is_declaration() const { return false; }
@@ -162,6 +166,11 @@ namespace AST {
     unop_ptr->type_ = Language::expression;
     if (nodes[0]->node_type() == Language::reserved_return) {
       unop_ptr->token_ = "return";
+      
+    }
+    else if (nodes[0]->node_type() == Language::reserved_return) {
+      unop_ptr->token_ = "print";
+
     } else {
       unop_ptr->token_ = nodes[0]->token();
     }

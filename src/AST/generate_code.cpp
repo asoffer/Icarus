@@ -55,6 +55,9 @@ namespace AST {
 
     if (is_return()) {
       builder.CreateRet(val);
+
+    } else if (is_print()) {
+      // builder.CreateCall(global_printd, val, "print");
     }
 
     return nullptr;

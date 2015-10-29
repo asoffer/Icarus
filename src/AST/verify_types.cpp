@@ -6,7 +6,10 @@ namespace AST {
 
     // Even if there was previously a type_error on the return line, we still
     // know that `return foo` should have void type
-    if (token_ == "return") {
+    //
+    // TODO is it safe to check one of the enums instead of strings?
+    // TODO print can only take a real right now
+    if (is_return() || is_print()) {
       expr_type_ = Type::get_void();
       return;
     }

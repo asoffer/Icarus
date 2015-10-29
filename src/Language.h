@@ -18,6 +18,7 @@ namespace Language {
 
     key_value_pair, key_value_pair_list,
     expression, paren_expression, fn_expression, scope, return_expression,
+    print_expression,
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
     statements, while_statement,
@@ -27,6 +28,7 @@ namespace Language {
 
     // Reserved words
     reserved_if, reserved_else, reserved_case, reserved_loop,
+    reserved_print,
     reserved_while, reserved_break, reserved_continue, reserved_return
   };
 } // namespace Language
@@ -55,7 +57,7 @@ namespace Language {
   }
 
   inline bool is_operator(NodeType t) {
-    return is_binary_operator(t) || t == reserved_return;
+    return is_binary_operator(t) || t == reserved_return || t == reserved_print;
   }
 
   extern const std::map<NodeType, std::string> show_name;

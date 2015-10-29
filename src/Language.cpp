@@ -38,6 +38,7 @@ namespace Language {
     { reserved_else, "Else" },
     { reserved_case, "Case" },
     { reserved_loop, "Loop" },
+    { reserved_print, "Print" },
     { reserved_while, "While" },
     { reserved_break, "Break" },
     { reserved_continue, "Continue" },
@@ -52,12 +53,14 @@ namespace Language {
     { "while",    reserved_while },
     { "break",    reserved_break },
     { "continue", reserved_continue },
+    { "print",    reserved_print },
     { "return",   reserved_return }
   };
 
   // Associativity stored in the lowest two bits.
   const std::map<std::string, size_t> op_prec = {
     { "return", (0 << 2) +   non_assoc },
+    { "print",  (0 << 2) +   non_assoc },
     { "=",      (1 << 2) +   non_assoc },
     { ":=",     (2 << 2) +   non_assoc },
     { ":",      (2 << 2) +   non_assoc },
@@ -193,6 +196,10 @@ namespace Language {
         { expression, binary_boolean_operator, expression },
         AST::ChainOp::build),
 
+    Rule(print_expression,
+        { reserved_print, expression },
+        AST::Unop::build),
+
     Rule(return_expression,
         { reserved_return, expression },
         AST::Unop::build),
@@ -244,6 +251,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { print_expression, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { return_expression, newline },
         AST::Statements::build_one),
 
@@ -269,6 +280,10 @@ namespace Language {
 
     Rule(statements,
         { statements, while_statement, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, print_expression, newline },
         AST::Statements::build_more),
 
     Rule(statements,

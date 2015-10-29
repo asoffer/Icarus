@@ -93,6 +93,11 @@ class Function : public Type {
     Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
       // TODO should I expand an input tuple into a vector?
       std::vector<llvm::Type*> input_list(1, input_type_->llvm());
+
+      if (input_type_ == get_void()) {
+        input_list.clear();
+      }
+
       llvm_type_ = llvm::FunctionType::get( output_type_->llvm(),
           input_list, false);
     }

@@ -203,12 +203,13 @@ AST::Node Lexer::next_operator() {
   }
 
   // Cannot have '-' in this list because of '->'
+  // The case '/' is missing because it has special the cases // and /* to deal
+  // with
   char lead_char = 0;
   Language::NodeType node_type;
   switch (peek) {
     case '+':
     case '*':
-    case '/':
     case '%':
       lead_char = static_cast<char>(peek);
       node_type = Language::generic_operator;
@@ -470,7 +471,8 @@ AST::Node Lexer::next_given_slash() {
   }
 
   if (peek == '=') {
-    return AST::Node(Language::generic_operator, "=");
+    file_.get();
+    return AST::Node(Language::generic_operator, "/=");
   }
 
   return AST::Node(Language::generic_operator, "/");

@@ -15,6 +15,12 @@ extern llvm::Module* global_module;
 extern llvm::Function* global_function;
 extern llvm::IRBuilder<> builder;
 
+#include <cstdio>
+extern "C" double printd(double X) {
+  fprintf(stderr, "%f\n", X);
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   if (argc != 3) {
     std::cerr
@@ -48,9 +54,8 @@ int main(int argc, char *argv[]) {
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
     global_function = llvm::Function::Create(
-        Type::get_function(Type::get_int(), Type::get_int())->llvm(),
+        Type::get_function(Type::get_void(), Type::get_int())->llvm(),
         llvm::Function::ExternalLinkage, "main", global_module);
-
 
     Parser parser(argv[2]);
 
@@ -88,8 +93,14 @@ int main(int argc, char *argv[]) {
 
     global_module->dump();
 
-    // std::cout << "-------------------- CLEANUP --------------------" << std::endl;
+//    std::ofstream output_file_stream("foo.ll");
+//    llvm::raw_os_ostream output_file(output_file_stream);
+//    global_module->print(output_file, nullptr);
+//    system("llvm-as foo.ll");
+//    system("llc foo.bc");
+//    system("clang foo.s -o foo");
 
+    // std::cout << "-------------------- CLEANUP --------------------" << std::endl;
   } else {
     std::cerr << "Invalid flag" << std::endl;
   }
