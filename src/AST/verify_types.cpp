@@ -121,6 +121,7 @@ namespace AST {
     std::set<Type*> expr_types;
 
     for (const auto& expr : exprs_) {
+      expr->verify_types();
       expr_types.insert(expr->expr_type_);
     }
 

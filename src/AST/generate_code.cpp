@@ -85,7 +85,7 @@ namespace AST {
         return builder.CreateSDiv(lhs_val, rhs_val, "divtmp");
 
       } else if (token() == "%") {
-        return builder.CreateSRem(lhs_val, rhs_val, "divrem");
+        return builder.CreateSRem(lhs_val, rhs_val, "remtmp");
 
       } else if (token() == "+=") {
         llvm::AllocaInst* var = nullptr;
@@ -240,7 +240,44 @@ namespace AST {
   }
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
-    return nullptr;
+    auto lhs_val = exprs_[0]->generate_code(scope);
+    llvm::Value* ret_val = nullptr;
+
+    for (size_t i = 1; i < exprs_.size(); ++i) {
+      auto rhs_val = exprs_[i]->generate_code(scope);
+      llvm::Value* cmp_val;
+
+      if (exprs_[0]->expr_type_ == Type::get_int()) {
+        if (ops_[i - 1]->token() == "<") {
+          cmp_val = builder.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
+
+        } else if (ops_[i - 1]->token() == "<=") {
+          cmp_val = builder.CreateICmpSLE(lhs_val, rhs_val, "letmp");
+
+        } else if (ops_[i - 1]->token() == "==") {
+          cmp_val = builder.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+
+        } else if (ops_[i - 1]->token() == "!=") {
+          cmp_val = builder.CreateICmpNE(lhs_val, rhs_val, "netmp");
+
+        } else if (ops_[i - 1]->token() == ">=") {
+          cmp_val = builder.CreateICmpSGE(lhs_val, rhs_val, "getmp");
+
+        } else if (ops_[i - 1]->token() == ">") {
+          cmp_val = builder.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+
+        } else {
+          std::cerr << "Invalid operator: " << ops_[i - 1];
+          return nullptr;
+        }
+
+        // TODO early exit
+        ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        lhs_val = rhs_val;
+      }
+    }
+
+    return ret_val;
   }
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {

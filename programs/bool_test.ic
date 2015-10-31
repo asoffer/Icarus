@@ -1,0 +1,4 @@
+b : bool
+n : int
+n = 3
+b = 2 < n <= 4 < 2 * n
