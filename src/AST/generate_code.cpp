@@ -243,11 +243,11 @@ namespace AST {
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
-    for (size_t i = 1; i < exprs_.size(); ++i) {
-      auto rhs_val = exprs_[i]->generate_code(scope);
-      llvm::Value* cmp_val;
+    if (exprs_[0]->expr_type_ == Type::get_int()) {
+      for (size_t i = 1; i < exprs_.size(); ++i) {
+        auto rhs_val = exprs_[i]->generate_code(scope);
+        llvm::Value* cmp_val;
 
-      if (exprs_[0]->expr_type_ == Type::get_int()) {
         if (ops_[i - 1]->token() == "<") {
           cmp_val = builder.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
 
@@ -270,6 +270,40 @@ namespace AST {
           std::cerr << "Invalid operator: " << ops_[i - 1];
           return nullptr;
         }
+
+        // TODO early exit
+        ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        lhs_val = rhs_val;
+
+      }
+    } else if (exprs_[0]->expr_type_ == Type::get_real()) {
+      for (size_t i = 1; i < exprs_.size(); ++i) {
+        auto rhs_val = exprs_[i]->generate_code(scope);
+        llvm::Value* cmp_val;
+
+        if (ops_[i - 1]->token() == "<") {
+          cmp_val = builder.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
+
+        } else if (ops_[i - 1]->token() == "<=") {
+          cmp_val = builder.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
+
+        } else if (ops_[i - 1]->token() == "==") {
+          cmp_val = builder.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
+
+        } else if (ops_[i - 1]->token() == "!=") {
+          cmp_val = builder.CreateFCmpONE(lhs_val, rhs_val, "netmp");
+
+        } else if (ops_[i - 1]->token() == ">=") {
+          cmp_val = builder.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
+
+        } else if (ops_[i - 1]->token() == ">") {
+          cmp_val = builder.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+
+        } else {
+          std::cerr << "Invalid operator: " << ops_[i - 1];
+          return nullptr;
+        }
+        // TODO should these be ordered, or can they be QNAN? probably.
 
         // TODO early exit
         ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
