@@ -1,0 +1,6 @@
+f : int -> real
+f = (n : int) -> real {
+  return 3.14
+}
+
+f(5)

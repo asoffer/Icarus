@@ -11,6 +11,10 @@ extern llvm::IRBuilder<> builder;
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
+    if (type()->is_function()) {
+      return global_module->getFunction(token());
+    }
+
     return builder.CreateLoad(alloca_, token());
   }
 
@@ -21,32 +25,32 @@ namespace AST {
     // that C++ uses.
 
     // TODO move this to Type
-    if (expr_type_ == Type::get_unknown() || expr_type_ == Type::get_type_error()) {
+    if (type() == Type::get_unknown() || type() == Type::get_type_error()) {
       return nullptr;
 
-    } else if (expr_type_ == Type::get_bool()) {
+    } else if (type() == Type::get_bool()) {
       // A bool is an unsigned 1-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(1, token() == "true" ? 1 : 0, false));
 
-    } else if (expr_type_ == Type::get_char()) {
+    } else if (type() == Type::get_char()) {
       // A character is an unsigend 8-bit integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
-    } else if (expr_type_ == Type::get_int()) {
+    } else if (type() == Type::get_int()) {
       // An int is a 32-bit signed integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(32, std::stoul(token()), true));
 
-    } else if (expr_type_ == Type::get_real()) {
+    } else if (type() == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
           llvm::APFloat(std::stod(token())));
 
-    } else if (expr_type_ == Type::get_type()) {
+    } else if (type() == Type::get_type()) {
       return nullptr;
 
-    } else if (expr_type_ == Type::get_uint()) {
+    } else if (type() == Type::get_uint()) {
       // A uint is a 64-bit unsigned integer
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(32, std::stoul(token()), false));
@@ -62,7 +66,7 @@ namespace AST {
     if (is_return()) {
       builder.CreateRet(val);
 
-    } else if(expr_->expr_type_ == Type::get_bool() && token() == "!") {
+    } else if(expr_->type() == Type::get_bool() && token() == "!") {
       return builder.CreateNot(val, "nottmp");
 
     } else if (is_print()) {
@@ -73,7 +77,23 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
-    if (expr_type_ == Type::get_bool()) {
+    if (token() == "()") {
+      std::cout << "???" << std::endl;
+      llvm::Value* lhs_val = lhs_->generate_code(scope);
+      std::cout << "___" << std::endl;
+      llvm::Value* rhs_val = rhs_->generate_code(scope);
+
+      std::cout << lhs_val << ", " << rhs_val << std::endl;
+
+      if (lhs_val == nullptr || rhs_val == nullptr) {
+        return nullptr;
+      }
+
+      std::vector<llvm::Value*> arg_vals = { rhs_val };
+      return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+    }
+
+    if (type() == Type::get_bool()) {
       llvm::Value* lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;
 
@@ -176,7 +196,7 @@ namespace AST {
       return nullptr;
     }
 
-    if (expr_type_ == Type::get_int()) {
+    if (type() == Type::get_int()) {
       if (token() == "+") {
         return builder.CreateAdd(lhs_val, rhs_val, "addtmp");
 
@@ -258,7 +278,7 @@ namespace AST {
         return nullptr;
       }
 
-    } else if (expr_type_ == Type::get_real()) {
+    } else if (type() == Type::get_real()) {
       if (token() == "+") {
         return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
 
@@ -326,8 +346,9 @@ namespace AST {
 
 
 
-    } else if (expr_type_ == Type::get_uint()) {
+    } else if (type() == Type::get_uint()) {
     }
+
 
     return nullptr;
   }
@@ -349,7 +370,7 @@ namespace AST {
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
-    if (exprs_[0]->expr_type_ == Type::get_int()) {
+    if (exprs_[0]->type() == Type::get_int()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -382,7 +403,7 @@ namespace AST {
         lhs_val = rhs_val;
 
       }
-    } else if (exprs_[0]->expr_type_ == Type::get_real()) {
+    } else if (exprs_[0]->type() == Type::get_real()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -423,7 +444,7 @@ namespace AST {
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
 
     llvm_function_ = llvm::Function::Create(
-        static_cast<llvm::FunctionType*>(expr_type_->llvm()),
+        static_cast<llvm::FunctionType*>(type()->llvm()),
         llvm::Function::ExternalLinkage, "__anon_fn", global_module);
 
 
@@ -512,7 +533,7 @@ namespace AST {
     auto start_block = builder.GetInsertBlock();
     builder.SetInsertPoint(landing_block);
     llvm::PHINode* phi_node =
-      builder.CreatePHI(Type::get_real()->llvm(), static_cast<unsigned int>(pairs_->size()), "phi");
+      builder.CreatePHI(type()->llvm(), static_cast<unsigned int>(pairs_->size()), "phi");
 
     builder.SetInsertPoint(start_block);
 
