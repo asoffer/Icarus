@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     global_statements->verify_types();
 
-    // std::cout << global_statements->to_string(0) << std::endl;
+    std::cout << global_statements->to_string(0) << std::endl;
 
     global_scope->set_entry(llvm::BasicBlock::Create(
           llvm::getGlobalContext(), "entry", global_function));

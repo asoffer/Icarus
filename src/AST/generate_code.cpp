@@ -75,20 +75,65 @@ namespace AST {
     }
 
     if (expr_type_ == Type::get_bool()) {
-      if (token() == "&") {
-        return builder.CreateAnd(lhs_val, rhs_val, "andtmp");
+      if (token() == "&" || token() == "|") {
+        // TODO move code-gen of values into this section so loads only happen
+        // on the phi-node they're needed for. I have no idea if mem2reg will
+        // take care of this, but it's an easy thing to fix, so might as well do
+        // it at some point.
+        // 
+        // TODO should large boolean expressions be built in a single structure
+        // rather than many smaller nodes? This seems like it would help
+        // optimization tools, but once again, I don't know enough about how
+        // LLVM works to know if that is actually true.
+        auto parent_fn = builder.GetInsertBlock()->getParent();
 
-      } else if (token() == "|") {
-        return builder.CreateOr(lhs_val, rhs_val, "ortmp");
+        llvm::BasicBlock* more_block =
+          llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
+        llvm::BasicBlock* merge_block =
+          llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+
+        llvm::BasicBlock* true_block = nullptr;
+        llvm::BasicBlock* false_block = nullptr;
+
+        // Tells us which block to jump to
+        if (token() == "&") {
+          true_block = more_block;
+          false_block = merge_block;
+        } else if (token() == "|") {
+          false_block = more_block;
+          true_block = merge_block;
+        }
+
+        builder.CreateCondBr(lhs_val, true_block, false_block);
+        // NOTE: The branches do nothing inside them. This is used so that when
+        // we join them with a phi node, we can use the branches to determine if
+        // the value was true or false. It seems strange, but maybe this is the
+        // right way to do it?
+        //
+        // TODO: Find out if this is the correct way to do this.
+        builder.SetInsertPoint(more_block);
+        builder.CreateBr(merge_block);
+
+        builder.SetInsertPoint(merge_block);
+        llvm::PHINode* phi_node =
+          builder.CreatePHI(Type::get_bool()->llvm(), 2, "merge");
+
+        if (token() == "&") {
+          phi_node->addIncoming(rhs_val, true_block);
+          phi_node->addIncoming(
+              llvm::ConstantInt::get(llvm::getGlobalContext(),
+                llvm::APInt(1, 0, false)), false_block);
+
+        } else if (token() == "|") {
+          phi_node->addIncoming(
+              llvm::ConstantInt::get(llvm::getGlobalContext(),
+                llvm::APInt(1, 1, false)), true_block);
+          phi_node->addIncoming(rhs_val, false_block);
+        }
+        return phi_node;
 
       } else if (token() == "^") {
         return builder.CreateXor(lhs_val, rhs_val, "xortmp");
-
-      } else if (token() == "==") {
-        return builder.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-
-      } else if (token() == "!=") {
-        return builder.CreateXor(lhs_val, rhs_val, "netmp");
 
       } else if (token() == "&=") {
         llvm::AllocaInst* var = nullptr;
@@ -131,9 +176,7 @@ namespace AST {
         return nullptr;
       }
 
-    }
-
-    if (expr_type_ == Type::get_int()) {
+    } else if (expr_type_ == Type::get_int()) {
       if (token() == "+") {
         return builder.CreateAdd(lhs_val, rhs_val, "addtmp");
 
@@ -302,6 +345,7 @@ namespace AST {
   }
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
+    // TODO short-circuiting
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
