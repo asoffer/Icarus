@@ -71,7 +71,8 @@ namespace AST {
       llvm::Value* lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;
 
-      if (token() == "&" || token() == "|") {
+      // TODO this check can be sped up, at the cost of debugging robustness
+      if (token() == "&" || token() == "|" || token() == "&=") {
         auto parent_fn = builder.GetInsertBlock()->getParent();
 
         auto more_block = llvm::BasicBlock::Create(
@@ -83,11 +84,11 @@ namespace AST {
         llvm::BasicBlock* true_block = nullptr;
         llvm::BasicBlock* false_block = nullptr;
 
-        if (token() == "&") {
+        if (token() == "&" || token() == "&=") {
           true_block = more_block;
           false_block = merge_block;
  
-        } else if (token() == "|") {
+        } else if (token() == "|" || token() == "|=") {
           false_block = more_block;
           true_block = merge_block;
         }
@@ -104,18 +105,35 @@ namespace AST {
 
         if (rhs_val == nullptr) return nullptr;
 
-        if (token() == "&") {
+        if (token() == "&" || token() == "&=") {
           phi_node->addIncoming(rhs_val, more_block);
           phi_node->addIncoming(
               llvm::ConstantInt::get(llvm::getGlobalContext(),
                 llvm::APInt(1, 0, false)), short_circuit_entry);
 
-        } else if (token() == "|") {
+        } else if (token() == "|" || token() == "|=") {
           phi_node->addIncoming(
               llvm::ConstantInt::get(llvm::getGlobalContext(),
                 llvm::APInt(1, 1, false)), short_circuit_entry);
           phi_node->addIncoming(rhs_val, more_block);
         }
+
+        if (token() == "&=" || token() == "|=") {
+          llvm::AllocaInst* var = nullptr;
+          if (lhs_->is_identifier()) {
+            auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+            var = id_ptr->alloca_;
+          }
+
+          // TODO remove this/robustify it
+          if (var != nullptr) {
+            builder.CreateStore(phi_node, var);
+          }
+
+          // Assignment versions do not return anything
+          return nullptr;
+        }
+
         return phi_node;
 
       }
@@ -128,33 +146,6 @@ namespace AST {
 
       if (token() == "^") {
         return builder.CreateXor(lhs_val, rhs_val, "xortmp");
-
-      } else if (token() == "&=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateAnd(lhs_val, rhs_val, "subtmp"), var);
-        return nullptr;
-
-      } else if (token() == "|=") {
-        return builder.CreateOr(lhs_val, rhs_val, "ortmp");
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateOr(lhs_val, rhs_val, "subtmp"), var);
-        return nullptr;
 
       } else if (token() == "^=") {
         llvm::AllocaInst* var = nullptr;
