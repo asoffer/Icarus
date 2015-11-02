@@ -1,7 +1,16 @@
-temp : int = 40
+temp : real
+temp = 40.0
 
-case {
-  temp = 32   =>  "ice"
-  temp < 212  =>  "water"
-  else        =>  "vapor"
+ice : real
+water : real
+vapor : real
+ice = 0.0
+water = 1.0
+vapor = 2.0
+
+val : real
+val = case {
+  temp <= 32.0  =>  ice
+  temp < 212.0  =>  water
+  else          =>  vapor
 }

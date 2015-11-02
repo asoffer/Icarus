@@ -64,8 +64,19 @@ namespace AST {
 
   void KVPairList::join_identifiers(Scope* scope) {
     for (auto& pair : kv_pairs_) {
-      pair.first->join_identifiers(scope);
-      pair.second->join_identifiers(scope);
+      if (pair.first->is_identifier()) {
+        auto id_ptr = scope->identifier(pair.first->token());
+        pair.second = std::static_pointer_cast<Expression>(id_ptr);
+      } else {
+        pair.first->join_identifiers(scope);
+      }
+
+      if (pair.second->is_identifier()) {
+        auto id_ptr = scope->identifier(pair.second->token());
+        pair.second = std::static_pointer_cast<Expression>(id_ptr);
+      } else {
+        pair.second->join_identifiers(scope);
+      }
     }
   }
 

@@ -217,8 +217,8 @@ namespace AST {
 
     if (lhs_->expr_type_ != rhs_->expr_type_) {
       std::cerr
-        << "Type mismatch:"
-        << lhs_->expr_type_->to_string() << " and"
+        << "Type mismatch: "
+        << lhs_->expr_type_->to_string() << " and "
         << rhs_->expr_type_->to_string() << std::endl;
     }
     expr_type_ = Type::get_void();

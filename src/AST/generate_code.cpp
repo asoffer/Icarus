@@ -1,5 +1,11 @@
 #include "AST.h"
 
+// TODO
+// We often have if (val == nullptr) return nullptr to propogate nullptrs. In
+// what situations is a nullptr actually possible to start with? If we can do
+// all checks on the AST before code generation, then maybe we can remove these
+// and thereby streamline the architecture.
+
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
 
@@ -500,6 +506,51 @@ namespace AST {
   }
 
   llvm::Value* Case::generate_code(Scope* scope) {
-    return nullptr;
+    auto parent_fn = builder.GetInsertBlock()->getParent();
+    auto landing_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "case_landing", parent_fn);
+    auto start_block = builder.GetInsertBlock();
+    builder.SetInsertPoint(landing_block);
+    llvm::PHINode* phi_node =
+      builder.CreatePHI(Type::get_real()->llvm(), static_cast<unsigned int>(pairs_->size()), "phi");
+
+    builder.SetInsertPoint(start_block);
+
+    auto countdown = pairs_->size() - 1;
+    auto iter = pairs_->kv_pairs_.begin();
+
+    while (countdown != 0) {
+      auto bool_val = iter->first->generate_code(scope);
+      if (bool_val == nullptr) return nullptr;
+
+      auto true_block = llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "case_true", parent_fn);
+      auto next_block = llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "case_next", parent_fn);
+
+      builder.CreateCondBr(bool_val, true_block, next_block);
+
+      // Need to set the insert point to true_block so that when we generate
+      // code for the true case, it gets put in that block.
+      builder.SetInsertPoint(true_block);
+      phi_node->addIncoming(iter->second->generate_code(scope), true_block);
+      builder.CreateBr(landing_block);
+
+      builder.SetInsertPoint(next_block);
+
+      ++iter; --countdown;
+    }
+
+    // Unroll the last level of the loop because it must end with
+    //   else => ...
+    // And this is a special case. When we get down here we are already pointing
+    // to the correct block, and iter is already pointing to the right value.
+    phi_node->addIncoming(iter->second->generate_code(scope), builder.GetInsertBlock());
+    builder.CreateBr(landing_block);
+
+    // Ensure that we end pointing to the right place
+    builder.SetInsertPoint(landing_block);
+
+    return phi_node;
   }
 }  // namespace AST

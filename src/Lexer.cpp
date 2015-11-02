@@ -271,8 +271,10 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::Node(Language::generic_operator,
-            std::string(1, lead_char) + "=");
+
+      Language::NodeType node_type = (lead_char == '-' ?
+          Language::generic_operator : Language::binary_boolean_operator);
+      return AST::Node(node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
       file_.get();
