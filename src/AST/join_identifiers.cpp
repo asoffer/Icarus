@@ -63,7 +63,7 @@ namespace AST {
   }
 
   void KVPairList::join_identifiers(Scope* scope) {
-    for (const auto& pair : kv_pairs_) {
+    for (auto& pair : kv_pairs_) {
       pair.first->join_identifiers(scope);
       pair.second->join_identifiers(scope);
     }

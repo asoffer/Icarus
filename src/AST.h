@@ -452,6 +452,7 @@ namespace AST {
 
   class KVPairList : public Node {
     public:
+      friend class Case;
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
       static NPtr build_one_assignment_error(NPtrVec&& nodes);
@@ -460,7 +461,10 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void needed_for(IdPtr id_ptr) const;
       virtual Type* verify_types_with_key(Type* key_type);
+
+      inline size_t size() const { return kv_pairs_.size(); }
 
     private:
       KVPairList() {}
@@ -554,10 +558,9 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
+      virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
-
-      virtual std::string to_string(size_t n) const;
       virtual void verify_types();
 
       virtual Type* interpret_as_type() const;
