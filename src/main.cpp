@@ -87,7 +87,6 @@ int main(int argc, char *argv[]) {
 
     global_statements->generate_code(global_scope);
 
-    builder.SetInsertPoint(global_scope->entry());
     builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, 0, false)));
 

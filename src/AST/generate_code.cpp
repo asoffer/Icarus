@@ -67,72 +67,66 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
-    llvm::Value* lhs_val = lhs_->generate_code(scope);
-    llvm::Value* rhs_val = rhs_->generate_code(scope);
-
-    if (lhs_val == nullptr || rhs_val == nullptr) {
-      return nullptr;
-    }
-
     if (expr_type_ == Type::get_bool()) {
+      llvm::Value* lhs_val = lhs_->generate_code(scope);
+      if (lhs_val == nullptr) return nullptr;
+
       if (token() == "&" || token() == "|") {
-        // TODO move code-gen of values into this section so loads only happen
-        // on the phi-node they're needed for. I have no idea if mem2reg will
-        // take care of this, but it's an easy thing to fix, so might as well do
-        // it at some point.
-        // 
-        // TODO should large boolean expressions be built in a single structure
-        // rather than many smaller nodes? This seems like it would help
-        // optimization tools, but once again, I don't know enough about how
-        // LLVM works to know if that is actually true.
         auto parent_fn = builder.GetInsertBlock()->getParent();
 
-        llvm::BasicBlock* more_block =
-          llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
-        llvm::BasicBlock* merge_block =
-          llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+        auto more_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "more", parent_fn);
+        auto merge_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "merge", parent_fn);
+        auto short_circuit_entry = builder.GetInsertBlock();
 
         llvm::BasicBlock* true_block = nullptr;
         llvm::BasicBlock* false_block = nullptr;
 
-        // Tells us which block to jump to
         if (token() == "&") {
           true_block = more_block;
           false_block = merge_block;
+ 
         } else if (token() == "|") {
           false_block = more_block;
           true_block = merge_block;
         }
 
         builder.CreateCondBr(lhs_val, true_block, false_block);
-        // NOTE: The branches do nothing inside them. This is used so that when
-        // we join them with a phi node, we can use the branches to determine if
-        // the value was true or false. It seems strange, but maybe this is the
-        // right way to do it?
-        //
-        // TODO: Find out if this is the correct way to do this.
+
         builder.SetInsertPoint(more_block);
+        llvm::Value* rhs_val = rhs_->generate_code(scope);
         builder.CreateBr(merge_block);
 
         builder.SetInsertPoint(merge_block);
         llvm::PHINode* phi_node =
           builder.CreatePHI(Type::get_bool()->llvm(), 2, "merge");
 
+        if (rhs_val == nullptr) return nullptr;
+
         if (token() == "&") {
-          phi_node->addIncoming(rhs_val, true_block);
+          phi_node->addIncoming(rhs_val, more_block);
           phi_node->addIncoming(
               llvm::ConstantInt::get(llvm::getGlobalContext(),
-                llvm::APInt(1, 0, false)), false_block);
+                llvm::APInt(1, 0, false)), short_circuit_entry);
 
         } else if (token() == "|") {
           phi_node->addIncoming(
               llvm::ConstantInt::get(llvm::getGlobalContext(),
-                llvm::APInt(1, 1, false)), true_block);
-          phi_node->addIncoming(rhs_val, false_block);
+                llvm::APInt(1, 1, false)), short_circuit_entry);
+          phi_node->addIncoming(rhs_val, more_block);
         }
         return phi_node;
 
-      } else if (token() == "^") {
+      }
+
+      // Already defined lhs_val
+      llvm::Value* rhs_val = rhs_->generate_code(scope);
+      if (rhs_val == nullptr) {
+        return nullptr;
+      }
+
+      if (token() == "^") {
         return builder.CreateXor(lhs_val, rhs_val, "xortmp");
 
       } else if (token() == "&=") {
@@ -176,7 +170,16 @@ namespace AST {
         return nullptr;
       }
 
-    } else if (expr_type_ == Type::get_int()) {
+    }
+
+    llvm::Value* lhs_val = lhs_->generate_code(scope);
+    llvm::Value* rhs_val = rhs_->generate_code(scope);
+
+    if (lhs_val == nullptr || rhs_val == nullptr) {
+      return nullptr;
+    }
+
+    if (expr_type_ == Type::get_int()) {
       if (token() == "+") {
         return builder.CreateAdd(lhs_val, rhs_val, "addtmp");
 
