@@ -1,6 +1,10 @@
 #include "Lexer.h"
 #include "Language.h"
+#include "ErrorLog.h"
+
 #include <map>
+
+extern ErrorLog error_log;
 
 // Local function for recognizing newlines a la std::isalpha, etc.
 bool isnewline(int n) {
@@ -13,7 +17,7 @@ bool isnewline(int n) {
 Lexer::Lexer(const char* file_name) :
   file_name_(file_name),
   file_(file_name, std::ifstream::in),
-  line_num_(0) {
+  line_num_(1) {
   }
 
 Lexer::Lexer(const std::string& file_name) : Lexer(file_name.c_str()) {}
@@ -329,9 +333,8 @@ AST::Node Lexer::next_string_literal() {
           str_lit += '\t'; break;
         default:
           {
-            std::cerr
-              << "The specified character is not an escape character."
-              << std::endl;
+            error_log.log(line_num_,
+                "The sequence `\\" + std::to_string(static_cast<char>(peek)) + "` is not an escape character.");
 
             str_lit += static_cast<char>(peek);
             break;
@@ -350,7 +353,8 @@ AST::Node Lexer::next_string_literal() {
     file_.get();
   }
   else {
-    std::cerr << "Newline encountered inside string literal."  << std::endl;
+    error_log.log(line_num_,
+        "String literal is not closed before the end of the line.");
   }
 
   return AST::Node::string_literal_node(line_num_, str_lit);

@@ -7,6 +7,7 @@
 #include "Type.h"
 #include "typedefs.h"
 #include "ScopeDB.h"
+#include "ErrorLog.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
@@ -14,6 +15,7 @@
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
 extern llvm::IRBuilder<> builder;
+extern ErrorLog error_log;
 
 #include <cstdio>
 extern "C" double printd(double X) {
@@ -50,6 +52,16 @@ int main(int argc, char *argv[]) {
     }
 
   } else if (std::strcmp(argv[1], "-p") == 0) {
+    error_log.set_file(argv[2]);
+
+    Parser parser(argv[2]);
+    auto root_node = parser.parse();
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+
+      return 0;
+    }
+
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
@@ -57,24 +69,40 @@ int main(int argc, char *argv[]) {
         Type::get_function(Type::get_void(), Type::get_int())->llvm(),
         llvm::Function::ExternalLinkage, "main", global_module);
 
-    Parser parser(argv[2]);
 
     // TODO write the language rules to guarantee that the parser produces a
     // Statements node at top level.
     auto global_statements =
-        std::static_pointer_cast<AST::Statements>(parser.parse());
+        std::static_pointer_cast<AST::Statements>(root_node);
 
     ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
 
     global_statements->join_identifiers(global_scope);
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return 0;
+    }
 
     ScopeDB::fill_db();
     ScopeDB::assign_decl_order();
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return 0;
+    }
+
 
     ScopeDB::Scope::verify_no_shadowing();
     ScopeDB::Scope::determine_declared_types();
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return 0;
+    }
 
     global_statements->verify_types();
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return 0;
+    }
 
     std::cout << global_statements->to_string(0) << std::endl;
 

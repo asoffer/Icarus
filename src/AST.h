@@ -18,9 +18,14 @@
 #include "Type.h"
 #include "typedefs.h"
 #include "ScopeDB.h"
+#include "ErrorLog.h"
+
+extern ErrorLog error_log;
 
 namespace AST {
   using ::ScopeDB::Scope;
+
+  // TODO is this still being used?
   extern size_t function_counter;
 
   class Node {
@@ -108,7 +113,7 @@ namespace AST {
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
     virtual void verify_types() = 0;
-    virtual void verify_type_is(Type* t);
+    virtual bool verify_type_is(Type* t);
 
     virtual Type* interpret_as_type() const = 0;
     virtual Type* type() const { return expr_type_; }
@@ -132,18 +137,9 @@ namespace AST {
   }
 
 
-  inline void Expression::verify_type_is(Type *t) {
+  inline bool Expression::verify_type_is(Type *t) {
     verify_types();
-
-    if (expr_type_ != t) {
-      // TODO: give some context for this error message. Why must this be the
-      // type?  So far the only instance where this is called is for case
-      // statements,
-      std::cerr
-        << "Type of `____` must be " << t->to_string() << ", but "
-        << expr_type_->to_string() << " found instead." << std::endl;
-      expr_type_ = t;
-    }
+    return expr_type_ == t; 
   }
 
   // TODO: This only represents a left unary operator for now
@@ -536,7 +532,7 @@ namespace AST {
   }
 
   inline NPtr KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
-    std::cerr << "You probably meant `==` instead of `=`" << std::endl;
+    error_log.log(nodes[0]->line_num_, "Assignment found where boolean expression was expected. Did you mean `==` instead of `=`?");
 
     auto assignment_node = std::static_pointer_cast<Assignment>(nodes[0]);
 
@@ -557,7 +553,7 @@ namespace AST {
   }
 
   inline NPtr KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
-    std::cerr << "You probably meant `==` instead of `=`" << std::endl;
+    error_log.log(nodes[0]->line_num_, "Assignment found where boolean expression was expected. Did you mean `==` instead of `=`?");
 
     auto assignment_node = std::static_pointer_cast<Assignment>(nodes[1]);
 

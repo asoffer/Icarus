@@ -1,4 +1,7 @@
 #include "AST.h"
+#include "ErrorLog.h"
+
+extern ErrorLog error_log;
 
 namespace AST {
   void Unop::verify_types() {
@@ -73,16 +76,14 @@ namespace AST {
     } else if (token_ == "()") {
       expr_type_ = Type::get_type_error();
       if (!lhs_->expr_type_->is_function()) {
-        std::cerr
-          << "Identifier `" << lhs_->token()
-          << "` is not a function." << std::endl;
+        error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name a function.");
         return;
       }
 
       Type* in_type = static_cast<Function*>(lhs_->expr_type_)->argument_type();
 
       if (in_type != rhs_->expr_type_) {
-        std::cerr << "Type mismatch on function arguments" << std::endl;
+        error_log.log(line_num_, "Type mismatch on function arguments.");
         return;
       }
 
@@ -97,10 +98,10 @@ namespace AST {
       if (lhs_->expr_type_ != rhs_->expr_type_) {
         // If the types don't match give an error message. We can continue
         // because the result must be a bool
-        std::cerr
-          << "Type mismatch for comparison operator" << token_ << " ("
-          << lhs_->expr_type_->to_string() << " and "
-          << rhs_->expr_type_->to_string() << ")" << std::endl;
+        error_log.log(line_num_,
+            "Type mismatch for comparison operator " + token_ + " ("
+            + lhs_->expr_type_->to_string() + " and "
+            + rhs_->expr_type_->to_string() + ")");
       }
 
       expr_type_ = Type::get_bool();
@@ -131,9 +132,7 @@ namespace AST {
 
     } else {
       // TODO guess what type was intended
-      std::cerr
-        << "Type error: Values do not match in ChainOp"
-        << std::endl;
+      error_log.log(line_num_, "Type error: Values do not have matching types in ChainOp");
     }
   }
 
@@ -168,7 +167,7 @@ namespace AST {
 
     if (return_type_as_type == Type::get_void()) {
       if (!return_types.empty()) {
-        std::cerr << "Function declared void but returns a value." << std::endl;
+        error_log.log(line_num_, "Function declared void but returns a value.");
       }
       return;
     }
@@ -179,18 +178,16 @@ namespace AST {
       //
       // TODO better error message. Repalec 'non-void' with some information
       // about the type.
-      std::cerr << "Non-void function has no return statement." << std::endl;
+      error_log.log(line_num_, "Non-void function has no return statement.");
 
     } else if (return_types.size() > 1) {
-      std::cerr << "Too many return types" << std::endl;
+      error_log.log(line_num_, "Too many return types.");
 
     } else if (*return_types.begin() != return_type_as_type) {
-      std::cerr
-        << "Return type does not match function declared return type: "
-        << (*return_types.begin())->to_string()
-        << " vs. "
-        << return_type_as_type->to_string()
-        << std::endl;
+      error_log.log(line_num_, "Return type does not match function declared return type: "
+          + (*return_types.begin())->to_string()
+          + " vs. "
+          + return_type_as_type->to_string());
     }
   }
 
@@ -216,10 +213,13 @@ namespace AST {
         rhs_->expr_type_ == Type::get_type_error()) return;
 
     if (lhs_->expr_type_ != rhs_->expr_type_) {
-      std::cerr
-        << "Type mismatch: "
-        << lhs_->expr_type_->to_string() << " and "
-        << rhs_->expr_type_->to_string() << std::endl;
+      if (lhs_->expr_type_ == Type::get_unknown()) {
+        error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
+      } else {
+        error_log.log(line_num_, "Type mismatch: "
+            + lhs_->expr_type_->to_string() + " and "
+            + rhs_->expr_type_->to_string());
+      }
     }
     expr_type_ = Type::get_void();
   }
@@ -234,17 +234,24 @@ namespace AST {
     std::set<Type*> value_types;
 
     for (const auto& kv : kv_pairs_) {
-      kv.first->verify_type_is(key_type);
+      if (!kv.first->verify_type_is(key_type)) {
+        // TODO: give some context for this error message. Why must this be the
+        // type?  So far the only instance where this is called is for case
+        // statements,
+        error_log.log(line_num_, "Type of `____` must be "
+            + key_type->to_string() + ", but "
+            + kv.first->expr_type_->to_string() + " found instead.");
+        kv.first->expr_type_ = key_type;
+      }
+
       kv.second->verify_types();
 
       value_types.insert(kv.second->expr_type_);
     }
 
-
     // TODO guess what type was intended
     if (value_types.size() != 1) {
-      std::cerr
-        << "Type error: Values do not match in key-value pairs" << std::endl;
+      error_log.log(line_num_, "Type error: Values do not match in key-value pairs");
       return Type::get_type_error();
     }
 
