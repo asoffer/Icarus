@@ -81,8 +81,6 @@ namespace AST {
       llvm::Value* lhs_val = lhs_->generate_code(scope);
       llvm::Value* rhs_val = rhs_->generate_code(scope);
 
-      std::cout << lhs_val << ", " << rhs_val << std::endl;
-
       if (lhs_val == nullptr || rhs_val == nullptr) {
         return nullptr;
       }

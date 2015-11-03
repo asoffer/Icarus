@@ -28,6 +28,7 @@ class Lexer {
   private:
     const char* file_name_;
     std::ifstream file_;
+    size_t line_num_;
 
     Lexer() = delete;
 

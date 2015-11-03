@@ -23,15 +23,25 @@ namespace AST {
   using ::ScopeDB::Scope;
   extern size_t function_counter;
 
-  class Declaration;
-  class Statements;
-
   class Node {
     public:
-      static inline Node eof_node() { return Node(Language::eof, ""); }
-      static inline Node newline_node() { return Node(Language::newline, ""); }
-      static inline Node string_literal_node(const std::string& str_lit) { 
-        return Node(Language::string_literal, str_lit);
+      friend class KVPairList;
+      friend class Expression;
+      friend class Terminal;
+      friend class Identifier;
+      friend class Unop;
+      friend class FunctionLiteral;
+      friend class Case;
+      friend class Binop;
+      friend class ChainOp;
+      friend class Declaration;
+      friend class Statements;
+      friend class Assignment;
+
+      static inline Node eof_node(size_t line_num) { return Node(line_num, Language::eof, ""); }
+      static inline Node newline_node() { return Node(0, Language::newline, ""); }
+      static inline Node string_literal_node(size_t line_num, const std::string& str_lit) { 
+        return Node(line_num, Language::string_literal, str_lit);
       }
 
       Language::NodeType node_type() const { return type_; }
@@ -63,21 +73,20 @@ namespace AST {
       virtual bool is_chain_op() const { return false; }
       virtual bool is_declaration() const { return false; }
 
-      Node(Language::NodeType type = Language::unknown,
-          const std::string& token = "") : type_(type), token_(token) {}
+      Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
+        : type_(type), token_(token), line_num_(line_num) {}
 
       virtual ~Node(){}
 
 
-      inline friend std::ostream& operator<<(
-          std::ostream& os, const Node& node) {
-
+      inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
         return os << node.to_string(0);
       }
 
     protected:
       Language::NodeType type_;
       std::string token_;
+      size_t line_num_;
   };
 
 
@@ -162,6 +171,7 @@ namespace AST {
   inline NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = new Unop;
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
+    unop_ptr->line_num_ = nodes[0]->line_num_;
 
     unop_ptr->type_ = Language::expression;
     if (nodes[0]->node_type() == Language::reserved_return) {
@@ -228,6 +238,8 @@ namespace AST {
 
   inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
     auto binop_ptr = new Binop;
+    binop_ptr->line_num_ = nodes[1]->line_num_;
+
     binop_ptr->lhs_ =
       std::static_pointer_cast<Expression>(nodes[0]);
 
@@ -283,6 +295,8 @@ namespace AST {
 
     } else {
       chain_ptr = std::shared_ptr<ChainOp>(new ChainOp);
+      chain_ptr->line_num_ = nodes[1]->line_num_;
+
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence_ = Language::op_prec.at(nodes[1]->token());
     }
@@ -323,6 +337,7 @@ namespace AST {
 
   inline NPtr Terminal::build(NPtrVec&& nodes, Type* t) {
     auto term_ptr = new Terminal;
+    term_ptr->line_num_ = nodes[0]->line_num_;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence_ = Language::op_prec.at("MAX");
@@ -369,6 +384,8 @@ namespace AST {
 
   inline NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = new Assignment;
+    assign_ptr->line_num_ = nodes[1]->line_num_;
+
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
@@ -386,7 +403,7 @@ namespace AST {
 
     public:
       static NPtr build(NPtrVec&& nodes) {
-        return NPtr(new Identifier(nodes[0]->token()));
+        return NPtr(new Identifier(nodes[0]->line_num_, nodes[0]->token()));
       }
 
       virtual std::string to_string(size_t n) const;
@@ -395,10 +412,11 @@ namespace AST {
       virtual bool is_identifier() const { return true; }
       virtual llvm::Value* generate_code(Scope* scope);
 
-      Identifier(const std::string& token_string) : alloca_(nullptr) {
+      Identifier(size_t line_num, const std::string& token_string) : alloca_(nullptr) {
         token_ = token_string;
         expr_type_ = Type::get_unknown();
         precedence_ = Language::op_prec.at("MAX");
+        line_num_ = line_num;
       }
 
       llvm::AllocaInst* alloca_;
@@ -438,8 +456,9 @@ namespace AST {
   inline NPtr Declaration::build(NPtrVec&& nodes) {
     auto decl_ptr = ScopeDB::make_declaration();
 
-    decl_ptr->id_ = IdPtr(new Identifier(nodes[0]->token()));
+    decl_ptr->id_ = IdPtr(new Identifier(nodes[0]->line_num_, nodes[0]->token()));
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
+    decl_ptr->line_num_ = nodes[1]->line_num_;
 
     decl_ptr->token_ = ":";
     decl_ptr->type_ = Language::decl_operator;
@@ -474,10 +493,12 @@ namespace AST {
 
   inline NPtr KVPairList::build_one(NPtrVec&& nodes) {
     auto pair_list = new KVPairList;
+    pair_list->line_num_ = nodes[0]->line_num_;
     EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
       key_ptr = EPtr(new Terminal);
+      // TODO line num
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
@@ -498,6 +519,7 @@ namespace AST {
 
     if (nodes[1]->node_type() == Language::reserved_else) {
       key_ptr = EPtr(new Terminal);
+      // TODO line num
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
@@ -519,7 +541,8 @@ namespace AST {
     auto assignment_node = std::static_pointer_cast<Assignment>(nodes[0]);
 
     // TODO this is mostly the same code as Binop::build_operator
-    auto binop_ptr = new Binop;
+    auto binop_ptr = new Binop; 
+    // TODO line num
     binop_ptr->lhs_ = assignment_node->lhs_;
     binop_ptr->rhs_ = assignment_node->rhs_;
 
@@ -540,6 +563,7 @@ namespace AST {
 
     // TODO this is mostly the same code as Binop::build_operator
     auto binop_ptr = new Binop;
+    // TODO line num
     binop_ptr->lhs_ = assignment_node->lhs_;
     binop_ptr->rhs_ = assignment_node->rhs_;
 
@@ -572,9 +596,10 @@ namespace AST {
   };
 
   inline NPtr Case::build(NPtrVec&& nodes) {
-    auto output = new Case;
-    output->pairs_ = std::static_pointer_cast<KVPairList>(nodes[3]);
-    return NPtr(output);
+    auto case_ptr = new Case;
+    case_ptr->line_num_ = nodes[0]->line_num_;
+    case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[3]);
+    return NPtr(case_ptr);
   }
 
 
@@ -621,6 +646,7 @@ namespace AST {
 
       static NPtr build(NPtrVec&& nodes) {
         auto fn_lit = new FunctionLiteral;
+        fn_lit->line_num_ = nodes[0]->line_num_;
 
         fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
 

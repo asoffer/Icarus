@@ -72,7 +72,10 @@ namespace ScopeDB {
     }
 
     // No such identifier has been seen yet, create a new IdPtr and return it.
-    IdPtr id_ptr = ids_[id_string] = IdPtr(new AST::Identifier(id_string));
+    //
+    // TODO will the fact that we're joining these make it harder to do line
+    // numbers?
+    IdPtr id_ptr = ids_[id_string] = IdPtr(new AST::Identifier(0, id_string));
     ids_[id_string] = id_ptr;
 
     scope_containing_[id_ptr] = this;

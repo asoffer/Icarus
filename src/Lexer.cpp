@@ -12,7 +12,8 @@ bool isnewline(int n) {
 // Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(const char* file_name) :
   file_name_(file_name),
-  file_(file_name, std::ifstream::in) {
+  file_(file_name, std::ifstream::in),
+  line_num_(0) {
   }
 
 Lexer::Lexer(const std::string& file_name) : Lexer(file_name.c_str()) {}
@@ -34,10 +35,11 @@ restart:
 
   // Delegate based on the next character in the file stream
   if (peek == EOF) {
-    node = AST::Node::eof_node();
+    node = AST::Node::eof_node(lexer.line_num_);
   }
   else if (isnewline(peek)) {
     node = AST::Node::newline_node();
+    ++lexer.line_num_;
     lexer.file_.get();
   }
   else if (std::isspace(peek)) {
@@ -88,7 +90,7 @@ AST::Node Lexer::next_word() {
   // Check if the word is reserved and if so, build the appropriate Node
   for (const auto& res : Language::reserved_words) {
     if (res.first == token) {
-      return AST::Node(res.second, token);
+      return AST::Node(line_num_, res.second, token);
     }
   }
 
@@ -96,12 +98,12 @@ AST::Node Lexer::next_word() {
   // appropriate Node.
   for (const auto& type_lit : Type::literals) {
     if (type_lit.first == token) {
-      return AST::Node(Language::type_literal, token);
+      return AST::Node(line_num_, Language::type_literal, token);
     }
   }
 
   // It's an identifier
-  return AST::Node(Language::identifier, token);
+  return AST::Node(line_num_, Language::identifier, token);
 }
 
 
@@ -126,7 +128,7 @@ AST::Node Lexer::next_number() {
   // If the next character is not a period, we're looking at an integer and can
   // return
   if (peek != '.') {
-    return AST::Node(Language::integer_literal, token);
+    return AST::Node(line_num_, Language::integer_literal, token);
   }
 
   // If the next character was a period, this is a non-integer. Add the period
@@ -136,7 +138,7 @@ AST::Node Lexer::next_number() {
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  return AST::Node(Language::real_literal, token);
+  return AST::Node(line_num_, Language::real_literal, token);
 }
 
 
@@ -159,32 +161,32 @@ AST::Node Lexer::next_operator() {
     case '(':
       {
         file_.get();
-        return AST::Node(Language::left_paren);
+        return AST::Node(line_num_, Language::left_paren);
       }
     case ')':
       {
         file_.get();
-        return AST::Node(Language::right_paren);
+        return AST::Node(line_num_, Language::right_paren);
       }
     case '{':
       {
         file_.get();
-        return AST::Node(Language::left_brace);
+        return AST::Node(line_num_, Language::left_brace);
       }
     case '}':
       {
         file_.get();
-        return AST::Node(Language::right_brace);
+        return AST::Node(line_num_, Language::right_brace);
       }
     case '[':
       {
         file_.get();
-        return AST::Node(Language::left_bracket);
+        return AST::Node(line_num_, Language::left_bracket);
       }
     case ']':
       {
         file_.get();
-        return AST::Node(Language::right_bracket);
+        return AST::Node(line_num_, Language::right_bracket);
       }
     case '"':
       {
@@ -230,7 +232,7 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') file_.get();
 
-    return AST::Node(node_type,
+    return AST::Node(line_num_, node_type,
         std::string(1, lead_char) + (peek == '=' ? "=" : ""));
   }
 
@@ -240,14 +242,14 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::Node(Language::generic_operator, ":=");
+      return AST::Node(line_num_, Language::generic_operator, ":=");
 
     } else if (peek == '>') {
       file_.get();
-      return AST::Node(Language::generic_operator, ":>");
+      return AST::Node(line_num_, Language::generic_operator, ":>");
  
     } else {
-      return AST::Node(Language::decl_operator, ":");
+      return AST::Node(line_num_, Language::decl_operator, ":");
     }
   }
 
@@ -257,9 +259,9 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::Node(Language::binary_boolean_operator, "!=");
+      return AST::Node(line_num_, Language::binary_boolean_operator, "!=");
     } else {
-      return AST::Node(Language::unary_operator, "!");
+      return AST::Node(line_num_, Language::unary_operator, "!");
     }
   }
 
@@ -274,20 +276,20 @@ AST::Node Lexer::next_operator() {
 
       Language::NodeType node_type = (lead_char == '-' ?
           Language::generic_operator : Language::binary_boolean_operator);
-      return AST::Node(node_type, std::string(1, lead_char) + "=");
+      return AST::Node(line_num_, node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
       file_.get();
       if (lead_char == '-') {
-        return AST::Node(Language::fn_arrow, "->");
+        return AST::Node(line_num_, Language::fn_arrow, "->");
       } else {
-        return AST::Node(Language::rocket_operator, "=>");
+        return AST::Node(line_num_, Language::rocket_operator, "=>");
       }
     } else {
       if (lead_char == '-') {
-        return AST::Node(Language::generic_operator, "-");
+        return AST::Node(line_num_, Language::generic_operator, "-");
       } else {
-        return AST::Node(Language::assign_operator, "=");
+        return AST::Node(line_num_, Language::assign_operator, "=");
       }
     }
   }
@@ -300,7 +302,7 @@ AST::Node Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  return AST::Node(Language::generic_operator, token);
+  return AST::Node(line_num_, Language::generic_operator, token);
 }
 
 AST::Node Lexer::next_string_literal() {
@@ -351,7 +353,7 @@ AST::Node Lexer::next_string_literal() {
     std::cerr << "Newline encountered inside string literal."  << std::endl;
   }
 
-  return AST::Node::string_literal_node(str_lit);
+  return AST::Node::string_literal_node(line_num_, str_lit);
 }
 
 AST::Node Lexer::next_char_literal() {
@@ -367,7 +369,7 @@ AST::Node Lexer::next_char_literal() {
     case '\r':
       {
         std::cerr << "Cannot use newline inside a character-literal." << std::endl;
-        return AST::Node(Language::newline);
+        return AST::Node(line_num_, Language::newline);
       }
     case '\\':
       {
@@ -415,7 +417,7 @@ AST::Node Lexer::next_char_literal() {
     std::cerr << "Character literal must be followed by a single-quote." << std::endl;
   }
 
-  return AST::Node(Language::character_literal, std::string(1, output_char));
+  return AST::Node(line_num_, Language::character_literal, std::string(1, output_char));
 }
 
 AST::Node Lexer::next_given_slash() {
@@ -438,7 +440,7 @@ AST::Node Lexer::next_given_slash() {
       peek = file_.peek();
     } while (!isnewline(peek));
 
-    return AST::Node(Language::comment, token);
+    return AST::Node(line_num_, Language::comment, token);
   }
 
   // If the first two characters are '/*' then start a multi-line comment.
@@ -458,7 +460,7 @@ AST::Node Lexer::next_given_slash() {
       if (!*this) {
         // If we're at the end of the stream
         std::cerr << "File ended during multi-line comment." << std::endl;
-        return AST::Node(Language::comment, "");
+        return AST::Node(line_num_, Language::comment, "");
       }
 
       if (prepeek == '/' && peek == '*') {
@@ -469,13 +471,13 @@ AST::Node Lexer::next_given_slash() {
       }
     }
 
-    return AST::Node(Language::comment, "MULTILINE COMMENT");
+    return AST::Node(line_num_, Language::comment, "MULTILINE COMMENT");
   }
 
   if (peek == '=') {
     file_.get();
-    return AST::Node(Language::generic_operator, "/=");
+    return AST::Node(line_num_, Language::generic_operator, "/=");
   }
 
-  return AST::Node(Language::generic_operator, "/");
+  return AST::Node(line_num_, Language::generic_operator, "/");
 }
