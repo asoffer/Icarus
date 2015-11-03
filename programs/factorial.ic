@@ -1,6 +1,3 @@
-// Intentionally missing return statement because we don't treat it
-// appropriately yet.
-
 factorial : int -> int
 factorial = (n : int) -> int {
    return case {

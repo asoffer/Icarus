@@ -119,6 +119,16 @@ Type* Type::get_tuple(std::vector<Type*> types) {
   return tuple_type;
 }
 
-std::vector<Pointer*> Pointer::pointer_types_;
+Type* Type::get_array(Type* t, size_t len) {
+  for (const auto& arr : Array::array_types_) {
+    if (arr->type_ == t && arr->len_ == len) return arr;
+  }
 
+  auto arr_type = new Array(t, len);
+  Array::array_types_.push_back(arr_type);
+  return arr_type;
+}
+
+std::vector<Pointer*> Pointer::pointer_types_;
+std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;

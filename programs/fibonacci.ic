@@ -1,0 +1,10 @@
+fib : int -> int
+fib = (n : int) -> int {
+   return case {
+    n < 2  =>  n
+    else   =>  fib(n - 1) + fib(n - 2)
+  }
+}
+
+x : int
+x = fib(10)

@@ -30,7 +30,7 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
     static Type* get_tuple(std::vector<Type*> types);
-
+    static Type* get_array(Type* t, size_t len);
 
     static std::map<std::string, Type*> literals;
     static std::vector<std::string> type_strings;
@@ -108,51 +108,71 @@ class Function : public Type {
     static std::vector<Function*> fn_types_;
 };
 
-  class Pointer : public Type {
-    public:
-      friend class Type;
-      virtual std::string to_string() const {
-        return "&" + pointee_type_->to_string();
-      }
+class Pointer : public Type {
+  public:
+    friend class Type;
+    virtual std::string to_string() const {
+      return "&" + pointee_type_->to_string();
+    }
 
-      virtual ~Pointer() {}
+    virtual ~Pointer() {}
 
-    private:
-      Pointer(Type* t) : pointee_type_(t) {
-        llvm_type_ = llvm::PointerType::get(t->llvm(), 0);
-      }
-      Type* pointee_type_;
+  private:
+    Pointer(Type* t) : pointee_type_(t) {
+      llvm_type_ = llvm::PointerType::get(t->llvm(), 0);
+    }
+    Type* pointee_type_;
 
-      static std::vector<Pointer*> pointer_types_;
-  };
+    static std::vector<Pointer*> pointer_types_;
+};
 
 
-  class Tuple : public Type {
-    public:
-      friend class Type;
+class Tuple : public Type {
+  public:
+    friend class Type;
 
-      virtual std::string to_string() const {
-        std::stringstream ss;
+    virtual std::string to_string() const {
+      std::stringstream ss;
 
-        auto iter = tuple_types_.begin();
+      auto iter = tuple_types_.begin();
+      ss << "(" << (*iter)->to_string();
+      while (iter != tuple_types_.end()) {
+        ss << ", ";
         ss << (*iter)->to_string();
-        while (iter != tuple_types_.end()) {
-          ss << ", ";
-          ss << (*iter)->to_string();
-          ++iter;
-        }
-
-        return ss.str();
+        ++iter;
       }
+      ss << ")";
 
-      virtual ~Tuple() {}
+      return ss.str();
+    }
 
-    private:
-      Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+    virtual ~Tuple() {}
 
-      std::vector<Type*> entry_types_;
+  private:
+    Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
 
-      static std::vector<Tuple*> tuple_types_;
-  };
+    std::vector<Type*> entry_types_;
+
+    static std::vector<Tuple*> tuple_types_;
+};
+
+class Array : public Type {
+  public:
+    friend class Type;
+
+    virtual std::string to_string() const {
+      return type_->to_string() + "[" + std::to_string(len_) + "]";
+    }
+
+    virtual ~Array() {}
+
+  private:
+    Array(Type* t, size_t len) : type_(t), len_(len) {}
+
+    Type* type_;
+    size_t len_;
+
+    static std::vector<Array*> array_types_;
+};
 
 #endif
