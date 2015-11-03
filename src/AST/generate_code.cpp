@@ -78,9 +78,7 @@ namespace AST {
 
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (token() == "()") {
-      std::cout << "???" << std::endl;
       llvm::Value* lhs_val = lhs_->generate_code(scope);
-      std::cout << "___" << std::endl;
       llvm::Value* rhs_val = rhs_->generate_code(scope);
 
       std::cout << lhs_val << ", " << rhs_val << std::endl;
@@ -443,10 +441,12 @@ namespace AST {
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
 
-    llvm_function_ = llvm::Function::Create(
-        static_cast<llvm::FunctionType*>(type()->llvm()),
-        llvm::Function::ExternalLinkage, "__anon_fn", global_module);
-
+    if (llvm_function_ == nullptr) {
+      std::cout << "??? WTF ???" << std::endl;
+      llvm_function_ = llvm::Function::Create(
+          static_cast<llvm::FunctionType*>(type()->llvm()),
+          llvm::Function::ExternalLinkage, "__anon_fn", global_module);
+    }
 
     // Name the inputs
     auto input_iter = inputs_.begin();
@@ -490,28 +490,35 @@ namespace AST {
   }
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
-    llvm::Value* var;
-    llvm::Value* val;
-
-    val = rhs_->generate_code(scope);
-    if (val == nullptr) return nullptr;
+    llvm::Value* var = nullptr;
+    llvm::Value* val = nullptr;
 
     if (lhs_->is_identifier()) {
-
       // Treat functions special
       if (rhs_->type()->is_function()) {
+        auto fn = std::static_pointer_cast<FunctionLiteral>(rhs_);
+        fn->llvm_function_ = global_module->getFunction(lhs_->token());
+        val = rhs_->generate_code(scope);
+        if (val == nullptr) return nullptr;
         val->setName(lhs_->token());
+
         return nullptr;
       }
+
+      val = rhs_->generate_code(scope);
+      if (val == nullptr) return nullptr;
 
       auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
       var = id_ptr->alloca_;
     } else {
+      val = rhs_->generate_code(scope);
+      if (val == nullptr) return nullptr;
+
       // TODO This situation could also come up for instance if I assign through
       // a pointer (or any lvalue that isnt an identifier.
       // Example:
       //   x : int
-      //   y : &x
+      //   y := &x
       //   @y = 3  // <--- HERE
       var = lhs_->generate_code(scope);
     }

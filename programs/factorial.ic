@@ -8,3 +8,5 @@ factorial = (n : int) -> int {
     else   =>  n * factorial(n - 1)
   }
 }
+
+factorial(factorial(3))

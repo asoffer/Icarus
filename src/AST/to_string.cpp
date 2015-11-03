@@ -63,8 +63,6 @@ namespace AST {
   }
 
   std::string Identifier::to_string(size_t n) const {
-    std::stringstream ss;
-    ss << this;
     return tabs(n) + "<Identifier " + expr_type_->to_string() + ": "
       + token() + ">\n";
   }

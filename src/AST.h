@@ -617,6 +617,8 @@ namespace AST {
 
   class FunctionLiteral : public Expression {
     public:
+      friend class Assignment;
+
       static NPtr build(NPtrVec&& nodes) {
         auto fn_lit = new FunctionLiteral;
 

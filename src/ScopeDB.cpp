@@ -6,6 +6,8 @@
 
 #include "AST.h"
 
+extern llvm::Module* global_module;
+
 namespace ScopeDB {
   Scope* Scope::build() {
     Scope* new_scope = new Scope;
@@ -43,21 +45,30 @@ namespace ScopeDB {
       //
       // What happens if you try to reassign? This almost certainly leads to a
       // bug.
-      if (decl_type->is_function()) continue;
+      if (decl_type->is_function()) {
+        llvm::Function::Create(
+            static_cast<llvm::FunctionType*>(decl_type->llvm()),
+            llvm::Function::ExternalLinkage, decl_ptr->identifier_string(), global_module);
 
-      decl_ptr->declared_identifier()->alloca_ =
-        temp_builder.CreateAlloca(
-            decl_type->llvm(),
-            nullptr, decl_ptr->identifier_string());
+      } else {
+        decl_ptr->declared_identifier()->alloca_ =
+          temp_builder.CreateAlloca(
+              decl_type->llvm(),
+              nullptr, decl_ptr->identifier_string());
+      }
     }
   }
 
   // TODO have a getter-only version for when we know we've passed the
   // verification step
   IdPtr Scope::identifier(const std::string& id_string) {
-    auto iter = ids_.find(id_string);
-    if (iter != ids_.end()) {
-      return iter->second;
+    Scope* current_scope = this;
+    while (current_scope != nullptr) {
+      auto iter = current_scope->ids_.find(id_string);
+      if (iter != current_scope->ids_.end()) {
+        return iter->second;
+      }
+      current_scope = current_scope->parent();
     }
 
     // No such identifier has been seen yet, create a new IdPtr and return it.

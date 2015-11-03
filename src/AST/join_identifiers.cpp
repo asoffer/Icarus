@@ -91,7 +91,9 @@ namespace AST {
     }
   }
 
-  void FunctionLiteral::join_identifiers(Scope*) {
+  void FunctionLiteral::join_identifiers(Scope* scope) {
+    fn_scope_->set_parent(scope);
+
     for (auto& in : inputs_) {
       in->join_identifiers(fn_scope_);
     }
