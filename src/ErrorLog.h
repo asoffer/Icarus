@@ -2,6 +2,7 @@
 #define ICARUS_ERROR_LOG_H
 
 #include <string>
+#include <map>
 #include <vector>
 #include <iostream>
 
@@ -17,8 +18,9 @@ class ErrorLog {
     inline void log(size_t line_num, const std::string& msg);
 
   private:
+    size_t err_num_;
     std::string file_name_;
-    std::vector<std::pair<size_t, std::string>> log_;
+    std::map<size_t, std::vector<std::string>> log_;
 };
 
 size_t ErrorLog::num_errors() const { return log_.size(); }
@@ -28,6 +30,7 @@ void ErrorLog::set_file(const char* file_name) {
 }
 
 void ErrorLog::log(size_t line_num, const std::string& msg) {
-  log_.emplace_back(line_num, msg);
+  ++err_num_;
+  log_[line_num].push_back(msg);
 }
 #endif  // ICARUS_ERROR_LOG_H

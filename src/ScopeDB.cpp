@@ -105,38 +105,30 @@ namespace ScopeDB {
         if (decl_ptr1->identifier_string() != decl_ptr2->identifier_string()) continue;
         
         auto scope_ptr = decl_ptr1->scope_;
+        // If the shadowing occurs in the same scope, we don't need to display
+        // the error message twice.
+        if (scope_ptr == decl_ptr2->scope_) {
+          if (decl_ptr1->line_num() <= decl_ptr2->line_num()) {
+            error_log.log(decl_ptr1->line_num(),
+                "Identifier `" + decl_ptr1->identifier_string()
+                + "` already declared in this scope (on line "
+                + std::to_string(decl_ptr2->line_num()) + ").");
+          }
+
+          continue;
+        }
+
         while (scope_ptr != nullptr) {
           if (scope_ptr == decl_ptr2->scope_) {
             error_log.log(decl_ptr1->line_num(),
                 "Identifier `" + decl_ptr1->identifier_string() + "` shadows identifier declared on line " + std::to_string(decl_ptr2->line_num()) + ".");
             // Do NOT skip out here. It's possible to have many shadows and we
             // might as well catch them all.
-            //
-            // TODO as we catch them, store them in a reasonable way so we don't
-            // generate quadratically many error messages
           }
           scope_ptr = scope_ptr->parent_;
         }
       }
     }
-
-    /*
-    for (auto scope_ptr : registry_) {
-      if (scope_ptr->parent_ == nullptr) continue;
-
-      Scope* check_against = scope_ptr;
-      do {
-        check_against = check_against->parent_;
-
-        for (const auto id : scope_ptr->ids_) {
-          auto found_iter = check_against->ids_.find(id.first);
-          if (found_iter != check_against->ids_.end()) {
-            error_log.log(id.second->line_num(),
-                "Identifier `" + id.first + "` shadows identifier declared on line " + std::to_string(found_iter->second->line_num()) + ".");
-          }
-        }
-      } while (check_against->parent_ != nullptr);
-    }*/
   }
 
 

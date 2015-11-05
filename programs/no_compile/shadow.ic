@@ -2,6 +2,8 @@ x = 3  // declared later.
 
 f : int -> int
 f = (x : int) -> int {
+  f : int -> int
+  f : bool
   x : char
   return 3
 }

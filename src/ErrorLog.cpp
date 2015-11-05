@@ -1,17 +1,18 @@
 #include "ErrorLog.h"
 
-ErrorLog::ErrorLog() {}
+ErrorLog::ErrorLog() : err_num_(0) {}
 
 std::ostream& operator<<(std::ostream& os, const ErrorLog& log) {
-  for (const auto& line_and_msg : log.log_) {
+  for (const auto& line_and_msgs : log.log_) {
     os << log.file_name_
-      << " (line " << line_and_msg.first << "):\n    "
-      << line_and_msg.second
-      << std::endl << std::endl;
+      << " (line " << line_and_msgs.first << "):\n";
+    for (const auto msg : line_and_msgs.second) {
+      os << "    " << msg << "\n\n";
+    }
   }
 
-  os << log.log_.size() << " error";
-  if (log.log_.size() != 1) {
+  os << log.err_num_ << " error";
+  if (log.err_num_ != 1) {
     os << "s";
   }
 
