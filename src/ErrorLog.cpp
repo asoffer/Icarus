@@ -9,5 +9,11 @@ std::ostream& operator<<(std::ostream& os, const ErrorLog& log) {
       << line_and_msg.second
       << std::endl << std::endl;
   }
-  return os;
+
+  os << log.log_.size() << " error";
+  if (log.log_.size() != 1) {
+    os << "s";
+  }
+
+  return os << " found." << std::endl;
 }

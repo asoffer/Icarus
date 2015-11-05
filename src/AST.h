@@ -56,9 +56,11 @@ namespace AST {
       void set_token(const std::string& token_string) {
         token_ = token_string;
       }
+      size_t line_num() const { return line_num_; }
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope) {}
+      virtual void assign_decl_to_scope(Scope* scope) {}
       virtual void verify_types() {}
 
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
@@ -111,6 +113,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const = 0;
     virtual void join_identifiers(Scope* scope) = 0;
+    virtual void assign_decl_to_scope(Scope* scope) = 0;
     virtual void needed_for(IdPtr id_ptr) const = 0;
     virtual void verify_types() = 0;
     virtual bool verify_type_is(Type* t);
@@ -151,6 +154,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
+    virtual void assign_decl_to_scope(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
 
@@ -201,6 +205,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
+    virtual void assign_decl_to_scope(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const;
     virtual void verify_types();
 
@@ -258,6 +263,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
@@ -321,6 +327,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope) {}
+    virtual void assign_decl_to_scope(Scope* scope);
     virtual void needed_for(IdPtr id_ptr) const {};
     virtual void verify_types();
 
@@ -421,14 +428,17 @@ namespace AST {
 
   class Declaration : public Expression {
     public:
-      static NPtr build(NPtrVec&& nodes);
+      friend DeclPtr ScopeDB::make_declaration(size_t line_num, const std::string& id_string);
+      friend class Scope;
 
+      static NPtr build(NPtrVec&& nodes);
       std::string identifier_string() const { return id_->token(); }
       IdPtr declared_identifier() const { return id_; }
       EPtr declared_type() const { return decl_type_; }
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
@@ -447,14 +457,12 @@ namespace AST {
     private:
       IdPtr id_;
       EPtr decl_type_;
+      Scope* scope_;
   };
 
   inline NPtr Declaration::build(NPtrVec&& nodes) {
-    auto decl_ptr = ScopeDB::make_declaration();
-
-    decl_ptr->id_ = IdPtr(new Identifier(nodes[0]->line_num_, nodes[0]->token()));
+    auto decl_ptr = ScopeDB::make_declaration(nodes[1]->line_num_, nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
-    decl_ptr->line_num_ = nodes[1]->line_num_;
 
     decl_ptr->token_ = ":";
     decl_ptr->type_ = Language::decl_operator;
@@ -476,6 +484,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual Type* verify_types_with_key(Type* key_type);
 
@@ -580,6 +589,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
@@ -609,6 +619,7 @@ namespace AST {
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
+    virtual void assign_decl_to_scope(Scope* scope);
     virtual void verify_types();
 
     void collect_return_types(std::set<Type*>* return_exprs) const;
@@ -670,6 +681,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
@@ -704,6 +716,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
       virtual void verify_types();
 
     private:

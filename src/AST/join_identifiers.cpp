@@ -35,6 +35,7 @@ namespace AST {
 
   void Declaration::join_identifiers(Scope* scope) {
     id_ = scope->identifier(identifier_string());
+    id_->line_num_ = line_num_;
 
     if (decl_type_->is_identifier()) {
       auto id_ptr = scope->identifier(decl_type_->token());
@@ -92,8 +93,6 @@ namespace AST {
   }
 
   void FunctionLiteral::join_identifiers(Scope* scope) {
-    fn_scope_->set_parent(scope);
-
     for (auto& in : inputs_) {
       in->join_identifiers(fn_scope_);
     }

@@ -1,0 +1,9 @@
+x = 3  // declared later.
+
+f : int -> int
+f = (x : int) -> int {
+  x : char
+  return 3
+}
+
+x : int

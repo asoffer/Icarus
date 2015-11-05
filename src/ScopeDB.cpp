@@ -5,8 +5,10 @@
 #include <algorithm>
 
 #include "AST.h"
+#include "ErrorLog.h"
 
 extern llvm::Module* global_module;
+extern ErrorLog error_log;
 
 namespace ScopeDB {
   Scope* Scope::build() {
@@ -72,9 +74,6 @@ namespace ScopeDB {
     }
 
     // No such identifier has been seen yet, create a new IdPtr and return it.
-    //
-    // TODO will the fact that we're joining these make it harder to do line
-    // numbers?
     IdPtr id_ptr = ids_[id_string] = IdPtr(new AST::Identifier(0, id_string));
     ids_[id_string] = id_ptr;
 
@@ -100,6 +99,28 @@ namespace ScopeDB {
   std::vector<Scope*> Scope::registry_;
 
   void Scope::verify_no_shadowing() {
+    for (auto decl_ptr1 : decl_registry_) {
+      for (auto decl_ptr2 : decl_registry_) {
+        if (decl_ptr1 == decl_ptr2) continue;
+        if (decl_ptr1->identifier_string() != decl_ptr2->identifier_string()) continue;
+        
+        auto scope_ptr = decl_ptr1->scope_;
+        while (scope_ptr != nullptr) {
+          if (scope_ptr == decl_ptr2->scope_) {
+            error_log.log(decl_ptr1->line_num(),
+                "Identifier `" + decl_ptr1->identifier_string() + "` shadows identifier declared on line " + std::to_string(decl_ptr2->line_num()) + ".");
+            // Do NOT skip out here. It's possible to have many shadows and we
+            // might as well catch them all.
+            //
+            // TODO as we catch them, store them in a reasonable way so we don't
+            // generate quadratically many error messages
+          }
+          scope_ptr = scope_ptr->parent_;
+        }
+      }
+    }
+
+    /*
     for (auto scope_ptr : registry_) {
       if (scope_ptr->parent_ == nullptr) continue;
 
@@ -110,19 +131,20 @@ namespace ScopeDB {
         for (const auto id : scope_ptr->ids_) {
           auto found_iter = check_against->ids_.find(id.first);
           if (found_iter != check_against->ids_.end()) {
-            std::cerr
-              << "Identifier shadowed: `" << id.first << "`"
-              << std::endl;
+            error_log.log(id.second->line_num(),
+                "Identifier `" + id.first + "` shadows identifier declared on line " + std::to_string(found_iter->second->line_num()) + ".");
           }
         }
       } while (check_against->parent_ != nullptr);
-    }
+    }*/
   }
 
 
-  DeclPtr make_declaration() {
+  DeclPtr make_declaration(size_t line_num, const std::string& id_string) {
     DeclPtr d(new AST::Declaration);
     decl_registry_.push_back(d);
+    d->id_ = IdPtr(new AST::Identifier(line_num, id_string));
+    d->line_num_ = line_num;
     return d;
   }
 

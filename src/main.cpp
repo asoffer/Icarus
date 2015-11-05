@@ -17,12 +17,6 @@ extern llvm::Function* global_function;
 extern llvm::IRBuilder<> builder;
 extern ErrorLog error_log;
 
-#include <cstdio>
-extern "C" double printd(double X) {
-  fprintf(stderr, "%f\n", X);
-  return 0;
-}
-
 int main(int argc, char *argv[]) {
   if (argc != 3) {
     std::cerr
@@ -77,6 +71,7 @@ int main(int argc, char *argv[]) {
 
     ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
 
+    global_statements->assign_decl_to_scope(global_scope);
     global_statements->join_identifiers(global_scope);
     if (error_log.num_errors() != 0) {
       std::cout << error_log;

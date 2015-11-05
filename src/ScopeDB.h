@@ -72,7 +72,7 @@ namespace ScopeDB {
   extern std::map<IdPtr, DeclPtr> decl_of_;
   extern std::vector<DeclPtr> decl_registry_;
 
-  extern DeclPtr make_declaration();
+  extern DeclPtr make_declaration(size_t line_num, const std::string& id_string);
 
   extern void fill_db();
   extern void assign_decl_order();
