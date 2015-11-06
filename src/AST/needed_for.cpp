@@ -42,7 +42,11 @@ namespace AST {
   }
 
   void Declaration::needed_for(IdPtr id_ptr) const {
-    // TODO
+    if (infer_type_) {
+      decl_type_->needed_for(id_ptr);
+    } else {
+      // TODO
+    }
   }
 
   void Case::needed_for(IdPtr id_ptr) const {

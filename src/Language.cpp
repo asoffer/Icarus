@@ -132,12 +132,18 @@ namespace Language {
 
     /* Begin declaration */
     Rule(declaration,
+        { identifier, decl_assign_operator, expression },
+        AST::Declaration::build_assign),
+
+
+    Rule(declaration,
         { identifier, decl_operator, expression },
-        AST::Declaration::build),
+        AST::Declaration::build_decl),
 
     Rule(fn_declaration,
         { identifier, decl_operator, fn_expression },
-        AST::Declaration::build),
+        AST::Declaration::build_decl),
+
 
     // TODO Should this be an expression or declaration
     Rule(expression,

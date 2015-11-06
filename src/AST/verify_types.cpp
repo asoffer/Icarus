@@ -109,9 +109,12 @@ namespace AST {
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
       expr_type_ = lhs_->expr_type_;
-
     }
     else {
+#ifdef DEBUG
+      std::cout << "##> Don't know what to do:\n  LHS: " << lhs_->expr_type_->to_string() << "\n  RHS: " << rhs_->expr_type_->to_string() << std::endl;
+      std::cout << to_string(0) << std::endl;
+#endif
       // TODO give a type-mismatch error here
       expr_type_ = Type::get_type_error();
     }
@@ -137,8 +140,16 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-    id_->verify_types();
     decl_type_->verify_types();
+
+    if (infer_type_) {
+//      std::cout << "######" << std::endl;
+//      std::cout << decl_type_->to_string(0) << std::endl;
+      id_->expr_type_ = decl_type_->expr_type_;
+    } else {
+      id_->verify_types();
+    }
+
     expr_type_ = id_->expr_type_;
   }
 

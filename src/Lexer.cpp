@@ -246,7 +246,7 @@ AST::Node Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::Node(line_num_, Language::generic_operator, ":=");
+      return AST::Node(line_num_, Language::decl_assign_operator, ":=");
 
     } else if (peek == '>') {
       file_.get();

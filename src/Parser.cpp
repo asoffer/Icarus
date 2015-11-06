@@ -9,13 +9,14 @@ Parser::Parser(const char* filename) : lexer_(filename) {
 
 NPtr Parser::parse() {
   while (lookahead_->node_type() != Language::eof) {
+
     if (should_shift() || !reduce()) {
       shift();
     }
 
 #if 0
     // Clear the screen
-    // std::cout << "\033[2J\033[1;1H" << std::endl;
+    std::cout << "\033[2J\033[1;1H" << std::endl;
     for (const auto& node_ptr : stack_) {
       std::cout << *node_ptr;
     }
@@ -46,8 +47,9 @@ bool Parser::should_shift() {
   if (stack_.empty()) return true;
 
   // If we see an identifier followed by a decl_operator, shift
+  // TODO add comment explaining why (so id doesn't get changed to expr I think?
   if (stack_.back()->node_type() == Language::identifier
-      && lookahead_->node_type() == Language::decl_operator) {
+      && is_decl(lookahead_->node_type())) {
     return true;
   }
 

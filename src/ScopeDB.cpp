@@ -85,8 +85,9 @@ namespace ScopeDB {
   void Scope::determine_declared_types() {
     for (auto scope_ptr : registry_) {
       for (auto decl_ptr : scope_ptr->ordered_decls_) {
-        decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->interpret_as_type();
+        decl_ptr->declared_identifier()->expr_type_ = (decl_ptr->infer_type_ ?
+            decl_ptr->declared_type()->expr_type_ :  // If type inference
+            decl_ptr->declared_type()->interpret_as_type()); // If no type inference
       }
     }
   }
@@ -249,6 +250,7 @@ namespace ScopeDB {
       scope_containing_[id_ptr]->ordered_decls_
         .push_back(decl_of_[id_ptr]);
     }
+
 
   }
 

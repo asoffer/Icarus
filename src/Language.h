@@ -47,7 +47,7 @@ constexpr size_t chain_assoc = 3;
 
 namespace Language {
   inline bool is_expression(NodeType t) {
-    return t == expression || t == declaration
+    return t == expression || t == declaration || t == decl_assign_operator
       || t == fn_declaration || t == assignment || t == return_expression;
   }
 
@@ -59,6 +59,11 @@ namespace Language {
   inline bool is_operator(NodeType t) {
     return is_binary_operator(t) || t == reserved_return || t == reserved_print;
   }
+
+  inline bool is_decl(NodeType t) {
+    return t == decl_operator || t == decl_assign_operator;
+  }
+
 
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;

@@ -68,8 +68,12 @@ namespace AST {
   }
 
   std::string Declaration::to_string(size_t n) const {
-    return tabs(n)
-      + "<Declaration " + expr_type_->to_string() + ">\n"
+    std::string output = tabs(n) + "<Declaration ";
+    if (infer_type_) {
+      output += "(infer type) ";
+    }
+
+    return output + expr_type_->to_string() + ">\n"
       + id_->to_string(n + 1)
       + decl_type_->to_string(n + 1);
   }

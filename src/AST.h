@@ -423,12 +423,23 @@ namespace AST {
   };
 
 
+  // class Declaration
+  //
+  // Represents declarations that may or may not be made with type inference.
+  // Either of these can be represented.
+  //
+  // identifier : type
+  // identifer := value
   class Declaration : public Expression {
     public:
       friend DeclPtr ScopeDB::make_declaration(size_t line_num, const std::string& id_string);
       friend class Scope;
 
-      static NPtr build(NPtrVec&& nodes);
+      static NPtr build(NPtrVec&& nodes,
+          const std::string&, Language::NodeType node_type, bool infer);
+      static NPtr build_decl(NPtrVec&& nodes);
+      static NPtr build_assign(NPtrVec&& nodes);
+
       std::string identifier_string() const { return id_->token(); }
       IdPtr declared_identifier() const { return id_; }
       EPtr declared_type() const { return decl_type_; }
@@ -439,8 +450,10 @@ namespace AST {
       virtual void needed_for(IdPtr id_ptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const { return decl_type_->interpret_as_type(); }
-
+      bool type_is_inferred() const { return infer_type_; }
+      virtual Type* interpret_as_type() const {
+        return decl_type_->interpret_as_type();
+      }
 
       virtual llvm::Value* generate_code(Scope* scope);
 
@@ -452,23 +465,40 @@ namespace AST {
       Declaration() {}
 
     private:
+      // The identifier being declared
       IdPtr id_;
+
+      // May represent the declared type or the value whose type is being
+      // inferred
       EPtr decl_type_;
       Scope* scope_;
+      bool infer_type_;
   };
 
-  inline NPtr Declaration::build(NPtrVec&& nodes) {
+  inline NPtr Declaration::build(NPtrVec&& nodes,
+      const std::string& op, Language::NodeType node_type, bool infer) {
+
     auto decl_ptr = ScopeDB::make_declaration(nodes[1]->line_num_, nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
-    decl_ptr->token_ = ":";
-    decl_ptr->type_ = Language::decl_operator;
+    decl_ptr->token_ = op;
+    decl_ptr->type_ = node_type;
 
-    decl_ptr->precedence_ = Language::op_prec.at(":");
+    decl_ptr->precedence_ = Language::op_prec.at(op);
+    decl_ptr->infer_type_ = infer;
 
     return std::static_pointer_cast<Node>(decl_ptr);
   }
 
+  inline NPtr Declaration::build_decl(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes),
+        ":", Language::decl_operator, false);
+  }
+
+  inline NPtr Declaration::build_assign(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes),
+        ":=", Language::decl_assign_operator, true);
+  }
 
   class KVPairList : public Node {
     public:
@@ -646,7 +676,7 @@ namespace AST {
 
   class FunctionLiteral : public Expression {
     public:
-      friend class Assignment;
+      friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
 
       static NPtr build(NPtrVec&& nodes) {
         auto fn_lit = new FunctionLiteral;

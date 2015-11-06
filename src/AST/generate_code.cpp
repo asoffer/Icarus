@@ -352,10 +352,6 @@ namespace AST {
 
   llvm::Value* Statements::generate_code(Scope* scope) {
     for (auto& stmt : statements_) {
-      // We pre-allocate declarations at the beginning of each block, so we
-      // don't need to do that here.
-      if (stmt->is_declaration()) continue;
-
       stmt->generate_code(scope);
     }
     return nullptr;
@@ -491,29 +487,29 @@ namespace AST {
     return llvm_function_;
   }
 
-  llvm::Value* Assignment::generate_code(Scope* scope) {
+  llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs) {
     llvm::Value* var = nullptr;
     llvm::Value* val = nullptr;
 
-    if (lhs_->is_identifier()) {
+    if (lhs->is_identifier()) {
       // Treat functions special
-      if (rhs_->type()->is_function()) {
-        auto fn = std::static_pointer_cast<FunctionLiteral>(rhs_);
-        fn->llvm_function_ = global_module->getFunction(lhs_->token());
-        val = rhs_->generate_code(scope);
+      if (rhs->type()->is_function()) {
+        auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
+        fn->llvm_function_ = global_module->getFunction(lhs->token());
+        val = rhs->generate_code(scope);
         if (val == nullptr) return nullptr;
-        val->setName(lhs_->token());
+        val->setName(lhs->token());
 
         return nullptr;
       }
 
-      val = rhs_->generate_code(scope);
+      val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
 
-      auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
+      auto id_ptr = std::static_pointer_cast<Identifier>(lhs);
       var = id_ptr->alloca_;
     } else {
-      val = rhs_->generate_code(scope);
+      val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
 
       // TODO This situation could also come up for instance if I assign through
@@ -522,7 +518,7 @@ namespace AST {
       //   x : int
       //   y := &x
       //   @y = 3  // <--- HERE
-      var = lhs_->generate_code(scope);
+      var = lhs->generate_code(scope);
     }
 
     if (var == nullptr) return nullptr;
@@ -531,8 +527,21 @@ namespace AST {
     return nullptr;
   }
 
+  llvm::Value* Assignment::generate_code(Scope* scope) {
+    return generate_assignment_code(scope, lhs_, rhs_);
+  }
+
   llvm::Value* Declaration::generate_code(Scope* scope) {
-    return nullptr;
+    // Declarations are preallocated at the beginning of each scope, so there's
+    // no need to do anything if there isn't also an assignment occurring
+    if (!infer_type_) return nullptr;
+
+    // Remember, decl_type_ is not really the right name in the inference case.
+    // It's the thing whose type we are inferring.
+    //
+    // TODO change the name of this member variable to describe what it actually
+    // is in both ':' and ':=" cases
+    return generate_assignment_code(scope, std::static_pointer_cast<Expression>(id_), decl_type_);
   }
 
   llvm::Value* Case::generate_code(Scope* scope) {

@@ -7,3 +7,4 @@ f : int
 x : foo
 foo : bar
 bar : foo
+baz : baz
