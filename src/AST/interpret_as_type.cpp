@@ -2,7 +2,6 @@
 
 namespace AST {
   Type* Unop::interpret_as_type() const {
-    // TODO Implement this
     return Type::get_type_error();
   }
 
@@ -21,7 +20,6 @@ namespace AST {
   Type* ChainOp::interpret_as_type() const {
     return Type::get_type_error();
   }
-
 
   Type* Terminal::interpret_as_type() const {
     if (expr_type_ == Type::get_type()) {
@@ -45,18 +43,11 @@ namespace AST {
     return Type::get_type_error();
   }
 
-//  Type AnonymousScope::interpret_as_type() const {
-//    // throw "Stub, this shouldn't be possible";
-//    return Type::get_type_error();
-//  }
-
   Type* FunctionLiteral::interpret_as_type() const {
-    // throw "Stub, this shouldn't be possible";
     return Type::get_type_error();
   }
 
   Type* Case::interpret_as_type() const {
-    // throw "Stub, this shouldn't be possible";
     return Type::get_type_error();
   }
 

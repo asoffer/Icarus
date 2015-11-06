@@ -25,9 +25,6 @@ extern ErrorLog error_log;
 namespace AST {
   using ::ScopeDB::Scope;
 
-  // TODO is this still being used?
-  extern size_t function_counter;
-
   class Node {
     public:
       friend class KVPairList;

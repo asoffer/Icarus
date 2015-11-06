@@ -443,6 +443,7 @@ namespace AST {
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
 
     if (llvm_function_ == nullptr) {
+      // For now, this should never happen
       std::cout << "??? WTF ???" << std::endl;
       llvm_function_ = llvm::Function::Create(
           static_cast<llvm::FunctionType*>(type()->llvm()),
