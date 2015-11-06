@@ -149,6 +149,10 @@ namespace Language {
     Rule(expression,
         { left_paren, declaration, right_paren },
         AST::Expression::parenthesize),
+ 
+    Rule(expression,
+        { left_paren, fn_declaration, right_paren },
+        AST::Expression::parenthesize),
     /* End declaration */
 
 

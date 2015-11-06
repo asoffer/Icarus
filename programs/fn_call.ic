@@ -1,5 +1,4 @@
-f : int -> real
-f = (n : int) -> real {
+f := (n : int) -> real {
   return 3.14
 }
 

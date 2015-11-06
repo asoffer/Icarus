@@ -1,9 +1,6 @@
-// Intentionally missing return statement because we don't treat it
-// appropriately yet.
-
-water_state : real -> string
-water_state = (temp : real) -> string {
-   case {
+// Segfaults because strings are not yet incorporated
+water_state := (temp : real) -> string {
+   return case {
     temp < 32         =>  "solid"
     32 <= temp < 212  =>  "liquid"
     else              =>  "gas"
