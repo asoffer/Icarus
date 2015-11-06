@@ -31,6 +31,8 @@ NPtr Parser::parse() {
   // with newline and we continue until it's equal to EOF. Thus, at least one
   // token is shifted onto the stack and each stack operation preserves the
   // non-empty invariant.
+  //
+  // TODO Make this impossible to be an issue
   if (stack_.size() > 1) {
     std::cerr
       << "Parser found several nodes at root level. Handling just the first tree."

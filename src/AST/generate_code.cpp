@@ -390,7 +390,8 @@ namespace AST {
           cmp_val = builder.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
 
         } else {
-          std::cerr << "Invalid operator: " << ops_[i - 1];
+          error_log.log(ops_[i - 1]->line_num(),
+              "Invalid operator: " + ops_[i - 1]->token());
           return nullptr;
         }
 
@@ -423,7 +424,9 @@ namespace AST {
           cmp_val = builder.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
 
         } else {
-          std::cerr << "Invalid operator: " << ops_[i - 1];
+          // TODO 
+          error_log.log(ops_[i - 1]->line_num(),
+              "Invalid operator: " + ops_[i - 1]->token());
           return nullptr;
         }
         // TODO should these be ordered, or can they be QNAN? probably.

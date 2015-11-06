@@ -372,7 +372,7 @@ AST::Node Lexer::next_char_literal() {
     case '\n':
     case '\r':
       {
-        std::cerr << "Cannot use newline inside a character-literal." << std::endl;
+        error_log.log(line_num_, "Cannot use newline inside a character-literal.");
         return AST::Node(line_num_, Language::newline);
       }
     case '\\':
@@ -383,7 +383,7 @@ AST::Node Lexer::next_char_literal() {
           output_char = '\'';
 
         } else if (peek == '\"') {
-          std::cerr << "Warning: the character '\"' does not need to be escaped." << std::endl;
+          error_log.log(line_num_, "Warning: the character '\"' does not need to be escaped.");
           output_char = '\"';
 
         } else if (peek == '\\') {
@@ -399,9 +399,7 @@ AST::Node Lexer::next_char_literal() {
           output_char = '\r';
 
         } else {
-          std::cerr
-            << "The specified character is not an escape character."
-            << std::endl;
+          error_log.log(line_num_, "The specified character is not an escape character.");
           output_char = static_cast<char>(peek);
         }
         break;
@@ -418,7 +416,7 @@ AST::Node Lexer::next_char_literal() {
   if (peek == '\'') {
     file_.get();
   } else {
-    std::cerr << "Character literal must be followed by a single-quote." << std::endl;
+    error_log.log(line_num_, "Character literal must be followed by a single-quote.");
   }
 
   return AST::Node(line_num_, Language::character_literal, std::string(1, output_char));
@@ -463,7 +461,7 @@ AST::Node Lexer::next_given_slash() {
 
       if (!*this) {
         // If we're at the end of the stream
-        std::cerr << "File ended during multi-line comment." << std::endl;
+        error_log.log(line_num_, "File ended during multi-line comment.");
         return AST::Node(line_num_, Language::comment, "");
       }
 

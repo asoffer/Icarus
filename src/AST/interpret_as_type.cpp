@@ -34,14 +34,13 @@ namespace AST {
       if (token() == "uint") return Type::get_uint();
       if (token() == "void") return Type::get_void();
 
-      std::cerr
-        << "I don't think " << token()
-        << " is a type!" << std::endl;
+      // TODO better error message
+      error_log.log(line_num(), "I don't think `" + token() + "` is a type!");
 
       return Type::get_type_error();
     }
 
-    std::cerr << token() + " is not a type!" << std::endl;
+    error_log.log(line_num(), "`" + token() + "` is not at type.");
 
     return Type::get_type_error();
   }

@@ -230,8 +230,8 @@ namespace ScopeDB {
         if ((already_seen[dep] & 2) == 2) continue;
 
         if ((already_seen[dep] & 1) == 1) {
+          error_log.log(dep->line_num(), "Cyclic dependency found.");
           // TODO give information about cycle
-          std::cerr << "Cyclic dependency found." << std::endl;
           return;
         }
 
@@ -241,7 +241,7 @@ namespace ScopeDB {
     }
 
     if (num_seen != already_seen.size()) {
-      std::cerr << "A dependency cycle was found." << std::endl;
+      error_log.log(0, "A dependency cycle was found.");
       return;
     }
 
