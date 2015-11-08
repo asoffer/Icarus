@@ -128,7 +128,7 @@ namespace Language {
         { fn_literal },
         drop_all_but<0>),
     /* End literals */
-    
+
 
     /* Begin declaration */
     Rule(declaration,
@@ -230,6 +230,13 @@ namespace Language {
     /* End expression */
 
 
+    /* Begin void return */
+    Rule(void_return_expression,
+        { reserved_return, newline},
+        AST::Terminal::build_void_return),
+    /* End void return */
+
+
     /* Begin paren/bracket operators */
     Rule(expression,
         { expression, left_paren, expression, right_paren },
@@ -259,6 +266,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { void_return_expression },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { expression, newline },
         AST::Statements::build_one),
 
@@ -273,6 +284,14 @@ namespace Language {
     Rule(statements,
         { return_expression, newline },
         AST::Statements::build_one),
+
+    Rule(statements,
+        { return_expression, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { statements, void_return_expression },
+        AST::Statements::build_more),
 
     Rule(statements,
         { statements, expression, newline },
@@ -347,7 +366,7 @@ namespace Language {
         drop_all_but<0>),
 
     Rule(expression,
-        { reserved_case, left_brace, newline, key_value_pair_list, right_brace },
+        { reserved_case, left_brace, key_value_pair_list, right_brace },
         AST::Case::build),
     /* End case statements */
 

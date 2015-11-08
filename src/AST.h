@@ -187,8 +187,6 @@ namespace AST {
     return NPtr(unop_ptr);
   }
 
-
-
   class Binop : public Expression {
     friend class KVPairList;
     friend class FunctionLiteral;
@@ -321,6 +319,7 @@ namespace AST {
     static NPtr build_integer_literal(NPtrVec&& nodes);
     static NPtr build_real_literal(NPtrVec&& nodes);
     static NPtr build_character_literal(NPtrVec&& nodes);
+    static NPtr build_void_return(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope) {}
@@ -365,6 +364,13 @@ namespace AST {
   inline NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::get_char());
   }
+
+  inline NPtr Terminal::build_void_return(NPtrVec&& nodes) {
+    // FIXME implement strings
+    return build(std::forward<NPtrVec>(nodes), Type::get_void());
+  }
+
+
 
 
   class Assignment : public Binop {

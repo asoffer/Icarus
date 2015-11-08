@@ -25,7 +25,13 @@ namespace AST {
     // that C++ uses.
 
     // TODO move this to Type
-    if (type() == Type::get_unknown() || type() == Type::get_type_error()) {
+    if (type() == Type::get_void()) {
+      if (token() == "return") {
+        builder.CreateRetVoid();
+      }
+      return nullptr;
+
+    } else if (type() == Type::get_unknown() || type() == Type::get_type_error()) {
       return nullptr;
 
     } else if (type() == Type::get_bool()) {
