@@ -14,7 +14,7 @@ NPtr Parser::parse() {
       shift();
     }
 
-#if 1
+#if 0
     // Clear the screen
     std::cout << "\033[2J\033[1;1H" << std::endl;
     for (const auto& node_ptr : stack_) {
