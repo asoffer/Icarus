@@ -1,5 +1,6 @@
 #include "AST.h"
 #include "Type.h"
+#include <sstream> // DEBUG
 
 namespace AST {
   std::string tabs(size_t n) {
@@ -93,8 +94,10 @@ namespace AST {
     std::string indent = tabs(n);
     std::string output;
 
+    size_t counter = 0;
     for (const auto& kv : kv_pairs_) {
-      output += indent + "[=>]\n";
+      ++counter;
+      output += indent + "[=> " + std::to_string(counter) + " of " + std::to_string(kv_pairs_.size()) + "]\n";
       output += kv.first->to_string(n + 1);
       output += kv.second->to_string(n + 1);
     }

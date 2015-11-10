@@ -120,12 +120,21 @@ namespace AST {
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
       expr_type_ = lhs_->expr_type_;
-    }
-    else {
-#ifdef DEBUG
-      std::cout << "##> Don't know what to do:\n  LHS: " << lhs_->expr_type_->to_string() << "\n  RHS: " << rhs_->expr_type_->to_string() << std::endl;
-      std::cout << to_string(0) << std::endl;
-#endif
+
+    } else if (lhs_->expr_type_ == Type::get_unknown()) {
+      error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
+      expr_type_ = Type::get_type_error();
+
+    } else if (rhs_->expr_type_ == Type::get_unknown()) {
+      error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
+      expr_type_ = Type::get_type_error();
+
+    } else {
+      error_log.log(line_num_,
+          "Type mismatch: "
+          + lhs_->expr_type_->to_string() + " and "
+          + rhs_->expr_type_->to_string() + ")");
+
       // TODO give a type-mismatch error here
       expr_type_ = Type::get_type_error();
     }
@@ -233,20 +242,24 @@ namespace AST {
 
 
   void Assignment::verify_types() {
-    Binop::verify_types();
-    expr_type_ = Type::get_type_error();
+    lhs_->verify_types();
+    rhs_->verify_types();
 
     if (lhs_->expr_type_ == Type::get_type_error() ||
-        rhs_->expr_type_ == Type::get_type_error()) return;
+        rhs_->expr_type_ == Type::get_type_error()) {
+      // An error was already found in the types, so just pass silently
 
-    if (rhs_->expr_type_ == Type::get_void()) {
+    } else if (rhs_->expr_type_ == Type::get_void()) {
       error_log.log(line_num_, "Void types cannot be assigned.");
-      return;
-    }
+      expr_type_ = Type::get_type_error();
 
-    if (lhs_->expr_type_ != rhs_->expr_type_) {
+    } else if (lhs_->expr_type_ != rhs_->expr_type_) {
       if (lhs_->expr_type_ == Type::get_unknown()) {
         error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
+
+      } else if (rhs_->expr_type_ == Type::get_unknown()) {
+        error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
+
       } else {
         error_log.log(line_num_, "Type mismatch: "
             + lhs_->expr_type_->to_string() + " and "

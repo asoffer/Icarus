@@ -1,4 +1,7 @@
-char_val : char -> int
+char_val := (c: char) -> int {
+  // Placeholder
+  return 0
+}
 
 is_digit := (c: char) -> bool {
   return char_val('0') <= char_val(c) <= char_val('9')

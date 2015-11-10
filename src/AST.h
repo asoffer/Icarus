@@ -412,7 +412,7 @@ namespace AST {
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
-    assign_ptr->token_ = ":";
+    assign_ptr->token_ = "=";
     assign_ptr->type_ = Language::assign_operator;
 
     assign_ptr->precedence_ = Language::op_prec.at("=");
@@ -654,7 +654,7 @@ namespace AST {
   inline NPtr Case::build(NPtrVec&& nodes) {
     auto case_ptr = new Case;
     case_ptr->line_num_ = nodes[0]->line_num_;
-    case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[3]);
+    case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[2]);
     return NPtr(case_ptr);
   }
 

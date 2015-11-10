@@ -90,6 +90,7 @@ namespace ScopeDB {
           decl_ptr->declared_type()->verify_types();
           decl_ptr->declared_identifier()->expr_type_ =
             decl_ptr->declared_type()->expr_type_;
+
         } else {
           decl_ptr->declared_identifier()->expr_type_ =
             decl_ptr->declared_type()->interpret_as_type(); // If no type inference

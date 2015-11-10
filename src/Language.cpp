@@ -352,18 +352,13 @@ namespace Language {
         { key_value_pair_list, reserved_else, rocket_operator, expression, newline },
         AST::KVPairList::build_more),
 
-    Rule(key_value_pair_list,
+    Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
         { assignment, rocket_operator, expression, newline },
         AST::KVPairList::build_one_assignment_error),
 
-    Rule(key_value_pair_list,
+    Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
         { assignment, expression, rocket_operator, expression, newline },
         AST::KVPairList::build_more_assignment_error),
-
-
-    Rule(key_value_pair_list,
-        { key_value_pair_list, newline },
-        drop_all_but<0>),
 
     Rule(expression,
         { reserved_case, left_brace, key_value_pair_list, right_brace },
@@ -382,6 +377,15 @@ namespace Language {
     Rule(newline,
         { newline, newline },
         drop_all_but<0>),
+
+    Rule(left_brace,
+        { left_brace, newline },
+        drop_all_but<0>),
+
+    Rule(right_brace,
+        { newline, right_brace },
+        drop_all_but<1>),
+
     /* End miscellaneous */ 
   };
 }  // namespace Language
