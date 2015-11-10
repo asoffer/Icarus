@@ -15,14 +15,25 @@ namespace AST {
     if (is_return() || is_print()) {
       expr_type_ = Type::get_void();
       return;
-    }
 
-    if (expr_->expr_type_ == Type::get_type_error()) {
+    } else if (token() == "()") {
+      if (!expr_->expr_type_->is_function()) {
+        expr_type_ = Type::get_type_error();
+        return;
+      }
+
+      auto fn_type = static_cast<Function*>(expr_->expr_type_);
+      expr_type_ = (fn_type->argument_type() == Type::get_void() ?
+          fn_type->return_type() : Type::get_type_error());
+
+      return;
+
+    } else if (expr_->expr_type_ == Type::get_type_error()) {
       expr_type_ = Type::get_type_error();
       return;
     }
 
-    if (token_ == "-") {
+    if (token() == "-") {
       if (expr_->expr_type_ == Type::get_uint()) {
         // TODO Warning/Error? signed conversion cast?
         expr_type_ = Type::get_int();
@@ -142,9 +153,13 @@ namespace AST {
   void Declaration::verify_types() {
     decl_type_->verify_types();
 
+    if (decl_type_->expr_type_ == Type::get_void()) {
+      error_log.log(line_num_, "Void types cannot be assigned.");
+      return;
+    }
+
+
     if (infer_type_) {
-//      std::cout << "######" << std::endl;
-//      std::cout << decl_type_->to_string(0) << std::endl;
       id_->expr_type_ = decl_type_->expr_type_;
     } else {
       id_->verify_types();
@@ -170,7 +185,8 @@ namespace AST {
     Type* return_type_as_type = return_type_->interpret_as_type();
 
     expr_type_ = Type::get_function(
-        inputs_.front()->type(),
+        // TODO do this part inside `Type`
+        inputs_.size() == 0 ? Type::get_void() : inputs_.front()->type(),
         return_type_as_type);
 
     std::set<Type*> return_types;
@@ -222,6 +238,11 @@ namespace AST {
 
     if (lhs_->expr_type_ == Type::get_type_error() ||
         rhs_->expr_type_ == Type::get_type_error()) return;
+
+    if (rhs_->expr_type_ == Type::get_void()) {
+      error_log.log(line_num_, "Void types cannot be assigned.");
+      return;
+    }
 
     if (lhs_->expr_type_ != rhs_->expr_type_) {
       if (lhs_->expr_type_ == Type::get_unknown()) {

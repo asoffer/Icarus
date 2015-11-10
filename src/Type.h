@@ -38,6 +38,7 @@ class Type {
     virtual std::string to_string() const = 0;
 
     virtual bool is_function() const { return false; }
+    virtual bool is_void() const { return this == Type::get_void(); }
 
     llvm::Type* llvm() const { return llvm_type_; }
 

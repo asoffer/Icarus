@@ -148,6 +148,7 @@ namespace AST {
 
     public:
     static NPtr build(NPtrVec&& nodes);
+    static NPtr build_paren_operator(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
@@ -186,6 +187,22 @@ namespace AST {
 
     return NPtr(unop_ptr);
   }
+
+  inline NPtr Unop::build_paren_operator(NPtrVec&& nodes) {
+    auto unop_ptr = new Unop;
+    unop_ptr->line_num_ = nodes[1]->line_num_;
+
+    unop_ptr->expr_ =
+      std::static_pointer_cast<Expression>(nodes[0]);
+
+    unop_ptr->token_ = "()";
+    unop_ptr->type_ = Language::expression;
+
+    unop_ptr->precedence_ = Language::op_prec.at("()");
+
+    return NPtr(unop_ptr);
+  }
+
 
   class Binop : public Expression {
     friend class KVPairList;
@@ -697,12 +714,7 @@ namespace AST {
 
         // TODO What if the fn_expression is more complicated, like a function
         // of the form (int -> int) -> int? I'm not sure how robust this is
-        if (!binop_ptr->lhs_->is_declaration()) {
-          // TODO Is this error message correct?
-          std::cerr
-            << "No input parameters named in function declaration"
-            << std::endl;
-        } else {
+        if (binop_ptr->lhs_->is_declaration()) {
           // TODO This assumes a single declaration, not a comma-separated list
           auto decl_ptr = std::static_pointer_cast<Declaration>(binop_ptr->lhs_);
 

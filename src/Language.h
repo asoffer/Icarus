@@ -17,7 +17,7 @@ namespace Language {
     decl_assign_operator, assign_operator, fn_arrow, rocket_operator,
 
     key_value_pair, key_value_pair_list,
-    expression, paren_expression, fn_expression, scope, return_expression,
+    expression, fn_expression, scope, return_expression,
     print_expression, void_return_expression,
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,

@@ -1,0 +1,12 @@
+do_nothing := void -> void {
+  return
+}
+
+just_seventeen := void -> int {
+  return 17
+}
+
+x := just_seventeen()
+y := (((do_nothing))())
+
+

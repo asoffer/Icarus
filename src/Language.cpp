@@ -243,6 +243,10 @@ namespace Language {
         AST::Binop::build_paren_operator),
 
     Rule(expression,
+        { expression, left_paren, right_paren },
+        AST::Unop::build_paren_operator),
+
+    Rule(expression,
         { expression, left_bracket, expression, right_bracket },
         AST::Binop::build_bracket_operator),
     /* End paren/bracket operators */
@@ -286,14 +290,6 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
-        { return_expression, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { statements, void_return_expression },
-        AST::Statements::build_more),
-
-    Rule(statements,
         { statements, expression, newline },
         AST::Statements::build_more),
 
@@ -315,6 +311,10 @@ namespace Language {
 
     Rule(statements,
         { statements, while_statement, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, void_return_expression },
         AST::Statements::build_more),
 
     Rule(statements,

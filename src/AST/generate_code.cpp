@@ -67,10 +67,14 @@ namespace AST {
   }
 
   llvm::Value* Unop::generate_code(Scope* scope) {
+    // TODO don't figure out what it is from the tokens.
     llvm::Value* val = expr_->generate_code(scope);
 
     if (is_return()) {
       builder.CreateRet(val);
+
+    } else if (token() == "()") {
+      return builder.CreateCall(static_cast<llvm::Function*>(val));
 
     } else if(expr_->type() == Type::get_bool() && token() == "!") {
       return builder.CreateNot(val, "nottmp");
@@ -91,6 +95,7 @@ namespace AST {
         return nullptr;
       }
 
+      // TODO multiple arguments
       std::vector<llvm::Value*> arg_vals = { rhs_val };
       return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
     }

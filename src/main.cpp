@@ -84,7 +84,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-
   global_statements->verify_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
