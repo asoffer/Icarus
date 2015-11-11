@@ -70,13 +70,14 @@ int main(int argc, char *argv[]) {
   }
 
   ScopeDB::fill_db();
-  ScopeDB::assign_decl_order();
+  global_statements->record_dependencies(nullptr);
+  ScopeDB::assign_type_order();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return 0;
   }
 
-
+  std::cout << global_statements->to_string(0) << std::endl;
   ScopeDB::Scope::verify_no_shadowing();
   ScopeDB::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
@@ -84,6 +85,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  std::cout << global_statements->to_string(0) << std::endl;
   global_statements->verify_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;

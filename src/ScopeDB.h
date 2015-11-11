@@ -25,7 +25,7 @@ namespace ScopeDB {
   class Scope {
     public:
       friend void fill_db();
-      friend void assign_decl_order();
+      friend void assign_type_order();
       friend class AST::FunctionLiteral;
 
       static void verify_no_shadowing();
@@ -67,7 +67,7 @@ namespace ScopeDB {
   };
 
   // To each IdPtr we associate a set holding IdPtrs for which it is needed
-  extern std::map<IdPtr, std::set<IdPtr>> dependencies_;
+  extern std::map<EPtr, std::set<EPtr>> dependencies_;
   extern std::map<IdPtr, Scope*> scope_containing_;
   extern std::map<IdPtr, DeclPtr> decl_of_;
   extern std::vector<DeclPtr> decl_registry_;
@@ -75,7 +75,7 @@ namespace ScopeDB {
   extern DeclPtr make_declaration(size_t line_num, const std::string& id_string);
 
   extern void fill_db();
-  extern void assign_decl_order();
+  extern void assign_type_order();
 
 }  // namespace ScopeDB
 

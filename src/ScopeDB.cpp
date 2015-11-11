@@ -100,7 +100,7 @@ namespace ScopeDB {
   }
 
   std::map<IdPtr, DeclPtr> decl_of_;
-  std::map<IdPtr, std::set<IdPtr>> dependencies_;
+  std::map<EPtr, std::set<EPtr>> dependencies_;
   std::vector<DeclPtr> decl_registry_;
   std::map<IdPtr, Scope*> scope_containing_;
 
@@ -148,6 +148,7 @@ namespace ScopeDB {
     return d;
   }
 
+
   void fill_db() {
     for (auto scope_ptr : Scope::registry_) {
       scope_ptr->ordered_decls_.clear();
@@ -158,9 +159,9 @@ namespace ScopeDB {
       decl_of_[decl_id] = decl_ptr;
 
       // Build up dependencies_ starting with empty sets
-      dependencies_[decl_id] = std::set<IdPtr>();
+      dependencies_[std::static_pointer_cast<AST::Expression>(decl_id)] = std::set<EPtr>();
     }
-
+/* TODO do I need this part anymore?
     // For each declared identifier, look through the identifiers which go into
     // it's type declaration. And add an IdPtr for this to each of there
     // dependencies_ sets
@@ -178,17 +179,18 @@ namespace ScopeDB {
         decl_type->needed_for(decl_id);
       }
     }
+  */
   }
 
-  void assign_decl_order() {
+  void assign_type_order() {
     // Counts the number of times a given IdPtr is an immediate dependency of
     // something else. So a value of zero means that nothing depends on it.
-    std::map<IdPtr, size_t> num_immediate_dep_refs;
+    std::map<EPtr, size_t> num_immediate_dep_refs;
 
     // Char just used as a mask
-    std::map<IdPtr, char> already_seen;
+    std::map<EPtr, char> already_seen;
 
-    std::stack<IdPtr> id_stack;
+    std::stack<EPtr> expr_stack;
 
     // Push back all the sources
     for (const auto& kv : dependencies_) {
@@ -203,11 +205,11 @@ namespace ScopeDB {
 
     for (const auto& kv : num_immediate_dep_refs) {
       if (kv.second == 0) {
-        id_stack.push(kv.first);
+        expr_stack.push(kv.first);
       }
     }
 
-    // Count the number of idptrs seen. If at the end this isn't equal to the
+    // Count the number of EPtrs seen. If at the end this isn't equal to the
     // total number, we know there's a cycle.
     //
     // TODO For better error messages we should write down what the cycle is.
@@ -215,26 +217,32 @@ namespace ScopeDB {
 
 
     // Preallocate a vector of the right size
-    std::vector<IdPtr> topo_order(already_seen.size(), nullptr);
+    std::vector<EPtr> topo_order(already_seen.size(), nullptr);
 
-    while (!id_stack.empty()) {
-      auto id_ptr = id_stack.top();
-      if ((already_seen[id_ptr] & 2) == 2) {
+    // 0x02 means already seen and already popped into topo_order
+    // 0x01 means seen but not yet popped
+    // 0x00 means not yet seen
+    while (!expr_stack.empty()) {
+      auto eptr = expr_stack.top();
+      if ((already_seen[eptr] & 2) == 2) {
+        // Already popped it into topo_order, so just ignore it
+        expr_stack.pop();
         continue;
       }
 
-      if ((already_seen[id_ptr] & 1) == 1) {
-        id_stack.pop();
+      if ((already_seen[eptr] & 1) == 1) {
+        // pop it off and put it in topo_order
+        expr_stack.pop();
+        topo_order[num_seen] = eptr;
 
-        topo_order[num_seen] = id_ptr;
-
-        already_seen[id_ptr] = 0x03;
+        // mark it as already seen
+        already_seen[eptr] = 0x03;
         ++num_seen;
         continue;
       }
 
-      already_seen[id_ptr] = 0x01;
-      for (const auto& dep : dependencies_[id_ptr]) {
+      already_seen[eptr] = 0x01;
+      for (const auto& dep : dependencies_[eptr]) {
         if ((already_seen[dep] & 2) == 2) continue;
 
         if ((already_seen[dep] & 1) == 1) {
@@ -243,9 +251,8 @@ namespace ScopeDB {
           return;
         }
 
-        id_stack.push(dep);
+        expr_stack.push(dep);
       }
-
     }
 
     if (num_seen != already_seen.size()) {
@@ -253,12 +260,17 @@ namespace ScopeDB {
       return;
     }
 
-    for (const auto& id_ptr : topo_order) {
-      scope_containing_[id_ptr]->ordered_decls_
-        .push_back(decl_of_[id_ptr]);
+    for (const auto& eptr : topo_order) {
+      eptr->verify_types();
+
+      // If it's an identifier, push it into the declarations for the
+      // appropriate scope, so they can be allocated correctly
+      if (eptr->is_identifier()) {
+        auto id_ptr = std::static_pointer_cast<AST::Identifier>(eptr);
+        scope_containing_[id_ptr]->ordered_decls_
+          .push_back(decl_of_[id_ptr]);
+      }
     }
-
-
   }
 
 }  // namespace ScopeDB

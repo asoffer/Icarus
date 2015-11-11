@@ -5,8 +5,6 @@ extern ErrorLog error_log;
 
 namespace AST {
   void Unop::verify_types() {
-    expr_->verify_types();
-
     // Even if there was previously a type_error on the return line, we still
     // know that `return foo` should have void type
     //
@@ -69,9 +67,6 @@ namespace AST {
   void Binop::verify_types() {
     // FIXME this is ugly, but "worse is better"
     // TODO make this better
-
-    lhs_->verify_types();
-    rhs_->verify_types();
 
     if (lhs_->expr_type_ == Type::get_type_error()
         || rhs_->expr_type_ == Type::get_type_error()) {
@@ -145,7 +140,6 @@ namespace AST {
     std::set<Type*> expr_types;
 
     for (const auto& expr : exprs_) {
-      expr->verify_types();
       expr_types.insert(expr->expr_type_);
     }
 
@@ -160,19 +154,15 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-    decl_type_->verify_types();
 
     if (decl_type_->expr_type_ == Type::get_void()) {
       error_log.log(line_num_, "Void types cannot be assigned.");
       return;
     }
 
-
-    if (infer_type_) {
-      id_->expr_type_ = decl_type_->expr_type_;
-    } else {
-      id_->verify_types();
-    }
+    id_->expr_type_ = (infer_type_
+        ? decl_type_->expr_type_
+        : decl_type_->interpret_as_type());
 
     expr_type_ = id_->expr_type_;
   }
@@ -184,20 +174,23 @@ namespace AST {
   }
 
   void FunctionLiteral::verify_types() {
-    for (const auto& kv : inputs_) {
-      kv->verify_types();
-    }
-    statements_->verify_types();
 
     // FIXME if there are many inputs, we just take the first one. Obviously
     // wrong
     Type* return_type_as_type = return_type_->interpret_as_type();
 
     expr_type_ = Type::get_function(
-        // TODO do this part inside `Type`
+        // TODO do this part inside `Type`, and don't just take the first
+        // element of inputs_
         inputs_.size() == 0 ? Type::get_void() : inputs_.front()->type(),
         return_type_as_type);
 
+    // NOTE: You cannot verify the return type in the body is correct here.
+    // The reason is that knowing the type of the function literal doesn't
+    // require knowing the internals of the function, and so the body may show
+    // up later. You'll have to verify this separately.
+
+    /*
     std::set<Type*> return_types;
     statements_->collect_return_types(&return_types);
 
@@ -224,7 +217,7 @@ namespace AST {
           + (*return_types.begin())->to_string()
           + " vs. "
           + return_type_as_type->to_string());
-    }
+    }*/
   }
 
   void Statements::collect_return_types(std::set<Type*>* return_exprs) const {
@@ -242,9 +235,6 @@ namespace AST {
 
 
   void Assignment::verify_types() {
-    lhs_->verify_types();
-    rhs_->verify_types();
-
     if (lhs_->expr_type_ == Type::get_type_error() ||
         rhs_->expr_type_ == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
@@ -289,8 +279,6 @@ namespace AST {
         kv.first->expr_type_ = key_type;
       }
 
-      kv.second->verify_types();
-
       value_types.insert(kv.second->expr_type_);
     }
 
@@ -305,15 +293,10 @@ namespace AST {
     return *value_types.begin();
   }
 
-  void Statements::verify_types() {
-    for (auto& eptr : statements_) {
-      eptr->verify_types();
-    }
-  }
+  void Statements::verify_types() {}
 
 
   void While::verify_types() {
     cond_->verify_type_is(Type::get_bool());
-    statements_->verify_types();
   }
 }  // namespace AST

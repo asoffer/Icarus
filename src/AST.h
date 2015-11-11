@@ -58,6 +58,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope) {}
       virtual void assign_decl_to_scope(Scope* scope) {}
+      virtual void record_dependencies(EPtr eptr) const {}
       virtual void verify_types() {}
 
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
@@ -65,6 +66,7 @@ namespace AST {
       virtual bool is_identifier() const {
         return type_ == Language::identifier;
       }
+      virtual bool is_expression() const { return false; }
 
       bool is_return() const {
         return node_type() == Language::return_expression;
@@ -111,13 +113,15 @@ namespace AST {
     virtual std::string to_string(size_t n) const = 0;
     virtual void join_identifiers(Scope* scope) = 0;
     virtual void assign_decl_to_scope(Scope* scope) = 0;
-    virtual void needed_for(IdPtr id_ptr) const = 0;
+    virtual void record_dependencies(EPtr eptr) const = 0;
     virtual void verify_types() = 0;
     virtual bool verify_type_is(Type* t);
 
     virtual Type* interpret_as_type() const = 0;
     virtual Type* type() const { return expr_type_; }
 
+
+    virtual bool is_expression() const { return true; }
 
     virtual llvm::Value* generate_code(Scope* scope) = 0;
 
@@ -153,7 +157,7 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void assign_decl_to_scope(Scope* scope);
-    virtual void needed_for(IdPtr id_ptr) const;
+    virtual void record_dependencies(EPtr eptr) const;
     virtual void verify_types();
 
     virtual Type* interpret_as_type() const;
@@ -218,7 +222,7 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void assign_decl_to_scope(Scope* scope);
-    virtual void needed_for(IdPtr id_ptr) const;
+    virtual void record_dependencies(EPtr eptr) const;
     virtual void verify_types();
 
     virtual Type* interpret_as_type() const;
@@ -276,7 +280,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
       virtual Type* interpret_as_type() const;
@@ -327,28 +331,28 @@ namespace AST {
 
 
   class Terminal : public Expression {
-    friend class KVPairList;
-
     public:
-    static NPtr build(NPtrVec&& nodes, Type* t);
-    static NPtr build_type_literal(NPtrVec&& nodes);
-    static NPtr build_string_literal(NPtrVec&& nodes);
-    static NPtr build_integer_literal(NPtrVec&& nodes);
-    static NPtr build_real_literal(NPtrVec&& nodes);
-    static NPtr build_character_literal(NPtrVec&& nodes);
-    static NPtr build_void_return(NPtrVec&& nodes);
+      friend class KVPairList;
 
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope) {}
-    virtual void assign_decl_to_scope(Scope* scope);
-    virtual void needed_for(IdPtr id_ptr) const {};
-    virtual void verify_types();
+      static NPtr build(NPtrVec&& nodes, Type* t);
+      static NPtr build_type_literal(NPtrVec&& nodes);
+      static NPtr build_string_literal(NPtrVec&& nodes);
+      static NPtr build_integer_literal(NPtrVec&& nodes);
+      static NPtr build_real_literal(NPtrVec&& nodes);
+      static NPtr build_character_literal(NPtrVec&& nodes);
+      static NPtr build_void_return(NPtrVec&& nodes);
 
-    virtual Type* interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope);
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope) {}
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope);
 
     protected:
-    Terminal() {}
+      Terminal() {}
   };
 
   inline NPtr Terminal::build(NPtrVec&& nodes, Type* t) {
@@ -430,6 +434,7 @@ namespace AST {
       }
 
       virtual std::string to_string(size_t n) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
       virtual bool is_identifier() const { return true; }
@@ -470,7 +475,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
       bool type_is_inferred() const { return infer_type_; }
@@ -535,7 +540,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual Type* verify_types_with_key(Type* key_type);
 
       inline size_t size() const { return kv_pairs_.size(); }
@@ -640,7 +645,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
       virtual Type* interpret_as_type() const;
@@ -662,7 +667,6 @@ namespace AST {
 
 
   class Statements : public Node {
-
     public:
     static NPtr build_one(NPtrVec&& nodes);
     static NPtr build_more(NPtrVec&& nodes);
@@ -670,6 +674,7 @@ namespace AST {
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
     virtual void assign_decl_to_scope(Scope* scope);
+    virtual void record_dependencies(EPtr) const;
     virtual void verify_types();
 
     void collect_return_types(std::set<Type*>* return_exprs) const;
@@ -727,7 +732,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void needed_for(IdPtr id_ptr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
       virtual Type* interpret_as_type() const;
@@ -762,6 +767,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr) const;
       virtual void verify_types();
 
     private:
