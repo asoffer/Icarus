@@ -9,8 +9,8 @@ namespace Language {
     identifier,
 
     // Literals
-    integer_literal, real_literal, character_literal, string_literal,
-    type_literal, fn_literal,
+    bool_literal, integer_literal, real_literal, character_literal,
+    string_literal, type_literal, fn_literal,
 
     // Operators
     unary_operator, generic_operator, binary_boolean_operator, decl_operator,
@@ -27,6 +27,7 @@ namespace Language {
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
 
     // Reserved words
+    reserved_bool_literal,
     reserved_if, reserved_else, reserved_case, reserved_loop,
     reserved_print,
     reserved_while, reserved_break, reserved_continue, reserved_return

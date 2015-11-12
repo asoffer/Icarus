@@ -34,6 +34,7 @@ namespace Language {
     { right_brace, "Right Brace" },
     { left_bracket, "Left Bracket" },
     { right_bracket, "Right Bracket" },
+    { reserved_bool_literal, "BoolLiteral" },
     { reserved_if, "If" },
     { reserved_else, "Else" },
     { reserved_case, "Case" },
@@ -46,6 +47,8 @@ namespace Language {
   };
 
   const std::map<std::string, NodeType> reserved_words = {
+    { "true",     reserved_bool_literal },
+    { "false",    reserved_bool_literal },
     { "if",       reserved_if },
     { "else",     reserved_else },
     { "case",     reserved_case },
@@ -96,6 +99,10 @@ namespace Language {
 
   const std::vector<Rule> rules = {
     /* Begin literals */
+    Rule(expression,
+        { reserved_bool_literal },
+        AST::Terminal::build_bool_literal),
+
     Rule(expression,
         { identifier },
         AST::Identifier::build),

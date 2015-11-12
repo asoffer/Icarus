@@ -337,6 +337,7 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes, Type* t);
       static NPtr build_type_literal(NPtrVec&& nodes);
       static NPtr build_string_literal(NPtrVec&& nodes);
+      static NPtr build_bool_literal(NPtrVec&& nodes);
       static NPtr build_integer_literal(NPtrVec&& nodes);
       static NPtr build_real_literal(NPtrVec&& nodes);
       static NPtr build_character_literal(NPtrVec&& nodes);
@@ -372,6 +373,10 @@ namespace AST {
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     // FIXME implement strings
     return build(std::forward<NPtrVec>(nodes), Type::get_type_error());
+  }
+
+  inline NPtr Terminal::build_bool_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), Type::get_bool());
   }
 
   inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {

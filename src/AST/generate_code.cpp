@@ -8,8 +8,12 @@
 
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
-extern llvm::Constant* external_putchar;
-extern llvm::Constant* external_printf;
+
+namespace cstdlib {
+  extern llvm::Constant* putchar;
+  extern llvm::Constant* puts;
+  extern llvm::Constant* printf;
+}  //namespace cstdlib
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
@@ -83,15 +87,47 @@ namespace AST {
 
     } else if (is_print()) {
       if (expr_->type() == Type::get_char()) {
-        builder.CreateCall(external_putchar, { val });
+        builder.CreateCall(cstdlib::putchar, { val });
 
       } else if (expr_->type() == Type::get_int()) {
-        llvm::Value* format = builder.CreateGlobalStringPtr("%d");
-        builder.CreateCall(external_printf, { format, val });
+        auto format = builder.CreateGlobalStringPtr("%d");
+        builder.CreateCall(cstdlib::printf, { format, val });
 
       } else if (expr_->type() == Type::get_real()) {
-        llvm::Value* format = builder.CreateGlobalStringPtr("%f");
-        builder.CreateCall(external_printf, { format, val });
+        auto format = builder.CreateGlobalStringPtr("%f");
+        builder.CreateCall(cstdlib::printf, { format, val });
+
+      } else if (expr_->type() == Type::get_bool()) {
+        auto true_str = builder.CreateGlobalStringPtr("true");
+        auto false_str = builder.CreateGlobalStringPtr("false");
+
+        auto parent_block = builder.GetInsertBlock()->getParent();
+
+        auto true_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "true_block", parent_block);
+        auto false_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "false_block", parent_block);
+        auto merge_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "merge_block", parent_block);
+
+
+        builder.CreateCondBr(val, true_block, false_block);
+
+        builder.SetInsertPoint(true_block);
+        builder.CreateBr(merge_block);
+
+        builder.SetInsertPoint(false_block);
+        builder.CreateBr(merge_block);
+
+
+        builder.SetInsertPoint(merge_block);
+        llvm::PHINode* phi_node =
+          builder.CreatePHI(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()), 2, "merge");
+        phi_node->addIncoming(true_str, true_block);
+        phi_node->addIncoming(false_str, false_block);
+
+        builder.CreateCall(cstdlib::puts, phi_node);
+
       } else {
         // TODO
       }

@@ -14,9 +14,14 @@
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
-extern llvm::Constant* external_putchar;
-extern llvm::Constant* external_printf;
 extern llvm::IRBuilder<> builder;
+
+namespace cstdlib {
+  extern llvm::Constant* printf;
+  extern llvm::Constant* putchar;
+  extern llvm::Constant* puts;
+}  // namespace cstdlib
+
 extern ErrorLog error_log;
 
 int main(int argc, char *argv[]) {
@@ -79,6 +84,7 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  // std::cout << global_statements->to_string(0) << std::endl;
   ScopeDB::Scope::verify_no_shadowing();
   ScopeDB::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
@@ -92,7 +98,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  // std::cout << global_statements->to_string(0) << std::endl;
 
   global_scope->set_entry(llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "entry", global_function));
@@ -100,18 +105,13 @@ int main(int argc, char *argv[]) {
   builder.SetInsertPoint(global_scope->entry());
 
   // Declaration for call to putchar for printing characters
-  external_putchar = global_module->getOrInsertFunction("putchar",
+  cstdlib::putchar = global_module->getOrInsertFunction("putchar",
       llvm::FunctionType::get(Type::get_int()->llvm(), { Type::get_char()->llvm() }, false));
-  // external_printf = global_module->getOrInsertFunction("printf",
-  // llvm::FunctionType::get(Type::get_int()->llvm(), { builder.getInt8Ty()->getPointerTo() }, true));
-
-  std::vector<llvm::Type *> args;
-  args.push_back(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
-  // accepts a char*, is vararg, and returns int
-  llvm::FunctionType* external_printf_type =
-    llvm::FunctionType::get(builder.getInt32Ty(), args, true);
-  external_printf = global_module->getOrInsertFunction("printf", external_printf_type);
-
+  cstdlib::printf = global_module->getOrInsertFunction("printf",
+      llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, true));
+  cstdlib::puts = global_module->getOrInsertFunction("puts",
+      llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, false));
+ 
   global_scope->allocate();
 
   global_statements->generate_code(global_scope);
