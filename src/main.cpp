@@ -14,6 +14,7 @@
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
+extern llvm::Constant* global_print_char;
 extern llvm::IRBuilder<> builder;
 extern ErrorLog error_log;
 
@@ -77,7 +78,6 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  std::cout << global_statements->to_string(0) << std::endl;
   ScopeDB::Scope::verify_no_shadowing();
   ScopeDB::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
@@ -85,19 +85,22 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
-  std::cout << global_statements->to_string(0) << std::endl;
   global_statements->verify_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return 0;
   }
 
-  std::cout << global_statements->to_string(0) << std::endl;
+  // std::cout << global_statements->to_string(0) << std::endl;
 
   global_scope->set_entry(llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "entry", global_function));
 
   builder.SetInsertPoint(global_scope->entry());
+
+  // Declaration for call to putchar for printing characters
+  global_print_char = global_module->getOrInsertFunction("putchar",
+      llvm::FunctionType::get(Type::get_int()->llvm(), { Type::get_char()->llvm() }, false));
 
   global_scope->allocate();
 
@@ -106,16 +109,9 @@ int main(int argc, char *argv[]) {
   builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, 0, false)));
 
-  global_module->dump();
-
-  // std::ofstream output_file_stream("foo.ll");
-  // llvm::raw_os_ostream output_file(output_file_stream);
-  // global_module->print(output_file, nullptr);
-  // system("llvm-as foo.ll");
-  // system("llc foo.bc");
-  // system("clang foo.s -o foo");
-
-  // std::cout << "-------------------- CLEANUP --------------------" << std::endl;
+  std::ofstream output_file_stream("ir.ll");
+  llvm::raw_os_ostream output_file(output_file_stream);
+  global_module->print(output_file, nullptr);
 
   return 0;
 }

@@ -8,6 +8,7 @@
 
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
+extern llvm::Function* global_print_char;
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
@@ -80,7 +81,9 @@ namespace AST {
       return builder.CreateNot(val, "nottmp");
 
     } else if (is_print()) {
-      // builder.CreateCall(global_printd, val, "print");
+      if (expr_->type() == Type::get_char()) {
+        builder.CreateCall(global_print_char, { val });
+      }
     }
 
     return nullptr;

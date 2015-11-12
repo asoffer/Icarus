@@ -1,8 +1,13 @@
 // Segfaults because strings are not yet incorporated
-water_state := (temp : real) -> string {
+water_state := (temp : int) -> char {
    return case {
-    temp < 32         =>  "solid"
-    32 <= temp < 212  =>  "liquid"
-    else              =>  "gas"
+    temp < 32         =>  's'
+    32 <= temp < 212  =>  'l'
+    else              =>  'g'
   }
 }
+
+print water_state(0)
+print water_state(10)
+print water_state(100000)
+print water_state(50)
