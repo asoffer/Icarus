@@ -6,4 +6,4 @@ factorial = (n : int) -> int {
   }
 }
 
-factorial(factorial(3))
+print factorial(factorial(3))

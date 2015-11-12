@@ -8,7 +8,8 @@
 
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
-extern llvm::Function* global_print_char;
+extern llvm::Constant* external_putchar;
+extern llvm::Constant* external_printf;
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
@@ -82,7 +83,17 @@ namespace AST {
 
     } else if (is_print()) {
       if (expr_->type() == Type::get_char()) {
-        builder.CreateCall(global_print_char, { val });
+        builder.CreateCall(external_putchar, { val });
+
+      } else if (expr_->type() == Type::get_int()) {
+        llvm::Value* format = builder.CreateGlobalStringPtr("%d");
+        builder.CreateCall(external_printf, { format, val });
+
+      } else if (expr_->type() == Type::get_real()) {
+        llvm::Value* format = builder.CreateGlobalStringPtr("%f");
+        builder.CreateCall(external_printf, { format, val });
+      } else {
+        // TODO
       }
     }
 

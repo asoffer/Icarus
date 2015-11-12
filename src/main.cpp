@@ -14,7 +14,8 @@
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
-extern llvm::Constant* global_print_char;
+extern llvm::Constant* external_putchar;
+extern llvm::Constant* external_printf;
 extern llvm::IRBuilder<> builder;
 extern ErrorLog error_log;
 
@@ -99,8 +100,17 @@ int main(int argc, char *argv[]) {
   builder.SetInsertPoint(global_scope->entry());
 
   // Declaration for call to putchar for printing characters
-  global_print_char = global_module->getOrInsertFunction("putchar",
+  external_putchar = global_module->getOrInsertFunction("putchar",
       llvm::FunctionType::get(Type::get_int()->llvm(), { Type::get_char()->llvm() }, false));
+  // external_printf = global_module->getOrInsertFunction("printf",
+  // llvm::FunctionType::get(Type::get_int()->llvm(), { builder.getInt8Ty()->getPointerTo() }, true));
+
+  std::vector<llvm::Type *> args;
+  args.push_back(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()));
+  // accepts a char*, is vararg, and returns int
+  llvm::FunctionType* external_printf_type =
+    llvm::FunctionType::get(builder.getInt32Ty(), args, true);
+  external_printf = global_module->getOrInsertFunction("printf", external_printf_type);
 
   global_scope->allocate();
 

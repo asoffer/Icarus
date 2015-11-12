@@ -1,0 +1,14 @@
+print 3.14159265358979323846
+print '\n'
+
+// ideally n would be a uint but we don't have typecasting yet
+// FIXME if you just replace `iters` with another variable just in the position
+// `iters >= 0.0` the compilation will segfault?
+approximate_pi := (iters : real) -> real {
+  return case {
+   iters >= 0.0  =>  4.0 / (2.0 * iters + 1.0) - approximate_pi(iters - 1.0)
+   else          =>  0.0
+  }
+}
+print approximate_pi(100.0)
+print '\n'

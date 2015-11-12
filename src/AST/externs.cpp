@@ -3,7 +3,9 @@
 
 llvm::Module* global_module;
 llvm::Function* global_function;
-llvm::Constant* global_print_char;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
+
+llvm::Constant* external_putchar;
+llvm::Constant* external_printf;
 
 ErrorLog error_log;
