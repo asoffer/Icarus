@@ -22,6 +22,8 @@ namespace AST {
     decl_type_->assign_decl_to_scope(scope);
   }
 
+  void ArrayType::assign_decl_to_scope(Scope* scope) {}
+
   void ChainOp::assign_decl_to_scope(Scope* scope) {
     for (auto& expr : exprs_) {
       expr->assign_decl_to_scope(scope);

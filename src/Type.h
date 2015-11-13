@@ -30,13 +30,14 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
     static Type* get_tuple(std::vector<Type*> types);
-    static Type* get_array(Type* t, size_t len);
+    static Type* get_array(Type* t);
 
     static std::map<std::string, Type*> literals;
     static std::vector<std::string> type_strings;
 
     virtual std::string to_string() const = 0;
 
+    virtual bool is_array() const { return false; }
     virtual bool is_function() const { return false; }
     virtual bool is_void() const { return this == Type::get_void(); }
 
@@ -81,11 +82,9 @@ class Function : public Type {
     }
 
     virtual std::string to_string() const {
-      return "("
-        + argument_type()->to_string()
-        + " -> "
-        + return_type()->to_string()
-        + ")";
+      std::stringstream ss;
+      ss << "(" << argument_type()->to_string() << " -> " << return_type()->to_string() << ")";
+      return ss.str();
     }
 
     virtual ~Function() {}
@@ -113,7 +112,9 @@ class Pointer : public Type {
   public:
     friend class Type;
     virtual std::string to_string() const {
-      return "&" + pointee_type_->to_string();
+      std::stringstream ss;
+      ss << "&" << pointee_type_->to_string();
+      return ss.str();
     }
 
     virtual ~Pointer() {}
@@ -162,16 +163,35 @@ class Array : public Type {
     friend class Type;
 
     virtual std::string to_string() const {
-      return type_->to_string() + "[" + std::to_string(len_) + "]";
+      std::stringstream ss;
+      ss << "[" << type_->to_string() << "]";
+      return ss.str();
+      /*
+      ss << "[" << len_;
+      const Type* type_ptr = this;
+      while (type_ptr->is_array()) {
+        auto array_ptr = static_cast<const Array*>(type_ptr);
+        ss << ", " << len_;
+        type_ptr = array_ptr->type_;
+      }
+      
+      ss << "; " << type_ptr->to_string() << "]";
+      return ss.str();
+      */
     }
+
+
+    virtual bool is_array() const { return true; }
 
     virtual ~Array() {}
 
   private:
-    Array(Type* t, size_t len) : type_(t), len_(len) {}
+    Array(Type* t) : type_(t)/*, len_(len)*/ {
+      llvm_type_ = llvm::ArrayType::get(t->llvm(), 17);
+    }
 
     Type* type_;
-    size_t len_;
+    // size_t len_;
 
     static std::vector<Array*> array_types_;
 };

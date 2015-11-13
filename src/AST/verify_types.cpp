@@ -135,6 +135,18 @@ namespace AST {
     }
   }
 
+  void ArrayType::verify_types() {
+    expr_type_ = Type::get_type();
+
+    // TODO implement uint and change this to uint
+    if (len_->expr_type_ != Type::get_int()) {
+      error_log.log(line_num_, "Array length indexed by non-integral type");
+    }
+
+    if (array_type_->expr_type_ != Type::get_type()) {
+      error_log.log(line_num_, "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
+    }
+  }
 
   void ChainOp::verify_types() {
     std::set<Type*> expr_types;
@@ -269,7 +281,7 @@ namespace AST {
     std::set<Type*> value_types;
 
     for (const auto& kv : kv_pairs_) {
-      if (!kv.first->verify_type_is(key_type)) {
+      if (kv.first->expr_type_ != key_type) {
         // TODO: give some context for this error message. Why must this be the
         // type?  So far the only instance where this is called is for case
         // statements,
@@ -295,8 +307,6 @@ namespace AST {
 
   void Statements::verify_types() {}
 
-
   void While::verify_types() {
-    cond_->verify_type_is(Type::get_bool());
   }
 }  // namespace AST

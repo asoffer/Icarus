@@ -15,6 +15,7 @@ namespace AST {
     // TODO implement
   }
 
+
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
       auto id_ptr = scope->identifier(lhs_->token());
@@ -32,6 +33,25 @@ namespace AST {
       rhs_->join_identifiers(scope);
     }
   }
+
+  void ArrayType::join_identifiers(Scope* scope) {
+    if (len_->is_identifier()) {
+      auto id_ptr = scope->identifier(len_->token());
+      len_ = std::static_pointer_cast<Expression>(id_ptr);
+
+    } else {
+      len_->join_identifiers(scope);
+    }
+
+    if (array_type_->is_identifier()) {
+      auto id_ptr = scope->identifier(array_type_->token());
+      array_type_ = std::static_pointer_cast<Expression>(id_ptr);
+
+    } else {
+      array_type_->join_identifiers(scope);
+    }
+  }
+
 
   void Declaration::join_identifiers(Scope* scope) {
     id_ = scope->identifier(identifier_string());

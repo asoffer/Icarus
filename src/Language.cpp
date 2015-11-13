@@ -25,6 +25,7 @@ namespace Language {
     { decl_assign_operator, ":=" },
     { assign_operator, "=" },
     { fn_arrow, "->" },
+    { semicolon, ";" },
     { rocket_operator, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
@@ -130,6 +131,10 @@ namespace Language {
     Rule(fn_literal,
         { fn_expression, left_brace, statements, right_brace },
         AST::FunctionLiteral::build),
+
+    Rule(expression,
+        { left_bracket, expression, semicolon, expression, right_bracket },
+        AST::ArrayType::build),
 
     Rule(expression,
         { fn_literal },

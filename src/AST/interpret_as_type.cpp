@@ -16,6 +16,10 @@ namespace AST {
     return Type::get_type_error();
   }
 
+  Type* ArrayType::interpret_as_type() const {
+    // TODO incorporate length when possible
+    return Type::get_array(array_type_->interpret_as_type());
+  }
 
   Type* ChainOp::interpret_as_type() const {
     return Type::get_type_error();

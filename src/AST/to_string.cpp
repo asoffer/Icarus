@@ -43,6 +43,12 @@ namespace AST {
     return output;
   }
 
+  std::string ArrayType::to_string(size_t n) const {
+    return tabs(n) + "<AraryType>\n"
+      + len_->to_string(n + 1)
+      + array_type_->to_string(n + 1);
+  }
+
   std::string ChainOp::to_string(size_t n) const {
     std::string output = tabs(n) + "<Chain: ";
     for (const auto& op : ops_) {

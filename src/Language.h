@@ -25,6 +25,7 @@ namespace Language {
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
+    semicolon,
 
     // Reserved words
     reserved_bool_literal,

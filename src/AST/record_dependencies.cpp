@@ -26,6 +26,14 @@ namespace AST {
       rhs_->record_dependencies(rhs_);
   }
 
+  void ArrayType::record_dependencies(EPtr eptr) const {
+      ScopeDB::dependencies_[eptr].insert(len_);
+      ScopeDB::dependencies_[eptr].insert(array_type_);
+
+      len_->record_dependencies(len_);
+      array_type_->record_dependencies(array_type_);
+  }
+
   void ChainOp::record_dependencies(EPtr eptr) const {
     for (auto& e : exprs_) {
       ScopeDB::dependencies_[eptr].insert(e);

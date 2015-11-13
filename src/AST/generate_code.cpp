@@ -410,6 +410,9 @@ namespace AST {
     return nullptr;
   }
 
+  llvm::Value* ArrayType::generate_code(Scope* scope) {
+    return nullptr;
+  }
 
   llvm::Value* Statements::generate_code(Scope* scope) {
     for (auto& stmt : statements_) {

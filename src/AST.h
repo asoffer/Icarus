@@ -39,6 +39,7 @@ namespace AST {
       friend class Declaration;
       friend class Statements;
       friend class Assignment;
+      friend class ArrayType;
 
       static inline Node eof_node(size_t line_num) { return Node(line_num, Language::eof, ""); }
       static inline Node newline_node() { return Node(0, Language::newline, ""); }
@@ -104,6 +105,7 @@ namespace AST {
     friend class ChainOp;
     friend class Declaration;
     friend class Assignment;
+    friend class ArrayType;
 
     public:
     static NPtr parenthesize(NPtrVec&& nodes);
@@ -115,15 +117,14 @@ namespace AST {
     virtual void assign_decl_to_scope(Scope* scope) = 0;
     virtual void record_dependencies(EPtr eptr) const = 0;
     virtual void verify_types() = 0;
-    virtual bool verify_type_is(Type* t);
 
     virtual Type* interpret_as_type() const = 0;
-    virtual Type* type() const { return expr_type_; }
+    virtual llvm::Value* generate_code(Scope* scope) = 0;
 
+    virtual Type* type() const { return expr_type_; }
 
     virtual bool is_expression() const { return true; }
 
-    virtual llvm::Value* generate_code(Scope* scope) = 0;
 
     virtual ~Expression(){}
 
@@ -138,12 +139,6 @@ namespace AST {
     auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
     expr_ptr->precedence_ = Language::op_prec.at("MAX");
     return expr_ptr;
-  }
-
-
-  inline bool Expression::verify_type_is(Type *t) {
-    verify_types();
-    return expr_type_ == t; 
   }
 
   // TODO: This only represents a left unary operator for now
@@ -218,6 +213,7 @@ namespace AST {
     static NPtr build(NPtrVec&& nodes);
     static NPtr build_paren_operator(NPtrVec&& nodes);
     static NPtr build_bracket_operator(NPtrVec&& nodes);
+    static NPtr build_array_type(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
@@ -271,6 +267,39 @@ namespace AST {
     return NPtr(binop_ptr);
   }
 
+  class ArrayType : public Expression {
+    public:
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope);
+
+    private:
+      EPtr len_;
+      EPtr array_type_;
+  };
+
+  inline NPtr ArrayType::build(NPtrVec&& nodes) {
+    auto array_type_ptr = new ArrayType;
+    array_type_ptr->line_num_ = nodes[0]->line_num_;
+
+    array_type_ptr->len_ =
+      std::static_pointer_cast<Expression>(nodes[1]);
+
+    array_type_ptr->array_type_ =
+      std::static_pointer_cast<Expression>(nodes[3]);
+
+    array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+    array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+
+    return NPtr(array_type_ptr);
+  }
 
 
   class ChainOp : public Expression {
