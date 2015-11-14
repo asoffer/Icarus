@@ -150,6 +150,18 @@ namespace AST {
       return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
     }
 
+    if (token() == "[]") {
+      llvm::Value* lhs_val = lhs_->generate_code(scope);
+      llvm::Value* rhs_val = rhs_->generate_code(scope);
+
+      if (lhs_val == nullptr || rhs_val == nullptr) {
+        return nullptr;
+      }
+
+      return nullptr;
+    }
+
+
     if (type() == Type::get_bool()) {
       llvm::Value* lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;

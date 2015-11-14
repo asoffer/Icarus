@@ -182,6 +182,8 @@ class Array : public Type {
 
 
     virtual bool is_array() const { return true; }
+    virtual Type* data_type() const { return type_; }
+
 
     virtual ~Array() {}
 

@@ -97,6 +97,25 @@ namespace AST {
       
       return;
 
+   } else if (token_ == "[]") {
+      expr_type_ = Type::get_type_error();
+      if (!lhs_->expr_type_->is_array()) {
+        error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name an array.");
+        return;
+      }
+
+
+      expr_type_ = static_cast<Array*>(lhs_->expr_type_)->data_type();
+
+      // TODO make this allow uint maybe?
+      // TODO allow slice indexing
+      if (rhs_->expr_type_ != Type::get_int()) {
+        error_log.log(line_num_, "Arary must be indexed by an integer.");
+        return;
+      }
+      
+      return;
+
     } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
         token_ == ">=" || token_ == "==" || token_ == "!=") {
       // TODO is this else-if block necessary anymore??

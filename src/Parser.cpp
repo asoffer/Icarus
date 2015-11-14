@@ -62,13 +62,15 @@ bool Parser::should_shift() {
     case Language::string_literal:
     case Language::type_literal:
     case Language::right_paren:
+    case Language::right_bracket:
       return false;
     default:;
   }
 
   // For function calls, shift the parentheses on
-  if (Language::is_expression(stack_.back()->node_type())
-      && lookahead_->node_type() == Language::left_paren) {
+  if (Language::is_expression(stack_.back()->node_type()) && (
+        lookahead_->node_type() == Language::left_paren ||
+        lookahead_->node_type() == Language::left_bracket)) {
     return true;
   }
 

@@ -119,9 +119,15 @@ int main(int argc, char *argv[]) {
   builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, 0, false)));
 
-  std::ofstream output_file_stream("ir.ll");
-  llvm::raw_os_ostream output_file(output_file_stream);
-  global_module->print(output_file, nullptr);
+  {
+    std::ofstream output_file_stream("ir.ll");
+    llvm::raw_os_ostream output_file(output_file_stream);
+    global_module->print(output_file, nullptr);
+  } // Ensure the stream writes before system calls
+  
+  system("llc -filetype=obj ir.ll");
+  system("gcc ir.o -o bin/prog");
+  system("rm ir.o ir.ll");
 
   return 0;
 }
