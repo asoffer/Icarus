@@ -1,5 +1,8 @@
 n := 3
 my_array : [n; int]
-my_array[0] = 10
-my_array[1] = my_array[0] + 1
-// print my_array[1]
+my_array[3] = 17
+my_array[1] = my_array[3] + 1
+print my_array[3]
+print '\t'
+print my_array[1]
+print '\n'

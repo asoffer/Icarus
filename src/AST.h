@@ -120,6 +120,7 @@ namespace AST {
 
     virtual Type* interpret_as_type() const = 0;
     virtual llvm::Value* generate_code(Scope* scope) = 0;
+    virtual llvm::Value* generate_lvalue(Scope* scope) = 0;
 
     virtual Type* type() const { return expr_type_; }
 
@@ -159,6 +160,7 @@ namespace AST {
 
 
     virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_lvalue(Scope* scope);
 
     private:
     EPtr expr_;
@@ -223,6 +225,7 @@ namespace AST {
 
     virtual Type* interpret_as_type() const;
     virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_lvalue(Scope* scope);
 
     virtual bool is_binop() const { return true; }
 
@@ -279,6 +282,9 @@ namespace AST {
 
       virtual Type* interpret_as_type() const;
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+
 
     private:
       EPtr len_;
@@ -315,6 +321,7 @@ namespace AST {
       virtual Type* interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
       virtual bool is_chain_op() const { return true; }
 
@@ -380,6 +387,7 @@ namespace AST {
 
       virtual Type* interpret_as_type() const;
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
     protected:
       Terminal() {}
@@ -436,6 +444,7 @@ namespace AST {
       virtual void verify_types();
 
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
       virtual ~Assignment(){}
 
@@ -473,6 +482,7 @@ namespace AST {
 
       virtual bool is_identifier() const { return true; }
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
       Identifier(size_t line_num, const std::string& token_string) : alloca_(nullptr) {
         token_ = token_string;
@@ -518,6 +528,7 @@ namespace AST {
       }
 
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
       virtual bool is_declaration() const { return true; }
 
@@ -684,6 +695,7 @@ namespace AST {
 
       virtual Type* interpret_as_type() const;
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
     private:
       Case() {}
@@ -772,6 +784,7 @@ namespace AST {
       virtual Type* interpret_as_type() const;
 
       virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
       virtual llvm::Function* llvm_function() const { return llvm_function_; }
 

@@ -151,14 +151,7 @@ namespace AST {
     }
 
     if (token() == "[]") {
-      llvm::Value* lhs_val = lhs_->generate_code(scope);
-      llvm::Value* rhs_val = rhs_->generate_code(scope);
-
-      if (lhs_val == nullptr || rhs_val == nullptr) {
-        return nullptr;
-      }
-
-      return nullptr;
+      return builder.CreateLoad(generate_lvalue(scope), "array_val");
     }
 
 
@@ -563,6 +556,8 @@ namespace AST {
     return llvm_function_;
   }
 
+  // This function exists because both '=' and ':=' need to call some version of
+  // the same code. it's been factored out here.
   llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs) {
     llvm::Value* var = nullptr;
     llvm::Value* val = nullptr;
@@ -578,26 +573,14 @@ namespace AST {
 
         return nullptr;
       }
-
-      val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
-
-      auto id_ptr = std::static_pointer_cast<Identifier>(lhs);
-      var = id_ptr->alloca_;
-    } else {
-      val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
-
-      // TODO This situation could also come up for instance if I assign through
-      // a pointer (or any lvalue that isnt an identifier.
-      // Example:
-      //   x : int
-      //   y := &x
-      //   @y = 3  // <--- HERE
-      var = lhs->generate_code(scope);
     }
 
+    val = rhs->generate_code(scope);
+    if (val == nullptr) return nullptr;
+
+    var = lhs->generate_lvalue(scope);
     if (var == nullptr) return nullptr;
+
     builder.CreateStore(val, var);
 
     return nullptr;

@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
   
   system("llc -filetype=obj ir.ll");
   system("gcc ir.o -o bin/prog");
-  system("rm ir.o ir.ll");
+  system("rm ir.o");
 
   return 0;
 }
