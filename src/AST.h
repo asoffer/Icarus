@@ -459,10 +459,10 @@ namespace AST {
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
-    assign_ptr->token_ = "=";
+    assign_ptr->token_ = nodes[1]->token();
     assign_ptr->type_ = Language::assign_operator;
 
-    assign_ptr->precedence_ = Language::op_prec.at("=");
+    assign_ptr->precedence_ = Language::op_prec.at(assign_ptr->token_);
 
     return NPtr(assign_ptr);
   }

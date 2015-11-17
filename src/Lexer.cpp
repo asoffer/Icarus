@@ -222,6 +222,9 @@ AST::Node Lexer::next_operator() {
     case '+':
     case '*':
     case '%':
+    case '&':
+    case '|':
+    case '^':
       lead_char = static_cast<char>(peek);
       node_type = Language::generic_operator;
       break;
@@ -232,17 +235,23 @@ AST::Node Lexer::next_operator() {
       break;
     default:
       lead_char = 0;
-      break;
   }
 
   if (lead_char != 0) {
     file_.get();
     peek = file_.peek();
 
-    if (peek == '=') file_.get();
+    std::string tok = std::string(1, lead_char);
+    if (peek == '=') {
+      tok += "=";
+      file_.get();
+    }
 
-    return AST::Node(line_num_, node_type,
-        std::string(1, lead_char) + (peek == '=' ? "=" : ""));
+    if (node_type == Language::generic_operator && peek == '=') {
+      node_type = Language::assign_operator;
+    }
+
+   return AST::Node(line_num_, node_type, tok);
   }
 
   if (peek == ':') {
@@ -284,7 +293,7 @@ AST::Node Lexer::next_operator() {
       file_.get();
 
       Language::NodeType node_type = (lead_char == '-' ?
-          Language::generic_operator : Language::binary_boolean_operator);
+          Language::assign_operator : Language::binary_boolean_operator);
       return AST::Node(line_num_, node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
@@ -483,7 +492,7 @@ AST::Node Lexer::next_given_slash() {
 
   if (peek == '=') {
     file_.get();
-    return AST::Node(line_num_, Language::generic_operator, "/=");
+    return AST::Node(line_num_, Language::assign_operator, "/=");
   }
 
   return AST::Node(line_num_, Language::generic_operator, "/");

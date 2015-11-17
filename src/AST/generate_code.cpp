@@ -138,12 +138,11 @@ namespace AST {
 
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (token() == "()") {
-      llvm::Value* lhs_val = lhs_->generate_code(scope);
-      llvm::Value* rhs_val = rhs_->generate_code(scope);
+      auto lhs_val = lhs_->generate_code(scope);
+      if (lhs_val == nullptr) return nullptr;
 
-      if (lhs_val == nullptr || rhs_val == nullptr) {
-        return nullptr;
-      }
+      auto rhs_val = rhs_->generate_code(scope);
+      if (rhs_val == nullptr) return nullptr;
 
       // TODO multiple arguments
       std::vector<llvm::Value*> arg_vals = { rhs_val };
@@ -156,257 +155,96 @@ namespace AST {
 
 
     if (type() == Type::get_bool()) {
-      llvm::Value* lhs_val = lhs_->generate_code(scope);
+      // The important/tricky thing in this section is short-circuiting
+
+      // Compute the left-hand side value no matter what
+      auto lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;
 
-      // TODO this check can be sped up, at the cost of debugging robustness
-      if (token() == "&" || token() == "|" || token() == "&=") {
-        auto parent_fn = builder.GetInsertBlock()->getParent();
-
-        auto more_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "more", parent_fn);
-        auto merge_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "merge", parent_fn);
-        auto short_circuit_entry = builder.GetInsertBlock();
-
-        llvm::BasicBlock* true_block = nullptr;
-        llvm::BasicBlock* false_block = nullptr;
-
-        if (token() == "&" || token() == "&=") {
-          true_block = more_block;
-          false_block = merge_block;
- 
-        } else if (token() == "|" || token() == "|=") {
-          false_block = more_block;
-          true_block = merge_block;
-        }
-
-        builder.CreateCondBr(lhs_val, true_block, false_block);
-
-        builder.SetInsertPoint(more_block);
+      // Assumption is that only operators of type (bool, bool) -> bool are '&',
+      // '|', and '^'
+      if (token() == "^") {
+        // No short-circuiting possible here.
         llvm::Value* rhs_val = rhs_->generate_code(scope);
-        builder.CreateBr(merge_block);
-
-        builder.SetInsertPoint(merge_block);
-        llvm::PHINode* phi_node =
-          builder.CreatePHI(Type::get_bool()->llvm(), 2, "merge");
-
         if (rhs_val == nullptr) return nullptr;
 
-        if (token() == "&" || token() == "&=") {
-          phi_node->addIncoming(rhs_val, more_block);
-          phi_node->addIncoming(
-              llvm::ConstantInt::get(llvm::getGlobalContext(),
-                llvm::APInt(1, 0, false)), short_circuit_entry);
-
-        } else if (token() == "|" || token() == "|=") {
-          phi_node->addIncoming(
-              llvm::ConstantInt::get(llvm::getGlobalContext(),
-                llvm::APInt(1, 1, false)), short_circuit_entry);
-          phi_node->addIncoming(rhs_val, more_block);
-        }
-
-        if (token() == "&=" || token() == "|=") {
-          llvm::AllocaInst* var = nullptr;
-          if (lhs_->is_identifier()) {
-            auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-            var = id_ptr->alloca_;
-          }
-
-          // TODO remove this/robustify it
-          if (var != nullptr) {
-            builder.CreateStore(phi_node, var);
-          }
-
-          // Assignment versions do not return anything
-          return nullptr;
-        }
-
-        return phi_node;
-
-      }
-
-      // Already defined lhs_val
-      llvm::Value* rhs_val = rhs_->generate_code(scope);
-      if (rhs_val == nullptr) {
-        return nullptr;
-      }
-
-      if (token() == "^") {
         return builder.CreateXor(lhs_val, rhs_val, "xortmp");
-
-      } else if (token() == "^=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "subtmp"), var);
-        return nullptr;
       }
 
+      auto parent_fn = builder.GetInsertBlock()->getParent();
+
+      // Create blocks for that split and feed back in to the phi-node
+      auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
+      auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+      // Remember where we entered from
+      auto short_circuit_entry = builder.GetInsertBlock();
+
+      char op_char = token()[0];
+      llvm::BasicBlock* true_block = (op_char == '&' ? more_block : merge_block);
+      llvm::BasicBlock* false_block = (op_char == '|' ? more_block : merge_block);
+
+
+      builder.CreateCondBr(lhs_val, true_block, false_block);
+
+      // If you need more information to determine the value, compute it
+      builder.SetInsertPoint(more_block);
+      auto rhs_val = rhs_->generate_code(scope);
+      auto long_circuit_entry = builder.GetInsertBlock();
+      builder.CreateBr(merge_block);
+
+      builder.SetInsertPoint(merge_block);
+      llvm::PHINode* phi_node =
+        builder.CreatePHI(Type::get_bool()->llvm(), 2, "phi");
+
+      if (rhs_val == nullptr) return nullptr;
+
+      if (op_char == '&') {
+        phi_node->addIncoming(rhs_val, long_circuit_entry);
+        phi_node->addIncoming(
+            llvm::ConstantInt::get(llvm::getGlobalContext(),
+              llvm::APInt(1, 0, false)), short_circuit_entry);
+
+      } else if (op_char == '|') {
+        phi_node->addIncoming(
+            llvm::ConstantInt::get(llvm::getGlobalContext(),
+              llvm::APInt(1, 1, false)), short_circuit_entry);
+        phi_node->addIncoming(rhs_val, long_circuit_entry);
+      }
+
+      return phi_node;
     }
 
-    llvm::Value* lhs_val = lhs_->generate_code(scope);
-    llvm::Value* rhs_val = rhs_->generate_code(scope);
+    auto lhs_val = lhs_->generate_code(scope);
+    if (lhs_val == nullptr) return nullptr;
 
-    if (lhs_val == nullptr || rhs_val == nullptr) {
-      return nullptr;
-    }
+    auto rhs_val = rhs_->generate_code(scope);
+    if (rhs_val == nullptr) return nullptr;
 
     if (type() == Type::get_int()) {
-      if (token() == "+") {
-        return builder.CreateAdd(lhs_val, rhs_val, "addtmp");
+      if (token() == "+") { return builder.CreateAdd(lhs_val, rhs_val, "addtmp"); }
+      else if (token() == "-") { return builder.CreateSub(lhs_val, rhs_val, "subtmp"); }
+      else if (token() == "*") { return builder.CreateMul(lhs_val, rhs_val, "multmp"); }
+      else if (token() == "/") { return builder.CreateSDiv(lhs_val, rhs_val, "divtmp"); }
+      else if (token() == "%") { return builder.CreateSRem(lhs_val, rhs_val, "remtmp"); }
 
-      } else if (token() == "-") {
-        return builder.CreateSub(lhs_val, rhs_val, "subtmp");
-
-      } else if (token() == "*") {
-        return builder.CreateMul(lhs_val, rhs_val, "multmp");
-
-      } else if (token() == "/") {
-        return builder.CreateSDiv(lhs_val, rhs_val, "divtmp");
-
-      } else if (token() == "%") {
-        return builder.CreateSRem(lhs_val, rhs_val, "remtmp");
-
-      } else if (token() == "+=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateAdd(lhs_val, rhs_val, "addtmp"), var);
-        return nullptr;
-
-      } else if (token() == "-=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateSub(lhs_val, rhs_val, "subtmp"), var);
-        return nullptr;
-
-      } else if (token() == "*=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateMul(lhs_val, rhs_val, "multmp"), var);
-        return nullptr;
-
-      } else if (token() == "/=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateSDiv(lhs_val, rhs_val, "divtmp"), var);
-        return nullptr;
-      
-      } else if (token() == "%=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateSRem(lhs_val, rhs_val, "remtmp"), var);
-        return nullptr;
-      }
+     
+      return nullptr;
 
     } else if (type() == Type::get_real()) {
-      if (token() == "+") {
-        return builder.CreateFAdd(lhs_val, rhs_val, "addtmp");
+      if (token() == "+") { return builder.CreateFAdd(lhs_val, rhs_val, "addtmp"); }
+      else if (token() == "-") { return builder.CreateFSub(lhs_val, rhs_val, "subtmp"); }
+      else if (token() == "*") { return builder.CreateFMul(lhs_val, rhs_val, "multmp"); }
+      else if (token() == "/") { return builder.CreateFDiv(lhs_val, rhs_val, "divtmp"); }
 
-      } else if (token() == "-") {
-        return builder.CreateFSub(lhs_val, rhs_val, "subtmp");
+//      auto lval = lhs_->generate_lvalue(scope);
+//      if (lval == nullptr) return nullptr;
+//
+//      if (token() == "+=") { builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); }
+//      else if (token() == "-=") { builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), lval); }
+//      else if (token() == "*=") { builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), lval); }
+//      else if (token() == "/=") { builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); }
 
-      } else if (token() == "*") {
-        return builder.CreateFMul(lhs_val, rhs_val, "multmp");
-
-      } else if (token() == "/") {
-        return builder.CreateFDiv(lhs_val, rhs_val, "divtmp");
-
-      } else if (token() == "+=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), var);
-        return nullptr;
-
-      } else if (token() == "-=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), var);
-        return nullptr;
-
-      } else if (token() == "*=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), var);
-        return nullptr;
-
-      } else if (token() == "/=") {
-        llvm::AllocaInst* var = nullptr;
-        if (lhs_->is_identifier()) {
-          auto id_ptr = std::static_pointer_cast<Identifier>(lhs_);
-          var = id_ptr->alloca_;
-        }
-
-        // TODO remove this/robustify it
-        if (var == nullptr) return nullptr;
-
-        builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), var);
-        return nullptr;
-      }
-
-
+      return nullptr;
 
     } else if (type() == Type::get_uint()) {
     }
@@ -415,9 +253,7 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* ArrayType::generate_code(Scope* scope) {
-    return nullptr;
-  }
+  llvm::Value* ArrayType::generate_code(Scope* scope) { return nullptr; }
 
   llvm::Value* Statements::generate_code(Scope* scope) {
     for (auto& stmt : statements_) {
@@ -562,31 +398,103 @@ namespace AST {
     llvm::Value* var = nullptr;
     llvm::Value* val = nullptr;
 
-    if (lhs->is_identifier()) {
-      // Treat functions special
-      if (rhs->type()->is_function()) {
-        auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
-        fn->llvm_function_ = global_module->getFunction(lhs->token());
-        val = rhs->generate_code(scope);
-        if (val == nullptr) return nullptr;
-        val->setName(lhs->token());
+    // Treat functions special
+    if (lhs->is_identifier() && rhs->type()->is_function()) {
+      auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
+      fn->llvm_function_ = global_module->getFunction(lhs->token());
+      val = rhs->generate_code(scope);
+      if (val == nullptr) return nullptr;
+      val->setName(lhs->token());
+    } else {
+      val = rhs->generate_code(scope);
+      if (val == nullptr) return nullptr;
 
-        return nullptr;
-      }
+      var = lhs->generate_lvalue(scope);
+      if (var == nullptr) return nullptr;
+
+      builder.CreateStore(val, var);
     }
-
-    val = rhs->generate_code(scope);
-    if (val == nullptr) return nullptr;
-
-    var = lhs->generate_lvalue(scope);
-    if (var == nullptr) return nullptr;
-
-    builder.CreateStore(val, var);
-
     return nullptr;
   }
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
+
+    if (token().size() == 2) { // +=, &=, etc
+      char main_op = token()[0];
+
+      auto lhs_val = lhs_->generate_code(scope);
+      if (lhs_val == nullptr) return nullptr;
+
+      if (lhs_->type() == Type::get_bool()) {
+        if (main_op == '^') {
+          auto lval = lhs_->generate_lvalue(scope);
+          if (lval == nullptr) return nullptr;
+
+          auto rhs_val = rhs_->generate_code(scope);
+          if (rhs_val == nullptr) return nullptr;
+
+          builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+        } else {
+
+          auto parent_fn = builder.GetInsertBlock()->getParent();
+          auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
+          auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+
+          // Assumption is that only operators of type (bool, bool) -> bool are
+          // '&', '|', and '^'
+          llvm::BasicBlock* true_block = (main_op == '&' ? more_block : merge_block);
+          llvm::BasicBlock* false_block = (main_op == '|' ? more_block : merge_block);
+
+          builder.CreateCondBr(lhs_val, true_block, false_block);
+
+          builder.SetInsertPoint(more_block);
+
+          auto lval = lhs_->generate_lvalue(scope);
+          if (lval == nullptr) return nullptr;
+
+          auto rhs_val = rhs_->generate_code(scope);
+          if (rhs_val == nullptr) return nullptr;
+
+          builder.CreateStore(rhs_val, lval);
+          builder.CreateBr(merge_block);
+
+          builder.SetInsertPoint(merge_block);
+        }
+
+        return nullptr;
+      }
+
+      auto lval = lhs_->generate_lvalue(scope);
+      if (lval == nullptr) return nullptr;
+
+      auto rhs_val = rhs_->generate_code(scope);
+      if (rhs_val == nullptr) return nullptr;
+
+      if (lhs_->type() == Type::get_int()) {
+        llvm::Value* computed_val = nullptr;
+        switch (main_op) {
+          case '+': computed_val = builder.CreateAdd(lhs_val, rhs_val, "addtmp"); break;
+          case '-': computed_val = builder.CreateSub(lhs_val, rhs_val, "subtmp"); break;
+          case '*': computed_val = builder.CreateMul(lhs_val, rhs_val, "multmp"); break;
+          case '/': computed_val = builder.CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
+          case '%': computed_val = builder.CreateSRem(lhs_val, rhs_val, "remtmp"); break;
+          default: return nullptr;
+        }
+        builder.CreateStore(computed_val, lval);
+        return nullptr;
+
+      } else if (type() == Type::get_real()) {
+        switch (main_op) {
+          case '+': builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); break;
+          case '-': builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), lval); break;
+          case '*': builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), lval); break;
+          case '/': builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); break;
+          default:;
+        }
+        return nullptr;
+      }
+    }
+
     return generate_assignment_code(scope, lhs_, rhs_);
   }
 

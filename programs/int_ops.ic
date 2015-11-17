@@ -10,3 +10,8 @@ b += a * b
 
 b : int
 a : int
+
+print a
+print '\n'
+print b
+print '\n'
