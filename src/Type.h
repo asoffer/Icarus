@@ -30,7 +30,7 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
     static Type* get_tuple(std::vector<Type*> types);
-    static Type* get_array(Type* t);
+    static Type* get_array(Type* t, int len);
 
     static std::map<std::string, Type*> literals;
     static std::vector<std::string> type_strings;
@@ -164,9 +164,6 @@ class Array : public Type {
 
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << "[" << type_->to_string() << "]";
-      return ss.str();
-      /*
       ss << "[" << len_;
       const Type* type_ptr = this;
       while (type_ptr->is_array()) {
@@ -177,7 +174,6 @@ class Array : public Type {
       
       ss << "; " << type_ptr->to_string() << "]";
       return ss.str();
-      */
     }
 
 
@@ -188,12 +184,19 @@ class Array : public Type {
     virtual ~Array() {}
 
   private:
-    Array(Type* t) : type_(t)/*, len_(len)*/ {
-      llvm_type_ = llvm::ArrayType::get(t->llvm(), 17);
+    // A value of -1 for the length means this is to be dependently typed. All
+    // other values are the actual type
+    Array(Type* t, int len = -1) : type_(t), len_(len) {
+      if (len == -1) {
+        // FIXME deal with the dependent case
+        llvm_type_ = llvm::ArrayType::get(t->llvm(), 17);
+      } else {
+        llvm_type_ = llvm::ArrayType::get(t->llvm(), static_cast<size_t>(len));
+      }
     }
 
     Type* type_;
-    // size_t len_;
+    int len_;
 
     static std::vector<Array*> array_types_;
 };

@@ -119,9 +119,9 @@ Type* Type::get_tuple(std::vector<Type*> types) {
   return tuple_type;
 }
 
-Type* Type::get_array(Type* t) {
-  for (const auto& arr : Array::array_types_) {
-    if (arr->type_ == t/* && arr->len_ == len*/) return arr;
+Type* Type::get_array(Type* t, int len) {
+ for (const auto& arr : Array::array_types_) {
+    if (arr->type_ == t && arr->len_ == len) return arr;
   }
 
   auto arr_type = new Array(t/*, len*/);

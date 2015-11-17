@@ -1,0 +1,87 @@
+prime := (n : int) -> int {
+  return case {
+    n == 1  =>  2
+    else    =>  prime_after(prime(n - 1))
+  }
+}
+
+
+prime_after := (n : int) -> int {
+  return case {
+    is_prime(n + 1)  =>  n + 1
+    else             =>  prime_after(n + 1)
+  }
+}
+
+// For now without multiple parameters or real looping constructs, this is the best we can do
+is_prime := (n : int) -> bool {
+  return case {
+    n % 2 == 0 & n != 2    =>  false
+    n % 3 == 0 & n != 3    =>  false
+    n % 5 == 0 & n != 5    =>  false
+    n % 7 == 0 & n != 7    =>  false
+    n % 11 == 0 & n != 11  =>  false
+    n % 13 == 0 & n != 13  =>  false
+    else                   =>  true
+  }
+}
+
+print prime(1)
+print '\n'
+print prime(2)
+print '\n'
+print prime(3)
+print '\n'
+print prime(4)
+print '\n'
+print prime(5)
+print '\n'
+print prime(6)
+print '\n'
+print prime(7)
+print '\n'
+print prime(8)
+print '\n'
+print prime(9)
+print '\n'
+print prime(10)
+print '\n'
+print prime(11)
+print '\n'
+print prime(12)
+print '\n'
+print prime(13)
+print '\n'
+print prime(14)
+print '\n'
+print prime(15)
+print '\n'
+print prime(16)
+print '\n'
+print prime(17)
+print '\n'
+print prime(18)
+print '\n'
+print prime(19)
+print '\n'
+print prime(20)
+print '\n'
+print prime(21)
+print '\n'
+print prime(22)
+print '\n'
+print prime(23)
+print '\n'
+print prime(24)
+print '\n'
+print prime(25)
+print '\n'
+print prime(26)
+print '\n'
+print prime(27)
+print '\n'
+print prime(28)
+print '\n'
+print prime(29)
+print '\n'
+

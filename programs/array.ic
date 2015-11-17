@@ -1,5 +1,4 @@
-n := 3
-my_array : [n; int]
+my_array : [6; int]
 my_array[3] = 17
 my_array[1] = my_array[3] + 1
 print my_array[3]

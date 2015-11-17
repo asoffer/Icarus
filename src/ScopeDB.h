@@ -27,6 +27,7 @@ namespace ScopeDB {
       friend void fill_db();
       friend void assign_type_order();
       friend class AST::FunctionLiteral;
+      friend class AST::Declaration;
 
       static void verify_no_shadowing();
       static void determine_declared_types();

@@ -145,6 +145,7 @@ namespace ScopeDB {
     decl_registry_.push_back(d);
     d->id_ = IdPtr(new AST::Identifier(line_num, id_string));
     d->line_num_ = line_num;
+
     return d;
   }
 
@@ -161,25 +162,7 @@ namespace ScopeDB {
       // Build up dependencies_ starting with empty sets
       dependencies_[std::static_pointer_cast<AST::Expression>(decl_id)] = std::set<EPtr>();
     }
-/* TODO do I need this part anymore?
-    // For each declared identifier, look through the identifiers which go into
-    // it's type declaration. And add an IdPtr for this to each of there
-    // dependencies_ sets
 
-    for (const auto& decl_ptr : decl_registry_) {
-      IdPtr decl_id = decl_ptr->declared_identifier();
-
-      EPtr decl_type = decl_ptr->declared_type();
-
-      if (decl_type->is_identifier()) {
-        dependencies_[decl_id]
-          .insert(std::static_pointer_cast<AST::Identifier>(decl_type));
-
-      } else {
-        decl_type->needed_for(decl_id);
-      }
-    }
-  */
   }
 
   void assign_type_order() {
@@ -202,7 +185,7 @@ namespace ScopeDB {
         num_immediate_dep_refs[dep]++;
       }
     }
-
+    
     for (const auto& kv : num_immediate_dep_refs) {
       if (kv.second == 0) {
         expr_stack.push(kv.first);
@@ -224,6 +207,7 @@ namespace ScopeDB {
     // 0x00 means not yet seen
     while (!expr_stack.empty()) {
       auto eptr = expr_stack.top();
+
       if ((already_seen[eptr] & 2) == 2) {
         // Already popped it into topo_order, so just ignore it
         expr_stack.pop();

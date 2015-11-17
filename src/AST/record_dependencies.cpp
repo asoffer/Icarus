@@ -14,24 +14,24 @@
 namespace AST {
 
   void Unop::record_dependencies(EPtr eptr) const {
-      ScopeDB::dependencies_[eptr].insert(expr_);
-      expr_->record_dependencies(expr_);
+    ScopeDB::dependencies_[eptr].insert(expr_);
+    expr_->record_dependencies(expr_);
   }
 
   void Binop::record_dependencies(EPtr eptr) const {
-      ScopeDB::dependencies_[eptr].insert(lhs_);
-      ScopeDB::dependencies_[eptr].insert(rhs_);
+    ScopeDB::dependencies_[eptr].insert(lhs_);
+    ScopeDB::dependencies_[eptr].insert(rhs_);
 
-      lhs_->record_dependencies(lhs_);
-      rhs_->record_dependencies(rhs_);
+    lhs_->record_dependencies(lhs_);
+    rhs_->record_dependencies(rhs_);
   }
 
   void ArrayType::record_dependencies(EPtr eptr) const {
-      ScopeDB::dependencies_[eptr].insert(len_);
-      ScopeDB::dependencies_[eptr].insert(array_type_);
+    ScopeDB::dependencies_[eptr].insert(len_);
+    ScopeDB::dependencies_[eptr].insert(array_type_);
 
-      len_->record_dependencies(len_);
-      array_type_->record_dependencies(array_type_);
+    len_->record_dependencies(len_);
+    array_type_->record_dependencies(array_type_);
   }
 
   void ChainOp::record_dependencies(EPtr eptr) const {
@@ -77,12 +77,20 @@ namespace AST {
   }
 
   void Terminal::record_dependencies(EPtr eptr) const {
+
     ScopeDB::dependencies_[eptr];
   }
 
   void Identifier::record_dependencies(EPtr eptr) const {
+    auto nn = ScopeDB::decl_of_.size();
+
     ScopeDB::dependencies_[eptr].insert(std::static_pointer_cast<Expression>(
-        ScopeDB::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
+          ScopeDB::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
+
+    if (nn != ScopeDB::decl_of_.size()) {
+      std::cout << eptr << std::endl;
+      std::cout << eptr->to_string(0) << std::endl;
+    }
   }
 
   void KVPairList::record_dependencies(EPtr /* nullptr */) const {

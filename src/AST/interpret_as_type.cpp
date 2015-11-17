@@ -17,8 +17,8 @@ namespace AST {
   }
 
   Type* ArrayType::interpret_as_type() const {
-    // TODO incorporate length when possible
-    return Type::get_array(array_type_->interpret_as_type());
+    // TODO incorporate length when known at compile time
+    return Type::get_array(array_type_->interpret_as_type(), -1);
   }
 
   Type* ChainOp::interpret_as_type() const {
