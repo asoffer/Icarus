@@ -43,7 +43,6 @@ int main(int argc, char *argv[]) {
     return 2;
   }
 
-
   error_log.set_file(argv[1]);
 
   Parser parser(argv[1]);
@@ -125,8 +124,16 @@ int main(int argc, char *argv[]) {
     global_module->print(output_file, nullptr);
   } // Ensure the stream writes before system calls
   
+
+  std::string input_file_name(argv[1]);
+  std::string link_string = "gcc ir.o -o bin/";
+  size_t start = input_file_name.find('/', 0) + 1;
+  size_t end = input_file_name.find('.', 0);
+  link_string += input_file_name.substr(start, end - start);
+
+  std::cout << link_string << std::endl;
   system("llc -filetype=obj ir.ll");
-  system("gcc ir.o -o bin/prog");
+  system(link_string.c_str());
   system("rm ir.o");
 
   return 0;

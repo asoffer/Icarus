@@ -33,12 +33,10 @@ namespace ScopeDB {
   }
 
   void Scope::set_parent(Scope* parent) {
-    std::cout << this << " ** " << parent << std::endl;
     parent_ = parent;
   }
 
   void Scope::allocate() {
-    std::cout << this << std::endl;
     llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
 
     for (const auto& decl_ptr : ordered_decls_) {

@@ -19,14 +19,14 @@ while num_primes > 0 {
 
 is_prime := (n : int) -> bool {
   k := 2
-  x := true
+  b := true
 
   while k * k <= n {
-    x &= n % k != 0
+    b &= n % k != 0
     k += 1
   }
 
-  return x
+  return b
 }
 
 print '\n'
