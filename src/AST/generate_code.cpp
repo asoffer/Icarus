@@ -572,6 +572,10 @@ namespace AST {
 
     builder.CreateBr(head_block);
     builder.SetInsertPoint(head_block);
+    body_scope_->set_entry(head_block);
+    body_scope_->entry()->removeFromParent();
+    body_scope_->entry()->insertInto(parent_fn);
+    body_scope_->allocate();
     builder.CreateCondBr(cond_->generate_code(scope), body_block, foot_block);
 
     builder.SetInsertPoint(body_block);

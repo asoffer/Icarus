@@ -1,8 +1,7 @@
 num_primes := 100
 m := 2
-b : bool
 while num_primes > 0 {
-  b = is_prime(m)
+  b := is_prime(m)
 
   print case {
     b     =>  m
