@@ -3,9 +3,7 @@
 namespace AST {
   void Unop::join_identifiers(Scope* scope) {
     if (expr_->is_identifier()) {
-      auto id_ptr = scope->identifier(expr_->token());
-      expr_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      expr_ = scope->identifier(expr_);
     } else {
       expr_->join_identifiers(scope);
     }
@@ -18,17 +16,13 @@ namespace AST {
 
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {
-      auto id_ptr = scope->identifier(lhs_->token());
-      lhs_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      lhs_ = scope->identifier(lhs_);
     } else {
       lhs_->join_identifiers(scope);
     }
 
     if (rhs_->is_identifier()) {
-      auto id_ptr = scope->identifier(rhs_->token());
-      rhs_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      rhs_ = scope->identifier(rhs_);
     } else {
       rhs_->join_identifiers(scope);
     }
@@ -36,17 +30,13 @@ namespace AST {
 
   void ArrayType::join_identifiers(Scope* scope) {
     if (len_->is_identifier()) {
-      auto id_ptr = scope->identifier(len_->token());
-      len_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      len_ = scope->identifier(len_);
     } else {
       len_->join_identifiers(scope);
     }
 
     if (array_type_->is_identifier()) {
-      auto id_ptr = scope->identifier(array_type_->token());
-      array_type_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      array_type_ = scope->identifier(array_type_);
     } else {
       array_type_->join_identifiers(scope);
     }
@@ -54,25 +44,21 @@ namespace AST {
 
 
   void Declaration::join_identifiers(Scope* scope) {
-    id_ = scope->identifier(identifier_string());
+    id_ = std::static_pointer_cast<Identifier>(
+        scope->identifier(declared_identifier()));
     id_->line_num_ = line_num_;
 
     if (decl_type_->is_identifier()) {
-      auto id_ptr = scope->identifier(decl_type_->token());
-      decl_type_ = std::static_pointer_cast<Expression>(id_ptr);
-
+      decl_type_ = scope->identifier(decl_type_);
     } else {
       decl_type_->join_identifiers(scope);
     }
-
   }
 
   void ChainOp::join_identifiers(Scope* scope) {
     for (auto& expr : exprs_) {
       if (expr->is_identifier()) {
-        auto id_ptr = scope->identifier(expr->token());
-        expr = std::static_pointer_cast<Expression>(id_ptr);
-
+        expr = scope->identifier(expr);
       } else {
         expr->join_identifiers(scope);
       }
@@ -86,15 +72,13 @@ namespace AST {
   void KVPairList::join_identifiers(Scope* scope) {
     for (auto& pair : kv_pairs_) {
       if (pair.first->is_identifier()) {
-        auto id_ptr = scope->identifier(pair.first->token());
-        pair.second = std::static_pointer_cast<Expression>(id_ptr);
+        pair.first = scope->identifier(pair.first);
       } else {
         pair.first->join_identifiers(scope);
       }
 
       if (pair.second->is_identifier()) {
-        auto id_ptr = scope->identifier(pair.second->token());
-        pair.second = std::static_pointer_cast<Expression>(id_ptr);
+        pair.second = scope->identifier(pair.second);
       } else {
         pair.second->join_identifiers(scope);
       }
@@ -102,13 +86,16 @@ namespace AST {
   }
 
   void Statements::join_identifiers(Scope* scope) {
-    for (auto& eptr : statements_) {
-      if (eptr->is_identifier()) {
-        auto id_ptr = scope->identifier(eptr->token());
-        eptr = std::static_pointer_cast<Node>(id_ptr);
+    for (auto& ptr : statements_) {
+      if (ptr->is_identifier()) {
+        ptr = std::static_pointer_cast<Node>(
+            scope->identifier(
+              std::static_pointer_cast<Expression>(ptr)
+              )
+            );
+      } else {
+        ptr->join_identifiers(scope);
       }
-
-      eptr->join_identifiers(scope);
     }
   }
 

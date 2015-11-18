@@ -63,23 +63,22 @@ namespace ScopeDB {
 
   // TODO have a getter-only version for when we know we've passed the
   // verification step
-  IdPtr Scope::identifier(const std::string& id_string) {
+  EPtr Scope::identifier(EPtr id_as_eptr) {
+    auto id_ptr = std::static_pointer_cast<AST::Identifier>(id_as_eptr);
     Scope* current_scope = this;
     while (current_scope != nullptr) {
-      auto iter = current_scope->ids_.find(id_string);
+      auto iter = current_scope->ids_.find(id_ptr->token());
       if (iter != current_scope->ids_.end()) {
-        return iter->second;
+        return std::static_pointer_cast<AST::Expression>(iter->second);
       }
       current_scope = current_scope->parent();
     }
 
-    // No such identifier has been seen yet, create a new IdPtr and return it.
-    IdPtr id_ptr = ids_[id_string] = IdPtr(new AST::Identifier(0, id_string));
-    ids_[id_string] = id_ptr;
+    // If you reach here it's because we never saw a declaration for the identifier
+    error_log.log(id_as_eptr->line_num(),
+        "Undeclared identifier `" + id_as_eptr->token() + "`.");
 
-    scope_containing_[id_ptr] = this;
-
-    return id_ptr;
+    return nullptr;
   }
 
   void Scope::determine_declared_types() {

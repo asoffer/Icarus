@@ -37,9 +37,12 @@ namespace ScopeDB {
       static size_t num_scopes();
 
       void set_parent(Scope* parent);
-      Scope* parent() { return parent_; }
-      IdPtr identifier(const std::string& id_string);
       void allocate();
+      Scope* parent() { return parent_; }
+
+      // While we're actually returning an IdPtr, it's only ever used as an
+      // EPtr, so we do the pointer cast inside.
+      EPtr identifier(EPtr id_as_eptr);
 
       llvm::BasicBlock* entry() {
         return entry_block_;

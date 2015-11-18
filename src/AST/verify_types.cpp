@@ -136,10 +136,12 @@ namespace AST {
       expr_type_ = lhs_->expr_type_;
 
     } else if (lhs_->expr_type_ == Type::get_unknown()) {
+      // TODO is this reachable?
       error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
       expr_type_ = Type::get_type_error();
 
     } else if (rhs_->expr_type_ == Type::get_unknown()) {
+      // TODO is this reachable?
       error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
       expr_type_ = Type::get_type_error();
 
@@ -276,9 +278,11 @@ namespace AST {
 
     } else if (lhs_->expr_type_ != rhs_->expr_type_) {
       if (lhs_->expr_type_ == Type::get_unknown()) {
+        // TODO is this reachable?
         error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
 
       } else if (rhs_->expr_type_ == Type::get_unknown()) {
+        // TODO is this reachable?
         error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
 
       } else {
