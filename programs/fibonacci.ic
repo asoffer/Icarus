@@ -8,13 +8,12 @@ fib = (n : int) -> int {
   }
 }
 
-x : int
-x = fib(10)
-print x
-print '\n'
-print fib(20)
-print '\n'
-print fib(0 - 10)
-print '\n'
-print fib(0 - 13)
-print '\n'
+i := 0 - 30
+while i < 30 {
+  print i
+  print ':'
+  print ' '
+  print fib(i)
+  print '\n'
+  i += 1
+}

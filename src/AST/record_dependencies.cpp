@@ -82,15 +82,8 @@ namespace AST {
   }
 
   void Identifier::record_dependencies(EPtr eptr) const {
-    auto nn = ScopeDB::decl_of_.size();
-
     ScopeDB::dependencies_[eptr].insert(std::static_pointer_cast<Expression>(
           ScopeDB::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
-
-    if (nn != ScopeDB::decl_of_.size()) {
-      std::cout << eptr << std::endl;
-      std::cout << eptr->to_string(0) << std::endl;
-    }
   }
 
   void KVPairList::record_dependencies(EPtr /* nullptr */) const {
@@ -110,7 +103,8 @@ namespace AST {
     }
   }
 
-  void While::record_dependencies(EPtr /* nullptr */) const {
-    // TODO implement this
+  void While::record_dependencies(EPtr eptr) const {
+    statements_->record_dependencies(nullptr);
+    cond_->record_dependencies(cond_);
   }
 }  // namespace AST

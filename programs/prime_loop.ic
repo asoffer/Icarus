@@ -1,0 +1,33 @@
+num_primes := 100
+m := 2
+b : bool
+while num_primes > 0 {
+  b = is_prime(m)
+
+  print case {
+    b     =>  m
+    else  =>  0
+  }
+  print ','
+  print ' '
+
+  num_primes -= case {
+    b     =>  1
+    else  =>  0
+  }
+  m += 1
+}
+
+is_prime := (n : int) -> bool {
+  k := 2
+  x := true
+
+  while k * k <= n {
+    x &= n % k != 0
+    k += 1
+  }
+
+  return x
+}
+
+print '\n'

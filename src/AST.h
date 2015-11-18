@@ -814,13 +814,17 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
       virtual void assign_decl_to_scope(Scope* scope);
-      virtual void record_dependencies(EPtr) const;
+      virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
+      virtual llvm::Value* generate_code(Scope* scope);
+
 
     private:
+      While() : body_scope_(ScopeDB::Scope::build()) {}
+
       EPtr cond_;
       std::shared_ptr<Statements> statements_;
-      //Scope body_scope_;
+      Scope* body_scope_;
   };
 
 

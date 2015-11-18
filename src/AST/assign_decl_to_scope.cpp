@@ -6,7 +6,11 @@ namespace AST {
   }
 
   void While::assign_decl_to_scope(Scope* scope) {
-    // TODO implement
+    body_scope_->set_parent(scope);
+
+    cond_->assign_decl_to_scope(scope);
+
+    statements_->assign_decl_to_scope(body_scope_);
   }
 
   void Terminal::assign_decl_to_scope(Scope* scope) {}

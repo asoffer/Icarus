@@ -331,5 +331,8 @@ namespace AST {
   void Statements::verify_types() {}
 
   void While::verify_types() {
+    if (cond_->type() != Type::get_bool()) {
+      error_log.log(cond_->line_num(), "Type error: Condition in while loop must be a boolean expression, but a type of " + cond_->type()->to_string() + " was fonud.");
+    }
   }
 }  // namespace AST

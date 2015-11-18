@@ -10,7 +10,8 @@ namespace AST {
   }
 
   void While::join_identifiers(Scope* scope) {
-    // TODO implement
+    cond_->join_identifiers(body_scope_);
+    statements_->join_identifiers(body_scope_);
   }
 
 
