@@ -20,6 +20,9 @@ namespace cstdlib {
   extern llvm::Constant* printf;
   extern llvm::Constant* putchar;
   extern llvm::Constant* puts;
+  extern llvm::Value* format_d;
+  extern llvm::Value* format_f;
+  extern llvm::Value* format_s;
 }  // namespace cstdlib
 
 extern ErrorLog error_log;
@@ -103,14 +106,18 @@ int main(int argc, char *argv[]) {
 
   builder.SetInsertPoint(global_scope->entry());
 
-  // Declaration for call to putchar for printing characters
+  // Declaration for call to putchar for printing
+  // TODO create these as soon as they're necessary but no sooner.
   cstdlib::putchar = global_module->getOrInsertFunction("putchar",
       llvm::FunctionType::get(Type::get_int()->llvm(), { Type::get_char()->llvm() }, false));
   cstdlib::printf = global_module->getOrInsertFunction("printf",
       llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, true));
   cstdlib::puts = global_module->getOrInsertFunction("puts",
       llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, false));
- 
+  cstdlib::format_d = builder.CreateGlobalStringPtr("%d");
+  cstdlib::format_f = builder.CreateGlobalStringPtr("%f");
+  cstdlib::format_s = builder.CreateGlobalStringPtr("%s");
+
   global_scope->allocate();
 
   global_statements->generate_code(global_scope);

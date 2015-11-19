@@ -13,6 +13,9 @@ namespace cstdlib {
   extern llvm::Constant* putchar;
   extern llvm::Constant* puts;
   extern llvm::Constant* printf;
+  extern llvm::Value* format_d;
+  extern llvm::Value* format_f;
+  extern llvm::Value* format_s;
 }  //namespace cstdlib
 
 namespace AST {
@@ -86,18 +89,7 @@ namespace AST {
       return builder.CreateNot(val, "nottmp");
 
     } else if (is_print()) {
-      if (expr_->type() == Type::get_char()) {
-        builder.CreateCall(cstdlib::putchar, { val });
-
-      } else if (expr_->type() == Type::get_int()) {
-        auto format = builder.CreateGlobalStringPtr("%d");
-        builder.CreateCall(cstdlib::printf, { format, val });
-
-      } else if (expr_->type() == Type::get_real()) {
-        auto format = builder.CreateGlobalStringPtr("%f");
-        builder.CreateCall(cstdlib::printf, { format, val });
-
-      } else if (expr_->type() == Type::get_bool()) {
+      if (expr_->type() == Type::get_bool()) {
         auto true_str = builder.CreateGlobalStringPtr("true");
         auto false_str = builder.CreateGlobalStringPtr("false");
 
@@ -127,6 +119,34 @@ namespace AST {
         phi_node->addIncoming(false_str, false_block);
 
         builder.CreateCall(cstdlib::puts, phi_node);
+
+      } else if (expr_->type() == Type::get_char()) {
+        builder.CreateCall(cstdlib::putchar, { val });
+
+      } else if (expr_->type() == Type::get_int()
+          || expr_->type() == Type::get_uint()) {
+        builder.CreateCall(cstdlib::printf, { cstdlib::format_d, val });
+
+      } else if (expr_->type() == Type::get_real()) {
+        builder.CreateCall(cstdlib::printf, { cstdlib::format_f, val });
+
+      } else if (expr_->type() == Type::get_type()) {
+        auto type_as_string = builder.CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
+        builder.CreateCall(cstdlib::printf, { cstdlib::format_s, type_as_string });
+
+      } else if (expr_->type()->is_function()) {
+        auto fn_str = builder.CreateGlobalStringPtr("{" + expr_->type()->to_string() + "}");
+
+        builder.CreateCall(cstdlib::printf, { cstdlib::format_s, fn_str });
+
+      } else if (expr_->type()->is_tuple()) {
+        // TODO
+
+      } else if (expr_->type()->is_pointer()) {
+        // TODO
+
+      } else if (expr_->type()->is_array()) {
+        // TODO
 
       } else {
         // TODO

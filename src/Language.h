@@ -56,7 +56,8 @@ namespace Language {
 
   inline bool is_binary_operator(NodeType t) {
     return t == generic_operator || t == decl_operator || t == assign_operator
-      || t == decl_assign_operator || t == fn_arrow || t == binary_boolean_operator;
+      || t == decl_assign_operator || t == fn_arrow || t == binary_boolean_operator
+      || t == comma;
   }
 
   inline bool is_operator(NodeType t) {

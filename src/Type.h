@@ -38,7 +38,9 @@ class Type {
     virtual std::string to_string() const = 0;
 
     virtual bool is_array() const { return false; }
+    virtual bool is_tuple() const { return false; }
     virtual bool is_function() const { return false; }
+    virtual bool is_pointer() const { return false; }
     virtual bool is_void() const { return this == Type::get_void(); }
 
     llvm::Type* llvm() const { return llvm_type_; }
@@ -83,7 +85,11 @@ class Function : public Type {
 
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << "(" << argument_type()->to_string() << " -> " << return_type()->to_string() << ")";
+      ss << argument_type()->to_string() << " -> ";
+      bool needs_parens = return_type()->is_function() || return_type()->is_tuple();
+      if (needs_parens) ss << "(";
+      ss << return_type()->to_string();
+      if (needs_parens) ss << ")";
       return ss.str();
     }
 
@@ -111,6 +117,10 @@ class Function : public Type {
 class Pointer : public Type {
   public:
     friend class Type;
+
+
+    virtual bool is_pointer() const { return true; }
+
     virtual std::string to_string() const {
       std::stringstream ss;
       ss << "&" << pointee_type_->to_string();
@@ -133,17 +143,20 @@ class Tuple : public Type {
   public:
     friend class Type;
 
+    virtual bool is_tuple() const { return true; }
+
     virtual std::string to_string() const {
       std::stringstream ss;
 
       auto iter = tuple_types_.begin();
-      ss << "(" << (*iter)->to_string();
+      ss << (*iter)->to_string();
       while (iter != tuple_types_.end()) {
-        ss << ", ";
+        bool needs_parens = (*iter)->is_tuple();
+        ss << (needs_parens ? " (" : " ");
         ss << (*iter)->to_string();
+        ss << (needs_parens ? ") " : " ");
         ++iter;
       }
-      ss << ")";
 
       return ss.str();
     }
