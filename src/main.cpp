@@ -131,7 +131,6 @@ int main(int argc, char *argv[]) {
   size_t end = input_file_name.find('.', 0);
   link_string += input_file_name.substr(start, end - start);
 
-  std::cout << link_string << std::endl;
   system("llc -filetype=obj ir.ll");
   system(link_string.c_str());
   system("rm ir.o");

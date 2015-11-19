@@ -162,40 +162,45 @@ AST::Node Lexer::next_operator() {
   // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
   // encountered should be considered on their own.
   switch (peek) {
+    case ',':
+      {
+        file_.get();
+        return AST::Node(line_num_, Language::comma, ",");
+      }
     case ';':
       {
         file_.get();
-        return AST::Node(line_num_, Language::semicolon);
+        return AST::Node(line_num_, Language::semicolon, ";");
       }
     case '(':
       {
         file_.get();
-        return AST::Node(line_num_, Language::left_paren);
+        return AST::Node(line_num_, Language::left_paren, "(");
       }
     case ')':
       {
         file_.get();
-        return AST::Node(line_num_, Language::right_paren);
+        return AST::Node(line_num_, Language::right_paren, ")");
       }
     case '{':
       {
         file_.get();
-        return AST::Node(line_num_, Language::left_brace);
+        return AST::Node(line_num_, Language::left_brace, "{");
       }
     case '}':
       {
         file_.get();
-        return AST::Node(line_num_, Language::right_brace);
+        return AST::Node(line_num_, Language::right_brace, "}");
       }
     case '[':
       {
         file_.get();
-        return AST::Node(line_num_, Language::left_bracket);
+        return AST::Node(line_num_, Language::left_bracket, "[");
       }
     case ']':
       {
         file_.get();
-        return AST::Node(line_num_, Language::right_bracket);
+        return AST::Node(line_num_, Language::right_bracket, "]");
       }
     case '"':
       {

@@ -109,7 +109,7 @@ Type* Type::get_pointer(Type* t) {
   return ptr_type;
 }
 
-Type* Type::get_tuple(std::vector<Type*> types) {
+Type* Type::get_tuple(const std::vector<Type*>& types) {
   for (const auto& tuple_type : Tuple::tuple_types_) {
     if (tuple_type->entry_types_ == types) return tuple_type;
   }

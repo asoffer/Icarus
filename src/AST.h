@@ -78,6 +78,7 @@ namespace AST {
  
       virtual bool is_binop() const { return false; }
       virtual bool is_chain_op() const { return false; }
+      virtual bool is_comma_list() const { return false; }
       virtual bool is_declaration() const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
@@ -270,46 +271,11 @@ namespace AST {
     return NPtr(binop_ptr);
   }
 
-  class ArrayType : public Expression {
-    public:
-      static NPtr build(NPtrVec&& nodes);
-
-      virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope);
-      virtual void assign_decl_to_scope(Scope* scope);
-      virtual void record_dependencies(EPtr eptr) const;
-      virtual void verify_types();
-
-      virtual Type* interpret_as_type() const;
-      virtual llvm::Value* generate_code(Scope* scope);
-      virtual llvm::Value* generate_lvalue(Scope* scope);
-
-
-
-    private:
-      EPtr len_;
-      EPtr array_type_;
-  };
-
-  inline NPtr ArrayType::build(NPtrVec&& nodes) {
-    auto array_type_ptr = new ArrayType;
-    array_type_ptr->line_num_ = nodes[0]->line_num_;
-
-    array_type_ptr->len_ =
-      std::static_pointer_cast<Expression>(nodes[1]);
-
-    array_type_ptr->array_type_ =
-      std::static_pointer_cast<Expression>(nodes[3]);
-
-    array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
-    array_type_ptr->precedence_ = Language::op_prec.at("MAX");
-
-    return NPtr(array_type_ptr);
-  }
-
 
   class ChainOp : public Expression {
     public:
+      friend class ArrayType;
+
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
@@ -324,6 +290,7 @@ namespace AST {
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
       virtual bool is_chain_op() const { return true; }
+      virtual bool is_comma_list() const { return ops_.front()->token() == ","; }
 
     private:
       std::vector<NPtr> ops_;
@@ -364,6 +331,63 @@ namespace AST {
   }
 
 
+  class ArrayType : public Expression {
+    public:
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+
+
+    private:
+      EPtr len_;
+      EPtr array_type_;
+  };
+
+  inline NPtr ArrayType::build(NPtrVec&& nodes) {
+    if (nodes[1]->is_comma_list()) {
+      auto len_chain = std::static_pointer_cast<ChainOp>(nodes[1]);
+
+      auto iter = len_chain->exprs_.rbegin();
+      EPtr prev = std::static_pointer_cast<Expression>(nodes[3]);
+      while (iter != len_chain->exprs_.rend()) {
+        auto array_type_ptr = new ArrayType;
+        array_type_ptr->line_num_ = (*iter)->line_num();
+        array_type_ptr->len_ = *iter;
+
+        array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+        array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+
+        array_type_ptr->array_type_ = prev;
+        prev = EPtr(array_type_ptr);
+        ++iter;
+      }
+      return std::static_pointer_cast<Node>(prev);
+
+    } else {
+      auto array_type_ptr = new ArrayType;
+      array_type_ptr->line_num_ = nodes[0]->line_num_;
+
+      array_type_ptr->len_ =
+        std::static_pointer_cast<Expression>(nodes[1]);
+
+      array_type_ptr->array_type_ =
+        std::static_pointer_cast<Expression>(nodes[3]);
+
+      array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+      array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+
+      return NPtr(array_type_ptr);
+    }
+  }
 
 
   class Terminal : public Expression {

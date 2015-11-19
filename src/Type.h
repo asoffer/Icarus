@@ -29,7 +29,7 @@ class Type {
 
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
-    static Type* get_tuple(std::vector<Type*> types);
+    static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t, int len);
 
     static std::map<std::string, Type*> literals;
@@ -165,7 +165,8 @@ class Array : public Type {
     virtual std::string to_string() const {
       std::stringstream ss;
       ss << "[" << len_;
-      const Type* type_ptr = this;
+      const Type* type_ptr = type_;
+
       while (type_ptr->is_array()) {
         auto array_ptr = static_cast<const Array*>(type_ptr);
         ss << ", " << len_;

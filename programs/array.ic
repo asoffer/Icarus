@@ -5,3 +5,26 @@ print my_array[3]
 print '\t'
 print my_array[1]
 print '\n'
+
+a : [6, 4; int]
+i := 0
+while i < 6 {
+  j := 0
+  while j < 4 {
+    a[i][j] = 4 * i + j
+    j += 1
+  }
+  i += 1
+}
+
+i = 0
+while i < 6 {
+  j := 0
+  while j < 4 {
+    print a[i][j]
+    print '\t'
+    j += 1
+  }
+  print '\n'
+  i += 1
+}

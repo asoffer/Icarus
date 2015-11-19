@@ -17,6 +17,7 @@ namespace Language {
     decl_assign_operator, assign_operator, fn_arrow, rocket_operator,
 
     key_value_pair, key_value_pair_list,
+    comma_list,
     expression, fn_expression, scope, return_expression,
     print_expression, void_return_expression,
     declaration, paren_declaration, fn_declaration,
@@ -25,7 +26,7 @@ namespace Language {
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
-    semicolon,
+    semicolon, comma,
 
     // Reserved words
     reserved_bool_literal,

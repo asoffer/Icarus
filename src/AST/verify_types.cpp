@@ -170,6 +170,23 @@ namespace AST {
   }
 
   void ChainOp::verify_types() {
+    // In order for a ChainOp to even be created, ops_.front() must exist.
+    // Because nothing has the same precedence levels as a comma, if the
+    // first op is a comma, they all are.
+    if (ops_.front()->token() == ",") {
+      std::vector<Type*> type_vec(exprs_.size(), nullptr);
+
+      size_t position = 0;
+      for (const auto& eptr : exprs_) {
+        type_vec[position] = eptr->type();
+        ++position;
+      }
+      expr_type_ = Type::get_tuple(type_vec);
+      return;
+    } 
+
+    // All other chain ops need to take arguments of the same type and the
+    // expr_type_ is that one type
     std::set<Type*> expr_types;
 
     for (const auto& expr : exprs_) {

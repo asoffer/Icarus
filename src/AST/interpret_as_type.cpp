@@ -22,6 +22,23 @@ namespace AST {
   }
 
   Type* ChainOp::interpret_as_type() const {
+    // In order for a ChainOp to even be created, ops_.front() must exist.
+    // Because nothing has the same precedence levels as a comma, if the
+    // first op is a comma, they all are.
+    if (ops_.front()->token() == ",") {
+      // Create a vector to hold the types so that we can pass it in to the
+      // tuple constructor. We know how big it needs to be, so we make it
+      // that big to begin with.
+      std::vector<Type*> type_vec(exprs_.size(), nullptr);
+
+      size_t position = 0;
+      for (const auto& eptr : exprs_) {
+        type_vec[position] = eptr->interpret_as_type();
+        ++position;
+      }
+      return Type::get_tuple(type_vec);
+    }
+
     return Type::get_type_error();
   }
 
