@@ -18,6 +18,12 @@ namespace AST {
     return output + "]\n";
   }
 
+  std::string Conditional::to_string(size_t n) const {
+    return tabs(n) + "<Conditional>\n"
+      + cond_->to_string(n + 1)
+      + statements_->to_string(n + 1);
+  }
+
   std::string While::to_string(size_t n) const {
     return tabs(n) + "<While>\n"
       + cond_->to_string(n + 1)

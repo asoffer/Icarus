@@ -1,19 +1,14 @@
-num_primes := 100
+num_primes := 10000
 m := 2
+
 while num_primes > 0 {
-  b := is_prime(m)
-
-  print case {
-    b     =>  m
-    else  =>  0
+  if is_prime(m) {
+    print m
+    print ','
+    print ' '
+    num_primes -= 1
   }
-  print ','
-  print ' '
-
-  num_primes -= case {
-    b     =>  1
-    else  =>  0
-  }
+  
   m += 1
 }
 

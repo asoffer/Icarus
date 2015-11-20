@@ -99,7 +99,7 @@ namespace AST {
 
 
   class Expression : public Node {
-    friend void ScopeDB::Scope::determine_declared_types();
+    friend void Scope::determine_declared_types();
     friend class KVPairList;
     friend class Unop;
     friend class Binop;
@@ -822,9 +822,32 @@ namespace AST {
       llvm::Function* llvm_function_;
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() : fn_scope_(ScopeDB::Scope::build()), llvm_function_(nullptr) {}
+      FunctionLiteral() : fn_scope_(Scope::build()), llvm_function_(nullptr) {}
   };
 
+  class Conditional : public Node {
+    public:
+      static NPtr build_if(NPtrVec&& nodes) {
+        auto if_stmt =  new Conditional;
+        if_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+        if_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+        return NPtr(if_stmt);
+      }
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+      virtual llvm::Value* generate_code(Scope* scope);
+
+    private:
+      Conditional() : body_scope_(Scope::build()) {}
+
+      EPtr cond_;
+      std::shared_ptr<Statements> statements_;
+      Scope* body_scope_;
+  };
   
   class While : public Node {
     public:
@@ -844,7 +867,7 @@ namespace AST {
 
 
     private:
-      While() : body_scope_(ScopeDB::Scope::build()) {}
+      While() : body_scope_(Scope::build()) {}
 
       EPtr cond_;
       std::shared_ptr<Statements> statements_;

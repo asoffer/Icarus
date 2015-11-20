@@ -103,6 +103,11 @@ namespace AST {
     }
   }
 
+  void Conditional::record_dependencies(EPtr eptr) const {
+    statements_->record_dependencies(nullptr);
+    cond_->record_dependencies(cond_);
+  }
+
   void While::record_dependencies(EPtr eptr) const {
     statements_->record_dependencies(nullptr);
     cond_->record_dependencies(cond_);

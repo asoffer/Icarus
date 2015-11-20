@@ -606,4 +606,32 @@ namespace AST {
 
     return nullptr;
   }
+
+  llvm::Value* Conditional::generate_code(Scope* scope) {
+    auto parent_fn = builder.GetInsertBlock()->getParent();
+
+    auto head_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "cond_head", parent_fn);
+    auto body_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "cond_body", parent_fn);
+    auto foot_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "cond_foot", parent_fn);
+
+    builder.CreateBr(head_block);
+    builder.SetInsertPoint(head_block);
+    body_scope_->set_entry(head_block);
+    body_scope_->entry()->removeFromParent();
+    body_scope_->entry()->insertInto(parent_fn);
+    body_scope_->allocate();
+    builder.CreateCondBr(cond_->generate_code(scope), body_block, foot_block);
+
+    builder.SetInsertPoint(body_block);
+    statements_->generate_code(body_scope_);
+    builder.CreateBr(foot_block);
+
+    builder.SetInsertPoint(foot_block);
+
+    return nullptr;
+  }
+
 }  // namespace AST

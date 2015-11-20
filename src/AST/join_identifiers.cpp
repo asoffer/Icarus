@@ -14,6 +14,10 @@ namespace AST {
     statements_->join_identifiers(body_scope_);
   }
 
+  void Conditional::join_identifiers(Scope* scope) {
+    cond_->join_identifiers(body_scope_);
+    statements_->join_identifiers(body_scope_);
+  }
 
   void Binop::join_identifiers(Scope* scope) {
     if (lhs_->is_identifier()) {

@@ -265,6 +265,11 @@ namespace Language {
         AST::Binop::build_bracket_operator),
     /* End paren/bracket operators */
 
+    /* Begin if */
+    Rule(if_statement,
+        { reserved_if, expression, left_brace, statements, right_brace },
+        AST::Conditional::build_if),
+    /* End if */
 
     /* Begin statements */
     Rule(statements,
@@ -289,6 +294,10 @@ namespace Language {
 
     Rule(statements,
         { expression, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { if_statement, newline },
         AST::Statements::build_one),
 
     Rule(statements,
@@ -321,6 +330,10 @@ namespace Language {
 
     Rule(statements,
         { statements, fn_declaration, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, if_statement, newline },
         AST::Statements::build_more),
 
     Rule(statements,

@@ -22,7 +22,7 @@ namespace Language {
     print_expression, void_return_expression,
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
-    statements, while_statement,
+    statements, while_statement, if_statement,
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,

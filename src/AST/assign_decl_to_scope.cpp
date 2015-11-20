@@ -5,6 +5,14 @@ namespace AST {
     expr_->assign_decl_to_scope(scope);
   }
 
+  void Conditional::assign_decl_to_scope(Scope* scope) {
+    body_scope_->set_parent(scope);
+
+    cond_->assign_decl_to_scope(scope);
+
+    statements_->assign_decl_to_scope(body_scope_);
+  }
+
   void While::assign_decl_to_scope(Scope* scope) {
     body_scope_->set_parent(scope);
 
