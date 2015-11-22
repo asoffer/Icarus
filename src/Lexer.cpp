@@ -162,6 +162,11 @@ AST::Node Lexer::next_operator() {
   // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
   // encountered should be considered on their own.
   switch (peek) {
+    case '@':
+      {
+        file_.get();
+        return AST::Node(line_num_, Language::dereference, "@");
+      }
     case ',':
       {
         file_.get();

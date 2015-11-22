@@ -27,6 +27,7 @@ namespace Language {
     { fn_arrow, "->" },
     { comma, "," },
     { semicolon, ";" },
+    { dereference, "@" },
     { rocket_operator, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
@@ -95,8 +96,9 @@ namespace Language {
     { "*",     (15 << 2) + right_assoc },
     { "/",     (15 << 2) + right_assoc },
     { "%",     (15 << 2) + right_assoc },
-    { "[]",    (16 << 2) +  left_assoc },
-    { "()",    (16 << 2) +  left_assoc },
+    { "@",     (16 << 2) +  left_assoc },
+    { "[]",    (17 << 2) +  left_assoc },
+    { "()",    (17 << 2) +  left_assoc },
     { "MAX",  (100 << 2) +   non_assoc }
   };
 
@@ -213,6 +215,10 @@ namespace Language {
     Rule(expression,
         { left_paren, expression, right_paren },
         AST::Expression::parenthesize),
+
+    Rule(expression,
+        { dereference, expression },
+        AST::Unop::build),
 
     Rule(fn_expression,
         { left_paren, fn_expression, right_paren },

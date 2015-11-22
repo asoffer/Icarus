@@ -123,7 +123,11 @@ class Pointer : public Type {
 
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << "&" << pointee_type_->to_string();
+      ss << "&";
+      bool needs_parens = pointee_type_->is_function();
+      ss << (needs_parens ? "(" : "");
+      ss << pointee_type_->to_string();
+      ss << (needs_parens ? ")" : "");
       return ss.str();
     }
 
