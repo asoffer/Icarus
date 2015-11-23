@@ -27,10 +27,14 @@ namespace AST {
   }
 
   void ArrayType::record_dependencies(EPtr eptr) const {
-    ScopeDB::dependencies_[eptr].insert(len_);
+    if (len_ != nullptr) {
+      ScopeDB::dependencies_[eptr].insert(len_);
+    }
     ScopeDB::dependencies_[eptr].insert(array_type_);
 
-    len_->record_dependencies(len_);
+    if (len_ != nullptr) {
+      len_->record_dependencies(len_);
+    }
     array_type_->record_dependencies(array_type_);
   }
 

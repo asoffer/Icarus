@@ -34,10 +34,12 @@ namespace AST {
   }
 
   void ArrayType::join_identifiers(Scope* scope) {
-    if (len_->is_identifier()) {
-      len_ = scope->identifier(len_);
-    } else {
-      len_->join_identifiers(scope);
+    if (len_ != nullptr) {
+      if (len_->is_identifier()) {
+        len_ = scope->identifier(len_);
+      } else {
+        len_->join_identifiers(scope);
+      }
     }
 
     if (array_type_->is_identifier()) {

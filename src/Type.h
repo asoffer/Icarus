@@ -6,7 +6,13 @@
 #include <map>
 #include <sstream>
 
+#include "ScopeDB.h"
+
 #include "llvm/IR/IRBuilder.h"
+
+constexpr size_t pointer_size_in_bytes = sizeof(char*);
+
+using ::ScopeDB::Scope;
 
 namespace AST {
   class Expression;
@@ -30,12 +36,15 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
-    static Type* get_array(Type* t, int len);
+    static Type* get_array(Type* t, int len = -1);
 
     static std::map<std::string, Type*> literals;
     static std::vector<std::string> type_strings;
+    static std::vector<size_t> type_bytes;
 
     virtual std::string to_string() const = 0;
+
+    virtual size_t bytes() const = 0;
 
     virtual bool is_array() const { return false; }
     virtual bool is_tuple() const { return false; }
@@ -64,6 +73,7 @@ class Primitive : public Type {
       t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_type, t_uint, t_void
     };
 
+    virtual size_t bytes() const { return Type::type_bytes[prim_type_]; }
     PrimitiveEnum prim_type_;
 
     Primitive(PrimitiveEnum pe);
@@ -82,6 +92,8 @@ class Function : public Type {
     llvm::FunctionType* llvm() const {
       return static_cast<llvm::FunctionType*>(llvm_type_);
     }
+
+    virtual size_t bytes() const { return pointer_size_in_bytes; }
 
     virtual std::string to_string() const {
       std::stringstream ss;
@@ -121,6 +133,8 @@ class Pointer : public Type {
 
     virtual bool is_pointer() const { return true; }
 
+    virtual size_t bytes() const { return pointer_size_in_bytes; }
+
     virtual std::string to_string() const {
       std::stringstream ss;
       ss << "&";
@@ -148,6 +162,16 @@ class Tuple : public Type {
     friend class Type;
 
     virtual bool is_tuple() const { return true; }
+
+    virtual size_t bytes() const {
+      // TODO add in padding
+      size_t output = 0;
+      for (auto ty : entry_types_) {
+        output += ty->bytes();
+      }
+
+      return output;
+    }
 
     virtual std::string to_string() const {
       std::stringstream ss;
@@ -177,11 +201,20 @@ class Tuple : public Type {
 
 class Array : public Type {
   public:
+    friend class Scope;
     friend class Type;
+
+    virtual size_t bytes() const { return pointer_size_in_bytes; }  // TODO
 
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << "[" << len_;
+      ss << "[";
+      if (has_dynamic_length()) {
+        ss << "&";
+      } else {
+        ss << len_;
+      }
+
       const Type* type_ptr = type_;
 
       while (type_ptr->is_array()) {
@@ -197,7 +230,7 @@ class Array : public Type {
 
     virtual bool is_array() const { return true; }
     virtual Type* data_type() const { return type_; }
-
+    virtual bool has_dynamic_length() const { return len_ == -1; }
 
     virtual ~Array() {}
 
@@ -206,8 +239,7 @@ class Array : public Type {
     // other values are the actual type
     Array(Type* t, int len = -1) : type_(t), len_(len) {
       if (len == -1) {
-        // FIXME deal with the dependent case
-        llvm_type_ = llvm::ArrayType::get(t->llvm(), 17);
+        llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
       } else {
         llvm_type_ = llvm::ArrayType::get(t->llvm(), static_cast<size_t>(len));
       }

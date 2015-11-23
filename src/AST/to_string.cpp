@@ -50,9 +50,11 @@ namespace AST {
   }
 
   std::string ArrayType::to_string(size_t n) const {
-    return tabs(n) + "<AraryType>\n"
-      + len_->to_string(n + 1)
-      + array_type_->to_string(n + 1);
+    std::string output = tabs(n) + "<AraryType>\n";
+    if (static_cast<Array*>(expr_type_)->has_dynamic_length()) {
+      output += len_->to_string(n + 1);
+    }
+    return output + array_type_->to_string(n + 1);
   }
 
   std::string ChainOp::to_string(size_t n) const {

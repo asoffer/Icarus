@@ -26,7 +26,7 @@ namespace Language {
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
-    semicolon, comma, dereference,
+    semicolon, comma, dereference, indirection,
 
     // Reserved words
     reserved_bool_literal,
@@ -61,7 +61,8 @@ namespace Language {
   }
 
   inline bool is_operator(NodeType t) {
-    return is_binary_operator(t) || t == reserved_return || t == reserved_print;
+    return is_binary_operator(t) || t == reserved_return || t == reserved_print
+      || t == indirection || t == dereference;
   }
 
   inline bool is_decl(NodeType t) {

@@ -160,7 +160,7 @@ namespace AST {
     expr_type_ = Type::get_type();
 
     // TODO implement uint and change this to uint
-    if (len_->expr_type_ != Type::get_int()) {
+    if (len_ != nullptr && len_->expr_type_ != Type::get_int()) {
       error_log.log(line_num_, "Array length indexed by non-integral type");
     }
 

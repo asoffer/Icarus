@@ -28,6 +28,7 @@ namespace Language {
     { comma, "," },
     { semicolon, ";" },
     { dereference, "@" },
+    { indirection, "&" },
     { rocket_operator, "=>" },
     { key_value_pair, "( => )" },
     { expression, "Expression" },
@@ -139,6 +140,11 @@ namespace Language {
     Rule(expression,
         { left_bracket, expression, semicolon, expression, right_bracket },
         AST::ArrayType::build),
+
+    Rule(expression,
+        { left_bracket, indirection, semicolon, expression, right_bracket },
+        AST::ArrayType::build_unknown),
+
 
     Rule(expression,
         { fn_literal },

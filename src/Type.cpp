@@ -34,6 +34,8 @@ std::map<std::string, Type*> Type::literals = {
 
 std::vector<std::string> Type::type_strings = {
   "type_error", "??", "bool", "char", "int", "real", "type", "uint", "void" };
+std::vector<size_t> Type::type_bytes = { 0, 0, 1, 1, 4, 8, 0, 4, 0 };
+
 
 Primitive::Primitive(PrimitiveEnum pe) : prim_type_(pe) {
   if (llvm_types_[prim_type_] == nullptr) {
@@ -124,7 +126,7 @@ Type* Type::get_array(Type* t, int len) {
     if (arr->type_ == t && arr->len_ == len) return arr;
   }
 
-  auto arr_type = new Array(t/*, len*/);
+  auto arr_type = new Array(t, len);
   Array::array_types_.push_back(arr_type);
   return arr_type;
 }

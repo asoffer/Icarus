@@ -232,7 +232,6 @@ AST::Node Lexer::next_operator() {
     case '+':
     case '*':
     case '%':
-    case '&':
     case '|':
     case '^':
       lead_char = static_cast<char>(peek);
@@ -251,7 +250,7 @@ AST::Node Lexer::next_operator() {
     file_.get();
     peek = file_.peek();
 
-    std::string tok = std::string(1, lead_char);
+    std::string tok(1, lead_char);
     if (peek == '=') {
       tok += "=";
       file_.get();
@@ -278,6 +277,19 @@ AST::Node Lexer::next_operator() {
  
     } else {
       return AST::Node(line_num_, Language::decl_operator, ":");
+    }
+  }
+
+  if (peek == '&') {
+    file_.get();
+    peek = file_.peek();
+
+    if (peek == '=') {
+      file_.get();
+      return AST::Node(line_num_, Language::assign_operator, "&=");
+
+    } else {
+      return AST::Node(line_num_, Language::indirection, "&");
     }
   }
 

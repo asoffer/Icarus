@@ -24,7 +24,7 @@ namespace AST {
       return global_module->getFunction(token());
     }
 
-    return builder.CreateLoad(alloca_, token());
+    return builder.CreateLoad(alloc_, token());
   }
 
   llvm::Value* Terminal::generate_code(Scope* scope) {
@@ -400,7 +400,7 @@ namespace AST {
     input_iter = inputs_.begin();
     for (auto& arg : llvm_function_->args()) {
       builder.CreateStore(&arg,
-          (*input_iter)->declared_identifier()->alloca_);
+          (*input_iter)->declared_identifier()->alloc_);
       ++input_iter;
     }
 

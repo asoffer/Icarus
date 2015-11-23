@@ -333,7 +333,10 @@ namespace AST {
 
   class ArrayType : public Expression {
     public:
+      friend class Scope;
+
       static NPtr build(NPtrVec&& nodes);
+      static NPtr build_unknown(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -389,6 +392,21 @@ namespace AST {
     }
   }
 
+  inline NPtr ArrayType::build_unknown(NPtrVec&& nodes) {
+    auto array_type_ptr = new ArrayType;
+    array_type_ptr->line_num_ = nodes[0]->line_num_;
+
+    // len_ == nullptr means we do not know the length of the array can change.
+    array_type_ptr->len_ = nullptr;
+
+    array_type_ptr->array_type_ =
+      std::static_pointer_cast<Expression>(nodes[3]);
+
+    array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+    array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+
+    return NPtr(array_type_ptr);
+  }
 
   class Terminal : public Expression {
     public:
@@ -508,14 +526,14 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
-      Identifier(size_t line_num, const std::string& token_string) : alloca_(nullptr) {
+      Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr) {
         token_ = token_string;
         expr_type_ = Type::get_unknown();
         precedence_ = Language::op_prec.at("MAX");
         line_num_ = line_num;
       }
 
-      llvm::AllocaInst* alloca_;
+      llvm::Value* alloc_;
   };
 
 

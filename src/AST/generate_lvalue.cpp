@@ -5,7 +5,7 @@ extern llvm::IRBuilder<> builder;
 
 namespace AST {
   llvm::Value* Identifier::generate_lvalue(Scope*) {
-    return alloca_;
+    return alloc_;
   } 
 
   // TODO
@@ -20,14 +20,27 @@ namespace AST {
 
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
-    if (lhs_->type()->is_array()) {
+    if (token() == "[]" && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
 
-      return builder.CreateGEP(lhs_->type()->llvm(),
-          lhs_val, { llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true)), rhs_val }, "array_idx");
+      lhs_val->dump();
+      rhs_val->dump();
+      // auto zero_val = llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true));
+      auto xx = builder.CreateGEP(lhs_->type()->llvm(),
+          lhs_val, { rhs_val }, "array_idx");
+      xx->dump();
+        return xx;
     }
-
     return nullptr;
   }
+
+      // TODO this is how you should check it, but it's not how it currently is being checked
+      // auto array_type = static_cast<Array*>(lhs_->type());
+      // if (array_type->has_dynamic_length()) {
+      //   return nullptr;
+      // } else {
+      //   return builder.CreateGEP(lhs_->type()->llvm(),
+      //       lhs_val, { llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true)), rhs_val }, "array_idx");
+      // }
 }  // namespace AST

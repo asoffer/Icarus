@@ -10,6 +10,7 @@ llvm::IRBuilder<> builder(llvm::getGlobalContext());
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
+  llvm::Constant* malloc;
   llvm::Constant* printf;
   llvm::Constant* putchar;
   llvm::Constant* puts;
