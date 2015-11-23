@@ -1,12 +1,11 @@
 my_array : [6; int]
 my_array[3] = 17
-/*
 my_array[1] = my_array[3] + 1
 print my_array[3]
 print '\t'
 print my_array[1]
 print '\n'
-
+/*
 a : [6, 4; int]
 i := 0
 while i < 6 {
@@ -30,4 +29,4 @@ while i < 6 {
   i += 1
 }
 */
-arr_ptr : [&; char]
+// arr_ptr : [&; char]

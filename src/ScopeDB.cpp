@@ -68,10 +68,14 @@ namespace ScopeDB {
               llvm::APInt(32, decl_type->bytes(), false));
 
           auto bytes_needed = temp_builder.CreateMul(array_len, bytes_per_elem, "malloc_bytes");
-          auto ptr_as_i8 = temp_builder.CreateCall(cstdlib::malloc, { bytes_needed }, decl_ptr->identifier_string());
-          decl_ptr->declared_identifier()->alloc_ =
-            temp_builder.CreateBitCast(ptr_as_i8,
-                Type::get_pointer(type_as_array->type_)->llvm(), "array_ptr");
+          auto ptr_as_i8 = temp_builder.CreateCall(cstdlib::malloc, { bytes_needed }, "array_ptr");
+
+          auto ptr_to_mem = temp_builder.CreateBitCast(ptr_as_i8,
+              Type::get_pointer(type_as_array->type_)->llvm(), "array_ptr");
+
+          decl_ptr->declared_identifier()->alloc_ = temp_builder.CreateAlloca(
+              Type::get_pointer(type_as_array->type_)->llvm(), nullptr, decl_ptr->identifier_string());
+           temp_builder.CreateStore(ptr_to_mem, decl_ptr->declared_identifier()->alloc_);
         }
 
         if (!type_as_array->has_dynamic_length()) {

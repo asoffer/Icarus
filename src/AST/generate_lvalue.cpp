@@ -24,13 +24,8 @@ namespace AST {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
 
-      lhs_val->dump();
-      rhs_val->dump();
-      // auto zero_val = llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true));
-      auto xx = builder.CreateGEP(lhs_->type()->llvm(),
-          lhs_val, { rhs_val }, "array_idx");
-      xx->dump();
-        return xx;
+      auto load_ptr = builder.CreateLoad(lhs_val);
+      return builder.CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
     }
     return nullptr;
   }
