@@ -3,8 +3,37 @@
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
 
+namespace cstdlib {
+  extern llvm::Constant* malloc;
+}
+
 namespace AST {
-  llvm::Value* Identifier::generate_lvalue(Scope*) {
+  llvm::Value* Identifier::generate_lvalue(Scope* scope) {
+    if (alloc_ == nullptr) {
+      if (type()->is_array()) {
+        auto array_type = std::static_pointer_cast<ArrayType>(scope->get_declared_type(this));
+
+        auto type_as_array = static_cast<Array*>(type());
+
+        if (array_type->len_ != nullptr) {
+          auto array_len = array_type->len_->generate_code(scope);
+          auto bytes_per_elem = llvm::ConstantInt::get(llvm::getGlobalContext(),
+              llvm::APInt(32, type()->bytes(), false));
+
+          auto bytes_needed = builder.CreateMul(array_len, bytes_per_elem, "malloc_bytes");
+          auto ptr_as_i8 = builder.CreateCall(cstdlib::malloc, { bytes_needed }, "array_ptr");
+
+          auto ptr_to_mem = builder.CreateBitCast(ptr_as_i8,
+              Type::get_pointer(type_as_array->type_)->llvm(), "array_ptr");
+
+          alloc_ = builder.CreateAlloca(Type::get_pointer(type_as_array->type_)->llvm(), nullptr, token());
+          builder.CreateStore(ptr_to_mem, alloc_);
+
+          bytes_needed->dump();
+        }
+
+      }
+    }
     return alloc_;
   } 
 
@@ -23,19 +52,11 @@ namespace AST {
     if (token() == "[]" && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
-
       auto load_ptr = builder.CreateLoad(lhs_val);
       return builder.CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
     }
     return nullptr;
   }
 
-      // TODO this is how you should check it, but it's not how it currently is being checked
-      // auto array_type = static_cast<Array*>(lhs_->type());
-      // if (array_type->has_dynamic_length()) {
-      //   return nullptr;
-      // } else {
-      //   return builder.CreateGEP(lhs_->type()->llvm(),
-      //       lhs_val, { llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0, true)), rhs_val }, "array_idx");
-      // }
+//
 }  // namespace AST

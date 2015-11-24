@@ -23,7 +23,6 @@ namespace AST {
     if (type()->is_function()) {
       return global_module->getFunction(token());
     }
-
     return builder.CreateLoad(alloc_, token());
   }
 

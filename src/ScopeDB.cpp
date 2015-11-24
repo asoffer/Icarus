@@ -10,10 +10,6 @@
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
 
-namespace cstdlib {
-  extern llvm::Constant* malloc;
-}
-
 namespace ScopeDB {
   Scope* Scope::build() {
     Scope* new_scope = new Scope;
@@ -40,6 +36,18 @@ namespace ScopeDB {
     parent_ = parent;
   }
 
+  EPtr Scope::get_declared_type(AST::Identifier* id_ptr) const {
+    for (const auto& decl_ptr : ordered_decls_) {
+      if (decl_ptr->id_.get() != id_ptr) continue;
+      return decl_ptr->decl_type_;
+    }
+
+    // This cannot segfault because the program would have exited earlier
+    // if it was undeclared.
+    return parent()->get_declared_type(id_ptr);
+
+  }
+
   void Scope::allocate() {
     llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
 
@@ -57,26 +65,7 @@ namespace ScopeDB {
             llvm::Function::ExternalLinkage, decl_ptr->identifier_string(), global_module);
       } else if (decl_type->is_array()) {
 
-        // TODO This belongs in a different place because a malloc isn't necessary here if
-        // the array type is known at compile-time
-        auto array_decl = std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
         auto type_as_array = static_cast<Array*>(decl_type);
-
-        if (array_decl->len_ != nullptr) {
-          auto array_len = array_decl->len_->generate_code(this);
-          auto bytes_per_elem = llvm::ConstantInt::get(llvm::getGlobalContext(),
-              llvm::APInt(32, decl_type->bytes(), false));
-
-          auto bytes_needed = temp_builder.CreateMul(array_len, bytes_per_elem, "malloc_bytes");
-          auto ptr_as_i8 = temp_builder.CreateCall(cstdlib::malloc, { bytes_needed }, "array_ptr");
-
-          auto ptr_to_mem = temp_builder.CreateBitCast(ptr_as_i8,
-              Type::get_pointer(type_as_array->type_)->llvm(), "array_ptr");
-
-          decl_ptr->declared_identifier()->alloc_ = temp_builder.CreateAlloca(
-              Type::get_pointer(type_as_array->type_)->llvm(), nullptr, decl_ptr->identifier_string());
-           temp_builder.CreateStore(ptr_to_mem, decl_ptr->declared_identifier()->alloc_);
-        }
 
         if (!type_as_array->has_dynamic_length()) {
           // TODO

@@ -201,7 +201,7 @@ class Tuple : public Type {
 
 class Array : public Type {
   public:
-    friend class Scope;
+    friend class AST::Identifier;
     friend class Type;
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }  // TODO

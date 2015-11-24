@@ -1,13 +1,17 @@
-my_array : [6; int]
+my_array : [10; int]
 my_array[3] = 17
 my_array[1] = my_array[3] + 1
-print my_array[3]
-print '\t'
-print my_array[1]
-print '\n'
-/*
-a : [6, 4; int]
 i := 0
+while i < 6 {
+  print my_array[i]
+  print '\t'
+  i += 1
+}
+print '\n'
+
+a : [6, 4; int]
+i = 0
+
 while i < 6 {
   j := 0
   while j < 4 {
@@ -16,7 +20,7 @@ while i < 6 {
   }
   i += 1
 }
-
+/*
 i = 0
 while i < 6 {
   j := 0

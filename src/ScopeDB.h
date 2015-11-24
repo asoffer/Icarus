@@ -38,7 +38,7 @@ namespace ScopeDB {
 
       void set_parent(Scope* parent);
       void allocate();
-      Scope* parent() { return parent_; }
+      Scope* parent() const { return parent_; }
 
       // While we're actually returning an IdPtr, it's only ever used as an
       // EPtr, so we do the pointer cast inside.
@@ -51,6 +51,8 @@ namespace ScopeDB {
       void set_entry(llvm::BasicBlock* bb) {
         entry_block_ = bb;
       }
+
+      EPtr get_declared_type(AST::Identifier* id_ptr) const;
 
     private:
       // TODO Do I need this constructor?
