@@ -760,6 +760,8 @@ namespace AST {
     public:
     static NPtr build_one(NPtrVec&& nodes);
     static NPtr build_more(NPtrVec&& nodes);
+    static NPtr build_double_expression_error(NPtrVec&& nodes);
+    static NPtr build_extra_expression_error(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope);
@@ -791,6 +793,25 @@ namespace AST {
     return NPtr(output);
   }
 
+  inline NPtr Statements::build_double_expression_error(NPtrVec&& nodes) {
+    error_log.log(nodes[0]->line_num_, "Adjacent expressions");
+
+    auto output = new Statements;
+    output->line_num_ = nodes[0]->line_num_;
+    output->statements_.push_back(std::move(nodes[0]));
+    output->statements_.push_back(std::move(nodes[1]));
+
+    return NPtr(output);
+  }
+
+  inline NPtr Statements::build_extra_expression_error(NPtrVec&& nodes) {
+    error_log.log(nodes[0]->line_num_, "Adjacent expressions");
+
+    auto output = std::static_pointer_cast<Statements>(nodes[0]);
+    output->statements_.push_back(std::move(nodes[1]));
+
+    return NPtr(output);
+  }
 
   class FunctionLiteral : public Expression {
     public:
