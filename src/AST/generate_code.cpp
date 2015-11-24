@@ -156,81 +156,8 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
-    if (token() == "()") {
-      auto lhs_val = lhs_->generate_code(scope);
-      if (lhs_val == nullptr) return nullptr;
-
-      auto rhs_val = rhs_->generate_code(scope);
-      if (rhs_val == nullptr) return nullptr;
-
-      // TODO multiple arguments
-      std::vector<llvm::Value*> arg_vals = { rhs_val };
-      return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
-    }
-
     if (token() == "[]") {
       return builder.CreateLoad(generate_lvalue(scope), "array_val");
-    }
-
-
-    if (type() == Type::get_bool()) {
-      // The important/tricky thing in this section is short-circuiting
-
-      // Compute the left-hand side value no matter what
-      auto lhs_val = lhs_->generate_code(scope);
-      if (lhs_val == nullptr) return nullptr;
-
-      // Assumption is that only operators of type (bool, bool) -> bool are '&',
-      // '|', and '^'
-      if (token() == "^") {
-        // No short-circuiting possible here.
-        llvm::Value* rhs_val = rhs_->generate_code(scope);
-        if (rhs_val == nullptr) return nullptr;
-
-        return builder.CreateXor(lhs_val, rhs_val, "xortmp");
-      }
-
-      auto parent_fn = builder.GetInsertBlock()->getParent();
-
-      // Create blocks for that split and feed back in to the phi-node
-      auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
-      auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
-      // Remember where we entered from
-      auto short_circuit_entry = builder.GetInsertBlock();
-
-      char op_char = token()[0];
-      llvm::BasicBlock* true_block = (op_char == '&' ? more_block : merge_block);
-      llvm::BasicBlock* false_block = (op_char == '|' ? more_block : merge_block);
-
-
-      builder.CreateCondBr(lhs_val, true_block, false_block);
-
-      // If you need more information to determine the value, compute it
-      builder.SetInsertPoint(more_block);
-      auto rhs_val = rhs_->generate_code(scope);
-      auto long_circuit_entry = builder.GetInsertBlock();
-      builder.CreateBr(merge_block);
-
-      builder.SetInsertPoint(merge_block);
-      llvm::PHINode* phi_node =
-        builder.CreatePHI(Type::get_bool()->llvm(), 2, "phi");
-
-      if (rhs_val == nullptr) return nullptr;
-
-      if (op_char == '&') {
-        phi_node->addIncoming(rhs_val, long_circuit_entry);
-        phi_node->addIncoming(
-            llvm::ConstantInt::get(llvm::getGlobalContext(),
-              llvm::APInt(1, 0, false)), short_circuit_entry);
-
-      } else if (op_char == '|') {
-        phi_node->addIncoming(
-            llvm::ConstantInt::get(llvm::getGlobalContext(),
-              llvm::APInt(1, 1, false)), short_circuit_entry);
-        phi_node->addIncoming(rhs_val, long_circuit_entry);
-      }
-
-      return phi_node;
     }
 
     auto lhs_val = lhs_->generate_code(scope);
@@ -238,6 +165,13 @@ namespace AST {
 
     auto rhs_val = rhs_->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
+
+
+    if (token() == "()") {
+      // TODO multiple arguments
+      std::vector<llvm::Value*> arg_vals = { rhs_val };
+      return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+    }
 
     if (type() == Type::get_int()) {
       if (token() == "+") { return builder.CreateAdd(lhs_val, rhs_val, "addtmp"); }
@@ -355,6 +289,66 @@ namespace AST {
         ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
+    } else if (exprs_[0]->type() == Type::get_bool()) {
+      // For boolean expression, the chain must be a single consistent operation
+      // because '&', '^', and '|' all have different precedence levels.
+      auto cmp_val = lhs_val;
+      if (ops_.front()->token() == "^") {
+        for (size_t i = 1; i < exprs_.size(); ++i) {
+          auto expr = exprs_[i];
+          auto rhs_val = expr->generate_code(scope);
+          cmp_val = builder.CreateXor(cmp_val, rhs_val);
+        }
+      } else {
+        auto parent_fn = builder.GetInsertBlock()->getParent();
+        // Condition blocks
+        std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
+        for (auto& block : cond_blocks) {
+          block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "cond_block", parent_fn);
+        }
+
+        // Landing blocks
+        auto land_true_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "land_true", parent_fn);
+        auto land_false_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "land_false", parent_fn);
+        auto merge_block = llvm::BasicBlock::Create(
+            llvm::getGlobalContext(), "merge_block", parent_fn);
+
+        if (ops_.front()->token() == "&") {
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            builder.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
+            builder.SetInsertPoint(cond_blocks[i]);
+            cmp_val = exprs_[i + 1]->generate_code(scope);
+          }
+        } else {  // if (ops_.front()->token() == "|") {
+          for (size_t i = 0; i < ops_.size(); ++i) {
+            builder.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
+            builder.SetInsertPoint(cond_blocks[i]);
+            cmp_val = exprs_[i + 1]->generate_code(scope);
+          }
+        }
+
+        builder.CreateCondBr(cmp_val, land_true_block, land_false_block);
+
+        builder.SetInsertPoint(land_true_block);
+        builder.CreateBr(merge_block);
+
+        builder.SetInsertPoint(land_false_block);
+        builder.CreateBr(merge_block);
+
+        builder.SetInsertPoint(merge_block);
+        // Join two cases
+        llvm::PHINode* phi_node = builder.CreatePHI(
+            Type::get_bool()->llvm(), 2, "merge");
+        phi_node->addIncoming(llvm::ConstantInt::get(llvm::getGlobalContext(),
+              llvm::APInt(1, 1, false)), land_true_block);
+        phi_node->addIncoming(llvm::ConstantInt::get(llvm::getGlobalContext(),
+              llvm::APInt(1, 0, false)), land_false_block);
+        cmp_val = phi_node;
+      }
+      ret_val = cmp_val;
     }
 
     return ret_val;

@@ -234,6 +234,11 @@ namespace Language {
         { expression, generic_operator, expression },
         AST::Binop::build),
 
+    // <expr> & <expr>
+    Rule(expression,
+        { expression, indirection, expression },
+        AST::ChainOp::build),
+
     Rule(expression,
         { expression, binary_boolean_operator, expression },
         AST::ChainOp::build),
