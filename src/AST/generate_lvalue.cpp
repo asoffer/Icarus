@@ -28,8 +28,6 @@ namespace AST {
 
           alloc_ = builder.CreateAlloca(Type::get_pointer(type_as_array->type_)->llvm(), nullptr, token());
           builder.CreateStore(ptr_to_mem, alloc_);
-
-          bytes_needed->dump();
         }
 
       }

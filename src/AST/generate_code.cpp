@@ -387,15 +387,8 @@ namespace AST {
 
     fn_scope_->entry()->removeFromParent();
     fn_scope_->entry()->insertInto(llvm_function_);
-    fn_scope_->allocate();
+    fn_scope_->enter();
     
-    // Because all variables in this scope, including inputs, are allocated, we
-    // go through the inputs and store in the allocated location. While this is
-    // not an optimized way to do things, we trust mem2reg to optimize this
-    // away.
-    //
-    // TODO implement a mem2reg pass.
-
     input_iter = inputs_.begin();
     for (auto& arg : llvm_function_->args()) {
       builder.CreateStore(&arg,
@@ -404,8 +397,7 @@ namespace AST {
     }
 
     statements_->generate_code(fn_scope_);
-
-    builder.SetInsertPoint(fn_scope_->entry());
+    fn_scope_->exit();
 
     builder.SetInsertPoint(old_block);
     return llvm_function_;
@@ -594,11 +586,12 @@ namespace AST {
     body_scope_->set_entry(head_block);
     body_scope_->entry()->removeFromParent();
     body_scope_->entry()->insertInto(parent_fn);
-    body_scope_->allocate();
+    body_scope_->enter();
     builder.CreateCondBr(cond_->generate_code(scope), body_block, foot_block);
 
     builder.SetInsertPoint(body_block);
     statements_->generate_code(body_scope_);
+    body_scope_->exit();
     builder.CreateBr(head_block);
 
     builder.SetInsertPoint(foot_block);
@@ -621,13 +614,14 @@ namespace AST {
     body_scope_->set_entry(head_block);
     body_scope_->entry()->removeFromParent();
     body_scope_->entry()->insertInto(parent_fn);
-    body_scope_->allocate();
+    body_scope_->enter();
     builder.CreateCondBr(cond_->generate_code(scope), body_block, foot_block);
 
     builder.SetInsertPoint(body_block);
     statements_->generate_code(body_scope_);
     builder.CreateBr(foot_block);
 
+    body_scope_->exit();
     builder.SetInsertPoint(foot_block);
 
     return nullptr;

@@ -32,6 +32,14 @@ namespace ScopeDB {
     return registry_.size();
   }
 
+  void Scope::enter() {
+    allocate();
+  }
+
+  void Scope::exit() {
+    // Add deallocation in here
+  }
+
   void Scope::set_parent(Scope* parent) {
     parent_ = parent;
   }

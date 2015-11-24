@@ -123,12 +123,14 @@ int main(int argc, char *argv[]) {
   cstdlib::format_f = builder.CreateGlobalStringPtr("%f", "percent_f");
   cstdlib::format_s = builder.CreateGlobalStringPtr("%s", "percent_s");
 
-  global_scope->allocate();
+  global_scope->enter();
 
   global_statements->generate_code(global_scope);
 
   builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, 0, false)));
+
+  global_scope->exit();
 
   {
     std::ofstream output_file_stream("ir.ll");

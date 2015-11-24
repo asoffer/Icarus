@@ -37,7 +37,8 @@ namespace ScopeDB {
       static size_t num_scopes();
 
       void set_parent(Scope* parent);
-      void allocate();
+      void enter();
+      void exit();
       Scope* parent() const { return parent_; }
 
       // While we're actually returning an IdPtr, it's only ever used as an
@@ -55,8 +56,9 @@ namespace ScopeDB {
       EPtr get_declared_type(AST::Identifier* id_ptr) const;
 
     private:
-      // TODO Do I need this constructor?
       Scope() : parent_(nullptr), entry_block_(nullptr) {}
+
+      void allocate();
 
       Scope(const Scope&) = delete;
       Scope(Scope&&) = delete;
