@@ -1,0 +1,22 @@
+i := 0
+while i < 30 {
+  print i
+  print ':' 
+  print ' '
+  print mod_four(i)
+  print '\n'
+  i += 1
+}
+
+mod_four := (n : int) -> int {
+  return case {
+    n % 2 == 0  =>  case {
+      (n / 2) % 2 == 0  =>  0
+      else              =>  2
+    }
+    else        =>  case {
+      ((n - 1) / 2) % 2 == 0  =>  1
+      else                    =>  3
+    }
+  }
+}

@@ -518,49 +518,47 @@ namespace AST {
 
   llvm::Value* Case::generate_code(Scope* scope) {
     auto parent_fn = builder.GetInsertBlock()->getParent();
-    auto landing_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "case_landing", parent_fn);
-    auto start_block = builder.GetInsertBlock();
-    builder.SetInsertPoint(landing_block);
-    llvm::PHINode* phi_node =
-      builder.CreatePHI(type()->llvm(), static_cast<unsigned int>(pairs_->size()), "phi");
+    // Condition blocks - The ith block is what you reach when you've
+    // failed the ith condition, where conditions are labelled starting at zero.
+    std::vector<llvm::BasicBlock*> case_blocks(pairs_->kv_pairs_.size() - 1);
 
-    builder.SetInsertPoint(start_block);
-
-    auto countdown = pairs_->size() - 1;
-    auto iter = pairs_->kv_pairs_.begin();
-
-    while (countdown != 0) {
-      auto bool_val = iter->first->generate_code(scope);
-      if (bool_val == nullptr) return nullptr;
-
-      auto true_block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "case_true", parent_fn);
-      auto next_block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "case_next", parent_fn);
-
-      builder.CreateCondBr(bool_val, true_block, next_block);
-
-      // Need to set the insert point to true_block so that when we generate
-      // code for the true case, it gets put in that block.
-      builder.SetInsertPoint(true_block);
-      phi_node->addIncoming(iter->second->generate_code(scope), true_block);
-      builder.CreateBr(landing_block);
-
-      builder.SetInsertPoint(next_block);
-
-      ++iter; --countdown;
+    for (auto& block : case_blocks) {
+      block = llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "case_block", parent_fn);
     }
 
-    // Unroll the last level of the loop because it must end with
-    //   else => ...
-    // And this is a special case. When we get down here we are already pointing
-    // to the correct block, and iter is already pointing to the right value.
-    phi_node->addIncoming(iter->second->generate_code(scope), builder.GetInsertBlock());
-    builder.CreateBr(landing_block);
+    // Landing blocks
+    auto current_block = builder.GetInsertBlock();
+    auto case_landing = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "case_landing", parent_fn);
+    builder.SetInsertPoint(case_landing);
+    llvm::PHINode* phi_node = builder.CreatePHI(type()->llvm(),
+          static_cast<unsigned int>(pairs_->kv_pairs_.size()), "phi");
+    builder.SetInsertPoint(current_block);
 
-    // Ensure that we end pointing to the right place
-    builder.SetInsertPoint(landing_block);
+    for (size_t i = 0; i < case_blocks.size(); ++i) {
+      auto cmp_val = pairs_->kv_pairs_[i].first->generate_code(scope);
+      auto true_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "land_true", parent_fn);
+ 
+      // If it's false, move on to the next block
+      builder.CreateCondBr(cmp_val, true_block, case_blocks[i]);
+      builder.SetInsertPoint(true_block);
+      auto output_val = pairs_->kv_pairs_[i].second->generate_code(scope);
+
+      // NOTE: You may be tempted to state that you are coming from the
+      // block 'true_block'. However, if the code generated for the right-hand
+      // side of the '=>' node is not just a single basic block, this will not
+      // be the case.
+      phi_node->addIncoming(output_val, builder.GetInsertBlock());
+      builder.CreateBr(case_landing);
+
+      builder.SetInsertPoint(case_blocks[i]);
+    }
+    auto output_val = pairs_->kv_pairs_.back().second->generate_code(scope);
+    phi_node->addIncoming(output_val, builder.GetInsertBlock());
+    builder.CreateBr(case_landing);
+    builder.SetInsertPoint(case_landing);
 
     return phi_node;
   }
