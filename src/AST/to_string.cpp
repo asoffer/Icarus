@@ -51,9 +51,8 @@ namespace AST {
 
   std::string ArrayType::to_string(size_t n) const {
     std::string output = tabs(n) + "<AraryType>\n";
-    if (static_cast<Array*>(expr_type_)->has_dynamic_length()) {
-      output += len_->to_string(n + 1);
-    }
+    // NOTE: You can't ask about expr_type_ to determine the length
+    // because it may not have been deduced yet.
     return output + array_type_->to_string(n + 1);
   }
 

@@ -435,13 +435,13 @@ namespace Language {
         { newline, right_brace },
         drop_all_but<1>),
 
-    Rule(statements,
-        { expression, expression },
-        AST::Statements::build_double_expression_error),
-
-    Rule(statements,
-        { statements, expression },
-        AST::Statements::build_extra_expression_error),
+//    Rule(missing_newline_statements,
+//        { expression, expression },
+//        AST::Statements::build_double_expression_error),
+//
+//    Rule(missing_newline_statements,
+//        { missing_newline_statements, expression },
+//        AST::Statements::build_extra_expression_error),
     /* End miscellaneous */ 
   };
 }  // namespace Language

@@ -40,7 +40,7 @@ NPtr Parser::parse() {
       << std::endl;
   }
 
- return stack_.back();
+  return stack_.back();
 }
 
 bool Parser::should_shift() {

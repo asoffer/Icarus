@@ -23,6 +23,7 @@ namespace Language {
     declaration, paren_declaration, fn_declaration,
     assignment, fn_assignment,
     statements, while_statement, if_statement,
+    missing_newline_statements,
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
