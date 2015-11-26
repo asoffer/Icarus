@@ -20,6 +20,7 @@ namespace Language {
     { character_literal, "Character" },
     { string_literal, "String" },
     { generic_operator, "Operator" },
+    { bool_operator, "BoolOperator" },
     { binary_boolean_operator, "BinOperator" },
     { decl_operator, ":" },
     { decl_assign_operator, ":=" },
@@ -239,6 +240,11 @@ namespace Language {
         { expression, indirection, expression },
         AST::ChainOp::build),
 
+    // <expr> | <expr>, <expr> ^ <expr>
+    Rule(expression,
+        { expression, bool_operator, expression },
+        AST::ChainOp::build),
+
     Rule(expression,
         { expression, binary_boolean_operator, expression },
         AST::ChainOp::build),
@@ -426,6 +432,10 @@ namespace Language {
     Rule(newline,
         { newline, newline },
         drop_all_but<0>),
+
+    Rule(left_brace,
+        { newline, left_brace },
+        drop_all_but<1>),
 
     Rule(left_brace,
         { left_brace, newline },

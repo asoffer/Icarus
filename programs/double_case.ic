@@ -1,5 +1,8 @@
 i := 0
-while i < 30 {
+while i < 30
+
+{
+
   print i
   print ':' 
   print ' '
@@ -8,15 +11,27 @@ while i < 30 {
   i += 1
 }
 
-mod_four := (n : int) -> int {
-  return case {
-    n % 2 == 0  =>  case {
+mod_four := (n : int) -> int{
+
+
+  return case
+
+  {
+    n % 2 == 0  =>  case
+    {
       (n / 2) % 2 == 0  =>  0
       else              =>  2
     }
-    else        =>  case {
+    else        =>  case
+    
+    
+    {
       ((n - 1) / 2) % 2 == 0  =>  1
       else                    =>  3
     }
+
+
   }
+
+
 }

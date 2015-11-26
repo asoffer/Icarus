@@ -14,7 +14,7 @@ namespace Language {
 
     // Operators
     unary_operator, generic_operator, binary_boolean_operator, decl_operator,
-    decl_assign_operator, assign_operator, fn_arrow, rocket_operator,
+    decl_assign_operator, assign_operator, fn_arrow, rocket_operator, bool_operator,
 
     key_value_pair, key_value_pair_list,
     comma_list,
@@ -58,7 +58,7 @@ namespace Language {
   inline bool is_binary_operator(NodeType t) {
     return t == generic_operator || t == decl_operator || t == assign_operator
       || t == decl_assign_operator || t == fn_arrow || t == binary_boolean_operator
-      || t == comma;
+      || t == bool_operator || t == comma || t == indirection;
   }
 
   inline bool is_operator(NodeType t) {

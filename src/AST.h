@@ -754,8 +754,6 @@ namespace AST {
   }
 
 
-
-
   class Statements : public Node {
     public:
     static NPtr build_one(NPtrVec&& nodes);

@@ -127,10 +127,10 @@ int main(int argc, char *argv[]) {
 
   global_statements->generate_code(global_scope);
 
+  global_scope->exit();
+
   builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, 0, false)));
-
-  global_scope->exit();
 
   {
     std::ofstream output_file_stream("ir.ll");

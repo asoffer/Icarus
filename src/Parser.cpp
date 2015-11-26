@@ -67,6 +67,12 @@ bool Parser::should_shift() {
     default:;
   }
 
+  if (stack_.back()->node_type() == Language::newline &&
+      (lookahead_->node_type() == Language::left_brace
+       || lookahead_->node_type() == Language::newline)) {
+    return true;
+  }
+
   // For function calls, shift the parentheses on
   if (Language::is_expression(stack_.back()->node_type()) && (
         lookahead_->node_type() == Language::left_paren ||

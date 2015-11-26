@@ -424,7 +424,7 @@ namespace AST {
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
 
-    if (token().size() == 2) { // +=, &=, etc
+    if (token().size() == 2) {  // +=, &=, etc
       char main_op = token()[0];
 
       auto lhs_val = lhs_->generate_code(scope);
@@ -440,6 +440,8 @@ namespace AST {
 
           builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
         } else {
+          //TODO An optimization technique would be to only do short-circuiting
+          // here if the thing we're avoiding is more expensive than the branch.
 
           auto parent_fn = builder.GetInsertBlock()->getParent();
           auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
@@ -454,6 +456,7 @@ namespace AST {
 
           builder.SetInsertPoint(more_block);
 
+          // Generating lvalue for storage
           auto lval = lhs_->generate_lvalue(scope);
           if (lval == nullptr) return nullptr;
 
