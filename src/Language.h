@@ -52,7 +52,8 @@ constexpr size_t chain_assoc = 3;
 namespace Language {
   inline bool is_expression(NodeType t) {
     return t == expression || t == declaration || t == decl_assign_operator
-      || t == fn_declaration || t == assignment || t == return_expression;
+      || t == fn_declaration || t == assignment || t == return_expression
+      || t == reserved_bool_literal;
   }
 
   inline bool is_binary_operator(NodeType t) {

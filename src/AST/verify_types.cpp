@@ -65,9 +65,6 @@ namespace AST {
 
 
   void Binop::verify_types() {
-    // FIXME this is ugly, but "worse is better"
-    // TODO make this better
-
     if (lhs_->expr_type_ == Type::get_type_error()
         || rhs_->expr_type_ == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
@@ -75,7 +72,21 @@ namespace AST {
       return;
     }
 
-    if (token_ == "=>") {
+
+    if (token_ == ":>") {
+      expr_type_ = rhs_->interpret_as_type();
+      if (lhs_->expr_type_ == expr_type_
+          || (lhs_->expr_type_ == Type::get_bool()
+            &&
+            (expr_type_ == Type::get_int()
+             || expr_type_ == Type::get_uint()
+             || expr_type_ == Type::get_real()))
+          || (lhs_->expr_type_ == Type::get_int() && expr_type_ == Type::get_real())
+          || (lhs_->expr_type_ == Type::get_uint() && expr_type_ == Type::get_real())
+          ) return;
+
+      error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());
+    } else if (token_ == "=>") {
       if (lhs_->expr_type_ != Type::get_bool())
         expr_type_ = Type::get_type_error();
 

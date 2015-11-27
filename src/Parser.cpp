@@ -56,6 +56,7 @@ bool Parser::should_shift() {
   // Reduce terminals
   switch (stack_.back()->node_type()) {
     case Language::identifier:
+    case Language::reserved_bool_literal:
     case Language::integer_literal:
     case Language::real_literal:
     case Language::character_literal:

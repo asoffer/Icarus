@@ -163,6 +163,36 @@ namespace AST {
     auto lhs_val = lhs_->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
 
+    if (token() == ":>") {
+      auto from_type = lhs_->expr_type_;
+      auto to_type = rhs_->interpret_as_type();
+      if (from_type == to_type) {
+        return lhs_val;
+      }
+
+      if (from_type == Type::get_bool()) {
+        if (to_type == Type::get_int() || to_type == Type::get_uint()) {
+          return builder.CreateZExt(lhs_val, to_type->llvm(), "ext_val");
+        } else if (to_type == Type::get_real()) {
+          return builder.CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
+        } else {
+          return nullptr;
+        }
+      } else if (from_type == Type::get_int()) {
+        if (to_type == Type::get_real()) {
+          return builder.CreateSIToFP(lhs_val, to_type->llvm(), "ext_val");
+        } else {
+          return nullptr;
+        }
+      } else if (from_type == Type::get_uint()) {
+        if (to_type == Type::get_real()) {
+          return builder.CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
+        } else {
+          return nullptr;
+        }
+      }
+    }
+
     auto rhs_val = rhs_->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
 
