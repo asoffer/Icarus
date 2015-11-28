@@ -10,6 +10,7 @@ extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
 
 namespace cstdlib {
+  extern llvm::Constant* malloc;
   extern llvm::Constant* putchar;
   extern llvm::Constant* puts;
   extern llvm::Constant* printf;
@@ -537,8 +538,46 @@ namespace AST {
   }
 
   llvm::Value* Declaration::generate_code(Scope* scope) {
-    // Declarations are preallocated at the beginning of each scope, so there's
-    // no need to do anything if there isn't also an assignment occurring
+    if (type()->is_array()) {
+      // TODO get_char() is used for bytes currently. Fix this
+
+      auto array_type = std::static_pointer_cast<ArrayType>(scope->get_declared_type(declared_identifier()));
+
+      auto type_as_array = static_cast<Array*>(type());
+      auto elem_type = type_as_array->data_type();
+
+      auto array_len = array_type->len_->generate_code(scope);
+      auto bytes_per_elem = llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(32, elem_type->bytes(), false));
+
+      auto four = llvm::ConstantInt::get(
+          llvm::getGlobalContext(), llvm::APInt(32, 4, false));
+      auto zero = llvm::ConstantInt::get(
+          llvm::getGlobalContext(), llvm::APInt(32, 0, false));
+
+
+      auto bytes_needed = builder.CreateAdd(four, 
+          builder.CreateMul(array_len, bytes_per_elem), "malloc_bytes");
+      auto malloc_call = builder.CreateCall(cstdlib::malloc, { bytes_needed });
+      auto ptr_type = Type::get_pointer(type_as_array->type_)->llvm();
+      auto raw_len_ptr = builder.CreateGEP(Type::get_char()->llvm(),
+          malloc_call, { zero }, "array_len_raw");
+      auto raw_data_ptr = builder.CreateGEP(Type::get_char()->llvm(),
+          malloc_call, { four }, "array_idx_raw");
+      auto ptr_to_data = builder.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
+
+      // TODO should be uint, probably
+      auto ptr_to_len = builder.CreateBitCast(raw_len_ptr,
+          Type::get_pointer(Type::get_int())->llvm(), "array_ptr");
+      builder.CreateStore(array_len, ptr_to_len);
+
+      builder.CreateStore(ptr_to_data, declared_identifier()->alloc_);
+      return ptr_to_data;
+    }
+
+    // For the most part, declarations are preallocated at the beginning
+    // of each scope, so there's no need to do anything if a heap allocation
+    // isn't required.
     if (!infer_type_) return nullptr;
 
     // Remember, decl_type_ is not really the right name in the inference case.

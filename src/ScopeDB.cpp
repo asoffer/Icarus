@@ -10,6 +10,10 @@
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
 
+namespace cstdlib {
+  extern llvm::Constant* free;
+}  // namespace cstdlib
+
 namespace ScopeDB {
   Scope* Scope::build() {
     Scope* new_scope = new Scope;
@@ -37,16 +41,29 @@ namespace ScopeDB {
   }
 
   void Scope::exit() {
-    // Add deallocation in here
+    llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
+    for (const auto& decl_ptr : ordered_decls_) {
+      auto decl_type = decl_ptr->declared_identifier()->type();
+      if (decl_type->is_array()) {
+        // TODO look at elements, see if they need deallocation
+
+        // auto array_ptr = temp_builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+
+        // auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
+        // auto ptr_to_free = temp_builder.CreateBitCast(array_ptr, basic_ptr_type, "ptr_to_free");
+        // ptr_to_free->dump();
+        // temp_builder.CreateCall(cstdlib::free, { ptr_to_free });
+      }
+    }
   }
 
   void Scope::set_parent(Scope* parent) {
     parent_ = parent;
   }
 
-  EPtr Scope::get_declared_type(AST::Identifier* id_ptr) const {
+  EPtr Scope::get_declared_type(IdPtr id_ptr) const {
     for (const auto& decl_ptr : ordered_decls_) {
-      if (decl_ptr->id_.get() != id_ptr) continue;
+      if (decl_ptr->id_ != id_ptr) continue;
       return decl_ptr->decl_type_;
     }
 
@@ -75,11 +92,11 @@ namespace ScopeDB {
 
         auto type_as_array = static_cast<Array*>(decl_type);
 
-        if (!type_as_array->has_dynamic_length()) {
-          // TODO
-        } else {
-          // There's nothing to do in this situation. We have to wait until the length is known in order to allocate
-        }
+        // TODO currently it doesn't matter if the length is technically
+        // dynamic or not. We're doing no optimizations using this
+        decl_ptr->declared_identifier()->alloc_ = temp_builder.CreateAlloca(
+            Type::get_pointer(type_as_array->data_type())->llvm(),
+            nullptr, decl_ptr->identifier_string());
       } else {
         decl_ptr->declared_identifier()->alloc_ =
           temp_builder.CreateAlloca(

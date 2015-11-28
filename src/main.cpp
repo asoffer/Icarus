@@ -17,6 +17,7 @@ extern llvm::Function* global_function;
 extern llvm::IRBuilder<> builder;
 
 namespace cstdlib {
+  extern llvm::Constant* free;
   extern llvm::Constant* malloc;
   extern llvm::Constant* printf;
   extern llvm::Constant* putchar;
@@ -109,10 +110,10 @@ int main(int argc, char *argv[]) {
 
   // Declaration for call to putchar for printing
   // TODO create these as soon as they're necessary but no sooner.
+  cstdlib::free = global_module->getOrInsertFunction("free",
+      llvm::FunctionType::get(Type::get_void()->llvm(), { Type::get_pointer(Type::get_char())->llvm() }, false));
   cstdlib::malloc = global_module->getOrInsertFunction("malloc",
-      llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
-        { Type::get_uint()->llvm() }, false));
-
+      llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(), { Type::get_uint()->llvm() }, false));
   cstdlib::printf = global_module->getOrInsertFunction("printf",
       llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, true));
   cstdlib::putchar = global_module->getOrInsertFunction("putchar",

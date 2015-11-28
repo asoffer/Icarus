@@ -53,7 +53,7 @@ namespace ScopeDB {
         entry_block_ = bb;
       }
 
-      EPtr get_declared_type(AST::Identifier* id_ptr) const;
+      EPtr get_declared_type(IdPtr id_ptr) const;
 
     private:
       Scope() : parent_(nullptr), entry_block_(nullptr) {}

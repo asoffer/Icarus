@@ -335,6 +335,7 @@ namespace AST {
     public:
       friend class Scope;
       friend class Identifier;
+      friend class Declaration;
 
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_unknown(NPtrVec&& nodes);
@@ -349,12 +350,11 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
-      ArrayType() : allocated_(false) {}
+      ArrayType() {}
 
     private:
       EPtr len_;
       EPtr array_type_;
-      bool allocated_;
   };
 
   inline NPtr ArrayType::build(NPtrVec&& nodes) {
