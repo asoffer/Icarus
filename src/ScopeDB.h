@@ -17,9 +17,13 @@
 
 #include <iostream>
 
+class Type;
+
 namespace AST {
   class FunctionLiteral;
 }
+
+extern llvm::IRBuilder<> builder;
 
 namespace ScopeDB {
   class Scope {
@@ -37,37 +41,59 @@ namespace ScopeDB {
       static size_t num_scopes();
 
       void set_parent(Scope* parent);
+      void set_return_type(Type* ret_type) { return_type_ = ret_type; }
       void enter();
       void exit();
       Scope* parent() const { return parent_; }
+      llvm::Value* return_value() const { return return_val_; }
 
       // While we're actually returning an IdPtr, it's only ever used as an
       // EPtr, so we do the pointer cast inside.
       EPtr identifier(EPtr id_as_eptr);
 
-      llvm::BasicBlock* entry() {
-        return entry_block_;
+      llvm::BasicBlock* entry_block() const { return entry_block_; }
+      llvm::BasicBlock* exit_block() const { return exit_block_; }
+
+      void set_parent_function(llvm::Function* fn) {
+        if (entry_block_ != nullptr && entry_block_->getParent() != nullptr) {
+          entry_block_->removeFromParent();
+        }
+
+        if (exit_block_ != nullptr && exit_block_->getParent() != nullptr) {
+          exit_block_->removeFromParent();
+        }
+
+        entry_block_->insertInto(fn);
+        exit_block_->insertInto(fn);
       }
 
-      void set_entry(llvm::BasicBlock* bb) {
-        entry_block_ = bb;
-      }
+      void make_return_void();
+      void make_return(llvm::Value* val);
 
       EPtr get_declared_type(IdPtr id_ptr) const;
 
     private:
-      Scope() : parent_(nullptr), entry_block_(nullptr) {}
+      Scope() :
+        parent_(nullptr),
+        entry_block_(llvm::BasicBlock::Create(
+              llvm::getGlobalContext(), "entry")),
+        exit_block_(llvm::BasicBlock::Create(
+              llvm::getGlobalContext(), "exit")) {}
 
       void allocate();
 
       Scope(const Scope&) = delete;
       Scope(Scope&&) = delete;
 
-      Scope* parent_;
-      llvm::BasicBlock* entry_block_;
-
       std::map<std::string, IdPtr> ids_;
       std::vector<DeclPtr> ordered_decls_;
+
+      Scope* parent_;
+      llvm::BasicBlock* entry_block_;
+      llvm::BasicBlock* exit_block_;
+
+      Type* return_type_;
+      llvm::Value* return_val_;
 
       // Important invariant: A pointer only ever points to scopes held in
       // higehr indices. The global (root) scope must be the last scope.

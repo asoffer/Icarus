@@ -102,11 +102,11 @@ int main(int argc, char *argv[]) {
     return 0;
   }
 
+  global_scope->set_parent_function(global_function);
+  global_scope->set_return_type(Type::get_int());
 
-  global_scope->set_entry(llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "entry", global_function));
 
-  builder.SetInsertPoint(global_scope->entry());
+  global_scope->enter();
 
   // Declaration for call to putchar for printing
   // TODO create these as soon as they're necessary but no sooner.
@@ -124,14 +124,15 @@ int main(int argc, char *argv[]) {
   cstdlib::format_f = builder.CreateGlobalStringPtr("%f", "percent_f");
   cstdlib::format_s = builder.CreateGlobalStringPtr("%s", "percent_s");
 
-  global_scope->enter();
 
   global_statements->generate_code(global_scope);
 
-  global_scope->exit();
+  auto zero = llvm::ConstantInt::get(
+      llvm::getGlobalContext(), llvm::APInt(32, 0, false));
+  global_scope->make_return(zero);
 
-  builder.CreateRet(llvm::ConstantInt::get(llvm::getGlobalContext(),
-        llvm::APInt(32, 0, false)));
+  // global_funtion->dump();
+  global_scope->exit();
 
   {
     std::ofstream output_file_stream("ir.ll");

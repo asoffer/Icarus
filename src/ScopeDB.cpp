@@ -37,25 +37,53 @@ namespace ScopeDB {
   }
 
   void Scope::enter() {
+    builder.SetInsertPoint(entry_block_);
+
+    if (return_type_ != nullptr && return_type_ != Type::get_void()) {
+      return_val_ = builder.CreateAlloca(return_type_->llvm(), nullptr, "retval");
+    }
+
     allocate();
   }
 
   void Scope::exit() {
-    llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
+    builder.CreateBr(exit_block_);
+    builder.SetInsertPoint(exit_block_);
+
     for (const auto& decl_ptr : ordered_decls_) {
       auto decl_type = decl_ptr->declared_identifier()->type();
       if (decl_type->is_array()) {
         // TODO look at elements, see if they need deallocation
 
-        // auto array_ptr = temp_builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+        // auto array_ptr = builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
 
         // auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
-        // auto ptr_to_free = temp_builder.CreateBitCast(array_ptr, basic_ptr_type, "ptr_to_free");
+        // auto ptr_to_free = builder.CreateBitCast(array_ptr, basic_ptr_type, "ptr_to_free");
         // ptr_to_free->dump();
-        // temp_builder.CreateCall(cstdlib::free, { ptr_to_free });
+        // builder.CreateCall(cstdlib::free, { ptr_to_free });
       }
     }
+
+
+    if (return_type_ == nullptr) {
+      // Do nothing, just exit.
+
+    } else if (return_type_ == Type::get_void()) {
+      builder.CreateRetVoid();
+
+    } else {
+      builder.CreateRet(builder.CreateLoad(return_val_, "retval"));
+    }
   }
+
+  void Scope::make_return_void() {}
+
+  void Scope::make_return(llvm::Value* val) {
+    if (val != nullptr) {
+      builder.CreateStore(val, return_val_);
+    }
+  }
+ 
 
   void Scope::set_parent(Scope* parent) {
     parent_ = parent;
@@ -74,8 +102,6 @@ namespace ScopeDB {
   }
 
   void Scope::allocate() {
-    llvm::IRBuilder<> temp_builder(entry_block_, entry_block_->begin());
-
     for (const auto& decl_ptr : ordered_decls_) {
       auto decl_type = decl_ptr->declared_identifier()->type();
 
@@ -94,12 +120,12 @@ namespace ScopeDB {
 
         // TODO currently it doesn't matter if the length is technically
         // dynamic or not. We're doing no optimizations using this
-        decl_ptr->declared_identifier()->alloc_ = temp_builder.CreateAlloca(
+        decl_ptr->declared_identifier()->alloc_ = builder.CreateAlloca(
             Type::get_pointer(type_as_array->data_type())->llvm(),
             nullptr, decl_ptr->identifier_string());
       } else {
         decl_ptr->declared_identifier()->alloc_ =
-          temp_builder.CreateAlloca(
+          builder.CreateAlloca(
               decl_type->llvm(),
               nullptr, decl_ptr->identifier_string());
       }
