@@ -8,8 +8,6 @@
 
 #include "ScopeDB.h"
 
-#include "llvm/IR/IRBuilder.h"
-
 constexpr size_t pointer_size_in_bytes = sizeof(char*);
 
 using ::ScopeDB::Scope;

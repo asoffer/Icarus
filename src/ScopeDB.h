@@ -67,10 +67,16 @@ namespace ScopeDB {
         exit_block_->insertInto(fn);
       }
 
+      void make_loop() { is_loop_ = true; }
       void make_return_void();
       void make_return(llvm::Value* val);
 
       EPtr get_declared_type(IdPtr id_ptr) const;
+
+      void allocate();
+
+      Scope(const Scope&) = delete;
+      Scope(Scope&&) = delete;
 
     private:
       Scope() :
@@ -78,12 +84,8 @@ namespace ScopeDB {
         entry_block_(llvm::BasicBlock::Create(
               llvm::getGlobalContext(), "entry")),
         exit_block_(llvm::BasicBlock::Create(
-              llvm::getGlobalContext(), "exit")) {}
-
-      void allocate();
-
-      Scope(const Scope&) = delete;
-      Scope(Scope&&) = delete;
+              llvm::getGlobalContext(), "exit")),
+        is_loop_(false) {}
 
       std::map<std::string, IdPtr> ids_;
       std::vector<DeclPtr> ordered_decls_;
@@ -94,6 +96,8 @@ namespace ScopeDB {
 
       Type* return_type_;
       llvm::Value* return_val_;
+
+      bool is_loop_;
 
       // Important invariant: A pointer only ever points to scopes held in
       // higehr indices. The global (root) scope must be the last scope.

@@ -11,8 +11,13 @@ extern llvm::Module* global_module;
 extern ErrorLog error_log;
 
 namespace cstdlib {
-  extern llvm::Constant* free;
+  extern llvm::Constant* free();
 }  // namespace cstdlib
+
+namespace data {
+  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+}  // namespace data
+
 
 namespace ScopeDB {
   Scope* Scope::build() {
@@ -38,12 +43,13 @@ namespace ScopeDB {
 
   void Scope::enter() {
     builder.SetInsertPoint(entry_block_);
-
     if (return_type_ != nullptr && return_type_ != Type::get_void()) {
       return_val_ = builder.CreateAlloca(return_type_->llvm(), nullptr, "retval");
     }
 
-    allocate();
+    // looping scopes must allocate before entering the scope
+    // to avoid stack overflow
+    if (!is_loop_) allocate();
   }
 
   void Scope::exit() {
@@ -55,12 +61,19 @@ namespace ScopeDB {
       if (decl_type->is_array()) {
         // TODO look at elements, see if they need deallocation
 
-        // auto array_ptr = builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+        auto array_ptr = builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
 
-        // auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
-        // auto ptr_to_free = builder.CreateBitCast(array_ptr, basic_ptr_type, "ptr_to_free");
-        // ptr_to_free->dump();
-        // builder.CreateCall(cstdlib::free, { ptr_to_free });
+        auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
+
+        auto four = data::const_int(4, true);
+        auto zero = data::const_int(0, true);
+        auto neg_four = builder.CreateSub(zero, four);
+
+        auto ptr_to_free = builder.CreateGEP(
+            builder.CreateBitCast(array_ptr, basic_ptr_type),
+            { neg_four }, "ptr_to_free");
+
+         builder.CreateCall(cstdlib::free(), { ptr_to_free });
       }
     }
 

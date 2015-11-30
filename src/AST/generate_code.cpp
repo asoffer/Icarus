@@ -10,14 +10,24 @@ extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
 
 namespace cstdlib {
-  extern llvm::Constant* malloc;
-  extern llvm::Constant* putchar;
-  extern llvm::Constant* puts;
-  extern llvm::Constant* printf;
-  extern llvm::Value* format_d;
-  extern llvm::Value* format_f;
-  extern llvm::Value* format_s;
-}  //namespace cstdlib
+  extern llvm::Constant* malloc();
+  extern llvm::Constant* putchar();
+  extern llvm::Constant* puts();
+  extern llvm::Constant* printf();
+
+  template<char C> llvm::Value* format() {
+    std::string char_str(1, C);
+    static llvm::Value* format_ =
+      builder.CreateGlobalStringPtr("%" + char_str, "percent_" + char_str);
+
+    return format_;
+  }
+
+}  // namespace cstdlib
+
+namespace data {
+  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+}  // namespace data
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
@@ -55,8 +65,7 @@ namespace AST {
 
     } else if (type() == Type::get_int()) {
       // An int is a 32-bit signed integer
-      return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(32, std::stoul(token()), true));
+      return data::const_int(std::stoul(token()), true);
 
     } else if (type() == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
@@ -67,8 +76,8 @@ namespace AST {
 
     } else if (type() == Type::get_uint()) {
       // A uint is a 64-bit unsigned integer
-      return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(32, std::stoul(token()), false));
+      return data::const_int(std::stoul(token()));
+
     } else {
       std::cerr << "FATAL: Terminal type is not a primitive type" << std::endl;
       return nullptr;
@@ -118,26 +127,26 @@ namespace AST {
         phi_node->addIncoming(true_str, true_block);
         phi_node->addIncoming(false_str, false_block);
 
-        builder.CreateCall(cstdlib::puts, phi_node);
+        builder.CreateCall(cstdlib::puts(), phi_node);
 
       } else if (expr_->type() == Type::get_char()) {
-        builder.CreateCall(cstdlib::putchar, { val });
+        builder.CreateCall(cstdlib::putchar(), { val });
 
       } else if (expr_->type() == Type::get_int()
           || expr_->type() == Type::get_uint()) {
-        builder.CreateCall(cstdlib::printf, { cstdlib::format_d, val });
+        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'d'>(), val });
 
       } else if (expr_->type() == Type::get_real()) {
-        builder.CreateCall(cstdlib::printf, { cstdlib::format_f, val });
+        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'f'>(), val });
 
       } else if (expr_->type() == Type::get_type()) {
         auto type_as_string = builder.CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
-        builder.CreateCall(cstdlib::printf, { cstdlib::format_s, type_as_string });
+        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), type_as_string });
 
       } else if (expr_->type()->is_function()) {
         auto fn_str = builder.CreateGlobalStringPtr("{" + expr_->type()->to_string() + "}");
 
-        builder.CreateCall(cstdlib::printf, { cstdlib::format_s, fn_str });
+        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_str });
 
       } else if (expr_->type()->is_tuple()) {
         // TODO
@@ -408,7 +417,6 @@ namespace AST {
     auto ret_type = static_cast<Function*>(expr_type_)->return_type();
     fn_scope_->set_return_type(ret_type);
 
-
     fn_scope_->enter();
     
     // TODO move this to fn_scope_.enter()
@@ -546,23 +554,18 @@ namespace AST {
       auto elem_type = type_as_array->data_type();
 
       auto array_len = array_type->len_->generate_code(scope);
-      auto bytes_per_elem = llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(32, elem_type->bytes(), false));
+      auto bytes_per_elem = data::const_int(elem_type->bytes());
+      auto int_size = data::const_int(Type::get_int()->bytes());
+      auto zero = data::const_int(0);
 
-      auto four = llvm::ConstantInt::get(
-          llvm::getGlobalContext(), llvm::APInt(32, 4, false));
-      auto zero = llvm::ConstantInt::get(
-          llvm::getGlobalContext(), llvm::APInt(32, 0, false));
-
-
-      auto bytes_needed = builder.CreateAdd(four, 
+      auto bytes_needed = builder.CreateAdd(int_size, 
           builder.CreateMul(array_len, bytes_per_elem), "malloc_bytes");
-      auto malloc_call = builder.CreateCall(cstdlib::malloc, { bytes_needed });
+      auto malloc_call = builder.CreateCall(cstdlib::malloc(), { bytes_needed });
       auto ptr_type = Type::get_pointer(type_as_array->type_)->llvm();
       auto raw_len_ptr = builder.CreateGEP(Type::get_char()->llvm(),
           malloc_call, { zero }, "array_len_raw");
       auto raw_data_ptr = builder.CreateGEP(Type::get_char()->llvm(),
-          malloc_call, { four }, "array_idx_raw");
+          malloc_call, { int_size }, "array_idx_raw");
       auto ptr_to_data = builder.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
 
       // TODO should be uint, probably
@@ -643,9 +646,13 @@ namespace AST {
         llvm::getGlobalContext(), "while_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
+    body_scope_->set_return_type(nullptr);
+    body_scope_->make_loop();
 
+    body_scope_->allocate();
     builder.CreateBr(while_cond_block);
     builder.SetInsertPoint(while_cond_block);
+
     builder.CreateCondBr(cond_->generate_code(scope),
         body_scope_->entry_block(), while_landing_block);
 
@@ -668,6 +675,7 @@ namespace AST {
         llvm::getGlobalContext(), "if_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
+    body_scope_->set_return_type(nullptr);
 
     builder.CreateBr(if_cond_block);
     builder.SetInsertPoint(if_cond_block);

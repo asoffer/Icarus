@@ -17,8 +17,8 @@ extern llvm::Function* global_function;
 extern llvm::IRBuilder<> builder;
 
 namespace cstdlib {
-  extern llvm::Constant* free;
-  extern llvm::Constant* malloc;
+  extern llvm::Constant* free();
+  extern llvm::Constant* malloc();
   extern llvm::Constant* printf;
   extern llvm::Constant* putchar;
   extern llvm::Constant* puts;
@@ -26,6 +26,11 @@ namespace cstdlib {
   extern llvm::Value* format_f;
   extern llvm::Value* format_s;
 }  // namespace cstdlib
+
+namespace data {
+  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+}  // namespace data
+
 
 extern ErrorLog error_log;
 
@@ -105,34 +110,11 @@ int main(int argc, char *argv[]) {
   global_scope->set_parent_function(global_function);
   global_scope->set_return_type(Type::get_int());
 
-
   global_scope->enter();
-
-  // Declaration for call to putchar for printing
-  // TODO create these as soon as they're necessary but no sooner.
-  cstdlib::free = global_module->getOrInsertFunction("free",
-      llvm::FunctionType::get(Type::get_void()->llvm(), { Type::get_pointer(Type::get_char())->llvm() }, false));
-  cstdlib::malloc = global_module->getOrInsertFunction("malloc",
-      llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(), { Type::get_uint()->llvm() }, false));
-  cstdlib::printf = global_module->getOrInsertFunction("printf",
-      llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, true));
-  cstdlib::putchar = global_module->getOrInsertFunction("putchar",
-      llvm::FunctionType::get(Type::get_int()->llvm(), { Type::get_char()->llvm() }, false));
-  cstdlib::puts = global_module->getOrInsertFunction("puts",
-      llvm::FunctionType::get(Type::get_int()->llvm(), { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, false));
-  cstdlib::format_d = builder.CreateGlobalStringPtr("%d", "percent_d");
-  cstdlib::format_f = builder.CreateGlobalStringPtr("%f", "percent_f");
-  cstdlib::format_s = builder.CreateGlobalStringPtr("%s", "percent_s");
-
-
   global_statements->generate_code(global_scope);
-
-  auto zero = llvm::ConstantInt::get(
-      llvm::getGlobalContext(), llvm::APInt(32, 0, false));
-  global_scope->make_return(zero);
-
-  // global_funtion->dump();
+  global_scope->make_return(data::const_int(0));
   global_scope->exit();
+
 
   {
     std::ofstream output_file_stream("ir.ll");
