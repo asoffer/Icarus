@@ -12,6 +12,7 @@ namespace AST {
   llvm::Value* Unop::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* ChainOp::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* ArrayType::generate_lvalue(Scope*) { return nullptr; }
+  llvm::Value* ArrayLiteral::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* Terminal::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* FunctionLiteral::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* Case::generate_lvalue(Scope*) { return nullptr; }

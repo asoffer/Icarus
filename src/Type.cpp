@@ -1,6 +1,14 @@
 #include "Type.h"
 #include "AST.h"
 
+namespace cstdlib {
+  extern llvm::Constant* malloc();
+}  // namespace cstdlib
+
+namespace data {
+  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+}  // namespace data
+
 std::vector<Function*> Function::fn_types_;
 
 #define MAKE_PRIMITIVE_TYPE_GETTER(type)                                 \
@@ -131,6 +139,36 @@ Type* Type::get_array(Type* t, int len) {
   return arr_type;
 }
 
+
 std::vector<Pointer*> Pointer::pointer_types_;
 std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
+
+
+llvm::Value* Array::make(llvm::Value* len) {
+  // Compute the amount of space to allocate
+  auto bytes_per_elem = data::const_int(data_type()->bytes());
+  auto int_size = data::const_int(Type::get_int()->bytes());
+  auto zero = data::const_int(0);
+  auto bytes_needed = builder.CreateAdd(int_size, 
+      builder.CreateMul(len, bytes_per_elem), "malloc_bytes");
+
+  // Malloc call
+  auto malloc_call = builder.CreateCall(cstdlib::malloc(), { bytes_needed });
+
+  // Pointer to the length at the head of the array
+  auto raw_len_ptr = builder.CreateGEP(Type::get_char()->llvm(),
+      malloc_call, { zero }, "array_len_raw");
+
+  auto len_ptr = builder.CreateBitCast(
+      raw_len_ptr, Type::get_pointer(Type::get_int())->llvm(), "len_ptr");
+    builder.CreateStore(len, len_ptr);
+
+  // Pointer to the array data
+  auto raw_data_ptr = builder.CreateGEP(Type::get_char()->llvm(),
+      malloc_call, { int_size }, "array_idx_raw");
+  
+  // Pointer to data cast
+  auto ptr_type = Type::get_pointer(data_type())->llvm();
+  return builder.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
+}

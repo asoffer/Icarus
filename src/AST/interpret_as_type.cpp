@@ -16,6 +16,10 @@ namespace AST {
     return Type::get_type_error();
   }
 
+  Type* ArrayLiteral::interpret_as_type() const {
+    return nullptr;
+  }
+
   Type* ArrayType::interpret_as_type() const {
     // TODO incorporate length when known at compile time
     return Type::get_array(array_type_->interpret_as_type(), -1);

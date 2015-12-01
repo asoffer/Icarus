@@ -14,6 +14,12 @@ namespace AST {
     statements_->join_identifiers(body_scope_);
   }
 
+  void ArrayLiteral::join_identifiers(Scope* scope) {
+    for (auto& el : elems_) {
+      el->join_identifiers(scope);
+    }
+  }
+
   void Conditional::join_identifiers(Scope* scope) {
     cond_->join_identifiers(body_scope_);
     statements_->join_identifiers(body_scope_);

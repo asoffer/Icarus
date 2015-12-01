@@ -21,6 +21,12 @@ namespace AST {
     statements_->assign_decl_to_scope(body_scope_);
   }
 
+  void ArrayLiteral::assign_decl_to_scope(Scope* scope) {
+    for (auto& el : elems_) {
+      el->assign_decl_to_scope(scope);
+    }
+  }
+
   void Terminal::assign_decl_to_scope(Scope* scope) {}
 
   void Binop::assign_decl_to_scope(Scope* scope) {

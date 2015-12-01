@@ -18,6 +18,13 @@ namespace AST {
     expr_->record_dependencies(expr_);
   }
 
+  void ArrayLiteral::record_dependencies(EPtr eptr) const {
+    for (const auto& el : elems_) {
+      ScopeDB::dependencies_[eptr].insert(el);
+      el->record_dependencies(el);
+    }
+  }
+
   void Binop::record_dependencies(EPtr eptr) const {
     ScopeDB::dependencies_[eptr].insert(lhs_);
     ScopeDB::dependencies_[eptr].insert(rhs_);
@@ -41,9 +48,6 @@ namespace AST {
   void ChainOp::record_dependencies(EPtr eptr) const {
     for (auto& e : exprs_) {
       ScopeDB::dependencies_[eptr].insert(e);
-    }
-
-    for (auto& e : exprs_) {
       e->record_dependencies(e);
     }
   }

@@ -273,7 +273,6 @@ namespace Language {
         AST::Terminal::build_void_return),
     /* End void return */
 
-
     /* Begin paren/bracket operators */
     Rule(expression,
         { expression, left_paren, expression, right_paren },
@@ -286,6 +285,11 @@ namespace Language {
     Rule(expression,
         { expression, left_bracket, expression, right_bracket },
         AST::Binop::build_bracket_operator),
+
+    Rule(expression,
+        { left_bracket, expression, right_bracket },
+        AST::ArrayLiteral::build),
+
     /* End paren/bracket operators */
 
     /* Begin if */

@@ -225,7 +225,8 @@ class Array : public Type {
       return ss.str();
     }
 
-
+    llvm::Value* make(llvm::Value* len);
+    
     virtual bool is_array() const { return true; }
     virtual Type* data_type() const { return type_; }
     virtual bool has_dynamic_length() const { return len_ == -1; }

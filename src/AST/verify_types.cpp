@@ -180,11 +180,24 @@ namespace AST {
     }
   }
 
+  void ArrayLiteral::verify_types() {
+    auto type_to_match = elems_.front()->expr_type_;
+
+    expr_type_ = Type::get_array(type_to_match);
+    for (const auto& el : elems_) {
+      if (el->expr_type_ != type_to_match) {
+        error_log.log(line_num_, "Type error: Array literal must have consistent type");
+        expr_type_ = Type::get_type_error();
+        return;
+      }
+    }
+  }
+
   void ChainOp::verify_types() {
     // In order for a ChainOp to even be created, ops_.front() must exist.
     // Because nothing has the same precedence levels as a comma, if the
     // first op is a comma, they all are.
-    if (ops_.front()->token() == ",") {
+    if (is_comma_list()) {
       std::vector<Type*> type_vec(exprs_.size(), nullptr);
 
       size_t position = 0;

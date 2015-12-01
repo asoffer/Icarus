@@ -40,6 +40,7 @@ namespace AST {
       friend class Statements;
       friend class Assignment;
       friend class ArrayType;
+      friend class ArrayLiteral;
 
       static inline Node eof_node(size_t line_num) { return Node(line_num, Language::eof, ""); }
       static inline Node newline_node() { return Node(0, Language::newline, ""); }
@@ -106,6 +107,7 @@ namespace AST {
     friend class ChainOp;
     friend class Declaration;
     friend class Assignment;
+    friend class ArrayLiteral;
     friend class ArrayType;
 
     public:
@@ -275,6 +277,7 @@ namespace AST {
   class ChainOp : public Expression {
     public:
       friend class ArrayType;
+      friend class ArrayLiteral;
 
       static NPtr build(NPtrVec&& nodes);
 
@@ -330,6 +333,38 @@ namespace AST {
     return std::static_pointer_cast<Node>(chain_ptr);
   }
 
+  class ArrayLiteral : public Expression {
+    public:
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+    private:
+      std::vector<EPtr> elems_;
+  };
+
+  inline NPtr ArrayLiteral::build(NPtrVec&& nodes) {
+    auto array_lit_ptr = new ArrayLiteral;
+    array_lit_ptr->precedence_ = Language::op_prec.at("MAX");
+    array_lit_ptr->line_num_ = nodes[0]->line_num_;
+
+    if (nodes[1]->is_comma_list()) {
+      array_lit_ptr->elems_ = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
+
+    } else {
+      array_lit_ptr->elems_.push_back(std::static_pointer_cast<Expression>(nodes[1]));
+    }
+
+    return NPtr(array_lit_ptr);
+  }
 
   class ArrayType : public Expression {
     public:
@@ -550,6 +585,7 @@ namespace AST {
     public:
       friend DeclPtr ScopeDB::make_declaration(size_t line_num, const std::string& id_string);
       friend class Scope;
+      friend class Assignment;
 
       static NPtr build(NPtrVec&& nodes,
           const std::string&, Language::NodeType node_type, bool infer);

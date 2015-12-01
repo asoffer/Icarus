@@ -24,6 +24,16 @@ namespace AST {
       + statements_->to_string(n + 1);
   }
 
+
+  std::string ArrayLiteral::to_string(size_t n) const {
+    std::string output = tabs(n) + "<ArrayLiteral>\n";
+    for (const auto& el : elems_) {
+      output += el->to_string(n + 1);
+    }
+
+    return output;
+  }
+
   std::string While::to_string(size_t n) const {
     return tabs(n) + "<While>\n"
       + cond_->to_string(n + 1)

@@ -541,42 +541,16 @@ namespace AST {
       }
     }
 
+    // The left-hand side may be a declaration
+    if (lhs_->is_declaration()) {
+      // TODO maybe the declarations generate_code ought to return an l-value for the thing it declares?
+      return generate_assignment_code(scope, std::static_pointer_cast<Declaration>(lhs_)->id_, rhs_);
+    }
+
     return generate_assignment_code(scope, lhs_, rhs_);
   }
 
   llvm::Value* Declaration::generate_code(Scope* scope) {
-    if (type()->is_array()) {
-      // TODO get_char() is used for bytes currently. Fix this
-
-      auto array_type = std::static_pointer_cast<ArrayType>(scope->get_declared_type(declared_identifier()));
-
-      auto type_as_array = static_cast<Array*>(type());
-      auto elem_type = type_as_array->data_type();
-
-      auto array_len = array_type->len_->generate_code(scope);
-      auto bytes_per_elem = data::const_int(elem_type->bytes());
-      auto int_size = data::const_int(Type::get_int()->bytes());
-      auto zero = data::const_int(0);
-
-      auto bytes_needed = builder.CreateAdd(int_size, 
-          builder.CreateMul(array_len, bytes_per_elem), "malloc_bytes");
-      auto malloc_call = builder.CreateCall(cstdlib::malloc(), { bytes_needed });
-      auto ptr_type = Type::get_pointer(type_as_array->type_)->llvm();
-      auto raw_len_ptr = builder.CreateGEP(Type::get_char()->llvm(),
-          malloc_call, { zero }, "array_len_raw");
-      auto raw_data_ptr = builder.CreateGEP(Type::get_char()->llvm(),
-          malloc_call, { int_size }, "array_idx_raw");
-      auto ptr_to_data = builder.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
-
-      // TODO should be uint, probably
-      auto ptr_to_len = builder.CreateBitCast(raw_len_ptr,
-          Type::get_pointer(Type::get_int())->llvm(), "array_ptr");
-      builder.CreateStore(array_len, ptr_to_len);
-
-      builder.CreateStore(ptr_to_data, declared_identifier()->alloc_);
-      return ptr_to_data;
-    }
-
     // For the most part, declarations are preallocated at the beginning
     // of each scope, so there's no need to do anything if a heap allocation
     // isn't required.
@@ -635,6 +609,29 @@ namespace AST {
     builder.SetInsertPoint(case_landing);
 
     return phi_node;
+  }
+
+  llvm::Value* ArrayLiteral::generate_code(Scope* scope) {
+    auto elems_size = elems_.size();
+
+
+    auto type_as_array = static_cast<Array*>(expr_type_);
+    auto element_type = type_as_array->data_type()->llvm();
+
+    // Allocate space for the array literal
+    auto array_data = type_as_array->make(data::const_int(elems_size));
+
+    // TODO Would it be faster to increment the pointer each time? Probably
+    for (size_t i = 0; i < elems_size; ++i) {
+      builder.CreateStore(elems_[i]->generate_code(scope),
+          builder.CreateGEP(element_type,
+            array_data, { data::const_int(i) }));
+    }
+
+    // Make a pointer to an array of the appropriate size
+
+
+    return array_data;
   }
 
   llvm::Value* While::generate_code(Scope* scope) {

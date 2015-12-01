@@ -1,0 +1,9 @@
+array_lit : [5; int]
+array_lit = [1, 4, 9, 16, 25]
+
+i := 0
+while i < 5 {
+  print array_lit[i]
+  print '\n'
+  i += 1
+}

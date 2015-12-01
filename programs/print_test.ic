@@ -1,13 +1,13 @@
-print 'H'
-print 'e'
-print 'l'
-print 'l'
-print 'o'
-print ' '
-print 'W'
-print 'o'
-print 'r'
-print 'l'
-print 'd'
-print '!'
-print '\n'
+hello : [5; char] = ['H', 'e', 'l', 'l', 'o']
+world := [' ', 'w', 'o', 'r', 'l', 'd', '!', '\n']
+i := 0
+while i < 5 {
+  print hello[i]
+  i += 1
+}
+
+i = 0
+while i < 8 {
+  print world[i]
+  i += 1
+}
