@@ -23,8 +23,6 @@ namespace AST {
   class FunctionLiteral;
 }
 
-extern llvm::IRBuilder<> builder;
-
 namespace ScopeDB {
   class Scope {
     public:
@@ -40,10 +38,12 @@ namespace ScopeDB {
       static Scope* build_global();
       static size_t num_scopes();
 
+      llvm::IRBuilder<>& builder() { return bldr_; }
+
       void set_parent(Scope* parent);
       void set_return_type(Type* ret_type) { return_type_ = ret_type; }
       void enter();
-      void exit();
+      void exit(llvm::BasicBlock* jump_to = nullptr);
       Scope* parent() const { return parent_; }
       llvm::Value* return_value() const { return return_val_; }
 
@@ -67,13 +67,17 @@ namespace ScopeDB {
         exit_block_->insertInto(fn);
       }
 
-      void make_loop() { is_loop_ = true; }
+      void make_loop() {
+        is_loop_ = true;
+        set_return_type(nullptr);
+      }
+
       void make_return_void();
       void make_return(llvm::Value* val);
 
       EPtr get_declared_type(IdPtr id_ptr) const;
 
-      void allocate();
+      void allocate(llvm::IRBuilder<>& alloc_builder);
 
       Scope(const Scope&) = delete;
       Scope(Scope&&) = delete;
@@ -85,7 +89,11 @@ namespace ScopeDB {
               llvm::getGlobalContext(), "entry")),
         exit_block_(llvm::BasicBlock::Create(
               llvm::getGlobalContext(), "exit")),
-        is_loop_(false) {}
+        bldr_(llvm::getGlobalContext()),
+        is_loop_(false) {
+
+          bldr_.SetInsertPoint(entry_block());
+        }
 
       std::map<std::string, IdPtr> ids_;
       std::vector<DeclPtr> ordered_decls_;
@@ -96,6 +104,8 @@ namespace ScopeDB {
 
       Type* return_type_;
       llvm::Value* return_val_;
+
+      llvm::IRBuilder<> bldr_;
 
       bool is_loop_;
 

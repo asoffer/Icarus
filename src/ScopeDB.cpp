@@ -42,50 +42,55 @@ namespace ScopeDB {
   }
 
   void Scope::enter() {
-    builder.SetInsertPoint(entry_block_);
+    // bldr_ is initialized to insert into entry_block_.
+
     if (return_type_ != nullptr && return_type_ != Type::get_void()) {
-      return_val_ = builder.CreateAlloca(return_type_->llvm(), nullptr, "retval");
+      return_val_ = bldr_.CreateAlloca(return_type_->llvm(), nullptr, "retval");
     }
 
     // looping scopes must allocate before entering the scope
     // to avoid stack overflow
-    if (!is_loop_) allocate();
+    if (!is_loop_) allocate(bldr_);
   }
 
-  void Scope::exit() {
-    builder.CreateBr(exit_block_);
-    builder.SetInsertPoint(exit_block_);
+  void Scope::exit(llvm::BasicBlock* jump_to) {
+    bldr_.CreateBr(exit_block_);
+    bldr_.SetInsertPoint(exit_block_);
 
     for (const auto& decl_ptr : ordered_decls_) {
       auto decl_type = decl_ptr->declared_identifier()->type();
       if (decl_type->is_array()) {
         // TODO look at elements, see if they need deallocation
 
-        auto array_ptr = builder.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+        auto array_ptr = bldr_.CreateLoad(decl_ptr->declared_identifier()->alloc_);
 
         auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
 
         auto four = data::const_int(4, true);
         auto zero = data::const_int(0, true);
-        auto neg_four = builder.CreateSub(zero, four);
+        auto neg_four = bldr_.CreateSub(zero, four);
 
-        auto ptr_to_free = builder.CreateGEP(
-            builder.CreateBitCast(array_ptr, basic_ptr_type),
+        auto ptr_to_free = bldr_.CreateGEP(
+            bldr_.CreateBitCast(array_ptr, basic_ptr_type),
             { neg_four }, "ptr_to_free");
 
-         builder.CreateCall(cstdlib::free(), { ptr_to_free });
+         bldr_.CreateCall(cstdlib::free(), { ptr_to_free });
       }
     }
 
 
+    // Every basic block must end with a return or a branch.
+    // If there is no return type, this scope does not represent a function,
+    // and so we branch to the block passed in. Otherwise, we return the
+    // appropriate value.
     if (return_type_ == nullptr) {
-      // Do nothing, just exit.
+      bldr_.CreateBr(jump_to);
 
     } else if (return_type_ == Type::get_void()) {
-      builder.CreateRetVoid();
+      bldr_.CreateRetVoid();
 
     } else {
-      builder.CreateRet(builder.CreateLoad(return_val_, "retval"));
+      bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
     }
   }
 
@@ -93,7 +98,7 @@ namespace ScopeDB {
 
   void Scope::make_return(llvm::Value* val) {
     if (val != nullptr) {
-      builder.CreateStore(val, return_val_);
+      bldr_.CreateStore(val, return_val_);
     }
   }
  
@@ -114,7 +119,7 @@ namespace ScopeDB {
 
   }
 
-  void Scope::allocate() {
+  void Scope::allocate(llvm::IRBuilder<>& alloc_builder) {
     for (const auto& decl_ptr : ordered_decls_) {
       auto decl_type = decl_ptr->declared_identifier()->type();
 
@@ -133,13 +138,12 @@ namespace ScopeDB {
 
         // TODO currently it doesn't matter if the length is technically
         // dynamic or not. We're doing no optimizations using this
-        decl_ptr->declared_identifier()->alloc_ = builder.CreateAlloca(
+        decl_ptr->declared_identifier()->alloc_ = alloc_builder.CreateAlloca(
             Type::get_pointer(type_as_array->data_type())->llvm(),
             nullptr, decl_ptr->identifier_string());
       } else {
         decl_ptr->declared_identifier()->alloc_ =
-          builder.CreateAlloca(
-              decl_type->llvm(),
+          alloc_builder.CreateAlloca(decl_type->llvm(),
               nullptr, decl_ptr->identifier_string());
       }
     }

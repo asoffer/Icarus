@@ -24,8 +24,8 @@ namespace AST {
     if (token() == "[]" && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
-      auto load_ptr = builder.CreateLoad(lhs_val);
-      return builder.CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
+      auto load_ptr = scope->builder().CreateLoad(lhs_val);
+      return scope->builder().CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
     }
     return nullptr;
   }

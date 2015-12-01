@@ -27,6 +27,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_char(char c);
 }  // namespace data
 
 namespace AST {
@@ -34,7 +35,7 @@ namespace AST {
     if (type()->is_function()) {
       return global_module->getFunction(token());
     }
-    return builder.CreateLoad(alloc_, token());
+    return scope->builder().CreateLoad(alloc_, token());
   }
 
   llvm::Value* Terminal::generate_code(Scope* scope) {
@@ -92,17 +93,17 @@ namespace AST {
       scope->make_return(val);
 
     } else if (token() == "()") {
-      return builder.CreateCall(static_cast<llvm::Function*>(val));
+      return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
 
     } else if(expr_->type() == Type::get_bool() && token() == "!") {
-      return builder.CreateNot(val, "nottmp");
+      return scope->builder().CreateNot(val, "nottmp");
 
     } else if (is_print()) {
       if (expr_->type() == Type::get_bool()) {
-        auto true_str = builder.CreateGlobalStringPtr("true");
-        auto false_str = builder.CreateGlobalStringPtr("false");
+        auto true_str = scope->builder().CreateGlobalStringPtr("true");
+        auto false_str = scope->builder().CreateGlobalStringPtr("false");
 
-        auto parent_block = builder.GetInsertBlock()->getParent();
+        auto parent_block = scope->builder().GetInsertBlock()->getParent();
 
         auto true_block = llvm::BasicBlock::Create(
             llvm::getGlobalContext(), "true_block", parent_block);
@@ -112,41 +113,41 @@ namespace AST {
             llvm::getGlobalContext(), "merge_block", parent_block);
 
 
-        builder.CreateCondBr(val, true_block, false_block);
+        scope->builder().CreateCondBr(val, true_block, false_block);
 
-        builder.SetInsertPoint(true_block);
-        builder.CreateBr(merge_block);
+        scope->builder().SetInsertPoint(true_block);
+        scope->builder().CreateBr(merge_block);
 
-        builder.SetInsertPoint(false_block);
-        builder.CreateBr(merge_block);
+        scope->builder().SetInsertPoint(false_block);
+        scope->builder().CreateBr(merge_block);
 
 
-        builder.SetInsertPoint(merge_block);
+        scope->builder().SetInsertPoint(merge_block);
         llvm::PHINode* phi_node =
-          builder.CreatePHI(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()), 2, "merge");
+          scope->builder().CreatePHI(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()), 2, "merge");
         phi_node->addIncoming(true_str, true_block);
         phi_node->addIncoming(false_str, false_block);
 
-        builder.CreateCall(cstdlib::puts(), phi_node);
+        scope->builder().CreateCall(cstdlib::puts(), phi_node);
 
       } else if (expr_->type() == Type::get_char()) {
-        builder.CreateCall(cstdlib::putchar(), { val });
+        scope->builder().CreateCall(cstdlib::putchar(), { val });
 
       } else if (expr_->type() == Type::get_int()
           || expr_->type() == Type::get_uint()) {
-        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'d'>(), val });
+        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'d'>(), val });
 
       } else if (expr_->type() == Type::get_real()) {
-        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'f'>(), val });
+        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'f'>(), val });
 
       } else if (expr_->type() == Type::get_type()) {
-        auto type_as_string = builder.CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
-        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), type_as_string });
+        auto type_as_string = scope->builder().CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
+        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), type_as_string });
 
       } else if (expr_->type()->is_function()) {
-        auto fn_str = builder.CreateGlobalStringPtr("{" + expr_->type()->to_string() + "}");
+        auto fn_str = scope->builder().CreateGlobalStringPtr("{" + expr_->type()->to_string() + "}");
 
-        builder.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_str });
+        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_str });
 
       } else if (expr_->type()->is_tuple()) {
         // TODO
@@ -155,7 +156,12 @@ namespace AST {
         // TODO
 
       } else if (expr_->type()->is_array()) {
-        // TODO
+        // TODO optimize if you know array length ahead of time.
+//        scope->builder().CreateCall(cstdlib::putchar(), { data::const_char('[') });
+//
+//        scope->builder().
+//
+//        scope->builder().CreateCall(cstdlib::putchar(), { data::const_char(']') });
 
       } else {
         // TODO
@@ -167,7 +173,7 @@ namespace AST {
 
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (token() == "[]") {
-      return builder.CreateLoad(generate_lvalue(scope), "array_val");
+      return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
     }
 
     auto lhs_val = lhs_->generate_code(scope);
@@ -182,21 +188,21 @@ namespace AST {
 
       if (from_type == Type::get_bool()) {
         if (to_type == Type::get_int() || to_type == Type::get_uint()) {
-          return builder.CreateZExt(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateZExt(lhs_val, to_type->llvm(), "ext_val");
         } else if (to_type == Type::get_real()) {
-          return builder.CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
         } else {
           return nullptr;
         }
       } else if (from_type == Type::get_int()) {
         if (to_type == Type::get_real()) {
-          return builder.CreateSIToFP(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateSIToFP(lhs_val, to_type->llvm(), "ext_val");
         } else {
           return nullptr;
         }
       } else if (from_type == Type::get_uint()) {
         if (to_type == Type::get_real()) {
-          return builder.CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
         } else {
           return nullptr;
         }
@@ -210,32 +216,32 @@ namespace AST {
     if (token() == "()") {
       // TODO multiple arguments
       std::vector<llvm::Value*> arg_vals = { rhs_val };
-      return builder.CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+      return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
     }
 
     if (type() == Type::get_int()) {
-      if (token() == "+") { return builder.CreateAdd(lhs_val, rhs_val, "addtmp"); }
-      else if (token() == "-") { return builder.CreateSub(lhs_val, rhs_val, "subtmp"); }
-      else if (token() == "*") { return builder.CreateMul(lhs_val, rhs_val, "multmp"); }
-      else if (token() == "/") { return builder.CreateSDiv(lhs_val, rhs_val, "divtmp"); }
-      else if (token() == "%") { return builder.CreateSRem(lhs_val, rhs_val, "remtmp"); }
+      if (token() == "+") { return scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); }
+      else if (token() == "-") { return scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); }
+      else if (token() == "*") { return scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); }
+      else if (token() == "/") { return scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); }
+      else if (token() == "%") { return scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); }
 
      
       return nullptr;
 
     } else if (type() == Type::get_real()) {
-      if (token() == "+") { return builder.CreateFAdd(lhs_val, rhs_val, "addtmp"); }
-      else if (token() == "-") { return builder.CreateFSub(lhs_val, rhs_val, "subtmp"); }
-      else if (token() == "*") { return builder.CreateFMul(lhs_val, rhs_val, "multmp"); }
-      else if (token() == "/") { return builder.CreateFDiv(lhs_val, rhs_val, "divtmp"); }
+      if (token() == "+") { return scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); }
+      else if (token() == "-") { return scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); }
+      else if (token() == "*") { return scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); }
+      else if (token() == "/") { return scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); }
 
 //      auto lval = lhs_->generate_lvalue(scope);
 //      if (lval == nullptr) return nullptr;
 //
-//      if (token() == "+=") { builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); }
-//      else if (token() == "-=") { builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), lval); }
-//      else if (token() == "*=") { builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), lval); }
-//      else if (token() == "/=") { builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); }
+//      if (token() == "+=") { scope->builder().CreateStore(scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); }
+//      else if (token() == "-=") { scope->builder().CreateStore(scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"), lval); }
+//      else if (token() == "*=") { scope->builder().CreateStore(scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"), lval); }
+//      else if (token() == "/=") { scope->builder().CreateStore(scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); }
 
       return nullptr;
 
@@ -266,22 +272,22 @@ namespace AST {
         llvm::Value* cmp_val;
 
         if (ops_[i - 1]->token() == "<") {
-          cmp_val = builder.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
+          cmp_val = scope->builder().CreateICmpSLT(lhs_val, rhs_val, "lttmp");
 
         } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = builder.CreateICmpSLE(lhs_val, rhs_val, "letmp");
+          cmp_val = scope->builder().CreateICmpSLE(lhs_val, rhs_val, "letmp");
 
         } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = builder.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          cmp_val = scope->builder().CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
 
         } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = builder.CreateICmpNE(lhs_val, rhs_val, "netmp");
+          cmp_val = scope->builder().CreateICmpNE(lhs_val, rhs_val, "netmp");
 
         } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = builder.CreateICmpSGE(lhs_val, rhs_val, "getmp");
+          cmp_val = scope->builder().CreateICmpSGE(lhs_val, rhs_val, "getmp");
 
         } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = builder.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+          cmp_val = scope->builder().CreateICmpSGT(lhs_val, rhs_val, "gttmp");
 
         } else {
           error_log.log(ops_[i - 1]->line_num(),
@@ -290,7 +296,7 @@ namespace AST {
         }
 
         // TODO early exit
-        ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        ret_val = (i != 1) ? scope->builder().CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
 
       }
@@ -300,22 +306,22 @@ namespace AST {
         llvm::Value* cmp_val;
 
         if (ops_[i - 1]->token() == "<") {
-          cmp_val = builder.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
+          cmp_val = scope->builder().CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
 
         } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = builder.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
+          cmp_val = scope->builder().CreateFCmpOLE(lhs_val, rhs_val, "letmp");
 
         } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = builder.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
+          cmp_val = scope->builder().CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
 
         } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = builder.CreateFCmpONE(lhs_val, rhs_val, "netmp");
+          cmp_val = scope->builder().CreateFCmpONE(lhs_val, rhs_val, "netmp");
 
         } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = builder.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
+          cmp_val = scope->builder().CreateFCmpOGE(lhs_val, rhs_val, "getmp");
 
         } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = builder.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+          cmp_val = scope->builder().CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
 
         } else {
           // TODO 
@@ -326,7 +332,7 @@ namespace AST {
         // TODO should these be ordered, or can they be QNAN? probably.
 
         // TODO early exit
-        ret_val = (i != 1) ? builder.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        ret_val = (i != 1) ? scope->builder().CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
     } else if (exprs_[0]->type() == Type::get_bool()) {
@@ -337,10 +343,10 @@ namespace AST {
         for (size_t i = 1; i < exprs_.size(); ++i) {
           auto expr = exprs_[i];
           auto rhs_val = expr->generate_code(scope);
-          cmp_val = builder.CreateXor(cmp_val, rhs_val);
+          cmp_val = scope->builder().CreateXor(cmp_val, rhs_val);
         }
       } else {
-        auto parent_fn = builder.GetInsertBlock()->getParent();
+        auto parent_fn = scope->builder().GetInsertBlock()->getParent();
         // Condition blocks
         std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
         for (auto& block : cond_blocks) {
@@ -358,29 +364,29 @@ namespace AST {
 
         if (ops_.front()->token() == "&") {
           for (size_t i = 0; i < ops_.size(); ++i) {
-            builder.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
-            builder.SetInsertPoint(cond_blocks[i]);
+            scope->builder().CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
+            scope->builder().SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
         } else {  // if (ops_.front()->token() == "|") {
           for (size_t i = 0; i < ops_.size(); ++i) {
-            builder.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
-            builder.SetInsertPoint(cond_blocks[i]);
+            scope->builder().CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
+            scope->builder().SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
         }
 
-        builder.CreateCondBr(cmp_val, land_true_block, land_false_block);
+        scope->builder().CreateCondBr(cmp_val, land_true_block, land_false_block);
 
-        builder.SetInsertPoint(land_true_block);
-        builder.CreateBr(merge_block);
+        scope->builder().SetInsertPoint(land_true_block);
+        scope->builder().CreateBr(merge_block);
 
-        builder.SetInsertPoint(land_false_block);
-        builder.CreateBr(merge_block);
+        scope->builder().SetInsertPoint(land_false_block);
+        scope->builder().CreateBr(merge_block);
 
-        builder.SetInsertPoint(merge_block);
+        scope->builder().SetInsertPoint(merge_block);
         // Join two cases
-        llvm::PHINode* phi_node = builder.CreatePHI(
+        llvm::PHINode* phi_node = scope->builder().CreatePHI(
             Type::get_bool()->llvm(), 2, "merge");
         phi_node->addIncoming(llvm::ConstantInt::get(llvm::getGlobalContext(),
               llvm::APInt(1, 1, false)), land_true_block);
@@ -411,7 +417,7 @@ namespace AST {
       ++input_iter;
     }
 
-    auto old_block = builder.GetInsertBlock();
+    auto old_block = scope->builder().GetInsertBlock();
 
     fn_scope_->set_parent_function(llvm_function_);
     auto ret_type = static_cast<Function*>(expr_type_)->return_type();
@@ -422,7 +428,7 @@ namespace AST {
     // TODO move this to fn_scope_.enter()
     input_iter = inputs_.begin();
     for (auto& arg : llvm_function_->args()) {
-      builder.CreateStore(&arg,
+      scope->builder().CreateStore(&arg,
           (*input_iter)->declared_identifier()->alloc_);
       ++input_iter;
     }
@@ -431,7 +437,7 @@ namespace AST {
 
     fn_scope_->exit();
 
-    builder.SetInsertPoint(old_block);
+    scope->builder().SetInsertPoint(old_block);
     return llvm_function_;
   }
 
@@ -455,7 +461,7 @@ namespace AST {
       var = lhs->generate_lvalue(scope);
       if (var == nullptr) return nullptr;
 
-      builder.CreateStore(val, var);
+      scope->builder().CreateStore(val, var);
     }
     return nullptr;
   }
@@ -476,12 +482,12 @@ namespace AST {
           auto rhs_val = rhs_->generate_code(scope);
           if (rhs_val == nullptr) return nullptr;
 
-          builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+          scope->builder().CreateStore(scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
         } else {
           //TODO An optimization technique would be to only do short-circuiting
           // here if the thing we're avoiding is more expensive than the branch.
 
-          auto parent_fn = builder.GetInsertBlock()->getParent();
+          auto parent_fn = scope->builder().GetInsertBlock()->getParent();
           auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
           auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
 
@@ -490,9 +496,9 @@ namespace AST {
           llvm::BasicBlock* true_block = (main_op == '&' ? more_block : merge_block);
           llvm::BasicBlock* false_block = (main_op == '|' ? more_block : merge_block);
 
-          builder.CreateCondBr(lhs_val, true_block, false_block);
+          scope->builder().CreateCondBr(lhs_val, true_block, false_block);
 
-          builder.SetInsertPoint(more_block);
+          scope->builder().SetInsertPoint(more_block);
 
           // Generating lvalue for storage
           auto lval = lhs_->generate_lvalue(scope);
@@ -501,10 +507,10 @@ namespace AST {
           auto rhs_val = rhs_->generate_code(scope);
           if (rhs_val == nullptr) return nullptr;
 
-          builder.CreateStore(rhs_val, lval);
-          builder.CreateBr(merge_block);
+          scope->builder().CreateStore(rhs_val, lval);
+          scope->builder().CreateBr(merge_block);
 
-          builder.SetInsertPoint(merge_block);
+          scope->builder().SetInsertPoint(merge_block);
         }
 
         return nullptr;
@@ -519,22 +525,22 @@ namespace AST {
       if (lhs_->type() == Type::get_int()) {
         llvm::Value* computed_val = nullptr;
         switch (main_op) {
-          case '+': computed_val = builder.CreateAdd(lhs_val, rhs_val, "addtmp"); break;
-          case '-': computed_val = builder.CreateSub(lhs_val, rhs_val, "subtmp"); break;
-          case '*': computed_val = builder.CreateMul(lhs_val, rhs_val, "multmp"); break;
-          case '/': computed_val = builder.CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
-          case '%': computed_val = builder.CreateSRem(lhs_val, rhs_val, "remtmp"); break;
+          case '+': computed_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); break;
+          case '-': computed_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); break;
+          case '*': computed_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); break;
+          case '/': computed_val = scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
+          case '%': computed_val = scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); break;
           default: return nullptr;
         }
-        builder.CreateStore(computed_val, lval);
+        scope->builder().CreateStore(computed_val, lval);
         return nullptr;
 
       } else if (type() == Type::get_real()) {
         switch (main_op) {
-          case '+': builder.CreateStore(builder.CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); break;
-          case '-': builder.CreateStore(builder.CreateFSub(lhs_val, rhs_val, "subtmp"), lval); break;
-          case '*': builder.CreateStore(builder.CreateFMul(lhs_val, rhs_val, "multmp"), lval); break;
-          case '/': builder.CreateStore(builder.CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); break;
+          case '+': scope->builder().CreateStore(scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); break;
+          case '-': scope->builder().CreateStore(scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"), lval); break;
+          case '*': scope->builder().CreateStore(scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"), lval); break;
+          case '/': scope->builder().CreateStore(scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); break;
           default:;
         }
         return nullptr;
@@ -565,7 +571,7 @@ namespace AST {
   }
 
   llvm::Value* Case::generate_code(Scope* scope) {
-    auto parent_fn = builder.GetInsertBlock()->getParent();
+    auto parent_fn = scope->builder().GetInsertBlock()->getParent();
     // Condition blocks - The ith block is what you reach when you've
     // failed the ith condition, where conditions are labelled starting at zero.
     std::vector<llvm::BasicBlock*> case_blocks(pairs_->kv_pairs_.size() - 1);
@@ -576,13 +582,13 @@ namespace AST {
     }
 
     // Landing blocks
-    auto current_block = builder.GetInsertBlock();
+    auto current_block = scope->builder().GetInsertBlock();
     auto case_landing = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "case_landing", parent_fn);
-    builder.SetInsertPoint(case_landing);
-    llvm::PHINode* phi_node = builder.CreatePHI(type()->llvm(),
+    scope->builder().SetInsertPoint(case_landing);
+    llvm::PHINode* phi_node = scope->builder().CreatePHI(type()->llvm(),
           static_cast<unsigned int>(pairs_->kv_pairs_.size()), "phi");
-    builder.SetInsertPoint(current_block);
+    scope->builder().SetInsertPoint(current_block);
 
     for (size_t i = 0; i < case_blocks.size(); ++i) {
       auto cmp_val = pairs_->kv_pairs_[i].first->generate_code(scope);
@@ -590,23 +596,23 @@ namespace AST {
         llvm::getGlobalContext(), "land_true", parent_fn);
  
       // If it's false, move on to the next block
-      builder.CreateCondBr(cmp_val, true_block, case_blocks[i]);
-      builder.SetInsertPoint(true_block);
+      scope->builder().CreateCondBr(cmp_val, true_block, case_blocks[i]);
+      scope->builder().SetInsertPoint(true_block);
       auto output_val = pairs_->kv_pairs_[i].second->generate_code(scope);
 
       // NOTE: You may be tempted to state that you are coming from the
       // block 'true_block'. However, if the code generated for the right-hand
       // side of the '=>' node is not just a single basic block, this will not
       // be the case.
-      phi_node->addIncoming(output_val, builder.GetInsertBlock());
-      builder.CreateBr(case_landing);
+      phi_node->addIncoming(output_val, scope->builder().GetInsertBlock());
+      scope->builder().CreateBr(case_landing);
 
-      builder.SetInsertPoint(case_blocks[i]);
+      scope->builder().SetInsertPoint(case_blocks[i]);
     }
     auto output_val = pairs_->kv_pairs_.back().second->generate_code(scope);
-    phi_node->addIncoming(output_val, builder.GetInsertBlock());
-    builder.CreateBr(case_landing);
-    builder.SetInsertPoint(case_landing);
+    phi_node->addIncoming(output_val, scope->builder().GetInsertBlock());
+    scope->builder().CreateBr(case_landing);
+    scope->builder().SetInsertPoint(case_landing);
 
     return phi_node;
   }
@@ -619,12 +625,12 @@ namespace AST {
     auto element_type = type_as_array->data_type()->llvm();
 
     // Allocate space for the array literal
-    auto array_data = type_as_array->make(data::const_int(elems_size));
+    auto array_data = type_as_array->make(scope->builder(), data::const_int(elems_size));
 
     // TODO Would it be faster to increment the pointer each time? Probably
     for (size_t i = 0; i < elems_size; ++i) {
-      builder.CreateStore(elems_[i]->generate_code(scope),
-          builder.CreateGEP(element_type,
+      scope->builder().CreateStore(elems_[i]->generate_code(scope),
+          scope->builder().CreateGEP(element_type,
             array_data, { data::const_int(i) }));
     }
 
@@ -635,7 +641,7 @@ namespace AST {
   }
 
   llvm::Value* While::generate_code(Scope* scope) {
-    auto parent_fn = builder.GetInsertBlock()->getParent();
+    auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
     auto while_cond_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "while_cond", parent_fn);
@@ -643,28 +649,32 @@ namespace AST {
         llvm::getGlobalContext(), "while_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
-    body_scope_->set_return_type(nullptr);
     body_scope_->make_loop();
 
-    body_scope_->allocate();
-    builder.CreateBr(while_cond_block);
-    builder.SetInsertPoint(while_cond_block);
+    // Annoying, but we have to allocate with the builder for the outer scope
+    body_scope_->allocate(scope->builder());
 
-    builder.CreateCondBr(cond_->generate_code(scope),
+    scope->builder().CreateBr(while_cond_block);
+    scope->builder().SetInsertPoint(while_cond_block);
+
+    scope->builder().CreateCondBr(cond_->generate_code(scope),
         body_scope_->entry_block(), while_landing_block);
 
     body_scope_->enter();
     statements_->generate_code(body_scope_);
-    body_scope_->exit();
 
-    builder.CreateBr(while_cond_block);
-    builder.SetInsertPoint(while_landing_block);
+    // When you exit the loop, you branch to its start. That's why
+    // we have have 'while_cond_block' below. It's not about exiting
+    // the loop, but about cleanup on each loop iteration.
+    body_scope_->exit(while_cond_block);
+
+    scope->builder().SetInsertPoint(while_landing_block);
 
     return nullptr;
   }
 
   llvm::Value* Conditional::generate_code(Scope* scope) {
-    auto parent_fn = builder.GetInsertBlock()->getParent();
+    auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
     auto if_cond_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "if_cond", parent_fn);
@@ -674,18 +684,18 @@ namespace AST {
     body_scope_->set_parent_function(parent_fn);
     body_scope_->set_return_type(nullptr);
 
-    builder.CreateBr(if_cond_block);
-    builder.SetInsertPoint(if_cond_block);
+    scope->builder().CreateBr(if_cond_block);
+    scope->builder().SetInsertPoint(if_cond_block);
 
-    builder.CreateCondBr(cond_->generate_code(scope),
+    scope->builder().CreateCondBr(cond_->generate_code(scope),
         body_scope_->entry_block(), if_landing_block);
 
     body_scope_->enter();
     statements_->generate_code(body_scope_);
     body_scope_->exit();
 
-    builder.CreateBr(if_landing_block);
-    builder.SetInsertPoint(if_landing_block);
+    scope->builder().CreateBr(if_landing_block);
+    scope->builder().SetInsertPoint(if_landing_block);
 
     return nullptr;
   }

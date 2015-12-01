@@ -70,13 +70,13 @@ int main(int argc, char *argv[]) {
       Type::get_function(Type::get_void(), Type::get_int())->llvm(),
       llvm::Function::ExternalLinkage, "main", global_module);
 
-
   // TODO write the language rules to guarantee that the parser produces a
   // Statements node at top level.
   auto global_statements =
     std::static_pointer_cast<AST::Statements>(root_node);
 
   ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
+  builder.SetInsertPoint(global_scope->entry_block());
 
   global_statements->assign_decl_to_scope(global_scope);
   global_statements->join_identifiers(global_scope);

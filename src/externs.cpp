@@ -60,6 +60,13 @@ namespace data {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, n, is_signed));
   }
+
+  llvm::Value* const_char(char c) {
+    // TODO check safety of char cast
+    return llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(8, static_cast<size_t>(c), false));
+  }
+
 }  // namespace data
 
 ErrorLog error_log;
