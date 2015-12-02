@@ -19,6 +19,8 @@ namespace AST {
 class Function;
 class Pointer;
 
+
+
 class Type {
   public:
     static Type* get_type_error();
@@ -41,20 +43,24 @@ class Type {
     static std::vector<size_t> type_bytes;
 
     virtual std::string to_string() const = 0;
-
     virtual size_t bytes() const = 0;
+    virtual llvm::Function* print_function() = 0;
 
     virtual bool is_array() const { return false; }
-    virtual bool is_tuple() const { return false; }
     virtual bool is_function() const { return false; }
     virtual bool is_pointer() const { return false; }
+    virtual bool is_primitive() const { return false; }
+    virtual bool is_tuple() const { return false; }
     virtual bool is_void() const { return this == Type::get_void(); }
+
 
     llvm::Type* llvm() const { return llvm_type_; }
 
+    Type() : print_fn_(nullptr) {}
     virtual ~Type() {}
 
   protected:
+    llvm::Function* print_fn_;
     llvm::Type* llvm_type_;
 };
 
@@ -63,6 +69,7 @@ class Primitive : public Type {
     friend class Type;
     virtual ~Primitive() {}
     virtual std::string to_string() const { return Type::type_strings[prim_type_]; }
+    virtual bool is_primitive() const { return true; }
 
   private:
     static constexpr size_t num_primitive_types_ = 9;
@@ -72,6 +79,8 @@ class Primitive : public Type {
     };
 
     virtual size_t bytes() const { return Type::type_bytes[prim_type_]; }
+    virtual llvm::Function* print_function();
+
     PrimitiveEnum prim_type_;
 
     Primitive(PrimitiveEnum pe);
@@ -92,11 +101,18 @@ class Function : public Type {
     }
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
+    virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << argument_type()->to_string() << " -> ";
-      bool needs_parens = return_type()->is_function() || return_type()->is_tuple();
+      bool needs_parens = argument_type()->is_function();
+      if (needs_parens) ss << "(";
+      ss << argument_type()->to_string();
+      if (needs_parens) ss << ")";
+ 
+      ss << " -> ";
+
+      needs_parens = return_type()->is_function();
       if (needs_parens) ss << "(";
       ss << return_type()->to_string();
       if (needs_parens) ss << ")";
@@ -108,13 +124,21 @@ class Function : public Type {
   private:
     Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
       // TODO should I expand an input tuple into a vector?
-      std::vector<llvm::Type*> input_list(1, input_type_->llvm());
+      auto llvm_input = input_type_->is_function()
+        ? Type::get_pointer(input_type_)->llvm()
+        : input_type_->llvm();
+
+      auto llvm_output = output_type_->is_function()
+        ? Type::get_pointer(output_type_)->llvm()
+        : output_type_->llvm();
+
+      std::vector<llvm::Type*> input_list(1, llvm_input);
 
       if (input_type_ == get_void()) {
         input_list.clear();
       }
 
-      llvm_type_ = llvm::FunctionType::get( output_type_->llvm(),
+      llvm_type_ = llvm::FunctionType::get( llvm_output,
           input_list, false);
     }
 
@@ -132,6 +156,7 @@ class Pointer : public Type {
     virtual bool is_pointer() const { return true; }
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
+    virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
       std::stringstream ss;
@@ -170,19 +195,18 @@ class Tuple : public Type {
 
       return output;
     }
+    virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
       std::stringstream ss;
 
       auto iter = tuple_types_.begin();
-      ss << (*iter)->to_string();
+      ss << "(" << (*iter)->to_string();
       while (iter != tuple_types_.end()) {
-        bool needs_parens = (*iter)->is_tuple();
-        ss << (needs_parens ? " (" : " ");
         ss << (*iter)->to_string();
-        ss << (needs_parens ? ") " : " ");
         ++iter;
       }
+      ss << ")";
 
       return ss.str();
     }
@@ -203,6 +227,7 @@ class Array : public Type {
     friend class Type;
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }  // TODO
+    virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
       std::stringstream ss;

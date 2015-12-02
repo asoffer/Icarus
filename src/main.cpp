@@ -14,7 +14,7 @@
 
 extern llvm::Module* global_module;
 extern llvm::Function* global_function;
-extern llvm::IRBuilder<> builder;
+extern llvm::IRBuilder<> global_builder;
 
 namespace cstdlib {
   extern llvm::Constant* free();
@@ -76,7 +76,9 @@ int main(int argc, char *argv[]) {
     std::static_pointer_cast<AST::Statements>(root_node);
 
   ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
-  builder.SetInsertPoint(global_scope->entry_block());
+
+  // TODO is this necessary?
+  global_builder.SetInsertPoint(global_scope->entry_block());
 
   global_statements->assign_decl_to_scope(global_scope);
   global_statements->join_identifiers(global_scope);

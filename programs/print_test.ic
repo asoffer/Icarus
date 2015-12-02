@@ -1,13 +1,21 @@
 hello : [5; char] = ['H', 'e', 'l', 'l', 'o']
 world := [' ', 'w', 'o', 'r', 'l', 'd', '!', '\n']
 i := 0
-while i < 5 {
-  print hello[i]
-  i += 1
-}
+print hello
 
 i = 0
 while i < 8 {
   print world[i]
   i += 1
 }
+
+print '\n'
+print [3]
+print '\n'
+print [3,4]
+print '\n'
+print [[1, 2], [3, 4]]
+print'\n'
+print [[2], [3, 4]]  // this should be illegal
+print'\n'
+

@@ -7,21 +7,19 @@
 // and thereby streamline the architecture.
 
 extern llvm::Module* global_module;
-extern llvm::IRBuilder<> builder;
+extern llvm::IRBuilder<> global_builder;
 
 namespace cstdlib {
-  extern llvm::Constant* malloc();
-  extern llvm::Constant* putchar();
-  extern llvm::Constant* puts();
   extern llvm::Constant* printf();
 
-  template<char C> llvm::Value* format() {
+  template<char C> llvm::Value* fmt() {
     std::string char_str(1, C);
     static llvm::Value* format_ =
-      builder.CreateGlobalStringPtr("%" + char_str, "percent_" + char_str);
+      global_builder.CreateGlobalStringPtr("%" + char_str, "percent_" + char_str);
 
     return format_;
   }
+
 
 }  // namespace cstdlib
 
@@ -99,73 +97,11 @@ namespace AST {
       return scope->builder().CreateNot(val, "nottmp");
 
     } else if (is_print()) {
-      if (expr_->type() == Type::get_bool()) {
-        auto true_str = scope->builder().CreateGlobalStringPtr("true");
-        auto false_str = scope->builder().CreateGlobalStringPtr("false");
-
-        auto parent_block = scope->builder().GetInsertBlock()->getParent();
-
-        auto true_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "true_block", parent_block);
-        auto false_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "false_block", parent_block);
-        auto merge_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "merge_block", parent_block);
-
-
-        scope->builder().CreateCondBr(val, true_block, false_block);
-
-        scope->builder().SetInsertPoint(true_block);
-        scope->builder().CreateBr(merge_block);
-
-        scope->builder().SetInsertPoint(false_block);
-        scope->builder().CreateBr(merge_block);
-
-
-        scope->builder().SetInsertPoint(merge_block);
-        llvm::PHINode* phi_node =
-          scope->builder().CreatePHI(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()), 2, "merge");
-        phi_node->addIncoming(true_str, true_block);
-        phi_node->addIncoming(false_str, false_block);
-
-        scope->builder().CreateCall(cstdlib::puts(), phi_node);
-
-      } else if (expr_->type() == Type::get_char()) {
-        scope->builder().CreateCall(cstdlib::putchar(), { val });
-
-      } else if (expr_->type() == Type::get_int()
-          || expr_->type() == Type::get_uint()) {
-        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'d'>(), val });
-
-      } else if (expr_->type() == Type::get_real()) {
-        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'f'>(), val });
-
-      } else if (expr_->type() == Type::get_type()) {
-        auto type_as_string = scope->builder().CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
-        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), type_as_string });
-
-      } else if (expr_->type()->is_function()) {
-        auto fn_str = scope->builder().CreateGlobalStringPtr("{" + expr_->type()->to_string() + "}");
-
-        scope->builder().CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_str });
-
-      } else if (expr_->type()->is_tuple()) {
-        // TODO
-
-      } else if (expr_->type()->is_pointer()) {
-        // TODO
-
-      } else if (expr_->type()->is_array()) {
-        // TODO optimize if you know array length ahead of time.
-//        scope->builder().CreateCall(cstdlib::putchar(), { data::const_char('[') });
-//
-//        scope->builder().
-//
-//        scope->builder().CreateCall(cstdlib::putchar(), { data::const_char(']') });
-
-      } else {
-        // TODO
+      if (expr_->type() == Type::get_type()) {
+        val = global_builder.CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
       }
+
+      scope->builder().CreateCall(expr_->type()->print_function(), { val });
     }
 
     return nullptr;
@@ -428,7 +364,7 @@ namespace AST {
     // TODO move this to fn_scope_.enter()
     input_iter = inputs_.begin();
     for (auto& arg : llvm_function_->args()) {
-      scope->builder().CreateStore(&arg,
+      fn_scope_->builder().CreateStore(&arg,
           (*input_iter)->declared_identifier()->alloc_);
       ++input_iter;
     }

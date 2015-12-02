@@ -3,7 +3,7 @@
 
 llvm::Module* global_module;
 llvm::Function* global_function;
-llvm::IRBuilder<> builder(llvm::getGlobalContext());
+llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
 
 // TODO Only generate these if they are necessary
 //
