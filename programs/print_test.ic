@@ -1,21 +1,110 @@
-hello : [5; char] = ['H', 'e', 'l', 'l', 'o']
-world := [' ', 'w', 'o', 'r', 'l', 'd', '!', '\n']
-i := 0
-print hello
+// bools
+print true
+print ','
+print 1 < 2 < 3
+print ','
+print 1 < 2 > 3
+print ','
+print false
+print ','
+b1 : bool = true  // longhand definition
+b2 := false  // shorthand definition
+print b1
+print ','
+print b2
+print '\n'
 
-i = 0
-while i < 8 {
-  print world[i]
-  i += 1
+// characters
+print 'a'  // literal
+print ','
+b : char = 'b'  // longhand definition
+print 'b'
+print ','
+c := 'c'  // shorthand definition
+print c
+
+print '\n'
+
+// ints
+print 17  // literal
+print ','
+n : int = 17 - 34  // longhand definition
+print n
+print ','
+m := 102  // shorthand definition
+print m
+
+print '\n'
+
+// reals
+print 17.51  // literal
+print ','
+r : real = 17.34 - 34.102  // longhand definition
+print r
+print ','
+s := 102.204  // shorthand definition
+print s
+
+print '\n'
+
+// arrays
+print ['H', 'e', 'l', 'l', 'o']  // literal
+world : [6; char] = [' ', 'w', 'o', 'r', 'l', 'd']  // longhand definition
+print world
+exclamation := ['!', '\n']  // shorthand definition
+print exclamation
+print '\n'
+
+// multi-dim arrays
+print [[1, 2], [3, 4]]  // literal
+print '\n'
+arr1 : [2, 3; [2; int]] = [[[1, 2],[3, 4],[5, 6]], [[7, 8],[9, 10],[11, 12]]]  // longhand definition
+print arr1
+print '\n'
+arr2 := [[[1, 2],[3, 4],[5, 6]], [[7, 8],[9, 10],[11, 12]]]  // shorthand definition
+print arr2
+print '\n'
+
+// functions 
+print (x: int) -> int { // literal
+  return x
+}
+print '\n'
+ 
+print plus_half
+print '\n'
+print zero_or_three
+print '\n'
+
+plus_half : int -> real = (x: int) -> real {  // longhand
+  return (x :> real) + 0.5
 }
 
-print '\n'
-print [3]
-print '\n'
-print [3,4]
-print '\n'
-print [[1, 2], [3, 4]]
-print'\n'
-print [[2], [3, 4]]  // this should be illegal
-print'\n'
+zero_or_three := (bb: bool) -> int {  // shorthand
+  return case {
+    bb    =>  3
+    else  =>  0
+  }
+}
 
+// types
+print int
+print '\n'
+print uint
+print '\n'
+print bool -> int -> int
+print '\n'
+print (bool -> int) -> int
+print '\n'
+print bool -> (int -> int)
+print '\n'
+print [5; int]
+print '\n'
+print [5,3; char]
+print '\n'
+print [5; [5; real]]
+print '\n'
+print [5, 1; bool] -> [2, 2, 2; int]
+print '\n'
+print type
+print '\n'

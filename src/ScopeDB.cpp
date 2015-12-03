@@ -133,7 +133,6 @@ namespace ScopeDB {
             static_cast<llvm::FunctionType*>(decl_type->llvm()),
             llvm::Function::ExternalLinkage, decl_ptr->identifier_string(), global_module);
       } else if (decl_type->is_array()) {
-
         auto type_as_array = static_cast<Array*>(decl_type);
 
         // TODO currently it doesn't matter if the length is technically

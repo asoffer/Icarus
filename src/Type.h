@@ -45,6 +45,7 @@ class Type {
     virtual std::string to_string() const = 0;
     virtual size_t bytes() const = 0;
     virtual llvm::Function* print_function() = 0;
+    virtual Type* replace(Type* pattern, Type* replacement) = 0;
 
     virtual bool is_array() const { return false; }
     virtual bool is_function() const { return false; }
@@ -69,6 +70,7 @@ class Primitive : public Type {
     friend class Type;
     virtual ~Primitive() {}
     virtual std::string to_string() const { return Type::type_strings[prim_type_]; }
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual bool is_primitive() const { return true; }
 
   private:
@@ -101,6 +103,7 @@ class Function : public Type {
     }
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -156,6 +159,7 @@ class Pointer : public Type {
     virtual bool is_pointer() const { return true; }
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -195,6 +199,7 @@ class Tuple : public Type {
 
       return output;
     }
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -229,20 +234,16 @@ class Array : public Type {
     virtual size_t bytes() const { return pointer_size_in_bytes; }  // TODO
     virtual llvm::Function* print_function();
 
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const {
       std::stringstream ss;
-      ss << "[";
-      if (has_dynamic_length()) {
-        ss << "&";
-      } else {
-        ss << len_;
-      }
+      ss << "[" << (has_dynamic_length() ? "-" : std::to_string(len_));
 
       const Type* type_ptr = type_;
 
       while (type_ptr->is_array()) {
         auto array_ptr = static_cast<const Array*>(type_ptr);
-        ss << ", " << len_;
+        ss << ", " << (has_dynamic_length() ? "-" : std::to_string(len_));
         type_ptr = array_ptr->type_;
       }
       

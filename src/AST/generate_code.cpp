@@ -33,6 +33,7 @@ namespace AST {
     if (type()->is_function()) {
       return global_module->getFunction(token());
     }
+
     return scope->builder().CreateLoad(alloc_, token());
   }
 
@@ -339,8 +340,8 @@ namespace AST {
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
 
     if (llvm_function_ == nullptr) {
-      // For now, this should never happen
-      std::cout << "??? WTF ???" << std::endl;
+      // NOTE: This means a function is not assigned.
+
       llvm_function_ = llvm::Function::Create(
           static_cast<llvm::FunctionType*>(type()->llvm()),
           llvm::Function::ExternalLinkage, "__anon_fn", global_module);

@@ -1,8 +1,0 @@
-print true  // true
-print false // false
-
-b := true
-print b  // true
-
-print 1 < 2 < 3  // true
-print 1 < 2 < 2  // false

@@ -191,6 +191,40 @@ llvm::Value* Array::make(llvm::IRBuilder<>& bldr, llvm::Value* len) {
   return bldr.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
 }
 
+Type* Primitive::replace(Type* pattern, Type* replacement) {
+  return (pattern == this) ? replacement : this;
+}
+
+Type* Function::replace(Type* pattern, Type* replacement) {
+  return (pattern == this)
+    ? replacement
+    : Type::get_function(
+        input_type_->replace(pattern, replacement),
+        output_type_->replace(pattern, replacement));
+}
+
+Type* Pointer::replace(Type* pattern, Type* replacement) {
+  return (pattern == this)
+    ? replacement
+    : Type::get_pointer(pointee_type_->replace(pattern, replacement));
+}
+
+Type* Tuple::replace(Type* pattern, Type* replacement) {
+  if (pattern == this) return replacement;
+
+  auto new_vec = std::vector<Type*>(entry_types_.size(), nullptr);
+  for (size_t i = 0; i < entry_types_.size(); ++i) {
+    new_vec[i] = entry_types_[i]->replace(pattern, replacement);
+  }
+
+  return Type::get_tuple(new_vec);
+}
+
+Type* Array::replace(Type* pattern, Type* replacement) {
+  return (pattern == this)
+    ? replacement
+    : Type::get_array(type_->replace(pattern, replacement), len_);
+}
 
 llvm::Function* Primitive::print_function() {
   if (print_fn_ != nullptr) return print_fn_;
@@ -204,15 +238,15 @@ llvm::Function* Primitive::print_function() {
   // Types require compile-time generated strings. Moreover the .llvm()
   // method returns a nullptr for type Types. Instead, we pass in its
   // string representation, but this means we must take 
-  llvm::Type* input_type = (this == Type::get_type())
-    ? llvm::Type::getInt8PtrTy(llvm::getGlobalContext())
-    : llvm();
+
+  auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
 
   // Otherwise, actually write our own
   print_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(Type::get_void()->llvm(), { input_type }, false),
+      llvm::FunctionType::get(
+        Type::get_void()->llvm(), { input_type->llvm() }, false),
       llvm::Function::ExternalLinkage,
-      "print" + to_string(), global_module);
+      "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
   ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
@@ -274,13 +308,13 @@ llvm::Function* Primitive::print_function() {
 llvm::Function* Array::print_function() {
   if (print_fn_ != nullptr) return print_fn_;
 
-  // TODO an array of types will be problematic. need to build a tool
-  // that replaces them all with global string pointers
+  auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
 
   print_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(Type::get_void()->llvm(), { llvm() }, false),
+      llvm::FunctionType::get(
+        Type::get_void()->llvm(), { input_type->llvm() }, false),
       llvm::Function::ExternalLinkage,
-      "print" + to_string(), global_module);
+      "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
   ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
@@ -363,7 +397,35 @@ llvm::Function* Array::print_function() {
   return print_fn_;
 }
 
+llvm::Function* Function::print_function() {
+  if (print_fn_ != nullptr) return print_fn_;
+
+  auto fn_print_str = global_builder.CreateGlobalStringPtr(
+      "<function " + to_string() + ">");
+
+  auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
+
+  // TODO
+  print_fn_ = llvm::Function::Create(
+      llvm::FunctionType::get(
+        Type::get_void()->llvm(), { Type::get_pointer(input_type)->llvm() }, false),
+      llvm::Function::ExternalLinkage,
+      "print." + to_string(), global_module);
+
+  ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
+
+  fn_scope->set_parent_function(print_fn_);
+  fn_scope->set_return_type(Type::get_void());
+
+  llvm::IRBuilder<>& bldr = fn_scope->builder();
+
+  fn_scope->enter();
+  bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_print_str });
+  fn_scope->exit();
+
+  return print_fn_;
+}
+
 // TODO complete these
-llvm::Function* Function::print_function() { return nullptr; }
 llvm::Function* Pointer::print_function() { return nullptr; }
 llvm::Function* Tuple::print_function() { return nullptr; }
