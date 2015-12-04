@@ -183,7 +183,8 @@ namespace AST {
   void ArrayLiteral::verify_types() {
     auto type_to_match = elems_.front()->expr_type_;
 
-    expr_type_ = Type::get_array(type_to_match);
+    // TODO size_t -> int cast here. Check safety.
+    expr_type_ = Type::get_array(type_to_match, static_cast<int>(elems_.size()));
     for (const auto& el : elems_) {
       if (el->expr_type_ != type_to_match) {
         error_log.log(line_num_, "Type error: Array literal must have consistent type");

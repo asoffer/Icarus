@@ -21,8 +21,10 @@ namespace AST {
   }
 
   Type* ArrayType::interpret_as_type() const {
-    // TODO incorporate length when known at compile time
-    return Type::get_array(array_type_->interpret_as_type(), -1);
+    int len = (len_->is_literal(Type::get_int()) || len_->is_literal(Type::get_uint()))
+      ? std::stoi(len_->token())
+      : -1;
+    return Type::get_array(array_type_->interpret_as_type(), len);
   }
 
   Type* ChainOp::interpret_as_type() const {

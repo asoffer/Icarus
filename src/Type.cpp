@@ -9,7 +9,6 @@ namespace cstdlib {
 
   extern llvm::Constant* putchar();
   extern llvm::Constant* printf();
-  extern llvm::Value* const_char(char c);
 
   template<char C> llvm::Value* format() {
     std::string char_str(1, C);
@@ -163,8 +162,11 @@ std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
 
 
-llvm::Value* Array::make(llvm::IRBuilder<>& bldr, llvm::Value* len) {
+llvm::Value* Array::make(llvm::IRBuilder<>& bldr) {
   // Compute the amount of space to allocate
+
+  // NOTE: this cast is safe because len_ is -1 or positive
+  auto len = data::const_int(len_ == -1 ? 0 : static_cast<size_t>(len_));
   auto bytes_per_elem = data::const_int(data_type()->bytes());
   auto int_size = data::const_int(Type::get_int()->bytes());
   auto zero = data::const_int(0);
@@ -429,3 +431,42 @@ llvm::Function* Function::print_function() {
 // TODO complete these
 llvm::Function* Pointer::print_function() { return nullptr; }
 llvm::Function* Tuple::print_function() { return nullptr; }
+
+Type::time_loc Primitive::type_time() const {
+  // Type::compile_time has a value of 1, and either_time has a value of 0
+  // so we can use the casts bool -> int -> time_loc
+  return static_cast<Type::time_loc>(static_cast<int>(this == Type::get_type()));
+}
+
+Type::time_loc Array::type_time() const {
+  // has_dynamic_length() will either be 0 or 2.
+  // As a Type::time_loc object, that's either "either_time"
+  // or "run_time" respectively.
+  return static_cast<Type::time_loc>(
+    static_cast<int>(data_type()->type_time())
+    |
+    (static_cast<int>(has_dynamic_length()) << 1));
+}
+
+Type::time_loc Function::type_time() const {
+  return static_cast<Type::time_loc>(
+      static_cast<int>(argument_type()->type_time())
+      |
+      static_cast<int>(return_type()->type_time()));
+}
+
+Type::time_loc Pointer::type_time() const {
+  // It's not allowed to be a pointer to a compile-time type,
+  // but we need not check this here. This will be checked by
+  // verify_types().
+  return Type::run_time;
+}
+
+Type::time_loc Tuple::type_time() const {
+  int output = Type::either_time;
+  for (auto t : tuple_types_) {
+    output |= t->type_time();
+  }
+
+  return static_cast<Type::time_loc>(output);
+}

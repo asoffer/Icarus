@@ -23,6 +23,8 @@ namespace AST {
   class FunctionLiteral;
 }
 
+enum class ScopeType { loop, cond, func };
+
 namespace ScopeDB {
   class Scope {
     public:
@@ -67,9 +69,11 @@ namespace ScopeDB {
         exit_block_->insertInto(fn);
       }
 
-      void make_loop() {
-        is_loop_ = true;
-        set_return_type(nullptr);
+      void make_type(ScopeType st) {
+        scope_type_ = st;
+        if (scope_type_ != ScopeType::func) {
+          set_return_type(nullptr);
+        }
       }
 
       void make_return_void();
@@ -90,7 +94,7 @@ namespace ScopeDB {
         exit_block_(llvm::BasicBlock::Create(
               llvm::getGlobalContext(), "exit")),
         bldr_(llvm::getGlobalContext()),
-        is_loop_(false) {
+        scope_type_(ScopeType::func) {
 
           bldr_.SetInsertPoint(entry_block());
         }
@@ -107,7 +111,7 @@ namespace ScopeDB {
 
       llvm::IRBuilder<> bldr_;
 
-      bool is_loop_;
+      ScopeType scope_type_;
 
       // Important invariant: A pointer only ever points to scopes held in
       // higehr indices. The global (root) scope must be the last scope.

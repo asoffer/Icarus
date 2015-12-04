@@ -20,9 +20,15 @@ class Function;
 class Pointer;
 
 
-
 class Type {
   public:
+    enum time_loc {
+      either_time  = 0x0,
+      compile_time = 0x1,
+      run_time     = 0x2,
+      mixed_time   = 0x3
+    };
+
     static Type* get_type_error();
     static Type* get_unknown();
     static Type* get_bool();
@@ -46,6 +52,7 @@ class Type {
     virtual size_t bytes() const = 0;
     virtual llvm::Function* print_function() = 0;
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
+    virtual Type::time_loc type_time() const = 0;
 
     virtual bool is_array() const { return false; }
     virtual bool is_function() const { return false; }
@@ -71,6 +78,7 @@ class Primitive : public Type {
     virtual ~Primitive() {}
     virtual std::string to_string() const { return Type::type_strings[prim_type_]; }
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type::time_loc type_time() const;
     virtual bool is_primitive() const { return true; }
 
   private:
@@ -104,6 +112,7 @@ class Function : public Type {
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type::time_loc type_time() const;
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -160,6 +169,7 @@ class Pointer : public Type {
 
     virtual size_t bytes() const { return pointer_size_in_bytes; }
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type::time_loc type_time() const;
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -200,6 +210,7 @@ class Tuple : public Type {
       return output;
     }
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type::time_loc type_time() const;
     virtual llvm::Function* print_function();
 
     virtual std::string to_string() const {
@@ -235,6 +246,7 @@ class Array : public Type {
     virtual llvm::Function* print_function();
 
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type::time_loc type_time() const;
     virtual std::string to_string() const {
       std::stringstream ss;
       ss << "[" << (has_dynamic_length() ? "-" : std::to_string(len_));
@@ -251,7 +263,7 @@ class Array : public Type {
       return ss.str();
     }
 
-    llvm::Value* make(llvm::IRBuilder<>& bldr, llvm::Value* len);
+    llvm::Value* make(llvm::IRBuilder<>& bldr);
     
     virtual bool is_array() const { return true; }
     virtual Type* data_type() const { return type_; }

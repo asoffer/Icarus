@@ -65,18 +65,16 @@ namespace AST {
 
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
 
-      virtual bool is_identifier() const {
-        return type_ == Language::identifier;
-      }
-      virtual bool is_expression() const { return false; }
-
       bool is_return() const {
         return node_type() == Language::return_expression;
       }
       bool is_print() const {
         return node_type() == Language::print_expression;
       }
- 
+
+      virtual bool is_identifier() const { return type_ == Language::identifier; }
+      virtual bool is_terminal() const { return false; }
+      virtual bool is_expression() const { return false; }
       virtual bool is_binop() const { return false; }
       virtual bool is_chain_op() const { return false; }
       virtual bool is_comma_list() const { return false; }
@@ -126,6 +124,9 @@ namespace AST {
     virtual llvm::Value* generate_lvalue(Scope* scope) = 0;
 
     virtual Type* type() const { return expr_type_; }
+    virtual bool is_literal(Type* t) const {
+      return is_terminal() && !is_identifier() && type() == t;
+    }
 
     virtual bool is_expression() const { return true; }
 
@@ -463,6 +464,8 @@ namespace AST {
       virtual void assign_decl_to_scope(Scope* scope);
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
+
+      virtual bool is_terminal() const { return true; }
 
       virtual Type* interpret_as_type() const;
       virtual llvm::Value* generate_code(Scope* scope);

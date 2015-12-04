@@ -555,16 +555,16 @@ namespace AST {
   }
 
   llvm::Value* ArrayLiteral::generate_code(Scope* scope) {
-    auto elems_size = elems_.size();
-
 
     auto type_as_array = static_cast<Array*>(expr_type_);
     auto element_type = type_as_array->data_type()->llvm();
 
     // Allocate space for the array literal
-    auto array_data = type_as_array->make(scope->builder(), data::const_int(elems_size));
+    auto array_data = type_as_array->make(scope->builder());
+    // data::const_int(elems_size));
 
     // TODO Would it be faster to increment the pointer each time? Probably
+    auto elems_size = elems_.size();
     for (size_t i = 0; i < elems_size; ++i) {
       scope->builder().CreateStore(elems_[i]->generate_code(scope),
           scope->builder().CreateGEP(element_type,
@@ -586,7 +586,7 @@ namespace AST {
         llvm::getGlobalContext(), "while_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
-    body_scope_->make_loop();
+    body_scope_->make_type(ScopeType::loop);
 
     // Annoying, but we have to allocate with the builder for the outer scope
     body_scope_->allocate(scope->builder());
@@ -619,7 +619,7 @@ namespace AST {
         llvm::getGlobalContext(), "if_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
-    body_scope_->set_return_type(nullptr);
+    body_scope_->make_type(ScopeType::cond);
 
     scope->builder().CreateBr(if_cond_block);
     scope->builder().SetInsertPoint(if_cond_block);
@@ -629,9 +629,8 @@ namespace AST {
 
     body_scope_->enter();
     statements_->generate_code(body_scope_);
-    body_scope_->exit();
+    body_scope_->exit(if_landing_block);
 
-    scope->builder().CreateBr(if_landing_block);
     scope->builder().SetInsertPoint(if_landing_block);
 
     return nullptr;

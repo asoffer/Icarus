@@ -50,7 +50,7 @@ namespace ScopeDB {
 
     // looping scopes must allocate before entering the scope
     // to avoid stack overflow
-    if (!is_loop_) allocate(bldr_);
+    if (scope_type_ != ScopeType::loop) allocate(bldr_);
   }
 
   void Scope::exit(llvm::BasicBlock* jump_to) {
@@ -78,12 +78,11 @@ namespace ScopeDB {
       }
     }
 
-
     // Every basic block must end with a return or a branch.
     // If there is no return type, this scope does not represent a function,
     // and so we branch to the block passed in. Otherwise, we return the
     // appropriate value.
-    if (return_type_ == nullptr) {
+    if (scope_type_ != ScopeType::func) {
       bldr_.CreateBr(jump_to);
 
     } else if (return_type_ == Type::get_void()) {
@@ -134,16 +133,21 @@ namespace ScopeDB {
             llvm::Function::ExternalLinkage, decl_ptr->identifier_string(), global_module);
       } else if (decl_type->is_array()) {
         auto type_as_array = static_cast<Array*>(decl_type);
-
         // TODO currently it doesn't matter if the length is technically
         // dynamic or not. We're doing no optimizations using this
         decl_ptr->declared_identifier()->alloc_ = alloc_builder.CreateAlloca(
             Type::get_pointer(type_as_array->data_type())->llvm(),
             nullptr, decl_ptr->identifier_string());
+
+        auto ptr_to_array = type_as_array->make(alloc_builder);
+        alloc_builder.CreateStore(ptr_to_array,
+            decl_ptr->declared_identifier()->alloc_);
+
       } else {
         decl_ptr->declared_identifier()->alloc_ =
           alloc_builder.CreateAlloca(decl_type->llvm(),
               nullptr, decl_ptr->identifier_string());
+
       }
     }
   }
