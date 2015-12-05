@@ -9,46 +9,46 @@ template<size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
 
 namespace Language {
   const std::map<Language::NodeType, std::string> show_name = {
-    { unknown, "Unknown" },
-    { eof, "EOF" },
-    { newline, "Newline" },
-    { comment, "Comment" },
-    { identifier, "Identifier" },
-    { integer_literal, "Integer" },
-    { real_literal, "Real" },
-    { type_literal, "Type" },
-    { character_literal, "Character" },
-    { string_literal, "String" },
-    { generic_operator, "Operator" },
-    { bool_operator, "BoolOperator" },
+    { unknown,                 "Unknown" },
+    { eof,                     "EOF" },
+    { newline,                 "Newline" },
+    { comment,                 "Comment" },
+    { identifier,              "Identifier" },
+    { integer_literal,         "Integer" },
+    { real_literal,            "Real" },
+    { type_literal,            "Type" },
+    { character_literal,       "Character" },
+    { string_literal,          "String" },
+    { generic_operator,        "Operator" },
+    { bool_operator,           "BoolOperator" },
     { binary_boolean_operator, "BinOperator" },
-    { decl_operator, ":" },
-    { decl_assign_operator, ":=" },
-    { assign_operator, "X=" },
-    { fn_arrow, "->" },
-    { comma, "," },
-    { semicolon, ";" },
-    { dereference, "@" },
-    { indirection, "&" },
-    { rocket_operator, "=>" },
-    { key_value_pair, "( => )" },
-    { expression, "Expression" },
-    { left_paren, "Left Paren" },
-    { right_paren, "Right Paren" },
-    { left_brace, "Left Brace" },
-    { right_brace, "Right Brace" },
-    { left_bracket, "Left Bracket" },
-    { right_bracket, "Right Bracket" },
-    { reserved_bool_literal, "BoolLiteral" },
-    { reserved_if, "If" },
-    { reserved_else, "Else" },
-    { reserved_case, "Case" },
-    { reserved_loop, "Loop" },
-    { reserved_print, "Print" },
-    { reserved_while, "While" },
-    { reserved_break, "Break" },
-    { reserved_continue, "Continue" },
-    { reserved_return, "Return" }
+    { decl_operator,           ":" },
+    { decl_assign_operator,    ":=" },
+    { assign_operator,         "X=" },
+    { fn_arrow,                "->" },
+    { comma,                   "," },
+    { semicolon,               ";" },
+    { dereference,             "@" },
+    { indirection,             "&" },
+    { rocket_operator,         "=>" },
+    { key_value_pair,          "( => )" },
+    { expression,              "Expression" },
+    { left_paren,              "Left Paren" },
+    { right_paren,             "Right Paren" },
+    { left_brace,              "Left Brace" },
+    { right_brace,             "Right Brace" },
+    { left_bracket,            "Left Bracket" },
+    { right_bracket,           "Right Bracket" },
+    { reserved_bool_literal,   "BoolLiteral" },
+    { reserved_if,             "If" },
+    { reserved_else,           "Else" },
+    { reserved_case,           "Case" },
+    { reserved_loop,           "Loop" },
+    { reserved_print,          "Print" },
+    { reserved_while,          "While" },
+    { reserved_break,          "Break" },
+    { reserved_continue,       "Continue" },
+    { reserved_return,         "Return" }
   };
 
   const std::map<std::string, NodeType> reserved_words = {
@@ -104,6 +104,11 @@ namespace Language {
     { "MAX",  (100 << 2) +   non_assoc }
   };
 
+  // Here is the definition for all rules in the langugae. For a rule to be
+  // applied, the node types on the top of the stack must match those given in
+  // the list (second line of each rule). If so, then the function given in the
+  // third line of each rule is applied, replacing the matched nodes. Lastly,
+  // the new nodes type is set to the given type in the first line.
   const std::vector<Rule> rules = {
     /* Begin literals */
     Rule(expression,

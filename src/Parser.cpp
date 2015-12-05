@@ -85,7 +85,7 @@ bool Parser::should_shift() {
   // check present, an identifier would get changed to an expression, and the
   // verification that it really is something defineable would be more
   // computationally intensive.
-  if (last_type == Language::identifier && is_decl(ahead_type)) {
+  if (last_type == Language::identifier && Language::is_decl(ahead_type)) {
     return true;
   }
 

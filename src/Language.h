@@ -1,9 +1,19 @@
 #ifndef ICARUS_LANGUAGE_H
 #define ICARUS_LANGUAGE_H
 
-#include "Type.h"
-
 namespace Language {
+  // Using masks to make determination node types easier.
+  // Starting masks in the 8th bit, leaves bits 0-7 for standard enumeration.
+  // This is safe because we will never have more than 128 NodeTypes in a given
+  // section.
+  constexpr int MASK_binary_operator      = 1 << 8;
+  constexpr int MASK_left_unary_operator  = 1 << 9;
+  constexpr int MASK_right_unary_operator = 1 << 9;
+  constexpr int MASK_expression           = 1 << 10;
+
+  constexpr int MASK_operator =
+    MASK_binary_operator | MASK_left_unary_operator | MASK_right_unary_operator;
+
   enum NodeType {
     unknown, eof, newline, comment,
     identifier,
@@ -13,27 +23,56 @@ namespace Language {
     string_literal, type_literal, fn_literal,
 
     // Operators
-    unary_operator, generic_operator, binary_boolean_operator, decl_operator,
-    decl_assign_operator, assign_operator, fn_arrow, rocket_operator, bool_operator,
+    unary_operator, rocket_operator,
 
     key_value_pair, key_value_pair_list,
     comma_list,
-    expression, fn_expression, scope, return_expression,
+    fn_expression, scope,
     print_expression, void_return_expression,
-    declaration, paren_declaration, fn_declaration,
-    assignment, fn_assignment,
+    paren_declaration,
+    fn_assignment,
     statements, while_statement, if_statement,
     missing_newline_statements,
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
-    semicolon, comma, dereference, indirection,
-
+    semicolon,
     // Reserved words
-    reserved_bool_literal,
     reserved_if, reserved_else, reserved_case, reserved_loop,
+    reserved_while, reserved_break, reserved_continue,
+
+
+    // BEGIN USING MASKS
+
+
+    // binary operators
+    generic_operator = MASK_binary_operator,
+    decl_operator,
+    assign_operator,
+    fn_arrow,
+    binary_boolean_operator,
+    bool_operator,
+    comma,
+
+    // left unary operators
+    reserved_return = MASK_left_unary_operator,
     reserved_print,
-    reserved_while, reserved_break, reserved_continue, reserved_return
+    dereference, 
+
+    // left unary operator + binary operator
+    indirection = MASK_binary_operator | MASK_left_unary_operator,
+
+    // expressions
+    expression = MASK_expression,
+    declaration,
+    fn_declaration,
+    assignment,
+    return_expression,
+    reserved_bool_literal,
+
+    // expression + binary operator
+    decl_assign_operator = MASK_binary_operator | MASK_expression
+
   };
 } // namespace Language
 
@@ -52,20 +91,15 @@ constexpr size_t assoc_mask = 3;
 
 namespace Language {
   inline bool is_expression(NodeType t) {
-    return t == expression || t == declaration || t == decl_assign_operator
-      || t == fn_declaration || t == assignment || t == return_expression
-      || t == reserved_bool_literal;
+    return (t & MASK_expression) != 0;
   }
 
   inline bool is_binary_operator(NodeType t) {
-    return t == generic_operator || t == decl_operator || t == assign_operator
-      || t == decl_assign_operator || t == fn_arrow || t == binary_boolean_operator
-      || t == bool_operator || t == comma || t == indirection;
+    return (t & MASK_binary_operator) != 0;
   }
 
   inline bool is_operator(NodeType t) {
-    return is_binary_operator(t) || t == reserved_return || t == reserved_print
-      || t == indirection || t == dereference;
+    return (t & MASK_operator) != 0;
   }
 
   inline bool is_decl(NodeType t) {
