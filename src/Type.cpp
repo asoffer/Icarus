@@ -162,11 +162,22 @@ std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
 
 
-llvm::Value* Array::make(llvm::IRBuilder<>& bldr) {
+llvm::Value* Array::make(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
+  // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
+  // len_ is -1, then the runtime length is what is used
+  llvm::Value* len;
+  if (len_ != -1) {
+    len = data::const_int(static_cast<size_t>(len_));
+
+  } else if (runtime_len == nullptr) {
+    len = data::const_int(0);
+
+  } else {
+    len = runtime_len;
+  }
+
   // Compute the amount of space to allocate
 
-  // NOTE: this cast is safe because len_ is -1 or positive
-  auto len = data::const_int(len_ == -1 ? 0 : static_cast<size_t>(len_));
   auto bytes_per_elem = data::const_int(data_type()->bytes());
   auto int_size = data::const_int(Type::get_int()->bytes());
   auto zero = data::const_int(0);

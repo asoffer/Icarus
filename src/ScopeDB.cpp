@@ -50,7 +50,9 @@ namespace ScopeDB {
 
     // looping scopes must allocate before entering the scope
     // to avoid stack overflow
-    if (scope_type_ != ScopeType::loop) allocate(bldr_);
+    if (scope_type_ != ScopeType::loop) {
+      allocate(bldr_);
+    }
   }
 
   void Scope::exit(llvm::BasicBlock* jump_to) {
@@ -139,7 +141,12 @@ namespace ScopeDB {
             Type::get_pointer(type_as_array->data_type())->llvm(),
             nullptr, decl_ptr->identifier_string());
 
-        auto ptr_to_array = type_as_array->make(alloc_builder);
+        auto array_type =
+          std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
+
+        auto ptr_to_array = type_as_array->make(alloc_builder,
+            array_type->generate_code(this));
+
         alloc_builder.CreateStore(ptr_to_array,
             decl_ptr->declared_identifier()->alloc_);
 

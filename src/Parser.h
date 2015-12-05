@@ -22,6 +22,8 @@ class Parser {
     void shift();
     bool reduce();
 
+    void show_debug() const;
+
     NPtrVec stack_;
     std::unique_ptr<AST::Node> lookahead_;
     Lexer lexer_;

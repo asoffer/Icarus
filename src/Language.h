@@ -48,6 +48,7 @@ constexpr size_t left_assoc = 0;
 constexpr size_t right_assoc = 1;
 constexpr size_t non_assoc = 2;
 constexpr size_t chain_assoc = 3;
+constexpr size_t assoc_mask = 3;
 
 namespace Language {
   inline bool is_expression(NodeType t) {

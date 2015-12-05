@@ -263,7 +263,7 @@ class Array : public Type {
       return ss.str();
     }
 
-    llvm::Value* make(llvm::IRBuilder<>& bldr);
+    llvm::Value* make(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
     
     virtual bool is_array() const { return true; }
     virtual Type* data_type() const { return type_; }
