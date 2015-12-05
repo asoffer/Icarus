@@ -11,26 +11,11 @@ namespace AST {
   class Declaration;
 }
 
-typedef std::shared_ptr<AST::Node> NPtr;
-typedef std::shared_ptr<AST::Expression> EPtr;
-typedef std::shared_ptr<AST::Identifier> IdPtr;
-typedef std::shared_ptr<AST::Declaration> DeclPtr;
+using NPtr = std::shared_ptr<AST::Node>;
+using EPtr = std::shared_ptr<AST::Expression>;
+using IdPtr = std::shared_ptr<AST::Identifier>;
+using DeclPtr = std::shared_ptr<AST::Declaration>;
 
-typedef std::vector<NPtr> NPtrVec;
-typedef NPtr (*fnptr)(NPtrVec&&);
-
-/*
-template<typename T> class uid {
-  private:
-    static size_t count;
-
-  protected:
-    uid() : id_(count++) {}
-    uid(const uid<T>&) = delete;
-    size_t id_;
-}
-
-template<typename T> size_t uid::count = 0;
-*/
+using NPtrVec = std::vector<NPtr>;
 
 #endif  // ICARUS_TYPEDEFS_H

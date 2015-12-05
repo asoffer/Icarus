@@ -8,7 +8,10 @@
 
 class Rule {
   public:
-    Rule(Language::NodeType output, const std::vector<Language::NodeType>& input, fnptr fn);
+    using NodeTypeVec = std::vector<Language::NodeType>;
+    using fnptr = NPtr (*)(NPtrVec&&);
+
+    Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn);
 
     size_t size() const { return input_.size(); }
 

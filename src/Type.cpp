@@ -1,5 +1,8 @@
 #include "Type.h"
 #include "AST.h"
+#include "ScopeDB.h"
+
+using ::ScopeDB::Scope;
 
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> global_builder;

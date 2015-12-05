@@ -7,6 +7,7 @@
 #include <string>
 
 #include "typedefs.h"
+#include "Type.h"
 
 // TODO Figure out what you need from this.
 #include "llvm/ADT/STLExtras.h"

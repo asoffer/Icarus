@@ -6,14 +6,18 @@
 #include <map>
 #include <sstream>
 
-#include "ScopeDB.h"
+// TODO Figure out what you need from this.
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
 
-constexpr size_t pointer_size_in_bytes = sizeof(char*);
-
-using ::ScopeDB::Scope;
+constexpr size_t pointer_size_in_bytes = sizeof(void*);
 
 namespace AST {
   class Expression;
+  class Declaration;
 }  // namespace AST
 
 class Function;

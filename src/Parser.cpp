@@ -13,9 +13,14 @@ Parser::Parser(const char* filename) : lexer_(filename) {
 
 // Parse the file with a shift-reduce algorithm
 NPtr Parser::parse() {
+  // The very first entry is a newline and should be shifted. Do that so we
+  // can be certain the stack is never empty. This allows us to avoid checking
+  // for the empty stack in the should_shift() method.
+  shift();
+
   while (lookahead_->node_type() != Language::eof) {
 
-    // deterimine if you should shift or reduce. If you should shift, the
+    // Deterimine if you should shift or reduce. If you should shift, the
     // conditional will be true and the body will execute (and therefore
     // shift). Otherwise, the second part of the conditional will be executed,
     // and we will attempt to reduce the stream. If we successfully reduce,
@@ -73,7 +78,6 @@ bool Parser::should_shift() {
   // We'll need these node types a lot, so lets make it easy to use
   const auto last_type = stack_.back()->node_type();
   const auto ahead_type = lookahead_->node_type();
-
 
   // If we see an identifier followed by a decl_operator, shift. Without this
   // check present, an identifier would get changed to an expression, and the
