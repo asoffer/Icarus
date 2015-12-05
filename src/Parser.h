@@ -13,7 +13,7 @@
 class Parser {
   public:
 
-    Parser(const char* filename);
+    Parser(const std::string& filename);
 
     NPtr parse();
 

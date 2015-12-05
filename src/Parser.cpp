@@ -1,10 +1,12 @@
 #include "Parser.h"
 #include "AST.h"
 
-extern bool DEBUG_PARSER;
+namespace debug {
+  extern bool parser;
+}  // namespace debug
 
 // Construct a parser for the given file
-Parser::Parser(const char* filename) : lexer_(filename) {
+Parser::Parser(const std::string& filename) : lexer_(filename) {
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
   lookahead_.reset(new AST::Node);
@@ -32,17 +34,17 @@ NPtr Parser::parse() {
 
     // A flag given to the compiler that will tell it to pause at each
     // shift/reduce step and show the current parse stack.
-    if (DEBUG_PARSER) show_debug();
+    if (debug::parser) show_debug();
   }
  
   // Once we exit the previous loop, we have seen all tokens and reached the
   // end of the file. There cannot be any more shifting, but there may be more
   // reductions to complete. While we can reduce, do so.
   while (reduce()) {
-    if (DEBUG_PARSER) show_debug();
+    if (debug::parser) show_debug();
   }
 
-  if (DEBUG_PARSER) {
+  if (debug::parser) {
     std::cout << "========== Parsing complete ==========" << std::endl;
   }
 

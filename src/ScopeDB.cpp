@@ -259,7 +259,6 @@ namespace ScopeDB {
       // Build up dependencies_ starting with empty sets
       dependencies_[std::static_pointer_cast<AST::Expression>(decl_id)] = std::set<EPtr>();
     }
-
   }
 
   void assign_type_order() {

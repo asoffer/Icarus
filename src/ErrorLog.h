@@ -14,7 +14,7 @@ class ErrorLog {
     friend std::ostream& operator<<(std::ostream& os, const ErrorLog& log);
 
     inline size_t num_errors() const;
-    inline void set_file(const char* file_name);
+    inline void set_file(const std::string& file_name);
     inline void log(size_t line_num, const std::string& msg);
 
   private:
@@ -25,8 +25,8 @@ class ErrorLog {
 
 size_t ErrorLog::num_errors() const { return log_.size(); }
 
-void ErrorLog::set_file(const char* file_name) {
-  file_name_ = std::string(file_name);
+void ErrorLog::set_file(const std::string& file_name) {
+  file_name_ = file_name;
 }
 
 void ErrorLog::log(size_t line_num, const std::string& msg) {

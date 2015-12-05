@@ -1,9 +1,11 @@
 #include "AST.h"
 #include "ErrorLog.h"
 
-// Debug flag for parser. Turns on step-by-step iteration through the shifting and
-// reducing.
-bool DEBUG_PARSER = false;
+// Debug flags
+namespace debug {
+  // Turns on step-by-step iteration through the shifting and reducing.
+  bool parser = false;
+}
 
 llvm::Module* global_module;
 llvm::Function* global_function;

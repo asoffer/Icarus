@@ -11,16 +11,12 @@ bool isnewline(int n) {
   return n == '\n' || n == '\r';
 }
 
-// Lexer constructors:
-//
 // Take a filename as a string or a C-string and opens the named file
-Lexer::Lexer(const char* file_name) :
-  file_name_(file_name),
+Lexer::Lexer(const std::string& file_name) :
+  file_name_(file_name.c_str()),
   file_(file_name, std::ifstream::in),
   line_num_(1) {
   }
-
-Lexer::Lexer(const std::string& file_name) : Lexer(file_name.c_str()) {}
 
 // Lexer destructor:
 //

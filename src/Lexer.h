@@ -13,7 +13,6 @@
 class Lexer {
   public:
     explicit Lexer(const std::string& file_name);
-    explicit Lexer(const char* file_name);
  
     ~Lexer();
 

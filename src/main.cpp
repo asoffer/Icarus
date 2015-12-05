@@ -16,56 +16,86 @@ extern llvm::Module* global_module;
 extern llvm::Function* global_function;
 extern llvm::IRBuilder<> global_builder;
 
-namespace cstdlib {
-  extern llvm::Constant* free();
-  extern llvm::Constant* malloc();
-  extern llvm::Constant* printf;
-  extern llvm::Constant* putchar;
-  extern llvm::Constant* puts;
-  extern llvm::Value* format_d;
-  extern llvm::Value* format_f;
-  extern llvm::Value* format_s;
-}  // namespace cstdlib
-
 namespace data {
   extern llvm::Value* const_int(size_t n, bool is_signed = false);
 }  // namespace data
 
-
 extern ErrorLog error_log;
 
+namespace debug {
+  extern bool parser;
+}  // namespace
+
+
+// This is an enum so we can give meaningful names for error codes.
+// However, at the end of the day, we must return ints. Thus, we need
+// to use the implicit cast from enum to int, and so we cannot get the
+// added type safety of an enum class.
+namespace error_code {
+  enum {
+    success = 0,  // returning 0 denotes succes
+
+    cyclic_dependency,
+    file_does_not_exist,
+    invalid_arguments,
+    parse_error,
+    shadow_or_type_error,
+    undeclared_identifier
+  };
+}  // namespace error_code
+
 int main(int argc, char *argv[]) {
-  if (argc != 2) {
-    std::cerr
-      << "Provide exactly one file name."
-      << std::endl;
-    return 1;
+  int arg_num = 1; // iterator over argv
+  int file_index = -1;  // Index of where file name is in argv
+  while (arg_num < argc) {
+    auto arg = argv[arg_num];
+
+    if (strcmp(arg, "-D") == 0 ||
+        strcmp(arg, "-d") == 0) {
+      debug::parser = true;
+
+    } else if (file_index == -1) {
+      // If we haven't seen a file yet, point to it
+      file_index = arg_num;
+
+    } else {
+      // If we have found a file already, error out.
+      std::cerr
+        << "Provide exactly one file name."
+        << std::endl;
+      return error_code::invalid_arguments;
+    }
+
+    ++arg_num;
+  }
+
+  // If the file name has no "." in it, append ".ic"
+  std::string file_name(argv[file_index]);
+  auto found_dot = file_name.find('.');
+  if (found_dot == std::string::npos) {
+    file_name += ".ic";
   }
 
   // Check if file exists
-  std::ifstream infile(argv[1]);
+  std::ifstream infile(file_name);
   if (!infile.good()) {
     std::cerr
-      << "File '"
-      << argv[2]
-      << "' does not exist or cannot be accessed."
+      << "File '" << file_name << "' does not exist or cannot be accessed."
       << std::endl;
-    return 2;
+    return error_code::file_does_not_exist;
   }
 
-  error_log.set_file(argv[1]);
+  error_log.set_file(file_name);
 
-  Parser parser(argv[1]);
+  Parser parser(file_name);
   auto root_node = parser.parse();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
-
-    return 0;
+    return error_code::parse_error;
   }
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
-
   global_function = llvm::Function::Create(
       Type::get_function(Type::get_void(), Type::get_int())->llvm(),
       llvm::Function::ExternalLinkage, "main", global_module);
@@ -77,52 +107,88 @@ int main(int argc, char *argv[]) {
 
   ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
 
-  // TODO is this necessary?
   global_builder.SetInsertPoint(global_scope->entry_block());
 
+  // COMPILATION STEP:
+  //
+  // Determine which declarations go in which scopes. Store that information
+  // with the scopes. Note that assign_decl_to_scope cannot possibly generate
+  // compilation errors, so we don't check for them here.
   global_statements->assign_decl_to_scope(global_scope);
+
+  // COMPILATION STEP:
+  //
+  // Join the identifiers turning the syntax tree into a syntax DAG. This must
+  // happen after the declarations are assigned to each scope so we have a
+  // specific identifier to point to that is easy to find. This can generate an
+  // undeclared identifier error.
   global_statements->join_identifiers(global_scope);
+
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
-    return 0;
+    return error_code::undeclared_identifier;
   }
 
+  // COMPILATION STEP:
+  //
+  // fill_db() has several housekeeping functionalities. It ensures that the
+  // vector of declarations ordered by dependency in each scope is cleared at
+  // this point. It initializes the table of dependencies. It also populates
+  // the decl_of_ database, so that we can quickly find a declaration from the
+  // identifier being declared. fill_db() cannot generate compilation errors.
   ScopeDB::fill_db();
+  // For each identifier, figure out which other identifiers are needed in
+  // order to declare this one. This cannot generate compilation errors.
   global_statements->record_dependencies(nullptr);
+  // To assign type orders, we traverse the dependency graph looking for a
+  // valid ordering in which we can determine the types of the nodes. This can
+  // generate compilation errors if no valid ordering exists.
   ScopeDB::assign_type_order();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
-    return 0;
+    return error_code::cyclic_dependency;
   }
 
-  // std::cout << global_statements->to_string(0) << std::endl;
+  // COMPILATION STEP:
+  //
+  // The name should be self-explanatory. This function looks through the
+  // scope tree for a node and its ancestor with declared identifiers of the
+  // same name. We do not allow shadowing of any kind whatsoever. Errors are
+  // generated if shadows are encountered. However, we are still able to
+  // continue on with determining the declared types (and give useful error
+  // messages, so we don't exit just yet.
   ScopeDB::Scope::verify_no_shadowing();
+  // Associate to each identifier its type.
   ScopeDB::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
-    return 0;
+    return error_code::shadow_or_type_error;
   }
 
-  global_statements->verify_types();
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return 0;
-  }
-
+  // Program has been verified. We can now proceed with code generation.
+  // Initialize the global_scope.
   global_scope->set_parent_function(global_function);
   global_scope->set_return_type(Type::get_int());
 
+
+  // Generate LLVM intermediate representation.
   global_scope->enter();
   global_statements->generate_code(global_scope);
   global_scope->make_return(data::const_int(0));
   global_scope->exit();
 
 
+  // TODO Optimization.
+
+
   {
+    // In this anonymous scope we write the LLVM IR to a file. The point
+    // of the anonymous scope is to ensure that the file is written and
+    // closed before we make system calls on it (e.g., for linking).
     std::ofstream output_file_stream("ir.ll");
     llvm::raw_os_ostream output_file(output_file_stream);
     global_module->print(output_file, nullptr);
-  } // Ensure the stream writes before system calls
+  }
   
 
   std::string input_file_name(argv[1]);
@@ -135,5 +201,5 @@ int main(int argc, char *argv[]) {
   system(link_string.c_str());
   system("rm ir.o");
 
-  return 0;
+  return error_code::success;
 }
