@@ -1,8 +1,6 @@
 #include "Type.h"
 #include "AST.h"
-#include "ScopeDB.h"
-
-using ::ScopeDB::Scope;
+#include "Scope.h"
 
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> global_builder;
@@ -265,7 +263,7 @@ llvm::Function* Primitive::print_function() {
       "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
-  ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
+  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());
@@ -333,7 +331,7 @@ llvm::Function* Array::print_function() {
       "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
-  ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
+  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());
@@ -428,7 +426,7 @@ llvm::Function* Function::print_function() {
       llvm::Function::ExternalLinkage,
       "print." + to_string(), global_module);
 
-  ScopeDB::Scope* fn_scope = ScopeDB::Scope::build();
+  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());

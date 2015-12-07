@@ -6,7 +6,7 @@
 #include "AST.h"
 #include "Type.h"
 #include "typedefs.h"
-#include "ScopeDB.h"
+#include "Scope.h"
 #include "ErrorLog.h"
 
 #include "llvm/Support/raw_ostream.h"
@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   auto global_statements =
     std::static_pointer_cast<AST::Statements>(root_node);
 
-  ScopeDB::Scope* global_scope = ScopeDB::Scope::build();
+  Scope::Scope* global_scope = Scope::Scope::build_global();
 
   global_builder.SetInsertPoint(global_scope->entry_block());
 
@@ -136,14 +136,14 @@ int main(int argc, char *argv[]) {
   // this point. It initializes the table of dependencies. It also populates
   // the decl_of_ database, so that we can quickly find a declaration from the
   // identifier being declared. fill_db() cannot generate compilation errors.
-  ScopeDB::fill_db();
+  Scope::fill_db();
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
   global_statements->record_dependencies(nullptr);
   // To assign type orders, we traverse the dependency graph looking for a
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
-  ScopeDB::assign_type_order();
+  Scope::assign_type_order();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;
@@ -157,9 +157,9 @@ int main(int argc, char *argv[]) {
   // generated if shadows are encountered. However, we are still able to
   // continue on with determining the declared types (and give useful error
   // messages, so we don't exit just yet.
-  ScopeDB::Scope::verify_no_shadowing();
+  Scope::Scope::verify_no_shadowing();
   // Associate to each identifier its type.
-  ScopeDB::Scope::determine_declared_types();
+  Scope::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;

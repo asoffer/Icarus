@@ -14,20 +14,20 @@
 namespace AST {
 
   void Unop::record_dependencies(EPtr eptr) const {
-    ScopeDB::dependencies_[eptr].insert(expr_);
+    Scope::dependencies_[eptr].insert(expr_);
     expr_->record_dependencies(expr_);
   }
 
   void ArrayLiteral::record_dependencies(EPtr eptr) const {
     for (const auto& el : elems_) {
-      ScopeDB::dependencies_[eptr].insert(el);
+      Scope::dependencies_[eptr].insert(el);
       el->record_dependencies(el);
     }
   }
 
   void Binop::record_dependencies(EPtr eptr) const {
-    ScopeDB::dependencies_[eptr].insert(lhs_);
-    ScopeDB::dependencies_[eptr].insert(rhs_);
+    Scope::dependencies_[eptr].insert(lhs_);
+    Scope::dependencies_[eptr].insert(rhs_);
 
     lhs_->record_dependencies(lhs_);
     rhs_->record_dependencies(rhs_);
@@ -35,9 +35,9 @@ namespace AST {
 
   void ArrayType::record_dependencies(EPtr eptr) const {
     if (len_ != nullptr) {
-      ScopeDB::dependencies_[eptr].insert(len_);
+      Scope::dependencies_[eptr].insert(len_);
     }
-    ScopeDB::dependencies_[eptr].insert(array_type_);
+    Scope::dependencies_[eptr].insert(array_type_);
 
     if (len_ != nullptr) {
       len_->record_dependencies(len_);
@@ -47,20 +47,20 @@ namespace AST {
 
   void ChainOp::record_dependencies(EPtr eptr) const {
     for (auto& e : exprs_) {
-      ScopeDB::dependencies_[eptr].insert(e);
+      Scope::dependencies_[eptr].insert(e);
       e->record_dependencies(e);
     }
   }
 
   void Declaration::record_dependencies(EPtr eptr) const {
-    ScopeDB::dependencies_[eptr].insert(decl_type_);
+    Scope::dependencies_[eptr].insert(decl_type_);
     decl_type_->record_dependencies(decl_type_);
   }
 
   void Case::record_dependencies(EPtr eptr) const {
     for (const auto& kv : pairs_->kv_pairs_) {
-      ScopeDB::dependencies_[eptr].insert(kv.first);
-      ScopeDB::dependencies_[eptr].insert(kv.second);
+      Scope::dependencies_[eptr].insert(kv.first);
+      Scope::dependencies_[eptr].insert(kv.second);
     }
 
     for (const auto& kv : pairs_->kv_pairs_) {
@@ -71,10 +71,10 @@ namespace AST {
 
   void FunctionLiteral::record_dependencies(EPtr eptr) const {
     for (const auto& in : inputs_) {
-      ScopeDB::dependencies_[eptr].insert(in);
+      Scope::dependencies_[eptr].insert(in);
     }
 
-    ScopeDB::dependencies_[eptr].insert(return_type_);
+    Scope::dependencies_[eptr].insert(return_type_);
 
     for (const auto& in : inputs_) {
       in->record_dependencies(in);
@@ -86,12 +86,12 @@ namespace AST {
 
   void Terminal::record_dependencies(EPtr eptr) const {
 
-    ScopeDB::dependencies_[eptr];
+    Scope::dependencies_[eptr];
   }
 
   void Identifier::record_dependencies(EPtr eptr) const {
-    ScopeDB::dependencies_[eptr].insert(std::static_pointer_cast<Expression>(
-          ScopeDB::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
+    Scope::dependencies_[eptr].insert(std::static_pointer_cast<Expression>(
+          Scope::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
   }
 
   void KVPairList::record_dependencies(EPtr /* nullptr */) const {

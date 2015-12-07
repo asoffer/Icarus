@@ -17,16 +17,16 @@
 #include "Language.h"
 #include "Type.h"
 #include "typedefs.h"
-#include "ScopeDB.h"
+#include "Scope.h"
 #include "ErrorLog.h"
 
 extern ErrorLog error_log;
 
 namespace AST {
-  using ::ScopeDB::Scope;
 
   class Node {
     public:
+      friend class ::Scope;
       friend class KVPairList;
       friend class Expression;
       friend class Terminal;
@@ -98,7 +98,7 @@ namespace AST {
 
 
   class Expression : public Node {
-    friend void Scope::determine_declared_types();
+    friend class ::Scope;
     friend class KVPairList;
     friend class Unop;
     friend class Binop;
@@ -369,7 +369,7 @@ namespace AST {
 
   class ArrayType : public Expression {
     public:
-      friend class Scope;
+      friend class ::Scope;
       friend class Identifier;
       friend class Declaration;
 
@@ -586,8 +586,7 @@ namespace AST {
   // identifer := value
   class Declaration : public Expression {
     public:
-      friend DeclPtr ScopeDB::make_declaration(size_t line_num, const std::string& id_string);
-      friend class Scope;
+      friend class ::Scope;
       friend class Assignment;
 
       static NPtr build(NPtrVec&& nodes,
@@ -634,7 +633,7 @@ namespace AST {
   inline NPtr Declaration::build(NPtrVec&& nodes,
       const std::string& op, Language::NodeType node_type, bool infer) {
 
-    auto decl_ptr = ScopeDB::make_declaration(nodes[1]->line_num_, nodes[0]->token());
+    auto decl_ptr = Scope::make_declaration(nodes[1]->line_num_, nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->token_ = op;
@@ -900,7 +899,9 @@ namespace AST {
       llvm::Function* llvm_function_;
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() : fn_scope_(Scope::build()), llvm_function_(nullptr) {}
+      FunctionLiteral() :
+        fn_scope_(Scope::build(ScopeType::func)),
+        llvm_function_(nullptr) {}
   };
 
   class Conditional : public Node {
@@ -920,7 +921,7 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
 
     private:
-      Conditional() : body_scope_(Scope::build()) {}
+      Conditional() : body_scope_(Scope::build(ScopeType::cond)) {}
 
       EPtr cond_;
       std::shared_ptr<Statements> statements_;
@@ -945,7 +946,7 @@ namespace AST {
 
 
     private:
-      While() : body_scope_(Scope::build()) {}
+      While() : body_scope_(Scope::build(ScopeType::loop)) {}
 
       EPtr cond_;
       std::shared_ptr<Statements> statements_;
