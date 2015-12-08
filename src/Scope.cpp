@@ -26,16 +26,14 @@ std::map<IdPtr, Scope*> Scope::scope_containing_;
 std::vector<Scope*> Scope::registry_;
 
 Scope* Scope::build(ScopeType st) {
-  Scope* new_scope = new Scope;
-  new_scope->make_type(st);
+  Scope* new_scope = new Scope(st);
   registry_.push_back(new_scope);
 
   return new_scope;
 }
 
 Scope* Scope::build_global() {
-  auto scope_ptr = new Scope;
-  scope_ptr->make_type(ScopeType::func);
+  auto scope_ptr = new Scope(ScopeType::func);
   for (auto& ptr : registry_) {
     ptr->parent_ = scope_ptr;
   }
@@ -53,18 +51,28 @@ size_t Scope::num_scopes() {
 // allocations done outside to avoid blowing up the stack. All others do
 // allocations at the beginning of the block.
 void Scope::enter() {
-  // bldr_ is initialized to insert into entry_block_.
+  allocate();
 
-  if (return_type_ != nullptr && return_type_ != Type::get_void()) {
-    return_val_ = bldr_.CreateAlloca(return_type_->llvm(), nullptr, "retval");
-  }
+  bldr_.SetInsertPoint(entry_block_);
 
-  // Looping scopes must allocate before entering the scope
-  // to avoid stack overflow.
-  if (scope_type_ != ScopeType::loop) {
-    allocate(bldr_);
+  for (const auto& decl_ptr : ordered_decls_) {
+    auto decl_type = decl_ptr->declared_identifier()->type();
+
+    if (decl_type->is_array()) {
+      auto type_as_array = static_cast<Array*>(decl_type);
+
+      auto array_type =
+        std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
+
+      auto ptr_to_array = type_as_array->make(bldr_,
+          array_type->generate_code(this));
+
+      bldr_.CreateStore(ptr_to_array,
+          decl_ptr->declared_identifier()->alloc_);
+    }
   }
 }
+
 
 // The code built in here is what runs when you exit this scope. Depending on
 // the scope type, this may include deallocations.
@@ -139,7 +147,9 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 
 }
 
-void Scope::allocate(llvm::IRBuilder<>& alloc_builder) {
+void Scope::allocate() {
+  bldr_.SetInsertPoint(alloc_block_);
+
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_type = decl_ptr->declared_identifier()->type();
 
@@ -151,31 +161,36 @@ void Scope::allocate(llvm::IRBuilder<>& alloc_builder) {
     if (decl_type->is_function()) {
       llvm::Function::Create(
           static_cast<llvm::FunctionType*>(decl_type->llvm()),
-          llvm::Function::ExternalLinkage, decl_ptr->identifier_string(), global_module);
+          llvm::Function::ExternalLinkage,
+          decl_ptr->identifier_string(),
+          global_module);
+
     } else if (decl_type->is_array()) {
       auto type_as_array = static_cast<Array*>(decl_type);
       // TODO currently it doesn't matter if the length is technically
       // dynamic or not. We're doing no optimizations using this
-      decl_ptr->declared_identifier()->alloc_ = alloc_builder.CreateAlloca(
+      decl_ptr->declared_identifier()->alloc_ = bldr_.CreateAlloca(
           Type::get_pointer(type_as_array->data_type())->llvm(),
           nullptr, decl_ptr->identifier_string());
 
       auto array_type =
         std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
 
-      auto ptr_to_array = type_as_array->make(alloc_builder,
-          array_type->generate_code(this));
-
-      alloc_builder.CreateStore(ptr_to_array,
-          decl_ptr->declared_identifier()->alloc_);
-
     } else {
-      decl_ptr->declared_identifier()->alloc_ =
-        alloc_builder.CreateAlloca(decl_type->llvm(),
-            nullptr, decl_ptr->identifier_string());
-
+      decl_ptr->declared_identifier()->alloc_ = bldr_.CreateAlloca(
+          decl_type->llvm(), nullptr, decl_ptr->identifier_string());
     }
   }
+
+  if (return_type_ != nullptr && return_type_ != Type::get_void()) {
+    return_val_ = bldr_.CreateAlloca(return_type_->llvm(), nullptr, "retval");
+  }
+
+  if (alloc_block_ != entry_block_) {
+    bldr_.CreateBr(entry_block_);
+  }
+
+  bldr_.SetInsertPoint(entry_block_);
 }
 
 // TODO have a getter-only version for when we know we've passed the
@@ -365,14 +380,11 @@ void Scope::assign_type_order() {
   }
 }
 
-void Scope::make_type(ScopeType st) {
-  scope_type_ = st;
-  if (scope_type_ != ScopeType::func) {
-    set_return_type(nullptr);
-  }
-}
-
 void Scope::set_parent_function(llvm::Function* fn) {
+  if (alloc_block_ != nullptr && alloc_block_->getParent() != nullptr) {
+    alloc_block_->removeFromParent();
+  }
+
   if (entry_block_ != nullptr && entry_block_->getParent() != nullptr) {
     entry_block_->removeFromParent();
   }
@@ -381,6 +393,9 @@ void Scope::set_parent_function(llvm::Function* fn) {
     exit_block_->removeFromParent();
   }
 
-  entry_block_->insertInto(fn);
+  alloc_block_->insertInto(fn);
+  if (entry_block_ != alloc_block_) {
+    entry_block_->insertInto(fn);
+  }
   exit_block_->insertInto(fn);
 }

@@ -72,47 +72,55 @@ class Scope {
     // EPtr, so we do the pointer cast inside.
     EPtr identifier(EPtr id_as_eptr);
 
+
+    llvm::BasicBlock* alloc_block() const { return alloc_block_; }
     llvm::BasicBlock* entry_block() const { return entry_block_; }
     llvm::BasicBlock* exit_block() const { return exit_block_; }
 
     void set_parent_function(llvm::Function* fn);
-    void make_type(ScopeType st);
     void make_return_void();
     void make_return(llvm::Value* val);
 
     EPtr get_declared_type(IdPtr id_ptr) const;
 
-    void allocate(llvm::IRBuilder<>& alloc_builder);
+    void allocate();
 
     Scope(const Scope&) = delete;
     Scope(Scope&&) = delete;
 
   private:
-    Scope() :
+    Scope(ScopeType st) :
       parent_(nullptr),
-      entry_block_(llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "entry")),
-      exit_block_(llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "exit")),
-      bldr_(llvm::getGlobalContext()),
-      scope_type_(ScopeType::func) {
+      scope_type_(st),
+      entry_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry")),
+      exit_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "exit")),
+      alloc_block_(scope_type_ == ScopeType::loop
+          ? llvm::BasicBlock::Create(llvm::getGlobalContext(), "allocs")
+          : entry_block_),
+      bldr_(llvm::getGlobalContext())
+      {
+        bldr_.SetInsertPoint(alloc_block_);
 
-        bldr_.SetInsertPoint(entry_block());
+        if (scope_type_ != ScopeType::func) {
+          set_return_type(nullptr);
+        }
       }
 
     std::map<std::string, IdPtr> ids_;
     std::vector<DeclPtr> ordered_decls_;
 
     Scope* parent_;
+    ScopeType scope_type_;
     llvm::BasicBlock* entry_block_;
     llvm::BasicBlock* exit_block_;
+    llvm::BasicBlock* alloc_block_;
 
     Type* return_type_;
     llvm::Value* return_val_;
 
+
     llvm::IRBuilder<> bldr_;
 
-    ScopeType scope_type_;
 
 };
 

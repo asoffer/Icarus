@@ -351,7 +351,7 @@ llvm::Function* Array::print_function() {
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),
-      { neg_four }, "ptr_to_free");
+      { neg_four }, "ptr_to_len");
 
   auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
       Type::get_pointer(Type::get_int())->llvm());
