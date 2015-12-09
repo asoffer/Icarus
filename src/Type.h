@@ -4,7 +4,6 @@
 #include <vector>
 #include <string>
 #include <map>
-#include <sstream>
 
 // TODO Figure out what you need from this.
 #include "llvm/ADT/STLExtras.h"
@@ -13,7 +12,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-constexpr size_t pointer_size_in_bytes = sizeof(void*);
+// TODO why is replace(_, _) not const?
 
 namespace AST {
   class Expression;
@@ -22,7 +21,6 @@ namespace AST {
 
 class Function;
 class Pointer;
-
 
 class Type {
   public:
@@ -49,21 +47,19 @@ class Type {
     static Type* get_array(Type* t, int len = -1);
 
     static std::map<std::string, Type*> literals;
-    static std::vector<std::string> type_strings;
-    static std::vector<size_t> type_bytes;
 
-    virtual std::string to_string() const = 0;
     virtual size_t bytes() const = 0;
     virtual llvm::Function* print_function() = 0;
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
+    virtual std::string to_string() const = 0;
     virtual Type::time_loc type_time() const = 0;
 
-    virtual bool is_array() const { return false; }
-    virtual bool is_function() const { return false; }
-    virtual bool is_pointer() const { return false; }
+    virtual bool is_array()     const { return false; }
+    virtual bool is_function()  const { return false; }
+    virtual bool is_pointer()   const { return false; }
     virtual bool is_primitive() const { return false; }
-    virtual bool is_tuple() const { return false; }
-    virtual bool is_void() const { return this == Type::get_void(); }
+    virtual bool is_tuple()     const { return false; }
+    virtual bool is_void()      const { return this == Type::get_void(); }
 
 
     llvm::Type* llvm() const { return llvm_type_; }
@@ -78,22 +74,26 @@ class Type {
 
 class Primitive : public Type {
   public:
+    static constexpr size_t num_primitive_types_ = 9;
+
     friend class Type;
     virtual ~Primitive() {}
-    virtual std::string to_string() const { return Type::type_strings[prim_type_]; }
+
+    virtual size_t bytes() const;
+    virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
     virtual Type::time_loc type_time() const;
+
     virtual bool is_primitive() const { return true; }
 
   private:
-    static constexpr size_t num_primitive_types_ = 9;
-
+    // This needs to be an enum becasue we use it to access other arrays and
+    // vectors
     enum PrimitiveEnum {
       t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_type, t_uint, t_void
     };
 
-    virtual size_t bytes() const { return Type::type_bytes[prim_type_]; }
-    virtual llvm::Function* print_function();
 
     PrimitiveEnum prim_type_;
 
@@ -114,26 +114,11 @@ class Function : public Type {
       return static_cast<llvm::FunctionType*>(llvm_type_);
     }
 
-    virtual size_t bytes() const { return pointer_size_in_bytes; }
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual Type::time_loc type_time() const;
+    virtual size_t bytes() const;
     virtual llvm::Function* print_function();
-
-    virtual std::string to_string() const {
-      std::stringstream ss;
-      bool needs_parens = argument_type()->is_function();
-      if (needs_parens) ss << "(";
-      ss << argument_type()->to_string();
-      if (needs_parens) ss << ")";
- 
-      ss << " -> ";
-
-      needs_parens = return_type()->is_function();
-      if (needs_parens) ss << "(";
-      ss << return_type()->to_string();
-      if (needs_parens) ss << ")";
-      return ss.str();
-    }
+    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
+    virtual Type::time_loc type_time() const;
 
     virtual ~Function() {}
 
@@ -171,20 +156,11 @@ class Pointer : public Type {
 
     virtual bool is_pointer() const { return true; }
 
-    virtual size_t bytes() const { return pointer_size_in_bytes; }
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual Type::time_loc type_time() const;
+    virtual size_t bytes() const;
     virtual llvm::Function* print_function();
-
-    virtual std::string to_string() const {
-      std::stringstream ss;
-      ss << "&";
-      bool needs_parens = pointee_type_->is_function();
-      ss << (needs_parens ? "(" : "");
-      ss << pointee_type_->to_string();
-      ss << (needs_parens ? ")" : "");
-      return ss.str();
-    }
+    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
+    virtual Type::time_loc type_time() const;
 
     virtual ~Pointer() {}
 
@@ -204,32 +180,11 @@ class Tuple : public Type {
 
     virtual bool is_tuple() const { return true; }
 
-    virtual size_t bytes() const {
-      // TODO add in padding
-      size_t output = 0;
-      for (auto ty : entry_types_) {
-        output += ty->bytes();
-      }
-
-      return output;
-    }
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual Type::time_loc type_time() const;
+    virtual size_t bytes() const;
     virtual llvm::Function* print_function();
-
-    virtual std::string to_string() const {
-      std::stringstream ss;
-
-      auto iter = tuple_types_.begin();
-      ss << "(" << (*iter)->to_string();
-      while (iter != tuple_types_.end()) {
-        ss << (*iter)->to_string();
-        ++iter;
-      }
-      ss << ")";
-
-      return ss.str();
-    }
+    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
+    virtual Type::time_loc type_time() const;
 
     virtual ~Tuple() {}
 
@@ -246,26 +201,11 @@ class Array : public Type {
     friend class AST::Declaration;
     friend class Type;
 
-    virtual size_t bytes() const { return pointer_size_in_bytes; }  // TODO
+    virtual size_t bytes() const;
     virtual llvm::Function* print_function();
-
     virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
     virtual Type::time_loc type_time() const;
-    virtual std::string to_string() const {
-      std::stringstream ss;
-      ss << "[" << (has_dynamic_length() ? "-" : std::to_string(len_));
-
-      const Type* type_ptr = type_;
-
-      while (type_ptr->is_array()) {
-        auto array_ptr = static_cast<const Array*>(type_ptr);
-        ss << ", " << (has_dynamic_length() ? "-" : std::to_string(len_));
-        type_ptr = array_ptr->type_;
-      }
-      
-      ss << "; " << type_ptr->to_string() << "]";
-      return ss.str();
-    }
 
     llvm::Value* make(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
     
