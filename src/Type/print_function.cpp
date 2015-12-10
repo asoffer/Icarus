@@ -105,7 +105,8 @@ llvm::Function* Primitive::print_function() {
 llvm::Function* Array::print_function() {
   if (print_fn_ != nullptr) return print_fn_;
 
-  auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
+  auto input_type =
+    replace(Type::get_type(), Type::get_pointer(Type::get_char()));
 
   print_fn_ = llvm::Function::Create(
       llvm::FunctionType::get(

@@ -48,7 +48,9 @@ class Type {
 
     static std::map<std::string, Type*> literals;
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const = 0;
     virtual size_t bytes() const = 0;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const = 0;
     virtual llvm::Function* print_function() = 0;
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
@@ -79,7 +81,9 @@ class Primitive : public Type {
     friend class Type;
     virtual ~Primitive() {}
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -114,7 +118,9 @@ class Function : public Type {
       return static_cast<llvm::FunctionType*>(llvm_type_);
     }
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -153,10 +159,11 @@ class Pointer : public Type {
   public:
     friend class Type;
 
-
     virtual bool is_pointer() const { return true; }
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -180,7 +187,9 @@ class Tuple : public Type {
 
     virtual bool is_tuple() const { return true; }
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -201,17 +210,20 @@ class Array : public Type {
     friend class AST::Declaration;
     friend class Type;
 
+    virtual bool is_array() const { return true; }
+
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual Type::time_loc type_time() const;
 
-    llvm::Value* make(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
-    
-    virtual bool is_array() const { return true; }
     virtual Type* data_type() const { return type_; }
     virtual bool has_dynamic_length() const { return len_ == -1; }
+    virtual llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr,
+        llvm::Value* runtime_len = nullptr) const;
 
     virtual ~Array() {}
 
@@ -219,11 +231,11 @@ class Array : public Type {
     // A value of -1 for the length means this is to be dependently typed. All
     // other values are the actual type
     Array(Type* t, int len = -1) : type_(t), len_(len) {
-      if (len == -1) {
-        llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
-      } else {
-        llvm_type_ = llvm::ArrayType::get(t->llvm(), static_cast<size_t>(len));
-      }
+//      if (has_dynamic_length()) {
+      llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
+//      } else {
+//        llvm_type_ = llvm::ArrayType::get(t->llvm(), static_cast<size_t>(len));
+//      }
     }
 
     Type* type_;

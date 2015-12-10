@@ -67,6 +67,26 @@ namespace data {
         llvm::APInt(32, n, is_signed));
   }
 
+  llvm::Value* const_real(double d) {
+    return llvm::ConstantFP::get(llvm::getGlobalContext(),
+        llvm::APFloat(d));
+  }
+
+  llvm::Value* const_false() {
+    return llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(1, 0, false));
+  }
+
+
+  llvm::Value* const_true() {
+    return llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(1, 1, false));
+  }
+
+  llvm::Value* const_bool(bool b) {
+    return b ? const_true() : const_false();
+  }
+
   llvm::Value* const_char(char c) {
     // TODO check safety of char cast
     return llvm::ConstantInt::get(llvm::getGlobalContext(),

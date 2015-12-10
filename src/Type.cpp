@@ -1,17 +1,6 @@
 #include "Type.h"
 #include "AST.h"
 
-namespace cstdlib {
-  extern llvm::Constant* malloc();
-}  // namespace cstdlib
-
-namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
-  extern llvm::Value* const_char(char c);
-}  // namespace data
-
-
-
 #define MAKE_PRIMITIVE_TYPE_GETTER(type)                                 \
   Type* Type::get_##type () {                                            \
     return &(Primitive::primitive_types_[Primitive::t_##type]);          \
@@ -146,46 +135,3 @@ std::vector<Pointer*> Pointer::pointer_types_;
 std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
 std::vector<Function*> Function::fn_types_;
-
-llvm::Value* Array::make(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
-  // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
-  // len_ is -1, then the runtime length is what is used
-  llvm::Value* len;
-  if (len_ != -1) {
-    len = data::const_int(static_cast<size_t>(len_));
-
-  } else if (runtime_len == nullptr) {
-    len = data::const_int(0);
-
-  } else {
-    len = runtime_len;
-  }
-
-  // Compute the amount of space to allocate
-
-  auto bytes_per_elem = data::const_int(data_type()->bytes());
-  auto int_size = data::const_int(Type::get_int()->bytes());
-  auto zero = data::const_int(0);
-  auto bytes_needed = bldr.CreateAdd(int_size, 
-      bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
-
-  // Malloc call
-  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
-
-  // Pointer to the length at the head of the array
-  auto raw_len_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { zero }, "array_len_raw");
-
-  auto len_ptr = bldr.CreateBitCast(
-      raw_len_ptr, Type::get_pointer(Type::get_int())->llvm(), "len_ptr");
-    bldr.CreateStore(len, len_ptr);
-
-  // Pointer to the array data
-  auto raw_data_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { int_size }, "array_idx_raw");
-  
-  // Pointer to data cast
-  auto ptr_type = Type::get_pointer(data_type())->llvm();
-  return bldr.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
-}
-

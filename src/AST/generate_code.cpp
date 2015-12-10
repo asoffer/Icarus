@@ -555,13 +555,13 @@ namespace AST {
   }
 
   llvm::Value* ArrayLiteral::generate_code(Scope* scope) {
+    // TODO if this is never assigned to anything, it will be leaked
 
     auto type_as_array = static_cast<Array*>(expr_type_);
     auto element_type = type_as_array->data_type()->llvm();
 
     // Allocate space for the array literal
-    auto array_data = type_as_array->make(scope->builder());
-    // data::const_int(elems_size));
+    auto array_data = type_as_array->initialize_literal(scope->builder());
 
     // TODO Would it be faster to increment the pointer each time? Probably
     auto elems_size = elems_.size();

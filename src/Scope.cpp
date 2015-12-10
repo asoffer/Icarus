@@ -58,18 +58,20 @@ void Scope::enter() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_type = decl_ptr->declared_identifier()->type();
 
-    if (decl_type->is_array()) {
-      auto type_as_array = static_cast<Array*>(decl_type);
+    decl_type->initialize(bldr_, decl_ptr->declared_identifier()->alloc_);
 
-      auto array_type =
-        std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
-
-      auto ptr_to_array = type_as_array->make(bldr_,
-          array_type->generate_code(this));
-
-      bldr_.CreateStore(ptr_to_array,
-          decl_ptr->declared_identifier()->alloc_);
-    }
+//     if (decl_type->is_array()) {
+//       auto type_as_array = static_cast<Array*>(decl_type);
+// 
+//       auto array_type =
+//         std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
+// 
+//       auto ptr_to_array = type_as_array->make(bldr_,
+//           array_type->generate_code(this));
+// 
+//       bldr_.CreateStore(ptr_to_array,
+//           decl_ptr->declared_identifier()->alloc_);
+//     }
   }
 }
 
@@ -152,33 +154,10 @@ void Scope::allocate() {
 
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_type = decl_ptr->declared_identifier()->type();
+    decl_ptr->declared_identifier()->alloc_ = decl_type->allocate(bldr_);
 
-    // TODO for now functions are treated as constant, and don't need to be
-    // declared in a scope.
-    //
-    // What happens if you try to reassign? This almost certainly leads to a
-    // bug.
     if (decl_type->is_function()) {
-      llvm::Function::Create(
-          static_cast<llvm::FunctionType*>(decl_type->llvm()),
-          llvm::Function::ExternalLinkage,
-          decl_ptr->identifier_string(),
-          global_module);
-
-    } else if (decl_type->is_array()) {
-      auto type_as_array = static_cast<Array*>(decl_type);
-      // TODO currently it doesn't matter if the length is technically
-      // dynamic or not. We're doing no optimizations using this
-      decl_ptr->declared_identifier()->alloc_ = bldr_.CreateAlloca(
-          Type::get_pointer(type_as_array->data_type())->llvm(),
-          nullptr, decl_ptr->identifier_string());
-
-      auto array_type =
-        std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
-
-    } else {
-      decl_ptr->declared_identifier()->alloc_ = bldr_.CreateAlloca(
-          decl_type->llvm(), nullptr, decl_ptr->identifier_string());
+      decl_ptr->declared_identifier()->alloc_->setName(decl_ptr->identifier_string());
     }
   }
 
