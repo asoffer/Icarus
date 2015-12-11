@@ -146,15 +146,31 @@ namespace AST {
       }
     }
 
+    if (token() == "()") {
+      std::vector<llvm::Value*> arg_vals;
+      if (rhs_->is_comma_list()) {
+        auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs_);
+        arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
+        size_t i = 0;
+        for (const auto& expr : arg_chainop->exprs_) {
+          arg_vals[i] = expr->generate_code(scope);
+          if (arg_vals[i] == nullptr) return nullptr;
+
+          ++i;
+        }
+
+      } else {
+        auto rhs_val = rhs_->generate_code(scope);
+        if (rhs_val == nullptr) return nullptr;
+
+        arg_vals = { rhs_val };
+      }
+      return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+    }
+
     auto rhs_val = rhs_->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
 
-
-    if (token() == "()") {
-      // TODO multiple arguments
-      std::vector<llvm::Value*> arg_vals = { rhs_val };
-      return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
-    }
 
     if (type() == Type::get_int()) {
       if (token() == "+") { return scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); }

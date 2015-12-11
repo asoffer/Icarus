@@ -107,6 +107,33 @@ class Primitive : public Type {
     static llvm::Type* llvm_types_[ num_primitive_types_ ];
 };
 
+class Tuple : public Type {
+  public:
+    friend class Type;
+    friend class Function;
+
+    virtual bool is_tuple() const { return true; }
+
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
+    virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual llvm::Function* print_function();
+    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
+    virtual Type::time_loc type_time() const;
+
+    size_t size() const { return entry_types_.size(); } 
+
+    virtual ~Tuple() {}
+
+  private:
+    Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+
+    std::vector<Type*> entry_types_;
+
+    static std::vector<Tuple*> tuple_types_;
+};
+
 class Function : public Type {
   public:
     friend class Type;
@@ -130,23 +157,34 @@ class Function : public Type {
 
   private:
     Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
-      // TODO should I expand an input tuple into a vector?
-      auto llvm_input = input_type_->is_function()
-        ? Type::get_pointer(input_type_)->llvm()
-        : input_type_->llvm();
+      std::vector<llvm::Type*> input_list;
+      if (input_type_->is_tuple()) {
+        auto input_tuple = static_cast<Tuple*>(input_type_);
+        auto len = input_tuple->size();
+        input_list.resize(len, nullptr);
+
+        size_t i = 0;
+        // TODO robustify this.
+        // What if tuple element is a tuple?
+        // What if tuple element is a function?
+        // ...
+        for (const auto& input : input_tuple->entry_types_) {
+          input_list[i] = input->llvm();
+          ++i;
+        }
+      } else if (input_type_->is_function()) {
+        input_list.push_back(Type::get_pointer(input_type_)->llvm());
+      
+      } else if (!input_type_->is_void()) {
+        input_list.push_back(input_type_->llvm());
+      }
 
       auto llvm_output = output_type_->is_function()
         ? Type::get_pointer(output_type_)->llvm()
         : output_type_->llvm();
 
-      std::vector<llvm::Type*> input_list(1, llvm_input);
-
-      if (input_type_ == get_void()) {
-        input_list.clear();
-      }
-
-      llvm_type_ = llvm::FunctionType::get( llvm_output,
-          input_list, false);
+      // Boolean parameter 'false' designates that this function is not variadic.
+      llvm_type_ = llvm::FunctionType::get(llvm_output, input_list, false);
     }
 
     Type* input_type_;
@@ -178,31 +216,6 @@ class Pointer : public Type {
     Type* pointee_type_;
 
     static std::vector<Pointer*> pointer_types_;
-};
-
-
-class Tuple : public Type {
-  public:
-    friend class Type;
-
-    virtual bool is_tuple() const { return true; }
-
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
-    virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
-    virtual llvm::Function* print_function();
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
-
-    virtual ~Tuple() {}
-
-  private:
-    Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
-
-    std::vector<Type*> entry_types_;
-
-    static std::vector<Tuple*> tuple_types_;
 };
 
 class Array : public Type {

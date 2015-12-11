@@ -48,10 +48,11 @@ std::string Pointer::to_string() const {
 std::string Tuple::to_string() const {
   std::stringstream ss;
 
-  auto iter = tuple_types_.begin();
+  auto iter = entry_types_.begin();
   ss << "(" << (*iter)->to_string();
-  while (iter != tuple_types_.end()) {
-    ss << (*iter)->to_string();
+  ++iter;
+  while (iter != entry_types_.end()) {
+    ss << ", " << (*iter)->to_string();
     ++iter;
   }
   ss << ")";

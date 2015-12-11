@@ -195,9 +195,6 @@ namespace AST {
   }
 
   void ChainOp::verify_types() {
-    // In order for a ChainOp to even be created, ops_.front() must exist.
-    // Because nothing has the same precedence levels as a comma, if the
-    // first op is a comma, they all are.
     if (is_comma_list()) {
       std::vector<Type*> type_vec(exprs_.size(), nullptr);
 
@@ -245,7 +242,7 @@ namespace AST {
   void Terminal::verify_types() {}
 
   void Identifier::verify_types() {
-    // TODO id verify
+    // TODO id verify. Does anything need to be done here?
   }
 
   void FunctionLiteral::verify_types() {
@@ -254,11 +251,29 @@ namespace AST {
     // wrong
     Type* return_type_as_type = return_type_->interpret_as_type();
 
-    expr_type_ = Type::get_function(
-        // TODO do this part inside `Type`, and don't just take the first
-        // element of inputs_
-        inputs_.size() == 0 ? Type::get_void() : inputs_.front()->type(),
-        return_type_as_type);
+    Type* input_type;
+    size_t inputs_size = inputs_.size();
+    switch (inputs_size) {
+      case 0:
+        input_type = Type::get_void();
+        break;
+      case 1:
+        input_type = inputs_.front()->type();
+        break;
+      default:
+        {
+          std::vector<Type*> input_type_vec(inputs_size, nullptr);
+          size_t i = 0;
+          for (const auto& input : inputs_) {
+            input_type_vec[i] = input->type();
+            ++i;
+          }
+
+          input_type = Type::get_tuple(input_type_vec);
+        }
+    }
+
+    expr_type_ = Type::get_function(input_type, return_type_as_type);
 
     // NOTE: You cannot verify the return type in the body is correct here.
     // The reason is that knowing the type of the function literal doesn't

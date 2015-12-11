@@ -174,12 +174,24 @@ namespace Language {
 
 
     // TODO Should this be an expression or declaration
-    Rule(expression,
+    Rule(declaration,
         { left_paren, declaration, right_paren },
         AST::Expression::parenthesize),
  
     Rule(expression,
         { left_paren, fn_declaration, right_paren },
+        AST::Expression::parenthesize),
+
+    Rule(declaration_comma_list,
+        { declaration, comma, declaration },
+        AST::ChainOp::build),
+
+    Rule(declaration_comma_list,
+        { declaration_comma_list, comma, declaration },
+        AST::ChainOp::build),
+
+    Rule(expression,
+        { left_paren, declaration_comma_list, right_paren},
         AST::Expression::parenthesize),
     /* End declaration */
 

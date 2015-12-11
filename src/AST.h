@@ -210,36 +210,36 @@ namespace AST {
 
 
   class Binop : public Expression {
-    friend class KVPairList;
-    friend class FunctionLiteral;
-
     public:
-    static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
+      friend class KVPairList;
+      friend class FunctionLiteral;
 
-    static NPtr build(NPtrVec&& nodes);
-    static NPtr build_paren_operator(NPtrVec&& nodes);
-    static NPtr build_bracket_operator(NPtrVec&& nodes);
-    static NPtr build_array_type(NPtrVec&& nodes);
+      static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
 
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
-    virtual void assign_decl_to_scope(Scope* scope);
-    virtual void record_dependencies(EPtr eptr) const;
-    virtual void verify_types();
+      static NPtr build(NPtrVec&& nodes);
+      static NPtr build_paren_operator(NPtrVec&& nodes);
+      static NPtr build_bracket_operator(NPtrVec&& nodes);
+      static NPtr build_array_type(NPtrVec&& nodes);
 
-    virtual Type* interpret_as_type() const;
-    virtual llvm::Value* generate_code(Scope* scope);
-    virtual llvm::Value* generate_lvalue(Scope* scope);
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
 
-    virtual bool is_binop() const { return true; }
+      virtual Type* interpret_as_type() const;
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+      virtual bool is_binop() const { return true; }
 
 
-    virtual ~Binop(){}
+      virtual ~Binop(){}
 
     protected:
-    Binop() {}
-    EPtr lhs_;
-    EPtr rhs_;
+      Binop() {}
+      EPtr lhs_;
+      EPtr rhs_;
   };
 
   inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
@@ -279,6 +279,8 @@ namespace AST {
     public:
       friend class ArrayType;
       friend class ArrayLiteral;
+      friend class FunctionLiteral;
+      friend class Binop;
 
       static NPtr build(NPtrVec&& nodes);
 
@@ -853,28 +855,7 @@ namespace AST {
     public:
       friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
 
-      static NPtr build(NPtrVec&& nodes) {
-        auto fn_lit = new FunctionLiteral;
-        fn_lit->line_num_ = nodes[0]->line_num_;
-
-        fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
-
-        // TODO scopes inside these statements should point to fn_scope_.
-
-        auto binop_ptr = std::static_pointer_cast<Binop>(nodes[0]);
-        fn_lit->return_type_ = std::move(binop_ptr->rhs_);
-
-        // TODO What if the fn_expression is more complicated, like a function
-        // of the form (int -> int) -> int? I'm not sure how robust this is
-        if (binop_ptr->lhs_->is_declaration()) {
-          // TODO This assumes a single declaration, not a comma-separated list
-          auto decl_ptr = std::static_pointer_cast<Declaration>(binop_ptr->lhs_);
-
-          fn_lit->inputs_.push_back(decl_ptr);
-        }
-
-        return NPtr(fn_lit);
-      }
+      static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -903,6 +884,42 @@ namespace AST {
         fn_scope_(Scope::build(ScopeType::func)),
         llvm_function_(nullptr) {}
   };
+
+  inline NPtr FunctionLiteral::build(NPtrVec&& nodes) {
+    auto fn_lit = new FunctionLiteral;
+    fn_lit->line_num_ = nodes[0]->line_num_;
+
+    fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
+
+    // TODO scopes inside these statements should point to fn_scope_.
+
+    auto binop_ptr = std::static_pointer_cast<Binop>(nodes[0]);
+    fn_lit->return_type_ = std::move(binop_ptr->rhs_);
+    auto input_args = binop_ptr->lhs_;
+
+    // TODO What if the fn_expression is more complicated, like a function
+    // of the form (int -> int) -> int? I'm not sure how robust this is
+    if (input_args->is_declaration()) {
+      auto decl_ptr = std::static_pointer_cast<Declaration>(input_args);
+
+      fn_lit->inputs_.push_back(decl_ptr);
+
+    } else if (input_args->is_comma_list()) {
+      auto decl_list = std::static_pointer_cast<ChainOp>(input_args);
+
+      // resize the input arg list
+      fn_lit->inputs_.resize(decl_list->exprs_.size(), nullptr);
+
+      size_t index = 0;
+      for (const auto& expr : decl_list->exprs_) {
+        auto decl = std::static_pointer_cast<Declaration>(expr);
+        fn_lit->inputs_[index++] = decl;
+      }
+    }
+
+    return NPtr(fn_lit);
+  }
+
 
   class Conditional : public Node {
     public:

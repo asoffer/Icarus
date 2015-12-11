@@ -29,7 +29,7 @@ namespace Language {
     comma_list,
     fn_expression, scope,
     print_expression, void_return_expression,
-    paren_declaration,
+    declaration_comma_list,
     fn_assignment,
     statements, while_statement, if_statement,
     missing_newline_statements,
