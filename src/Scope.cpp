@@ -15,7 +15,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_int(int n, bool is_signed = false);
 }  // namespace data
 
 std::map<IdPtr, DeclPtr> Scope::decl_of_;
@@ -91,9 +91,7 @@ void Scope::exit(llvm::BasicBlock* jump_to) {
 
       auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
 
-      auto four = data::const_int(4, true);
-      auto zero = data::const_int(0, true);
-      auto neg_four = bldr_.CreateSub(zero, four);
+      auto neg_four = data::const_int(-4, true);
 
       auto ptr_to_free = bldr_.CreateGEP(
           bldr_.CreateBitCast(array_ptr, basic_ptr_type),

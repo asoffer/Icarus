@@ -17,7 +17,7 @@ extern llvm::Function* global_function;
 extern llvm::IRBuilder<> global_builder;
 
 namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_uint(size_t n);
 }  // namespace data
 
 extern ErrorLog error_log;
@@ -174,7 +174,7 @@ int main(int argc, char *argv[]) {
   // Generate LLVM intermediate representation.
   global_scope->enter();
   global_statements->generate_code(global_scope);
-  global_scope->make_return(data::const_int(0));
+  global_scope->make_return(data::const_uint(0));
   global_scope->exit();
 
 

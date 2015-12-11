@@ -18,7 +18,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
 }  // namespace data
 
@@ -129,9 +129,8 @@ llvm::Function* Array::print_function() {
 
   auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
 
-  auto four = data::const_int(4, true);
-  auto zero = data::const_int(0, true);
-  auto neg_four = bldr.CreateSub(zero, four);
+  auto zero = data::const_int(0);
+  auto neg_four = data::const_int(-4, true);
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),

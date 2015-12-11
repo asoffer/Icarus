@@ -281,6 +281,10 @@ namespace Language {
     Rule(fn_expression,
         { expression, fn_arrow, expression },
         AST::Binop::build),
+
+    Rule(fn_expression,
+        { declaration, fn_arrow, expression },
+        AST::Binop::build),
     /* End expression */
 
 

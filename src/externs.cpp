@@ -62,10 +62,34 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  llvm::Value* const_int(size_t n, bool is_signed = false) {
-    return llvm::ConstantInt::get(llvm::getGlobalContext(),
-        llvm::APInt(32, n, is_signed));
+  llvm::Value* const_int(int n, bool is_signed = false) {
+#ifdef DEBUG
+    if (n < 0 && !is_signed) {
+      std::cerr << "FATAL: Unsigned negative integer!" << std::endl;
+    }
+#endif
+    if (n >= 0) {
+      return llvm::ConstantInt::get(llvm::getGlobalContext(),
+          llvm::APInt(32, static_cast<size_t>(n), is_signed));
+    } else {
+      return global_builder.CreateSub(
+          llvm::ConstantInt::get(
+            llvm::getGlobalContext(), llvm::APInt(32, 0, true)),
+          llvm::ConstantInt::get(
+            llvm::getGlobalContext(), llvm::APInt(32, static_cast<size_t>(-n), true)));
+    }
   }
+
+  llvm::Value* const_uint(size_t n) {
+#ifdef DEBUG
+    if (n > (1 << 30)) {
+      std::cerr << "FATAL: Potential overflow on compile-time integer constants" << std::endl;
+    }
+#endif
+    // The safety of this cast is verified only in debug mode
+    return const_int(static_cast<int>(n), false);
+  }
+
 
   llvm::Value* const_real(double d) {
     return llvm::ConstantFP::get(llvm::getGlobalContext(),

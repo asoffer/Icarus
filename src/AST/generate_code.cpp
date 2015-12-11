@@ -24,7 +24,8 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_uint(size_t n);
+  extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
 }  // namespace data
 
@@ -64,8 +65,7 @@ namespace AST {
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
     } else if (type() == Type::get_int()) {
-      // An int is a 32-bit signed integer
-      return data::const_int(std::stoul(token()), true);
+      return data::const_int(std::stoi(token()), true);
 
     } else if (type() == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
@@ -75,8 +75,7 @@ namespace AST {
       return nullptr;
 
     } else if (type() == Type::get_uint()) {
-      // A uint is a 64-bit unsigned integer
-      return data::const_int(std::stoul(token()));
+      return data::const_uint(std::stoul(token()));
 
     } else {
       std::cerr << "FATAL: Terminal type is not a primitive type" << std::endl;
@@ -584,7 +583,7 @@ namespace AST {
     for (size_t i = 0; i < elems_size; ++i) {
       scope->builder().CreateStore(elems_[i]->generate_code(scope),
           scope->builder().CreateGEP(element_type,
-            array_data, { data::const_int(i) }));
+            array_data, { data::const_uint(i) }));
     }
 
     // Make a pointer to an array of the appropriate size

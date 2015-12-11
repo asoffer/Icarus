@@ -6,7 +6,8 @@ namespace cstdlib {
 
 
 namespace data {
-  extern llvm::Value* const_int(size_t n, bool is_signed = false);
+  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
   extern llvm::Value* const_false();
@@ -57,7 +58,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   // len_ is -1, then the runtime length is what is used
   llvm::Value* len;
   if (len_ != -1) {
-    len = data::const_int(static_cast<size_t>(len_));
+    len = data::const_int(len_);
 
   } else if (runtime_len == nullptr) {
     len = data::const_int(0);
@@ -67,8 +68,8 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   }
 
   // Compute the amount of space to allocate
-  auto bytes_per_elem = data::const_int(data_type()->bytes());
-  auto int_size = data::const_int(Type::get_int()->bytes());
+  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto int_size = data::const_uint(Type::get_int()->bytes());
   auto zero = data::const_int(0);
   auto bytes_needed = bldr.CreateAdd(int_size, 
       bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
