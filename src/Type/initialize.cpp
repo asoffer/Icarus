@@ -10,6 +10,7 @@ namespace data {
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
+  extern llvm::Value* const_true();
   extern llvm::Value* const_false();
 }  // namespace data
 
@@ -93,11 +94,30 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   auto ptr_type = Type::get_pointer(data_type())->llvm();
   auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
 
-  // TODO initialize insides here 
-  // 1. Determine the type inside.
-  // 2. Loop through the dynamic length
-  // 3. Use a GEP instruction to get a pointer to the right place
-  // 4. Call initialize and store the initialized object in that position.
+
+  // initialize insides here 
+
+  auto prev_block = bldr.GetInsertBlock();
+  auto parent_fn = prev_block->getParent();
+
+  auto loop_block = llvm::BasicBlock::Create(
+      llvm::getGlobalContext(), "init_loop", parent_fn);
+  auto done_block = llvm::BasicBlock::Create(
+      llvm::getGlobalContext(), "init_done", parent_fn);
+
+  bldr.CreateBr(loop_block);
+
+  bldr.SetInsertPoint(loop_block);
+  llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
+  phi->addIncoming(data::const_uint(0), prev_block);
+
+  data_type()->initialize(bldr, bldr.CreateGEP(data_type()->llvm(), ret_ptr, { phi }));
+  auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
+
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len), loop_block, done_block);
+  phi->addIncoming(next_iter, bldr.GetInsertBlock());
+
+  bldr.SetInsertPoint(done_block);
 
   return ret_ptr;
 }

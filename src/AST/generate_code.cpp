@@ -24,6 +24,8 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
+  extern llvm::Value* const_true();
+  extern llvm::Value* const_false();
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
@@ -340,10 +342,8 @@ namespace AST {
         // Join two cases
         llvm::PHINode* phi_node = scope->builder().CreatePHI(
             Type::get_bool()->llvm(), 2, "merge");
-        phi_node->addIncoming(llvm::ConstantInt::get(llvm::getGlobalContext(),
-              llvm::APInt(1, 1, false)), land_true_block);
-        phi_node->addIncoming(llvm::ConstantInt::get(llvm::getGlobalContext(),
-              llvm::APInt(1, 0, false)), land_false_block);
+        phi_node->addIncoming(data::const_true(), land_true_block);
+        phi_node->addIncoming(data::const_false(), land_false_block);
         cmp_val = phi_node;
       }
       ret_val = cmp_val;
