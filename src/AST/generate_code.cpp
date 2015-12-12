@@ -11,16 +11,6 @@ extern llvm::IRBuilder<> global_builder;
 
 namespace cstdlib {
   extern llvm::Constant* printf();
-
-  template<char C> llvm::Value* fmt() {
-    std::string char_str(1, C);
-    static llvm::Value* format_ =
-      global_builder.CreateGlobalStringPtr("%" + char_str, "percent_" + char_str);
-
-    return format_;
-  }
-
-
 }  // namespace cstdlib
 
 namespace data {
@@ -29,6 +19,7 @@ namespace data {
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
+  extern llvm::Value* global_string(const std::string& s);
 }  // namespace data
 
 namespace AST {
@@ -100,7 +91,7 @@ namespace AST {
 
     } else if (is_print()) {
       if (expr_->type() == Type::get_type()) {
-        val = global_builder.CreateGlobalStringPtr(expr_->interpret_as_type()->to_string());
+        val = data::global_string(expr_->interpret_as_type()->to_string());
       }
 
       scope->builder().CreateCall(expr_->type()->print_function(), { val });
