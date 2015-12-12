@@ -56,22 +56,10 @@ void Scope::enter() {
   bldr_.SetInsertPoint(entry_block_);
 
   for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_type = decl_ptr->declared_identifier()->type();
+    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_type = decl_id->type();
 
-    decl_type->initialize(bldr_, decl_ptr->declared_identifier()->alloc_);
-
-//     if (decl_type->is_array()) {
-//       auto type_as_array = static_cast<Array*>(decl_type);
-// 
-//       auto array_type =
-//         std::static_pointer_cast<AST::ArrayType>(decl_ptr->declared_type());
-// 
-//       auto ptr_to_array = type_as_array->make(bldr_,
-//           array_type->generate_code(this));
-// 
-//       bldr_.CreateStore(ptr_to_array,
-//           decl_ptr->declared_identifier()->alloc_);
-//     }
+    decl_type->initialize(bldr_, decl_id->alloc_);
   }
 }
 
@@ -151,23 +139,21 @@ void Scope::allocate() {
   bldr_.SetInsertPoint(alloc_block_);
 
   for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_type = decl_ptr->declared_identifier()->type();
-    decl_ptr->declared_identifier()->alloc_ = decl_type->allocate(bldr_);
-
-    if (decl_type->is_function()) {
-      decl_ptr->declared_identifier()->alloc_->setName(decl_ptr->identifier_string());
-    }
+    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_type = decl_id->type();
+    decl_id->alloc_ = decl_type->allocate(bldr_);
+    decl_id->alloc_->setName(decl_ptr->identifier_string());
   }
 
+  // If we need a return type, allocate it now.
   if (return_type_ != nullptr && return_type_ != Type::get_void()) {
     return_val_ = bldr_.CreateAlloca(return_type_->llvm(), nullptr, "retval");
   }
 
   if (alloc_block_ != entry_block_) {
     bldr_.CreateBr(entry_block_);
+    bldr_.SetInsertPoint(entry_block_);
   }
-
-  bldr_.SetInsertPoint(entry_block_);
 }
 
 // TODO have a getter-only version for when we know we've passed the

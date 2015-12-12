@@ -8,18 +8,13 @@ namespace cstdlib {
   extern llvm::Constant* putchar();
   extern llvm::Constant* printf();
 
-  template<char C> llvm::Value* format() {
-    std::string char_str(1, C);
-    static llvm::Value* format_ =
-      global_builder.CreateGlobalStringPtr("%" + char_str, "percent_" + char_str);
-
-    return format_;
-  }
 }  // namespace cstdlib
 
 namespace data {
+  extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
+  extern llvm::Value* global_string(const std::string& s);
 }  // namespace data
 
 
@@ -55,9 +50,6 @@ llvm::Function* Primitive::print_function() {
 
   fn_scope->enter();
   if (this == Type::get_bool()) {
-    auto true_str = bldr.CreateGlobalStringPtr("true");
-    auto false_str = bldr.CreateGlobalStringPtr("false");
-
     auto true_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "true_block", print_fn_);
     auto false_block = llvm::BasicBlock::Create(
@@ -76,24 +68,24 @@ llvm::Function* Primitive::print_function() {
 
     bldr.SetInsertPoint(merge_block);
     llvm::PHINode* phi_node =
-      bldr.CreatePHI(llvm::Type::getInt8PtrTy(llvm::getGlobalContext()), 2, "merge");
-    phi_node->addIncoming(true_str, true_block);
-    phi_node->addIncoming(false_str, false_block);
+      bldr.CreatePHI(Type::get_pointer(Type::get_char())->llvm(), 2, "merge");
+    phi_node->addIncoming(data::global_string("true"),  true_block);
+    phi_node->addIncoming(data::global_string("false"), false_block);
 
-    bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), phi_node });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), phi_node });
 
   } else if (this == Type::get_int() || this == Type::get_uint()) {
-    bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'d'>(), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string("%d"), val });
 
   } else if (this == Type::get_real()) {
-    bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'f'>(), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string("%f"), val });
 
   } else if (this == Type::get_type()) {
     // To print a type we must first get it's string representation,
     // which is the job of the code generator. We assume that the value
     // passed in is already this string (as a global string pointer)
 
-    bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), val });
   }
 
   fn_scope->exit();
@@ -125,70 +117,48 @@ llvm::Function* Array::print_function() {
   fn_scope->enter();
   bldr.CreateCall(cstdlib::putchar(), { data::const_char('[') });
 
-  // TODO should we do this by building an AST and generating code from it?
-
   auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
-
-  auto zero = data::const_int(0);
-  auto neg_four = data::const_int(-4, true);
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),
-      { neg_four }, "ptr_to_len");
+      { data::const_int(-4, true) }, "ptr_to_len");
 
   auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
       Type::get_pointer(Type::get_int())->llvm());
 
-  auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { zero }));
+  auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_int(0) }));
 
-  auto non_empty_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "non_empty", print_fn_);
-  auto cond_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "cond", print_fn_);
   auto loop_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "loop", print_fn_);
-  auto land_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "land", print_fn_);
-  auto finish_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "finish", print_fn_);
+    llvm::getGlobalContext(), "print_loop", print_fn_);
+  auto loop_head_block = llvm::BasicBlock::Create(
+    llvm::getGlobalContext(), "print_loop_head", print_fn_);
+  auto done_block = llvm::BasicBlock::Create(
+    llvm::getGlobalContext(), "print_done", print_fn_);
 
+  bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(0)),
+      done_block, loop_head_block);
 
-  bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_int(0)),
-      finish_block, non_empty_block);
-  bldr.SetInsertPoint(non_empty_block);
+  bldr.SetInsertPoint(loop_head_block);
+  auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
+  bldr.CreateCall(data_type()->print_function(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(1)),
+      done_block, loop_block);
 
-  auto array_len_less_one = bldr.CreateSub(array_len, data::const_int(1));
-
-  auto i_store = bldr.CreateAlloca(Type::get_int()->llvm(), nullptr, "i");
-  bldr.CreateStore(zero, i_store);
-  bldr.CreateBr(cond_block);
-
-  bldr.SetInsertPoint(cond_block);
-  auto i_val = bldr.CreateLoad(i_store);
-  auto cmp_val = bldr.CreateICmpSLT(i_val, array_len_less_one);
-  bldr.CreateCondBr(cmp_val, loop_block, land_block);
   bldr.SetInsertPoint(loop_block);
+  llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
+  phi->addIncoming(data::const_uint(1), loop_head_block);
 
-  auto elem_ptr = bldr.CreateGEP(val, { i_val });
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(", ") });
 
+  elem_ptr = bldr.CreateGEP(val, { phi });
   bldr.CreateCall(data_type()->print_function(), { bldr.CreateLoad(elem_ptr) });
 
-  auto comma_space = global_builder.CreateGlobalStringPtr(", ");
-  bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), comma_space });
+  auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, array_len), loop_block, done_block);
+  phi->addIncoming(next_iter, loop_block);
+  bldr.SetInsertPoint(done_block);
 
-  auto new_i_val = bldr.CreateAdd(i_val, data::const_int(1));
-  bldr.CreateStore(new_i_val, i_store);
-  bldr.CreateBr(cond_block);
-
-  bldr.SetInsertPoint(land_block);
-  auto last_elem = bldr.CreateGEP(val, { array_len_less_one });
-  bldr.CreateCall(data_type()->print_function(), { bldr.CreateLoad(last_elem) });
-
-  bldr.CreateBr(finish_block);
-
-  bldr.SetInsertPoint(finish_block);
   bldr.CreateCall(cstdlib::putchar(), { data::const_char(']') });
-
   fn_scope->exit();
 
   return print_fn_;
@@ -217,7 +187,7 @@ llvm::Function* Function::print_function() {
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
-  bldr.CreateCall(cstdlib::printf(), { cstdlib::format<'s'>(), fn_print_str });
+  bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), fn_print_str });
   fn_scope->exit();
 
   return print_fn_;

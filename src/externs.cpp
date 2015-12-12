@@ -1,6 +1,8 @@
 #include "AST.h"
 #include "ErrorLog.h"
 
+#include <map>
+
 // Debug flags
 namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
@@ -10,6 +12,8 @@ namespace debug {
 llvm::Module* global_module;
 llvm::Function* global_function;
 llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
+
+std::map<std::string, llvm::Value*> global_strings;
 
 // TODO Only generate these if they are necessary
 //
@@ -117,6 +121,13 @@ namespace data {
         llvm::APInt(8, static_cast<size_t>(c), false));
   }
 
+  llvm::Value* global_string(const std::string& s) {
+    auto iter = global_strings.find(s);
+    if (iter != global_strings.end()) {
+      return iter->second;
+    }
+    return global_strings[s] = global_builder.CreateGlobalStringPtr(s);
+  }
 }  // namespace data
 
 ErrorLog error_log;

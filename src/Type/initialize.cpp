@@ -115,6 +115,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
 
   bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len), loop_block, done_block);
+  // Need to get insert block becasue the block can be changed inside the loop.
   phi->addIncoming(next_iter, bldr.GetInsertBlock());
 
   bldr.SetInsertPoint(done_block);
