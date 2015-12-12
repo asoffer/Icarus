@@ -65,43 +65,45 @@ namespace Language {
     { "return",   reserved_return }
   };
 
+  constexpr size_t prec_value(size_t n, size_t assoc) { return (n << 2) + assoc; }
+
   // Associativity stored in the lowest two bits.
   const std::map<std::string, size_t> op_prec = {
-    { "return", (0 << 2) +   non_assoc },
-    { "print",  (0 << 2) +   non_assoc },
-    { ",",      (1 << 2) + chain_assoc },
-    { "=",      (2 << 2) +   non_assoc },
-    { ":=",     (3 << 2) +   non_assoc },
-    { ":",      (3 << 2) +   non_assoc },
-    { ":>",     (3 << 2) +  left_assoc },
-    { "=>",     (4 << 2) +   non_assoc },
-    { "->",     (4 << 2) + right_assoc },
-    { "|=",     (5 << 2) + right_assoc },
-    { "^=",     (6 << 2) + right_assoc },
-    { "&=",     (7 << 2) + right_assoc },
-    { "+=",     (8 << 2) + right_assoc },
-    { "-=",     (8 << 2) + right_assoc },
-    { "*=",     (9 << 2) + right_assoc },
-    { "/=",     (9 << 2) + right_assoc },
-    { "%=",     (9 << 2) + right_assoc },
-    { "|",     (10 << 2) + right_assoc },
-    { "^",     (11 << 2) + right_assoc },
-    { "&",     (12 << 2) + right_assoc },
-    { "<",     (13 << 2) + chain_assoc },
-    { ">",     (13 << 2) + chain_assoc },
-    { "<=",    (13 << 2) + chain_assoc },
-    { ">=",    (13 << 2) + chain_assoc },
-    { "==",    (13 << 2) + chain_assoc },
-    { "!=",    (13 << 2) + chain_assoc },
-    { "+",     (14 << 2) + right_assoc },
-    { "-",     (14 << 2) + right_assoc },
-    { "*",     (15 << 2) + right_assoc },
-    { "/",     (15 << 2) + right_assoc },
-    { "%",     (15 << 2) + right_assoc },
-    { "@",     (16 << 2) +  left_assoc },
-    { "[]",    (17 << 2) +  left_assoc },
-    { "()",    (17 << 2) +  left_assoc },
-    { "MAX",  (100 << 2) +   non_assoc }
+    { "return", prec_value(  0,   non_assoc) },
+    { "print",  prec_value(  0,   non_assoc) },
+    { ",",      prec_value(  1, chain_assoc) },
+    { "=>",     prec_value(  2,   non_assoc) }, 
+    { "=",      prec_value(  3,   non_assoc) },
+    { ":=",     prec_value(  3,   non_assoc) },
+    { ":",      prec_value(  3,   non_assoc) },
+    { ":>",     prec_value(  4,  left_assoc) },
+    { "->",     prec_value(  5, right_assoc) },
+    { "|=",     prec_value(  6, right_assoc) },
+    { "^=",     prec_value(  7, right_assoc) },
+    { "&=",     prec_value(  8, right_assoc) },
+    { "+=",     prec_value(  9, right_assoc) },
+    { "-=",     prec_value(  9, right_assoc) },
+    { "*=",     prec_value( 10, right_assoc) },
+    { "/=",     prec_value( 10, right_assoc) },
+    { "%=",     prec_value( 10, right_assoc) },
+    { "|",      prec_value( 11, right_assoc) },
+    { "^",      prec_value( 12, right_assoc) },
+    { "&",      prec_value( 13, right_assoc) },
+    { "<",      prec_value( 14, chain_assoc) },
+    { ">",      prec_value( 14, chain_assoc) },
+    { "<=",     prec_value( 14, chain_assoc) },
+    { ">=",     prec_value( 14, chain_assoc) },
+    { "==",     prec_value( 14, chain_assoc) },
+    { "!=",     prec_value( 14, chain_assoc) },
+    { "+",      prec_value( 15, right_assoc) },
+    { "-",      prec_value( 15, right_assoc) },
+    { "*",      prec_value( 16, right_assoc) },
+    { "/",      prec_value( 16, right_assoc) },
+    { "%",      prec_value( 16, right_assoc) },
+    { "@",      prec_value( 17,  left_assoc) },
+    { "[]",     prec_value( 18,  left_assoc) },
+    { "()",     prec_value( 18,  left_assoc) },
+    { "MAX",    prec_value(100,   non_assoc) }
   };
 
   // Here is the definition for all rules in the langugae. For a rule to be
@@ -317,6 +319,10 @@ namespace Language {
     Rule(if_statement,
         { reserved_if, expression, left_brace, statements, right_brace },
         AST::Conditional::build_if),
+
+    Rule(if_statement,
+        { reserved_if, assignment, left_brace, statements, right_brace },
+        AST::Conditional::build_if_assignment_error),
     /* End if */
 
     /* Begin statements */
@@ -437,7 +443,7 @@ namespace Language {
         AST::KVPairList::build_one_assignment_error),
 
     Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
-        { assignment, expression, rocket_operator, expression, newline },
+        { key_value_pair_list, assignment, rocket_operator, expression, newline },
         AST::KVPairList::build_more_assignment_error),
 
     Rule(expression,
@@ -450,6 +456,11 @@ namespace Language {
     Rule(while_statement,
         { reserved_while, expression, left_brace, statements, right_brace },
         AST::While::build),
+
+    Rule(while_statement,
+        { reserved_while, assignment, left_brace, statements, right_brace },
+        AST::While::build_assignment_error),
+
     /* End while loop */
 
 

@@ -6,6 +6,8 @@
 #include <vector>
 #include <iostream>
 
+#include "typedefs.h"
+
 // TODO depending on whether or not we log to the console, to a browser, etc, we
 // will want to display things differently. For now, just log to the console.
 class ErrorLog {
@@ -16,6 +18,8 @@ class ErrorLog {
     inline size_t num_errors() const;
     inline void set_file(const std::string& file_name);
     inline void log(size_t line_num, const std::string& msg);
+
+    NPtr assignment_vs_equality(NPtr node);
 
   private:
     size_t err_num_;
@@ -33,4 +37,5 @@ void ErrorLog::log(size_t line_num, const std::string& msg) {
   ++err_num_;
   log_[line_num].push_back(msg);
 }
+
 #endif  // ICARUS_ERROR_LOG_H

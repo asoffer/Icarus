@@ -23,7 +23,7 @@ namespace Language {
     string_literal, type_literal, fn_literal,
 
     // Operators
-    unary_operator, rocket_operator,
+    unary_operator,
 
     key_value_pair, key_value_pair_list,
     comma_list,
@@ -53,6 +53,7 @@ namespace Language {
     binary_boolean_operator,
     bool_operator,
     comma,
+    rocket_operator,
 
     // left unary operators
     reserved_return = MASK_left_unary_operator,

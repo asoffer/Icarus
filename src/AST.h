@@ -107,6 +107,7 @@ namespace AST {
     friend class Assignment;
     friend class ArrayLiteral;
     friend class ArrayType;
+    friend class Conditional;
 
     public:
     static NPtr parenthesize(NPtrVec&& nodes);
@@ -213,6 +214,8 @@ namespace AST {
     public:
       friend class KVPairList;
       friend class FunctionLiteral;
+      friend class Conditional;
+      friend class ::ErrorLog;
 
       static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
 
@@ -281,6 +284,7 @@ namespace AST {
       friend class ArrayLiteral;
       friend class FunctionLiteral;
       friend class Binop;
+      friend class ::ErrorLog;
 
       static NPtr build(NPtrVec&& nodes);
 
@@ -304,6 +308,9 @@ namespace AST {
   };
 
   inline NPtr ChainOp::build(NPtrVec&& nodes) {
+    // TODO it is conceivable that either the LHS or the RHS are already chains
+    // of the appropriate type. Deal with this!
+
     std::shared_ptr<ChainOp> chain_ptr(nullptr);
 
     // Add to a chain so long as the precedence levels match. The only thing at
@@ -522,6 +529,8 @@ namespace AST {
 
   class Assignment : public Binop {
     public:
+      friend class ::ErrorLog;
+
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
@@ -725,46 +734,14 @@ namespace AST {
   }
 
   inline NPtr KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
-    error_log.log(nodes[0]->line_num_, "Assignment found where boolean expression was expected. Did you mean `==` instead of `=`?");
-
-    auto assignment_node = std::static_pointer_cast<Assignment>(nodes[0]);
-
-    // TODO this is mostly the same code as Binop::build_operator
-    auto binop_ptr = new Binop; 
-    // TODO line num
-    binop_ptr->lhs_ = assignment_node->lhs_;
-    binop_ptr->rhs_ = assignment_node->rhs_;
-
-    binop_ptr->token_ = "==";
-    binop_ptr->type_ = Language::generic_operator;
-    binop_ptr->precedence_ = Language::op_prec.at("==");
-
-    nodes[0] = NPtr(binop_ptr);
-
-
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
     return build_one(std::forward<NPtrVec>(nodes));
   }
 
   inline NPtr KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
-    error_log.log(nodes[0]->line_num_, "Assignment found where boolean expression was expected. Did you mean `==` instead of `=`?");
-
-    auto assignment_node = std::static_pointer_cast<Assignment>(nodes[1]);
-
-    // TODO this is mostly the same code as Binop::build_operator
-    auto binop_ptr = new Binop;
-    // TODO line num
-    binop_ptr->lhs_ = assignment_node->lhs_;
-    binop_ptr->rhs_ = assignment_node->rhs_;
-
-    binop_ptr->token_ = "==";
-    binop_ptr->type_ = Language::generic_operator;
-    binop_ptr->precedence_ = Language::op_prec.at("==");
-
-    nodes[0] = NPtr(binop_ptr);
-
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
     return build_more(std::forward<NPtrVec>(nodes));
   }
-
 
 
   class Case : public Expression {
@@ -923,12 +900,8 @@ namespace AST {
 
   class Conditional : public Node {
     public:
-      static NPtr build_if(NPtrVec&& nodes) {
-        auto if_stmt =  new Conditional;
-        if_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
-        if_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
-        return NPtr(if_stmt);
-      }
+      static NPtr build_if(NPtrVec&& nodes);
+      static NPtr build_if_assignment_error(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -944,15 +917,23 @@ namespace AST {
       std::shared_ptr<Statements> statements_;
       Scope* body_scope_;
   };
+
+  inline NPtr Conditional::build_if(NPtrVec&& nodes) {
+    auto if_stmt =  new Conditional;
+    if_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+    if_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+    return NPtr(if_stmt);
+  }
+
+  inline NPtr Conditional::build_if_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build_if(std::forward<NPtrVec>(nodes));
+  }
   
   class While : public Node {
     public:
-      static NPtr build(NPtrVec&& nodes) {
-        auto while_stmt = new While;
-        while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
-        while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
-        return NPtr(while_stmt);
-      }
+      static NPtr build(NPtrVec&& nodes);
+      static NPtr build_assignment_error(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -970,7 +951,18 @@ namespace AST {
       Scope* body_scope_;
   };
 
+  inline NPtr While::build(NPtrVec&& nodes) {
+    auto while_stmt = new While;
+    while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+    while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+    return NPtr(while_stmt);
+  }
 
+  inline NPtr While::build_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build(std::forward<NPtrVec>(nodes));
+  }
+ 
 }  // namespace AST
 
 #endif  // ICARUS_AST_NODE_H
