@@ -617,24 +617,42 @@ namespace AST {
   llvm::Value* Conditional::generate_code(Scope* scope) {
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
-    auto if_cond_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "if_cond", parent_fn);
-    auto if_landing_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "if_landing", parent_fn);
+    // Last block is either the else-block or the landing block if
+    // no else-block exists.
+    std::vector<llvm::BasicBlock*> cond_blocks(conds_.size() + 1,
+        nullptr);
+    
+    for (size_t i = 0; i < cond_blocks.size(); ++i) {
+      cond_blocks[i] = llvm::BasicBlock::Create(
+          llvm::getGlobalContext(), "cond_block", parent_fn);
+    }
 
-    body_scope_->set_parent_function(parent_fn);
+    llvm::BasicBlock* landing = has_else_
+      ? llvm::BasicBlock::Create(llvm::getGlobalContext(), "land", parent_fn)
+      : cond_blocks.back();
 
-    scope->builder().CreateBr(if_cond_block);
-    scope->builder().SetInsertPoint(if_cond_block);
+    scope->builder().CreateBr(cond_blocks[0]);
 
-    scope->builder().CreateCondBr(cond_->generate_code(scope),
-        body_scope_->entry_block(), if_landing_block);
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      scope->builder().SetInsertPoint(cond_blocks[i]);
+      auto condition = conds_[i]->generate_code(scope);
+      scope->builder().CreateCondBr(condition,
+          body_scopes_[i]->alloc_block(), cond_blocks[i + 1]);
+    }
 
-    body_scope_->enter();
-    statements_->generate_code(body_scope_);
-    body_scope_->exit(if_landing_block);
+    scope->builder().SetInsertPoint(cond_blocks.back());
+    if (has_else_) {
+      scope->builder().CreateBr(body_scopes_.back()->alloc_block());
+    }
 
-    scope->builder().SetInsertPoint(if_landing_block);
+    for (size_t i = 0; i < statements_.size(); ++i) {
+      body_scopes_[i]->set_parent_function(parent_fn);
+      body_scopes_[i]->enter();
+      statements_[i]->generate_code(body_scopes_[i]);
+      body_scopes_[i]->exit(landing);
+    }
+
+    scope->builder().SetInsertPoint(landing);
 
     return nullptr;
   }

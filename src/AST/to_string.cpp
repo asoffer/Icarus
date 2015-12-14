@@ -1,6 +1,6 @@
 #include "AST.h"
 #include "Type.h"
-#include <sstream> // DEBUG
+#include <sstream>
 
 namespace AST {
   std::string tabs(size_t n) {
@@ -19,9 +19,26 @@ namespace AST {
   }
 
   std::string Conditional::to_string(size_t n) const {
-    return tabs(n) + "<Conditional>\n"
-      + cond_->to_string(n + 1)
-      + statements_->to_string(n + 1);
+    std::stringstream ss;
+    ss << tabs(n)
+      << "<Conditional (" << statements_.size() << " part"
+      << (statements_.size() == 1 ? "" : "s")
+      << ")>\n";
+
+      for (size_t i = 0; i < conds_.size(); ++i) {
+        ss
+          << tabs(n + 1) << "Condition " << i << ":\n"
+          << conds_[i]->to_string(n + 1)
+          << statements_[i]->to_string(n + 1);
+      }
+
+    if (has_else_) {
+      ss
+        << tabs(n + 1) << "Else:\n"
+        << statements_.back()->to_string(n + 1);
+    }
+
+    return ss.str();
   }
 
 

@@ -21,8 +21,13 @@ namespace AST {
   }
 
   void Conditional::join_identifiers(Scope* scope) {
-    cond_->join_identifiers(body_scope_);
-    statements_->join_identifiers(body_scope_);
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      conds_[i]->join_identifiers(body_scopes_[i]);
+    }
+
+    for (size_t i = 0; i < statements_.size(); ++i) {
+      statements_[i]->join_identifiers(body_scopes_[i]);
+    }
   }
 
   void Binop::join_identifiers(Scope* scope) {

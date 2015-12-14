@@ -112,8 +112,13 @@ namespace AST {
   }
 
   void Conditional::record_dependencies(EPtr eptr) const {
-    statements_->record_dependencies(nullptr);
-    cond_->record_dependencies(cond_);
+    for (size_t i = 0; i < statements_.size(); ++i) {
+      statements_[i]->record_dependencies(nullptr);
+    }
+
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      conds_[i]->record_dependencies(conds_[i]);
+    }
   }
 
   void While::record_dependencies(EPtr eptr) const {

@@ -24,6 +24,7 @@ extern ErrorLog error_log;
 
 namespace debug {
   extern bool parser;
+  extern bool ast;
 }  // namespace
 
 
@@ -53,7 +54,6 @@ int main(int argc, char *argv[]) {
     if (strcmp(arg, "-D") == 0 ||
         strcmp(arg, "-d") == 0) {
       debug::parser = true;
-
     } else if (file_index == -1) {
       // If we haven't seen a file yet, point to it
       file_index = arg_num;

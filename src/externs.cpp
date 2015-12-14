@@ -3,7 +3,7 @@
 
 #include <map>
 
-// Debug flags
+// Debug flags and their default values
 namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
   bool parser = false;

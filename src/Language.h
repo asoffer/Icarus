@@ -31,7 +31,7 @@ namespace Language {
     print_expression, void_return_expression,
     declaration_comma_list,
     fn_assignment,
-    statements, while_statement, if_statement,
+    statements, while_statement, if_statement, if_else_statement,
     missing_newline_statements,
 
     // Parens, braces, and brackets

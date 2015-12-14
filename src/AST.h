@@ -901,6 +901,8 @@ namespace AST {
   class Conditional : public Node {
     public:
       static NPtr build_if(NPtrVec&& nodes);
+      static NPtr build_else_if(NPtrVec&& nodes);
+      static NPtr build_else(NPtrVec&& nodes);
       static NPtr build_if_assignment_error(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
@@ -911,18 +913,47 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
 
     private:
-      Conditional() : body_scope_(Scope::build(ScopeType::cond)) {}
+      Conditional() : has_else_(false) {}
 
-      EPtr cond_;
-      std::shared_ptr<Statements> statements_;
-      Scope* body_scope_;
+      std::vector<EPtr> conds_;
+      bool has_else_;
+      std::vector<std::shared_ptr<Statements>> statements_;
+      std::vector<Scope*> body_scopes_;
   };
 
   inline NPtr Conditional::build_if(NPtrVec&& nodes) {
-    auto if_stmt =  new Conditional;
-    if_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
-    if_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+    auto if_stmt = new Conditional;
+    if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
+    if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
+    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
     return NPtr(if_stmt);
+  }
+
+  inline NPtr Conditional::build_else_if(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
+    auto else_if = std::static_pointer_cast<Conditional>(std::move(nodes[2]));
+
+#ifdef DEBUG
+    if (else_if->conds_.size()       != 1 ||
+        else_if->statements_.size()  != 1 ||
+        else_if->body_scopes_.size() != 1) {
+      std::cerr << "FATAL: Else-if statement constructed by parser with multiple conditional blocks." << std::endl;
+    }
+#endif
+
+    if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
+    if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
+    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
+    return if_stmt;
+  }
+
+  inline NPtr Conditional::build_else(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
+    if_stmt->has_else_ = true;
+    if_stmt->statements_.push_back(
+        std::static_pointer_cast<Statements>(std::move(nodes[3])));
+    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
+    return std::move(if_stmt);
   }
 
   inline NPtr Conditional::build_if_assignment_error(NPtrVec&& nodes) {

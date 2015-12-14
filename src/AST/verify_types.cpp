@@ -394,8 +394,10 @@ namespace AST {
   }
 
   void Conditional::verify_types() {
-    if (cond_->type() != Type::get_bool()) {
-      error_log.log(cond_->line_num(), "Type error: Condition in if statement must be a boolean expression, but a type of " + cond_->type()->to_string() + " was found.");
+    for (const auto& cond : conds_) {
+      if (cond->type() != Type::get_bool()) {
+        error_log.log(cond->line_num(), "Type error: Condition in if statement must be a boolean expression, but a type of " + cond->type()->to_string() + " was found.");
+      }
     }
   }
 

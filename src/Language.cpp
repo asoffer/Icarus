@@ -323,6 +323,14 @@ namespace Language {
     Rule(if_statement,
         { reserved_if, assignment, left_brace, statements, right_brace },
         AST::Conditional::build_if_assignment_error),
+
+    Rule(if_statement,
+        { if_statement, reserved_else, if_statement },
+        AST::Conditional::build_else_if),
+
+    Rule(if_else_statement,
+        { if_statement, reserved_else, left_brace, statements, right_brace },
+        AST::Conditional::build_else),
     /* End if */
 
     /* Begin statements */
@@ -352,6 +360,10 @@ namespace Language {
 
     Rule(statements,
         { if_statement, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
+        { if_else_statement, newline },
         AST::Statements::build_one),
 
     Rule(statements,
@@ -388,6 +400,10 @@ namespace Language {
 
     Rule(statements,
         { statements, if_statement, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, if_else_statement, newline },
         AST::Statements::build_more),
 
     Rule(statements,

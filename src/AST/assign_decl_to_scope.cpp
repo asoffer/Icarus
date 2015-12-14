@@ -6,11 +6,18 @@ namespace AST {
   }
 
   void Conditional::assign_decl_to_scope(Scope* scope) {
-    body_scope_->set_parent(scope);
+    std::cout << to_string(0) << std::endl;
+    std::cout << conds_.size() << ", " << body_scopes_.size() << ", " << statements_.size() << std::endl;
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      body_scopes_[i]->set_parent(scope);
+      conds_[i]->assign_decl_to_scope(scope);
+      statements_[i]->assign_decl_to_scope(body_scopes_[i]);
+    }
 
-    cond_->assign_decl_to_scope(scope);
-
-    statements_->assign_decl_to_scope(body_scope_);
+    if (has_else_) {
+      body_scopes_.back()->set_parent(scope);
+      statements_.back()->assign_decl_to_scope(body_scopes_.back());
+    }
   }
 
   void While::assign_decl_to_scope(Scope* scope) {
