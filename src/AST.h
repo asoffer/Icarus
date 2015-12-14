@@ -42,11 +42,9 @@ namespace AST {
       friend class ArrayType;
       friend class ArrayLiteral;
 
-      static inline Node eof_node(size_t line_num) { return Node(line_num, Language::eof, ""); }
-      static inline Node newline_node() { return Node(0, Language::newline, ""); }
-      static inline Node string_literal_node(size_t line_num, const std::string& str_lit) { 
-        return Node(line_num, Language::string_literal, str_lit);
-      }
+      static Node eof_node(size_t line_num);
+      static Node newline_node();
+      static Node string_literal_node(size_t line_num, const std::string& str_lit);
 
       Language::NodeType node_type() const { return type_; }
       void set_node_type(Language::NodeType t) { type_ = t; }
@@ -85,7 +83,6 @@ namespace AST {
 
       virtual ~Node(){}
 
-
       inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
         return os << node.to_string(0);
       }
@@ -96,49 +93,62 @@ namespace AST {
       size_t line_num_;
   };
 
+      inline Node Node::eof_node(size_t line_num) {
+        return Node(line_num, Language::eof, "");
+      }
+
+      inline Node Node::newline_node() {
+        return Node(0, Language::newline, "");
+      }
+
+      inline Node Node::string_literal_node(
+          size_t line_num, const std::string& str_lit) { 
+        return Node(line_num, Language::string_literal, str_lit);
+      }
 
   class Expression : public Node {
-    friend class ::Scope;
-    friend class KVPairList;
-    friend class Unop;
-    friend class Binop;
-    friend class ChainOp;
-    friend class Declaration;
-    friend class Assignment;
-    friend class ArrayLiteral;
-    friend class ArrayType;
-    friend class Conditional;
-
     public:
-    static NPtr parenthesize(NPtrVec&& nodes);
+      friend class ::Scope;
+      friend class KVPairList;
+      friend class Unop;
+      friend class Binop;
+      friend class ChainOp;
+      friend class Declaration;
+      friend class Assignment;
+      friend class ArrayLiteral;
+      friend class ArrayType;
+      friend class Conditional;
 
-    size_t precedence() const { return precedence_; }
+      static NPtr parenthesize(NPtrVec&& nodes);
 
-    virtual std::string to_string(size_t n) const = 0;
-    virtual void join_identifiers(Scope* scope) = 0;
-    virtual void assign_decl_to_scope(Scope* scope) = 0;
-    virtual void record_dependencies(EPtr eptr) const = 0;
-    virtual void verify_types() = 0;
+      size_t precedence() const { return precedence_; }
 
-    virtual Type* interpret_as_type() const = 0;
-    virtual llvm::Value* generate_code(Scope* scope) = 0;
-    virtual llvm::Value* generate_lvalue(Scope* scope) = 0;
+      virtual std::string to_string(size_t n) const = 0;
+      virtual void join_identifiers(Scope* scope) = 0;
+      virtual void assign_decl_to_scope(Scope* scope) = 0;
+      virtual void record_dependencies(EPtr eptr) const = 0;
+      virtual void verify_types() = 0;
 
-    virtual Type* type() const { return expr_type_; }
-    virtual bool is_literal(Type* t) const {
-      return is_terminal() && !is_identifier() && type() == t;
-    }
+      virtual Type* interpret_as_type() const = 0;
+      virtual llvm::Value* generate_code(Scope* scope) = 0;
+      virtual llvm::Value* generate_lvalue(Scope* scope) = 0;
 
-    virtual bool is_expression() const { return true; }
+      virtual Type* type() const { return expr_type_; }
+      virtual bool is_literal(Type* t) const {
+        return is_terminal() && !is_identifier() && type() == t;
+      }
+
+      virtual bool is_expression() const { return true; }
 
 
-    virtual ~Expression(){}
+      virtual ~Expression(){}
+
+      Expression() : expr_type_(Type::get_unknown()) {}
 
     protected:
-    Expression() : expr_type_(Type::get_unknown()) {}
 
-    size_t precedence_;
-    Type* expr_type_;
+      size_t precedence_;
+      Type* expr_type_;
   };
 
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
@@ -149,31 +159,31 @@ namespace AST {
 
   // TODO: This only represents a left unary operator for now
   class Unop : public Expression {
-    friend class Statements;
-
     public:
-    static NPtr build(NPtrVec&& nodes);
-    static NPtr build_paren_operator(NPtrVec&& nodes);
+      friend class Statements;
 
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
-    virtual void assign_decl_to_scope(Scope* scope);
-    virtual void record_dependencies(EPtr eptr) const;
-    virtual void verify_types();
+      static NPtr build(NPtrVec&& nodes);
+      static NPtr build_paren_operator(NPtrVec&& nodes);
 
-    virtual Type* interpret_as_type() const;
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type() const;
 
 
-    virtual llvm::Value* generate_code(Scope* scope);
-    virtual llvm::Value* generate_lvalue(Scope* scope);
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
 
     private:
-    EPtr expr_;
+      EPtr expr_;
   };
 
 
   inline NPtr Unop::build(NPtrVec&& nodes) {
-    auto unop_ptr = new Unop;
+    auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
     unop_ptr->line_num_ = nodes[0]->line_num_;
 
@@ -191,11 +201,11 @@ namespace AST {
 
     unop_ptr->precedence_ = Language::op_prec.at(unop_ptr->token());
 
-    return NPtr(unop_ptr);
+    return unop_ptr;
   }
 
   inline NPtr Unop::build_paren_operator(NPtrVec&& nodes) {
-    auto unop_ptr = new Unop;
+    auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->line_num_ = nodes[1]->line_num_;
 
     unop_ptr->expr_ =
@@ -206,7 +216,7 @@ namespace AST {
 
     unop_ptr->precedence_ = Language::op_prec.at("()");
 
-    return NPtr(unop_ptr);
+    return unop_ptr;
   }
 
 
@@ -239,8 +249,9 @@ namespace AST {
 
       virtual ~Binop(){}
 
-    protected:
       Binop() {}
+
+    protected:
       EPtr lhs_;
       EPtr rhs_;
   };
@@ -260,7 +271,7 @@ namespace AST {
   }
 
   inline NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
-    auto binop_ptr = new Binop;
+    auto binop_ptr = std::make_shared<Binop>();
     binop_ptr->line_num_ = nodes[1]->line_num_;
 
     binop_ptr->lhs_ =
@@ -274,7 +285,7 @@ namespace AST {
 
     binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
 
-    return NPtr(binop_ptr);
+    return binop_ptr;
   }
 
 
@@ -328,7 +339,7 @@ namespace AST {
       chain_ptr = std::static_pointer_cast<ChainOp>(nodes[0]);
 
     } else {
-      chain_ptr = std::shared_ptr<ChainOp>(new ChainOp);
+      chain_ptr = std::make_shared<ChainOp>();
       chain_ptr->line_num_ = nodes[1]->line_num_;
 
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
@@ -362,7 +373,7 @@ namespace AST {
   };
 
   inline NPtr ArrayLiteral::build(NPtrVec&& nodes) {
-    auto array_lit_ptr = new ArrayLiteral;
+    auto array_lit_ptr = std::make_shared<ArrayLiteral>();
     array_lit_ptr->precedence_ = Language::op_prec.at("MAX");
     array_lit_ptr->line_num_ = nodes[0]->line_num_;
 
@@ -373,7 +384,7 @@ namespace AST {
       array_lit_ptr->elems_.push_back(std::static_pointer_cast<Expression>(nodes[1]));
     }
 
-    return NPtr(array_lit_ptr);
+    return array_lit_ptr;
   }
 
   class ArrayType : public Expression {
@@ -423,7 +434,7 @@ namespace AST {
       return std::static_pointer_cast<Node>(prev);
 
     } else {
-      auto array_type_ptr = new ArrayType;
+      auto array_type_ptr = std::make_shared<ArrayType>();
       array_type_ptr->line_num_ = nodes[0]->line_num_;
 
       array_type_ptr->len_ =
@@ -435,12 +446,12 @@ namespace AST {
       array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
       array_type_ptr->precedence_ = Language::op_prec.at("MAX");
 
-      return NPtr(array_type_ptr);
+      return array_type_ptr;
     }
   }
 
   inline NPtr ArrayType::build_unknown(NPtrVec&& nodes) {
-    auto array_type_ptr = new ArrayType;
+    auto array_type_ptr = std::make_shared<ArrayType>();
     array_type_ptr->line_num_ = nodes[0]->line_num_;
 
     // len_ == nullptr means we do not know the length of the array can change.
@@ -452,7 +463,7 @@ namespace AST {
     array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
     array_type_ptr->precedence_ = Language::op_prec.at("MAX");
 
-    return NPtr(array_type_ptr);
+    return array_type_ptr;
   }
 
   class Terminal : public Expression {
@@ -480,18 +491,17 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
-    protected:
       Terminal() {}
   };
 
   inline NPtr Terminal::build(NPtrVec&& nodes, Type* t) {
-    auto term_ptr = new Terminal;
+    auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num_ = nodes[0]->line_num_;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence_ = Language::op_prec.at("MAX");
 
-    return NPtr(term_ptr);
+    return term_ptr;
   }
 
   inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
@@ -525,8 +535,6 @@ namespace AST {
   }
 
 
-
-
   class Assignment : public Binop {
     public:
       friend class ::ErrorLog;
@@ -539,14 +547,12 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
-      virtual ~Assignment(){}
-
-    private:
       Assignment() {}
+      virtual ~Assignment(){}
   };
 
   inline NPtr Assignment::build(NPtrVec&& nodes) {
-    auto assign_ptr = new Assignment;
+    auto assign_ptr = std::make_shared<Assignment>();
     assign_ptr->line_num_ = nodes[1]->line_num_;
 
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
@@ -557,17 +563,14 @@ namespace AST {
 
     assign_ptr->precedence_ = Language::op_prec.at(assign_ptr->token_);
 
-    return NPtr(assign_ptr);
+    return assign_ptr;
   }
 
 
   class Identifier : public Terminal {
-    friend class Assignment;
-
     public:
-      static NPtr build(NPtrVec&& nodes) {
-        return NPtr(new Identifier(nodes[0]->line_num_, nodes[0]->token()));
-      }
+      friend class Assignment;
+      static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void record_dependencies(EPtr eptr) const;
@@ -587,6 +590,9 @@ namespace AST {
       llvm::Value* alloc_;
   };
 
+  inline NPtr Identifier::build(NPtrVec&& nodes) {
+    return std::make_shared<Identifier>(nodes[0]->line_num_, nodes[0]->token());
+  }
 
   // class Declaration
   //
@@ -605,9 +611,9 @@ namespace AST {
       static NPtr build_decl(NPtrVec&& nodes);
       static NPtr build_assign(NPtrVec&& nodes);
 
-      std::string identifier_string() const { return id_->token(); }
-      IdPtr declared_identifier() const { return id_; }
-      EPtr declared_type() const { return decl_type_; }
+      inline std::string identifier_string() const { return id_->token(); }
+      inline IdPtr declared_identifier() const { return id_; }
+      inline EPtr declared_type() const { return decl_type_; }
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -625,10 +631,8 @@ namespace AST {
 
       virtual bool is_declaration() const { return true; }
 
-      virtual ~Declaration(){}
-
-
       Declaration() {}
+      virtual ~Declaration(){}
 
     private:
       // The identifier being declared
@@ -683,19 +687,19 @@ namespace AST {
 
       inline size_t size() const { return kv_pairs_.size(); }
 
-    private:
       KVPairList() {}
 
+    private:
       std::vector<std::pair<EPtr, EPtr>> kv_pairs_;
   };
 
   inline NPtr KVPairList::build_one(NPtrVec&& nodes) {
-    auto pair_list = new KVPairList;
+    auto pair_list = std::make_shared<KVPairList>();
     pair_list->line_num_ = nodes[0]->line_num_;
     EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
-      key_ptr = EPtr(new Terminal);
+      key_ptr = std::make_shared<Terminal>();
       // TODO line num
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
@@ -707,7 +711,7 @@ namespace AST {
 
     auto val_ptr = std::static_pointer_cast<Expression>(nodes[2]);
 
-    pair_list->kv_pairs_.emplace_back(key_ptr, val_ptr);
+    pair_list->kv_pairs_.emplace_back(std::move(key_ptr), std::move(val_ptr));
     return NPtr(pair_list);
   }
 
@@ -716,7 +720,7 @@ namespace AST {
     EPtr key_ptr;
 
     if (nodes[1]->node_type() == Language::reserved_else) {
-      key_ptr = EPtr(new Terminal);
+      key_ptr = std::make_shared<Terminal>();
       // TODO line num
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
@@ -728,7 +732,7 @@ namespace AST {
 
     auto val_ptr = std::static_pointer_cast<Expression>(nodes[3]);
 
-    pair_list->kv_pairs_.emplace_back(key_ptr, val_ptr);
+    pair_list->kv_pairs_.emplace_back(std::move(key_ptr), std::move(val_ptr));
 
     return pair_list;
   }
@@ -758,65 +762,69 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
-    private:
       Case() {}
+      virtual ~Case() {}
+
+    private:
       std::shared_ptr<KVPairList> pairs_;
   };
 
   inline NPtr Case::build(NPtrVec&& nodes) {
-    auto case_ptr = new Case;
+    auto case_ptr = std::make_shared<Case>();
     case_ptr->line_num_ = nodes[0]->line_num_;
     case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[2]);
-    return NPtr(case_ptr);
+    return case_ptr;
   }
 
 
   class Statements : public Node {
     public:
-    static NPtr build_one(NPtrVec&& nodes);
-    static NPtr build_more(NPtrVec&& nodes);
-    static NPtr build_double_expression_error(NPtrVec&& nodes);
-    static NPtr build_extra_expression_error(NPtrVec&& nodes);
+      static NPtr build_one(NPtrVec&& nodes);
+      static NPtr build_more(NPtrVec&& nodes);
+      static NPtr build_double_expression_error(NPtrVec&& nodes);
+      static NPtr build_extra_expression_error(NPtrVec&& nodes);
 
-    virtual std::string to_string(size_t n) const;
-    virtual void join_identifiers(Scope* scope);
-    virtual void assign_decl_to_scope(Scope* scope);
-    virtual void record_dependencies(EPtr) const;
-    virtual void verify_types();
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr) const;
+      virtual void verify_types();
 
-    void collect_return_types(std::set<Type*>* return_exprs) const;
-    virtual llvm::Value* generate_code(Scope* scope);
+      void collect_return_types(std::set<Type*>* return_exprs) const;
+      virtual llvm::Value* generate_code(Scope* scope);
 
-    inline size_t size() { return statements_.size(); }
+      inline size_t size() { return statements_.size(); }
+
+      Statements() {}
+      virtual ~Statements() {}
 
     private:
-    Statements() {}
-    std::vector<NPtr> statements_;
+      std::vector<NPtr> statements_;
   };
 
   inline NPtr Statements::build_one(NPtrVec&& nodes) {
-    auto output = new Statements;
+    auto output = std::make_shared<Statements>();
     output->statements_.push_back(std::move(nodes[0]));
 
-    return NPtr(output);
+    return output;
   }
 
   inline NPtr Statements::build_more(NPtrVec&& nodes) {
     auto output = std::static_pointer_cast<Statements>(nodes[0]);
     output->statements_.push_back(std::move(nodes[1]));
 
-    return NPtr(output);
+    return output;
   }
 
   inline NPtr Statements::build_double_expression_error(NPtrVec&& nodes) {
     error_log.log(nodes[0]->line_num_, "Adjacent expressions");
 
-    auto output = new Statements;
+    auto output = std::make_shared<Statements>();
     output->line_num_ = nodes[0]->line_num_;
     output->statements_.push_back(std::move(nodes[0]));
     output->statements_.push_back(std::move(nodes[1]));
 
-    return NPtr(output);
+    return output;
   }
 
   inline NPtr Statements::build_extra_expression_error(NPtrVec&& nodes) {
@@ -825,7 +833,7 @@ namespace AST {
     auto output = std::static_pointer_cast<Statements>(nodes[0]);
     output->statements_.push_back(std::move(nodes[1]));
 
-    return NPtr(output);
+    return output;
   }
 
   class FunctionLiteral : public Expression {
@@ -847,6 +855,8 @@ namespace AST {
 
       virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
+      FunctionLiteral() :
+        fn_scope_(Scope::build(ScopeType::func)), llvm_function_(nullptr) {}
       virtual ~FunctionLiteral() {}
 
     private:
@@ -857,13 +867,10 @@ namespace AST {
       llvm::Function* llvm_function_;
       std::shared_ptr<Statements> statements_;
 
-      FunctionLiteral() :
-        fn_scope_(Scope::build(ScopeType::func)),
-        llvm_function_(nullptr) {}
   };
 
   inline NPtr FunctionLiteral::build(NPtrVec&& nodes) {
-    auto fn_lit = new FunctionLiteral;
+    auto fn_lit = std::make_shared<FunctionLiteral>();
     fn_lit->line_num_ = nodes[0]->line_num_;
 
     fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
@@ -894,7 +901,7 @@ namespace AST {
       }
     }
 
-    return NPtr(fn_lit);
+    return fn_lit;
   }
 
 
@@ -916,8 +923,9 @@ namespace AST {
 
       bool has_else() const { return else_line_num_ != 0; }
 
-    private:
       Conditional() : else_line_num_(0) {}
+      virtual ~Conditional() {}
+    private:
 
       std::vector<EPtr> conds_;
       std::vector<std::shared_ptr<Statements>> statements_;
@@ -930,11 +938,11 @@ namespace AST {
   };
 
   inline NPtr Conditional::build_if(NPtrVec&& nodes) {
-    auto if_stmt = new Conditional;
+    auto if_stmt = std::make_shared<Conditional>();
     if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
     if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
     if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
-    return NPtr(if_stmt);
+    return if_stmt;
   }
 
   inline NPtr Conditional::build_extra_else_error(NPtrVec&& nodes) {
@@ -996,19 +1004,20 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
 
 
-    private:
       While() : body_scope_(Scope::build(ScopeType::loop)) {}
+      virtual ~While() {}
 
+    private:
       EPtr cond_;
       std::shared_ptr<Statements> statements_;
       Scope* body_scope_;
   };
 
   inline NPtr While::build(NPtrVec&& nodes) {
-    auto while_stmt = new While;
+    auto while_stmt = std::make_shared<While>();
     while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
     while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
-    return NPtr(while_stmt);
+    return while_stmt;
   }
 
   inline NPtr While::build_assignment_error(NPtrVec&& nodes) {
