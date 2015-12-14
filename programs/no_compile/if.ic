@@ -1,5 +1,19 @@
 a := 3
 b := 4
+
 if a = b {
   print a
+
+} else {
+  print b
+
+} else {
+  print a
+
+} else {
+  print b
+
+} else if (a = b) {
+  print a
 }
+

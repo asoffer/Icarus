@@ -903,6 +903,8 @@ namespace AST {
       static NPtr build_if(NPtrVec&& nodes);
       static NPtr build_else_if(NPtrVec&& nodes);
       static NPtr build_else(NPtrVec&& nodes);
+      static NPtr build_extra_else_error(NPtrVec&& nodes);
+      static NPtr build_extra_else_if_error(NPtrVec&& nodes);
       static NPtr build_if_assignment_error(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
@@ -912,13 +914,19 @@ namespace AST {
       virtual void verify_types();
       virtual llvm::Value* generate_code(Scope* scope);
 
+      bool has_else() const { return else_line_num_ != 0; }
+
     private:
-      Conditional() : has_else_(false) {}
+      Conditional() : else_line_num_(0) {}
 
       std::vector<EPtr> conds_;
-      bool has_else_;
       std::vector<std::shared_ptr<Statements>> statements_;
       std::vector<Scope*> body_scopes_;
+
+      // We use else_line_num_ to determine if an else branch exists (when it's
+      // non-zero) and also for error generation (if multiple else-blocks are
+      // present).
+      size_t else_line_num_;
   };
 
   inline NPtr Conditional::build_if(NPtrVec&& nodes) {
@@ -927,6 +935,20 @@ namespace AST {
     if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
     if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
     return NPtr(if_stmt);
+  }
+
+  inline NPtr Conditional::build_extra_else_error(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
+    error_log.log(nodes[1]->line_num(), "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+
+    return std::move(nodes[0]);
+  }
+
+  inline NPtr Conditional::build_extra_else_if_error(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
+    error_log.log(nodes[1]->line_num(), "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+
+    return std::move(nodes[0]);
   }
 
   inline NPtr Conditional::build_else_if(NPtrVec&& nodes) {
@@ -949,7 +971,7 @@ namespace AST {
 
   inline NPtr Conditional::build_else(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
-    if_stmt->has_else_ = true;
+    if_stmt->else_line_num_ = nodes[1]->line_num();
     if_stmt->statements_.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
     if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));

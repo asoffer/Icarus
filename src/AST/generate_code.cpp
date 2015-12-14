@@ -627,7 +627,7 @@ namespace AST {
           llvm::getGlobalContext(), "cond_block", parent_fn);
     }
 
-    llvm::BasicBlock* landing = has_else_
+    llvm::BasicBlock* landing = has_else()
       ? llvm::BasicBlock::Create(llvm::getGlobalContext(), "land", parent_fn)
       : cond_blocks.back();
 
@@ -641,7 +641,7 @@ namespace AST {
     }
 
     scope->builder().SetInsertPoint(cond_blocks.back());
-    if (has_else_) {
+    if (has_else()) {
       scope->builder().CreateBr(body_scopes_.back()->alloc_block());
     }
 

@@ -207,9 +207,17 @@ namespace Language {
         { declaration, assign_operator, expression },
         AST::Assignment::build),
 
+    Rule(assignment,
+        { left_paren, assignment, right_paren},
+        AST::Expression::parenthesize),
+
     Rule(fn_assignment,
         { fn_declaration, assign_operator, expression },
         AST::Assignment::build),
+
+    Rule(fn_assignment,
+        { left_paren, fn_assignment, right_paren},
+        AST::Expression::parenthesize),
 
     Rule(assignment,
         { expression, assign_operator, fn_expression },
@@ -331,6 +339,16 @@ namespace Language {
     Rule(if_else_statement,
         { if_statement, reserved_else, left_brace, statements, right_brace },
         AST::Conditional::build_else),
+
+    Rule(if_else_statement,
+        { if_else_statement, reserved_else, left_brace, statements, right_brace },
+        AST::Conditional::build_extra_else_error),
+
+    Rule(if_else_statement,
+        { if_else_statement, reserved_else, if_statement },
+        AST::Conditional::build_extra_else_if_error),
+
+
     /* End if */
 
     /* Begin statements */

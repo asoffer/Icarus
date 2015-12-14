@@ -32,7 +32,7 @@ namespace AST {
           << statements_[i]->to_string(n + 1);
       }
 
-    if (has_else_) {
+    if (has_else()) {
       ss
         << tabs(n + 1) << "Else:\n"
         << statements_.back()->to_string(n + 1);
