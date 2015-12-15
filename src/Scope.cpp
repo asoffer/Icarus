@@ -25,34 +25,25 @@ std::map<IdPtr, Scope*> Scope::scope_containing_;
 
 std::vector<Scope*> Scope::registry_;
 
-Scope* Scope::build(ScopeType st) {
-  Scope* new_scope = new Scope(st);
-  registry_.push_back(new_scope);
 
-  return new_scope;
-}
+FnScope* Scope::build_global() {
+  // TODO add an explicit main entry point and make this scope not a function.
+  FnScope* scope_ptr = build<FnScope>();
 
-Scope* Scope::build_global() {
-  auto scope_ptr = new Scope(ScopeType::func);
   for (auto& ptr : registry_) {
+    if (ptr == scope_ptr) continue;
+
     ptr->parent_ = scope_ptr;
   }
 
-  registry_.push_back(scope_ptr);
-  return registry_.back();
+  return scope_ptr;
 }
 
 size_t Scope::num_scopes() {
   return registry_.size();
 }
 
-// The code built in here is what runs when a scope is entered. Depending on
-// the scope type, this may include allocations. Looping scopes have their
-// allocations done outside to avoid blowing up the stack. All others do
-// allocations at the beginning of the block.
 void Scope::enter() {
-  allocate();
-
   bldr_.SetInsertPoint(entry_block_);
 
   for (const auto& decl_ptr : ordered_decls_) {
@@ -63,54 +54,62 @@ void Scope::enter() {
   }
 }
 
+void FnScope::enter() {
+  bldr_.SetInsertPoint(entry_block_);
+  for (auto scope : innards_) {
+    allocate(scope);
+  }
 
-// The code built in here is what runs when you exit this scope. Depending on
-// the scope type, this may include deallocations.
+  allocate(this);
+
+  Scope::enter();
+}
+
+
+// TODO simplify this. No need for an exit block unless it's in FnScope
 void Scope::exit(llvm::BasicBlock* jump_to) {
   bldr_.CreateBr(exit_block_);
   bldr_.SetInsertPoint(exit_block_);
+  bldr_.CreateBr(jump_to);
+}
 
-  for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_type = decl_ptr->declared_identifier()->type();
-    if (decl_type->is_array()) {
-      // TODO look at elements, see if they need deallocation
 
-      auto array_ptr = bldr_.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+// Take in input and ignore it.
+void FnScope::exit(llvm::BasicBlock*) {
+  bldr_.CreateBr(exit_block_);
+  bldr_.SetInsertPoint(exit_block_);
 
-      auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
-
-      auto neg_four = data::const_int(-4, true);
-
-      auto ptr_to_free = bldr_.CreateGEP(
-          bldr_.CreateBitCast(array_ptr, basic_ptr_type),
-          { neg_four }, "ptr_to_free");
-
-      bldr_.CreateCall(cstdlib::free(), { ptr_to_free });
-    }
+  for (auto scope : innards_) {
+    deallocate(scope);
   }
 
-  // Every basic block must end with a return or a branch.
-  // If there is no return type, this scope does not represent a function,
-  // and so we branch to the block passed in. Otherwise, we return the
-  // appropriate value.
-  if (scope_type_ != ScopeType::func) {
-    bldr_.CreateBr(jump_to);
-
-  } else if (return_type_ == Type::get_void()) {
+  if (return_type_ == Type::get_void()) {
     bldr_.CreateRetVoid();
 
   } else {
     bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
   }
 }
-
-// TODO This seems unnecessary.
-void Scope::make_return_void() {}
+void Scope::make_return_void() {
+  containing_function_->make_return_void();
+}
 
 void Scope::make_return(llvm::Value* val) {
-  if (val != nullptr) {
-    bldr_.CreateStore(val, return_val_);
+  containing_function_->make_return(val);
+}
+
+void FnScope::make_return_void() {
+  return_type_ = Type::get_void();
+}
+
+void FnScope::make_return(llvm::Value* val) {
+#ifdef DEBUG
+  if (val == nullptr) {
+    std::cerr << "FATAL: making a return value before it's allocation." << std::endl;
   }
+#endif
+
+  bldr_.CreateStore(val, return_val_);
 }
 
 
@@ -118,7 +117,33 @@ void Scope::make_return(llvm::Value* val) {
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.
 void Scope::set_parent(Scope* parent) {
+#ifdef DEBUG
+  if (parent == nullptr) {
+    std::cerr << "FATAL: Setting scope's parent to be a nullptr." << std::endl;
+  }
+
+  if (parent == this) {
+    std::cerr << "FATAL: Setting parent as self." << std::endl;
+  }
+#endif
+
+  if (parent_ != nullptr && parent_->containing_function_ != nullptr) {
+    parent_->containing_function_->innards_.erase(this);
+  }
+
   parent_ = parent;
+  if (!is_function_scope()) {
+    containing_function_ = parent_->containing_function_;
+  }
+
+  if (parent_->is_function_scope()) {
+    static_cast<FnScope*>(parent_)->innards_.insert(this);
+
+  } else {
+    std::cout << parent_ << std::endl;
+    std::cout << parent_->containing_function_ << std::endl;
+    parent_->containing_function_->innards_.insert(this);
+  }
 }
 
 // Gets the type of that the identifier was declared as. This is a pointer to
@@ -135,10 +160,8 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 
 }
 
-void Scope::allocate() {
-  bldr_.SetInsertPoint(alloc_block_);
-
-  for (const auto& decl_ptr : ordered_decls_) {
+void FnScope::allocate(Scope* scope) {
+  for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
@@ -152,13 +175,30 @@ void Scope::allocate() {
   }
 
   // If we need a return type, allocate it now.
-  if (return_type_ != nullptr && return_type_ != Type::get_void()) {
-    return_val_ = bldr_.CreateAlloca(return_type_->llvm(), nullptr, "retval");
+  if (return_type_ != Type::get_void()) {
+    return_val_ = return_type_->allocate(bldr_);
+    return_val_->setName("retval");
   }
+}
 
-  if (alloc_block_ != entry_block_) {
-    bldr_.CreateBr(entry_block_);
-    bldr_.SetInsertPoint(entry_block_);
+void FnScope::deallocate(Scope* scope) {
+  for (const auto& decl_ptr : scope->ordered_decls_) {
+    auto decl_type = decl_ptr->declared_identifier()->type();
+    if (decl_type->is_array()) {
+      // TODO look at elements, see if they need deallocation
+
+      auto array_ptr = bldr_.CreateLoad(decl_ptr->declared_identifier()->alloc_);
+
+      auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
+
+      auto neg_four = data::const_int(-4, true);
+
+      auto ptr_to_free = bldr_.CreateGEP(
+          bldr_.CreateBitCast(array_ptr, basic_ptr_type),
+          { neg_four }, "ptr_to_free");
+
+      bldr_.CreateCall(cstdlib::free(), { ptr_to_free });
+    }
   }
 }
 
@@ -352,21 +392,15 @@ void Scope::assign_type_order() {
 }
 
 void Scope::set_parent_function(llvm::Function* fn) {
-  if (alloc_block_ != nullptr && alloc_block_->getParent() != nullptr) {
-    alloc_block_->removeFromParent();
-  }
-
   if (entry_block_ != nullptr && entry_block_->getParent() != nullptr) {
     entry_block_->removeFromParent();
   }
+
+  entry_block_->insertInto(fn);
 
   if (exit_block_ != nullptr && exit_block_->getParent() != nullptr) {
     exit_block_->removeFromParent();
   }
 
-  alloc_block_->insertInto(fn);
-  if (entry_block_ != alloc_block_) {
-    entry_block_->insertInto(fn);
-  }
   exit_block_->insertInto(fn);
 }

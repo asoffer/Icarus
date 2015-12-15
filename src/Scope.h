@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <type_traits>
 
 #include "typedefs.h"
 #include "Type.h"
@@ -19,37 +20,31 @@
 #include <iostream>
 
 class Type;
+class FnScope;
 
 namespace AST {
   class FunctionLiteral;
 }
 
-enum class ScopeType { loop, cond, func, type };
 
 class Scope {
   public:
-    friend void fill_db();
-    friend void assign_type_order();
     friend class AST::FunctionLiteral;
     friend class AST::Declaration;
+    friend class FnScope;
+
+    // Build a scope of the appropriate type
+    template<typename T>
+      static typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type build();
+
+    static std::map<EPtr, std::set<EPtr>> dependencies_;
+    static std::map<IdPtr, DeclPtr> decl_of_;
 
     static void verify_no_shadowing();
     static void determine_declared_types();
 
-    static Scope* build(ScopeType st);
-    static Scope* build_global();
+    static FnScope* build_global();
     static size_t num_scopes();
-
-
-    // Important invariant: A pointer only ever points to scopes held in
-    // higehr indices. The global (root) scope must be the last scope.
-    static std::vector<Scope*> registry_;
-
-    // To each IdPtr we associate a set holding IdPtrs for which it is needed
-    static std::map<EPtr, std::set<EPtr>> dependencies_;
-    static std::map<IdPtr, Scope*> scope_containing_;
-    static std::map<IdPtr, DeclPtr> decl_of_;
-    static std::vector<DeclPtr> decl_registry_;
 
     static DeclPtr make_declaration(size_t line_num, const std::string& id_string);
 
@@ -63,66 +58,109 @@ class Scope {
     llvm::IRBuilder<>& builder() { return bldr_; }
 
     void set_parent(Scope* parent);
-    void set_return_type(Type* ret_type) { return_type_ = ret_type; }
-    void enter();
-    void exit(llvm::BasicBlock* jump_to = nullptr);
     Scope* parent() const { return parent_; }
-    llvm::Value* return_value() const { return return_val_; }
+
+    virtual bool is_function_scope() const { return false; }
+
+    virtual void enter();
+    virtual void exit(llvm::BasicBlock* jump_to = nullptr);
 
     // While we're actually returning an IdPtr, it's only ever used as an
     // EPtr, so we do the pointer cast inside.
     EPtr identifier(EPtr id_as_eptr);
 
-
-    llvm::BasicBlock* alloc_block() const { return alloc_block_; }
     llvm::BasicBlock* entry_block() const { return entry_block_; }
     llvm::BasicBlock* exit_block() const { return exit_block_; }
 
     void set_parent_function(llvm::Function* fn);
-    void make_return_void();
-    void make_return(llvm::Value* val);
-
     EPtr get_declared_type(IdPtr id_ptr) const;
 
-    void allocate();
+    virtual void make_return_void();
+    virtual void make_return(llvm::Value* val);
 
     Scope(const Scope&) = delete;
     Scope(Scope&&) = delete;
+    virtual ~Scope() {}
 
-  private:
-    Scope(ScopeType st) :
+  protected:
+    Scope() :
       parent_(nullptr),
-      scope_type_(st),
+      containing_function_(nullptr),
       entry_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry")),
       exit_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "exit")),
-      alloc_block_(scope_type_ == ScopeType::loop
-          ? llvm::BasicBlock::Create(llvm::getGlobalContext(), "allocs")
-          : entry_block_),
-      bldr_(llvm::getGlobalContext())
-      {
-        bldr_.SetInsertPoint(alloc_block_);
-
-        if (scope_type_ != ScopeType::func) {
-          set_return_type(nullptr);
-        }
-      }
+      bldr_(llvm::getGlobalContext()) {}
 
     std::map<std::string, IdPtr> ids_;
     std::vector<DeclPtr> ordered_decls_;
 
     Scope* parent_;
-    ScopeType scope_type_;
+    FnScope* containing_function_;
     llvm::BasicBlock* entry_block_;
     llvm::BasicBlock* exit_block_;
-    llvm::BasicBlock* alloc_block_;
-
-    Type* return_type_;
-    llvm::Value* return_val_;
-
 
     llvm::IRBuilder<> bldr_;
 
+  private:
+    // Important invariant: A pointer only ever points to scopes held in
+    // higehr indices. The global (root) scope must be the last scope.
+    static std::vector<Scope*> registry_;
 
+    // To each IdPtr we associate a set holding IdPtrs for which it is needed
+    static std::map<IdPtr, Scope*> scope_containing_;
+    static std::vector<DeclPtr> decl_registry_;
 };
 
+
+template<typename T>
+typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build() {
+  T* new_scope = new T();
+  registry_.push_back(new_scope);
+  return new_scope;
+}
+
+
+class FnScope : public Scope {
+  public:
+    friend class Scope;
+
+    virtual bool is_function_scope() const { return true; }
+
+    virtual void enter();
+    virtual void exit(llvm::BasicBlock* jump_to = nullptr);
+
+    virtual void make_return_void();
+    virtual void make_return(llvm::Value* val);
+
+    void set_return_type(Type* ret_type) { return_type_ = ret_type; }
+    llvm::Value* return_value() const { return return_val_; }
+
+    FnScope() : return_type_(Type::get_void()), return_val_(nullptr) {
+      containing_function_ = this;
+    }
+
+    virtual ~FnScope() {}
+
+  private:
+    std::set<Scope*> innards_;
+    Type* return_type_;
+    llvm::Value* return_val_;
+
+    void allocate(Scope* scope);
+    void deallocate(Scope* scope);
+};
+
+class WhileScope : public Scope {
+  public:
+    WhileScope() {}
+};
+
+class TypeScope : public Scope {
+  public:
+    TypeScope() {}
+};
+
+class CondScope : public Scope {
+  public:
+    CondScope() {}
+};
 #endif  // ICARUS_SCOPE_H

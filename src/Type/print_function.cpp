@@ -41,7 +41,7 @@ llvm::Function* Primitive::print_function() {
       "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
-  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
+  FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());
@@ -107,7 +107,7 @@ llvm::Function* Array::print_function() {
       "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
-  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
+  FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());
@@ -179,7 +179,7 @@ llvm::Function* Function::print_function() {
       llvm::Function::ExternalLinkage,
       "print." + to_string(), global_module);
 
-  Scope::Scope* fn_scope = Scope::Scope::build(ScopeType::func);
+  FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
   fn_scope->set_return_type(Type::get_void());

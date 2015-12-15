@@ -105,7 +105,7 @@ int main(int argc, char *argv[]) {
   auto global_statements =
     std::static_pointer_cast<AST::Statements>(root_node);
 
-  Scope::Scope* global_scope = Scope::Scope::build_global();
+  FnScope* global_scope = Scope::build_global();
 
   global_builder.SetInsertPoint(global_scope->entry_block());
 

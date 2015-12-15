@@ -891,12 +891,11 @@ namespace AST {
 
       virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
-      FunctionLiteral() :
-        fn_scope_(Scope::build(ScopeType::func)), llvm_function_(nullptr) {}
+      FunctionLiteral() : fn_scope_(new FnScope), llvm_function_(nullptr) {}
       virtual ~FunctionLiteral() {}
 
     private:
-      Scope* fn_scope_;
+      FnScope* fn_scope_;
       EPtr return_type_;
 
       std::vector<DeclPtr> inputs_;
@@ -977,7 +976,7 @@ namespace AST {
     auto if_stmt = std::make_shared<Conditional>();
     if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
     if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
-    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
     return if_stmt;
   }
 
@@ -1009,7 +1008,7 @@ namespace AST {
 
     if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
     if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
-    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
     return if_stmt;
   }
 
@@ -1018,7 +1017,7 @@ namespace AST {
     if_stmt->else_line_num_ = nodes[1]->line_num();
     if_stmt->statements_.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
-    if_stmt->body_scopes_.push_back(Scope::build(ScopeType::cond));
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
     return std::move(if_stmt);
   }
 
@@ -1040,7 +1039,7 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
 
 
-      While() : body_scope_(Scope::build(ScopeType::loop)) {}
+      While() : body_scope_(Scope::build<WhileScope>()) {}
       virtual ~While() {}
 
     private:
@@ -1078,7 +1077,7 @@ namespace AST {
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
       TypeLiteral() :
-        type_scope_(Scope::build(ScopeType::type)), type_value_(nullptr) {}
+        type_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
       virtual ~TypeLiteral() {}
       
     private:

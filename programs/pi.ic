@@ -10,5 +10,5 @@ approximate_pi := (iters : real) -> real {
    else          =>  0.0
   }
 }
-print approximate_pi(100.0)
+print approximate_pi(200000.0)
 print '\n'

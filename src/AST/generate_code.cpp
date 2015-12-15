@@ -593,7 +593,7 @@ namespace AST {
 
     body_scope_->set_parent_function(parent_fn);
 
-    scope->builder().CreateBr(body_scope_->alloc_block());
+    scope->builder().CreateBr(body_scope_->entry_block());
 
     body_scope_->enter();
 
@@ -637,12 +637,12 @@ namespace AST {
       scope->builder().SetInsertPoint(cond_blocks[i]);
       auto condition = conds_[i]->generate_code(scope);
       scope->builder().CreateCondBr(condition,
-          body_scopes_[i]->alloc_block(), cond_blocks[i + 1]);
+          body_scopes_[i]->entry_block(), cond_blocks[i + 1]);
     }
 
     scope->builder().SetInsertPoint(cond_blocks.back());
     if (has_else()) {
-      scope->builder().CreateBr(body_scopes_.back()->alloc_block());
+      scope->builder().CreateBr(body_scopes_.back()->entry_block());
     }
 
     for (size_t i = 0; i < statements_.size(); ++i) {
