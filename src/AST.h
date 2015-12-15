@@ -7,13 +7,6 @@
 #include <set>
 #include <vector>
 
-// TODO Figure out what you need from this.
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-
 #include "Language.h"
 #include "Type.h"
 #include "typedefs.h"
@@ -298,6 +291,7 @@ namespace AST {
       friend class ::ErrorLog;
 
       static NPtr build(NPtrVec&& nodes);
+      static NPtr join(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope);
@@ -318,10 +312,48 @@ namespace AST {
       std::vector<EPtr> exprs_;
   };
 
-  inline NPtr ChainOp::build(NPtrVec&& nodes) {
-    // TODO it is conceivable that either the LHS or the RHS are already chains
-    // of the appropriate type. Deal with this!
 
+  inline NPtr ChainOp::join(NPtrVec&& nodes) {
+    auto lhs_prec = std::static_pointer_cast<Expression>(nodes[0])->precedence();
+    auto op_prec = Language::op_prec.at(nodes[1]->token());
+    auto rhs_prec = std::static_pointer_cast<Expression>(nodes[2])->precedence();
+
+    if (lhs_prec == op_prec && op_prec == rhs_prec) {
+      auto rhs = std::static_pointer_cast<ChainOp>(std::move(nodes[2]));
+
+      auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
+      chain_ptr->ops_.emplace_back(std::move(nodes[1]));
+      chain_ptr->ops_.insert(chain_ptr->ops_.end(),
+          std::make_move_iterator(rhs->ops_.begin()),
+          std::make_move_iterator(rhs->ops_.end()));
+
+      chain_ptr->ops_.insert(chain_ptr->ops_.begin(),
+          std::make_move_iterator(rhs->ops_.begin()),
+          std::make_move_iterator(rhs->ops_.end()));
+      return chain_ptr;
+
+    } else if (op_prec != rhs_prec) {
+      return build(std::forward<NPtrVec>(nodes));
+
+    } else {  // op_prec == rhs_prec
+      auto rhs = std::static_pointer_cast<ChainOp>(std::move(nodes[2]));
+      auto chain_ptr = std::make_shared<ChainOp>();
+      chain_ptr->exprs_.emplace_back(
+          std::move(std::static_pointer_cast<Expression>(nodes[0])));
+
+      chain_ptr->ops_.emplace_back(std::move(nodes[1]));
+      chain_ptr->ops_.insert(chain_ptr->ops_.end(),
+          std::make_move_iterator(rhs->ops_.begin()),
+          std::make_move_iterator(rhs->ops_.end()));
+
+      chain_ptr->exprs_.insert(chain_ptr->exprs_.begin(),
+          std::make_move_iterator(rhs->exprs_.begin()),
+          std::make_move_iterator(rhs->exprs_.end()));
+      return chain_ptr;
+    }
+  }
+
+  inline NPtr ChainOp::build(NPtrVec&& nodes) {
     std::shared_ptr<ChainOp> chain_ptr(nullptr);
 
     // Add to a chain so long as the precedence levels match. The only thing at
@@ -424,7 +456,7 @@ namespace AST {
         array_type_ptr->line_num_ = (*iter)->line_num();
         array_type_ptr->len_ = *iter;
 
-        array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+        array_type_ptr->token_ = "";
         array_type_ptr->precedence_ = Language::op_prec.at("MAX");
 
         array_type_ptr->array_type_ = prev;
@@ -443,7 +475,7 @@ namespace AST {
       array_type_ptr->array_type_ =
         std::static_pointer_cast<Expression>(nodes[3]);
 
-      array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+      array_type_ptr->token_ = "";
       array_type_ptr->precedence_ = Language::op_prec.at("MAX");
 
       return array_type_ptr;
@@ -460,7 +492,7 @@ namespace AST {
     array_type_ptr->array_type_ =
       std::static_pointer_cast<Expression>(nodes[3]);
 
-    array_type_ptr->token_ = ""; // TODO what should go here? Does it matter?
+    array_type_ptr->token_ = "";
     array_type_ptr->precedence_ = Language::op_prec.at("MAX");
 
     return array_type_ptr;
@@ -702,7 +734,7 @@ namespace AST {
 
     if (nodes[0]->node_type() == Language::reserved_else) {
       key_ptr = std::make_shared<Terminal>();
-      // TODO line num
+      key_ptr->line_num_ = nodes[0]->line_num();
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");
@@ -723,7 +755,7 @@ namespace AST {
 
     if (nodes[1]->node_type() == Language::reserved_else) {
       key_ptr = std::make_shared<Terminal>();
-      // TODO line num
+      key_ptr->line_num_ = nodes[1]->line_num();
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
       key_ptr->precedence_ = Language::op_prec.at("MAX");

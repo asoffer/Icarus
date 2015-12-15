@@ -13,10 +13,10 @@ NPtr ErrorLog::assignment_vs_equality(NPtr node) {
   NPtrVec node_vec = {
     std::static_pointer_cast<AST::Node>(assignment_node->lhs_),
     NPtr(new AST::Node(node->line_num(), Language::generic_operator, "==")),
-    std::static_pointer_cast<AST::Node>(assignment_node->lhs_)
+    std::static_pointer_cast<AST::Node>(assignment_node->rhs_)
   };
 
-  return AST::ChainOp::build(std::forward<NPtrVec>(node_vec));
+  return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
 }
 
 std::ostream& operator<<(std::ostream& os, const ErrorLog& log) {
