@@ -1,6 +1,8 @@
 #include "Type.h"
 #include "AST.h"
 
+extern llvm::Module* global_module;
+
 #define MAKE_PRIMITIVE_TYPE_GETTER(type)                                 \
   Type* Type::get_##type () {                                            \
     return &(Primitive::primitive_types_[Primitive::t_##type]);          \
@@ -135,3 +137,41 @@ std::vector<Pointer*> Pointer::pointer_types_;
 std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
 std::vector<Function*> Function::fn_types_;
+
+Type* Type::get_from_id(IdPtr type_ptr) {
+  // TODO only works for inferred type declarations
+  auto type_lit = std::static_pointer_cast<AST::TypeLiteral>(
+      Scope::get_declaration(type_ptr)->declared_type());
+
+  return Type::get_user_defined(type_lit->decls_);
+}
+
+Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
+  auto user_def_type = new UserDefined;
+
+  for (const auto& decl : decls) {
+    if (decl->type_is_inferred()) {
+      // TODO
+    } else {
+      user_def_type->fields_.emplace_back(decl->identifier_string(),
+          decl->interpret_as_type());
+    }
+  }
+
+  llvm::StructType* struct_type =
+    llvm::StructType::create(global_module->getContext());
+
+  size_t num_fields = user_def_type->fields_.size();
+  std::vector<llvm::Type*> llvm_fields(num_fields, nullptr);
+  for (size_t i = 0; i < num_fields; ++i) {
+    llvm_fields[i] = 
+      user_def_type->fields_[i].second->llvm();
+  }
+
+  // The boolean parameter is 'isPacked'
+  struct_type->setBody(std::move(llvm_fields), false);
+  user_def_type->llvm_type_ = struct_type;
+
+  user_def_type->llvm_type_->dump();
+  return user_def_type;
+}

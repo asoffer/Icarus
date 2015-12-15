@@ -18,7 +18,7 @@ namespace AST {
   llvm::Value* Case::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* Assignment::generate_lvalue(Scope*) { return nullptr; }
   llvm::Value* Declaration::generate_lvalue(Scope*) { return nullptr; }
-
+  llvm::Value* TypeLiteral::generate_lvalue(Scope*) { return nullptr; }
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
     if (token() == "[]" && lhs_->type()->is_array()) {

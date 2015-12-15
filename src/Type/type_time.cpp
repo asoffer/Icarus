@@ -38,3 +38,8 @@ Type::time_loc Tuple::type_time() const {
 
   return static_cast<Type::time_loc>(output);
 }
+
+Type::time_loc UserDefined::type_time() const {
+  // TODO
+  return run_time;
+}

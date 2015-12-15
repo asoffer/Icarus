@@ -124,4 +124,10 @@ namespace AST {
     statements_->join_identifiers(fn_scope_);
   }
 
+  void TypeLiteral::join_identifiers(Scope* scope) {
+    for (auto& decl : decls_) {
+      decl->join_identifiers(type_scope_);
+    }
+  }
+
 }  // namespace AST

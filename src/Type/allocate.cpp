@@ -23,6 +23,7 @@ llvm::Value* Function::allocate(llvm::IRBuilder<>& bldr) const {
 }
 
 llvm::Value* Pointer::allocate(llvm::IRBuilder<>& bldr) const {
+  // TODO
   return nullptr;
 }
 
@@ -31,5 +32,11 @@ llvm::Value* Primitive::allocate(llvm::IRBuilder<>& bldr) const {
 }
 
 llvm::Value* Tuple::allocate(llvm::IRBuilder<>& bldr) const {
+  // TODO
+  return nullptr;
+}
+
+llvm::Value* UserDefined::allocate(llvm::IRBuilder<>& bldr) const {
+  // TODO
   return nullptr;
 }

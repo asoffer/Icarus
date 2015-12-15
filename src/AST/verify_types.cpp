@@ -401,4 +401,7 @@ namespace AST {
     }
   }
 
+  void TypeLiteral::verify_types() {
+    // TODO
+  }
 }  // namespace AST

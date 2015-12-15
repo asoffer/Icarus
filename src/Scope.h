@@ -24,7 +24,7 @@ namespace AST {
   class FunctionLiteral;
 }
 
-enum class ScopeType { loop, cond, func };
+enum class ScopeType { loop, cond, func, type };
 
 class Scope {
   public:
@@ -57,6 +57,7 @@ class Scope {
     static void assign_type_order();
 
 
+    static DeclPtr get_declaration(IdPtr id) { return decl_of_[id]; }
 
 
     llvm::IRBuilder<>& builder() { return bldr_; }

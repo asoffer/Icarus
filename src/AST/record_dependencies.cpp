@@ -125,4 +125,11 @@ namespace AST {
     statements_->record_dependencies(nullptr);
     cond_->record_dependencies(cond_);
   }
+
+  void TypeLiteral::record_dependencies(EPtr eptr) const {
+    for (const auto& decl : decls_) {
+      Scope::dependencies_[eptr].insert(decl);
+      decl->record_dependencies(decl);
+    }
+  }
 }  // namespace AST

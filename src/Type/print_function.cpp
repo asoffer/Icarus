@@ -196,3 +196,5 @@ llvm::Function* Function::print_function() {
 // TODO complete these
 llvm::Function* Pointer::print_function() { return nullptr; }
 llvm::Function* Tuple::print_function() { return nullptr; }
+
+llvm::Function* UserDefined::print_function() { return nullptr; }

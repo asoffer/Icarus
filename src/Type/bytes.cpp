@@ -22,4 +22,8 @@ size_t Tuple::bytes() const {
 
   return output;
 }
+size_t UserDefined::bytes() const {
+  // TODO add in padding
+  return 0;
+}
 

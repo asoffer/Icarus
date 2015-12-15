@@ -34,3 +34,12 @@ Type* Array::replace(Type* pattern, Type* replacement) {
     ? replacement
     : Type::get_array(type_->replace(pattern, replacement), len_);
 }
+
+Type* UserDefined::replace(Type* pattern, Type* replacement) {
+  if (pattern == this) {
+    return replacement;
+  }
+
+  // TODO Should we be allowed to look inside structs?
+  return this;
+}

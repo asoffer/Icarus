@@ -41,6 +41,7 @@ namespace AST {
       friend class Assignment;
       friend class ArrayType;
       friend class ArrayLiteral;
+      friend class TypeLiteral;
 
       static Node eof_node(size_t line_num);
       static Node newline_node();
@@ -129,7 +130,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const = 0;
       virtual void verify_types() = 0;
 
-      virtual Type* interpret_as_type() const = 0;
+      virtual Type* interpret_as_type() = 0;
       virtual llvm::Value* generate_code(Scope* scope) = 0;
       virtual llvm::Value* generate_lvalue(Scope* scope) = 0;
 
@@ -146,7 +147,6 @@ namespace AST {
       Expression() : expr_type_(Type::get_unknown()) {}
 
     protected:
-
       size_t precedence_;
       Type* expr_type_;
   };
@@ -171,7 +171,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
 
 
       virtual llvm::Value* generate_code(Scope* scope);
@@ -240,7 +240,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
@@ -305,7 +305,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
 
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
@@ -364,7 +364,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
@@ -402,7 +402,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
@@ -487,7 +487,7 @@ namespace AST {
 
       virtual bool is_terminal() const { return true; }
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
@@ -504,13 +504,13 @@ namespace AST {
     return term_ptr;
   }
 
-  inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_type());
-  }
-
   inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     // FIXME implement strings
     return build(std::forward<NPtrVec>(nodes), Type::get_type_error());
+  }
+
+  inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), Type::get_type());
   }
 
   inline NPtr Terminal::build_bool_literal(NPtrVec&& nodes) {
@@ -567,7 +567,8 @@ namespace AST {
   }
 
 
-  class Identifier : public Terminal {
+  class Identifier
+    : public Terminal, public std::enable_shared_from_this<Identifier> {
     public:
       friend class Assignment;
       static NPtr build(NPtrVec&& nodes);
@@ -575,6 +576,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
+      virtual Type* interpret_as_type();
 
       virtual bool is_identifier() const { return true; }
       virtual llvm::Value* generate_code(Scope* scope);
@@ -622,7 +624,7 @@ namespace AST {
       virtual void verify_types();
 
       bool type_is_inferred() const { return infer_type_; }
-      virtual Type* interpret_as_type() const {
+      virtual Type* interpret_as_type() {
         return decl_type_->interpret_as_type();
       }
 
@@ -758,7 +760,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
 
@@ -779,6 +781,8 @@ namespace AST {
 
   class Statements : public Node {
     public:
+      friend class TypeLiteral;
+
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
       static NPtr build_double_expression_error(NPtrVec&& nodes);
@@ -848,7 +852,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const;
       virtual void verify_types();
 
-      virtual Type* interpret_as_type() const;
+      virtual Type* interpret_as_type();
 
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
@@ -1024,7 +1028,51 @@ namespace AST {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
     return build(std::forward<NPtrVec>(nodes));
   }
- 
+
+  class TypeLiteral : public Expression {
+    public:
+      friend Type* ::Type::get_from_id(IdPtr type_ptr);
+
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type();
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+      TypeLiteral() :
+        type_scope_(Scope::build(ScopeType::type)), type_value_(nullptr) {}
+      virtual ~TypeLiteral() {}
+      
+    private:
+      Scope* type_scope_;
+      Type* type_value_;
+      std::vector<DeclPtr> decls_;
+  };
+
+  inline NPtr TypeLiteral::build(NPtrVec&& nodes) {
+    auto type_lit_ptr = std::make_shared<TypeLiteral>();
+    type_lit_ptr->line_num_ = nodes[0]->line_num_;
+    type_lit_ptr->expr_type_ = Type::get_type();
+
+    auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
+    for (auto&& stmt : stmts->statements_) {
+      // TODO we ignore everything that isn't a declaration.
+      // This is a cheap way to get started, but probably not ideal.
+      if (!stmt->is_declaration()) continue;
+
+      auto decl = std::static_pointer_cast<Declaration>(std::move(stmt));
+      type_lit_ptr->decls_.emplace_back(std::move(decl));
+    }
+
+    return type_lit_ptr;
+  }
+
 }  // namespace AST
 
 #endif  // ICARUS_AST_NODE_H

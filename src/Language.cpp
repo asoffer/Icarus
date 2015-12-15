@@ -48,7 +48,8 @@ namespace Language {
     { reserved_while,          "While" },
     { reserved_break,          "Break" },
     { reserved_continue,       "Continue" },
-    { reserved_return,         "Return" }
+    { reserved_return,         "Return" },
+    { reserved_type,           "Type" }
   };
 
   const std::map<std::string, NodeType> reserved_words = {
@@ -62,7 +63,8 @@ namespace Language {
     { "break",    reserved_break },
     { "continue", reserved_continue },
     { "print",    reserved_print },
-    { "return",   reserved_return }
+    { "return",   reserved_return },
+    { "type",     reserved_type }
   };
 
   constexpr size_t prec_value(size_t n, size_t assoc) { return (n << 2) + assoc; }
@@ -496,6 +498,15 @@ namespace Language {
         AST::While::build_assignment_error),
 
     /* End while loop */
+
+
+    /* Begin type literals */
+    // TODO tighten this up. Just taking in any statements probably captures
+    // way too much.
+    Rule(expression,
+        { reserved_type, left_brace, statements, right_brace },
+        AST::TypeLiteral::build),
+    /* End type literals */
 
 
     /* Begin miscellaneous */

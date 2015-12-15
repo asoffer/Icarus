@@ -156,11 +156,30 @@ namespace AST {
   }
 
   std::string FunctionLiteral::to_string(size_t n) const {
-    std::string output = tabs(n) + "<FunctionLiteral>\n";
+    std::stringstream ss;
+    ss
+      << tabs(n)
+      << "<FunctionLiteral>\n";
     for (const auto& kv : inputs_) {
-      output += kv->to_string(n + 1);
+      ss << kv->to_string(n + 1);
     }
-    return output + tabs(n + 1) + "Body:\n" + statements_->to_string(n + 2);
+    ss
+      << tabs(n + 1)
+      << "Body:\n"
+      << statements_->to_string(n + 2);
+    return ss.str();
+  }
+
+  std::string TypeLiteral::to_string(size_t n) const {
+    std::stringstream ss;
+    ss
+      << tabs(n)
+      << "<Type>\n";
+    for (const auto& decl : decls_) {
+      ss << decl->to_string(n + 1);
+    }
+
+    return ss.str();
   }
 
 }  // namespace AST

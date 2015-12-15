@@ -141,6 +141,12 @@ void Scope::allocate() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
+
+    if (decl_type == Type::get_type()) {
+      // TODO Set the types name
+      continue;
+    }
+
     decl_id->alloc_ = decl_type->allocate(bldr_);
     decl_id->alloc_->setName(decl_ptr->identifier_string());
   }
@@ -311,7 +317,9 @@ void Scope::assign_type_order() {
       continue;
     }
 
+
     already_seen[eptr] = 0x01;
+
     for (const auto& dep : dependencies_[eptr]) {
       if ((already_seen[dep] & 2) == 2) continue;
 

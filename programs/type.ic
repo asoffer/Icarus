@@ -1,0 +1,5 @@
+point := type {
+  x : real
+  y : real
+  z : real
+}

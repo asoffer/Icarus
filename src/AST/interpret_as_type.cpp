@@ -1,11 +1,11 @@
 #include "AST.h"
 
 namespace AST {
-  Type* Unop::interpret_as_type() const {
+  Type* Unop::interpret_as_type() {
     return Type::get_type_error();
   }
 
-  Type* Binop::interpret_as_type() const {
+  Type* Binop::interpret_as_type() {
     if (token() == "->") {
       return Type::get_function(
           lhs_->interpret_as_type(),
@@ -16,18 +16,18 @@ namespace AST {
     return Type::get_type_error();
   }
 
-  Type* ArrayLiteral::interpret_as_type() const {
+  Type* ArrayLiteral::interpret_as_type() {
     return nullptr;
   }
 
-  Type* ArrayType::interpret_as_type() const {
+  Type* ArrayType::interpret_as_type() {
     int len = (len_->is_literal(Type::get_int()) || len_->is_literal(Type::get_uint()))
       ? std::stoi(len_->token())
       : -1;
     return Type::get_array(array_type_->interpret_as_type(), len);
   }
 
-  Type* ChainOp::interpret_as_type() const {
+  Type* ChainOp::interpret_as_type() {
     // In order for a ChainOp to even be created, ops_.front() must exist.
     // Because nothing has the same precedence levels as a comma, if the
     // first op is a comma, they all are.
@@ -48,7 +48,17 @@ namespace AST {
     return Type::get_type_error();
   }
 
-  Type* Terminal::interpret_as_type() const {
+  Type* Identifier::interpret_as_type() {
+    if (expr_type_ == Type::get_type()) {
+      return Type::get_from_id(shared_from_this());
+    }
+
+    error_log.log(line_num(), "`" + token() + "` is not at type.");
+
+    return Type::get_type_error();
+  }
+
+  Type* Terminal::interpret_as_type() {
     if (expr_type_ == Type::get_type()) {
 
       if (token() == "bool") return Type::get_bool();
@@ -70,12 +80,16 @@ namespace AST {
     return Type::get_type_error();
   }
 
-  Type* FunctionLiteral::interpret_as_type() const {
+  Type* FunctionLiteral::interpret_as_type() {
     return Type::get_type_error();
   }
 
-  Type* Case::interpret_as_type() const {
+  Type* Case::interpret_as_type() {
     return Type::get_type_error();
+  }
+
+  Type* TypeLiteral::interpret_as_type() {
+    return type_value_;
   }
 
 }  // namespace AST

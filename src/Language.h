@@ -22,6 +22,7 @@ namespace Language {
     bool_literal, integer_literal, real_literal, character_literal,
     string_literal, type_literal, fn_literal,
 
+
     // Operators
     unary_operator,
 
@@ -39,7 +40,7 @@ namespace Language {
     semicolon,
     // Reserved words
     reserved_if, reserved_else, reserved_case, reserved_loop,
-    reserved_while, reserved_break, reserved_continue,
+    reserved_while, reserved_break, reserved_continue, reserved_type,
 
 
     // BEGIN USING MASKS

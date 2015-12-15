@@ -123,3 +123,6 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   return ret_ptr;
 }
 
+void UserDefined::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
+  // TODO
+}

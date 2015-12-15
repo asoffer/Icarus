@@ -77,3 +77,7 @@ std::string Array::to_string() const {
 }
 
 
+std::string UserDefined::to_string() const {
+  // TODO 
+  return "<TYPE>";
+}

@@ -657,4 +657,7 @@ namespace AST {
     return nullptr;
   }
 
+  llvm::Value* TypeLiteral::generate_code(Scope* scope) {
+    return nullptr;
+  }
 }  // namespace AST

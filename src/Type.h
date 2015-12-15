@@ -22,8 +22,11 @@ namespace AST {
 class Function;
 class Pointer;
 
+#include "typedefs.h"
+
 class Type {
   public:
+
     enum time_loc {
       either_time  = 0x0,
       compile_time = 0x1,
@@ -45,6 +48,9 @@ class Type {
     static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t, int len = -1);
+    static Type* get_user_defined(const std::vector<DeclPtr>& decls);
+
+    static Type* get_from_id(IdPtr type_ptr);
 
     static std::map<std::string, Type*> literals;
 
@@ -255,6 +261,24 @@ class Array : public Type {
     int len_;
 
     static std::vector<Array*> array_types_;
+};
+
+class UserDefined : public Type {
+  public:
+    friend class Type;
+
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
+    virtual size_t bytes() const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual llvm::Function* print_function();
+    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual std::string to_string() const;
+    virtual Type::time_loc type_time() const;
+
+    virtual ~UserDefined() {}
+
+  private:
+    std::vector<std::pair<std::string, Type*>> fields_;
 };
 
 #endif
