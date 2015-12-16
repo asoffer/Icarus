@@ -50,10 +50,17 @@ void FnScope::enter() {
   bldr_.SetInsertPoint(entry_block_);
 
   allocate(this);
+
   for (auto scope : innards_) {
     allocate(scope);
   }
 
+  // Even though this is an allocation, it cannot be put in
+  // FnScope::allocate() because that gets called multiple times
+  if (return_type_ != Type::get_void()) {
+    return_val_ = return_type_->allocate(bldr_);
+    return_val_->setName("retval");
+  }
 
   Scope::enter();
 }
@@ -132,8 +139,6 @@ void Scope::set_parent(Scope* parent) {
     static_cast<FnScope*>(parent_)->innards_.insert(this);
 
   } else {
-    std::cout << parent_ << std::endl;
-    std::cout << parent_->containing_function_ << std::endl;
     parent_->containing_function_->innards_.insert(this);
   }
 }
@@ -152,6 +157,11 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 
 }
 
+// This function allocates all the things declared the scope parameter in this
+// function scope.
+//
+// TODO maybe we should set this up differently, so it's a method of the scope
+// and it just calls it using containing_function_?
 void FnScope::allocate(Scope* scope) {
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
@@ -166,12 +176,6 @@ void FnScope::allocate(Scope* scope) {
 
     decl_id->alloc_ = decl_type->allocate(bldr_);
     decl_id->alloc_->setName(decl_ptr->identifier_string());
-  }
-
-  // If we need a return type, allocate it now.
-  if (return_type_ != Type::get_void()) {
-    return_val_ = return_type_->allocate(bldr_);
-    return_val_->setName("retval");
   }
 }
 
