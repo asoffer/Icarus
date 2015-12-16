@@ -75,6 +75,8 @@ class Scope {
     void set_parent_function(llvm::Function* fn);
     EPtr get_declared_type(IdPtr id_ptr) const;
 
+    void uninitialize();
+
     virtual void make_return_void();
     virtual void make_return(llvm::Value* val);
 
@@ -146,7 +148,6 @@ class FnScope : public Scope {
     llvm::Value* return_val_;
 
     void allocate(Scope* scope);
-    void deallocate(Scope* scope);
 };
 
 class WhileScope : public Scope {

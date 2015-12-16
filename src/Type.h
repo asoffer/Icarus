@@ -60,7 +60,8 @@ class Type {
     virtual llvm::Function* print_function() = 0;
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
-    virtual Type::time_loc type_time() const = 0;
+    virtual time_loc type_time() const = 0;
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {}
 
     virtual bool is_array()     const { return false; }
     virtual bool is_function()  const { return false; }
@@ -93,7 +94,7 @@ class Primitive : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
 
     virtual bool is_primitive() const { return true; }
 
@@ -126,7 +127,7 @@ class Tuple : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
 
     size_t size() const { return entry_types_.size(); } 
 
@@ -157,7 +158,7 @@ class Function : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
 
     virtual ~Function() {}
 
@@ -211,7 +212,7 @@ class Pointer : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
 
     virtual ~Pointer() {}
 
@@ -237,7 +238,8 @@ class Array : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
 
     virtual Type* data_type() const { return type_; }
     virtual bool has_dynamic_length() const { return len_ == -1; }
@@ -273,7 +275,8 @@ class UserDefined : public Type {
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
-    virtual Type::time_loc type_time() const;
+    virtual time_loc type_time() const;
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
 
     virtual ~UserDefined() {}
 

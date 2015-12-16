@@ -586,6 +586,8 @@ namespace AST {
   llvm::Value* While::generate_code(Scope* scope) {
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
+    auto while_cond_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "while_cond", parent_fn);
     auto while_stmt_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "while_stmt", parent_fn);
     auto while_landing_block = llvm::BasicBlock::Create(
@@ -593,21 +595,23 @@ namespace AST {
 
     body_scope_->set_parent_function(parent_fn);
 
-    scope->builder().CreateBr(body_scope_->entry_block());
+    scope->builder().CreateBr(while_cond_block);
+    scope->builder().SetInsertPoint(while_cond_block);
+
+    auto cond = cond_->generate_code(scope);
+    scope->builder().CreateCondBr(cond,
+        body_scope_->entry_block(), while_landing_block);
 
     body_scope_->enter();
-
-    body_scope_->builder().CreateCondBr(cond_->generate_code(body_scope_),
-       while_stmt_block, while_landing_block);
+    body_scope_->builder().CreateBr(while_stmt_block);
 
     body_scope_->builder().SetInsertPoint(while_stmt_block);
-
     statements_->generate_code(body_scope_);
 
     // When you exit the loop, you branch to its start. That's why
     // we have have 'while_cond_block' below. It's not about exiting
     // the loop, but about cleanup on each loop iteration.
-    body_scope_->exit(body_scope_->entry_block());
+    body_scope_->exit(while_cond_block);
 
     scope->builder().SetInsertPoint(while_landing_block);
 

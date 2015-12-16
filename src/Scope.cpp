@@ -10,14 +10,6 @@
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
 
-namespace cstdlib {
-  extern llvm::Constant* free();
-}  // namespace cstdlib
-
-namespace data {
-  extern llvm::Value* const_int(int n, bool is_signed = false);
-}  // namespace data
-
 std::map<IdPtr, DeclPtr> Scope::decl_of_;
 std::map<EPtr, std::set<EPtr>> Scope::dependencies_;
 std::vector<DeclPtr> Scope::decl_registry_;
@@ -56,11 +48,12 @@ void Scope::enter() {
 
 void FnScope::enter() {
   bldr_.SetInsertPoint(entry_block_);
+
+  allocate(this);
   for (auto scope : innards_) {
     allocate(scope);
   }
 
-  allocate(this);
 
   Scope::enter();
 }
@@ -70,6 +63,8 @@ void FnScope::enter() {
 void Scope::exit(llvm::BasicBlock* jump_to) {
   bldr_.CreateBr(exit_block_);
   bldr_.SetInsertPoint(exit_block_);
+  uninitialize();
+
   bldr_.CreateBr(jump_to);
 }
 
@@ -78,10 +73,7 @@ void Scope::exit(llvm::BasicBlock* jump_to) {
 void FnScope::exit(llvm::BasicBlock*) {
   bldr_.CreateBr(exit_block_);
   bldr_.SetInsertPoint(exit_block_);
-
-  for (auto scope : innards_) {
-    deallocate(scope);
-  }
+  uninitialize();
 
   if (return_type_ == Type::get_void()) {
     bldr_.CreateRetVoid();
@@ -165,6 +157,8 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
+
+    // TODO make this for compile-time stuff
     if (decl_type == Type::get_type()) {
       // TODO Set the types name
       continue;
@@ -181,24 +175,17 @@ void FnScope::allocate(Scope* scope) {
   }
 }
 
-void FnScope::deallocate(Scope* scope) {
-  for (const auto& decl_ptr : scope->ordered_decls_) {
-    auto decl_type = decl_ptr->declared_identifier()->type();
-    if (decl_type->is_array()) {
-      // TODO look at elements, see if they need deallocation
+void Scope::uninitialize() {
+  for (const auto& decl_ptr : ordered_decls_) {
+    auto decl_id = decl_ptr->declared_identifier();
+    decl_id->type()->uninitialize(bldr_, decl_id->alloc_);
 
-      auto array_ptr = bldr_.CreateLoad(decl_ptr->declared_identifier()->alloc_);
-
-      auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
-
-      auto neg_four = data::const_int(-4, true);
-
-      auto ptr_to_free = bldr_.CreateGEP(
-          bldr_.CreateBitCast(array_ptr, basic_ptr_type),
-          { neg_four }, "ptr_to_free");
-
-      bldr_.CreateCall(cstdlib::free(), { ptr_to_free });
+    // TODO make this for compile-time stuff
+    if (decl_id->type() == Type::get_type()) {
+      // TODO Set the types name
+      continue;
     }
+
   }
 }
 
