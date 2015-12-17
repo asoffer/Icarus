@@ -3,6 +3,14 @@
 
 extern llvm::Module* global_module;
 
+namespace cstdlib {
+  extern llvm::Constant* malloc();
+}  // namespace cstdlib
+
+namespace data {
+  extern llvm::Value* const_uint(size_t n);
+}  // namespace data
+
 #define MAKE_PRIMITIVE_TYPE_GETTER(type)                                 \
   Type* Type::get_##type () {                                            \
     return &(Primitive::primitive_types_[Primitive::t_##type]);          \
@@ -174,4 +182,62 @@ Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
 
   user_def_type->llvm_type_->dump();
   return user_def_type;
+}
+
+
+Array::Array(Type* t, int len) : type_(t), len_(len) {
+  // TODO is the length ever part of the type?
+  llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
+
+  dim_ = 1 + ((data_type()->is_array()) ? static_cast<Array*>(data_type())->dim_ : 0);
+
+  std::vector<llvm::Type*> init_args(dim_ + 1, get_uint()->llvm());
+  init_args[0] = get_pointer(this)->llvm();
+
+  // Don't even bother to build a FnScope
+  init_fn_ = llvm::Function::Create(
+      llvm::FunctionType::get(Type::get_void()->llvm(), init_args, false),
+      llvm::Function::ExternalLinkage,
+      "init." + to_string(), global_module);
+
+  auto entry_block = llvm::BasicBlock::Create(
+      llvm::getGlobalContext(), "entry", init_fn_);
+
+  llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
+  fn_bldr.SetInsertPoint( entry_block );
+
+  // TODO is there a cleaner notation for this? I hope so.
+  // There's nothing problematic here, it's just ugly.
+  std::vector<llvm::Value*> args;
+  size_t arg_num = 0;
+  for (auto& arg : init_fn_->args()) {
+    arg.setName("arg" + std::to_string(arg_num));
+    args.push_back(&arg);
+  }
+  auto store_ptr = args[0];
+  auto len_val = args[1];
+
+  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto int_size = data::const_uint(Type::get_int()->bytes());
+  auto bytes_needed = fn_bldr.CreateAdd(int_size, 
+      fn_bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
+
+  // Malloc call
+  auto malloc_call = fn_bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+
+  // Pointer to the length at the head of the array
+  auto len_ptr = fn_bldr.CreateBitCast(malloc_call,
+      get_pointer(get_int())->llvm(), "len_ptr");
+
+  fn_bldr.CreateStore(len_val, len_ptr);
+
+  // Pointer to the array data
+  auto raw_data_ptr = fn_bldr.CreateGEP(Type::get_char()->llvm(),
+      malloc_call, { int_size }, "raw_data_ptr");
+
+  // Pointer to data cast
+  auto ptr_type = Type::get_pointer(data_type())->llvm();
+  auto data_ptr = fn_bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
+  fn_bldr.CreateStore(data_ptr, store_ptr);
+    fn_bldr.CreateRetVoid();
 }

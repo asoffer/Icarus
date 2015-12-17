@@ -247,18 +247,19 @@ class Array : public Type {
     virtual llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr,
         llvm::Value* runtime_len = nullptr) const;
 
+    void initialize_array(llvm::IRBuilder<>& bldr, llvm::Value* var,
+        std::vector<llvm::Value*> lengths);
+
     virtual ~Array() {}
 
   private:
     // A value of -1 for the length means this is to be dependently typed. All
     // other values are the actual type
-    Array(Type* t, int len = -1) : type_(t), len_(len) {
-//      if (has_dynamic_length()) {
-      llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
-//      } else {
-//        llvm_type_ = llvm::ArrayType::get(t->llvm(), static_cast<size_t>(len));
-//      }
-    }
+    Array(Type* t, int len = -1);
+
+    // Not the length of the array, but the dimension. That is, it's how many
+    // times you can access an element.
+    size_t dim_;
 
     Type* type_;
     int len_;

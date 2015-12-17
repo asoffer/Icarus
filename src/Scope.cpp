@@ -17,6 +17,10 @@ std::map<IdPtr, Scope*> Scope::scope_containing_;
 
 std::vector<Scope*> Scope::registry_;
 
+namespace data {
+  extern llvm::Value* const_uint(size_t n);
+}  // namespace data
+
 
 FnScope* Scope::build_global() {
   // TODO add an explicit main entry point and make this scope not a function.
@@ -42,7 +46,16 @@ void Scope::enter() {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    decl_type->initialize(bldr_, decl_id->alloc_);
+    if (decl_type->is_array()) {
+      auto array_type = static_cast<Array*>(decl_type);
+      // TODO actually determine the correct lengths.
+      std::vector<llvm::Value*> lengths = { data::const_uint(5), data::const_uint(5) };
+
+      array_type->initialize_array(bldr_, decl_id->alloc_, lengths);
+
+    } else {
+      decl_type->initialize(bldr_, decl_id->alloc_);
+    }
   }
 }
 
