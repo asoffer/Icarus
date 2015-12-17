@@ -71,6 +71,8 @@ namespace AST {
       virtual bool is_chain_op() const { return false; }
       virtual bool is_comma_list() const { return false; }
       virtual bool is_declaration() const { return false; }
+      virtual bool is_array_type() const { return false; }
+
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
         : type_(type), token_(token), line_num_(line_num) {}
@@ -437,6 +439,11 @@ namespace AST {
       virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
+
+      virtual bool is_array_type() const { return true; }
+
+      EPtr length() const { return len_; }
+      EPtr data_type() const { return array_type_; }
 
       ArrayType() {}
 

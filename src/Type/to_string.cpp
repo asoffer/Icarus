@@ -62,13 +62,13 @@ std::string Tuple::to_string() const {
 
 std::string Array::to_string() const {
   std::stringstream ss;
-  ss << "[" << (has_dynamic_length() ? "-" : std::to_string(len_));
+  ss << "[-";
 
   const Type* type_ptr = type_;
 
   while (type_ptr->is_array()) {
     auto array_ptr = static_cast<const Array*>(type_ptr);
-    ss << ", " << (has_dynamic_length() ? "-" : std::to_string(len_));
+    ss << ", -";
     type_ptr = array_ptr->type_;
   }
 

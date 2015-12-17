@@ -11,9 +11,7 @@ Type::time_loc Array::type_time() const {
   // As a Type::time_loc object, that's either "either_time"
   // or "run_time" respectively.
   return static_cast<Type::time_loc>(
-    static_cast<int>(data_type()->type_time())
-    |
-    (static_cast<int>(has_dynamic_length()) << 1));
+    static_cast<int>(data_type()->type_time() & run_time));
 }
 
 Type::time_loc Function::type_time() const {

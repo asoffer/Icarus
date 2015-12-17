@@ -503,6 +503,27 @@ namespace AST {
     // For the most part, declarations are preallocated at the beginning
     // of each scope, so there's no need to do anything if a heap allocation
     // isn't required.
+
+    //
+    if (declared_type()->is_array_type()) {
+      std::vector<llvm::Value*> lengths;
+
+      EPtr next_ptr = declared_type();
+      while (next_ptr->is_array_type()) {
+        auto length =
+          std::static_pointer_cast<AST::ArrayType>(next_ptr)->length();
+
+        next_ptr =
+          std::static_pointer_cast<AST::ArrayType>(next_ptr)->data_type();
+
+        lengths.push_back(length->generate_code(scope));
+      }
+
+      auto array_type = static_cast<Array*>(type());
+      array_type->initialize_array(scope->builder(),
+          declared_identifier()->alloc_, lengths);
+    }
+
     if (!infer_type_) return nullptr;
 
     // Remember, decl_type_ is not really the right name in the inference case.

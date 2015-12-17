@@ -130,12 +130,12 @@ Type* Type::get_tuple(const std::vector<Type*>& types) {
   return tuple_type;
 }
 
-Type* Type::get_array(Type* t, int len) {
+Type* Type::get_array(Type* t) {
  for (const auto& arr : Array::array_types_) {
-    if (arr->type_ == t && arr->len_ == len) return arr;
+    if (arr->type_ == t) return arr;
   }
 
-  auto arr_type = new Array(t, len);
+  auto arr_type = new Array(t);
   Array::array_types_.push_back(arr_type);
   return arr_type;
 }
@@ -185,7 +185,7 @@ Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
 }
 
 
-Array::Array(Type* t, int len) : type_(t), len_(len) {
+Array::Array(Type* t) : type_(t) {
   // TODO is the length ever part of the type?
   llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
 
@@ -239,5 +239,42 @@ Array::Array(Type* t, int len) : type_(t), len_(len) {
   auto ptr_type = Type::get_pointer(data_type())->llvm();
   auto data_ptr = fn_bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
   fn_bldr.CreateStore(data_ptr, store_ptr);
-    fn_bldr.CreateRetVoid();
+
+  // Loop through the array and initialize each input
+  auto loop_block = llvm::BasicBlock::Create(
+    llvm::getGlobalContext(), "loop", init_fn_);
+  auto exit_block = llvm::BasicBlock::Create(
+    llvm::getGlobalContext(), "exit", init_fn_);
+
+  fn_bldr.CreateBr(loop_block);
+  fn_bldr.SetInsertPoint(loop_block);
+
+  llvm::PHINode* phi = fn_bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
+  phi->addIncoming(data::const_uint(0), entry_block);
+
+  data_ptr = fn_bldr.CreateGEP(data_ptr, { phi });
+
+  if (data_type()->init_fn_ == nullptr) {
+    data_type()->initialize(fn_bldr, data_ptr);
+
+  } else {
+    std::vector<llvm::Value*> call_args = { data_ptr };
+    auto iter = init_fn_->args().begin();
+    ++iter;
+    ++iter;
+    while (iter != init_fn_->args().end()) {
+      call_args.push_back(iter);
+      ++iter;
+    }
+    
+    fn_bldr.CreateCall(data_type()->init_fn_, call_args);
+  }
+
+  auto next_data = fn_bldr.CreateAdd(phi, data::const_uint(1));
+  fn_bldr.CreateCondBr(fn_bldr.CreateICmpULT(next_data, len_val),
+      loop_block, exit_block);
+  phi->addIncoming(next_data, loop_block);
+
+  fn_bldr.SetInsertPoint(exit_block);
+  fn_bldr.CreateRetVoid();
 }

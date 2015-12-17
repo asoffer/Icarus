@@ -32,7 +32,7 @@ Type* Tuple::replace(Type* pattern, Type* replacement) {
 Type* Array::replace(Type* pattern, Type* replacement) {
   return (pattern == this)
     ? replacement
-    : Type::get_array(type_->replace(pattern, replacement), len_);
+    : Type::get_array(type_->replace(pattern, replacement));
 }
 
 Type* UserDefined::replace(Type* pattern, Type* replacement) {

@@ -26,6 +26,7 @@ class Pointer;
 
 class Type {
   public:
+    friend class Array;
 
     enum time_loc {
       either_time  = 0x0,
@@ -47,7 +48,7 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
-    static Type* get_array(Type* t, int len = -1);
+    static Type* get_array(Type* t);
     static Type* get_user_defined(const std::vector<DeclPtr>& decls);
 
     static Type* get_from_id(IdPtr type_ptr);
@@ -243,7 +244,6 @@ class Array : public Type {
     virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
     virtual Type* data_type() const { return type_; }
-    virtual bool has_dynamic_length() const { return len_ == -1; }
     virtual llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr,
         llvm::Value* runtime_len = nullptr) const;
 
@@ -255,14 +255,13 @@ class Array : public Type {
   private:
     // A value of -1 for the length means this is to be dependently typed. All
     // other values are the actual type
-    Array(Type* t, int len = -1);
+    Array(Type* t);
 
     // Not the length of the array, but the dimension. That is, it's how many
     // times you can access an element.
     size_t dim_;
 
     Type* type_;
-    int len_;
 
     static std::vector<Array*> array_types_;
 };

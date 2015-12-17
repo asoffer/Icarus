@@ -71,10 +71,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
   // len_ is -1, then the runtime length is what is used
   llvm::Value* len;
-  if (len_ != -1) {
-    len = data::const_int(len_);
-
-  } else if (runtime_len == nullptr) {
+  if (runtime_len == nullptr) {
     len = data::const_int(0);
 
   } else {
