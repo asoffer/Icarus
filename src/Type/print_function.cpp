@@ -35,21 +35,19 @@ llvm::Function* Primitive::print_function() {
 
   // Otherwise, actually write our own
   print_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(
-        Type::get_void()->llvm(), { input_type->llvm() }, false),
-      llvm::Function::ExternalLinkage,
-      "print." + to_string(), global_module);
+      llvm::FunctionType::get(get_void()->llvm(), { input_type->llvm() }, false),
+      llvm::Function::ExternalLinkage, "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(Type::get_void());
+  fn_scope->set_return_type(get_void());
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
-  if (this == Type::get_bool()) {
+  if (this == get_bool()) {
     auto true_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "true_block", print_fn_);
     auto false_block = llvm::BasicBlock::Create(
@@ -68,19 +66,19 @@ llvm::Function* Primitive::print_function() {
 
     bldr.SetInsertPoint(merge_block);
     llvm::PHINode* phi_node =
-      bldr.CreatePHI(Type::get_pointer(Type::get_char())->llvm(), 2, "merge");
+      bldr.CreatePHI(get_pointer(get_char())->llvm(), 2, "merge");
     phi_node->addIncoming(data::global_string("true"),  true_block);
     phi_node->addIncoming(data::global_string("false"), false_block);
 
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), phi_node });
 
-  } else if (this == Type::get_int() || this == Type::get_uint()) {
+  } else if (this == get_int() || this == get_uint()) {
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%d"), val });
 
-  } else if (this == Type::get_real()) {
+  } else if (this == get_real()) {
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%f"), val });
 
-  } else if (this == Type::get_type()) {
+  } else if (this == get_type()) {
     // To print a type we must first get it's string representation,
     // which is the job of the code generator. We assume that the value
     // passed in is already this string (as a global string pointer)
@@ -98,11 +96,11 @@ llvm::Function* Array::print_function() {
   if (print_fn_ != nullptr) return print_fn_;
 
   auto input_type =
-    replace(Type::get_type(), Type::get_pointer(Type::get_char()));
+    replace(get_type(), get_pointer(get_char()));
 
   print_fn_ = llvm::Function::Create(
       llvm::FunctionType::get(
-        Type::get_void()->llvm(), { input_type->llvm() }, false),
+        get_void()->llvm(), { input_type->llvm() }, false),
       llvm::Function::ExternalLinkage,
       "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
@@ -110,21 +108,21 @@ llvm::Function* Array::print_function() {
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(Type::get_void());
+  fn_scope->set_return_type(get_void());
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
   bldr.CreateCall(cstdlib::putchar(), { data::const_char('[') });
 
-  auto basic_ptr_type = Type::get_pointer(Type::get_char())->llvm();
+  auto basic_ptr_type = get_pointer(get_char())->llvm();
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),
       { data::const_int(-4, true) }, "ptr_to_len");
 
   auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
-      Type::get_pointer(Type::get_int())->llvm());
+      get_pointer(get_int())->llvm());
 
   auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_int(0) }));
 
@@ -145,7 +143,7 @@ llvm::Function* Array::print_function() {
       done_block, loop_block);
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
+  llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "loop_phi");
   phi->addIncoming(data::const_uint(1), loop_head_block);
 
   bldr.CreateCall(cstdlib::printf(), { data::global_string(", ") });
@@ -170,19 +168,19 @@ llvm::Function* Function::print_function() {
   auto fn_print_str = global_builder.CreateGlobalStringPtr(
       "<function " + to_string() + ">");
 
-  auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
+  auto input_type = replace(get_type(), get_pointer(get_char()));
 
   // TODO
   print_fn_ = llvm::Function::Create(
       llvm::FunctionType::get(
-        Type::get_void()->llvm(), { Type::get_pointer(input_type)->llvm() }, false),
+        get_void()->llvm(), { get_pointer(input_type)->llvm() }, false),
       llvm::Function::ExternalLinkage,
       "print." + to_string(), global_module);
 
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(Type::get_void());
+  fn_scope->set_return_type(get_void());
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 

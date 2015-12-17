@@ -56,12 +56,12 @@ class Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const = 0;
     virtual size_t bytes() const = 0;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const = 0;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) = 0;
     virtual llvm::Function* print_function() = 0;
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
     virtual time_loc type_time() const = 0;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {}
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
     virtual bool is_array()     const { return false; }
     virtual bool is_function()  const { return false; }
@@ -73,11 +73,12 @@ class Type {
 
     llvm::Type* llvm() const { return llvm_type_; }
 
-    Type() : print_fn_(nullptr) {}
+    Type() : print_fn_(nullptr), init_fn_(nullptr) {}
     virtual ~Type() {}
 
   protected:
     llvm::Function* print_fn_;
+    llvm::Function* init_fn_;
     llvm::Type* llvm_type_;
 };
 
@@ -90,7 +91,7 @@ class Primitive : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -123,7 +124,7 @@ class Tuple : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -154,7 +155,7 @@ class Function : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -208,7 +209,7 @@ class Pointer : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -218,7 +219,7 @@ class Pointer : public Type {
 
   private:
     Pointer(Type* t) : pointee_type_(t) {
-      llvm_type_ = llvm::PointerType::get(t->llvm(), 0);
+      llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
     }
     Type* pointee_type_;
 
@@ -234,12 +235,12 @@ class Array : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) ;
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
     virtual Type* data_type() const { return type_; }
     virtual bool has_dynamic_length() const { return len_ == -1; }
@@ -271,12 +272,12 @@ class UserDefined : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
     virtual llvm::Function* print_function();
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const;
+    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
     virtual ~UserDefined() {}
 

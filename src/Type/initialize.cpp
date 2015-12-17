@@ -1,4 +1,7 @@
 #include "Type.h"
+#include "Scope.h"
+
+extern llvm::Module* global_module;
 
 namespace cstdlib {
   extern llvm::Constant* malloc();
@@ -14,7 +17,7 @@ namespace data {
   extern llvm::Value* const_false();
 }  // namespace data
 
-void Primitive::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
+void Primitive::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   llvm::Value* init_val = nullptr;
   switch (prim_type_) {
     case t_bool:
@@ -39,18 +42,64 @@ void Primitive::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
 }
 
 // Nothing to be initialized here
-void Function::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {}
+void Function::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
-void Array::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
-  bldr.CreateStore(initialize_literal(bldr), var);
+void Array::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+  if (init_fn_ == nullptr) {
+    // Don't even bother to build a FnScope
+
+    init_fn_ = llvm::Function::Create(
+        llvm::FunctionType::get(
+          Type::get_void()->llvm(),
+          { get_pointer(this)->llvm() }, false),
+        llvm::Function::ExternalLinkage,
+        "init." + to_string(), global_module);
+    llvm::Value* arg = init_fn_->args().begin();
+
+    auto entry_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "entry", init_fn_);
+ 
+    llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
+    fn_bldr.SetInsertPoint( entry_block );
+
+    auto len = /* TODO: LENGTH */ data::const_int(0);
+
+    auto bytes_per_elem = data::const_uint(data_type()->bytes());
+    auto int_size = data::const_uint(Type::get_int()->bytes());
+    auto bytes_needed = fn_bldr.CreateAdd(int_size, 
+        fn_bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
+
+    // Malloc call
+    auto malloc_call = fn_bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+
+    // Pointer to the length at the head of the array
+    auto len_ptr = fn_bldr.CreateBitCast(malloc_call,
+        get_pointer(get_int())->llvm(), "len_ptr");
+
+    fn_bldr.CreateStore(len, len_ptr);
+
+    // Pointer to the array data
+    auto raw_data_ptr = fn_bldr.CreateGEP(Type::get_char()->llvm(),
+        malloc_call, { int_size }, "raw_data_ptr");
+
+    // Pointer to data cast
+    auto ptr_type = Type::get_pointer(data_type())->llvm();
+    auto data_ptr = fn_bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
+    fn_bldr.CreateStore(data_ptr, arg);
+    fn_bldr.CreateRetVoid();
+  }
+
+  bldr.CreateCall(init_fn_, { bldr.CreateGEP(var, { data::const_uint(0) }) });
+
+  // bldr.CreateStore(initialize_literal(bldr), var);
 }
 
-void Pointer::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
+void Pointer::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   // Initialize to zero
   bldr.CreateStore(data::const_int(0), var);
 }
 
-void Tuple::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
+void Tuple::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   // TODO
 }
 
@@ -123,6 +172,6 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   return ret_ptr;
 }
 
-void UserDefined::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) const {
+void UserDefined::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   // TODO
 }

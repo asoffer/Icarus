@@ -13,7 +13,7 @@ extern llvm::Module* global_module;
 
 // This method uninitializes stack space for each particular type.
 
-void Array::uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* alloc) const {
+void Array::uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* alloc) {
   // TODO look at elements, see if they need deallocation
   auto array_ptr = bldr.CreateLoad(alloc);
   auto basic_ptr_type = get_pointer(get_char())->llvm();
@@ -25,6 +25,6 @@ void Array::uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* alloc) const {
   bldr.CreateCall(cstdlib::free(), { ptr_to_free });
 }
 
-void UserDefined::uninitialize(llvm::IRBuilder<>& /*bldr*/, llvm::Value* /* alloc*/) const {
+void UserDefined::uninitialize(llvm::IRBuilder<>& /*bldr*/, llvm::Value* /* alloc*/) {
   // TODO
 }

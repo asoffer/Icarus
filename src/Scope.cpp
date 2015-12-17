@@ -167,7 +167,6 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-
     // TODO make this for compile-time stuff
     if (decl_type == Type::get_type()) {
       // TODO Set the types name
