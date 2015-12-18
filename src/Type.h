@@ -27,6 +27,7 @@ class Pointer;
 class Type {
   public:
     friend class Array;
+    friend class UserDefined;
 
     enum time_loc {
       either_time  = 0x0,
@@ -49,9 +50,10 @@ class Type {
     static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t);
-    static Type* get_user_defined(const std::vector<DeclPtr>& decls);
+    static Type* get_user_defined(const std::string& name);
 
-    static Type* get_from_id(IdPtr type_ptr);
+    static void make_user_defined(
+        const std::vector<DeclPtr>& decls, const std::string& name);
 
     static std::map<std::string, Type*> literals;
 
@@ -64,13 +66,13 @@ class Type {
     virtual time_loc type_time() const = 0;
     virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
-    virtual bool is_array()     const { return false; }
-    virtual bool is_function()  const { return false; }
-    virtual bool is_pointer()   const { return false; }
-    virtual bool is_primitive() const { return false; }
-    virtual bool is_tuple()     const { return false; }
-    virtual bool is_void()      const { return this == Type::get_void(); }
-
+    virtual bool is_array()        const { return false; }
+    virtual bool is_function()     const { return false; }
+    virtual bool is_pointer()      const { return false; }
+    virtual bool is_primitive()    const { return false; }
+    virtual bool is_tuple()        const { return false; }
+    virtual bool is_void()         const { return this == Type::get_void(); }
+    virtual bool is_user_defined() const { return false; }
 
     llvm::Type* llvm() const { return llvm_type_; }
 
@@ -279,10 +281,14 @@ class UserDefined : public Type {
     virtual time_loc type_time() const;
     virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
+    virtual bool is_user_defined() const { return true; }
+
     virtual ~UserDefined() {}
 
   private:
     std::vector<std::pair<std::string, Type*>> fields_;
+
+    static std::map<std::string, UserDefined*> lookup_;
 };
 
 #endif

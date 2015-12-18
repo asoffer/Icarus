@@ -47,7 +47,7 @@ namespace AST {
 
   Type* Identifier::interpret_as_type() {
     if (expr_type_ == Type::get_type()) {
-      return Type::get_from_id(shared_from_this());
+      return Type::get_user_defined(token());
     }
 
     error_log.log(line_num(), "`" + token() + "` is not at type.");

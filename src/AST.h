@@ -72,6 +72,7 @@ namespace AST {
       virtual bool is_comma_list() const { return false; }
       virtual bool is_declaration() const { return false; }
       virtual bool is_array_type() const { return false; }
+      virtual bool is_type_literal() const { return false; }
 
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
@@ -607,7 +608,7 @@ namespace AST {
 
 
   class Identifier
-    : public Terminal, public std::enable_shared_from_this<Identifier> {
+    : public Terminal {
     public:
       friend class Assignment;
       static NPtr build(NPtrVec&& nodes);
@@ -1069,7 +1070,7 @@ namespace AST {
 
   class TypeLiteral : public Expression {
     public:
-      friend Type* ::Type::get_from_id(IdPtr type_ptr);
+      friend class Declaration;
 
       static NPtr build(NPtrVec&& nodes);
 
@@ -1082,6 +1083,8 @@ namespace AST {
       virtual Type* interpret_as_type();
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
+
+      virtual bool is_type_literal() const { return true; }
 
       TypeLiteral() :
         type_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}

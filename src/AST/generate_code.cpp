@@ -397,6 +397,7 @@ namespace AST {
       val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
       val->setName(lhs->token());
+
     } else {
       val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
@@ -531,7 +532,7 @@ namespace AST {
     //
     // TODO change the name of this member variable to describe what it actually
     // is in both ':' and ':=" cases
-    return generate_assignment_code(scope, std::static_pointer_cast<Expression>(id_), decl_type_);
+    return generate_assignment_code(scope, id_, decl_type_);
   }
 
   llvm::Value* Case::generate_code(Scope* scope) {

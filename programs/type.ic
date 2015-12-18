@@ -1,5 +1,14 @@
-point := type {
+point2d := type {
+  x: real
+  y: real
+}
+
+point3d := type {
   x : real
   y : real
   z : real
 }
+
+
+p : point3d
+q : point2d

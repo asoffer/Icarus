@@ -1,5 +1,5 @@
 #include "Type.h"
-
+#include <iostream>
 extern llvm::Module* global_module;
 
 // This method allocates stack space for each particular type.
@@ -37,6 +37,5 @@ llvm::Value* Tuple::allocate(llvm::IRBuilder<>& bldr) const {
 }
 
 llvm::Value* UserDefined::allocate(llvm::IRBuilder<>& bldr) const {
-  // TODO
-  return nullptr;
+  return bldr.CreateAlloca(llvm());
 }

@@ -146,15 +146,23 @@ std::vector<Array*> Array::array_types_;
 std::vector<Tuple*> Tuple::tuple_types_;
 std::vector<Function*> Function::fn_types_;
 
-Type* Type::get_from_id(IdPtr type_ptr) {
-  // TODO only works for inferred type declarations
-  auto type_lit = std::static_pointer_cast<AST::TypeLiteral>(
-      Scope::get_declaration(type_ptr)->declared_type());
 
-  return Type::get_user_defined(type_lit->decls_);
+std::map<std::string, UserDefined*> UserDefined::lookup_;
+
+
+Type* Type::get_user_defined(const std::string& name) {
+#ifdef DEBUG
+  return UserDefined::lookup_.at(name);
+#endif
+  return UserDefined::lookup_[name];
 }
 
-Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
+void Type::make_user_defined(
+    const std::vector<DeclPtr>& decls, const std::string& name) {
+
+  auto iter = UserDefined::lookup_.find(name);
+  if (iter != UserDefined::lookup_.end()) return;
+
   auto user_def_type = new UserDefined;
 
   for (const auto& decl : decls) {
@@ -168,6 +176,7 @@ Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
 
   llvm::StructType* struct_type =
     llvm::StructType::create(global_module->getContext());
+  struct_type->setName(name);
 
   size_t num_fields = user_def_type->fields_.size();
   std::vector<llvm::Type*> llvm_fields(num_fields, nullptr);
@@ -180,8 +189,7 @@ Type* Type::get_user_defined(const std::vector<DeclPtr>& decls) {
   struct_type->setBody(std::move(llvm_fields), false);
   user_def_type->llvm_type_ = struct_type;
 
-  user_def_type->llvm_type_->dump();
-  return user_def_type;
+  UserDefined::lookup_[name] = user_def_type;
 }
 
 

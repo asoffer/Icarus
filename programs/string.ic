@@ -1,0 +1,5 @@
+string := type {
+  chars: [10; char]
+}
+
+s : string

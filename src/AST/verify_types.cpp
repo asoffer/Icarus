@@ -231,6 +231,12 @@ namespace AST {
       return;
     }
 
+    if (decl_type_->is_type_literal() && infer_type_) {
+      auto type_lit_ = std::static_pointer_cast<TypeLiteral>(decl_type_);
+      Type::make_user_defined(type_lit_->decls_, id_->token());
+    }
+
+
     id_->expr_type_ = (infer_type_
         ? decl_type_->expr_type_
         : decl_type_->interpret_as_type());
