@@ -132,4 +132,12 @@ namespace AST {
       decl->record_dependencies(decl);
     }
   }
+
+  void EnumLiteral::record_dependencies(EPtr eptr) const {
+    for (const auto& val : vals_) {
+      Scope::dependencies_[eptr].insert(val);
+      val->record_dependencies(val);
+    }
+  }
+
 }  // namespace AST

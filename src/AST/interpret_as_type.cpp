@@ -89,4 +89,9 @@ namespace AST {
     return type_value_;
   }
 
+  Type* EnumLiteral::interpret_as_type() {
+    return type_value_;
+  }
+
+
 }  // namespace AST

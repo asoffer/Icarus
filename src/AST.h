@@ -35,6 +35,7 @@ namespace AST {
       friend class ArrayType;
       friend class ArrayLiteral;
       friend class TypeLiteral;
+      friend class EnumLiteral;
 
       static Node eof_node(size_t line_num);
       static Node newline_node();
@@ -822,6 +823,7 @@ namespace AST {
   class Statements : public Node {
     public:
       friend class TypeLiteral;
+      friend class EnumLiteral;
 
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
@@ -1113,6 +1115,53 @@ namespace AST {
 
     return type_lit_ptr;
   }
+
+  class EnumLiteral : public Expression {
+    public:
+
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual void join_identifiers(Scope* scope);
+      virtual void assign_decl_to_scope(Scope* scope);
+      virtual void record_dependencies(EPtr eptr) const;
+      virtual void verify_types();
+
+      virtual Type* interpret_as_type();
+      virtual llvm::Value* generate_code(Scope* scope);
+      virtual llvm::Value* generate_lvalue(Scope* scope);
+
+      virtual bool is_type_literal() const { return true; }
+
+      // TODO Will TypeScope suffice?
+      EnumLiteral() :
+        enum_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
+      virtual ~EnumLiteral() {}
+      
+    private:
+      Scope* enum_scope_;
+      Type* type_value_;
+      std::vector<IdPtr> vals_;
+  };
+
+  inline NPtr EnumLiteral::build(NPtrVec&& nodes) {
+    auto enum_lit_ptr = std::make_shared<EnumLiteral>();
+    enum_lit_ptr->line_num_ = nodes[0]->line_num_;
+    enum_lit_ptr->expr_type_ = Type::get_type();
+
+    auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
+    for (auto&& stmt : stmts->statements_) {
+      // TODO we ignore everything that isn't a declaration.
+      // This is a cheap way to get started, but probably not ideal.
+      if (!stmt->is_identifier()) continue;
+
+      auto decl = std::static_pointer_cast<Identifier>(std::move(stmt));
+      enum_lit_ptr->vals_.emplace_back(std::move(decl));
+    }
+
+    return enum_lit_ptr;
+  }
+
 
 }  // namespace AST
 

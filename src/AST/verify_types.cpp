@@ -409,4 +409,6 @@ namespace AST {
   void TypeLiteral::verify_types() {
     // TODO
   }
+
+  void EnumLiteral::verify_types() {}
 }  // namespace AST

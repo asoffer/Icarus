@@ -1,0 +1,17 @@
+suit := enum {
+  club
+  diamond
+  heart
+  spade
+}
+
+marshmallow := enum {
+  heart
+  star
+  horseshoe
+  clover
+  blue_moon
+  pot_of_gold
+  rainbow
+  me_red_ballon
+}

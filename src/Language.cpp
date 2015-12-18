@@ -42,6 +42,7 @@ namespace Language {
     { reserved_bool_literal,   "BoolLiteral" },
     { reserved_if,             "If" },
     { reserved_else,           "Else" },
+    { reserved_enum,           "Enum" },
     { reserved_case,           "Case" },
     { reserved_loop,           "Loop" },
     { reserved_print,          "Print" },
@@ -57,6 +58,7 @@ namespace Language {
     { "false",    reserved_bool_literal },
     { "if",       reserved_if },
     { "else",     reserved_else },
+    { "enum",     reserved_enum },
     { "case",     reserved_case },
     { "loop",     reserved_loop },
     { "while",    reserved_while },
@@ -508,6 +510,14 @@ namespace Language {
         { reserved_type, left_brace, statements, right_brace },
         AST::TypeLiteral::build),
     /* End type literals */
+
+    /* Begin enums */
+    // TODO tighten this up. Just taking in any statements probably captures
+    // way too much.
+    Rule(expression,
+        { reserved_enum, left_brace, statements, right_brace },
+        AST::EnumLiteral::build),
+    /* End enums */
 
 
     /* Begin miscellaneous */

@@ -38,8 +38,9 @@ namespace Language {
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     semicolon,
+
     // Reserved words
-    reserved_if, reserved_else, reserved_case, reserved_loop,
+    reserved_if, reserved_else, reserved_case, reserved_loop, reserved_enum,
     reserved_while, reserved_break, reserved_continue, reserved_type,
 
 

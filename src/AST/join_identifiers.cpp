@@ -134,4 +134,11 @@ namespace AST {
     }
   }
 
+  void EnumLiteral::join_identifiers(Scope* scope) {
+    for (auto& val : vals_) {
+      val->join_identifiers(enum_scope_);
+    }
+  }
+
+
 }  // namespace AST
