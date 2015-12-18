@@ -105,6 +105,7 @@ namespace Language {
     { "@",      prec_value( 18,  left_assoc) },
     { "[]",     prec_value( 19,  left_assoc) },
     { "()",     prec_value( 19,  left_assoc) },
+    { ".",      prec_value( 20,  left_assoc) },
     { "MAX",    prec_value(100,   non_assoc) }
   };
 

@@ -12,3 +12,7 @@ point3d := type {
 
 p : point3d
 q : point2d
+
+p.x = 1.0
+p.y = 1.1
+p.z = 1.2

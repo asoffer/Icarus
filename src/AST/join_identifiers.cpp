@@ -37,6 +37,10 @@ namespace AST {
       lhs_->join_identifiers(scope);
     }
 
+    // Ignore the RHS of a dot operator
+    // TODO Access should be looking in a different scope
+    if (token() == ".") return;
+
     if (rhs_->is_identifier()) {
       rhs_ = scope->identifier(rhs_);
     } else {
