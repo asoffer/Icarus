@@ -61,6 +61,7 @@ class Scope {
     Scope* parent() const { return parent_; }
 
     virtual bool is_function_scope() const { return false; }
+    virtual bool is_loop_scope() const { return false; }
 
     virtual void enter();
     virtual void exit(llvm::BasicBlock* jump_to = nullptr);
@@ -72,7 +73,7 @@ class Scope {
     llvm::BasicBlock* entry_block() const { return entry_block_; }
     llvm::BasicBlock* exit_block() const { return exit_block_; }
 
-    void set_parent_function(llvm::Function* fn);
+    virtual void set_parent_function(llvm::Function* fn);
     EPtr get_declared_type(IdPtr id_ptr) const;
 
     void uninitialize();
@@ -152,7 +153,18 @@ class FnScope : public Scope {
 
 class WhileScope : public Scope {
   public:
-    WhileScope() {}
+    friend class Scope;
+
+    virtual bool is_loop_scope() const { return true; }
+    llvm::BasicBlock* landing() const { return while_landing_; }
+    WhileScope() : while_landing_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while_land")){
+    }
+
+    virtual void set_parent_function(llvm::Function* fn);
+
+    virtual ~WhileScope() {}
+  private:
+    llvm::BasicBlock* while_landing_;
 };
 
 class TypeScope : public Scope {

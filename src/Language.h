@@ -40,9 +40,10 @@ namespace Language {
     semicolon,
 
     // Reserved words
-    reserved_if, reserved_else, reserved_case, reserved_loop, reserved_enum,
-    reserved_while, reserved_break, reserved_continue, reserved_type,
+    reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
+    reserved_enum, reserved_while, reserved_continue, reserved_type,
 
+    break_statement,
 
     // BEGIN USING MASKS
 

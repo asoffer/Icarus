@@ -191,5 +191,8 @@ namespace AST {
       << (vals_.size() == 1 ? " value>\n" : " values>\n");
     return ss.str();
   }
+  std::string Break::to_string(size_t n) const {
+    return tabs(n) +  "<Break>";
+  }
 
 }  // namespace AST

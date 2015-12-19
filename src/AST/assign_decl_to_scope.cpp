@@ -94,6 +94,4 @@ namespace AST {
       val->assign_decl_to_scope(enum_scope_);
     }
   }
-
-
 }  // namespace AST

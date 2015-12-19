@@ -24,7 +24,6 @@ extern ErrorLog error_log;
 
 namespace debug {
   extern bool parser;
-  extern bool ast;
 }  // namespace
 
 
@@ -177,6 +176,11 @@ int main(int argc, char *argv[]) {
   global_scope->make_return(data::const_uint(0));
   global_scope->exit();
 
+  Scope::Scope::determine_declared_types();
+  if (error_log.num_errors() != 0) {
+    std::cout << error_log;
+    return error_code::shadow_or_type_error;
+  }
 
   // TODO Optimization.
 

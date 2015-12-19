@@ -399,3 +399,16 @@ void Scope::set_parent_function(llvm::Function* fn) {
 
   exit_block_->insertInto(fn);
 }
+
+void WhileScope::set_parent_function(llvm::Function* fn) {
+  Scope::set_parent_function(fn);
+
+  if (while_landing_ != nullptr && while_landing_->getParent() != nullptr) {
+    while_landing_->removeFromParent();
+  }
+
+  while_landing_->insertInto(fn);
+
+
+}
+ 

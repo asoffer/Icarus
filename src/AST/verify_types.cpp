@@ -411,4 +411,5 @@ namespace AST {
   }
 
   void EnumLiteral::verify_types() {}
+
 }  // namespace AST

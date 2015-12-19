@@ -9,17 +9,17 @@ namespace AST {
   } 
 
   // TODO
-  llvm::Value* Unop::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* ChainOp::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* ArrayType::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* ArrayLiteral::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* Terminal::generate_lvalue(Scope*) { return nullptr; }
+  llvm::Value* Unop::generate_lvalue(Scope*)            { return nullptr; }
+  llvm::Value* ChainOp::generate_lvalue(Scope*)         { return nullptr; }
+  llvm::Value* ArrayType::generate_lvalue(Scope*)       { return nullptr; }
+  llvm::Value* ArrayLiteral::generate_lvalue(Scope*)    { return nullptr; }
+  llvm::Value* Terminal::generate_lvalue(Scope*)        { return nullptr; }
   llvm::Value* FunctionLiteral::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* Case::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* Assignment::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* Declaration::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* TypeLiteral::generate_lvalue(Scope*) { return nullptr; }
-  llvm::Value* EnumLiteral::generate_lvalue(Scope*) { return nullptr; }
+  llvm::Value* Case::generate_lvalue(Scope*)            { return nullptr; }
+  llvm::Value* Assignment::generate_lvalue(Scope*)      { return nullptr; }
+  llvm::Value* Declaration::generate_lvalue(Scope*)     { return nullptr; }
+  llvm::Value* TypeLiteral::generate_lvalue(Scope*)     { return nullptr; }
+  llvm::Value* EnumLiteral::generate_lvalue(Scope*)     { return nullptr; }
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
     if (token() == "[]" && lhs_->type()->is_array()) {

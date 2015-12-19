@@ -24,6 +24,7 @@ namespace AST {
       friend class Expression;
       friend class Terminal;
       friend class Identifier;
+      friend class Break;
       friend class Unop;
       friend class FunctionLiteral;
       friend class Case;
@@ -608,8 +609,7 @@ namespace AST {
   }
 
 
-  class Identifier
-    : public Terminal {
+  class Identifier : public Terminal {
     public:
       friend class Assignment;
       static NPtr build(NPtrVec&& nodes);
@@ -1055,7 +1055,7 @@ namespace AST {
     private:
       EPtr cond_;
       std::shared_ptr<Statements> statements_;
-      Scope* body_scope_;
+      WhileScope* body_scope_;
   };
 
   inline NPtr While::build(NPtrVec&& nodes) {
@@ -1160,6 +1160,24 @@ namespace AST {
     }
 
     return enum_lit_ptr;
+  }
+
+
+  class Break : public Node {
+    public:
+      static NPtr build(NPtrVec&& nodes);
+
+      virtual std::string to_string(size_t n) const;
+      virtual llvm::Value* generate_code(Scope* scope);
+
+      Break(size_t line_num) {
+        line_num_ = line_num;
+      }
+
+  };
+
+  inline NPtr Break::build(NPtrVec&& nodes) {
+    return std::make_shared<Break>(nodes[0]->line_num_);
   }
 
 

@@ -139,6 +139,4 @@ namespace AST {
       val->join_identifiers(enum_scope_);
     }
   }
-
-
 }  // namespace AST

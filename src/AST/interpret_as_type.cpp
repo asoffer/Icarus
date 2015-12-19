@@ -93,5 +93,4 @@ namespace AST {
     return type_value_;
   }
 
-
 }  // namespace AST

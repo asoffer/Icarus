@@ -139,5 +139,4 @@ namespace AST {
       val->record_dependencies(val);
     }
   }
-
 }  // namespace AST

@@ -39,6 +39,7 @@ namespace Language {
     { right_brace,             "Right Brace" },
     { left_bracket,            "Left Bracket" },
     { right_bracket,           "Right Bracket" },
+    { reserved_break,          "Break" },
     { reserved_bool_literal,   "BoolLiteral" },
     { reserved_if,             "If" },
     { reserved_else,           "Else" },
@@ -56,6 +57,7 @@ namespace Language {
   const std::map<std::string, NodeType> reserved_words = {
     { "true",     reserved_bool_literal },
     { "false",    reserved_bool_literal },
+    { "break",    reserved_break },
     { "if",       reserved_if },
     { "else",     reserved_else },
     { "enum",     reserved_enum },
@@ -402,6 +404,10 @@ namespace Language {
         AST::Statements::build_one),
 
     Rule(statements,
+        { break_statement, newline },
+        AST::Statements::build_one),
+
+    Rule(statements,
         { statements, expression, newline },
         AST::Statements::build_more),
 
@@ -443,6 +449,10 @@ namespace Language {
 
     Rule(statements,
         { statements, return_expression, newline },
+        AST::Statements::build_more),
+
+    Rule(statements,
+        { statements, break_statement, newline },
         AST::Statements::build_more),
 
     Rule(statements,
@@ -501,6 +511,13 @@ namespace Language {
         AST::While::build_assignment_error),
 
     /* End while loop */
+
+
+    /* Begin loop extras */
+    Rule(break_statement,
+        { reserved_break },
+        AST::Break::build),
+    /* End loop extras */
 
 
     /* Begin type literals */

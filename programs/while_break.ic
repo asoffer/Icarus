@@ -1,0 +1,7 @@
+n := 5
+while true {
+  n *= 2
+  break
+}
+
+print n

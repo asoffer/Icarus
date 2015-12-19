@@ -6,6 +6,8 @@
 // all checks on the AST before code generation, then maybe we can remove these
 // and thereby streamline the architecture.
 
+extern ErrorLog error_log;
+
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> global_builder;
 
@@ -688,6 +690,21 @@ namespace AST {
   }
 
   llvm::Value* EnumLiteral::generate_code(Scope* scope) {
+    return nullptr;
+  }
+
+  llvm::Value* Break::generate_code(Scope* scope) {
+    if (scope->is_loop_scope()) {
+      auto while_scope = static_cast<WhileScope*>(scope);
+      // TODO if this is in another scope, break up out of those too.
+      // For example, a conditional inside a loop.
+      scope->builder().CreateBr(while_scope->landing());
+
+    } else {
+      error_log.log(line_num(),
+          "A `break` command was encountered outside of a loop.");
+    }
+
     return nullptr;
   }
 
