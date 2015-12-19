@@ -86,6 +86,31 @@ namespace AST {
           ) return;
 
       error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());
+
+    } else if(token_ == ".") {
+      if (!rhs_->is_identifier()) {
+        error_log.log(line_num_, "Member access (`.`) must access an identifier.");
+      }
+
+      auto lhs_type = lhs_->type();
+      if (!lhs_type->is_user_defined()) {
+        // TODO better error message
+        error_log.log(line_num_, "Elements of this type have no members.");
+
+      } else {
+        auto user_def_type = static_cast<UserDefined*>(lhs_type);
+        auto member_type = user_def_type->field(rhs_->token());
+        if (member_type == nullptr) {
+          // TODO better error message
+          error_log.log(line_num_,
+              "Type has no member named `" + rhs_->token() + "`.");
+        } else {
+          rhs_->expr_type_ = member_type;
+          expr_type_ = member_type;
+        }
+      }
+      return;
+
     } else if (token_ == "=>") {
       if (lhs_->expr_type_ != Type::get_bool())
         expr_type_ = Type::get_type_error();
@@ -148,12 +173,12 @@ namespace AST {
 
     } else if (lhs_->expr_type_ == Type::get_unknown()) {
       // TODO is this reachable?
-      error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
+      error_log.log(line_num_, "-Undeclared identifier `" + lhs_->token() + "`");
       expr_type_ = Type::get_type_error();
 
     } else if (rhs_->expr_type_ == Type::get_unknown()) {
       // TODO is this reachable?
-      error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
+      error_log.log(line_num_, "+Undeclared identifier `" + rhs_->token() + "`");
       expr_type_ = Type::get_type_error();
 
     } else {

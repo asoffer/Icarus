@@ -107,6 +107,16 @@ namespace AST {
       return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
     }
 
+    if (token() == ".") {
+      if (lhs_->type()->is_user_defined()) {
+        return scope->builder().CreateLoad(generate_lvalue(scope));
+      } else {
+        // TODO
+      }
+      return nullptr;
+    }
+
+
     auto lhs_val = lhs_->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
 

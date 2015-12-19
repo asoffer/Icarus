@@ -27,10 +27,12 @@ namespace AST {
 
   void Binop::record_dependencies(EPtr eptr) const {
     Scope::dependencies_[eptr].insert(lhs_);
-    Scope::dependencies_[eptr].insert(rhs_);
-
     lhs_->record_dependencies(lhs_);
-    rhs_->record_dependencies(rhs_);
+
+    if (token() != ".") {
+      Scope::dependencies_[eptr].insert(rhs_);
+      rhs_->record_dependencies(rhs_);
+    }
   }
 
   void ArrayType::record_dependencies(EPtr eptr) const {

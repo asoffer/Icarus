@@ -283,6 +283,10 @@ class UserDefined : public Type {
 
     virtual bool is_user_defined() const { return true; }
 
+    Type* field(const std::string& name) const;
+    llvm::Value* field_num(const std::string& name) const;
+
+
     virtual ~UserDefined() {}
 
   private:

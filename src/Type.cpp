@@ -286,3 +286,26 @@ Array::Array(Type* t) : type_(t) {
   fn_bldr.SetInsertPoint(exit_block);
   fn_bldr.CreateRetVoid();
 }
+
+Type* UserDefined::field(const std::string& name) const {
+  auto iter = fields_.cbegin();
+  while (iter != fields_.end()) {
+    if (iter->first == name) {
+      return iter->second;
+    }
+    ++iter;
+  }
+  return nullptr;
+}
+
+llvm::Value* UserDefined::field_num(const std::string& name) const {
+  size_t i = 0;
+  auto iter = fields_.cbegin();
+  while (iter != fields_.end()) {
+    if (iter->first == name) {
+      return data::const_uint(i);
+    }
+    ++iter; ++i;
+  }
+  return nullptr;
+}

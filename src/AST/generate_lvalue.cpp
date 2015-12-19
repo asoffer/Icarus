@@ -3,6 +3,10 @@
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> builder;
 
+namespace data {
+  extern llvm::Value* const_uint(size_t n);
+}  // namespace data
+
 namespace AST {
   llvm::Value* Identifier::generate_lvalue(Scope* scope) {
     return alloc_;
@@ -27,9 +31,17 @@ namespace AST {
       auto rhs_val = rhs_->generate_code(scope);
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
       return scope->builder().CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
+
+    } else if (token() == "." && lhs_->type()->is_user_defined()) {
+      auto lhs_type = static_cast<UserDefined*>(lhs_->type());
+      auto lhs_lval = lhs_->generate_lvalue(scope);
+
+      return scope->builder().CreateGEP(lhs_type->llvm(), lhs_lval,
+          { data::const_uint(0), lhs_type->field_num(rhs_->token()) });
     }
+
     return nullptr;
   }
 
-//
+  //
 }  // namespace AST
