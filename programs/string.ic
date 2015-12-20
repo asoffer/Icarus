@@ -1,5 +1,15 @@
-string := type {
-  chars: [10; char]
+show := (s: string) -> void {
+  i := 0
+  while i < s.length {
+    print s.chars[i]
+
+    i += 1
+  }
 }
 
-s : string
+string := type {
+  chars: [100; char]
+  length: int
+}
+
+

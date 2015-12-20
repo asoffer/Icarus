@@ -56,6 +56,7 @@ namespace Language {
     binary_boolean_operator,
     bool_operator,
     comma,
+    dot,
     rocket_operator,
 
     // left unary operators

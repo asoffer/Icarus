@@ -266,6 +266,10 @@ namespace Language {
         AST::Expression::parenthesize),
 
     Rule(expression,
+        { expression, dot, expression },
+        AST::Binop::build),
+
+    Rule(expression,
         { expression, generic_operator, expression },
         AST::Binop::build),
 

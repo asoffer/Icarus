@@ -125,8 +125,11 @@ bool Parser::should_shift() {
   }
 
   // For function calls, shift the parentheses (same for indexing)
-  if (Language::is_expression(stack_.back()->node_type()) &&
-      (ahead_type == Language::left_paren || ahead_type == Language::left_bracket)) {
+  if (Language::is_expression(last_type) &&
+      (ahead_type == Language::left_paren || ahead_type == Language::left_bracket) &&
+      // Must also guarantee that we don't have a '.' beforehand 
+      (stack_.size() < 2 ||
+       stack_[stack_.size() - 2]->node_type() != Language::dot)) {
     return true;
   }
 

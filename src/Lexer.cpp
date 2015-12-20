@@ -203,6 +203,11 @@ AST::Node Lexer::next_operator() {
         file_.get();
         return AST::Node(line_num_, Language::right_bracket, "]");
       }
+    case '.':
+      {
+        file_.get();
+        return AST::Node(line_num_, Language::dot, ".");
+      }
     case '"':
       {
         file_.get();

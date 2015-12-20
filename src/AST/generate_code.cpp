@@ -169,6 +169,11 @@ namespace AST {
 
         arg_vals = { rhs_val };
       }
+
+      if (type()->is_void()) {
+        return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
+      }
+
       return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
     }
 
