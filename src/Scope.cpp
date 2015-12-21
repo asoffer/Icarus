@@ -47,7 +47,7 @@ void Scope::enter() {
     auto decl_type = decl_id->type();
 
     if (decl_type->is_array()) continue;
-    decl_type->initialize(bldr_, decl_id->alloc_);
+    bldr_.CreateCall(decl_type->initialize(), { decl_id->alloc_ });
   }
 }
 
@@ -186,14 +186,10 @@ void FnScope::allocate(Scope* scope) {
 void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    decl_id->type()->uninitialize(bldr_, decl_id->alloc_);
-
-    // TODO make this for compile-time stuff
-    if (decl_id->type() == Type::get_type()) {
-      // TODO Set the types name
-      continue;
+    auto uninit_function = decl_id->type()->uninitialize();
+    if (uninit_function != nullptr) {
+      bldr_.CreateCall(uninit_function, decl_id->alloc_);
     }
-
   }
 }
 

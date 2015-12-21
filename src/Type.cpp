@@ -263,7 +263,7 @@ Array::Array(Type* t) : type_(t) {
   data_ptr = fn_bldr.CreateGEP(data_ptr, { phi });
 
   if (data_type()->init_fn_ == nullptr) {
-    data_type()->initialize(fn_bldr, data_ptr);
+    fn_bldr.CreateCall(data_type()->initialize(), { data_ptr });
 
   } else {
     std::vector<llvm::Value*> call_args = { data_ptr };

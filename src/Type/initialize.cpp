@@ -15,8 +15,32 @@ namespace data {
   extern llvm::Value* const_false();
 }  // namespace data
 
-void Primitive::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  llvm::Value* init_val = nullptr;
+extern llvm::Module* global_module;
+
+llvm::Function* get_llvm_init(Type* type) {
+  return llvm::Function::Create(
+      llvm::FunctionType::get(Type::get_void()->llvm(),
+        { Type::get_pointer(type)->llvm() }, false),
+      llvm::Function::ExternalLinkage, "assign." + type->to_string(),
+      global_module);
+}
+
+
+llvm::Function* Primitive::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+
+  init_fn_ = get_llvm_init(this);
+    
+  FnScope* fn_scope = Scope::build<FnScope>();
+  fn_scope->set_parent_function(init_fn_);
+  fn_scope->set_return_type(get_void());
+
+  llvm::IRBuilder<>& bldr = fn_scope->builder();
+
+  fn_scope->enter();
+  auto var = init_fn_->args().begin();
+
+  llvm::Value* init_val;
   switch (prim_type_) {
     case t_bool:
       init_val = data::const_false();
@@ -33,19 +57,65 @@ void Primitive::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     case t_real:
       init_val = data::const_real(0);
       break;
-    default: return;
+    default: return nullptr;
   }
 
   bldr.CreateStore(init_val, var);
+  fn_scope->exit();
+
+  return init_fn_;
 }
 
-// Nothing to be initialized here
-void Function::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
-
-void Array::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-#ifdef DEBUG 
-  std::cerr << "FATAL: Cannot initialize an array without length information" << std::endl;
+llvm::Function* Function::initialize() {
+  // Functions (for now) are const. This should not be allowed.
+#ifdef DEBUG
+  std::cerr << "FATAL: Function initialization is illegal!" << std::endl;
 #endif
+
+  return nullptr;
+}
+
+
+// For arrays whose length is determned at runtime
+llvm::Function* Array::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+
+  init_fn_ = get_llvm_init(this);
+
+  FnScope* fn_scope = Scope::build<FnScope>();
+  fn_scope->set_parent_function(init_fn_);
+  fn_scope->set_return_type(get_void());
+
+  llvm::IRBuilder<>& bldr = fn_scope->builder();
+
+  fn_scope->enter();
+  auto var = init_fn_->args().begin();
+
+  auto null_pointer = bldr.CreateBitCast(
+      data::const_uint(0), get_pointer(data_type())->llvm());
+
+  bldr.CreateStore(null_pointer, var);
+  fn_scope->exit();
+
+  return init_fn_;
+}
+
+llvm::Function* Pointer::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+  // TODO
+  return nullptr;
+}
+
+llvm::Function* Tuple::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+  // TODO
+  return nullptr;
+}
+
+llvm::Function* UserDefined::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+  // TODO
+  return nullptr;
 }
 
 void Array::initialize_array(llvm::IRBuilder<>& bldr, 
@@ -58,16 +128,7 @@ void Array::initialize_array(llvm::IRBuilder<>& bldr,
   bldr.CreateCall(init_fn_, init_args);
 }
 
-void Pointer::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  // Initialize to zero
-  bldr.CreateStore(data::const_int(0), var);
-}
-
-void Tuple::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  // TODO
-}
-
-llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) const {
+llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
   // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
   // len_ is -1, then the runtime length is what is used
   llvm::Value* len;
@@ -121,7 +182,8 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
   phi->addIncoming(data::const_uint(0), prev_block);
 
-  data_type()->initialize(bldr, bldr.CreateGEP(data_type()->llvm(), ret_ptr, { phi }));
+  // TODO FIXME
+  // data_type()->initialize(bldr, bldr.CreateGEP(data_type()->llvm(), ret_ptr, { phi }));
   auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
 
   bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len), loop_block, done_block);
@@ -131,8 +193,4 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   bldr.SetInsertPoint(done_block);
 
   return ret_ptr;
-}
-
-void UserDefined::initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  // TODO
 }

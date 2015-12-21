@@ -59,12 +59,16 @@ class Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const = 0;
     virtual size_t bytes() const = 0;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) = 0;
-    virtual llvm::Function* print_function() = 0;
+
+    virtual llvm::Function* assign() = 0;
+    virtual llvm::Function* initialize() = 0;
+    virtual llvm::Function* print() = 0;
+    // virtual llvm::Function* repr() { return nullptr; } // TODO Implement this
+    virtual llvm::Function* uninitialize() = 0;
+
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
     virtual time_loc type_time() const = 0;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
     virtual bool is_array()        const { return false; }
     virtual bool is_function()     const { return false; }
@@ -76,12 +80,26 @@ class Type {
 
     llvm::Type* llvm() const { return llvm_type_; }
 
-    Type() : print_fn_(nullptr), init_fn_(nullptr) {}
+    Type() :
+      assign_fn_(nullptr),
+      init_fn_  (nullptr),
+      print_fn_ (nullptr),
+      repr_fn_  (nullptr),
+      uninit_fn_(nullptr) {}
+
     virtual ~Type() {}
 
   protected:
-    llvm::Function* print_fn_;
-    llvm::Function* init_fn_;
+    // NOTE: For the same of simplicity, none of these will be left undefined,
+    // even if they do something that should obviously be inlined. We'll trust
+    // the inliner to do it's job.
+    llvm::Function
+      * assign_fn_,
+      * init_fn_,
+      * print_fn_,
+      * repr_fn_,
+      * uninit_fn_;
+
     llvm::Type* llvm_type_;
 };
 
@@ -94,8 +112,13 @@ class Primitive : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    // virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
@@ -127,8 +150,13 @@ class Tuple : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    // virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
@@ -158,8 +186,13 @@ class Function : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    // virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
@@ -212,8 +245,13 @@ class Pointer : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    // virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
@@ -238,16 +276,20 @@ class Array : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var) ;
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    // virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
     virtual Type* data_type() const { return type_; }
-    virtual llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr,
-        llvm::Value* runtime_len = nullptr) const;
+
+    llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
 
     void initialize_array(llvm::IRBuilder<>& bldr, llvm::Value* var,
         std::vector<llvm::Value*> lengths);
@@ -274,12 +316,16 @@ class UserDefined : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
-    virtual void initialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
-    virtual llvm::Function* print_function();
+
+    virtual llvm::Function* assign();
+    virtual llvm::Function* initialize();
+    virtual llvm::Function* print();
+    //virtual llvm::Function* repr();
+    virtual llvm::Function* uninitialize();
+
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
-    virtual void uninitialize(llvm::IRBuilder<>& bldr, llvm::Value* var);
 
     virtual bool is_user_defined() const { return true; }
 

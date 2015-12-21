@@ -18,7 +18,7 @@ namespace data {
 }  // namespace data
 
 
-llvm::Function* Primitive::print_function() {
+llvm::Function* Primitive::print() {
   if (print_fn_ != nullptr) return print_fn_;
 
   // char doesn't require building a new function. We can just
@@ -92,7 +92,7 @@ llvm::Function* Primitive::print_function() {
 }
 
 // There must be a better way to do this.
-llvm::Function* Array::print_function() {
+llvm::Function* Array::print() {
   if (print_fn_ != nullptr) return print_fn_;
 
   auto input_type =
@@ -137,8 +137,10 @@ llvm::Function* Array::print_function() {
       done_block, loop_head_block);
 
   bldr.SetInsertPoint(loop_head_block);
+
+  // TODO is this const_int(0) superfluous?
   auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
-  bldr.CreateCall(data_type()->print_function(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCall(data_type()->print(), { bldr.CreateLoad(elem_ptr) });
   bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(1)),
       done_block, loop_block);
 
@@ -149,7 +151,7 @@ llvm::Function* Array::print_function() {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(", ") });
 
   elem_ptr = bldr.CreateGEP(val, { phi });
-  bldr.CreateCall(data_type()->print_function(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCall(data_type()->print(), { bldr.CreateLoad(elem_ptr) });
 
   auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
   bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, array_len), loop_block, done_block);
@@ -162,7 +164,7 @@ llvm::Function* Array::print_function() {
   return print_fn_;
 }
 
-llvm::Function* Function::print_function() {
+llvm::Function* Function::print() {
   if (print_fn_ != nullptr) return print_fn_;
 
   auto fn_print_str = global_builder.CreateGlobalStringPtr(
@@ -192,7 +194,7 @@ llvm::Function* Function::print_function() {
 }
 
 // TODO complete these
-llvm::Function* Pointer::print_function() { return nullptr; }
-llvm::Function* Tuple::print_function() { return nullptr; }
+llvm::Function* Pointer::print() { return nullptr; }
+llvm::Function* Tuple::print() { return nullptr; }
 
-llvm::Function* UserDefined::print_function() { return nullptr; }
+llvm::Function* UserDefined::print() { return nullptr; }

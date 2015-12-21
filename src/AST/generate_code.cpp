@@ -96,7 +96,7 @@ namespace AST {
         val = data::global_string(expr_->interpret_as_type()->to_string());
       }
 
-      scope->builder().CreateCall(expr_->type()->print_function(), { val });
+      scope->builder().CreateCall(expr_->type()->print(), { val });
     }
 
     return nullptr;
@@ -422,8 +422,9 @@ namespace AST {
       var = lhs->generate_lvalue(scope);
       if (var == nullptr) return nullptr;
 
-      scope->builder().CreateStore(val, var);
+      scope->builder().CreateCall(lhs->type()->assign(), { val, var });
     }
+
     return nullptr;
   }
 
