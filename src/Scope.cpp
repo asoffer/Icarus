@@ -47,6 +47,8 @@ void Scope::enter() {
     auto decl_type = decl_id->type();
 
     if (decl_type->is_array()) continue;
+    if (decl_type->is_function()) continue;
+    
     bldr_.CreateCall(decl_type->initialize(), { decl_id->alloc_ });
   }
 }
@@ -399,12 +401,27 @@ void Scope::set_parent_function(llvm::Function* fn) {
 void WhileScope::set_parent_function(llvm::Function* fn) {
   Scope::set_parent_function(fn);
 
-  if (while_landing_ != nullptr && while_landing_->getParent() != nullptr) {
-    while_landing_->removeFromParent();
+  if (land_block_ != nullptr && land_block_->getParent() != nullptr) {
+    land_block_->removeFromParent();
   }
 
-  while_landing_->insertInto(fn);
+  land_block_->insertInto(fn);
 
+  if (cond_block_ != nullptr && cond_block_->getParent() != nullptr) {
+    cond_block_->removeFromParent();
+  }
+
+  cond_block_->insertInto(fn);
 
 }
- 
+
+void WhileScope::enter() {
+  Scope::enter();
+  bldr_.CreateBr(cond_block_);
+  bldr_.SetInsertPoint(cond_block_);
+}
+
+
+void WhileScope::exit(llvm::BasicBlock*) {
+  Scope::exit(cond_block_);
+}

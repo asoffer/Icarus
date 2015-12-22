@@ -185,6 +185,8 @@ llvm::Function* UserDefined::initialize() {
 }
 
 llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
+  // TODO determine when this can be freed. Currently just being leaked.
+
   // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
   // len_ is -1, then the runtime length is what is used
   llvm::Value* len;
@@ -195,10 +197,13 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
     len = runtime_len;
   }
 
+  std::vector<llvm::Type*> init_types(dim_ + 1, get_uint()->llvm());
+  init_types[0] = get_pointer(this)->llvm();
+
+
   // Compute the amount of space to allocate
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
   auto int_size = data::const_uint(Type::get_int()->bytes());
-  auto zero = data::const_int(0);
   auto bytes_needed = bldr.CreateAdd(int_size, 
       bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
 
@@ -207,7 +212,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
 
   // Pointer to the length at the head of the array
   auto raw_len_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { zero }, "array_len_raw");
+      malloc_call, { data::const_int(0) }, "array_len_raw");
 
   auto len_ptr = bldr.CreateBitCast(
       raw_len_ptr, Type::get_pointer(Type::get_int())->llvm(), "len_ptr");
@@ -220,33 +225,6 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   // Pointer to data cast
   auto ptr_type = Type::get_pointer(data_type())->llvm();
   auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
-
-
-  // initialize insides here 
-
-  auto prev_block = bldr.GetInsertBlock();
-  auto parent_fn = prev_block->getParent();
-
-  auto loop_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "init_loop", parent_fn);
-  auto done_block = llvm::BasicBlock::Create(
-      llvm::getGlobalContext(), "init_done", parent_fn);
-
-  bldr.CreateBr(loop_block);
-
-  bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
-  phi->addIncoming(data::const_uint(0), prev_block);
-
-  // TODO FIXME
-  // data_type()->initialize(bldr, bldr.CreateGEP(data_type()->llvm(), ret_ptr, { phi }));
-  auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
-
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len), loop_block, done_block);
-  // Need to get insert block becasue the block can be changed inside the loop.
-  phi->addIncoming(next_iter, bldr.GetInsertBlock());
-
-  bldr.SetInsertPoint(done_block);
 
   return ret_ptr;
 }

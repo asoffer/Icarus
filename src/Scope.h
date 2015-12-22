@@ -156,15 +156,23 @@ class WhileScope : public Scope {
     friend class Scope;
 
     virtual bool is_loop_scope() const { return true; }
-    llvm::BasicBlock* landing() const { return while_landing_; }
-    WhileScope() : while_landing_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while_land")){
+    llvm::BasicBlock* cond_block() const { return cond_block_; }
+    llvm::BasicBlock* landing_block() const { return land_block_; }
+
+    virtual void enter();
+    virtual void exit(llvm::BasicBlock* jump_to = nullptr);
+
+    WhileScope() :
+      cond_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while_cond")),
+      land_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while_land")) {
     }
 
     virtual void set_parent_function(llvm::Function* fn);
 
     virtual ~WhileScope() {}
   private:
-    llvm::BasicBlock* while_landing_;
+    llvm::BasicBlock* cond_block_;
+    llvm::BasicBlock* land_block_;
 };
 
 class TypeScope : public Scope {

@@ -5,6 +5,10 @@
 
 extern llvm::Module* global_module;
 
+namespace cstdlib {
+  extern llvm::Constant* malloc();
+}  // namespace cstdlib
+
 namespace data {
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
@@ -73,17 +77,25 @@ llvm::Function* Array::assign() {
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, raw_ptr_type),
       { data::const_int(-4, true) }, "ptr_to_len");
-  auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
-      get_pointer(get_int())->llvm());
+  auto len_val = bldr.CreateLoad(
+    bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm()));
 
-  // TODO is this const_int(0) superfluous?
-  auto len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
+  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto int_size = data::const_uint(Type::get_uint()->bytes());
+  auto bytes_needed = bldr.CreateAdd(int_size, 
+      bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
 
+  // Malloc call
+  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+  // Store the right length in the start of the array.
+  bldr.CreateStore(len_val,
+      bldr.CreateBitCast(malloc_call, get_pointer(get_uint())->llvm()));
 
-  auto data_ptr = bldr.CreateGEP(
-      bldr.CreateBitCast(val, data_type()->llvm()), { data::const_uint(0) });
-  auto copy_ptr = bldr.CreateGEP(
-      bldr.CreateBitCast(var, data_type()->llvm()), { data::const_uint(0) });
+  auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
+  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, get_pointer(data_type())->llvm());
+  auto copy_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
+
+  bldr.CreateStore(data_ptr, var);
 
   auto loop_block = llvm::BasicBlock::Create(
     llvm::getGlobalContext(), "loop", assign_fn_);
@@ -106,13 +118,10 @@ llvm::Function* Array::assign() {
   bldr.CreateCall(data_type()->assign(), { copy_elem, data_ptr_item });
   auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
 
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len), loop_block, done_block);
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len_val), loop_block, done_block);
   phi->addIncoming(next_iter, bldr.GetInsertBlock());
 
-
-
-
-
+  bldr.SetInsertPoint(done_block);
   fn_scope->exit();
   return assign_fn_;
 

@@ -601,21 +601,19 @@ namespace AST {
     // TODO if this is never assigned to anything, it will be leaked
 
     auto type_as_array = static_cast<Array*>(expr_type_);
-    auto element_type = type_as_array->data_type()->llvm();
+    auto element_type = type_as_array->data_type();
 
+    auto elems_size = elems_.size();
     // Allocate space for the array literal
-    auto array_data = type_as_array->initialize_literal(scope->builder());
+    auto array_data = type_as_array->initialize_literal(scope->builder(), data::const_uint(elems_size));
 
     // TODO Would it be faster to increment the pointer each time? Probably
-    auto elems_size = elems_.size();
     for (size_t i = 0; i < elems_size; ++i) {
-      scope->builder().CreateStore(elems_[i]->generate_code(scope),
-          scope->builder().CreateGEP(element_type,
-            array_data, { data::const_uint(i) }));
+      auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
+          array_data, { data::const_uint(i) });
+      scope->builder().CreateCall(element_type->assign(),
+          { elems_[i]->generate_code(scope), data_ptr });
     }
-
-    // Make a pointer to an array of the appropriate size
-
 
     return array_data;
   }
@@ -623,34 +621,21 @@ namespace AST {
   llvm::Value* While::generate_code(Scope* scope) {
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
-    auto while_cond_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "while_cond", parent_fn);
     auto while_stmt_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "while_stmt", parent_fn);
-    auto while_landing_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "while_landing", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
 
-    scope->builder().CreateBr(while_cond_block);
-    scope->builder().SetInsertPoint(while_cond_block);
-
-    auto cond = cond_->generate_code(scope);
-    scope->builder().CreateCondBr(cond,
-        body_scope_->entry_block(), while_landing_block);
-
+    scope->builder().CreateBr(body_scope_->entry_block());
     body_scope_->enter();
-    body_scope_->builder().CreateBr(while_stmt_block);
+    auto cond = cond_->generate_code(body_scope_);
+    body_scope_->builder().CreateCondBr(cond,
+        while_stmt_block, body_scope_->landing_block());
 
     body_scope_->builder().SetInsertPoint(while_stmt_block);
     statements_->generate_code(body_scope_);
-
-    // When you exit the loop, you branch to its start. That's why
-    // we have have 'while_cond_block' below. It's not about exiting
-    // the loop, but about cleanup on each loop iteration.
-    body_scope_->exit(while_cond_block);
-
-    scope->builder().SetInsertPoint(while_landing_block);
+    body_scope_->exit();
+    scope->builder().SetInsertPoint(body_scope_->landing_block());
 
     return nullptr;
   }
@@ -711,7 +696,7 @@ namespace AST {
       auto while_scope = static_cast<WhileScope*>(scope);
       // TODO if this is in another scope, break up out of those too.
       // For example, a conditional inside a loop.
-      scope->builder().CreateBr(while_scope->landing());
+      scope->builder().CreateBr(while_scope->landing_block());
 
     } else {
       error_log.log(line_num(),
