@@ -21,7 +21,7 @@ llvm::Function* get_llvm_init(Type* type) {
   return llvm::Function::Create(
       llvm::FunctionType::get(Type::get_void()->llvm(),
         { Type::get_pointer(type)->llvm() }, false),
-      llvm::Function::ExternalLinkage, "assign." + type->to_string(),
+      llvm::Function::ExternalLinkage, "init." + type->to_string(),
       global_module);
 }
 
@@ -80,7 +80,15 @@ llvm::Function* Function::initialize() {
 llvm::Function* Array::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 
-  init_fn_ = get_llvm_init(this);
+  std::vector<llvm::Type*> init_types(dim_ + 1, get_uint()->llvm());
+  init_types[0] = get_pointer(this)->llvm();
+
+  // We can't call get_llvm_init, because arrays also need lengths. A slight
+  // modification does what we want.
+  init_fn_ = llvm::Function::Create(
+      llvm::FunctionType::get(Type::get_void()->llvm(), init_types, false),
+      llvm::Function::ExternalLinkage, "init." + to_string(),
+      global_module);
 
   FnScope* fn_scope = Scope::build<FnScope>();
   fn_scope->set_parent_function(init_fn_);
@@ -89,12 +97,70 @@ llvm::Function* Array::initialize() {
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
-  auto var = init_fn_->args().begin();
 
-  auto null_pointer = bldr.CreateBitCast(
-      data::const_uint(0), get_pointer(data_type())->llvm());
+  // Name the function arguments to make the LLVM IR easier to read
+  std::vector<llvm::Value*> args;
+  size_t arg_num = 0;
+  for (auto& arg : init_fn_->args()) {
+    arg.setName("arg" + std::to_string(arg_num));
+    args.push_back(&arg);
+  }
+  auto store_ptr = args[0];
+  auto len_val = args[1];
 
-  bldr.CreateStore(null_pointer, var);
+  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto int_size = data::const_uint(Type::get_int()->bytes());
+  auto bytes_needed = bldr.CreateAdd(int_size, 
+      bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
+
+  // Malloc call
+  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+
+  // Pointer to the length at the head of the array
+  auto len_ptr = bldr.CreateBitCast(malloc_call,
+      get_pointer(get_int())->llvm(), "len_ptr");
+
+  bldr.CreateStore(len_val, len_ptr);
+
+  // Pointer to the array data
+  auto raw_data_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
+      malloc_call, { int_size }, "raw_data_ptr");
+
+  // Pointer to data cast
+  auto ptr_type = Type::get_pointer(data_type())->llvm();
+  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
+  bldr.CreateStore(data_ptr, store_ptr);
+
+  // Loop through the array and initialize each input
+  auto loop_block = llvm::BasicBlock::Create(
+    llvm::getGlobalContext(), "loop", init_fn_);
+
+  bldr.CreateBr(loop_block);
+  bldr.SetInsertPoint(loop_block);
+
+  llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
+  phi->addIncoming(data::const_uint(0), fn_scope->entry_block());
+
+  auto curr_ptr = bldr.CreateGEP(data_ptr, { phi });
+
+  std::vector<llvm::Value*> next_init_args = { curr_ptr };
+  if (data_type()->is_array()) {
+    auto iters = init_fn_->args().begin();
+    ++(++iters); // Start at the second length argument
+
+    while (iters != init_fn_->args().end()) {
+      next_init_args.push_back(iters);
+      ++iters;
+    }
+  }
+  bldr.CreateCall(data_type()->initialize(), next_init_args);
+
+  auto next_data = bldr.CreateAdd(phi, data::const_uint(1));
+
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_data, len_val),
+      loop_block, fn_scope->exit_block());
+  phi->addIncoming(next_data, loop_block);
+
   fn_scope->exit();
 
   return init_fn_;
@@ -116,16 +182,6 @@ llvm::Function* UserDefined::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
   // TODO
   return nullptr;
-}
-
-void Array::initialize_array(llvm::IRBuilder<>& bldr, 
-    llvm::Value* var, std::vector<llvm::Value*> lengths) {
-
-  std::vector<llvm::Value*>
-    init_args = { bldr.CreateGEP(var, { data::const_uint(0) }) };
-  init_args.insert(init_args.end(), lengths.begin(), lengths.end());
-
-  bldr.CreateCall(init_fn_, init_args);
 }
 
 llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {

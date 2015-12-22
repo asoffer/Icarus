@@ -291,9 +291,6 @@ class Array : public Type {
 
     llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
 
-    void initialize_array(llvm::IRBuilder<>& bldr, llvm::Value* var,
-        std::vector<llvm::Value*> lengths);
-
     virtual ~Array() {}
 
   private:

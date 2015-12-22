@@ -11,10 +11,6 @@ extern ErrorLog error_log;
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> global_builder;
 
-namespace cstdlib {
-  extern llvm::Constant* printf();
-}  // namespace cstdlib
-
 namespace data {
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
@@ -525,8 +521,10 @@ namespace AST {
 
     //
     if (declared_type()->is_array_type()) {
-      std::vector<llvm::Value*> lengths;
 
+      std::vector<llvm::Value*> init_args = { declared_identifier()->alloc_ };
+
+      // Push the array lengths onto the vector for calling args
       EPtr next_ptr = declared_type();
       while (next_ptr->is_array_type()) {
         auto length =
@@ -535,12 +533,11 @@ namespace AST {
         next_ptr =
           std::static_pointer_cast<AST::ArrayType>(next_ptr)->data_type();
 
-        lengths.push_back(length->generate_code(scope));
+        init_args.push_back(length->generate_code(scope));
       }
 
       auto array_type = static_cast<Array*>(type());
-      array_type->initialize_array(scope->builder(),
-          declared_identifier()->alloc_, lengths);
+      scope->builder().CreateCall(array_type->initialize(), init_args);
     }
 
     if (!infer_type_) return nullptr;
