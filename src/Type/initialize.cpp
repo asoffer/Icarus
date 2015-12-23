@@ -30,15 +30,12 @@ llvm::Function* Primitive::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 
   init_fn_ = get_llvm_init(this);
-    
-  FnScope* fn_scope = Scope::build<FnScope>();
-  fn_scope->set_parent_function(init_fn_);
-  fn_scope->set_return_type(get_void());
+  
+  auto block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry");
+  block->insertInto(init_fn_);
 
-  llvm::IRBuilder<>& bldr = fn_scope->builder();
-
-  fn_scope->enter();
-  auto var = init_fn_->args().begin();
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
 
   llvm::Value* init_val;
   switch (prim_type_) {
@@ -60,8 +57,8 @@ llvm::Function* Primitive::initialize() {
     default: return nullptr;
   }
 
-  bldr.CreateStore(init_val, var);
-  fn_scope->exit();
+  bldr.CreateCall(assign(), { init_val, init_fn_->args().begin() });
+  bldr.CreateRetVoid();
 
   return init_fn_;
 }
