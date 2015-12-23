@@ -1,7 +1,10 @@
-n := 5
+n := 1
 while true {
   n *= 2
-  break
+  a := [0, 1, 2]
+  if n > 1000 {
+    break
+  }
 }
 
 print n

@@ -1,3 +1,4 @@
+/*
 // bools
 print true
 print ','
@@ -46,11 +47,12 @@ s := 102.204  // shorthand definition
 print s
 
 print '\n'
-
 // arrays
+*/
 print ['H', 'e', 'l', 'l', 'o']  // literal
 world : [6; char] = [' ', 'w', 'o', 'r', 'l', 'd']  // longhand definition
 print world
+/*
 exclamation := ['!', '\n']  // shorthand definition
 print exclamation
 print '\n'
@@ -108,3 +110,4 @@ print [5, 1; bool] -> [2, 2, 2; int]
 print '\n'
 // print type
 print '\n'
+*/

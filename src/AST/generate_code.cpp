@@ -692,15 +692,43 @@ namespace AST {
   }
 
   llvm::Value* Break::generate_code(Scope* scope) {
-    if (scope->is_loop_scope()) {
-      auto while_scope = static_cast<WhileScope*>(scope);
-      // TODO if this is in another scope, break up out of those too.
-      // For example, a conditional inside a loop.
-      scope->builder().CreateBr(while_scope->landing_block());
+    auto scope_ptr = scope;
 
-    } else {
+    auto prev_insert = scope->builder().GetInsertBlock();
+
+    auto parent_fn = scope->builder().GetInsertBlock()->getParent();
+    llvm::BasicBlock* dealloc_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "dealloc_block", parent_fn);
+    scope->builder().CreateBr(dealloc_block);
+
+
+    while (!scope_ptr->is_loop_scope()) {     
+      auto prev_block = scope_ptr->builder().GetInsertBlock();
+      scope_ptr->builder().SetInsertPoint(dealloc_block);
+      scope_ptr->uninitialize();
+      scope_ptr->builder().SetInsertPoint(prev_block);
+
+      // Go to parent block
+      scope_ptr = scope_ptr->parent();
+      if (scope_ptr == nullptr) break;
+      if (scope_ptr->is_function_scope()) break;
+    }
+
+    if (scope_ptr == nullptr || scope_ptr->is_function_scope()) {
       error_log.log(line_num(),
           "A `break` command was encountered outside of a loop.");
+
+    } else {
+      auto while_scope = static_cast<WhileScope*>(scope_ptr);
+      // TODO if this is in another scope, break up out of those too.
+      // For example, a conditional inside a loop.
+      scope->builder().SetInsertPoint(dealloc_block);
+      auto while_scope_insert = while_scope->builder().GetInsertBlock();
+      while_scope->builder().SetInsertPoint(dealloc_block);
+      while_scope->uninitialize();
+      while_scope->builder().SetInsertPoint(while_scope_insert);
+      scope->builder().CreateBr(while_scope->landing_block());
+      scope->builder().SetInsertPoint(prev_insert);
     }
 
     return nullptr;
