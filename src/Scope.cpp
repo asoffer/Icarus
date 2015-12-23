@@ -46,10 +46,19 @@ void Scope::enter() {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    if (decl_type->is_array()) continue;
-    if (decl_type->is_function()) continue;
-    
-    bldr_.CreateCall(decl_type->initialize(), { decl_id->alloc_ });
+    if (decl_type->is_function()) {
+      continue;
+
+    } else if (decl_type->is_array()) {
+      auto array_dim = static_cast<Array*>(decl_type)->dim();
+      std::vector<llvm::Value*> init_args(array_dim + 1, data::const_uint(0));
+      init_args[0] = decl_id->alloc_;
+      bldr_.CreateCall(decl_type->initialize(), init_args);
+      continue;
+
+    } else {
+      bldr_.CreateCall(decl_type->initialize(), { decl_id->alloc_ });
+    }
   }
 }
 

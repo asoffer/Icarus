@@ -197,9 +197,6 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
     len = runtime_len;
   }
 
-  std::vector<llvm::Type*> init_types(dim_ + 1, get_uint()->llvm());
-  init_types[0] = get_pointer(this)->llvm();
-
 
   // Compute the amount of space to allocate
   auto bytes_per_elem = data::const_uint(data_type()->bytes());

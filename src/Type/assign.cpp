@@ -87,6 +87,7 @@ llvm::Function* Array::assign() {
 
   // Malloc call
   auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+
   // Store the right length in the start of the array.
   bldr.CreateStore(len_val,
       bldr.CreateBitCast(malloc_call, get_pointer(get_uint())->llvm()));

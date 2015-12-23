@@ -288,7 +288,7 @@ class Array : public Type {
     virtual time_loc type_time() const;
 
     virtual Type* data_type() const { return type_; }
-
+    virtual size_t dim() const { return dim_; }
     llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
 
     virtual ~Array() {}
