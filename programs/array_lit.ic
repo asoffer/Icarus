@@ -7,3 +7,6 @@ while i < 5 {
   print '\n'
   i += 1
 }
+
+double_lit : [20; real]
+print double_lit

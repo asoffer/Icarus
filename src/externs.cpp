@@ -28,6 +28,15 @@ namespace cstdlib {
     return free_;
   }
 
+  llvm::Constant* calloc() {
+    static llvm::Constant* calloc_ =
+      global_module->getOrInsertFunction("calloc",
+          llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
+            { Type::get_uint()->llvm() }, false));
+
+    return calloc_;
+  }
+ 
   llvm::Constant* malloc() {
     static llvm::Constant* malloc_ =
       global_module->getOrInsertFunction("malloc",

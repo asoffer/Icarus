@@ -2,6 +2,7 @@
 #include "Scope.h"
 
 namespace cstdlib {
+  extern llvm::Constant* calloc();
   extern llvm::Constant* malloc();
 }  // namespace cstdlib
 
@@ -108,55 +109,63 @@ llvm::Function* Array::initialize() {
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
   auto int_size = data::const_uint(Type::get_int()->bytes());
   auto bytes_needed = bldr.CreateAdd(int_size, 
-      bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
+      bldr.CreateMul(len_val, bytes_per_elem), "alloc_bytes");
 
-  // Malloc call
-  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
+  auto data_is_primitive = data_type()->is_primitive();
+
+  // (M/C)alloc call
+  auto alloc_call = bldr.CreateCall(
+      data_is_primitive
+      ? cstdlib::calloc()
+      : cstdlib::malloc(), { bytes_needed });
 
   // Pointer to the length at the head of the array
-  auto len_ptr = bldr.CreateBitCast(malloc_call,
+  auto len_ptr = bldr.CreateBitCast(alloc_call,
       get_pointer(get_int())->llvm(), "len_ptr");
 
   bldr.CreateStore(len_val, len_ptr);
 
   // Pointer to the array data
   auto raw_data_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { int_size }, "raw_data_ptr");
+      alloc_call, { int_size }, "raw_data_ptr");
 
   // Pointer to data cast
   auto ptr_type = Type::get_pointer(data_type())->llvm();
   auto data_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
   bldr.CreateStore(data_ptr, store_ptr);
 
-  // Loop through the array and initialize each input
-  auto loop_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "loop", init_fn_);
+  // Just calling calloc is okay for p
+  if (!data_is_primitive) {
+    // Loop through the array and initialize each input
+    auto loop_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "loop", init_fn_);
 
-  bldr.CreateBr(loop_block);
-  bldr.SetInsertPoint(loop_block);
+    bldr.CreateBr(loop_block);
+    bldr.SetInsertPoint(loop_block);
 
-  llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
-  phi->addIncoming(data::const_uint(0), fn_scope->entry_block());
+    llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
+    phi->addIncoming(data::const_uint(0), fn_scope->entry_block());
 
-  auto curr_ptr = bldr.CreateGEP(data_ptr, { phi });
+    auto curr_ptr = bldr.CreateGEP(data_ptr, { phi });
 
-  std::vector<llvm::Value*> next_init_args = { curr_ptr };
-  if (data_type()->is_array()) {
-    auto iters = init_fn_->args().begin();
-    ++(++iters); // Start at the second length argument
+    std::vector<llvm::Value*> next_init_args = { curr_ptr };
+    if (data_type()->is_array()) {
+      auto iters = init_fn_->args().begin();
+      ++(++iters); // Start at the second length argument
 
-    while (iters != init_fn_->args().end()) {
-      next_init_args.push_back(iters);
-      ++iters;
+      while (iters != init_fn_->args().end()) {
+        next_init_args.push_back(iters);
+        ++iters;
+      }
     }
+    bldr.CreateCall(data_type()->initialize(), next_init_args);
+
+    auto next_data = bldr.CreateAdd(phi, data::const_uint(1));
+
+    bldr.CreateCondBr(bldr.CreateICmpULT(next_data, len_val),
+        loop_block, fn_scope->exit_block());
+    phi->addIncoming(next_data, loop_block);
   }
-  bldr.CreateCall(data_type()->initialize(), next_init_args);
-
-  auto next_data = bldr.CreateAdd(phi, data::const_uint(1));
-
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_data, len_val),
-      loop_block, fn_scope->exit_block());
-  phi->addIncoming(next_data, loop_block);
 
   fn_scope->exit();
 
