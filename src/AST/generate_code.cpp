@@ -419,7 +419,12 @@ namespace AST {
       var = lhs->generate_lvalue(scope);
       if (var == nullptr) return nullptr;
 
-      scope->builder().CreateCall(lhs->type()->assign(), { val, var });
+
+      if (rhs->is_array_literal()) {
+        scope->builder().CreateStore(val, var);
+      } else {
+        scope->builder().CreateCall(lhs->type()->assign(), { val, var });
+      }
     }
 
     return nullptr;
@@ -604,16 +609,25 @@ namespace AST {
     auto type_as_array = static_cast<Array*>(expr_type_);
     auto element_type = type_as_array->data_type();
 
-    auto elems_size = elems_.size();
-    // Allocate space for the array literal
+    size_t elems_size = elems_.size();
+
     auto array_data = type_as_array->initialize_literal(scope->builder(), data::const_uint(elems_size));
 
-    // TODO Would it be faster to increment the pointer each time? Probably
-    for (size_t i = 0; i < elems_size; ++i) {
-      auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
-          array_data, { data::const_uint(i) });
-      scope->builder().CreateCall(element_type->assign(),
-          { elems_[i]->generate_code(scope), data_ptr });
+    if (!element_type->is_array()) {
+      for (size_t i = 0; i < elems_size; ++i) {
+        auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
+            array_data, { data::const_uint(i) });
+
+        scope->builder().CreateCall(element_type->assign(),
+            { elems_[i]->generate_code(scope), data_ptr });
+      }
+
+    } else {
+      for (size_t i = 0; i < elems_size; ++i) {
+        auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
+            array_data, { data::const_uint(i) });
+        scope->builder().CreateStore(elems_[i]->generate_code(scope), data_ptr);
+      }
     }
 
     return array_data;

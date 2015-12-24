@@ -75,7 +75,7 @@ namespace AST {
       virtual bool is_declaration() const { return false; }
       virtual bool is_array_type() const { return false; }
       virtual bool is_type_literal() const { return false; }
-
+      virtual bool is_array_literal() const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
         : type_(type), token_(token), line_num_(line_num) {}
@@ -393,6 +393,8 @@ namespace AST {
 
   class ArrayLiteral : public Expression {
     public:
+      virtual bool is_array_literal() const { return true; }
+
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;

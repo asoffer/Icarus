@@ -193,15 +193,10 @@ llvm::Function* UserDefined::initialize() {
 llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
   // TODO determine when this can be freed. Currently just being leaked.
 
-  // NOTE: this cast is safe because len_ is -1 or positive. Moreover, if
-  // len_ is -1, then the runtime length is what is used
-  llvm::Value* len;
-  if (runtime_len == nullptr) {
-    len = data::const_int(0);
-
-  } else {
-    len = runtime_len;
-  }
+  llvm::Value* len =
+    (runtime_len == nullptr)
+    ? data::const_uint(0)
+    : runtime_len;
 
 
   // Compute the amount of space to allocate

@@ -6,12 +6,15 @@
 extern llvm::Module* global_module;
 
 namespace cstdlib {
+  extern llvm::Constant* printf();
   extern llvm::Constant* malloc();
 }  // namespace cstdlib
 
 namespace data {
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
+
+  extern llvm::Value* global_string(const std::string& s);
 }  // namespace data
 
 
@@ -71,6 +74,8 @@ llvm::Function* Array::assign() {
   auto val = iter;
   auto var = ++iter;
 
+
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(": 0x%x  0x%x\n"), val, var });
   bldr.CreateCall(uninitialize(), { var });
 
   auto raw_ptr_type = get_pointer(get_char())->llvm();
