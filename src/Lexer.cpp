@@ -111,8 +111,9 @@ AST::Node Lexer::next_number() {
 #ifdef DEBUG
   // Sanity check:
   // We only call this function if the top character is a number character
-  if (!std::isdigit(file_.peek()))
+  if (!std::isdigit(file_.peek())) {
     std::cerr << "FATAL: Non-digit character encountered as first character in next_number." << std::endl;
+  }
 #endif
 
   // Used to store the number
@@ -125,9 +126,15 @@ AST::Node Lexer::next_number() {
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  // If the next character is not a period, we're looking at an integer and can
-  // return
-  if (peek != '.') {
+  if (peek == 'u' || peek == 'U') {
+    // If the next character is a 'u' or a 'U', it's an integer literal. We can
+    // ignore the character and return.
+    file_.get();
+    return AST::Node(line_num_, Language::unsigned_integer_literal, token);
+
+  } else if (peek != '.') {
+    // If the next character is not a period, we're looking at an integer and
+    // can return.
     return AST::Node(line_num_, Language::integer_literal, token);
   }
 

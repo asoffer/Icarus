@@ -72,8 +72,11 @@ llvm::Function* Primitive::print() {
 
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), phi_node });
 
-  } else if (this == get_int() || this == get_uint()) {
+  } else if (this == get_int()) {
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%d"), val });
+
+  } else if (this == get_uint()) {
+    bldr.CreateCall(cstdlib::printf(), { data::global_string("%u"), val });
 
   } else if (this == get_real()) {
     bldr.CreateCall(cstdlib::printf(), { data::global_string("%f"), val });

@@ -519,6 +519,7 @@ namespace AST {
       static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_bool_literal(NPtrVec&& nodes);
       static NPtr build_integer_literal(NPtrVec&& nodes);
+      static NPtr build_unsigned_integer_literal(NPtrVec&& nodes);
       static NPtr build_real_literal(NPtrVec&& nodes);
       static NPtr build_character_literal(NPtrVec&& nodes);
       static NPtr build_void_return(NPtrVec&& nodes);
@@ -559,6 +560,10 @@ namespace AST {
 
   inline NPtr Terminal::build_bool_literal(NPtrVec&& nodes) {
     return build(std::forward<NPtrVec>(nodes), Type::get_bool());
+  }
+
+  inline NPtr Terminal::build_unsigned_integer_literal(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes), Type::get_uint());
   }
 
   inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {

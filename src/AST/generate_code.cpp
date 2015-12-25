@@ -187,19 +187,21 @@ namespace AST {
      
       return nullptr;
 
+    } else if (type() == Type::get_uint()) {
+      if (token() == "+") { return scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); }
+      else if (token() == "-") { return scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); }
+      else if (token() == "*") { return scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); }
+      else if (token() == "/") { return scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); }
+      else if (token() == "%") { return scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); }
+
+
+      return nullptr;
+
     } else if (type() == Type::get_real()) {
       if (token() == "+") { return scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); }
       else if (token() == "-") { return scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); }
       else if (token() == "*") { return scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); }
       else if (token() == "/") { return scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); }
-
-//      auto lval = lhs_->generate_lvalue(scope);
-//      if (lval == nullptr) return nullptr;
-//
-//      if (token() == "+=") { scope->builder().CreateStore(scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); }
-//      else if (token() == "-=") { scope->builder().CreateStore(scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"), lval); }
-//      else if (token() == "*=") { scope->builder().CreateStore(scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"), lval); }
-//      else if (token() == "/=") { scope->builder().CreateStore(scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); }
 
       return nullptr;
 
