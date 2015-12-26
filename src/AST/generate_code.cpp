@@ -501,6 +501,19 @@ namespace AST {
         scope->builder().CreateStore(computed_val, lval);
         return nullptr;
 
+      } else if (lhs_->type() == Type::get_uint()) {
+        llvm::Value* computed_val = nullptr;
+        switch (main_op) {
+          case '+': computed_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); break;
+          case '-': computed_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); break;
+          case '*': computed_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); break;
+          case '/': computed_val = scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); break;
+          case '%': computed_val = scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); break;
+          default: return nullptr;
+        }
+        scope->builder().CreateStore(computed_val, lval);
+        return nullptr;
+
       } else if (type() == Type::get_real()) {
         switch (main_op) {
           case '+': scope->builder().CreateStore(scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); break;
