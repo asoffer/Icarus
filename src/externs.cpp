@@ -124,7 +124,7 @@ namespace data {
     return b ? const_true() : const_false();
   }
 
-  llvm::Value* const_char(char c) {
+  llvm::ConstantInt* const_char(char c) {
     // TODO check safety of char cast
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(8, static_cast<size_t>(c), false));

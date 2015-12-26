@@ -143,7 +143,7 @@ llvm::Function* Array::print() {
 
   // TODO is this const_int(0) superfluous?
   auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
-  bldr.CreateCall(data_type()->print(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
   bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(1)),
       done_block, loop_block);
 
@@ -154,7 +154,7 @@ llvm::Function* Array::print() {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(", ") });
 
   elem_ptr = bldr.CreateGEP(val, { phi });
-  bldr.CreateCall(data_type()->print(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
 
   auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
   bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, array_len), loop_block, done_block);
