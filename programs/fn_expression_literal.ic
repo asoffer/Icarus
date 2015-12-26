@@ -1,0 +1,7 @@
+print ((n: int, m: int) -> int {
+  return n * n + m * m
+})(3, 2)
+
+print (n: int) -> int {
+  return n * n
+}(3)
