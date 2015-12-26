@@ -11,6 +11,10 @@ extern ErrorLog error_log;
 extern llvm::Module* global_module;
 extern llvm::IRBuilder<> global_builder;
 
+namespace builtin {
+  extern llvm::Function* ascii();
+}  // namespace builtin
+
 namespace data {
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
@@ -34,6 +38,11 @@ namespace AST {
     //
     // The benefits are clear, but this ties me to using the same representation
     // that C++ uses.
+
+    // Built in function of type uint -> char
+    if (token() == "ascii") {
+     return builtin::ascii();
+    }
 
     // TODO move this to Type
     if (type() == Type::get_void()) {

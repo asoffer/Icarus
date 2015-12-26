@@ -44,7 +44,7 @@ llvm::Function* Primitive::repr() {
           bldr.CreateICmpUGT(data::const_char(' '), val),
           bldr.CreateOr(
             bldr.CreateICmpEQ(data::const_char('\\'), val),
-          bldr.CreateICmpULT(data::const_char('\x7f'), val))),
+          bldr.CreateICmpULT(data::const_char('\x7e'), val))),
         exceptional_block,
         standard_block);
 

@@ -35,7 +35,7 @@ llvm::Function* Primitive::print() {
 
   // Otherwise, actually write our own
   print_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(get_void()->llvm(), { input_type->llvm() }, false),
+      Type::get_function(input_type, get_void())->llvm(),
       llvm::Function::ExternalLinkage, "print." + to_string(), global_module);
   llvm::Value* val = print_fn_->args().begin();
 

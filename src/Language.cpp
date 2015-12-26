@@ -42,6 +42,7 @@ namespace Language {
     { right_bracket,            "Right Bracket" },
     { reserved_break,           "Break" },
     { reserved_bool_literal,    "BoolLiteral" },
+    { reserved_ascii,           "ASCII" },
     { reserved_if,              "If" },
     { reserved_else,            "Else" },
     { reserved_enum,            "Enum" },
@@ -56,6 +57,7 @@ namespace Language {
   };
 
   const std::map<std::string, NodeType> reserved_words = {
+    { "ascii",    reserved_ascii },
     { "true",     reserved_bool_literal },
     { "false",    reserved_bool_literal },
     { "break",    reserved_break },
@@ -311,6 +313,10 @@ namespace Language {
     Rule(fn_expression,
         { declaration, fn_arrow, expression },
         AST::Binop::build),
+
+    Rule(expression,
+        { reserved_ascii },
+        AST::Terminal::build_ASCII),
     /* End expression */
 
 

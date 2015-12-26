@@ -43,5 +43,4 @@ namespace AST {
     return nullptr;
   }
 
-  //
 }  // namespace AST

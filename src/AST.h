@@ -523,6 +523,7 @@ namespace AST {
       static NPtr build_real_literal(NPtrVec&& nodes);
       static NPtr build_character_literal(NPtrVec&& nodes);
       static NPtr build_void_return(NPtrVec&& nodes);
+      static NPtr build_ASCII(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope) {}
@@ -583,6 +584,10 @@ namespace AST {
     return build(std::forward<NPtrVec>(nodes), Type::get_void());
   }
 
+  inline NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec>(nodes),
+        Type::get_function(Type::get_uint(), Type::get_char()));
+  }
 
   class Assignment : public Binop {
     public:

@@ -15,6 +15,8 @@ llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
 
 std::map<std::string, llvm::Value*> global_strings;
 
+ErrorLog error_log;
+
 // TODO Only generate these if they are necessary
 //
 // TODO Reduce the dependency on the C standard library. This probably means
@@ -139,4 +141,27 @@ namespace data {
   }
 }  // namespace data
 
-ErrorLog error_log;
+namespace builtin {
+  llvm::Function* ascii() {
+    static llvm::Function* ascii_ = nullptr;
+    if (ascii_ != nullptr) return ascii_;
+
+    ascii_ = llvm::Function::Create(
+        Type::get_function(Type::get_uint(), Type::get_char())->llvm(),
+        llvm::Function::ExternalLinkage, "ascii", global_module);
+
+    llvm::Value* val = ascii_->args().begin();
+    llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+
+    auto entry_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "entry", ascii_);
+
+    bldr.SetInsertPoint(entry_block);
+    // TODO check bounds if build option specified
+
+    bldr.CreateRet(bldr.CreateTrunc(val, Type::get_char()->llvm()));
+
+    return ascii_;
+  }
+
+}  // namespace builtin

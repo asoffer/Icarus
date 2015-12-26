@@ -42,7 +42,7 @@ namespace Language {
 
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
-    reserved_enum, reserved_while, reserved_continue, reserved_type,
+    reserved_enum, reserved_while, reserved_continue, reserved_type, reserved_ascii,
 
     break_statement,
 
