@@ -143,6 +143,7 @@ llvm::Function* Array::print() {
 
   // TODO is this const_int(0) superfluous?
   auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
+
   bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
   bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(1)),
       done_block, loop_block);

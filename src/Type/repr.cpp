@@ -95,7 +95,7 @@ llvm::Function* Primitive::repr() {
     return repr_fn_;
   }
 
-  return repr_fn_ = print_fn_;
+  return repr_fn_ = print();
 }
 
 

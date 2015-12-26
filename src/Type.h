@@ -63,7 +63,7 @@ class Type {
     virtual llvm::Function* assign() = 0;
     virtual llvm::Function* initialize() = 0;
     virtual llvm::Function* print() = 0;
-    virtual llvm::Function* repr() { return print(); } // If no repr() is defined, default to print()
+    virtual llvm::Function* repr() { return repr_fn_ = print(); } // If no repr() is defined, default to print()
     virtual llvm::Function* uninitialize() = 0;
 
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
