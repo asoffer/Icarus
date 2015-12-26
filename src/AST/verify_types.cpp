@@ -82,7 +82,9 @@ namespace AST {
              || expr_type_ == Type::get_uint()
              || expr_type_ == Type::get_real()))
           || (lhs_->expr_type_ == Type::get_int() && expr_type_ == Type::get_real())
+          || (lhs_->expr_type_ == Type::get_int() && expr_type_ == Type::get_uint())
           || (lhs_->expr_type_ == Type::get_uint() && expr_type_ == Type::get_real())
+          || (lhs_->expr_type_ == Type::get_uint() && expr_type_ == Type::get_int())
           ) return;
 
       error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());

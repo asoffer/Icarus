@@ -3,11 +3,9 @@ print ['x', 'y', 'z', '\\', '\n', '\t', '\r']
 char_array : [array_len; char]
 
 i := 0
-j := 0u
 while i < array_len {
-  char_array[i] = ascii(j)
+  char_array[i] = ascii(i :> uint)
   i += 1
-  j += 1u
 }
 
 print char_array

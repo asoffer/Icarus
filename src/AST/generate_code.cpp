@@ -140,15 +140,21 @@ namespace AST {
         } else {
           return nullptr;
         }
+
       } else if (from_type == Type::get_int()) {
         if (to_type == Type::get_real()) {
-          return scope->builder().CreateSIToFP(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateSIToFP(lhs_val, to_type->llvm(), "fp_val");
+        } else if (to_type == Type::get_uint()) {
+          return lhs_val;
         } else {
           return nullptr;
         }
+
       } else if (from_type == Type::get_uint()) {
         if (to_type == Type::get_real()) {
-          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
+          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "fp_val");
+        } else if (to_type == Type::get_int()) {
+          return lhs_val;
         } else {
           return nullptr;
         }
