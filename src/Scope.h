@@ -10,13 +10,6 @@
 #include "typedefs.h"
 #include "Type.h"
 
-// TODO Figure out what you need from this.
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-
 #include <iostream>
 
 class Type;
