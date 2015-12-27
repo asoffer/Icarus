@@ -326,8 +326,9 @@ AST::Node Lexer::next_operator() {
     if (peek == '=') {
       file_.get();
 
-      Language::NodeType node_type = (lead_char == '-' ?
-          Language::assign_operator : Language::binary_boolean_operator);
+      Language::NodeType node_type = (lead_char == '-'
+          ? Language::assign_operator
+          : Language::binary_boolean_operator);
       return AST::Node(line_num_, node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
@@ -339,7 +340,7 @@ AST::Node Lexer::next_operator() {
       }
     } else {
       if (lead_char == '-') {
-        return AST::Node(line_num_, Language::generic_operator, "-");
+        return AST::Node(line_num_, Language::negation, "-");
       } else {
         return AST::Node(line_num_, Language::assign_operator, "=");
       }

@@ -1,0 +1,12 @@
+n := 3
+a := -n
+n = 0
+b := -n
+x := 3.14
+c := -----x
+print a
+print '\n'
+print b
+print '\n'
+print c
+print '\n'

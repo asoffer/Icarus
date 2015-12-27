@@ -189,8 +189,7 @@ namespace AST {
     if (nodes[0]->node_type() == Language::reserved_return) {
       unop_ptr->token_ = "return";
       
-    }
-    else if (nodes[0]->node_type() == Language::reserved_return) {
+    } else if (nodes[0]->node_type() == Language::reserved_return) {
       unop_ptr->token_ = "print";
 
     } else {

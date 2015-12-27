@@ -30,6 +30,7 @@ namespace Language {
     { comma,                    "," },
     { semicolon,                ";" },
     { dereference,              "@" },
+    { negation,                 "-" },
     { indirection,              "&" },
     { rocket_operator,          "=>" },
     { key_value_pair,           "( => )" },
@@ -264,8 +265,13 @@ namespace Language {
         { left_paren, expression, right_paren },
         AST::Expression::parenthesize),
 
+    // TODO do we even use this?
     Rule(expression,
         { dereference, expression },
+        AST::Unop::build),
+
+    Rule(expression,
+        { negation, expression },
         AST::Unop::build),
 
     Rule(fn_expression,
@@ -274,6 +280,10 @@ namespace Language {
 
     Rule(expression,
         { expression, dot, expression },
+        AST::Binop::build),
+
+    Rule(expression,
+        { expression, negation, expression },
         AST::Binop::build),
 
     Rule(expression,

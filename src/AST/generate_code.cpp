@@ -87,7 +87,15 @@ namespace AST {
     // TODO don't figure out what it is from the tokens.
     llvm::Value* val = expr_->generate_code(scope);
 
-    if (is_return()) {
+    if (token() == "-") {
+      if (expr_type_ == Type::get_int()) {
+        return scope->builder().CreateNeg(val);
+
+      } else if (expr_type_ == Type::get_real()) {
+        return scope->builder().CreateFNeg(val);
+      }
+
+    } else if (is_return()) {
       scope->make_return(val);
 
     } else if (token() == "()") {
@@ -424,7 +432,9 @@ namespace AST {
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
       auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
-      fn->llvm_function_ = global_module->getFunction(lhs->token());
+      if (lhs->token() == "main") {
+        fn->llvm_function_ = global_module->getFunction(lhs->token());
+      }
       val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
       val->setName(lhs->token());
@@ -555,9 +565,7 @@ namespace AST {
     // of each scope, so there's no need to do anything if a heap allocation
     // isn't required.
 
-    //
     if (declared_type()->is_array_type()) {
-
       std::vector<llvm::Value*> init_args = { declared_identifier()->alloc_ };
 
       // Push the array lengths onto the vector for calling args

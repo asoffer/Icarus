@@ -67,6 +67,7 @@ namespace Language {
 
     // left unary operator + binary operator
     indirection = MASK_binary_operator | MASK_left_unary_operator,
+    negation,
 
     // expressions
     expression = MASK_expression,

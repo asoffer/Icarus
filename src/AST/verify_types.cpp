@@ -33,8 +33,8 @@ namespace AST {
 
     if (token() == "-") {
       if (expr_->expr_type_ == Type::get_uint()) {
-        // TODO Warning/Error? signed conversion cast?
-        expr_type_ = Type::get_int();
+        error_log.log(line_num(), "Negation applied to unsigned integer");
+        expr_type_ = Type::get_uint();
 
       } else if (expr_->expr_type_ == Type::get_int()) {
         expr_type_ = Type::get_int();
@@ -43,7 +43,7 @@ namespace AST {
         expr_type_ = Type::get_real();
 
       } else {
-        // TODO there are probably more cases here
+        error_log.log(line_num(), expr_type_->to_string() + " has no negation operator.");
         expr_type_ = Type::get_type_error();
       }
 
