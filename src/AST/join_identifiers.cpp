@@ -16,7 +16,11 @@ namespace AST {
 
   void ArrayLiteral::join_identifiers(Scope* scope) {
     for (auto& el : elems_) {
-      el->join_identifiers(scope);
+      if (el->is_identifier()) {
+        el = scope->identifier(el);
+      } else {
+        el->join_identifiers(scope);
+      }
     }
   }
 

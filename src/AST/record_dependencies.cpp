@@ -98,7 +98,7 @@ namespace AST {
 
   void KVPairList::record_dependencies(EPtr /* nullptr */) const {
 #ifdef DEBUG
-    std::cerr << "KVPairList::record_dependencies(EPtr) should never be called" << std::endl;
+    std::cerr << "FATAL: KVPairList::record_dependencies(EPtr) should never be called" << std::endl;
 #endif
   }
 

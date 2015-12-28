@@ -10,3 +10,14 @@ while i < 5 {
 
 double_lit : [20; real]
 print double_lit
+
+print '\n'
+x := 3
+y := 2
+a := [[x, y]]
+print a
+a[0][0] += 1
+print a
+print '\n'
+print x
+print '\n'
