@@ -1,0 +1,14 @@
+if bool == bool == char {
+  print 1
+  print '\n'
+}
+
+if int != uint {
+  print 2
+  print '\n'
+}
+
+if [3; int] == [5; int] {
+  print 3
+  print '\n'
+}
