@@ -95,9 +95,6 @@ int main(int argc, char *argv[]) {
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
-  global_function = llvm::Function::Create(
-      Type::get_function(Type::get_void(), Type::get_int())->llvm(),
-      llvm::Function::ExternalLinkage, "main", global_module);
 
   // TODO write the language rules to guarantee that the parser produces a
   // Statements node at top level.
@@ -166,9 +163,6 @@ int main(int argc, char *argv[]) {
 
   // Program has been verified. We can now proceed with code generation.
   // Initialize the global_scope.
-  global_scope->set_parent_function(global_function);
-  global_scope->set_return_type(Type::get_int());
-
 
   // Generate LLVM intermediate representation.
   global_scope->enter();

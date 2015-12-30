@@ -1,3 +1,5 @@
+
+main := void -> void {
 num_primes := 10000
 m := 2
 
@@ -10,6 +12,7 @@ while num_primes > 0 {
   }
   
   m += 1
+}
 }
 
 is_prime := (n : int) -> bool {

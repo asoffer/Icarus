@@ -1,4 +1,3 @@
-do_nothing := (n : int) -> void  {
+main := void -> void  {
   return
 }
-

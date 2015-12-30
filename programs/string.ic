@@ -12,4 +12,6 @@ string := type {
   length: int
 }
 
-
+main := void -> void {
+  return
+}

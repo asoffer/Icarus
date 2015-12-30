@@ -37,6 +37,7 @@ square_dist := (pt1: point3d, pt2: point3d) -> real {
   return dx * dx + dy * dy + dz * dz
 }
 
+main := void -> void {
 p1 : point3d
 p2 : point3d
 q : point2d
@@ -75,3 +76,4 @@ print ','
 print ' '
 print c.center.y
 print '\n'
+}

@@ -1,7 +1,10 @@
+main := void -> void {
 if bool == bool == char {
   print 1
-  print '\n'
+} else {
+  print -1
 }
+  print '\n'
 
 if int != uint {
   print 2
@@ -11,4 +14,5 @@ if int != uint {
 if [3; int] == [5; int] {
   print 3
   print '\n'
+}
 }

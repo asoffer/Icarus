@@ -15,3 +15,7 @@ foo := (n : int) -> int {
   n += n
   return n + 3
 }
+
+main := void -> void {
+  return
+}

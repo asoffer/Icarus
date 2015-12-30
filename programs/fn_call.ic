@@ -2,4 +2,6 @@ f := (n : int) -> real {
   return 3.14
 }
 
-f(5)
+main := void -> void {
+  f(5)
+}

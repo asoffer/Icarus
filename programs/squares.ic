@@ -1,3 +1,4 @@
+main := void -> void {
 max := 10000
 ddx := 2
 dx := 0 - 1
@@ -9,3 +10,4 @@ while x < max {
   print '\t'
 }
 print '\n'
+}

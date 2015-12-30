@@ -25,6 +25,7 @@ is_prime := (n : int) -> bool {
   }
 }
 
+main := void -> void {
 i := 1
 while i < 30 {
   print i
@@ -34,4 +35,5 @@ while i < 30 {
   print '\n'
 
   i += 1
+}
 }

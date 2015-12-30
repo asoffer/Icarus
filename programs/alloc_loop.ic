@@ -1,3 +1,5 @@
-while true {
-  b : [5; int]
+main := void -> void {
+  while true {
+    b : [5; int]
+  }
 }

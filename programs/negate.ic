@@ -1,3 +1,4 @@
+main := void -> void {
 n := 3
 a := -n
 n = 0
@@ -10,3 +11,4 @@ print b
 print '\n'
 print c
 print '\n'
+}

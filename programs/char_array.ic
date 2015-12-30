@@ -1,12 +1,14 @@
-array_len := 256
-print ['x', 'y', 'z', '\\', '\n', '\t', '\r']
-char_array : [array_len; char]
-
-i := 0
-while i < array_len {
-  char_array[i] = ascii(i :> uint)
-  i += 1
+main := void -> void {
+  array_len := 256
+  print ['x', 'y', 'z', '\\', '\n', '\t', '\r']
+  char_array : [array_len; char]
+  
+  i := 0
+  while i < array_len {
+    char_array[i] = ascii(i :> uint)
+    i += 1
+  }
+  
+  print char_array
+  print '\n'
 }
-
-print char_array
-print '\n'

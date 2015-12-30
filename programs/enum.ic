@@ -15,3 +15,7 @@ marshmallow := enum {
   rainbow
   me_red_ballon
 }
+
+main := void -> void {
+  return
+}

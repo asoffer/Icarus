@@ -1,7 +1,10 @@
+
+main := void -> void {
 n := 17 + 32
 m := n + 2
 r := 3.14159
 
 square := (x: real) -> real {
   return x * x
+}
 }

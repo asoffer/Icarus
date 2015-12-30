@@ -9,6 +9,7 @@
 extern ErrorLog error_log;
 
 extern llvm::Module* global_module;
+extern llvm::Function* global_function;
 
 namespace builtin {
   extern llvm::Function* ascii();
@@ -434,9 +435,8 @@ namespace AST {
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
       auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
-      if (lhs->token() == "main") {
-        fn->llvm_function_ = global_module->getFunction(lhs->token());
-      }
+      fn->llvm_function_ = global_module->getFunction(lhs->token());
+
       val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;
       val->setName(lhs->token());

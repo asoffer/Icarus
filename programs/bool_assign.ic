@@ -1,7 +1,9 @@
-b := true
-b &= true
-print b
-b &= false
-print b
-b |= true
-print b
+main := void -> void {
+  b := true
+  b &= true
+  print b
+  b &= false
+  print b
+  b |= true
+  print b
+}

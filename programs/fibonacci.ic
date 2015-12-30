@@ -8,12 +8,14 @@ fib = (n : int) -> int {
   }
 }
 
-i := 0 - 30
-while i < 30 {
-  print i
-  print ':'
-  print ' '
-  print fib(i)
-  print '\n'
-  i += 1
+main := void -> void {
+  i := 0 - 30
+  while i < 30 {
+    print i
+    print ':'
+    print ' '
+    print fib(i)
+    print '\n'
+    i += 1
+  }
 }

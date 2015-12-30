@@ -6,4 +6,6 @@ factorial = (n : int) -> int {
   }
 }
 
-print factorial(factorial(3))
+main := void -> void {
+  print factorial(factorial(3))
+}

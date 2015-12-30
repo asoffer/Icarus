@@ -9,6 +9,7 @@
 
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
+extern llvm::Function* global_function;
 
 std::map<IdPtr, DeclPtr> Scope::decl_of_;
 std::map<EPtr, std::set<EPtr>> Scope::dependencies_;
@@ -26,11 +27,19 @@ FnScope* Scope::build_global() {
   // TODO add an explicit main entry point and make this scope not a function.
   FnScope* scope_ptr = build<FnScope>();
 
+  global_function = llvm::Function::Create(
+      Type::get_function(Type::get_void(), Type::get_int())->llvm(),
+      llvm::Function::ExternalLinkage, "woodlydoodly", global_module);
+
+
   for (auto& ptr : registry_) {
     if (ptr == scope_ptr) continue;
 
     ptr->parent_ = scope_ptr;
   }
+  scope_ptr->set_parent_function(global_function);
+  scope_ptr->set_return_type(Type::get_int());
+
 
   return scope_ptr;
 }

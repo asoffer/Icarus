@@ -1,63 +1,23 @@
-n_len := 10
-
-n : [n_len; int]
-r : [20; real]
-c : [5; char]
-
-r[19] = 1 :> real
-c[4] = 'x'
-
-i := 0
-while i < 5 {
-  print c[i]
-  i += 1
+main := void -> void {
+  n_len := 10
+  
+  n : [n_len; int]
+  r : [20; real]
+  c : [5; char]
+  
+  r[19] = 1 :> real
+  c[4] = 'x'
+  
+  i := 0
+  while i < 5 {
+    print c[i]
+    i += 1
+  }
+  
+  i = 0
+  while i < 20 {
+    print r[i]
+    print '\n'
+    i += 1
+  }
 }
-
-i = 0
-while i < 20 {
-  print r[i]
-  print '\n'
-  i += 1
-}
-// n[9] = 3
-// 
-// n[3] = 17
-// n[1] = n[3] + 1
-// 
-// i := 0
-// while i < n_len {
-//   print n[i]
-//   print '\t'
-//   i += 1
-// }
-// print '\n'
-// 
-// 
-// a : [3, 17; int]
-// a[0][3] = 60
-// 
-// i := 0
-// 
-// while i < 6 {
-//   j := 0
-//   while j < 4 {
-//     a[i][j] = 4 * i + j
-//     j += 1
-//   }
-//   i += 1
-// }
-// 
-// 
-// i = 0
-// while i < 6 {
-//   j := 0
-//   while j < 4 {
-//     print a[i][j]
-//     print '\t'
-//     j += 1
-//   }
-//   print '\n'
-//   i += 1
-// }
-
-// arr_ptr : [-; char]

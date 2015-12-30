@@ -1,6 +1,8 @@
-a : [10; [5; int]]
-b : [2, 3, 1; int]
-print a
-print '\n'
-print b
-print '\n'
+main := void -> void {
+  a : [10; [5; int]]
+  b : [2, 3, 1; int]
+  print a
+  print '\n'
+  print b
+  print '\n'
+}
