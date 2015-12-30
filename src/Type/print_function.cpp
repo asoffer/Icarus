@@ -2,7 +2,6 @@
 #include "Scope.h"
 
 extern llvm::Module* global_module;
-extern llvm::IRBuilder<> global_builder;
 
 namespace cstdlib {
   extern llvm::Constant* putchar();
@@ -171,8 +170,7 @@ llvm::Function* Array::print() {
 llvm::Function* Function::print() {
   if (print_fn_ != nullptr) return print_fn_;
 
-  auto fn_print_str = global_builder.CreateGlobalStringPtr(
-      "<function " + to_string() + ">");
+  auto fn_print_str = data::global_string("<function " + to_string() + ">");
 
   auto input_type = replace(get_type(), get_pointer(get_char()));
 

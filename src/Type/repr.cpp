@@ -2,7 +2,6 @@
 #include "Scope.h"
 
 extern llvm::Module* global_module;
-extern llvm::IRBuilder<> global_builder;
 
 namespace cstdlib {
   extern llvm::Constant* printf();

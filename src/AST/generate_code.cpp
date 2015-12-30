@@ -9,7 +9,6 @@
 extern ErrorLog error_log;
 
 extern llvm::Module* global_module;
-extern llvm::IRBuilder<> global_builder;
 
 namespace builtin {
   extern llvm::Function* ascii();
