@@ -18,7 +18,6 @@ namespace builtin {
 namespace data {
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
-  extern llvm::Value* const_bool(bool b);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
@@ -250,21 +249,10 @@ namespace AST {
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
-    if (exprs_[0]->type() == Type::get_type()) {
-      bool aggregate = true;
-      // TODO short-circuit in case interpret as type is expensive
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        auto& last = exprs_[i];
-        auto& next = exprs_[i + 1];
-        if (ops_[i]->token() == "==") {
-          aggregate &= (last->interpret_as_type() == next->interpret_as_type());
-        } else if (ops_[i]->token() == "!=") {
-          aggregate &= (last->interpret_as_type() != next->interpret_as_type());
-        }
-      }
 
-      return data::const_bool(aggregate);
-    } else if (exprs_[0]->type() == Type::get_int()) {
+    if (exprs_[0]->type() == Type::get_type()) return evaluate();
+
+    if (exprs_[0]->type() == Type::get_int()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
