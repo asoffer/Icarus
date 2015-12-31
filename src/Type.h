@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_H
 #define ICARUS_TYPE_H
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include <map>

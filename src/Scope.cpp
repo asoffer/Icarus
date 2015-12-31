@@ -55,7 +55,8 @@ void Scope::enter() {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    if (decl_type->is_function()) {
+    if (decl_type->is_function()
+        || decl_type == Type::get_type()) {
       continue;
 
     } else if (decl_type->is_array()) {

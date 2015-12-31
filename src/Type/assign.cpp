@@ -6,7 +6,6 @@
 extern llvm::Module* global_module;
 
 namespace cstdlib {
-  extern llvm::Constant* printf();
   extern llvm::Constant* malloc();
 }  // namespace cstdlib
 
@@ -75,7 +74,6 @@ llvm::Function* Array::assign() {
   auto var = ++iter;
 
 
-  bldr.CreateCall(cstdlib::printf(), { data::global_string(": 0x%x  0x%x\n"), val, var });
   bldr.CreateCall(uninitialize(), { var });
 
   auto raw_ptr_type = get_pointer(get_char())->llvm();
@@ -146,5 +144,37 @@ llvm::Function* Tuple::assign() {
 
 llvm::Function* UserDefined::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
-  return nullptr;
+
+  assign_fn_ = get_llvm_assign(this);
+    
+  FnScope* fn_scope = Scope::build<FnScope>();
+  fn_scope->set_parent_function(assign_fn_);
+  fn_scope->set_return_type(get_void());
+
+//   llvm::IRBuilder<>& bldr = fn_scope->builder();
+
+  fn_scope->enter();
+//   auto iter = assign_fn_->args().begin();
+//   auto val = iter;
+//   auto var = ++iter;
+
+  // assign all fields
+  // TODO It's problematic to pass an object of user-defined type by value
+//  auto fields_size = fields_.size();
+//  for (size_t field_num = 0; field_num < fields_size; ++field_num) {
+//    auto field_type = fields_[field_num].second;
+//
+//    auto field_val = bldr.CreateGEP(field_type->llvm(), val,
+//        { data::const_uint(field_num) });
+//    field_val->dump();
+//    auto field_var = bldr.CreateGEP(field_type->llvm(), var,
+//        { data::const_uint(0), data::const_uint(field_num) });
+//  
+//    field_var->dump();
+//    bldr.CreateCall(field_type->assign(), { field_val, field_var });
+//  }
+//
+  fn_scope->exit();
+
+  return assign_fn_;
 }
