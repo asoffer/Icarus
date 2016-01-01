@@ -1,0 +1,10 @@
+main := void -> void {
+  foo := type {
+    n: int
+    r: real
+  }
+  print foo.n
+  print '\n'
+  pritn foo.r
+  print '\n'
+}
