@@ -9,7 +9,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::ConstantInt* const_char(char c);
-  extern llvm::Value* global_string(const std::string& s);
+  extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
 
@@ -27,7 +27,7 @@ llvm::Function* Primitive::repr() {
     FnScope* fn_scope = Scope::build<FnScope>();
 
     fn_scope->set_parent_function(repr_fn_);
-    fn_scope->set_return_type(get_void());
+    fn_scope->set_type(get_function(this, get_void()));
 
     llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -48,7 +48,7 @@ llvm::Function* Primitive::repr() {
         standard_block);
 
     bldr.SetInsertPoint(standard_block);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'%c'"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'%c'"), val });
     bldr.CreateBr(fn_scope->exit_block());
 
     bldr.SetInsertPoint(exceptional_block);
@@ -59,35 +59,35 @@ llvm::Function* Primitive::repr() {
     auto switch_stmt = bldr.CreateSwitch(val, branch_default);
 
     bldr.SetInsertPoint(branch_default);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'\\x%02x'"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'\\x%02x'"), val });
     bldr.CreateBr(fn_scope->exit_block());
 
     auto branch_tab =
       llvm::BasicBlock::Create(llvm::getGlobalContext(), "tab", repr_fn_);
     switch_stmt->addCase(data::const_char('\t'), branch_tab);
     bldr.SetInsertPoint(branch_tab);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'\\t'") });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'\\t'") });
     bldr.CreateBr(fn_scope->exit_block());
 
     auto branch_newline =
       llvm::BasicBlock::Create(llvm::getGlobalContext(), "newline", repr_fn_);
     switch_stmt->addCase(data::const_char('\n'), branch_newline);
     bldr.SetInsertPoint(branch_newline);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'\\n'") });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'\\n'") });
     bldr.CreateBr(fn_scope->exit_block());
 
     auto branch_carriage_return =
       llvm::BasicBlock::Create(llvm::getGlobalContext(), "carriage_return", repr_fn_);
     switch_stmt->addCase(data::const_char('\r'), branch_carriage_return);
     bldr.SetInsertPoint(branch_carriage_return);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'\\r'") });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'\\r'") });
     bldr.CreateBr(fn_scope->exit_block());
 
     auto branch_backslash =
       llvm::BasicBlock::Create(llvm::getGlobalContext(), "backslash", repr_fn_);
     switch_stmt->addCase(data::const_char('\\'), branch_backslash);
     bldr.SetInsertPoint(branch_backslash);
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("'\\\\'") });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "'\\\\'") });
     // bldr.CreateBr(fn_scope->exit_block());
 
     fn_scope->exit();

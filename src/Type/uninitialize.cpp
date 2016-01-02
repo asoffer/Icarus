@@ -8,7 +8,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
 }  // namespace data
 
 
@@ -28,7 +28,7 @@ llvm::Function* Array::uninitialize() {
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(uninit_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(get_pointer(this), get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -40,7 +40,7 @@ llvm::Function* Array::uninitialize() {
 
   auto ptr_to_free = bldr.CreateGEP(
       bldr.CreateBitCast(bldr.CreateLoad(alloc), basic_ptr_type),
-      { data::const_int(-4, true) }, "ptr_to_free");
+      { data::const_int(bldr, -4, true) }, "ptr_to_free");
 
   bldr.CreateCall(cstdlib::free(), { ptr_to_free });
 

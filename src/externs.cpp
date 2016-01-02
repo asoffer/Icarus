@@ -10,8 +10,6 @@ namespace debug {
 }
 
 llvm::Module* global_module;
-llvm::Function* global_function;
-llvm::IRBuilder<> global_builder(llvm::getGlobalContext());
 
 std::map<std::string, llvm::Value*> global_strings;
 
@@ -77,7 +75,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  llvm::Value* const_int(int n, bool is_signed = false) {
+  llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false) {
 #ifdef DEBUG
     if (n < 0 && !is_signed) {
       std::cerr << "FATAL: Unsigned negative integer!" << std::endl;
@@ -87,7 +85,7 @@ namespace data {
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(32, static_cast<size_t>(n), is_signed));
     } else {
-      return global_builder.CreateSub(
+      return bldr.CreateSub(
           llvm::ConstantInt::get(
             llvm::getGlobalContext(), llvm::APInt(32, 0, true)),
           llvm::ConstantInt::get(
@@ -101,8 +99,10 @@ namespace data {
       std::cerr << "FATAL: Potential overflow on compile-time integer constants" << std::endl;
     }
 #endif
+
     // The safety of this cast is verified only in debug mode
-    return const_int(static_cast<int>(n), false);
+    return llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(32, static_cast<size_t>(n), false));
   }
 
 
@@ -132,12 +132,12 @@ namespace data {
         llvm::APInt(8, static_cast<size_t>(c), false));
   }
 
-  llvm::Value* global_string(const std::string& s) {
+  llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s) {
     auto iter = global_strings.find(s);
     if (iter != global_strings.end()) {
       return iter->second;
     }
-    return global_strings[s] = global_builder.CreateGlobalStringPtr(s);
+    return global_strings[s] = bldr.CreateGlobalStringPtr(s);
   }
 }  // namespace data
 

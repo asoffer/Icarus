@@ -9,12 +9,11 @@
 
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
-extern llvm::Function* global_function;
 
-std::map<IdPtr, DeclPtr> Scope::decl_of_;
-std::map<EPtr, std::set<EPtr>> Scope::dependencies_;
-std::vector<DeclPtr> Scope::decl_registry_;
-std::map<IdPtr, Scope*> Scope::scope_containing_;
+std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
+std::map<EPtr, std::set<EPtr>> Scope::dependencies_ = {};
+std::vector<DeclPtr> Scope::decl_registry_ = {};
+std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
 
 std::vector<Scope*> Scope::registry_;
 
@@ -23,25 +22,31 @@ namespace data {
 }  // namespace data
 
 
-FnScope* Scope::build_global() {
-  // TODO add an explicit main entry point and make this scope not a function.
-  FnScope* scope_ptr = build<FnScope>();
-
-  global_function = llvm::Function::Create(
-      Type::get_function(Type::get_void(), Type::get_int())->llvm(),
-      llvm::Function::ExternalLinkage, "woodlydoodly", global_module);
-
+GlobalScope* Scope::build_global() {
+  GlobalScope* scope_ptr = build<GlobalScope>();
 
   for (auto& ptr : registry_) {
     if (ptr == scope_ptr) continue;
 
-    ptr->parent_ = scope_ptr;
+    ptr->set_parent(scope_ptr);
   }
-  scope_ptr->set_parent_function(global_function);
-  scope_ptr->set_return_type(Type::get_int());
 
+  scope_ptr->bldr_.SetInsertPoint(scope_ptr->entry_block());
 
   return scope_ptr;
+}
+
+void GlobalScope::initialize() {
+  for (const auto& decl_ptr : ordered_decls_) {
+    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_type = decl_id->type();
+    if (decl_type->is_function()) {
+      decl_id->alloc_ = decl_type->allocate(bldr_);
+      decl_id->alloc_->setName(decl_ptr->identifier_string());
+    } else {
+      std::cerr << "FATAL: Global variables not currently allowed." << std::endl;
+    }
+  }
 }
 
 size_t Scope::num_scopes() {
@@ -49,7 +54,7 @@ size_t Scope::num_scopes() {
 }
 
 void Scope::enter() {
-  bldr_.SetInsertPoint(entry_block_);
+  bldr_.SetInsertPoint(entry_block());
 
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
@@ -73,7 +78,7 @@ void Scope::enter() {
 }
 
 void FnScope::enter() {
-  bldr_.SetInsertPoint(entry_block_);
+  bldr_.SetInsertPoint(entry_block());
 
   allocate(this);
 
@@ -83,8 +88,8 @@ void FnScope::enter() {
 
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
-  if (return_type_ != Type::get_void()) {
-    return_val_ = return_type_->allocate(bldr_);
+  if (fn_type_->return_type() != Type::get_void()) {
+    return_val_ = fn_type_->return_type()->allocate(bldr_);
     return_val_->setName("retval");
   }
 
@@ -93,50 +98,51 @@ void FnScope::enter() {
 
 
 // TODO simplify this. No need for an exit block unless it's in FnScope
-void Scope::exit(llvm::BasicBlock* jump_to) {
-  bldr_.CreateBr(exit_block_);
-  bldr_.SetInsertPoint(exit_block_);
+void Scope::exit() {
+  bldr_.CreateBr(exit_block());
+  bldr_.SetInsertPoint(exit_block());
   uninitialize();
-
-  bldr_.CreateBr(jump_to);
 }
 
-
-// Take in input and ignore it.
-void FnScope::exit(llvm::BasicBlock*) {
-  bldr_.CreateBr(exit_block_);
-  bldr_.SetInsertPoint(exit_block_);
+void SimpleFnScope::exit() {
+  // Cannot Branch to exit_block() because that's the same block!
+  // Thus, calling up to Scope::exit() is not possible.
   uninitialize();
 
-  if (return_type_ == Type::get_void()) {
+  if (fn_type_->return_type() == Type::get_void()) {
     bldr_.CreateRetVoid();
 
   } else {
     bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
   }
 }
-void Scope::make_return_void() {
-  containing_function_->make_return_void();
+
+// Take in input and ignore it.
+void FnScope::exit() {
+  Scope::exit();
+
+  if (fn_type_->return_type() == Type::get_void()) {
+    bldr_.CreateRetVoid();
+
+  } else {
+    bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
+  }
 }
 
 void Scope::make_return(llvm::Value* val) {
   containing_function_->make_return(val);
 }
 
-void FnScope::make_return_void() {
-  return_type_ = Type::get_void();
-}
-
-void FnScope::make_return(llvm::Value* val) {
-#ifdef DEBUG
-  if (val == nullptr) {
-    std::cerr << "FATAL: making a return value before it's allocation." << std::endl;
-  }
-#endif
+void GenericFnScope::make_return(llvm::Value* val) {
+  // nullptr means void return type
+  if (val == nullptr) return;
 
   bldr_.CreateStore(val, return_val_);
 }
 
+void GenericFnScope::add_scope(Scope* scope) {
+  innards_.insert(scope);
+}
 
 // Set pointer to the parent scope. This is an independent concept from LLVM's
 // "parent". For us, functions can be declared in local scopes, so we will
@@ -153,19 +159,18 @@ void Scope::set_parent(Scope* parent) {
 #endif
 
   if (parent_ != nullptr && parent_->containing_function_ != nullptr) {
-    parent_->containing_function_->innards_.erase(this);
+    parent_->containing_function_->remove_scope(this);
   }
 
   parent_ = parent;
-  if (!is_function_scope()) {
+  if (parent->is_function_scope()) {
+    containing_function_ = static_cast<GenericFnScope*>(parent_);
+  } else {
     containing_function_ = parent_->containing_function_;
   }
 
-  if (parent_->is_function_scope()) {
-    static_cast<FnScope*>(parent_)->innards_.insert(this);
-
-  } else {
-    parent_->containing_function_->innards_.insert(this);
+  if (containing_function_ != nullptr) {
+    containing_function_->add_scope(this);
   }
 }
 
@@ -188,7 +193,7 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 //
 // TODO maybe we should set this up differently, so it's a method of the scope
 // and it just calls it using containing_function_?
-void FnScope::allocate(Scope* scope) {
+void GenericFnScope::allocate(Scope* scope) {
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
@@ -403,19 +408,21 @@ void Scope::assign_type_order() {
   }
 }
 
+
 void Scope::set_parent_function(llvm::Function* fn) {
-  if (entry_block_ != nullptr && entry_block_->getParent() != nullptr) {
-    entry_block_->removeFromParent();
+  if (entry_block() != nullptr && entry_block()->getParent() != nullptr) {
+    entry_block()->removeFromParent();
   }
 
-  entry_block_->insertInto(fn);
+  entry_block()->insertInto(fn);
 
-  if (exit_block_ != nullptr && exit_block_->getParent() != nullptr) {
-    exit_block_->removeFromParent();
+  if (exit_block() != nullptr && exit_block()->getParent() != nullptr) {
+    exit_block()->removeFromParent();
   }
 
-  exit_block_->insertInto(fn);
+  exit_block()->insertInto(fn);
 }
+
 
 void WhileScope::set_parent_function(llvm::Function* fn) {
   Scope::set_parent_function(fn);
@@ -441,6 +448,7 @@ void WhileScope::enter() {
 }
 
 
-void WhileScope::exit(llvm::BasicBlock*) {
-  Scope::exit(cond_block_);
+void WhileScope::exit() {
+  Scope::exit();
+  bldr_.CreateBr(cond_block_);
 }

@@ -1,10 +1,12 @@
-n := 1
-while true {
-  n *= 2
-  a := [0, 1, 2]
-  if n > 1000 {
-    break
+main := void -> void {
+  n := 1
+  while true {
+    n *= 2
+    a := [0, 1, 2]
+    if n > 1000 {
+      break
+    }
   }
+  
+  print n
 }
-
-print n

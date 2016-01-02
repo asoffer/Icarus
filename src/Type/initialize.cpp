@@ -9,7 +9,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
@@ -48,10 +48,10 @@ llvm::Function* Primitive::initialize() {
       init_val = data::const_char('\0');
       break;
     case t_int:
-      init_val = data::const_int(0, true);  // signed
+      init_val = data::const_int(bldr, 0, true);  // signed
       break;
     case t_uint:
-      init_val = data::const_int(0); // unsigned
+      init_val = data::const_uint(0); // unsigned
       break;
     case t_real:
       init_val = data::const_real(0);
@@ -91,7 +91,7 @@ llvm::Function* Array::initialize() {
 
   FnScope* fn_scope = Scope::build<FnScope>();
   fn_scope->set_parent_function(init_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(this, get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -231,7 +231,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
 
   // Pointer to the length at the head of the array
   auto raw_len_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { data::const_int(0) }, "array_len_raw");
+      malloc_call, { data::const_uint(0) }, "array_len_raw");
 
   auto len_ptr = bldr.CreateBitCast(
       raw_len_ptr, Type::get_pointer(Type::get_int())->llvm(), "len_ptr");

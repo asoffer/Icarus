@@ -155,6 +155,36 @@ std::vector<Function*> Function::fn_types_;
 
 std::map<std::string, UserDefined*> UserDefined::lookup_;
 
+Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
+  std::vector<llvm::Type*> input_list;
+  if (input_type_->is_tuple()) {
+    auto input_tuple = static_cast<Tuple*>(input_type_);
+    auto len = input_tuple->size();
+    input_list.resize(len, nullptr);
+
+    size_t i = 0;
+    // TODO robustify this.
+    // What if tuple element is a tuple?
+    // What if tuple element is a function?
+    // ...
+    for (const auto& input : input_tuple->entry_types_) {
+      input_list[i] = input->llvm();
+      ++i;
+    }
+  } else if (input_type_->is_function()) {
+    input_list.push_back(Type::get_pointer(input_type_)->llvm());
+
+  } else if (!input_type_->is_void()) {
+    input_list.push_back(input_type_->llvm());
+  }
+
+  auto llvm_output = output_type_->is_function()
+    ? Type::get_pointer(output_type_)->llvm()
+    : output_type_->llvm();
+
+  // Boolean parameter 'false' designates that this function is not variadic.
+  llvm_type_ = llvm::FunctionType::get(llvm_output, input_list, false);
+}
 
 Type* Type::get_user_defined(const std::string& name) {
   return UserDefined::lookup_ AT(name);

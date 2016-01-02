@@ -19,9 +19,9 @@ namespace data {
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
   extern llvm::Value* const_char(char c);
-  extern llvm::Value* global_string(const std::string& s);
+  extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
 namespace AST {
@@ -46,9 +46,7 @@ namespace AST {
 
     // TODO move this to Type
     if (type() == Type::get_void()) {
-      if (token() == "return") {
-        scope->make_return_void();
-      }
+      if (token() == "return") scope->make_return(nullptr);
       return nullptr;
 
     } else if (type() == Type::get_unknown() || type() == Type::get_type_error()) {
@@ -65,7 +63,7 @@ namespace AST {
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
     } else if (type() == Type::get_int()) {
-      return data::const_int(std::stoi(token()), true);
+      return data::const_int(scope->builder(), std::stoi(token()), true);
 
     } else if (type() == Type::get_real()) {
       return llvm::ConstantFP::get(llvm::getGlobalContext(),
@@ -106,7 +104,7 @@ namespace AST {
 
     } else if (is_print()) {
       if (expr_->type() == Type::get_type()) {
-        val = data::global_string(expr_->interpret_as_type()->to_string());
+        val = data::global_string(scope->builder(), expr_->interpret_as_type()->to_string());
       }
 
       scope->builder().CreateCall(expr_->type()->print(), { val });
@@ -404,8 +402,7 @@ namespace AST {
     auto old_block = scope->builder().GetInsertBlock();
 
     fn_scope_->set_parent_function(llvm_function_);
-    auto ret_type = static_cast<Function*>(expr_type_)->return_type();
-    fn_scope_->set_return_type(ret_type);
+    fn_scope_->set_type(static_cast<Function*>(expr_type_));
 
     fn_scope_->enter();
     
@@ -636,6 +633,7 @@ namespace AST {
       scope->builder().SetInsertPoint(case_blocks[i]);
     }
     auto output_val = pairs_->kv_pairs_.back().second->generate_code(scope);
+
     phi_node->addIncoming(output_val, scope->builder().GetInsertBlock());
     scope->builder().CreateBr(case_landing);
     scope->builder().SetInsertPoint(case_landing);
@@ -730,7 +728,8 @@ namespace AST {
       body_scopes_[i]->set_parent_function(parent_fn);
       body_scopes_[i]->enter();
       statements_[i]->generate_code(body_scopes_[i]);
-      body_scopes_[i]->exit(landing);
+      body_scopes_[i]->exit();
+      body_scopes_[i]->builder().CreateBr(landing);
     }
 
     scope->builder().SetInsertPoint(landing);

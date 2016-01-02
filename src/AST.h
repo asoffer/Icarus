@@ -1002,7 +1002,7 @@ namespace AST {
 
       std::vector<EPtr> conds_;
       std::vector<std::shared_ptr<Statements>> statements_;
-      std::vector<Scope*> body_scopes_;
+      std::vector<CondScope*> body_scopes_;
 
       // We use else_line_num_ to determine if an else branch exists (when it's
       // non-zero) and also for error generation (if multiple else-blocks are

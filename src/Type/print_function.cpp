@@ -11,9 +11,10 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
+
   extern llvm::Value* const_char(char c);
-  extern llvm::Value* global_string(const std::string& s);
+  extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
 
@@ -31,7 +32,6 @@ llvm::Function* Primitive::print() {
   // string representation, but this means we must take 
 
   auto input_type = replace(Type::get_type(), Type::get_pointer(Type::get_char()));
-
   // Otherwise, actually write our own
   print_fn_ = llvm::Function::Create(
       Type::get_function(input_type, get_void())->llvm(),
@@ -41,7 +41,7 @@ llvm::Function* Primitive::print() {
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(input_type, get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -66,26 +66,26 @@ llvm::Function* Primitive::print() {
     bldr.SetInsertPoint(merge_block);
     llvm::PHINode* phi_node =
       bldr.CreatePHI(get_pointer(get_char())->llvm(), 2, "merge");
-    phi_node->addIncoming(data::global_string("true"),  true_block);
-    phi_node->addIncoming(data::global_string("false"), false_block);
+    phi_node->addIncoming(data::global_string(bldr, "true"),  true_block);
+    phi_node->addIncoming(data::global_string(bldr, "false"), false_block);
 
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), phi_node });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"), phi_node });
 
   } else if (this == get_int()) {
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("%d"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%d"), val });
 
   } else if (this == get_uint()) {
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("%u"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%u"), val });
 
   } else if (this == get_real()) {
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("%f"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%f"), val });
 
   } else if (this == get_type()) {
     // To print a type we must first get it's string representation,
     // which is the job of the code generator. We assume that the value
     // passed in is already this string (as a global string pointer)
 
-    bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), val });
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"), val });
   }
 
   fn_scope->exit();
@@ -110,7 +110,7 @@ llvm::Function* Array::print() {
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(input_type, get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -121,12 +121,12 @@ llvm::Function* Array::print() {
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),
-      { data::const_int(-4, true) }, "ptr_to_len");
+      { data::const_int(bldr, -4, true) }, "ptr_to_len");
 
   auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
       get_pointer(get_int())->llvm());
 
-  auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_int(0) }));
+  auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
 
   auto loop_block = llvm::BasicBlock::Create(
     llvm::getGlobalContext(), "print_loop", print_fn_);
@@ -151,7 +151,7 @@ llvm::Function* Array::print() {
   llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "loop_phi");
   phi->addIncoming(data::const_uint(1), loop_head_block);
 
-  bldr.CreateCall(cstdlib::printf(), { data::global_string(", ") });
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, ", ") });
 
   elem_ptr = bldr.CreateGEP(val, { phi });
   bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
@@ -170,8 +170,6 @@ llvm::Function* Array::print() {
 llvm::Function* Function::print() {
   if (print_fn_ != nullptr) return print_fn_;
 
-  auto fn_print_str = data::global_string("<function " + to_string() + ">");
-
   auto input_type = replace(get_type(), get_pointer(get_char()));
 
   // TODO
@@ -184,12 +182,14 @@ llvm::Function* Function::print() {
   FnScope* fn_scope = Scope::build<FnScope>();
 
   fn_scope->set_parent_function(print_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(input_type, get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
-  bldr.CreateCall(cstdlib::printf(), { data::global_string("%s"), fn_print_str });
+
+  auto fn_print_str = data::global_string(bldr, "<function " + to_string() + ">");
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"), fn_print_str });
   fn_scope->exit();
 
   return print_fn_;

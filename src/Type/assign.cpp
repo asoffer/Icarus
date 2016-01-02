@@ -10,7 +10,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(int n, bool is_signed = false);
+  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
 
   extern llvm::Value* global_string(const std::string& s);
@@ -32,7 +32,7 @@ llvm::Function* Primitive::assign() {
     
   FnScope* fn_scope = Scope::build<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -64,7 +64,7 @@ llvm::Function* Array::assign() {
 
   FnScope* fn_scope = Scope::build<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -79,7 +79,7 @@ llvm::Function* Array::assign() {
   auto raw_ptr_type = get_pointer(get_char())->llvm();
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, raw_ptr_type),
-      { data::const_int(-4, true) }, "ptr_to_len");
+      { data::const_int(bldr, -4, true) }, "ptr_to_len");
   auto len_val = bldr.CreateLoad(
     bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm()));
 
@@ -149,7 +149,7 @@ llvm::Function* UserDefined::assign() {
     
   FnScope* fn_scope = Scope::build<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_return_type(get_void());
+  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
 //   llvm::IRBuilder<>& bldr = fn_scope->builder();
 

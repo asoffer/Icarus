@@ -13,9 +13,6 @@
 #include "llvm/Support/raw_os_ostream.h"
 
 extern llvm::Module* global_module;
-extern llvm::Function* global_function;
-extern llvm::IRBuilder<> global_builder;
-
 namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
@@ -101,9 +98,7 @@ int main(int argc, char *argv[]) {
   auto global_statements =
     std::static_pointer_cast<AST::Statements>(root_node);
 
-  FnScope* global_scope = Scope::build_global();
-
-  global_builder.SetInsertPoint(global_scope->entry_block());
+  auto global_scope = Scope::build_global();
 
   // COMPILATION STEP:
   //
@@ -165,10 +160,8 @@ int main(int argc, char *argv[]) {
   // Initialize the global_scope.
 
   // Generate LLVM intermediate representation.
-  global_scope->enter();
+  global_scope->initialize();
   global_statements->generate_code(global_scope);
-  global_scope->make_return(data::const_uint(0));
-  global_scope->exit();
 
   Scope::Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
