@@ -43,6 +43,8 @@ void GlobalScope::initialize() {
     if (decl_type->is_function()) {
       decl_id->alloc_ = decl_type->allocate(bldr_);
       decl_id->alloc_->setName(decl_ptr->identifier_string());
+    } else if (decl_type == Type::get_type()) {
+      continue;
     } else {
       std::cerr << "FATAL: Global variables not currently allowed." << std::endl;
     }

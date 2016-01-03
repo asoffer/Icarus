@@ -89,12 +89,13 @@ namespace AST {
 
       error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());
 
-    } else if(token_ == ".") {
+    } else if (token_ == ".") {
       if (!rhs_->is_identifier()) {
         error_log.log(line_num_, "Member access (`.`) must access an identifier.");
       }
 
       auto lhs_type = lhs_->type();
+
       if (!lhs_type->is_user_defined()) {
         // TODO better error message
         error_log.log(line_num_, "Elements of this type have no members.");
@@ -252,15 +253,17 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-
     if (decl_type_->expr_type_ == Type::get_void()) {
       error_log.log(line_num_, "Void types cannot be assigned.");
       return;
     }
 
-    if (decl_type_->is_type_literal() && infer_type_) {
+
+    if (decl_type_->is_type_literal()) {
       auto type_lit_ = std::static_pointer_cast<TypeLiteral>(decl_type_);
-      Type::make_user_defined(type_lit_->decls_, id_->token());
+      type_lit_->type_value_ = 
+        Type::make_user_defined(type_lit_->decls_, 
+            infer_type_ ? identifier_string() : "unnamed type");
     }
 
 

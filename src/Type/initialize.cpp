@@ -200,10 +200,15 @@ llvm::Function* UserDefined::initialize() {
   auto fields_size = fields_.size();
   for (size_t field_num = 0; field_num < fields_size; ++field_num) {
     auto field_type = fields_[field_num].second;
-    bldr.CreateCall(field_type->initialize(), { 
-        bldr.CreateGEP(llvm(), init_fn_->args().begin(), {
-          data::const_uint(0), data::const_uint(field_num) })
-        });
+    auto arg = bldr.CreateGEP(llvm(), init_fn_->args().begin(), {
+        data::const_uint(0), data::const_uint(field_num) });
+
+    if (field_type->is_array()) {
+      bldr.CreateCall(field_type->initialize(), { arg, data::const_uint(0) });
+    } else {
+      bldr.CreateCall(field_type->initialize(), { arg });
+    }
+
   }
 
   bldr.CreateRetVoid();

@@ -7,7 +7,9 @@ water_state := (temp : int) -> char {
   }
 }
 
-print water_state(0)
-print water_state(10)
-print water_state(100000)
-print water_state(50)
+main := void -> void {
+  print water_state(0)
+  print water_state(10)
+  print water_state(100000)
+  print water_state(50)
+}

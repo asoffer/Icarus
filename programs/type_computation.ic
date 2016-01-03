@@ -15,4 +15,13 @@ if [3; int] == [5; int] {
   print 3
   print '\n'
 }
+
+a := type {
+  n: int
+}
+b := type {
+  n: int
+}
+print a == b  // false
+print '\n'
 }

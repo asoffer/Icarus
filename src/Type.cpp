@@ -190,11 +190,11 @@ Type* Type::get_user_defined(const std::string& name) {
   return UserDefined::lookup_ AT(name);
 }
 
-void Type::make_user_defined(
+Type* Type::make_user_defined(
     const std::vector<DeclPtr>& decls, const std::string& name) {
 
   auto iter = UserDefined::lookup_.find(name);
-  if (iter != UserDefined::lookup_.end()) return;
+  if (iter != UserDefined::lookup_.end()) return iter->second;
 
   auto user_def_type = new UserDefined;
 
@@ -222,7 +222,7 @@ void Type::make_user_defined(
   struct_type->setBody(std::move(llvm_fields), false);
   user_def_type->llvm_type_ = struct_type;
 
-  UserDefined::lookup_[name] = user_def_type;
+  return UserDefined::lookup_[name] = user_def_type;
 }
 
 

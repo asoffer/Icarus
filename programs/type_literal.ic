@@ -1,10 +1,12 @@
 main := void -> void {
-  foo := type {
+  foo: type {
     n: int
     r: real
   }
+  foo.n = 17
+  foo.r = 3.14
   print foo.n
   print '\n'
-  pritn foo.r
+  print foo.r
   print '\n'
 }

@@ -244,11 +244,12 @@ namespace AST {
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
     // TODO short-circuiting
+    if (exprs_[0]->type() == Type::get_type()) return evaluate();
+
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
-
-    if (exprs_[0]->type() == Type::get_type()) return evaluate();
+    auto& bldr = scope->builder();
 
     if (exprs_[0]->type() == Type::get_int()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
@@ -256,22 +257,22 @@ namespace AST {
         llvm::Value* cmp_val;
 
         if (ops_[i - 1]->token() == "<") {
-          cmp_val = scope->builder().CreateICmpSLT(lhs_val, rhs_val, "lttmp");
+          cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
 
         } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = scope->builder().CreateICmpSLE(lhs_val, rhs_val, "letmp");
+          cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
 
         } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = scope->builder().CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
 
         } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = scope->builder().CreateICmpNE(lhs_val, rhs_val, "netmp");
+          cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
 
         } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = scope->builder().CreateICmpSGE(lhs_val, rhs_val, "getmp");
+          cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
 
         } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = scope->builder().CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+          cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
 
         } else {
           error_log.log(ops_[i - 1]->line_num(),
@@ -280,7 +281,7 @@ namespace AST {
         }
 
         // TODO early exit
-        ret_val = (i != 1) ? scope->builder().CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
 
       }
@@ -290,22 +291,22 @@ namespace AST {
         llvm::Value* cmp_val;
 
         if (ops_[i - 1]->token() == "<") {
-          cmp_val = scope->builder().CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
+          cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
 
         } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = scope->builder().CreateFCmpOLE(lhs_val, rhs_val, "letmp");
+          cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
 
         } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = scope->builder().CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
+          cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
 
         } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = scope->builder().CreateFCmpONE(lhs_val, rhs_val, "netmp");
+          cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
 
         } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = scope->builder().CreateFCmpOGE(lhs_val, rhs_val, "getmp");
+          cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
 
         } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = scope->builder().CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+          cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
 
         } else {
           // TODO 
@@ -316,7 +317,7 @@ namespace AST {
         // TODO should these be ordered, or can they be QNAN? probably.
 
         // TODO early exit
-        ret_val = (i != 1) ? scope->builder().CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
     } else if (exprs_[0]->type() == Type::get_bool()) {
@@ -327,10 +328,10 @@ namespace AST {
         for (size_t i = 1; i < exprs_.size(); ++i) {
           auto expr = exprs_[i];
           auto rhs_val = expr->generate_code(scope);
-          cmp_val = scope->builder().CreateXor(cmp_val, rhs_val);
+          cmp_val = bldr.CreateXor(cmp_val, rhs_val);
         }
       } else {
-        auto parent_fn = scope->builder().GetInsertBlock()->getParent();
+        auto parent_fn = bldr.GetInsertBlock()->getParent();
         // Condition blocks
         std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
         for (auto& block : cond_blocks) {
@@ -348,29 +349,29 @@ namespace AST {
 
         if (ops_.front()->token() == "&") {
           for (size_t i = 0; i < ops_.size(); ++i) {
-            scope->builder().CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
-            scope->builder().SetInsertPoint(cond_blocks[i]);
+            bldr.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
+            bldr.SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
         } else {  // if (ops_.front()->token() == "|") {
           for (size_t i = 0; i < ops_.size(); ++i) {
-            scope->builder().CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
-            scope->builder().SetInsertPoint(cond_blocks[i]);
+            bldr.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
+            bldr.SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
         }
 
-        scope->builder().CreateCondBr(cmp_val, land_true_block, land_false_block);
+        bldr.CreateCondBr(cmp_val, land_true_block, land_false_block);
 
-        scope->builder().SetInsertPoint(land_true_block);
-        scope->builder().CreateBr(merge_block);
+        bldr.SetInsertPoint(land_true_block);
+        bldr.CreateBr(merge_block);
 
-        scope->builder().SetInsertPoint(land_false_block);
-        scope->builder().CreateBr(merge_block);
+        bldr.SetInsertPoint(land_false_block);
+        bldr.CreateBr(merge_block);
 
-        scope->builder().SetInsertPoint(merge_block);
+        bldr.SetInsertPoint(merge_block);
         // Join two cases
-        llvm::PHINode* phi_node = scope->builder().CreatePHI(
+        llvm::PHINode* phi_node = bldr.CreatePHI(
             Type::get_bool()->llvm(), 2, "merge");
         phi_node->addIncoming(data::const_true(), land_true_block);
         phi_node->addIncoming(data::const_false(), land_false_block);

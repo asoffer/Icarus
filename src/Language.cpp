@@ -22,6 +22,7 @@ namespace Language {
     { string_literal,           "String" },
     { generic_operator,         "Operator" },
     { bool_operator,            "BoolOperator" },
+    { dot,                      "Dot" },
     { binary_boolean_operator,  "BinOperator" },
     { decl_operator,            ":" },
     { decl_assign_operator,     ":=" },

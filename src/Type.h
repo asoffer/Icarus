@@ -53,7 +53,7 @@ class Type {
     static Type* get_array(Type* t);
     static Type* get_user_defined(const std::string& name);
 
-    static void make_user_defined(
+    static Type* make_user_defined(
         const std::vector<DeclPtr>& decls, const std::string& name);
 
     static std::map<std::string, Type*> literals;
