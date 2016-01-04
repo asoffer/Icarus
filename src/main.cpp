@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <queue>
 
 #include "Parser.h"
 #include "AST.h"
@@ -24,10 +25,25 @@ namespace debug {
 }  // namespace
 
 
-// This is an enum so we can give meaningful names for error codes.
-// However, at the end of the day, we must return ints. Thus, we need
-// to use the implicit cast from enum to int, and so we cannot get the
-// added type safety of an enum class.
+// The keys in this map represent the file names, and the values represent the
+// syntax trees from the parsed file.
+//
+// TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
+// a datarace will corrupt the memory. When we start threading, we need to lock
+// the map before usage.
+extern std::map<std::string, StmtsPtr> ast_map;
+
+
+// Each time a file is imported, it will be added to the queue. We then parse
+// each file off the queue until the queue is empty. We avoid circular calls by
+// checking if the map is already filled before parsing.
+extern std::queue<std::string> file_queue;
+
+
+// This is an enum so we can give meaningful names for error codes. However, at
+// the end of the day, we must return ints. Thus, we need to use the implicit
+// cast from enum to int, and so we cannot get the added type safety of an enum
+// class.
 namespace error_code {
   enum {
     success = 0,  // returning 0 denotes succes
@@ -41,8 +57,21 @@ namespace error_code {
   };
 }  // namespace error_code
 
+
+// If the file name does not have an extension, add ".ic" to the end of it.
+//
+// TODO this is extremely not robust and probably has system dependencies.
+std::string canonicalize_file_name(const std::string& filename) {
+  auto found_dot = filename.find('.');
+  return (found_dot == std::string::npos)
+    ? filename + ".ic"
+    : filename;
+}
+
+
+
 int main(int argc, char *argv[]) {
-  int arg_num = 1; // iterator over argv
+  int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv
   while (arg_num < argc) {
     auto arg = argv[arg_num];
@@ -65,26 +94,33 @@ int main(int argc, char *argv[]) {
     ++arg_num;
   }
 
-  // If the file name has no "." in it, append ".ic"
-  std::string file_name(argv[file_index]);
-  auto found_dot = file_name.find('.');
-  if (found_dot == std::string::npos) {
-    file_name += ".ic";
+  // Add the file to the queue
+  file_queue.emplace(argv[file_index]);
+
+  while (!file_queue.empty()) {
+    std::string file_name = canonicalize_file_name(file_queue.front());
+    file_queue.pop();
+    auto iter = ast_map.find(file_name);
+
+    // If we've already parsed this file, don't parse it again.
+    if (iter != ast_map.end()) continue;
+
+
+    // Check if file exists
+    std::ifstream infile(file_name);
+    if (!infile.good()) {
+      // TODO do this with the error log
+      std::cerr
+        << "File '" << file_name << "' does not exist or cannot be accessed."
+        << std::endl;
+    }
+    error_log.set_file(file_name);
+
+    Parser parser(file_name);
+    ast_map[file_name] = std::static_pointer_cast<AST::Statements>(parser.parse());
   }
 
-  // Check if file exists
-  std::ifstream infile(file_name);
-  if (!infile.good()) {
-    std::cerr
-      << "File '" << file_name << "' does not exist or cannot be accessed."
-      << std::endl;
-    return error_code::file_does_not_exist;
-  }
 
-  error_log.set_file(file_name);
-
-  Parser parser(file_name);
-  auto root_node = parser.parse();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::parse_error;
@@ -95,8 +131,22 @@ int main(int argc, char *argv[]) {
 
   // TODO write the language rules to guarantee that the parser produces a
   // Statements node at top level.
-  auto global_statements =
-    std::static_pointer_cast<AST::Statements>(root_node);
+    
+
+  // Combine all statement nodes from separately-parsed files.
+  auto global_statements = std::make_shared<AST::Statements>();
+
+  // Reserve enough space forr all of them to avoid unneeded copies
+  size_t num_statements = 0;
+  for (const auto& kv : ast_map) {
+    num_statements = kv.second->size();
+  }
+  global_statements->reserve(num_statements);
+
+  for (auto& kv : ast_map) {
+    global_statements->add_nodes(kv.second);
+  }
+
 
   auto global_scope = Scope::build_global();
 

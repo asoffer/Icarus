@@ -866,6 +866,13 @@ namespace AST {
       virtual llvm::Value* evaluate();
 
       inline size_t size() { return statements_.size(); }
+      inline void reserve(size_t n) { return statements_.reserve(n); }
+
+      void add_nodes(StmtsPtr stmts) {
+        for (auto& stmt : stmts->statements_) {
+          statements_.push_back(std::move(stmt));
+        }
+      }
 
       Statements() {}
       virtual ~Statements() {}

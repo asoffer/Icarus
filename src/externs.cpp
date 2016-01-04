@@ -2,12 +2,16 @@
 #include "ErrorLog.h"
 
 #include <map>
+#include <queue>
 
 // Debug flags and their default values
 namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
   bool parser = false;
 }
+
+std::map<std::string, StmtsPtr> ast_map;
+std::queue<std::string> file_queue;
 
 llvm::Module* global_module;
 

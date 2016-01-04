@@ -1,0 +1,6 @@
+import import_cycle
+
+main := void -> void {
+  print 'x'
+  print '\n'
+}

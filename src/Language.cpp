@@ -1,10 +1,19 @@
 #include "Language.h"
-
 #include "AST.h"
 
+#include <queue>
+
+extern std::queue<std::string> file_queue;
 // This is intentionally not accessible in other translation units.
 template<size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
   return std::move(nodes[N]);
+}
+
+// TODO we can't have a '/' character, and since all our programs are in the
+// programs/ directory for now, we hard-code that. This needs to be removed.
+NPtr import_file(NPtrVec&& nodes) {
+  file_queue.emplace("programs/" + nodes[1]->token());
+  return std::make_shared<AST::Node>(AST::Node::newline_node());
 }
 
 namespace Language {
@@ -49,6 +58,7 @@ namespace Language {
     { reserved_else,            "Else" },
     { reserved_enum,            "Enum" },
     { reserved_case,            "Case" },
+    { reserved_import,          "Import" },
     { reserved_loop,            "Loop" },
     { reserved_print,           "Print" },
     { reserved_while,           "While" },
@@ -67,6 +77,7 @@ namespace Language {
     { "else",     reserved_else },
     { "enum",     reserved_enum },
     { "case",     reserved_case },
+    { "import",   reserved_import },
     { "loop",     reserved_loop },
     { "while",    reserved_while },
     { "break",    reserved_break },
@@ -561,6 +572,13 @@ namespace Language {
         { reserved_enum, left_brace, statements, right_brace },
         AST::EnumLiteral::build),
     /* End enums */
+
+    
+    /* Begin import */
+    Rule(newline,
+        { reserved_import, expression, newline },
+        import_file),
+    /* End import */
 
 
     /* Begin miscellaneous */

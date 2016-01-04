@@ -5,7 +5,3 @@ factorial = (n : int) -> int {
     else   =>  n * factorial(n - 1)
   }
 }
-
-main := void -> void {
-  print factorial(factorial(3))
-}

@@ -1,0 +1,9 @@
+import fibonacci
+import factorial
+
+main := void -> void {
+  print fib(10)
+  print '\n'
+  print factorial(6)
+  print '\n'
+}
