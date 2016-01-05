@@ -1,4 +1,4 @@
-import import_cycle
+import "import_cycle.ic"
 
 main := void -> void {
   print 'x'

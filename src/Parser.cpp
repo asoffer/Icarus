@@ -89,6 +89,13 @@ bool Parser::should_shift() {
     return true;
   }
 
+  if (stack_.size() >= 2
+      && ahead_type == Language::newline
+      && last_type == Language::string_literal
+      && stack_[stack_.size() - 2]->node_type() == Language::reserved_import) {
+    return true;
+  }
+
   // Reduce terminals
   switch (last_type) {
     case Language::identifier:

@@ -576,7 +576,7 @@ namespace Language {
     
     /* Begin import */
     Rule(newline,
-        { reserved_import, expression, newline },
+        { reserved_import, string_literal, newline },
         import_file),
     /* End import */
 

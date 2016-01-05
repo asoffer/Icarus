@@ -1,5 +1,5 @@
-import fibonacci
-import factorial
+import "fibonacci.ic"
+import "factorial.ic"
 
 main := void -> void {
   print fib(10)
