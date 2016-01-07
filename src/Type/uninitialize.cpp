@@ -9,7 +9,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
+  extern llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n);
 }  // namespace data
 
 
@@ -39,7 +39,7 @@ llvm::Function* Array::uninitialize() {
   auto data_ptr = bldr.CreateLoad(alloc);
   auto ptr_to_free = bldr.CreateGEP(
       bldr.CreateBitCast(data_ptr, basic_ptr_type),
-      { data::const_int(bldr, -static_cast<int>(get_uint()->bytes()), true) }, "ptr_to_free");
+      { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_free");
 
   if (data_type()->uninitialize() != nullptr) {
     auto len_ptr = bldr.CreateBitCast(ptr_to_free,

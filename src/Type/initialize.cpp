@@ -8,7 +8,6 @@ namespace cstdlib {
 
 
 namespace data {
-  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
@@ -47,10 +46,10 @@ llvm::Function* Primitive::initialize() {
       init_val = data::const_char('\0');
       break;
     case t_int:
-      init_val = data::const_int(bldr, 0, true);  // signed
-      break;
+      // Because LLVM treats ints and uints identically,
+      // we can safely fallthrough
     case t_uint:
-      init_val = data::const_uint(0); // unsigned
+      init_val = data::const_uint(0);
       break;
     case t_real:
       init_val = data::const_real(0);

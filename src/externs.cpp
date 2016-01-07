@@ -4,6 +4,8 @@
 #include <map>
 #include <queue>
 
+// TODO 32 is hard-coded here as an int size. Change it
+
 // Debug flags and their default values
 namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
@@ -96,6 +98,22 @@ namespace data {
             llvm::getGlobalContext(), llvm::APInt(32, static_cast<size_t>(-n), true)));
     }
   }
+
+
+  llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n) {
+#ifdef DEBUG
+    if (n > (1 << 30)) {
+      std::cerr << "FATAL: Potential overflow on compile-time integer constants" << std::endl;
+    }
+#endif
+
+    return bldr.CreateSub(
+       llvm::ConstantInt::get(
+         llvm::getGlobalContext(), llvm::APInt(32, 0, true)),
+       llvm::ConstantInt::get(
+         llvm::getGlobalContext(), llvm::APInt(32, n, true)));
+  }
+
 
   llvm::Value* const_uint(size_t n) {
 #ifdef DEBUG

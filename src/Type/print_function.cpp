@@ -10,9 +10,8 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
+  extern llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n);
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
-
   extern llvm::Value* const_char(char c);
   extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
@@ -121,7 +120,7 @@ llvm::Function* Array::print() {
 
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, basic_ptr_type),
-      { data::const_int(bldr, -static_cast<int>(get_uint()->bytes()), true) }, "ptr_to_len");
+      { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_len");
 
   auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
       get_pointer(get_int())->llvm());
@@ -140,7 +139,7 @@ llvm::Function* Array::print() {
 
   bldr.SetInsertPoint(loop_head_block);
 
-  // TODO is this const_int(0) superfluous?
+  // TODO is this const_uint(0) superfluous?
   auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
 
   bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
