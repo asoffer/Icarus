@@ -14,11 +14,11 @@ bin/icarus programs/code_gen_test.ic
 bin/icarus programs/code_gen_test_with_type_inference.ic
 bin/icarus programs/double_case.ic
 bin/icarus programs/enum.ic
-bin/icarus programs/factorial.ic
-bin/icarus programs/fibonacci.ic
 bin/icarus programs/fn_call.ic
 bin/icarus programs/fn_expression_literal.ic
 bin/icarus programs/if.ic
+bin/icarus programs/import.ic
+bin/icarus programs/import_cycle.ic
 bin/icarus programs/infer_type.ic
 bin/icarus programs/int_ops.ic
 bin/icarus programs/is_digit.ic

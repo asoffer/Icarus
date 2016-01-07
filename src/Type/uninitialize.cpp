@@ -19,7 +19,6 @@ extern llvm::Module* global_module;
 llvm::Function* Array::uninitialize() {
   if (uninit_fn_ != nullptr) return uninit_fn_;
 
-
   uninit_fn_ = llvm::Function::Create(
       llvm::FunctionType::get(get_void()->llvm(),
         { get_pointer(this)->llvm() }, false),
@@ -40,7 +39,7 @@ llvm::Function* Array::uninitialize() {
 
   auto ptr_to_free = bldr.CreateGEP(
       bldr.CreateBitCast(bldr.CreateLoad(alloc), basic_ptr_type),
-      { data::const_int(bldr, -4, true) }, "ptr_to_free");
+      { data::const_int(bldr, -static_cast<int>(get_uint()->bytes()), true) }, "ptr_to_free");
 
   bldr.CreateCall(cstdlib::free(), { ptr_to_free });
 
