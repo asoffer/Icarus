@@ -8,7 +8,6 @@ namespace cstdlib {
 
 
 namespace data {
-  extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
@@ -122,7 +121,7 @@ llvm::Function* Array::initialize() {
 
   // Pointer to the length at the head of the array
   auto len_ptr = bldr.CreateBitCast(alloc_call,
-      get_pointer(get_int())->llvm(), "len_ptr");
+      get_pointer(get_uint())->llvm(), "len_ptr");
 
   bldr.CreateStore(len_val, len_ptr);
 
@@ -227,7 +226,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
 
   // Compute the amount of space to allocate
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
-  auto int_size = data::const_uint(Type::get_int()->bytes());
+  auto int_size = data::const_uint(Type::get_uint()->bytes());
   auto bytes_needed = bldr.CreateAdd(int_size, 
       bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
 

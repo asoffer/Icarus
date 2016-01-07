@@ -8,6 +8,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
+  extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
 }  // namespace data
 
@@ -35,11 +36,34 @@ llvm::Function* Array::uninitialize() {
   auto alloc = uninit_fn_->args().begin();
   auto basic_ptr_type = get_pointer(get_char())->llvm();
 
-  // TODO uninitialize internals
-
+  auto data_ptr = bldr.CreateLoad(alloc);
   auto ptr_to_free = bldr.CreateGEP(
-      bldr.CreateBitCast(bldr.CreateLoad(alloc), basic_ptr_type),
+      bldr.CreateBitCast(data_ptr, basic_ptr_type),
       { data::const_int(bldr, -static_cast<int>(get_uint()->bytes()), true) }, "ptr_to_free");
+
+  if (data_type()->uninitialize() != nullptr) {
+    auto len_ptr = bldr.CreateBitCast(ptr_to_free,
+        get_pointer(get_uint())->llvm(), "len_ptr");
+    auto len_val = bldr.CreateLoad(len_ptr);
+
+    auto loop_block = llvm::BasicBlock::Create(
+        llvm::getGlobalContext(), "loop", uninit_fn_);
+
+    bldr.CreateBr(loop_block);
+    bldr.SetInsertPoint(loop_block);
+
+    llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
+    phi->addIncoming(data::const_uint(0), fn_scope->entry_block());
+
+    auto curr_ptr = bldr.CreateGEP(data_ptr, { phi });
+    bldr.CreateCall(data_type()->uninitialize(), { curr_ptr });
+
+    auto next_data = bldr.CreateAdd(phi, data::const_uint(1));
+
+    bldr.CreateCondBr(bldr.CreateICmpULT(next_data, len_val),
+        loop_block, fn_scope->exit_block());
+    phi->addIncoming(next_data, loop_block);
+  }
 
   bldr.CreateCall(cstdlib::free(), { ptr_to_free });
 
@@ -52,8 +76,6 @@ llvm::Function* Primitive::uninitialize() {
   // TODO
   return nullptr;
 }
-
-
 
 llvm::Function* Function::uninitialize() {
   if (uninit_fn_ != nullptr) return uninit_fn_;
