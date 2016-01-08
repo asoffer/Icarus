@@ -135,6 +135,8 @@ llvm::Function* Array::initialize() {
 
   // Just calling calloc is okay for p
   if (!data_is_primitive) {
+    auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
+
     // Loop through the array and initialize each input
     auto loop_block = llvm::BasicBlock::Create(
         llvm::getGlobalContext(), "loop", init_fn_);
@@ -142,12 +144,10 @@ llvm::Function* Array::initialize() {
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);
 
-    llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "phi");
-    phi->addIncoming(data::const_uint(0), fn_scope->entry_block());
+    llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "phi");
+    phi->addIncoming(data_ptr, fn_scope->entry_block());
 
-    auto curr_ptr = bldr.CreateGEP(data_ptr, { phi });
-
-    std::vector<llvm::Value*> next_init_args = { curr_ptr };
+    std::vector<llvm::Value*> next_init_args = { phi };
     if (data_type()->is_array()) {
       auto iters = init_fn_->args().begin();
       ++(++iters); // Start at the second length argument
@@ -159,11 +159,11 @@ llvm::Function* Array::initialize() {
     }
     bldr.CreateCall(data_type()->initialize(), next_init_args);
 
-    auto next_data = bldr.CreateAdd(phi, data::const_uint(1));
+    auto next_ptr = bldr.CreateGEP(phi, { data::const_uint(1) });
 
-    bldr.CreateCondBr(bldr.CreateICmpULT(next_data, len_val),
+    bldr.CreateCondBr(bldr.CreateICmpULT(next_ptr, end_ptr),
         loop_block, fn_scope->exit_block());
-    phi->addIncoming(next_data, loop_block);
+    phi->addIncoming(next_ptr, loop_block);
   }
 
   fn_scope->exit();

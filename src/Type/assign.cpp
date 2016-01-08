@@ -98,6 +98,7 @@ llvm::Function* Array::assign() {
   auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
   auto data_ptr = bldr.CreateBitCast(raw_data_ptr, get_pointer(data_type())->llvm());
   auto copy_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
+  auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
 
   bldr.CreateStore(data_ptr, var);
 
@@ -111,19 +112,16 @@ llvm::Function* Array::assign() {
   auto prev_block = bldr.GetInsertBlock();
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* phi = bldr.CreatePHI(Type::get_uint()->llvm(), 2, "loop_phi");
-  phi->addIncoming(data::const_uint(0), prev_block);
+  llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "phi");
+  phi->addIncoming(data_ptr, prev_block);
 
-  auto data_ptr_item = bldr.CreateGEP(data_ptr, { phi });
-  auto copy_elem = bldr.CreateLoad(
-    bldr.CreateGEP(copy_ptr, { phi }));
+  auto copy_elem = bldr.CreateLoad(bldr.CreateGEP(copy_ptr, { phi }));
 
-  // TODO If the next thing is an array, I want to just point to it.
-  bldr.CreateCall(data_type()->assign(), { copy_elem, data_ptr_item });
-  auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
+  bldr.CreateCall(data_type()->assign(), { copy_elem, phi });
+  auto next_ptr = bldr.CreateGEP(phi, data::const_uint(1));
 
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, len_val), loop_block, done_block);
-  phi->addIncoming(next_iter, bldr.GetInsertBlock());
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_ptr, end_ptr), loop_block, done_block);
+  phi->addIncoming(next_ptr, bldr.GetInsertBlock());
 
   bldr.SetInsertPoint(done_block);
   fn_scope->exit();

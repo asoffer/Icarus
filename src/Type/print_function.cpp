@@ -122,42 +122,44 @@ llvm::Function* Array::print() {
       bldr.CreateBitCast(val, basic_ptr_type),
       { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_len");
 
-  auto len_ptr = bldr.CreateBitCast(raw_len_ptr,
-      get_pointer(get_int())->llvm());
-
-  auto array_len = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
+  auto len_ptr = bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm());
+  auto len_val = bldr.CreateLoad(bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
 
   auto loop_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "print_loop", print_fn_);
+    llvm::getGlobalContext(), "loop.body", print_fn_);
   auto loop_head_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "print_loop_head", print_fn_);
+    llvm::getGlobalContext(), "loop.head", print_fn_);
   auto done_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "print_done", print_fn_);
+    llvm::getGlobalContext(), "loop.done", print_fn_);
 
-  bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(0)),
+  bldr.CreateCondBr(bldr.CreateICmpEQ(len_val, data::const_uint(0)),
       done_block, loop_head_block);
 
   bldr.SetInsertPoint(loop_head_block);
+
+  // Start at position 1, not zero
+  auto start_ptr = bldr.CreateGEP(val, { data::const_uint(1) });
+  auto end_ptr = bldr.CreateGEP(val, { len_val });
+
 
   // TODO is this const_uint(0) superfluous?
   auto elem_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
 
   bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
-  bldr.CreateCondBr(bldr.CreateICmpEQ(array_len, data::const_uint(1)),
+  bldr.CreateCondBr(bldr.CreateICmpEQ(len_val, data::const_uint(1)),
       done_block, loop_block);
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* phi = bldr.CreatePHI(get_uint()->llvm(), 2, "loop_phi");
-  phi->addIncoming(data::const_uint(1), loop_head_block);
+  llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "loop_phi");
+  phi->addIncoming(start_ptr, loop_head_block);
 
   bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, ", ") });
 
-  elem_ptr = bldr.CreateGEP(val, { phi });
-  bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(elem_ptr) });
+  bldr.CreateCall(data_type()->repr(), { bldr.CreateLoad(phi) });
 
-  auto next_iter = bldr.CreateAdd(phi, data::const_uint(1));
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_iter, array_len), loop_block, done_block);
-  phi->addIncoming(next_iter, loop_block);
+  auto next_ptr = bldr.CreateGEP(phi, data::const_uint(1));
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_ptr, end_ptr), loop_block, done_block);
+  phi->addIncoming(next_ptr, loop_block);
   bldr.SetInsertPoint(done_block);
 
   bldr.CreateCall(cstdlib::putchar(), { data::const_char(']') });
