@@ -281,9 +281,6 @@ namespace AST {
   }
 
   void FunctionLiteral::verify_types() {
-
-    // FIXME if there are many inputs, we just take the first one. Obviously
-    // wrong
     Type* return_type_as_type = return_type_->interpret_as_type();
 
     Type* input_type;

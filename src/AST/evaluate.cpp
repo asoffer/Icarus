@@ -2,18 +2,49 @@
 
 namespace data {
   extern llvm::Value* const_bool(bool b);
+  extern llvm::Value* const_char(char c);
+  extern llvm::Value* const_uint(size_t n);
+  extern llvm::Value* const_real(double d);
+
 }  // namespace data
 
 namespace AST {
-  // TODO
-  llvm::Value* Identifier::evaluate()      { return nullptr; }
-  llvm::Value* Unop::evaluate()            { return nullptr; }
+  llvm::Value* Expression::llvm_value(Context::Value v) {
+    if (type() == Type::get_bool()) {
+      return data::const_bool(v.as_bool);
 
-  llvm::Value* ChainOp::evaluate(){ 
-    return data::const_bool(evaluate_as_bool());
+    } else if (type() == Type::get_char()) {
+      return data::const_char(v.as_char);
+
+    } else if (type() == Type::get_int()) {
+      // TODO allow negative constants
+      return data::const_uint(static_cast<size_t>(v.as_int));
+
+    } else if (type() == Type::get_real()) {
+      return data::const_real(v.as_real);
+
+    } else if (type() == Type::get_uint()) {
+      return data::const_uint(v.as_uint);
+    }
+
+    return nullptr;
   }
- 
-  bool ChainOp::evaluate_as_bool() {
+
+  // TODO
+  Context::Value Identifier::evaluate(Context&) {
+    return Context::Value();
+  }
+
+  Context::Value Unop::evaluate(Context& ctx) {
+    if (is_return()) {
+      ctx.set_return_value(expr_->evaluate(ctx));
+    }
+
+    // TODO
+    return Context::Value();
+  }
+
+  Context::Value ChainOp::evaluate(Context&){ 
     for (size_t i = 0; i < ops_.size(); ++i) {
       auto& last = exprs_[i];
       auto& next = exprs_[i + 1];
@@ -33,19 +64,49 @@ namespace AST {
     return true;
   }
 
-  llvm::Value* ArrayType::evaluate()       { return nullptr; }
-  llvm::Value* ArrayLiteral::evaluate()    { return nullptr; }
-  llvm::Value* Terminal::evaluate()        { return nullptr; }
-  llvm::Value* FunctionLiteral::evaluate() { return nullptr; }
-  llvm::Value* Case::evaluate()            { return nullptr; }
-  llvm::Value* Assignment::evaluate()      { return nullptr; }
-  llvm::Value* Declaration::evaluate()     { return nullptr; }
-  llvm::Value* TypeLiteral::evaluate()     { return nullptr; }
-  llvm::Value* EnumLiteral::evaluate()     { return nullptr; }
-  llvm::Value* Binop::evaluate()           { return nullptr; }
-  llvm::Value* KVPairList::evaluate()      { return nullptr; }
-  llvm::Value* Statements::evaluate()      { return nullptr; }
-  llvm::Value* Conditional::evaluate()     { return nullptr; }
-  llvm::Value* Break::evaluate()           { return nullptr; }
-  llvm::Value* While::evaluate()           { return nullptr; }
+  Context::Value ArrayType::evaluate(Context&)       { return Context::Value(); }
+  Context::Value ArrayLiteral::evaluate(Context&)    { return Context::Value(); }
+
+  Context::Value Terminal::evaluate(Context& ctx) {
+    if (token() == "true") {
+      return Context::Value(true);
+
+    } else if (token() == "false") {
+      return Context::Value(false);
+    }
+
+    // TOD
+    return Context::Value();
+  }
+
+  Context::Value FunctionLiteral::evaluate(Context&) { return Context::Value(); }
+  Context::Value Case::evaluate(Context&)            { return Context::Value(); }
+  Context::Value Assignment::evaluate(Context&)      { return Context::Value(); }
+  Context::Value Declaration::evaluate(Context&)     { return Context::Value(); }
+  Context::Value TypeLiteral::evaluate(Context&)     { return Context::Value(); }
+  Context::Value EnumLiteral::evaluate(Context&)     { return Context::Value(); }
+
+  Context::Value Binop::evaluate(Context&) {
+    if (token() == "()") {
+      Context ctx;
+      return lhs_->evaluate(ctx);
+    }
+
+    return Context::Value();
+  }
+
+  Context::Value KVPairList::evaluate(Context&)      { return Context::Value(); }
+  Context::Value Statements::evaluate(Context& ctx) {
+    for (auto& stmt : statements_) {
+      stmt->evaluate(ctx);
+      if (ctx.has_return()) {
+        return ctx.return_value();
+      }
+    }
+
+    return Context::Value();
+  }
+  Context::Value Conditional::evaluate(Context&)     { return Context::Value(); }
+  Context::Value Break::evaluate(Context&)           { return Context::Value(); }
+  Context::Value While::evaluate(Context&)           { return Context::Value(); }
 }  // namespace AST

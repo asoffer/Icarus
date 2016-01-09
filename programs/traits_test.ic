@@ -1,0 +1,22 @@
+import "type_traits.ic"
+
+main := void -> void {
+  print Any(bool)
+  print '\n'
+  print Any(char -> real)
+  print '\n'
+  print bytes(bool)
+  print '\n'
+  print bytes(char)
+  print '\n'
+  print bytes(int)
+  print '\n'
+  print bytes(real)
+  print '\n'
+  print bytes(uint)
+  print '\n'
+  print bytes(type)
+  print '\n'
+  print bytes(char -> real)
+  print '\n'
+}

@@ -114,6 +114,12 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
+    // TODO this test is a standin for actually determining if this is compile-time
+    if (rhs_->type() == Type::get_type()) {
+      Context ctx;
+      return llvm_value(evaluate(ctx));
+    }
+
     if (token() == "[]") {
       return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
     }
@@ -244,7 +250,10 @@ namespace AST {
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
     // TODO short-circuiting
-    if (exprs_[0]->type() == Type::get_type()) return evaluate();
+    if (exprs_[0]->type() == Type::get_type()) {
+      Context ctx;
+      return llvm_value(evaluate(ctx));
+    }
 
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
@@ -384,6 +393,7 @@ namespace AST {
   }
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
+    if (type()->llvm() == nullptr) return nullptr;
 
     if (llvm_function_ == nullptr) {
       // NOTE: This means a function is not assigned.

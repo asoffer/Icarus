@@ -161,6 +161,10 @@ namespace Language {
         AST::Terminal::build_string_literal),
 
     Rule(expression,
+        { reserved_type },
+        AST::Terminal::build_type_literal),
+
+    Rule(expression,
         { type_literal },
         AST::Terminal::build_type_literal),
 

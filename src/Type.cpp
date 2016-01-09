@@ -156,6 +156,7 @@ std::vector<Function*> Function::fn_types_;
 std::map<std::string, UserDefined*> UserDefined::lookup_;
 
 Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
+  bool llvm_null = false;
   std::vector<llvm::Type*> input_list;
   if (input_type_->is_tuple()) {
     auto input_tuple = static_cast<Tuple*>(input_type_);
@@ -169,21 +170,36 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     // ...
     for (const auto& input : input_tuple->entry_types_) {
       input_list[i] = input->llvm();
+      input->llvm()->dump();
+      if (input_list[i] == nullptr) {
+        llvm_null = true;
+        break;
+      }
       ++i;
     }
   } else if (input_type_->is_function()) {
     input_list.push_back(Type::get_pointer(input_type_)->llvm());
 
   } else if (!input_type_->is_void()) {
-    input_list.push_back(input_type_->llvm());
+    if (input_type_->llvm() == nullptr) {
+      llvm_null = true;
+    } else {
+      input_list.push_back(input_type_->llvm());
+    }
   }
 
   auto llvm_output = output_type_->is_function()
     ? Type::get_pointer(output_type_)->llvm()
     : output_type_->llvm();
 
+  if (llvm_output == nullptr) {
+    llvm_null = true;
+  }
+
   // Boolean parameter 'false' designates that this function is not variadic.
-  llvm_type_ = llvm::FunctionType::get(llvm_output, input_list, false);
+  llvm_type_ = llvm_null
+    ? nullptr
+    : llvm::FunctionType::get(llvm_output, input_list, false);
 }
 
 Type* Type::get_user_defined(const std::string& name) {

@@ -1,6 +1,5 @@
-// Segfaults because strings are not yet incorporated
 water_state := (temp : int) -> char {
-   return case {
+  return case {
     temp < 32         =>  's'
     32 <= temp < 212  =>  'l'
     else              =>  'g'
