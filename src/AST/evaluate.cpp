@@ -3,8 +3,9 @@
 namespace data {
   extern llvm::Value* const_bool(bool b);
   extern llvm::Value* const_char(char c);
-  extern llvm::Value* const_uint(size_t n);
+  extern llvm::Value* const_int(int n);
   extern llvm::Value* const_real(double d);
+  extern llvm::Value* const_uint(size_t n);
 
 }  // namespace data
 
@@ -17,8 +18,7 @@ namespace AST {
       return data::const_char(v.as_char);
 
     } else if (type() == Type::get_int()) {
-      // TODO allow negative constants
-      return data::const_uint(static_cast<size_t>(v.as_int));
+      return data::const_int(v.as_int);
 
     } else if (type() == Type::get_real()) {
       return data::const_real(v.as_real);
@@ -38,6 +38,15 @@ namespace AST {
   Context::Value Unop::evaluate(Context& ctx) {
     if (is_return()) {
       ctx.set_return_value(expr_->evaluate(ctx));
+
+    } else if (token() == "-") {
+      if (type() == Type::get_int()) {
+        return Context::Value(-expr_->evaluate(ctx).as_int);
+
+      } else if (type() == Type::get_real()) {
+        return Context::Value(-expr_->evaluate(ctx).as_real);
+      }
+
     }
 
     // TODO
@@ -51,45 +60,74 @@ namespace AST {
 
       if (ops_[i]->token() == "==") {
         if (last->interpret_as_type() != next->interpret_as_type()) {
-          return false;
+          return Context::Value(false);
         }
 
       } else if (ops_[i]->token() == "!=") {
         if (last->interpret_as_type() == next->interpret_as_type()) {
-          return false;
+          return Context::Value(false);
         }
       }
     }
 
-    return true;
+    return Context::Value(true);
   }
 
   Context::Value ArrayType::evaluate(Context&)       { return Context::Value(); }
   Context::Value ArrayLiteral::evaluate(Context&)    { return Context::Value(); }
 
   Context::Value Terminal::evaluate(Context& ctx) {
-    if (token() == "true") {
-      return Context::Value(true);
+    if (type() == Type::get_bool()) {
+      if (token() == "true") {
+        return Context::Value(true);
 
-    } else if (token() == "false") {
-      return Context::Value(false);
+      } else if (token() == "false") {
+        return Context::Value(false);
+
+      } else {
+        std::cerr << "FATAL: BOOL LITERAL?" << std::endl;
+        return Context::Value();
+      }
+
+    } else if (type() == Type::get_char()) {
+      return Context::Value(token()[0]);
+
+    } else if (type() == Type::get_int()) {
+      return Context::Value(std::stoi(token()));
+
+    } else if (type() == Type::get_real()) {
+      return Context::Value(std::stod(token()));
+
+    } else if (type() == Type::get_uint()) {
+      return Context::Value(std::stoul(token()));
+
+    } else {
+      // TODO
+      return Context::Value();
     }
-
-    // TOD
-    return Context::Value();
   }
 
-  Context::Value FunctionLiteral::evaluate(Context&) { return Context::Value(); }
+  Context::Value FunctionLiteral::evaluate(Context& ctx) {
+    return statements_->evaluate(ctx);
+  }
+
   Context::Value Case::evaluate(Context&)            { return Context::Value(); }
   Context::Value Assignment::evaluate(Context&)      { return Context::Value(); }
   Context::Value Declaration::evaluate(Context&)     { return Context::Value(); }
   Context::Value TypeLiteral::evaluate(Context&)     { return Context::Value(); }
   Context::Value EnumLiteral::evaluate(Context&)     { return Context::Value(); }
 
-  Context::Value Binop::evaluate(Context&) {
+  Context::Value Binop::evaluate(Context& ctx) {
     if (token() == "()") {
-      Context ctx;
-      return lhs_->evaluate(ctx);
+      if (lhs_->is_identifier()) {
+        auto fn = ctx.get(std::static_pointer_cast<Identifier>(lhs_));
+        Context fn_ctx = Context::GlobalContext.spawn();
+
+        // TODO populate the function context with arguments
+
+        auto x = fn->evaluate(fn_ctx);
+        return x;
+      }
     }
 
     return Context::Value();

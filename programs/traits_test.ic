@@ -1,22 +1,38 @@
-import "type_traits.ic"
+Any := (T: type) -> bool {
+  return true
+}
+
+AlwaysX := (T: type) -> char {
+  return 'x'
+}
+
+AlwaysFive := (T: type) -> int {
+  return 5
+}
+
+AlwaysNegativeFive := (T: type) -> int {
+  return -5
+}
+
+AlwaysTen := (T: type) -> uint {
+  return 10u
+}
+
+AlwaysPi := (T: type) -> real {
+  return 3.141592653589
+}
 
 main := void -> void {
   print Any(bool)
   print '\n'
-  print Any(char -> real)
+  print AlwaysX(char -> real)
   print '\n'
-  print bytes(bool)
+  print AlwaysFive(bool)
   print '\n'
-  print bytes(char)
+  print AlwaysNegativeFive(char)
   print '\n'
-  print bytes(int)
+  print AlwaysTen(int)
   print '\n'
-  print bytes(real)
-  print '\n'
-  print bytes(uint)
-  print '\n'
-  print bytes(type)
-  print '\n'
-  print bytes(char -> real)
+  print AlwaysPi(real)
   print '\n'
 }

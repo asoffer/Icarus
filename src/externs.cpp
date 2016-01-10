@@ -81,24 +81,10 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false) {
-#ifdef DEBUG
-    if (n < 0 && !is_signed) {
-      std::cerr << "FATAL: Unsigned negative integer!" << std::endl;
-    }
-#endif
-    if (n >= 0) {
-      return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(32, static_cast<size_t>(n), is_signed));
-    } else {
-      return bldr.CreateSub(
-          llvm::ConstantInt::get(
-            llvm::getGlobalContext(), llvm::APInt(32, 0, true)),
-          llvm::ConstantInt::get(
-            llvm::getGlobalContext(), llvm::APInt(32, static_cast<size_t>(-n), true)));
-    }
+  llvm::Value* const_int(int n) {
+    return llvm::ConstantInt::get(llvm::getGlobalContext(),
+        llvm::APInt(32, static_cast<unsigned int>(n), false));
   }
-
 
   llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n) {
 #ifdef DEBUG
@@ -185,5 +171,4 @@ namespace builtin {
 
     return ascii_;
   }
-
 }  // namespace builtin

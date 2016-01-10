@@ -58,7 +58,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const {}
       virtual void verify_types() {}
 
-      virtual Context::Value evaluate(Context& ctx) { return nullptr; }
+      virtual Context::Value evaluate(Context& ctx) { return Context::Value(); }
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
 
       bool is_return() const {

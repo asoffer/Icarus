@@ -1,4 +1,5 @@
 #include "AST.h"
+#include "Context.h"
 
 // TODO
 // We often have if (val == nullptr) return nullptr to propogate nullptrs. In
@@ -19,8 +20,9 @@ namespace data {
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
   extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
+  extern llvm::Value* const_int(int n);
   extern llvm::Value* const_char(char c);
+  extern llvm::Value* const_real(double d);
   extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
@@ -59,15 +61,15 @@ namespace AST {
 
     } else if (type() == Type::get_char()) {
       // A character is an unsigend 8-bit integer
+
       return llvm::ConstantInt::get(llvm::getGlobalContext(),
           llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
 
     } else if (type() == Type::get_int()) {
-      return data::const_int(scope->builder(), std::stoi(token()), true);
+      return data::const_int(std::stoi(token()));
 
     } else if (type() == Type::get_real()) {
-      return llvm::ConstantFP::get(llvm::getGlobalContext(),
-          llvm::APFloat(std::stod(token())));
+      return data::const_real(std::stod(token()));
 
     } else if (type() == Type::get_type()) {
       return nullptr;
@@ -86,10 +88,10 @@ namespace AST {
     llvm::Value* val = expr_->generate_code(scope);
 
     if (token() == "-") {
-      if (expr_type_ == Type::get_int()) {
+      if (type() == Type::get_int()) {
         return scope->builder().CreateNeg(val);
 
-      } else if (expr_type_ == Type::get_real()) {
+      } else if (type() == Type::get_real()) {
         return scope->builder().CreateFNeg(val);
       }
 
@@ -116,7 +118,7 @@ namespace AST {
   llvm::Value* Binop::generate_code(Scope* scope) {
     // TODO this test is a standin for actually determining if this is compile-time
     if (rhs_->type() == Type::get_type()) {
-      Context ctx;
+      Context ctx = Context::GlobalContext.spawn();
       return llvm_value(evaluate(ctx));
     }
 
@@ -251,7 +253,7 @@ namespace AST {
   llvm::Value* ChainOp::generate_code(Scope* scope) {
     // TODO short-circuiting
     if (exprs_[0]->type() == Type::get_type()) {
-      Context ctx;
+      Context ctx = Context::GlobalContext.spawn();
       return llvm_value(evaluate(ctx));
     }
 
@@ -442,6 +444,12 @@ namespace AST {
 
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
+      // TODO for now all functions are bound in the global context. This is
+      // probably incorrect. However, it may be safe anyways, because we've
+      // already verified access.
+      Context::GlobalContext.bind(rhs,
+          std::static_pointer_cast<Identifier>(lhs));
+
       auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
       fn->llvm_function_ = global_module->getFunction(lhs->token());
 

@@ -10,7 +10,7 @@ namespace cstdlib {
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_int(llvm::IRBuilder<>& bldr, int n, bool is_signed = false);
+  extern llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n);
   extern llvm::Value* const_uint(size_t n);
 
   extern llvm::Value* global_string(const std::string& s);
@@ -79,7 +79,7 @@ llvm::Function* Array::assign() {
   auto raw_ptr_type = get_pointer(get_char())->llvm();
   auto raw_len_ptr = bldr.CreateGEP(
       bldr.CreateBitCast(val, raw_ptr_type),
-      { data::const_int(bldr, -static_cast<int>(get_uint()->bytes()), true) }, "ptr_to_len");
+      { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_len");
   auto len_val = bldr.CreateLoad(
     bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm()));
 
