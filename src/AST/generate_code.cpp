@@ -444,12 +444,6 @@ namespace AST {
 
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
-      // TODO for now all functions are bound in the global context. This is
-      // probably incorrect. However, it may be safe anyways, because we've
-      // already verified access.
-      Context::GlobalContext.bind(rhs,
-          std::static_pointer_cast<Identifier>(lhs));
-
       auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
       fn->llvm_function_ = global_module->getFunction(lhs->token());
 

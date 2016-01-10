@@ -253,11 +253,10 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-    if (decl_type_->expr_type_ == Type::get_void()) {
+    if (decl_type_->type() == Type::get_void()) {
       error_log.log(line_num_, "Void types cannot be assigned.");
       return;
     }
-
 
     if (decl_type_->is_type_literal()) {
       auto type_lit_ = std::static_pointer_cast<TypeLiteral>(decl_type_);
@@ -268,10 +267,17 @@ namespace AST {
 
 
     id_->expr_type_ = (infer_type_
-        ? decl_type_->expr_type_
+        ? decl_type_->type()
         : decl_type_->interpret_as_type());
 
-    expr_type_ = id_->expr_type_;
+    expr_type_ = id_->type();
+
+    if (infer_type_) {
+      // TODO for now all functions are bound in the global context. This is
+      // probably incorrect. However, it may be safe anyways, because we've
+      // already verified access.
+      Context::GlobalContext.bind(decl_type_, id_);
+    }
   }
 
   void Terminal::verify_types() {}

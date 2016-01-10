@@ -1,0 +1,25 @@
+Any := (T: type) -> bool {
+  return true
+}
+
+AlwaysX := (T: type) -> char {
+  return 'x'
+}
+
+AlwaysFive := (T: type) -> int {
+  return 5
+}
+
+AlwaysNegativeFive := (T: type) -> int {
+  return -5
+}
+
+AlwaysTen := (T: type) -> uint {
+  return 10u
+}
+
+AlwaysPi := (T: type) -> real {
+  return 3.141592653589
+}
+
+
