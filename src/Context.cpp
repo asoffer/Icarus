@@ -3,7 +3,7 @@
 
 Context Context::GlobalContext;
 
-EPtr Context::get(IdPtr idptr) {
+Context::Value Context::get(IdPtr idptr) {
   auto iter = bindings_.find(idptr);
   if (iter == bindings_.end()) {
     if (parent_ == nullptr) {
@@ -21,8 +21,8 @@ Context Context::spawn() {
   ctx.parent_ = this;
   return ctx;
 }
-void Context::bind(EPtr eptr, IdPtr idptr) {
-  bindings_[idptr] = eptr;
+void Context::bind(Context::Value v, IdPtr idptr) {
+  bindings_.emplace(std::make_pair(idptr, v));
 }
 
 void Context::set_return_value(Value v) {

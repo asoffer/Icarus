@@ -31,8 +31,8 @@ namespace AST {
   }
 
   // TODO
-  Context::Value Identifier::evaluate(Context&) {
-    return Context::Value();
+  Context::Value Identifier::evaluate(Context& ctx) {
+    return ctx.get(shared_from_this());
   }
 
   Context::Value Unop::evaluate(Context& ctx) {
@@ -50,31 +50,58 @@ namespace AST {
     }
 
     // TODO
-    return Context::Value();
+    return nullptr;
   }
 
-  Context::Value ChainOp::evaluate(Context&){ 
-    for (size_t i = 0; i < ops_.size(); ++i) {
-      auto& last = exprs_[i];
-      auto& next = exprs_[i + 1];
+  Context::Value ChainOp::evaluate(Context& ctx) { 
+    if (exprs_[0]->type() == Type::get_bool()) {
+      if (ops_[0]->token() == "^") {
+        bool expr_val = false;
+        for (auto& expr : exprs_) {
+          expr_val = (expr_val != expr->evaluate(ctx).as_bool);
+        }
+        return Context::Value(expr_val);
 
-      if (ops_[i]->token() == "==") {
-        if (last->interpret_as_type() != next->interpret_as_type()) {
-          return Context::Value(false);
+      } else if (ops_[0]->token() == "&") {
+        for (auto& expr : exprs_) {
+          if (expr->evaluate(ctx).as_bool) return Context::Value(false);
+        }
+        return Context::Value(true);
+
+      } else if (ops_[0]->token() == "|") {
+        for (auto& expr : exprs_) {
+          if (expr->evaluate(ctx).as_bool) {
+            return Context::Value(true);
+          }
+        }
+        return Context::Value(false);
+      }
+
+    } else if (exprs_[0]->type() == Type::get_type()) {
+      auto last = exprs_[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops_.size(); ++i) {
+        auto next = exprs_[i + 1]->evaluate(ctx);
+
+        if (ops_[i]->token() == "==") {
+          if (last.as_type != next.as_type) {
+            return Context::Value(false);
+          }
+
+        } else if (ops_[i]->token() == "!=") {
+          if (last.as_type == next.as_type) {
+            return Context::Value(false);
+          }
         }
 
-      } else if (ops_[i]->token() == "!=") {
-        if (last->interpret_as_type() == next->interpret_as_type()) {
-          return Context::Value(false);
-        }
+        last = next;
       }
     }
 
     return Context::Value(true);
   }
 
-  Context::Value ArrayType::evaluate(Context&)       { return Context::Value(); }
-  Context::Value ArrayLiteral::evaluate(Context&)    { return Context::Value(); }
+  Context::Value ArrayType::evaluate(Context&)       { return nullptr; }
+  Context::Value ArrayLiteral::evaluate(Context&)    { return nullptr; }
 
   Context::Value Terminal::evaluate(Context& ctx) {
     if (type() == Type::get_bool()) {
@@ -86,7 +113,7 @@ namespace AST {
 
       } else {
         std::cerr << "FATAL: BOOL LITERAL?" << std::endl;
-        return Context::Value();
+        return nullptr;
       }
 
     } else if (type() == Type::get_char()) {
@@ -101,9 +128,12 @@ namespace AST {
     } else if (type() == Type::get_uint()) {
       return Context::Value(std::stoul(token()));
 
+    } else if (type() == Type::get_type()) {
+      return Context::Value(interpret_as_type());
+
     } else {
       // TODO
-      return Context::Value();
+      return nullptr;
     }
   }
 
@@ -111,29 +141,35 @@ namespace AST {
     return statements_->evaluate(ctx);
   }
 
-  Context::Value Case::evaluate(Context&)            { return Context::Value(); }
-  Context::Value Assignment::evaluate(Context&)      { return Context::Value(); }
-  Context::Value Declaration::evaluate(Context&)     { return Context::Value(); }
-  Context::Value TypeLiteral::evaluate(Context&)     { return Context::Value(); }
-  Context::Value EnumLiteral::evaluate(Context&)     { return Context::Value(); }
+  Context::Value Case::evaluate(Context&)            { return nullptr; }
+  Context::Value Assignment::evaluate(Context&)      { return nullptr; }
+  Context::Value Declaration::evaluate(Context&)     { return nullptr; }
+  Context::Value TypeLiteral::evaluate(Context&)     { return nullptr; }
+  Context::Value EnumLiteral::evaluate(Context&)     { return nullptr; }
 
   Context::Value Binop::evaluate(Context& ctx) {
     if (token() == "()") {
       if (lhs_->is_identifier()) {
-        auto fn = ctx.get(std::static_pointer_cast<Identifier>(lhs_));
+        auto expr_ptr = ctx.get(std::static_pointer_cast<Identifier>(lhs_)).as_expr;
+        // TODO must lhs_ be a function?
+        auto fn_ptr = static_cast<FunctionLiteral*>(expr_ptr);
         Context fn_ctx = Context::GlobalContext.spawn();
 
-        // TODO populate the function context with arguments
+        // Populate the function context with arguments
+        for (const auto& arg : fn_ptr->inputs_) {
+          fn_ctx.bind(rhs_->evaluate(ctx), arg->declared_identifier());
+        }
 
-        auto x = fn->evaluate(fn_ctx);
+
+        auto x = fn_ptr->evaluate(fn_ctx);
         return x;
       }
     }
 
-    return Context::Value();
+    return nullptr;
   }
 
-  Context::Value KVPairList::evaluate(Context&)      { return Context::Value(); }
+  Context::Value KVPairList::evaluate(Context&)      { return nullptr; }
   Context::Value Statements::evaluate(Context& ctx) {
     for (auto& stmt : statements_) {
       stmt->evaluate(ctx);
@@ -142,9 +178,9 @@ namespace AST {
       }
     }
 
-    return Context::Value();
+    return nullptr;
   }
-  Context::Value Conditional::evaluate(Context&)     { return Context::Value(); }
-  Context::Value Break::evaluate(Context&)           { return Context::Value(); }
-  Context::Value While::evaluate(Context&)           { return Context::Value(); }
+  Context::Value Conditional::evaluate(Context&)     { return nullptr; }
+  Context::Value Break::evaluate(Context&)           { return nullptr; }
+  Context::Value While::evaluate(Context&)           { return nullptr; }
 }  // namespace AST

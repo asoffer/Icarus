@@ -58,7 +58,7 @@ namespace AST {
       virtual void record_dependencies(EPtr eptr) const {}
       virtual void verify_types() {}
 
-      virtual Context::Value evaluate(Context& ctx) { return Context::Value(); }
+      virtual Context::Value evaluate(Context& ctx) { return nullptr; }
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
 
       bool is_return() const {
@@ -632,7 +632,9 @@ namespace AST {
   }
 
 
-  class Identifier : public Terminal {
+  class Identifier : public Terminal,
+  public std::enable_shared_from_this<Identifier> {
+
     public:
       friend class Assignment;
       static NPtr build(NPtrVec&& nodes);
@@ -920,6 +922,7 @@ namespace AST {
   class FunctionLiteral : public Expression {
     public:
       friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
+      friend class Binop;
 
       static NPtr build(NPtrVec&& nodes);
 

@@ -56,8 +56,9 @@ namespace AST {
   }
 
   Type* Terminal::interpret_as_type() {
-    if (expr_type_ == Type::get_type()) {
+    if (type() == Type::get_type()) {
 
+      // TODO Lookup table as part of Type class
       if (token() == "bool") return Type::get_bool();
       if (token() == "char") return Type::get_char();
       if (token() == "int") return Type::get_int();

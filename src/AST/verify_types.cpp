@@ -276,7 +276,7 @@ namespace AST {
       // TODO for now all functions are bound in the global context. This is
       // probably incorrect. However, it may be safe anyways, because we've
       // already verified access.
-      Context::GlobalContext.bind(decl_type_, id_);
+      Context::GlobalContext.bind(Context::Value(decl_type_.get()), id_);
     }
   }
 

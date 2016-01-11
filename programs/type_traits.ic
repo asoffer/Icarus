@@ -2,6 +2,10 @@ Any := (T: type) -> bool {
   return true
 }
 
+IsNumeric := (T: type) -> bool {
+  return T == real | T == uint | T == int
+}
+
 AlwaysX := (T: type) -> char {
   return 'x'
 }

@@ -3,6 +3,16 @@ import "type_traits.ic"
 main := void -> void {
   print Any(bool)
   print '\n'
+  print IsNumeric(char)
+  print '\n'
+  print IsNumeric(real)
+  print '\n'
+  print IsNumeric(int)
+  print '\n'
+  print IsNumeric(bool)
+  print '\n'
+  print IsNumeric(uint)
+  print '\n'
   print AlwaysX(char -> real)
   print '\n'
   print AlwaysFive(bool)
