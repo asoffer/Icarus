@@ -45,3 +45,6 @@ help:
 	@echo "DEPENDS : $(DEPENDS)"
 	@echo "LLVM_CXX : $(LLVM_CXX)"
 	@echo "LLVM_LINK : $(LLVM_LINK)"
+
+wc:
+	@wc src/*.* src/AST/*.* src/Type/*.*

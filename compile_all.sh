@@ -9,6 +9,7 @@ bin/icarus programs/bool_test_with_colon_eq.ic
 bin/icarus programs/case.ic
 bin/icarus programs/case_with_type_inference.ic
 bin/icarus programs/cast.ic
+bin/icarus programs/chain_test.ic
 bin/icarus programs/char_array.ic
 bin/icarus programs/code_gen_test.ic
 bin/icarus programs/code_gen_test_with_type_inference.ic
@@ -36,6 +37,7 @@ bin/icarus programs/string.ic
 bin/icarus programs/type.ic
 bin/icarus programs/type_computation.ic
 bin/icarus programs/type_literal.ic
+bin/icarus programs/traits_test.ic
 bin/icarus programs/uint_literal_test.ic
 bin/icarus programs/void_return_test.ic
 bin/icarus programs/water_state.ic

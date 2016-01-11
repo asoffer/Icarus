@@ -293,7 +293,7 @@ AST::Node Lexer::next_operator() {
     peek = file_.peek();
 
     if (peek == '=') {
-      std::string tok = "==";
+      std::string tok = "_=";
       tok[0] = past_peek;
       file_.get();
       return AST::Node(line_num_, Language::assign_operator, tok);

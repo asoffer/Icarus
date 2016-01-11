@@ -166,8 +166,6 @@ bool Parser::should_shift() {
     // TODO figure out if we should exit early here. Is there any reasonable
     // way to continue?
     if (associativity == non_assoc) {
-      std::cout << "!!!" << lhs_prec << std::endl;
-
       error_log.log(lookahead_->line_num(),
           "Non-associative operator found with no specified association. Maybe you forgot parentheses?");
     }

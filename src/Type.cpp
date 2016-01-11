@@ -170,7 +170,6 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     // ...
     for (const auto& input : input_tuple->entry_types_) {
       input_list[i] = input->llvm();
-      input->llvm()->dump();
       if (input_list[i] == nullptr) {
         llvm_null = true;
         break;
