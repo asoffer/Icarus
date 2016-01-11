@@ -30,7 +30,6 @@ namespace AST {
     return nullptr;
   }
 
-  // TODO
   Context::Value Identifier::evaluate(Context& ctx) {
     return ctx.get(shared_from_this());
   }
@@ -141,7 +140,17 @@ namespace AST {
     return statements_->evaluate(ctx);
   }
 
-  Context::Value Case::evaluate(Context&)            { return nullptr; }
+  Context::Value Case::evaluate(Context& ctx) {
+    for (size_t i = 0; i < pairs_->kv_pairs_.size() - 1; ++i) {
+      auto pair = pairs_->kv_pairs_[i];
+
+      if (pair.first->evaluate(ctx).as_bool) {
+        return pair.second->evaluate(ctx);
+      }
+    }
+    return pairs_->kv_pairs_.back().second->evaluate(ctx);
+  }
+
   Context::Value Assignment::evaluate(Context&)      { return nullptr; }
   Context::Value Declaration::evaluate(Context&)     { return nullptr; }
   Context::Value TypeLiteral::evaluate(Context&)     { return nullptr; }

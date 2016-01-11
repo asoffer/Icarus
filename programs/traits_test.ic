@@ -7,20 +7,19 @@ main := void -> void {
   print '\n'
   print IsNumeric(real)
   print '\n'
-  print IsNumeric(int)
-  print '\n'
-  print IsNumeric(bool)
-  print '\n'
-  print IsNumeric(uint)
-  print '\n'
-  print AlwaysX(char -> real)
-  print '\n'
-  print AlwaysFive(bool)
-  print '\n'
-  print AlwaysNegativeFive(char)
-  print '\n'
-  print AlwaysTen(int)
-  print '\n'
-  print AlwaysPi(real)
+
+  print bytes(bool)
+  print ','
+  print bytes(char)
+  print ','
+  print bytes(int)
+  print ','
+  print bytes(real)
+  print ','
+  print bytes(uint)
+  print ','
+  print bytes(type)
+  print ','
+  print bytes(void)
   print '\n'
 }

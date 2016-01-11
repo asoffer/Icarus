@@ -508,6 +508,7 @@ namespace AST {
 
   class KVPairList : public Node {
     public:
+      // TODO must have an else. should be stored outside the vector
       friend class Case;
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);

@@ -6,24 +6,14 @@ IsNumeric := (T: type) -> bool {
   return T == real | T == uint | T == int
 }
 
-AlwaysX := (T: type) -> char {
-  return 'x'
+bytes := (T: type) -> uint {
+  return case {
+    T == bool  =>  1u
+    T == char  =>  1u
+    T == int   =>  4u
+    T == real  =>  8u
+    T == uint  =>  8u
+    T == type  =>  0u
+    T == void  =>  0u
+  }
 }
-
-AlwaysFive := (T: type) -> int {
-  return 5
-}
-
-AlwaysNegativeFive := (T: type) -> int {
-  return -5
-}
-
-AlwaysTen := (T: type) -> uint {
-  return 10u
-}
-
-AlwaysPi := (T: type) -> real {
-  return 3.141592653589
-}
-
-
