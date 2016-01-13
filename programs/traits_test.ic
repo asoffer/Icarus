@@ -22,4 +22,20 @@ main := void -> void {
   print ','
   print bytes(void)
   print '\n'
+
+  print IsBig(bool)
+  print ','
+  print IsBig(char)
+  print ','
+  print IsBig(int)
+  print ','
+  print IsBig(real)
+  print ','
+  print IsBig(uint)
+  print ','
+  print IsBig(type)
+  print ','
+  print IsBig(void)
+  print '\n'
+
 }

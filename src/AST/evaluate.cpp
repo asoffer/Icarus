@@ -38,6 +38,33 @@ namespace AST {
     if (is_return()) {
       ctx.set_return_value(expr_->evaluate(ctx));
 
+    } else if (is_print()) {
+      auto val = expr_->evaluate(ctx);
+      if (expr_->type() == Type::get_bool()) {
+        std::cout << (val.as_bool ? "true" : "false");
+
+      } else if (expr_->type() == Type::get_char()) {
+        std::cout << val.as_char;
+
+      } else if (expr_->type() == Type::get_int()) {
+        std::cout << val.as_int;
+
+      } else if (expr_->type() == Type::get_real()) {
+        std::cout << val.as_real;
+
+      } else if (expr_->type() == Type::get_type()) {
+        std::cout << val.as_type->to_string();
+
+      } else if (expr_->type() == Type::get_uint()) {
+        std::cout << val.as_uint;
+
+      } else {
+        // TOOD
+      }
+
+      std::cout.flush();
+      return nullptr;
+
     } else if (token() == "-") {
       if (type() == Type::get_int()) {
         return Context::Value(-expr_->evaluate(ctx).as_int);
@@ -48,7 +75,6 @@ namespace AST {
 
     }
 
-    // TODO
     return nullptr;
   }
 
@@ -76,6 +102,45 @@ namespace AST {
         return Context::Value(false);
       }
 
+      return Context::Value(true);
+
+    } else if (exprs_[0]->type() == Type::get_int()) {
+      bool total = true;
+      auto last = exprs_[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops_.size(); ++i) {
+        auto next = exprs_[i + 1]->evaluate(ctx);
+
+        if (ops_[i]->token() == "<") {
+          total &= (last.as_int < next.as_int);
+
+        } else if (ops_[i]->token() == "<=") {
+          total &= (last.as_int <= next.as_int);
+
+        } else if (ops_[i]->token() == "==") {
+          total &= (last.as_int == next.as_int);
+
+        } else if (ops_[i]->token() == "!=") {
+          total &= (last.as_int != next.as_int);
+
+        } else if (ops_[i]->token() == ">=") {
+          total &= (last.as_int >= next.as_int);
+
+        } else if (ops_[i]->token() == ">") {
+          total &= (last.as_int > next.as_int);
+
+        } else {
+          // TODO what else could it be?
+        }
+
+        if (!total) {
+          return Context::Value(false);
+        }
+
+        last = next;
+      }
+
+      return Context::Value(true);
+
     } else if (exprs_[0]->type() == Type::get_type()) {
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
@@ -94,9 +159,47 @@ namespace AST {
 
         last = next;
       }
-    }
+      return Context::Value(true);
 
-    return Context::Value(true);
+    } else if (exprs_[0]->type() == Type::get_uint()) {
+      bool total = true;
+      auto last = exprs_[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops_.size(); ++i) {
+        auto next = exprs_[i + 1]->evaluate(ctx);
+
+        if (ops_[i]->token() == "<") {
+          total &= (last.as_uint < next.as_uint);
+
+        } else if (ops_[i]->token() == "<=") {
+          total &= (last.as_uint <= next.as_uint);
+
+        } else if (ops_[i]->token() == "==") {
+          total &= (last.as_uint == next.as_uint);
+
+        } else if (ops_[i]->token() == "!=") {
+          total &= (last.as_uint != next.as_uint);
+
+        } else if (ops_[i]->token() == ">=") {
+          total &= (last.as_uint >= next.as_uint);
+
+        } else if (ops_[i]->token() == ">") {
+
+          total &= (last.as_uint > next.as_uint);
+        } else {
+          // TODO what else could it be?
+        }
+
+        if (!total) {
+          return Context::Value(false);
+        }
+        last = next;
+      }
+
+      return Context::Value(true);
+
+    } else {
+      return nullptr;
+    }
   }
 
   Context::Value ArrayType::evaluate(Context&)       { return nullptr; }
@@ -189,7 +292,29 @@ namespace AST {
 
     return nullptr;
   }
-  Context::Value Conditional::evaluate(Context&)     { return nullptr; }
+
+  Context::Value Conditional::evaluate(Context& ctx) {
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      if (conds_[i]->evaluate(ctx).as_bool) {
+        Context cond_ctx(&ctx);
+        statements_[i]->evaluate(cond_ctx);
+        if (cond_ctx.has_return()) {
+          return cond_ctx.return_value();
+        }
+      }
+    }
+
+    if (has_else()) {
+        Context cond_ctx(&ctx);
+        statements_.back()->evaluate(cond_ctx);
+        if (cond_ctx.has_return()) {
+          return cond_ctx.return_value();
+        }
+    }
+
+    return nullptr;
+  }
+
   Context::Value Break::evaluate(Context&)           { return nullptr; }
   Context::Value While::evaluate(Context&)           { return nullptr; }
 }  // namespace AST

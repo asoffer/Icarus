@@ -28,4 +28,9 @@ void Context::bind(Context::Value v, IdPtr idptr) {
 void Context::set_return_value(Value v) {
   has_ret_ = true;
   ret_val_ = v;
+
+  // TODO this is a hacky way to ensure all scopes have a return value all the way up
+  if (parent_ != nullptr) {
+    parent_->set_return_value(v);
+  }
 }

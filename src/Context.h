@@ -45,7 +45,8 @@ class Context {
 
     static Context GlobalContext;
 
-    Context() : ret_val_(nullptr), has_ret_(false), parent_(nullptr) {
+    Context(Context* parent = nullptr) :
+      ret_val_(nullptr), has_ret_(false), parent_(parent) {
     }
 
   private:

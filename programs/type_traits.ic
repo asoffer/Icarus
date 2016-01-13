@@ -17,3 +17,11 @@ bytes := (T: type) -> uint {
     T == void  =>  0u
   }
 }
+
+IsBig := (T: type) -> bool {
+  if bytes(T) > 4u {
+    return true
+  } else {
+    return false
+  }
+}
