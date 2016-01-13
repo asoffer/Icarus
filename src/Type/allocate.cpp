@@ -1,5 +1,6 @@
 #include "Type.h"
 #include <iostream>
+
 extern llvm::Module* global_module;
 
 // This method allocates stack space for each particular type.

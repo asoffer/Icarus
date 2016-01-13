@@ -98,6 +98,17 @@ constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask = 3;
 
 namespace Language {
+
+  namespace Operator {
+    constexpr size_t add = 0;
+    constexpr size_t sub = 1;
+    constexpr size_t mul = 2;
+    constexpr size_t div = 3;
+    constexpr size_t mod = 4;
+    constexpr size_t num_operators = 5;
+  }  // namespace Operator
+
+
   inline bool is_expression(NodeType t) {
     return (t & MASK_expression) != 0;
   }

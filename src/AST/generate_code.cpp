@@ -1,6 +1,11 @@
 #include "AST.h"
 #include "Context.h"
 
+// This is the only place that needs to know about operators, so rather than
+// keep them in the header everywhere, we just put the necessary templates in
+// this one header.
+#include "Type/ops.h"
+
 // TODO
 // We often have if (val == nullptr) return nullptr to propogate nullptrs. In
 // what situations is a nullptr actually possible to start with? If we can do
@@ -105,11 +110,7 @@ namespace AST {
       return scope->builder().CreateNot(val, "nottmp");
 
     } else if (is_print()) {
-      if (expr_->type() == Type::get_type()) {
-        val = data::global_string(scope->builder(), expr_->interpret_as_type()->to_string());
-      }
-
-      scope->builder().CreateCall(expr_->type()->print(), { val });
+      expr_->type()->call_print(scope->builder(), val);
     }
 
     return nullptr;
@@ -205,38 +206,22 @@ namespace AST {
     auto rhs_val = rhs_->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
 
+    if (token() == "+") {
+      return type()->call_add(scope->builder(), lhs_val, rhs_val);
 
-    if (type() == Type::get_int()) {
-      if (token() == "+") { return scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); }
-      else if (token() == "-") { return scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); }
-      else if (token() == "*") { return scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); }
-      else if (token() == "/") { return scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); }
-      else if (token() == "%") { return scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); }
+    } else if (token() == "-") {
+      return type()->call_sub(scope->builder(), lhs_val, rhs_val);
 
-     
-      return nullptr;
+    } else if (token() == "*") {
+      return type()->call_mul(scope->builder(), lhs_val, rhs_val);
 
-    } else if (type() == Type::get_uint()) {
-      if (token() == "+") { return scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); }
-      else if (token() == "-") { return scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); }
-      else if (token() == "*") { return scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); }
-      else if (token() == "/") { return scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); }
-      else if (token() == "%") { return scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); }
+    } else if (token() == "/") {
+      return type()->call_div
+          (scope->builder(), lhs_val, rhs_val);
 
-
-      return nullptr;
-
-    } else if (type() == Type::get_real()) {
-      if (token() == "+") { return scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); }
-      else if (token() == "-") { return scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); }
-      else if (token() == "*") { return scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); }
-      else if (token() == "/") { return scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); }
-
-      return nullptr;
-
-    } else if (type() == Type::get_uint()) {
+    } else if (token() == "%") {
+      return type()->call_mod(scope->builder(), lhs_val, rhs_val);
     }
-
 
     return nullptr;
   }

@@ -47,7 +47,7 @@ std::map<std::string, Type*> Type::literals = {
 };
 
 
-Primitive::Primitive(PrimitiveEnum pe) : prim_type_(pe) {
+Primitive::Primitive(PrimitiveEnum pe) : repr_fn_(nullptr), prim_type_(pe) {
   if (llvm_types_[prim_type_] == nullptr) {
     switch (prim_type_) {
       case t_bool:
@@ -241,7 +241,7 @@ Type* Type::make_user_defined(
 }
 
 
-Array::Array(Type* t) : type_(t) {
+Array::Array(Type* t) : repr_fn_(nullptr), type_(t) {
   // TODO is the length ever part of the type?
   llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
 

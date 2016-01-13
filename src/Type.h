@@ -63,9 +63,19 @@ class Type {
 
     virtual llvm::Function* assign() = 0;
     virtual llvm::Function* initialize() = 0;
-    virtual llvm::Function* print() = 0;
-    virtual llvm::Function* repr() { return repr_fn_ = print(); } // If no repr() is defined, default to print()
     virtual llvm::Function* uninitialize() = 0;
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) = 0;
+    virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+      call_repr(bldr, val);
+    }
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
+
 
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
@@ -84,8 +94,6 @@ class Type {
     Type() :
       assign_fn_(nullptr),
       init_fn_  (nullptr),
-      print_fn_ (nullptr),
-      repr_fn_  (nullptr),
       uninit_fn_(nullptr) {}
 
     virtual ~Type() {}
@@ -97,8 +105,6 @@ class Type {
     llvm::Function
       * assign_fn_,
       * init_fn_,
-      * print_fn_,
-      * repr_fn_,
       * uninit_fn_;
 
     llvm::Type* llvm_type_;
@@ -116,9 +122,16 @@ class Primitive : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
-    virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -127,6 +140,8 @@ class Primitive : public Type {
     virtual bool is_primitive() const { return true; }
 
   private:
+    llvm::Function* repr_fn_;
+
     // This needs to be an enum becasue we use it to access other arrays and
     // vectors
     enum PrimitiveEnum {
@@ -154,9 +169,15 @@ class Tuple : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
-    // virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -190,9 +211,16 @@ class Function : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
-    // virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -220,11 +248,18 @@ class Pointer : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
-    // virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
 
-    virtual Type* replace(Type* pattern, Type* replacement);
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+
+
+   virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
 
@@ -251,9 +286,16 @@ class Array : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
-    // virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -274,6 +316,8 @@ class Array : public Type {
     // times you can access an element.
     size_t dim_;
 
+    llvm::Function* repr_fn_;
+
     Type* type_;
 
     static std::vector<Array*> array_types_;
@@ -288,9 +332,17 @@ class UserDefined : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    virtual llvm::Function* print();
     //virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
+
+    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+
+    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
