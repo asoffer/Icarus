@@ -105,6 +105,10 @@ namespace AST {
       return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
 
     } else if (is_print()) {
+      if (expr_->type() == Type::get_type()) {
+        // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
+        val  = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+      }
       expr_->type()->call_print(scope->builder(), val);
     }
 

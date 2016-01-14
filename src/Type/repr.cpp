@@ -141,8 +141,11 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
         { data::global_string(bldr, "%f"), val });
 
   } else if (this == get_type()) {
+    // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
+    auto type_val = reinterpret_cast<Type*>(val);
+
     bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"),
-        data::global_string(bldr, to_string()) });
+        data::global_string(bldr, type_val->to_string()) });
 
   } else if (this == get_uint()) {
     bldr.CreateCall(cstdlib::printf(),
