@@ -100,12 +100,14 @@ constexpr size_t assoc_mask = 3;
 namespace Language {
 
   namespace Operator {
-    constexpr size_t add = 0;
-    constexpr size_t sub = 1;
-    constexpr size_t mul = 2;
-    constexpr size_t div = 3;
-    constexpr size_t mod = 4;
-    constexpr size_t num_operators = 5;
+#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
+    constexpr size_t op = __COUNTER__;
+
+#include "config/binary_operators.conf"
+
+#undef BINARY_OPERATOR_MACRO
+
+    constexpr size_t num_operators = 5;  // TODO make this not an explicit number
   }  // namespace Operator
 
 

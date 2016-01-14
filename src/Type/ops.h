@@ -69,34 +69,59 @@ llvm::Value* Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Array::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Array::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Array::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Array::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Array::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+llvm::Value* Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
+  if (this == get_int()) {
+    return bldr.CreateNeg(operand, "neg");
 
-llvm::Value* Tuple::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Tuple::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Tuple::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Tuple::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Tuple::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+  } else if (this == get_real()) {
+    return bldr.CreateFNeg(operand, "fneg");
 
-llvm::Value* Pointer::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Pointer::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Pointer::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Pointer::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Pointer::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+  } else {
+    return nullptr;
+  }
+}
 
-llvm::Value* Function::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Function::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Function::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Function::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* Function::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
+  if (this == get_char()) {
+    return bldr.CreateNot(operand, "not");
 
-llvm::Value* UserDefined::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* UserDefined::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* UserDefined::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* UserDefined::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
-llvm::Value* UserDefined::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+  } else {
+    return nullptr;
+  }
+}
+
+#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
+  llvm::Value* TYPE::call_##op (llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) { return nullptr; }
+#define LEFT_UNARY_OPERATOR_MACRO(op) \
+  llvm::Value* TYPE::call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) { return nullptr; }
+
+
+#define TYPE Array 
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+#undef TYPE
+
+#define TYPE Tuple
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+#undef TYPE
+
+#define TYPE Pointer
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+#undef TYPE
+
+#define TYPE Function
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+#undef TYPE
+
+#define TYPE UserDefined
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+#undef TYPE
+
+#undef CHAIN_OPERATOR_MACRO
+#undef BINARY_OPERATOR_MACRO
 
 #endif  // ICARUS_TYPE_OPS_H

@@ -13,6 +13,9 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+#include "typedefs.h"
+#include "Scope.h"
+
 // TODO why is replace(_, _) not const?
 
 namespace AST {
@@ -24,6 +27,14 @@ class Function;
 class Pointer;
 
 #include "typedefs.h"
+
+#define ENDING = 0; 
+
+#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
+  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) ENDING
+#define LEFT_UNARY_OPERATOR_MACRO(op) \
+  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING
+
 
 class Type {
   public:
@@ -70,12 +81,8 @@ class Type {
       call_repr(bldr, val);
     }
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) = 0;
-
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement) = 0;
     virtual std::string to_string() const = 0;
@@ -110,6 +117,9 @@ class Type {
     llvm::Type* llvm_type_;
 };
 
+#undef ENDING
+#define ENDING ;
+
 class Primitive : public Type {
   public:
     static constexpr size_t num_primitive_types_ = 9;
@@ -127,11 +137,8 @@ class Primitive : public Type {
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -173,11 +180,8 @@ class Tuple : public Type {
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -209,18 +213,15 @@ class Function : public Type {
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
 
+
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -252,12 +253,8 @@ class Pointer : public Type {
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
    virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -290,12 +287,8 @@ class Array : public Type {
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -332,17 +325,12 @@ class UserDefined : public Type {
 
     virtual llvm::Function* assign();
     virtual llvm::Function* initialize();
-    //virtual llvm::Function* repr();
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual llvm::Value* call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-    virtual llvm::Value* call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs);
-
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
@@ -362,4 +350,9 @@ class UserDefined : public Type {
     static std::map<std::string, UserDefined*> lookup_;
 };
 
-#endif
+
+#undef LEFT_UNARY_OPERATOR_MACRO
+#undef BINARY_OPERATOR_MACRO
+#undef ENDING
+
+#endif  // ICARUS_TYPE_H

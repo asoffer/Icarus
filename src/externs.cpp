@@ -30,7 +30,7 @@ namespace cstdlib {
     static llvm::Constant* free_ =
       global_module->getOrInsertFunction("free", 
           llvm::FunctionType::get(Type::get_void()->llvm(),
-          { Type::get_pointer(Type::get_char())->llvm()}, false));
+            { Type::get_pointer(Type::get_char())->llvm()}, false));
     return free_;
   }
 

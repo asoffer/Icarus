@@ -93,21 +93,16 @@ namespace AST {
     llvm::Value* val = expr_->generate_code(scope);
 
     if (token() == "-") {
-      if (type() == Type::get_int()) {
-        return scope->builder().CreateNeg(val);
+      expr_->type()->call_neg(scope->builder(), val);
 
-      } else if (type() == Type::get_real()) {
-        return scope->builder().CreateFNeg(val);
-      }
+    } else if (token() == "!") {
+      expr_->type()->call_not(scope->builder(), val);
 
     } else if (is_return()) {
       scope->make_return(val);
 
     } else if (token() == "()") {
       return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
-
-    } else if(expr_->type() == Type::get_bool() && token() == "!") {
-      return scope->builder().CreateNot(val, "nottmp");
 
     } else if (is_print()) {
       expr_->type()->call_print(scope->builder(), val);

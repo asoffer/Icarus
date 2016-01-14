@@ -13,6 +13,8 @@
 #include <iostream>
 
 class Type;
+class Function;
+
 class GlobalScope;
 class GenericFnScope;
 class FnScope;

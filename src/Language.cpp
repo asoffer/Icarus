@@ -108,20 +108,16 @@ namespace Language {
     { "*=",     prec_value( 11,   non_assoc) },
     { "/=",     prec_value( 11,   non_assoc) },
     { "%=",     prec_value( 11,   non_assoc) },
-    { "|",      prec_value( 12, chain_assoc) },
-    { "^",      prec_value( 13, chain_assoc) },
-    { "&",      prec_value( 14, chain_assoc) },
-    { "<",      prec_value( 15, chain_assoc) },
-    { ">",      prec_value( 15, chain_assoc) },
-    { "<=",     prec_value( 15, chain_assoc) },
-    { ">=",     prec_value( 15, chain_assoc) },
-    { "==",     prec_value( 15, chain_assoc) },
-    { "!=",     prec_value( 15, chain_assoc) },
-    { "+",      prec_value( 16,  left_assoc) },
-    { "-",      prec_value( 16,  left_assoc) },
-    { "*",      prec_value( 17,  left_assoc) },
-    { "/",      prec_value( 17,  left_assoc) },
-    { "%",      prec_value( 17,  left_assoc) },
+#define CHAIN_OPERATOR_MACRO(op, sym, prec, assoc) \
+    { #sym , prec_value( (prec) , assoc##_assoc ) },
+#include "config/chain_operators.conf"
+#undef BINARY_OPERATOR_MACRO
+
+#define BINARY_OPERATOR_MACRO(op, sym, prec, assoc) \
+    { #sym , prec_value( (prec) , assoc##_assoc ) },
+#include "config/binary_operators.conf"
+#undef BINARY_OPERATOR_MACRO
+
     { "@",      prec_value( 18,  left_assoc) },
     { "[]",     prec_value( 19,  left_assoc) },
     { "()",     prec_value( 19,  left_assoc) },
