@@ -28,7 +28,7 @@ namespace AST {
     // In order for a ChainOp to even be created, ops_.front() must exist.
     // Because nothing has the same precedence levels as a comma, if the
     // first op is a comma, they all are.
-    if (ops_.front()->token() == ",") {
+    if (ops_.front() == Language::ChainOperator::Comma) {
       // Create a vector to hold the types so that we can pass it in to the
       // tuple constructor. We know how big it needs to be, so we make it
       // that big to begin with.

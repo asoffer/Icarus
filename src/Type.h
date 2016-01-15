@@ -80,6 +80,8 @@ class Type {
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       call_repr(bldr, val);
     }
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) = 0;
+
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -136,6 +138,7 @@ class Primitive : public Type {
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -179,6 +182,7 @@ class Tuple : public Type {
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -219,6 +223,7 @@ class Function : public Type {
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -252,6 +257,7 @@ class Pointer : public Type {
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -286,6 +292,7 @@ class Array : public Type {
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -328,6 +335,7 @@ class UserDefined : public Type {
     virtual llvm::Function* uninitialize();
 
     virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"

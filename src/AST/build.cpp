@@ -10,12 +10,19 @@ namespace AST {
     unop_ptr->type_ = Language::expression;
     if (nodes[0]->node_type() == Language::reserved_return) {
       unop_ptr->token_ = "return";
+      unop_ptr->op_ = Language::UnaryOperator::Return;
 
-    } else if (nodes[0]->node_type() == Language::reserved_return) {
+    } else if (nodes[0]->node_type() == Language::reserved_print) {
       unop_ptr->token_ = "print";
+      unop_ptr->op_ = Language::UnaryOperator::Print;
 
     } else {
       unop_ptr->token_ = nodes[0]->token();
+      if (unop_ptr->token_ == "-") {
+        unop_ptr->op_ = Language::UnaryOperator::Neg;
+      } else if (unop_ptr->token_ == "!") {
+        unop_ptr->op_ = Language::UnaryOperator::Not;
+      }
     }
 
     unop_ptr->precedence_ = Language::op_prec.at(unop_ptr->token());
@@ -32,13 +39,15 @@ namespace AST {
 
     unop_ptr->token_ = "()";
     unop_ptr->type_ = Language::expression;
+    unop_ptr->op_ = Language::UnaryOperator::Call;
 
     unop_ptr->precedence_ = Language::op_prec.at("()");
 
     return unop_ptr;
   }
 
-  NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol) {
+  NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol,
+      Language::BinaryOperator op_class) {
     auto binop_ptr = std::make_shared<Binop>();
     binop_ptr->line_num_ = nodes[1]->line_num_;
 
@@ -50,6 +59,7 @@ namespace AST {
 
     binop_ptr->token_ = op_symbol;
     binop_ptr->type_ = Language::generic_operator;
+    binop_ptr->op_ = op_class;
 
     binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
 
@@ -65,7 +75,32 @@ namespace AST {
       auto rhs = std::static_pointer_cast<ChainOp>(std::move(nodes[2]));
 
       auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
-      chain_ptr->ops_.emplace_back(std::move(nodes[1]));
+
+      const std::string& token = nodes[1]->token();
+      // TODO move to lookup table
+      if (token == "<") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
+      } else if (token == "<=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
+      } else if (token == "==") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
+      } else if (token == "!=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
+      } else if (token == ">=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
+      } else if (token == ">") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
+      } else if (token == "|") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Or);
+      } else if (token == "^") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
+      } else if (token == "&") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::And);
+      } else if (token == ",") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
+      }
+
+
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
           std::make_move_iterator(rhs->ops_.begin()),
           std::make_move_iterator(rhs->ops_.end()));
@@ -84,7 +119,30 @@ namespace AST {
       chain_ptr->exprs_.emplace_back(
           std::move(std::static_pointer_cast<Expression>(nodes[0])));
 
-      chain_ptr->ops_.emplace_back(std::move(nodes[1]));
+      const std::string& token = nodes[1]->token();
+      // TODO move to lookup table
+      if (token == "<") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
+      } else if (token == "<=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
+      } else if (token == "==") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
+      } else if (token == "!=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
+      } else if (token == ">=") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
+      } else if (token == ">") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
+      } else if (token == "|") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Or);
+      } else if (token == "^") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
+      } else if (token == "&") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::And);
+      } else if (token == ",") {
+        chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
+      }
+
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
           std::make_move_iterator(rhs->ops_.begin()),
           std::make_move_iterator(rhs->ops_.end()));
@@ -121,7 +179,30 @@ namespace AST {
       chain_ptr->precedence_ = Language::op_prec.at(nodes[1]->token());
     }
 
-    chain_ptr->ops_.push_back(nodes[1]);
+    const std::string& token = nodes[1]->token();
+    // TODO move to lookup table
+    if (token == "<") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
+    } else if (token == "<=") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
+    } else if (token == "==") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
+    } else if (token == "!=") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
+    } else if (token == ">=") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
+    } else if (token == ">") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
+    } else if (token == "|") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::Or);
+    } else if (token == "^") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
+    } else if (token == "&") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::And);
+    } else if (token == ",") {
+      chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
+    }
+
 
     chain_ptr->exprs_.push_back(
         std::static_pointer_cast<Expression>(nodes[2]));
@@ -197,9 +278,10 @@ namespace AST {
     return array_type_ptr;
   }
 
-  NPtr Terminal::build(NPtrVec&& nodes, Type* t) {
+  NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
     auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num_ = nodes[0]->line_num_;
+    term_ptr->terminal_type_ = term_type;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence_ = Language::op_prec.at("MAX");

@@ -17,7 +17,7 @@ class Lexer {
     ~Lexer();
 
     // Reads the next token from the lexer into a node
-    friend Lexer& operator>>(Lexer& l, AST::Node& node);
+    friend Lexer& operator>>(Lexer& l, AST::TokenNode& node);
 
     // Returns true precisely when we have not yet reached EOF
     operator bool () const { return !file_.eof() && !file_.fail(); }
@@ -31,12 +31,12 @@ class Lexer {
 
     Lexer() = delete;
 
-    AST::Node next_word();
-    AST::Node next_number();
-    AST::Node next_operator();
-    AST::Node next_string_literal();
-    AST::Node next_char_literal();
-    AST::Node next_given_slash();
+    AST::TokenNode next_word();
+    AST::TokenNode next_number();
+    AST::TokenNode next_operator();
+    AST::TokenNode next_string_literal();
+    AST::TokenNode next_char_literal();
+    AST::TokenNode next_given_slash();
 };
 
 #endif  // ICARUS_LEXER_H

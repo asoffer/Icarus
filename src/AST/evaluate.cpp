@@ -80,26 +80,28 @@ namespace AST {
 
   Context::Value ChainOp::evaluate(Context& ctx) { 
     if (exprs_[0]->type() == Type::get_bool()) {
-      if (ops_[0]->token() == "^") {
-        bool expr_val = false;
-        for (auto& expr : exprs_) {
-          expr_val = (expr_val != expr->evaluate(ctx).as_bool);
-        }
-        return Context::Value(expr_val);
-
-      } else if (ops_[0]->token() == "&") {
-        for (auto& expr : exprs_) {
-          if (expr->evaluate(ctx).as_bool) return Context::Value(false);
-        }
-        return Context::Value(true);
-
-      } else if (ops_[0]->token() == "|") {
-        for (auto& expr : exprs_) {
-          if (expr->evaluate(ctx).as_bool) {
-            return Context::Value(true);
+      switch (ops_[0]) {
+        case Language::ChainOperator::Xor:
+          {
+            bool expr_val = false;
+            for (auto& expr : exprs_) {
+              expr_val = (expr_val != expr->evaluate(ctx).as_bool);
+            }
+            return Context::Value(expr_val);
           }
-        }
-        return Context::Value(false);
+        case Language::ChainOperator::And:
+          for (auto& expr : exprs_) {
+            if (expr->evaluate(ctx).as_bool) return Context::Value(false);
+          }
+          return Context::Value(true);
+        case Language::ChainOperator::Or:
+          for (auto& expr : exprs_) {
+            if (expr->evaluate(ctx).as_bool) {
+              return Context::Value(true);
+            }
+          }
+          return Context::Value(false);
+        default:;
       }
 
       return Context::Value(true);
@@ -110,26 +112,20 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
-        if (ops_[i]->token() == "<") {
-          total &= (last.as_int < next.as_int);
-
-        } else if (ops_[i]->token() == "<=") {
-          total &= (last.as_int <= next.as_int);
-
-        } else if (ops_[i]->token() == "==") {
-          total &= (last.as_int == next.as_int);
-
-        } else if (ops_[i]->token() == "!=") {
-          total &= (last.as_int != next.as_int);
-
-        } else if (ops_[i]->token() == ">=") {
-          total &= (last.as_int >= next.as_int);
-
-        } else if (ops_[i]->token() == ">") {
-          total &= (last.as_int > next.as_int);
-
-        } else {
-          // TODO what else could it be?
+        switch (ops_[i]) {
+          case Language::ChainOperator::LessThan:
+            total &= (last.as_int < next.as_int);
+          case Language::ChainOperator::LessEq:
+            total &= (last.as_int <= next.as_int);
+          case Language::ChainOperator::Equal:
+            total &= (last.as_int == next.as_int);
+          case Language::ChainOperator::NotEqual:
+            total &= (last.as_int != next.as_int);
+          case Language::ChainOperator::GreaterThan:
+            total &= (last.as_int >= next.as_int);
+          case Language::ChainOperator::GreaterEq:
+            total &= (last.as_int > next.as_int);
+          default:;
         }
 
         if (!total) {
@@ -146,12 +142,12 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
-        if (ops_[i]->token() == "==") {
+        if (ops_[i] == Language::ChainOperator::Equal) {
           if (last.as_type != next.as_type) {
             return Context::Value(false);
           }
 
-        } else if (ops_[i]->token() == "!=") {
+        } else if (ops_[i] == Language::ChainOperator::NotEqual) {
           if (last.as_type == next.as_type) {
             return Context::Value(false);
           }
@@ -167,26 +163,20 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
-        if (ops_[i]->token() == "<") {
-          total &= (last.as_uint < next.as_uint);
-
-        } else if (ops_[i]->token() == "<=") {
-          total &= (last.as_uint <= next.as_uint);
-
-        } else if (ops_[i]->token() == "==") {
-          total &= (last.as_uint == next.as_uint);
-
-        } else if (ops_[i]->token() == "!=") {
-          total &= (last.as_uint != next.as_uint);
-
-        } else if (ops_[i]->token() == ">=") {
-          total &= (last.as_uint >= next.as_uint);
-
-        } else if (ops_[i]->token() == ">") {
-
-          total &= (last.as_uint > next.as_uint);
-        } else {
-          // TODO what else could it be?
+        switch (ops_[i]) {
+          case Language::ChainOperator::LessThan:
+            total &= (last.as_int < next.as_int);
+          case Language::ChainOperator::LessEq:
+            total &= (last.as_int <= next.as_int);
+          case Language::ChainOperator::Equal:
+            total &= (last.as_int == next.as_int);
+          case Language::ChainOperator::NotEqual:
+            total &= (last.as_int != next.as_int);
+          case Language::ChainOperator::GreaterThan:
+            total &= (last.as_int >= next.as_int);
+          case Language::ChainOperator::GreaterEq:
+            total &= (last.as_int > next.as_int);
+          default:;
         }
 
         if (!total) {

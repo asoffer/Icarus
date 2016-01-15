@@ -85,9 +85,10 @@ namespace AST {
 
   std::string ChainOp::to_string(size_t n) const {
     std::string output = tabs(n) + "<Chain: ";
-    for (const auto& op : ops_) {
-      output += op->token() + " ";
-    }
+    // TODO lookup table show token
+    // for (const auto& op : ops_) {
+    //   output += op->token() + " ";
+    // }
 
     output += ", prec: " + std::to_string(precedence()) + ">\n";
 

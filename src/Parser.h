@@ -25,12 +25,12 @@ class Parser {
     void show_debug() const;
 
     NPtrVec stack_;
-    std::unique_ptr<AST::Node> lookahead_;
+    std::unique_ptr<AST::TokenNode> lookahead_;
     Lexer lexer_;
 };
 
 inline void Parser::shift() {
-  std::unique_ptr<AST::Node> next_node_ptr(new AST::Node);
+  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
   lexer_ >> *next_node_ptr;
 
   // Never shift comments onto the stack

@@ -40,186 +40,137 @@ namespace AST {
     return scope->builder().CreateLoad(alloc_, token());
   }
 
+  // Invariant:
+  // Only returns nullptr if the expression type is void or a type
   llvm::Value* Terminal::generate_code(Scope* scope) {
-    // TODO Do I want to use string-to-X functions, or should I roll my own?
-    //
-    // The benefits are clear, but this ties me to using the same representation
-    // that C++ uses.
+    //TODO remove dependence on token() altogether
 
-    // Built in function of type uint -> char
-    if (token() == "ascii") {
-     return builtin::ascii();
-    }
-
-    // TODO move this to Type
-    if (type() == Type::get_void()) {
-      if (token() == "return") scope->make_return(nullptr);
-      return nullptr;
-
-    } else if (type() == Type::get_unknown() || type() == Type::get_type_error()) {
-      return nullptr;
-
-    } else if (type() == Type::get_bool()) {
-      // A bool is an unsigned 1-bit integer
-      return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(1, token() == "true" ? 1 : 0, false));
-
-    } else if (type() == Type::get_char()) {
-      // A character is an unsigend 8-bit integer
-
-      return llvm::ConstantInt::get(llvm::getGlobalContext(),
-          llvm::APInt(8, static_cast<unsigned int>(token()[0]), false));
-
-    } else if (type() == Type::get_int()) {
-      return data::const_int(std::stoi(token()));
-
-    } else if (type() == Type::get_real()) {
-      return data::const_real(std::stod(token()));
-
-    } else if (type() == Type::get_type()) {
-      return nullptr;
-
-    } else if (type() == Type::get_uint()) {
-      return data::const_uint(std::stoul(token()));
-
-    } else {
-      std::cerr << "FATAL: Terminal type is not a primitive type" << std::endl;
-      return nullptr;
+    switch (terminal_type_) {
+      case Language::Terminal::ASCII:
+        return builtin::ascii();
+      case Language::Terminal::Return:
+        scope->make_return(nullptr);
+        return nullptr;  // This expression has type void
+      case Language::Terminal::True:
+        return data::const_true();
+      case Language::Terminal::False:
+        return data::const_false();
+      case Language::Terminal::Character:
+        return data::const_char(token()[0]);
+      case Language::Terminal::Integer:
+        return data::const_int(std::stoi(token()));
+      case Language::Terminal::Real:
+        return data::const_real(std::stod(token()));
+      case Language::Terminal::Type:
+        return nullptr;
+      case Language::Terminal::UnsignedInteger:
+        return data::const_uint(std::stoul(token()));
     }
   }
 
+  // Invariant:
+  // Only returns nullptr if the expression type is void or a type
   llvm::Value* Unop::generate_code(Scope* scope) {
-    // TODO don't figure out what it is from the tokens.
     llvm::Value* val = expr_->generate_code(scope);
 
-    if (token() == "-") {
-      expr_->type()->call_neg(scope->builder(), val);
-
-    } else if (token() == "!") {
-      expr_->type()->call_not(scope->builder(), val);
-
-    } else if (is_return()) {
-      scope->make_return(val);
-
-    } else if (token() == "()") {
-      return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
-
-    } else if (is_print()) {
-      if (expr_->type() == Type::get_type()) {
+    llvm::IRBuilder<>& bldr = scope->builder();
+    switch (op_) {
+      case Language::UnaryOperator::Neg:
+        return expr_->type()->call_neg (bldr, val);
+      case Language::UnaryOperator::Not:
+        return expr_->type()->call_not (bldr, val);
+      case Language::UnaryOperator::Call:
+        return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+      case Language::UnaryOperator::Print:
         // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-        val  = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
-      }
-      expr_->type()->call_print(scope->builder(), val);
-    }
+        if (expr_->type() == Type::get_type()) {
+          val  = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+        }
+        expr_->type()->call_print(scope->builder(), val);
+        return nullptr;
 
-    return nullptr;
+      case Language::UnaryOperator::Return:
+        scope->make_return(val);
+        return nullptr;
+    }
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
-    // TODO this test is a standin for actually determining if this is compile-time
-    if (rhs_->type() == Type::get_type()) {
-      Context ctx = Context::GlobalContext.spawn();
-      return llvm_value(evaluate(ctx));
-    }
+    switch (op_) {
+      case Language::BinaryOperator::Index:
+        return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
 
-    if (token() == "[]") {
-      return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
-    }
+      case Language::BinaryOperator::Access:
+        if (lhs_->type()->is_user_defined()) {
+          return scope->builder().CreateLoad(generate_lvalue(scope));
 
-    if (token() == ".") {
-      if (lhs_->type()->is_user_defined()) {
-        return scope->builder().CreateLoad(generate_lvalue(scope));
-      } else {
-        // TODO
-      }
-      return nullptr;
-    }
+        } else {
+          return nullptr;
+        }
 
+      default:;
+    }
 
     auto lhs_val = lhs_->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
 
-    if (token() == ":>") {
-      auto from_type = lhs_->expr_type_;
-      auto to_type = rhs_->interpret_as_type();
-      if (from_type == to_type) {
-        return lhs_val;
-      }
+    // TODO this test is a standin for actually determining if this is compile-time
+//    if (rhs_->type() == Type::get_type()) {
+//      Context ctx = Context::GlobalContext.spawn();
+//      return llvm_value(evaluate(ctx));
+//    }
 
-      if (from_type == Type::get_bool()) {
-        if (to_type == Type::get_int() || to_type == Type::get_uint()) {
-          return scope->builder().CreateZExt(lhs_val, to_type->llvm(), "ext_val");
-        } else if (to_type == Type::get_real()) {
-          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "ext_val");
-        } else {
-          return nullptr;
+
+    switch (op_) {
+      case Language::BinaryOperator::Cast:
+        return lhs_->type()->call_cast(scope->builder(), lhs_val, rhs_->interpret_as_type());
+    
+      case Language::BinaryOperator::Call:
+        if (lhs_->type()->is_function()) {
+          std::vector<llvm::Value*> arg_vals;
+          if (rhs_->is_comma_list()) {
+            auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs_);
+            arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
+            size_t i = 0;
+            for (const auto& expr : arg_chainop->exprs_) {
+              arg_vals[i] = expr->generate_code(scope);
+              if (arg_vals[i] == nullptr) return nullptr;
+              ++i;
+            }
+
+          } else {
+            auto rhs_val = rhs_->generate_code(scope);
+            if (rhs_val == nullptr) return nullptr;
+            arg_vals = { rhs_val };
+          }
+
+          if (type()->is_void()) {
+            scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
+            return nullptr;
+
+          } else {
+            return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+          }
         }
-
-      } else if (from_type == Type::get_int()) {
-        if (to_type == Type::get_real()) {
-          return scope->builder().CreateSIToFP(lhs_val, to_type->llvm(), "fp_val");
-        } else if (to_type == Type::get_uint()) {
-          return lhs_val;
-        } else {
-          return nullptr;
-        }
-
-      } else if (from_type == Type::get_uint()) {
-        if (to_type == Type::get_real()) {
-          return scope->builder().CreateUIToFP(lhs_val, to_type->llvm(), "fp_val");
-        } else if (to_type == Type::get_int()) {
-          return lhs_val;
-        } else {
-          return nullptr;
-        }
-      }
-    }
-
-    if (token() == "()") {
-      std::vector<llvm::Value*> arg_vals;
-      if (rhs_->is_comma_list()) {
-        auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs_);
-        arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
-        size_t i = 0;
-        for (const auto& expr : arg_chainop->exprs_) {
-          arg_vals[i] = expr->generate_code(scope);
-          if (arg_vals[i] == nullptr) return nullptr;
-
-          ++i;
-        }
-
-      } else {
-        auto rhs_val = rhs_->generate_code(scope);
-        if (rhs_val == nullptr) return nullptr;
-
-        arg_vals = { rhs_val };
-      }
-
-      if (type()->is_void()) {
-        return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
-      }
-
-      return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+      default:;
     }
 
     auto rhs_val = rhs_->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
 
-    if (token() == "+") {
-      return type()->call_add(scope->builder(), lhs_val, rhs_val);
-
-    } else if (token() == "-") {
-      return type()->call_sub(scope->builder(), lhs_val, rhs_val);
-
-    } else if (token() == "*") {
-      return type()->call_mul(scope->builder(), lhs_val, rhs_val);
-
-    } else if (token() == "/") {
-      return type()->call_div
-          (scope->builder(), lhs_val, rhs_val);
-
-    } else if (token() == "%") {
-      return type()->call_mod(scope->builder(), lhs_val, rhs_val);
+    llvm::IRBuilder<>& bldr = scope->builder();
+    switch (op_) {
+      case Language::BinaryOperator::Add:
+        return type()->call_add(bldr, lhs_val, rhs_val);
+      case Language::BinaryOperator::Sub:
+        return type()->call_sub(bldr, lhs_val, rhs_val);
+      case Language::BinaryOperator::Mul:
+        return type()->call_mul(bldr, lhs_val, rhs_val);
+      case Language::BinaryOperator::Div:
+        return type()->call_div(bldr, lhs_val, rhs_val);
+      case Language::BinaryOperator::Mod:
+        return type()->call_mod(bldr, lhs_val, rhs_val);
+      default:;
     }
 
     return nullptr;
@@ -251,67 +202,78 @@ namespace AST {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
 
-        if (ops_[i - 1]->token() == "<") {
-          cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
-
-        } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
-
-        } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-
-        } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
-
-        } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
-
-        } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
-
-        } else {
-          error_log.log(ops_[i - 1]->line_num(),
-              "Invalid operator: " + ops_[i - 1]->token());
-          return nullptr;
+        // TODO early exit
+        switch (ops_[i - 1]) {
+          case Language::ChainOperator::LessThan:
+            cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
+          case Language::ChainOperator::LessEq:
+            cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
+          case Language::ChainOperator::Equal:
+            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          case Language::ChainOperator::NotEqual:
+            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
+          case Language::ChainOperator::GreaterEq:
+            cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
+          case Language::ChainOperator::GreaterThan:
+            cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+          default:;
         }
 
-        // TODO early exit
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
 
       }
+
+    } else if (exprs_[0]->type() == Type::get_uint()) {
+      for (size_t i = 1; i < exprs_.size(); ++i) {
+        auto rhs_val = exprs_[i]->generate_code(scope);
+        llvm::Value* cmp_val;
+
+        // TODO early exit
+        switch (ops_[i - 1]) {
+          case Language::ChainOperator::LessThan:
+            cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp");
+          case Language::ChainOperator::LessEq:
+            cmp_val = bldr.CreateICmpULE(lhs_val, rhs_val, "letmp");
+          case Language::ChainOperator::Equal:
+            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          case Language::ChainOperator::NotEqual:
+            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
+          case Language::ChainOperator::GreaterEq:
+            cmp_val = bldr.CreateICmpUGE(lhs_val, rhs_val, "getmp");
+          case Language::ChainOperator::GreaterThan:
+            cmp_val = bldr.CreateICmpUGT(lhs_val, rhs_val, "gttmp");
+          default:;
+        }
+
+        ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        lhs_val = rhs_val;
+
+      }
+
     } else if (exprs_[0]->type() == Type::get_real()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
 
-        if (ops_[i - 1]->token() == "<") {
-          cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
-
-        } else if (ops_[i - 1]->token() == "<=") {
-          cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
-
-        } else if (ops_[i - 1]->token() == "==") {
-          cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
-
-        } else if (ops_[i - 1]->token() == "!=") {
-          cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
-
-        } else if (ops_[i - 1]->token() == ">=") {
-          cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
-
-        } else if (ops_[i - 1]->token() == ">") {
-          cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
-
-        } else {
-          // TODO 
-          error_log.log(ops_[i - 1]->line_num(),
-              "Invalid operator: " + ops_[i - 1]->token());
-          return nullptr;
-        }
-        // TODO should these be ordered, or can they be QNAN? probably.
-
         // TODO early exit
+        // TODO should these be ordered, or can they be QNAN? probably.
+        switch (ops_[i - 1]) {
+          case Language::ChainOperator::LessThan:
+            cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
+          case Language::ChainOperator::LessEq:
+            cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
+          case Language::ChainOperator::Equal:
+            cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
+          case Language::ChainOperator::NotEqual:
+            cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
+          case Language::ChainOperator::GreaterEq:
+            cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
+          case Language::ChainOperator::GreaterThan:
+            cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+          default:;
+        }
+
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
@@ -319,7 +281,7 @@ namespace AST {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.
       auto cmp_val = lhs_val;
-      if (ops_.front()->token() == "^") {
+      if (ops_.front() == Language::ChainOperator::Xor) {
         for (size_t i = 1; i < exprs_.size(); ++i) {
           auto expr = exprs_[i];
           auto rhs_val = expr->generate_code(scope);
@@ -342,13 +304,13 @@ namespace AST {
         auto merge_block = llvm::BasicBlock::Create(
             llvm::getGlobalContext(), "merge_block", parent_fn);
 
-        if (ops_.front()->token() == "&") {
+        if (ops_.front() == Language::ChainOperator::And) {
           for (size_t i = 0; i < ops_.size(); ++i) {
             bldr.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
             bldr.SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
-        } else {  // if (ops_.front()->token() == "|") {
+        } else {  // if (ops_.front() == Language::ChainOperator::Or) {
           for (size_t i = 0; i < ops_.size(); ++i) {
             bldr.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
             bldr.SetInsertPoint(cond_blocks[i]);

@@ -15,11 +15,11 @@ namespace Language {
     MASK_binary_operator | MASK_left_unary_operator | MASK_right_unary_operator;
 
   enum NodeType {
-    unknown, eof, newline, comment,
+    unknown, bof, eof, newline, comment,
     identifier,
 
     // Literals
-    bool_literal, integer_literal, unsigned_integer_literal,
+    integer_literal, unsigned_integer_literal,
     real_literal, character_literal,
     string_literal, type_literal, fn_literal,
 
@@ -76,7 +76,8 @@ namespace Language {
     fn_declaration,
     assignment,
     return_expression,
-    reserved_bool_literal,
+    reserved_true,
+    reserved_false,
 
     // expression + binary operator
     decl_assign_operator = MASK_binary_operator | MASK_expression
@@ -98,18 +99,38 @@ constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask = 3;
 
 namespace Language {
+  enum class Operator {
+    Return,Print,
+    Comma,Rocket,
+    Assign, ColonEq, Colon, Cast, Arrow,
+    OrEq, XorEq, AndEq,
+    PlusEq, SubEq, MulEq, DivEq, ModEq,
+    Or, Xor, And,
+    LessThan, LessEq, Equal, NotEqual, GreaterEq, GreaterThan,
+    Add, Sub, Mul, Div, Mod,
+    At, Index, Call, Dot, Max,
+  };
 
-  namespace Operator {
-#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
-    constexpr size_t op = __COUNTER__;
+  enum class Terminal {
+    ASCII, Return, True, False,
+    Character, Integer, Real, Type, UnsignedInteger
+  };
 
-#include "config/binary_operators.conf"
+  enum class UnaryOperator {
+    Call, Neg, Not, Print, Return
+  };
 
-#undef BINARY_OPERATOR_MACRO
+  enum class BinaryOperator {
+    Add, Sub, Mul, Div, Mod,
+    Call, Index, Access, Cast,
+    Arrow
+  };
 
-    constexpr size_t num_operators = 5;  // TODO make this not an explicit number
-  }  // namespace Operator
-
+  enum class ChainOperator {
+    LessThan, LessEq, Equal, NotEqual, GreaterEq, GreaterThan,
+    Or, Xor, And,
+    Comma
+  };
 
   inline bool is_expression(NodeType t) {
     return (t & MASK_expression) != 0;
@@ -131,7 +152,7 @@ namespace Language {
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;
   extern const std::map<std::string, size_t> op_prec;
-
+  extern const std::map<std::string, BinaryOperator> binop_enum_class_name;
 }  // namespace Language
 
 #endif  // ICARUS_LANGUAGE_H

@@ -9,8 +9,8 @@ namespace debug {
 Parser::Parser(const std::string& filename) : lexer_(filename) {
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
-  lookahead_.reset(new AST::Node);
-  *lookahead_ = AST::Node::newline_node();
+  lookahead_.reset(new AST::TokenNode);
+  *lookahead_ = AST::TokenNode::newline();
 }
 
 // Parse the file with a shift-reduce algorithm
@@ -36,10 +36,11 @@ NPtr Parser::parse() {
     // shift/reduce step and show the current parse stack.
     if (debug::parser) show_debug();
   }
- 
+
   // Once we exit the previous loop, we have seen all tokens and reached the
   // end of the file. There cannot be any more shifting, but there may be more
   // reductions to complete. While we can reduce, do so.
+
   while (reduce()) {
     if (debug::parser) show_debug();
   }
@@ -99,7 +100,8 @@ bool Parser::should_shift() {
   // Reduce terminals
   switch (last_type) {
     case Language::identifier:
-    case Language::reserved_bool_literal:
+    case Language::reserved_true:
+    case Language::reserved_false:
     case Language::integer_literal:
     case Language::real_literal:
     case Language::character_literal:
@@ -147,14 +149,35 @@ bool Parser::should_shift() {
   if (Language::is_binary_operator(ahead_type) && stack_.size() >= 2
       && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
 
+    // TODO FIXME hacky solution while removing token_ from node
+    size_t lhs_prec, rhs_prec;
+//    if (stack_[stack_.size() - 2]->token() == "") {
+//      auto eptr = std::static_pointer_cast<AST::Expression>(stack_[stack_.size() - 2]);
+//      lhs_prec = eptr->precedence();
+//      rhs_prec = Language::op_prec.at(lookahead_->token());
+//    } else {
 #if DEBUG
     // .at() is more expensive, and should only be used in debug mode
-    auto lhs_prec = Language::op_prec.at(stack_[stack_.size() - 2]->token());
-    auto rhs_prec = Language::op_prec.at(lookahead_->token());
+    auto node = stack_[stack_.size() - 2];
+    auto token = node->token();
+    if (Language::op_prec.find(token) == Language::op_prec.end()) {
+      std::cout << "!!" << token  << "!!" << stack_.size() << std::endl;
+      if (node->is_expression()) {
+        std::cout << "yes" << std::endl;
+      } else {
+        std::cout << "no" << std::endl;
+        std::cout << node->line_num() << std::endl;
+      }
+      std::cout << node->node_type() << std::endl;
+      
+    }
+    lhs_prec = Language::op_prec.at(stack_[stack_.size() - 2]->token());
+    rhs_prec = Language::op_prec.at(lookahead_->token());
 #else
-    auto lhs_prec = Language::op_prec[stack_[stack_.size() - 2]->token()];
-    auto rhs_prec = Language::op_prec[lookahead_->token()];
+    lhs_prec = Language::op_prec[stack_[stack_.size() - 2]->token()];
+    rhs_prec = Language::op_prec[lookahead_->token()];
 #endif
+//    }
 
     if (lhs_prec != rhs_prec) return lhs_prec < rhs_prec;
 

@@ -120,7 +120,6 @@ int main(int argc, char *argv[]) {
     ast_map[file_name] = std::static_pointer_cast<AST::Statements>(parser.parse());
   }
 
-
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::parse_error;

@@ -39,14 +39,10 @@ namespace AST {
       friend class TypeLiteral;
       friend class EnumLiteral;
 
-      static Node eof_node(size_t line_num);
-      static Node newline_node();
-      static Node string_literal_node(size_t line_num, const std::string& str_lit);
-
       Language::NodeType node_type() const { return type_; }
       void set_node_type(Language::NodeType t) { type_ = t; }
 
-      std::string token() const { return token_; }
+      virtual std::string token() const { return token_; }
       void set_token(const std::string& token_string) {
         token_ = token_string;
       }
@@ -78,6 +74,7 @@ namespace AST {
       virtual bool is_array_type() const { return false; }
       virtual bool is_type_literal() const { return false; }
       virtual bool is_array_literal() const { return false; }
+      virtual bool is_token_node() const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
         : type_(type), token_(token), line_num_(line_num) {}
@@ -94,18 +91,41 @@ namespace AST {
       size_t line_num_;
   };
 
-      inline Node Node::eof_node(size_t line_num) {
-        return Node(line_num, Language::eof, "");
+  class TokenNode : public Node {
+    public:
+      static TokenNode eof(size_t line_num) {
+        return TokenNode(line_num, Language::eof);
       }
 
-      inline Node Node::newline_node() {
-        return Node(0, Language::newline, "");
+      static TokenNode newline() {
+        return TokenNode(0, Language::newline);
       }
 
-      inline Node Node::string_literal_node(
-          size_t line_num, const std::string& str_lit) { 
-        return Node(line_num, Language::string_literal, str_lit);
+      static TokenNode string_literal(size_t line_num, const std::string& str_lit) {
+        return TokenNode(line_num, Language::string_literal, str_lit);
       }
+
+      virtual bool is_token_node() const { return true; }
+      virtual std::string token() const {
+        return tk_;
+      }
+
+      virtual ~TokenNode() {}
+
+      TokenNode(size_t line_num = 0,
+          // TODO make newline a bof (beginning of file)
+          Language::NodeType node_type = Language::newline,
+          std::string str_lit = "")
+        : Node(line_num, node_type), tk_(std::move(str_lit)) {
+       
+          if (node_type == Language::reserved_return) tk_ = "return";
+        }
+
+    private:
+      std::string tk_;
+  };
+
+
 
   class Expression : public Node {
     public:
@@ -183,6 +203,7 @@ namespace AST {
 
     private:
       EPtr expr_;
+      Language::UnaryOperator op_;
   };
 
 
@@ -193,7 +214,7 @@ namespace AST {
       friend class Conditional;
       friend class ::ErrorLog;
 
-      static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol);
+      static NPtr build_operator(NPtrVec&& nodes, std::string op_symbol, Language::BinaryOperator op_class);
 
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_paren_operator(NPtrVec&& nodes);
@@ -219,22 +240,23 @@ namespace AST {
       Binop() {}
 
     protected:
+      Language::BinaryOperator op_;
       EPtr lhs_;
       EPtr rhs_;
   };
 
   inline NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
-    return Binop::build_operator(std::forward<NPtrVec>(nodes), "()");
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), "()", Language::BinaryOperator::Call);
   }
 
   inline NPtr Binop::build_bracket_operator(NPtrVec&& nodes) {
-    return Binop::build_operator(std::forward<NPtrVec>(nodes), "[]");
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), "[]", Language::BinaryOperator::Index);
   }
 
   inline NPtr Binop::build(NPtrVec&& nodes) {
-    return Binop::build_operator(
-        std::forward<NPtrVec>(nodes),
-        nodes[1]->token());
+    auto token = nodes[1]->token();
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), token,
+        Language::binop_enum_class_name.at(token));
   }
 
 
@@ -262,10 +284,10 @@ namespace AST {
       virtual Context::Value evaluate(Context& ctx);
 
       virtual bool is_chain_op() const { return true; }
-      virtual bool is_comma_list() const { return ops_.front()->token() == ","; }
+      virtual bool is_comma_list() const { return ops_.front() == Language::ChainOperator::Comma; }
 
     private:
-      std::vector<NPtr> ops_;
+      std::vector<Language::ChainOperator> ops_;
       std::vector<EPtr> exprs_;
   };
 
@@ -328,10 +350,11 @@ namespace AST {
     public:
       friend class KVPairList;
 
-      static NPtr build(NPtrVec&& nodes, Type* t);
+      static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
       static NPtr build_type_literal(NPtrVec&& nodes);
       static NPtr build_string_literal(NPtrVec&& nodes);
-      static NPtr build_bool_literal(NPtrVec&& nodes);
+      static NPtr build_true(NPtrVec&& nodes);
+      static NPtr build_false(NPtrVec&& nodes);
       static NPtr build_integer_literal(NPtrVec&& nodes);
       static NPtr build_unsigned_integer_literal(NPtrVec&& nodes);
       static NPtr build_real_literal(NPtrVec&& nodes);
@@ -353,44 +376,59 @@ namespace AST {
       virtual Context::Value evaluate(Context& ctx);
 
       Terminal() {}
+
+    private:
+      Language::Terminal terminal_type_;
   };
 
-  inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
-    // FIXME implement strings
-    return build(std::forward<NPtrVec>(nodes), Type::get_type_error());
-  }
+//  inline NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
+//    // FIXME implement strings
+//    return build(std::forward<NPtrVec&&>(nodes), Type::get_type_error());
+//  }
 
   inline NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_type());
+    return build(Language::Terminal::Type,
+        std::forward<NPtrVec&&>(nodes), Type::get_type());
   }
 
-  inline NPtr Terminal::build_bool_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_bool());
+  inline NPtr Terminal::build_true(NPtrVec&& nodes) {
+    return build(Language::Terminal::True,
+        std::forward<NPtrVec&&>(nodes), Type::get_bool());
+  }
+
+  inline NPtr Terminal::build_false(NPtrVec&& nodes) {
+    return build(Language::Terminal::False,
+        std::forward<NPtrVec&&>(nodes), Type::get_bool());
   }
 
   inline NPtr Terminal::build_unsigned_integer_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_uint());
+    return build(Language::Terminal::UnsignedInteger,
+        std::forward<NPtrVec&&>(nodes), Type::get_uint());
   }
 
   inline NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_int());
+    return build(Language::Terminal::Integer,
+        std::forward<NPtrVec&&>(nodes), Type::get_int());
   }
 
   inline NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_real());
+    return build(Language::Terminal::Real,
+        std::forward<NPtrVec&&>(nodes), Type::get_real());
   }
 
   inline NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes), Type::get_char());
+    return build(Language::Terminal::Character,
+        std::forward<NPtrVec&&>(nodes), Type::get_char());
   }
 
   inline NPtr Terminal::build_void_return(NPtrVec&& nodes) {
-    // FIXME implement strings
-    return build(std::forward<NPtrVec>(nodes), Type::get_void());
+    return build(Language::Terminal::Return,
+        std::forward<NPtrVec&&>(nodes), Type::get_void());
   }
 
   inline NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes),
+    return build(Language::Terminal::ASCII,
+        std::forward<NPtrVec&&>(nodes),
         Type::get_function(Type::get_uint(), Type::get_char()));
   }
 
@@ -497,12 +535,12 @@ namespace AST {
 
 
   inline NPtr Declaration::build_decl(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes),
+    return build(std::forward<NPtrVec&&>(nodes),
         ":", Language::decl_operator, false);
   }
 
   inline NPtr Declaration::build_assign(NPtrVec&& nodes) {
-    return build(std::forward<NPtrVec>(nodes),
+    return build(std::forward<NPtrVec&&>(nodes),
         ":=", Language::decl_assign_operator, true);
   }
 
@@ -534,12 +572,12 @@ namespace AST {
 
   inline NPtr KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-    return build_one(std::forward<NPtrVec>(nodes));
+    return build_one(std::forward<NPtrVec&&>(nodes));
   }
 
   inline NPtr KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-    return build_more(std::forward<NPtrVec>(nodes));
+    return build_more(std::forward<NPtrVec&&>(nodes));
   }
 
 
@@ -762,7 +800,7 @@ namespace AST {
 
   inline NPtr Conditional::build_if_assignment_error(NPtrVec&& nodes) {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-    return build_if(std::forward<NPtrVec>(nodes));
+    return build_if(std::forward<NPtrVec&&>(nodes));
   }
   
   class While : public Node {
@@ -797,7 +835,7 @@ namespace AST {
 
   inline NPtr While::build_assignment_error(NPtrVec&& nodes) {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-    return build(std::forward<NPtrVec>(nodes));
+    return build(std::forward<NPtrVec&&>(nodes));
   }
 
   class TypeLiteral : public Expression {
