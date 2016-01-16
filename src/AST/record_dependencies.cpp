@@ -29,7 +29,7 @@ namespace AST {
     Scope::dependencies_[eptr].insert(lhs_);
     lhs_->record_dependencies(lhs_);
 
-    if (token() != ".") {
+    if (op_ != Language::Operator::Access) {
       Scope::dependencies_[eptr].insert(rhs_);
       rhs_->record_dependencies(rhs_);
     }

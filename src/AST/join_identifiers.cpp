@@ -24,6 +24,11 @@ namespace AST {
     }
   }
 
+  void Identifier::join_identifiers(Scope* scope) {
+    Terminal::join_identifiers(scope);
+  }
+
+
   void Conditional::join_identifiers(Scope* scope) {
     for (size_t i = 0; i < conds_.size(); ++i) {
       conds_[i]->join_identifiers(body_scopes_[i]);
@@ -43,7 +48,7 @@ namespace AST {
 
     // Ignore the RHS of a dot operator
     // TODO Access should be looking in a different scope
-    if (token() == ".") return;
+    if (op_ == Language::Operator::Access) return;
 
     if (rhs_->is_identifier()) {
       rhs_ = scope->identifier(rhs_);

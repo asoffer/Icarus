@@ -100,36 +100,22 @@ constexpr size_t assoc_mask = 3;
 
 namespace Language {
   enum class Operator {
+    NotAnOperator,
     Return,Print,
     Comma,Rocket,
     Assign, ColonEq, Colon, Cast, Arrow,
     OrEq, XorEq, AndEq,
-    PlusEq, SubEq, MulEq, DivEq, ModEq,
+    AddEq, SubEq, MulEq, DivEq, ModEq,
     Or, Xor, And,
     LessThan, LessEq, Equal, NotEqual, GreaterEq, GreaterThan,
     Add, Sub, Mul, Div, Mod,
-    At, Index, Call, Dot, Max,
+    Not,
+    At, Index, Call, Access 
   };
 
   enum class Terminal {
     ASCII, Return, True, False,
-    Character, Integer, Real, Type, UnsignedInteger
-  };
-
-  enum class UnaryOperator {
-    Call, Neg, Not, Print, Return
-  };
-
-  enum class BinaryOperator {
-    Add, Sub, Mul, Div, Mod,
-    Call, Index, Access, Cast,
-    Arrow
-  };
-
-  enum class ChainOperator {
-    LessThan, LessEq, Equal, NotEqual, GreaterEq, GreaterThan,
-    Or, Xor, And,
-    Comma
+    Char, Int, Real, Type, UInt
   };
 
   inline bool is_expression(NodeType t) {
@@ -148,11 +134,12 @@ namespace Language {
     return t == decl_operator || t == decl_assign_operator;
   }
 
+  extern size_t precedence(Language::Operator op);
 
+  extern const std::map<std::string, Language::Operator> lookup_operator;
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;
   extern const std::map<std::string, size_t> op_prec;
-  extern const std::map<std::string, BinaryOperator> binop_enum_class_name;
 }  // namespace Language
 
 #endif  // ICARUS_LANGUAGE_H

@@ -34,6 +34,10 @@ namespace AST {
 
   void Terminal::assign_decl_to_scope(Scope* scope) {}
 
+  void Identifier::assign_decl_to_scope(Scope* scope) {
+    Terminal::assign_decl_to_scope(scope);
+  }
+
   void Binop::assign_decl_to_scope(Scope* scope) {
     lhs_->assign_decl_to_scope(scope);
     rhs_->assign_decl_to_scope(scope);

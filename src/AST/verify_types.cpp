@@ -14,7 +14,7 @@ namespace AST {
       expr_type_ = Type::get_void();
       return;
 
-    } else if (token() == "()") {
+    } else if (op_ == Language::Operator::Call) {
       if (!expr_->expr_type_->is_function()) {
         expr_type_ = Type::get_type_error();
         return;
@@ -31,7 +31,7 @@ namespace AST {
       return;
     }
 
-    if (token() == "-") {
+    if (op_ == Language::Operator::Sub) {
       if (expr_->expr_type_ == Type::get_uint()) {
         error_log.log(line_num(), "Negation applied to unsigned integer");
         expr_type_ = Type::get_uint();
@@ -47,7 +47,7 @@ namespace AST {
         expr_type_ = Type::get_type_error();
       }
 
-    } else if (token_ == "!") {
+    } else if (op_ == Language::Operator::Not) {
       if (expr_->expr_type_ != Type::get_bool()) {
         expr_type_ = Type::get_type_error();
 
@@ -73,7 +73,7 @@ namespace AST {
     }
 
 
-    if (token_ == ":>") {
+    if (op_ == Language::Operator::Cast) {
       expr_type_ = rhs_->interpret_as_type();
       if (lhs_->expr_type_ == expr_type_
           || (lhs_->expr_type_ == Type::get_bool()
@@ -89,7 +89,7 @@ namespace AST {
 
       error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());
 
-    } else if (token_ == ".") {
+    } else if (op_ == Language::Operator::Access) {
       if (!rhs_->is_identifier()) {
         error_log.log(line_num_, "Member access (`.`) must access an identifier.");
       }
@@ -102,9 +102,13 @@ namespace AST {
 
       } else {
         auto user_def_type = static_cast<UserDefined*>(lhs_type);
+        // TODO TOKENREMOVAL
+        // rhs_ must be and identifier in this case
         auto member_type = user_def_type->field(rhs_->token());
         if (member_type == nullptr) {
           // TODO better error message
+          // TODO TOKENREMOVAL
+          // rhs_ must be and identifier in this case
           error_log.log(line_num_,
               "Type has no member named `" + rhs_->token() + "`.");
         } else {
@@ -114,13 +118,15 @@ namespace AST {
       }
       return;
 
-    } else if (token_ == "=>") {
+    } else if (op_ == Language::Operator::Rocket) {
       if (lhs_->expr_type_ != Type::get_bool())
         expr_type_ = Type::get_type_error();
 
-    } else if (token_ == "()") {
+    } else if (op_ == Language::Operator::Call) {
       expr_type_ = Type::get_type_error();
       if (!lhs_->expr_type_->is_function()) {
+        // TODO TOKENREMOVAL
+        // TODO lhs might not have a precise token
         error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name a function.");
         return;
       }
@@ -136,9 +142,11 @@ namespace AST {
       
       return;
 
-   } else if (token_ == "[]") {
+   } else if (op_ == Language::Operator::Index) {
       expr_type_ = Type::get_type_error();
       if (!lhs_->expr_type_->is_array()) {
+        // TODO TOKENREMOVAL
+        // TODO lhs might not have a precise token
         error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name an array.");
         return;
       }
@@ -155,15 +163,21 @@ namespace AST {
       
       return;
 
-    } else if (token_ == "<" || token_ == ">" || token_ == "<=" ||
-        token_ == ">=" || token_ == "==" || token_ == "!=") {
+    } else if (op_ == Language::Operator::LessThan
+        || op_ == Language::Operator::LessEq
+        || op_ == Language::Operator::Equal
+        || op_ == Language::Operator::NotEqual
+        || op_ == Language::Operator::GreaterEq
+        || op_ == Language::Operator::GreaterThan) {
       // TODO is this else-if block necessary anymore??
  
       if (lhs_->expr_type_ != rhs_->expr_type_) {
         // If the types don't match give an error message. We can continue
         // because the result must be a bool
+        // TODO TOKENREMOVAL
+        // TODO lhs might not have a precise token
         error_log.log(line_num_,
-            "Type mismatch for comparison operator " + token_ + " ("
+            "Type mismatch for comparison operator " + token() + " ("
             + lhs_->expr_type_->to_string() + " and "
             + rhs_->expr_type_->to_string() + ")");
       }
@@ -173,16 +187,6 @@ namespace AST {
     } else if (lhs_->expr_type_ == rhs_->expr_type_) {
       //Otherwise it's an arithmetic operator
       expr_type_ = lhs_->expr_type_;
-
-    } else if (lhs_->expr_type_ == Type::get_unknown()) {
-      // TODO is this reachable?
-      error_log.log(line_num_, "-Undeclared identifier `" + lhs_->token() + "`");
-      expr_type_ = Type::get_type_error();
-
-    } else if (rhs_->expr_type_ == Type::get_unknown()) {
-      // TODO is this reachable?
-      error_log.log(line_num_, "+Undeclared identifier `" + rhs_->token() + "`");
-      expr_type_ = Type::get_type_error();
 
     } else {
       error_log.log(line_num_,
@@ -372,19 +376,9 @@ namespace AST {
       expr_type_ = Type::get_type_error();
 
     } else if (lhs_->expr_type_ != rhs_->expr_type_) {
-      if (lhs_->expr_type_ == Type::get_unknown()) {
-        // TODO is this reachable?
-        error_log.log(line_num_, "Undeclared identifier `" + lhs_->token() + "`");
-
-      } else if (rhs_->expr_type_ == Type::get_unknown()) {
-        // TODO is this reachable?
-        error_log.log(line_num_, "Undeclared identifier `" + rhs_->token() + "`");
-
-      } else {
-        error_log.log(line_num_, "Type mismatch: "
-            + lhs_->expr_type_->to_string() + " and "
-            + rhs_->expr_type_->to_string());
-      }
+      error_log.log(line_num_, "Type mismatch: "
+          + lhs_->expr_type_->to_string() + " and "
+          + rhs_->expr_type_->to_string());
     }
     expr_type_ = Type::get_void();
   }

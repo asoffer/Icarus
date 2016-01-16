@@ -12,7 +12,7 @@ NPtr ErrorLog::assignment_vs_equality(NPtr node) {
 
   NPtrVec node_vec = {
     std::static_pointer_cast<AST::Node>(assignment_node->lhs_),
-    NPtr(new AST::Node(node->line_num(), Language::generic_operator, "==")),
+    std::make_shared<AST::TokenNode>(node->line_num(), Language::generic_operator, "=="),
     std::static_pointer_cast<AST::Node>(assignment_node->rhs_)
   };
 

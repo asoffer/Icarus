@@ -65,7 +65,7 @@ namespace AST {
       std::cout.flush();
       return nullptr;
 
-    } else if (token() == "-") {
+    } else if (op_ == Language::Operator::Sub) {
       if (type() == Type::get_int()) {
         return Context::Value(-expr_->evaluate(ctx).as_int);
 
@@ -81,7 +81,7 @@ namespace AST {
   Context::Value ChainOp::evaluate(Context& ctx) { 
     if (exprs_[0]->type() == Type::get_bool()) {
       switch (ops_[0]) {
-        case Language::ChainOperator::Xor:
+        case Language::Operator::Xor:
           {
             bool expr_val = false;
             for (auto& expr : exprs_) {
@@ -89,12 +89,12 @@ namespace AST {
             }
             return Context::Value(expr_val);
           }
-        case Language::ChainOperator::And:
+        case Language::Operator::And:
           for (auto& expr : exprs_) {
             if (expr->evaluate(ctx).as_bool) return Context::Value(false);
           }
           return Context::Value(true);
-        case Language::ChainOperator::Or:
+        case Language::Operator::Or:
           for (auto& expr : exprs_) {
             if (expr->evaluate(ctx).as_bool) {
               return Context::Value(true);
@@ -113,17 +113,17 @@ namespace AST {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
         switch (ops_[i]) {
-          case Language::ChainOperator::LessThan:
+          case Language::Operator::LessThan:
             total &= (last.as_int < next.as_int);
-          case Language::ChainOperator::LessEq:
+          case Language::Operator::LessEq:
             total &= (last.as_int <= next.as_int);
-          case Language::ChainOperator::Equal:
+          case Language::Operator::Equal:
             total &= (last.as_int == next.as_int);
-          case Language::ChainOperator::NotEqual:
+          case Language::Operator::NotEqual:
             total &= (last.as_int != next.as_int);
-          case Language::ChainOperator::GreaterThan:
+          case Language::Operator::GreaterThan:
             total &= (last.as_int >= next.as_int);
-          case Language::ChainOperator::GreaterEq:
+          case Language::Operator::GreaterEq:
             total &= (last.as_int > next.as_int);
           default:;
         }
@@ -142,12 +142,12 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
-        if (ops_[i] == Language::ChainOperator::Equal) {
+        if (ops_[i] == Language::Operator::Equal) {
           if (last.as_type != next.as_type) {
             return Context::Value(false);
           }
 
-        } else if (ops_[i] == Language::ChainOperator::NotEqual) {
+        } else if (ops_[i] == Language::Operator::NotEqual) {
           if (last.as_type == next.as_type) {
             return Context::Value(false);
           }
@@ -164,17 +164,17 @@ namespace AST {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
         switch (ops_[i]) {
-          case Language::ChainOperator::LessThan:
+          case Language::Operator::LessThan:
             total &= (last.as_int < next.as_int);
-          case Language::ChainOperator::LessEq:
+          case Language::Operator::LessEq:
             total &= (last.as_int <= next.as_int);
-          case Language::ChainOperator::Equal:
+          case Language::Operator::Equal:
             total &= (last.as_int == next.as_int);
-          case Language::ChainOperator::NotEqual:
+          case Language::Operator::NotEqual:
             total &= (last.as_int != next.as_int);
-          case Language::ChainOperator::GreaterThan:
+          case Language::Operator::GreaterThan:
             total &= (last.as_int >= next.as_int);
-          case Language::ChainOperator::GreaterEq:
+          case Language::Operator::GreaterEq:
             total &= (last.as_int > next.as_int);
           default:;
         }
@@ -250,7 +250,7 @@ namespace AST {
   Context::Value EnumLiteral::evaluate(Context&)     { return nullptr; }
 
   Context::Value Binop::evaluate(Context& ctx) {
-    if (token() == "()") {
+    if (op_ == Language::Operator::Call) {
       if (lhs_->is_identifier()) {
         auto expr_ptr = ctx.get(std::static_pointer_cast<Identifier>(lhs_)).as_expr;
         // TODO must lhs_ be a function?

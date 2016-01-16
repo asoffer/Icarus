@@ -51,138 +51,35 @@ namespace Language {
     { right_brace,              "Right Brace" },
     { left_bracket,             "Left Bracket" },
     { right_bracket,            "Right Bracket" },
-    { reserved_break,           "Break" },
-    { reserved_true,            "True" },
-    { reserved_false,           "False" },
-    { reserved_ascii,           "ASCII" },
-    { reserved_if,              "If" },
-    { reserved_else,            "Else" },
-    { reserved_enum,            "Enum" },
-    { reserved_case,            "Case" },
-    { reserved_import,          "Import" },
-    { reserved_loop,            "Loop" },
-    { reserved_print,           "Print" },
-    { reserved_while,           "While" },
-    { reserved_break,           "Break" },
-    { reserved_continue,        "Continue" },
-    { reserved_return,          "Return" },
-    { reserved_type,            "Type" }
+#define RESERVED_MACRO(res) { reserved_##res, #res },
+#include "config/reserved.conf"
+#undef RESERVED_MACRO
   };
-
-  const std::map<std::string, BinaryOperator> binop_enum_class_name = {
-    { "+",  BinaryOperator::Add },
-    { "-",  BinaryOperator::Sub },
-    { "*",  BinaryOperator::Mul },
-    { "/",  BinaryOperator::Div },
-    { "%",  BinaryOperator::Mod },
-
-    { "()", BinaryOperator::Call },
-    { "[]", BinaryOperator::Index },
-    { ".",  BinaryOperator::Access },
-    { ":>", BinaryOperator::Cast },
-
-    { "->", BinaryOperator::Arrow }
-  };
-
 
   const std::map<std::string, NodeType> reserved_words = {
-    { "ascii",    reserved_ascii },
-    { "true",     reserved_true },
-    { "false",    reserved_false },
-    { "break",    reserved_break },
-    { "if",       reserved_if },
-    { "else",     reserved_else },
-    { "enum",     reserved_enum },
-    { "case",     reserved_case },
-    { "import",   reserved_import },
-    { "loop",     reserved_loop },
-    { "while",    reserved_while },
-    { "break",    reserved_break },
-    { "continue", reserved_continue },
-    { "print",    reserved_print },
-    { "return",   reserved_return },
-    { "type",     reserved_type }
+#define RESERVED_MACRO(res) { #res, reserved_##res },
+#include "config/reserved.conf"
+#undef RESERVED_MACRO
   };
 
   constexpr size_t prec_value(size_t n, size_t assoc) { return (n << 2) + assoc; }
 
   // Associativity stored in the lowest two bits.
 
-  size_t precedence(Language::Operator op) {
-    using Language::Operator;
+  size_t precedence(Operator op) {
     switch (op) {
-      case Operator::Return:       return prec_value(  0,   non_assoc);
-      case Operator::Print:        return prec_value(  0,   non_assoc);
-      case Operator::Comma:        return prec_value(  1, chain_assoc);
-      case Operator::Rocket:       return prec_value(  2,   non_assoc); 
-      case Operator::Assign:       return prec_value(  3,   non_assoc);
-      case Operator::ColonEq:      return prec_value(  3,   non_assoc);
-      case Operator::Colon:        return prec_value(  4,   non_assoc);
-      case Operator::Cast:         return prec_value(  5,  left_assoc);
-      case Operator::Arrow:        return prec_value(  6, right_assoc);
-      case Operator::OrEq:         return prec_value(  7,   non_assoc);
-      case Operator::XorEq:        return prec_value(  8,   non_assoc);
-      case Operator::AndEq:        return prec_value(  9,   non_assoc);
-      case Operator::PlusEq:       return prec_value( 10,   non_assoc);
-      case Operator::SubEq:        return prec_value( 10,   non_assoc);
-      case Operator::MulEq:        return prec_value( 11,   non_assoc);
-      case Operator::DivEq:        return prec_value( 11,   non_assoc);
-      case Operator::ModEq:        return prec_value( 11,   non_assoc);
-      case Operator::Or:           return prec_value( 12, chain_assoc);
-      case Operator::Xor:          return prec_value( 13, chain_assoc);
-      case Operator::And:          return prec_value( 14, chain_assoc);
-      case Operator::LessThan:     return prec_value( 15, chain_assoc);
-      case Operator::LessEq:       return prec_value( 15, chain_assoc);
-      case Operator::Equal:        return prec_value( 15, chain_assoc);
-      case Operator::NotEqual:     return prec_value( 15, chain_assoc);
-      case Operator::GreaterEq:    return prec_value( 15, chain_assoc);
-      case Operator::GreaterThan:  return prec_value( 15, chain_assoc);
-      case Operator::Add:          return prec_value( 16, chain_assoc);
-      case Operator::Sub:          return prec_value( 16, chain_assoc);
-      case Operator::Mul:          return prec_value( 17, chain_assoc);
-      case Operator::Div:          return prec_value( 17, chain_assoc);
-      case Operator::Mod:          return prec_value( 17, chain_assoc);
-      case Operator::At:           return prec_value( 18, chain_assoc);
-      case Operator::Index:        return prec_value( 19, chain_assoc);
-      case Operator::Call:         return prec_value( 19, chain_assoc);
-      case Operator::Dot:          return prec_value( 20, chain_assoc);
-      case Operator::Max:          return prec_value(100, chain_assoc);
+#define OPERATOR_MACRO(name, symbol, prec, assoc) \
+      case Operator::name: return prec_value((prec), (assoc));
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
     }
   }
 
-  const std::map<std::string, size_t> op_prec = {
-    { "return", prec_value(  0,   non_assoc) },
-    { "print",  prec_value(  0,   non_assoc) },
-    { ",",      prec_value(  1, chain_assoc) },
-    { "=>",     prec_value(  2,   non_assoc) }, 
-    { "=",      prec_value(  3,   non_assoc) },
-    { ":=",     prec_value(  3,   non_assoc) },
-    { ":",      prec_value(  4,   non_assoc) },
-    { ":>",     prec_value(  5,  left_assoc) },
-    { "->",     prec_value(  6, right_assoc) },
-    { "|=",     prec_value(  7,   non_assoc) },
-    { "^=",     prec_value(  8,   non_assoc) },
-    { "&=",     prec_value(  9,   non_assoc) },
-    { "+=",     prec_value( 10,   non_assoc) },
-    { "-=",     prec_value( 10,   non_assoc) },
-    { "*=",     prec_value( 11,   non_assoc) },
-    { "/=",     prec_value( 11,   non_assoc) },
-    { "%=",     prec_value( 11,   non_assoc) },
-#define CHAIN_OPERATOR_MACRO(op, sym, prec, assoc) \
-    { #sym , prec_value( (prec) , assoc##_assoc ) },
-#include "config/chain_operators.conf"
-#undef BINARY_OPERATOR_MACRO
-
-#define BINARY_OPERATOR_MACRO(op, sym, prec, assoc) \
-    { #sym , prec_value( (prec) , assoc##_assoc ) },
-#include "config/binary_operators.conf"
-#undef BINARY_OPERATOR_MACRO
-
-    { "@",      prec_value( 18,  left_assoc) },
-    { "[]",     prec_value( 19,  left_assoc) },
-    { "()",     prec_value( 19,  left_assoc) },
-    { ".",      prec_value( 20,  left_assoc) },
-    { "MAX",    prec_value(100,   non_assoc) }
+  const std::map<std::string, Operator> lookup_operator = {
+#define OPERATOR_MACRO(name, symbol, prec, assoc) \
+    { #symbol, Operator::name },
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
   };
 
   // Here is the definition for all rules in the langugae. For a rule to be

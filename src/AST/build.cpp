@@ -5,27 +5,13 @@ namespace AST {
   NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
-    unop_ptr->line_num_ = nodes[0]->line_num_;
+    auto tk_node = std::static_pointer_cast<TokenNode>(nodes[0]);
+    unop_ptr->line_num_ = tk_node->line_num_;
 
     unop_ptr->type_ = Language::expression;
-    if (nodes[0]->node_type() == Language::reserved_return) {
-      unop_ptr->token_ = "return";
-      unop_ptr->op_ = Language::UnaryOperator::Return;
+    unop_ptr->op_ = tk_node->operator_type();
 
-    } else if (nodes[0]->node_type() == Language::reserved_print) {
-      unop_ptr->token_ = "print";
-      unop_ptr->op_ = Language::UnaryOperator::Print;
-
-    } else {
-      unop_ptr->token_ = nodes[0]->token();
-      if (unop_ptr->token_ == "-") {
-        unop_ptr->op_ = Language::UnaryOperator::Neg;
-      } else if (unop_ptr->token_ == "!") {
-        unop_ptr->op_ = Language::UnaryOperator::Not;
-      }
-    }
-
-    unop_ptr->precedence_ = Language::op_prec.at(unop_ptr->token());
+    unop_ptr->precedence_ = Language::precedence(unop_ptr->op_);
 
     return unop_ptr;
   }
@@ -37,17 +23,14 @@ namespace AST {
     unop_ptr->expr_ =
       std::static_pointer_cast<Expression>(nodes[0]);
 
-    unop_ptr->token_ = "()";
     unop_ptr->type_ = Language::expression;
-    unop_ptr->op_ = Language::UnaryOperator::Call;
-
-    unop_ptr->precedence_ = Language::op_prec.at("()");
+    unop_ptr->op_ = Language::Operator::Call;
+    unop_ptr->precedence_ = Language::precedence(unop_ptr->op_);
 
     return unop_ptr;
   }
 
-  NPtr Binop::build_operator(NPtrVec&& nodes, std::string op_symbol,
-      Language::BinaryOperator op_class) {
+  NPtr Binop::build_operator(NPtrVec&& nodes, Language::Operator op_class) {
     auto binop_ptr = std::make_shared<Binop>();
     binop_ptr->line_num_ = nodes[1]->line_num_;
 
@@ -57,18 +40,34 @@ namespace AST {
     binop_ptr->rhs_ =
       std::static_pointer_cast<Expression>(nodes[2]);
 
-    binop_ptr->token_ = op_symbol;
     binop_ptr->type_ = Language::generic_operator;
     binop_ptr->op_ = op_class;
 
-    binop_ptr->precedence_ = Language::op_prec.at(op_symbol);
+    binop_ptr->precedence_ = Language::precedence(binop_ptr->op_);
 
     return binop_ptr;
   }
 
+  NPtr Binop::build(NPtrVec&& nodes) {
+    auto op = std::static_pointer_cast<TokenNode>(nodes[1]);
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), op->operator_type());
+  }
+
+  NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), Language::Operator::Call);
+  }
+
+  NPtr Binop::build_bracket_operator(NPtrVec&& nodes) {
+    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), Language::Operator::Index);
+  }
+
+
+
   NPtr ChainOp::join(NPtrVec&& nodes) {
+    // TODO FIXME
     auto lhs_prec = std::static_pointer_cast<Expression>(nodes[0])->precedence();
-    auto op_prec = Language::op_prec.at(nodes[1]->token());
+    auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
+    auto op_prec = Language::precedence(op_node->operator_type());
     auto rhs_prec = std::static_pointer_cast<Expression>(nodes[2])->precedence();
 
     if (lhs_prec == op_prec && op_prec == rhs_prec) {
@@ -76,31 +75,8 @@ namespace AST {
 
       auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
 
-      const std::string& token = nodes[1]->token();
-      // TODO move to lookup table
-      if (token == "<") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
-      } else if (token == "<=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
-      } else if (token == "==") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
-      } else if (token == "!=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
-      } else if (token == ">=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
-      } else if (token == ">") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
-      } else if (token == "|") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Or);
-      } else if (token == "^") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
-      } else if (token == "&") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::And);
-      } else if (token == ",") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
-      }
-
-
+      chain_ptr->ops_.push_back(op_node->operator_type());
+      
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
           std::make_move_iterator(rhs->ops_.begin()),
           std::make_move_iterator(rhs->ops_.end()));
@@ -122,25 +98,25 @@ namespace AST {
       const std::string& token = nodes[1]->token();
       // TODO move to lookup table
       if (token == "<") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
+        chain_ptr->ops_.push_back(Language::Operator::LessThan);
       } else if (token == "<=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
+        chain_ptr->ops_.push_back(Language::Operator::LessEq);
       } else if (token == "==") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
+        chain_ptr->ops_.push_back(Language::Operator::Equal);
       } else if (token == "!=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
+        chain_ptr->ops_.push_back(Language::Operator::NotEqual);
       } else if (token == ">=") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
+        chain_ptr->ops_.push_back(Language::Operator::GreaterEq);
       } else if (token == ">") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
+        chain_ptr->ops_.push_back(Language::Operator::GreaterThan);
       } else if (token == "|") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Or);
+        chain_ptr->ops_.push_back(Language::Operator::Or);
       } else if (token == "^") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
+        chain_ptr->ops_.push_back(Language::Operator::Xor);
       } else if (token == "&") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::And);
+        chain_ptr->ops_.push_back(Language::Operator::And);
       } else if (token == ",") {
-        chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
+        chain_ptr->ops_.push_back(Language::Operator::Comma);
       }
 
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
@@ -155,6 +131,9 @@ namespace AST {
   }
 
   NPtr ChainOp::build(NPtrVec&& nodes) {
+    auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
+    auto op_prec = Language::precedence(op_node->operator_type());
+
     std::shared_ptr<ChainOp> chain_ptr(nullptr);
 
     // Add to a chain so long as the precedence levels match. The only thing at
@@ -163,7 +142,7 @@ namespace AST {
     if (use_old_chain_op) {
       ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
 
-      if (lhs_ptr->precedence() != Language::op_prec.at(nodes[1]->token())) {
+      if (lhs_ptr->precedence() != op_prec) {
         use_old_chain_op = false;
       }
     }
@@ -176,31 +155,31 @@ namespace AST {
       chain_ptr->line_num_ = nodes[1]->line_num_;
 
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
-      chain_ptr->precedence_ = Language::op_prec.at(nodes[1]->token());
+      chain_ptr->precedence_ = op_prec;
     }
 
     const std::string& token = nodes[1]->token();
     // TODO move to lookup table
     if (token == "<") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::LessThan);
+      chain_ptr->ops_.push_back(Language::Operator::LessThan);
     } else if (token == "<=") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::LessEq);
+      chain_ptr->ops_.push_back(Language::Operator::LessEq);
     } else if (token == "==") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::Equal);
+      chain_ptr->ops_.push_back(Language::Operator::Equal);
     } else if (token == "!=") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::NotEqual);
+      chain_ptr->ops_.push_back(Language::Operator::NotEqual);
     } else if (token == ">=") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::GreaterEq);
+      chain_ptr->ops_.push_back(Language::Operator::GreaterEq);
     } else if (token == ">") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::GreaterThan);
+      chain_ptr->ops_.push_back(Language::Operator::GreaterThan);
     } else if (token == "|") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::Or);
+      chain_ptr->ops_.push_back(Language::Operator::Or);
     } else if (token == "^") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::Xor);
+      chain_ptr->ops_.push_back(Language::Operator::Xor);
     } else if (token == "&") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::And);
+      chain_ptr->ops_.push_back(Language::Operator::And);
     } else if (token == ",") {
-      chain_ptr->ops_.push_back(Language::ChainOperator::Comma);
+      chain_ptr->ops_.push_back(Language::Operator::Comma);
     }
 
 
@@ -212,7 +191,8 @@ namespace AST {
 
   NPtr ArrayLiteral::build(NPtrVec&& nodes) {
     auto array_lit_ptr = std::make_shared<ArrayLiteral>();
-    array_lit_ptr->precedence_ = Language::op_prec.at("MAX");
+    array_lit_ptr->precedence_ =
+      Language::precedence(Language::Operator::NotAnOperator);
     array_lit_ptr->line_num_ = nodes[0]->line_num_;
 
     if (nodes[1]->is_comma_list()) {
@@ -236,8 +216,7 @@ namespace AST {
         array_type_ptr->line_num_ = (*iter)->line_num();
         array_type_ptr->len_ = *iter;
 
-        array_type_ptr->token_ = "";
-        array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+        array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
 
         array_type_ptr->array_type_ = prev;
         prev = EPtr(array_type_ptr);
@@ -255,8 +234,7 @@ namespace AST {
       array_type_ptr->array_type_ =
         std::static_pointer_cast<Expression>(nodes[3]);
 
-      array_type_ptr->token_ = "";
-      array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+      array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
 
       return array_type_ptr;
     }
@@ -272,22 +250,60 @@ namespace AST {
     array_type_ptr->array_type_ =
       std::static_pointer_cast<Expression>(nodes[3]);
 
-    array_type_ptr->token_ = "";
-    array_type_ptr->precedence_ = Language::op_prec.at("MAX");
+    array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
 
     return array_type_ptr;
   }
 
   NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
+    // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num_ = nodes[0]->line_num_;
     term_ptr->terminal_type_ = term_type;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
-    term_ptr->precedence_ = Language::op_prec.at("MAX");
+    term_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
 
     return term_ptr;
   }
+
+  NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
+    return build(Language::Terminal::Type, std::forward<NPtrVec&&>(nodes), Type::get_type());
+  }
+
+  NPtr Terminal::build_true(NPtrVec&& nodes) {
+    return build(Language::Terminal::True, std::forward<NPtrVec&&>(nodes), Type::get_bool());
+  }
+
+  NPtr Terminal::build_false(NPtrVec&& nodes) {
+    return build(Language::Terminal::False, std::forward<NPtrVec&&>(nodes), Type::get_bool());
+  }
+
+  NPtr Terminal::build_unsigned_integer_literal(NPtrVec&& nodes) {
+    return build(Language::Terminal::UInt, std::forward<NPtrVec&&>(nodes), Type::get_uint());
+  }
+
+  NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
+    return build(Language::Terminal::Int, std::forward<NPtrVec&&>(nodes), Type::get_int());
+  }
+
+  NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
+    return build(Language::Terminal::Real, std::forward<NPtrVec&&>(nodes), Type::get_real());
+  }
+
+  NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
+    return build(Language::Terminal::Char, std::forward<NPtrVec&&>(nodes), Type::get_char());
+  }
+
+  NPtr Terminal::build_void_return(NPtrVec&& nodes) {
+    return build(Language::Terminal::Return, std::forward<NPtrVec&&>(nodes), Type::get_void());
+  }
+
+  NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
+    return build(Language::Terminal::ASCII, std::forward<NPtrVec&&>(nodes), Type::get_function(Type::get_uint(), Type::get_char()));
+  }
+
+
 
   NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = std::make_shared<Assignment>();
@@ -296,28 +312,39 @@ namespace AST {
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
-    assign_ptr->token_ = nodes[1]->token();
+    auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
+    assign_ptr->op_ = op_node->operator_type();
     assign_ptr->type_ = Language::assign_operator;
 
-    assign_ptr->precedence_ = Language::op_prec.at(assign_ptr->token_);
+    assign_ptr->precedence_ = Language::precedence(assign_ptr->op_);
 
     return assign_ptr;
   }
 
-  NPtr Declaration::build(NPtrVec&& nodes,
-      const std::string& op, Language::NodeType node_type, bool infer) {
-
+  NPtr Declaration::build(NPtrVec&& nodes, Language::NodeType node_type, bool infer) {
     auto decl_ptr = Scope::make_declaration(nodes[1]->line_num_, nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
-    decl_ptr->token_ = op;
     decl_ptr->type_ = node_type;
 
-    decl_ptr->precedence_ = Language::op_prec.at(op);
+    decl_ptr->op_ = infer
+      ? Language::Operator::ColonEq
+      : Language::Operator::Colon;
+    
+    decl_ptr->precedence_ = Language::precedence(decl_ptr->op_);
     decl_ptr->infer_type_ = infer;
 
     return std::static_pointer_cast<Node>(decl_ptr);
   }
+
+  NPtr Declaration::build_decl(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec&&>(nodes), Language::decl_operator, false);
+  }
+
+  NPtr Declaration::build_assign(NPtrVec&& nodes) {
+    return build(std::forward<NPtrVec&&>(nodes), Language::decl_assign_operator, true);
+  }
+
 
   NPtr KVPairList::build_one(NPtrVec&& nodes) {
     auto pair_list = std::make_shared<KVPairList>();
@@ -329,7 +356,8 @@ namespace AST {
       key_ptr->line_num_ = nodes[0]->line_num();
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
-      key_ptr->precedence_ = Language::op_prec.at("MAX");
+      key_ptr->precedence_ = 
+        Language::precedence(Language::Operator::NotAnOperator);
 
     } else {
       key_ptr = std::static_pointer_cast<Expression>(nodes[0]);
@@ -350,7 +378,8 @@ namespace AST {
       key_ptr->line_num_ = nodes[1]->line_num();
       key_ptr->expr_type_ = Type::get_bool();
       key_ptr->token_ = "else";
-      key_ptr->precedence_ = Language::op_prec.at("MAX");
+      key_ptr->precedence_ = 
+        Language::precedence(Language::Operator::NotAnOperator);
 
     } else {
       key_ptr = std::static_pointer_cast<Expression>(nodes[1]);
@@ -361,6 +390,16 @@ namespace AST {
     pair_list->kv_pairs_.emplace_back(std::move(key_ptr), std::move(val_ptr));
 
     return pair_list;
+  }
+
+  NPtr KVPairList::build_one_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build_one(std::forward<NPtrVec&&>(nodes));
+  }
+
+  NPtr KVPairList::build_more_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build_more(std::forward<NPtrVec&&>(nodes));
   }
 
   NPtr FunctionLiteral::build(NPtrVec&& nodes) {

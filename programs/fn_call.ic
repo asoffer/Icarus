@@ -3,5 +3,5 @@ f := (n : int) -> real {
 }
 
 main := void -> void {
-  f(5)
+  print f(5)
 }

@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <memory>
+#include <type_traits>
 
 namespace AST {
   class Node;

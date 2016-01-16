@@ -46,25 +46,16 @@ namespace AST {
     //TODO remove dependence on token() altogether
 
     switch (terminal_type_) {
-      case Language::Terminal::ASCII:
-        return builtin::ascii();
-      case Language::Terminal::Return:
-        scope->make_return(nullptr);
-        return nullptr;  // This expression has type void
-      case Language::Terminal::True:
-        return data::const_true();
-      case Language::Terminal::False:
-        return data::const_false();
-      case Language::Terminal::Character:
-        return data::const_char(token()[0]);
-      case Language::Terminal::Integer:
-        return data::const_int(std::stoi(token()));
-      case Language::Terminal::Real:
-        return data::const_real(std::stod(token()));
-      case Language::Terminal::Type:
-        return nullptr;
-      case Language::Terminal::UnsignedInteger:
-        return data::const_uint(std::stoul(token()));
+      using Language::Terminal;
+      case Terminal::ASCII:  return builtin::ascii();
+      case Terminal::True:   return data::const_true();
+      case Terminal::False:  return data::const_false();
+      case Terminal::Char:   return data::const_char(token()[0]);
+      case Terminal::Int:    return data::const_int(std::stoi(token()));
+      case Terminal::Real:   return data::const_real(std::stod(token()));
+      case Terminal::UInt:   return data::const_uint(std::stoul(token()));
+      case Terminal::Type:   return nullptr;
+      case Terminal::Return: return nullptr;
     }
   }
 
@@ -75,38 +66,34 @@ namespace AST {
 
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op_) {
-      case Language::UnaryOperator::Neg:
-        return expr_->type()->call_neg (bldr, val);
-      case Language::UnaryOperator::Not:
-        return expr_->type()->call_not (bldr, val);
-      case Language::UnaryOperator::Call:
+      using Language::Operator;
+      case Operator::Sub:    return expr_->type()->call_neg(bldr, val);
+      case Operator::Not:    return expr_->type()->call_not(bldr, val);
+      case Operator::Return: scope->make_return(val); return nullptr;
+      case Operator::Call:
         return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
-      case Language::UnaryOperator::Print:
+      case Operator::Print:
         // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
         if (expr_->type() == Type::get_type()) {
-          val  = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+          val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
         }
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
 
-      case Language::UnaryOperator::Return:
-        scope->make_return(val);
-        return nullptr;
+      default: return nullptr;
     }
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
+    using Language::Operator;
     switch (op_) {
-      case Language::BinaryOperator::Index:
+      case Operator::Index:
         return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
 
-      case Language::BinaryOperator::Access:
-        if (lhs_->type()->is_user_defined()) {
-          return scope->builder().CreateLoad(generate_lvalue(scope));
-
-        } else {
-          return nullptr;
-        }
+      case Operator::Access:
+        return (lhs_->type()->is_user_defined())
+          ? scope->builder().CreateLoad(generate_lvalue(scope))
+          : nullptr;
 
       default:;
     }
@@ -122,10 +109,10 @@ namespace AST {
 
 
     switch (op_) {
-      case Language::BinaryOperator::Cast:
+      case Operator::Cast:
         return lhs_->type()->call_cast(scope->builder(), lhs_val, rhs_->interpret_as_type());
     
-      case Language::BinaryOperator::Call:
+      case Operator::Call:
         if (lhs_->type()->is_function()) {
           std::vector<llvm::Value*> arg_vals;
           if (rhs_->is_comma_list()) {
@@ -160,16 +147,11 @@ namespace AST {
 
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op_) {
-      case Language::BinaryOperator::Add:
-        return type()->call_add(bldr, lhs_val, rhs_val);
-      case Language::BinaryOperator::Sub:
-        return type()->call_sub(bldr, lhs_val, rhs_val);
-      case Language::BinaryOperator::Mul:
-        return type()->call_mul(bldr, lhs_val, rhs_val);
-      case Language::BinaryOperator::Div:
-        return type()->call_div(bldr, lhs_val, rhs_val);
-      case Language::BinaryOperator::Mod:
-        return type()->call_mod(bldr, lhs_val, rhs_val);
+      case Operator::Add: return type()->call_add(bldr, lhs_val, rhs_val);
+      case Operator::Sub: return type()->call_sub(bldr, lhs_val, rhs_val);
+      case Operator::Mul: return type()->call_mul(bldr, lhs_val, rhs_val);
+      case Operator::Div: return type()->call_div(bldr, lhs_val, rhs_val);
+      case Operator::Mod: return type()->call_mod(bldr, lhs_val, rhs_val);
       default:;
     }
 
@@ -186,6 +168,8 @@ namespace AST {
   }
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
+    using Language::Operator;
+
     // TODO short-circuiting
     if (exprs_[0]->type() == Type::get_type()) {
       Context ctx = Context::GlobalContext.spawn();
@@ -204,18 +188,12 @@ namespace AST {
 
         // TODO early exit
         switch (ops_[i - 1]) {
-          case Language::ChainOperator::LessThan:
-            cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
-          case Language::ChainOperator::LessEq:
-            cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
-          case Language::ChainOperator::Equal:
-            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-          case Language::ChainOperator::NotEqual:
-            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
-          case Language::ChainOperator::GreaterEq:
-            cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
-          case Language::ChainOperator::GreaterThan:
-            cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:    cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
+          case Operator::LessEq:      cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
+          case Operator::Equal:       cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          case Operator::NotEqual:    cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
+          case Operator::GreaterEq:   cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
+          case Operator::GreaterThan: cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
           default:;
         }
 
@@ -231,18 +209,12 @@ namespace AST {
 
         // TODO early exit
         switch (ops_[i - 1]) {
-          case Language::ChainOperator::LessThan:
-            cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp");
-          case Language::ChainOperator::LessEq:
-            cmp_val = bldr.CreateICmpULE(lhs_val, rhs_val, "letmp");
-          case Language::ChainOperator::Equal:
-            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-          case Language::ChainOperator::NotEqual:
-            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
-          case Language::ChainOperator::GreaterEq:
-            cmp_val = bldr.CreateICmpUGE(lhs_val, rhs_val, "getmp");
-          case Language::ChainOperator::GreaterThan:
-            cmp_val = bldr.CreateICmpUGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:    cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp");
+          case Operator::LessEq:      cmp_val = bldr.CreateICmpULE(lhs_val, rhs_val, "letmp");
+          case Operator::Equal:       cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
+          case Operator::NotEqual:    cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
+          case Operator::GreaterEq:   cmp_val = bldr.CreateICmpUGE(lhs_val, rhs_val, "getmp");
+          case Operator::GreaterThan: cmp_val = bldr.CreateICmpUGT(lhs_val, rhs_val, "gttmp");
           default:;
         }
 
@@ -259,18 +231,12 @@ namespace AST {
         // TODO early exit
         // TODO should these be ordered, or can they be QNAN? probably.
         switch (ops_[i - 1]) {
-          case Language::ChainOperator::LessThan:
-            cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
-          case Language::ChainOperator::LessEq:
-            cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
-          case Language::ChainOperator::Equal:
-            cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
-          case Language::ChainOperator::NotEqual:
-            cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
-          case Language::ChainOperator::GreaterEq:
-            cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
-          case Language::ChainOperator::GreaterThan:
-            cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:    cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
+          case Operator::LessEq:      cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
+          case Operator::Equal:       cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
+          case Operator::NotEqual:    cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
+          case Operator::GreaterEq:   cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
+          case Operator::GreaterThan: cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
           default:;
         }
 
@@ -281,7 +247,7 @@ namespace AST {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.
       auto cmp_val = lhs_val;
-      if (ops_.front() == Language::ChainOperator::Xor) {
+      if (ops_.front() == Language::Operator::Xor) {
         for (size_t i = 1; i < exprs_.size(); ++i) {
           auto expr = exprs_[i];
           auto rhs_val = expr->generate_code(scope);
@@ -293,24 +259,24 @@ namespace AST {
         std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
         for (auto& block : cond_blocks) {
           block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "cond_block", parent_fn);
+            llvm::getGlobalContext(), "cond.block", parent_fn);
         }
 
         // Landing blocks
         auto land_true_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "land_true", parent_fn);
+            llvm::getGlobalContext(), "land.true", parent_fn);
         auto land_false_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "land_false", parent_fn);
+            llvm::getGlobalContext(), "land.false", parent_fn);
         auto merge_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "merge_block", parent_fn);
+            llvm::getGlobalContext(), "merge.block", parent_fn);
 
-        if (ops_.front() == Language::ChainOperator::And) {
+        if (ops_.front() == Language::Operator::And) {
           for (size_t i = 0; i < ops_.size(); ++i) {
             bldr.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
             bldr.SetInsertPoint(cond_blocks[i]);
             cmp_val = exprs_[i + 1]->generate_code(scope);
           }
-        } else {  // if (ops_.front() == Language::ChainOperator::Or) {
+        } else {  // if (ops_.front() == Language::Operator::Or) {
           for (size_t i = 0; i < ops_.size(); ++i) {
             bldr.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
             bldr.SetInsertPoint(cond_blocks[i]);
@@ -391,6 +357,7 @@ namespace AST {
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
       auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
+      // TODO TOKENREMOVAL
       fn->llvm_function_ = global_module->getFunction(lhs->token());
 
       val = rhs->generate_code(scope);
@@ -416,54 +383,18 @@ namespace AST {
   }
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
-
-    if (token().size() == 2) {  // +=, &=, etc
-      char main_op = token()[0];
+    using Language::Operator;
+    if (op_ == Operator::OrEq
+        || op_ == Operator::XorEq
+        || op_ == Operator::AndEq
+        || op_ == Operator::AddEq
+        || op_ == Operator::SubEq
+        || op_ == Operator::MulEq
+        || op_ == Operator::DivEq
+        || op_ == Operator::ModEq) {
 
       auto lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;
-
-      if (lhs_->type() == Type::get_bool()) {
-        if (main_op == '^') {
-          auto lval = lhs_->generate_lvalue(scope);
-          if (lval == nullptr) return nullptr;
-
-          auto rhs_val = rhs_->generate_code(scope);
-          if (rhs_val == nullptr) return nullptr;
-
-          scope->builder().CreateStore(scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
-        } else {
-          //TODO An optimization technique would be to only do short-circuiting
-          // here if the thing we're avoiding is more expensive than the branch.
-
-          auto parent_fn = scope->builder().GetInsertBlock()->getParent();
-          auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
-          auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
-
-          // Assumption is that only operators of type (bool, bool) -> bool are
-          // '&', '|', and '^'
-          llvm::BasicBlock* true_block = (main_op == '&' ? more_block : merge_block);
-          llvm::BasicBlock* false_block = (main_op == '|' ? more_block : merge_block);
-
-          scope->builder().CreateCondBr(lhs_val, true_block, false_block);
-
-          scope->builder().SetInsertPoint(more_block);
-
-          // Generating lvalue for storage
-          auto lval = lhs_->generate_lvalue(scope);
-          if (lval == nullptr) return nullptr;
-
-          auto rhs_val = rhs_->generate_code(scope);
-          if (rhs_val == nullptr) return nullptr;
-
-          scope->builder().CreateStore(rhs_val, lval);
-          scope->builder().CreateBr(merge_block);
-
-          scope->builder().SetInsertPoint(merge_block);
-        }
-
-        return nullptr;
-      }
 
       auto lval = lhs_->generate_lvalue(scope);
       if (lval == nullptr) return nullptr;
@@ -471,40 +402,71 @@ namespace AST {
       auto rhs_val = rhs_->generate_code(scope);
       if (rhs_val == nullptr) return nullptr;
 
-      if (lhs_->type() == Type::get_int()) {
-        llvm::Value* computed_val = nullptr;
-        switch (main_op) {
-          case '+': computed_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); break;
-          case '-': computed_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); break;
-          case '*': computed_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); break;
-          case '/': computed_val = scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
-          case '%': computed_val = scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); break;
+      if (lhs_->type() == Type::get_bool()) {
+        switch (op_) {
+          case Operator::XorEq:
+            scope->builder().CreateStore(scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+          case Operator::AndEq:
+          case Operator::OrEq:
+            {
+              auto parent_fn = scope->builder().GetInsertBlock()->getParent();
+              auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
+              auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+
+              // Assumption is that only operators of type (bool, bool) -> bool are '&', '|', and '^'
+              llvm::BasicBlock* true_block  = (op_ == Operator::AndEq) ? more_block : merge_block;
+              llvm::BasicBlock* false_block = (op_ == Operator::OrEq)  ? more_block : merge_block;
+
+              scope->builder().CreateCondBr(lhs_val, true_block, false_block);
+              scope->builder().SetInsertPoint(more_block);
+
+              // Generating lvalue for storage
+              scope->builder().CreateStore(rhs_val, lval);
+              scope->builder().CreateBr(merge_block);
+
+              scope->builder().SetInsertPoint(merge_block);
+            }
+          default:;
+        }
+
+        return nullptr;
+
+      } else if (lhs_->type() == Type::get_int()) {
+        llvm::Value* comp_val = nullptr;
+        switch (op_) {
+          case Operator::AddEq: comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
+          case Operator::SubEq: comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
+          case Operator::MulEq: comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
+          case Operator::DivEq: comp_val = scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
+          case Operator::ModEq: comp_val = scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); break;
           default: return nullptr;
         }
-        scope->builder().CreateStore(computed_val, lval);
+        scope->builder().CreateStore(comp_val, lval);
         return nullptr;
 
       } else if (lhs_->type() == Type::get_uint()) {
-        llvm::Value* computed_val = nullptr;
-        switch (main_op) {
-          case '+': computed_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp"); break;
-          case '-': computed_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp"); break;
-          case '*': computed_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp"); break;
-          case '/': computed_val = scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); break;
-          case '%': computed_val = scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); break;
+        llvm::Value* comp_val = nullptr;
+        switch (op_) {
+          case Operator::AddEq: comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
+          case Operator::SubEq: comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
+          case Operator::MulEq: comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
+          case Operator::DivEq: comp_val = scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); break;
+          case Operator::ModEq: comp_val = scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); break;
           default: return nullptr;
         }
-        scope->builder().CreateStore(computed_val, lval);
+        scope->builder().CreateStore(comp_val, lval);
         return nullptr;
 
       } else if (type() == Type::get_real()) {
-        switch (main_op) {
-          case '+': scope->builder().CreateStore(scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"), lval); break;
-          case '-': scope->builder().CreateStore(scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"), lval); break;
-          case '*': scope->builder().CreateStore(scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"), lval); break;
-          case '/': scope->builder().CreateStore(scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"), lval); break;
-          default:;
+        llvm::Value* comp_val = nullptr;
+        switch (op_) {
+          case Operator::AddEq: comp_val = scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); break;
+          case Operator::SubEq: comp_val = scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); break;
+          case Operator::MulEq: comp_val = scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); break;
+          case Operator::DivEq: comp_val = scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); break;
+          default: return nullptr;
         }
+        scope->builder().CreateStore(comp_val, lval);
         return nullptr;
       }
     }
@@ -696,13 +658,8 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* TypeLiteral::generate_code(Scope* scope) {
-    return nullptr;
-  }
-
-  llvm::Value* EnumLiteral::generate_code(Scope* scope) {
-    return nullptr;
-  }
+  llvm::Value* TypeLiteral::generate_code(Scope* scope) { return nullptr; }
+  llvm::Value* EnumLiteral::generate_code(Scope* scope) { return nullptr; }
 
   llvm::Value* Break::generate_code(Scope* scope) {
     auto scope_ptr = scope;

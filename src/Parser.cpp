@@ -149,35 +149,19 @@ bool Parser::should_shift() {
   if (Language::is_binary_operator(ahead_type) && stack_.size() >= 2
       && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
 
-    // TODO FIXME hacky solution while removing token_ from node
-    size_t lhs_prec, rhs_prec;
-//    if (stack_[stack_.size() - 2]->token() == "") {
-//      auto eptr = std::static_pointer_cast<AST::Expression>(stack_[stack_.size() - 2]);
-//      lhs_prec = eptr->precedence();
-//      rhs_prec = Language::op_prec.at(lookahead_->token());
-//    } else {
-#if DEBUG
-    // .at() is more expensive, and should only be used in debug mode
-    auto node = stack_[stack_.size() - 2];
-    auto token = node->token();
-    if (Language::op_prec.find(token) == Language::op_prec.end()) {
-      std::cout << "!!" << token  << "!!" << stack_.size() << std::endl;
-      if (node->is_expression()) {
-        std::cout << "yes" << std::endl;
-      } else {
-        std::cout << "no" << std::endl;
-        std::cout << node->line_num() << std::endl;
-      }
-      std::cout << node->node_type() << std::endl;
-      
+    size_t lhs_prec;
+    size_t rhs_prec = Language::precedence(lookahead_->operator_type());
+
+    const auto& prev_node = stack_[stack_.size() - 2];
+    if (prev_node->is_token_node()) {
+      auto prev_token_node =
+        std::static_pointer_cast<AST::TokenNode>(prev_node);
+      lhs_prec = Language::precedence(prev_token_node->operator_type());
+
+    } else {
+      std::cout << "FATAL: Previous node is not a token node." << std::endl;
+      lhs_prec = 0;
     }
-    lhs_prec = Language::op_prec.at(stack_[stack_.size() - 2]->token());
-    rhs_prec = Language::op_prec.at(lookahead_->token());
-#else
-    lhs_prec = Language::op_prec[stack_[stack_.size() - 2]->token()];
-    rhs_prec = Language::op_prec[lookahead_->token()];
-#endif
-//    }
 
     if (lhs_prec != rhs_prec) return lhs_prec < rhs_prec;
 

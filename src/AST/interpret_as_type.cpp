@@ -6,7 +6,7 @@ namespace AST {
   }
 
   Type* Binop::interpret_as_type() {
-    if (token() == "->") {
+    if (op_ == Language::Operator::Arrow) {
       return Type::get_function(
           lhs_->interpret_as_type(),
           rhs_->interpret_as_type());
@@ -28,7 +28,7 @@ namespace AST {
     // In order for a ChainOp to even be created, ops_.front() must exist.
     // Because nothing has the same precedence levels as a comma, if the
     // first op is a comma, they all are.
-    if (ops_.front() == Language::ChainOperator::Comma) {
+    if (ops_.front() == Language::Operator::Comma) {
       // Create a vector to hold the types so that we can pass it in to the
       // tuple constructor. We know how big it needs to be, so we make it
       // that big to begin with.
@@ -55,10 +55,15 @@ namespace AST {
     return Type::get_type_error();
   }
 
+  Type* Declaration::interpret_as_type() {
+    return decl_type_->interpret_as_type();
+  }
+
   Type* Terminal::interpret_as_type() {
     if (type() == Type::get_type()) {
 
       // TODO Lookup table as part of Type class
+      // TODO TOKENREMOVAL
       if (token() == "bool") return Type::get_bool();
       if (token() == "char") return Type::get_char();
       if (token() == "int") return Type::get_int();

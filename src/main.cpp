@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
   // Reserve enough space forr all of them to avoid unneeded copies
   size_t num_statements = 0;
   for (const auto& kv : ast_map) {
-    num_statements = kv.second->size();
+    num_statements += kv.second->size();
   }
   global_statements->reserve(num_statements);
 
@@ -199,7 +199,7 @@ int main(int argc, char *argv[]) {
   // messages, so we don't exit just yet.
   Scope::Scope::verify_no_shadowing();
   // Associate to each identifier its type.
-  Scope::Scope::determine_declared_types();
+  Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;
@@ -212,7 +212,7 @@ int main(int argc, char *argv[]) {
   global_scope->initialize();
   global_statements->generate_code(global_scope);
 
-  Scope::Scope::determine_declared_types();
+  Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;

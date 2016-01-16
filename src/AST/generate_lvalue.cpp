@@ -26,16 +26,18 @@ namespace AST {
   llvm::Value* EnumLiteral::generate_lvalue(Scope*)     { return nullptr; }
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
-    if (token() == "[]" && lhs_->type()->is_array()) {
+    if (op_ == Language::Operator::Index && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
       return scope->builder().CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
 
-    } else if (token() == "." && lhs_->type()->is_user_defined()) {
+    } else if (op_ == Language::Operator::Access && lhs_->type()->is_user_defined()) {
       auto lhs_type = static_cast<UserDefined*>(lhs_->type());
       auto lhs_lval = lhs_->generate_lvalue(scope);
 
+      // TODO TOKENREMOVAL
+      // rhs must needs to be an identifier in this case. use this to access token()
       return scope->builder().CreateGEP(lhs_type->llvm(), lhs_lval,
           { data::const_uint(0), lhs_type->field_num(rhs_->token()) });
     }

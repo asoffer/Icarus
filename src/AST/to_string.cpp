@@ -59,7 +59,6 @@ namespace AST {
 
   std::string Unop::to_string(size_t n) const {
     return tabs(n) + "<Unop " + expr_type_->to_string() + ": '"
-      + (token_ == "" ? Language::show_name.at(type_) : token_)
       + "', prec: " + std::to_string(precedence_) + ">\n"
       + expr_->to_string(n + 1);
   }
@@ -67,7 +66,6 @@ namespace AST {
   std::string Binop::to_string(size_t n) const {
     std::string output = 
       tabs(n) + "<Binop " + expr_type_->to_string() + ": '"
-      + (token_ == "" ? Language::show_name.at(type_) : token_)
       + "', prec: " + std::to_string(precedence_) + ">\n";
 
     output += lhs_->to_string(n + 1);
