@@ -29,6 +29,19 @@ namespace AST {
     } else if (expr_->type() == Type::get_type_error()) {
       expr_type_ = Type::get_type_error();
       return;
+
+    } else if (op_ == Language::Operator::At) {
+      if (expr_->type()->is_pointer()) {
+        expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
+
+      } else {
+       error_log.log(line_num(), "Dereferencing object of type " + expr_->type()->to_string() + ", which is not a pointer.");
+      }
+
+    } else if (op_ == Language::Operator::And) { // Indirection '&'
+      // TODO disallow pointers to goofy things
+      expr_type_ = Type::get_pointer(expr_->type());
+      return;
     }
 
     if (op_ == Language::Operator::Sub) {

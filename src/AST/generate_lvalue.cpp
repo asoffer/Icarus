@@ -32,14 +32,16 @@ namespace AST {
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
       return scope->builder().CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
 
-    } else if (op_ == Language::Operator::Access && lhs_->type()->is_user_defined()) {
-      auto lhs_type = static_cast<UserDefined*>(lhs_->type());
-      auto lhs_lval = lhs_->generate_lvalue(scope);
+    } else if (op_ == Language::Operator::Access) {
+      if (lhs_->type()->is_user_defined()) {
+        auto lhs_type = static_cast<UserDefined*>(lhs_->type());
+        auto lhs_lval = lhs_->generate_lvalue(scope);
 
-      // TODO TOKENREMOVAL
-      // rhs must needs to be an identifier in this case. use this to access token()
-      return scope->builder().CreateGEP(lhs_type->llvm(), lhs_lval,
-          { data::const_uint(0), lhs_type->field_num(rhs_->token()) });
+        // TODO TOKENREMOVAL
+        // rhs must needs to be an identifier in this case. use this to access token()
+        return scope->builder().CreateGEP(lhs_type->llvm(), lhs_lval,
+            { data::const_uint(0), lhs_type->field_num(rhs_->token()) });
+      }
     }
 
     return nullptr;

@@ -1,6 +1,8 @@
 #include "Type.h"
 #include "Scope.h"
 
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
+
 namespace cstdlib {
   extern llvm::Constant* calloc();
   extern llvm::Constant* malloc();
@@ -8,6 +10,7 @@ namespace cstdlib {
 
 
 namespace data {
+  extern llvm::Value* null_pointer(Type* t);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
@@ -19,8 +22,7 @@ extern llvm::Module* global_module;
 
 llvm::Function* get_llvm_init(Type* type) {
   return llvm::Function::Create(
-      llvm::FunctionType::get(Type::get_void()->llvm(),
-        { Type::get_pointer(type)->llvm() }, false),
+      Type::get_function(Type::get_pointer(type), Type::get_void())->llvm(),
       llvm::Function::ExternalLinkage, "init." + type->to_string(),
       global_module);
 }
@@ -31,24 +33,19 @@ llvm::Function* Primitive::initialize() {
 
   init_fn_ = get_llvm_init(this);
   
-  auto block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry");
-  block->insertInto(init_fn_);
+  auto block = make_block("entry", init_fn_);
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   bldr.SetInsertPoint(block);
 
   llvm::Value* init_val;
   switch (prim_type_) {
-    case t_bool:
-      init_val = data::const_false(); break;
-    case t_char:
-      init_val = data::const_char('\0'); break;
+    case t_bool: init_val = data::const_false(); break;
+    case t_char: init_val = data::const_char('\0'); break;
     case t_int:
-    case t_uint:
-      init_val = data::const_uint(0); break;
-    case t_real:
-      init_val = data::const_real(0); break;
-    default: return nullptr;
+    case t_uint: init_val = data::const_uint(0); break;
+    case t_real: init_val = data::const_real(0); break;
+    default:     return nullptr;
   }
 
   bldr.CreateCall(assign(), { init_val, init_fn_->args().begin() });
@@ -130,8 +127,7 @@ llvm::Function* Array::initialize() {
     auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
 
     // Loop through the array and initialize each input
-    auto loop_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "loop", init_fn_);
+    auto loop_block = make_block("loop", init_fn_);
 
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);
@@ -165,8 +161,19 @@ llvm::Function* Array::initialize() {
 
 llvm::Function* Pointer::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
-  // TODO
-  return nullptr;
+
+  init_fn_ = get_llvm_init(this);
+  
+  auto block = make_block("entry", init_fn_);
+
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
+
+  llvm::Value* init_val = data::null_pointer(pointee_type_);
+  bldr.CreateCall(assign(), { init_val, init_fn_->args().begin() });
+  bldr.CreateRetVoid();
+
+  return init_fn_;
 }
 
 llvm::Function* Tuple::initialize() {
@@ -180,8 +187,7 @@ llvm::Function* UserDefined::initialize() {
 
   init_fn_ = get_llvm_init(this);
   
-  auto block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry");
-  block->insertInto(init_fn_);
+  auto block = make_block("entry", init_fn_);
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   bldr.SetInsertPoint(block);

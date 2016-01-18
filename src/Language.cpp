@@ -137,6 +137,7 @@ namespace Language {
         { left_bracket, expression, semicolon, expression, right_bracket },
         AST::ArrayType::build),
 
+    // TODO make this the correct thing
     Rule(expression,
         { left_bracket, indirection, semicolon, expression, right_bracket },
         AST::ArrayType::build_unknown),
@@ -238,7 +239,7 @@ namespace Language {
         { left_paren, expression, right_paren },
         AST::Expression::parenthesize),
 
-    // TODO do we even use this?
+    /////*****
     Rule(expression,
         { dereference, expression },
         AST::Unop::build),
@@ -276,6 +277,10 @@ namespace Language {
     Rule(expression,
         { expression, binary_boolean_operator, expression },
         AST::ChainOp::build),
+
+    Rule(expression,
+        { indirection, expression },
+        AST::Unop::build),
 
     Rule(print_expression,
         { reserved_print, expression },

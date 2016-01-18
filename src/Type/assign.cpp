@@ -4,7 +4,7 @@
 #include <iostream>
 
 extern llvm::Module* global_module;
-
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 namespace cstdlib {
   extern llvm::Constant* malloc();
 }  // namespace cstdlib
@@ -29,19 +29,16 @@ llvm::Function* Primitive::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
-    
-  FnScope* fn_scope = Scope::build<FnScope>();
-  fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
+  auto block = make_block("entry", assign_fn_);
 
-  llvm::IRBuilder<>& bldr = fn_scope->builder();
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
 
-  fn_scope->enter();
   auto iter = assign_fn_->args().begin();
   auto val = iter;
   auto var = ++iter;
   bldr.CreateStore(val, var);
-  fn_scope->exit();
+  bldr.CreateRetVoid();
 
   return assign_fn_;
 }
@@ -102,10 +99,8 @@ llvm::Function* Array::assign() {
 
   bldr.CreateStore(data_ptr, var);
 
-  auto loop_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "loop", assign_fn_);
-  auto done_block = llvm::BasicBlock::Create(
-    llvm::getGlobalContext(), "loop_done", assign_fn_);
+  auto loop_block = make_block("loop", assign_fn_);
+  auto done_block = make_block("loop_done", assign_fn_);
 
   bldr.CreateBr(loop_block);
 
@@ -132,7 +127,20 @@ llvm::Function* Array::assign() {
 
 llvm::Function* Pointer::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
-  return nullptr;
+
+  assign_fn_ = get_llvm_assign(this);
+  auto block = make_block("entry", assign_fn_);
+
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
+
+  auto iter = assign_fn_->args().begin();
+  auto val = iter;
+  auto var = ++iter;
+  bldr.CreateStore(val, var);
+  bldr.CreateRetVoid();
+
+  return assign_fn_;
 }
 
 llvm::Function* Tuple::assign() {

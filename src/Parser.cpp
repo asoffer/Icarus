@@ -194,8 +194,6 @@ bool Parser::should_shift() {
 // Returns true if a rule is matched and applied. Returns false otherwise.
 bool Parser::reduce() {
   const Rule* matched_rule_ptr = nullptr;
-
-
   for (const Rule& rule : Language::rules) {
     // If we've already matched a rule, ignore rules of lower precedence.
     // Precedence is simply determined by the length of the match.
@@ -208,8 +206,7 @@ bool Parser::reduce() {
 #ifdef DEBUG
       // It should be impossible to match multiple rules with the same precedence
       // levels.
-      if (matched_rule_ptr != nullptr &&
-          rule.size() == matched_rule_ptr->size()) {
+      if (matched_rule_ptr != nullptr && rule.size() == matched_rule_ptr->size()) {
         std::cerr << "FATAL: Two rules matched with the same size" << std::endl;
       }
 #endif

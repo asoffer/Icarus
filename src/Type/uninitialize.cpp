@@ -13,7 +13,7 @@ namespace data {
   extern llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n);
 }  // namespace data
 
-
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 extern llvm::Module* global_module;
 
 // This method uninitializes stack space for each particular type.
@@ -48,8 +48,7 @@ llvm::Function* Array::uninitialize() {
     auto len_val = bldr.CreateLoad(len_ptr);
     auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
 
-    auto loop_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "loop", uninit_fn_);
+    auto loop_block = make_block("loop", uninit_fn_);
 
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);

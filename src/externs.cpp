@@ -21,66 +21,38 @@ std::map<std::string, llvm::Value*> global_strings;
 
 ErrorLog error_log;
 
-// TODO Only generate these if they are necessary
-//
+
+llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
+  return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
+}
+
+#define CSTDLIB(fn, variadic, in, out)        \
+  llvm::Constant* fn() {                      \
+    static llvm::Constant* func_ =            \
+    global_module->getOrInsertFunction(#fn,   \
+        llvm::FunctionType::get(out->llvm(),  \
+          { in->llvm() }, variadic));         \
+    return func_;                             \
+  }
+
+
+
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
-  llvm::Constant* free() {
-    static llvm::Constant* free_ =
-      global_module->getOrInsertFunction("free", 
-          llvm::FunctionType::get(Type::get_void()->llvm(),
-            { Type::get_pointer(Type::get_char())->llvm()}, false));
-    return free_;
-  }
-
-  llvm::Constant* calloc() {
-    static llvm::Constant* calloc_ =
-      global_module->getOrInsertFunction("calloc",
-          llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
-            { Type::get_uint()->llvm() }, false));
-
-    return calloc_;
-  }
- 
-  llvm::Constant* malloc() {
-    static llvm::Constant* malloc_ =
-      global_module->getOrInsertFunction("malloc",
-          llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
-            { Type::get_uint()->llvm() }, false));
-
-    return malloc_;
-  }
-  
-  llvm::Constant* printf() {
-    static llvm::Constant* printf_ =
-      global_module->getOrInsertFunction("printf",
-          llvm::FunctionType::get(Type::get_int()->llvm(),
-            { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, true));
-
-    return printf_;
-  }
-
-  llvm::Constant* putchar() {
-    static llvm::Constant* putchar_ =
-      global_module->getOrInsertFunction("putchar",
-          llvm::FunctionType::get(Type::get_int()->llvm(),
-            { Type::get_char()->llvm() }, false));
-
-    return putchar_;
-  }
-
-  llvm::Constant* puts() {
-    static llvm::Constant* puts_ =
-      global_module->getOrInsertFunction("puts",
-          llvm::FunctionType::get(Type::get_int()->llvm(),
-            { llvm::Type::getInt8PtrTy(llvm::getGlobalContext()) }, false));
-
-    return puts_;
-  }
+  CSTDLIB(free,    false, Type::get_pointer(Type::get_char()), Type::get_void());
+  CSTDLIB(calloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
+  CSTDLIB(malloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
+  CSTDLIB(putchar, false, Type::get_char(), Type::get_int());
+  CSTDLIB(puts,    false, Type::get_pointer(Type::get_char()), Type::get_int());
+  CSTDLIB(printf,  true,  Type::get_pointer(Type::get_char()), Type::get_int());
 }  // namespace cstdlib
 
 namespace data {
+  llvm::Value* null_pointer(Type* t) {
+    return llvm::ConstantPointerNull::get(llvm::PointerType::get(t->llvm(), 0));
+  }
+
   llvm::Value* const_int(int n) {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, static_cast<unsigned int>(n), false));
@@ -161,8 +133,7 @@ namespace builtin {
     llvm::Value* val = ascii_->args().begin();
     llvm::IRBuilder<> bldr(llvm::getGlobalContext());
 
-    auto entry_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "entry", ascii_);
+    auto entry_block = make_block("entry", ascii_);
 
     bldr.SetInsertPoint(entry_block);
     // TODO check bounds if build option specified
@@ -172,3 +143,5 @@ namespace builtin {
     return ascii_;
   }
 }  // namespace builtin
+
+#undef CSTDLIB

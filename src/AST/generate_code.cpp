@@ -12,6 +12,8 @@
 // all checks on the AST before code generation, then maybe we can remove these
 // and thereby streamline the architecture.
 
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
+
 extern ErrorLog error_log;
 
 extern llvm::Module* global_module;
@@ -62,24 +64,41 @@ namespace AST {
   // Invariant:
   // Only returns nullptr if the expression type is void or a type
   llvm::Value* Unop::generate_code(Scope* scope) {
-    llvm::Value* val = expr_->generate_code(scope);
+    if (op_ == Language::Operator::And) {
+      return expr_->generate_lvalue(scope);
+    }
 
+    llvm::Value* val = expr_->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op_) {
       using Language::Operator;
-      case Operator::Sub:    return expr_->type()->call_neg(bldr, val);
-      case Operator::Not:    return expr_->type()->call_not(bldr, val);
-      case Operator::Return: scope->make_return(val); return nullptr;
+
+      case Operator::Sub:
+      return expr_->type()->call_neg(bldr, val);
+
+      case Operator::Not:
+      return expr_->type()->call_not(bldr, val);
+
+      case Operator::Return:
+      scope->make_return(val);
+      return nullptr;
+
+      case Operator::At:
+      return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
+
       case Operator::Call:
-        return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+      return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+
       case Operator::Print:
-        // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-        if (expr_->type() == Type::get_type()) {
-          val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
-        }
-        expr_->type()->call_print(scope->builder(), val);
-        return nullptr;
-      default: return nullptr;
+      // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
+      if (expr_->type() == Type::get_type()) {
+        val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+      }
+      expr_->type()->call_print(scope->builder(), val);
+      return nullptr;
+
+      default:
+      return nullptr;
     }
   }
 
@@ -254,17 +273,13 @@ namespace AST {
         // Condition blocks
         std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
         for (auto& block : cond_blocks) {
-          block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "cond.block", parent_fn);
+          block = make_block("cond.block", parent_fn);
         }
 
         // Landing blocks
-        auto land_true_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "land.true", parent_fn);
-        auto land_false_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "land.false", parent_fn);
-        auto merge_block = llvm::BasicBlock::Create(
-            llvm::getGlobalContext(), "merge.block", parent_fn);
+        auto land_true_block = make_block("land.true", parent_fn);
+        auto land_false_block = make_block("land.false", parent_fn);
+        auto merge_block = make_block("merge.block", parent_fn);
 
         if (ops_.front() == Language::Operator::And) {
           for (size_t i = 0; i < ops_.size(); ++i) {
@@ -402,12 +417,12 @@ namespace AST {
           case Operator::OrEq:
             {
               auto parent_fn = scope->builder().GetInsertBlock()->getParent();
-              auto more_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "more", parent_fn);
-              auto merge_block = llvm::BasicBlock::Create(llvm::getGlobalContext(), "merge", parent_fn);
+              auto more_block = make_block("more", parent_fn);
+              auto merge_block = make_block("merge", parent_fn);
 
               // Assumption is that only operators of type (bool, bool) -> bool are '&', '|', and '^'
-              llvm::BasicBlock* true_block  = (op_ == Operator::AndEq) ? more_block : merge_block;
-              llvm::BasicBlock* false_block = (op_ == Operator::OrEq)  ? more_block : merge_block;
+              auto true_block  = (op_ == Operator::AndEq) ? more_block : merge_block;
+              auto false_block = (op_ == Operator::OrEq)  ? more_block : merge_block;
 
               scope->builder().CreateCondBr(lhs_val, true_block, false_block);
               scope->builder().SetInsertPoint(more_block);
@@ -513,14 +528,12 @@ namespace AST {
     std::vector<llvm::BasicBlock*> case_blocks(pairs_->kv_pairs_.size() - 1);
 
     for (auto& block : case_blocks) {
-      block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "case_block", parent_fn);
+      block = make_block("case.block", parent_fn);
     }
 
     // Landing blocks
     auto current_block = scope->builder().GetInsertBlock();
-    auto case_landing = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "case_landing", parent_fn);
+    auto case_landing = make_block("case.landing", parent_fn);
     scope->builder().SetInsertPoint(case_landing);
     llvm::PHINode* phi_node = scope->builder().CreatePHI(type()->llvm(),
           static_cast<unsigned int>(pairs_->kv_pairs_.size()), "phi");
@@ -528,8 +541,7 @@ namespace AST {
 
     for (size_t i = 0; i < case_blocks.size(); ++i) {
       auto cmp_val = pairs_->kv_pairs_[i].first->generate_code(scope);
-      auto true_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "land_true", parent_fn);
+      auto true_block = make_block("land_true", parent_fn);
  
       // If it's false, move on to the next block
       scope->builder().CreateCondBr(cmp_val, true_block, case_blocks[i]);
@@ -589,8 +601,7 @@ namespace AST {
   llvm::Value* While::generate_code(Scope* scope) {
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();
 
-    auto while_stmt_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "while_stmt", parent_fn);
+    auto while_stmt_block = make_block("while.stmt", parent_fn);
 
     body_scope_->set_parent_function(parent_fn);
 
@@ -617,12 +628,11 @@ namespace AST {
         nullptr);
     
     for (size_t i = 0; i < cond_blocks.size(); ++i) {
-      cond_blocks[i] = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "cond_block", parent_fn);
+      cond_blocks[i] = make_block("cond.block", parent_fn);
     }
 
     llvm::BasicBlock* landing = has_else()
-      ? llvm::BasicBlock::Create(llvm::getGlobalContext(), "land", parent_fn)
+      ? make_block("land", parent_fn)
       : cond_blocks.back();
 
     scope->builder().CreateBr(cond_blocks[0]);
@@ -661,8 +671,7 @@ namespace AST {
     auto prev_insert = scope->builder().GetInsertBlock();
 
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();
-    llvm::BasicBlock* dealloc_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "dealloc_block", parent_fn);
+    llvm::BasicBlock* dealloc_block = make_block("dealloc.block", parent_fn);
     scope->builder().CreateBr(dealloc_block);
 
 

@@ -69,7 +69,10 @@ class Type {
 
     static std::map<std::string, Type*> literals;
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const = 0;
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const {
+      return bldr.CreateAlloca(llvm());
+    }
+    
     virtual size_t bytes() const = 0;
 
     virtual llvm::Function* assign() = 0;
@@ -129,7 +132,6 @@ class Primitive : public Type {
     friend class Type;
     virtual ~Primitive() {}
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
 
     virtual llvm::Function* assign();
@@ -248,8 +250,8 @@ class Pointer : public Type {
     friend class Type;
 
     virtual bool is_pointer() const { return true; }
+    Type* pointee_type() const { return pointee_type_; }
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
 
     virtual llvm::Function* assign();
@@ -262,7 +264,7 @@ class Pointer : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-   virtual Type* replace(Type* pattern, Type* replacement);
+    virtual Type* replace(Type* pattern, Type* replacement);
     virtual std::string to_string() const;
     virtual time_loc type_time() const;
 
@@ -284,7 +286,6 @@ class Array : public Type {
 
     virtual bool is_array() const { return true; }
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
 
     virtual llvm::Function* assign();
@@ -327,7 +328,6 @@ class UserDefined : public Type {
   public:
     friend class Type;
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual size_t bytes() const;
 
     virtual llvm::Function* assign();

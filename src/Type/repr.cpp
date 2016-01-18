@@ -2,6 +2,7 @@
 #include "Scope.h"
 
 extern llvm::Module* global_module;
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 
 namespace cstdlib {
   extern llvm::Constant* putchar();
@@ -21,8 +22,7 @@ void add_branch(llvm::Function* fn, Scope* fn_scope, llvm::SwitchInst* switch_st
 
   llvm::IRBuilder<>& fn_bldr = fn_scope->builder();
 
-  auto branch =
-    llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
+  auto branch = make_block(name, fn);
   switch_stmt->addCase(data::const_char(char_to_display), branch);
   fn_bldr.SetInsertPoint(branch);
   fn_bldr.CreateCall(cstdlib::printf(), { data::global_string(fn_bldr, display_as) });
@@ -48,12 +48,9 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       llvm::IRBuilder<>& fn_bldr = fn_scope->builder();
 
       fn_scope->enter();
-      auto true_block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "true_block", repr_fn_);
-      auto false_block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "false_block", repr_fn_);
-      auto merge_block = llvm::BasicBlock::Create(
-          llvm::getGlobalContext(), "merge_block", repr_fn_);
+      auto true_block  = make_block("true.block",  repr_fn_);
+      auto false_block = make_block("false.block", repr_fn_);
+      auto merge_block = make_block("merge_block", repr_fn_);
 
       // NOTE: Exactly one argument is provided always
       fn_bldr.CreateCondBr(arg, true_block, false_block);
@@ -94,10 +91,8 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
     fn_scope->enter();
 
-    auto standard_block =
-      llvm::BasicBlock::Create(llvm::getGlobalContext(), "standard", repr_fn_);
-    auto exceptional_block =
-      llvm::BasicBlock::Create(llvm::getGlobalContext(), "exceptional", repr_fn_);
+    auto standard_block = make_block("standard", repr_fn_);
+    auto exceptional_block = make_block("exceptional", repr_fn_);
 
     fn_bldr.CreateCondBr(
         fn_bldr.CreateOr(
@@ -114,8 +109,7 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
     fn_bldr.SetInsertPoint(exceptional_block);
 
-    auto branch_default =
-      llvm::BasicBlock::Create(llvm::getGlobalContext(), "default", repr_fn_);
+    auto branch_default = make_block("default", repr_fn_);
     
     auto switch_stmt = fn_bldr.CreateSwitch(arg, branch_default);
 
@@ -180,12 +174,9 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
     auto len_ptr = fn_bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm());
     auto len_val = fn_bldr.CreateLoad(fn_bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
 
-    auto loop_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "loop.body", repr_fn_);
-    auto loop_head_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "loop.head", repr_fn_);
-    auto done_block = llvm::BasicBlock::Create(
-        llvm::getGlobalContext(), "loop.done", repr_fn_);
+    auto loop_block = make_block("loop.body", repr_fn_);
+    auto loop_head_block = make_block("loop.head", repr_fn_);
+    auto done_block = make_block("loop.done", repr_fn_);
 
     fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(len_val, data::const_uint(0)),
         done_block, loop_head_block);
@@ -228,6 +219,9 @@ void Function::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       data::global_string(bldr, "<function " + to_string() + ">") });
 }
 
-void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
+void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "&_%x"), val });
+}
+
 void Tuple::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
 void UserDefined::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}

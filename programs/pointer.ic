@@ -1,0 +1,14 @@
+main := void -> void {
+  x := 17
+
+  xptr := &x
+
+  x *= x
+
+  print xptr
+  print '\n'
+  print @xptr
+  print '\n'
+  print &x
+  print '\n'
+}

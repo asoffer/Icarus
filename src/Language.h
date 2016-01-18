@@ -135,7 +135,6 @@ namespace Language {
   }
 
   extern size_t precedence(Language::Operator op);
-
   extern const std::map<std::string, Language::Operator> lookup_operator;
   extern const std::map<NodeType, std::string> show_name;
   extern const std::map<std::string, NodeType> reserved_words;

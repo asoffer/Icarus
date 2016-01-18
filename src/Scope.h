@@ -23,7 +23,7 @@ namespace AST {
   class FunctionLiteral;
 }
 
-
+extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 
 class Scope {
   public:
@@ -117,8 +117,8 @@ typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build
 template<typename T> class StandardEntryExit {
   public:
     StandardEntryExit() :
-      entry_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "entry")),
-      exit_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "exit")) {}
+      entry_block_(make_block("entry", nullptr)),
+      exit_block_(make_block("exit", nullptr)) {}
 
     virtual ~StandardEntryExit() {}
 
@@ -183,7 +183,7 @@ class SimpleFnScope : public GenericFnScope {
     virtual void exit();
 
     SimpleFnScope() :
-      the_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "block")) {}
+      the_block_(make_block("block", nullptr)) {}
 
     virtual ~SimpleFnScope() {}
 
@@ -222,10 +222,10 @@ class WhileScope : public Scope {
     virtual void exit();
 
     WhileScope() :
-      entry_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while.entry")),
-      exit_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while.exit")),
-      cond_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while.cond")),
-      land_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "while.land")) {
+      entry_block_(make_block("while.entry", nullptr)),
+      exit_block_(make_block("while.exit", nullptr)),
+      cond_block_(make_block("while.cond", nullptr)),
+      land_block_(make_block("while.land", nullptr)) {
     }
 
     virtual ~WhileScope() {}
@@ -246,7 +246,7 @@ class GlobalScope : public Scope {
     void initialize();
 
     GlobalScope() :
-      the_block_(llvm::BasicBlock::Create(llvm::getGlobalContext(), "global.block")) {}
+      the_block_(make_block("global.block", nullptr)) {}
 
     virtual ~GlobalScope() {}
 

@@ -276,7 +276,7 @@ AST::TokenNode Lexer::next_operator() {
 
     } else {
       return AST::TokenNode(line_num_,
-          (peek == '&' ? Language::indirection : Language::bool_operator),
+          (past_peek == '&' ? Language::indirection : Language::bool_operator),
           std::string(1, past_peek));
     }
   }

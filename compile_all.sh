@@ -28,6 +28,7 @@ bin/icarus programs/multiple_args.ic
 bin/icarus programs/negate.ic
 bin/icarus programs/paren_test.ic
 bin/icarus programs/pi.ic
+bin/icarus programs/pointer.ic
 bin/icarus programs/prime_loop.ic
 bin/icarus programs/primes_recursive.ic
 bin/icarus programs/print_array.ic
