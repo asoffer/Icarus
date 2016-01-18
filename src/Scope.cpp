@@ -250,7 +250,7 @@ void Scope::determine_declared_types() {
         // TODO do inference correctly inside this scope in necessary.
         decl_ptr->declared_type()->verify_types();
         decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->expr_type_;
+          decl_ptr->declared_type()->type();
 
       } else {
 

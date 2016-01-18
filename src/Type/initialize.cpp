@@ -40,20 +40,14 @@ llvm::Function* Primitive::initialize() {
   llvm::Value* init_val;
   switch (prim_type_) {
     case t_bool:
-      init_val = data::const_false();
-      break;
+      init_val = data::const_false(); break;
     case t_char:
-      init_val = data::const_char('\0');
-      break;
+      init_val = data::const_char('\0'); break;
     case t_int:
-      // Because LLVM treats ints and uints identically,
-      // we can safely fallthrough
     case t_uint:
-      init_val = data::const_uint(0);
-      break;
+      init_val = data::const_uint(0); break;
     case t_real:
-      init_val = data::const_real(0);
-      break;
+      init_val = data::const_real(0); break;
     default: return nullptr;
   }
 
@@ -114,9 +108,7 @@ llvm::Function* Array::initialize() {
 
   // (M/C)alloc call
   auto alloc_call = bldr.CreateCall(
-      data_is_primitive
-      ? cstdlib::calloc()
-      : cstdlib::malloc(), { bytes_needed });
+      data_is_primitive ? cstdlib::calloc() : cstdlib::malloc(), { bytes_needed });
 
   // Pointer to the length at the head of the array
   auto len_ptr = bldr.CreateBitCast(alloc_call,

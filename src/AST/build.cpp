@@ -6,7 +6,7 @@ namespace AST {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
     auto tk_node = std::static_pointer_cast<TokenNode>(nodes[0]);
-    unop_ptr->line_num_ = tk_node->line_num_;
+    unop_ptr->line_num_ = tk_node->line_num();
 
     unop_ptr->type_ = Language::expression;
     unop_ptr->op_ = tk_node->operator_type();
@@ -18,7 +18,7 @@ namespace AST {
 
   NPtr Unop::build_paren_operator(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
-    unop_ptr->line_num_ = nodes[1]->line_num_;
+    unop_ptr->line_num_ = nodes[1]->line_num();
 
     unop_ptr->expr_ =
       std::static_pointer_cast<Expression>(nodes[0]);
@@ -32,7 +32,7 @@ namespace AST {
 
   NPtr Binop::build_operator(NPtrVec&& nodes, Language::Operator op_class) {
     auto binop_ptr = std::make_shared<Binop>();
-    binop_ptr->line_num_ = nodes[1]->line_num_;
+    binop_ptr->line_num_ = nodes[1]->line_num();
 
     binop_ptr->lhs_ =
       std::static_pointer_cast<Expression>(nodes[0]);
@@ -76,7 +76,7 @@ namespace AST {
       auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
 
       chain_ptr->ops_.push_back(op_node->operator_type());
-      
+
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
           std::make_move_iterator(rhs->ops_.begin()),
           std::make_move_iterator(rhs->ops_.end()));
@@ -152,37 +152,13 @@ namespace AST {
 
     } else {
       chain_ptr = std::make_shared<ChainOp>();
-      chain_ptr->line_num_ = nodes[1]->line_num_;
+      chain_ptr->line_num_ = nodes[1]->line_num();
 
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence_ = op_prec;
     }
 
-    const std::string& token = nodes[1]->token();
-    // TODO move to lookup table
-    if (token == "<") {
-      chain_ptr->ops_.push_back(Language::Operator::LessThan);
-    } else if (token == "<=") {
-      chain_ptr->ops_.push_back(Language::Operator::LessEq);
-    } else if (token == "==") {
-      chain_ptr->ops_.push_back(Language::Operator::Equal);
-    } else if (token == "!=") {
-      chain_ptr->ops_.push_back(Language::Operator::NotEqual);
-    } else if (token == ">=") {
-      chain_ptr->ops_.push_back(Language::Operator::GreaterEq);
-    } else if (token == ">") {
-      chain_ptr->ops_.push_back(Language::Operator::GreaterThan);
-    } else if (token == "|") {
-      chain_ptr->ops_.push_back(Language::Operator::Or);
-    } else if (token == "^") {
-      chain_ptr->ops_.push_back(Language::Operator::Xor);
-    } else if (token == "&") {
-      chain_ptr->ops_.push_back(Language::Operator::And);
-    } else if (token == ",") {
-      chain_ptr->ops_.push_back(Language::Operator::Comma);
-    }
-
-
+    chain_ptr->ops_.push_back(op_node->operator_type());
     chain_ptr->exprs_.push_back(
         std::static_pointer_cast<Expression>(nodes[2]));
 
@@ -193,7 +169,7 @@ namespace AST {
     auto array_lit_ptr = std::make_shared<ArrayLiteral>();
     array_lit_ptr->precedence_ =
       Language::precedence(Language::Operator::NotAnOperator);
-    array_lit_ptr->line_num_ = nodes[0]->line_num_;
+    array_lit_ptr->line_num_ = nodes[0]->line_num();
 
     if (nodes[1]->is_comma_list()) {
       array_lit_ptr->elems_ = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
@@ -226,7 +202,7 @@ namespace AST {
 
     } else {
       auto array_type_ptr = std::make_shared<ArrayType>();
-      array_type_ptr->line_num_ = nodes[0]->line_num_;
+      array_type_ptr->line_num_ = nodes[0]->line_num();
 
       array_type_ptr->len_ =
         std::static_pointer_cast<Expression>(nodes[1]);
@@ -242,7 +218,7 @@ namespace AST {
 
   NPtr ArrayType::build_unknown(NPtrVec&& nodes) {
     auto array_type_ptr = std::make_shared<ArrayType>();
-    array_type_ptr->line_num_ = nodes[0]->line_num_;
+    array_type_ptr->line_num_ = nodes[0]->line_num();
 
     // len_ == nullptr means we do not know the length of the array can change.
     array_type_ptr->len_ = nullptr;
@@ -258,7 +234,7 @@ namespace AST {
   NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
     // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
-    term_ptr->line_num_ = nodes[0]->line_num_;
+    term_ptr->line_num_ = nodes[0]->line_num();
     term_ptr->terminal_type_ = term_type;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
@@ -307,7 +283,7 @@ namespace AST {
 
   NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = std::make_shared<Assignment>();
-    assign_ptr->line_num_ = nodes[1]->line_num_;
+    assign_ptr->line_num_ = nodes[1]->line_num();
 
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
@@ -322,7 +298,7 @@ namespace AST {
   }
 
   NPtr Declaration::build(NPtrVec&& nodes, Language::NodeType node_type, bool infer) {
-    auto decl_ptr = Scope::make_declaration(nodes[1]->line_num_, nodes[0]->token());
+    auto decl_ptr = Scope::make_declaration(nodes[1]->line_num(), nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->type_ = node_type;
@@ -330,7 +306,7 @@ namespace AST {
     decl_ptr->op_ = infer
       ? Language::Operator::ColonEq
       : Language::Operator::Colon;
-    
+
     decl_ptr->precedence_ = Language::precedence(decl_ptr->op_);
     decl_ptr->infer_type_ = infer;
 
@@ -348,7 +324,7 @@ namespace AST {
 
   NPtr KVPairList::build_one(NPtrVec&& nodes) {
     auto pair_list = std::make_shared<KVPairList>();
-    pair_list->line_num_ = nodes[0]->line_num_;
+    pair_list->line_num_ = nodes[0]->line_num();
     EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
@@ -404,7 +380,7 @@ namespace AST {
 
   NPtr FunctionLiteral::build(NPtrVec&& nodes) {
     auto fn_lit = std::make_shared<FunctionLiteral>();
-    fn_lit->line_num_ = nodes[0]->line_num_;
+    fn_lit->line_num_ = nodes[0]->line_num();
 
     fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
 
@@ -439,7 +415,7 @@ namespace AST {
 
   NPtr TypeLiteral::build(NPtrVec&& nodes) {
     auto type_lit_ptr = std::make_shared<TypeLiteral>();
-    type_lit_ptr->line_num_ = nodes[0]->line_num_;
+    type_lit_ptr->line_num_ = nodes[0]->line_num();
     type_lit_ptr->expr_type_ = Type::get_type();
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
@@ -453,6 +429,112 @@ namespace AST {
     }
 
     return type_lit_ptr;
+  }
+
+  NPtr Statements::build_one(NPtrVec&& nodes) {
+    auto output = std::make_shared<Statements>();
+    output->statements_.push_back(std::move(nodes[0]));
+
+    return output;
+  }
+
+  NPtr Statements::build_more(NPtrVec&& nodes) {
+    auto output = std::static_pointer_cast<Statements>(nodes[0]);
+    output->statements_.push_back(std::move(nodes[1]));
+
+    return output;
+  }
+
+  NPtr Statements::build_double_expression_error(NPtrVec&& nodes) {
+    error_log.log(nodes[0]->line_num(), "Adjacent expressions");
+
+    auto output = std::make_shared<Statements>();
+    output->line_num_ = nodes[0]->line_num();
+    output->statements_.push_back(std::move(nodes[0]));
+    output->statements_.push_back(std::move(nodes[1]));
+
+    return output;
+  }
+
+  NPtr Statements::build_extra_expression_error(NPtrVec&& nodes) {
+    error_log.log(nodes[0]->line_num(), "Adjacent expressions");
+
+    auto output = std::static_pointer_cast<Statements>(nodes[0]);
+    output->statements_.push_back(std::move(nodes[1]));
+
+    return output;
+  }
+
+  NPtr Conditional::build_if(NPtrVec&& nodes) {
+    auto if_stmt = std::make_shared<Conditional>();
+    if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
+    if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    return if_stmt;
+  }
+
+  NPtr Conditional::build_extra_else_error(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
+    error_log.log(nodes[1]->line_num(), "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+
+    return std::move(nodes[0]);
+  }
+
+  NPtr Conditional::build_extra_else_if_error(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
+    error_log.log(nodes[1]->line_num(), "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+
+    return std::move(nodes[0]);
+  }
+
+  NPtr Conditional::build_else_if(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
+    auto else_if = std::static_pointer_cast<Conditional>(std::move(nodes[2]));
+
+#ifdef DEBUG
+    if (else_if->conds_.size()       != 1 ||
+        else_if->statements_.size()  != 1 ||
+        else_if->body_scopes_.size() != 1) {
+      std::cerr << "FATAL: Else-if statement constructed by parser with multiple conditional blocks." << std::endl;
+    }
+#endif
+
+    if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
+    if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    return if_stmt;
+  }
+
+  NPtr Conditional::build_else(NPtrVec&& nodes) {
+    auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
+    if_stmt->else_line_num_ = nodes[1]->line_num();
+    if_stmt->statements_.push_back(
+        std::static_pointer_cast<Statements>(std::move(nodes[3])));
+    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    return std::move(if_stmt);
+  }
+
+  NPtr Conditional::build_if_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build_if(std::forward<NPtrVec&&>(nodes));
+  }
+
+  NPtr EnumLiteral::build(NPtrVec&& nodes) {
+    auto enum_lit_ptr = std::make_shared<EnumLiteral>();
+    enum_lit_ptr->line_num_ = nodes[0]->line_num();
+    enum_lit_ptr->expr_type_ = Type::get_type();
+
+    auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
+    for (auto&& stmt : stmts->statements_) {
+      // TODO we ignore everything that isn't a declaration.
+      // This is a cheap way to get started, but probably not ideal.
+      if (!stmt->is_identifier()) continue;
+
+      auto decl = std::static_pointer_cast<Identifier>(std::move(stmt));
+      enum_lit_ptr->vals_.emplace_back(std::move(decl));
+    }
+
+    return enum_lit_ptr;
   }
 
 }  // namespace AST

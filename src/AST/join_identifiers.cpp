@@ -24,6 +24,10 @@ namespace AST {
     }
   }
 
+
+  void Terminal::join_identifiers(Scope* scope) {
+  }
+
   void Identifier::join_identifiers(Scope* scope) {
     Terminal::join_identifiers(scope);
   }

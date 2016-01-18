@@ -79,7 +79,6 @@ namespace AST {
         }
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
-
       default: return nullptr;
     }
   }
@@ -89,12 +88,10 @@ namespace AST {
     switch (op_) {
       case Operator::Index:
         return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
-
       case Operator::Access:
         return (lhs_->type()->is_user_defined())
           ? scope->builder().CreateLoad(generate_lvalue(scope))
           : nullptr;
-
       default:;
     }
 
@@ -199,7 +196,6 @@ namespace AST {
 
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
-
       }
 
     } else if (exprs_[0]->type() == Type::get_uint()) {
@@ -384,14 +380,10 @@ namespace AST {
 
   llvm::Value* Assignment::generate_code(Scope* scope) {
     using Language::Operator;
-    if (op_ == Operator::OrEq
-        || op_ == Operator::XorEq
-        || op_ == Operator::AndEq
-        || op_ == Operator::AddEq
-        || op_ == Operator::SubEq
-        || op_ == Operator::MulEq
-        || op_ == Operator::DivEq
-        || op_ == Operator::ModEq) {
+    if (   op_ == Operator::OrEq  || op_ == Operator::XorEq
+        || op_ == Operator::AndEq || op_ == Operator::AddEq
+        || op_ == Operator::SubEq || op_ == Operator::MulEq
+        || op_ == Operator::DivEq || op_ == Operator::ModEq) {
 
       auto lhs_val = lhs_->generate_code(scope);
       if (lhs_val == nullptr) return nullptr;
@@ -591,6 +583,8 @@ namespace AST {
 
     return array_data;
   }
+
+  llvm::Value* KVPairList::generate_code(Scope*) { return nullptr; }
 
   llvm::Value* While::generate_code(Scope* scope) {
     auto parent_fn = scope->builder().GetInsertBlock()->getParent();

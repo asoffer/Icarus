@@ -15,40 +15,40 @@ namespace AST {
       return;
 
     } else if (op_ == Language::Operator::Call) {
-      if (!expr_->expr_type_->is_function()) {
+      if (!expr_->type()->is_function()) {
         expr_type_ = Type::get_type_error();
         return;
       }
 
-      auto fn_type = static_cast<Function*>(expr_->expr_type_);
+      auto fn_type = static_cast<Function*>(expr_->type());
       expr_type_ = (fn_type->argument_type() == Type::get_void() ?
           fn_type->return_type() : Type::get_type_error());
 
       return;
 
-    } else if (expr_->expr_type_ == Type::get_type_error()) {
+    } else if (expr_->type() == Type::get_type_error()) {
       expr_type_ = Type::get_type_error();
       return;
     }
 
     if (op_ == Language::Operator::Sub) {
-      if (expr_->expr_type_ == Type::get_uint()) {
+      if (expr_->type() == Type::get_uint()) {
         error_log.log(line_num(), "Negation applied to unsigned integer");
         expr_type_ = Type::get_uint();
 
-      } else if (expr_->expr_type_ == Type::get_int()) {
+      } else if (expr_->type() == Type::get_int()) {
         expr_type_ = Type::get_int();
 
-      } else if(expr_->expr_type_ == Type::get_real()) {
+      } else if(expr_->type() == Type::get_real()) {
         expr_type_ = Type::get_real();
 
       } else {
-        error_log.log(line_num(), expr_type_->to_string() + " has no negation operator.");
+        error_log.log(line_num(), type()->to_string() + " has no negation operator.");
         expr_type_ = Type::get_type_error();
       }
 
     } else if (op_ == Language::Operator::Not) {
-      if (expr_->expr_type_ != Type::get_bool()) {
+      if (expr_->type() != Type::get_bool()) {
         expr_type_ = Type::get_type_error();
 
       } else {
@@ -65,8 +65,8 @@ namespace AST {
 
 
   void Binop::verify_types() {
-    if (lhs_->expr_type_ == Type::get_type_error()
-        || rhs_->expr_type_ == Type::get_type_error()) {
+    if (lhs_->type() == Type::get_type_error()
+        || rhs_->type() == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
       expr_type_ = Type::get_type_error();
       return;
@@ -75,30 +75,30 @@ namespace AST {
 
     if (op_ == Language::Operator::Cast) {
       expr_type_ = rhs_->interpret_as_type();
-      if (lhs_->expr_type_ == expr_type_
-          || (lhs_->expr_type_ == Type::get_bool()
+      if (lhs_->type() == type()
+          || (lhs_->type() == Type::get_bool()
             &&
-            (expr_type_ == Type::get_int()
-             || expr_type_ == Type::get_uint()
-             || expr_type_ == Type::get_real()))
-          || (lhs_->expr_type_ == Type::get_int() && expr_type_ == Type::get_real())
-          || (lhs_->expr_type_ == Type::get_int() && expr_type_ == Type::get_uint())
-          || (lhs_->expr_type_ == Type::get_uint() && expr_type_ == Type::get_real())
-          || (lhs_->expr_type_ == Type::get_uint() && expr_type_ == Type::get_int())
+            (type() == Type::get_int()
+             || type() == Type::get_uint()
+             || type() == Type::get_real()))
+          || (lhs_->type() == Type::get_int() && type() == Type::get_real())
+          || (lhs_->type() == Type::get_int() && type() == Type::get_uint())
+          || (lhs_->type() == Type::get_uint() && type() == Type::get_real())
+          || (lhs_->type() == Type::get_uint() && type() == Type::get_int())
           ) return;
 
-      error_log.log(line_num_, "Invalid cast from " + lhs_->expr_type_->to_string() + " to " + expr_type_->to_string());
+      error_log.log(line_num(), "Invalid cast from " + lhs_->type()->to_string() + " to " + type()->to_string());
 
     } else if (op_ == Language::Operator::Access) {
       if (!rhs_->is_identifier()) {
-        error_log.log(line_num_, "Member access (`.`) must access an identifier.");
+        error_log.log(line_num(), "Member access (`.`) must access an identifier.");
       }
 
       auto lhs_type = lhs_->type();
 
       if (!lhs_type->is_user_defined()) {
         // TODO better error message
-        error_log.log(line_num_, "Elements of this type have no members.");
+        error_log.log(line_num(), "Elements of this type have no members.");
 
       } else {
         auto user_def_type = static_cast<UserDefined*>(lhs_type);
@@ -109,7 +109,7 @@ namespace AST {
           // TODO better error message
           // TODO TOKENREMOVAL
           // rhs_ must be and identifier in this case
-          error_log.log(line_num_,
+          error_log.log(line_num(),
               "Type has no member named `" + rhs_->token() + "`.");
         } else {
           rhs_->expr_type_ = member_type;
@@ -119,45 +119,45 @@ namespace AST {
       return;
 
     } else if (op_ == Language::Operator::Rocket) {
-      if (lhs_->expr_type_ != Type::get_bool())
+      if (lhs_->type() != Type::get_bool())
         expr_type_ = Type::get_type_error();
 
     } else if (op_ == Language::Operator::Call) {
       expr_type_ = Type::get_type_error();
-      if (!lhs_->expr_type_->is_function()) {
+      if (!lhs_->type()->is_function()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name a function.");
+        error_log.log(line_num(), "Identifier `" + lhs_->token() +"` does not name a function.");
         return;
       }
 
-      Type* in_type = static_cast<Function*>(lhs_->expr_type_)->argument_type();
+      Type* in_type = static_cast<Function*>(lhs_->type())->argument_type();
 
-      if (in_type != rhs_->expr_type_) {
-        error_log.log(line_num_, "Type mismatch on function arguments.");
+      if (in_type != rhs_->type()) {
+        error_log.log(line_num(), "Type mismatch on function arguments.");
         return;
       }
 
-      expr_type_ = static_cast<Function*>(lhs_->expr_type_)->return_type();
+      expr_type_ = static_cast<Function*>(lhs_->type())->return_type();
       
       return;
 
    } else if (op_ == Language::Operator::Index) {
       expr_type_ = Type::get_type_error();
-      if (!lhs_->expr_type_->is_array()) {
+      if (!lhs_->type()->is_array()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num_, "Identifier `" + lhs_->token() +"` does not name an array.");
+        error_log.log(line_num(), "Identifier `" + lhs_->token() +"` does not name an array.");
         return;
       }
 
 
-      expr_type_ = static_cast<Array*>(lhs_->expr_type_)->data_type();
+      expr_type_ = static_cast<Array*>(lhs_->type())->data_type();
 
       // TODO make this allow uint maybe?
       // TODO allow slice indexing
-      if (rhs_->expr_type_ != Type::get_int()) {
-        error_log.log(line_num_, "Arary must be indexed by an integer.");
+      if (rhs_->type() != Type::get_int()) {
+        error_log.log(line_num(), "Arary must be indexed by an integer.");
         return;
       }
       
@@ -171,28 +171,28 @@ namespace AST {
         || op_ == Language::Operator::GreaterThan) {
       // TODO is this else-if block necessary anymore??
  
-      if (lhs_->expr_type_ != rhs_->expr_type_) {
+      if (lhs_->type() != rhs_->type()) {
         // If the types don't match give an error message. We can continue
         // because the result must be a bool
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num_,
+        error_log.log(line_num(),
             "Type mismatch for comparison operator " + token() + " ("
-            + lhs_->expr_type_->to_string() + " and "
-            + rhs_->expr_type_->to_string() + ")");
+            + lhs_->type()->to_string() + " and "
+            + rhs_->type()->to_string() + ")");
       }
 
       expr_type_ = Type::get_bool();
 
-    } else if (lhs_->expr_type_ == rhs_->expr_type_) {
+    } else if (lhs_->type() == rhs_->type()) {
       //Otherwise it's an arithmetic operator
-      expr_type_ = lhs_->expr_type_;
+      expr_type_ = lhs_->type();
 
     } else {
-      error_log.log(line_num_,
+      error_log.log(line_num(),
           "Type mismatch: "
-          + lhs_->expr_type_->to_string() + " and "
-          + rhs_->expr_type_->to_string() + ")");
+          + lhs_->type()->to_string() + " and "
+          + rhs_->type()->to_string() + ")");
 
       // TODO give a type-mismatch error here
       expr_type_ = Type::get_type_error();
@@ -203,27 +203,28 @@ namespace AST {
     expr_type_ = Type::get_type();
 
     // TODO implement uint and change this to uint
-    if (len_ != nullptr && len_->expr_type_ != Type::get_int()) {
-      error_log.log(line_num_, "Array length indexed by non-integral type");
+    if (len_ != nullptr && len_->type() != Type::get_int()) {
+      error_log.log(line_num(), "Array length indexed by non-integral type");
     }
 
-    if (array_type_->expr_type_ != Type::get_type()) {
-      error_log.log(line_num_, "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
+    if (array_type_->type() != Type::get_type()) {
+      error_log.log(line_num(), "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
     }
   }
 
   void ArrayLiteral::verify_types() {
-    auto type_to_match = elems_.front()->expr_type_;
+    auto type_to_match = elems_.front()->type();
 
     expr_type_ = Type::get_array(type_to_match);
     for (const auto& el : elems_) {
-      if (el->expr_type_ != type_to_match) {
-        error_log.log(line_num_, "Type error: Array literal must have consistent type");
+      if (el->type() != type_to_match) {
+        error_log.log(line_num(), "Type error: Array literal must have consistent type");
         expr_type_ = Type::get_type_error();
         return;
       }
     }
   }
+
 
   void ChainOp::verify_types() {
     if (is_comma_list()) {
@@ -243,7 +244,7 @@ namespace AST {
     std::set<Type*> expr_types;
 
     for (const auto& expr : exprs_) {
-      expr_types.insert(expr->expr_type_);
+      expr_types.insert(expr->type());
     }
 
     if (expr_types.size() == 1) {
@@ -252,13 +253,13 @@ namespace AST {
 
     } else {
       // TODO guess what type was intended
-      error_log.log(line_num_, "Type error: Values do not have matching types in ChainOp");
+      error_log.log(line_num(), "Type error: Values do not have matching types in ChainOp");
     }
   }
 
   void Declaration::verify_types() {
     if (decl_type_->type() == Type::get_void()) {
-      error_log.log(line_num_, "Void types cannot be assigned.");
+      error_log.log(line_num(), "Void types cannot be assigned.");
       return;
     }
 
@@ -328,7 +329,7 @@ namespace AST {
 
     if (return_type_as_type == Type::get_void()) {
       if (!return_types.empty()) {
-        error_log.log(line_num_, "Function declared void but returns a value.");
+        error_log.log(line_num(), "Function declared void but returns a value.");
       }
       return;
     }
@@ -339,13 +340,13 @@ namespace AST {
       //
       // TODO better error message. Repalec 'non-void' with some information
       // about the type.
-      error_log.log(line_num_, "Non-void function has no return statement.");
+      error_log.log(line_num(), "Non-void function has no return statement.");
 
     } else if (return_types.size() > 1) {
-      error_log.log(line_num_, "Too many return types.");
+      error_log.log(line_num(), "Too many return types.");
 
     } else if (*return_types.begin() != return_type_as_type) {
-      error_log.log(line_num_, "Return type does not match function declared return type: "
+      error_log.log(line_num(), "Return type does not match function declared return type: "
           + (*return_types.begin())->to_string()
           + " vs. "
           + return_type_as_type->to_string());
@@ -367,18 +368,18 @@ namespace AST {
 
 
   void Assignment::verify_types() {
-    if (lhs_->expr_type_ == Type::get_type_error() ||
-        rhs_->expr_type_ == Type::get_type_error()) {
+    if (lhs_->type() == Type::get_type_error() ||
+        rhs_->type() == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
 
-    } else if (rhs_->expr_type_ == Type::get_void()) {
-      error_log.log(line_num_, "Void types cannot be assigned.");
+    } else if (rhs_->type() == Type::get_void()) {
+      error_log.log(line_num(), "Void types cannot be assigned.");
       expr_type_ = Type::get_type_error();
 
-    } else if (lhs_->expr_type_ != rhs_->expr_type_) {
-      error_log.log(line_num_, "Type mismatch: "
-          + lhs_->expr_type_->to_string() + " and "
-          + rhs_->expr_type_->to_string());
+    } else if (lhs_->type() != rhs_->type()) {
+      error_log.log(line_num(), "Type mismatch: "
+          + lhs_->type()->to_string() + " and "
+          + rhs_->type()->to_string());
     }
     expr_type_ = Type::get_void();
   }
@@ -387,28 +388,30 @@ namespace AST {
     expr_type_ = pairs_->verify_types_with_key(Type::get_bool());
   }
 
+  void KVPairList::verify_types() {}
+
   // Verifies that all keys have the same given type `key_type` and that all
   // values have the same (but unspecified) type.
   Type* KVPairList::verify_types_with_key(Type* key_type) {
     std::set<Type*> value_types;
 
     for (const auto& kv : kv_pairs_) {
-      if (kv.first->expr_type_ != key_type) {
+      if (kv.first->type() != key_type) {
         // TODO: give some context for this error message. Why must this be the
         // type?  So far the only instance where this is called is for case
         // statements,
-        error_log.log(line_num_, "Type of `____` must be "
+        error_log.log(line_num(), "Type of `____` must be "
             + key_type->to_string() + ", but "
-            + kv.first->expr_type_->to_string() + " found instead.");
+            + kv.first->type()->to_string() + " found instead.");
         kv.first->expr_type_ = key_type;
       }
 
-      value_types.insert(kv.second->expr_type_);
+      value_types.insert(kv.second->type());
     }
 
     // TODO guess what type was intended
     if (value_types.size() != 1) {
-      error_log.log(line_num_, "Type error: Values do not match in key-value pairs");
+      error_log.log(line_num(), "Type error: Values do not match in key-value pairs");
       return Type::get_type_error();
     }
 
