@@ -16,8 +16,6 @@
 #include "typedefs.h"
 #include "Scope.h"
 
-// TODO why is replace(_, _) not const?
-
 namespace AST {
   class Expression;
   class Declaration;
@@ -28,13 +26,22 @@ class Pointer;
 
 #include "typedefs.h"
 
-#define ENDING = 0; 
+#define ENDING = 0 
 
 #define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
-  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) ENDING
-#define LEFT_UNARY_OPERATOR_MACRO(op) \
-  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING
+  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) ENDING;
 
+#define LEFT_UNARY_OPERATOR_MACRO(op) \
+  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING;
+
+#define BASIC_FUNCTIONS                        \
+  virtual llvm::Function* assign() ENDING;     \
+virtual llvm::Function* initialize() ENDING;   \
+virtual llvm::Function* uninitialize() ENDING; \
+virtual size_t bytes() const ENDING;           \
+virtual std::string to_string() const ENDING;  \
+virtual time_loc type_time() const ENDING;     \
+virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
 
 class Type {
   public:
@@ -64,34 +71,22 @@ class Type {
     static Type* get_array(Type* t);
     static Type* get_user_defined(const std::string& name);
 
-    static Type* make_user_defined(
-        const std::vector<DeclPtr>& decls, const std::string& name);
+    static Type* make_user_defined(const std::vector<DeclPtr>& decls, const std::string& name);
 
     static std::map<std::string, Type*> literals;
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const {
       return bldr.CreateAlloca(llvm());
     }
-    
-    virtual size_t bytes() const = 0;
 
-    virtual llvm::Function* assign() = 0;
-    virtual llvm::Function* initialize() = 0;
-    virtual llvm::Function* uninitialize() = 0;
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) = 0;
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       call_repr(bldr, val);
     }
-    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) = 0;
 
-
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    virtual Type* replace(Type* pattern, Type* replacement) = 0;
-    virtual std::string to_string() const = 0;
-    virtual time_loc type_time() const = 0;
 
     virtual bool is_array()        const { return false; }
     virtual bool is_function()     const { return false; }
@@ -123,7 +118,7 @@ class Type {
 };
 
 #undef ENDING
-#define ENDING ;
+#define ENDING
 
 class Primitive : public Type {
   public:
@@ -132,22 +127,12 @@ class Primitive : public Type {
     friend class Type;
     virtual ~Primitive() {}
 
-    virtual size_t bytes() const;
-
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
+BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     virtual bool is_primitive() const { return true; }
 
@@ -177,21 +162,13 @@ class Tuple : public Type {
     virtual bool is_tuple() const { return true; }
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
-    virtual size_t bytes() const;
 
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     size_t size() const { return entry_types_.size(); } 
 
@@ -217,22 +194,12 @@ class Function : public Type {
     }
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
-    virtual size_t bytes() const;
 
-
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     virtual ~Function() {}
 
@@ -252,21 +219,12 @@ class Pointer : public Type {
     virtual bool is_pointer() const { return true; }
     Type* pointee_type() const { return pointee_type_; }
 
-    virtual size_t bytes() const;
 
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     virtual ~Pointer() {}
 
@@ -286,21 +244,11 @@ class Array : public Type {
 
     virtual bool is_array() const { return true; }
 
-    virtual size_t bytes() const;
-
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     virtual Type* data_type() const { return type_; }
     virtual size_t dim() const { return dim_; }
@@ -328,21 +276,11 @@ class UserDefined : public Type {
   public:
     friend class Type;
 
-    virtual size_t bytes() const;
-
-    virtual llvm::Function* assign();
-    virtual llvm::Function* initialize();
-    virtual llvm::Function* uninitialize();
-
-    virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 
+    BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual Type* replace(Type* pattern, Type* replacement);
-    virtual std::string to_string() const;
-    virtual time_loc type_time() const;
 
     virtual bool is_user_defined() const { return true; }
 
@@ -359,6 +297,7 @@ class UserDefined : public Type {
 };
 
 
+#undef BASIC_FUNCTIONS
 #undef LEFT_UNARY_OPERATOR_MACRO
 #undef BINARY_OPERATOR_MACRO
 #undef ENDING
