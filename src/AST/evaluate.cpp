@@ -155,6 +155,7 @@ namespace AST {
 
         last = next;
       }
+
       return Context::Value(true);
 
     } else if (exprs_[0]->type() == Type::get_uint()) {

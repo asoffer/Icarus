@@ -70,39 +70,43 @@ namespace AST {
 
     llvm::Value* val = expr_->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
-    switch (op_) {
-      using Language::Operator;
-
+    using Language::Operator;
+    switch (op_) { 
       case Operator::Sub:
-      return expr_->type()->call_neg(bldr, val);
+        return expr_->type()->call_neg(bldr, val);
 
       case Operator::Not:
-      return expr_->type()->call_not(bldr, val);
+        return expr_->type()->call_not(bldr, val);
 
       case Operator::Return:
-      scope->make_return(val);
-      return nullptr;
+        scope->make_return(val);
+        return nullptr;
 
       case Operator::At:
-      return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
+        return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
 
       case Operator::Call:
-      return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+        return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
 
       case Operator::Print:
-      // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-      if (expr_->type() == Type::get_type()) {
-        val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
-      }
-      expr_->type()->call_print(scope->builder(), val);
-      return nullptr;
+        // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
+        if (expr_->type() == Type::get_type()) {
+          val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+        }
+        expr_->type()->call_print(scope->builder(), val);
+        return nullptr;
 
       default:
-      return nullptr;
+        return nullptr;
     }
   }
 
   llvm::Value* Binop::generate_code(Scope* scope) {
+    if (time() == Time::compile) {
+      Context ctx = Context::GlobalContext.spawn();
+      return llvm_value(evaluate(ctx));
+    }
+
     using Language::Operator;
     switch (op_) {
       case Operator::Index:
@@ -116,13 +120,6 @@ namespace AST {
 
     auto lhs_val = lhs_->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
-
-    // TODO this test is a standin for actually determining if this is compile-time
-//    if (rhs_->type() == Type::get_type()) {
-//      Context ctx = Context::GlobalContext.spawn();
-//      return llvm_value(evaluate(ctx));
-//    }
-
 
     switch (op_) {
       case Operator::Cast:
@@ -184,14 +181,12 @@ namespace AST {
   }
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
-    using Language::Operator;
-
-    // TODO short-circuiting
-    if (exprs_[0]->type() == Type::get_type()) {
+    if (time() == Time::compile) {
       Context ctx = Context::GlobalContext.spawn();
       return llvm_value(evaluate(ctx));
     }
 
+    using Language::Operator;
     auto lhs_val = exprs_[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
@@ -322,7 +317,6 @@ namespace AST {
 
     if (llvm_function_ == nullptr) {
       // NOTE: This means a function is not assigned.
-
       llvm_function_ = llvm::Function::Create(
           static_cast<llvm::FunctionType*>(type()->llvm()),
           llvm::Function::ExternalLinkage, "__anon_fn", global_module);

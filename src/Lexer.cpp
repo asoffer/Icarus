@@ -477,15 +477,14 @@ AST::TokenNode Lexer::next_given_slash() {
     
     // This is intentionally not set to '/' (which must be the character
     // preceeding peek at this point because we don't want to count it in the
-    // loop moer than once). 
+    // loop more than once). 
     int prepeek = 0;
 
     while (comment_layer != 0) {
       prepeek = peek;
       peek = file_.get();
 
-      if (!*this) {
-        // If we're at the end of the stream
+      if (!*this) {  // If we're at the end of the stream
         error_log.log(line_num_, "File ended during multi-line comment.");
         return AST::TokenNode(line_num_, Language::comment, "");
       }

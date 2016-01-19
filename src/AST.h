@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "Language.h"
+#include "TimeEval.h"
 #include "Type.h"
 #include "typedefs.h"
 #include "Scope.h"
@@ -17,26 +18,28 @@
 extern ErrorLog error_log;
 
 namespace AST {
-#define ENDING = 0;
+#define ENDING = 0
 #define VIRTUAL_METHODS_FOR_NODES                           \
-  virtual std::string to_string(size_t n) const      ENDING \
-  virtual void join_identifiers(Scope* scope)        ENDING \
-  virtual void assign_decl_to_scope(Scope* scope)    ENDING \
-  virtual void record_dependencies(EPtr eptr) const  ENDING \
-  virtual void verify_types()                        ENDING \
-  virtual Context::Value evaluate(Context& ctx)      ENDING \
-  virtual llvm::Value* generate_code(Scope* scope)   ENDING
+  virtual std::string to_string(size_t n) const     ENDING; \
+  virtual void join_identifiers(Scope* scope)       ENDING; \
+  virtual void assign_decl_to_scope(Scope* scope)   ENDING; \
+  virtual void record_dependencies(EPtr eptr) const ENDING; \
+  virtual void verify_types()                       ENDING; \
+  virtual Context::Value evaluate(Context& ctx)     ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)  ENDING; \
+  virtual Time::Eval determine_time()               ENDING
 
-#define VIRTUAL_METHODS_FOR_EXPRESION                      \
-  virtual std::string to_string(size_t n) const      ENDING \
-  virtual void join_identifiers(Scope* scope)        ENDING \
-  virtual void assign_decl_to_scope(Scope* scope)    ENDING \
-  virtual void record_dependencies(EPtr eptr) const  ENDING \
-  virtual void verify_types()                        ENDING \
-  virtual Type* interpret_as_type()                  ENDING \
-  virtual llvm::Value* generate_code(Scope* scope)   ENDING \
-  virtual llvm::Value* generate_lvalue(Scope* scope) ENDING \
-  virtual Context::Value evaluate(Context& ctx)      ENDING
+#define VIRTUAL_METHODS_FOR_EXPRESSION                       \
+  virtual std::string to_string(size_t n) const      ENDING; \
+  virtual void join_identifiers(Scope* scope)        ENDING; \
+  virtual void assign_decl_to_scope(Scope* scope)    ENDING; \
+  virtual void record_dependencies(EPtr eptr) const  ENDING; \
+  virtual void verify_types()                        ENDING; \
+  virtual Type* interpret_as_type()                  ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)   ENDING; \
+  virtual llvm::Value* generate_lvalue(Scope* scope) ENDING; \
+  virtual Context::Value evaluate(Context& ctx)      ENDING; \
+  virtual Time::Eval determine_time()                ENDING
 
   class Node {
     public:
@@ -57,6 +60,7 @@ namespace AST {
 
       virtual Context::Value evaluate(Context& ctx) { return nullptr; }
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
+      virtual Time::Eval determine_time() { return Time::error; }
 
       bool is_return() const {
         return node_type() == Language::return_expression;
@@ -64,6 +68,7 @@ namespace AST {
       bool is_print() const {
         return node_type() == Language::print_expression;
       }
+      Time::Eval time() { return time_; }
 
       virtual bool is_identifier() const { return type_ == Language::identifier; }
       virtual bool is_terminal() const { return false; }
@@ -79,7 +84,7 @@ namespace AST {
       virtual bool is_token_node() const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
-        : type_(type), token_(token), line_num_(line_num) {}
+        : type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
 
       virtual ~Node(){}
 
@@ -91,6 +96,7 @@ namespace AST {
       Language::NodeType type_;
       std::string token_;
       size_t line_num_;
+      Time::Eval time_;
   };
 
   class TokenNode : public Node {
@@ -156,19 +162,18 @@ namespace AST {
 
       virtual bool is_expression() const { return true; }
 
-
       virtual ~Expression(){}
 
       Expression() : expr_type_(Type::get_unknown()) {}
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
     protected:
       size_t precedence_;
       Type* expr_type_;
   };
 
 #undef ENDING
-#define ENDING ;
+#define ENDING
 
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
     auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
@@ -185,11 +190,11 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_paren_operator(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
     private:
-        EPtr expr_;
-        Language::Operator op_;
+      EPtr expr_;
+      Language::Operator op_;
   };
 
 
@@ -204,9 +209,9 @@ namespace AST {
       static NPtr build_bracket_operator(NPtrVec&& nodes);
       static NPtr build_array_type(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        virtual bool is_binop() const { return true; }
+      virtual bool is_binop() const { return true; }
 
 
       virtual ~Binop(){}
@@ -230,7 +235,7 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       static NPtr join(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
       virtual bool is_chain_op() const { return true; }
       virtual bool is_comma_list() const { return ops_.front() == Language::Operator::Comma; }
@@ -249,7 +254,7 @@ namespace AST {
 
       static NPtr build(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
     private:
       std::vector<EPtr> elems_;
@@ -260,7 +265,7 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_unknown(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
       virtual bool is_array_type() const { return true; }
 
@@ -289,7 +294,7 @@ namespace AST {
       static NPtr build_void_return(NPtrVec&& nodes);
       static NPtr build_ASCII(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
       virtual bool is_terminal() const { return true; }
 
@@ -320,9 +325,9 @@ namespace AST {
     public:
       static NPtr build(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        virtual bool is_identifier() const { return true; }
+      virtual bool is_identifier() const { return true; }
 
       Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr) {
         token_ = token_string;
@@ -359,9 +364,9 @@ namespace AST {
       inline IdPtr declared_identifier() const { return id_; }
       inline EPtr declared_type() const { return decl_type_; }
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        bool type_is_inferred() const { return infer_type_; } 
+      bool type_is_inferred() const { return infer_type_; } 
 
       virtual bool is_declaration() const { return true; }
 
@@ -391,10 +396,10 @@ namespace AST {
       static NPtr build_one_assignment_error(NPtrVec&& nodes);
       static NPtr build_more_assignment_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES
+      VIRTUAL_METHODS_FOR_NODES;
 
       virtual Type* verify_types_with_key(Type* key_type);
-      
+
       inline size_t size() const { return kv_pairs_.size(); }
 
       KVPairList() {}
@@ -411,7 +416,7 @@ namespace AST {
       Case() {}
       virtual ~Case() {}
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
     private:
       std::shared_ptr<KVPairList> pairs_;
@@ -435,7 +440,7 @@ namespace AST {
       static NPtr build_double_expression_error(NPtrVec&& nodes);
       static NPtr build_extra_expression_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES
+      VIRTUAL_METHODS_FOR_NODES;
 
       void collect_return_types(std::set<Type*>* return_exprs) const;
 
@@ -461,9 +466,9 @@ namespace AST {
       friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
       static NPtr build(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        virtual llvm::Function* llvm_function() const { return llvm_function_; }
+      virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
       FunctionLiteral() : fn_scope_(new FnScope), llvm_function_(nullptr) {}
       virtual ~FunctionLiteral() {}
@@ -488,7 +493,7 @@ namespace AST {
       static NPtr build_extra_else_if_error(NPtrVec&& nodes);
       static NPtr build_if_assignment_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES
+      VIRTUAL_METHODS_FOR_NODES;
 
       bool has_else() const { return else_line_num_ != 0; }
 
@@ -511,7 +516,7 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_assignment_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES
+      VIRTUAL_METHODS_FOR_NODES;
 
       While() : body_scope_(Scope::build<WhileScope>()) {}
       virtual ~While() {}
@@ -540,9 +545,9 @@ namespace AST {
 
       static NPtr build(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        virtual bool is_type_literal() const { return true; }
+      virtual bool is_type_literal() const { return true; }
 
       TypeLiteral() :
         type_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
@@ -560,9 +565,9 @@ namespace AST {
 
       static NPtr build(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESION
+      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-        virtual bool is_enum_literal() const { return true; }
+      virtual bool is_enum_literal() const { return true; }
 
       // TODO Will TypeScope suffice?
       EnumLiteral() :
@@ -585,6 +590,8 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual Context::Value evaluate(Context& ctx);
 
+      virtual Time::Eval determine_time();
+
       Break(size_t line_num) {
         line_num_ = line_num;
       }
@@ -599,7 +606,7 @@ namespace AST {
 }  // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES
-#undef VIRTUAL_METHODS_FOR_EXPRESION
+#undef VIRTUAL_METHODS_FOR_EXPRESSION
 #undef ENDING
 
 #endif  // ICARUS_AST_NODE_H

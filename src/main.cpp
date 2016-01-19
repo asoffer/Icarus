@@ -204,6 +204,8 @@ int main(int argc, char *argv[]) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;
   }
+  global_statements->determine_time();
+
 
   // Program has been verified. We can now proceed with code generation.
   // Initialize the global_scope.

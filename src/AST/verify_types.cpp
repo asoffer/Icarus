@@ -9,7 +9,22 @@ namespace AST {
     // know that `return foo` should have void type
     //
     // TODO is it safe to check one of the enums instead of strings?
-    // TODO print can only take a real right now
+    if (op_ == Language::Operator::At) {
+      if (expr_->type()->is_pointer()) {
+        expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
+
+      } else {
+       error_log.log(line_num(), "Dereferencing object of type " + expr_->type()->to_string() + ", which is not a pointer.");
+      }
+
+    } else if (op_ == Language::Operator::And) { // Indirection '&'
+
+      // TODO disallow pointers to goofy things (address of rvalue, e.g.)
+      expr_type_ = Type::get_pointer(expr_->type());
+      return;
+    }
+
+
     if (is_return() || is_print()) {
       expr_type_ = Type::get_void();
       return;
@@ -21,8 +36,9 @@ namespace AST {
       }
 
       auto fn_type = static_cast<Function*>(expr_->type());
-      expr_type_ = (fn_type->argument_type() == Type::get_void() ?
-          fn_type->return_type() : Type::get_type_error());
+      expr_type_ = (fn_type->argument_type() == Type::get_void()
+          ? fn_type->return_type()
+          : Type::get_type_error());
 
       return;
 
@@ -30,21 +46,7 @@ namespace AST {
       expr_type_ = Type::get_type_error();
       return;
 
-    } else if (op_ == Language::Operator::At) {
-      if (expr_->type()->is_pointer()) {
-        expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
-
-      } else {
-       error_log.log(line_num(), "Dereferencing object of type " + expr_->type()->to_string() + ", which is not a pointer.");
-      }
-
-    } else if (op_ == Language::Operator::And) { // Indirection '&'
-      // TODO disallow pointers to goofy things
-      expr_type_ = Type::get_pointer(expr_->type());
-      return;
-    }
-
-    if (op_ == Language::Operator::Sub) {
+    } else if (op_ == Language::Operator::Sub) {
       if (expr_->type() == Type::get_uint()) {
         error_log.log(line_num(), "Negation applied to unsigned integer");
         expr_type_ = Type::get_uint();
@@ -68,24 +70,18 @@ namespace AST {
         expr_type_ = Type::get_bool();
       }
     }
-
-
-    // TODO there are more unary operators to verify.
-    // @ - dereferencing
-    // & - indirection
-    //
   }
 
 
   void Binop::verify_types() {
-    if (lhs_->type() == Type::get_type_error()
-        || rhs_->type() == Type::get_type_error()) {
+    if (lhs_->type() == Type::get_type_error() ||
+        rhs_->type() == Type::get_type_error()) {
       // An error was already found in the types, so just pass silently
       expr_type_ = Type::get_type_error();
       return;
     }
 
-
+    // TODO casting check should be part of the type interface
     if (op_ == Language::Operator::Cast) {
       expr_type_ = rhs_->interpret_as_type();
       if (lhs_->type() == type()
@@ -261,7 +257,7 @@ namespace AST {
     }
 
     if (expr_types.size() == 1) {
-      // FIXME assuming this is only used for booleans currently.
+      // TODO must it always be bool?
       expr_type_ = Type::get_bool();
 
     } else {
@@ -277,12 +273,12 @@ namespace AST {
     }
 
     if (decl_type_->is_type_literal()) {
+
       auto type_lit_ = std::static_pointer_cast<TypeLiteral>(decl_type_);
       type_lit_->type_value_ = 
         Type::make_user_defined(type_lit_->decls_, 
             infer_type_ ? identifier_string() : "unnamed type");
     }
-
 
     id_->expr_type_ = (infer_type_
         ? decl_type_->type()
@@ -299,10 +295,7 @@ namespace AST {
   }
 
   void Terminal::verify_types() {}
-
-  void Identifier::verify_types() {
-    // TODO id verify. Does anything need to be done here?
-  }
+  void Identifier::verify_types() {}
 
   void FunctionLiteral::verify_types() {
     Type* return_type_as_type = return_type_->interpret_as_type();
@@ -377,8 +370,6 @@ namespace AST {
       return_exprs->insert(unop_ptr->expr_->type());
     }
   }
-
-
 
   void Assignment::verify_types() {
     if (lhs_->type() == Type::get_type_error() ||

@@ -15,6 +15,7 @@
 
 #include "typedefs.h"
 #include "Scope.h"
+#include "TimeEval.h"
 
 namespace AST {
   class Expression;
@@ -40,20 +41,13 @@ virtual llvm::Function* initialize() ENDING;   \
 virtual llvm::Function* uninitialize() ENDING; \
 virtual size_t bytes() const ENDING;           \
 virtual std::string to_string() const ENDING;  \
-virtual time_loc type_time() const ENDING;     \
+virtual Time::Eval time() const ENDING;        \
 virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
 
 class Type {
   public:
     friend class Array;
     friend class UserDefined;
-
-    enum time_loc {
-      either_time  = 0x0,
-      compile_time = 0x1,
-      run_time     = 0x2,
-      mixed_time   = 0x3
-    };
 
     static Type* get_type_error();
     static Type* get_unknown();
@@ -82,6 +76,8 @@ class Type {
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       call_repr(bldr, val);
     }
+
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
