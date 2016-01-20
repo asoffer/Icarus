@@ -125,6 +125,9 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
+  Type::initialize_operator_table();
+
+
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 

@@ -5,6 +5,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 // TODO Figure out what you need from this.
 #include "llvm/ADT/STLExtras.h"
@@ -13,6 +14,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+#include "Language.h"
 #include "typedefs.h"
 #include "Scope.h"
 #include "TimeEval.h"
@@ -60,6 +62,8 @@ class Type {
     static Type* get_void();
 
     static Function* get_function(Type* in, Type* out);
+    static Function* get_function(std::vector<Type*> in, Type* out);
+
     static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t);
@@ -92,6 +96,9 @@ class Type {
     virtual bool is_void()         const { return this == Type::get_void(); }
     virtual bool is_user_defined() const { return false; }
 
+    static Type* get_operator(Language::Operator op, Type* signature);
+    static void initialize_operator_table();
+
     llvm::Type* llvm() const { return llvm_type_; }
 
     Type() :
@@ -111,6 +118,10 @@ class Type {
       * uninit_fn_;
 
     llvm::Type* llvm_type_;
+
+  private:
+    // Takes in an operator and returns a set of the possible functions signatures
+    static std::map<Language::Operator, std::map<Type*, Type*>> op_map_;
 };
 
 #undef ENDING

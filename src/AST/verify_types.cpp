@@ -4,6 +4,26 @@
 extern ErrorLog error_log;
 
 namespace AST {
+  Type* operator_lookup(size_t line_num, Language::Operator op, Type* lhs_type, Type* rhs_type) {
+    auto ret_type = Type::get_operator(op, Type::get_tuple({ lhs_type, rhs_type }));
+    if (ret_type == nullptr) {
+      std::string tok;
+      switch (op) {
+#define OPERATOR_MACRO(name, symbol, prec, assoc) \
+        case Language::Operator::name: tok = #symbol; break;
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+      }
+
+      error_log.log(line_num, "No known operator overload for `" + tok + "` with types " + lhs_type->to_string() + " and " + rhs_type->to_string());
+      return Type::get_type_error();
+    } else {
+      //Otherwise it's an arithmetic operator
+      return ret_type;
+    }
+  }
+
+
   void Unop::verify_types() {
     // Even if there was previously a type_error on the return line, we still
     // know that `return foo` should have void type
@@ -172,39 +192,8 @@ namespace AST {
       
       return;
 
-    } else if (op_ == Language::Operator::LessThan
-        || op_ == Language::Operator::LessEq
-        || op_ == Language::Operator::Equal
-        || op_ == Language::Operator::NotEqual
-        || op_ == Language::Operator::GreaterEq
-        || op_ == Language::Operator::GreaterThan) {
-      // TODO is this else-if block necessary anymore??
- 
-      if (lhs_->type() != rhs_->type()) {
-        // If the types don't match give an error message. We can continue
-        // because the result must be a bool
-        // TODO TOKENREMOVAL
-        // TODO lhs might not have a precise token
-        error_log.log(line_num(),
-            "Type mismatch for comparison operator " + token() + " ("
-            + lhs_->type()->to_string() + " and "
-            + rhs_->type()->to_string() + ")");
-      }
-
-      expr_type_ = Type::get_bool();
-
-    } else if (lhs_->type() == rhs_->type()) {
-      //Otherwise it's an arithmetic operator
-      expr_type_ = lhs_->type();
-
     } else {
-      error_log.log(line_num(),
-          "Type mismatch: "
-          + lhs_->type()->to_string() + " and "
-          + rhs_->type()->to_string() + ")");
-
-      // TODO give a type-mismatch error here
-      expr_type_ = Type::get_type_error();
+      expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
     }
   }
 
@@ -372,20 +361,21 @@ namespace AST {
   }
 
   void Assignment::verify_types() {
-    if (lhs_->type() == Type::get_type_error() ||
-        rhs_->type() == Type::get_type_error()) {
-      // An error was already found in the types, so just pass silently
-
-    } else if (rhs_->type() == Type::get_void()) {
-      error_log.log(line_num(), "Void types cannot be assigned.");
+    if (lhs_->type() == Type::get_type_error() || rhs_->type() == Type::get_type_error()) {
       expr_type_ = Type::get_type_error();
-
-    } else if (lhs_->type() != rhs_->type()) {
-      error_log.log(line_num(), "Type mismatch: "
-          + lhs_->type()->to_string() + " and "
-          + rhs_->type()->to_string());
+      return;
     }
-    expr_type_ = Type::get_void();
+
+    // TODO put this in the lookup with a type matching system
+    if (op_ == Language::Operator::Assign) {
+      if (lhs_->type() != rhs_->type()) {
+        error_log.log(line_num(), "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
+      }
+      expr_type_ = Type::get_void();
+      return;
+    }
+
+    expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
   }
 
   void Case::verify_types() {

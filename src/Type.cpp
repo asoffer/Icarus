@@ -17,35 +17,21 @@ namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
 
-#define MAKE_PRIMITIVE_TYPE_GETTER(type)                                 \
-  Type* Type::get_##type () {                                            \
-    return &(Primitive::primitive_types_[Primitive::t_##type]);          \
+#define PRIMITIVE_TYPE_MACRO(type)                               \
+  Type* Type::get_##type () {                                    \
+    return &(Primitive::primitive_types_[Primitive::t_##type]);  \
   }
+#include "config/primitive_types.conf"
 
-MAKE_PRIMITIVE_TYPE_GETTER(type_error);
-MAKE_PRIMITIVE_TYPE_GETTER(unknown);
-MAKE_PRIMITIVE_TYPE_GETTER(bool);
-MAKE_PRIMITIVE_TYPE_GETTER(char);
-MAKE_PRIMITIVE_TYPE_GETTER(int);
-MAKE_PRIMITIVE_TYPE_GETTER(real);
-MAKE_PRIMITIVE_TYPE_GETTER(type);
-MAKE_PRIMITIVE_TYPE_GETTER(uint);
-MAKE_PRIMITIVE_TYPE_GETTER(void);
+#undef PRIMITIVE_TYPE_MACRO
 
-#undef MAKE_PRIMITIVE_TYPE_GETTER
-
+#define PRIMITIVE_TYPE_MACRO(type) { #type , Type::get_##type() },
 std::map<std::string, Type*> Type::literals = {
-  { "type_error", Type::get_type_error() },
-  { "??",         Type::get_unknown() },
-  { "bool",       Type::get_bool() },
-  { "char",       Type::get_char() },
-  { "int",        Type::get_int() },
-  { "real",       Type::get_real() },
-  { "type",       Type::get_type() },
-  { "uint",       Type::get_uint() },
-  { "void",       Type::get_void() }
+#include "config/primitive_types.conf"
 };
+#undef PRIMITIVE_TYPE_MACRO
 
+std::map<Language::Operator, std::map<Type*, Type*>> Type::op_map_ = {};
 
 Primitive::Primitive(PrimitiveEnum pe) : repr_fn_(nullptr), prim_type_(pe) {
   if (llvm_types_[prim_type_] == nullptr) {
@@ -82,17 +68,11 @@ Primitive::Primitive(PrimitiveEnum pe) : repr_fn_(nullptr), prim_type_(pe) {
   llvm_type_ = llvm_types_[prim_type_];
 };
 
+#define PRIMITIVE_TYPE_MACRO(type) Primitive(Primitive::t_##type),
 Primitive Primitive::primitive_types_[ num_primitive_types_ ] = {
-  Primitive(Primitive::t_type_error),
-  Primitive(Primitive::t_unknown),
-  Primitive(Primitive::t_bool),
-  Primitive(Primitive::t_char),
-  Primitive(Primitive::t_int),
-  Primitive(Primitive::t_real),
-  Primitive(Primitive::t_type),
-  Primitive(Primitive::t_uint),
-  Primitive(Primitive::t_void)
+#include "config/primitive_types.conf"
 };
+#undef PRIMITIVE_TYPE_MACRO
 
 // NOTE: Ideally, we'd pre-compute all of these. Unfortunately, this is not
 // possible in the obvious way, due to the static initialization order fiasco.
@@ -102,6 +82,10 @@ Primitive Primitive::primitive_types_[ num_primitive_types_ ] = {
 llvm::Type* Primitive::llvm_types_[ num_primitive_types_ ] = {
   nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
 };
+
+Function* Type::get_function(std::vector<Type*> in, Type* out) {
+  return get_function(get_tuple(in), out);
+}
 
 Function* Type::get_function(Type* in, Type* out) {
   for (const auto& fn_type : Function::fn_types_) {
@@ -137,7 +121,7 @@ Type* Type::get_tuple(const std::vector<Type*>& types) {
 }
 
 Type* Type::get_array(Type* t) {
- for (const auto& arr : Array::array_types_) {
+  for (const auto& arr : Array::array_types_) {
     if (arr->type_ == t) return arr;
   }
 
@@ -272,4 +256,144 @@ llvm::Value* UserDefined::field_num(const std::string& name) const {
     ++iter; ++i;
   }
   return nullptr;
+}
+
+void Type::initialize_operator_table() {
+  op_map_[Language::Operator::Arrow] = {
+    { get_tuple({ get_type(), get_type() }), get_type() },
+  };
+
+  op_map_[Language::Operator::OrEq] = {
+    { get_tuple({ get_bool(), get_bool() }), get_void() },
+  };
+
+  op_map_[Language::Operator::XorEq] = {
+    { get_tuple({ get_bool(), get_bool() }), get_void() },
+  };
+
+  op_map_[Language::Operator::AndEq] = {
+    { get_tuple({ get_bool(), get_bool() }), get_void() },
+  };
+
+  op_map_[Language::Operator::AddEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_void() },
+    { get_tuple({ get_uint(), get_uint() }), get_void() },
+    { get_tuple({ get_real(), get_real() }), get_void() },
+  };
+
+  op_map_[Language::Operator::SubEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_void() },
+    { get_tuple({ get_uint(), get_uint() }), get_void() },
+    { get_tuple({ get_real(), get_real() }), get_void() },
+  };
+
+  op_map_[Language::Operator::MulEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_void() },
+    { get_tuple({ get_uint(), get_uint() }), get_void() },
+    { get_tuple({ get_real(), get_real() }), get_void() },
+  };
+
+  op_map_[Language::Operator::DivEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_void() },
+    { get_tuple({ get_uint(), get_uint() }), get_void() },
+    { get_tuple({ get_real(), get_real() }), get_void() },
+  };
+
+  op_map_[Language::Operator::ModEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_void() },
+    { get_tuple({ get_uint(), get_uint() }), get_void() },
+  };
+
+  op_map_[Language::Operator::Or] = {
+    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::Xor] = {
+    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::And] = {
+    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::LessThan] = {
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::LessEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::Equal] = {
+    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+    { get_tuple({ get_char(), get_char() }), get_bool() },
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ get_type(), get_type() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::NotEqual] = {
+    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+    { get_tuple({ get_char(), get_char() }), get_bool() },
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ get_type(), get_type() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::GreaterEq] = {
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::GreaterThan] = {
+    { get_tuple({ get_int(),  get_int() }), get_bool() },
+    { get_tuple({ get_uint(), get_uint() }), get_bool() },
+    { get_tuple({ get_real(), get_real() }), get_bool() },
+  };
+
+  op_map_[Language::Operator::Add] = {
+    { get_tuple({ get_int(),  get_int() }), get_int() },
+    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+    { get_tuple({ get_real(), get_real() }), get_real() },
+  };
+
+  op_map_[Language::Operator::Sub] = {
+    { get_tuple({ get_int(),  get_int() }), get_int() },
+    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+    { get_tuple({ get_real(), get_real() }), get_real() },
+  };
+
+  op_map_[Language::Operator::Mul] = {
+    { get_tuple({ get_int(),  get_int() }), get_int() },
+    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+    { get_tuple({ get_real(), get_real() }), get_real() },
+  };
+
+  op_map_[Language::Operator::Div] = {
+    { get_tuple({ get_int(),  get_int() }), get_int() },
+    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+    { get_tuple({ get_real(), get_real() }), get_real() },
+  };
+
+  op_map_[Language::Operator::Mod] = {
+    { get_tuple({ get_int(),  get_int() }), get_int() },
+    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+  };
+
+  op_map_[Language::Operator::Not] = {
+    { get_bool(), get_bool() },
+  };
+}
+
+Type* Type::get_operator(Language::Operator op, Type* signature) {
+  auto operator_set = op_map_[op];
+  auto iter = operator_set.find(signature);
+  return (iter != operator_set.end()) ? iter->second : nullptr;
 }

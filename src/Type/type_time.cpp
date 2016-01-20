@@ -26,7 +26,7 @@ Time::Eval Pointer::time() const {
 
 Time::Eval Tuple::time() const {
   Time::Eval output = Time::either;
-  for (auto t : tuple_types_) {
+  for (auto t : entry_types_) {
     output |= t->time();
   }
 
