@@ -37,13 +37,14 @@ class Pointer;
 #define LEFT_UNARY_OPERATOR_MACRO(op) \
   virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING;
 
-#define BASIC_FUNCTIONS                        \
-  virtual llvm::Function* assign() ENDING;     \
-virtual llvm::Function* initialize() ENDING;   \
-virtual llvm::Function* uninitialize() ENDING; \
-virtual size_t bytes() const ENDING;           \
-virtual std::string to_string() const ENDING;  \
-virtual Time::Eval time() const ENDING;        \
+#define BASIC_FUNCTIONS                         \
+  virtual llvm::Function* assign() ENDING;      \
+virtual llvm::Function* initialize() ENDING;    \
+virtual llvm::Function* uninitialize() ENDING;  \
+virtual size_t bytes() const ENDING;            \
+virtual std::string to_string() const ENDING;   \
+virtual Time::Eval time() const ENDING;         \
+virtual void set_print(llvm::Function* fn) ENDING; \
 virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
 
 class Type {
@@ -294,10 +295,13 @@ class UserDefined : public Type {
     Type* field(const std::string& name) const;
     llvm::Value* field_num(const std::string& name) const;
 
+    virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
     virtual ~UserDefined() {}
 
   private:
+    llvm::Function* print_fn_;
+
     std::vector<std::pair<std::string, Type*>> fields_;
 
     static std::map<std::string, UserDefined*> lookup_;

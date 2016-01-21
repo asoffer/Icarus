@@ -1,11 +1,11 @@
-show := (s: string) -> void {
+__print__ := (s: string) -> void {
   i := 0
   while i < s.length {
     print s.chars[i]
-
     i += 1
   }
 }
+
 
 string := type {
   chars: [100; char]
@@ -13,5 +13,14 @@ string := type {
 }
 
 main := void -> void {
+  s: string
+  s.chars[0] = 'h'
+  s.chars[1] = 'e'
+  s.chars[2] = 'l'
+  s.chars[3] = 'l'
+  s.chars[4] = 'o'
+  s.chars[5] = '!'
+  s.length = 6
+  print s
   return
 }

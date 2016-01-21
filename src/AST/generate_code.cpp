@@ -361,14 +361,26 @@ namespace AST {
 
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
-      auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
-      // TODO TOKENREMOVAL
-      fn->llvm_function_ = global_module->getFunction(lhs->token());
+      if (lhs->token() == "__print__") {
+        // TODO type verification to assert print only one value
 
-      val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
-      val->setName(lhs->token());
+        // get the first argument
+        val = rhs->generate_code(scope);
+        if (val == nullptr) return nullptr;
 
+        auto rhs_as_func = static_cast<Function*>(rhs->type());
+        auto arg_type = rhs_as_func->argument_type();
+        arg_type->set_print(static_cast<llvm::Function*>(val));
+
+      } else {
+        auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
+        // TODO TOKENREMOVAL
+        fn->llvm_function_ = global_module->getFunction(lhs->token());
+
+        val = rhs->generate_code(scope);
+        if (val == nullptr) return nullptr;
+        val->setName(lhs->token());
+      }
     } else {
       val = rhs->generate_code(scope);
       if (val == nullptr) return nullptr;

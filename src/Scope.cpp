@@ -43,8 +43,10 @@ void GlobalScope::initialize() {
     if (decl_type->llvm() == nullptr) continue;
 
     if (decl_type->is_function()) {
-      decl_id->alloc_ = decl_type->allocate(bldr_);
-      decl_id->alloc_->setName(decl_ptr->identifier_string());
+      if (decl_id->token()[0] != '_') {  // Ignore operators
+        decl_id->alloc_ = decl_type->allocate(bldr_);
+        decl_id->alloc_->setName(decl_ptr->identifier_string());
+      }
     } else if (decl_type == Type::get_type()) {
       continue;
     } else {

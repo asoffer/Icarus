@@ -35,7 +35,24 @@ void Primitive::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   }
 }
 
+
 // TODO complete these
 // void Pointer::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
 // void Tuple::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
-// void UserDefined::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
+
+void UserDefined::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+  if (print_fn_ != nullptr) {
+    bldr.CreateCall(print_fn_, { val });
+  }
+  // TODO ensure that you only call print if you have defined it.
+}
+
+void Primitive::set_print(llvm::Function* fn) {}
+void Pointer::set_print(llvm::Function* fn) {}
+void Tuple::set_print(llvm::Function* fn) {}
+void Function::set_print(llvm::Function* fn) {}
+void Array::set_print(llvm::Function* fn) {}
+void UserDefined::set_print(llvm::Function* fn) {
+  print_fn_ = fn;
+  print_fn_->setName("print." + to_string());
+}

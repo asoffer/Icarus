@@ -47,7 +47,7 @@ restart:
     lexer.file_.get();
     goto restart;
   }
-  else if (std::isalpha(peek)) {
+  else if (std::isalpha(peek) || peek == '_') {
     node = lexer.next_word();
   }
   else if (std::isdigit(peek)) {
@@ -71,7 +71,7 @@ AST::TokenNode Lexer::next_word() {
 #ifdef DEBUG
   // Sanity check:
   // We only call this function if the top character is an alpha character
-  if (!std::isalpha(file_.peek()))
+  if (!std::isalpha(file_.peek()) && file_.peek() != '_')
     std::cerr << "FATAL: Non-alpha character encountered as first character in next_word." << std::endl;
 #endif
 

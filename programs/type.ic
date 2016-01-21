@@ -18,7 +18,7 @@ show2d := (pt : point2d) -> void {
   print ')'
 }
 
-show3d := (pt : point3d) -> void {
+__print__ := (pt: point3d) -> void {
   print '('
   print pt.x
   print ','
@@ -52,9 +52,9 @@ main := void -> void {
   
   show2d(q)
   print ' '
-  show3d(p1)
+  print p1
   print ' '
-  show3d(p2)
+  print p2
   print '\n'
   print square_dist(p1, p2)
   print '\n'
