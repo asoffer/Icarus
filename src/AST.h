@@ -470,7 +470,7 @@ namespace AST {
 
       virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
-      FunctionLiteral() : fn_scope_(new FnScope), llvm_function_(nullptr) {}
+      FunctionLiteral() : fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
       virtual ~FunctionLiteral() {}
 
     private:

@@ -160,7 +160,7 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
       }
       ++i;
     }
-  } else if (input_type_->is_function()) {
+  } else if (input_type_->is_function() || input_type_->is_user_defined()) {
     input_list.push_back(Type::get_pointer(input_type_)->llvm());
 
   } else if (!input_type_->is_void()) {

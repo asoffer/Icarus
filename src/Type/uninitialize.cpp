@@ -26,7 +26,7 @@ llvm::Function* Array::uninitialize() {
         { get_pointer(this)->llvm() }, false),
       llvm::Function::ExternalLinkage, "uninit." + to_string(), global_module);
 
-  FnScope* fn_scope = Scope::build<FnScope>();
+  FnScope* fn_scope = Scope::build_fn<FnScope>();
 
   fn_scope->set_parent_function(uninit_fn_);
   fn_scope->set_type(get_function(get_pointer(this), get_void()));

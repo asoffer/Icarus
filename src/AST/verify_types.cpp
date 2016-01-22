@@ -40,7 +40,7 @@ namespace AST {
     } else if (op_ == Language::Operator::And) { // Indirection '&'
 
       // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-      expr_type_ = Type::get_pointer(expr_->type());
+      expr_type_ = Type::get_pointer(expr_->interpret_as_type());
       return;
     }
 

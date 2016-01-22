@@ -78,7 +78,7 @@ llvm::Function* Array::initialize() {
       llvm::Function::ExternalLinkage, "init." + to_string(),
       global_module);
 
-  FnScope* fn_scope = Scope::build<FnScope>();
+  FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(init_fn_);
   fn_scope->set_type(get_function(this, get_void()));
 

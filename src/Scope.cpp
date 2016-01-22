@@ -10,6 +10,11 @@
 extern llvm::Module* global_module;
 extern ErrorLog error_log;
 
+namespace debug {
+  extern bool dependency_system;
+}  // namespace debug
+
+
 std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
 std::map<EPtr, std::set<EPtr>> Scope::dependencies_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
@@ -94,7 +99,16 @@ void FnScope::enter() {
 
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
-  if (fn_type_->return_type() != Type::get_void()) {
+  if (fn_type_->return_type()->is_user_defined()) {
+    llvm_fn_->dump();
+    auto iter = llvm_fn_->args().end();
+    --iter;
+    return_val_ = iter;
+    return_val_->dump();
+    // return_val_ is the last argument
+    return_val_->setName("retval");
+
+  } else if (fn_type_->return_type() != Type::get_void()) {
     return_val_ = fn_type_->return_type()->allocate(bldr_);
     return_val_->setName("retval");
   }
@@ -127,7 +141,8 @@ void SimpleFnScope::exit() {
 void FnScope::exit() {
   Scope::exit();
 
-  if (fn_type_->return_type() == Type::get_void()) {
+  if (fn_type_->return_type() == Type::get_void()
+      || fn_type_->return_type()->is_user_defined()) {
     bldr_.CreateRetVoid();
 
   } else {
@@ -314,10 +329,15 @@ void Scope::fill_db() {
 
   for (const auto& decl_ptr : decl_registry_) {
     IdPtr decl_id = decl_ptr->declared_identifier();
+    if (debug::dependency_system) {
+      std::cout << "Make decl_of_: " << decl_id->token() << " (line " << decl_ptr->line_num() << ")" << std::endl;
+      std::cout << "\t" << decl_id << std::endl;
+    }
     decl_of_[decl_id] = decl_ptr;
 
     // Build up dependencies_ starting with empty sets
     dependencies_[std::static_pointer_cast<AST::Expression>(decl_id)] = std::set<EPtr>();
+
   }
 }
 
@@ -345,6 +365,12 @@ void Scope::assign_type_order() {
   for (const auto& kv : num_immediate_dep_refs) {
     if (kv.second == 0) {
       expr_stack.push(kv.first);
+
+      if (debug::dependency_system) {
+        if (kv.first == nullptr) {
+          std::cout << "Found a null pointer!" << std::endl;
+        }
+      }
     }
   }
 
@@ -358,11 +384,22 @@ void Scope::assign_type_order() {
   // Preallocate a vector of the right size
   std::vector<EPtr> topo_order(already_seen.size(), nullptr);
 
+  if (debug::dependency_system) {
+    std::cout << "Expressions seen: " << already_seen.size() << std::endl;
+  }
+
   // 0x02 means already seen and already popped into topo_order
   // 0x01 means seen but not yet popped
   // 0x00 means not yet seen
   while (!expr_stack.empty()) {
     auto eptr = expr_stack.top();
+
+    if (debug::dependency_system) {
+      if (eptr == nullptr) {
+        std::cout << "Found a null pointer!" << std::endl;
+      }
+    }
+
 
     if ((already_seen[eptr] & 2) == 2) {
       // Already popped it into topo_order, so just ignore it
@@ -385,6 +422,17 @@ void Scope::assign_type_order() {
     already_seen[eptr] = 0x01;
 
     for (const auto& dep : dependencies_[eptr]) {
+      if (debug::dependency_system) {
+        if (dep == nullptr) {
+          std::cout
+            << "Looking at a null dependency from "
+            << *eptr
+            << " seen on line "
+            << eptr->line_num()
+            << std::endl;
+        }
+      }
+
       if ((already_seen[dep] & 2) == 2) continue;
 
       if ((already_seen[dep] & 1) == 1) {
@@ -415,6 +463,10 @@ void Scope::assign_type_order() {
   }
 }
 
+void FnScope::set_parent_function(llvm::Function* fn) {
+  llvm_fn_ = fn;
+  Scope::set_parent_function(fn);
+}
 
 void Scope::set_parent_function(llvm::Function* fn) {
   if (entry_block() != nullptr && entry_block()->getParent() != nullptr) {

@@ -1,0 +1,8 @@
+foo := (x: int) -> int {
+  y := x * x
+  return x + y
+}
+
+main := void -> void {
+  return
+}

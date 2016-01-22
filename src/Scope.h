@@ -35,6 +35,10 @@ class Scope {
     template<typename T>
       static typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type build();
 
+    template<typename T>
+      static typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type build_fn();
+
+
     static std::map<EPtr, std::set<EPtr>> dependencies_;
     static std::map<IdPtr, DeclPtr> decl_of_;
 
@@ -108,11 +112,18 @@ class Scope {
 
 template<typename T>
 typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build() {
-  T* new_scope = new T();
+  T* new_scope = new T;
   registry_.push_back(new_scope);
   return new_scope;
 }
 
+// TODO limit to 
+template<typename T>
+typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type Scope::build_fn() {
+  T* new_scope = new T(nullptr);
+  registry_.push_back(new_scope);
+  return new_scope;
+}
 
 template<typename T> class StandardEntryExit {
   public:
@@ -159,8 +170,9 @@ class GenericFnScope : public Scope {
     virtual void make_return(llvm::Value* val);
     llvm::Value* return_value() const { return return_val_; }
 
-    GenericFnScope() :
+    GenericFnScope(llvm::Function* fn) :
       fn_type_(nullptr),
+      llvm_fn_(fn),
       return_val_(nullptr) {}
 
   virtual ~GenericFnScope() {}
@@ -169,6 +181,7 @@ class GenericFnScope : public Scope {
     // The inner scopes which contain identifiers that might need to be declared
     std::set<Scope*> innards_;
     Function* fn_type_;
+    llvm::Function* llvm_fn_;
     llvm::Value* return_val_;
 
     void allocate(Scope* scope);
@@ -182,8 +195,8 @@ class SimpleFnScope : public GenericFnScope {
     virtual void enter();
     virtual void exit();
 
-    SimpleFnScope() :
-      the_block_(make_block("block", nullptr)) {}
+    SimpleFnScope(llvm::Function* fn) :
+      GenericFnScope(fn), the_block_(make_block("block", nullptr)) {}
 
     virtual ~SimpleFnScope() {}
 
@@ -200,7 +213,9 @@ class FnScope : public GenericFnScope, public StandardEntryExit<FnScope> {
     virtual void enter();
     virtual void exit();
 
-    FnScope() {}
+    virtual void set_parent_function(llvm::Function* fn);
+
+    FnScope(llvm::Function* fn) : GenericFnScope(fn) {}
 
     virtual ~FnScope() {}
 

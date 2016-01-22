@@ -22,7 +22,8 @@ extern ErrorLog error_log;
 
 namespace debug {
   extern bool parser;
-}  // namespace
+  extern bool dependency_system;
+}  // namespace debug
 
 
 // The keys in this map represent the file names, and the values represent the
@@ -76,9 +77,11 @@ int main(int argc, char *argv[]) {
   while (arg_num < argc) {
     auto arg = argv[arg_num];
 
-    if (strcmp(arg, "-D") == 0 ||
-        strcmp(arg, "-d") == 0) {
+    if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
       debug::parser = true;
+    } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "-d") == 0) {
+      debug::dependency_system = true;
+
     } else if (file_index == -1) {
       // If we haven't seen a file yet, point to it
       file_index = arg_num;

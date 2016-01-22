@@ -138,6 +138,13 @@ namespace AST {
     for (auto& in : inputs_) {
       in->join_identifiers(fn_scope_);
     }
+
+    if (return_type_->is_identifier()) {
+      return_type_ = scope->identifier(return_type_);
+    } else {
+      return_type_->join_identifiers(fn_scope_);
+    }
+
     statements_->join_identifiers(fn_scope_);
   }
 

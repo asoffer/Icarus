@@ -6,6 +6,17 @@ __print__ := (s: string) -> void {
   }
 }
 
+hello := void -> string {
+  s: string
+  s.length = 6
+  s.chars[0] = 'h'
+  s.chars[1] = 'e'
+  s.chars[2] = 'l'
+  s.chars[3] = 'l'
+  s.chars[4] = 'o'
+  s.chars[5] = '!'
+  return s
+}
 
 string := type {
   chars: [100; char]
@@ -13,14 +24,7 @@ string := type {
 }
 
 main := void -> void {
-  s: string
-  s.chars[0] = 'h'
-  s.chars[1] = 'e'
-  s.chars[2] = 'l'
-  s.chars[3] = 'l'
-  s.chars[4] = 'o'
-  s.chars[5] = '!'
-  s.length = 6
+  s := hello()
   print s
   return
 }

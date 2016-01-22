@@ -59,7 +59,7 @@ llvm::Function* Array::assign() {
 
   // Create unitilization function
 
-  FnScope* fn_scope = Scope::build<FnScope>();
+  FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
   fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
@@ -153,7 +153,7 @@ llvm::Function* UserDefined::assign() {
 
   assign_fn_ = get_llvm_assign(this);
     
-  FnScope* fn_scope = Scope::build<FnScope>();
+  FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
   fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
@@ -183,4 +183,15 @@ llvm::Function* UserDefined::assign() {
   fn_scope->exit();
 
   return assign_fn_;
+}
+
+void Primitive::set_assign(llvm::Function* fn) {}
+void Pointer::set_assign(llvm::Function* fn) {}
+void Tuple::set_assign(llvm::Function* fn) {}
+void Function::set_assign(llvm::Function* fn) {}
+void Array::set_assign(llvm::Function* fn) {}
+void UserDefined::set_assign(llvm::Function* fn) {
+  assign_fn_ = fn;
+  std::cout << "**" << std::endl;
+  assign_fn_->setName("assign." + to_string());
 }

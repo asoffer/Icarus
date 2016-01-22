@@ -92,6 +92,9 @@ namespace AST {
         // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
         if (expr_->type() == Type::get_type()) {
           val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+
+        } else if (expr_->type()->is_user_defined()) {
+          val = scope->builder().CreateAlloca(expr_->type()->llvm(), nullptr, "struct.tmp");
         }
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
@@ -132,15 +135,26 @@ namespace AST {
             auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs_);
             arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
             size_t i = 0;
-            for (const auto& expr : arg_chainop->exprs_) {
+            for (const auto& expr : arg_chainop->exprs_) { 
               arg_vals[i] = expr->generate_code(scope);
               if (arg_vals[i] == nullptr) return nullptr;
+
+              if (expr->type()->is_user_defined()) {
+                arg_vals[i] = scope->builder().CreateAlloca(rhs_->type()->llvm(), nullptr, "struct.tmp");
+              }
+
               ++i;
             }
 
           } else {
             auto rhs_val = rhs_->generate_code(scope);
             if (rhs_val == nullptr) return nullptr;
+
+            if (rhs_->type()->is_user_defined()) {
+              // TODO be sure to allocate this ahead of all loops and reuse it when possible
+              rhs_val = scope->builder().CreateAlloca(rhs_->type()->llvm(), nullptr, "struct.tmp");
+            } 
+
             arg_vals = { rhs_val };
           }
 
@@ -340,9 +354,14 @@ namespace AST {
     input_iter = inputs_.begin();
     for (auto& arg : llvm_function_->args()) {
       auto decl_id = (*input_iter)->declared_identifier();
-      fn_scope_->builder().CreateCall(decl_id->type()->assign(),
-          { &arg, (*input_iter)->declared_identifier()->alloc_ });
-      ++input_iter;
+
+      if (decl_id->type()->is_user_defined()) {
+        // TODO
+      } else {
+        fn_scope_->builder().CreateCall(decl_id->type()->assign(),
+            { &arg, (*input_iter)->declared_identifier()->alloc_ });
+      }
+        ++input_iter;
     }
 
     statements_->generate_code(fn_scope_);
@@ -371,6 +390,18 @@ namespace AST {
         auto rhs_as_func = static_cast<Function*>(rhs->type());
         auto arg_type = rhs_as_func->argument_type();
         arg_type->set_print(static_cast<llvm::Function*>(val));
+
+      } else if (lhs->token() == "__assign__") {
+        std::cout << "*???" << std::endl;
+        // TODO type verification
+
+        // get the first argument
+        val = rhs->generate_code(scope);
+        if (val == nullptr) return nullptr;
+
+        auto rhs_as_func = static_cast<Function*>(rhs->type());
+        auto arg_type = rhs_as_func->argument_type();
+        arg_type->set_assign(static_cast<llvm::Function*>(val));
 
       } else {
         auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);

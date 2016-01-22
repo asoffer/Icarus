@@ -10,6 +10,9 @@
 namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
   bool parser = false;
+
+  // Turns on debug printing in the dependency system
+  bool dependency_system = false;
 }
 
 std::map<std::string, StmtsPtr> ast_map;
