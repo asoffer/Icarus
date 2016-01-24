@@ -153,7 +153,9 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     // What if tuple element is a function?
     // ...
     for (const auto& input : input_tuple->entry_types_) {
-      input_list[i] = input->llvm();
+      input_list[i] = (input->is_function() || input->is_user_defined())
+        ? get_pointer(input)->llvm()
+        : input->llvm();
       if (input_list[i] == nullptr) {
         llvm_null = true;
         break;
@@ -161,7 +163,7 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
       ++i;
     }
   } else if (input_type_->is_function() || input_type_->is_user_defined()) {
-    input_list.push_back(Type::get_pointer(input_type_)->llvm());
+    input_list.push_back(get_pointer(input_type_)->llvm());
 
   } else if (!input_type_->is_void()) {
     if (input_type_->llvm() == nullptr) {
@@ -171,8 +173,14 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     }
   }
 
+  if (output_type_->is_user_defined()) {
+    input_list.push_back(get_pointer(output_type_)->llvm());
+    llvm_type_ = llvm::FunctionType::get(get_void()->llvm(), input_list, false);
+    return;
+  }
+
   auto llvm_output = output_type_->is_function()
-    ? Type::get_pointer(output_type_)->llvm()
+    ? get_pointer(output_type_)->llvm()
     : output_type_->llvm();
 
   if (llvm_output == nullptr) {

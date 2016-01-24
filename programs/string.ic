@@ -8,13 +8,8 @@ __print__ := (s: string) -> void {
 
 hello := void -> string {
   s: string
-  s.length = 6
-  s.chars[0] = 'h'
-  s.chars[1] = 'e'
-  s.chars[2] = 'l'
-  s.chars[3] = 'l'
-  s.chars[4] = 'o'
-  s.chars[5] = '!'
+  s.length = 7
+  s.chars = ['h', 'e', 'l', 'l', 'o', '!','\n']
   return s
 }
 
@@ -24,7 +19,10 @@ string := type {
 }
 
 main := void -> void {
+  x : string = hello()
+  print x
   s := hello()
   print s
+  print hello()
   return
 }

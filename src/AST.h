@@ -19,27 +19,27 @@ extern ErrorLog error_log;
 
 namespace AST {
 #define ENDING = 0
-#define VIRTUAL_METHODS_FOR_NODES                           \
-  virtual std::string to_string(size_t n) const     ENDING; \
-  virtual void join_identifiers(Scope* scope)       ENDING; \
-  virtual void assign_decl_to_scope(Scope* scope)   ENDING; \
-  virtual void record_dependencies(EPtr eptr) const ENDING; \
-  virtual void verify_types()                       ENDING; \
-  virtual Context::Value evaluate(Context& ctx)     ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)  ENDING; \
-  virtual Time::Eval determine_time()               ENDING
+#define VIRTUAL_METHODS_FOR_NODES                                          \
+  virtual std::string to_string(size_t n) const                    ENDING; \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
+  virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
+  virtual void record_dependencies(EPtr eptr) const                ENDING; \
+  virtual void verify_types()                                      ENDING; \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
+  virtual Time::Eval determine_time()                              ENDING
 
-#define VIRTUAL_METHODS_FOR_EXPRESSION                       \
-  virtual std::string to_string(size_t n) const      ENDING; \
-  virtual void join_identifiers(Scope* scope)        ENDING; \
-  virtual void assign_decl_to_scope(Scope* scope)    ENDING; \
-  virtual void record_dependencies(EPtr eptr) const  ENDING; \
-  virtual void verify_types()                        ENDING; \
-  virtual Type* interpret_as_type()                  ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)   ENDING; \
-  virtual llvm::Value* generate_lvalue(Scope* scope) ENDING; \
-  virtual Context::Value evaluate(Context& ctx)      ENDING; \
-  virtual Time::Eval determine_time()                ENDING
+#define VIRTUAL_METHODS_FOR_EXPRESSION                                     \
+  virtual std::string to_string(size_t n) const                    ENDING; \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
+  virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
+  virtual void record_dependencies(EPtr eptr) const                ENDING; \
+  virtual void verify_types()                                      ENDING; \
+  virtual Type* interpret_as_type()                                ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
+  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
+  virtual Time::Eval determine_time()                              ENDING
 
   class Node {
     public:
@@ -53,7 +53,7 @@ namespace AST {
       size_t line_num() const { return line_num_; }
 
       virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope) {}
+      virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
       virtual void assign_decl_to_scope(Scope* scope) {}
       virtual void record_dependencies(EPtr eptr) const {}
       virtual void verify_types() {}
@@ -329,7 +329,7 @@ namespace AST {
 
       virtual bool is_identifier() const { return true; }
 
-      Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr) {
+      Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
         token_ = token_string;
         expr_type_ = Type::get_unknown();
         precedence_ =
@@ -338,6 +338,7 @@ namespace AST {
       }
 
       llvm::Value* alloc_;
+      bool is_function_arg_;
   };
 
   inline NPtr Identifier::build(NPtrVec&& nodes) {

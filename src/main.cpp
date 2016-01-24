@@ -14,6 +14,8 @@
 #include "llvm/Support/raw_os_ostream.h"
 
 extern llvm::Module* global_module;
+extern llvm::DataLayout* data_layout;
+
 namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
@@ -133,6 +135,7 @@ int main(int argc, char *argv[]) {
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
+  data_layout = new llvm::DataLayout(global_module);
 
   // TODO write the language rules to guarantee that the parser produces a
   // Statements node at top level.

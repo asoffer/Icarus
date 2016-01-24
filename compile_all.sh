@@ -37,6 +37,7 @@ bin/icarus programs/squares.ic
 bin/icarus programs/string.ic
 bin/icarus programs/type.ic
 bin/icarus programs/type_computation.ic
+bin/icarus programs/type_return.ic
 bin/icarus programs/type_literal.ic
 bin/icarus programs/traits_test.ic
 bin/icarus programs/uint_literal_test.ic

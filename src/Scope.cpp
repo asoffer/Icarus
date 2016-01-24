@@ -8,7 +8,12 @@
 #include "ErrorLog.h"
 
 extern llvm::Module* global_module;
+extern llvm::DataLayout* data_layout;
 extern ErrorLog error_log;
+
+namespace cstdlib {
+  extern llvm::Constant* memcpy();
+}  // namespace cstdlib
 
 namespace debug {
   extern bool dependency_system;
@@ -44,6 +49,8 @@ GlobalScope* Scope::build_global() {
 void GlobalScope::initialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
+    if (decl_id->is_function_arg_) continue;
+
     auto decl_type = decl_id->type();
     if (decl_type->llvm() == nullptr) continue;
 
@@ -71,8 +78,7 @@ void Scope::enter() {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    if (decl_type->is_function()
-        || decl_type == Type::get_type()) {
+    if (decl_type->is_function() || decl_type == Type::get_type()) {
       continue;
 
     } else if (decl_type->is_array()) {
@@ -83,6 +89,7 @@ void Scope::enter() {
       continue;
 
     } else {
+      if (decl_id->is_function_arg_) continue;
       bldr_.CreateCall(decl_type->initialize(), { decl_id->alloc_ });
     }
   }
@@ -100,11 +107,9 @@ void FnScope::enter() {
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
   if (fn_type_->return_type()->is_user_defined()) {
-    llvm_fn_->dump();
     auto iter = llvm_fn_->args().end();
     --iter;
     return_val_ = iter;
-    return_val_->dump();
     // return_val_ is the last argument
     return_val_->setName("retval");
 
@@ -158,7 +163,19 @@ void GenericFnScope::make_return(llvm::Value* val) {
   // nullptr means void return type
   if (val == nullptr) return;
 
-  bldr_.CreateStore(val, return_val_);
+  auto ret_type = fn_type_->return_type();
+  if (ret_type->is_user_defined()) {
+    // TODO pull out memcpy into a single fn call
+    auto val_raw = bldr_.CreateBitCast(val,
+        Type::get_pointer(Type::get_char())->llvm());
+    auto ret_raw = bldr_.CreateBitCast(return_val_,
+        Type::get_pointer(Type::get_char())->llvm());
+    bldr_.CreateCall(cstdlib::memcpy(), { ret_raw, val_raw,
+        data::const_uint(
+          data_layout->getTypeStoreSize(ret_type->llvm())) });
+  } else {
+    bldr_.CreateStore(val, return_val_);
+  }
 }
 
 void GenericFnScope::add_scope(Scope* scope) {
@@ -215,16 +232,23 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 // TODO maybe we should set this up differently, so it's a method of the scope
 // and it just calls it using containing_function_?
 void GenericFnScope::allocate(Scope* scope) {
+  // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
+    
+    if (decl_id->is_function_arg_ && decl_type->is_user_defined()) {
+      // Insert this alloc in the FunctionLiteral node
+      continue;
+    }
+
 
     // TODO make this for compile-time stuff
     if (decl_type == Type::get_type()) {
       // TODO Set the types name
       continue;
     }
-
+   
     decl_id->alloc_ = decl_type->allocate(bldr_);
     decl_id->alloc_->setName(decl_ptr->identifier_string());
   }

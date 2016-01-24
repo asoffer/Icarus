@@ -19,6 +19,7 @@ std::map<std::string, StmtsPtr> ast_map;
 std::queue<std::string> file_queue;
 
 llvm::Module* global_module;
+llvm::DataLayout* data_layout;
 
 std::map<std::string, llvm::Value*> global_strings;
 
@@ -46,9 +47,25 @@ namespace cstdlib {
   CSTDLIB(free,    false, Type::get_pointer(Type::get_char()), Type::get_void());
   CSTDLIB(calloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
   CSTDLIB(malloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
+  //CSTDLIB(memcpy,  false, Type::get_tuple({ Type::get_pointer(Type::get_char()), Type::get_pointer(Type::get_char()), Type::get_uint() }), Type::get_pointer(Type::get_char()));
   CSTDLIB(putchar, false, Type::get_char(), Type::get_int());
   CSTDLIB(puts,    false, Type::get_pointer(Type::get_char()), Type::get_int());
   CSTDLIB(printf,  true,  Type::get_pointer(Type::get_char()), Type::get_int());
+
+  llvm::Constant* memcpy() {                     
+    static llvm::Constant* func_ =            
+      global_module->getOrInsertFunction("memcpy",   
+          llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
+            {
+            Type::get_pointer(Type::get_char())->llvm(),
+            Type::get_pointer(Type::get_char())->llvm(),
+            Type::get_uint()->llvm()
+            }, false));
+    return func_;                             
+  }
+
+
+
 }  // namespace cstdlib
 
 namespace data {

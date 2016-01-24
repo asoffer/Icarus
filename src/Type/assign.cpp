@@ -19,8 +19,7 @@ namespace data {
 
 llvm::Function* get_llvm_assign(Type* type) {
   return llvm::Function::Create(
-      llvm::FunctionType::get(Type::get_void()->llvm(),
-        { type->llvm(), Type::get_pointer(type)->llvm() }, false),
+      Type::get_function(Type::get_tuple({ type, Type::get_pointer(type) }), Type::get_void())->llvm(),
       llvm::Function::ExternalLinkage, "assign." + type->to_string(),
       global_module);
 }
@@ -93,11 +92,12 @@ llvm::Function* Array::assign() {
       bldr.CreateBitCast(malloc_call, get_pointer(get_uint())->llvm()));
 
   auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
-  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, get_pointer(data_type())->llvm());
-  auto copy_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
-  auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
+  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr,
+      get_pointer(data_type())->llvm());
+  auto copy_from_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
+  auto end_ptr = bldr.CreateGEP(copy_to_ptr, { len_val });
 
-  bldr.CreateStore(data_ptr, var);
+  bldr.CreateStore(copy_to_ptr, var);
 
   auto loop_block = make_block("loop", assign_fn_);
   auto done_block = make_block("loop_done", assign_fn_);
@@ -107,16 +107,23 @@ llvm::Function* Array::assign() {
   auto prev_block = bldr.GetInsertBlock();
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "phi");
-  phi->addIncoming(data_ptr, prev_block);
+  llvm::PHINode* from_phi = bldr.CreatePHI(
+      get_pointer(data_type())->llvm(), 2,"phi");
+  from_phi->addIncoming(copy_from_ptr, prev_block);
 
-  auto copy_elem = bldr.CreateLoad(bldr.CreateGEP(copy_ptr, { phi }));
+  llvm::PHINode* to_phi = bldr.CreatePHI(
+      get_pointer(data_type())->llvm(), 2,"phi");
+  to_phi->addIncoming(copy_to_ptr, prev_block);
 
-  bldr.CreateCall(data_type()->assign(), { copy_elem, phi });
-  auto next_ptr = bldr.CreateGEP(phi, data::const_uint(1));
+  auto copy_from_elem = bldr.CreateLoad(bldr.CreateGEP(from_phi, { data::const_uint(0) }));
+  bldr.CreateCall(data_type()->assign(), { copy_from_elem, to_phi });
 
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_ptr, end_ptr), loop_block, done_block);
-  phi->addIncoming(next_ptr, bldr.GetInsertBlock());
+  auto next_from_ptr = bldr.CreateGEP(from_phi, data::const_uint(1));
+  auto next_to_ptr = bldr.CreateGEP(to_phi, data::const_uint(1));
+
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_to_ptr, end_ptr), loop_block, done_block);
+  to_phi->addIncoming(next_to_ptr, bldr.GetInsertBlock());
+  from_phi->addIncoming(next_from_ptr, bldr.GetInsertBlock());
 
   bldr.SetInsertPoint(done_block);
   fn_scope->exit();
@@ -157,29 +164,29 @@ llvm::Function* UserDefined::assign() {
   fn_scope->set_parent_function(assign_fn_);
   fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
 
-//   llvm::IRBuilder<>& bldr = fn_scope->builder();
+  llvm::IRBuilder<>& bldr = fn_scope->builder();
 
   fn_scope->enter();
-//   auto iter = assign_fn_->args().begin();
-//   auto val = iter;
-//   auto var = ++iter;
+   auto iter = assign_fn_->args().begin();
+   auto val = iter;
+   auto var = ++iter;
 
   // assign all fields
-  // TODO It's problematic to pass an object of user-defined type by value
-//  auto fields_size = fields_.size();
-//  for (size_t field_num = 0; field_num < fields_size; ++field_num) {
-//    auto field_type = fields_[field_num].second;
-//
-//    auto field_val = bldr.CreateGEP(field_type->llvm(), val,
-//        { data::const_uint(field_num) });
-//    field_val->dump();
-//    auto field_var = bldr.CreateGEP(field_type->llvm(), var,
-//        { data::const_uint(0), data::const_uint(field_num) });
-//  
-//    field_var->dump();
-//    bldr.CreateCall(field_type->assign(), { field_val, field_var });
-//  }
-//
+   auto fields_size = fields_.size();
+   for (size_t field_num = 0; field_num < fields_size; ++field_num) {
+     auto field_type = fields_[field_num].second;
+
+     auto field_val = bldr.CreateGEP(llvm(), val,
+         { data::const_uint(0), data::const_uint(field_num) });
+     if (!field_type->is_user_defined()) {
+       field_val = bldr.CreateLoad(field_type->llvm(), field_val);
+     }
+     auto field_var = bldr.CreateGEP(llvm(), var,
+         { data::const_uint(0), data::const_uint(field_num) });
+
+     bldr.CreateCall(field_type->assign(), { field_val, field_var });
+   }
+
   fn_scope->exit();
 
   return assign_fn_;

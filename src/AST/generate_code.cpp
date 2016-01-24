@@ -17,7 +17,11 @@ extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn)
 extern ErrorLog error_log;
 
 extern llvm::Module* global_module;
-extern llvm::Function* global_function;
+extern llvm::DataLayout* data_layout;
+
+namespace cstdlib {
+  extern llvm::Constant* memcpy();
+}  // namespace cstdlib
 
 namespace builtin {
   extern llvm::Function* ascii();
@@ -37,9 +41,11 @@ namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
     if (type()->is_function()) {
       return global_module->getFunction(token());
+    } else if (type()->is_user_defined()) {
+      return alloc_;
+    } else {
+      return scope->builder().CreateLoad(alloc_, token());
     }
-
-    return scope->builder().CreateLoad(alloc_, token());
   }
 
   // Invariant:
@@ -86,15 +92,36 @@ namespace AST {
         return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
 
       case Operator::Call:
-        return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+        {
+          auto fn_type = static_cast<Function*>(expr_->type());
+          if (fn_type->return_type()->is_user_defined()) {
+            // TODO move this outside of any potential loops
+            auto local_ret = scope->builder().CreateAlloca(
+                fn_type->return_type()->llvm());
+
+            scope->builder().CreateCall(static_cast<llvm::Function*>(val), { local_ret });
+            return local_ret;
+
+          } else {
+            return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
+          }
+        }
 
       case Operator::Print:
-        // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
         if (expr_->type() == Type::get_type()) {
+          // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
           val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
 
         } else if (expr_->type()->is_user_defined()) {
-          val = scope->builder().CreateAlloca(expr_->type()->llvm(), nullptr, "struct.tmp");
+          auto tmp = scope->builder().CreateAlloca(expr_->type()->llvm(), nullptr, "struct.tmp");
+          // TODO pull out memcpy into a single fn call
+          auto tmp_raw = scope->builder().CreateBitCast(tmp, Type::get_pointer(Type::get_char())->llvm());
+          auto val_raw = scope->builder().CreateBitCast(val, Type::get_pointer(Type::get_char())->llvm());
+          auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
+              { tmp_raw, val_raw, data::const_uint(
+                data_layout->getTypeStoreSize(expr_->type()->llvm())) });
+          val = scope->builder().CreateBitCast(mem_copy,
+              Type::get_pointer(expr_->type())->llvm());
         }
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
@@ -140,7 +167,22 @@ namespace AST {
               if (arg_vals[i] == nullptr) return nullptr;
 
               if (expr->type()->is_user_defined()) {
-                arg_vals[i] = scope->builder().CreateAlloca(rhs_->type()->llvm(), nullptr, "struct.tmp");
+                auto arg_ptr = scope->builder().CreateAlloca(
+                    expr->type()->llvm(), nullptr, "struct.tmp");
+
+                // TODO pull out memcpy into a single fn call
+                auto tmp_raw = scope->builder().CreateBitCast(arg_ptr,
+                    Type::get_pointer(Type::get_char())->llvm());
+
+                auto val_raw = scope->builder().CreateBitCast(arg_vals[i],
+                    Type::get_pointer(Type::get_char())->llvm());
+
+                auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
+                    { tmp_raw, val_raw, data::const_uint(
+                      data_layout->getTypeStoreSize(expr->type()->llvm())) });
+
+                arg_vals[i] = scope->builder().CreateBitCast(mem_copy,
+                    Type::get_pointer(expr->type())->llvm());
               }
 
               ++i;
@@ -152,7 +194,23 @@ namespace AST {
 
             if (rhs_->type()->is_user_defined()) {
               // TODO be sure to allocate this ahead of all loops and reuse it when possible
-              rhs_val = scope->builder().CreateAlloca(rhs_->type()->llvm(), nullptr, "struct.tmp");
+
+              auto arg_ptr = scope->builder().CreateAlloca(
+                  rhs_->type()->llvm(), nullptr, "struct.tmp");
+
+              // TODO pull out memcpy into a single fn call
+              auto tmp_raw = scope->builder().CreateBitCast(arg_ptr,
+                  Type::get_pointer(Type::get_char())->llvm());
+
+              auto val_raw = scope->builder().CreateBitCast(rhs_val,
+                  Type::get_pointer(Type::get_char())->llvm());
+
+              auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
+                  { tmp_raw, val_raw, data::const_uint(
+                    data_layout->getTypeStoreSize(rhs_->type()->llvm())) });
+
+              rhs_val = scope->builder().CreateBitCast(mem_copy,
+                  Type::get_pointer(rhs_->type())->llvm());
             } 
 
             arg_vals = { rhs_val };
@@ -213,12 +271,18 @@ namespace AST {
 
         // TODO early exit
         switch (ops_[i - 1]) {
-          case Operator::LessThan:    cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp");
-          case Operator::LessEq:      cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp");
-          case Operator::Equal:       cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-          case Operator::NotEqual:    cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
-          case Operator::GreaterEq:   cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp");
-          case Operator::GreaterThan: cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:
+            cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp"); break;
+          case Operator::LessEq:
+            cmp_val = bldr.CreateICmpSLE(lhs_val, rhs_val, "letmp"); break;
+          case Operator::Equal:
+            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp"); break;
+          case Operator::NotEqual:
+            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp"); break;
+          case Operator::GreaterEq:
+            cmp_val = bldr.CreateICmpSGE(lhs_val, rhs_val, "getmp"); break;
+          case Operator::GreaterThan:
+            cmp_val = bldr.CreateICmpSGT(lhs_val, rhs_val, "gttmp"); break;
           default:;
         }
 
@@ -337,10 +401,21 @@ namespace AST {
     }
 
     // Name the inputs
-    auto input_iter = inputs_.begin();
-    for (auto& arg : llvm_function_->args()) {
-      arg.setName((*input_iter)->identifier_string());
-      ++input_iter;
+    auto arg_iter = llvm_function_->args().begin();
+    for (const auto& input_iter : inputs_) {
+      arg_iter->setName(input_iter->identifier_string());
+      // Set alloc
+      auto decl_id = input_iter->declared_identifier();
+      auto decl_type = decl_id->type();
+      if (decl_type->is_user_defined()) {
+        decl_id->alloc_ = arg_iter;
+      } 
+
+      ++arg_iter;
+    }
+
+    if (return_type_->interpret_as_type()->is_user_defined()) {
+      arg_iter->setName("retval");
     }
 
     auto old_block = scope->builder().GetInsertBlock();
@@ -350,20 +425,6 @@ namespace AST {
 
     fn_scope_->enter();
     
-    // TODO move this to fn_scope_.enter()
-    input_iter = inputs_.begin();
-    for (auto& arg : llvm_function_->args()) {
-      auto decl_id = (*input_iter)->declared_identifier();
-
-      if (decl_id->type()->is_user_defined()) {
-        // TODO
-      } else {
-        fn_scope_->builder().CreateCall(decl_id->type()->assign(),
-            { &arg, (*input_iter)->declared_identifier()->alloc_ });
-      }
-        ++input_iter;
-    }
-
     statements_->generate_code(fn_scope_);
 
     fn_scope_->exit();
@@ -422,6 +483,7 @@ namespace AST {
 
       if (rhs->is_array_literal()) {
         scope->builder().CreateStore(val, var);
+
       } else {
         scope->builder().CreateCall(lhs->type()->assign(), { val, var });
       }

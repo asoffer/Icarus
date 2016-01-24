@@ -1,7 +1,7 @@
 #include "AST.h"
 
 namespace AST {
-  void Unop::join_identifiers(Scope* scope) {
+  void Unop::join_identifiers(Scope* scope, bool is_arg) {
     if (expr_->is_identifier()) {
       expr_ = scope->identifier(expr_);
     } else {
@@ -9,12 +9,12 @@ namespace AST {
     }
   }
 
-  void While::join_identifiers(Scope* scope) {
+  void While::join_identifiers(Scope* scope, bool is_arg) {
     cond_->join_identifiers(body_scope_);
     statements_->join_identifiers(body_scope_);
   }
 
-  void ArrayLiteral::join_identifiers(Scope* scope) {
+  void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& el : elems_) {
       if (el->is_identifier()) {
         el = scope->identifier(el);
@@ -25,15 +25,15 @@ namespace AST {
   }
 
 
-  void Terminal::join_identifiers(Scope* scope) {
+  void Terminal::join_identifiers(Scope* scope, bool is_arg) {
   }
 
-  void Identifier::join_identifiers(Scope* scope) {
+  void Identifier::join_identifiers(Scope* scope, bool is_arg) {
     Terminal::join_identifiers(scope);
   }
 
 
-  void Conditional::join_identifiers(Scope* scope) {
+  void Conditional::join_identifiers(Scope* scope, bool is_arg) {
     for (size_t i = 0; i < conds_.size(); ++i) {
       conds_[i]->join_identifiers(body_scopes_[i]);
     }
@@ -43,7 +43,7 @@ namespace AST {
     }
   }
 
-  void Binop::join_identifiers(Scope* scope) {
+  void Binop::join_identifiers(Scope* scope, bool is_arg) {
     if (lhs_->is_identifier()) {
       lhs_ = scope->identifier(lhs_);
     } else {
@@ -61,7 +61,7 @@ namespace AST {
     }
   }
 
-  void ArrayType::join_identifiers(Scope* scope) {
+  void ArrayType::join_identifiers(Scope* scope, bool is_arg) {
     if (len_ != nullptr) {
       if (len_->is_identifier()) {
         len_ = scope->identifier(len_);
@@ -78,10 +78,13 @@ namespace AST {
   }
 
 
-  void Declaration::join_identifiers(Scope* scope) {
+  void Declaration::join_identifiers(Scope* scope, bool is_arg) {
     id_ = std::static_pointer_cast<Identifier>(
         scope->identifier(declared_identifier()));
-    id_->line_num_ = line_num_;
+    if (is_arg) {
+      id_->is_function_arg_ = true;
+    }
+    id_->line_num_ = line_num(); // Hacky and probably wrong TODO FIXME
 
     if (decl_type_->is_identifier()) {
       decl_type_ = scope->identifier(decl_type_);
@@ -90,7 +93,7 @@ namespace AST {
     }
   }
 
-  void ChainOp::join_identifiers(Scope* scope) {
+  void ChainOp::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& expr : exprs_) {
       if (expr->is_identifier()) {
         expr = scope->identifier(expr);
@@ -100,11 +103,11 @@ namespace AST {
     }
   }
 
-  void Case::join_identifiers(Scope* scope) {
+  void Case::join_identifiers(Scope* scope, bool is_arg) {
     pairs_->join_identifiers(scope);
   }
 
-  void KVPairList::join_identifiers(Scope* scope) {
+  void KVPairList::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& pair : kv_pairs_) {
       if (pair.first->is_identifier()) {
         pair.first = scope->identifier(pair.first);
@@ -120,7 +123,7 @@ namespace AST {
     }
   }
 
-  void Statements::join_identifiers(Scope* scope) {
+  void Statements::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& ptr : statements_) {
       if (ptr->is_identifier()) {
         ptr = std::static_pointer_cast<Node>(
@@ -134,9 +137,9 @@ namespace AST {
     }
   }
 
-  void FunctionLiteral::join_identifiers(Scope* scope) {
+  void FunctionLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& in : inputs_) {
-      in->join_identifiers(fn_scope_);
+      in->join_identifiers(fn_scope_, true);
     }
 
     if (return_type_->is_identifier()) {
@@ -148,13 +151,13 @@ namespace AST {
     statements_->join_identifiers(fn_scope_);
   }
 
-  void TypeLiteral::join_identifiers(Scope* scope) {
+  void TypeLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& decl : decls_) {
       decl->join_identifiers(type_scope_);
     }
   }
 
-  void EnumLiteral::join_identifiers(Scope* scope) {
+  void EnumLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& val : vals_) {
       val->join_identifiers(enum_scope_);
     }
