@@ -375,7 +375,8 @@ void Scope::assign_type_order() {
 
   std::stack<EPtr> expr_stack;
 
-  // Push back all the sources
+  // Push back all the sources (i.e., all the EPtrs with num_immediate_dep_refs
+  // equal to zero
   for (const auto& kv : dependencies_) {
     // Ensure each identifier is present in the map
     num_immediate_dep_refs[kv.first];

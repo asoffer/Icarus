@@ -1,0 +1,8 @@
+main := void -> void {
+  print "hello\n"
+  t := "world\n"
+  print t
+  print "t has length "
+  print size(t)
+  print '\n'
+}

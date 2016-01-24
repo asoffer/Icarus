@@ -113,9 +113,9 @@ namespace Language {
         { real_literal },
         AST::Terminal::build_real_literal),
 
-//    Rule(expression,
-//        { string_literal },
-//        AST::Terminal::build_string_literal),
+    Rule(expression,
+        { string_literal },
+        AST::Terminal::build_string_literal),
 
     Rule(expression,
         { reserved_type },

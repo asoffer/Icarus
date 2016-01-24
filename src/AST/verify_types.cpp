@@ -287,7 +287,12 @@ namespace AST {
     }
   }
 
-  void Terminal::verify_types() {}
+  void Terminal::verify_types() {
+    if (terminal_type_ == Language::Terminal::StringLiteral) {
+      expr_type_ = Type::get_string();
+    }
+  }
+
   void Identifier::verify_types() {}
 
   void FunctionLiteral::verify_types() {
@@ -316,40 +321,6 @@ namespace AST {
     }
 
     expr_type_ = Type::get_function(input_type, return_type_as_type);
-
-    // NOTE: You cannot verify the return type in the body is correct here.
-    // The reason is that knowing the type of the function literal doesn't
-    // require knowing the internals of the function, and so the body may show
-    // up later. You'll have to verify this separately.
-
-    /*
-    std::set<Type*> return_types;
-    statements_->collect_return_types(&return_types);
-
-    if (return_type_as_type == Type::get_void()) {
-      if (!return_types.empty()) {
-        error_log.log(line_num(), "Function declared void but returns a value.");
-      }
-      return;
-    }
-
-    if (return_types.empty()) {
-      // If you get here, the return type isn't void so no return statements is
-      // an error.
-      //
-      // TODO better error message. Repalec 'non-void' with some information
-      // about the type.
-      error_log.log(line_num(), "Non-void function has no return statement.");
-
-    } else if (return_types.size() > 1) {
-      error_log.log(line_num(), "Too many return types.");
-
-    } else if (*return_types.begin() != return_type_as_type) {
-      error_log.log(line_num(), "Return type does not match function declared return type: "
-          + (*return_types.begin())->to_string()
-          + " vs. "
-          + return_type_as_type->to_string());
-    }*/
   }
 
   void Statements::collect_return_types(std::set<Type*>* return_exprs) const {

@@ -22,7 +22,6 @@ namespace data {
     return &(Primitive::primitive_types_[Primitive::t_##type]);  \
   }
 #include "config/primitive_types.conf"
-
 #undef PRIMITIVE_TYPE_MACRO
 
 #define PRIMITIVE_TYPE_MACRO(type) { #type , Type::get_##type() },
@@ -138,6 +137,12 @@ std::vector<Function*> Function::fn_types_;
 
 
 std::map<std::string, UserDefined*> UserDefined::lookup_;
+
+Type* Type::get_string() {
+  auto iter = UserDefined::lookup_.find("string");
+  return (iter == UserDefined::lookup_.end()) ? nullptr : iter->second;
+}
+
 
 Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   bool llvm_null = false;

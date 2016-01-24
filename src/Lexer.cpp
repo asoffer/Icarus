@@ -346,16 +346,11 @@ AST::TokenNode Lexer::next_string_literal() {
       file_.get();
       peek = file_.peek();
       switch (peek) {
-        case '\\':
-          str_lit += '\\'; break;
-        case '"':
-          str_lit += '"'; break;
-        case 'n':
-          str_lit += '\n'; break;
-        case 'r':
-          str_lit += '\r'; break;
-        case 't':
-          str_lit += '\t'; break;
+        case '\\': str_lit += '\\'; break;
+        case '"':  str_lit += '"';  break;
+        case 'n':  str_lit += '\n'; break;
+        case 'r':  str_lit += '\r'; break;
+        case 't':  str_lit += '\t'; break;
         default:
           {
             error_log.log(line_num_,
@@ -404,29 +399,22 @@ AST::TokenNode Lexer::next_char_literal() {
       {
         file_.get();
         peek = file_.peek();
-        if (peek == '\'') {
-          output_char = '\'';
-
-        } else if (peek == '\"') {
-          error_log.log(line_num_, "Warning: the character '\"' does not need to be escaped.");
-          output_char = '\"';
-
-        } else if (peek == '\\') {
-          output_char = '\\';
-
-        } else if (peek == 't') {
-          output_char = '\t';
-
-        } else if (peek == 'n') {
-          output_char = '\n';
-
-        } else if (peek == 'r') {
-          output_char = '\r';
-
-        } else {
-          error_log.log(line_num_, "The specified character is not an escape character.");
+        switch (peek) {
+          case '\'': output_char = '\''; break;
+          case '\"': output_char = '"';
+                     error_log.log(line_num_,
+                         "Warning: the character '\"' does not need to be escaped.");
+                     break;
+          case '\\': output_char = '\\'; break;
+          case 't':  output_char = '\t'; break;
+          case 'n':  output_char = '\n'; break;
+          case 'r':  output_char = '\r'; break;
+          default:
+                     error_log.log(line_num_,
+                         "The specified character is not an escape character.");
           output_char = static_cast<char>(peek);
         }
+
         break;
       }
     default:

@@ -21,6 +21,8 @@ extern llvm::DataLayout* data_layout;
 
 namespace cstdlib {
   extern llvm::Constant* memcpy();
+  extern llvm::Constant* printf();
+
 }  // namespace cstdlib
 
 namespace builtin {
@@ -53,17 +55,54 @@ namespace AST {
   llvm::Value* Terminal::generate_code(Scope* scope) {
     //TODO remove dependence on token() altogether
 
+    using Language::Terminal;
     switch (terminal_type_) {
-      using Language::Terminal;
-      case Terminal::ASCII:  return builtin::ascii();
-      case Terminal::True:   return data::const_true();
-      case Terminal::False:  return data::const_false();
-      case Terminal::Char:   return data::const_char(token()[0]);
-      case Terminal::Int:    return data::const_int(std::stoi(token()));
-      case Terminal::Real:   return data::const_real(std::stod(token()));
-      case Terminal::UInt:   return data::const_uint(std::stoul(token()));
-      case Terminal::Type:   return nullptr;
-      case Terminal::Return: return nullptr;
+      case Terminal::ASCII:
+        return builtin::ascii();
+      case Terminal::True:
+        return data::const_true();
+      case Terminal::False:
+        return data::const_false();
+      case Terminal::Char:
+        return data::const_char(token()[0]);
+      case Terminal::Int:
+        return data::const_int(std::stoi(token()));
+      case Terminal::Real:
+        return data::const_real(std::stod(token()));
+      case Terminal::UInt:
+        return data::const_uint(std::stoul(token()));
+      case Terminal::StringLiteral:
+        {
+          auto str = data::global_string(scope->builder(), token());
+          auto len = data::const_uint(token().size());
+
+          auto str_alloc = scope->builder().CreateAlloca(type()->llvm());
+
+          // TODO use field_num(). This gets the length
+          auto len_ptr = scope->builder().CreateGEP(str_alloc,
+              { data::const_uint(0), data::const_uint(1) });
+          scope->builder().CreateStore(len, len_ptr);
+
+          // TODO use field_num(). This gets the char array
+          auto char_array_ptr = scope->builder().CreateGEP(str_alloc,
+              { data::const_uint(0), data::const_uint(0) });
+
+          auto char_array_type = static_cast<Array*>(Type::get_array(Type::get_char()));
+
+          // NOTE: no need to uninitialize because we never initialized it.
+
+          auto char_ptr = char_array_type->initialize_literal(
+              scope->builder(), len);
+  
+          scope->builder().CreateStore(char_ptr, char_array_ptr);
+          scope->builder().CreateCall(cstdlib::memcpy(), { char_ptr, str, len });
+
+          return str_alloc;
+        }
+      case Terminal::Type:
+        return nullptr;
+      case Terminal::Return:
+        return nullptr;
     }
   }
 
@@ -297,12 +336,18 @@ namespace AST {
 
         // TODO early exit
         switch (ops_[i - 1]) {
-          case Operator::LessThan:    cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp");
-          case Operator::LessEq:      cmp_val = bldr.CreateICmpULE(lhs_val, rhs_val, "letmp");
-          case Operator::Equal:       cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp");
-          case Operator::NotEqual:    cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp");
-          case Operator::GreaterEq:   cmp_val = bldr.CreateICmpUGE(lhs_val, rhs_val, "getmp");
-          case Operator::GreaterThan: cmp_val = bldr.CreateICmpUGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:
+            cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp"); break;
+          case Operator::LessEq:
+            cmp_val = bldr.CreateICmpULE(lhs_val, rhs_val, "letmp"); break;
+          case Operator::Equal:
+            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp"); break;
+          case Operator::NotEqual:
+            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp"); break;
+          case Operator::GreaterEq:
+            cmp_val = bldr.CreateICmpUGE(lhs_val, rhs_val, "getmp"); break;
+          case Operator::GreaterThan:
+            cmp_val = bldr.CreateICmpUGT(lhs_val, rhs_val, "gttmp"); break;
           default:;
         }
 
@@ -319,12 +364,18 @@ namespace AST {
         // TODO early exit
         // TODO should these be ordered, or can they be QNAN? probably.
         switch (ops_[i - 1]) {
-          case Operator::LessThan:    cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp");
-          case Operator::LessEq:      cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp");
-          case Operator::Equal:       cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp");
-          case Operator::NotEqual:    cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp");
-          case Operator::GreaterEq:   cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp");
-          case Operator::GreaterThan: cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp");
+          case Operator::LessThan:
+            cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp"); break;
+          case Operator::LessEq:
+            cmp_val = bldr.CreateFCmpOLE(lhs_val, rhs_val, "letmp"); break;
+          case Operator::Equal:
+            cmp_val = bldr.CreateFCmpOEQ(lhs_val, rhs_val, "eqtmp"); break;
+          case Operator::NotEqual:
+            cmp_val = bldr.CreateFCmpONE(lhs_val, rhs_val, "netmp"); break;
+          case Operator::GreaterEq:
+            cmp_val = bldr.CreateFCmpOGE(lhs_val, rhs_val, "getmp"); break;
+          case Operator::GreaterThan:
+            cmp_val = bldr.CreateFCmpOGT(lhs_val, rhs_val, "gttmp"); break;
           default:;
         }
 

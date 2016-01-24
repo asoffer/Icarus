@@ -6,6 +6,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <queue>
 
 #include "Language.h"
 #include "TimeEval.h"
@@ -16,6 +17,7 @@
 #include "Context.h"
 
 extern ErrorLog error_log;
+extern std::queue<std::string> file_queue;
 
 namespace AST {
 #define ENDING = 0
@@ -342,6 +344,10 @@ namespace AST {
   };
 
   inline NPtr Identifier::build(NPtrVec&& nodes) {
+    if (nodes[0]->token() == "string") {
+      file_queue.emplace("lib/string.ic");
+    }
+
     return std::make_shared<Identifier>(nodes[0]->line_num(), nodes[0]->token());
   }
 

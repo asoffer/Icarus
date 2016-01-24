@@ -3,6 +3,7 @@ main := void -> void {
     n: int
     r: real
   }
+
   foo.n = 17
   foo.r = 3.14
   print foo.n

@@ -53,15 +53,15 @@ class Type {
     friend class Array;
     friend class UserDefined;
 
-    static Type* get_type_error();
-    static Type* get_unknown();
-    static Type* get_bool();
-    static Type* get_char();
-    static Type* get_int();
-    static Type* get_real();
-    static Type* get_type();
-    static Type* get_uint();
-    static Type* get_void();
+#define PRIMITIVE_TYPE_MACRO(type) static Type* get_##type();
+#include "config/primitive_types.conf"
+#undef PRIMITIVE_TYPE_MACRO
+
+    // Note: this one is special. It functions identically to the rest, but
+    // it's special in that it will return nullptr if you haven't imported the
+    // string library. This should never come up, because it's only used to add
+    // type to a string literal, and using a string literal should import strings.
+    static Type* get_string();
 
     static Function* get_function(Type* in, Type* out);
     static Function* get_function(std::vector<Type*> in, Type* out);

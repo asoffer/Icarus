@@ -1,5 +1,6 @@
 #include "AST.h"
 #include "ErrorLog.h"
+#include "typedefs.h"
 
 #include <map>
 #include <queue>
@@ -16,6 +17,12 @@ namespace debug {
 }
 
 std::map<std::string, StmtsPtr> ast_map;
+
+enum class Lib {
+  String
+};
+
+std::map<Lib, IdPtr> lib_type;
 std::queue<std::string> file_queue;
 
 llvm::Module* global_module;
@@ -24,7 +31,6 @@ llvm::DataLayout* data_layout;
 std::map<std::string, llvm::Value*> global_strings;
 
 ErrorLog error_log;
-
 
 llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);

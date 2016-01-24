@@ -110,7 +110,6 @@ int main(int argc, char *argv[]) {
     // If we've already parsed this file, don't parse it again.
     if (iter != ast_map.end()) continue;
 
-
     // Check if file exists
     std::ifstream infile(file_name);
     if (!infile.good()) {
@@ -144,7 +143,7 @@ int main(int argc, char *argv[]) {
   // Combine all statement nodes from separately-parsed files.
   auto global_statements = std::make_shared<AST::Statements>();
 
-  // Reserve enough space forr all of them to avoid unneeded copies
+  // Reserve enough space for all of them to avoid unneeded copies
   size_t num_statements = 0;
   for (const auto& kv : ast_map) {
     num_statements += kv.second->size();

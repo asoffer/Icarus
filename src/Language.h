@@ -40,10 +40,12 @@ namespace Language {
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     semicolon,
 
+    // TODO use RESERVED_MACRO to generate these.
+    // Figure out the right way to do that given that they may need different masks
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
     reserved_enum, reserved_while, reserved_continue, reserved_type, reserved_ascii,
-    reserved_import,
+    reserved_import, reserved_string,
 
     break_statement,
 
@@ -115,7 +117,8 @@ namespace Language {
 
   enum class Terminal {
     ASCII, Return, True, False,
-    Char, Int, Real, Type, UInt
+    Char, Int, Real, Type, UInt,
+    StringLiteral
   };
 
   inline bool is_expression(NodeType t) {

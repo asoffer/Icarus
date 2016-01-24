@@ -1,5 +1,8 @@
 #include "AST.h"
 
+#include <queue>
+
+extern std::queue<std::string> file_queue;
 
 namespace AST {
   NPtr Unop::build(NPtrVec&& nodes) {
@@ -245,6 +248,11 @@ namespace AST {
 
   NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
     return build(Language::Terminal::Type, std::forward<NPtrVec&&>(nodes), Type::get_type());
+  }
+
+  NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
+    file_queue.emplace("lib/string.ic");
+    return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Type::get_unknown());
   }
 
   NPtr Terminal::build_true(NPtrVec&& nodes) {

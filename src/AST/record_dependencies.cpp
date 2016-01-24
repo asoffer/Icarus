@@ -120,6 +120,9 @@ namespace AST {
 
   void Terminal::record_dependencies(EPtr eptr) const {
     DEBUG_KILL(eptr, "terminal");
+    // NOTE: Need to ensure that eptr is a node in the dependency graph,
+    // so even though we aren't assigning anything to it, we must access
+    // it here.
     Scope::dependencies_[eptr];
   }
 
