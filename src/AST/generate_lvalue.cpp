@@ -12,8 +12,14 @@ namespace AST {
     return alloc_;
   } 
 
-  // TODO
-  llvm::Value* Unop::generate_lvalue(Scope*)            { return nullptr; }
+  llvm::Value* Unop::generate_lvalue(Scope* scope) {
+    if (op_ == Language::Operator::At) {
+      return expr_->generate_code(scope);
+    }
+
+    return nullptr;
+  }
+  
   llvm::Value* ChainOp::generate_lvalue(Scope*)         { return nullptr; }
   llvm::Value* ArrayType::generate_lvalue(Scope*)       { return nullptr; }
   llvm::Value* ArrayLiteral::generate_lvalue(Scope*)    { return nullptr; }
@@ -33,15 +39,18 @@ namespace AST {
       return scope->builder().CreateGEP(type()->llvm(), load_ptr, { rhs_val }, "array_idx");
 
     } else if (op_ == Language::Operator::Access) {
-      if (lhs_->type()->is_user_defined()) {
-        auto lhs_type = static_cast<UserDefined*>(lhs_->type());
-        auto lhs_lval = lhs_->generate_lvalue(scope);
+      // Automatically pass through pointers
+      auto lhs_type = lhs_->type();
+      auto lhs_lval = lhs_->generate_lvalue(scope);
 
-        // TODO TOKENREMOVAL
-        // rhs must needs to be an identifier in this case. use this to access token()
-        return scope->builder().CreateGEP(lhs_type->llvm(), lhs_lval,
-            { data::const_uint(0), lhs_type->field_num(rhs_->token()) });
+      while (lhs_type->is_pointer()) {
+        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
+        lhs_lval = scope->builder().CreateLoad(lhs_lval);
       }
+
+      auto udef_type = static_cast<UserDefined*>(lhs_type);
+      return scope->builder().CreateGEP(lhs_lval,
+          { data::const_uint(0), udef_type->field_num(rhs_->token()) });
     }
 
     return nullptr;

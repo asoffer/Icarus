@@ -139,7 +139,7 @@ namespace Language {
 
     // TODO make this the correct thing
     Rule(expression,
-        { left_bracket, indirection, semicolon, expression, right_bracket },
+        { left_bracket, negation, semicolon, expression, right_bracket },
         AST::ArrayType::build_unknown),
 
 

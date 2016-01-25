@@ -1,0 +1,53 @@
+foo := type {
+  n : int
+  r : real
+}
+
+make_foo := void -> foo {
+  f: foo
+  f.n = 17
+  f.r = 34.51
+  return f
+}
+
+main := void -> void {
+  f := make_foo()
+  fp := &f
+  fpp := &fp
+  print f.n
+  print '\n'
+  x := fp.n
+  print x
+  print'\n'
+  print fpp.n
+  print '\n'
+  print fpp.r
+  print '\n'
+  print (@fpp).r
+  print '\n'
+  fppp := &fpp
+  fpppp := &fppp
+  fppppp := &fpppp
+  fpppppp := &fppppp
+  fppppppp := &fpppppp
+  fppppppp.n = -17
+  (@fppppppp).r = -34.51
+  print @fppppppp
+  print '\n'
+  print fppppppp.n
+  print '\n'
+  print (@fppppppp).n
+  print '\n'
+  print (@@fppppppp).n
+  print '\n'
+  print (@@@fppppppp).n
+  print '\n'
+  print fppppppp.r
+  print '\n'
+  print (@fppppppp).r
+  print '\n'
+  print (@@fppppppp).r
+  print '\n'
+  print (@@@fppppppp).r
+  print '\n'
+}

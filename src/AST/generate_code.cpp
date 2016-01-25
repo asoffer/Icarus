@@ -177,14 +177,25 @@ namespace AST {
     }
 
     using Language::Operator;
-    switch (op_) {
-      case Operator::Index:
-        return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
-      case Operator::Access:
-        return (lhs_->type()->is_user_defined())
-          ? scope->builder().CreateLoad(generate_lvalue(scope))
-          : nullptr;
-      default:;
+    if (op_ == Operator::Index) {
+      return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
+
+    } else if (op_ == Operator::Access) {
+      auto lhs_type = lhs_->type();
+      auto lhs_val = lhs_->generate_code(scope);
+      while (lhs_type->is_pointer()) {
+        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
+        if (!lhs_type->is_user_defined()) {
+          lhs_val = scope->builder().CreateLoad(lhs_val);
+        }
+      }
+
+      auto udef_type = static_cast<UserDefined*>(lhs_type);
+      auto retval = scope->builder().CreateGEP(lhs_val,
+          { data::const_uint(0), udef_type->field_num(rhs_->token()) });
+      return (type()->is_user_defined())
+        ? retval
+        : scope->builder().CreateLoad(retval);
     }
 
     auto lhs_val = lhs_->generate_code(scope);

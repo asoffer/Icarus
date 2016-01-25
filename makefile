@@ -7,6 +7,7 @@ DEPENDS := $(SOURCES:src/%.cpp=build/%.d)
 
 COMPILER := clang++
 BUILD_FLAGS := -g -O0 -D DEBUG
+LINK_FLAGS := 
 STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror
 OPTS = -iquote$(shell pwd)/src
@@ -26,7 +27,7 @@ build/%.o: src/%.cpp
 -include $(DEPENDS)
 
 $(TARGET): $(OBJECTS)
-	@$(COMPILER) $(LLVM_LINK) $(OBJECTS) -o $@
+	@$(COMPILER) $(LLVM_LINK) $(LINK_FLAGS) $(OBJECTS) -o $@
 
 unity:
 	@mkdir -p build

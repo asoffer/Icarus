@@ -1,5 +1,5 @@
 string := type {
-  chars: [100; char]
+  chars: [-; char]
   length: uint
 }
 

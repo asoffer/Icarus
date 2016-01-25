@@ -128,10 +128,13 @@ namespace AST {
       }
 
       auto lhs_type = lhs_->type();
+      while (lhs_type->is_pointer()) {
+        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
+      }
 
       if (!lhs_type->is_user_defined()) {
         // TODO better error message
-        error_log.log(line_num(), "Elements of this type have no members.");
+        error_log.log(line_num(), "Objects of type " + lhs_type->to_string() + " have no members.");
 
       } else {
         auto user_def_type = static_cast<UserDefined*>(lhs_type);
@@ -143,7 +146,7 @@ namespace AST {
           // TODO TOKENREMOVAL
           // rhs_ must be and identifier in this case
           error_log.log(line_num(),
-              "Type has no member named `" + rhs_->token() + "`.");
+              "Objects of type " + lhs_type->to_string() + " has no member named `" + rhs_->token() + "`.");
         } else {
           rhs_->expr_type_ = member_type;
           expr_type_ = member_type;

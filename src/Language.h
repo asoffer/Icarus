@@ -103,8 +103,8 @@ constexpr size_t assoc_mask = 3;
 namespace Language {
   enum class Operator {
     NotAnOperator,
-    Return,Print,
-    Comma,Rocket,
+    Return, Print,
+    Comma, Rocket,
     Assign, ColonEq, Colon, Cast, Arrow,
     OrEq, XorEq, AndEq,
     AddEq, SubEq, MulEq, DivEq, ModEq,
