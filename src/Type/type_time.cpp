@@ -37,3 +37,9 @@ Time::Eval UserDefined::time() const {
   // TODO
   return Time::run;
 }
+
+
+Time::Eval Enum::time() const {
+  // TODO
+  return Time::run;
+}

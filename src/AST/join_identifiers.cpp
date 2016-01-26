@@ -157,9 +157,5 @@ namespace AST {
     }
   }
 
-  void EnumLiteral::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& val : vals_) {
-      val->join_identifiers(enum_scope_);
-    }
-  }
+  void EnumLiteral::join_identifiers(Scope* scope, bool is_arg) {}
 }  // namespace AST

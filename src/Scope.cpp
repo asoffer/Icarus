@@ -7,6 +7,12 @@
 #include "AST.h"
 #include "ErrorLog.h"
 
+#ifdef DEBUG
+#define AT(access) .at( (access) )
+#else
+#define AT(access) [ (access) ]
+#endif
+
 extern llvm::Module* global_module;
 extern llvm::DataLayout* data_layout;
 extern ErrorLog error_log;
@@ -355,7 +361,8 @@ void Scope::fill_db() {
     IdPtr decl_id = decl_ptr->declared_identifier();
     if (debug::dependency_system) {
       std::cout << "Make decl_of_: " << decl_id->token() << " (line " << decl_ptr->line_num() << ")" << std::endl;
-      std::cout << "\t" << decl_id << std::endl;
+      std::cout << "\t" << decl_id << " -> " << decl_ptr << std::endl;
+      std::cout << "\tRHS: " << decl_ptr->declared_type() << std::endl;
     }
     decl_of_[decl_id] = decl_ptr;
 
@@ -386,7 +393,11 @@ void Scope::assign_type_order() {
       num_immediate_dep_refs[dep]++;
     }
   }
+  // num_immediate_dep_refs[foo] counts the number of things which directly
+  // need foo's type in order to determine their own.
 
+  // Start the stack with the sources of the dependency graph.
+  // That is, those expressions which no one depends on.
   for (const auto& kv : num_immediate_dep_refs) {
     if (kv.second == 0) {
       expr_stack.push(kv.first);
@@ -416,29 +427,43 @@ void Scope::assign_type_order() {
   // 0x02 means already seen and already popped into topo_order
   // 0x01 means seen but not yet popped
   // 0x00 means not yet seen
+
+  // Standard depth-first search
   while (!expr_stack.empty()) {
     auto eptr = expr_stack.top();
 
     if (debug::dependency_system) {
       if (eptr == nullptr) {
-        std::cout << "Found a null pointer!" << std::endl;
+        std::cerr << "Found a null pointer!" << std::endl;
+        assert(false);
+
+      } else {
+        std::cout << "Looking at:   " << eptr << "\n" << *eptr << std::endl;
       }
     }
 
 
-    if ((already_seen[eptr] & 2) == 2) {
+    if ((already_seen AT(eptr) & 2) == 2) {
+      if (debug::dependency_system) {
+        std::cout << "Already done: "  << eptr << "\n" << *eptr << std::endl;
+      }
       // Already popped it into topo_order, so just ignore it
       expr_stack.pop();
       continue;
-    }
 
-    if ((already_seen[eptr] & 1) == 1) {
+    }
+    
+    if ((already_seen AT(eptr) & 1) == 1) {
       // pop it off and put it in topo_order
+      if (debug::dependency_system) {
+        std::cout << "Adding:       " << eptr << "\n"  << *eptr << std::endl;
+      }
+
       expr_stack.pop();
       topo_order[num_seen] = eptr;
 
       // mark it as already seen
-      already_seen[eptr] = 0x03;
+      already_seen AT(eptr) = 0x03;
       ++num_seen;
       continue;
     }
@@ -448,24 +473,44 @@ void Scope::assign_type_order() {
 
     for (const auto& dep : dependencies_[eptr]) {
       if (debug::dependency_system) {
+        std::cout << "Found deps:   " << dependencies_[eptr].size() << std::endl;
+
         if (dep == nullptr) {
-          std::cout
+          std::cerr
             << "Looking at a null dependency from "
             << *eptr
             << " seen on line "
             << eptr->line_num()
             << std::endl;
+          assert(false);
+        }
+
+        if (already_seen.find(dep) == already_seen.end()) {
+          std::cerr
+            << "FATAL: Dependency has not been seen yet: "
+            << dep << std::endl
+            << *dep << std::endl
+            << "COMING FROM " << eptr << "\n" << *eptr << std::endl;
+          assert(false);
         }
       }
 
-      if ((already_seen[dep] & 2) == 2) continue;
+      if ((already_seen AT(dep) & 2) == 2) {
+        if (debug::dependency_system) {
+          std::cout << "Skipping:     " << eptr << "\n"  << *eptr << std::endl;
+        }
+        continue;
+      }
 
-      if ((already_seen[dep] & 1) == 1) {
+      if ((already_seen AT(dep) & 1) == 1) {
         error_log.log(dep->line_num(), "Cyclic dependency found.");
         // TODO give information about cycle
         return;
       }
 
+      if (debug::dependency_system) {
+        std::cout << "Pushing dep:  " << eptr << "\n"  << *dep << std::endl;
+      }
       expr_stack.push(dep);
     }
   }

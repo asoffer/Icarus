@@ -91,3 +91,18 @@ std::string UserDefined::to_string() const {
 #endif
   return "<UnknownType>";
 }
+
+std::string Enum::to_string() const {
+  // Hacky reverse lookup.
+  // TODO Is it worth storing the table in a reverse-lookup as well?
+  for (const auto& kv : lookup_) {
+    if (kv.second == this) {
+      return kv.first;
+    }
+  }
+
+#ifdef DEBUG
+  std::cerr << "FATAL: User-defined type not in type database.";
+#endif
+  return "<UnknownType>";
+}

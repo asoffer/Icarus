@@ -192,13 +192,32 @@ llvm::Function* UserDefined::assign() {
   return assign_fn_;
 }
 
+llvm::Function* Enum::assign() {
+  if (assign_fn_ != nullptr) return assign_fn_;
+
+  assign_fn_ = get_llvm_assign(this);
+  auto block = make_block("entry", assign_fn_);
+
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
+
+  auto iter = assign_fn_->args().begin();
+  auto val = iter;
+  auto var = ++iter;
+  bldr.CreateStore(val, var);
+  bldr.CreateRetVoid();
+
+  return assign_fn_;
+}
+
+
 void Primitive::set_assign(llvm::Function* fn) {}
 void Pointer::set_assign(llvm::Function* fn) {}
 void Tuple::set_assign(llvm::Function* fn) {}
 void Function::set_assign(llvm::Function* fn) {}
 void Array::set_assign(llvm::Function* fn) {}
+void Enum::set_assign(llvm::Function* fn) {}
 void UserDefined::set_assign(llvm::Function* fn) {
   assign_fn_ = fn;
-  std::cout << "**" << std::endl;
   assign_fn_->setName("assign." + to_string());
 }

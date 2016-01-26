@@ -101,11 +101,7 @@ namespace AST {
   }
 
   Time::Eval EnumLiteral::determine_time() {
-    for (auto& v : vals_) {
-      v->determine_time();
-    }
-
-    return time_ = Time::compile;
+    return time_ = Time::run;
   }
 
   Time::Eval Break::determine_time() {

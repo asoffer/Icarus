@@ -52,6 +52,7 @@ void Pointer::set_print(llvm::Function* fn) {}
 void Tuple::set_print(llvm::Function* fn) {}
 void Function::set_print(llvm::Function* fn) {}
 void Array::set_print(llvm::Function* fn) {}
+void Enum::set_print(llvm::Function* fn) {}
 void UserDefined::set_print(llvm::Function* fn) {
   print_fn_ = fn;
   print_fn_->setName("print." + to_string());

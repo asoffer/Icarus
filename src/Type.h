@@ -21,11 +21,15 @@
 
 namespace AST {
   class Expression;
+  class EnumLiteral;
   class Declaration;
 }  // namespace AST
 
 class Function;
 class Pointer;
+class Enum;
+class Array;
+class UserDefined;
 
 #include "typedefs.h"
 
@@ -50,8 +54,9 @@ virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
 
 class Type {
   public:
-    friend class Array;
-    friend class UserDefined;
+    friend class ::Array;
+    friend class ::UserDefined;
+    friend class ::Enum;
 
 #define PRIMITIVE_TYPE_MACRO(type) static Type* get_##type();
 #include "config/primitive_types.conf"
@@ -70,8 +75,11 @@ class Type {
     static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t);
     static Type* get_user_defined(const std::string& name);
+    static Type* get_enum(const std::string& name);
+    static Type* get_type_from_identifier(const std::string& name);
 
-    static Type* make_user_defined(const std::vector<DeclPtr>& decls, const std::string& name);
+    static UserDefined* make_user_defined(const std::vector<DeclPtr>& decls, const std::string& name);
+    static Enum* make_enum(std::shared_ptr<AST::EnumLiteral> enumlit, const std::string& name);
 
     static std::map<std::string, Type*> literals;
 
@@ -90,13 +98,14 @@ class Type {
 #include "config/binary_operators.conf"
 
 
-    virtual bool is_array()        const { return false; }
-    virtual bool is_function()     const { return false; }
-    virtual bool is_pointer()      const { return false; }
-    virtual bool is_primitive()    const { return false; }
-    virtual bool is_tuple()        const { return false; }
-    virtual bool is_void()         const { return this == Type::get_void(); }
-    virtual bool is_user_defined() const { return false; }
+    virtual bool is_array()         const { return false; }
+    virtual bool is_function()      const { return false; }
+    virtual bool is_pointer()       const { return false; }
+    virtual bool is_primitive()     const { return false; }
+    virtual bool is_tuple()         const { return false; }
+    virtual bool is_void()          const { return this == Type::get_void(); }
+    virtual bool is_user_defined()  const { return false; }
+    virtual bool is_enum()          const { return false; }
 
     static Type* get_operator(Language::Operator op, Type* signature);
     static void initialize_operator_table();
@@ -306,6 +315,30 @@ class UserDefined : public Type {
     std::vector<std::pair<std::string, Type*>> fields_;
 
     static std::map<std::string, UserDefined*> lookup_;
+};
+
+
+class Enum : public Type {
+  public:
+    friend class Type;
+
+    Enum() {
+      llvm_type_ = Type::get_uint()->llvm();
+    }
+
+    BASIC_FUNCTIONS;
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+    virtual ~Enum() {}
+    virtual bool is_enum() const { return true; }
+    llvm::Value* get_value(const std::string& str) const { return intval_.at(str); }
+
+  private:
+    llvm::Function* repr_fn_;
+    std::map<std::string, llvm::Value*> intval_;
+
+    static std::map<std::string, Enum*> lookup_;
 };
 
 

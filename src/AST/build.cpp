@@ -534,11 +534,12 @@ namespace AST {
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {
-      // TODO we ignore everything that isn't a declaration.
-      // This is a cheap way to get started, but probably not ideal.
-      if (!stmt->is_identifier()) continue;
+      if (!stmt->is_identifier()) {
+        error_log.log(stmt->line_num(), "Enum members must be identifiers.");
+      }
 
-      auto decl = std::static_pointer_cast<Identifier>(std::move(stmt));
+      // TODO repeated terms?
+      auto decl = std::static_pointer_cast<Identifier>(std::move(stmt))->token();
       enum_lit_ptr->vals_.emplace_back(std::move(decl));
     }
 

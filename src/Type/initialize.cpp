@@ -212,6 +212,24 @@ llvm::Function* UserDefined::initialize() {
   return init_fn_;
 }
 
+llvm::Function* Enum::initialize() {
+  if (init_fn_ != nullptr) return init_fn_;
+
+  init_fn_ = get_llvm_init(this);
+  
+  auto block = make_block("entry", init_fn_);
+
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  bldr.SetInsertPoint(block);
+
+  bldr.CreateCall(assign(), { data::const_uint(0), init_fn_->args().begin() });
+  bldr.CreateRetVoid();
+
+  return init_fn_;
+}
+
+
+
 llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
   // TODO determine when this can be freed. Currently just being leaked.
 

@@ -93,9 +93,5 @@ namespace AST {
     }
   }
 
-  void EnumLiteral::assign_decl_to_scope(Scope* scope) {
-    for (auto& val : vals_) {
-      val->assign_decl_to_scope(enum_scope_);
-    }
-  }
+  void EnumLiteral::assign_decl_to_scope(Scope* scope) {}
 }  // namespace AST

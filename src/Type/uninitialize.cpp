@@ -101,3 +101,11 @@ llvm::Function* UserDefined::uninitialize() {
   // TODO
   return nullptr;
 }
+
+llvm::Function* Enum::uninitialize() {
+  if (uninit_fn_ != nullptr) return uninit_fn_;
+  // TODO
+  return nullptr;
+}
+
+

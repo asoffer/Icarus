@@ -137,6 +137,7 @@ std::vector<Function*> Function::fn_types_;
 
 
 std::map<std::string, UserDefined*> UserDefined::lookup_;
+std::map<std::string, Enum*> Enum::lookup_;
 
 Type* Type::get_string() {
   auto iter = UserDefined::lookup_.find("string");
@@ -198,11 +199,45 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     : llvm::FunctionType::get(llvm_output, input_list, false);
 }
 
+Type* Type::get_type_from_identifier(const std::string& name) {
+  auto enum_iter = Enum::lookup_.find(name);
+  if (enum_iter != Enum::lookup_.end()) return enum_iter->second;
+
+  auto udef_iter = UserDefined::lookup_.find(name);
+  if (udef_iter != UserDefined::lookup_.end()) return udef_iter->second;
+
+#ifdef DEBUG
+  std::cerr << "FATAL: No type found matching " << name << std::endl;
+#endif
+
+  return nullptr;
+}
+
+Type* Type::get_enum(const std::string& name) {
+  return Enum::lookup_ AT(name);
+}
+
 Type* Type::get_user_defined(const std::string& name) {
   return UserDefined::lookup_ AT(name);
 }
 
-Type* Type::make_user_defined(
+Enum* Type::make_enum(
+    std::shared_ptr<AST::EnumLiteral> enumlit, const std::string& name) {
+
+  auto iter = Enum::lookup_.find(name);
+  if (iter != Enum::lookup_.end()) return iter->second;
+
+  auto enum_type = new Enum;
+  size_t i = 0;
+  for (const auto& idstr : enumlit->vals_) {
+    enum_type->intval_[idstr] = data::const_uint(i);
+    ++i;
+  }
+
+  return Enum::lookup_[name] = enum_type;
+}
+
+UserDefined* Type::make_user_defined(
     const std::vector<DeclPtr>& decls, const std::string& name) {
 
   auto iter = UserDefined::lookup_.find(name);

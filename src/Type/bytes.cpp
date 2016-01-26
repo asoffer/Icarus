@@ -11,6 +11,8 @@ size_t Pointer::bytes() const { return pointer_size_in_bytes; }
 
 size_t Primitive::bytes() const { return type_bytes[prim_type_]; }
 
+size_t Enum::bytes() const { return Primitive::get_uint()->bytes(); }
+
 size_t Array::bytes() const { return pointer_size_in_bytes; }  // TODO
 
 size_t Tuple::bytes() const {

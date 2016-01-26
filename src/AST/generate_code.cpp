@@ -182,6 +182,12 @@ namespace AST {
 
     } else if (op_ == Operator::Access) {
       auto lhs_type = lhs_->type();
+
+      if (lhs_->type() == Type::get_type() && lhs_->interpret_as_type()->is_enum()) {
+        auto enum_type = static_cast<Enum*>(lhs_->interpret_as_type());
+        return enum_type->get_value(rhs_->token());
+      }
+
       auto lhs_val = lhs_->generate_code(scope);
       while (lhs_type->is_pointer()) {
         lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
@@ -515,7 +521,6 @@ namespace AST {
         arg_type->set_print(static_cast<llvm::Function*>(val));
 
       } else if (lhs->token() == "__assign__") {
-        std::cout << "*???" << std::endl;
         // TODO type verification
 
         // get the first argument
@@ -573,7 +578,8 @@ namespace AST {
       if (lhs_->type() == Type::get_bool()) {
         switch (op_) {
           case Operator::XorEq:
-            scope->builder().CreateStore(scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+            scope->builder().CreateStore(
+                scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
           case Operator::AndEq:
           case Operator::OrEq:
             {
@@ -602,11 +608,16 @@ namespace AST {
       } else if (lhs_->type() == Type::get_int()) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
-          case Operator::AddEq: comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
-          case Operator::SubEq: comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
-          case Operator::MulEq: comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
-          case Operator::DivEq: comp_val = scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
-          case Operator::ModEq: comp_val = scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); break;
+          case Operator::AddEq:
+            comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
+          case Operator::SubEq:
+            comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
+          case Operator::MulEq:
+            comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
+          case Operator::DivEq:
+            comp_val = scope->builder().CreateSDiv(lhs_val, rhs_val, "divtmp"); break;
+          case Operator::ModEq:
+            comp_val = scope->builder().CreateSRem(lhs_val, rhs_val, "remtmp"); break;
           default: return nullptr;
         }
         scope->builder().CreateStore(comp_val, lval);
@@ -615,11 +626,16 @@ namespace AST {
       } else if (lhs_->type() == Type::get_uint()) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
-          case Operator::AddEq: comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
-          case Operator::SubEq: comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
-          case Operator::MulEq: comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
-          case Operator::DivEq: comp_val = scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); break;
-          case Operator::ModEq: comp_val = scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); break;
+          case Operator::AddEq:
+            comp_val = scope->builder().CreateAdd(lhs_val, rhs_val, "addtmp");  break;
+          case Operator::SubEq:
+            comp_val = scope->builder().CreateSub(lhs_val, rhs_val, "subtmp");  break;
+          case Operator::MulEq:
+            comp_val = scope->builder().CreateMul(lhs_val, rhs_val, "multmp");  break;
+          case Operator::DivEq:
+            comp_val = scope->builder().CreateUDiv(lhs_val, rhs_val, "divtmp"); break;
+          case Operator::ModEq:
+            comp_val = scope->builder().CreateURem(lhs_val, rhs_val, "remtmp"); break;
           default: return nullptr;
         }
         scope->builder().CreateStore(comp_val, lval);
@@ -628,10 +644,14 @@ namespace AST {
       } else if (type() == Type::get_real()) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
-          case Operator::AddEq: comp_val = scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); break;
-          case Operator::SubEq: comp_val = scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); break;
-          case Operator::MulEq: comp_val = scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); break;
-          case Operator::DivEq: comp_val = scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); break;
+          case Operator::AddEq:
+            comp_val = scope->builder().CreateFAdd(lhs_val, rhs_val, "addtmp"); break;
+          case Operator::SubEq:
+            comp_val = scope->builder().CreateFSub(lhs_val, rhs_val, "subtmp"); break;
+          case Operator::MulEq:
+            comp_val = scope->builder().CreateFMul(lhs_val, rhs_val, "multmp"); break;
+          case Operator::DivEq:
+            comp_val = scope->builder().CreateFDiv(lhs_val, rhs_val, "divtmp"); break;
           default: return nullptr;
         }
         scope->builder().CreateStore(comp_val, lval);
@@ -824,6 +844,8 @@ namespace AST {
   }
 
   llvm::Value* TypeLiteral::generate_code(Scope* scope) { return nullptr; }
+
+  // No code to generate for this, constants added automatically.
   llvm::Value* EnumLiteral::generate_code(Scope* scope) { return nullptr; }
 
   llvm::Value* Break::generate_code(Scope* scope) {

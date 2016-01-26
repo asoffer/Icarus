@@ -132,11 +132,7 @@ namespace AST {
         lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
       }
 
-      if (!lhs_type->is_user_defined()) {
-        // TODO better error message
-        error_log.log(line_num(), "Objects of type " + lhs_type->to_string() + " have no members.");
-
-      } else {
+      if (lhs_type->is_user_defined()) {
         auto user_def_type = static_cast<UserDefined*>(lhs_type);
         // TODO TOKENREMOVAL
         // rhs_ must be and identifier in this case
@@ -151,6 +147,16 @@ namespace AST {
           rhs_->expr_type_ = member_type;
           expr_type_ = member_type;
         }
+
+      } else if (lhs_->interpret_as_type()->is_enum()) {
+        // TODO verify that the rhs is actually a member
+        expr_type_ = lhs_->interpret_as_type();
+        rhs_->expr_type_ = expr_type_;
+
+      } else {
+        // TODO better error message
+        error_log.log(line_num(),
+            "Objects of type " + lhs_type->to_string() + " have no members.");
       }
       return;
 
@@ -269,11 +275,16 @@ namespace AST {
     }
 
     if (decl_type_->is_type_literal()) {
+      auto type_lit = std::static_pointer_cast<TypeLiteral>(decl_type_);
+      type_lit->type_value_ = 
+        Type::make_user_defined(type_lit->decls_, 
+            infer_type_ ? identifier_string() : "__anon.type");
 
-      auto type_lit_ = std::static_pointer_cast<TypeLiteral>(decl_type_);
-      type_lit_->type_value_ = 
-        Type::make_user_defined(type_lit_->decls_, 
-            infer_type_ ? identifier_string() : "unnamed type");
+    } else if (decl_type_->is_enum_literal()) {
+      auto enum_lit = std::static_pointer_cast<EnumLiteral>(decl_type_);
+      enum_lit->type_value_ =
+        Type::make_enum(enum_lit,
+            infer_type_ ? identifier_string() : "__anon.enum");
     }
 
     id_->expr_type_ = (infer_type_
@@ -412,6 +423,8 @@ namespace AST {
     // TODO
   }
 
-  void EnumLiteral::verify_types() {}
+  void EnumLiteral::verify_types() {
+    // TODO
+  }
 
 }  // namespace AST

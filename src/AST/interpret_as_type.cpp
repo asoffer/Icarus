@@ -1,10 +1,6 @@
 #include "AST.h"
 
 namespace AST {
-  Type* Unop::interpret_as_type() {
-    return Type::get_type_error();
-  }
-
   Type* Binop::interpret_as_type() {
     if (op_ == Language::Operator::Arrow) {
       return Type::get_function(
@@ -14,10 +10,6 @@ namespace AST {
 
     // TODO more cases here probably
     return Type::get_type_error();
-  }
-
-  Type* ArrayLiteral::interpret_as_type() {
-    return nullptr;
   }
 
   Type* ArrayType::interpret_as_type() {
@@ -46,11 +38,11 @@ namespace AST {
   }
 
   Type* Identifier::interpret_as_type() {
-    if (expr_type_ == Type::get_type()) {
-      return Type::get_user_defined(token());
+    if (type() == Type::get_type()) {
+      return Type::get_type_from_identifier(token());
     }
 
-    error_log.log(line_num(), "`" + token() + "` is not at type.");
+    error_log.log(line_num(), "`" + token() + "` is not a type.");
 
     return Type::get_type_error();
   }
@@ -83,20 +75,11 @@ namespace AST {
     return Type::get_type_error();
   }
 
-  Type* FunctionLiteral::interpret_as_type() {
-    return Type::get_type_error();
-  }
+  Type* FunctionLiteral::interpret_as_type()  { return Type::get_type_error(); }
+  Type* Case::interpret_as_type()             { return Type::get_type_error(); }
+  Type* ArrayLiteral::interpret_as_type()     { return Type::get_type_error(); }
+  Type* Unop::interpret_as_type()             { return Type::get_type_error(); }
 
-  Type* Case::interpret_as_type() {
-    return Type::get_type_error();
-  }
-
-  Type* TypeLiteral::interpret_as_type() {
-    return type_value_;
-  }
-
-  Type* EnumLiteral::interpret_as_type() {
-    return type_value_;
-  }
-
+  Type* TypeLiteral::interpret_as_type() { return type_value_; }
+  Type* EnumLiteral::interpret_as_type() { return type_value_; }
 }  // namespace AST

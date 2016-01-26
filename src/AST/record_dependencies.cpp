@@ -7,12 +7,11 @@ namespace debug {
 }  // namespace debug
 
 
-#define DEBUG_KILL(x, where)          \
-  if (debug::dependency_system) {     \
-    if ( (x) == nullptr ) {           \
-      std::cout << "-> " << where << std::endl; \
-      assert(false);                  \
-    }                                 \
+#define DEBUG_KILL(x)             \
+  if (debug::dependency_system) { \
+    if ( (x) == nullptr ) {       \
+      assert(false);              \
+    }                             \
   }
 
 // These functions are confusing because we're fighting an annoyance of
@@ -29,7 +28,7 @@ namespace debug {
 namespace AST {
 
   void Unop::record_dependencies(EPtr eptr) const {
-    DEBUG_KILL(expr_, "unop");
+    DEBUG_KILL(expr_);
 
     Scope::dependencies_[eptr].insert(expr_);
     expr_->record_dependencies(expr_);
@@ -37,7 +36,7 @@ namespace AST {
 
   void ArrayLiteral::record_dependencies(EPtr eptr) const {
     for (const auto& el : elems_) {
-      DEBUG_KILL(el, "array_lit");
+      DEBUG_KILL(el);
 
       Scope::dependencies_[eptr].insert(el);
       el->record_dependencies(el);
@@ -45,13 +44,13 @@ namespace AST {
   }
 
   void Binop::record_dependencies(EPtr eptr) const {
-    DEBUG_KILL(lhs_, "binop lhs");
+    DEBUG_KILL(lhs_);
 
     Scope::dependencies_[eptr].insert(lhs_);
     lhs_->record_dependencies(lhs_);
 
     if (op_ != Language::Operator::Access) {
-      DEBUG_KILL(rhs_, "binop rhs");
+      DEBUG_KILL(rhs_);
 
       Scope::dependencies_[eptr].insert(rhs_);
       rhs_->record_dependencies(rhs_);
@@ -60,11 +59,11 @@ namespace AST {
 
   void ArrayType::record_dependencies(EPtr eptr) const {
     if (len_ != nullptr) {
-      DEBUG_KILL(len_, "arraytype len");
+      DEBUG_KILL(len_);
       Scope::dependencies_[eptr].insert(len_);
     }
 
-    DEBUG_KILL(array_type_, "ararytype");
+    DEBUG_KILL(array_type_);
     Scope::dependencies_[eptr].insert(array_type_);
 
     if (len_ != nullptr) {
@@ -75,23 +74,23 @@ namespace AST {
 
   void ChainOp::record_dependencies(EPtr eptr) const {
     for (auto& e : exprs_) {
-      DEBUG_KILL(e, "chain");
+      DEBUG_KILL(e);
       Scope::dependencies_[eptr].insert(e);
       e->record_dependencies(e);
     }
   }
 
   void Declaration::record_dependencies(EPtr eptr) const {
-    DEBUG_KILL(decl_type_, "decl");
+    DEBUG_KILL(decl_type_);
     Scope::dependencies_[eptr].insert(decl_type_);
     decl_type_->record_dependencies(decl_type_);
   }
 
   void Case::record_dependencies(EPtr eptr) const {
     for (const auto& kv : pairs_->kv_pairs_) {
-      DEBUG_KILL(kv.first, "case 1");
+      DEBUG_KILL(kv.first);
       Scope::dependencies_[eptr].insert(kv.first);
-      DEBUG_KILL(kv.second, "case 2");
+      DEBUG_KILL(kv.second);
       Scope::dependencies_[eptr].insert(kv.second);
     }
 
@@ -103,11 +102,11 @@ namespace AST {
 
   void FunctionLiteral::record_dependencies(EPtr eptr) const {
     for (const auto& in : inputs_) {
-      DEBUG_KILL(in, "fnlit in");
+      DEBUG_KILL(in);
       Scope::dependencies_[eptr].insert(in);
     }
 
-    DEBUG_KILL(return_type_, "fnlit rettype");
+    DEBUG_KILL(return_type_);
     Scope::dependencies_[eptr].insert(return_type_);
 
     for (const auto& in : inputs_) {
@@ -119,7 +118,7 @@ namespace AST {
   }
 
   void Terminal::record_dependencies(EPtr eptr) const {
-    DEBUG_KILL(eptr, "terminal");
+    DEBUG_KILL(eptr);
     // NOTE: Need to ensure that eptr is a node in the dependency graph,
     // so even though we aren't assigning anything to it, we must access
     // it here.
@@ -127,7 +126,7 @@ namespace AST {
   }
 
   void Identifier::record_dependencies(EPtr eptr) const {
-    DEBUG_KILL(Scope::decl_of_[std::static_pointer_cast<Identifier>(eptr)], "id");
+    DEBUG_KILL(Scope::decl_of_[std::static_pointer_cast<Identifier>(eptr)]);
     Scope::dependencies_[eptr].insert(std::static_pointer_cast<Expression>(
           Scope::decl_of_[std::static_pointer_cast<Identifier>(eptr)]));
   }
@@ -166,18 +165,18 @@ namespace AST {
 
   void TypeLiteral::record_dependencies(EPtr eptr) const {
     for (const auto& decl : decls_) {
-      DEBUG_KILL(decl, "typelit");
+      DEBUG_KILL(decl);
       Scope::dependencies_[eptr].insert(decl);
       decl->record_dependencies(decl);
     }
   }
 
   void EnumLiteral::record_dependencies(EPtr eptr) const {
-    for (const auto& val : vals_) {
-      DEBUG_KILL(val, "enum");
-      Scope::dependencies_[eptr].insert(val);
-      val->record_dependencies(val);
-    }
+    DEBUG_KILL(eptr);
+    // NOTE: Need to ensure that eptr is a node in the dependency graph,
+    // so even though we aren't assigning anything to it, we must access
+    // it here.
+    Scope::dependencies_[eptr];
   }
 }  // namespace AST
 

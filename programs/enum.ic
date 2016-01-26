@@ -17,5 +17,17 @@ marshmallow := enum {
 }
 
 main := void -> void {
-  return
+  s := suit.diamond
+  print s
+  print '\n'
+  print marshmallow.rainbow
+  print '\n'
+  s = suit.spade
+  print s
+  print '\n'
+}
+
+color := enum {
+  red
+  black
 }
