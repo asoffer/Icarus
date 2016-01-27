@@ -76,7 +76,7 @@ namespace AST {
           auto str = data::global_string(scope->builder(), token());
           auto len = data::const_uint(token().size());
 
-          auto str_alloc = scope->builder().CreateAlloca(type()->llvm());
+          auto str_alloc = scope->builder().CreateAlloca(*type());
 
           // TODO use field_num(). This gets the length
           auto len_ptr = scope->builder().CreateGEP(str_alloc,
@@ -136,7 +136,7 @@ namespace AST {
           if (fn_type->return_type()->is_user_defined()) {
             // TODO move this outside of any potential loops
             auto local_ret = scope->builder().CreateAlloca(
-                fn_type->return_type()->llvm());
+                *fn_type->return_type());
 
             scope->builder().CreateCall(static_cast<llvm::Function*>(val), { local_ret });
             return local_ret;
@@ -152,15 +152,14 @@ namespace AST {
           val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
 
         } else if (expr_->type()->is_user_defined()) {
-          auto tmp = scope->builder().CreateAlloca(expr_->type()->llvm(), nullptr, "struct.tmp");
+          auto tmp = scope->builder().CreateAlloca(*expr_->type(), nullptr, "struct.tmp");
           // TODO pull out memcpy into a single fn call
-          auto tmp_raw = scope->builder().CreateBitCast(tmp, Type::get_pointer(Type::get_char())->llvm());
-          auto val_raw = scope->builder().CreateBitCast(val, Type::get_pointer(Type::get_char())->llvm());
+          auto tmp_raw = scope->builder().CreateBitCast(tmp, *RawPtr);
+          auto val_raw = scope->builder().CreateBitCast(val, *RawPtr);
           auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
               { tmp_raw, val_raw, data::const_uint(
-                data_layout->getTypeStoreSize(expr_->type()->llvm())) });
-          val = scope->builder().CreateBitCast(mem_copy,
-              Type::get_pointer(expr_->type())->llvm());
+                data_layout->getTypeStoreSize(*expr_->type())) });
+          val = scope->builder().CreateBitCast(mem_copy, *Ptr(expr_->type()));
         }
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
@@ -223,22 +222,18 @@ namespace AST {
               if (arg_vals[i] == nullptr) return nullptr;
 
               if (expr->type()->is_user_defined()) {
-                auto arg_ptr = scope->builder().CreateAlloca(
-                    expr->type()->llvm(), nullptr, "struct.tmp");
+                auto arg_ptr = scope->builder()
+                  .CreateAlloca(*expr->type(), nullptr, "struct.tmp");
 
                 // TODO pull out memcpy into a single fn call
-                auto tmp_raw = scope->builder().CreateBitCast(arg_ptr,
-                    Type::get_pointer(Type::get_char())->llvm());
-
-                auto val_raw = scope->builder().CreateBitCast(arg_vals[i],
-                    Type::get_pointer(Type::get_char())->llvm());
+                auto tmp_raw = scope->builder().CreateBitCast(arg_ptr, *RawPtr);
+                auto val_raw = scope->builder().CreateBitCast(arg_vals[i], *RawPtr);
 
                 auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
                     { tmp_raw, val_raw, data::const_uint(
-                      data_layout->getTypeStoreSize(expr->type()->llvm())) });
+                      data_layout->getTypeStoreSize(*expr->type())) });
 
-                arg_vals[i] = scope->builder().CreateBitCast(mem_copy,
-                    Type::get_pointer(expr->type())->llvm());
+                arg_vals[i] = scope->builder().CreateBitCast(mem_copy, *Ptr(expr->type()));
               }
 
               ++i;
@@ -251,22 +246,17 @@ namespace AST {
             if (rhs_->type()->is_user_defined()) {
               // TODO be sure to allocate this ahead of all loops and reuse it when possible
 
-              auto arg_ptr = scope->builder().CreateAlloca(
-                  rhs_->type()->llvm(), nullptr, "struct.tmp");
+              auto arg_ptr = scope->builder().CreateAlloca(*rhs_->type(), nullptr, "struct.tmp");
 
               // TODO pull out memcpy into a single fn call
-              auto tmp_raw = scope->builder().CreateBitCast(arg_ptr,
-                  Type::get_pointer(Type::get_char())->llvm());
-
-              auto val_raw = scope->builder().CreateBitCast(rhs_val,
-                  Type::get_pointer(Type::get_char())->llvm());
+              auto tmp_raw = scope->builder().CreateBitCast(arg_ptr, *RawPtr);
+              auto val_raw = scope->builder().CreateBitCast(rhs_val, *RawPtr);
 
               auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
                   { tmp_raw, val_raw, data::const_uint(
-                    data_layout->getTypeStoreSize(rhs_->type()->llvm())) });
+                    data_layout->getTypeStoreSize(*rhs_->type())) });
 
-              rhs_val = scope->builder().CreateBitCast(mem_copy,
-                  Type::get_pointer(rhs_->type())->llvm());
+              rhs_val = scope->builder().CreateBitCast(mem_copy, *Ptr(rhs_->type()));
             } 
 
             arg_vals = { rhs_val };
@@ -463,8 +453,7 @@ namespace AST {
 
         bldr.SetInsertPoint(merge_block);
         // Join two cases
-        llvm::PHINode* phi_node = bldr.CreatePHI(
-            Type::get_bool()->llvm(), 2, "merge");
+        llvm::PHINode* phi_node = bldr.CreatePHI(*Bool, 2, "merge");
         phi_node->addIncoming(data::const_true(), land_true_block);
         phi_node->addIncoming(data::const_false(), land_false_block);
         cmp_val = phi_node;
@@ -476,7 +465,7 @@ namespace AST {
   }
 
   llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
-    if (type()->llvm() == nullptr) return nullptr;
+    if (*type() == nullptr) return nullptr;
 
     if (llvm_function_ == nullptr) {
       // NOTE: This means a function is not assigned.
@@ -744,7 +733,7 @@ namespace AST {
     auto current_block = scope->builder().GetInsertBlock();
     auto case_landing = make_block("case.landing", parent_fn);
     scope->builder().SetInsertPoint(case_landing);
-    llvm::PHINode* phi_node = scope->builder().CreatePHI(type()->llvm(),
+    llvm::PHINode* phi_node = scope->builder().CreatePHI(*type(),
           static_cast<unsigned int>(pairs_->kv_pairs_.size()), "phi");
     scope->builder().SetInsertPoint(current_block);
 
@@ -783,12 +772,13 @@ namespace AST {
 
     size_t elems_size = elems_.size();
 
-    auto array_data = type_as_array->initialize_literal(scope->builder(), data::const_uint(elems_size));
+    auto array_data = type_as_array->initialize_literal(
+        scope->builder(), data::const_uint(elems_size));
 
     if (!element_type->is_array()) {
       for (size_t i = 0; i < elems_size; ++i) {
-        auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
-            array_data, { data::const_uint(i) });
+        auto data_ptr = scope->builder().CreateGEP(
+            *element_type, array_data, { data::const_uint(i) });
 
         scope->builder().CreateCall(element_type->assign(),
             { elems_[i]->generate_code(scope), data_ptr });
@@ -796,8 +786,8 @@ namespace AST {
 
     } else {
       for (size_t i = 0; i < elems_size; ++i) {
-        auto data_ptr = scope->builder().CreateGEP(element_type->llvm(),
-            array_data, { data::const_uint(i) });
+        auto data_ptr = scope->builder().CreateGEP(
+            *element_type, array_data, { data::const_uint(i) });
         scope->builder().CreateStore(elems_[i]->generate_code(scope), data_ptr);
       }
     }

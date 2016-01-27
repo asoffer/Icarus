@@ -72,12 +72,11 @@ llvm::Function* Array::assign() {
 
   bldr.CreateCall(uninitialize(), { var });
 
-  auto raw_ptr_type = get_pointer(get_char())->llvm();
   auto raw_len_ptr = bldr.CreateGEP(
-      bldr.CreateBitCast(val, raw_ptr_type),
+      bldr.CreateBitCast(val, *RawPtr),
       { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_len");
   auto len_val = bldr.CreateLoad(
-    bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm()));
+    bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint)));
 
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
   auto int_size = data::const_uint(Type::get_uint()->bytes());
@@ -89,11 +88,10 @@ llvm::Function* Array::assign() {
 
   // Store the right length in the start of the array.
   bldr.CreateStore(len_val,
-      bldr.CreateBitCast(malloc_call, get_pointer(get_uint())->llvm()));
+      bldr.CreateBitCast(malloc_call, *Ptr(Uint)));
 
   auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
-  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr,
-      get_pointer(data_type())->llvm());
+  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()));
   auto copy_from_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
   auto end_ptr = bldr.CreateGEP(copy_to_ptr, { len_val });
 
@@ -107,12 +105,10 @@ llvm::Function* Array::assign() {
   auto prev_block = bldr.GetInsertBlock();
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* from_phi = bldr.CreatePHI(
-      get_pointer(data_type())->llvm(), 2,"phi");
+  llvm::PHINode* from_phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
   from_phi->addIncoming(copy_from_ptr, prev_block);
 
-  llvm::PHINode* to_phi = bldr.CreatePHI(
-      get_pointer(data_type())->llvm(), 2,"phi");
+  llvm::PHINode* to_phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
   auto copy_from_elem = bldr.CreateLoad(bldr.CreateGEP(from_phi, { data::const_uint(0) }));
@@ -179,7 +175,7 @@ llvm::Function* UserDefined::assign() {
      auto field_val = bldr.CreateGEP(llvm(), val,
          { data::const_uint(0), data::const_uint(field_num) });
      if (!field_type->is_user_defined()) {
-       field_val = bldr.CreateLoad(field_type->llvm(), field_val);
+       field_val = bldr.CreateLoad(*field_type, field_val);
      }
      auto field_var = bldr.CreateGEP(llvm(), var,
          { data::const_uint(0), data::const_uint(field_num) });

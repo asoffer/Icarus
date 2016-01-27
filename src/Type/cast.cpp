@@ -4,15 +4,15 @@
 llvm::Value* Primitive::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) {
   if (this == get_bool()) {
     if (to_type == get_int() || to_type == get_uint()) {
-      return bldr.CreateZExt(val, to_type->llvm(), "ext_val");
+      return bldr.CreateZExt(val, *to_type, "ext_val");
 
     } else if (to_type == get_real()) {
-      return bldr.CreateUIToFP(val, to_type->llvm(), "ext_val");
+      return bldr.CreateUIToFP(val, *to_type, "ext_val");
     }
 
   } else if (this == get_int()) {
     if (to_type == get_real()) {
-      return bldr.CreateSIToFP(val, to_type->llvm(), "fp_val");
+      return bldr.CreateSIToFP(val, *to_type, "fp_val");
 
     } else if (to_type == get_uint()) {
       return val;
@@ -20,7 +20,7 @@ llvm::Value* Primitive::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Typ
 
   } else if (this == get_uint()) {
     if (to_type == get_real()) {
-      return bldr.CreateUIToFP(val, to_type->llvm(), "fp_val");
+      return bldr.CreateUIToFP(val, *to_type, "fp_val");
 
     } else if (to_type == get_int()) {
       // TODO is this actually going to be allowed?

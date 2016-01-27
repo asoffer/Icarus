@@ -22,8 +22,7 @@ llvm::Function* Array::uninitialize() {
   if (uninit_fn_ != nullptr) return uninit_fn_;
 
   uninit_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(get_void()->llvm(),
-        { get_pointer(this)->llvm() }, false),
+      llvm::FunctionType::get(*Void, { *Ptr(this) }, false),
       llvm::Function::ExternalLinkage, "uninit." + to_string(), global_module);
 
   FnScope* fn_scope = Scope::build_fn<FnScope>();
@@ -35,16 +34,12 @@ llvm::Function* Array::uninitialize() {
 
   fn_scope->enter();
   auto alloc = uninit_fn_->args().begin();
-  auto basic_ptr_type = get_pointer(get_char())->llvm();
-
   auto data_ptr = bldr.CreateLoad(alloc);
-  auto ptr_to_free = bldr.CreateGEP(
-      bldr.CreateBitCast(data_ptr, basic_ptr_type),
+  auto ptr_to_free = bldr.CreateGEP(bldr.CreateBitCast(data_ptr, *RawPtr),
       { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_free");
 
   if (data_type()->uninitialize() != nullptr) {
-    auto len_ptr = bldr.CreateBitCast(ptr_to_free,
-        get_pointer(get_uint())->llvm(), "len_ptr");
+    auto len_ptr = bldr.CreateBitCast(ptr_to_free, *Ptr(Uint), "len_ptr");
     auto len_val = bldr.CreateLoad(len_ptr);
     auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
 
@@ -53,7 +48,7 @@ llvm::Function* Array::uninitialize() {
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);
 
-    llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "phi");
+    llvm::PHINode* phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
     phi->addIncoming(data_ptr, fn_scope->entry_block());
 
     bldr.CreateCall(data_type()->uninitialize(), { phi });

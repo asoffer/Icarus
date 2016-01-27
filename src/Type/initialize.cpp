@@ -68,8 +68,8 @@ llvm::Function* Function::initialize() {
 llvm::Function* Array::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 
-  std::vector<llvm::Type*> init_types(dim_ + 1, get_uint()->llvm());
-  init_types[0] = get_pointer(this)->llvm();
+  std::vector<llvm::Type*> init_types(dim_ + 1, *Uint);
+  init_types[0] = *Ptr(this);
 
   // We can't call get_llvm_init, because arrays also need lengths. A slight
   // modification does what we want.
@@ -108,18 +108,15 @@ llvm::Function* Array::initialize() {
       data_is_primitive ? cstdlib::calloc() : cstdlib::malloc(), { bytes_needed });
 
   // Pointer to the length at the head of the array
-  auto len_ptr = bldr.CreateBitCast(alloc_call,
-      get_pointer(get_uint())->llvm(), "len_ptr");
+  auto len_ptr = bldr.CreateBitCast(alloc_call, *Ptr(Uint), "len_ptr");
 
   bldr.CreateStore(len_val, len_ptr);
 
   // Pointer to the array data
-  auto raw_data_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      alloc_call, { int_size }, "raw_data_ptr");
+  auto raw_data_ptr = bldr.CreateGEP(*Char, alloc_call, { int_size }, "raw_data_ptr");
 
   // Pointer to data cast
-  auto ptr_type = Type::get_pointer(data_type())->llvm();
-  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "data_ptr");
+  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "data_ptr");
   bldr.CreateStore(data_ptr, store_ptr);
 
   // Just calling calloc is okay for p
@@ -132,7 +129,7 @@ llvm::Function* Array::initialize() {
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);
 
-    llvm::PHINode* phi = bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "phi");
+    llvm::PHINode* phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
     phi->addIncoming(data_ptr, fn_scope->entry_block());
 
     std::vector<llvm::Value*> next_init_args = { phi };
@@ -196,7 +193,7 @@ llvm::Function* UserDefined::initialize() {
   auto fields_size = fields_.size();
   for (size_t field_num = 0; field_num < fields_size; ++field_num) {
     auto field_type = fields_[field_num].second;
-    auto arg = bldr.CreateGEP(llvm(), init_fn_->args().begin(), {
+    auto arg = bldr.CreateGEP(*this, init_fn_->args().begin(), {
         data::const_uint(0), data::const_uint(field_num) });
 
     if (field_type->is_array()) {
@@ -249,20 +246,18 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
 
   // Pointer to the length at the head of the array
-  auto raw_len_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { data::const_uint(0) }, "array_len_raw");
+  auto raw_len_ptr = bldr.CreateGEP(*Char, malloc_call,
+      { data::const_uint(0) }, "array_len_raw");
 
-  auto len_ptr = bldr.CreateBitCast(
-      raw_len_ptr, Type::get_pointer(Type::get_int())->llvm(), "len_ptr");
-    bldr.CreateStore(len, len_ptr);
+  auto len_ptr = bldr.CreateBitCast(raw_len_ptr, *Ptr(Int), "len_ptr");
+  bldr.CreateStore(len, len_ptr);
 
   // Pointer to the array data
-  auto raw_data_ptr = bldr.CreateGEP(Type::get_char()->llvm(),
-      malloc_call, { int_size }, "array_idx_raw");
+  auto raw_data_ptr = bldr.CreateGEP(*Char, malloc_call,
+      { int_size }, "array_idx_raw");
   
   // Pointer to data cast
-  auto ptr_type = Type::get_pointer(data_type())->llvm();
-  auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, ptr_type, "array_ptr");
+  auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "array_ptr");
 
   return ret_ptr;
 }

@@ -129,6 +129,7 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
+  TypeSystem::initialize();
   Type::initialize_operator_table();
 
 

@@ -457,3 +457,21 @@ Type* Type::get_operator(Language::Operator op, Type* signature) {
   auto iter = operator_set.find(signature);
   return (iter != operator_set.end()) ? iter->second : nullptr;
 }
+
+namespace TypeSystem {
+  void initialize() {
+    Error = Type::get_type_error();
+    Unknown = Type::get_unknown();
+    Bool = Type::get_bool();
+    Char = Type::get_char();
+    Int = Type::get_int();
+    Real = Type::get_real();
+    Type_ = Type::get_type();
+    Uint = Type::get_uint();
+    Void = Type::get_void();
+    RawPtr = Ptr(Char);
+  }
+}  // namespace TypeSystem
+
+
+

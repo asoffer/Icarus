@@ -176,6 +176,7 @@ namespace AST {
       Type* in_type = static_cast<Function*>(lhs_->type())->argument_type();
 
       if (in_type != rhs_->type()) {
+        // std::cout << in_type->to_string() << ", " << rhs_->type()->to_string() << std::endl;
         error_log.log(line_num(), "Type mismatch on function arguments.");
         return;
       }

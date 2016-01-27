@@ -62,6 +62,8 @@ class Type {
 #include "config/primitive_types.conf"
 #undef PRIMITIVE_TYPE_MACRO
 
+    operator llvm::Type* () { return llvm(); }
+
     // Note: this one is special. It functions identically to the rest, but
     // it's special in that it will return nullptr if you haven't imported the
     // string library. This should never come up, because it's only used to add
@@ -339,6 +341,22 @@ class Enum : public Type {
 
     static std::map<std::string, Enum*> lookup_;
 };
+
+extern Type* Error;
+extern Type* Unknown;
+extern Type* Bool;
+extern Type* Char;
+extern Type* Int;
+extern Type* Real;
+extern Type* Type_;
+extern Type* Uint;
+extern Type* Void;
+extern Type* RawPtr;
+extern Type* Ptr(Type* t);
+
+namespace TypeSystem {
+  void initialize();
+}  // namespace TypeSystem
 
 
 #undef BASIC_FUNCTIONS

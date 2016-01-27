@@ -62,8 +62,7 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       fn_bldr.CreateBr(merge_block);
 
       fn_bldr.SetInsertPoint(merge_block);
-      llvm::PHINode* phi_node =
-        fn_bldr.CreatePHI(get_pointer(get_char())->llvm(), 2, "merge");
+      llvm::PHINode* phi_node = fn_bldr.CreatePHI(*Ptr(Char), 2, "merge");
       phi_node->addIncoming(data::global_string(fn_bldr, "true"),  true_block);
       phi_node->addIncoming(data::global_string(fn_bldr, "false"), false_block);
 
@@ -165,13 +164,11 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
     fn_scope->enter();
     fn_bldr.CreateCall(cstdlib::putchar(), { data::const_char('[') });
 
-    auto basic_ptr_type = get_pointer(get_char())->llvm();
-
     auto raw_len_ptr = fn_bldr.CreateGEP(
-        fn_bldr.CreateBitCast(arg, basic_ptr_type),
+        fn_bldr.CreateBitCast(arg, *RawPtr),
         { data::const_neg(fn_bldr, get_uint()->bytes()) }, "ptr_to_len");
 
-    auto len_ptr = fn_bldr.CreateBitCast(raw_len_ptr, get_pointer(get_uint())->llvm());
+    auto len_ptr = fn_bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint));
     auto len_val = fn_bldr.CreateLoad(fn_bldr.CreateGEP(len_ptr, { data::const_uint(0) }));
 
     auto loop_block = make_block("loop.body", repr_fn_);
@@ -195,7 +192,7 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
         done_block, loop_block);
 
     fn_bldr.SetInsertPoint(loop_block);
-    llvm::PHINode* phi = fn_bldr.CreatePHI(get_pointer(data_type())->llvm(), 2, "loop_phi");
+    llvm::PHINode* phi = fn_bldr.CreatePHI(*Ptr(data_type()), 2, "loop_phi");
     phi->addIncoming(start_ptr, loop_head_block);
 
     fn_bldr.CreateCall(cstdlib::printf(), { data::global_string(fn_bldr, ", ") });
