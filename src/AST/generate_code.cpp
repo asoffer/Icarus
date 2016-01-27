@@ -509,15 +509,15 @@ namespace AST {
     fn_scope_->set_type(static_cast<Function*>(expr_type_));
 
     fn_scope_->enter();
-    auto input_iter = inputs_.begin();
-    for (auto& arg : llvm_function_->args()) {
-      auto decl_id = (*input_iter)->declared_identifier();
+    auto arg = llvm_function_->args().begin();
+    for (auto& input_iter : inputs_) {
+      auto decl_id = input_iter->declared_identifier();
 
       if (!decl_id->type()->is_user_defined()) {
         fn_scope_->builder().CreateCall(decl_id->type()->assign(),
-            { &arg, (*input_iter)->declared_identifier()->alloc_ });
+            { arg, input_iter->declared_identifier()->alloc_ });
       }
-      ++input_iter;
+      ++arg;
     }
 
     
