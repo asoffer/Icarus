@@ -1,15 +1,16 @@
 #include "Type.h"
+extern llvm::DataLayout* data_layout;
 
 constexpr size_t pointer_size_in_bytes = sizeof(void*);
-constexpr const size_t type_bytes[ Primitive::num_primitive_types_ ] = {
-  0, 0, 1, 1, 4, 8, 0, 4, 0
-};
 
 size_t Function::bytes() const { return pointer_size_in_bytes; }
 
 size_t Pointer::bytes() const { return pointer_size_in_bytes; }
 
-size_t Primitive::bytes() const { return type_bytes[prim_type_]; }
+size_t TypeSystem::Primitive::bytes() const {
+  return (llvm_type_ == nullptr)
+    ? 0 : data_layout->getTypeStoreSize(llvm_type_);
+}
 
 size_t Enum::bytes() const { return Uint->bytes(); }
 

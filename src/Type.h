@@ -44,13 +44,6 @@ extern Type* Void;
 extern Type* RawPtr;
 extern Type* Ptr(Type* t);
 
-namespace TypeSystem {
-  extern std::map<std::string, Type*> Literals;
-  void initialize();
-}  // namespace TypeSystem
-
-
-
 #include "typedefs.h"
 
 #define ENDING = 0 
@@ -118,7 +111,7 @@ class Type {
     virtual bool is_array()         const { return false; }
     virtual bool is_function()      const { return false; }
     virtual bool is_pointer()       const { return false; }
-    virtual bool is_primitive()     const { return false; }
+    virtual bool isPrimitive()      const { return false; }
     virtual bool is_tuple()         const { return false; }
     virtual bool is_void()          const { return this == Void; }
     virtual bool is_user_defined()  const { return false; }
@@ -152,43 +145,40 @@ class Type {
     static std::map<Language::Operator, std::map<Type*, Type*>> op_map_;
 };
 
+
 #undef ENDING
 #define ENDING
 
-class Primitive : public Type {
-  public:
-    static constexpr size_t num_primitive_types_ = 9;
 
-    friend class Type;
-    virtual ~Primitive() {}
+namespace TypeSystem {
+  class Primitive : public Type {
+    public:
+      enum class TypeEnum {
+        Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
+      };
 
-    virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
-    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
+      Primitive() = delete;
+      Primitive(TypeEnum pt);
+      virtual ~Primitive() {}
+      virtual bool isPrimitive() const { return true; }
 
-BASIC_FUNCTIONS;
+      virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
+      virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr,
+          llvm::Value* val, Type* to_type);
+
+      BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    virtual bool is_primitive() const { return true; }
+    private:
+      Primitive::TypeEnum type_;
+      llvm::Function* repr_fn_;
+  };
 
-  private:
-    llvm::Function* repr_fn_;
-    friend void TypeSystem::initialize();
+  extern std::map<std::string, Type*> Literals;
+  void initialize();
+}  // namespace TypeSystem
 
-    // This needs to be an enum becasue we use it to access other arrays and
-    // vectors
-    enum PrimitiveEnum {
-      t_type_error, t_unknown, t_bool, t_char, t_int, t_real, t_type, t_uint, t_void
-    };
-
-
-    PrimitiveEnum prim_type_;
-
-    Primitive(PrimitiveEnum pe);
-
-    static Primitive primitive_types_[ num_primitive_types_ ];
-    static llvm::Type* llvm_types_[ num_primitive_types_ ];
-};
 
 class Tuple : public Type {
   public:

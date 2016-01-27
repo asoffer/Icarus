@@ -20,56 +20,6 @@ namespace data {
 
 std::map<Language::Operator, std::map<Type*, Type*>> Type::op_map_ = {};
 
-Primitive::Primitive(PrimitiveEnum pe) : repr_fn_(nullptr), prim_type_(pe) {
-  if (llvm_types_[prim_type_] == nullptr) {
-    switch (prim_type_) {
-      case t_bool:
-        llvm_types_[prim_type_] =
-          llvm::Type::getInt1Ty(llvm::getGlobalContext());
-        break;
-      case t_char:
-        llvm_types_[prim_type_] =
-          llvm::Type::getInt8Ty(llvm::getGlobalContext());
-        break;
-      case t_int:
-        llvm_types_[prim_type_] =
-          llvm::Type::getInt32Ty(llvm::getGlobalContext());
-        break;
-      case t_real:
-        llvm_types_[prim_type_] =
-          llvm::Type::getDoubleTy(llvm::getGlobalContext());
-        break;
-      case t_uint: // make it unsigned
-        llvm_types_[prim_type_] =
-          llvm::Type::getInt32Ty(llvm::getGlobalContext());
-        break;
-      case t_void:
-        llvm_types_[prim_type_] =
-          llvm::Type::getVoidTy(llvm::getGlobalContext());
-        break;
-      default:
-        llvm_types_[prim_type_] = nullptr;
-        break;
-    }
-  }
-  llvm_type_ = llvm_types_[prim_type_];
-};
-
-#define PRIMITIVE_TYPE_MACRO(type) Primitive(Primitive::t_##type),
-Primitive Primitive::primitive_types_[ num_primitive_types_ ] = {
-#include "config/primitive_types.conf"
-};
-#undef PRIMITIVE_TYPE_MACRO
-
-// NOTE: Ideally, we'd pre-compute all of these. Unfortunately, this is not
-// possible in the obvious way, due to the static initialization order fiasco.
-//
-// TODO On entry into main, allocate all of these, intsead of doing so in the
-// Primitive type constructor
-llvm::Type* Primitive::llvm_types_[ num_primitive_types_ ] = {
-  nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr
-};
-
 Function* Type::get_function(std::vector<Type*> in, Type* out) {
   return get_function(get_tuple(in), out);
 }
@@ -78,7 +28,6 @@ Function* Type::get_function(Type* in, Type* out) {
   for (const auto& fn_type : Function::fn_types_) {
     if (fn_type->input_type_ != in) continue;
     if (fn_type->output_type_ != out) continue;
-
     return fn_type;
   }
 
@@ -122,7 +71,6 @@ Type* Type::get_string() {
   return (iter == UserDefined::lookup_.end()) ? nullptr : iter->second;
 }
 
-
 Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   bool llvm_null = false;
   std::vector<llvm::Type*> input_list;
@@ -153,8 +101,10 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     if (input_type_->llvm() == nullptr) {
       llvm_null = true;
     } else {
-      input_list.push_back(input_type_->llvm());
+      input_list.push_back(*input_type_);
     }
+  } else {
+    input_list.clear();
   }
 
   if (output_type_->is_user_defined()) {
@@ -163,9 +113,9 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     return;
   }
 
-  auto llvm_output = output_type_->is_function()
+  llvm::Type* llvm_output = output_type_->is_function()
     ? *Ptr(output_type_)
-    : output_type_->llvm();
+    : *output_type_;
 
   if (llvm_output == nullptr) {
     llvm_null = true;
@@ -436,17 +386,37 @@ Type* Type::get_operator(Language::Operator op, Type* signature) {
 }
 
 namespace TypeSystem {
-  void initialize() {
-    Literals["bool"] = Bool  = new Primitive(Primitive::t_bool);
-    Literals["char"] = Char  = new Primitive(Primitive::t_char);
-    Literals["int"]  = Int   = new Primitive(Primitive::t_int);
-    Literals["real"] = Real  = new Primitive(Primitive::t_real);
-    Literals["type"] = Type_ = new Primitive(Primitive::t_type);
-    Literals["uint"] = Uint  = new Primitive(Primitive::t_uint);
-    Literals["void"] = Void  = new Primitive(Primitive::t_void);
+  Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
+    switch (type_) {
+      case Primitive::TypeEnum::Bool:
+        llvm_type_ = llvm::Type::getInt1Ty(llvm::getGlobalContext());   break;
+      case Primitive::TypeEnum::Char:
+        llvm_type_ = llvm::Type::getInt8Ty(llvm::getGlobalContext());   break;
+      case Primitive::TypeEnum::Int:
+        llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+      case Primitive::TypeEnum::Real:
+        llvm_type_ = llvm::Type::getDoubleTy(llvm::getGlobalContext()); break;
+      case Primitive::TypeEnum::Uint:
+        llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+      case Primitive::TypeEnum::Void:
+        llvm_type_ = llvm::Type::getVoidTy(llvm::getGlobalContext());   break;
+      default:
+        llvm_type_ = nullptr;
+    }
+  }
 
-    Error   = new Primitive(Primitive::t_type_error);
-    Unknown = new Primitive(Primitive::t_unknown);
+  void initialize() {
+    // TODO do we need to pair of strings and their types?
+    Literals["bool"] = Bool  = new Primitive(Primitive::TypeEnum::Bool);
+    Literals["char"] = Char  = new Primitive(Primitive::TypeEnum::Char);
+    Literals["int"]  = Int   = new Primitive(Primitive::TypeEnum::Int);
+    Literals["real"] = Real  = new Primitive(Primitive::TypeEnum::Real);
+    Literals["type"] = Type_ = new Primitive(Primitive::TypeEnum::Type);
+    Literals["uint"] = Uint  = new Primitive(Primitive::TypeEnum::Uint);
+    Literals["void"] = Void  = new Primitive(Primitive::TypeEnum::Void);
+
+    Error   = new Primitive(Primitive::TypeEnum::Error);
+    Unknown = new Primitive(Primitive::TypeEnum::Unknown);
     RawPtr = Ptr(Char);
   }
 }  // namespace TypeSystem

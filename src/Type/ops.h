@@ -3,7 +3,7 @@
 
 #include "Language.h"
 
-llvm::Value* Primitive::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
+llvm::Value* TypeSystem::Primitive::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
   if (this == Int || this == Uint) {
     return bldr.CreateAdd(lhs, rhs, "add");
 
@@ -15,7 +15,7 @@ llvm::Value* Primitive::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Primitive::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
+llvm::Value* TypeSystem::Primitive::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
   if (this == Int || this == Uint) {
     return bldr.CreateSub(lhs, rhs, "sub");
 
@@ -27,7 +27,7 @@ llvm::Value* Primitive::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Primitive::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
+llvm::Value* TypeSystem::Primitive::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
   if (this == Int || this == Uint) {
     return bldr.CreateMul(lhs, rhs, "mul");
 
@@ -39,7 +39,7 @@ llvm::Value* Primitive::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Primitive::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
+llvm::Value* TypeSystem::Primitive::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
   if (this == Int) {
     return bldr.CreateSDiv(lhs, rhs, "sdiv");
 
@@ -54,7 +54,7 @@ llvm::Value* Primitive::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
+llvm::Value* TypeSystem::Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
   if (this == Int) {
     return bldr.CreateSRem(lhs, rhs, "smod");
 
@@ -69,7 +69,7 @@ llvm::Value* Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
   }
 }
 
-llvm::Value* Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
+llvm::Value* TypeSystem::Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
   if (this == Int) {
     return bldr.CreateNeg(operand, "neg");
 
@@ -81,7 +81,7 @@ llvm::Value* Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) 
   }
 }
 
-llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
+llvm::Value* TypeSystem::Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
   if (this == Char) {
     return bldr.CreateNot(operand, "not");
 

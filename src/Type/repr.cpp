@@ -31,7 +31,7 @@ void add_branch(llvm::Function* fn, Scope* fn_scope, llvm::SwitchInst* switch_st
   }
 }
 
-void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+void TypeSystem::Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   if (this == Bool) {
     if (repr_fn_ == nullptr) {
       auto fn_type = get_function(this, Void);

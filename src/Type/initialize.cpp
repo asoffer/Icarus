@@ -11,6 +11,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* null_pointer(Type* t);
+  extern llvm::Value* const_int(int n);
   extern llvm::Value* const_uint(size_t n);
   extern llvm::Value* const_char(char c);
   extern llvm::Value* const_real(double d);
@@ -28,7 +29,7 @@ llvm::Function* get_llvm_init(Type* type) {
 }
 
 
-llvm::Function* Primitive::initialize() {
+llvm::Function* TypeSystem::Primitive::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 
   init_fn_ = get_llvm_init(this);
@@ -39,15 +40,22 @@ llvm::Function* Primitive::initialize() {
   bldr.SetInsertPoint(block);
 
   llvm::Value* init_val;
-  switch (prim_type_) {
-    case t_bool: init_val = data::const_false(); break;
-    case t_char: init_val = data::const_char('\0'); break;
-    case t_int:
-    case t_uint: init_val = data::const_uint(0); break;
-    case t_real: init_val = data::const_real(0); break;
-    default:     return nullptr;
+  switch (type_) {
+    case Primitive::TypeEnum::Error:   assert(false && "Constructor called for type Error");
+    case Primitive::TypeEnum::Unknown: assert(false && "Constructor called for unknown type");
+    case Primitive::TypeEnum::Bool:    init_val = data::const_false(); break;
+                  //bldr.CreateStore(data::const_false(),     var); return;
+    case Primitive::TypeEnum::Char:    init_val = data::const_char('\0'); break;
+                  //bldr.CreateStore(data::const_char('\0'),  var); return;
+    case Primitive::TypeEnum::Int:     init_val = data::const_int(0); break;
+                                 // bldr.CreateStore(data::const_int(0),      var); return;
+    case Primitive::TypeEnum::Real:    init_val = data::const_real(0); break;
+                  //bldr.CreateStore(data::const_real(0),     var); return;
+    case Primitive::TypeEnum::Type:    assert(false && "Constructor called for type");
+    case Primitive::TypeEnum::Uint:    init_val = data::const_uint(0); break;
+                  //bldr.CreateStore(data::const_uint(0),     var); return;
+    case Primitive::TypeEnum::Void:    assert(false && "Constructor called for void type");
   }
-
   bldr.CreateCall(assign(), { init_val, init_fn_->args().begin() });
   bldr.CreateRetVoid();
 
@@ -101,7 +109,7 @@ llvm::Function* Array::initialize() {
   auto bytes_needed = bldr.CreateAdd(uint_size, 
       bldr.CreateMul(len_val, bytes_per_elem), "alloc_bytes");
 
-  auto data_is_primitive = data_type()->is_primitive();
+  auto data_is_primitive = data_type()->isPrimitive();
 
   // (M/C)alloc call
   auto alloc_call = bldr.CreateCall(

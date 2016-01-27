@@ -1,7 +1,7 @@
 #include "Type.h"
 #include "Scope.h"
 
-llvm::Value* Primitive::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) {
+llvm::Value* TypeSystem::Primitive::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) {
   if (this == Bool) {
     if (to_type == Int || to_type == Uint) {
       return bldr.CreateZExt(val, *to_type, "ext_val");

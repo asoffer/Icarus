@@ -66,7 +66,7 @@ llvm::Function* Array::uninitialize() {
   return uninit_fn_;
 }
 
-llvm::Function* Primitive::uninitialize() {
+llvm::Function* TypeSystem::Primitive::uninitialize() {
   if (uninit_fn_ != nullptr) return uninit_fn_;
   // TODO
   return nullptr;

@@ -3,20 +3,18 @@
 #include <string>
 #include <sstream>
 
-constexpr const char* type_strings[ Primitive::num_primitive_types_ ] = {
-  "type_error",
-  "??",
-  "bool",
-  "char",
-  "int",
-  "real",
-  "type",
-  "uint",
-  "void"
-};
-
-std::string Primitive::to_string() const {
-  return type_strings[prim_type_];
+std::string TypeSystem::Primitive::to_string() const {
+  switch (type_) {
+    case Primitive::TypeEnum::Error:   return "!!!";
+    case Primitive::TypeEnum::Unknown: return "???";
+    case Primitive::TypeEnum::Bool:    return "bool";
+    case Primitive::TypeEnum::Char:    return "char";
+    case Primitive::TypeEnum::Int:     return "int";
+    case Primitive::TypeEnum::Real:    return "real";
+    case Primitive::TypeEnum::Type:    return "type";
+    case Primitive::TypeEnum::Uint:    return "uint";
+    case Primitive::TypeEnum::Void:    return "void";
+  }
 }
 
 std::string Function::to_string() const {

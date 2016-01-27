@@ -24,7 +24,7 @@ llvm::Function* get_llvm_assign(Type* type) {
       global_module);
 }
 
-llvm::Function* Primitive::assign() {
+llvm::Function* TypeSystem::Primitive::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
@@ -206,7 +206,7 @@ llvm::Function* Enum::assign() {
 }
 
 
-void Primitive::set_assign(llvm::Function* fn) {}
+void TypeSystem::Primitive::set_assign(llvm::Function* fn) {}
 void Pointer::set_assign(llvm::Function* fn) {}
 void Tuple::set_assign(llvm::Function* fn) {}
 void Function::set_assign(llvm::Function* fn) {}
