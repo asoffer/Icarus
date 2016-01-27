@@ -4,10 +4,10 @@
 #include "Language.h"
 
 llvm::Value* Primitive::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
-  if (this == get_int() || this == get_uint()) {
+  if (this == Int || this == Uint) {
     return bldr.CreateAdd(lhs, rhs, "add");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFAdd(lhs, rhs, "fadd");
 
   } else {
@@ -16,10 +16,10 @@ llvm::Value* Primitive::call_add(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
 }
 
 llvm::Value* Primitive::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
-  if (this == get_int() || this == get_uint()) {
+  if (this == Int || this == Uint) {
     return bldr.CreateSub(lhs, rhs, "sub");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFSub(lhs, rhs, "fsub");
 
   } else {
@@ -28,10 +28,10 @@ llvm::Value* Primitive::call_sub(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
 }
 
 llvm::Value* Primitive::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
-  if (this == get_int() || this == get_uint()) {
+  if (this == Int || this == Uint) {
     return bldr.CreateMul(lhs, rhs, "mul");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFMul(lhs, rhs, "fmul");
 
   } else {
@@ -40,13 +40,13 @@ llvm::Value* Primitive::call_mul(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
 }
 
 llvm::Value* Primitive::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
-  if (this == get_int()) {
+  if (this == Int) {
     return bldr.CreateSDiv(lhs, rhs, "sdiv");
 
-  } else if (this == get_uint()) {
+  } else if (this == Uint) {
     return bldr.CreateUDiv(lhs, rhs, "udiv");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFDiv(lhs, rhs, "fdiv");
 
   } else {
@@ -55,13 +55,13 @@ llvm::Value* Primitive::call_div(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
 }
 
 llvm::Value* Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) {
-  if (this == get_int()) {
+  if (this == Int) {
     return bldr.CreateSRem(lhs, rhs, "smod");
 
-  } else if (this == get_uint()) {
+  } else if (this == Uint) {
     return bldr.CreateURem(lhs, rhs, "umod");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFRem(lhs, rhs, "fmod");
 
   } else {
@@ -70,10 +70,10 @@ llvm::Value* Primitive::call_mod(llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm
 }
 
 llvm::Value* Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
-  if (this == get_int()) {
+  if (this == Int) {
     return bldr.CreateNeg(operand, "neg");
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     return bldr.CreateFNeg(operand, "fneg");
 
   } else {
@@ -82,7 +82,7 @@ llvm::Value* Primitive::call_neg(llvm::IRBuilder<>& bldr, llvm::Value* operand) 
 }
 
 llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) {
-  if (this == get_char()) {
+  if (this == Char) {
     return bldr.CreateNot(operand, "not");
 
   } else {

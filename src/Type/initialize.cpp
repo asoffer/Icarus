@@ -22,7 +22,7 @@ extern llvm::Module* global_module;
 
 llvm::Function* get_llvm_init(Type* type) {
   return llvm::Function::Create(
-      Type::get_function(Type::get_pointer(type), Type::get_void())->llvm(),
+      Type::get_function(Ptr(type), Void)->llvm(),
       llvm::Function::ExternalLinkage, "init." + type->to_string(),
       global_module);
 }
@@ -74,13 +74,13 @@ llvm::Function* Array::initialize() {
   // We can't call get_llvm_init, because arrays also need lengths. A slight
   // modification does what we want.
   init_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(Type::get_void()->llvm(), init_types, false),
+      llvm::FunctionType::get(*Void, init_types, false),
       llvm::Function::ExternalLinkage, "init." + to_string(),
       global_module);
 
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(init_fn_);
-  fn_scope->set_type(get_function(this, get_void()));
+  fn_scope->set_type(get_function(this, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -97,8 +97,8 @@ llvm::Function* Array::initialize() {
   auto len_val = args[1];
 
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
-  auto int_size = data::const_uint(Type::get_int()->bytes());
-  auto bytes_needed = bldr.CreateAdd(int_size, 
+  auto uint_size = data::const_uint(Uint->bytes());
+  auto bytes_needed = bldr.CreateAdd(uint_size, 
       bldr.CreateMul(len_val, bytes_per_elem), "alloc_bytes");
 
   auto data_is_primitive = data_type()->is_primitive();
@@ -113,7 +113,7 @@ llvm::Function* Array::initialize() {
   bldr.CreateStore(len_val, len_ptr);
 
   // Pointer to the array data
-  auto raw_data_ptr = bldr.CreateGEP(*Char, alloc_call, { int_size }, "raw_data_ptr");
+  auto raw_data_ptr = bldr.CreateGEP(*Char, alloc_call, { uint_size }, "raw_data_ptr");
 
   // Pointer to data cast
   auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "data_ptr");
@@ -238,8 +238,8 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
 
   // Compute the amount of space to allocate
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
-  auto int_size = data::const_uint(Type::get_uint()->bytes());
-  auto bytes_needed = bldr.CreateAdd(int_size, 
+  auto uint_size = data::const_uint(Uint->bytes());
+  auto bytes_needed = bldr.CreateAdd(uint_size,
       bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
 
   // Malloc call
@@ -254,7 +254,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
 
   // Pointer to the array data
   auto raw_data_ptr = bldr.CreateGEP(*Char, malloc_call,
-      { int_size }, "array_idx_raw");
+      { uint_size }, "array_idx_raw");
   
   // Pointer to data cast
   auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "array_ptr");

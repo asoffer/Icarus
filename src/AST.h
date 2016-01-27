@@ -166,7 +166,7 @@ namespace AST {
 
       virtual ~Expression(){}
 
-      Expression() : expr_type_(Type::get_unknown()) {}
+      Expression() : expr_type_(Unknown) {}
 
       VIRTUAL_METHODS_FOR_EXPRESSION;
     protected:
@@ -333,7 +333,7 @@ namespace AST {
 
       Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
         token_ = token_string;
-        expr_type_ = Type::get_unknown();
+        expr_type_ = Unknown;
         precedence_ =
           Language::precedence(Language::Operator::NotAnOperator);
         line_num_ = line_num;

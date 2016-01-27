@@ -96,7 +96,7 @@ AST::TokenNode Lexer::next_word() {
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
-  for (const auto& type_lit : Type::literals) {
+  for (const auto& type_lit : TypeSystem::Literals) {
     if (type_lit.first == token) {
       return AST::TokenNode(line_num_, Language::type_literal, token);
     }

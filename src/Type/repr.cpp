@@ -32,9 +32,9 @@ void add_branch(llvm::Function* fn, Scope* fn_scope, llvm::SwitchInst* switch_st
 }
 
 void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
-  if (this == get_bool()) {
+  if (this == Bool) {
     if (repr_fn_ == nullptr) {
-      auto fn_type = get_function(this, get_void());
+      auto fn_type = get_function(this, Void);
 
       repr_fn_ = llvm::Function::Create(fn_type->llvm(),
           llvm::Function::ExternalLinkage, "repr.bool", global_module);
@@ -74,8 +74,8 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
     bldr.CreateCall(repr_fn_, { val });
 
-  } else if (this == get_char()) {
-    auto fn_type = get_function(this, get_void());
+  } else if (this == Char) {
+    auto fn_type = get_function(this, Void);
 
     repr_fn_ = llvm::Function::Create(fn_type->llvm(),
         llvm::Function::ExternalLinkage, "repr.char", global_module);
@@ -125,31 +125,30 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
     bldr.CreateCall(repr_fn_, { val });
 
-  } else if (this == get_int()) {
+  } else if (this == Int) {
     bldr.CreateCall(cstdlib::printf(),
         { data::global_string(bldr, "%d"), val });
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     bldr.CreateCall(cstdlib::printf(),
         { data::global_string(bldr, "%f"), val });
 
-  } else if (this == get_type()) {
+  } else if (this == Type_) {
     // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
     auto type_val = reinterpret_cast<Type*>(val);
 
     bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"),
         data::global_string(bldr, type_val->to_string()) });
 
-  } else if (this == get_uint()) {
-    bldr.CreateCall(cstdlib::printf(),
-        { data::global_string(bldr, "%uu"), val });
+  } else if (this == Uint) {
+    bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%uu"), val });
   }
 }
 
 void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   if (repr_fn_ == nullptr) {
     // TODO what about arrays of types?
-    auto fn_type = get_function(this, get_void());
+    auto fn_type = get_function(this, Void);
     repr_fn_ = llvm::Function::Create(fn_type->llvm(),
         llvm::Function::ExternalLinkage, "print." + to_string(), global_module);
     llvm::Value* arg = repr_fn_->args().begin();
@@ -166,7 +165,7 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
     auto raw_len_ptr = fn_bldr.CreateGEP(
         fn_bldr.CreateBitCast(arg, *RawPtr),
-        { data::const_neg(fn_bldr, get_uint()->bytes()) }, "ptr_to_len");
+        { data::const_neg(fn_bldr, Uint->bytes()) }, "ptr_to_len");
 
     auto len_ptr = fn_bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint));
     auto len_val = fn_bldr.CreateLoad(fn_bldr.CreateGEP(len_ptr, { data::const_uint(0) }));

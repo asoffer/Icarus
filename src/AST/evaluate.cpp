@@ -11,19 +11,19 @@ namespace data {
 
 namespace AST {
   llvm::Value* Expression::llvm_value(Context::Value v) {
-    if (type() == Type::get_bool()) {
+    if (type() == Bool) {
       return data::const_bool(v.as_bool);
 
-    } else if (type() == Type::get_char()) {
+    } else if (type() == Char) {
       return data::const_char(v.as_char);
 
-    } else if (type() == Type::get_int()) {
+    } else if (type() == Int) {
       return data::const_int(v.as_int);
 
-    } else if (type() == Type::get_real()) {
+    } else if (type() == Real) {
       return data::const_real(v.as_real);
 
-    } else if (type() == Type::get_uint()) {
+    } else if (type() == Uint) {
       return data::const_uint(v.as_uint);
     }
 
@@ -40,22 +40,22 @@ namespace AST {
 
     } else if (is_print()) {
       auto val = expr_->evaluate(ctx);
-      if (expr_->type() == Type::get_bool()) {
+      if (expr_->type() == Bool) {
         std::cout << (val.as_bool ? "true" : "false");
 
-      } else if (expr_->type() == Type::get_char()) {
+      } else if (expr_->type() == Char) {
         std::cout << val.as_char;
 
-      } else if (expr_->type() == Type::get_int()) {
+      } else if (expr_->type() == Int) {
         std::cout << val.as_int;
 
-      } else if (expr_->type() == Type::get_real()) {
+      } else if (expr_->type() == Real) {
         std::cout << val.as_real;
 
-      } else if (expr_->type() == Type::get_type()) {
+      } else if (expr_->type() == Type_) {
         std::cout << val.as_type->to_string();
 
-      } else if (expr_->type() == Type::get_uint()) {
+      } else if (expr_->type() == Uint) {
         std::cout << val.as_uint;
 
       } else {
@@ -66,10 +66,10 @@ namespace AST {
       return nullptr;
 
     } else if (op_ == Language::Operator::Sub) {
-      if (type() == Type::get_int()) {
+      if (type() == Int) {
         return Context::Value(-expr_->evaluate(ctx).as_int);
 
-      } else if (type() == Type::get_real()) {
+      } else if (type() == Real) {
         return Context::Value(-expr_->evaluate(ctx).as_real);
       }
 
@@ -79,7 +79,7 @@ namespace AST {
   }
 
   Context::Value ChainOp::evaluate(Context& ctx) { 
-    if (exprs_[0]->type() == Type::get_bool()) {
+    if (exprs_[0]->type() == Bool) {
       switch (ops_[0]) {
         case Language::Operator::Xor:
           {
@@ -106,7 +106,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Type::get_int()) {
+    } else if (exprs_[0]->type() == Int) {
       bool total = true;
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
@@ -137,7 +137,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Type::get_type()) {
+    } else if (exprs_[0]->type() == Type_) {
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
@@ -158,7 +158,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Type::get_uint()) {
+    } else if (exprs_[0]->type() == Uint) {
       bool total = true;
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
@@ -197,7 +197,7 @@ namespace AST {
   Context::Value ArrayLiteral::evaluate(Context&)    { return nullptr; }
 
   Context::Value Terminal::evaluate(Context& ctx) {
-    if (type() == Type::get_bool()) {
+    if (type() == Bool) {
       if (token() == "true") {
         return Context::Value(true);
 
@@ -209,19 +209,19 @@ namespace AST {
         return nullptr;
       }
 
-    } else if (type() == Type::get_char()) {
+    } else if (type() == Char) {
       return Context::Value(token()[0]);
 
-    } else if (type() == Type::get_int()) {
+    } else if (type() == Int) {
       return Context::Value(std::stoi(token()));
 
-    } else if (type() == Type::get_real()) {
+    } else if (type() == Real) {
       return Context::Value(std::stod(token()));
 
-    } else if (type() == Type::get_uint()) {
+    } else if (type() == Uint) {
       return Context::Value(std::stoul(token()));
 
-    } else if (type() == Type::get_type()) {
+    } else if (type() == Type_) {
       return Context::Value(interpret_as_type());
 
     } else {

@@ -87,7 +87,7 @@ namespace AST {
           auto char_array_ptr = scope->builder().CreateGEP(str_alloc,
               { data::const_uint(0), data::const_uint(0) });
 
-          auto char_array_type = static_cast<Array*>(Type::get_array(Type::get_char()));
+          auto char_array_type = static_cast<Array*>(Type::get_array(Char));
 
           // NOTE: no need to uninitialize because we never initialized it.
 
@@ -147,7 +147,7 @@ namespace AST {
         }
 
       case Operator::Print:
-        if (expr_->type() == Type::get_type()) {
+        if (expr_->type() == Type_) {
           // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
           val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
 
@@ -182,7 +182,7 @@ namespace AST {
     } else if (op_ == Operator::Access) {
       auto lhs_type = lhs_->type();
 
-      if (lhs_->type() == Type::get_type() && lhs_->interpret_as_type()->is_enum()) {
+      if (lhs_->type() == Type_ && lhs_->interpret_as_type()->is_enum()) {
         auto enum_type = static_cast<Enum*>(lhs_->interpret_as_type());
         return enum_type->get_value(rhs_->token());
       }
@@ -310,7 +310,7 @@ namespace AST {
 
     auto& bldr = scope->builder();
 
-    if (exprs_[0]->type() == Type::get_int()) {
+    if (exprs_[0]->type() == Int) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -336,7 +336,7 @@ namespace AST {
         lhs_val = rhs_val;
       }
 
-    } else if (exprs_[0]->type() == Type::get_uint()) {
+    } else if (exprs_[0]->type() == Uint) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -363,7 +363,7 @@ namespace AST {
 
       }
 
-    } else if (exprs_[0]->type() == Type::get_real()) {
+    } else if (exprs_[0]->type() == Real) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -406,7 +406,7 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
-    } else if (exprs_[0]->type() == Type::get_bool()) {
+    } else if (exprs_[0]->type() == Bool) {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.
       auto cmp_val = lhs_val;
@@ -592,7 +592,7 @@ namespace AST {
       auto rhs_val = rhs_->generate_code(scope);
       if (rhs_val == nullptr) return nullptr;
 
-      if (lhs_->type() == Type::get_bool()) {
+      if (lhs_->type() == Bool) {
         switch (op_) {
           case Operator::XorEq:
             scope->builder().CreateStore(
@@ -622,7 +622,7 @@ namespace AST {
 
         return nullptr;
 
-      } else if (lhs_->type() == Type::get_int()) {
+      } else if (lhs_->type() == Int) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
           case Operator::AddEq:
@@ -640,7 +640,7 @@ namespace AST {
         scope->builder().CreateStore(comp_val, lval);
         return nullptr;
 
-      } else if (lhs_->type() == Type::get_uint()) {
+      } else if (lhs_->type() == Uint) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
           case Operator::AddEq:
@@ -658,7 +658,7 @@ namespace AST {
         scope->builder().CreateStore(comp_val, lval);
         return nullptr;
 
-      } else if (type() == Type::get_real()) {
+      } else if (type() == Real) {
         llvm::Value* comp_val = nullptr;
         switch (op_) {
           case Operator::AddEq:

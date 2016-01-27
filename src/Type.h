@@ -25,11 +25,31 @@ namespace AST {
   class Declaration;
 }  // namespace AST
 
+class Type;
 class Function;
 class Pointer;
 class Enum;
 class Array;
 class UserDefined;
+
+extern Type* Error;
+extern Type* Unknown;
+extern Type* Bool;
+extern Type* Char;
+extern Type* Int;
+extern Type* Real;
+extern Type* Type_;
+extern Type* Uint;
+extern Type* Void;
+extern Type* RawPtr;
+extern Type* Ptr(Type* t);
+
+namespace TypeSystem {
+  extern std::map<std::string, Type*> Literals;
+  void initialize();
+}  // namespace TypeSystem
+
+
 
 #include "typedefs.h"
 
@@ -58,10 +78,6 @@ class Type {
     friend class ::UserDefined;
     friend class ::Enum;
 
-#define PRIMITIVE_TYPE_MACRO(type) static Type* get_##type();
-#include "config/primitive_types.conf"
-#undef PRIMITIVE_TYPE_MACRO
-
     operator llvm::Type* () { return llvm(); }
 
     // Note: this one is special. It functions identically to the rest, but
@@ -73,7 +89,6 @@ class Type {
     static Function* get_function(Type* in, Type* out);
     static Function* get_function(std::vector<Type*> in, Type* out);
 
-    static Type* get_pointer(Type* t);
     static Type* get_tuple(const std::vector<Type*>& types);
     static Type* get_array(Type* t);
     static Type* get_user_defined(const std::string& name);
@@ -105,7 +120,7 @@ class Type {
     virtual bool is_pointer()       const { return false; }
     virtual bool is_primitive()     const { return false; }
     virtual bool is_tuple()         const { return false; }
-    virtual bool is_void()          const { return this == Type::get_void(); }
+    virtual bool is_void()          const { return this == Void; }
     virtual bool is_user_defined()  const { return false; }
     virtual bool is_enum()          const { return false; }
 
@@ -158,6 +173,7 @@ BASIC_FUNCTIONS;
 
   private:
     llvm::Function* repr_fn_;
+    friend void TypeSystem::initialize();
 
     // This needs to be an enum becasue we use it to access other arrays and
     // vectors
@@ -234,7 +250,7 @@ class Function : public Type {
 
 class Pointer : public Type {
   public:
-    friend class Type;
+    friend Type* Ptr(Type*);
 
     virtual bool is_pointer() const { return true; }
     Type* pointee_type() const { return pointee_type_; }
@@ -341,22 +357,6 @@ class Enum : public Type {
 
     static std::map<std::string, Enum*> lookup_;
 };
-
-extern Type* Error;
-extern Type* Unknown;
-extern Type* Bool;
-extern Type* Char;
-extern Type* Int;
-extern Type* Real;
-extern Type* Type_;
-extern Type* Uint;
-extern Type* Void;
-extern Type* RawPtr;
-extern Type* Ptr(Type* t);
-
-namespace TypeSystem {
-  void initialize();
-}  // namespace TypeSystem
 
 
 #undef BASIC_FUNCTIONS

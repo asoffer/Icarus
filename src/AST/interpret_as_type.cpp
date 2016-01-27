@@ -9,7 +9,7 @@ namespace AST {
     }
 
     // TODO more cases here probably
-    return Type::get_type_error();
+    return Error;
   }
 
   Type* ArrayType::interpret_as_type() {
@@ -34,17 +34,17 @@ namespace AST {
       return Type::get_tuple(type_vec);
     }
 
-    return Type::get_type_error();
+    return Error;
   }
 
   Type* Identifier::interpret_as_type() {
-    if (type() == Type::get_type()) {
+    if (type() == Type_) {
       return Type::get_type_from_identifier(token());
     }
 
     error_log.log(line_num(), "`" + token() + "` is not a type.");
 
-    return Type::get_type_error();
+    return Error;
   }
 
   Type* Declaration::interpret_as_type() {
@@ -52,33 +52,33 @@ namespace AST {
   }
 
   Type* Terminal::interpret_as_type() {
-    if (type() == Type::get_type()) {
+    if (type() == Type_) {
 
       // TODO Lookup table as part of Type class
       // TODO TOKENREMOVAL
-      if (token() == "bool") return Type::get_bool();
-      if (token() == "char") return Type::get_char();
-      if (token() == "int") return Type::get_int();
-      if (token() == "real") return Type::get_real();
-      if (token() == "type") return Type::get_type();
-      if (token() == "uint") return Type::get_uint();
-      if (token() == "void") return Type::get_void();
+      if (token() == "bool") return Bool;
+      if (token() == "char") return Char;
+      if (token() == "int")  return Int;
+      if (token() == "real") return Real;
+      if (token() == "type") return Type_;
+      if (token() == "uint") return Uint;
+      if (token() == "void") return Void;
 
       // TODO better error message
       error_log.log(line_num(), "I don't think `" + token() + "` is a type!");
 
-      return Type::get_type_error();
+      return Error;
     }
 
     error_log.log(line_num(), "`" + token() + "` is not at type.");
 
-    return Type::get_type_error();
+    return Error;
   }
 
-  Type* FunctionLiteral::interpret_as_type()  { return Type::get_type_error(); }
-  Type* Case::interpret_as_type()             { return Type::get_type_error(); }
-  Type* ArrayLiteral::interpret_as_type()     { return Type::get_type_error(); }
-  Type* Unop::interpret_as_type()             { return Type::get_type_error(); }
+  Type* FunctionLiteral::interpret_as_type()  { return Error; }
+  Type* Case::interpret_as_type()             { return Error; }
+  Type* ArrayLiteral::interpret_as_type()     { return Error; }
+  Type* Unop::interpret_as_type()             { return Error; }
 
   Type* TypeLiteral::interpret_as_type() { return type_value_; }
   Type* EnumLiteral::interpret_as_type() { return type_value_; }

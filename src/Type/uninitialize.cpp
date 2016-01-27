@@ -28,7 +28,7 @@ llvm::Function* Array::uninitialize() {
   FnScope* fn_scope = Scope::build_fn<FnScope>();
 
   fn_scope->set_parent_function(uninit_fn_);
-  fn_scope->set_type(get_function(get_pointer(this), get_void()));
+  fn_scope->set_type(get_function(Ptr(this), Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -36,7 +36,7 @@ llvm::Function* Array::uninitialize() {
   auto alloc = uninit_fn_->args().begin();
   auto data_ptr = bldr.CreateLoad(alloc);
   auto ptr_to_free = bldr.CreateGEP(bldr.CreateBitCast(data_ptr, *RawPtr),
-      { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_free");
+      { data::const_neg(bldr, Uint->bytes()) }, "ptr_to_free");
 
   if (data_type()->uninitialize() != nullptr) {
     auto len_ptr = bldr.CreateBitCast(ptr_to_free, *Ptr(Uint), "len_ptr");

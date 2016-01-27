@@ -247,44 +247,44 @@ namespace AST {
   }
 
   NPtr Terminal::build_type_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Type, std::forward<NPtrVec&&>(nodes), Type::get_type());
+    return build(Language::Terminal::Type, std::forward<NPtrVec&&>(nodes), Type_);
   }
 
   NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     file_queue.emplace("lib/string.ic");
-    return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Type::get_unknown());
+    return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Unknown);
   }
 
   NPtr Terminal::build_true(NPtrVec&& nodes) {
-    return build(Language::Terminal::True, std::forward<NPtrVec&&>(nodes), Type::get_bool());
+    return build(Language::Terminal::True, std::forward<NPtrVec&&>(nodes), Bool);
   }
 
   NPtr Terminal::build_false(NPtrVec&& nodes) {
-    return build(Language::Terminal::False, std::forward<NPtrVec&&>(nodes), Type::get_bool());
+    return build(Language::Terminal::False, std::forward<NPtrVec&&>(nodes), Bool);
   }
 
   NPtr Terminal::build_unsigned_integer_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::UInt, std::forward<NPtrVec&&>(nodes), Type::get_uint());
+    return build(Language::Terminal::UInt, std::forward<NPtrVec&&>(nodes), Uint);
   }
 
   NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Int, std::forward<NPtrVec&&>(nodes), Type::get_int());
+    return build(Language::Terminal::Int, std::forward<NPtrVec&&>(nodes), Int);
   }
 
   NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Real, std::forward<NPtrVec&&>(nodes), Type::get_real());
+    return build(Language::Terminal::Real, std::forward<NPtrVec&&>(nodes), Real);
   }
 
   NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Char, std::forward<NPtrVec&&>(nodes), Type::get_char());
+    return build(Language::Terminal::Char, std::forward<NPtrVec&&>(nodes), Char);
   }
 
   NPtr Terminal::build_void_return(NPtrVec&& nodes) {
-    return build(Language::Terminal::Return, std::forward<NPtrVec&&>(nodes), Type::get_void());
+    return build(Language::Terminal::Return, std::forward<NPtrVec&&>(nodes), Void);
   }
 
   NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
-    return build(Language::Terminal::ASCII, std::forward<NPtrVec&&>(nodes), Type::get_function(Type::get_uint(), Type::get_char()));
+    return build(Language::Terminal::ASCII, std::forward<NPtrVec&&>(nodes), Type::get_function(Uint, Char));
   }
 
 
@@ -338,7 +338,7 @@ namespace AST {
     if (nodes[0]->node_type() == Language::reserved_else) {
       key_ptr = std::make_shared<Terminal>();
       key_ptr->line_num_ = nodes[0]->line_num();
-      key_ptr->expr_type_ = Type::get_bool();
+      key_ptr->expr_type_ = Bool;
       key_ptr->token_ = "else";
       key_ptr->precedence_ = 
         Language::precedence(Language::Operator::NotAnOperator);
@@ -360,7 +360,7 @@ namespace AST {
     if (nodes[1]->node_type() == Language::reserved_else) {
       key_ptr = std::make_shared<Terminal>();
       key_ptr->line_num_ = nodes[1]->line_num();
-      key_ptr->expr_type_ = Type::get_bool();
+      key_ptr->expr_type_ = Bool;
       key_ptr->token_ = "else";
       key_ptr->precedence_ = 
         Language::precedence(Language::Operator::NotAnOperator);
@@ -424,7 +424,7 @@ namespace AST {
   NPtr TypeLiteral::build(NPtrVec&& nodes) {
     auto type_lit_ptr = std::make_shared<TypeLiteral>();
     type_lit_ptr->line_num_ = nodes[0]->line_num();
-    type_lit_ptr->expr_type_ = Type::get_type();
+    type_lit_ptr->expr_type_ = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {
@@ -530,7 +530,7 @@ namespace AST {
   NPtr EnumLiteral::build(NPtrVec&& nodes) {
     auto enum_lit_ptr = std::make_shared<EnumLiteral>();
     enum_lit_ptr->line_num_ = nodes[0]->line_num();
-    enum_lit_ptr->expr_type_ = Type::get_type();
+    enum_lit_ptr->expr_type_ = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {

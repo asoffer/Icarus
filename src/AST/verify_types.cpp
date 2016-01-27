@@ -16,7 +16,7 @@ namespace AST {
       }
 
       error_log.log(line_num, "No known operator overload for `" + tok + "` with types " + lhs_type->to_string() + " and " + rhs_type->to_string());
-      return Type::get_type_error();
+      return Error;
     } else {
       //Otherwise it's an arithmetic operator
       return ret_type;
@@ -40,68 +40,65 @@ namespace AST {
     } else if (op_ == Language::Operator::And) { // Indirection '&'
 
       // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-      if (expr_->type() == Type::get_type()) {
-        expr_type_ = Type::get_pointer(expr_->interpret_as_type());
+      if (expr_->type() == Type_) {
+        expr_type_ = Ptr(expr_->interpret_as_type());
       } else {
-        expr_type_ = Type::get_pointer(expr_->type());
+        expr_type_ = Ptr(expr_->type());
       }
       return;
     }
 
 
     if (is_return() || is_print()) {
-      expr_type_ = Type::get_void();
+      expr_type_ = Void;
       return;
 
     } else if (op_ == Language::Operator::Call) {
       if (!expr_->type()->is_function()) {
-        expr_type_ = Type::get_type_error();
+        expr_type_ = Error;
         return;
       }
 
       auto fn_type = static_cast<Function*>(expr_->type());
-      expr_type_ = (fn_type->argument_type() == Type::get_void()
-          ? fn_type->return_type()
-          : Type::get_type_error());
+      expr_type_ = (fn_type->argument_type() == Void) ? fn_type->return_type() : Error;
 
       return;
 
-    } else if (expr_->type() == Type::get_type_error()) {
-      expr_type_ = Type::get_type_error();
+    } else if (expr_->type() == Error) {
+      expr_type_ = Error;
       return;
 
     } else if (op_ == Language::Operator::Sub) {
-      if (expr_->type() == Type::get_uint()) {
+      if (expr_->type() == Uint) {
         error_log.log(line_num(), "Negation applied to unsigned integer");
-        expr_type_ = Type::get_uint();
+        expr_type_ = Uint;
 
-      } else if (expr_->type() == Type::get_int()) {
-        expr_type_ = Type::get_int();
+      } else if (expr_->type() == Int) {
+        expr_type_ = Int;
 
-      } else if(expr_->type() == Type::get_real()) {
-        expr_type_ = Type::get_real();
+      } else if(expr_->type() == Real) {
+        expr_type_ = Real;
 
       } else {
         error_log.log(line_num(), type()->to_string() + " has no negation operator.");
-        expr_type_ = Type::get_type_error();
+        expr_type_ = Error;
       }
 
     } else if (op_ == Language::Operator::Not) {
-      if (expr_->type() != Type::get_bool()) {
-        expr_type_ = Type::get_type_error();
+      if (expr_->type() != Bool) {
+        expr_type_ = Error;
 
       } else {
-        expr_type_ = Type::get_bool();
+        expr_type_ = Bool;
       }
     }
   }
 
 
   void Binop::verify_types() {
-    if (lhs_->type() == Type::get_type_error() ||
-        rhs_->type() == Type::get_type_error()) {
+    if (lhs_->type() == Error || rhs_->type() == Error) {
       // An error was already found in the types, so just pass silently
-      expr_type_ = Type::get_type_error();
+      expr_type_ = Error;
       return;
     }
 
@@ -109,15 +106,12 @@ namespace AST {
     if (op_ == Language::Operator::Cast) {
       expr_type_ = rhs_->interpret_as_type();
       if (lhs_->type() == type()
-          || (lhs_->type() == Type::get_bool()
-            &&
-            (type() == Type::get_int()
-             || type() == Type::get_uint()
-             || type() == Type::get_real()))
-          || (lhs_->type() == Type::get_int() && type() == Type::get_real())
-          || (lhs_->type() == Type::get_int() && type() == Type::get_uint())
-          || (lhs_->type() == Type::get_uint() && type() == Type::get_real())
-          || (lhs_->type() == Type::get_uint() && type() == Type::get_int())
+          || (lhs_->type() == Bool
+            && (type() == Int || type() == Uint || type() == Real))
+          || (lhs_->type() == Int && type() == Real)
+          || (lhs_->type() == Int && type() == Uint)
+          || (lhs_->type() == Uint && type() == Real)
+          || (lhs_->type() == Uint && type() == Int)
           ) return;
 
       error_log.log(line_num(), "Invalid cast from " + lhs_->type()->to_string() + " to " + type()->to_string());
@@ -161,11 +155,12 @@ namespace AST {
       return;
 
     } else if (op_ == Language::Operator::Rocket) {
-      if (lhs_->type() != Type::get_bool())
-        expr_type_ = Type::get_type_error();
+      if (lhs_->type() != Bool) {
+        expr_type_ = Error;
+      }
 
     } else if (op_ == Language::Operator::Call) {
-      expr_type_ = Type::get_type_error();
+      expr_type_ = Error;
       if (!lhs_->type()->is_function()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
@@ -186,7 +181,7 @@ namespace AST {
       return;
 
    } else if (op_ == Language::Operator::Index) {
-      expr_type_ = Type::get_type_error();
+      expr_type_ = Error;
       if (!lhs_->type()->is_array()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
@@ -199,7 +194,7 @@ namespace AST {
 
       // TODO make this allow uint maybe?
       // TODO allow slice indexing
-      if (rhs_->type() != Type::get_int()) {
+      if (rhs_->type() != Int) {
         error_log.log(line_num(), "Arary must be indexed by an integer.");
         return;
       }
@@ -212,14 +207,14 @@ namespace AST {
   }
 
   void ArrayType::verify_types() {
-    expr_type_ = Type::get_type();
+    expr_type_ = Type_;
 
     // TODO implement uint and change this to uint
-    if (len_ != nullptr && len_->type() != Type::get_int()) {
+    if (len_ != nullptr && len_->type() != Int) {
       error_log.log(line_num(), "Array length indexed by non-integral type");
     }
 
-    if (array_type_->type() != Type::get_type()) {
+    if (array_type_->type() != Type_) {
       error_log.log(line_num(), "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
     }
   }
@@ -231,7 +226,7 @@ namespace AST {
     for (const auto& el : elems_) {
       if (el->type() != type_to_match) {
         error_log.log(line_num(), "Type error: Array literal must have consistent type");
-        expr_type_ = Type::get_type_error();
+        expr_type_ = Error;
         return;
       }
     }
@@ -261,7 +256,7 @@ namespace AST {
 
     if (expr_types.size() == 1) {
       // TODO must it always be bool?
-      expr_type_ = Type::get_bool();
+      expr_type_ = Bool;
 
     } else {
       // TODO guess what type was intended
@@ -270,7 +265,7 @@ namespace AST {
   }
 
   void Declaration::verify_types() {
-    if (decl_type_->type() == Type::get_void()) {
+    if (decl_type_->type() == Void) {
       error_log.log(line_num(), "Void types cannot be assigned.");
       return;
     }
@@ -317,7 +312,7 @@ namespace AST {
     size_t inputs_size = inputs_.size();
     switch (inputs_size) {
       case 0:
-        input_type = Type::get_void();
+        input_type = Void;
         break;
       case 1:
         input_type = inputs_.front()->type();
@@ -351,8 +346,8 @@ namespace AST {
   }
 
   void Assignment::verify_types() {
-    if (lhs_->type() == Type::get_type_error() || rhs_->type() == Type::get_type_error()) {
-      expr_type_ = Type::get_type_error();
+    if (lhs_->type() == Error || rhs_->type() == Error) {
+      expr_type_ = Error;
       return;
     }
 
@@ -361,7 +356,7 @@ namespace AST {
       if (lhs_->type() != rhs_->type()) {
         error_log.log(line_num(), "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
       }
-      expr_type_ = Type::get_void();
+      expr_type_ = Void;
       return;
     }
 
@@ -369,7 +364,7 @@ namespace AST {
   }
 
   void Case::verify_types() {
-    expr_type_ = pairs_->verify_types_with_key(Type::get_bool());
+    expr_type_ = pairs_->verify_types_with_key(Bool);
   }
 
   void KVPairList::verify_types() {}
@@ -396,7 +391,7 @@ namespace AST {
     // TODO guess what type was intended
     if (value_types.size() != 1) {
       error_log.log(line_num(), "Type error: Values do not match in key-value pairs");
-      return Type::get_type_error();
+      return Error;
     }
 
     // FIXME this paradigm fits really well with Case statements but not
@@ -407,14 +402,14 @@ namespace AST {
   void Statements::verify_types() {}
 
   void While::verify_types() {
-    if (cond_->type() != Type::get_bool()) {
+    if (cond_->type() != Bool) {
       error_log.log(cond_->line_num(), "Type error: Condition in while loop must be a boolean expression, but a type of " + cond_->type()->to_string() + " was found.");
     }
   }
 
   void Conditional::verify_types() {
     for (const auto& cond : conds_) {
-      if (cond->type() != Type::get_bool()) {
+      if (cond->type() != Bool) {
         error_log.log(cond->line_num(), "Type error: Condition in if statement must be a boolean expression, but a type of " + cond->type()->to_string() + " was found.");
       }
     }

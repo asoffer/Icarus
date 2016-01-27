@@ -74,6 +74,9 @@ std::string canonicalize_file_name(const std::string& filename) {
 
 
 int main(int argc, char *argv[]) {
+  // This includes naming all basic types, so it must be done even before lexing.
+  TypeSystem::initialize();
+
   int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv
   while (arg_num < argc) {
@@ -129,7 +132,6 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
-  TypeSystem::initialize();
   Type::initialize_operator_table();
 
 

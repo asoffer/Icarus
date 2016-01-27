@@ -65,7 +65,7 @@ void GlobalScope::initialize() {
         decl_id->alloc_ = decl_type->allocate(bldr_);
         decl_id->alloc_->setName(decl_ptr->identifier_string());
       }
-    } else if (decl_type == Type::get_type()) {
+    } else if (decl_type == Type_) {
       continue;
     } else {
       std::cerr << "FATAL: Global variables not currently allowed." << std::endl;
@@ -84,7 +84,7 @@ void Scope::enter() {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    if (decl_type->is_function() || decl_type == Type::get_type()) {
+    if (decl_type->is_function() || decl_type == Type_) {
       continue;
 
     } else if (decl_type->is_array()) {
@@ -119,7 +119,7 @@ void FnScope::enter() {
     // return_val_ is the last argument
     return_val_->setName("retval");
 
-  } else if (fn_type_->return_type() != Type::get_void()) {
+  } else if (fn_type_->return_type() != Void) {
     return_val_ = fn_type_->return_type()->allocate(bldr_);
     return_val_->setName("retval");
   }
@@ -140,7 +140,7 @@ void SimpleFnScope::exit() {
   // Thus, calling up to Scope::exit() is not possible.
   uninitialize();
 
-  if (fn_type_->return_type() == Type::get_void()) {
+  if (fn_type_->return_type() == Void) {
     bldr_.CreateRetVoid();
 
   } else {
@@ -152,7 +152,7 @@ void SimpleFnScope::exit() {
 void FnScope::exit() {
   Scope::exit();
 
-  if (fn_type_->return_type() == Type::get_void()
+  if (fn_type_->return_type() == Void
       || fn_type_->return_type()->is_user_defined()) {
     bldr_.CreateRetVoid();
 
@@ -172,10 +172,8 @@ void GenericFnScope::make_return(llvm::Value* val) {
   auto ret_type = fn_type_->return_type();
   if (ret_type->is_user_defined()) {
     // TODO pull out memcpy into a single fn call
-    auto val_raw = bldr_.CreateBitCast(val,
-        Type::get_pointer(Type::get_char())->llvm());
-    auto ret_raw = bldr_.CreateBitCast(return_val_,
-        Type::get_pointer(Type::get_char())->llvm());
+    auto val_raw = bldr_.CreateBitCast(val, *RawPtr);
+    auto ret_raw = bldr_.CreateBitCast(return_val_, *RawPtr);
     bldr_.CreateCall(cstdlib::memcpy(), { ret_raw, val_raw,
         data::const_uint(
           data_layout->getTypeStoreSize(ret_type->llvm())) });
@@ -250,7 +248,7 @@ void GenericFnScope::allocate(Scope* scope) {
 
 
     // TODO make this for compile-time stuff
-    if (decl_type == Type::get_type()) {
+    if (decl_type == Type_) {
       // TODO Set the types name
       continue;
     }

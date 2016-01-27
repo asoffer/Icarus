@@ -14,22 +14,22 @@ namespace data {
 }  // namespace data
 
 void Primitive::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
-  if (this == get_bool()) {
+  if (this == Bool) {
     call_repr(bldr, val);
 
-  } else if (this == get_char()) {
+  } else if (this == Char) {
     bldr.CreateCall(cstdlib::putchar(), { val });
 
-  } else if (this == get_int()) {
+  } else if (this == Int) {
     call_repr(bldr, val);
 
-  } else if (this == get_real()) {
+  } else if (this == Real) {
     call_repr(bldr, val);
     
-  } else if (this == get_type()) {
+  } else if (this == Type_) {
     call_repr(bldr, val);
 
-  } else if (this == get_uint()) {
+  } else if (this == Uint) {
     bldr.CreateCall(cstdlib::printf(),
         { data::global_string(bldr, "%u"), val });
   }

@@ -36,13 +36,13 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
 }
 
-#define CSTDLIB(fn, variadic, in, out)        \
-  llvm::Constant* fn() {                      \
-    static llvm::Constant* func_ =            \
-    global_module->getOrInsertFunction(#fn,   \
-        llvm::FunctionType::get(out->llvm(),  \
-          { in->llvm() }, variadic));         \
-    return func_;                             \
+#define CSTDLIB(fn, variadic, in, out)      \
+  llvm::Constant* fn() {                    \
+    static llvm::Constant* func_ =          \
+    global_module->getOrInsertFunction(#fn, \
+        llvm::FunctionType::get(*out,       \
+          { *in }, variadic));              \
+    return func_;                           \
   }
 
 
@@ -50,23 +50,19 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
-  CSTDLIB(free,    false, Type::get_pointer(Type::get_char()), Type::get_void());
-  CSTDLIB(calloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
-  CSTDLIB(malloc,  false, Type::get_uint(), Type::get_pointer(Type::get_char()));
-  //CSTDLIB(memcpy,  false, Type::get_tuple({ Type::get_pointer(Type::get_char()), Type::get_pointer(Type::get_char()), Type::get_uint() }), Type::get_pointer(Type::get_char()));
-  CSTDLIB(putchar, false, Type::get_char(), Type::get_int());
-  CSTDLIB(puts,    false, Type::get_pointer(Type::get_char()), Type::get_int());
-  CSTDLIB(printf,  true,  Type::get_pointer(Type::get_char()), Type::get_int());
+  CSTDLIB(free,    false, Ptr(Char), Void);
+  CSTDLIB(calloc,  false, Uint, Ptr(Char));
+  CSTDLIB(malloc,  false, Uint, Ptr(Char));
+  //CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }), Ptr(Char));
+  CSTDLIB(putchar, false, Char, Int);
+  CSTDLIB(puts,    false, Ptr(Char), Int);
+  CSTDLIB(printf,  true,  Ptr(Char), Int);
 
   llvm::Constant* memcpy() {                     
     static llvm::Constant* func_ =            
       global_module->getOrInsertFunction("memcpy",   
-          llvm::FunctionType::get(Type::get_pointer(Type::get_char())->llvm(),
-            {
-            Type::get_pointer(Type::get_char())->llvm(),
-            Type::get_pointer(Type::get_char())->llvm(),
-            Type::get_uint()->llvm()
-            }, false));
+          llvm::FunctionType::get(*Ptr(Char),
+            { *RawPtr, *RawPtr, *Uint }, false));
     return func_;                             
   }
 
@@ -76,7 +72,7 @@ namespace cstdlib {
 
 namespace data {
   llvm::Value* null_pointer(Type* t) {
-    return llvm::ConstantPointerNull::get(llvm::PointerType::get(t->llvm(), 0));
+    return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t, 0));
   }
 
   llvm::Value* const_int(int n) {
@@ -166,7 +162,7 @@ namespace builtin {
     if (ascii_ != nullptr) return ascii_;
 
     ascii_ = llvm::Function::Create(
-        Type::get_function(Type::get_uint(), Type::get_char())->llvm(),
+        Type::get_function(Uint, Char)->llvm(),
         llvm::Function::ExternalLinkage, "ascii", global_module);
 
     llvm::Value* val = ascii_->args().begin();
@@ -177,7 +173,7 @@ namespace builtin {
     bldr.SetInsertPoint(entry_block);
     // TODO check bounds if build option specified
 
-    bldr.CreateRet(bldr.CreateTrunc(val, Type::get_char()->llvm()));
+    bldr.CreateRet(bldr.CreateTrunc(val, *Char));
 
     return ascii_;
   }

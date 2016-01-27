@@ -18,19 +18,6 @@ namespace data {
   extern llvm::Constant* str(const std::string& s);
 }  // namespace data
 
-#define PRIMITIVE_TYPE_MACRO(type)                               \
-  Type* Type::get_##type () {                                    \
-    return &(Primitive::primitive_types_[Primitive::t_##type]);  \
-  }
-#include "config/primitive_types.conf"
-#undef PRIMITIVE_TYPE_MACRO
-
-#define PRIMITIVE_TYPE_MACRO(type) { #type , Type::get_##type() },
-std::map<std::string, Type*> Type::literals = {
-#include "config/primitive_types.conf"
-};
-#undef PRIMITIVE_TYPE_MACRO
-
 std::map<Language::Operator, std::map<Type*, Type*>> Type::op_map_ = {};
 
 Primitive::Primitive(PrimitiveEnum pe) : repr_fn_(nullptr), prim_type_(pe) {
@@ -100,16 +87,6 @@ Function* Type::get_function(Type* in, Type* out) {
   return fn_type;
 }
 
-Type* Type::get_pointer(Type* t) {
-  for (const auto& ptr : Pointer::pointer_types_) {
-    if (ptr->pointee_type_ == t) return ptr;
-  }
-
-  auto ptr_type = new Pointer(t);
-  Pointer::pointer_types_.push_back(ptr_type);
-  return ptr_type;
-}
-
 Type* Type::get_tuple(const std::vector<Type*>& types) {
   for (const auto& tuple_type : Tuple::tuple_types_) {
     if (tuple_type->entry_types_ == types) return tuple_type;
@@ -161,8 +138,8 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
     // ...
     for (const auto& input : input_tuple->entry_types_) {
       input_list[i] = (input->is_function() || input->is_user_defined())
-        ? get_pointer(input)->llvm()
-        : input->llvm();
+        ? *Ptr(input)
+        : *input;
       if (input_list[i] == nullptr) {
         llvm_null = true;
         break;
@@ -170,7 +147,7 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
       ++i;
     }
   } else if (input_type_->is_function() || input_type_->is_user_defined()) {
-    input_list.push_back(get_pointer(input_type_)->llvm());
+    input_list.push_back(*Ptr(input_type_));
 
   } else if (!input_type_->is_void()) {
     if (input_type_->llvm() == nullptr) {
@@ -181,13 +158,13 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   }
 
   if (output_type_->is_user_defined()) {
-    input_list.push_back(get_pointer(output_type_)->llvm());
-    llvm_type_ = llvm::FunctionType::get(get_void()->llvm(), input_list, false);
+    input_list.push_back(*Ptr(output_type_));
+    llvm_type_ = llvm::FunctionType::get(*Void, input_list, false);
     return;
   }
 
   auto llvm_output = output_type_->is_function()
-    ? get_pointer(output_type_)->llvm()
+    ? *Ptr(output_type_)
     : output_type_->llvm();
 
   if (llvm_output == nullptr) {
@@ -274,8 +251,8 @@ Array::Array(Type* t) : repr_fn_(nullptr), type_(t) {
 
   dim_ = 1 + ((data_type()->is_array()) ? static_cast<Array*>(data_type())->dim_ : 0);
 
-  std::vector<llvm::Type*> init_args(dim_ + 1, get_uint()->llvm());
-  init_args[0] = get_pointer(this)->llvm();
+  std::vector<llvm::Type*> init_args(dim_ + 1, Uint->llvm());
+  init_args[0] = *Ptr(this);
 }
 
 Type* UserDefined::field(const std::string& name) const {
@@ -302,7 +279,7 @@ llvm::Value* UserDefined::field_num(const std::string& name) const {
 }
 
 Enum::Enum(AST::EnumLiteral* enumlit) {
-  llvm_type_ = Type::get_uint()->llvm();
+  llvm_type_ = *Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   // size_t enum_size = enumlit->vals_.size();
@@ -320,135 +297,135 @@ Enum::Enum(AST::EnumLiteral* enumlit) {
 
 void Type::initialize_operator_table() {
   op_map_[Language::Operator::Arrow] = {
-    { get_tuple({ get_type(), get_type() }), get_type() },
+    { get_tuple({ Type_, Type_ }), Type_ },
   };
 
   op_map_[Language::Operator::OrEq] = {
-    { get_tuple({ get_bool(), get_bool() }), get_void() },
+    { get_tuple({ Bool, Bool }), Void },
   };
 
   op_map_[Language::Operator::XorEq] = {
-    { get_tuple({ get_bool(), get_bool() }), get_void() },
+    { get_tuple({ Bool, Bool }), Void },
   };
 
   op_map_[Language::Operator::AndEq] = {
-    { get_tuple({ get_bool(), get_bool() }), get_void() },
+    { get_tuple({ Bool, Bool }), Void },
   };
 
   op_map_[Language::Operator::AddEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_void() },
-    { get_tuple({ get_uint(), get_uint() }), get_void() },
-    { get_tuple({ get_real(), get_real() }), get_void() },
+    { get_tuple({ Int,  Int }), Void },
+    { get_tuple({ Uint, Uint }), Void },
+    { get_tuple({ Real, Real }), Void },
   };
 
   op_map_[Language::Operator::SubEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_void() },
-    { get_tuple({ get_uint(), get_uint() }), get_void() },
-    { get_tuple({ get_real(), get_real() }), get_void() },
+    { get_tuple({ Int,  Int }), Void },
+    { get_tuple({ Uint, Uint }), Void },
+    { get_tuple({ Real, Real }), Void },
   };
 
   op_map_[Language::Operator::MulEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_void() },
-    { get_tuple({ get_uint(), get_uint() }), get_void() },
-    { get_tuple({ get_real(), get_real() }), get_void() },
+    { get_tuple({ Int,  Int }), Void },
+    { get_tuple({ Uint, Uint }), Void },
+    { get_tuple({ Real, Real }), Void },
   };
 
   op_map_[Language::Operator::DivEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_void() },
-    { get_tuple({ get_uint(), get_uint() }), get_void() },
-    { get_tuple({ get_real(), get_real() }), get_void() },
+    { get_tuple({ Int,  Int }), Void },
+    { get_tuple({ Uint, Uint }), Void },
+    { get_tuple({ Real, Real }), Void },
   };
 
   op_map_[Language::Operator::ModEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_void() },
-    { get_tuple({ get_uint(), get_uint() }), get_void() },
+    { get_tuple({ Int,  Int }), Void },
+    { get_tuple({ Uint, Uint }), Void },
   };
 
   op_map_[Language::Operator::Or] = {
-    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+    { get_tuple({ Bool, Bool }), Bool },
   };
 
   op_map_[Language::Operator::Xor] = {
-    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+    { get_tuple({ Bool, Bool }), Bool },
   };
 
   op_map_[Language::Operator::And] = {
-    { get_tuple({ get_bool(), get_bool() }), get_bool() },
+    { get_tuple({ Bool, Bool }), Bool },
   };
 
   op_map_[Language::Operator::LessThan] = {
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
   };
 
   op_map_[Language::Operator::LessEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
   };
 
   op_map_[Language::Operator::Equal] = {
-    { get_tuple({ get_bool(), get_bool() }), get_bool() },
-    { get_tuple({ get_char(), get_char() }), get_bool() },
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
-    { get_tuple({ get_type(), get_type() }), get_bool() },
+    { get_tuple({ Bool, Bool }), Bool },
+    { get_tuple({ Char, Char }), Bool },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
+    { get_tuple({ Type_, Type_ }), Bool },
   };
 
   op_map_[Language::Operator::NotEqual] = {
-    { get_tuple({ get_bool(), get_bool() }), get_bool() },
-    { get_tuple({ get_char(), get_char() }), get_bool() },
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
-    { get_tuple({ get_type(), get_type() }), get_bool() },
+    { get_tuple({ Bool, Bool }), Bool },
+    { get_tuple({ Char, Char }), Bool },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
+    { get_tuple({ Type_, Type_ }), Bool },
   };
 
   op_map_[Language::Operator::GreaterEq] = {
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
   };
 
   op_map_[Language::Operator::GreaterThan] = {
-    { get_tuple({ get_int(),  get_int() }), get_bool() },
-    { get_tuple({ get_uint(), get_uint() }), get_bool() },
-    { get_tuple({ get_real(), get_real() }), get_bool() },
+    { get_tuple({ Int,  Int }), Bool },
+    { get_tuple({ Uint, Uint }), Bool },
+    { get_tuple({ Real, Real }), Bool },
   };
 
   op_map_[Language::Operator::Add] = {
-    { get_tuple({ get_int(),  get_int() }), get_int() },
-    { get_tuple({ get_uint(), get_uint() }), get_uint() },
-    { get_tuple({ get_real(), get_real() }), get_real() },
+    { get_tuple({ Int,  Int }), Int },
+    { get_tuple({ Uint, Uint }), Uint },
+    { get_tuple({ Real, Real }), Real },
   };
 
   op_map_[Language::Operator::Sub] = {
-    { get_tuple({ get_int(),  get_int() }), get_int() },
-    { get_tuple({ get_uint(), get_uint() }), get_uint() },
-    { get_tuple({ get_real(), get_real() }), get_real() },
+    { get_tuple({ Int,  Int }), Int },
+    { get_tuple({ Uint, Uint }), Uint },
+    { get_tuple({ Real, Real }), Real },
   };
 
   op_map_[Language::Operator::Mul] = {
-    { get_tuple({ get_int(),  get_int() }), get_int() },
-    { get_tuple({ get_uint(), get_uint() }), get_uint() },
-    { get_tuple({ get_real(), get_real() }), get_real() },
+    { get_tuple({ Int,  Int }), Int },
+    { get_tuple({ Uint, Uint }), Uint },
+    { get_tuple({ Real, Real }), Real },
   };
 
   op_map_[Language::Operator::Div] = {
-    { get_tuple({ get_int(),  get_int() }), get_int() },
-    { get_tuple({ get_uint(), get_uint() }), get_uint() },
-    { get_tuple({ get_real(), get_real() }), get_real() },
+    { get_tuple({ Int,  Int }), Int },
+    { get_tuple({ Uint, Uint }), Uint },
+    { get_tuple({ Real, Real }), Real },
   };
 
   op_map_[Language::Operator::Mod] = {
-    { get_tuple({ get_int(),  get_int() }), get_int() },
-    { get_tuple({ get_uint(), get_uint() }), get_uint() },
+    { get_tuple({ Int,  Int }), Int },
+    { get_tuple({ Uint, Uint }), Uint },
   };
 
   op_map_[Language::Operator::Not] = {
-    { get_bool(), get_bool() },
+    { Bool, Bool },
   };
 }
 
@@ -460,15 +437,16 @@ Type* Type::get_operator(Language::Operator op, Type* signature) {
 
 namespace TypeSystem {
   void initialize() {
-    Error = Type::get_type_error();
-    Unknown = Type::get_unknown();
-    Bool = Type::get_bool();
-    Char = Type::get_char();
-    Int = Type::get_int();
-    Real = Type::get_real();
-    Type_ = Type::get_type();
-    Uint = Type::get_uint();
-    Void = Type::get_void();
+    Literals["bool"] = Bool  = new Primitive(Primitive::t_bool);
+    Literals["char"] = Char  = new Primitive(Primitive::t_char);
+    Literals["int"]  = Int   = new Primitive(Primitive::t_int);
+    Literals["real"] = Real  = new Primitive(Primitive::t_real);
+    Literals["type"] = Type_ = new Primitive(Primitive::t_type);
+    Literals["uint"] = Uint  = new Primitive(Primitive::t_uint);
+    Literals["void"] = Void  = new Primitive(Primitive::t_void);
+
+    Error   = new Primitive(Primitive::t_type_error);
+    Unknown = new Primitive(Primitive::t_unknown);
     RawPtr = Ptr(Char);
   }
 }  // namespace TypeSystem

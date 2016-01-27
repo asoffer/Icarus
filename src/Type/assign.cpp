@@ -19,7 +19,7 @@ namespace data {
 
 llvm::Function* get_llvm_assign(Type* type) {
   return llvm::Function::Create(
-      Type::get_function(Type::get_tuple({ type, Type::get_pointer(type) }), Type::get_void())->llvm(),
+      Type::get_function(Type::get_tuple({ type, Ptr(type) }), Void)->llvm(),
       llvm::Function::ExternalLinkage, "assign." + type->to_string(),
       global_module);
 }
@@ -60,7 +60,7 @@ llvm::Function* Array::assign() {
 
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
+  fn_scope->set_type(get_function(get_tuple({ this, Ptr(this) }), Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -72,14 +72,13 @@ llvm::Function* Array::assign() {
 
   bldr.CreateCall(uninitialize(), { var });
 
-  auto raw_len_ptr = bldr.CreateGEP(
-      bldr.CreateBitCast(val, *RawPtr),
-      { data::const_neg(bldr, get_uint()->bytes()) }, "ptr_to_len");
+  auto raw_len_ptr = bldr.CreateGEP(bldr.CreateBitCast(val, *RawPtr),
+      { data::const_neg(bldr, Uint->bytes()) }, "ptr_to_len");
   auto len_val = bldr.CreateLoad(
     bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint)));
 
   auto bytes_per_elem = data::const_uint(data_type()->bytes());
-  auto int_size = data::const_uint(Type::get_uint()->bytes());
+  auto int_size = data::const_uint(Uint->bytes());
   auto bytes_needed = bldr.CreateAdd(int_size, 
       bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
 
@@ -158,7 +157,7 @@ llvm::Function* UserDefined::assign() {
     
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_type(get_function(get_tuple({ this, get_pointer(this) }), get_void()));
+  fn_scope->set_type(get_function(get_tuple({ this, Ptr(this) }), Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
