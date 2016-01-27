@@ -216,7 +216,7 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
 void Function::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"),
-      data::global_string(bldr, "<function " + to_string() + ">") });
+      data::global_string(bldr, "[function " + to_string() + "]") });
 }
 
 void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
@@ -228,8 +228,8 @@ void Enum::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   // an array of global strings and accesssing that.
   //
   // For now, just print the number in brackets after the enums name
-  bldr.CreateCall(
-      cstdlib::printf(), { data::global_string(bldr, to_string() + "[%d]"), val });
+  bldr.CreateCall(cstdlib::printf(),
+      { data::global_string(bldr, to_string() + "[%d]"), val });
 }
 
 void Tuple::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}

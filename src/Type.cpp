@@ -15,6 +15,7 @@ namespace cstdlib {
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
+  extern llvm::Constant* str(const std::string& s);
 }  // namespace data
 
 #define PRIMITIVE_TYPE_MACRO(type)                               \
@@ -227,13 +228,7 @@ Enum* Type::make_enum(
   auto iter = Enum::lookup_.find(name);
   if (iter != Enum::lookup_.end()) return iter->second;
 
-  auto enum_type = new Enum;
-  size_t i = 0;
-  for (const auto& idstr : enumlit->vals_) {
-    enum_type->intval_[idstr] = data::const_uint(i);
-    ++i;
-  }
-
+  auto enum_type = new Enum(enumlit.get());
   return Enum::lookup_[name] = enum_type;
 }
 
@@ -304,6 +299,23 @@ llvm::Value* UserDefined::field_num(const std::string& name) const {
     ++iter; ++i;
   }
   return nullptr;
+}
+
+Enum::Enum(AST::EnumLiteral* enumlit) {
+  llvm_type_ = Type::get_uint()->llvm();
+
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  // size_t enum_size = enumlit->vals_.size();
+
+  // TODO Use bldr to create a global array of enum_size charptrs
+
+  size_t i = 0;
+  for (const auto& idstr : enumlit->vals_) {
+    intval_[idstr] = data::const_uint(i);
+    // llvm::Value* print_str = data::str(idstr);
+    // TODO add print_str to the global array
+    ++i;
+  }
 }
 
 void Type::initialize_operator_table() {

@@ -399,6 +399,23 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
+    } else if (exprs_[0]->type()->is_enum()) {
+      for (size_t i = 1; i < exprs_.size(); ++i) {
+        auto rhs_val = exprs_[i]->generate_code(scope);
+        llvm::Value* cmp_val;
+
+        // TODO early exit
+        switch (ops_[i - 1]) {
+          case Operator::Equal:
+            cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp"); break;
+          case Operator::NotEqual:
+            cmp_val = bldr.CreateICmpNE(lhs_val, rhs_val, "netmp"); break;
+          default:;
+        }
+
+        ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
+        lhs_val = rhs_val;
+      }
     } else if (exprs_[0]->type() == Type::get_bool()) {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.

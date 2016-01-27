@@ -322,9 +322,8 @@ class Enum : public Type {
   public:
     friend class Type;
 
-    Enum() {
-      llvm_type_ = Type::get_uint()->llvm();
-    }
+    Enum() = delete;
+    Enum(AST::EnumLiteral* enumlit);
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"

@@ -25,6 +25,26 @@ main := void -> void {
   s = suit.spade
   print s
   print '\n'
+  print case {
+    s == suit.diamond  =>  color.red
+    s == suit.heart    =>  color.red
+    else               =>  color.black
+  }
+  print '\n'
+
+  s = suit.diamond
+  print case {
+    s == suit.diamond  =>  color.red
+    s == suit.heart    =>  color.red
+    else               =>  color.black
+  }
+  print '\n'
+  print case {
+    s != suit.diamond  =>  color.red
+    s != suit.heart    =>  color.red
+    else               =>  color.black
+  }
+  print '\n'
 }
 
 color := enum {

@@ -569,7 +569,7 @@ namespace AST {
 
   class EnumLiteral : public Expression {
     public:
-      friend class ::Type;
+      friend class ::Enum;
       friend class Declaration;
 
       static NPtr build(NPtrVec&& nodes);

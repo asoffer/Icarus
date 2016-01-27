@@ -138,11 +138,24 @@ namespace data {
         llvm::APInt(8, static_cast<size_t>(c), false));
   }
 
+
+  /*
+  llvm::Value* str(const std::string& s) {
+    static llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+    auto iter = global_strings.find(s);
+    if (iter != global_strings.end()) {
+      return iter->second;
+    }
+
+    return global_strings[s] = bldr.CreateGlobalStringPtr(s);
+  }*/
+
   llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s) {
     auto iter = global_strings.find(s);
     if (iter != global_strings.end()) {
       return iter->second;
     }
+
     return global_strings[s] = bldr.CreateGlobalStringPtr(s);
   }
 }  // namespace data
