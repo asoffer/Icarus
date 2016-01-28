@@ -443,3 +443,7 @@ bool UserDefined::requires_uninit() const {
   }
   return false;
 }
+
+std::ostream& operator<<(std::ostream& os, const Type& t) {
+  return os << t.to_string();
+}

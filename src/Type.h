@@ -355,6 +355,7 @@ class Enum : public Type {
     static std::map<std::string, Enum*> lookup_;
 };
 
+std::ostream& operator<<(std::ostream& os, const Type& t);
 
 #undef BASIC_FUNCTIONS
 #undef LEFT_UNARY_OPERATOR_MACRO
