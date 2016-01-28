@@ -58,13 +58,13 @@ extern Type* Ptr(Type* t);
 
 #define BASIC_FUNCTIONS                                                   \
   virtual llvm::Function* assign() ENDING;                                \
-virtual llvm::Function* uninitialize() ENDING;                            \
 virtual std::string to_string() const ENDING;                             \
 virtual Time::Eval time() const ENDING;                                   \
 virtual void set_print(llvm::Function* fn) ENDING;                        \
 virtual void set_assign(llvm::Function* fn) ENDING;                       \
 virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
-virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
+virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING; \
+virtual void call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING
 
 class Type {
   public:
@@ -110,6 +110,7 @@ class Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
+    virtual bool requires_uninit() const { return false; }
 
     virtual bool is_array()         const { return false; }
     virtual bool is_function()      const { return false; }
@@ -125,9 +126,7 @@ class Type {
 
     llvm::Type* llvm() const { return llvm_type_; }
 
-    Type() :
-      assign_fn_(nullptr),
-      uninit_fn_(nullptr) {}
+    Type() : assign_fn_(nullptr) {}
 
     virtual ~Type() {}
 
@@ -135,10 +134,7 @@ class Type {
     // NOTE: For the same of simplicity, none of these will be left undefined,
     // even if they do something that should obviously be inlined. We'll trust
     // the inliner to do it's job.
-    llvm::Function
-      * assign_fn_,
-      * uninit_fn_;
-
+    llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
 
   private:
@@ -186,6 +182,7 @@ class Tuple : public Type {
   public:
     friend class Type;
     friend class Function;
+    // TODO requires_uninit()
 
     virtual bool is_tuple() const { return true; }
 
@@ -270,6 +267,7 @@ class Array : public Type {
     friend class AST::Declaration;
     friend class Type;
 
+    virtual bool requires_uninit() const;
     virtual bool is_array() const { return true; }
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
@@ -296,6 +294,7 @@ class Array : public Type {
 
     llvm::Function
       * init_fn_,
+      * uninit_fn_,
       * repr_fn_;
 
     Type* type_;
@@ -306,25 +305,26 @@ class Array : public Type {
 class UserDefined : public Type {
   public:
     friend class Type;
+    UserDefined();
+    virtual ~UserDefined() {}
+    virtual bool is_user_defined() const { return true; }
+
+    virtual bool requires_uninit() const;
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual bool is_user_defined() const { return true; }
-
     Type* field(const std::string& name) const;
     llvm::Value* field_num(const std::string& name) const;
 
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
-    virtual ~UserDefined() {}
-
   private:
     llvm::Function
       * init_fn_,
+      * uninit_fn_,
       * print_fn_;
 
     std::vector<std::pair<std::string, Type*>> fields_;

@@ -200,8 +200,14 @@ UserDefined* Type::make_user_defined(
 }
 
 
-Array::Array(Type* t) : init_fn_(nullptr), repr_fn_(nullptr), type_(t) {
-  // TODO is the length ever part of the type?
+UserDefined::UserDefined() :
+  init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
+{
+}
+
+Array::Array(Type* t) :
+  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), type_(t)
+{
   llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
 
   dim_ = 1 + ((data_type()->is_array()) ? static_cast<Array*>(data_type())->dim_ : 0);
@@ -428,3 +434,12 @@ namespace TypeSystem {
 
 
 
+bool Array::requires_uninit() const { return true; }
+bool UserDefined::requires_uninit() const {
+  for (const auto field : fields_) {
+    if (field.second->requires_uninit()) {
+      return true;
+    }
+  }
+  return false;
+}

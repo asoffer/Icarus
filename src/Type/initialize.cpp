@@ -79,9 +79,9 @@ void UserDefined::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     auto fields_size = fields_.size();
     for (size_t field_num = 0; field_num < fields_size; ++field_num) {
       auto field_type = fields_[field_num].second;
-      auto arg = fnbldr.CreateGEP(*this, init_fn_->args().begin(), {
-          data::const_uint(0), data::const_uint(field_num) });
-
+      auto arg = fnbldr.CreateGEP(init_fn_->args().begin(),
+          { data::const_uint(0), data::const_uint(field_num) });
+      // TODO arrays of known length need to be init'ed differently
       field_type->call_init(fnbldr, { arg });
     }
 
@@ -91,7 +91,6 @@ void UserDefined::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateCall(init_fn_, { var });
 }
 
-// TODO Call_init for array the good old way.
 llvm::Function* Array::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 

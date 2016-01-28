@@ -262,10 +262,7 @@ void GenericFnScope::allocate(Scope* scope) {
 void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    auto uninit_function = decl_id->type()->uninitialize();
-    if (uninit_function != nullptr) {
-      bldr_.CreateCall(uninit_function, decl_id->alloc_);
-    }
+    decl_id->type()->call_uninit(bldr_, { decl_id->alloc_ });
   }
 }
 

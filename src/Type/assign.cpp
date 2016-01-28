@@ -69,8 +69,7 @@ llvm::Function* Array::assign() {
   auto val = iter;
   auto var = ++iter;
 
-
-  bldr.CreateCall(uninitialize(), { var });
+  call_uninit(bldr, { var });
 
   auto raw_len_ptr = bldr.CreateGEP(bldr.CreateBitCast(val, *RawPtr),
       { data::const_neg(bldr, Uint->bytes()) }, "ptr_to_len");
