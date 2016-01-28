@@ -46,6 +46,11 @@ Type* Type::get_tuple(const std::vector<Type*>& types) {
   return tuple_type;
 }
 
+size_t Type::bytes() const {
+  return (llvm_type_ == nullptr)
+    ? 0 : data_layout->getTypeStoreSize(llvm_type_);
+}
+
 Type* Type::get_array(Type* t) {
   for (const auto& arr : Array::array_types_) {
     if (arr->type_ == t) return arr;
@@ -195,7 +200,7 @@ UserDefined* Type::make_user_defined(
 }
 
 
-Array::Array(Type* t) : repr_fn_(nullptr), type_(t) {
+Array::Array(Type* t) : init_fn_(nullptr), repr_fn_(nullptr), type_(t) {
   // TODO is the length ever part of the type?
   llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
 

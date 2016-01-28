@@ -19,6 +19,8 @@
 #include "Scope.h"
 #include "TimeEval.h"
 
+extern llvm::DataLayout* data_layout;
+
 namespace AST {
   class Expression;
   class EnumLiteral;
@@ -54,15 +56,14 @@ extern Type* Ptr(Type* t);
 #define LEFT_UNARY_OPERATOR_MACRO(op) \
   virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING;
 
-#define BASIC_FUNCTIONS                             \
-  virtual llvm::Function* assign() ENDING;          \
-virtual llvm::Function* initialize() ENDING;        \
-virtual llvm::Function* uninitialize() ENDING;      \
-virtual size_t bytes() const ENDING;                \
-virtual std::string to_string() const ENDING;       \
-virtual Time::Eval time() const ENDING;             \
-virtual void set_print(llvm::Function* fn) ENDING;  \
-virtual void set_assign(llvm::Function* fn) ENDING; \
+#define BASIC_FUNCTIONS                                                   \
+  virtual llvm::Function* assign() ENDING;                                \
+virtual llvm::Function* uninitialize() ENDING;                            \
+virtual std::string to_string() const ENDING;                             \
+virtual Time::Eval time() const ENDING;                                   \
+virtual void set_print(llvm::Function* fn) ENDING;                        \
+virtual void set_assign(llvm::Function* fn) ENDING;                       \
+virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
 virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING
 
 class Type {
@@ -72,6 +73,8 @@ class Type {
     friend class ::Enum;
 
     operator llvm::Type* () { return llvm(); }
+
+    size_t bytes() const;
 
     // Note: this one is special. It functions identically to the rest, but
     // it's special in that it will return nullptr if you haven't imported the
@@ -124,7 +127,6 @@ class Type {
 
     Type() :
       assign_fn_(nullptr),
-      init_fn_  (nullptr),
       uninit_fn_(nullptr) {}
 
     virtual ~Type() {}
@@ -135,7 +137,6 @@ class Type {
     // the inliner to do it's job.
     llvm::Function
       * assign_fn_,
-      * init_fn_,
       * uninit_fn_;
 
     llvm::Type* llvm_type_;
@@ -175,8 +176,9 @@ namespace TypeSystem {
       llvm::Function* repr_fn_;
   };
 
-  extern std::map<std::string, Type*> Literals;
   void initialize();
+
+  extern std::map<std::string, Type*> Literals;
 }  // namespace TypeSystem
 
 
@@ -278,6 +280,7 @@ class Array : public Type {
 
     virtual Type* data_type() const { return type_; }
     virtual size_t dim() const { return dim_; }
+    llvm::Function* initialize();
     llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
 
     virtual ~Array() {}
@@ -291,7 +294,9 @@ class Array : public Type {
     // times you can access an element.
     size_t dim_;
 
-    llvm::Function* repr_fn_;
+    llvm::Function
+      * init_fn_,
+      * repr_fn_;
 
     Type* type_;
 
@@ -318,7 +323,9 @@ class UserDefined : public Type {
     virtual ~UserDefined() {}
 
   private:
-    llvm::Function* print_fn_;
+    llvm::Function
+      * init_fn_,
+      * print_fn_;
 
     std::vector<std::pair<std::string, Type*>> fields_;
 
