@@ -78,46 +78,36 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   if (input_type_->is_tuple()) {
     auto in_tup = static_cast<Tuple*>(input_type_);
     for (auto t : in_tup->entry_types()) {
-      if (t == Void) continue;
-      llvm::Type* llvm_t_type = *t;
-      if (t->is_function() || llvm_t_type == nullptr) {
-        llvm_type_ = nullptr;
-        return;
+      if (! t->add_llvm_input(llvm_in)) {
+        llvm_type_ = nullptr; return;
       }
-
-      llvm_in.push_back(llvm_t_type);
     }
-  } else if (input_type_->is_function()) {
-    llvm_type_ = nullptr;
-    return;
-
-  } else if (input_type_ != Void) {
-    llvm_in.push_back(*input_type_);
+  } else {
+    if (! input_type_->add_llvm_input(llvm_in)) {
+      llvm_type_ = nullptr; return;
+    }
   }
 
   if (output_type_->is_tuple()) {
     auto out_tup = static_cast<Tuple*>(output_type_);
-    for(auto t : out_tup->entry_types()) {
-      llvm::Type* llvm_ptr_type = *Ptr(t);
-      if (llvm_ptr_type == nullptr) {
-        llvm_type_ = nullptr;
-        return;
+    for (auto t : out_tup->entry_types()) {
+      if (! Ptr(t)->add_llvm_input(llvm_in)) {
+        llvm_type_ = nullptr; return;
       }
-
-      llvm_in.push_back(llvm_ptr_type);
+    }
+  } else if (output_type_->is_enum() || output_type_->is_array()
+      || output_type_->is_primitive()) {
+    llvm_out = *output_type_;
+    if (llvm_out == nullptr) {
+      llvm_type_ = nullptr; return;
     }
 
-  } else if (output_type_->is_user_defined()) {
-    llvm_in.push_back(*Ptr(output_type_));
-
-  } else if (output_type_->is_function()
-      || output_type_->llvm() == nullptr) {
-    llvm_type_ = nullptr;
-    return;
-
   } else {
-    llvm_out = *output_type_;
+    if (! Ptr(output_type_)->add_llvm_input(llvm_in)) {
+      llvm_type_ = nullptr; return;
+    }
   }
+
   llvm_type_ = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 

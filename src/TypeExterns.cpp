@@ -147,10 +147,6 @@ namespace TypeSystem {
   Type* get_operator(Language::Operator op, Type* signature) {
     auto operator_set = operator_table[op];
     for (const auto& fn : operator_set) {
-//      if (op == Language::Operator::Sub) {
-//        std::cout << *fn->argument_type() << " vs. " << *signature << std::endl;
-//        std::cout << fn->argument_type() << " vs. " << signature << std::endl;
-//      }
       if (signature == fn->argument_type()) {
         return fn->return_type();
       }

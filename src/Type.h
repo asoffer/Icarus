@@ -32,7 +32,6 @@ class Primitive;
 class Array;
 class Tuple;
 class Pointer;
-
 class Function;
 class Enum;
 class UserDefined;
@@ -78,6 +77,7 @@ virtual std::string to_string() const ENDING;                             \
 virtual Time::Eval time() const ENDING;                                   \
 virtual void set_print(llvm::Function* fn) ENDING;                        \
 virtual void set_assign(llvm::Function* fn) ENDING;                       \
+virtual bool add_llvm_input(std::vector<llvm::Type*>& llvm_in) ENDING;    \
 virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
 virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING; \
 virtual void call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING

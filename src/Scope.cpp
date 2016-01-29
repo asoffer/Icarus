@@ -247,7 +247,7 @@ void GenericFnScope::allocate(Scope* scope) {
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
-    
+
     if (decl_id->is_function_arg_ && decl_type->is_user_defined()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
@@ -268,6 +268,7 @@ void GenericFnScope::allocate(Scope* scope) {
 void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
+    if (decl_id->is_function_arg_) continue;
     decl_id->type()->call_uninit(bldr_, { decl_id->alloc_ });
   }
 }

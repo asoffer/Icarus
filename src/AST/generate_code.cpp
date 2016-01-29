@@ -196,7 +196,6 @@ namespace AST {
       }
 
       auto udef_type = static_cast<UserDefined*>(lhs_type);
-      udef_type->field_num(rhs_->token())->dump();
 
       auto retval = scope->builder().CreateGEP(lhs_val,
           { data::const_uint(0), udef_type->field_num(rhs_->token()) });
