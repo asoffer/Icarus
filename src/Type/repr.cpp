@@ -31,12 +31,12 @@ void add_branch(llvm::Function* fn, Scope* fn_scope, llvm::SwitchInst* switch_st
   }
 }
 
-void TypeSystem::Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   if (this == Bool) {
     if (repr_fn_ == nullptr) {
-      auto fn_type = get_function(this, Void);
+      auto fn_type = Func(this, Void);
 
-      repr_fn_ = llvm::Function::Create(fn_type->llvm(),
+      repr_fn_ = llvm::Function::Create(*fn_type,
           llvm::Function::ExternalLinkage, "repr.bool", global_module);
       llvm::Value* arg = repr_fn_->args().begin();
 
@@ -75,9 +75,9 @@ void TypeSystem::Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val)
     bldr.CreateCall(repr_fn_, { val });
 
   } else if (this == Char) {
-    auto fn_type = get_function(this, Void);
+    auto fn_type = Func(this, Void);
 
-    repr_fn_ = llvm::Function::Create(fn_type->llvm(),
+    repr_fn_ = llvm::Function::Create(*fn_type,
         llvm::Function::ExternalLinkage, "repr.char", global_module);
     llvm::Value* arg = repr_fn_->args().begin();
 
@@ -148,8 +148,8 @@ void TypeSystem::Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val)
 void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   if (repr_fn_ == nullptr) {
     // TODO what about arrays of types?
-    auto fn_type = get_function(this, Void);
-    repr_fn_ = llvm::Function::Create(fn_type->llvm(),
+    auto fn_type = Func(this, Void);
+    repr_fn_ = llvm::Function::Create(*fn_type,
         llvm::Function::ExternalLinkage, "print." + to_string(), global_module);
     llvm::Value* arg = repr_fn_->args().begin();
 
@@ -210,9 +210,11 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   bldr.CreateCall(repr_fn_, { val });
 }
 
+// NOTE: [function ...] probably looks too much like an array. That's why you
+// used <function ...> in the first place.
 void Function::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"),
-      data::global_string(bldr, "[function " + to_string() + "]") });
+      data::global_string(bldr, "<function " + to_string() + ">") });
 }
 
 void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {

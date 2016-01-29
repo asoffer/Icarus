@@ -18,13 +18,12 @@ namespace data {
 
 
 llvm::Function* get_llvm_assign(Type* type) {
-  return llvm::Function::Create(
-      Type::get_function(Type::get_tuple({ type, Ptr(type) }), Void)->llvm(),
+  return llvm::Function::Create(*Func({ type, Ptr(type) }, Void),
       llvm::Function::ExternalLinkage, "assign." + type->to_string(),
       global_module);
 }
 
-llvm::Function* TypeSystem::Primitive::assign() {
+llvm::Function* Primitive::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
@@ -60,7 +59,7 @@ llvm::Function* Array::assign() {
 
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_type(get_function(get_tuple({ this, Ptr(this) }), Void));
+  fn_scope->set_type(Func({ this, Ptr(this) }, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -156,7 +155,7 @@ llvm::Function* UserDefined::assign() {
     
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(assign_fn_);
-  fn_scope->set_type(get_function(get_tuple({ this, Ptr(this) }), Void));
+  fn_scope->set_type(Func({ this, Ptr(this) }, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -205,7 +204,7 @@ llvm::Function* Enum::assign() {
 }
 
 
-void TypeSystem::Primitive::set_assign(llvm::Function* fn) {}
+void Primitive::set_assign(llvm::Function* fn) {}
 void Pointer::set_assign(llvm::Function* fn) {}
 void Tuple::set_assign(llvm::Function* fn) {}
 void Function::set_assign(llvm::Function* fn) {}

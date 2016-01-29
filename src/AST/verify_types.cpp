@@ -1,11 +1,12 @@
 #include "AST.h"
 #include "ErrorLog.h"
+#include "Type.h"
 
 extern ErrorLog error_log;
 
 namespace AST {
   Type* operator_lookup(size_t line_num, Language::Operator op, Type* lhs_type, Type* rhs_type) {
-    auto ret_type = Type::get_operator(op, Type::get_tuple({ lhs_type, rhs_type }));
+    auto ret_type = TypeSystem::get_operator(op, Tup({ lhs_type, rhs_type }));
     if (ret_type == nullptr) {
       std::string tok;
       switch (op) {
@@ -22,7 +23,6 @@ namespace AST {
       return ret_type;
     }
   }
-
 
   void Unop::verify_types() {
     // Even if there was previously a type_error on the return line, we still
@@ -60,8 +60,15 @@ namespace AST {
       }
 
       auto fn_type = static_cast<Function*>(expr_->type());
-      expr_type_ = (fn_type->argument_type() == Void) ? fn_type->return_type() : Error;
+      if (fn_type->argument_type() == Void) {
+        // TODO multiple return values. For now just taking one
+        expr_type_ = fn_type->return_type();
 
+      } else {
+        error_log.log(line_num(), "Call to a function of type "
+            + fn_type->to_string() + " with no arguments provided.");
+        expr_type_ = Error;
+      }
       return;
 
     } else if (expr_->type() == Error) {
@@ -168,14 +175,15 @@ namespace AST {
         return;
       }
 
-      Type* in_type = static_cast<Function*>(lhs_->type())->argument_type();
+      auto in_types = static_cast<Function*>(lhs_->type())->argument_type();
 
-      if (in_type != rhs_->type()) {
-        // std::cout << in_type->to_string() << ", " << rhs_->type()->to_string() << std::endl;
+      // TODO If rhs is a comma-list, is it's type given by a tuple?
+      if (in_types != rhs_->type()) {
         error_log.log(line_num(), "Type mismatch on function arguments.");
         return;
       }
 
+      // TODO multiple return values. For now just taking the first
       expr_type_ = static_cast<Function*>(lhs_->type())->return_type();
       
       return;
@@ -222,7 +230,7 @@ namespace AST {
   void ArrayLiteral::verify_types() {
     auto type_to_match = elems_.front()->type();
 
-    expr_type_ = Type::get_array(type_to_match);
+    expr_type_ = Arr(type_to_match);
     for (const auto& el : elems_) {
       if (el->type() != type_to_match) {
         error_log.log(line_num(), "Type error: Array literal must have consistent type");
@@ -242,7 +250,7 @@ namespace AST {
         type_vec[position] = eptr->type();
         ++position;
       }
-      expr_type_ = Type::get_tuple(type_vec);
+      expr_type_ = Tup(type_vec);
       return;
     } 
 
@@ -326,11 +334,11 @@ namespace AST {
             ++i;
           }
 
-          input_type = Type::get_tuple(input_type_vec);
+          input_type = Tup(input_type_vec);
         }
     }
 
-    expr_type_ = Type::get_function(input_type, return_type_as_type);
+    expr_type_ = Func(input_type, return_type_as_type);
   }
 
   void Statements::collect_return_types(std::set<Type*>* return_exprs) const {

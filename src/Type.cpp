@@ -18,55 +18,11 @@ namespace data {
   extern llvm::Constant* str(const std::string& s);
 }  // namespace data
 
-std::map<Language::Operator, std::map<Type*, Type*>> Type::op_map_ = {};
-
-Function* Type::get_function(std::vector<Type*> in, Type* out) {
-  return get_function(get_tuple(in), out);
-}
-
-Function* Type::get_function(Type* in, Type* out) {
-  for (const auto& fn_type : Function::fn_types_) {
-    if (fn_type->input_type_ != in) continue;
-    if (fn_type->output_type_ != out) continue;
-    return fn_type;
-  }
-
-  auto fn_type = new Function(in, out);
-  Function::fn_types_.push_back(fn_type);
-  return fn_type;
-}
-
-Type* Type::get_tuple(const std::vector<Type*>& types) {
-  for (const auto& tuple_type : Tuple::tuple_types_) {
-    if (tuple_type->entry_types_ == types) return tuple_type;
-  }
-
-  auto tuple_type = new Tuple(types);
-  Tuple::tuple_types_.push_back(tuple_type);
-  return tuple_type;
-}
 
 size_t Type::bytes() const {
   return (llvm_type_ == nullptr)
     ? 0 : data_layout->getTypeStoreSize(llvm_type_);
 }
-
-Type* Type::get_array(Type* t) {
-  for (const auto& arr : Array::array_types_) {
-    if (arr->type_ == t) return arr;
-  }
-
-  auto arr_type = new Array(t);
-  Array::array_types_.push_back(arr_type);
-  return arr_type;
-}
-
-
-std::vector<Pointer*> Pointer::pointer_types_;
-std::vector<Array*> Array::array_types_;
-std::vector<Tuple*> Tuple::tuple_types_;
-std::vector<Function*> Function::fn_types_;
-
 
 std::map<std::string, UserDefined*> UserDefined::lookup_;
 std::map<std::string, Enum*> Enum::lookup_;
@@ -76,60 +32,93 @@ Type* Type::get_string() {
   return (iter == UserDefined::lookup_.end()) ? nullptr : iter->second;
 }
 
+// CONSTRUCTORS
+Type::Type() : assign_fn_(nullptr) {}
+
+Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
+  switch (type_) {
+    case Primitive::TypeEnum::Bool:
+      llvm_type_ = llvm::Type::getInt1Ty(llvm::getGlobalContext());   break;
+    case Primitive::TypeEnum::Char:
+      llvm_type_ = llvm::Type::getInt8Ty(llvm::getGlobalContext());   break;
+    case Primitive::TypeEnum::Int:
+      llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+    case Primitive::TypeEnum::Real:
+      llvm_type_ = llvm::Type::getDoubleTy(llvm::getGlobalContext()); break;
+    case Primitive::TypeEnum::Uint:
+      llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+    case Primitive::TypeEnum::Void:
+      llvm_type_ = llvm::Type::getVoidTy(llvm::getGlobalContext());   break;
+    default:
+      llvm_type_ = nullptr;
+  }
+}
+
+Array::Array(Type* t) :
+  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), type_(t)
+{
+  llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
+  dim_ = 1 + ((data_type()->is_array())
+      ? static_cast<Array*>(data_type())->dim() : 0);
+
+  std::vector<llvm::Type*> init_args(dim_ + 1, *Uint);
+  init_args[0] = *Ptr(this);
+}
+
+Tuple::Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+
+Pointer::Pointer(Type* t) : pointee_type_(t) {
+  llvm_type_ = llvm::PointerType::getUnqual(*pointee_type());
+}
+
 Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
-  bool llvm_null = false;
-  std::vector<llvm::Type*> input_list;
+  std::vector<llvm::Type*> llvm_in;
+  llvm::Type* llvm_out = *Void;
+
   if (input_type_->is_tuple()) {
-    auto input_tuple = static_cast<Tuple*>(input_type_);
-    auto len = input_tuple->size();
-    input_list.resize(len, nullptr);
-
-    size_t i = 0;
-    // TODO robustify this.
-    // What if tuple element is a tuple?
-    // What if tuple element is a function?
-    // ...
-    for (const auto& input : input_tuple->entry_types_) {
-      input_list[i] = (input->is_function() || input->is_user_defined())
-        ? *Ptr(input)
-        : *input;
-      if (input_list[i] == nullptr) {
-        llvm_null = true;
-        break;
+    auto in_tup = static_cast<Tuple*>(input_type_);
+    for (auto t : in_tup->entry_types()) {
+      if (t == Void) continue;
+      llvm::Type* llvm_t_type = *t;
+      if (t->is_function() || llvm_t_type == nullptr) {
+        llvm_type_ = nullptr;
+        return;
       }
-      ++i;
-    }
-  } else if (input_type_->is_function() || input_type_->is_user_defined()) {
-    input_list.push_back(*Ptr(input_type_));
 
-  } else if (!input_type_->is_void()) {
-    if (input_type_->llvm() == nullptr) {
-      llvm_null = true;
-    } else {
-      input_list.push_back(*input_type_);
+      llvm_in.push_back(llvm_t_type);
     }
-  } else {
-    input_list.clear();
-  }
-
-  if (output_type_->is_user_defined()) {
-    input_list.push_back(*Ptr(output_type_));
-    llvm_type_ = llvm::FunctionType::get(*Void, input_list, false);
+  } else if (input_type_->is_function()) {
+    llvm_type_ = nullptr;
     return;
+
+  } else if (input_type_ != Void) {
+    llvm_in.push_back(*input_type_);
   }
 
-  llvm::Type* llvm_output = output_type_->is_function()
-    ? *Ptr(output_type_)
-    : *output_type_;
+  if (output_type_->is_tuple()) {
+    auto out_tup = static_cast<Tuple*>(output_type_);
+    for(auto t : out_tup->entry_types()) {
+      llvm::Type* llvm_ptr_type = *Ptr(t);
+      if (llvm_ptr_type == nullptr) {
+        llvm_type_ = nullptr;
+        return;
+      }
 
-  if (llvm_output == nullptr) {
-    llvm_null = true;
+      llvm_in.push_back(llvm_ptr_type);
+    }
+
+  } else if (output_type_->is_user_defined()) {
+    llvm_in.push_back(*Ptr(output_type_));
+
+  } else if (output_type_->is_function()
+      || output_type_->llvm() == nullptr) {
+    llvm_type_ = nullptr;
+    return;
+
+  } else {
+    llvm_out = *output_type_;
   }
-
-  // Boolean parameter 'false' designates that this function is not variadic.
-  llvm_type_ = llvm_null
-    ? nullptr
-    : llvm::FunctionType::get(llvm_output, input_list, false);
+  llvm_type_ = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 
 Type* Type::get_type_from_identifier(const std::string& name) {
@@ -205,17 +194,6 @@ UserDefined::UserDefined() :
 {
 }
 
-Array::Array(Type* t) :
-  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), type_(t)
-{
-  llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
-
-  dim_ = 1 + ((data_type()->is_array()) ? static_cast<Array*>(data_type())->dim_ : 0);
-
-  std::vector<llvm::Type*> init_args(dim_ + 1, Uint->llvm());
-  init_args[0] = *Ptr(this);
-}
-
 Type* UserDefined::field(const std::string& name) const {
   auto iter = fields_.cbegin();
   while (iter != fields_.end()) {
@@ -255,184 +233,6 @@ Enum::Enum(AST::EnumLiteral* enumlit) {
     ++i;
   }
 }
-
-void Type::initialize_operator_table() {
-  op_map_[Language::Operator::Arrow] = {
-    { get_tuple({ Type_, Type_ }), Type_ },
-  };
-
-  op_map_[Language::Operator::OrEq] = {
-    { get_tuple({ Bool, Bool }), Void },
-  };
-
-  op_map_[Language::Operator::XorEq] = {
-    { get_tuple({ Bool, Bool }), Void },
-  };
-
-  op_map_[Language::Operator::AndEq] = {
-    { get_tuple({ Bool, Bool }), Void },
-  };
-
-  op_map_[Language::Operator::AddEq] = {
-    { get_tuple({ Int,  Int }), Void },
-    { get_tuple({ Uint, Uint }), Void },
-    { get_tuple({ Real, Real }), Void },
-  };
-
-  op_map_[Language::Operator::SubEq] = {
-    { get_tuple({ Int,  Int }), Void },
-    { get_tuple({ Uint, Uint }), Void },
-    { get_tuple({ Real, Real }), Void },
-  };
-
-  op_map_[Language::Operator::MulEq] = {
-    { get_tuple({ Int,  Int }), Void },
-    { get_tuple({ Uint, Uint }), Void },
-    { get_tuple({ Real, Real }), Void },
-  };
-
-  op_map_[Language::Operator::DivEq] = {
-    { get_tuple({ Int,  Int }), Void },
-    { get_tuple({ Uint, Uint }), Void },
-    { get_tuple({ Real, Real }), Void },
-  };
-
-  op_map_[Language::Operator::ModEq] = {
-    { get_tuple({ Int,  Int }), Void },
-    { get_tuple({ Uint, Uint }), Void },
-  };
-
-  op_map_[Language::Operator::Or] = {
-    { get_tuple({ Bool, Bool }), Bool },
-  };
-
-  op_map_[Language::Operator::Xor] = {
-    { get_tuple({ Bool, Bool }), Bool },
-  };
-
-  op_map_[Language::Operator::And] = {
-    { get_tuple({ Bool, Bool }), Bool },
-  };
-
-  op_map_[Language::Operator::LessThan] = {
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-  };
-
-  op_map_[Language::Operator::LessEq] = {
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-  };
-
-  op_map_[Language::Operator::Equal] = {
-    { get_tuple({ Bool, Bool }), Bool },
-    { get_tuple({ Char, Char }), Bool },
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-    { get_tuple({ Type_, Type_ }), Bool },
-  };
-
-  op_map_[Language::Operator::NotEqual] = {
-    { get_tuple({ Bool, Bool }), Bool },
-    { get_tuple({ Char, Char }), Bool },
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-    { get_tuple({ Type_, Type_ }), Bool },
-  };
-
-  op_map_[Language::Operator::GreaterEq] = {
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-  };
-
-  op_map_[Language::Operator::GreaterThan] = {
-    { get_tuple({ Int,  Int }), Bool },
-    { get_tuple({ Uint, Uint }), Bool },
-    { get_tuple({ Real, Real }), Bool },
-  };
-
-  op_map_[Language::Operator::Add] = {
-    { get_tuple({ Int,  Int }), Int },
-    { get_tuple({ Uint, Uint }), Uint },
-    { get_tuple({ Real, Real }), Real },
-  };
-
-  op_map_[Language::Operator::Sub] = {
-    { get_tuple({ Int,  Int }), Int },
-    { get_tuple({ Uint, Uint }), Uint },
-    { get_tuple({ Real, Real }), Real },
-  };
-
-  op_map_[Language::Operator::Mul] = {
-    { get_tuple({ Int,  Int }), Int },
-    { get_tuple({ Uint, Uint }), Uint },
-    { get_tuple({ Real, Real }), Real },
-  };
-
-  op_map_[Language::Operator::Div] = {
-    { get_tuple({ Int,  Int }), Int },
-    { get_tuple({ Uint, Uint }), Uint },
-    { get_tuple({ Real, Real }), Real },
-  };
-
-  op_map_[Language::Operator::Mod] = {
-    { get_tuple({ Int,  Int }), Int },
-    { get_tuple({ Uint, Uint }), Uint },
-  };
-
-  op_map_[Language::Operator::Not] = {
-    { Bool, Bool },
-  };
-}
-
-Type* Type::get_operator(Language::Operator op, Type* signature) {
-  auto operator_set = op_map_[op];
-  auto iter = operator_set.find(signature);
-  return (iter != operator_set.end()) ? iter->second : nullptr;
-}
-
-namespace TypeSystem {
-  Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
-    switch (type_) {
-      case Primitive::TypeEnum::Bool:
-        llvm_type_ = llvm::Type::getInt1Ty(llvm::getGlobalContext());   break;
-      case Primitive::TypeEnum::Char:
-        llvm_type_ = llvm::Type::getInt8Ty(llvm::getGlobalContext());   break;
-      case Primitive::TypeEnum::Int:
-        llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
-      case Primitive::TypeEnum::Real:
-        llvm_type_ = llvm::Type::getDoubleTy(llvm::getGlobalContext()); break;
-      case Primitive::TypeEnum::Uint:
-        llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
-      case Primitive::TypeEnum::Void:
-        llvm_type_ = llvm::Type::getVoidTy(llvm::getGlobalContext());   break;
-      default:
-        llvm_type_ = nullptr;
-    }
-  }
-
-  void initialize() {
-    // TODO do we need to pair of strings and their types?
-    Literals["bool"] = Bool  = new Primitive(Primitive::TypeEnum::Bool);
-    Literals["char"] = Char  = new Primitive(Primitive::TypeEnum::Char);
-    Literals["int"]  = Int   = new Primitive(Primitive::TypeEnum::Int);
-    Literals["real"] = Real  = new Primitive(Primitive::TypeEnum::Real);
-    Literals["type"] = Type_ = new Primitive(Primitive::TypeEnum::Type);
-    Literals["uint"] = Uint  = new Primitive(Primitive::TypeEnum::Uint);
-    Literals["void"] = Void  = new Primitive(Primitive::TypeEnum::Void);
-
-    Error   = new Primitive(Primitive::TypeEnum::Error);
-    Unknown = new Primitive(Primitive::TypeEnum::Unknown);
-    RawPtr = Ptr(Char);
-  }
-}  // namespace TypeSystem
-
-
 
 bool Array::requires_uninit() const { return true; }
 bool UserDefined::requires_uninit() const {

@@ -161,8 +161,7 @@ namespace builtin {
     static llvm::Function* ascii_ = nullptr;
     if (ascii_ != nullptr) return ascii_;
 
-    ascii_ = llvm::Function::Create(
-        Type::get_function(Uint, Char)->llvm(),
+    ascii_ = llvm::Function::Create(*Func(Uint, Char),
         llvm::Function::ExternalLinkage, "ascii", global_module);
 
     llvm::Value* val = ascii_->args().begin();

@@ -132,7 +132,6 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
-  Type::initialize_operator_table();
 
 
   // Init global module, function, etc.

@@ -113,6 +113,7 @@ void FnScope::enter() {
 
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
+  // TODO multiple return types for now just take one
   if (fn_type_->return_type()->is_user_defined()) {
     auto iter = llvm_fn_->args().end();
     --iter;
@@ -120,14 +121,15 @@ void FnScope::enter() {
     // return_val_ is the last argument
     return_val_->setName("retval");
 
+    // TODO multiple return types for now just take one
   } else if (fn_type_->return_type() != Void) {
+    // TODO multiple return types for now just take one
     return_val_ = fn_type_->return_type()->allocate(bldr_);
     return_val_->setName("retval");
   }
 
   Scope::enter();
 }
-
 
 // TODO simplify this. No need for an exit block unless it's in FnScope
 void Scope::exit() {
@@ -141,6 +143,7 @@ void SimpleFnScope::exit() {
   // Thus, calling up to Scope::exit() is not possible.
   uninitialize();
 
+  // TODO multiple return types for now just take one
   if (fn_type_->return_type() == Void) {
     bldr_.CreateRetVoid();
 
@@ -153,7 +156,9 @@ void SimpleFnScope::exit() {
 void FnScope::exit() {
   Scope::exit();
 
+  // TODO multiple return types for now just take one
   if (fn_type_->return_type() == Void
+      // TODO multiple return types for now just take one
       || fn_type_->return_type()->is_user_defined()) {
     bldr_.CreateRetVoid();
 
@@ -170,6 +175,7 @@ void GenericFnScope::make_return(llvm::Value* val) {
   // nullptr means void return type
   if (val == nullptr) return;
 
+  // TODO multiple return types for now just take one
   auto ret_type = fn_type_->return_type();
   if (ret_type->is_user_defined()) {
     // TODO pull out memcpy into a single fn call

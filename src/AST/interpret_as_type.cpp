@@ -3,9 +3,7 @@
 namespace AST {
   Type* Binop::interpret_as_type() {
     if (op_ == Language::Operator::Arrow) {
-      return Type::get_function(
-          lhs_->interpret_as_type(),
-          rhs_->interpret_as_type());
+      return Func(lhs_->interpret_as_type(), rhs_->interpret_as_type());
     }
 
     // TODO more cases here probably
@@ -13,7 +11,7 @@ namespace AST {
   }
 
   Type* ArrayType::interpret_as_type() {
-    return Type::get_array(array_type_->interpret_as_type());
+    return Arr(array_type_->interpret_as_type());
   }
 
   Type* ChainOp::interpret_as_type() {
@@ -31,7 +29,7 @@ namespace AST {
         type_vec[position] = eptr->interpret_as_type();
         ++position;
       }
-      return Type::get_tuple(type_vec);
+      return Tup(type_vec);
     }
 
     return Error;

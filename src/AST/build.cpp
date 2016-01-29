@@ -284,7 +284,8 @@ namespace AST {
   }
 
   NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
-    return build(Language::Terminal::ASCII, std::forward<NPtrVec&&>(nodes), Type::get_function(Uint, Char));
+    return build(Language::Terminal::ASCII,
+        std::forward<NPtrVec&&>(nodes), Func(Uint, Char));
   }
 
 

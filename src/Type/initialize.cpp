@@ -21,21 +21,19 @@ namespace data {
 
 extern llvm::Module* global_module;
 
-namespace TypeSystem {
-  void Primitive::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-    switch (type_) {
-      case TypeEnum::Error:   assert(false && "Constructor called for type Error");
-      case TypeEnum::Unknown: assert(false && "Constructor called for unknown type");
-      case TypeEnum::Type:    assert(false && "Constructor called for type");
-      case TypeEnum::Void:    assert(false && "Constructor called for void type");
-      case TypeEnum::Bool:    bldr.CreateStore(data::const_false(),    var); return;
-      case TypeEnum::Char:    bldr.CreateStore(data::const_char('\0'), var); return;
-      case TypeEnum::Int:     bldr.CreateStore(data::const_int(0),     var); return;
-      case TypeEnum::Real:    bldr.CreateStore(data::const_real(0),    var); return;
-      case TypeEnum::Uint:    bldr.CreateStore(data::const_uint(0),    var); return;
-    }
+void Primitive::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+  switch (type_) {
+    case TypeEnum::Error:   assert(false && "Constructor called for type Error");
+    case TypeEnum::Unknown: assert(false && "Constructor called for unknown type");
+    case TypeEnum::Type:    assert(false && "Constructor called for type");
+    case TypeEnum::Void:    assert(false && "Constructor called for void type");
+    case TypeEnum::Bool:    bldr.CreateStore(data::const_false(),    var); return;
+    case TypeEnum::Char:    bldr.CreateStore(data::const_char('\0'), var); return;
+    case TypeEnum::Int:     bldr.CreateStore(data::const_int(0),     var); return;
+    case TypeEnum::Real:    bldr.CreateStore(data::const_real(0),    var); return;
+    case TypeEnum::Uint:    bldr.CreateStore(data::const_uint(0),    var); return;
   }
-}  // namespace TypeSystem
+}
 
 // TODO Change this is array size is known at compile time
 void Array::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
@@ -67,7 +65,7 @@ void Enum::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 
 void UserDefined::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {
-    init_fn_ = llvm::Function::Create(Type::get_function(Ptr(this), Void)->llvm(),
+    init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
         llvm::Function::ExternalLinkage, "init." + to_string(), global_module);
 
     auto block = make_block("entry", init_fn_);
@@ -104,7 +102,7 @@ llvm::Function* Array::initialize() {
 
   FnScope* fn_scope = Scope::build_fn<FnScope>();
   fn_scope->set_parent_function(init_fn_);
-  fn_scope->set_type(get_function(this, Void));
+  fn_scope->set_type(Func(this, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
   fn_scope->enter();
@@ -127,7 +125,7 @@ llvm::Function* Array::initialize() {
 
   // TODO more generally, determine whether zeroing out the type
   // is the correct behavior for initialization
-  auto use_calloc = data_type()->isPrimitive();
+  auto use_calloc = data_type()->is_primitive();
 
   // (M/C)alloc call
   auto alloc_call = bldr.CreateCall(

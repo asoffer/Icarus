@@ -16,9 +16,7 @@ namespace data {
 extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 extern llvm::Module* global_module;
 
-namespace TypeSystem {
-  void Primitive::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
-}  // namespace TypeSystem
+void Primitive::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
 void Array::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (uninit_fn_ == nullptr) {
@@ -28,7 +26,7 @@ void Array::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 
     FnScope* fn_scope = Scope::build_fn<FnScope>();
     fn_scope->set_parent_function(uninit_fn_);
-    fn_scope->set_type(get_function(Ptr(this), Void));
+    fn_scope->set_type(Func(Ptr(this), Void));
 
     llvm::IRBuilder<>& fnbldr = fn_scope->builder();
     fn_scope->enter();
@@ -79,7 +77,7 @@ void UserDefined::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (!requires_uninit()) return;
 
   if (uninit_fn_ == nullptr) {
-    uninit_fn_ = llvm::Function::Create(Type::get_function(Ptr(this), Void)->llvm(),
+    uninit_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
         llvm::Function::ExternalLinkage, "uninit." + to_string(), global_module);
 
     auto block = make_block("entry", uninit_fn_);

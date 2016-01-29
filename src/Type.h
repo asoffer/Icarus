@@ -28,23 +28,39 @@ namespace AST {
 }  // namespace AST
 
 class Type;
-class Function;
-class Pointer;
-class Enum;
+class Primitive;
 class Array;
+class Tuple;
+class Pointer;
+
+class Function;
+class Enum;
 class UserDefined;
 
-extern Type* Error;
-extern Type* Unknown;
-extern Type* Bool;
-extern Type* Char;
-extern Type* Int;
-extern Type* Real;
-extern Type* Type_;
-extern Type* Uint;
-extern Type* Void;
-extern Type* RawPtr;
-extern Type* Ptr(Type* t);
+namespace TypeSystem {
+  void initialize();
+  extern std::map<std::string, Type*> Literals;
+  extern Type* get_operator(Language::Operator op, Type* signature);
+}  // namespace TypeSystem
+
+extern Primitive* Error;
+extern Primitive* Unknown;
+extern Primitive* Bool;
+extern Primitive* Char;
+extern Primitive* Int;
+extern Primitive* Real;
+extern Primitive* Type_;
+extern Primitive* Uint;
+extern Primitive* Void;
+extern Pointer* RawPtr;
+
+extern Pointer* Ptr(Type* t);
+extern Array* Arr(Type* t);
+extern Tuple* Tup(const std::vector<Type*>& t);
+extern Function* Func(Type* in, Type* out);
+extern Function* Func(std::vector<Type*> in, Type* out);
+extern Function* Func(Type* in, std::vector<Type*> out);
+extern Function* Func(std::vector<Type*> in, std::vector<Type*> out);
 
 #include "typedefs.h"
 
@@ -72,7 +88,7 @@ class Type {
     friend class ::UserDefined;
     friend class ::Enum;
 
-    operator llvm::Type* () { return llvm(); }
+    virtual operator llvm::Type* () const { return llvm_type_; }
 
     size_t bytes() const;
 
@@ -82,11 +98,6 @@ class Type {
     // type to a string literal, and using a string literal should import strings.
     static Type* get_string();
 
-    static Function* get_function(Type* in, Type* out);
-    static Function* get_function(std::vector<Type*> in, Type* out);
-
-    static Type* get_tuple(const std::vector<Type*>& types);
-    static Type* get_array(Type* t);
     static Type* get_user_defined(const std::string& name);
     static Type* get_enum(const std::string& name);
     static Type* get_type_from_identifier(const std::string& name);
@@ -97,7 +108,7 @@ class Type {
     static std::map<std::string, Type*> literals;
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const {
-      return bldr.CreateAlloca(llvm());
+      return bldr.CreateAlloca(*this);
     }
 
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
@@ -112,21 +123,17 @@ class Type {
 
     virtual bool requires_uninit() const { return false; }
 
+    virtual bool is_primitive()     const { return false; }
     virtual bool is_array()         const { return false; }
-    virtual bool is_function()      const { return false; }
-    virtual bool is_pointer()       const { return false; }
-    virtual bool isPrimitive()      const { return false; }
     virtual bool is_tuple()         const { return false; }
-    virtual bool is_void()          const { return this == Void; }
+    virtual bool is_pointer()       const { return false; }
+    virtual bool is_function()      const { return false; }
     virtual bool is_user_defined()  const { return false; }
     virtual bool is_enum()          const { return false; }
 
-    static Type* get_operator(Language::Operator op, Type* signature);
-    static void initialize_operator_table();
-
     llvm::Type* llvm() const { return llvm_type_; }
 
-    Type() : assign_fn_(nullptr) {}
+    Type();
 
     virtual ~Type() {}
 
@@ -136,112 +143,137 @@ class Type {
     // the inliner to do it's job.
     llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
-
-  private:
-    // Takes in an operator and returns a set of the possible functions signatures
-    static std::map<Language::Operator, std::map<Type*, Type*>> op_map_;
 };
 
 
 #undef ENDING
 #define ENDING
 
+class Primitive : public Type {
+  public:
+    Primitive() = delete;
+    virtual ~Primitive() {}
+    virtual bool is_primitive() const { return true; }
+    friend void TypeSystem::initialize();
 
-namespace TypeSystem {
-  class Primitive : public Type {
-    public:
-      enum class TypeEnum {
-        Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
-      };
+    virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr,
+        llvm::Value* val, Type* to_type);
 
-      Primitive() = delete;
-      Primitive(TypeEnum pt);
-      virtual ~Primitive() {}
-      virtual bool isPrimitive() const { return true; }
+    BASIC_FUNCTIONS;
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
-      virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
-      virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr,
-          llvm::Value* val, Type* to_type);
+  private:
+    enum class TypeEnum {
+      Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
+    };
+
+    Primitive(TypeEnum pt);
+
+    Primitive::TypeEnum type_;
+    llvm::Function* repr_fn_;
+};
+
+class Array : public Type {
+  public:
+    Array() = delete;
+    virtual ~Array() {}
+    virtual bool is_array() const { return true; }
+    friend Array* Arr(Type*);
+
+    friend class AST::Declaration;
+    friend class Type;
+
+      virtual bool requires_uninit() const;
+      virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
       BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
+      virtual Type* data_type() const { return type_; }
+      virtual size_t dim() const { return dim_; }
+
+      llvm::Function* initialize();
+      llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr,
+          llvm::Value* runtime_len = nullptr);
+
+
     private:
-      Primitive::TypeEnum type_;
-      llvm::Function* repr_fn_;
+      Array(Type* t);
+
+      // Not the length of the array, but the dimension. That is, it's how many
+      // times you can access an element.
+      size_t dim_;
+
+      llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
+
+      Type* type_;
   };
-
-  void initialize();
-
-  extern std::map<std::string, Type*> Literals;
-}  // namespace TypeSystem
-
 
 class Tuple : public Type {
   public:
-    friend class Type;
-    friend class Function;
+    Tuple() = delete;
+    virtual ~Tuple() {}
+    virtual bool is_tuple() const { return true; }
+    friend Tuple* Tup(const std::vector<Type*>&);
+
+    std::vector<Type*> entry_types() { return entry_types_; }
+
     // TODO requires_uninit()
 
-    virtual bool is_tuple() const { return true; }
-
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
-
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-
     size_t size() const { return entry_types_.size(); } 
 
-    virtual ~Tuple() {}
-
   private:
-    Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+    Tuple(const std::vector<Type*>& types);
 
     std::vector<Type*> entry_types_;
-
-    static std::vector<Tuple*> tuple_types_;
 };
 
 class Function : public Type {
   public:
-    friend class Type;
+    Function() = delete;
+    virtual ~Function() {}
     virtual bool is_function() const { return true; }
-    Type* argument_type() const { return input_type_; }
-    Type* return_type() const { return output_type_; }
+    friend Function* Func(Type* in, Type* out);
 
-    llvm::FunctionType* llvm() const {
+    operator llvm::FunctionType* () const {
       return static_cast<llvm::FunctionType*>(llvm_type_);
     }
 
-    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
+    Type* argument_type() const { return input_type_; }
+    Type* return_type()   const { return output_type_; }
 
+    virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-    virtual ~Function() {}
 
   private:
     Function(Type* in, Type* out);
 
     Type* input_type_;
     Type* output_type_;
-
-    static std::vector<Function*> fn_types_;
 };
 
 class Pointer : public Type {
   public:
-    friend Type* Ptr(Type*);
-
+    Pointer() = delete;
+    virtual ~Pointer() {}
     virtual bool is_pointer() const { return true; }
+
+    friend Pointer* Ptr(Type*);
+
     Type* pointee_type() const { return pointee_type_; }
 
 
@@ -251,55 +283,10 @@ class Pointer : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    virtual ~Pointer() {}
 
   private:
-    Pointer(Type* t) : pointee_type_(t) {
-      llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
-    }
+    Pointer(Type* t);
     Type* pointee_type_;
-
-    static std::vector<Pointer*> pointer_types_;
-};
-
-class Array : public Type {
-  public:
-    friend class AST::Declaration;
-    friend class Type;
-
-    virtual bool requires_uninit() const;
-    virtual bool is_array() const { return true; }
-
-    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
-
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
-    virtual Type* data_type() const { return type_; }
-    virtual size_t dim() const { return dim_; }
-    llvm::Function* initialize();
-    llvm::Value* initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len = nullptr);
-
-    virtual ~Array() {}
-
-  private:
-    // A value of -1 for the length means this is to be dependently typed. All
-    // other values are the actual type
-    Array(Type* t);
-
-    // Not the length of the array, but the dimension. That is, it's how many
-    // times you can access an element.
-    size_t dim_;
-
-    llvm::Function
-      * init_fn_,
-      * uninit_fn_,
-      * repr_fn_;
-
-    Type* type_;
-
-    static std::vector<Array*> array_types_;
 };
 
 class UserDefined : public Type {

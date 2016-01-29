@@ -13,7 +13,7 @@ namespace data {
   extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
-void TypeSystem::Primitive::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+void Primitive::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   if (this == Bool) {
     call_repr(bldr, val);
 
@@ -47,7 +47,7 @@ void UserDefined::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   // TODO ensure that you only call print if you have defined it.
 }
 
-void TypeSystem::Primitive::set_print(llvm::Function* fn) {}
+void Primitive::set_print(llvm::Function* fn) {}
 void Pointer::set_print(llvm::Function* fn) {}
 void Tuple::set_print(llvm::Function* fn) {}
 void Function::set_print(llvm::Function* fn) {}

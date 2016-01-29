@@ -43,8 +43,10 @@ namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
     if (type()->is_function()) {
       return global_module->getFunction(token());
+
     } else if (type()->is_user_defined()) {
       return alloc_;
+
     } else {
       return scope->builder().CreateLoad(alloc_, token());
     }
@@ -87,11 +89,8 @@ namespace AST {
           auto char_array_ptr = scope->builder().CreateGEP(str_alloc,
               { data::const_uint(0), data::const_uint(0) });
 
-          auto char_array_type = static_cast<Array*>(Type::get_array(Char));
-
           // NOTE: no need to uninitialize because we never initialized it.
-
-          auto char_ptr = char_array_type->initialize_literal(
+          auto char_ptr = Arr(Char)->initialize_literal(
               scope->builder(), len);
   
           scope->builder().CreateStore(char_ptr, char_array_ptr);
@@ -132,6 +131,7 @@ namespace AST {
 
       case Operator::Call:
         {
+          // TODO multiple return types. For now ignoring all but first
           auto fn_type = static_cast<Function*>(expr_->type());
           if (fn_type->return_type()->is_user_defined()) {
             // TODO move this outside of any potential loops
@@ -196,6 +196,8 @@ namespace AST {
       }
 
       auto udef_type = static_cast<UserDefined*>(lhs_type);
+      udef_type->field_num(rhs_->token())->dump();
+
       auto retval = scope->builder().CreateGEP(lhs_val,
           { data::const_uint(0), udef_type->field_num(rhs_->token()) });
       return (type()->is_user_defined())
@@ -262,7 +264,7 @@ namespace AST {
             arg_vals = { rhs_val };
           }
 
-          if (type()->is_void()) {
+          if (type() == Void) {
             scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
             return nullptr;
 
@@ -526,27 +528,17 @@ namespace AST {
 
     // Treat functions special
     if (lhs->is_identifier() && rhs->type()->is_function()) {
-      if (lhs->token() == "__print__") {
-        // TODO type verification to assert print only one value
-
-        // get the first argument
+      if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
         val = rhs->generate_code(scope);
         if (val == nullptr) return nullptr;
 
+        // NOTE: Type verification asserts that the first argument of
+        // each of these is the correct type.
+        // TODO This verification hasn't yet been implemented
         auto rhs_as_func = static_cast<Function*>(rhs->type());
         auto arg_type = rhs_as_func->argument_type();
+
         arg_type->set_print(static_cast<llvm::Function*>(val));
-
-      } else if (lhs->token() == "__assign__") {
-        // TODO type verification
-
-        // get the first argument
-        val = rhs->generate_code(scope);
-        if (val == nullptr) return nullptr;
-
-        auto rhs_as_func = static_cast<Function*>(rhs->type());
-        auto arg_type = rhs_as_func->argument_type();
-        arg_type->set_assign(static_cast<llvm::Function*>(val));
 
       } else {
         auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
