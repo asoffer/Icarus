@@ -133,11 +133,11 @@ namespace AST {
         lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
       }
 
-      if (lhs_type->is_user_defined()) {
-        auto user_def_type = static_cast<UserDefined*>(lhs_type);
+      if (lhs_type->is_struct()) {
+        auto struct_type = static_cast<Structure*>(lhs_type);
         // TODO TOKENREMOVAL
         // rhs_ must be and identifier in this case
-        auto member_type = user_def_type->field(rhs_->token());
+        auto member_type = struct_type->field(rhs_->token());
         if (member_type == nullptr) {
           // TODO better error message
           // TODO TOKENREMOVAL
@@ -281,14 +281,12 @@ namespace AST {
     if (decl_type_->is_type_literal()) {
       auto type_lit = std::static_pointer_cast<TypeLiteral>(decl_type_);
       type_lit->type_value_ = 
-        Type::make_user_defined(type_lit->decls_, 
-            infer_type_ ? identifier_string() : "__anon.type");
+        Struct(infer_type_ ? identifier_string() : "__anon.type", type_lit->decls_); 
 
     } else if (decl_type_->is_enum_literal()) {
       auto enum_lit = std::static_pointer_cast<EnumLiteral>(decl_type_);
       enum_lit->type_value_ =
-        Type::make_enum(enum_lit,
-            infer_type_ ? identifier_string() : "__anon.enum");
+        Enum(infer_type_ ? identifier_string() : "__anon.enum", enum_lit.get());
     }
 
     id_->expr_type_ = (infer_type_
@@ -307,7 +305,7 @@ namespace AST {
 
   void Terminal::verify_types() {
     if (terminal_type_ == Language::Terminal::StringLiteral) {
-      expr_type_ = Type::get_string();
+      expr_type_ = String;
     }
   }
 

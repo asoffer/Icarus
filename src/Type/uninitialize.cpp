@@ -71,9 +71,9 @@ void Tuple::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 
 void Pointer::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 void Function::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
-void Enum::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
+void Enumeration::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {}
 
-void UserDefined::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Structure::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (!requires_uninit()) return;
 
   if (uninit_fn_ == nullptr) {

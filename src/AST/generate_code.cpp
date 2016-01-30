@@ -17,7 +17,6 @@ extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn)
 extern ErrorLog error_log;
 
 extern llvm::Module* global_module;
-extern llvm::DataLayout* data_layout;
 
 namespace cstdlib {
   extern llvm::Constant* memcpy();
@@ -39,12 +38,22 @@ namespace data {
   extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
 }  // namespace data
 
+llvm::Value* struct_memcpy(Type* type, llvm::Value* val, llvm::IRBuilder<>& bldr) {
+  auto arg_ptr = bldr.CreateAlloca(*type, nullptr, "struct.tmp");
+  auto tmp_raw = bldr.CreateBitCast(arg_ptr, *RawPtr);
+  auto val_raw = bldr.CreateBitCast(val, *RawPtr);
+  auto mem_copy = bldr.CreateCall(cstdlib::memcpy(),
+      { tmp_raw, val_raw, data::const_uint(type->bytes()) });
+
+  return bldr.CreateBitCast(mem_copy, *Ptr(type));
+}
+
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
     if (type()->is_function()) {
       return global_module->getFunction(token());
 
-    } else if (type()->is_user_defined()) {
+    } else if (type()->is_struct()) {
       return alloc_;
 
     } else {
@@ -131,9 +140,8 @@ namespace AST {
 
       case Operator::Call:
         {
-          // TODO multiple return types. For now ignoring all but first
           auto fn_type = static_cast<Function*>(expr_->type());
-          if (fn_type->return_type()->is_user_defined()) {
+          if (fn_type->return_type()->is_struct()) {
             // TODO move this outside of any potential loops
             auto local_ret = scope->builder().CreateAlloca(
                 *fn_type->return_type());
@@ -151,16 +159,10 @@ namespace AST {
           // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
           val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
 
-        } else if (expr_->type()->is_user_defined()) {
-          auto tmp = scope->builder().CreateAlloca(*expr_->type(), nullptr, "struct.tmp");
-          // TODO pull out memcpy into a single fn call
-          auto tmp_raw = scope->builder().CreateBitCast(tmp, *RawPtr);
-          auto val_raw = scope->builder().CreateBitCast(val, *RawPtr);
-          auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
-              { tmp_raw, val_raw, data::const_uint(
-                data_layout->getTypeStoreSize(*expr_->type())) });
-          val = scope->builder().CreateBitCast(mem_copy, *Ptr(expr_->type()));
+        } else if (expr_->type()->is_struct()) {
+          val = struct_memcpy(expr_->type(), val, scope->builder());
         }
+
         expr_->type()->call_print(scope->builder(), val);
         return nullptr;
 
@@ -183,23 +185,23 @@ namespace AST {
       auto lhs_type = lhs_->type();
 
       if (lhs_->type() == Type_ && lhs_->interpret_as_type()->is_enum()) {
-        auto enum_type = static_cast<Enum*>(lhs_->interpret_as_type());
+        auto enum_type = static_cast<Enumeration*>(lhs_->interpret_as_type());
         return enum_type->get_value(rhs_->token());
       }
 
       auto lhs_val = lhs_->generate_code(scope);
       while (lhs_type->is_pointer()) {
         lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
-        if (!lhs_type->is_user_defined()) {
+        if (!lhs_type->is_struct()) {
           lhs_val = scope->builder().CreateLoad(lhs_val);
         }
       }
 
-      auto udef_type = static_cast<UserDefined*>(lhs_type);
+      auto struct_type = static_cast<Structure*>(lhs_type);
 
       auto retval = scope->builder().CreateGEP(lhs_val,
-          { data::const_uint(0), udef_type->field_num(rhs_->token()) });
-      return (type()->is_user_defined())
+          { data::const_uint(0), struct_type->field_num(rhs_->token()) });
+      return (type()->is_struct())
         ? retval
         : scope->builder().CreateLoad(retval);
     }
@@ -222,19 +224,9 @@ namespace AST {
               arg_vals[i] = expr->generate_code(scope);
               if (arg_vals[i] == nullptr) return nullptr;
 
-              if (expr->type()->is_user_defined()) {
-                auto arg_ptr = scope->builder()
-                  .CreateAlloca(*expr->type(), nullptr, "struct.tmp");
-
-                // TODO pull out memcpy into a single fn call
-                auto tmp_raw = scope->builder().CreateBitCast(arg_ptr, *RawPtr);
-                auto val_raw = scope->builder().CreateBitCast(arg_vals[i], *RawPtr);
-
-                auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
-                    { tmp_raw, val_raw, data::const_uint(
-                      data_layout->getTypeStoreSize(*expr->type())) });
-
-                arg_vals[i] = scope->builder().CreateBitCast(mem_copy, *Ptr(expr->type()));
+              if (expr->type()->is_struct()) {
+                arg_vals[i] =
+                  struct_memcpy(expr->type(), arg_vals[i], scope->builder());
               }
 
               ++i;
@@ -244,20 +236,9 @@ namespace AST {
             auto rhs_val = rhs_->generate_code(scope);
             if (rhs_val == nullptr) return nullptr;
 
-            if (rhs_->type()->is_user_defined()) {
+            if (rhs_->type()->is_struct()) {
               // TODO be sure to allocate this ahead of all loops and reuse it when possible
-
-              auto arg_ptr = scope->builder().CreateAlloca(*rhs_->type(), nullptr, "struct.tmp");
-
-              // TODO pull out memcpy into a single fn call
-              auto tmp_raw = scope->builder().CreateBitCast(arg_ptr, *RawPtr);
-              auto val_raw = scope->builder().CreateBitCast(rhs_val, *RawPtr);
-
-              auto mem_copy = scope->builder().CreateCall(cstdlib::memcpy(),
-                  { tmp_raw, val_raw, data::const_uint(
-                    data_layout->getTypeStoreSize(*rhs_->type())) });
-
-              rhs_val = scope->builder().CreateBitCast(mem_copy, *Ptr(rhs_->type()));
+              rhs_val = struct_memcpy(rhs_->type(), rhs_val, scope->builder());
             } 
 
             arg_vals = { rhs_val };
@@ -482,14 +463,14 @@ namespace AST {
       // Set alloc
       auto decl_id = input_iter->declared_identifier();
       auto decl_type = decl_id->type();
-      if (decl_type->is_user_defined()) {
+      if (decl_type->is_struct()) {
         decl_id->alloc_ = arg_iter;
       }
 
       ++arg_iter;
     }
 
-    if (return_type_->interpret_as_type()->is_user_defined()) {
+    if (return_type_->interpret_as_type()->is_struct()) {
       arg_iter->setName("retval");
     }
 
@@ -503,7 +484,7 @@ namespace AST {
     for (auto& input_iter : inputs_) {
       auto decl_id = input_iter->declared_identifier();
 
-      if (!decl_id->type()->is_user_defined()) {
+      if (!decl_id->type()->is_struct()) {
         fn_scope_->builder().CreateCall(decl_id->type()->assign(),
             { arg, input_iter->declared_identifier()->alloc_ });
       }

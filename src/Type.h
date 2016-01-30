@@ -33,13 +33,14 @@ class Array;
 class Tuple;
 class Pointer;
 class Function;
-class Enum;
-class UserDefined;
+class Enumeration;
+class Structure;
 
 namespace TypeSystem {
   void initialize();
   extern std::map<std::string, Type*> Literals;
   extern Type* get_operator(Language::Operator op, Type* signature);
+  extern Type* get(const std::string& name);
 }  // namespace TypeSystem
 
 extern Primitive* Error;
@@ -52,6 +53,7 @@ extern Primitive* Type_;
 extern Primitive* Uint;
 extern Primitive* Void;
 extern Pointer* RawPtr;
+extern Structure* String;
 
 extern Pointer* Ptr(Type* t);
 extern Array* Arr(Type* t);
@@ -60,6 +62,10 @@ extern Function* Func(Type* in, Type* out);
 extern Function* Func(std::vector<Type*> in, Type* out);
 extern Function* Func(Type* in, std::vector<Type*> out);
 extern Function* Func(std::vector<Type*> in, std::vector<Type*> out);
+extern Enumeration* Enum(const std::string& name,
+    const AST::EnumLiteral* e = nullptr);
+extern Structure* Struct(const std::string& name,
+    const std::vector<DeclPtr>& decls = {});
 
 #include "typedefs.h"
 
@@ -85,8 +91,6 @@ virtual void call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING
 class Type {
   public:
     friend class ::Array;
-    friend class ::UserDefined;
-    friend class ::Enum;
 
     virtual operator llvm::Type* () const { return llvm_type_; }
 
@@ -97,13 +101,6 @@ class Type {
     // string library. This should never come up, because it's only used to add
     // type to a string literal, and using a string literal should import strings.
     static Type* get_string();
-
-    static Type* get_user_defined(const std::string& name);
-    static Type* get_enum(const std::string& name);
-    static Type* get_type_from_identifier(const std::string& name);
-
-    static UserDefined* make_user_defined(const std::vector<DeclPtr>& decls, const std::string& name);
-    static Enum* make_enum(std::shared_ptr<AST::EnumLiteral> enumlit, const std::string& name);
 
     static std::map<std::string, Type*> literals;
 
@@ -123,13 +120,13 @@ class Type {
 
     virtual bool requires_uninit() const { return false; }
 
-    virtual bool is_primitive()     const { return false; }
-    virtual bool is_array()         const { return false; }
-    virtual bool is_tuple()         const { return false; }
-    virtual bool is_pointer()       const { return false; }
-    virtual bool is_function()      const { return false; }
-    virtual bool is_user_defined()  const { return false; }
-    virtual bool is_enum()          const { return false; }
+    virtual bool is_primitive() const { return false; }
+    virtual bool is_array()     const { return false; }
+    virtual bool is_tuple()     const { return false; }
+    virtual bool is_pointer()   const { return false; }
+    virtual bool is_function()  const { return false; }
+    virtual bool is_struct()    const { return false; }
+    virtual bool is_enum()      const { return false; }
 
     llvm::Type* llvm() const { return llvm_type_; }
 
@@ -238,6 +235,29 @@ class Tuple : public Type {
     std::vector<Type*> entry_types_;
 };
 
+class Pointer : public Type {
+  public:
+    Pointer() = delete;
+    virtual ~Pointer() {}
+    virtual bool is_pointer() const { return true; }
+
+    friend Pointer* Ptr(Type*);
+
+    Type* pointee_type() const { return pointee_type_; }
+
+
+    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
+
+    BASIC_FUNCTIONS;
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+
+  private:
+    Pointer(Type* t);
+    Type* pointee_type_;
+};
+
 class Function : public Type {
   public:
     Function() = delete;
@@ -266,36 +286,38 @@ class Function : public Type {
     Type* output_type_;
 };
 
-class Pointer : public Type {
+class Enumeration : public Type {
   public:
-    Pointer() = delete;
-    virtual ~Pointer() {}
-    virtual bool is_pointer() const { return true; }
-
-    friend Pointer* Ptr(Type*);
-
-    Type* pointee_type() const { return pointee_type_; }
-
-
-    virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
+    Enumeration() = delete;
+    virtual ~Enumeration() {}
+    virtual bool is_enum() const { return true; }
+    friend Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e );
 
     BASIC_FUNCTIONS;
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
+    llvm::Value* get_value(const std::string& str) const { return intval_.at(str); }
 
   private:
-    Pointer(Type* t);
-    Type* pointee_type_;
+    Enumeration(const std::string& name, const AST::EnumLiteral* enumlit);
+
+    std::string name_;
+    llvm::Function* repr_fn_;
+    std::map<std::string, llvm::Value*> intval_;
 };
 
-class UserDefined : public Type {
+class Structure : public Type {
   public:
-    friend class Type;
-    UserDefined();
-    virtual ~UserDefined() {}
-    virtual bool is_user_defined() const { return true; }
+    Structure();
+    virtual ~Structure() {}
+    virtual bool is_struct() const { return true; }
+    friend Structure* Struct(const std::string& name,
+        const std::vector<DeclPtr>& decls);
 
+    Structure(const std::string& name, const std::vector<DeclPtr>& decls);
+
+    friend Type* TypeSystem::get(const std::string& name);
     virtual bool requires_uninit() const;
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
@@ -309,38 +331,17 @@ class UserDefined : public Type {
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
 
   private:
+    std::string name_;
+
     llvm::Function
       * init_fn_,
       * uninit_fn_,
       * print_fn_;
 
     std::vector<std::pair<std::string, Type*>> fields_;
-
-    static std::map<std::string, UserDefined*> lookup_;
 };
 
 
-class Enum : public Type {
-  public:
-    friend class Type;
-
-    Enum() = delete;
-    Enum(AST::EnumLiteral* enumlit);
-
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
-    virtual ~Enum() {}
-    virtual bool is_enum() const { return true; }
-    llvm::Value* get_value(const std::string& str) const { return intval_.at(str); }
-
-  private:
-    llvm::Function* repr_fn_;
-    std::map<std::string, llvm::Value*> intval_;
-
-    static std::map<std::string, Enum*> lookup_;
-};
 
 std::ostream& operator<<(std::ostream& os, const Type& t);
 

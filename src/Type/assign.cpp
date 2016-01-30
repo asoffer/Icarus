@@ -148,7 +148,7 @@ llvm::Function* Tuple::assign() {
   return nullptr;
 }
 
-llvm::Function* UserDefined::assign() {
+llvm::Function* Structure::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
@@ -171,7 +171,7 @@ llvm::Function* UserDefined::assign() {
 
      auto field_val = bldr.CreateGEP(llvm(), val,
          { data::const_uint(0), data::const_uint(field_num) });
-     if (!field_type->is_user_defined()) {
+     if (!field_type->is_struct()) {
        field_val = bldr.CreateLoad(*field_type, field_val);
      }
      auto field_var = bldr.CreateGEP(llvm(), var,
@@ -185,7 +185,7 @@ llvm::Function* UserDefined::assign() {
   return assign_fn_;
 }
 
-llvm::Function* Enum::assign() {
+llvm::Function* Enumeration::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
@@ -209,8 +209,8 @@ void Pointer::set_assign(llvm::Function* fn) {}
 void Tuple::set_assign(llvm::Function* fn) {}
 void Function::set_assign(llvm::Function* fn) {}
 void Array::set_assign(llvm::Function* fn) {}
-void Enum::set_assign(llvm::Function* fn) {}
-void UserDefined::set_assign(llvm::Function* fn) {
+void Enumeration::set_assign(llvm::Function* fn) {}
+void Structure::set_assign(llvm::Function* fn) {
   assign_fn_ = fn;
   assign_fn_->setName("assign." + to_string());
 }

@@ -35,4 +35,4 @@ llvm::Value* Pointer::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type*
 llvm::Value* Tuple::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
 llvm::Value* Function::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
 llvm::Value* Array::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
-llvm::Value* UserDefined::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
+llvm::Value* Structure::call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }

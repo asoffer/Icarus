@@ -116,12 +116,12 @@ llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) 
 #include "config/binary_operators.conf"
 #undef TYPE
 
-#define TYPE UserDefined
+#define TYPE Structure
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
-#define TYPE Enum
+#define TYPE Enumeration
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE

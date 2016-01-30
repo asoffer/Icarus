@@ -221,7 +221,7 @@ void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "&_%x"), val });
 }
 
-void Enum::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+void Enumeration::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   // TODO print the enum's name as a string. This requires preallocating
   // an array of global strings and accesssing that.
   //
@@ -231,4 +231,4 @@ void Enum::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 }
 
 void Tuple::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
-void UserDefined::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}
+void Structure::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}

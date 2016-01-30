@@ -76,26 +76,5 @@ std::string Tuple::to_string() const {
   return ss.str();
 }
 
-std::string UserDefined::to_string() const {
-  // Hacky reverse lookup.
-  // TODO Is it worth storing the table in a reverse-lookup as well?
-  for (const auto& kv : lookup_) {
-    if (kv.second == this) {
-      return kv.first;
-    }
-  }
-
-  assert(false && "User-defined type is not in the type database.");
-}
-
-std::string Enum::to_string() const {
-  // Hacky reverse lookup.
-  // TODO Is it worth storing the table in a reverse-lookup as well?
-  for (const auto& kv : lookup_) {
-    if (kv.second == this) {
-      return kv.first;
-    }
-  }
-
-  assert(false && "Enum is not in the type database.");
-}
+std::string Structure::to_string()   const { return name_; }
+std::string Enumeration::to_string() const { return name_; }

@@ -28,12 +28,12 @@ bool Function::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
   return false;
 }
 
-bool Enum::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
+bool Enumeration::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
   llvm_in.push_back(*this);
   return true;
 }
 
-bool UserDefined::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
+bool Structure::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
   llvm_in.push_back(*Ptr(this));
   return true;
 }

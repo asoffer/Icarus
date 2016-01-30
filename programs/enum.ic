@@ -5,6 +5,14 @@ suit := enum {
   spade
 }
 
+get_color := (s: suit) -> color {
+  return case {
+    s == suit.club   =>  color.black
+    s == suit.spade  =>  color.black
+    else             =>  color.red
+  }
+}
+
 marshmallow := enum {
   heart
   star
@@ -25,25 +33,12 @@ main := void -> void {
   s = suit.spade
   print s
   print '\n'
-  print case {
-    s == suit.diamond  =>  color.red
-    s == suit.heart    =>  color.red
-    else               =>  color.black
-  }
+  print get_color(s)
   print '\n'
-
   s = suit.diamond
-  print case {
-    s == suit.diamond  =>  color.red
-    s == suit.heart    =>  color.red
-    else               =>  color.black
-  }
+  print get_color(s)
   print '\n'
-  print case {
-    s != suit.diamond  =>  color.red
-    s != suit.heart    =>  color.red
-    else               =>  color.black
-  }
+  print get_color(suit.spade)
   print '\n'
 }
 

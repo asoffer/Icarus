@@ -562,14 +562,14 @@ namespace AST {
 
     private:
       Scope* type_scope_;
-      UserDefined* type_value_;
+      Structure* type_value_;
       std::vector<DeclPtr> decls_;
   };
 
 
   class EnumLiteral : public Expression {
     public:
-      friend class ::Enum;
+      friend class ::Enumeration;
       friend class Declaration;
 
       static NPtr build(NPtrVec&& nodes);
@@ -585,7 +585,7 @@ namespace AST {
 
     private:
       Scope* enum_scope_;
-      Enum* type_value_;
+      Enumeration* type_value_;
       std::vector<std::string> vals_;
   };
 

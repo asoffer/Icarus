@@ -114,7 +114,7 @@ void FnScope::enter() {
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
   // TODO multiple return types for now just take one
-  if (fn_type_->return_type()->is_user_defined()) {
+  if (fn_type_->return_type()->is_struct()) {
     auto iter = llvm_fn_->args().end();
     --iter;
     return_val_ = iter;
@@ -159,7 +159,7 @@ void FnScope::exit() {
   // TODO multiple return types for now just take one
   if (fn_type_->return_type() == Void
       // TODO multiple return types for now just take one
-      || fn_type_->return_type()->is_user_defined()) {
+      || fn_type_->return_type()->is_struct()) {
     bldr_.CreateRetVoid();
 
   } else {
@@ -177,7 +177,7 @@ void GenericFnScope::make_return(llvm::Value* val) {
 
   // TODO multiple return types for now just take one
   auto ret_type = fn_type_->return_type();
-  if (ret_type->is_user_defined()) {
+  if (ret_type->is_struct()) {
     // TODO pull out memcpy into a single fn call
     auto val_raw = bldr_.CreateBitCast(val, *RawPtr);
     auto ret_raw = bldr_.CreateBitCast(return_val_, *RawPtr);
@@ -248,7 +248,7 @@ void GenericFnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type();
 
-    if (decl_id->is_function_arg_ && decl_type->is_user_defined()) {
+    if (decl_id->is_function_arg_ && decl_type->is_struct()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }

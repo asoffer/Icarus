@@ -59,11 +59,11 @@ void Function::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   assert(false && "Cannot initialize a function. They are constant");
 }
 
-void Enum::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Enumeration::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateStore(data::const_uint(0), { var });
 }
 
-void UserDefined::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {
     init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
         llvm::Function::ExternalLinkage, "init." + to_string(), global_module);

@@ -24,13 +24,6 @@ size_t Type::bytes() const {
     ? 0 : data_layout->getTypeStoreSize(llvm_type_);
 }
 
-std::map<std::string, UserDefined*> UserDefined::lookup_;
-std::map<std::string, Enum*> Enum::lookup_;
-
-Type* Type::get_string() {
-  auto iter = UserDefined::lookup_.find("string");
-  return (iter == UserDefined::lookup_.end()) ? nullptr : iter->second;
-}
 
 // CONSTRUCTORS
 Type::Type() : assign_fn_(nullptr) {}
@@ -111,52 +104,32 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   llvm_type_ = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 
-Type* Type::get_type_from_identifier(const std::string& name) {
-  auto enum_iter = Enum::lookup_.find(name);
-  if (enum_iter != Enum::lookup_.end()) return enum_iter->second;
+Enumeration::Enumeration(const std::string& name,
+    const AST::EnumLiteral* enumlit) : name_(name) {
+  llvm_type_ = *Uint;
 
-  auto udef_iter = UserDefined::lookup_.find(name);
-  if (udef_iter != UserDefined::lookup_.end()) return udef_iter->second;
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  // size_t enum_size = enumlit->vals_.size();
 
-#ifdef DEBUG
-  std::cerr << "FATAL: No type found matching " << name << std::endl;
-#endif
+  // TODO Use bldr to create a global array of enum_size char ptrs
 
-  return nullptr;
+  size_t i = 0;
+  for (const auto& idstr : enumlit->vals_) {
+    intval_[idstr] = data::const_uint(i);
+    // llvm::Value* print_str = data::str(idstr);
+    // TODO add print_str to the global array
+    ++i;
+  }
 }
 
-Type* Type::get_enum(const std::string& name) {
-  return Enum::lookup_ AT(name);
-}
-
-Type* Type::get_user_defined(const std::string& name) {
-  return UserDefined::lookup_ AT(name);
-}
-
-Enum* Type::make_enum(
-    std::shared_ptr<AST::EnumLiteral> enumlit, const std::string& name) {
-
-  auto iter = Enum::lookup_.find(name);
-  if (iter != Enum::lookup_.end()) return iter->second;
-
-  auto enum_type = new Enum(enumlit.get());
-  return Enum::lookup_[name] = enum_type;
-}
-
-UserDefined* Type::make_user_defined(
-    const std::vector<DeclPtr>& decls, const std::string& name) {
-
-  auto iter = UserDefined::lookup_.find(name);
-  if (iter != UserDefined::lookup_.end()) return iter->second;
-
-  auto user_def_type = new UserDefined;
-
+Structure::Structure(const std::string& name, const std::vector<DeclPtr>& decls)
+  : name_(name), init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
+{
   for (const auto& decl : decls) {
     if (decl->type_is_inferred()) {
       // TODO
     } else {
-      user_def_type->fields_.emplace_back(decl->identifier_string(),
-          decl->interpret_as_type());
+      fields_.emplace_back(decl->identifier_string(), decl->interpret_as_type());
     }
   }
 
@@ -164,27 +137,17 @@ UserDefined* Type::make_user_defined(
     llvm::StructType::create(global_module->getContext());
   struct_type->setName(name);
 
-  size_t num_fields = user_def_type->fields_.size();
+  size_t num_fields = fields_.size();
   std::vector<llvm::Type*> llvm_fields(num_fields, nullptr);
   for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = 
-      user_def_type->fields_[i].second->llvm();
+    llvm_fields[i] = fields_[i].second->llvm();
   }
 
-  // The boolean parameter is 'isPacked'
-  struct_type->setBody(std::move(llvm_fields), false);
-  user_def_type->llvm_type_ = struct_type;
-
-  return UserDefined::lookup_[name] = user_def_type;
+  struct_type->setBody(std::move(llvm_fields), /* isPacked = */ false);
+  llvm_type_ = struct_type;
 }
 
-
-UserDefined::UserDefined() :
-  init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
-{
-}
-
-Type* UserDefined::field(const std::string& name) const {
+Type* Structure::field(const std::string& name) const {
   auto iter = fields_.cbegin();
   while (iter != fields_.end()) {
     if (iter->first == name) {
@@ -195,7 +158,7 @@ Type* UserDefined::field(const std::string& name) const {
   return nullptr;
 }
 
-llvm::Value* UserDefined::field_num(const std::string& name) const {
+llvm::Value* Structure::field_num(const std::string& name) const {
   size_t i = 0;
   auto iter = fields_.cbegin();
   while (iter != fields_.end()) {
@@ -207,25 +170,9 @@ llvm::Value* UserDefined::field_num(const std::string& name) const {
   return nullptr;
 }
 
-Enum::Enum(AST::EnumLiteral* enumlit) {
-  llvm_type_ = *Uint;
-
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-  // size_t enum_size = enumlit->vals_.size();
-
-  // TODO Use bldr to create a global array of enum_size charptrs
-
-  size_t i = 0;
-  for (const auto& idstr : enumlit->vals_) {
-    intval_[idstr] = data::const_uint(i);
-    // llvm::Value* print_str = data::str(idstr);
-    // TODO add print_str to the global array
-    ++i;
-  }
-}
 
 bool Array::requires_uninit() const { return true; }
-bool UserDefined::requires_uninit() const {
+bool Structure::requires_uninit() const {
   for (const auto field : fields_) {
     if (field.second->requires_uninit()) {
       return true;

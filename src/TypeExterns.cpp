@@ -10,10 +10,22 @@ Primitive* Type_;
 Primitive* Uint;
 Primitive* Void;
 Pointer* RawPtr;
+Structure* String;
 
 namespace TypeSystem {
   std::map<std::string, Type*> Literals;
   std::map<Language::Operator, std::vector<Function*>> operator_table;
+
+  Type* get(const std::string& name) {
+    auto enum_ptr = Enum(name);
+    if (enum_ptr) return enum_ptr;
+
+    auto struct_ptr = Struct(name);
+    if (struct_ptr) return struct_ptr;
+
+    assert(false && ("No type found matching " + name).c_str());
+  }
+
 
   void initialize() {
     // TODO do we need to pair of strings and their types?
@@ -158,9 +170,8 @@ namespace TypeSystem {
 
 Array* Arr(Type* t) {
   static std::vector<Array*> array_types_;
-  for (const auto& arr : array_types_) {
+  for (auto arr : array_types_)
     if (arr->type_ == t) return arr;
-  }
 
   auto arr_type = new Array(t);
   array_types_.push_back(arr_type);
@@ -170,9 +181,7 @@ Array* Arr(Type* t) {
 Tuple* Tup(const std::vector<Type*>& types) {
   static std::vector<Tuple*> tuple_types_;
   for (auto tuple_type : tuple_types_) {
-    if (tuple_type->entry_types() == types) {
-      return tuple_type;
-    }
+    if (tuple_type->entry_types() == types) return tuple_type;
   }
 
   auto tuple_type = new Tuple(types);
@@ -227,4 +236,29 @@ Function* Func(std::vector<Type*> in, std::vector<Type*> out) {
     case 1:  return Func(in.front(), out);
     default: return Func(Tup(in), out);
   }
+}
+
+Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
+  static std::map<std::string, Enumeration*> enum_types_;
+  auto iter = enum_types_.find(name);
+  if (iter != enum_types_.end()) return iter->second;
+
+  if (e == nullptr) return nullptr;
+
+  auto enum_type = new Enumeration(name, e);
+  return enum_types_[name] = enum_type;
+}
+
+Structure* Struct(const std::string& name, const std::vector<DeclPtr>& decls) {
+  static std::map<std::string, Structure*> struct_types_;
+  auto iter = struct_types_.find(name);
+  if (iter != struct_types_.end()) return iter->second;
+
+  if (decls.empty()) return nullptr;
+
+  auto struct_type = new Structure(name, decls);
+
+  if (struct_type->to_string() == "string") String = struct_type;
+
+  return struct_types_[name] = struct_type;
 }

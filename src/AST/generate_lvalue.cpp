@@ -48,9 +48,9 @@ namespace AST {
         lhs_lval = scope->builder().CreateLoad(lhs_lval);
       }
 
-      auto udef_type = static_cast<UserDefined*>(lhs_type);
+      auto struct_type = static_cast<Structure*>(lhs_type);
       return scope->builder().CreateGEP(lhs_lval,
-          { data::const_uint(0), udef_type->field_num(rhs_->token()) });
+          { data::const_uint(0), struct_type->field_num(rhs_->token()) });
     }
 
     return nullptr;

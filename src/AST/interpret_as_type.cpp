@@ -36,9 +36,7 @@ namespace AST {
   }
 
   Type* Identifier::interpret_as_type() {
-    if (type() == Type_) {
-      return Type::get_type_from_identifier(token());
-    }
+    if (type() == Type_) return TypeSystem::get(token());
 
     error_log.log(line_num(), "`" + token() + "` is not a type.");
 

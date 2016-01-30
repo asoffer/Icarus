@@ -33,13 +33,13 @@ Time::Eval Tuple::time() const {
   return output;
 }
 
-Time::Eval UserDefined::time() const {
+Time::Eval Structure::time() const {
   // TODO
   return Time::run;
 }
 
 
-Time::Eval Enum::time() const {
+Time::Eval Enumeration::time() const {
   // TODO
   return Time::run;
 }
