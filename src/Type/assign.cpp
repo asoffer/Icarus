@@ -42,12 +42,7 @@ llvm::Function* Primitive::assign() {
 }
 
 llvm::Function* Function::assign() {
-  // Functions (for now) are const. This should not be allowed.
-#ifdef DEBUG
-  std::cerr << "FATAL: Function assignment is illegal!" << std::endl;
-#endif
-
-  return nullptr;
+  assert(false && "Function assignment is illegal!");
 }
 
 llvm::Function* Array::assign() {

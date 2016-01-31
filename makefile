@@ -9,7 +9,7 @@ COMPILER := clang++
 BUILD_FLAGS := -g -O0 -D DEBUG
 LINK_FLAGS := 
 STDS = -std=c++11
-WARN = -Wall -Wextra -Wconversion -Werror
+WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic
 OPTS = -iquote$(shell pwd)/src
 LLVM_CXX = $(shell llvm-config --cxxflags)
 LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs core)

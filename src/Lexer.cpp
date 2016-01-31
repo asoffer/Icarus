@@ -36,31 +36,29 @@ restart:
   // Delegate based on the next character in the file stream
   if (peek == EOF) {
     node = AST::TokenNode::eof(lexer.line_num_);
-  }
-  else if (isnewline(peek)) {
+
+  } else if (isnewline(peek)) {
     node = AST::TokenNode::newline();
     ++lexer.line_num_;
     lexer.file_.get();
-  }
-  else if (std::isspace(peek)) {
+
+  } else if (std::isspace(peek)) {
     // Ignore space/tab characters by restarting
     lexer.file_.get();
     goto restart;
-  }
-  else if (std::isalpha(peek) || peek == '_') {
+
+  } else if (std::isalpha(peek) || peek == '_') {
     node = lexer.next_word();
-  }
-  else if (std::isdigit(peek)) {
+
+  } else if (std::isdigit(peek)) {
     node = lexer.next_number();
-  }
-  else if (std::ispunct(peek)) {
+
+  } else if (std::ispunct(peek)) {
     node = lexer.next_operator();
+
+  } else {
+    assert(false && "Lexer found a control character.");
   }
-#ifdef DEBUG
-  else {
-    std::cerr << "FATAL: Lexer found a control character." << std::endl;
-  }
-#endif
 
   return lexer;
 }
@@ -68,12 +66,8 @@ restart:
 // The next token begins with an alpha character meaning that it is either a
 // reserved word or an identifier.
 AST::TokenNode Lexer::next_word() {
-#ifdef DEBUG
-  // Sanity check:
-  // We only call this function if the top character is an alpha character
-  if (!std::isalpha(file_.peek()) && file_.peek() != '_')
-    std::cerr << "FATAL: Non-alpha character encountered as first character in next_word." << std::endl;
-#endif
+  assert((std::isalpha(file_.peek()) || file_.peek() == '_')
+      && "Non-alpha character encountered as first character in next_word.");
 
   // Used to store the word
   std::string token;
@@ -108,13 +102,8 @@ AST::TokenNode Lexer::next_word() {
 
 
 AST::TokenNode Lexer::next_number() {
-#ifdef DEBUG
-  // Sanity check:
-  // We only call this function if the top character is a number character
-  if (!std::isdigit(file_.peek())) {
-    std::cerr << "FATAL: Non-digit character encountered as first character in next_number." << std::endl;
-  }
-#endif
+  assert(std::isdigit(file_.peek())
+      && "Non-digit character encountered as first character in next_number.");
 
   // Used to store the number
   std::string token;
@@ -130,12 +119,12 @@ AST::TokenNode Lexer::next_number() {
     // If the next character is a 'u' or a 'U', it's an integer literal. We can
     // ignore the character and return.
     file_.get();
-    return AST::TokenNode(line_num_, Language::unsigned_integer_literal, token);
+    return AST::TokenNode(line_num_, Language::uint_literal, token);
 
   } else if (peek != '.') {
     // If the next character is not a period, we're looking at an integer and
     // can return.
-    return AST::TokenNode(line_num_, Language::integer_literal, token);
+    return AST::TokenNode(line_num_, Language::int_literal, token);
   }
 
   // If the next character was a period, this is a non-integer. Add the period
@@ -153,10 +142,7 @@ AST::TokenNode Lexer::next_operator() {
   // Sanity check:
   // We only call this function if the top character is punctuation
   int peek = file_.peek();
-#ifdef DEBUG
-  if (!std::ispunct(peek))
-    std::cerr << "FATAL: Non-punct character encountered as first character in next_operator." << std::endl;
-#endif
+  assert(std::ispunct(peek) && "Non-punct character encountered as first character in next_operator.");
 
   // In general, we're going to take all punctuation characters, lump them
   // together, and call that an operator. However, some operators are just one
@@ -432,15 +418,12 @@ AST::TokenNode Lexer::next_char_literal() {
     error_log.log(line_num_, "Character literal must be followed by a single-quote.");
   }
 
-  return AST::TokenNode(line_num_, Language::character_literal, std::string(1, output_char));
+  return AST::TokenNode(line_num_, Language::char_literal, std::string(1, output_char));
 }
 
 AST::TokenNode Lexer::next_given_slash() {
   int peek = file_.peek();
-#ifdef DEBUG
-  if (peek != '/')
-    std::cerr << "FATAL: Non-punct character encountered as first character in next_operator." << std::endl;
-#endif
+  assert(peek == '/' && "Non-slash character encountered as first character in next_operator.");
 
   file_.get();
   peek = file_.peek();

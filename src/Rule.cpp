@@ -1,7 +1,5 @@
 #include "Rule.h"
-
 #include "AST.h"
-
 
 Rule::Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn)
   : output_(output), input_(input), fn_(fn) {}
@@ -19,9 +17,8 @@ bool Rule::match(const NPtrVec& node_stack) const {
   for (size_t i = 0; i < input_.size();
       ++i, --rule_index, --stack_index) {
 
-    if (node_stack[stack_index]->node_type() != input_[rule_index]) {
-      return false;
-    }
+    auto iter = input_[rule_index].find(node_stack[stack_index]->node_type());
+    if (iter == input_[rule_index].end()) return false;
   }
 
   // If you complete the loop, there is a match.

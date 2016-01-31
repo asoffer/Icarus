@@ -23,11 +23,11 @@ namespace Language {
     { newline,                  "Newline" },
     { comment,                  "Comment" },
     { identifier,               "Identifier" },
-    { integer_literal,          "Integer" },
-    { unsigned_integer_literal, "UInt" },
+    { int_literal,              "Integer" },
+    { uint_literal,             "UInt" },
     { real_literal,             "Real" },
     { type_literal,             "Type" },
-    { character_literal,        "Character" },
+    { char_literal,             "Character" },
     { string_literal,           "String" },
     { generic_operator,         "Operator" },
     { bool_operator,            "BoolOperator" },
@@ -89,445 +89,211 @@ namespace Language {
   // the new nodes type is set to the given type in the first line.
   const std::vector<Rule> rules = {
     /* Begin literals */
-    Rule(expression,
-        { reserved_true },
-        AST::Terminal::build_true),
-
-    Rule(expression,
-        { reserved_false },
-        AST::Terminal::build_false),
-
-    Rule(expression,
-        { identifier },
-        AST::Identifier::build),
-
-    Rule(expression,
-        { unsigned_integer_literal },
-        AST::Terminal::build_unsigned_integer_literal),
-
-    Rule(expression,
-        { integer_literal },
-        AST::Terminal::build_integer_literal),
-
-    Rule(expression,
-        { real_literal },
-        AST::Terminal::build_real_literal),
-
-    Rule(expression,
-        { string_literal },
-        AST::Terminal::build_string_literal),
-
-    Rule(expression,
-        { reserved_type },
+    Rule(expression, { {reserved_true} },   AST::Terminal::build_true),
+    Rule(expression, { {reserved_false} },  AST::Terminal::build_false),
+    Rule(expression, { {identifier} },      AST::Identifier::build),
+    Rule(expression, { {uint_literal} },    AST::Terminal::build_uint_literal),
+    Rule(expression, { {int_literal} },     AST::Terminal::build_int_literal),
+    Rule(expression, { {real_literal} },    AST::Terminal::build_real_literal),
+    Rule(expression, { {string_literal} },  AST::Terminal::build_string_literal),
+    Rule(expression, { {char_literal} },    AST::Terminal::build_char_literal),
+    Rule(expression, { {reserved_ascii} },  AST::Terminal::build_ASCII),
+    Rule(expression, { {fn_literal, fn_expression} }, drop_all_but<0>),
+    Rule(expression, { {type_literal, reserved_type} },
         AST::Terminal::build_type_literal),
-
-    Rule(expression,
-        { type_literal },
-        AST::Terminal::build_type_literal),
-
-    Rule(expression,
-        { character_literal },
-        AST::Terminal::build_character_literal),
 
     Rule(fn_literal,
-        { fn_expression, left_brace, statements, right_brace },
+        { {fn_expression}, {left_brace}, {statements}, {right_brace} },
         AST::FunctionLiteral::build),
 
     Rule(expression,
-        { left_bracket, expression, semicolon, expression, right_bracket },
+        { {left_bracket}, {expression}, {semicolon}, {expression}, {right_bracket} },
         AST::ArrayType::build),
 
     // TODO make this the correct thing
     Rule(expression,
-        { left_bracket, negation, semicolon, expression, right_bracket },
+        { {left_bracket}, {negation}, {semicolon}, {expression}, {right_bracket} },
         AST::ArrayType::build_unknown),
-
-
-    Rule(expression,
-        { fn_literal },
-        drop_all_but<0>),
     /* End literals */
 
-
     /* Begin declaration */
-    Rule(declaration,
-        { identifier, decl_assign_operator, expression },
+    Rule(declaration, { {identifier}, {decl_assign_operator}, {expression} },
         AST::Declaration::build_assign),
 
-
     Rule(declaration,
-        { identifier, decl_operator, expression },
+        { {identifier}, {decl_operator}, {expression, fn_expression} },
         AST::Declaration::build_decl),
-
-    Rule(fn_declaration,
-        { identifier, decl_operator, fn_expression },
-        AST::Declaration::build_decl),
-
 
     // TODO Should this be an expression or declaration
     Rule(declaration,
-        { left_paren, declaration, right_paren },
-        AST::Expression::parenthesize),
- 
-    Rule(expression,
-        { left_paren, fn_declaration, right_paren },
+        { {left_paren}, {fn_declaration, declaration, declaration_comma_list}, {right_paren} },
         AST::Expression::parenthesize),
 
     Rule(declaration_comma_list,
-        { declaration, comma, declaration },
+        { {declaration_comma_list, declaration}, {comma}, {declaration} },
         AST::ChainOp::build),
-
-    Rule(declaration_comma_list,
-        { declaration_comma_list, comma, declaration },
-        AST::ChainOp::build),
-
-    Rule(expression,
-        { left_paren, declaration_comma_list, right_paren},
-        AST::Expression::parenthesize),
     /* End declaration */
-
 
     /* Begin assignment */
     Rule(assignment,
-        { expression, assign_operator, expression },
+        { {fn_declaration, declaration, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
         AST::Assignment::build),
 
-    Rule(assignment,
-        { declaration, assign_operator, expression },
-        AST::Assignment::build),
-
-    Rule(assignment,
-        { left_paren, assignment, right_paren},
+    Rule(assignment, { {left_paren}, {assignment}, {right_paren} },
         AST::Expression::parenthesize),
 
-    Rule(fn_assignment,
-        { fn_declaration, assign_operator, expression },
-        AST::Assignment::build),
-
-    Rule(fn_assignment,
-        { left_paren, fn_assignment, right_paren},
+    Rule(fn_assignment, { {left_paren}, {fn_assignment}, {right_paren} },
         AST::Expression::parenthesize),
-
-    Rule(assignment,
-        { expression, assign_operator, fn_expression },
-        AST::Assignment::build),
-
-    Rule(assignment,
-        { declaration, assign_operator, fn_expression },
-        AST::Assignment::build),
-
-    Rule(fn_assignment,
-        { fn_declaration, assign_operator, fn_expression },
-        AST::Assignment::build),
-
-    Rule(assignment,
-        { expression, assign_operator, fn_literal },
-        AST::Assignment::build),
-
-    Rule(assignment,
-        { declaration, assign_operator, fn_literal },
-        AST::Assignment::build),
-
-    Rule(fn_assignment,
-        { fn_declaration, assign_operator, fn_literal },
-        AST::Assignment::build),
     /* End assignment */
-
     
     /* Begin expression */
-    Rule(expression,
-        { left_paren, expression, right_paren },
-        AST::Expression::parenthesize),
-
-    /////*****
-    Rule(expression,
-        { dereference, expression },
-        AST::Unop::build),
-
-    Rule(expression,
-        { negation, expression },
-        AST::Unop::build),
-
-    Rule(fn_expression,
-        { left_paren, fn_expression, right_paren },
+    Rule(expression, { {left_paren}, {expression}, {right_paren} },
         AST::Expression::parenthesize),
 
     Rule(expression,
-        { expression, dot, expression },
-        AST::Binop::build),
-
-    Rule(expression,
-        { expression, negation, expression },
-        AST::Binop::build),
-
-    Rule(expression,
-        { expression, generic_operator, expression },
-        AST::Binop::build),
-
-    // <expr> & <expr>
-    Rule(expression,
-        { expression, indirection, expression },
-        AST::ChainOp::build),
-
-    // <expr> | <expr>, <expr> ^ <expr>
-    Rule(expression,
-        { expression, bool_operator, expression },
-        AST::ChainOp::build),
-
-    Rule(expression,
-        { expression, binary_boolean_operator, expression },
-        AST::ChainOp::build),
-
-    Rule(expression,
-        { indirection, expression },
+        { {dereference, negation, indirection, reserved_print, reserved_return}, {expression} },
         AST::Unop::build),
-
-    Rule(print_expression,
-        { reserved_print, expression },
-        AST::Unop::build),
-
-    Rule(return_expression,
-        { reserved_return, expression },
-        AST::Unop::build),
-
-    Rule(expression,
-        { fn_expression },
-        drop_all_but<0>),
 
     Rule(fn_expression,
-        { expression, fn_arrow, expression },
-        AST::Binop::build),
+        { {left_paren}, {fn_expression}, {right_paren} },
+        AST::Expression::parenthesize),
 
-    Rule(fn_expression,
-        { declaration, fn_arrow, expression },
+    Rule(expression,
+        { {expression}, {dot, negation, generic_operator}, {expression} },
         AST::Binop::build),
 
     Rule(expression,
-        { reserved_ascii },
-        AST::Terminal::build_ASCII),
+        { {expression}, {indirection, bool_operator, binary_boolean_operator}, {expression} },
+        AST::ChainOp::build),
+
+    Rule(fn_expression,
+        { {expression, declaration}, {fn_arrow}, {expression} },
+        AST::Binop::build),
     /* End expression */
 
-
     /* Begin void return */
-    Rule(void_return_expression,
-        { reserved_return, newline},
+    Rule(void_return_expression, { {reserved_return}, {newline}},
         AST::Terminal::build_void_return),
     /* End void return */
 
     /* Begin paren/bracket operators */
     Rule(expression,
-        { expression, left_paren, expression, right_paren },
+        { {expression}, {left_paren}, {expression}, {right_paren} },
         AST::Binop::build_paren_operator),
 
     Rule(expression,
-        { expression, left_paren, right_paren },
+        { {expression}, {left_paren}, {right_paren} },
         AST::Unop::build_paren_operator),
 
     Rule(expression,
-        { expression, left_bracket, expression, right_bracket },
+        { {expression}, {left_bracket}, {expression}, {right_bracket} },
         AST::Binop::build_bracket_operator),
 
     Rule(expression,
-        { left_bracket, expression, right_bracket },
+        { {left_bracket}, {expression}, {right_bracket} },
         AST::ArrayLiteral::build),
-
     /* End paren/bracket operators */
 
     /* Begin if */
     Rule(if_statement,
-        { reserved_if, expression, left_brace, statements, right_brace },
+        { {reserved_if}, {expression}, {left_brace}, {statements}, {right_brace} },
         AST::Conditional::build_if),
 
     Rule(if_statement,
-        { reserved_if, assignment, left_brace, statements, right_brace },
+        { {reserved_if}, {assignment}, {left_brace}, {statements}, {right_brace} },
         AST::Conditional::build_if_assignment_error),
 
     Rule(if_statement,
-        { if_statement, reserved_else, if_statement },
+        { {if_statement}, {reserved_else}, {if_statement} },
         AST::Conditional::build_else_if),
 
     Rule(if_else_statement,
-        { if_statement, reserved_else, left_brace, statements, right_brace },
+        { {if_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },
         AST::Conditional::build_else),
 
     Rule(if_else_statement,
-        { if_else_statement, reserved_else, left_brace, statements, right_brace },
+        { {if_else_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },
         AST::Conditional::build_extra_else_error),
 
     Rule(if_else_statement,
-        { if_else_statement, reserved_else, if_statement },
+        { {if_else_statement}, {reserved_else}, {if_statement} },
         AST::Conditional::build_extra_else_if_error),
-
-
     /* End if */
 
     /* Begin statements */
     Rule(statements,
-        { assignment, newline },
+        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, print_expression, return_expression, break_statement}, {newline} },
         AST::Statements::build_one),
 
     Rule(statements,
-        { fn_assignment, newline },
+        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, print_expression, return_expression, break_statement}, {newline} },
+        AST::Statements::build_more),
+
+
+    Rule(statements, { {void_return_expression} },
         AST::Statements::build_one),
 
-    Rule(statements,
-        { declaration, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { fn_declaration, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { void_return_expression },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { expression, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { if_statement, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { if_else_statement, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { while_statement, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { print_expression, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { return_expression, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { break_statement, newline },
-        AST::Statements::build_one),
-
-    Rule(statements,
-        { statements, expression, newline },
+    Rule(statements, { {statements}, {void_return_expression} },
         AST::Statements::build_more),
 
-    Rule(statements,
-        { statements, assignment, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, fn_assignment, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, declaration, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, fn_declaration, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, if_statement, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, if_else_statement, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, while_statement, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, void_return_expression },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, print_expression, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, return_expression, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { statements, break_statement, newline },
-        AST::Statements::build_more),
-
-    Rule(statements,
-        { newline, statements },
-        drop_all_but<1>),
-
-    Rule(statements,
-        { statements, newline },
-        drop_all_but<0>),
+    Rule(statements, { {newline}, {statements} }, drop_all_but<1>),
+    Rule(statements, { {statements}, {newline} }, drop_all_but<0>),
     /* End statements */
 
     /* Begin comma list */
-    Rule(expression,
-        { expression, comma, expression },
-        AST::ChainOp::build),
+    Rule(expression, { {expression}, {comma}, {expression} }, AST::ChainOp::build),
     /* End comma list */
 
     /* Begin case statements */
     Rule(key_value_pair_list,
-        { expression, rocket_operator, expression, newline },
+        { {expression}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_one),
 
     Rule(key_value_pair_list,
-        { key_value_pair_list, expression, rocket_operator, expression, newline },
+        { {key_value_pair_list}, {expression}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_more),
 
     Rule(key_value_pair_list,
-        { reserved_else, rocket_operator, expression, newline },
+        { {reserved_else}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_one),
 
     Rule(key_value_pair_list,
-        { key_value_pair_list, reserved_else, rocket_operator, expression, newline },
+        { {key_value_pair_list}, {reserved_else}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_more),
 
     Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
-        { assignment, rocket_operator, expression, newline },
+        { {assignment}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_one_assignment_error),
 
     Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
-        { key_value_pair_list, assignment, rocket_operator, expression, newline },
+        { {key_value_pair_list}, {assignment}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_more_assignment_error),
 
     Rule(expression,
-        { reserved_case, left_brace, key_value_pair_list, right_brace },
+        { {reserved_case}, {left_brace}, {key_value_pair_list}, {right_brace} },
         AST::Case::build),
     /* End case statements */
 
-
     /* Begin while loop */
     Rule(while_statement,
-        { reserved_while, expression, left_brace, statements, right_brace },
+        { {reserved_while}, {expression}, {left_brace}, {statements}, {right_brace} },
         AST::While::build),
 
     Rule(while_statement,
-        { reserved_while, assignment, left_brace, statements, right_brace },
+        { {reserved_while}, {assignment}, {left_brace}, {statements}, {right_brace} },
         AST::While::build_assignment_error),
 
     /* End while loop */
 
-
     /* Begin loop extras */
-    Rule(break_statement,
-        { reserved_break },
-        AST::Break::build),
+    Rule(break_statement, { {reserved_break} }, AST::Break::build),
     /* End loop extras */
-
 
     /* Begin type literals */
     // TODO tighten this up. Just taking in any statements probably captures
     // way too much.
     Rule(expression,
-        { reserved_type, left_brace, statements, right_brace },
+        { {reserved_type}, {left_brace}, {statements}, {right_brace} },
         AST::TypeLiteral::build),
     /* End type literals */
 
@@ -535,34 +301,21 @@ namespace Language {
     // TODO tighten this up. Just taking in any statements probably captures
     // way too much.
     Rule(expression,
-        { reserved_enum, left_brace, statements, right_brace },
+        { {reserved_enum}, {left_brace}, {statements}, {right_brace} },
         AST::EnumLiteral::build),
     /* End enums */
 
     
     /* Begin import */
-    Rule(newline,
-        { reserved_import, string_literal, newline },
-        import_file),
+    Rule(newline, { {reserved_import}, {string_literal}, {newline} }, import_file),
     /* End import */
 
 
     /* Begin miscellaneous */
-    Rule(newline,
-        { newline, newline },
-        drop_all_but<0>),
-
-    Rule(left_brace,
-        { newline, left_brace },
-        drop_all_but<1>),
-
-    Rule(left_brace,
-        { left_brace, newline },
-        drop_all_but<0>),
-
-    Rule(right_brace,
-        { newline, right_brace },
-        drop_all_but<1>),
+    Rule(newline,     { {newline}, {newline} },     drop_all_but<0>),
+    Rule(left_brace,  { {newline}, {left_brace} },  drop_all_but<1>),
+    Rule(left_brace,  { {left_brace}, {newline} },  drop_all_but<0>),
+    Rule(right_brace, { {newline}, {right_brace} }, drop_all_but<1>),
 
 //    Rule(missing_newline_statements,
 //        { expression, expression },

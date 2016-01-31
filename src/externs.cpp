@@ -81,11 +81,7 @@ namespace data {
   }
 
   llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n) {
-#ifdef DEBUG
-    if (n > (1 << 30)) {
-      std::cerr << "FATAL: Potential overflow on compile-time integer constants" << std::endl;
-    }
-#endif
+    assert(n <= (1 << 30) && "Potential overflow on compile-time integer constants");
 
     return bldr.CreateSub(
        llvm::ConstantInt::get(
@@ -96,11 +92,7 @@ namespace data {
 
 
   llvm::Value* const_uint(size_t n) {
-#ifdef DEBUG
-    if (n > (1 << 30)) {
-      std::cerr << "FATAL: Potential overflow on compile-time integer constants" << std::endl;
-    }
-#endif
+    assert(n <= (1 << 30) && "Potential overflow on compile-time integer constants");
 
     // The safety of this cast is verified only in debug mode
     return llvm::ConstantInt::get(llvm::getGlobalContext(),

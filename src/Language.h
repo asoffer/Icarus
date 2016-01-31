@@ -19,8 +19,8 @@ namespace Language {
     identifier,
 
     // Literals
-    integer_literal, unsigned_integer_literal,
-    real_literal, character_literal,
+    int_literal, uint_literal,
+    real_literal, char_literal,
     string_literal, type_literal, fn_literal,
 
 

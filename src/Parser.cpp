@@ -7,6 +7,7 @@ namespace debug {
 
 // Construct a parser for the given file
 Parser::Parser(const std::string& filename) : lexer_(filename) {
+  assert(stack_.empty());
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
   lookahead_.reset(new AST::TokenNode);
@@ -102,9 +103,10 @@ bool Parser::should_shift() {
     case Language::identifier:
     case Language::reserved_true:
     case Language::reserved_false:
-    case Language::integer_literal:
+    case Language::int_literal:
+    case Language::uint_literal:
     case Language::real_literal:
-    case Language::character_literal:
+    case Language::char_literal:
     case Language::string_literal:
     case Language::type_literal:
     case Language::right_paren:
@@ -203,13 +205,8 @@ bool Parser::reduce() {
     }
 
     if (rule.match(stack_)) {
-#ifdef DEBUG
-      // It should be impossible to match multiple rules with the same precedence
-      // levels.
-      if (matched_rule_ptr != nullptr && rule.size() == matched_rule_ptr->size()) {
-        std::cerr << "FATAL: Two rules matched with the same size" << std::endl;
-      }
-#endif
+      assert((matched_rule_ptr == nullptr || rule.size() != matched_rule_ptr->size())
+          && "Two rules matched with the same size");
 
       // Extract a pointer to the rule. It's safe to take a pointer here, because
       // Language::rules is const.

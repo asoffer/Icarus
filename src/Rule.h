@@ -3,12 +3,13 @@
 
 #include <vector>
 #include <memory>
+#include <set>
 #include "Language.h"
 #include "typedefs.h"
 
 class Rule {
   public:
-    using NodeTypeVec = std::vector<Language::NodeType>;
+    using NodeTypeVec = std::vector<std::set<Language::NodeType>>;
     using fnptr = NPtr (*)(NPtrVec&&);
 
     Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn);
@@ -20,7 +21,7 @@ class Rule {
 
   private:
     Language::NodeType output_;
-    std::vector<Language::NodeType> input_;
+    NodeTypeVec input_;
     fnptr fn_;
 };
 

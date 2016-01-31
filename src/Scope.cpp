@@ -197,15 +197,8 @@ void GenericFnScope::add_scope(Scope* scope) {
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.
 void Scope::set_parent(Scope* parent) {
-#ifdef DEBUG
-  if (parent == nullptr) {
-    std::cerr << "FATAL: Setting scope's parent to be a nullptr." << std::endl;
-  }
-
-  if (parent == this) {
-    std::cerr << "FATAL: Setting parent as self." << std::endl;
-  }
-#endif
+  assert(parent && "Setting scope's parent to be a nullptr.");
+  assert(parent != this && "Setting parent as self");
 
   if (parent_ != nullptr && parent_->containing_function_ != nullptr) {
     parent_->containing_function_->remove_scope(this);
@@ -478,24 +471,14 @@ void Scope::assign_type_order() {
       if (debug::dependency_system) {
         std::cout << "Found deps:   " << dependencies_[eptr].size() << std::endl;
 
-        if (dep == nullptr) {
-          std::cerr
-            << "Looking at a null dependency from "
-            << *eptr
-            << " seen on line "
-            << eptr->line_num()
-            << std::endl;
-          assert(false);
-        }
+        assert(dep && 
+            ("Looking at a null dependency from " + eptr->to_string(0)
+             + " seen on line " + std::to_string(eptr->line_num()) + "\n").c_str());
 
-        if (already_seen.find(dep) == already_seen.end()) {
-          std::cerr
-            << "FATAL: Dependency has not been seen yet: "
-            << dep << std::endl
-            << *dep << std::endl
-            << "COMING FROM " << eptr << "\n" << *eptr << std::endl;
-          assert(false);
-        }
+        assert(already_seen.find(dep) != already_seen.end() &&
+            ("Dependency has not been seen yet: "
+            + dep->to_string(0) + "\nCOMING FROM "
+            + eptr->to_string(0) + "\n").c_str());
       }
 
       if ((already_seen AT(dep) & 2) == 2) {

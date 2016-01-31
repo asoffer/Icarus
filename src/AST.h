@@ -64,26 +64,22 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
       virtual Time::Eval determine_time() { return Time::error; }
 
-      bool is_return() const {
-        return node_type() == Language::return_expression;
-      }
-      bool is_print() const {
-        return node_type() == Language::print_expression;
-      }
+      bool is_return() const { return node_type() == Language::return_expression; }
+      bool is_print()  const {  return node_type() == Language::print_expression; }
       Time::Eval time() { return time_; }
 
-      virtual bool is_identifier() const { return type_ == Language::identifier; }
-      virtual bool is_terminal() const { return false; }
-      virtual bool is_expression() const { return false; }
-      virtual bool is_binop() const { return false; }
-      virtual bool is_chain_op() const { return false; }
-      virtual bool is_comma_list() const { return false; }
-      virtual bool is_declaration() const { return false; }
-      virtual bool is_array_type() const { return false; }
-      virtual bool is_type_literal() const { return false; }
-      virtual bool is_enum_literal() const { return false; }
+      virtual bool is_identifier()    const { return type_ == Language::identifier; }
+      virtual bool is_terminal()      const { return false; }
+      virtual bool is_expression()    const { return false; }
+      virtual bool is_binop()         const { return false; }
+      virtual bool is_chain_op()      const { return false; }
+      virtual bool is_comma_list()    const { return false; }
+      virtual bool is_declaration()   const { return false; }
+      virtual bool is_array_type()    const { return false; }
+      virtual bool is_type_literal()  const { return false; }
+      virtual bool is_enum_literal()  const { return false; }
       virtual bool is_array_literal() const { return false; }
-      virtual bool is_token_node() const { return false; }
+      virtual bool is_token_node()    const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
         : type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
@@ -141,8 +137,6 @@ namespace AST {
       std::string tk_;
       Language::Operator op_;
   };
-
-
 
   class Expression : public Node {
     public:
@@ -289,10 +283,10 @@ namespace AST {
       static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_true(NPtrVec&& nodes);
       static NPtr build_false(NPtrVec&& nodes);
-      static NPtr build_integer_literal(NPtrVec&& nodes);
-      static NPtr build_unsigned_integer_literal(NPtrVec&& nodes);
+      static NPtr build_int_literal(NPtrVec&& nodes);
+      static NPtr build_uint_literal(NPtrVec&& nodes);
       static NPtr build_real_literal(NPtrVec&& nodes);
-      static NPtr build_character_literal(NPtrVec&& nodes);
+      static NPtr build_char_literal(NPtrVec&& nodes);
       static NPtr build_void_return(NPtrVec&& nodes);
       static NPtr build_ASCII(NPtrVec&& nodes);
 

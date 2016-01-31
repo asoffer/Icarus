@@ -263,11 +263,11 @@ namespace AST {
     return build(Language::Terminal::False, std::forward<NPtrVec&&>(nodes), Bool);
   }
 
-  NPtr Terminal::build_unsigned_integer_literal(NPtrVec&& nodes) {
+  NPtr Terminal::build_uint_literal(NPtrVec&& nodes) {
     return build(Language::Terminal::UInt, std::forward<NPtrVec&&>(nodes), Uint);
   }
 
-  NPtr Terminal::build_integer_literal(NPtrVec&& nodes) {
+  NPtr Terminal::build_int_literal(NPtrVec&& nodes) {
     return build(Language::Terminal::Int, std::forward<NPtrVec&&>(nodes), Int);
   }
 
@@ -275,7 +275,7 @@ namespace AST {
     return build(Language::Terminal::Real, std::forward<NPtrVec&&>(nodes), Real);
   }
 
-  NPtr Terminal::build_character_literal(NPtrVec&& nodes) {
+  NPtr Terminal::build_char_literal(NPtrVec&& nodes) {
     return build(Language::Terminal::Char, std::forward<NPtrVec&&>(nodes), Char);
   }
 
@@ -500,13 +500,8 @@ namespace AST {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
     auto else_if = std::static_pointer_cast<Conditional>(std::move(nodes[2]));
 
-#ifdef DEBUG
-    if (else_if->conds_.size()       != 1 ||
-        else_if->statements_.size()  != 1 ||
-        else_if->body_scopes_.size() != 1) {
-      std::cerr << "FATAL: Else-if statement constructed by parser with multiple conditional blocks." << std::endl;
-    }
-#endif
+    assert(else_if->conds_.size() == 1 && else_if->statements_.size() == 1 && else_if->body_scopes_.size() == 1
+        && "Else-if statement constructed by parser with multiple conditional blocks.");
 
     if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
     if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
