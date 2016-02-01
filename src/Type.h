@@ -305,6 +305,7 @@ class Enumeration : public Type {
     std::string name_;
     llvm::Function* repr_fn_;
     std::map<std::string, llvm::Value*> intval_;
+    llvm::GlobalVariable* str_array_;
 };
 
 class Structure : public Type {

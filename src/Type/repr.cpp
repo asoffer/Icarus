@@ -226,8 +226,10 @@ void Enumeration::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   // an array of global strings and accesssing that.
   //
   // For now, just print the number in brackets after the enums name
+  auto val_str = bldr.CreateLoad(
+      bldr.CreateGEP(str_array_, { data::const_uint(0), val }));
   bldr.CreateCall(cstdlib::printf(),
-      { data::global_string(bldr, to_string() + "[%d]"), val });
+      { data::global_string(bldr, to_string() + ".%s"), val_str });
 }
 
 void Tuple::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {}

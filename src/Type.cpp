@@ -105,7 +105,7 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
 }
 
 Enumeration::Enumeration(const std::string& name,
-    const AST::EnumLiteral* enumlit) : name_(name) {
+    const AST::EnumLiteral* enumlit) : name_(name), str_array_(nullptr) {
   llvm_type_ = *Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
@@ -113,17 +113,38 @@ Enumeration::Enumeration(const std::string& name,
 
   // TODO Use bldr to create a global array of enum_size char ptrs
 
+  std::vector<llvm::Constant*> enum_str_elems(enumlit->vals_.size(), nullptr);
+
   size_t i = 0;
   for (const auto& idstr : enumlit->vals_) {
     intval_[idstr] = data::const_uint(i);
-    // llvm::Value* print_str = data::str(idstr);
-    // TODO add print_str to the global array
+
+    auto enum_str = new llvm::GlobalVariable(*global_module,
+        /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
+        /*  isConstant = */ true,
+        /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
+        /* Initializer = */ llvm::ConstantDataArray::getString(
+          llvm::getGlobalContext(), idstr, true),
+        /*        Name = */ idstr);
+    enum_str->setAlignment(1);
+    enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
+        llvm::ArrayType::get(*Char, idstr.size() + 1),
+        enum_str, { data::const_uint(0), data::const_uint(0) });
+
     ++i;
   }
-}
 
-Structure::Structure(const std::string& name, const std::vector<DeclPtr>& decls)
-  : name_(name), init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
+  str_array_ = new llvm::GlobalVariable(*global_module, 
+      /*        Type = */ llvm::ArrayType::get(*Ptr(Char), enumlit->vals_.size()),
+      /*  isConstant = */ false,
+      /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+      /* Initializer = */ llvm::ConstantArray::get(
+        llvm::ArrayType::get(*Ptr(Char), enumlit->vals_.size()), enum_str_elems),
+      /*        Name = */ name_ + ".name.array");
+  }
+
+  Structure::Structure(const std::string& name, const std::vector<DeclPtr>& decls)
+: name_(name), init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
 {
   for (const auto& decl : decls) {
     if (decl->type_is_inferred()) {
