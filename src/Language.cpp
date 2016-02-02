@@ -106,6 +106,7 @@ namespace Language {
         { {fn_expression}, {left_brace}, {statements}, {right_brace} },
         AST::FunctionLiteral::build),
 
+    // TODO rename this type. could be an array type or an array expression depending on the context
     Rule(expression,
         { {left_bracket}, {expression}, {semicolon}, {expression}, {right_bracket} },
         AST::ArrayType::build),

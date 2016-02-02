@@ -1,0 +1,8 @@
+main := void -> void {
+  x := 'y'
+  a := [5; x]
+  print a
+  print '\n'
+  print [5; int]
+  print '\n'
+}

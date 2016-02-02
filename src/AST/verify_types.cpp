@@ -215,16 +215,20 @@ namespace AST {
   }
 
   void ArrayType::verify_types() {
-    expr_type_ = Type_;
 
     // TODO implement uint and change this to uint
     if (len_ != nullptr && len_->type() != Int) {
       error_log.log(line_num(), "Array length indexed by non-integral type");
     }
 
-    if (array_type_->type() != Type_) {
-      error_log.log(line_num(), "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
+    if (array_type_->type() == Type_) {
+      expr_type_ = Type_;
+    } else {
+      expr_type_ = Arr(array_type_->type());
     }
+//    if (array_type_->type() != Type_) {
+//      error_log.log(line_num(), "Base for array must be a type but " + array_type_->type()->to_string() + " given.");
+//    }
   }
 
   void ArrayLiteral::verify_types() {

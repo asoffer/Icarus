@@ -171,9 +171,7 @@ class GenericFnScope : public Scope {
     llvm::Value* return_value() const { return return_val_; }
 
     GenericFnScope(llvm::Function* fn) :
-      fn_type_(nullptr),
-      llvm_fn_(fn),
-      return_val_(nullptr) {}
+      fn_type_(nullptr), llvm_fn_(fn), return_val_(nullptr) {}
 
   virtual ~GenericFnScope() {}
 

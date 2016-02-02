@@ -52,7 +52,7 @@ extern Primitive* Real;
 extern Primitive* Type_;
 extern Primitive* Uint;
 extern Primitive* Void;
-extern Pointer* RawPtr;
+extern Pointer*   RawPtr;
 extern Structure* String;
 
 extern Pointer* Ptr(Type* t);
@@ -135,9 +135,6 @@ class Type {
     virtual ~Type() {}
 
   protected:
-    // NOTE: For the same of simplicity, none of these will be left undefined,
-    // even if they do something that should obviously be inlined. We'll trust
-    // the inliner to do it's job.
     llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
 };
@@ -162,10 +159,7 @@ class Primitive : public Type {
 #include "config/binary_operators.conf"
 
   private:
-    enum class TypeEnum {
-      Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
-    };
-
+    enum class TypeEnum { Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void };
     Primitive(TypeEnum pt);
 
     Primitive::TypeEnum type_;
@@ -334,15 +328,10 @@ class Structure : public Type {
   private:
     std::string name_;
 
-    llvm::Function
-      * init_fn_,
-      * uninit_fn_,
-      * print_fn_;
+    llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
 
     std::vector<std::pair<std::string, Type*>> fields_;
 };
-
-
 
 std::ostream& operator<<(std::ostream& os, const Type& t);
 

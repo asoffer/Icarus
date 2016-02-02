@@ -19,7 +19,9 @@ extern ErrorLog error_log;
 extern llvm::Module* global_module;
 
 namespace cstdlib {
+  extern llvm::Constant* free();
   extern llvm::Constant* memcpy();
+  extern llvm::Constant* malloc();
   extern llvm::Constant* printf();
 
 }  // namespace cstdlib
@@ -117,13 +119,18 @@ namespace AST {
   // Invariant:
   // Only returns nullptr if the expression type is void or a type
   llvm::Value* Unop::generate_code(Scope* scope) {
-    if (op_ == Language::Operator::And) {
-      return expr_->generate_lvalue(scope);
+    using Language::Operator;
+    // Cases where we don't want to generate code for the node
+    if (op_ == Operator::And) return expr_->generate_lvalue(scope);
+    if (op_ == Operator::Print && expr_->type() == Type_) {
+      // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
+      auto val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+      expr_->type()->call_print(scope->builder(), val);
+      return nullptr;
     }
 
     llvm::Value* val = expr_->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
-    using Language::Operator;
     switch (op_) { 
       case Operator::Sub:
         return expr_->type()->call_neg(bldr, val);
@@ -153,17 +160,10 @@ namespace AST {
             return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
           }
         }
-
       case Operator::Print:
-        if (expr_->type() == Type_) {
-          // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-          val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
-
-        } else if (expr_->type()->is_struct()) {
-          val = struct_memcpy(expr_->type(), val, scope->builder());
-        }
-
-        expr_->type()->call_print(scope->builder(), val);
+        expr_->type()->call_print(scope->builder(), expr_->type()->is_struct()
+            ? struct_memcpy(expr_->type(), val, scope->builder())
+            : val);
         return nullptr;
 
       default:
@@ -271,7 +271,45 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* ArrayType::generate_code(Scope* scope) { return nullptr; }
+  // If you do generate the code here, it is a shorthand array literal
+  llvm::Value* ArrayType::generate_code(Scope* scope) {
+    // TODO arrays can only take primitive types currently.
+    auto len = length()->generate_code(scope);
+    auto data_ty = data_type()->type();
+    auto data = data_type()->generate_code(scope);
+    llvm::IRBuilder<>& bldr = scope->builder();
+
+    auto alloc_size = bldr.CreateAdd(data::const_uint(Uint->bytes()),
+        bldr.CreateMul(len, data::const_uint(data_ty->bytes())));
+    auto alloc_ptr = bldr.CreateCall(cstdlib::malloc(), { alloc_size });
+    bldr.CreateStore(len, bldr.CreateBitCast(alloc_ptr, *Ptr(Uint)));
+
+    auto start_ptr = bldr.CreateBitCast(
+        bldr.CreateGEP(alloc_ptr, { data::const_uint(Uint->bytes()) }), *Ptr(data_ty), "startptr");
+    auto end_ptr = bldr.CreateGEP(start_ptr, { len }); 
+
+    auto prev_block = bldr.GetInsertBlock();
+    auto parent_fn = bldr.GetInsertBlock()->getParent();
+
+    auto loop_block = make_block("loop.block", parent_fn);
+    auto loop_end = make_block("loop.end", parent_fn);
+
+    bldr.CreateBr(loop_block);
+    bldr.SetInsertPoint(loop_block);
+    auto phi_node = bldr.CreatePHI(*Ptr(data_ty), 2, "phi");
+    phi_node->addIncoming(start_ptr, prev_block);
+    bldr.CreateCall(data_ty->assign(), { data, phi_node });
+
+    auto next_ptr = bldr.CreateGEP(phi_node, { data::const_uint(1) });
+    phi_node->addIncoming(next_ptr, loop_block);
+ 
+    auto cmp = bldr.CreateICmpEQ(next_ptr, end_ptr);
+    bldr.CreateCondBr(cmp, loop_end, loop_block);
+    bldr.SetInsertPoint(loop_end);
+    // TODO If you never assign this, the allocation is leaked
+
+    return start_ptr;
+  }
 
   llvm::Value* Statements::generate_code(Scope* scope) {
     for (auto& stmt : statements_) {
