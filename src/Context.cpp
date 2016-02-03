@@ -6,11 +6,7 @@ Context Context::GlobalContext;
 Context::Value Context::get(IdPtr idptr) {
   auto iter = bindings_.find(idptr);
   if (iter == bindings_.end()) {
-    if (parent_ == nullptr) {
-      return nullptr;
-    }
-
-    return parent_->get(idptr);
+    return parent_ == nullptr ? nullptr : parent_->get(idptr);
   }
 
   return iter->second;

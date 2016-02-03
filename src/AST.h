@@ -18,6 +18,12 @@
 
 extern ErrorLog error_log;
 extern std::queue<std::string> file_queue;
+class Scope;
+class FnScope;
+class CondScope;
+class WhileScope;
+class Structure;
+class Enumeration;
 
 namespace AST {
 #define ENDING = 0
@@ -25,7 +31,7 @@ namespace AST {
   virtual std::string to_string(size_t n) const                    ENDING; \
   virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
   virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
-  virtual void record_dependencies(EPtr eptr) const                ENDING; \
+  virtual void record_dependencies()                               ENDING; \
   virtual void verify_types()                                      ENDING; \
   virtual Context::Value evaluate(Context& ctx)                    ENDING; \
   virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
@@ -35,7 +41,7 @@ namespace AST {
   virtual std::string to_string(size_t n) const                    ENDING; \
   virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
   virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
-  virtual void record_dependencies(EPtr eptr) const                ENDING; \
+  virtual void record_dependencies()                               ENDING; \
   virtual void verify_types()                                      ENDING; \
   virtual Type* interpret_as_type()                                ENDING; \
   virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
@@ -57,7 +63,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
       virtual void assign_decl_to_scope(Scope* scope) {}
-      virtual void record_dependencies(EPtr eptr) const {}
+      virtual void record_dependencies() {}
       virtual void verify_types() {}
 
       virtual Context::Value evaluate(Context& ctx) { return nullptr; }
@@ -140,6 +146,11 @@ namespace AST {
 
   class Expression : public Node {
     public:
+      Expression();
+      virtual ~Expression(){}
+      virtual bool is_expression() const { return true; }
+      VIRTUAL_METHODS_FOR_EXPRESSION;
+
       friend class KVPairList;
       friend class Binop;
       friend class Declaration;
@@ -155,14 +166,7 @@ namespace AST {
       }
 
       llvm::Value* llvm_value(Context::Value v);
-
-      virtual bool is_expression() const { return true; }
-
-      virtual ~Expression(){}
-
-      Expression() : expr_type_(Unknown) {}
-
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+    
     protected:
       size_t precedence_;
       Type* expr_type_;
@@ -196,7 +200,7 @@ namespace AST {
 
   class Binop : public Expression {
     public:
-      friend FunctionLiteral;
+      friend class FunctionLiteral;
       friend class ::ErrorLog;
 
       static NPtr build_operator(NPtrVec&& nodes, Language::Operator op_class);
@@ -317,24 +321,16 @@ namespace AST {
   };
 
   class Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
-
     public:
+      Identifier() = delete;
+      Identifier(size_t line_num, const std::string& token_string);
+      virtual ~Identifier() {}
+      virtual bool is_identifier() const { return true; }
       static NPtr build(NPtrVec&& nodes);
-
       VIRTUAL_METHODS_FOR_EXPRESSION;
 
-      virtual bool is_identifier() const { return true; }
-
-      Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
-        token_ = token_string;
-        expr_type_ = Unknown;
-        precedence_ =
-          Language::precedence(Language::Operator::NotAnOperator);
-        line_num_ = line_num;
-      }
-
       llvm::Value* alloc_;
-      bool is_function_arg_;
+      bool is_function_arg_;      
   };
 
   inline NPtr Identifier::build(NPtrVec&& nodes) {
@@ -463,16 +459,15 @@ namespace AST {
 
   class FunctionLiteral : public Expression {
     public:
-      friend class Binop;
-      friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
+      FunctionLiteral();
+      virtual ~FunctionLiteral() {}
       static NPtr build(NPtrVec&& nodes);
-
       VIRTUAL_METHODS_FOR_EXPRESSION;
 
-      virtual llvm::Function* llvm_function() const { return llvm_function_; }
+      friend class Binop;
+      friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
 
-      FunctionLiteral() : fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
-      virtual ~FunctionLiteral() {}
+      virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
     private:
       FnScope* fn_scope_;
@@ -481,9 +476,7 @@ namespace AST {
       std::vector<DeclPtr> inputs_;
       llvm::Function* llvm_function_;
       std::shared_ptr<Statements> statements_;
-
   };
-
 
   class Conditional : public Node {
     public:
@@ -514,13 +507,13 @@ namespace AST {
 
   class While : public Node {
     public:
+      While();
+      virtual ~While() {}
+
       static NPtr build(NPtrVec&& nodes);
       static NPtr build_assignment_error(NPtrVec&& nodes);
 
       VIRTUAL_METHODS_FOR_NODES;
-
-      While() : body_scope_(Scope::build<WhileScope>()) {}
-      virtual ~While() {}
 
     private:
       EPtr cond_;
@@ -542,17 +535,13 @@ namespace AST {
 
   class TypeLiteral : public Expression {
     public:
-      friend class Declaration;
-
+      TypeLiteral();
+      virtual ~TypeLiteral() {}
+      virtual bool is_type_literal() const { return true; }
       static NPtr build(NPtrVec&& nodes);
-
       VIRTUAL_METHODS_FOR_EXPRESSION;
 
-      virtual bool is_type_literal() const { return true; }
-
-      TypeLiteral() :
-        type_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
-      virtual ~TypeLiteral() {}
+      friend class Declaration;
 
     private:
       Scope* type_scope_;
@@ -560,22 +549,20 @@ namespace AST {
       std::vector<DeclPtr> decls_;
   };
 
-
+//#define AST_EXPR_CLASS(camel, underscore) \
+//  class camel : public Expression
+//  AST_EXPR_CLASS(EnumLiteral, enum_literal) {
   class EnumLiteral : public Expression {
     public:
-      friend class ::Enumeration;
-      friend class Declaration;
 
+      EnumLiteral();
+      virtual ~EnumLiteral() {}
+      virtual bool is_enum_literal() const { return true; }
       static NPtr build(NPtrVec&& nodes);
-
       VIRTUAL_METHODS_FOR_EXPRESSION;
 
-      virtual bool is_enum_literal() const { return true; }
-
-      // TODO Will TypeScope suffice?
-      EnumLiteral() :
-        enum_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
-      virtual ~EnumLiteral() {}
+      friend class ::Enumeration;
+      friend class Declaration;
 
     private:
       Scope* enum_scope_;

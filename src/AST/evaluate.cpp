@@ -11,21 +11,11 @@ namespace data {
 
 namespace AST {
   llvm::Value* Expression::llvm_value(Context::Value v) {
-    if (type() == Bool) {
-      return data::const_bool(v.as_bool);
-
-    } else if (type() == Char) {
-      return data::const_char(v.as_char);
-
-    } else if (type() == Int) {
-      return data::const_int(v.as_int);
-
-    } else if (type() == Real) {
-      return data::const_real(v.as_real);
-
-    } else if (type() == Uint) {
-      return data::const_uint(v.as_uint);
-    }
+    if (type() == Bool)       return data::const_bool(v.as_bool);
+    else if (type() == Char)  return data::const_char(v.as_char);
+    else if (type() == Int)   return data::const_int(v.as_int);
+    else if (type() == Real)  return data::const_real(v.as_real);
+    else if (type() == Uint)  return data::const_uint(v.as_uint);
 
     return nullptr;
   }
@@ -40,27 +30,13 @@ namespace AST {
 
     } else if (is_print()) {
       auto val = expr_->evaluate(ctx);
-      if (expr_->type() == Bool) {
-        std::cout << (val.as_bool ? "true" : "false");
-
-      } else if (expr_->type() == Char) {
-        std::cout << val.as_char;
-
-      } else if (expr_->type() == Int) {
-        std::cout << val.as_int;
-
-      } else if (expr_->type() == Real) {
-        std::cout << val.as_real;
-
-      } else if (expr_->type() == Type_) {
-        std::cout << val.as_type->to_string();
-
-      } else if (expr_->type() == Uint) {
-        std::cout << val.as_uint;
-
-      } else {
-        // TOOD
-      }
+      if (expr_->type() == Bool)        std::cout << (val.as_bool ? "true" : "false");
+      else if (expr_->type() == Char)   std::cout << val.as_char;
+      else if (expr_->type() == Int)    std::cout << val.as_int;
+      else if (expr_->type() == Real)   std::cout << val.as_real;
+      else if (expr_->type() == Type_)  std::cout << val.as_type->to_string();
+      else if (expr_->type() == Uint)   std::cout << val.as_uint;
+      else { /* TODO */ }
 
       std::cout.flush();
       return nullptr;
@@ -72,7 +48,6 @@ namespace AST {
       } else if (type() == Real) {
         return Context::Value(-expr_->evaluate(ctx).as_real);
       }
-
     }
 
     return nullptr;
@@ -112,25 +87,18 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
+        using Language::Operator;
         switch (ops_[i]) {
-          case Language::Operator::LessThan:
-            total &= (last.as_int < next.as_int);
-          case Language::Operator::LessEq:
-            total &= (last.as_int <= next.as_int);
-          case Language::Operator::Equal:
-            total &= (last.as_int == next.as_int);
-          case Language::Operator::NotEqual:
-            total &= (last.as_int != next.as_int);
-          case Language::Operator::GreaterThan:
-            total &= (last.as_int >= next.as_int);
-          case Language::Operator::GreaterEq:
-            total &= (last.as_int > next.as_int);
+          case Operator::LessThan:    total &= (last.as_int < next.as_int);
+          case Operator::LessEq:      total &= (last.as_int <= next.as_int);
+          case Operator::Equal:       total &= (last.as_int == next.as_int);
+          case Operator::NotEqual:    total &= (last.as_int != next.as_int);
+          case Operator::GreaterThan: total &= (last.as_int >= next.as_int);
+          case Operator::GreaterEq:   total &= (last.as_int > next.as_int);
           default:;
         }
 
-        if (!total) {
-          return Context::Value(false);
-        }
+        if (!total) { return Context::Value(false); }
 
         last = next;
       }
@@ -164,25 +132,19 @@ namespace AST {
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
 
+        using Language::Operator;
         switch (ops_[i]) {
-          case Language::Operator::LessThan:
-            total &= (last.as_int < next.as_int);
-          case Language::Operator::LessEq:
-            total &= (last.as_int <= next.as_int);
-          case Language::Operator::Equal:
-            total &= (last.as_int == next.as_int);
-          case Language::Operator::NotEqual:
-            total &= (last.as_int != next.as_int);
-          case Language::Operator::GreaterThan:
-            total &= (last.as_int >= next.as_int);
-          case Language::Operator::GreaterEq:
-            total &= (last.as_int > next.as_int);
+          case Operator::LessThan:    total &= (last.as_int < next.as_int);
+          case Operator::LessEq:      total &= (last.as_int <= next.as_int);
+          case Operator::Equal:       total &= (last.as_int == next.as_int);
+          case Operator::NotEqual:    total &= (last.as_int != next.as_int);
+          case Operator::GreaterThan: total &= (last.as_int >= next.as_int);
+          case Operator::GreaterEq:   total &= (last.as_int > next.as_int);
           default:;
         }
 
-        if (!total) {
-          return Context::Value(false);
-        }
+        if (!total) { return Context::Value(false); }
+        
         last = next;
       }
 
@@ -198,36 +160,17 @@ namespace AST {
 
   Context::Value Terminal::evaluate(Context& ctx) {
     if (type() == Bool) {
-      if (token() == "true") {
-        return Context::Value(true);
-
-      } else if (token() == "false") {
-        return Context::Value(false);
-
-      } else {
-        std::cerr << "FATAL: BOOL LITERAL?" << std::endl;
-        return nullptr;
-      }
-
-    } else if (type() == Char) {
-      return Context::Value(token()[0]);
-
-    } else if (type() == Int) {
-      return Context::Value(std::stoi(token()));
-
-    } else if (type() == Real) {
-      return Context::Value(std::stod(token()));
-
-    } else if (type() == Uint) {
-      return Context::Value(std::stoul(token()));
-
-    } else if (type() == Type_) {
-      return Context::Value(interpret_as_type());
-
-    } else {
-      // TODO
-      return nullptr;
+      assert((token() == "true" || token() == "false")
+          && "Bool literal other than true or false");
+      return Context::Value(token() == "true");
     }
+    else if (type() == Char)  return Context::Value(token()[0]);
+    else if (type() == Int)   return Context::Value(std::stoi(token()));
+    else if (type() == Real)  return Context::Value(std::stod(token()));
+    else if (type() == Uint)  return Context::Value(std::stoul(token()));
+    else if (type() == Type_) return Context::Value(interpret_as_type());
+    else { /* TODO */ }
+    return nullptr;
   }
 
   Context::Value FunctionLiteral::evaluate(Context& ctx) {

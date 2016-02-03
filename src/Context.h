@@ -5,7 +5,8 @@
 #include <map>
 
 #include "typedefs.h"
-#include "Type.h"
+
+class Type;
 
 namespace AST {
   class Expression;

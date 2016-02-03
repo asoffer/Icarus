@@ -1,17 +1,10 @@
 #include "Scope.h"
 
 #include <iostream>
-#include <stack>
 #include <algorithm>
 
 #include "AST.h"
 #include "ErrorLog.h"
-
-#ifdef DEBUG
-#define AT(access) .at( (access) )
-#else
-#define AT(access) [ (access) ]
-#endif
 
 extern llvm::Module* global_module;
 extern llvm::DataLayout* data_layout;
@@ -27,7 +20,6 @@ namespace debug {
 
 
 std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
-std::map<EPtr, std::set<EPtr>> Scope::dependencies_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
 std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
 
@@ -65,17 +57,13 @@ void GlobalScope::initialize() {
         decl_id->alloc_ = decl_type->allocate(bldr_);
         decl_id->alloc_->setName(decl_ptr->identifier_string());
       }
-    } else if (decl_type == Type_) {
-      continue;
     } else {
-      std::cerr << "FATAL: Global variables not currently allowed." << std::endl;
+      assert(decl_type == Type_ && "Global variables not currently allowed.");
     }
   }
 }
 
-size_t Scope::num_scopes() {
-  return registry_.size();
-}
+size_t Scope::num_scopes() { return registry_.size(); }
 
 void Scope::enter() {
   bldr_.SetInsertPoint(entry_block());
@@ -337,186 +325,13 @@ void Scope::verify_no_shadowing() {
   }
 }
 
-
 DeclPtr Scope::make_declaration(size_t line_num, const std::string& id_string) {
-  DeclPtr d(new AST::Declaration);
-  decl_registry_.push_back(d);
-  d->id_ = IdPtr(new AST::Identifier(line_num, id_string));
+  auto d = std::make_shared<AST::Declaration>();
+  decl_registry_.emplace_back(d);
+  d->id_ = std::make_shared<AST::Identifier>(line_num, id_string);
   d->line_num_ = line_num;
 
   return d;
-}
-
-
-void Scope::fill_db() {
-  for (auto scope_ptr : Scope::registry_) {
-    scope_ptr->ordered_decls_.clear();
-  }
-
-  for (const auto& decl_ptr : decl_registry_) {
-    IdPtr decl_id = decl_ptr->declared_identifier();
-    if (debug::dependency_system) {
-      std::cout << "Make decl_of_: " << decl_id->token() << " (line " << decl_ptr->line_num() << ")" << std::endl;
-      std::cout << "\t" << decl_id << " -> " << decl_ptr << std::endl;
-      std::cout << "\tRHS: " << decl_ptr->declared_type() << std::endl;
-    }
-    decl_of_[decl_id] = decl_ptr;
-
-    // Build up dependencies_ starting with empty sets
-    dependencies_[std::static_pointer_cast<AST::Expression>(decl_id)] = std::set<EPtr>();
-
-  }
-}
-
-void Scope::assign_type_order() {
-  // Counts the number of times a given IdPtr is an immediate dependency of
-  // something else. So a value of zero means that nothing depends on it.
-  std::map<EPtr, size_t> num_immediate_dep_refs;
-
-  // Char just used as a mask
-  std::map<EPtr, char> already_seen;
-
-  std::stack<EPtr> expr_stack;
-
-  // Push back all the sources (i.e., all the EPtrs with num_immediate_dep_refs
-  // equal to zero
-  for (const auto& kv : dependencies_) {
-    // Ensure each identifier is present in the map
-    num_immediate_dep_refs[kv.first];
-    already_seen[kv.first] = 0x00;
-
-    for (const auto& dep : kv.second) {
-      num_immediate_dep_refs[dep]++;
-    }
-  }
-  // num_immediate_dep_refs[foo] counts the number of things which directly
-  // need foo's type in order to determine their own.
-
-  // Start the stack with the sources of the dependency graph.
-  // That is, those expressions which no one depends on.
-  for (const auto& kv : num_immediate_dep_refs) {
-    if (kv.second == 0) {
-      expr_stack.push(kv.first);
-
-      if (debug::dependency_system) {
-        if (kv.first == nullptr) {
-          std::cout << "Found a null pointer!" << std::endl;
-        }
-      }
-    }
-  }
-
-  // Count the number of EPtrs seen. If at the end this isn't equal to the
-  // total number, we know there's a cycle.
-  //
-  // TODO For better error messages we should write down what the cycle is.
-  size_t num_seen = 0;
-
-
-  // Preallocate a vector of the right size
-  std::vector<EPtr> topo_order(already_seen.size(), nullptr);
-
-  if (debug::dependency_system) {
-    std::cout << "Expressions seen: " << already_seen.size() << std::endl;
-  }
-
-  // 0x02 means already seen and already popped into topo_order
-  // 0x01 means seen but not yet popped
-  // 0x00 means not yet seen
-
-  // Standard depth-first search
-  while (!expr_stack.empty()) {
-    auto eptr = expr_stack.top();
-
-    if (debug::dependency_system) {
-      if (eptr == nullptr) {
-        std::cerr << "Found a null pointer!" << std::endl;
-        assert(false);
-
-      } else {
-        std::cout << "Looking at:   " << eptr << "\n" << *eptr << std::endl;
-      }
-    }
-
-
-    if ((already_seen AT(eptr) & 2) == 2) {
-      if (debug::dependency_system) {
-        std::cout << "Already done: "  << eptr << "\n" << *eptr << std::endl;
-      }
-      // Already popped it into topo_order, so just ignore it
-      expr_stack.pop();
-      continue;
-
-    }
-    
-    if ((already_seen AT(eptr) & 1) == 1) {
-      // pop it off and put it in topo_order
-      if (debug::dependency_system) {
-        std::cout << "Adding:       " << eptr << "\n"  << *eptr << std::endl;
-      }
-
-      expr_stack.pop();
-      topo_order[num_seen] = eptr;
-
-      // mark it as already seen
-      already_seen AT(eptr) = 0x03;
-      ++num_seen;
-      continue;
-    }
-
-
-    already_seen[eptr] = 0x01;
-
-    for (const auto& dep : dependencies_[eptr]) {
-      if (debug::dependency_system) {
-        std::cout << "Found deps:   " << dependencies_[eptr].size() << std::endl;
-
-        assert(dep && 
-            ("Looking at a null dependency from " + eptr->to_string(0)
-             + " seen on line " + std::to_string(eptr->line_num()) + "\n").c_str());
-
-        assert(already_seen.find(dep) != already_seen.end() &&
-            ("Dependency has not been seen yet: "
-            + dep->to_string(0) + "\nCOMING FROM "
-            + eptr->to_string(0) + "\n").c_str());
-      }
-
-      if ((already_seen AT(dep) & 2) == 2) {
-        if (debug::dependency_system) {
-          std::cout << "Skipping:     " << eptr << "\n"  << *eptr << std::endl;
-        }
-        continue;
-      }
-
-      if ((already_seen AT(dep) & 1) == 1) {
-        error_log.log(dep->line_num(), "Cyclic dependency found.");
-        // TODO give information about cycle
-        return;
-      }
-
-      if (debug::dependency_system) {
-        std::cout << "Pushing dep:  " << eptr << "\n"  << *dep << std::endl;
-      }
-      expr_stack.push(dep);
-    }
-  }
-
-  if (num_seen != already_seen.size()) {
-    error_log.log(0, "A dependency cycle was found.");
-    return;
-  }
-
-  for (const auto& eptr : topo_order) {
-    eptr->verify_types();
-
-    // If it's an identifier, push it into the declarations for the
-    // appropriate scope, so they can be allocated correctly
-    if (eptr->is_identifier()) {
-      auto id_ptr = std::static_pointer_cast<AST::Identifier>(eptr);
-      scope_containing_[id_ptr]->ordered_decls_
-        .push_back(decl_of_[id_ptr]);
-    }
-  }
 }
 
 void FnScope::set_parent_function(llvm::Function* fn) {
@@ -537,7 +352,6 @@ void Scope::set_parent_function(llvm::Function* fn) {
 
   exit_block()->insertInto(fn);
 }
-
 
 void WhileScope::set_parent_function(llvm::Function* fn) {
   Scope::set_parent_function(fn);

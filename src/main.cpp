@@ -9,6 +9,7 @@
 #include "typedefs.h"
 #include "Scope.h"
 #include "ErrorLog.h"
+#include "DependencySystem.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
@@ -186,14 +187,14 @@ int main(int argc, char *argv[]) {
   // this point. It initializes the table of dependencies. It also populates
   // the decl_of_ database, so that we can quickly find a declaration from the
   // identifier being declared. fill_db() cannot generate compilation errors.
-  Scope::fill_db();
+  Dependency::fill_db();
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
-  global_statements->record_dependencies(nullptr);
+  Dependency::record(global_statements.get());
   // To assign type orders, we traverse the dependency graph looking for a
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
-  Scope::assign_type_order();
+  Dependency::assign_type_order();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;

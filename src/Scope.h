@@ -9,6 +9,7 @@
 
 #include "typedefs.h"
 #include "Type.h"
+#include "DependencySystem.h"
 
 #include <iostream>
 
@@ -38,8 +39,6 @@ class Scope {
     template<typename T>
       static typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type build_fn();
 
-
-    static std::map<EPtr, std::set<EPtr>> dependencies_;
     static std::map<IdPtr, DeclPtr> decl_of_;
 
     static void verify_no_shadowing();
@@ -49,10 +48,6 @@ class Scope {
     static size_t num_scopes();
 
     static DeclPtr make_declaration(size_t line_num, const std::string& id_string);
-
-    static void fill_db();
-    static void assign_type_order();
-
 
     static DeclPtr get_declaration(IdPtr id) { return decl_of_[id]; }
 
@@ -107,6 +102,8 @@ class Scope {
     // To each IdPtr we associate a set holding IdPtrs for which it is needed
     static std::map<IdPtr, Scope*> scope_containing_;
     static std::vector<DeclPtr> decl_registry_;
+    friend void Dependency::fill_db();
+    friend void Dependency::assign_type_order();
 };
 
 
