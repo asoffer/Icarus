@@ -95,6 +95,7 @@ namespace AST {
       return Context::Value(true);
 
     } else if (exprs_[0]->type() == Int) {
+
       bool total = true;
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
@@ -212,9 +213,12 @@ namespace AST {
     return pairs_->kv_pairs_.back().second->evaluate(ctx);
   }
 
+  Context::Value TypeLiteral::evaluate(Context&) {
+    return Context::Value(type_value_);
+  }
+
   Context::Value Assignment::evaluate(Context&)      { return nullptr; }
   Context::Value Declaration::evaluate(Context&)     { return nullptr; }
-  Context::Value TypeLiteral::evaluate(Context&)     { return nullptr; }
   Context::Value EnumLiteral::evaluate(Context&)     { return nullptr; }
 
   Context::Value Binop::evaluate(Context& ctx) {

@@ -537,6 +537,7 @@ namespace AST {
       static NPtr build(NPtrVec&& nodes);
       VIRTUAL_METHODS_FOR_EXPRESSION;
 
+      void build_llvm_internals();
       friend class Declaration;
 
     private:

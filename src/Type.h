@@ -25,6 +25,7 @@ namespace AST {
   class Expression;
   class EnumLiteral;
   class Declaration;
+  class TypeLiteral;
 }  // namespace AST
 
 class Type;
@@ -64,8 +65,7 @@ extern Function* Func(Type* in, std::vector<Type*> out);
 extern Function* Func(std::vector<Type*> in, std::vector<Type*> out);
 extern Enumeration* Enum(const std::string& name,
     const AST::EnumLiteral* e = nullptr);
-extern Structure* Struct(const std::string& name,
-    const std::vector<DeclPtr>& decls = {});
+extern Structure* Struct(const std::string& name);
 
 #include "typedefs.h"
 
@@ -310,9 +310,10 @@ class Structure : public Type {
     friend Structure* Struct(const std::string& name,
         const std::vector<DeclPtr>& decls);
 
-    Structure(const std::string& name, const std::vector<DeclPtr>& decls);
+    Structure(const std::string& name);
 
     friend Type* TypeSystem::get(const std::string& name);
+    friend class AST::TypeLiteral;
     virtual bool requires_uninit() const;
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);

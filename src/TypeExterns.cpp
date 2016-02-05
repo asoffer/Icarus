@@ -21,7 +21,6 @@ namespace TypeSystem {
     if (enum_ptr) return enum_ptr;
 
     auto struct_ptr = Struct(name);
-    std::cout << name << std::endl;
     assert(struct_ptr && "No struct found matching this name");
     return struct_ptr;
   }
@@ -249,14 +248,12 @@ Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
   return enum_types_[name] = enum_type;
 }
 
-Structure* Struct(const std::string& name, const std::vector<DeclPtr>& decls) {
+Structure* Struct(const std::string& name) {
   static std::map<std::string, Structure*> struct_types_;
   auto iter = struct_types_.find(name);
   if (iter != struct_types_.end()) return iter->second;
 
-  if (decls.empty()) return nullptr;
-
-  auto struct_type = new Structure(name, decls);
+  auto struct_type = new Structure(name);
 
   if (struct_type->to_string() == "string") String = struct_type;
 

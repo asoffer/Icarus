@@ -10,8 +10,19 @@ namespace debug {
 #define DEBUG_KILL(x) if (debug::dependency_system) assert(x);
 
 namespace AST {
+  void Terminal::record_dependencies() {
+    Dependency::value_type(this, this);
+    DEBUG_KILL(this);
+  }
+
+  void Identifier::record_dependencies() {
+    Dependency::value_value(this, Scope::decl_of_[shared_from_this()].get());
+    Dependency::type_type(this, Scope::decl_of_[shared_from_this()].get());
+  }
+
   void Unop::record_dependencies() {
     DEBUG_KILL(expr_);
+    Dependency::value_type(this, expr_.get());
     Dependency::type_type(this, expr_.get());
     expr_->record_dependencies();
   }
@@ -21,12 +32,14 @@ namespace AST {
       DEBUG_KILL(el);
 
       Dependency::type_type(this, el.get());
+      Dependency::value_type(this, this);
       el->record_dependencies();
     }
   }
 
   void Binop::record_dependencies() {
     DEBUG_KILL(lhs_);
+    Dependency::value_type(this, this);
 
     Dependency::type_type(this, lhs_.get());
     lhs_->record_dependencies();
@@ -40,6 +53,7 @@ namespace AST {
   }
 
   void ArrayType::record_dependencies() {
+    Dependency::value_type(this, this);
     if (len_ != nullptr) {
       DEBUG_KILL(len_);
       Dependency::type_type(this, len_.get());
@@ -55,6 +69,7 @@ namespace AST {
   }
 
   void ChainOp::record_dependencies() {
+    Dependency::value_type(this, this);
     for (auto& e : exprs_) {
       DEBUG_KILL(e);
       Dependency::type_type(this, e.get());
@@ -65,18 +80,19 @@ namespace AST {
   void Declaration::record_dependencies() {
     DEBUG_KILL(decl_type_);
 
-    Dependency::type_type(id_.get(), this);
-    Dependency::value_type(id_.get(), this);
-    if (infer_type_) {
+    if (type_is_inferred()) {
       Dependency::type_type(this, decl_type_.get());
+      Dependency::value_value(this, decl_type_.get());
     } else {
       Dependency::type_value(this, decl_type_.get());
     }
 
+    id_->record_dependencies();
     decl_type_->record_dependencies();
   }
 
   void Case::record_dependencies() {
+    Dependency::value_type(this, this);
     for (const auto& kv : pairs_->kv_pairs_) {
       DEBUG_KILL(kv.first);
       Dependency::type_type(this, kv.first.get());
@@ -91,6 +107,7 @@ namespace AST {
   }
 
   void FunctionLiteral::record_dependencies() {
+    Dependency::value_type(this, this);
     for (const auto& in : inputs_) {
       DEBUG_KILL(in);
       Dependency::type_type(this, in.get());
@@ -105,15 +122,6 @@ namespace AST {
 
     return_type_->record_dependencies();
     statements_->record_dependencies();
-  }
-
-  void Terminal::record_dependencies() {
-    DEBUG_KILL(this);
-    Dependency::add_to_table(this);
-  }
-
-  void Identifier::record_dependencies() {
-    Dependency::type_type(this, Scope::decl_of_[shared_from_this()].get());
   }
 
   void KVPairList::record_dependencies() {
@@ -139,12 +147,13 @@ namespace AST {
   void TypeLiteral::record_dependencies() {
     for (const auto& decl : decls_) {
       DEBUG_KILL(decl);
-      Dependency::type_type(this, decl.get());
+      Dependency::value_type(this, decl.get());
       decl->record_dependencies();
     }
   }
 
   void EnumLiteral::record_dependencies() {
+    Dependency::value_type(this, this);
     DEBUG_KILL(this);
     Dependency::add_to_table(this);
   }

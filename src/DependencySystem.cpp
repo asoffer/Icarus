@@ -3,7 +3,7 @@
 #include <map>
 #include <set>
 #include <iostream>
-#include <stack>
+#include <vector>
 
 #include "typedefs.h"
 #include "Scope.h"
@@ -130,18 +130,18 @@ namespace Dependency {
     // expression pointer and one with the bools representing type/value
     // This saves us all the padding that gets placed at the end of the
     // PtrWithTorV struct.
-    std::stack<AST::Expression*> expr_stack;
-    std::stack<bool> torv_stack;
+    std::vector<AST::Expression*> expr_stack;
+    std::vector<bool> torv_stack;
 
     for (const auto& kv : num_immediate_dep_refs) {
       if (kv.second.first == 0) {
-        expr_stack.push(kv.first);
-        torv_stack.push(true);
+        expr_stack.push_back(kv.first);
+        torv_stack.push_back(true);
       }
 
       if (kv.second.second == 0) {
-        expr_stack.push(kv.first);
-        torv_stack.push(false);
+        expr_stack.push_back(kv.first);
+        torv_stack.push_back(false);
       }
     }
 
@@ -158,17 +158,26 @@ namespace Dependency {
     }
 
     while (!expr_stack.empty()) {
+      if (debug::dependency_system) {
+        // std::cin.ignore(1);
+        std::cout << "\033[2J\033[1;1H" << std::endl;
+      }
       // Ensure stacks match up
       assert(expr_stack.size() == torv_stack.size() && "Stacks sizes don't match!");
 
-      auto ptr = expr_stack.top();
-      auto torv = torv_stack.top();
+      auto ptr = expr_stack.back();
+      auto torv = torv_stack.back();
 
       if (debug::dependency_system) {
         std::cout
-          << "+------------------------------------------------" << std::endl
-          << "| Stack size: " << expr_stack.size() << std::endl
-          << "| Node " << ptr << (torv ? " (type)" : " (value)") << ptr->token() << std::endl;
+          << "+------------------------------------------------" << std::endl;
+
+        for (size_t i = 0; i < expr_stack.size(); ++i) {
+          std::cout << "| " << i << ". " << expr_stack[i] << (torv_stack[i] ? " (type)" : " (value)") << std::endl;
+        }
+
+        std::cout << *ptr << std::endl;
+        std::cout << "Seen flag (on entry): " << already_seen AT(ptr) << std::endl;
       }
  
       Flag done_flag = (torv ? type_done : val_done);
@@ -176,31 +185,36 @@ namespace Dependency {
         if (debug::dependency_system) {
           std::cout << "| Already done. Popping." << std::endl;
         }
-        expr_stack.pop();
-        torv_stack.pop();
+        expr_stack.pop_back();
+        torv_stack.pop_back();
         continue;
       }
 
       Flag seen_flag = (torv ? type_seen : val_seen);
       if ((already_seen AT(ptr) & seen_flag) != 0) {
         // pop it off and put it in topo_order
-        if (debug::dependency_system) {
-          std::cout << "| Already seen. Adding to topo_order." << std::endl;
-        }
-
-        expr_stack.pop();
-        torv_stack.pop();
+        expr_stack.pop_back();
+        torv_stack.pop_back();
         topo_order.emplace_back(ptr, torv);
         already_seen AT(ptr) = static_cast<Flag>((seen_flag << 1) | already_seen AT(ptr)); // Mark it as done
+
+        if (debug::dependency_system) {
+          std::cout << "Seen flag (now):      " << already_seen AT(ptr) << std::endl;
+          std::cout << "| Already seen. Adding to topo_order." << std::endl;
+        }
         continue;
       }
 
       // If you get here, this node is totally new.
 
       // Mark it as seen
-      already_seen AT(ptr) = seen_flag;
+      already_seen AT(ptr) = static_cast<Flag>(seen_flag | already_seen AT(ptr));
       if (debug::dependency_system) {
-        std::cout << "| Marking as seen." << std::endl;
+        std::cout << "Seen flag (later):    " << already_seen AT(ptr) << std::endl;
+        std::cout << "| Marking as seen." << seen_flag << std::endl;
+        std::cout << "| Has "
+          << dependencies_ AT( PtrWithTorV(ptr, torv)).size()
+          << " dependencies." << std::endl;
       }
  
       // And follow it's dependencies
@@ -214,23 +228,45 @@ namespace Dependency {
 
         } else if ((already_seen AT(dep.ptr_) & seen_flag) != 0) {
           error_log.log(dep.ptr_->line_num(), "Cyclic dependency found.");
+          assert(false && "cyclic dep found");
 
         } else {
           if (debug::dependency_system) {
             std::cout << "| Pushing " << dep.ptr_ << " (" << (dep.torv_ ? "type" : "value") << ")" << std::endl;
           }
  
-          expr_stack.push(dep.ptr_);
-          torv_stack.push(dep.torv_);
+          expr_stack.push_back(dep.ptr_);
+          torv_stack.push_back(dep.torv_);
         }
       }
     }
 
+    if (debug::dependency_system) {
+      std::cout << "+-----------ORDER:-----------+" << std::endl;
+      for (const auto& ptr_with_torv : topo_order) {
+        std::cout << "| " << ptr_with_torv.ptr_
+          << (ptr_with_torv.torv_ ? " (type) " : " (value) ") << std::endl;
+      }
+      std::cin.ignore(1);
+    }
+
     // TODO Check for cyclic dependencies that are in components without sources
 
-    for (const auto& ptr_with_torv : topo_order) {
+    for (auto& ptr_with_torv : topo_order) {
       if (ptr_with_torv.torv_) {
         ptr_with_torv.ptr_->verify_types();
+      }
+
+      if (debug::dependency_system) {
+        std::cout << "\033[2J\033[1;1H" << std::endl;
+        std::cout << *ptr_with_torv.ptr_ << std::endl;
+        std::cout << "line " << ptr_with_torv.ptr_->line_num() << std::endl;
+        std::cout << "== " << (ptr_with_torv.torv_ ? "type" : "value") << " ==" << std::endl;
+        if (ptr_with_torv.torv_) {
+          std::cout << *ptr_with_torv.ptr_->type() << std::endl;
+        } else {
+          // std::cout << *ptr_with_torv.ptr_->type() << std::endl;
+        }
       }
 
       // If it's an identifier, push it into the declarations for the
@@ -238,6 +274,15 @@ namespace Dependency {
       if (ptr_with_torv.torv_ && ptr_with_torv.ptr_->is_identifier()) {
         auto id_ptr = static_cast<AST::Identifier*>(ptr_with_torv.ptr_)->shared_from_this();
         Scope::scope_containing_[id_ptr]->ordered_decls_.push_back(Scope::decl_of_[id_ptr]);
+      }
+
+      if (!ptr_with_torv.torv_ && ptr_with_torv.ptr_->is_type_literal()) {
+        auto struct_ptr = static_cast<AST::TypeLiteral*>(ptr_with_torv.ptr_);
+        struct_ptr->build_llvm_internals();
+      }
+
+      if (debug::dependency_system) {
+        std::cin.ignore(1);
       }
     }
   }

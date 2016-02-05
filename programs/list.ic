@@ -1,0 +1,21 @@
+main := void -> void {
+  x: node
+  y: node
+  z: node
+  x.next = &y
+  y.next = &z
+  x.data = -17
+  y.data = 17
+  z.data = 34
+  print x.data
+  print '\n'
+  print x.next.data
+  print '\n'
+  print x.next.next.data
+  print '\n'
+}
+
+node := type {
+  data: int
+  next: &node
+}

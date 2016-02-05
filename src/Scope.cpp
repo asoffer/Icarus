@@ -282,7 +282,7 @@ void Scope::determine_declared_types() {
     for (auto decl_ptr : scope_ptr->ordered_decls_) {
       if (decl_ptr->infer_type_) {
         // TODO do inference correctly inside this scope in necessary.
-        decl_ptr->declared_type()->verify_types();
+        // decl_ptr->declared_type()->verify_types();
         decl_ptr->declared_identifier()->expr_type_ =
           decl_ptr->declared_type()->type();
 

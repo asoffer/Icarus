@@ -161,8 +161,7 @@ bool Parser::should_shift() {
       lhs_prec = Language::precedence(prev_token_node->operator_type());
 
     } else {
-      std::cout << "FATAL: Previous node is not a token node." << std::endl;
-      lhs_prec = 0;
+      assert(false && "Previous node is not a token node.");
     }
 
     if (lhs_prec != rhs_prec) return lhs_prec < rhs_prec;

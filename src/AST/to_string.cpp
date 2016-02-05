@@ -100,9 +100,10 @@ namespace AST {
   std::string Terminal::to_string(size_t n) const {
     auto str =  tabs(n) + "<Terminal " + expr_type_->to_string() + ": ";
     if (token_ == "\n") str += "\\n";
-    if (token_ == "\t") str += "\\t";
-    if (token_ == "\r") str += "\\r";
-    if (token_ == " ") str += "' '";
+    else if (token() == "\t") str += "\\t";
+    else if (token() == "\r") str += "\\r";
+    else if (token() == " ") str += "' '";
+    else str += token();
     str += ">\n";
     return str;
   }

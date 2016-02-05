@@ -143,28 +143,11 @@ Enumeration::Enumeration(const std::string& name,
       /*        Name = */ name_ + ".name.array");
   }
 
-  Structure::Structure(const std::string& name, const std::vector<DeclPtr>& decls)
+  Structure::Structure(const std::string& name)
 : name_(name), init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
 {
-  for (const auto& decl : decls) {
-    if (decl->type_is_inferred()) {
-      // TODO
-    } else {
-      fields_.emplace_back(decl->identifier_string(), decl->interpret_as_type());
-    }
-  }
-
-  llvm::StructType* struct_type =
-    llvm::StructType::create(global_module->getContext());
-  struct_type->setName(name);
-
-  size_t num_fields = fields_.size();
-  std::vector<llvm::Type*> llvm_fields(num_fields, nullptr);
-  for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = fields_[i].second->llvm();
-  }
-
-  struct_type->setBody(std::move(llvm_fields), /* isPacked = */ false);
+  auto struct_type = llvm::StructType::create(global_module->getContext());
+  struct_type->setName(name_);
   llvm_type_ = struct_type;
 }
 

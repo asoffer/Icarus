@@ -16,7 +16,7 @@ Context Context::spawn() {
   return ctx;
 }
 void Context::bind(Context::Value v, IdPtr idptr) {
-  bindings_.emplace(std::make_pair(idptr, v));
+  bindings_.emplace(idptr, v);
 }
 
 void Context::set_return_value(Value v) {

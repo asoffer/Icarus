@@ -52,7 +52,9 @@ llvm::Value* struct_memcpy(Type* type, llvm::Value* val, llvm::IRBuilder<>& bldr
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
-    if (type()->is_function()) {
+    if (type() == Type_) {
+      return nullptr;
+    } else if (type()->is_function()) {
       return global_module->getFunction(token());
 
     } else if (type()->is_struct()) {

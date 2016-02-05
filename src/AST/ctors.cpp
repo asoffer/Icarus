@@ -23,4 +23,26 @@ namespace AST {
     enum_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
 
   While::While() : body_scope_(Scope::build<WhileScope>()) {}
+
+  // TODO put this somewhere else
+  void TypeLiteral::build_llvm_internals() {
+    for (const auto& decl : decls_) {
+      if (decl->type_is_inferred()) {
+        // TODO
+      } else {
+        type_value_->fields_.emplace_back(decl->identifier_string(),
+            decl->declared_type()->evaluate(Scope::Global->context()).as_type);
+      }
+    }
+
+    size_t num_fields = type_value_->fields_.size();
+    std::vector<llvm::Type*> llvm_fields(num_fields, nullptr);
+    for (size_t i = 0; i < num_fields; ++i) {
+      llvm_fields[i] = type_value_->fields_[i].second->llvm();
+    }
+
+    static_cast<llvm::StructType*>(type_value_->llvm_type_)->setBody(
+        std::move(llvm_fields), /* isPacked = */ false);
+  }
+
 }  // namespace AST

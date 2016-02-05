@@ -24,6 +24,211 @@ namespace AST {
     }
   }
 
+  void Terminal::verify_types() {
+    using Language::Terminal;
+    switch (terminal_type_) {
+      case Terminal::ASCII:         expr_type_ = Func(Uint, Char);  break;
+      case Terminal::Return:        expr_type_ = Void;              break;
+      case Terminal::True:          expr_type_ = Bool;              break;
+      case Terminal::False:         expr_type_ = Bool;              break;
+      case Terminal::Char:          expr_type_ = Char;              break;
+      case Terminal::Int:           expr_type_ = Int;               break;
+      case Terminal::Real:          expr_type_ = Real;              break;
+      case Terminal::Type:          expr_type_ = Type_;             break;
+      case Terminal::UInt:          expr_type_ = Uint;              break;
+      case Terminal::StringLiteral: expr_type_ = String;            break;
+    }
+  }
+
+  void Identifier::verify_types() {
+    auto decl_ptr = Scope::decl_of_[shared_from_this()];
+    if (decl_ptr->type_is_inferred()) {
+      expr_type_ = decl_ptr->type();
+
+      if (expr_type_ == Type_) {
+        Scope::Global->context().bind(Context::Value(
+              decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type),
+            shared_from_this());
+        assert(Scope::Global->context().get(shared_from_this()).as_type
+            && "Bound type was a nullptr");
+      }
+    } else {
+      expr_type_ = decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type;
+
+    }
+    assert(expr_type_ && "Expression type is nullptr in Identifier::verify_types()");
+  }
+  void Unop::verify_types() {
+    using Language::Operator;
+    if (op_ == Operator::Print) {
+      if (expr_->type() == Void) {
+        error_log.log(line_num(), "Void types cannot be printed");
+      }
+      expr_type_ = Void;
+    
+    } else if (op_ == Operator::And) {
+      // TODO disallow pointers to goofy things (address of rvalue, e.g.)
+      expr_type_ = (expr_->type() == Type_
+          ? static_cast<Type*>(Type_)
+          : static_cast<Type*>(Ptr(expr_->type())));
+
+    } else if (op_ == Operator::Sub) {
+      if (expr_->type() == Uint) {
+        error_log.log(line_num(), "Negation applied to unsigned integer");
+        expr_type_ = Uint;
+
+      } else if (expr_->type() == Int) {
+        expr_type_ = Int;
+
+      } else if(expr_->type() == Real) {
+        expr_type_ = Real;
+
+      } else {
+        error_log.log(line_num(), type()->to_string() + " has no negation operator.");
+        expr_type_ = Error;
+      }
+    } else {
+      assert(false && "Died in Unop::verify_types");
+    }
+    return;
+  }
+
+  void Binop::verify_types() {
+    using Language::Operator;
+    if (lhs_->type() == Error || rhs_->type() == Error) {
+      // An error was already found in the types, so just pass silently
+      expr_type_ = Error;
+      return;
+    }
+
+    if (op_ == Operator::Access) {
+      if (!rhs_->is_identifier()) {
+        error_log.log(line_num(), "Member access (`.`) must access an identifier.");
+        expr_type_ = Error;
+        return;
+      }
+
+      // Access passes through pointers
+      auto lhs_type = lhs_->type();
+      while (lhs_type->is_pointer()) {
+        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
+      }
+
+      if (lhs_type->is_struct()) {
+        auto struct_type = static_cast<Structure*>(lhs_type);
+        auto member_type = struct_type->field(rhs_->token());
+        if (member_type == nullptr) {
+          error_log.log(line_num(),
+              "Objects of type " + lhs_type->to_string() + " has no member named `" + rhs_->token() + "`.");
+        } else {
+          rhs_->expr_type_ = member_type;
+          expr_type_ = member_type;
+        }
+      }
+      assert(expr_type_ && "expr_type_ is nullptr in binop access");
+      return;
+    }
+
+    assert(false && "Died in Binop::verify_types");
+  }
+
+  void ChainOp::verify_types() {
+    assert(false && "Died in ChainOp::verify_types");
+  }
+
+  void Declaration::verify_types() {
+    if (decl_type_->type() == Void) {
+      expr_type_ = Error;
+      error_log.log(line_num(), "Void types cannot be assigned.");
+      return;
+    }
+
+    expr_type_ = (type_is_inferred()
+        ? decl_type_->type()
+        : decl_type_->evaluate(Scope::Global->context()).as_type);
+    return;
+  }
+ 
+  void ArrayType::verify_types() {
+    assert(false && "Died in ArrayType::verify_types");
+  }
+
+  void ArrayLiteral::verify_types() {
+    assert(false && "Died in ArrayLiteral::verify_types");
+  }
+
+  void FunctionLiteral::verify_types() {
+    Type* ret_type = return_type_->evaluate(Scope::Global->context()).as_type;
+    assert(ret_type && "Return type is a nullptr");
+    Type* input_type;
+    size_t inputs_size = inputs_.size();
+    if (inputs_size == 0) {
+      input_type = Void;
+
+    } else if (inputs_size == 1) {
+      input_type = inputs_.front()->type();
+
+    } else {
+      std::vector<Type*> input_type_vec;
+      for (const auto& input : inputs_) {
+        input_type_vec.push_back(input->type());
+      }
+
+      input_type = Tup(input_type_vec);
+    }
+    expr_type_ = Func(input_type, ret_type);
+    assert(expr_type_ && "FunctionLiteral type is nullptr");
+  }
+
+  void Assignment::verify_types() {
+    if (lhs_->type() == Error || rhs_->type() == Error) {
+      expr_type_ = Error;
+      return;
+    }
+
+    if (op_ == Language::Operator::Assign) {
+      if (lhs_->type() != rhs_->type()) {
+        error_log.log(line_num(), "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
+      }
+      expr_type_ = Void;
+      return;
+    }
+
+    // expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
+
+    assert(false && "Died in Assignment::verify_types");
+  }
+
+  void Case::verify_types() {
+    assert(false && "Died in Case::verify_types");
+  }
+
+  void KVPairList::verify_types() {
+    assert(false && "Died in KVPairList::verify_types");
+  }
+  void Statements::verify_types() {
+    assert(false && "Died in Statements::verify_types");
+  }
+  void While::verify_types() {
+    assert(false && "Died in While::verify_types");
+  }
+  void Conditional::verify_types() {
+    assert(false && "Died in Conditional::verify_types");
+  }
+
+  void EnumLiteral::verify_types() {
+    assert(false && "Died in EnumLiteral::verify_types");
+  }
+
+  void TypeLiteral::verify_types() {
+    expr_type_ = Type_;
+    type_value_ = Struct("__anon.type"); 
+  }
+
+  Type* KVPairList::verify_types_with_key(Type* key_type) {
+    assert(false && "Died in KVPairList::verify_types_with_key");
+  }
+/*
   void Unop::verify_types() {
     // Even if there was previously a type_error on the return line, we still
     // know that `return foo` should have void type
@@ -40,17 +245,16 @@ namespace AST {
     } else if (op_ == Language::Operator::Print) {
       expr_type_ = Void;
 
-   } else if (op_ == Language::Operator::Return) {
+    } else if (op_ == Language::Operator::Return) {
       expr_type_ = Void;
 
     } else if (op_ == Language::Operator::And) { // Indirection '&'
-
       // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-      expr_type_ = Ptr( (expr_->type() == Type_)
-          ? expr_->interpret_as_type()
-          : expr_->type());
-
+      expr_type_ = (expr_->type() == Type_
+          ? static_cast<Type*>(Type_)
+          : static_cast<Type*>(Ptr(expr_->type())));
       return;
+
     } else if (op_ == Language::Operator::Call) {
       if (!expr_->type()->is_function()) {
         expr_type_ = Error;
@@ -216,7 +420,6 @@ namespace AST {
   }
 
   void ArrayType::verify_types() {
-
     // TODO implement uint and change this to uint
     if (len_ != nullptr && len_->type() != Int) {
       error_log.log(line_num(), "Array length indexed by non-integral type");
@@ -294,11 +497,12 @@ namespace AST {
         Enum(infer_type_ ? identifier_string() : "__anon.enum", enum_lit.get());
     }
 
-    id_->expr_type_ = (infer_type_
-        ? decl_type_->type()
-        : decl_type_->interpret_as_type());
+    // TODO get the scope context
+    expr_type_ = (infer_type_ ?
+        decl_type_->type() : decl_type_->evaluate(Scope::Global->context()).as_type);
 
-    expr_type_ = id_->type();
+    // TODO unnecessary, I think
+    // id_->expr_type_ = expr_type_;
 
     if (infer_type_) {
       // TODO for now all functions are bound in the global context. This is
@@ -314,7 +518,25 @@ namespace AST {
     }
   }
 
-  void Identifier::verify_types() {}
+  void Identifier::verify_types() {
+    auto decl_ptr = Scope::decl_of_[shared_from_this()];
+    // TODO use the right context
+    if (decl_ptr->type_is_inferred()) {
+      expr_type_ = decl_ptr->type();
+
+    } else {
+      // TODO use the correct context
+      expr_type_ = decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type;
+    }
+
+    if (expr_type_ == Type_) {
+      // TODO Bind it in the correct context
+      // For now, bind it in the global context
+      Scope::Global->context().bind(
+          decl_ptr->declared_type()->evaluate(Scope::Global->context()),
+          shared_from_this());
+    }
+  }
 
   void FunctionLiteral::verify_types() {
     Type* return_type_as_type = return_type_->interpret_as_type();
@@ -421,5 +643,5 @@ namespace AST {
   void EnumLiteral::verify_types() {
     // TODO
   }
-
+*/
 }  // namespace AST
