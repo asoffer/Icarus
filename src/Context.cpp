@@ -1,8 +1,6 @@
 #include "Context.h"
 #include "AST.h"
 
-Context Context::GlobalContext;
-
 Context::Value Context::get(IdPtr idptr) {
   auto iter = bindings_.find(idptr);
   if (iter == bindings_.end()) {

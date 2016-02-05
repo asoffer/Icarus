@@ -70,8 +70,6 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
       virtual Time::Eval determine_time() { return Time::error; }
 
-      bool is_return() const { return node_type() == Language::return_expression; }
-      bool is_print()  const {  return node_type() == Language::print_expression; }
       Time::Eval time() { return time_; }
 
       virtual bool is_identifier()    const { return type_ == Language::identifier; }
@@ -438,8 +436,6 @@ namespace AST {
       static NPtr build_extra_expression_error(NPtrVec&& nodes);
 
       VIRTUAL_METHODS_FOR_NODES;
-
-      void collect_return_types(std::set<Type*>* return_exprs) const;
 
       inline size_t size() { return statements_.size(); }
       inline void reserve(size_t n) { return statements_.reserve(n); }

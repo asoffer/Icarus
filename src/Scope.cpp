@@ -19,6 +19,8 @@ namespace debug {
 }  // namespace debug
 
 
+GlobalScope* Scope::Global = nullptr;  // Initialized in main
+
 std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
 std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
@@ -193,6 +195,8 @@ void Scope::set_parent(Scope* parent) {
   }
 
   parent_ = parent;
+  ctx_.set_parent(&parent->context());
+
   if (parent->is_function_scope()) {
     containing_function_ = static_cast<GenericFnScope*>(parent_);
   } else {
@@ -233,7 +237,6 @@ void GenericFnScope::allocate(Scope* scope) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }
-
 
     // TODO make this for compile-time stuff
     if (decl_type == Type_) {

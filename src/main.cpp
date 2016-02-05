@@ -158,14 +158,14 @@ int main(int argc, char *argv[]) {
   }
 
 
-  auto global_scope = Scope::build_global();
+  Scope::Global = Scope::build_global();
 
   // COMPILATION STEP:
   //
   // Determine which declarations go in which scopes. Store that information
   // with the scopes. Note that assign_decl_to_scope cannot possibly generate
   // compilation errors, so we don't check for them here.
-  global_statements->assign_decl_to_scope(global_scope);
+  global_statements->assign_decl_to_scope(Scope::Global);
 
   // COMPILATION STEP:
   //
@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
   // happen after the declarations are assigned to each scope so we have a
   // specific identifier to point to that is easy to find. This can generate an
   // undeclared identifier error.
-  global_statements->join_identifiers(global_scope);
+  global_statements->join_identifiers(Scope::Global);
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
   // To assign type orders, we traverse the dependency graph looking for a
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
-  Dependency::assign_type_order();
+  Dependency::assign_order();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;
@@ -219,11 +219,11 @@ int main(int argc, char *argv[]) {
 
 
   // Program has been verified. We can now proceed with code generation.
-  // Initialize the global_scope.
+  // Initialize the global scope.
 
   // Generate LLVM intermediate representation.
-  global_scope->initialize();
-  global_statements->generate_code(global_scope);
+  Scope::Global->initialize();
+  global_statements->generate_code(Scope::Global);
 
   Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {

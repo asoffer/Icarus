@@ -36,6 +36,7 @@ class Context {
 
     };
 
+    void set_parent(Context* parent_ctx) { parent_ = parent_ctx; }
     bool has_return() { return has_ret_; }
     Value return_value() { return ret_val_; }
     void set_return_value(Value v);
@@ -43,8 +44,6 @@ class Context {
 
     Context spawn();
     Value get(IdPtr idptr);
-
-    static Context GlobalContext;
 
     Context(Context* parent = nullptr) :
       ret_val_(nullptr), has_ret_(false), parent_(parent) {

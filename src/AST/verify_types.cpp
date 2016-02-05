@@ -34,25 +34,23 @@ namespace AST {
         expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
 
       } else {
-       error_log.log(line_num(), "Dereferencing object of type " + expr_->type()->to_string() + ", which is not a pointer.");
+        error_log.log(line_num(), "Dereferencing object of type " + expr_->type()->to_string() + ", which is not a pointer.");
       }
+
+    } else if (op_ == Language::Operator::Print) {
+      expr_type_ = Void;
+
+   } else if (op_ == Language::Operator::Return) {
+      expr_type_ = Void;
 
     } else if (op_ == Language::Operator::And) { // Indirection '&'
 
       // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-      if (expr_->type() == Type_) {
-        expr_type_ = Ptr(expr_->interpret_as_type());
-      } else {
-        expr_type_ = Ptr(expr_->type());
-      }
+      expr_type_ = Ptr( (expr_->type() == Type_)
+          ? expr_->interpret_as_type()
+          : expr_->type());
+
       return;
-    }
-
-
-    if (is_return() || is_print()) {
-      expr_type_ = Void;
-      return;
-
     } else if (op_ == Language::Operator::Call) {
       if (!expr_->type()->is_function()) {
         expr_type_ = Error;
@@ -72,10 +70,12 @@ namespace AST {
       return;
 
     } else if (expr_->type() == Error) {
+
       expr_type_ = Error;
       return;
 
     } else if (op_ == Language::Operator::Sub) {
+
       if (expr_->type() == Uint) {
         error_log.log(line_num(), "Negation applied to unsigned integer");
         expr_type_ = Uint;
@@ -179,6 +179,7 @@ namespace AST {
 
       // TODO If rhs is a comma-list, is it's type given by a tuple?
       if (in_types != rhs_->type()) {
+        // TODO segfault happenning here because rhs_ is not totally initialized always.
         error_log.log(line_num(), "Type mismatch on function arguments.");
         return;
       }
@@ -303,7 +304,7 @@ namespace AST {
       // TODO for now all functions are bound in the global context. This is
       // probably incorrect. However, it may be safe anyways, because we've
       // already verified access.
-      Context::GlobalContext.bind(Context::Value(decl_type_.get()), id_);
+      Scope::Global->context().bind(Context::Value(decl_type_.get()), id_);
     }
   }
 
@@ -341,18 +342,6 @@ namespace AST {
     }
 
     expr_type_ = Func(input_type, return_type_as_type);
-  }
-
-  void Statements::collect_return_types(std::set<Type*>* return_exprs) const {
-    for (const auto& stmt : statements_) {
-      // TODO When we start having loops/conditionals, this won't cut it. We'll
-      // need to dive deeper into the scopes
-      if (!stmt->is_return()) continue;
-
-      // Safe because, to pass is_return(), it must be a pointer to a Unop.
-      auto unop_ptr = static_cast<Unop*>(stmt.get());
-      return_exprs->insert(unop_ptr->expr_->type());
-    }
   }
 
   void Assignment::verify_types() {

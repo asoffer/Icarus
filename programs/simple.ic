@@ -1,0 +1,4 @@
+main := void -> void {
+  x := 0
+  print x
+}

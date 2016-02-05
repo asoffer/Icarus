@@ -7,13 +7,7 @@ namespace debug {
   extern bool dependency_system;
 }  // namespace debug
 
-
-#define DEBUG_KILL(x)             \
-  if (debug::dependency_system) { \
-    if ( (x) == nullptr ) {       \
-      assert(false);              \
-    }                             \
-  }
+#define DEBUG_KILL(x) if (debug::dependency_system) assert(x);
 
 namespace AST {
   void Unop::record_dependencies() {
@@ -71,8 +65,14 @@ namespace AST {
   void Declaration::record_dependencies() {
     DEBUG_KILL(decl_type_);
 
-    Dependency::type_value(this, decl_type_.get());
-    Dependency::type_type(this, decl_type_.get());
+    Dependency::type_type(id_.get(), this);
+    Dependency::value_type(id_.get(), this);
+    if (infer_type_) {
+      Dependency::type_type(this, decl_type_.get());
+    } else {
+      Dependency::type_value(this, decl_type_.get());
+    }
+
     decl_type_->record_dependencies();
   }
 

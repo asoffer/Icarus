@@ -98,8 +98,13 @@ namespace AST {
   }
 
   std::string Terminal::to_string(size_t n) const {
-    return tabs(n) + "<Terminal " + expr_type_->to_string() + ": "
-      + token_ + ">\n";
+    auto str =  tabs(n) + "<Terminal " + expr_type_->to_string() + ": ";
+    if (token_ == "\n") str += "\\n";
+    if (token_ == "\t") str += "\\t";
+    if (token_ == "\r") str += "\\r";
+    if (token_ == " ") str += "' '";
+    str += ">\n";
+    return str;
   }
 
   std::string Identifier::to_string(size_t n) const {

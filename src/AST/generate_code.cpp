@@ -173,7 +173,7 @@ namespace AST {
 
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (time() == Time::compile) {
-      Context ctx = Context::GlobalContext.spawn();
+      Context ctx = Scope::Global->context().spawn();
       return llvm_value(evaluate(ctx));
     }
 
@@ -183,10 +183,12 @@ namespace AST {
 
     } else if (op_ == Operator::Access) {
       auto lhs_type = lhs_->type();
-
-      if (lhs_->type() == Type_ && lhs_->interpret_as_type()->is_enum()) {
-        auto enum_type = static_cast<Enumeration*>(lhs_->interpret_as_type());
-        return enum_type->get_value(rhs_->token());
+      if (lhs_->type() == Type_) {
+        auto lhs_as_type = lhs_->interpret_as_type();
+        if (lhs_as_type->is_enum()) {
+          auto enum_type = static_cast<Enumeration*>(lhs_as_type);
+          return enum_type->get_value(rhs_->token());
+        }
       }
 
       auto lhs_val = lhs_->generate_code(scope);
@@ -320,7 +322,7 @@ namespace AST {
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
     if (time() == Time::compile) {
-      Context ctx = Context::GlobalContext.spawn();
+      Context ctx = Scope::Global->context().spawn();
       return llvm_value(evaluate(ctx));
     }
 

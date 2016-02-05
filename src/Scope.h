@@ -10,6 +10,7 @@
 #include "typedefs.h"
 #include "Type.h"
 #include "DependencySystem.h"
+#include "Context.h"
 
 #include <iostream>
 
@@ -31,6 +32,8 @@ class Scope {
     friend class AST::FunctionLiteral;
     friend class AST::Declaration;
     friend class GenericFnScope;
+
+    static GlobalScope* Global;
 
     // Build a scope of the appropriate type
     template<typename T>
@@ -76,19 +79,20 @@ class Scope {
 
     void uninitialize();
 
+    Context& context() { return ctx_; }
+
     Scope(const Scope&) = delete;
     Scope(Scope&&) = delete;
     virtual ~Scope() {}
 
   protected:
-    Scope() :
-      parent_(nullptr),
-      containing_function_(nullptr),
-      bldr_(llvm::getGlobalContext()) {}
+    Scope() : parent_(nullptr), containing_function_(nullptr),
+    bldr_(llvm::getGlobalContext()) {}
 
     std::map<std::string, IdPtr> ids_;
     std::vector<DeclPtr> ordered_decls_;
 
+    Context ctx_;
     Scope* parent_;
     GenericFnScope* containing_function_;
 
@@ -103,7 +107,7 @@ class Scope {
     static std::map<IdPtr, Scope*> scope_containing_;
     static std::vector<DeclPtr> decl_registry_;
     friend void Dependency::fill_db();
-    friend void Dependency::assign_type_order();
+    friend void Dependency::assign_order();
 };
 
 

@@ -21,7 +21,8 @@ namespace TypeSystem {
     if (enum_ptr) return enum_ptr;
 
     auto struct_ptr = Struct(name);
-    assert(struct_ptr && ("No type found matching " + name).c_str());
+    std::cout << name << std::endl;
+    assert(struct_ptr && "No struct found matching this name");
     return struct_ptr;
   }
 

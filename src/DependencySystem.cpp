@@ -19,25 +19,59 @@ namespace debug {
 #endif
 
 namespace Dependency {
-  std::map<AST::Expression*, std::set<AST::Expression*>> type_dependencies_ = {};
-  std::map<AST::Expression*, std::set<AST::Expression*>> value_dependencies_ = {};
+  // This is terribly wasteful due to poor alignment.
+  // Maybe a bottleneck for large programs but probably not.
+  // In any event, for your own pride you should pack these neater.
+  struct PtrWithTorV {
+    PtrWithTorV() = delete;
+    PtrWithTorV(AST::Expression *ptr, bool torv) : ptr_(ptr), torv_(torv) {}
+    AST::Expression *ptr_;
+    bool torv_; // true => type, false => value
+  };
+}  // namespace Dependency
+
+namespace std {
+  template<> struct less<Dependency::PtrWithTorV> {
+    bool operator()(const Dependency::PtrWithTorV& lhs, const Dependency::PtrWithTorV& rhs) const {
+      if (lhs.ptr_ != rhs.ptr_) return lhs.ptr_ < rhs.ptr_;
+      if (lhs.torv_ != rhs.torv_) return lhs.torv_ < rhs.torv_;
+      return false;
+    }
+  };
+}  // namespace std
+
+namespace Dependency {
+  using DepMap = std::map<PtrWithTorV, std::set<PtrWithTorV>>;
+  static DepMap dependencies_ = {};
 
   void record(AST::Node* node) { node->record_dependencies(); }
 
-  void type_value(AST::Expression* depender, AST::Expression* dependee) {
-    value_dependencies_[depender].insert(dependee);
-  }
-
   void type_type(AST::Expression* depender, AST::Expression* dependee) {
-    type_dependencies_[depender].insert(dependee);
+    dependencies_[PtrWithTorV(depender, true)].emplace(dependee, true);
+    dependencies_[PtrWithTorV(depender, false)];
   }
 
+  void type_value(AST::Expression* depender, AST::Expression* dependee) {
+    dependencies_[PtrWithTorV(depender, true)].emplace(dependee, false);
+    dependencies_[PtrWithTorV(depender, false)];
+  }
+
+  void value_type(AST::Expression* depender, AST::Expression* dependee) {
+    dependencies_[PtrWithTorV(depender, true)];
+    dependencies_[PtrWithTorV(depender, false)].emplace(dependee, true);
+  }
+
+  void value_value(AST::Expression* depender, AST::Expression* dependee) {
+    dependencies_[PtrWithTorV(depender, true)];
+    dependencies_[PtrWithTorV(depender, false)].emplace(dependee, false);
+  }
 
   void add_to_table(AST::Expression* depender) {
-    value_dependencies_[depender];
-    type_dependencies_[depender];
+    dependencies_[PtrWithTorV(depender, true)];
+    dependencies_[PtrWithTorV(depender, false)];
   }
 
+  // Gives us a map from identifiers to their declarations
   void fill_db() {
     for (auto scope_ptr : Scope::registry_) {
       scope_ptr->ordered_decls_.clear();
@@ -53,158 +87,158 @@ namespace Dependency {
       Scope::decl_of_[decl_id] = decl_ptr;
 
       // Build up dependencies_ starting with empty sets
-      type_dependencies_[decl_id.get()] = {};
+      dependencies_[PtrWithTorV(decl_id.get(), true)]  = {};
+      dependencies_[PtrWithTorV(decl_id.get(), false)] = {};
     }
   }
 
-  void assign_type_order() {
-    // Counts the number of times a given IdPtr is an immediate dependency of
-    // something else. So a value of zero means that nothing depends on it.
-    std::map<AST::Expression*, size_t> num_immediate_dep_refs;
+  enum Flag : char {
+    unseen    = 0x00,
+    type_seen = 0x01,
+    val_seen  = 0x04,
+    tv_seen   = 0x05,
+    type_done = 0x02,
+    val_done  = 0x08,
+    tv_done   = 0x0a
+  };
 
-    // Char just used as a mask
-    std::map<const AST::Expression*, char> already_seen;
+  void assign_order() {
+    // Find all sources in the dependency graph. First record for each
+    // identifier, how many times something depends on its type and on its
+    // value.
+    using pair_nums = std::pair<size_t, size_t>;
+    std::map<AST::Expression*, pair_nums> num_immediate_dep_refs;
+    std::map<AST::Expression*, Flag> already_seen;
 
-    std::stack<AST::Expression*> expr_stack;
+    for (const auto& kv : dependencies_) {
+      already_seen[kv.first.ptr_] = unseen;
 
-    // Push back all the sources (i.e., all the ptrs with num_immediate_dep_refs
-    // equal to zero
-    for (const auto& kv : type_dependencies_) {
-      // Ensure each identifier is present in the map
-      num_immediate_dep_refs[kv.first];
-      already_seen[kv.first] = 0x00;
+      num_immediate_dep_refs[kv.first.ptr_];
 
       for (const auto& dep : kv.second) {
-        num_immediate_dep_refs[dep]++;
-      }
-    }
-    // num_immediate_dep_refs[foo] counts the number of things which directly
-    // need foo's type in order to determine their own.
-
-    // Start the stack with the sources of the dependency graph.
-    // That is, those expressions which no one depends on.
-    for (const auto& kv : num_immediate_dep_refs) {
-      if (kv.second == 0) {
-        expr_stack.push(kv.first);
-
-        if (debug::dependency_system) {
-          if (kv.first == nullptr) {
-            std::cout << "Found a null pointer!" << std::endl;
-          }
+        if (dep.torv_) {
+          num_immediate_dep_refs[dep.ptr_].first++;
+        } else {
+          num_immediate_dep_refs[dep.ptr_].second++;
         }
       }
     }
 
-    // Count the number of Expression* seen. If at the end this isn't equal to the
-    // total number, we know there's a cycle.
-    //
-    // TODO For better error messages we should write down what the cycle is.
-    size_t num_seen = 0;
+    // Next, pick out all the PtrWithTorVs that are are not depended on by
+    // anything. These are all possible sources and get put into the stack to
+    // start out with. We store our stack in two parallel chunks. One with the
+    // expression pointer and one with the bools representing type/value
+    // This saves us all the padding that gets placed at the end of the
+    // PtrWithTorV struct.
+    std::stack<AST::Expression*> expr_stack;
+    std::stack<bool> torv_stack;
 
+    for (const auto& kv : num_immediate_dep_refs) {
+      if (kv.second.first == 0) {
+        expr_stack.push(kv.first);
+        torv_stack.push(true);
+      }
 
-    // Preallocate a vector of the right size
-    std::vector<AST::Expression*> topo_order(already_seen.size(), nullptr);
+      if (kv.second.second == 0) {
+        expr_stack.push(kv.first);
+        torv_stack.push(false);
+      }
+    }
+
+    assert(expr_stack.size() == torv_stack.size() && "Stacks initialized to be of differet sizes");
+
+    std::vector<PtrWithTorV> topo_order;
 
     if (debug::dependency_system) {
-      std::cout << "Expressions seen: " << already_seen.size() << std::endl;
+      std::cout << "+------DEPENDENCY-TABLE------+" << std::endl;
+      for (const auto kv : dependencies_) {
+        std::cout << "| " << kv.first.ptr_ << (kv.first.torv_ ? " (type)  (" : " (value) (") << kv.second.size() << ") | " << kv.first.ptr_->token() << num_immediate_dep_refs[kv.first.ptr_].first << num_immediate_dep_refs[kv.first.ptr_].second << std::endl;
+      }
+      std::cout << "+----------------------------+" << std::endl;
     }
 
-    // 0x02 means already seen and already popped into topo_order
-    // 0x01 means seen but not yet popped
-    // 0x00 means not yet seen
-
-    // Standard depth-first search
     while (!expr_stack.empty()) {
-      auto eptr = expr_stack.top();
+      // Ensure stacks match up
+      assert(expr_stack.size() == torv_stack.size() && "Stacks sizes don't match!");
+
+      auto ptr = expr_stack.top();
+      auto torv = torv_stack.top();
 
       if (debug::dependency_system) {
-        if (eptr == nullptr) {
-          std::cerr << "Found a null pointer!" << std::endl;
-          assert(false);
-
-        } else {
-          std::cout << "Looking at:   " << eptr << "\n" << *eptr << std::endl;
-        }
+        std::cout
+          << "+------------------------------------------------" << std::endl
+          << "| Stack size: " << expr_stack.size() << std::endl
+          << "| Node " << ptr << (torv ? " (type)" : " (value)") << ptr->token() << std::endl;
       }
-
-
-      if ((already_seen AT(eptr) & 2) == 2) {
+ 
+      Flag done_flag = (torv ? type_done : val_done);
+      if ((already_seen AT(ptr) & done_flag) != 0) {
         if (debug::dependency_system) {
-          std::cout << "Already done: "  << eptr << "\n" << *eptr << std::endl;
+          std::cout << "| Already done. Popping." << std::endl;
         }
-        // Already popped it into topo_order, so just ignore it
         expr_stack.pop();
+        torv_stack.pop();
         continue;
-
       }
 
-      if ((already_seen AT(eptr) & 1) == 1) {
+      Flag seen_flag = (torv ? type_seen : val_seen);
+      if ((already_seen AT(ptr) & seen_flag) != 0) {
         // pop it off and put it in topo_order
         if (debug::dependency_system) {
-          std::cout << "Adding:       " << eptr << "\n"  << *eptr << std::endl;
+          std::cout << "| Already seen. Adding to topo_order." << std::endl;
         }
 
         expr_stack.pop();
-        topo_order[num_seen] = eptr;
-
-        // mark it as already seen
-        already_seen AT(eptr) = 0x03;
-        ++num_seen;
+        torv_stack.pop();
+        topo_order.emplace_back(ptr, torv);
+        already_seen AT(ptr) = static_cast<Flag>((seen_flag << 1) | already_seen AT(ptr)); // Mark it as done
         continue;
       }
 
+      // If you get here, this node is totally new.
 
-      already_seen[eptr] = 0x01;
+      // Mark it as seen
+      already_seen AT(ptr) = seen_flag;
+      if (debug::dependency_system) {
+        std::cout << "| Marking as seen." << std::endl;
+      }
+ 
+      // And follow it's dependencies
+      assert((dependencies_.find( PtrWithTorV(ptr, torv) ) != dependencies_.end()) && "Not in dependency table");
+      for (const auto& dep : dependencies_ AT( PtrWithTorV(ptr, torv) )) {
+        done_flag = (dep.torv_ ? type_done : val_done);
+        seen_flag = (dep.torv_ ? type_seen : val_seen);
 
-      for (const auto& dep : type_dependencies_[eptr]) {
-        if (debug::dependency_system) {
-          std::cout << "Found deps:   " << type_dependencies_[eptr].size() << std::endl;
-
-          assert(dep && 
-              ("Looking at a null dependency from " + eptr->to_string(0)
-               + " seen on line " + std::to_string(eptr->line_num()) + "\n").c_str());
-
-          assert(already_seen.find(dep) != already_seen.end() &&
-              ("Dependency has not been seen yet: "
-               + dep->to_string(0) + "\nCOMING FROM "
-               + eptr->to_string(0) + "\n").c_str());
-        }
-
-        if ((already_seen AT(dep) & 2) == 2) {
-          if (debug::dependency_system) {
-            std::cout << "Skipping:     " << eptr << "\n"  << *eptr << std::endl;
-          }
+        if ((already_seen AT(dep.ptr_) & done_flag) != 0) {
           continue;
-        }
 
-        if ((already_seen AT(dep) & 1) == 1) {
-          error_log.log(dep->line_num(), "Cyclic dependency found.");
-          // TODO give information about cycle
-          return;
-        }
+        } else if ((already_seen AT(dep.ptr_) & seen_flag) != 0) {
+          error_log.log(dep.ptr_->line_num(), "Cyclic dependency found.");
 
-        if (debug::dependency_system) {
-          std::cout << "Pushing dep:  " << eptr << "\n"  << *dep << std::endl;
+        } else {
+          if (debug::dependency_system) {
+            std::cout << "| Pushing " << dep.ptr_ << " (" << (dep.torv_ ? "type" : "value") << ")" << std::endl;
+          }
+ 
+          expr_stack.push(dep.ptr_);
+          torv_stack.push(dep.torv_);
         }
-        expr_stack.push(dep);
       }
     }
 
-    if (num_seen != already_seen.size()) {
-      error_log.log(0, "A dependency cycle was found.");
-      return;
-    }
+    // TODO Check for cyclic dependencies that are in components without sources
 
-    for (const auto& ptr : topo_order) {
-      ptr->verify_types();
+    for (const auto& ptr_with_torv : topo_order) {
+      if (ptr_with_torv.torv_) {
+        ptr_with_torv.ptr_->verify_types();
+      }
 
       // If it's an identifier, push it into the declarations for the
       // appropriate scope, so they can be allocated correctly
-      if (ptr->is_identifier()) {
-        auto id_ptr = static_cast<AST::Identifier*>(ptr)->shared_from_this();
+      if (ptr_with_torv.torv_ && ptr_with_torv.ptr_->is_identifier()) {
+        auto id_ptr = static_cast<AST::Identifier*>(ptr_with_torv.ptr_)->shared_from_this();
         Scope::scope_containing_[id_ptr]->ordered_decls_.push_back(Scope::decl_of_[id_ptr]);
       }
     }
   }
-
 }  // namespace Dep

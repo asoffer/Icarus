@@ -11,24 +11,31 @@ namespace data {
 
 namespace AST {
   llvm::Value* Expression::llvm_value(Context::Value v) {
-    if (type() == Bool)       return data::const_bool(v.as_bool);
-    else if (type() == Char)  return data::const_char(v.as_char);
-    else if (type() == Int)   return data::const_int(v.as_int);
-    else if (type() == Real)  return data::const_real(v.as_real);
-    else if (type() == Uint)  return data::const_uint(v.as_uint);
+    assert(type() != Type_   && "Type_ conversion to llvm::Value*");
+    assert(type() != Error   && "Error conversion to llvm::Value*");
+    assert(type() != Unknown && "Unknown conversion to llvm::Value*");
+
+    if (type() == Bool)  return data::const_bool(v.as_bool);
+    if (type() == Char)  return data::const_char(v.as_char);
+    if (type() == Int)   return data::const_int(v.as_int);
+    if (type() == Real)  return data::const_real(v.as_real);
+    if (type() == Uint)  return data::const_uint(v.as_uint);
 
     return nullptr;
   }
 
   Context::Value Identifier::evaluate(Context& ctx) {
+    // TODO log the struct name in the context of the scope
+    if (type() != Type_)      return ctx.get(shared_from_this());
+    if (type()->is_struct())  return Context::Value(TypeSystem::get(token()));
     return ctx.get(shared_from_this());
   }
 
   Context::Value Unop::evaluate(Context& ctx) {
-    if (is_return()) {
+    if (op_ == Language::Operator::Return) {
       ctx.set_return_value(expr_->evaluate(ctx));
 
-    } else if (is_print()) {
+    } else if (op_ == Language::Operator::Print) {
       auto val = expr_->evaluate(ctx);
       if (expr_->type() == Bool)        std::cout << (val.as_bool ? "true" : "false");
       else if (expr_->type() == Char)   std::cout << val.as_char;
@@ -48,6 +55,12 @@ namespace AST {
       } else if (type() == Real) {
         return Context::Value(-expr_->evaluate(ctx).as_real);
       }
+    } else if (op_ == Language::Operator::And) {
+      if (expr_->type() != Type_) {
+        // TODO better error message
+        error_log.log(line_num(), "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
+      }
+      return Context::Value(Ptr(expr_->evaluate(ctx).as_type));
     }
 
     return nullptr;
@@ -168,7 +181,18 @@ namespace AST {
     else if (type() == Int)   return Context::Value(std::stoi(token()));
     else if (type() == Real)  return Context::Value(std::stod(token()));
     else if (type() == Uint)  return Context::Value(std::stoul(token()));
-    else if (type() == Type_) return Context::Value(interpret_as_type());
+    else if (type() == Type_) {
+      if (token() == "bool") return Context::Value(Bool);
+      if (token() == "char") return Context::Value(Char);
+      if (token() == "int")  return Context::Value(Int);
+      if (token() == "real") return Context::Value(Real);
+      if (token() == "type") return Context::Value(Type_);
+      if (token() == "uint") return Context::Value(Uint);
+      if (token() == "void") return Context::Value(Void);
+
+      error_log.log(line_num(), "I don't think `" + token() + "` is a type!");
+      return Context::Value(Error);
+    }
     else { /* TODO */ }
     return nullptr;
   }
@@ -199,7 +223,7 @@ namespace AST {
         auto expr_ptr = ctx.get(std::static_pointer_cast<Identifier>(lhs_)).as_expr;
         // TODO must lhs_ be a function?
         auto fn_ptr = static_cast<FunctionLiteral*>(expr_ptr);
-        Context fn_ctx = Context::GlobalContext.spawn();
+        Context fn_ctx = Scope::Global->context().spawn();
 
         // Populate the function context with arguments
         for (const auto& arg : fn_ptr->inputs_) {
