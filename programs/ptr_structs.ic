@@ -1,0 +1,13 @@
+main := void -> void {
+  f: foo
+  f.x
+}
+
+foo := type {
+  x: &bar
+}
+bar := type {
+  y: int
+}
+
+

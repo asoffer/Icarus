@@ -53,18 +53,20 @@ namespace AST {
   }
 
   void ArrayType::record_dependencies() {
-    Dependency::value_type(this, this);
+
     if (len_ != nullptr) {
       DEBUG_KILL(len_);
+      Dependency::value_value(this, len_.get());
+
+      // Maybe later when we have length dependency?
       Dependency::type_type(this, len_.get());
+
+      len_->record_dependencies();
     }
 
     DEBUG_KILL(array_type_);
+    Dependency::value_type(this, array_type_.get());
     Dependency::type_type(this, array_type_.get());
-
-    if (len_ != nullptr) {
-      len_->record_dependencies();
-    }
     array_type_->record_dependencies();
   }
 

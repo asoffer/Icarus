@@ -242,6 +242,9 @@ Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
   auto iter = enum_types_.find(name);
   if (iter != enum_types_.end()) return iter->second;
 
+  // If you don't provide something to create it with,
+  // it's just meant to be a check for existance
+  // TODO merge this with Contexts
   if (e == nullptr) return nullptr;
 
   auto enum_type = new Enumeration(name, e);

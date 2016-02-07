@@ -109,7 +109,7 @@ namespace AST {
   }
 
   std::string Identifier::to_string(size_t n) const {
-    return tabs(n) + "<Identifier " + expr_type_->to_string() + ": "
+    return tabs(n) + "<Identifier " + (expr_type_? expr_type_->to_string():"") + ": "
       + token() + ">\n";
   }
 

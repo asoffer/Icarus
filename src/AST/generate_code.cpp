@@ -78,6 +78,10 @@ namespace AST {
         return data::const_true();
       case Terminal::False:
         return data::const_false();
+      case Terminal::Else:
+        // Because in the case where else represents a terminal, it's
+        // value is true
+        return data::const_true();
       case Terminal::Char:
         return data::const_char(token()[0]);
       case Terminal::Int:
@@ -126,7 +130,10 @@ namespace AST {
     if (op_ == Operator::And) return expr_->generate_lvalue(scope);
     if (op_ == Operator::Print && expr_->type() == Type_) {
       // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-      auto val = reinterpret_cast<llvm::Value*>(expr_->interpret_as_type());
+      // TODO use corrent scope
+
+      auto val = reinterpret_cast<llvm::Value*>(
+          expr_->evaluate(scope->context()).as_type);
       expr_->type()->call_print(scope->builder(), val);
       return nullptr;
     }
@@ -175,8 +182,7 @@ namespace AST {
 
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (time() == Time::compile) {
-      Context ctx = Scope::Global->context().spawn();
-      return llvm_value(evaluate(ctx));
+      return llvm_value(evaluate(scope->context()));
     }
 
     using Language::Operator;
@@ -186,7 +192,8 @@ namespace AST {
     } else if (op_ == Operator::Access) {
       auto lhs_type = lhs_->type();
       if (lhs_->type() == Type_) {
-        auto lhs_as_type = lhs_->interpret_as_type();
+        auto lhs_as_type =
+          lhs_->evaluate(scope->context()).as_type;
         if (lhs_as_type->is_enum()) {
           auto enum_type = static_cast<Enumeration*>(lhs_as_type);
           return enum_type->get_value(rhs_->token());
@@ -215,7 +222,8 @@ namespace AST {
 
     switch (op_) {
       case Operator::Cast:
-        return lhs_->type()->call_cast(scope->builder(), lhs_val, rhs_->interpret_as_type());
+        return lhs_->type()->call_cast(scope->builder(), lhs_val, 
+          rhs_->evaluate(scope->context()).as_type);
     
       case Operator::Call:
         if (lhs_->type()->is_function()) {
@@ -324,8 +332,7 @@ namespace AST {
 
   llvm::Value* ChainOp::generate_code(Scope* scope) {
     if (time() == Time::compile) {
-      Context ctx = Scope::Global->context().spawn();
-      return llvm_value(evaluate(ctx));
+      return llvm_value(evaluate(scope->context()));
     }
 
     using Language::Operator;
@@ -512,7 +519,9 @@ namespace AST {
       ++arg_iter;
     }
 
-    if (return_type_->interpret_as_type()->is_struct()) {
+
+    auto ret_type = return_type_->evaluate(scope->context()).as_type;
+    if (ret_type->is_struct()) {
       arg_iter->setName("retval");
     }
 

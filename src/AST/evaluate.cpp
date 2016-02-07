@@ -169,7 +169,11 @@ namespace AST {
     }
   }
 
-  Context::Value ArrayType::evaluate(Context&)       { return nullptr; }
+  Context::Value ArrayType::evaluate(Context& ctx)       {
+    // TODO what if this is just a compile time array in shorthand?
+    return Context::Value(Arr(array_type_->evaluate(ctx).as_type));
+  }
+
   Context::Value ArrayLiteral::evaluate(Context&)    { return nullptr; }
 
   Context::Value Terminal::evaluate(Context& ctx) {
@@ -219,10 +223,14 @@ namespace AST {
 
   Context::Value Assignment::evaluate(Context&)      { return nullptr; }
   Context::Value Declaration::evaluate(Context&)     { return nullptr; }
-  Context::Value EnumLiteral::evaluate(Context&)     { return nullptr; }
+
+  Context::Value EnumLiteral::evaluate(Context&) {
+    return Context::Value(type_value_);
+  }
 
   Context::Value Binop::evaluate(Context& ctx) {
-    if (op_ == Language::Operator::Call) {
+    using Language::Operator;
+    if (op_ == Operator::Call) {
       if (lhs_->is_identifier()) {
         auto expr_ptr = ctx.get(std::static_pointer_cast<Identifier>(lhs_)).as_expr;
         // TODO must lhs_ be a function?
@@ -238,6 +246,11 @@ namespace AST {
         auto x = fn_ptr->evaluate(fn_ctx);
         return x;
       }
+
+    } else if (op_ == Operator::Arrow) {
+      auto lhs_type = lhs_->evaluate(ctx).as_type;
+      auto rhs_type = rhs_->evaluate(ctx).as_type;
+      return Context::Value(Func(lhs_type, rhs_type));
     }
 
     return nullptr;

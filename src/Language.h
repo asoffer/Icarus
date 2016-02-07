@@ -116,7 +116,7 @@ namespace Language {
   };
 
   enum class Terminal {
-    ASCII, Return, True, False,
+    ASCII, Return, Else, True, False,
     Char, Int, Real, Type, UInt,
     StringLiteral
   };

@@ -337,13 +337,8 @@ namespace AST {
     EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
-      key_ptr = std::make_shared<Terminal>();
-      key_ptr->line_num_ = nodes[0]->line_num();
-      key_ptr->expr_type_ = Bool;
-      key_ptr->token_ = "else";
-      key_ptr->precedence_ = 
-        Language::precedence(Language::Operator::NotAnOperator);
-
+      key_ptr = std::static_pointer_cast<Terminal>(Terminal::build(
+            Language::Terminal::Else, { nodes[0] }, Bool));
     } else {
       key_ptr = std::static_pointer_cast<Expression>(nodes[0]);
     }
@@ -359,12 +354,8 @@ namespace AST {
     EPtr key_ptr;
 
     if (nodes[1]->node_type() == Language::reserved_else) {
-      key_ptr = std::make_shared<Terminal>();
-      key_ptr->line_num_ = nodes[1]->line_num();
-      key_ptr->expr_type_ = Bool;
-      key_ptr->token_ = "else";
-      key_ptr->precedence_ = 
-        Language::precedence(Language::Operator::NotAnOperator);
+      key_ptr = std::static_pointer_cast<Terminal>(Terminal::build(
+            Language::Terminal::Else, { nodes[1] }, Bool));
 
     } else {
       key_ptr = std::static_pointer_cast<Expression>(nodes[1]);
