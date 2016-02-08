@@ -2,6 +2,14 @@
 
 namespace AST {
   Expression::Expression() : expr_type_(Unknown) {}
+  Declaration::Declaration() {}
+  ArrayLiteral::ArrayLiteral() {}
+  ChainOp::ChainOp() {}
+  Case::Case() {}
+  Binop::Binop() {}
+  Unop::Unop() {}
+  Terminal::Terminal() {}
+  ArrayType::ArrayType() {}
 
   Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
     token_ = token_string;

@@ -12,6 +12,9 @@ namespace AST {
   }
 
   Time::Eval Binop::determine_time() {
+    if (op_ == Language::Operator::Cast) {
+      return time_ = lhs_->determine_time();
+    }
     return time_ = lhs_->determine_time() | rhs_->determine_time();
   }
 
@@ -107,5 +110,4 @@ namespace AST {
   Time::Eval Break::determine_time() {
     return time_ = Time::either;
   }
-
 }  // namespace AST

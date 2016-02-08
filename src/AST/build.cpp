@@ -234,6 +234,11 @@ namespace AST {
     return array_type_ptr;
   }
 
+  NPtr Terminal::build(NPtrVec&&) {
+    // This function is only here to make the macro generation simpler
+    assert(false && "Called a function that shouldn't be called.");
+  }
+
   NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
     // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
@@ -304,6 +309,16 @@ namespace AST {
     assign_ptr->precedence_ = Language::precedence(assign_ptr->op_);
 
     return assign_ptr;
+  }
+
+  NPtr Expression::build(NPtrVec&&) {
+    // This function is only here to make the macro generation simpler
+    assert(false && "Called a function that shouldn't be called.");
+  } 
+
+  NPtr Declaration::build(NPtrVec&&) {
+    // This function is only here to make the macro generation simpler
+    assert(false && "Called a function that shouldn't be called.");
   }
 
   NPtr Declaration::build(NPtrVec&& nodes, Language::NodeType node_type, bool infer) {
@@ -533,4 +548,19 @@ namespace AST {
     return enum_lit_ptr;
   }
 
+  NPtr Break::build(NPtrVec&& nodes) {
+    return std::make_shared<Break>(nodes[0]->line_num());
+  }
+
+  NPtr While::build(NPtrVec&& nodes) {
+    auto while_stmt = std::make_shared<While>();
+    while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+    while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+    return while_stmt;
+  }
+
+  NPtr While::build_assignment_error(NPtrVec&& nodes) {
+    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
+    return build(std::forward<NPtrVec&&>(nodes));
+  }
 }  // namespace AST

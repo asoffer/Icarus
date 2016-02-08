@@ -24,29 +24,35 @@ class CondScope;
 class WhileScope;
 class Structure;
 class Enumeration;
+class NSLiteral;
 
 namespace AST {
 #define ENDING = 0
-#define VIRTUAL_METHODS_FOR_NODES                                          \
-  virtual std::string to_string(size_t n) const                    ENDING; \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
-  virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
-  virtual void record_dependencies()                               ENDING; \
-  virtual void verify_types()                                      ENDING; \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
+#define OVERRIDE
+#define VIRTUAL_METHODS_FOR_NODES                                           \
+  virtual std::string to_string(size_t n) const                    ENDING;  \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING;  \
+  virtual void assign_decl_to_scope(Scope* scope)                  ENDING;  \
+  virtual void record_dependencies()                               ENDING;  \
+  virtual void verify_types()                                      ENDING;  \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING;  \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING;  \
   virtual Time::Eval determine_time()                              ENDING
 
-#define VIRTUAL_METHODS_FOR_EXPRESSION                                     \
-  virtual std::string to_string(size_t n) const                    ENDING; \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
-  virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
-  virtual void record_dependencies()                               ENDING; \
-  virtual void verify_types()                                      ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
-  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
-  virtual Time::Eval determine_time()                              ENDING
+#define EXPR_FNS(name, checkname)                                           \
+  name();                                                                   \
+  virtual ~name() {}                                                        \
+  virtual bool is_##checkname() const OVERRIDE { return true; }             \
+  virtual std::string to_string(size_t n) const                    ENDING;  \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING;  \
+  virtual void assign_decl_to_scope(Scope* scope)                  ENDING;  \
+  virtual void record_dependencies()                               ENDING;  \
+  virtual void verify_types()                                      ENDING;  \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING;  \
+  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING;  \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING;  \
+  virtual Time::Eval determine_time()                              ENDING;  \
+  static NPtr build(NPtrVec&& nodes)
 
   class Node {
     public:
@@ -71,18 +77,22 @@ namespace AST {
 
       Time::Eval time() { return time_; }
 
-      virtual bool is_identifier()    const { return type_ == Language::identifier; }
-      virtual bool is_terminal()      const { return false; }
-      virtual bool is_expression()    const { return false; }
-      virtual bool is_binop()         const { return false; }
-      virtual bool is_chain_op()      const { return false; }
-      virtual bool is_comma_list()    const { return false; }
-      virtual bool is_declaration()   const { return false; }
-      virtual bool is_array_type()    const { return false; }
-      virtual bool is_type_literal()  const { return false; }
-      virtual bool is_enum_literal()  const { return false; }
-      virtual bool is_array_literal() const { return false; }
-      virtual bool is_token_node()    const { return false; }
+ //type_ == Language::identifier; }
+      virtual bool is_identifier()       const { return false; }
+      virtual bool is_terminal()         const { return false; }
+      virtual bool is_expression()       const { return false; }
+      virtual bool is_binop()            const { return false; }
+      virtual bool is_function_literal() const { return false; }
+      virtual bool is_chain_op()         const { return false; }
+      virtual bool is_case()             const { return false; }
+      virtual bool is_unop()             const { return false; }
+      virtual bool is_comma_list()       const { return false; }
+      virtual bool is_declaration()      const { return false; }
+      virtual bool is_array_type()       const { return false; }
+      virtual bool is_type_literal()     const { return false; }
+      virtual bool is_enum_literal()     const { return false; }
+      virtual bool is_array_literal()    const { return false; }
+      virtual bool is_token_node()       const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
         : type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
@@ -143,10 +153,7 @@ namespace AST {
 
   class Expression : public Node {
     public:
-      Expression();
-      virtual ~Expression(){}
-      virtual bool is_expression() const { return true; }
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      EXPR_FNS(Expression, expression);
 
       friend class KVPairList;
       friend class Binop;
@@ -170,8 +177,9 @@ namespace AST {
   };
 
 #undef ENDING
-#define ENDING
-
+#define ENDING override
+#undef OVERRIDE
+#define OVERRIDE override
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
     auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
     expr_ptr->precedence_ =
@@ -182,12 +190,14 @@ namespace AST {
   // TODO: This only represents a left unary operator for now
   class Unop : public Expression {
     public:
+      EXPR_FNS(Unop, unop);
+
       friend class Statements;
 
-      static NPtr build(NPtrVec&& nodes);
-      static NPtr build_paren_operator(NPtrVec&& nodes);
+      Language::Operator op() const { return op_; }
+      EPtr operand() const { return expr_; }
 
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      static NPtr build_paren_operator(NPtrVec&& nodes);
 
     private:
       EPtr expr_;
@@ -197,23 +207,17 @@ namespace AST {
 
   class Binop : public Expression {
     public:
+      EXPR_FNS(Binop, binop);
+
       friend class FunctionLiteral;
       friend class ::ErrorLog;
 
+      Language::Operator op() const { return op_; }
+
       static NPtr build_operator(NPtrVec&& nodes, Language::Operator op_class);
-      static NPtr build(NPtrVec&& nodes);
       static NPtr build_paren_operator(NPtrVec&& nodes);
       static NPtr build_bracket_operator(NPtrVec&& nodes);
       static NPtr build_array_type(NPtrVec&& nodes);
-
-      VIRTUAL_METHODS_FOR_EXPRESSION;
-
-      virtual bool is_binop() const { return true; }
-
-
-      virtual ~Binop(){}
-
-      Binop() {}
 
     protected:
       Language::Operator op_;
@@ -224,18 +228,19 @@ namespace AST {
 
   class ChainOp : public Expression {
     public:
+      EXPR_FNS(ChainOp, chain_op);
+
       friend class FunctionLiteral;
       friend class ArrayType;
       friend class ArrayLiteral;
       friend class Binop;
 
-      static NPtr build(NPtrVec&& nodes);
       static NPtr join(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESSION;
 
-      virtual bool is_chain_op() const { return true; }
-      virtual bool is_comma_list() const { return ops_.front() == Language::Operator::Comma; }
+      virtual bool is_comma_list() const override {
+        return ops_.front() == Language::Operator::Comma;
+      }
 
     private:
       std::vector<Language::Operator> ops_;
@@ -245,13 +250,8 @@ namespace AST {
 
   class ArrayLiteral : public Expression {
     public:
+      EXPR_FNS(ArrayLiteral, array_literal);
       friend class ChainOp;
-
-      virtual bool is_array_literal() const { return true; }
-
-      static NPtr build(NPtrVec&& nodes);
-
-      VIRTUAL_METHODS_FOR_EXPRESSION;
 
     private:
       std::vector<EPtr> elems_;
@@ -259,26 +259,22 @@ namespace AST {
 
   class ArrayType : public Expression {
     public:
-      static NPtr build(NPtrVec&& nodes);
+      EXPR_FNS(ArrayType, array_type);
+
       static NPtr build_unknown(NPtrVec&& nodes);
-
-      VIRTUAL_METHODS_FOR_EXPRESSION;
-
-      virtual bool is_array_type() const { return true; }
 
       EPtr length() const { return len_; }
       EPtr data_type() const { return array_type_; }
-
-      ArrayType() {}
 
     private:
       EPtr len_;
       EPtr array_type_;
   };
 
-
   class Terminal : public Expression {
     public:
+      EXPR_FNS(Terminal, terminal);
+
       static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
       static NPtr build_type_literal(NPtrVec&& nodes);
       static NPtr build_string_literal(NPtrVec&& nodes);
@@ -291,12 +287,6 @@ namespace AST {
       static NPtr build_void_return(NPtrVec&& nodes);
       static NPtr build_ASCII(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_EXPRESSION;
-
-      virtual bool is_terminal() const { return true; }
-
-
-      Terminal() {}
 
     private:
       Language::Terminal terminal_type_;
@@ -304,6 +294,9 @@ namespace AST {
 
   class Assignment : public Binop {
     public:
+      Assignment() {}
+      virtual ~Assignment(){}
+
       static NPtr build(NPtrVec&& nodes);
 
       virtual std::string to_string(size_t n) const;
@@ -313,18 +306,13 @@ namespace AST {
       virtual llvm::Value* generate_lvalue(Scope* scope);
       virtual Context::Value evaluate(Context& ctx);
 
-      Assignment() {}
-      virtual ~Assignment(){}
   };
 
   class Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
     public:
-      Identifier() = delete;
+      EXPR_FNS(Identifier, identifier);
+      // TODO Identifier() = delete;
       Identifier(size_t line_num, const std::string& token_string);
-      virtual ~Identifier() {}
-      virtual bool is_identifier() const { return true; }
-      static NPtr build(NPtrVec&& nodes);
-      VIRTUAL_METHODS_FOR_EXPRESSION;
 
       llvm::Value* alloc_;
       bool is_function_arg_;      
@@ -347,6 +335,8 @@ namespace AST {
   // identifer := value
   class Declaration : public Expression {
     public:
+      EXPR_FNS(Declaration, declaration);
+
       friend class Assignment;
       friend class ::Scope;
 
@@ -358,14 +348,9 @@ namespace AST {
       inline IdPtr declared_identifier() const { return id_; }
       inline EPtr declared_type() const { return decl_type_; }
 
-      VIRTUAL_METHODS_FOR_EXPRESSION;
 
       bool type_is_inferred() const { return infer_type_; } 
 
-      virtual bool is_declaration() const { return true; }
-
-      Declaration() {}
-      virtual ~Declaration(){}
 
     private:
       // The identifier being declared
@@ -405,12 +390,7 @@ namespace AST {
 
   class Case : public Expression {
     public:
-      static NPtr build(NPtrVec&& nodes);
-
-      Case() {}
-      virtual ~Case() {}
-
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      EXPR_FNS(Case, case);
 
     private:
       std::shared_ptr<KVPairList> pairs_;
@@ -428,6 +408,7 @@ namespace AST {
     public:
       friend class TypeLiteral;
       friend class EnumLiteral;
+      friend class NSLiteral;
 
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
@@ -454,10 +435,7 @@ namespace AST {
 
   class FunctionLiteral : public Expression {
     public:
-      FunctionLiteral();
-      virtual ~FunctionLiteral() {}
-      static NPtr build(NPtrVec&& nodes);
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      EXPR_FNS(FunctionLiteral, function_literal);
 
       friend class Binop;
       friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
@@ -516,25 +494,9 @@ namespace AST {
       WhileScope* body_scope_;
   };
 
-  inline NPtr While::build(NPtrVec&& nodes) {
-    auto while_stmt = std::make_shared<While>();
-    while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
-    while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
-    return while_stmt;
-  }
-
-  inline NPtr While::build_assignment_error(NPtrVec&& nodes) {
-    nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-    return build(std::forward<NPtrVec&&>(nodes));
-  }
-
   class TypeLiteral : public Expression {
     public:
-      TypeLiteral();
-      virtual ~TypeLiteral() {}
-      virtual bool is_type_literal() const { return true; }
-      static NPtr build(NPtrVec&& nodes);
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      EXPR_FNS(TypeLiteral, type_literal);
 
       void build_llvm_internals();
       friend class Declaration;
@@ -545,17 +507,9 @@ namespace AST {
       std::vector<DeclPtr> decls_;
   };
 
-//#define AST_EXPR_CLASS(camel, underscore) \
-//  class camel : public Expression
-//  AST_EXPR_CLASS(EnumLiteral, enum_literal) {
   class EnumLiteral : public Expression {
     public:
-
-      EnumLiteral();
-      virtual ~EnumLiteral() {}
-      virtual bool is_enum_literal() const { return true; }
-      static NPtr build(NPtrVec&& nodes);
-      VIRTUAL_METHODS_FOR_EXPRESSION;
+      EXPR_FNS(EnumLiteral, enum_literal);
 
       friend class ::Enumeration;
       friend class Declaration;
@@ -565,7 +519,6 @@ namespace AST {
       Enumeration* type_value_;
       std::vector<std::string> vals_;
   };
-
 
   class Break : public Node {
     public:
@@ -582,16 +535,10 @@ namespace AST {
       }
 
   };
-
-  inline NPtr Break::build(NPtrVec&& nodes) {
-    return std::make_shared<Break>(nodes[0]->line_num());
-  }
-
-
 }  // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES
-#undef VIRTUAL_METHODS_FOR_EXPRESSION
+#undef EXPR_FNS
 #undef ENDING
-
+#undef OVERRIDE
 #endif  // ICARUS_AST_NODE_H

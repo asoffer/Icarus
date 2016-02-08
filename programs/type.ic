@@ -68,7 +68,7 @@ main := void -> void {
   c.radius = 3.0
   c.center.x = 1.1
   c.center.y = 1.2
-  
+
   print c.radius
   print '!'
   print '\n'

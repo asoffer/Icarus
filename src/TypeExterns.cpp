@@ -251,12 +251,17 @@ Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
   return enum_types_[name] = enum_type;
 }
 
-Structure* Struct(const std::string& name) {
+Structure* Struct(const std::string& name, AST::TypeLiteral* t) {
   static std::map<std::string, Structure*> struct_types_;
   auto iter = struct_types_.find(name);
   if (iter != struct_types_.end()) return iter->second;
 
-  auto struct_type = new Structure(name);
+  // If you don't provide something to create it with,
+  // it's just meant to be a check for existance
+  // TODO merge this with Contexts
+  if (t == nullptr) return nullptr;
+
+  auto struct_type = new Structure(name, t);
 
   if (struct_type->to_string() == "string") String = struct_type;
 

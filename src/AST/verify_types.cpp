@@ -362,7 +362,6 @@ namespace AST {
     }
   }
 
-
   void ArrayLiteral::verify_types() {
     auto type_to_match = elems_.front()->type();
     assert(type_to_match && "type to match is nullptr");
@@ -447,7 +446,7 @@ namespace AST {
   void TypeLiteral::verify_types() {
     static size_t anon_type_counter = 0;
     expr_type_ = Type_;
-    type_value_ = Struct("__anon.struct" + std::to_string(anon_type_counter)); 
+    type_value_ = Struct("__anon.struct" +std::to_string(anon_type_counter), this); 
     ++anon_type_counter;
   }
 

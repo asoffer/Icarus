@@ -30,7 +30,7 @@ namespace Language {
     key_value_pair, key_value_pair_list,
     comma_list,
     fn_expression, scope,
-    print_expression, void_return_expression,
+    void_return_expression,
     declaration_comma_list,
     fn_assignment,
     statements, while_statement, if_statement, if_else_statement,
@@ -77,7 +77,6 @@ namespace Language {
     declaration,
     fn_declaration,
     assignment,
-    return_expression,
     reserved_true,
     reserved_false,
 

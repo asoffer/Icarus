@@ -221,8 +221,8 @@ namespace AST {
     return Context::Value(type_value_);
   }
 
-  Context::Value Assignment::evaluate(Context&)      { return nullptr; }
-  Context::Value Declaration::evaluate(Context&)     { return nullptr; }
+  Context::Value Assignment::evaluate(Context&)  { return nullptr; }
+  Context::Value Declaration::evaluate(Context&) { return nullptr; }
 
   Context::Value EnumLiteral::evaluate(Context&) {
     return Context::Value(type_value_);

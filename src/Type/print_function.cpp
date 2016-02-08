@@ -37,12 +37,6 @@ void Structure::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   // TODO ensure that you only call print if you have defined it.
 }
 
-void Primitive::set_print(llvm::Function* fn) {}
-void Pointer::set_print(llvm::Function* fn) {}
-void Tuple::set_print(llvm::Function* fn) {}
-void Function::set_print(llvm::Function* fn) {}
-void Array::set_print(llvm::Function* fn) {}
-void Enumeration::set_print(llvm::Function* fn) {}
 void Structure::set_print(llvm::Function* fn) {
   print_fn_ = fn;
   print_fn_->setName("print." + to_string());

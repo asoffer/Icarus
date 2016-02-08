@@ -13,6 +13,7 @@ main := void -> void {
   b.y = &f
   print &f
   print '\n'
-  print f.x.y
+  baz := @(f.x)
+  print baz.y
   print '\n'
 }

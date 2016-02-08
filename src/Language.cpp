@@ -170,6 +170,7 @@ namespace Language {
     Rule(fn_expression,
         { {expression, declaration}, {fn_arrow}, {expression} },
         AST::Binop::build),
+
     /* End expression */
 
     /* Begin void return */
@@ -223,11 +224,11 @@ namespace Language {
 
     /* Begin statements */
     Rule(statements,
-        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, print_expression, return_expression, break_statement}, {newline} },
+        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, break_statement}, {newline} },
         AST::Statements::build_one),
 
     Rule(statements,
-        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, print_expression, return_expression, break_statement}, {newline} },
+        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, break_statement}, {newline} },
         AST::Statements::build_more),
 
 

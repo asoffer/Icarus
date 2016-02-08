@@ -152,7 +152,11 @@ namespace AST {
         return nullptr;
 
       case Operator::At:
-        return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
+        if (type()->is_struct()) {
+          return val;
+        } else {
+          return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
+        }
 
       case Operator::Call:
         {
@@ -566,9 +570,9 @@ namespace AST {
 
         // NOTE: Type verification asserts that the first argument of
         // each of these is the correct type.
-        // TODO This verification hasn't yet been implemented
+        // TODO This verification hasn't yet been implemented and that it is a struct
         auto rhs_as_func = static_cast<Function*>(rhs->type());
-        auto arg_type = rhs_as_func->argument_type();
+        auto arg_type = static_cast<Structure*>(rhs_as_func->argument_type());
 
         arg_type->set_print(static_cast<llvm::Function*>(val));
 
@@ -885,10 +889,9 @@ namespace AST {
     return nullptr;
   }
 
-  llvm::Value* TypeLiteral::generate_code(Scope* scope) { return nullptr; }
-
   // No code to generate for this, constants added automatically.
   llvm::Value* EnumLiteral::generate_code(Scope* scope) { return nullptr; }
+  llvm::Value* TypeLiteral::generate_code(Scope* scope) { return nullptr; }
 
   llvm::Value* Break::generate_code(Scope* scope) {
     auto scope_ptr = scope;
@@ -931,5 +934,6 @@ namespace AST {
 
     return nullptr;
   }
+
 
 }  // namespace AST

@@ -26,8 +26,6 @@ size_t Type::bytes() const {
 
 
 // CONSTRUCTORS
-Type::Type() : assign_fn_(nullptr) {}
-
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
     case Primitive::TypeEnum::Bool:
@@ -141,10 +139,11 @@ Enumeration::Enumeration(const std::string& name,
       /* Initializer = */ llvm::ConstantArray::get(
         llvm::ArrayType::get(*Ptr(Char), enumlit->vals_.size()), enum_str_elems),
       /*        Name = */ name_ + ".name.array");
-  }
+}
 
-  Structure::Structure(const std::string& name)
-: name_(name), init_fn_(nullptr), uninit_fn_(nullptr), print_fn_(nullptr)
+Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
+  expr_(expr), name_(name), init_fn_(nullptr),
+  uninit_fn_(nullptr), print_fn_(nullptr)
 {
   auto struct_type = llvm::StructType::create(global_module->getContext());
   struct_type->setName(name_);

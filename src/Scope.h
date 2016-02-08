@@ -23,7 +23,7 @@ class FnScope;
 
 namespace AST {
   class FunctionLiteral;
-}
+}  // namespace AST
 
 extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 
@@ -107,7 +107,7 @@ class Scope {
     static std::map<IdPtr, Scope*> scope_containing_;
     static std::vector<DeclPtr> decl_registry_;
     friend void Dependency::fill_db();
-    friend void Dependency::assign_order();
+    friend void Dependency::traverse_from(Dependency::PtrWithTorV, std::map<AST::Expression*, Dependency::Flag>&);
 };
 
 
@@ -142,6 +142,7 @@ template<typename T> class StandardEntryExit {
 class CondScope : public Scope, public StandardEntryExit<CondScope> {
   public:
     CondScope() {}
+    virtual ~CondScope() {}
 
     llvm::BasicBlock* entry_block() { return entry_block_; }
     llvm::BasicBlock* exit_block() { return exit_block_; }
@@ -150,6 +151,7 @@ class CondScope : public Scope, public StandardEntryExit<CondScope> {
 class TypeScope : public Scope, public StandardEntryExit<TypeScope> {
   public:
     TypeScope() {}
+    virtual ~TypeScope() {}
 
     llvm::BasicBlock* entry_block() { return entry_block_; }
     llvm::BasicBlock* exit_block() { return exit_block_; }
@@ -268,16 +270,5 @@ class GlobalScope : public Scope {
     llvm::BasicBlock* the_block_;
 
 };
-
-//class NamespaceScope : public Scope {
-//};
-//
-//class TypeScope : public Scope {
-//};
-//
-//
-//class AnonScope : public Scope {
-//};
-
 
 #endif  // ICARUS_SCOPE_H

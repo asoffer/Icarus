@@ -197,15 +197,3 @@ llvm::Function* Enumeration::assign() {
 
   return assign_fn_;
 }
-
-
-void Primitive::set_assign(llvm::Function* fn) {}
-void Pointer::set_assign(llvm::Function* fn) {}
-void Tuple::set_assign(llvm::Function* fn) {}
-void Function::set_assign(llvm::Function* fn) {}
-void Array::set_assign(llvm::Function* fn) {}
-void Enumeration::set_assign(llvm::Function* fn) {}
-void Structure::set_assign(llvm::Function* fn) {
-  assign_fn_ = fn;
-  assign_fn_->setName("assign." + to_string());
-}

@@ -5,15 +5,15 @@
 
 std::string Primitive::to_string() const {
   switch (type_) {
-    case TypeEnum::Error:   return "!!!";
-    case TypeEnum::Unknown: return "???";
-    case TypeEnum::Bool:    return "bool";
-    case TypeEnum::Char:    return "char";
-    case TypeEnum::Int:     return "int";
-    case TypeEnum::Real:    return "real";
-    case TypeEnum::Type:    return "type";
-    case TypeEnum::Uint:    return "uint";
-    case TypeEnum::Void:    return "void";
+    case TypeEnum::Error:     return "!!!";
+    case TypeEnum::Unknown:   return "???";
+    case TypeEnum::Bool:      return "bool";
+    case TypeEnum::Char:      return "char";
+    case TypeEnum::Int:       return "int";
+    case TypeEnum::Real:      return "real";
+    case TypeEnum::Type:      return "type";
+    case TypeEnum::Uint:      return "uint";
+    case TypeEnum::Void:      return "void";
   }
 }
 

@@ -65,7 +65,8 @@ extern Function* Func(Type* in, std::vector<Type*> out);
 extern Function* Func(std::vector<Type*> in, std::vector<Type*> out);
 extern Enumeration* Enum(const std::string& name,
     const AST::EnumLiteral* e = nullptr);
-extern Structure* Struct(const std::string& name);
+extern Structure* Struct(const std::string& name,
+    AST::TypeLiteral* expr = nullptr);
 
 #include "typedefs.h"
 
@@ -77,19 +78,31 @@ extern Structure* Struct(const std::string& name);
 #define LEFT_UNARY_OPERATOR_MACRO(op) \
   virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING;
 
-#define BASIC_FUNCTIONS                                                   \
-  virtual llvm::Function* assign() ENDING;                                \
+#define BASIC_METHODS                                                     \
+virtual llvm::Function* assign() ENDING;                                  \
 virtual std::string to_string() const ENDING;                             \
 virtual Time::Eval time() const ENDING;                                   \
-virtual void set_print(llvm::Function* fn) ENDING;                        \
-virtual void set_assign(llvm::Function* fn) ENDING;                       \
 virtual bool add_llvm_input(std::vector<llvm::Type*>& llvm_in) ENDING;    \
 virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
 virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING; \
 virtual void call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING
 
+#define TYPE_FNS(name, checkname)                                         \
+  name() = delete;                                                        \
+virtual ~name() {}                                                        \
+virtual bool is_##checkname() const { return true; }                      \
+BASIC_METHODS
+
+
 class Type {
   public:
+    Type() : assign_fn_(nullptr) {}
+    virtual ~Type() {}
+    BASIC_METHODS;
+
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
     friend class ::Array;
 
     virtual operator llvm::Type* () const { return llvm_type_; }
@@ -114,10 +127,6 @@ class Type {
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type) { return nullptr; }
 
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
     virtual bool requires_uninit() const { return false; }
 
     virtual bool is_primitive() const { return false; }
@@ -130,10 +139,6 @@ class Type {
 
     llvm::Type* llvm() const { return llvm_type_; }
 
-    Type();
-
-    virtual ~Type() {}
-
   protected:
     llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
@@ -145,21 +150,21 @@ class Type {
 
 class Primitive : public Type {
   public:
-    Primitive() = delete;
-    virtual ~Primitive() {}
-    virtual bool is_primitive() const { return true; }
+    TYPE_FNS(Primitive, primitive);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
     friend void TypeSystem::initialize();
 
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr,
         llvm::Value* val, Type* to_type);
 
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
   private:
-    enum class TypeEnum { Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void };
+    enum class TypeEnum {
+      Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
+    };
+
     Primitive(TypeEnum pt);
 
     Primitive::TypeEnum type_;
@@ -168,9 +173,10 @@ class Primitive : public Type {
 
 class Array : public Type {
   public:
-    Array() = delete;
-    virtual ~Array() {}
-    virtual bool is_array() const { return true; }
+    TYPE_FNS(Array, array);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
     friend Array* Arr(Type*);
 
     friend class AST::Declaration;
@@ -178,10 +184,6 @@ class Array : public Type {
 
       virtual bool requires_uninit() const;
       virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
-
-      BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
 
       virtual Type* data_type() const { return type_; }
       virtual size_t dim() const { return dim_; }
@@ -205,9 +207,10 @@ class Array : public Type {
 
 class Tuple : public Type {
   public:
-    Tuple() = delete;
-    virtual ~Tuple() {}
-    virtual bool is_tuple() const { return true; }
+    TYPE_FNS(Tuple, tuple);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
     friend Tuple* Tup(const std::vector<Type*>&);
 
     std::vector<Type*> entry_types() { return entry_types_; }
@@ -216,10 +219,6 @@ class Tuple : public Type {
 
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
-
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
 
     size_t size() const { return entry_types_.size(); } 
 
@@ -231,9 +230,9 @@ class Tuple : public Type {
 
 class Pointer : public Type {
   public:
-    Pointer() = delete;
-    virtual ~Pointer() {}
-    virtual bool is_pointer() const { return true; }
+    TYPE_FNS(Pointer, pointer);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
     friend Pointer* Ptr(Type*);
 
@@ -242,11 +241,6 @@ class Pointer : public Type {
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
-
   private:
     Pointer(Type* t);
     Type* pointee_type_;
@@ -254,9 +248,10 @@ class Pointer : public Type {
 
 class Function : public Type {
   public:
-    Function() = delete;
-    virtual ~Function() {}
-    virtual bool is_function() const { return true; }
+    TYPE_FNS(Function, function);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
     friend Function* Func(Type* in, Type* out);
 
     operator llvm::FunctionType* () const {
@@ -269,10 +264,6 @@ class Function : public Type {
     virtual llvm::Value* allocate(llvm::IRBuilder<>& bldr) const;
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* to_type);
 
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
   private:
     Function(Type* in, Type* out);
 
@@ -282,14 +273,11 @@ class Function : public Type {
 
 class Enumeration : public Type {
   public:
-    Enumeration() = delete;
-    virtual ~Enumeration() {}
-    virtual bool is_enum() const { return true; }
-    friend Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e );
-
-    BASIC_FUNCTIONS;
+    TYPE_FNS(Enumeration, enum);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
+
+    friend Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e );
 
     llvm::Value* get_value(const std::string& str) const;
 
@@ -306,17 +294,17 @@ class Enumeration : public Type {
 
 class Structure : public Type {
   public:
-    Structure();
-    virtual ~Structure() {}
-    virtual bool is_struct() const { return true; }
-    friend Structure* Struct(const std::string& name,
-        const std::vector<DeclPtr>& decls);
+    TYPE_FNS(Structure, struct);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
 
-    Structure(const std::string& name);
+    Structure(const std::string& name, AST::TypeLiteral* expr);
 
     friend Type* TypeSystem::get(const std::string& name);
     friend class AST::TypeLiteral;
     virtual bool requires_uninit() const;
+
+    AST::TypeLiteral* defining_expression() { return expr_; }
 
     void set_name(const std::string& name) {
       name_ = name;
@@ -327,15 +315,14 @@ class Structure : public Type {
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 
-    BASIC_FUNCTIONS;
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
     Type* field(const std::string& name) const;
     llvm::Value* field_num(const std::string& name) const;
 
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
+    void set_print(llvm::Function* fn);
 
   private:
+    AST::TypeLiteral* expr_;
     std::string name_;
 
     llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
@@ -345,7 +332,8 @@ class Structure : public Type {
 
 std::ostream& operator<<(std::ostream& os, const Type& t);
 
-#undef BASIC_FUNCTIONS
+#undef TYPE_FNS
+#undef BASIC_METHODS
 #undef LEFT_UNARY_OPERATOR_MACRO
 #undef BINARY_OPERATOR_MACRO
 #undef ENDING

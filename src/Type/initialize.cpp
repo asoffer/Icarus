@@ -23,15 +23,15 @@ extern llvm::Module* global_module;
 
 void Primitive::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   switch (type_) {
-    case TypeEnum::Error:   assert(false && "Constructor called for type Error");
-    case TypeEnum::Unknown: assert(false && "Constructor called for unknown type");
-    case TypeEnum::Type:    assert(false && "Constructor called for type");
-    case TypeEnum::Void:    assert(false && "Constructor called for void type");
-    case TypeEnum::Bool:    bldr.CreateStore(data::const_false(),    var); return;
-    case TypeEnum::Char:    bldr.CreateStore(data::const_char('\0'), var); return;
-    case TypeEnum::Int:     bldr.CreateStore(data::const_int(0),     var); return;
-    case TypeEnum::Real:    bldr.CreateStore(data::const_real(0),    var); return;
-    case TypeEnum::Uint:    bldr.CreateStore(data::const_uint(0),    var); return;
+    case TypeEnum::Error:     assert(false && "Constructor called for type Error");
+    case TypeEnum::Unknown:   assert(false && "Constructor called for unknown type");
+    case TypeEnum::Type:      assert(false && "Constructor called for type");
+    case TypeEnum::Void:      assert(false && "Constructor called for void type");
+    case TypeEnum::Bool:      bldr.CreateStore(data::const_false(),    var); return;
+    case TypeEnum::Char:      bldr.CreateStore(data::const_char('\0'), var); return;
+    case TypeEnum::Int:       bldr.CreateStore(data::const_int(0),     var); return;
+    case TypeEnum::Real:      bldr.CreateStore(data::const_real(0),    var); return;
+    case TypeEnum::Uint:      bldr.CreateStore(data::const_uint(0),    var); return;
   }
 }
 
