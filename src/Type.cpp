@@ -174,6 +174,10 @@ llvm::Value* Structure::field_num(const std::string& name) const {
   return nullptr;
 }
 
+llvm::Value* Enumeration::get_value(const std::string& str) const {
+  auto iter = intval_.find(str);
+  return (iter == intval_.end()) ? nullptr : iter->second;
+}
 
 bool Array::requires_uninit() const { return true; }
 bool Structure::requires_uninit() const {

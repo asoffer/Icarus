@@ -344,6 +344,7 @@ namespace AST {
     if (exprs_[0]->type() == Int) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
+
         llvm::Value* cmp_val;
 
         // TODO early exit

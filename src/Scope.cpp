@@ -289,7 +289,7 @@ void Scope::determine_declared_types() {
       } else {
 
         decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->interpret_as_type(); // If no type inference
+          decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type; // If no type inference
       }
     }
   }

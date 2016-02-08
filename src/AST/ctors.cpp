@@ -32,7 +32,6 @@ namespace AST {
       } else {
         auto field = decl->declared_type()->evaluate(Scope::Global->context()).as_type;
         assert(field && "field is nullptr");
-        std::cout <<*this << std::endl;
         assert(type_value_ && "null type_value_");
         type_value_->fields_.emplace_back(decl->identifier_string(), field);
       }

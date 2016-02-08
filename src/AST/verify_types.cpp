@@ -1,6 +1,7 @@
 #include "AST.h"
 #include "ErrorLog.h"
 #include "Type.h"
+#include <sstream>
 
 extern ErrorLog error_log;
 
@@ -48,9 +49,29 @@ namespace AST {
       assert(expr_type_ && "decl_ptr->type() is nullptr");
 
       if (expr_type_ == Type_) {
-        Scope::Global->context().bind(Context::Value(
-              decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type),
-            shared_from_this());
+        auto type_as_ctx_val =
+          decl_ptr->declared_type()->evaluate(Scope::Global->context());
+        auto type_for_binding = type_as_ctx_val.as_type;
+        Scope::Global->context().bind(type_as_ctx_val, shared_from_this());
+
+        // To do nice printing, we want to replace __anon... with a name. For
+        // now, we just choose the first name that was bound to it.
+        //
+        // TODO come up with a better way to
+        // 1. figure out what name to print
+        // 2. determine if the type chosen hasn't had a name bound to it yet.
+        if (type_for_binding->to_string()[0] == '_') {
+          if (type_for_binding->is_enum()) {
+            static_cast<Enumeration*>(type_for_binding)->set_name(token());
+
+          } else if (type_for_binding->is_struct()) {
+            static_cast<Structure*>(type_for_binding)->set_name(token());
+
+          } else {
+            assert(false && "non-enum non-struct starting with '_'");
+          }
+        }
+
         assert(Scope::Global->context().get(shared_from_this()).as_type
             && "Bound type was a nullptr");
       }
@@ -128,8 +149,6 @@ namespace AST {
     } else {
       assert(false && "Died in Unop::verify_types");
     }
-
-    return;
   }
 
   void Binop::verify_types() {
@@ -149,6 +168,24 @@ namespace AST {
 
       // Access passes through pointers
       auto lhs_type = lhs_->type();
+      if (lhs_type == Type_) {
+        auto lhs_typename = lhs_->evaluate(Scope::Global->context()).as_type;
+        if (lhs_typename->is_enum()) {
+          auto enum_type = static_cast<Enumeration*>(lhs_typename);
+          // If you can get the value,
+          if (enum_type->get_value(rhs_->token())) {
+            // TODO use correct context
+            expr_type_ = lhs_->evaluate(Scope::Global->context()).as_type;
+            rhs_->expr_type_ = expr_type_;
+
+          } else {
+            error_log.log(line_num(), lhs_typename->to_string() + " has no member " + rhs_->token() + ".");
+            expr_type_ = Error;
+          }
+          return;
+        }
+      }
+
       while (lhs_type->is_pointer()) {
         lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
       }
@@ -158,13 +195,15 @@ namespace AST {
         auto member_type = struct_type->field(rhs_->token());
         if (member_type == nullptr) {
           error_log.log(line_num(),
-              "Objects of type " + lhs_type->to_string() + " has no member named `" + rhs_->token() + "`.");
+              "Objects of type " + lhs_type->to_string() + " have no member named `" + rhs_->token() + "`.");
           expr_type_ = Error;
         } else {
           rhs_->expr_type_ = member_type;
           expr_type_ = member_type;
         }
       }
+
+      
       assert(expr_type_ && "expr_type_ is nullptr in binop access");
       return;
     }  else if (op_ == Language::Operator::Rocket) {
@@ -243,7 +282,6 @@ namespace AST {
       return;
     }
 
-
     assert(false && "Died in Binop::verify_types");
   }
 
@@ -274,8 +312,15 @@ namespace AST {
       expr_type_ = Bool;
 
     } else {
+
       // TODO guess what type was intended
-      error_log.log(line_num(), "Type error: Values do not have matching types in ChainOp");
+      std::stringstream ss;
+      ss << "Type error: Types do not all match. Found the following types:\n";
+      for (const auto& t : expr_types) {
+        ss << "\t" << *t << "\n";
+      }
+
+      error_log.log(line_num(), ss.str());
       expr_type_ = Error;
     }
   }
@@ -290,8 +335,17 @@ namespace AST {
     expr_type_ = (type_is_inferred()
         ? decl_type_->type()
         : decl_type_->evaluate(Scope::Global->context()).as_type);
+
+    // TODO fix this hacky solution.
+    // Some stuff like this is done in Identifier::verify_types().
+    // Other stuff is done here.
+    if (expr_type_->time() == Time::compile && expr_type_->is_function()) {
+      // TODO bind to the correct context
+      Scope::Global->context().bind(
+          Context::Value(declared_type().get()), declared_identifier());
+    }
+
     assert(expr_type_ && "decl expr is nullptr");
-    return;
   }
 
   void ArrayType::verify_types() {
@@ -306,8 +360,6 @@ namespace AST {
       expr_type_ = Arr(array_type_->type());
       assert(expr_type_ && "arrayType nullptr");
     }
-
-    return;
   }
 
 
@@ -326,7 +378,6 @@ namespace AST {
         expr_type_ = Error;
       }
     }
-    return;
   }
 
   void FunctionLiteral::verify_types() {
@@ -367,7 +418,6 @@ namespace AST {
       expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
       assert(expr_type_ && "operator_lookup");
     }
-    return;
   }
 
   void Case::verify_types() {
@@ -389,12 +439,16 @@ namespace AST {
   }
 
   void EnumLiteral::verify_types() {
-    type_value_ = Enum("__anon.enum", this);
+    static size_t anon_enum_counter = 0;
+    type_value_ = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
+    ++anon_enum_counter;
   }
 
   void TypeLiteral::verify_types() {
+    static size_t anon_type_counter = 0;
     expr_type_ = Type_;
-    type_value_ = Struct("__anon.struct"); 
+    type_value_ = Struct("__anon.struct" + std::to_string(anon_type_counter)); 
+    ++anon_type_counter;
   }
 
   // Verifies that all keys have the same given type `key_type` and that all

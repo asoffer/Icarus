@@ -1,0 +1,18 @@
+foo := type {
+  x: &bar
+}
+
+bar := type {
+  y: &foo
+}
+
+main := void -> void {
+  f: foo
+  b: bar
+  f.x = &b
+  b.y = &f
+  print &f
+  print '\n'
+  print f.x.y
+  print '\n'
+}

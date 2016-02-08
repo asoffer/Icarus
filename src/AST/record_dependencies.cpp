@@ -16,6 +16,7 @@ namespace AST {
   }
 
   void Identifier::record_dependencies() {
+    Dependency::value_type(this, this);
     Dependency::value_value(this, Scope::decl_of_[shared_from_this()].get());
     Dependency::type_type(this, Scope::decl_of_[shared_from_this()].get());
   }
@@ -85,6 +86,7 @@ namespace AST {
     if (type_is_inferred()) {
       Dependency::type_type(this, decl_type_.get());
       Dependency::value_value(this, decl_type_.get());
+      Dependency::value_type(this, this);
     } else {
       Dependency::type_value(this, decl_type_.get());
     }
@@ -147,9 +149,10 @@ namespace AST {
   }
 
   void TypeLiteral::record_dependencies() {
+    Dependency::value_type(this, this);
     for (const auto& decl : decls_) {
       DEBUG_KILL(decl);
-      Dependency::value_type(this, decl.get());
+      Dependency::value_type(this, decl->declared_identifier().get());
       decl->record_dependencies();
     }
   }

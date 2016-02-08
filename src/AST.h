@@ -43,7 +43,6 @@ namespace AST {
   virtual void assign_decl_to_scope(Scope* scope)                  ENDING; \
   virtual void record_dependencies()                               ENDING; \
   virtual void verify_types()                                      ENDING; \
-  virtual Type* interpret_as_type()                                ENDING; \
   virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
   virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
   virtual Context::Value evaluate(Context& ctx)                    ENDING; \

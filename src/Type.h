@@ -291,7 +291,9 @@ class Enumeration : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    llvm::Value* get_value(const std::string& str) const { return intval_.at(str); }
+    llvm::Value* get_value(const std::string& str) const;
+
+    void set_name(const std::string& name) { name_ = name; }
 
   private:
     Enumeration(const std::string& name, const AST::EnumLiteral* enumlit);
@@ -315,6 +317,13 @@ class Structure : public Type {
     friend Type* TypeSystem::get(const std::string& name);
     friend class AST::TypeLiteral;
     virtual bool requires_uninit() const;
+
+    void set_name(const std::string& name) {
+      name_ = name;
+      if (name == "string") {
+        String = this;
+      }
+    }
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 

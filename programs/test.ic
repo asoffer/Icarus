@@ -1,6 +1,9 @@
-foo := (x: int) -> int {
-  y := x * x
-  return x + y
+foo := type {
+  x: int
+}
+
+bar := type {
+  y: int
 }
 
 main := void -> void {
