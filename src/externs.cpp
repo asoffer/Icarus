@@ -45,8 +45,6 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
     return func_;                           \
   }
 
-
-
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
@@ -65,9 +63,6 @@ namespace cstdlib {
             { *RawPtr, *RawPtr, *Uint }, false));
     return func_;                             
   }
-
-
-
 }  // namespace cstdlib
 
 namespace data {
@@ -101,8 +96,7 @@ namespace data {
 
 
   llvm::Value* const_real(double d) {
-    return llvm::ConstantFP::get(llvm::getGlobalContext(),
-        llvm::APFloat(d));
+    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(d));
   }
 
   llvm::Value* const_false() {
@@ -126,17 +120,6 @@ namespace data {
         llvm::APInt(8, static_cast<size_t>(c), false));
   }
 
-
-  /*
-  llvm::Value* str(const std::string& s) {
-    static llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-    auto iter = global_strings.find(s);
-    if (iter != global_strings.end()) {
-      return iter->second;
-    }
-
-    return global_strings[s] = bldr.CreateGlobalStringPtr(s);
-  }*/
 
   llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s) {
     auto iter = global_strings.find(s);

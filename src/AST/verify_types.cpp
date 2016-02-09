@@ -242,7 +242,7 @@ namespace AST {
       if (!lhs_->type()->is_array()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num(), "Identifier `" + lhs_->token() +"` does not name an array.");
+        error_log.log(line_num(), "Identifier `" + lhs_->token() + "` does not name an array.");
         return;
       }
 
@@ -480,23 +480,4 @@ namespace AST {
     // KVPairLists so much
     return *value_types.begin();
   }
-
-  /*
-void Statements::verify_types() {}
-
-void While::verify_types() {
-  if (cond_->type() != Bool) {
-    error_log.log(cond_->line_num(), "Type error: Condition in while loop must be a boolean expression, but a type of " + cond_->type()->to_string() + " was found.");
-  }
-}
-
-void Conditional::verify_types() {
-  for (const auto& cond : conds_) {
-    if (cond->type() != Bool) {
-      error_log.log(cond->line_num(), "Type error: Condition in if statement must be a boolean expression, but a type of " + cond->type()->to_string() + " was found.");
-    }
-  }
-}
-
-*/
 }  // namespace AST

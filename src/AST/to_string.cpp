@@ -4,18 +4,53 @@
 
 namespace AST {
   std::string tabs(size_t n) {
-    // Tabs are two spaces
     return std::string(n << 1, ' ');
   }
 
   std::string Node::to_string(size_t n) const {
-    std::string output =
-      tabs(n) + "[" + Language::show_name.at(type_);
+    std::string output = tabs(n) + "[";
+    switch (type_) {
+      case Language::unknown:                 output += "Unknown";       break;
+      case Language::eof:                     output += "EOF";           break;
+      case Language::newline:                 output += "Newline";       break;
+      case Language::comment:                 output += "Comment";       break;
+      case Language::identifier:              output += "Identifier";    break;
+      case Language::int_literal:             output += "Integer";       break;
+      case Language::uint_literal:            output += "UInt";          break;
+      case Language::real_literal:            output += "Real";          break;
+      case Language::type_literal:            output += "Type";          break;
+      case Language::char_literal:            output += "Character";     break;
+      case Language::string_literal:          output += "String";        break;
+      case Language::generic_operator:        output += "Operator";      break;
+      case Language::bool_operator:           output += "BoolOperator";  break;
+      case Language::dot:                     output += "Dot";           break;
+      case Language::binary_boolean_operator: output += "BinOperator";   break;
+      case Language::decl_operator:           output += ":";             break;
+      case Language::decl_assign_operator:    output += ":=";            break;
+      case Language::assign_operator:         output += "X=";            break;
+      case Language::fn_arrow:                output += "->";            break;
+      case Language::comma:                   output += ":";             break;
+      case Language::semicolon:               output += ";";             break;
+      case Language::dereference:             output += "@";             break;
+      case Language::negation:                output += "-";             break;
+      case Language::indirection:             output += "&";             break;
+      case Language::rocket_operator:         output += "=>";            break;
+      case Language::key_value_pair:          output += "( => )";        break;
+      case Language::expression:              output += "Expression";    break;
+      case Language::left_paren:              output += "Left Paren";    break;
+      case Language::right_paren:             output += "Right Paren";   break;
+      case Language::left_brace:              output += "Left Brace";    break;
+      case Language::right_brace:             output += "Right Brace";   break;
+      case Language::left_bracket:            output += "Left Bracket";  break;
+      case Language::right_bracket:           output += "Right Bracket"; break;
+#define RESERVED_MACRO(res) \
+      case Language::reserved_##res:          output += #res;            break;
+#include "config/reserved.conf"
+#undef RESERVED_MACRO
+      default:;
+    }
 
-    if (!token_.empty())
-      output += ": " + token_;
-
-    return output + "]\n";
+    return output + (!token_.empty() ? ": " + token_ : "") + "]\n";
   }
 
   std::string Conditional::to_string(size_t n) const {

@@ -213,6 +213,7 @@ namespace AST {
       friend class ::ErrorLog;
 
       Language::Operator op() const { return op_; }
+      EPtr lhs() const { return lhs_; }
 
       static NPtr build_operator(NPtrVec&& nodes, Language::Operator op_class);
       static NPtr build_paren_operator(NPtrVec&& nodes);

@@ -118,7 +118,7 @@ namespace Dependency {
         if (torv) {
           if (ptr->is_unop()) {
             auto unop = static_cast<AST::Unop*>(ptr);
-            if(unop->op() == Language::Operator::At) {
+            if (unop->op() == Language::Operator::At) {
               auto t = unop->operand()->type();
               if (t->is_pointer()) {
                 t = static_cast<Pointer*>(t)->pointee_type();
@@ -128,7 +128,20 @@ namespace Dependency {
                       struct_type->defining_expression(), false);
                   traverse_from(ptr_with_torv, already_seen);
                 }
-                // traverse_from(type, already_seen);
+              }
+            }
+          } else if (ptr->is_binop()) {
+            auto binop = static_cast<AST::Binop*>(ptr);
+            if (binop->op() == Language::Operator::Access) {
+              if (binop->lhs()->type()->is_pointer()) {
+                auto t = binop->lhs()->type();
+                while (t->is_pointer()) t = static_cast<Pointer*>(t)->pointee_type();
+                if (t->is_struct()) {
+                  auto struct_type = static_cast<Structure*>(t);
+                  PtrWithTorV ptr_with_torv(
+                      struct_type->defining_expression(), false);
+                  traverse_from(ptr_with_torv, already_seen);
+                }
               }
             }
           }

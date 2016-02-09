@@ -17,45 +17,6 @@ NPtr import_file(NPtrVec&& nodes) {
 }
 
 namespace Language {
-  const std::map<Language::NodeType, std::string> show_name = {
-    { unknown,                  "Unknown" },
-    { eof,                      "EOF" },
-    { newline,                  "Newline" },
-    { comment,                  "Comment" },
-    { identifier,               "Identifier" },
-    { int_literal,              "Integer" },
-    { uint_literal,             "UInt" },
-    { real_literal,             "Real" },
-    { type_literal,             "Type" },
-    { char_literal,             "Character" },
-    { string_literal,           "String" },
-    { generic_operator,         "Operator" },
-    { bool_operator,            "BoolOperator" },
-    { dot,                      "Dot" },
-    { binary_boolean_operator,  "BinOperator" },
-    { decl_operator,            ":" },
-    { decl_assign_operator,     ":=" },
-    { assign_operator,          "X=" },
-    { fn_arrow,                 "->" },
-    { comma,                    "," },
-    { semicolon,                ";" },
-    { dereference,              "@" },
-    { negation,                 "-" },
-    { indirection,              "&" },
-    { rocket_operator,          "=>" },
-    { key_value_pair,           "( => )" },
-    { expression,               "Expression" },
-    { left_paren,               "Left Paren" },
-    { right_paren,              "Right Paren" },
-    { left_brace,               "Left Brace" },
-    { right_brace,              "Right Brace" },
-    { left_bracket,             "Left Bracket" },
-    { right_bracket,            "Right Bracket" },
-#define RESERVED_MACRO(res) { reserved_##res, #res },
-#include "config/reserved.conf"
-#undef RESERVED_MACRO
-  };
-
   const std::map<std::string, NodeType> reserved_words = {
 #define RESERVED_MACRO(res) { #res, reserved_##res },
 #include "config/reserved.conf"

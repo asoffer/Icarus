@@ -26,6 +26,7 @@ bin/icarus programs/is_digit.ic
 bin/icarus programs/multidim_array.ic
 bin/icarus programs/multiple_args.ic
 bin/icarus programs/mutual_ptrs.ic
+bin/icarus programs/mutual_ptrs2.ic
 bin/icarus programs/negate.ic
 bin/icarus programs/paren_test.ic
 bin/icarus programs/pi.ic
