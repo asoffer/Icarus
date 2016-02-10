@@ -94,9 +94,7 @@ int main(int argc, char *argv[]) {
 
     } else {
       // If we have found a file already, error out.
-      std::cerr
-        << "Provide exactly one file name."
-        << std::endl;
+      std::cerr << "Provide exactly one file name." << std::endl;
       return error_code::invalid_arguments;
     }
 

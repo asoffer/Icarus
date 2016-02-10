@@ -5,6 +5,15 @@
 extern std::queue<std::string> file_queue;
 
 namespace AST {
+  NPtr Identifier::build(NPtrVec&& nodes) {
+    if (nodes[0]->token() == "string") {
+      file_queue.emplace("lib/string.ic");
+    }
+
+    return std::make_shared<Identifier>(nodes[0]->line_num(), nodes[0]->token());
+  }
+
+
   NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
@@ -257,6 +266,7 @@ namespace AST {
 
   NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     file_queue.emplace("lib/string.ic");
+
     return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Unknown);
   }
 

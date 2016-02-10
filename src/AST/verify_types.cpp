@@ -53,6 +53,10 @@ namespace AST {
           decl_ptr->declared_type()->evaluate(Scope::Global->context());
         auto type_for_binding = type_as_ctx_val.as_type;
         Scope::Global->context().bind(type_as_ctx_val, shared_from_this());
+        // TODO This is a hacky solution. Clean it up.
+        if (token() == "string") {
+          String = static_cast<Structure*>(type_for_binding);
+        }
 
         // To do nice printing, we want to replace __anon... with a name. For
         // now, we just choose the first name that was bound to it.
@@ -335,6 +339,17 @@ namespace AST {
     expr_type_ = (type_is_inferred()
         ? decl_type_->type()
         : decl_type_->evaluate(Scope::Global->context()).as_type);
+
+    if (!expr_type_) {
+      std::cout << this << std::endl;
+      std::cout << decl_type_ << std::endl;
+      std::cout << type_is_inferred() << std::endl;
+      std::cout << decl_type_->token() << "!" << std::endl;
+      std::cout << decl_type_->type() << std::endl;
+
+      std::cout << *declared_identifier() << std::endl;
+      std::cout << *declared_type() << std::endl;
+    }
 
     // TODO fix this hacky solution.
     // Some stuff like this is done in Identifier::verify_types().

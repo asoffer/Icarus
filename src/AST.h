@@ -319,14 +319,6 @@ namespace AST {
       bool is_function_arg_;      
   };
 
-  inline NPtr Identifier::build(NPtrVec&& nodes) {
-    if (nodes[0]->token() == "string") {
-      file_queue.emplace("lib/string.ic");
-    }
-
-    return std::make_shared<Identifier>(nodes[0]->line_num(), nodes[0]->token());
-  }
-
   // class Declaration
   //
   // Represents declarations that may or may not be made with type inference.

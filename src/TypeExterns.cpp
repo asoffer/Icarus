@@ -263,7 +263,5 @@ Structure* Struct(const std::string& name, AST::TypeLiteral* t) {
 
   auto struct_type = new Structure(name, t);
 
-  if (struct_type->to_string() == "string") String = struct_type;
-
   return struct_types_[name] = struct_type;
 }

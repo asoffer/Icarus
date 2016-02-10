@@ -24,14 +24,11 @@ namespace AST {
     }
   }
 
-
-  void Terminal::join_identifiers(Scope* scope, bool is_arg) {
-  }
+  void Terminal::join_identifiers(Scope* scope, bool is_arg) {}
 
   void Identifier::join_identifiers(Scope* scope, bool is_arg) {
     Terminal::join_identifiers(scope);
   }
-
 
   void Conditional::join_identifiers(Scope* scope, bool is_arg) {
     for (size_t i = 0; i < conds_.size(); ++i) {
@@ -52,6 +49,8 @@ namespace AST {
 
     // Ignore the RHS of a dot operator
     // TODO Access should be looking in a different scope
+    // Should it be looking at all?
+    // Should this even be a binary operator?
     if (op_ == Language::Operator::Access) return;
 
     if (rhs_->is_identifier()) {
@@ -76,7 +75,6 @@ namespace AST {
       array_type_->join_identifiers(scope);
     }
   }
-
 
   void Declaration::join_identifiers(Scope* scope, bool is_arg) {
     id_ = std::static_pointer_cast<Identifier>(

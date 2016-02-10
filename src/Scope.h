@@ -73,6 +73,7 @@ class Scope {
     // While we're actually returning an IdPtr, it's only ever used as an
     // EPtr, so we do the pointer cast inside.
     EPtr identifier(EPtr id_as_eptr);
+    EPtr identifier(const std::string& name) const;
 
     virtual void set_parent_function(llvm::Function* fn);
     EPtr get_declared_type(IdPtr id_ptr) const;

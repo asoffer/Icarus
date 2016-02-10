@@ -277,6 +277,16 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
   return nullptr;
 }
 
+EPtr Scope::identifier(const std::string& name) const {
+  auto iter = ids_.find(name);
+  if (iter == ids_.end()) {
+    if (parent_) return parent_->identifier(name);
+    return nullptr;
+  }
+  return iter->second;
+}
+
+
 void Scope::determine_declared_types() {
   for (auto scope_ptr : registry_) {
     for (auto decl_ptr : scope_ptr->ordered_decls_) {
