@@ -188,6 +188,14 @@ bool Structure::requires_uninit() const {
   return false;
 }
 
+void Structure::set_name(const std::string& name) {
+  name_ = name;
+  static_cast<llvm::StructType*>(llvm_type_)->setName(name_);
+  if (name == "string") {
+    String = this;
+  }
+}
+
 std::ostream& operator<<(std::ostream& os, const Type& t) {
   return os << t.to_string();
 }

@@ -100,3 +100,5 @@ void Structure::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 
   bldr.CreateCall(uninit_fn_, { var });
 }
+
+void DependentType::call_uninit(llvm::IRBuilder<>&, llvm::Value*) {}

@@ -45,7 +45,7 @@ namespace Language {
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
     reserved_enum, reserved_while, reserved_continue, reserved_type, reserved_ascii,
-    reserved_import, reserved_string,
+    reserved_import, reserved_string, reserved_alloc,
 
     break_statement,
 
@@ -115,7 +115,7 @@ namespace Language {
   };
 
   enum class Terminal {
-    ASCII, Return, Else, True, False,
+    ASCII, Alloc, Return, Else, True, False,
     Char, Int, Real, Type, UInt,
     StringLiteral
   };

@@ -37,3 +37,7 @@ bool Structure::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
   llvm_in.push_back(*Ptr(this));
   return true;
 }
+
+bool DependentType::add_llvm_input(std::vector<llvm::Type*>&) {
+  return false;
+}

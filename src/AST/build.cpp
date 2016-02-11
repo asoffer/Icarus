@@ -303,6 +303,12 @@ namespace AST {
         std::forward<NPtrVec&&>(nodes), Func(Uint, Char));
   }
 
+  NPtr Terminal::build_alloc(NPtrVec&& nodes) {
+    return build(Language::Terminal::Alloc, std::forward<NPtrVec&&>(nodes),
+        DepType([](Type* t) { return Ptr(t); }));
+  }
+
+
 
 
   NPtr Assignment::build(NPtrVec&& nodes) {

@@ -90,6 +90,8 @@ namespace AST {
         return data::const_real(std::stod(token()));
       case Terminal::UInt:
         return data::const_uint(std::stoul(token()));
+      case Terminal::Alloc:
+        return cstdlib::malloc();
       case Terminal::StringLiteral:
         {
           auto str = data::global_string(scope->builder(), token());
@@ -267,6 +269,12 @@ namespace AST {
           } else {
             return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
           }
+        } else if (lhs_->type()->is_dependent_type()) {
+          // TODO make this generic. right now dependent_type implise alloc(...)
+          auto t = rhs_->evaluate(scope->context()).as_type;
+          auto alloc_ptr = scope->builder().CreateCall(
+              lhs_val, { data::const_uint(t->bytes()) });
+          return scope->builder().CreateBitCast(alloc_ptr, *type());
         }
       default:;
     }

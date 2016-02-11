@@ -1,21 +1,59 @@
+__print__ := (l: list) -> void {
+  iter := l.head
+  if l.size == 0u {
+    return
+  }
+print '['
+  i := 0u
+  while i < l.size {
+    i += 1u
+    print iter.data
+    if i != l.size {
+      print ' '
+      print '-'
+      print '>'
+      print ' '
+    }
+    iter = iter.next
+  }
+
+print ']'
+}
+
 main := void -> void {
-  x: node
-  y: node
-  z: node
-  x.next = &y
-  y.next = &z
-  x.data = -17
-  y.data = 17
-  z.data = 34
-  print x.data
+  l: list
+  add(&l, 3)
+  add(&l, 5)
+  add(&l, 7)
+
+  print l
   print '\n'
-  print x.next.data
+
+  emptylist: list
+
+  print emptylist
   print '\n'
-  print x.next.next.data
+  l1: list
+
+  add(&l1, 17)
+  print l1
   print '\n'
 }
 
 node := type {
   data: int
   next: &node
+}
+
+list := type {
+  head: &node
+  size: uint
+}
+
+add := (l: &list, n: int) -> void {
+  nptr := alloc(node)
+  nptr.data = n
+  nptr.next = l.head
+  l.head = nptr
+  l.size += 1u
 }

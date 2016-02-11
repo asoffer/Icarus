@@ -76,5 +76,9 @@ std::string Tuple::to_string() const {
   return ss.str();
 }
 
+std::string DependentType::to_string() const {
+  return "(DependentType)";
+}
+
 std::string Structure::to_string()   const { return name_; }
 std::string Enumeration::to_string() const { return name_; }

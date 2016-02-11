@@ -265,3 +265,12 @@ Structure* Struct(const std::string& name, AST::TypeLiteral* t) {
 
   return struct_types_[name] = struct_type;
 }
+
+// TODO take in a vector of context values instead
+DependentType* DepType(std::function<Type*(Type*)> fn) {
+  // These won't be leaked, but they aren't uniqued.
+  static std::vector<DependentType*> dep_types_;
+  auto dep_type = new DependentType(fn);
+  dep_types_.push_back(dep_type);
+  return dep_type;
+}

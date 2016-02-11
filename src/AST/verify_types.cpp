@@ -39,6 +39,7 @@ namespace AST {
       case Terminal::Type:          expr_type_ = Type_;             break;
       case Terminal::UInt:          expr_type_ = Uint;              break;
       case Terminal::StringLiteral: expr_type_ = String;            break;
+      case Terminal::Alloc:         /* Already set */               break;
     }
   }
 
@@ -219,6 +220,16 @@ namespace AST {
 
     } else if (op_ == Language::Operator::Call) {
       expr_type_ = Error;
+      if (lhs_->type()->is_dependent_type()) {
+        // TODO treat dependent types as functions
+        auto dep_type = static_cast<DependentType*>(lhs_->type());
+        auto result_type =
+          (*dep_type)(rhs_->evaluate(Scope::Global->context()).as_type);
+        expr_type_ = result_type;
+        return;
+      }
+
+
       if (!lhs_->type()->is_function()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token

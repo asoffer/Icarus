@@ -1,0 +1,8 @@
+main := void -> void {
+  nptr := alloc(int)
+  @nptr = 17
+  print nptr
+  print '\n'
+  print @nptr
+  print '\n'
+}

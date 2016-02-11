@@ -217,6 +217,12 @@ void Function::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
       data::global_string(bldr, "<function " + to_string() + ">") });
 }
 
+void DependentType::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
+  bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "%s"),
+      data::global_string(bldr, "<dependent " + to_string() + ">") });
+}
+
+
 void Pointer::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
   bldr.CreateCall(cstdlib::printf(), { data::global_string(bldr, "&_%x"), val });
 }

@@ -43,3 +43,5 @@ Time::Eval Enumeration::time() const {
   // TODO
   return Time::run;
 }
+
+Time::Eval DependentType::time() const { return Time::compile; }

@@ -36,6 +36,7 @@ class Pointer;
 class Function;
 class Enumeration;
 class Structure;
+class DependentType;
 
 namespace TypeSystem {
   void initialize();
@@ -67,6 +68,7 @@ extern Enumeration* Enum(const std::string& name,
     const AST::EnumLiteral* e = nullptr);
 extern Structure* Struct(const std::string& name,
     AST::TypeLiteral* expr = nullptr);
+extern DependentType* DepType(std::function<Type*(Type*)> fn);
 
 #include "typedefs.h"
 
@@ -129,13 +131,14 @@ class Type {
 
     virtual bool requires_uninit() const { return false; }
 
-    virtual bool is_primitive() const { return false; }
-    virtual bool is_array()     const { return false; }
-    virtual bool is_tuple()     const { return false; }
-    virtual bool is_pointer()   const { return false; }
-    virtual bool is_function()  const { return false; }
-    virtual bool is_struct()    const { return false; }
-    virtual bool is_enum()      const { return false; }
+    virtual bool is_primitive()       const { return false; }
+    virtual bool is_array()           const { return false; }
+    virtual bool is_tuple()           const { return false; }
+    virtual bool is_pointer()         const { return false; }
+    virtual bool is_function()        const { return false; }
+    virtual bool is_struct()          const { return false; }
+    virtual bool is_enum()            const { return false; }
+    virtual bool is_dependent_type()  const { return false; }
 
     llvm::Type* llvm() const { return llvm_type_; }
 
@@ -306,12 +309,7 @@ class Structure : public Type {
 
     AST::TypeLiteral* defining_expression() { return expr_; }
 
-    void set_name(const std::string& name) {
-      name_ = name;
-      if (name == "string") {
-        String = this;
-      }
-    }
+    void set_name(const std::string& name);
 
     virtual llvm::Value* call_cast(llvm::IRBuilder<>& bldr, llvm::Value* val, Type* t);
 
@@ -329,6 +327,21 @@ class Structure : public Type {
 
     std::vector<std::pair<std::string, Type*>> fields_;
 };
+
+class DependentType : public Type {
+  public:
+    TYPE_FNS(DependentType, dependent_type);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+
+    DependentType(std::function<Type*(Type*)> fn) : fn_(fn) {}
+    Type* operator()(Type* t) const { return fn_(t); }
+
+  private:
+    std::function<Type*(Type*)> fn_;
+};
+
 
 std::ostream& operator<<(std::ostream& os, const Type& t);
 

@@ -287,7 +287,7 @@ namespace AST {
       static NPtr build_char_literal(NPtrVec&& nodes);
       static NPtr build_void_return(NPtrVec&& nodes);
       static NPtr build_ASCII(NPtrVec&& nodes);
-
+      static NPtr build_alloc(NPtrVec&& nodes);
 
     private:
       Language::Terminal terminal_type_;

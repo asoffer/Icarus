@@ -197,3 +197,8 @@ llvm::Function* Enumeration::assign() {
 
   return assign_fn_;
 }
+
+llvm::Function* DependentType::assign() {
+  if (assign_fn_ != nullptr) return assign_fn_;
+  return nullptr;
+}

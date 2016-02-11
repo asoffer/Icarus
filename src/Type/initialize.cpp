@@ -63,6 +63,8 @@ void Enumeration::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateStore(data::const_uint(0), { var });
 }
 
+void DependentType::call_init(llvm::IRBuilder<>&, llvm::Value*) {}
+
 void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {
     init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
