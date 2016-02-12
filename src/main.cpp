@@ -77,7 +77,10 @@ std::string canonicalize_file_name(const std::string& filename) {
 int main(int argc, char *argv[]) {
   // This includes naming all basic types, so it must be done even before lexing.
   TypeSystem::initialize();
-  Scope::Global = Scope::build_global();
+
+  // Initialize the global scope
+  Scope::Global = Scope::build<GlobalScope>();
+  Scope::Global->builder().SetInsertPoint(Scope::Global->entry_block());
 
   int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv
@@ -179,12 +182,6 @@ int main(int argc, char *argv[]) {
 
   // COMPILATION STEP:
   //
-  // fill_db() has several housekeeping functionalities. It ensures that the
-  // vector of declarations ordered by dependency in each scope is cleared at
-  // this point. It initializes the table of dependencies. It also populates
-  // the decl_of_ database, so that we can quickly find a declaration from the
-  // identifier being declared. fill_db() cannot generate compilation errors.
-  Dependency::fill_db();
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
   Dependency::record(global_statements.get());

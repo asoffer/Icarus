@@ -11,7 +11,7 @@ namespace AST {
   Terminal::Terminal() {}
   ArrayType::ArrayType() {}
 
-  Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
+  Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false), decl_(nullptr) {
     token_ = token_string;
     expr_type_ = Unknown;
     precedence_ =

@@ -17,8 +17,8 @@ namespace AST {
 
   void Identifier::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::value_value(this, Scope::decl_of_[shared_from_this()].get());
-    Dependency::type_type(this, Scope::decl_of_[shared_from_this()].get());
+    Dependency::value_value(this, decl_);
+    Dependency::type_type(this, decl_);
   }
 
   void Unop::record_dependencies() {

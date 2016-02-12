@@ -316,7 +316,8 @@ namespace AST {
       Identifier(size_t line_num, const std::string& token_string);
 
       llvm::Value* alloc_;
-      bool is_function_arg_;      
+      bool is_function_arg_;
+      Declaration* decl_;
   };
 
   // class Declaration
@@ -345,6 +346,8 @@ namespace AST {
       bool type_is_inferred() const { return infer_type_; } 
 
 
+      Scope* scope_;
+
     private:
       // The identifier being declared
       IdPtr id_;
@@ -353,7 +356,6 @@ namespace AST {
       // inferred
       Language::Operator op_;
       EPtr decl_type_;
-      Scope* scope_;
       bool infer_type_;
   };
 

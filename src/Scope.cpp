@@ -16,9 +16,7 @@ namespace cstdlib {
 
 GlobalScope* Scope::Global = nullptr;  // Initialized in main
 
-std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
-std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
@@ -26,15 +24,6 @@ namespace data {
 
 Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
   bldr_(llvm::getGlobalContext()) {}
-
-
-GlobalScope* Scope::build_global() {
-  GlobalScope* scope_ptr = build<GlobalScope>();
-
-  scope_ptr->bldr_.SetInsertPoint(scope_ptr->entry_block());
-
-  return scope_ptr;
-}
 
 void GlobalScope::initialize() {
   for (const auto& decl_ptr : ordered_decls_) {
@@ -248,7 +237,6 @@ void Scope::uninitialize() {
 // TODO have a getter-only version for when we know we've passed the
 // verification step
 EPtr Scope::identifier(EPtr id_as_eptr) {
-  std::cout << "=======" << std::endl;
   auto id_ptr = std::static_pointer_cast<AST::Identifier>(id_as_eptr);
   Scope* current_scope = this;
   while (current_scope != nullptr) {
@@ -256,9 +244,7 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
     if (iter != current_scope->ids_.end()) {
       return std::static_pointer_cast<AST::Expression>(iter->second);
     }
-    std::cout << id_as_eptr->token() << "\t=> not in " << current_scope << std::endl;
     current_scope = current_scope->parent();
-    std::cout << "trying " << current_scope << std::endl;
   }
 
   // If you reach here it's because we never saw a declaration for the identifier

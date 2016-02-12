@@ -44,14 +44,13 @@ namespace AST {
   }
 
   void Identifier::verify_types() {
-    auto decl_ptr = Scope::decl_of_[shared_from_this()];
-    if (decl_ptr->type_is_inferred()) {
-      expr_type_ = decl_ptr->type();
-      assert(expr_type_ && "decl_ptr->type() is nullptr");
+    if (decl_->type_is_inferred()) {
+      expr_type_ = decl_->type();
+      assert(expr_type_ && "decl_->type() is nullptr");
 
       if (expr_type_ == Type_) {
         auto type_as_ctx_val =
-          decl_ptr->declared_type()->evaluate(Scope::Global->context());
+          decl_->declared_type()->evaluate(Scope::Global->context());
         auto type_for_binding = type_as_ctx_val.as_type;
         Scope::Global->context().bind(type_as_ctx_val, shared_from_this());
         // TODO This is a hacky solution. Clean it up.
@@ -81,7 +80,7 @@ namespace AST {
             && "Bound type was a nullptr");
       }
     } else {
-      expr_type_ = decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type;
+      expr_type_ = decl_->declared_type()->evaluate(Scope::Global->context()).as_type;
       assert(expr_type_ && "eval with context expr_ptr is nullptr");
 
     }

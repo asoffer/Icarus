@@ -42,15 +42,9 @@ class Scope {
     template<typename T>
       static typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type build_fn();
 
-    static std::map<IdPtr, DeclPtr> decl_of_;
-
     static void verify_no_shadowing();
 
-    static GlobalScope* build_global();
-
     static DeclPtr make_declaration(size_t line_num, const std::string& id_string);
-
-    static DeclPtr get_declaration(IdPtr id) { return decl_of_[id]; }
 
     virtual void enter();
     virtual void exit();
@@ -88,7 +82,7 @@ class Scope {
     Scope();
 
     std::map<std::string, IdPtr> ids_;
-    std::vector<DeclPtr> ordered_decls_;
+    std::vector<AST::Declaration*> ordered_decls_;
 
     Context ctx_;
     Scope* parent_;
@@ -98,10 +92,9 @@ class Scope {
 
   private:
     // To each IdPtr we associate a set holding IdPtrs for which it is needed
-    static std::map<IdPtr, Scope*> scope_containing_;
     static std::vector<DeclPtr> decl_registry_;
-    friend void Dependency::fill_db();
-    friend void Dependency::traverse_from(Dependency::PtrWithTorV, std::map<AST::Expression*, Dependency::Flag>&);
+    friend void Dependency::traverse_from(Dependency::PtrWithTorV,
+        std::map<AST::Expression*, Dependency::Flag>&);
 };
 
 

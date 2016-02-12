@@ -18,7 +18,6 @@ namespace Dependency {
 
   extern void record(AST::Node* node);
   extern void add_to_table(AST::Expression* depender);
-  extern void fill_db();
   extern void assign_order();
 }  // namespace Dependency
 
