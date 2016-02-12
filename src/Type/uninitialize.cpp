@@ -24,8 +24,7 @@ void Array::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
         llvm::FunctionType::get(*Void, { *Ptr(this) }, false),
         llvm::Function::ExternalLinkage, "uninit." + to_string(), global_module);
 
-    FnScope* fn_scope = Scope::build_fn<FnScope>();
-    fn_scope->set_parent_function(uninit_fn_);
+    FnScope* fn_scope = new FnScope(uninit_fn_);
     fn_scope->set_type(Func(Ptr(this), Void));
 
     llvm::IRBuilder<>& fnbldr = fn_scope->builder();

@@ -79,8 +79,7 @@ int main(int argc, char *argv[]) {
   TypeSystem::initialize();
 
   // Initialize the global scope
-  Scope::Global = Scope::build<GlobalScope>();
-  Scope::Global->builder().SetInsertPoint(Scope::Global->entry_block());
+  Scope::Global = new GlobalScope();
 
   int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv

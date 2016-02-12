@@ -16,9 +16,7 @@
 
 class Type;
 class Function;
-
 class GlobalScope;
-class GenericFnScope;
 class FnScope;
 
 namespace AST {
@@ -31,16 +29,9 @@ class Scope {
   public:
     friend class AST::FunctionLiteral;
     friend class AST::Declaration;
-    friend class GenericFnScope;
+    friend class FnScope;
 
     static GlobalScope* Global;
-
-    // Build a scope of the appropriate type
-    template<typename T>
-      static typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type build();
-
-    template<typename T>
-      static typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type build_fn();
 
     static void verify_no_shadowing();
 
@@ -86,7 +77,7 @@ class Scope {
 
     Context ctx_;
     Scope* parent_;
-    GenericFnScope* containing_function_;
+    FnScope* containing_function_;
 
     llvm::IRBuilder<> bldr_;
 
@@ -97,59 +88,37 @@ class Scope {
         std::map<AST::Expression*, Dependency::Flag>&);
 };
 
-
-template<typename T>
-typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build() {
-  T* new_scope = new T;
-  return new_scope;
-}
-
-// TODO limit to 
-template<typename T>
-typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type Scope::build_fn() {
-  T* new_scope = new T(nullptr);
-  return new_scope;
-}
-
-template<typename T> class StandardEntryExit {
+class CondScope : public Scope {
   public:
-    StandardEntryExit() :
+    CondScope() :
       entry_block_(make_block("entry", nullptr)),
       exit_block_(make_block("exit", nullptr)) {}
 
-    virtual ~StandardEntryExit() {}
-
-  protected:
-    llvm::BasicBlock* entry_block_;
-    llvm::BasicBlock* exit_block_;
-};
-
-class CondScope : public Scope, public StandardEntryExit<CondScope> {
-  public:
-    CondScope() {}
     virtual ~CondScope() {}
 
     llvm::BasicBlock* entry_block() { return entry_block_; }
     llvm::BasicBlock* exit_block() { return exit_block_; }
+
+  private:
+    llvm::BasicBlock *entry_block_, *exit_block_;
 };
 
-class TypeScope : public Scope, public StandardEntryExit<TypeScope> {
+class TypeScope : public Scope {
   public:
-    TypeScope() {}
+    TypeScope() :
+      entry_block_(make_block("entry", nullptr)),
+      exit_block_(make_block("exit", nullptr)) {}
+
     virtual ~TypeScope() {}
 
     llvm::BasicBlock* entry_block() { return entry_block_; }
     llvm::BasicBlock* exit_block() { return exit_block_; }
+  private:
+    llvm::BasicBlock *entry_block_, *exit_block_;
 };
 
-class GenericFnScope : public Scope {
+class FnScope : public Scope {
   public:
-    virtual llvm::BasicBlock* entry_block() = 0;
-    virtual llvm::BasicBlock* exit_block() = 0;
-
-    virtual void enter() = 0;
-    virtual void exit() = 0;
-
     virtual bool is_function_scope() const { return true; }
     void set_type(Function* fn_type) { fn_type_ = fn_type; }
     void add_scope(Scope* scope);
@@ -158,41 +127,6 @@ class GenericFnScope : public Scope {
     virtual void make_return(llvm::Value* val);
     llvm::Value* return_value() const { return return_val_; }
 
-    GenericFnScope(llvm::Function* fn) :
-      fn_type_(nullptr), llvm_fn_(fn), return_val_(nullptr) {}
-
-  virtual ~GenericFnScope() {}
-
-  protected:
-    // The inner scopes which contain identifiers that might need to be declared
-    std::set<Scope*> innards_;
-    Function* fn_type_;
-    llvm::Function* llvm_fn_;
-    llvm::Value* return_val_;
-
-    void allocate(Scope* scope);
-};
-
-class SimpleFnScope : public GenericFnScope {
-  public:
-    virtual llvm::BasicBlock* entry_block() { return the_block_; }
-    virtual llvm::BasicBlock* exit_block() { return the_block_; }
-
-    virtual void enter();
-    virtual void exit();
-
-    SimpleFnScope(llvm::Function* fn) :
-      GenericFnScope(fn), the_block_(make_block("block", nullptr)) {}
-
-    virtual ~SimpleFnScope() {}
-
-  private:
-    llvm::BasicBlock* the_block_;
-};
-
-
-class FnScope : public GenericFnScope, public StandardEntryExit<FnScope> {
-  public:
     virtual llvm::BasicBlock* entry_block() { return entry_block_; }
     virtual llvm::BasicBlock* exit_block() { return exit_block_; }
 
@@ -201,10 +135,17 @@ class FnScope : public GenericFnScope, public StandardEntryExit<FnScope> {
 
     virtual void set_parent_function(llvm::Function* fn);
 
-    FnScope(llvm::Function* fn) : GenericFnScope(fn) {}
+    FnScope(llvm::Function* fn = nullptr);
 
     virtual ~FnScope() {}
+  private:
+    std::set<Scope*> innards_;
+    Function* fn_type_;
+    llvm::Function* llvm_fn_;
+    llvm::Value* return_val_;
 
+    llvm::BasicBlock *entry_block_, *exit_block_;
+    void allocate(Scope* scope);
 };
 
 class WhileScope : public Scope {
@@ -232,11 +173,7 @@ class WhileScope : public Scope {
     virtual ~WhileScope() {}
 
   private:
-    llvm::BasicBlock* entry_block_;
-    llvm::BasicBlock* exit_block_;
-    llvm::BasicBlock* cond_block_;
-    llvm::BasicBlock* land_block_;
-
+    llvm::BasicBlock *entry_block_, *exit_block_, *cond_block_, *land_block_;
 };
 
 class GlobalScope : public Scope {
@@ -246,8 +183,9 @@ class GlobalScope : public Scope {
 
     void initialize();
 
-    GlobalScope() :
-      the_block_(make_block("global.block", nullptr)) {}
+    GlobalScope() : the_block_(make_block("global.block", nullptr)) {
+      bldr_.SetInsertPoint(entry_block());
+    }
 
     virtual ~GlobalScope() {}
 

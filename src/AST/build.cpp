@@ -500,7 +500,7 @@ namespace AST {
     auto if_stmt = std::make_shared<Conditional>();
     if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
     if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
-    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    if_stmt->body_scopes_.push_back(new CondScope);
     return if_stmt;
   }
 
@@ -527,7 +527,7 @@ namespace AST {
 
     if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
     if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
-    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    if_stmt->body_scopes_.push_back(new CondScope);
     return if_stmt;
   }
 
@@ -536,7 +536,7 @@ namespace AST {
     if_stmt->else_line_num_ = nodes[1]->line_num();
     if_stmt->statements_.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
-    if_stmt->body_scopes_.push_back(Scope::build<CondScope>());
+    if_stmt->body_scopes_.push_back(new CondScope);
     return std::move(if_stmt);
   }
 

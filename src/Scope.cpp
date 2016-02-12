@@ -44,6 +44,14 @@ void GlobalScope::initialize() {
   }
 }
 
+FnScope::FnScope(llvm::Function* fn) :
+  fn_type_(nullptr), return_val_(nullptr),
+  entry(make_block("entry", nullptr)),
+  exit(make_block("exit", nullptr))
+{ 
+  if (fn) set_parent_function(fn);
+}
+
 void Scope::enter() {
   bldr_.SetInsertPoint(entry_block());
 
@@ -105,21 +113,6 @@ void Scope::exit() {
   uninitialize();
 }
 
-void SimpleFnScope::exit() {
-  // Cannot Branch to exit_block() because that's the same block!
-  // Thus, calling up to Scope::exit() is not possible.
-  uninitialize();
-
-  // TODO multiple return types for now just take one
-  if (fn_type_->return_type() == Void) {
-    bldr_.CreateRetVoid();
-
-  } else {
-    bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
-  }
-}
-
-// Take in input and ignore it.
 void FnScope::exit() {
   Scope::exit();
 
@@ -138,7 +131,7 @@ void Scope::make_return(llvm::Value* val) {
   containing_function_->make_return(val);
 }
 
-void GenericFnScope::make_return(llvm::Value* val) {
+void FnScope::make_return(llvm::Value* val) {
   // nullptr means void return type
   if (val == nullptr) return;
 
@@ -156,7 +149,7 @@ void GenericFnScope::make_return(llvm::Value* val) {
   }
 }
 
-void GenericFnScope::add_scope(Scope* scope) {
+void FnScope::add_scope(Scope* scope) {
   innards_.insert(scope);
 }
 
@@ -175,7 +168,7 @@ void Scope::set_parent(Scope* parent) {
   ctx_.set_parent(&parent->context());
 
   if (parent->is_function_scope()) {
-    containing_function_ = static_cast<GenericFnScope*>(parent_);
+    containing_function_ = static_cast<FnScope*>(parent_);
   } else {
     containing_function_ = parent_->containing_function_;
   }
@@ -204,7 +197,7 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 //
 // TODO maybe we should set this up differently, so it's a method of the scope
 // and it just calls it using containing_function_?
-void GenericFnScope::allocate(Scope* scope) {
+void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
