@@ -52,10 +52,6 @@ namespace Dependency {
 
   // Gives us a map from identifiers to their declarations
   void fill_db() {
-    for (auto scope_ptr : Scope::registry_) {
-      scope_ptr->ordered_decls_.clear();
-    }
-
     for (const auto& decl_ptr : Scope::decl_registry_) {
       auto decl_id = decl_ptr->declared_identifier();
       if (debug::dependency_system) {

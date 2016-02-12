@@ -45,10 +45,8 @@ class Scope {
     static std::map<IdPtr, DeclPtr> decl_of_;
 
     static void verify_no_shadowing();
-    static void determine_declared_types();
 
     static GlobalScope* build_global();
-    static size_t num_scopes();
 
     static DeclPtr make_declaration(size_t line_num, const std::string& id_string);
 
@@ -87,8 +85,7 @@ class Scope {
     virtual ~Scope() {}
 
   protected:
-    Scope() : parent_(nullptr), containing_function_(nullptr),
-    bldr_(llvm::getGlobalContext()) {}
+    Scope();
 
     std::map<std::string, IdPtr> ids_;
     std::vector<DeclPtr> ordered_decls_;
@@ -100,10 +97,6 @@ class Scope {
     llvm::IRBuilder<> bldr_;
 
   private:
-    // Important invariant: A pointer only ever points to scopes held in
-    // higehr indices. The global (root) scope must be the last scope.
-    static std::vector<Scope*> registry_;
-
     // To each IdPtr we associate a set holding IdPtrs for which it is needed
     static std::map<IdPtr, Scope*> scope_containing_;
     static std::vector<DeclPtr> decl_registry_;
@@ -115,7 +108,6 @@ class Scope {
 template<typename T>
 typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build() {
   T* new_scope = new T;
-  registry_.push_back(new_scope);
   return new_scope;
 }
 
@@ -123,7 +115,6 @@ typename std::enable_if<std::is_base_of<Scope, T>::value, T*>::type Scope::build
 template<typename T>
 typename std::enable_if<std::is_base_of<FnScope, T>::value, T*>::type Scope::build_fn() {
   T* new_scope = new T(nullptr);
-  registry_.push_back(new_scope);
   return new_scope;
 }
 

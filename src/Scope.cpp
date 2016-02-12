@@ -14,32 +14,22 @@ namespace cstdlib {
   extern llvm::Constant* memcpy();
 }  // namespace cstdlib
 
-namespace debug {
-  extern bool dependency_system;
-}  // namespace debug
-
-
 GlobalScope* Scope::Global = nullptr;  // Initialized in main
 
 std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
 std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
 
-std::vector<Scope*> Scope::registry_;
-
 namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
 
+Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
+  bldr_(llvm::getGlobalContext()) {}
+
 
 GlobalScope* Scope::build_global() {
   GlobalScope* scope_ptr = build<GlobalScope>();
-
-  for (auto& ptr : registry_) {
-    if (ptr == scope_ptr) continue;
-
-    ptr->set_parent(scope_ptr);
-  }
 
   scope_ptr->bldr_.SetInsertPoint(scope_ptr->entry_block());
 
@@ -64,8 +54,6 @@ void GlobalScope::initialize() {
     }
   }
 }
-
-size_t Scope::num_scopes() { return registry_.size(); }
 
 void Scope::enter() {
   bldr_.SetInsertPoint(entry_block());
@@ -260,6 +248,7 @@ void Scope::uninitialize() {
 // TODO have a getter-only version for when we know we've passed the
 // verification step
 EPtr Scope::identifier(EPtr id_as_eptr) {
+  std::cout << "=======" << std::endl;
   auto id_ptr = std::static_pointer_cast<AST::Identifier>(id_as_eptr);
   Scope* current_scope = this;
   while (current_scope != nullptr) {
@@ -267,7 +256,9 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
     if (iter != current_scope->ids_.end()) {
       return std::static_pointer_cast<AST::Expression>(iter->second);
     }
+    std::cout << id_as_eptr->token() << "\t=> not in " << current_scope << std::endl;
     current_scope = current_scope->parent();
+    std::cout << "trying " << current_scope << std::endl;
   }
 
   // If you reach here it's because we never saw a declaration for the identifier
@@ -284,25 +275,6 @@ EPtr Scope::identifier(const std::string& name) const {
     return nullptr;
   }
   return iter->second;
-}
-
-
-void Scope::determine_declared_types() {
-  for (auto scope_ptr : registry_) {
-    for (auto decl_ptr : scope_ptr->ordered_decls_) {
-      if (decl_ptr->infer_type_) {
-        // TODO do inference correctly inside this scope in necessary.
-        // decl_ptr->declared_type()->verify_types();
-        decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->type();
-
-      } else {
-
-        decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type; // If no type inference
-      }
-    }
-  }
 }
 
 void Scope::verify_no_shadowing() {
