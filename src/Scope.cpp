@@ -6,18 +6,12 @@
 #include "AST.h"
 #include "ErrorLog.h"
 
-extern llvm::Module* global_module;
 extern llvm::DataLayout* data_layout;
 extern ErrorLog error_log;
 
 namespace cstdlib {
   extern llvm::Constant* memcpy();
 }  // namespace cstdlib
-
-namespace debug {
-  extern bool dependency_system;
-}  // namespace debug
-
 
 GlobalScope* Scope::Global = nullptr;  // Initialized in main
 

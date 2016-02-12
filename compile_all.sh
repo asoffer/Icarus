@@ -14,6 +14,7 @@ bin/icarus programs/char_array.ic
 bin/icarus programs/code_gen_test.ic
 bin/icarus programs/code_gen_test_with_type_inference.ic
 bin/icarus programs/double_case.ic
+bin/icarus programs/dynamic_allocation.ic
 bin/icarus programs/enum.ic
 bin/icarus programs/fn_call.ic
 bin/icarus programs/fn_expression_literal.ic
@@ -23,6 +24,7 @@ bin/icarus programs/import_cycle.ic
 bin/icarus programs/infer_type.ic
 bin/icarus programs/int_ops.ic
 bin/icarus programs/is_digit.ic
+bin/icarus programs/list.ic
 bin/icarus programs/multidim_array.ic
 bin/icarus programs/multiple_args.ic
 bin/icarus programs/mutual_ptrs.ic

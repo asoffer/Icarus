@@ -89,7 +89,13 @@ namespace AST {
   }
   void Unop::verify_types() {
     using Language::Operator;
-    if (op_ == Operator::Print) {
+    if (op_ == Operator::Free) {
+      if (!expr_->type()->is_pointer()) {
+        error_log.log(line_num(), "Free can only be called on pointer types");
+      }
+      expr_type_ = Void;
+ 
+    } else if (op_ == Operator::Print) {
       if (expr_->type() == Void) {
         error_log.log(line_num(), "Void types cannot be printed");
       }

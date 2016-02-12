@@ -13,7 +13,6 @@ namespace AST {
     return std::make_shared<Identifier>(nodes[0]->line_num(), nodes[0]->token());
   }
 
-
   NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
@@ -24,7 +23,6 @@ namespace AST {
     unop_ptr->op_ = tk_node->operator_type();
 
     unop_ptr->precedence_ = Language::precedence(unop_ptr->op_);
-
     return unop_ptr;
   }
 

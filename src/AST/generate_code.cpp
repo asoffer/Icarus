@@ -31,6 +31,7 @@ namespace builtin {
 }  // namespace builtin
 
 namespace data {
+  extern llvm::Value* null_pointer(Type* t);
   extern llvm::Value* const_true();
   extern llvm::Value* const_false();
   extern llvm::Value* const_uint(size_t n);
@@ -148,7 +149,15 @@ namespace AST {
 
       case Operator::Not:
         return expr_->type()->call_not(bldr, val);
-
+      case Operator::Free:
+        {
+          bldr.CreateCall(cstdlib::free(), { bldr.CreateBitCast(val, *RawPtr) });
+          // Reset pointer to null
+          auto ptee_type = static_cast<Pointer*>(expr_->type())->pointee_type();
+          bldr.CreateStore(data::null_pointer(ptee_type),
+              expr_->generate_lvalue(scope));
+        return nullptr;
+        }
       case Operator::Return:
         scope->make_return(val);
         return nullptr;

@@ -114,7 +114,7 @@ namespace Language {
         AST::Expression::parenthesize),
 
     Rule(expression,
-        { {dereference, negation, indirection, reserved_print, reserved_return}, {expression} },
+        { {dereference, negation, indirection, reserved_print, reserved_return, reserved_free}, {expression} },
         AST::Unop::build),
 
     Rule(fn_expression,
@@ -132,7 +132,6 @@ namespace Language {
     Rule(fn_expression,
         { {expression, declaration}, {fn_arrow}, {expression} },
         AST::Binop::build),
-
     /* End expression */
 
     /* Begin void return */

@@ -5,6 +5,7 @@ namespace AST {
     time_ = expr_->determine_time();
     if (op_ == Language::Operator::At    ||
         op_ == Language::Operator::And   ||
+        op_ == Language::Operator::Free  ||
         op_ == Language::Operator::Print) {
       time_ |= Time::run;
     }

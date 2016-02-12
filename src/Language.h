@@ -51,7 +51,6 @@ namespace Language {
 
     // BEGIN USING MASKS
 
-
     // binary operators
     generic_operator = MASK_binary_operator,
     decl_operator,
@@ -65,7 +64,7 @@ namespace Language {
 
     // left unary operators
     reserved_return = MASK_left_unary_operator,
-    reserved_print,
+    reserved_print, reserved_free,
     dereference, 
 
     // left unary operator + binary operator
@@ -102,7 +101,7 @@ constexpr size_t assoc_mask = 3;
 namespace Language {
   enum class Operator {
     NotAnOperator,
-    Return, Print,
+    Return, Print, Free,
     Comma, Rocket,
     Assign, ColonEq, Colon, Cast, Arrow,
     OrEq, XorEq, AndEq,
