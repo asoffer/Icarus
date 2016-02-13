@@ -46,8 +46,8 @@ void GlobalScope::initialize() {
 
 FnScope::FnScope(llvm::Function* fn) :
   fn_type_(nullptr), return_val_(nullptr),
-  entry(make_block("entry", nullptr)),
-  exit(make_block("exit", nullptr))
+  entry_block_(make_block("entry", nullptr)),
+  exit_block_(make_block("exit", nullptr))
 { 
   if (fn) set_parent_function(fn);
 }
