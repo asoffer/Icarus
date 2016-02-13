@@ -15,30 +15,14 @@ namespace cstdlib {
 
 GlobalScope* Scope::Global = nullptr;  // Initialized in main
 
-std::map<IdPtr, DeclPtr> Scope::decl_of_ = {};
 std::vector<DeclPtr> Scope::decl_registry_ = {};
-std::map<IdPtr, Scope*> Scope::scope_containing_ = {};
-
-std::vector<Scope*> Scope::registry_;
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
 
-
-GlobalScope* Scope::build_global() {
-  GlobalScope* scope_ptr = build<GlobalScope>();
-
-  for (auto& ptr : registry_) {
-    if (ptr == scope_ptr) continue;
-
-    ptr->set_parent(scope_ptr);
-  }
-
-  scope_ptr->bldr_.SetInsertPoint(scope_ptr->entry_block());
-
-  return scope_ptr;
-}
+Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
+  bldr_(llvm::getGlobalContext()) {}
 
 void GlobalScope::initialize() {
   for (const auto& decl_ptr : ordered_decls_) {
@@ -59,7 +43,13 @@ void GlobalScope::initialize() {
   }
 }
 
-size_t Scope::num_scopes() { return registry_.size(); }
+FnScope::FnScope(llvm::Function* fn) :
+  fn_type_(nullptr), return_val_(nullptr),
+  entry_block_(make_block("entry", nullptr)),
+  exit_block_(make_block("exit", nullptr))
+{ 
+  if (fn) set_parent_function(fn);
+}
 
 void Scope::enter() {
   bldr_.SetInsertPoint(entry_block());
@@ -122,21 +112,6 @@ void Scope::exit() {
   uninitialize();
 }
 
-void SimpleFnScope::exit() {
-  // Cannot Branch to exit_block() because that's the same block!
-  // Thus, calling up to Scope::exit() is not possible.
-  uninitialize();
-
-  // TODO multiple return types for now just take one
-  if (fn_type_->return_type() == Void) {
-    bldr_.CreateRetVoid();
-
-  } else {
-    bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
-  }
-}
-
-// Take in input and ignore it.
 void FnScope::exit() {
   Scope::exit();
 
@@ -155,7 +130,7 @@ void Scope::make_return(llvm::Value* val) {
   containing_function_->make_return(val);
 }
 
-void GenericFnScope::make_return(llvm::Value* val) {
+void FnScope::make_return(llvm::Value* val) {
   // nullptr means void return type
   if (val == nullptr) return;
 
@@ -173,7 +148,7 @@ void GenericFnScope::make_return(llvm::Value* val) {
   }
 }
 
-void GenericFnScope::add_scope(Scope* scope) {
+void FnScope::add_scope(Scope* scope) {
   innards_.insert(scope);
 }
 
@@ -192,7 +167,7 @@ void Scope::set_parent(Scope* parent) {
   ctx_.set_parent(&parent->context());
 
   if (parent->is_function_scope()) {
-    containing_function_ = static_cast<GenericFnScope*>(parent_);
+    containing_function_ = static_cast<FnScope*>(parent_);
   } else {
     containing_function_ = parent_->containing_function_;
   }
@@ -221,7 +196,7 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 //
 // TODO maybe we should set this up differently, so it's a method of the scope
 // and it just calls it using containing_function_?
-void GenericFnScope::allocate(Scope* scope) {
+void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
@@ -278,25 +253,6 @@ EPtr Scope::identifier(const std::string& name) const {
     return nullptr;
   }
   return iter->second;
-}
-
-
-void Scope::determine_declared_types() {
-  for (auto scope_ptr : registry_) {
-    for (auto decl_ptr : scope_ptr->ordered_decls_) {
-      if (decl_ptr->infer_type_) {
-        // TODO do inference correctly inside this scope in necessary.
-        // decl_ptr->declared_type()->verify_types();
-        decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->type();
-
-      } else {
-
-        decl_ptr->declared_identifier()->expr_type_ =
-          decl_ptr->declared_type()->evaluate(Scope::Global->context()).as_type; // If no type inference
-      }
-    }
-  }
 }
 
 void Scope::verify_no_shadowing() {

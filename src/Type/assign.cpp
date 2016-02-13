@@ -52,8 +52,7 @@ llvm::Function* Array::assign() {
 
   // Create unitilization function
 
-  FnScope* fn_scope = Scope::build_fn<FnScope>();
-  fn_scope->set_parent_function(assign_fn_);
+  FnScope* fn_scope = new FnScope(assign_fn_);
   fn_scope->set_type(Func({ this, Ptr(this) }, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
@@ -148,8 +147,7 @@ llvm::Function* Structure::assign() {
 
   assign_fn_ = get_llvm_assign(this);
     
-  FnScope* fn_scope = Scope::build_fn<FnScope>();
-  fn_scope->set_parent_function(assign_fn_);
+  FnScope* fn_scope = new FnScope(assign_fn_);
   fn_scope->set_type(Func({ this, Ptr(this) }, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();

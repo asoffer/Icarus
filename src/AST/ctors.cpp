@@ -11,7 +11,7 @@ namespace AST {
   Terminal::Terminal() {}
   ArrayType::ArrayType() {}
 
-  Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false) {
+  Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false), decl_(nullptr) {
     token_ = token_string;
     expr_type_ = Unknown;
     precedence_ =
@@ -23,14 +23,12 @@ namespace AST {
   FunctionLiteral::FunctionLiteral() :
     fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
 
-  TypeLiteral::TypeLiteral() :
-    type_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
+  TypeLiteral::TypeLiteral() : type_scope_(new TypeScope), type_value_(nullptr) {}
 
   // TODO Will TypeScope suffice?
-  EnumLiteral::EnumLiteral() :
-    enum_scope_(Scope::build<TypeScope>()), type_value_(nullptr) {}
+  EnumLiteral::EnumLiteral() : enum_scope_(new TypeScope), type_value_(nullptr) {}
 
-  While::While() : body_scope_(Scope::build<WhileScope>()) {}
+  While::While() : body_scope_(new WhileScope) {}
 
   // TODO put this somewhere else
   void TypeLiteral::build_llvm_internals() {

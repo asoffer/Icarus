@@ -103,8 +103,7 @@ llvm::Function* Array::initialize() {
       llvm::Function::ExternalLinkage, "init." + to_string(),
       global_module);
 
-  FnScope* fn_scope = Scope::build_fn<FnScope>();
-  fn_scope->set_parent_function(init_fn_);
+  FnScope* fn_scope = new FnScope(init_fn_);
   fn_scope->set_type(Func(this, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();

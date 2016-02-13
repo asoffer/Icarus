@@ -40,9 +40,7 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
           llvm::Function::ExternalLinkage, "repr.bool", global_module);
       llvm::Value* arg = repr_fn_->args().begin();
 
-      FnScope* fn_scope = Scope::build_fn<FnScope>();
-
-      fn_scope->set_parent_function(repr_fn_);
+      FnScope* fn_scope = new FnScope(repr_fn_);
       fn_scope->set_type(fn_type);
 
       llvm::IRBuilder<>& fn_bldr = fn_scope->builder();
@@ -81,9 +79,7 @@ void Primitive::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
         llvm::Function::ExternalLinkage, "repr.char", global_module);
     llvm::Value* arg = repr_fn_->args().begin();
 
-    FnScope* fn_scope = Scope::build_fn<FnScope>();
-
-    fn_scope->set_parent_function(repr_fn_);
+    FnScope* fn_scope = new FnScope(repr_fn_);
     fn_scope->set_type(fn_type);
 
     llvm::IRBuilder<>& fn_bldr = fn_scope->builder();
@@ -153,9 +149,7 @@ void Array::call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) {
         llvm::Function::ExternalLinkage, "print." + to_string(), global_module);
     llvm::Value* arg = repr_fn_->args().begin();
 
-    FnScope* fn_scope = Scope::build_fn<FnScope>();
-
-    fn_scope->set_parent_function(repr_fn_);
+    FnScope* fn_scope = new FnScope(repr_fn_);
     fn_scope->set_type(fn_type);
 
     llvm::IRBuilder<>& fn_bldr = fn_scope->builder();

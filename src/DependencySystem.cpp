@@ -50,27 +50,6 @@ namespace Dependency {
     dependencies_[PtrWithTorV(depender, false)];
   }
 
-  // Gives us a map from identifiers to their declarations
-  void fill_db() {
-    for (auto scope_ptr : Scope::registry_) {
-      scope_ptr->ordered_decls_.clear();
-    }
-
-    for (const auto& decl_ptr : Scope::decl_registry_) {
-      auto decl_id = decl_ptr->declared_identifier();
-      if (debug::dependency_system) {
-        std::cout << "Make decl_of_: " << decl_id->token() << " (line " << decl_ptr->line_num() << ")" << std::endl;
-        std::cout << "\t" << decl_id << " -> " << decl_ptr << std::endl;
-        std::cout << "\tRHS: " << decl_ptr->declared_type() << std::endl;
-      }
-      Scope::decl_of_[decl_id] = decl_ptr;
-
-      // Build up dependencies_ starting with empty sets
-      dependencies_[PtrWithTorV(decl_id.get(), true)]  = {};
-      dependencies_[PtrWithTorV(decl_id.get(), false)] = {};
-    }
-  }
-
   void traverse_from(PtrWithTorV pt, std::map<AST::Expression*, Flag>& already_seen) {
     std::vector<AST::Expression*> expr_stack;
     std::vector<bool> torv_stack;
@@ -152,7 +131,7 @@ namespace Dependency {
         // appropriate scope, so they can be allocated correctly
         if (torv && ptr->is_identifier()) {
           auto id_ptr = static_cast<AST::Identifier*>(ptr)->shared_from_this();
-          Scope::scope_containing_[id_ptr]->ordered_decls_.push_back(Scope::decl_of_[id_ptr]);
+          id_ptr->decl_->scope_->ordered_decls_.push_back(id_ptr->decl_);
         }
 
         if (!torv && ptr->is_type_literal()) {

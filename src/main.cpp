@@ -78,6 +78,9 @@ int main(int argc, char *argv[]) {
   // This includes naming all basic types, so it must be done even before lexing.
   TypeSystem::initialize();
 
+  // Initialize the global scope
+  Scope::Global = new GlobalScope();
+
   int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv
   while (arg_num < argc) {
@@ -156,8 +159,6 @@ int main(int argc, char *argv[]) {
   }
 
 
-  Scope::Global = Scope::build_global();
-
   // COMPILATION STEP:
   //
   // Determine which declarations go in which scopes. Store that information
@@ -180,12 +181,6 @@ int main(int argc, char *argv[]) {
 
   // COMPILATION STEP:
   //
-  // fill_db() has several housekeeping functionalities. It ensures that the
-  // vector of declarations ordered by dependency in each scope is cleared at
-  // this point. It initializes the table of dependencies. It also populates
-  // the decl_of_ database, so that we can quickly find a declaration from the
-  // identifier being declared. fill_db() cannot generate compilation errors.
-  Dependency::fill_db();
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
   Dependency::record(global_statements.get());
@@ -203,18 +198,14 @@ int main(int argc, char *argv[]) {
   // The name should be self-explanatory. This function looks through the
   // scope tree for a node and its ancestor with declared identifiers of the
   // same name. We do not allow shadowing of any kind whatsoever. Errors are
-  // generated if shadows are encountered. However, we are still able to
-  // continue on with determining the declared types (and give useful error
-  // messages, so we don't exit just yet.
+  // generated if shadows are encountered.
   Scope::Scope::verify_no_shadowing();
-  // Associate to each identifier its type.
-  Scope::determine_declared_types();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;
   }
-  global_statements->determine_time();
 
+  global_statements->determine_time();
 
   // Program has been verified. We can now proceed with code generation.
   // Initialize the global scope.
@@ -223,14 +214,7 @@ int main(int argc, char *argv[]) {
   Scope::Global->initialize();
   global_statements->generate_code(Scope::Global);
 
-  Scope::determine_declared_types();
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::shadow_or_type_error;
-  }
-
   // TODO Optimization.
-
 
   {
     // In this anonymous scope we write the LLVM IR to a file. The point
