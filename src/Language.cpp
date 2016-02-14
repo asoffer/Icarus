@@ -256,7 +256,7 @@ namespace Language {
     // TODO tighten this up. Just taking in any statements probably captures
     // way too much.
     Rule(expression,
-        { {reserved_type}, {left_brace}, {statements}, {right_brace} },
+        { {reserved_struct}, {left_brace}, {statements}, {right_brace} },
         AST::TypeLiteral::build),
     /* End type literals */
 

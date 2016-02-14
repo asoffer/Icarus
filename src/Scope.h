@@ -105,6 +105,7 @@ class CondScope : public Scope {
 
 class TypeScope : public Scope {
   public:
+    // TODO why are you even bothering making these blocks?
     TypeScope() :
       entry_block_(make_block("entry", nullptr)),
       exit_block_(make_block("exit", nullptr)) {}

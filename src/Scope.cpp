@@ -140,9 +140,8 @@ void FnScope::make_return(llvm::Value* val) {
     // TODO pull out memcpy into a single fn call
     auto val_raw = bldr_.CreateBitCast(val, *RawPtr);
     auto ret_raw = bldr_.CreateBitCast(return_val_, *RawPtr);
-    bldr_.CreateCall(cstdlib::memcpy(), { ret_raw, val_raw,
-        data::const_uint(
-          data_layout->getTypeStoreSize(ret_type->llvm())) });
+    bldr_.CreateCall(cstdlib::memcpy(),
+        { ret_raw, val_raw, data::const_uint(ret_type->bytes()) });
   } else {
     bldr_.CreateStore(val, return_val_);
   }
@@ -241,7 +240,7 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
 
   // If you reach here it's because we never saw a declaration for the identifier
   error_log.log(id_as_eptr->line_num(),
-      "Undeclared identifier `" + id_as_eptr->token() + "`.");
+      "Undeclared identifier `" + id_ptr->token() + "`.");
 
   return nullptr;
 }

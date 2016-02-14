@@ -87,7 +87,8 @@ namespace AST {
     statements_->assign_decl_to_scope(fn_scope_);
   }
 
-  void TypeLiteral::assign_decl_to_scope(Scope*) {
+  void TypeLiteral::assign_decl_to_scope(Scope* scope) {
+    type_scope_->set_parent(scope);
     for (auto& decl : decls_) {
       decl->assign_decl_to_scope(type_scope_);
     }

@@ -184,7 +184,8 @@ bool Parser::should_shift() {
   }
 
   // If we're defining a function with braces don't stop early.
-  if ((last_type == Language::fn_expression || last_type == Language::reserved_type) && ahead_type == Language::left_brace) {
+  if ((last_type == Language::fn_expression
+        || last_type == Language::reserved_struct) && ahead_type == Language::left_brace) {
     return true;
   }
 

@@ -1,5 +1,5 @@
 main := void -> void {
-  foo: type {
+  foo: struct {
     n: int
     r: real
   }

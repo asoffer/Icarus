@@ -1,9 +1,9 @@
-point2d := type {
+point2d := struct {
   x: real
   y: real
 }
 
-point3d := type {
+point3d := struct {
   x : real
   y : real
   z : real
@@ -59,7 +59,7 @@ main := void -> void {
   print square_dist(p1, p2)
   print '\n'
   
-  circle := type {
+  circle := struct {
     radius : real
     center : point2d
   }

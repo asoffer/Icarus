@@ -2,6 +2,8 @@
 #include "Type.h"
 #include <sstream>
 
+#define TYPE_OR(other) (expr_type_? expr_type_->to_string() : (other))
+
 namespace AST {
   std::string tabs(size_t n) {
     return std::string(n << 1, ' ');
@@ -60,17 +62,13 @@ namespace AST {
       << (statements_.size() == 1 ? "" : "s")
       << ")>\n";
 
-      for (size_t i = 0; i < conds_.size(); ++i) {
-        ss
-          << tabs(n + 1) << "Condition " << i << ":\n"
-          << conds_[i]->to_string(n + 1)
-          << statements_[i]->to_string(n + 1);
-      }
+    for (size_t i = 0; i < conds_.size(); ++i) {
+      ss << tabs(n + 1) << "Condition " << i << ":\n"
+        << conds_[i]->to_string(n + 1) << statements_[i]->to_string(n + 1);
+    }
 
     if (has_else()) {
-      ss
-        << tabs(n + 1) << "Else:\n"
-        << statements_.back()->to_string(n + 1);
+      ss << tabs(n + 1) << "Else:\n" << statements_.back()->to_string(n + 1);
     }
 
     return ss.str();
@@ -87,32 +85,55 @@ namespace AST {
   }
 
   std::string While::to_string(size_t n) const {
-    return tabs(n) + "<While>\n"
-      + cond_->to_string(n + 1)
+    return tabs(n) + "<While>\n" + cond_->to_string(n + 1)
       + statements_->to_string(n + 1);
   }
 
   std::string Unop::to_string(size_t n) const {
-    return tabs(n) + "<Unop " + expr_type_->to_string() + ": '"
-      + "', prec: " + std::to_string(precedence_) + ">\n"
-      + expr_->to_string(n + 1);
+    std::stringstream ss;
+    ss << tabs(n) << "<Unop " << TYPE_OR("") << ": ";
+    switch (op_) {
+      case Language::Operator::Return: ss << "Return"; break;
+      case Language::Operator::Print:  ss << "Print";  break;
+      case Language::Operator::Free:   ss << "Free";   break;
+      case Language::Operator::And:    ss << "And";    break;
+      case Language::Operator::Sub:    ss << "Sub";    break;
+      case Language::Operator::Not:    ss << "Not";    break;
+      case Language::Operator::At:     ss << "At";     break;
+      case Language::Operator::Call:   ss << "Call";   break;
+      default: assert(false && "Not a unary operator");
+    }
+    ss << ">\n" << expr_->to_string(n + 1);
+    return ss.str();
   }
 
   std::string Binop::to_string(size_t n) const {
-    std::string output = 
-      tabs(n) + "<Binop " + expr_type_->to_string() + ": '"
-      + "', prec: " + std::to_string(precedence_) + ">\n";
-
-    output += lhs_->to_string(n + 1);
-    output += rhs_->to_string(n + 1);
-
-    return output;
+    std::stringstream ss;
+    ss << tabs(n) << "<Binop " << TYPE_OR("") << ": ";
+    switch (op_) {
+      case Language::Operator::Cast:    ss << "Cast";   break;
+      case Language::Operator::Arrow:   ss << "->";     break;
+      case Language::Operator::Or:      ss << "Or";     break;
+      case Language::Operator::Xor:     ss << "Xor";    break;
+      case Language::Operator::And:     ss << "And";    break;
+      case Language::Operator::Add:     ss << "Add";    break;
+      case Language::Operator::Sub:     ss << "Sub";    break;
+      case Language::Operator::Mul:     ss << "Mul";    break;
+      case Language::Operator::Div:     ss << "Div";    break;
+      case Language::Operator::Mod:     ss << "Mod";    break;
+      case Language::Operator::Index:   ss << "Index";  break;
+      case Language::Operator::Call:    ss << "Call";   break;
+      case Language::Operator::Access:  ss << "Access"; break;
+      default: assert(false && "Not a binary operator");
+    }
+    ss << ">\n"
+      << lhs_->to_string(n + 1)
+      << rhs_->to_string(n + 1);
+    return ss.str();
   }
 
   std::string ArrayType::to_string(size_t n) const {
-    std::string output = tabs(n) + "<AraryType>\n";
-    // NOTE: You can't ask about expr_type_ to determine the length
-    // because it may not have been deduced yet.
+    std::string output = tabs(n) + "<ArrayType>\n";
     return output + array_type_->to_string(n + 1);
   }
 
@@ -133,35 +154,32 @@ namespace AST {
   }
 
   std::string Terminal::to_string(size_t n) const {
-    auto str =  tabs(n) + "<Terminal " + expr_type_->to_string() + ": ";
-    if (token_ == "\n") str += "\\n";
-    else if (token() == "\t") str += "\\t";
-    else if (token() == "\r") str += "\\r";
-    else if (token() == " ") str += "' '";
-    else str += token();
-    str += ">\n";
-    return str;
+    auto str =  tabs(n) + "<Terminal " + TYPE_OR("") + ": ";
+
+    if (token_ == "\n")       str += "\\n";
+    else if (token_ == "\t")  str += "\\t";
+    else if (token_ == "\r")  str += "\\r";
+    else if (token_ == " ")   str += "' '";
+    else str += token_;
+    return str + ">\n";
   }
 
   std::string Identifier::to_string(size_t n) const {
-    return tabs(n) + "<Identifier " + (expr_type_? expr_type_->to_string():"") + ": "
+    return tabs(n) + "<Identifier " + TYPE_OR("") + ": "
       + token() + ">\n";
   }
 
   std::string Declaration::to_string(size_t n) const {
     std::string output = tabs(n) + "<Declaration ";
-    if (infer_type_) {
-      output += "(infer type) ";
-    }
+    if (infer_type_) output += "(infer type) ";
 
-    return output + expr_type_->to_string() + ">\n"
+    return output + TYPE_OR("") + ">\n"
       + id_->to_string(n + 1)
       + decl_type_->to_string(n + 1);
   }
 
   std::string Assignment::to_string(size_t n) const {
-    return tabs(n)
-      + "<Assignment " + expr_type_->to_string() + ">\n"
+    return tabs(n) + "<Assignment " + TYPE_OR("") + ">\n"
       + lhs_->to_string(n + 1)
       + rhs_->to_string(n + 1);
   }
@@ -197,24 +215,17 @@ namespace AST {
 
   std::string FunctionLiteral::to_string(size_t n) const {
     std::stringstream ss;
-    ss
-      << tabs(n)
-      << "<FunctionLiteral>\n";
+    ss << tabs(n) << "<FunctionLiteral>\n";
     for (const auto& kv : inputs_) {
       ss << kv->to_string(n + 1);
     }
-    ss
-      << tabs(n + 1)
-      << "Body:\n"
-      << statements_->to_string(n + 2);
+    ss << tabs(n + 1) << "Body:\n" << statements_->to_string(n + 2);
     return ss.str();
   }
 
   std::string TypeLiteral::to_string(size_t n) const {
     std::stringstream ss;
-    ss
-      << tabs(n)
-      << "<Type>\n";
+    ss << tabs(n) << "<Type>\n";
     for (const auto& decl : decls_) {
       ss << decl->to_string(n + 1);
     }
@@ -224,15 +235,12 @@ namespace AST {
 
   std::string EnumLiteral::to_string(size_t n) const {
     std::stringstream ss;
-    ss
-      << tabs(n)
-      << "<Enum with "
-      << vals_.size()
+    ss << tabs(n) << "<Enum with " << vals_.size()
       << (vals_.size() == 1 ? " value>\n" : " values>\n");
     return ss.str();
   }
   std::string Break::to_string(size_t n) const {
-    return tabs(n) +  "<Break>";
+    return tabs(n) + "<Break>";
   }
 
 }  // namespace AST

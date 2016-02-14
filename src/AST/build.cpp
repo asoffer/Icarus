@@ -306,9 +306,6 @@ namespace AST {
         DepType([](Type* t) { return Ptr(t); }));
   }
 
-
-
-
   NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = std::make_shared<Assignment>();
     assign_ptr->line_num_ = nodes[1]->line_num();

@@ -1,4 +1,4 @@
-point := type {
+point := struct {
   x: real
   y: real
   z: real

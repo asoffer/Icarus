@@ -44,8 +44,8 @@ namespace Language {
     // Figure out the right way to do that given that they may need different masks
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
-    reserved_enum, reserved_while, reserved_continue, reserved_type, reserved_ascii,
-    reserved_import, reserved_string, reserved_alloc,
+    reserved_enum, reserved_while, reserved_continue, reserved_ascii,
+    reserved_import, reserved_string, reserved_alloc, reserved_struct,
 
     break_statement,
 
@@ -78,6 +78,7 @@ namespace Language {
     assignment,
     reserved_true,
     reserved_false,
+    reserved_type,
 
     // expression + binary operator
     decl_assign_operator = MASK_binary_operator | MASK_expression
