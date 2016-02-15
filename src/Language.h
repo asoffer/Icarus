@@ -78,6 +78,7 @@ namespace Language {
     assignment,
     reserved_true,
     reserved_false,
+    reserved_null,
     reserved_type,
 
     // expression + binary operator
@@ -115,7 +116,7 @@ namespace Language {
   };
 
   enum class Terminal {
-    ASCII, Alloc, Return, Else, True, False,
+    ASCII, Alloc, Return, Else, True, False, Null,
     Char, Int, Real, Type, UInt,
     StringLiteral
   };

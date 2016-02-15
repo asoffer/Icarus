@@ -268,43 +268,19 @@ namespace AST {
     return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Unknown);
   }
 
-  NPtr Terminal::build_true(NPtrVec&& nodes) {
-    return build(Language::Terminal::True, std::forward<NPtrVec&&>(nodes), Bool);
-  }
-
-  NPtr Terminal::build_false(NPtrVec&& nodes) {
-    return build(Language::Terminal::False, std::forward<NPtrVec&&>(nodes), Bool);
-  }
-
-  NPtr Terminal::build_uint_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::UInt, std::forward<NPtrVec&&>(nodes), Uint);
-  }
-
-  NPtr Terminal::build_int_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Int, std::forward<NPtrVec&&>(nodes), Int);
-  }
-
-  NPtr Terminal::build_real_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Real, std::forward<NPtrVec&&>(nodes), Real);
-  }
-
-  NPtr Terminal::build_char_literal(NPtrVec&& nodes) {
-    return build(Language::Terminal::Char, std::forward<NPtrVec&&>(nodes), Char);
-  }
-
-  NPtr Terminal::build_void_return(NPtrVec&& nodes) {
-    return build(Language::Terminal::Return, std::forward<NPtrVec&&>(nodes), Void);
-  }
-
-  NPtr Terminal::build_ASCII(NPtrVec&& nodes) {
-    return build(Language::Terminal::ASCII,
-        std::forward<NPtrVec&&>(nodes), Func(Uint, Char));
-  }
-
-  NPtr Terminal::build_alloc(NPtrVec&& nodes) {
-    return build(Language::Terminal::Alloc, std::forward<NPtrVec&&>(nodes),
-        DepType([](Type* t) { return Ptr(t); }));
-  }
+#define TERMINAL_BUILD(name, enum_elem, ty) NPtr Terminal::build_##name(NPtrVec&& nodes) { \
+  return build(Language::Terminal::enum_elem, std::forward<NPtrVec&&>(nodes), ty); }
+  TERMINAL_BUILD(true,         True,   Bool);
+  TERMINAL_BUILD(false,        False,  Bool);
+  TERMINAL_BUILD(null,         Null,   NullPtr);
+  TERMINAL_BUILD(uint_literal, UInt,   Uint);
+  TERMINAL_BUILD(int_literal,  Int,    Int);
+  TERMINAL_BUILD(real_literal, Real,   Real);
+  TERMINAL_BUILD(char_literal, Char,   Char);
+  TERMINAL_BUILD(void_return,  Return, Void);
+  TERMINAL_BUILD(ASCII,        ASCII,  Func(Uint, Char));
+  TERMINAL_BUILD(alloc,        Alloc,  DepType([](Type* t) { return Ptr(t); }));
+#undef TERMINAL_BUILD
 
   NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = std::make_shared<Assignment>();

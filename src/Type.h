@@ -54,6 +54,7 @@ extern Primitive* Real;
 extern Primitive* Type_;
 extern Primitive* Uint;
 extern Primitive* Void;
+extern Primitive* NullPtr;
 extern Pointer*   RawPtr;
 extern Structure* String;
 
@@ -165,7 +166,7 @@ class Primitive : public Type {
 
   private:
     enum class TypeEnum {
-      Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void
+      Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr
     };
 
     Primitive(TypeEnum pt);

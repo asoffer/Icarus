@@ -73,6 +73,12 @@ namespace AST {
 
     using Language::Terminal;
     switch (terminal_type_) {
+      case Terminal::Null:
+        // null_pointer() automatically adds Ptr() so we need to remove it here
+        // TODO is there a better API for this? Almost certainly yes.
+        assert(expr_type_->is_pointer() && "Null pointer of non-pointer type ");
+        return data::null_pointer(
+            static_cast<Pointer*>(expr_type_)->pointee_type());
       case Terminal::ASCII:
         return builtin::ascii();
       case Terminal::True:

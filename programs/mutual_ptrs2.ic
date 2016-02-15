@@ -1,8 +1,8 @@
-foo := type {
+foo := struct {
   x: &bar
 }
 
-bar := type {
+bar := struct {
   y: &foo
 }
 
@@ -28,15 +28,15 @@ main := void -> void {
   print '\n'
 }
 
-foo1 := type {
+foo1 := struct {
   x : &foo2
 }
 
-foo2 := type {
+foo2 := struct {
   x : &foo3
 }
 
-foo3 := type {
+foo3 := struct {
   x : &foo1
 }
 

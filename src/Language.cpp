@@ -52,6 +52,7 @@ namespace Language {
     /* Begin literals */
     Rule(expression, { {reserved_true} },   AST::Terminal::build_true),
     Rule(expression, { {reserved_false} },  AST::Terminal::build_false),
+    Rule(expression, { {reserved_null} },   AST::Terminal::build_null),
     Rule(expression, { {identifier} },      AST::Identifier::build),
     Rule(expression, { {uint_literal} },    AST::Terminal::build_uint_literal),
     Rule(expression, { {int_literal} },     AST::Terminal::build_int_literal),

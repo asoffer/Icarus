@@ -1,8 +1,8 @@
-foo := type {
+foo := struct {
   x: &bar
 }
 
-bar := type {
+bar := struct {
   y: &foo
 }
 

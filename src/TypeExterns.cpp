@@ -2,6 +2,7 @@
 
 Primitive* Error;
 Primitive* Unknown;
+Primitive* NullPtr;
 Primitive* Bool;
 Primitive* Char;
 Primitive* Int;
@@ -36,6 +37,7 @@ namespace TypeSystem {
     Literals["uint"] = Uint  = new Primitive(Primitive::TypeEnum::Uint);
     Literals["void"] = Void  = new Primitive(Primitive::TypeEnum::Void);
 
+    NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
     Error   = new Primitive(Primitive::TypeEnum::Error);
     Unknown = new Primitive(Primitive::TypeEnum::Unknown);
     RawPtr = Ptr(Char);

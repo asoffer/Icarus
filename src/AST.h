@@ -276,11 +276,15 @@ namespace AST {
     public:
       EXPR_FNS(Terminal, terminal);
 
+      friend class Assignment;
+      friend class Declaration;
+
       static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
       static NPtr build_type_literal(NPtrVec&& nodes);
       static NPtr build_string_literal(NPtrVec&& nodes);
       static NPtr build_true(NPtrVec&& nodes);
       static NPtr build_false(NPtrVec&& nodes);
+      static NPtr build_null(NPtrVec&& nodes);
       static NPtr build_int_literal(NPtrVec&& nodes);
       static NPtr build_uint_literal(NPtrVec&& nodes);
       static NPtr build_real_literal(NPtrVec&& nodes);

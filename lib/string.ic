@@ -1,4 +1,4 @@
-string := type {
+string := struct {
   chars: [-; char]
   length: uint
 }

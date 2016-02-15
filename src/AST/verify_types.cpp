@@ -40,6 +40,7 @@ namespace AST {
       case Terminal::UInt:          expr_type_ = Uint;              break;
       case Terminal::StringLiteral: expr_type_ = String;            break;
       case Terminal::Alloc:         /* Already set */               break;
+      case Terminal::Null:          /* Already set */               break;
     }
   }
 
@@ -356,6 +357,16 @@ namespace AST {
         ? decl_type_->type()
         : decl_type_->evaluate(Scope::Global->context()).as_type);
 
+    // TODO if RHS is not a type give a nice message instead of segfaulting
+
+    if (decl_type_->is_terminal()) {
+      // May assume it's 
+      auto term = std::static_pointer_cast<Terminal>(decl_type_);
+      if (term->terminal_type_ == Language::Terminal::Null) {
+        error_log.log(line_num(), "Cannot infer the type of `null`.");
+      }
+    }
+
     if (!expr_type_) {
       std::cout << this << std::endl;
       std::cout << decl_type_ << std::endl;
@@ -439,7 +450,17 @@ namespace AST {
       return;
     }
 
+    // TODO if lhs is reserved?
     if (op_ == Language::Operator::Assign) {
+      if (rhs_->is_terminal()) {
+        auto term = std::static_pointer_cast<Terminal>(rhs_);
+        if (term->terminal_type_ == Language::Terminal::Null) {
+          term->expr_type_ = lhs_->type();
+          expr_type_ = Void;
+          return;
+        }
+      }
+
       if (lhs_->type() != rhs_->type()) {
         error_log.log(line_num(), "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
       }

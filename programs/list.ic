@@ -40,12 +40,12 @@ main := void -> void {
   print '\n'
 }
 
-node := type {
+node := struct {
   data: int
   next: &node
 }
 
-list := type {
+list := struct {
   head: &node
   size: uint
 }

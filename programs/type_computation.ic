@@ -16,10 +16,10 @@ if [3; int] == [5; int] {
   print '\n'
 }
 
-a := type {
+a := struct {
   n: int
 }
-b := type {
+b := struct {
   n: int
 }
 print a == b  // false
