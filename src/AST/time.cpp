@@ -12,6 +12,10 @@ namespace AST {
     return time_;
   }
 
+  Time::Eval Access::determine_time() {
+    return time_ = expr_->determine_time();
+  }
+
   Time::Eval Binop::determine_time() {
     if (op_ == Language::Operator::Cast) {
       return time_ = lhs_->determine_time();

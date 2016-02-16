@@ -4,6 +4,7 @@ namespace AST {
   Expression::Expression() : expr_type_(Unknown) {}
   Declaration::Declaration() {}
   ArrayLiteral::ArrayLiteral() {}
+  Access::Access() {}
   ChainOp::ChainOp() {}
   Case::Case() {}
   Binop::Binop() {}

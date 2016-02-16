@@ -123,8 +123,12 @@ namespace Language {
         AST::Expression::parenthesize),
 
     Rule(expression,
-        { {expression}, {dot, negation, generic_operator}, {expression} },
+        { {expression}, {negation, generic_operator}, {expression} },
         AST::Binop::build),
+
+    Rule(expression,
+        { {expression}, {dot}, {identifier} },
+        AST::Access::build),
 
     Rule(expression,
         { {expression}, {indirection, bool_operator, binary_boolean_operator}, {expression} },

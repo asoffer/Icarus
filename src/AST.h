@@ -77,7 +77,6 @@ namespace AST {
 
       Time::Eval time() { return time_; }
 
- //type_ == Language::identifier; }
       virtual bool is_identifier()       const { return false; }
       virtual bool is_terminal()         const { return false; }
       virtual bool is_expression()       const { return false; }
@@ -86,6 +85,7 @@ namespace AST {
       virtual bool is_chain_op()         const { return false; }
       virtual bool is_case()             const { return false; }
       virtual bool is_unop()             const { return false; }
+      virtual bool is_access()           const { return false; }
       virtual bool is_comma_list()       const { return false; }
       virtual bool is_declaration()      const { return false; }
       virtual bool is_array_type()       const { return false; }
@@ -98,6 +98,8 @@ namespace AST {
         : type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
 
       virtual ~Node(){}
+
+      friend class Access;
 
       inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
         return os << node.to_string(0);
@@ -205,6 +207,16 @@ namespace AST {
       Language::Operator op_;
   };
 
+  class Access: public Expression {
+    public:
+      EXPR_FNS(Access, access);
+
+      EPtr expr() const { return expr_; }
+
+    private:
+      std::string member_name_;
+      EPtr expr_;
+  };
 
   class Binop : public Expression {
     public:

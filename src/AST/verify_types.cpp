@@ -162,6 +162,52 @@ namespace AST {
     }
   }
 
+  void Access::verify_types() {
+    if (expr_->type() == Error) {
+      // An error was already found in the types, so just pass silently
+      expr_type_ = Error;
+      return;
+    }
+
+    auto etype = expr_->type();
+    if (etype == Type_) {
+      auto etypename = expr_->evaluate(Scope::Global->context()).as_type;
+      if (etypename->is_enum()) {
+        auto enum_type = static_cast<Enumeration*>(etypename);
+        // If you can get the value,
+        if (enum_type->get_value(member_name_)) {
+          // TODO use correct context
+          expr_type_ = expr_->evaluate(Scope::Global->context()).as_type;
+
+        } else {
+          error_log.log(line_num(), etypename->to_string() + " has no member " + member_name_ + ".");
+          expr_type_ = Error;
+        }
+        return;
+      }
+    }
+
+    // Access passes through pointers
+    while (etype->is_pointer()) {
+      etype = static_cast<Pointer*>(etype)->pointee_type();
+    }
+
+    if (etype->is_struct()) {
+      auto struct_type = static_cast<Structure*>(etype);
+      auto member_type = struct_type->field(member_name_);
+      if (member_type) {
+        expr_type_ = member_type;
+      } else {
+        error_log.log(line_num(), "Objects of type " + etype->to_string()
+            + " have no member named `" + member_name_ + "`.");
+        expr_type_ = Error;
+      }
+    }
+
+    assert(expr_type_ && "expr_type_ is nullptr in access");
+    return;
+  }
+
   void Binop::verify_types() {
     using Language::Operator;
     if (lhs_->type() == Error || rhs_->type() == Error) {
@@ -170,54 +216,7 @@ namespace AST {
       return;
     }
 
-    if (op_ == Operator::Access) {
-      if (!rhs_->is_identifier()) {
-        error_log.log(line_num(), "Member access (`.`) must access an identifier.");
-        expr_type_ = Error;
-        return;
-      }
-
-      // Access passes through pointers
-      auto lhs_type = lhs_->type();
-      if (lhs_type == Type_) {
-        auto lhs_typename = lhs_->evaluate(Scope::Global->context()).as_type;
-        if (lhs_typename->is_enum()) {
-          auto enum_type = static_cast<Enumeration*>(lhs_typename);
-          // If you can get the value,
-          if (enum_type->get_value(rhs_->token())) {
-            // TODO use correct context
-            expr_type_ = lhs_->evaluate(Scope::Global->context()).as_type;
-            rhs_->expr_type_ = expr_type_;
-
-          } else {
-            error_log.log(line_num(), lhs_typename->to_string() + " has no member " + rhs_->token() + ".");
-            expr_type_ = Error;
-          }
-          return;
-        }
-      }
-
-      while (lhs_type->is_pointer()) {
-        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
-      }
-
-      if (lhs_type->is_struct()) {
-        auto struct_type = static_cast<Structure*>(lhs_type);
-        auto member_type = struct_type->field(rhs_->token());
-        if (member_type == nullptr) {
-          error_log.log(line_num(),
-              "Objects of type " + lhs_type->to_string() + " have no member named `" + rhs_->token() + "`.");
-          expr_type_ = Error;
-        } else {
-          rhs_->expr_type_ = member_type;
-          expr_type_ = member_type;
-        }
-      }
-
-      
-      assert(expr_type_ && "expr_type_ is nullptr in binop access");
-      return;
-    }  else if (op_ == Language::Operator::Rocket) {
+    if (op_ == Language::Operator::Rocket) {
       if (lhs_->type() != Bool) {
         error_log.log(line_num(), "LHS of rocket must be a bool");
         expr_type_ = Error;

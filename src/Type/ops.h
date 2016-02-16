@@ -55,7 +55,6 @@ llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) 
 #define LEFT_UNARY_OPERATOR_MACRO(op) \
   llvm::Value* TYPE::call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) { return nullptr; }
 
-
 #define TYPE Array 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
@@ -90,7 +89,6 @@ llvm::Value* Primitive::call_not(llvm::IRBuilder<>& bldr, llvm::Value* operand) 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
-
 
 #undef CHAIN_OPERATOR_MACRO
 #undef BINARY_OPERATOR_MACRO

@@ -40,6 +40,15 @@ namespace AST {
     return unop_ptr;
   }
 
+  NPtr Access::build(NPtrVec&& nodes) {
+    auto access_ptr = std::make_shared<Access>();
+    access_ptr->member_name_ = nodes[2]->token();
+    access_ptr->line_num_ = nodes[0]->line_num();
+    access_ptr->expr_ = std::static_pointer_cast<Expression>(std::move(nodes[0]));
+
+    return access_ptr;
+  }
+
   NPtr Binop::build_operator(NPtrVec&& nodes, Language::Operator op_class) {
     auto binop_ptr = std::make_shared<Binop>();
     binop_ptr->line_num_ = nodes[1]->line_num();

@@ -228,6 +228,10 @@ namespace AST {
     return Context::Value(type_value_);
   }
 
+  Context::Value Access::evaluate(Context& ctx) {
+    assert(false && "not yet implemented");
+  }
+
   Context::Value Binop::evaluate(Context& ctx) {
     using Language::Operator;
     if (op_ == Operator::Call) {

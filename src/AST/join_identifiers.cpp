@@ -40,6 +40,14 @@ namespace AST {
     }
   }
 
+  void Access::join_identifiers(Scope* scope, bool is_arg) {
+    if (expr_->is_identifier()) {
+      expr_ = scope->identifier(expr_);
+    } else {
+      expr_->join_identifiers(scope);
+    }
+  }
+
   void Binop::join_identifiers(Scope* scope, bool is_arg) {
     if (lhs_->is_identifier()) {
       lhs_ = scope->identifier(lhs_);

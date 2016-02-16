@@ -201,6 +201,34 @@ namespace AST {
     }
   }
 
+  llvm::Value* Access::generate_code(Scope* scope) {
+    auto etype = expr_->type();
+    if (etype == Type_) {
+      auto expr_as_type =
+        expr_->evaluate(scope->context()).as_type;
+      if (expr_as_type->is_enum()) {
+        auto enum_type = static_cast<Enumeration*>(expr_as_type);
+        return enum_type->get_value(member_name_);
+      }
+    }
+
+    auto eval = expr_->generate_code(scope);
+    while (etype->is_pointer()) {
+      etype = static_cast<Pointer*>(etype)->pointee_type();
+      if (!etype->is_struct()) {
+        eval = scope->builder().CreateLoad(eval);
+      }
+    }
+
+    auto struct_type = static_cast<Structure*>(etype);
+
+    auto retval = scope->builder().CreateGEP(eval,
+        { data::const_uint(0), struct_type->field_num(member_name_) });
+    return (type()->is_struct())
+      ? retval
+      : scope->builder().CreateLoad(retval);
+  }
+
   llvm::Value* Binop::generate_code(Scope* scope) {
     if (time() == Time::compile) {
       return llvm_value(evaluate(scope->context()));
@@ -210,32 +238,6 @@ namespace AST {
     if (op_ == Operator::Index) {
       return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
 
-    } else if (op_ == Operator::Access) {
-      auto lhs_type = lhs_->type();
-      if (lhs_->type() == Type_) {
-        auto lhs_as_type =
-          lhs_->evaluate(scope->context()).as_type;
-        if (lhs_as_type->is_enum()) {
-          auto enum_type = static_cast<Enumeration*>(lhs_as_type);
-          return enum_type->get_value(rhs_->token());
-        }
-      }
-
-      auto lhs_val = lhs_->generate_code(scope);
-      while (lhs_type->is_pointer()) {
-        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
-        if (!lhs_type->is_struct()) {
-          lhs_val = scope->builder().CreateLoad(lhs_val);
-        }
-      }
-
-      auto struct_type = static_cast<Structure*>(lhs_type);
-
-      auto retval = scope->builder().CreateGEP(lhs_val,
-          { data::const_uint(0), struct_type->field_num(rhs_->token()) });
-      return (type()->is_struct())
-        ? retval
-        : scope->builder().CreateLoad(retval);
     }
 
     auto lhs_val = lhs_->generate_code(scope);

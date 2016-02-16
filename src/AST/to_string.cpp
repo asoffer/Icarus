@@ -107,6 +107,11 @@ namespace AST {
     return ss.str();
   }
 
+  std::string Access::to_string(size_t n) const {
+    return tabs(n) + "<Access " + member_name_ + " " + TYPE_OR("") + ">\n"
+      + expr_->to_string(n + 1);
+  }
+
   std::string Binop::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Binop " << TYPE_OR("") << ": ";
@@ -123,7 +128,6 @@ namespace AST {
       case Language::Operator::Mod:     ss << "Mod";    break;
       case Language::Operator::Index:   ss << "Index";  break;
       case Language::Operator::Call:    ss << "Call";   break;
-      case Language::Operator::Access:  ss << "Access"; break;
       default: assert(false && "Not a binary operator");
     }
     ss << ">\n"

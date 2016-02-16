@@ -42,6 +42,11 @@ namespace AST {
     // if the last time we write is not for its declaration, we lose.
   }
 
+  void Access::assign_scope(Scope* scope) {
+    scope_ = scope;
+    expr_->assign_scope(scope);
+  }
+
   void Binop::assign_scope(Scope* scope) {
     scope_ = scope;
     lhs_->assign_scope(scope);

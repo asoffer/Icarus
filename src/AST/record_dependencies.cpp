@@ -21,6 +21,13 @@ namespace AST {
     Dependency::type_type(this, decl_);
   }
 
+  void Access::record_dependencies() {
+    Dependency::value_type(this, this);
+    Dependency::value_value(this, expr_.get());
+    Dependency::type_type(this, expr_.get());
+    expr_->record_dependencies();
+  }
+
   void Unop::record_dependencies() {
     Dependency::value_type(this, expr_.get());
     Dependency::type_type(this, expr_.get());

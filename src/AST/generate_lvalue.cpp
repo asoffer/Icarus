@@ -31,6 +31,21 @@ namespace AST {
   llvm::Value* TypeLiteral::generate_lvalue(Scope*)     { return nullptr; }
   llvm::Value* EnumLiteral::generate_lvalue(Scope*)     { return nullptr; }
 
+  llvm::Value* Access::generate_lvalue(Scope* scope) {
+    // Automatically pass through pointers
+    auto etype = expr_->type();
+    auto e_lval = expr_->generate_lvalue(scope);
+
+    while (etype->is_pointer()) {
+      etype = static_cast<Pointer*>(etype)->pointee_type();
+      e_lval = scope->builder().CreateLoad(e_lval);
+    }
+
+    auto struct_type = static_cast<Structure*>(etype);
+    return scope->builder().CreateGEP(e_lval,
+        { data::const_uint(0), struct_type->field_num(member_name_) });
+  }
+
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
     if (op_ == Language::Operator::Index && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
@@ -38,21 +53,7 @@ namespace AST {
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
       return scope->builder().CreateGEP(*type(), load_ptr, { rhs_val }, "array_idx");
 
-    } else if (op_ == Language::Operator::Access) {
-      // Automatically pass through pointers
-      auto lhs_type = lhs_->type();
-      auto lhs_lval = lhs_->generate_lvalue(scope);
-
-      while (lhs_type->is_pointer()) {
-        lhs_type = static_cast<Pointer*>(lhs_type)->pointee_type();
-        lhs_lval = scope->builder().CreateLoad(lhs_lval);
-      }
-
-      auto struct_type = static_cast<Structure*>(lhs_type);
-      return scope->builder().CreateGEP(lhs_lval,
-          { data::const_uint(0), struct_type->field_num(rhs_->token()) });
-    }
-
+    } 
     return nullptr;
   }
 
