@@ -162,9 +162,9 @@ int main(int argc, char *argv[]) {
   // COMPILATION STEP:
   //
   // Determine which declarations go in which scopes. Store that information
-  // with the scopes. Note that assign_decl_to_scope cannot possibly generate
+  // with the scopes. Note that assign_scope cannot possibly generate
   // compilation errors, so we don't check for them here.
-  global_statements->assign_decl_to_scope(Scope::Global);
+  global_statements->assign_scope(Scope::Global);
 
   // COMPILATION STEP:
   //

@@ -27,6 +27,7 @@ void Primitive::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     case TypeEnum::Unknown:   assert(false && "Constructor called for unknown type");
     case TypeEnum::Type:      assert(false && "Constructor called for type");
     case TypeEnum::Void:      assert(false && "Constructor called for void type");
+    case TypeEnum::NullPtr:   assert(false && "Constructor called for raw nullptr");
     case TypeEnum::Bool:      bldr.CreateStore(data::const_false(),    var); return;
     case TypeEnum::Char:      bldr.CreateStore(data::const_char('\0'), var); return;
     case TypeEnum::Int:       bldr.CreateStore(data::const_int(0),     var); return;

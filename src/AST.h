@@ -29,29 +29,29 @@ class NSLiteral;
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
-#define VIRTUAL_METHODS_FOR_NODES                                           \
-  virtual std::string to_string(size_t n) const                    ENDING;  \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING;  \
-  virtual void assign_decl_to_scope(Scope* scope)                  ENDING;  \
-  virtual void record_dependencies()                               ENDING;  \
-  virtual void verify_types()                                      ENDING;  \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING;  \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING;  \
+#define VIRTUAL_METHODS_FOR_NODES                                          \
+  virtual std::string to_string(size_t n) const                    ENDING; \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
+  virtual void assign_scope(Scope* scope)                          ENDING; \
+  virtual void record_dependencies()                               ENDING; \
+  virtual void verify_types()                                      ENDING; \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
   virtual Time::Eval determine_time()                              ENDING
 
-#define EXPR_FNS(name, checkname)                                           \
-  name();                                                                   \
-  virtual ~name() {}                                                        \
-  virtual bool is_##checkname() const OVERRIDE { return true; }             \
-  virtual std::string to_string(size_t n) const                    ENDING;  \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING;  \
-  virtual void assign_decl_to_scope(Scope* scope)                  ENDING;  \
-  virtual void record_dependencies()                               ENDING;  \
-  virtual void verify_types()                                      ENDING;  \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING;  \
-  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING;  \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING;  \
-  virtual Time::Eval determine_time()                              ENDING;  \
+#define EXPR_FNS(name, checkname)                                          \
+  name();                                                                  \
+  virtual ~name() {}                                                       \
+  virtual bool is_##checkname() const OVERRIDE { return true; }            \
+  virtual std::string to_string(size_t n) const                    ENDING; \
+  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
+  virtual void assign_scope(Scope* scope)                          ENDING; \
+  virtual void record_dependencies()                               ENDING; \
+  virtual void verify_types()                                      ENDING; \
+  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
+  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
+  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
+  virtual Time::Eval determine_time()                              ENDING; \
   static NPtr build(NPtrVec&& nodes)
 
   class Node {
@@ -67,7 +67,7 @@ namespace AST {
 
       virtual std::string to_string(size_t n) const;
       virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
-      virtual void assign_decl_to_scope(Scope* scope) {}
+      virtual void assign_scope(Scope* scope) {}
       virtual void record_dependencies() {}
       virtual void verify_types() {}
 
@@ -104,6 +104,7 @@ namespace AST {
       }
 
     protected:
+      Scope* scope_;
       Language::NodeType type_;
       std::string token_;
       size_t line_num_;
@@ -337,6 +338,7 @@ namespace AST {
 
       friend class Assignment;
       friend class ::Scope;
+      friend class TypeLiteral;
 
       static NPtr build(NPtrVec&& nodes, Language::NodeType node_type, bool infer);
       static NPtr build_decl(NPtrVec&& nodes);
