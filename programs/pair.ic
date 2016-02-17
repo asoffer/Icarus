@@ -1,0 +1,27 @@
+pair := (K: type, V: type) -> type {
+  return struct {
+    key: K
+    val: V
+  }
+}
+
+main := void -> void {
+  IntChar := pair(int, char)
+
+  p: IntChar
+  f: pair(int, int)
+  p.key = 3
+  f.key = p.key
+  f.val = p.key
+  p.val = 'x'
+  print p.key
+  print '\n'
+  print p.val
+  print '\n'
+  print '('
+  print f.key
+  print ','
+  print f.val
+  print ')'
+  print '\n'
+}

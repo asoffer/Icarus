@@ -9,15 +9,17 @@
 #include "DependencyTypes.h"
 
 namespace Dependency {
-  extern void type_type  (AST::Expression* depender, AST::Expression* dependee);
-  extern void type_value (AST::Expression* depender, AST::Expression* dependee);
-  extern void value_type (AST::Expression* depender, AST::Expression* dependee);
-  extern void value_value(AST::Expression* depender, AST::Expression* dependee);
+  extern void type_type  (AST::Node* depender, AST::Node* dependee);
+  extern void type_value (AST::Node* depender, AST::Node* dependee);
+  extern void value_type (AST::Node* depender, AST::Node* dependee);
+  extern void value_value(AST::Node* depender, AST::Node* dependee);
 
-  extern void traverse_from(PtrWithTorV, std::map<AST::Expression*, Flag>&);
+  extern void traverse_from(PtrWithTorV);
 
   extern void record(AST::Node* node);
-  extern void add_to_table(AST::Expression* depender);
+
+  extern void mark_as_done(AST::Node* e);
+  extern void add_to_table(AST::Node* depender);
   extern void assign_order();
 }  // namespace Dependency
 

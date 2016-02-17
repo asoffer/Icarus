@@ -421,7 +421,6 @@ namespace AST {
     public:
       friend class TypeLiteral;
       friend class EnumLiteral;
-      friend class NSLiteral;
 
       static NPtr build_one(NPtrVec&& nodes);
       static NPtr build_more(NPtrVec&& nodes);
@@ -540,6 +539,7 @@ namespace AST {
       virtual std::string to_string(size_t n) const;
       virtual llvm::Value* generate_code(Scope* scope);
       virtual Context::Value evaluate(Context& ctx);
+      virtual void record_dependencies();
 
       virtual Time::Eval determine_time();
 

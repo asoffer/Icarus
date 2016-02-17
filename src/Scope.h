@@ -84,8 +84,7 @@ class Scope {
   private:
     // To each IdPtr we associate a set holding IdPtrs for which it is needed
     static std::vector<DeclPtr> decl_registry_;
-    friend void Dependency::traverse_from(Dependency::PtrWithTorV,
-        std::map<AST::Expression*, Dependency::Flag>&);
+    friend void Dependency::traverse_from(Dependency::PtrWithTorV);
 };
 
 class CondScope : public Scope {

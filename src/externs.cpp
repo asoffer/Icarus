@@ -18,6 +18,8 @@ namespace debug {
 
 std::map<std::string, StmtsPtr> ast_map;
 
+std::vector<AST::TypeLiteral*> created_types;
+
 enum class Lib {
   String
 };

@@ -1,5 +1,5 @@
 #include "AST.h"
-
+#include "Language.h"
 namespace data {
   extern llvm::Value* const_bool(bool b);
   extern llvm::Value* const_char(char c);
@@ -26,14 +26,25 @@ namespace AST {
 
   Context::Value Identifier::evaluate(Context& ctx) {
     // TODO log the struct name in the context of the scope
-    if (type() != Type_)      return ctx.get(shared_from_this());
-    if (type()->is_struct())  return Context::Value(TypeSystem::get(token()));
-    return ctx.get(shared_from_this());
+    if (type() != Type_) {
+      return ctx.get(shared_from_this());
+
+    } else if (type()->is_struct()) {
+      return Context::Value(TypeSystem::get(token()));
+
+    } else {
+      auto val = ctx.get(shared_from_this());
+      if (val.as_type) return val;
+
+      // If val was nullptr, it's a dependent type
+      return Context::Value(DepType([](Type* t) { return t; }));
+    }
   }
 
   Context::Value Unop::evaluate(Context& ctx) {
     if (op_ == Language::Operator::Return) {
       ctx.set_return_value(expr_->evaluate(ctx));
+      return nullptr;
 
     } else if (op_ == Language::Operator::Print) {
       auto val = expr_->evaluate(ctx);
@@ -63,7 +74,7 @@ namespace AST {
       return Context::Value(Ptr(expr_->evaluate(ctx).as_type));
     }
 
-    return nullptr;
+    assert(false && "Unop eval: I don't know what to do.");
   }
 
   Context::Value ChainOp::evaluate(Context& ctx) { 
@@ -217,8 +228,56 @@ namespace AST {
     return pairs_->kv_pairs_.back().second->evaluate(ctx);
   }
 
-  Context::Value TypeLiteral::evaluate(Context&) {
-    return Context::Value(type_value_);
+  Context::Value TypeLiteral::evaluate(Context& ctx) {
+    static size_t anon_type_counter = 0;
+    // Hack to determine if the type is parametric or not
+    // TODO make this not a hack
+    bool dep_type_flag = false;
+    for (const auto& decl : decls_) {
+      if (decl->type()->is_dependent_type()) {
+        dep_type_flag = true;
+        break;
+      }
+    }
+
+    if (!dep_type_flag) return Context::Value(type_value_);
+
+    std::vector<DeclPtr> decls_in_ctx;
+    for (const auto& decl : decls_) {
+      auto d = std::make_shared<Declaration>();
+      d->infer_type_ = false;
+      d->id_ = std::make_shared<Identifier>(0, decl->identifier_string());
+      d->id_->decl_ = d.get();
+      decls_in_ctx.push_back(d);
+
+      // TODO finish setting data in d so that we can safely print this
+      // out for debugging
+
+      auto dtype = decl->declared_type()->evaluate(ctx).as_type;
+      d->expr_type_ = dtype;
+      if (dtype == Int) {
+        auto intnode = std::make_shared<TokenNode>(0, Language::type_literal, "int");
+        d->decl_type_ = std::static_pointer_cast<Expression>(
+            Terminal::build_type_literal({ intnode }));
+
+      } else if (dtype == Char) {
+        auto intnode = std::make_shared<TokenNode>(0, Language::type_literal, "char");
+        d->decl_type_ = std::static_pointer_cast<Expression>(
+            Terminal::build_type_literal({ intnode }));
+      }
+    }
+
+    // TODO Push the type literal table for later use? If not, who owns this?
+    auto type_lit_ptr = new TypeLiteral;
+    type_lit_ptr->decls_ = std::move(decls_in_ctx);
+
+    type_lit_ptr->type_value_ = 
+      Struct("__anon.param.struct" + std::to_string(anon_type_counter++), type_lit_ptr);
+    type_lit_ptr->build_llvm_internals();
+
+    Dependency::mark_as_done(type_lit_ptr);
+
+    return Context::Value(type_lit_ptr->type_value_);
   }
 
   Context::Value Assignment::evaluate(Context&)  { return nullptr; }
@@ -235,20 +294,30 @@ namespace AST {
   Context::Value Binop::evaluate(Context& ctx) {
     using Language::Operator;
     if (op_ == Operator::Call) {
-      if (lhs_->is_identifier()) {
-        auto expr_ptr = ctx.get(std::static_pointer_cast<Identifier>(lhs_)).as_expr;
-        // TODO must lhs_ be a function?
-        auto fn_ptr = static_cast<FunctionLiteral*>(expr_ptr);
-        Context fn_ctx = Scope::Global->context().spawn();
+      if (lhs_->type()->is_function()) {
+        auto lhs_val = lhs_->evaluate(ctx).as_expr;
+        auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
+        Context fn_ctx = lhs_->scope_->context().spawn();
 
-        // Populate the function context with arguments
-        for (const auto& arg : fn_ptr->inputs_) {
-          fn_ctx.bind(rhs_->evaluate(ctx), arg->declared_identifier());
+        std::vector<EPtr> arg_vals;
+        if (rhs_->is_comma_list()) {
+          arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
+        } else {
+          arg_vals = { rhs_ };
         }
 
+        // TODO nice error message if they are not? Shouldn't type verification have
+        // already checked this?
+        assert(arg_vals.size() == fn_ptr->inputs_.size()
+            && "wrong number of arguments");
 
-        auto x = fn_ptr->evaluate(fn_ctx);
-        return x;
+        // Populate the function context with arguments
+        for (size_t i = 0; i < arg_vals.size(); ++i) {
+          auto rhs_eval = arg_vals[i]->evaluate(ctx);
+          fn_ctx.bind(rhs_eval, fn_ptr->inputs_[i]->declared_identifier());
+        }
+
+        return fn_ptr->evaluate(fn_ctx);
       }
 
     } else if (op_ == Operator::Arrow) {
@@ -261,6 +330,7 @@ namespace AST {
   }
 
   Context::Value KVPairList::evaluate(Context&)      { return nullptr; }
+
   Context::Value Statements::evaluate(Context& ctx) {
     for (auto& stmt : statements_) {
       stmt->evaluate(ctx);

@@ -750,7 +750,7 @@ namespace AST {
         scope->builder().CreateCall(array_type->initialize(), init_args);
       }
 
-      if (!infer_type_) return nullptr;
+      if (!infer_type_ || expr_type_ == Type_) return nullptr;
 
       // Remember, decl_type_ is not really the right name in the inference case.
       // It's the thing whose type we are inferring.

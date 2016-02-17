@@ -51,9 +51,12 @@ namespace AST {
 
       if (expr_type_ == Type_) {
         auto type_as_ctx_val =
-          decl_->declared_type()->evaluate(Scope::Global->context());
+          decl_->declared_type()->evaluate(scope_->context());
         auto type_for_binding = type_as_ctx_val.as_type;
-        Scope::Global->context().bind(type_as_ctx_val, shared_from_this());
+
+        assert(type_for_binding && "type_for_binding is null");
+
+        scope_->context().bind(type_as_ctx_val, shared_from_this());
         // TODO This is a hacky solution. Clean it up.
         if (token() == "string") {
           String = static_cast<Structure*>(type_for_binding);
@@ -65,6 +68,7 @@ namespace AST {
         // TODO come up with a better way to
         // 1. figure out what name to print
         // 2. determine if the type chosen hasn't had a name bound to it yet.
+
         if (type_for_binding->to_string()[0] == '_') {
           if (type_for_binding->is_enum()) {
             static_cast<Enumeration*>(type_for_binding)->set_name(token());
@@ -77,11 +81,11 @@ namespace AST {
           }
         }
 
-        assert(Scope::Global->context().get(shared_from_this()).as_type
+        assert(scope_->context().get(shared_from_this()).as_type
             && "Bound type was a nullptr");
       }
     } else {
-      expr_type_ = decl_->declared_type()->evaluate(Scope::Global->context()).as_type;
+      expr_type_ = decl_->declared_type()->evaluate(scope_->context()).as_type;
       assert(expr_type_ && "eval with context expr_ptr is nullptr");
 
     }
@@ -168,16 +172,15 @@ namespace AST {
       expr_type_ = Error;
       return;
     }
-
     auto etype = expr_->type();
     if (etype == Type_) {
-      auto etypename = expr_->evaluate(Scope::Global->context()).as_type;
+      auto etypename = expr_->evaluate(scope_->context()).as_type;
       if (etypename->is_enum()) {
         auto enum_type = static_cast<Enumeration*>(etypename);
         // If you can get the value,
         if (enum_type->get_value(member_name_)) {
           // TODO use correct context
-          expr_type_ = expr_->evaluate(Scope::Global->context()).as_type;
+          expr_type_ = expr_->evaluate(scope_->context()).as_type;
 
         } else {
           error_log.log(line_num(), etypename->to_string() + " has no member " + member_name_ + ".");
@@ -229,7 +232,7 @@ namespace AST {
         // TODO treat dependent types as functions
         auto dep_type = static_cast<DependentType*>(lhs_->type());
         auto result_type =
-          (*dep_type)(rhs_->evaluate(Scope::Global->context()).as_type);
+          (*dep_type)(rhs_->evaluate(scope_->context()).as_type);
         expr_type_ = result_type;
         return;
       }
@@ -279,7 +282,7 @@ namespace AST {
       return;
     } else if (op_ == Language::Operator::Cast) {
       // TODO use correct scope
-      expr_type_ = rhs_->evaluate(Scope::Global->context()).as_type;
+      expr_type_ = rhs_->evaluate(scope_->context()).as_type;
       if (expr_type_ == Error) return;
       assert(expr_type_ && "cast to nullptr?");
 
@@ -354,7 +357,7 @@ namespace AST {
 
     expr_type_ = (type_is_inferred()
         ? decl_type_->type()
-        : decl_type_->evaluate(Scope::Global->context()).as_type);
+        : decl_type_->evaluate(scope_->context()).as_type);
 
     // TODO if RHS is not a type give a nice message instead of segfaulting
 
@@ -366,6 +369,7 @@ namespace AST {
       }
     }
 
+    
     if (!expr_type_) {
       std::cout << this << std::endl;
       std::cout << decl_type_ << std::endl;
@@ -375,15 +379,15 @@ namespace AST {
 
       std::cout << *declared_identifier() << std::endl;
       std::cout << *declared_type() << std::endl;
+      assert(false && "expr_type_ is null");
     }
 
     // TODO fix this hacky solution.
     // Some stuff like this is done in Identifier::verify_types().
     // Other stuff is done here.
     if (expr_type_->time() == Time::compile && expr_type_->is_function()) {
-      // TODO bind to the correct context
-      Scope::Global->context().bind(
-          Context::Value(declared_type().get()), declared_identifier());
+      scope_->context().bind(Context::Value(
+            declared_type().get()), declared_identifier());
     }
 
     assert(expr_type_ && "decl expr is nullptr");
@@ -421,7 +425,7 @@ namespace AST {
   }
 
   void FunctionLiteral::verify_types() {
-    Type* ret_type = return_type_->evaluate(Scope::Global->context()).as_type;
+    Type* ret_type = return_type_->evaluate(scope_->context()).as_type;
     assert(ret_type && "Return type is a nullptr");
     Type* input_type;
     size_t inputs_size = inputs_.size();
@@ -478,14 +482,25 @@ namespace AST {
   void KVPairList::verify_types() {
     assert(false && "Died in KVPairList::verify_types");
   }
+
   void Statements::verify_types() {
-    assert(false && "Died in Statements::verify_types");
+    // TODO Verify that a return statement, if present, is the last thing
   }
+
   void While::verify_types() {
-    assert(false && "Died in While::verify_types");
+    if (cond_->type() != Bool) {
+      error_log.log(line_num(), "While loop condition must be a bool, but "
+          + cond_->type()->to_string() + " given.");
+    }
   }
+
   void Conditional::verify_types() {
-    assert(false && "Died in Conditional::verify_types");
+    for (const auto& cond : conds_) {
+      if (cond->type() != Bool) {
+        error_log.log(line_num(), "Conditional must be a bool, but "
+            + cond->type()->to_string() + " given.");
+      }
+    }
   }
 
   void EnumLiteral::verify_types() {
@@ -497,7 +512,7 @@ namespace AST {
   void TypeLiteral::verify_types() {
     static size_t anon_type_counter = 0;
     expr_type_ = Type_;
-    type_value_ = Struct("__anon.struct" +std::to_string(anon_type_counter), this); 
+    type_value_ = Struct("__anon.struct" + std::to_string(anon_type_counter), this); 
     ++anon_type_counter;
   }
 

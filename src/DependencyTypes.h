@@ -2,7 +2,7 @@
 #define ICARUS_DEPENDENCY_TYPES_H
 
 namespace AST {
-  class Expression;
+  class Node;
 }  // namespace AST
 
 namespace Dependency {
@@ -21,8 +21,8 @@ namespace Dependency {
   // In any event, for your own pride you should pack these neater.
   struct PtrWithTorV {
     PtrWithTorV() = delete;
-    PtrWithTorV(AST::Expression *ptr, bool torv) : ptr_(ptr), torv_(torv) {}
-    AST::Expression *ptr_;
+    PtrWithTorV(AST::Node *ptr, bool torv) : ptr_(ptr), torv_(torv) {}
+    AST::Node *ptr_;
     bool torv_; // true => type, false => value
   };
 
