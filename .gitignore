@@ -2,3 +2,9 @@ bin/
 build/
 
 *.ll
+
+*.dot
+
+*.pdf
+
+src/code

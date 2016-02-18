@@ -4,6 +4,8 @@
 #include <set>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #include "typedefs.h"
 #include "DependencyTypes.h"
@@ -201,6 +203,50 @@ namespace Dependency {
       if (!torv && ((already_seen_[ptr] & val_seen) != 0)) continue;
       traverse_from(kv.first);
     }
+  }
+
+  class GraphVizFile {
+    public:
+      GraphVizFile(const char* filename) : fout_(filename) {
+        fout_ << "digraph {\nrankdir=LR\n";
+      }
+
+      GraphVizFile& operator<<(const std::string& str) {
+        fout_ << str;
+        return *this;
+      }
+
+      ~GraphVizFile() {
+        fout_ << "}";
+        fout_.close();
+      }
+    private:
+      std::ofstream fout_;
+  };
+
+  template<typename T> std::string str(T* ptr) {
+    std::stringstream ss;
+    ss << ptr;
+    return ss.str();
+  }
+
+  void write_graphviz() {
+      GraphVizFile gviz("dependencies.dot");
+      for (const auto& node : dependencies_) {
+        gviz
+          << (node.first.torv_ ? "  t" : "  v") << str(node.first.ptr_)
+          << " [label=\"" << str(node.first.ptr_) << "\", fillcolor=\""
+          << (node.first.torv_ ? "#88ffaa" : "#88aaff")
+          << "\", style=\"filled\"];\n";
+      }
+
+      for (const auto& dep : dependencies_) {
+        for (const auto& d : dep.second) {
+          gviz
+            << (dep.first.torv_ ? "  t" : "  v") << str(dep.first.ptr_) << " -> "
+            << (d.torv_ ? "t" : "v") << str(d.ptr_) << ";\n";
+        }
+      }
   }
 
 }  // namespace Dep

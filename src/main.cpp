@@ -188,6 +188,7 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   Dependency::assign_order();
+  Dependency::write_graphviz();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;

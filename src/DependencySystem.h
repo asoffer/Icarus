@@ -21,6 +21,7 @@ namespace Dependency {
   extern void mark_as_done(AST::Node* e);
   extern void add_to_table(AST::Node* depender);
   extern void assign_order();
+  extern void write_graphviz();
 }  // namespace Dependency
 
 #endif  // ICARUS_DEPENDENCY_SYSTEM_H
