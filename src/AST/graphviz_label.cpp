@@ -95,6 +95,10 @@ namespace AST {
     }
   }
 
+  std::string TypeLiteral::graphviz_label() const {
+    return type_value_ ? "Type: " + type_value_->name_ : "TypeLiteral";
+  }
+
   std::string ArrayType::graphviz_label() const { return "ArrayType"; }
   std::string ArrayLiteral::graphviz_label() const {
     return "ArrayLiteral";
@@ -103,7 +107,6 @@ namespace AST {
   std::string KVPairList::graphviz_label() const { return "KVPairList"; }
   std::string Statements::graphviz_label() const { return "Statements"; }
   std::string FunctionLiteral::graphviz_label() const { return "FunctionLiteral"; }
-  std::string TypeLiteral::graphviz_label() const { return "TypeLiteral"; }
   std::string EnumLiteral::graphviz_label() const { return "Enum"; }
   std::string Break::graphviz_label() const { return "Break"; }
 }  // namespace AST

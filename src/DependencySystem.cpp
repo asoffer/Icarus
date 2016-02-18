@@ -13,6 +13,7 @@
 
 namespace debug {
   extern bool dependency_system;
+  extern bool dependency_graph;
 }  // namespace debug
 
 #ifdef DEBUG
@@ -26,7 +27,12 @@ namespace Dependency {
   static DepMap dependencies_ = {};
   static std::map<AST::Node*, Flag> already_seen_ = {};
 
-  void record(AST::Node* node) { node->record_dependencies(); }
+  void record(AST::Node* node) {
+    node->record_dependencies();
+    if (debug::dependency_graph) {
+      Dependency::write_graphviz();
+    }
+  }
 
   void type_type(AST::Node* depender, AST::Node* dependee) {
     dependencies_[PtrWithTorV(depender, true)].emplace(dependee, true);
@@ -208,7 +214,7 @@ namespace Dependency {
   class GraphVizFile {
     public:
       GraphVizFile(const char* filename) : fout_(filename) {
-        fout_ << "digraph {\nrankdir=LR\n";
+        fout_ << "digraph {\n";//rankdir=LR\n";
       }
 
       GraphVizFile& operator<<(const std::string& str) {
@@ -239,6 +245,7 @@ namespace Dependency {
         gviz
           << (node.first.torv_ ? "  t" : "  v") << str(node.first.ptr_)
           << " [label=\"" << node.first.ptr_->graphviz_label()
+          << "\t(" << std::to_string(node.first.ptr_->line_num()) <<  ")"
           << "\", fillcolor=\"" << (node.first.torv_ ? "#88ffaa" : "#88aaff")
           << "\", shape=\"" << (node.first.ptr_->is_identifier() ? "diamond"
               : node.first.ptr_->is_declaration() ? "rectangle" : "ellipse")

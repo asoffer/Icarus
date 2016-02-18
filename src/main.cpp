@@ -195,10 +195,6 @@ int main(int argc, char *argv[]) {
   // generate compilation errors if no valid ordering exists.
   Dependency::assign_order();
 
-  if (debug::dependency_graph) {
-    Dependency::write_graphviz();
-  }
-
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;
