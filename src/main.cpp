@@ -26,6 +26,7 @@ extern ErrorLog error_log;
 namespace debug {
   extern bool parser;
   extern bool dependency_system;
+  extern bool dependency_graph;
 }  // namespace debug
 
 
@@ -90,6 +91,11 @@ int main(int argc, char *argv[]) {
       debug::parser = true;
     } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "-d") == 0) {
       debug::dependency_system = true;
+      debug::dependency_graph = true;
+
+    } else if (strcmp(arg, "-dg") == 0) {
+      debug::dependency_graph = true;
+
 
     } else if (file_index == -1) {
       // If we haven't seen a file yet, point to it
@@ -188,7 +194,11 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   Dependency::assign_order();
-  Dependency::write_graphviz();
+
+  if (debug::dependency_graph) {
+    Dependency::write_graphviz();
+  }
+
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::cyclic_dependency;

@@ -35,6 +35,7 @@ namespace AST {
   virtual void assign_scope(Scope* scope)                          ENDING; \
   virtual void record_dependencies()                               ENDING; \
   virtual void verify_types()                                      ENDING; \
+  virtual std::string graphviz_label() const                       ENDING; \
   virtual Context::Value evaluate(Context& ctx)                    ENDING; \
   virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
   virtual Time::Eval determine_time()                              ENDING
@@ -48,6 +49,7 @@ namespace AST {
   virtual void assign_scope(Scope* scope)                          ENDING; \
   virtual void record_dependencies()                               ENDING; \
   virtual void verify_types()                                      ENDING; \
+  virtual std::string graphviz_label() const                       ENDING; \
   virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
   virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
   virtual Context::Value evaluate(Context& ctx)                    ENDING; \
@@ -70,6 +72,7 @@ namespace AST {
       virtual void assign_scope(Scope* scope) {}
       virtual void record_dependencies() {}
       virtual void verify_types() {}
+      virtual std::string graphviz_label() const;
 
       virtual Context::Value evaluate(Context& ctx) { return nullptr; }
       virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
@@ -323,6 +326,7 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual llvm::Value* generate_lvalue(Scope* scope);
       virtual Context::Value evaluate(Context& ctx);
+      virtual std::string graphviz_label() const;
 
   };
 
@@ -540,7 +544,7 @@ namespace AST {
       virtual llvm::Value* generate_code(Scope* scope);
       virtual Context::Value evaluate(Context& ctx);
       virtual void record_dependencies();
-
+      virtual std::string graphviz_label() const;
       virtual Time::Eval determine_time();
 
       Break(size_t line_num) {

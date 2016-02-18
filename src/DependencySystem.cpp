@@ -217,8 +217,11 @@ namespace Dependency {
       }
 
       ~GraphVizFile() {
-        fout_ << "}";
-        fout_.close();
+        {
+          fout_ << "}";
+          fout_.close();
+        }
+        system("dot -Tpdf dependencies.dot -o dependencies.pdf");
       }
     private:
       std::ofstream fout_;
@@ -235,8 +238,10 @@ namespace Dependency {
       for (const auto& node : dependencies_) {
         gviz
           << (node.first.torv_ ? "  t" : "  v") << str(node.first.ptr_)
-          << " [label=\"" << str(node.first.ptr_) << "\", fillcolor=\""
-          << (node.first.torv_ ? "#88ffaa" : "#88aaff")
+          << " [label=\"" << node.first.ptr_->graphviz_label()
+          << "\", fillcolor=\"" << (node.first.torv_ ? "#88ffaa" : "#88aaff")
+          << "\", shape=\"" << (node.first.ptr_->is_identifier() ? "diamond"
+              : node.first.ptr_->is_declaration() ? "rectangle" : "ellipse")
           << "\", style=\"filled\"];\n";
       }
 
