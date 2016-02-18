@@ -272,10 +272,9 @@ namespace AST {
 
       expr_type_ = static_cast<Array*>(lhs_->type())->data_type();
       assert(expr_type_ && "array data type is nullptr");
-      // TODO make this allow uint maybe?
       // TODO allow slice indexing
-      if (rhs_->type() != Int) {
-        error_log.log(line_num(), "Arary must be indexed by an integer.");
+      if (rhs_->type() != Int && rhs_->type() != Uint) {
+        error_log.log(line_num(), "Arary must be indexed by an int or uint. You supplied a " + rhs_->type()->to_string());
         return;
       }
 

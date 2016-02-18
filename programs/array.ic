@@ -8,16 +8,16 @@ main := void -> void {
   r[19] = 1 :> real
   c[4] = 'x'
   
-  i := 0
-  while i < 5 {
+  i := 0u
+  while i < 5u {
     print c[i]
-    i += 1
+    i += 1u
   }
   
-  i = 0
-  while i < 20 {
+  i = 0u
+  while i < 20u {
     print r[i]
     print '\n'
-    i += 1
+    i += 1u
   }
 }
