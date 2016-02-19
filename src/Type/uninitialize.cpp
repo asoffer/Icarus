@@ -101,3 +101,4 @@ void Structure::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 }
 
 void DependentType::call_uninit(llvm::IRBuilder<>&, llvm::Value*) {}
+void TypeVariable::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value*) {}

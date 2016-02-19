@@ -200,3 +200,7 @@ llvm::Function* DependentType::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
   return nullptr;
 }
+
+llvm::Function* TypeVariable::assign() {
+  assert(false && "Cannot assign to a type variable");
+}

@@ -45,3 +45,4 @@ Time::Eval Enumeration::time() const {
 }
 
 Time::Eval DependentType::time() const { return Time::compile; }
+Time::Eval TypeVariable::time() const { return Time::compile; }

@@ -81,5 +81,10 @@ std::string DependentType::to_string() const {
   return "(DependentType)";
 }
 
+std::string TypeVariable::to_string() const {
+  return "TypeVariable(" + id_->token() + ")";
+}
+
+
 std::string Structure::to_string()   const { return name_; }
 std::string Enumeration::to_string() const { return name_; }

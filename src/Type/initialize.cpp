@@ -65,6 +65,8 @@ void Enumeration::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 }
 
 void DependentType::call_init(llvm::IRBuilder<>&, llvm::Value*) {}
+void TypeVariable::call_init(llvm::IRBuilder<>&, llvm::Value*) {}
+
 
 void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {

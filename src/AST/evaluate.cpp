@@ -36,8 +36,7 @@ namespace AST {
       auto val = ctx.get(shared_from_this());
       if (val.as_type) return val;
 
-      // If val was nullptr, it's a dependent type
-      return Context::Value(DepType([](Type* t) { return t; }));
+      return Context::Value(TypeVariable(shared_from_this()));
     }
   }
 
@@ -230,11 +229,12 @@ namespace AST {
 
   Context::Value TypeLiteral::evaluate(Context& ctx) {
     static size_t anon_type_counter = 0;
-    // Hack to determine if the type is parametric or not
-    // TODO make this not a hack
+    // TODO just make the type no matter what?
+    std::cout << "!! " << type_value_ << std::endl;
+    std::cout << "$$ " << *type_value_ << std::endl;
     bool dep_type_flag = false;
     for (const auto& decl : decls_) {
-      if (decl->type()->is_dependent_type()) {
+      if (decl->type()->has_variables()) {
         dep_type_flag = true;
         break;
       }

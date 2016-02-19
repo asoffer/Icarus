@@ -84,6 +84,7 @@ extern DependentType* DepType(std::function<Type*(Type*)> fn);
 #define BASIC_METHODS                                                     \
 virtual llvm::Function* assign() ENDING;                                  \
 virtual std::string to_string() const ENDING;                             \
+virtual bool has_variables() const ENDING;                                \
 virtual Time::Eval time() const ENDING;                                   \
 virtual bool add_llvm_input(std::vector<llvm::Type*>& llvm_in) ENDING;    \
 virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
@@ -335,7 +336,6 @@ class DependentType : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-
     DependentType(std::function<Type*(Type*)> fn) : fn_(fn) {}
     Type* operator()(Type* t) const { return fn_(t); }
 
@@ -343,6 +343,17 @@ class DependentType : public Type {
     std::function<Type*(Type*)> fn_;
 };
 
+class TypeVariable : public Type {
+  public:
+    TYPE_FNS(TypeVariable, type_variable);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+    TypeVariable(IdPtr id) : id_(id) {}
+
+  private:
+    IdPtr id_;
+};
 
 std::ostream& operator<<(std::ostream& os, const Type& t);
 

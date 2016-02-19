@@ -7,6 +7,6 @@ wrapper := (T: type) -> type {
 Int := wrapper(int)
 
 main := void -> void {
-  x := Int
+  x: Int
   x.val = 3
 }
