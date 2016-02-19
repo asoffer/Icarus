@@ -4,13 +4,18 @@
 #include <set>
 #include <iostream>
 #include <vector>
+#include <fstream>
+#include <sstream>
 
 #include "typedefs.h"
 #include "DependencyTypes.h"
 #include "Scope.h"
 
 namespace debug {
-  extern bool dependency_system;
+  extern bool dependency_graph;
+
+  // debug info local to translation unit:
+  static AST::Node* last_ptr = nullptr;
 }  // namespace debug
 
 #ifdef DEBUG
@@ -24,7 +29,12 @@ namespace Dependency {
   static DepMap dependencies_ = {};
   static std::map<AST::Node*, Flag> already_seen_ = {};
 
-  void record(AST::Node* node) { node->record_dependencies(); }
+  void record(AST::Node* node) {
+    node->record_dependencies();
+    if (debug::dependency_graph) {
+      Dependency::write_graphviz();
+    }
+  }
 
   void type_type(AST::Node* depender, AST::Node* dependee) {
     dependencies_[PtrWithTorV(depender, true)].emplace(dependee, true);
@@ -64,33 +74,14 @@ namespace Dependency {
     torv_stack.push_back(pt.torv_);
 
     while (!node_stack.empty()) {
-      if (debug::dependency_system) {
-        std::cin.ignore(1);
-        std::cout << "\033[2J\033[1;1H" << std::endl;
-      }
       // Ensure stacks match up
       assert(node_stack.size() == torv_stack.size() && "Stacks sizes don't match!");
 
       auto ptr = node_stack.back();
       auto torv = torv_stack.back();
 
-      if (debug::dependency_system) {
-        std::cout
-          << "+------------------------------------------------" << std::endl;
-
-        for (size_t i = 0; i < node_stack.size(); ++i) {
-          std::cout << "| " << i << ". " << node_stack[i] << (torv_stack[i] ? " (type)" : " (value)") << std::endl;
-        }
-
-        std::cout << *ptr << std::endl;
-        std::cout << "Seen flag (on entry): " << already_seen_ AT(ptr) << " (vs. seen_flag = " << (torv ? type_seen : val_seen) << ")"<< std::endl;
-      }
- 
       Flag done_flag = (torv ? type_done : val_done);
       if ((already_seen_ AT(ptr) & done_flag) != 0) {
-        if (debug::dependency_system) {
-          std::cout << "| Already done. Popping." << std::endl;
-        }
         node_stack.pop_back();
         torv_stack.pop_back();
         continue;
@@ -128,7 +119,18 @@ namespace Dependency {
             }
           }
 
+          if (debug::dependency_graph) {
+            debug::last_ptr = ptr;
+            Dependency::write_graphviz();
+            std::cin.ignore(1);
+          }
+ 
           ptr->verify_types();
+
+          if (debug::dependency_graph) {
+            Dependency::write_graphviz();
+            std::cin.ignore(1);
+          }
         }
         // If it's an identifier, push it into the declarations for the
         // appropriate scope, so they can be allocated correctly
@@ -143,25 +145,12 @@ namespace Dependency {
         }
  
         already_seen_ AT(ptr) = static_cast<Flag>((seen_flag << 1) | already_seen_ AT(ptr)); // Mark it as done
-
-        if (debug::dependency_system) {
-          std::cout << "Seen flag (now):      " << already_seen_ AT(ptr) << std::endl;
-          std::cout << "| Already seen. Verifying." << std::endl;
-        }
         continue;
       }
 
       // If you get here, this node is totally new.
-
       // Mark it as seen
       already_seen_ AT(ptr) = static_cast<Flag>(seen_flag | already_seen_ AT(ptr));
-      if (debug::dependency_system) {
-        std::cout << "Seen flag (later):    " << already_seen_ AT(ptr) << std::endl;
-        std::cout << "| Marking as seen." << seen_flag << std::endl;
-        std::cout << "| Has "
-          << dependencies_ AT( PtrWithTorV(ptr, torv)).size()
-          << " dependencies." << std::endl;
-      }
 
       // And follow it's dependencies
       assert((dependencies_.find( PtrWithTorV(ptr, torv) ) != dependencies_.end()) && "Not in dependency table");
@@ -177,10 +166,6 @@ namespace Dependency {
           assert(false && "cyclic dep found");
 
         } else {
-          if (debug::dependency_system) {
-            std::cout << "| Pushing " << dep.ptr_ << " (" << (dep.torv_ ? "type" : "value") << ")" << std::endl;
-          }
-
           node_stack.push_back(dep.ptr_);
           torv_stack.push_back(dep.torv_);
         }
@@ -201,6 +186,79 @@ namespace Dependency {
       if (!torv && ((already_seen_[ptr] & val_seen) != 0)) continue;
       traverse_from(kv.first);
     }
+  }
+
+  class GraphVizFile {
+    public:
+      GraphVizFile(const char* filename) : fout_(filename) {
+        fout_ << "digraph {\n";
+      }
+
+      GraphVizFile& operator<<(const std::string& str) {
+        fout_ << str;
+        return *this;
+      }
+
+      ~GraphVizFile() {
+        {
+          fout_ << "}";
+          fout_.close();
+        }
+        system("dot -Tpdf dependencies.dot -o dependencies.pdf");
+      }
+    private:
+      std::ofstream fout_;
+  };
+
+  std::string graphviz_node(PtrWithTorV x) {
+    std::stringstream output;
+    output << (x.torv_ ? "  t" : "  v") << x.ptr_;
+    return output.str();
+  }
+
+  std::string escape(const std::string& str) {
+    std::stringstream output;
+    for (size_t i = 0; i < str.size(); ++i) {
+      if (str[i] == ' ') output << "\\ ";
+      else if (str[i] == '<') output << "&lt;";
+      else if (str[i] == '>') output << "&gt;";
+      else if (str[i] == '&') output << "&amp;";
+      else output << str[i];
+    }
+    return output.str();
+  }
+
+  std::string graphviz_label(PtrWithTorV x) {
+    std::stringstream output;
+    output
+      << (x.torv_ ? "  t" : "  v") << x.ptr_
+      << "[label=\"{" << escape(x.ptr_->graphviz_label())
+      << "\t(" << x.ptr_->line_num() << ")|"
+      << escape(x.ptr_->is_expression()
+          ? static_cast<AST::Expression*>(x.ptr_)->type()->to_string() : "---")
+      << "}\", fillcolor=\"";
+    if (x.ptr_ == debug::last_ptr && x.torv_) {
+      output << "#ff88aa";
+    } else {
+      output << "#88" << (x.torv_ ? "ffaa" : "aaff");
+    }
+    output
+      << "\" color=\"" << (x.ptr_->time() == Time::compile ? "red" : "black")
+      << "\" penwidth=\"2.0\" shape=\"Mrecord\", style=\"filled\"];\n";
+    return output.str();
+  }
+
+  void write_graphviz() {
+      GraphVizFile gviz("dependencies.dot");
+      for (const auto& node : dependencies_) {
+        gviz << graphviz_label(node.first);
+      }
+
+      for (const auto& dep : dependencies_) {
+        for (const auto& d : dep.second) {
+          gviz << graphviz_node(dep.first) << " -> " << graphviz_node(d) << ";\n";
+        }
+      }
   }
 
 }  // namespace Dep
