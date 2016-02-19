@@ -12,9 +12,6 @@ namespace debug {
   // Turns on step-by-step iteration through the shifting and reducing.
   bool parser = false;
 
-  // Turns on debug printing in the dependency system
-  bool dependency_system = false;
-
   // Turns on dependency graph generation
   bool dependency_graph = false;
 }

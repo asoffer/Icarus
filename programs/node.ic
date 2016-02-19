@@ -1,0 +1,12 @@
+wrapper := (T: type) -> type {
+  return struct {
+    value: T
+  }
+}
+
+Int := wrapper(int)
+
+main := void -> void {
+  x := Int
+  x.val = 3
+}

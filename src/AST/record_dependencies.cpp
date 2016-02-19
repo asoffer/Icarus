@@ -29,6 +29,7 @@ namespace AST {
   }
 
   void Unop::record_dependencies() {
+    Dependency::value_type(this, this);
     Dependency::value_type(this, expr_.get());
     Dependency::type_type(this, expr_.get());
     if (op_ == Language::Operator::Return) {
