@@ -9,6 +9,9 @@ namespace data {
 
 }  // namespace data
 
+using InOutVec = std::vector<std::pair<std::vector<Context::Value>, Context::Value>>;
+static std::map<AST::FunctionLiteral*, InOutVec> function_call_cache;
+
 namespace AST {
   llvm::Value* Expression::llvm_value(Context::Value v) {
     assert(type() != Type_   && "Type_ conversion to llvm::Value*");
@@ -267,7 +270,8 @@ namespace AST {
       }
     }
 
-    // TODO Push the type literal table for later use? If not, who owns this?
+    // TODO note that this will be captured if it's the result of a
+    // function call by the cache, but otherwise it's currently leaked
     auto type_lit_ptr = new TypeLiteral;
     type_lit_ptr->decls_ = std::move(decls_in_ctx);
 
@@ -346,24 +350,59 @@ namespace AST {
       assert(lhs_val);
       auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
 
-      Context fn_ctx = ctx.spawn();
+
 
       std::vector<EPtr> arg_vals;
       if (rhs_->is_comma_list()) {
         arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
       } else {
         arg_vals.push_back(rhs_);
-      }
+      }     
 
       assert(arg_vals.size() == fn_ptr->inputs_.size());
+
+      std::vector<Context::Value> ctx_vals;
 
       // Populate the function context with arguments
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         auto rhs_eval = arg_vals[i]->evaluate(ctx);
-        fn_ctx.bind(rhs_eval, fn_ptr->inputs_[i]->declared_identifier());
+        ctx_vals.push_back(rhs_eval);
       }
 
-      return fn_ptr->evaluate(fn_ctx);
+      // For functions that return types, we cache all calls
+      // TODO add possibility for #nocache
+      bool returns_type =
+        (static_cast<Function*>(fn_ptr->type())->return_type() == Type_);
+
+      if (returns_type) {
+        for (const auto& cache_entry : function_call_cache[fn_ptr]) {
+          size_t cache_size = cache_entry.first.size();
+
+          assert(ctx_vals.size() == cache_size);
+          // Because it's a call to a function with that many arguments!
+
+          bool matches = true;
+          for (size_t i = 0; i < cache_size; ++i) {
+            if (cache_entry.first[i] != ctx_vals[i]) {
+              matches = false;
+              break;
+            }
+          }
+
+          if (matches) return cache_entry.second;
+        }
+      }
+ 
+      Context fn_ctx = ctx.spawn();
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs_[i]->declared_identifier());
+      }
+
+      auto return_val = fn_ptr->evaluate(fn_ctx);
+      if (returns_type) {
+        function_call_cache[fn_ptr].emplace_back(ctx_vals, return_val);
+      }
+      return return_val;
 
     } else if (op_ == Operator::Arrow) {
       auto lhs_type = lhs_->evaluate(ctx).as_type;

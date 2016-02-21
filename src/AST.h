@@ -24,7 +24,6 @@ class CondScope;
 class WhileScope;
 class Structure;
 class Enumeration;
-class NSLiteral;
 
 namespace AST {
 #define ENDING = 0
