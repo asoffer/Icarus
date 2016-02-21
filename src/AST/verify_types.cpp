@@ -1,6 +1,7 @@
 #include "AST.h"
 #include "ErrorLog.h"
 #include "Type.h"
+#include "DependencySystem.h"
 #include <sstream>
 
 extern ErrorLog error_log;
@@ -47,50 +48,29 @@ namespace AST {
   void Identifier::verify_types() {
     if (decl_->type_is_inferred()) {
       expr_type_ = decl_->type();
+
+      if (decl_->declared_type()->is_type_literal()) {
+        auto tlit_type_val =
+          static_cast<TypeLiteral*>(decl_->declared_type().get())->type_value_;
+        scope_->context().bind(Context::Value(tlit_type_val), shared_from_this());
+
+      } else if (decl_->declared_type()->is_function_literal()) {
+        auto flit = static_cast<FunctionLiteral*>(decl_->declared_type().get());
+        scope_->context().bind(Context::Value(flit), shared_from_this());
+      }
       assert(expr_type_ && "decl_->type() is nullptr");
 
-      if (expr_type_ == Type_) {
-        auto type_as_ctx_val =
-          decl_->declared_type()->evaluate(scope_->context());
-        auto type_for_binding = type_as_ctx_val.as_type;
-
-        assert(type_for_binding && "type_for_binding is null");
-
-        scope_->context().bind(type_as_ctx_val, shared_from_this());
-        // TODO This is a hacky solution. Clean it up.
-        if (token() == "string") {
-          String = static_cast<Structure*>(type_for_binding);
-        }
-
-        // To do nice printing, we want to replace __anon... with a name. For
-        // now, we just choose the first name that was bound to it.
-        //
-        // TODO come up with a better way to
-        // 1. figure out what name to print
-        // 2. determine if the type chosen hasn't had a name bound to it yet.
-
-        if (type_for_binding->to_string()[0] == '_') {
-          if (type_for_binding->is_enum()) {
-            static_cast<Enumeration*>(type_for_binding)->set_name(token());
-
-          } else if (type_for_binding->is_struct()) {
-            static_cast<Structure*>(type_for_binding)->set_name(token());
-
-          } else {
-            assert(false && "non-enum non-struct starting with '_'");
-          }
-        }
-
-        assert(scope_->context().get(shared_from_this()).as_type
-            && "Bound type was a nullptr");
-      }
     } else {
       expr_type_ = decl_->declared_type()->evaluate(scope_->context()).as_type;
       assert(expr_type_ && "eval with context expr_ptr is nullptr");
-
+      if (expr_type_ == Type_) {
+        scope_->context().bind(
+            Context::Value(TypeVar(shared_from_this())), shared_from_this());
+      }
     }
     assert(expr_type_ && "Expression type is nullptr in Identifier::verify_types()");
   }
+
   void Unop::verify_types() {
     using Language::Operator;
     if (op_ == Operator::Free) {
@@ -174,6 +154,7 @@ namespace AST {
     }
     auto etype = expr_->type();
     if (etype == Type_) {
+      Dependency::traverse_from(Dependency::PtrWithTorV(expr_.get(), false));
       auto etypename = expr_->evaluate(scope_->context()).as_type;
       if (etypename->is_enum()) {
         auto enum_type = static_cast<Enumeration*>(etypename);
@@ -228,6 +209,7 @@ namespace AST {
 
     } else if (op_ == Language::Operator::Call) {
       expr_type_ = Error;
+
       if (lhs_->type()->is_dependent_type()) {
         // TODO treat dependent types as functions
         auto dep_type = static_cast<DependentType*>(lhs_->type());
@@ -361,32 +343,10 @@ namespace AST {
     // TODO if RHS is not a type give a nice message instead of segfaulting
 
     if (decl_type_->is_terminal()) {
-      // May assume it's 
       auto term = std::static_pointer_cast<Terminal>(decl_type_);
       if (term->terminal_type_ == Language::Terminal::Null) {
         error_log.log(line_num(), "Cannot infer the type of `null`.");
       }
-    }
-
-    
-    if (!expr_type_) {
-      std::cout << this << std::endl;
-      std::cout << decl_type_ << std::endl;
-      std::cout << type_is_inferred() << std::endl;
-      std::cout << decl_type_->token() << "!" << std::endl;
-      std::cout << decl_type_->type() << std::endl;
-
-      std::cout << *declared_identifier() << std::endl;
-      std::cout << *declared_type() << std::endl;
-      assert(false && "expr_type_ is null");
-    }
-
-    // TODO fix this hacky solution.
-    // Some stuff like this is done in Identifier::verify_types().
-    // Other stuff is done here.
-    if (expr_type_->time() == Time::compile && expr_type_->is_function()) {
-      scope_->context().bind(Context::Value(
-            declared_type().get()), declared_identifier());
     }
 
     assert(expr_type_ && "decl expr is nullptr");
@@ -504,6 +464,7 @@ namespace AST {
 
   void EnumLiteral::verify_types() {
     static size_t anon_enum_counter = 0;
+    expr_type_ = Type_;
     type_value_ = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
     ++anon_enum_counter;
   }

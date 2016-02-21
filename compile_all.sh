@@ -49,3 +49,4 @@ bin/icarus programs/uint_literal_test.ic
 bin/icarus programs/void_return_test.ic
 bin/icarus programs/water_state.ic
 bin/icarus programs/while_break.ic
+bin/icarus programs/wrapper.ic

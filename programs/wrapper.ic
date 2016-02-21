@@ -1,0 +1,17 @@
+Int := wrapper(int)
+
+main := void -> void {
+  x: Int
+  x.value = 3
+  y: wrapper(char)
+  y.value = ascii(65u)
+  print y.value
+  y.value = '\n'
+  print y.value
+}
+
+wrapper := (T: type) -> type {
+  return struct {
+    value: T
+  }
+}

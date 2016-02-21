@@ -25,7 +25,7 @@ class Context {
       Type*            as_type;
       AST::Expression* as_expr;
 
-      Value(std::nullptr_t) { as_null = nullptr; }
+      Value(std::nullptr_t ptr = nullptr) { as_null = nullptr; }
       explicit Value(             bool b) { as_bool = b; }
       explicit Value(             char c) { as_char = c; }
       explicit Value(              int n) { as_int  = n; }
@@ -33,7 +33,6 @@ class Context {
       explicit Value(           size_t n) { as_uint = n; }
       explicit Value(            Type* t) { as_type = t; }
       explicit Value( AST::Expression* e) { as_expr = e; }
-
     };
 
     void set_parent(Context* parent_ctx) { parent_ = parent_ctx; }
@@ -48,6 +47,7 @@ class Context {
     Context(Context* parent = nullptr) :
       ret_val_(nullptr), has_ret_(false), parent_(parent) {
     }
+    size_t bindsize() const { return bindings_.size(); }
 
   private:
     Value ret_val_;

@@ -24,7 +24,7 @@ namespace AST {
   FunctionLiteral::FunctionLiteral() :
     fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
 
-  TypeLiteral::TypeLiteral() : type_scope_(new TypeScope), type_value_(nullptr) {}
+  TypeLiteral::TypeLiteral() : type_value_(nullptr), type_scope_(new TypeScope) {}
 
   // TODO Will TypeScope suffice?
   EnumLiteral::EnumLiteral() : enum_scope_(new TypeScope), type_value_(nullptr) {}
@@ -33,8 +33,15 @@ namespace AST {
 
   // TODO put this somewhere else
   void TypeLiteral::build_llvm_internals() {
+    assert(type_value_);
+
+    for (const auto& decl : decls_) {
+      if (decl->type()->has_variables()) return;
+    }
+
     for (const auto& decl : decls_) {
       if (decl->type_is_inferred()) {
+        assert(false);
         // TODO
       } else {
         auto field = decl->declared_type()->evaluate(Scope::Global->context()).as_type;

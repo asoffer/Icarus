@@ -37,6 +37,7 @@ class Function;
 class Enumeration;
 class Structure;
 class DependentType;
+class TypeVariable;
 
 namespace TypeSystem {
   void initialize();
@@ -70,6 +71,7 @@ extern Enumeration* Enum(const std::string& name,
 extern Structure* Struct(const std::string& name,
     AST::TypeLiteral* expr = nullptr);
 extern DependentType* DepType(std::function<Type*(Type*)> fn);
+extern TypeVariable* TypeVar(IdPtr id);
 
 #include "typedefs.h"
 
@@ -84,7 +86,6 @@ extern DependentType* DepType(std::function<Type*(Type*)> fn);
 #define BASIC_METHODS                                                     \
 virtual llvm::Function* assign() ENDING;                                  \
 virtual std::string to_string() const ENDING;                             \
-virtual bool has_variables() const ENDING;                                \
 virtual Time::Eval time() const ENDING;                                   \
 virtual bool add_llvm_input(std::vector<llvm::Type*>& llvm_in) ENDING;    \
 virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
@@ -100,7 +101,7 @@ BASIC_METHODS
 
 class Type {
   public:
-    Type() : assign_fn_(nullptr) {}
+    Type() : assign_fn_(nullptr), has_vars_(false) {}
     virtual ~Type() {}
     BASIC_METHODS;
 
@@ -112,6 +113,7 @@ class Type {
     virtual operator llvm::Type* () const { return llvm_type_; }
 
     size_t bytes() const;
+    bool has_variables() const { return has_vars_; }
 
     // Note: this one is special. It functions identically to the rest, but
     // it's special in that it will return nullptr if you haven't imported the
@@ -141,12 +143,14 @@ class Type {
     virtual bool is_struct()          const { return false; }
     virtual bool is_enum()            const { return false; }
     virtual bool is_dependent_type()  const { return false; }
+    virtual bool is_type_variable()   const { return false; }
 
     llvm::Type* llvm() const { return llvm_type_; }
 
   protected:
     llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
+    bool has_vars_;
 };
 
 
@@ -337,6 +341,7 @@ class DependentType : public Type {
 #include "config/binary_operators.conf"
 
     DependentType(std::function<Type*(Type*)> fn) : fn_(fn) {}
+
     Type* operator()(Type* t) const { return fn_(t); }
 
   private:
@@ -349,7 +354,9 @@ class TypeVariable : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    TypeVariable(IdPtr id) : id_(id) {}
+    TypeVariable(IdPtr id) : id_(id) {
+      has_vars_ = true;
+    }
 
   private:
     IdPtr id_;

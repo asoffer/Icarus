@@ -80,7 +80,6 @@ int main(int argc, char *argv[]) {
 
   // Initialize the global scope
   Scope::Global = new GlobalScope();
-
   int arg_num = 1;  // iterator over argv
   int file_index = -1;  // Index of where file name is in argv
   while (arg_num < argc) {

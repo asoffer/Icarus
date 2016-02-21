@@ -54,17 +54,26 @@ Array::Array(Type* t) :
 
   std::vector<llvm::Type*> init_args(dim_ + 1, *Uint);
   init_args[0] = *Ptr(this);
+  has_vars_ = type_->has_variables();
 }
 
-Tuple::Tuple(const std::vector<Type*>& types) : entry_types_(types) {}
+Tuple::Tuple(const std::vector<Type*>& types) : entry_types_(types) {
+  for (const auto& entry : entry_types_) {
+    if (has_vars_) break;
+    has_vars_ = entry->has_variables();
+  }
+}
 
 Pointer::Pointer(Type* t) : pointee_type_(t) {
   llvm_type_ = llvm::PointerType::getUnqual(*pointee_type());
+  has_vars_ = pointee_type_->has_variables();
 }
 
 Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
   std::vector<llvm::Type*> llvm_in;
   llvm::Type* llvm_out = *Void;
+
+  has_vars_ = input_type_->has_variables() || output_type_->has_variables();
 
   if (input_type_->is_tuple()) {
     auto in_tup = static_cast<Tuple*>(input_type_);
@@ -148,6 +157,11 @@ Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
   auto struct_type = llvm::StructType::create(global_module->getContext());
   struct_type->setName(name_);
   llvm_type_ = struct_type;
+
+  for (const auto& field : fields_) {
+    if (has_vars_) break;
+    has_vars_ = field.second->has_variables();
+  }
 }
 
 Type* Structure::field(const std::string& name) const {

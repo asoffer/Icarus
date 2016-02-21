@@ -98,7 +98,7 @@ namespace AST {
       virtual bool is_token_node()       const { return false; }
 
       Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
-        : type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
+        : scope_(nullptr), type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
 
       virtual ~Node(){}
 
@@ -108,8 +108,9 @@ namespace AST {
         return os << node.to_string(0);
       }
 
-    protected:
       Scope* scope_;
+
+    protected:
       Language::NodeType type_;
       std::string token_;
       size_t line_num_;
@@ -367,9 +368,6 @@ namespace AST {
 
       bool type_is_inferred() const { return infer_type_; } 
 
-
-      Scope* scope_;
-
     private:
       // The identifier being declared
       IdPtr id_;
@@ -517,9 +515,10 @@ namespace AST {
       void build_llvm_internals();
       friend class Declaration;
 
-    private:
-      Scope* type_scope_;
       Structure* type_value_;
+
+    private:
+      Scope* type_scope_;  // TODO replace with general scope_
       std::vector<DeclPtr> decls_;
   };
 

@@ -33,10 +33,11 @@ namespace AST {
       return Context::Value(TypeSystem::get(token()));
 
     } else {
-      auto val = ctx.get(shared_from_this());
-      if (val.as_type) return val;
 
-      return Context::Value(TypeVariable(shared_from_this()));
+      auto val = ctx.get(shared_from_this());
+      assert(val.as_type && "Unknown value for identifier in this scope");
+
+      return val;
     }
   }
 
@@ -70,6 +71,7 @@ namespace AST {
         // TODO better error message
         error_log.log(line_num(), "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
       }
+
       return Context::Value(Ptr(expr_->evaluate(ctx).as_type));
     }
 
@@ -230,8 +232,6 @@ namespace AST {
   Context::Value TypeLiteral::evaluate(Context& ctx) {
     static size_t anon_type_counter = 0;
     // TODO just make the type no matter what?
-    std::cout << "!! " << type_value_ << std::endl;
-    std::cout << "$$ " << *type_value_ << std::endl;
     bool dep_type_flag = false;
     for (const auto& decl : decls_) {
       if (decl->type()->has_variables()) {
@@ -281,7 +281,54 @@ namespace AST {
   }
 
   Context::Value Assignment::evaluate(Context&)  { return nullptr; }
-  Context::Value Declaration::evaluate(Context&) { return nullptr; }
+
+  Context::Value Declaration::evaluate(Context& ctx) {
+    if (infer_type_) {
+      if (declared_type()->type()->is_function()) {
+        ctx.bind(Context::Value(declared_type().get()), id_);
+      } else {
+        auto type_as_ctx_val = declared_type()->evaluate(ctx);
+        ctx.bind(type_as_ctx_val, id_);
+
+        if (declared_type()->is_type_literal()) {
+          assert(type_as_ctx_val.as_type->is_struct());
+          static_cast<Structure*>(type_as_ctx_val.as_type)->set_name(identifier_string());
+
+        } else if (declared_type()->is_enum_literal()) {
+          assert(type_as_ctx_val.as_type->is_enum());
+          static_cast<Enumeration*>(type_as_ctx_val.as_type)->set_name(identifier_string());
+        } 
+      }
+    } else {
+      if (declared_type()->type() == Type_) {
+        ctx.bind(Context::Value(TypeVar(id_)), id_);
+      } else if (declared_type()->type()->is_type_variable()) {
+        // TODO Should we just skip this?
+      } else { /* There's nothing to do */ }
+    }
+
+/*
+      // To do nice printing, we want to replace __anon... with a name. For
+      // now, we just choose the first name that was bound to it.
+      //
+      // TODO come up with a better way to
+      // 1. figure out what name to print
+      // 2. determine if the type chosen hasn't had a name bound to it yet.
+      if (type_for_binding->to_string()[0] == '_') {
+        if (type_for_binding->is_enum()) {
+          static_cast<Enumeration*>(type_for_binding)->set_name(token());
+
+        } else if (type_for_binding->is_struct()) {
+          static_cast<Structure*>(type_for_binding)->set_name(token());
+
+        } else {
+          assert(false && "non-enum non-struct starting with '_'");
+        }
+      }
+      assert(scope_->context().get(id_).as_type && "Bound type was a nullptr");
+*/
+    return nullptr;
+  }
 
   Context::Value EnumLiteral::evaluate(Context&) {
     return Context::Value(type_value_);
@@ -294,31 +341,29 @@ namespace AST {
   Context::Value Binop::evaluate(Context& ctx) {
     using Language::Operator;
     if (op_ == Operator::Call) {
-      if (lhs_->type()->is_function()) {
-        auto lhs_val = lhs_->evaluate(ctx).as_expr;
-        auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
-        Context fn_ctx = lhs_->scope_->context().spawn();
+      assert(lhs_->type()->is_function());
+      auto lhs_val = lhs_->evaluate(ctx).as_expr;
+      assert(lhs_val);
+      auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
 
-        std::vector<EPtr> arg_vals;
-        if (rhs_->is_comma_list()) {
-          arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
-        } else {
-          arg_vals = { rhs_ };
-        }
+      Context fn_ctx = ctx.spawn();
 
-        // TODO nice error message if they are not? Shouldn't type verification have
-        // already checked this?
-        assert(arg_vals.size() == fn_ptr->inputs_.size()
-            && "wrong number of arguments");
-
-        // Populate the function context with arguments
-        for (size_t i = 0; i < arg_vals.size(); ++i) {
-          auto rhs_eval = arg_vals[i]->evaluate(ctx);
-          fn_ctx.bind(rhs_eval, fn_ptr->inputs_[i]->declared_identifier());
-        }
-
-        return fn_ptr->evaluate(fn_ctx);
+      std::vector<EPtr> arg_vals;
+      if (rhs_->is_comma_list()) {
+        arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
+      } else {
+        arg_vals.push_back(rhs_);
       }
+
+      assert(arg_vals.size() == fn_ptr->inputs_.size());
+
+      // Populate the function context with arguments
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        auto rhs_eval = arg_vals[i]->evaluate(ctx);
+        fn_ctx.bind(rhs_eval, fn_ptr->inputs_[i]->declared_identifier());
+      }
+
+      return fn_ptr->evaluate(fn_ctx);
 
     } else if (op_ == Operator::Arrow) {
       auto lhs_type = lhs_->evaluate(ctx).as_type;

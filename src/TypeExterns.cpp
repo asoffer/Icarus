@@ -276,3 +276,12 @@ DependentType* DepType(std::function<Type*(Type*)> fn) {
   dep_types_.push_back(dep_type);
   return dep_type;
 }
+
+TypeVariable* TypeVar(IdPtr id) {
+  // These won't be leaked, but they aren't uniqued.
+  static std::map<IdPtr, TypeVariable*> vars_;
+  auto iter = vars_.find(id);
+  if (iter != vars_.end()) return iter->second;
+
+  return vars_[id] = new TypeVariable(id);
+}

@@ -30,7 +30,6 @@ namespace AST {
 
   void Unop::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::value_type(this, expr_.get());
     Dependency::type_type(this, expr_.get());
     if (op_ == Language::Operator::Return) {
       Dependency::value_value(this, expr_.get());
@@ -91,6 +90,7 @@ namespace AST {
       Dependency::value_value(this, decl_type_.get());
       Dependency::value_type(this, this);
     } else {
+      Dependency::value_type(this, this);
       Dependency::type_value(this, decl_type_.get());
     }
 
@@ -117,7 +117,8 @@ namespace AST {
       Dependency::type_type(this, in.get());
     }
 
-    Dependency::type_type(this, return_type_.get());
+     Dependency::type_type(this, return_type_.get());
+     Dependency::type_value(this, return_type_.get());
 
     for (const auto& in : inputs_) {
       in->record_dependencies();

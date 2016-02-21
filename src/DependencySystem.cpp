@@ -15,6 +15,7 @@ namespace debug {
   extern bool dependency_graph;
 
   // debug info local to translation unit:
+  static bool last_torv = false;
   static AST::Node* last_ptr = nullptr;
 }  // namespace debug
 
@@ -74,7 +75,6 @@ namespace Dependency {
     torv_stack.push_back(pt.torv_);
 
     while (!node_stack.empty()) {
-      // Ensure stacks match up
       assert(node_stack.size() == torv_stack.size() && "Stacks sizes don't match!");
 
       auto ptr = node_stack.back();
@@ -91,6 +91,13 @@ namespace Dependency {
       if ((already_seen_ AT(ptr) & seen_flag) != 0) {
         node_stack.pop_back();
         torv_stack.pop_back();
+
+        if (debug::dependency_graph) {
+          debug::last_ptr = ptr;
+          debug::last_torv = torv;
+          Dependency::write_graphviz();
+          std::cin.ignore(1);
+        }
 
         if (torv) {
           if (ptr->is_unop()) {
@@ -109,7 +116,8 @@ namespace Dependency {
               }
             }
           } else if (ptr->is_access()) {
-            auto t = static_cast<AST::Access*>(ptr)->expr()->type();
+            auto access_ptr = static_cast<AST::Access*>(ptr);
+            auto t = access_ptr->expr()->type();
             while (t->is_pointer()) t = static_cast<Pointer*>(t)->pointee_type();
             if (t->is_struct()) {
               auto struct_type = static_cast<Structure*>(t);
@@ -119,19 +127,22 @@ namespace Dependency {
             }
           }
 
-          if (debug::dependency_graph) {
-            debug::last_ptr = ptr;
-            Dependency::write_graphviz();
-            std::cin.ignore(1);
-          }
- 
           ptr->verify_types();
 
-          if (debug::dependency_graph) {
-            Dependency::write_graphviz();
-            std::cin.ignore(1);
+        } else {
+          if (ptr->is_declaration()
+            && static_cast<AST::Declaration*>(ptr)->type() == Type_) {
+            ptr->evaluate(ptr->scope_->context());
           }
+
+          if (ptr->is_type_literal()) {
+            // TODO move to typeliteral->evaluate?
+            auto struct_ptr = static_cast<AST::TypeLiteral*>(ptr);
+            struct_ptr->build_llvm_internals();
+          }
+
         }
+
         // If it's an identifier, push it into the declarations for the
         // appropriate scope, so they can be allocated correctly
         if (torv && ptr->is_identifier()) {
@@ -139,11 +150,7 @@ namespace Dependency {
           id_ptr->decl_->scope_->ordered_decls_.push_back(id_ptr->decl_);
         }
 
-        if (!torv && ptr->is_type_literal()) {
-          auto struct_ptr = static_cast<AST::TypeLiteral*>(ptr);
-          struct_ptr->build_llvm_internals();
-        }
- 
+
         already_seen_ AT(ptr) = static_cast<Flag>((seen_flag << 1) | already_seen_ AT(ptr)); // Mark it as done
         continue;
       }
@@ -220,6 +227,7 @@ namespace Dependency {
     std::stringstream output;
     for (size_t i = 0; i < str.size(); ++i) {
       if (str[i] == ' ') output << "\\ ";
+      else if (str[i] == '\n') output << "\\\\n";
       else if (str[i] == '<') output << "&lt;";
       else if (str[i] == '>') output << "&gt;";
       else if (str[i] == '&') output << "&amp;";
@@ -236,14 +244,10 @@ namespace Dependency {
       << "\t(" << x.ptr_->line_num() << ")|"
       << escape(x.ptr_->is_expression()
           ? static_cast<AST::Expression*>(x.ptr_)->type()->to_string() : "---")
-      << "}\", fillcolor=\"";
-    if (x.ptr_ == debug::last_ptr && x.torv_) {
-      output << "#ff88aa";
-    } else {
-      output << "#88" << (x.torv_ ? "ffaa" : "aaff");
-    }
-    output
-      << "\" color=\"" << (x.ptr_->time() == Time::compile ? "red" : "black")
+      << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")
+      << "\" color=\""
+      << (x.ptr_ == debug::last_ptr && x.torv_ == debug::last_torv
+       ? "red" : "black")
       << "\" penwidth=\"2.0\" shape=\"Mrecord\", style=\"filled\"];\n";
     return output.str();
   }
