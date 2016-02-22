@@ -256,7 +256,7 @@ namespace AST {
     // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num = nodes[0]->line_num;
-    term_ptr->terminal_type_ = term_type;
+    term_ptr->terminal_type = term_type;
     term_ptr->type = t;
     term_ptr->token_ = nodes[0]->token();
     term_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);

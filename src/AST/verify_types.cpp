@@ -33,7 +33,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
   void Terminal::verify_types() {
     using Language::Terminal;
-    switch (terminal_type_) {
+    switch (terminal_type) {
       case Terminal::ASCII:         type = Func(Uint, Char);  break;
       case Terminal::Return:        type = Void;              break;
       case Terminal::Else:          type = Bool;              break;
@@ -360,7 +360,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
     if (decl_type_->is_terminal()) {
       auto term = std::static_pointer_cast<Terminal>(decl_type_);
-      if (term->terminal_type_ == Language::Terminal::Null) {
+      if (term->terminal_type == Language::Terminal::Null) {
         error_log.log(line_num, "Cannot infer the type of `null`.");
       }
     }
@@ -432,7 +432,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
     if (op == Language::Operator::Assign) {
       if (rhs->is_terminal()) {
         auto term = std::static_pointer_cast<Terminal>(rhs);
-        if (term->terminal_type_ == Language::Terminal::Null) {
+        if (term->terminal_type == Language::Terminal::Null) {
           term->type = lhs->type;
           type = Void;
           return;

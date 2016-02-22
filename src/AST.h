@@ -228,46 +228,39 @@ namespace AST {
     EPtr data_type;
   };
 
-  class Terminal : public Expression {
-    public:
-      EXPR_FNS(Terminal, terminal);
+  struct Terminal : public Expression {
+    EXPR_FNS(Terminal, terminal);
 
-      friend class Assignment;
-      friend class Declaration;
+    static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
+    static NPtr build_type_literal(NPtrVec&& nodes);
+    static NPtr build_string_literal(NPtrVec&& nodes);
+    static NPtr build_true(NPtrVec&& nodes);
+    static NPtr build_false(NPtrVec&& nodes);
+    static NPtr build_null(NPtrVec&& nodes);
+    static NPtr build_int_literal(NPtrVec&& nodes);
+    static NPtr build_uint_literal(NPtrVec&& nodes);
+    static NPtr build_real_literal(NPtrVec&& nodes);
+    static NPtr build_char_literal(NPtrVec&& nodes);
+    static NPtr build_void_return(NPtrVec&& nodes);
+    static NPtr build_ASCII(NPtrVec&& nodes);
+    static NPtr build_alloc(NPtrVec&& nodes);
 
-      static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
-      static NPtr build_type_literal(NPtrVec&& nodes);
-      static NPtr build_string_literal(NPtrVec&& nodes);
-      static NPtr build_true(NPtrVec&& nodes);
-      static NPtr build_false(NPtrVec&& nodes);
-      static NPtr build_null(NPtrVec&& nodes);
-      static NPtr build_int_literal(NPtrVec&& nodes);
-      static NPtr build_uint_literal(NPtrVec&& nodes);
-      static NPtr build_real_literal(NPtrVec&& nodes);
-      static NPtr build_char_literal(NPtrVec&& nodes);
-      static NPtr build_void_return(NPtrVec&& nodes);
-      static NPtr build_ASCII(NPtrVec&& nodes);
-      static NPtr build_alloc(NPtrVec&& nodes);
-
-    private:
-      Language::Terminal terminal_type_;
+    Language::Terminal terminal_type;
   };
 
-  class Assignment : public Binop {
-    public:
-      Assignment() {}
-      virtual ~Assignment(){}
+  struct Assignment : public Binop {
+    Assignment() {}
+    virtual ~Assignment(){}
 
-      static NPtr build(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes);
 
-      virtual std::string to_string(size_t n) const;
-      virtual void verify_types();
+    virtual std::string to_string(size_t n) const;
+    virtual void verify_types();
 
-      virtual llvm::Value* generate_code(Scope* scope);
-      virtual llvm::Value* generate_lvalue(Scope* scope);
-      virtual Context::Value evaluate(Context& ctx);
-      virtual std::string graphviz_label() const;
-
+    virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_lvalue(Scope* scope);
+    virtual Context::Value evaluate(Context& ctx);
+    virtual std::string graphviz_label() const;
   };
 
   class Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
@@ -292,7 +285,7 @@ namespace AST {
   public:
     EXPR_FNS(Declaration, declaration);
 
-    friend class Assignment;
+    friend struct Assignment;
     friend class ::Scope;
     friend class TypeLiteral;
 

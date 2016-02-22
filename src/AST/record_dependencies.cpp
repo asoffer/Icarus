@@ -10,7 +10,7 @@ namespace debug {
 namespace AST {
   void Terminal::record_dependencies() {
     Dependency::value_type(this, this);
-    if (terminal_type_ == Language::Terminal::StringLiteral) {
+    if (terminal_type == Language::Terminal::StringLiteral) {
       Dependency::type_value(this, Scope::Global->identifier("string").get());
     }
   }

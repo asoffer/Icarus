@@ -68,72 +68,69 @@ namespace AST {
 
   // Invariant:
   // Only returns nullptr if the expression type is void or a type
-  llvm::Value* Terminal::generate_code(Scope* scope) {
-    //TODO remove dependence on token() altogether
+  llvm::Value *Terminal::generate_code(Scope *scope) {
+    // TODO remove dependence on token() altogether
 
     using Language::Terminal;
-    switch (terminal_type_) {
-      case Terminal::Null:
-        // null_pointer() automatically adds Ptr() so we need to remove it here
-        // TODO is there a better API for this? Almost certainly yes.
-        assert(type->is_pointer() && "Null pointer of non-pointer type ");
-        return data::null_pointer(
-            static_cast<Pointer*>(type)->pointee_type());
-      case Terminal::ASCII:
-        return builtin::ascii();
-      case Terminal::True:
-        return data::const_true();
-      case Terminal::False:
-        return data::const_false();
-      case Terminal::Else:
-        // Because in the case where else represents a terminal, it's
-        // value is true
-        return data::const_true();
-      case Terminal::Char:
-        return data::const_char(token()[0]);
-      case Terminal::Int:
-        return data::const_int(std::stoi(token()));
-      case Terminal::Real:
-        return data::const_real(std::stod(token()));
-      case Terminal::UInt:
-        return data::const_uint(std::stoul(token()));
-      case Terminal::Alloc:
-        return cstdlib::malloc();
-      case Terminal::StringLiteral:
-        {
-          auto str = data::global_string(scope->builder(), token());
-          auto len = data::const_uint(token().size());
+    switch (terminal_type) {
+    case Terminal::Null:
+      // null_pointer() automatically adds Ptr() so we need to remove it here
+      // TODO is there a better API for this? Almost certainly yes.
+      assert(type->is_pointer() && "Null pointer of non-pointer type ");
+      return data::null_pointer(static_cast<Pointer *>(type)->pointee_type());
+    case Terminal::ASCII:
+      return builtin::ascii();
+    case Terminal::True:
+      return data::const_true();
+    case Terminal::False:
+      return data::const_false();
+    case Terminal::Else:
+      // Because in the case where else represents a terminal, it's
+      // value is true
+      return data::const_true();
+    case Terminal::Char:
+      return data::const_char(token()[0]);
+    case Terminal::Int:
+      return data::const_int(std::stoi(token()));
+    case Terminal::Real:
+      return data::const_real(std::stod(token()));
+    case Terminal::UInt:
+      return data::const_uint(std::stoul(token()));
+    case Terminal::Alloc:
+      return cstdlib::malloc();
+    case Terminal::StringLiteral: {
+      auto str = data::global_string(scope->builder(), token());
+      auto len = data::const_uint(token().size());
 
-          auto str_alloc = scope->builder().CreateAlloca(*type);
+      auto str_alloc = scope->builder().CreateAlloca(*type);
 
-          // TODO use field_num(). This gets the length
-          auto len_ptr = scope->builder().CreateGEP(str_alloc,
-              { data::const_uint(0), data::const_uint(1) });
-          scope->builder().CreateStore(len, len_ptr);
+      // TODO use field_num(). This gets the length
+      auto len_ptr = scope->builder().CreateGEP(
+          str_alloc, {data::const_uint(0), data::const_uint(1)});
+      scope->builder().CreateStore(len, len_ptr);
 
-          // TODO use field_num(). This gets the char array
-          auto char_array_ptr = scope->builder().CreateGEP(str_alloc,
-              { data::const_uint(0), data::const_uint(0) });
+      // TODO use field_num(). This gets the char array
+      auto char_array_ptr = scope->builder().CreateGEP(
+          str_alloc, {data::const_uint(0), data::const_uint(0)});
 
-          // NOTE: no need to uninitialize because we never initialized it.
-          auto char_ptr = Arr(Char)->initialize_literal(
-              scope->builder(), len);
+      // NOTE: no need to uninitialize because we never initialized it.
+      auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), len);
 
-          scope->builder().CreateStore(char_ptr, char_array_ptr);
-          scope->builder().CreateCall(cstdlib::memcpy(), { char_ptr, str, len });
+      scope->builder().CreateStore(char_ptr, char_array_ptr);
+      scope->builder().CreateCall(cstdlib::memcpy(), {char_ptr, str, len});
 
-          return str_alloc;
-        }
-      case Terminal::Type:
-        return nullptr;
-      case Terminal::Return:
-        return nullptr;
+      return str_alloc;
+    }
+    case Terminal::Type:
+      return nullptr;
+    case Terminal::Return:
+      return nullptr;
     }
   }
 
   // Invariant:
   // Only returns nullptr if the expression type is void or a type
-  llvm::Value* Unop::generate_code(Scope* scope) {
+  llvm::Value *Unop::generate_code(Scope *scope) {
     using Language::Operator;
     // Cases where we don't want to generate code for the node
     if (op == Operator::And)
@@ -142,95 +139,92 @@ namespace AST {
       // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
       // TODO use corrent scope
 
-      auto val = reinterpret_cast<llvm::Value*>(
+      auto val = reinterpret_cast<llvm::Value *>(
           operand->evaluate(scope->context()).as_type);
       operand->type->call_print(scope->builder(), val);
       return nullptr;
     }
 
-    llvm::Value* val = operand->generate_code(scope);
-    llvm::IRBuilder<>& bldr = scope->builder();
-    switch (op) { 
-      case Operator::Sub:
-        return operand->type->call_neg(bldr, val);
+    llvm::Value *val = operand->generate_code(scope);
+    llvm::IRBuilder<> &bldr = scope->builder();
+    switch (op) {
+    case Operator::Sub:
+      return operand->type->call_neg(bldr, val);
 
-      case Operator::Not:
-        return operand->type->call_not(bldr, val);
-      case Operator::Free:
-        {
-          bldr.CreateCall(cstdlib::free(), { bldr.CreateBitCast(val, *RawPtr) });
-          // Reset pointer to null
-          auto ptee_type = static_cast<Pointer*>(operand->type)->pointee_type();
-          bldr.CreateStore(data::null_pointer(ptee_type),
-              operand->generate_lvalue(scope));
-        return nullptr;
-        }
-      case Operator::Return:
-        scope->make_return(val);
-        return nullptr;
+    case Operator::Not:
+      return operand->type->call_not(bldr, val);
+    case Operator::Free: {
+      bldr.CreateCall(cstdlib::free(), {bldr.CreateBitCast(val, *RawPtr)});
+      // Reset pointer to null
+      auto ptee_type = static_cast<Pointer *>(operand->type)->pointee_type();
+      bldr.CreateStore(data::null_pointer(ptee_type),
+                       operand->generate_lvalue(scope));
+      return nullptr;
+    }
+    case Operator::Return:
+      scope->make_return(val);
+      return nullptr;
 
-      case Operator::At:
-        if (type->is_struct()) {
-          return val;
-        } else {
-          return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
-        }
+    case Operator::At:
+      if (type->is_struct()) {
+        return val;
+      } else {
+        return bldr.CreateLoad(bldr.CreateGEP(val, {data::const_uint(0)}));
+      }
 
-      case Operator::Call:
-        {
-          auto fn_type = static_cast<Function*>(operand->type);
-          if (fn_type->return_type()->is_struct()) {
-            // TODO move this outside of any potential loops
-            auto local_ret = scope->builder().CreateAlloca(
-                *fn_type->return_type());
+    case Operator::Call: {
+      auto fn_type = static_cast<Function *>(operand->type);
+      if (fn_type->return_type()->is_struct()) {
+        // TODO move this outside of any potential loops
+        auto local_ret = scope->builder().CreateAlloca(*fn_type->return_type());
 
-            scope->builder().CreateCall(static_cast<llvm::Function*>(val), { local_ret });
-            return local_ret;
+        scope->builder().CreateCall(static_cast<llvm::Function *>(val),
+                                    {local_ret});
+        return local_ret;
 
-          } else {
-            return scope->builder().CreateCall(static_cast<llvm::Function*>(val));
-          }
-        }
-      case Operator::Print:
-        operand->type->call_print(scope->builder(), operand->type->is_struct()
-            ? struct_memcpy(operand->type, val, scope->builder())
-            : val);
-        return nullptr;
+      } else {
+        return scope->builder().CreateCall(static_cast<llvm::Function *>(val));
+      }
+    }
+    case Operator::Print:
+      operand->type->call_print(
+          scope->builder(),
+          operand->type->is_struct()
+              ? struct_memcpy(operand->type, val, scope->builder())
+              : val);
+      return nullptr;
 
-      default:
-        return nullptr;
+    default:
+      return nullptr;
     }
   }
 
-  llvm::Value* Access::generate_code(Scope* scope) {
+  llvm::Value *Access::generate_code(Scope *scope) {
     auto etype = operand->type;
     if (etype == Type_) {
-      auto expr_as_type =
-        operand->evaluate(scope->context()).as_type;
+      auto expr_as_type = operand->evaluate(scope->context()).as_type;
       if (expr_as_type->is_enum()) {
-        auto enum_type = static_cast<Enumeration*>(expr_as_type);
+        auto enum_type = static_cast<Enumeration *>(expr_as_type);
         return enum_type->get_value(member_name);
       }
     }
 
     auto eval = operand->generate_code(scope);
     while (etype->is_pointer()) {
-      etype = static_cast<Pointer*>(etype)->pointee_type();
+      etype = static_cast<Pointer *>(etype)->pointee_type();
       if (!etype->is_struct()) {
         eval = scope->builder().CreateLoad(eval);
       }
     }
 
-    auto struct_type = static_cast<Structure*>(etype);
+    auto struct_type = static_cast<Structure *>(etype);
 
-    auto retval = scope->builder().CreateGEP(eval,
-        { data::const_uint(0), struct_type->field_num(member_name) });
-    return (type->is_struct())
-      ? retval
-      : scope->builder().CreateLoad(retval);
+    auto retval = scope->builder().CreateGEP(
+        eval, {data::const_uint(0), struct_type->field_num(member_name)});
+    return (type->is_struct()) ? retval : scope->builder().CreateLoad(retval);
   }
 
-  llvm::Value* Binop::generate_code(Scope* scope) {
+  llvm::Value *Binop::generate_code(Scope *scope) {
     if (time() == Time::compile) {
       return llvm_value(evaluate(scope->context()));
     }
@@ -238,67 +232,73 @@ namespace AST {
     using Language::Operator;
     if (op == Operator::Index) {
       return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
-
     }
 
     auto lhs_val = lhs->generate_code(scope);
-    if (lhs_val == nullptr) return nullptr;
+    if (lhs_val == nullptr)
+      return nullptr;
 
     switch (op) {
-      case Operator::Cast:
-        return lhs->type->call_cast(scope->builder(), lhs_val, 
-            rhs->evaluate(scope->context()).as_type);
+    case Operator::Cast:
+      return lhs->type->call_cast(scope->builder(), lhs_val,
+                                  rhs->evaluate(scope->context()).as_type);
 
-      case Operator::Call:
-        if (lhs->type->is_function()) {
-          std::vector<llvm::Value*> arg_vals;
-          if (rhs->is_comma_list()) {
-            auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs);
-            arg_vals.resize(arg_chainop->exprs.size(), nullptr);
-            size_t i = 0;
-            for (const auto& expr : arg_chainop->exprs) { 
-              arg_vals[i] = expr->generate_code(scope);
-              if (arg_vals[i] == nullptr) return nullptr;
+    case Operator::Call:
+      if (lhs->type->is_function()) {
+        std::vector<llvm::Value *> arg_vals;
+        if (rhs->is_comma_list()) {
+          auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs);
+          arg_vals.resize(arg_chainop->exprs.size(), nullptr);
+          size_t i = 0;
+          for (const auto &expr : arg_chainop->exprs) {
+            arg_vals[i] = expr->generate_code(scope);
+            if (arg_vals[i] == nullptr)
+              return nullptr;
 
-              if (expr->type->is_struct()) {
-                arg_vals[i] =
+            if (expr->type->is_struct()) {
+              arg_vals[i] =
                   struct_memcpy(expr->type, arg_vals[i], scope->builder());
-              }
-
-              ++i;
             }
 
-          } else {
-            auto rhs_val = rhs->generate_code(scope);
-            if (rhs_val == nullptr) return nullptr;
-
-            if (rhs->type->is_struct()) {
-              // TODO be sure to allocate this ahead of all loops and reuse it when possible
-              rhs_val = struct_memcpy(rhs->type, rhs_val, scope->builder());
-            } 
-
-            arg_vals = { rhs_val };
+            ++i;
           }
 
-          if (type == Void) {
-            scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
+        } else {
+          auto rhs_val = rhs->generate_code(scope);
+          if (rhs_val == nullptr)
             return nullptr;
 
-          } else {
-            return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
+          if (rhs->type->is_struct()) {
+            // TODO be sure to allocate this ahead of all loops and reuse it
+            // when possible
+            rhs_val = struct_memcpy(rhs->type, rhs_val, scope->builder());
           }
-        } else if (lhs->type->is_dependent_type()) {
-          // TODO make this generic. right now dependent_type implise alloc(...)
-          auto t = rhs->evaluate(scope->context()).as_type;
-          auto alloc_ptr = scope->builder().CreateCall(
-              lhs_val, { data::const_uint(t->bytes()) });
-          return scope->builder().CreateBitCast(alloc_ptr, *type);
+
+          arg_vals = {rhs_val};
         }
-      default:;
+
+        if (type == Void) {
+          scope->builder().CreateCall(static_cast<llvm::Function *>(lhs_val),
+                                      arg_vals);
+          return nullptr;
+
+        } else {
+          return scope->builder().CreateCall(
+              static_cast<llvm::Function *>(lhs_val), arg_vals, "calltmp");
+        }
+      } else if (lhs->type->is_dependent_type()) {
+        // TODO make this generic. right now dependent_type implise alloc(...)
+        auto t = rhs->evaluate(scope->context()).as_type;
+        auto alloc_ptr = scope->builder().CreateCall(
+            lhs_val, {data::const_uint(t->bytes())});
+        return scope->builder().CreateBitCast(alloc_ptr, *type);
+      }
+    default:;
     }
 
     auto rhs_val = rhs->generate_code(scope);
-    if (rhs_val == nullptr) return nullptr;
+    if (rhs_val == nullptr)
+      return nullptr;
 
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op) {
