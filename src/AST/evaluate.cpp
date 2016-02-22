@@ -47,6 +47,7 @@ namespace AST {
   Context::Value Unop::evaluate(Context& ctx) {
     if (op_ == Language::Operator::Return) {
       ctx.set_return_value(expr_->evaluate(ctx));
+
       return nullptr;
 
     } else if (op_ == Language::Operator::Print) {
@@ -75,6 +76,7 @@ namespace AST {
         error_log.log(line_num(), "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
       }
 
+      // TODO FIXME I know this is wrong
       return Context::Value(Ptr(expr_->evaluate(ctx).as_type));
     }
 
@@ -350,8 +352,6 @@ namespace AST {
       assert(lhs_val);
       auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
 
-
-
       std::vector<EPtr> arg_vals;
       if (rhs_->is_comma_list()) {
         arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
@@ -374,8 +374,9 @@ namespace AST {
       bool returns_type =
         (static_cast<Function*>(fn_ptr->type())->return_type() == Type_);
 
+      auto& fn_cache = function_call_cache[fn_ptr];
       if (returns_type) {
-        for (const auto& cache_entry : function_call_cache[fn_ptr]) {
+        for (const auto& cache_entry : fn_cache) {
           size_t cache_size = cache_entry.first.size();
 
           assert(ctx_vals.size() == cache_size);
@@ -392,15 +393,19 @@ namespace AST {
           if (matches) return cache_entry.second;
         }
       }
- 
+
+
       Context fn_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         fn_ctx.bind(ctx_vals[i], fn_ptr->inputs_[i]->declared_identifier());
       }
 
+      fn_cache.emplace_back(ctx_vals, Context::Value(static_cast<Type*>(nullptr)));
+      auto& cached_val = fn_cache.back();
       auto return_val = fn_ptr->evaluate(fn_ctx);
       if (returns_type) {
-        function_call_cache[fn_ptr].emplace_back(ctx_vals, return_val);
+        delete cached_val.second.as_type;
+        cached_val.second = return_val;
       }
       return return_val;
 

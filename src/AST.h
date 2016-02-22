@@ -230,6 +230,7 @@ namespace AST {
 
       Language::Operator op() const { return op_; }
       EPtr lhs() const { return lhs_; }
+      EPtr rhs() const { return rhs_; }
 
       static NPtr build_operator(NPtrVec&& nodes, Language::Operator op_class);
       static NPtr build_paren_operator(NPtrVec&& nodes);
@@ -247,19 +248,12 @@ namespace AST {
     public:
       EXPR_FNS(ChainOp, chain_op);
 
-      friend class FunctionLiteral;
-      friend class ArrayType;
-      friend class ArrayLiteral;
-      friend class Binop;
-
       static NPtr join(NPtrVec&& nodes);
-
 
       virtual bool is_comma_list() const override {
         return ops_.front() == Language::Operator::Comma;
       }
 
-    private:
       std::vector<Language::Operator> ops_;
       std::vector<EPtr> exprs_;
   };
@@ -450,12 +444,8 @@ namespace AST {
     public:
       EXPR_FNS(FunctionLiteral, function_literal);
 
-      friend class Binop;
-      friend llvm::Value* generate_assignment_code(Scope* scope, EPtr lhs, EPtr rhs);
-
       virtual llvm::Function* llvm_function() const { return llvm_function_; }
 
-    private:
       FnScope* fn_scope_;
       EPtr return_type_;
 

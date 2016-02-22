@@ -28,3 +28,15 @@ void Context::set_return_value(Value v) {
     parent_->set_return_value(v);
   }
 }
+
+bool operator==(Context::Value lhs, Context::Value rhs) {
+  // We choose double because it's the largest possibility,
+  // so we don't have any problems with data slicing
+  return lhs.as_real == rhs.as_real;
+}
+
+bool operator!=(Context::Value lhs, Context::Value rhs) {
+  return !(lhs == rhs);
+}
+
+
