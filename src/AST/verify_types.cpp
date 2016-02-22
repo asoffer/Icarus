@@ -399,19 +399,19 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   }
 
   void FunctionLiteral::verify_types() {
-    Type* ret_type = return_type_->evaluate(scope_->context()).as_type;
+    Type* ret_type = return_type_expr->evaluate(scope_->context()).as_type;
     assert(ret_type && "Return type is a nullptr");
     Type* input_type;
-    size_t inputs_size = inputs_.size();
-    if (inputs_size == 0) {
+    size_t inputssize = inputs.size();
+    if (inputssize == 0) {
       input_type = Void;
 
-    } else if (inputs_size == 1) {
-      input_type = inputs_.front()->type;
+    } else if (inputssize == 1) {
+      input_type = inputs.front()->type;
 
     } else {
       std::vector<Type*> input_type_vec;
-      for (const auto& input : inputs_) {
+      for (const auto& input : inputs) {
         input_type_vec.push_back(input->type);
       }
 

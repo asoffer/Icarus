@@ -63,7 +63,7 @@ Time::Eval Statements::determine_time() {
 
 Time::Eval FunctionLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &in : inputs_) {
+  for (auto &in : inputs) {
     time_ |= in->determine_time();
   }
 

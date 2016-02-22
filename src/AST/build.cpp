@@ -396,10 +396,10 @@ namespace AST {
 
     fn_lit->statements = std::static_pointer_cast<Statements>(nodes[2]);
 
-    // TODO scopes inside these statements should point to fn_scope_.
+    // TODO scopes inside these statements should point to fn_scope.
 
     auto binop_ptr = std::static_pointer_cast<Binop>(nodes[0]);
-    fn_lit->return_type_ = std::move(binop_ptr->rhs);
+    fn_lit->return_type_expr = std::move(binop_ptr->rhs);
     auto input_args = binop_ptr->lhs;
 
     // TODO What if the fn_expression is more complicated, like a function
@@ -407,18 +407,18 @@ namespace AST {
     if (input_args->is_declaration()) {
       auto decl_ptr = std::static_pointer_cast<Declaration>(input_args);
 
-      fn_lit->inputs_.push_back(decl_ptr);
+      fn_lit->inputs.push_back(decl_ptr);
 
     } else if (input_args->is_comma_list()) {
       auto decl_list = std::static_pointer_cast<ChainOp>(input_args);
 
       // resize the input arg list
-      fn_lit->inputs_.resize(decl_list->exprs.size(), nullptr);
+      fn_lit->inputs.resize(decl_list->exprs.size(), nullptr);
 
       size_t index = 0;
       for (const auto& expr : decl_list->exprs) {
         auto decl = std::static_pointer_cast<Declaration>(expr);
-        fn_lit->inputs_[index++] = decl;
+        fn_lit->inputs[index++] = decl;
       }
     }
 

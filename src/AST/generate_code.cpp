@@ -528,16 +528,16 @@ namespace AST {
     llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
       if (*type == nullptr) return nullptr;
 
-      if (llvm_function_ == nullptr) {
+      if (llvm_fn == nullptr) {
         // NOTE: This means a function is not assigned.
-        llvm_function_ = llvm::Function::Create(
+        llvm_fn = llvm::Function::Create(
             static_cast<llvm::FunctionType*>(type->llvm()),
             llvm::Function::ExternalLinkage, "__anon_fn", global_module);
       }
 
       // Name the inputs
-      auto arg_iter = llvm_function_->args().begin();
-      for (const auto& input_iter : inputs_) {
+      auto arg_iter = llvm_fn->args().begin();
+      for (const auto& input_iter : inputs) {
         arg_iter->setName(input_iter->identifier->token());
         // Set alloc
         auto decl_id = input_iter->identifier;
@@ -550,35 +550,35 @@ namespace AST {
       }
 
 
-      auto ret_type = return_type_->evaluate(scope->context()).as_type;
+      auto ret_type = return_type_expr->evaluate(scope->context()).as_type;
       if (ret_type->is_struct()) {
         arg_iter->setName("retval");
       }
 
       auto old_block = scope->builder().GetInsertBlock();
 
-      fn_scope_->set_parent_function(llvm_function_);
-      fn_scope_->set_type(static_cast<Function*>(type));
+      fn_scope->set_parent_function(llvm_fn);
+      fn_scope->set_type(static_cast<Function*>(type));
 
-      fn_scope_->enter();
-      auto arg = llvm_function_->args().begin();
-      for (auto& input_iter : inputs_) {
+      fn_scope->enter();
+      auto arg = llvm_fn->args().begin();
+      for (auto& input_iter : inputs) {
         auto decl_id = input_iter->identifier;
 
         if (!decl_id->type->is_struct()) {
-          fn_scope_->builder().CreateCall(decl_id->type->assign(),
+          fn_scope->builder().CreateCall(decl_id->type->assign(),
               { arg, input_iter->identifier->alloc });
         }
         ++arg;
       }
 
 
-      statements->generate_code(fn_scope_);
+      statements->generate_code(fn_scope);
 
-      fn_scope_->exit();
+      fn_scope->exit();
 
       scope->builder().SetInsertPoint(old_block);
-      return llvm_function_;
+      return llvm_fn;
     }
 
     // This function exists because both '=' and ':=' need to call some version of
@@ -604,7 +604,7 @@ namespace AST {
         } else {
           auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
           // TODO TOKENREMOVAL
-          fn->llvm_function_ = global_module->getFunction(lhs->token());
+          fn->llvm_fn = global_module->getFunction(lhs->token());
 
           val = rhs->generate_code(scope);
           if (val == nullptr) return nullptr;

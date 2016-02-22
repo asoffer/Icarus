@@ -20,14 +20,14 @@ class GlobalScope;
 class FnScope;
 
 namespace AST {
-  class FunctionLiteral;
-}  // namespace AST
+struct FunctionLiteral;
+} // namespace AST
 
 extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 
 class Scope {
   public:
-    friend class AST::FunctionLiteral;
+    friend struct AST::FunctionLiteral;
     friend struct AST::Declaration;
     friend class FnScope;
 

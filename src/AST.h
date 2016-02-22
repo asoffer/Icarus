@@ -334,18 +334,15 @@ namespace AST {
     std::vector<NPtr> statements;
   };
 
-  class FunctionLiteral : public Expression {
-    public:
-      EXPR_FNS(FunctionLiteral, function_literal);
+  struct FunctionLiteral : public Expression {
+    EXPR_FNS(FunctionLiteral, function_literal);
 
-      virtual llvm::Function* llvm_function() const { return llvm_function_; }
+    FnScope* fn_scope;
+    EPtr return_type_expr;
 
-      FnScope* fn_scope_;
-      EPtr return_type_;
-
-      std::vector<DeclPtr> inputs_;
-      llvm::Function* llvm_function_;
-      std::shared_ptr<Statements> statements;
+    std::vector<DeclPtr> inputs;
+    llvm::Function *llvm_fn;
+    std::shared_ptr<Statements> statements;
   };
 
   struct Conditional : public Node {

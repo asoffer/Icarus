@@ -373,7 +373,7 @@ namespace AST {
         arg_vals.push_back(rhs);
       }     
 
-      assert(arg_vals.size() == fn_ptr->inputs_.size());
+      assert(arg_vals.size() == fn_ptr->inputs.size());
 
       std::vector<Context::Value> ctx_vals;
 
@@ -411,7 +411,7 @@ namespace AST {
 
       Context fn_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs_[i]->identifier);
+        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs[i]->identifier);
       }
 
       fn_cache.emplace_back(ctx_vals, Context::Value(static_cast<Type*>(nullptr)));

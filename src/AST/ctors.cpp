@@ -21,7 +21,7 @@ Identifier::Identifier(size_t input_line_num, const std::string &token_string)
 }
 
 FunctionLiteral::FunctionLiteral()
-    : fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
+    : fn_scope(new FnScope(nullptr)), llvm_fn(nullptr) {}
 
 TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope(new TypeScope) {}
 

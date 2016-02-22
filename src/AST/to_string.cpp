@@ -218,7 +218,7 @@ std::string Conditional::to_string(size_t n) const {
   std::string FunctionLiteral::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<FunctionLiteral>\n";
-    for (const auto& kv : inputs_) {
+    for (const auto& kv : inputs) {
       ss << kv->to_string(n + 1);
     }
     ss << tabs(n + 1) << "Body:\n" << statements->to_string(n + 2);

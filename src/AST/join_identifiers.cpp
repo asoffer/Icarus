@@ -104,12 +104,12 @@ namespace AST {
   }
 
   void FunctionLiteral::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& in : inputs_) {
-      in->join_identifiers(fn_scope_, true);
+    for (auto& in : inputs) {
+      in->join_identifiers(fn_scope, true);
     }
 
-    set_or_recurse(return_type_, fn_scope_);
-    statements->join_identifiers(fn_scope_);
+    set_or_recurse(return_type_expr, fn_scope);
+    statements->join_identifiers(fn_scope);
   }
 
   void TypeLiteral::join_identifiers(Scope*, bool) {

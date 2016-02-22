@@ -113,24 +113,24 @@ namespace AST {
 
   void FunctionLiteral::record_dependencies() {
     Dependency::value_type(this, this);
-    for (const auto& in : inputs_) {
+    for (const auto& in : inputs) {
       Dependency::type_type(this, in.get());
     }
 
-     Dependency::type_type(this, return_type_.get());
-     Dependency::type_value(this, return_type_.get());
+     Dependency::type_type(this, return_type_expr.get());
+     Dependency::type_value(this, return_type_expr.get());
 
-    for (const auto& in : inputs_) {
+    for (const auto& in : inputs) {
       in->record_dependencies();
     }
 
     Dependency::value_value(this, statements.get());
     Dependency::value_type(this, statements.get());
 
-    Dependency::value_value(this, return_type_.get());
-    Dependency::value_type(this, return_type_.get());
+    Dependency::value_value(this, return_type_expr.get());
+    Dependency::value_type(this, return_type_expr.get());
 
-    return_type_->record_dependencies();
+    return_type_expr->record_dependencies();
     statements->record_dependencies();
   }
 

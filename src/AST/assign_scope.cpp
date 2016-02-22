@@ -96,12 +96,12 @@ namespace AST {
 
   void FunctionLiteral::assign_scope(Scope* scope) {
     scope_ = scope;
-    fn_scope_->set_parent(scope);
+    fn_scope->set_parent(scope);
 
-    for (auto& in : inputs_) {
-      in->assign_scope(fn_scope_);
+    for (auto& in : inputs) {
+      in->assign_scope(fn_scope);
     }
-    statements->assign_scope(fn_scope_);
+    statements->assign_scope(fn_scope);
   }
 
   void TypeLiteral::assign_scope(Scope* scope) {
