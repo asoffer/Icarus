@@ -320,7 +320,7 @@ namespace AST {
 
   NPtr Declaration::build(NPtrVec&& nodes, Language::NodeType node_type, bool infer) {
     auto decl_ptr = Scope::make_declaration(nodes[1]->line_num, nodes[0]->token());
-    decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
+    decl_ptr->type_expr = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->type_ = node_type;
 
@@ -329,7 +329,7 @@ namespace AST {
       : Language::Operator::Colon;
 
     decl_ptr->precedence = Language::precedence(decl_ptr->op);
-    decl_ptr->infer_type_ = infer;
+    decl_ptr->is_inferred = infer;
 
     return std::static_pointer_cast<Node>(decl_ptr);
   }

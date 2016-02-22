@@ -24,7 +24,7 @@ namespace AST {
   }
 
   std::string Declaration::graphviz_label() const {
-    return identifier_string() + (type_is_inferred() ? " := ..." : " : ...");
+    return identifier->token() + (is_inferred ? " := ..." : " : ...");
   }
 
   std::string Access::graphviz_label() const { return "." + member_name; }

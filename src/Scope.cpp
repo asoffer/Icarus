@@ -26,7 +26,7 @@ Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
 
 void GlobalScope::initialize() {
   for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_id = decl_ptr->identifier;
     if (decl_id->is_function_arg) continue;
 
     auto decl_type = decl_id->type;
@@ -35,7 +35,7 @@ void GlobalScope::initialize() {
     if (decl_type->is_function()) {
       if (decl_id->token()[0] != '_') {  // Ignore operators
         decl_id->alloc = decl_type->allocate(bldr_);
-        decl_id->alloc->setName(decl_ptr->identifier_string());
+        decl_id->alloc->setName(decl_ptr->identifier->token());
       }
     } else {
       assert(decl_type == Type_ && "Global variables not currently allowed.");
@@ -55,7 +55,7 @@ void Scope::enter() {
   bldr_.SetInsertPoint(entry_block());
 
   for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
     if (decl_type->is_function() || decl_type == Type_) {
@@ -178,15 +178,15 @@ void Scope::set_parent(Scope* parent) {
 
 // Gets the type of that the identifier was declared as. This is a pointer to
 // an expression object, rather than a Type object.
-EPtr Scope::get_declared_type(IdPtr id_ptr) const {
+EPtr Scope::get_declared_type(IdPtr identifierptr) const {
   for (const auto& decl_ptr : ordered_decls_) {
-    if (decl_ptr->id_ != id_ptr) continue;
-    return decl_ptr->decl_type_;
+    if (decl_ptr->identifier != identifierptr) continue;
+    return decl_ptr->type_expr;
   }
 
   // This cannot segfault because the program would have exited earlier
   // if it was undeclared.
-  return parent()->get_declared_type(id_ptr);
+  return parent()->get_declared_type(identifierptr);
 
 }
 
@@ -198,7 +198,7 @@ EPtr Scope::get_declared_type(IdPtr id_ptr) const {
 void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
-    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
     if (decl_id->is_function_arg && decl_type->is_struct()) {
@@ -213,13 +213,13 @@ void FnScope::allocate(Scope* scope) {
     }
    
     decl_id->alloc = decl_type->allocate(bldr_);
-    decl_id->alloc->setName(decl_ptr->identifier_string());
+    decl_id->alloc->setName(decl_ptr->identifier->token());
   }
 }
 
 void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->declared_identifier();
+    auto decl_id = decl_ptr->identifier;
     if (decl_id->is_function_arg) continue;
     decl_id->type->call_uninit(bldr_, { decl_id->alloc });
   }
@@ -227,11 +227,11 @@ void Scope::uninitialize() {
 
 // TODO have a getter-only version for when we know we've passed the
 // verification step
-EPtr Scope::identifier(EPtr id_as_eptr) {
-  auto id_ptr = std::static_pointer_cast<AST::Identifier>(id_as_eptr);
+EPtr Scope::identifier(EPtr identifieras_eptr) {
+  auto identifierptr = std::static_pointer_cast<AST::Identifier>(identifieras_eptr);
   Scope* current_scope = this;
   while (current_scope != nullptr) {
-    auto iter = current_scope->ids_.find(id_ptr->token());
+    auto iter = current_scope->ids_.find(identifierptr->token());
     if (iter != current_scope->ids_.end()) {
       return std::static_pointer_cast<AST::Expression>(iter->second);
     }
@@ -239,8 +239,8 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
   }
 
   // If you reach here it's because we never saw a declaration for the identifier
-  error_log.log(id_as_eptr->line_num,
-      "Undeclared identifier `" + id_ptr->token() + "`.");
+  error_log.log(identifieras_eptr->line_num,
+      "Undeclared identifier `" + identifierptr->token() + "`.");
 
   return nullptr;
 }
@@ -258,7 +258,7 @@ void Scope::verify_no_shadowing() {
   for (auto decl_ptr1 : decl_registry_) {
     for (auto decl_ptr2 : decl_registry_) {
       if (decl_ptr1 == decl_ptr2) continue;
-      if (decl_ptr1->identifier_string() != decl_ptr2->identifier_string()) continue;
+      if (decl_ptr1->identifier->token() != decl_ptr2->identifier->token()) continue;
 
       auto scope_ptr = decl_ptr1->scope_;
       // If the shadowing occurs in the same scope, we don't need to display
@@ -266,7 +266,7 @@ void Scope::verify_no_shadowing() {
       if (scope_ptr == decl_ptr2->scope_) {
         if (decl_ptr1->line_num <= decl_ptr2->line_num) {
           error_log.log(decl_ptr1->line_num,
-              "Identifier `" + decl_ptr1->identifier_string()
+              "Identifier `" + decl_ptr1->identifier->token()
               + "` already declared in this scope (on line "
               + std::to_string(decl_ptr2->line_num) + ").");
         }
@@ -277,7 +277,7 @@ void Scope::verify_no_shadowing() {
       while (scope_ptr != nullptr) {
         if (scope_ptr == decl_ptr2->scope_) {
           error_log.log(decl_ptr1->line_num,
-                        "Identifier `" + decl_ptr1->identifier_string() +
+                        "Identifier `" + decl_ptr1->identifier->token() +
                             "` shadows identifier declared on line " +
                             std::to_string(decl_ptr2->line_num) + ".");
           // Do NOT skip out here. It's possible to have many shadows and we
@@ -289,10 +289,10 @@ void Scope::verify_no_shadowing() {
   }
 }
 
-DeclPtr Scope::make_declaration(size_t line_num, const std::string &id_string) {
+DeclPtr Scope::make_declaration(size_t line_num, const std::string &identifierstring) {
   auto d = std::make_shared<AST::Declaration>();
   decl_registry_.emplace_back(d);
-  d->id_ = std::make_shared<AST::Identifier>(line_num, id_string);
+  d->identifier = std::make_shared<AST::Identifier>(line_num, identifierstring);
   d->line_num = line_num;
 
   return d;

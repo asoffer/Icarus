@@ -65,14 +65,14 @@ namespace AST {
   }
 
   void Declaration::join_identifiers(Scope* scope, bool is_arg) {
-    id_ = std::static_pointer_cast<Identifier>(
-        scope->identifier(declared_identifier()));
+    identifier = std::static_pointer_cast<Identifier>(
+        scope->identifier(identifier));
     if (is_arg) {
-      id_->is_function_arg = true;
+      identifier->is_function_arg = true;
     }
-    id_->line_num = line_num; // Hacky and probably wrong TODO FIXME
+    identifier->line_num = line_num; // Hacky and probably wrong TODO FIXME
 
-    set_or_recurse(decl_type_, scope);
+    set_or_recurse(type_expr, scope);
   }
 
   void ChainOp::join_identifiers(Scope* scope, bool is_arg) {

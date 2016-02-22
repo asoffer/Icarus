@@ -273,40 +273,29 @@ namespace AST {
     Declaration* decl;
   };
 
-  // class Declaration
+  // struct Declaration
   //
   // Represents declarations that may or may not be made with type inference.
   // Either of these can be represented.
   //
   // identifier : type
   // identifer := value
-  class Declaration : public Expression {
-  public:
+  struct Declaration : public Expression {
     EXPR_FNS(Declaration, declaration);
 
-    friend struct Assignment;
-    friend class ::Scope;
-    friend class TypeLiteral;
-
     static NPtr build(NPtrVec &&nodes, Language::NodeType node_type,
-                      bool infer);
+        bool infer);
     static NPtr build_decl(NPtrVec &&nodes);
     static NPtr build_assign(NPtrVec &&nodes);
 
-    inline std::string identifier_string() const { return id_->token(); }
-    inline IdPtr declared_identifier() const { return id_; }
-    inline EPtr declared_type() const { return decl_type_; }
-
-    bool type_is_inferred() const { return infer_type_; }
-
     Language::Operator op;
     // The identifier being declared
-    IdPtr id_;
+    IdPtr identifier;
 
     // May represent the declared type or the value whose type is being
     // inferred
-    EPtr decl_type_;
-    bool infer_type_;
+    EPtr type_expr;
+    bool is_inferred;
   };
 
 
@@ -439,7 +428,7 @@ namespace AST {
       EXPR_FNS(TypeLiteral, type_literal);
 
       void build_llvm_internals();
-      friend class Declaration;
+      friend struct Declaration;
 
       Structure* type_value_;
 
@@ -453,7 +442,7 @@ namespace AST {
       EXPR_FNS(EnumLiteral, enum_literal);
 
       friend class ::Enumeration;
-      friend class Declaration;
+      friend struct Declaration;
 
     private:
       Scope* enum_scope_;

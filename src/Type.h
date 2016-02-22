@@ -23,8 +23,8 @@ extern llvm::DataLayout* data_layout;
 
 namespace AST {
   struct Expression;
+  struct Declaration;
   class EnumLiteral;
-  class Declaration;
   class TypeLiteral;
 }  // namespace AST
 
@@ -188,7 +188,7 @@ class Array : public Type {
 
     friend Array* Arr(Type*);
 
-    friend class AST::Declaration;
+    friend struct AST::Declaration;
     friend class Type;
 
       virtual bool requires_uninit() const;

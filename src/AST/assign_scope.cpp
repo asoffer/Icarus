@@ -56,11 +56,11 @@ namespace AST {
   void Declaration::assign_scope(Scope* scope) {
     scope_ = scope;
 
-    scope_->ids_[identifier_string()] = id_;
-    id_->decl = this;
+    scope_->ids_[identifier->token()] = identifier;
+    identifier->decl = this;
 
-    id_->scope_ = scope;
-    decl_type_->assign_scope(scope);
+    identifier->scope_ = scope;
+    type_expr->assign_scope(scope);
   }
 
   void ArrayType::assign_scope(Scope* scope) {

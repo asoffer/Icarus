@@ -28,7 +28,7 @@ extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn)
 class Scope {
   public:
     friend class AST::FunctionLiteral;
-    friend class AST::Declaration;
+    friend struct AST::Declaration;
     friend class FnScope;
 
     static GlobalScope* Global;

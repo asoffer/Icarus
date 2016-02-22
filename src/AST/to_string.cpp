@@ -173,11 +173,11 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string Declaration::to_string(size_t n) const {
     std::string output = tabs(n) + "<Declaration ";
-    if (infer_type_) output += "(infer type) ";
+    if (is_inferred) output += "(infer type) ";
 
     return output + TYPE_OR("") + ">\n"
-      + id_->to_string(n + 1)
-      + decl_type_->to_string(n + 1);
+      + identifier->to_string(n + 1)
+      + type_expr->to_string(n + 1);
   }
 
   std::string Assignment::to_string(size_t n) const {

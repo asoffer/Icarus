@@ -538,9 +538,9 @@ namespace AST {
       // Name the inputs
       auto arg_iter = llvm_function_->args().begin();
       for (const auto& input_iter : inputs_) {
-        arg_iter->setName(input_iter->identifier_string());
+        arg_iter->setName(input_iter->identifier->token());
         // Set alloc
-        auto decl_id = input_iter->declared_identifier();
+        auto decl_id = input_iter->identifier;
         auto decl_type = decl_id->type;
         if (decl_type->is_struct()) {
           decl_id->alloc = arg_iter;
@@ -563,11 +563,11 @@ namespace AST {
       fn_scope_->enter();
       auto arg = llvm_function_->args().begin();
       for (auto& input_iter : inputs_) {
-        auto decl_id = input_iter->declared_identifier();
+        auto decl_id = input_iter->identifier;
 
         if (!decl_id->type->is_struct()) {
           fn_scope_->builder().CreateCall(decl_id->type->assign(),
-              { arg, input_iter->declared_identifier()->alloc });
+              { arg, input_iter->identifier->alloc });
         }
         ++arg;
       }
@@ -721,7 +721,7 @@ namespace AST {
       // The left-hand side may be a declaration
       if (lhs->is_declaration()) {
         // TODO maybe the declarations generate_code ought to return an l-value for the thing it declares?
-        return generate_assignment_code(scope, std::static_pointer_cast<Declaration>(lhs)->id_, rhs);
+        return generate_assignment_code(scope, std::static_pointer_cast<Declaration>(lhs)->identifier, rhs);
       }
 
       return generate_assignment_code(scope, lhs, rhs);
@@ -732,11 +732,11 @@ namespace AST {
       // of each scope, so there's no need to do anything if a heap allocation
       // isn't required.
 
-      if (declared_type()->is_array_type()) {
-        std::vector<llvm::Value*> init_args = { declared_identifier()->alloc };
+      if (type_expr->is_array_type()) {
+        std::vector<llvm::Value*> init_args = { identifier->alloc };
 
         // Push the array lengths onto the vector for calling args
-        EPtr next_ptr = declared_type();
+        EPtr next_ptr = type_expr;
         while (next_ptr->is_array_type()) {
           auto length =
               std::static_pointer_cast<AST::ArrayType>(next_ptr)->length;
@@ -751,14 +751,14 @@ namespace AST {
         scope->builder().CreateCall(array_type->initialize(), init_args);
       }
 
-      if (!infer_type_ || type == Type_) return nullptr;
+      if (!is_inferred || type == Type_) return nullptr;
 
-      // Remember, decl_type_ is not really the right name in the inference case.
+      // Remember, type_expr is not really the right name in the inference case.
       // It's the thing whose type we are inferring.
       //
       // TODO change the name of this member variable to describe what it actually
       // is in both ':' and ':=" cases
-      return generate_assignment_code(scope, id_, decl_type_);
+      return generate_assignment_code(scope, identifier, type_expr);
     }
 
     llvm::Value* Case::generate_code(Scope* scope) {

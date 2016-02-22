@@ -40,15 +40,14 @@ void TypeLiteral::build_llvm_internals() {
   }
 
   for (const auto &decl : decls_) {
-    if (decl->type_is_inferred()) {
+    if (decl->is_inferred) {
       assert(false); // TODO
 
     } else {
-      auto field =
-          decl->declared_type()->evaluate(Scope::Global->context()).as_type;
+      auto field = decl->type_expr->evaluate(Scope::Global->context()).as_type;
       assert(field && "field is nullptr");
       assert(type_value_ && "null type_value_");
-      type_value_->fields_.emplace_back(decl->identifier_string(), field);
+      type_value_->fields_.emplace_back(decl->identifier->token(), field);
     }
   }
 

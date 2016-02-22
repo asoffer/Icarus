@@ -256,6 +256,7 @@ std::string graphviz_label(PtrWithTorV x) {
 
 void write_graphviz() {
   GraphVizFile gviz("dependencies.dot");
+
   for (const auto &node : dependencies_) {
     gviz << graphviz_label(node.first);
   }

@@ -264,24 +264,24 @@ namespace AST {
     std::vector<DeclPtr> decls_in_ctx;
     for (const auto& decl : decls_) {
       auto d = std::make_shared<Declaration>();
-      d->infer_type_ = false;
-      d->id_ = std::make_shared<Identifier>(0, decl->identifier_string());
-      d->id_->decl = d.get();
+      d->is_inferred = false;
+      d->identifier = std::make_shared<Identifier>(0, decl->identifier->token());
+      d->identifier->decl = d.get();
       decls_in_ctx.push_back(d);
 
       // TODO finish setting data in d so that we can safely print this
       // out for debugging
 
-      auto dtype = decl->declared_type()->evaluate(ctx).as_type;
+      auto dtype = decl->type_expr->evaluate(ctx).as_type;
       d->type = dtype;
       if (dtype == Int) {
         auto intnode = std::make_shared<TokenNode>(0, Language::type_literal, "int");
-        d->decl_type_ = std::static_pointer_cast<Expression>(
+        d->type_expr = std::static_pointer_cast<Expression>(
             Terminal::build_type_literal({ intnode }));
 
       } else if (dtype == Char) {
         auto intnode = std::make_shared<TokenNode>(0, Language::type_literal, "char");
-        d->decl_type_ = std::static_pointer_cast<Expression>(
+        d->type_expr = std::static_pointer_cast<Expression>(
             Terminal::build_type_literal({ intnode }));
       }
     }
@@ -303,26 +303,26 @@ namespace AST {
   Context::Value Assignment::evaluate(Context&)  { return nullptr; }
 
   Context::Value Declaration::evaluate(Context& ctx) {
-    if (infer_type_) {
-      if (declared_type()->type->is_function()) {
-        ctx.bind(Context::Value(declared_type().get()), id_);
+    if (is_inferred) {
+      if (type_expr->type->is_function()) {
+        ctx.bind(Context::Value(type_expr.get()), identifier);
       } else {
-        auto type_as_ctx_val = declared_type()->evaluate(ctx);
-        ctx.bind(type_as_ctx_val, id_);
+        auto type_as_ctx_val = type_expr->evaluate(ctx);
+        ctx.bind(type_as_ctx_val, identifier);
 
-        if (declared_type()->is_type_literal()) {
+        if (type_expr->is_type_literal()) {
           assert(type_as_ctx_val.as_type->is_struct());
-          static_cast<Structure*>(type_as_ctx_val.as_type)->set_name(identifier_string());
+          static_cast<Structure*>(type_as_ctx_val.as_type)->set_name(identifier->token());
 
-        } else if (declared_type()->is_enum_literal()) {
+        } else if (type_expr->is_enum_literal()) {
           assert(type_as_ctx_val.as_type->is_enum());
-          static_cast<Enumeration*>(type_as_ctx_val.as_type)->set_name(identifier_string());
+          static_cast<Enumeration*>(type_as_ctx_val.as_type)->set_name(identifier->token());
         } 
       }
     } else {
-      if (declared_type()->type == Type_) {
-        ctx.bind(Context::Value(TypeVar(id_)), id_);
-      } else if (declared_type()->type->is_type_variable()) {
+      if (type_expr->type == Type_) {
+        ctx.bind(Context::Value(TypeVar(identifier)), identifier);
+      } else if (type_expr->type->is_type_variable()) {
         // TODO Should we just skip this?
       } else { /* There's nothing to do */ }
     }
@@ -345,7 +345,7 @@ namespace AST {
           assert(false && "non-enum non-struct starting with '_'");
         }
       }
-      assert(scope_->context().get(id_).as_type && "Bound type was a nullptr");
+      assert(scope_->context().get(identifier).as_type && "Bound type was a nullptr");
 */
     return nullptr;
   }
@@ -411,7 +411,7 @@ namespace AST {
 
       Context fn_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs_[i]->declared_identifier());
+        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs_[i]->identifier);
       }
 
       fn_cache.emplace_back(ctx_vals, Context::Value(static_cast<Type*>(nullptr)));

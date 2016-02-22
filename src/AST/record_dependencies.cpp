@@ -85,17 +85,17 @@ namespace AST {
   }
 
   void Declaration::record_dependencies() {
-    if (type_is_inferred()) {
-      Dependency::type_type(this, decl_type_.get());
-      Dependency::value_value(this, decl_type_.get());
+    if (is_inferred) {
+      Dependency::type_type(this, type_expr.get());
+      Dependency::value_value(this, type_expr.get());
       Dependency::value_type(this, this);
     } else {
       Dependency::value_type(this, this);
-      Dependency::type_value(this, decl_type_.get());
+      Dependency::type_value(this, type_expr.get());
     }
 
-    id_->record_dependencies();
-    decl_type_->record_dependencies();
+    identifier->record_dependencies();
+    type_expr->record_dependencies();
   }
 
   void Case::record_dependencies() {
@@ -171,7 +171,7 @@ namespace AST {
     Dependency::value_type(this, this);
     for (const auto& decl : decls_) {
       // NOTE: Assuming only : and no :=. TODO Fix this when you allow :=
-      Dependency::value_type(this, decl->declared_identifier().get());
+      Dependency::value_type(this, decl->identifier.get());
       decl->record_dependencies();
     }
   }
