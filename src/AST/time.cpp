@@ -52,7 +52,7 @@ Time::Eval KVPairList::determine_time() {
   return time_;
 }
 
-Time::Eval Case::determine_time() { return time_ = pairs_->determine_time(); }
+Time::Eval Case::determine_time() { return time_ = kv->determine_time(); }
 
 Time::Eval Statements::determine_time() {
   for (auto &stmt : statements_) {

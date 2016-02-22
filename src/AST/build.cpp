@@ -560,4 +560,11 @@ namespace AST {
     nodes[1] = error_log.assignment_vs_equality(nodes[1]);
     return build(std::forward<NPtrVec&&>(nodes));
   }
+
+  NPtr Case::build(NPtrVec&& nodes) {
+    auto case_ptr = std::make_shared<Case>();
+    case_ptr->line_num = nodes[0]->line_num;
+    case_ptr->kv = std::static_pointer_cast<KVPairList>(nodes[2]);
+    return case_ptr;
+  }
 }  // namespace AST

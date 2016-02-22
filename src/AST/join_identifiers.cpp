@@ -82,7 +82,7 @@ namespace AST {
   }
 
   void Case::join_identifiers(Scope* scope, bool is_arg) {
-    pairs_->join_identifiers(scope);
+    kv->join_identifiers(scope);
   }
 
   void KVPairList::join_identifiers(Scope* scope, bool is_arg) {

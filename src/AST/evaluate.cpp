@@ -238,14 +238,14 @@ namespace AST {
   }
 
   Context::Value Case::evaluate(Context& ctx) {
-    for (size_t i = 0; i < pairs_->pairs.size() - 1; ++i) {
-      auto pair = pairs_->pairs[i];
+    for (size_t i = 0; i < kv->pairs.size() - 1; ++i) {
+      auto pair = kv->pairs[i];
 
       if (pair.first->evaluate(ctx).as_bool) {
         return pair.second->evaluate(ctx);
       }
     }
-    return pairs_->pairs.back().second->evaluate(ctx);
+    return kv->pairs.back().second->evaluate(ctx);
   }
 
   Context::Value TypeLiteral::evaluate(Context& ctx) {

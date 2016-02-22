@@ -305,22 +305,11 @@ namespace AST {
     std::vector<std::pair<EPtr, EPtr>> pairs;
   };
 
+  struct Case : public Expression {
+    EXPR_FNS(Case, case);
 
-  class Case : public Expression {
-    public:
-      EXPR_FNS(Case, case);
-
-    private:
-      std::shared_ptr<KVPairList> pairs_;
+    std::shared_ptr<KVPairList> kv;
   };
-
-  inline NPtr Case::build(NPtrVec&& nodes) {
-    auto case_ptr = std::make_shared<Case>();
-    case_ptr->line_num = nodes[0]->line_num;
-    case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[2]);
-    return case_ptr;
-  }
-
 
   class Statements : public Node {
     public:
@@ -434,21 +423,19 @@ namespace AST {
       std::vector<std::string> vals_;
   };
 
-  class Break : public Node {
-    public:
-      static NPtr build(NPtrVec&& nodes);
+  struct Break : public Node {
+    static NPtr build(NPtrVec&& nodes);
 
-      virtual std::string to_string(size_t n) const;
-      virtual llvm::Value* generate_code(Scope* scope);
-      virtual Context::Value evaluate(Context& ctx);
-      virtual void record_dependencies();
-      virtual std::string graphviz_label() const;
-      virtual Time::Eval determine_time();
+    virtual std::string to_string(size_t n) const;
+    virtual llvm::Value* generate_code(Scope* scope);
+    virtual Context::Value evaluate(Context& ctx);
+    virtual void record_dependencies();
+    virtual std::string graphviz_label() const;
+    virtual Time::Eval determine_time();
 
-      Break(size_t new_line_num) {
-        line_num = new_line_num;
-      }
-
+    Break(size_t new_line_num) {
+      line_num = new_line_num;
+    }
   };
 }  // namespace AST
 

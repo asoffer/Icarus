@@ -449,7 +449,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   }
 
   void Case::verify_types() {
-    type = pairs_->verify_types_with_key(Bool);
+    type = kv->verify_types_with_key(Bool);
     assert(type && "case is nullptr");
   }
 

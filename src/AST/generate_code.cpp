@@ -765,7 +765,7 @@ namespace AST {
       auto parent_fn = scope->builder().GetInsertBlock()->getParent();
       // Condition blocks - The ith block is what you reach when you've
       // failed the ith condition, where conditions are labelled starting at zero.
-      std::vector<llvm::BasicBlock*> case_blocks(pairs_->pairs.size() - 1);
+      std::vector<llvm::BasicBlock*> case_blocks(kv->pairs.size() - 1);
 
       for (auto& block : case_blocks) {
         block = make_block("case.block", parent_fn);
@@ -776,17 +776,17 @@ namespace AST {
       auto case_landing = make_block("case.landing", parent_fn);
       scope->builder().SetInsertPoint(case_landing);
       llvm::PHINode* phi_node = scope->builder().CreatePHI(*type,
-          static_cast<unsigned int>(pairs_->pairs.size()), "phi");
+          static_cast<unsigned int>(kv->pairs.size()), "phi");
       scope->builder().SetInsertPoint(current_block);
 
       for (size_t i = 0; i < case_blocks.size(); ++i) {
-        auto cmp_val = pairs_->pairs[i].first->generate_code(scope);
+        auto cmp_val = kv->pairs[i].first->generate_code(scope);
         auto true_block = make_block("land_true", parent_fn);
 
         // If it's false, move on to the next block
         scope->builder().CreateCondBr(cmp_val, true_block, case_blocks[i]);
         scope->builder().SetInsertPoint(true_block);
-        auto output_val = pairs_->pairs[i].second->generate_code(scope);
+        auto output_val = kv->pairs[i].second->generate_code(scope);
 
         // NOTE: You may be tempted to state that you are coming from the
         // block 'true_block'. However, if the code generated for the right-hand
@@ -797,7 +797,7 @@ namespace AST {
 
         scope->builder().SetInsertPoint(case_blocks[i]);
       }
-      auto output_val = pairs_->pairs.back().second->generate_code(scope);
+      auto output_val = kv->pairs.back().second->generate_code(scope);
 
       phi_node->addIncoming(output_val, scope->builder().GetInsertBlock());
       scope->builder().CreateBr(case_landing);

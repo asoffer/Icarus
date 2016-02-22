@@ -76,7 +76,7 @@ namespace AST {
 
   void Case::assign_scope(Scope* scope) {
     scope_ = scope;
-    pairs_->assign_scope(scope);
+    kv->assign_scope(scope);
   }
 
   void KVPairList::assign_scope(Scope* scope) {

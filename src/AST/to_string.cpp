@@ -187,7 +187,7 @@ std::string Conditional::to_string(size_t n) const {
   }
 
   std::string Case::to_string(size_t n) const {
-    return tabs(n) + "<Case>\n" + pairs_->to_string(n + 1);
+    return tabs(n) + "<Case>\n" + kv->to_string(n + 1);
   }
 
   std::string KVPairList::to_string(size_t n) const {

@@ -100,12 +100,12 @@ namespace AST {
 
   void Case::record_dependencies() {
     Dependency::value_type(this, this);
-    for (const auto& kv : pairs_->pairs) {
+    for (const auto& kv : kv->pairs) {
       Dependency::type_type(this, kv.first.get());
       Dependency::type_type(this, kv.second.get());
     }
 
-    for (const auto& kv : pairs_->pairs) {
+    for (const auto& kv : kv->pairs) {
       kv.first->record_dependencies();
       kv.second->record_dependencies();
     } 
