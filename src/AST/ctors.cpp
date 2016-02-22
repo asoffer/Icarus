@@ -23,16 +23,15 @@ Identifier::Identifier(size_t input_line_num, const std::string &token_string)
 FunctionLiteral::FunctionLiteral()
     : fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
 
-TypeLiteral::TypeLiteral() : type_value_(nullptr), type_scope_(new TypeScope) {}
+TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope_(new TypeScope) {}
 
-// TODO Will TypeScope suffice?
-EnumLiteral::EnumLiteral() : enum_scope_(new TypeScope), type_value_(nullptr) {}
+EnumLiteral::EnumLiteral() : type_value(nullptr) {}
 
 While::While() : body_scope_(new WhileScope) {}
 
 // TODO put this somewhere else
 void TypeLiteral::build_llvm_internals() {
-  assert(type_value_);
+  assert(type_value);
 
   for (const auto &decl : decls_) {
     if (decl->type->has_variables())
@@ -46,18 +45,18 @@ void TypeLiteral::build_llvm_internals() {
     } else {
       auto field = decl->type_expr->evaluate(Scope::Global->context()).as_type;
       assert(field && "field is nullptr");
-      assert(type_value_ && "null type_value_");
-      type_value_->fields_.emplace_back(decl->identifier->token(), field);
+      assert(type_value && "null type_value");
+      type_value->fields_.emplace_back(decl->identifier->token(), field);
     }
   }
 
-  size_t num_fields = type_value_->fields_.size();
+  size_t num_fields = type_value->fields_.size();
   std::vector<llvm::Type *> llvm_fields(num_fields, nullptr);
   for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = type_value_->fields_[i].second->llvm();
+    llvm_fields[i] = type_value->fields_[i].second->llvm();
   }
 
-  static_cast<llvm::StructType *>(type_value_->llvm_type_)
+  static_cast<llvm::StructType *>(type_value->llvm_type_)
       ->setBody(std::move(llvm_fields), /* isPacked = */ false);
 }
 } // namespace AST

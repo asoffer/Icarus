@@ -237,8 +237,8 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string EnumLiteral::to_string(size_t n) const {
     std::stringstream ss;
-    ss << tabs(n) << "<Enum with " << vals_.size()
-      << (vals_.size() == 1 ? " value>\n" : " values>\n");
+    ss << tabs(n) << "<Enum with " << members.size()
+      << (members.size() == 1 ? " value>\n" : " values>\n");
     return ss.str();
   }
   std::string Break::to_string(size_t n) const {

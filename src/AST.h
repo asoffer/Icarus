@@ -398,24 +398,18 @@ namespace AST {
       void build_llvm_internals();
       friend struct Declaration;
 
-      Structure* type_value_;
+      Structure* type_value;
 
     private:
       Scope* type_scope_;  // TODO replace with general scope_
       std::vector<DeclPtr> decls_;
   };
 
-  class EnumLiteral : public Expression {
-    public:
-      EXPR_FNS(EnumLiteral, enum_literal);
+  struct EnumLiteral : public Expression {
+    EXPR_FNS(EnumLiteral, enum_literal);
 
-      friend class ::Enumeration;
-      friend struct Declaration;
-
-    private:
-      Scope* enum_scope_;
-      Enumeration* type_value_;
-      std::vector<std::string> vals_;
+    Enumeration* type_value;
+    std::vector<std::string> members;
   };
 
   struct Break : public Node {

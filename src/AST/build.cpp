@@ -539,7 +539,7 @@ namespace AST {
 
       // TODO repeated terms?
       auto decl = std::static_pointer_cast<Identifier>(std::move(stmt))->token();
-      enum_lit_ptr->vals_.emplace_back(std::move(decl));
+      enum_lit_ptr->members.emplace_back(std::move(decl));
     }
 
     return enum_lit_ptr;

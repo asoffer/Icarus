@@ -57,7 +57,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
       if (decl->type_expr->is_type_literal()) {
         auto tlit_type_val =
             static_cast<TypeLiteral *>(decl->type_expr.get())
-                ->type_value_;
+                ->type_value;
         scope_->context().bind(Context::Value(tlit_type_val),
                                shared_from_this());
 
@@ -480,14 +480,14 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   void EnumLiteral::verify_types() {
     static size_t anon_enum_counter = 0;
     type = Type_;
-    type_value_ = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
+    type_value = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
     ++anon_enum_counter;
   }
 
   void TypeLiteral::verify_types() {
     static size_t anon_type_counter = 0;
     type = Type_;
-    type_value_ =
+    type_value =
         Struct("__anon.struct" + std::to_string(anon_type_counter), this);
     ++anon_type_counter;
   }

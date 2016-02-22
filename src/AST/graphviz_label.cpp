@@ -96,7 +96,7 @@ namespace AST {
   }
 
   std::string TypeLiteral::graphviz_label() const {
-    return type_value_ ? "Type: " + type_value_->name_ : "TypeLiteral";
+    return type_value ? "Type: " + type_value->name_ : "TypeLiteral";
   }
 
   std::string ArrayType::graphviz_label() const { return "ArrayType"; }

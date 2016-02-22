@@ -116,37 +116,38 @@ Enumeration::Enumeration(const std::string& name,
   llvm_type_ = *Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-  // size_t enum_size = enumlit->vals_.size();
 
   // TODO Use bldr to create a global array of enum_size char ptrs
 
-  std::vector<llvm::Constant*> enum_str_elems(enumlit->vals_.size(), nullptr);
+  auto num_members = enumlit->members.size();
+  std::vector<llvm::Constant*> enum_str_elems(num_members, nullptr);
 
   size_t i = 0;
-  for (const auto& idstr : enumlit->vals_) {
+  for (const auto& idstr : enumlit->members) {
     intval_[idstr] = data::const_uint(i);
 
-    auto enum_str = new llvm::GlobalVariable(*global_module,
-        /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
-        /*  isConstant = */ true,
-        /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
-        /* Initializer = */ llvm::ConstantDataArray::getString(
+  auto enum_str = new llvm::GlobalVariable(
+      *global_module,
+      /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
+      /*  isConstant = */ true,
+      /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
+      /* Initializer = */ llvm::ConstantDataArray::getString(
           llvm::getGlobalContext(), idstr, true),
-        /*        Name = */ idstr);
-    enum_str->setAlignment(1);
-    enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
-        llvm::ArrayType::get(*Char, idstr.size() + 1),
-        enum_str, { data::const_uint(0), data::const_uint(0) });
+      /*        Name = */ idstr);
+  enum_str->setAlignment(1);
+  enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
+      llvm::ArrayType::get(*Char, idstr.size() + 1), enum_str,
+      {data::const_uint(0), data::const_uint(0)});
 
-    ++i;
+  ++i;
   }
-
-  str_array_ = new llvm::GlobalVariable(*global_module, 
-      /*        Type = */ llvm::ArrayType::get(*Ptr(Char), enumlit->vals_.size()),
+  str_array_ = new llvm::GlobalVariable(
+      *global_module,
+      /*        Type = */ llvm::ArrayType::get(*Ptr(Char), num_members),
       /*  isConstant = */ false,
       /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
       /* Initializer = */ llvm::ConstantArray::get(
-        llvm::ArrayType::get(*Ptr(Char), enumlit->vals_.size()), enum_str_elems),
+          llvm::ArrayType::get(*Ptr(Char), num_members), enum_str_elems),
       /*        Name = */ name_ + ".name.array");
 }
 

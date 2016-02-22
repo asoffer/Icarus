@@ -259,7 +259,7 @@ namespace AST {
       }
     }
 
-    if (!dep_type_flag) return Context::Value(type_value_);
+    if (!dep_type_flag) return Context::Value(type_value);
 
     std::vector<DeclPtr> decls_in_ctx;
     for (const auto& decl : decls_) {
@@ -291,13 +291,13 @@ namespace AST {
     auto type_lit_ptr = new TypeLiteral;
     type_lit_ptr->decls_ = std::move(decls_in_ctx);
 
-    type_lit_ptr->type_value_ = 
+    type_lit_ptr->type_value = 
       Struct("__anon.param.struct" + std::to_string(anon_type_counter++), type_lit_ptr);
     type_lit_ptr->build_llvm_internals();
 
     Dependency::mark_as_done(type_lit_ptr);
 
-    return Context::Value(type_lit_ptr->type_value_);
+    return Context::Value(type_lit_ptr->type_value);
   }
 
   Context::Value Assignment::evaluate(Context&)  { return nullptr; }
@@ -351,7 +351,7 @@ namespace AST {
   }
 
   Context::Value EnumLiteral::evaluate(Context&) {
-    return Context::Value(type_value_);
+    return Context::Value(type_value);
   }
 
   Context::Value Access::evaluate(Context& ctx) {
