@@ -73,7 +73,7 @@ namespace AST {
     } else if (op_ == Language::Operator::And) {
       if (expr_->type() != Type_) {
         // TODO better error message
-        error_log.log(line_num(), "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
+        error_log.log(line_num, "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
       }
 
       // TODO FIXME I know this is wrong
@@ -212,7 +212,7 @@ namespace AST {
       if (token() == "uint") return Context::Value(Uint);
       if (token() == "void") return Context::Value(Void);
 
-      error_log.log(line_num(), "I don't think `" + token() + "` is a type!");
+      error_log.log(line_num, "I don't think `" + token() + "` is a type!");
       return Context::Value(Error);
     }
     else { /* TODO */ }

@@ -1,4 +1,5 @@
-// No need to include the corresponding header. Everything here is global and extern
+// No need to include the corresponding header. Everything here is global and
+// extern
 
 #include <map>
 #include <set>
@@ -169,7 +170,7 @@ namespace Dependency {
           continue;
 
         } else if ((already_seen_ AT(dep.ptr_) & seen_flag) != 0) {
-          error_log.log(dep.ptr_->line_num(), "Cyclic dependency found.");
+          error_log.log(dep.ptr_->line_num, "Cyclic dependency found.");
           assert(false && "cyclic dep found");
 
         } else {
@@ -241,7 +242,7 @@ namespace Dependency {
     output
       << (x.torv_ ? "  t" : "  v") << x.ptr_
       << "[label=\"{" << escape(x.ptr_->graphviz_label())
-      << "\t(" << x.ptr_->line_num() << ")|"
+      << "\t(" << x.ptr_->line_num << ")|"
       << escape(x.ptr_->is_expression()
           ? static_cast<AST::Expression*>(x.ptr_)->type()->to_string() : "---")
       << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")

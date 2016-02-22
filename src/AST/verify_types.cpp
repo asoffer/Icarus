@@ -75,19 +75,19 @@ namespace AST {
     using Language::Operator;
     if (op_ == Operator::Free) {
       if (!expr_->type()->is_pointer()) {
-        error_log.log(line_num(), "Free can only be called on pointer types");
+        error_log.log(line_num, "Free can only be called on pointer types");
       }
       expr_type_ = Void;
  
     } else if (op_ == Operator::Print) {
       if (expr_->type() == Void) {
-        error_log.log(line_num(), "Void types cannot be printed");
+        error_log.log(line_num, "Void types cannot be printed");
       }
       expr_type_ = Void;
 
     } else if (op_ == Operator::Return) {
       if (expr_->type() == Void) {
-        error_log.log(line_num(), "Void types cannot be returned");
+        error_log.log(line_num, "Void types cannot be returned");
       }
  
       expr_type_ = Void;
@@ -97,14 +97,14 @@ namespace AST {
         expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
 
       } else {
-        error_log.log(line_num(), "Dereferencing object of type "
+        error_log.log(line_num, "Dereferencing object of type "
             + expr_->type()->to_string() + ", which is not a pointer.");
         expr_type_ = Error;
       }
 
     } else if (op_ == Operator::Call) {
       if (!expr_->type()->is_function()) {
-        error_log.log(line_num(),
+        error_log.log(line_num,
             "Identifier `" + expr_->token() + "` is not a function.");
         expr_type_ = Error;
         return;
@@ -112,7 +112,7 @@ namespace AST {
 
       auto fn = static_cast<Function*>(expr_->type());
       if (fn->argument_type() != Void) {
-        error_log.log(line_num(),
+        error_log.log(line_num,
             "Calling function `" + expr_->token() + "` with no arguments.");
         expr_type_ = Error;
       } else {
@@ -128,7 +128,7 @@ namespace AST {
 
     } else if (op_ == Operator::Sub) {
       if (expr_->type() == Uint) {
-        error_log.log(line_num(), "Negation applied to unsigned integer");
+        error_log.log(line_num, "Negation applied to unsigned integer");
         expr_type_ = Int;
 
       } else if (expr_->type() == Int) {
@@ -138,7 +138,7 @@ namespace AST {
         expr_type_ = Real;
 
       } else {
-        error_log.log(line_num(), type()->to_string() + " has no negation operator.");
+        error_log.log(line_num, type()->to_string() + " has no negation operator.");
         expr_type_ = Error;
       }
     } else {
@@ -164,7 +164,7 @@ namespace AST {
           expr_type_ = expr_->evaluate(scope_->context()).as_type;
 
         } else {
-          error_log.log(line_num(), etypename->to_string() + " has no member " + member_name_ + ".");
+          error_log.log(line_num, etypename->to_string() + " has no member " + member_name_ + ".");
           expr_type_ = Error;
         }
         return;
@@ -182,7 +182,7 @@ namespace AST {
       if (member_type) {
         expr_type_ = member_type;
       } else {
-        error_log.log(line_num(), "Objects of type " + etype->to_string()
+        error_log.log(line_num, "Objects of type " + etype->to_string()
             + " have no member named `" + member_name_ + "`.");
         expr_type_ = Error;
       }
@@ -202,7 +202,7 @@ namespace AST {
 
     if (op_ == Language::Operator::Rocket) {
       if (lhs_->type() != Bool) {
-        error_log.log(line_num(), "LHS of rocket must be a bool");
+        error_log.log(line_num, "LHS of rocket must be a bool");
         expr_type_ = Error;
       }
       return;
@@ -223,7 +223,7 @@ namespace AST {
       if (!lhs_->type()->is_function()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num(), "Identifier `" + lhs_->token() +"` does not name a function.");
+        error_log.log(line_num, "Identifier `" + lhs_->token() +"` does not name a function.");
         return;
       }
 
@@ -232,7 +232,7 @@ namespace AST {
       // TODO If rhs is a comma-list, is it's type given by a tuple?
       if (in_types != rhs_->type()) {
         // TODO segfault happenning here because rhs_ is not totally initialized always.
-        error_log.log(line_num(), "Type mismatch on function arguments.");
+        error_log.log(line_num, "Type mismatch on function arguments.");
         return;
       }
 
@@ -247,7 +247,7 @@ namespace AST {
       if (!lhs_->type()->is_array()) {
         // TODO TOKENREMOVAL
         // TODO lhs might not have a precise token
-        error_log.log(line_num(), "Identifier `" + lhs_->token() + "` does not name an array.");
+        error_log.log(line_num, "Identifier `" + lhs_->token() + "` does not name an array.");
         return;
       }
 
@@ -256,7 +256,7 @@ namespace AST {
       assert(expr_type_ && "array data type is nullptr");
       // TODO allow slice indexing
       if (rhs_->type() != Int && rhs_->type() != Uint) {
-        error_log.log(line_num(), "Arary must be indexed by an int or uint. You supplied a " + rhs_->type()->to_string());
+        error_log.log(line_num, "Arary must be indexed by an int or uint. You supplied a " + rhs_->type()->to_string());
         return;
       }
 
@@ -276,12 +276,12 @@ namespace AST {
           || (lhs_->type() == Uint && type() == Int)
          ) return;
 
-      error_log.log(line_num(),
+      error_log.log(line_num,
           "Invalid cast from " + lhs_->type()->to_string()
           + " to " + type()->to_string());
 
     } else {
-      expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
+      expr_type_ = operator_lookup(line_num, op_, lhs_->type(), rhs_->type());
       assert(expr_type_ && "operator_lookup yields nullptr");
       return;
     }
@@ -324,7 +324,7 @@ namespace AST {
         ss << "\t" << *t << "\n";
       }
 
-      error_log.log(line_num(), ss.str());
+      error_log.log(line_num, ss.str());
       expr_type_ = Error;
     }
   }
@@ -332,7 +332,7 @@ namespace AST {
   void Declaration::verify_types() {
     if (decl_type_->type() == Void) {
       expr_type_ = Error;
-      error_log.log(line_num(), "Void types cannot be assigned.");
+      error_log.log(line_num, "Void types cannot be assigned.");
       return;
     }
 
@@ -345,7 +345,7 @@ namespace AST {
     if (decl_type_->is_terminal()) {
       auto term = std::static_pointer_cast<Terminal>(decl_type_);
       if (term->terminal_type_ == Language::Terminal::Null) {
-        error_log.log(line_num(), "Cannot infer the type of `null`.");
+        error_log.log(line_num, "Cannot infer the type of `null`.");
       }
     }
 
@@ -355,7 +355,7 @@ namespace AST {
   void ArrayType::verify_types() {
     // TODO change this to uint
     if (len_ != nullptr && len_->type() != Int) {
-      error_log.log(line_num(), "Array length indexed by non-integral type");
+      error_log.log(line_num, "Array length indexed by non-integral type");
     }
 
     if (array_type_->type() == Type_) {
@@ -377,7 +377,7 @@ namespace AST {
     expr_type_ = Arr(type_to_match);
     for (const auto& el : elems_) {
       if (el->type() != type_to_match) {
-        error_log.log(line_num(), "Type error: Array literal must have consistent type");
+        error_log.log(line_num, "Type error: Array literal must have consistent type");
         expr_type_ = Error;
       }
     }
@@ -424,11 +424,11 @@ namespace AST {
       }
 
       if (lhs_->type() != rhs_->type()) {
-        error_log.log(line_num(), "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
+        error_log.log(line_num, "Invalid assignment. Left-hand side has type " + lhs_->type()->to_string() + ", but right-hand side has type " + rhs_->type()->to_string());
       }
       expr_type_ = Void;
     } else {
-      expr_type_ = operator_lookup(line_num(), op_, lhs_->type(), rhs_->type());
+      expr_type_ = operator_lookup(line_num, op_, lhs_->type(), rhs_->type());
       assert(expr_type_ && "operator_lookup");
     }
   }
@@ -448,7 +448,7 @@ namespace AST {
 
   void While::verify_types() {
     if (cond_->type() != Bool) {
-      error_log.log(line_num(), "While loop condition must be a bool, but "
+      error_log.log(line_num, "While loop condition must be a bool, but "
           + cond_->type()->to_string() + " given.");
     }
   }
@@ -456,7 +456,7 @@ namespace AST {
   void Conditional::verify_types() {
     for (const auto& cond : conds_) {
       if (cond->type() != Bool) {
-        error_log.log(line_num(), "Conditional must be a bool, but "
+        error_log.log(line_num, "Conditional must be a bool, but "
             + cond->type()->to_string() + " given.");
       }
     }
@@ -486,7 +486,7 @@ namespace AST {
         // TODO: give some context for this error message. Why must this be the
         // type?  So far the only instance where this is called is for case
         // statements,
-        error_log.log(line_num(), "Type of `____` must be "
+        error_log.log(line_num, "Type of `____` must be "
             + key_type->to_string() + ", but "
             + kv.first->type()->to_string() + " found instead.");
         kv.first->expr_type_ = key_type;
@@ -498,7 +498,7 @@ namespace AST {
 
     // TODO guess what type was intended
     if (value_types.size() != 1) {
-      error_log.log(line_num(), "Type error: Values do not match in key-value pairs");
+      error_log.log(line_num, "Type error: Values do not match in key-value pairs");
       return Error;
     }
 

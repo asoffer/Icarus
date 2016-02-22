@@ -929,8 +929,7 @@ namespace AST {
       }
 
       if (scope_ptr == nullptr || scope_ptr->is_function_scope()) {
-        error_log.log(line_num(),
-            "A `break` command was encountered outside of a loop.");
+        error_log.log(line_num, "A `break` command was encountered outside of a loop.");
 
       } else {
         auto while_scope = static_cast<WhileScope*>(scope_ptr);

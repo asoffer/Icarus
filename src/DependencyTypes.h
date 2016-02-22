@@ -2,7 +2,7 @@
 #define ICARUS_DEPENDENCY_TYPES_H
 
 namespace AST {
-  class Node;
+  struct Node;
 }  // namespace AST
 
 namespace Dependency {

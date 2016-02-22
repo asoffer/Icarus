@@ -90,7 +90,7 @@ namespace AST {
     if (is_arg) {
       id_->is_function_arg_ = true;
     }
-    id_->line_num_ = line_num(); // Hacky and probably wrong TODO FIXME
+    id_->line_num = line_num; // Hacky and probably wrong TODO FIXME
 
     if (decl_type_->is_identifier()) {
       decl_type_ = scope->identifier(decl_type_);

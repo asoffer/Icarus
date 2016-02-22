@@ -10,14 +10,14 @@ namespace AST {
       file_queue.emplace("lib/string.ic");
     }
 
-    return std::make_shared<Identifier>(nodes[0]->line_num(), nodes[0]->token());
+    return std::make_shared<Identifier>(nodes[0]->line_num, nodes[0]->token());
   }
 
   NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
     auto tk_node = std::static_pointer_cast<TokenNode>(nodes[0]);
-    unop_ptr->line_num_ = tk_node->line_num();
+    unop_ptr->line_num = tk_node->line_num;
 
     unop_ptr->type_ = Language::expression;
     unop_ptr->op_ = tk_node->operator_type();
@@ -28,7 +28,7 @@ namespace AST {
 
   NPtr Unop::build_paren_operator(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
-    unop_ptr->line_num_ = nodes[1]->line_num();
+    unop_ptr->line_num = nodes[1]->line_num;
 
     unop_ptr->expr_ =
       std::static_pointer_cast<Expression>(nodes[0]);
@@ -43,7 +43,7 @@ namespace AST {
   NPtr Access::build(NPtrVec&& nodes) {
     auto access_ptr = std::make_shared<Access>();
     access_ptr->member_name_ = nodes[2]->token();
-    access_ptr->line_num_ = nodes[0]->line_num();
+    access_ptr->line_num = nodes[0]->line_num;
     access_ptr->expr_ = std::static_pointer_cast<Expression>(std::move(nodes[0]));
 
     return access_ptr;
@@ -51,7 +51,7 @@ namespace AST {
 
   NPtr Binop::build_operator(NPtrVec&& nodes, Language::Operator op_class) {
     auto binop_ptr = std::make_shared<Binop>();
-    binop_ptr->line_num_ = nodes[1]->line_num();
+    binop_ptr->line_num = nodes[1]->line_num;
 
     binop_ptr->lhs_ =
       std::static_pointer_cast<Expression>(nodes[0]);
@@ -171,7 +171,7 @@ namespace AST {
 
     } else {
       chain_ptr = std::make_shared<ChainOp>();
-      chain_ptr->line_num_ = nodes[1]->line_num();
+      chain_ptr->line_num = nodes[1]->line_num;
 
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence_ = op_prec;
@@ -188,7 +188,7 @@ namespace AST {
     auto array_lit_ptr = std::make_shared<ArrayLiteral>();
     array_lit_ptr->precedence_ =
       Language::precedence(Language::Operator::NotAnOperator);
-    array_lit_ptr->line_num_ = nodes[0]->line_num();
+    array_lit_ptr->line_num = nodes[0]->line_num;
 
     if (nodes[1]->is_comma_list()) {
       array_lit_ptr->elems_ = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
@@ -208,7 +208,7 @@ namespace AST {
       EPtr prev = std::static_pointer_cast<Expression>(nodes[3]);
       while (iter != len_chain->exprs_.rend()) {
         auto array_type_ptr = new ArrayType;
-        array_type_ptr->line_num_ = (*iter)->line_num();
+        array_type_ptr->line_num = (*iter)->line_num;
         array_type_ptr->len_ = *iter;
 
         array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
@@ -221,7 +221,7 @@ namespace AST {
 
     } else {
       auto array_type_ptr = std::make_shared<ArrayType>();
-      array_type_ptr->line_num_ = nodes[0]->line_num();
+      array_type_ptr->line_num = nodes[0]->line_num;
 
       array_type_ptr->len_ =
         std::static_pointer_cast<Expression>(nodes[1]);
@@ -237,7 +237,7 @@ namespace AST {
 
   NPtr ArrayType::build_unknown(NPtrVec&& nodes) {
     auto array_type_ptr = std::make_shared<ArrayType>();
-    array_type_ptr->line_num_ = nodes[0]->line_num();
+    array_type_ptr->line_num = nodes[0]->line_num;
 
     // len_ == nullptr means we do not know the length of the array can change.
     array_type_ptr->len_ = nullptr;
@@ -258,7 +258,7 @@ namespace AST {
   NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
     // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
-    term_ptr->line_num_ = nodes[0]->line_num();
+    term_ptr->line_num = nodes[0]->line_num;
     term_ptr->terminal_type_ = term_type;
     term_ptr->expr_type_ = t;
     term_ptr->token_ = nodes[0]->token();
@@ -293,7 +293,7 @@ namespace AST {
 
   NPtr Assignment::build(NPtrVec&& nodes) {
     auto assign_ptr = std::make_shared<Assignment>();
-    assign_ptr->line_num_ = nodes[1]->line_num();
+    assign_ptr->line_num = nodes[1]->line_num;
 
     assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
@@ -318,7 +318,7 @@ namespace AST {
   }
 
   NPtr Declaration::build(NPtrVec&& nodes, Language::NodeType node_type, bool infer) {
-    auto decl_ptr = Scope::make_declaration(nodes[1]->line_num(), nodes[0]->token());
+    auto decl_ptr = Scope::make_declaration(nodes[1]->line_num, nodes[0]->token());
     decl_ptr->decl_type_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     decl_ptr->type_ = node_type;
@@ -344,7 +344,7 @@ namespace AST {
 
   NPtr KVPairList::build_one(NPtrVec&& nodes) {
     auto pair_list = std::make_shared<KVPairList>();
-    pair_list->line_num_ = nodes[0]->line_num();
+    pair_list->line_num = nodes[0]->line_num;
     EPtr key_ptr;
 
     if (nodes[0]->node_type() == Language::reserved_else) {
@@ -391,7 +391,7 @@ namespace AST {
 
   NPtr FunctionLiteral::build(NPtrVec&& nodes) {
     auto fn_lit = std::make_shared<FunctionLiteral>();
-    fn_lit->line_num_ = nodes[0]->line_num();
+    fn_lit->line_num = nodes[0]->line_num;
 
     fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
 
@@ -426,7 +426,7 @@ namespace AST {
 
   NPtr TypeLiteral::build(NPtrVec&& nodes) {
     auto type_lit_ptr = std::make_shared<TypeLiteral>();
-    type_lit_ptr->line_num_ = nodes[0]->line_num();
+    type_lit_ptr->line_num = nodes[0]->line_num;
     type_lit_ptr->expr_type_ = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
@@ -457,10 +457,10 @@ namespace AST {
   }
 
   NPtr Statements::build_double_expression_error(NPtrVec&& nodes) {
-    error_log.log(nodes[0]->line_num(), "Adjacent expressions");
+    error_log.log(nodes[0]->line_num, "Adjacent expressions");
 
     auto output = std::make_shared<Statements>();
-    output->line_num_ = nodes[0]->line_num();
+    output->line_num = nodes[0]->line_num;
     output->statements_.push_back(std::move(nodes[0]));
     output->statements_.push_back(std::move(nodes[1]));
 
@@ -468,7 +468,7 @@ namespace AST {
   }
 
   NPtr Statements::build_extra_expression_error(NPtrVec&& nodes) {
-    error_log.log(nodes[0]->line_num(), "Adjacent expressions");
+    error_log.log(nodes[0]->line_num, "Adjacent expressions");
 
     auto output = std::static_pointer_cast<Statements>(nodes[0]);
     output->statements_.push_back(std::move(nodes[1]));
@@ -486,14 +486,14 @@ namespace AST {
 
   NPtr Conditional::build_extra_else_error(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
-    error_log.log(nodes[1]->line_num(), "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+    error_log.log(nodes[1]->line_num, "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num_) + ".");
 
     return std::move(nodes[0]);
   }
 
   NPtr Conditional::build_extra_else_if_error(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
-    error_log.log(nodes[1]->line_num(), "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+    error_log.log(nodes[1]->line_num, "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num_) + ".");
 
     return std::move(nodes[0]);
   }
@@ -513,7 +513,7 @@ namespace AST {
 
   NPtr Conditional::build_else(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
-    if_stmt->else_line_num_ = nodes[1]->line_num();
+    if_stmt->else_line_num_ = nodes[1]->line_num;
     if_stmt->statements_.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
     if_stmt->body_scopes_.push_back(new CondScope);
@@ -527,13 +527,13 @@ namespace AST {
 
   NPtr EnumLiteral::build(NPtrVec&& nodes) {
     auto enum_lit_ptr = std::make_shared<EnumLiteral>();
-    enum_lit_ptr->line_num_ = nodes[0]->line_num();
+    enum_lit_ptr->line_num = nodes[0]->line_num;
     enum_lit_ptr->expr_type_ = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {
       if (!stmt->is_identifier()) {
-        error_log.log(stmt->line_num(), "Enum members must be identifiers.");
+        error_log.log(stmt->line_num, "Enum members must be identifiers.");
       }
 
       // TODO repeated terms?
@@ -545,7 +545,7 @@ namespace AST {
   }
 
   NPtr Break::build(NPtrVec&& nodes) {
-    return std::make_shared<Break>(nodes[0]->line_num());
+    return std::make_shared<Break>(nodes[0]->line_num);
   }
 
   NPtr While::build(NPtrVec&& nodes) {

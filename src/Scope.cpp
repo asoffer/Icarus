@@ -239,7 +239,7 @@ EPtr Scope::identifier(EPtr id_as_eptr) {
   }
 
   // If you reach here it's because we never saw a declaration for the identifier
-  error_log.log(id_as_eptr->line_num(),
+  error_log.log(id_as_eptr->line_num,
       "Undeclared identifier `" + id_ptr->token() + "`.");
 
   return nullptr;
@@ -264,11 +264,11 @@ void Scope::verify_no_shadowing() {
       // If the shadowing occurs in the same scope, we don't need to display
       // the error message twice.
       if (scope_ptr == decl_ptr2->scope_) {
-        if (decl_ptr1->line_num() <= decl_ptr2->line_num()) {
-          error_log.log(decl_ptr1->line_num(),
+        if (decl_ptr1->line_num <= decl_ptr2->line_num) {
+          error_log.log(decl_ptr1->line_num,
               "Identifier `" + decl_ptr1->identifier_string()
               + "` already declared in this scope (on line "
-              + std::to_string(decl_ptr2->line_num()) + ").");
+              + std::to_string(decl_ptr2->line_num) + ").");
         }
 
         continue;
@@ -276,8 +276,10 @@ void Scope::verify_no_shadowing() {
 
       while (scope_ptr != nullptr) {
         if (scope_ptr == decl_ptr2->scope_) {
-          error_log.log(decl_ptr1->line_num(),
-              "Identifier `" + decl_ptr1->identifier_string() + "` shadows identifier declared on line " + std::to_string(decl_ptr2->line_num()) + ".");
+          error_log.log(decl_ptr1->line_num,
+                        "Identifier `" + decl_ptr1->identifier_string() +
+                            "` shadows identifier declared on line " +
+                            std::to_string(decl_ptr2->line_num) + ".");
           // Do NOT skip out here. It's possible to have many shadows and we
           // might as well catch them all.
         }
@@ -287,11 +289,11 @@ void Scope::verify_no_shadowing() {
   }
 }
 
-DeclPtr Scope::make_declaration(size_t line_num, const std::string& id_string) {
+DeclPtr Scope::make_declaration(size_t line_num, const std::string &id_string) {
   auto d = std::make_shared<AST::Declaration>();
   decl_registry_.emplace_back(d);
   d->id_ = std::make_shared<AST::Identifier>(line_num, id_string);
-  d->line_num_ = line_num;
+  d->line_num = line_num;
 
   return d;
 }

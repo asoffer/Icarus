@@ -55,65 +55,63 @@ namespace AST {
   virtual Time::Eval determine_time()                              ENDING; \
   static NPtr build(NPtrVec&& nodes)
 
-  class Node {
-    public:
-      Language::NodeType node_type() const { return type_; }
-      void set_node_type(Language::NodeType t) { type_ = t; }
+  struct Node {
+    Language::NodeType node_type() const { return type_; }
+    void set_node_type(Language::NodeType t) { type_ = t; }
 
-      virtual std::string token() const { return token_; }
-      void set_token(const std::string& token_string) {
-        token_ = token_string;
-      }
-      size_t line_num() const { return line_num_; }
+    virtual std::string token() const { return token_; }
+    void set_token(const std::string& token_string) {
+      token_ = token_string;
+    }
 
-      virtual std::string to_string(size_t n) const;
-      virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
-      virtual void assign_scope(Scope* scope) {}
-      virtual void record_dependencies() {}
-      virtual void verify_types() {}
-      virtual std::string graphviz_label() const;
+    virtual std::string to_string(size_t n) const;
+    virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
+    virtual void assign_scope(Scope* scope) {}
+    virtual void record_dependencies() {}
+    virtual void verify_types() {}
+    virtual std::string graphviz_label() const;
 
-      virtual Context::Value evaluate(Context& ctx) { return nullptr; }
-      virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
-      virtual Time::Eval determine_time() { return Time::error; }
+    virtual Context::Value evaluate(Context& ctx) { return nullptr; }
+    virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
+    virtual Time::Eval determine_time() { return Time::error; }
 
-      Time::Eval time() { return time_; }
+    Time::Eval time() { return time_; }
 
-      virtual bool is_identifier()       const { return false; }
-      virtual bool is_terminal()         const { return false; }
-      virtual bool is_expression()       const { return false; }
-      virtual bool is_binop()            const { return false; }
-      virtual bool is_function_literal() const { return false; }
-      virtual bool is_chain_op()         const { return false; }
-      virtual bool is_case()             const { return false; }
-      virtual bool is_unop()             const { return false; }
-      virtual bool is_access()           const { return false; }
-      virtual bool is_comma_list()       const { return false; }
-      virtual bool is_declaration()      const { return false; }
-      virtual bool is_array_type()       const { return false; }
-      virtual bool is_type_literal()     const { return false; }
-      virtual bool is_enum_literal()     const { return false; }
-      virtual bool is_array_literal()    const { return false; }
-      virtual bool is_token_node()       const { return false; }
+    virtual bool is_identifier()       const { return false; }
+    virtual bool is_terminal()         const { return false; }
+    virtual bool is_expression()       const { return false; }
+    virtual bool is_binop()            const { return false; }
+    virtual bool is_function_literal() const { return false; }
+    virtual bool is_chain_op()         const { return false; }
+    virtual bool is_case()             const { return false; }
+    virtual bool is_unop()             const { return false; }
+    virtual bool is_access()           const { return false; }
+    virtual bool is_comma_list()       const { return false; }
+    virtual bool is_declaration()      const { return false; }
+    virtual bool is_array_type()       const { return false; }
+    virtual bool is_type_literal()     const { return false; }
+    virtual bool is_enum_literal()     const { return false; }
+    virtual bool is_array_literal()    const { return false; }
+    virtual bool is_token_node()       const { return false; }
 
-      Node(size_t line_num = 0, Language::NodeType type = Language::unknown, const std::string& token = "")
-        : scope_(nullptr), type_(type), token_(token), line_num_(line_num), time_(Time::error) {}
+    Node(size_t line_num = 0,
+        Language::NodeType type = Language::unknown, const std::string& token = "")
+      : scope_(nullptr), type_(type), token_(token), line_num(line_num), time_(Time::error) {}
 
-      virtual ~Node(){}
+    virtual ~Node(){}
 
-      friend class Access;
+    friend class Access;
 
-      inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
-        return os << node.to_string(0);
-      }
+    inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
+      return os << node.to_string(0);
+    }
 
-      Scope* scope_;
+    Scope* scope_;
 
-    protected:
-      Language::NodeType type_;
-      std::string token_;
-      size_t line_num_;
-      Time::Eval time_;
+    Language::NodeType type_;
+    std::string token_;
+    size_t line_num;
+    Time::Eval time_;
   };
 
   class TokenNode : public Node {
@@ -406,7 +404,7 @@ namespace AST {
 
   inline NPtr Case::build(NPtrVec&& nodes) {
     auto case_ptr = std::make_shared<Case>();
-    case_ptr->line_num_ = nodes[0]->line_num();
+    case_ptr->line_num = nodes[0]->line_num;
     case_ptr->pairs_ = std::static_pointer_cast<KVPairList>(nodes[2]);
     return case_ptr;
   }
@@ -535,8 +533,8 @@ namespace AST {
       virtual std::string graphviz_label() const;
       virtual Time::Eval determine_time();
 
-      Break(size_t line_num) {
-        line_num_ = line_num;
+      Break(size_t new_line_num) {
+        line_num = new_line_num;
       }
 
   };

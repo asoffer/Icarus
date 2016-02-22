@@ -6,7 +6,7 @@
 #include <type_traits>
 
 namespace AST {
-  class Node;
+  struct Node;
   class Expression;
   class Identifier;
   class Declaration;

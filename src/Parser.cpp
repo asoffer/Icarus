@@ -2,11 +2,11 @@
 #include "AST.h"
 
 namespace debug {
-  extern bool parser;
-}  // namespace debug
+extern bool parser;
+} // namespace debug
 
 // Construct a parser for the given file
-Parser::Parser(const std::string& filename) : lexer_(filename) {
+Parser::Parser(const std::string &filename) : lexer_(filename) {
   assert(stack_.empty());
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
@@ -31,11 +31,13 @@ NPtr Parser::parse() {
     // the body (i.e., we will not shift). On the other hand, if there was
     // no reduce possible, then the conditional will evaluate to true, and we
     // will shift.
-    if (should_shift() || !reduce()) shift();
+    if (should_shift() || !reduce())
+      shift();
 
     // A flag given to the compiler that will tell it to pause at each
     // shift/reduce step and show the current parse stack.
-    if (debug::parser) show_debug();
+    if (debug::parser)
+      show_debug();
   }
 
   // Once we exit the previous loop, we have seen all tokens and reached the
@@ -43,7 +45,8 @@ NPtr Parser::parse() {
   // reductions to complete. While we can reduce, do so.
 
   while (reduce()) {
-    if (debug::parser) show_debug();
+    if (debug::parser)
+      show_debug();
   }
 
   if (debug::parser) {
@@ -57,9 +60,9 @@ NPtr Parser::parse() {
   //
   // TODO Make this impossible to be an issue
   if (stack_.size() > 1) {
-    std::cerr
-      << "Parser found several nodes at root level. Handling just the first tree."
-      << std::endl;
+    std::cerr << "Parser found several nodes at root level. Handling just the "
+                 "first tree."
+              << std::endl;
   }
 
   return stack_.back();
@@ -69,7 +72,7 @@ NPtr Parser::parse() {
 void Parser::show_debug() const {
   // Clear the screen
   std::cout << "\033[2J\033[1;1H" << std::endl;
-  for (const auto& node_ptr : stack_) {
+  for (const auto &node_ptr : stack_) {
     std::cout << *node_ptr;
   }
   std::cin.ignore(1);
@@ -91,28 +94,27 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (stack_.size() >= 2
-      && ahead_type == Language::newline
-      && last_type == Language::string_literal
-      && stack_[stack_.size() - 2]->node_type() == Language::reserved_import) {
+  if (stack_.size() >= 2 && ahead_type == Language::newline &&
+      last_type == Language::string_literal &&
+      stack_[stack_.size() - 2]->node_type() == Language::reserved_import) {
     return true;
   }
 
   // Reduce terminals
   switch (last_type) {
-    case Language::identifier:
-    case Language::reserved_true:
-    case Language::reserved_false:
-    case Language::int_literal:
-    case Language::uint_literal:
-    case Language::real_literal:
-    case Language::char_literal:
-    case Language::string_literal:
-    case Language::type_literal:
-    case Language::right_paren:
-    case Language::right_bracket:
-      return false;
-    default:;
+  case Language::identifier:
+  case Language::reserved_true:
+  case Language::reserved_false:
+  case Language::int_literal:
+  case Language::uint_literal:
+  case Language::real_literal:
+  case Language::char_literal:
+  case Language::string_literal:
+  case Language::type_literal:
+  case Language::right_paren:
+  case Language::right_bracket:
+    return false;
+  default:;
   }
 
   // Shift all newlines together so they can be repeatedly reduced. Similarly,
@@ -137,8 +139,9 @@ bool Parser::should_shift() {
 
   // For function calls, shift the parentheses (same for indexing)
   if (Language::is_expression(last_type) &&
-      (ahead_type == Language::left_paren || ahead_type == Language::left_bracket) &&
-      // Must also guarantee that we don't have a '.' beforehand 
+      (ahead_type == Language::left_paren ||
+       ahead_type == Language::left_bracket) &&
+      // Must also guarantee that we don't have a '.' beforehand
       (stack_.size() < 2 ||
        stack_[stack_.size() - 2]->node_type() != Language::dot)) {
     return true;
@@ -148,34 +151,36 @@ bool Parser::should_shift() {
   // in the lookahead, then we must compare their precedence levels to decide
   // whether or not to shift. We only shift if the one on the stack has lower
   // precedence.
-  if (Language::is_binary_operator(ahead_type) && stack_.size() >= 2
-      && Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
+  if (Language::is_binary_operator(ahead_type) && stack_.size() >= 2 &&
+      Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
 
     size_t lhs_prec;
     size_t rhs_prec = Language::precedence(lookahead_->operator_type());
 
-    const auto& prev_node = stack_[stack_.size() - 2];
+    const auto &prev_node = stack_[stack_.size() - 2];
     if (prev_node->is_token_node()) {
       auto prev_token_node =
-        std::static_pointer_cast<AST::TokenNode>(prev_node);
+          std::static_pointer_cast<AST::TokenNode>(prev_node);
       lhs_prec = Language::precedence(prev_token_node->operator_type());
 
     } else {
       assert(false && "Previous node is not a token node.");
     }
 
-    if (lhs_prec != rhs_prec) return lhs_prec < rhs_prec;
+    if (lhs_prec != rhs_prec)
+      return lhs_prec < rhs_prec;
 
     auto associativity = lhs_prec & assoc_mask;
 
     // Non-associative operators in this situation are a parsing error,
     // because the lhs and rhs precedences are the same.
-    // 
+    //
     // TODO figure out if we should exit early here. Is there any reasonable
     // way to continue?
     if (associativity == non_assoc) {
-      error_log.log(lookahead_->line_num(),
-          "Non-associative operator found with no specified association. Maybe you forgot parentheses?");
+      error_log.log(lookahead_->line_num, "Non-associative operator found "
+                                          "with no specified association. "
+                                          "Maybe you forgot parentheses?");
     }
 
     // If the precedence levels are equal, we should shift right-associative
@@ -184,8 +189,9 @@ bool Parser::should_shift() {
   }
 
   // If we're defining a function with braces don't stop early.
-  if ((last_type == Language::fn_expression
-        || last_type == Language::reserved_struct) && ahead_type == Language::left_brace) {
+  if ((last_type == Language::fn_expression ||
+       last_type == Language::reserved_struct) &&
+      ahead_type == Language::left_brace) {
     return true;
   }
 
@@ -195,20 +201,21 @@ bool Parser::should_shift() {
 // Reduces the stack according to the language rules spceified in Language.cpp.
 // Returns true if a rule is matched and applied. Returns false otherwise.
 bool Parser::reduce() {
-  const Rule* matched_rule_ptr = nullptr;
-  for (const Rule& rule : Language::rules) {
+  const Rule *matched_rule_ptr = nullptr;
+  for (const Rule &rule : Language::rules) {
     // If we've already matched a rule, ignore rules of lower precedence.
     // Precedence is simply determined by the length of the match.
-    if (matched_rule_ptr != nullptr &&
-        matched_rule_ptr->size() > rule.size()) {
+    if (matched_rule_ptr != nullptr && matched_rule_ptr->size() > rule.size()) {
       continue;
     }
 
     if (rule.match(stack_)) {
-      assert((matched_rule_ptr == nullptr || rule.size() != matched_rule_ptr->size())
-          && "Two rules matched with the same size");
+      assert((matched_rule_ptr == nullptr ||
+              rule.size() != matched_rule_ptr->size()) &&
+             "Two rules matched with the same size");
 
-      // Extract a pointer to the rule. It's safe to take a pointer here, because
+      // Extract a pointer to the rule. It's safe to take a pointer here,
+      // because
       // Language::rules is const.
       matched_rule_ptr = &rule;
     }
@@ -216,7 +223,8 @@ bool Parser::reduce() {
 
   // If you make it to the end of the rules and still haven't matched, then
   // return false
-  if (matched_rule_ptr == nullptr) return false;
+  if (matched_rule_ptr == nullptr)
+    return false;
 
   // Apply the rule
   matched_rule_ptr->apply(stack_);

@@ -12,12 +12,12 @@ namespace AST {
   Terminal::Terminal() {}
   ArrayType::ArrayType() {}
 
-  Identifier::Identifier(size_t line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false), decl_(nullptr) {
+  Identifier::Identifier(size_t set_line_num, const std::string& token_string) : alloc_(nullptr), is_function_arg_(false), decl_(nullptr) {
     token_ = token_string;
     expr_type_ = Unknown;
     precedence_ =
       Language::precedence(Language::Operator::NotAnOperator);
-    line_num_ = line_num;
+    line_num = set_line_num;
   }
 
 
