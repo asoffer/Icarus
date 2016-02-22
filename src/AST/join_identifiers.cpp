@@ -1,12 +1,16 @@
 #include "AST.h"
 
+void set_or_recurse(EPtr& eptr, Scope* scope) {
+  if (eptr->is_identifier()) {
+    eptr = scope->identifier(eptr);
+  } else {
+    eptr->join_identifiers(scope);
+  }
+}
+
 namespace AST {
   void Unop::join_identifiers(Scope* scope, bool is_arg) {
-    if (operand->is_identifier()) {
-      operand = scope->identifier(operand);
-    } else {
-      operand->join_identifiers(scope);
-    }
+    set_or_recurse(operand, scope);
   }
 
   void While::join_identifiers(Scope* scope, bool is_arg) {
@@ -16,11 +20,7 @@ namespace AST {
 
   void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& el : elems) {
-      if (el->is_identifier()) {
-        el = scope->identifier(el);
-      } else {
-        el->join_identifiers(scope);
-      }
+      set_or_recurse(el, scope);
     }
   }
 
@@ -41,19 +41,11 @@ namespace AST {
   }
 
   void Access::join_identifiers(Scope* scope, bool is_arg) {
-    if (operand->is_identifier()) {
-      operand = scope->identifier(operand);
-    } else {
-      operand->join_identifiers(scope);
-    }
+    set_or_recurse(operand, scope);
   }
 
   void Binop::join_identifiers(Scope* scope, bool is_arg) {
-    if (lhs->is_identifier()) {
-      lhs = scope->identifier(lhs);
-    } else {
-      lhs->join_identifiers(scope);
-    }
+    set_or_recurse(lhs, scope);
 
     // Ignore the RHS of a dot operator
     // TODO Access should be looking in a different scope
@@ -61,27 +53,15 @@ namespace AST {
     // Should this even be a binary operator?
     if (op == Language::Operator::Access) return;
 
-    if (rhs->is_identifier()) {
-      rhs = scope->identifier(rhs);
-    } else {
-      rhs->join_identifiers(scope);
-    }
+    set_or_recurse(rhs, scope);
   }
 
   void ArrayType::join_identifiers(Scope* scope, bool is_arg) {
     if (length != nullptr) {
-      if (length->is_identifier()) {
-        length = scope->identifier(length);
-      } else {
-        length->join_identifiers(scope);
-      }
+      set_or_recurse(length, scope);
     }
 
-    if (data_type->is_identifier()) {
-      data_type = scope->identifier(data_type);
-    } else {
-      data_type->join_identifiers(scope);
-    }
+    set_or_recurse(data_type, scope);
   }
 
   void Declaration::join_identifiers(Scope* scope, bool is_arg) {
@@ -92,20 +72,12 @@ namespace AST {
     }
     id_->line_num = line_num; // Hacky and probably wrong TODO FIXME
 
-    if (decl_type_->is_identifier()) {
-      decl_type_ = scope->identifier(decl_type_);
-    } else {
-      decl_type_->join_identifiers(scope);
-    }
+    set_or_recurse(decl_type_, scope);
   }
 
   void ChainOp::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& expr : exprs) {
-      if (expr->is_identifier()) {
-        expr = scope->identifier(expr);
-      } else {
-        expr->join_identifiers(scope);
-      }
+      set_or_recurse(expr, scope);
     }
   }
 
@@ -115,17 +87,8 @@ namespace AST {
 
   void KVPairList::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& pair : kv_pairs_) {
-      if (pair.first->is_identifier()) {
-        pair.first = scope->identifier(pair.first);
-      } else {
-        pair.first->join_identifiers(scope);
-      }
-
-      if (pair.second->is_identifier()) {
-        pair.second = scope->identifier(pair.second);
-      } else {
-        pair.second->join_identifiers(scope);
-      }
+      set_or_recurse(pair.first, scope);
+      set_or_recurse(pair.second, scope);
     }
   }
 
@@ -133,10 +96,7 @@ namespace AST {
     for (auto& ptr : statements_) {
       if (ptr->is_identifier()) {
         ptr = std::static_pointer_cast<Node>(
-            scope->identifier(
-              std::static_pointer_cast<Expression>(ptr)
-              )
-            );
+            scope->identifier(std::static_pointer_cast<Expression>(ptr)));
       } else {
         ptr->join_identifiers(scope);
       }
@@ -148,12 +108,7 @@ namespace AST {
       in->join_identifiers(fn_scope_, true);
     }
 
-    if (return_type_->is_identifier()) {
-      return_type_ = scope->identifier(return_type_);
-    } else {
-      return_type_->join_identifiers(fn_scope_);
-    }
-
+    set_or_recurse(return_type_, fn_scope_);
     statements_->join_identifiers(fn_scope_);
   }
 
