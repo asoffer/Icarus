@@ -462,9 +462,9 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   }
 
   void While::verify_types() {
-    if (cond_->type != Bool) {
+    if (condition->type != Bool) {
       error_log.log(line_num, "While loop condition must be a bool, but "
-          + cond_->type->to_string() + " given.");
+          + condition->type->to_string() + " given.");
     }
   }
 

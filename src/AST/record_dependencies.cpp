@@ -161,15 +161,15 @@ namespace AST {
     // because this isn't allowed at compile-time
     // TODO check evaluate
     Dependency::value_type(this, this);
-    Dependency::type_type(this, cond_.get());
+    Dependency::type_type(this, condition.get());
     Dependency::type_type(this, statements.get());
     statements->record_dependencies();
-    cond_->record_dependencies();
+    condition->record_dependencies();
   }
 
   void TypeLiteral::record_dependencies() {
     Dependency::value_type(this, this);
-    for (const auto& decl : decls_) {
+    for (const auto& decl : declarations) {
       // NOTE: Assuming only : and no :=. TODO Fix this when you allow :=
       Dependency::value_type(this, decl->identifier.get());
       decl->record_dependencies();

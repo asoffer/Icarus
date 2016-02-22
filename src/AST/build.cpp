@@ -437,7 +437,7 @@ namespace AST {
       if (!stmt->is_declaration()) continue;
 
       auto decl = std::static_pointer_cast<Declaration>(std::move(stmt));
-      type_lit_ptr->decls_.emplace_back(std::move(decl));
+      type_lit_ptr->declarations.emplace_back(std::move(decl));
     }
 
     return type_lit_ptr;
@@ -551,7 +551,7 @@ namespace AST {
 
   NPtr While::build(NPtrVec&& nodes) {
     auto while_stmt = std::make_shared<While>();
-    while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
+    while_stmt->condition = std::static_pointer_cast<Expression>(nodes[1]);
     while_stmt->statements = std::static_pointer_cast<Statements>(nodes[3]);
     return while_stmt;
   }

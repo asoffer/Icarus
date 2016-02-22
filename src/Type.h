@@ -25,7 +25,7 @@ namespace AST {
   struct Expression;
   struct Declaration;
   struct EnumLiteral;
-  class TypeLiteral;
+  struct TypeLiteral;
 }  // namespace AST
 
 class Type;
@@ -310,7 +310,7 @@ class Structure : public Type {
     Structure(const std::string& name, AST::TypeLiteral* expr);
 
     friend Type* TypeSystem::get(const std::string& name);
-    friend class AST::TypeLiteral;
+    friend struct AST::TypeLiteral;
     virtual bool requires_uninit() const;
 
     AST::TypeLiteral* defining_expression() { return expr_; }

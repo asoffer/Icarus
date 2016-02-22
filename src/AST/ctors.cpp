@@ -23,22 +23,22 @@ Identifier::Identifier(size_t input_line_num, const std::string &token_string)
 FunctionLiteral::FunctionLiteral()
     : fn_scope_(new FnScope(nullptr)), llvm_function_(nullptr) {}
 
-TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope_(new TypeScope) {}
+TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope(new TypeScope) {}
 
 EnumLiteral::EnumLiteral() : type_value(nullptr) {}
 
-While::While() : body_scope_(new WhileScope) {}
+While::While() : while_scope(new WhileScope) {}
 
 // TODO put this somewhere else
 void TypeLiteral::build_llvm_internals() {
   assert(type_value);
 
-  for (const auto &decl : decls_) {
+  for (const auto &decl : declarations) {
     if (decl->type->has_variables())
       return;
   }
 
-  for (const auto &decl : decls_) {
+  for (const auto &decl : declarations) {
     if (decl->is_inferred) {
       assert(false); // TODO
 

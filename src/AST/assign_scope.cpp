@@ -22,9 +22,9 @@ namespace AST {
 
   void While::assign_scope(Scope* scope) {
     scope_ = scope;
-    body_scope_->set_parent(scope);
-    cond_->assign_scope(body_scope_);
-    statements->assign_scope(body_scope_);
+    while_scope->set_parent(scope);
+    condition->assign_scope(while_scope);
+    statements->assign_scope(while_scope);
   }
 
   void ArrayLiteral::assign_scope(Scope* scope) {
@@ -106,9 +106,9 @@ namespace AST {
 
   void TypeLiteral::assign_scope(Scope* scope) {
     scope_ = scope;
-    type_scope_->set_parent(scope);
-    for (auto& decl : decls_) {
-      decl->assign_scope(type_scope_);
+    type_scope->set_parent(scope);
+    for (auto& decl : declarations) {
+      decl->assign_scope(type_scope);
     }
   }
 

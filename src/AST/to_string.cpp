@@ -83,7 +83,7 @@ std::string Conditional::to_string(size_t n) const {
   }
 
   std::string While::to_string(size_t n) const {
-    return tabs(n) + "<While>\n" + cond_->to_string(n + 1)
+    return tabs(n) + "<While>\n" + condition->to_string(n + 1)
       + statements->to_string(n + 1);
   }
 
@@ -228,7 +228,7 @@ std::string Conditional::to_string(size_t n) const {
   std::string TypeLiteral::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Type>\n";
-    for (const auto& decl : decls_) {
+    for (const auto& decl : declarations) {
       ss << decl->to_string(n + 1);
     }
 

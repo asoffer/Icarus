@@ -375,34 +375,27 @@ namespace AST {
       size_t else_line_num_;
   };
 
-  class While : public Node {
-    public:
-      While();
-      virtual ~While() {}
+  struct While : public Node {
+    While();
+    virtual ~While() {}
+    VIRTUAL_METHODS_FOR_NODES;
 
-      static NPtr build(NPtrVec&& nodes);
-      static NPtr build_assignment_error(NPtrVec&& nodes);
+    static NPtr build(NPtrVec&& nodes);
+    static NPtr build_assignment_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES;
-
-    private:
-      EPtr cond_;
-      std::shared_ptr<Statements> statements;
-      WhileScope* body_scope_;
+    EPtr condition;
+    std::shared_ptr<Statements> statements;
+    WhileScope* while_scope;
   };
 
-  class TypeLiteral : public Expression {
-    public:
-      EXPR_FNS(TypeLiteral, type_literal);
+  struct TypeLiteral : public Expression {
+    EXPR_FNS(TypeLiteral, type_literal);
 
-      void build_llvm_internals();
-      friend struct Declaration;
+    void build_llvm_internals();
 
-      Structure* type_value;
-
-    private:
-      Scope* type_scope_;  // TODO replace with general scope_
-      std::vector<DeclPtr> decls_;
+    Structure* type_value;
+    Scope* type_scope;
+    std::vector<DeclPtr> declarations;
   };
 
   struct EnumLiteral : public Expression {

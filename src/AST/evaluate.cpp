@@ -252,7 +252,7 @@ namespace AST {
     static size_t anon_type_counter = 0;
     // TODO just make the type no matter what?
     bool dep_type_flag = false;
-    for (const auto& decl : decls_) {
+    for (const auto& decl : declarations) {
       if (decl->type->has_variables()) {
         dep_type_flag = true;
         break;
@@ -262,7 +262,7 @@ namespace AST {
     if (!dep_type_flag) return Context::Value(type_value);
 
     std::vector<DeclPtr> decls_in_ctx;
-    for (const auto& decl : decls_) {
+    for (const auto& decl : declarations) {
       auto d = std::make_shared<Declaration>();
       d->is_inferred = false;
       d->identifier = std::make_shared<Identifier>(0, decl->identifier->token());
@@ -289,7 +289,7 @@ namespace AST {
     // TODO note that this will be captured if it's the result of a
     // function call by the cache, but otherwise it's currently leaked
     auto type_lit_ptr = new TypeLiteral;
-    type_lit_ptr->decls_ = std::move(decls_in_ctx);
+    type_lit_ptr->declarations = std::move(decls_in_ctx);
 
     type_lit_ptr->type_value = 
       Struct("__anon.param.struct" + std::to_string(anon_type_counter++), type_lit_ptr);

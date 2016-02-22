@@ -480,8 +480,8 @@ namespace AST {
       } else {
         auto parent_fn = bldr.GetInsertBlock()->getParent();
         // Condition blocks
-        std::vector<llvm::BasicBlock*> cond_blocks(ops.size());
-        for (auto& block : cond_blocks) {
+        std::vector<llvm::BasicBlock*> conditionblocks(ops.size());
+        for (auto& block : conditionblocks) {
           block = make_block("cond.block", parent_fn);
         }
 
@@ -492,14 +492,14 @@ namespace AST {
 
         if (ops.front() == Language::Operator::And) {
           for (size_t i = 0; i < ops.size(); ++i) {
-            bldr.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
-            bldr.SetInsertPoint(cond_blocks[i]);
+            bldr.CreateCondBr(cmp_val, conditionblocks[i], land_false_block);
+            bldr.SetInsertPoint(conditionblocks[i]);
             cmp_val = exprs[i + 1]->generate_code(scope);
           }
         } else {  // if (ops.front() == Language::Operator::Or) {
           for (size_t i = 0; i < ops.size(); ++i) {
-            bldr.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
-            bldr.SetInsertPoint(cond_blocks[i]);
+            bldr.CreateCondBr(cmp_val, land_true_block, conditionblocks[i]);
+            bldr.SetInsertPoint(conditionblocks[i]);
             cmp_val = exprs[i + 1]->generate_code(scope);
           }
         }
@@ -844,18 +844,18 @@ namespace AST {
 
       auto while_stmt_block = make_block("while.stmt", parent_fn);
 
-      body_scope_->set_parent_function(parent_fn);
+      while_scope->set_parent_function(parent_fn);
 
-      scope->builder().CreateBr(body_scope_->entry_block());
-      body_scope_->enter();
-      auto cond = cond_->generate_code(body_scope_);
-      body_scope_->builder().CreateCondBr(cond,
-          while_stmt_block, body_scope_->landing_block());
+      scope->builder().CreateBr(while_scope->entry_block());
+      while_scope->enter();
+      auto cond = condition->generate_code(while_scope);
+      while_scope->builder().CreateCondBr(cond,
+          while_stmt_block, while_scope->landing_block());
 
-      body_scope_->builder().SetInsertPoint(while_stmt_block);
-      statements->generate_code(body_scope_);
-      body_scope_->exit();
-      scope->builder().SetInsertPoint(body_scope_->landing_block());
+      while_scope->builder().SetInsertPoint(while_stmt_block);
+      statements->generate_code(while_scope);
+      while_scope->exit();
+      scope->builder().SetInsertPoint(while_scope->landing_block());
 
       return nullptr;
     }
@@ -865,27 +865,27 @@ namespace AST {
 
       // Last block is either the else-block or the landing block if
       // no else-block exists.
-      std::vector<llvm::BasicBlock*> cond_blocks(conds_.size() + 1,
+      std::vector<llvm::BasicBlock*> conditionblocks(conds_.size() + 1,
           nullptr);
 
-      for (size_t i = 0; i < cond_blocks.size(); ++i) {
-        cond_blocks[i] = make_block("cond.block", parent_fn);
+      for (size_t i = 0; i < conditionblocks.size(); ++i) {
+        conditionblocks[i] = make_block("cond.block", parent_fn);
       }
 
       llvm::BasicBlock* landing = has_else()
         ? make_block("land", parent_fn)
-        : cond_blocks.back();
+        : conditionblocks.back();
 
-      scope->builder().CreateBr(cond_blocks[0]);
+      scope->builder().CreateBr(conditionblocks[0]);
 
       for (size_t i = 0; i < conds_.size(); ++i) {
-        scope->builder().SetInsertPoint(cond_blocks[i]);
+        scope->builder().SetInsertPoint(conditionblocks[i]);
         auto condition = conds_[i]->generate_code(scope);
         scope->builder().CreateCondBr(condition,
-            body_scopes_[i]->entry_block(), cond_blocks[i + 1]);
+            body_scopes_[i]->entry_block(), conditionblocks[i + 1]);
       }
 
-      scope->builder().SetInsertPoint(cond_blocks.back());
+      scope->builder().SetInsertPoint(conditionblocks.back());
       if (has_else()) {
         scope->builder().CreateBr(body_scopes_.back()->entry_block());
       }

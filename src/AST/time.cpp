@@ -83,12 +83,12 @@ Time::Eval Conditional::determine_time() {
 }
 
 Time::Eval While::determine_time() {
-  return time_ = cond_->determine_time() | statements->determine_time();
+  return time_ = condition->determine_time() | statements->determine_time();
 }
 
 Time::Eval TypeLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &d : decls_) {
+  for (auto &d : declarations) {
     time_ |= d->determine_time();
   }
   return time_;

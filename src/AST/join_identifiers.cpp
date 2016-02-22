@@ -14,8 +14,8 @@ namespace AST {
   }
 
   void While::join_identifiers(Scope* scope, bool is_arg) {
-    cond_->join_identifiers(body_scope_);
-    statements->join_identifiers(body_scope_);
+    condition->join_identifiers(while_scope);
+    statements->join_identifiers(while_scope);
   }
 
   void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
@@ -113,8 +113,8 @@ namespace AST {
   }
 
   void TypeLiteral::join_identifiers(Scope*, bool) {
-    for (auto& decl : decls_) {
-      decl->join_identifiers(type_scope_);
+    for (auto& decl : declarations) {
+      decl->join_identifiers(type_scope);
     }
   }
 
