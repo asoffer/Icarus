@@ -68,7 +68,7 @@ namespace AST {
     id_ = std::static_pointer_cast<Identifier>(
         scope->identifier(declared_identifier()));
     if (is_arg) {
-      id_->is_function_arg_ = true;
+      id_->is_function_arg = true;
     }
     id_->line_num = line_num; // Hacky and probably wrong TODO FIXME
 

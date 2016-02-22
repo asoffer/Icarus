@@ -13,7 +13,7 @@ Terminal::Terminal() {}
 ArrayType::ArrayType() {}
 
 Identifier::Identifier(size_t input_line_num, const std::string &token_string)
-    : alloc_(nullptr), is_function_arg_(false), decl_(nullptr) {
+    : alloc(nullptr), is_function_arg(false), decl(nullptr) {
   token_ = token_string;
   type = Unknown;
   precedence = Language::precedence(Language::Operator::NotAnOperator);

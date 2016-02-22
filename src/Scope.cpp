@@ -27,15 +27,15 @@ Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
 void GlobalScope::initialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    if (decl_id->is_function_arg_) continue;
+    if (decl_id->is_function_arg) continue;
 
     auto decl_type = decl_id->type;
     if (decl_type->llvm() == nullptr) continue;
 
     if (decl_type->is_function()) {
       if (decl_id->token()[0] != '_') {  // Ignore operators
-        decl_id->alloc_ = decl_type->allocate(bldr_);
-        decl_id->alloc_->setName(decl_ptr->identifier_string());
+        decl_id->alloc = decl_type->allocate(bldr_);
+        decl_id->alloc->setName(decl_ptr->identifier_string());
       }
     } else {
       assert(decl_type == Type_ && "Global variables not currently allowed.");
@@ -64,14 +64,14 @@ void Scope::enter() {
     } else if (decl_type->is_array()) {
       auto array_dim = static_cast<Array*>(decl_type)->dim();
       std::vector<llvm::Value*> init_args(array_dim + 1, data::const_uint(0));
-      init_args[0] = decl_id->alloc_;
+      init_args[0] = decl_id->alloc;
       auto array_type = static_cast<Array*>(decl_type);
       bldr_.CreateCall(array_type->initialize(), init_args);
       continue;
 
     } else {
-      if (decl_id->is_function_arg_) continue;
-      decl_type->call_init(bldr_, { decl_id->alloc_ });
+      if (decl_id->is_function_arg) continue;
+      decl_type->call_init(bldr_, { decl_id->alloc });
     }
   }
 }
@@ -201,7 +201,7 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->declared_identifier();
     auto decl_type = decl_id->type;
 
-    if (decl_id->is_function_arg_ && decl_type->is_struct()) {
+    if (decl_id->is_function_arg && decl_type->is_struct()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }
@@ -212,16 +212,16 @@ void FnScope::allocate(Scope* scope) {
       continue;
     }
    
-    decl_id->alloc_ = decl_type->allocate(bldr_);
-    decl_id->alloc_->setName(decl_ptr->identifier_string());
+    decl_id->alloc = decl_type->allocate(bldr_);
+    decl_id->alloc->setName(decl_ptr->identifier_string());
   }
 }
 
 void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    if (decl_id->is_function_arg_) continue;
-    decl_id->type->call_uninit(bldr_, { decl_id->alloc_ });
+    if (decl_id->is_function_arg) continue;
+    decl_id->type->call_uninit(bldr_, { decl_id->alloc });
   }
 }
 

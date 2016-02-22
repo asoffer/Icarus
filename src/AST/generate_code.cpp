@@ -59,10 +59,10 @@ namespace AST {
       return global_module->getFunction(token());
 
     } else if (type->is_struct()) {
-      return alloc_;
+      return alloc;
 
     } else {
-      return scope->builder().CreateLoad(alloc_, token());
+      return scope->builder().CreateLoad(alloc, token());
     }
   }
 
@@ -543,7 +543,7 @@ namespace AST {
         auto decl_id = input_iter->declared_identifier();
         auto decl_type = decl_id->type;
         if (decl_type->is_struct()) {
-          decl_id->alloc_ = arg_iter;
+          decl_id->alloc = arg_iter;
         }
 
         ++arg_iter;
@@ -567,7 +567,7 @@ namespace AST {
 
         if (!decl_id->type->is_struct()) {
           fn_scope_->builder().CreateCall(decl_id->type->assign(),
-              { arg, input_iter->declared_identifier()->alloc_ });
+              { arg, input_iter->declared_identifier()->alloc });
         }
         ++arg;
       }
@@ -733,7 +733,7 @@ namespace AST {
       // isn't required.
 
       if (declared_type()->is_array_type()) {
-        std::vector<llvm::Value*> init_args = { declared_identifier()->alloc_ };
+        std::vector<llvm::Value*> init_args = { declared_identifier()->alloc };
 
         // Push the array lengths onto the vector for calling args
         EPtr next_ptr = declared_type();

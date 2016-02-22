@@ -263,15 +263,14 @@ namespace AST {
     virtual std::string graphviz_label() const;
   };
 
-  class Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
-    public:
-      EXPR_FNS(Identifier, identifier);
-      // TODO Identifier() = delete;
-      Identifier(size_t line_num, const std::string& token_string);
+  struct Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
+    EXPR_FNS(Identifier, identifier);
+    // TODO Identifier() = delete;
+    Identifier(size_t line_num, const std::string& token_string);
 
-      llvm::Value* alloc_;
-      bool is_function_arg_;
-      Declaration* decl_;
+    llvm::Value* alloc;
+    bool is_function_arg;
+    Declaration* decl;
   };
 
   // class Declaration

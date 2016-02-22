@@ -51,25 +51,25 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   }
 
   void Identifier::verify_types() {
-    if (decl_->type_is_inferred()) {
-      type = decl_->type;
+    if (decl->type_is_inferred()) {
+      type = decl->type;
 
-      if (decl_->declared_type()->is_type_literal()) {
+      if (decl->declared_type()->is_type_literal()) {
         auto tlit_type_val =
-            static_cast<TypeLiteral *>(decl_->declared_type().get())
+            static_cast<TypeLiteral *>(decl->declared_type().get())
                 ->type_value_;
         scope_->context().bind(Context::Value(tlit_type_val),
                                shared_from_this());
 
-      } else if (decl_->declared_type()->is_function_literal()) {
+      } else if (decl->declared_type()->is_function_literal()) {
         auto flit =
-            static_cast<FunctionLiteral *>(decl_->declared_type().get());
+            static_cast<FunctionLiteral *>(decl->declared_type().get());
         scope_->context().bind(Context::Value(flit), shared_from_this());
       }
-      assert(type && "decl_->type is nullptr");
+      assert(type && "decl->type is nullptr");
 
     } else {
-      type = decl_->declared_type()->evaluate(scope_->context()).as_type;
+      type = decl->declared_type()->evaluate(scope_->context()).as_type;
       assert(type && "eval with context operandptr is nullptr");
       if (type == Type_) {
         scope_->context().bind(Context::Value(TypeVar(shared_from_this())),

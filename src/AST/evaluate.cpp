@@ -266,7 +266,7 @@ namespace AST {
       auto d = std::make_shared<Declaration>();
       d->infer_type_ = false;
       d->id_ = std::make_shared<Identifier>(0, decl->identifier_string());
-      d->id_->decl_ = d.get();
+      d->id_->decl = d.get();
       decls_in_ctx.push_back(d);
 
       // TODO finish setting data in d so that we can safely print this

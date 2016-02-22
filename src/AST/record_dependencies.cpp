@@ -17,8 +17,8 @@ namespace AST {
 
   void Identifier::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::value_value(this, decl_);
-    Dependency::type_type(this, decl_);
+    Dependency::value_value(this, decl);
+    Dependency::type_type(this, decl);
   }
 
   void Access::record_dependencies() {

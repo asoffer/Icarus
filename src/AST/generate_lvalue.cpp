@@ -9,7 +9,7 @@ namespace data {
 
 namespace AST {
   llvm::Value* Identifier::generate_lvalue(Scope* scope) {
-    return alloc_;
+    return alloc;
   } 
 
   llvm::Value* Unop::generate_lvalue(Scope* scope) {

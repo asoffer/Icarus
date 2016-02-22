@@ -8,7 +8,7 @@
 namespace AST {
 struct Node;
 struct Expression;
-class Identifier;
+struct Identifier;
 class Declaration;
 class Statements;
 }

@@ -57,7 +57,7 @@ namespace AST {
     scope_ = scope;
 
     scope_->ids_[identifier_string()] = id_;
-    id_->decl_ = this;
+    id_->decl = this;
 
     id_->scope_ = scope;
     decl_type_->assign_scope(scope);
