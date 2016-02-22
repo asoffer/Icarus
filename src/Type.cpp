@@ -152,22 +152,22 @@ Enumeration::Enumeration(const std::string& name,
 }
 
 Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
-  expr_(expr), name_(name), init_fn_(nullptr),
+  ast_expression(expr), bound_name(name), init_fn_(nullptr),
   uninit_fn_(nullptr), print_fn_(nullptr)
 {
   auto struct_type = llvm::StructType::create(global_module->getContext());
-  struct_type->setName(name_);
+  struct_type->setName(bound_name);
   llvm_type_ = struct_type;
 
-  for (const auto& field : fields_) {
+  for (const auto& field : fields) {
     if (has_vars_) break;
     has_vars_ = field.second->has_variables();
   }
 }
 
 Type* Structure::field(const std::string& name) const {
-  auto iter = fields_.cbegin();
-  while (iter != fields_.end()) {
+  auto iter = fields.cbegin();
+  while (iter != fields.end()) {
     if (iter->first == name) {
       return iter->second;
     }
@@ -178,8 +178,8 @@ Type* Structure::field(const std::string& name) const {
 
 llvm::Value* Structure::field_num(const std::string& name) const {
   size_t i = 0;
-  auto iter = fields_.cbegin();
-  while (iter != fields_.end()) {
+  auto iter = fields.cbegin();
+  while (iter != fields.cend()) {
     if (iter->first == name) {
       return data::const_uint(i);
     }
@@ -195,7 +195,7 @@ llvm::Value* Enumeration::get_value(const std::string& str) const {
 
 bool Array::requires_uninit() const { return true; }
 bool Structure::requires_uninit() const {
-  for (const auto field : fields_) {
+  for (const auto field : fields) {
     if (field.second->requires_uninit()) {
       return true;
     }
@@ -204,8 +204,8 @@ bool Structure::requires_uninit() const {
 }
 
 void Structure::set_name(const std::string& name) {
-  name_ = name;
-  static_cast<llvm::StructType*>(llvm_type_)->setName(name_);
+  bound_name = name;
+  static_cast<llvm::StructType*>(llvm_type_)->setName(bound_name);
   if (name == "string") {
     String = this;
   }

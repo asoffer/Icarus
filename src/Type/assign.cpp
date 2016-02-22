@@ -158,9 +158,9 @@ llvm::Function* Structure::assign() {
    auto var = ++iter;
 
   // assign all fields
-   auto fields_size = fields_.size();
-   for (size_t field_num = 0; field_num < fields_size; ++field_num) {
-     auto field_type = fields_[field_num].second;
+   auto num_fields= fields.size();
+   for (size_t field_num = 0; field_num < num_fields; ++field_num) {
+     auto field_type = fields[field_num].second;
 
      auto field_val = bldr.CreateGEP(llvm(), val,
          { data::const_uint(0), data::const_uint(field_num) });

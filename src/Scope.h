@@ -140,9 +140,9 @@ class FnScope : public Scope {
     virtual ~FnScope() {}
   private:
     std::set<Scope*> innards_;
-    Function* fn_type_;
-    llvm::Function* llvm_fn_;
-    llvm::Value* return_val_;
+    Function *fn_type_;
+    llvm::Function *llvm_fn_;
+    llvm::Value *return_val_;
 
     llvm::BasicBlock *entry_block_, *exit_block_;
     void allocate(Scope* scope);

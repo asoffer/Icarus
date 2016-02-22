@@ -35,9 +35,9 @@ class Tuple;
 class Pointer;
 class Function;
 class Enumeration;
-class Structure;
-class DependentType;
-class TypeVariable;
+struct Structure;
+struct DependentType;
+struct TypeVariable;
 
 namespace TypeSystem {
   void initialize();
@@ -75,29 +75,30 @@ extern TypeVariable* TypeVar(IdPtr id);
 
 #include "typedefs.h"
 
-#define ENDING = 0 
+#define ENDING = 0
 
-#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc) \
-  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* lhs, llvm::Value* rhs) ENDING;
+#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
+  virtual llvm::Value *call_##op(llvm::IRBuilder<> &bldr, llvm::Value *lhs,    \
+                                 llvm::Value *rhs) ENDING;
 
-#define LEFT_UNARY_OPERATOR_MACRO(op) \
-  virtual llvm::Value* call_##op (llvm::IRBuilder<>& bldr, llvm::Value* operand) ENDING;
+#define LEFT_UNARY_OPERATOR_MACRO(op)                                          \
+  virtual llvm::Value *call_##op(llvm::IRBuilder<> &bldr,                      \
+                                 llvm::Value *operand) ENDING;
 
-#define BASIC_METHODS                                                     \
-virtual llvm::Function* assign() ENDING;                                  \
-virtual std::string to_string() const ENDING;                             \
-virtual Time::Eval time() const ENDING;                                   \
-virtual bool add_llvm_input(std::vector<llvm::Type*>& llvm_in) ENDING;    \
-virtual void call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING; \
-virtual void call_repr(llvm::IRBuilder<>& bldr, llvm::Value* val) ENDING; \
-virtual void call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) ENDING
+#define BASIC_METHODS                                                          \
+  virtual llvm::Function *assign() ENDING;                                     \
+  virtual std::string to_string() const ENDING;                                \
+  virtual Time::Eval time() const ENDING;                                      \
+  virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
+  virtual void call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING;    \
+  virtual void call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) ENDING;    \
+  virtual void call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING
 
-#define TYPE_FNS(name, checkname)                                         \
-  name() = delete;                                                        \
-virtual ~name() {}                                                        \
-virtual bool is_##checkname() const { return true; }                      \
-BASIC_METHODS
-
+#define TYPE_FNS(name, checkname)                                              \
+  name() = delete;                                                             \
+  virtual ~name() {}                                                           \
+  virtual bool is_##checkname() const { return true; }                         \
+  BASIC_METHODS
 
 class Type {
   public:
@@ -118,8 +119,9 @@ class Type {
     // Note: this one is special. It functions identically to the rest, but
     // it's special in that it will return nullptr if you haven't imported the
     // string library. This should never come up, because it's only used to add
-    // type to a string literal, and using a string literal should import strings.
-    static Type* get_string();
+    // type to a string literal, and using a string literal should import
+    // strings.
+    static Type *get_string();
 
     static std::map<std::string, Type*> literals;
 
@@ -147,7 +149,6 @@ class Type {
 
     llvm::Type* llvm() const { return llvm_type_; }
 
-  protected:
     llvm::Function* assign_fn_;
     llvm::Type* llvm_type_;
     bool has_vars_;
@@ -301,19 +302,14 @@ class Enumeration : public Type {
     llvm::GlobalVariable* str_array_;
 };
 
-class Structure : public Type {
-  public:
-    TYPE_FNS(Structure, struct);
+struct Structure : public Type {
+  TYPE_FNS(Structure, struct);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    Structure(const std::string& name, AST::TypeLiteral* expr);
+  Structure(const std::string& name, AST::TypeLiteral* expr);
 
-    friend Type* TypeSystem::get(const std::string& name);
-    friend struct AST::TypeLiteral;
-    virtual bool requires_uninit() const;
-
-    AST::TypeLiteral* defining_expression() { return expr_; }
+  virtual bool requires_uninit() const;
 
     void set_name(const std::string& name);
 
@@ -325,44 +321,38 @@ class Structure : public Type {
     virtual void call_print(llvm::IRBuilder<>& bldr, llvm::Value* val);
     void set_print(llvm::Function* fn);
 
-  private:
-    AST::TypeLiteral* expr_;
-    std::string name_;
+    AST::TypeLiteral* ast_expression;
+    std::string bound_name;
 
+    std::vector<std::pair<std::string, Type*>> fields;
+  private:
     llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
 
-    std::vector<std::pair<std::string, Type*>> fields_;
 };
 
-class DependentType : public Type {
-  public:
-    TYPE_FNS(DependentType, dependent_type);
+struct DependentType : public Type {
+  TYPE_FNS(DependentType, dependent_type);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    DependentType(std::function<Type*(Type*)> fn) : fn_(fn) {}
+  DependentType(std::function<Type *(Type *)> fn) : func(fn) {}
 
-    Type* operator()(Type* t) const { return fn_(t); }
+  Type *operator()(Type *t) const { return func(t); }
 
-  private:
-    std::function<Type*(Type*)> fn_;
+  std::function<Type *(Type *)> func;
 };
 
-class TypeVariable : public Type {
-  public:
-    TYPE_FNS(TypeVariable, type_variable);
+struct TypeVariable : public Type {
+  TYPE_FNS(TypeVariable, type_variable);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-    TypeVariable(IdPtr id) : id_(id) {
-      has_vars_ = true;
-    }
+  TypeVariable(IdPtr id) : identifier(id) { has_vars_ = true; }
 
-  private:
-    IdPtr id_;
+  IdPtr identifier;
 };
 
-std::ostream& operator<<(std::ostream& os, const Type& t);
+std::ostream &operator<<(std::ostream &os, const Type &t);
 
 #undef TYPE_FNS
 #undef BASIC_METHODS

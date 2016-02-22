@@ -109,8 +109,7 @@ void traverse_from(PtrWithTorV pt) {
               t = static_cast<Pointer*>(t)->pointee_type();
               if (t->is_struct()) {
                 auto struct_type = static_cast<Structure*>(t);
-                PtrWithTorV ptr_with_torv(
-                    struct_type->defining_expression(), false);
+                PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
                 traverse_from(ptr_with_torv);
               }
             }
@@ -121,8 +120,7 @@ void traverse_from(PtrWithTorV pt) {
           while (t->is_pointer()) t = static_cast<Pointer*>(t)->pointee_type();
           if (t->is_struct()) {
             auto struct_type = static_cast<Structure*>(t);
-            PtrWithTorV ptr_with_torv(
-                struct_type->defining_expression(), false);
+            PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
             traverse_from(ptr_with_torv);
           }
         }

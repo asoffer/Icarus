@@ -22,7 +22,7 @@ class Scope;
 class FnScope;
 class CondScope;
 class WhileScope;
-class Structure;
+struct Structure;
 class Enumeration;
 
 namespace AST {

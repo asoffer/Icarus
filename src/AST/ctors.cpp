@@ -46,14 +46,14 @@ void TypeLiteral::build_llvm_internals() {
       auto field = decl->type_expr->evaluate(Scope::Global->context()).as_type;
       assert(field && "field is nullptr");
       assert(type_value && "null type_value");
-      type_value->fields_.emplace_back(decl->identifier->token(), field);
+      type_value->fields.emplace_back(decl->identifier->token(), field);
     }
   }
 
-  size_t num_fields = type_value->fields_.size();
+  size_t num_fields = type_value->fields.size();
   std::vector<llvm::Type *> llvm_fields(num_fields, nullptr);
   for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = type_value->fields_[i].second->llvm();
+    llvm_fields[i] = type_value->fields[i].second->llvm();
   }
 
   static_cast<llvm::StructType *>(type_value->llvm_type_)
