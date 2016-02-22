@@ -23,7 +23,7 @@ class FnScope;
 class CondScope;
 class WhileScope;
 struct Structure;
-class Enumeration;
+struct Enumeration;
 
 namespace AST {
 #define ENDING = 0

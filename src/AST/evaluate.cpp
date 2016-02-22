@@ -312,12 +312,14 @@ namespace AST {
 
         if (type_expr->is_type_literal()) {
           assert(type_as_ctx_val.as_type->is_struct());
-          static_cast<Structure*>(type_as_ctx_val.as_type)->set_name(identifier->token());
+          static_cast<Structure *>(type_as_ctx_val.as_type)->bound_name =
+              identifier->token();
 
         } else if (type_expr->is_enum_literal()) {
           assert(type_as_ctx_val.as_type->is_enum());
-          static_cast<Enumeration*>(type_as_ctx_val.as_type)->set_name(identifier->token());
-        } 
+          static_cast<Enumeration *>(type_as_ctx_val.as_type)->bound_name =
+              identifier->token();
+        }
       }
     } else {
       if (type_expr->type == Type_) {

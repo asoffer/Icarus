@@ -112,7 +112,7 @@ Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
 }
 
 Enumeration::Enumeration(const std::string& name,
-    const AST::EnumLiteral* enumlit) : name_(name), str_array_(nullptr) {
+    const AST::EnumLiteral* enumlit) : bound_name(name), string_data(nullptr) {
   llvm_type_ = *Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
@@ -124,7 +124,7 @@ Enumeration::Enumeration(const std::string& name,
 
   size_t i = 0;
   for (const auto& idstr : enumlit->members) {
-    intval_[idstr] = data::const_uint(i);
+    int_values[idstr] = data::const_uint(i);
 
   auto enum_str = new llvm::GlobalVariable(
       *global_module,
@@ -141,14 +141,14 @@ Enumeration::Enumeration(const std::string& name,
 
   ++i;
   }
-  str_array_ = new llvm::GlobalVariable(
+  string_data = new llvm::GlobalVariable(
       *global_module,
       /*        Type = */ llvm::ArrayType::get(*Ptr(Char), num_members),
       /*  isConstant = */ false,
       /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
       /* Initializer = */ llvm::ConstantArray::get(
           llvm::ArrayType::get(*Ptr(Char), num_members), enum_str_elems),
-      /*        Name = */ name_ + ".name.array");
+      /*        Name = */ bound_name + ".name.array");
 }
 
 Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
@@ -189,8 +189,8 @@ llvm::Value* Structure::field_num(const std::string& name) const {
 }
 
 llvm::Value* Enumeration::get_value(const std::string& str) const {
-  auto iter = intval_.find(str);
-  return (iter == intval_.end()) ? nullptr : iter->second;
+  auto iter = int_values.find(str);
+  return (iter == int_values.end()) ? nullptr : iter->second;
 }
 
 bool Array::requires_uninit() const { return true; }
