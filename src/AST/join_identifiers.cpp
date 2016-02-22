@@ -69,18 +69,18 @@ namespace AST {
   }
 
   void ArrayType::join_identifiers(Scope* scope, bool is_arg) {
-    if (len_ != nullptr) {
-      if (len_->is_identifier()) {
-        len_ = scope->identifier(len_);
+    if (length != nullptr) {
+      if (length->is_identifier()) {
+        length = scope->identifier(length);
       } else {
-        len_->join_identifiers(scope);
+        length->join_identifiers(scope);
       }
     }
 
-    if (array_type_->is_identifier()) {
-      array_type_ = scope->identifier(array_type_);
+    if (data_type->is_identifier()) {
+      data_type = scope->identifier(data_type);
     } else {
-      array_type_->join_identifiers(scope);
+      data_type->join_identifiers(scope);
     }
   }
 

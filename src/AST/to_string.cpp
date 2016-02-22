@@ -136,7 +136,7 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string ArrayType::to_string(size_t n) const {
     std::string output = tabs(n) + "<ArrayType>\n";
-    return output + array_type_->to_string(n + 1);
+    return output + data_type->to_string(n + 1);
   }
 
   std::string ChainOp::to_string(size_t n) const {

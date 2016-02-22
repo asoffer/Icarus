@@ -158,7 +158,7 @@ namespace AST {
     // that precedence level should be the operators which can be chained.
     bool use_old_chain_op = nodes[0]->is_chain_op();
     if (use_old_chain_op) {
-      ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
+      ChainOp *lhs_ptr = static_cast<ChainOp *>(nodes[0].get());
 
       if (lhs_ptr->precedence != op_prec) {
         use_old_chain_op = false;
@@ -172,7 +172,8 @@ namespace AST {
       chain_ptr = std::make_shared<ChainOp>();
       chain_ptr->line_num = nodes[1]->line_num;
 
-      chain_ptr->exprs.push_back(std::static_pointer_cast<Expression>(nodes[0]));
+      chain_ptr->exprs.push_back(
+          std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence = op_prec;
     }
 
@@ -182,36 +183,38 @@ namespace AST {
     return std::static_pointer_cast<Node>(chain_ptr);
   }
 
-  NPtr ArrayLiteral::build(NPtrVec&& nodes) {
+  NPtr ArrayLiteral::build(NPtrVec &&nodes) {
     auto array_lit_ptr = std::make_shared<ArrayLiteral>();
     array_lit_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
+        Language::precedence(Language::Operator::NotAnOperator);
     array_lit_ptr->line_num = nodes[0]->line_num;
 
     if (nodes[1]->is_comma_list()) {
       array_lit_ptr->elems = std::static_pointer_cast<ChainOp>(nodes[1])->exprs;
 
     } else {
-      array_lit_ptr->elems.push_back(std::static_pointer_cast<Expression>(nodes[1]));
+      array_lit_ptr->elems.push_back(
+          std::static_pointer_cast<Expression>(nodes[1]));
     }
 
     return array_lit_ptr;
   }
 
-  NPtr ArrayType::build(NPtrVec&& nodes) {
+  NPtr ArrayType::build(NPtrVec &&nodes) {
     if (nodes[1]->is_comma_list()) {
-      auto len_chain = std::static_pointer_cast<ChainOp>(nodes[1]);
+      auto lengthchain = std::static_pointer_cast<ChainOp>(nodes[1]);
 
-      auto iter = len_chain->exprs.rbegin();
+      auto iter = lengthchain->exprs.rbegin();
       EPtr prev = std::static_pointer_cast<Expression>(nodes[3]);
-      while (iter != len_chain->exprs.rend()) {
+      while (iter != lengthchain->exprs.rend()) {
         auto array_type_ptr = new ArrayType;
         array_type_ptr->line_num = (*iter)->line_num;
-        array_type_ptr->len_ = *iter;
+        array_type_ptr->length = *iter;
 
-        array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+        array_type_ptr->precedence =
+            Language::precedence(Language::Operator::NotAnOperator);
 
-        array_type_ptr->array_type_ = prev;
+        array_type_ptr->data_type = prev;
         prev = EPtr(array_type_ptr);
         ++iter;
       }
@@ -220,40 +223,36 @@ namespace AST {
     } else {
       auto array_type_ptr = std::make_shared<ArrayType>();
       array_type_ptr->line_num = nodes[0]->line_num;
-
-      array_type_ptr->len_ =
-        std::static_pointer_cast<Expression>(nodes[1]);
-
-      array_type_ptr->array_type_ =
-        std::static_pointer_cast<Expression>(nodes[3]);
-
-      array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+      array_type_ptr->length = std::static_pointer_cast<Expression>(nodes[1]);
+      array_type_ptr->data_type =
+          std::static_pointer_cast<Expression>(nodes[3]);
+      array_type_ptr->precedence =
+          Language::precedence(Language::Operator::NotAnOperator);
 
       return array_type_ptr;
     }
   }
 
-  NPtr ArrayType::build_unknown(NPtrVec&& nodes) {
+  NPtr ArrayType::build_unknown(NPtrVec &&nodes) {
     auto array_type_ptr = std::make_shared<ArrayType>();
     array_type_ptr->line_num = nodes[0]->line_num;
 
-    // len_ == nullptr means we do not know the length of the array can change.
-    array_type_ptr->len_ = nullptr;
-
-    array_type_ptr->array_type_ =
-      std::static_pointer_cast<Expression>(nodes[3]);
-
-    array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+    // length == nullptr means we do not know the length of the array can
+    // change.
+    array_type_ptr->length = nullptr;
+    array_type_ptr->data_type = std::static_pointer_cast<Expression>(nodes[3]);
+    array_type_ptr->precedence =
+        Language::precedence(Language::Operator::NotAnOperator);
 
     return array_type_ptr;
   }
 
-  NPtr Terminal::build(NPtrVec&&) {
+  NPtr Terminal::build(NPtrVec &&) {
     // This function is only here to make the macro generation simpler
     assert(false && "Called a function that shouldn't be called.");
   }
 
-  NPtr Terminal::build(Language::Terminal term_type, NPtrVec&& nodes, Type* t) {
+  NPtr Terminal::build(Language::Terminal term_type, NPtrVec &&nodes, Type *t) {
     // TODO token FIXME
     auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num = nodes[0]->line_num;
@@ -272,24 +271,28 @@ namespace AST {
   NPtr Terminal::build_string_literal(NPtrVec&& nodes) {
     file_queue.emplace("lib/string.ic");
 
-    return build(Language::Terminal::StringLiteral, std::forward<NPtrVec&&>(nodes), Unknown);
+    return build(Language::Terminal::StringLiteral,
+                 std::forward<NPtrVec &&>(nodes), Unknown);
   }
 
-#define TERMINAL_BUILD(name, enum_elem, ty) NPtr Terminal::build_##name(NPtrVec&& nodes) { \
-  return build(Language::Terminal::enum_elem, std::forward<NPtrVec&&>(nodes), ty); }
-  TERMINAL_BUILD(true,         True,   Bool);
-  TERMINAL_BUILD(false,        False,  Bool);
-  TERMINAL_BUILD(null,         Null,   NullPtr);
-  TERMINAL_BUILD(uint_literal, UInt,   Uint);
-  TERMINAL_BUILD(int_literal,  Int,    Int);
-  TERMINAL_BUILD(real_literal, Real,   Real);
-  TERMINAL_BUILD(char_literal, Char,   Char);
-  TERMINAL_BUILD(void_return,  Return, Void);
-  TERMINAL_BUILD(ASCII,        ASCII,  Func(Uint, Char));
-  TERMINAL_BUILD(alloc,        Alloc,  DepType([](Type* t) { return Ptr(t); }));
+#define TERMINAL_BUILD(name, enum_elem, ty)                                    \
+  NPtr Terminal::build_##name(NPtrVec &&nodes) {                               \
+    return build(Language::Terminal::enum_elem,                                \
+                 std::forward<NPtrVec &&>(nodes), ty);                         \
+  }
+  TERMINAL_BUILD(true, True, Bool);
+  TERMINAL_BUILD(false, False, Bool);
+  TERMINAL_BUILD(null, Null, NullPtr);
+  TERMINAL_BUILD(uint_literal, UInt, Uint);
+  TERMINAL_BUILD(int_literal, Int, Int);
+  TERMINAL_BUILD(real_literal, Real, Real);
+  TERMINAL_BUILD(char_literal, Char, Char);
+  TERMINAL_BUILD(void_return, Return, Void);
+  TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
+  TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
 #undef TERMINAL_BUILD
 
-  NPtr Assignment::build(NPtrVec&& nodes) {
+  NPtr Assignment::build(NPtrVec &&nodes) {
     auto assign_ptr = std::make_shared<Assignment>();
     assign_ptr->line_num = nodes[1]->line_num;
 

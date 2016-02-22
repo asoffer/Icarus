@@ -202,7 +202,7 @@ namespace AST {
 
   Context::Value ArrayType::evaluate(Context& ctx)       {
     // TODO what if this is just a compile time array in shorthand?
-    return Context::Value(Arr(array_type_->evaluate(ctx).as_type));
+    return Context::Value(Arr(data_type->evaluate(ctx).as_type));
   }
 
   Context::Value ArrayLiteral::evaluate(Context&)    { return nullptr; }

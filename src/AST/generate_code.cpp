@@ -316,9 +316,9 @@ namespace AST {
   // If you do generate the code here, it is a shorthand array literal
   llvm::Value* ArrayType::generate_code(Scope* scope) {
     // TODO arrays can only take primitive types currently.
-    auto len = length()->generate_code(scope);
-    auto data_ty = data_type()->type;
-    auto data = data_type()->generate_code(scope);
+    auto len = length->generate_code(scope);
+    auto data_ty = data_type->type;
+    auto data = data_type->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
 
     auto alloc_size = bldr.CreateAdd(data::const_uint(Uint->bytes()),
@@ -739,10 +739,10 @@ namespace AST {
         EPtr next_ptr = declared_type();
         while (next_ptr->is_array_type()) {
           auto length =
-            std::static_pointer_cast<AST::ArrayType>(next_ptr)->length();
+              std::static_pointer_cast<AST::ArrayType>(next_ptr)->length;
 
           next_ptr =
-            std::static_pointer_cast<AST::ArrayType>(next_ptr)->data_type();
+              std::static_pointer_cast<AST::ArrayType>(next_ptr)->data_type;
 
           init_args.push_back(length->generate_code(scope));
         }

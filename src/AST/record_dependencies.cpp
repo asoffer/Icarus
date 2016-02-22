@@ -62,18 +62,18 @@ namespace AST {
 
   void ArrayType::record_dependencies() {
 
-    if (len_ != nullptr) {
-      Dependency::value_value(this, len_.get());
+    if (length != nullptr) {
+      Dependency::value_value(this, length.get());
 
       // Maybe later when we have length dependency?
-      Dependency::type_type(this, len_.get());
+      Dependency::type_type(this, length.get());
 
-      len_->record_dependencies();
+      length->record_dependencies();
     }
 
-    Dependency::value_type(this, array_type_.get());
-    Dependency::type_type(this, array_type_.get());
-    array_type_->record_dependencies();
+    Dependency::value_type(this, data_type.get());
+    Dependency::type_type(this, data_type.get());
+    data_type->record_dependencies();
   }
 
   void ChainOp::record_dependencies() {

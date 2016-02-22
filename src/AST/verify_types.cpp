@@ -370,14 +370,14 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
   void ArrayType::verify_types() {
     // TODO change this to uint
-    if (len_ != nullptr && len_->type != Int) {
+    if (length != nullptr && length->type != Int) {
       error_log.log(line_num, "Array length indexed by non-integral type");
     }
 
-    if (array_type_->type == Type_) {
+    if (data_type->type == Type_) {
       type = Type_;
     } else {
-      type = Arr(array_type_->type);
+      type = Arr(data_type->type);
       assert(type && "arrayType nullptr");
     }
   }

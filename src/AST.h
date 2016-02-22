@@ -219,18 +219,13 @@ namespace AST {
     std::vector<EPtr> elems;
   };
 
-  class ArrayType : public Expression {
-    public:
-      EXPR_FNS(ArrayType, array_type);
+  struct ArrayType : public Expression {
+    EXPR_FNS(ArrayType, array_type);
 
-      static NPtr build_unknown(NPtrVec&& nodes);
+    static NPtr build_unknown(NPtrVec &&nodes);
 
-      EPtr length() const { return len_; }
-      EPtr data_type() const { return array_type_; }
-
-    private:
-      EPtr len_;
-      EPtr array_type_;
+    EPtr length;
+    EPtr data_type;
   };
 
   class Terminal : public Expression {
