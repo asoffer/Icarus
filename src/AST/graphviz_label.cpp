@@ -46,7 +46,7 @@ namespace AST {
 
   std::string ChainOp::graphviz_label() const {
     std::string output;
-    for (const auto& op : ops_) {
+    for (const auto& op : ops) {
       switch (op) {
         case Language::Operator::Or:          output += "| ";  break;
         case Language::Operator::Xor:         output += "^ ";  break;

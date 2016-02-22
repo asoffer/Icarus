@@ -201,20 +201,18 @@ namespace AST {
     EPtr lhs, rhs;
   };
 
-  class ChainOp : public Expression {
-    public:
-      EXPR_FNS(ChainOp, chain_op);
+  struct ChainOp : public Expression {
+    EXPR_FNS(ChainOp, chain_op);
 
-      static NPtr join(NPtrVec&& nodes);
+    static NPtr join(NPtrVec&& nodes);
 
-      virtual bool is_comma_list() const override {
-        return ops_.front() == Language::Operator::Comma;
-      }
+    virtual bool is_comma_list() const override {
+      return ops.front() == Language::Operator::Comma;
+    }
 
-      std::vector<Language::Operator> ops_;
-      std::vector<EPtr> exprs_;
+    std::vector<Language::Operator> ops;
+    std::vector<EPtr> exprs;
   };
-
 
   struct ArrayLiteral : public Expression {
     EXPR_FNS(ArrayLiteral, array_literal);

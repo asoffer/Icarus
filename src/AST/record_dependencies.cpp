@@ -78,7 +78,7 @@ namespace AST {
 
   void ChainOp::record_dependencies() {
     Dependency::value_type(this, this);
-    for (auto& e : exprs_) {
+    for (auto& e : exprs) {
       Dependency::type_type(this, e.get());
       e->record_dependencies();
     }

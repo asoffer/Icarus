@@ -69,7 +69,7 @@ namespace AST {
 
   void ChainOp::assign_scope(Scope* scope) {
     scope_ = scope;
-    for (auto& expr : exprs_) {
+    for (auto& expr : exprs) {
       expr->assign_scope(scope);
     }
   }

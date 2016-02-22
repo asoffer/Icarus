@@ -142,13 +142,13 @@ std::string Conditional::to_string(size_t n) const {
   std::string ChainOp::to_string(size_t n) const {
     std::string output = tabs(n) + "<Chain: ";
     // TODO lookup table show token
-    // for (const auto& op : ops_) {
+    // for (const auto& op : ops) {
     //   output += op->token() + " ";
     // }
 
     output += ", prec: " + std::to_string(precedence) + ">\n";
 
-    for (const auto& expr : exprs_) {
+    for (const auto& expr : exprs) {
       output += expr->to_string(n + 1);
     }
 

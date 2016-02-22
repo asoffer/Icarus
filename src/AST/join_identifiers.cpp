@@ -100,7 +100,7 @@ namespace AST {
   }
 
   void ChainOp::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& expr : exprs_) {
+    for (auto& expr : exprs) {
       if (expr->is_identifier()) {
         expr = scope->identifier(expr);
       } else {

@@ -21,7 +21,7 @@ Time::Eval Binop::determine_time() {
 
 Time::Eval ChainOp::determine_time() {
   time_ = Time::either;
-  for (const auto &expr : exprs_) {
+  for (const auto &expr : exprs) {
     time_ |= expr->determine_time();
   }
   return time_;

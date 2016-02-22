@@ -84,23 +84,23 @@ namespace AST {
   }
 
   Context::Value ChainOp::evaluate(Context& ctx) { 
-    if (exprs_[0]->type == Bool) {
-      switch (ops_[0]) {
+    if (exprs[0]->type == Bool) {
+      switch (ops[0]) {
         case Language::Operator::Xor:
           {
             bool expr_val = false;
-            for (auto& expr : exprs_) {
+            for (auto& expr : exprs) {
               expr_val = (expr_val != expr->evaluate(ctx).as_bool);
             }
             return Context::Value(expr_val);
           }
         case Language::Operator::And:
-          for (auto& expr : exprs_) {
+          for (auto& expr : exprs) {
             if (expr->evaluate(ctx).as_bool) return Context::Value(false);
           }
           return Context::Value(true);
         case Language::Operator::Or:
-          for (auto& expr : exprs_) {
+          for (auto& expr : exprs) {
             if (expr->evaluate(ctx).as_bool) {
               return Context::Value(true);
             }
@@ -111,15 +111,15 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type == Int) {
+    } else if (exprs[0]->type == Int) {
 
       bool total = true;
-      auto last = exprs_[0]->evaluate(ctx);
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        auto next = exprs_[i + 1]->evaluate(ctx);
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
 
         using Language::Operator;
-        switch (ops_[i]) {
+        switch (ops[i]) {
           case Operator::LessThan:    total &= (last.as_int < next.as_int);
           case Operator::LessEq:      total &= (last.as_int <= next.as_int);
           case Operator::Equal:       total &= (last.as_int == next.as_int);
@@ -136,17 +136,17 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type == Type_) {
-      auto last = exprs_[0]->evaluate(ctx);
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        auto next = exprs_[i + 1]->evaluate(ctx);
+    } else if (exprs[0]->type == Type_) {
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
 
-        if (ops_[i] == Language::Operator::Equal) {
+        if (ops[i] == Language::Operator::Equal) {
           if (last.as_type != next.as_type) {
             return Context::Value(false);
           }
 
-        } else if (ops_[i] == Language::Operator::NotEqual) {
+        } else if (ops[i] == Language::Operator::NotEqual) {
           if (last.as_type == next.as_type) {
             return Context::Value(false);
           }
@@ -157,25 +157,39 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type == Uint) {
+    } else if (exprs[0]->type == Uint) {
       bool total = true;
-      auto last = exprs_[0]->evaluate(ctx);
-      for (size_t i = 0; i < ops_.size(); ++i) {
-        auto next = exprs_[i + 1]->evaluate(ctx);
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
 
         using Language::Operator;
-        switch (ops_[i]) {
-          case Operator::LessThan:    total &= (last.as_int < next.as_int);
-          case Operator::LessEq:      total &= (last.as_int <= next.as_int);
-          case Operator::Equal:       total &= (last.as_int == next.as_int);
-          case Operator::NotEqual:    total &= (last.as_int != next.as_int);
-          case Operator::GreaterThan: total &= (last.as_int >= next.as_int);
-          case Operator::GreaterEq:   total &= (last.as_int > next.as_int);
-          default:;
+        switch (ops[i]) {
+        case Operator::LessThan:
+          total &= (last.as_int < next.as_int);
+          break;
+        case Operator::LessEq:
+          total &= (last.as_int <= next.as_int);
+          break;
+        case Operator::Equal:
+          total &= (last.as_int == next.as_int);
+          break;
+        case Operator::NotEqual:
+          total &= (last.as_int != next.as_int);
+          break;
+        case Operator::GreaterThan:
+          total &= (last.as_int >= next.as_int);
+          break;
+        case Operator::GreaterEq:
+          total &= (last.as_int > next.as_int);
+          break;
+        default:;
         }
 
-        if (!total) { return Context::Value(false); }
-        
+        if (!total) {
+          return Context::Value(false);
+        }
+
         last = next;
       }
 
@@ -354,7 +368,7 @@ namespace AST {
 
       std::vector<EPtr> arg_vals;
       if (rhs->is_comma_list()) {
-        arg_vals = std::static_pointer_cast<ChainOp>(rhs)->exprs_;
+        arg_vals = std::static_pointer_cast<ChainOp>(rhs)->exprs;
       } else {
         arg_vals.push_back(rhs);
       }     

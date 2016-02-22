@@ -254,9 +254,9 @@ namespace AST {
           std::vector<llvm::Value*> arg_vals;
           if (rhs->is_comma_list()) {
             auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs);
-            arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
+            arg_vals.resize(arg_chainop->exprs.size(), nullptr);
             size_t i = 0;
-            for (const auto& expr : arg_chainop->exprs_) { 
+            for (const auto& expr : arg_chainop->exprs) { 
               arg_vals[i] = expr->generate_code(scope);
               if (arg_vals[i] == nullptr) return nullptr;
 
@@ -366,19 +366,19 @@ namespace AST {
     }
 
     using Language::Operator;
-    auto lhs_val = exprs_[0]->generate_code(scope);
+    auto lhs_val = exprs[0]->generate_code(scope);
     llvm::Value* ret_val = nullptr;
 
     auto& bldr = scope->builder();
 
-    if (exprs_[0]->type == Int) {
-      for (size_t i = 1; i < exprs_.size(); ++i) {
-        auto rhs_val = exprs_[i]->generate_code(scope);
+    if (exprs[0]->type == Int) {
+      for (size_t i = 1; i < exprs.size(); ++i) {
+        auto rhs_val = exprs[i]->generate_code(scope);
 
         llvm::Value* cmp_val;
 
         // TODO early exit
-        switch (ops_[i - 1]) {
+        switch (ops[i - 1]) {
           case Operator::LessThan:
             cmp_val = bldr.CreateICmpSLT(lhs_val, rhs_val, "lttmp"); break;
           case Operator::LessEq:
@@ -398,13 +398,13 @@ namespace AST {
         lhs_val = rhs_val;
       }
 
-    } else if (exprs_[0]->type == Uint) {
-      for (size_t i = 1; i < exprs_.size(); ++i) {
-        auto rhs_val = exprs_[i]->generate_code(scope);
+    } else if (exprs[0]->type == Uint) {
+      for (size_t i = 1; i < exprs.size(); ++i) {
+        auto rhs_val = exprs[i]->generate_code(scope);
         llvm::Value* cmp_val;
 
         // TODO early exit
-        switch (ops_[i - 1]) {
+        switch (ops[i - 1]) {
           case Operator::LessThan:
             cmp_val = bldr.CreateICmpULT(lhs_val, rhs_val, "lttmp"); break;
           case Operator::LessEq:
@@ -424,14 +424,14 @@ namespace AST {
         lhs_val = rhs_val;
       }
 
-    } else if (exprs_[0]->type == Real) {
-      for (size_t i = 1; i < exprs_.size(); ++i) {
-        auto rhs_val = exprs_[i]->generate_code(scope);
+    } else if (exprs[0]->type == Real) {
+      for (size_t i = 1; i < exprs.size(); ++i) {
+        auto rhs_val = exprs[i]->generate_code(scope);
         llvm::Value* cmp_val;
 
         // TODO early exit
         // TODO should these be ordered, or can they be QNAN? probably.
-        switch (ops_[i - 1]) {
+        switch (ops[i - 1]) {
           case Operator::LessThan:
             cmp_val = bldr.CreateFCmpOLT(lhs_val, rhs_val, "lttmp"); break;
           case Operator::LessEq:
@@ -450,13 +450,13 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
-    } else if (exprs_[0]->type->is_enum()) {
-      for (size_t i = 1; i < exprs_.size(); ++i) {
-        auto rhs_val = exprs_[i]->generate_code(scope);
+    } else if (exprs[0]->type->is_enum()) {
+      for (size_t i = 1; i < exprs.size(); ++i) {
+        auto rhs_val = exprs[i]->generate_code(scope);
         llvm::Value* cmp_val;
 
         // TODO early exit
-        switch (ops_[i - 1]) {
+        switch (ops[i - 1]) {
           case Operator::Equal:
             cmp_val = bldr.CreateICmpEQ(lhs_val, rhs_val, "eqtmp"); break;
           case Operator::NotEqual:
@@ -467,20 +467,20 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
-    } else if (exprs_[0]->type == Bool) {
+    } else if (exprs[0]->type == Bool) {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.
       auto cmp_val = lhs_val;
-      if (ops_.front() == Language::Operator::Xor) {
-        for (size_t i = 1; i < exprs_.size(); ++i) {
-          auto expr = exprs_[i];
+      if (ops.front() == Language::Operator::Xor) {
+        for (size_t i = 1; i < exprs.size(); ++i) {
+          auto expr = exprs[i];
           auto rhs_val = expr->generate_code(scope);
           cmp_val = bldr.CreateXor(cmp_val, rhs_val);
         }
       } else {
         auto parent_fn = bldr.GetInsertBlock()->getParent();
         // Condition blocks
-        std::vector<llvm::BasicBlock*> cond_blocks(ops_.size());
+        std::vector<llvm::BasicBlock*> cond_blocks(ops.size());
         for (auto& block : cond_blocks) {
           block = make_block("cond.block", parent_fn);
         }
@@ -490,17 +490,17 @@ namespace AST {
         auto land_false_block = make_block("land.false", parent_fn);
         auto merge_block = make_block("merge.block", parent_fn);
 
-        if (ops_.front() == Language::Operator::And) {
-          for (size_t i = 0; i < ops_.size(); ++i) {
+        if (ops.front() == Language::Operator::And) {
+          for (size_t i = 0; i < ops.size(); ++i) {
             bldr.CreateCondBr(cmp_val, cond_blocks[i], land_false_block);
             bldr.SetInsertPoint(cond_blocks[i]);
-            cmp_val = exprs_[i + 1]->generate_code(scope);
+            cmp_val = exprs[i + 1]->generate_code(scope);
           }
-        } else {  // if (ops_.front() == Language::Operator::Or) {
-          for (size_t i = 0; i < ops_.size(); ++i) {
+        } else {  // if (ops.front() == Language::Operator::Or) {
+          for (size_t i = 0; i < ops.size(); ++i) {
             bldr.CreateCondBr(cmp_val, land_true_block, cond_blocks[i]);
             bldr.SetInsertPoint(cond_blocks[i]);
-            cmp_val = exprs_[i + 1]->generate_code(scope);
+            cmp_val = exprs[i + 1]->generate_code(scope);
           }
         }
 

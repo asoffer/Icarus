@@ -307,10 +307,10 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
   void ChainOp::verify_types() {
     if (is_comma_list()) {
-      std::vector<Type*> type_vec(exprs_.size(), nullptr);
+      std::vector<Type*> type_vec(exprs.size(), nullptr);
 
       size_t position = 0;
-      for (const auto& eptr : exprs_) {
+      for (const auto& eptr : exprs) {
         type_vec[position] = eptr->type;
         ++position;
       }
@@ -323,7 +323,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
     // type is that one type
     std::set<Type*> expr_types;
 
-    for (const auto& expr : exprs_) {
+    for (const auto& expr : exprs) {
       expr_types.insert(expr->type);
     }
 

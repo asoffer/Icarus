@@ -93,15 +93,15 @@ namespace AST {
 
       auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
 
-      chain_ptr->ops_.push_back(op_node->op);
+      chain_ptr->ops.push_back(op_node->op);
 
-      chain_ptr->ops_.insert(chain_ptr->ops_.end(),
-          std::make_move_iterator(rhs->ops_.begin()),
-          std::make_move_iterator(rhs->ops_.end()));
+      chain_ptr->ops.insert(chain_ptr->ops.end(),
+          std::make_move_iterator(rhs->ops.begin()),
+          std::make_move_iterator(rhs->ops.end()));
 
-      chain_ptr->ops_.insert(chain_ptr->ops_.begin(),
-          std::make_move_iterator(rhs->ops_.begin()),
-          std::make_move_iterator(rhs->ops_.end()));
+      chain_ptr->ops.insert(chain_ptr->ops.begin(),
+          std::make_move_iterator(rhs->ops.begin()),
+          std::make_move_iterator(rhs->ops.end()));
       return chain_ptr;
 
     } else if (op_prec != rhs_prec) {
@@ -110,40 +110,40 @@ namespace AST {
     } else {  // op_prec == rhs_prec
       auto rhs = std::static_pointer_cast<ChainOp>(std::move(nodes[2]));
       auto chain_ptr = std::make_shared<ChainOp>();
-      chain_ptr->exprs_.emplace_back(
+      chain_ptr->exprs.emplace_back(
           std::move(std::static_pointer_cast<Expression>(nodes[0])));
 
       const std::string& token = nodes[1]->token();
       // TODO move to lookup table
       if (token == "<") {
-        chain_ptr->ops_.push_back(Language::Operator::LessThan);
+        chain_ptr->ops.push_back(Language::Operator::LessThan);
       } else if (token == "<=") {
-        chain_ptr->ops_.push_back(Language::Operator::LessEq);
+        chain_ptr->ops.push_back(Language::Operator::LessEq);
       } else if (token == "==") {
-        chain_ptr->ops_.push_back(Language::Operator::Equal);
+        chain_ptr->ops.push_back(Language::Operator::Equal);
       } else if (token == "!=") {
-        chain_ptr->ops_.push_back(Language::Operator::NotEqual);
+        chain_ptr->ops.push_back(Language::Operator::NotEqual);
       } else if (token == ">=") {
-        chain_ptr->ops_.push_back(Language::Operator::GreaterEq);
+        chain_ptr->ops.push_back(Language::Operator::GreaterEq);
       } else if (token == ">") {
-        chain_ptr->ops_.push_back(Language::Operator::GreaterThan);
+        chain_ptr->ops.push_back(Language::Operator::GreaterThan);
       } else if (token == "|") {
-        chain_ptr->ops_.push_back(Language::Operator::Or);
+        chain_ptr->ops.push_back(Language::Operator::Or);
       } else if (token == "^") {
-        chain_ptr->ops_.push_back(Language::Operator::Xor);
+        chain_ptr->ops.push_back(Language::Operator::Xor);
       } else if (token == "&") {
-        chain_ptr->ops_.push_back(Language::Operator::And);
+        chain_ptr->ops.push_back(Language::Operator::And);
       } else if (token == ",") {
-        chain_ptr->ops_.push_back(Language::Operator::Comma);
+        chain_ptr->ops.push_back(Language::Operator::Comma);
       }
 
-      chain_ptr->ops_.insert(chain_ptr->ops_.end(),
-          std::make_move_iterator(rhs->ops_.begin()),
-          std::make_move_iterator(rhs->ops_.end()));
+      chain_ptr->ops.insert(chain_ptr->ops.end(),
+          std::make_move_iterator(rhs->ops.begin()),
+          std::make_move_iterator(rhs->ops.end()));
 
-      chain_ptr->exprs_.insert(chain_ptr->exprs_.begin(),
-          std::make_move_iterator(rhs->exprs_.begin()),
-          std::make_move_iterator(rhs->exprs_.end()));
+      chain_ptr->exprs.insert(chain_ptr->exprs.begin(),
+          std::make_move_iterator(rhs->exprs.begin()),
+          std::make_move_iterator(rhs->exprs.end()));
       return chain_ptr;
     }
   }
@@ -172,13 +172,12 @@ namespace AST {
       chain_ptr = std::make_shared<ChainOp>();
       chain_ptr->line_num = nodes[1]->line_num;
 
-      chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
+      chain_ptr->exprs.push_back(std::static_pointer_cast<Expression>(nodes[0]));
       chain_ptr->precedence = op_prec;
     }
 
-    chain_ptr->ops_.push_back(op_node->op);
-    chain_ptr->exprs_.push_back(
-        std::static_pointer_cast<Expression>(nodes[2]));
+    chain_ptr->ops.push_back(op_node->op);
+    chain_ptr->exprs.push_back(std::static_pointer_cast<Expression>(nodes[2]));
 
     return std::static_pointer_cast<Node>(chain_ptr);
   }
@@ -190,7 +189,7 @@ namespace AST {
     array_lit_ptr->line_num = nodes[0]->line_num;
 
     if (nodes[1]->is_comma_list()) {
-      array_lit_ptr->elems = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
+      array_lit_ptr->elems = std::static_pointer_cast<ChainOp>(nodes[1])->exprs;
 
     } else {
       array_lit_ptr->elems.push_back(std::static_pointer_cast<Expression>(nodes[1]));
@@ -203,9 +202,9 @@ namespace AST {
     if (nodes[1]->is_comma_list()) {
       auto len_chain = std::static_pointer_cast<ChainOp>(nodes[1]);
 
-      auto iter = len_chain->exprs_.rbegin();
+      auto iter = len_chain->exprs.rbegin();
       EPtr prev = std::static_pointer_cast<Expression>(nodes[3]);
-      while (iter != len_chain->exprs_.rend()) {
+      while (iter != len_chain->exprs.rend()) {
         auto array_type_ptr = new ArrayType;
         array_type_ptr->line_num = (*iter)->line_num;
         array_type_ptr->len_ = *iter;
@@ -411,10 +410,10 @@ namespace AST {
       auto decl_list = std::static_pointer_cast<ChainOp>(input_args);
 
       // resize the input arg list
-      fn_lit->inputs_.resize(decl_list->exprs_.size(), nullptr);
+      fn_lit->inputs_.resize(decl_list->exprs.size(), nullptr);
 
       size_t index = 0;
-      for (const auto& expr : decl_list->exprs_) {
+      for (const auto& expr : decl_list->exprs) {
         auto decl = std::static_pointer_cast<Declaration>(expr);
         fn_lit->inputs_[index++] = decl;
       }
