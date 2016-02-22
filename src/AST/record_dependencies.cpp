@@ -150,7 +150,7 @@ namespace AST {
       Dependency::value_value(this, stmt.get());
       stmt->record_dependencies();
     }
-    for (auto& cond : conds_) {
+    for (auto& cond : conditions) {
       Dependency::value_value(this, cond.get());
       cond->record_dependencies();
     }

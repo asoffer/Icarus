@@ -469,7 +469,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   }
 
   void Conditional::verify_types() {
-    for (const auto& cond : conds_) {
+    for (const auto& cond : conditions) {
       if (cond->type != Bool) {
         error_log.log(line_num, "Conditional must be a bool, but "
             + cond->type->to_string() + " given.");

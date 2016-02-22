@@ -72,7 +72,7 @@ Time::Eval FunctionLiteral::determine_time() {
 
 Time::Eval Conditional::determine_time() {
   time_ = Time::either;
-  for (auto &cond : conds_) {
+  for (auto &cond : conditions) {
     time_ |= cond->determine_time();
   }
   for (auto &stmt : statements) {

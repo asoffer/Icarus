@@ -348,31 +348,29 @@ namespace AST {
       std::shared_ptr<Statements> statements;
   };
 
-  class Conditional : public Node {
-    public:
-      static NPtr build_if(NPtrVec&& nodes);
-      static NPtr build_else_if(NPtrVec&& nodes);
-      static NPtr build_else(NPtrVec&& nodes);
-      static NPtr build_extra_else_error(NPtrVec&& nodes);
-      static NPtr build_extra_else_if_error(NPtrVec&& nodes);
-      static NPtr build_if_assignment_error(NPtrVec&& nodes);
+  struct Conditional : public Node {
+    static NPtr build_if(NPtrVec&& nodes);
+    static NPtr build_else_if(NPtrVec&& nodes);
+    static NPtr build_else(NPtrVec&& nodes);
+    static NPtr build_extra_else_error(NPtrVec&& nodes);
+    static NPtr build_extra_else_if_error(NPtrVec&& nodes);
+    static NPtr build_if_assignment_error(NPtrVec&& nodes);
 
-      VIRTUAL_METHODS_FOR_NODES;
+    VIRTUAL_METHODS_FOR_NODES;
 
-      bool has_else() const { return else_line_num_ != 0; }
+    bool has_else() const { return else_line_num != 0; }
 
-      Conditional() : else_line_num_(0) {}
-      virtual ~Conditional() {}
-    private:
+    Conditional() : else_line_num(0) {}
+    virtual ~Conditional() {}
 
-      std::vector<EPtr> conds_;
-      std::vector<std::shared_ptr<Statements>> statements;
-      std::vector<CondScope*> body_scopes_;
+    std::vector<EPtr> conditions;
+    std::vector<std::shared_ptr<Statements>> statements;
+    std::vector<CondScope*> body_scopes;
 
-      // We use else_line_num_ to determine if an else branch exists (when it's
-      // non-zero) and also for error generation (if multiple else-blocks are
-      // present).
-      size_t else_line_num_;
+    // We use else_line_num to determine if an else branch exists (when it's
+    // non-zero) and also for error generation (if multiple else-blocks are
+    // present).
+    size_t else_line_num;
   };
 
   struct While : public Node {

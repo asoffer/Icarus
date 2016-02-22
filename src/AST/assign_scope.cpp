@@ -8,15 +8,15 @@ namespace AST {
 
   void Conditional::assign_scope(Scope* scope) {
     scope_ = scope;
-    for (size_t i = 0; i < conds_.size(); ++i) {
-      body_scopes_[i]->set_parent(scope);
-      conds_[i]->assign_scope(scope);
-      statements[i]->assign_scope(body_scopes_[i]);
+    for (size_t i = 0; i < conditions.size(); ++i) {
+      body_scopes[i]->set_parent(scope);
+      conditions[i]->assign_scope(scope);
+      statements[i]->assign_scope(body_scopes[i]);
     }
 
     if (has_else()) {
-      body_scopes_.back()->set_parent(scope);
-      statements.back()->assign_scope(body_scopes_.back());
+      body_scopes.back()->set_parent(scope);
+      statements.back()->assign_scope(body_scopes.back());
     }
   }
 

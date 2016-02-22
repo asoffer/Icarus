@@ -865,7 +865,7 @@ namespace AST {
 
       // Last block is either the else-block or the landing block if
       // no else-block exists.
-      std::vector<llvm::BasicBlock*> conditionblocks(conds_.size() + 1,
+      std::vector<llvm::BasicBlock*> conditionblocks(conditions.size() + 1,
           nullptr);
 
       for (size_t i = 0; i < conditionblocks.size(); ++i) {
@@ -878,24 +878,24 @@ namespace AST {
 
       scope->builder().CreateBr(conditionblocks[0]);
 
-      for (size_t i = 0; i < conds_.size(); ++i) {
+      for (size_t i = 0; i < conditions.size(); ++i) {
         scope->builder().SetInsertPoint(conditionblocks[i]);
-        auto condition = conds_[i]->generate_code(scope);
+        auto condition = conditions[i]->generate_code(scope);
         scope->builder().CreateCondBr(condition,
-            body_scopes_[i]->entry_block(), conditionblocks[i + 1]);
+            body_scopes[i]->entry_block(), conditionblocks[i + 1]);
       }
 
       scope->builder().SetInsertPoint(conditionblocks.back());
       if (has_else()) {
-        scope->builder().CreateBr(body_scopes_.back()->entry_block());
+        scope->builder().CreateBr(body_scopes.back()->entry_block());
       }
 
       for (size_t i = 0; i < statements.size(); ++i) {
-        body_scopes_[i]->set_parent_function(parent_fn);
-        body_scopes_[i]->enter();
-        statements[i]->generate_code(body_scopes_[i]);
-        body_scopes_[i]->exit();
-        body_scopes_[i]->builder().CreateBr(landing);
+        body_scopes[i]->set_parent_function(parent_fn);
+        body_scopes[i]->enter();
+        statements[i]->generate_code(body_scopes[i]);
+        body_scopes[i]->exit();
+        body_scopes[i]->builder().CreateBr(landing);
       }
 
       scope->builder().SetInsertPoint(landing);

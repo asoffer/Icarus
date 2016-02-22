@@ -60,9 +60,9 @@ std::string Conditional::to_string(size_t n) const {
       << (statements.size() == 1 ? "" : "s")
       << ")>\n";
 
-    for (size_t i = 0; i < conds_.size(); ++i) {
+    for (size_t i = 0; i < conditions.size(); ++i) {
       ss << tabs(n + 1) << "Condition " << i << ":\n"
-        << conds_[i]->to_string(n + 1) << statements[i]->to_string(n + 1);
+        << conditions[i]->to_string(n + 1) << statements[i]->to_string(n + 1);
     }
 
     if (has_else()) {

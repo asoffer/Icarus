@@ -31,12 +31,12 @@ namespace AST {
   }
 
   void Conditional::join_identifiers(Scope* scope, bool is_arg) {
-    for (size_t i = 0; i < conds_.size(); ++i) {
-      conds_[i]->join_identifiers(body_scopes_[i]);
+    for (size_t i = 0; i < conditions.size(); ++i) {
+      conditions[i]->join_identifiers(body_scopes[i]);
     }
 
     for (size_t i = 0; i < statements.size(); ++i) {
-      statements[i]->join_identifiers(body_scopes_[i]);
+      statements[i]->join_identifiers(body_scopes[i]);
     }
   }
 

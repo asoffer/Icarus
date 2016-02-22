@@ -479,22 +479,22 @@ namespace AST {
 
   NPtr Conditional::build_if(NPtrVec&& nodes) {
     auto if_stmt = std::make_shared<Conditional>();
-    if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
+    if_stmt->conditions = { std::static_pointer_cast<Expression>(nodes[1]) };
     if_stmt->statements = { std::static_pointer_cast<Statements>(nodes[3]) };
-    if_stmt->body_scopes_.push_back(new CondScope);
+    if_stmt->body_scopes.push_back(new CondScope);
     return if_stmt;
   }
 
   NPtr Conditional::build_extra_else_error(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
-    error_log.log(nodes[1]->line_num, "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+    error_log.log(nodes[1]->line_num, "If-statement already has an else-branch. The first else-branch is on line " + std::to_string(if_stmt->else_line_num) + ".");
 
     return std::move(nodes[0]);
   }
 
   NPtr Conditional::build_extra_else_if_error(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(nodes[0]);
-    error_log.log(nodes[1]->line_num, "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num_) + ".");
+    error_log.log(nodes[1]->line_num, "Else-if block is unreachable because it follows an else block. The else-block is on line " + std::to_string(if_stmt->else_line_num) + ".");
 
     return std::move(nodes[0]);
   }
@@ -503,21 +503,21 @@ namespace AST {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
     auto else_if = std::static_pointer_cast<Conditional>(std::move(nodes[2]));
 
-    assert(else_if->conds_.size() == 1 && else_if->statements.size() == 1 && else_if->body_scopes_.size() == 1
+    assert(else_if->conditions.size() == 1 && else_if->statements.size() == 1 && else_if->body_scopes.size() == 1
         && "Else-if statement constructed by parser with multiple conditional blocks.");
 
-    if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
+    if_stmt->conditions.push_back(std::move(else_if->conditions.front()));
     if_stmt->statements.push_back(std::move(else_if->statements.front()));
-    if_stmt->body_scopes_.push_back(new CondScope);
+    if_stmt->body_scopes.push_back(new CondScope);
     return if_stmt;
   }
 
   NPtr Conditional::build_else(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
-    if_stmt->else_line_num_ = nodes[1]->line_num;
+    if_stmt->else_line_num = nodes[1]->line_num;
     if_stmt->statements.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
-    if_stmt->body_scopes_.push_back(new CondScope);
+    if_stmt->body_scopes.push_back(new CondScope);
     return std::move(if_stmt);
   }
 

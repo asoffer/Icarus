@@ -446,8 +446,8 @@ namespace AST {
   }
 
   Context::Value Conditional::evaluate(Context& ctx) {
-    for (size_t i = 0; i < conds_.size(); ++i) {
-      if (conds_[i]->evaluate(ctx).as_bool) {
+    for (size_t i = 0; i < conditions.size(); ++i) {
+      if (conditions[i]->evaluate(ctx).as_bool) {
         Context cond_ctx(&ctx);
         statements[i]->evaluate(cond_ctx);
         if (cond_ctx.has_return()) {
@@ -467,6 +467,6 @@ namespace AST {
     return nullptr;
   }
 
-  Context::Value Break::evaluate(Context&)           { return nullptr; }
-  Context::Value While::evaluate(Context&)           { return nullptr; }
+  Context::Value Break::evaluate(Context &) { return nullptr; }
+  Context::Value While::evaluate(Context &) { return nullptr; }
 }  // namespace AST
