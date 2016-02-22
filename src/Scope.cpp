@@ -88,7 +88,7 @@ void FnScope::enter() {
   // Even though this is an allocation, it cannot be put in
   // FnScope::allocate() because that gets called multiple times
   // TODO multiple return types for now just take one
-  if (fn_type_->return_type()->is_struct()) {
+  if (fn_type_->output->is_struct()) {
     auto iter = llvm_fn_->args().end();
     --iter;
     return_val_ = iter;
@@ -96,9 +96,9 @@ void FnScope::enter() {
     return_val_->setName("retval");
 
     // TODO multiple return types for now just take one
-  } else if (fn_type_->return_type() != Void) {
+  } else if (fn_type_->output != Void) {
     // TODO multiple return types for now just take one
-    return_val_ = fn_type_->return_type()->allocate(bldr_);
+    return_val_ = fn_type_->output->allocate(bldr_);
     return_val_->setName("retval");
   }
 
@@ -116,9 +116,9 @@ void FnScope::exit() {
   Scope::exit();
 
   // TODO multiple return types for now just take one
-  if (fn_type_->return_type() == Void
+  if (fn_type_->output == Void
       // TODO multiple return types for now just take one
-      || fn_type_->return_type()->is_struct()) {
+      || fn_type_->output->is_struct()) {
     bldr_.CreateRetVoid();
 
   } else {
@@ -135,7 +135,7 @@ void FnScope::make_return(llvm::Value* val) {
   if (val == nullptr) return;
 
   // TODO multiple return types for now just take one
-  auto ret_type = fn_type_->return_type();
+  auto ret_type = fn_type_->output;
   if (ret_type->is_struct()) {
     // TODO pull out memcpy into a single fn call
     auto val_raw = bldr_.CreateBitCast(val, *RawPtr);

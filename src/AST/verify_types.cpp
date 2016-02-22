@@ -121,12 +121,12 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
       }
 
       auto fn = static_cast<Function *>(operand->type);
-      if (fn->argument_type() != Void) {
+      if (fn->input != Void) {
         error_log.log(line_num, "Calling function `" + operand->token() +
                                     "` with no arguments.");
         type = Error;
       } else {
-        type = fn->return_type();
+        type = fn->output;
         assert(type && "fn return type is nullptr");
       }
 
@@ -242,7 +242,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
         return;
       }
 
-      auto in_types = static_cast<Function *>(lhs->type)->argument_type();
+      auto in_types = static_cast<Function *>(lhs->type)->input;
 
       // TODO If rhs is a comma-list, is it's type given by a tuple?
       if (in_types != rhs->type) {
@@ -253,7 +253,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
       }
 
       // TODO multiple return values. For now just taking the first
-      type = static_cast<Function *>(lhs->type)->return_type();
+      type = static_cast<Function *>(lhs->type)->output;
       assert(type && "return type is null");
 
       return;

@@ -33,7 +33,7 @@ class Primitive;
 class Array;
 class Tuple;
 class Pointer;
-class Function;
+struct Function;
 struct Enumeration;
 struct Structure;
 struct DependentType;
@@ -268,30 +268,21 @@ private:
   Type *pointee_type_;
 };
 
-class Function : public Type {
-public:
+struct Function : public Type {
   TYPE_FNS(Function, function);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-  friend Function *Func(Type *in, Type *out);
 
   operator llvm::FunctionType *() const {
     return static_cast<llvm::FunctionType *>(llvm_type_);
   }
 
-  Type *argument_type() const { return input_type_; }
-  Type *return_type() const { return output_type_; }
-
   virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
-private:
   Function(Type *in, Type *out);
-
-  Type *input_type_;
-  Type *output_type_;
+  Type *input, *output;
 };
 
 struct Enumeration : public Type {

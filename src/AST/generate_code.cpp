@@ -174,9 +174,9 @@ namespace AST {
 
     case Operator::Call: {
       auto fn_type = static_cast<Function *>(operand->type);
-      if (fn_type->return_type()->is_struct()) {
+      if (fn_type->output->is_struct()) {
         // TODO move this outside of any potential loops
-        auto local_ret = scope->builder().CreateAlloca(*fn_type->return_type());
+        auto local_ret = scope->builder().CreateAlloca(*fn_type->output);
 
         scope->builder().CreateCall(static_cast<llvm::Function *>(val),
                                     {local_ret});
@@ -597,7 +597,7 @@ namespace AST {
           // each of these is the correct type.
           // TODO This verification hasn't yet been implemented and that it is a struct
           auto rhs_as_func = static_cast<Function*>(rhs->type);
-          auto arg_type = static_cast<Structure*>(rhs_as_func->argument_type());
+          auto arg_type = static_cast<Structure*>(rhs_as_func->input);
 
           arg_type->set_print(static_cast<llvm::Function*>(val));
 

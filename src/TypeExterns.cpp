@@ -160,8 +160,8 @@ namespace TypeSystem {
   Type* get_operator(Language::Operator op, Type* signature) {
     auto operator_set = operator_table[op];
     for (const auto& fn : operator_set) {
-      if (signature == fn->argument_type()) {
-        return fn->return_type();
+      if (signature == fn->input) {
+        return fn->output;
       }
     }
     return nullptr;
@@ -205,8 +205,8 @@ Pointer* Ptr(Type* t) {
 Function* Func(Type* in, Type* out) {
   static std::vector<Function*> fn_types_;
   for (const auto& fn_type : fn_types_) {
-    if (fn_type->argument_type() != in) continue;
-    if (fn_type->return_type() != out)  continue;
+    if (fn_type->input != in) continue;
+    if (fn_type->output != out) continue;
     return fn_type;
   }
 

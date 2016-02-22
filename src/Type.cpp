@@ -69,42 +69,47 @@ Pointer::Pointer(Type* t) : pointee_type_(t) {
   has_vars_ = pointee_type_->has_variables();
 }
 
-Function::Function(Type* in, Type* out) : input_type_(in), output_type_(out) {
-  std::vector<llvm::Type*> llvm_in;
-  llvm::Type* llvm_out = *Void;
+Function::Function(Type* in, Type* out) : input(in), output(out) {
+  std::vector<llvm::Type *> llvm_in;
+  llvm::Type *llvm_out = *Void;
 
-  has_vars_ = input_type_->has_variables() || output_type_->has_variables();
+  has_vars_ = input->has_variables() || output->has_variables();
 
-  if (input_type_->is_tuple()) {
-    auto in_tup = static_cast<Tuple*>(input_type_);
+  if (input->is_tuple()) {
+    auto in_tup = static_cast<Tuple *>(input);
     for (auto t : in_tup->entry_types()) {
-      if (! t->add_llvm_input(llvm_in)) {
-        llvm_type_ = nullptr; return;
+      if (!t->add_llvm_input(llvm_in)) {
+        llvm_type_ = nullptr;
+        return;
       }
     }
   } else {
-    if (! input_type_->add_llvm_input(llvm_in)) {
-      llvm_type_ = nullptr; return;
+    if (!input->add_llvm_input(llvm_in)) {
+      llvm_type_ = nullptr;
+      return;
     }
   }
 
-  if (output_type_->is_tuple()) {
-    auto out_tup = static_cast<Tuple*>(output_type_);
+  if (output->is_tuple()) {
+    auto out_tup = static_cast<Tuple *>(output);
     for (auto t : out_tup->entry_types()) {
-      if (! Ptr(t)->add_llvm_input(llvm_in)) {
-        llvm_type_ = nullptr; return;
+      if (!Ptr(t)->add_llvm_input(llvm_in)) {
+        llvm_type_ = nullptr;
+        return;
       }
     }
-  } else if (output_type_->is_enum() || output_type_->is_array()
-      || output_type_->is_primitive()) {
-    llvm_out = *output_type_;
+  } else if (output->is_enum() || output->is_array() ||
+             output->is_primitive()) {
+    llvm_out = *output;
     if (llvm_out == nullptr) {
-      llvm_type_ = nullptr; return;
+      llvm_type_ = nullptr;
+      return;
     }
 
   } else {
-    if (! Ptr(output_type_)->add_llvm_input(llvm_in)) {
-      llvm_type_ = nullptr; return;
+    if (!Ptr(output)->add_llvm_input(llvm_in)) {
+      llvm_type_ = nullptr;
+      return;
     }
   }
 

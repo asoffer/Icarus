@@ -34,20 +34,20 @@ std::string Array::to_string() const {
 
 std::string Function::to_string() const {
   std::stringstream ss;
-  if (argument_type()->is_function()) {
-    ss << "(" << *argument_type() << ")";
+  if (input->is_function()) {
+    ss << "(" << *input << ")";
 
   } else {
-    ss << *argument_type();
+    ss << *input;
   }
 
   ss << " -> ";
 
-  if (return_type()->is_function()) {
-    ss << "(" << *return_type() << ")";
+  if (output->is_function()) {
+    ss << "(" << *output << ")";
 
   } else {
-    ss << *return_type();
+    ss << *output;
   }
   return ss.str();
 }

@@ -388,7 +388,7 @@ namespace AST {
       // For functions that return types, we cache all calls
       // TODO add possibility for #nocache
       bool returns_type =
-        (static_cast<Function*>(fn_ptr->type)->return_type() == Type_);
+        (static_cast<Function*>(fn_ptr->type)->output == Type_);
 
       auto& fn_cache = function_call_cache[fn_ptr];
       if (returns_type) {

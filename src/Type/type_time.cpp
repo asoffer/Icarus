@@ -14,7 +14,7 @@ Time::Eval Array::time() const {
 }
 
 Time::Eval Function::time() const {
-  return argument_type()->time() | return_type()->time();
+  return input->time() | output->time();
 }
 
 Time::Eval Pointer::time() const {
