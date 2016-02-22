@@ -2,63 +2,61 @@
 #include "Type.h"
 #include <sstream>
 
-#define TYPE_OR(other) (expr_type_? expr_type_->to_string() : (other))
+#define TYPE_OR(other) (type ? type->to_string() : (other))
 
 namespace AST {
-  std::string tabs(size_t n) {
-    return std::string(n << 1, ' ');
-  }
+std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
-  std::string Node::to_string(size_t n) const {
-    std::string output = tabs(n) + "[";
-    switch (type_) {
-      case Language::unknown:                 output += "Unknown";       break;
-      case Language::eof:                     output += "EOF";           break;
-      case Language::newline:                 output += "Newline";       break;
-      case Language::comment:                 output += "Comment";       break;
-      case Language::identifier:              output += "Identifier";    break;
-      case Language::int_literal:             output += "Integer";       break;
-      case Language::uint_literal:            output += "UInt";          break;
-      case Language::real_literal:            output += "Real";          break;
-      case Language::type_literal:            output += "Type";          break;
-      case Language::char_literal:            output += "Character";     break;
-      case Language::string_literal:          output += "String";        break;
-      case Language::generic_operator:        output += "Operator";      break;
-      case Language::bool_operator:           output += "BoolOperator";  break;
-      case Language::dot:                     output += "Dot";           break;
-      case Language::binary_boolean_operator: output += "BinOperator";   break;
-      case Language::decl_operator:           output += ":";             break;
-      case Language::decl_assign_operator:    output += ":=";            break;
-      case Language::assign_operator:         output += "X=";            break;
-      case Language::fn_arrow:                output += "->";            break;
-      case Language::comma:                   output += ":";             break;
-      case Language::semicolon:               output += ";";             break;
-      case Language::dereference:             output += "@";             break;
-      case Language::negation:                output += "-";             break;
-      case Language::indirection:             output += "&";             break;
-      case Language::rocket_operator:         output += "=>";            break;
-      case Language::key_value_pair:          output += "( => )";        break;
-      case Language::expression:              output += "Expression";    break;
-      case Language::left_paren:              output += "Left Paren";    break;
-      case Language::right_paren:             output += "Right Paren";   break;
-      case Language::left_brace:              output += "Left Brace";    break;
-      case Language::right_brace:             output += "Right Brace";   break;
-      case Language::left_bracket:            output += "Left Bracket";  break;
-      case Language::right_bracket:           output += "Right Bracket"; break;
-#define RESERVED_MACRO(res) \
-      case Language::reserved_##res:          output += #res;            break;
+std::string Node::to_string(size_t n) const {
+  std::string output = tabs(n) + "[";
+  switch (type_) {
+    case Language::unknown:                 output += "Unknown";       break;
+    case Language::eof:                     output += "EOF";           break;
+    case Language::newline:                 output += "Newline";       break;
+    case Language::comment:                 output += "Comment";       break;
+    case Language::identifier:              output += "Identifier";    break;
+    case Language::int_literal:             output += "Integer";       break;
+    case Language::uint_literal:            output += "UInt";          break;
+    case Language::real_literal:            output += "Real";          break;
+    case Language::type_literal:            output += "Type";          break;
+    case Language::char_literal:            output += "Character";     break;
+    case Language::string_literal:          output += "String";        break;
+    case Language::generic_operator:        output += "Operator";      break;
+    case Language::bool_operator:           output += "BoolOperator";  break;
+    case Language::dot:                     output += "Dot";           break;
+    case Language::binary_boolean_operator: output += "BinOperator";   break;
+    case Language::decl_operator:           output += ":";             break;
+    case Language::decl_assign_operator:    output += ":=";            break;
+    case Language::assign_operator:         output += "X=";            break;
+    case Language::fn_arrow:                output += "->";            break;
+    case Language::comma:                   output += ":";             break;
+    case Language::semicolon:               output += ";";             break;
+    case Language::dereference:             output += "@";             break;
+    case Language::negation:                output += "-";             break;
+    case Language::indirection:             output += "&";             break;
+    case Language::rocket_operator:         output += "=>";            break;
+    case Language::key_value_pair:          output += "( => )";        break;
+    case Language::expression:              output += "Expression";    break;
+    case Language::left_paren:              output += "Left Paren";    break;
+    case Language::right_paren:             output += "Right Paren";   break;
+    case Language::left_brace:              output += "Left Brace";    break;
+    case Language::right_brace:             output += "Right Brace";   break;
+    case Language::left_bracket:            output += "Left Bracket";  break;
+    case Language::right_bracket:           output += "Right Bracket"; break;
+#define RESERVED_MACRO(res)                                                    \
+    case Language::reserved_##res:          output += #res;            break;
 #include "config/reserved.conf"
 #undef RESERVED_MACRO
-      default:;
-    }
-
-    return output + (!token_.empty() ? ": " + token_ : "") + "]\n";
+    default:;
   }
 
-  std::string Conditional::to_string(size_t n) const {
-    std::stringstream ss;
-    ss << tabs(n)
-      << "<Conditional (" << statements_.size() << " part"
+  return output + (!token_.empty() ? ": " + token_ : "") + "]\n";
+}
+
+std::string Conditional::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n)
+    << "<Conditional (" << statements_.size() << " part"
       << (statements_.size() == 1 ? "" : "s")
       << ")>\n";
 
@@ -77,7 +75,7 @@ namespace AST {
 
   std::string ArrayLiteral::to_string(size_t n) const {
     std::string output = tabs(n) + "<ArrayLiteral>\n";
-    for (const auto& el : elems_) {
+    for (const auto& el : elems) {
       output += el->to_string(n + 1);
     }
 
@@ -108,7 +106,7 @@ namespace AST {
   }
 
   std::string Access::to_string(size_t n) const {
-    return tabs(n) + "<Access " + member_name_ + " " + TYPE_OR("") + ">\n"
+    return tabs(n) + "<Access " + member_name + " " + TYPE_OR("") + ">\n"
       + operand->to_string(n + 1);
   }
 
@@ -131,8 +129,8 @@ namespace AST {
       default: assert(false && "Not a binary operator");
     }
     ss << ">\n"
-      << lhs_->to_string(n + 1)
-      << rhs_->to_string(n + 1);
+      << lhs->to_string(n + 1)
+      << rhs->to_string(n + 1);
     return ss.str();
   }
 
@@ -148,7 +146,7 @@ namespace AST {
     //   output += op->token() + " ";
     // }
 
-    output += ", prec: " + std::to_string(precedence()) + ">\n";
+    output += ", prec: " + std::to_string(precedence) + ">\n";
 
     for (const auto& expr : exprs_) {
       output += expr->to_string(n + 1);
@@ -184,8 +182,8 @@ namespace AST {
 
   std::string Assignment::to_string(size_t n) const {
     return tabs(n) + "<Assignment " + TYPE_OR("") + ">\n"
-      + lhs_->to_string(n + 1)
-      + rhs_->to_string(n + 1);
+      + lhs->to_string(n + 1)
+      + rhs->to_string(n + 1);
   }
 
   std::string Case::to_string(size_t n) const {

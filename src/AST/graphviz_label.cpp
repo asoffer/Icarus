@@ -27,11 +27,11 @@ namespace AST {
     return identifier_string() + (type_is_inferred() ? " := ..." : " : ...");
   }
 
-  std::string Access::graphviz_label() const { return "." + member_name_; }
+  std::string Access::graphviz_label() const { return "." + member_name; }
 
   std::string Terminal::graphviz_label() const {
     std::string output = "Terminal: ";
-    if (type() == Char) {
+    if (type == Char) {
       output += "'";
       if (token_ == "\n")       output += "\\\\n";
       else if (token_ == "\t")  output += "\\\\t";

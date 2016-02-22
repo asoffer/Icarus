@@ -53,12 +53,12 @@ llvm::Value* struct_memcpy(Type* type, llvm::Value* val, llvm::IRBuilder<>& bldr
 
 namespace AST {
   llvm::Value* Identifier::generate_code(Scope* scope) {
-    if (type() == Type_) {
+    if (type == Type_) {
       return nullptr;
-    } else if (type()->is_function()) {
+    } else if (type->is_function()) {
       return global_module->getFunction(token());
 
-    } else if (type()->is_struct()) {
+    } else if (type->is_struct()) {
       return alloc_;
 
     } else {
@@ -76,9 +76,9 @@ namespace AST {
       case Terminal::Null:
         // null_pointer() automatically adds Ptr() so we need to remove it here
         // TODO is there a better API for this? Almost certainly yes.
-        assert(expr_type_->is_pointer() && "Null pointer of non-pointer type ");
+        assert(type->is_pointer() && "Null pointer of non-pointer type ");
         return data::null_pointer(
-            static_cast<Pointer*>(expr_type_)->pointee_type());
+            static_cast<Pointer*>(type)->pointee_type());
       case Terminal::ASCII:
         return builtin::ascii();
       case Terminal::True:
@@ -104,7 +104,7 @@ namespace AST {
           auto str = data::global_string(scope->builder(), token());
           auto len = data::const_uint(token().size());
 
-          auto str_alloc = scope->builder().CreateAlloca(*type());
+          auto str_alloc = scope->builder().CreateAlloca(*type);
 
           // TODO use field_num(). This gets the length
           auto len_ptr = scope->builder().CreateGEP(str_alloc,
@@ -138,13 +138,13 @@ namespace AST {
     // Cases where we don't want to generate code for the node
     if (op == Operator::And)
       return operand->generate_lvalue(scope);
-    if (op == Operator::Print && operand->type() == Type_) {
+    if (op == Operator::Print && operand->type == Type_) {
       // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
       // TODO use corrent scope
 
       auto val = reinterpret_cast<llvm::Value*>(
           operand->evaluate(scope->context()).as_type);
-      operand->type()->call_print(scope->builder(), val);
+      operand->type->call_print(scope->builder(), val);
       return nullptr;
     }
 
@@ -152,15 +152,15 @@ namespace AST {
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op) { 
       case Operator::Sub:
-        return operand->type()->call_neg(bldr, val);
+        return operand->type->call_neg(bldr, val);
 
       case Operator::Not:
-        return operand->type()->call_not(bldr, val);
+        return operand->type->call_not(bldr, val);
       case Operator::Free:
         {
           bldr.CreateCall(cstdlib::free(), { bldr.CreateBitCast(val, *RawPtr) });
           // Reset pointer to null
-          auto ptee_type = static_cast<Pointer*>(operand->type())->pointee_type();
+          auto ptee_type = static_cast<Pointer*>(operand->type)->pointee_type();
           bldr.CreateStore(data::null_pointer(ptee_type),
               operand->generate_lvalue(scope));
         return nullptr;
@@ -170,7 +170,7 @@ namespace AST {
         return nullptr;
 
       case Operator::At:
-        if (type()->is_struct()) {
+        if (type->is_struct()) {
           return val;
         } else {
           return bldr.CreateLoad(bldr.CreateGEP(val, { data::const_uint(0) }));
@@ -178,7 +178,7 @@ namespace AST {
 
       case Operator::Call:
         {
-          auto fn_type = static_cast<Function*>(operand->type());
+          auto fn_type = static_cast<Function*>(operand->type);
           if (fn_type->return_type()->is_struct()) {
             // TODO move this outside of any potential loops
             auto local_ret = scope->builder().CreateAlloca(
@@ -192,8 +192,8 @@ namespace AST {
           }
         }
       case Operator::Print:
-        operand->type()->call_print(scope->builder(), operand->type()->is_struct()
-            ? struct_memcpy(operand->type(), val, scope->builder())
+        operand->type->call_print(scope->builder(), operand->type->is_struct()
+            ? struct_memcpy(operand->type, val, scope->builder())
             : val);
         return nullptr;
 
@@ -203,13 +203,13 @@ namespace AST {
   }
 
   llvm::Value* Access::generate_code(Scope* scope) {
-    auto etype = operand->type();
+    auto etype = operand->type;
     if (etype == Type_) {
       auto expr_as_type =
         operand->evaluate(scope->context()).as_type;
       if (expr_as_type->is_enum()) {
         auto enum_type = static_cast<Enumeration*>(expr_as_type);
-        return enum_type->get_value(member_name_);
+        return enum_type->get_value(member_name);
       }
     }
 
@@ -224,8 +224,8 @@ namespace AST {
     auto struct_type = static_cast<Structure*>(etype);
 
     auto retval = scope->builder().CreateGEP(eval,
-        { data::const_uint(0), struct_type->field_num(member_name_) });
-    return (type()->is_struct())
+        { data::const_uint(0), struct_type->field_num(member_name) });
+    return (type->is_struct())
       ? retval
       : scope->builder().CreateLoad(retval);
   }
@@ -241,72 +241,72 @@ namespace AST {
 
     }
 
-    auto lhs_val = lhs_->generate_code(scope);
+    auto lhs_val = lhs->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
 
     switch (op) {
       case Operator::Cast:
-        return lhs_->type()->call_cast(scope->builder(), lhs_val, 
-            rhs_->evaluate(scope->context()).as_type);
+        return lhs->type->call_cast(scope->builder(), lhs_val, 
+            rhs->evaluate(scope->context()).as_type);
 
       case Operator::Call:
-        if (lhs_->type()->is_function()) {
+        if (lhs->type->is_function()) {
           std::vector<llvm::Value*> arg_vals;
-          if (rhs_->is_comma_list()) {
-            auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs_);
+          if (rhs->is_comma_list()) {
+            auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs);
             arg_vals.resize(arg_chainop->exprs_.size(), nullptr);
             size_t i = 0;
             for (const auto& expr : arg_chainop->exprs_) { 
               arg_vals[i] = expr->generate_code(scope);
               if (arg_vals[i] == nullptr) return nullptr;
 
-              if (expr->type()->is_struct()) {
+              if (expr->type->is_struct()) {
                 arg_vals[i] =
-                  struct_memcpy(expr->type(), arg_vals[i], scope->builder());
+                  struct_memcpy(expr->type, arg_vals[i], scope->builder());
               }
 
               ++i;
             }
 
           } else {
-            auto rhs_val = rhs_->generate_code(scope);
+            auto rhs_val = rhs->generate_code(scope);
             if (rhs_val == nullptr) return nullptr;
 
-            if (rhs_->type()->is_struct()) {
+            if (rhs->type->is_struct()) {
               // TODO be sure to allocate this ahead of all loops and reuse it when possible
-              rhs_val = struct_memcpy(rhs_->type(), rhs_val, scope->builder());
+              rhs_val = struct_memcpy(rhs->type, rhs_val, scope->builder());
             } 
 
             arg_vals = { rhs_val };
           }
 
-          if (type() == Void) {
+          if (type == Void) {
             scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals);
             return nullptr;
 
           } else {
             return scope->builder().CreateCall(static_cast<llvm::Function*>(lhs_val), arg_vals, "calltmp");
           }
-        } else if (lhs_->type()->is_dependent_type()) {
+        } else if (lhs->type->is_dependent_type()) {
           // TODO make this generic. right now dependent_type implise alloc(...)
-          auto t = rhs_->evaluate(scope->context()).as_type;
+          auto t = rhs->evaluate(scope->context()).as_type;
           auto alloc_ptr = scope->builder().CreateCall(
               lhs_val, { data::const_uint(t->bytes()) });
-          return scope->builder().CreateBitCast(alloc_ptr, *type());
+          return scope->builder().CreateBitCast(alloc_ptr, *type);
         }
       default:;
     }
 
-    auto rhs_val = rhs_->generate_code(scope);
+    auto rhs_val = rhs->generate_code(scope);
     if (rhs_val == nullptr) return nullptr;
 
     llvm::IRBuilder<>& bldr = scope->builder();
     switch (op) {
-      case Operator::Add: return type()->call_add(bldr, lhs_val, rhs_val);
-      case Operator::Sub: return type()->call_sub(bldr, lhs_val, rhs_val);
-      case Operator::Mul: return type()->call_mul(bldr, lhs_val, rhs_val);
-      case Operator::Div: return type()->call_div(bldr, lhs_val, rhs_val);
-      case Operator::Mod: return type()->call_mod(bldr, lhs_val, rhs_val);
+      case Operator::Add: return type->call_add(bldr, lhs_val, rhs_val);
+      case Operator::Sub: return type->call_sub(bldr, lhs_val, rhs_val);
+      case Operator::Mul: return type->call_mul(bldr, lhs_val, rhs_val);
+      case Operator::Div: return type->call_div(bldr, lhs_val, rhs_val);
+      case Operator::Mod: return type->call_mod(bldr, lhs_val, rhs_val);
       default:;
     }
 
@@ -317,7 +317,7 @@ namespace AST {
   llvm::Value* ArrayType::generate_code(Scope* scope) {
     // TODO arrays can only take primitive types currently.
     auto len = length()->generate_code(scope);
-    auto data_ty = data_type()->type();
+    auto data_ty = data_type()->type;
     auto data = data_type()->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
 
@@ -371,7 +371,7 @@ namespace AST {
 
     auto& bldr = scope->builder();
 
-    if (exprs_[0]->type() == Int) {
+    if (exprs_[0]->type == Int) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
 
@@ -398,7 +398,7 @@ namespace AST {
         lhs_val = rhs_val;
       }
 
-    } else if (exprs_[0]->type() == Uint) {
+    } else if (exprs_[0]->type == Uint) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -424,7 +424,7 @@ namespace AST {
         lhs_val = rhs_val;
       }
 
-    } else if (exprs_[0]->type() == Real) {
+    } else if (exprs_[0]->type == Real) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -450,7 +450,7 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
-    } else if (exprs_[0]->type()->is_enum()) {
+    } else if (exprs_[0]->type->is_enum()) {
       for (size_t i = 1; i < exprs_.size(); ++i) {
         auto rhs_val = exprs_[i]->generate_code(scope);
         llvm::Value* cmp_val;
@@ -467,7 +467,7 @@ namespace AST {
         ret_val = (i != 1) ? bldr.CreateAnd(ret_val, cmp_val, "booltmp") : cmp_val;
         lhs_val = rhs_val;
       }
-    } else if (exprs_[0]->type() == Bool) {
+    } else if (exprs_[0]->type == Bool) {
       // For boolean expression, the chain must be a single consistent operation
       // because '&', '^', and '|' all have different precedence levels.
       auto cmp_val = lhs_val;
@@ -526,12 +526,12 @@ namespace AST {
     }
 
     llvm::Value* FunctionLiteral::generate_code(Scope* scope) {
-      if (*type() == nullptr) return nullptr;
+      if (*type == nullptr) return nullptr;
 
       if (llvm_function_ == nullptr) {
         // NOTE: This means a function is not assigned.
         llvm_function_ = llvm::Function::Create(
-            static_cast<llvm::FunctionType*>(type()->llvm()),
+            static_cast<llvm::FunctionType*>(type->llvm()),
             llvm::Function::ExternalLinkage, "__anon_fn", global_module);
       }
 
@@ -541,7 +541,7 @@ namespace AST {
         arg_iter->setName(input_iter->identifier_string());
         // Set alloc
         auto decl_id = input_iter->declared_identifier();
-        auto decl_type = decl_id->type();
+        auto decl_type = decl_id->type;
         if (decl_type->is_struct()) {
           decl_id->alloc_ = arg_iter;
         }
@@ -558,15 +558,15 @@ namespace AST {
       auto old_block = scope->builder().GetInsertBlock();
 
       fn_scope_->set_parent_function(llvm_function_);
-      fn_scope_->set_type(static_cast<Function*>(expr_type_));
+      fn_scope_->set_type(static_cast<Function*>(type));
 
       fn_scope_->enter();
       auto arg = llvm_function_->args().begin();
       for (auto& input_iter : inputs_) {
         auto decl_id = input_iter->declared_identifier();
 
-        if (!decl_id->type()->is_struct()) {
-          fn_scope_->builder().CreateCall(decl_id->type()->assign(),
+        if (!decl_id->type->is_struct()) {
+          fn_scope_->builder().CreateCall(decl_id->type->assign(),
               { arg, input_iter->declared_identifier()->alloc_ });
         }
         ++arg;
@@ -588,7 +588,7 @@ namespace AST {
       llvm::Value* val = nullptr;
 
       // Treat functions special
-      if (lhs->is_identifier() && rhs->type()->is_function()) {
+      if (lhs->is_identifier() && rhs->type->is_function()) {
         if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
           val = rhs->generate_code(scope);
           if (val == nullptr) return nullptr;
@@ -596,7 +596,7 @@ namespace AST {
           // NOTE: Type verification asserts that the first argument of
           // each of these is the correct type.
           // TODO This verification hasn't yet been implemented and that it is a struct
-          auto rhs_as_func = static_cast<Function*>(rhs->type());
+          auto rhs_as_func = static_cast<Function*>(rhs->type);
           auto arg_type = static_cast<Structure*>(rhs_as_func->argument_type());
 
           arg_type->set_print(static_cast<llvm::Function*>(val));
@@ -622,7 +622,7 @@ namespace AST {
           scope->builder().CreateStore(val, var);
 
         } else {
-          scope->builder().CreateCall(lhs->type()->assign(), { val, var });
+          scope->builder().CreateCall(lhs->type->assign(), { val, var });
         }
       }
 
@@ -636,16 +636,16 @@ namespace AST {
           || op == Operator::SubEq || op == Operator::MulEq
           || op == Operator::DivEq || op == Operator::ModEq) {
 
-        auto lhs_val = lhs_->generate_code(scope);
+        auto lhs_val = lhs->generate_code(scope);
         if (lhs_val == nullptr) return nullptr;
 
-        auto lval = lhs_->generate_lvalue(scope);
+        auto lval = lhs->generate_lvalue(scope);
         if (lval == nullptr) return nullptr;
 
-        auto rhs_val = rhs_->generate_code(scope);
+        auto rhs_val = rhs->generate_code(scope);
         if (rhs_val == nullptr) return nullptr;
 
-        if (lhs_->type() == Bool) {
+        if (lhs->type == Bool) {
           switch (op) {
             case Operator::XorEq:
               scope->builder().CreateStore(
@@ -675,7 +675,7 @@ namespace AST {
 
           return nullptr;
 
-        } else if (lhs_->type() == Int) {
+        } else if (lhs->type == Int) {
           llvm::Value* val = nullptr;
           auto& bldr = scope->builder();
           switch (op) {
@@ -689,7 +689,7 @@ namespace AST {
           bldr.CreateStore(val, lval);
           return nullptr;
 
-        } else if (lhs_->type() == Uint) {
+        } else if (lhs->type == Uint) {
           auto& bldr = scope->builder();
           llvm::Value* val = nullptr;
           switch (op) {
@@ -703,7 +703,7 @@ namespace AST {
           bldr.CreateStore(val, lval);
           return nullptr;
 
-        } else if (type() == Real) {
+        } else if (type == Real) {
           llvm::Value* val = nullptr;
           auto& bldr = scope->builder();
           switch (op) {
@@ -719,12 +719,12 @@ namespace AST {
       }
 
       // The left-hand side may be a declaration
-      if (lhs_->is_declaration()) {
+      if (lhs->is_declaration()) {
         // TODO maybe the declarations generate_code ought to return an l-value for the thing it declares?
-        return generate_assignment_code(scope, std::static_pointer_cast<Declaration>(lhs_)->id_, rhs_);
+        return generate_assignment_code(scope, std::static_pointer_cast<Declaration>(lhs)->id_, rhs);
       }
 
-      return generate_assignment_code(scope, lhs_, rhs_);
+      return generate_assignment_code(scope, lhs, rhs);
     }
 
     llvm::Value* Declaration::generate_code(Scope* scope) {
@@ -747,11 +747,11 @@ namespace AST {
           init_args.push_back(length->generate_code(scope));
         }
 
-        auto array_type = static_cast<Array*>(type());
+        auto array_type = static_cast<Array*>(type);
         scope->builder().CreateCall(array_type->initialize(), init_args);
       }
 
-      if (!infer_type_ || expr_type_ == Type_) return nullptr;
+      if (!infer_type_ || type == Type_) return nullptr;
 
       // Remember, decl_type_ is not really the right name in the inference case.
       // It's the thing whose type we are inferring.
@@ -775,7 +775,7 @@ namespace AST {
       auto current_block = scope->builder().GetInsertBlock();
       auto case_landing = make_block("case.landing", parent_fn);
       scope->builder().SetInsertPoint(case_landing);
-      llvm::PHINode* phi_node = scope->builder().CreatePHI(*type(),
+      llvm::PHINode* phi_node = scope->builder().CreatePHI(*type,
           static_cast<unsigned int>(pairs_->kv_pairs_.size()), "phi");
       scope->builder().SetInsertPoint(current_block);
 
@@ -809,28 +809,28 @@ namespace AST {
     llvm::Value* ArrayLiteral::generate_code(Scope* scope) {
       // TODO if this is never assigned to anything, it will be leaked
 
-      auto type_as_array = static_cast<Array*>(expr_type_);
+      auto type_as_array = static_cast<Array*>(type);
       auto element_type = type_as_array->data_type();
 
-      size_t elems_size = elems_.size();
+      size_t num_elems = elems.size();
 
       auto array_data = type_as_array->initialize_literal(
-          scope->builder(), data::const_uint(elems_size));
+          scope->builder(), data::const_uint(num_elems));
 
       if (!element_type->is_array()) {
-        for (size_t i = 0; i < elems_size; ++i) {
+        for (size_t i = 0; i < num_elems; ++i) {
           auto data_ptr = scope->builder().CreateGEP(
               *element_type, array_data, { data::const_uint(i) });
 
           scope->builder().CreateCall(element_type->assign(),
-              { elems_[i]->generate_code(scope), data_ptr });
+              { elems[i]->generate_code(scope), data_ptr });
         }
 
       } else {
-        for (size_t i = 0; i < elems_size; ++i) {
+        for (size_t i = 0; i < num_elems; ++i) {
           auto data_ptr = scope->builder().CreateGEP(
               *element_type, array_data, { data::const_uint(i) });
-          scope->builder().CreateStore(elems_[i]->generate_code(scope), data_ptr);
+          scope->builder().CreateStore(elems[i]->generate_code(scope), data_ptr);
         }
       }
 

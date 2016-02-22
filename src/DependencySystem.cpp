@@ -104,7 +104,7 @@ namespace Dependency {
           if (ptr->is_unop()) {
             auto unop = static_cast<AST::Unop*>(ptr);
             if (unop->op == Language::Operator::At) {
-              auto t = unop->operand->type();
+              auto t = unop->operand->type;
               while (t->is_pointer()) t = static_cast<Pointer*>(t)->pointee_type();
               if (t->is_pointer()) {
                 t = static_cast<Pointer*>(t)->pointee_type();
@@ -118,7 +118,7 @@ namespace Dependency {
             }
           } else if (ptr->is_access()) {
             auto access_ptr = static_cast<AST::Access*>(ptr);
-            auto t = access_ptr->operand->type();
+            auto t = access_ptr->operand->type;
             while (t->is_pointer()) t = static_cast<Pointer*>(t)->pointee_type();
             if (t->is_struct()) {
               auto struct_type = static_cast<Structure*>(t);
@@ -132,7 +132,7 @@ namespace Dependency {
 
         } else {
           if (ptr->is_declaration()
-            && static_cast<AST::Declaration*>(ptr)->type() == Type_) {
+            && static_cast<AST::Declaration*>(ptr)->type == Type_) {
             ptr->evaluate(ptr->scope_->context());
           }
 
@@ -244,7 +244,7 @@ namespace Dependency {
       << "[label=\"{" << escape(x.ptr_->graphviz_label())
       << "\t(" << x.ptr_->line_num << ")|"
       << escape(x.ptr_->is_expression()
-          ? static_cast<AST::Expression*>(x.ptr_)->type()->to_string() : "---")
+          ? static_cast<AST::Expression*>(x.ptr_)->type->to_string() : "---")
       << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")
       << "\" color=\""
       << (x.ptr_ == debug::last_ptr && x.torv_ == debug::last_torv

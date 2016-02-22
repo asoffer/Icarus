@@ -12,10 +12,10 @@ NPtr ErrorLog::assignment_vs_equality(NPtr node) {
   auto assignment_node = std::static_pointer_cast<AST::Binop>(node);
 
   NPtrVec node_vec = {
-      std::static_pointer_cast<AST::Node>(assignment_node->lhs_),
+      std::static_pointer_cast<AST::Node>(assignment_node->lhs),
       std::make_shared<AST::TokenNode>(node->line_num,
                                        Language::generic_operator, "=="),
-      std::static_pointer_cast<AST::Node>(assignment_node->rhs_)};
+      std::static_pointer_cast<AST::Node>(assignment_node->rhs)};
 
   return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
 }

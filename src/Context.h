@@ -9,7 +9,7 @@
 class Type;
 
 namespace AST {
-  class Expression;
+  struct Expression;
 }  // namespae AST
 
 class Context {

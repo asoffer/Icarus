@@ -101,7 +101,7 @@ namespace AST {
 
     virtual ~Node() {}
 
-    friend class Access;
+    friend struct Access;
 
     inline friend std::ostream& operator<<(std::ostream& os, const Node& node) {
       return os << node.to_string(0);
@@ -121,7 +121,6 @@ namespace AST {
     }
 
     static TokenNode newline() { return TokenNode(0, Language::newline); }
-
     static TokenNode string_literal(size_t line_num,
                                     const std::string &str_lit) {
       return TokenNode(line_num, Language::string_literal, str_lit);
@@ -139,37 +138,27 @@ namespace AST {
         : Node(line_num, in_node_type), tk_(std::move(str_lit)) {
 
       op = Language::is_operator(node_type())
-                ? Language::lookup_operator.at(tk_)
-                : Language::Operator::NotAnOperator;
+               ? Language::lookup_operator.at(tk_)
+               : Language::Operator::NotAnOperator;
     }
 
     std::string tk_;
     Language::Operator op;
   };
 
-  class Expression : public Node {
-    public:
-      EXPR_FNS(Expression, expression);
+  struct Expression : public Node {
+    EXPR_FNS(Expression, expression);
 
-      friend class KVPairList;
-      friend class Binop;
-      friend class Declaration;
-      friend class ::Scope;
+    static NPtr parenthesize(NPtrVec &&nodes);
 
-      static NPtr parenthesize(NPtrVec&& nodes);
+    virtual bool is_literal(Type *t) const {
+      return is_terminal() && !is_identifier() && type == t;
+    }
 
-      size_t precedence() const { return precedence_; }
+    llvm::Value *llvm_value(Context::Value v);
 
-      virtual Type* type() const { return expr_type_; }
-      virtual bool is_literal(Type* t) const {
-        return is_terminal() && !is_identifier() && type() == t;
-      }
-
-      llvm::Value* llvm_value(Context::Value v);
-    
-    protected:
-      size_t precedence_;
-      Type* expr_type_;
+    size_t precedence;
+    Type *type;
   };
 
 #undef ENDING
@@ -178,8 +167,8 @@ namespace AST {
 #define OVERRIDE override
   inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
     auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
-    expr_ptr->precedence_ =
-      Language::precedence(Language::Operator::NotAnOperator);
+    expr_ptr->precedence =
+        Language::precedence(Language::Operator::NotAnOperator);
     return expr_ptr;
   }
 
@@ -193,35 +182,24 @@ namespace AST {
     Language::Operator op;
   };
 
-  class Access: public Expression {
-    public:
-      EXPR_FNS(Access, access);
+  struct Access : public Expression {
+    EXPR_FNS(Access, access);
 
-      std::string member_name_;
-      EPtr operand;
+    std::string member_name;
+    EPtr operand;
   };
 
-  class Binop : public Expression {
-    public:
-      EXPR_FNS(Binop, binop);
+  struct Binop : public Expression {
+    EXPR_FNS(Binop, binop);
 
-      friend class FunctionLiteral;
-      friend class ::ErrorLog;
+    static NPtr build_operator(NPtrVec &&nodes, Language::Operator op_class);
+    static NPtr build_paren_operator(NPtrVec &&nodes);
+    static NPtr build_bracket_operator(NPtrVec &&nodes);
+    static NPtr build_array_type(NPtrVec &&nodes);
 
-      EPtr lhs() const { return lhs_; }
-      EPtr rhs() const { return rhs_; }
-
-      static NPtr build_operator(NPtrVec&& nodes, Language::Operator op_class);
-      static NPtr build_paren_operator(NPtrVec&& nodes);
-      static NPtr build_bracket_operator(NPtrVec&& nodes);
-      static NPtr build_array_type(NPtrVec&& nodes);
-
-      Language::Operator op;
-    protected:
-      EPtr lhs_;
-      EPtr rhs_;
+    Language::Operator op;
+    EPtr lhs, rhs;
   };
-
 
   class ChainOp : public Expression {
     public:
@@ -238,13 +216,9 @@ namespace AST {
   };
 
 
-  class ArrayLiteral : public Expression {
-    public:
-      EXPR_FNS(ArrayLiteral, array_literal);
-      friend class ChainOp;
-
-    private:
-      std::vector<EPtr> elems_;
+  struct ArrayLiteral : public Expression {
+    EXPR_FNS(ArrayLiteral, array_literal);
+    std::vector<EPtr> elems;
   };
 
   class ArrayType : public Expression {

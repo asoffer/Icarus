@@ -29,7 +29,7 @@ void GlobalScope::initialize() {
     auto decl_id = decl_ptr->declared_identifier();
     if (decl_id->is_function_arg_) continue;
 
-    auto decl_type = decl_id->type();
+    auto decl_type = decl_id->type;
     if (decl_type->llvm() == nullptr) continue;
 
     if (decl_type->is_function()) {
@@ -56,7 +56,7 @@ void Scope::enter() {
 
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    auto decl_type = decl_id->type();
+    auto decl_type = decl_id->type;
 
     if (decl_type->is_function() || decl_type == Type_) {
       continue;
@@ -199,7 +199,7 @@ void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
-    auto decl_type = decl_id->type();
+    auto decl_type = decl_id->type;
 
     if (decl_id->is_function_arg_ && decl_type->is_struct()) {
       // Insert this alloc in the FunctionLiteral node
@@ -221,7 +221,7 @@ void Scope::uninitialize() {
   for (const auto& decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->declared_identifier();
     if (decl_id->is_function_arg_) continue;
-    decl_id->type()->call_uninit(bldr_, { decl_id->alloc_ });
+    decl_id->type->call_uninit(bldr_, { decl_id->alloc_ });
   }
 }
 

@@ -22,7 +22,7 @@ namespace AST {
     unop_ptr->type_ = Language::expression;
     unop_ptr->op = tk_node->op;
 
-    unop_ptr->precedence_ = Language::precedence(unop_ptr->op);
+    unop_ptr->precedence = Language::precedence(unop_ptr->op);
     return unop_ptr;
   }
 
@@ -35,14 +35,14 @@ namespace AST {
 
     unop_ptr->type_ = Language::expression;
     unop_ptr->op = Language::Operator::Call;
-    unop_ptr->precedence_ = Language::precedence(unop_ptr->op);
+    unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
     return unop_ptr;
   }
 
   NPtr Access::build(NPtrVec&& nodes) {
     auto access_ptr = std::make_shared<Access>();
-    access_ptr->member_name_ = nodes[2]->token();
+    access_ptr->member_name = nodes[2]->token();
     access_ptr->line_num = nodes[0]->line_num;
     access_ptr->operand = std::static_pointer_cast<Expression>(std::move(nodes[0]));
 
@@ -53,15 +53,15 @@ namespace AST {
     auto binop_ptr = std::make_shared<Binop>();
     binop_ptr->line_num = nodes[1]->line_num;
 
-    binop_ptr->lhs_ =
+    binop_ptr->lhs =
       std::static_pointer_cast<Expression>(nodes[0]);
 
-    binop_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
+    binop_ptr->rhs = std::static_pointer_cast<Expression>(nodes[2]);
 
     binop_ptr->type_ = Language::generic_operator;
     binop_ptr->op = op_class;
 
-    binop_ptr->precedence_ = Language::precedence(binop_ptr->op);
+    binop_ptr->precedence = Language::precedence(binop_ptr->op);
 
     return binop_ptr;
   }
@@ -83,10 +83,10 @@ namespace AST {
 
   NPtr ChainOp::join(NPtrVec &&nodes) {
     // TODO FIXME
-    auto lhs_prec = std::static_pointer_cast<Expression>(nodes[0])->precedence();
+    auto lhs_prec = std::static_pointer_cast<Expression>(nodes[0])->precedence;
     auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
     auto op_prec = Language::precedence(op_node->op);
-    auto rhs_prec = std::static_pointer_cast<Expression>(nodes[2])->precedence();
+    auto rhs_prec = std::static_pointer_cast<Expression>(nodes[2])->precedence;
 
     if (lhs_prec == op_prec && op_prec == rhs_prec) {
       auto rhs = std::static_pointer_cast<ChainOp>(std::move(nodes[2]));
@@ -160,7 +160,7 @@ namespace AST {
     if (use_old_chain_op) {
       ChainOp* lhs_ptr = static_cast<ChainOp*>(nodes[0].get());
 
-      if (lhs_ptr->precedence() != op_prec) {
+      if (lhs_ptr->precedence != op_prec) {
         use_old_chain_op = false;
       }
     }
@@ -173,7 +173,7 @@ namespace AST {
       chain_ptr->line_num = nodes[1]->line_num;
 
       chain_ptr->exprs_.push_back(std::static_pointer_cast<Expression>(nodes[0]));
-      chain_ptr->precedence_ = op_prec;
+      chain_ptr->precedence = op_prec;
     }
 
     chain_ptr->ops_.push_back(op_node->op);
@@ -185,15 +185,15 @@ namespace AST {
 
   NPtr ArrayLiteral::build(NPtrVec&& nodes) {
     auto array_lit_ptr = std::make_shared<ArrayLiteral>();
-    array_lit_ptr->precedence_ =
+    array_lit_ptr->precedence =
       Language::precedence(Language::Operator::NotAnOperator);
     array_lit_ptr->line_num = nodes[0]->line_num;
 
     if (nodes[1]->is_comma_list()) {
-      array_lit_ptr->elems_ = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
+      array_lit_ptr->elems = std::static_pointer_cast<ChainOp>(nodes[1])->exprs_;
 
     } else {
-      array_lit_ptr->elems_.push_back(std::static_pointer_cast<Expression>(nodes[1]));
+      array_lit_ptr->elems.push_back(std::static_pointer_cast<Expression>(nodes[1]));
     }
 
     return array_lit_ptr;
@@ -210,7 +210,7 @@ namespace AST {
         array_type_ptr->line_num = (*iter)->line_num;
         array_type_ptr->len_ = *iter;
 
-        array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
+        array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
 
         array_type_ptr->array_type_ = prev;
         prev = EPtr(array_type_ptr);
@@ -228,7 +228,7 @@ namespace AST {
       array_type_ptr->array_type_ =
         std::static_pointer_cast<Expression>(nodes[3]);
 
-      array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
+      array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
 
       return array_type_ptr;
     }
@@ -244,7 +244,7 @@ namespace AST {
     array_type_ptr->array_type_ =
       std::static_pointer_cast<Expression>(nodes[3]);
 
-    array_type_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
+    array_type_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
 
     return array_type_ptr;
   }
@@ -259,9 +259,9 @@ namespace AST {
     auto term_ptr = std::make_shared<Terminal>();
     term_ptr->line_num = nodes[0]->line_num;
     term_ptr->terminal_type_ = term_type;
-    term_ptr->expr_type_ = t;
+    term_ptr->type = t;
     term_ptr->token_ = nodes[0]->token();
-    term_ptr->precedence_ = Language::precedence(Language::Operator::NotAnOperator);
+    term_ptr->precedence = Language::precedence(Language::Operator::NotAnOperator);
 
     return term_ptr;
   }
@@ -294,14 +294,14 @@ namespace AST {
     auto assign_ptr = std::make_shared<Assignment>();
     assign_ptr->line_num = nodes[1]->line_num;
 
-    assign_ptr->lhs_ = std::static_pointer_cast<Expression>(nodes[0]);
-    assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
+    assign_ptr->lhs = std::static_pointer_cast<Expression>(nodes[0]);
+    assign_ptr->rhs = std::static_pointer_cast<Expression>(nodes[2]);
 
     auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
     assign_ptr->op = op_node->op;
     assign_ptr->type_ = Language::assign_operator;
 
-    assign_ptr->precedence_ = Language::precedence(assign_ptr->op);
+    assign_ptr->precedence = Language::precedence(assign_ptr->op);
 
     return assign_ptr;
   }
@@ -326,7 +326,7 @@ namespace AST {
       ? Language::Operator::ColonEq
       : Language::Operator::Colon;
 
-    decl_ptr->precedence_ = Language::precedence(decl_ptr->op);
+    decl_ptr->precedence = Language::precedence(decl_ptr->op);
     decl_ptr->infer_type_ = infer;
 
     return std::static_pointer_cast<Node>(decl_ptr);
@@ -397,8 +397,8 @@ namespace AST {
     // TODO scopes inside these statements should point to fn_scope_.
 
     auto binop_ptr = std::static_pointer_cast<Binop>(nodes[0]);
-    fn_lit->return_type_ = std::move(binop_ptr->rhs_);
-    auto input_args = binop_ptr->lhs_;
+    fn_lit->return_type_ = std::move(binop_ptr->rhs);
+    auto input_args = binop_ptr->lhs;
 
     // TODO What if the fn_expression is more complicated, like a function
     // of the form (int -> int) -> int? I'm not sure how robust this is
@@ -426,7 +426,7 @@ namespace AST {
   NPtr TypeLiteral::build(NPtrVec&& nodes) {
     auto type_lit_ptr = std::make_shared<TypeLiteral>();
     type_lit_ptr->line_num = nodes[0]->line_num;
-    type_lit_ptr->expr_type_ = Type_;
+    type_lit_ptr->type = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {
@@ -527,7 +527,7 @@ namespace AST {
   NPtr EnumLiteral::build(NPtrVec&& nodes) {
     auto enum_lit_ptr = std::make_shared<EnumLiteral>();
     enum_lit_ptr->line_num = nodes[0]->line_num;
-    enum_lit_ptr->expr_type_ = Type_;
+    enum_lit_ptr->type = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
     for (auto&& stmt : stmts->statements_) {

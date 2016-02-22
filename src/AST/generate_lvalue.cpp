@@ -33,7 +33,7 @@ namespace AST {
 
   llvm::Value* Access::generate_lvalue(Scope* scope) {
     // Automatically pass through pointers
-    auto etype = operand->type();
+    auto etype = operand->type;
     auto e_lval = operand->generate_lvalue(scope);
 
     while (etype->is_pointer()) {
@@ -43,15 +43,15 @@ namespace AST {
 
     auto struct_type = static_cast<Structure*>(etype);
     return scope->builder().CreateGEP(e_lval,
-        { data::const_uint(0), struct_type->field_num(member_name_) });
+        { data::const_uint(0), struct_type->field_num(member_name) });
   }
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
-    if (op == Language::Operator::Index && lhs_->type()->is_array()) {
-      auto lhs_val = lhs_->generate_lvalue(scope);
-      auto rhs_val = rhs_->generate_code(scope);
+    if (op == Language::Operator::Index && lhs->type->is_array()) {
+      auto lhs_val = lhs->generate_lvalue(scope);
+      auto rhs_val = rhs->generate_code(scope);
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
-      return scope->builder().CreateGEP(*type(), load_ptr, { rhs_val }, "array_idx");
+      return scope->builder().CreateGEP(type->llvm(), load_ptr, { rhs_val }, "array_idx");
 
     } 
     return nullptr;

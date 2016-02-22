@@ -14,9 +14,9 @@ Time::Eval Access::determine_time() { return time_ = operand->determine_time(); 
 
 Time::Eval Binop::determine_time() {
   if (op == Language::Operator::Cast) {
-    return time_ = lhs_->determine_time();
+    return time_ = lhs->determine_time();
   }
-  return time_ = lhs_->determine_time() | rhs_->determine_time();
+  return time_ = lhs->determine_time() | rhs->determine_time();
 }
 
 Time::Eval ChainOp::determine_time() {
@@ -27,7 +27,7 @@ Time::Eval ChainOp::determine_time() {
   return time_;
 }
 
-Time::Eval ArrayLiteral::determine_time() { return time_ = type()->time(); }
+Time::Eval ArrayLiteral::determine_time() { return time_ = type->time(); }
 
 Time::Eval ArrayType::determine_time() { return time_ = Time::compile; }
 
@@ -36,7 +36,7 @@ Time::Eval Terminal::determine_time() {
                                                               : Time::run;
 }
 
-Time::Eval Identifier::determine_time() { return time_ = type()->time(); }
+Time::Eval Identifier::determine_time() { return time_ = type->time(); }
 
 Time::Eval Declaration::determine_time() {
   decl_type_->determine_time();

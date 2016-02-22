@@ -15,7 +15,7 @@ namespace AST {
   }
 
   void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& el : elems_) {
+    for (auto& el : elems) {
       if (el->is_identifier()) {
         el = scope->identifier(el);
       } else {
@@ -49,10 +49,10 @@ namespace AST {
   }
 
   void Binop::join_identifiers(Scope* scope, bool is_arg) {
-    if (lhs_->is_identifier()) {
-      lhs_ = scope->identifier(lhs_);
+    if (lhs->is_identifier()) {
+      lhs = scope->identifier(lhs);
     } else {
-      lhs_->join_identifiers(scope);
+      lhs->join_identifiers(scope);
     }
 
     // Ignore the RHS of a dot operator
@@ -61,10 +61,10 @@ namespace AST {
     // Should this even be a binary operator?
     if (op == Language::Operator::Access) return;
 
-    if (rhs_->is_identifier()) {
-      rhs_ = scope->identifier(rhs_);
+    if (rhs->is_identifier()) {
+      rhs = scope->identifier(rhs);
     } else {
-      rhs_->join_identifiers(scope);
+      rhs->join_identifiers(scope);
     }
   }
 

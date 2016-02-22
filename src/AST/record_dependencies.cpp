@@ -38,7 +38,7 @@ namespace AST {
   }
 
   void ArrayLiteral::record_dependencies() {
-    for (const auto& el : elems_) {
+    for (const auto& el : elems) {
       Dependency::type_type(this, el.get());
       Dependency::value_type(this, this);
       el->record_dependencies();
@@ -48,16 +48,16 @@ namespace AST {
   void Binop::record_dependencies() {
     Dependency::value_type(this, this);
 
-    Dependency::type_type(this, lhs_.get());
-    lhs_->record_dependencies();
+    Dependency::type_type(this, lhs.get());
+    lhs->record_dependencies();
 
     if (op != Language::Operator::Access) {
-      Dependency::type_type(this, rhs_.get());
-      rhs_->record_dependencies();
+      Dependency::type_type(this, rhs.get());
+      rhs->record_dependencies();
     }
 
-    Dependency::value_value(this, lhs_.get());
-    Dependency::value_value(this, rhs_.get());
+    Dependency::value_value(this, lhs.get());
+    Dependency::value_value(this, rhs.get());
   }
 
   void ArrayType::record_dependencies() {

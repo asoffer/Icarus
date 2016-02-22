@@ -29,7 +29,7 @@ namespace AST {
 
   void ArrayLiteral::assign_scope(Scope* scope) {
     scope_ = scope;
-    for (auto& el : elems_) {
+    for (auto &el : elems) {
       el->assign_scope(scope);
     }
   }
@@ -49,8 +49,8 @@ namespace AST {
 
   void Binop::assign_scope(Scope* scope) {
     scope_ = scope;
-    lhs_->assign_scope(scope);
-    rhs_->assign_scope(scope);
+    lhs->assign_scope(scope);
+    rhs->assign_scope(scope);
   }
 
   void Declaration::assign_scope(Scope* scope) {

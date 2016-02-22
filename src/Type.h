@@ -22,7 +22,7 @@
 extern llvm::DataLayout* data_layout;
 
 namespace AST {
-  class Expression;
+  struct Expression;
   class EnumLiteral;
   class Declaration;
   class TypeLiteral;

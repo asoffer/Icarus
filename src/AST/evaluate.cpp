@@ -14,25 +14,25 @@ static std::map<AST::FunctionLiteral*, InOutVec> function_call_cache;
 
 namespace AST {
   llvm::Value* Expression::llvm_value(Context::Value v) {
-    assert(type() != Type_   && "Type_ conversion to llvm::Value*");
-    assert(type() != Error   && "Error conversion to llvm::Value*");
-    assert(type() != Unknown && "Unknown conversion to llvm::Value*");
+    assert(type != Type_   && "Type_ conversion to llvm::Value*");
+    assert(type != Error   && "Error conversion to llvm::Value*");
+    assert(type != Unknown && "Unknown conversion to llvm::Value*");
 
-    if (type() == Bool)  return data::const_bool(v.as_bool);
-    if (type() == Char)  return data::const_char(v.as_char);
-    if (type() == Int)   return data::const_int(v.as_int);
-    if (type() == Real)  return data::const_real(v.as_real);
-    if (type() == Uint)  return data::const_uint(v.as_uint);
+    if (type == Bool)  return data::const_bool(v.as_bool);
+    if (type == Char)  return data::const_char(v.as_char);
+    if (type == Int)   return data::const_int(v.as_int);
+    if (type == Real)  return data::const_real(v.as_real);
+    if (type == Uint)  return data::const_uint(v.as_uint);
 
     return nullptr;
   }
 
   Context::Value Identifier::evaluate(Context& ctx) {
     // TODO log the struct name in the context of the scope
-    if (type() != Type_) {
+    if (type != Type_) {
       return ctx.get(shared_from_this());
 
-    } else if (type()->is_struct()) {
+    } else if (type->is_struct()) {
       return Context::Value(TypeSystem::get(token()));
 
     } else {
@@ -52,28 +52,28 @@ namespace AST {
 
     } else if (op == Language::Operator::Print) {
       auto val = operand->evaluate(ctx);
-      if (operand->type() == Bool)        std::cout << (val.as_bool ? "true" : "false");
-      else if (operand->type() == Char)   std::cout << val.as_char;
-      else if (operand->type() == Int)    std::cout << val.as_int;
-      else if (operand->type() == Real)   std::cout << val.as_real;
-      else if (operand->type() == Type_)  std::cout << val.as_type->to_string();
-      else if (operand->type() == Uint)   std::cout << val.as_uint;
+      if (operand->type == Bool)        std::cout << (val.as_bool ? "true" : "false");
+      else if (operand->type == Char)   std::cout << val.as_char;
+      else if (operand->type == Int)    std::cout << val.as_int;
+      else if (operand->type == Real)   std::cout << val.as_real;
+      else if (operand->type == Type_)  std::cout << val.as_type->to_string();
+      else if (operand->type == Uint)   std::cout << val.as_uint;
       else { /* TODO */ }
 
       std::cout.flush();
       return nullptr;
 
     } else if (op == Language::Operator::Sub) {
-      if (type() == Int) {
+      if (type == Int) {
         return Context::Value(-operand->evaluate(ctx).as_int);
 
-      } else if (type() == Real) {
+      } else if (type == Real) {
         return Context::Value(-operand->evaluate(ctx).as_real);
       }
     } else if (op == Language::Operator::And) {
-      if (operand->type() != Type_) {
+      if (operand->type != Type_) {
         // TODO better error message
-        error_log.log(line_num, "Taking the address of a " + operand->type()->to_string() + " is not allowed at compile-time");
+        error_log.log(line_num, "Taking the address of a " + operand->type->to_string() + " is not allowed at compile-time");
       }
 
       // TODO FIXME I know this is wrong
@@ -84,7 +84,7 @@ namespace AST {
   }
 
   Context::Value ChainOp::evaluate(Context& ctx) { 
-    if (exprs_[0]->type() == Bool) {
+    if (exprs_[0]->type == Bool) {
       switch (ops_[0]) {
         case Language::Operator::Xor:
           {
@@ -111,7 +111,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Int) {
+    } else if (exprs_[0]->type == Int) {
 
       bool total = true;
       auto last = exprs_[0]->evaluate(ctx);
@@ -136,7 +136,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Type_) {
+    } else if (exprs_[0]->type == Type_) {
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
         auto next = exprs_[i + 1]->evaluate(ctx);
@@ -157,7 +157,7 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs_[0]->type() == Uint) {
+    } else if (exprs_[0]->type == Uint) {
       bool total = true;
       auto last = exprs_[0]->evaluate(ctx);
       for (size_t i = 0; i < ops_.size(); ++i) {
@@ -194,16 +194,16 @@ namespace AST {
   Context::Value ArrayLiteral::evaluate(Context&)    { return nullptr; }
 
   Context::Value Terminal::evaluate(Context& ctx) {
-    if (type() == Bool) {
+    if (type == Bool) {
       assert((token() == "true" || token() == "false")
           && "Bool literal other than true or false");
       return Context::Value(token() == "true");
     }
-    else if (type() == Char)  return Context::Value(token()[0]);
-    else if (type() == Int)   return Context::Value(std::stoi(token()));
-    else if (type() == Real)  return Context::Value(std::stod(token()));
-    else if (type() == Uint)  return Context::Value(std::stoul(token()));
-    else if (type() == Type_) {
+    else if (type == Char)  return Context::Value(token()[0]);
+    else if (type == Int)   return Context::Value(std::stoi(token()));
+    else if (type == Real)  return Context::Value(std::stod(token()));
+    else if (type == Uint)  return Context::Value(std::stoul(token()));
+    else if (type == Type_) {
       if (token() == "bool") return Context::Value(Bool);
       if (token() == "char") return Context::Value(Char);
       if (token() == "int")  return Context::Value(Int);
@@ -239,7 +239,7 @@ namespace AST {
     // TODO just make the type no matter what?
     bool dep_type_flag = false;
     for (const auto& decl : decls_) {
-      if (decl->type()->has_variables()) {
+      if (decl->type->has_variables()) {
         dep_type_flag = true;
         break;
       }
@@ -259,7 +259,7 @@ namespace AST {
       // out for debugging
 
       auto dtype = decl->declared_type()->evaluate(ctx).as_type;
-      d->expr_type_ = dtype;
+      d->type = dtype;
       if (dtype == Int) {
         auto intnode = std::make_shared<TokenNode>(0, Language::type_literal, "int");
         d->decl_type_ = std::static_pointer_cast<Expression>(
@@ -290,7 +290,7 @@ namespace AST {
 
   Context::Value Declaration::evaluate(Context& ctx) {
     if (infer_type_) {
-      if (declared_type()->type()->is_function()) {
+      if (declared_type()->type->is_function()) {
         ctx.bind(Context::Value(declared_type().get()), id_);
       } else {
         auto type_as_ctx_val = declared_type()->evaluate(ctx);
@@ -306,9 +306,9 @@ namespace AST {
         } 
       }
     } else {
-      if (declared_type()->type() == Type_) {
+      if (declared_type()->type == Type_) {
         ctx.bind(Context::Value(TypeVar(id_)), id_);
-      } else if (declared_type()->type()->is_type_variable()) {
+      } else if (declared_type()->type->is_type_variable()) {
         // TODO Should we just skip this?
       } else { /* There's nothing to do */ }
     }
@@ -347,16 +347,16 @@ namespace AST {
   Context::Value Binop::evaluate(Context& ctx) {
     using Language::Operator;
     if (op == Operator::Call) {
-      assert(lhs_->type()->is_function());
-      auto lhs_val = lhs_->evaluate(ctx).as_expr;
+      assert(lhs->type->is_function());
+      auto lhs_val = lhs->evaluate(ctx).as_expr;
       assert(lhs_val);
       auto fn_ptr = static_cast<FunctionLiteral*>(lhs_val);
 
       std::vector<EPtr> arg_vals;
-      if (rhs_->is_comma_list()) {
-        arg_vals = std::static_pointer_cast<ChainOp>(rhs_)->exprs_;
+      if (rhs->is_comma_list()) {
+        arg_vals = std::static_pointer_cast<ChainOp>(rhs)->exprs_;
       } else {
-        arg_vals.push_back(rhs_);
+        arg_vals.push_back(rhs);
       }     
 
       assert(arg_vals.size() == fn_ptr->inputs_.size());
@@ -372,7 +372,7 @@ namespace AST {
       // For functions that return types, we cache all calls
       // TODO add possibility for #nocache
       bool returns_type =
-        (static_cast<Function*>(fn_ptr->type())->return_type() == Type_);
+        (static_cast<Function*>(fn_ptr->type)->return_type() == Type_);
 
       auto& fn_cache = function_call_cache[fn_ptr];
       if (returns_type) {
@@ -410,8 +410,8 @@ namespace AST {
       return return_val;
 
     } else if (op == Operator::Arrow) {
-      auto lhs_type = lhs_->evaluate(ctx).as_type;
-      auto rhs_type = rhs_->evaluate(ctx).as_type;
+      auto lhs_type = lhs->evaluate(ctx).as_type;
+      auto rhs_type = rhs->evaluate(ctx).as_type;
       return Context::Value(Func(lhs_type, rhs_type));
     }
 

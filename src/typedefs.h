@@ -6,11 +6,11 @@
 #include <type_traits>
 
 namespace AST {
-  struct Node;
-  class Expression;
-  class Identifier;
-  class Declaration;
-  class Statements;
+struct Node;
+struct Expression;
+class Identifier;
+class Declaration;
+class Statements;
 }
 
 using NPtr = std::shared_ptr<AST::Node>;
@@ -21,4 +21,4 @@ using StmtsPtr = std::shared_ptr<AST::Statements>;
 
 using NPtrVec = std::vector<NPtr>;
 
-#endif  // ICARUS_TYPEDEFS_H
+#endif // ICARUS_TYPEDEFS_H
