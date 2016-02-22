@@ -92,7 +92,7 @@ namespace AST {
   std::string Unop::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Unop " << TYPE_OR("") << ": ";
-    switch (op_) {
+    switch (op) {
       case Language::Operator::Return: ss << "Return"; break;
       case Language::Operator::Print:  ss << "Print";  break;
       case Language::Operator::Free:   ss << "Free";   break;
@@ -103,19 +103,19 @@ namespace AST {
       case Language::Operator::Call:   ss << "Call";   break;
       default: assert(false && "Not a unary operator");
     }
-    ss << ">\n" << expr_->to_string(n + 1);
+    ss << ">\n" << operand->to_string(n + 1);
     return ss.str();
   }
 
   std::string Access::to_string(size_t n) const {
     return tabs(n) + "<Access " + member_name_ + " " + TYPE_OR("") + ">\n"
-      + expr_->to_string(n + 1);
+      + operand->to_string(n + 1);
   }
 
   std::string Binop::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Binop " << TYPE_OR("") << ": ";
-    switch (op_) {
+    switch (op) {
       case Language::Operator::Cast:    ss << "Cast";   break;
       case Language::Operator::Arrow:   ss << "->";     break;
       case Language::Operator::Or:      ss << "Or";     break;

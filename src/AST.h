@@ -28,32 +28,32 @@ class Enumeration;
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
-#define VIRTUAL_METHODS_FOR_NODES                                          \
-  virtual std::string to_string(size_t n) const                    ENDING; \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
-  virtual void assign_scope(Scope* scope)                          ENDING; \
-  virtual void record_dependencies()                               ENDING; \
-  virtual void verify_types()                                      ENDING; \
-  virtual std::string graphviz_label() const                       ENDING; \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
-  virtual Time::Eval determine_time()                              ENDING
+#define VIRTUAL_METHODS_FOR_NODES                                              \
+  virtual std::string to_string(size_t n) const ENDING;                        \
+  virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
+  virtual void assign_scope(Scope *scope) ENDING;                              \
+  virtual void record_dependencies() ENDING;                                   \
+  virtual void verify_types() ENDING;                                          \
+  virtual std::string graphviz_label() const ENDING;                           \
+  virtual Context::Value evaluate(Context &ctx) ENDING;                        \
+  virtual llvm::Value *generate_code(Scope *scope) ENDING;                     \
+  virtual Time::Eval determine_time() ENDING
 
-#define EXPR_FNS(name, checkname)                                          \
-  name();                                                                  \
-  virtual ~name() {}                                                       \
-  virtual bool is_##checkname() const OVERRIDE { return true; }            \
-  virtual std::string to_string(size_t n) const                    ENDING; \
-  virtual void join_identifiers(Scope* scope, bool is_arg = false) ENDING; \
-  virtual void assign_scope(Scope* scope)                          ENDING; \
-  virtual void record_dependencies()                               ENDING; \
-  virtual void verify_types()                                      ENDING; \
-  virtual std::string graphviz_label() const                       ENDING; \
-  virtual llvm::Value* generate_code(Scope* scope)                 ENDING; \
-  virtual llvm::Value* generate_lvalue(Scope* scope)               ENDING; \
-  virtual Context::Value evaluate(Context& ctx)                    ENDING; \
-  virtual Time::Eval determine_time()                              ENDING; \
-  static NPtr build(NPtrVec&& nodes)
+#define EXPR_FNS(name, checkname)                                              \
+  name();                                                                      \
+  virtual ~name() {}                                                           \
+  virtual bool is_##checkname() const OVERRIDE { return true; }                \
+  virtual std::string to_string(size_t n) const ENDING;                        \
+  virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
+  virtual void assign_scope(Scope *scope) ENDING;                              \
+  virtual void record_dependencies() ENDING;                                   \
+  virtual void verify_types() ENDING;                                          \
+  virtual std::string graphviz_label() const ENDING;                           \
+  virtual llvm::Value *generate_code(Scope *scope) ENDING;                     \
+  virtual llvm::Value *generate_lvalue(Scope *scope) ENDING;                   \
+  virtual Context::Value evaluate(Context &ctx) ENDING;                        \
+  virtual Time::Eval determine_time() ENDING;                                  \
+  static NPtr build(NPtrVec &&nodes)
 
   struct Node {
     Language::NodeType node_type() const { return type_; }
@@ -77,28 +77,29 @@ namespace AST {
 
     Time::Eval time() { return time_; }
 
-    virtual bool is_identifier()       const { return false; }
-    virtual bool is_terminal()         const { return false; }
-    virtual bool is_expression()       const { return false; }
-    virtual bool is_binop()            const { return false; }
+    virtual bool is_identifier() const { return false; }
+    virtual bool is_terminal() const { return false; }
+    virtual bool is_expression() const { return false; }
+    virtual bool is_binop() const { return false; }
     virtual bool is_function_literal() const { return false; }
-    virtual bool is_chain_op()         const { return false; }
-    virtual bool is_case()             const { return false; }
-    virtual bool is_unop()             const { return false; }
-    virtual bool is_access()           const { return false; }
-    virtual bool is_comma_list()       const { return false; }
-    virtual bool is_declaration()      const { return false; }
-    virtual bool is_array_type()       const { return false; }
-    virtual bool is_type_literal()     const { return false; }
-    virtual bool is_enum_literal()     const { return false; }
-    virtual bool is_array_literal()    const { return false; }
-    virtual bool is_token_node()       const { return false; }
+    virtual bool is_chain_op() const { return false; }
+    virtual bool is_case() const { return false; }
+    virtual bool is_unop() const { return false; }
+    virtual bool is_access() const { return false; }
+    virtual bool is_comma_list() const { return false; }
+    virtual bool is_declaration() const { return false; }
+    virtual bool is_array_type() const { return false; }
+    virtual bool is_type_literal() const { return false; }
+    virtual bool is_enum_literal() const { return false; }
+    virtual bool is_array_literal() const { return false; }
+    virtual bool is_token_node() const { return false; }
 
-    Node(size_t line_num = 0,
-        Language::NodeType type = Language::unknown, const std::string& token = "")
-      : scope_(nullptr), type_(type), token_(token), line_num(line_num), time_(Time::error) {}
+    Node(size_t line_num = 0, Language::NodeType type = Language::unknown,
+         const std::string &token = "")
+        : scope_(nullptr), type_(type), token_(token), line_num(line_num),
+          time_(Time::error) {}
 
-    virtual ~Node(){}
+    virtual ~Node() {}
 
     friend class Access;
 
@@ -114,45 +115,36 @@ namespace AST {
     Time::Eval time_;
   };
 
-  class TokenNode : public Node {
-    public:
-      static TokenNode eof(size_t line_num) {
-        return TokenNode(line_num, Language::eof);
-      }
+  struct TokenNode : public Node {
+    static TokenNode eof(size_t line_num) {
+      return TokenNode(line_num, Language::eof);
+    }
 
-      static TokenNode newline() {
-        return TokenNode(0, Language::newline);
-      }
+    static TokenNode newline() { return TokenNode(0, Language::newline); }
 
-      static TokenNode string_literal(size_t line_num, const std::string& str_lit) {
-        return TokenNode(line_num, Language::string_literal, str_lit);
-      }
+    static TokenNode string_literal(size_t line_num,
+                                    const std::string &str_lit) {
+      return TokenNode(line_num, Language::string_literal, str_lit);
+    }
 
-      Language::Operator operator_type() const { return op_; }
+    virtual bool is_token_node() const { return true; }
+    virtual std::string token() const { return tk_; }
 
-      virtual bool is_token_node() const { return true; }
-      virtual std::string token() const {
-        return tk_;
-      }
+    virtual ~TokenNode() {}
 
-      virtual ~TokenNode() {}
-
-      // TODO make newline default a bof (beginning of file)
-      TokenNode(size_t line_num = 0,
-          Language::NodeType in_node_type = Language::newline,
-          std::string str_lit = "")
+    // TODO make newline default a bof (beginning of file)
+    TokenNode(size_t line_num = 0,
+              Language::NodeType in_node_type = Language::newline,
+              std::string str_lit = "")
         : Node(line_num, in_node_type), tk_(std::move(str_lit)) {
 
-          if (Language::is_operator(node_type())) {
-            op_ = Language::lookup_operator.at(tk_);
-          } else {
-            op_ = Language::Operator::NotAnOperator;
-          }
-        }
+      op = Language::is_operator(node_type())
+                ? Language::lookup_operator.at(tk_)
+                : Language::Operator::NotAnOperator;
+    }
 
-    private:
-      std::string tk_;
-      Language::Operator op_;
+    std::string tk_;
+    Language::Operator op;
   };
 
   class Expression : public Node {
@@ -192,31 +184,21 @@ namespace AST {
   }
 
   // TODO: This only represents a left unary operator for now
-  class Unop : public Expression {
-    public:
-      EXPR_FNS(Unop, unop);
+  struct Unop : public Expression {
+    EXPR_FNS(Unop, unop);
 
-      friend class Statements;
+    static NPtr build_paren_operator(NPtrVec&& nodes);
 
-      Language::Operator op() const { return op_; }
-      EPtr operand() const { return expr_; }
-
-      static NPtr build_paren_operator(NPtrVec&& nodes);
-
-    private:
-      EPtr expr_;
-      Language::Operator op_;
+    EPtr operand;
+    Language::Operator op;
   };
 
   class Access: public Expression {
     public:
       EXPR_FNS(Access, access);
 
-      EPtr expr() const { return expr_; }
-
-    private:
       std::string member_name_;
-      EPtr expr_;
+      EPtr operand;
   };
 
   class Binop : public Expression {
@@ -226,7 +208,6 @@ namespace AST {
       friend class FunctionLiteral;
       friend class ::ErrorLog;
 
-      Language::Operator op() const { return op_; }
       EPtr lhs() const { return lhs_; }
       EPtr rhs() const { return rhs_; }
 
@@ -235,8 +216,8 @@ namespace AST {
       static NPtr build_bracket_operator(NPtrVec&& nodes);
       static NPtr build_array_type(NPtrVec&& nodes);
 
+      Language::Operator op;
     protected:
-      Language::Operator op_;
       EPtr lhs_;
       EPtr rhs_;
   };
@@ -341,33 +322,32 @@ namespace AST {
   // identifier : type
   // identifer := value
   class Declaration : public Expression {
-    public:
-      EXPR_FNS(Declaration, declaration);
+  public:
+    EXPR_FNS(Declaration, declaration);
 
-      friend class Assignment;
-      friend class ::Scope;
-      friend class TypeLiteral;
+    friend class Assignment;
+    friend class ::Scope;
+    friend class TypeLiteral;
 
-      static NPtr build(NPtrVec&& nodes, Language::NodeType node_type, bool infer);
-      static NPtr build_decl(NPtrVec&& nodes);
-      static NPtr build_assign(NPtrVec&& nodes);
+    static NPtr build(NPtrVec &&nodes, Language::NodeType node_type,
+                      bool infer);
+    static NPtr build_decl(NPtrVec &&nodes);
+    static NPtr build_assign(NPtrVec &&nodes);
 
-      inline std::string identifier_string() const { return id_->token(); }
-      inline IdPtr declared_identifier() const { return id_; }
-      inline EPtr declared_type() const { return decl_type_; }
+    inline std::string identifier_string() const { return id_->token(); }
+    inline IdPtr declared_identifier() const { return id_; }
+    inline EPtr declared_type() const { return decl_type_; }
 
+    bool type_is_inferred() const { return infer_type_; }
 
-      bool type_is_inferred() const { return infer_type_; } 
+    Language::Operator op;
+    // The identifier being declared
+    IdPtr id_;
 
-    private:
-      // The identifier being declared
-      IdPtr id_;
-
-      // May represent the declared type or the value whose type is being
-      // inferred
-      Language::Operator op_;
-      EPtr decl_type_;
-      bool infer_type_;
+    // May represent the declared type or the value whose type is being
+    // inferred
+    EPtr decl_type_;
+    bool infer_type_;
   };
 
 

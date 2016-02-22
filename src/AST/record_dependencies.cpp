@@ -23,18 +23,18 @@ namespace AST {
 
   void Access::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::value_value(this, expr_.get());
-    Dependency::type_type(this, expr_.get());
-    expr_->record_dependencies();
+    Dependency::value_value(this, operand.get());
+    Dependency::type_type(this, operand.get());
+    operand->record_dependencies();
   }
 
   void Unop::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::type_type(this, expr_.get());
-    if (op_ == Language::Operator::Return) {
-      Dependency::value_value(this, expr_.get());
+    Dependency::type_type(this, operand.get());
+    if (op == Language::Operator::Return) {
+      Dependency::value_value(this, operand.get());
     }
-    expr_->record_dependencies();
+    operand->record_dependencies();
   }
 
   void ArrayLiteral::record_dependencies() {
@@ -51,7 +51,7 @@ namespace AST {
     Dependency::type_type(this, lhs_.get());
     lhs_->record_dependencies();
 
-    if (op_ != Language::Operator::Access) {
+    if (op != Language::Operator::Access) {
       Dependency::type_type(this, rhs_.get());
       rhs_->record_dependencies();
     }

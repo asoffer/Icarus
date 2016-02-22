@@ -2,10 +2,10 @@
 
 namespace AST {
   void Unop::join_identifiers(Scope* scope, bool is_arg) {
-    if (expr_->is_identifier()) {
-      expr_ = scope->identifier(expr_);
+    if (operand->is_identifier()) {
+      operand = scope->identifier(operand);
     } else {
-      expr_->join_identifiers(scope);
+      operand->join_identifiers(scope);
     }
   }
 
@@ -41,10 +41,10 @@ namespace AST {
   }
 
   void Access::join_identifiers(Scope* scope, bool is_arg) {
-    if (expr_->is_identifier()) {
-      expr_ = scope->identifier(expr_);
+    if (operand->is_identifier()) {
+      operand = scope->identifier(operand);
     } else {
-      expr_->join_identifiers(scope);
+      operand->join_identifiers(scope);
     }
   }
 
@@ -59,7 +59,7 @@ namespace AST {
     // TODO Access should be looking in a different scope
     // Should it be looking at all?
     // Should this even be a binary operator?
-    if (op_ == Language::Operator::Access) return;
+    if (op == Language::Operator::Access) return;
 
     if (rhs_->is_identifier()) {
       rhs_ = scope->identifier(rhs_);

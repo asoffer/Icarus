@@ -3,7 +3,7 @@
 namespace AST {
   void Unop::assign_scope(Scope* scope) {
     scope_ = scope;
-    expr_->assign_scope(scope);
+    operand->assign_scope(scope);
   }
 
   void Conditional::assign_scope(Scope* scope) {
@@ -44,7 +44,7 @@ namespace AST {
 
   void Access::assign_scope(Scope* scope) {
     scope_ = scope;
-    expr_->assign_scope(scope);
+    operand->assign_scope(scope);
   }
 
   void Binop::assign_scope(Scope* scope) {

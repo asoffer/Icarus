@@ -155,13 +155,13 @@ bool Parser::should_shift() {
       Language::is_operator(stack_[stack_.size() - 2]->node_type())) {
 
     size_t lhs_prec;
-    size_t rhs_prec = Language::precedence(lookahead_->operator_type());
+    size_t rhs_prec = Language::precedence(lookahead_->op);
 
     const auto &prev_node = stack_[stack_.size() - 2];
     if (prev_node->is_token_node()) {
       auto prev_token_node =
           std::static_pointer_cast<AST::TokenNode>(prev_node);
-      lhs_prec = Language::precedence(prev_token_node->operator_type());
+      lhs_prec = Language::precedence(prev_token_node->op);
 
     } else {
       assert(false && "Previous node is not a token node.");

@@ -136,32 +136,33 @@ namespace AST {
   llvm::Value* Unop::generate_code(Scope* scope) {
     using Language::Operator;
     // Cases where we don't want to generate code for the node
-    if (op_ == Operator::And) return expr_->generate_lvalue(scope);
-    if (op_ == Operator::Print && expr_->type() == Type_) {
+    if (op == Operator::And)
+      return operand->generate_lvalue(scope);
+    if (op == Operator::Print && operand->type() == Type_) {
       // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
       // TODO use corrent scope
 
       auto val = reinterpret_cast<llvm::Value*>(
-          expr_->evaluate(scope->context()).as_type);
-      expr_->type()->call_print(scope->builder(), val);
+          operand->evaluate(scope->context()).as_type);
+      operand->type()->call_print(scope->builder(), val);
       return nullptr;
     }
 
-    llvm::Value* val = expr_->generate_code(scope);
+    llvm::Value* val = operand->generate_code(scope);
     llvm::IRBuilder<>& bldr = scope->builder();
-    switch (op_) { 
+    switch (op) { 
       case Operator::Sub:
-        return expr_->type()->call_neg(bldr, val);
+        return operand->type()->call_neg(bldr, val);
 
       case Operator::Not:
-        return expr_->type()->call_not(bldr, val);
+        return operand->type()->call_not(bldr, val);
       case Operator::Free:
         {
           bldr.CreateCall(cstdlib::free(), { bldr.CreateBitCast(val, *RawPtr) });
           // Reset pointer to null
-          auto ptee_type = static_cast<Pointer*>(expr_->type())->pointee_type();
+          auto ptee_type = static_cast<Pointer*>(operand->type())->pointee_type();
           bldr.CreateStore(data::null_pointer(ptee_type),
-              expr_->generate_lvalue(scope));
+              operand->generate_lvalue(scope));
         return nullptr;
         }
       case Operator::Return:
@@ -177,7 +178,7 @@ namespace AST {
 
       case Operator::Call:
         {
-          auto fn_type = static_cast<Function*>(expr_->type());
+          auto fn_type = static_cast<Function*>(operand->type());
           if (fn_type->return_type()->is_struct()) {
             // TODO move this outside of any potential loops
             auto local_ret = scope->builder().CreateAlloca(
@@ -191,8 +192,8 @@ namespace AST {
           }
         }
       case Operator::Print:
-        expr_->type()->call_print(scope->builder(), expr_->type()->is_struct()
-            ? struct_memcpy(expr_->type(), val, scope->builder())
+        operand->type()->call_print(scope->builder(), operand->type()->is_struct()
+            ? struct_memcpy(operand->type(), val, scope->builder())
             : val);
         return nullptr;
 
@@ -202,17 +203,17 @@ namespace AST {
   }
 
   llvm::Value* Access::generate_code(Scope* scope) {
-    auto etype = expr_->type();
+    auto etype = operand->type();
     if (etype == Type_) {
       auto expr_as_type =
-        expr_->evaluate(scope->context()).as_type;
+        operand->evaluate(scope->context()).as_type;
       if (expr_as_type->is_enum()) {
         auto enum_type = static_cast<Enumeration*>(expr_as_type);
         return enum_type->get_value(member_name_);
       }
     }
 
-    auto eval = expr_->generate_code(scope);
+    auto eval = operand->generate_code(scope);
     while (etype->is_pointer()) {
       etype = static_cast<Pointer*>(etype)->pointee_type();
       if (!etype->is_struct()) {
@@ -235,7 +236,7 @@ namespace AST {
     }
 
     using Language::Operator;
-    if (op_ == Operator::Index) {
+    if (op == Operator::Index) {
       return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
 
     }
@@ -243,7 +244,7 @@ namespace AST {
     auto lhs_val = lhs_->generate_code(scope);
     if (lhs_val == nullptr) return nullptr;
 
-    switch (op_) {
+    switch (op) {
       case Operator::Cast:
         return lhs_->type()->call_cast(scope->builder(), lhs_val, 
             rhs_->evaluate(scope->context()).as_type);
@@ -300,7 +301,7 @@ namespace AST {
     if (rhs_val == nullptr) return nullptr;
 
     llvm::IRBuilder<>& bldr = scope->builder();
-    switch (op_) {
+    switch (op) {
       case Operator::Add: return type()->call_add(bldr, lhs_val, rhs_val);
       case Operator::Sub: return type()->call_sub(bldr, lhs_val, rhs_val);
       case Operator::Mul: return type()->call_mul(bldr, lhs_val, rhs_val);
@@ -630,10 +631,10 @@ namespace AST {
 
     llvm::Value* Assignment::generate_code(Scope* scope) {
       using Language::Operator;
-      if (   op_ == Operator::OrEq  || op_ == Operator::XorEq
-          || op_ == Operator::AndEq || op_ == Operator::AddEq
-          || op_ == Operator::SubEq || op_ == Operator::MulEq
-          || op_ == Operator::DivEq || op_ == Operator::ModEq) {
+      if (   op == Operator::OrEq  || op == Operator::XorEq
+          || op == Operator::AndEq || op == Operator::AddEq
+          || op == Operator::SubEq || op == Operator::MulEq
+          || op == Operator::DivEq || op == Operator::ModEq) {
 
         auto lhs_val = lhs_->generate_code(scope);
         if (lhs_val == nullptr) return nullptr;
@@ -645,7 +646,7 @@ namespace AST {
         if (rhs_val == nullptr) return nullptr;
 
         if (lhs_->type() == Bool) {
-          switch (op_) {
+          switch (op) {
             case Operator::XorEq:
               scope->builder().CreateStore(
                   scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
@@ -657,8 +658,8 @@ namespace AST {
                 auto merge_block = make_block("merge", parent_fn);
 
                 // Assumption is that only operators of type (bool, bool) -> bool are '&', '|', and '^'
-                auto true_block  = (op_ == Operator::AndEq) ? more_block : merge_block;
-                auto false_block = (op_ == Operator::OrEq)  ? more_block : merge_block;
+                auto true_block  = (op == Operator::AndEq) ? more_block : merge_block;
+                auto false_block = (op == Operator::OrEq)  ? more_block : merge_block;
 
                 scope->builder().CreateCondBr(lhs_val, true_block, false_block);
                 scope->builder().SetInsertPoint(more_block);
@@ -677,7 +678,7 @@ namespace AST {
         } else if (lhs_->type() == Int) {
           llvm::Value* val = nullptr;
           auto& bldr = scope->builder();
-          switch (op_) {
+          switch (op) {
             case Operator::AddEq: val = bldr.CreateAdd (lhs_val, rhs_val, "at"); break;
             case Operator::SubEq: val = bldr.CreateSub (lhs_val, rhs_val, "st"); break;
             case Operator::MulEq: val = bldr.CreateMul (lhs_val, rhs_val, "mt"); break;
@@ -691,7 +692,7 @@ namespace AST {
         } else if (lhs_->type() == Uint) {
           auto& bldr = scope->builder();
           llvm::Value* val = nullptr;
-          switch (op_) {
+          switch (op) {
             case Operator::AddEq: val = bldr.CreateAdd (lhs_val, rhs_val, "at"); break;
             case Operator::SubEq: val = bldr.CreateSub (lhs_val, rhs_val, "st"); break;
             case Operator::MulEq: val = bldr.CreateMul (lhs_val, rhs_val, "mt"); break;
@@ -705,7 +706,7 @@ namespace AST {
         } else if (type() == Real) {
           llvm::Value* val = nullptr;
           auto& bldr = scope->builder();
-          switch (op_) {
+          switch (op) {
             case Operator::AddEq: val = bldr.CreateFAdd(lhs_val, rhs_val, "at"); break;
             case Operator::SubEq: val = bldr.CreateFSub(lhs_val, rhs_val, "st"); break;
             case Operator::MulEq: val = bldr.CreateFMul(lhs_val, rhs_val, "mt"); break;

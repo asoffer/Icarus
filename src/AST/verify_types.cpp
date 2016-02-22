@@ -62,7 +62,7 @@ namespace AST {
 
     } else {
       expr_type_ = decl_->declared_type()->evaluate(scope_->context()).as_type;
-      assert(expr_type_ && "eval with context expr_ptr is nullptr");
+      assert(expr_type_ && "eval with context operandptr is nullptr");
       if (expr_type_ == Type_) {
         scope_->context().bind(
             Context::Value(TypeVar(shared_from_this())), shared_from_this());
@@ -73,68 +73,68 @@ namespace AST {
 
   void Unop::verify_types() {
     using Language::Operator;
-    if (op_ == Operator::Free) {
-      if (!expr_->type()->is_pointer()) {
+    if (op == Operator::Free) {
+      if (!operand->type()->is_pointer()) {
         error_log.log(line_num, "Free can only be called on pointer types");
       }
       expr_type_ = Void;
  
-    } else if (op_ == Operator::Print) {
-      if (expr_->type() == Void) {
+    } else if (op == Operator::Print) {
+      if (operand->type() == Void) {
         error_log.log(line_num, "Void types cannot be printed");
       }
       expr_type_ = Void;
 
-    } else if (op_ == Operator::Return) {
-      if (expr_->type() == Void) {
+    } else if (op == Operator::Return) {
+      if (operand->type() == Void) {
         error_log.log(line_num, "Void types cannot be returned");
       }
  
       expr_type_ = Void;
 
-    } else if (op_ == Operator::At) {
-      if (expr_->type()->is_pointer()) {
-        expr_type_ = static_cast<Pointer*>(expr_->type())->pointee_type();
+    } else if (op == Operator::At) {
+      if (operand->type()->is_pointer()) {
+        expr_type_ = static_cast<Pointer*>(operand->type())->pointee_type();
 
       } else {
         error_log.log(line_num, "Dereferencing object of type "
-            + expr_->type()->to_string() + ", which is not a pointer.");
+            + operand->type()->to_string() + ", which is not a pointer.");
         expr_type_ = Error;
       }
 
-    } else if (op_ == Operator::Call) {
-      if (!expr_->type()->is_function()) {
+    } else if (op == Operator::Call) {
+      if (!operand->type()->is_function()) {
         error_log.log(line_num,
-            "Identifier `" + expr_->token() + "` is not a function.");
+            "Identifier `" + operand->token() + "` is not a function.");
         expr_type_ = Error;
         return;
       }
 
-      auto fn = static_cast<Function*>(expr_->type());
+      auto fn = static_cast<Function*>(operand->type());
       if (fn->argument_type() != Void) {
         error_log.log(line_num,
-            "Calling function `" + expr_->token() + "` with no arguments.");
+            "Calling function `" + operand->token() + "` with no arguments.");
         expr_type_ = Error;
       } else {
         expr_type_ = fn->return_type();
         assert(expr_type_ && "fn return type is nullptr");
       }
 
-    } else if (op_ == Operator::And) {
+    } else if (op == Operator::And) {
       // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-      if (expr_->type() == Type_) expr_type_ = Type_;
-      else                        expr_type_ = Ptr(expr_->type());
+      if (operand->type() == Type_) expr_type_ = Type_;
+      else                        expr_type_ = Ptr(operand->type());
       assert(expr_type_ && "&expr_type_ is null");
 
-    } else if (op_ == Operator::Sub) {
-      if (expr_->type() == Uint) {
+    } else if (op == Operator::Sub) {
+      if (operand->type() == Uint) {
         error_log.log(line_num, "Negation applied to unsigned integer");
         expr_type_ = Int;
 
-      } else if (expr_->type() == Int) {
+      } else if (operand->type() == Int) {
         expr_type_ = Int;
 
-      } else if(expr_->type() == Real) {
+      } else if(operand->type() == Real) {
         expr_type_ = Real;
 
       } else {
@@ -147,21 +147,21 @@ namespace AST {
   }
 
   void Access::verify_types() {
-    if (expr_->type() == Error) {
+    if (operand->type() == Error) {
       // An error was already found in the types, so just pass silently
       expr_type_ = Error;
       return;
     }
-    auto etype = expr_->type();
+    auto etype = operand->type();
     if (etype == Type_) {
-      Dependency::traverse_from(Dependency::PtrWithTorV(expr_.get(), false));
-      auto etypename = expr_->evaluate(scope_->context()).as_type;
+      Dependency::traverse_from(Dependency::PtrWithTorV(operand.get(), false));
+      auto etypename = operand->evaluate(scope_->context()).as_type;
       if (etypename->is_enum()) {
         auto enum_type = static_cast<Enumeration*>(etypename);
         // If you can get the value,
         if (enum_type->get_value(member_name_)) {
           // TODO use correct context
-          expr_type_ = expr_->evaluate(scope_->context()).as_type;
+          expr_type_ = operand->evaluate(scope_->context()).as_type;
 
         } else {
           error_log.log(line_num, etypename->to_string() + " has no member " + member_name_ + ".");
@@ -200,14 +200,14 @@ namespace AST {
       return;
     }
 
-    if (op_ == Language::Operator::Rocket) {
+    if (op == Language::Operator::Rocket) {
       if (lhs_->type() != Bool) {
         error_log.log(line_num, "LHS of rocket must be a bool");
         expr_type_ = Error;
       }
       return;
 
-    } else if (op_ == Language::Operator::Call) {
+    } else if (op == Language::Operator::Call) {
       expr_type_ = Error;
 
       if (lhs_->type()->is_dependent_type()) {
@@ -242,7 +242,7 @@ namespace AST {
 
       return;
 
-    } else if (op_ == Language::Operator::Index) {
+    } else if (op == Language::Operator::Index) {
       expr_type_ = Error;
       if (!lhs_->type()->is_array()) {
         // TODO TOKENREMOVAL
@@ -261,7 +261,7 @@ namespace AST {
       }
 
       return;
-    } else if (op_ == Language::Operator::Cast) {
+    } else if (op == Language::Operator::Cast) {
       // TODO use correct scope
       expr_type_ = rhs_->evaluate(scope_->context()).as_type;
       if (expr_type_ == Error) return;
@@ -281,7 +281,7 @@ namespace AST {
           + " to " + type()->to_string());
 
     } else {
-      expr_type_ = operator_lookup(line_num, op_, lhs_->type(), rhs_->type());
+      expr_type_ = operator_lookup(line_num, op, lhs_->type(), rhs_->type());
       assert(expr_type_ && "operator_lookup yields nullptr");
       return;
     }
@@ -413,7 +413,7 @@ namespace AST {
     }
 
     // TODO if lhs is reserved?
-    if (op_ == Language::Operator::Assign) {
+    if (op == Language::Operator::Assign) {
       if (rhs_->is_terminal()) {
         auto term = std::static_pointer_cast<Terminal>(rhs_);
         if (term->terminal_type_ == Language::Terminal::Null) {
@@ -428,7 +428,7 @@ namespace AST {
       }
       expr_type_ = Void;
     } else {
-      expr_type_ = operator_lookup(line_num, op_, lhs_->type(), rhs_->type());
+      expr_type_ = operator_lookup(line_num, op, lhs_->type(), rhs_->type());
       assert(expr_type_ && "operator_lookup");
     }
   }

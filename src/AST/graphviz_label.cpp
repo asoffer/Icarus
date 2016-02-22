@@ -6,7 +6,7 @@ namespace AST {
   std::string While::graphviz_label() const { return "While"; }
 
   std::string Unop::graphviz_label() const {
-    switch (op_) {
+    switch (op) {
       case Language::Operator::Return: return "Return";
       case Language::Operator::Print:  return "Print";
       case Language::Operator::Free:   return "Free";
@@ -65,7 +65,7 @@ namespace AST {
   }
 
   std::string Assignment::graphviz_label() const {
-    switch (op_) {
+    switch (op) {
       case Language::Operator::OrEq:  return "|=";
       case Language::Operator::XorEq: return "^=";
       case Language::Operator::AndEq: return "&=";
@@ -80,7 +80,7 @@ namespace AST {
   }
 
   std::string Binop::graphviz_label() const {
-    switch (op_) {
+    switch (op) {
       case Language::Operator::Index:   return "Index";
       case Language::Operator::Call:    return "Call";
       case Language::Operator::Arrow:   return "->";

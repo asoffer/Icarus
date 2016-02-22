@@ -45,39 +45,39 @@ namespace AST {
   }
 
   Context::Value Unop::evaluate(Context& ctx) {
-    if (op_ == Language::Operator::Return) {
-      ctx.set_return_value(expr_->evaluate(ctx));
+    if (op == Language::Operator::Return) {
+      ctx.set_return_value(operand->evaluate(ctx));
 
       return nullptr;
 
-    } else if (op_ == Language::Operator::Print) {
-      auto val = expr_->evaluate(ctx);
-      if (expr_->type() == Bool)        std::cout << (val.as_bool ? "true" : "false");
-      else if (expr_->type() == Char)   std::cout << val.as_char;
-      else if (expr_->type() == Int)    std::cout << val.as_int;
-      else if (expr_->type() == Real)   std::cout << val.as_real;
-      else if (expr_->type() == Type_)  std::cout << val.as_type->to_string();
-      else if (expr_->type() == Uint)   std::cout << val.as_uint;
+    } else if (op == Language::Operator::Print) {
+      auto val = operand->evaluate(ctx);
+      if (operand->type() == Bool)        std::cout << (val.as_bool ? "true" : "false");
+      else if (operand->type() == Char)   std::cout << val.as_char;
+      else if (operand->type() == Int)    std::cout << val.as_int;
+      else if (operand->type() == Real)   std::cout << val.as_real;
+      else if (operand->type() == Type_)  std::cout << val.as_type->to_string();
+      else if (operand->type() == Uint)   std::cout << val.as_uint;
       else { /* TODO */ }
 
       std::cout.flush();
       return nullptr;
 
-    } else if (op_ == Language::Operator::Sub) {
+    } else if (op == Language::Operator::Sub) {
       if (type() == Int) {
-        return Context::Value(-expr_->evaluate(ctx).as_int);
+        return Context::Value(-operand->evaluate(ctx).as_int);
 
       } else if (type() == Real) {
-        return Context::Value(-expr_->evaluate(ctx).as_real);
+        return Context::Value(-operand->evaluate(ctx).as_real);
       }
-    } else if (op_ == Language::Operator::And) {
-      if (expr_->type() != Type_) {
+    } else if (op == Language::Operator::And) {
+      if (operand->type() != Type_) {
         // TODO better error message
-        error_log.log(line_num, "Taking the address of a " + expr_->type()->to_string() + " is not allowed at compile-time");
+        error_log.log(line_num, "Taking the address of a " + operand->type()->to_string() + " is not allowed at compile-time");
       }
 
       // TODO FIXME I know this is wrong
-      return Context::Value(Ptr(expr_->evaluate(ctx).as_type));
+      return Context::Value(Ptr(operand->evaluate(ctx).as_type));
     }
 
     assert(false && "Unop eval: I don't know what to do.");
@@ -346,7 +346,7 @@ namespace AST {
 
   Context::Value Binop::evaluate(Context& ctx) {
     using Language::Operator;
-    if (op_ == Operator::Call) {
+    if (op == Operator::Call) {
       assert(lhs_->type()->is_function());
       auto lhs_val = lhs_->evaluate(ctx).as_expr;
       assert(lhs_val);
@@ -409,7 +409,7 @@ namespace AST {
       }
       return return_val;
 
-    } else if (op_ == Operator::Arrow) {
+    } else if (op == Operator::Arrow) {
       auto lhs_type = lhs_->evaluate(ctx).as_type;
       auto rhs_type = rhs_->evaluate(ctx).as_type;
       return Context::Value(Func(lhs_type, rhs_type));

@@ -15,14 +15,14 @@ namespace AST {
 
   NPtr Unop::build(NPtrVec&& nodes) {
     auto unop_ptr = std::make_shared<Unop>();
-    unop_ptr->expr_ = std::static_pointer_cast<Expression>(nodes[1]);
+    unop_ptr->operand = std::static_pointer_cast<Expression>(nodes[1]);
     auto tk_node = std::static_pointer_cast<TokenNode>(nodes[0]);
     unop_ptr->line_num = tk_node->line_num;
 
     unop_ptr->type_ = Language::expression;
-    unop_ptr->op_ = tk_node->operator_type();
+    unop_ptr->op = tk_node->op;
 
-    unop_ptr->precedence_ = Language::precedence(unop_ptr->op_);
+    unop_ptr->precedence_ = Language::precedence(unop_ptr->op);
     return unop_ptr;
   }
 
@@ -30,12 +30,12 @@ namespace AST {
     auto unop_ptr = std::make_shared<Unop>();
     unop_ptr->line_num = nodes[1]->line_num;
 
-    unop_ptr->expr_ =
+    unop_ptr->operand =
       std::static_pointer_cast<Expression>(nodes[0]);
 
     unop_ptr->type_ = Language::expression;
-    unop_ptr->op_ = Language::Operator::Call;
-    unop_ptr->precedence_ = Language::precedence(unop_ptr->op_);
+    unop_ptr->op = Language::Operator::Call;
+    unop_ptr->precedence_ = Language::precedence(unop_ptr->op);
 
     return unop_ptr;
   }
@@ -44,7 +44,7 @@ namespace AST {
     auto access_ptr = std::make_shared<Access>();
     access_ptr->member_name_ = nodes[2]->token();
     access_ptr->line_num = nodes[0]->line_num;
-    access_ptr->expr_ = std::static_pointer_cast<Expression>(std::move(nodes[0]));
+    access_ptr->operand = std::static_pointer_cast<Expression>(std::move(nodes[0]));
 
     return access_ptr;
   }
@@ -56,37 +56,36 @@ namespace AST {
     binop_ptr->lhs_ =
       std::static_pointer_cast<Expression>(nodes[0]);
 
-    binop_ptr->rhs_ =
-      std::static_pointer_cast<Expression>(nodes[2]);
+    binop_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     binop_ptr->type_ = Language::generic_operator;
-    binop_ptr->op_ = op_class;
+    binop_ptr->op = op_class;
 
-    binop_ptr->precedence_ = Language::precedence(binop_ptr->op_);
+    binop_ptr->precedence_ = Language::precedence(binop_ptr->op);
 
     return binop_ptr;
   }
 
-  NPtr Binop::build(NPtrVec&& nodes) {
-    auto op = std::static_pointer_cast<TokenNode>(nodes[1]);
-    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), op->operator_type());
+  NPtr Binop::build(NPtrVec &&nodes) {
+    auto op = std::static_pointer_cast<TokenNode>(nodes[1])->op;
+    return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op);
   }
 
-  NPtr Binop::build_paren_operator(NPtrVec&& nodes) {
-    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), Language::Operator::Call);
+  NPtr Binop::build_paren_operator(NPtrVec &&nodes) {
+    return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
+                                 Language::Operator::Call);
   }
 
-  NPtr Binop::build_bracket_operator(NPtrVec&& nodes) {
-    return Binop::build_operator(std::forward<NPtrVec&&>(nodes), Language::Operator::Index);
+  NPtr Binop::build_bracket_operator(NPtrVec &&nodes) {
+    return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
+                                 Language::Operator::Index);
   }
 
-
-
-  NPtr ChainOp::join(NPtrVec&& nodes) {
+  NPtr ChainOp::join(NPtrVec &&nodes) {
     // TODO FIXME
     auto lhs_prec = std::static_pointer_cast<Expression>(nodes[0])->precedence();
     auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
-    auto op_prec = Language::precedence(op_node->operator_type());
+    auto op_prec = Language::precedence(op_node->op);
     auto rhs_prec = std::static_pointer_cast<Expression>(nodes[2])->precedence();
 
     if (lhs_prec == op_prec && op_prec == rhs_prec) {
@@ -94,7 +93,7 @@ namespace AST {
 
       auto chain_ptr = std::static_pointer_cast<ChainOp>(std::move(nodes[0]));
 
-      chain_ptr->ops_.push_back(op_node->operator_type());
+      chain_ptr->ops_.push_back(op_node->op);
 
       chain_ptr->ops_.insert(chain_ptr->ops_.end(),
           std::make_move_iterator(rhs->ops_.begin()),
@@ -151,7 +150,7 @@ namespace AST {
 
   NPtr ChainOp::build(NPtrVec&& nodes) {
     auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
-    auto op_prec = Language::precedence(op_node->operator_type());
+    auto op_prec = Language::precedence(op_node->op);
 
     std::shared_ptr<ChainOp> chain_ptr(nullptr);
 
@@ -177,7 +176,7 @@ namespace AST {
       chain_ptr->precedence_ = op_prec;
     }
 
-    chain_ptr->ops_.push_back(op_node->operator_type());
+    chain_ptr->ops_.push_back(op_node->op);
     chain_ptr->exprs_.push_back(
         std::static_pointer_cast<Expression>(nodes[2]));
 
@@ -299,10 +298,10 @@ namespace AST {
     assign_ptr->rhs_ = std::static_pointer_cast<Expression>(nodes[2]);
 
     auto op_node = std::static_pointer_cast<TokenNode>(nodes[1]);
-    assign_ptr->op_ = op_node->operator_type();
+    assign_ptr->op = op_node->op;
     assign_ptr->type_ = Language::assign_operator;
 
-    assign_ptr->precedence_ = Language::precedence(assign_ptr->op_);
+    assign_ptr->precedence_ = Language::precedence(assign_ptr->op);
 
     return assign_ptr;
   }
@@ -323,11 +322,11 @@ namespace AST {
 
     decl_ptr->type_ = node_type;
 
-    decl_ptr->op_ = infer
+    decl_ptr->op = infer
       ? Language::Operator::ColonEq
       : Language::Operator::Colon;
 
-    decl_ptr->precedence_ = Language::precedence(decl_ptr->op_);
+    decl_ptr->precedence_ = Language::precedence(decl_ptr->op);
     decl_ptr->infer_type_ = infer;
 
     return std::static_pointer_cast<Node>(decl_ptr);

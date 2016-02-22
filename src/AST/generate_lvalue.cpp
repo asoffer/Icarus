@@ -13,8 +13,8 @@ namespace AST {
   } 
 
   llvm::Value* Unop::generate_lvalue(Scope* scope) {
-    if (op_ == Language::Operator::At) {
-      return expr_->generate_code(scope);
+    if (op == Language::Operator::At) {
+      return operand->generate_code(scope);
     }
 
     return nullptr;
@@ -33,8 +33,8 @@ namespace AST {
 
   llvm::Value* Access::generate_lvalue(Scope* scope) {
     // Automatically pass through pointers
-    auto etype = expr_->type();
-    auto e_lval = expr_->generate_lvalue(scope);
+    auto etype = operand->type();
+    auto e_lval = operand->generate_lvalue(scope);
 
     while (etype->is_pointer()) {
       etype = static_cast<Pointer*>(etype)->pointee_type();
@@ -47,7 +47,7 @@ namespace AST {
   }
 
   llvm::Value* Binop::generate_lvalue(Scope* scope) {
-    if (op_ == Language::Operator::Index && lhs_->type()->is_array()) {
+    if (op == Language::Operator::Index && lhs_->type()->is_array()) {
       auto lhs_val = lhs_->generate_lvalue(scope);
       auto rhs_val = rhs_->generate_code(scope);
       auto load_ptr = scope->builder().CreateLoad(lhs_val);
