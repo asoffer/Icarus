@@ -124,14 +124,14 @@ namespace AST {
       in->record_dependencies();
     }
 
-    Dependency::value_value(this, statements_.get());
-    Dependency::value_type(this, statements_.get());
+    Dependency::value_value(this, statements.get());
+    Dependency::value_type(this, statements.get());
 
     Dependency::value_value(this, return_type_.get());
     Dependency::value_type(this, return_type_.get());
 
     return_type_->record_dependencies();
-    statements_->record_dependencies();
+    statements->record_dependencies();
   }
 
   void KVPairList::record_dependencies() {
@@ -139,14 +139,14 @@ namespace AST {
   }
 
   void Statements::record_dependencies() {
-    for (const auto& stmt : statements_) {
+    for (const auto& stmt : statements) {
       Dependency::value_value(this, stmt.get());
       stmt->record_dependencies();
     }
   }
 
   void Conditional::record_dependencies() {
-    for (auto& stmt : statements_) {
+    for (auto& stmt : statements) {
       Dependency::value_value(this, stmt.get());
       stmt->record_dependencies();
     }
@@ -162,8 +162,8 @@ namespace AST {
     // TODO check evaluate
     Dependency::value_type(this, this);
     Dependency::type_type(this, cond_.get());
-    Dependency::type_type(this, statements_.get());
-    statements_->record_dependencies();
+    Dependency::type_type(this, statements.get());
+    statements->record_dependencies();
     cond_->record_dependencies();
   }
 

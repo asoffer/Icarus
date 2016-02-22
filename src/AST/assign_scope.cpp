@@ -11,12 +11,12 @@ namespace AST {
     for (size_t i = 0; i < conds_.size(); ++i) {
       body_scopes_[i]->set_parent(scope);
       conds_[i]->assign_scope(scope);
-      statements_[i]->assign_scope(body_scopes_[i]);
+      statements[i]->assign_scope(body_scopes_[i]);
     }
 
     if (has_else()) {
       body_scopes_.back()->set_parent(scope);
-      statements_.back()->assign_scope(body_scopes_.back());
+      statements.back()->assign_scope(body_scopes_.back());
     }
   }
 
@@ -24,7 +24,7 @@ namespace AST {
     scope_ = scope;
     body_scope_->set_parent(scope);
     cond_->assign_scope(body_scope_);
-    statements_->assign_scope(body_scope_);
+    statements->assign_scope(body_scope_);
   }
 
   void ArrayLiteral::assign_scope(Scope* scope) {
@@ -89,8 +89,8 @@ namespace AST {
 
   void Statements::assign_scope(Scope* scope) {
     scope_ = scope;
-    for (auto& eptr : statements_) {
-      eptr->assign_scope(scope);
+    for (auto& nptr : statements) {
+      nptr->assign_scope(scope);
     }
   }
 
@@ -101,7 +101,7 @@ namespace AST {
     for (auto& in : inputs_) {
       in->assign_scope(fn_scope_);
     }
-    statements_->assign_scope(fn_scope_);
+    statements->assign_scope(fn_scope_);
   }
 
   void TypeLiteral::assign_scope(Scope* scope) {

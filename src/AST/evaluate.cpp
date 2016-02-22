@@ -234,7 +234,7 @@ namespace AST {
   }
 
   Context::Value FunctionLiteral::evaluate(Context& ctx) {
-    return statements_->evaluate(ctx);
+    return statements->evaluate(ctx);
   }
 
   Context::Value Case::evaluate(Context& ctx) {
@@ -435,7 +435,7 @@ namespace AST {
   Context::Value KVPairList::evaluate(Context&)      { return nullptr; }
 
   Context::Value Statements::evaluate(Context& ctx) {
-    for (auto& stmt : statements_) {
+    for (auto& stmt : statements) {
       stmt->evaluate(ctx);
       if (ctx.has_return()) {
         return ctx.return_value();
@@ -449,7 +449,7 @@ namespace AST {
     for (size_t i = 0; i < conds_.size(); ++i) {
       if (conds_[i]->evaluate(ctx).as_bool) {
         Context cond_ctx(&ctx);
-        statements_[i]->evaluate(cond_ctx);
+        statements[i]->evaluate(cond_ctx);
         if (cond_ctx.has_return()) {
           return cond_ctx.return_value();
         }
@@ -458,7 +458,7 @@ namespace AST {
 
     if (has_else()) {
         Context cond_ctx(&ctx);
-        statements_.back()->evaluate(cond_ctx);
+        statements.back()->evaluate(cond_ctx);
         if (cond_ctx.has_return()) {
           return cond_ctx.return_value();
         }

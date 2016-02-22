@@ -394,7 +394,7 @@ namespace AST {
     auto fn_lit = std::make_shared<FunctionLiteral>();
     fn_lit->line_num = nodes[0]->line_num;
 
-    fn_lit->statements_ = std::static_pointer_cast<Statements>(nodes[2]);
+    fn_lit->statements = std::static_pointer_cast<Statements>(nodes[2]);
 
     // TODO scopes inside these statements should point to fn_scope_.
 
@@ -431,7 +431,7 @@ namespace AST {
     type_lit_ptr->type = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
-    for (auto&& stmt : stmts->statements_) {
+    for (auto&& stmt : stmts->statements) {
       // TODO we ignore everything that isn't a declaration.
       // This is a cheap way to get started, but probably not ideal.
       if (!stmt->is_declaration()) continue;
@@ -445,14 +445,14 @@ namespace AST {
 
   NPtr Statements::build_one(NPtrVec&& nodes) {
     auto output = std::make_shared<Statements>();
-    output->statements_.push_back(std::move(nodes[0]));
+    output->statements.push_back(std::move(nodes[0]));
 
     return output;
   }
 
   NPtr Statements::build_more(NPtrVec&& nodes) {
     auto output = std::static_pointer_cast<Statements>(nodes[0]);
-    output->statements_.push_back(std::move(nodes[1]));
+    output->statements.push_back(std::move(nodes[1]));
 
     return output;
   }
@@ -462,8 +462,8 @@ namespace AST {
 
     auto output = std::make_shared<Statements>();
     output->line_num = nodes[0]->line_num;
-    output->statements_.push_back(std::move(nodes[0]));
-    output->statements_.push_back(std::move(nodes[1]));
+    output->statements.push_back(std::move(nodes[0]));
+    output->statements.push_back(std::move(nodes[1]));
 
     return output;
   }
@@ -472,7 +472,7 @@ namespace AST {
     error_log.log(nodes[0]->line_num, "Adjacent expressions");
 
     auto output = std::static_pointer_cast<Statements>(nodes[0]);
-    output->statements_.push_back(std::move(nodes[1]));
+    output->statements.push_back(std::move(nodes[1]));
 
     return output;
   }
@@ -480,7 +480,7 @@ namespace AST {
   NPtr Conditional::build_if(NPtrVec&& nodes) {
     auto if_stmt = std::make_shared<Conditional>();
     if_stmt->conds_ = { std::static_pointer_cast<Expression>(nodes[1]) };
-    if_stmt->statements_ = { std::static_pointer_cast<Statements>(nodes[3]) };
+    if_stmt->statements = { std::static_pointer_cast<Statements>(nodes[3]) };
     if_stmt->body_scopes_.push_back(new CondScope);
     return if_stmt;
   }
@@ -503,11 +503,11 @@ namespace AST {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
     auto else_if = std::static_pointer_cast<Conditional>(std::move(nodes[2]));
 
-    assert(else_if->conds_.size() == 1 && else_if->statements_.size() == 1 && else_if->body_scopes_.size() == 1
+    assert(else_if->conds_.size() == 1 && else_if->statements.size() == 1 && else_if->body_scopes_.size() == 1
         && "Else-if statement constructed by parser with multiple conditional blocks.");
 
     if_stmt->conds_.push_back(std::move(else_if->conds_.front()));
-    if_stmt->statements_.push_back(std::move(else_if->statements_.front()));
+    if_stmt->statements.push_back(std::move(else_if->statements.front()));
     if_stmt->body_scopes_.push_back(new CondScope);
     return if_stmt;
   }
@@ -515,7 +515,7 @@ namespace AST {
   NPtr Conditional::build_else(NPtrVec&& nodes) {
     auto if_stmt = std::static_pointer_cast<Conditional>(std::move(nodes[0]));
     if_stmt->else_line_num_ = nodes[1]->line_num;
-    if_stmt->statements_.push_back(
+    if_stmt->statements.push_back(
         std::static_pointer_cast<Statements>(std::move(nodes[3])));
     if_stmt->body_scopes_.push_back(new CondScope);
     return std::move(if_stmt);
@@ -532,7 +532,7 @@ namespace AST {
     enum_lit_ptr->type = Type_;
 
     auto stmts = std::static_pointer_cast<Statements>(std::move(nodes[2]));
-    for (auto&& stmt : stmts->statements_) {
+    for (auto&& stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
         error_log.log(stmt->line_num, "Enum members must be identifiers.");
       }
@@ -552,7 +552,7 @@ namespace AST {
   NPtr While::build(NPtrVec&& nodes) {
     auto while_stmt = std::make_shared<While>();
     while_stmt->cond_ = std::static_pointer_cast<Expression>(nodes[1]);
-    while_stmt->statements_ = std::static_pointer_cast<Statements>(nodes[3]);
+    while_stmt->statements = std::static_pointer_cast<Statements>(nodes[3]);
     return while_stmt;
   }
 

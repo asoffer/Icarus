@@ -354,7 +354,7 @@ namespace AST {
   }
 
   llvm::Value* Statements::generate_code(Scope* scope) {
-    for (auto& stmt : statements_) {
+    for (auto& stmt : statements) {
       stmt->generate_code(scope);
     }
     return nullptr;
@@ -573,7 +573,7 @@ namespace AST {
       }
 
 
-      statements_->generate_code(fn_scope_);
+      statements->generate_code(fn_scope_);
 
       fn_scope_->exit();
 
@@ -853,7 +853,7 @@ namespace AST {
           while_stmt_block, body_scope_->landing_block());
 
       body_scope_->builder().SetInsertPoint(while_stmt_block);
-      statements_->generate_code(body_scope_);
+      statements->generate_code(body_scope_);
       body_scope_->exit();
       scope->builder().SetInsertPoint(body_scope_->landing_block());
 
@@ -890,10 +890,10 @@ namespace AST {
         scope->builder().CreateBr(body_scopes_.back()->entry_block());
       }
 
-      for (size_t i = 0; i < statements_.size(); ++i) {
+      for (size_t i = 0; i < statements.size(); ++i) {
         body_scopes_[i]->set_parent_function(parent_fn);
         body_scopes_[i]->enter();
-        statements_[i]->generate_code(body_scopes_[i]);
+        statements[i]->generate_code(body_scopes_[i]);
         body_scopes_[i]->exit();
         body_scopes_[i]->builder().CreateBr(landing);
       }

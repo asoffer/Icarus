@@ -55,7 +55,7 @@ Time::Eval KVPairList::determine_time() {
 Time::Eval Case::determine_time() { return time_ = kv->determine_time(); }
 
 Time::Eval Statements::determine_time() {
-  for (auto &stmt : statements_) {
+  for (auto &stmt : statements) {
     time_ |= stmt->determine_time();
   }
   return time_;
@@ -67,7 +67,7 @@ Time::Eval FunctionLiteral::determine_time() {
     time_ |= in->determine_time();
   }
 
-  return (time_ |= statements_->determine_time());
+  return (time_ |= statements->determine_time());
 }
 
 Time::Eval Conditional::determine_time() {
@@ -75,7 +75,7 @@ Time::Eval Conditional::determine_time() {
   for (auto &cond : conds_) {
     time_ |= cond->determine_time();
   }
-  for (auto &stmt : statements_) {
+  for (auto &stmt : statements) {
     time_ |= stmt->determine_time();
   }
 
@@ -83,7 +83,7 @@ Time::Eval Conditional::determine_time() {
 }
 
 Time::Eval While::determine_time() {
-  return time_ = cond_->determine_time() | statements_->determine_time();
+  return time_ = cond_->determine_time() | statements->determine_time();
 }
 
 Time::Eval TypeLiteral::determine_time() {

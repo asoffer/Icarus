@@ -56,17 +56,17 @@ std::string Node::to_string(size_t n) const {
 std::string Conditional::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n)
-    << "<Conditional (" << statements_.size() << " part"
-      << (statements_.size() == 1 ? "" : "s")
+    << "<Conditional (" << statements.size() << " part"
+      << (statements.size() == 1 ? "" : "s")
       << ")>\n";
 
     for (size_t i = 0; i < conds_.size(); ++i) {
       ss << tabs(n + 1) << "Condition " << i << ":\n"
-        << conds_[i]->to_string(n + 1) << statements_[i]->to_string(n + 1);
+        << conds_[i]->to_string(n + 1) << statements[i]->to_string(n + 1);
     }
 
     if (has_else()) {
-      ss << tabs(n + 1) << "Else:\n" << statements_.back()->to_string(n + 1);
+      ss << tabs(n + 1) << "Else:\n" << statements.back()->to_string(n + 1);
     }
 
     return ss.str();
@@ -84,7 +84,7 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string While::to_string(size_t n) const {
     return tabs(n) + "<While>\n" + cond_->to_string(n + 1)
-      + statements_->to_string(n + 1);
+      + statements->to_string(n + 1);
   }
 
   std::string Unop::to_string(size_t n) const {
@@ -208,7 +208,7 @@ std::string Conditional::to_string(size_t n) const {
   std::string Statements::to_string(size_t n) const {
     std::string output = tabs(n) + "<Statements>\n";
 
-    for (const auto& exprs : statements_) {
+    for (const auto& exprs : statements) {
       output += exprs->to_string(n + 1);
     }
 
@@ -221,7 +221,7 @@ std::string Conditional::to_string(size_t n) const {
     for (const auto& kv : inputs_) {
       ss << kv->to_string(n + 1);
     }
-    ss << tabs(n + 1) << "Body:\n" << statements_->to_string(n + 2);
+    ss << tabs(n + 1) << "Body:\n" << statements->to_string(n + 2);
     return ss.str();
   }
 

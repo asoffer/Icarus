@@ -311,32 +311,27 @@ namespace AST {
     std::shared_ptr<KVPairList> kv;
   };
 
-  class Statements : public Node {
-    public:
-      friend class TypeLiteral;
-      friend class EnumLiteral;
+  struct Statements : public Node {
+    static NPtr build_one(NPtrVec&& nodes);
+    static NPtr build_more(NPtrVec&& nodes);
+    static NPtr build_double_expression_error(NPtrVec&& nodes);
+    static NPtr build_extra_expression_error(NPtrVec&& nodes);
 
-      static NPtr build_one(NPtrVec&& nodes);
-      static NPtr build_more(NPtrVec&& nodes);
-      static NPtr build_double_expression_error(NPtrVec&& nodes);
-      static NPtr build_extra_expression_error(NPtrVec&& nodes);
+    VIRTUAL_METHODS_FOR_NODES;
 
-      VIRTUAL_METHODS_FOR_NODES;
+    inline size_t size() { return statements.size(); }
+    inline void reserve(size_t n) { return statements.reserve(n); }
 
-      inline size_t size() { return statements_.size(); }
-      inline void reserve(size_t n) { return statements_.reserve(n); }
-
-      void add_nodes(StmtsPtr stmts) {
-        for (auto& stmt : stmts->statements_) {
-          statements_.push_back(std::move(stmt));
-        }
+    void add_nodes(StmtsPtr stmts) {
+      for (auto& stmt : stmts->statements) {
+        statements.push_back(std::move(stmt));
       }
+    }
 
-      Statements() {}
-      virtual ~Statements() {}
+    Statements() {}
+    virtual ~Statements() {}
 
-    private:
-      std::vector<NPtr> statements_;
+    std::vector<NPtr> statements;
   };
 
   class FunctionLiteral : public Expression {
@@ -350,7 +345,7 @@ namespace AST {
 
       std::vector<DeclPtr> inputs_;
       llvm::Function* llvm_function_;
-      std::shared_ptr<Statements> statements_;
+      std::shared_ptr<Statements> statements;
   };
 
   class Conditional : public Node {
@@ -371,7 +366,7 @@ namespace AST {
     private:
 
       std::vector<EPtr> conds_;
-      std::vector<std::shared_ptr<Statements>> statements_;
+      std::vector<std::shared_ptr<Statements>> statements;
       std::vector<CondScope*> body_scopes_;
 
       // We use else_line_num_ to determine if an else branch exists (when it's
@@ -392,7 +387,7 @@ namespace AST {
 
     private:
       EPtr cond_;
-      std::shared_ptr<Statements> statements_;
+      std::shared_ptr<Statements> statements;
       WhileScope* body_scope_;
   };
 

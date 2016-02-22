@@ -10,7 +10,7 @@ struct Node;
 struct Expression;
 struct Identifier;
 struct Declaration;
-class Statements;
+struct Statements;
 }
 
 using NPtr = std::shared_ptr<AST::Node>;

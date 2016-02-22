@@ -15,7 +15,7 @@ namespace AST {
 
   void While::join_identifiers(Scope* scope, bool is_arg) {
     cond_->join_identifiers(body_scope_);
-    statements_->join_identifiers(body_scope_);
+    statements->join_identifiers(body_scope_);
   }
 
   void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
@@ -35,8 +35,8 @@ namespace AST {
       conds_[i]->join_identifiers(body_scopes_[i]);
     }
 
-    for (size_t i = 0; i < statements_.size(); ++i) {
-      statements_[i]->join_identifiers(body_scopes_[i]);
+    for (size_t i = 0; i < statements.size(); ++i) {
+      statements[i]->join_identifiers(body_scopes_[i]);
     }
   }
 
@@ -93,7 +93,7 @@ namespace AST {
   }
 
   void Statements::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& ptr : statements_) {
+    for (auto& ptr : statements) {
       if (ptr->is_identifier()) {
         ptr = std::static_pointer_cast<Node>(
             scope->identifier(std::static_pointer_cast<Expression>(ptr)));
@@ -109,7 +109,7 @@ namespace AST {
     }
 
     set_or_recurse(return_type_, fn_scope_);
-    statements_->join_identifiers(fn_scope_);
+    statements->join_identifiers(fn_scope_);
   }
 
   void TypeLiteral::join_identifiers(Scope*, bool) {
