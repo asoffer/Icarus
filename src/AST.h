@@ -273,52 +273,36 @@ namespace AST {
     Declaration* decl;
   };
 
-  // struct Declaration
-  //
-  // Represents declarations that may or may not be made with type inference.
-  // Either of these can be represented.
-  //
-  // identifier : type
-  // identifer := value
   struct Declaration : public Expression {
     EXPR_FNS(Declaration, declaration);
 
     static NPtr build(NPtrVec &&nodes, Language::NodeType node_type,
-        bool infer);
+                      bool infer);
     static NPtr build_decl(NPtrVec &&nodes);
     static NPtr build_assign(NPtrVec &&nodes);
 
     Language::Operator op;
-    // The identifier being declared
     IdPtr identifier;
-
-    // May represent the declared type or the value whose type is being
-    // inferred
     EPtr type_expr;
     bool is_inferred;
   };
 
+  struct KVPairList : public Node {
+    // TODO must have an else. should be stored outside the vector
+    static NPtr build_one(NPtrVec&& nodes);
+    static NPtr build_more(NPtrVec&& nodes);
+    static NPtr build_one_assignment_error(NPtrVec&& nodes);
+    static NPtr build_more_assignment_error(NPtrVec&& nodes);
 
-  class KVPairList : public Node {
-    public:
-      friend class Case;
+    VIRTUAL_METHODS_FOR_NODES;
 
-      // TODO must have an else. should be stored outside the vector
-      static NPtr build_one(NPtrVec&& nodes);
-      static NPtr build_more(NPtrVec&& nodes);
-      static NPtr build_one_assignment_error(NPtrVec&& nodes);
-      static NPtr build_more_assignment_error(NPtrVec&& nodes);
+    virtual Type* verify_types_with_key(Type* key_type);
 
-      VIRTUAL_METHODS_FOR_NODES;
+    inline size_t size() const { return pairs.size(); }
 
-      virtual Type* verify_types_with_key(Type* key_type);
+    KVPairList() {}
 
-      inline size_t size() const { return kv_pairs_.size(); }
-
-      KVPairList() {}
-
-    private:
-      std::vector<std::pair<EPtr, EPtr>> kv_pairs_;
+    std::vector<std::pair<EPtr, EPtr>> pairs;
   };
 
 

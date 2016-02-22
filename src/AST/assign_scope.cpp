@@ -81,7 +81,7 @@ namespace AST {
 
   void KVPairList::assign_scope(Scope* scope) {
     scope_ = scope;
-    for (auto& pair : kv_pairs_) {
+    for (auto& pair : pairs) {
       pair.first->assign_scope(scope);
       pair.second->assign_scope(scope);
     }

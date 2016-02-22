@@ -45,7 +45,7 @@ Time::Eval Declaration::determine_time() {
 
 Time::Eval KVPairList::determine_time() {
   time_ = Time::either;
-  for (auto &kv_pair : kv_pairs_) {
+  for (auto &kv_pair : pairs) {
     time_ |= kv_pair.first->determine_time();
     time_ |= kv_pair.second->determine_time();
   }

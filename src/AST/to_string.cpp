@@ -195,9 +195,9 @@ std::string Conditional::to_string(size_t n) const {
     std::string output;
 
     size_t counter = 0;
-    for (const auto& kv : kv_pairs_) {
+    for (const auto& kv : pairs) {
       ++counter;
-      output += indent + "[=> " + std::to_string(counter) + " of " + std::to_string(kv_pairs_.size()) + "]\n";
+      output += indent + "[=> " + std::to_string(counter) + " of " + std::to_string(pairs.size()) + "]\n";
       output += kv.first->to_string(n + 1);
       output += kv.second->to_string(n + 1);
     }

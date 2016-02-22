@@ -86,7 +86,7 @@ namespace AST {
   }
 
   void KVPairList::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& pair : kv_pairs_) {
+    for (auto& pair : pairs) {
       set_or_recurse(pair.first, scope);
       set_or_recurse(pair.second, scope);
     }

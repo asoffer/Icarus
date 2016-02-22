@@ -497,7 +497,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
   Type *KVPairList::verify_types_with_key(Type *key_type) {
     std::set<Type *> value_types;
 
-    for (const auto &kv : kv_pairs_) {
+    for (const auto &kv : pairs) {
       if (kv.first->type != key_type) {
         // TODO: give some context for this error message. Why must this be the
         // type?  So far the only instance where this is called is for case

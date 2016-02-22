@@ -357,7 +357,7 @@ namespace AST {
 
     auto val_ptr = std::static_pointer_cast<Expression>(nodes[2]);
 
-    pair_list->kv_pairs_.emplace_back(std::move(key_ptr), std::move(val_ptr));
+    pair_list->pairs.emplace_back(std::move(key_ptr), std::move(val_ptr));
     return NPtr(pair_list);
   }
 
@@ -375,7 +375,7 @@ namespace AST {
 
     auto val_ptr = std::static_pointer_cast<Expression>(nodes[3]);
 
-    pair_list->kv_pairs_.emplace_back(std::move(key_ptr), std::move(val_ptr));
+    pair_list->pairs.emplace_back(std::move(key_ptr), std::move(val_ptr));
 
     return pair_list;
   }
