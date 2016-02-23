@@ -312,8 +312,8 @@ namespace AST {
 
         if (type_expr->is_type_literal()) {
           assert(type_as_ctx_val.as_type->is_struct());
-          static_cast<Structure *>(type_as_ctx_val.as_type)->bound_name =
-              identifier->token();
+          static_cast<Structure *>(type_as_ctx_val.as_type)
+              ->set_name(identifier->token());
 
         } else if (type_expr->is_enum_literal()) {
           assert(type_as_ctx_val.as_type->is_enum());
@@ -321,6 +321,7 @@ namespace AST {
               identifier->token();
         }
       }
+
     } else {
       if (type_expr->type == Type_) {
         ctx.bind(Context::Value(TypeVar(identifier)), identifier);
@@ -329,26 +330,6 @@ namespace AST {
       } else { /* There's nothing to do */ }
     }
 
-/*
-      // To do nice printing, we want to replace __anon... with a name. For
-      // now, we just choose the first name that was bound to it.
-      //
-      // TODO come up with a better way to
-      // 1. figure out what name to print
-      // 2. determine if the type chosen hasn't had a name bound to it yet.
-      if (type_for_binding->to_string()[0] == '_') {
-        if (type_for_binding->is_enum()) {
-          static_cast<Enumeration*>(type_for_binding)->set_name(token());
-
-        } else if (type_for_binding->is_struct()) {
-          static_cast<Structure*>(type_for_binding)->set_name(token());
-
-        } else {
-          assert(false && "non-enum non-struct starting with '_'");
-        }
-      }
-      assert(scope_->context().get(identifier).as_type && "Bound type was a nullptr");
-*/
     return nullptr;
   }
 

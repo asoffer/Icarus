@@ -194,7 +194,7 @@ Tuple* Tup(const std::vector<Type*>& types) {
 Pointer* Ptr(Type* t) {
   static std::vector<Pointer*> pointer_types_;
   for (const auto& ptr : pointer_types_) {
-    if (ptr->pointee_type() == t) return ptr;
+    if (ptr->pointee == t) return ptr;
   }
 
   auto ptr_type = new Pointer(t);

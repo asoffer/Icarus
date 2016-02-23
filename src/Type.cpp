@@ -64,9 +64,9 @@ Tuple::Tuple(const std::vector<Type*>& types) : entry_types_(types) {
   }
 }
 
-Pointer::Pointer(Type* t) : pointee_type_(t) {
-  llvm_type_ = llvm::PointerType::getUnqual(*pointee_type());
-  has_vars_ = pointee_type_->has_variables();
+Pointer::Pointer(Type *t) : pointee(t) {
+  llvm_type_ = llvm::PointerType::getUnqual(*pointee);
+  has_vars_  = pointee->has_variables();
 }
 
 Function::Function(Type* in, Type* out) : input(in), output(out) {

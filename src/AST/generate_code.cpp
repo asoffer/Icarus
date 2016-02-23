@@ -77,7 +77,7 @@ namespace AST {
       // null_pointer() automatically adds Ptr() so we need to remove it here
       // TODO is there a better API for this? Almost certainly yes.
       assert(type->is_pointer() && "Null pointer of non-pointer type ");
-      return data::null_pointer(static_cast<Pointer *>(type)->pointee_type());
+      return data::null_pointer(static_cast<Pointer *>(type)->pointee);
     case Terminal::ASCII:
       return builtin::ascii();
     case Terminal::True:
@@ -156,7 +156,7 @@ namespace AST {
     case Operator::Free: {
       bldr.CreateCall(cstdlib::free(), {bldr.CreateBitCast(val, *RawPtr)});
       // Reset pointer to null
-      auto ptee_type = static_cast<Pointer *>(operand->type)->pointee_type();
+      auto ptee_type = static_cast<Pointer *>(operand->type)->pointee;
       bldr.CreateStore(data::null_pointer(ptee_type),
                        operand->generate_lvalue(scope));
       return nullptr;
@@ -211,7 +211,7 @@ namespace AST {
 
     auto eval = operand->generate_code(scope);
     while (etype->is_pointer()) {
-      etype = static_cast<Pointer *>(etype)->pointee_type();
+      etype = static_cast<Pointer *>(etype)->pointee;
       if (!etype->is_struct()) {
         eval = scope->builder().CreateLoad(eval);
       }

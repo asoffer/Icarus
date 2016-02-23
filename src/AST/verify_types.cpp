@@ -103,7 +103,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
     } else if (op == Operator::At) {
       if (operand->type->is_pointer()) {
-        type = static_cast<Pointer *>(operand->type)->pointee_type();
+        type = static_cast<Pointer *>(operand->type)->pointee;
 
       } else {
         error_log.log(line_num, "Dereferencing object of type " +
@@ -187,7 +187,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
 
     // Access passes through pointers
     while (etype->is_pointer()) {
-      etype = static_cast<Pointer *>(etype)->pointee_type();
+      etype = static_cast<Pointer *>(etype)->pointee;
     }
 
     if (etype->is_struct()) {

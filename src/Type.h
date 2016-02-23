@@ -32,7 +32,7 @@ class Type;
 class Primitive;
 class Array;
 class Tuple;
-class Pointer;
+struct Pointer;
 struct Function;
 struct Enumeration;
 struct Structure;
@@ -250,22 +250,15 @@ private:
   std::vector<Type *> entry_types_;
 };
 
-class Pointer : public Type {
-public:
+struct Pointer : public Type {
   TYPE_FNS(Pointer, pointer);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  friend Pointer *Ptr(Type *);
-
-  Type *pointee_type() const { return pointee_type_; }
-
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
-
-private:
   Pointer(Type *t);
-  Type *pointee_type_;
+  Type *pointee;
 };
 
 struct Function : public Type {

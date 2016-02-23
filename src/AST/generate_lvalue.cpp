@@ -37,7 +37,7 @@ namespace AST {
     auto e_lval = operand->generate_lvalue(scope);
 
     while (etype->is_pointer()) {
-      etype = static_cast<Pointer*>(etype)->pointee_type();
+      etype = static_cast<Pointer*>(etype)->pointee;
       e_lval = scope->builder().CreateLoad(e_lval);
     }
 

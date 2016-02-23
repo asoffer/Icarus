@@ -54,10 +54,10 @@ std::string Function::to_string() const {
 
 std::string Pointer::to_string() const {
   std::stringstream ss;
-  if (pointee_type()->is_function()) {
-    ss << "&(" << *pointee_type() << ")";
+  if (pointee->is_function()) {
+    ss << "&(" << *pointee << ")";
   } else {
-    ss << "&" << *pointee_type();
+    ss << "&" << *pointee;
   }
   return ss.str();
 }

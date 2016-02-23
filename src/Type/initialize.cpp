@@ -53,7 +53,7 @@ void Tuple::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 }
 
 void Pointer::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  bldr.CreateStore(data::null_pointer(pointee_type()), var);
+  bldr.CreateStore(data::null_pointer(pointee), var);
 }
 
 void Function::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
