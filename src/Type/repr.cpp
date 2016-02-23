@@ -186,17 +186,17 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     // TODO is this const_uint(0) superfluous?
     auto elem_ptr = fn_bldr.CreateGEP(arg, {data::const_uint(0)});
 
-    data_type()->call_repr(fn_bldr, fn_bldr.CreateLoad(elem_ptr));
+    data_type->call_repr(fn_bldr, fn_bldr.CreateLoad(elem_ptr));
     fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(len_val, data::const_uint(1)),
                          done_block, loop_block);
 
     fn_bldr.SetInsertPoint(loop_block);
-    llvm::PHINode *phi = fn_bldr.CreatePHI(*Ptr(data_type()), 2, "loop_phi");
+    llvm::PHINode *phi = fn_bldr.CreatePHI(*Ptr(data_type), 2, "loop_phi");
     phi->addIncoming(start_ptr, loop_head_block);
 
     fn_bldr.CreateCall(cstdlib::printf(), {data::global_string(fn_bldr, ", ")});
 
-    data_type()->call_repr(fn_bldr, fn_bldr.CreateLoad(phi));
+    data_type->call_repr(fn_bldr, fn_bldr.CreateLoad(phi));
 
     auto next_ptr = fn_bldr.CreateGEP(phi, data::const_uint(1));
     fn_bldr.CreateCondBr(fn_bldr.CreateICmpULT(next_ptr, end_ptr), loop_block,

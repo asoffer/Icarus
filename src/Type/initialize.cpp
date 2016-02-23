@@ -44,7 +44,7 @@ void Array::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
       bldr.CreateBitCast(alloc_call, *Ptr(Uint)));
   auto raw_data_ptr = bldr.CreateGEP(
       alloc_call, { data::const_uint(Uint->bytes()) });
-  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "data_ptr");
+  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "data_ptr");
     bldr.CreateStore(data_ptr, var);
 }
 
@@ -98,7 +98,7 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 llvm::Function* Array::initialize() {
   if (init_fn_ != nullptr) return init_fn_;
 
-  std::vector<llvm::Type*> init_types(dim() + 1, *Uint);
+  std::vector<llvm::Type*> init_types(dimension + 1, *Uint);
   init_types[0] = *Ptr(this);
 
   init_fn_ = llvm::Function::Create(
@@ -123,14 +123,14 @@ llvm::Function* Array::initialize() {
   auto store_ptr = args[0];
   auto len_val = args[1];
 
-  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto bytes_per_elem = data::const_uint(data_type->bytes());
   auto uint_size = data::const_uint(Uint->bytes());
   auto bytes_needed = bldr.CreateAdd(uint_size, 
       bldr.CreateMul(len_val, bytes_per_elem), "alloc_bytes");
 
   // TODO more generally, determine whether zeroing out the type
   // is the correct behavior for initialization
-  auto use_calloc = data_type()->is_primitive();
+  auto use_calloc = data_type->is_primitive();
 
   // (M/C)alloc call
   auto alloc_call = bldr.CreateCall(
@@ -144,7 +144,7 @@ llvm::Function* Array::initialize() {
   auto raw_data_ptr = bldr.CreateGEP(alloc_call, { uint_size });
 
   // Pointer to data cast
-  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "data_ptr");
+  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "data_ptr");
   bldr.CreateStore(data_ptr, store_ptr);
 
   // Just calling calloc is okay for p
@@ -156,11 +156,11 @@ llvm::Function* Array::initialize() {
     bldr.CreateBr(loop_block);
     bldr.SetInsertPoint(loop_block);
 
-    llvm::PHINode* phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
+    llvm::PHINode* phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
     phi->addIncoming(data_ptr, fn_scope->entry_block());
 
     std::vector<llvm::Value*> next_init_args = { phi };
-    if (data_type()->is_array()) {
+    if (data_type->is_array()) {
       auto iters = init_args.begin();
       ++(++iters); // Start at the second length argument
 
@@ -168,11 +168,11 @@ llvm::Function* Array::initialize() {
         next_init_args.push_back(iters);
         ++iters;
       }
-      auto data_array_type = static_cast<Array*>(data_type());
+      auto data_array_type = static_cast<Array*>(data_type);
       bldr.CreateCall(data_array_type->initialize(), next_init_args);
 
     } else {
-      data_type()->call_init(bldr, phi);
+      data_type->call_init(bldr, phi);
     }
 
     auto next_ptr = bldr.CreateGEP(phi, { data::const_uint(1) });
@@ -195,7 +195,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
     (runtime_len == nullptr) ? data::const_uint(0) : runtime_len;
 
   // Compute the amount of space to allocate
-  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto bytes_per_elem = data::const_uint(data_type->bytes());
   auto uint_size = data::const_uint(Uint->bytes());
   auto bytes_needed = bldr.CreateAdd(uint_size,
       bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
@@ -214,7 +214,7 @@ llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* run
   auto raw_data_ptr = bldr.CreateGEP(malloc_call, { uint_size }, "array_idx_raw");
   
   // Pointer to data cast
-  auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()), "array_ptr");
+  auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "array_ptr");
 
   return ret_ptr;
 }

@@ -172,7 +172,7 @@ namespace TypeSystem {
 Array* Arr(Type* t) {
   static std::vector<Array*> array_types_;
   for (auto arr : array_types_)
-    if (arr->type_ == t) return arr;
+    if (arr->data_type == t) return arr;
 
   auto arr_type = new Array(t);
   array_types_.push_back(arr_type);
@@ -182,7 +182,7 @@ Array* Arr(Type* t) {
 Tuple* Tup(const std::vector<Type*>& types) {
   static std::vector<Tuple*> tuple_types_;
   for (auto tuple_type : tuple_types_) {
-    if (tuple_type->entry_types() == types) return tuple_type;
+    if (tuple_type->entries == types) return tuple_type;
   }
 
   auto tuple_type = new Tuple(types);

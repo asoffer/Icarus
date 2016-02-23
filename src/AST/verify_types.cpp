@@ -268,7 +268,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
         return;
       }
 
-      type = static_cast<Array *>(lhs->type)->data_type();
+      type = static_cast<Array *>(lhs->type)->data_type;
       assert(type && "array data type is nullptr");
       // TODO allow slice indexing
       if (rhs->type != Int && rhs->type != Uint) {

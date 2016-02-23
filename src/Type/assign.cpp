@@ -69,7 +69,7 @@ llvm::Function* Array::assign() {
   auto len_val = bldr.CreateLoad(
     bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint)));
 
-  auto bytes_per_elem = data::const_uint(data_type()->bytes());
+  auto bytes_per_elem = data::const_uint(data_type->bytes());
   auto int_size = data::const_uint(Uint->bytes());
   auto bytes_needed = bldr.CreateAdd(int_size, 
       bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
@@ -82,7 +82,7 @@ llvm::Function* Array::assign() {
       bldr.CreateBitCast(malloc_call, *Ptr(Uint)));
 
   auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
-  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type()));
+  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type));
   auto copy_from_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
   auto end_ptr = bldr.CreateGEP(copy_to_ptr, { len_val });
 
@@ -96,14 +96,14 @@ llvm::Function* Array::assign() {
   auto prev_block = bldr.GetInsertBlock();
 
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* from_phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
+  llvm::PHINode* from_phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
   from_phi->addIncoming(copy_from_ptr, prev_block);
 
-  llvm::PHINode* to_phi = bldr.CreatePHI(*Ptr(data_type()), 2, "phi");
+  llvm::PHINode* to_phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
   auto copy_from_elem = bldr.CreateLoad(bldr.CreateGEP(from_phi, { data::const_uint(0) }));
-  bldr.CreateCall(data_type()->assign(), { copy_from_elem, to_phi });
+  bldr.CreateCall(data_type->assign(), { copy_from_elem, to_phi });
 
   auto next_from_ptr = bldr.CreateGEP(from_phi, data::const_uint(1));
   auto next_to_ptr = bldr.CreateGEP(to_phi, data::const_uint(1));

@@ -46,19 +46,20 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 }
 
 Array::Array(Type* t) :
-  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), type_(t)
+  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t)
 {
   llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
-  dim_ = 1 + ((data_type()->is_array())
-      ? static_cast<Array*>(data_type())->dim() : 0);
+  dimension = data_type->is_array()
+                  ? 1 + static_cast<Array *>(data_type)->dimension
+                  : 1;
 
-  std::vector<llvm::Type*> init_args(dim_ + 1, *Uint);
+  std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
   init_args[0] = *Ptr(this);
-  has_vars_ = type_->has_variables();
+  has_vars_    = data_type->has_variables();
 }
 
-Tuple::Tuple(const std::vector<Type*>& types) : entry_types_(types) {
-  for (const auto& entry : entry_types_) {
+Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {
+  for (const auto &entry : entries) {
     if (has_vars_) break;
     has_vars_ = entry->has_variables();
   }
@@ -77,7 +78,7 @@ Function::Function(Type* in, Type* out) : input(in), output(out) {
 
   if (input->is_tuple()) {
     auto in_tup = static_cast<Tuple *>(input);
-    for (auto t : in_tup->entry_types()) {
+    for (auto t : in_tup->entries) {
       if (!t->add_llvm_input(llvm_in)) {
         llvm_type_ = nullptr;
         return;
@@ -92,7 +93,7 @@ Function::Function(Type* in, Type* out) : input(in), output(out) {
 
   if (output->is_tuple()) {
     auto out_tup = static_cast<Tuple *>(output);
-    for (auto t : out_tup->entry_types()) {
+    for (auto t : out_tup->entries) {
       if (!Ptr(t)->add_llvm_input(llvm_in)) {
         llvm_type_ = nullptr;
         return;

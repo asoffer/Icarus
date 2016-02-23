@@ -62,7 +62,7 @@ void Scope::enter() {
       continue;
 
     } else if (decl_type->is_array()) {
-      auto array_dim = static_cast<Array*>(decl_type)->dim();
+      auto array_dim = static_cast<Array*>(decl_type)->dimension;
       std::vector<llvm::Value*> init_args(array_dim + 1, data::const_uint(0));
       init_args[0] = decl_id->alloc;
       auto array_type = static_cast<Array*>(decl_type);

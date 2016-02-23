@@ -35,7 +35,7 @@ void Array::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     auto ptr_to_free = fnbldr.CreateGEP(fnbldr.CreateBitCast(data_ptr, *RawPtr),
         { data::const_neg(fnbldr, Uint->bytes()) }, "ptr_to_free");
 
-    if (data_type()->requires_uninit()) {
+    if (data_type->requires_uninit()) {
       auto len_ptr = fnbldr.CreateBitCast(ptr_to_free, *Ptr(Uint), "len_ptr");
       auto len_val = fnbldr.CreateLoad(len_ptr);
       auto end_ptr = fnbldr.CreateGEP(data_ptr, { len_val });
@@ -45,10 +45,10 @@ void Array::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
       fnbldr.CreateBr(loop_block);
       fnbldr.SetInsertPoint(loop_block);
 
-      auto phi = fnbldr.CreatePHI(*Ptr(data_type()), 2, "phi");
+      auto phi = fnbldr.CreatePHI(*Ptr(data_type), 2, "phi");
       phi->addIncoming(data_ptr, fn_scope->entry_block());
 
-      data_type()->call_uninit(fnbldr, { phi });
+      data_type->call_uninit(fnbldr, { phi });
       auto next_ptr = fnbldr.CreateGEP(phi, { data::const_uint(1) });
 
       fnbldr.CreateCondBr(fnbldr.CreateICmpULT(next_ptr, end_ptr),

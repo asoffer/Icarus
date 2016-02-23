@@ -21,11 +21,11 @@ std::string Primitive::to_string() const {
 std::string Array::to_string() const {
   std::stringstream ss;
   ss << "[-";
-  const Type* type_ptr = data_type();
+  const Type* type_ptr = data_type;
 
   while (type_ptr->is_array()) {
     ss << ", -";
-    type_ptr = static_cast<const Array*>(type_ptr)->data_type();
+    type_ptr = static_cast<const Array*>(type_ptr)->data_type;
   }
 
   ss << "; " << *type_ptr << "]";
@@ -65,10 +65,10 @@ std::string Pointer::to_string() const {
 std::string Tuple::to_string() const {
   std::stringstream ss;
 
-  auto iter = entry_types_.begin();
+  auto iter = entries.begin();
   ss << "(" << *(*iter);
   ++iter;
-  while (iter != entry_types_.end()) {
+  while (iter != entries.end()) {
     ss << ", " << *(*iter);
     ++iter;
   }

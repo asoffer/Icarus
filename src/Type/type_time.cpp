@@ -10,7 +10,7 @@ Time::Eval Array::time() const {
   // has_dynamic_length() will either be 0 or 2.
   // As a Time::Eval object, that's either "either_time"
   // or "run_time" respectively.
-  return data_type()->time() & Time::run;
+  return data_type->time() & Time::run;
 }
 
 Time::Eval Function::time() const {
@@ -26,7 +26,7 @@ Time::Eval Pointer::time() const {
 
 Time::Eval Tuple::time() const {
   Time::Eval output = Time::either;
-  for (auto t : entry_types_) {
+  for (auto t : entries) {
     output |= t->time();
   }
 

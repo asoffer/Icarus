@@ -29,9 +29,9 @@ struct TypeLiteral;
 } // namespace AST
 
 class Type;
-class Primitive;
-class Array;
-class Tuple;
+struct Primitive;
+struct Array;
+struct Tuple;
 struct Pointer;
 struct Function;
 struct Enumeration;
@@ -109,7 +109,7 @@ public:
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  friend class ::Array;
+  friend struct ::Array;
 
   virtual operator llvm::Type *() const { return llvm_type_; }
 
@@ -160,19 +160,16 @@ public:
 #undef ENDING
 #define ENDING
 
-class Primitive : public Type {
+struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  friend void TypeSystem::initialize();
-
   virtual void call_print(llvm::IRBuilder<> &bldr, llvm::Value *val);
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
-private:
   enum class TypeEnum {
     Error,
     Unknown,
@@ -186,55 +183,40 @@ private:
     NullPtr
   };
 
-  Primitive(TypeEnum pt);
-
   Primitive::TypeEnum type_;
   llvm::Function *repr_fn_;
+
+  Primitive(TypeEnum pt);
 };
 
-class Array : public Type {
-public:
+struct Array : public Type {
   TYPE_FNS(Array, array);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-  friend Array *Arr(Type *);
-
-  friend struct AST::Declaration;
-  friend class Type;
 
   virtual bool requires_uninit() const;
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
-  virtual Type *data_type() const { return type_; }
-  virtual size_t dim() const { return dim_; }
-
   llvm::Function *initialize();
   llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr,
                                   llvm::Value *runtime_len = nullptr);
 
-private:
-  Array(Type *t);
+  llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
+
+  Type *data_type;
 
   // Not the length of the array, but the dimension. That is, it's how many
   // times you can access an element.
-  size_t dim_;
+  size_t dimension;
 
-  llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
-
-  Type *type_;
+  Array(Type *t);
 };
 
-class Tuple : public Type {
-public:
+struct Tuple : public Type {
   TYPE_FNS(Tuple, tuple);
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
-
-  friend Tuple *Tup(const std::vector<Type *> &);
-
-  std::vector<Type *> entry_types() { return entry_types_; }
 
   // TODO requires_uninit()
 
@@ -242,12 +224,9 @@ public:
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
-  size_t size() const { return entry_types_.size(); }
-
-private:
   Tuple(const std::vector<Type *> &types);
 
-  std::vector<Type *> entry_types_;
+  std::vector<Type *> entries;
 };
 
 struct Pointer : public Type {

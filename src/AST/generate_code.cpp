@@ -810,7 +810,7 @@ namespace AST {
       // TODO if this is never assigned to anything, it will be leaked
 
       auto type_as_array = static_cast<Array*>(type);
-      auto element_type = type_as_array->data_type();
+      auto element_type = type_as_array->data_type;
 
       size_t num_elems = elems.size();
 
