@@ -1,7 +1,7 @@
 #include "Type.h"
 
 bool Primitive::add_llvm_input(std::vector<llvm::Type*>& llvm_in) {
-  if (llvm_type_ == nullptr) return false;
+  if (llvm_type == nullptr) return false;
   if (this != Void) llvm_in.push_back(*this);
   return true;
 }

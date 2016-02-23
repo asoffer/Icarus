@@ -20,8 +20,8 @@ namespace data {
 
 
 size_t Type::bytes() const {
-  return (llvm_type_ == nullptr)
-    ? 0 : data_layout->getTypeStoreSize(llvm_type_);
+  return (llvm_type == nullptr)
+    ? 0 : data_layout->getTypeStoreSize(llvm_type);
 }
 
 
@@ -29,64 +29,64 @@ size_t Type::bytes() const {
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
     case Primitive::TypeEnum::Bool:
-      llvm_type_ = llvm::Type::getInt1Ty(llvm::getGlobalContext());   break;
+      llvm_type = llvm::Type::getInt1Ty(llvm::getGlobalContext());   break;
     case Primitive::TypeEnum::Char:
-      llvm_type_ = llvm::Type::getInt8Ty(llvm::getGlobalContext());   break;
+      llvm_type = llvm::Type::getInt8Ty(llvm::getGlobalContext());   break;
     case Primitive::TypeEnum::Int:
-      llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+      llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
     case Primitive::TypeEnum::Real:
-      llvm_type_ = llvm::Type::getDoubleTy(llvm::getGlobalContext()); break;
+      llvm_type = llvm::Type::getDoubleTy(llvm::getGlobalContext()); break;
     case Primitive::TypeEnum::Uint:
-      llvm_type_ = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
+      llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());  break;
     case Primitive::TypeEnum::Void:
-      llvm_type_ = llvm::Type::getVoidTy(llvm::getGlobalContext());   break;
+      llvm_type = llvm::Type::getVoidTy(llvm::getGlobalContext());   break;
     default:
-      llvm_type_ = nullptr;
+      llvm_type = nullptr;
   }
 }
 
 Array::Array(Type* t) :
   init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t)
 {
-  llvm_type_ = llvm::PointerType::getUnqual(t->llvm());
+  llvm_type = llvm::PointerType::getUnqual(t->llvm_type);
   dimension = data_type->is_array()
                   ? 1 + static_cast<Array *>(data_type)->dimension
                   : 1;
 
   std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
   init_args[0] = *Ptr(this);
-  has_vars_    = data_type->has_variables();
+  has_vars     = data_type->has_vars;
 }
 
 Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {
   for (const auto &entry : entries) {
-    if (has_vars_) break;
-    has_vars_ = entry->has_variables();
+    if (has_vars) break;
+    has_vars = entry->has_vars;
   }
 }
 
 Pointer::Pointer(Type *t) : pointee(t) {
-  llvm_type_ = llvm::PointerType::getUnqual(*pointee);
-  has_vars_  = pointee->has_variables();
+  llvm_type = llvm::PointerType::getUnqual(*pointee);
+  has_vars  = pointee->has_vars;
 }
 
 Function::Function(Type* in, Type* out) : input(in), output(out) {
   std::vector<llvm::Type *> llvm_in;
   llvm::Type *llvm_out = *Void;
 
-  has_vars_ = input->has_variables() || output->has_variables();
+  has_vars = input->has_vars || output->has_vars;
 
   if (input->is_tuple()) {
     auto in_tup = static_cast<Tuple *>(input);
     for (auto t : in_tup->entries) {
       if (!t->add_llvm_input(llvm_in)) {
-        llvm_type_ = nullptr;
+        llvm_type = nullptr;
         return;
       }
     }
   } else {
     if (!input->add_llvm_input(llvm_in)) {
-      llvm_type_ = nullptr;
+      llvm_type = nullptr;
       return;
     }
   }
@@ -95,7 +95,7 @@ Function::Function(Type* in, Type* out) : input(in), output(out) {
     auto out_tup = static_cast<Tuple *>(output);
     for (auto t : out_tup->entries) {
       if (!Ptr(t)->add_llvm_input(llvm_in)) {
-        llvm_type_ = nullptr;
+        llvm_type = nullptr;
         return;
       }
     }
@@ -103,23 +103,23 @@ Function::Function(Type* in, Type* out) : input(in), output(out) {
              output->is_primitive()) {
     llvm_out = *output;
     if (llvm_out == nullptr) {
-      llvm_type_ = nullptr;
+      llvm_type = nullptr;
       return;
     }
 
   } else {
     if (!Ptr(output)->add_llvm_input(llvm_in)) {
-      llvm_type_ = nullptr;
+      llvm_type = nullptr;
       return;
     }
   }
 
-  llvm_type_ = llvm::FunctionType::get(llvm_out, llvm_in, false);
+  llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 
 Enumeration::Enumeration(const std::string& name,
     const AST::EnumLiteral* enumlit) : bound_name(name), string_data(nullptr) {
-  llvm_type_ = *Uint;
+  llvm_type = *Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
 
@@ -163,11 +163,11 @@ Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
 {
   auto struct_type = llvm::StructType::create(global_module->getContext());
   struct_type->setName(bound_name);
-  llvm_type_ = struct_type;
+  llvm_type = struct_type;
 
   for (const auto& field : fields) {
-    if (has_vars_) break;
-    has_vars_ = field.second->has_variables();
+    if (has_vars) break;
+    has_vars = field.second->has_vars;
   }
 }
 
@@ -211,7 +211,7 @@ bool Structure::requires_uninit() const {
 
 void Structure::set_name(const std::string& name) {
   bound_name = name;
-  static_cast<llvm::StructType*>(llvm_type_)->setName(bound_name);
+  static_cast<llvm::StructType*>(llvm_type)->setName(bound_name);
   if (name == "string") {
     String = this;
   }

@@ -6,7 +6,7 @@
 
 #include "typedefs.h"
 
-class Type;
+struct Type;
 
 namespace AST {
   struct Expression;

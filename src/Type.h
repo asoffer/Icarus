@@ -28,7 +28,7 @@ struct EnumLiteral;
 struct TypeLiteral;
 } // namespace AST
 
-class Type;
+struct Type;
 struct Primitive;
 struct Array;
 struct Tuple;
@@ -100,9 +100,9 @@ extern TypeVariable *TypeVar(IdPtr id);
   virtual bool is_##checkname() const { return true; }                         \
   BASIC_METHODS
 
-class Type {
+struct Type {
 public:
-  Type() : assign_fn_(nullptr), has_vars_(false) {}
+  Type() : assign_fn_(nullptr), has_vars(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
 
@@ -111,10 +111,9 @@ public:
 
   friend struct ::Array;
 
-  virtual operator llvm::Type *() const { return llvm_type_; }
+  virtual operator llvm::Type *() const { return llvm_type; }
 
   size_t bytes() const;
-  bool has_variables() const { return has_vars_; }
 
   // Note: this one is special. It functions identically to the rest, but
   // it's special in that it will return nullptr if you haven't imported the
@@ -122,8 +121,6 @@ public:
   // type to a string literal, and using a string literal should import
   // strings.
   static Type *get_string();
-
-  static std::map<std::string, Type *> literals;
 
   virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const {
     return bldr.CreateAlloca(*this);
@@ -150,11 +147,9 @@ public:
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
 
-  llvm::Type *llvm() const { return llvm_type_; }
-
   llvm::Function *assign_fn_;
-  llvm::Type *llvm_type_;
-  bool has_vars_;
+  llvm::Type *llvm_type;
+  bool has_vars;
 };
 
 #undef ENDING
@@ -246,7 +241,7 @@ struct Function : public Type {
 #include "config/binary_operators.conf"
 
   operator llvm::FunctionType *() const {
-    return static_cast<llvm::FunctionType *>(llvm_type_);
+    return static_cast<llvm::FunctionType *>(llvm_type);
   }
 
   virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
@@ -318,7 +313,7 @@ struct TypeVariable : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  TypeVariable(IdPtr id) : identifier(id) { has_vars_ = true; }
+  TypeVariable(IdPtr id) : identifier(id) { has_vars = true; }
 
   IdPtr identifier;
 };

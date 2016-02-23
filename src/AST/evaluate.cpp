@@ -253,7 +253,7 @@ namespace AST {
     // TODO just make the type no matter what?
     bool dep_type_flag = false;
     for (const auto& decl : declarations) {
-      if (decl->type->has_variables()) {
+      if (decl->type->has_vars) {
         dep_type_flag = true;
         break;
       }

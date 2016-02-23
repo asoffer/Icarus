@@ -30,7 +30,7 @@ void GlobalScope::initialize() {
     if (decl_id->is_function_arg) continue;
 
     auto decl_type = decl_id->type;
-    if (decl_type->llvm() == nullptr) continue;
+    if (decl_type->llvm_type == nullptr) continue;
 
     if (decl_type->is_function()) {
       if (decl_id->token()[0] != '_') {  // Ignore operators

@@ -34,8 +34,7 @@ void TypeLiteral::build_llvm_internals() {
   assert(type_value);
 
   for (const auto &decl : declarations) {
-    if (decl->type->has_variables())
-      return;
+    if (decl->type->has_vars) return;
   }
 
   for (const auto &decl : declarations) {
@@ -53,10 +52,10 @@ void TypeLiteral::build_llvm_internals() {
   size_t num_fields = type_value->fields.size();
   std::vector<llvm::Type *> llvm_fields(num_fields, nullptr);
   for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = type_value->fields[i].second->llvm();
+    llvm_fields[i] = type_value->fields[i].second->llvm_type;
   }
 
-  static_cast<llvm::StructType *>(type_value->llvm_type_)
+  static_cast<llvm::StructType *>(type_value->llvm_type)
       ->setBody(std::move(llvm_fields), /* isPacked = */ false);
 }
 } // namespace AST

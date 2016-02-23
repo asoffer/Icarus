@@ -531,7 +531,7 @@ namespace AST {
       if (llvm_fn == nullptr) {
         // NOTE: This means a function is not assigned.
         llvm_fn = llvm::Function::Create(
-            static_cast<llvm::FunctionType*>(type->llvm()),
+            static_cast<llvm::FunctionType*>(type->llvm_type),
             llvm::Function::ExternalLinkage, "__anon_fn", global_module);
       }
 

@@ -162,12 +162,12 @@ llvm::Function* Structure::assign() {
    for (size_t field_num = 0; field_num < num_fields; ++field_num) {
      auto field_type = fields[field_num].second;
 
-     auto field_val = bldr.CreateGEP(llvm(), val,
+     auto field_val = bldr.CreateGEP(llvm_type, val,
          { data::const_uint(0), data::const_uint(field_num) });
      if (!field_type->is_struct()) {
        field_val = bldr.CreateLoad(*field_type, field_val);
      }
-     auto field_var = bldr.CreateGEP(llvm(), var,
+     auto field_var = bldr.CreateGEP(llvm_type, var,
          { data::const_uint(0), data::const_uint(field_num) });
 
      bldr.CreateCall(field_type->assign(), { field_val, field_var });

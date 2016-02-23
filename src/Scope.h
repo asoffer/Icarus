@@ -14,7 +14,7 @@
 
 #include <iostream>
 
-class Type;
+struct Type;
 struct Function;
 class GlobalScope;
 class FnScope;
