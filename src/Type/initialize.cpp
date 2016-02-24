@@ -73,23 +73,31 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
         llvm::Function::ExternalLinkage, "init." + to_string(), global_module);
 
-    auto block = make_block("entry", init_fn_);
+    FnScope* fn_scope = new FnScope(init_fn_);
+    fn_scope->set_type(Func(Ptr(this), Void));
 
-    llvm::IRBuilder<> fnbldr(llvm::getGlobalContext());
-    fnbldr.SetInsertPoint(block);
+    llvm::IRBuilder<>& bldr = fn_scope->builder();
+    fn_scope->enter();
 
     // initialize all fields
     auto num_fields = fields.size();
     for (size_t field_num = 0; field_num < num_fields; ++field_num) {
       auto field_type = fields[field_num].second;
-
-      auto arg = fnbldr.CreateGEP(init_fn_->args().begin(),
+      auto arg = bldr.CreateGEP(init_fn_->args().begin(),
           { data::const_uint(0), data::const_uint(field_num) });
       // TODO arrays of known length need to be init'ed differently
-      field_type->call_init(fnbldr, { arg });
+
+      auto init_expr = init_values[field_num];
+      if (init_expr) {
+        auto init_val = init_expr->generate_code(fn_scope);
+        bldr.CreateCall(field_type->assign(), {init_val, arg});
+
+      } else {
+        field_type->call_init(bldr, {arg});
+      }
     }
 
-    fnbldr.CreateRetVoid();
+    fn_scope->exit();
   }
 
   bldr.CreateCall(init_fn_, { var });

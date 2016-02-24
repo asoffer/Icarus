@@ -18,6 +18,7 @@
 #include "typedefs.h"
 #include "Scope.h"
 #include "TimeEval.h"
+#include "Context.h"
 
 extern llvm::DataLayout *data_layout;
 
@@ -279,7 +280,7 @@ struct Structure : public Type {
   void set_name(const std::string &name);
 
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *t);
+      Type *t);
 
   Type *field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
@@ -291,8 +292,9 @@ struct Structure : public Type {
   std::string bound_name;
 
   std::vector<std::pair<std::string, Type *>> fields;
+  std::vector<AST::Expression*> init_values;
 
-private:
+  private:
   llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
 };
 

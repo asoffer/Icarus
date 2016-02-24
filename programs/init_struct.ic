@@ -1,0 +1,25 @@
+pair := struct {
+  x := square(4) + 1
+  y := 'x'
+  z : int
+}
+
+__print__ := (p: pair) -> void {
+  print '('
+  print p.x
+  print ','
+  print p.y
+  print ','
+  print p.z
+  print ')'
+}
+
+square := (n: int) -> int {
+  return n * n
+}
+
+main := void -> void {
+  p: pair
+  print p
+  print '\n'
+}
