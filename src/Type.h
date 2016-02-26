@@ -39,6 +39,7 @@ struct Enumeration;
 struct Structure;
 struct DependentType;
 struct TypeVariable;
+struct ForwardDeclaration;
 
 namespace TypeSystem {
 void initialize();
@@ -73,6 +74,7 @@ extern Structure *Struct(const std::string &name,
                          AST::TypeLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<Type *(Type *)> fn);
 extern TypeVariable *TypeVar(IdPtr id);
+extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
 
 #include "typedefs.h"
 
@@ -90,6 +92,7 @@ extern TypeVariable *TypeVar(IdPtr id);
   virtual llvm::Function *assign() ENDING;                                     \
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() const ENDING;                                      \
+  virtual void generate_llvm() const ENDING;                                   \
   virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
   virtual void call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING;    \
   virtual void call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) ENDING;    \
@@ -103,7 +106,7 @@ extern TypeVariable *TypeVar(IdPtr id);
 
 struct Type {
 public:
-  Type() : assign_fn_(nullptr), has_vars(false) {}
+  Type() : assign_fn_(nullptr), llvm_type(nullptr), has_vars(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
 
@@ -112,7 +115,7 @@ public:
 
   friend struct ::Array;
 
-  virtual operator llvm::Type *() const { return llvm_type; }
+  virtual operator llvm::Type *() const;
 
   size_t bytes() const;
 
@@ -149,7 +152,7 @@ public:
   virtual bool is_type_variable() const { return false; }
 
   llvm::Function *assign_fn_;
-  llvm::Type *llvm_type;
+  mutable llvm::Type *llvm_type;
   bool has_vars;
 };
 
@@ -241,9 +244,7 @@ struct Function : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  operator llvm::FunctionType *() const {
-    return static_cast<llvm::FunctionType *>(llvm_type);
-  }
+  operator llvm::FunctionType *() const;
 
   virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
@@ -319,6 +320,24 @@ struct TypeVariable : public Type {
 
   IdPtr identifier;
 };
+
+struct ForwardDeclaration : public Type {
+  TYPE_FNS(ForwardDeclaration, fwd_decl);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+  static std::vector<Type*> forward_declarations;
+
+  ForwardDeclaration(AST::Expression* expr) : expr(expr) {
+    index = forward_declarations.size();
+    forward_declarations.push_back(nullptr);
+  }
+
+  size_t index;
+  AST::Expression* expr;
+};
+
+
 
 std::ostream &operator<<(std::ostream &os, const Type &t);
 

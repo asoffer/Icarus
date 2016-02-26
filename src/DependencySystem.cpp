@@ -125,18 +125,18 @@ void traverse_from(PtrWithTorV pt) {
           }
         }
 
+
         ptr->verify_types();
 
       } else {
-        if (ptr->is_declaration()
-            && static_cast<AST::Declaration*>(ptr)->type == Type_) {
-          ptr->evaluate(ptr->scope_->context());
-        }
-
         if (ptr->is_type_literal()) {
-          // TODO move to typeliteral->evaluate?
-          auto struct_ptr = static_cast<AST::TypeLiteral*>(ptr);
-          struct_ptr->build_llvm_internals();
+          // Evaluating a type literal stores the types of its members (but
+          // those types may still be opaque.
+          ptr->evaluate(ptr->scope_->context());
+
+        } else if (ptr->is_declaration() &&
+                   static_cast<AST::Declaration *>(ptr)->type == Type_) {
+          ptr->evaluate(ptr->scope_->context());
         }
 
       }

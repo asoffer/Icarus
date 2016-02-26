@@ -220,6 +220,10 @@ void Function::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
        data::global_string(bldr, "<function " + to_string() + ">")});
 }
 
+void ForwardDeclaration::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
+  assert(false && "Cannot represent a forward declaration");
+}
+
 void DependentType::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
   bldr.CreateCall(
       cstdlib::printf(),

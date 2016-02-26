@@ -64,9 +64,17 @@ void Enumeration::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateStore(data::const_uint(0), { var });
 }
 
-void DependentType::call_init(llvm::IRBuilder<>&, llvm::Value*) {}
-void TypeVariable::call_init(llvm::IRBuilder<>&, llvm::Value*) {}
+void DependentType::call_init(llvm::IRBuilder<>&, llvm::Value*) {
+  assert(false && "Cannot initialize a dependent type");
+}
 
+void TypeVariable::call_init(llvm::IRBuilder<>&, llvm::Value*) {
+  assert(false && "Cannot initialize a type variable");
+}
+
+void ForwardDeclaration::call_init(llvm::IRBuilder<> &, llvm::Value *) {
+  assert(false && "Cannot initialize a forward declaration");
+}
 
 void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {

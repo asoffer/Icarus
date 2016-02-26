@@ -100,5 +100,15 @@ void Structure::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateCall(uninit_fn_, { var });
 }
 
-void DependentType::call_uninit(llvm::IRBuilder<>&, llvm::Value*) {}
-void TypeVariable::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value*) {}
+void DependentType::call_uninit(llvm::IRBuilder<>&, llvm::Value*) {
+  assert(false && "Cannot uninitialize a dependent type");
+}
+
+void TypeVariable::call_uninit(llvm::IRBuilder<>&, llvm::Value*) {
+  assert(false && "Cannot uninitialize a type variable");
+}
+
+void ForwardDeclaration::call_uninit(llvm::IRBuilder<> &, llvm::Value *) {
+  assert(false && "Cannot uninitialize a forward declaration");
+}
+

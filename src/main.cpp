@@ -14,20 +14,23 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
-extern llvm::Module* global_module;
-extern llvm::DataLayout* data_layout;
+extern llvm::Module *global_module;
+extern llvm::DataLayout *data_layout;
+
+namespace TypeSystem {
+extern void GenerateLLVM();
+} // namespace TypeSystem
 
 namespace data {
-  extern llvm::Value* const_uint(size_t n);
-}  // namespace data
+extern llvm::Value *const_uint(size_t n);
+} // namespace data
 
 extern ErrorLog error_log;
 
 namespace debug {
-  extern bool parser;
-  extern bool dependency_graph;
-}  // namespace debug
-
+extern bool parser;
+extern bool dependency_graph;
+} // namespace debug
 
 // The keys in this map represent the file names, and the values represent the
 // syntax trees from the parsed file.
@@ -187,6 +190,7 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   Dependency::assign_order();
+  TypeSystem::GenerateLLVM();
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;

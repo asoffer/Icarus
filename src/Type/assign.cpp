@@ -201,6 +201,12 @@ llvm::Function* DependentType::assign() {
   return nullptr;
 }
 
+// TODO these should probably be the default behavior in Type and overriden
+// elsewhere
 llvm::Function* TypeVariable::assign() {
   assert(false && "Cannot assign to a type variable");
+}
+
+llvm::Function* ForwardDeclaration::assign() {
+  assert(false && "Cannot assign to a forward declaration");
 }

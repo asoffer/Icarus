@@ -45,10 +45,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   }
 }
 
-Array::Array(Type* t) :
-  init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t)
-{
-  llvm_type = llvm::PointerType::getUnqual(t->llvm_type);
+Array::Array(Type *t)
+    : init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t) {
   dimension = data_type->is_array()
                   ? 1 + static_cast<Array *>(data_type)->dimension
                   : 1;
@@ -65,56 +63,10 @@ Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {
   }
 }
 
-Pointer::Pointer(Type *t) : pointee(t) {
-  llvm_type = llvm::PointerType::getUnqual(*pointee);
-  has_vars  = pointee->has_vars;
-}
+Pointer::Pointer(Type *t) : pointee(t) { has_vars = pointee->has_vars; }
 
 Function::Function(Type* in, Type* out) : input(in), output(out) {
-  std::vector<llvm::Type *> llvm_in;
-  llvm::Type *llvm_out = *Void;
-
   has_vars = input->has_vars || output->has_vars;
-
-  if (input->is_tuple()) {
-    auto in_tup = static_cast<Tuple *>(input);
-    for (auto t : in_tup->entries) {
-      if (!t->add_llvm_input(llvm_in)) {
-        llvm_type = nullptr;
-        return;
-      }
-    }
-  } else {
-    if (!input->add_llvm_input(llvm_in)) {
-      llvm_type = nullptr;
-      return;
-    }
-  }
-
-  if (output->is_tuple()) {
-    auto out_tup = static_cast<Tuple *>(output);
-    for (auto t : out_tup->entries) {
-      if (!Ptr(t)->add_llvm_input(llvm_in)) {
-        llvm_type = nullptr;
-        return;
-      }
-    }
-  } else if (output->is_enum() || output->is_array() ||
-             output->is_primitive()) {
-    llvm_out = *output;
-    if (llvm_out == nullptr) {
-      llvm_type = nullptr;
-      return;
-    }
-
-  } else {
-    if (!Ptr(output)->add_llvm_input(llvm_in)) {
-      llvm_type = nullptr;
-      return;
-    }
-  }
-
-  llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 
 Enumeration::Enumeration(const std::string& name,
@@ -157,19 +109,10 @@ Enumeration::Enumeration(const std::string& name,
       /*        Name = */ bound_name + ".name.array");
 }
 
-Structure::Structure(const std::string& name, AST::TypeLiteral* expr) :
-  ast_expression(expr), bound_name(name), init_fn_(nullptr),
-  uninit_fn_(nullptr), print_fn_(nullptr)
-{
-  auto struct_type = llvm::StructType::create(global_module->getContext());
-  struct_type->setName(bound_name);
-  llvm_type = struct_type;
-
-  for (const auto& field : fields) {
-    if (has_vars) break;
-    has_vars = field.second->has_vars;
-  }
-}
+// Create a totally opaque struct
+Structure::Structure(const std::string &name, AST::TypeLiteral *expr)
+    : ast_expression(expr), bound_name(name), init_fn_(nullptr),
+      uninit_fn_(nullptr), print_fn_(nullptr) {}
 
 Type* Structure::field(const std::string& name) const {
   auto iter = fields.cbegin();
@@ -211,12 +154,24 @@ bool Structure::requires_uninit() const {
 
 void Structure::set_name(const std::string& name) {
   bound_name = name;
-  static_cast<llvm::StructType*>(llvm_type)->setName(bound_name);
   if (name == "string") {
     String = this;
   }
 }
 
+std::vector<Type*> ForwardDeclaration::forward_declarations;
+
 std::ostream& operator<<(std::ostream& os, const Type& t) {
   return os << t.to_string();
 }
+
+Type::operator llvm::Type *() const {
+  generate_llvm();
+  return llvm_type;
+}
+
+Function::operator llvm::FunctionType *() const {
+  generate_llvm();
+  return static_cast<llvm::FunctionType *>(llvm_type);
+}
+

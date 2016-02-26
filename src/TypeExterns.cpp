@@ -167,51 +167,65 @@ namespace TypeSystem {
     return nullptr;
   }
 
+static std::vector<Array*> array_types_;
+static std::vector<Tuple*> tuple_types_;
+static std::vector<Pointer*> pointer_types_;
+static std::vector<Function*> fn_types_;
+static std::map<std::string, Enumeration*> enum_types_;
+static std::vector<DependentType *> dep_types_;
+static std::map<IdPtr, TypeVariable *> vars_;
+static std::map<std::string, Structure*> struct_types_;
+
+void GenerateLLVM() {
+  for (auto t : array_types_) t->generate_llvm();
+  for (auto t : tuple_types_) t->generate_llvm();
+  for (auto t : pointer_types_) t->generate_llvm();
+  for (auto t : fn_types_) t->generate_llvm();
+  for (auto kv : struct_types_) kv.second->generate_llvm();
+  for (auto kv : struct_types_) kv.second->ast_expression->build_llvm_internals();
+}
+
 }  // namespace TypeSystem
 
 Array* Arr(Type* t) {
-  static std::vector<Array*> array_types_;
-  for (auto arr : array_types_)
+  for (auto arr : TypeSystem::array_types_)
     if (arr->data_type == t) return arr;
 
   auto arr_type = new Array(t);
-  array_types_.push_back(arr_type);
+  TypeSystem::array_types_.push_back(arr_type);
   return arr_type;
 }
 
 Tuple* Tup(const std::vector<Type*>& types) {
-  static std::vector<Tuple*> tuple_types_;
-  for (auto tuple_type : tuple_types_) {
+  for (auto tuple_type : TypeSystem::tuple_types_) {
     if (tuple_type->entries == types) return tuple_type;
   }
 
   auto tuple_type = new Tuple(types);
-  tuple_types_.push_back(tuple_type);
+  TypeSystem::tuple_types_.push_back(tuple_type);
 
   return tuple_type;
 }
 
 Pointer* Ptr(Type* t) {
-  static std::vector<Pointer*> pointer_types_;
-  for (const auto& ptr : pointer_types_) {
+  for (const auto& ptr : TypeSystem::pointer_types_) {
     if (ptr->pointee == t) return ptr;
   }
 
   auto ptr_type = new Pointer(t);
-  pointer_types_.push_back(ptr_type);
+  TypeSystem::pointer_types_.push_back(ptr_type);
   return ptr_type;
 }
 
 Function* Func(Type* in, Type* out) {
-  static std::vector<Function*> fn_types_;
-  for (const auto& fn_type : fn_types_) {
+  for (const auto& fn_type : TypeSystem::fn_types_) {
     if (fn_type->input != in) continue;
     if (fn_type->output != out) continue;
     return fn_type;
   }
 
   auto fn_type = new Function(in, out);
-  fn_types_.push_back(fn_type);
+  TypeSystem::fn_types_.push_back(fn_type);
   return fn_type;
 }
 
@@ -240,9 +254,8 @@ Function* Func(std::vector<Type*> in, std::vector<Type*> out) {
 }
 
 Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
-  static std::map<std::string, Enumeration*> enum_types_;
-  auto iter = enum_types_.find(name);
-  if (iter != enum_types_.end()) return iter->second;
+  auto iter = TypeSystem::enum_types_.find(name);
+  if (iter != TypeSystem::enum_types_.end()) return iter->second;
 
   // If you don't provide something to create it with,
   // it's just meant to be a check for existance
@@ -250,13 +263,12 @@ Enumeration* Enum(const std::string& name, const AST::EnumLiteral* e) {
   if (e == nullptr) return nullptr;
 
   auto enum_type = new Enumeration(name, e);
-  return enum_types_[name] = enum_type;
+  return TypeSystem::enum_types_[name] = enum_type;
 }
 
 Structure* Struct(const std::string& name, AST::TypeLiteral* t) {
-  static std::map<std::string, Structure*> struct_types_;
-  auto iter = struct_types_.find(name);
-  if (iter != struct_types_.end()) return iter->second;
+  auto iter = TypeSystem::struct_types_.find(name);
+  if (iter != TypeSystem::struct_types_.end()) return iter->second;
 
   // If you don't provide something to create it with,
   // it's just meant to be a check for existance
@@ -265,23 +277,25 @@ Structure* Struct(const std::string& name, AST::TypeLiteral* t) {
 
   auto struct_type = new Structure(name, t);
 
-  return struct_types_[name] = struct_type;
+  return TypeSystem::struct_types_[name] = struct_type;
 }
 
 // TODO take in a vector of context values instead
-DependentType* DepType(std::function<Type*(Type*)> fn) {
+DependentType *DepType(std::function<Type *(Type *)> fn) {
   // These won't be leaked, but they aren't uniqued.
-  static std::vector<DependentType*> dep_types_;
   auto dep_type = new DependentType(fn);
-  dep_types_.push_back(dep_type);
+  TypeSystem::dep_types_.push_back(dep_type);
   return dep_type;
 }
 
-TypeVariable* TypeVar(IdPtr id) {
+TypeVariable *TypeVar(IdPtr id) {
   // These won't be leaked, but they aren't uniqued.
-  static std::map<IdPtr, TypeVariable*> vars_;
-  auto iter = vars_.find(id);
-  if (iter != vars_.end()) return iter->second;
+  auto iter = TypeSystem::vars_.find(id);
+  if (iter != TypeSystem::vars_.end()) return iter->second;
 
-  return vars_[id] = new TypeVariable(id);
+  return TypeSystem::vars_[id] = new TypeVariable(id);
+}
+
+ForwardDeclaration *FwdDecl(AST::Expression *expr) {
+  return new ForwardDeclaration(expr);
 }

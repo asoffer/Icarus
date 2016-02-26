@@ -170,7 +170,6 @@ namespace AST {
   void TypeLiteral::record_dependencies() {
     Dependency::value_type(this, this);
     for (const auto& decl : declarations) {
-      // NOTE: Assuming only : and no :=. TODO Fix this when you allow :=
       Dependency::value_type(this, decl->identifier.get());
       decl->record_dependencies();
     }

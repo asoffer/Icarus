@@ -77,8 +77,8 @@ namespace AST {
         error_log.log(line_num, "Taking the address of a " + operand->type->to_string() + " is not allowed at compile-time");
       }
 
-      // TODO FIXME I know this is wrong
-      return Context::Value(Ptr(operand->evaluate(ctx).as_type));
+      return Context::Value(Ptr(FwdDecl(operand.get())/*->evaluate(ctx).as_type*/));
+      // return Context::Value(Ptr(operand->evaluate(ctx).as_type));
     }
 
     assert(false && "Unop eval: I don't know what to do.");
@@ -250,17 +250,26 @@ namespace AST {
   }
 
   Context::Value TypeLiteral::evaluate(Context& ctx) {
-    static size_t anon_type_counter = 0;
-    // TODO just make the type no matter what?
-    bool dep_type_flag = false;
-    for (const auto& decl : declarations) {
-      if (decl->type->has_vars) {
-        dep_type_flag = true;
-        break;
+    if (type_value->fields.empty()) {
+      // Create the fields
+      for (const auto &decl : declarations) {
+        Type *field =
+          decl->is_inferred
+          ? decl->type_expr->type
+          : decl->type_expr->evaluate(scope_->context()).as_type;
+        assert(field && "field is nullptr");
+
+        type_value->fields.emplace_back(decl->identifier->token(), field);
+        type_value->init_values.emplace_back(
+            decl->is_inferred ? decl->type_expr.get() : nullptr);
+
+        // Update whether or not type_value has vars
+        // TODO Move this to a different loop so you can break early?
+        type_value->has_vars |= field->has_vars;
       }
     }
 
-    if (!dep_type_flag) return Context::Value(type_value);
+    if (!type_value->has_vars) return Context::Value(type_value);
 
     std::vector<DeclPtr> decls_in_ctx;
     for (const auto& decl : declarations) {
@@ -287,6 +296,7 @@ namespace AST {
       }
     }
 
+    static size_t anon_type_counter = 0;
     // TODO note that this will be captured if it's the result of a
     // function call by the cache, but otherwise it's currently leaked
     auto type_lit_ptr = new TypeLiteral;
@@ -294,11 +304,33 @@ namespace AST {
 
     type_lit_ptr->type_value = 
       Struct("__anon.param.struct" + std::to_string(anon_type_counter++), type_lit_ptr);
-    type_lit_ptr->build_llvm_internals();
+    // NOTE: This is a basically a copy of the conditions above.
+    // TODO: factor this out appropriately.
+
+    if (type_lit_ptr->type_value->fields.empty()) {
+      // Create the fields
+      for (const auto &decl : declarations) {
+        Type *field =
+            decl->is_inferred
+                ? decl->type_expr->type
+                : decl->type_expr->evaluate(ctx).as_type;
+        assert(field && "field is nullptr");
+
+        type_lit_ptr->type_value->fields.emplace_back(decl->identifier->token(),
+                                                      field);
+        type_lit_ptr->type_value->init_values.emplace_back(
+            decl->is_inferred ? decl->type_expr.get() : nullptr);
+
+        // Update whether or not type_lit_ptr->type_value has vars
+        // TODO Move this to a different loop so you can break early?
+        type_lit_ptr->type_value->has_vars |= field->has_vars;
+      }
+    }
 
     Dependency::mark_as_done(type_lit_ptr);
 
     return Context::Value(type_lit_ptr->type_value);
+
   }
 
   Context::Value Assignment::evaluate(Context&)  { return nullptr; }

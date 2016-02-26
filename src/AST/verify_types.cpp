@@ -165,6 +165,7 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
       type = Error;
       return;
     }
+
     auto etype = operand->type;
     if (etype == Type_) {
       Dependency::traverse_from(Dependency::PtrWithTorV(operand.get(), false));
@@ -173,7 +174,6 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
         auto enum_type = static_cast<Enumeration *>(etypename);
         // If you can get the value,
         if (enum_type->get_value(member_name)) {
-          // TODO use correct context
           type = operand->evaluate(scope_->context()).as_type;
 
         } else {
@@ -191,10 +191,10 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
     }
 
     if (etype->is_struct()) {
-      auto struct_type = static_cast<Structure *>(etype);
-      auto member_type = struct_type->field(member_name);
+      auto member_type = static_cast<Structure *>(etype)->field(member_name);
       if (member_type) {
         type = member_type;
+
       } else {
         error_log.log(line_num, "Objects of type " + etype->to_string() +
                                     " have no member named `" + member_name +
