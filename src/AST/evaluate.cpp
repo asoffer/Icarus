@@ -121,12 +121,12 @@ namespace AST {
 
         using Language::Operator;
         switch (ops[i]) {
-          case Operator::LessThan:    total &= (last.as_int < next.as_int);
-          case Operator::LessEq:      total &= (last.as_int <= next.as_int);
-          case Operator::Equal:       total &= (last.as_int == next.as_int);
-          case Operator::NotEqual:    total &= (last.as_int != next.as_int);
-          case Operator::GreaterThan: total &= (last.as_int >= next.as_int);
-          case Operator::GreaterEq:   total &= (last.as_int > next.as_int);
+          case Operator::LT:    total &= (last.as_int < next.as_int);
+          case Operator::LE:      total &= (last.as_int <= next.as_int);
+          case Operator::EQ:       total &= (last.as_int == next.as_int);
+          case Operator::NE:    total &= (last.as_int != next.as_int);
+          case Operator::GT: total &= (last.as_int >= next.as_int);
+          case Operator::GE:   total &= (last.as_int > next.as_int);
           default:;
         }
 
@@ -142,12 +142,12 @@ namespace AST {
       for (size_t i = 0; i < ops.size(); ++i) {
         auto next = exprs[i + 1]->evaluate(ctx);
 
-        if (ops[i] == Language::Operator::Equal) {
+        if (ops[i] == Language::Operator::EQ) {
           if (last.as_type != next.as_type) {
             return Context::Value(false);
           }
 
-        } else if (ops[i] == Language::Operator::NotEqual) {
+        } else if (ops[i] == Language::Operator::NE) {
           if (last.as_type == next.as_type) {
             return Context::Value(false);
           }
@@ -166,24 +166,12 @@ namespace AST {
 
         using Language::Operator;
         switch (ops[i]) {
-        case Operator::LessThan:
-          total &= (last.as_int < next.as_int);
-          break;
-        case Operator::LessEq:
-          total &= (last.as_int <= next.as_int);
-          break;
-        case Operator::Equal:
-          total &= (last.as_int == next.as_int);
-          break;
-        case Operator::NotEqual:
-          total &= (last.as_int != next.as_int);
-          break;
-        case Operator::GreaterThan:
-          total &= (last.as_int >= next.as_int);
-          break;
-        case Operator::GreaterEq:
-          total &= (last.as_int > next.as_int);
-          break;
+        case Operator::LT: total &= (last.as_int < next.as_int); break;
+        case Operator::LE: total &= (last.as_int <= next.as_int); break;
+        case Operator::EQ: total &= (last.as_int == next.as_int); break;
+        case Operator::NE: total &= (last.as_int != next.as_int); break;
+        case Operator::GT: total &= (last.as_int >= next.as_int); break;
+        case Operator::GE: total &= (last.as_int > next.as_int); break;
         default:;
         }
 

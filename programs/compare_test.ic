@@ -1,0 +1,56 @@
+main := void -> void {
+  enum_test()
+  int_test()
+  uint_test()
+  real_test()
+}
+
+E := enum {
+  A
+  B
+}
+
+enum_test := void -> void {
+  print E.A == E.A == E.A
+  print '\n'
+  print E.A == E.A == E.B
+  print '\n'
+  print E.A != E.A != E.B
+  print '\n'
+}
+
+real_test := void -> void {
+  a := 1.0
+  b := 2.0
+  c := 3.0
+  print a < b < c
+  print '\n'
+  print a > b < c
+  print '\n'
+  print a < b == c
+  print '\n'
+}
+
+uint_test := void -> void {
+  a := 1u
+  b := 2u
+  c := 3u
+  print a < b < c
+  print '\n'
+  print a > b < c
+  print '\n'
+  print a < b == c
+  print '\n'
+}
+
+int_test := void -> void {
+  a := 1
+  b := 2
+  c := 3
+  print a < b < c
+  print '\n'
+  print a > b < c
+  print '\n'
+  print a < b == c
+  print '\n'
+}

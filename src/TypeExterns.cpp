@@ -82,19 +82,19 @@ namespace TypeSystem {
     operator_table[Language::Operator::Xor] = { Func({ Bool, Bool }, Bool) };
     operator_table[Language::Operator::And] = { Func({ Bool, Bool }, Bool) };
 
-    operator_table[Language::Operator::LessThan] = {
+    operator_table[Language::Operator::LT] = {
       Func({ Int,  Int }, Bool),
       Func({ Uint, Uint }, Bool),
       Func({ Real, Real }, Bool)
     };
 
-    operator_table[Language::Operator::LessEq] = {
+    operator_table[Language::Operator::LE] = {
       Func({ Int,  Int }, Bool),
       Func({ Uint, Uint }, Bool),
       Func({ Real, Real }, Bool)
     };
 
-    operator_table[Language::Operator::Equal] = {
+    operator_table[Language::Operator::EQ] = {
       Func({ Bool,  Bool }, Bool),
       Func({ Char,  Char }, Bool),
       Func({ Int,  Int }, Bool),
@@ -103,7 +103,7 @@ namespace TypeSystem {
       Func({ Type_, Type_ }, Bool)
     };
 
-    operator_table[Language::Operator::NotEqual] = {
+    operator_table[Language::Operator::NE] = {
       Func({ Bool,  Bool }, Bool),
       Func({ Char,  Char }, Bool),
       Func({ Int,  Int }, Bool),
@@ -112,13 +112,13 @@ namespace TypeSystem {
       Func({ Type_, Type_ }, Bool)
     };
 
-    operator_table[Language::Operator::GreaterEq] = {
+    operator_table[Language::Operator::GE] = {
       Func({ Int,  Int }, Bool),
       Func({ Uint, Uint }, Bool),
       Func({ Real, Real }, Bool)
     };
 
-    operator_table[Language::Operator::GreaterThan] = {
+    operator_table[Language::Operator::GT] = {
       Func({ Int,  Int }, Bool),
       Func({ Uint, Uint }, Bool),
       Func({ Real, Real }, Bool)

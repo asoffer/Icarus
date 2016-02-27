@@ -116,17 +116,17 @@ namespace AST {
       const std::string& token = nodes[1]->token();
       // TODO move to lookup table
       if (token == "<") {
-        chain_ptr->ops.push_back(Language::Operator::LessThan);
+        chain_ptr->ops.push_back(Language::Operator::LT);
       } else if (token == "<=") {
-        chain_ptr->ops.push_back(Language::Operator::LessEq);
+        chain_ptr->ops.push_back(Language::Operator::LE);
       } else if (token == "==") {
-        chain_ptr->ops.push_back(Language::Operator::Equal);
+        chain_ptr->ops.push_back(Language::Operator::EQ);
       } else if (token == "!=") {
-        chain_ptr->ops.push_back(Language::Operator::NotEqual);
+        chain_ptr->ops.push_back(Language::Operator::NE);
       } else if (token == ">=") {
-        chain_ptr->ops.push_back(Language::Operator::GreaterEq);
+        chain_ptr->ops.push_back(Language::Operator::GE);
       } else if (token == ">") {
-        chain_ptr->ops.push_back(Language::Operator::GreaterThan);
+        chain_ptr->ops.push_back(Language::Operator::GT);
       } else if (token == "|") {
         chain_ptr->ops.push_back(Language::Operator::Or);
       } else if (token == "^") {

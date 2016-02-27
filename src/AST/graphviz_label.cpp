@@ -53,12 +53,12 @@ std::string ChainOp::graphviz_label() const {
     case Language::Operator::Or: output += "| "; break;
     case Language::Operator::Xor: output += "^ "; break;
     case Language::Operator::And: output += "& "; break;
-    case Language::Operator::LessThan: output += "< "; break;
-    case Language::Operator::LessEq: output += "<= "; break;
-    case Language::Operator::Equal: output += "== "; break;
-    case Language::Operator::NotEqual: output += "!= "; break;
-    case Language::Operator::GreaterEq: output += "<= "; break;
-    case Language::Operator::GreaterThan: output += "< "; break;
+    case Language::Operator::LT: output += "< "; break;
+    case Language::Operator::LE: output += "<= "; break;
+    case Language::Operator::EQ: output += "== "; break;
+    case Language::Operator::NE: output += "!= "; break;
+    case Language::Operator::GE: output += "<= "; break;
+    case Language::Operator::GT: output += "< "; break;
     case Language::Operator::Comma: output += ", "; break;
     default: assert(false && "Not a chain operator");
     }

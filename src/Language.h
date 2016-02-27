@@ -109,7 +109,7 @@ namespace Language {
     OrEq, XorEq, AndEq,
     AddEq, SubEq, MulEq, DivEq, ModEq,
     Or, Xor, And,
-    LessThan, LessEq, Equal, NotEqual, GreaterEq, GreaterThan,
+    LT, LE, EQ, NE, GE, GT,
     Add, Sub, Mul, Div, Mod,
     Not,
     At, Index, Call, Access 
