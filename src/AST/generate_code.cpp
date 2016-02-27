@@ -200,27 +200,43 @@ namespace AST {
   }
 
   llvm::Value *Access::generate_code(Scope *scope) {
-    auto etype = operand->type;
-    if (etype == Type_) {
+    if (operand->type == Type_) {
+      // As of 2/26/16, the only way an operand could be a type is if it's an
+      // enum, as in `Color.Red`. Here Color is an enum with the access
+      // parameter Red.
+      //
+      // NOTE: this will likely change if we implement UFCS. In that case, this
+      // whole method will probably be out of date.
       auto expr_as_type = operand->evaluate(scope->context()).as_type;
-      if (expr_as_type->is_enum()) {
-        auto enum_type = static_cast<Enumeration *>(expr_as_type);
-        return enum_type->get_value(member_name);
-      }
+      assert(expr_as_type->is_enum() && "Expression should be an enum");
+      return static_cast<Enumeration *>(expr_as_type)->get_value(member_name);
     }
 
+    // Generate the code for the operand
     auto eval = operand->generate_code(scope);
-    while (etype->is_pointer()) {
-      etype = static_cast<Pointer *>(etype)->pointee;
-      if (!etype->is_struct()) {
+
+    // To make access pass through all layers of pointers, we loop through
+    // loading values while we're looking at pointers.
+    while (operand->type->is_pointer()) {
+      operand->type = static_cast<Pointer *>(operand->type)->pointee;
+      if (!operand->type->is_struct()) {
         eval = scope->builder().CreateLoad(eval);
       }
     }
 
-    auto struct_type = static_cast<Structure *>(etype);
+    assert(operand->type->is_struct() && "Access must be on a struct");
+    auto struct_type = static_cast<Structure *>(operand->type);
+
+    if (type->is_function() || type == Type_) {
+      // TODO do something else
+      assert(false);
+    }
 
     auto retval = scope->builder().CreateGEP(
         eval, {data::const_uint(0), struct_type->field_num(member_name)});
+
+    // We always pass around pointers to structs, rather than actually loading
+    // them into registers, which might not be big enough.
     return (type->is_struct()) ? retval : scope->builder().CreateLoad(retval);
   }
 

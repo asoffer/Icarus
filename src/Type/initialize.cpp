@@ -1,58 +1,65 @@
 #include "Type.h"
 #include "Scope.h"
 
-extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
+#ifdef DEBUG
+#define AT(access) .at( (access) )
+#else
+#define AT(access) [ (access) ]
+#endif
+
+extern llvm::BasicBlock *make_block(const std::string &name,
+                                    llvm::Function *fn);
 
 namespace cstdlib {
-  extern llvm::Constant* calloc();
-  extern llvm::Constant* malloc();
-}  // namespace cstdlib
-
+extern llvm::Constant *calloc();
+extern llvm::Constant *malloc();
+} // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* null_pointer(Type* t);
-  extern llvm::Value* const_int(int n);
-  extern llvm::Value* const_uint(size_t n);
-  extern llvm::Value* const_char(char c);
-  extern llvm::Value* const_real(double d);
-  extern llvm::Value* const_true();
-  extern llvm::Value* const_false();
-}  // namespace data
+extern llvm::Value *null_pointer(Type *t);
+extern llvm::Value *const_int(int n);
+extern llvm::Value *const_uint(size_t n);
+extern llvm::Value *const_char(char c);
+extern llvm::Value *const_real(double d);
+extern llvm::Value *const_true();
+extern llvm::Value *const_false();
+} // namespace data
 
-extern llvm::Module* global_module;
+extern llvm::Module *global_module;
 
-void Primitive::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Primitive::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   switch (type_) {
-    case TypeEnum::Error:     assert(false && "Constructor called for type Error");
-    case TypeEnum::Unknown:   assert(false && "Constructor called for unknown type");
-    case TypeEnum::Type:      assert(false && "Constructor called for type");
-    case TypeEnum::Void:      assert(false && "Constructor called for void type");
-    case TypeEnum::NullPtr:   assert(false && "Constructor called for raw nullptr");
-    case TypeEnum::Bool:      bldr.CreateStore(data::const_false(),    var); return;
-    case TypeEnum::Char:      bldr.CreateStore(data::const_char('\0'), var); return;
-    case TypeEnum::Int:       bldr.CreateStore(data::const_int(0),     var); return;
-    case TypeEnum::Real:      bldr.CreateStore(data::const_real(0),    var); return;
-    case TypeEnum::Uint:      bldr.CreateStore(data::const_uint(0),    var); return;
+  case TypeEnum::Error: assert(false && "Constructor called for type Error");
+  case TypeEnum::Unknown:
+    assert(false && "Constructor called for unknown type");
+  case TypeEnum::Type: assert(false && "Constructor called for type");
+  case TypeEnum::Void: assert(false && "Constructor called for void type");
+  case TypeEnum::NullPtr: assert(false && "Constructor called for raw nullptr");
+  case TypeEnum::Bool: bldr.CreateStore(data::const_false(), var); return;
+  case TypeEnum::Char: bldr.CreateStore(data::const_char('\0'), var); return;
+  case TypeEnum::Int: bldr.CreateStore(data::const_int(0), var); return;
+  case TypeEnum::Real: bldr.CreateStore(data::const_real(0), var); return;
+  case TypeEnum::Uint: bldr.CreateStore(data::const_uint(0), var); return;
   }
 }
 
 // TODO Change this is array size is known at compile time
-void Array::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  auto alloc_call = bldr.CreateCall(cstdlib::malloc(),
-      { data::const_uint(Uint->bytes()) });
-  bldr.CreateStore(data::const_uint(0), 
-      bldr.CreateBitCast(alloc_call, *Ptr(Uint)));
-  auto raw_data_ptr = bldr.CreateGEP(
-      alloc_call, { data::const_uint(Uint->bytes()) });
+void Array::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
+  auto alloc_call =
+      bldr.CreateCall(cstdlib::malloc(), {data::const_uint(Uint->bytes())});
+  bldr.CreateStore(data::const_uint(0),
+                   bldr.CreateBitCast(alloc_call, *Ptr(Uint)));
+  auto raw_data_ptr =
+      bldr.CreateGEP(alloc_call, {data::const_uint(Uint->bytes())});
   auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "data_ptr");
-    bldr.CreateStore(data_ptr, var);
+  bldr.CreateStore(data_ptr, var);
 }
 
-void Tuple::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Tuple::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   // TODO
 }
 
-void Pointer::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Pointer::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   bldr.CreateStore(data::null_pointer(pointee), var);
 }
 
@@ -78,7 +85,8 @@ void ForwardDeclaration::call_init(llvm::IRBuilder<> &, llvm::Value *) {
 
 void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {
-    init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
+    auto x = Func(Ptr(this), Void);
+    init_fn_ = llvm::Function::Create(*x,
         llvm::Function::ExternalLinkage, "init." + to_string(), global_module);
 
     FnScope* fn_scope = new FnScope(init_fn_);
@@ -88,20 +96,17 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     fn_scope->enter();
 
     // initialize all fields
-    auto num_fields = fields.size();
-    for (size_t field_num = 0; field_num < num_fields; ++field_num) {
-      auto field_type = fields[field_num].second;
-      auto arg = bldr.CreateGEP(init_fn_->args().begin(),
-          { data::const_uint(0), data::const_uint(field_num) });
-      // TODO arrays of known length need to be init'ed differently
-
-      auto init_expr = init_values[field_num];
+    for (const auto& kv : field_num_to_llvm_num) {
+      auto the_field_type = field_type AT(kv.first);
+      auto arg = bldr.CreateGEP(
+          init_fn_->args().begin(),
+          {data::const_uint(0), data::const_uint(kv.second)});
+      auto init_expr = init_values AT(kv.first);
       if (init_expr) {
         auto init_val = init_expr->generate_code(fn_scope);
-        bldr.CreateCall(field_type->assign(), {init_val, arg});
-
+        bldr.CreateCall(the_field_type->assign(), {init_val, arg});
       } else {
-        field_type->call_init(bldr, {arg});
+        the_field_type->call_init(bldr, {arg});
       }
     }
 

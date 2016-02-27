@@ -250,22 +250,18 @@ namespace AST {
   }
 
   Context::Value TypeLiteral::evaluate(Context& ctx) {
-    if (type_value->fields.empty()) {
+    if (type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
         Type *field =
-          decl->is_inferred
-          ? decl->type_expr->type
-          : decl->type_expr->evaluate(scope_->context()).as_type;
+            decl->is_inferred
+                ? decl->type_expr->type
+                : decl->type_expr->evaluate(scope_->context()).as_type;
         assert(field && "field is nullptr");
 
-        type_value->fields.emplace_back(decl->identifier->token(), field);
-        type_value->init_values.emplace_back(
-            decl->is_inferred ? decl->type_expr.get() : nullptr);
-
-        // Update whether or not type_value has vars
-        // TODO Move this to a different loop so you can break early?
-        type_value->has_vars |= field->has_vars;
+        type_value->insert_field(decl->identifier->token(), field,
+                                 decl->is_inferred ? decl->type_expr.get()
+                                                   : nullptr);
       }
     }
 
@@ -307,7 +303,7 @@ namespace AST {
     // NOTE: This is a basically a copy of the conditions above.
     // TODO: factor this out appropriately.
 
-    if (type_lit_ptr->type_value->fields.empty()) {
+    if (type_lit_ptr->type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
         Type *field =
@@ -316,14 +312,9 @@ namespace AST {
                 : decl->type_expr->evaluate(ctx).as_type;
         assert(field && "field is nullptr");
 
-        type_lit_ptr->type_value->fields.emplace_back(decl->identifier->token(),
-                                                      field);
-        type_lit_ptr->type_value->init_values.emplace_back(
+        type_lit_ptr->type_value->insert_field(
+            decl->identifier->token(), field,
             decl->is_inferred ? decl->type_expr.get() : nullptr);
-
-        // Update whether or not type_lit_ptr->type_value has vars
-        // TODO Move this to a different loop so you can break early?
-        type_lit_ptr->type_value->has_vars |= field->has_vars;
       }
     }
 

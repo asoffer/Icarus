@@ -3,24 +3,30 @@
 
 #include <iostream>
 
+#ifdef DEBUG
+#define AT(access) .at( (access) )
+#else
+#define AT(access) [ (access) ]
+#endif
+
 extern llvm::Module* global_module;
-extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
+extern llvm::BasicBlock *make_block(const std::string &name,
+                                    llvm::Function *fn);
 namespace cstdlib {
-  extern llvm::Constant* malloc();
-}  // namespace cstdlib
+extern llvm::Constant *malloc();
+} // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n);
-  extern llvm::Value* const_uint(size_t n);
+extern llvm::Value *const_neg(llvm::IRBuilder<> &bldr, size_t n);
+extern llvm::Value *const_uint(size_t n);
 
-  extern llvm::Value* global_string(const std::string& s);
-}  // namespace data
+extern llvm::Value *global_string(const std::string &s);
+} // namespace data
 
-
-llvm::Function* get_llvm_assign(Type* type) {
-  return llvm::Function::Create(*Func({ type, Ptr(type) }, Void),
-      llvm::Function::ExternalLinkage, "assign." + type->to_string(),
-      global_module);
+llvm::Function *get_llvm_assign(Type *type) {
+  return llvm::Function::Create(*Func({type, Ptr(type)}, Void),
+                                llvm::Function::ExternalLinkage,
+                                "assign." + type->to_string(), global_module);
 }
 
 llvm::Function* Primitive::assign() {
@@ -142,43 +148,42 @@ llvm::Function* Tuple::assign() {
   return nullptr;
 }
 
-llvm::Function* Structure::assign() {
+llvm::Function *Structure::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
-    
-  FnScope* fn_scope = new FnScope(assign_fn_);
-  fn_scope->set_type(Func({ this, Ptr(this) }, Void));
 
-  llvm::IRBuilder<>& bldr = fn_scope->builder();
+  FnScope *fn_scope = new FnScope(assign_fn_);
+  fn_scope->set_type(Func({this, Ptr(this)}, Void));
+
+  llvm::IRBuilder<> &bldr = fn_scope->builder();
 
   fn_scope->enter();
-   auto iter = assign_fn_->args().begin();
-   auto val = iter;
-   auto var = ++iter;
+  auto iter = assign_fn_->args().begin();
+  auto val  = iter;
+  auto var  = ++iter;
 
   // assign all fields
-   auto num_fields= fields.size();
-   for (size_t field_num = 0; field_num < num_fields; ++field_num) {
-     auto field_type = fields[field_num].second;
-
-     auto field_val = bldr.CreateGEP(llvm_type, val,
-         { data::const_uint(0), data::const_uint(field_num) });
-     if (!field_type->is_struct()) {
-       field_val = bldr.CreateLoad(*field_type, field_val);
-     }
-     auto field_var = bldr.CreateGEP(llvm_type, var,
-         { data::const_uint(0), data::const_uint(field_num) });
-
-     bldr.CreateCall(field_type->assign(), { field_val, field_var });
-   }
+  for (const auto& iter : field_num_to_llvm_num) {
+    auto the_field_type = field_type AT(iter.first);
+    auto field_val = bldr.CreateGEP(
+        val, {data::const_uint(0), data::const_uint(iter.second)});
+    if (!the_field_type->is_struct()) {
+      // Load non-structs. Structs are passed by pointer, so no load needed in
+      // that case.
+      field_val = bldr.CreateLoad(*the_field_type, field_val);
+    }
+    auto field_var = bldr.CreateGEP(
+        var, {data::const_uint(0), data::const_uint(iter.second)});
+    bldr.CreateCall(the_field_type->assign(), {field_val, field_var});
+  }
 
   fn_scope->exit();
 
   return assign_fn_;
 }
 
-llvm::Function* Enumeration::assign() {
+llvm::Function *Enumeration::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
@@ -188,7 +193,7 @@ llvm::Function* Enumeration::assign() {
   bldr.SetInsertPoint(block);
 
   auto iter = assign_fn_->args().begin();
-  auto val = iter;
+  auto val  = iter;
   auto var = ++iter;
   bldr.CreateStore(val, var);
   bldr.CreateRetVoid();

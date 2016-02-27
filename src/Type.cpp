@@ -24,8 +24,6 @@ size_t Type::bytes() const {
     ? 0 : data_layout->getTypeStoreSize(llvm_type);
 }
 
-
-// CONSTRUCTORS
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
     case Primitive::TypeEnum::Bool:
@@ -115,26 +113,15 @@ Structure::Structure(const std::string &name, AST::TypeLiteral *expr)
       uninit_fn_(nullptr), print_fn_(nullptr) {}
 
 Type* Structure::field(const std::string& name) const {
-  auto iter = fields.cbegin();
-  while (iter != fields.end()) {
-    if (iter->first == name) {
-      return iter->second;
-    }
-    ++iter;
-  }
-  return nullptr;
+  return field_type AT(field_name_to_num AT(name));
 }
 
 llvm::Value* Structure::field_num(const std::string& name) const {
-  size_t i = 0;
-  auto iter = fields.cbegin();
-  while (iter != fields.cend()) {
-    if (iter->first == name) {
-      return data::const_uint(i);
-    }
-    ++iter; ++i;
-  }
-  return nullptr;
+  auto num = field_name_to_num AT(name);
+  auto t = field_type AT(num);
+  assert(!t->is_function() && t != Type_ && "Invalid data field");
+
+  return data::const_uint(field_num_to_llvm_num AT(num));
 }
 
 llvm::Value* Enumeration::get_value(const std::string& str) const {
@@ -144,10 +131,8 @@ llvm::Value* Enumeration::get_value(const std::string& str) const {
 
 bool Array::requires_uninit() const { return true; }
 bool Structure::requires_uninit() const {
-  for (const auto field : fields) {
-    if (field.second->requires_uninit()) {
-      return true;
-    }
+  for (const auto t : field_type) {
+    if (t->requires_uninit()) return true;
   }
   return false;
 }
@@ -175,3 +160,28 @@ Function::operator llvm::FunctionType *() const {
   return static_cast<llvm::FunctionType *>(llvm_type);
 }
 
+void Structure::insert_field(const std::string &name, Type *ty,
+                             AST::Expression *init_val) {
+  auto next_num = field_num_to_name.size();
+  field_name_to_num[name] = next_num;
+  field_num_to_name.push_back(name);
+  field_type.push_back(ty);
+
+  { // Check sizes align
+    size_t size1 = field_name_to_num.size();
+    size_t size2 = field_num_to_name.size();
+    size_t size3 = field_type.size();
+    assert(size1 == size2 && size2 == size3 &&
+           "Size mismatch in struct database");
+  }
+
+  if (!ty->is_function() && ty != Type_) {
+    size_t next_llvm                = field_num_to_llvm_num.size();
+    field_num_to_llvm_num[next_num] = next_llvm;
+  }
+
+  // By default, init_val is nullptr;
+  init_values.emplace_back(init_val);
+
+  has_vars |= ty->has_vars;
+}

@@ -281,7 +281,7 @@ struct Structure : public Type {
   void set_name(const std::string &name);
 
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-      Type *t);
+                                 Type *t);
 
   Type *field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
@@ -292,10 +292,19 @@ struct Structure : public Type {
   AST::TypeLiteral *ast_expression;
   std::string bound_name;
 
-  std::vector<std::pair<std::string, Type *>> fields;
-  std::vector<AST::Expression*> init_values;
+  void insert_field(const std::string &name, Type *ty,
+                    AST::Expression *init_val);
 
-  private:
+  // Field database info
+  std::map<std::string, size_t> field_name_to_num;
+  std::vector<std::string> field_num_to_name;
+  std::vector<Type *> field_type;
+  std::map<size_t, size_t> field_num_to_llvm_num;
+
+  std::vector<AST::Expression *> init_values;
+
+
+private:
   llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
 };
 

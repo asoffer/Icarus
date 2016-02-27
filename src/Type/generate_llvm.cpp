@@ -1,5 +1,11 @@
 #include "Type.h"
 
+#ifdef DEBUG
+#define AT(access) .at( (access) )
+#else
+#define AT(access) [ (access) ]
+#endif
+
 extern llvm::Module* global_module;
 
 void Array::generate_llvm() const {
@@ -75,7 +81,7 @@ void Structure::generate_llvm() const {
   auto struct_type = llvm::StructType::create(global_module->getContext());
   llvm_type = struct_type;
 
-  for (const auto &kv : fields) kv.second->generate_llvm();
+  for (const auto &f : field_type) f->generate_llvm();
 
   struct_type->setName(bound_name);
 }
@@ -93,15 +99,15 @@ void AST::TypeLiteral::build_llvm_internals() {
   auto llvm_struct_type =
       static_cast<llvm::StructType *>(type_value->llvm_type);
   if (!llvm_struct_type->isOpaque()) return;
- 
+
   for (const auto &decl : declarations) {
     if (decl->type->has_vars) return;
   }
 
-  size_t num_fields = type_value->fields.size();
-  std::vector<llvm::Type *> llvm_fields(num_fields, nullptr);
-  for (size_t i = 0; i < num_fields; ++i) {
-    llvm_fields[i] = type_value->fields[i].second->llvm_type;
+  size_t num_data_fields = type_value->field_num_to_llvm_num.size();
+  std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
+  for (const auto& kv : type_value->field_num_to_llvm_num) {
+    llvm_fields[kv.second] = type_value->field_type AT(kv.first)->llvm_type;
   }
 
   static_cast<llvm::StructType *>(type_value->llvm_type)
