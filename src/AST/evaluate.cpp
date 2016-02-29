@@ -84,30 +84,27 @@ namespace AST {
     assert(false && "Unop eval: I don't know what to do.");
   }
 
-  Context::Value ChainOp::evaluate(Context& ctx) { 
+  Context::Value ChainOp::evaluate(Context &ctx) {
     if (exprs[0]->type == Bool) {
       switch (ops[0]) {
-        case Language::Operator::Xor:
-          {
-            bool expr_val = false;
-            for (auto& expr : exprs) {
-              expr_val = (expr_val != expr->evaluate(ctx).as_bool);
-            }
-            return Context::Value(expr_val);
-          }
-        case Language::Operator::And:
-          for (auto& expr : exprs) {
-            if (expr->evaluate(ctx).as_bool) return Context::Value(false);
-          }
-          return Context::Value(true);
-        case Language::Operator::Or:
-          for (auto& expr : exprs) {
-            if (expr->evaluate(ctx).as_bool) {
-              return Context::Value(true);
-            }
-          }
-          return Context::Value(false);
-        default:;
+      case Language::Operator::Xor: {
+        bool expr_val = false;
+        for (auto &expr : exprs) {
+          expr_val = (expr_val != expr->evaluate(ctx).as_bool);
+        }
+        return Context::Value(expr_val);
+      }
+      case Language::Operator::And:
+        for (auto &expr : exprs) {
+          if (expr->evaluate(ctx).as_bool) return Context::Value(false);
+        }
+        return Context::Value(true);
+      case Language::Operator::Or:
+        for (auto &expr : exprs) {
+          if (expr->evaluate(ctx).as_bool) { return Context::Value(true); }
+        }
+        return Context::Value(false);
+      default:;
       }
 
       return Context::Value(true);
@@ -121,13 +118,13 @@ namespace AST {
 
         using Language::Operator;
         switch (ops[i]) {
-          case Operator::LT:    total &= (last.as_int < next.as_int);
-          case Operator::LE:      total &= (last.as_int <= next.as_int);
-          case Operator::EQ:       total &= (last.as_int == next.as_int);
-          case Operator::NE:    total &= (last.as_int != next.as_int);
-          case Operator::GT: total &= (last.as_int >= next.as_int);
-          case Operator::GE:   total &= (last.as_int > next.as_int);
-          default:;
+        case Operator::LT: total &= (last.as_int < next.as_int);
+        case Operator::LE: total &= (last.as_int <= next.as_int);
+        case Operator::EQ: total &= (last.as_int == next.as_int);
+        case Operator::NE: total &= (last.as_int != next.as_int);
+        case Operator::GT: total &= (last.as_int >= next.as_int);
+        case Operator::GE: total &= (last.as_int > next.as_int);
+        default:;
         }
 
         if (!total) { return Context::Value(false); }
@@ -185,7 +182,7 @@ namespace AST {
       return Context::Value(true);
 
     } else {
-      return nullptr;
+      assert(false && "ChainOp::evaluate case unhandled");
     }
   }
 

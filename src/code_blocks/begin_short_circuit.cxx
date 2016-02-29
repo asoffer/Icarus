@@ -1,11 +1,5 @@
-auto landing    = make_block("land", parent_fn);
-auto curr_block = bldr.GetInsertBlock();
-
-// Setup landing phi node
-bldr.SetInsertPoint(landing);
-llvm::PHINode *phi =
-    bldr.CreatePHI(*Bool, static_cast<unsigned int>(exprs.size()), "phi");
-
+bldr.SetInsertPoint(curr_block);
+auto lhs_val = exprs[0] -> generate_code(scope);
 for (size_t i = 1; i < exprs.size(); ++i) {
   bldr.SetInsertPoint(curr_block);
   auto rhs_val = exprs[i]->generate_code(scope);

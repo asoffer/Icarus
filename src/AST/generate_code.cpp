@@ -366,19 +366,39 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
   }
 
   using Language::Operator;
-  auto lhs_val         = exprs[0]->generate_code(scope);
-  llvm::Value *ret_val = nullptr;
 
-  auto &bldr = scope->builder();
+  auto expr_type = exprs[0]->type;
+  auto &bldr     = scope->builder();
+
+  // Boolean xor is separate because it can't be short-circuited
+  if (expr_type == Bool && ops.front() == Operator::Xor) {
+    llvm::Value *cmp_val = exprs[0]->generate_code(scope);
+    for (size_t i = 1; i < exprs.size(); ++i) {
+      cmp_val = bldr.CreateXor(cmp_val, exprs[i]->generate_code(scope));
+    }
+    return cmp_val;
+  }
 
   auto parent_fn  = bldr.GetInsertBlock()->getParent();
+  auto landing    = make_block("land", parent_fn);
+  auto curr_block = bldr.GetInsertBlock();
+
+  // Count the number of incoming branches into the phi node. This is equal to
+  // the number of exprs, unless it's & or |. In those instances, it is one more
+  // than the number of expressions.
+  auto num_incoming = static_cast<unsigned int>(exprs.size());
+  if (expr_type == Bool) ++num_incoming;
+
+  // Create the phi node
+  bldr.SetInsertPoint(landing);
+  llvm::PHINode *phi = bldr.CreatePHI(*Bool, num_incoming, "phi");
 
 #define CASE_OPERATOR(cmp, llvm_call, op_name)                                 \
   case Operator::op_name:                                                      \
     cmp = bldr.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");   \
     break
 
-  if (exprs[0]->type == Int) {
+  if (expr_type == Int) {
 #include "code_blocks/begin_short_circuit.cxx"
     CASE_OPERATOR(cmp_val, ICmpS, LT);
     CASE_OPERATOR(cmp_val, ICmpS, LE);
@@ -388,7 +408,7 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
     CASE_OPERATOR(cmp_val, ICmpS, GT);
 #include "code_blocks/end_short_circuit.cxx"
 
-  } else if (exprs[0]->type == Uint) {
+  } else if (expr_type == Uint) {
 #include "code_blocks/begin_short_circuit.cxx"
     CASE_OPERATOR(cmp_val, ICmpU, LT);
     CASE_OPERATOR(cmp_val, ICmpU, LE);
@@ -398,7 +418,7 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
     CASE_OPERATOR(cmp_val, ICmpU, GT);
 #include "code_blocks/end_short_circuit.cxx"
 
-  } else if (exprs[0]->type == Real) {
+  } else if (expr_type == Real) {
 #include "code_blocks/begin_short_circuit.cxx"
     CASE_OPERATOR(cmp_val, FCmpO, LT);
     CASE_OPERATOR(cmp_val, FCmpO, LE);
@@ -408,73 +428,53 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
     CASE_OPERATOR(cmp_val, FCmpO, GT);
 #include "code_blocks/end_short_circuit.cxx"
 
-
-  } else if (exprs[0]->type->is_enum()) {
+  } else if (expr_type->is_enum()) {
 #include "code_blocks/begin_short_circuit.cxx"
     CASE_OPERATOR(cmp_val, ICmp, EQ);
     CASE_OPERATOR(cmp_val, ICmp, NE);
 #include "code_blocks/end_short_circuit.cxx"
-
+    // TODO struct, function, etc
 #undef CASE_OPERATOR
-
-  } else if (exprs[0]->type == Bool) {
-    // For boolean expression, the chain must be a single consistent operation
-    // because '&', '^', and '|' all have different precedence levels.
-    auto cmp_val = lhs_val;
-    if (ops.front() == Language::Operator::Xor) {
-      for (size_t i = 1; i < exprs.size(); ++i) {
-        auto expr    = exprs[i];
-        auto rhs_val = expr->generate_code(scope);
-        cmp_val      = bldr.CreateXor(cmp_val, rhs_val);
+  } else if (expr_type == Bool) {
+    // TODO in the last case, can't you just come from the last branch taking
+    // the yet unknown value rather than doing another branch? Answer: Yes. Do
+    // it.
+    if (ops.front() == Operator::And) {
+      for (const auto& ex : exprs) {
+        bldr.SetInsertPoint(curr_block);
+        auto next_block = make_block("next", parent_fn);
+        bldr.CreateCondBr(ex->generate_code(scope), next_block, landing);
+        phi->addIncoming(data::const_false(), curr_block);
+        curr_block = next_block;
       }
+
+      bldr.SetInsertPoint(curr_block);
+      phi->addIncoming(data::const_true(), curr_block);
+
+    } else if (ops.front() == Operator::Or) {
+      for (const auto& ex : exprs) {
+        bldr.SetInsertPoint(curr_block);
+        auto next_block = make_block("next", parent_fn);
+        bldr.CreateCondBr(ex->generate_code(scope), landing, next_block);
+        phi->addIncoming(data::const_true(), curr_block);
+        curr_block = next_block;
+      }
+
+      bldr.SetInsertPoint(curr_block);
+      phi->addIncoming(data::const_false(), curr_block);
+
     } else {
-      auto parent_fn = bldr.GetInsertBlock()->getParent();
-      // Condition blocks
-      std::vector<llvm::BasicBlock *> conditionblocks(ops.size());
-      for (auto &block : conditionblocks) {
-        block = make_block("cond.block", parent_fn);
-      }
-
-      // Landing blocks
-      auto land_true_block  = make_block("land.true", parent_fn);
-      auto land_false_block = make_block("land.false", parent_fn);
-      auto merge_block      = make_block("merge.block", parent_fn);
-
-      if (ops.front() == Language::Operator::And) {
-        for (size_t i = 0; i < ops.size(); ++i) {
-          bldr.CreateCondBr(cmp_val, conditionblocks[i], land_false_block);
-          bldr.SetInsertPoint(conditionblocks[i]);
-          cmp_val = exprs[i + 1]->generate_code(scope);
-        }
-      } else { // if (ops.front() == Language::Operator::Or) {
-        for (size_t i = 0; i < ops.size(); ++i) {
-          bldr.CreateCondBr(cmp_val, land_true_block, conditionblocks[i]);
-          bldr.SetInsertPoint(conditionblocks[i]);
-          cmp_val = exprs[i + 1]->generate_code(scope);
-        }
-      }
-
-      bldr.CreateCondBr(cmp_val, land_true_block, land_false_block);
-
-      bldr.SetInsertPoint(land_true_block);
-      bldr.CreateBr(merge_block);
-
-      bldr.SetInsertPoint(land_false_block);
-      bldr.CreateBr(merge_block);
-
-      bldr.SetInsertPoint(merge_block);
-      // Join two cases
-      llvm::PHINode *phi_node = bldr.CreatePHI(*Bool, 2, "merge");
-      phi_node->addIncoming(data::const_true(), land_true_block);
-      phi_node->addIncoming(data::const_false(), land_false_block);
-      cmp_val = phi_node;
+      assert(false && "invalid operand in short-circuiting");
     }
-    ret_val = cmp_val;
+
+    bldr.CreateBr(landing);
+    bldr.SetInsertPoint(landing);
+    return phi;
+
+  } else {
+    assert(false && "Invalid type in ChainOp::generate_code");
   }
-
-  return ret_val;
 }
-
 
 llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
   if (*type == nullptr) return nullptr;

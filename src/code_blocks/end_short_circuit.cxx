@@ -10,8 +10,7 @@
 }
 
 bldr.SetInsertPoint(curr_block);
-bldr.CreateBr(landing);
 phi->addIncoming(data::const_true(), curr_block);
-
+bldr.CreateBr(landing);
 bldr.SetInsertPoint(landing);
-ret_val = phi;
+return phi;

@@ -48,4 +48,4 @@ help:
 	@echo "LLVM_LINK : $(LLVM_LINK)"
 
 wc:
-	@wc src/*.* src/AST/*.* src/Type/*.* src/config/*.*
+	@wc src/*.* src/*/*.*
