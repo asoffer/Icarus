@@ -361,9 +361,7 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
   // TODO eval of enums at compile-time is wrong. This could be
   // 1. That the eval function is wrong, or
   // 2. That they shouldn't be determined at compile-time
-  if (time() == Time::compile) {
-    return llvm_value(evaluate(scope->context()));
-  }
+  if (time() == Time::compile) return llvm_value(evaluate(scope->context()));
 
   using Language::Operator;
 
@@ -444,7 +442,7 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
         bldr.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
         bldr.CreateCondBr(ex->generate_code(scope), next_block, landing);
-        phi->addIncoming(data::const_false(), curr_block);
+        phi->addIncoming(data::const_false(), bldr.GetInsertBlock());
         curr_block = next_block;
       }
 
@@ -456,7 +454,7 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
         bldr.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
         bldr.CreateCondBr(ex->generate_code(scope), landing, next_block);
-        phi->addIncoming(data::const_true(), curr_block);
+        phi->addIncoming(data::const_true(), bldr.GetInsertBlock());
         curr_block = next_block;
       }
 

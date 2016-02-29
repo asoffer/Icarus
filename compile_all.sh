@@ -1,3 +1,4 @@
+bin/icarus programs/access.ic
 bin/icarus programs/alloc_init.ic
 bin/icarus programs/alloc_loop.ic
 bin/icarus programs/alloc_loop2.ic

@@ -85,46 +85,46 @@ namespace AST {
   }
 
   Context::Value ChainOp::evaluate(Context &ctx) {
-    if (exprs[0]->type == Bool) {
+    using Language::Operator;
+    auto expr_type = exprs[0]->type;
+    if (expr_type == Bool) {
       switch (ops[0]) {
-      case Language::Operator::Xor: {
+      case Operator::Xor: {
         bool expr_val = false;
         for (auto &expr : exprs) {
           expr_val = (expr_val != expr->evaluate(ctx).as_bool);
         }
         return Context::Value(expr_val);
       }
-      case Language::Operator::And:
+      case Operator::And:
         for (auto &expr : exprs) {
           if (expr->evaluate(ctx).as_bool) return Context::Value(false);
         }
         return Context::Value(true);
-      case Language::Operator::Or:
+      case Operator::Or:
         for (auto &expr : exprs) {
           if (expr->evaluate(ctx).as_bool) { return Context::Value(true); }
         }
         return Context::Value(false);
-      default:;
+      default: assert(false && "Invalid chainop for bool in evaluate()");
       }
 
       return Context::Value(true);
 
-    } else if (exprs[0]->type == Int) {
-
+    } else if (expr_type == Int) {
       bool total = true;
       auto last = exprs[0]->evaluate(ctx);
       for (size_t i = 0; i < ops.size(); ++i) {
         auto next = exprs[i + 1]->evaluate(ctx);
 
-        using Language::Operator;
         switch (ops[i]) {
-        case Operator::LT: total &= (last.as_int < next.as_int);
-        case Operator::LE: total &= (last.as_int <= next.as_int);
-        case Operator::EQ: total &= (last.as_int == next.as_int);
-        case Operator::NE: total &= (last.as_int != next.as_int);
-        case Operator::GT: total &= (last.as_int >= next.as_int);
-        case Operator::GE: total &= (last.as_int > next.as_int);
-        default:;
+        case Operator::LT: total &= (last.as_int < next.as_int); break;
+        case Operator::LE: total &= (last.as_int <= next.as_int); break;
+        case Operator::EQ: total &= (last.as_int == next.as_int); break;
+        case Operator::NE: total &= (last.as_int != next.as_int); break;
+        case Operator::GE: total &= (last.as_int >= next.as_int); break;
+        case Operator::GT: total &= (last.as_int > next.as_int); break;
+        default: assert(false && "Invalid chainop for int in evaluate()");
         }
 
         if (!total) { return Context::Value(false); }
@@ -134,59 +134,95 @@ namespace AST {
 
       return Context::Value(true);
 
-    } else if (exprs[0]->type == Type_) {
-      auto last = exprs[0]->evaluate(ctx);
-      for (size_t i = 0; i < ops.size(); ++i) {
-        auto next = exprs[i + 1]->evaluate(ctx);
-
-        if (ops[i] == Language::Operator::EQ) {
-          if (last.as_type != next.as_type) {
-            return Context::Value(false);
-          }
-
-        } else if (ops[i] == Language::Operator::NE) {
-          if (last.as_type == next.as_type) {
-            return Context::Value(false);
-          }
-        }
-
-        last = next;
-      }
-
-      return Context::Value(true);
-
-    } else if (exprs[0]->type == Uint) {
+    } else if (expr_type == Type_) {
       bool total = true;
       auto last = exprs[0]->evaluate(ctx);
       for (size_t i = 0; i < ops.size(); ++i) {
         auto next = exprs[i + 1]->evaluate(ctx);
 
-        using Language::Operator;
         switch (ops[i]) {
-        case Operator::LT: total &= (last.as_int < next.as_int); break;
-        case Operator::LE: total &= (last.as_int <= next.as_int); break;
-        case Operator::EQ: total &= (last.as_int == next.as_int); break;
-        case Operator::NE: total &= (last.as_int != next.as_int); break;
-        case Operator::GT: total &= (last.as_int >= next.as_int); break;
-        case Operator::GE: total &= (last.as_int > next.as_int); break;
-        default:;
+        case Operator::EQ: total &= (last.as_type == next.as_type); break;
+        case Operator::NE: total &= (last.as_type != next.as_type); break;
+        default: assert(false && "Invalid chainop for type in evaluate()");
         }
 
-        if (!total) {
-          return Context::Value(false);
-        }
+        if (!total) { return Context::Value(false); }
 
         last = next;
       }
 
       return Context::Value(true);
 
+    } else if (expr_type == Uint) {
+      bool total = true;
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
+
+        switch (ops[i]) {
+        case Operator::LT: total &= (last.as_int < next.as_int); break;
+        case Operator::LE: total &= (last.as_int <= next.as_int); break;
+        case Operator::EQ: total &= (last.as_int == next.as_int); break;
+        case Operator::NE: total &= (last.as_int != next.as_int); break;
+        case Operator::GE: total &= (last.as_int >= next.as_int); break;
+        case Operator::GT: total &= (last.as_int > next.as_int); break;
+        default: assert(false && "Invalid chainop for uint in evaluate()");
+        }
+
+        if (!total) { return Context::Value(false); }
+
+        last = next;
+      }
+
+      return Context::Value(true);
+
+    } else if (expr_type == Real) {
+      bool total = true;
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
+
+        switch (ops[i]) {
+        case Operator::LT: total &= (last.as_real < next.as_real); break;
+        case Operator::LE: total &= (last.as_real <= next.as_real); break;
+        case Operator::EQ: total &= (last.as_real == next.as_real); break;
+        case Operator::NE: total &= (last.as_real != next.as_real); break;
+        case Operator::GE: total &= (last.as_real >= next.as_real); break;
+        case Operator::GT: total &= (last.as_real > next.as_real); break;
+        default: assert(false && "Invalid chainop for uint in evaluate()");
+        }
+
+        if (!total) { return Context::Value(false); }
+
+        last = next;
+      }
+
+      return Context::Value(true);
+
+    } else if (expr_type->is_enum()) {
+      bool total = true;
+      auto last = exprs[0]->evaluate(ctx);
+      for (size_t i = 0; i < ops.size(); ++i) {
+        auto next = exprs[i + 1]->evaluate(ctx);
+
+        switch (ops[i]) {
+        case Operator::EQ: total &= (last.as_uint == next.as_uint); break;
+        case Operator::NE: total &= (last.as_uint != next.as_uint); break;
+        default: assert(false && "Invalid chainop for enum in evaluate()");
+        }
+
+        if (!total) { return Context::Value(false); }
+
+        last = next;
+      }
+
+      return Context::Value(true);
     } else {
       assert(false && "ChainOp::evaluate case unhandled");
     }
   }
 
-  Context::Value ArrayType::evaluate(Context& ctx)       {
+  Context::Value ArrayType::evaluate(Context &ctx) {
     // TODO what if this is just a compile time array in shorthand?
     return Context::Value(Arr(data_type->evaluate(ctx).as_type));
   }
@@ -347,6 +383,10 @@ namespace AST {
   }
 
   Context::Value Access::evaluate(Context& ctx) {
+    if (type->is_enum()) {
+      auto enum_type = static_cast<Enumeration*>(type);
+      return Context::Value(enum_type->get_index(member_name));
+    }
     assert(false && "not yet implemented");
   }
 

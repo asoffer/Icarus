@@ -25,6 +25,10 @@ enum_test := void -> void {
     return E.C
   }
 
+  print E.A == E.A == E.A
+  print '\n'
+  print E.A == E.B == ae()
+  print '\n'
   print ae() == ae() != be()
   print '\n'
   print ae() == be() == ce()

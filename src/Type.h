@@ -259,13 +259,14 @@ struct Enumeration : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
+  size_t get_index(const std::string &str) const;
   llvm::Value *get_value(const std::string &str) const;
 
   Enumeration(const std::string &name, const AST::EnumLiteral *enumlit);
 
   std::string bound_name;
   llvm::Function *repr_fn_;
-  std::map<std::string, llvm::Value *> int_values;
+  std::map<std::string, size_t> int_values;
   llvm::GlobalVariable *string_data;
 };
 

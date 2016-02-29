@@ -1,0 +1,4 @@
+main := void -> void {
+  a : bool
+  a = a | a & a
+}

@@ -80,7 +80,7 @@ Enumeration::Enumeration(const std::string& name,
 
   size_t i = 0;
   for (const auto& idstr : enumlit->members) {
-    int_values[idstr] = data::const_uint(i);
+    int_values[idstr] = i;
 
   auto enum_str = new llvm::GlobalVariable(
       *global_module,
@@ -124,9 +124,17 @@ llvm::Value* Structure::field_num(const std::string& name) const {
   return data::const_uint(field_num_to_llvm_num AT(num));
 }
 
-llvm::Value* Enumeration::get_value(const std::string& str) const {
+size_t Enumeration::get_index(const std::string& str) const {
   auto iter = int_values.find(str);
-  return (iter == int_values.end()) ? nullptr : iter->second;
+  if (iter == int_values.end()) {
+    assert(false && "Invalid enumeration value");
+  } else {
+    return iter->second;
+  }
+}
+
+llvm::Value* Enumeration::get_value(const std::string& str) const {
+  return data::const_uint(get_index(str));
 }
 
 bool Array::requires_uninit() const { return true; }
