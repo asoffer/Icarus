@@ -15,7 +15,7 @@ namespace cstdlib {
 
 GlobalScope* Scope::Global = nullptr;  // Initialized in main
 
-std::vector<DeclPtr> Scope::decl_registry_ = {};
+std::vector<AST::Declaration *> Scope::decl_registry_ = {};
 
 namespace data {
   extern llvm::Value* const_uint(size_t n);
@@ -178,15 +178,15 @@ void Scope::set_parent(Scope* parent) {
 
 // Gets the type of that the identifier was declared as. This is a pointer to
 // an expression object, rather than a Type object.
-EPtr Scope::get_declared_type(IdPtr identifierptr) const {
+AST::Expression *Scope::get_declared_type(AST::Identifier *idptr) const {
   for (const auto& decl_ptr : ordered_decls_) {
-    if (decl_ptr->identifier != identifierptr) continue;
+    if (decl_ptr->identifier != idptr) continue;
     return decl_ptr->type_expr;
   }
 
   // This cannot segfault because the program would have exited earlier
   // if it was undeclared.
-  return parent()->get_declared_type(identifierptr);
+  return parent()->get_declared_type(idptr);
 
 }
 
@@ -290,8 +290,8 @@ void Scope::verify_no_shadowing() {
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
                                           const std::string &identifierstring) {
-  auto decl = new Declaration;
-  decl_registry_.emplace_back(d);
+  auto decl = new AST::Declaration;
+  decl_registry_.emplace_back(decl);
   decl->identifier = new AST::Identifier(line_num, identifierstring);
   decl->line_num   = line_num;
   return decl;
