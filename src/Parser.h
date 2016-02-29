@@ -15,7 +15,7 @@ class Parser {
 
     Parser(const std::string& filename);
 
-    NPtr parse();
+    AST::Node *parse();
 
   private:
     bool should_shift();
@@ -24,7 +24,7 @@ class Parser {
 
     void show_debug() const;
 
-    NPtrVec stack_;
+    NPtrVec2 stack_;
     std::unique_ptr<AST::TokenNode> lookahead_;
     Lexer lexer_;
 };
@@ -40,7 +40,7 @@ inline void Parser::shift() {
     return;
   }
 
-  stack_.push_back(std::move(lookahead_));
+  stack_.push_back(lookahead_.release());
   lookahead_ = std::move(next_node_ptr);
 }
 
