@@ -25,6 +25,24 @@ class WhileScope;
 struct Structure;
 struct Enumeration;
 
+class Node;
+
+template <typename T> T *steal(AST::Expression *&n) {
+  // TODO reinterpret_cast for safety in debug mode?
+  auto temp = static_cast<T*>(n);
+  assert(temp && "stolen pointer is null");
+  n = nullptr;
+  return temp;
+}
+
+template <typename T> T *steal(AST::Node *&n) {
+  // TODO reinterpret_cast for safety in debug mode?
+  auto temp = static_cast<T*>(n);
+  assert(temp && "stolen pointer is null");
+  n = nullptr;
+  return temp;
+}
+
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
@@ -53,7 +71,7 @@ namespace AST {
   virtual llvm::Value *generate_lvalue(Scope *scope) ENDING;                   \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
-  static NPtr build(NPtrVec &&nodes)
+  static Node* build(NPtrVec2 &&nodes)
 
   struct Node {
     Language::NodeType node_type() const { return type_; }
@@ -149,7 +167,7 @@ namespace AST {
   struct Expression : public Node {
     EXPR_FNS(Expression, expression);
 
-    static NPtr parenthesize(NPtrVec &&nodes);
+    static Node* parenthesize(NPtrVec2 &&nodes);
 
     virtual bool is_literal(Type *t) const {
       return is_terminal() && !is_identifier() && type == t;
@@ -165,8 +183,8 @@ namespace AST {
 #define ENDING override
 #undef OVERRIDE
 #define OVERRIDE override
-  inline NPtr Expression::parenthesize(NPtrVec&& nodes) {
-    auto expr_ptr = std::static_pointer_cast<Expression>(nodes[1]);
+  inline Node* Expression::parenthesize(NPtrVec2&& nodes) {
+    auto expr_ptr = steal<Expression>(nodes[1]);
     expr_ptr->precedence =
         Language::precedence(Language::Operator::NotAnOperator);
     return expr_ptr;
@@ -176,9 +194,9 @@ namespace AST {
   struct Unop : public Expression {
     EXPR_FNS(Unop, unop);
 
-    static NPtr build_paren_operator(NPtrVec&& nodes);
+    static Node* build_paren_operator(NPtrVec2&& nodes);
 
-    EPtr operand;
+    Expression* operand;
     Language::Operator op;
   };
 
@@ -186,64 +204,64 @@ namespace AST {
     EXPR_FNS(Access, access);
 
     std::string member_name;
-    EPtr operand;
+    Expression* operand;
   };
 
   struct Binop : public Expression {
     EXPR_FNS(Binop, binop);
 
-    static NPtr build_operator(NPtrVec &&nodes, Language::Operator op_class);
-    static NPtr build_paren_operator(NPtrVec &&nodes);
-    static NPtr build_bracket_operator(NPtrVec &&nodes);
-    static NPtr build_array_type(NPtrVec &&nodes);
+    static Node* build_operator(NPtrVec2 &&nodes, Language::Operator op_class);
+    static Node* build_paren_operator(NPtrVec2 &&nodes);
+    static Node* build_bracket_operator(NPtrVec2 &&nodes);
+    static Node* build_array_type(NPtrVec2 &&nodes);
 
     Language::Operator op;
-    EPtr lhs, rhs;
+    Expression *lhs, *rhs;
   };
 
   struct ChainOp : public Expression {
     EXPR_FNS(ChainOp, chain_op);
 
-    static NPtr join(NPtrVec&& nodes);
+    static Node* join(NPtrVec2&& nodes);
 
     virtual bool is_comma_list() const override {
       return ops.front() == Language::Operator::Comma;
     }
 
     std::vector<Language::Operator> ops;
-    std::vector<EPtr> exprs;
+    std::vector<Expression*> exprs;
   };
 
   struct ArrayLiteral : public Expression {
     EXPR_FNS(ArrayLiteral, array_literal);
-    std::vector<EPtr> elems;
+    std::vector<Expression*> elems;
   };
 
   struct ArrayType : public Expression {
     EXPR_FNS(ArrayType, array_type);
 
-    static NPtr build_unknown(NPtrVec &&nodes);
+    static Node* build_unknown(NPtrVec2 &&nodes);
 
-    EPtr length;
-    EPtr data_type;
+    Expression* length;
+    Expression* data_type;
   };
 
   struct Terminal : public Expression {
     EXPR_FNS(Terminal, terminal);
 
-    static NPtr build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
-    static NPtr build_type_literal(NPtrVec&& nodes);
-    static NPtr build_string_literal(NPtrVec&& nodes);
-    static NPtr build_true(NPtrVec&& nodes);
-    static NPtr build_false(NPtrVec&& nodes);
-    static NPtr build_null(NPtrVec&& nodes);
-    static NPtr build_int_literal(NPtrVec&& nodes);
-    static NPtr build_uint_literal(NPtrVec&& nodes);
-    static NPtr build_real_literal(NPtrVec&& nodes);
-    static NPtr build_char_literal(NPtrVec&& nodes);
-    static NPtr build_void_return(NPtrVec&& nodes);
-    static NPtr build_ASCII(NPtrVec&& nodes);
-    static NPtr build_alloc(NPtrVec&& nodes);
+    static Node* build(Language::Terminal term_type, NPtrVec2&& nodes, Type* t);
+    static Node* build_type_literal(NPtrVec2&& nodes);
+    static Node* build_string_literal(NPtrVec2&& nodes);
+    static Node* build_true(NPtrVec2&& nodes);
+    static Node* build_false(NPtrVec2&& nodes);
+    static Node* build_null(NPtrVec2&& nodes);
+    static Node* build_int_literal(NPtrVec2&& nodes);
+    static Node* build_uint_literal(NPtrVec2&& nodes);
+    static Node* build_real_literal(NPtrVec2&& nodes);
+    static Node* build_char_literal(NPtrVec2&& nodes);
+    static Node* build_void_return(NPtrVec2&& nodes);
+    static Node* build_ASCII(NPtrVec2&& nodes);
+    static Node* build_alloc(NPtrVec2&& nodes);
 
     Language::Terminal terminal_type;
   };
@@ -252,7 +270,7 @@ namespace AST {
     Assignment() {}
     virtual ~Assignment(){}
 
-    static NPtr build(NPtrVec&& nodes);
+    static Node* build(NPtrVec2&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
@@ -276,23 +294,23 @@ namespace AST {
   struct Declaration : public Expression {
     EXPR_FNS(Declaration, declaration);
 
-    static NPtr build(NPtrVec &&nodes, Language::NodeType node_type,
+    static Node* build(NPtrVec2 &&nodes, Language::NodeType node_type,
                       bool infer);
-    static NPtr build_decl(NPtrVec &&nodes);
-    static NPtr build_assign(NPtrVec &&nodes);
+    static Node* build_decl(NPtrVec2 &&nodes);
+    static Node* build_assign(NPtrVec2 &&nodes);
 
     Language::Operator op;
-    IdPtr identifier;
-    EPtr type_expr;
+    Identifier *identifier;
+    Expression* type_expr;
     bool is_inferred;
   };
 
   struct KVPairList : public Node {
     // TODO must have an else. should be stored outside the vector
-    static NPtr build_one(NPtrVec&& nodes);
-    static NPtr build_more(NPtrVec&& nodes);
-    static NPtr build_one_assignment_error(NPtrVec&& nodes);
-    static NPtr build_more_assignment_error(NPtrVec&& nodes);
+    static Node* build_one(NPtrVec2&& nodes);
+    static Node* build_more(NPtrVec2&& nodes);
+    static Node* build_one_assignment_error(NPtrVec2&& nodes);
+    static Node* build_more_assignment_error(NPtrVec2&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
@@ -302,27 +320,27 @@ namespace AST {
 
     KVPairList() {}
 
-    std::vector<std::pair<EPtr, EPtr>> pairs;
+    std::vector<std::pair<Expression*, Expression*>> pairs;
   };
 
   struct Case : public Expression {
     EXPR_FNS(Case, case);
 
-    std::shared_ptr<KVPairList> kv;
+    KVPairList *kv;
   };
 
   struct Statements : public Node {
-    static NPtr build_one(NPtrVec&& nodes);
-    static NPtr build_more(NPtrVec&& nodes);
-    static NPtr build_double_expression_error(NPtrVec&& nodes);
-    static NPtr build_extra_expression_error(NPtrVec&& nodes);
+    static Node* build_one(NPtrVec2&& nodes);
+    static Node* build_more(NPtrVec2&& nodes);
+    static Node* build_double_expression_error(NPtrVec2&& nodes);
+    static Node* build_extra_expression_error(NPtrVec2&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
     inline size_t size() { return statements.size(); }
     inline void reserve(size_t n) { return statements.reserve(n); }
 
-    void add_nodes(StmtsPtr stmts) {
+    void add_nodes(Statements * stmts) {
       for (auto& stmt : stmts->statements) {
         statements.push_back(std::move(stmt));
       }
@@ -331,27 +349,27 @@ namespace AST {
     Statements() {}
     virtual ~Statements() {}
 
-    std::vector<NPtr> statements;
+    std::vector<AST::Node *> statements;
   };
 
   struct FunctionLiteral : public Expression {
     EXPR_FNS(FunctionLiteral, function_literal);
 
     FnScope* fn_scope;
-    EPtr return_type_expr;
+    Expression* return_type_expr;
 
-    std::vector<DeclPtr> inputs;
+    std::vector<Declaration *> inputs;
     llvm::Function *llvm_fn;
-    std::shared_ptr<Statements> statements;
+    Statements *statements;
   };
 
   struct Conditional : public Node {
-    static NPtr build_if(NPtrVec&& nodes);
-    static NPtr build_else_if(NPtrVec&& nodes);
-    static NPtr build_else(NPtrVec&& nodes);
-    static NPtr build_extra_else_error(NPtrVec&& nodes);
-    static NPtr build_extra_else_if_error(NPtrVec&& nodes);
-    static NPtr build_if_assignment_error(NPtrVec&& nodes);
+    static Node* build_if(NPtrVec2&& nodes);
+    static Node* build_else_if(NPtrVec2&& nodes);
+    static Node* build_else(NPtrVec2&& nodes);
+    static Node* build_extra_else_error(NPtrVec2&& nodes);
+    static Node* build_extra_else_if_error(NPtrVec2&& nodes);
+    static Node* build_if_assignment_error(NPtrVec2&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
@@ -360,9 +378,9 @@ namespace AST {
     Conditional() : else_line_num(0) {}
     virtual ~Conditional() {}
 
-    std::vector<EPtr> conditions;
-    std::vector<std::shared_ptr<Statements>> statements;
-    std::vector<CondScope*> body_scopes;
+    std::vector<Expression *> conditions;
+    std::vector<Statements *> statements;
+    std::vector<CondScope *> body_scopes;
 
     // We use else_line_num to determine if an else branch exists (when it's
     // non-zero) and also for error generation (if multiple else-blocks are
@@ -375,12 +393,12 @@ namespace AST {
     virtual ~While() {}
     VIRTUAL_METHODS_FOR_NODES;
 
-    static NPtr build(NPtrVec&& nodes);
-    static NPtr build_assignment_error(NPtrVec&& nodes);
+    static Node* build(NPtrVec2&& nodes);
+    static Node* build_assignment_error(NPtrVec2&& nodes);
 
-    EPtr condition;
-    std::shared_ptr<Statements> statements;
-    WhileScope* while_scope;
+    Expression *condition;
+    Statements *statements;
+    WhileScope *while_scope;
   };
 
   struct TypeLiteral : public Expression {
@@ -390,7 +408,7 @@ namespace AST {
 
     Structure* type_value;
     Scope* type_scope;
-    std::vector<DeclPtr> declarations;
+    std::vector<Declaration *> declarations;
   };
 
   struct EnumLiteral : public Expression {
@@ -401,7 +419,7 @@ namespace AST {
   };
 
   struct Break : public Node {
-    static NPtr build(NPtrVec&& nodes);
+    static Node* build(NPtrVec2&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual llvm::Value* generate_code(Scope* scope);

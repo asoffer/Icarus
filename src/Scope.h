@@ -35,7 +35,8 @@ class Scope {
 
     static void verify_no_shadowing();
 
-    static DeclPtr make_declaration(size_t line_num, const std::string& id_string);
+    static AST::Declaration *make_declaration(size_t line_num,
+                                              const std::string &id_string);
 
     virtual void enter();
     virtual void exit();
@@ -72,7 +73,7 @@ class Scope {
   protected:
     Scope();
 
-    std::map<std::string, IdPtr> ids_;
+    std::map<std::string, AST::Identifier *> ids_;
     std::vector<AST::Declaration*> ordered_decls_;
 
     Context ctx_;

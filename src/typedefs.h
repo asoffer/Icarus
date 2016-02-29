@@ -20,5 +20,6 @@ using DeclPtr = std::shared_ptr<AST::Declaration>;
 using StmtsPtr = std::shared_ptr<AST::Statements>;
 
 using NPtrVec = std::vector<NPtr>;
+using NPtrVec2 = std::vector<AST::Node*>;
 
 #endif // ICARUS_TYPEDEFS_H

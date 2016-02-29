@@ -19,7 +19,7 @@ class ErrorLog {
     inline void set_file(const std::string& file_name);
     inline void log(size_t line_num, const std::string& msg);
 
-    NPtr assignment_vs_equality(NPtr node);
+    AST::Node *assignment_vs_equality(AST::Node *node);
 
   private:
     size_t err_num_;

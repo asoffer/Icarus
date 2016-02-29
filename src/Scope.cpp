@@ -289,16 +289,16 @@ void Scope::verify_no_shadowing() {
   }
 }
 
-DeclPtr Scope::make_declaration(size_t line_num, const std::string &identifierstring) {
-  auto d = std::make_shared<AST::Declaration>();
+AST::Declaration *Scope::make_declaration(size_t line_num,
+                                          const std::string &identifierstring) {
+  auto decl = new Declaration;
   decl_registry_.emplace_back(d);
-  d->identifier = std::make_shared<AST::Identifier>(line_num, identifierstring);
-  d->line_num = line_num;
-
-  return d;
+  decl->identifier = new AST::Identifier(line_num, identifierstring);
+  decl->line_num   = line_num;
+  return decl;
 }
 
-void FnScope::set_parent_function(llvm::Function* fn) {
+void FnScope::set_parent_function(llvm::Function *fn) {
   llvm_fn_ = fn;
   Scope::set_parent_function(fn);
 }
