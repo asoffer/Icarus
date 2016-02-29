@@ -227,25 +227,24 @@ void Scope::uninitialize() {
 
 // TODO have a getter-only version for when we know we've passed the
 // verification step
-EPtr Scope::identifier(EPtr identifieras_eptr) {
-  auto identifierptr = std::static_pointer_cast<AST::Identifier>(identifieras_eptr);
-  Scope* current_scope = this;
+AST::Identifier *Scope::identifier(AST::Expression* id_as_eptr) {
+  auto idptr = static_cast<AST::Identifier *>(id_as_eptr);
+
+  Scope *current_scope = this;
   while (current_scope != nullptr) {
-    auto iter = current_scope->ids_.find(identifierptr->token());
-    if (iter != current_scope->ids_.end()) {
-      return std::static_pointer_cast<AST::Expression>(iter->second);
-    }
+    auto iter = current_scope->ids_.find(idptr->token());
+    if (iter != current_scope->ids_.end()) { return iter->second; }
     current_scope = current_scope->parent();
   }
 
   // If you reach here it's because we never saw a declaration for the identifier
-  error_log.log(identifieras_eptr->line_num,
-      "Undeclared identifier `" + identifierptr->token() + "`.");
+  error_log.log(idptr->line_num,
+                "Undeclared identifier `" + idptr->token() + "`.");
 
   return nullptr;
 }
 
-EPtr Scope::identifier(const std::string& name) const {
+AST::Identifier *Scope::identifier(const std::string &name) const {
   auto iter = ids_.find(name);
   if (iter == ids_.end()) {
     if (parent_) return parent_->identifier(name);

@@ -1,6 +1,6 @@
 #include "AST.h"
 
-void set_or_recurse(EPtr& eptr, Scope* scope) {
+void set_or_recurse(AST::Expression *&eptr, Scope *scope) {
   if (eptr->is_identifier()) {
     eptr = scope->identifier(eptr);
   } else {
@@ -65,8 +65,7 @@ namespace AST {
   }
 
   void Declaration::join_identifiers(Scope* scope, bool is_arg) {
-    identifier = std::static_pointer_cast<Identifier>(
-        scope->identifier(identifier));
+    identifier = scope->identifier(identifier);
     if (is_arg) {
       identifier->is_function_arg = true;
     }
@@ -95,8 +94,7 @@ namespace AST {
   void Statements::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& ptr : statements) {
       if (ptr->is_identifier()) {
-        ptr = std::static_pointer_cast<Node>(
-            scope->identifier(std::static_pointer_cast<Expression>(ptr)));
+        ptr = scope->identifier(static_cast<Expression *>(ptr));
       } else {
         ptr->join_identifiers(scope);
       }
