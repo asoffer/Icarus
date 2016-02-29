@@ -1,7 +1,7 @@
 #include "Context.h"
 #include "AST.h"
 
-Context::Value Context::get(IdPtr idptr) {
+Context::Value Context::get(AST::Identifier *idptr) {
   auto iter = bindings_.find(idptr);
   if (iter == bindings_.end()) {
     return !parent_ ? nullptr : parent_->get(idptr);
@@ -15,7 +15,7 @@ Context Context::spawn() {
   ctx.parent_ = this;
   return ctx;
 }
-void Context::bind(Context::Value v, IdPtr idptr) {
+void Context::bind(Context::Value v, AST::Identifier *idptr) {
   bindings_.emplace(idptr, v);
 }
 

@@ -281,7 +281,7 @@ namespace AST {
     virtual std::string graphviz_label() const;
   };
 
-  struct Identifier : public Terminal, public std::enable_shared_from_this<Identifier> {
+  struct Identifier : public Terminal {
     EXPR_FNS(Identifier, identifier);
     // TODO Identifier() = delete;
     Identifier(size_t line_num, const std::string& token_string);

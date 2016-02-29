@@ -39,10 +39,10 @@ class Context {
     bool has_return() { return has_ret_; }
     Value return_value() { return ret_val_; }
     void set_return_value(Value v);
-    void bind(Value v, IdPtr idptr);
+    void bind(Value v, AST::Identifier *idptr);
 
     Context spawn();
-    Value get(IdPtr idptr);
+    Value get(AST::Identifier *idptr);
 
     Context(Context* parent = nullptr) :
       ret_val_(nullptr), has_ret_(false), parent_(parent) {
@@ -52,7 +52,7 @@ class Context {
   private:
     Value ret_val_;
     bool has_ret_;
-    std::map<IdPtr, Value> bindings_;
+    std::map<AST::Identifier *, Value> bindings_;
     Context* parent_ = nullptr;
 };
 
