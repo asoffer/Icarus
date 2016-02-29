@@ -11,12 +11,12 @@ AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {
 
   auto assignment_node = static_cast<AST::Binop *>(node);
 
-  NPtrVec2 node_vec = {
+  NPtrVec node_vec = {
       assignment_node->lhs,
       new AST::TokenNode(node->line_num, Language::generic_operator, "=="),
       assignment_node->rhs};
 
-  return AST::ChainOp::join(std::forward<NPtrVec2>(node_vec));
+  return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
 }
 
 std::ostream &operator<<(std::ostream &os, const ErrorLog &log) {

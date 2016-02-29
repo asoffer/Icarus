@@ -4,7 +4,6 @@
 #include <map>
 #include <set>
 
-#include "typedefs.h"
 #include "AST.h"
 #include "DependencyTypes.h"
 

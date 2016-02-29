@@ -5,7 +5,7 @@ Rule::Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn)
   : output_(output), input_(input), fn_(fn) {}
 
 // Determine if the back of the stack matches the rule
-bool Rule::match(const NPtrVec2& node_stack) const {
+bool Rule::match(const NPtrVec& node_stack) const {
   // The stack needs to be long enough to match.
   if (input_.size() > node_stack.size()) return false;
 
@@ -25,10 +25,10 @@ bool Rule::match(const NPtrVec2& node_stack) const {
   return true;
 }
 
-void Rule::apply(NPtrVec2& node_stack) const {
+void Rule::apply(NPtrVec& node_stack) const {
   // Make a vector for the rule function to take as input. It will begin with
   // size() shared_ptrs.
-  NPtrVec2 nodes_to_reduce(size());
+  NPtrVec nodes_to_reduce(size());
 
   // A rule's size cannot be empty, so the int value for i will always start at
   // a non-negative integer. We use an int so we can condition on i >= 0.

@@ -7,7 +7,6 @@
 #include "Lexer.h"
 #include "Rule.h"
 #include "AST.h"
-#include "typedefs.h"
 #include "Language.h"
 
 class Parser {
@@ -24,7 +23,7 @@ class Parser {
 
     void show_debug() const;
 
-    NPtrVec2 stack_;
+    NPtrVec stack_;
     std::unique_ptr<AST::TokenNode> lookahead_;
     Lexer lexer_;
 };

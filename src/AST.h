@@ -11,7 +11,6 @@
 #include "Language.h"
 #include "TimeEval.h"
 #include "Type.h"
-#include "typedefs.h"
 #include "Scope.h"
 #include "ErrorLog.h"
 #include "Context.h"
@@ -24,8 +23,6 @@ class CondScope;
 class WhileScope;
 struct Structure;
 struct Enumeration;
-
-class Node;
 
 template <typename T> T *steal(AST::Expression *&n) {
   // TODO reinterpret_cast for safety in debug mode?
@@ -44,6 +41,8 @@ template <typename T> T *steal(AST::Node *&n) {
 }
 
 namespace AST {
+using NPtrVec = std::vector<Node *>;
+
 #define ENDING = 0
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
@@ -71,7 +70,7 @@ namespace AST {
   virtual llvm::Value *generate_lvalue(Scope *scope) ENDING;                   \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
-  static Node* build(NPtrVec2 &&nodes)
+  static Node* build(NPtrVec &&nodes)
 
   struct Node {
     Language::NodeType node_type() const { return type_; }
@@ -167,7 +166,7 @@ namespace AST {
   struct Expression : public Node {
     EXPR_FNS(Expression, expression);
 
-    static Node* parenthesize(NPtrVec2 &&nodes);
+    static Node* parenthesize(NPtrVec &&nodes);
 
     virtual bool is_literal(Type *t) const {
       return is_terminal() && !is_identifier() && type == t;
@@ -183,7 +182,7 @@ namespace AST {
 #define ENDING override
 #undef OVERRIDE
 #define OVERRIDE override
-  inline Node* Expression::parenthesize(NPtrVec2&& nodes) {
+  inline Node* Expression::parenthesize(NPtrVec&& nodes) {
     auto expr_ptr = steal<Expression>(nodes[1]);
     expr_ptr->precedence =
         Language::precedence(Language::Operator::NotAnOperator);
@@ -194,7 +193,7 @@ namespace AST {
   struct Unop : public Expression {
     EXPR_FNS(Unop, unop);
 
-    static Node* build_paren_operator(NPtrVec2&& nodes);
+    static Node* build_paren_operator(NPtrVec&& nodes);
 
     Expression* operand;
     Language::Operator op;
@@ -210,10 +209,10 @@ namespace AST {
   struct Binop : public Expression {
     EXPR_FNS(Binop, binop);
 
-    static Node* build_operator(NPtrVec2 &&nodes, Language::Operator op_class);
-    static Node* build_paren_operator(NPtrVec2 &&nodes);
-    static Node* build_bracket_operator(NPtrVec2 &&nodes);
-    static Node* build_array_type(NPtrVec2 &&nodes);
+    static Node* build_operator(NPtrVec &&nodes, Language::Operator op_class);
+    static Node* build_paren_operator(NPtrVec &&nodes);
+    static Node* build_bracket_operator(NPtrVec &&nodes);
+    static Node* build_array_type(NPtrVec &&nodes);
 
     Language::Operator op;
     Expression *lhs, *rhs;
@@ -222,7 +221,7 @@ namespace AST {
   struct ChainOp : public Expression {
     EXPR_FNS(ChainOp, chain_op);
 
-    static Node* join(NPtrVec2&& nodes);
+    static Node* join(NPtrVec&& nodes);
 
     virtual bool is_comma_list() const override {
       return ops.front() == Language::Operator::Comma;
@@ -240,7 +239,7 @@ namespace AST {
   struct ArrayType : public Expression {
     EXPR_FNS(ArrayType, array_type);
 
-    static Node* build_unknown(NPtrVec2 &&nodes);
+    static Node* build_unknown(NPtrVec &&nodes);
 
     Expression* length;
     Expression* data_type;
@@ -249,28 +248,42 @@ namespace AST {
   struct Terminal : public Expression {
     EXPR_FNS(Terminal, terminal);
 
-    static Node* build(Language::Terminal term_type, NPtrVec2&& nodes, Type* t);
-    static Node* build_type_literal(NPtrVec2&& nodes);
-    static Node* build_string_literal(NPtrVec2&& nodes);
-    static Node* build_true(NPtrVec2&& nodes);
-    static Node* build_false(NPtrVec2&& nodes);
-    static Node* build_null(NPtrVec2&& nodes);
-    static Node* build_int_literal(NPtrVec2&& nodes);
-    static Node* build_uint_literal(NPtrVec2&& nodes);
-    static Node* build_real_literal(NPtrVec2&& nodes);
-    static Node* build_char_literal(NPtrVec2&& nodes);
-    static Node* build_void_return(NPtrVec2&& nodes);
-    static Node* build_ASCII(NPtrVec2&& nodes);
-    static Node* build_alloc(NPtrVec2&& nodes);
+    static Node* build(Language::Terminal term_type, NPtrVec&& nodes, Type* t);
+    static Node* build_type_literal(NPtrVec&& nodes);
+    static Node* build_string_literal(NPtrVec&& nodes);
+    static Node* build_true(NPtrVec&& nodes);
+    static Node* build_false(NPtrVec&& nodes);
+    static Node* build_null(NPtrVec&& nodes);
+    static Node* build_int_literal(NPtrVec&& nodes);
+    static Node* build_uint_literal(NPtrVec&& nodes);
+    static Node* build_real_literal(NPtrVec&& nodes);
+    static Node* build_char_literal(NPtrVec&& nodes);
+    static Node* build_void_return(NPtrVec&& nodes);
+    static Node* build_ASCII(NPtrVec&& nodes);
+    static Node* build_alloc(NPtrVec&& nodes);
 
     Language::Terminal terminal_type;
+  };
+
+  struct Declaration : public Expression {
+    EXPR_FNS(Declaration, declaration);
+
+    static Node* build(NPtrVec &&nodes, Language::NodeType node_type,
+                      bool infer);
+    static Node* build_decl(NPtrVec &&nodes);
+    static Node* build_assign(NPtrVec &&nodes);
+
+    Language::Operator op;
+    Identifier *identifier;
+    Expression* type_expr;
+    bool is_inferred;
   };
 
   struct Assignment : public Binop {
     Assignment() {}
     virtual ~Assignment(){}
 
-    static Node* build(NPtrVec2&& nodes);
+    static Node* build(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
@@ -291,26 +304,13 @@ namespace AST {
     Declaration* decl;
   };
 
-  struct Declaration : public Expression {
-    EXPR_FNS(Declaration, declaration);
-
-    static Node* build(NPtrVec2 &&nodes, Language::NodeType node_type,
-                      bool infer);
-    static Node* build_decl(NPtrVec2 &&nodes);
-    static Node* build_assign(NPtrVec2 &&nodes);
-
-    Language::Operator op;
-    Identifier *identifier;
-    Expression* type_expr;
-    bool is_inferred;
-  };
 
   struct KVPairList : public Node {
     // TODO must have an else. should be stored outside the vector
-    static Node* build_one(NPtrVec2&& nodes);
-    static Node* build_more(NPtrVec2&& nodes);
-    static Node* build_one_assignment_error(NPtrVec2&& nodes);
-    static Node* build_more_assignment_error(NPtrVec2&& nodes);
+    static Node* build_one(NPtrVec&& nodes);
+    static Node* build_more(NPtrVec&& nodes);
+    static Node* build_one_assignment_error(NPtrVec&& nodes);
+    static Node* build_more_assignment_error(NPtrVec&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
@@ -330,10 +330,10 @@ namespace AST {
   };
 
   struct Statements : public Node {
-    static Node* build_one(NPtrVec2&& nodes);
-    static Node* build_more(NPtrVec2&& nodes);
-    static Node* build_double_expression_error(NPtrVec2&& nodes);
-    static Node* build_extra_expression_error(NPtrVec2&& nodes);
+    static Node* build_one(NPtrVec&& nodes);
+    static Node* build_more(NPtrVec&& nodes);
+    static Node* build_double_expression_error(NPtrVec&& nodes);
+    static Node* build_extra_expression_error(NPtrVec&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
@@ -364,12 +364,12 @@ namespace AST {
   };
 
   struct Conditional : public Node {
-    static Node* build_if(NPtrVec2&& nodes);
-    static Node* build_else_if(NPtrVec2&& nodes);
-    static Node* build_else(NPtrVec2&& nodes);
-    static Node* build_extra_else_error(NPtrVec2&& nodes);
-    static Node* build_extra_else_if_error(NPtrVec2&& nodes);
-    static Node* build_if_assignment_error(NPtrVec2&& nodes);
+    static Node* build_if(NPtrVec&& nodes);
+    static Node* build_else_if(NPtrVec&& nodes);
+    static Node* build_else(NPtrVec&& nodes);
+    static Node* build_extra_else_error(NPtrVec&& nodes);
+    static Node* build_extra_else_if_error(NPtrVec&& nodes);
+    static Node* build_if_assignment_error(NPtrVec&& nodes);
 
     VIRTUAL_METHODS_FOR_NODES;
 
@@ -393,8 +393,8 @@ namespace AST {
     virtual ~While() {}
     VIRTUAL_METHODS_FOR_NODES;
 
-    static Node* build(NPtrVec2&& nodes);
-    static Node* build_assignment_error(NPtrVec2&& nodes);
+    static Node* build(NPtrVec&& nodes);
+    static Node* build_assignment_error(NPtrVec&& nodes);
 
     Expression *condition;
     Statements *statements;
@@ -419,7 +419,7 @@ namespace AST {
   };
 
   struct Break : public Node {
-    static Node* build(NPtrVec2&& nodes);
+    static Node* build(NPtrVec&& nodes);
 
     virtual std::string to_string(size_t n) const;
     virtual llvm::Value* generate_code(Scope* scope);

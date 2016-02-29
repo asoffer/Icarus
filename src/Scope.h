@@ -7,7 +7,6 @@
 #include <string>
 #include <type_traits>
 
-#include "typedefs.h"
 #include "Type.h"
 #include "DependencySystem.h"
 #include "Context.h"
@@ -20,6 +19,8 @@ class GlobalScope;
 class FnScope;
 
 namespace AST {
+struct Declaration;
+struct Identifier;
 struct FunctionLiteral;
 } // namespace AST
 

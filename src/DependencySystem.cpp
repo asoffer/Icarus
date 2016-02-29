@@ -8,7 +8,6 @@
 #include <fstream>
 #include <sstream>
 
-#include "typedefs.h"
 #include "DependencyTypes.h"
 #include "Scope.h"
 

@@ -1,6 +1,4 @@
 #include "AST.h"
-#include "ErrorLog.h"
-#include "typedefs.h"
 
 #include <map>
 #include <queue>
@@ -16,7 +14,7 @@ namespace debug {
   bool dependency_graph = false;
 }
 
-std::map<std::string, StmtsPtr> ast_map;
+std::map<std::string, AST::Statements *> ast_map;
 
 std::vector<AST::TypeLiteral*> created_types;
 
@@ -24,7 +22,7 @@ enum class Lib {
   String
 };
 
-std::map<Lib, IdPtr> lib_type;
+std::map<Lib, AST::Identifier *> lib_type;
 std::queue<std::string> file_queue;
 
 llvm::Module* global_module;
@@ -32,11 +30,11 @@ llvm::DataLayout* data_layout;
 
 std::map<std::string, llvm::Value*> global_strings;
 
-ErrorLog error_log;
-
 llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
 }
+
+ErrorLog error_log;
 
 #define CSTDLIB(fn, variadic, in, out)      \
   llvm::Constant* fn() {                    \

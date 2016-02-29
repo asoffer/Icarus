@@ -4,11 +4,10 @@
 #include <iostream>
 #include <map>
 
-#include "typedefs.h"
-
 struct Type;
 
 namespace AST {
+  struct Identifier;
   struct Expression;
 }  // namespae AST
 

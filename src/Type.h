@@ -15,7 +15,6 @@
 #include "llvm/IR/Verifier.h"
 
 #include "Language.h"
-#include "typedefs.h"
 #include "Scope.h"
 #include "TimeEval.h"
 #include "Context.h"
@@ -75,8 +74,6 @@ extern Structure *Struct(const std::string &name,
 extern DependentType *DepType(std::function<Type *(Type *)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
 extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
-
-#include "typedefs.h"
 
 #define ENDING = 0
 

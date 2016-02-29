@@ -5,13 +5,13 @@
 extern std::queue<std::string> file_queue;
 
 namespace AST {
-Node *Identifier::build(NPtrVec2 &&nodes) {
+Node *Identifier::build(NPtrVec &&nodes) {
   if (nodes[0]->token() == "string") { file_queue.emplace("lib/string.ic"); }
 
   return new Identifier(nodes[0]->line_num, nodes[0]->token());
 }
 
-Node *Unop::build(NPtrVec2 &&nodes) {
+Node *Unop::build(NPtrVec &&nodes) {
   auto unop_ptr      = new Unop;
   unop_ptr->operand  = steal<Expression>(nodes[1]);
 
@@ -26,7 +26,7 @@ Node *Unop::build(NPtrVec2 &&nodes) {
   return unop_ptr;
 }
 
-Node *Unop::build_paren_operator(NPtrVec2 &&nodes) {
+Node *Unop::build_paren_operator(NPtrVec &&nodes) {
   auto unop_ptr        = new Unop;
   unop_ptr->line_num   = nodes[1]->line_num;
   unop_ptr->operand    = steal<Expression>(nodes[0]);
@@ -37,7 +37,7 @@ Node *Unop::build_paren_operator(NPtrVec2 &&nodes) {
   return unop_ptr;
 }
 
-Node *Access::build(NPtrVec2 &&nodes) {
+Node *Access::build(NPtrVec &&nodes) {
   auto access_ptr         = new Access;
   access_ptr->member_name = nodes[2]->token();
   access_ptr->line_num    = nodes[0]->line_num;
@@ -46,7 +46,7 @@ Node *Access::build(NPtrVec2 &&nodes) {
   return access_ptr;
 }
 
-Node *Binop::build_operator(NPtrVec2 &&nodes, Language::Operator op_class) {
+Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
   auto binop_ptr      = new Binop;
   binop_ptr->line_num = nodes[1]->line_num;
 
@@ -60,22 +60,22 @@ Node *Binop::build_operator(NPtrVec2 &&nodes, Language::Operator op_class) {
   return binop_ptr;
 }
 
-Node *Binop::build(NPtrVec2 &&nodes) {
+Node *Binop::build(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
-  return Binop::build_operator(std::forward<NPtrVec2 &&>(nodes), op);
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op);
 }
 
-Node *Binop::build_paren_operator(NPtrVec2 &&nodes) {
-  return Binop::build_operator(std::forward<NPtrVec2 &&>(nodes),
+Node *Binop::build_paren_operator(NPtrVec &&nodes) {
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
                                Language::Operator::Call);
 }
 
-Node *Binop::build_bracket_operator(NPtrVec2 &&nodes) {
-  return Binop::build_operator(std::forward<NPtrVec2 &&>(nodes),
+Node *Binop::build_bracket_operator(NPtrVec &&nodes) {
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
                                Language::Operator::Index);
 }
 
-Node *ChainOp::join(NPtrVec2 &&nodes) {
+Node *ChainOp::join(NPtrVec &&nodes) {
   // TODO FIXME
   auto lhs_prec = static_cast<Expression *>(nodes[0])->precedence;
   auto op_node  = steal<TokenNode>(nodes[1]);
@@ -84,7 +84,7 @@ Node *ChainOp::join(NPtrVec2 &&nodes) {
   auto rhs_prec = static_cast<Expression *>(nodes[2])->precedence;
 
   if (op_prec != rhs_prec) {
-    return build(std::forward<NPtrVec2>(nodes));
+    return build(std::forward<NPtrVec>(nodes));
   }
 
   auto rhs = steal<ChainOp>(nodes[2]);
@@ -142,7 +142,7 @@ Node *ChainOp::join(NPtrVec2 &&nodes) {
   return chain_ptr;
 }
 
-Node *ChainOp::build(NPtrVec2 &&nodes) {
+Node *ChainOp::build(NPtrVec &&nodes) {
   // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
   auto op_node = static_cast<TokenNode*>(nodes[1]);
   auto op_prec = Language::precedence(op_node->op);
@@ -151,12 +151,9 @@ Node *ChainOp::build(NPtrVec2 &&nodes) {
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  bool use_old_chain_op = nodes[0]->is_chain_op();
-  if (use_old_chain_op) {
-    ChainOp *lhs_ptr = steal<ChainOp>(nodes[0]);
-
-    if (lhs_ptr->precedence != op_prec) { use_old_chain_op = false; }
-  }
+  bool use_old_chain_op =
+      nodes[0]->is_chain_op() &&
+      static_cast<ChainOp *>(nodes[0])->precedence == op_prec;
 
   if (use_old_chain_op) {
     chain_ptr = steal<ChainOp>(nodes[0]);
@@ -176,7 +173,7 @@ Node *ChainOp::build(NPtrVec2 &&nodes) {
   return chain_ptr;
 }
 
-Node *ArrayLiteral::build(NPtrVec2 &&nodes) {
+Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
   array_lit_ptr->precedence =
       Language::precedence(Language::Operator::NotAnOperator);
@@ -193,7 +190,7 @@ Node *ArrayLiteral::build(NPtrVec2 &&nodes) {
   return array_lit_ptr;
 }
 
-Node *ArrayType::build(NPtrVec2 &&nodes) {
+Node *ArrayType::build(NPtrVec &&nodes) {
   if (nodes[1]->is_comma_list()) {
     // Not to be owned, but we will gut parts of it.
     auto lengthchain = static_cast<ChainOp*>(nodes[1]);
@@ -228,7 +225,7 @@ Node *ArrayType::build(NPtrVec2 &&nodes) {
   }
 }
 
-Node *ArrayType::build_unknown(NPtrVec2 &&nodes) {
+Node *ArrayType::build_unknown(NPtrVec &&nodes) {
   auto array_type_ptr      = new ArrayType;
   array_type_ptr->line_num = nodes[0]->line_num;
 
@@ -243,13 +240,13 @@ Node *ArrayType::build_unknown(NPtrVec2 &&nodes) {
   return array_type_ptr;
 }
 
-Node *Terminal::build(NPtrVec2 &&) {
+Node *Terminal::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it?
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Terminal::build(Language::Terminal term_type, NPtrVec2 &&nodes, Type *t) {
+Node *Terminal::build(Language::Terminal term_type, NPtrVec &&nodes, Type *t) {
   // TODO token FIXME
   auto term_ptr           = new Terminal;
   term_ptr->line_num      = nodes[0]->line_num;
@@ -262,22 +259,22 @@ Node *Terminal::build(Language::Terminal term_type, NPtrVec2 &&nodes, Type *t) {
   return term_ptr;
 }
 
-Node *Terminal::build_type_literal(NPtrVec2 &&nodes) {
-  return build(Language::Terminal::Type, std::forward<NPtrVec2 &&>(nodes),
+Node *Terminal::build_type_literal(NPtrVec &&nodes) {
+  return build(Language::Terminal::Type, std::forward<NPtrVec &&>(nodes),
                Type_);
 }
 
-Node *Terminal::build_string_literal(NPtrVec2 &&nodes) {
+Node *Terminal::build_string_literal(NPtrVec &&nodes) {
   file_queue.emplace("lib/string.ic");
 
   return build(Language::Terminal::StringLiteral,
-               std::forward<NPtrVec2 &&>(nodes), Unknown);
+               std::forward<NPtrVec &&>(nodes), Unknown);
 }
 
 #define TERMINAL_BUILD(name, enum_elem, ty)                                    \
-  Node *Terminal::build_##name(NPtrVec2 &&nodes) {                             \
+  Node *Terminal::build_##name(NPtrVec &&nodes) {                             \
     return build(Language::Terminal::enum_elem,                                \
-                 std::forward<NPtrVec2 &&>(nodes), ty);                        \
+                 std::forward<NPtrVec &&>(nodes), ty);                        \
   }
 TERMINAL_BUILD(true, True, Bool);
 TERMINAL_BUILD(false, False, Bool);
@@ -291,7 +288,7 @@ TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
 TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
 #undef TERMINAL_BUILD
 
-Node *Assignment::build(NPtrVec2 &&nodes) {
+Node *Assignment::build(NPtrVec &&nodes) {
   auto assign_ptr      = new Assignment;
   assign_ptr->line_num = nodes[1]->line_num;
 
@@ -305,19 +302,19 @@ Node *Assignment::build(NPtrVec2 &&nodes) {
   return assign_ptr;
 }
 
-Node *Expression::build(NPtrVec2 &&) {
+Node *Expression::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Declaration::build(NPtrVec2 &&) {
+Node *Declaration::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Declaration::build(NPtrVec2 &&nodes, Language::NodeType node_type,
+Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
                          bool infer) {
   auto decl_ptr =
       Scope::make_declaration(nodes[1]->line_num, nodes[0]->token());
@@ -334,17 +331,17 @@ Node *Declaration::build(NPtrVec2 &&nodes, Language::NodeType node_type,
   return decl_ptr;
 }
 
-Node *Declaration::build_decl(NPtrVec2 &&nodes) {
-  return build(std::forward<NPtrVec2 &&>(nodes), Language::decl_operator,
+Node *Declaration::build_decl(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::decl_operator,
                false);
 }
 
-Node *Declaration::build_assign(NPtrVec2 &&nodes) {
-  return build(std::forward<NPtrVec2 &&>(nodes), Language::decl_assign_operator,
+Node *Declaration::build_assign(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::decl_assign_operator,
                true);
 }
 
-Node *KVPairList::build_one(NPtrVec2 &&nodes) {
+Node *KVPairList::build_one(NPtrVec &&nodes) {
   auto pair_list      = new KVPairList;
   pair_list->line_num = nodes[0]->line_num;
   Expression *key_ptr;
@@ -363,7 +360,7 @@ Node *KVPairList::build_one(NPtrVec2 &&nodes) {
   return pair_list;
 }
 
-Node *KVPairList::build_more(NPtrVec2 &&nodes) {
+Node *KVPairList::build_more(NPtrVec &&nodes) {
   auto pair_list = steal<KVPairList>(nodes[0]);
   Expression *key_ptr = nullptr;
 
@@ -380,17 +377,17 @@ Node *KVPairList::build_more(NPtrVec2 &&nodes) {
   return pair_list;
 }
 
-Node *KVPairList::build_one_assignment_error(NPtrVec2 &&nodes) {
+Node *KVPairList::build_one_assignment_error(NPtrVec &&nodes) {
   nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_one(std::forward<NPtrVec2 &&>(nodes));
+  return build_one(std::forward<NPtrVec &&>(nodes));
 }
 
-Node *KVPairList::build_more_assignment_error(NPtrVec2 &&nodes) {
+Node *KVPairList::build_more_assignment_error(NPtrVec &&nodes) {
   nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_more(std::forward<NPtrVec2 &&>(nodes));
+  return build_more(std::forward<NPtrVec &&>(nodes));
 }
 
-Node *FunctionLiteral::build(NPtrVec2 &&nodes) {
+Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit      = new FunctionLiteral;
   fn_lit->line_num = nodes[0]->line_num;
 
@@ -428,7 +425,7 @@ Node *FunctionLiteral::build(NPtrVec2 &&nodes) {
   return fn_lit;
 }
 
-Node *TypeLiteral::build(NPtrVec2 &&nodes) {
+Node *TypeLiteral::build(NPtrVec &&nodes) {
   auto type_lit_ptr      = new TypeLiteral;
   type_lit_ptr->line_num = nodes[0]->line_num;
   type_lit_ptr->type     = Type_;
@@ -445,21 +442,21 @@ Node *TypeLiteral::build(NPtrVec2 &&nodes) {
   return type_lit_ptr;
 }
 
-Node *Statements::build_one(NPtrVec2 &&nodes) {
+Node *Statements::build_one(NPtrVec &&nodes) {
   auto output = new Statements;
   output->statements.push_back(steal<Node>(nodes[0]));
 
   return output;
 }
 
-Node *Statements::build_more(NPtrVec2 &&nodes) {
+Node *Statements::build_more(NPtrVec &&nodes) {
   auto output = steal<Statements>(nodes[0]);
   output->statements.push_back(steal<Node>(nodes[1]));
 
   return output;
 }
 
-Node *Statements::build_double_expression_error(NPtrVec2 &&nodes) {
+Node *Statements::build_double_expression_error(NPtrVec &&nodes) {
   error_log.log(nodes[0]->line_num, "Adjacent expressions");
 
   auto output      = new Statements;
@@ -470,7 +467,7 @@ Node *Statements::build_double_expression_error(NPtrVec2 &&nodes) {
   return output;
 }
 
-Node *Statements::build_extra_expression_error(NPtrVec2 &&nodes) {
+Node *Statements::build_extra_expression_error(NPtrVec &&nodes) {
   error_log.log(nodes[0]->line_num, "Adjacent expressions");
 
   auto output = steal<Statements>(nodes[0]);
@@ -479,7 +476,7 @@ Node *Statements::build_extra_expression_error(NPtrVec2 &&nodes) {
   return output;
 }
 
-Node *Conditional::build_if(NPtrVec2 &&nodes) {
+Node *Conditional::build_if(NPtrVec &&nodes) {
   auto if_stmt        = new Conditional;
   if_stmt->conditions = {steal<Expression>(nodes[1])};
   if_stmt->statements = {steal<Statements>(nodes[3])};
@@ -487,7 +484,7 @@ Node *Conditional::build_if(NPtrVec2 &&nodes) {
   return if_stmt;
 }
 
-Node *Conditional::build_extra_else_error(NPtrVec2 &&nodes) {
+Node *Conditional::build_extra_else_error(NPtrVec &&nodes) {
   auto if_stmt = static_cast<Conditional *>(nodes[0]);
   error_log.log(nodes[1]->line_num, "If-statement already has an else-branch. "
                                     "The first else-branch is on line " +
@@ -497,7 +494,7 @@ Node *Conditional::build_extra_else_error(NPtrVec2 &&nodes) {
   return steal<Node>(nodes[0]);
 }
 
-Node *Conditional::build_extra_else_if_error(NPtrVec2 &&nodes) {
+Node *Conditional::build_extra_else_if_error(NPtrVec &&nodes) {
   auto if_stmt = static_cast<Conditional *>(nodes[0]);
   error_log.log(nodes[1]->line_num,
                 "Else-if block is unreachable because it follows an else "
@@ -507,7 +504,7 @@ Node *Conditional::build_extra_else_if_error(NPtrVec2 &&nodes) {
   return steal<Node>(nodes[0]);
 }
 
-Node *Conditional::build_else_if(NPtrVec2 &&nodes) {
+Node *Conditional::build_else_if(NPtrVec &&nodes) {
   auto if_stmt = steal<Conditional>(nodes[0]);
   auto else_if = steal<Conditional>(nodes[2]);
 
@@ -522,7 +519,7 @@ Node *Conditional::build_else_if(NPtrVec2 &&nodes) {
   return if_stmt;
 }
 
-Node *Conditional::build_else(NPtrVec2 &&nodes) {
+Node *Conditional::build_else(NPtrVec &&nodes) {
   auto if_stmt           = steal<Conditional>(nodes[0]);
   if_stmt->else_line_num = nodes[1]->line_num;
   if_stmt->statements.push_back(steal<Statements>(nodes[3]));
@@ -530,12 +527,12 @@ Node *Conditional::build_else(NPtrVec2 &&nodes) {
   return if_stmt;
 }
 
-Node *Conditional::build_if_assignment_error(NPtrVec2 &&nodes) {
+Node *Conditional::build_if_assignment_error(NPtrVec &&nodes) {
   nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_if(std::forward<NPtrVec2 &&>(nodes));
+  return build_if(std::forward<NPtrVec &&>(nodes));
 }
 
-Node *EnumLiteral::build(NPtrVec2 &&nodes) {
+Node *EnumLiteral::build(NPtrVec &&nodes) {
   auto enum_lit_ptr      = new EnumLiteral;
   enum_lit_ptr->line_num = nodes[0]->line_num;
   enum_lit_ptr->type     = Type_;
@@ -555,21 +552,21 @@ Node *EnumLiteral::build(NPtrVec2 &&nodes) {
   return enum_lit_ptr;
 }
 
-Node *Break::build(NPtrVec2 &&nodes) { return new Break(nodes[0]->line_num); }
+Node *Break::build(NPtrVec &&nodes) { return new Break(nodes[0]->line_num); }
 
-Node *While::build(NPtrVec2 &&nodes) {
+Node *While::build(NPtrVec &&nodes) {
   auto while_stmt        = new While;
   while_stmt->condition  = steal<Expression>(nodes[1]);
   while_stmt->statements = steal<Statements>(nodes[3]);
   return while_stmt;
 }
 
-Node *While::build_assignment_error(NPtrVec2 &&nodes) {
+Node *While::build_assignment_error(NPtrVec &&nodes) {
   nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build(std::forward<NPtrVec2 &&>(nodes));
+  return build(std::forward<NPtrVec &&>(nodes));
 }
 
-Node *Case::build(NPtrVec2 &&nodes) {
+Node *Case::build(NPtrVec &&nodes) {
   auto case_ptr      = new Case;
   case_ptr->line_num = nodes[0]->line_num;
   case_ptr->kv       = steal<KVPairList>(nodes[2]);

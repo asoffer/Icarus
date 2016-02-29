@@ -6,7 +6,6 @@
 #include "Parser.h"
 #include "AST.h"
 #include "Type.h"
-#include "typedefs.h"
 #include "Scope.h"
 #include "ErrorLog.h"
 #include "DependencySystem.h"
