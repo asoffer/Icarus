@@ -15,7 +15,6 @@
 #include "llvm/IR/Verifier.h"
 
 #include "Language.h"
-#include "typedefs.h"
 #include "Scope.h"
 #include "TimeEval.h"
 #include "Context.h"
@@ -73,10 +72,8 @@ extern Enumeration *Enum(const std::string &name,
 extern Structure *Struct(const std::string &name,
                          AST::TypeLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<Type *(Type *)> fn);
-extern TypeVariable *TypeVar(IdPtr id);
+extern TypeVariable *TypeVar(AST::Identifier *id);
 extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
-
-#include "typedefs.h"
 
 #define ENDING = 0
 
@@ -326,9 +323,9 @@ struct TypeVariable : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  TypeVariable(IdPtr id) : identifier(id) { has_vars = true; }
+  TypeVariable(AST::Identifier *id) : identifier(id) { has_vars = true; }
 
-  IdPtr identifier;
+  AST::Identifier *identifier;
 };
 
 struct ForwardDeclaration : public Type {

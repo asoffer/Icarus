@@ -6,7 +6,6 @@
 #include "Parser.h"
 #include "AST.h"
 #include "Type.h"
-#include "typedefs.h"
 #include "Scope.h"
 #include "ErrorLog.h"
 #include "DependencySystem.h"
@@ -38,53 +37,47 @@ extern bool dependency_graph;
 // TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
 // a datarace will corrupt the memory. When we start threading, we need to lock
 // the map before usage.
-extern std::map<std::string, StmtsPtr> ast_map;
-
+extern std::map<std::string, AST::Statements *> ast_map;
 
 // Each time a file is imported, it will be added to the queue. We then parse
 // each file off the queue until the queue is empty. We avoid circular calls by
 // checking if the map is already filled before parsing.
 extern std::queue<std::string> file_queue;
 
-
 // This is an enum so we can give meaningful names for error codes. However, at
 // the end of the day, we must return ints. Thus, we need to use the implicit
 // cast from enum to int, and so we cannot get the added type safety of an enum
 // class.
 namespace error_code {
-  enum {
-    success = 0,  // returning 0 denotes succes
+enum {
+  success = 0, // returning 0 denotes succes
 
-    cyclic_dependency,
-    file_does_not_exist,
-    invalid_arguments,
-    parse_error,
-    shadow_or_type_error,
-    undeclared_identifier
-  };
-}  // namespace error_code
-
+  cyclic_dependency,
+  file_does_not_exist,
+  invalid_arguments,
+  parse_error,
+  shadow_or_type_error,
+  undeclared_identifier
+};
+} // namespace error_code
 
 // If the file name does not have an extension, add ".ic" to the end of it.
 //
 // TODO this is extremely not robust and probably has system dependencies.
-std::string canonicalize_file_name(const std::string& filename) {
+std::string canonicalize_file_name(const std::string &filename) {
   auto found_dot = filename.find('.');
-  return (found_dot == std::string::npos)
-    ? filename + ".ic"
-    : filename;
+  return (found_dot == std::string::npos) ? filename + ".ic" : filename;
 }
 
-
-
 int main(int argc, char *argv[]) {
-  // This includes naming all basic types, so it must be done even before lexing.
+  // This includes naming all basic types, so it must be done even before
+  // lexing.
   TypeSystem::initialize();
 
   // Initialize the global scope
-  Scope::Global = new GlobalScope();
-  int arg_num = 1;  // iterator over argv
-  int file_index = -1;  // Index of where file name is in argv
+  Scope::Global  = new GlobalScope();
+  int arg_num    = 1;  // iterator over argv
+  int file_index = -1; // Index of where file name is in argv
   while (arg_num < argc) {
     auto arg = argv[arg_num];
 
@@ -128,7 +121,7 @@ int main(int argc, char *argv[]) {
     error_log.set_file(file_name);
 
     Parser parser(file_name);
-    ast_map[file_name] = std::static_pointer_cast<AST::Statements>(parser.parse());
+    ast_map[file_name] = static_cast<AST::Statements *>(parser.parse());
   }
 
   if (error_log.num_errors() != 0) {

@@ -8,7 +8,6 @@
 #include <fstream>
 #include <sstream>
 
-#include "typedefs.h"
 #include "DependencyTypes.h"
 #include "Scope.h"
 
@@ -144,7 +143,7 @@ void traverse_from(PtrWithTorV pt) {
       // If it's an identifier, push it into the declarations for the
       // appropriate scope, so they can be allocated correctly
       if (torv && ptr->is_identifier()) {
-        auto id_ptr = static_cast<AST::Identifier*>(ptr)->shared_from_this();
+        auto id_ptr = static_cast<AST::Identifier*>(ptr);
         id_ptr->decl->scope_->ordered_decls_.push_back(id_ptr->decl);
       }
 

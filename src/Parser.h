@@ -7,7 +7,6 @@
 #include "Lexer.h"
 #include "Rule.h"
 #include "AST.h"
-#include "typedefs.h"
 #include "Language.h"
 
 class Parser {
@@ -15,7 +14,7 @@ class Parser {
 
     Parser(const std::string& filename);
 
-    NPtr parse();
+    AST::Node *parse();
 
   private:
     bool should_shift();
@@ -40,7 +39,7 @@ inline void Parser::shift() {
     return;
   }
 
-  stack_.push_back(std::move(lookahead_));
+  stack_.push_back(lookahead_.release());
   lookahead_ = std::move(next_node_ptr);
 }
 

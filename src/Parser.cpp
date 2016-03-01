@@ -15,7 +15,7 @@ Parser::Parser(const std::string &filename) : lexer_(filename) {
 }
 
 // Parse the file with a shift-reduce algorithm
-NPtr Parser::parse() {
+AST::Node *Parser::parse() {
   // The very first entry is a newline and should be shifted. Do that so we
   // can be certain the stack is never empty. This allows us to avoid checking
   // for the empty stack in the should_shift() method.
@@ -159,8 +159,7 @@ bool Parser::should_shift() {
 
     const auto &prev_node = stack_[stack_.size() - 2];
     if (prev_node->is_token_node()) {
-      auto prev_token_node =
-          std::static_pointer_cast<AST::TokenNode>(prev_node);
+      auto prev_token_node = static_cast<AST::TokenNode *>(prev_node);
       lhs_prec = Language::precedence(prev_token_node->op);
 
     } else {

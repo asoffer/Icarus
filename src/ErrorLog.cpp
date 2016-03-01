@@ -5,17 +5,16 @@
 
 ErrorLog::ErrorLog() : err_num_(0) {}
 
-NPtr ErrorLog::assignment_vs_equality(NPtr node) {
+AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {
   log(node->line_num, "Assignment found where boolean expression was expected. "
                       "Did you mean `==` instead of `=`?");
 
-  auto assignment_node = std::static_pointer_cast<AST::Binop>(node);
+  auto assignment_node = static_cast<AST::Binop *>(node);
 
   NPtrVec node_vec = {
-      std::static_pointer_cast<AST::Node>(assignment_node->lhs),
-      std::make_shared<AST::TokenNode>(node->line_num,
-                                       Language::generic_operator, "=="),
-      std::static_pointer_cast<AST::Node>(assignment_node->rhs)};
+      assignment_node->lhs,
+      new AST::TokenNode(node->line_num, Language::generic_operator, "=="),
+      assignment_node->rhs};
 
   return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
 }

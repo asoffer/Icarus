@@ -173,7 +173,7 @@ static std::vector<Pointer*> pointer_types_;
 static std::vector<Function*> fn_types_;
 static std::map<std::string, Enumeration*> enum_types_;
 static std::vector<DependentType *> dep_types_;
-static std::map<IdPtr, TypeVariable *> vars_;
+static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure*> struct_types_;
 
 void GenerateLLVM() {
@@ -288,7 +288,7 @@ DependentType *DepType(std::function<Type *(Type *)> fn) {
   return dep_type;
 }
 
-TypeVariable *TypeVar(IdPtr id) {
+TypeVariable *TypeVar(AST::Identifier *id) {
   // These won't be leaked, but they aren't uniqued.
   auto iter = TypeSystem::vars_.find(id);
   if (iter != TypeSystem::vars_.end()) return iter->second;

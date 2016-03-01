@@ -247,7 +247,7 @@ llvm::Value *Binop::generate_code(Scope *scope) {
     if (lhs->type->is_function()) {
       std::vector<llvm::Value *> arg_vals;
       if (rhs->is_comma_list()) {
-        auto arg_chainop = std::static_pointer_cast<ChainOp>(rhs);
+        auto arg_chainop = static_cast<ChainOp *>(rhs);
         arg_vals.resize(arg_chainop->exprs.size(), nullptr);
         size_t i = 0;
         for (const auto &expr : arg_chainop->exprs) {
@@ -526,7 +526,8 @@ llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
 
 // This function exists because both '=' and ':=' need to call some version of
 // the same code. it's been factored out here.
-llvm::Value *generate_assignment_code(Scope *scope, EPtr lhs, EPtr rhs) {
+llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
+                                      Expression *rhs) {
   llvm::Value *var = nullptr;
   llvm::Value *val = nullptr;
 
@@ -546,7 +547,7 @@ llvm::Value *generate_assignment_code(Scope *scope, EPtr lhs, EPtr rhs) {
       arg_type->set_print(static_cast<llvm::Function *>(val));
 
     } else {
-      auto fn = std::static_pointer_cast<FunctionLiteral>(rhs);
+      auto fn = static_cast<FunctionLiteral *>(rhs);
       // TODO TOKENREMOVAL
       fn->llvm_fn = global_module->getFunction(lhs->token());
 
@@ -681,7 +682,7 @@ llvm::Value *Assignment::generate_code(Scope *scope) {
     // TODO maybe the declarations generate_code ought to return an l-value for
     // the thing it declares?
     return generate_assignment_code(
-        scope, std::static_pointer_cast<Declaration>(lhs)->identifier, rhs);
+        scope, static_cast<Declaration *>(lhs)->identifier, rhs);
   }
 
   return generate_assignment_code(scope, lhs, rhs);
@@ -696,12 +697,10 @@ llvm::Value *Declaration::generate_code(Scope *scope) {
     std::vector<llvm::Value *> init_args = {identifier->alloc};
 
     // Push the array lengths onto the vector for calling args
-    EPtr next_ptr = type_expr;
+    Expression *next_ptr = type_expr;
     while (next_ptr->is_array_type()) {
-      auto length = std::static_pointer_cast<AST::ArrayType>(next_ptr)->length;
-
-      next_ptr = std::static_pointer_cast<AST::ArrayType>(next_ptr)->data_type;
-
+      auto length = static_cast<AST::ArrayType *>(next_ptr)->length;
+      next_ptr = static_cast<AST::ArrayType *>(next_ptr)->data_type;
       init_args.push_back(length->generate_code(scope));
     }
 

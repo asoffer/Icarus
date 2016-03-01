@@ -5,15 +5,17 @@
 
 extern std::queue<std::string> file_queue;
 // This is intentionally not accessible in other translation units.
-template<size_t N> NPtr drop_all_but(NPtrVec&& nodes) {
-  return std::move(nodes[N]);
+template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
+  return steal<AST::Node>(nodes[N]);
 }
 
 // TODO we can't have a '/' character, and since all our programs are in the
 // programs/ directory for now, we hard-code that. This needs to be removed.
-NPtr import_file(NPtrVec&& nodes) {
+AST::Node *import_file(NPtrVec &&nodes) {
   file_queue.emplace("programs/" + nodes[1]->token());
-  return std::make_shared<AST::Node>(AST::TokenNode::newline());
+  auto tk_node = new AST::TokenNode;
+  *tk_node = AST::TokenNode::newline();
+  return tk_node;
 }
 
 namespace Language {

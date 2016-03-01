@@ -5,19 +5,23 @@
 #include <memory>
 #include <set>
 #include "Language.h"
-#include "typedefs.h"
+
+namespace AST {
+struct Node;
+} // namespace AST
 
 class Rule {
   public:
     using NodeTypeVec = std::vector<std::set<Language::NodeType>>;
-    using fnptr = NPtr (*)(NPtrVec&&);
+    using NPtrVec     = std::vector<AST::Node *>;
+    using fnptr       = AST::Node *(*)(NPtrVec &&);
 
-    Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn);
+    Rule(Language::NodeType output, const NodeTypeVec &input, fnptr fn);
 
     size_t size() const { return input_.size(); }
 
-    bool match(const NPtrVec& node_stack) const;
-    void apply(NPtrVec& node_stack) const;
+    bool match(const NPtrVec &node_stack) const;
+    void apply(NPtrVec &node_stack) const;
 
   private:
     Language::NodeType output_;
@@ -26,7 +30,7 @@ class Rule {
 };
 
 namespace Language {
-  extern const std::vector<Rule> rules;
-}  // namespace Language
+extern const std::vector<Rule> rules;
+} // namespace Language
 
-#endif  // ICARUS_RULE_H
+#endif // ICARUS_RULE_H

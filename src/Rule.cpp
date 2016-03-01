@@ -43,5 +43,7 @@ void Rule::apply(NPtrVec& node_stack) const {
   auto new_ptr = fn_(std::move(nodes_to_reduce));
   new_ptr->set_node_type(output_);
 
+  for (const auto ptr : nodes_to_reduce) { delete ptr; }
+
   node_stack.push_back(std::move(new_ptr));
 }

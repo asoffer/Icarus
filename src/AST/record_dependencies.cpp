@@ -11,7 +11,7 @@ namespace AST {
   void Terminal::record_dependencies() {
     Dependency::value_type(this, this);
     if (terminal_type == Language::Terminal::StringLiteral) {
-      Dependency::type_value(this, Scope::Global->identifier("string").get());
+      Dependency::type_value(this, Scope::Global->identifier("string"));
     }
   }
 
@@ -23,23 +23,23 @@ namespace AST {
 
   void Access::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::value_value(this, operand.get());
-    Dependency::type_type(this, operand.get());
+    Dependency::value_value(this, operand);
+    Dependency::type_type(this, operand);
     operand->record_dependencies();
   }
 
   void Unop::record_dependencies() {
     Dependency::value_type(this, this);
-    Dependency::type_type(this, operand.get());
+    Dependency::type_type(this, operand);
     if (op == Language::Operator::Return) {
-      Dependency::value_value(this, operand.get());
+      Dependency::value_value(this, operand);
     }
     operand->record_dependencies();
   }
 
   void ArrayLiteral::record_dependencies() {
     for (const auto& el : elems) {
-      Dependency::type_type(this, el.get());
+      Dependency::type_type(this, el);
       Dependency::value_type(this, this);
       el->record_dependencies();
     }
@@ -48,50 +48,50 @@ namespace AST {
   void Binop::record_dependencies() {
     Dependency::value_type(this, this);
 
-    Dependency::type_type(this, lhs.get());
+    Dependency::type_type(this, lhs);
     lhs->record_dependencies();
 
     if (op != Language::Operator::Access) {
-      Dependency::type_type(this, rhs.get());
+      Dependency::type_type(this, rhs);
       rhs->record_dependencies();
     }
 
-    Dependency::value_value(this, lhs.get());
-    Dependency::value_value(this, rhs.get());
+    Dependency::value_value(this, lhs);
+    Dependency::value_value(this, rhs);
   }
 
   void ArrayType::record_dependencies() {
 
     if (length != nullptr) {
-      Dependency::value_value(this, length.get());
+      Dependency::value_value(this, length);
 
       // Maybe later when we have length dependency?
-      Dependency::type_type(this, length.get());
+      Dependency::type_type(this, length);
 
       length->record_dependencies();
     }
 
-    Dependency::value_type(this, data_type.get());
-    Dependency::type_type(this, data_type.get());
+    Dependency::value_type(this, data_type);
+    Dependency::type_type(this, data_type);
     data_type->record_dependencies();
   }
 
   void ChainOp::record_dependencies() {
     Dependency::value_type(this, this);
     for (auto& e : exprs) {
-      Dependency::type_type(this, e.get());
+      Dependency::type_type(this, e);
       e->record_dependencies();
     }
   }
 
   void Declaration::record_dependencies() {
     if (is_inferred) {
-      Dependency::type_type(this, type_expr.get());
-      Dependency::value_value(this, type_expr.get());
+      Dependency::type_type(this, type_expr);
+      Dependency::value_value(this, type_expr);
       Dependency::value_type(this, this);
     } else {
       Dependency::value_type(this, this);
-      Dependency::type_value(this, type_expr.get());
+      Dependency::type_value(this, type_expr);
     }
 
     identifier->record_dependencies();
@@ -101,8 +101,8 @@ namespace AST {
   void Case::record_dependencies() {
     Dependency::value_type(this, this);
     for (const auto& kv : kv->pairs) {
-      Dependency::type_type(this, kv.first.get());
-      Dependency::type_type(this, kv.second.get());
+      Dependency::type_type(this, kv.first);
+      Dependency::type_type(this, kv.second);
     }
 
     for (const auto& kv : kv->pairs) {
@@ -114,21 +114,21 @@ namespace AST {
   void FunctionLiteral::record_dependencies() {
     Dependency::value_type(this, this);
     for (const auto& in : inputs) {
-      Dependency::type_type(this, in.get());
+      Dependency::type_type(this, in);
     }
 
-     Dependency::type_type(this, return_type_expr.get());
-     Dependency::type_value(this, return_type_expr.get());
+     Dependency::type_type(this, return_type_expr);
+     Dependency::type_value(this, return_type_expr);
 
     for (const auto& in : inputs) {
       in->record_dependencies();
     }
 
-    Dependency::value_value(this, statements.get());
-    Dependency::value_type(this, statements.get());
+    Dependency::value_value(this, statements);
+    Dependency::value_type(this, statements);
 
-    Dependency::value_value(this, return_type_expr.get());
-    Dependency::value_type(this, return_type_expr.get());
+    Dependency::value_value(this, return_type_expr);
+    Dependency::value_type(this, return_type_expr);
 
     return_type_expr->record_dependencies();
     statements->record_dependencies();
@@ -140,18 +140,18 @@ namespace AST {
 
   void Statements::record_dependencies() {
     for (const auto& stmt : statements) {
-      Dependency::value_value(this, stmt.get());
+      Dependency::value_value(this, stmt);
       stmt->record_dependencies();
     }
   }
 
   void Conditional::record_dependencies() {
     for (auto& stmt : statements) {
-      Dependency::value_value(this, stmt.get());
+      Dependency::value_value(this, stmt);
       stmt->record_dependencies();
     }
     for (auto& cond : conditions) {
-      Dependency::value_value(this, cond.get());
+      Dependency::value_value(this, cond);
       cond->record_dependencies();
     }
   }
@@ -161,8 +161,8 @@ namespace AST {
     // because this isn't allowed at compile-time
     // TODO check evaluate
     Dependency::value_type(this, this);
-    Dependency::type_type(this, condition.get());
-    Dependency::type_type(this, statements.get());
+    Dependency::type_type(this, condition);
+    Dependency::type_type(this, statements);
     statements->record_dependencies();
     condition->record_dependencies();
   }
@@ -170,7 +170,7 @@ namespace AST {
   void TypeLiteral::record_dependencies() {
     Dependency::value_type(this, this);
     for (const auto& decl : declarations) {
-      Dependency::value_type(this, decl->identifier.get());
+      Dependency::value_type(this, decl->identifier);
       decl->record_dependencies();
     }
   }
