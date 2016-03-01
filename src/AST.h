@@ -58,7 +58,7 @@ using NPtrVec = std::vector<Node *>;
 
 #define EXPR_FNS(name, checkname)                                              \
   name();                                                                      \
-  virtual ~name() {}                                                           \
+  virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
@@ -70,7 +70,7 @@ using NPtrVec = std::vector<Node *>;
   virtual llvm::Value *generate_lvalue(Scope *scope) ENDING;                   \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
-  static Node* build(NPtrVec &&nodes)
+  static Node *build(NPtrVec &&nodes)
 
   struct Node {
     Language::NodeType node_type() const { return type_; }
@@ -319,6 +319,7 @@ using NPtrVec = std::vector<Node *>;
     inline size_t size() const { return pairs.size(); }
 
     KVPairList() {}
+    ~KVPairList();
 
     std::vector<std::pair<Expression*, Expression*>> pairs;
   };
@@ -347,7 +348,7 @@ using NPtrVec = std::vector<Node *>;
     }
 
     Statements() {}
-    virtual ~Statements() {}
+    virtual ~Statements();
 
     std::vector<AST::Node *> statements;
   };
@@ -376,7 +377,7 @@ using NPtrVec = std::vector<Node *>;
     bool has_else() const { return else_line_num != 0; }
 
     Conditional() : else_line_num(0) {}
-    virtual ~Conditional() {}
+    virtual ~Conditional();
 
     std::vector<Expression *> conditions;
     std::vector<Statements *> statements;
@@ -390,7 +391,7 @@ using NPtrVec = std::vector<Node *>;
 
   struct While : public Node {
     While();
-    virtual ~While() {}
+    virtual ~While();
     VIRTUAL_METHODS_FOR_NODES;
 
     static Node* build(NPtrVec&& nodes);
@@ -420,6 +421,7 @@ using NPtrVec = std::vector<Node *>;
 
   struct Break : public Node {
     static Node* build(NPtrVec&& nodes);
+    virtual ~Break();
 
     virtual std::string to_string(size_t n) const;
     virtual llvm::Value* generate_code(Scope* scope);

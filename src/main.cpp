@@ -140,7 +140,7 @@ int main(int argc, char *argv[]) {
     
 
   // Combine all statement nodes from separately-parsed files.
-  auto global_statements = std::make_shared<AST::Statements>();
+  auto global_statements = new AST::Statements;
 
   // Reserve enough space for all of them to avoid unneeded copies
   size_t num_statements = 0;
@@ -178,7 +178,7 @@ int main(int argc, char *argv[]) {
   //
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
-  Dependency::record(global_statements.get());
+  Dependency::record(global_statements);
   // To assign type orders, we traverse the dependency graph looking for a
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
