@@ -192,16 +192,15 @@ Node *ArrayLiteral::build(NPtrVec &&nodes) {
 
 Node *ArrayType::build(NPtrVec &&nodes) {
   if (nodes[1]->is_comma_list()) {
-    // Not to be owned, but we will gut parts of it.
-    auto lengthchain = static_cast<ChainOp*>(nodes[1]);
-    auto iter        = lengthchain->exprs.rbegin();
-    auto prev        = steal<Expression>(nodes[3]);
+    auto length_chain = steal<ChainOp>(nodes[1]);
+    auto iter         = length_chain->exprs.rbegin();
+    auto prev         = steal<Expression>(nodes[3]);
 
-    while (iter != lengthchain->exprs.rend()) {
+    while (iter != length_chain->exprs.rend()) {
       auto array_type_ptr      = new ArrayType;
       array_type_ptr->line_num = (*iter)->line_num;
-      using std::swap;
-      swap(array_type_ptr->length, *iter);
+      array_type_ptr->length   = *iter;
+      *iter                    = nullptr;
 
       array_type_ptr->precedence =
           Language::precedence(Language::Operator::NotAnOperator);
@@ -210,6 +209,7 @@ Node *ArrayType::build(NPtrVec &&nodes) {
       prev                      = array_type_ptr;
       ++iter;
     }
+    delete length_chain;
     return prev;
 
   } else {

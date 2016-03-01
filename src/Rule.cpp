@@ -1,6 +1,12 @@
 #include "Rule.h"
 #include "AST.h"
 
+#define DELETE(ptr)                                                            \
+  {                                                                            \
+    delete ptr;                                                                \
+    ptr = nullptr;                                                             \
+  }
+
 Rule::Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn)
   : output_(output), input_(input), fn_(fn) {}
 
@@ -43,7 +49,7 @@ void Rule::apply(NPtrVec& node_stack) const {
   auto new_ptr = fn_(std::move(nodes_to_reduce));
   new_ptr->set_node_type(output_);
 
-  for (const auto ptr : nodes_to_reduce) { delete ptr; }
+  for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 
   node_stack.push_back(std::move(new_ptr));
 }
