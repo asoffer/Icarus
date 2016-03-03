@@ -172,14 +172,19 @@ llvm::Value *Unop::generate_code(Scope *scope) {
       return scope->builder().CreateCall(static_cast<llvm::Function *>(val));
     }
   }
-  case Operator::Print:
-    operand->type->call_print(
-        scope->builder(),
-        operand->type->is_struct()
-            ? struct_memcpy(operand->type, val, scope->builder())
-            : val);
+  case Operator::Print: {
+    if (operand->type->is_array()) {
+      // TODO avoid calculation of val in this case
+      operand->type->call_print(scope->builder(), operand->generate_lvalue(scope));
+    } else {
+      operand->type->call_print(
+          scope->builder(),
+          operand->type->is_struct()
+              ? struct_memcpy(operand->type, val, scope->builder())
+              : val);
+    }
     return nullptr;
-
+  }
   default: return nullptr;
   }
 }
@@ -361,7 +366,9 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
   // TODO eval of enums at compile-time is wrong. This could be
   // 1. That the eval function is wrong, or
   // 2. That they shouldn't be determined at compile-time
-  if (time() == Time::compile) return llvm_value(evaluate(scope->context()));
+  if (time() == Time::compile) {
+    return llvm_value(evaluate(scope->context()));
+  }
 
   using Language::Operator;
 
@@ -556,16 +563,19 @@ llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
       val->setName(lhs->token());
     }
   } else {
-    val = rhs->generate_code(scope);
-    if (val == nullptr) return nullptr;
-
     var = lhs->generate_lvalue(scope);
     if (var == nullptr) return nullptr;
 
     if (rhs->is_array_literal()) {
+      val = rhs->generate_lvalue(scope);
+      if (val == nullptr) return nullptr;
+
       scope->builder().CreateStore(val, var);
 
     } else {
+      val = rhs->generate_code(scope);
+      if (val == nullptr) return nullptr;
+
       scope->builder().CreateCall(lhs->type->assign(), {val, var});
     }
   }
@@ -693,20 +703,21 @@ llvm::Value *Declaration::generate_code(Scope *scope) {
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.
 
-  if (type_expr->is_array_type()) {
-    std::vector<llvm::Value *> init_args = {identifier->alloc};
-
-    // Push the array lengths onto the vector for calling args
-    Expression *next_ptr = type_expr;
-    while (next_ptr->is_array_type()) {
-      auto length = static_cast<AST::ArrayType *>(next_ptr)->length;
-      next_ptr = static_cast<AST::ArrayType *>(next_ptr)->data_type;
-      init_args.push_back(length->generate_code(scope));
-    }
-
-    auto array_type = static_cast<Array *>(type);
-    scope->builder().CreateCall(array_type->initialize(), init_args);
-  }
+//  if (type_expr->is_array_type()) {
+//  TODO
+//    std::vector<llvm::Value *> init_args = {identifier->alloc};
+//
+//    // Push the array lengths onto the vector for calling args
+//    Expression *next_ptr = type_expr;
+//    while (next_ptr->is_array_type()) {
+//      auto length = static_cast<AST::ArrayType *>(next_ptr)->length;
+//      next_ptr = static_cast<AST::ArrayType *>(next_ptr)->data_type;
+//      init_args.push_back(length->generate_code(scope));
+//    }
+//
+//    auto array_type = static_cast<Array *>(type);
+//    scope->builder().CreateCall(array_type->initialize(), init_args);
+//  }
 
   if (!is_inferred || type == Type_) return nullptr;
 

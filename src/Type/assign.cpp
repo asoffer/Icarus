@@ -68,64 +68,50 @@ llvm::Function* Array::assign() {
   auto val = iter;
   auto var = ++iter;
 
-  call_uninit(bldr, { var });
+  call_uninit(bldr, var);
+  // Allocate space and save the pointer
+  auto new_len      = bldr.CreateLoad(bldr.CreateGEP(val, data::const_uint(0)));
+  auto data_ptr_ptr = bldr.CreateGEP(var, data::const_uint(1));
+  auto load_ptr_ptr = bldr.CreateGEP(val, data::const_uint(1));
+  auto malloc_call = bldr.CreateCall(
+      cstdlib::malloc(),
+      bldr.CreateMul(new_len, data::const_uint(data_type->bytes())));
 
-  auto raw_len_ptr = bldr.CreateGEP(bldr.CreateBitCast(val, *RawPtr),
-      { data::const_neg(bldr, Uint->bytes()) }, "ptr_to_len");
-  auto len_val = bldr.CreateLoad(
-    bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint)));
+  bldr.CreateStore(malloc_call, bldr.CreateGEP(var, data::const_uint(0)));
 
-  auto bytes_per_elem = data::const_uint(data_type->bytes());
-  auto int_size = data::const_uint(Uint->bytes());
-  auto bytes_needed = bldr.CreateAdd(int_size, 
-      bldr.CreateMul(len_val, bytes_per_elem), "malloc_bytes");
-
-  // Malloc call
-  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
-
-  // Store the right length in the start of the array.
-  bldr.CreateStore(len_val,
-      bldr.CreateBitCast(malloc_call, *Ptr(Uint)));
-
-  auto raw_data_ptr = bldr.CreateGEP(malloc_call, { int_size });
-  auto copy_to_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type));
-  auto copy_from_ptr = bldr.CreateGEP(val, { data::const_uint(0) });
-  auto end_ptr = bldr.CreateGEP(copy_to_ptr, { len_val });
-
-  bldr.CreateStore(copy_to_ptr, var);
+  auto copy_to_ptr   = bldr.CreateLoad(data_ptr_ptr);
+  auto copy_from_ptr = bldr.CreateLoad(load_ptr_ptr);
+  auto end_ptr       = bldr.CreateGEP(copy_to_ptr, new_len);
 
   auto loop_block = make_block("loop", assign_fn_);
-  auto done_block = make_block("loop_done", assign_fn_);
-
-  bldr.CreateBr(loop_block);
+  auto land_block = make_block("land", assign_fn_);
 
   auto prev_block = bldr.GetInsertBlock();
-
+  bldr.CreateBr(loop_block);
   bldr.SetInsertPoint(loop_block);
-  llvm::PHINode* from_phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
+  auto from_phi = bldr.CreatePHI(*Ptr(data_type), 2, "from_phi");
+  auto to_phi   = bldr.CreatePHI(*Ptr(data_type), 2, "to_phi");
   from_phi->addIncoming(copy_from_ptr, prev_block);
-
-  llvm::PHINode* to_phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
-  auto copy_from_elem = bldr.CreateLoad(bldr.CreateGEP(from_phi, { data::const_uint(0) }));
-  bldr.CreateCall(data_type->assign(), { copy_from_elem, to_phi });
+  auto copy_from_elem =
+      bldr.CreateLoad(bldr.CreateGEP(from_phi, {data::const_uint(0)}));
+  bldr.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
 
   auto next_from_ptr = bldr.CreateGEP(from_phi, data::const_uint(1));
-  auto next_to_ptr = bldr.CreateGEP(to_phi, data::const_uint(1));
+  auto next_to_ptr   = bldr.CreateGEP(to_phi, data::const_uint(1));
 
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_to_ptr, end_ptr), loop_block, done_block);
+  bldr.CreateCondBr(bldr.CreateICmpULT(next_to_ptr, end_ptr), loop_block,
+                    land_block);
   to_phi->addIncoming(next_to_ptr, bldr.GetInsertBlock());
   from_phi->addIncoming(next_from_ptr, bldr.GetInsertBlock());
 
-  bldr.SetInsertPoint(done_block);
+  bldr.SetInsertPoint(land_block);
   fn_scope->exit();
   return assign_fn_;
-
-  return nullptr;
 }
 
-llvm::Function* Pointer::assign() {
+llvm::Function *Pointer::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);

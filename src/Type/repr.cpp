@@ -1,17 +1,17 @@
 #include "Type.h"
 #include "Scope.h"
 
+extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr);
+
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
-
 namespace cstdlib {
 extern llvm::Constant *putchar();
 extern llvm::Constant *printf();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_neg(llvm::IRBuilder<> &bldr, size_t n);
 extern llvm::Value *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::Value *global_string(llvm::IRBuilder<> &bldr,
@@ -149,7 +149,7 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
 void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
   if (repr_fn_ == nullptr) {
     // TODO what about arrays of types?
-    auto fn_type = Func(this, Void);
+    auto fn_type = Func(Ptr(this), Void);
     repr_fn_ = llvm::Function::Create(*fn_type, llvm::Function::ExternalLinkage,
                                       "print." + to_string(), global_module);
     llvm::Value *arg = repr_fn_->args().begin();
@@ -162,13 +162,9 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     fn_scope->enter();
     fn_bldr.CreateCall(cstdlib::putchar(), {data::const_char('[')});
 
-    auto raw_len_ptr = fn_bldr.CreateGEP(
-        fn_bldr.CreateBitCast(arg, *RawPtr),
-        {data::const_neg(fn_bldr, Uint->bytes())}, "ptr_to_len");
-
-    auto len_ptr = fn_bldr.CreateBitCast(raw_len_ptr, *Ptr(Uint));
-    auto len_val =
-        fn_bldr.CreateLoad(fn_bldr.CreateGEP(len_ptr, {data::const_uint(0)}));
+    auto len_ptr =
+        fn_bldr.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
+    auto len_val = fn_bldr.CreateLoad(len_ptr);
 
     auto loop_block      = make_block("loop.body", repr_fn_);
     auto loop_head_block = make_block("loop.head", repr_fn_);
@@ -180,23 +176,29 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     fn_bldr.SetInsertPoint(loop_head_block);
 
     // Start at position 1, not zero
-    auto start_ptr = fn_bldr.CreateGEP(arg, {data::const_uint(1)});
-    auto end_ptr   = fn_bldr.CreateGEP(arg, {len_val});
+    auto data_ptr_ptr = fn_bldr.CreateGEP(
+        arg, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
+    llvm::Value *start_ptr = fn_bldr.CreateLoad(data_ptr_ptr, "start_ptr");
+    auto end_ptr           = fn_bldr.CreateGEP(start_ptr, {len_val}, "end_ptr");
 
-    // TODO is this const_uint(0) superfluous?
-    auto elem_ptr = fn_bldr.CreateGEP(arg, {data::const_uint(0)});
+    // TODO make calls to call_repr not have to first check if we pass the
+    // object or a pointer to the object.
+    data_type->call_repr(fn_bldr, PtrCallFix(fn_bldr, data_type, start_ptr));
 
-    data_type->call_repr(fn_bldr, fn_bldr.CreateLoad(elem_ptr));
-    fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(len_val, data::const_uint(1)),
-                         done_block, loop_block);
+    start_ptr = fn_bldr.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
+    fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(start_ptr, end_ptr), done_block,
+                         loop_block);
 
+    // Otherwise, print ", element" repeatedly.
     fn_bldr.SetInsertPoint(loop_block);
-    llvm::PHINode *phi = fn_bldr.CreatePHI(*Ptr(data_type), 2, "loop_phi");
+    auto phi = fn_bldr.CreatePHI(*Ptr(data_type), 2, "loop_phi");
     phi->addIncoming(start_ptr, loop_head_block);
 
     fn_bldr.CreateCall(cstdlib::printf(), {data::global_string(fn_bldr, ", ")});
 
-    data_type->call_repr(fn_bldr, fn_bldr.CreateLoad(phi));
+    // TODO make calls to call_repr not have to first check if we pass the
+    // object or a pointer to the object.
+    data_type->call_repr(fn_bldr, PtrCallFix(fn_bldr, data_type, phi));
 
     auto next_ptr = fn_bldr.CreateGEP(phi, data::const_uint(1));
     fn_bldr.CreateCondBr(fn_bldr.CreateICmpULT(next_ptr, end_ptr), loop_block,
@@ -205,6 +207,7 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     fn_bldr.SetInsertPoint(done_block);
 
     fn_bldr.CreateCall(cstdlib::putchar(), {data::const_char(']')});
+
     fn_scope->exit();
   }
 

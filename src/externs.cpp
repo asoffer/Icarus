@@ -36,37 +36,36 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
 
 ErrorLog error_log;
 
-#define CSTDLIB(fn, variadic, in, out)      \
-  llvm::Constant* fn() {                    \
-    static llvm::Constant* func_ =          \
-    global_module->getOrInsertFunction(#fn, \
-        llvm::FunctionType::get(*out,       \
-          { *in }, variadic));              \
-    return func_;                           \
+#define CSTDLIB(fn, variadic, in, out)                                         \
+  llvm::Constant *fn() {                                                       \
+    static llvm::Constant *func_ = global_module->getOrInsertFunction(         \
+        #fn, llvm::FunctionType::get(*out, {*in}, variadic));                  \
+    return func_;                                                              \
   }
 
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
-  CSTDLIB(free,    false, Ptr(Char), Void);
-  CSTDLIB(calloc,  false, Uint, Ptr(Char));
-  CSTDLIB(malloc,  false, Uint, Ptr(Char));
-  //CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }), Ptr(Char));
-  CSTDLIB(putchar, false, Char, Int);
-  CSTDLIB(puts,    false, Ptr(Char), Int);
-  CSTDLIB(printf,  true,  Ptr(Char), Int);
+CSTDLIB(free, false, Ptr(Char), Void);
+CSTDLIB(calloc, false, Uint, Ptr(Char));
+CSTDLIB(malloc, false, Uint, Ptr(Char));
+// CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }),
+// Ptr(Char));
+CSTDLIB(putchar, false, Char, Int);
+CSTDLIB(puts, false, Ptr(Char), Int);
+CSTDLIB(printf, true, Ptr(Char), Int);
 
-  llvm::Constant* memcpy() {                     
-    static llvm::Constant* func_ =            
-      global_module->getOrInsertFunction("memcpy",   
-          llvm::FunctionType::get(*Ptr(Char),
-            { *RawPtr, *RawPtr, *Uint }, false));
-    return func_;                             
-  }
-}  // namespace cstdlib
+llvm::Constant *memcpy() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "memcpy",
+      llvm::FunctionType::get(*Ptr(Char), {*RawPtr, *RawPtr, *Uint}, false));
+  return func_;
+}
+} // namespace cstdlib
+#undef CSTDLIB
 
 namespace data {
-  llvm::Value* null_pointer(Type* t) {
+  llvm::Value *null_pointer(Type *t) {
     return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t, 0));
   }
 
@@ -153,4 +152,8 @@ namespace builtin {
   }
 }  // namespace builtin
 
-#undef CSTDLIB
+// TODO make calls to call_repr not have to first check if we pass the
+// object or a pointer to the object.
+llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr) {
+  return (t->is_array() || t->is_struct()) ? ptr : bldr.CreateLoad(ptr);
+}

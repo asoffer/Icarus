@@ -32,44 +32,48 @@ void Array::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {
         llvm::Function::ExternalLinkage, "uninit." + to_string(),
         global_module);
 
-    FnScope* fn_scope = new FnScope(uninit_fn_);
+    FnScope *fn_scope = new FnScope(uninit_fn_);
     fn_scope->set_type(Func(Ptr(this), Void));
 
-    llvm::IRBuilder<>& fnbldr = fn_scope->builder();
+    llvm::IRBuilder<> &fnbldr = fn_scope->builder();
     fn_scope->enter();
 
-    auto alloc = uninit_fn_->args().begin();
-    auto data_ptr = fnbldr.CreateLoad(alloc);
-    auto ptr_to_free = fnbldr.CreateGEP(fnbldr.CreateBitCast(data_ptr, *RawPtr),
-        { data::const_neg(fnbldr, Uint->bytes()) }, "ptr_to_free");
+    auto array = uninit_fn_->args().begin();
+    uninit_fn_->args().begin()->setName("array");
+    auto len_ptr = fnbldr.CreateGEP(
+        array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
+    auto len_val = fnbldr.CreateLoad(len_ptr, "len_val");
+
+    auto data_ptr = fnbldr.CreateLoad(
+        fnbldr.CreateGEP(array, {data::const_uint(0), data::const_uint(1)}),
+        "ptr_to_free");
 
     if (data_type->requires_uninit()) {
-      auto len_ptr = fnbldr.CreateBitCast(ptr_to_free, *Ptr(Uint), "len_ptr");
-      auto len_val = fnbldr.CreateLoad(len_ptr);
-      auto end_ptr = fnbldr.CreateGEP(data_ptr, { len_val });
+      auto end_ptr  = fnbldr.CreateGEP(data_ptr, len_val, "end_ptr");
 
       auto loop_block = make_block("loop", uninit_fn_);
-
       fnbldr.CreateBr(loop_block);
       fnbldr.SetInsertPoint(loop_block);
 
       auto phi = fnbldr.CreatePHI(*Ptr(data_type), 2, "phi");
       phi->addIncoming(data_ptr, fn_scope->entry_block());
 
-      data_type->call_uninit(fnbldr, { phi });
-      auto next_ptr = fnbldr.CreateGEP(phi, { data::const_uint(1) });
-
-      fnbldr.CreateCondBr(fnbldr.CreateICmpULT(next_ptr, end_ptr),
-          loop_block, fn_scope->exit_block());
+      data_type->call_uninit(fnbldr, {phi});
+      auto next_ptr   = fnbldr.CreateGEP(phi, data::const_uint(1));
+      auto land_block = make_block("land", uninit_fn_);
+      fnbldr.CreateCondBr(fnbldr.CreateICmpULT(next_ptr, end_ptr), loop_block,
+                          land_block);
       phi->addIncoming(next_ptr, loop_block);
+
+      fnbldr.SetInsertPoint(land_block);
     }
 
-    fnbldr.CreateCall(cstdlib::free(), { ptr_to_free });
-
+    fnbldr.CreateCall(cstdlib::free(),
+                      fnbldr.CreateBitCast(data_ptr, *RawPtr));
     fn_scope->exit();
   }
 
-  bldr.CreateCall(uninit_fn_, { var });
+  bldr.CreateCall(uninit_fn_, {var});
 }
 
 void Tuple::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {

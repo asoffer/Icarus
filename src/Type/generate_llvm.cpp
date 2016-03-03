@@ -11,7 +11,12 @@ extern llvm::Module* global_module;
 void Array::generate_llvm() const {
   if (llvm_type) return;
   data_type->generate_llvm();
-  llvm_type = llvm::PointerType::getUnqual(data_type->llvm_type);
+  auto struct_type = llvm::StructType::create(global_module->getContext());
+
+  struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
+
+  struct_type->setName(to_string());
+  llvm_type = struct_type;
 }
 
 void Pointer::generate_llvm() const {
