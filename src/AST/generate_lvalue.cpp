@@ -46,14 +46,9 @@ llvm::Value *Binop::generate_lvalue(Scope *scope) {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
     auto lhs_val  = lhs->generate_lvalue(scope);
     auto rhs_val  = rhs->generate_code(scope);
-    // auto load_ptr = scope->builder().CreateLoad(lhs_val);
-    auto data_type = static_cast<Array*>(lhs->type)->data_type;
-    if (data_type->is_array() || data_type->is_struct()) {
-      return scope->builder().CreateGEP(lhs_val, {rhs_val}, "array_idx");
-    } else {
-      return scope->builder().CreateLoad(
-          scope->builder().CreateGEP(lhs_val, {rhs_val}, "array_idx"));
-    }
+    auto data_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
+        lhs_val, {data::const_uint(0), data::const_uint(1)}));
+    return scope->builder().CreateGEP(data_ptr, {rhs_val}, "array_idx");
   }
   return nullptr;
 }

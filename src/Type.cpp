@@ -193,3 +193,9 @@ void Structure::insert_field(const std::string &name, Type *ty,
 
   has_vars |= ty->has_vars;
 }
+
+bool Type::is_big() const { return is_array() || is_struct(); }
+bool Type::stores_data() const {
+  return this != Type_ && !is_function() && !is_dependent_type() &&
+         !is_type_variable();
+}

@@ -6,12 +6,6 @@
 // this one header.
 #include "Type/ops.h"
 
-// TODO
-// We often have if (val == nullptr) return nullptr to propogate nullptrs. In
-// what situations is a nullptr actually possible to start with? If we can do
-// all checks on the AST before code generation, then maybe we can remove these
-// and thereby streamline the architecture.
-
 extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn);
 
 extern ErrorLog error_log;
@@ -31,6 +25,7 @@ extern llvm::Function *ascii();
 
 namespace data {
 extern llvm::Value *null_pointer(Type *t);
+extern llvm::Value *null(Type *t);
 extern llvm::Value *const_true();
 extern llvm::Value *const_false();
 extern llvm::Value *const_uint(size_t n);
@@ -56,10 +51,12 @@ namespace AST {
 llvm::Value *Identifier::generate_code(Scope *scope) {
   if (type == Type_) {
     return nullptr;
+
   } else if (type->is_function()) {
+    // TODO better way to get functions based on their name
     return global_module->getFunction(token());
 
-  } else if (type->is_struct()) {
+  } else if (type->is_big()) {
     return alloc;
 
   } else {
@@ -71,27 +68,45 @@ llvm::Value *Identifier::generate_code(Scope *scope) {
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Terminal::generate_code(Scope *scope) {
   // TODO remove dependence on token() altogether
-
-  using Language::Terminal;
   switch (terminal_type) {
-  case Terminal::Null:
-    // null_pointer() automatically adds Ptr() so we need to remove it here
-    // TODO is there a better API for this? Almost certainly yes.
+  case Language::Terminal::Type:
+  case Language::Terminal::Return: {
+    return nullptr;
+  }
+  case Language::Terminal::Null: {
     assert(type->is_pointer() && "Null pointer of non-pointer type ");
-    return data::null_pointer(static_cast<Pointer *>(type)->pointee);
-  case Terminal::ASCII: return builtin::ascii();
-  case Terminal::True: return data::const_true();
-  case Terminal::False: return data::const_false();
-  case Terminal::Else:
-    // Because in the case where else represents a terminal, it's
-    // value is true
+    return data::null(type);
+  }
+  case Language::Terminal::ASCII: {
+    return builtin::ascii();
+  }
+  case Language::Terminal::True: {
     return data::const_true();
-  case Terminal::Char: return data::const_char(token()[0]);
-  case Terminal::Int: return data::const_int(std::stoi(token()));
-  case Terminal::Real: return data::const_real(std::stod(token()));
-  case Terminal::UInt: return data::const_uint(std::stoul(token()));
-  case Terminal::Alloc: return cstdlib::malloc();
-  case Terminal::StringLiteral: {
+  }
+  case Language::Terminal::False: {
+    return data::const_false();
+  }
+  case Language::Terminal::Else:
+    return data::const_true();
+  // Else is a terminal only in case statements. In this situation, it's
+  // corresponding resulting value is always to be the one chosen, so we
+  // should have 'else' represent the value true.
+  case Language::Terminal::Char: {
+    return data::const_char(token()[0]);
+  }
+  case Language::Terminal::Int: {
+    return data::const_int(std::stoi(token()));
+  }
+  case Language::Terminal::Real: {
+    return data::const_real(std::stod(token()));
+  }
+  case Language::Terminal::UInt: {
+    return data::const_uint(std::stoul(token()));
+  }
+  case Language::Terminal::Alloc: {
+    return cstdlib::malloc();
+  }
+  case Language::Terminal::StringLiteral: {
     auto str = data::global_string(scope->builder(), token());
     auto len = data::const_uint(token().size());
 
@@ -107,85 +122,85 @@ llvm::Value *Terminal::generate_code(Scope *scope) {
         str_alloc, {data::const_uint(0), data::const_uint(0)});
 
     // NOTE: no need to uninitialize because we never initialized it.
-    auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), len);
+    auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), token().size());
 
     scope->builder().CreateStore(char_ptr, char_array_ptr);
     scope->builder().CreateCall(cstdlib::memcpy(), {char_ptr, str, len});
 
     return str_alloc;
   }
-  case Terminal::Type: return nullptr;
-  case Terminal::Return: return nullptr;
   }
 }
 
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Unop::generate_code(Scope *scope) {
-  using Language::Operator;
-  // Cases where we don't want to generate code for the node
-  if (op == Operator::And) return operand->generate_lvalue(scope);
-  if (op == Operator::Print && operand->type == Type_) {
-    // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
-    // TODO use corrent scope
+  // We first go through all the possible operators where we don't necessarily
+  // need to generate code for the operand.
+  switch (op) {
+  case Language::Operator::And: {
+    // TODO ensure that this has an l-value
+    return operand->generate_lvalue(scope);
+  }
+  case Language::Operator::Print: {
+    // NOTE: Type punning Type* -> llvm::Value*
+    llvm::Value *val = (operand->type == Type_)
+                           ? reinterpret_cast<llvm::Value *>(
+                                 operand->evaluate(scope->context()).as_type)
+                           : operand->generate_code(scope);
 
-    auto val = reinterpret_cast<llvm::Value *>(
-        operand->evaluate(scope->context()).as_type);
+    if (operand->type->is_struct()) {
+      // TODO maybe callees should be responsible for the struct memcpy?
+      val = struct_memcpy(operand->type, val, scope->builder());
+    }
+
     operand->type->call_print(scope->builder(), val);
     return nullptr;
+  }
+  default:;
   }
 
   llvm::Value *val        = operand->generate_code(scope);
   llvm::IRBuilder<> &bldr = scope->builder();
   switch (op) {
-  case Operator::Sub: return operand->type->call_neg(bldr, val);
-
-  case Operator::Not: return operand->type->call_not(bldr, val);
-  case Operator::Free: {
+  case Language::Operator::Sub: {
+    return operand->type->call_neg(bldr, val);
+  }
+  case Language::Operator::Not: {
+    return operand->type->call_not(bldr, val);
+  }
+  case Language::Operator::Free: {
     bldr.CreateCall(cstdlib::free(), {bldr.CreateBitCast(val, *RawPtr)});
-    // Reset pointer to null
-    auto ptee_type = static_cast<Pointer *>(operand->type)->pointee;
-    bldr.CreateStore(data::null_pointer(ptee_type),
+    // TODO only if it has an l-value
+    bldr.CreateStore(data::null(operand->type),
                      operand->generate_lvalue(scope));
     return nullptr;
   }
-  case Operator::Return: scope->make_return(val); return nullptr;
-
-  case Operator::At:
-    if (type->is_struct()) {
-      return val;
-    } else {
-      return bldr.CreateLoad(bldr.CreateGEP(val, {data::const_uint(0)}));
-    }
-
-  case Operator::Call: {
-    auto fn_type = static_cast<Function *>(operand->type);
-    if (fn_type->output->is_struct()) {
+  case Language::Operator::Return: {
+    scope->make_return(val);
+    return nullptr;
+  }
+  case Language::Operator::At: {
+    return type->is_big() ? val : bldr.CreateLoad(val);
+  }
+  case Language::Operator::Call: {
+    assert(operand->type->is_function() && "Operand should be a function.");
+    auto out_type = static_cast<Function *>(operand->type)->output;
+    // TODO this whole section needs an overhaul when we totally settle on how
+    // to pass large things.
+    if (out_type->is_struct()) {
       // TODO move this outside of any potential loops
-      auto local_ret = scope->builder().CreateAlloca(*fn_type->output);
+      auto local_ret = scope->builder().CreateAlloca(*out_type);
 
       scope->builder().CreateCall(static_cast<llvm::Function *>(val),
-                                  {local_ret});
+                                  local_ret);
       return local_ret;
 
     } else {
       return scope->builder().CreateCall(static_cast<llvm::Function *>(val));
     }
   }
-  case Operator::Print: {
-    if (operand->type->is_array()) {
-      // TODO avoid calculation of val in this case
-      operand->type->call_print(scope->builder(), operand->generate_lvalue(scope));
-    } else {
-      operand->type->call_print(
-          scope->builder(),
-          operand->type->is_struct()
-              ? struct_memcpy(operand->type, val, scope->builder())
-              : val);
-    }
-    return nullptr;
-  }
-  default: return nullptr;
+  default: assert(false && "Unimplemented unary operator codegen");
   }
 }
 
@@ -207,27 +222,26 @@ llvm::Value *Access::generate_code(Scope *scope) {
 
   // To make access pass through all layers of pointers, we loop through
   // loading values while we're looking at pointers.
-  while (operand->type->is_pointer()) {
-    operand->type = static_cast<Pointer *>(operand->type)->pointee;
-    if (!operand->type->is_struct()) {
-      eval = scope->builder().CreateLoad(eval);
+  auto base_type = operand->type;
+  while (base_type->is_pointer()) {
+    base_type = static_cast<Pointer *>(base_type)->pointee;
+    if (!base_type->is_big()) eval = scope->builder().CreateLoad(eval);
+  }
+
+  if (base_type->is_struct()) {
+    auto struct_type = static_cast<Structure *>(base_type);
+
+    if (!type->stores_data()) {
+      assert(false && "Not yet implemented");
     }
+
+    auto elem_ptr = scope->builder().CreateGEP(
+        eval, {data::const_uint(0), struct_type->field_num(member_name)});
+    return type->is_big() ? elem_ptr : scope->builder().CreateLoad(elem_ptr);
+
+  } else {
+    assert(false && "Not yet implemented");
   }
-
-  assert(operand->type->is_struct() && "Access must be on a struct");
-  auto struct_type = static_cast<Structure *>(operand->type);
-
-  if (type->is_function() || type == Type_) {
-    // TODO do something else
-    assert(false);
-  }
-
-  auto retval = scope->builder().CreateGEP(
-      eval, {data::const_uint(0), struct_type->field_num(member_name)});
-
-  // We always pass around pointers to structs, rather than actually loading
-  // them into registers, which might not be big enough.
-  return (type->is_struct()) ? retval : scope->builder().CreateLoad(retval);
 }
 
 llvm::Value *Binop::generate_code(Scope *scope) {
@@ -235,45 +249,54 @@ llvm::Value *Binop::generate_code(Scope *scope) {
     return llvm_value(evaluate(scope->context()));
   }
 
-  using Language::Operator;
-  if (op == Operator::Index) {
-    return scope->builder().CreateLoad(generate_lvalue(scope), "array_val");
-  }
-
   auto lhs_val = lhs->generate_code(scope);
-  if (lhs_val == nullptr) return nullptr;
+  llvm::IRBuilder<> &bldr = scope->builder();
 
   switch (op) {
-  case Operator::Cast:
-    return lhs->type->call_cast(scope->builder(), lhs_val,
+  case Language::Operator::Index: {
+    if (lhs->type->is_array()) {
+      auto data_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
+          lhs_val, {data::const_uint(0), data::const_uint(1)}));
+      if (type->is_big()) {
+        return scope->builder().CreateGEP(data_ptr, {rhs->generate_code(scope)},
+                                          "array_val");
+      } else {
+        return scope->builder().CreateLoad(scope->builder().CreateGEP(
+            data_ptr, {rhs->generate_code(scope)}, "array_val"));
+      }
+    }
+    assert(false && "Not yet implemented");
+  }
+  case Language::Operator::Cast: {
+    return lhs->type->call_cast(bldr, lhs_val,
                                 rhs->evaluate(scope->context()).as_type);
-
-  case Operator::Call:
+  }
+  case Language::Operator::Call: {
     if (lhs->type->is_function()) {
       std::vector<llvm::Value *> arg_vals;
+      // This whole section should be pulled out into a function called
+      // "collate_for_function_call" or something like that.
       if (rhs->is_comma_list()) {
-        auto arg_chainop = static_cast<ChainOp *>(rhs);
-        arg_vals.resize(arg_chainop->exprs.size(), nullptr);
-        size_t i = 0;
-        for (const auto &expr : arg_chainop->exprs) {
-          arg_vals[i] = expr->generate_code(scope);
-          if (arg_vals[i] == nullptr) return nullptr;
+        auto &arg_exprs = static_cast<ChainOp *>(rhs)->exprs;
+        arg_vals.resize(arg_exprs.size(), nullptr);
+        for (size_t i = 0; i < arg_exprs.size(); ++i) {
+          arg_vals[i] = arg_exprs[i]->generate_code(scope);
+          assert(arg_vals[i] && "Argument value was null");
 
-          if (expr->type->is_struct()) {
-            arg_vals[i] =
-                struct_memcpy(expr->type, arg_vals[i], scope->builder());
+          if (arg_exprs[i]->type->is_struct()) {
+            // TODO be sure to allocate this ahead of all loops and reuse it
+            // when possible. Also, do this for arrays?
+            arg_vals[i] = struct_memcpy(arg_exprs[i]->type, arg_vals[i],
+                                        scope->builder());
           }
-
-          ++i;
         }
-
       } else {
         auto rhs_val = rhs->generate_code(scope);
-        if (rhs_val == nullptr) return nullptr;
+        assert(rhs_val && "Argument value was null");
 
         if (rhs->type->is_struct()) {
           // TODO be sure to allocate this ahead of all loops and reuse it
-          // when possible
+          // when possible. Also, do this for arrays?
           rhs_val = struct_memcpy(rhs->type, rhs_val, scope->builder());
         }
 
@@ -289,50 +312,50 @@ llvm::Value *Binop::generate_code(Scope *scope) {
         return scope->builder().CreateCall(
             static_cast<llvm::Function *>(lhs_val), arg_vals, "calltmp");
       }
+
     } else if (lhs->type->is_dependent_type()) {
-      // TODO make this generic. right now dependent_type implise alloc(...)
-      auto t = rhs->evaluate(scope->context()).as_type;
-      auto alloc_ptr =
-          scope->builder().CreateCall(lhs_val, {data::const_uint(t->bytes())});
-      return scope->builder().CreateBitCast(alloc_ptr, *type);
+      // TODO make this generic. right now dependent_type implies alloc(...)
+      auto t         = rhs->evaluate(scope->context()).as_type;
+      auto alloc_ptr = bldr.CreateCall(lhs_val, {data::const_uint(t->bytes())});
+      return bldr.CreateBitCast(alloc_ptr, *type);
     }
+  }
   default:;
   }
 
   auto rhs_val = rhs->generate_code(scope);
-  if (rhs_val == nullptr) return nullptr;
-
-  llvm::IRBuilder<> &bldr = scope->builder();
   switch (op) {
-  case Operator::Add: return type->call_add(bldr, lhs_val, rhs_val);
-  case Operator::Sub: return type->call_sub(bldr, lhs_val, rhs_val);
-  case Operator::Mul: return type->call_mul(bldr, lhs_val, rhs_val);
-  case Operator::Div: return type->call_div(bldr, lhs_val, rhs_val);
-  case Operator::Mod: return type->call_mod(bldr, lhs_val, rhs_val);
+  case Language::Operator::Add: return type->call_add(bldr, lhs_val, rhs_val);
+  case Language::Operator::Sub: return type->call_sub(bldr, lhs_val, rhs_val);
+  case Language::Operator::Mul: return type->call_mul(bldr, lhs_val, rhs_val);
+  case Language::Operator::Div: return type->call_div(bldr, lhs_val, rhs_val);
+  case Language::Operator::Mod: return type->call_mod(bldr, lhs_val, rhs_val);
   default:;
   }
 
-  return nullptr;
+  assert(false && "Reached end of Binop::generate_code");
 }
 
-// If you do generate the code here, it is a shorthand array literal
+// TODO rename ArrayType as ShorthandArray. These represent the type of an array
+// as well as a shorthand array. During code-gen, it's treated as the latter,
+// because we never need to code-gen types.
 llvm::Value *ArrayType::generate_code(Scope *scope) {
-  // TODO arrays can only take primitive types currently.
+  // TODO This doesn't work if len is a chain of lengths.
   auto len                = length->generate_code(scope);
   auto data_ty            = data_type->type;
   auto data               = data_type->generate_code(scope);
   llvm::IRBuilder<> &bldr = scope->builder();
 
-  auto alloc_size =
-      bldr.CreateAdd(data::const_uint(Uint->bytes()),
-                     bldr.CreateMul(len, data::const_uint(data_ty->bytes())));
-  auto alloc_ptr = bldr.CreateCall(cstdlib::malloc(), {alloc_size});
-  bldr.CreateStore(len, bldr.CreateBitCast(alloc_ptr, *Ptr(Uint)));
+  auto alloc_size = bldr.CreateMul(len, data::const_uint(data_ty->bytes()));
+  auto alloc_ptr = bldr.CreateCall(cstdlib::malloc(), alloc_size);
 
-  auto start_ptr = bldr.CreateBitCast(
-      bldr.CreateGEP(alloc_ptr, {data::const_uint(Uint->bytes())}),
-      *Ptr(data_ty), "startptr");
-  auto end_ptr = bldr.CreateGEP(start_ptr, {len});
+  auto tmp_array = bldr.CreateAlloca(*type, nullptr, "array.tmp");
+  bldr.CreateStore(len, bldr.CreateGEP(tmp_array, {data::const_uint(0),
+                                                    data::const_uint(0)}));
+  bldr.CreateStore(alloc_ptr, bldr.CreateGEP(tmp_array, {data::const_uint(0),
+                                                         data::const_uint(1)}));
+
+  auto end_ptr   = bldr.CreateGEP(alloc_ptr, len);
 
   auto prev_block = bldr.GetInsertBlock();
   auto parent_fn  = bldr.GetInsertBlock()->getParent();
@@ -343,24 +366,58 @@ llvm::Value *ArrayType::generate_code(Scope *scope) {
   bldr.CreateBr(loop_block);
   bldr.SetInsertPoint(loop_block);
   auto phi_node = bldr.CreatePHI(*Ptr(data_ty), 2, "phi");
-  phi_node->addIncoming(start_ptr, prev_block);
+  phi_node->addIncoming(alloc_ptr, prev_block);
   bldr.CreateCall(data_ty->assign(), {data, phi_node});
 
-  auto next_ptr = bldr.CreateGEP(phi_node, {data::const_uint(1)});
+  auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
   phi_node->addIncoming(next_ptr, loop_block);
 
-  auto cmp = bldr.CreateICmpEQ(next_ptr, end_ptr);
-  bldr.CreateCondBr(cmp, loop_end, loop_block);
+  bldr.CreateCondBr(bldr.CreateICmpEQ(next_ptr, end_ptr), loop_end, loop_block);
   bldr.SetInsertPoint(loop_end);
-  // TODO If you never assign this, the allocation is leaked
 
-  return start_ptr;
+  // TODO If you never assign this, the allocation is leaked. It should be
+  // verified before code-gen that this is leaked
+  return tmp_array;
 }
 
 llvm::Value *Statements::generate_code(Scope *scope) {
-  for (auto &stmt : statements) { stmt->generate_code(scope); }
+  for (auto &stmt : statements) stmt->generate_code(scope);
   return nullptr;
 }
+
+#define BEGIN_SHORT_CIRCUIT                                                    \
+  bldr.SetInsertPoint(curr_block);                                             \
+  auto lhs_val = exprs[0]->generate_code(scope);                               \
+  for (size_t i = 1; i < exprs.size(); ++i) {                                  \
+    bldr.SetInsertPoint(curr_block);                                           \
+    auto rhs_val = exprs[i]->generate_code(scope);                             \
+                                                                               \
+    llvm::Value *cmp_val = nullptr;                                            \
+    switch (ops[i - 1]) {
+
+#define CASE(cmp, llvm_call, op_name)                                          \
+  case Operator::op_name: {                                                    \
+    cmp = bldr.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");   \
+  } break
+
+#define END_SHORT_CIRCUIT                                                      \
+  default: assert(false && "Invalid operator");                                \
+    }                                                                          \
+    assert(cmp_val && "cmp_val is nullptr");                                   \
+                                                                               \
+    auto next_block = make_block("next", parent_fn);                           \
+    bldr.CreateCondBr(cmp_val, next_block, landing);                           \
+    phi->addIncoming(data::const_false(), curr_block);                         \
+    curr_block = next_block;                                                   \
+    lhs_val    = rhs_val;                                                      \
+    }                                                                          \
+                                                                               \
+    bldr.SetInsertPoint(curr_block);                                           \
+    phi->addIncoming(data::const_true(), curr_block);                          \
+    bldr.CreateBr(landing);                                                    \
+    bldr.SetInsertPoint(landing);                                              \
+    return phi;
+
 
 llvm::Value *ChainOp::generate_code(Scope *scope) {
   // TODO eval of enums at compile-time is wrong. This could be
@@ -397,49 +454,43 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
   // Create the phi node
   bldr.SetInsertPoint(landing);
   llvm::PHINode *phi = bldr.CreatePHI(*Bool, num_incoming, "phi");
-
-#define CASE_OPERATOR(cmp, llvm_call, op_name)                                 \
-  case Operator::op_name:                                                      \
-    cmp = bldr.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");   \
-    break
-
   if (expr_type == Int) {
-#include "code_blocks/begin_short_circuit.cxx"
-    CASE_OPERATOR(cmp_val, ICmpS, LT);
-    CASE_OPERATOR(cmp_val, ICmpS, LE);
-    CASE_OPERATOR(cmp_val, ICmp, EQ);
-    CASE_OPERATOR(cmp_val, ICmp, NE);
-    CASE_OPERATOR(cmp_val, ICmpS, GE);
-    CASE_OPERATOR(cmp_val, ICmpS, GT);
-#include "code_blocks/end_short_circuit.cxx"
+    BEGIN_SHORT_CIRCUIT
+    CASE(cmp_val, ICmpS, LT);
+    CASE(cmp_val, ICmpS, LE);
+    CASE(cmp_val, ICmp, EQ);
+    CASE(cmp_val, ICmp, NE);
+    CASE(cmp_val, ICmpS, GE);
+    CASE(cmp_val, ICmpS, GT);
+    END_SHORT_CIRCUIT
 
   } else if (expr_type == Uint) {
-#include "code_blocks/begin_short_circuit.cxx"
-    CASE_OPERATOR(cmp_val, ICmpU, LT);
-    CASE_OPERATOR(cmp_val, ICmpU, LE);
-    CASE_OPERATOR(cmp_val, ICmp, EQ);
-    CASE_OPERATOR(cmp_val, ICmp, NE);
-    CASE_OPERATOR(cmp_val, ICmpU, GE);
-    CASE_OPERATOR(cmp_val, ICmpU, GT);
-#include "code_blocks/end_short_circuit.cxx"
+    BEGIN_SHORT_CIRCUIT
+    CASE(cmp_val, ICmpU, LT);
+    CASE(cmp_val, ICmpU, LE);
+    CASE(cmp_val, ICmp, EQ);
+    CASE(cmp_val, ICmp, NE);
+    CASE(cmp_val, ICmpU, GE);
+    CASE(cmp_val, ICmpU, GT);
+    END_SHORT_CIRCUIT
 
   } else if (expr_type == Real) {
-#include "code_blocks/begin_short_circuit.cxx"
-    CASE_OPERATOR(cmp_val, FCmpO, LT);
-    CASE_OPERATOR(cmp_val, FCmpO, LE);
-    CASE_OPERATOR(cmp_val, FCmpO, EQ);
-    CASE_OPERATOR(cmp_val, FCmpO, NE);
-    CASE_OPERATOR(cmp_val, FCmpO, GE);
-    CASE_OPERATOR(cmp_val, FCmpO, GT);
-#include "code_blocks/end_short_circuit.cxx"
+    BEGIN_SHORT_CIRCUIT
+    CASE(cmp_val, FCmpO, LT);
+    CASE(cmp_val, FCmpO, LE);
+    CASE(cmp_val, FCmpO, EQ);
+    CASE(cmp_val, FCmpO, NE);
+    CASE(cmp_val, FCmpO, GE);
+    CASE(cmp_val, FCmpO, GT);
+    END_SHORT_CIRCUIT
 
   } else if (expr_type->is_enum()) {
-#include "code_blocks/begin_short_circuit.cxx"
-    CASE_OPERATOR(cmp_val, ICmp, EQ);
-    CASE_OPERATOR(cmp_val, ICmp, NE);
-#include "code_blocks/end_short_circuit.cxx"
-    // TODO struct, function, etc
-#undef CASE_OPERATOR
+    BEGIN_SHORT_CIRCUIT
+    CASE(cmp_val, ICmp, EQ);
+    CASE(cmp_val, ICmp, NE);
+    END_SHORT_CIRCUIT
+
+    // TODO struct, function, array, etc
   } else if (expr_type == Bool) {
     // TODO in the last case, can't you just come from the last branch taking
     // the yet unknown value rather than doing another branch? Answer: Yes. Do
@@ -481,11 +532,13 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
   }
 }
 
-llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
-  if (*type == nullptr) return nullptr;
+#undef BEGIN_SHORT_CIRCUIT
+#undef CASE
+#undef END_SHORT_CIRCUIT
 
+llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
   if (llvm_fn == nullptr) {
-    // NOTE: This means a function is not assigned.
+    // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
         static_cast<llvm::FunctionType *>(type->llvm_type),
         llvm::Function::ExternalLinkage, "__anon_fn", global_module);
@@ -498,7 +551,7 @@ llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
     // Set alloc
     auto decl_id   = input_iter->identifier;
     auto decl_type = decl_id->type;
-    if (decl_type->is_struct()) { decl_id->alloc = arg_iter; }
+    if (decl_type->is_big()) { decl_id->alloc = arg_iter; }
 
     ++arg_iter;
   }
@@ -542,12 +595,9 @@ llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
   if (lhs->is_identifier() && rhs->type->is_function()) {
     if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
       val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
+      assert(val && "RHS of assignment generated null code");
 
-      // NOTE: Type verification asserts that the first argument of
-      // each of these is the correct type.
-      // TODO This verification hasn't yet been implemented and that it is a
-      // struct
+      // TODO verify that you are defining print for this struct type.
       auto rhs_as_func = static_cast<Function *>(rhs->type);
       auto arg_type    = static_cast<Structure *>(rhs_as_func->input);
 
@@ -555,138 +605,35 @@ llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
 
     } else {
       auto fn = static_cast<FunctionLiteral *>(rhs);
-      // TODO TOKENREMOVAL
+      // TODO TOKENREMOVAL. Get the function via some unique name (probably
+      // mangled somehow)
       fn->llvm_fn = global_module->getFunction(lhs->token());
 
       val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
+      assert(val && "RHS of assignment generated null code");
       val->setName(lhs->token());
     }
   } else {
     var = lhs->generate_lvalue(scope);
-    if (var == nullptr) return nullptr;
+    assert(var && "LHS of assignment generated null code");
 
-    if (rhs->is_array_literal()) {
-      val = rhs->generate_lvalue(scope);
-      if (val == nullptr) return nullptr;
+    val = rhs->generate_code(scope);
+    assert(val && "RHS of assignment generated null code");
 
-      scope->builder().CreateStore(val, var);
+    lhs->type->call_uninit(scope->builder(), var);
 
-    } else {
-      val = rhs->generate_code(scope);
-      if (val == nullptr) return nullptr;
-
-      scope->builder().CreateCall(lhs->type->assign(), {val, var});
-    }
+    scope->builder().CreateCall(lhs->type->assign(), {val, var});
   }
 
   return nullptr;
 }
 
+#define CASE(op, llvm_op, symbol)                                              \
+  case Operator::op: {                                                         \
+    val = scope->builder().Create##llvm_op(lhs_val, rhs_val, symbol);          \
+  } break
+
 llvm::Value *Assignment::generate_code(Scope *scope) {
-  using Language::Operator;
-  if (op == Operator::OrEq || op == Operator::XorEq || op == Operator::AndEq ||
-      op == Operator::AddEq || op == Operator::SubEq || op == Operator::MulEq ||
-      op == Operator::DivEq || op == Operator::ModEq) {
-
-    auto lhs_val = lhs->generate_code(scope);
-    if (lhs_val == nullptr) return nullptr;
-
-    auto lval = lhs->generate_lvalue(scope);
-    if (lval == nullptr) return nullptr;
-
-    auto rhs_val = rhs->generate_code(scope);
-    if (rhs_val == nullptr) return nullptr;
-
-    if (lhs->type == Bool) {
-      switch (op) {
-      case Operator::XorEq:
-        scope->builder().CreateStore(
-            scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
-      case Operator::AndEq:
-      case Operator::OrEq: {
-        auto parent_fn   = scope->builder().GetInsertBlock()->getParent();
-        auto more_block  = make_block("more", parent_fn);
-        auto merge_block = make_block("merge", parent_fn);
-
-        // Assumption is that only operators of type (bool, bool) -> bool are
-        // '&', '|', and '^'
-        auto true_block  = (op == Operator::AndEq) ? more_block : merge_block;
-        auto false_block = (op == Operator::OrEq) ? more_block : merge_block;
-
-        scope->builder().CreateCondBr(lhs_val, true_block, false_block);
-        scope->builder().SetInsertPoint(more_block);
-
-        // Generating lvalue for storage
-        scope->builder().CreateStore(rhs_val, lval);
-        scope->builder().CreateBr(merge_block);
-
-        scope->builder().SetInsertPoint(merge_block);
-      }
-      default:;
-      }
-
-      return nullptr;
-
-    } else if (lhs->type == Int) {
-      llvm::Value *val = nullptr;
-      auto &bldr = scope->builder();
-      switch (op) {
-      case Operator::AddEq: val = bldr.CreateAdd(lhs_val, rhs_val, "at"); break;
-      case Operator::SubEq: val = bldr.CreateSub(lhs_val, rhs_val, "st"); break;
-      case Operator::MulEq: val = bldr.CreateMul(lhs_val, rhs_val, "mt"); break;
-      case Operator::DivEq:
-        val = bldr.CreateSDiv(lhs_val, rhs_val, "dt");
-        break;
-      case Operator::ModEq:
-        val = bldr.CreateSRem(lhs_val, rhs_val, "rt");
-        break;
-      default: return nullptr;
-      }
-      bldr.CreateStore(val, lval);
-      return nullptr;
-
-    } else if (lhs->type == Uint) {
-      auto &bldr       = scope->builder();
-      llvm::Value *val = nullptr;
-      switch (op) {
-      case Operator::AddEq: val = bldr.CreateAdd(lhs_val, rhs_val, "at"); break;
-      case Operator::SubEq: val = bldr.CreateSub(lhs_val, rhs_val, "st"); break;
-      case Operator::MulEq: val = bldr.CreateMul(lhs_val, rhs_val, "mt"); break;
-      case Operator::DivEq:
-        val = bldr.CreateUDiv(lhs_val, rhs_val, "dt");
-        break;
-      case Operator::ModEq:
-        val = bldr.CreateURem(lhs_val, rhs_val, "rt");
-        break;
-      default: return nullptr;
-      }
-      bldr.CreateStore(val, lval);
-      return nullptr;
-
-    } else if (type == Real) {
-      llvm::Value *val = nullptr;
-      auto &bldr = scope->builder();
-      switch (op) {
-      case Operator::AddEq:
-        val = bldr.CreateFAdd(lhs_val, rhs_val, "at");
-        break;
-      case Operator::SubEq:
-        val = bldr.CreateFSub(lhs_val, rhs_val, "st");
-        break;
-      case Operator::MulEq:
-        val = bldr.CreateFMul(lhs_val, rhs_val, "mt");
-        break;
-      case Operator::DivEq:
-        val = bldr.CreateFDiv(lhs_val, rhs_val, "dt");
-        break;
-      default: return nullptr;
-      }
-      bldr.CreateStore(val, lval);
-      return nullptr;
-    }
-  }
-
   // The left-hand side may be a declaration
   if (lhs->is_declaration()) {
     // TODO maybe the declarations generate_code ought to return an l-value for
@@ -695,31 +642,109 @@ llvm::Value *Assignment::generate_code(Scope *scope) {
         scope, static_cast<Declaration *>(lhs)->identifier, rhs);
   }
 
+
+  using Language::Operator;
+  if (op == Operator::OrEq || op == Operator::XorEq || op == Operator::AndEq ||
+      op == Operator::AddEq || op == Operator::SubEq || op == Operator::MulEq ||
+      op == Operator::DivEq || op == Operator::ModEq) {
+
+    auto lhs_val = lhs->generate_code(scope);
+    assert(lhs_val && "LHS of assignment generated null code");
+
+    auto lval = lhs->generate_lvalue(scope);
+    assert(lval && "LHS lval of assignment generated null code");
+
+    if (lhs->type == Bool) {
+      switch (op) {
+      case Operator::XorEq: {
+        auto rhs_val = rhs->generate_code(scope);
+        assert(rhs_val && "RHS of assignment generated null code");
+
+        scope->builder().CreateStore(
+            scope->builder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+      } break;
+      case Operator::AndEq: {
+        auto parent_fn   = scope->builder().GetInsertBlock()->getParent();
+        auto more_block  = make_block("more", parent_fn);
+        auto merge_block = make_block("merge", parent_fn);
+        scope->builder().CreateCondBr(lhs_val, more_block, merge_block);
+
+        scope->builder().SetInsertPoint(more_block);
+        auto rhs_val = rhs->generate_code(scope);
+        assert(rhs_val && "RHS of assignment generated null code");
+
+        scope->builder().CreateStore(rhs_val, lval);
+        scope->builder().CreateBr(merge_block);
+        scope->builder().SetInsertPoint(merge_block);
+      } break;
+      case Operator::OrEq: {
+        auto parent_fn   = scope->builder().GetInsertBlock()->getParent();
+        auto more_block  = make_block("more", parent_fn);
+        auto merge_block = make_block("merge", parent_fn);
+        scope->builder().CreateCondBr(lhs_val, merge_block, more_block);
+
+        scope->builder().SetInsertPoint(more_block);
+        auto rhs_val = rhs->generate_code(scope);
+        assert(rhs_val && "RHS of assignment generated null code");
+
+        scope->builder().CreateStore(rhs_val, lval);
+        scope->builder().CreateBr(merge_block);
+        scope->builder().SetInsertPoint(merge_block);
+      } break;
+      default: assert(false && "Invalid assignment operator for boolean type");
+      }
+      return nullptr;
+    }
+
+    auto rhs_val = rhs->generate_code(scope);
+    assert(rhs_val && "RHS of assignment generated null code");
+
+    llvm::Value *val = nullptr;
+    if (lhs->type == Int) {
+      switch (op) {
+        CASE(AddEq, Add, "at");
+        CASE(SubEq, Sub, "st");
+        CASE(MulEq, Mul, "mt");
+        CASE(DivEq, SDiv, "dt");
+        CASE(ModEq, SRem, "rt");
+      default: assert(false && "Invalid operator");
+      }
+
+    } else if (lhs->type == Uint) {
+      switch (op) {
+        CASE(AddEq, Add, "at");
+        CASE(SubEq, Sub, "st");
+        CASE(MulEq, Mul, "mt");
+        CASE(DivEq, UDiv, "dt");
+        CASE(ModEq, URem, "rt");
+      default: assert(false && "Invalid operator");
+      }
+
+    } else if (lhs->type == Real) {
+      switch (op) {
+        CASE(AddEq, FAdd, "at");
+        CASE(SubEq, FSub, "st");
+        CASE(MulEq, FMul, "mt");
+        CASE(DivEq, FDiv, "dt");
+      default: assert(false && "Invalid operator");
+      }
+    } else {
+      assert(false && "Not yet implemented");
+    }
+
+    scope->builder().CreateStore(val, lval);
+    return nullptr;
+  }
+
   return generate_assignment_code(scope, lhs, rhs);
 }
+#undef CASE
 
 llvm::Value *Declaration::generate_code(Scope *scope) {
+  if (!is_inferred || type == Type_) return nullptr;
   // For the most part, declarations are preallocated at the beginning
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.
-
-//  if (type_expr->is_array_type()) {
-//  TODO
-//    std::vector<llvm::Value *> init_args = {identifier->alloc};
-//
-//    // Push the array lengths onto the vector for calling args
-//    Expression *next_ptr = type_expr;
-//    while (next_ptr->is_array_type()) {
-//      auto length = static_cast<AST::ArrayType *>(next_ptr)->length;
-//      next_ptr = static_cast<AST::ArrayType *>(next_ptr)->data_type;
-//      init_args.push_back(length->generate_code(scope));
-//    }
-//
-//    auto array_type = static_cast<Array *>(type);
-//    scope->builder().CreateCall(array_type->initialize(), init_args);
-//  }
-
-  if (!is_inferred || type == Type_) return nullptr;
 
   // Remember, type_expr is not really the right name in the inference case.
   // It's the thing whose type we are inferring.
@@ -729,6 +754,7 @@ llvm::Value *Declaration::generate_code(Scope *scope) {
   return generate_assignment_code(scope, identifier, type_expr);
 }
 
+// TODO cleanup. Nothing incorrect here that I know of, just can be simplified
 llvm::Value *Case::generate_code(Scope *scope) {
   auto parent_fn = scope->builder().GetInsertBlock()->getParent();
   // Condition blocks - The ith block is what you reach when you've
@@ -775,31 +801,29 @@ llvm::Value *Case::generate_code(Scope *scope) {
 }
 
 llvm::Value *ArrayLiteral::generate_code(Scope *scope) {
-  // TODO if this is never assigned to anything, it will be leaked
+  // TODO if this is never assigned to anything, it will be leaked. This should
+  // be verified.
 
   auto type_as_array = static_cast<Array *>(type);
   auto element_type  = type_as_array->data_type;
+  size_t num_elems   = elems.size();
 
-  size_t num_elems = elems.size();
+  auto array_data =
+      type_as_array->initialize_literal(scope->builder(), num_elems);
+  auto head_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
+      array_data, {data::const_uint(0), data::const_uint(1)}));
 
-  auto array_data = type_as_array->initialize_literal(
-      scope->builder(), data::const_uint(num_elems));
-
-  if (!element_type->is_array()) {
+  if (element_type->is_big()) {
+    assert(false && "Not yet implemented");
+  } else {
     for (size_t i = 0; i < num_elems; ++i) {
-      auto data_ptr = scope->builder().CreateGEP(*element_type, array_data,
-                                                 {data::const_uint(i)});
+      auto data_ptr =
+          scope->builder().CreateGEP(head_ptr, {data::const_uint(i)});
 
       scope->builder().CreateCall(element_type->assign(),
                                   {elems[i]->generate_code(scope), data_ptr});
     }
 
-  } else {
-    for (size_t i = 0; i < num_elems; ++i) {
-      auto data_ptr = scope->builder().CreateGEP(*element_type, array_data,
-                                                 {data::const_uint(i)});
-      scope->builder().CreateStore(elems[i]->generate_code(scope), data_ptr);
-    }
   }
 
   return array_data;

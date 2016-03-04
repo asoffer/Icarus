@@ -148,6 +148,9 @@ public:
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
 
+  virtual bool is_big() const;
+  virtual bool stores_data() const;
+
   llvm::Function *assign_fn_;
   mutable llvm::Type *llvm_type;
   bool has_vars;
@@ -195,8 +198,7 @@ struct Array : public Type {
                                  Type *to_type);
 
   llvm::Function *initialize();
-  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr,
-                                  llvm::Value *runtime_len = nullptr);
+  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, size_t len);
 
   llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
 

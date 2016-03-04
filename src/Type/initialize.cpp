@@ -208,35 +208,19 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 //  return init_fn_;
 //}
 
+llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
+                                       size_t len) {
 
+  auto bytes_to_alloc = data::const_uint(len * data_type->bytes());
+  auto malloc_call = bldr.CreateBitCast(
+      bldr.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
 
-llvm::Value* Array::initialize_literal(llvm::IRBuilder<>& bldr, llvm::Value* runtime_len) {
-  // TODO determine when this can be freed. Currently just being leaked.
-
-  llvm::Value* len =
-    (runtime_len == nullptr) ? data::const_uint(0) : runtime_len;
-
-  // Compute the amount of space to allocate
-  auto bytes_per_elem = data::const_uint(data_type->bytes());
-  auto uint_size = data::const_uint(Uint->bytes());
-  auto bytes_needed = bldr.CreateAdd(uint_size,
-      bldr.CreateMul(len, bytes_per_elem), "malloc_bytes");
-
-  // Malloc call
-  auto malloc_call = bldr.CreateCall(cstdlib::malloc(), { bytes_needed });
-
-  // Pointer to the length at the head of the array
-  auto raw_len_ptr = bldr.CreateGEP(malloc_call,
-      { data::const_uint(0) }, "array_len_raw");
-
-  auto len_ptr = bldr.CreateBitCast(raw_len_ptr, *Ptr(Int), "len_ptr");
-  bldr.CreateStore(len, len_ptr);
-
-  // Pointer to the array data
-  auto raw_data_ptr = bldr.CreateGEP(malloc_call, { uint_size }, "array_idx_raw");
-  
-  // Pointer to data cast
-  auto ret_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "array_ptr");
-
-  return ret_ptr;
+  // TODO allocate this in the right place
+  auto alloc = allocate(bldr);
+  bldr.CreateStore(
+      data::const_uint(len),
+      bldr.CreateGEP(alloc, {data::const_uint(0), data::const_uint(0)}));
+  bldr.CreateStore(malloc_call, bldr.CreateGEP(alloc, {data::const_uint(0),
+                                                       data::const_uint(1)}));
+  return alloc;
 }

@@ -69,6 +69,11 @@ namespace data {
     return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t, 0));
   }
 
+  llvm::Value *null(Type *t) {
+    assert(t->is_pointer() && "type must be a pointer to have a null value");
+    return null_pointer(static_cast<Pointer *>(t)->pointee);
+  }
+
   llvm::Value* const_int(int n) {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, static_cast<unsigned int>(n), false));

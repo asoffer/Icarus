@@ -15,10 +15,10 @@ main := void -> void {
   print '\n'
   x := 3
   y := 2
-  a := [[x, y]]
-  print a
-  a[0][0] += 1
-  print a
+  // a := [[x, y]]
+  // print a
+  // a[0][0] += 1
+  // print a
   print '\n'
   print x
   print '\n'

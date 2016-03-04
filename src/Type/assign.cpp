@@ -54,12 +54,14 @@ llvm::Function* Function::assign() {
 llvm::Function* Array::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
-  assign_fn_ = get_llvm_assign(this);
+  assign_fn_ = llvm::Function::Create(
+      *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
+      "assign." + to_string(), global_module);
 
   // Create unitilization function
 
   FnScope* fn_scope = new FnScope(assign_fn_);
-  fn_scope->set_type(Func({ this, Ptr(this) }, Void));
+  fn_scope->set_type(Func({ Ptr(this), Ptr(this) }, Void));
 
   llvm::IRBuilder<>& bldr = fn_scope->builder();
 
@@ -70,14 +72,23 @@ llvm::Function* Array::assign() {
 
   call_uninit(bldr, var);
   // Allocate space and save the pointer
-  auto new_len      = bldr.CreateLoad(bldr.CreateGEP(val, data::const_uint(0)));
-  auto data_ptr_ptr = bldr.CreateGEP(var, data::const_uint(1));
-  auto load_ptr_ptr = bldr.CreateGEP(val, data::const_uint(1));
-  auto malloc_call = bldr.CreateCall(
-      cstdlib::malloc(),
-      bldr.CreateMul(new_len, data::const_uint(data_type->bytes())));
+  auto new_len = bldr.CreateLoad(
+      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
+  auto data_ptr_ptr =
+      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)});
+  auto load_ptr_ptr =
+      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(1)});
+  auto malloc_call = bldr.CreateBitCast(
+      bldr.CreateCall(
+          cstdlib::malloc(),
+          bldr.CreateMul(new_len, data::const_uint(data_type->bytes()))),
+      *Ptr(data_type));
 
-  bldr.CreateStore(malloc_call, bldr.CreateGEP(var, data::const_uint(0)));
+  bldr.CreateStore(
+      new_len, bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+
+  bldr.CreateStore(malloc_call, bldr.CreateGEP(var, {data::const_uint(0),
+                                                     data::const_uint(1)}));
 
   auto copy_to_ptr   = bldr.CreateLoad(data_ptr_ptr);
   auto copy_from_ptr = bldr.CreateLoad(load_ptr_ptr);
@@ -90,7 +101,7 @@ llvm::Function* Array::assign() {
   bldr.CreateBr(loop_block);
   bldr.SetInsertPoint(loop_block);
   auto from_phi = bldr.CreatePHI(*Ptr(data_type), 2, "from_phi");
-  auto to_phi   = bldr.CreatePHI(*Ptr(data_type), 2, "to_phi");
+  auto to_phi = bldr.CreatePHI(*Ptr(data_type), 2, "to_phi");
   from_phi->addIncoming(copy_from_ptr, prev_block);
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
