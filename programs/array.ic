@@ -13,7 +13,7 @@ main := void -> void {
     print c[i]
     i += 1u
   }
-  
+
   i = 0u
   while i < 20u {
     print r[i]

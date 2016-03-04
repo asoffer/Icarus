@@ -40,15 +40,15 @@ void Array::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {
 
     auto array = uninit_fn_->args().begin();
     uninit_fn_->args().begin()->setName("array");
-    auto len_ptr = fnbldr.CreateGEP(
-        array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-    auto len_val = fnbldr.CreateLoad(len_ptr, "len_val");
-
     auto data_ptr = fnbldr.CreateLoad(
         fnbldr.CreateGEP(array, {data::const_uint(0), data::const_uint(1)}),
         "ptr_to_free");
 
     if (data_type->requires_uninit()) {
+      auto len_ptr = fnbldr.CreateGEP(
+          array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
+      auto len_val = fnbldr.CreateLoad(len_ptr, "len_val");
+
       auto end_ptr  = fnbldr.CreateGEP(data_ptr, len_val, "end_ptr");
 
       auto loop_block = make_block("loop", uninit_fn_);

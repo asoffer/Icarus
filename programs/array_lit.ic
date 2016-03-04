@@ -2,24 +2,24 @@ main := void -> void {
   array_lit : [5; int]
   array_lit = [1, 4, 9, 16, 25]
   
-  i := 0
-  while i < 5 {
-    print array_lit[i]
-    print '\n'
-    i += 1
-  }
-  
-  double_lit : [20; real]
-  print double_lit
-  
-  print '\n'
-  x := 3
-  y := 2
-  // a := [[x, y]]
-  // print a
-  // a[0][0] += 1
-  // print a
-  print '\n'
-  print x
-  print '\n'
+//  i := 0
+//  while i < 5 {
+//    print array_lit[i]
+//    print '\n'
+//    i += 1
+//  }
+//  
+//  double_lit : [20; real]
+//  print double_lit
+//  
+//  print '\n'
+//  x := 3
+//  y := 2
+//  // a := [[x, y]]
+//  // print a
+//  // a[0][0] += 1
+//  // print a
+//  print '\n'
+//  print x
+//  print '\n'
 }

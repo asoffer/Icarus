@@ -207,19 +207,22 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
 //  fn_scope->exit();
 //  return init_fn_;
 //}
+llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
+                                       llvm::Value *alloc, size_t len) {
+  return initialize_literal(bldr, alloc, data::const_uint(len));
+}
 
 llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
-                                       size_t len) {
-
-  auto bytes_to_alloc = data::const_uint(len * data_type->bytes());
+                                       llvm::Value *alloc, llvm::Value *len) {
+  auto bytes_to_alloc =
+      bldr.CreateMul(len, data::const_uint(data_type->bytes()));
   auto malloc_call = bldr.CreateBitCast(
       bldr.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
 
   // TODO allocate this in the right place
-  auto alloc = allocate(bldr);
+
   bldr.CreateStore(
-      data::const_uint(len),
-      bldr.CreateGEP(alloc, {data::const_uint(0), data::const_uint(0)}));
+      len, bldr.CreateGEP(alloc, {data::const_uint(0), data::const_uint(0)}));
   bldr.CreateStore(malloc_call, bldr.CreateGEP(alloc, {data::const_uint(0),
                                                        data::const_uint(1)}));
   return alloc;

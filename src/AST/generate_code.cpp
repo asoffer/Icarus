@@ -122,7 +122,8 @@ llvm::Value *Terminal::generate_code(Scope *scope) {
         str_alloc, {data::const_uint(0), data::const_uint(0)});
 
     // NOTE: no need to uninitialize because we never initialized it.
-    auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), token().size());
+    auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), str_alloc,
+                                                  token().size());
 
     scope->builder().CreateStore(char_ptr, char_array_ptr);
     scope->builder().CreateCall(cstdlib::memcpy(), {char_ptr, str, len});
@@ -538,6 +539,12 @@ llvm::Value *ChainOp::generate_code(Scope *scope) {
 
 llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
   if (llvm_fn == nullptr) {
+    assert(type->is_function() && "How is the type not a function?");
+    auto fn_type = static_cast<Function *>(type);
+
+    // TODO what is the correct generalization of this?
+    if (fn_type->output == Type_) return nullptr;
+
     // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
         static_cast<llvm::FunctionType *>(type->llvm_type),
@@ -610,8 +617,9 @@ llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
       fn->llvm_fn = global_module->getFunction(lhs->token());
 
       val = rhs->generate_code(scope);
-      assert(val && "RHS of assignment generated null code");
-      val->setName(lhs->token());
+      // Null value can be returned here, if for instance, the rhs is a function
+      // on types.
+      if (val) { val->setName(lhs->token()); }
     }
   } else {
     var = lhs->generate_lvalue(scope);
@@ -741,6 +749,17 @@ llvm::Value *Assignment::generate_code(Scope *scope) {
 #undef CASE
 
 llvm::Value *Declaration::generate_code(Scope *scope) {
+  // In the case of something like
+  // foo: [10; char], an actual allocation needs to occur.
+  // TODO maybe this should be moved into the scope?
+  // Or maybe declarations in scope should be moved here?
+  if (!is_inferred && type->is_array()) {
+    assert(type_expr->is_array_type() && "Not array type");
+    auto len =
+        static_cast<ArrayType *>(type_expr)->length->generate_code(scope);
+    static_cast<Array *>(type)->initialize_literal(scope->builder(), identifier->alloc, len);
+  }
+
   if (!is_inferred || type == Type_) return nullptr;
   // For the most part, declarations are preallocated at the beginning
   // of each scope, so there's no need to do anything if a heap allocation
@@ -808,8 +827,9 @@ llvm::Value *ArrayLiteral::generate_code(Scope *scope) {
   auto element_type  = type_as_array->data_type;
   size_t num_elems   = elems.size();
 
-  auto array_data =
-      type_as_array->initialize_literal(scope->builder(), num_elems);
+  auto array_data = type->allocate(scope->builder());
+  type_as_array->initialize_literal(scope->builder(), array_data, num_elems);
+
   auto head_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
       array_data, {data::const_uint(0), data::const_uint(1)}));
 

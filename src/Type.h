@@ -198,7 +198,10 @@ struct Array : public Type {
                                  Type *to_type);
 
   llvm::Function *initialize();
-  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, size_t len);
+  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
+                                  size_t len);
+  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
+                                  llvm::Value *len);
 
   llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
 
