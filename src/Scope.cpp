@@ -58,22 +58,21 @@ void Scope::enter() {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (decl_type->is_function() || decl_type == Type_) {
-      continue;
+    if (!decl_type->stores_data()) continue;
 
-    } else if (decl_type->is_array()) {
-      auto array_dim = static_cast<Array*>(decl_type)->dimension;
-      std::vector<llvm::Value*> init_args(array_dim + 1, data::const_uint(0));
-      init_args[0] = decl_id->alloc;
-      // TODO
-      // auto array_type = static_cast<Array*>(decl_type);
-      // bldr_.CreateCall(array_type->initialize(), init_args);
-      continue;
+    // if (decl_type->is_array()) {
+    //   auto array_dim = static_cast<Array*>(decl_type)->dimension;
+    //   std::vector<llvm::Value*> init_args(array_dim + 1, data::const_uint(0));
+    //   init_args[0] = decl_id->alloc;
+    //   // TODO
+    //   // auto array_type = static_cast<Array*>(decl_type);
+    //   // bldr_.CreateCall(array_type->initialize(), init_args);
+    //   continue;
 
-    } else {
-      if (decl_id->is_function_arg) continue;
-      decl_type->call_init(bldr_, { decl_id->alloc });
-    }
+    // } else {
+    if (decl_id->is_function_arg) continue;
+    decl_type->call_init(bldr_, {decl_id->alloc});
+    // }
   }
 }
 

@@ -45,10 +45,12 @@ void Primitive::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
 
 // TODO Change this is array size is known at compile time
 void Array::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
-  bldr.CreateStore(data::const_uint(0),
-                   bldr.CreateGEP(var, data::const_uint(0)));
-  bldr.CreateStore(data::null_pointer(data_type),
-                   bldr.CreateGEP(var, data::const_uint(1)));
+  bldr.CreateStore(
+      data::const_uint(0),
+      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+  bldr.CreateStore(
+      data::null_pointer(data_type),
+      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
 }
 
 void Tuple::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
@@ -112,101 +114,7 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   bldr.CreateCall(init_fn_, { var });
 }
 
-// This function call initializes the array with the given lengths
-// TODO document the difference between this and call_init
-//llvm::Function* Array::initialize() {
-//  if (init_fn_ != nullptr) return init_fn_;
-//
-//  std::vector<llvm::Type*> init_types(dimension + 1, *Uint);
-//  init_types[0] = *Ptr(this);
-//
-//  init_fn_ = llvm::Function::Create(
-//      llvm::FunctionType::get(*Void, init_types, false),
-//      llvm::Function::ExternalLinkage, "init." + to_string(),
-//      global_module);
-//
-//  FnScope* fn_scope = new FnScope(init_fn_);
-//  fn_scope->set_type(Func(this, Void));
-//
-//  llvm::IRBuilder<>& bldr = fn_scope->builder();
-//  fn_scope->enter();
-//
-//  // Name the function arguments to make the LLVM IR easier to read
-//  std::vector<llvm::Value *> args;
-//  size_t arg_num = 0;
-//  auto init_args = init_fn_->args();
-//  for (auto &arg : init_args) {
-//    arg.setName("arg" + std::to_string(arg_num++));
-//    args.push_back(&arg);
-//  }
-//  auto store_ptr = bldr.CreateLoad(bldr.CreateGEP(args[0], data::const_uint(1));
-//  bldr.CreateStore(args[0], bldr.CreateGEP(var, data::const_uint(0)));
-//  auto len_val = args.back();
-//  args.pop_back();
-//
-//  auto bytes_needed =
-//      bldr.CreateMul(len_val, data::const_uint(data_type->bytes()));
-//
-//  // TODO more generally, determine whether zeroing out the type
-//  // is the correct behavior for initialization
-//  auto use_calloc = data_type->is_primitive();
-//
-//  // (M/C)alloc call
-//  auto alloc_call = bldr.CreateCall(
-//      use_calloc ? cstdlib::calloc() : cstdlib::malloc(), {bytes_needed});
-//
-//  bldr.CreateStore(alloc_call, );
-//
-//
-//  // Store the length at the head of the array
-//  auto len_ptr = bldr.CreateBitCast(alloc_call, *Ptr(Uint), "len_ptr");
-//  bldr.CreateStore(len_val, len_ptr);
-//
-//  // Pointer to the array data
-//  auto raw_data_ptr = bldr.CreateGEP(alloc_call, {uint_size});
-//
-//  // Pointer to data cast
-//  auto data_ptr = bldr.CreateBitCast(raw_data_ptr, *Ptr(data_type), "data_ptr");
-//  bldr.CreateStore(data_ptr, store_ptr);
-//
-//  // Just calling calloc is okay for p
-//  if (!use_calloc) {
-//    auto end_ptr = bldr.CreateGEP(data_ptr, { len_val });
-//
-//    // Loop through the array and initialize each input
-//    auto loop_block = make_block("loop", init_fn_);
-//    bldr.CreateBr(loop_block);
-//    bldr.SetInsertPoint(loop_block);
-//
-//    llvm::PHINode* phi = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
-//    phi->addIncoming(data_ptr, fn_scope->entry_block());
-//
-//    std::vector<llvm::Value*> next_init_args = { phi };
-//    if (data_type->is_array()) {
-//      auto iters = init_args.begin();
-//      ++(++iters); // Start at the second length argument
-//
-//      while (iters != init_args.end()) {
-//        next_init_args.push_back(iters);
-//        ++iters;
-//      }
-//      auto data_array_type = static_cast<Array*>(data_type);
-//      bldr.CreateCall(data_array_type->initialize(), next_init_args);
-//
-//    } else {
-//      data_type->call_init(bldr, phi);
-//    }
-//
-//    auto next_ptr = bldr.CreateGEP(phi, { data::const_uint(1) });
-//
-//    bldr.CreateCondBr(bldr.CreateICmpULT(next_ptr, end_ptr),
-//        loop_block, fn_scope->exit_block());
-//    phi->addIncoming(next_ptr, loop_block);
-//  }
-//
-//  fn_scope->exit();
-//  return init_fn_;
-//}
+// TODO no need to return anything here.
 llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
                                        llvm::Value *alloc, size_t len) {
   return initialize_literal(bldr, alloc, data::const_uint(len));
@@ -214,16 +122,27 @@ llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
 
 llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
                                        llvm::Value *alloc, llvm::Value *len) {
-  auto bytes_to_alloc =
-      bldr.CreateMul(len, data::const_uint(data_type->bytes()));
-  auto malloc_call = bldr.CreateBitCast(
-      bldr.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
+  auto use_calloc         = data_type->is_primitive();
+  llvm::Value *alloc_call = nullptr;
+
+  if (use_calloc) {
+    alloc_call = bldr.CreateBitCast(
+        bldr.CreateCall(cstdlib::calloc(),
+                        {len, data::const_uint(data_type->bytes())}),
+        *Ptr(data_type));
+  } else {
+    auto bytes_to_alloc =
+        bldr.CreateMul(len, data::const_uint(data_type->bytes()));
+
+    alloc_call = bldr.CreateBitCast(
+        bldr.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
+  }
 
   // TODO allocate this in the right place
-
   bldr.CreateStore(
       len, bldr.CreateGEP(alloc, {data::const_uint(0), data::const_uint(0)}));
-  bldr.CreateStore(malloc_call, bldr.CreateGEP(alloc, {data::const_uint(0),
+
+  bldr.CreateStore(alloc_call, bldr.CreateGEP(alloc, {data::const_uint(0),
                                                        data::const_uint(1)}));
   return alloc;
 }

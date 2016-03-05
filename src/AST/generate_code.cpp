@@ -16,7 +16,6 @@ namespace cstdlib {
 extern llvm::Constant *free();
 extern llvm::Constant *memcpy();
 extern llvm::Constant *malloc();
-
 } // namespace cstdlib
 
 namespace builtin {
@@ -112,21 +111,21 @@ llvm::Value *Terminal::generate_code(Scope *scope) {
 
     auto str_alloc = scope->builder().CreateAlloca(*type);
 
-    // TODO use field_num(). This gets the length
     auto len_ptr = scope->builder().CreateGEP(
-        str_alloc, {data::const_uint(0), data::const_uint(1)});
+        str_alloc, {data::const_uint(0), String->field_num("length")}, "len_ptr");
     scope->builder().CreateStore(len, len_ptr);
 
-    // TODO use field_num(). This gets the char array
     auto char_array_ptr = scope->builder().CreateGEP(
-        str_alloc, {data::const_uint(0), data::const_uint(0)});
+        str_alloc, {data::const_uint(0), String->field_num("chars")}, "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
-    auto char_ptr = Arr(Char)->initialize_literal(scope->builder(), str_alloc,
-                                                  token().size());
+    Arr(Char)
+        ->initialize_literal(scope->builder(), char_array_ptr, token().size());
 
-    scope->builder().CreateStore(char_ptr, char_array_ptr);
-    scope->builder().CreateCall(cstdlib::memcpy(), {char_ptr, str, len});
+    auto char_data_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
+        char_array_ptr, {data::const_uint(0), data::const_uint(1)}), "char_data_ptr");
+
+    scope->builder().CreateCall(cstdlib::memcpy(), {char_data_ptr, str, len});
 
     return str_alloc;
   }
@@ -542,8 +541,7 @@ llvm::Value *FunctionLiteral::generate_code(Scope *scope) {
     assert(type->is_function() && "How is the type not a function?");
     auto fn_type = static_cast<Function *>(type);
 
-    // TODO what is the correct generalization of this?
-    if (fn_type->output == Type_) return nullptr;
+    if (fn_type->time() == Time::compile) return nullptr;
 
     // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
@@ -627,8 +625,6 @@ llvm::Value *generate_assignment_code(Scope *scope, Expression *lhs,
 
     val = rhs->generate_code(scope);
     assert(val && "RHS of assignment generated null code");
-
-    lhs->type->call_uninit(scope->builder(), var);
 
     scope->builder().CreateCall(lhs->type->assign(), {val, var});
   }
@@ -833,17 +829,11 @@ llvm::Value *ArrayLiteral::generate_code(Scope *scope) {
   auto head_ptr = scope->builder().CreateLoad(scope->builder().CreateGEP(
       array_data, {data::const_uint(0), data::const_uint(1)}));
 
-  if (element_type->is_big()) {
-    assert(false && "Not yet implemented");
-  } else {
-    for (size_t i = 0; i < num_elems; ++i) {
-      auto data_ptr =
-          scope->builder().CreateGEP(head_ptr, {data::const_uint(i)});
+  for (size_t i = 0; i < num_elems; ++i) {
+    auto data_ptr = scope->builder().CreateGEP(head_ptr, {data::const_uint(i)});
 
-      scope->builder().CreateCall(element_type->assign(),
-                                  {elems[i]->generate_code(scope), data_ptr});
-    }
-
+    scope->builder().CreateCall(element_type->assign(),
+                                {elems[i]->generate_code(scope), data_ptr});
   }
 
   return array_data;

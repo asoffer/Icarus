@@ -19,8 +19,6 @@ extern llvm::Constant *malloc();
 namespace data {
 extern llvm::Value *const_neg(llvm::IRBuilder<> &bldr, size_t n);
 extern llvm::Value *const_uint(size_t n);
-
-extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 llvm::Function *get_llvm_assign(Type *type) {
@@ -58,7 +56,7 @@ llvm::Function* Array::assign() {
       *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
       "assign." + to_string(), global_module);
 
-  // Create unitilization function
+  // Create uninitialization function
 
   FnScope* fn_scope = new FnScope(assign_fn_);
   fn_scope->set_type(Func({ Ptr(this), Ptr(this) }, Void));
@@ -67,22 +65,25 @@ llvm::Function* Array::assign() {
 
   fn_scope->enter();
   auto iter = assign_fn_->args().begin();
-  auto val = iter;
+  auto val  = iter;
   auto var = ++iter;
+  val->setName("val");
+  var->setName("var");
 
   call_uninit(bldr, var);
   // Allocate space and save the pointer
   auto new_len = bldr.CreateLoad(
-      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
-  auto data_ptr_ptr =
-      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)});
-  auto load_ptr_ptr =
-      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(1)});
+      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),
+      "new_len");
+  auto data_ptr_ptr = bldr.CreateGEP(
+      var, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
+  auto load_ptr_ptr = bldr.CreateGEP(
+      val, {data::const_uint(0), data::const_uint(1)}, "load_ptr_ptr");
   auto malloc_call = bldr.CreateBitCast(
       bldr.CreateCall(
           cstdlib::malloc(),
           bldr.CreateMul(new_len, data::const_uint(data_type->bytes()))),
-      *Ptr(data_type));
+      *Ptr(data_type), "malloc_call");
 
   bldr.CreateStore(
       new_len, bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
@@ -106,7 +107,10 @@ llvm::Function* Array::assign() {
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
   auto copy_from_elem =
-      bldr.CreateLoad(bldr.CreateGEP(from_phi, {data::const_uint(0)}));
+      data_type->is_big()
+          ? bldr.CreateGEP(from_phi, {data::const_uint(0)})
+          : bldr.CreateLoad(bldr.CreateGEP(from_phi, {data::const_uint(0)}));
+
   bldr.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
 
   auto next_from_ptr = bldr.CreateGEP(from_phi, data::const_uint(1));
@@ -151,7 +155,7 @@ llvm::Function *Structure::assign() {
   assign_fn_ = get_llvm_assign(this);
 
   FnScope *fn_scope = new FnScope(assign_fn_);
-  fn_scope->set_type(Func({this, Ptr(this)}, Void));
+  fn_scope->set_type(Func({Ptr(this), Ptr(this)}, Void));
 
   llvm::IRBuilder<> &bldr = fn_scope->builder();
 
@@ -165,9 +169,7 @@ llvm::Function *Structure::assign() {
     auto the_field_type = field_type AT(iter.first);
     auto field_val = bldr.CreateGEP(
         val, {data::const_uint(0), data::const_uint(iter.second)});
-    if (!the_field_type->is_struct()) {
-      // Load non-structs. Structs are passed by pointer, so no load needed in
-      // that case.
+    if (!the_field_type->is_big()) {
       field_val = bldr.CreateLoad(*the_field_type, field_val);
     }
     auto field_var = bldr.CreateGEP(

@@ -68,8 +68,7 @@ void Array::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {
       fnbldr.SetInsertPoint(land_block);
     }
 
-    fnbldr.CreateCall(cstdlib::free(),
-                      fnbldr.CreateBitCast(data_ptr, *RawPtr));
+    fnbldr.CreateCall(cstdlib::free(), fnbldr.CreateBitCast(data_ptr, *RawPtr));
     fn_scope->exit();
   }
 

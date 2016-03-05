@@ -47,13 +47,21 @@ ErrorLog error_log;
 // writing platform-specific assembly.
 namespace cstdlib {
 CSTDLIB(free, false, Ptr(Char), Void);
-CSTDLIB(calloc, false, Uint, Ptr(Char));
 CSTDLIB(malloc, false, Uint, Ptr(Char));
 // CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }),
 // Ptr(Char));
 CSTDLIB(putchar, false, Char, Int);
 CSTDLIB(puts, false, Ptr(Char), Int);
 CSTDLIB(printf, true, Ptr(Char), Int);
+
+// TODO Even though it's the same, shouldn't it be RawPtr for return type rather
+// than Ptr(Char)?
+
+llvm::Constant *calloc() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "calloc", llvm::FunctionType::get(*RawPtr, {*Uint, *Uint}, false));
+  return func_;
+}
 
 llvm::Constant *memcpy() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
