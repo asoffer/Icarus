@@ -53,7 +53,7 @@ using NPtrVec = std::vector<Node *>;
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
-  virtual llvm::Value *generate_code(Scope *scope) ENDING;                     \
+  virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
@@ -66,8 +66,8 @@ using NPtrVec = std::vector<Node *>;
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
-  virtual llvm::Value *generate_code(Scope *scope) ENDING;                     \
-  virtual llvm::Value *generate_lvalue(Scope *scope) ENDING;                   \
+  virtual llvm::Value *generate_code() ENDING;                                 \
+  virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
   static Node *build(NPtrVec &&nodes)
@@ -89,7 +89,7 @@ using NPtrVec = std::vector<Node *>;
     virtual std::string graphviz_label() const;
 
     virtual Context::Value evaluate(Context& ctx) { return nullptr; }
-    virtual llvm::Value* generate_code(Scope* scope) { return nullptr; }
+    virtual llvm::Value* generate_code() { return nullptr; }
     virtual Time::Eval determine_time() { return Time::error; }
 
     Time::Eval time() { return time_; }
@@ -288,8 +288,8 @@ using NPtrVec = std::vector<Node *>;
     virtual std::string to_string(size_t n) const;
     virtual void verify_types();
 
-    virtual llvm::Value* generate_code(Scope* scope);
-    virtual llvm::Value* generate_lvalue(Scope* scope);
+    virtual llvm::Value* generate_code();
+    virtual llvm::Value* generate_lvalue();
     virtual Context::Value evaluate(Context& ctx);
     virtual std::string graphviz_label() const;
   };
@@ -424,7 +424,7 @@ using NPtrVec = std::vector<Node *>;
     virtual ~Break();
 
     virtual std::string to_string(size_t n) const;
-    virtual llvm::Value* generate_code(Scope* scope);
+    virtual llvm::Value* generate_code();
     virtual Context::Value evaluate(Context& ctx);
     virtual void record_dependencies();
     virtual std::string graphviz_label() const;

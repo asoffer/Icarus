@@ -6,6 +6,7 @@
 #include <set>
 #include <string>
 #include <type_traits>
+#include <stack>
 
 #include "Type.h"
 #include "DependencySystem.h"
@@ -33,6 +34,7 @@ public:
   friend struct AST::Declaration;
   friend class FnScope;
 
+  static std::stack<Scope *> Stack;
   static GlobalScope *Global;
 
   static void verify_no_shadowing();
@@ -193,5 +195,13 @@ public:
 private:
   llvm::BasicBlock *the_block_;
 };
+
+// TODO these are not threadsafe! When we access the stack, when compilation is
+// multi-threaded, we should probably grab a mutex before getting the top of the
+// stack
+
+Scope *CurrentScope();
+llvm::IRBuilder<> &CurrentBuilder();
+Context &CurrentContext();
 
 #endif // ICARUS_SCOPE_H

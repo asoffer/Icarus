@@ -101,7 +101,9 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
           {data::const_uint(0), data::const_uint(kv.second)});
       auto init_expr = init_values AT(kv.first);
       if (init_expr) {
-        auto init_val = init_expr->generate_code(fn_scope);
+        Scope::Stack.push(fn_scope);
+        auto init_val = init_expr->generate_code();
+        Scope::Stack.pop();
         bldr.CreateCall(the_field_type->assign(), {init_val, arg});
       } else {
         the_field_type->call_init(bldr, {arg});

@@ -209,7 +209,10 @@ int main(int argc, char *argv[]) {
 
   // Generate LLVM intermediate representation.
   Scope::Global->initialize();
-  global_statements->generate_code(Scope::Global);
+
+  Scope::Stack.push(Scope::Global);
+  global_statements->generate_code();
+  Scope::Stack.pop();
 
   // TODO Optimization.
 

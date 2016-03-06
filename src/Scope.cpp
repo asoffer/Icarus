@@ -344,3 +344,17 @@ void WhileScope::exit() {
   Scope::exit();
   bldr_.CreateBr(cond_block_);
 }
+
+Scope *CurrentScope() {
+  if (Scope::Stack.empty()) return nullptr;
+  return Scope::Stack.top();
+}
+
+std::stack<Scope *> Scope::Stack;
+
+llvm::IRBuilder<> &CurrentBuilder() { 
+  return CurrentScope()->builder(); }
+
+Context &CurrentContext() { return CurrentScope()->context(); }
+
+
