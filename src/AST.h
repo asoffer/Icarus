@@ -48,7 +48,7 @@ using NPtrVec = std::vector<Node *>;
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
-  virtual void assign_scope(Scope *scope) ENDING;                              \
+  virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
@@ -62,7 +62,7 @@ using NPtrVec = std::vector<Node *>;
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
-  virtual void assign_scope(Scope *scope) ENDING;                              \
+  virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
@@ -83,7 +83,7 @@ using NPtrVec = std::vector<Node *>;
 
     virtual std::string to_string(size_t n) const;
     virtual void join_identifiers(Scope* scope, bool is_arg = false) {}
-    virtual void assign_scope(Scope* scope) {}
+    virtual void assign_scope() {}
     virtual void record_dependencies() {}
     virtual void verify_types() {}
     virtual std::string graphviz_label() const;
