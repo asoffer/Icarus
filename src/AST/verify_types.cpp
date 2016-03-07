@@ -51,7 +51,16 @@ void Terminal::verify_types() {
 }
 
 void Identifier::verify_types() {
-  if (decl->is_inferred) {
+  switch (decl->decl_type) {
+  case Declaration::DeclType::Std: {
+    type = decl->type_expr->evaluate(scope_->context()).as_type;
+    assert(type && "eval with context operandptr is nullptr");
+    if (type == Type_) {
+      scope_->context().bind(Context::Value(TypeVar(this)), this);
+    }
+  } break;
+
+  case Declaration::DeclType::Infer: {
     type = decl->type;
 
     if (decl->type_expr->is_type_literal()) {
@@ -65,13 +74,13 @@ void Identifier::verify_types() {
     }
     assert(type && "decl->type is nullptr");
 
-  } else {
-    type = decl->type_expr->evaluate(scope_->context()).as_type;
-    assert(type && "eval with context operandptr is nullptr");
-    if (type == Type_) {
-      scope_->context().bind(Context::Value(TypeVar(this)), this);
-    }
+  } break;
+
+  case Declaration::DeclType::In: {
+    assert(false && "Not yet implemented");
+  } break;
   }
+
   assert(type && "Expression type is nullptr in Identifier::verify_types()");
 }
 
@@ -341,11 +350,18 @@ void Declaration::verify_types() {
     return;
   }
 
-  std::cout << "** " << type << std::endl;
-  type = (is_inferred ? type_expr->type
-                      : type_expr->evaluate(scope_->context()).as_type);
+  switch (decl_type) {
+  case Declaration::DeclType::Std: {
+    type = type_expr->evaluate(scope_->context()).as_type;
+  } break;
+  case Declaration::DeclType::Infer: {
+    type = type_expr->type;
+  } break;
+  case Declaration::DeclType::In: {
+    assert(false && "Not yet implemented");
+  } break;
+  }
 
-  std::cout << "## " << type << std::endl;
   // TODO if RHS is not a type give a nice message instead of segfaulting
 
   if (type_expr->is_terminal()) {
@@ -354,14 +370,6 @@ void Declaration::verify_types() {
       error_log.log(line_num, "Cannot infer the type of `null`.");
     }
   }
-
-  std::cout << ">====" << std::endl;
-  std::cout << type_expr << std::endl;
-  std::cout << *type_expr << std::endl;
-  std::cout << *type_expr->type << std::endl;
-  std::cout << is_inferred << std::endl;
-  std::cout << type << std::endl;
-  std::cout << "<====" << std::endl;
 
   assert(type && "decl expr is nullptr");
 }

@@ -180,7 +180,17 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string Declaration::to_string(size_t n) const {
     std::string output = tabs(n) + "<Declaration ";
-    if (is_inferred) output += "(infer type) ";
+    switch (decl_type) {
+    case DeclType::Std: {
+      output += "(:)";
+    } break;
+    case DeclType::Infer: {
+      output += "(:=)";
+    } break;
+    case DeclType::In: {
+      output += "(in)";
+    } break;
+    }
 
     return output + TYPE_OR("") + ">\n"
       + identifier->to_string(n + 1)

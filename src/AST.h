@@ -268,10 +268,13 @@ struct Declaration : public Expression {
   static Node *build_decl(NPtrVec &&nodes);
   static Node *build_assign(NPtrVec &&nodes);
 
+  // TODO is 'op' necessary? anymore?
   Language::Operator op;
   Identifier *identifier;
   Expression *type_expr;
-  bool is_inferred;
+
+  enum class DeclType { Std, Infer, In };
+  DeclType decl_type;
 };
 
 struct Assignment : public Binop {

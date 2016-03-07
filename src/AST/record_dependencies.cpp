@@ -19,7 +19,6 @@ namespace AST {
     Dependency::value_type(this, this);
     Dependency::value_value(this, decl);
     Dependency::type_type(this, decl);
-    std::cout << ">> " <<  this << std::endl;
   }
 
   void Access::record_dependencies() {
@@ -86,13 +85,17 @@ namespace AST {
   }
 
   void Declaration::record_dependencies() {
-    if (is_inferred) {
+    switch (decl_type) {
+    case DeclType::Std: {
+      Dependency::value_type(this, this);
+      Dependency::type_value(this, type_expr);
+    } break;
+    case DeclType::Infer:
+    case DeclType::In: {
       Dependency::type_type(this, type_expr);
       Dependency::value_value(this, type_expr);
       Dependency::value_type(this, this);
-    } else {
-      Dependency::value_type(this, this);
-      Dependency::type_value(this, type_expr);
+    } break;
     }
 
     identifier->record_dependencies();

@@ -2,7 +2,7 @@
 
 namespace AST {
 Expression::Expression() : type(Unknown) {}
-Declaration::Declaration() {}
+Declaration::Declaration() : decl_type(DeclType::Std) {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}
 ChainOp::ChainOp() {}

@@ -23,7 +23,11 @@ std::string Unop::graphviz_label() const {
 std::string Identifier::graphviz_label() const { return "ID: " + token(); }
 
 std::string Declaration::graphviz_label() const {
-  return identifier->token() + (is_inferred ? " := ..." : " : ...");
+  switch (decl_type) {
+  case DeclType::Std: return identifier->token() + " : ...";
+  case DeclType::Infer: return identifier->token() + " := ...";
+  case DeclType::In: return identifier->token() + " in ...";
+  }
 }
 
 std::string Access::graphviz_label() const { return "." + member_name; }

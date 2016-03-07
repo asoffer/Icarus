@@ -749,13 +749,13 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (!is_inferred && type->is_array()) {
+  if (decl_type == DeclType::Std && type->is_array()) {
     assert(type_expr->is_array_type() && "Not array type");
     auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
     static_cast<Array *>(type)->initialize_literal(CurrentBuilder(), identifier->alloc, len);
   }
 
-  if (!is_inferred || type == Type_) return nullptr;
+  if (decl_type == DeclType::Std || type == Type_) return nullptr;
   // For the most part, declarations are preallocated at the beginning
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.

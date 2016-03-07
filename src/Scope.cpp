@@ -288,11 +288,11 @@ void Scope::verify_no_shadowing() {
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
                                           const std::string &id_string) {
-  std::cout << "***" << line_num << ": " << id_string << std::endl;
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
   decl->identifier = new AST::Identifier(line_num, id_string);
   decl->line_num   = line_num;
+
   return decl;
 }
 

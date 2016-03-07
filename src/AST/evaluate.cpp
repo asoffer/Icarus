@@ -274,14 +274,17 @@ namespace AST {
     if (type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
+        assert(decl->decl_type != Declaration::DeclType::In &&
+               "Cannot us DeclType::In");
+        bool is_inferred = (decl->decl_type == Declaration::DeclType::Infer);
+
         Type *field =
-            decl->is_inferred
-                ? decl->type_expr->type
-                : decl->type_expr->evaluate(scope_->context()).as_type;
+            is_inferred ? decl->type_expr->type
+                        : decl->type_expr->evaluate(scope_->context()).as_type;
         assert(field && "field is nullptr");
 
         type_value->insert_field(decl->identifier->token(), field,
-                                 decl->is_inferred ? decl->type_expr : nullptr);
+                                 is_inferred ? decl->type_expr : nullptr);
       }
     }
 
@@ -291,7 +294,7 @@ namespace AST {
     std::vector<Declaration *> decls_in_ctx;
     for (const auto& decl : declarations) {
       auto d = new Declaration;
-      d->is_inferred = false;
+      d->decl_type = Declaration::DeclType::Std;
       d->identifier = new Identifier(0, decl->identifier->token());
       d->identifier->decl = d;
       decls_in_ctx.push_back(d);
@@ -327,15 +330,16 @@ namespace AST {
     if (type_lit_ptr->type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
-        Type *field =
-            decl->is_inferred
-                ? decl->type_expr->type
-                : decl->type_expr->evaluate(ctx).as_type;
+        assert(decl->decl_type != Declaration::DeclType::In &&
+               "Cannot us DeclType::In");
+        bool is_inferred = (decl->decl_type == Declaration::DeclType::Infer);
+        Type *field = is_inferred ? decl->type_expr->type
+                                  : decl->type_expr->evaluate(ctx).as_type;
         assert(field && "field is nullptr");
 
-        type_lit_ptr->type_value->insert_field(
-            decl->identifier->token(), field,
-            decl->is_inferred ? decl->type_expr : nullptr);
+        type_lit_ptr->type_value->insert_field(decl->identifier->token(), field,
+                                               is_inferred ? decl->type_expr
+                                                           : nullptr);
       }
     }
 
@@ -345,10 +349,11 @@ namespace AST {
 
   }
 
-  Context::Value Assignment::evaluate(Context&)  { return nullptr; }
+  Context::Value Assignment::evaluate(Context &) { return nullptr; }
 
-  Context::Value Declaration::evaluate(Context& ctx) {
-    if (is_inferred) {
+  Context::Value Declaration::evaluate(Context &ctx) {
+    switch (decl_type) {
+    case DeclType::Infer: {
       if (type_expr->type->is_function()) {
         ctx.bind(Context::Value(type_expr), identifier);
       } else {
@@ -366,23 +371,27 @@ namespace AST {
               identifier->token();
         }
       }
-
-    } else {
+    } break;
+    case DeclType::Std: {
       if (type_expr->type == Type_) {
         ctx.bind(Context::Value(TypeVar(identifier)), identifier);
       } else if (type_expr->type->is_type_variable()) {
         // TODO Should we just skip this?
-      } else { /* There's nothing to do */ }
+      } else { /* There's nothing to do */
+      }
+    } break;
+    case DeclType::In:
+      assert(false && "Cannot use DeclType::In in this context");
     }
 
     return nullptr;
   }
 
-  Context::Value EnumLiteral::evaluate(Context&) {
+  Context::Value EnumLiteral::evaluate(Context &) {
     return Context::Value(type_value);
   }
 
-  Context::Value Access::evaluate(Context& ctx) {
+  Context::Value Access::evaluate(Context &ctx) {
     if (type->is_enum()) {
       auto enum_type = static_cast<Enumeration*>(type);
       return Context::Value(enum_type->get_index(member_name));

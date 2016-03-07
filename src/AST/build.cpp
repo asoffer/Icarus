@@ -326,7 +326,7 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
       infer ? Language::Operator::ColonEq : Language::Operator::Colon;
 
   decl_ptr->precedence  = Language::precedence(decl_ptr->op);
-  decl_ptr->is_inferred = infer;
+  decl_ptr->decl_type   = infer ? DeclType::Infer : DeclType::Std;
 
   return decl_ptr;
 }
