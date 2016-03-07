@@ -316,8 +316,10 @@ Node *Declaration::build(NPtrVec &&) {
 
 Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
                          bool infer) {
-  auto decl_ptr =
-      Scope::make_declaration(nodes[1]->line_num, nodes[0]->token());
+  auto decl_ptr = Scope::make_declaration(
+      nodes[1]->line_num, infer ? DeclType::Infer : DeclType::Std,
+      nodes[0]->token());
+
   decl_ptr->type_expr = steal<Expression>(nodes[2]);
 
   decl_ptr->type_ = node_type;
@@ -326,7 +328,6 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
       infer ? Language::Operator::ColonEq : Language::Operator::Colon;
 
   decl_ptr->precedence  = Language::precedence(decl_ptr->op);
-  decl_ptr->decl_type   = infer ? DeclType::Infer : DeclType::Std;
 
   return decl_ptr;
 }
@@ -566,8 +567,8 @@ Node *For::build(NPtrVec &&nodes) {
   for_stmt->line_num                   = nodes[0]->line_num;
   for_stmt->container                  = steal<Expression>(nodes[3]);
   for_stmt->statements                 = steal<Statements>(nodes[5]);
-  for_stmt->iterator =
-      Scope::make_declaration(nodes[1]->line_num, nodes[1]->token());
+  for_stmt->iterator = Scope::make_declaration(nodes[1]->line_num, DeclType::In,
+                                               nodes[1]->token());
   for_stmt->iterator->type_expr        = for_stmt->container;
   return for_stmt;
 }

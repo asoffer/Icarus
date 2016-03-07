@@ -274,9 +274,9 @@ namespace AST {
     if (type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
-        assert(decl->decl_type != Declaration::DeclType::In &&
+        assert(decl->decl_type != DeclType::In &&
                "Cannot us DeclType::In");
-        bool is_inferred = (decl->decl_type == Declaration::DeclType::Infer);
+        bool is_inferred = (decl->decl_type == DeclType::Infer);
 
         Type *field =
             is_inferred ? decl->type_expr->type
@@ -294,7 +294,7 @@ namespace AST {
     std::vector<Declaration *> decls_in_ctx;
     for (const auto& decl : declarations) {
       auto d = new Declaration;
-      d->decl_type = Declaration::DeclType::Std;
+      d->decl_type = DeclType::Std;
       d->identifier = new Identifier(0, decl->identifier->token());
       d->identifier->decl = d;
       decls_in_ctx.push_back(d);
@@ -330,9 +330,9 @@ namespace AST {
     if (type_lit_ptr->type_value->field_type.empty()) {
       // Create the fields
       for (const auto &decl : declarations) {
-        assert(decl->decl_type != Declaration::DeclType::In &&
+        assert(decl->decl_type != DeclType::In &&
                "Cannot us DeclType::In");
-        bool is_inferred = (decl->decl_type == Declaration::DeclType::Infer);
+        bool is_inferred = (decl->decl_type == DeclType::Infer);
         Type *field = is_inferred ? decl->type_expr->type
                                   : decl->type_expr->evaluate(ctx).as_type;
         assert(field && "field is nullptr");

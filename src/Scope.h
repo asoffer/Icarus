@@ -11,6 +11,7 @@
 #include "Type.h"
 #include "DependencySystem.h"
 #include "Context.h"
+#include "AST/DeclType.h"
 
 #include <iostream>
 
@@ -39,8 +40,9 @@ public:
 
   static void verify_no_shadowing();
 
-  static AST::Declaration *make_declaration(size_t line_num,
-                                            const std::string &id_string);
+  static AST::Declaration *
+  make_declaration(size_t line_num, AST::DeclType decl_type,
+                   const std::string &id_string);
 
   virtual void enter();
   virtual void exit();

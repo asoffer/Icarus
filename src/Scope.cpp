@@ -287,11 +287,13 @@ void Scope::verify_no_shadowing() {
 }
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
+                                          AST::DeclType decl_type,
                                           const std::string &id_string) {
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
   decl->identifier = new AST::Identifier(line_num, id_string);
   decl->line_num   = line_num;
+  decl->decl_type  = decl_type;
 
   return decl;
 }

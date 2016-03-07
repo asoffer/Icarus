@@ -51,18 +51,17 @@ void Terminal::verify_types() {
 }
 
 void Identifier::verify_types() {
+  type = decl->type;
+  assert(type && "type is null");
+
   switch (decl->decl_type) {
-  case Declaration::DeclType::Std: {
-    type = decl->type_expr->evaluate(scope_->context()).as_type;
-    assert(type && "eval with context operandptr is nullptr");
+  case DeclType::Std: {
     if (type == Type_) {
       scope_->context().bind(Context::Value(TypeVar(this)), this);
     }
   } break;
 
-  case Declaration::DeclType::Infer: {
-    type = decl->type;
-
+  case DeclType::Infer: {
     if (decl->type_expr->is_type_literal()) {
       auto tlit_type_val =
           static_cast<TypeLiteral *>(decl->type_expr)->type_value;
@@ -72,12 +71,10 @@ void Identifier::verify_types() {
       auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
       scope_->context().bind(Context::Value(flit), this);
     }
-    assert(type && "decl->type is nullptr");
-
   } break;
 
-  case Declaration::DeclType::In: {
-    assert(false && "Not yet implemented");
+  case DeclType::In: {
+    // TODO does anything need to happen here?
   } break;
   }
 
@@ -351,14 +348,23 @@ void Declaration::verify_types() {
   }
 
   switch (decl_type) {
-  case Declaration::DeclType::Std: {
+  case DeclType::Std: {
     type = type_expr->evaluate(scope_->context()).as_type;
   } break;
-  case Declaration::DeclType::Infer: {
+  case DeclType::Infer: {
     type = type_expr->type;
   } break;
-  case Declaration::DeclType::In: {
-    assert(false && "Not yet implemented");
+  case DeclType::In: {
+    // We may have already seen that the container isn't an array (or doesn't
+    // have an indexing operator. However, we don't want to stop here or
+    // segfault, so we need to check here before we cast the type. If it does
+    // fail, we've already logged the error, so we just need to set the type to
+    // be Error.
+    if (type_expr->type->is_array()) {
+      type = static_cast<Array *>(type_expr->type)->data_type;
+    } else {
+      type = Error;
+    }
   } break;
   }
 
@@ -482,8 +488,9 @@ void For::verify_types() {
   if (!container->type->is_array()) {
     error_log.log(line_num, "For loop condition must be an array, but " +
                                 container->type->to_string() + " given.");
+  } else {
+    iterator->type = static_cast<Array *>(container->type)->data_type;
   }
-  iterator->type = static_cast<Array *>(container->type)->data_type;
 }
 
 void Conditional::verify_types() {

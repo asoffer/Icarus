@@ -10,6 +10,7 @@
 
 #include "Language.h"
 #include "TimeEval.h"
+#include "AST/DeclType.h"
 #include "Type.h"
 #include "Scope.h"
 #include "ErrorLog.h"
@@ -273,7 +274,6 @@ struct Declaration : public Expression {
   Identifier *identifier;
   Expression *type_expr;
 
-  enum class DeclType { Std, Infer, In };
   DeclType decl_type;
 };
 
