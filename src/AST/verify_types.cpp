@@ -341,9 +341,11 @@ void Declaration::verify_types() {
     return;
   }
 
+  std::cout << "** " << type << std::endl;
   type = (is_inferred ? type_expr->type
                       : type_expr->evaluate(scope_->context()).as_type);
 
+  std::cout << "## " << type << std::endl;
   // TODO if RHS is not a type give a nice message instead of segfaulting
 
   if (type_expr->is_terminal()) {
@@ -352,6 +354,14 @@ void Declaration::verify_types() {
       error_log.log(line_num, "Cannot infer the type of `null`.");
     }
   }
+
+  std::cout << ">====" << std::endl;
+  std::cout << type_expr << std::endl;
+  std::cout << *type_expr << std::endl;
+  std::cout << *type_expr->type << std::endl;
+  std::cout << is_inferred << std::endl;
+  std::cout << type << std::endl;
+  std::cout << "<====" << std::endl;
 
   assert(type && "decl expr is nullptr");
 }
@@ -457,6 +467,15 @@ void While::verify_types() {
     error_log.log(line_num, "While loop condition must be a bool, but " +
                                 condition->type->to_string() + " given.");
   }
+}
+
+void For::verify_types() {
+  // TODO array -> "has operator[]"
+  if (!container->type->is_array()) {
+    error_log.log(line_num, "For loop condition must be an array, but " +
+                                container->type->to_string() + " given.");
+  }
+  iterator->type = static_cast<Array *>(container->type)->data_type;
 }
 
 void Conditional::verify_types() {

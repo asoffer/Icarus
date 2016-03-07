@@ -4,6 +4,7 @@ namespace AST {
 std::string Node::graphviz_label() const { return "Generic node"; }
 std::string Conditional::graphviz_label() const { return "If"; }
 std::string While::graphviz_label() const { return "While"; }
+std::string For::graphviz_label() const { return "For"; }
 
 std::string Unop::graphviz_label() const {
   switch (op) {

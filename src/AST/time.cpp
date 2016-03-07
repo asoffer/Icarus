@@ -86,6 +86,11 @@ Time::Eval While::determine_time() {
   return time_ = condition->determine_time() | statements->determine_time();
 }
 
+Time::Eval For::determine_time() {
+  return time_ = iterator->determine_time() | container->determine_time() |
+                 statements->determine_time();
+}
+
 Time::Eval TypeLiteral::determine_time() {
   time_ = Time::either;
   for (auto &d : declarations) {

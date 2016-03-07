@@ -1,0 +1,6 @@
+main := void -> void {
+  a: [5; int]
+  for x in a {
+    print x
+  }
+}

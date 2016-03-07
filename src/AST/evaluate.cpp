@@ -499,6 +499,16 @@ namespace AST {
     return nullptr;
   }
 
-  Context::Value Break::evaluate(Context &) { return nullptr; }
-  Context::Value While::evaluate(Context &) { return nullptr; }
+  Context::Value Break::evaluate(Context &) {
+    assert(false && "Not yet implemented");
+  }
+
+  Context::Value While::evaluate(Context &) {
+    assert(false && "Not yet implemented");
+  }
+
+  Context::Value For::evaluate(Context &) {
+    assert(false && "Not yet implemented");
+  }
+
 }  // namespace AST

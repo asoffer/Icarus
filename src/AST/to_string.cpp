@@ -87,6 +87,13 @@ std::string Conditional::to_string(size_t n) const {
       + statements->to_string(n + 1);
   }
 
+  std::string For::to_string(size_t n) const {
+    std::stringstream ss;
+    ss << tabs(n) << "<For>\n" << iterator->to_string(n + 1)
+       << container->to_string(n + 1) << statements->to_string(n + 1);
+    return ss.str();
+  }
+
   std::string Unop::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Unop " << TYPE_OR("") << ": ";

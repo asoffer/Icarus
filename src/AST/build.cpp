@@ -561,6 +561,17 @@ Node *While::build(NPtrVec &&nodes) {
   return while_stmt;
 }
 
+Node *For::build(NPtrVec &&nodes) {
+  auto for_stmt                        = new For;
+  for_stmt->line_num                   = nodes[0]->line_num;
+  for_stmt->container                  = steal<Expression>(nodes[3]);
+  for_stmt->statements                 = steal<Statements>(nodes[5]);
+  for_stmt->iterator =
+      Scope::make_declaration(nodes[1]->line_num, nodes[1]->token());
+  for_stmt->iterator->type_expr        = for_stmt->container;
+  return for_stmt;
+}
+
 Node *While::build_assignment_error(NPtrVec &&nodes) {
   nodes[1] = error_log.assignment_vs_equality(nodes[1]);
   return build(std::forward<NPtrVec &&>(nodes));

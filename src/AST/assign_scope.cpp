@@ -34,6 +34,18 @@ void Conditional::assign_scope() {
   }
 }
 
+void For::assign_scope() {
+  scope_ = CurrentScope();
+  for_scope->set_parent(CurrentScope());
+
+  Scope::Stack.push(for_scope);
+  iterator->assign_scope();
+  container->assign_scope();
+  statements->assign_scope();
+  Scope::Stack.pop();
+}
+
+
 void While::assign_scope() {
   scope_ = CurrentScope();
   while_scope->set_parent(CurrentScope());

@@ -192,11 +192,11 @@ namespace Language {
 
     /* Begin statements */
     Rule(statements,
-        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, break_statement}, {newline} },
+        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement}, {newline} },
         AST::Statements::build_one),
 
     Rule(statements,
-        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, while_statement, break_statement}, {newline} },
+        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement}, {newline} },
         AST::Statements::build_more),
 
 
@@ -254,6 +254,12 @@ namespace Language {
         AST::While::build_assignment_error),
 
     /* End while loop */
+
+    /* Begin for loop */
+    Rule(for_statement,
+        { {reserved_for}, {expression}, {reserved_in}, {expression}, {left_brace}, {statements}, {right_brace} },
+        AST::For::build),
+    /* End for loop */
 
     /* Begin loop extras */
     Rule(break_statement, { {reserved_break} }, AST::Break::build),

@@ -28,4 +28,5 @@ TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope(new TypeScope) {}
 EnumLiteral::EnumLiteral() : type_value(nullptr) {}
 
 While::While() : while_scope(new WhileScope) {}
+For::For() : for_scope(new WhileScope) {}
 } // namespace AST

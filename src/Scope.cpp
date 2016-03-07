@@ -225,8 +225,6 @@ void Scope::uninitialize() {
   }
 }
 
-// TODO have a getter-only version for when we know we've passed the
-// verification step
 AST::Identifier *Scope::identifier(AST::Expression* id_as_eptr) {
   auto idptr = static_cast<AST::Identifier *>(id_as_eptr);
 
@@ -289,10 +287,11 @@ void Scope::verify_no_shadowing() {
 }
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
-                                          const std::string &identifierstring) {
+                                          const std::string &id_string) {
+  std::cout << "***" << line_num << ": " << id_string << std::endl;
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
-  decl->identifier = new AST::Identifier(line_num, identifierstring);
+  decl->identifier = new AST::Identifier(line_num, id_string);
   decl->line_num   = line_num;
   return decl;
 }

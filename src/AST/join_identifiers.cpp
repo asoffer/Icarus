@@ -18,6 +18,15 @@ namespace AST {
     statements->join_identifiers(while_scope);
   }
 
+  void For::join_identifiers(Scope* scope, bool is_arg) {
+    iterator->identifier           = for_scope->identifier(iterator->identifier);
+    iterator->identifier->line_num = line_num;
+    set_or_recurse(iterator->type_expr, for_scope);
+
+    set_or_recurse(container, for_scope);
+    statements->join_identifiers(for_scope);
+  }
+
   void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
     for (auto& el : elems) {
       set_or_recurse(el, scope);

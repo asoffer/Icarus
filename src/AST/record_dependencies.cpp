@@ -19,6 +19,7 @@ namespace AST {
     Dependency::value_type(this, this);
     Dependency::value_value(this, decl);
     Dependency::type_type(this, decl);
+    std::cout << ">> " <<  this << std::endl;
   }
 
   void Access::record_dependencies() {
@@ -165,6 +166,24 @@ namespace AST {
     Dependency::type_type(this, statements);
     statements->record_dependencies();
     condition->record_dependencies();
+  }
+
+  void For::record_dependencies() {
+    // NOTE: We don't depend on internal values
+    // because this isn't allowed at compile-time
+    // TODO check evaluate
+    Dependency::value_type(this, this);
+    Dependency::type_type(this, container);
+    Dependency::type_type(this, statements);
+
+    // Iterator doesn't have a declaration specifically. It's implicitly
+    // declared here
+
+    statements->record_dependencies();
+    iterator->record_dependencies();
+    container->record_dependencies();
+
+    Dependency::type_type(iterator, this);
   }
 
   void TypeLiteral::record_dependencies() {

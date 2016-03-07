@@ -4,11 +4,10 @@ string := struct {
 }
 
 __print__ := (s: string) -> void {
-  i := 0
-  int_len := s.length :> int
-  while i < int_len {
+  i := 0u
+  while i < s.length {
     print s.chars[i]
-    i += 1
+    i += 1u
   }
 
 //  for c in s.chars[ .. s.length - 1] {

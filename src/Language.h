@@ -33,7 +33,7 @@ namespace Language {
     void_return_expression,
     declaration_comma_list,
     fn_assignment,
-    statements, while_statement, if_statement, if_else_statement,
+    statements, for_statement, while_statement, if_statement, if_else_statement,
     missing_newline_statements,
 
     // Parens, braces, and brackets
@@ -43,9 +43,10 @@ namespace Language {
     // TODO use RESERVED_MACRO to generate these.
     // Figure out the right way to do that given that they may need different masks
     // Reserved words
-    reserved_break, reserved_if, reserved_else, reserved_case, reserved_loop,
-    reserved_enum, reserved_while, reserved_continue, reserved_ascii,
-    reserved_import, reserved_string, reserved_alloc, reserved_struct,
+    reserved_break, reserved_if, reserved_else, reserved_case, reserved_for, 
+    reserved_in, reserved_enum, reserved_while, reserved_continue,
+    reserved_ascii, reserved_import, reserved_string, reserved_alloc,
+    reserved_struct,
 
     break_statement,
 

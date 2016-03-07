@@ -953,4 +953,8 @@ llvm::Value *Break::generate_code() {
   return nullptr;
 }
 
+llvm::Value *For::generate_code() {
+  assert(false && "Not yet implemented");
+}
+
 } // namespace AST
