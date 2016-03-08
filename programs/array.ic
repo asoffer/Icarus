@@ -20,4 +20,10 @@ main := void -> void {
     print '\n'
     i += 1u
   }
+
+  for x in r {
+    print x
+    print ' '
+  }
+  print '\n'
 }

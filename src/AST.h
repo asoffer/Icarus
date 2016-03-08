@@ -395,6 +395,9 @@ struct For : public Node {
   Declaration *iterator;
   Expression *container;
   Statements *statements;
+
+  // TODO change this scope type? Certainly at least change the name from
+  // WhileScope to LoopScope
   WhileScope *for_scope;
   // ForScope *for_scope;
 };

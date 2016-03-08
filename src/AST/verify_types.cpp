@@ -486,7 +486,7 @@ void While::verify_types() {
 void For::verify_types() {
   // TODO array -> "has operator[]"
   if (!container->type->is_array()) {
-    error_log.log(line_num, "For loop condition must be an array, but " +
+    error_log.log(line_num, "For loop container must be an array, but " +
                                 container->type->to_string() + " given.");
   } else {
     iterator->type = static_cast<Array *>(container->type)->data_type;

@@ -573,7 +573,7 @@ llvm::Value *FunctionLiteral::generate_code() {
   for (auto &input_iter : inputs) {
     auto decl_id = input_iter->identifier;
 
-    if (!decl_id->type->is_struct()) {
+    if (!decl_id->type->is_big()) {
       fn_scope->builder().CreateCall(decl_id->type->assign(),
                                      {arg, input_iter->identifier->alloc});
     }
@@ -845,6 +845,8 @@ llvm::Value *While::generate_code() {
 
   auto while_stmt_block = make_block("while.stmt", parent_fn);
 
+  // TODO if you forget this, it causes bad bugs. Make it impossible to forget
+  // this!!!
   while_scope->set_parent_function(parent_fn);
 
   CurrentBuilder().CreateBr(while_scope->entry_block());
@@ -954,7 +956,56 @@ llvm::Value *Break::generate_code() {
 }
 
 llvm::Value *For::generate_code() {
-  assert(false && "Not yet implemented");
+  auto data_type = iterator->type;
+
+  auto container_val = container->generate_code();
+  assert(container_val && "container_val is nullptr");
+
+  llvm::IRBuilder<> &bldr = CurrentBuilder();
+
+  auto start_block = bldr.GetInsertBlock();
+  auto parent_fn   = start_block->getParent();
+  auto loop_block  = make_block("loop", parent_fn);
+  auto land_block  = make_block("loop.land", parent_fn);
+
+  // TODO if you forget this, it causes bad bugs. Make it impossible to forget
+  // this!!!
+  for_scope->set_parent_function(parent_fn);
+  // Scope::Stack.push(for_scope);
+
+  auto len = bldr.CreateLoad(bldr.CreateGEP(
+      container_val, {data::const_uint(0), data::const_uint(0)}), "len");
+  auto start_ptr = bldr.CreateLoad(bldr.CreateGEP(
+      container_val, {data::const_uint(0), data::const_uint(1)}), "start_ptr");
+  auto end_ptr = bldr.CreateGEP(start_ptr, len, "end_ptr");
+
+  bldr.CreateBr(loop_block);
+  bldr.SetInsertPoint(loop_block);
+  auto phi_node = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
+  phi_node->addIncoming(start_ptr, start_block);
+  iterator->identifier->alloc = phi_node;
+  statements->generate_code();
+  // Scope::Stack.pop();
+
+  auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
+  bldr.CreateCondBr(bldr.CreateICmpEQ(next_ptr, end_ptr), land_block,
+                    loop_block);
+  phi_node->addIncoming(next_ptr, loop_block);
+
+  // HACK because you don't want to use these
+  // TODO remove this when you overhaul Scope to something more sensible
+  bldr.SetInsertPoint(for_scope->entry_block());
+  bldr.CreateBr(for_scope->entry_block());
+  bldr.SetInsertPoint(for_scope->exit_block());
+  bldr.CreateBr(for_scope->exit_block());
+  bldr.SetInsertPoint(for_scope->cond_block());
+  bldr.CreateBr(for_scope->cond_block());
+  bldr.SetInsertPoint(for_scope->landing_block());
+  bldr.CreateBr(for_scope->landing_block());
+
+  bldr.SetInsertPoint(land_block);
+
+  return nullptr;
 }
 
 } // namespace AST

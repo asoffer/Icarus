@@ -1,6 +1,26 @@
 main := void -> void {
-  a: [5; int]
-  for x in a {
-    print x
+  A: [26; char]
+  a: [26; char]
+  i := 0u
+
+  for c in A {
+    c = ascii(65u + i)
+    i += 1u
   }
+
+  i = 0u
+  for c in a {
+    c = ascii(97u + i)
+    i += 1u
+  }
+
+  for c in A {
+    print c
+  }
+  print '\n'
+
+  for c in a {
+    print c
+  }
+  print '\n'
 }
