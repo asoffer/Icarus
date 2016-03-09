@@ -85,7 +85,7 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (init_fn_ == nullptr) {
     auto x = Func(Ptr(this), Void);
     init_fn_ = llvm::Function::Create(*x,
-        llvm::Function::ExternalLinkage, "init." + to_string(), global_module);
+        llvm::Function::ExternalLinkage, "init." + Mangle(this), global_module);
 
     FnScope* fn_scope = new FnScope(init_fn_);
     fn_scope->set_type(Func(Ptr(this), Void));

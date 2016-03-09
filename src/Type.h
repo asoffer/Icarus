@@ -19,6 +19,8 @@
 #include "TimeEval.h"
 #include "Context.h"
 
+extern std::string Mangle(const Type *t, bool prefix = true);
+
 extern llvm::DataLayout *data_layout;
 
 namespace AST {

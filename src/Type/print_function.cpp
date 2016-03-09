@@ -39,5 +39,5 @@ void Structure::call_print(llvm::IRBuilder<>& bldr, llvm::Value* val) {
 
 void Structure::set_print(llvm::Function* fn) {
   print_fn_ = fn;
-  print_fn_->setName("print." + to_string());
+  print_fn_->setName("print." + Mangle(this));
 }

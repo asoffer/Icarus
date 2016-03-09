@@ -54,7 +54,7 @@ llvm::Function* Array::assign() {
 
   assign_fn_ = llvm::Function::Create(
       *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
-      "assign." + to_string(), global_module);
+      "assign." + Mangle(this), global_module);
 
   // Create uninitialization function
 

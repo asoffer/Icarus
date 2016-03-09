@@ -29,7 +29,7 @@ void Array::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   if (uninit_fn_ == nullptr) {
     uninit_fn_ = llvm::Function::Create(
         llvm::FunctionType::get(*Void, {*Ptr(this)}, false),
-        llvm::Function::ExternalLinkage, "uninit." + to_string(),
+        llvm::Function::ExternalLinkage, "uninit." + Mangle(this),
         global_module);
 
     FnScope *fn_scope = new FnScope(uninit_fn_);
@@ -89,7 +89,7 @@ void Structure::call_uninit(llvm::IRBuilder<>& bldr, llvm::Value* var) {
   if (uninit_fn_ == nullptr) {
     uninit_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
                                         llvm::Function::ExternalLinkage,
-                                        "uninit." + to_string(), global_module);
+                                        "uninit." + Mangle(this), global_module);
 
     auto block = make_block("entry", uninit_fn_);
 

@@ -151,7 +151,7 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     // TODO what about arrays of types?
     auto fn_type = Func(Ptr(this), Void);
     repr_fn_ = llvm::Function::Create(*fn_type, llvm::Function::ExternalLinkage,
-                                      "print." + to_string(), global_module);
+                                      "repr." + Mangle(this), global_module);
     llvm::Value *arg = repr_fn_->args().begin();
 
     FnScope *fn_scope = new FnScope(repr_fn_);

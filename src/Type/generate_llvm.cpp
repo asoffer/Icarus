@@ -15,7 +15,7 @@ void Array::generate_llvm() const {
 
   struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
 
-  struct_type->setName(to_string());
+  struct_type->setName(Mangle(this));
   llvm_type = struct_type;
 }
 
