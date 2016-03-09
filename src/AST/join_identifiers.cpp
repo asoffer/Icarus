@@ -1,129 +1,126 @@
 #include "AST.h"
 
-void set_or_recurse(AST::Expression *&eptr, Scope *scope) {
+void set_or_recurse(AST::Expression *&eptr) {
+  // TODO What happens to the line number?
   if (eptr->is_identifier()) {
-    eptr = scope->identifier(eptr);
+    eptr = CurrentScope()->identifier(eptr);
   } else {
-    eptr->join_identifiers(scope);
+    eptr->join_identifiers();
   }
 }
 
 namespace AST {
-  void Unop::join_identifiers(Scope* scope, bool is_arg) {
-    set_or_recurse(operand, scope);
+  void Unop::join_identifiers(bool is_arg) {
+    set_or_recurse(operand);
   }
 
-  void While::join_identifiers(Scope* scope, bool is_arg) {
-    condition->join_identifiers(while_scope);
-    statements->join_identifiers(while_scope);
+  void While::join_identifiers(bool is_arg) {
+    Scope::Stack.push(while_scope);
+    condition->join_identifiers();
+    statements->join_identifiers();
+    Scope::Stack.pop();
   }
 
-  void For::join_identifiers(Scope* scope, bool is_arg) {
-    iterator->identifier           = for_scope->identifier(iterator->identifier);
-    iterator->identifier->line_num = line_num;
-    set_or_recurse(iterator->type_expr, for_scope);
+  void For::join_identifiers(bool is_arg) {
+    Scope::Stack.push(for_scope);
+    iterator->identifier = CurrentScope()->identifier(iterator->identifier);
+    set_or_recurse(iterator->type_expr);
 
-    set_or_recurse(container, for_scope);
-    statements->join_identifiers(for_scope);
+    set_or_recurse(container);
+    statements->join_identifiers();
+    Scope::Stack.pop();
   }
 
-  void ArrayLiteral::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& el : elems) {
-      set_or_recurse(el, scope);
-    }
+  void ArrayLiteral::join_identifiers(bool is_arg) {
+    for (auto &el : elems) { set_or_recurse(el); }
   }
 
-  void Terminal::join_identifiers(Scope* scope, bool is_arg) {}
+  void Terminal::join_identifiers(bool is_arg) {}
 
-  void Identifier::join_identifiers(Scope* scope, bool is_arg) {
-    Terminal::join_identifiers(scope);
+  void Identifier::join_identifiers(bool is_arg) {
+    Terminal::join_identifiers();
   }
 
-  void Conditional::join_identifiers(Scope* scope, bool is_arg) {
+  void Conditional::join_identifiers(bool is_arg) {
     for (size_t i = 0; i < conditions.size(); ++i) {
-      conditions[i]->join_identifiers(body_scopes[i]);
+      Scope::Stack.push(body_scopes[i]);
+      conditions[i]->join_identifiers();
+      Scope::Stack.pop();
     }
-
     for (size_t i = 0; i < statements.size(); ++i) {
-      statements[i]->join_identifiers(body_scopes[i]);
+      Scope::Stack.push(body_scopes[i]);
+      statements[i]->join_identifiers();
+      Scope::Stack.pop();
     }
   }
 
-  void Access::join_identifiers(Scope* scope, bool is_arg) {
-    set_or_recurse(operand, scope);
+  void Access::join_identifiers(bool is_arg) {
+    set_or_recurse(operand);
   }
 
-  void Binop::join_identifiers(Scope* scope, bool is_arg) {
-    set_or_recurse(lhs, scope);
-
-    // Ignore the RHS of a dot operator
-    // TODO Access should be looking in a different scope
-    // Should it be looking at all?
-    // Should this even be a binary operator?
-    if (op == Language::Operator::Access) return;
-
-    set_or_recurse(rhs, scope);
+  void Binop::join_identifiers(bool is_arg) {
+    set_or_recurse(lhs);
+    set_or_recurse(rhs);
   }
 
-  void ArrayType::join_identifiers(Scope* scope, bool is_arg) {
-    if (length != nullptr) {
-      set_or_recurse(length, scope);
-    }
-
-    set_or_recurse(data_type, scope);
+  void ArrayType::join_identifiers(bool is_arg) {
+    if (length != nullptr) { set_or_recurse(length); }
+    set_or_recurse(data_type);
   }
 
-  void Declaration::join_identifiers(Scope* scope, bool is_arg) {
-    identifier = scope->identifier(identifier);
+  void Declaration::join_identifiers(bool is_arg) {
+    identifier = CurrentScope()->identifier(identifier);
     if (is_arg) {
       identifier->is_function_arg = true;
     }
-    identifier->line_num = line_num; // Hacky and probably wrong TODO FIXME
 
-    set_or_recurse(type_expr, scope);
+    set_or_recurse(type_expr);
   }
 
-  void ChainOp::join_identifiers(Scope* scope, bool is_arg) {
-    for (auto& expr : exprs) {
-      set_or_recurse(expr, scope);
-    }
+  void ChainOp::join_identifiers(bool is_arg) {
+    for (auto &expr : exprs) { set_or_recurse(expr); }
   }
 
-  void Case::join_identifiers(Scope* scope, bool is_arg) {
-    kv->join_identifiers(scope);
+  void Case::join_identifiers(bool is_arg) {
+    kv->join_identifiers();
   }
 
-  void KVPairList::join_identifiers(Scope* scope, bool is_arg) {
+  void KVPairList::join_identifiers(bool is_arg) {
     for (auto& pair : pairs) {
-      set_or_recurse(pair.first, scope);
-      set_or_recurse(pair.second, scope);
+      set_or_recurse(pair.first);
+      set_or_recurse(pair.second);
     }
   }
 
-  void Statements::join_identifiers(Scope* scope, bool is_arg) {
+  void Statements::join_identifiers(bool is_arg) {
     for (auto& ptr : statements) {
       if (ptr->is_identifier()) {
-        ptr = scope->identifier(static_cast<Expression *>(ptr));
+        ptr = CurrentScope()->identifier(static_cast<Expression *>(ptr));
       } else {
-        ptr->join_identifiers(scope);
+        ptr->join_identifiers();
       }
     }
   }
 
-  void FunctionLiteral::join_identifiers(Scope* scope, bool is_arg) {
+  void FunctionLiteral::join_identifiers(bool is_arg) {
+    Scope::Stack.push(fn_scope);
     for (auto& in : inputs) {
-      in->join_identifiers(fn_scope, true);
+      in->join_identifiers(true);
     }
 
-    set_or_recurse(return_type_expr, fn_scope);
-    statements->join_identifiers(fn_scope);
+    set_or_recurse(return_type_expr);
+    statements->join_identifiers();
+
+    Scope::Stack.pop();
   }
 
-  void TypeLiteral::join_identifiers(Scope*, bool) {
+  void TypeLiteral::join_identifiers(bool) {
+    Scope::Stack.push(type_scope);
     for (auto& decl : declarations) {
-      decl->join_identifiers(type_scope);
+      decl->join_identifiers();
     }
+    Scope::Stack.pop();
   }
 
-  void EnumLiteral::join_identifiers(Scope* scope, bool is_arg) {}
+  void EnumLiteral::join_identifiers(bool is_arg) {}
 }  // namespace AST

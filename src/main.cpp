@@ -161,7 +161,6 @@ int main(int argc, char *argv[]) {
   // compilation errors, so we don't check for them here.
   Scope::Stack.push(Scope::Global);
   global_statements->assign_scope();
-  Scope::Stack.pop();
 
   // COMPILATION STEP:
   //
@@ -169,7 +168,8 @@ int main(int argc, char *argv[]) {
   // happen after the declarations are assigned to each scope so we have a
   // specific identifier to point to that is easy to find. This can generate an
   // undeclared identifier error.
-  global_statements->join_identifiers(Scope::Global);
+  global_statements->join_identifiers();
+  Scope::Stack.pop();
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;

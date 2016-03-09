@@ -48,7 +48,7 @@ using NPtrVec = std::vector<Node *>;
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
+  virtual void join_identifiers(bool is_arg = false) ENDING;     \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
@@ -62,7 +62,7 @@ using NPtrVec = std::vector<Node *>;
   virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(Scope *scope, bool is_arg = false) ENDING;     \
+  virtual void join_identifiers(bool is_arg = false) ENDING;     \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
@@ -81,7 +81,7 @@ struct Node {
   void set_token(const std::string &token_string) { token_ = token_string; }
 
   virtual std::string to_string(size_t n) const;
-  virtual void join_identifiers(Scope *scope, bool is_arg = false) {}
+  virtual void join_identifiers(bool is_arg = false) {}
   virtual void assign_scope() {}
   virtual void record_dependencies() {}
   virtual void verify_types() {}
