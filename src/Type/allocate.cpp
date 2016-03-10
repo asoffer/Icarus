@@ -16,6 +16,12 @@ llvm::Value *Function::allocate(llvm::IRBuilder<> &bldr) const {
                                 global_module);
 }
 
+llvm::Value *Array::allocate(llvm::IRBuilder<> &bldr) const {
+  auto alloc = bldr.CreateAlloca(*this);
+  alloc->setName("tmp_array");
+  return alloc;
+}
+
 llvm::Value *Tuple::allocate(llvm::IRBuilder<> &bldr) const {
   return nullptr; // TODO
 }

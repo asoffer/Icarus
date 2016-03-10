@@ -48,9 +48,11 @@ void Array::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   bldr.CreateStore(
       data::const_uint(0),
       bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+  auto ptr = bldr.CreateBitCast(
+      bldr.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
+      *Ptr(data_type));
   bldr.CreateStore(
-      data::null_pointer(data_type),
-      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
+      ptr, bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
 }
 
 void Tuple::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
@@ -122,6 +124,7 @@ llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
   return initialize_literal(bldr, alloc, data::const_uint(len));
 }
 
+// TODO rename? This isn't really about init-ing literals
 llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
                                        llvm::Value *alloc, llvm::Value *len) {
   auto use_calloc         = data_type->is_primitive();

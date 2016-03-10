@@ -205,6 +205,8 @@ struct Array : public Type {
   llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
                                   llvm::Value *len);
 
+  virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
+
   llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
 
   Type *data_type;

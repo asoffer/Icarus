@@ -348,9 +348,9 @@ llvm::Value *ArrayType::generate_code() {
   auto alloc_size = bldr.CreateMul(len, data::const_uint(data_ty->bytes()));
   auto alloc_ptr = bldr.CreateCall(cstdlib::malloc(), alloc_size);
 
-  auto tmp_array = bldr.CreateAlloca(*type, nullptr, "array.tmp");
+  auto tmp_array = type->allocate(CurrentBuilder());
   bldr.CreateStore(len, bldr.CreateGEP(tmp_array, {data::const_uint(0),
-                                                    data::const_uint(0)}));
+                                                   data::const_uint(0)}));
   bldr.CreateStore(alloc_ptr, bldr.CreateGEP(tmp_array, {data::const_uint(0),
                                                          data::const_uint(1)}));
 
@@ -823,13 +823,16 @@ llvm::Value *ArrayLiteral::generate_code() {
   size_t num_elems   = elems.size();
 
   auto array_data = type->allocate(CurrentBuilder());
+
   type_as_array->initialize_literal(CurrentBuilder(), array_data, num_elems);
 
   auto head_ptr = CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
       array_data, {data::const_uint(0), data::const_uint(1)}));
 
+  // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr = CurrentBuilder().CreateGEP(head_ptr, {data::const_uint(i)});
+    element_type->call_init(CurrentBuilder(), data_ptr);
 
     CurrentBuilder().CreateCall(element_type->assign(),
                                 {elems[i]->generate_code(), data_ptr});

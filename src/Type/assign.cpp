@@ -108,8 +108,8 @@ llvm::Function* Array::assign() {
 
   auto copy_from_elem =
       data_type->is_big()
-          ? bldr.CreateGEP(from_phi, {data::const_uint(0)})
-          : bldr.CreateLoad(bldr.CreateGEP(from_phi, {data::const_uint(0)}));
+          ? static_cast<llvm::Value *>(from_phi)
+          : static_cast<llvm::Value *>(bldr.CreateLoad(from_phi));
 
   bldr.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
 
