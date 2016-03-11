@@ -35,7 +35,7 @@ void Array::call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) {
     FnScope *fn_scope = new FnScope(uninit_fn_);
     fn_scope->set_type(Func(Ptr(this), Void));
 
-    llvm::IRBuilder<> &fnbldr = fn_scope->builder();
+    llvm::IRBuilder<> &fnbldr = fn_scope->builder;
     fn_scope->enter();
 
     auto array = uninit_fn_->args().begin();

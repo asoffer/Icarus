@@ -21,40 +21,12 @@ namespace data {
   extern llvm::Value* const_uint(size_t n);
 }  // namespace data
 
-Scope::Scope() : parent_(Scope::Global), containing_function_(nullptr),
-  bldr_(llvm::getGlobalContext()) {}
+Scope::Scope() : parent(Scope::Global), containing_function_(nullptr),
+  builder(llvm::getGlobalContext()) {}
 
-void GlobalScope::initialize() {
-  for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->identifier;
-    if (decl_id->is_function_arg) continue;
-
-    auto decl_type = decl_id->type;
-    if (decl_type->llvm_type == nullptr) continue;
-
-    if (decl_type->is_function()) {
-      if (decl_id->token()[0] != '_') {  // Ignore operators
-        decl_id->alloc = decl_type->allocate(bldr_);
-        decl_id->alloc->setName(decl_ptr->identifier->token());
-      }
-    } else {
-      assert(decl_type == Type_ && "Global variables not currently allowed.");
-    }
-  }
-}
-
-FnScope::FnScope(llvm::Function* fn) :
-  fn_type_(nullptr), return_val_(nullptr),
-  entry_block_(make_block("entry", nullptr)),
-  exit_block_(make_block("exit", nullptr))
-{ 
-  if (fn) set_parent_function(fn);
-}
-
-void Scope::enter() {
-  bldr_.SetInsertPoint(entry_block());
-
-  for (const auto& decl_ptr : ordered_decls_) {
+void Scope::initialize(llvm::BasicBlock *block) {
+  builder.SetInsertPoint(block);
+  for (auto decl_ptr : ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
@@ -66,18 +38,75 @@ void Scope::enter() {
     //   init_args[0] = decl_id->alloc;
     //   // TODO
     //   // auto array_type = static_cast<Array*>(decl_type);
-    //   // bldr_.CreateCall(array_type->initialize(), init_args);
+    //   // builder.CreateCall(array_type->initialize(), init_args);
     //   continue;
 
     // } else {
     if (decl_id->is_function_arg) continue;
-    decl_type->call_init(bldr_, {decl_id->alloc});
+    decl_type->call_init(builder, {decl_id->alloc});
     // }
   }
 }
 
+void Scope::uninitialize(llvm::BasicBlock *block) {
+  builder.SetInsertPoint(block);
+  // NOTE Not a relevant limit, but worth tracking anyways.
+  for (int i = static_cast<int>(ordered_decls_.size()); i >= 0; --i) {
+    auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
+
+    // TODO is this correct?
+    if (decl_id->is_function_arg) continue;
+
+
+    decl_id->type->call_uninit(builder, { decl_id->alloc });
+  }
+}
+
+void GlobalScope::initialize() {
+  for (auto decl_ptr : ordered_decls_) {
+    auto decl_id = decl_ptr->identifier;
+    if (decl_id->is_function_arg) continue;
+
+    auto decl_type = decl_id->type;
+    if (decl_type->llvm_type == nullptr) continue;
+
+    if (decl_type->is_function()) {
+      if (decl_id->token()[0] != '_') {  // Ignore operators
+        decl_id->alloc = decl_type->allocate(builder);
+        decl_id->alloc->setName(decl_ptr->identifier->token());
+      }
+    } else {
+      assert(decl_type == Type_ && "Global variables not currently allowed.");
+    }
+  }
+}
+
+FnScope::FnScope(llvm::Function *fn)
+    : fn_type_(nullptr), return_val_(nullptr),
+      entry_block_(make_block("entry", nullptr)),
+      exit_block_(make_block("exit", nullptr)) {
+  set_parent_function(fn);
+}
+
+void FnScope::set_parent_function(llvm::Function *fn) {
+  if (fn) { llvm_fn_ = fn; }
+
+  if (entry_block_ && entry_block_->getParent()) {
+    entry_block_->removeFromParent();
+  }
+
+  if (exit_block_ && exit_block_->getParent()) {
+    exit_block_->removeFromParent();
+  }
+
+  if (fn) {
+    entry_block_->insertInto(fn);
+    exit_block_->insertInto(fn);
+  }
+}
+
 void FnScope::enter() {
-  bldr_.SetInsertPoint(entry_block());
+  builder.SetInsertPoint(entry_block_);
 
   allocate(this);
 
@@ -98,35 +127,28 @@ void FnScope::enter() {
     // TODO multiple return types for now just take one
   } else if (fn_type_->output != Void) {
     // TODO multiple return types for now just take one
-    return_val_ = fn_type_->output->allocate(bldr_);
+    return_val_ = fn_type_->output->allocate(builder);
     return_val_->setName("retval");
   }
-
-  Scope::enter();
-}
-
-// TODO simplify this. No need for an exit block unless it's in FnScope
-void Scope::exit() {
-  bldr_.CreateBr(exit_block());
-  bldr_.SetInsertPoint(exit_block());
-  uninitialize();
 }
 
 void FnScope::exit() {
-  Scope::exit();
+  builder.CreateBr(exit_block_);
+  builder.SetInsertPoint(exit_block_);
 
   // TODO multiple return types for now just take one
   if (fn_type_->output == Void
       // TODO multiple return types for now just take one
       || fn_type_->output->is_struct()) {
-    bldr_.CreateRetVoid();
+    builder.CreateRetVoid();
 
   } else {
-    bldr_.CreateRet(bldr_.CreateLoad(return_val_, "retval"));
+    builder.CreateRet(builder.CreateLoad(return_val_, "retval"));
   }
 }
 
 void Scope::make_return(llvm::Value* val) {
+  assert(containing_function_);
   containing_function_->make_return(val);
 }
 
@@ -138,12 +160,12 @@ void FnScope::make_return(llvm::Value* val) {
   auto ret_type = fn_type_->output;
   if (ret_type->is_struct()) {
     // TODO pull out memcpy into a single fn call
-    auto val_raw = bldr_.CreateBitCast(val, *RawPtr);
-    auto ret_raw = bldr_.CreateBitCast(return_val_, *RawPtr);
-    bldr_.CreateCall(cstdlib::memcpy(),
+    auto val_raw = builder.CreateBitCast(val, *RawPtr);
+    auto ret_raw = builder.CreateBitCast(return_val_, *RawPtr);
+    builder.CreateCall(cstdlib::memcpy(),
         { ret_raw, val_raw, data::const_uint(ret_type->bytes()) });
   } else {
-    bldr_.CreateStore(val, return_val_);
+    builder.CreateStore(val, return_val_);
   }
 }
 
@@ -154,26 +176,24 @@ void FnScope::add_scope(Scope* scope) {
 // Set pointer to the parent scope. This is an independent concept from LLVM's
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.
-void Scope::set_parent(Scope* parent) {
-  assert(parent && "Setting scope's parent to be a nullptr.");
-  assert(parent != this && "Setting parent as self");
+void Scope::set_parent(Scope* new_parent) {
+  assert(new_parent && "Setting scope's parent to be a nullptr.");
+  assert(new_parent != this && "Setting parent as self");
 
-  if (parent_ != nullptr && parent_->containing_function_ != nullptr) {
-    parent_->containing_function_->remove_scope(this);
+  if (parent != nullptr && parent->containing_function_ != nullptr) {
+    parent->containing_function_->remove_scope(this);
   }
 
-  parent_ = parent;
-  ctx_.set_parent(&parent->context());
+  parent = new_parent;
+  ctx_.set_parent(&new_parent->context());
 
-  if (parent->is_function_scope()) {
-    containing_function_ = static_cast<FnScope*>(parent_);
+  if (new_parent->is_function_scope()) {
+    containing_function_ = static_cast<FnScope *>(parent);
   } else {
-    containing_function_ = parent_->containing_function_;
+    containing_function_ = parent->containing_function_;
   }
 
-  if (containing_function_ != nullptr) {
-    containing_function_->add_scope(this);
-  }
+  if (containing_function_) { containing_function_->add_scope(this); }
 }
 
 // Gets the type of that the identifier was declared as. This is a pointer to
@@ -186,7 +206,7 @@ AST::Expression *Scope::get_declared_type(AST::Identifier *idptr) const {
 
   // This cannot segfault because the program would have exited earlier
   // if it was undeclared.
-  return parent()->get_declared_type(idptr);
+  return parent->get_declared_type(idptr);
 
 }
 
@@ -212,16 +232,8 @@ void FnScope::allocate(Scope* scope) {
       continue;
     }
    
-    decl_id->alloc = decl_type->allocate(bldr_);
+    decl_id->alloc = decl_type->allocate(builder);
     decl_id->alloc->setName(decl_ptr->identifier->token());
-  }
-}
-
-void Scope::uninitialize() {
-  for (const auto& decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->identifier;
-    if (decl_id->is_function_arg) continue;
-    decl_id->type->call_uninit(bldr_, { decl_id->alloc });
   }
 }
 
@@ -232,7 +244,7 @@ AST::Identifier *Scope::identifier(AST::Expression* id_as_eptr) {
   while (current_scope != nullptr) {
     auto iter = current_scope->ids_.find(idptr->token());
     if (iter != current_scope->ids_.end()) { return iter->second; }
-    current_scope = current_scope->parent();
+    current_scope = current_scope->parent;
   }
 
   // If you reach here it's because we never saw a declaration for the identifier
@@ -245,7 +257,7 @@ AST::Identifier *Scope::identifier(AST::Expression* id_as_eptr) {
 AST::Identifier *Scope::identifier(const std::string &name) const {
   auto iter = ids_.find(name);
   if (iter == ids_.end()) {
-    if (parent_) return parent_->identifier(name);
+    if (parent) return parent->identifier(name);
     return nullptr;
   }
   return iter->second;
@@ -280,7 +292,7 @@ void Scope::verify_no_shadowing() {
           // Do NOT skip out here. It's possible to have many shadows and we
           // might as well catch them all.
         }
-        scope_ptr = scope_ptr->parent_;
+        scope_ptr = scope_ptr->parent;
       }
     }
   }
@@ -298,54 +310,6 @@ AST::Declaration *Scope::make_declaration(size_t line_num,
   return decl;
 }
 
-void FnScope::set_parent_function(llvm::Function *fn) {
-  llvm_fn_ = fn;
-  Scope::set_parent_function(fn);
-}
-
-void Scope::set_parent_function(llvm::Function* fn) {
-  if (entry_block() != nullptr && entry_block()->getParent() != nullptr) {
-    entry_block()->removeFromParent();
-  }
-
-  entry_block()->insertInto(fn);
-
-  if (exit_block() != nullptr && exit_block()->getParent() != nullptr) {
-    exit_block()->removeFromParent();
-  }
-
-  exit_block()->insertInto(fn);
-}
-
-void WhileScope::set_parent_function(llvm::Function* fn) {
-  Scope::set_parent_function(fn);
-
-  if (land_block_ != nullptr && land_block_->getParent() != nullptr) {
-    land_block_->removeFromParent();
-  }
-
-  land_block_->insertInto(fn);
-
-  if (cond_block_ != nullptr && cond_block_->getParent() != nullptr) {
-    cond_block_->removeFromParent();
-  }
-
-  cond_block_->insertInto(fn);
-
-}
-
-void WhileScope::enter() {
-  Scope::enter();
-  bldr_.CreateBr(cond_block_);
-  bldr_.SetInsertPoint(cond_block_);
-}
-
-
-void WhileScope::exit() {
-  Scope::exit();
-  bldr_.CreateBr(cond_block_);
-}
-
 Scope *CurrentScope() {
   if (Scope::Stack.empty()) return nullptr;
   return Scope::Stack.top();
@@ -354,7 +318,7 @@ Scope *CurrentScope() {
 std::stack<Scope *> Scope::Stack;
 
 llvm::IRBuilder<> &CurrentBuilder() { 
-  return CurrentScope()->builder(); }
+  return CurrentScope()->builder; }
 
 Context &CurrentContext() { return CurrentScope()->context(); }
 

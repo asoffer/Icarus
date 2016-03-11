@@ -18,10 +18,8 @@
 
 extern ErrorLog error_log;
 extern std::queue<std::string> file_queue;
-class Scope;
-class FnScope;
-class CondScope;
-class WhileScope;
+struct Scope;
+struct FnScope;
 struct Structure;
 struct Enumeration;
 
@@ -48,7 +46,7 @@ using NPtrVec = std::vector<Node *>;
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(bool is_arg = false) ENDING;     \
+  virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
@@ -62,7 +60,7 @@ using NPtrVec = std::vector<Node *>;
   virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(bool is_arg = false) ENDING;     \
+  virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
@@ -378,7 +376,7 @@ struct Conditional : public Node {
 
   std::vector<Expression *> conditions;
   std::vector<Statements *> statements;
-  std::vector<CondScope *> body_scopes;
+  std::vector<Scope *> body_scopes;
 
   // We use else_line_num to determine if an else branch exists (when it's
   // non-zero) and also for error generation (if multiple else-blocks are
@@ -396,10 +394,7 @@ struct For : public Node {
   Expression *container;
   Statements *statements;
 
-  // TODO change this scope type? Certainly at least change the name from
-  // WhileScope to LoopScope
-  WhileScope *for_scope;
-  // ForScope *for_scope;
+  Scope *for_scope;
 };
 
 struct While : public Node {
@@ -412,7 +407,7 @@ struct While : public Node {
 
   Expression *condition;
   Statements *statements;
-  WhileScope *while_scope;
+  Scope *while_scope;
 };
 
 struct TypeLiteral : public Expression {

@@ -61,7 +61,7 @@ llvm::Function* Array::assign() {
   FnScope* fn_scope = new FnScope(assign_fn_);
   fn_scope->set_type(Func({ Ptr(this), Ptr(this) }, Void));
 
-  llvm::IRBuilder<>& bldr = fn_scope->builder();
+  llvm::IRBuilder<>& bldr = fn_scope->builder;
 
   fn_scope->enter();
   auto iter = assign_fn_->args().begin();
@@ -157,7 +157,7 @@ llvm::Function *Structure::assign() {
   FnScope *fn_scope = new FnScope(assign_fn_);
   fn_scope->set_type(Func({Ptr(this), Ptr(this)}, Void));
 
-  llvm::IRBuilder<> &bldr = fn_scope->builder();
+  llvm::IRBuilder<> &bldr = fn_scope->builder;
 
   fn_scope->enter();
   auto iter = assign_fn_->args().begin();

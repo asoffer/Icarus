@@ -92,7 +92,7 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     FnScope* fn_scope = new FnScope(init_fn_);
     fn_scope->set_type(Func(Ptr(this), Void));
 
-    llvm::IRBuilder<>& bldr = fn_scope->builder();
+    llvm::IRBuilder<>& bldr = fn_scope->builder;
     fn_scope->enter();
 
     // initialize all fields

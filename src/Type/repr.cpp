@@ -18,12 +18,12 @@ extern llvm::Value *global_string(llvm::IRBuilder<> &bldr,
                                   const std::string &s);
 } // namespace data
 
-void add_branch(llvm::Function *fn, Scope *fn_scope,
+void add_branch(llvm::Function *fn, FnScope *fn_scope,
                 llvm::SwitchInst *switch_stmt, const std::string &name,
                 char char_to_display, const std::string &display_as,
                 bool add_jump = true) {
 
-  llvm::IRBuilder<> &fn_bldr = fn_scope->builder();
+  llvm::IRBuilder<> &fn_bldr = fn_scope->builder;
 
   auto branch = make_block(name, fn);
   switch_stmt->addCase(data::const_char(char_to_display), branch);
@@ -46,7 +46,7 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
       FnScope *fn_scope = new FnScope(repr_fn_);
       fn_scope->set_type(fn_type);
 
-      llvm::IRBuilder<> &fn_bldr = fn_scope->builder();
+      llvm::IRBuilder<> &fn_bldr = fn_scope->builder;
 
       fn_scope->enter();
       auto true_block  = make_block("true.block", repr_fn_);
@@ -85,7 +85,7 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     FnScope *fn_scope = new FnScope(repr_fn_);
     fn_scope->set_type(fn_type);
 
-    llvm::IRBuilder<> &fn_bldr = fn_scope->builder();
+    llvm::IRBuilder<> &fn_bldr = fn_scope->builder;
 
     fn_scope->enter();
 
@@ -157,7 +157,7 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     FnScope *fn_scope = new FnScope(repr_fn_);
     fn_scope->set_type(fn_type);
 
-    llvm::IRBuilder<> &fn_bldr = fn_scope->builder();
+    llvm::IRBuilder<> &fn_bldr = fn_scope->builder;
 
     fn_scope->enter();
     fn_bldr.CreateCall(cstdlib::putchar(), {data::const_char('[')});

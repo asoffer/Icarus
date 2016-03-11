@@ -135,11 +135,9 @@ namespace data {
 
   llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s) {
     auto iter = global_strings.find(s);
-    if (iter != global_strings.end()) {
-      return iter->second;
-    }
-
-    return global_strings[s] = bldr.CreateGlobalStringPtr(s);
+    return iter == global_strings.end()
+               ? global_strings[s] = bldr.CreateGlobalStringPtr(s)
+               : iter->second;
   }
 }  // namespace data
 
@@ -167,6 +165,8 @@ namespace builtin {
 
 // TODO make calls to call_repr not have to first check if we pass the
 // object or a pointer to the object.
+//
+// This really ought to be inlined, but that's not possible keeping it externed
 llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr) {
-  return (t->is_array() || t->is_struct()) ? ptr : bldr.CreateLoad(ptr);
+  return (t->is_big()) ? ptr : bldr.CreateLoad(ptr);
 }

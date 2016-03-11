@@ -49,8 +49,8 @@ void For::assign_scope() {
 void While::assign_scope() {
   scope_ = CurrentScope();
   while_scope->set_parent(CurrentScope());
-  Scope::Stack.push(while_scope);
   condition->assign_scope();
+  Scope::Stack.push(while_scope);
   statements->assign_scope();
   Scope::Stack.pop();
 }
