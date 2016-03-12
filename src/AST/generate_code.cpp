@@ -848,33 +848,35 @@ llvm::Value *Conditional::generate_code() {
   // this!!!
   auto parent_fn = CurrentBuilder().GetInsertBlock()->getParent();
 
-  // Last block is either the else-block or the landing block if
-  // no else-block exists.
-  std::vector<llvm::BasicBlock *> cond_block(conditions.size() + 1, nullptr);
-  std::vector<llvm::BasicBlock *> body_block(conditions.size() + 1, nullptr);
+  std::vector<llvm::BasicBlock *> cond_block(conditions.size(), nullptr);
+  std::vector<llvm::BasicBlock *> body_block(body_scopes.size(), nullptr);
 
   for (size_t i = 0; i < cond_block.size(); ++i) {
     cond_block[i] = make_block("cond.block", parent_fn);
+  }
+
+  for (size_t i = 0; i < body_block.size(); ++i) {
     body_block[i] = make_block("body.block", parent_fn);
   }
 
-  llvm::BasicBlock *land_block =
-      has_else() ? make_block("land", parent_fn) : cond_block.back();
+  auto *land_block = make_block("land", parent_fn);
 
   CurrentBuilder().CreateBr(cond_block[0]);
 
-  for (size_t i = 0; i < conditions.size(); ++i) {
+  for (size_t i = 0; i < conditions.size() - 1; ++i) {
     CurrentBuilder().SetInsertPoint(cond_block[i]);
     auto condition = conditions[i]->generate_code();
     CurrentBuilder().CreateCondBr(condition, body_block[i], cond_block[i + 1]);
   }
 
+  // Last step
   CurrentBuilder().SetInsertPoint(cond_block.back());
-  if (has_else()) {
-    CurrentBuilder().CreateBr(body_block.back());
-  }
+  auto condition = conditions.back()->generate_code();
+  CurrentBuilder().CreateCondBr(condition, body_block[conditions.size() - 1],
+                                has_else() ? body_block.back() : land_block);
 
-  for (size_t i = 0; i < statements.size(); ++i) {
+  // This loop covers the case of else
+  for (size_t i = 0; i < body_scopes.size(); ++i) {
     Scope::Stack.push(body_scopes[i]);
     body_scopes[i]->initialize(body_block[i]);
 
@@ -885,6 +887,7 @@ llvm::Value *Conditional::generate_code() {
 
     Scope::Stack.pop();
   }
+
 
   CurrentBuilder().SetInsertPoint(land_block);
   return nullptr;
@@ -946,7 +949,10 @@ llvm::Value *While::generate_code() {
 
   // Loop condition
   CurrentBuilder().CreateBr(cond_block);
+
+  CurrentBuilder().SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
+
   CurrentBuilder().CreateCondBr(cond, body_block, land_block);
 
   // Loop body

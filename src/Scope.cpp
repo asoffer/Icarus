@@ -51,7 +51,7 @@ void Scope::initialize(llvm::BasicBlock *block) {
 void Scope::uninitialize(llvm::BasicBlock *block) {
   builder.SetInsertPoint(block);
   // NOTE Not a relevant limit, but worth tracking anyways.
-  for (int i = static_cast<int>(ordered_decls_.size()); i >= 0; --i) {
+  for (int i = static_cast<int>(ordered_decls_.size()) - 1; i >= 0; --i) {
     auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
 
     // TODO is this correct?
