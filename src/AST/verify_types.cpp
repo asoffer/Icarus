@@ -362,6 +362,11 @@ void Declaration::verify_types() {
     // be Error.
     if (type_expr->type->is_array()) {
       type = static_cast<Array *>(type_expr->type)->data_type;
+    } else if (type_expr->type == Type_) {
+      auto t = type_expr->evaluate(scope_->context()).as_type;
+      if (t->is_enum()) {
+        type = t;
+      }
     } else {
       type = Error;
     }
@@ -485,12 +490,19 @@ void While::verify_types() {
 
 void For::verify_types() {
   // TODO array -> "has operator[]"
-  if (!container->type->is_array()) {
-    error_log.log(line_num, "For loop container must be an array, but " +
-                                container->type->to_string() + " given.");
-  } else {
+  if (container->type->is_array()) {
     iterator->type = static_cast<Array *>(container->type)->data_type;
+    return;
+
+  } else if (container->type == Type_) {
+    auto t = container->evaluate(scope_->context()).as_type;
+    if (t->is_enum()) {
+      iterator->type = Type_;
+      return;
+    }
   }
+  error_log.log(line_num, "For loop container must be an array or enum, but " +
+                              container->type->to_string() + " given.");
 }
 
 void Conditional::verify_types() {

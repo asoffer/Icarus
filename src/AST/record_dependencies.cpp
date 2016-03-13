@@ -176,6 +176,7 @@ namespace AST {
     // because this isn't allowed at compile-time
     // TODO check evaluate
     Dependency::value_type(this, this);
+    Dependency::type_value(this, container);
     Dependency::type_type(this, container);
     Dependency::type_type(this, statements);
 

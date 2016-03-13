@@ -978,46 +978,64 @@ llvm::Value *For::generate_code() {
 
   auto parent_fn = start_block->getParent();
 
-  auto data_type = iterator->type;
+  if (container->type->is_array()) {
+    auto data_type = iterator->type;
 
-  auto container_val = container->generate_code();
-  assert(container_val && "container_val is nullptr");
+    auto container_val = container->generate_code();
+    assert(container_val && "container_val is nullptr");
 
-  auto loop_block  = make_block("loop", parent_fn);
-  auto land_block  = make_block("loop.land", parent_fn);
+    auto loop_block = make_block("loop", parent_fn);
+    auto land_block = make_block("loop.land", parent_fn);
 
+    auto len_ptr = bldr.CreateGEP(
+        container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
+    auto len_val = bldr.CreateLoad(len_ptr, "len");
 
-  auto len_ptr = bldr.CreateGEP(
-      container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-  auto len_val = bldr.CreateLoad(len_ptr, "len");
+    auto start_ptr =
+        bldr.CreateLoad(bldr.CreateGEP(container_val, {data::const_uint(0),
+                                                       data::const_uint(1)}),
+                        "start_ptr");
+    auto end_ptr = bldr.CreateGEP(start_ptr, len_val, "end_ptr");
 
-  auto start_ptr = bldr.CreateLoad(bldr.CreateGEP(
-      container_val, {data::const_uint(0), data::const_uint(1)}), "start_ptr");
-  auto end_ptr = bldr.CreateGEP(start_ptr, len_val, "end_ptr");
+    bldr.CreateBr(loop_block);
+    bldr.SetInsertPoint(loop_block);
+    auto phi_node = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
+    phi_node->addIncoming(start_ptr, start_block);
+    iterator->identifier->alloc = phi_node;
 
-  bldr.CreateBr(loop_block);
-  bldr.SetInsertPoint(loop_block);
-  auto phi_node = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
-  phi_node->addIncoming(start_ptr, start_block);
-  iterator->identifier->alloc = phi_node;
+    Scope::Stack.push(for_scope);
+    for_scope->initialize(loop_block);
 
-  Scope::Stack.push(for_scope);
-  for_scope->initialize(loop_block);
+    statements->generate_code();
 
-  statements->generate_code();
+    for_scope->uninitialize(bldr.GetInsertBlock());
 
-  for_scope->uninitialize(bldr.GetInsertBlock());
+    auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
+    auto cmp      = bldr.CreateICmpEQ(next_ptr, end_ptr);
 
-  auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
-  auto cmp      = bldr.CreateICmpEQ(next_ptr, end_ptr);
+    bldr.CreateCondBr(cmp, land_block, loop_block);
+    phi_node->addIncoming(next_ptr, loop_block);
 
-  bldr.CreateCondBr(cmp, land_block, loop_block);
-  phi_node->addIncoming(next_ptr, loop_block);
+    Scope::Stack.pop();
 
-  Scope::Stack.pop();
-
-  CurrentBuilder().SetInsertPoint(land_block);
-
+    CurrentBuilder().SetInsertPoint(land_block);
+  } else {
+    // TODO that condition should really be encodede into the loop somewhere to
+    // make it faster to check.
+    auto t = container->evaluate(scope_->context()).as_type;
+    if (t->is_enum()) {
+      auto enum_type = static_cast<Enumeration *>(t);
+      // TODO get them by means other than string name
+      for (const auto kv: enum_type->int_values) {
+        bldr.CreateStore(data::const_uint(kv.second),
+                         iterator->identifier->alloc);
+        statements->generate_code();
+      }
+    } else {
+      assert(false && "Not yet implemented");
+    }
+  }
+ 
   return nullptr;
 }
 

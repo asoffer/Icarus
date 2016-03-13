@@ -124,7 +124,6 @@ void traverse_from(PtrWithTorV pt) {
           }
         }
 
-
         ptr->verify_types();
 
       } else {
