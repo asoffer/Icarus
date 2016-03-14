@@ -23,4 +23,9 @@ main := void -> void {
     print c
   }
   print '\n'
+
+  for n in uint {
+    print n
+    print '\n'
+  }
 }

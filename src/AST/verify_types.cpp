@@ -364,7 +364,7 @@ void Declaration::verify_types() {
       type = static_cast<Array *>(type_expr->type)->data_type;
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context()).as_type;
-      if (t->is_enum()) {
+      if (t->is_enum() || t == Uint) {
         type = t;
       }
     } else {
@@ -496,7 +496,7 @@ void For::verify_types() {
 
   } else if (container->type == Type_) {
     auto t = container->evaluate(scope_->context()).as_type;
-    if (t->is_enum()) {
+    if (t->is_enum() || t == Uint) {
       iterator->type = Type_;
       return;
     }

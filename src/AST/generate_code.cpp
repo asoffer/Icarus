@@ -70,6 +70,7 @@ llvm::Value *Terminal::generate_code() {
   switch (terminal_type) {
   case Language::Terminal::Type:
   case Language::Terminal::Return: {
+                                     // TODO branch to end of current function scope, and delete everything on the way out?
     return nullptr;
   }
   case Language::Terminal::Null: {
@@ -1031,6 +1032,30 @@ llvm::Value *For::generate_code() {
                          iterator->identifier->alloc);
         statements->generate_code();
       }
+    } else if (t == Uint) {
+      auto loop_block = make_block("loop", parent_fn);
+      auto land_block = make_block("land", parent_fn);
+
+      bldr.CreateBr(loop_block);
+      bldr.SetInsertPoint(loop_block);
+      auto phi_node = bldr.CreatePHI(*Uint, 2, "phi");
+      phi_node->addIncoming(data::const_uint(0), start_block);
+
+      Scope::Stack.push(for_scope);
+      for_scope->initialize(loop_block);
+
+      CurrentBuilder().CreateStore(phi_node, iterator->identifier->alloc);
+      statements->generate_code();
+
+      auto next = CurrentBuilder().CreateAdd(CurrentBuilder().CreateLoad(iterator->identifier->alloc),
+                                 data::const_uint(1));
+
+      phi_node->addIncoming(next, CurrentBuilder().GetInsertBlock());
+
+      Scope::Stack.pop();
+      bldr.CreateBr(loop_block);
+      bldr.SetInsertPoint(land_block);
+
     } else {
       assert(false && "Not yet implemented");
     }
