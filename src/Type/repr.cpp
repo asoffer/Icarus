@@ -30,7 +30,7 @@ void add_branch(llvm::Function *fn, llvm::IRBuilder<> &bldr,
   if (jump_block) { bldr.CreateBr(jump_block); }
 }
 
-void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
+void Primitive::call_repr(llvm::Value *val) {
   if (this == Bool) {
     if (repr_fn_ == nullptr) {
       repr_fn_ = llvm::Function::Create(*Func(this, Void),
@@ -40,7 +40,7 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
 
       auto entry = make_block("entry", repr_fn_);
       llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
-      bldr.SetInsertPoint(entry);
+      fn_bldr.SetInsertPoint(entry);
       auto offset = fn_bldr.CreateMul(fn_bldr.CreateZExt(arg, *RawPtr),
                                       data::const_uint(6));
 
@@ -50,7 +50,7 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
       fn_bldr.CreateRetVoid();
     }
 
-    bldr.CreateCall(repr_fn_, {val});
+    builder.CreateCall(repr_fn_, {val});
 
   } else if (this == Char) {
     if (repr_fn_ == nullptr) {
@@ -99,32 +99,35 @@ void Primitive::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
       add_branch(repr_fn_, fn_bldr, switch_stmt, "backslash", '\\', "'\\\\'",
                  exit);
 
-      bldr.SetInsertPoint(exit);
-      bldr.CreateRetVoid();
+      fn_bldr.SetInsertPoint(exit);
+      fn_bldr.CreateRetVoid();
     }
 
-    bldr.CreateCall(repr_fn_, {val});
+    builder.CreateCall(repr_fn_, {val});
 
   } else if (this == Int) {
-    bldr.CreateCall(cstdlib::printf(), {data::global_string(bldr, "%d"), val});
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string(builder, "%d"), val});
 
   } else if (this == Real) {
-    bldr.CreateCall(cstdlib::printf(), {data::global_string(bldr, "%f"), val});
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string(builder, "%f"), val});
 
   } else if (this == Type_) {
     // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
     auto type_val = reinterpret_cast<Type *>(val);
 
-    bldr.CreateCall(cstdlib::printf(),
-                    {data::global_string(bldr, "%s"),
-                     data::global_string(bldr, type_val->to_string())});
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string(builder, "%s"),
+                        data::global_string(builder, type_val->to_string())});
 
   } else if (this == Uint) {
-    bldr.CreateCall(cstdlib::printf(), {data::global_string(bldr, "%uu"), val});
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string(builder, "%uu"), val});
   }
 }
 
-void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
+void Array::call_repr(llvm::Value *val) {
   if (repr_fn_ == nullptr) {
     // TODO what about arrays of types?
     auto fn_type = Func(Ptr(this), Void);
@@ -159,7 +162,7 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(fn_bldr, PtrCallFix(fn_bldr, data_type, start_ptr));
+    data_type->call_repr(PtrCallFix(fn_bldr, data_type, start_ptr));
 
     start_ptr =
         fn_bldr.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
@@ -175,7 +178,7 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(fn_bldr, PtrCallFix(fn_bldr, data_type, phi));
+    data_type->call_repr(PtrCallFix(fn_bldr, data_type, phi));
 
     auto next_ptr = fn_bldr.CreateGEP(phi, data::const_uint(1));
     fn_bldr.CreateCondBr(fn_bldr.CreateICmpULT(next_ptr, end_ptr), loop_block,
@@ -187,44 +190,45 @@ void Array::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
     fn_bldr.CreateRetVoid();
   }
 
-  bldr.CreateCall(repr_fn_, {val});
+  builder.CreateCall(repr_fn_, {val});
 }
 
 // NOTE: [function ...] probably looks too much like an array. That's why you
 // used <function ...> in the first place.
-void Function::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
-  bldr.CreateCall(
+void Function::call_repr(llvm::Value *val) {
+  builder.CreateCall(
       cstdlib::printf(),
-      {data::global_string(bldr, "%s"),
-       data::global_string(bldr, "<function " + to_string() + ">")});
+      {data::global_string(builder, "%s"),
+       data::global_string(builder, "<function " + to_string() + ">")});
 }
 
-void ForwardDeclaration::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
+void ForwardDeclaration::call_repr(llvm::Value *val) {
   assert(false && "Cannot represent a forward declaration");
 }
 
-void DependentType::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
-  bldr.CreateCall(
+void DependentType::call_repr(llvm::Value *val) {
+  builder.CreateCall(
       cstdlib::printf(),
-      {data::global_string(bldr, "%s"),
-       data::global_string(bldr, "<dependent " + to_string() + ">")});
+      {data::global_string(builder, "%s"),
+       data::global_string(builder, "<dependent " + to_string() + ">")});
 }
 
-void Pointer::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
-  bldr.CreateCall(cstdlib::printf(), {data::global_string(bldr, "&_%x"), val});
+void Pointer::call_repr(llvm::Value *val) {
+  builder.CreateCall(cstdlib::printf(), {data::global_string(builder, "&_%x"), val});
 }
 
-void Enumeration::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {
+void Enumeration::call_repr(llvm::Value *val) {
   // TODO print the enum's name as a string. This requires preallocating
   // an array of global strings and accesssing that.
   //
   // For now, just print the number in brackets after the enums name
-  auto val_str =
-      bldr.CreateLoad(bldr.CreateGEP(string_data, {data::const_uint(0), val}));
-  bldr.CreateCall(cstdlib::printf(),
-                  {data::global_string(bldr, to_string() + ".%s"), val_str});
+  auto val_str = builder.CreateLoad(
+      builder.CreateGEP(string_data, {data::const_uint(0), val}));
+  builder.CreateCall(
+      cstdlib::printf(),
+      {data::global_string(builder, to_string() + ".%s"), val_str});
 }
 
-void Tuple::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {}
-void Structure::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {}
-void TypeVariable::call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) {}
+void Tuple::call_repr(llvm::Value *val) {}
+void Structure::call_repr(llvm::Value *val) {}
+void TypeVariable::call_repr(llvm::Value *val) {}

@@ -17,6 +17,7 @@ namespace debug {
 std::map<std::string, AST::Statements *> ast_map;
 
 std::vector<AST::TypeLiteral*> created_types;
+llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 enum class Lib {
   String

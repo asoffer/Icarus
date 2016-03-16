@@ -67,9 +67,9 @@ struct BlockScope : public Scope {
 
   virtual void initialize();
   void uninitialize();
+  void make_return(llvm::Value *val);
 
   llvm::BasicBlock *entry, *exit;
-  llvm::IRBuilder<> builder;
 };
 
 struct FnScope : public BlockScope {
@@ -83,7 +83,7 @@ struct FnScope : public BlockScope {
 
   virtual void initialize();
   void leave();
-  void allocate(Scope *scope, llvm::IRBuilder<> &bldr);
+  void allocate(Scope *scope);
 
   Function *fn_type;
   llvm::Function *llvm_fn;
@@ -96,7 +96,6 @@ struct FnScope : public BlockScope {
 // stack
 
 Scope *CurrentScope();
-llvm::IRBuilder<> &CurrentBuilder();
 Context &CurrentContext();
 
 

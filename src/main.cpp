@@ -219,7 +219,7 @@ int main(int argc, char *argv[]) {
 
       if (decl_type->is_function()) {
         if (decl_id->token()[0] != '_') { // Ignore operators
-          decl_id->alloc = decl_type->allocate(Scope::Global->builder);
+          decl_id->alloc = decl_type->allocate();
           decl_id->alloc->setName(decl_ptr->identifier->token());
         }
       } else {

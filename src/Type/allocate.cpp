@@ -5,7 +5,7 @@ extern llvm::Module *global_module;
 
 // This method allocates stack space for each particular type.
 
-llvm::Value *Function::allocate(llvm::IRBuilder<> &bldr) const {
+llvm::Value *Function::allocate() const {
   // TODO for now functions are treated as constant, and don't need to be
   // declared in a scope.
   //
@@ -16,12 +16,12 @@ llvm::Value *Function::allocate(llvm::IRBuilder<> &bldr) const {
                                 global_module);
 }
 
-llvm::Value *Array::allocate(llvm::IRBuilder<> &bldr) const {
-  auto alloc = bldr.CreateAlloca(*this);
+llvm::Value *Array::allocate() const {
+  auto alloc = builder.CreateAlloca(*this);
   alloc->setName("tmp_array");
   return alloc;
 }
 
-llvm::Value *Tuple::allocate(llvm::IRBuilder<> &bldr) const {
+llvm::Value *Tuple::allocate() const {
   return nullptr; // TODO
 }

@@ -1,6 +1,7 @@
 #include "AST.h"
 
 extern llvm::Module *global_module;
+extern llvm::IRBuilder<> builder;
 
 namespace data {
 extern llvm::Value *const_uint(size_t n);
@@ -33,11 +34,11 @@ llvm::Value *Access::generate_lvalue() {
 
   while (etype->is_pointer()) {
     etype  = static_cast<Pointer *>(etype)->pointee;
-    e_lval = CurrentBuilder().CreateLoad(e_lval);
+    e_lval = builder.CreateLoad(e_lval);
   }
 
   auto struct_type = static_cast<Structure *>(etype);
-  return CurrentBuilder().CreateGEP(
+  return builder.CreateGEP(
       e_lval, {data::const_uint(0), struct_type->field_num(member_name)});
 }
 
@@ -45,9 +46,9 @@ llvm::Value *Binop::generate_lvalue() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
     auto lhs_val  = lhs->generate_lvalue();
     auto rhs_val  = rhs->generate_code();
-    auto data_ptr = CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
+    auto data_ptr = builder.CreateLoad(builder.CreateGEP(
         lhs_val, {data::const_uint(0), data::const_uint(1)}));
-    return CurrentBuilder().CreateGEP(data_ptr, {rhs_val}, "array_idx");
+    return builder.CreateGEP(data_ptr, {rhs_val}, "array_idx");
   }
   return nullptr;
 }

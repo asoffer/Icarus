@@ -21,6 +21,7 @@
 
 extern std::string Mangle(const Type *t, bool prefix = true);
 
+extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
 
 namespace AST {
@@ -94,7 +95,7 @@ extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
   virtual void generate_llvm() const ENDING;                                   \
   virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
   virtual void call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING;    \
-  virtual void call_repr(llvm::IRBuilder<> &bldr, llvm::Value *val) ENDING;    \
+  virtual void call_repr(llvm::Value *val) ENDING;                             \
   virtual void call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
@@ -125,13 +126,9 @@ public:
   // strings.
   static Type *get_string();
 
-  virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const {
-    return bldr.CreateAlloca(*this);
-  }
+  virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
 
-  virtual void call_print(llvm::IRBuilder<> &bldr, llvm::Value *val) {
-    call_repr(bldr, val);
-  }
+  virtual void call_print(llvm::Value *val) { call_repr(val); }
 
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type) {
@@ -167,7 +164,7 @@ public:
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  virtual void call_print(llvm::IRBuilder<> &bldr, llvm::Value *val);
+  virtual void call_print(llvm::Value *val);
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
@@ -205,7 +202,7 @@ struct Array : public Type {
   llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
                                   llvm::Value *len);
 
-  virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
+  virtual llvm::Value *allocate() const;
 
   llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
 
@@ -225,7 +222,7 @@ struct Tuple : public Type {
 
   // TODO requires_uninit()
 
-  virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
+  virtual llvm::Value *allocate() const;
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
@@ -252,7 +249,7 @@ struct Function : public Type {
 
   operator llvm::FunctionType *() const;
 
-  virtual llvm::Value *allocate(llvm::IRBuilder<> &bldr) const;
+  virtual llvm::Value *allocate() const;
   virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
                                  Type *to_type);
 
@@ -293,7 +290,7 @@ struct Structure : public Type {
   Type *field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
 
-  virtual void call_print(llvm::IRBuilder<> &bldr, llvm::Value *val);
+  virtual void call_print(llvm::Value *val);
   void set_print(llvm::Function *fn);
 
   AST::TypeLiteral *ast_expression;

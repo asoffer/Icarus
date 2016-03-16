@@ -10,29 +10,17 @@ extern llvm::DataLayout* data_layout;
 extern ErrorLog error_log;
 
 namespace cstdlib {
-  extern llvm::Constant* memcpy();
-}  // namespace cstdlib
+extern llvm::Constant *memcpy();
+} // namespace cstdlib
 
-#if DEBUG
-#define CALL_ONCE                                                              \
-  static bool called__ = false;                                                \
-  assert(!called__ && "Function has already been called.");                    \
-  called__ = true
-#else
-#define CALL_ONCE
-#endif
+namespace data {
+extern llvm::Value *const_uint(size_t n);
+} // namespace data
 
 BlockScope *Scope::Global = nullptr; // Initialized in main
 std::vector<AST::Declaration *> Scope::decl_registry_ = {};
 
 std::stack<Scope *> Scope::Stack;
-
-llvm::IRBuilder<> &CurrentBuilder() {
-  auto s = CurrentScope();
-  while (s && !s->is_block_scope()) { s = s->parent; }
-  assert(s);
-  return static_cast<BlockScope *>(s)->builder;
-}
 
 Context &CurrentContext() { return CurrentScope()->context; }
 Scope *CurrentScope() {
@@ -94,20 +82,15 @@ void Scope::set_parent(Scope* new_parent) {
   parent = new_parent;
   context.set_parent(&new_parent->context);
 
-  if (new_parent->is_function_scope()) {
-    containing_function_ = static_cast<FnScope *>(parent);
-  } else {
-    containing_function_ = parent->containing_function_;
-  }
+  containing_function_ = new_parent->is_function_scope()
+                             ? static_cast<FnScope *>(parent)
+                             : parent->containing_function_;
 
   if (containing_function_) { containing_function_->add_scope(this); }
 }
 
 BlockScope::BlockScope()
-    : entry(make_block("entry", nullptr)), exit(make_block("exit", nullptr)),
-      builder(llvm::getGlobalContext()) {
-  builder.SetInsertPoint(entry);
-      }
+    : entry(make_block("entry", nullptr)), exit(make_block("exit", nullptr)) {}
 
 void Scope::verify_no_shadowing() {
   for (auto decl_ptr1 : decl_registry_) {
@@ -146,8 +129,6 @@ void Scope::verify_no_shadowing() {
 }
 
 void BlockScope::initialize() {
-  CALL_ONCE;
-
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   bldr.SetInsertPoint(entry);
   for (auto decl_ptr : ordered_decls_) {
@@ -174,8 +155,6 @@ void BlockScope::initialize() {
 }
 
 void BlockScope::uninitialize() {
-  CALL_ONCE;
-
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   bldr.SetInsertPoint(exit);
 
@@ -187,6 +166,13 @@ void BlockScope::uninitialize() {
 
     decl_id->type->call_uninit(bldr, {decl_id->alloc});
   }
+}
+
+void BlockScope::make_return(llvm::Value *val) {
+  FnScope *fn_scope =
+      is_function_scope() ? static_cast<FnScope *>(this) : containing_function_;
+  builder.CreateStore(val, fn_scope->return_value);
+  builder.CreateBr(fn_scope->exit);
 }
 
 FnScope::FnScope(llvm::Function *fn) : fn_type(nullptr), return_value(nullptr) {
@@ -208,16 +194,17 @@ void FnScope::add_scope(Scope *scope) { innards_.insert(scope); }
 void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
 
 void FnScope::initialize() {
-  CALL_ONCE;
-
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   bldr.SetInsertPoint(entry);
 
-  allocate(this, bldr);
-
-  for (auto scope : innards_) {
-    allocate(scope, bldr);
+  if (fn_type->output != Void) {
+    // TODO multiple return types
+    return_value = bldr.CreateAlloca(*fn_type->output, nullptr,  "retval");
   }
+
+  allocate(this);
+
+  for (auto scope : innards_) { allocate(scope); }
 
   BlockScope::initialize();
 }
@@ -225,10 +212,15 @@ void FnScope::initialize() {
 void FnScope::leave() {
   uninitialize();
   builder.SetInsertPoint(exit);
-  builder.CreateRet(builder.CreateLoad(return_value));
+  if (return_value) {
+    builder.CreateRet(builder.CreateLoad(return_value));
+  } else {
+    builder.CreateRetVoid();
+  }
 }
 
-void FnScope::allocate(Scope* scope, llvm::IRBuilder<>& bldr) {
+
+void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
@@ -245,7 +237,7 @@ void FnScope::allocate(Scope* scope, llvm::IRBuilder<>& bldr) {
       continue;
     }
    
-    decl_id->alloc = decl_type->allocate(bldr);
+    decl_id->alloc = decl_type->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }
 }
@@ -253,28 +245,6 @@ void FnScope::allocate(Scope* scope, llvm::IRBuilder<>& bldr) {
 
 /*****************************************************************************
 
-
-namespace data {
-  extern llvm::Value* const_uint(size_t n);
-}  // namespace data
-
-Scope::Scope() : parent(Scope::Global), containing_function_(nullptr),
-  builder(llvm::getGlobalContext()) {}
-
-void FnScope::exit() {
-  builder.CreateBr(exit_block_);
-  builder.SetInsertPoint(exit_block_);
-
-  // TODO multiple return types for now just take one
-  if (fn_type->output == Void
-      // TODO multiple return types for now just take one
-      || fn_type->output->is_struct()) {
-    builder.CreateRetVoid();
-
-  } else {
-    builder.CreateRet(builder.CreateLoad(return_val_, "retval"));
-  }
-}
 
 void Scope::make_return(llvm::Value* val) {
   assert(containing_function_);

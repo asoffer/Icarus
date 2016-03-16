@@ -11,6 +11,7 @@ extern llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn)
 extern ErrorLog error_log;
 
 extern llvm::Module *global_module;
+extern llvm::IRBuilder<> builder;
 
 namespace cstdlib {
 extern llvm::Constant *free();
@@ -59,7 +60,7 @@ llvm::Value *Identifier::generate_code() {
     return alloc;
 
   } else {
-    return CurrentBuilder().CreateLoad(alloc, token());
+    return builder.CreateLoad(alloc, token());
   }
 }
 
@@ -107,26 +108,26 @@ llvm::Value *Terminal::generate_code() {
     return cstdlib::malloc();
   }
   case Language::Terminal::StringLiteral: {
-    auto str = data::global_string(CurrentBuilder(), token());
+    auto str = data::global_string(builder, token());
     auto len = data::const_uint(token().size());
 
-    auto str_alloc = CurrentBuilder().CreateAlloca(*type);
+    auto str_alloc = builder.CreateAlloca(*type);
 
-    auto len_ptr = CurrentBuilder().CreateGEP(
+    auto len_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0), String->field_num("length")}, "len_ptr");
-    CurrentBuilder().CreateStore(len, len_ptr);
+    builder.CreateStore(len, len_ptr);
 
-    auto char_array_ptr = CurrentBuilder().CreateGEP(
+    auto char_array_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0), String->field_num("chars")}, "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
     Arr(Char)
-        ->initialize_literal(CurrentBuilder(), char_array_ptr, token().size());
+        ->initialize_literal(builder, char_array_ptr, token().size());
 
-    auto char_data_ptr = CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
+    auto char_data_ptr = builder.CreateLoad(builder.CreateGEP(
         char_array_ptr, {data::const_uint(0), data::const_uint(1)}), "char_data_ptr");
 
-    CurrentBuilder().CreateCall(cstdlib::memcpy(), {char_data_ptr, str, len});
+    builder.CreateCall(cstdlib::memcpy(), {char_data_ptr, str, len});
 
     return str_alloc;
   }
@@ -152,38 +153,37 @@ llvm::Value *Unop::generate_code() {
 
     if (operand->type->is_struct()) {
       // TODO maybe callees should be responsible for the struct memcpy?
-      val = struct_memcpy(operand->type, val, CurrentBuilder());
+      val = struct_memcpy(operand->type, val, builder);
     }
 
-    // operand->type->call_print(CurrentBuilder(), val);
+    operand->type->call_print(val);
 
     return nullptr;
   }
   default:;
   }
 
-  llvm::Value *val        = operand->generate_code();
-  llvm::IRBuilder<> &bldr = CurrentBuilder();
+  llvm::Value *val = operand->generate_code();
   switch (op) {
   case Language::Operator::Sub: {
-    return operand->type->call_neg(bldr, val);
+    return operand->type->call_neg(builder, val);
   }
   case Language::Operator::Not: {
-    return operand->type->call_not(bldr, val);
+    return operand->type->call_not(builder, val);
   }
   case Language::Operator::Free: {
-    bldr.CreateCall(cstdlib::free(), {bldr.CreateBitCast(val, *RawPtr)});
+    builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, *RawPtr)});
     // TODO only if it has an l-value
-    bldr.CreateStore(data::null(operand->type), operand->generate_lvalue());
+    builder.CreateStore(data::null(operand->type), operand->generate_lvalue());
     return nullptr;
   }
   case Language::Operator::Return: {
-    // TODO !!!
-    // CurrentScope()->make_return(val);
+    assert(scope_->is_block_scope());
+    static_cast<BlockScope *>(scope_)->make_return(val);
     return nullptr;
   }
   case Language::Operator::At: {
-    return type->is_big() ? val : bldr.CreateLoad(val);
+    return type->is_big() ? val : builder.CreateLoad(val);
   }
   case Language::Operator::Call: {
     assert(operand->type->is_function() && "Operand should be a function.");
@@ -192,14 +192,14 @@ llvm::Value *Unop::generate_code() {
     // to pass large things.
     if (out_type->is_struct()) {
       // TODO move this outside of any potential loops
-      auto local_ret = CurrentBuilder().CreateAlloca(*out_type);
+      auto local_ret = builder.CreateAlloca(*out_type);
 
-      CurrentBuilder().CreateCall(static_cast<llvm::Function *>(val),
+      builder.CreateCall(static_cast<llvm::Function *>(val),
                                   local_ret);
       return local_ret;
 
     } else {
-      return CurrentBuilder().CreateCall(static_cast<llvm::Function *>(val));
+      return builder.CreateCall(static_cast<llvm::Function *>(val));
     }
   }
   default: assert(false && "Unimplemented unary operator codegen");
@@ -227,7 +227,7 @@ llvm::Value *Access::generate_code() {
   auto base_type = operand->type;
   while (base_type->is_pointer()) {
     base_type = static_cast<Pointer *>(base_type)->pointee;
-    if (!base_type->is_big()) eval = CurrentBuilder().CreateLoad(eval);
+    if (!base_type->is_big()) eval = builder.CreateLoad(eval);
   }
 
   if (base_type->is_struct()) {
@@ -237,9 +237,9 @@ llvm::Value *Access::generate_code() {
       assert(false && "Not yet implemented");
     }
 
-    auto elem_ptr = CurrentBuilder().CreateGEP(
+    auto elem_ptr = builder.CreateGEP(
         eval, {data::const_uint(0), struct_type->field_num(member_name)});
-    return type->is_big() ? elem_ptr : CurrentBuilder().CreateLoad(elem_ptr);
+    return type->is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
 
   } else {
     assert(false && "Not yet implemented");
@@ -252,25 +252,24 @@ llvm::Value *Binop::generate_code() {
   }
 
   auto lhs_val = lhs->generate_code();
-  llvm::IRBuilder<> &bldr = CurrentBuilder();
 
   switch (op) {
   case Language::Operator::Index: {
     if (lhs->type->is_array()) {
-      auto data_ptr = CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
+      auto data_ptr = builder.CreateLoad(builder.CreateGEP(
           lhs_val, {data::const_uint(0), data::const_uint(1)}));
       if (type->is_big()) {
-        return CurrentBuilder().CreateGEP(data_ptr, {rhs->generate_code()},
+        return builder.CreateGEP(data_ptr, {rhs->generate_code()},
                                           "array_val");
       } else {
-        return CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
+        return builder.CreateLoad(builder.CreateGEP(
             data_ptr, {rhs->generate_code()}, "array_val"));
       }
     }
     assert(false && "Not yet implemented");
   }
   case Language::Operator::Cast: {
-    return lhs->type->call_cast(bldr, lhs_val,
+    return lhs->type->call_cast(builder, lhs_val,
                                 rhs->evaluate(CurrentContext()).as_type);
   }
   case Language::Operator::Call: {
@@ -289,7 +288,7 @@ llvm::Value *Binop::generate_code() {
             // TODO be sure to allocate this ahead of all loops and reuse it
             // when possible. Also, do this for arrays?
             arg_vals[i] = struct_memcpy(arg_exprs[i]->type, arg_vals[i],
-                                        CurrentBuilder());
+                                        builder);
           }
         }
       } else {
@@ -299,27 +298,27 @@ llvm::Value *Binop::generate_code() {
         if (rhs->type->is_struct()) {
           // TODO be sure to allocate this ahead of all loops and reuse it
           // when possible. Also, do this for arrays?
-          rhs_val = struct_memcpy(rhs->type, rhs_val, CurrentBuilder());
+          rhs_val = struct_memcpy(rhs->type, rhs_val, builder);
         }
 
         arg_vals = {rhs_val};
       }
 
       if (type == Void) {
-        CurrentBuilder().CreateCall(static_cast<llvm::Function *>(lhs_val),
+        builder.CreateCall(static_cast<llvm::Function *>(lhs_val),
                                     arg_vals);
         return nullptr;
 
       } else {
-        return CurrentBuilder().CreateCall(
+        return builder.CreateCall(
             static_cast<llvm::Function *>(lhs_val), arg_vals, "calltmp");
       }
 
     } else if (lhs->type->is_dependent_type()) {
       // TODO make this generic. right now dependent_type implies alloc(...)
       auto t         = rhs->evaluate(CurrentContext()).as_type;
-      auto alloc_ptr = bldr.CreateCall(lhs_val, {data::const_uint(t->bytes())});
-      return bldr.CreateBitCast(alloc_ptr, *type);
+      auto alloc_ptr = builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
+      return builder.CreateBitCast(alloc_ptr, *type);
     }
   }
   default:;
@@ -327,11 +326,11 @@ llvm::Value *Binop::generate_code() {
 
   auto rhs_val = rhs->generate_code();
   switch (op) {
-  case Language::Operator::Add: return type->call_add(bldr, lhs_val, rhs_val);
-  case Language::Operator::Sub: return type->call_sub(bldr, lhs_val, rhs_val);
-  case Language::Operator::Mul: return type->call_mul(bldr, lhs_val, rhs_val);
-  case Language::Operator::Div: return type->call_div(bldr, lhs_val, rhs_val);
-  case Language::Operator::Mod: return type->call_mod(bldr, lhs_val, rhs_val);
+  case Language::Operator::Add: return type->call_add(builder, lhs_val, rhs_val);
+  case Language::Operator::Sub: return type->call_sub(builder, lhs_val, rhs_val);
+  case Language::Operator::Mul: return type->call_mul(builder, lhs_val, rhs_val);
+  case Language::Operator::Div: return type->call_div(builder, lhs_val, rhs_val);
+  case Language::Operator::Mod: return type->call_mod(builder, lhs_val, rhs_val);
   default:;
   }
 
@@ -346,36 +345,35 @@ llvm::Value *ArrayType::generate_code() {
   auto len                = length->generate_code();
   auto data_ty            = data_type->type;
   auto data               = data_type->generate_code();
-  llvm::IRBuilder<> &bldr = CurrentBuilder();
 
-  auto alloc_size = bldr.CreateMul(len, data::const_uint(data_ty->bytes()));
-  auto alloc_ptr = bldr.CreateCall(cstdlib::malloc(), alloc_size);
+  auto alloc_size = builder.CreateMul(len, data::const_uint(data_ty->bytes()));
+  auto alloc_ptr = builder.CreateCall(cstdlib::malloc(), alloc_size);
 
-  auto tmp_array = type->allocate(CurrentBuilder());
-  bldr.CreateStore(len, bldr.CreateGEP(tmp_array, {data::const_uint(0),
+  auto tmp_array = type->allocate();
+  builder.CreateStore(len, builder.CreateGEP(tmp_array, {data::const_uint(0),
                                                    data::const_uint(0)}));
-  bldr.CreateStore(alloc_ptr, bldr.CreateGEP(tmp_array, {data::const_uint(0),
+  builder.CreateStore(alloc_ptr, builder.CreateGEP(tmp_array, {data::const_uint(0),
                                                          data::const_uint(1)}));
 
-  auto end_ptr   = bldr.CreateGEP(alloc_ptr, len);
+  auto end_ptr   = builder.CreateGEP(alloc_ptr, len);
 
-  auto prev_block = bldr.GetInsertBlock();
-  auto parent_fn  = bldr.GetInsertBlock()->getParent();
+  auto prev_block = builder.GetInsertBlock();
+  auto parent_fn  = builder.GetInsertBlock()->getParent();
 
   auto loop_block = make_block("loop.block", parent_fn);
   auto loop_end   = make_block("loop.end", parent_fn);
 
-  bldr.CreateBr(loop_block);
-  bldr.SetInsertPoint(loop_block);
-  auto phi_node = bldr.CreatePHI(*Ptr(data_ty), 2, "phi");
+  builder.CreateBr(loop_block);
+  builder.SetInsertPoint(loop_block);
+  auto phi_node = builder.CreatePHI(*Ptr(data_ty), 2, "phi");
   phi_node->addIncoming(alloc_ptr, prev_block);
-  bldr.CreateCall(data_ty->assign(), {data, phi_node});
+  builder.CreateCall(data_ty->assign(), {data, phi_node});
 
-  auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
+  auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
   phi_node->addIncoming(next_ptr, loop_block);
 
-  bldr.CreateCondBr(bldr.CreateICmpEQ(next_ptr, end_ptr), loop_end, loop_block);
-  bldr.SetInsertPoint(loop_end);
+  builder.CreateCondBr(builder.CreateICmpEQ(next_ptr, end_ptr), loop_end, loop_block);
+  builder.SetInsertPoint(loop_end);
 
   // TODO If you never assign this, the allocation is leaked. It should be
   // verified before code-gen that this is leaked
@@ -388,10 +386,10 @@ llvm::Value *Statements::generate_code() {
 }
 
 #define BEGIN_SHORT_CIRCUIT                                                    \
-  bldr.SetInsertPoint(curr_block);                                             \
+  builder.SetInsertPoint(curr_block);                                          \
   auto lhs_val = exprs[0]->generate_code();                                    \
   for (size_t i = 1; i < exprs.size(); ++i) {                                  \
-    bldr.SetInsertPoint(curr_block);                                           \
+    builder.SetInsertPoint(curr_block);                                        \
     auto rhs_val = exprs[i]->generate_code();                                  \
                                                                                \
     llvm::Value *cmp_val = nullptr;                                            \
@@ -399,7 +397,8 @@ llvm::Value *Statements::generate_code() {
 
 #define CASE(cmp, llvm_call, op_name)                                          \
   case Operator::op_name: {                                                    \
-    cmp = bldr.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");   \
+    cmp =                                                                      \
+        builder.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");  \
   } break
 
 #define END_SHORT_CIRCUIT                                                      \
@@ -408,18 +407,17 @@ llvm::Value *Statements::generate_code() {
     assert(cmp_val && "cmp_val is nullptr");                                   \
                                                                                \
     auto next_block = make_block("next", parent_fn);                           \
-    bldr.CreateCondBr(cmp_val, next_block, landing);                           \
+    builder.CreateCondBr(cmp_val, next_block, landing);                        \
     phi->addIncoming(data::const_false(), curr_block);                         \
     curr_block = next_block;                                                   \
     lhs_val    = rhs_val;                                                      \
     }                                                                          \
                                                                                \
-    bldr.SetInsertPoint(curr_block);                                           \
+    builder.SetInsertPoint(curr_block);                                        \
     phi->addIncoming(data::const_true(), curr_block);                          \
-    bldr.CreateBr(landing);                                                    \
-    bldr.SetInsertPoint(landing);                                              \
+    builder.CreateBr(landing);                                                 \
+    builder.SetInsertPoint(landing);                                           \
     return phi;
-
 
 llvm::Value *ChainOp::generate_code() {
   // TODO eval of enums at compile-time is wrong. This could be
@@ -432,20 +430,19 @@ llvm::Value *ChainOp::generate_code() {
   using Language::Operator;
 
   auto expr_type = exprs[0]->type;
-  auto &bldr     = CurrentBuilder();
 
   // Boolean xor is separate because it can't be short-circuited
   if (expr_type == Bool && ops.front() == Operator::Xor) {
     llvm::Value *cmp_val = exprs[0]->generate_code();
     for (size_t i = 1; i < exprs.size(); ++i) {
-      cmp_val = bldr.CreateXor(cmp_val, exprs[i]->generate_code());
+      cmp_val = builder.CreateXor(cmp_val, exprs[i]->generate_code());
     }
     return cmp_val;
   }
 
-  auto parent_fn  = bldr.GetInsertBlock()->getParent();
+  auto parent_fn  = builder.GetInsertBlock()->getParent();
   auto landing    = make_block("land", parent_fn);
-  auto curr_block = bldr.GetInsertBlock();
+  auto curr_block = builder.GetInsertBlock();
 
   // Count the number of incoming branches into the phi node. This is equal to
   // the number of exprs, unless it's & or |. In those instances, it is one more
@@ -454,8 +451,8 @@ llvm::Value *ChainOp::generate_code() {
   if (expr_type == Bool) ++num_incoming;
 
   // Create the phi node
-  bldr.SetInsertPoint(landing);
-  llvm::PHINode *phi = bldr.CreatePHI(*Bool, num_incoming, "phi");
+  builder.SetInsertPoint(landing);
+  llvm::PHINode *phi = builder.CreatePHI(*Bool, num_incoming, "phi");
   if (expr_type == Int) {
     BEGIN_SHORT_CIRCUIT
     CASE(cmp_val, ICmpS, LT);
@@ -499,34 +496,34 @@ llvm::Value *ChainOp::generate_code() {
     // it.
     if (ops.front() == Operator::And) {
       for (const auto& ex : exprs) {
-        bldr.SetInsertPoint(curr_block);
+        builder.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
-        bldr.CreateCondBr(ex->generate_code(), next_block, landing);
-        phi->addIncoming(data::const_false(), bldr.GetInsertBlock());
+        builder.CreateCondBr(ex->generate_code(), next_block, landing);
+        phi->addIncoming(data::const_false(), builder.GetInsertBlock());
         curr_block = next_block;
       }
 
-      bldr.SetInsertPoint(curr_block);
+      builder.SetInsertPoint(curr_block);
       phi->addIncoming(data::const_true(), curr_block);
 
     } else if (ops.front() == Operator::Or) {
       for (const auto& ex : exprs) {
-        bldr.SetInsertPoint(curr_block);
+        builder.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
-        bldr.CreateCondBr(ex->generate_code(), landing, next_block);
-        phi->addIncoming(data::const_true(), bldr.GetInsertBlock());
+        builder.CreateCondBr(ex->generate_code(), landing, next_block);
+        phi->addIncoming(data::const_true(), builder.GetInsertBlock());
         curr_block = next_block;
       }
 
-      bldr.SetInsertPoint(curr_block);
+      builder.SetInsertPoint(curr_block);
       phi->addIncoming(data::const_false(), curr_block);
 
     } else {
       assert(false && "invalid operand in short-circuiting");
     }
 
-    bldr.CreateBr(landing);
-    bldr.SetInsertPoint(landing);
+    builder.CreateBr(landing);
+    builder.SetInsertPoint(landing);
     return phi;
 
   } else {
@@ -566,10 +563,12 @@ llvm::Value *FunctionLiteral::generate_code() {
   auto ret_type = return_type_expr->evaluate(CurrentContext()).as_type;
   if (ret_type->is_struct()) { arg_iter->setName("retval"); }
 
-  auto old_block = CurrentBuilder().GetInsertBlock();
 
   fn_scope->set_parent_function(llvm_fn);
   fn_scope->fn_type = static_cast<Function *>(type);
+
+  auto old_block = builder.GetInsertBlock();
+  builder.SetInsertPoint(fn_scope->entry);
 
   Scope::Stack.push(fn_scope);
   fn_scope->initialize();
@@ -578,19 +577,22 @@ llvm::Value *FunctionLiteral::generate_code() {
     auto decl_id = input_iter->identifier;
 
     if (!decl_id->type->is_big()) {
-      fn_scope->builder.CreateCall(decl_id->type->assign(),
-                                     {arg, input_iter->identifier->alloc});
+      builder.CreateCall(decl_id->type->assign(),
+                         {arg, input_iter->identifier->alloc});
     }
     ++arg;
   }
 
   statements->generate_code();
-  CurrentBuilder().CreateBr(fn_scope->exit);
+  builder.CreateBr(fn_scope->exit);
   fn_scope->leave();
 
   Scope::Stack.pop();
 
-  CurrentBuilder().SetInsertPoint(old_block);
+  if (old_block) {
+    builder.SetInsertPoint(old_block);
+  }
+
   return llvm_fn;
 }
 
@@ -630,7 +632,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 
-    CurrentBuilder().CreateCall(lhs->type->assign(), {val, var});
+    builder.CreateCall(lhs->type->assign(), {val, var});
   }
 
   return nullptr;
@@ -638,7 +640,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
 #define CASE(op, llvm_op, symbol)                                              \
   case Operator::op: {                                                         \
-    val = CurrentBuilder().Create##llvm_op(lhs_val, rhs_val, symbol);          \
+    val = builder.Create##llvm_op(lhs_val, rhs_val, symbol);                   \
   } break
 
 llvm::Value *Assignment::generate_code() {
@@ -668,36 +670,36 @@ llvm::Value *Assignment::generate_code() {
         auto rhs_val = rhs->generate_code();
         assert(rhs_val && "RHS of assignment generated null code");
 
-        CurrentBuilder().CreateStore(
-            CurrentBuilder().CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+        builder.CreateStore(
+            builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
       } break;
       case Operator::AndEq: {
-        auto parent_fn   = CurrentBuilder().GetInsertBlock()->getParent();
+        auto parent_fn   = builder.GetInsertBlock()->getParent();
         auto more_block  = make_block("more", parent_fn);
         auto merge_block = make_block("merge", parent_fn);
-        CurrentBuilder().CreateCondBr(lhs_val, more_block, merge_block);
+        builder.CreateCondBr(lhs_val, more_block, merge_block);
 
-        CurrentBuilder().SetInsertPoint(more_block);
+        builder.SetInsertPoint(more_block);
         auto rhs_val = rhs->generate_code();
         assert(rhs_val && "RHS of assignment generated null code");
 
-        CurrentBuilder().CreateStore(rhs_val, lval);
-        CurrentBuilder().CreateBr(merge_block);
-        CurrentBuilder().SetInsertPoint(merge_block);
+        builder.CreateStore(rhs_val, lval);
+        builder.CreateBr(merge_block);
+        builder.SetInsertPoint(merge_block);
       } break;
       case Operator::OrEq: {
-        auto parent_fn   = CurrentBuilder().GetInsertBlock()->getParent();
+        auto parent_fn   = builder.GetInsertBlock()->getParent();
         auto more_block  = make_block("more", parent_fn);
         auto merge_block = make_block("merge", parent_fn);
-        CurrentBuilder().CreateCondBr(lhs_val, merge_block, more_block);
+        builder.CreateCondBr(lhs_val, merge_block, more_block);
 
-        CurrentBuilder().SetInsertPoint(more_block);
+        builder.SetInsertPoint(more_block);
         auto rhs_val = rhs->generate_code();
         assert(rhs_val && "RHS of assignment generated null code");
 
-        CurrentBuilder().CreateStore(rhs_val, lval);
-        CurrentBuilder().CreateBr(merge_block);
-        CurrentBuilder().SetInsertPoint(merge_block);
+        builder.CreateStore(rhs_val, lval);
+        builder.CreateBr(merge_block);
+        builder.SetInsertPoint(merge_block);
       } break;
       default: assert(false && "Invalid assignment operator for boolean type");
       }
@@ -740,7 +742,7 @@ llvm::Value *Assignment::generate_code() {
       assert(false && "Not yet implemented");
     }
 
-    CurrentBuilder().CreateStore(val, lval);
+    builder.CreateStore(val, lval);
     return nullptr;
   }
 
@@ -756,7 +758,7 @@ llvm::Value *Declaration::generate_code() {
   if (decl_type == DeclType::Std && type->is_array()) {
     assert(type_expr->is_array_type() && "Not array type");
     auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
-    static_cast<Array *>(type)->initialize_literal(CurrentBuilder(), identifier->alloc, len);
+    static_cast<Array *>(type)->initialize_literal(builder, identifier->alloc, len);
   }
 
   if (decl_type == DeclType::Std || type == Type_) return nullptr;
@@ -774,7 +776,7 @@ llvm::Value *Declaration::generate_code() {
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified
 llvm::Value *Case::generate_code() {
-  auto parent_fn = CurrentBuilder().GetInsertBlock()->getParent();
+  auto parent_fn = builder.GetInsertBlock()->getParent();
   // Condition blocks - The ith block is what you reach when you've
   // failed the ith condition, where conditions are labelled starting at zero.
   std::vector<llvm::BasicBlock *> case_blocks(kv->pairs.size() - 1);
@@ -784,36 +786,36 @@ llvm::Value *Case::generate_code() {
   }
 
   // Landing blocks
-  auto current_block = CurrentBuilder().GetInsertBlock();
+  auto current_block = builder.GetInsertBlock();
   auto case_landing = make_block("case.landing", parent_fn);
-  CurrentBuilder().SetInsertPoint(case_landing);
-  llvm::PHINode *phi_node = CurrentBuilder().CreatePHI(
+  builder.SetInsertPoint(case_landing);
+  llvm::PHINode *phi_node = builder.CreatePHI(
       *type, static_cast<unsigned int>(kv->pairs.size()), "phi");
-  CurrentBuilder().SetInsertPoint(current_block);
+  builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
     auto cmp_val    = kv->pairs[i].first->generate_code();
     auto true_block = make_block("land_true", parent_fn);
 
     // If it's false, move on to the next block
-    CurrentBuilder().CreateCondBr(cmp_val, true_block, case_blocks[i]);
-    CurrentBuilder().SetInsertPoint(true_block);
+    builder.CreateCondBr(cmp_val, true_block, case_blocks[i]);
+    builder.SetInsertPoint(true_block);
     auto output_val = kv->pairs[i].second->generate_code();
 
     // NOTE: You may be tempted to state that you are coming from the
     // block 'true_block'. However, if the code generated for the right-hand
     // side of the '=>' node is not just a single basic block, this will not
     // be the case.
-    phi_node->addIncoming(output_val, CurrentBuilder().GetInsertBlock());
-    CurrentBuilder().CreateBr(case_landing);
+    phi_node->addIncoming(output_val, builder.GetInsertBlock());
+    builder.CreateBr(case_landing);
 
-    CurrentBuilder().SetInsertPoint(case_blocks[i]);
+    builder.SetInsertPoint(case_blocks[i]);
   }
   auto output_val = kv->pairs.back().second->generate_code();
 
-  phi_node->addIncoming(output_val, CurrentBuilder().GetInsertBlock());
-  CurrentBuilder().CreateBr(case_landing);
-  CurrentBuilder().SetInsertPoint(case_landing);
+  phi_node->addIncoming(output_val, builder.GetInsertBlock());
+  builder.CreateBr(case_landing);
+  builder.SetInsertPoint(case_landing);
 
   return phi_node;
 }
@@ -826,19 +828,19 @@ llvm::Value *ArrayLiteral::generate_code() {
   auto element_type  = type_as_array->data_type;
   size_t num_elems   = elems.size();
 
-  auto array_data = type->allocate(CurrentBuilder());
+  auto array_data = type->allocate();
 
-  type_as_array->initialize_literal(CurrentBuilder(), array_data, num_elems);
+  type_as_array->initialize_literal(builder, array_data, num_elems);
 
-  auto head_ptr = CurrentBuilder().CreateLoad(CurrentBuilder().CreateGEP(
+  auto head_ptr = builder.CreateLoad(builder.CreateGEP(
       array_data, {data::const_uint(0), data::const_uint(1)}));
 
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
-    auto data_ptr = CurrentBuilder().CreateGEP(head_ptr, {data::const_uint(i)});
-    element_type->call_init(CurrentBuilder(), data_ptr);
+    auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
+    element_type->call_init(builder, data_ptr);
 
-    CurrentBuilder().CreateCall(element_type->assign(),
+    builder.CreateCall(element_type->assign(),
                                 {elems[i]->generate_code(), data_ptr});
   }
 
@@ -850,7 +852,7 @@ llvm::Value *KVPairList::generate_code() { return nullptr; }
 llvm::Value *Conditional::generate_code() {
   // TODO if you forget this, it causes bad bugs. Make it impossible to forget
   // this!!!
-  auto parent_fn = CurrentBuilder().GetInsertBlock()->getParent();
+  auto parent_fn = builder.GetInsertBlock()->getParent();
 
   std::vector<llvm::BasicBlock *> cond_block(conditions.size(), nullptr);
   std::vector<llvm::BasicBlock *> body_block(body_scopes.size(), nullptr);
@@ -865,19 +867,19 @@ llvm::Value *Conditional::generate_code() {
 
   auto *land_block = make_block("land", parent_fn);
 
-  CurrentBuilder().CreateBr(cond_block[0]);
+  builder.CreateBr(cond_block[0]);
 
   for (size_t i = 0; i < conditions.size() - 1; ++i) {
-    CurrentBuilder().SetInsertPoint(cond_block[i]);
+    builder.SetInsertPoint(cond_block[i]);
     auto condition = conditions[i]->generate_code();
-    CurrentBuilder().CreateCondBr(condition, body_scopes[i]->entry,
+    builder.CreateCondBr(condition, body_scopes[i]->entry,
                                   cond_block[i + 1]);
   }
 
   // Last step
-  CurrentBuilder().SetInsertPoint(cond_block.back());
+  builder.SetInsertPoint(cond_block.back());
   auto condition = conditions.back()->generate_code();
-  CurrentBuilder().CreateCondBr(
+  builder.CreateCondBr(
       condition, body_scopes[conditions.size() - 1]->entry,
       has_else() ? body_scopes.back()->entry : land_block);
 
@@ -887,18 +889,18 @@ llvm::Value *Conditional::generate_code() {
     body_scopes[i]->initialize();
 
     statements[i]->generate_code();
-    CurrentBuilder().CreateBr(body_scopes[i]->exit);
+    builder.CreateBr(body_scopes[i]->exit);
 
     body_scopes[i]->uninitialize();
-    CurrentBuilder().SetInsertPoint(body_scopes[i]->exit);
+    builder.SetInsertPoint(body_scopes[i]->exit);
 
-    CurrentBuilder().CreateBr(land_block);
+    builder.CreateBr(land_block);
 
     Scope::Stack.pop();
   }
 
 
-  CurrentBuilder().SetInsertPoint(land_block);
+  builder.SetInsertPoint(land_block);
   return nullptr;
 }
 
@@ -911,11 +913,11 @@ llvm::Value *Break::generate_code() {
   // Use an enum for this.
 //  auto scope_ptr = CurrentScope();
 //
-//  auto prev_insert = CurrentBuilder().GetInsertBlock();
+//  auto prev_insert = builder.GetInsertBlock();
 //
-//  auto parent_fn                  = CurrentBuilder().GetInsertBlock()->getParent();
+//  auto parent_fn                  = builder.GetInsertBlock()->getParent();
 //  llvm::BasicBlock *dealloc_block = make_block("dealloc.block", parent_fn);
-//  CurrentBuilder().CreateBr(dealloc_block);
+//  builder.CreateBr(dealloc_block);
 //
 //  while (!scope_ptr->is_loop_scope()) {
 //    auto prev_block = scope_ptr->builder.GetInsertBlock();
@@ -937,13 +939,13 @@ llvm::Value *Break::generate_code() {
 //    auto while_scope = static_cast<WhileScope *>(scope_ptr);
 //    // TODO if this is in another scope, break up out of those too.
 //    // For example, a conditional inside a loop.
-//    CurrentBuilder().SetInsertPoint(dealloc_block);
+//    builder.SetInsertPoint(dealloc_block);
 //    auto while_scope_insert = while_scope->builder.GetInsertBlock();
 //    while_scope->builder.SetInsertPoint(dealloc_block);
 //    while_scope->uninitialize();
 //    while_scope->builder.SetInsertPoint(while_scope_insert);
-//    CurrentBuilder().CreateBr(while_scope->landing_block());
-//    CurrentBuilder().SetInsertPoint(prev_insert);
+//    builder.CreateBr(while_scope->landing_block());
+//    builder.SetInsertPoint(prev_insert);
 //  }
 //
   return nullptr;
@@ -951,42 +953,41 @@ llvm::Value *Break::generate_code() {
 
 llvm::Value *While::generate_code() {
 
-  auto parent_fn  = CurrentBuilder().GetInsertBlock()->getParent();
+  auto parent_fn  = builder.GetInsertBlock()->getParent();
   auto cond_block = make_block("while.cond", parent_fn);
   auto body_block = make_block("while.body", parent_fn);
   auto land_block = make_block("while.land", parent_fn);
 
   // Loop condition
-  CurrentBuilder().CreateBr(cond_block);
+  builder.CreateBr(cond_block);
 
-  CurrentBuilder().SetInsertPoint(cond_block);
+  builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
 
-  CurrentBuilder().CreateCondBr(cond, while_scope->entry, land_block);
+  builder.CreateCondBr(cond, while_scope->entry, land_block);
   // Loop body
   Scope::Stack.push(while_scope);
   while_scope->initialize();
-  CurrentBuilder().SetInsertPoint(while_scope->entry);
-  CurrentBuilder().CreateBr(body_block);
+  builder.SetInsertPoint(while_scope->entry);
+  builder.CreateBr(body_block);
 
   statements->generate_code();
 
-  CurrentBuilder().CreateBr(while_scope->exit);
+  builder.CreateBr(while_scope->exit);
   while_scope->uninitialize();
-  CurrentBuilder().SetInsertPoint(while_scope->exit);
-  CurrentBuilder().CreateBr(cond_block);
+  builder.SetInsertPoint(while_scope->exit);
+  builder.CreateBr(cond_block);
 
   // Landing
   Scope::Stack.pop();
-  CurrentBuilder().SetInsertPoint(land_block);
+  builder.SetInsertPoint(land_block);
 
   return nullptr;
 }
 
 
 llvm::Value *For::generate_code() {
-  llvm::IRBuilder<> &bldr = CurrentBuilder();
-  auto start_block = bldr.GetInsertBlock();
+  auto start_block = builder.GetInsertBlock();
 
   auto parent_fn = start_block->getParent();
 
@@ -1000,42 +1001,42 @@ llvm::Value *For::generate_code() {
     auto loop_block = make_block("loop.body", parent_fn);
     auto land_block = make_block("loop.land", parent_fn);
 
-    auto len_ptr = bldr.CreateGEP(
+    auto len_ptr = builder.CreateGEP(
         container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-    auto len_val = bldr.CreateLoad(len_ptr, "len");
+    auto len_val = builder.CreateLoad(len_ptr, "len");
 
     auto start_ptr =
-        bldr.CreateLoad(bldr.CreateGEP(container_val, {data::const_uint(0),
+        builder.CreateLoad(builder.CreateGEP(container_val, {data::const_uint(0),
                                                        data::const_uint(1)}),
                         "start_ptr");
-    auto end_ptr = bldr.CreateGEP(start_ptr, len_val, "end_ptr");
+    auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
 
-    bldr.CreateBr(cond_block);
-    auto phi_node = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
+    builder.CreateBr(cond_block);
+    auto phi_node = builder.CreatePHI(*Ptr(data_type), 2, "phi");
     phi_node->addIncoming(start_ptr, start_block);
     iterator->identifier->alloc = phi_node;
 
-    auto cmp = bldr.CreateICmpEQ(phi_node, end_ptr);
-    bldr.CreateCondBr(cmp, for_scope->entry, land_block);
+    auto cmp = builder.CreateICmpEQ(phi_node, end_ptr);
+    builder.CreateCondBr(cmp, for_scope->entry, land_block);
 
     Scope::Stack.push(for_scope);
     for_scope->initialize();
-    bldr.SetInsertPoint(for_scope->entry);
-    bldr.CreateBr(loop_block);
+    builder.SetInsertPoint(for_scope->entry);
+    builder.CreateBr(loop_block);
 
     statements->generate_code();
 
-    auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
+    auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
     phi_node->addIncoming(next_ptr, for_scope->exit); // Comes from exit block
-    bldr.CreateBr(for_scope->exit);
+    builder.CreateBr(for_scope->exit);
 
     for_scope->uninitialize();
-    bldr.SetInsertPoint(for_scope->exit);
-    bldr.CreateBr(cond_block);
+    builder.SetInsertPoint(for_scope->exit);
+    builder.CreateBr(cond_block);
 
     Scope::Stack.pop();
 
-    CurrentBuilder().SetInsertPoint(land_block);
+    builder.SetInsertPoint(land_block);
   } else {
     // TODO that condition should really be encodede into the loop somewhere to
     // make it faster to check.
@@ -1044,7 +1045,7 @@ llvm::Value *For::generate_code() {
       auto enum_type = static_cast<Enumeration *>(t);
       // TODO get them by means other than string name
       for (const auto kv: enum_type->int_values) {
-        bldr.CreateStore(data::const_uint(kv.second),
+        builder.CreateStore(data::const_uint(kv.second),
                          iterator->identifier->alloc);
         statements->generate_code();
       }
@@ -1054,21 +1055,21 @@ llvm::Value *For::generate_code() {
       auto loop_block = make_block("loop", parent_fn);
       auto land_block = make_block("land", parent_fn);
 
-      bldr.CreateBr(loop_block);
-      bldr.SetInsertPoint(loop_block);
-      auto phi_node = bldr.CreatePHI(*Uint, 2, "phi");
+      builder.CreateBr(loop_block);
+      builder.SetInsertPoint(loop_block);
+      auto phi_node = builder.CreatePHI(*Uint, 2, "phi");
       phi_node->addIncoming(data::const_uint(0), start_block);
 
       Scope::Stack.push(for_scope);
       for_scope->initialize();
 
-      CurrentBuilder().CreateStore(phi_node, iterator->identifier->alloc);
+      builder.CreateStore(phi_node, iterator->identifier->alloc);
       statements->generate_code();
 
-      auto next = CurrentBuilder().CreateAdd(CurrentBuilder().CreateLoad(iterator->identifier->alloc),
+      auto next = builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
                                  data::const_uint(1));
 
-      phi_node->addIncoming(next, CurrentBuilder().GetInsertBlock());
+      phi_node->addIncoming(next, builder.GetInsertBlock());
 
       Scope::Stack.pop();
       bldr.CreateBr(loop_block);
