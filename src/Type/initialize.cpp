@@ -89,11 +89,9 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     init_fn_ = llvm::Function::Create(*x,
         llvm::Function::ExternalLinkage, "init." + Mangle(this), global_module);
 
-    FnScope* fn_scope = new FnScope(init_fn_);
-    fn_scope->set_type(Func(Ptr(this), Void));
-
-    llvm::IRBuilder<>& bldr = fn_scope->builder;
-    fn_scope->enter();
+    llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+    auto block = make_block("entry", assign_fn_);
+    bldr.SetInsertPoint(block);
 
     // initialize all fields
     for (const auto& kv : field_num_to_llvm_num) {
@@ -103,16 +101,16 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
           {data::const_uint(0), data::const_uint(kv.second)});
       auto init_expr = init_values AT(kv.first);
       if (init_expr) {
-        Scope::Stack.push(fn_scope);
+        // Scope::Stack.push(fn_scope);
         auto init_val = init_expr->generate_code();
-        Scope::Stack.pop();
+        // Scope::Stack.pop();
         bldr.CreateCall(the_field_type->assign(), {init_val, arg});
       } else {
         the_field_type->call_init(bldr, {arg});
       }
     }
 
-    fn_scope->exit();
+    bldr.CreateRetVoid();
   }
 
   bldr.CreateCall(init_fn_, { var });

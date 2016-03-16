@@ -19,21 +19,28 @@
 extern ErrorLog error_log;
 extern std::queue<std::string> file_queue;
 struct Scope;
+struct BlockScope;
 struct FnScope;
 struct Structure;
 struct Enumeration;
 
 template <typename T> T *steal(AST::Expression *&n) {
-  // TODO reinterpret_cast for safety in debug mode?
+#ifdef DEBUG
+  auto temp = reinterpret_cast<T *>(n);
+#else
   auto temp = static_cast<T *>(n);
+#endif
   assert(temp && "stolen pointer is null");
   n = nullptr;
   return temp;
 }
 
 template <typename T> T *steal(AST::Node *&n) {
-  // TODO reinterpret_cast for safety in debug mode?
+#ifdef DEBUG
+  auto temp = reinterpret_cast<T *>(n);
+#else
   auto temp = static_cast<T *>(n);
+#endif
   assert(temp && "stolen pointer is null");
   n = nullptr;
   return temp;
@@ -184,7 +191,6 @@ inline Node *Expression::parenthesize(NPtrVec &&nodes) {
   return expr_ptr;
 }
 
-// TODO: This only represents a left unary operator for now
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
 
@@ -376,7 +382,7 @@ struct Conditional : public Node {
 
   std::vector<Expression *> conditions;
   std::vector<Statements *> statements;
-  std::vector<Scope *> body_scopes;
+  std::vector<BlockScope *> body_scopes;
 
   // We use else_line_num to determine if an else branch exists (when it's
   // non-zero) and also for error generation (if multiple else-blocks are
@@ -394,7 +400,7 @@ struct For : public Node {
   Expression *container;
   Statements *statements;
 
-  Scope *for_scope;
+  BlockScope *for_scope;
 };
 
 struct While : public Node {
@@ -407,7 +413,7 @@ struct While : public Node {
 
   Expression *condition;
   Statements *statements;
-  Scope *while_scope;
+  BlockScope *while_scope;
 };
 
 struct TypeLiteral : public Expression {

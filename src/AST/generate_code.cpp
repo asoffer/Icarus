@@ -155,7 +155,8 @@ llvm::Value *Unop::generate_code() {
       val = struct_memcpy(operand->type, val, CurrentBuilder());
     }
 
-    operand->type->call_print(CurrentBuilder(), val);
+    // operand->type->call_print(CurrentBuilder(), val);
+
     return nullptr;
   }
   default:;
@@ -177,7 +178,8 @@ llvm::Value *Unop::generate_code() {
     return nullptr;
   }
   case Language::Operator::Return: {
-    CurrentScope()->make_return(val);
+    // TODO !!!
+    // CurrentScope()->make_return(val);
     return nullptr;
   }
   case Language::Operator::At: {
@@ -567,10 +569,10 @@ llvm::Value *FunctionLiteral::generate_code() {
   auto old_block = CurrentBuilder().GetInsertBlock();
 
   fn_scope->set_parent_function(llvm_fn);
-  fn_scope->set_type(static_cast<Function *>(type));
+  fn_scope->fn_type = static_cast<Function *>(type);
 
   Scope::Stack.push(fn_scope);
-  fn_scope->enter();
+  fn_scope->initialize();
   auto arg = llvm_fn->args().begin();
   for (auto &input_iter : inputs) {
     auto decl_id = input_iter->identifier;
@@ -583,8 +585,9 @@ llvm::Value *FunctionLiteral::generate_code() {
   }
 
   statements->generate_code();
+  CurrentBuilder().CreateBr(fn_scope->exit);
+  fn_scope->leave();
 
-  fn_scope->exit();
   Scope::Stack.pop();
 
   CurrentBuilder().SetInsertPoint(old_block);
@@ -867,23 +870,28 @@ llvm::Value *Conditional::generate_code() {
   for (size_t i = 0; i < conditions.size() - 1; ++i) {
     CurrentBuilder().SetInsertPoint(cond_block[i]);
     auto condition = conditions[i]->generate_code();
-    CurrentBuilder().CreateCondBr(condition, body_block[i], cond_block[i + 1]);
+    CurrentBuilder().CreateCondBr(condition, body_scopes[i]->entry,
+                                  cond_block[i + 1]);
   }
 
   // Last step
   CurrentBuilder().SetInsertPoint(cond_block.back());
   auto condition = conditions.back()->generate_code();
-  CurrentBuilder().CreateCondBr(condition, body_block[conditions.size() - 1],
-                                has_else() ? body_block.back() : land_block);
+  CurrentBuilder().CreateCondBr(
+      condition, body_scopes[conditions.size() - 1]->entry,
+      has_else() ? body_scopes.back()->entry : land_block);
 
   // This loop covers the case of else
   for (size_t i = 0; i < body_scopes.size(); ++i) {
     Scope::Stack.push(body_scopes[i]);
-    body_scopes[i]->initialize(body_block[i]);
+    body_scopes[i]->initialize();
 
     statements[i]->generate_code();
+    CurrentBuilder().CreateBr(body_scopes[i]->exit);
 
-    body_scopes[i]->uninitialize(CurrentBuilder().GetInsertBlock());
+    body_scopes[i]->uninitialize();
+    CurrentBuilder().SetInsertPoint(body_scopes[i]->exit);
+
     CurrentBuilder().CreateBr(land_block);
 
     Scope::Stack.pop();
@@ -954,15 +962,18 @@ llvm::Value *While::generate_code() {
   CurrentBuilder().SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
 
-  CurrentBuilder().CreateCondBr(cond, body_block, land_block);
-
+  CurrentBuilder().CreateCondBr(cond, while_scope->entry, land_block);
   // Loop body
   Scope::Stack.push(while_scope);
-  while_scope->initialize(body_block);
+  while_scope->initialize();
+  CurrentBuilder().SetInsertPoint(while_scope->entry);
+  CurrentBuilder().CreateBr(body_block);
 
   statements->generate_code();
 
-  while_scope->uninitialize(CurrentBuilder().GetInsertBlock());
+  CurrentBuilder().CreateBr(while_scope->exit);
+  while_scope->uninitialize();
+  CurrentBuilder().SetInsertPoint(while_scope->exit);
   CurrentBuilder().CreateBr(cond_block);
 
   // Landing
@@ -985,7 +996,8 @@ llvm::Value *For::generate_code() {
     auto container_val = container->generate_code();
     assert(container_val && "container_val is nullptr");
 
-    auto loop_block = make_block("loop", parent_fn);
+    auto cond_block = make_block("loop.cond", parent_fn);
+    auto loop_block = make_block("loop.body", parent_fn);
     auto land_block = make_block("loop.land", parent_fn);
 
     auto len_ptr = bldr.CreateGEP(
@@ -998,24 +1010,28 @@ llvm::Value *For::generate_code() {
                         "start_ptr");
     auto end_ptr = bldr.CreateGEP(start_ptr, len_val, "end_ptr");
 
-    bldr.CreateBr(loop_block);
-    bldr.SetInsertPoint(loop_block);
+    bldr.CreateBr(cond_block);
     auto phi_node = bldr.CreatePHI(*Ptr(data_type), 2, "phi");
     phi_node->addIncoming(start_ptr, start_block);
     iterator->identifier->alloc = phi_node;
 
+    auto cmp = bldr.CreateICmpEQ(phi_node, end_ptr);
+    bldr.CreateCondBr(cmp, for_scope->entry, land_block);
+
     Scope::Stack.push(for_scope);
-    for_scope->initialize(loop_block);
+    for_scope->initialize();
+    bldr.SetInsertPoint(for_scope->entry);
+    bldr.CreateBr(loop_block);
 
     statements->generate_code();
 
-    for_scope->uninitialize(bldr.GetInsertBlock());
-
     auto next_ptr = bldr.CreateGEP(phi_node, data::const_uint(1));
-    auto cmp      = bldr.CreateICmpEQ(next_ptr, end_ptr);
+    phi_node->addIncoming(next_ptr, for_scope->exit); // Comes from exit block
+    bldr.CreateBr(for_scope->exit);
 
-    bldr.CreateCondBr(cmp, land_block, loop_block);
-    phi_node->addIncoming(next_ptr, loop_block);
+    for_scope->uninitialize();
+    bldr.SetInsertPoint(for_scope->exit);
+    bldr.CreateBr(cond_block);
 
     Scope::Stack.pop();
 
@@ -1023,7 +1039,7 @@ llvm::Value *For::generate_code() {
   } else {
     // TODO that condition should really be encodede into the loop somewhere to
     // make it faster to check.
-    auto t = container->evaluate(scope_->context()).as_type;
+    auto t = container->evaluate(scope_->context).as_type;
     if (t->is_enum()) {
       auto enum_type = static_cast<Enumeration *>(t);
       // TODO get them by means other than string name
@@ -1033,6 +1049,8 @@ llvm::Value *For::generate_code() {
         statements->generate_code();
       }
     } else if (t == Uint) {
+      assert(false && "NOT YET IMPLEMENTED");
+      /*
       auto loop_block = make_block("loop", parent_fn);
       auto land_block = make_block("land", parent_fn);
 
@@ -1042,7 +1060,7 @@ llvm::Value *For::generate_code() {
       phi_node->addIncoming(data::const_uint(0), start_block);
 
       Scope::Stack.push(for_scope);
-      for_scope->initialize(loop_block);
+      for_scope->initialize();
 
       CurrentBuilder().CreateStore(phi_node, iterator->identifier->alloc);
       statements->generate_code();
@@ -1055,7 +1073,7 @@ llvm::Value *For::generate_code() {
       Scope::Stack.pop();
       bldr.CreateBr(loop_block);
       bldr.SetInsertPoint(land_block);
-
+*/
     } else {
       assert(false && "Not yet implemented");
     }

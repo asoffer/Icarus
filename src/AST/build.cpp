@@ -481,7 +481,7 @@ Node *Conditional::build_if(NPtrVec &&nodes) {
   auto if_stmt        = new Conditional;
   if_stmt->conditions = {steal<Expression>(nodes[1])};
   if_stmt->statements = {steal<Statements>(nodes[3])};
-  if_stmt->body_scopes.push_back(new Scope);
+  if_stmt->body_scopes.push_back(new BlockScope);
   return if_stmt;
 }
 
@@ -516,7 +516,7 @@ Node *Conditional::build_else_if(NPtrVec &&nodes) {
 
   if_stmt->conditions.push_back(else_if->conditions.front());
   if_stmt->statements.push_back(else_if->statements.front());
-  if_stmt->body_scopes.push_back(new Scope);
+  if_stmt->body_scopes.push_back(new BlockScope);
   return if_stmt;
 }
 
@@ -524,7 +524,7 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
   auto if_stmt           = steal<Conditional>(nodes[0]);
   if_stmt->else_line_num = nodes[1]->line_num;
   if_stmt->statements.push_back(steal<Statements>(nodes[3]));
-  if_stmt->body_scopes.push_back(new Scope);
+  if_stmt->body_scopes.push_back(new BlockScope);
   return if_stmt;
 }
 

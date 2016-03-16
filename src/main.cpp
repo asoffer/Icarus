@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   TypeSystem::initialize();
 
   // Initialize the global scope
-  Scope::Global  = new GlobalScope();
+  Scope::Global  = new BlockScope();
   int arg_num    = 1;  // iterator over argv
   int file_index = -1; // Index of where file name is in argv
   while (arg_num < argc) {
@@ -209,9 +209,26 @@ int main(int argc, char *argv[]) {
   // Program has been verified. We can now proceed with code generation.
   // Initialize the global scope.
 
-  // Generate LLVM intermediate representation.
-  Scope::Global->initialize();
+  { // Initialize Global scope
+    for (auto decl_ptr : Scope::Global->ordered_decls_) {
+      auto decl_id = decl_ptr->identifier;
+      if (decl_id->is_function_arg) continue;
 
+      auto decl_type = decl_id->type;
+      if (decl_type->llvm_type == nullptr) continue;
+
+      if (decl_type->is_function()) {
+        if (decl_id->token()[0] != '_') { // Ignore operators
+          decl_id->alloc = decl_type->allocate(Scope::Global->builder);
+          decl_id->alloc->setName(decl_ptr->identifier->token());
+        }
+      } else {
+        assert(decl_type == Type_ && "Global variables not currently allowed.");
+      }
+    }
+  }
+
+  // Generate LLVM intermediate representation.
   Scope::Stack.push(Scope::Global);
   global_statements->generate_code();
   Scope::Stack.pop();

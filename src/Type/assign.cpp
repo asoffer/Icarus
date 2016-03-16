@@ -31,9 +31,9 @@ llvm::Function* Primitive::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   assign_fn_ = get_llvm_assign(this);
-  auto block = make_block("entry", assign_fn_);
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  auto block = make_block("entry", assign_fn_);
   bldr.SetInsertPoint(block);
 
   auto iter = assign_fn_->args().begin();
@@ -57,13 +57,10 @@ llvm::Function* Array::assign() {
       "assign." + Mangle(this), global_module);
 
   // Create uninitialization function
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  auto block = make_block("entry", assign_fn_);
+  bldr.SetInsertPoint(block);
 
-  FnScope* fn_scope = new FnScope(assign_fn_);
-  fn_scope->set_type(Func({ Ptr(this), Ptr(this) }, Void));
-
-  llvm::IRBuilder<>& bldr = fn_scope->builder;
-
-  fn_scope->enter();
   auto iter = assign_fn_->args().begin();
   auto val  = iter;
   auto var = ++iter;
@@ -121,8 +118,11 @@ llvm::Function* Array::assign() {
   to_phi->addIncoming(next_to_ptr, bldr.GetInsertBlock());
   from_phi->addIncoming(next_from_ptr, bldr.GetInsertBlock());
 
-  bldr.SetInsertPoint(land_block);
-  fn_scope->exit();
+  auto exit_block = make_block("exit", assign_fn_);
+  bldr.CreateBr(exit_block);
+  bldr.SetInsertPoint(exit_block);
+  bldr.CreateRetVoid();
+
   return assign_fn_;
 }
 
@@ -154,12 +154,10 @@ llvm::Function *Structure::assign() {
 
   assign_fn_ = get_llvm_assign(this);
 
-  FnScope *fn_scope = new FnScope(assign_fn_);
-  fn_scope->set_type(Func({Ptr(this), Ptr(this)}, Void));
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+  auto block = make_block("entry", assign_fn_);
+  bldr.SetInsertPoint(block);
 
-  llvm::IRBuilder<> &bldr = fn_scope->builder;
-
-  fn_scope->enter();
   auto iter = assign_fn_->args().begin();
   auto val  = iter;
   auto var  = ++iter;
@@ -177,7 +175,10 @@ llvm::Function *Structure::assign() {
     bldr.CreateCall(the_field_type->assign(), {field_val, field_var});
   }
 
-  fn_scope->exit();
+  auto exit_block = make_block("exit", assign_fn_);
+  bldr.CreateBr(exit_block);
+  bldr.SetInsertPoint(exit_block);
+  bldr.CreateRetVoid();
 
   return assign_fn_;
 }

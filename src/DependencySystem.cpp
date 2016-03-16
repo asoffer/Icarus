@@ -130,11 +130,11 @@ void traverse_from(PtrWithTorV pt) {
         if (ptr->is_type_literal()) {
           // Evaluating a type literal stores the types of its members (but
           // those types may still be opaque.
-          ptr->evaluate(ptr->scope_->context());
+          ptr->evaluate(ptr->scope_->context);
 
         } else if (ptr->is_declaration() &&
                    static_cast<AST::Declaration *>(ptr)->type == Type_) {
-          ptr->evaluate(ptr->scope_->context());
+          ptr->evaluate(ptr->scope_->context);
         }
 
       }

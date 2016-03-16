@@ -57,7 +57,7 @@ void Identifier::verify_types() {
   switch (decl->decl_type) {
   case DeclType::Std: {
     if (type == Type_) {
-      scope_->context().bind(Context::Value(TypeVar(this)), this);
+      scope_->context.bind(Context::Value(TypeVar(this)), this);
     }
   } break;
 
@@ -65,11 +65,11 @@ void Identifier::verify_types() {
     if (decl->type_expr->is_type_literal()) {
       auto tlit_type_val =
           static_cast<TypeLiteral *>(decl->type_expr)->type_value;
-      scope_->context().bind(Context::Value(tlit_type_val), this);
+      scope_->context.bind(Context::Value(tlit_type_val), this);
 
     } else if (decl->type_expr->is_function_literal()) {
       auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
-      scope_->context().bind(Context::Value(flit), this);
+      scope_->context.bind(Context::Value(flit), this);
     }
   } break;
 
@@ -169,12 +169,12 @@ void Access::verify_types() {
   auto etype = operand->type;
   if (etype == Type_) {
     Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
-    auto etypename = operand->evaluate(scope_->context()).as_type;
+    auto etypename = operand->evaluate(scope_->context).as_type;
     if (etypename->is_enum()) {
       auto enum_type = static_cast<Enumeration *>(etypename);
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
-        type = operand->evaluate(scope_->context()).as_type;
+        type = operand->evaluate(scope_->context).as_type;
 
       } else {
         error_log.log(line_num, etypename->to_string() + " has no member " +
@@ -228,7 +228,7 @@ void Binop::verify_types() {
     if (lhs->type->is_dependent_type()) {
       // TODO treat dependent types as functions
       auto dep_type    = static_cast<DependentType *>(lhs->type);
-      auto result_type = (*dep_type)(rhs->evaluate(scope_->context()).as_type);
+      auto result_type = (*dep_type)(rhs->evaluate(scope_->context).as_type);
       type             = result_type;
       return;
     }
@@ -280,7 +280,7 @@ void Binop::verify_types() {
     return;
   } else if (op == Language::Operator::Cast) {
     // TODO use correct scope
-    type = rhs->evaluate(scope_->context()).as_type;
+    type = rhs->evaluate(scope_->context).as_type;
     if (type == Error) return;
     assert(type && "cast to nullptr?");
 
@@ -349,7 +349,7 @@ void Declaration::verify_types() {
 
   switch (decl_type) {
   case DeclType::Std: {
-    type = type_expr->evaluate(scope_->context()).as_type;
+    type = type_expr->evaluate(scope_->context).as_type;
   } break;
   case DeclType::Infer: {
     type = type_expr->type;
@@ -363,7 +363,7 @@ void Declaration::verify_types() {
     if (type_expr->type->is_array()) {
       type = static_cast<Array *>(type_expr->type)->data_type;
     } else if (type_expr->type == Type_) {
-      auto t = type_expr->evaluate(scope_->context()).as_type;
+      auto t = type_expr->evaluate(scope_->context).as_type;
       if (t->is_enum() || t == Uint) {
         type = t;
       }
@@ -418,7 +418,7 @@ void ArrayLiteral::verify_types() {
 }
 
 void FunctionLiteral::verify_types() {
-  Type *ret_type = return_type_expr->evaluate(scope_->context()).as_type;
+  Type *ret_type = return_type_expr->evaluate(scope_->context).as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t inputssize = inputs.size();
@@ -495,7 +495,7 @@ void For::verify_types() {
     return;
 
   } else if (container->type == Type_) {
-    auto t = container->evaluate(scope_->context()).as_type;
+    auto t = container->evaluate(scope_->context).as_type;
     if (t->is_enum() || t == Uint) {
       iterator->type = Type_;
       return;

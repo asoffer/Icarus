@@ -17,7 +17,7 @@
 
 struct Type;
 struct Function;
-struct GlobalScope;
+struct BlockScope;
 struct FnScope;
 
 namespace AST {
@@ -28,6 +28,79 @@ struct FunctionLiteral;
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
+struct Scope {
+  static std::stack<Scope *> Stack;
+  static void verify_no_shadowing();
+  static BlockScope *Global; // TODO Should this be it's own type
+  static AST::Declaration *
+  make_declaration(size_t line_num, AST::DeclType decl_type,
+                   const std::string &id_string);
+  static std::vector<AST::Declaration *> decl_registry_;
+
+  void set_parent(Scope *parent);
+
+  virtual bool is_block_scope() { return false; }
+  virtual bool is_function_scope() { return false; }
+
+  AST::Identifier *identifier(AST::Expression *id_as_eptr);
+  AST::Identifier *identifier(const std::string &name) const;
+
+  AST::Expression *get_declared_type(AST::Identifier *id_ptr) const;
+
+  Scope();
+  Scope(const Scope&) = delete;
+  Scope(Scope&&) = delete;
+  virtual ~Scope() {}
+
+  std::map<std::string, AST::Identifier *> ids_;
+  std::vector<AST::Declaration *> ordered_decls_;
+
+  Scope *parent;
+  FnScope *containing_function_;
+  Context context;
+};
+
+struct BlockScope : public Scope {
+  BlockScope();
+  virtual ~BlockScope(){}
+  virtual bool is_block_scope() { return true; }
+
+  virtual void initialize();
+  void uninitialize();
+
+  llvm::BasicBlock *entry, *exit;
+  llvm::IRBuilder<> builder;
+};
+
+struct FnScope : public BlockScope {
+  FnScope(llvm::Function *fn = nullptr);
+  virtual bool is_function_scope() { return true; }
+  virtual ~FnScope(){}
+
+  void set_parent_function(llvm::Function *fn);
+  void add_scope(Scope *scope);
+  void remove_scope(Scope *scope);
+
+  virtual void initialize();
+  void leave();
+  void allocate(Scope *scope, llvm::IRBuilder<> &bldr);
+
+  Function *fn_type;
+  llvm::Function *llvm_fn;
+  llvm::Value *return_value;
+  std::set<Scope *> innards_;
+};
+
+// TODO these are not threadsafe! When we access the stack, when compilation is
+// multi-threaded, we should probably grab a mutex before getting the top of the
+// stack
+
+Scope *CurrentScope();
+llvm::IRBuilder<> &CurrentBuilder();
+Context &CurrentContext();
+
+
+/*****************************************************************************
 
 struct Scope {
   static std::stack<Scope *> Stack;
@@ -131,13 +204,5 @@ struct GlobalScope : public Scope {
 
   llvm::BasicBlock *the_block_;
 };
-
-// TODO these are not threadsafe! When we access the stack, when compilation is
-// multi-threaded, we should probably grab a mutex before getting the top of the
-// stack
-
-Scope *CurrentScope();
-llvm::IRBuilder<> &CurrentBuilder();
-Context &CurrentContext();
-
+*/
 #endif // ICARUS_SCOPE_H

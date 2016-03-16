@@ -280,7 +280,7 @@ namespace AST {
 
         Type *field =
             is_inferred ? decl->type_expr->type
-                        : decl->type_expr->evaluate(scope_->context()).as_type;
+                        : decl->type_expr->evaluate(scope_->context).as_type;
         assert(field && "field is nullptr");
 
         type_value->insert_field(decl->identifier->token(), field,
