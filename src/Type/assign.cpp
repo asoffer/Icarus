@@ -52,14 +52,15 @@ llvm::Function* Function::assign() {
 llvm::Function* Array::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
+  auto save_block = builder.GetInsertBlock();
+
   assign_fn_ = llvm::Function::Create(
       *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
       "assign." + Mangle(this), global_module);
 
   // Create uninitialization function
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
   auto block = make_block("entry", assign_fn_);
-  bldr.SetInsertPoint(block);
+  builder.SetInsertPoint(block);
 
   auto iter = assign_fn_->args().begin();
   auto val  = iter;
@@ -67,61 +68,61 @@ llvm::Function* Array::assign() {
   val->setName("val");
   var->setName("var");
 
-  call_uninit(bldr, var);
+  call_uninit(builder, var);
   // Allocate space and save the pointer
-  auto new_len = bldr.CreateLoad(
-      bldr.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),
+  auto new_len = builder.CreateLoad(
+      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),
       "new_len");
-  auto data_ptr_ptr = bldr.CreateGEP(
+  auto data_ptr_ptr = builder.CreateGEP(
       var, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
-  auto load_ptr_ptr = bldr.CreateGEP(
+  auto load_ptr_ptr = builder.CreateGEP(
       val, {data::const_uint(0), data::const_uint(1)}, "load_ptr_ptr");
-  auto malloc_call = bldr.CreateBitCast(
-      bldr.CreateCall(
+  auto malloc_call = builder.CreateBitCast(
+      builder.CreateCall(
           cstdlib::malloc(),
-          bldr.CreateMul(new_len, data::const_uint(data_type->bytes()))),
+          builder.CreateMul(new_len, data::const_uint(data_type->bytes()))),
       *Ptr(data_type), "malloc_call");
 
-  bldr.CreateStore(
-      new_len, bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+  builder.CreateStore(
+      new_len, builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
 
-  bldr.CreateStore(malloc_call, bldr.CreateGEP(var, {data::const_uint(0),
+  builder.CreateStore(malloc_call, builder.CreateGEP(var, {data::const_uint(0),
                                                      data::const_uint(1)}));
 
-  auto copy_to_ptr   = bldr.CreateLoad(data_ptr_ptr);
-  auto copy_from_ptr = bldr.CreateLoad(load_ptr_ptr);
-  auto end_ptr       = bldr.CreateGEP(copy_to_ptr, new_len);
+  auto copy_to_ptr   = builder.CreateLoad(data_ptr_ptr);
+  auto copy_from_ptr = builder.CreateLoad(load_ptr_ptr);
+  auto end_ptr       = builder.CreateGEP(copy_to_ptr, new_len);
 
   auto loop_block = make_block("loop", assign_fn_);
-  auto land_block = make_block("land", assign_fn_);
+  auto exit_block = make_block("exit", assign_fn_);
 
-  auto prev_block = bldr.GetInsertBlock();
-  bldr.CreateBr(loop_block);
-  bldr.SetInsertPoint(loop_block);
-  auto from_phi = bldr.CreatePHI(*Ptr(data_type), 2, "from_phi");
-  auto to_phi = bldr.CreatePHI(*Ptr(data_type), 2, "to_phi");
+  auto prev_block = builder.GetInsertBlock();
+  builder.CreateBr(loop_block);
+  builder.SetInsertPoint(loop_block);
+  auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
+  auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
   from_phi->addIncoming(copy_from_ptr, prev_block);
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
   auto copy_from_elem =
       data_type->is_big()
           ? static_cast<llvm::Value *>(from_phi)
-          : static_cast<llvm::Value *>(bldr.CreateLoad(from_phi));
+          : static_cast<llvm::Value *>(builder.CreateLoad(from_phi));
 
-  bldr.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
+  builder.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
 
-  auto next_from_ptr = bldr.CreateGEP(from_phi, data::const_uint(1));
-  auto next_to_ptr   = bldr.CreateGEP(to_phi, data::const_uint(1));
+  auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
+  auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
 
-  bldr.CreateCondBr(bldr.CreateICmpULT(next_to_ptr, end_ptr), loop_block,
-                    land_block);
-  to_phi->addIncoming(next_to_ptr, bldr.GetInsertBlock());
-  from_phi->addIncoming(next_from_ptr, bldr.GetInsertBlock());
+  builder.CreateCondBr(builder.CreateICmpULT(next_to_ptr, end_ptr), loop_block,
+                       exit_block);
+  to_phi->addIncoming(next_to_ptr, builder.GetInsertBlock());
+  from_phi->addIncoming(next_from_ptr, builder.GetInsertBlock());
 
-  auto exit_block = make_block("exit", assign_fn_);
-  bldr.CreateBr(exit_block);
-  bldr.SetInsertPoint(exit_block);
-  bldr.CreateRetVoid();
+  builder.SetInsertPoint(exit_block);
+  builder.CreateRetVoid();
+
+  builder.SetInsertPoint(save_block);
 
   return assign_fn_;
 }

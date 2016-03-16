@@ -584,14 +584,16 @@ llvm::Value *FunctionLiteral::generate_code() {
   }
 
   statements->generate_code();
-  builder.CreateBr(fn_scope->exit);
+  auto block = builder.GetInsertBlock();
+  if (block->empty() || !llvm::isa<llvm::BranchInst>(&block->back())) {
+    builder.CreateBr(fn_scope->exit);
+  }
+
   fn_scope->leave();
 
   Scope::Stack.pop();
 
-  if (old_block) {
-    builder.SetInsertPoint(old_block);
-  }
+  if (old_block) { builder.SetInsertPoint(old_block); }
 
   return llvm_fn;
 }
@@ -853,6 +855,7 @@ llvm::Value *Conditional::generate_code() {
   // TODO if you forget this, it causes bad bugs. Make it impossible to forget
   // this!!!
   auto parent_fn = builder.GetInsertBlock()->getParent();
+  for (auto s : body_scopes) { s->set_parent_function(parent_fn); }
 
   std::vector<llvm::BasicBlock *> cond_block(conditions.size(), nullptr);
   std::vector<llvm::BasicBlock *> body_block(body_scopes.size(), nullptr);
@@ -954,6 +957,8 @@ llvm::Value *Break::generate_code() {
 llvm::Value *While::generate_code() {
 
   auto parent_fn  = builder.GetInsertBlock()->getParent();
+  while_scope->set_parent_function(parent_fn);
+
   auto cond_block = make_block("while.cond", parent_fn);
   auto body_block = make_block("while.body", parent_fn);
   auto land_block = make_block("while.land", parent_fn);
@@ -968,14 +973,14 @@ llvm::Value *While::generate_code() {
   // Loop body
   Scope::Stack.push(while_scope);
   while_scope->initialize();
-  builder.SetInsertPoint(while_scope->entry);
   builder.CreateBr(body_block);
 
+  builder.SetInsertPoint(body_block);
   statements->generate_code();
-
   builder.CreateBr(while_scope->exit);
-  while_scope->uninitialize();
+
   builder.SetInsertPoint(while_scope->exit);
+  while_scope->uninitialize();
   builder.CreateBr(cond_block);
 
   // Landing
@@ -990,6 +995,7 @@ llvm::Value *For::generate_code() {
   auto start_block = builder.GetInsertBlock();
 
   auto parent_fn = start_block->getParent();
+  for_scope->set_parent_function(parent_fn);
 
   if (container->type->is_array()) {
     auto data_type = iterator->type;
@@ -1010,8 +1016,9 @@ llvm::Value *For::generate_code() {
                                                        data::const_uint(1)}),
                         "start_ptr");
     auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
-
     builder.CreateBr(cond_block);
+
+    builder.SetInsertPoint(cond_block);
     auto phi_node = builder.CreatePHI(*Ptr(data_type), 2, "phi");
     phi_node->addIncoming(start_ptr, start_block);
     iterator->identifier->alloc = phi_node;
@@ -1021,9 +1028,9 @@ llvm::Value *For::generate_code() {
 
     Scope::Stack.push(for_scope);
     for_scope->initialize();
-    builder.SetInsertPoint(for_scope->entry);
     builder.CreateBr(loop_block);
 
+    builder.SetInsertPoint(loop_block);
     statements->generate_code();
 
     auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));

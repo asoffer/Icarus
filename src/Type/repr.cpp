@@ -31,6 +31,8 @@ void add_branch(llvm::Function *fn, llvm::IRBuilder<> &bldr,
 }
 
 void Primitive::call_repr(llvm::Value *val) {
+  auto prev_block = builder.GetInsertBlock();
+
   if (this == Bool) {
     if (repr_fn_ == nullptr) {
       repr_fn_ = llvm::Function::Create(*Func(this, Void),
@@ -39,17 +41,17 @@ void Primitive::call_repr(llvm::Value *val) {
       llvm::Value *arg = repr_fn_->args().begin();
 
       auto entry = make_block("entry", repr_fn_);
-      llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
-      fn_bldr.SetInsertPoint(entry);
-      auto offset = fn_bldr.CreateMul(fn_bldr.CreateZExt(arg, *RawPtr),
+      builder.SetInsertPoint(entry);
+      auto offset = builder.CreateMul(builder.CreateZExt(arg, *RawPtr),
                                       data::const_uint(6));
 
-      auto str = fn_bldr.CreateGEP(data::global_string(fn_bldr, "false\0true"),
+      auto str = builder.CreateGEP(data::global_string(builder, "false\0true"),
                                    offset);
-      fn_bldr.CreateCall(cstdlib::printf(), str);
-      fn_bldr.CreateRetVoid();
+      builder.CreateCall(cstdlib::printf(), str);
+      builder.CreateRetVoid();
     }
 
+    builder.SetInsertPoint(prev_block);
     builder.CreateCall(repr_fn_, {val});
 
   } else if (this == Char) {
@@ -59,50 +61,50 @@ void Primitive::call_repr(llvm::Value *val) {
                                         "repr.char", global_module);
       llvm::Value *arg = repr_fn_->args().begin();
 
-      llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
       auto entry = make_block("entry", repr_fn_);
       auto exit = make_block("exit", repr_fn_);
-      fn_bldr.SetInsertPoint(entry);
+      builder.SetInsertPoint(entry);
 
       auto standard_block    = make_block("standard", repr_fn_);
       auto exceptional_block = make_block("exceptional", repr_fn_);
 
-      fn_bldr.CreateCondBr(
-          fn_bldr.CreateOr(
-              fn_bldr.CreateICmpUGT(data::const_char(' '), arg),
-              fn_bldr.CreateOr(
-                  fn_bldr.CreateICmpEQ(data::const_char('\\'), arg),
-                  fn_bldr.CreateICmpULT(data::const_char('\x7e'), arg))),
+      builder.CreateCondBr(
+          builder.CreateOr(
+              builder.CreateICmpUGT(data::const_char(' '), arg),
+              builder.CreateOr(
+                  builder.CreateICmpEQ(data::const_char('\\'), arg),
+                  builder.CreateICmpULT(data::const_char('\x7e'), arg))),
           exceptional_block, standard_block);
 
-      fn_bldr.SetInsertPoint(standard_block);
-      fn_bldr.CreateCall(cstdlib::printf(),
-                         {data::global_string(fn_bldr, "'%c'"), arg});
-      fn_bldr.CreateBr(exit);
+      builder.SetInsertPoint(standard_block);
+      builder.CreateCall(cstdlib::printf(),
+                         {data::global_string(builder, "'%c'"), arg});
+      builder.CreateBr(exit);
 
-      fn_bldr.SetInsertPoint(exceptional_block);
+      builder.SetInsertPoint(exceptional_block);
 
       auto branch_default = make_block("default", repr_fn_);
 
-      auto switch_stmt = fn_bldr.CreateSwitch(arg, branch_default);
+      auto switch_stmt = builder.CreateSwitch(arg, branch_default);
 
-      fn_bldr.SetInsertPoint(branch_default);
-      fn_bldr.CreateCall(cstdlib::printf(),
-                         {data::global_string(fn_bldr, "'\\x%02x'"), arg});
-      fn_bldr.CreateBr(exit);
+      builder.SetInsertPoint(branch_default);
+      builder.CreateCall(cstdlib::printf(),
+                         {data::global_string(builder, "'\\x%02x'"), arg});
+      builder.CreateBr(exit);
 
-      add_branch(repr_fn_, fn_bldr, switch_stmt, "tab", '\t', "'\\t'", exit);
-      add_branch(repr_fn_, fn_bldr, switch_stmt, "newline", '\n', "'\\n'",
+      add_branch(repr_fn_, builder, switch_stmt, "tab", '\t', "'\\t'", exit);
+      add_branch(repr_fn_, builder, switch_stmt, "newline", '\n', "'\\n'",
                  exit);
-      add_branch(repr_fn_, fn_bldr, switch_stmt, "carriage_return", '\r',
+      add_branch(repr_fn_, builder, switch_stmt, "carriage_return", '\r',
                  "'\\r'", exit);
-      add_branch(repr_fn_, fn_bldr, switch_stmt, "backslash", '\\', "'\\\\'",
+      add_branch(repr_fn_, builder, switch_stmt, "backslash", '\\', "'\\\\'",
                  exit);
 
-      fn_bldr.SetInsertPoint(exit);
-      fn_bldr.CreateRetVoid();
+      builder.SetInsertPoint(exit);
+      builder.CreateRetVoid();
     }
 
+    builder.SetInsertPoint(prev_block);
     builder.CreateCall(repr_fn_, {val});
 
   } else if (this == Int) {
@@ -128,6 +130,8 @@ void Primitive::call_repr(llvm::Value *val) {
 }
 
 void Array::call_repr(llvm::Value *val) {
+  auto prev_block = builder.GetInsertBlock();
+
   if (repr_fn_ == nullptr) {
     // TODO what about arrays of types?
     auto fn_type = Func(Ptr(this), Void);
@@ -135,61 +139,61 @@ void Array::call_repr(llvm::Value *val) {
                                       "repr." + Mangle(this), global_module);
     llvm::Value *arg = repr_fn_->args().begin();
 
-    llvm::IRBuilder<> fn_bldr(llvm::getGlobalContext());
     auto enter_block = make_block("enter", repr_fn_);
-    fn_bldr.SetInsertPoint(enter_block);
+    builder.SetInsertPoint(enter_block);
 
-    fn_bldr.CreateCall(cstdlib::putchar(), {data::const_char('[')});
+    builder.CreateCall(cstdlib::putchar(), {data::const_char('[')});
 
     auto len_ptr =
-        fn_bldr.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
-    auto len_val = fn_bldr.CreateLoad(len_ptr);
+        builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
+    auto len_val = builder.CreateLoad(len_ptr);
 
     auto loop_block      = make_block("loop.body", repr_fn_);
     auto loop_head_block = make_block("loop.head", repr_fn_);
     auto done_block      = make_block("exit", repr_fn_);
 
-    fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(len_val, data::const_uint(0)),
+    builder.CreateCondBr(builder.CreateICmpEQ(len_val, data::const_uint(0)),
                          done_block, loop_head_block);
 
-    fn_bldr.SetInsertPoint(loop_head_block);
+    builder.SetInsertPoint(loop_head_block);
 
     // Start at position 1, not zero
-    auto data_ptr_ptr = fn_bldr.CreateGEP(
+    auto data_ptr_ptr = builder.CreateGEP(
         arg, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
-    llvm::Value *start_ptr = fn_bldr.CreateLoad(data_ptr_ptr, "start_ptr");
-    auto end_ptr           = fn_bldr.CreateGEP(start_ptr, {len_val}, "end_ptr");
+    llvm::Value *start_ptr = builder.CreateLoad(data_ptr_ptr, "start_ptr");
+    auto end_ptr           = builder.CreateGEP(start_ptr, {len_val}, "end_ptr");
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(fn_bldr, data_type, start_ptr));
+    data_type->call_repr(PtrCallFix(builder, data_type, start_ptr));
 
     start_ptr =
-        fn_bldr.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
-    fn_bldr.CreateCondBr(fn_bldr.CreateICmpEQ(start_ptr, end_ptr), done_block,
+        builder.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
+    builder.CreateCondBr(builder.CreateICmpEQ(start_ptr, end_ptr), done_block,
                          loop_block);
 
     // Otherwise, print ", element" repeatedly.
-    fn_bldr.SetInsertPoint(loop_block);
-    auto phi = fn_bldr.CreatePHI(*Ptr(data_type), 2, "loop_phi");
+    builder.SetInsertPoint(loop_block);
+    auto phi = builder.CreatePHI(*Ptr(data_type), 2, "loop_phi");
     phi->addIncoming(start_ptr, loop_head_block);
 
-    fn_bldr.CreateCall(cstdlib::printf(), {data::global_string(fn_bldr, ", ")});
+    builder.CreateCall(cstdlib::printf(), {data::global_string(builder, ", ")});
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(fn_bldr, data_type, phi));
+    data_type->call_repr(PtrCallFix(builder, data_type, phi));
 
-    auto next_ptr = fn_bldr.CreateGEP(phi, data::const_uint(1));
-    fn_bldr.CreateCondBr(fn_bldr.CreateICmpULT(next_ptr, end_ptr), loop_block,
+    auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
+    builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,
                          done_block);
     phi->addIncoming(next_ptr, loop_block);
-    fn_bldr.SetInsertPoint(done_block);
+    builder.SetInsertPoint(done_block);
 
-    fn_bldr.CreateCall(cstdlib::putchar(), {data::const_char(']')});
-    fn_bldr.CreateRetVoid();
+    builder.CreateCall(cstdlib::putchar(), {data::const_char(']')});
+    builder.CreateRetVoid();
   }
 
+  builder.SetInsertPoint(prev_block);
   builder.CreateCall(repr_fn_, {val});
 }
 

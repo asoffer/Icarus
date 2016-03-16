@@ -69,6 +69,8 @@ struct BlockScope : public Scope {
   void uninitialize();
   void make_return(llvm::Value *val);
 
+  void set_parent_function(llvm::Function *fn);
+
   llvm::BasicBlock *entry, *exit;
 };
 
@@ -77,7 +79,6 @@ struct FnScope : public BlockScope {
   virtual bool is_function_scope() { return true; }
   virtual ~FnScope(){}
 
-  void set_parent_function(llvm::Function *fn);
   void add_scope(Scope *scope);
   void remove_scope(Scope *scope);
 

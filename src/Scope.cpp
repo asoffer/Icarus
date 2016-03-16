@@ -129,8 +129,7 @@ void Scope::verify_no_shadowing() {
 }
 
 void BlockScope::initialize() {
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-  bldr.SetInsertPoint(entry);
+  builder.SetInsertPoint(entry);
   for (auto decl_ptr : ordered_decls_) {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
@@ -144,19 +143,18 @@ void BlockScope::initialize() {
     //   init_args[0] = decl_id->alloc;
     //   // TODO
     //   // auto array_type = static_cast<Array*>(decl_type);
-    //   // bldr.CreateCall(array_type->initialize(), init_args);
+    //   // builder.CreateCall(array_type->initialize(), init_args);
     //   continue;
 
     // } else {
     if (decl_id->is_function_arg) continue;
-    decl_type->call_init(bldr, {decl_id->alloc});
+    decl_type->call_init(builder, {decl_id->alloc});
     // }
   }
 }
 
 void BlockScope::uninitialize() {
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-  bldr.SetInsertPoint(exit);
+  builder.SetInsertPoint(exit);
 
   for (int i = static_cast<int>(ordered_decls_.size()) - 1; i >= 0; --i) {
     auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
@@ -164,7 +162,7 @@ void BlockScope::uninitialize() {
     // TODO is this correct?
     if (decl_id->is_function_arg) continue;
 
-    decl_id->type->call_uninit(bldr, {decl_id->alloc});
+    decl_id->type->call_uninit(builder, {decl_id->alloc});
   }
 }
 
@@ -179,8 +177,10 @@ FnScope::FnScope(llvm::Function *fn) : fn_type(nullptr), return_value(nullptr) {
   set_parent_function(fn);
 }
 
-void FnScope::set_parent_function(llvm::Function *fn) {
-  if (fn) { llvm_fn = fn; }
+void BlockScope::set_parent_function(llvm::Function *fn) {
+  // NOTE previously you also checked if fn was a nullptr. Must you still do this?
+  if (is_function_scope()) { static_cast<FnScope *>(this)->llvm_fn = fn; }
+
   if (entry && entry->getParent()) { entry->removeFromParent(); }
   if (exit && exit->getParent()) { exit->removeFromParent(); }
 
@@ -194,12 +194,11 @@ void FnScope::add_scope(Scope *scope) { innards_.insert(scope); }
 void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
 
 void FnScope::initialize() {
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-  bldr.SetInsertPoint(entry);
+  builder.SetInsertPoint(entry);
 
   if (fn_type->output != Void) {
     // TODO multiple return types
-    return_value = bldr.CreateAlloca(*fn_type->output, nullptr,  "retval");
+    return_value = builder.CreateAlloca(*fn_type->output, nullptr,  "retval");
   }
 
   allocate(this);
@@ -210,8 +209,8 @@ void FnScope::initialize() {
 }
 
 void FnScope::leave() {
-  uninitialize();
   builder.SetInsertPoint(exit);
+  uninitialize();
   if (return_value) {
     builder.CreateRet(builder.CreateLoad(return_value));
   } else {
