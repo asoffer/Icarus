@@ -16,7 +16,6 @@ extern llvm::Constant *free();
 namespace data {
 extern llvm::Value *const_char(char c);
 extern llvm::Value *const_uint(size_t n);
-extern llvm::Value *const_neg(llvm::IRBuilder<> &bldr, size_t n);
 } // namespace data
 
 extern llvm::BasicBlock *make_block(const std::string &name,

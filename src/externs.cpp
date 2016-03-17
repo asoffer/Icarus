@@ -88,17 +88,6 @@ namespace data {
         llvm::APInt(32, static_cast<unsigned int>(n), false));
   }
 
-  llvm::Value* const_neg(llvm::IRBuilder<>& bldr, size_t n) {
-    assert(n <= (1 << 30) && "Potential overflow on compile-time integer constants");
-
-    return bldr.CreateSub(
-       llvm::ConstantInt::get(
-         llvm::getGlobalContext(), llvm::APInt(32, 0, true)),
-       llvm::ConstantInt::get(
-         llvm::getGlobalContext(), llvm::APInt(32, n, true)));
-  }
-
-
   llvm::Value* const_uint(size_t n) {
     assert(n <= (1 << 30) && "Potential overflow on compile-time integer constants");
 

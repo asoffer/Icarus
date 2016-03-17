@@ -17,7 +17,6 @@ extern llvm::Constant *malloc();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_neg(llvm::IRBuilder<> &bldr, size_t n);
 extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
