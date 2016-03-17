@@ -144,6 +144,7 @@ public:
   virtual bool is_function() const { return false; }
   virtual bool is_struct() const { return false; }
   virtual bool is_enum() const { return false; }
+  virtual bool is_fwd_decl() const { return false; }
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
 
@@ -339,18 +340,16 @@ struct ForwardDeclaration : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  static std::vector<Type*> forward_declarations;
+  static std::vector<Type *> forward_declarations;
 
-  ForwardDeclaration(AST::Expression* expr) : expr(expr) {
-    index = forward_declarations.size();
-    forward_declarations.push_back(nullptr);
-  }
+  ForwardDeclaration(AST::Expression *expr);
+
+  void set(Type *type);
 
   size_t index;
-  AST::Expression* expr;
+  AST::Expression *expr;
+  Type *eval;
 };
-
-
 
 std::ostream &operator<<(std::ostream &os, const Type &t);
 

@@ -194,6 +194,16 @@ void Structure::insert_field(const std::string &name, Type *ty,
   has_vars |= ty->has_vars;
 }
 
+ForwardDeclaration::ForwardDeclaration(AST::Expression *expr)
+    : expr(expr), eval(nullptr) {
+  index = forward_declarations.size();
+  forward_declarations.push_back(nullptr);
+}
+
+void ForwardDeclaration::set(Type *type) {
+  eval = type;
+}
+
 bool Type::is_big() const { return is_array() || is_struct(); }
 bool Type::stores_data() const {
   return this != Type_ && !is_function() && !is_dependent_type() &&

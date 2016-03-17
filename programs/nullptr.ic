@@ -1,29 +1,30 @@
 main := void -> void {
   x : &int
-  x = null
-
-  y : &char = null
- 
-  print x
-  print '\n'
   x = alloc(int)
-  print x
-  print '\n'
-  @x = 17
-  print @x
-  print '\n'
-  free x
-  print x
-  print "\n============================\n"
-  print y
-  print '\n'
-  y = alloc(char)
-  print y
-  print '\n'
-  @y = ascii(65u)
-  print @y
-  print '\n'
-  free y
-  print y
-  print '\n'
+  @x = 3
+//
+//  y : &char = null
+// 
+//  print x
+//  print '\n'
+//  x = alloc(int)
+//  print x
+//  print '\n'
+//  @x = 17
+//  print @x
+//  print '\n'
+//  free x
+//  print x
+//  print "\n============================\n"
+//  print y
+//  print '\n'
+//  y = alloc(char)
+//  print y
+//  print '\n'
+//  @y = ascii(65u)
+//  print @y
+//  print '\n'
+//  free y
+//  print y
+//  print '\n'
 }

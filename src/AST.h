@@ -11,7 +11,7 @@
 #include "Language.h"
 #include "TimeEval.h"
 #include "AST/DeclType.h"
-#include "Type.h"
+
 #include "Scope.h"
 #include "ErrorLog.h"
 #include "Context.h"
@@ -23,6 +23,8 @@ struct BlockScope;
 struct FnScope;
 struct Structure;
 struct Enumeration;
+
+struct Type;
 
 template <typename T> T *steal(AST::Expression *&n) {
 #ifdef DEBUG

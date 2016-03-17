@@ -6,11 +6,10 @@ extern llvm::Module* global_module;
 namespace cstdlib {
   extern llvm::Constant* putchar();
   extern llvm::Constant* printf();
-
 }  // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s);
+  extern llvm::Value* global_string(const std::string& s);
 }  // namespace data
 
 void Primitive::call_print(llvm::Value* val) {
@@ -18,8 +17,7 @@ void Primitive::call_print(llvm::Value* val) {
     builder.CreateCall(cstdlib::putchar(), { val });
 
   } else if (this == Uint) {
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string(builder, "%u"), val});
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%u"), val});
 
   } else {
     call_repr(val);

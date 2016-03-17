@@ -1,7 +1,8 @@
 #include "Type.h"
 #include "Scope.h"
 
-extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr);
+extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t,
+                               llvm::Value *ptr);
 
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -14,8 +15,7 @@ extern llvm::Constant *printf();
 namespace data {
 extern llvm::Value *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
-extern llvm::Value *global_string(llvm::IRBuilder<> &bldr,
-                                  const std::string &s);
+extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 void add_branch(llvm::Function *fn, llvm::SwitchInst *switch_stmt,
@@ -25,8 +25,7 @@ void add_branch(llvm::Function *fn, llvm::SwitchInst *switch_stmt,
   auto branch = make_block(name, fn);
   switch_stmt->addCase(data::const_char(char_to_display), branch);
   builder.SetInsertPoint(branch);
-  builder.CreateCall(cstdlib::printf(),
-                     {data::global_string(builder, display_as)});
+  builder.CreateCall(cstdlib::printf(), {data::global_string(display_as)});
   builder.CreateRetVoid();
 }
 
@@ -48,13 +47,11 @@ void Primitive::call_repr(llvm::Value *val) {
       builder.CreateCondBr(arg, true_block, false_block);
 
       builder.SetInsertPoint(true_block);
-      builder.CreateCall(cstdlib::printf(),
-                         data::global_string(builder, "true"));
+      builder.CreateCall(cstdlib::printf(), data::global_string("true"));
       builder.CreateRetVoid();
 
       builder.SetInsertPoint(false_block);
-      builder.CreateCall(cstdlib::printf(),
-                         data::global_string(builder, "false"));
+      builder.CreateCall(cstdlib::printf(), data::global_string("false"));
       builder.CreateRetVoid();
     }
 
@@ -83,8 +80,7 @@ void Primitive::call_repr(llvm::Value *val) {
           exceptional_block, standard_block);
 
       builder.SetInsertPoint(standard_block);
-      builder.CreateCall(cstdlib::printf(),
-                         {data::global_string(builder, "'%c'"), arg});
+      builder.CreateCall(cstdlib::printf(), {data::global_string("'%c'"), arg});
       builder.CreateRetVoid();
 
       builder.SetInsertPoint(exceptional_block);
@@ -95,7 +91,7 @@ void Primitive::call_repr(llvm::Value *val) {
 
       builder.SetInsertPoint(branch_default);
       builder.CreateCall(cstdlib::printf(),
-                         {data::global_string(builder, "'\\x%02x'"), arg});
+                         {data::global_string("'\\x%02x'"), arg});
       builder.CreateRetVoid();
 
       add_branch(repr_fn_, switch_stmt, "tab", '\t', "'\\t'");
@@ -108,24 +104,21 @@ void Primitive::call_repr(llvm::Value *val) {
     builder.CreateCall(repr_fn_, {val});
 
   } else if (this == Int) {
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string(builder, "%d"), val});
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%d"), val});
 
   } else if (this == Real) {
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string(builder, "%f"), val});
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%f"), val});
 
   } else if (this == Type_) {
     // NOTE: BE VERY CAREFUL HERE. YOU ARE TYPE PUNNING!
     auto type_val = reinterpret_cast<Type *>(val);
 
     builder.CreateCall(cstdlib::printf(),
-                       {data::global_string(builder, "%s"),
-                        data::global_string(builder, type_val->to_string())});
+                       {data::global_string("%s"),
+                        data::global_string(type_val->to_string())});
 
   } else if (this == Uint) {
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string(builder, "%uu"), val});
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%uu"), val});
   }
 }
 
@@ -177,7 +170,7 @@ void Array::call_repr(llvm::Value *val) {
     auto phi = builder.CreatePHI(*Ptr(data_type), 2, "loop_phi");
     phi->addIncoming(start_ptr, loop_head_block);
 
-    builder.CreateCall(cstdlib::printf(), {data::global_string(builder, ", ")});
+    builder.CreateCall(cstdlib::printf(), {data::global_string(", ")});
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
@@ -200,10 +193,9 @@ void Array::call_repr(llvm::Value *val) {
 // NOTE: [function ...] probably looks too much like an array. That's why you
 // used <function ...> in the first place.
 void Function::call_repr(llvm::Value *val) {
-  builder.CreateCall(
-      cstdlib::printf(),
-      {data::global_string(builder, "%s"),
-       data::global_string(builder, "<function " + to_string() + ">")});
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string("%s"),
+                      data::global_string("<function " + to_string() + ">")});
 }
 
 void ForwardDeclaration::call_repr(llvm::Value *val) {
@@ -211,14 +203,13 @@ void ForwardDeclaration::call_repr(llvm::Value *val) {
 }
 
 void DependentType::call_repr(llvm::Value *val) {
-  builder.CreateCall(
-      cstdlib::printf(),
-      {data::global_string(builder, "%s"),
-       data::global_string(builder, "<dependent " + to_string() + ">")});
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string("%s"),
+                      data::global_string("<dependent " + to_string() + ">")});
 }
 
 void Pointer::call_repr(llvm::Value *val) {
-  builder.CreateCall(cstdlib::printf(), {data::global_string(builder, "&_%x"), val});
+  builder.CreateCall(cstdlib::printf(), {data::global_string("&_%x"), val});
 }
 
 void Enumeration::call_repr(llvm::Value *val) {
@@ -228,9 +219,8 @@ void Enumeration::call_repr(llvm::Value *val) {
   // For now, just print the number in brackets after the enums name
   auto val_str = builder.CreateLoad(
       builder.CreateGEP(string_data, {data::const_uint(0), val}));
-  builder.CreateCall(
-      cstdlib::printf(),
-      {data::global_string(builder, to_string() + ".%s"), val_str});
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string(to_string() + ".%s"), val_str});
 }
 
 void Tuple::call_repr(llvm::Value *val) {}

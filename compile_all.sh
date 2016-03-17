@@ -33,6 +33,7 @@ bin/icarus programs/multiple_args.ic
 bin/icarus programs/mutual_ptrs.ic
 bin/icarus programs/mutual_ptrs2.ic
 bin/icarus programs/negate.ic
+bin/icarus programs/nullptr.ic
 bin/icarus programs/pair.ic
 bin/icarus programs/paren_test.ic
 bin/icarus programs/pi.ic

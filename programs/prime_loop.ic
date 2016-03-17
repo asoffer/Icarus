@@ -1,18 +1,18 @@
 
 main := void -> void {
-num_primes := 10000
-m := 2
-
-while num_primes > 0 {
-  if is_prime(m) {
-    print m
-    print ','
-    print ' '
-    num_primes -= 1
-  }
+  num_primes := 10000
+  m := 2
   
-  m += 1
-}
+  while num_primes > 0 {
+    if is_prime(m) {
+      print m
+      print ','
+      print ' '
+      num_primes -= 1
+    }
+    
+    m += 1
+  }
 }
 
 is_prime := (n : int) -> bool {
@@ -26,5 +26,3 @@ is_prime := (n : int) -> bool {
 
   return b
 }
-
-print '\n'

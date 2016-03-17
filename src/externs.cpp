@@ -133,11 +133,10 @@ namespace data {
         llvm::APInt(8, static_cast<size_t>(c), false));
   }
 
-
-  llvm::Value* global_string(llvm::IRBuilder<>& bldr, const std::string& s) {
+  llvm::Value *global_string(const std::string &s) {
     auto iter = global_strings.find(s);
     return iter == global_strings.end()
-               ? global_strings[s] = bldr.CreateGlobalStringPtr(s)
+               ? global_strings[s] = builder.CreateGlobalStringPtr(s)
                : iter->second;
   }
 }  // namespace data

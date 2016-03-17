@@ -1,3 +1,7 @@
-main := void -> void {
-print 3
+node := (T: type) -> type {
+  return struct {
+    next: &node(T)
+  }
 }
+
+node(int)

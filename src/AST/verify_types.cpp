@@ -5,6 +5,13 @@
 #include <sstream>
 
 extern ErrorLog error_log;
+void resolve_forward_declaration(AST::Expression *e) {
+  if (e->type->is_fwd_decl()) {
+    auto fwd = static_cast<ForwardDeclaration *>(e->type);
+    assert(fwd->eval && "forward declaration not yet fully determined");
+    e->type = fwd->eval;
+  }
+}
 
 namespace AST {
 Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
@@ -455,6 +462,8 @@ void Assignment::verify_types() {
       }
     }
 
+    resolve_forward_declaration(lhs);
+    resolve_forward_declaration(rhs);
     if (lhs->type != rhs->type) {
       error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
                                   lhs->type->to_string() +
