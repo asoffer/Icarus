@@ -890,18 +890,18 @@ llvm::Value *Conditional::generate_code() {
   for (size_t i = 0; i < body_scopes.size(); ++i) {
     Scope::Stack.push(body_scopes[i]);
     body_scopes[i]->initialize();
+    builder.CreateBr(body_block[i]);
 
+    builder.SetInsertPoint(body_block[i]);
     statements[i]->generate_code();
     builder.CreateBr(body_scopes[i]->exit);
 
-    body_scopes[i]->uninitialize();
     builder.SetInsertPoint(body_scopes[i]->exit);
-
+    body_scopes[i]->uninitialize();
     builder.CreateBr(land_block);
 
     Scope::Stack.pop();
   }
-
 
   builder.SetInsertPoint(land_block);
   return nullptr;

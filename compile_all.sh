@@ -19,6 +19,7 @@ bin/icarus programs/dynamic_allocation.ic
 bin/icarus programs/enum.ic
 bin/icarus programs/fn_call.ic
 bin/icarus programs/fn_expression_literal.ic
+bin/icarus programs/for_test.ic
 bin/icarus programs/if.ic
 bin/icarus programs/import.ic
 bin/icarus programs/import_cycle.ic
