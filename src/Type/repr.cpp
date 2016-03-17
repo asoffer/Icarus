@@ -18,16 +18,16 @@ extern llvm::Value *global_string(llvm::IRBuilder<> &bldr,
                                   const std::string &s);
 } // namespace data
 
-void add_branch(llvm::Function *fn, llvm::IRBuilder<> &bldr,
-                llvm::SwitchInst *switch_stmt, const std::string &name,
-                char char_to_display, const std::string &display_as,
-                llvm::BasicBlock *jump_block = nullptr) {
+void add_branch(llvm::Function *fn, llvm::SwitchInst *switch_stmt,
+                const std::string &name, char char_to_display,
+                const std::string &display_as) {
 
   auto branch = make_block(name, fn);
   switch_stmt->addCase(data::const_char(char_to_display), branch);
-  bldr.SetInsertPoint(branch);
-  bldr.CreateCall(cstdlib::printf(), {data::global_string(bldr, display_as)});
-  if (jump_block) { bldr.CreateBr(jump_block); }
+  builder.SetInsertPoint(branch);
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string(builder, display_as)});
+  builder.CreateRetVoid();
 }
 
 void Primitive::call_repr(llvm::Value *val) {
@@ -39,15 +39,22 @@ void Primitive::call_repr(llvm::Value *val) {
                                         llvm::Function::ExternalLinkage,
                                         "repr.bool", global_module);
       llvm::Value *arg = repr_fn_->args().begin();
+      arg->setName("b");
 
-      auto entry = make_block("entry", repr_fn_);
+      auto entry       = make_block("entry", repr_fn_);
+      auto true_block  = make_block("true.block", repr_fn_);
+      auto false_block = make_block("false.block", repr_fn_);
       builder.SetInsertPoint(entry);
-      auto offset = builder.CreateMul(builder.CreateZExt(arg, *RawPtr),
-                                      data::const_uint(6));
+      builder.CreateCondBr(arg, true_block, false_block);
 
-      auto str = builder.CreateGEP(data::global_string(builder, "false\0true"),
-                                   offset);
-      builder.CreateCall(cstdlib::printf(), str);
+      builder.SetInsertPoint(true_block);
+      builder.CreateCall(cstdlib::printf(),
+                         data::global_string(builder, "true"));
+      builder.CreateRetVoid();
+
+      builder.SetInsertPoint(false_block);
+      builder.CreateCall(cstdlib::printf(),
+                         data::global_string(builder, "false"));
       builder.CreateRetVoid();
     }
 
@@ -62,7 +69,6 @@ void Primitive::call_repr(llvm::Value *val) {
       llvm::Value *arg = repr_fn_->args().begin();
 
       auto entry = make_block("entry", repr_fn_);
-      auto exit = make_block("exit", repr_fn_);
       builder.SetInsertPoint(entry);
 
       auto standard_block    = make_block("standard", repr_fn_);
@@ -79,7 +85,7 @@ void Primitive::call_repr(llvm::Value *val) {
       builder.SetInsertPoint(standard_block);
       builder.CreateCall(cstdlib::printf(),
                          {data::global_string(builder, "'%c'"), arg});
-      builder.CreateBr(exit);
+      builder.CreateRetVoid();
 
       builder.SetInsertPoint(exceptional_block);
 
@@ -90,18 +96,12 @@ void Primitive::call_repr(llvm::Value *val) {
       builder.SetInsertPoint(branch_default);
       builder.CreateCall(cstdlib::printf(),
                          {data::global_string(builder, "'\\x%02x'"), arg});
-      builder.CreateBr(exit);
-
-      add_branch(repr_fn_, builder, switch_stmt, "tab", '\t', "'\\t'", exit);
-      add_branch(repr_fn_, builder, switch_stmt, "newline", '\n', "'\\n'",
-                 exit);
-      add_branch(repr_fn_, builder, switch_stmt, "carriage_return", '\r',
-                 "'\\r'", exit);
-      add_branch(repr_fn_, builder, switch_stmt, "backslash", '\\', "'\\\\'",
-                 exit);
-
-      builder.SetInsertPoint(exit);
       builder.CreateRetVoid();
+
+      add_branch(repr_fn_, switch_stmt, "tab", '\t', "'\\t'");
+      add_branch(repr_fn_, switch_stmt, "newline", '\n', "'\\n'");
+      add_branch(repr_fn_, switch_stmt, "carriage_return", '\r', "'\\r'");
+      add_branch(repr_fn_, switch_stmt, "backslash", '\\', "'\\\\'");
     }
 
     builder.SetInsertPoint(prev_block);

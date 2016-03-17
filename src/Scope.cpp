@@ -17,6 +17,8 @@ namespace data {
 extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
+extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr);
+
 BlockScope *Scope::Global = nullptr; // Initialized in main
 std::vector<AST::Declaration *> Scope::decl_registry_ = {};
 
@@ -169,7 +171,16 @@ void BlockScope::uninitialize() {
 void BlockScope::make_return(llvm::Value *val) {
   FnScope *fn_scope =
       is_function_scope() ? static_cast<FnScope *>(this) : containing_function_;
-  builder.CreateStore(val, fn_scope->return_value);
+
+  // TODO multiple return values?
+
+  if (fn_scope->fn_type->output->is_big()) {
+    builder.CreateCall(fn_scope->fn_type->output->assign(),
+                       {val, fn_scope->return_value});
+  } else {
+    builder.CreateStore(val, fn_scope->return_value);
+  }
+
   builder.CreateBr(fn_scope->exit);
 }
 
@@ -198,7 +209,12 @@ void FnScope::initialize() {
 
   if (fn_type->output != Void) {
     // TODO multiple return types
-    return_value = builder.CreateAlloca(*fn_type->output, nullptr,  "retval");
+    if (fn_type->output->is_big()) {
+      // TODO which one? This works iff there is only one
+      return_value = llvm_fn->args().begin();
+    } else {
+      return_value = builder.CreateAlloca(*fn_type->output, nullptr, "retval");
+    }
   }
 
   allocate(this);
@@ -211,10 +227,12 @@ void FnScope::initialize() {
 void FnScope::leave() {
   builder.SetInsertPoint(exit);
   uninitialize();
-  if (return_value) {
-    builder.CreateRet(builder.CreateLoad(return_value));
-  } else {
+  // TODO multiple return values
+  auto ret_type = fn_type->output;
+  if (ret_type == Void || ret_type->is_big()) {
     builder.CreateRetVoid();
+  } else {
+    builder.CreateRet(builder.CreateLoad(return_value));
   }
 }
 
@@ -240,65 +258,3 @@ void FnScope::allocate(Scope* scope) {
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }
 }
-
-
-/*****************************************************************************
-
-
-void Scope::make_return(llvm::Value* val) {
-  assert(containing_function_);
-  containing_function_->make_return(val);
-}
-
-void FnScope::make_return(llvm::Value* val) {
-  // nullptr means void return type
-  if (val == nullptr) return;
-
-  // TODO multiple return types for now just take one
-  auto ret_type = fn_type->output;
-  if (ret_type->is_struct()) {
-    // TODO pull out memcpy into a single fn call
-    auto val_raw = builder.CreateBitCast(val, *RawPtr);
-    auto ret_raw = builder.CreateBitCast(return_val_, *RawPtr);
-    builder.CreateCall(cstdlib::memcpy(),
-        { ret_raw, val_raw, data::const_uint(ret_type->bytes()) });
-  } else {
-    builder.CreateStore(val, return_val_);
-  }
-}
-
-
-// Gets the type of that the identifier was declared as. This is a pointer to
-// an expression object, rather than a Type object.
-AST::Expression *Scope::get_declared_type(AST::Identifier *idptr) const {
-  for (const auto& decl_ptr : ordered_decls_) {
-    if (decl_ptr->identifier != idptr) continue;
-    return decl_ptr->type_expr;
-  }
-
-  // This cannot segfault because the program would have exited earlier
-  // if it was undeclared.
-  return parent->get_declared_type(idptr);
-
-}
-
-// This function allocates all the things declared the scope parameter in this
-// function scope.
-//
-// TODO maybe we should set this up differently, so it's a method of the scope
-// and it just calls it using containing_function_?
-
-
-Scope *CurrentScope() {
-  if (Scope::Stack.empty()) return nullptr;
-  return Scope::Stack.top();
-}
-
-std::stack<Scope *> Scope::Stack;
-
-llvm::IRBuilder<> &CurrentBuilder() { 
-  return CurrentScope()->builder; }
-
-Context &CurrentContext() { return CurrentScope()->context(); }
-
-*/

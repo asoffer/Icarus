@@ -1045,13 +1045,20 @@ llvm::Value *For::generate_code() {
 
     builder.SetInsertPoint(land_block);
   } else {
-    // TODO that condition should really be encodede into the loop somewhere to
+    // TODO that condition should really be encoded into the loop somewhere to
     // make it faster to check.
     auto t = container->evaluate(scope_->context).as_type;
     if (t->is_enum()) {
       auto enum_type = static_cast<Enumeration *>(t);
       // TODO get them by means other than string name
-      for (const auto kv: enum_type->int_values) {
+
+      // Mostly we don't need these.
+      // TODO what if we allocate inside the loop?
+      for_scope->entry->removeFromParent();
+      for_scope->exit->removeFromParent();
+
+        for (const auto kv: enum_type->int_values) {
+
         builder.CreateStore(data::const_uint(kv.second),
                          iterator->identifier->alloc);
         statements->generate_code();
