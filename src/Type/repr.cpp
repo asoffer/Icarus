@@ -1,8 +1,7 @@
 #include "Type.h"
 #include "Scope.h"
 
-extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t,
-                               llvm::Value *ptr);
+extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
 
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -158,7 +157,7 @@ void Array::call_repr(llvm::Value *val) {
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(builder, data_type, start_ptr));
+    data_type->call_repr(PtrCallFix(data_type, start_ptr));
 
     start_ptr =
         builder.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
@@ -174,7 +173,7 @@ void Array::call_repr(llvm::Value *val) {
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(builder, data_type, phi));
+    data_type->call_repr(PtrCallFix(data_type, phi));
 
     auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
     builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,

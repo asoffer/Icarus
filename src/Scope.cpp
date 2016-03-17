@@ -17,8 +17,6 @@ namespace data {
 extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
-extern llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr);
-
 BlockScope *Scope::Global = nullptr; // Initialized in main
 std::vector<AST::Declaration *> Scope::decl_registry_ = {};
 
@@ -150,7 +148,7 @@ void BlockScope::initialize() {
 
     // } else {
     if (decl_id->is_function_arg) continue;
-    decl_type->call_init(builder, {decl_id->alloc});
+    decl_type->call_init({decl_id->alloc});
     // }
   }
 }
@@ -164,7 +162,7 @@ void BlockScope::uninitialize() {
     // TODO is this correct?
     if (decl_id->is_function_arg) continue;
 
-    decl_id->type->call_uninit(builder, {decl_id->alloc});
+    decl_id->type->call_uninit({decl_id->alloc});
   }
 }
 

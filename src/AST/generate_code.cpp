@@ -124,7 +124,7 @@ llvm::Value *Terminal::generate_code() {
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
-    Arr(Char)->initialize_literal(builder, char_array_ptr, token().size());
+    Arr(Char)->initialize_literal(char_array_ptr, token().size());
 
     auto char_data_ptr = builder.CreateLoad(
         builder.CreateGEP(char_array_ptr,
@@ -170,10 +170,10 @@ llvm::Value *Unop::generate_code() {
   llvm::Value *val = operand->generate_code();
   switch (op) {
   case Language::Operator::Sub: {
-    return operand->type->call_neg(builder, val);
+    return operand->type->call_neg(val);
   }
   case Language::Operator::Not: {
-    return operand->type->call_not(builder, val);
+    return operand->type->call_not(val);
   }
   case Language::Operator::Free: {
     builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, *RawPtr)});
@@ -269,7 +269,7 @@ llvm::Value *Binop::generate_code() {
     assert(false && "Not yet implemented");
   }
   case Language::Operator::Cast: {
-    return lhs->type->call_cast(builder, lhs_val,
+    return lhs->type->call_cast(lhs_val,
                                 rhs->evaluate(CurrentContext()).as_type);
   }
   case Language::Operator::Call: {
@@ -326,16 +326,11 @@ llvm::Value *Binop::generate_code() {
 
   auto rhs_val = rhs->generate_code();
   switch (op) {
-  case Language::Operator::Add:
-    return type->call_add(builder, lhs_val, rhs_val);
-  case Language::Operator::Sub:
-    return type->call_sub(builder, lhs_val, rhs_val);
-  case Language::Operator::Mul:
-    return type->call_mul(builder, lhs_val, rhs_val);
-  case Language::Operator::Div:
-    return type->call_div(builder, lhs_val, rhs_val);
-  case Language::Operator::Mod:
-    return type->call_mod(builder, lhs_val, rhs_val);
+  case Language::Operator::Add: return type->call_add(lhs_val, rhs_val);
+  case Language::Operator::Sub: return type->call_sub(lhs_val, rhs_val);
+  case Language::Operator::Mul: return type->call_mul(lhs_val, rhs_val);
+  case Language::Operator::Div: return type->call_div(lhs_val, rhs_val);
+  case Language::Operator::Mod: return type->call_mod(lhs_val, rhs_val);
   default:;
   }
 
@@ -766,7 +761,7 @@ llvm::Value *Declaration::generate_code() {
     assert(type_expr->is_array_type() && "Not array type");
     auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
     static_cast<Array *>(type)
-        ->initialize_literal(builder, identifier->alloc, len);
+        ->initialize_literal(identifier->alloc, len);
   }
 
   if (decl_type == DeclType::Std || type == Type_) return nullptr;
@@ -838,7 +833,7 @@ llvm::Value *ArrayLiteral::generate_code() {
 
   auto array_data = type->allocate();
 
-  type_as_array->initialize_literal(builder, array_data, num_elems);
+  type_as_array->initialize_literal(array_data, num_elems);
 
   auto head_ptr = builder.CreateLoad(builder.CreateGEP(
       array_data, {data::const_uint(0), data::const_uint(1)}));
@@ -846,7 +841,7 @@ llvm::Value *ArrayLiteral::generate_code() {
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
-    element_type->call_init(builder, data_ptr);
+    element_type->call_init(data_ptr);
 
     builder.CreateCall(element_type->assign(),
                        {elems[i]->generate_code(), data_ptr});

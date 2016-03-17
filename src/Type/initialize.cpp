@@ -2,9 +2,9 @@
 #include "Scope.h"
 
 #ifdef DEBUG
-#define AT(access) .at( (access) )
+#define AT(access) .at((access))
 #else
-#define AT(access) [ (access) ]
+#define AT(access) [(access)]
 #endif
 
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -27,7 +27,7 @@ extern llvm::Value *const_false();
 
 extern llvm::Module *global_module;
 
-void Primitive::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
+void Primitive::call_init(llvm::Value *var) {
   switch (type_) {
   case TypeEnum::Error: assert(false && "Constructor called for type Error");
   case TypeEnum::Unknown:
@@ -35,71 +35,71 @@ void Primitive::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
   case TypeEnum::Type: assert(false && "Constructor called for type");
   case TypeEnum::Void: assert(false && "Constructor called for void type");
   case TypeEnum::NullPtr: assert(false && "Constructor called for raw nullptr");
-  case TypeEnum::Bool: bldr.CreateStore(data::const_false(), var); return;
-  case TypeEnum::Char: bldr.CreateStore(data::const_char('\0'), var); return;
-  case TypeEnum::Int: bldr.CreateStore(data::const_int(0), var); return;
-  case TypeEnum::Real: bldr.CreateStore(data::const_real(0), var); return;
-  case TypeEnum::Uint: bldr.CreateStore(data::const_uint(0), var); return;
+  case TypeEnum::Bool: builder.CreateStore(data::const_false(), var); return;
+  case TypeEnum::Char: builder.CreateStore(data::const_char('\0'), var); return;
+  case TypeEnum::Int: builder.CreateStore(data::const_int(0), var); return;
+  case TypeEnum::Real: builder.CreateStore(data::const_real(0), var); return;
+  case TypeEnum::Uint: builder.CreateStore(data::const_uint(0), var); return;
   }
 }
 
 // TODO Change this is array size is known at compile time
-void Array::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
-  bldr.CreateStore(
+void Array::call_init(llvm::Value *var) {
+  builder.CreateStore(
       data::const_uint(0),
-      bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
-  auto ptr = bldr.CreateBitCast(
-      bldr.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
+      builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+  auto ptr = builder.CreateBitCast(
+      builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
       *Ptr(data_type));
-  bldr.CreateStore(
-      ptr, bldr.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
+  builder.CreateStore(
+      ptr, builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
 }
 
-void Tuple::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
+void Tuple::call_init(llvm::Value *var) {
   // TODO
 }
 
-void Pointer::call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) {
-  bldr.CreateStore(data::null_pointer(pointee), var);
+void Pointer::call_init(llvm::Value *var) {
+  builder.CreateStore(data::null_pointer(pointee), var);
 }
 
-void Function::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Function::call_init(llvm::Value *var) {
   assert(false && "Cannot initialize a function. They are constant");
 }
 
-void Enumeration::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
-  bldr.CreateStore(data::const_uint(0), { var });
+void Enumeration::call_init(llvm::Value *var) {
+  builder.CreateStore(data::const_uint(0), {var});
 }
 
-void DependentType::call_init(llvm::IRBuilder<>&, llvm::Value*) {
+void DependentType::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a dependent type");
 }
 
-void TypeVariable::call_init(llvm::IRBuilder<>&, llvm::Value*) {
+void TypeVariable::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a type variable");
 }
 
-void ForwardDeclaration::call_init(llvm::IRBuilder<> &, llvm::Value *) {
+void ForwardDeclaration::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a forward declaration");
 }
 
-void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
+void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
     auto save_block = builder.GetInsertBlock();
 
-    auto x = Func(Ptr(this), Void);
-    init_fn_ = llvm::Function::Create(*x,
-        llvm::Function::ExternalLinkage, "init." + Mangle(this), global_module);
+    auto x   = Func(Ptr(this), Void);
+    init_fn_ = llvm::Function::Create(*x, llvm::Function::ExternalLinkage,
+                                      "init." + Mangle(this), global_module);
 
     auto block = make_block("entry", init_fn_);
     builder.SetInsertPoint(block);
 
     // initialize all fields
-    for (const auto& kv : field_num_to_llvm_num) {
+    for (const auto &kv : field_num_to_llvm_num) {
       auto the_field_type = field_type AT(kv.first);
-      auto arg = builder.CreateGEP(
-          init_fn_->args().begin(),
-          {data::const_uint(0), data::const_uint(kv.second)});
+      auto arg =
+          builder.CreateGEP(init_fn_->args().begin(),
+                            {data::const_uint(0), data::const_uint(kv.second)});
       auto init_expr = init_values AT(kv.first);
       if (init_expr) {
         // Scope::Stack.push(fn_scope);
@@ -107,7 +107,7 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
         // Scope::Stack.pop();
         builder.CreateCall(the_field_type->assign(), {init_val, arg});
       } else {
-        the_field_type->call_init(builder, {arg});
+        the_field_type->call_init({arg});
       }
     }
 
@@ -115,39 +115,39 @@ void Structure::call_init(llvm::IRBuilder<>& bldr, llvm::Value* var) {
     builder.SetInsertPoint(save_block);
   }
 
-  builder.CreateCall(init_fn_, { var });
+  builder.CreateCall(init_fn_, {var});
 }
 
 // TODO no need to return anything here.
-llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
-                                       llvm::Value *alloc, size_t len) {
-  return initialize_literal(bldr, alloc, data::const_uint(len));
+llvm::Value *Array::initialize_literal(llvm::Value *alloc, size_t len) {
+  return initialize_literal(alloc, data::const_uint(len));
 }
 
 // TODO rename? This isn't really about init-ing literals
-llvm::Value *Array::initialize_literal(llvm::IRBuilder<> &bldr,
-                                       llvm::Value *alloc, llvm::Value *len) {
+llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
   auto use_calloc         = data_type->is_primitive();
   llvm::Value *alloc_call = nullptr;
 
   if (use_calloc) {
-    alloc_call = bldr.CreateBitCast(
-        bldr.CreateCall(cstdlib::calloc(),
-                        {len, data::const_uint(data_type->bytes())}),
+    alloc_call = builder.CreateBitCast(
+        builder.CreateCall(cstdlib::calloc(),
+                           {len, data::const_uint(data_type->bytes())}),
         *Ptr(data_type));
   } else {
     auto bytes_to_alloc =
-        bldr.CreateMul(len, data::const_uint(data_type->bytes()));
+        builder.CreateMul(len, data::const_uint(data_type->bytes()));
 
-    alloc_call = bldr.CreateBitCast(
-        bldr.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
+    alloc_call = builder.CreateBitCast(
+        builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
+        *Ptr(data_type));
   }
 
   // TODO allocate this in the right place
-  bldr.CreateStore(
-      len, bldr.CreateGEP(alloc, {data::const_uint(0), data::const_uint(0)}));
+  builder.CreateStore(len, builder.CreateGEP(alloc, {data::const_uint(0),
+                                                     data::const_uint(0)}));
 
-  bldr.CreateStore(alloc_call, bldr.CreateGEP(alloc, {data::const_uint(0),
-                                                       data::const_uint(1)}));
+  builder.CreateStore(
+      alloc_call,
+      builder.CreateGEP(alloc, {data::const_uint(0), data::const_uint(1)}));
   return alloc;
 }

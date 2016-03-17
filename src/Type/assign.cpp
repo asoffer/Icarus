@@ -67,7 +67,7 @@ llvm::Function* Array::assign() {
   val->setName("val");
   var->setName("var");
 
-  call_uninit(builder, var);
+  call_uninit(var);
   // Allocate space and save the pointer
   auto new_len = builder.CreateLoad(
       builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),

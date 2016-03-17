@@ -156,6 +156,6 @@ namespace builtin {
 // object or a pointer to the object.
 //
 // This really ought to be inlined, but that's not possible keeping it externed
-llvm::Value *PtrCallFix(llvm::IRBuilder<> &bldr, Type *t, llvm::Value *ptr) {
-  return (t->is_big()) ? ptr : bldr.CreateLoad(ptr);
+llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr) {
+  return (t->is_big()) ? ptr : builder.CreateLoad(ptr);
 }

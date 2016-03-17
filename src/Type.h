@@ -81,12 +81,10 @@ extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
 #define ENDING = 0
 
 #define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
-  virtual llvm::Value *call_##op(llvm::IRBuilder<> &bldr, llvm::Value *lhs,    \
-                                 llvm::Value *rhs) ENDING;
+  virtual llvm::Value *call_##op(llvm::Value *lhs, llvm::Value *rhs) ENDING;
 
 #define LEFT_UNARY_OPERATOR_MACRO(op)                                          \
-  virtual llvm::Value *call_##op(llvm::IRBuilder<> &bldr,                      \
-                                 llvm::Value *operand) ENDING;
+  virtual llvm::Value *call_##op(llvm::Value *operand) ENDING;
 
 #define BASIC_METHODS                                                          \
   virtual llvm::Function *assign() ENDING;                                     \
@@ -94,9 +92,9 @@ extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
   virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
-  virtual void call_init(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING;    \
+  virtual void call_init(llvm::Value *var) ENDING;                             \
   virtual void call_repr(llvm::Value *val) ENDING;                             \
-  virtual void call_uninit(llvm::IRBuilder<> &bldr, llvm::Value *var) ENDING
+  virtual void call_uninit(llvm::Value *var) ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -130,8 +128,7 @@ public:
 
   virtual void call_print(llvm::Value *val) { call_repr(val); }
 
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type) {
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type) {
     return nullptr;
   }
 
@@ -166,8 +163,7 @@ public:
 #include "config/binary_operators.conf"
 
   virtual void call_print(llvm::Value *val);
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
 
   enum class TypeEnum {
     Error,
@@ -194,14 +190,11 @@ struct Array : public Type {
 #include "config/binary_operators.conf"
 
   virtual bool requires_uninit() const;
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
 
   llvm::Function *initialize();
-  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
-                                  size_t len);
-  llvm::Value *initialize_literal(llvm::IRBuilder<> &bldr, llvm::Value *alloc,
-                                  llvm::Value *len);
+  llvm::Value *initialize_literal(llvm::Value *alloc, size_t len);
+  llvm::Value *initialize_literal(llvm::Value *alloc, llvm::Value *len);
 
   virtual llvm::Value *allocate() const;
 
@@ -224,8 +217,7 @@ struct Tuple : public Type {
   // TODO requires_uninit()
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
 
   Tuple(const std::vector<Type *> &types);
 
@@ -237,8 +229,7 @@ struct Pointer : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
   Pointer(Type *t);
   Type *pointee;
 };
@@ -251,8 +242,7 @@ struct Function : public Type {
   operator llvm::FunctionType *() const;
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
 
   Function(Type *in, Type *out);
   Type *input, *output;
@@ -285,8 +275,7 @@ struct Structure : public Type {
 
   void set_name(const std::string &name);
 
-  virtual llvm::Value *call_cast(llvm::IRBuilder<> &bldr, llvm::Value *val,
-                                 Type *t);
+  virtual llvm::Value *call_cast(llvm::Value *val, Type *t);
 
   Type *field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
