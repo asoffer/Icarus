@@ -24,8 +24,12 @@ main := void -> void {
   }
   print '\n'
 
+  k := 0u
   for n in uint {
-    print n
-    print '\n'
+    if n == k * k {
+      print n
+      print ' '
+      k += 1u
+    }
   }
 }

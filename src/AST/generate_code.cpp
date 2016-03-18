@@ -758,6 +758,7 @@ llvm::Value *Declaration::generate_code() {
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
   if (decl_type == DeclType::Std && type->is_array()) {
+    // TODO uninitialize previous value
     assert(type_expr->is_array_type() && "Not array type");
     auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
     static_cast<Array *>(type)
@@ -1022,7 +1023,7 @@ llvm::Value *For::generate_code() {
     iterator->identifier->alloc = phi_node;
 
     auto cmp = builder.CreateICmpEQ(phi_node, end_ptr);
-    builder.CreateCondBr(cmp, for_scope->entry, land_block);
+    builder.CreateCondBr(cmp, land_block, for_scope->entry);
 
     Scope::Stack.push(for_scope);
     for_scope->initialize();
@@ -1062,8 +1063,33 @@ llvm::Value *For::generate_code() {
         statements->generate_code();
       }
     } else if (t == Uint) {
-      assert(false && "NOT YET IMPLEMENTED");
 
+      auto loop_block = make_block("loop.body", parent_fn);
+      auto land_block = make_block("loop.land", parent_fn);
+
+      builder.CreateStore(data::const_uint(0), iterator->identifier->alloc);
+      builder.CreateBr(for_scope->entry);
+
+      Scope::Stack.push(for_scope);
+      for_scope->initialize();
+      builder.CreateBr(loop_block);
+
+      builder.SetInsertPoint(loop_block);
+      statements->generate_code();
+
+      builder.CreateStore(
+          builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
+                            data::const_uint(1)),
+          iterator->identifier->alloc);
+
+      builder.CreateBr(for_scope->exit);
+      for_scope->uninitialize();
+      builder.SetInsertPoint(for_scope->exit);
+      builder.CreateBr(for_scope->entry);
+
+      Scope::Stack.pop();
+
+      builder.SetInsertPoint(land_block);
     } else {
       assert(false && "Not yet implemented");
     }
