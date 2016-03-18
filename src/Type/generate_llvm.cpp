@@ -13,7 +13,7 @@ void Array::generate_llvm() const {
   data_type.get->generate_llvm();
   auto struct_type = llvm::StructType::create(global_module->getContext());
 
-  struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
+  struct_type->setBody({Uint, TypePtr(Ptr(data_type))}, /* isPacked = */ false);
 
   struct_type->setName(Mangle(this));
   llvm_type = struct_type;
@@ -30,9 +30,8 @@ void Function::generate_llvm() const {
   if (llvm_type) return;
   input.get->generate_llvm();
   output.get->generate_llvm();
-
   std::vector<llvm::Type *> llvm_in;
-  llvm::Type *llvm_out = *Void;
+  llvm::Type *llvm_out = Void;
 
   if (input.is_tuple()) {
     auto in_tup = static_cast<Tuple *>(input.get);

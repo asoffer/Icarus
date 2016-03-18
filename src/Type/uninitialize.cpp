@@ -29,7 +29,7 @@ void Array::call_uninit(llvm::Value *var) {
     auto prev_block = builder.GetInsertBlock();
 
     uninit_fn_ = llvm::Function::Create(
-        llvm::FunctionType::get(*Void, {*Ptr(this)}, false),
+        llvm::FunctionType::get(Void, {TypePtr(Ptr(this))}, false),
         llvm::Function::ExternalLinkage, "uninit." + Mangle(this),
         global_module);
 
@@ -68,7 +68,7 @@ void Array::call_uninit(llvm::Value *var) {
     }
 
     builder.CreateCall(cstdlib::free(),
-                       builder.CreateBitCast(data_ptr, *RawPtr));
+                       builder.CreateBitCast(data_ptr, RawPtr));
     builder.CreateRetVoid();
     builder.SetInsertPoint(prev_block);
   }

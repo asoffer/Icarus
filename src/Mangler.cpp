@@ -5,17 +5,17 @@
 
 std::string Mangle(const Type *t, bool prefix) {
   if (t->is_primitive()) {
-    if (t == Bool) {
+    if (t == Bool.get) {
       return "b";
-    } else if (t == Char) {
+    } else if (t == Char.get) {
       return "c";
-    } else if (t == Int) {
+    } else if (t == Int.get) {
       return "i";
-    } else if (t == Real) {
+    } else if (t == Real.get) {
       return "r";
-    } else if (t == Uint) {
+    } else if (t == Uint.get) {
       return "u";
-    } else if (t == Void) {
+    } else if (t == Void.get) {
       return "v";
     } else {
       assert(false && "Invalid type name to be mangled");

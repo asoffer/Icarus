@@ -38,8 +38,8 @@ extern llvm::Value *global_string(const std::string &s);
 
 llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   auto arg_ptr  = builder.CreateAlloca(type, nullptr, "struct.tmp");
-  auto tmp_raw  = builder.CreateBitCast(arg_ptr, *RawPtr);
-  auto val_raw  = builder.CreateBitCast(val, *RawPtr);
+  auto tmp_raw  = builder.CreateBitCast(arg_ptr, RawPtr);
+  auto val_raw  = builder.CreateBitCast(val, RawPtr);
   auto mem_copy = builder.CreateCall(
       cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type.get->bytes())});
 
@@ -114,12 +114,14 @@ llvm::Value *Terminal::generate_code() {
     auto str_alloc = builder.CreateAlloca(type);
 
     auto len_ptr = builder.CreateGEP(
-        str_alloc, {data::const_uint(0), String->field_num("length")},
+        str_alloc, {data::const_uint(0),
+                    static_cast<Structure *>(String.get)->field_num("length")},
         "len_ptr");
     builder.CreateStore(len, len_ptr);
 
     auto char_array_ptr = builder.CreateGEP(
-        str_alloc, {data::const_uint(0), String->field_num("chars")},
+        str_alloc, {data::const_uint(0),
+                    static_cast<Structure *>(String.get)->field_num("chars")},
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
@@ -175,7 +177,7 @@ llvm::Value *Unop::generate_code() {
     return operand->type.get->call_not(val);
   }
   case Language::Operator::Free: {
-    builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, *RawPtr)});
+    builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, RawPtr)});
     // TODO only if it has an l-value
     builder.CreateStore(data::null(operand->type), operand->generate_lvalue());
     return nullptr;
@@ -453,7 +455,7 @@ llvm::Value *ChainOp::generate_code() {
 
   // Create the phi node
   builder.SetInsertPoint(landing);
-  llvm::PHINode *phi = builder.CreatePHI(*Bool, num_incoming, "phi");
+  llvm::PHINode *phi = builder.CreatePHI(Bool, num_incoming, "phi");
   if (expr_type == Int) {
     BEGIN_SHORT_CIRCUIT
     CASE(cmp_val, ICmpS, LT);

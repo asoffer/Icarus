@@ -26,9 +26,9 @@ void initialize() {
   Literals["uint"] = Uint = new Primitive(Primitive::TypeEnum::Uint);
   Literals["void"] = Void = new Primitive(Primitive::TypeEnum::Void);
 
+  Unknown = new Primitive(Primitive::TypeEnum::Unknown);
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
   Error   = new Primitive(Primitive::TypeEnum::Error);
-  Unknown = new Primitive(Primitive::TypeEnum::Unknown);
   RawPtr  = Ptr(Char);
 
   operator_table[Language::Operator::Arrow] = {Func({Type_, Type_}, Type_)};

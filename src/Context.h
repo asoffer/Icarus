@@ -30,6 +30,7 @@ class Context {
       explicit Value(              int n) { as_int  = n; }
       explicit Value(           double d) { as_real = d; }
       explicit Value(           size_t n) { as_uint = n; }
+      explicit Value(          TypePtr t) { as_type = t.get; }
       explicit Value(            Type* t) { as_type = t; }
       explicit Value( AST::Expression* e) { as_expr = e; }
     };

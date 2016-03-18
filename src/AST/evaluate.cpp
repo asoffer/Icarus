@@ -313,7 +313,7 @@ Context::Value TypeLiteral::evaluate(Context &ctx) {
     // TODO finish setting data in d so that we can safely print this
     // out for debugging
 
-    auto dtype = decl->type_expr->evaluate(ctx).as_type;
+    TypePtr dtype = decl->type_expr->evaluate(ctx).as_type;
     d->type = dtype;
     if (dtype == Int) {
       auto intnode = new TokenNode(0, Language::type_literal, "int");

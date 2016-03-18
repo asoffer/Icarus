@@ -25,6 +25,8 @@ size_t Type::bytes() const {
     ? 0 : data_layout->getTypeStoreSize(llvm_type);
 }
 
+TypePtr::TypePtr(Type *t) : get(t) {}
+
 std::string TypePtr::to_string() const { return get->to_string(); }
 
 bool TypePtr::is_primitive() const { return get->is_primitive(); }
@@ -48,8 +50,9 @@ TypePtr::operator llvm::Type *() const {
   return get->llvm_type;
 }
 
-TypePtr &TypePtr::operator=(TypePtr &t) {
-  assert(!is_fwd_decl());
+TypePtr &TypePtr::operator=(const TypePtr &t) {
+  assert(!get || !is_fwd_decl());
+
   if (t.is_fwd_decl()) {
     static_cast<ForwardDeclaration *>(t.get)->usages.push_back(this);
   }
@@ -82,7 +85,7 @@ Array::Array(TypePtr t)
                   ? 1 + static_cast<Array *>(data_type.get)->dimension
                   : 1;
 
-  std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
+  std::vector<llvm::Type *> init_args(dimension + 1, Uint);
   init_args[0] = *Ptr(this);
   has_vars     = data_type.get->has_vars;
 }
@@ -102,7 +105,7 @@ Function::Function(TypePtr in, TypePtr out) : input(in), output(out) {
 
 Enumeration::Enumeration(const std::string& name,
     const AST::EnumLiteral* enumlit) : bound_name(name), string_data(nullptr) {
-  llvm_type = *Uint;
+  llvm_type = Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
 
@@ -117,7 +120,7 @@ Enumeration::Enumeration(const std::string& name,
 
   auto enum_str = new llvm::GlobalVariable(
       *global_module,
-      /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
+      /*        Type = */ llvm::ArrayType::get(Char, idstr.size() + 1),
       /*  isConstant = */ true,
       /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
       /* Initializer = */ llvm::ConstantDataArray::getString(
@@ -125,7 +128,7 @@ Enumeration::Enumeration(const std::string& name,
       /*        Name = */ idstr);
   enum_str->setAlignment(1);
   enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
-      llvm::ArrayType::get(*Char, idstr.size() + 1), enum_str,
+      llvm::ArrayType::get(Char, idstr.size() + 1), enum_str,
       {data::const_uint(0), data::const_uint(0)});
 
   ++i;
@@ -239,7 +242,7 @@ void ForwardDeclaration::set(TypePtr type) {
 
 bool Type::is_big() const { return is_array() || is_struct(); }
 bool Type::stores_data() const {
-  return this != Type_ && !is_function() && !is_dependent_type() &&
+  return this != Type_.get && !is_function() && !is_dependent_type() &&
          !is_type_variable();
 }
 

@@ -10,10 +10,10 @@ class Type;
 } // namespace llvm
 
 struct TypePtr {
-  TypePtr(Type *t = nullptr) : get(t) {}
+  TypePtr(Type *t = nullptr);
   TypePtr(const TypePtr &t) : get(t.get) {}
 
-  TypePtr &operator=(TypePtr &t);
+  TypePtr &operator=(const TypePtr &t);
 
   std::string to_string() const;
 

@@ -93,6 +93,7 @@ void traverse_from(PtrWithTorV pt) {
       if (debug::dependency_graph) {
         debug::last_ptr  = ptr;
         debug::last_torv = torv;
+
         Dependency::write_graphviz();
         std::cin.ignore(1);
       }

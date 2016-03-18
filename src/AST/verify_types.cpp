@@ -425,15 +425,15 @@ void ArrayLiteral::verify_types() {
 }
 
 void FunctionLiteral::verify_types() {
-  Type *ret_type = return_type_expr->evaluate(scope_->context).as_type;
+  TypePtr ret_type = return_type_expr->evaluate(scope_->context).as_type;
   assert(ret_type && "Return type is a nullptr");
-  Type *input_type;
+  TypePtr input_type;
   size_t inputssize = inputs.size();
   if (inputssize == 0) {
     input_type = Void;
 
   } else if (inputssize == 1) {
-    input_type = inputs.front()->type.get;
+    input_type = inputs.front()->type;
 
   } else {
     std::vector<TypePtr> input_type_vec;
@@ -441,7 +441,9 @@ void FunctionLiteral::verify_types() {
 
     input_type = Tup(input_type_vec);
   }
+
   type = Func(input_type, ret_type);
+
   assert(type && "FunctionLiteral type is nullptr");
 }
 

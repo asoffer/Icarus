@@ -40,34 +40,34 @@ ErrorLog error_log;
 #define CSTDLIB(fn, variadic, in, out)                                         \
   llvm::Constant *fn() {                                                       \
     static llvm::Constant *func_ = global_module->getOrInsertFunction(         \
-        #fn, llvm::FunctionType::get(*out, {*in}, variadic));                  \
+        #fn, llvm::FunctionType::get(out, {in}, variadic));                    \
     return func_;                                                              \
   }
 
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
-CSTDLIB(free, false, Ptr(Char), Void);
-CSTDLIB(malloc, false, Uint, Ptr(Char));
+CSTDLIB(free, false, TypePtr(Ptr(Char)), Void);
+CSTDLIB(malloc, false, Uint, TypePtr(Ptr(Char)));
 // CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }),
 // Ptr(Char));
 CSTDLIB(putchar, false, Char, Int);
-CSTDLIB(puts, false, Ptr(Char), Int);
-CSTDLIB(printf, true, Ptr(Char), Int);
+CSTDLIB(puts, false, TypePtr(Ptr(Char)), Int);
+CSTDLIB(printf, true, TypePtr(Ptr(Char)), Int);
 
 // TODO Even though it's the same, shouldn't it be RawPtr for return type rather
 // than Ptr(Char)?
 
 llvm::Constant *calloc() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "calloc", llvm::FunctionType::get(*RawPtr, {*Uint, *Uint}, false));
+      "calloc", llvm::FunctionType::get(RawPtr, {Uint, Uint}, false));
   return func_;
 }
 
 llvm::Constant *memcpy() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
       "memcpy",
-      llvm::FunctionType::get(*Ptr(Char), {*RawPtr, *RawPtr, *Uint}, false));
+      llvm::FunctionType::get(TypePtr(Ptr(Char)), {RawPtr, RawPtr, Uint}, false));
   return func_;
 }
 } // namespace cstdlib
@@ -146,7 +146,7 @@ namespace builtin {
     bldr.SetInsertPoint(entry_block);
     // TODO check bounds if build option specified
 
-    bldr.CreateRet(bldr.CreateTrunc(val, *Char));
+    bldr.CreateRet(bldr.CreateTrunc(val, Char));
 
     return ascii_;
   }
