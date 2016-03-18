@@ -79,7 +79,7 @@ llvm::Function* Array::assign() {
   auto malloc_call = builder.CreateBitCast(
       builder.CreateCall(
           cstdlib::malloc(),
-          builder.CreateMul(new_len, data::const_uint(data_type->bytes()))),
+          builder.CreateMul(new_len, data::const_uint(data_type.get->bytes()))),
       *Ptr(data_type), "malloc_call");
 
   builder.CreateStore(
@@ -104,11 +104,11 @@ llvm::Function* Array::assign() {
   to_phi->addIncoming(copy_to_ptr, prev_block);
 
   auto copy_from_elem =
-      data_type->is_big()
+      data_type.get->is_big()
           ? static_cast<llvm::Value *>(from_phi)
           : static_cast<llvm::Value *>(builder.CreateLoad(from_phi));
 
-  builder.CreateCall(data_type->assign(), {copy_from_elem, to_phi});
+  builder.CreateCall(data_type.get->assign(), {copy_from_elem, to_phi});
 
   auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
   auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
@@ -167,12 +167,12 @@ llvm::Function *Structure::assign() {
     auto the_field_type = field_type AT(iter.first);
     auto field_val = bldr.CreateGEP(
         val, {data::const_uint(0), data::const_uint(iter.second)});
-    if (!the_field_type->is_big()) {
-      field_val = bldr.CreateLoad(*the_field_type, field_val);
+    if (!the_field_type.get->is_big()) {
+      field_val = bldr.CreateLoad(the_field_type, field_val);
     }
     auto field_var = bldr.CreateGEP(
         var, {data::const_uint(0), data::const_uint(iter.second)});
-    bldr.CreateCall(the_field_type->assign(), {field_val, field_var});
+    bldr.CreateCall(the_field_type.get->assign(), {field_val, field_var});
   }
 
   auto exit_block = make_block("exit", assign_fn_);

@@ -26,9 +26,9 @@ std::string Mangle(const Type *t, bool prefix) {
   if (prefix) ss << "_Z";
 
   if (t->is_array()) {
-    ss << "A0" << Mangle(static_cast<const Array*>(t)->data_type, false);
+    ss << "A0" << Mangle(static_cast<const Array*>(t)->data_type.get, false);
   } else if (t->is_pointer()) {
-    ss << "P" << Mangle(static_cast<const Pointer*>(t)->pointee, false);
+    ss << "P" << Mangle(static_cast<const Pointer*>(t)->pointee.get, false);
   } else {
     ss << t->to_string();
   }

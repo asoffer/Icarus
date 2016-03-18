@@ -2,7 +2,7 @@
 #include "Type.h"
 #include <sstream>
 
-#define TYPE_OR(other) (type ? type->to_string() : (other))
+#define TYPE_OR(other) (type ? type.to_string() : (other))
 
 namespace AST {
 std::string tabs(size_t n) { return std::string(n << 1, ' '); }

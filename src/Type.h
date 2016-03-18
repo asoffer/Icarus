@@ -18,6 +18,7 @@
 #include "Scope.h"
 #include "TimeEval.h"
 #include "Context.h"
+#include "TypePtr.h"
 
 extern std::string Mangle(const Type *t, bool prefix = true);
 
@@ -45,36 +46,36 @@ struct ForwardDeclaration;
 
 namespace TypeSystem {
 void initialize();
-extern std::map<std::string, Type *> Literals;
-extern Type *get_operator(Language::Operator op, Type *signature);
-extern Type *get(const std::string &name);
+extern std::map<std::string, TypePtr> Literals;
+extern TypePtr get_operator(Language::Operator op, TypePtr signature);
+extern TypePtr get(const std::string &name);
 } // namespace TypeSystem
 
-extern Primitive *Error;
-extern Primitive *Unknown;
-extern Primitive *Bool;
-extern Primitive *Char;
-extern Primitive *Int;
-extern Primitive *Real;
-extern Primitive *Type_;
-extern Primitive *Uint;
-extern Primitive *Void;
-extern Primitive *NullPtr;
-extern Pointer *RawPtr;
-extern Structure *String;
+extern TypePtr Error;
+extern TypePtr Unknown;
+extern TypePtr Bool;
+extern TypePtr Char;
+extern TypePtr Int;
+extern TypePtr Real;
+extern TypePtr Type_;
+extern TypePtr Uint;
+extern TypePtr Void;
+extern TypePtr NullPtr;
+extern TypePtr RawPtr;
+extern TypePtr String;
 
-extern Pointer *Ptr(Type *t);
-extern Array *Arr(Type *t);
-extern Tuple *Tup(const std::vector<Type *> &t);
-extern Function *Func(Type *in, Type *out);
-extern Function *Func(std::vector<Type *> in, Type *out);
-extern Function *Func(Type *in, std::vector<Type *> out);
-extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
+extern Pointer *Ptr(TypePtr t);
+extern Array *Arr(TypePtr t);
+extern Tuple *Tup(const std::vector<TypePtr> &t);
+extern Function *Func(TypePtr in, TypePtr out);
+extern Function *Func(std::vector<TypePtr> in, TypePtr out);
+extern Function *Func(TypePtr in, std::vector<TypePtr> out);
+extern Function *Func(std::vector<TypePtr> in, std::vector<TypePtr> out);
 extern Enumeration *Enum(const std::string &name,
                          const AST::EnumLiteral *e = nullptr);
 extern Structure *Struct(const std::string &name,
                          AST::TypeLiteral *expr = nullptr);
-extern DependentType *DepType(std::function<Type *(Type *)> fn);
+extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
 extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
 
@@ -122,13 +123,13 @@ public:
   // string library. This should never come up, because it's only used to add
   // type to a string literal, and using a string literal should import
   // strings.
-  static Type *get_string();
+  static TypePtr get_string();
 
   virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
 
   virtual void call_print(llvm::Value *val) { call_repr(val); }
 
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type) {
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type) {
     return nullptr;
   }
 
@@ -163,7 +164,7 @@ public:
 #include "config/binary_operators.conf"
 
   virtual void call_print(llvm::Value *val);
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   enum class TypeEnum {
     Error,
@@ -190,7 +191,7 @@ struct Array : public Type {
 #include "config/binary_operators.conf"
 
   virtual bool requires_uninit() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   llvm::Function *initialize();
   llvm::Value *initialize_literal(llvm::Value *alloc, size_t len);
@@ -200,13 +201,13 @@ struct Array : public Type {
 
   llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
 
-  Type *data_type;
+  TypePtr data_type;
 
   // Not the length of the array, but the dimension. That is, it's how many
   // times you can access an element.
   size_t dimension;
 
-  Array(Type *t);
+  Array(TypePtr t);
 };
 
 struct Tuple : public Type {
@@ -217,11 +218,11 @@ struct Tuple : public Type {
   // TODO requires_uninit()
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
-  Tuple(const std::vector<Type *> &types);
+  Tuple(const std::vector<TypePtr> &types);
 
-  std::vector<Type *> entries;
+  std::vector<TypePtr> entries;
 };
 
 struct Pointer : public Type {
@@ -229,9 +230,9 @@ struct Pointer : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
-  Pointer(Type *t);
-  Type *pointee;
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
+  Pointer(TypePtr t);
+  TypePtr pointee;
 };
 
 struct Function : public Type {
@@ -242,10 +243,10 @@ struct Function : public Type {
   operator llvm::FunctionType *() const;
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *to_type);
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
-  Function(Type *in, Type *out);
-  Type *input, *output;
+  Function(TypePtr in, TypePtr out);
+  TypePtr input, output;
 };
 
 struct Enumeration : public Type {
@@ -275,9 +276,9 @@ struct Structure : public Type {
 
   void set_name(const std::string &name);
 
-  virtual llvm::Value *call_cast(llvm::Value *val, Type *t);
+  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr t);
 
-  Type *field(const std::string &name) const;
+  TypePtr field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
 
   virtual void call_print(llvm::Value *val);
@@ -286,17 +287,16 @@ struct Structure : public Type {
   AST::TypeLiteral *ast_expression;
   std::string bound_name;
 
-  void insert_field(const std::string &name, Type *ty,
+  void insert_field(const std::string &name, TypePtr ty,
                     AST::Expression *init_val);
 
   // Field database info
   std::map<std::string, size_t> field_name_to_num;
   std::vector<std::string> field_num_to_name;
-  std::vector<Type *> field_type;
+  std::vector<TypePtr> field_type;
   std::map<size_t, size_t> field_num_to_llvm_num;
 
   std::vector<AST::Expression *> init_values;
-
 
 private:
   llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
@@ -307,11 +307,11 @@ struct DependentType : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  DependentType(std::function<Type *(Type *)> fn) : func(fn) {}
+  DependentType(std::function<TypePtr(TypePtr)> fn) : func(fn) {}
 
-  Type *operator()(Type *t) const { return func(t); }
+  TypePtr operator()(TypePtr t) const { return func(t); }
 
-  std::function<Type *(Type *)> func;
+  std::function<TypePtr(TypePtr)> func;
 };
 
 struct TypeVariable : public Type {
@@ -329,15 +329,17 @@ struct ForwardDeclaration : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  static std::vector<Type *> forward_declarations;
+  static std::vector<TypePtr> forward_declarations;
 
   ForwardDeclaration(AST::Expression *expr);
 
-  void set(Type *type);
+  void set(TypePtr type);
 
   size_t index;
   AST::Expression *expr;
-  Type *eval;
+  TypePtr eval;
+
+  std::vector<TypePtr *> usages;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

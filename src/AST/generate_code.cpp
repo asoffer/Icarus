@@ -26,7 +26,7 @@ extern llvm::Function *ascii();
 
 namespace data {
 extern llvm::Value *null_pointer(Type *t);
-extern llvm::Value *null(Type *t);
+extern llvm::Value *null(TypePtr t);
 extern llvm::Value *const_true();
 extern llvm::Value *const_false();
 extern llvm::Value *const_uint(size_t n);
@@ -36,15 +36,14 @@ extern llvm::Value *const_real(double d);
 extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
-llvm::Value *struct_memcpy(Type *type, llvm::Value *val,
-                           llvm::IRBuilder<> &bldr) {
-  auto arg_ptr  = bldr.CreateAlloca(*type, nullptr, "struct.tmp");
-  auto tmp_raw  = bldr.CreateBitCast(arg_ptr, *RawPtr);
-  auto val_raw  = bldr.CreateBitCast(val, *RawPtr);
-  auto mem_copy = bldr.CreateCall(
-      cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type->bytes())});
+llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
+  auto arg_ptr  = builder.CreateAlloca(type, nullptr, "struct.tmp");
+  auto tmp_raw  = builder.CreateBitCast(arg_ptr, *RawPtr);
+  auto val_raw  = builder.CreateBitCast(val, *RawPtr);
+  auto mem_copy = builder.CreateCall(
+      cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type.get->bytes())});
 
-  return bldr.CreateBitCast(mem_copy, *Ptr(type));
+  return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
 namespace AST {
@@ -52,11 +51,11 @@ llvm::Value *Identifier::generate_code() {
   if (type == Type_) {
     return nullptr;
 
-  } else if (type->is_function()) {
+  } else if (type.is_function()) {
     // TODO better way to get functions based on their name
     return global_module->getFunction(token());
 
-  } else if (type->is_big()) {
+  } else if (type.is_big()) {
     return alloc;
 
   } else {
@@ -76,7 +75,7 @@ llvm::Value *Terminal::generate_code() {
     return nullptr;
   }
   case Language::Terminal::Null: {
-    assert(type->is_pointer() && "Null pointer of non-pointer type ");
+    assert(type.is_pointer() && "Null pointer of non-pointer type ");
     return data::null(type);
   }
   case Language::Terminal::ASCII: {
@@ -112,7 +111,7 @@ llvm::Value *Terminal::generate_code() {
     auto str = data::global_string(token());
     auto len = data::const_uint(token().size());
 
-    auto str_alloc = builder.CreateAlloca(*type);
+    auto str_alloc = builder.CreateAlloca(type);
 
     auto len_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0), String->field_num("length")},
@@ -155,12 +154,12 @@ llvm::Value *Unop::generate_code() {
                                  operand->evaluate(CurrentContext()).as_type)
                            : operand->generate_code();
 
-    if (operand->type->is_struct()) {
+    if (operand->type.is_struct()) {
       // TODO maybe callees should be responsible for the struct memcpy?
-      val = struct_memcpy(operand->type, val, builder);
+      val = struct_memcpy(operand->type, val);
     }
 
-    operand->type->call_print(val);
+    operand->type.get->call_print(val);
 
     return nullptr;
   }
@@ -170,10 +169,10 @@ llvm::Value *Unop::generate_code() {
   llvm::Value *val = operand->generate_code();
   switch (op) {
   case Language::Operator::Sub: {
-    return operand->type->call_neg(val);
+    return operand->type.get->call_neg(val);
   }
   case Language::Operator::Not: {
-    return operand->type->call_not(val);
+    return operand->type.get->call_not(val);
   }
   case Language::Operator::Free: {
     builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, *RawPtr)});
@@ -187,16 +186,16 @@ llvm::Value *Unop::generate_code() {
     return nullptr;
   }
   case Language::Operator::At: {
-    return type->is_big() ? val : builder.CreateLoad(val);
+    return type.is_big() ? val : builder.CreateLoad(val);
   }
   case Language::Operator::Call: {
-    assert(operand->type->is_function() && "Operand should be a function.");
-    auto out_type = static_cast<Function *>(operand->type)->output;
+    assert(operand->type.is_function() && "Operand should be a function.");
+    auto out_type = static_cast<Function *>(operand->type.get)->output;
     // TODO this whole section needs an overhaul when we totally settle on how
     // to pass large things.
-    if (out_type->is_struct()) {
+    if (out_type.is_struct()) {
       // TODO move this outside of any potential loops
-      auto local_ret = builder.CreateAlloca(*out_type);
+      auto local_ret = builder.CreateAlloca(out_type);
 
       builder.CreateCall(static_cast<llvm::Function *>(val), local_ret);
       return local_ret;
@@ -228,19 +227,19 @@ llvm::Value *Access::generate_code() {
   // To make access pass through all layers of pointers, we loop through
   // loading values while we're looking at pointers.
   auto base_type = operand->type;
-  while (base_type->is_pointer()) {
-    base_type = static_cast<Pointer *>(base_type)->pointee;
-    if (!base_type->is_big()) eval = builder.CreateLoad(eval);
+  while (base_type.is_pointer()) {
+    base_type = static_cast<Pointer *>(base_type.get)->pointee;
+    if (!base_type.is_big()) eval = builder.CreateLoad(eval);
   }
 
-  if (base_type->is_struct()) {
-    auto struct_type = static_cast<Structure *>(base_type);
+  if (base_type.is_struct()) {
+    auto struct_type = static_cast<Structure *>(base_type.get);
 
-    if (!type->stores_data()) { assert(false && "Not yet implemented"); }
+    if (!type.stores_data()) { assert(false && "Not yet implemented"); }
 
     auto elem_ptr = builder.CreateGEP(
         eval, {data::const_uint(0), struct_type->field_num(member_name)});
-    return type->is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
+    return type.is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
 
   } else {
     assert(false && "Not yet implemented");
@@ -256,10 +255,10 @@ llvm::Value *Binop::generate_code() {
 
   switch (op) {
   case Language::Operator::Index: {
-    if (lhs->type->is_array()) {
+    if (lhs->type.is_array()) {
       auto data_ptr = builder.CreateLoad(builder.CreateGEP(
           lhs_val, {data::const_uint(0), data::const_uint(1)}));
-      if (type->is_big()) {
+      if (type.is_big()) {
         return builder.CreateGEP(data_ptr, {rhs->generate_code()}, "array_val");
       } else {
         return builder.CreateLoad(
@@ -269,11 +268,11 @@ llvm::Value *Binop::generate_code() {
     assert(false && "Not yet implemented");
   }
   case Language::Operator::Cast: {
-    return lhs->type->call_cast(lhs_val,
+    return lhs->type.get->call_cast(lhs_val,
                                 rhs->evaluate(CurrentContext()).as_type);
   }
   case Language::Operator::Call: {
-    if (lhs->type->is_function()) {
+    if (lhs->type.is_function()) {
       std::vector<llvm::Value *> arg_vals;
       // This whole section should be pulled out into a function called
       // "collate_for_function_call" or something like that.
@@ -284,21 +283,21 @@ llvm::Value *Binop::generate_code() {
           arg_vals[i] = arg_exprs[i]->generate_code();
           assert(arg_vals[i] && "Argument value was null");
 
-          if (arg_exprs[i]->type->is_struct()) {
+          if (arg_exprs[i]->type.is_struct()) {
             // TODO be sure to allocate this ahead of all loops and reuse it
             // when possible. Also, do this for arrays?
             arg_vals[i] =
-                struct_memcpy(arg_exprs[i]->type, arg_vals[i], builder);
+                struct_memcpy(arg_exprs[i]->type, arg_vals[i]);
           }
         }
       } else {
         auto rhs_val = rhs->generate_code();
         assert(rhs_val && "Argument value was null");
 
-        if (rhs->type->is_struct()) {
+        if (rhs->type.is_struct()) {
           // TODO be sure to allocate this ahead of all loops and reuse it
           // when possible. Also, do this for arrays?
-          rhs_val = struct_memcpy(rhs->type, rhs_val, builder);
+          rhs_val = struct_memcpy(rhs->type, rhs_val);
         }
 
         arg_vals = {rhs_val};
@@ -313,12 +312,12 @@ llvm::Value *Binop::generate_code() {
                                   arg_vals, "calltmp");
       }
 
-    } else if (lhs->type->is_dependent_type()) {
+    } else if (lhs->type.is_dependent_type()) {
       // TODO make this generic. right now dependent_type implies alloc(...)
       auto t = rhs->evaluate(CurrentContext()).as_type;
       auto alloc_ptr =
           builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
-      return builder.CreateBitCast(alloc_ptr, *type);
+      return builder.CreateBitCast(alloc_ptr, type);
     }
   }
   default:;
@@ -326,11 +325,11 @@ llvm::Value *Binop::generate_code() {
 
   auto rhs_val = rhs->generate_code();
   switch (op) {
-  case Language::Operator::Add: return type->call_add(lhs_val, rhs_val);
-  case Language::Operator::Sub: return type->call_sub(lhs_val, rhs_val);
-  case Language::Operator::Mul: return type->call_mul(lhs_val, rhs_val);
-  case Language::Operator::Div: return type->call_div(lhs_val, rhs_val);
-  case Language::Operator::Mod: return type->call_mod(lhs_val, rhs_val);
+  case Language::Operator::Add: return type.get->call_add(lhs_val, rhs_val);
+  case Language::Operator::Sub: return type.get->call_sub(lhs_val, rhs_val);
+  case Language::Operator::Mul: return type.get->call_mul(lhs_val, rhs_val);
+  case Language::Operator::Div: return type.get->call_div(lhs_val, rhs_val);
+  case Language::Operator::Mod: return type.get->call_mod(lhs_val, rhs_val);
   default:;
   }
 
@@ -346,10 +345,10 @@ llvm::Value *ArrayType::generate_code() {
   auto data_ty = data_type->type;
   auto data    = data_type->generate_code();
 
-  auto alloc_size = builder.CreateMul(len, data::const_uint(data_ty->bytes()));
+  auto alloc_size = builder.CreateMul(len, data::const_uint(data_ty.get->bytes()));
   auto alloc_ptr  = builder.CreateCall(cstdlib::malloc(), alloc_size);
 
-  auto tmp_array = type->allocate();
+  auto tmp_array = type.get->allocate();
   builder.CreateStore(len, builder.CreateGEP(tmp_array, {data::const_uint(0),
                                                          data::const_uint(0)}));
   builder.CreateStore(
@@ -368,7 +367,7 @@ llvm::Value *ArrayType::generate_code() {
   builder.SetInsertPoint(loop_block);
   auto phi_node = builder.CreatePHI(*Ptr(data_ty), 2, "phi");
   phi_node->addIncoming(alloc_ptr, prev_block);
-  builder.CreateCall(data_ty->assign(), {data, phi_node});
+  builder.CreateCall(data_ty.get->assign(), {data, phi_node});
 
   auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
   phi_node->addIncoming(next_ptr, loop_block);
@@ -485,7 +484,7 @@ llvm::Value *ChainOp::generate_code() {
     CASE(cmp_val, FCmpO, GT);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type->is_enum()) {
+  } else if (expr_type.is_enum()) {
     BEGIN_SHORT_CIRCUIT
     CASE(cmp_val, ICmp, EQ);
     CASE(cmp_val, ICmp, NE);
@@ -539,14 +538,14 @@ llvm::Value *ChainOp::generate_code() {
 
 llvm::Value *FunctionLiteral::generate_code() {
   if (llvm_fn == nullptr) {
-    assert(type->is_function() && "How is the type not a function?");
-    auto fn_type = static_cast<Function *>(type);
+    assert(type.is_function() && "How is the type not a function?");
+    auto fn_type = static_cast<Function *>(type.get);
 
     if (fn_type->time() == Time::compile) return nullptr;
 
     // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
-        static_cast<llvm::FunctionType *>(type->llvm_type),
+        static_cast<llvm::FunctionType *>(type.get->llvm_type),
         llvm::Function::ExternalLinkage, "__anon_fn", global_module);
   }
 
@@ -557,7 +556,7 @@ llvm::Value *FunctionLiteral::generate_code() {
     // Set alloc
     auto decl_id   = input_iter->identifier;
     auto decl_type = decl_id->type;
-    if (decl_type->is_big()) { decl_id->alloc = arg_iter; }
+    if (decl_type.is_big()) { decl_id->alloc = arg_iter; }
 
     ++arg_iter;
   }
@@ -566,7 +565,7 @@ llvm::Value *FunctionLiteral::generate_code() {
   if (ret_type->is_struct()) { arg_iter->setName("retval"); }
 
   fn_scope->set_parent_function(llvm_fn);
-  fn_scope->fn_type = static_cast<Function *>(type);
+  fn_scope->fn_type = static_cast<Function *>(type.get);
 
   auto old_block = builder.GetInsertBlock();
   builder.SetInsertPoint(fn_scope->entry);
@@ -577,8 +576,8 @@ llvm::Value *FunctionLiteral::generate_code() {
   for (auto &input_iter : inputs) {
     auto decl_id = input_iter->identifier;
 
-    if (!decl_id->type->is_big()) {
-      builder.CreateCall(decl_id->type->assign(),
+    if (!decl_id->type.is_big()) {
+      builder.CreateCall(decl_id->type.get->assign(),
                          {arg, input_iter->identifier->alloc});
     }
     ++arg;
@@ -606,14 +605,14 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
   llvm::Value *val = nullptr;
 
   // Treat functions special
-  if (lhs->is_identifier() && rhs->type->is_function()) {
+  if (lhs->is_identifier() && rhs->type.is_function()) {
     if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
       val = rhs->generate_code();
       assert(val && "RHS of assignment generated null code");
 
       // TODO verify that you are defining print for this struct type.
-      auto rhs_as_func = static_cast<Function *>(rhs->type);
-      auto arg_type    = static_cast<Structure *>(rhs_as_func->input);
+      auto rhs_as_func = static_cast<Function *>(rhs->type.get);
+      auto arg_type    = static_cast<Structure *>(rhs_as_func->input.get);
 
       arg_type->set_print(static_cast<llvm::Function *>(val));
 
@@ -635,7 +634,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 
-    builder.CreateCall(lhs->type->assign(), {val, var});
+    builder.CreateCall(lhs->type.get->assign(), {val, var});
   }
 
   return nullptr;
@@ -757,11 +756,11 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type->is_array()) {
+  if (decl_type == DeclType::Std && type.is_array()) {
     // TODO uninitialize previous value
     assert(type_expr->is_array_type() && "Not array type");
     auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
-    static_cast<Array *>(type)
+    static_cast<Array *>(type.get)
         ->initialize_literal(identifier->alloc, len);
   }
 
@@ -794,7 +793,7 @@ llvm::Value *Case::generate_code() {
   auto case_landing = make_block("case.landing", parent_fn);
   builder.SetInsertPoint(case_landing);
   llvm::PHINode *phi_node = builder.CreatePHI(
-      *type, static_cast<unsigned int>(kv->pairs.size()), "phi");
+      type, static_cast<unsigned int>(kv->pairs.size()), "phi");
   builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
@@ -828,11 +827,11 @@ llvm::Value *ArrayLiteral::generate_code() {
   // TODO if this is never assigned to anything, it will be leaked. This should
   // be verified.
 
-  auto type_as_array = static_cast<Array *>(type);
+  auto type_as_array = static_cast<Array *>(type.get);
   auto element_type  = type_as_array->data_type;
   size_t num_elems   = elems.size();
 
-  auto array_data = type->allocate();
+  auto array_data = type.get->allocate();
 
   type_as_array->initialize_literal(array_data, num_elems);
 
@@ -842,9 +841,9 @@ llvm::Value *ArrayLiteral::generate_code() {
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
-    element_type->call_init(data_ptr);
+    element_type.get->call_init(data_ptr);
 
-    builder.CreateCall(element_type->assign(),
+    builder.CreateCall(element_type.get->assign(),
                        {elems[i]->generate_code(), data_ptr});
   }
 
@@ -996,7 +995,7 @@ llvm::Value *For::generate_code() {
   auto parent_fn = start_block->getParent();
   for_scope->set_parent_function(parent_fn);
 
-  if (container->type->is_array()) {
+  if (container->type.is_array()) {
     auto data_type = iterator->type;
 
     auto container_val = container->generate_code();

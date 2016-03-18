@@ -34,8 +34,8 @@ Context::Value Identifier::evaluate(Context &ctx) {
   if (type != Type_) {
     return ctx.get(this);
 
-  } else if (type->is_struct()) {
-    return Context::Value(TypeSystem::get(token()));
+  } else if (type.get->is_struct()) {
+    return Context::Value(TypeSystem::get(token()).get);
 
   } else {
 
@@ -83,7 +83,7 @@ Context::Value Unop::evaluate(Context &ctx) {
     if (operand->type != Type_) {
       // TODO better error message
       error_log.log(line_num, "Taking the address of a " +
-                                  operand->type->to_string() +
+                                  operand->type.to_string() +
                                   " is not allowed at compile-time");
     }
 
@@ -208,7 +208,7 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
     return Context::Value(true);
 
-  } else if (expr_type->is_enum()) {
+  } else if (expr_type.is_enum()) {
     bool total = true;
     auto last = exprs[0]->evaluate(ctx);
     for (size_t i = 0; i < ops.size(); ++i) {
@@ -290,7 +290,7 @@ Context::Value TypeLiteral::evaluate(Context &ctx) {
       bool is_inferred = (decl->decl_type == DeclType::Infer);
 
       Type *field = is_inferred
-                        ? decl->type_expr->type
+                        ? decl->type_expr->type.get
                         : decl->type_expr->evaluate(scope_->context).as_type;
       assert(field && "field is nullptr");
 
@@ -344,7 +344,7 @@ Context::Value TypeLiteral::evaluate(Context &ctx) {
     for (const auto &decl : declarations) {
       assert(decl->decl_type != DeclType::In && "Cannot us DeclType::In");
       bool is_inferred = (decl->decl_type == DeclType::Infer);
-      Type *field = is_inferred ? decl->type_expr->type
+      Type *field = is_inferred ? decl->type_expr->type.get
                                 : decl->type_expr->evaluate(ctx).as_type;
       assert(field && "field is nullptr");
 
@@ -364,7 +364,7 @@ Context::Value Assignment::evaluate(Context &) { return nullptr; }
 Context::Value Declaration::evaluate(Context &ctx) {
   switch (decl_type) {
   case DeclType::Infer: {
-    if (type_expr->type->is_function()) {
+    if (type_expr->type.is_function()) {
       ctx.bind(Context::Value(type_expr), identifier);
     } else {
       auto type_as_ctx_val = type_expr->evaluate(ctx);
@@ -385,7 +385,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
   case DeclType::Std: {
     if (type_expr->type == Type_) {
       ctx.bind(Context::Value(TypeVar(identifier)), identifier);
-    } else if (type_expr->type->is_type_variable()) {
+    } else if (type_expr->type.is_type_variable()) {
       // TODO Should we just skip this?
     } else { /* There's nothing to do */
     }
@@ -401,8 +401,8 @@ Context::Value EnumLiteral::evaluate(Context &) {
 }
 
 Context::Value Access::evaluate(Context &ctx) {
-  if (type->is_enum()) {
-    auto enum_type = static_cast<Enumeration *>(type);
+  if (type.is_enum()) {
+    auto enum_type = static_cast<Enumeration *>(type.get);
     return Context::Value(enum_type->get_index(member_name));
   }
   assert(false && "not yet implemented");
@@ -411,7 +411,7 @@ Context::Value Access::evaluate(Context &ctx) {
 Context::Value Binop::evaluate(Context &ctx) {
   using Language::Operator;
   if (op == Operator::Call) {
-    assert(lhs->type->is_function());
+    assert(lhs->type.get->is_function());
     auto lhs_val = lhs->evaluate(ctx).as_expr;
     assert(lhs_val);
     auto fn_ptr = static_cast<FunctionLiteral *>(lhs_val);
@@ -436,7 +436,7 @@ Context::Value Binop::evaluate(Context &ctx) {
     // For functions that return types, we cache all calls
     // TODO add possibility for #nocache
     bool returns_type =
-        (static_cast<Function *>(fn_ptr->type)->output == Type_);
+        (static_cast<Function *>(fn_ptr->type.get)->output == Type_);
 
     auto &fn_cache = function_call_cache[fn_ptr];
     if (returns_type) {

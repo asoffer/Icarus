@@ -74,13 +74,13 @@ llvm::Constant *memcpy() {
 #undef CSTDLIB
 
 namespace data {
-  llvm::Value *null_pointer(Type *t) {
-    return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t, 0));
+  llvm::Value *null_pointer(TypePtr t) {
+    return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t.get, 0));
   }
 
-  llvm::Value *null(Type *t) {
-    assert(t->is_pointer() && "type must be a pointer to have a null value");
-    return null_pointer(static_cast<Pointer *>(t)->pointee);
+  llvm::Value *null(TypePtr t) {
+    assert(t.is_pointer() && "type must be a pointer to have a null value");
+    return null_pointer(static_cast<Pointer *>(t.get)->pointee);
   }
 
   llvm::Value* const_int(int n) {
@@ -156,6 +156,6 @@ namespace builtin {
 // object or a pointer to the object.
 //
 // This really ought to be inlined, but that's not possible keeping it externed
-llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr) {
-  return (t->is_big()) ? ptr : builder.CreateLoad(ptr);
+llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr) {
+  return (t.is_big()) ? ptr : builder.CreateLoad(ptr);
 }

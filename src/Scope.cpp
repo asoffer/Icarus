@@ -134,7 +134,7 @@ void BlockScope::initialize() {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (!decl_type->stores_data()) continue;
+    if (!decl_type.stores_data()) continue;
 
     // if (decl_type->is_array()) {
     //   auto array_dim = static_cast<Array*>(decl_type)->dimension;
@@ -149,7 +149,7 @@ void BlockScope::initialize() {
     // } else {
     if (decl_ptr->decl_type == AST::DeclType::In) continue;
     if (decl_id->is_function_arg) continue;
-    decl_type->call_init({decl_id->alloc});
+    decl_type.get->call_init({decl_id->alloc});
     // }
   }
 }
@@ -163,7 +163,7 @@ void BlockScope::uninitialize() {
     // TODO is this correct?
     if (decl_id->is_function_arg) continue;
 
-    decl_id->type->call_uninit({decl_id->alloc});
+    decl_id->type.get->call_uninit({decl_id->alloc});
   }
 }
 
@@ -173,8 +173,8 @@ void BlockScope::make_return(llvm::Value *val) {
 
   // TODO multiple return values?
 
-  if (fn_scope->fn_type->output->is_big()) {
-    builder.CreateCall(fn_scope->fn_type->output->assign(),
+  if (fn_scope->fn_type->output.is_big()) {
+    builder.CreateCall(fn_scope->fn_type->output.get->assign(),
                        {val, fn_scope->return_value});
   } else {
     builder.CreateStore(val, fn_scope->return_value);
@@ -208,11 +208,11 @@ void FnScope::initialize() {
 
   if (fn_type->output != Void) {
     // TODO multiple return types
-    if (fn_type->output->is_big()) {
+    if (fn_type->output.is_big()) {
       // TODO which one? This works iff there is only one
       return_value = llvm_fn->args().begin();
     } else {
-      return_value = builder.CreateAlloca(*fn_type->output, nullptr, "retval");
+      return_value = builder.CreateAlloca(fn_type->output, nullptr, "retval");
     }
   }
 
@@ -228,7 +228,7 @@ void FnScope::leave() {
   uninitialize();
   // TODO multiple return values
   auto ret_type = fn_type->output;
-  if (ret_type == Void || ret_type->is_big()) {
+  if (ret_type == Void || ret_type.is_big()) {
     builder.CreateRetVoid();
   } else {
     builder.CreateRet(builder.CreateLoad(return_value));
@@ -242,7 +242,7 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (decl_id->is_function_arg && decl_type->is_struct()) {
+    if (decl_id->is_function_arg && decl_type.is_struct()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }
@@ -253,7 +253,7 @@ void FnScope::allocate(Scope* scope) {
       continue;
     }
    
-    decl_id->alloc = decl_type->allocate();
+    decl_id->alloc = decl_type.get->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }
 }

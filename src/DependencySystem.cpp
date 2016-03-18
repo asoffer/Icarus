@@ -102,11 +102,11 @@ void traverse_from(PtrWithTorV pt) {
           auto unop = static_cast<AST::Unop *>(ptr);
           if (unop->op == Language::Operator::At) {
             auto t = unop->operand->type;
-            while (t->is_pointer()) t = static_cast<Pointer *>(t)->pointee;
-            if (t->is_pointer()) {
-              t = static_cast<Pointer *>(t)->pointee;
-              if (t->is_struct()) {
-                auto struct_type = static_cast<Structure *>(t);
+            while (t.is_pointer()) t = static_cast<Pointer *>(t.get)->pointee;
+            if (t.is_pointer()) {
+              t = static_cast<Pointer *>(t.get)->pointee;
+              if (t.is_struct()) {
+                auto struct_type = static_cast<Structure *>(t.get);
                 PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
                 traverse_from(ptr_with_torv);
               }
@@ -115,9 +115,9 @@ void traverse_from(PtrWithTorV pt) {
         } else if (ptr->is_access()) {
           auto access_ptr = static_cast<AST::Access *>(ptr);
           auto t = access_ptr->operand->type;
-          while (t->is_pointer()) t = static_cast<Pointer *>(t)->pointee;
-          if (t->is_struct()) {
-            auto struct_type = static_cast<Structure *>(t);
+          while (t.is_pointer()) t = static_cast<Pointer *>(t.get)->pointee;
+          if (t.is_struct()) {
+            auto struct_type = static_cast<Structure *>(t.get);
             PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
             traverse_from(ptr_with_torv);
           }
@@ -127,8 +127,8 @@ void traverse_from(PtrWithTorV pt) {
 
         if (ptr->is_expression()) {
           auto eptr = static_cast<AST::Expression *>(ptr);
-          if (eptr->type->is_fwd_decl()) {
-            auto fwd = static_cast<ForwardDeclaration *>(eptr->type);
+          if (eptr->type.is_fwd_decl()) {
+            auto fwd = static_cast<ForwardDeclaration *>(eptr->type.get);
             fwd->set(fwd->expr->evaluate(ptr->scope_->context).as_type);
           }
         }
@@ -252,7 +252,7 @@ std::string graphviz_label(PtrWithTorV x) {
          << escape(x.ptr_->graphviz_label()) << "\t(" << x.ptr_->line_num
          << ")|" << escape(x.ptr_->is_expression()
                                ? static_cast<AST::Expression *>(x.ptr_)
-                                     ->type->to_string()
+                                     ->type.to_string()
                                : "---")
          << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")
          << "\" color=\""

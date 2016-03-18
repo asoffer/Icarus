@@ -1,4 +1,5 @@
 #include "Type.h"
+#include "TypePtr.h"
 #include "AST.h"
 
 #ifdef DEBUG
@@ -24,6 +25,38 @@ size_t Type::bytes() const {
     ? 0 : data_layout->getTypeStoreSize(llvm_type);
 }
 
+std::string TypePtr::to_string() const { return get->to_string(); }
+
+bool TypePtr::is_primitive() const { return get->is_primitive(); }
+bool TypePtr::is_array() const { return get->is_array(); }
+bool TypePtr::is_tuple() const { return get->is_tuple(); }
+bool TypePtr::is_pointer() const { return get->is_pointer(); }
+bool TypePtr::is_function() const { return get->is_function(); }
+bool TypePtr::is_struct() const { return get->is_struct(); }
+bool TypePtr::is_enum() const { return get->is_enum(); }
+bool TypePtr::is_fwd_decl() const { return get->is_fwd_decl(); }
+bool TypePtr::is_dependent_type() const { return get->is_dependent_type(); }
+bool TypePtr::is_type_variable() const { return get->is_type_variable(); }
+
+bool TypePtr::is_big() const { return get->is_big(); }
+bool TypePtr::stores_data() const { return get->stores_data(); }
+
+TypePtr::operator bool() const { return get != nullptr; }
+
+TypePtr::operator llvm::Type *() const {
+  get->generate_llvm();
+  return get->llvm_type;
+}
+
+TypePtr &TypePtr::operator=(TypePtr &t) {
+  assert(!is_fwd_decl());
+  if (t.is_fwd_decl()) {
+    static_cast<ForwardDeclaration *>(t.get)->usages.push_back(this);
+  }
+  get = t.get;
+  return *this;
+}
+
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
     case Primitive::TypeEnum::Bool:
@@ -43,28 +76,28 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   }
 }
 
-Array::Array(Type *t)
+Array::Array(TypePtr t)
     : init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t) {
-  dimension = data_type->is_array()
-                  ? 1 + static_cast<Array *>(data_type)->dimension
+  dimension = data_type.is_array()
+                  ? 1 + static_cast<Array *>(data_type.get)->dimension
                   : 1;
 
   std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
   init_args[0] = *Ptr(this);
-  has_vars     = data_type->has_vars;
+  has_vars     = data_type.get->has_vars;
 }
 
-Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {
+Tuple::Tuple(const std::vector<TypePtr> &entries) : entries(entries) {
   for (const auto &entry : entries) {
     if (has_vars) break;
-    has_vars = entry->has_vars;
+    has_vars = entry.get->has_vars;
   }
 }
 
-Pointer::Pointer(Type *t) : pointee(t) { has_vars = pointee->has_vars; }
+Pointer::Pointer(TypePtr t) : pointee(t) { has_vars = pointee.get->has_vars; }
 
-Function::Function(Type* in, Type* out) : input(in), output(out) {
-  has_vars = input->has_vars || output->has_vars;
+Function::Function(TypePtr in, TypePtr out) : input(in), output(out) {
+  has_vars = input.get->has_vars || output.get->has_vars;
 }
 
 Enumeration::Enumeration(const std::string& name,
@@ -112,14 +145,14 @@ Structure::Structure(const std::string &name, AST::TypeLiteral *expr)
     : ast_expression(expr), bound_name(name), init_fn_(nullptr),
       uninit_fn_(nullptr), print_fn_(nullptr) {}
 
-Type* Structure::field(const std::string& name) const {
+TypePtr Structure::field(const std::string& name) const {
   return field_type AT(field_name_to_num AT(name));
 }
 
 llvm::Value* Structure::field_num(const std::string& name) const {
   auto num = field_name_to_num AT(name);
   auto t = field_type AT(num);
-  assert(!t->is_function() && t != Type_ && "Invalid data field");
+  assert(!t.is_function() && t != Type_ && "Invalid data field");
 
   return data::const_uint(field_num_to_llvm_num AT(num));
 }
@@ -140,7 +173,7 @@ llvm::Value* Enumeration::get_value(const std::string& str) const {
 bool Array::requires_uninit() const { return true; }
 bool Structure::requires_uninit() const {
   for (const auto t : field_type) {
-    if (t->requires_uninit()) return true;
+    if (t.get->requires_uninit()) return true;
   }
   return false;
 }
@@ -152,7 +185,7 @@ void Structure::set_name(const std::string& name) {
   }
 }
 
-std::vector<Type*> ForwardDeclaration::forward_declarations;
+std::vector<TypePtr> ForwardDeclaration::forward_declarations;
 
 std::ostream& operator<<(std::ostream& os, const Type& t) {
   return os << t.to_string();
@@ -168,7 +201,7 @@ Function::operator llvm::FunctionType *() const {
   return static_cast<llvm::FunctionType *>(llvm_type);
 }
 
-void Structure::insert_field(const std::string &name, Type *ty,
+void Structure::insert_field(const std::string &name, TypePtr ty,
                              AST::Expression *init_val) {
   auto next_num = field_num_to_name.size();
   field_name_to_num[name] = next_num;
@@ -183,7 +216,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
            "Size mismatch in struct database");
   }
 
-  if (!ty->is_function() && ty != Type_) {
+  if (!ty.is_function() && ty != Type_) {
     size_t next_llvm                = field_num_to_llvm_num.size();
     field_num_to_llvm_num[next_num] = next_llvm;
   }
@@ -191,7 +224,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
   // By default, init_val is nullptr;
   init_values.emplace_back(init_val);
 
-  has_vars |= ty->has_vars;
+  has_vars |= ty.get->has_vars;
 }
 
 ForwardDeclaration::ForwardDeclaration(AST::Expression *expr)
@@ -200,7 +233,7 @@ ForwardDeclaration::ForwardDeclaration(AST::Expression *expr)
   forward_declarations.push_back(nullptr);
 }
 
-void ForwardDeclaration::set(Type *type) {
+void ForwardDeclaration::set(TypePtr type) {
   eval = type;
 }
 
@@ -208,4 +241,8 @@ bool Type::is_big() const { return is_array() || is_struct(); }
 bool Type::stores_data() const {
   return this != Type_ && !is_function() && !is_dependent_type() &&
          !is_type_variable();
+}
+
+std::ostream &operator<<(std::ostream &os, const TypePtr &t) {
+  return os << *t.get;
 }

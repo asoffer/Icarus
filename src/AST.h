@@ -10,6 +10,7 @@
 
 #include "Language.h"
 #include "TimeEval.h"
+#include "TypePtr.h"
 #include "AST/DeclType.h"
 
 #include "Scope.h"
@@ -23,8 +24,6 @@ struct BlockScope;
 struct FnScope;
 struct Structure;
 struct Enumeration;
-
-struct Type;
 
 template <typename T> T *steal(AST::Expression *&n) {
 #ifdef DEBUG
@@ -172,14 +171,14 @@ struct Expression : public Node {
 
   static Node *parenthesize(NPtrVec &&nodes);
 
-  virtual bool is_literal(Type *t) const {
+  virtual bool is_literal(TypePtr t) const {
     return is_terminal() && !is_identifier() && type == t;
   }
 
   llvm::Value *llvm_value(Context::Value v);
 
   size_t precedence;
-  Type *type;
+  TypePtr type;
 };
 
 #undef ENDING
@@ -251,7 +250,7 @@ struct ArrayType : public Expression {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
 
-  static Node *build(Language::Terminal term_type, NPtrVec &&nodes, Type *t);
+  static Node *build(Language::Terminal term_type, NPtrVec &&nodes, TypePtr t);
   static Node *build_type_literal(NPtrVec &&nodes);
   static Node *build_string_literal(NPtrVec &&nodes);
   static Node *build_true(NPtrVec &&nodes);
@@ -317,7 +316,7 @@ struct KVPairList : public Node {
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  virtual Type *verify_types_with_key(Type *key_type);
+  virtual TypePtr verify_types_with_key(TypePtr key_type);
 
   inline size_t size() const { return pairs.size(); }
 

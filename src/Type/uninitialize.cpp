@@ -43,7 +43,7 @@ void Array::call_uninit(llvm::Value *var) {
         builder.CreateGEP(array, {data::const_uint(0), data::const_uint(1)}),
         "ptr_to_free");
 
-    if (data_type->requires_uninit()) {
+    if (data_type.get->requires_uninit()) {
       auto len_ptr = builder.CreateGEP(
           array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
       auto len_val = builder.CreateLoad(len_ptr, "len_val");
@@ -57,7 +57,7 @@ void Array::call_uninit(llvm::Value *var) {
       auto phi = builder.CreatePHI(*Ptr(data_type), 2, "phi");
       phi->addIncoming(data_ptr, entry_block);
 
-      data_type->call_uninit({phi});
+      data_type.get->call_uninit({phi});
       auto next_ptr   = builder.CreateGEP(phi, data::const_uint(1));
       auto land_block = make_block("land", uninit_fn_);
       builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,
@@ -98,11 +98,11 @@ void Structure::call_uninit(llvm::Value* var) {
 
     for (const auto &kv : field_num_to_llvm_num) {
       auto the_field_type = field_type AT(kv.first);
-      if (the_field_type->requires_uninit()) {
+      if (the_field_type.get->requires_uninit()) {
         auto arg = builder.CreateGEP(
             uninit_fn_->args().begin(),
             {data::const_uint(0), data::const_uint(kv.second)});
-        the_field_type->call_uninit({arg});
+        the_field_type.get->call_uninit({arg});
       }
     }
 

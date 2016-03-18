@@ -6,18 +6,18 @@
 
 extern ErrorLog error_log;
 void resolve_forward_declaration(AST::Expression *e) {
-  if (e->type->is_fwd_decl()) {
-    auto fwd = static_cast<ForwardDeclaration *>(e->type);
+  if (e->type.get->is_fwd_decl()) {
+    auto fwd = static_cast<ForwardDeclaration *>(e->type.get);
     assert(fwd->eval && "forward declaration not yet fully determined");
     e->type = fwd->eval;
   }
 }
 
 namespace AST {
-Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
-                      Type *rhs_type) {
+TypePtr operator_lookup(size_t line_num, Language::Operator op, TypePtr lhs_type,
+                      TypePtr rhs_type) {
   auto ret_type = TypeSystem::get_operator(op, Tup({lhs_type, rhs_type}));
-  if (ret_type == nullptr) {
+  if (ret_type.get == nullptr) {
     std::string tok;
     switch (op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
@@ -29,8 +29,8 @@ Type *operator_lookup(size_t line_num, Language::Operator op, Type *lhs_type,
     }
 
     error_log.log(line_num, "No known operator overload for `" + tok +
-                                "` with types " + lhs_type->to_string() +
-                                " and " + rhs_type->to_string());
+                                "` with types " + lhs_type.to_string() +
+                                " and " + rhs_type.to_string());
     return Error;
   } else {
     // Otherwise it's an arithmetic operator
@@ -91,7 +91,7 @@ void Identifier::verify_types() {
 void Unop::verify_types() {
   using Language::Operator;
   if (op == Operator::Free) {
-    if (!operand->type->is_pointer()) {
+    if (!operand->type.is_pointer()) {
       error_log.log(line_num, "Free can only be called on pointer types");
     }
     type = Void;
@@ -110,25 +110,25 @@ void Unop::verify_types() {
     type = Void;
 
   } else if (op == Operator::At) {
-    if (operand->type->is_pointer()) {
-      type = static_cast<Pointer *>(operand->type)->pointee;
+    if (operand->type.is_pointer()) {
+      type = static_cast<Pointer *>(operand->type.get)->pointee;
 
     } else {
       error_log.log(line_num, "Dereferencing object of type " +
-                                  operand->type->to_string() +
+                                  operand->type.to_string() +
                                   ", which is not a pointer.");
       type = Error;
     }
 
   } else if (op == Operator::Call) {
-    if (!operand->type->is_function()) {
+    if (!operand->type.is_function()) {
       error_log.log(line_num,
                     "Identifier `" + operand->token() + "` is not a function.");
       type = Error;
       return;
     }
 
-    auto fn = static_cast<Function *>(operand->type);
+    auto fn = static_cast<Function *>(operand->type.get);
     if (fn->input != Void) {
       error_log.log(line_num, "Calling function `" + operand->token() +
                                   "` with no arguments.");
@@ -158,7 +158,7 @@ void Unop::verify_types() {
       type = Real;
 
     } else {
-      error_log.log(line_num, type->to_string() + " has no negation operator.");
+      error_log.log(line_num, type.to_string() + " has no negation operator.");
       type = Error;
     }
   } else {
@@ -193,17 +193,17 @@ void Access::verify_types() {
   }
 
   // Access passes through pointers
-  while (etype->is_pointer()) {
-    etype = static_cast<Pointer *>(etype)->pointee;
+  while (etype.is_pointer()) {
+    etype = static_cast<Pointer *>(etype.get)->pointee;
   }
 
-  if (etype->is_struct()) {
-    auto member_type = static_cast<Structure *>(etype)->field(member_name);
+  if (etype.is_struct()) {
+    auto member_type = static_cast<Structure *>(etype.get)->field(member_name);
     if (member_type) {
       type = member_type;
 
     } else {
-      error_log.log(line_num, "Objects of type " + etype->to_string() +
+      error_log.log(line_num, "Objects of type " + etype.to_string() +
                                   " have no member named `" + member_name +
                                   "`.");
       type = Error;
@@ -232,15 +232,15 @@ void Binop::verify_types() {
   } else if (op == Language::Operator::Call) {
     type = Error;
 
-    if (lhs->type->is_dependent_type()) {
+    if (lhs->type.is_dependent_type()) {
       // TODO treat dependent types as functions
-      auto dep_type    = static_cast<DependentType *>(lhs->type);
+      auto dep_type    = static_cast<DependentType *>(lhs->type.get);
       auto result_type = (*dep_type)(rhs->evaluate(scope_->context).as_type);
       type             = result_type;
       return;
     }
 
-    if (!lhs->type->is_function()) {
+    if (!lhs->type.is_function()) {
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
       error_log.log(line_num, "Identifier `" + lhs->token() +
@@ -248,7 +248,7 @@ void Binop::verify_types() {
       return;
     }
 
-    auto in_types = static_cast<Function *>(lhs->type)->input;
+    auto in_types = static_cast<Function *>(lhs->type.get)->input;
 
     // TODO If rhs is a comma-list, is it's type given by a tuple?
     if (in_types != rhs->type) {
@@ -259,14 +259,14 @@ void Binop::verify_types() {
     }
 
     // TODO multiple return values. For now just taking the first
-    type = static_cast<Function *>(lhs->type)->output;
+    type = static_cast<Function *>(lhs->type.get)->output;
     assert(type && "return type is null");
 
     return;
 
   } else if (op == Language::Operator::Index) {
     type = Error;
-    if (!lhs->type->is_array()) {
+    if (!lhs->type.is_array()) {
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
       error_log.log(line_num, "Identifier `" + lhs->token() +
@@ -274,13 +274,13 @@ void Binop::verify_types() {
       return;
     }
 
-    type = static_cast<Array *>(lhs->type)->data_type;
+    type = static_cast<Array *>(lhs->type.get)->data_type;
     assert(type && "array data type is nullptr");
     // TODO allow slice indexing
     if (rhs->type != Int && rhs->type != Uint) {
       error_log.log(line_num,
                     "Arary must be indexed by an int or uint. You supplied a " +
-                        rhs->type->to_string());
+                        rhs->type.to_string());
       return;
     }
 
@@ -299,8 +299,8 @@ void Binop::verify_types() {
         (lhs->type == Uint && type == Int))
       return;
 
-    error_log.log(line_num, "Invalid cast from " + lhs->type->to_string() +
-                                " to " + type->to_string());
+    error_log.log(line_num, "Invalid cast from " + lhs->type.to_string() +
+                                " to " + type.to_string());
 
   } else {
     type = operator_lookup(line_num, op, lhs->type, rhs->type);
@@ -313,7 +313,7 @@ void Binop::verify_types() {
 
 void ChainOp::verify_types() {
   if (is_comma_list()) {
-    std::vector<Type *> type_vec(exprs.size(), nullptr);
+    std::vector<TypePtr> type_vec(exprs.size(), nullptr);
 
     size_t position = 0;
     for (const auto &eptr : exprs) {
@@ -327,7 +327,7 @@ void ChainOp::verify_types() {
 
   // All other chain ops need to take arguments of the same type and the
   // type is that one type
-  std::set<Type *> expr_types;
+  std::set<TypePtr> expr_types;
 
   for (const auto &expr : exprs) { expr_types.insert(expr->type); }
 
@@ -340,7 +340,7 @@ void ChainOp::verify_types() {
     // TODO guess what type was intended
     std::stringstream ss;
     ss << "Type error: Types do not all match. Found the following types:\n";
-    for (const auto &t : expr_types) { ss << "\t" << *t << "\n"; }
+    for (const auto &t : expr_types) { ss << "\t" << *t.get << "\n"; }
 
     error_log.log(line_num, ss.str());
     type = Error;
@@ -367,8 +367,8 @@ void Declaration::verify_types() {
     // segfault, so we need to check here before we cast the type. If it does
     // fail, we've already logged the error, so we just need to set the type to
     // be Error.
-    if (type_expr->type->is_array()) {
-      type = static_cast<Array *>(type_expr->type)->data_type;
+    if (type_expr->type.is_array()) {
+      type = static_cast<Array *>(type_expr->type.get)->data_type;
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context).as_type;
       if (t->is_enum() || t == Uint) {
@@ -433,10 +433,10 @@ void FunctionLiteral::verify_types() {
     input_type = Void;
 
   } else if (inputssize == 1) {
-    input_type = inputs.front()->type;
+    input_type = inputs.front()->type.get;
 
   } else {
-    std::vector<Type *> input_type_vec;
+    std::vector<TypePtr> input_type_vec;
     for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
 
     input_type = Tup(input_type_vec);
@@ -466,9 +466,9 @@ void Assignment::verify_types() {
     resolve_forward_declaration(rhs);
     if (lhs->type != rhs->type) {
       error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
-                                  lhs->type->to_string() +
+                                  lhs->type.to_string() +
                                   ", but right-hand side has type " +
-                                  rhs->type->to_string());
+                                  rhs->type.to_string());
     }
     type = Void;
   } else {
@@ -493,14 +493,14 @@ void Statements::verify_types() {
 void While::verify_types() {
   if (condition->type != Bool) {
     error_log.log(line_num, "While loop condition must be a bool, but " +
-                                condition->type->to_string() + " given.");
+                                condition->type.to_string() + " given.");
   }
 }
 
 void For::verify_types() {
   // TODO array -> "has operator[]"
-  if (container->type->is_array()) {
-    iterator->type = static_cast<Array *>(container->type)->data_type;
+  if (container->type.is_array()) {
+    iterator->type = static_cast<Array *>(container->type.get)->data_type;
     return;
 
   } else if (container->type == Type_) {
@@ -511,14 +511,14 @@ void For::verify_types() {
     }
   }
   error_log.log(line_num, "For loop container must be an array or enum, but " +
-                              container->type->to_string() + " given.");
+                              container->type.to_string() + " given.");
 }
 
 void Conditional::verify_types() {
   for (const auto &cond : conditions) {
     if (cond->type != Bool) {
       error_log.log(line_num, "Conditional must be a bool, but " +
-                                  cond->type->to_string() + " given.");
+                                  cond->type.to_string() + " given.");
     }
   }
 }
@@ -540,8 +540,8 @@ void TypeLiteral::verify_types() {
 
 // Verifies that all keys have the same given type `key_type` and that all
 // values have the same (but unspecified) type.
-Type *KVPairList::verify_types_with_key(Type *key_type) {
-  std::set<Type *> value_types;
+TypePtr KVPairList::verify_types_with_key(TypePtr key_type) {
+  std::set<TypePtr> value_types;
 
   for (const auto &kv : pairs) {
     if (kv.first->type != key_type) {
@@ -549,8 +549,8 @@ Type *KVPairList::verify_types_with_key(Type *key_type) {
       // type?  So far the only instance where this is called is for case
       // statements,
       error_log.log(line_num, "Type of `____` must be " +
-                                  key_type->to_string() + ", but " +
-                                  kv.first->type->to_string() +
+                                  key_type.to_string() + ", but " +
+                                  kv.first->type.to_string() +
                                   " found instead.");
       kv.first->type = key_type;
       assert(kv.first->type && "keytype");

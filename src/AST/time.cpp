@@ -10,24 +10,22 @@ Time::Eval Unop::determine_time() {
   return time_;
 }
 
-Time::Eval Access::determine_time() { return time_ = operand->determine_time(); }
+Time::Eval Access::determine_time() {
+  return time_ = operand->determine_time();
+}
 
 Time::Eval Binop::determine_time() {
-  if (op == Language::Operator::Cast) {
-    return time_ = lhs->determine_time();
-  }
+  if (op == Language::Operator::Cast) { return time_ = lhs->determine_time(); }
   return time_ = lhs->determine_time() | rhs->determine_time();
 }
 
 Time::Eval ChainOp::determine_time() {
   time_ = Time::either;
-  for (const auto &expr : exprs) {
-    time_ |= expr->determine_time();
-  }
+  for (const auto &expr : exprs) { time_ |= expr->determine_time(); }
   return time_;
 }
 
-Time::Eval ArrayLiteral::determine_time() { return time_ = type->time(); }
+Time::Eval ArrayLiteral::determine_time() { return time_ = type.get->time(); }
 
 Time::Eval ArrayType::determine_time() { return time_ = Time::compile; }
 
@@ -36,7 +34,7 @@ Time::Eval Terminal::determine_time() {
                                                              : Time::run;
 }
 
-Time::Eval Identifier::determine_time() { return time_ = type->time(); }
+Time::Eval Identifier::determine_time() { return time_ = type.get->time(); }
 
 Time::Eval Declaration::determine_time() {
   type_expr->determine_time();
@@ -55,29 +53,21 @@ Time::Eval KVPairList::determine_time() {
 Time::Eval Case::determine_time() { return time_ = kv->determine_time(); }
 
 Time::Eval Statements::determine_time() {
-  for (auto &stmt : statements) {
-    time_ |= stmt->determine_time();
-  }
+  for (auto &stmt : statements) { time_ |= stmt->determine_time(); }
   return time_;
 }
 
 Time::Eval FunctionLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &in : inputs) {
-    time_ |= in->determine_time();
-  }
+  for (auto &in : inputs) { time_ |= in->determine_time(); }
 
   return (time_ |= statements->determine_time());
 }
 
 Time::Eval Conditional::determine_time() {
   time_ = Time::either;
-  for (auto &cond : conditions) {
-    time_ |= cond->determine_time();
-  }
-  for (auto &stmt : statements) {
-    time_ |= stmt->determine_time();
-  }
+  for (auto &cond : conditions) { time_ |= cond->determine_time(); }
+  for (auto &stmt : statements) { time_ |= stmt->determine_time(); }
 
   return time_;
 }
@@ -93,9 +83,7 @@ Time::Eval For::determine_time() {
 
 Time::Eval TypeLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &d : declarations) {
-    time_ |= d->determine_time();
-  }
+  for (auto &d : declarations) { time_ |= d->determine_time(); }
   return time_;
 }
 

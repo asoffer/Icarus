@@ -21,43 +21,43 @@ std::string Primitive::to_string() const {
 std::string Array::to_string() const {
   std::stringstream ss;
   ss << "[-";
-  const Type* type_ptr = data_type;
+  const TypePtr *type_ptr_ptr = &data_type;
 
-  while (type_ptr->is_array()) {
+  while (type_ptr_ptr->is_array()) {
     ss << ", -";
-    type_ptr = static_cast<const Array*>(type_ptr)->data_type;
+    type_ptr_ptr = &static_cast<const Array*>(type_ptr_ptr->get)->data_type;
   }
 
-  ss << "; " << *type_ptr << "]";
+  ss << "; " << *type_ptr_ptr << "]";
   return ss.str();
 }
 
 std::string Function::to_string() const {
   std::stringstream ss;
-  if (input->is_function()) {
-    ss << "(" << *input << ")";
+  if (input.is_function()) {
+    ss << "(" << input << ")";
 
   } else {
-    ss << *input;
+    ss << input;
   }
 
   ss << " -> ";
 
-  if (output->is_function()) {
-    ss << "(" << *output << ")";
+  if (output.is_function()) {
+    ss << "(" << output << ")";
 
   } else {
-    ss << *output;
+    ss << output;
   }
   return ss.str();
 }
 
 std::string Pointer::to_string() const {
   std::stringstream ss;
-  if (pointee->is_function()) {
-    ss << "&(" << *pointee << ")";
+  if (pointee.is_function()) {
+    ss << "&(" << pointee << ")";
   } else {
-    ss << "&" << *pointee;
+    ss << "&" << pointee;
   }
   return ss.str();
 }
@@ -66,10 +66,10 @@ std::string Tuple::to_string() const {
   std::stringstream ss;
 
   auto iter = entries.begin();
-  ss << "(" << *(*iter);
+  ss << "(" << *iter;
   ++iter;
   while (iter != entries.end()) {
-    ss << ", " << *(*iter);
+    ss << ", " << *iter;
     ++iter;
   }
   ss << ")";
