@@ -1,7 +1,8 @@
 node := (T: type) -> type {
   return struct {
+    data: T
     next: &node(T)
   }
 }
 
-node(int)
+node(int) == node(char)

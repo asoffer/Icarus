@@ -339,7 +339,7 @@ struct ForwardDeclaration : public Type {
   AST::Expression *expr;
   TypePtr eval;
 
-  mutable std::vector<TypePtr *> usages;
+  mutable std::set<TypePtr *> usages;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

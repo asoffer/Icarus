@@ -51,14 +51,95 @@ TypePtr::operator llvm::Type *() const {
 }
 
 TypePtr &TypePtr::operator=(const TypePtr &t) {
-  assert(!get || !is_fwd_decl());
+  if (get && is_fwd_decl()) {
+    auto this_fwd = static_cast<ForwardDeclaration *>(get);
+    this_fwd->usages.erase(this);
+  }
 
   if (t.is_fwd_decl()) {
-    static_cast<ForwardDeclaration *>(t.get)->usages.push_back(this);
+    auto t_fwd = static_cast<ForwardDeclaration *>(t.get);
+    t_fwd->usages.insert(this);
   }
   get = t.get;
   return *this;
 }
+
+void TypePtr::resolve_fwd_decls() {
+  if (!get || is_primitive() || is_enum() || is_type_variable()) {
+    return;
+
+  } else if (is_array()) {
+    auto dt = static_cast<Array *>(get)->data_type;
+    dt.resolve_fwd_decls();
+    *this = Arr(dt);
+
+  } else if (is_tuple()) {
+    // TODO
+
+  } else if (is_pointer()) {
+    auto pointee = static_cast<Pointer *>(get)->pointee;
+    pointee.resolve_fwd_decls();
+    *this = Ptr(pointee);
+  } else if (is_struct()) {
+    // TODO
+
+  } else if (is_fwd_decl()) {
+    auto fwd = static_cast<ForwardDeclaration *>(get);
+    assert(fwd->eval);
+    *this = fwd->eval;
+
+  } else if (is_dependent_type()) {
+    // TODO This presents a unique challenge, but hopefully you'll get rid of
+    // this altogether anyways.
+  }
+}
+
+bool operator==(TypePtr lhs, TypePtr rhs) { return lhs.get == rhs.get; }
+/*
+bool operator==(TypePtr lhs, TypePtr rhs) {
+  if ((lhs.is_primitive() && rhs.is_primitive())
+      || (lhs.is_enum() && rhs.is_enum())) {
+    // TODO TypeError and Unknown?
+    return lhs.get == rhs.get;
+
+  } else if (lhs.is_array() && rhs.is_array()) {
+    return static_cast<Array *>(lhs.get)->data_type ==
+           static_cast<Array *>(rhs.get)->data_type;
+
+  } else if (lhs.is_tuple() && rhs.is_tuple()) {
+    // TODO
+    assert(false);
+
+  } else if (lhs.is_pointer() && rhs.is_pointer()) {
+    return static_cast<Pointer *>(lhs.get)->pointee ==
+           static_cast<Pointer *>(rhs.get)->pointee;
+
+  } else if (lhs.is_function() && rhs.is_function()) {
+    auto lhs_fn = static_cast<Function *>(lhs.get);
+    auto rhs_fn = static_cast<Function *>(rhs.get);
+    return lhs_fn->input == rhs_fn->input && lhs_fn->output == rhs_fn->output;
+
+  } else if (lhs.is_struct() && rhs.is_struct()) {
+    auto lhs_str = static_cast<Structure *>(lhs.get);
+    auto rhs_str = static_cast<Structure *>(rhs.get);
+    if (lhs_str->field_type.size() != rhs_str->field_type.size()) { return false; }
+
+    for (size_t i = 0; i < lhs_str->field_type.size(); ++i) {
+      if (lhs_str->field_type[i] != rhs_str->field_type[i]) { return false; }
+    }
+    return true;
+
+  } else if (lhs.is_fwd_decl() && rhs.is_fwd_decl()) {
+    assert(false);
+  } else if (lhs.is_dependent_type() && rhs.is_dependent_type()) {
+    assert(false);
+  } else if (lhs.is_type_variable() && rhs.is_type_variable()) {
+    assert(false);
+  } else {
+    return false;
+  }
+}
+*/
 
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
@@ -238,6 +319,10 @@ ForwardDeclaration::ForwardDeclaration(AST::Expression *expr)
 
 void ForwardDeclaration::set(TypePtr type) {
   eval = type;
+  for (auto tpp : usages) {
+    *tpp = type;
+  }
+  usages.clear();
 }
 
 bool Type::is_big() const { return is_array() || is_struct(); }

@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <map>
+#include "TypePtr.h"
 
 struct Type;
 

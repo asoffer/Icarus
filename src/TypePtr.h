@@ -31,6 +31,8 @@ struct TypePtr {
   bool is_big() const;
   bool stores_data() const;
 
+  void resolve_fwd_decls();
+
   operator llvm::Type *() const;
 
   operator bool () const;
@@ -43,6 +45,6 @@ std::ostream &operator<<(std::ostream &os, const TypePtr &t);
 // Necessary because you can have std::set<TypePtr>
 inline bool operator <(TypePtr lhs, TypePtr rhs) { return lhs.get < rhs.get; }
 
-inline bool operator==(TypePtr lhs, TypePtr rhs) { return lhs.get == rhs.get; }
+bool operator==(TypePtr lhs, TypePtr rhs);
 inline bool operator!=(TypePtr lhs, TypePtr rhs) { return !(lhs == rhs); }
 #endif

@@ -464,8 +464,8 @@ void Assignment::verify_types() {
       }
     }
 
-    resolve_forward_declaration(lhs);
-    resolve_forward_declaration(rhs);
+    lhs->type.resolve_fwd_decls();
+    rhs->type.resolve_fwd_decls();
     if (lhs->type != rhs->type) {
       error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
                                   lhs->type.to_string() +
