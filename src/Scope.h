@@ -28,6 +28,9 @@ struct FunctionLiteral;
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
+
+enum class ScopeType { While, For, Conditional, Function, Global };
+
 struct Scope {
   static std::stack<Scope *> Stack;
   static void verify_no_shadowing();
@@ -61,7 +64,8 @@ struct Scope {
 };
 
 struct BlockScope : public Scope {
-  BlockScope();
+  BlockScope() = delete;
+  BlockScope(ScopeType st);
   virtual ~BlockScope(){}
   virtual bool is_block_scope() { return true; }
 
@@ -71,7 +75,8 @@ struct BlockScope : public Scope {
 
   void set_parent_function(llvm::Function *fn);
 
-  llvm::BasicBlock *entry, *exit;
+  ScopeType type;
+  llvm::BasicBlock *entry, *exit, *land;
 };
 
 struct FnScope : public BlockScope {

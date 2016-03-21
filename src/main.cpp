@@ -75,7 +75,7 @@ int main(int argc, char *argv[]) {
   TypeSystem::initialize();
 
   // Initialize the global scope
-  Scope::Global  = new BlockScope();
+  Scope::Global  = new BlockScope(ScopeType::Global);
   int arg_num    = 1;  // iterator over argv
   int file_index = -1; // Index of where file name is in argv
   while (arg_num < argc) {

@@ -80,6 +80,7 @@ namespace AST {
     Dependency::value_type(this, this);
     for (auto& e : exprs) {
       Dependency::type_type(this, e);
+      Dependency::value_value(this, e);
       e->record_dependencies();
     }
   }

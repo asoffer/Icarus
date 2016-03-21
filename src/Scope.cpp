@@ -89,8 +89,9 @@ void Scope::set_parent(Scope* new_parent) {
   if (containing_function_) { containing_function_->add_scope(this); }
 }
 
-BlockScope::BlockScope()
-    : entry(make_block("entry", nullptr)), exit(make_block("exit", nullptr)) {}
+BlockScope::BlockScope(ScopeType st)
+    : type(st), entry(make_block("entry", nullptr)),
+      exit(make_block("exit", nullptr)), land(nullptr) {}
 
 void Scope::verify_no_shadowing() {
   for (auto decl_ptr1 : decl_registry_) {
@@ -183,7 +184,8 @@ void BlockScope::make_return(llvm::Value *val) {
   builder.CreateBr(fn_scope->exit);
 }
 
-FnScope::FnScope(llvm::Function *fn) : fn_type(nullptr), return_value(nullptr) {
+FnScope::FnScope(llvm::Function *fn)
+    : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr) {
   set_parent_function(fn);
 }
 

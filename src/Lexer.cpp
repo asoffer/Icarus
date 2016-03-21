@@ -142,7 +142,9 @@ AST::TokenNode Lexer::next_operator() {
   // Sanity check:
   // We only call this function if the top character is punctuation
   int peek = file_.peek();
-  assert(std::ispunct(peek) && "Non-punct character encountered as first character in next_operator.");
+  assert(
+      std::ispunct(peek) &&
+      "Non-punct character encountered as first character in next_operator.");
 
   // In general, we're going to take all punctuation characters, lump them
   // together, and call that an operator. However, some operators are just one

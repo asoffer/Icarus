@@ -889,6 +889,9 @@ llvm::Value *Conditional::generate_code() {
 
   // This loop covers the case of else
   for (size_t i = 0; i < body_scopes.size(); ++i) {
+    assert(!body_scopes[i]->land);
+    body_scopes[i]->land = land_block;
+
     Scope::Stack.push(body_scopes[i]);
     body_scopes[i]->initialize();
     builder.CreateBr(body_block[i]);
@@ -913,6 +916,18 @@ llvm::Value *EnumLiteral::generate_code() { return nullptr; }
 llvm::Value *TypeLiteral::generate_code() { return nullptr; }
 
 llvm::Value *Break::generate_code() {
+  auto scope_ptr = CurrentScope();
+
+  BlockScope *block_scope_ptr;
+  do {
+    assert(scope_ptr->is_block_scope());
+    block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
+    std::cout << scope_ptr << std::endl;
+    scope_ptr = block_scope_ptr->parent;
+
+  } while (block_scope_ptr->type != ScopeType::While &&
+           block_scope_ptr->type != ScopeType::For);
+
   // TODO implementation requires knowing what sort of scope we're looking at.
   // Use an enum for this.
   //  auto scope_ptr = CurrentScope();
@@ -960,9 +975,10 @@ llvm::Value *While::generate_code() {
   auto parent_fn = builder.GetInsertBlock()->getParent();
   while_scope->set_parent_function(parent_fn);
 
+  assert(!while_scope->land);
   auto cond_block = make_block("while.cond", parent_fn);
   auto body_block = make_block("while.body", parent_fn);
-  auto land_block = make_block("while.land", parent_fn);
+  while_scope->land = make_block("while.land", parent_fn);
 
   // Loop condition
   builder.CreateBr(cond_block);
@@ -970,7 +986,7 @@ llvm::Value *While::generate_code() {
   builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
 
-  builder.CreateCondBr(cond, while_scope->entry, land_block);
+  builder.CreateCondBr(cond, while_scope->entry, while_scope->land);
   // Loop body
   Scope::Stack.push(while_scope);
   while_scope->initialize();
@@ -986,7 +1002,7 @@ llvm::Value *While::generate_code() {
 
   // Landing
   Scope::Stack.pop();
-  builder.SetInsertPoint(land_block);
+  builder.SetInsertPoint(while_scope->land);
 
   return nullptr;
 }
@@ -1003,9 +1019,10 @@ llvm::Value *For::generate_code() {
     auto container_val = container->generate_code();
     assert(container_val && "container_val is nullptr");
 
+    assert(!for_scope->land);
     auto cond_block = make_block("loop.cond", parent_fn);
     auto loop_block = make_block("loop.body", parent_fn);
-    auto land_block = make_block("loop.land", parent_fn);
+    for_scope->land = make_block("loop.land", parent_fn);
 
     auto len_ptr = builder.CreateGEP(
         container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
@@ -1024,7 +1041,7 @@ llvm::Value *For::generate_code() {
     iterator->identifier->alloc = phi_node;
 
     auto cmp = builder.CreateICmpEQ(phi_node, end_ptr);
-    builder.CreateCondBr(cmp, land_block, for_scope->entry);
+    builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
 
     Scope::Stack.push(for_scope);
     for_scope->initialize();
@@ -1043,7 +1060,7 @@ llvm::Value *For::generate_code() {
 
     Scope::Stack.pop();
 
-    builder.SetInsertPoint(land_block);
+    builder.SetInsertPoint(for_scope->land);
   } else {
     // TODO that condition should really be encoded into the loop somewhere to
     // make it faster to check.
@@ -1065,8 +1082,9 @@ llvm::Value *For::generate_code() {
       }
     } else if (t == Uint) {
 
+      assert(!for_scope->land);
       auto loop_block = make_block("loop.body", parent_fn);
-      auto land_block = make_block("loop.land", parent_fn);
+      for_scope->land = make_block("loop.land", parent_fn);
 
       builder.CreateStore(data::const_uint(0), iterator->identifier->alloc);
       builder.CreateBr(for_scope->entry);
@@ -1090,7 +1108,7 @@ llvm::Value *For::generate_code() {
 
       Scope::Stack.pop();
 
-      builder.SetInsertPoint(land_block);
+      builder.SetInsertPoint(for_scope->land);
     } else {
       assert(false && "Not yet implemented");
     }
