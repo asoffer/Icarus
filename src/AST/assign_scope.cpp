@@ -115,4 +115,6 @@ void TypeLiteral::assign_scope() {
   for (auto &decl : declarations) { decl->assign_scope(); }
   Scope::Stack.pop();
 }
+
+void Break::assign_scope() { scope_ = CurrentScope(); }
 } // namespace AST

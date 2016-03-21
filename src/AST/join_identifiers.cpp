@@ -35,7 +35,8 @@ namespace AST {
     for (auto &el : elems) { set_or_recurse(el); }
   }
 
-  void Terminal::join_identifiers(bool is_arg) {}
+  void Terminal::join_identifiers(bool) {}
+  void Break::join_identifiers(bool) {}
 
   void Identifier::join_identifiers(bool is_arg) {
     Terminal::join_identifiers();

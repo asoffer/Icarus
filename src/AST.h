@@ -438,14 +438,11 @@ struct Break : public Node {
   static Node *build(NPtrVec &&nodes);
   virtual ~Break();
 
-  virtual std::string to_string(size_t n) const;
-  virtual llvm::Value *generate_code();
-  virtual Context::Value evaluate(Context &ctx);
-  virtual void record_dependencies();
-  virtual std::string graphviz_label() const;
-  virtual Time::Eval determine_time();
+  VIRTUAL_METHODS_FOR_NODES;
 
   Break(size_t new_line_num) { line_num = new_line_num; }
+
+  BlockScope *loop_scope;
 };
 } // namespace AST
 

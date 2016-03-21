@@ -44,6 +44,7 @@ struct Scope {
 
   virtual bool is_block_scope() { return false; }
   virtual bool is_function_scope() { return false; }
+  virtual bool is_loop_scope();
 
   AST::Identifier *identifier(AST::Expression *id_as_eptr);
   AST::Identifier *identifier(const std::string &name) const;
@@ -76,6 +77,7 @@ struct BlockScope : public Scope {
   void set_parent_function(llvm::Function *fn);
 
   ScopeType type;
+  llvm::Value *break_flag;
   llvm::BasicBlock *entry, *exit, *land;
 };
 

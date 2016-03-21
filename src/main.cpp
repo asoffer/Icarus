@@ -25,6 +25,7 @@ extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
 extern ErrorLog error_log;
+extern llvm::IRBuilder<> builder;
 
 namespace debug {
 extern bool parser;
@@ -43,6 +44,7 @@ extern std::map<std::string, AST::Statements *> ast_map;
 // each file off the queue until the queue is empty. We avoid circular calls by
 // checking if the map is already filled before parsing.
 extern std::queue<std::string> file_queue;
+
 
 // This is an enum so we can give meaningful names for error codes. However, at
 // the end of the day, we must return ints. Thus, we need to use the implicit
@@ -76,6 +78,8 @@ int main(int argc, char *argv[]) {
 
   // Initialize the global scope
   Scope::Global  = new BlockScope(ScopeType::Global);
+  builder.SetInsertPoint(Scope::Global->entry);
+
   int arg_num    = 1;  // iterator over argv
   int file_index = -1; // Index of where file name is in argv
   while (arg_num < argc) {

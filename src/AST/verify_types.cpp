@@ -572,4 +572,23 @@ TypePtr KVPairList::verify_types_with_key(TypePtr key_type) {
   // KVPairLists so much
   return *value_types.begin();
 }
+
+void Break::verify_types() {
+  auto scope_ptr = scope_;
+  while (scope_ptr) {
+    assert(scope_ptr->is_block_scope());
+    auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
+    if (block_scope_ptr->type == ScopeType::Function) { break; }
+
+    if (block_scope_ptr->is_loop_scope()) {
+      loop_scope = block_scope_ptr;
+      return;
+    }
+
+    scope_ptr = block_scope_ptr->parent;
+  }
+
+  error_log.log(line_num, "Break statement must be contained inside a loop.");
+}
+
 } // namespace AST

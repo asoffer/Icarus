@@ -90,7 +90,7 @@ void Scope::set_parent(Scope* new_parent) {
 }
 
 BlockScope::BlockScope(ScopeType st)
-    : type(st), entry(make_block("entry", nullptr)),
+    : type(st), break_flag(nullptr), entry(make_block("entry", nullptr)),
       exit(make_block("exit", nullptr)), land(nullptr) {}
 
 void Scope::verify_no_shadowing() {
@@ -258,4 +258,10 @@ void FnScope::allocate(Scope* scope) {
     decl_id->alloc = decl_type.get->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }
+}
+
+bool Scope::is_loop_scope() {
+  if (!is_block_scope()) return false;
+  auto bs = static_cast<BlockScope*>(this);
+  return bs->type == ScopeType::For || bs->type == ScopeType::While;
 }

@@ -384,7 +384,23 @@ llvm::Value *ArrayType::generate_code() {
 }
 
 llvm::Value *Statements::generate_code() {
-  for (auto &stmt : statements) stmt->generate_code();
+  assert(!statements.empty());
+
+  auto it = statements.begin();
+  (*it)->generate_code();
+  ++it;
+  while (it != statements.end()) {
+    assert(builder.GetInsertBlock());
+    auto term_inst = builder.GetInsertBlock()->getTerminator();
+    if (term_inst) {
+      // TODO Log a warning about unreachable code.
+      break;
+    }
+
+    (*it)->generate_code();
+    ++it;
+  }
+
   return nullptr;
 }
 
@@ -898,11 +914,29 @@ llvm::Value *Conditional::generate_code() {
 
     builder.SetInsertPoint(body_block[i]);
     statements[i]->generate_code();
-    builder.CreateBr(body_scopes[i]->exit);
+
+    auto term_inst = builder.GetInsertBlock()->getTerminator();
+    if (!term_inst) { builder.CreateBr(body_scopes[i]->exit); }
 
     builder.SetInsertPoint(body_scopes[i]->exit);
     body_scopes[i]->uninitialize();
-    builder.CreateBr(land_block);
+
+    // TODO Pull this loop out. It has a lot of commonalities with other scope traversing-loops used elsewhere.
+    assert(scope_->is_block_scope());
+    BlockScope *scope_ptr = static_cast<BlockScope *>(scope_);
+    while (scope_ptr) {
+      if (scope_ptr->is_loop_scope()) { break; }
+      auto par = scope_ptr->parent;
+      if (!par) break;
+      assert(par->is_block_scope());
+      scope_ptr = static_cast<BlockScope *>(par);
+    }
+
+    if (scope_ptr && scope_ptr->break_flag) {
+      builder.CreateCondBr(builder.CreateLoad(scope_ptr->break_flag), scope_ptr->exit, land_block);
+    } else {
+      builder.CreateBr(land_block);
+    }
 
     Scope::Stack.pop();
   }
@@ -917,63 +951,23 @@ llvm::Value *TypeLiteral::generate_code() { return nullptr; }
 
 llvm::Value *Break::generate_code() {
   auto scope_ptr = CurrentScope();
+  assert(scope_ptr->is_block_scope());
+  auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
 
-  BlockScope *block_scope_ptr;
-  do {
-    assert(scope_ptr->is_block_scope());
-    block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
-    std::cout << scope_ptr << std::endl;
-    scope_ptr = block_scope_ptr->parent;
+  // every step of the way you need to insert a phi node and change the
+  // unconditional branch to a conditional branch.
 
-  } while (block_scope_ptr->type != ScopeType::While &&
-           block_scope_ptr->type != ScopeType::For);
-
-  // TODO implementation requires knowing what sort of scope we're looking at.
-  // Use an enum for this.
-  //  auto scope_ptr = CurrentScope();
-  //
-  //  auto prev_insert = builder.GetInsertBlock();
-  //
-  //  auto parent_fn                  = builder.GetInsertBlock()->getParent();
-  //  llvm::BasicBlock *dealloc_block = make_block("dealloc.block", parent_fn);
-  //  builder.CreateBr(dealloc_block);
-  //
-  //  while (!scope_ptr->is_loop_scope()) {
-  //    auto prev_block = scope_ptr->builder.GetInsertBlock();
-  //    scope_ptr->builder.SetInsertPoint(dealloc_block);
-  //    scope_ptr->uninitialize();
-  //    scope_ptr->builder.SetInsertPoint(prev_block);
-  //
-  //    // Go to parent block
-  //    scope_ptr = scope_ptr->parent();
-  //    if (scope_ptr == nullptr) break;
-  //    if (scope_ptr->is_function_scope()) break;
-  //  }
-  //
-  //  if (scope_ptr == nullptr || scope_ptr->is_function_scope()) {
-  //    error_log.log(line_num,
-  //                  "A `break` command was encountered outside of a loop.");
-  //
-  //  } else {
-  //    auto while_scope = static_cast<WhileScope *>(scope_ptr);
-  //    // TODO if this is in another scope, break up out of those too.
-  //    // For example, a conditional inside a loop.
-  //    builder.SetInsertPoint(dealloc_block);
-  //    auto while_scope_insert = while_scope->builder.GetInsertBlock();
-  //    while_scope->builder.SetInsertPoint(dealloc_block);
-  //    while_scope->uninitialize();
-  //    while_scope->builder.SetInsertPoint(while_scope_insert);
-  //    builder.CreateBr(while_scope->landing_block());
-  //    builder.SetInsertPoint(prev_insert);
-  //  }
-  //
+  // TODO worry about uninitializing everything.
+  builder.CreateStore(data::const_true(), loop_scope->break_flag);
+  builder.CreateBr(block_scope_ptr->exit);
   return nullptr;
 }
 
 llvm::Value *While::generate_code() {
-
   auto parent_fn = builder.GetInsertBlock()->getParent();
   while_scope->set_parent_function(parent_fn);
+
+  assert(!while_scope->break_flag);
 
   assert(!while_scope->land);
   auto cond_block = make_block("while.cond", parent_fn);
@@ -982,6 +976,13 @@ llvm::Value *While::generate_code() {
 
   // Loop condition
   builder.CreateBr(cond_block);
+
+  // Build break flag in functions entry position.
+  assert(while_scope->containing_function_);
+  assert(while_scope->containing_function_->entry);
+  builder.SetInsertPoint(while_scope->containing_function_->entry->begin());
+  while_scope->break_flag = builder.CreateAlloca(Bool, nullptr, "break.flag");
+  builder.CreateStore(data::const_false(), while_scope->break_flag);
 
   builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
@@ -998,7 +999,8 @@ llvm::Value *While::generate_code() {
 
   builder.SetInsertPoint(while_scope->exit);
   while_scope->uninitialize();
-  builder.CreateBr(cond_block);
+  builder.CreateCondBr(builder.CreateLoad(while_scope->break_flag),
+                       while_scope->land, cond_block);
 
   // Landing
   Scope::Stack.pop();
