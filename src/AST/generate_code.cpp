@@ -46,6 +46,17 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
+// Build exit flag in functions entry position. In actuality, we don't need
+// a full uint. We only need 3 potential flags.
+void InitializeExitFlag(BlockScope *scope, const std::string &flag_name) {
+  auto start_block = builder.GetInsertBlock();
+  assert(scope->containing_function_);
+  assert(scope->containing_function_->entry);
+  builder.SetInsertPoint(scope->containing_function_->entry->begin());
+  scope->exit_flag = builder.CreateAlloca(Uint, nullptr, flag_name);
+  builder.CreateStore(data::const_uint(0), scope->exit_flag);
+  builder.SetInsertPoint(start_block);
+}
 
 #define BREAK_FLAG data::const_uint(1)
 #define CONTINUE_FLAG data::const_uint(2)
@@ -980,13 +991,7 @@ llvm::Value *While::generate_code() {
   // Loop condition
   builder.CreateBr(cond_block);
 
-  // Build break flag in functions entry position. In actuality, we don't need a
-  // full uint. We only need 3 potential flags.
-  assert(while_scope->containing_function_);
-  assert(while_scope->containing_function_->entry);
-  builder.SetInsertPoint(while_scope->containing_function_->entry->begin());
-  while_scope->exit_flag = builder.CreateAlloca(Uint, nullptr, "break.flag");
-  builder.CreateStore(data::const_uint(0), while_scope->exit_flag);
+  InitializeExitFlag(while_scope, "while.exit.flag");
 
   builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
@@ -1022,6 +1027,8 @@ llvm::Value *For::generate_code() {
   for_scope->set_parent_function(parent_fn);
 
   if (container->type.is_array()) {
+    InitializeExitFlag(for_scope, "for.exit.flag");
+
     auto data_type = iterator->type;
 
     auto container_val = container->generate_code();
@@ -1057,14 +1064,17 @@ llvm::Value *For::generate_code() {
 
     builder.SetInsertPoint(loop_block);
     statements->generate_code();
-
-    auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
-    phi_node->addIncoming(next_ptr, for_scope->exit); // Comes from exit block
     builder.CreateBr(for_scope->exit);
 
-    for_scope->uninitialize();
     builder.SetInsertPoint(for_scope->exit);
-    builder.CreateBr(cond_block);
+    auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
+    phi_node->addIncoming(next_ptr, for_scope->exit); // Comes from exit block
+
+    for_scope->uninitialize();
+
+    auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
+    auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+    builder.CreateCondBr(should_exit, for_scope->land, cond_block);
 
     Scope::Stack.pop();
 
@@ -1089,6 +1099,7 @@ llvm::Value *For::generate_code() {
         statements->generate_code();
       }
     } else if (t == Uint) {
+      InitializeExitFlag(for_scope, "for.exit.flag");
 
       assert(!for_scope->land);
       auto loop_block = make_block("loop.body", parent_fn);
@@ -1104,15 +1115,19 @@ llvm::Value *For::generate_code() {
       builder.SetInsertPoint(loop_block);
       statements->generate_code();
 
+      builder.CreateBr(for_scope->exit);
+
+      builder.SetInsertPoint(for_scope->exit);
       builder.CreateStore(
           builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
                             data::const_uint(1)),
           iterator->identifier->alloc);
 
-      builder.CreateBr(for_scope->exit);
       for_scope->uninitialize();
-      builder.SetInsertPoint(for_scope->exit);
-      builder.CreateBr(for_scope->entry);
+
+      auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
+      auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+      builder.CreateCondBr(should_exit, for_scope->land, for_scope->entry);
 
       Scope::Stack.pop();
 

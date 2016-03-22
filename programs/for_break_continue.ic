@@ -1,0 +1,32 @@
+main := void -> void {
+  for n in uint {
+    if n % 2u == 0u {
+      continue
+    }
+
+    print n
+    if n > 10u {
+      break
+    }
+    print "\n"
+  }
+
+  print "\n\n\n"
+
+  a := [2, 4, 5, 6, 8, 9, 10, 11]
+  for x in a {
+    if x == 5 {
+      continue
+    }
+
+    if x == 9 {
+      break
+    }
+
+    print x
+    print '\n'
+  }
+
+  print "Who do we appreciate?\n"
+
+}
