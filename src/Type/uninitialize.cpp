@@ -125,4 +125,3 @@ void TypeVariable::call_uninit(llvm::Value*) {
 void ForwardDeclaration::call_uninit(llvm::Value *) {
   assert(false && "Cannot uninitialize a forward declaration");
 }
-

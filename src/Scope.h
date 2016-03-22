@@ -77,7 +77,7 @@ struct BlockScope : public Scope {
   void set_parent_function(llvm::Function *fn);
 
   ScopeType type;
-  llvm::Value *break_flag;
+  llvm::Value *exit_flag;
   llvm::BasicBlock *entry, *exit, *land;
 };
 

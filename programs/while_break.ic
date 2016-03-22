@@ -7,7 +7,7 @@ main := void -> void {
       g: foo
       break
     }
-    print " "
+    print "*"
   }
   
   print " -> "

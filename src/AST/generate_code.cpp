@@ -46,6 +46,10 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
+
+#define BREAK_FLAG data::const_uint(1)
+#define CONTINUE_FLAG data::const_uint(2)
+
 namespace AST {
 llvm::Value *Identifier::generate_code() {
   if (type == Type_) {
@@ -932,8 +936,10 @@ llvm::Value *Conditional::generate_code() {
       scope_ptr = static_cast<BlockScope *>(par);
     }
 
-    if (scope_ptr && scope_ptr->break_flag) {
-      builder.CreateCondBr(builder.CreateLoad(scope_ptr->break_flag), scope_ptr->exit, land_block);
+    if (scope_ptr && scope_ptr->exit_flag) {
+      auto exit_flag = builder.CreateLoad(scope_ptr->exit_flag);
+      auto should_exit = builder.CreateICmpNE(exit_flag, data::const_uint(0));
+      builder.CreateCondBr(should_exit, scope_ptr->exit, land_block);
     } else {
       builder.CreateBr(land_block);
     }
@@ -958,7 +964,7 @@ llvm::Value *Break::generate_code() {
   // unconditional branch to a conditional branch.
 
   // TODO worry about uninitializing everything.
-  builder.CreateStore(data::const_true(), loop_scope->break_flag);
+  builder.CreateStore(BREAK_FLAG, loop_scope->exit_flag);
   builder.CreateBr(block_scope_ptr->exit);
   return nullptr;
 }
@@ -967,7 +973,7 @@ llvm::Value *While::generate_code() {
   auto parent_fn = builder.GetInsertBlock()->getParent();
   while_scope->set_parent_function(parent_fn);
 
-  assert(!while_scope->break_flag);
+  assert(!while_scope->exit_flag);
 
   assert(!while_scope->land);
   auto cond_block = make_block("while.cond", parent_fn);
@@ -977,12 +983,13 @@ llvm::Value *While::generate_code() {
   // Loop condition
   builder.CreateBr(cond_block);
 
-  // Build break flag in functions entry position.
+  // Build break flag in functions entry position. In actuality, we don't need a
+  // full uint. We only need 3 potential flags.
   assert(while_scope->containing_function_);
   assert(while_scope->containing_function_->entry);
   builder.SetInsertPoint(while_scope->containing_function_->entry->begin());
-  while_scope->break_flag = builder.CreateAlloca(Bool, nullptr, "break.flag");
-  builder.CreateStore(data::const_false(), while_scope->break_flag);
+  while_scope->exit_flag = builder.CreateAlloca(Uint, nullptr, "break.flag");
+  builder.CreateStore(data::const_uint(0), while_scope->exit_flag);
 
   builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
@@ -999,8 +1006,10 @@ llvm::Value *While::generate_code() {
 
   builder.SetInsertPoint(while_scope->exit);
   while_scope->uninitialize();
-  builder.CreateCondBr(builder.CreateLoad(while_scope->break_flag),
-                       while_scope->land, cond_block);
+
+  auto exit_flag = builder.CreateLoad(while_scope->exit_flag);
+  auto should_break = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+  builder.CreateCondBr(should_break, while_scope->land, cond_block);
 
   // Landing
   Scope::Stack.pop();
@@ -1119,3 +1128,8 @@ llvm::Value *For::generate_code() {
   return nullptr;
 }
 } // namespace AST
+
+#undef BREAK_FLAG
+#undef CONTINUE_FLAG
+
+

@@ -90,7 +90,7 @@ void Scope::set_parent(Scope* new_parent) {
 }
 
 BlockScope::BlockScope(ScopeType st)
-    : type(st), break_flag(nullptr), entry(make_block("entry", nullptr)),
+    : type(st), exit_flag(nullptr), entry(make_block("entry", nullptr)),
       exit(make_block("exit", nullptr)), land(nullptr) {}
 
 void Scope::verify_no_shadowing() {
