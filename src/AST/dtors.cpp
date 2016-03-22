@@ -79,7 +79,7 @@ TypeLiteral::~TypeLiteral() {
 }
 
 EnumLiteral::~EnumLiteral() {}
-Break::~Break() {}
+BreakOrContinue::~BreakOrContinue() {}
 
 } // namespace AST
 #undef DELETE

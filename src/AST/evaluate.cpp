@@ -511,7 +511,7 @@ Context::Value Conditional::evaluate(Context &ctx) {
   return nullptr;
 }
 
-Context::Value Break::evaluate(Context &) {
+Context::Value BreakOrContinue::evaluate(Context &) {
   assert(false && "Not yet implemented");
 }
 

@@ -258,8 +258,8 @@ std::string Conditional::to_string(size_t n) const {
       << (members.size() == 1 ? " value>\n" : " values>\n");
     return ss.str();
   }
-  std::string Break::to_string(size_t n) const {
-    return tabs(n) + "<Break>";
+  std::string BreakOrContinue::to_string(size_t n) const {
+    return tabs(n) + (is_break ? "<Break>" : "<Continue>");
   }
 
 }  // namespace AST

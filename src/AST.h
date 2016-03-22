@@ -434,15 +434,19 @@ struct EnumLiteral : public Expression {
   std::vector<std::string> members;
 };
 
-struct Break : public Node {
-  static Node *build(NPtrVec &&nodes);
-  virtual ~Break();
+struct BreakOrContinue : public Node {
+  static Node *build_break(NPtrVec &&nodes);
+  static Node *build_continue(NPtrVec &&nodes);
+  virtual ~BreakOrContinue();
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  Break(size_t new_line_num) { line_num = new_line_num; }
+  BreakOrContinue(size_t new_line_num, bool is_break = true) : is_break(is_break) {
+    line_num = new_line_num;
+  }
 
   BlockScope *loop_scope;
+  bool is_break;
 };
 } // namespace AST
 

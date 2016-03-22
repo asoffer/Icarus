@@ -204,7 +204,7 @@ namespace AST {
     Dependency::add_to_table(this);
   }
 
-  void Break::record_dependencies() {
+  void BreakOrContinue::record_dependencies() {
     Dependency::add_to_table(this);
   }
 }  // namespace AST

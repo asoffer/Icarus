@@ -48,7 +48,7 @@ namespace Language {
     reserved_ascii, reserved_import, reserved_string, reserved_alloc,
     reserved_struct,
 
-    break_statement,
+    break_statement, continue_statement,
 
     // BEGIN USING MASKS
 

@@ -36,7 +36,7 @@ namespace AST {
   }
 
   void Terminal::join_identifiers(bool) {}
-  void Break::join_identifiers(bool) {}
+  void BreakOrContinue::join_identifiers(bool) {}
 
   void Identifier::join_identifiers(bool is_arg) {
     Terminal::join_identifiers();

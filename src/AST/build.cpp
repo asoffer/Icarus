@@ -553,7 +553,13 @@ Node *EnumLiteral::build(NPtrVec &&nodes) {
   return enum_lit_ptr;
 }
 
-Node *Break::build(NPtrVec &&nodes) { return new Break(nodes[0]->line_num); }
+Node *BreakOrContinue::build_break(NPtrVec &&nodes) {
+  return new BreakOrContinue(nodes[0]->line_num, true);
+}
+
+Node *BreakOrContinue::build_continue(NPtrVec &&nodes) {
+  return new BreakOrContinue(nodes[0]->line_num, false);
+}
 
 Node *While::build(NPtrVec &&nodes) {
   auto while_stmt        = new While;

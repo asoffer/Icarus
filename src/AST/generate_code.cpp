@@ -955,16 +955,13 @@ llvm::Value *Conditional::generate_code() {
 llvm::Value *EnumLiteral::generate_code() { return nullptr; }
 llvm::Value *TypeLiteral::generate_code() { return nullptr; }
 
-llvm::Value *Break::generate_code() {
+llvm::Value *BreakOrContinue::generate_code() {
   auto scope_ptr = CurrentScope();
   assert(scope_ptr->is_block_scope());
   auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
 
-  // every step of the way you need to insert a phi node and change the
-  // unconditional branch to a conditional branch.
-
-  // TODO worry about uninitializing everything.
-  builder.CreateStore(BREAK_FLAG, loop_scope->exit_flag);
+  builder.CreateStore(is_break ? BREAK_FLAG : CONTINUE_FLAG,
+                      loop_scope->exit_flag);
   builder.CreateBr(block_scope_ptr->exit);
   return nullptr;
 }
