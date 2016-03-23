@@ -1026,15 +1026,15 @@ llvm::Value *For::generate_code() {
   auto parent_fn = start_block->getParent();
   for_scope->set_parent_function(parent_fn);
 
-  if (container->type.is_array()) {
-    InitializeExitFlag(for_scope, "for.exit.flag");
+  InitializeExitFlag(for_scope, "for.exit.flag");
+  assert(!for_scope->land);
 
+  if (container->type.is_array()) {
     auto data_type = iterator->type;
 
     auto container_val = container->generate_code();
     assert(container_val && "container_val is nullptr");
 
-    assert(!for_scope->land);
     auto cond_block = make_block("loop.cond", parent_fn);
     auto loop_block = make_block("loop.body", parent_fn);
     for_scope->land = make_block("loop.land", parent_fn);
@@ -1087,21 +1087,29 @@ llvm::Value *For::generate_code() {
       auto enum_type = static_cast<Enumeration *>(t);
       // TODO get them by means other than string name
 
-      // Mostly we don't need these.
-      // TODO what if we allocate inside the loop?
-      for_scope->entry->removeFromParent();
-      for_scope->exit->removeFromParent();
+      auto loop_block = make_block("loop.body", parent_fn);
+ 
+      builder.CreateBr(for_scope->entry);
+      Scope::Stack.push(for_scope);
+      for_scope->initialize();
+
+      // Assumption: blocks are labelled in numeric order.
+ 
+      builder.CreateBr(loop_block);
 
       for (const auto kv : enum_type->int_values) {
-
+        // TODO init
         builder.CreateStore(data::const_uint(kv.second),
                             iterator->identifier->alloc);
         statements->generate_code();
-      }
-    } else if (t == Uint) {
-      InitializeExitFlag(for_scope, "for.exit.flag");
+        // TODO uninit
 
-      assert(!for_scope->land);
+        // auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
+        // auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+        // builder.CreateCondBr(should_exit, for_scope->land, __________);
+      }
+
+    } else if (t == Uint) {
       auto loop_block = make_block("loop.body", parent_fn);
       for_scope->land = make_block("loop.land", parent_fn);
 
@@ -1143,5 +1151,3 @@ llvm::Value *For::generate_code() {
 
 #undef BREAK_FLAG
 #undef CONTINUE_FLAG
-
-

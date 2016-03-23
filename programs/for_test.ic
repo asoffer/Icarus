@@ -31,5 +31,9 @@ main := void -> void {
       print ' '
       k += 1u
     }
+    if n > 1000u {
+      print "\n"
+      break
+    }
   }
 }
