@@ -174,8 +174,7 @@ std::string Conditional::to_string(size_t n) const {
   }
 
   std::string Identifier::to_string(size_t n) const {
-    return tabs(n) + "<Identifier " + TYPE_OR("") + ": "
-      + token() + ">\n";
+    return tabs(n) + "<Identifier " + TYPE_OR("") + ": " + token() + ">\n";
   }
 
   std::string Declaration::to_string(size_t n) const {
@@ -192,15 +191,13 @@ std::string Conditional::to_string(size_t n) const {
     } break;
     }
 
-    return output + TYPE_OR("") + ">\n"
-      + identifier->to_string(n + 1)
-      + type_expr->to_string(n + 1);
+    return output + TYPE_OR("") + ">\n" + identifier->to_string(n + 1) +
+           type_expr->to_string(n + 1);
   }
 
   std::string Assignment::to_string(size_t n) const {
-    return tabs(n) + "<Assignment " + TYPE_OR("") + ">\n"
-      + lhs->to_string(n + 1)
-      + rhs->to_string(n + 1);
+    return tabs(n) + "<Assignment " + TYPE_OR("") + ">\n" +
+           lhs->to_string(n + 1) + rhs->to_string(n + 1);
   }
 
   std::string Case::to_string(size_t n) const {
@@ -242,7 +239,7 @@ std::string Conditional::to_string(size_t n) const {
     return ss.str();
   }
 
-  std::string TypeLiteral::to_string(size_t n) const {
+  std::string StructLiteral::to_string(size_t n) const {
     std::stringstream ss;
     ss << tabs(n) << "<Type>\n";
     for (const auto& decl : declarations) {
@@ -262,4 +259,7 @@ std::string Conditional::to_string(size_t n) const {
     return tabs(n) + (is_break ? "<Break>" : "<Continue>");
   }
 
+  std::string DummyTypeExpr::to_string(size_t n) const {
+    return tabs(n) + "<" + type_value.get->to_string() + ">\n";
+  }
 }  // namespace AST

@@ -215,3 +215,7 @@ llvm::Function* TypeVariable::assign() {
 llvm::Function* ForwardDeclaration::assign() {
   assert(false && "Cannot assign to a forward declaration");
 }
+
+llvm::Function* ParametricStructure::assign() {
+  assert(false && "Cannot assign to a parametric structure");
+}

@@ -6,6 +6,10 @@ std::string Conditional::graphviz_label() const { return "If"; }
 std::string While::graphviz_label() const { return "While"; }
 std::string For::graphviz_label() const { return "For"; }
 
+std::string DummyTypeExpr::graphviz_label() const {
+  return type_value.get->to_string();
+}
+
 std::string Unop::graphviz_label() const {
   switch (op) {
   case Language::Operator::Return: return "Return";
@@ -102,10 +106,7 @@ std::string Binop::graphviz_label() const {
   }
 }
 
-std::string TypeLiteral::graphviz_label() const {
-  return type_value ? "Type: " + type_value->bound_name : "TypeLiteral";
-}
-
+std::string StructLiteral::graphviz_label() const { return "StructLiteral"; }
 std::string ArrayType::graphviz_label() const { return "ArrayType"; }
 std::string ArrayLiteral::graphviz_label() const { return "ArrayLiteral"; }
 std::string Case::graphviz_label() const { return "Case"; }

@@ -126,6 +126,7 @@ static std::map<std::string, Enumeration *> enum_types_;
 static std::vector<DependentType *> dep_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure *> struct_types_;
+static std::map<std::string, ParametricStructure *> param_struct_types_;
 
 void GenerateLLVM() {
   for (auto t : array_types_) t->generate_llvm();
@@ -218,7 +219,7 @@ Enumeration *Enum(const std::string &name, const AST::EnumLiteral *e) {
   return TypeSystem::enum_types_[name] = enum_type;
 }
 
-Structure *Struct(const std::string &name, AST::TypeLiteral *t) {
+Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   auto iter = TypeSystem::struct_types_.find(name);
   if (iter != TypeSystem::struct_types_.end()) return iter->second;
 
@@ -230,6 +231,21 @@ Structure *Struct(const std::string &name, AST::TypeLiteral *t) {
   auto struct_type = new Structure(name, t);
 
   return TypeSystem::struct_types_[name] = struct_type;
+}
+
+ParametricStructure *ParamStruct(const std::string &name,
+                                 AST::StructLiteral *t) {
+  auto iter = TypeSystem::param_struct_types_.find(name);
+  if (iter != TypeSystem::param_struct_types_.end()) return iter->second;
+
+  // If you don't provide something to create it with,
+  // it's just meant to be a check for existance
+  // TODO merge this with Contexts
+  if (t == nullptr) return nullptr;
+
+  auto param_struct_type = new ParametricStructure(name, t);
+
+  return TypeSystem::param_struct_types_[name] = param_struct_type;
 }
 
 // TODO take in a vector of context values instead

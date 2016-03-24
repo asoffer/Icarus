@@ -24,8 +24,9 @@ llvm::Value *FunctionLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *Case::generate_lvalue() { return nullptr; }
 llvm::Value *Assignment::generate_lvalue() { return nullptr; }
 llvm::Value *Declaration::generate_lvalue() { return nullptr; }
-llvm::Value *TypeLiteral::generate_lvalue() { return nullptr; }
+llvm::Value *StructLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *EnumLiteral::generate_lvalue() { return nullptr; }
+llvm::Value *DummyTypeExpr::generate_lvalue() { return nullptr; }
 
 llvm::Value *Access::generate_lvalue() {
   // Automatically pass through pointers

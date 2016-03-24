@@ -318,9 +318,7 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
                          bool infer) {
   auto decl_ptr = Scope::make_declaration(
       nodes[1]->line_num, infer ? DeclType::Infer : DeclType::Std,
-      nodes[0]->token());
-
-  decl_ptr->type_expr = steal<Expression>(nodes[2]);
+      nodes[0]->token(), steal<Expression>(nodes[2]));
 
   decl_ptr->type_ = node_type;
 
@@ -426,10 +424,10 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   return fn_lit;
 }
 
-Node *TypeLiteral::build(NPtrVec &&nodes) {
-  auto type_lit_ptr      = new TypeLiteral;
-  type_lit_ptr->line_num = nodes[0]->line_num;
-  type_lit_ptr->type     = Type_;
+Node *StructLiteral::build(NPtrVec &&nodes) {
+  auto struct_lit_ptr      = new StructLiteral;
+  struct_lit_ptr->line_num = nodes[0]->line_num;
+  struct_lit_ptr->type     = Type_;
 
   auto stmts = static_cast<Statements *>(nodes[2]);
   for (auto &&stmt : stmts->statements) {
@@ -437,11 +435,44 @@ Node *TypeLiteral::build(NPtrVec &&nodes) {
     assert(stmt->is_declaration() &&
            "Statement is not a declaration, and that case isn't handled yet.");
 
-    type_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
+    struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
   }
 
-  return type_lit_ptr;
+  return struct_lit_ptr;
 }
+
+Node *StructLiteral::build_parametric(NPtrVec &&nodes) {
+  auto struct_lit_ptr      = new StructLiteral;
+  struct_lit_ptr->line_num = nodes[0]->line_num;
+  struct_lit_ptr->type     = Type_;
+
+  if (nodes[1]->is_declaration()) {
+    struct_lit_ptr->params = {steal<Declaration>(nodes[1])};
+
+  } else if (nodes[1]->is_comma_list()) {
+    auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
+
+    assert(struct_lit_ptr->params.empty());
+    struct_lit_ptr->params.resize(expr_vec.size());
+
+    for (size_t i = 0; i < expr_vec.size(); ++i) {
+      assert(expr_vec[i]->is_declaration());
+      struct_lit_ptr->params[i] = static_cast<Declaration *>(expr_vec[i]);
+    }
+  }
+
+  auto stmts = static_cast<Statements *>(nodes[3]);
+  for (auto &&stmt : stmts->statements) {
+    // TODO handle this gracefully
+    assert(stmt->is_declaration() &&
+           "Statement is not a declaration, and that case isn't handled yet.");
+
+    struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
+  }
+
+  return struct_lit_ptr;
+}
+
 
 Node *Statements::build_one(NPtrVec &&nodes) {
   auto output = new Statements;
@@ -573,9 +604,8 @@ Node *For::build(NPtrVec &&nodes) {
   for_stmt->line_num                   = nodes[0]->line_num;
   for_stmt->container                  = steal<Expression>(nodes[3]);
   for_stmt->statements                 = steal<Statements>(nodes[5]);
-  for_stmt->iterator = Scope::make_declaration(nodes[1]->line_num, DeclType::In,
-                                               nodes[1]->token());
-  for_stmt->iterator->type_expr        = for_stmt->container;
+  for_stmt->iterator = Scope::make_declaration(
+      nodes[1]->line_num, DeclType::In, nodes[1]->token(), for_stmt->container);
   return for_stmt;
 }
 

@@ -107,14 +107,16 @@ void FunctionLiteral::assign_scope() {
   Scope::Stack.pop();
 }
 
-void TypeLiteral::assign_scope() {
+void StructLiteral::assign_scope() {
   scope_ = CurrentScope();
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
+  for (auto &param : params) { param->assign_scope(); }
   for (auto &decl : declarations) { decl->assign_scope(); }
   Scope::Stack.pop();
 }
 
 void BreakOrContinue::assign_scope() { scope_ = CurrentScope(); }
+void DummyTypeExpr::assign_scope() { scope_ = CurrentScope(); }
 } // namespace AST

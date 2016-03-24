@@ -1,17 +1,15 @@
 #include "AST.h"
 #include "Language.h"
+
+#include <sstream>
+
 namespace data {
 extern llvm::Value *const_bool(bool b);
 extern llvm::Value *const_char(char c);
 extern llvm::Value *const_int(int n);
 extern llvm::Value *const_real(double d);
 extern llvm::Value *const_uint(size_t n);
-
 } // namespace data
-
-using InOutVec =
-    std::vector<std::pair<std::vector<Context::Value>, Context::Value>>;
-static std::map<AST::FunctionLiteral *, InOutVec> function_call_cache;
 
 namespace AST {
 llvm::Value *Expression::llvm_value(Context::Value v) {
@@ -44,6 +42,10 @@ Context::Value Identifier::evaluate(Context &ctx) {
 
     return val;
   }
+}
+
+Context::Value DummyTypeExpr::evaluate(Context &) {
+  return Context::Value(type_value);
 }
 
 Context::Value Unop::evaluate(Context &ctx) {
@@ -282,81 +284,34 @@ Context::Value Case::evaluate(Context &ctx) {
   return kv->pairs.back().second->evaluate(ctx);
 }
 
-Context::Value TypeLiteral::evaluate(Context &ctx) {
-  if (type_value->field_type.empty()) {
-    // Create the fields
-    for (const auto &decl : declarations) {
-      assert(decl->decl_type != DeclType::In && "Cannot us DeclType::In");
-      bool is_inferred = (decl->decl_type == DeclType::Infer);
+Context::Value StructLiteral::evaluate(Context &ctx) {
+  static size_t struct_counter = 0;
 
-      Type *field = is_inferred
-                        ? decl->type_expr->type.get
-                        : decl->type_expr->evaluate(scope_->context).as_type;
-      assert(field && "field is nullptr");
+  if (params.empty()) {
+    if (!type_value) {
+      type_value =
+          Struct("anon.struct." + std::to_string(struct_counter++), this);
 
-      type_value->insert_field(decl->identifier->token(), field,
-                               is_inferred ? decl->type_expr : nullptr);
+      for (auto decl : declarations) {
+        bool is_inferred = (decl->decl_type == DeclType::Infer);
+
+        Type *field = is_inferred
+                          ? decl->type_expr->type.get
+                          : decl->type_expr->evaluate(scope_->context).as_type;
+        assert(field && "field is nullptr");
+        auto struct_type_value = static_cast<Structure *>(type_value.get);
+        struct_type_value->insert_field(decl->identifier->token(), field,
+                                        is_inferred ? decl->type_expr
+                                                    : nullptr);
+      }
+    }
+  } else {
+    if (!type_value) {
+      type_value =
+          ParamStruct("anon.struct." + std::to_string(struct_counter++), this);
     }
   }
-
-  if (!type_value->has_vars) return Context::Value(type_value);
-
-  // TODO FIXME verify who owns these
-  std::vector<Declaration *> decls_in_ctx;
-  for (const auto &decl : declarations) {
-    auto d              = new Declaration;
-    d->decl_type        = DeclType::Std;
-    d->identifier       = new Identifier(0, decl->identifier->token());
-    d->identifier->decl = d;
-    decls_in_ctx.push_back(d);
-
-    // TODO finish setting data in d so that we can safely print this
-    // out for debugging
-
-    TypePtr dtype = decl->type_expr->evaluate(ctx).as_type;
-    d->type = dtype;
-    if (dtype == Int) {
-      auto intnode = new TokenNode(0, Language::type_literal, "int");
-      d->type_expr =
-          static_cast<Expression *>(Terminal::build_type_literal({intnode}));
-
-    } else if (dtype == Char) {
-      auto intnode = new TokenNode(0, Language::type_literal, "char");
-      d->type_expr =
-          static_cast<Expression *>(Terminal::build_type_literal({intnode}));
-    }
-  }
-
-  static size_t anon_type_counter = 0;
-  // TODO note that this will be captured if it's the result of a
-  // function call by the cache, but otherwise it's currently leaked
-  auto type_lit_ptr          = new TypeLiteral;
-  type_lit_ptr->declarations = decls_in_ctx;
-
-  type_lit_ptr->type_value =
-      Struct("__anon.param.struct" + std::to_string(anon_type_counter++),
-             type_lit_ptr);
-  // NOTE: This is a basically a copy of the conditions above.
-  // TODO: factor this out appropriately.
-
-  if (type_lit_ptr->type_value->field_type.empty()) {
-    // Create the fields
-    for (const auto &decl : declarations) {
-      assert(decl->decl_type != DeclType::In && "Cannot us DeclType::In");
-      bool is_inferred = (decl->decl_type == DeclType::Infer);
-      Type *field = is_inferred ? decl->type_expr->type.get
-                                : decl->type_expr->evaluate(ctx).as_type;
-      assert(field && "field is nullptr");
-
-      type_lit_ptr->type_value->insert_field(decl->identifier->token(), field,
-                                             is_inferred ? decl->type_expr
-                                                         : nullptr);
-    }
-  }
-
-  Dependency::mark_as_done(type_lit_ptr);
-
-  return Context::Value(type_lit_ptr->type_value);
+  return Context::Value(type_value);
 }
 
 Context::Value Assignment::evaluate(Context &) { return nullptr; }
@@ -370,10 +325,16 @@ Context::Value Declaration::evaluate(Context &ctx) {
       auto type_as_ctx_val = type_expr->evaluate(ctx);
       ctx.bind(type_as_ctx_val, identifier);
 
-      if (type_expr->is_type_literal()) {
-        assert(type_as_ctx_val.as_type->is_struct());
-        static_cast<Structure *>(type_as_ctx_val.as_type)
-            ->set_name(identifier->token());
+      if (type_expr->is_struct_literal()) {
+        if (type_as_ctx_val.as_type->is_struct()) {
+          static_cast<Structure *>(type_as_ctx_val.as_type)
+              ->set_name(identifier->token());
+        } else if (type_as_ctx_val.as_type->is_parametric_struct()) {
+          static_cast<ParametricStructure *>(type_as_ctx_val.as_type)
+              ->bound_name = identifier->token();
+        } else {
+          assert(false);
+        }
 
       } else if (type_expr->is_enum_literal()) {
         assert(type_as_ctx_val.as_type->is_enum());
@@ -411,67 +372,93 @@ Context::Value Access::evaluate(Context &ctx) {
 Context::Value Binop::evaluate(Context &ctx) {
   using Language::Operator;
   if (op == Operator::Call) {
-    assert(lhs->type.get->is_function());
-    auto lhs_val = lhs->evaluate(ctx).as_expr;
-    assert(lhs_val);
-    auto fn_ptr = static_cast<FunctionLiteral *>(lhs_val);
+    if (lhs->type.get->is_function()) {
+      auto lhs_val = lhs->evaluate(ctx).as_expr;
+      assert(lhs_val);
+      auto fn_ptr = static_cast<FunctionLiteral *>(lhs_val);
 
-    std::vector<Expression *> arg_vals;
-    if (rhs->is_comma_list()) {
-      arg_vals = static_cast<ChainOp *>(rhs)->exprs;
-    } else {
-      arg_vals.push_back(rhs);
-    }
-
-    assert(arg_vals.size() == fn_ptr->inputs.size());
-
-    std::vector<Context::Value> ctx_vals;
-
-    // Populate the function context with arguments
-    for (size_t i = 0; i < arg_vals.size(); ++i) {
-      auto rhs_eval = arg_vals[i]->evaluate(ctx);
-      ctx_vals.push_back(rhs_eval);
-    }
-
-    // For functions that return types, we cache all calls
-    // TODO add possibility for #nocache
-    bool returns_type =
-        (static_cast<Function *>(fn_ptr->type.get)->output == Type_);
-
-    auto &fn_cache = function_call_cache[fn_ptr];
-    if (returns_type) {
-      for (const auto &cache_entry : fn_cache) {
-        size_t cache_size = cache_entry.first.size();
-
-        assert(ctx_vals.size() == cache_size);
-        // Because it's a call to a function with that many arguments!
-
-        bool matches = true;
-        for (size_t i = 0; i < cache_size; ++i) {
-          if (cache_entry.first[i] != ctx_vals[i]) {
-            matches = false;
-            break;
-          }
-        }
-
-        if (matches) return cache_entry.second;
+      std::vector<Expression *> arg_vals;
+      if (rhs->is_comma_list()) {
+        arg_vals = static_cast<ChainOp *>(rhs)->exprs;
+      } else {
+        arg_vals.push_back(rhs);
       }
-    }
 
-    Context fn_ctx = ctx.spawn();
-    for (size_t i = 0; i < arg_vals.size(); ++i) {
-      fn_ctx.bind(ctx_vals[i], fn_ptr->inputs[i]->identifier);
-    }
+      assert(arg_vals.size() == fn_ptr->inputs.size());
 
-    fn_cache.emplace_back(ctx_vals,
-                          Context::Value(static_cast<Type *>(nullptr)));
-    auto &cached_val = fn_cache.back();
-    auto return_val = fn_ptr->evaluate(fn_ctx);
-    if (returns_type) {
-      delete cached_val.second.as_type;
-      cached_val.second = return_val;
+      std::vector<Context::Value> ctx_vals;
+
+      // Populate the function context with arguments
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        auto rhs_eval = arg_vals[i]->evaluate(ctx);
+        ctx_vals.push_back(rhs_eval);
+      }
+
+      Context fn_ctx = ctx.spawn();
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs[i]->identifier);
+      }
+
+      return fn_ptr->evaluate(fn_ctx);
+
+    } else if (lhs->type == Type_) {
+      auto lhs_evaled = lhs->evaluate(ctx).as_type;
+      assert(lhs_evaled->is_parametric_struct());
+      auto param_struct = static_cast<ParametricStructure *>(lhs_evaled);
+      auto struct_lit   = param_struct->ast_expression;
+
+      std::vector<Expression *> arg_vals;
+      if (rhs->is_comma_list()) {
+        arg_vals = static_cast<ChainOp *>(rhs)->exprs;
+      } else {
+        arg_vals.push_back(rhs);
+      }
+
+      std::vector<Context::Value> ctx_vals;
+
+      // Populate the function context with arguments
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        auto rhs_eval = arg_vals[i]->evaluate(ctx);
+        ctx_vals.push_back(rhs_eval);
+      }
+
+      Context struct_ctx = ctx.spawn();
+      for (size_t i = 0; i < arg_vals.size(); ++i) {
+        struct_ctx.bind(ctx_vals[i], struct_lit->params[i]->identifier);
+      }
+      auto cloned_struct = param_struct->ast_expression->clone(struct_ctx);
+      assert(!cloned_struct->type_value);
+
+      std::stringstream ss;
+      // TODO if the parameter is not a type?
+      ss << param_struct->bound_name << "(" << ctx_vals[0].as_type->to_string();
+      for (size_t i = 1; i < arg_vals.size(); ++i) {
+        ss << ", " << ctx_vals[i].as_type->to_string();
+      }
+      ss << ")";
+
+      cloned_struct->type_value =
+          Struct(ss.str(), cloned_struct);
+
+      for (auto decl : cloned_struct->declarations) {
+        bool is_inferred = (decl->decl_type == DeclType::Infer);
+
+        Type *field = is_inferred
+                          ? decl->type_expr->type.get
+                          : decl->type_expr->evaluate(scope_->context).as_type;
+        assert(field && "field is nullptr");
+        auto struct_type_value =
+            static_cast<Structure *>(cloned_struct->type_value.get);
+        struct_type_value->insert_field(decl->identifier->token(), field,
+                                        is_inferred ? decl->type_expr
+                                                    : nullptr);
+      }
+
+      return Context::Value(cloned_struct->type_value);
+
+    } else {
+      assert(false);
     }
-    return return_val;
 
   } else if (op == Operator::Arrow) {
     auto lhs_type = lhs->evaluate(ctx).as_type;

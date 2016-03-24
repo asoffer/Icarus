@@ -12,10 +12,16 @@ Unop::Unop() {}
 Terminal::Terminal() {}
 ArrayType::ArrayType() {}
 
+DummyTypeExpr::DummyTypeExpr() { assert(false); }
+
+DummyTypeExpr::DummyTypeExpr(size_t expr_line_num, Type *t) : type_value(t) {
+  line_num   = expr_line_num;
+}
+
 Identifier::Identifier() { assert(false); }
 
 Identifier::Identifier(size_t input_line_num, const std::string &token_string)
-    : alloc(nullptr), is_function_arg(false), decl(nullptr) {
+    : alloc(nullptr), is_arg(false), decl(nullptr) {
   token_     = token_string;
   type       = Unknown;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
@@ -24,7 +30,7 @@ Identifier::Identifier(size_t input_line_num, const std::string &token_string)
 
 FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope), llvm_fn(nullptr) {}
 
-TypeLiteral::TypeLiteral() : type_value(nullptr), type_scope(new Scope) {}
+StructLiteral::StructLiteral() : type_value(nullptr), type_scope(new Scope) {}
 
 EnumLiteral::EnumLiteral() : type_value(nullptr) {}
 

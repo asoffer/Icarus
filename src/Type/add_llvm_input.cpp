@@ -49,3 +49,7 @@ bool TypeVariable::add_llvm_input(std::vector<llvm::Type*>&) {
 bool ForwardDeclaration::add_llvm_input(std::vector<llvm::Type*>&) {
   return false;
 }
+
+bool ParametricStructure::add_llvm_input(std::vector<llvm::Type*>&) {
+  return false;
+}

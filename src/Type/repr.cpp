@@ -225,3 +225,4 @@ void Enumeration::call_repr(llvm::Value *val) {
 void Tuple::call_repr(llvm::Value *val) {}
 void Structure::call_repr(llvm::Value *val) {}
 void TypeVariable::call_repr(llvm::Value *val) {}
+void ParametricStructure::call_repr(llvm::Value *val) {}

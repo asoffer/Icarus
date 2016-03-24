@@ -29,12 +29,13 @@ Scope *CurrentScope() {
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
                                           AST::DeclType decl_type,
-                                          const std::string &id_string) {
+                                          const std::string &id_string, AST::Expression *type_expr) {
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
   decl->identifier = new AST::Identifier(line_num, id_string);
   decl->line_num   = line_num;
   decl->decl_type  = decl_type;
+  decl->type_expr  = type_expr;
 
   return decl;
 }
@@ -42,13 +43,14 @@ AST::Declaration *Scope::make_declaration(size_t line_num,
 Scope::Scope() : parent(Scope::Global), containing_function_(nullptr) {}
 
 AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
+  assert(id_as_eptr->is_identifier());
   auto idptr = static_cast<AST::Identifier *>(id_as_eptr);
 
-  Scope *current_scope = this;
-  while (current_scope != nullptr) {
-    auto iter = current_scope->ids_.find(idptr->token());
-    if (iter != current_scope->ids_.end()) { return iter->second; }
-    current_scope = current_scope->parent;
+  Scope *scope_ptr = this;
+  while (scope_ptr != nullptr) {
+    auto iter = scope_ptr->ids_.find(idptr->token());
+    if (iter != scope_ptr->ids_.end()) { return iter->second; }
+    scope_ptr = scope_ptr->parent;
   }
 
   // If you reach here it's because we never saw a declaration for the
@@ -149,7 +151,7 @@ void BlockScope::initialize() {
 
     // } else {
     if (decl_ptr->decl_type == AST::DeclType::In) continue;
-    if (decl_id->is_function_arg) continue;
+    if (decl_id->is_arg) continue;
     decl_type.get->call_init({decl_id->alloc});
     // }
   }
@@ -162,7 +164,7 @@ void BlockScope::uninitialize() {
     auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
 
     // TODO is this correct?
-    if (decl_id->is_function_arg) continue;
+    if (decl_id->is_arg) continue;
 
     decl_id->type.get->call_uninit({decl_id->alloc});
   }
@@ -244,7 +246,7 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (decl_id->is_function_arg && decl_type.is_struct()) {
+    if (decl_id->is_arg && decl_type.is_struct()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }

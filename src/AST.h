@@ -61,7 +61,7 @@ using NPtrVec = std::vector<Node *>;
   virtual std::string graphviz_label() const ENDING;                           \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual llvm::Value *generate_code() ENDING;                                 \
-  virtual Time::Eval determine_time() ENDING
+  virtual Time::Eval determine_time() ENDING                                   \
 
 #define EXPR_FNS(name, checkname)                                              \
   name();                                                                      \
@@ -111,10 +111,11 @@ struct Node {
   virtual bool is_comma_list() const { return false; }
   virtual bool is_declaration() const { return false; }
   virtual bool is_array_type() const { return false; }
-  virtual bool is_type_literal() const { return false; }
+  virtual bool is_struct_literal() const { return false; }
   virtual bool is_enum_literal() const { return false; }
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
+  virtual bool is_dummy() const { return false; }
 
   Node(size_t line_num = 0, Language::NodeType type = Language::unknown,
        const std::string &token = "")
@@ -299,11 +300,10 @@ struct Assignment : public Binop {
 
 struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
-  // TODO Identifier() = delete;
   Identifier(size_t line_num, const std::string &token_string);
 
   llvm::Value *alloc;
-  bool is_function_arg;
+  bool is_arg; // function argument or struct parameter
   Declaration *decl;
 };
 
@@ -417,12 +417,16 @@ struct While : public Node {
   BlockScope *while_scope;
 };
 
-struct TypeLiteral : public Expression {
-  EXPR_FNS(TypeLiteral, type_literal);
+struct StructLiteral : public Expression {
+  EXPR_FNS(StructLiteral, struct_literal);
+
+  static Node *build_parametric(NPtrVec &&nodes);
 
   void build_llvm_internals();
+  StructLiteral *clone(Context &ctx);
 
-  Structure *type_value;
+  std::vector<Declaration *> params;
+  TypePtr type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;
 };
@@ -432,6 +436,13 @@ struct EnumLiteral : public Expression {
 
   Enumeration *type_value;
   std::vector<std::string> members;
+};
+
+struct DummyTypeExpr : public Expression {
+  EXPR_FNS(DummyTypeExpr, dummy);
+  DummyTypeExpr(size_t expr_line_num, Type *t);
+
+  TypePtr type_value;
 };
 
 struct BreakOrContinue : public Node {

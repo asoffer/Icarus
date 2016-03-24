@@ -83,6 +83,11 @@ void ForwardDeclaration::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a forward declaration");
 }
 
+void ParametricStructure::call_init(llvm::Value *) {
+  assert(false && "Cannot initialize a parametric struct");
+}
+
+
 void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
     auto save_block = builder.GetInsertBlock();

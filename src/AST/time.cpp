@@ -81,7 +81,7 @@ Time::Eval For::determine_time() {
                  statements->determine_time();
 }
 
-Time::Eval TypeLiteral::determine_time() {
+Time::Eval StructLiteral::determine_time() {
   time_ = Time::either;
   for (auto &d : declarations) { time_ |= d->determine_time(); }
   return time_;
@@ -90,4 +90,5 @@ Time::Eval TypeLiteral::determine_time() {
 Time::Eval EnumLiteral::determine_time() { return time_ = Time::run; }
 
 Time::Eval BreakOrContinue::determine_time() { return time_ = Time::either; }
+Time::Eval DummyTypeExpr::determine_time() { return time_ = Time::compile; }
 } // namespace AST

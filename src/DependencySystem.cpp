@@ -135,7 +135,7 @@ void traverse_from(PtrWithTorV pt) {
         }
 
       } else {
-        if (ptr->is_type_literal()) {
+        if (ptr->is_struct_literal()) {
           // Evaluating a type literal stores the types of its members (but
           // those types may still be opaque.
           ptr->evaluate(ptr->scope_->context);

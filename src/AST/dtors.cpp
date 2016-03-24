@@ -73,13 +73,14 @@ For::~For() {
   DELETE(for_scope);
 }
 
-TypeLiteral::~TypeLiteral() {
+StructLiteral::~StructLiteral() {
   for (auto ptr : declarations) DELETE(ptr);
   DELETE(type_scope);
 }
 
 EnumLiteral::~EnumLiteral() {}
 BreakOrContinue::~BreakOrContinue() {}
+DummyTypeExpr::~DummyTypeExpr() {}
 
 } // namespace AST
 #undef DELETE

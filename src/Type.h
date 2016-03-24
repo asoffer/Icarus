@@ -29,7 +29,7 @@ namespace AST {
 struct Expression;
 struct Declaration;
 struct EnumLiteral;
-struct TypeLiteral;
+struct StructLiteral;
 } // namespace AST
 
 struct Type;
@@ -40,6 +40,7 @@ struct Pointer;
 struct Function;
 struct Enumeration;
 struct Structure;
+struct ParametricStructure;
 struct DependentType;
 struct TypeVariable;
 struct ForwardDeclaration;
@@ -74,7 +75,9 @@ extern Function *Func(std::vector<TypePtr> in, std::vector<TypePtr> out);
 extern Enumeration *Enum(const std::string &name,
                          const AST::EnumLiteral *e = nullptr);
 extern Structure *Struct(const std::string &name,
-                         AST::TypeLiteral *expr = nullptr);
+                         AST::StructLiteral *expr = nullptr);
+extern ParametricStructure *ParamStruct(const std::string &name,
+                                        AST::StructLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
 extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
@@ -141,6 +144,7 @@ public:
   virtual bool is_pointer() const { return false; }
   virtual bool is_function() const { return false; }
   virtual bool is_struct() const { return false; }
+  virtual bool is_parametric_struct() const { return false; }
   virtual bool is_enum() const { return false; }
   virtual bool is_fwd_decl() const { return false; }
   virtual bool is_dependent_type() const { return false; }
@@ -270,7 +274,7 @@ struct Structure : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  Structure(const std::string &name, AST::TypeLiteral *expr);
+  Structure(const std::string &name, AST::StructLiteral *expr);
 
   virtual bool requires_uninit() const;
 
@@ -284,7 +288,7 @@ struct Structure : public Type {
   virtual void call_print(llvm::Value *val);
   void set_print(llvm::Function *fn);
 
-  AST::TypeLiteral *ast_expression;
+  AST::StructLiteral *ast_expression;
   std::string bound_name;
 
   void insert_field(const std::string &name, TypePtr ty,
@@ -300,6 +304,17 @@ struct Structure : public Type {
 
 private:
   llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
+};
+
+struct ParametricStructure : public Type {
+  TYPE_FNS(ParametricStructure, parametric_struct);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+  ParametricStructure(const std::string &name, AST::StructLiteral *expr);
+
+  AST::StructLiteral *ast_expression;
+  std::string bound_name;
 };
 
 struct DependentType : public Type {

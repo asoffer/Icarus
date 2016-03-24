@@ -271,7 +271,11 @@ namespace Language {
     // way too much.
     Rule(expression,
         { {reserved_struct}, {left_brace}, {statements}, {right_brace} },
-        AST::TypeLiteral::build),
+        AST::StructLiteral::build),
+
+    Rule(expression,
+        { {reserved_struct}, {declaration}, {left_brace}, {statements}, {right_brace} },
+        AST::StructLiteral::build_parametric),
     /* End type literals */
 
     /* Begin enums */

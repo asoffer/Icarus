@@ -216,7 +216,7 @@ int main(int argc, char *argv[]) {
   { // Initialize Global scope
     for (auto decl_ptr : Scope::Global->ordered_decls_) {
       auto decl_id = decl_ptr->identifier;
-      if (decl_id->is_function_arg) continue;
+      if (decl_id->is_arg) continue;
 
       auto decl_type = decl_id->type;
       if (decl_type.get->llvm_type == nullptr) continue;

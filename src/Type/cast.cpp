@@ -46,3 +46,6 @@ llvm::Value *Array::call_cast(llvm::Value *val, TypePtr to_type) {
 llvm::Value *Structure::call_cast(llvm::Value *val, TypePtr to_type) {
   return nullptr;
 }
+//llvm::Value *ParametricStructure::call_cast(llvm::Value *val, TypePtr to_type) {
+//  return nullptr;
+//}

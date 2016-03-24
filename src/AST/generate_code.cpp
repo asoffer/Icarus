@@ -964,7 +964,7 @@ llvm::Value *Conditional::generate_code() {
 
 // No code to generate for this, constants added automatically.
 llvm::Value *EnumLiteral::generate_code() { return nullptr; }
-llvm::Value *TypeLiteral::generate_code() { return nullptr; }
+llvm::Value *StructLiteral::generate_code() { return nullptr; }
 
 llvm::Value *BreakOrContinue::generate_code() {
   auto scope_ptr = CurrentScope();
@@ -1145,6 +1145,11 @@ llvm::Value *For::generate_code() {
     }
   }
 
+  return nullptr;
+}
+
+llvm::Value *DummyTypeExpr::generate_code() {
+  assert(false);
   return nullptr;
 }
 } // namespace AST

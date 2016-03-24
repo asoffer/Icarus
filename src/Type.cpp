@@ -11,18 +11,16 @@
 extern llvm::Module* global_module;
 
 namespace cstdlib {
-  extern llvm::Constant* malloc();
-}  // namespace cstdlib
+extern llvm::Constant *malloc();
+} // namespace cstdlib
 
 namespace data {
-  extern llvm::Value* const_uint(size_t n);
-  extern llvm::Constant* str(const std::string& s);
-}  // namespace data
-
+extern llvm::Value *const_uint(size_t n);
+extern llvm::Constant *str(const std::string &s);
+} // namespace data
 
 size_t Type::bytes() const {
-  return (llvm_type == nullptr)
-    ? 0 : data_layout->getTypeStoreSize(llvm_type);
+  return (llvm_type == nullptr) ? 0 : data_layout->getTypeStoreSize(llvm_type);
 }
 
 TypePtr::TypePtr(Type *t) : get(t) {}
@@ -39,6 +37,9 @@ bool TypePtr::is_enum() const { return get->is_enum(); }
 bool TypePtr::is_fwd_decl() const { return get->is_fwd_decl(); }
 bool TypePtr::is_dependent_type() const { return get->is_dependent_type(); }
 bool TypePtr::is_type_variable() const { return get->is_type_variable(); }
+bool TypePtr::is_parametric_struct() const {
+  return get->is_parametric_struct();
+}
 
 bool TypePtr::is_big() const { return get->is_big(); }
 bool TypePtr::stores_data() const { return get->stores_data(); }
@@ -95,51 +96,6 @@ void TypePtr::resolve_fwd_decls() {
 }
 
 bool operator==(TypePtr lhs, TypePtr rhs) { return lhs.get == rhs.get; }
-/*
-bool operator==(TypePtr lhs, TypePtr rhs) {
-  if ((lhs.is_primitive() && rhs.is_primitive())
-      || (lhs.is_enum() && rhs.is_enum())) {
-    // TODO TypeError and Unknown?
-    return lhs.get == rhs.get;
-
-  } else if (lhs.is_array() && rhs.is_array()) {
-    return static_cast<Array *>(lhs.get)->data_type ==
-           static_cast<Array *>(rhs.get)->data_type;
-
-  } else if (lhs.is_tuple() && rhs.is_tuple()) {
-    // TODO
-    assert(false);
-
-  } else if (lhs.is_pointer() && rhs.is_pointer()) {
-    return static_cast<Pointer *>(lhs.get)->pointee ==
-           static_cast<Pointer *>(rhs.get)->pointee;
-
-  } else if (lhs.is_function() && rhs.is_function()) {
-    auto lhs_fn = static_cast<Function *>(lhs.get);
-    auto rhs_fn = static_cast<Function *>(rhs.get);
-    return lhs_fn->input == rhs_fn->input && lhs_fn->output == rhs_fn->output;
-
-  } else if (lhs.is_struct() && rhs.is_struct()) {
-    auto lhs_str = static_cast<Structure *>(lhs.get);
-    auto rhs_str = static_cast<Structure *>(rhs.get);
-    if (lhs_str->field_type.size() != rhs_str->field_type.size()) { return false; }
-
-    for (size_t i = 0; i < lhs_str->field_type.size(); ++i) {
-      if (lhs_str->field_type[i] != rhs_str->field_type[i]) { return false; }
-    }
-    return true;
-
-  } else if (lhs.is_fwd_decl() && rhs.is_fwd_decl()) {
-    assert(false);
-  } else if (lhs.is_dependent_type() && rhs.is_dependent_type()) {
-    assert(false);
-  } else if (lhs.is_type_variable() && rhs.is_type_variable()) {
-    assert(false);
-  } else {
-    return false;
-  }
-}
-*/
 
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
@@ -224,14 +180,19 @@ Enumeration::Enumeration(const std::string& name,
       /*        Name = */ bound_name + ".name.array");
 }
 
-// Create a totally opaque struct
-Structure::Structure(const std::string &name, AST::TypeLiteral *expr)
+ParametricStructure::ParametricStructure(const std::string &name,
+                                         AST::StructLiteral *expr)
+    : ast_expression(expr), bound_name(name) {}
+
+// Create a opaque struct
+Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), init_fn_(nullptr),
       uninit_fn_(nullptr), print_fn_(nullptr) {}
 
 TypePtr Structure::field(const std::string& name) const {
   return field_type AT(field_name_to_num AT(name));
 }
+
 
 llvm::Value* Structure::field_num(const std::string& name) const {
   auto num = field_name_to_num AT(name);

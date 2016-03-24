@@ -69,10 +69,10 @@ void Identifier::verify_types() {
   } break;
 
   case DeclType::Infer: {
-    if (decl->type_expr->is_type_literal()) {
-      auto tlit_type_val =
-          static_cast<TypeLiteral *>(decl->type_expr)->type_value;
-      scope_->context.bind(Context::Value(tlit_type_val), this);
+    if (decl->type_expr->is_struct_literal()) {
+//      auto tlit_type_val =
+//          static_cast<StructLiteral *>(decl->type_expr)->type_value;
+//      scope_->context.bind(Context::Value(tlit_type_val), this);
 
     } else if (decl->type_expr->is_function_literal()) {
       auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
@@ -174,6 +174,7 @@ void Access::verify_types() {
   }
 
   auto etype = operand->type;
+
   if (etype == Type_) {
     Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
     auto etypename = operand->evaluate(scope_->context).as_type;
@@ -237,6 +238,17 @@ void Binop::verify_types() {
       auto dep_type    = static_cast<DependentType *>(lhs->type.get);
       auto result_type = (*dep_type)(rhs->evaluate(scope_->context).as_type);
       type             = result_type;
+      return;
+    }
+
+    if (lhs->type == Type_) {
+      auto lhs_as_type = lhs->evaluate(scope_->context).as_type;
+      if (!lhs_as_type->is_parametric_struct()) {
+        error_log.log(line_num, "Cannot call expression of type " +
+                                    lhs_as_type->to_string());
+      } else {
+        type = Type_;
+      }
       return;
     }
 
@@ -532,12 +544,9 @@ void EnumLiteral::verify_types() {
   ++anon_enum_counter;
 }
 
-void TypeLiteral::verify_types() {
-  static size_t anon_type_counter = 0;
+void StructLiteral::verify_types() {
+  // TODO Is this "true" anymore if the struct is parametric?
   type = Type_;
-  type_value =
-      Struct("__anon.struct" + std::to_string(anon_type_counter), this);
-  ++anon_type_counter;
 }
 
 // Verifies that all keys have the same given type `key_type` and that all
@@ -591,4 +600,5 @@ void BreakOrContinue::verify_types() {
   error_log.log(line_num, "Break statement must be contained inside a loop.");
 }
 
+void DummyTypeExpr::verify_types() {}
 } // namespace AST

@@ -89,6 +89,7 @@ void Structure::generate_llvm() const {
   struct_type->setName(bound_name);
 }
 
+void ParametricStructure::generate_llvm() const {}
 void DependentType::generate_llvm() const {}
 void TypeVariable::generate_llvm() const {}
 void ForwardDeclaration::generate_llvm() const {
@@ -100,23 +101,28 @@ void Enumeration::generate_llvm() const { /* Generated on creation */ }
 void Primitive::generate_llvm() const { /* Generated on creation */ }
 
 // TODO make this a member of Structure instead
-void AST::TypeLiteral::build_llvm_internals() {
-  assert(type_value);
+void AST::StructLiteral::build_llvm_internals() {
+  if (params.empty()) {
+    assert(type_value.get->is_struct());
+    auto tval = static_cast<Structure *>(type_value.get);
 
-  auto llvm_struct_type =
-      static_cast<llvm::StructType *>(type_value->llvm_type);
-  if (!llvm_struct_type->isOpaque()) return;
+    auto llvm_struct_type =
+        static_cast<llvm::StructType *>(tval->llvm_type);
+    if (!llvm_struct_type->isOpaque()) return;
+  
+    for (const auto &decl : declarations) {
+      if (decl->type.get->has_vars) return;
+    }
+  
+    size_t num_data_fields = tval->field_num_to_llvm_num.size();
+    std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
+    for (const auto& kv : tval->field_num_to_llvm_num) {
+      llvm_fields[kv.second] = tval->field_type AT(kv.first).get->llvm_type;
+    }
 
-  for (const auto &decl : declarations) {
-    if (decl->type.get->has_vars) return;
+    static_cast<llvm::StructType *>(tval->llvm_type)
+        ->setBody(std::move(llvm_fields), /* isPacked = */ false);
+  } else {
+    assert(false);
   }
-
-  size_t num_data_fields = type_value->field_num_to_llvm_num.size();
-  std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
-  for (const auto& kv : type_value->field_num_to_llvm_num) {
-    llvm_fields[kv.second] = type_value->field_type AT(kv.first).get->llvm_type;
-  }
-
-  static_cast<llvm::StructType *>(type_value->llvm_type)
-      ->setBody(std::move(llvm_fields), /* isPacked = */ false);
 }
