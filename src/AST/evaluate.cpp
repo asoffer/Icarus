@@ -435,18 +435,19 @@ Context::Value Binop::evaluate(Context &ctx) {
       cloned_struct->type_value =
           Struct(ss.str(), cloned_struct);
 
-      for (auto decl : cloned_struct->declarations) {
-        bool is_inferred = (decl->decl_type == DeclType::Infer);
+      auto struct_type =
+          static_cast<Structure *>(cloned_struct->type_value.get);
+      if (struct_type->field_type.size() == 0) {
+        for (auto decl : cloned_struct->declarations) {
+          bool is_inferred = (decl->decl_type == DeclType::Infer);
 
-        Type *field = is_inferred
-                          ? decl->type_expr->type.get
+          Type *field =
+              is_inferred ? decl->type_expr->type.get
                           : decl->type_expr->evaluate(scope_->context).as_type;
-        assert(field && "field is nullptr");
-        auto struct_type_value =
-            static_cast<Structure *>(cloned_struct->type_value.get);
-        struct_type_value->insert_field(decl->identifier->token(), field,
-                                        is_inferred ? decl->type_expr
-                                                    : nullptr);
+          assert(field && "field is nullptr");
+          struct_type->insert_field(decl->identifier->token(), field,
+                                    is_inferred ? decl->type_expr : nullptr);
+        }
       }
 
       return Context::Value(cloned_struct->type_value);

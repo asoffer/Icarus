@@ -16,8 +16,6 @@ main := void -> void {
   print y.value
 }
 
-wrapper := (T: type) -> type {
-  return struct {
-    value: T
-  }
+wrapper := struct (T: type) {
+  value: T
 }

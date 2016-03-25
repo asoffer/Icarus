@@ -371,8 +371,12 @@ void Declaration::verify_types() {
     // TODO if it's compile-time
     if (type == Type_) {
       if (type_expr->is_struct_literal()) {
-        assert(static_cast<StructLiteral *>(type_expr)->type_value);
-        scope_->context.bind(Context::Value(static_cast<StructLiteral *>(type_expr)->type_value), identifier);
+        auto type_expr_as_struct = static_cast<StructLiteral *>(type_expr);
+        if (type_expr_as_struct->params.empty()) {
+          assert(type_expr_as_struct->type_value);
+          scope_->context.bind(Context::Value(type_expr_as_struct->type_value),
+                               identifier);
+        }
       }
     }
   } break;
@@ -387,9 +391,7 @@ void Declaration::verify_types() {
 
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context).as_type;
-      if (t->is_enum() || t == Uint) {
-        type = t;
-      }
+      if (t->is_enum() || t == Uint) { type = t; }
     } else {
       type = Error;
     }

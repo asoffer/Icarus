@@ -40,6 +40,5 @@ main := void -> void {
   print ')'
   print '\n'
 
-
   IntChar := pair(int, char)
 }
