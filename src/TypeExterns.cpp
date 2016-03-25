@@ -7,6 +7,7 @@ namespace TypeSystem {
 std::map<std::string, TypePtr> Literals;
 std::map<Language::Operator, std::vector<Function *>> operator_table;
 
+// TODO is this even necessary?
 TypePtr get(const std::string &name) {
   auto enum_ptr = Enum(name);
   if (enum_ptr) return enum_ptr;

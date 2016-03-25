@@ -99,6 +99,7 @@ void traverse_from(PtrWithTorV pt) {
       }
 
       if (torv) {
+        // TODO add these via something like lambdas in record_dependencise
         if (ptr->is_unop()) {
           auto unop = static_cast<AST::Unop *>(ptr);
           if (unop->op == Language::Operator::At) {
@@ -113,6 +114,7 @@ void traverse_from(PtrWithTorV pt) {
               }
             }
           }
+
         } else if (ptr->is_access()) {
           auto access_ptr = static_cast<AST::Access *>(ptr);
           auto t = access_ptr->operand->type;
@@ -121,6 +123,15 @@ void traverse_from(PtrWithTorV pt) {
             auto struct_type = static_cast<Structure *>(t.get);
             PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
             traverse_from(ptr_with_torv);
+          }
+
+        } else if (ptr->is_binop()) {
+          auto binop_ptr = static_cast<AST::Binop *>(ptr);
+          if (binop_ptr->op == Language::Operator::Call) {
+            if (binop_ptr->lhs->type == Type_) {
+              PtrWithTorV ptr_with_torv(binop_ptr->lhs, false);
+              traverse_from(ptr_with_torv);
+            }
           }
         }
 
