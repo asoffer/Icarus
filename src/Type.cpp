@@ -100,8 +100,9 @@ Function::Function(TypePtr in, TypePtr out) : input(in), output(out) {
   has_vars = input.get->has_vars || output.get->has_vars;
 }
 
-Enumeration::Enumeration(const std::string& name,
-    const AST::EnumLiteral* enumlit) : bound_name(name), string_data(nullptr) {
+Enumeration::Enumeration(const std::string &name,
+                         const AST::EnumLiteral *enumlit)
+    : bound_name(name), string_data(nullptr) {
   llvm_type = Uint;
 
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());

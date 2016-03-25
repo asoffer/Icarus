@@ -1083,31 +1083,48 @@ llvm::Value *For::generate_code() {
     // TODO that condition should really be encoded into the loop somewhere to
     // make it faster to check.
     auto t = container->evaluate(scope_->context).as_type;
+
     if (t->is_enum()) {
+      // NOTE: We assume that the entries are numbered starting at zero.
+
       auto enum_type = static_cast<Enumeration *>(t);
       // TODO get them by means other than string name
 
+      auto cond_block = make_block("loop.cond", parent_fn);
       auto loop_block = make_block("loop.body", parent_fn);
- 
-      builder.CreateBr(for_scope->entry);
+      for_scope->land = make_block("loop.land", parent_fn);
+
+      builder.CreateBr(cond_block);
+      builder.SetInsertPoint(cond_block);
+      auto phi_node = builder.CreatePHI(Uint, 2, "phi");
+      phi_node->addIncoming(data::const_uint(0), start_block);
+      builder.CreateStore(phi_node, iterator->identifier->alloc);
+
+      auto cmp = builder.CreateICmpEQ(
+          phi_node, data::const_uint(enum_type->int_values.size()));
+      builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
+
       Scope::Stack.push(for_scope);
       for_scope->initialize();
-
-      // Assumption: blocks are labelled in numeric order.
- 
       builder.CreateBr(loop_block);
 
-      for (const auto kv : enum_type->int_values) {
-        // TODO init
-        builder.CreateStore(data::const_uint(kv.second),
-                            iterator->identifier->alloc);
-        statements->generate_code();
-        // TODO uninit
+      builder.SetInsertPoint(loop_block);
+      statements->generate_code();
+      builder.CreateBr(for_scope->exit);
 
-        // auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
-        // auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-        // builder.CreateCondBr(should_exit, for_scope->land, __________);
-      }
+      builder.SetInsertPoint(for_scope->exit);
+      auto next = builder.CreateAdd(
+          builder.CreateLoad(iterator->identifier->alloc), data::const_uint(1));
+      phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
+
+      for_scope->uninitialize();
+
+      auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
+      auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+      builder.CreateCondBr(should_exit, for_scope->land, cond_block);
+
+      Scope::Stack.pop();
+      builder.SetInsertPoint(for_scope->land);
 
     } else if (t == Uint) {
       auto loop_block = make_block("loop.body", parent_fn);
