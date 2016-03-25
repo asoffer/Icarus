@@ -24,7 +24,6 @@ struct TypePtr {
   bool is_function() const;
   bool is_struct() const;
   bool is_enum() const;
-  bool is_fwd_decl() const;
   bool is_dependent_type() const;
   bool is_type_variable() const;
   bool is_parametric_struct() const;

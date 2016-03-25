@@ -229,6 +229,7 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   if (t == nullptr) return nullptr;
 
   auto struct_type = new Structure(name, t);
+  t->type_value = struct_type;
 
   return TypeSystem::struct_types_[name] = struct_type;
 }
@@ -262,8 +263,4 @@ TypeVariable *TypeVar(AST::Identifier *id) {
   if (iter != TypeSystem::vars_.end()) return iter->second;
 
   return TypeSystem::vars_[id] = new TypeVariable(id);
-}
-
-ForwardDeclaration *FwdDecl(AST::Expression *expr) {
-  return new ForwardDeclaration(expr);
 }

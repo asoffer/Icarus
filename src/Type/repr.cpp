@@ -197,10 +197,6 @@ void Function::call_repr(llvm::Value *val) {
                       data::global_string("<function " + to_string() + ">")});
 }
 
-void ForwardDeclaration::call_repr(llvm::Value *val) {
-  assert(false && "Cannot represent a forward declaration");
-}
-
 void DependentType::call_repr(llvm::Value *val) {
   builder.CreateCall(cstdlib::printf(),
                      {data::global_string("%s"),

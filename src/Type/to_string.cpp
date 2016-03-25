@@ -85,11 +85,6 @@ std::string TypeVariable::to_string() const {
   return "Var(" + identifier->token() + ")";
 }
 
-std::string ForwardDeclaration::to_string() const {
-  return "ForwardDeclaration(" + std::to_string(index) + ")";
-}
-
-
 std::string Structure::to_string() const { return bound_name; }
 std::string ParametricStructure::to_string() const { return bound_name; }
 std::string Enumeration::to_string() const { return bound_name; }

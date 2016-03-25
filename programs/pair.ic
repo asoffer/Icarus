@@ -17,23 +17,28 @@ main := void -> void {
   rr.key = ic.key :> real
   rr.val = 3.14159
 
-  print "("
+  print '('
   print ic.key
   print ", "
   print ic.val
-  print ")\n"
+  print ')'
+  print '\n'
 
-  print "("
+  print '('
   print ii.key
-  print ", "
+  print ','
+  print ' '
   print ii.val
-  print ")\n"
+  print ')'
+  print '\n'
 
-  print "("
+  print '('
   print rr.key
-  print ", "
+  print ','
+  print ' '
   print rr.val
-  print ")\n"
+  print ')'
+  print '\n'
 
 
   IntChar := pair(int, char)

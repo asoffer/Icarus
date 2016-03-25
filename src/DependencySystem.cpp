@@ -126,14 +126,6 @@ void traverse_from(PtrWithTorV pt) {
 
         ptr->verify_types();
 
-        if (ptr->is_expression()) {
-          auto eptr = static_cast<AST::Expression *>(ptr);
-          if (eptr->type.is_fwd_decl()) {
-            auto fwd = static_cast<ForwardDeclaration *>(eptr->type.get);
-            fwd->set(fwd->expr->evaluate(ptr->scope_->context).as_type);
-          }
-        }
-
       } else {
         if (ptr->is_struct_literal()) {
           // Evaluating a type literal stores the types of its members (but

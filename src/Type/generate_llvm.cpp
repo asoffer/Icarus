@@ -92,11 +92,7 @@ void Structure::generate_llvm() const {
 void ParametricStructure::generate_llvm() const {}
 void DependentType::generate_llvm() const {}
 void TypeVariable::generate_llvm() const {}
-void ForwardDeclaration::generate_llvm() const {
-  assert(eval);
-  eval.get->generate_llvm();
-  llvm_type = eval.get->llvm_type;
-}
+
 void Enumeration::generate_llvm() const { /* Generated on creation */ }
 void Primitive::generate_llvm() const { /* Generated on creation */ }
 

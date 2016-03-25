@@ -5,13 +5,6 @@
 #include <sstream>
 
 extern ErrorLog error_log;
-void resolve_forward_declaration(AST::Expression *e) {
-  if (e->type.get->is_fwd_decl()) {
-    auto fwd = static_cast<ForwardDeclaration *>(e->type.get);
-    assert(fwd->eval && "forward declaration not yet fully determined");
-    e->type = fwd->eval;
-  }
-}
 
 namespace AST {
 TypePtr operator_lookup(size_t line_num, Language::Operator op, TypePtr lhs_type,
@@ -73,7 +66,6 @@ void Identifier::verify_types() {
 //      auto tlit_type_val =
 //          static_cast<StructLiteral *>(decl->type_expr)->type_value;
 //      scope_->context.bind(Context::Value(tlit_type_val), this);
-
     } else if (decl->type_expr->is_function_literal()) {
       auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
       scope_->context.bind(Context::Value(flit), this);
@@ -199,6 +191,8 @@ void Access::verify_types() {
   }
 
   if (etype.is_struct()) {
+    assert(static_cast<Structure *>(etype.get)->field_type.size());
+
     auto member_type = static_cast<Structure *>(etype.get)->field(member_name);
     if (member_type) {
       type = member_type;
@@ -243,6 +237,7 @@ void Binop::verify_types() {
 
     if (lhs->type == Type_) {
       auto lhs_as_type = lhs->evaluate(scope_->context).as_type;
+
       if (!lhs_as_type->is_parametric_struct()) {
         error_log.log(line_num, "Cannot call expression of type " +
                                     lhs_as_type->to_string());
@@ -372,6 +367,14 @@ void Declaration::verify_types() {
   } break;
   case DeclType::Infer: {
     type = type_expr->type;
+
+    // TODO if it's compile-time
+    if (type == Type_) {
+      if (type_expr->is_struct_literal()) {
+        assert(static_cast<StructLiteral *>(type_expr)->type_value);
+        scope_->context.bind(Context::Value(static_cast<StructLiteral *>(type_expr)->type_value), identifier);
+      }
+    }
   } break;
   case DeclType::In: {
     // We may have already seen that the container isn't an array (or doesn't
@@ -381,6 +384,7 @@ void Declaration::verify_types() {
     // be Error.
     if (type_expr->type.is_array()) {
       type = static_cast<Array *>(type_expr->type.get)->data_type;
+
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context).as_type;
       if (t->is_enum() || t == Uint) {
@@ -476,8 +480,6 @@ void Assignment::verify_types() {
       }
     }
 
-    lhs->type.resolve_fwd_decls();
-    rhs->type.resolve_fwd_decls();
     if (lhs->type != rhs->type) {
       error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
                                   lhs->type.to_string() +
@@ -539,14 +541,22 @@ void Conditional::verify_types() {
 
 void EnumLiteral::verify_types() {
   static size_t anon_enum_counter = 0;
-  type                            = Type_;
-  type_value                      = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
+
+  type       = Type_;
+  type_value = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
   ++anon_enum_counter;
 }
 
 void StructLiteral::verify_types() {
-  // TODO Is this "true" anymore if the struct is parametric?
+  static size_t anon_struct_counter = 0;
   type = Type_;
+
+  // For non-parametric structs ...
+  if (params.empty()) {
+    type_value =
+        Struct("__anon.struct" + std::to_string(anon_struct_counter), this);
+    ++anon_struct_counter;
+  }
 }
 
 // Verifies that all keys have the same given type `key_type` and that all

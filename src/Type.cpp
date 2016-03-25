@@ -34,7 +34,6 @@ bool TypePtr::is_pointer() const { return get->is_pointer(); }
 bool TypePtr::is_function() const { return get->is_function(); }
 bool TypePtr::is_struct() const { return get->is_struct(); }
 bool TypePtr::is_enum() const { return get->is_enum(); }
-bool TypePtr::is_fwd_decl() const { return get->is_fwd_decl(); }
 bool TypePtr::is_dependent_type() const { return get->is_dependent_type(); }
 bool TypePtr::is_type_variable() const { return get->is_type_variable(); }
 bool TypePtr::is_parametric_struct() const {
@@ -52,47 +51,8 @@ TypePtr::operator llvm::Type *() const {
 }
 
 TypePtr &TypePtr::operator=(const TypePtr &t) {
-  if (get && is_fwd_decl()) {
-    auto this_fwd = static_cast<ForwardDeclaration *>(get);
-    this_fwd->usages.erase(this);
-  }
-
-  if (t.is_fwd_decl()) {
-    auto t_fwd = static_cast<ForwardDeclaration *>(t.get);
-    t_fwd->usages.insert(this);
-  }
   get = t.get;
   return *this;
-}
-
-void TypePtr::resolve_fwd_decls() {
-  if (!get || is_primitive() || is_enum() || is_type_variable()) {
-    return;
-
-  } else if (is_array()) {
-    auto dt = static_cast<Array *>(get)->data_type;
-    dt.resolve_fwd_decls();
-    *this = Arr(dt);
-
-  } else if (is_tuple()) {
-    // TODO
-
-  } else if (is_pointer()) {
-    auto pointee = static_cast<Pointer *>(get)->pointee;
-    pointee.resolve_fwd_decls();
-    *this = Ptr(pointee);
-  } else if (is_struct()) {
-    // TODO
-
-  } else if (is_fwd_decl()) {
-    auto fwd = static_cast<ForwardDeclaration *>(get);
-    assert(fwd->eval);
-    *this = fwd->eval;
-
-  } else if (is_dependent_type()) {
-    // TODO This presents a unique challenge, but hopefully you'll get rid of
-    // this altogether anyways.
-  }
 }
 
 bool operator==(TypePtr lhs, TypePtr rhs) { return lhs.get == rhs.get; }
@@ -230,8 +190,6 @@ void Structure::set_name(const std::string& name) {
   }
 }
 
-std::vector<TypePtr> ForwardDeclaration::forward_declarations;
-
 std::ostream& operator<<(std::ostream& os, const Type& t) {
   return os << t.to_string();
 }
@@ -270,20 +228,6 @@ void Structure::insert_field(const std::string &name, TypePtr ty,
   init_values.emplace_back(init_val);
 
   has_vars |= ty.get->has_vars;
-}
-
-ForwardDeclaration::ForwardDeclaration(AST::Expression *expr)
-    : expr(expr), eval(nullptr) {
-  index = forward_declarations.size();
-  forward_declarations.push_back(nullptr);
-}
-
-void ForwardDeclaration::set(TypePtr type) {
-  eval = type;
-  for (auto tpp : usages) {
-    *tpp = type;
-  }
-  usages.clear();
 }
 
 bool Type::is_big() const { return is_array() || is_struct(); }

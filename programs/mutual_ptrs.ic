@@ -6,7 +6,6 @@ bar := struct {
   y: &foo
 }
 
-/*
 main := void -> void {
   f: foo
   b: bar
@@ -17,4 +16,4 @@ main := void -> void {
   baz := @(f.x)
   print baz.y
   print '\n'
-}*/
+}

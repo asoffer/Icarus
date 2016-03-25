@@ -43,7 +43,6 @@ struct Structure;
 struct ParametricStructure;
 struct DependentType;
 struct TypeVariable;
-struct ForwardDeclaration;
 
 namespace TypeSystem {
 void initialize();
@@ -80,7 +79,6 @@ extern ParametricStructure *ParamStruct(const std::string &name,
                                         AST::StructLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
-extern ForwardDeclaration *FwdDecl(AST::Expression *expr);
 
 #define ENDING = 0
 
@@ -146,7 +144,6 @@ public:
   virtual bool is_struct() const { return false; }
   virtual bool is_parametric_struct() const { return false; }
   virtual bool is_enum() const { return false; }
-  virtual bool is_fwd_decl() const { return false; }
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
 
@@ -337,24 +334,6 @@ struct TypeVariable : public Type {
   TypeVariable(AST::Identifier *id) : identifier(id) { has_vars = true; }
 
   AST::Identifier *identifier;
-};
-
-struct ForwardDeclaration : public Type {
-  TYPE_FNS(ForwardDeclaration, fwd_decl);
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-
-  static std::vector<TypePtr> forward_declarations;
-
-  ForwardDeclaration(AST::Expression *expr);
-
-  void set(TypePtr type);
-
-  size_t index;
-  AST::Expression *expr;
-  TypePtr eval;
-
-  mutable std::set<TypePtr *> usages;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

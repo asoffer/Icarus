@@ -92,16 +92,10 @@ llvm::Value* Primitive::call_not(llvm::Value* operand) {
 #include "config/binary_operators.conf"
 #undef TYPE
 
-#define TYPE ForwardDeclaration
-#include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
-#undef TYPE
-
 #define TYPE ParametricStructure
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
-
 
 #undef CHAIN_OPERATOR_MACRO
 #undef BINARY_OPERATOR_MACRO

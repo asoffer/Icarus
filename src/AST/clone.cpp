@@ -23,7 +23,7 @@ StructLiteral *StructLiteral::clone(Context &ctx) {
 
     // no need to do type verification
     new_decl->type = type_expr_ptr;
-
+    type_expr_ptr->generate_llvm();
 
     struct_lit->declarations.push_back(new_decl);
   }

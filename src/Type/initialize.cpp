@@ -79,10 +79,6 @@ void TypeVariable::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a type variable");
 }
 
-void ForwardDeclaration::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a forward declaration");
-}
-
 void ParametricStructure::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a parametric struct");
 }

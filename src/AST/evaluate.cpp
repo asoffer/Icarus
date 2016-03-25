@@ -89,7 +89,7 @@ Context::Value Unop::evaluate(Context &ctx) {
                                   " is not allowed at compile-time");
     }
 
-    return Context::Value(Ptr(FwdDecl(operand)));
+    return Context::Value(Ptr(operand->evaluate(ctx).as_type));
   }
 
   assert(false && "Unop eval: I don't know what to do.");
@@ -245,15 +245,15 @@ Context::Value Terminal::evaluate(Context &ctx) {
     assert((token() == "true" || token() == "false") &&
            "Bool literal other than true or false");
     return Context::Value(token() == "true");
-  } else if (type == Char)
+  } else if (type == Char) {
     return Context::Value(token()[0]);
-  else if (type == Int)
+  } else if (type == Int) {
     return Context::Value(std::stoi(token()));
-  else if (type == Real)
+  } else if (type == Real) {
     return Context::Value(std::stod(token()));
-  else if (type == Uint)
+  } else if (type == Uint) {
     return Context::Value(std::stoul(token()));
-  else if (type == Type_) {
+  } else if (type == Type_) {
     if (token() == "bool") return Context::Value(Bool);
     if (token() == "char") return Context::Value(Char);
     if (token() == "int") return Context::Value(Int);
@@ -285,32 +285,27 @@ Context::Value Case::evaluate(Context &ctx) {
 }
 
 Context::Value StructLiteral::evaluate(Context &ctx) {
-  static size_t struct_counter = 0;
+  if (!(params.empty() && type_value)) {
+    static size_t struct_counter = 0;
+    type_value =
+        ParamStruct("anon.struct." + std::to_string(struct_counter++), this);
 
-  if (params.empty()) {
-    if (!type_value) {
-      type_value =
-          Struct("anon.struct." + std::to_string(struct_counter++), this);
-
+  } else if (params.empty()) {
+    auto struct_type = static_cast<Structure *>(type_value.get);
+    if (struct_type->field_type.size() == 0) {
       for (auto decl : declarations) {
         bool is_inferred = (decl->decl_type == DeclType::Infer);
-
-        Type *field = is_inferred
+        Type *field      = is_inferred
                           ? decl->type_expr->type.get
                           : decl->type_expr->evaluate(scope_->context).as_type;
         assert(field && "field is nullptr");
-        auto struct_type_value = static_cast<Structure *>(type_value.get);
-        struct_type_value->insert_field(decl->identifier->token(), field,
-                                        is_inferred ? decl->type_expr
-                                                    : nullptr);
+        struct_type->insert_field(decl->identifier->token(), field,
+                                  is_inferred ? decl->type_expr : nullptr);
       }
     }
-  } else {
-    if (!type_value) {
-      type_value =
-          ParamStruct("anon.struct." + std::to_string(struct_counter++), this);
-    }
   }
+
+
   return Context::Value(type_value);
 }
 
