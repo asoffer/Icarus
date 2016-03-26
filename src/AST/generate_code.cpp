@@ -1020,6 +1020,30 @@ llvm::Value *While::generate_code() {
   return nullptr;
 }
 
+void For::GenerateLoopBodyCode(llvm::Function *parent_fn) {
+  auto loop_block = make_block("loop.body", parent_fn);
+
+  Scope::Stack.push(for_scope);
+  for_scope->initialize();
+  builder.CreateBr(loop_block);
+
+  builder.SetInsertPoint(loop_block);
+  statements->generate_code();
+  builder.CreateBr(for_scope->exit);
+}
+
+void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
+  for_scope->uninitialize();
+
+  auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
+  auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
+  builder.CreateCondBr(should_exit, for_scope->land, reentry);
+
+  Scope::Stack.pop();
+
+  builder.SetInsertPoint(for_scope->land);
+}
+
 llvm::Value *For::generate_code() {
   auto start_block = builder.GetInsertBlock();
 
@@ -1029,15 +1053,14 @@ llvm::Value *For::generate_code() {
   InitializeExitFlag(for_scope, "for.exit.flag");
   assert(!for_scope->land);
 
+  for_scope->land = make_block("loop.land", parent_fn);
+
   if (container->type.is_array()) {
     auto data_type = iterator->type;
 
     auto container_val = container->generate_code();
     assert(container_val && "container_val is nullptr");
 
-    auto cond_block = make_block("loop.cond", parent_fn);
-    auto loop_block = make_block("loop.body", parent_fn);
-    for_scope->land = make_block("loop.land", parent_fn);
 
     auto len_ptr = builder.CreateGEP(
         container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
@@ -1048,37 +1071,27 @@ llvm::Value *For::generate_code() {
                           {data::const_uint(0), data::const_uint(1)}),
         "start_ptr");
     auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
-    builder.CreateBr(cond_block);
 
+    auto cond_block = make_block("loop.cond", parent_fn);
+
+    builder.CreateBr(cond_block);
     builder.SetInsertPoint(cond_block);
     auto phi_node = builder.CreatePHI(*Ptr(data_type), 2, "phi");
     phi_node->addIncoming(start_ptr, start_block);
+
     iterator->identifier->alloc = phi_node;
 
     auto cmp = builder.CreateICmpEQ(phi_node, end_ptr);
     builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
 
-    Scope::Stack.push(for_scope);
-    for_scope->initialize();
-    builder.CreateBr(loop_block);
-
-    builder.SetInsertPoint(loop_block);
-    statements->generate_code();
-    builder.CreateBr(for_scope->exit);
+    GenerateLoopBodyCode(parent_fn);
 
     builder.SetInsertPoint(for_scope->exit);
-    auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
-    phi_node->addIncoming(next_ptr, for_scope->exit); // Comes from exit block
+    auto next = builder.CreateGEP(phi_node, data::const_uint(1));
+    phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
 
-    for_scope->uninitialize();
+    GenerateLoopExitCode(cond_block);
 
-    auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
-    auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-    builder.CreateCondBr(should_exit, for_scope->land, cond_block);
-
-    Scope::Stack.pop();
-
-    builder.SetInsertPoint(for_scope->land);
   } else {
     // TODO that condition should really be encoded into the loop somewhere to
     // make it faster to check.
@@ -1091,8 +1104,6 @@ llvm::Value *For::generate_code() {
       // TODO get them by means other than string name
 
       auto cond_block = make_block("loop.cond", parent_fn);
-      auto loop_block = make_block("loop.body", parent_fn);
-      for_scope->land = make_block("loop.land", parent_fn);
 
       builder.CreateBr(cond_block);
       builder.SetInsertPoint(cond_block);
@@ -1104,43 +1115,20 @@ llvm::Value *For::generate_code() {
           phi_node, data::const_uint(enum_type->int_values.size()));
       builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
 
-      Scope::Stack.push(for_scope);
-      for_scope->initialize();
-      builder.CreateBr(loop_block);
+      GenerateLoopBodyCode(parent_fn);
 
-      builder.SetInsertPoint(loop_block);
-      statements->generate_code();
-      builder.CreateBr(for_scope->exit);
-
-      builder.SetInsertPoint(for_scope->exit);
       auto next = builder.CreateAdd(
           builder.CreateLoad(iterator->identifier->alloc), data::const_uint(1));
       phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
 
-      for_scope->uninitialize();
-
-      auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
-      auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-      builder.CreateCondBr(should_exit, for_scope->land, cond_block);
-
-      Scope::Stack.pop();
-      builder.SetInsertPoint(for_scope->land);
+      GenerateLoopExitCode(cond_block);
 
     } else if (t == Uint) {
-      auto loop_block = make_block("loop.body", parent_fn);
-      for_scope->land = make_block("loop.land", parent_fn);
 
       builder.CreateStore(data::const_uint(0), iterator->identifier->alloc);
       builder.CreateBr(for_scope->entry);
 
-      Scope::Stack.push(for_scope);
-      for_scope->initialize();
-      builder.CreateBr(loop_block);
-
-      builder.SetInsertPoint(loop_block);
-      statements->generate_code();
-
-      builder.CreateBr(for_scope->exit);
+      GenerateLoopBodyCode(parent_fn);
 
       builder.SetInsertPoint(for_scope->exit);
       builder.CreateStore(
@@ -1148,15 +1136,8 @@ llvm::Value *For::generate_code() {
                             data::const_uint(1)),
           iterator->identifier->alloc);
 
-      for_scope->uninitialize();
+      GenerateLoopExitCode(for_scope->entry);
 
-      auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
-      auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-      builder.CreateCondBr(should_exit, for_scope->land, for_scope->entry);
-
-      Scope::Stack.pop();
-
-      builder.SetInsertPoint(for_scope->land);
     } else {
       assert(false && "Not yet implemented");
     }

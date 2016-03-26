@@ -397,6 +397,10 @@ struct For : public Node {
   VIRTUAL_METHODS_FOR_NODES;
 
   static Node *build(NPtrVec &&nodes);
+
+  void GenerateLoopBodyCode(llvm::Function *parent_fn);
+  void GenerateLoopExitCode(llvm::BasicBlock *reentry);
+
   Declaration *iterator;
   Expression *container;
   Statements *statements;
