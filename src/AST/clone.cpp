@@ -3,11 +3,12 @@
 #include "DependencySystem.h"
 
 namespace AST {
-StructLiteral *StructLiteral::clone(Context &ctx) {
-  auto struct_lit = new StructLiteral;
+StructLiteral *StructLiteral::clone(size_t cache_index, Context &ctx) {
+  auto struct_lit = cache[cache_index];
   struct_lit->declarations.reserve(declarations.size());
+
   for (auto decl: declarations) {
-    auto type_expr_ptr        = decl->type_expr->evaluate(ctx).as_type;
+    auto type_expr_ptr = decl->type_expr->evaluate(ctx).as_type;
 
     auto new_decl        = new Declaration;
     new_decl->identifier = new Identifier(line_num, decl->identifier->token());
@@ -23,10 +24,12 @@ StructLiteral *StructLiteral::clone(Context &ctx) {
 
     // no need to do type verification
     new_decl->type = type_expr_ptr;
-    type_expr_ptr->generate_llvm();
+
+    if (!type_expr_ptr->has_vars) { type_expr_ptr->generate_llvm(); }
 
     struct_lit->declarations.push_back(new_decl);
   }
+
 
   // we need to generate it's dependencies.
   Dependency::mark_as_done(struct_lit);

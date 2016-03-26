@@ -236,14 +236,15 @@ void Binop::verify_types() {
     }
 
     if (lhs->type == Type_) {
-      auto lhs_as_type = lhs->evaluate(scope_->context).as_type;
+      // TODO (remove this assumption)
+      //
+      // Assume you are not a dufus, and if you're passing a struct to be
+      // "called" that it's a parametric struct. (So we use .as_expr).
+      //
+      // auto lhs_as_expr = lhs->evaluate(scope_->context).as_expr;
 
-      if (!lhs_as_type->is_parametric_struct()) {
-        error_log.log(line_num, "Cannot call expression of type " +
-                                    lhs_as_type->to_string());
-      } else {
-        type = Type_;
-      }
+      // If it isn't parametric, terribleness will ensue.
+      type = Type_;
       return;
     }
 
@@ -372,11 +373,9 @@ void Declaration::verify_types() {
     if (type == Type_) {
       if (type_expr->is_struct_literal()) {
         auto type_expr_as_struct = static_cast<StructLiteral *>(type_expr);
-        if (type_expr_as_struct->params.empty()) {
-          assert(type_expr_as_struct->type_value);
-          scope_->context.bind(Context::Value(type_expr_as_struct->type_value),
-                               identifier);
-        }
+        assert(type_expr_as_struct->type_value);
+        scope_->context.bind(Context::Value(type_expr_as_struct->type_value),
+                             identifier);
       }
     }
   } break;
@@ -553,10 +552,14 @@ void StructLiteral::verify_types() {
   static size_t anon_struct_counter = 0;
   type = Type_;
 
-  // For non-parametric structs ...
-  if (params.empty()) {
-    type_value =
-        Struct("__anon.struct" + std::to_string(anon_struct_counter), this);
+  if (!type_value) {
+    if (params.empty()) {
+      type_value =
+          Struct("__anon.struct" + std::to_string(anon_struct_counter), this);
+    } else {
+      type_value = ParamStruct(
+          "__anon.param.struct" + std::to_string(anon_struct_counter), this);
+    }
     ++anon_struct_counter;
   }
 }

@@ -12,6 +12,9 @@ namespace debug {
 
   // Turns on dependency graph generation
   bool dependency_graph = false;
+
+  // Turns on printing of parametric-struct data generation.
+  bool parametric_struct = false;
 }
 
 std::map<std::string, AST::Statements *> ast_map;

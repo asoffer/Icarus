@@ -1,59 +1,64 @@
-__print__ := (l: list) -> void {
-  iter := l.head
-  if l.size == 0u {
-    return
-  }
-print '['
-  i := 0u
-  while i < l.size {
-    i += 1u
-    print iter.data
-    if i != l.size {
-      print ' '
-      print '-'
-      print '>'
-      print ' '
-    }
-    iter = iter.next
-  }
-
-print ']'
+node := struct(T: type) {
+  data: T
+  next: &node(T)
 }
-
 main := void -> void {
-  l: list
-  add(&l, 3)
-  add(&l, 5)
-  add(&l, 7)
-
-  print l
-  print '\n'
-
-  emptylist: list
-
-  print emptylist
-  print '\n'
-  l1: list
-
-  add(&l1, 17)
-  print l1
-  print '\n'
+  n: node(real)
+  m: node(int)
 }
 
-node := struct {
-  data: int
-  next: &node
-}
+//list := struct(T: type) {
+//  head: &node(T)
+//  size: uint
+//}
 
-list := struct {
-  head: &node
-  size: uint
-}
 
-add := (l: &list, n: int) -> void {
-  nptr := alloc(node)
-  nptr.data = n
-  nptr.next = l.head
-  l.head = nptr
-  l.size += 1u
-}
+//__print__ := (l: list) -> void {
+//  iter := l.head
+//  if l.size == 0u {
+//    return
+//  }
+//print '['
+//  i := 0u
+//  while i < l.size {
+//    i += 1u
+//    print iter.data
+//    if i != l.size {
+//      print ' '
+//      print '-'
+//      print '>'
+//      print ' '
+//    }
+//    iter = iter.next
+//  }
+//
+//print ']'
+//}
+//
+//main := void -> void {
+//  l: list
+//  add(&l, 3)
+//  add(&l, 5)
+//  add(&l, 7)
+//
+//  print l
+//  print '\n'
+//
+//  emptylist: list
+//
+//  print emptylist
+//  print '\n'
+//  l1: list
+//
+//  add(&l1, 17)
+//  print l1
+//  print '\n'
+//}
+//
+//add := (l: &list, n: int) -> void {
+//  nptr := alloc(node)
+//  nptr.data = n
+//  nptr.next = l.head
+//  l.head = nptr
+//  l.size += 1u
+//}*/

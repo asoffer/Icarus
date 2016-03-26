@@ -3,6 +3,10 @@
 
 #include <sstream>
 
+namespace debug {
+extern bool parametric_struct;
+} // namespace debug
+
 namespace data {
 extern llvm::Value *const_bool(bool b);
 extern llvm::Value *const_char(char c);
@@ -399,9 +403,14 @@ Context::Value Binop::evaluate(Context &ctx) {
     } else if (lhs->type == Type_) {
       auto lhs_evaled = lhs->evaluate(ctx).as_type;
       assert(lhs_evaled->is_parametric_struct());
+
       auto param_struct = static_cast<ParametricStructure *>(lhs_evaled);
       auto struct_lit   = param_struct->ast_expression;
 
+      if (debug::parametric_struct) {
+        std::cout << "== Evaluating a parametric struct call ==\n"
+                  << *struct_lit << std::endl;
+      }
       std::vector<Expression *> arg_vals;
       if (rhs->is_comma_list()) {
         arg_vals = static_cast<ChainOp *>(rhs)->exprs;
@@ -409,20 +418,80 @@ Context::Value Binop::evaluate(Context &ctx) {
         arg_vals.push_back(rhs);
       }
 
-      std::vector<Context::Value> ctx_vals;
+      auto num_args = arg_vals.size();
 
+      if (debug::parametric_struct) {
+        std::cout << " * Argument values:" << std::endl;
+      }
+      std::vector<Context::Value> ctx_vals;
       // Populate the function context with arguments
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
+      for (size_t i = 0; i < num_args; ++i) {
         auto rhs_eval = arg_vals[i]->evaluate(ctx);
         ctx_vals.push_back(rhs_eval);
+
+        if (debug::parametric_struct) {
+          std::cout << "   " << i << ". " << *ctx_vals.back().as_type
+                    << std::endl;
+        }
       }
+
+      if (debug::parametric_struct) { std::cout << std::endl; }
+
+      // look through the cache
+      // TODO there's definitely a better way to do this.
+
+      for (auto cached_val : struct_lit->cache) {
+        if (debug::parametric_struct) {
+          std::cout << " * Checking match against " << cached_val << std::endl;
+        }
+
+        if (cached_val->declarations.size() != num_args) {
+          if (debug::parametric_struct) {
+            std::cout << "   - Parameter number mismatch" << std::endl;
+          }
+          continue;
+        }
+
+        for (size_t i = 0; i < num_args; ++i) {
+          if (ctx_vals[i].as_type !=
+              cached_val->declarations[i]->type_expr->evaluate(ctx).as_type) {
+
+            if (debug::parametric_struct) {
+              std::cout << "   - Failed matching argument " << i << std::endl;
+            }
+
+            goto outer_continue;
+          }
+        }
+
+        if (debug::parametric_struct) {
+          std::cout << "   - Found a match." << std::endl;
+        }
+        // If you get down here, you have found the right thing.
+        return Context::Value(cached_val->type_value);
+
+      outer_continue:;
+      }
+
+      size_t cache_index = struct_lit->cache.size();
+      auto sl = new StructLiteral;
+
+      // TODO move the functionality of verify_types out into another function
+      // and have this call that function and verify_types call that as well.
+      // The naming is wacky. The call here is just to use the type_value
+      // assignment functionality.
+      sl->verify_types();
+
+      struct_lit->cache.push_back(sl);
+
 
       Context struct_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         struct_ctx.bind(ctx_vals[i], struct_lit->params[i]->identifier);
       }
-      auto cloned_struct = param_struct->ast_expression->clone(struct_ctx);
-      assert(!cloned_struct->type_value);
+
+      auto cloned_struct =
+          param_struct->ast_expression->clone(cache_index, struct_ctx);
 
       std::stringstream ss;
       // TODO if the parameter is not a type?
@@ -432,8 +501,12 @@ Context::Value Binop::evaluate(Context &ctx) {
       }
       ss << ")";
 
-      cloned_struct->type_value =
-          Struct(ss.str(), cloned_struct);
+      // TODO move the functionality of verify_types out into another function
+      // and have this call that function and verify_types call that as well.
+      // The naming is wacky. The call here is just to use the type_value
+      // assignment functionality.
+      cloned_struct->verify_types();
+      static_cast<Structure *>(cloned_struct->type_value.get)->set_name(ss.str());
 
       auto struct_type =
           static_cast<Structure *>(cloned_struct->type_value.get);

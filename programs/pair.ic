@@ -14,8 +14,12 @@ main := void -> void {
   ic.val = 'x'
 
   rr: pair(real, real)
+  rr2: pair(real, real)
+
   rr.key = ic.key :> real
   rr.val = 3.14159
+  rr2.key = rr.val
+  rr2.val = rr.key
 
   print '('
   print ic.key

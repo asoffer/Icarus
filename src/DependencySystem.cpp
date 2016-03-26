@@ -129,8 +129,16 @@ void traverse_from(PtrWithTorV pt) {
           auto binop_ptr = static_cast<AST::Binop *>(ptr);
           if (binop_ptr->op == Language::Operator::Call) {
             if (binop_ptr->lhs->type == Type_) {
-              PtrWithTorV ptr_with_torv(binop_ptr->lhs, false);
-              traverse_from(ptr_with_torv);
+              // TODO
+              //
+              // The code below was to ensure that the LHS was actually a
+              // parametric struct. Unfortunately, it can cause dependency
+              // cycles. For now, we just assume that calling a type we know
+              // that the type is parametric. This probably introduces some bad
+              // bugs.
+
+              // PtrWithTorV ptr_with_torv(binop_ptr->lhs, false);
+              // traverse_from(ptr_with_torv);
             }
           }
         }
@@ -158,6 +166,7 @@ void traverse_from(PtrWithTorV pt) {
 
       already_seen_ AT(ptr) = static_cast<Flag>(
           (seen_flag << 1) | already_seen_ AT(ptr)); // Mark it as done
+
       continue;
     }
 
@@ -250,6 +259,10 @@ std::string escape(const std::string &str) {
   return output.str();
 }
 
+std::string ShowFlag (Flag f) {
+  return std::to_string((f & 12) >> 2) + ", " + std::to_string(f & 3);
+}
+
 std::string graphviz_label(PtrWithTorV x) {
   std::stringstream output;
   output << (x.torv_ ? "  t" : "  v") << x.ptr_ << "[label=\"{"
@@ -257,8 +270,11 @@ std::string graphviz_label(PtrWithTorV x) {
          << ")|" << escape(x.ptr_->is_expression()
                                ? static_cast<AST::Expression *>(x.ptr_)
                                      ->type.to_string()
-                               : "---")
-         << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")
+                               : "---");
+  if (already_seen_.find(x.ptr_) != already_seen_.end()) {
+    output << " [" << ShowFlag(already_seen_ AT(x.ptr_)) << "]";
+  }
+  output << "}\", fillcolor=\"#88" << (x.torv_ ? "ffaa" : "aaff")
          << "\" color=\""
          << (x.ptr_ == debug::last_ptr && x.torv_ == debug::last_torv ? "red"
                                                                       : "black")

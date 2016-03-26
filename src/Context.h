@@ -48,7 +48,7 @@ class Context {
     Context(Context* parent = nullptr) :
       ret_val_(nullptr), has_ret_(false), parent_(parent) {
     }
-    size_t bindsize() const { return bindings_.size(); }
+    size_t size() const { return bindings_.size(); }
 
   private:
     Value ret_val_;

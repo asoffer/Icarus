@@ -30,6 +30,7 @@ extern llvm::IRBuilder<> builder;
 namespace debug {
 extern bool parser;
 extern bool dependency_graph;
+extern bool parametric_struct;
 } // namespace debug
 
 // The keys in this map represent the file names, and the values represent the
@@ -87,8 +88,12 @@ int main(int argc, char *argv[]) {
 
     if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
       debug::parser = true;
+
     } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "-d") == 0) {
       debug::dependency_graph = true;
+
+    } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
+      debug::parametric_struct = true;
 
     } else if (file_index == -1) {
       // If we haven't seen a file yet, point to it

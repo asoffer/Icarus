@@ -427,12 +427,13 @@ struct StructLiteral : public Expression {
   static Node *build_parametric(NPtrVec &&nodes);
 
   void build_llvm_internals();
-  StructLiteral *clone(Context &ctx);
+  StructLiteral *clone(size_t cache_index, Context &ctx);
 
   std::vector<Declaration *> params;
   TypePtr type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;
+  std::vector<StructLiteral *> cache;
 };
 
 struct EnumLiteral : public Expression {
