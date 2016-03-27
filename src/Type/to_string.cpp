@@ -82,7 +82,7 @@ std::string DependentType::to_string() const {
 }
 
 std::string TypeVariable::to_string() const {
-  return "Var(" + identifier->token() + ")";
+  return "`" + identifier->token();
 }
 
 std::string Structure::to_string() const { return bound_name; }

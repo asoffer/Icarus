@@ -33,7 +33,6 @@ StructLiteral *StructLiteral::clone(size_t cache_index, Context &ctx) {
 
   // we need to generate it's dependencies.
   Dependency::mark_as_done(struct_lit);
-
   return struct_lit;
 }
 } // namespace AST

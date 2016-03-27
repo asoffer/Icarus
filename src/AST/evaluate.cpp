@@ -290,9 +290,8 @@ Context::Value Case::evaluate(Context &ctx) {
 
 Context::Value StructLiteral::evaluate(Context &ctx) {
   if (!(params.empty() && type_value)) {
-    static size_t struct_counter = 0;
-    type_value =
-        ParamStruct("anon.struct." + std::to_string(struct_counter++), this);
+    // TODO don't really need to call verify types;
+    verify_types();
 
   } else if (params.empty()) {
     auto struct_type = static_cast<Structure *>(type_value.get);
@@ -330,7 +329,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
               ->set_name(identifier->token());
         } else if (type_as_ctx_val.as_type->is_parametric_struct()) {
           static_cast<ParametricStructure *>(type_as_ctx_val.as_type)
-              ->bound_name = identifier->token();
+              ->set_name(identifier->token());
         } else {
           assert(false);
         }
@@ -408,7 +407,7 @@ Context::Value Binop::evaluate(Context &ctx) {
       auto struct_lit   = param_struct->ast_expression;
 
       if (debug::parametric_struct) {
-        std::cout << "== Evaluating a parametric struct call ==\n"
+        std::cout << "\n== Evaluating a parametric struct call ==\n"
                   << *struct_lit << std::endl;
       }
       std::vector<Expression *> arg_vals;
@@ -481,9 +480,15 @@ Context::Value Binop::evaluate(Context &ctx) {
       // The naming is wacky. The call here is just to use the type_value
       // assignment functionality.
       sl->verify_types();
-
       struct_lit->cache.push_back(sl);
 
+      if (debug::parametric_struct) {
+        std::cout << " * No match found.\n"
+                     " * Creating new cached value.\n"
+                     " * Cache size is now "
+                  << struct_lit->cache.size() << " for " << struct_lit << "."
+                  << std::endl;
+      }
 
       Context struct_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {

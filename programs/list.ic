@@ -2,16 +2,11 @@ node := struct(T: type) {
   data: T
   next: &node(T)
 }
-main := void -> void {
-  n: node(real)
-  m: node(int)
+
+list := struct(T: type) {
+  head: &node(T)
+  size: uint
 }
-
-//list := struct(T: type) {
-//  head: &node(T)
-//  size: uint
-//}
-
 
 //__print__ := (l: list) -> void {
 //  iter := l.head

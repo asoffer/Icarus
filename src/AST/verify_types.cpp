@@ -550,7 +550,7 @@ void EnumLiteral::verify_types() {
 
 void StructLiteral::verify_types() {
   static size_t anon_struct_counter = 0;
-  type = Type_;
+  type                              = Type_;
 
   if (!type_value) {
     if (params.empty()) {

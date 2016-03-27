@@ -29,6 +29,10 @@ std::string Mangle(const Type *t, bool prefix) {
     ss << "A0" << Mangle(static_cast<const Array*>(t)->data_type.get, false);
   } else if (t->is_pointer()) {
     ss << "P" << Mangle(static_cast<const Pointer*>(t)->pointee.get, false);
+  } else if (t->is_struct()) {
+    auto struct_type = static_cast<const Structure*>(t);
+    ss << "S" << struct_type->bound_name.size() << struct_type->bound_name;
+
   } else {
     ss << t->to_string();
   }

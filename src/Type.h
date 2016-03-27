@@ -310,6 +310,8 @@ struct ParametricStructure : public Type {
 
   ParametricStructure(const std::string &name, AST::StructLiteral *expr);
 
+  void set_name(const std::string &name);
+
   AST::StructLiteral *ast_expression;
   std::string bound_name;
 };
