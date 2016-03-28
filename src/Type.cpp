@@ -194,12 +194,13 @@ void Structure::set_name(const std::string& name) {
 void ParametricStructure::set_name(const std::string& name) {
   bound_name = name;
   assert(ast_expression);
-  for (auto struct_lit : ast_expression->cache) {
-    assert(struct_lit->type_value);
+  for (auto &kv : ast_expression->cache) {
+    assert(kv.second->type_value);
     // NOTE This is pretty hacky: Find the first paren.
     // TODO better way would be to cache not just the struct but it's parameters
     // as well.
-    auto& str_name = static_cast<Structure*>(struct_lit->type_value.get)->bound_name;
+    auto &str_name =
+        static_cast<Structure *>(kv.second->type_value.get)->bound_name;
     size_t paren_pos = str_name.find('(');
     assert(paren_pos != std::string::npos);
     str_name =
@@ -207,7 +208,7 @@ void ParametricStructure::set_name(const std::string& name) {
   }
 }
 
-std::ostream& operator<<(std::ostream& os, const Type& t) {
+std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
 

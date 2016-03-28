@@ -427,13 +427,16 @@ struct StructLiteral : public Expression {
   static Node *build_parametric(NPtrVec &&nodes);
 
   void build_llvm_internals();
-  StructLiteral *clone(size_t cache_index, Context &ctx);
+  StructLiteral *clone(StructLiteral *&, Context &ctx);
 
   std::vector<Declaration *> params;
   TypePtr type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;
-  std::vector<StructLiteral *> cache;
+
+  // TODO this should be more than just type pointers. Parameters can be ints,
+  // etc. Do we allow real?
+  std::map<std::vector<TypePtr>, StructLiteral *> cache;
 };
 
 struct EnumLiteral : public Expression {

@@ -40,7 +40,6 @@ Context::Value Identifier::evaluate(Context &ctx) {
     return Context::Value(TypeSystem::get(token()).get);
 
   } else {
-
     auto val = ctx.get(this);
     assert(val.as_type && "Unknown value for identifier in this scope");
 
@@ -86,7 +85,11 @@ Context::Value Unop::evaluate(Context &ctx) {
       return Context::Value(-operand->evaluate(ctx).as_real);
     }
   } else if (op == Language::Operator::And) {
-    if (operand->type != Type_) {
+    if (operand->type == Unknown) {
+      // Create a cached value for the operand
+      assert(false);
+
+    } else if (operand->type != Type_) {
       // TODO better error message
       error_log.log(line_num, "Taking the address of a " +
                                   operand->type.to_string() +
@@ -439,21 +442,25 @@ Context::Value Binop::evaluate(Context &ctx) {
       // look through the cache
       // TODO there's definitely a better way to do this.
 
-      for (auto cached_val : struct_lit->cache) {
+      size_t cache_num = 0;
+      for (const auto &cached_val : struct_lit->cache) {
         if (debug::parametric_struct) {
-          std::cout << " * Checking match against " << cached_val << std::endl;
+          std::cout << " * Checking match against cache position " << cache_num
+                    << std::endl;
         }
 
-        if (cached_val->declarations.size() != num_args) {
+        if (cached_val.first.size() != num_args) {
           if (debug::parametric_struct) {
-            std::cout << "   - Parameter number mismatch" << std::endl;
+            std::cout << "   - Parameter number mismatch (" << num_args
+                      << " vs " << cached_val.first.size() << ")"
+                      << std::endl;
           }
           continue;
         }
 
         for (size_t i = 0; i < num_args; ++i) {
-          if (ctx_vals[i].as_type !=
-              cached_val->declarations[i]->type_expr->evaluate(ctx).as_type) {
+          // TODO not always a type
+          if (ctx_vals[i].as_type != cached_val.first[i]) {
 
             if (debug::parametric_struct) {
               std::cout << "   - Failed matching argument " << i << std::endl;
@@ -467,20 +474,26 @@ Context::Value Binop::evaluate(Context &ctx) {
           std::cout << "   - Found a match." << std::endl;
         }
         // If you get down here, you have found the right thing.
-        return Context::Value(cached_val->type_value);
+        return Context::Value(cached_val.second->type_value);
 
       outer_continue:;
       }
 
-      size_t cache_index = struct_lit->cache.size();
-      auto sl = new StructLiteral;
+      // TODO there's definitely a way to consolidate/speed up this stuff.
+      // Create the key earlier and do a binary rather than linear search
+      // through the cache using this key.
+      std::vector<TypePtr> vec_key;
+      for (size_t i = 0; i < num_args; ++i) {
+        vec_key.push_back(ctx_vals[i].as_type);
+      }
+        
+      auto &cache_loc = (struct_lit->cache[vec_key] = new StructLiteral);
 
       // TODO move the functionality of verify_types out into another function
       // and have this call that function and verify_types call that as well.
       // The naming is wacky. The call here is just to use the type_value
       // assignment functionality.
-      sl->verify_types();
-      struct_lit->cache.push_back(sl);
+      cache_loc->verify_types();
 
       if (debug::parametric_struct) {
         std::cout << " * No match found.\n"
@@ -488,6 +501,7 @@ Context::Value Binop::evaluate(Context &ctx) {
                      " * Cache size is now "
                   << struct_lit->cache.size() << " for " << struct_lit << "."
                   << std::endl;
+        assert(struct_lit->cache.size() < 5);
       }
 
       Context struct_ctx = ctx.spawn();
@@ -496,7 +510,7 @@ Context::Value Binop::evaluate(Context &ctx) {
       }
 
       auto cloned_struct =
-          param_struct->ast_expression->clone(cache_index, struct_ctx);
+          param_struct->ast_expression->clone(cache_loc, struct_ctx);
 
       std::stringstream ss;
       // TODO if the parameter is not a type?

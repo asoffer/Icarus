@@ -1,59 +1,140 @@
+list := struct(T: type) {
+  size: uint
+  head: &node(T)
+}
+
+
 node := struct(T: type) {
   data: T
   next: &node(T)
 }
 
-list := struct(T: type) {
-  head: &node(T)
-  size: uint
+__print__ := (l: list(int)) -> void {
+  iter := l.head
+  if l.size == 0u {
+    return
+  }
+  print '['
+    i := 0u
+    while i < l.size {
+      i += 1u
+      print iter.data
+      if i != l.size {
+        print ' '
+        print '-'
+        print '>'
+        print ' '
+      }
+      iter = iter.next
+    }
+  
+  print ']'
 }
 
-//__print__ := (l: list) -> void {
-//  iter := l.head
-//  if l.size == 0u {
-//    return
-//  }
-//print '['
-//  i := 0u
-//  while i < l.size {
-//    i += 1u
-//    print iter.data
-//    if i != l.size {
-//      print ' '
-//      print '-'
-//      print '>'
-//      print ' '
-//    }
-//    iter = iter.next
-//  }
-//
-//print ']'
-//}
-//
-//main := void -> void {
-//  l: list
-//  add(&l, 3)
-//  add(&l, 5)
-//  add(&l, 7)
-//
-//  print l
-//  print '\n'
-//
-//  emptylist: list
-//
-//  print emptylist
-//  print '\n'
-//  l1: list
-//
-//  add(&l1, 17)
-//  print l1
-//  print '\n'
-//}
-//
-//add := (l: &list, n: int) -> void {
-//  nptr := alloc(node)
-//  nptr.data = n
-//  nptr.next = l.head
-//  l.head = nptr
-//  l.size += 1u
-//}*/
+show_lc := (l: list(char)) -> void {
+  iter := l.head
+  if l.size == 0u {
+    return
+  }
+  print '['
+    i := 0u
+    while i < l.size {
+      i += 1u
+      print iter.data
+      if i != l.size {
+        print ' '
+        print '-'
+        print '>'
+        print ' '
+      }
+      iter = iter.next
+    }
+  
+  print ']'
+}
+
+show_llc := (l: list(list(char))) -> void {
+  iter := l.head
+  if l.size == 0u {
+    return
+  }
+  print '['
+    i := 0u
+    while i < l.size {
+      i += 1u
+      show_lc(iter.data)
+      if i != l.size {
+        print ' '
+        print '-'
+        print '>'
+        print ' '
+      }
+      iter = iter.next
+    }
+  
+  print ']'
+}
+
+
+
+main := void -> void {
+  l: list(int)
+  add(&l, 3)
+  add(&l, 5)
+  add(&l, 7)
+
+  print l
+  print '\n'
+
+  emptylist: list(real)
+
+  print emptylist
+  print '\n'
+
+  l1: list(char)
+  addc(&l1, 'o')
+  addc(&l1, 'l')
+  addc(&l1, 'l')
+  addc(&l1, 'e')
+  addc(&l1, 'h')
+  show_lc(l1)
+  print '\n'
+
+  l2: list(char)
+  addc(&l2, 'd')
+  addc(&l2, 'l')
+  addc(&l2, 'r')
+  addc(&l2, 'o')
+  addc(&l2, 'w')
+  show_lc(l2)
+  print '\n'
+
+  LLC := list(list(char))
+  ll: LLC
+  addlc(&ll, l2)
+  addlc(&ll, l1)
+  show_llc(ll)
+  print '\n'
+}
+
+add := (l: &list(int), n: int) -> void {
+  nptr := alloc(node(int))
+  nptr.data = n
+  nptr.next = l.head
+  l.head = nptr
+  l.size += 1u
+}
+addc := (l: &list(char), c: char) -> void {
+  nptr := alloc(node(char))
+  nptr.data = c
+  nptr.next = l.head
+  l.head = nptr
+  l.size += 1u
+}
+addlc := (l: &list(list(char)), c: list(char)) -> void {
+  nptr := alloc(node(list(char)))
+  nptr.data = c
+  nptr.next = l.head
+  l.head = nptr
+  l.size += 1u
+}
