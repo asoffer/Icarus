@@ -1030,6 +1030,7 @@ void For::GenerateLoopBodyCode(llvm::Function *parent_fn) {
   builder.SetInsertPoint(loop_block);
   statements->generate_code();
   builder.CreateBr(for_scope->exit);
+  builder.SetInsertPoint(for_scope->exit);
 }
 
 void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
@@ -1086,7 +1087,6 @@ llvm::Value *For::generate_code() {
 
     GenerateLoopBodyCode(parent_fn);
 
-    builder.SetInsertPoint(for_scope->exit);
     auto next = builder.CreateGEP(phi_node, data::const_uint(1));
     phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
 
@@ -1130,7 +1130,6 @@ llvm::Value *For::generate_code() {
 
       GenerateLoopBodyCode(parent_fn);
 
-      builder.SetInsertPoint(for_scope->exit);
       builder.CreateStore(
           builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
                             data::const_uint(1)),
