@@ -47,7 +47,7 @@ std::string Mangle(const Type *t, bool prefix) {
 }
 
 std::string Mangle(const Function *f, const std::string &name) {
-  if (name == "main") return "main";
+  if (name == "main" || f->time() == Time::compile) { return name; }
 
   std::stringstream ss;
   ss << "_ZF" << name.size() << name;

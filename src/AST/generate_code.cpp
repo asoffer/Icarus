@@ -68,7 +68,11 @@ llvm::Value *Identifier::generate_code() {
 
   } else if (type.is_function()) {
     // TODO better way to get functions based on their name
-    return global_module->getFunction(token());
+    auto fn_type                     = static_cast<Function *>(type.get);
+    llvm::FunctionType *llvm_fn_type = *fn_type;
+    auto mangled_name                = Mangle(fn_type, token());
+
+    return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
   } else if (type.is_big()) {
     return alloc;
@@ -673,13 +677,16 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
       arg_type->set_print(static_cast<llvm::Function *>(val));
 
     } else {
-      auto fn = static_cast<FunctionLiteral *>(rhs);
-      auto mangled_name =
-          Mangle(static_cast<Function *>(rhs->type.get), lhs->token());
+      auto fn                          = static_cast<FunctionLiteral *>(rhs);
+      auto fn_type                     = static_cast<Function *>(rhs->type.get);
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+      auto mangled_name                = Mangle(fn_type, lhs->token());
 
-      fn->llvm_fn = global_module->getFunction(mangled_name);
+      fn->llvm_fn = static_cast<llvm::Function *>(
+          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
 
       val = rhs->generate_code();
+
       // Null value can be returned here, if for instance, the rhs is a function
       // on types.
       if (val) { val->setName(mangled_name); }
@@ -821,7 +828,9 @@ llvm::Value *Declaration::generate_code() {
         ->initialize_literal(identifier->alloc, len);
   }
 
-  if (decl_type == DeclType::Std || type == Type_) return nullptr;
+  if (decl_type == DeclType::Std || type.get->time() == Time::compile) {
+    return nullptr;
+  }
   // For the most part, declarations are preallocated at the beginning
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.
