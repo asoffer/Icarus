@@ -265,7 +265,7 @@ void Binop::verify_types() {
       // In the binary operator (), store the index for which quantum type value
       // you're actually calling.
       for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
-        auto fn_type   = static_cast<Function *>(opt.get);
+        auto fn_type = static_cast<Function *>(opt.get);
         if (fn_type->input != rhs->type) continue;
 
         type = fn_type->output;

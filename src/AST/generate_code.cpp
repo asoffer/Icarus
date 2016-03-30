@@ -268,7 +268,29 @@ llvm::Value *Binop::generate_code() {
     return llvm_value(evaluate(CurrentContext()));
   }
 
-  auto lhs_val = lhs->generate_code();
+  llvm::Value *lhs_val = nullptr;
+
+  if (lhs->type.is_quantum()) {
+    Function *fn_type = nullptr;
+    for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
+      fn_type = static_cast<Function *>(opt.get);
+      if (fn_type->input == rhs->type) break;
+    }
+
+    // Because of type verification we know that if we get here, there is a
+    // valid choice for the quantum type. The loop above cannot end normally. It
+    // must end at a break statement.
+    assert(fn_type && fn_type->input == rhs->type);
+
+    llvm::FunctionType *llvm_fn_type = *fn_type;
+
+    auto mangled_name = Mangle(static_cast<Function *>(fn_type), lhs->token());
+    lhs_val           = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+
+  } else {
+    lhs_val = lhs->generate_code();
+  }
+  assert(lhs_val);
 
   switch (op) {
   case Language::Operator::Index: {
@@ -289,7 +311,7 @@ llvm::Value *Binop::generate_code() {
                                 rhs->evaluate(CurrentContext()).as_type);
   }
   case Language::Operator::Call: {
-    if (lhs->type.is_function()) {
+    if (lhs->type.is_function() || lhs->type.is_quantum()) {
       std::vector<llvm::Value *> arg_vals;
       // This whole section should be pulled out into a function called
       // "collate_for_function_call" or something like that.
