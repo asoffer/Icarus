@@ -27,6 +27,7 @@ struct TypePtr {
   bool is_dependent_type() const;
   bool is_type_variable() const;
   bool is_parametric_struct() const;
+  bool is_quantum() const;
 
   bool is_big() const;
   bool stores_data() const;

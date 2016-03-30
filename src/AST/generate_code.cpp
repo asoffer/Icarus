@@ -605,6 +605,7 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   Scope::Stack.push(fn_scope);
   fn_scope->initialize();
+
   auto arg = llvm_fn->args().begin();
   for (auto &input_iter : inputs) {
     auto decl_id = input_iter->identifier;
@@ -651,14 +652,15 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
     } else {
       auto fn = static_cast<FunctionLiteral *>(rhs);
-      // TODO TOKENREMOVAL. Get the function via some unique name (probably
-      // mangled somehow)
-      fn->llvm_fn = global_module->getFunction(lhs->token());
+      auto mangled_name =
+          Mangle(static_cast<Function *>(rhs->type.get), lhs->token());
+
+      fn->llvm_fn = global_module->getFunction(mangled_name);
 
       val = rhs->generate_code();
       // Null value can be returned here, if for instance, the rhs is a function
       // on types.
-      if (val) { val->setName(lhs->token()); }
+      if (val) { val->setName(mangled_name); }
     }
   } else {
     var = lhs->generate_lvalue();

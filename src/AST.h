@@ -304,7 +304,7 @@ struct Identifier : public Terminal {
 
   llvm::Value *alloc;
   bool is_arg; // function argument or struct parameter
-  Declaration *decl;
+  std::vector<Declaration *> decls;
 };
 
 struct KVPairList : public Node {

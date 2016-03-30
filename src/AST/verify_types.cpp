@@ -51,30 +51,43 @@ void Terminal::verify_types() {
 }
 
 void Identifier::verify_types() {
-  type = decl->type;
-  assert(type && "type is null");
-
-  switch (decl->decl_type) {
-  case DeclType::Std: {
-    if (type == Type_) {
-      scope_->context.bind(Context::Value(TypeVar(this)), this);
+  // We have already checked in Declaration::verify_types that either there is
+  // one type, or there are functions
+  if (decls.size() == 1) {
+    type = decls[0]->type;
+    assert(type && "type is null");
+  } else {
+    std::vector<TypePtr> vec;
+    for (auto decl : decls) {
+      vec.push_back(decl->type);
     }
-  } break;
 
-  case DeclType::Infer: {
-    if (decl->type_expr->is_struct_literal()) {
-//      auto tlit_type_val =
-//          static_cast<StructLiteral *>(decl->type_expr)->type_value;
-//      scope_->context.bind(Context::Value(tlit_type_val), this);
-    } else if (decl->type_expr->is_function_literal()) {
-      auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
-      scope_->context.bind(Context::Value(flit), this);
+    type = new QuantumType(vec);
+  }
+
+  for (const auto decl : decls) {
+    switch (decl->decl_type) {
+    case DeclType::Std: {
+      if (type == Type_) {
+        scope_->context.bind(Context::Value(TypeVar(this)), this);
+      }
+    } break;
+
+    case DeclType::Infer: {
+      if (decl->type_expr->is_struct_literal()) {
+        //      auto tlit_type_val =
+        //          static_cast<StructLiteral *>(decl->type_expr)->type_value;
+        //      scope_->context.bind(Context::Value(tlit_type_val), this);
+      } else if (decl->type_expr->is_function_literal()) {
+        auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
+        scope_->context.bind(Context::Value(flit), this);
+      }
+    } break;
+
+    case DeclType::In: {
+      // TODO does anything need to happen here?
+    } break;
     }
-  } break;
-
-  case DeclType::In: {
-    // TODO does anything need to happen here?
-  } break;
   }
 
   assert(type && "Expression type is nullptr in Identifier::verify_types()");
@@ -248,7 +261,20 @@ void Binop::verify_types() {
       return;
     }
 
-    if (!lhs->type.is_function()) {
+    if (lhs->type.is_quantum()) {
+      // In the binary operator (), store the index for which quantum type value
+      // you're actually calling.
+      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
+        auto fn_type   = static_cast<Function *>(opt.get);
+        if (fn_type->input != rhs->type) continue;
+
+        type = fn_type->output;
+        return;
+      }
+      error_log.log(line_num, "Could not match function type");
+      return;
+    } else if (!lhs->type.is_function()) {
+      std::cout << lhs->type << std::endl;
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
       error_log.log(line_num, "Identifier `" + lhs->token() +
@@ -260,8 +286,6 @@ void Binop::verify_types() {
 
     // TODO If rhs is a comma-list, is it's type given by a tuple?
     if (in_types != rhs->type) {
-      // TODO segfault happenning here because rhs is not totally initialized
-      // always.
       error_log.log(line_num, "Type mismatch on function arguments.");
       return;
     }

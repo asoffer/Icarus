@@ -128,6 +128,7 @@ static std::vector<DependentType *> dep_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
+static std::vector<QuantumType *> quant_;
 
 void GenerateLLVM() {
   for (auto t : array_types_) t->generate_llvm();
@@ -264,4 +265,9 @@ TypeVariable *TypeVar(AST::Identifier *id) {
   if (iter != TypeSystem::vars_.end()) return iter->second;
 
   return TypeSystem::vars_[id] = new TypeVariable(id);
+}
+
+QuantumType *Quantum(const std::vector<TypePtr>& vec) {
+  TypeSystem::quant_.push_back(new QuantumType(vec));
+  return TypeSystem::quant_.back();
 }

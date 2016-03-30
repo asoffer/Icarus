@@ -106,7 +106,8 @@ void Scope::verify_no_shadowing() {
       // If the shadowing occurs in the same scope, we don't need to display
       // the error message twice.
       if (scope_ptr == decl_ptr2->scope_) {
-        if (decl_ptr1->line_num <= decl_ptr2->line_num) {
+        if ((!decl_ptr1->type.is_function() || !decl_ptr2->type.is_function()) &&
+            decl_ptr1->line_num <= decl_ptr2->line_num) {
           error_log.log(decl_ptr1->line_num,
                         "Identifier `" + decl_ptr1->identifier->token() +
                             "` already declared in this scope (on line " +

@@ -19,8 +19,10 @@ void Terminal::record_dependencies() {
 
 void Identifier::record_dependencies() {
   Dependency::value_type(this, this);
-  Dependency::value_value(this, decl);
-  Dependency::type_type(this, decl);
+  for (const auto decl : decls) {
+    Dependency::value_value(this, decl);
+    Dependency::type_type(this, decl);
+  }
 }
 
 void Access::record_dependencies() {

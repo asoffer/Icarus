@@ -20,8 +20,6 @@
 #include "Context.h"
 #include "TypePtr.h"
 
-extern std::string Mangle(const Type *t, bool prefix = true);
-
 extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
 
@@ -43,6 +41,11 @@ struct Structure;
 struct ParametricStructure;
 struct DependentType;
 struct TypeVariable;
+struct QuantumType;
+
+// TODO this is not the right API for mangling.
+extern std::string Mangle(const Type *t, bool prefix = true);
+extern std::string Mangle(const Function *f, const std::string &name);
 
 namespace TypeSystem {
 void initialize();
@@ -79,6 +82,7 @@ extern ParametricStructure *ParamStruct(const std::string &name,
                                         AST::StructLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
+extern QuantumType *Quantum(const std::vector<TypePtr>& vec);
 
 #define ENDING = 0
 
@@ -146,6 +150,7 @@ public:
   virtual bool is_enum() const { return false; }
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
+  virtual bool is_quantum() const { return false; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;
@@ -336,6 +341,16 @@ struct TypeVariable : public Type {
   TypeVariable(AST::Identifier *id) : identifier(id) { has_vars = true; }
 
   AST::Identifier *identifier;
+};
+
+struct QuantumType : public Type {
+  TYPE_FNS(QuantumType, quantum);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+  QuantumType(const std::vector<TypePtr>& vec);
+  // TODO maybe quantum types should only hold functions?
+  std::vector<TypePtr> options;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

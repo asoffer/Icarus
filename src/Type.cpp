@@ -36,6 +36,7 @@ bool TypePtr::is_struct() const { return get->is_struct(); }
 bool TypePtr::is_enum() const { return get->is_enum(); }
 bool TypePtr::is_dependent_type() const { return get->is_dependent_type(); }
 bool TypePtr::is_type_variable() const { return get->is_type_variable(); }
+bool TypePtr::is_quantum() const { return get->is_quantum(); }
 bool TypePtr::is_parametric_struct() const {
   return get->is_parametric_struct();
 }
@@ -144,6 +145,13 @@ Enumeration::Enumeration(const std::string &name,
 ParametricStructure::ParametricStructure(const std::string &name,
                                          AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name) {}
+
+QuantumType::QuantumType(const std::vector<TypePtr>& vec) : options(vec) {
+  has_vars = false;
+  for (auto opt : options) { has_vars |= opt.get->has_vars; }
+}
+    
+
 
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)

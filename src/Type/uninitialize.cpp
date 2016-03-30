@@ -114,14 +114,18 @@ void Structure::call_uninit(llvm::Value* var) {
   builder.CreateCall(uninit_fn_, { var });
 }
 
-void DependentType::call_uninit(llvm::Value*) {
+void DependentType::call_uninit(llvm::Value *) {
   assert(false && "Cannot uninitialize a dependent type");
 }
 
-void TypeVariable::call_uninit(llvm::Value*) {
+void TypeVariable::call_uninit(llvm::Value *) {
   assert(false && "Cannot uninitialize a type variable");
 }
 
 void ParametricStructure::call_uninit(llvm::Value *) {
-  assert(false && "Cannot uninitialize a forward declaration");
+  assert(false && "Cannot uninitialize a parametric struct");
+}
+
+void QuantumType::call_uninit(llvm::Value *) {
+  assert(false && "Cannot uninitialize a quantum type");
 }

@@ -161,7 +161,9 @@ void traverse_from(PtrWithTorV pt) {
       // appropriate scope, so they can be allocated correctly
       if (torv && ptr->is_identifier()) {
         auto id_ptr = static_cast<AST::Identifier *>(ptr);
-        id_ptr->decl->scope_->ordered_decls_.push_back(id_ptr->decl);
+        for (auto decl : id_ptr->decls) {
+          decl->scope_->ordered_decls_.push_back(decl);
+        }
       }
 
       already_seen_ AT(ptr) = static_cast<Flag>(

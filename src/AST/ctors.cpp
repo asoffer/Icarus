@@ -21,7 +21,7 @@ DummyTypeExpr::DummyTypeExpr(size_t expr_line_num, Type *t) : type_value(t) {
 Identifier::Identifier() { assert(false); }
 
 Identifier::Identifier(size_t input_line_num, const std::string &token_string)
-    : alloc(nullptr), is_arg(false), decl(nullptr) {
+    : alloc(nullptr), is_arg(false) {
   token_     = token_string;
   type       = Unknown;
   precedence = Language::precedence(Language::Operator::NotAnOperator);

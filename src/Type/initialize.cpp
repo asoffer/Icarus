@@ -83,6 +83,9 @@ void ParametricStructure::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a parametric struct");
 }
 
+void QuantumType::call_init(llvm::Value *) {
+  assert(false && "Cannot initialize a quantum type");
+}
 
 void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
