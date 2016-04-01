@@ -10,11 +10,12 @@
 extern llvm::Module *global_module;
 
 namespace cstdlib {
+extern llvm::Constant *printf();
 extern llvm::Constant *free();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_char(char c);
+extern llvm::Value *global_string(const std::string &s);
 extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
@@ -35,7 +36,6 @@ void Array::call_uninit(llvm::Value *var) {
 
     auto entry_block = make_block("entry", uninit_fn_);
     builder.SetInsertPoint(entry_block);
-
     auto array = uninit_fn_->args().begin();
     array->setName("array");
 
@@ -66,6 +66,10 @@ void Array::call_uninit(llvm::Value *var) {
 
       builder.SetInsertPoint(land_block);
     }
+
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string("freeing 0x%x in uninit.%s\n"), data_ptr,
+                        data::global_string(to_string())});
 
     builder.CreateCall(cstdlib::free(),
                        builder.CreateBitCast(data_ptr, RawPtr));

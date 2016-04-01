@@ -13,9 +13,11 @@ extern llvm::BasicBlock *make_block(const std::string &name,
 namespace cstdlib {
 extern llvm::Constant *calloc();
 extern llvm::Constant *malloc();
+extern llvm::Constant *printf();
 } // namespace cstdlib
 
 namespace data {
+extern llvm::Value *global_string(const std::string &s);
 extern llvm::Value *null_pointer(TypePtr t);
 extern llvm::Value *const_int(int n);
 extern llvm::Value *const_uint(size_t n);
@@ -45,14 +47,35 @@ void Primitive::call_init(llvm::Value *var) {
 
 // TODO Change this is array size is known at compile time
 void Array::call_init(llvm::Value *var) {
-  builder.CreateStore(
-      data::const_uint(0),
-      builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
-  auto ptr = builder.CreateBitCast(
-      builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
-      *Ptr(data_type));
-  builder.CreateStore(
-      ptr, builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
+  if (init_fn_ == nullptr) {
+    auto save_block = builder.GetInsertBlock();
+
+    init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
+                                      llvm::Function::ExternalLinkage,
+                                      "init." + Mangle(this), global_module);
+
+    auto block = make_block("entry", init_fn_);
+    builder.SetInsertPoint(block);
+    auto arg = init_fn_->args().begin();
+
+    builder.CreateStore(
+        data::const_uint(0),
+        builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)}));
+    auto ptr = builder.CreateBitCast(
+        builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
+        *Ptr(data_type));
+
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string("malloced 0x%x in init.%s\n"),
+                        ptr, data::global_string(to_string())});
+
+    builder.CreateStore(ptr, builder.CreateGEP(arg, {data::const_uint(0),
+                                                     data::const_uint(1)}));
+
+    builder.CreateRetVoid();
+    builder.SetInsertPoint(save_block);
+  }
+  builder.CreateCall(init_fn_, {var});
 }
 
 void Tuple::call_init(llvm::Value *var) {
@@ -91,8 +114,8 @@ void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
     auto save_block = builder.GetInsertBlock();
 
-    auto x   = Func(Ptr(this), Void);
-    init_fn_ = llvm::Function::Create(*x, llvm::Function::ExternalLinkage,
+    init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
+                                      llvm::Function::ExternalLinkage,
                                       "init." + Mangle(this), global_module);
 
     auto block = make_block("entry", init_fn_);
@@ -137,6 +160,10 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
         builder.CreateCall(cstdlib::calloc(),
                            {len, data::const_uint(data_type.get->bytes())}),
         *Ptr(data_type));
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string("calloced 0x%x in initlit.%s\n"),
+                        alloc_call, data::global_string(to_string())});
+
   } else {
     auto bytes_to_alloc =
         builder.CreateMul(len, data::const_uint(data_type.get->bytes()));
@@ -144,6 +171,10 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
     alloc_call = builder.CreateBitCast(
         builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
         *Ptr(data_type));
+
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string("malloced 0x%x in initlit.%s\n"),
+                        alloc_call, data::global_string(to_string())});
   }
 
   // TODO allocate this in the right place

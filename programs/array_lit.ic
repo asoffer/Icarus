@@ -1,26 +1,29 @@
 main := void -> void {
-  array_lit : [5; int]
-  array_lit = [1, 4, 9, 16, 25]
-  
-  i := 0
-  while i < 5 {
-    print array_lit[i]
-    print '\n'
-    i += 1
-  }
-  
-  double_lit : [20; real]
-  print double_lit
-  
+  b := [[0]]
+  print b
   print '\n'
-  x := 3
-  y := 2
+ // array_lit : [5; int]
+ // array_lit = [1, 4, 9, 16, 25]
+ // 
+ // i := 0
+ // while i < 5 {
+ //   print array_lit[i]
+ //   print '\n'
+ //   i += 1
+ // }
+ // 
+ // double_lit : [20; real]
+ // print double_lit
+ // 
+ // print '\n'
+  // x := 3
+  // y := 2
   // TODO figure out why this segfaults and fix it.
-  // a := [[x, y]]
+  //a := [[0]]
   // print a
-  // a[0][0] += 1
-  // print a
-  print '\n'
-  print x
-  print '\n'
+  //a[0][0] += 1
+  //print a
+  //print '\n'
+  //print x
+  //print '\n'
 }

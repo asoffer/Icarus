@@ -161,6 +161,12 @@ void BlockScope::initialize() {
 void BlockScope::uninitialize() {
   builder.SetInsertPoint(exit);
 
+  while (!deferred_uninits.empty()) {
+    auto &deferred = deferred_uninits.top();
+    deferred.first.get->call_uninit(deferred.second);
+    deferred_uninits.pop();
+  }
+
   for (int i = static_cast<int>(ordered_decls_.size()) - 1; i >= 0; --i) {
     auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
 
@@ -169,6 +175,10 @@ void BlockScope::uninitialize() {
 
     decl_id->type.get->call_uninit({decl_id->alloc});
   }
+}
+
+void BlockScope::defer_uninit(TypePtr type, llvm::Value *val) {
+  deferred_uninits.emplace(type, val);
 }
 
 void BlockScope::make_return(llvm::Value *val) {

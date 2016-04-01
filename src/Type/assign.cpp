@@ -13,10 +13,12 @@ extern llvm::Module* global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 namespace cstdlib {
+extern llvm::Constant *printf();
 extern llvm::Constant *malloc();
 } // namespace cstdlib
 
 namespace data {
+extern llvm::Value *global_string(const std::string &s);
 extern llvm::Value *const_uint(size_t n);
 } // namespace data
 
@@ -57,7 +59,6 @@ llvm::Function* Array::assign() {
       *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
       "assign." + Mangle(this), global_module);
 
-  // Create uninitialization function
   auto block = make_block("entry", assign_fn_);
   builder.SetInsertPoint(block);
 
@@ -67,7 +68,12 @@ llvm::Function* Array::assign() {
   val->setName("val");
   var->setName("var");
 
-  call_uninit(var);
+  // NOTE!!! THIS IS THE CULPRIT FIXME FIXME FIXME
+  // call_uninit(var);
+  builder.CreateCall(
+      cstdlib::printf(),
+      {data::global_string("should deallocate array stored 0x%x\n"), var});
+
   // Allocate space and save the pointer
   auto new_len = builder.CreateLoad(
       builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),
@@ -76,11 +82,16 @@ llvm::Function* Array::assign() {
       var, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
   auto load_ptr_ptr = builder.CreateGEP(
       val, {data::const_uint(0), data::const_uint(1)}, "load_ptr_ptr");
+
   auto malloc_call = builder.CreateBitCast(
       builder.CreateCall(
           cstdlib::malloc(),
           builder.CreateMul(new_len, data::const_uint(data_type.get->bytes()))),
       *Ptr(data_type), "malloc_call");
+
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string("malloced 0x%x in assign.%s\n"),
+                      malloc_call, data::global_string(to_string())});
 
   builder.CreateStore(
       new_len, builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));

@@ -913,6 +913,9 @@ llvm::Value *ArrayLiteral::generate_code() {
                        {elems[i]->generate_code(), data_ptr});
   }
 
+  assert(scope_->is_block_scope());
+  static_cast<BlockScope *>(scope_)->defer_uninit(type, array_data);
+
   return array_data;
 }
 
