@@ -5,4 +5,13 @@ main := void -> void {
   print '\n'
   print [5; int]
   print '\n'
+  print a.size
+  print '\n'
+  b := [a, a, a]
+  print b.size
+  print '\n'
+  print b[0].size
+  print '\n'
+  print b
+  print '\n'
 }

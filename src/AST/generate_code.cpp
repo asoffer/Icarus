@@ -253,6 +253,11 @@ llvm::Value *Access::generate_code() {
     if (!base_type.is_big()) eval = builder.CreateLoad(eval);
   }
 
+  if (base_type.is_array() &&member_name == "size") {
+    return builder.CreateLoad(
+        builder.CreateGEP(eval, {data::const_uint(0), data::const_uint(0)}));
+  }
+
   if (base_type.is_struct()) {
     auto struct_type = static_cast<Structure *>(base_type.get);
 

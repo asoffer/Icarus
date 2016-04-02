@@ -203,6 +203,11 @@ void Access::verify_types() {
     etype = static_cast<Pointer *>(etype.get)->pointee;
   }
 
+  if (etype.is_array() && member_name == "size") {
+    type = Uint;
+    return;
+  }
+
   if (etype.is_struct()) {
     assert(static_cast<Structure *>(etype.get)->field_type.size());
 
