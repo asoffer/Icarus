@@ -12,8 +12,10 @@
 extern llvm::Module* global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
+
+extern llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr);
+
 namespace cstdlib {
-extern llvm::Constant *printf();
 extern llvm::Constant *malloc();
 } // namespace cstdlib
 
@@ -50,17 +52,17 @@ llvm::Function* Function::assign() {
   assert(false && "Function assignment is illegal!");
 }
 
-llvm::Function* Array::assign() {
+llvm::Function *Array::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   auto save_block = builder.GetInsertBlock();
 
-  assign_fn_ = llvm::Function::Create(
-      *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
-      "assign." + Mangle(this), global_module);
+  assign_fn_ = llvm::Function::Create(*Func({Ptr(this), Ptr(this)}, Void),
+                                      llvm::Function::ExternalLinkage,
+                                      "assign." + Mangle(this), global_module);
 
-  auto block = make_block("entry", assign_fn_);
-  builder.SetInsertPoint(block);
+  auto entry_block = make_block("entry", assign_fn_);
+  builder.SetInsertPoint(entry_block);
 
   auto iter = assign_fn_->args().begin();
   auto val  = iter;
@@ -68,66 +70,58 @@ llvm::Function* Array::assign() {
   val->setName("val");
   var->setName("var");
 
-  // NOTE!!! THIS IS THE CULPRIT FIXME FIXME FIXME
-  // call_uninit(var);
-  builder.CreateCall(
-      cstdlib::printf(),
-      {data::global_string("should deallocate array stored 0x%x\n"), var});
+  // release the resources held by var
+  call_uninit(var);
 
-  // Allocate space and save the pointer
   auto new_len = builder.CreateLoad(
-      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}),
-      "new_len");
-  auto data_ptr_ptr = builder.CreateGEP(
-      var, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
-  auto load_ptr_ptr = builder.CreateGEP(
-      val, {data::const_uint(0), data::const_uint(1)}, "load_ptr_ptr");
+      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
+  builder.CreateStore(new_len, builder.CreateGEP(var, {data::const_uint(0),
+                                                       data::const_uint(0)}));
 
+  auto bytes_to_alloc =
+      builder.CreateMul(new_len, data::const_uint(data_type.get->bytes()));
   auto malloc_call = builder.CreateBitCast(
-      builder.CreateCall(
-          cstdlib::malloc(),
-          builder.CreateMul(new_len, data::const_uint(data_type.get->bytes()))),
-      *Ptr(data_type), "malloc_call");
-
-  builder.CreateCall(cstdlib::printf(),
-                     {data::global_string("malloced 0x%x in assign.%s\n"),
-                      malloc_call, data::global_string(to_string())});
-
+      builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
   builder.CreateStore(
-      new_len, builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)}));
+      malloc_call,
+      builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
 
-  builder.CreateStore(malloc_call, builder.CreateGEP(var, {data::const_uint(0),
-                                                     data::const_uint(1)}));
+  auto copy_from_ptr = builder.CreateLoad(
+      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(1)}));
+  auto end_ptr = builder.CreateGEP(copy_from_ptr, new_len);
 
-  auto copy_to_ptr   = builder.CreateLoad(data_ptr_ptr);
-  auto copy_from_ptr = builder.CreateLoad(load_ptr_ptr);
-  auto end_ptr       = builder.CreateGEP(copy_to_ptr, new_len);
-
+  auto cond_block = make_block("cond", assign_fn_);
   auto loop_block = make_block("loop", assign_fn_);
   auto exit_block = make_block("exit", assign_fn_);
 
-  auto prev_block = builder.GetInsertBlock();
-  builder.CreateBr(loop_block);
-  builder.SetInsertPoint(loop_block);
+  builder.CreateBr(cond_block);
+  builder.SetInsertPoint(cond_block);
+
   auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
   auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
-  from_phi->addIncoming(copy_from_ptr, prev_block);
-  to_phi->addIncoming(copy_to_ptr, prev_block);
+  builder.CreateCondBr(builder.CreateICmpULT(from_phi, end_ptr),
+                       loop_block, exit_block);
 
-  auto copy_from_elem =
-      data_type.get->is_big()
-          ? static_cast<llvm::Value *>(from_phi)
-          : static_cast<llvm::Value *>(builder.CreateLoad(from_phi));
+  // Write loop body
+  builder.SetInsertPoint(loop_block);
 
-  builder.CreateCall(data_type.get->assign(), {copy_from_elem, to_phi});
+  // This is ludicrous, but we have to init it here so that it can be
+  // immeditaely uninitialized safely.
+  data_type.get->call_init(to_phi);
+
+  builder.CreateCall(data_type.get->assign(),
+                     {PtrCallFix(data_type, from_phi), to_phi});
 
   auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
   auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
 
-  builder.CreateCondBr(builder.CreateICmpULT(next_to_ptr, end_ptr), loop_block,
-                       exit_block);
-  to_phi->addIncoming(next_to_ptr, builder.GetInsertBlock());
-  from_phi->addIncoming(next_from_ptr, builder.GetInsertBlock());
+  from_phi->addIncoming(next_from_ptr, loop_block);
+  to_phi->addIncoming(next_to_ptr, loop_block);
+
+  from_phi->addIncoming(copy_from_ptr, entry_block);
+  to_phi->addIncoming(malloc_call, entry_block);
+
+  builder.CreateBr(cond_block);
 
   builder.SetInsertPoint(exit_block);
   builder.CreateRetVoid();

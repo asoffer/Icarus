@@ -13,7 +13,6 @@ extern llvm::BasicBlock *make_block(const std::string &name,
 namespace cstdlib {
 extern llvm::Constant *calloc();
 extern llvm::Constant *malloc();
-extern llvm::Constant *printf();
 } // namespace cstdlib
 
 namespace data {
@@ -64,10 +63,6 @@ void Array::call_init(llvm::Value *var) {
     auto ptr = builder.CreateBitCast(
         builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
         *Ptr(data_type));
-
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string("malloced 0x%x in init.%s\n"),
-                        ptr, data::global_string(to_string())});
 
     builder.CreateStore(ptr, builder.CreateGEP(arg, {data::const_uint(0),
                                                      data::const_uint(1)}));
@@ -160,9 +155,6 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
         builder.CreateCall(cstdlib::calloc(),
                            {len, data::const_uint(data_type.get->bytes())}),
         *Ptr(data_type));
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string("calloced 0x%x in initlit.%s\n"),
-                        alloc_call, data::global_string(to_string())});
 
   } else {
     auto bytes_to_alloc =
@@ -172,9 +164,6 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
         builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
         *Ptr(data_type));
 
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string("malloced 0x%x in initlit.%s\n"),
-                        alloc_call, data::global_string(to_string())});
   }
 
   // TODO allocate this in the right place
@@ -184,5 +173,6 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
   builder.CreateStore(
       alloc_call,
       builder.CreateGEP(alloc, {data::const_uint(0), data::const_uint(1)}));
+
   return alloc;
 }

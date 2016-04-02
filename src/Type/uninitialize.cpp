@@ -10,7 +10,6 @@
 extern llvm::Module *global_module;
 
 namespace cstdlib {
-extern llvm::Constant *printf();
 extern llvm::Constant *free();
 } // namespace cstdlib
 
@@ -50,29 +49,32 @@ void Array::call_uninit(llvm::Value *var) {
 
       auto end_ptr  = builder.CreateGEP(data_ptr, len_val, "end_ptr");
 
+      auto cond_block = make_block("cond", uninit_fn_);
       auto loop_block = make_block("loop", uninit_fn_);
-      builder.CreateBr(loop_block);
-      builder.SetInsertPoint(loop_block);
+      auto land_block = make_block("land", uninit_fn_);
+
+      builder.CreateBr(cond_block);
+      builder.SetInsertPoint(cond_block);
 
       auto phi = builder.CreatePHI(*Ptr(data_type), 2, "phi");
       phi->addIncoming(data_ptr, entry_block);
 
-      data_type.get->call_uninit({phi});
-      auto next_ptr   = builder.CreateGEP(phi, data::const_uint(1));
-      auto land_block = make_block("land", uninit_fn_);
-      builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,
+      builder.CreateCondBr(builder.CreateICmpULT(phi, end_ptr), loop_block,
                            land_block);
+
+      builder.SetInsertPoint(loop_block);
+      data_type.get->call_uninit({phi});
+      auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
+
+      builder.CreateBr(cond_block);
       phi->addIncoming(next_ptr, loop_block);
 
       builder.SetInsertPoint(land_block);
     }
 
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string("freeing 0x%x in uninit.%s\n"), data_ptr,
-                        data::global_string(to_string())});
-
     builder.CreateCall(cstdlib::free(),
                        builder.CreateBitCast(data_ptr, RawPtr));
+
     builder.CreateRetVoid();
     builder.SetInsertPoint(prev_block);
   }
