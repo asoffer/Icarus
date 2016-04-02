@@ -1,4 +1,9 @@
 main := void -> void {
+  for n in 1 .. 10 {
+    print n
+    print '\n'
+  }
+
   A: [26; char]
   a: [26; char]
   i := 0u

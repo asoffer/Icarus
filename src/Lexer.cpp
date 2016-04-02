@@ -153,47 +153,57 @@ AST::TokenNode Lexer::next_operator() {
   // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
   // encountered should be considered on their own.
   switch (peek) {
-    case '@':
+  case '`':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::tick, "`");
+  case '@':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::dereference, "@");
+  case ',': {
+    file_.get();
+    return AST::TokenNode(line_num_, Language::comma, ",");
+  }
+  case ';':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::semicolon, ";");
+  case '(':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::left_paren, "(");
+  case ')':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::right_paren, ")");
+  case '{':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::left_brace, "{");
+  case '}':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::right_brace, "}");
+  case '[':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::left_bracket, "[");
+  case ']':
+    file_.get();
+    return AST::TokenNode(line_num_, Language::right_bracket, "]");
+  case '.': {
+    file_.get();
+    if (file_.peek() == '.') {
       file_.get();
-      return AST::TokenNode(line_num_, Language::dereference, "@");
-    case ',':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::comma, ",");
-    case ';':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::semicolon, ";");
-    case '(':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::left_paren, "(");
-    case ')':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::right_paren, ")");
-    case '{':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::left_brace, "{");
-    case '}':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::right_brace, "}");
-    case '[':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::left_bracket, "[");
-    case ']':
-      file_.get();
-      return AST::TokenNode(line_num_, Language::right_bracket, "]");
-    case '.':
-      file_.get();
+      return AST::TokenNode(line_num_, Language::dots, "..");
+    } else {
       return AST::TokenNode(line_num_, Language::dot, ".");
-    case '"':
-      file_.get();
-      return next_string_literal();
-    case '\'':
-      file_.get();
-      return next_char_literal();
+    }
+  }
+  case '"': {
+    file_.get();
+    return next_string_literal();
+  }
+  case '\'': {
+    file_.get();
+    return next_char_literal();
+  }
   }
 
-  if (peek == '/') {
-    return next_given_slash();
-  }
+  if (peek == '/') { return next_given_slash(); }
 
   // Cannot have '-' in this list because of '->'
   // The case '/' is missing because it has special the cases // and /* to deal
@@ -201,7 +211,7 @@ AST::TokenNode Lexer::next_operator() {
   char lead_char = 0;
   Language::NodeType node_type;
   switch (peek) {
-    case '+':
+  case '+':
     case '*':
     case '%':
       lead_char = static_cast<char>(peek);

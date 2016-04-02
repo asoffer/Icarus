@@ -61,6 +61,8 @@ namespace Language {
     bool_operator,
     comma,
     dot,
+    dots,
+    tick,
     rocket_operator,
 
     // left unary operators
@@ -102,46 +104,44 @@ constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask = 3;
 
 namespace Language {
-  enum class Operator {
-    NotAnOperator,
-    Return, Print, Free,
-    Comma, Rocket,
-    Assign, ColonEq, Colon, Cast, Arrow,
-    OrEq, XorEq, AndEq,
-    AddEq, SubEq, MulEq, DivEq, ModEq,
-    Or, Xor, And,
-    LT, LE, EQ, NE, GE, GT,
-    Add, Sub, Mul, Div, Mod,
-    Not,
-    At, Index, Call, Access 
-  };
+enum class Operator {
+#define OPERATOR_MACRO(name, symbol, prec, assoc) name,
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+};
 
-  enum class Terminal {
-    ASCII, Alloc, Return, Else, True, False, Null,
-    Char, Int, Real, Type, UInt,
-    StringLiteral
-  };
+enum class Terminal {
+  ASCII,
+  Alloc,
+  Return,
+  Else,
+  True,
+  False,
+  Null,
+  Char,
+  Int,
+  Real,
+  Type,
+  UInt,
+  StringLiteral
+};
 
-  inline bool is_expression(NodeType t) {
-    return (t & MASK_expression) != 0;
-  }
+inline bool is_expression(NodeType t) { return (t & MASK_expression) != 0; }
 
-  inline bool is_binary_operator(NodeType t) {
-    return (t & MASK_binary_operator) != 0;
-  }
+inline bool is_binary_operator(NodeType t) {
+  return (t & MASK_binary_operator) != 0;
+}
 
-  inline bool is_operator(NodeType t) {
-    return (t & MASK_operator) != 0;
-  }
+inline bool is_operator(NodeType t) { return (t & MASK_operator) != 0; }
 
-  inline bool is_decl(NodeType t) {
-    return t == decl_operator || t == decl_assign_operator;
-  }
+inline bool is_decl(NodeType t) {
+  return t == decl_operator || t == decl_assign_operator;
+}
 
-  extern size_t precedence(Language::Operator op);
-  extern const std::map<std::string, Language::Operator> lookup_operator;
-  extern const std::map<std::string, NodeType> reserved_words;
-  extern const std::map<std::string, size_t> op_prec;
-}  // namespace Language
+extern size_t precedence(Language::Operator op);
+extern const std::map<std::string, Language::Operator> lookup_operator;
+extern const std::map<std::string, NodeType> reserved_words;
+extern const std::map<std::string, size_t> op_prec;
+} // namespace Language
 
-#endif  // ICARUS_LANGUAGE_H
+#endif // ICARUS_LANGUAGE_H

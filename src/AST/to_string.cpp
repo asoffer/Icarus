@@ -24,6 +24,8 @@ std::string Node::to_string(size_t n) const {
     case Language::generic_operator:        output += "Operator";      break;
     case Language::bool_operator:           output += "BoolOperator";  break;
     case Language::dot:                     output += "Dot";           break;
+    case Language::dots:                    output += "Dots";          break;
+    case Language::tick:                    output += "Tick";          break;
     case Language::binary_boolean_operator: output += "BinOperator";   break;
     case Language::decl_operator:           output += ":";             break;
     case Language::decl_assign_operator:    output += ":=";            break;
