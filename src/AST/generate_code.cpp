@@ -41,7 +41,8 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   auto tmp_raw  = builder.CreateBitCast(arg_ptr, RawPtr);
   auto val_raw  = builder.CreateBitCast(val, RawPtr);
   auto mem_copy = builder.CreateCall(
-      cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type.get->bytes())});
+      cstdlib::memcpy(),
+      {tmp_raw, val_raw, data::const_uint(type.get->bytes())});
 
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
@@ -538,12 +539,18 @@ llvm::Value *ChainOp::generate_code() {
     CASE(cmp_val, ICmpU, GT);
     END_SHORT_CIRCUIT
 
+  } else if (expr_type == Char) {
+    BEGIN_SHORT_CIRCUIT
+    CASE(cmp_val, ICmp, EQ);
+    CASE(cmp_val, ICmp, NE);
+    END_SHORT_CIRCUIT
+
   } else if (expr_type == Real) {
     BEGIN_SHORT_CIRCUIT
     CASE(cmp_val, FCmpO, LT);
     CASE(cmp_val, FCmpO, LE);
-    CASE(cmp_val, FCmpO, EQ);
-    CASE(cmp_val, FCmpO, NE);
+    CASE(cmp_val, FCmpO, EQ); // TODO should we really allow this?
+    CASE(cmp_val, FCmpO, NE); // TODO should we really allow this?
     CASE(cmp_val, FCmpO, GE);
     CASE(cmp_val, FCmpO, GT);
     END_SHORT_CIRCUIT
