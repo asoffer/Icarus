@@ -135,6 +135,8 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::Mod:     ss << "Mod";    break;
       case Language::Operator::Index:   ss << "Index";  break;
       case Language::Operator::Call:    ss << "Call";   break;
+      case Language::Operator::Dots:    ss << "Dots";   break;
+      case Language::Operator::Tick:    ss << "Tick";   break;
       default: assert(false && "Not a binary operator");
     }
     ss << ">\n"

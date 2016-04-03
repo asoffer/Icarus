@@ -123,6 +123,7 @@ static std::vector<Array *> array_types_;
 static std::vector<Tuple *> tuple_types_;
 static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
+static std::map<TypePtr, RangeType *> ranges_;
 static std::map<std::string, Enumeration *> enum_types_;
 static std::vector<DependentType *> dep_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
@@ -271,3 +272,12 @@ QuantumType *Quantum(const std::vector<TypePtr>& vec) {
   TypeSystem::quant_.push_back(new QuantumType(vec));
   return TypeSystem::quant_.back();
 }
+
+RangeType *Range(TypePtr t) {
+  // These won't be leaked, but they aren't uniqued.
+  auto iter = TypeSystem::ranges_.find(t);
+  if (iter != TypeSystem::ranges_.end()) return iter->second;
+
+  return TypeSystem::ranges_[t] = new RangeType(t);
+}
+

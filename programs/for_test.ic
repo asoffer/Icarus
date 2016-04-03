@@ -1,8 +1,17 @@
 main := void -> void {
-  for n in 1 .. 10 {
+  start := -7
+  end := 10
+
+  for n in start .. end {
     print n
-    print '\n'
+    print " "
   }
+  print "\n"
+
+  for ch in 'a' .. 'z' {
+    print ch
+  }
+  print "\n"
 
   A: [26; char]
   a: [26; char]

@@ -125,7 +125,7 @@ namespace Language {
         AST::Expression::parenthesize),
 
     Rule(expression,
-        { {expression}, {negation, generic_operator}, {expression} },
+        { {expression}, {negation, generic_operator, dots, tick}, {expression} },
         AST::Binop::build),
 
     Rule(expression,
@@ -259,6 +259,7 @@ namespace Language {
     Rule(for_statement,
         { {reserved_for}, {expression}, {reserved_in}, {expression}, {left_brace}, {statements}, {right_brace} },
         AST::For::build),
+
     /* End for loop */
 
     /* Begin loop extras */

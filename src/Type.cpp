@@ -37,6 +37,7 @@ bool TypePtr::is_enum() const { return get->is_enum(); }
 bool TypePtr::is_dependent_type() const { return get->is_dependent_type(); }
 bool TypePtr::is_type_variable() const { return get->is_type_variable(); }
 bool TypePtr::is_quantum() const { return get->is_quantum(); }
+bool TypePtr::is_range() const { return get->is_range(); }
 bool TypePtr::is_parametric_struct() const {
   return get->is_parametric_struct();
 }

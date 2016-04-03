@@ -153,37 +153,21 @@ AST::TokenNode Lexer::next_operator() {
   // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
   // encountered should be considered on their own.
   switch (peek) {
-  case '`':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::tick, "`");
-  case '@':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::dereference, "@");
-  case ',': {
-    file_.get();
-    return AST::TokenNode(line_num_, Language::comma, ",");
-  }
-  case ';':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::semicolon, ";");
-  case '(':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::left_paren, "(");
-  case ')':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::right_paren, ")");
-  case '{':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::left_brace, "{");
-  case '}':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::right_brace, "}");
-  case '[':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::left_bracket, "[");
-  case ']':
-    file_.get();
-    return AST::TokenNode(line_num_, Language::right_bracket, "]");
+#define CASE(character, str, name)                                             \
+  case character:                                                              \
+    file_.get();                                                               \
+    return AST::TokenNode(line_num_, Language::name, str)
+    CASE('`', "`", tick);
+    CASE('@', "@", dereference);
+    CASE(',', ",", comma);
+    CASE(';', ";", semicolon);
+    CASE('(', "(", left_paren);
+    CASE(')', ")", right_paren);
+    CASE('[', "[", left_bracket);
+    CASE(']', "]", right_bracket);
+    CASE('{', "{", left_brace);
+    CASE('}', "}", right_brace);
+#undef CASE
   case '.': {
     file_.get();
     if (file_.peek() == '.') {

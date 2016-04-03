@@ -51,3 +51,4 @@ bool ParametricStructure::add_llvm_input(std::vector<llvm::Type *> &) {
 }
 
 bool QuantumType::add_llvm_input(std::vector<llvm::Type *> &) { return false; }
+bool RangeType::add_llvm_input(std::vector<llvm::Type *> &) { return false; }

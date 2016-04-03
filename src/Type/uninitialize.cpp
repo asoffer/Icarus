@@ -135,3 +135,7 @@ void ParametricStructure::call_uninit(llvm::Value *) {
 void QuantumType::call_uninit(llvm::Value *) {
   assert(false && "Cannot uninitialize a quantum type");
 }
+
+void RangeType::call_uninit(llvm::Value *) {
+  assert(false && "Cannot uninitialize a range type");
+}

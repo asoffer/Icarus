@@ -223,3 +223,7 @@ llvm::Function *ParametricStructure::assign() {
 llvm::Function *QuantumType::assign() {
   assert(false && "Cannot assign to a quantum type");
 }
+
+llvm::Function *RangeType::assign() {
+  assert(false && "Cannot assign to a quantum type");
+}

@@ -44,6 +44,8 @@ Time::Eval Enumeration::time() const {
   return Time::run;
 }
 
+Time::Eval RangeType::time() const { return end_type.get->time(); }
+
 Time::Eval DependentType::time() const { return Time::compile; }
 Time::Eval TypeVariable::time() const { return Time::compile; }
 Time::Eval ParametricStructure::time() const { return Time::compile; }

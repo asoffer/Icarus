@@ -235,14 +235,15 @@ void Binop::verify_types() {
     return;
   }
 
-  if (op == Language::Operator::Rocket) {
+  switch (op) {
+  case Operator::Rocket: {
     if (lhs->type != Bool) {
       error_log.log(line_num, "LHS of rocket must be a bool");
       type = Error;
     }
     return;
-
-  } else if (op == Language::Operator::Call) {
+  }
+  case Operator::Call: {
     type = Error;
 
     if (lhs->type.is_dependent_type()) {
@@ -300,8 +301,8 @@ void Binop::verify_types() {
     assert(type && "return type is null");
 
     return;
-
-  } else if (op == Language::Operator::Index) {
+  }
+  case Operator::Index: {
     type = Error;
     if (!lhs->type.is_array()) {
       // TODO TOKENREMOVAL
@@ -322,7 +323,8 @@ void Binop::verify_types() {
     }
 
     return;
-  } else if (op == Language::Operator::Cast) {
+  }
+  case Operator::Cast: {
     // TODO use correct scope
     type = rhs->evaluate(scope_->context).as_type;
     if (type == Error) return;
@@ -333,16 +335,36 @@ void Binop::verify_types() {
         (lhs->type == Int && type == Real) ||
         (lhs->type == Int && type == Uint) ||
         (lhs->type == Uint && type == Real) ||
-        (lhs->type == Uint && type == Int))
+        (lhs->type == Uint && type == Int)) {
       return;
+    }
 
     error_log.log(line_num, "Invalid cast from " + lhs->type.to_string() +
                                 " to " + type.to_string());
+    return;
+  }
+  case Operator::Dots: {
+    if (lhs->type == Int && rhs->type == Int) {
+      type = Range(Int);
 
-  } else {
+    } else if (lhs->type == Uint && rhs->type == Uint) {
+      type = Range(Uint);
+
+    } else if (lhs->type == Char && rhs->type == Char) {
+      type = Range(Char);
+
+    } else {
+      error_log.log(line_num, "No known range construction for types" +
+                                  lhs->type.to_string() + " .. " +
+                                  rhs->type.to_string());
+    }
+    return;
+  }
+  default: {
     type = operator_lookup(line_num, op, lhs->type, rhs->type);
     assert(type && "operator_lookup yields nullptr");
     return;
+  }
   }
 
   assert(false && "Died in Binop::verify_types");
@@ -417,10 +439,15 @@ void Declaration::verify_types() {
     if (type_expr->type.is_array()) {
       type = static_cast<Array *>(type_expr->type.get)->data_type;
 
+    } else if (type_expr->type.is_range()) {
+      type = static_cast<RangeType *>(type_expr->type.get)->end_type;
+
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context).as_type;
       if (t->is_enum() || t == Uint) { type = t; }
+
     } else {
+      error_log.log(line_num, "Cannot determine type from in declaration.");
       type = Error;
     }
   } break;
@@ -549,6 +576,10 @@ void For::verify_types() {
     iterator->type = static_cast<Array *>(container->type.get)->data_type;
     return;
 
+  } else if (container->type.is_range()) {
+    iterator->type = static_cast<RangeType *>(container->type.get)->end_type;
+    return;
+
   } else if (container->type == Type_) {
     auto t = container->evaluate(scope_->context).as_type;
     if (t->is_enum() || t == Uint) {
@@ -556,7 +587,8 @@ void For::verify_types() {
       return;
     }
   }
-  error_log.log(line_num, "For loop container must be an array or enum, but " +
+
+  error_log.log(line_num, "For loop container must be a range, an array or an enum, but " +
                               container->type.to_string() + " given.");
 }
 

@@ -93,6 +93,10 @@ void DependentType::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a dependent type");
 }
 
+void RangeType::call_init(llvm::Value *) {
+  assert(false && "Cannot initialize a range type");
+}
+
 void TypeVariable::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a type variable");
 }

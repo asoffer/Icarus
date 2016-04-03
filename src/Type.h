@@ -42,6 +42,7 @@ struct ParametricStructure;
 struct DependentType;
 struct TypeVariable;
 struct QuantumType;
+struct RangeType;
 
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
@@ -83,6 +84,7 @@ extern ParametricStructure *ParamStruct(const std::string &name,
 extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id);
 extern QuantumType *Quantum(const std::vector<TypePtr>& vec);
+extern RangeType *Range(TypePtr t);
 
 #define ENDING = 0
 
@@ -151,6 +153,7 @@ public:
   virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
   virtual bool is_quantum() const { return false; }
+  virtual bool is_range() const { return false; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;
@@ -351,6 +354,16 @@ struct QuantumType : public Type {
   QuantumType(const std::vector<TypePtr>& vec);
   // TODO maybe quantum types should only hold functions?
   std::vector<TypePtr> options;
+};
+
+struct RangeType : public Type {
+  TYPE_FNS(RangeType, range);
+#include "config/left_unary_operators.conf"
+#include "config/binary_operators.conf"
+
+  RangeType(TypePtr t) : end_type(t) { has_vars = end_type.get->has_vars; }
+
+  TypePtr end_type;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);
