@@ -94,6 +94,11 @@ bool Parser::should_shift() {
     return true;
   }
 
+  if (last_type == Language::dots) {
+    return (Language::is_expression(ahead_type) ||
+            ((ahead_type & Language::MASK_left_unary_operator) != 0));
+  }
+
   if (stack_.size() >= 2 && ahead_type == Language::newline &&
       last_type == Language::string_literal &&
       stack_[stack_.size() - 2]->node_type() == Language::reserved_import) {

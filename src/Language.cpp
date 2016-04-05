@@ -125,6 +125,10 @@ namespace Language {
         AST::Expression::parenthesize),
 
     Rule(expression,
+        { {expression}, {dots} },
+        AST::Binop::build_dots),
+
+    Rule(expression,
         { {expression}, {negation, generic_operator, dots, tick}, {expression} },
         AST::Binop::build),
 

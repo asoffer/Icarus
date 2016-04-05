@@ -60,6 +60,20 @@ Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
   return binop_ptr;
 }
 
+Node *Binop::build_dots(NPtrVec &&nodes) {
+  auto binop_ptr      = new Binop;
+  binop_ptr->line_num = nodes[1]->line_num;
+
+  binop_ptr->lhs   = steal<Expression>(nodes[0]);
+  binop_ptr->rhs   = nullptr;
+  binop_ptr->type_ = Language::dots;
+  binop_ptr->op    = static_cast<TokenNode *>(nodes[1])->op;
+
+  binop_ptr->precedence = Language::precedence(binop_ptr->op);
+
+  return binop_ptr;
+}
+
 Node *Binop::build(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op);
