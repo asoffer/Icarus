@@ -1,57 +1,51 @@
 main := void -> void {
-  for a in 17 .. {
-    print a
+  for x in 'a' .. {
+    if x == 'c' {
+      continue
+    }
+    print x
+
+    if x == 'x' {
+      break
+    }
   }
 
-//  start := -7
-//  end := 10
-//
-//  for n in start .. end {
-//    print n
-//    print " "
-//  }
-//  print "\n"
-//
-//  for ch in 'a' .. 'z' {
-//    print ch
-//  }
-//  print "\n"
-//
-//  A: [26; char]
-//  a: [26; char]
-//  i := 0u
-//
-//  for c in A {
-//    c = ascii(65u + i)
-//    i += 1u
-//  }
-//
-//  i = 0u
-//  for c in a {
-//    c = ascii(97u + i)
-//    i += 1u
-//  }
-//
-//  for c in A {
-//    print c
-//  }
-//  print '\n'
-//
-//  for c in a {
-//    print c
-//  }
-//  print '\n'
-//
-//  k := 0u
-//  for n in uint {
-//    if n == k * k {
-//      print n
-//      print ' '
-//      k += 1u
-//    }
-//    if n > 1000u {
-//      print "\n"
-//      break
-//    }
-//  }
+  start := -7
+  end := 10
+
+  for n in start .. end {
+    print n
+    print " "
+  }
+  print "\n"
+
+  for ch in 'a' .. 'z' {
+    print ch
+  }
+  print "\n"
+
+  A: [26; char]
+  a: [26; char]
+  i := 0u
+
+  for c in A {
+    c = ascii(65u + i)
+    i += 1u
+  }
+
+  i = 0u
+  for c in a {
+    c = ascii(97u + i)
+    i += 1u
+  }
+
+  for c in A {
+    print c
+  }
+  print '\n'
+
+  for c in a {
+    print c
+  }
+  print '\n'
 }

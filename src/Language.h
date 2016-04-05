@@ -61,7 +61,6 @@ namespace Language {
     bool_operator,
     comma,
     dot,
-    dots,
     tick,
     rocket_operator,
 
@@ -69,8 +68,9 @@ namespace Language {
     reserved_return = MASK_left_unary_operator,
     reserved_print, reserved_free,
     dereference, 
+    dots,
 
-    // left unary operator + binary operator
+    // unary operator + binary operator
     indirection = MASK_binary_operator | MASK_left_unary_operator,
     negation,
 

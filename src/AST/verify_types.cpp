@@ -95,26 +95,27 @@ void Identifier::verify_types() {
 
 void Unop::verify_types() {
   using Language::Operator;
-  if (op == Operator::Free) {
+  switch (op) {
+  case Operator::Free: {
     if (!operand->type.is_pointer()) {
       error_log.log(line_num, "Free can only be called on pointer types");
     }
     type = Void;
-
-  } else if (op == Operator::Print) {
+  } break;
+  case Operator::Print: {
     if (operand->type == Void) {
       error_log.log(line_num, "Void types cannot be printed");
     }
     type = Void;
-
-  } else if (op == Operator::Return) {
+  } break;
+  case Operator::Return: {
     if (operand->type == Void) {
       error_log.log(line_num, "Void types cannot be returned");
     }
 
     type = Void;
-
-  } else if (op == Operator::At) {
+  } break;
+  case Operator::At: {
     if (operand->type.is_pointer()) {
       type = static_cast<Pointer *>(operand->type.get)->pointee;
 
@@ -124,8 +125,8 @@ void Unop::verify_types() {
                                   ", which is not a pointer.");
       type = Error;
     }
-
-  } else if (op == Operator::Call) {
+  } break;
+  case Operator::Call: {
     if (!operand->type.is_function()) {
       error_log.log(line_num,
                     "Identifier `" + operand->token() + "` is not a function.");
@@ -142,16 +143,16 @@ void Unop::verify_types() {
       type = fn->output;
       assert(type && "fn return type is nullptr");
     }
-
-  } else if (op == Operator::And) {
+  } break;
+  case Operator::And: {
     // TODO disallow pointers to goofy things (address of rvalue, e.g.)
     if (operand->type == Type_)
       type = Type_;
     else
       type = Ptr(operand->type);
     assert(type && "&type is null");
-
-  } else if (op == Operator::Sub) {
+  } break;
+  case Operator::Sub: {
     if (operand->type == Uint) {
       error_log.log(line_num, "Negation applied to unsigned integer");
       type = Int;
@@ -166,8 +167,16 @@ void Unop::verify_types() {
       error_log.log(line_num, type.to_string() + " has no negation operator.");
       type = Error;
     }
-  } else {
-    assert(false && "Died in Unop::verify_types");
+  } break;
+  case Operator::Dots: {
+    if (operand->type == Uint || operand->type == Int || operand->type == Char) {
+      type = Range(operand->type);
+    } else {
+      error_log.log(line_num, type.to_string() + " cannot be part of a range");
+      type = Error;
+    }
+  } break;
+  default: assert(false && "Died in Unop::verify_types");
   }
 }
 
@@ -582,7 +591,7 @@ void For::verify_types() {
 
   } else if (container->type == Type_) {
     auto t = container->evaluate(scope_->context).as_type;
-    if (t->is_enum() || t == Uint) {
+    if (t->is_enum()) {
       iterator->type = Type_;
       return;
     }

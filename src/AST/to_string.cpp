@@ -108,6 +108,7 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::Not:    ss << "Not";    break;
       case Language::Operator::At:     ss << "At";     break;
       case Language::Operator::Call:   ss << "Call";   break;
+      case Language::Operator::Dots:   ss << "Dots";   break;
       default: assert(false && "Not a unary operator");
     }
     ss << ">\n" << operand->to_string(n + 1);

@@ -197,6 +197,7 @@ struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
 
   static Node *build_paren_operator(NPtrVec &&nodes);
+  static Node *build_dots(NPtrVec &&nodes);
 
   Expression *operand;
   Language::Operator op;
@@ -213,7 +214,6 @@ struct Binop : public Expression {
   EXPR_FNS(Binop, binop);
 
   static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class);
-  static Node *build_dots(NPtrVec &&nodes);
   static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_bracket_operator(NPtrVec &&nodes);
   static Node *build_array_type(NPtrVec &&nodes);

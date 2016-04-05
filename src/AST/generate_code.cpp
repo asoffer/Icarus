@@ -1138,13 +1138,29 @@ llvm::Value *For::generate_code() {
     GenerateLoopExitCode(cond_block);
 
   } else if (container->type.is_range()) {
-    assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
+    bool double_ended_range;
 
-    auto start_val = static_cast<Binop *>(container)->lhs->generate_code();
-    auto end_val   = static_cast<Binop *>(container)->rhs->generate_code();
+    if (container->is_binop()) {
+      assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
+      double_ended_range = true;
+    } else if (container->is_unop()) {
+      assert(static_cast<Unop *>(container)->op == Language::Operator::Dots);
+      double_ended_range = false;
+    } else {
+      assert(false);
+    }
+
+    llvm::Value *start_val =
+        double_ended_range
+            ? static_cast<Binop *>(container)->lhs->generate_code()
+            : static_cast<Unop *>(container)->operand->generate_code();
+
+    llvm::Value *end_val =
+        double_ended_range
+            ? static_cast<Binop *>(container)->rhs->generate_code()
+            : nullptr;
 
     auto cond_block = make_block("loop.cond", parent_fn);
-
     builder.CreateBr(cond_block);
     builder.SetInsertPoint(cond_block);
 
@@ -1152,27 +1168,27 @@ llvm::Value *For::generate_code() {
     phi_node->addIncoming(start_val, start_block);
     builder.CreateStore(phi_node, iterator->identifier->alloc);
 
-    llvm::Value *cmp = nullptr;
-    if (iterator->type == Int) {
-      cmp = builder.CreateICmpSGT(phi_node, end_val);
-    } else if (iterator->type == Uint || iterator->type == Char) {
-      cmp = builder.CreateICmpUGT(phi_node, end_val);
-    }
+    if (double_ended_range) {
+      llvm::Value *cmp = nullptr;
+      if (iterator->type == Int) {
+        cmp = builder.CreateICmpSGT(phi_node, end_val);
+      } else if (iterator->type == Uint || iterator->type == Char) {
+        cmp = builder.CreateICmpUGT(phi_node, end_val);
+      }
 
-    builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
+      builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
+
+    } else {
+      builder.CreateBr(for_scope->entry);
+    }
 
     GenerateLoopBodyCode(parent_fn);
 
-    llvm::Value *next;
-    if (iterator->type == Char) {
-      next = builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
-                               data::const_char(1));
-    } else {
-      next = builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
-                               data::const_uint(1));
-    }
-    phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
+    llvm::Value *next = builder.CreateAdd(
+        builder.CreateLoad(iterator->identifier->alloc),
+        iterator->type == Char ? data::const_char(1) : data::const_uint(1));
 
+    phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
     GenerateLoopExitCode(cond_block);
 
   } else {
@@ -1205,20 +1221,6 @@ llvm::Value *For::generate_code() {
       phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
 
       GenerateLoopExitCode(cond_block);
-
-    } else if (t == Uint) {
-
-      builder.CreateStore(data::const_uint(0), iterator->identifier->alloc);
-      builder.CreateBr(for_scope->entry);
-
-      GenerateLoopBodyCode(parent_fn);
-
-      builder.CreateStore(
-          builder.CreateAdd(builder.CreateLoad(iterator->identifier->alloc),
-                            data::const_uint(1)),
-          iterator->identifier->alloc);
-
-      GenerateLoopExitCode(for_scope->entry);
 
     } else {
       assert(false && "Not yet implemented");

@@ -126,7 +126,7 @@ namespace Language {
 
     Rule(expression,
         { {expression}, {dots} },
-        AST::Binop::build_dots),
+        AST::Unop::build_dots),
 
     Rule(expression,
         { {expression}, {negation, generic_operator, dots, tick}, {expression} },

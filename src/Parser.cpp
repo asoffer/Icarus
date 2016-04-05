@@ -94,11 +94,6 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (last_type == Language::dots) {
-    return (Language::is_expression(ahead_type) ||
-            ((ahead_type & Language::MASK_left_unary_operator) != 0));
-  }
-
   if (stack_.size() >= 2 && ahead_type == Language::newline &&
       last_type == Language::string_literal &&
       stack_[stack_.size() - 2]->node_type() == Language::reserved_import) {
@@ -117,9 +112,27 @@ bool Parser::should_shift() {
   case Language::string_literal:
   case Language::type_literal:
   case Language::right_paren:
-  case Language::right_bracket:
-    return false;
+  case Language::right_bracket: return false;
   default:;
+  }
+
+  if (last_type == Language::dots) {
+    // TODO simplify this
+    switch (ahead_type) {
+    case Language::identifier:
+    case Language::reserved_true:
+    case Language::reserved_false:
+    case Language::int_literal:
+    case Language::uint_literal:
+    case Language::real_literal:
+    case Language::char_literal:
+    case Language::string_literal:
+    case Language::type_literal: return true;
+    default:;
+    }
+
+    return (Language::is_expression(ahead_type) ||
+            ((ahead_type & Language::MASK_left_unary_operator) != 0));
   }
 
   // Shift all newlines together so they can be repeatedly reduced. Similarly,

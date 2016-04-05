@@ -15,8 +15,8 @@ Node *Unop::build(NPtrVec &&nodes) {
   auto unop_ptr      = new Unop;
   unop_ptr->operand  = steal<Expression>(nodes[1]);
 
-  // We intentionally do not delet tk_node becasue we only want to read from it.
-  // The apply() call will take care of its deletion.
+  // We intentionally do not delete tk_node becasue we only want to read from
+  // it. The apply() call will take care of its deletion.
   auto tk_node       = static_cast<TokenNode *>(nodes[0]);
   unop_ptr->line_num = tk_node->line_num;
   unop_ptr->type_    = Language::expression;
@@ -60,18 +60,20 @@ Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
   return binop_ptr;
 }
 
-Node *Binop::build_dots(NPtrVec &&nodes) {
-  auto binop_ptr      = new Binop;
-  binop_ptr->line_num = nodes[1]->line_num;
+// More generally, this is correct for any right-unary operation
+Node *Unop::build_dots(NPtrVec &&nodes) {
+  auto unop_ptr      = new Unop;
+  unop_ptr->operand  = steal<Expression>(nodes[0]);
 
-  binop_ptr->lhs   = steal<Expression>(nodes[0]);
-  binop_ptr->rhs   = nullptr;
-  binop_ptr->type_ = Language::dots;
-  binop_ptr->op    = static_cast<TokenNode *>(nodes[1])->op;
+  // We intentionally do not delete tk_node becasue we only want to read from
+  // it. The apply() call will take care of its deletion.
+  auto tk_node       = static_cast<TokenNode *>(nodes[1]);
+  unop_ptr->line_num = tk_node->line_num;
+  unop_ptr->type_    = Language::expression;
+  unop_ptr->op       = tk_node->op;
 
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
-
-  return binop_ptr;
+  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  return unop_ptr;
 }
 
 Node *Binop::build(NPtrVec &&nodes) {
