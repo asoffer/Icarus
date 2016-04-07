@@ -47,9 +47,9 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
-#define BREAK_FLAG data::const_uint(1)
-#define CONTINUE_FLAG data::const_uint(2)
-#define RETURN_FLAG data::const_uint(4)
+#define BREAK_FLAG data::const_char('\01')
+#define CONTINUE_FLAG data::const_char('\02')
+#define RETURN_FLAG data::const_char('\04')
 
 namespace AST {
 llvm::Value *Identifier::generate_code() {
@@ -973,24 +973,13 @@ llvm::Value *Conditional::generate_code() {
     builder.SetInsertPoint(body_scopes[i]->exit);
     body_scopes[i]->uninitialize();
 
-    // TODO Pull this loop out. It has a lot of commonalities with other scope traversing-loops used elsewhere.
-    assert(scope_->is_block_scope());
-    BlockScope *scope_ptr = static_cast<BlockScope *>(scope_);
-    while (scope_ptr) {
-      if (scope_ptr->is_loop_scope()) { break; }
-      auto par = scope_ptr->parent;
-      if (!par) break;
-      assert(par->is_block_scope());
-      scope_ptr = static_cast<BlockScope *>(par);
-    }
+    auto exit_flag =
+        builder.CreateLoad(body_scopes[i]->containing_function_->exit_flag);
 
-    if (scope_ptr && scope_ptr->exit_flag) {
-      auto exit_flag = builder.CreateLoad(scope_ptr->exit_flag);
-      auto should_exit = builder.CreateICmpNE(exit_flag, data::const_uint(0));
-      builder.CreateCondBr(should_exit, scope_ptr->exit, land_block);
-    } else {
-      builder.CreateBr(land_block);
-    }
+    assert(body_scopes[i]->parent->is_block_scope());
+    auto parent_block_scope = static_cast<BlockScope *>(body_scopes[i]->parent);
+    auto is_zero = builder.CreateICmpEQ(exit_flag, data::const_char('\00'));
+    builder.CreateCondBr(is_zero, land_block, parent_block_scope->exit);
 
     Scope::Stack.pop();
   }
@@ -1004,13 +993,14 @@ llvm::Value *EnumLiteral::generate_code() { return nullptr; }
 llvm::Value *StructLiteral::generate_code() { return nullptr; }
 
 llvm::Value *BreakOrContinue::generate_code() {
-  auto scope_ptr = CurrentScope();
-  assert(scope_ptr->is_block_scope());
-  auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
+  llvm::Value *exit_flag_alloc =
+      CurrentScope()->is_function_scope()
+          ? static_cast<FnScope *>(CurrentScope())->exit_flag
+          : CurrentScope()->containing_function_->exit_flag;
 
-  builder.CreateStore(is_break ? BREAK_FLAG : CONTINUE_FLAG,
-                      loop_scope->exit_flag);
-  builder.CreateBr(block_scope_ptr->exit);
+  builder.CreateStore(is_break ? BREAK_FLAG : CONTINUE_FLAG, exit_flag_alloc);
+  builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
+
   return nullptr;
 }
 
@@ -1042,7 +1032,8 @@ llvm::Value *While::generate_code() {
   builder.SetInsertPoint(while_scope->exit);
   while_scope->uninitialize();
 
-  auto exit_flag = builder.CreateLoad(while_scope->exit_flag);
+  auto exit_flag =
+      builder.CreateLoad(while_scope->containing_function_->exit_flag);
 
   // Switch. By default go back to the start of the loop.
   auto switch_stmt = builder.CreateSwitch(exit_flag, cond_block);
@@ -1074,9 +1065,15 @@ void For::GenerateLoopBodyCode(llvm::Function *parent_fn) {
 void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
   for_scope->uninitialize();
 
-  auto exit_flag   = builder.CreateLoad(for_scope->exit_flag);
-  auto should_exit = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-  builder.CreateCondBr(should_exit, for_scope->land, reentry);
+  auto exit_flag =
+      builder.CreateLoad(for_scope->containing_function_->exit_flag);
+
+  // Switch. By default go back to the start of the loop.
+  auto switch_stmt = builder.CreateSwitch(exit_flag, reentry);
+  switch_stmt->addCase(BREAK_FLAG, for_scope->land);
+  assert(for_scope->parent->is_block_scope());
+  auto parent_block_scope = static_cast<BlockScope *>(for_scope);
+  switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
 
   Scope::Stack.pop();
 

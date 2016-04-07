@@ -15,6 +15,7 @@ extern llvm::Constant *memcpy();
 
 namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_char(char c);
 } // namespace data
 
 BlockScope *Scope::Global = nullptr; // Initialized in main
@@ -92,7 +93,7 @@ void Scope::set_parent(Scope* new_parent) {
 }
 
 BlockScope::BlockScope(ScopeType st)
-    : type(st), exit_flag(nullptr), entry(make_block("entry", nullptr)),
+    : type(st), entry(make_block("entry", nullptr)),
       exit(make_block("exit", nullptr)), land(nullptr) {}
 
 void Scope::verify_no_shadowing() {
@@ -134,7 +135,11 @@ void Scope::verify_no_shadowing() {
 
 void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
-  builder.CreateStore(data::const_uint(0), exit_flag);
+
+  builder.CreateStore(data::const_char('\00'),
+                      is_function_scope()
+                          ? static_cast<FnScope *>(this)->exit_flag
+                          : containing_function_->exit_flag);
 
   for (auto decl_ptr : ordered_decls_) {
     auto decl_id   = decl_ptr->identifier;
@@ -200,7 +205,8 @@ void BlockScope::make_return(llvm::Value *val) {
 }
 
 FnScope::FnScope(llvm::Function *fn)
-    : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr) {
+    : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
+      exit_flag(nullptr) {
   set_parent_function(fn);
 }
 
@@ -222,6 +228,7 @@ void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
 
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
+  exit_flag = builder.CreateAlloca(Char, nullptr, "exit.flag");
 
   if (fn_type->output != Void) {
     // TODO multiple return types
@@ -254,12 +261,6 @@ void FnScope::leave() {
 
 
 void FnScope::allocate(Scope* scope) {
-  // Allocate the exit_flag
-  if (scope->is_block_scope()) { 
-    auto block_scope = static_cast<BlockScope *>(scope);
-    block_scope->exit_flag = builder.CreateAlloca(Uint, nullptr, "exit.flag");
-  }
-
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;

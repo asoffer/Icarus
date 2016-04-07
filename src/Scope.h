@@ -79,7 +79,6 @@ struct BlockScope : public Scope {
   void defer_uninit(TypePtr type, llvm::Value *val);
 
   ScopeType type;
-  llvm::Value *exit_flag;
   llvm::BasicBlock *entry, *exit, *land;
   std::stack<std::pair<TypePtr, llvm::Value *>> deferred_uninits;
 };
@@ -98,7 +97,7 @@ struct FnScope : public BlockScope {
 
   Function *fn_type;
   llvm::Function *llvm_fn;
-  llvm::Value *return_value;
+  llvm::Value *return_value, *exit_flag;
   std::set<Scope *> innards_;
 };
 
