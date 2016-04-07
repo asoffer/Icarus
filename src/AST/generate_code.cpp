@@ -79,6 +79,15 @@ llvm::Value *Terminal::generate_code() {
   switch (terminal_type) {
   case Language::Terminal::Type:
   case Language::Terminal::Return: {
+
+    llvm::Value *exit_flag_alloc =
+        CurrentScope()->is_function_scope()
+            ? static_cast<FnScope *>(CurrentScope())->exit_flag
+            : CurrentScope()->containing_function_->exit_flag;
+
+    builder.CreateStore(RETURN_FLAG, exit_flag_alloc);
+    builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
+
     // TODO branch to end of current function scope, and delete everything on
     // the way out?
     return nullptr;
@@ -1072,7 +1081,7 @@ void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
   auto switch_stmt = builder.CreateSwitch(exit_flag, reentry);
   switch_stmt->addCase(BREAK_FLAG, for_scope->land);
   assert(for_scope->parent->is_block_scope());
-  auto parent_block_scope = static_cast<BlockScope *>(for_scope);
+  auto parent_block_scope = static_cast<BlockScope *>(for_scope->parent);
   switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
 
   Scope::Stack.pop();
