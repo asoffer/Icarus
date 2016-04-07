@@ -352,7 +352,18 @@ Context::Value Declaration::evaluate(Context &ctx) {
     } else { /* There's nothing to do */
     }
   } break;
-  case DeclType::In: assert(false && "Cannot use DeclType::In in this context");
+  case DeclType::In: {
+    assert(false && "Cannot use DeclType::In in this context");
+    break;
+  }
+  case DeclType::Tick: {
+    // Being asked to evaluate a tick, is just being asked to figure out what
+    // type it must represent from the available information. There is very
+    // little information here, since it's a generic function, so we simply bind
+    // a type variable and return it.
+    ctx.bind(Context::Value(TypeVar(identifier)), identifier);
+    return ctx.get(identifier);
+  }
   }
 
   return nullptr;

@@ -83,9 +83,11 @@ void Identifier::verify_types() {
         scope_->context.bind(Context::Value(flit), this);
       }
     } break;
-
     case DeclType::In: {
       // TODO does anything need to happen here?
+    } break;
+    case DeclType::Tick: {
+      // TODO do we need to do anything here?
     } break;
     }
   }
@@ -299,6 +301,9 @@ void Binop::verify_types() {
 
     auto in_types = static_cast<Function *>(lhs->type.get)->input;
 
+    // TODO Check if it takes any type variables at all.
+
+
     // TODO If rhs is a comma-list, is it's type given by a tuple?
     if (in_types != rhs->type) {
       error_log.log(line_num, "Type mismatch on function arguments.");
@@ -459,6 +464,26 @@ void Declaration::verify_types() {
       error_log.log(line_num, "Cannot determine type from in declaration.");
       type = Error;
     }
+  } break;
+  case DeclType::Tick: {
+    if (!type_expr->type.is_function()) {
+      // TODO Need a way better
+      error_log.log(
+          line_num,
+          "Cannot generate a type where the tester is not a function");
+      type = Error;
+      return;
+    }
+    auto test_func = static_cast<Function *>(type_expr->type.get);
+    if (test_func->output != Bool) {
+      // TODO What about implicitly cast-able to bool via a user-defined cast?
+      error_log.log(line_num, "Test function must return a bool");
+      type = Error;
+      return;
+    }
+
+    // TODO can't continue with type verification immediately
+
   } break;
   }
 

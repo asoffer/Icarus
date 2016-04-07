@@ -194,6 +194,9 @@ std::string Conditional::to_string(size_t n) const {
     case DeclType::In: {
       output += "(in)";
     } break;
+    case DeclType::Tick: {
+      output += "(`)";
+    } break;
     }
 
     return output + TYPE_OR("") + ">\n" + identifier->to_string(n + 1) +

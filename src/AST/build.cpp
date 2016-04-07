@@ -37,6 +37,23 @@ Node *Unop::build_paren_operator(NPtrVec &&nodes) {
   return unop_ptr;
 }
 
+// More generally, this is correct for any right-unary operation
+Node *Unop::build_dots(NPtrVec &&nodes) {
+  auto unop_ptr      = new Unop;
+  unop_ptr->operand  = steal<Expression>(nodes[0]);
+
+  // We intentionally do not delete tk_node becasue we only want to read from
+  // it. The apply() call will take care of its deletion.
+  auto tk_node       = static_cast<TokenNode *>(nodes[1]);
+  unop_ptr->line_num = tk_node->line_num;
+  unop_ptr->type_    = Language::expression;
+  unop_ptr->op       = tk_node->op;
+
+  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  return unop_ptr;
+}
+
+
 Node *Access::build(NPtrVec &&nodes) {
   auto access_ptr         = new Access;
   access_ptr->member_name = nodes[2]->token();
@@ -58,22 +75,6 @@ Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
 
   return binop_ptr;
-}
-
-// More generally, this is correct for any right-unary operation
-Node *Unop::build_dots(NPtrVec &&nodes) {
-  auto unop_ptr      = new Unop;
-  unop_ptr->operand  = steal<Expression>(nodes[0]);
-
-  // We intentionally do not delete tk_node becasue we only want to read from
-  // it. The apply() call will take care of its deletion.
-  auto tk_node       = static_cast<TokenNode *>(nodes[1]);
-  unop_ptr->line_num = tk_node->line_num;
-  unop_ptr->type_    = Language::expression;
-  unop_ptr->op       = tk_node->op;
-
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-  return unop_ptr;
 }
 
 Node *Binop::build(NPtrVec &&nodes) {
@@ -331,15 +332,18 @@ Node *Declaration::build(NPtrVec &&) {
 }
 
 Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
-                         bool infer) {
+                         DeclType dt) {
   auto decl_ptr = Scope::make_declaration(
-      nodes[1]->line_num, infer ? DeclType::Infer : DeclType::Std,
-      nodes[0]->token(), steal<Expression>(nodes[2]));
+      nodes[1]->line_num, dt, nodes[0]->token(), steal<Expression>(nodes[2]));
 
   decl_ptr->type_ = node_type;
 
-  decl_ptr->op =
-      infer ? Language::Operator::ColonEq : Language::Operator::Colon;
+  switch (dt) {
+  case DeclType::Std:   decl_ptr->op = Language::Operator::Colon; break;
+  case DeclType::Infer: decl_ptr->op = Language::Operator::ColonEq; break;
+  case DeclType::Tick:  assert(false); break;
+  case DeclType::In:    assert(false); break;
+  }
 
   decl_ptr->precedence  = Language::precedence(decl_ptr->op);
 
@@ -348,12 +352,24 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
 
 Node *Declaration::build_decl(NPtrVec &&nodes) {
   return build(std::forward<NPtrVec &&>(nodes), Language::decl_operator,
-               false);
+               DeclType::Std);
 }
 
 Node *Declaration::build_assign(NPtrVec &&nodes) {
   return build(std::forward<NPtrVec &&>(nodes), Language::decl_assign_operator,
-               true);
+               DeclType::Infer);
+}
+
+Node *Declaration::build_tick(NPtrVec &&nodes) {
+  auto decl_ptr =
+      Scope::make_declaration(nodes[1]->line_num, DeclType::Tick,
+                              nodes[2]->token(), steal<Expression>(nodes[0]));
+
+  decl_ptr->type_       = Language::tick;
+  decl_ptr->op          = Language::Operator::Tick;
+  decl_ptr->precedence  = Language::precedence(decl_ptr->op);
+
+  return decl_ptr;
 }
 
 Node *KVPairList::build_one(NPtrVec &&nodes) {

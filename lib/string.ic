@@ -4,15 +4,9 @@ string := struct {
 }
 
 __print__ := (s: string) -> void {
-  i := 0u
-  while i < s.length {
+  for i in 0u .. s.length - 1u {
     print s.chars[i]
-    i += 1u
   }
-
-//  for c in s.chars[ .. s.length - 1] {
-//    print c
-//  }
 }
 
 size := (s: string) -> uint {

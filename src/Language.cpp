@@ -87,8 +87,12 @@ namespace Language {
         AST::Declaration::build_assign),
 
     Rule(declaration,
-        { {identifier}, {decl_operator}, {expression, fn_expression} },
+        { {identifier}, {decl_operator}, {expression, fn_expression, declaration} },
         AST::Declaration::build_decl),
+
+    Rule(declaration,
+        { {expression}, {tick}, {expression} },
+        AST::Declaration::build_tick),
 
     // TODO Should this be an expression or declaration
     Rule(declaration,
@@ -129,7 +133,7 @@ namespace Language {
         AST::Unop::build_dots),
 
     Rule(expression,
-        { {expression}, {negation, generic_operator, dots, tick}, {expression} },
+        { {expression}, {negation, generic_operator, dots}, {expression} },
         AST::Binop::build),
 
     Rule(expression,

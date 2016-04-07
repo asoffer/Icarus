@@ -105,6 +105,12 @@ void Declaration::record_dependencies() {
     Dependency::value_value(this, type_expr);
     Dependency::value_type(this, this);
   } break;
+  case DeclType::Tick: {
+    Dependency::type_type(this, type_expr);
+    Dependency::type_value(this, type_expr);
+    Dependency::value_type(this, this);
+    Dependency::value_value(this, type_expr);
+  } break;
   }
 
   identifier->record_dependencies();

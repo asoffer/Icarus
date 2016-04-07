@@ -1,0 +1,12 @@
+main := void -> void {
+  show(3)
+  show('x')
+}
+
+show := (val: Any`T) -> void {
+  print val
+}
+
+Any := (T: type) -> bool {
+  return true
+}

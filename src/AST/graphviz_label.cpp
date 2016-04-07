@@ -31,6 +31,7 @@ std::string Declaration::graphviz_label() const {
   case DeclType::Std: return identifier->token() + " : ...";
   case DeclType::Infer: return identifier->token() + " := ...";
   case DeclType::In: return identifier->token() + " in ...";
+  case DeclType::Tick: return identifier->token() + " ... `";
   }
 }
 
