@@ -4,7 +4,7 @@ extern llvm::Module *global_module;
 extern llvm::IRBuilder<> builder;
 
 namespace data {
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 namespace AST {

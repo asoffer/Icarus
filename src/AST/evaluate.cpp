@@ -8,11 +8,11 @@ extern bool parametric_struct;
 } // namespace debug
 
 namespace data {
-extern llvm::Value *const_bool(bool b);
-extern llvm::Value *const_char(char c);
-extern llvm::Value *const_int(int n);
-extern llvm::Value *const_real(double d);
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_bool(bool b);
+extern llvm::ConstantInt *const_char(char c);
+extern llvm::ConstantInt *const_int(int n);
+extern llvm::ConstantFP *const_real(double d);
+extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 namespace AST {

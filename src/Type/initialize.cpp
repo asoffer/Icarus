@@ -18,12 +18,12 @@ extern llvm::Constant *malloc();
 namespace data {
 extern llvm::Value *global_string(const std::string &s);
 extern llvm::Value *null_pointer(TypePtr t);
-extern llvm::Value *const_int(int n);
-extern llvm::Value *const_uint(size_t n);
-extern llvm::Value *const_char(char c);
-extern llvm::Value *const_real(double d);
-extern llvm::Value *const_true();
-extern llvm::Value *const_false();
+extern llvm::ConstantInt *const_int(int n);
+extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_char(char c);
+extern llvm::ConstantFP *const_real(double d);
+extern llvm::ConstantInt *const_true();
+extern llvm::ConstantInt *const_false();
 } // namespace data
 
 extern llvm::Module *global_module;

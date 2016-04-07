@@ -14,7 +14,7 @@ extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 BlockScope *Scope::Global = nullptr; // Initialized in main
@@ -134,6 +134,8 @@ void Scope::verify_no_shadowing() {
 
 void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
+  builder.CreateStore(data::const_uint(0), exit_flag);
+
   for (auto decl_ptr : ordered_decls_) {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
@@ -252,6 +254,12 @@ void FnScope::leave() {
 
 
 void FnScope::allocate(Scope* scope) {
+  // Allocate the exit_flag
+  if (scope->is_block_scope()) { 
+    auto block_scope = static_cast<BlockScope *>(scope);
+    block_scope->exit_flag = builder.CreateAlloca(Uint, nullptr, "exit.flag");
+  }
+
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;

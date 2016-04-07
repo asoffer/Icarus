@@ -12,7 +12,7 @@ extern llvm::Constant *printf();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::Value *global_string(const std::string &s);
 } // namespace data

@@ -86,12 +86,12 @@ namespace data {
     return null_pointer(static_cast<Pointer *>(t.get)->pointee);
   }
 
-  llvm::Value* const_int(int n) {
+  llvm::ConstantInt* const_int(int n) {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(32, static_cast<unsigned int>(n), false));
   }
 
-  llvm::Value* const_uint(size_t n) {
+  llvm::ConstantInt* const_uint(size_t n) {
     assert(n <= (1 << 30) && "Potential overflow on compile-time integer constants");
 
     // The safety of this cast is verified only in debug mode
@@ -99,23 +99,21 @@ namespace data {
         llvm::APInt(32, static_cast<size_t>(n), false));
   }
 
-
-  llvm::Value* const_real(double d) {
+  llvm::ConstantFP *const_real(double d) {
     return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(d));
   }
 
-  llvm::Value* const_false() {
+  llvm::ConstantInt* const_false() {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(1, 0, false));
   }
 
-
-  llvm::Value* const_true() {
+  llvm::ConstantInt *const_true() {
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
         llvm::APInt(1, 1, false));
   }
 
-  llvm::Value* const_bool(bool b) {
+  llvm::ConstantInt *const_bool(bool b) {
     return b ? const_true() : const_false();
   }
 

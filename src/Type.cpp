@@ -15,7 +15,7 @@ extern llvm::Constant *malloc();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::Constant *str(const std::string &s);
 } // namespace data
 
@@ -129,7 +129,8 @@ Enumeration::Enumeration(const std::string &name,
   enum_str->setAlignment(1);
   enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
       llvm::ArrayType::get(Char, idstr.size() + 1), enum_str,
-      {data::const_uint(0), data::const_uint(0)});
+      llvm::ArrayRef<llvm::Constant *>{data::const_uint(0),
+                                       data::const_uint(0)});
 
   ++i;
   }

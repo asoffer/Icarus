@@ -27,12 +27,12 @@ extern llvm::Function *ascii();
 namespace data {
 extern llvm::Value *null_pointer(Type *t);
 extern llvm::Value *null(TypePtr t);
-extern llvm::Value *const_true();
-extern llvm::Value *const_false();
-extern llvm::Value *const_uint(size_t n);
-extern llvm::Value *const_int(int n);
-extern llvm::Value *const_char(char c);
-extern llvm::Value *const_real(double d);
+extern llvm::ConstantInt *const_true();
+extern llvm::ConstantInt *const_false();
+extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_int(int n);
+extern llvm::ConstantInt *const_char(char c);
+extern llvm::ConstantFP *const_real(double d);
 extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
@@ -47,20 +47,9 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
-// Build exit flag in functions entry position. In actuality, we don't need
-// a full uint. We only need 3 potential flags.
-void InitializeExitFlag(BlockScope *scope, const std::string &flag_name) {
-  auto start_block = builder.GetInsertBlock();
-  assert(scope->containing_function_);
-  assert(scope->containing_function_->entry);
-  builder.SetInsertPoint(scope->containing_function_->entry->begin());
-  scope->exit_flag = builder.CreateAlloca(Uint, nullptr, flag_name);
-  builder.CreateStore(data::const_uint(0), scope->exit_flag);
-  builder.SetInsertPoint(start_block);
-}
-
 #define BREAK_FLAG data::const_uint(1)
 #define CONTINUE_FLAG data::const_uint(2)
+#define RETURN_FLAG data::const_uint(4)
 
 namespace AST {
 llvm::Value *Identifier::generate_code() {
@@ -1029,8 +1018,6 @@ llvm::Value *While::generate_code() {
   auto parent_fn = builder.GetInsertBlock()->getParent();
   while_scope->set_parent_function(parent_fn);
 
-  assert(!while_scope->exit_flag);
-
   assert(!while_scope->land);
   auto cond_block = make_block("while.cond", parent_fn);
   auto body_block = make_block("while.body", parent_fn);
@@ -1038,8 +1025,6 @@ llvm::Value *While::generate_code() {
 
   // Loop condition
   builder.CreateBr(cond_block);
-
-  InitializeExitFlag(while_scope, "while.exit.flag");
 
   builder.SetInsertPoint(cond_block);
   auto cond = condition->generate_code();
@@ -1058,8 +1043,13 @@ llvm::Value *While::generate_code() {
   while_scope->uninitialize();
 
   auto exit_flag = builder.CreateLoad(while_scope->exit_flag);
-  auto should_break = builder.CreateICmpEQ(exit_flag, BREAK_FLAG);
-  builder.CreateCondBr(should_break, while_scope->land, cond_block);
+
+  // Switch. By default go back to the start of the loop.
+  auto switch_stmt = builder.CreateSwitch(exit_flag, cond_block);
+  switch_stmt->addCase(BREAK_FLAG, while_scope->land);
+  assert(while_scope->parent->is_block_scope());
+  auto parent_block_scope = static_cast<BlockScope *>(while_scope);
+  switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
 
   // Landing
   Scope::Stack.pop();
@@ -1099,7 +1089,6 @@ llvm::Value *For::generate_code() {
   auto parent_fn = start_block->getParent();
   for_scope->set_parent_function(parent_fn);
 
-  InitializeExitFlag(for_scope, "for.exit.flag");
   assert(!for_scope->land);
 
   for_scope->land = make_block("loop.land", parent_fn);
@@ -1238,3 +1227,4 @@ llvm::Value *DummyTypeExpr::generate_code() {
 
 #undef BREAK_FLAG
 #undef CONTINUE_FLAG
+#undef RETURN_FLAG

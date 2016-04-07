@@ -1,5 +1,5 @@
 main := void -> void {
-  for n in uint {
+  for n in 0u .. {
     if n % 2u == 0u {
       continue
     }

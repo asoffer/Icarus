@@ -21,7 +21,7 @@ extern llvm::Constant *malloc();
 
 namespace data {
 extern llvm::Value *global_string(const std::string &s);
-extern llvm::Value *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 llvm::Function *get_llvm_assign(Type *type) {
