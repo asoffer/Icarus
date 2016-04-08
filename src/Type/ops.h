@@ -3,6 +3,8 @@
 
 #include "Language.h"
 
+extern llvm::Module *global_module;
+
 llvm::Value *Primitive::call_add(llvm::Value *lhs, llvm::Value *rhs) {
   if (this == Int || this == Uint)  return builder.CreateAdd(lhs, rhs, "add");
   else if (this == Real)            return builder.CreateFAdd(lhs, rhs, "fadd");
@@ -45,6 +47,25 @@ llvm::Value* Primitive::call_not(llvm::Value* operand) {
   return (this == Char ? builder.CreateNot(operand, "not") : nullptr);
 }
 
+llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
+  auto old_block = builder.GetInsertBlock();
+  auto llvm_fn = llvm::Function::Create(
+      static_cast<llvm::FunctionType *>(llvm_type),
+      llvm::Function::ExternalLinkage, "__anon_fn", global_module);
+
+  auto entry = make_block("entry", llvm_fn);
+  builder.SetInsertPoint(entry);
+
+  // TODO multiple args, multiple return values, non-primitives, void return
+  auto arg = llvm_fn->args().begin();
+  builder.CreateRet(builder.CreateCall(lhs, {builder.CreateCall(rhs, {arg})}));
+
+  builder.SetInsertPoint(old_block);
+  return llvm_fn;
+}
+
+
+
 #define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
   llvm::Value *TYPE::call_##op(llvm::Value *lhs, llvm::Value *rhs) {           \
     return nullptr;                                                            \
@@ -69,7 +90,10 @@ llvm::Value* Primitive::call_not(llvm::Value* operand) {
 
 #define TYPE Function
 #include "config/left_unary_operators.conf"
-#include "config/binary_operators.conf"
+BINARY_OPERATOR_MACRO(add, +, 16, left)
+BINARY_OPERATOR_MACRO(sub, -, 16, left)
+BINARY_OPERATOR_MACRO(div, /, 17, left)
+BINARY_OPERATOR_MACRO(mod, %, 17, left)
 #undef TYPE
 
 #define TYPE Structure

@@ -687,13 +687,16 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
       arg_type->set_print(static_cast<llvm::Function *>(val));
 
     } else {
-      auto fn                          = static_cast<FunctionLiteral *>(rhs);
       auto fn_type                     = static_cast<Function *>(rhs->type.get);
       llvm::FunctionType *llvm_fn_type = *fn_type;
       auto mangled_name                = Mangle(fn_type, lhs->token());
 
-      fn->llvm_fn = static_cast<llvm::Function *>(
-          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
+      if (rhs->is_function_literal()) {
+        auto fn = static_cast<FunctionLiteral *>(rhs);
+
+        fn->llvm_fn = static_cast<llvm::Function *>(
+            global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
+      }
 
       val = rhs->generate_code();
 

@@ -9,6 +9,15 @@ extern ErrorLog error_log;
 namespace AST {
 TypePtr operator_lookup(size_t line_num, Language::Operator op, TypePtr lhs_type,
                       TypePtr rhs_type) {
+  // TODO move this into the get_operator function
+  if (lhs_type.is_function() && rhs_type.is_function()) {
+    auto lhs_fn = static_cast<Function *>(lhs_type.get);
+    auto rhs_fn = static_cast<Function *>(rhs_type.get);
+    if (rhs_fn->output == lhs_fn->input) {
+      return Func(rhs_fn->input, lhs_fn->output);
+    }
+  }
+
   auto ret_type = TypeSystem::get_operator(op, Tup({lhs_type, rhs_type}));
   if (ret_type.get == nullptr) {
     std::string tok;
