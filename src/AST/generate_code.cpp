@@ -383,49 +383,8 @@ llvm::Value *Binop::generate_code() {
   assert(false && "Reached end of Binop::generate_code");
 }
 
-// TODO rename ArrayType as ShorthandArray. These represent the type of an array
-// as well as a shorthand array. During code-gen, it's treated as the latter,
-// because we never need to code-gen types.
 llvm::Value *ArrayType::generate_code() {
-  // TODO This doesn't work if len is a chain of lengths.
-  auto len     = length->generate_code();
-  auto data_ty = data_type->type;
-  auto data    = data_type->generate_code();
-
-  auto alloc_size = builder.CreateMul(len, data::const_uint(data_ty.get->bytes()));
-  auto alloc_ptr  = builder.CreateCall(cstdlib::malloc(), alloc_size);
-
-  auto tmp_array = type.get->allocate();
-  builder.CreateStore(len, builder.CreateGEP(tmp_array, {data::const_uint(0),
-                                                         data::const_uint(0)}));
-  builder.CreateStore(
-      alloc_ptr,
-      builder.CreateGEP(tmp_array, {data::const_uint(0), data::const_uint(1)}));
-
-  auto end_ptr = builder.CreateGEP(alloc_ptr, len);
-
-  auto prev_block = builder.GetInsertBlock();
-  auto parent_fn  = builder.GetInsertBlock()->getParent();
-
-  auto loop_block = make_block("loop.block", parent_fn);
-  auto loop_end   = make_block("loop.end", parent_fn);
-
-  builder.CreateBr(loop_block);
-  builder.SetInsertPoint(loop_block);
-  auto phi_node = builder.CreatePHI(*Ptr(data_ty), 2, "phi");
-  phi_node->addIncoming(alloc_ptr, prev_block);
-  builder.CreateCall(data_ty.get->assign(), {data, phi_node});
-
-  auto next_ptr = builder.CreateGEP(phi_node, data::const_uint(1));
-  phi_node->addIncoming(next_ptr, loop_block);
-
-  builder.CreateCondBr(builder.CreateICmpEQ(next_ptr, end_ptr), loop_end,
-                       loop_block);
-  builder.SetInsertPoint(loop_end);
-
-  // TODO If you never assign this, the allocation is leaked. It should be
-  // verified before code-gen that this is leaked
-  return tmp_array;
+  assert(false && "Not valid for code-gen");
 }
 
 llvm::Value *Statements::generate_code() {
