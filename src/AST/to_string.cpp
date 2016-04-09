@@ -25,13 +25,13 @@ std::string Node::to_string(size_t n) const {
     case Language::bool_operator:           output += "BoolOperator";  break;
     case Language::dot:                     output += "Dot";           break;
     case Language::dots:                    output += "Dots";          break;
-    case Language::tick:                    output += "Tick";          break;
     case Language::binary_boolean_operator: output += "BinOperator";   break;
     case Language::DECL_OPERATOR_STD:       output += ":";             break;
     case Language::DECL_OPERATOR_INFER:     output += ":=";            break;
+    case Language::DECL_OPERATOR_GENERATE:  output += "Tick";          break;
     case Language::assign_operator:         output += "X=";            break;
     case Language::fn_arrow:                output += "->";            break;
-    case Language::comma:                   output += ":";             break;
+    case Language::comma:                   output += ",";             break;
     case Language::semicolon:               output += ";";             break;
     case Language::dereference:             output += "@";             break;
     case Language::negation:                output += "-";             break;

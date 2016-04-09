@@ -31,7 +31,7 @@ namespace Language {
     comma_list,
     fn_expression, scope,
     void_return_expression,
-    declaration_comma_list,
+    DECL_LIST,
     fn_assignment,
     statements, for_statement, while_statement, if_statement, if_else_statement,
     missing_newline_statements,
@@ -70,7 +70,6 @@ namespace Language {
     bool_operator,
     comma,
     dot,
-    tick,
     rocket_operator,
 
     // left unary operators
@@ -85,7 +84,6 @@ namespace Language {
 
     // expressions
     expression = MASK_expression,
-    declaration,
     fn_declaration,
     assignment,
     reserved_true,

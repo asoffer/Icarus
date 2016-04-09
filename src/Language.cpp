@@ -45,6 +45,14 @@ namespace Language {
 #undef OPERATOR_MACRO
   };
 
+#define ARGS \
+  DECL_LIST, STMT_DECL_STD, STMT_DECL_INFER
+  // This doesn't allow include 'void' or other things like that.
+
+#define STMT \
+  STMT_DECL_STD, STMT_DECL_INFER
+  // TODO add more!
+
   // Here is the definition for all rules in the langugae. For a rule to be
   // applied, the node types on the top of the stack must match those given in
   // the list (second line of each rule). If so, then the function given in the
@@ -85,51 +93,45 @@ namespace Language {
     /* Begin declaration */
     Rule(STMT_DECL_STD, { {identifier}, {DECL_OPERATOR_STD}, {expression, fn_expression} },
         AST::Declaration::BuildStd),
-    Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression} },
+    Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression, fn_expression} },
         AST::Declaration::BuildInfer),
     Rule(STMT_DECL_IN, { {identifier}, {DECL_OPERATOR_IN}, {expression} },
         AST::Declaration::BuildInfer),
     Rule(STMT_DECL_GENERATE, { {expression}, {DECL_OPERATOR_GENERATE}, {identifier} },
         AST::Declaration::BuildInfer),
-
-    Rule(declaration, {{STMT_DECL_STD}}, drop_all_but<0>),
-    Rule(declaration, {{STMT_DECL_INFER}}, drop_all_but<0>),
-    Rule(declaration, {{STMT_DECL_IN}}, drop_all_but<0>),
-    Rule(declaration, {{STMT_DECL_GENERATE}}, drop_all_but<0>),
-
-    // TODO Should this be an expression or declaration
-    Rule(declaration,
-        { {left_paren}, {fn_declaration, declaration, declaration_comma_list}, {right_paren} },
-        AST::Expression::parenthesize),
-
-    Rule(declaration_comma_list,
-        { {declaration_comma_list, declaration}, {comma}, {declaration} },
-        AST::ChainOp::build),
     /* End declaration */
+
+    /* Begin parentheses */
+#define PAREN_RULE( node_type ) \
+    Rule(node_type, { {left_paren}, {node_type}, {right_paren} }, AST::Expression::parenthesize)
+
+    PAREN_RULE(expression),
+    PAREN_RULE(assignment),
+    PAREN_RULE(fn_assignment),
+    PAREN_RULE(fn_expression),
+    PAREN_RULE(STMT_DECL_STD),
+    PAREN_RULE(STMT_DECL_INFER),
+    PAREN_RULE(DECL_LIST),
+    PAREN_RULE(fn_declaration),
+
+#undef PAREN_RULE
+    /* End parentheses */
+
+    /* Begin declaration list */
+    // TODO would this include ((a: int, b: int), c: int) and is that what we want?
+    Rule(DECL_LIST, {{ARGS}, {comma}, {STMT_DECL_STD, STMT_DECL_INFER}}, AST::ChainOp::build),
+    /* End declaration list */
 
     /* Begin assignment */
     Rule(assignment,
-        { {fn_declaration, declaration, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
+        { {fn_declaration, STMT_DECL_STD, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
         AST::Assignment::build),
-
-    Rule(assignment, { {left_paren}, {assignment}, {right_paren} },
-        AST::Expression::parenthesize),
-
-    Rule(fn_assignment, { {left_paren}, {fn_assignment}, {right_paren} },
-        AST::Expression::parenthesize),
     /* End assignment */
     
     /* Begin expression */
-    Rule(expression, { {left_paren}, {expression}, {right_paren} },
-        AST::Expression::parenthesize),
-
     Rule(expression,
         { {dereference, negation, indirection, reserved_print, reserved_return, reserved_free}, {expression} },
         AST::Unop::build),
-
-    Rule(fn_expression,
-        { {left_paren}, {fn_expression}, {right_paren} },
-        AST::Expression::parenthesize),
 
     Rule(expression,
         { {expression}, {dots} },
@@ -148,7 +150,7 @@ namespace Language {
         AST::ChainOp::build),
 
     Rule(fn_expression,
-        { {expression, declaration}, {fn_arrow}, {expression} },
+        { {expression, ARGS}, {fn_arrow}, {expression} },
         AST::Binop::build),
     /* End expression */
 
@@ -203,11 +205,11 @@ namespace Language {
 
     /* Begin statements */
     Rule(statements,
-        { {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
+        { {assignment, fn_assignment, STMT_DECL_STD, STMT_DECL_INFER, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
         AST::Statements::build_one),
 
     Rule(statements,
-        { {statements}, {assignment, fn_assignment, declaration, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
+        { {statements}, {assignment, fn_assignment, STMT_DECL_STD, STMT_DECL_INFER, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
         AST::Statements::build_more),
 
 
@@ -286,7 +288,7 @@ namespace Language {
         AST::StructLiteral::build),
 
     Rule(expression,
-        { {reserved_struct}, {declaration}, {left_brace}, {statements}, {right_brace} },
+        { {reserved_struct}, {ARGS}, {left_brace}, {statements}, {right_brace} },
         AST::StructLiteral::build_parametric),
     /* End type literals */
 
@@ -319,4 +321,7 @@ namespace Language {
 //        AST::Statements::build_extra_expression_error),
     /* End miscellaneous */ 
   };
+
+#undef ARGS
+#undef STMT 
 }  // namespace Language

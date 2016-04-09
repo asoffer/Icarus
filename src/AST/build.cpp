@@ -370,7 +370,7 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
       Scope::make_declaration(nodes[1]->line_num, DeclType::Tick,
                               nodes[2]->token(), steal<Expression>(nodes[0]));
 
-  decl_ptr->type_       = Language::tick;
+  decl_ptr->type_       = Language::DECL_OPERATOR_GENERATE;
   decl_ptr->op          = Language::Operator::Tick;
   decl_ptr->precedence  = Language::precedence(decl_ptr->op);
 
