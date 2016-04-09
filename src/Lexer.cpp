@@ -157,7 +157,7 @@ AST::TokenNode Lexer::next_operator() {
   case character:                                                              \
     file_.get();                                                               \
     return AST::TokenNode(line_num_, Language::name, str)
-    CASE('`', "`", tick);
+    CASE('`', "`", DECL_OPERATOR_GENERATE);
     CASE('@', "@", dereference);
     CASE(',', ",", comma);
     CASE(';', ";", semicolon);
@@ -233,14 +233,14 @@ AST::TokenNode Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::TokenNode(line_num_, Language::decl_assign_operator, ":=");
+      return AST::TokenNode(line_num_, Language::DECL_OPERATOR_INFER, ":=");
 
     } else if (peek == '>') {
       file_.get();
       return AST::TokenNode(line_num_, Language::generic_operator, ":>");
  
     } else {
-      return AST::TokenNode(line_num_, Language::decl_operator, ":");
+      return AST::TokenNode(line_num_, Language::DECL_OPERATOR_STD, ":");
     }
   }
 

@@ -83,16 +83,19 @@ namespace Language {
     /* End literals */
 
     /* Begin declaration */
-    Rule(declaration, { {identifier}, {decl_assign_operator}, {expression} },
-        AST::Declaration::build_assign),
+    Rule(STMT_DECL_STD, { {identifier}, {DECL_OPERATOR_STD}, {expression, fn_expression} },
+        AST::Declaration::BuildStd),
+    Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression} },
+        AST::Declaration::BuildInfer),
+    Rule(STMT_DECL_IN, { {identifier}, {DECL_OPERATOR_IN}, {expression} },
+        AST::Declaration::BuildInfer),
+    Rule(STMT_DECL_GENERATE, { {expression}, {DECL_OPERATOR_GENERATE}, {identifier} },
+        AST::Declaration::BuildInfer),
 
-    Rule(declaration,
-        { {identifier}, {decl_operator}, {expression, fn_expression, declaration} },
-        AST::Declaration::build_decl),
-
-    Rule(declaration,
-        { {expression}, {tick}, {expression} },
-        AST::Declaration::build_tick),
+    Rule(declaration, {{STMT_DECL_STD}}, drop_all_but<0>),
+    Rule(declaration, {{STMT_DECL_INFER}}, drop_all_but<0>),
+    Rule(declaration, {{STMT_DECL_IN}}, drop_all_but<0>),
+    Rule(declaration, {{STMT_DECL_GENERATE}}, drop_all_but<0>),
 
     // TODO Should this be an expression or declaration
     Rule(declaration,

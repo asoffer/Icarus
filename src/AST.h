@@ -273,9 +273,11 @@ struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
 
   static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
-  static Node *build_decl(NPtrVec &&nodes);
-  static Node *build_assign(NPtrVec &&nodes);
-  static Node *build_tick(NPtrVec &&nodes);
+
+  static Node *BuildStd(NPtrVec &&nodes);
+  static Node *BuildInfer(NPtrVec &&nodes);
+  static Node *BuildIn(NPtrVec &&nodes);
+  static Node *BuildGenerate(NPtrVec &&nodes);
 
   // TODO is 'op' necessary? anymore?
   Language::Operator op;

@@ -350,17 +350,22 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
   return decl_ptr;
 }
 
-Node *Declaration::build_decl(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::decl_operator,
+Node *Declaration::BuildStd(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_STD,
                DeclType::Std);
 }
 
-Node *Declaration::build_assign(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::decl_assign_operator,
+Node *Declaration::BuildInfer(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_INFER,
                DeclType::Infer);
 }
 
-Node *Declaration::build_tick(NPtrVec &&nodes) {
+Node *Declaration::BuildIn(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_IN,
+               DeclType::In);
+}
+
+Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   auto decl_ptr =
       Scope::make_declaration(nodes[1]->line_num, DeclType::Tick,
                               nodes[2]->token(), steal<Expression>(nodes[0]));

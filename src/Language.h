@@ -50,11 +50,20 @@ namespace Language {
 
     break_statement, continue_statement,
 
+    STMT_DECL_STD,
+    STMT_DECL_INFER,
+    STMT_DECL_IN,
+    STMT_DECL_GENERATE,
+
     // BEGIN USING MASKS
 
     // binary operators
     generic_operator = MASK_binary_operator,
-    decl_operator,
+
+    DECL_OPERATOR_STD,
+    DECL_OPERATOR_INFER,
+    DECL_OPERATOR_IN,
+
     assign_operator,
     fn_arrow,
     binary_boolean_operator,
@@ -85,8 +94,7 @@ namespace Language {
     reserved_type,
 
     // expression + binary operator
-    decl_assign_operator = MASK_binary_operator | MASK_expression
-
+    DECL_OPERATOR_GENERATE = MASK_binary_operator | MASK_expression,
   };
 } // namespace Language
 
@@ -135,7 +143,8 @@ inline bool is_binary_operator(NodeType t) {
 inline bool is_operator(NodeType t) { return (t & MASK_operator) != 0; }
 
 inline bool is_decl(NodeType t) {
-  return t == decl_operator || t == decl_assign_operator;
+  return t == DECL_OPERATOR_INFER || t == DECL_OPERATOR_STD ||
+         t == DECL_OPERATOR_GENERATE || t == DECL_OPERATOR_IN;
 }
 
 extern size_t precedence(Language::Operator op);
