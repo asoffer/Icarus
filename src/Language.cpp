@@ -75,9 +75,7 @@ namespace Language {
     Rule(expression, { {type_literal, reserved_type} },
         AST::Terminal::build_type_literal),
 
-    Rule(fn_literal,
-        { {fn_expression}, {left_brace}, {statements}, {right_brace} },
-        AST::FunctionLiteral::build),
+    Rule(fn_literal, { {fn_expression}, {left_brace}, {statements}, {right_brace} }, AST::FunctionLiteral::build),
 
     // TODO rename this type. could be an array type or an array expression depending on the context
     Rule(expression,
@@ -107,12 +105,10 @@ namespace Language {
 
     PAREN_RULE(expression),
     PAREN_RULE(assignment),
-    PAREN_RULE(fn_assignment),
     PAREN_RULE(fn_expression),
     PAREN_RULE(STMT_DECL_STD),
     PAREN_RULE(STMT_DECL_INFER),
     PAREN_RULE(DECL_LIST),
-    PAREN_RULE(fn_declaration),
 
 #undef PAREN_RULE
     /* End parentheses */
@@ -124,7 +120,7 @@ namespace Language {
 
     /* Begin assignment */
     Rule(assignment,
-        { {fn_declaration, STMT_DECL_STD, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
+        { {STMT_DECL_STD, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
         AST::Assignment::build),
     /* End assignment */
     
@@ -178,38 +174,21 @@ namespace Language {
     /* End paren/bracket operators */
 
     /* Begin if */
-    Rule(if_statement,
-        { {reserved_if}, {expression}, {left_brace}, {statements}, {right_brace} },
-        AST::Conditional::build_if),
-
-    Rule(if_statement,
-        { {reserved_if}, {assignment}, {left_brace}, {statements}, {right_brace} },
-        AST::Conditional::build_if_assignment_error),
-
-    Rule(if_statement,
-        { {if_statement}, {reserved_else}, {if_statement} },
-        AST::Conditional::build_else_if),
-
-    Rule(if_else_statement,
-        { {if_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },
-        AST::Conditional::build_else),
-
-    Rule(if_else_statement,
-        { {if_else_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },
-        AST::Conditional::build_extra_else_error),
-
-    Rule(if_else_statement,
-        { {if_else_statement}, {reserved_else}, {if_statement} },
-        AST::Conditional::build_extra_else_if_error),
+    Rule(if_statement,      { {reserved_if}, {expression}, {left_brace}, {statements}, {right_brace} },           AST::Conditional::build_if),
+    Rule(if_statement,      { {reserved_if}, {assignment}, {left_brace}, {statements}, {right_brace} },           AST::Conditional::build_if_assignment_error),
+    Rule(if_statement,      { {if_statement}, {reserved_else}, {if_statement} },                                  AST::Conditional::build_else_if),
+    Rule(if_else_statement, { {if_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },       AST::Conditional::build_else),
+    Rule(if_else_statement, { {if_else_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },  AST::Conditional::build_extra_else_error),
+    Rule(if_else_statement, { {if_else_statement}, {reserved_else}, {if_statement} },                             AST::Conditional::build_extra_else_if_error),
     /* End if */
 
     /* Begin statements */
     Rule(statements,
-        { {assignment, fn_assignment, STMT_DECL_STD, STMT_DECL_INFER, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
+        { {assignment, STMT_DECL_STD, STMT_DECL_INFER, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
         AST::Statements::build_one),
 
     Rule(statements,
-        { {statements}, {assignment, fn_assignment, STMT_DECL_STD, STMT_DECL_INFER, fn_declaration, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
+        { {statements}, {assignment, STMT_DECL_STD, STMT_DECL_INFER, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
         AST::Statements::build_more),
 
 
@@ -258,48 +237,25 @@ namespace Language {
     /* End case statements */
 
     /* Begin while loop */
-    Rule(while_statement,
-        { {reserved_while}, {expression}, {left_brace}, {statements}, {right_brace} },
-        AST::While::build),
-
-    Rule(while_statement,
-        { {reserved_while}, {assignment}, {left_brace}, {statements}, {right_brace} },
-        AST::While::build_assignment_error),
-
+    Rule(while_statement, { {reserved_while}, {expression}, {left_brace}, {statements}, {right_brace} }, AST::While::build),
+    Rule(while_statement, { {reserved_while}, {assignment}, {left_brace}, {statements}, {right_brace} }, AST::While::build_assignment_error),
     /* End while loop */
 
     /* Begin for loop */
-    Rule(for_statement,
-        { {reserved_for}, {expression}, {reserved_in}, {expression}, {left_brace}, {statements}, {right_brace} },
-        AST::For::build),
-
+    Rule(for_statement, { {reserved_for}, {expression}, {reserved_in}, {expression}, {left_brace}, {statements}, {right_brace} }, AST::For::build),
     /* End for loop */
 
     /* Begin loop extras */
-    Rule(break_statement, { {reserved_break} }, AST::BreakOrContinue::build_break),
+    Rule(break_statement,    { {reserved_break} },    AST::BreakOrContinue::build_break),
     Rule(continue_statement, { {reserved_continue} }, AST::BreakOrContinue::build_continue),
     /* End loop extras */
 
-    /* Begin type literals */
-    // TODO tighten this up. Just taking in any statements probably captures
-    // way too much.
-    Rule(expression,
-        { {reserved_struct}, {left_brace}, {statements}, {right_brace} },
-        AST::StructLiteral::build),
-
-    Rule(expression,
-        { {reserved_struct}, {ARGS}, {left_brace}, {statements}, {right_brace} },
-        AST::StructLiteral::build_parametric),
-    /* End type literals */
-
-    /* Begin enums */
-    // TODO tighten this up. Just taking in any statements probably captures
-    // way too much.
-    Rule(expression,
-        { {reserved_enum}, {left_brace}, {statements}, {right_brace} },
-        AST::EnumLiteral::build),
-    /* End enums */
-
+    /* Begin structs and enums */
+    // TODO tighten this up. Just taking in any statements probably captures way too much.
+    Rule(expression, { {reserved_struct}, {left_brace}, {statements}, {right_brace} },         AST::StructLiteral::build),
+    Rule(expression, { {reserved_struct}, {ARGS}, {left_brace}, {statements}, {right_brace} }, AST::StructLiteral::build_parametric),
+    Rule(expression, { {reserved_enum}, {left_brace}, {statements}, {right_brace} },           AST::EnumLiteral::build),
+    /* End structs and enums */
     
     /* Begin import */
     Rule(newline, { {reserved_import}, {string_literal}, {newline} }, import_file),

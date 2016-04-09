@@ -32,13 +32,14 @@ namespace Language {
     fn_expression, scope,
     void_return_expression,
     DECL_LIST,
-    fn_assignment,
     statements, for_statement, while_statement, if_statement, if_else_statement,
     missing_newline_statements,
 
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     semicolon,
+    
+    braced_block,
 
     // TODO use RESERVED_MACRO to generate these.
     // Figure out the right way to do that given that they may need different masks
@@ -84,7 +85,6 @@ namespace Language {
 
     // expressions
     expression = MASK_expression,
-    fn_declaration,
     assignment,
     reserved_true,
     reserved_false,
