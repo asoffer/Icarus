@@ -8,51 +8,54 @@ namespace AST {
 std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
 std::string Node::to_string(size_t n) const {
+  std::stringstream ss;
   std::string output = tabs(n) + "[";
   switch (type_) {
-    case Language::unknown:                 output += "Unknown";       break;
-    case Language::eof:                     output += "EOF";           break;
-    case Language::newline:                 output += "Newline";       break;
-    case Language::comment:                 output += "Comment";       break;
-    case Language::identifier:              output += "Identifier";    break;
-    case Language::int_literal:             output += "Integer";       break;
-    case Language::uint_literal:            output += "UInt";          break;
-    case Language::real_literal:            output += "Real";          break;
-    case Language::type_literal:            output += "Type";          break;
-    case Language::char_literal:            output += "Character";     break;
-    case Language::string_literal:          output += "String";        break;
-    case Language::generic_operator:        output += "Operator";      break;
-    case Language::bool_operator:           output += "BoolOperator";  break;
-    case Language::dot:                     output += "Dot";           break;
-    case Language::dots:                    output += "Dots";          break;
-    case Language::binary_boolean_operator: output += "BinOperator";   break;
-    case Language::DECL_OPERATOR_STD:       output += ":";             break;
-    case Language::DECL_OPERATOR_INFER:     output += ":=";            break;
-    case Language::DECL_OPERATOR_GENERATE:  output += "Tick";          break;
-    case Language::assign_operator:         output += "X=";            break;
-    case Language::fn_arrow:                output += "->";            break;
-    case Language::comma:                   output += ",";             break;
-    case Language::semicolon:               output += ";";             break;
-    case Language::dereference:             output += "@";             break;
-    case Language::negation:                output += "-";             break;
-    case Language::indirection:             output += "&";             break;
-    case Language::rocket_operator:         output += "=>";            break;
-    case Language::key_value_pair:          output += "( => )";        break;
-    case Language::expression:              output += "Expression";    break;
-    case Language::left_paren:              output += "Left Paren";    break;
-    case Language::right_paren:             output += "Right Paren";   break;
-    case Language::left_brace:              output += "Left Brace";    break;
-    case Language::right_brace:             output += "Right Brace";   break;
-    case Language::left_bracket:            output += "Left Bracket";  break;
-    case Language::right_bracket:           output += "Right Bracket"; break;
+  case Language::unknown:                 ss << "Unknown";       break;
+  case Language::eof:                     ss << "EOF";           break;
+  case Language::newline:                 ss << "Newline";       break;
+  case Language::comment:                 ss << "Comment";       break;
+  case Language::identifier:              ss << "Identifier";    break;
+  case Language::int_literal:             ss << "Integer";       break;
+  case Language::uint_literal:            ss << "UInt";          break;
+  case Language::real_literal:            ss << "Real";          break;
+  case Language::type_literal:            ss << "Type";          break;
+  case Language::char_literal:            ss << "Character";     break;
+  case Language::string_literal:          ss << "String";        break;
+  case Language::generic_operator:        ss << "Operator";      break;
+  case Language::bool_operator:           ss << "BoolOperator";  break;
+  case Language::dot:                     ss << "Dot";           break;
+  case Language::dots:                    ss << "Dots";          break;
+  case Language::binary_boolean_operator: ss << "BinOperator";   break;
+  case Language::DECL_OPERATOR_STD:       ss << ":";             break;
+  case Language::DECL_OPERATOR_INFER:     ss << ":=";            break;
+  case Language::DECL_OPERATOR_GENERATE:  ss << "Tick";          break;
+  case Language::assign_operator:         ss << "X=";            break;
+  case Language::fn_arrow:                ss << "->";            break;
+  case Language::comma:                   ss << ",";             break;
+  case Language::semicolon:               ss << ";";             break;
+  case Language::dereference:             ss << "@";             break;
+  case Language::not_operator:            ss << "!";             break;
+  case Language::negation:                ss << "-";             break;
+  case Language::indirection:             ss << "&";             break;
+  case Language::rocket_operator:         ss << "=>";            break;
+  case Language::key_value_pair:          ss << "( => )";        break;
+  case Language::expression:              ss << "Expression";    break;
+  case Language::left_paren:              ss << "Left Paren";    break;
+  case Language::right_paren:             ss << "Right Paren";   break;
+  case Language::left_brace:              ss << "Left Brace";    break;
+  case Language::right_brace:             ss << "Right Brace";   break;
+  case Language::left_bracket:            ss << "Left Bracket";  break;
+  case Language::right_bracket:           ss << "Right Bracket"; break;
 #define RESERVED_MACRO(res)                                                    \
-    case Language::reserved_##res:          output += #res;            break;
+  case Language::reserved_##res:          ss << #res;            break;
 #include "config/reserved.conf"
 #undef RESERVED_MACRO
-    default:;
+  default:;
   }
 
-  return output + (!token_.empty() ? ": " + token_ : "") + "]\n";
+  ss << (!token_.empty() ? ": " + token_ : "") << "]\n";
+  return ss.str();
 }
 
 std::string Conditional::to_string(size_t n) const {

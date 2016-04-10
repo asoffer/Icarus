@@ -23,12 +23,7 @@ namespace Language {
     real_literal, char_literal,
     string_literal, type_literal, fn_literal,
 
-
-    // Operators
-    unary_operator,
-
     key_value_pair, key_value_pair_list,
-    comma_list,
     fn_expression, scope,
     DECL_LIST,
     statements,
@@ -37,8 +32,6 @@ namespace Language {
     // Parens, braces, and brackets
     left_paren, right_paren, left_brace, right_brace, left_bracket, right_bracket,
     semicolon,
-    
-    braced_block,
 
     // TODO use RESERVED_MACRO to generate these.
     // Figure out the right way to do that given that they may need different masks
@@ -75,12 +68,11 @@ namespace Language {
     // left unary operators
     reserved_return = MASK_left_unary_operator,
     reserved_print, reserved_free,
-    dereference, 
-    dots,
+    dereference, not_operator,
 
     // unary operator + binary operator
     indirection = MASK_binary_operator | MASK_left_unary_operator,
-    negation,
+    negation, dots,
 
     // expressions
     expression = MASK_expression,

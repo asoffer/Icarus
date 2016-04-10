@@ -187,6 +187,16 @@ void Unop::verify_types() {
       type = Error;
     }
   } break;
+  case Operator::Not: {
+    if (operand->type == Bool) {
+      type = Bool;
+    } else {
+      error_log.log(
+          line_num,
+          "The logical negation operator `!` only applies to boolean values");
+      type = Error;
+    }
+  } break;
   default: assert(false && "Died in Unop::verify_types");
   }
 }

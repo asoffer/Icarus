@@ -52,7 +52,6 @@ namespace Language {
 #define STMT                                                                   \
   STMT_DECL_STD, STMT_DECL_INFER, STMT_IF, STMT_IF_ELSE, STMT_FOR, STMT_WHILE, \
   STMT_JUMP, STMT_ASSIGN
-  // TODO add more!
 
   // Here is the definition for all rules in the langugae. For a rule to be
   // applied, the node types on the top of the stack must match those given in
@@ -125,15 +124,13 @@ namespace Language {
     
     /* Begin expression */
     Rule(expression,
-        { {dereference, negation, indirection, reserved_print, reserved_return, reserved_free}, {expression} },
+        { {not_operator, dereference, negation, indirection, reserved_print, reserved_return, reserved_free}, {expression} },
         AST::Unop::build),
 
-    Rule(expression,
-        { {expression}, {dots} },
-        AST::Unop::build_dots),
+    Rule(expression, { {expression}, {dots} }, AST::Unop::build_dots),
 
     Rule(expression,
-        { {expression}, {negation, generic_operator, dots}, {expression} },
+        { {expression}, {generic_operator, dots, negation}, {expression} },
         AST::Binop::build),
 
     Rule(expression,

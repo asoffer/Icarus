@@ -9,4 +9,13 @@ main := void -> void {
   b = 2 < n <= 4 < 2 * n
   b = 2.0 < r <= 2.0 * r < 8.2
   b &= a | b & c
+  b &= !a
+
+  array := [true, false] 
+  for x in array {
+  print x
+  print '\n'
+  print !x
+  print '\n'
+  }
 }

@@ -271,7 +271,7 @@ AST::TokenNode Lexer::next_operator() {
       file_.get();
       return AST::TokenNode(line_num_, Language::binary_boolean_operator, "!=");
     } else {
-      return AST::TokenNode(line_num_, Language::unary_operator, "!");
+      return AST::TokenNode(line_num_, Language::not_operator, "!");
     }
   }
 
