@@ -79,7 +79,7 @@ StructLiteral::~StructLiteral() {
 }
 
 EnumLiteral::~EnumLiteral() {}
-BreakOrContinue::~BreakOrContinue() {}
+Jump::~Jump() {}
 DummyTypeExpr::~DummyTypeExpr() {}
 
 } // namespace AST

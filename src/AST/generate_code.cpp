@@ -963,7 +963,7 @@ llvm::Value *Conditional::generate_code() {
 llvm::Value *EnumLiteral::generate_code() { return nullptr; }
 llvm::Value *StructLiteral::generate_code() { return nullptr; }
 
-llvm::Value *BreakOrContinue::generate_code() {
+llvm::Value *Jump::generate_code() {
   llvm::Value *exit_flag_alloc =
       CurrentScope()->is_function_scope()
           ? static_cast<FnScope *>(CurrentScope())->exit_flag

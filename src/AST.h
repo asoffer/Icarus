@@ -456,14 +456,13 @@ struct DummyTypeExpr : public Expression {
   TypePtr type_value;
 };
 
-struct BreakOrContinue : public Node {
-  static Node *build_break(NPtrVec &&nodes);
-  static Node *build_continue(NPtrVec &&nodes);
-  virtual ~BreakOrContinue();
+struct Jump : public Node {
+  static Node *build(NPtrVec &&nodes);
+  virtual ~Jump();
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  BreakOrContinue(size_t new_line_num, bool is_break = true) : is_break(is_break) {
+  Jump(size_t new_line_num, bool is_break = true) : is_break(is_break) {
     line_num = new_line_num;
   }
 

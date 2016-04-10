@@ -117,7 +117,7 @@ std::string FunctionLiteral::graphviz_label() const {
   return "FunctionLiteral";
 }
 std::string EnumLiteral::graphviz_label() const { return "Enum"; }
-std::string BreakOrContinue::graphviz_label() const {
+std::string Jump::graphviz_label() const {
   return is_break ? "Break" : "Continue";
 }
 } // namespace AST

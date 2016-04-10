@@ -49,8 +49,9 @@ namespace Language {
   DECL_LIST, STMT_DECL_STD, STMT_DECL_INFER
   // This doesn't allow include 'void' or other things like that.
 
-#define STMT \
-  STMT_DECL_STD, STMT_DECL_INFER, STMT_IF, STMT_IF_ELSE, STMT_FOR, STMT_WHILE, STMT_BREAK, STMT_CONTINUE, STMT_ASSIGN
+#define STMT                                                                   \
+  STMT_DECL_STD, STMT_DECL_INFER, STMT_IF, STMT_IF_ELSE, STMT_FOR, STMT_WHILE, \
+  STMT_JUMP, STMT_ASSIGN
   // TODO add more!
 
   // Here is the definition for all rules in the langugae. For a rule to be
@@ -236,8 +237,7 @@ namespace Language {
     /* End for loop */
 
     /* Begin loop extras */
-    Rule(STMT_BREAK,    { {reserved_break} },    AST::BreakOrContinue::build_break),
-    Rule(STMT_CONTINUE, { {reserved_continue} }, AST::BreakOrContinue::build_continue),
+    Rule(STMT_JUMP, { {reserved_break, reserved_continue} }, AST::Jump::build),
     /* End loop extras */
 
     /* Begin structs and enums */

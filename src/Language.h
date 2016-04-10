@@ -49,8 +49,7 @@ namespace Language {
     reserved_ascii, reserved_import, reserved_string, reserved_alloc, reserved_in,
     reserved_struct,
 
-    STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_BREAK, STMT_CONTINUE,
-    STMT_ASSIGN,
+    STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_JUMP, STMT_ASSIGN,
 
     STMT_DECL_STD,
     STMT_DECL_INFER,

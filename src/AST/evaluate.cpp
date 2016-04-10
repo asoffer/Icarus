@@ -597,7 +597,7 @@ Context::Value Conditional::evaluate(Context &ctx) {
   return nullptr;
 }
 
-Context::Value BreakOrContinue::evaluate(Context &) {
+Context::Value Jump::evaluate(Context &) {
   assert(false && "Not yet implemented");
 }
 

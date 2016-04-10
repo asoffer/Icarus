@@ -89,6 +89,6 @@ Time::Eval StructLiteral::determine_time() {
 
 Time::Eval EnumLiteral::determine_time() { return time_ = Time::run; }
 
-Time::Eval BreakOrContinue::determine_time() { return time_ = Time::either; }
+Time::Eval Jump::determine_time() { return time_ = Time::either; }
 Time::Eval DummyTypeExpr::determine_time() { return time_ = Time::compile; }
 } // namespace AST

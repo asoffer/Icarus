@@ -36,7 +36,7 @@ void ArrayLiteral::join_identifiers(bool) {
 }
 
 void Terminal::join_identifiers(bool) {}
-void BreakOrContinue::join_identifiers(bool) {}
+void Jump::join_identifiers(bool) {}
 
 void Identifier::join_identifiers(bool) { Terminal::join_identifiers(); }
 

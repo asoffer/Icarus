@@ -219,5 +219,5 @@ void EnumLiteral::record_dependencies() {
   Dependency::add_to_table(this);
 }
 
-void BreakOrContinue::record_dependencies() { Dependency::add_to_table(this); }
+void Jump::record_dependencies() { Dependency::add_to_table(this); }
 } // namespace AST

@@ -701,7 +701,7 @@ TypePtr KVPairList::verify_types_with_key(TypePtr key_type) {
   return *value_types.begin();
 }
 
-void BreakOrContinue::verify_types() {
+void Jump::verify_types() {
   auto scope_ptr = scope_;
   while (scope_ptr) {
     assert(scope_ptr->is_block_scope());

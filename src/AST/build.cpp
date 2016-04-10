@@ -616,12 +616,9 @@ Node *EnumLiteral::build(NPtrVec &&nodes) {
   return enum_lit_ptr;
 }
 
-Node *BreakOrContinue::build_break(NPtrVec &&nodes) {
-  return new BreakOrContinue(nodes[0]->line_num, true);
-}
-
-Node *BreakOrContinue::build_continue(NPtrVec &&nodes) {
-  return new BreakOrContinue(nodes[0]->line_num, false);
+Node *Jump::build(NPtrVec &&nodes) {
+  return new Jump(nodes[0]->line_num,
+                  nodes[0]->node_type() == Language::reserved_break);
 }
 
 Node *While::build(NPtrVec &&nodes) {

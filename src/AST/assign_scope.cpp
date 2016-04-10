@@ -122,6 +122,6 @@ void StructLiteral::assign_scope() {
   Scope::Stack.pop();
 }
 
-void BreakOrContinue::assign_scope() { scope_ = CurrentScope(); }
+void Jump::assign_scope() { scope_ = CurrentScope(); }
 void DummyTypeExpr::assign_scope() { scope_ = CurrentScope(); }
 } // namespace AST
