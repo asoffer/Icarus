@@ -99,8 +99,10 @@ void Declaration::record_dependencies() {
     Dependency::value_type(this, this);
     Dependency::type_value(this, type_expr);
   } break;
-  case DeclType::Infer:
-  case DeclType::In: {
+  case DeclType::In:
+    Dependency::type_value(this, type_expr);
+    // Note: Intentionally falling through
+  case DeclType::Infer: {
     Dependency::type_type(this, type_expr);
     Dependency::value_value(this, type_expr);
     Dependency::value_type(this, this);
@@ -187,18 +189,14 @@ void For::record_dependencies() {
   // because this isn't allowed at compile-time
   // TODO check evaluate
   Dependency::value_type(this, this);
-  Dependency::type_value(this, container);
-  Dependency::type_type(this, container);
+  Dependency::type_type(this, iterator);
+  Dependency::value_value(this, iterator);
   Dependency::type_type(this, statements);
-
-  // Iterator doesn't have a declaration specifically. It's implicitly
-  // declared here
 
   statements->record_dependencies();
   iterator->record_dependencies();
   container->record_dependencies();
 
-  Dependency::type_type(iterator, this);
 }
 
 void StructLiteral::record_dependencies() {

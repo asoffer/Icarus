@@ -1,6 +1,13 @@
 #include "AST.h"
 
 namespace AST {
+TokenNode::TokenNode(size_t line_num, Language::NodeType in_node_type,
+                     std::string str_lit)
+    : Node(line_num, in_node_type), tk_(std::move(str_lit)) {
+  op = Language::is_operator(node_type()) ? Language::lookup_operator.at(tk_)
+                                          : Language::Operator::NotAnOperator;
+}
+
 Expression::Expression() : type(Unknown) {}
 Declaration::Declaration() : decl_type(DeclType::Std) {}
 ArrayLiteral::ArrayLiteral() {}

@@ -477,7 +477,7 @@ void Declaration::verify_types() {
 
     } else if (type_expr->type == Type_) {
       auto t = type_expr->evaluate(scope_->context).as_type;
-      if (t->is_enum() || t == Uint) { type = t; }
+      if (t->is_enum()) { type = t; }
 
     } else {
       error_log.log(line_num, "Cannot determine type from in declaration.");

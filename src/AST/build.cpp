@@ -341,8 +341,8 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
   switch (dt) {
   case DeclType::Std:   decl_ptr->op = Language::Operator::Colon; break;
   case DeclType::Infer: decl_ptr->op = Language::Operator::ColonEq; break;
+  case DeclType::In:    decl_ptr->op = Language::Operator::In; break;
   case DeclType::Tick:  assert(false); break;
-  case DeclType::In:    assert(false); break;
   }
 
   decl_ptr->precedence  = Language::precedence(decl_ptr->op);
@@ -358,6 +358,11 @@ Node *Declaration::BuildStd(NPtrVec &&nodes) {
 Node *Declaration::BuildInfer(NPtrVec &&nodes) {
   return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_INFER,
                DeclType::Infer);
+}
+
+Node *Declaration::BuildIn(NPtrVec &&nodes) {
+  return build(std::forward<NPtrVec &&>(nodes), Language::reserved_in,
+               DeclType::In);
 }
 
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
@@ -636,12 +641,18 @@ Node *While::build(NPtrVec &&nodes) {
 }
 
 Node *For::build(NPtrVec &&nodes) {
-  auto for_stmt                        = new For;
-  for_stmt->line_num                   = nodes[0]->line_num;
-  for_stmt->container                  = steal<Expression>(nodes[3]);
-  for_stmt->statements                 = steal<Statements>(nodes[5]);
-  for_stmt->iterator = Scope::make_declaration(
-      nodes[1]->line_num, DeclType::In, nodes[1]->token(), for_stmt->container);
+  auto for_stmt        = new For;
+  for_stmt->line_num   = nodes[0]->line_num;
+  for_stmt->statements = steal<Statements>(nodes[3]);
+
+  auto iter_or_iter_list = steal<Expression>(nodes[1]);
+  if (iter_or_iter_list->is_comma_list()) {
+    assert(false && "Not yet implemented");
+  } else {
+    for_stmt->iterator  = static_cast<Declaration *>(iter_or_iter_list);
+    for_stmt->container = for_stmt->iterator->type_expr;
+  }
+
   return for_stmt;
 }
 

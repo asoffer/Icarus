@@ -93,8 +93,10 @@ namespace Language {
         AST::Declaration::BuildStd),
     Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression, fn_expression} },
         AST::Declaration::BuildInfer),
+    Rule(DECL_IN, { {identifier}, {reserved_in}, {expression} },
+        AST::Declaration::BuildIn),
     Rule(STMT_DECL_GENERATE, { {expression}, {DECL_OPERATOR_GENERATE}, {identifier} },
-        AST::Declaration::BuildInfer),
+        AST::Declaration::BuildGenerate),
     /* End declaration */
 
     /* Begin parentheses */
@@ -113,7 +115,8 @@ namespace Language {
 
     /* Begin declaration list */
     // TODO would this include ((a: int, b: int), c: int) and is that what we want?
-    Rule(DECL_LIST, {{ARGS}, {comma}, {STMT_DECL_STD, STMT_DECL_INFER}}, AST::ChainOp::build),
+    Rule(DECL_LIST, { {ARGS}, {comma}, {STMT_DECL_STD, STMT_DECL_INFER} }, AST::ChainOp::build),
+    Rule(DECL_IN_LIST, { {DECL_IN, DECL_IN_LIST}, {comma}, {DECL_IN} }, AST::ChainOp::build),
     /* End declaration list */
 
     /* Begin assignment */
@@ -182,6 +185,7 @@ namespace Language {
     /* End statements */
 
     /* Begin comma list */
+    // TODO is this even used?
     Rule(expression, { {expression}, {comma}, {expression} }, AST::ChainOp::build),
     /* End comma list */
 
@@ -221,7 +225,9 @@ namespace Language {
     /* End while loop */
 
     /* Begin for loop */
-    Rule(STMT_FOR, { {reserved_for}, {identifier}, {reserved_in}, {expression, identifier}, {left_brace}, {statements}, {right_brace} }, AST::For::build),
+    Rule(STMT_FOR,
+        { {reserved_for}, {DECL_IN, DECL_IN_LIST}, {left_brace}, {statements}, {right_brace} },
+        AST::For::build),
     /* End for loop */
 
     /* Begin loop extras */

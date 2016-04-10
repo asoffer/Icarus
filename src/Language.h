@@ -38,7 +38,7 @@ namespace Language {
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_for, 
     reserved_enum, reserved_while, reserved_continue,
-    reserved_ascii, reserved_import, reserved_string, reserved_alloc, reserved_in,
+    reserved_ascii, reserved_import, reserved_string, reserved_alloc,
     reserved_struct,
 
     STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_JUMP, STMT_ASSIGN,
@@ -46,6 +46,8 @@ namespace Language {
     STMT_DECL_STD,
     STMT_DECL_INFER,
     STMT_DECL_GENERATE,
+    DECL_IN,
+    DECL_IN_LIST,
 
     // BEGIN USING MASKS
 
@@ -64,6 +66,7 @@ namespace Language {
     comma,
     dot,
     rocket_operator,
+    reserved_in,
 
     // left unary operators
     reserved_return = MASK_left_unary_operator,

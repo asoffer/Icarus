@@ -40,7 +40,11 @@ Context::Value Identifier::evaluate(Context &ctx) {
     return Context::Value(TypeSystem::get(token()).get);
 
   } else {
+    std::cout << this << std::endl;
+    std::cout << *this << std::endl;
+
     auto val = ctx.get(this);
+
     assert(val.as_type && "Unknown value for identifier in this scope");
 
     return val;
@@ -353,8 +357,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
     }
   } break;
   case DeclType::In: {
-    assert(false && "Cannot use DeclType::In in this context");
-    break;
+    return nullptr;
   }
   case DeclType::Tick: {
     // Being asked to evaluate a tick, is just being asked to figure out what

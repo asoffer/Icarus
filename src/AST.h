@@ -156,13 +156,7 @@ struct TokenNode : public Node {
   // TODO make newline default a bof (beginning of file)
   TokenNode(size_t line_num = 0,
             Language::NodeType in_node_type = Language::newline,
-            std::string str_lit = "")
-      : Node(line_num, in_node_type), tk_(std::move(str_lit)) {
-
-    op = Language::is_operator(node_type()) ? Language::lookup_operator.at(tk_)
-                                            : Language::Operator::NotAnOperator;
-  }
-
+            std::string str_lit = "");
   std::string tk_;
   Language::Operator op;
 };
@@ -275,6 +269,7 @@ struct Declaration : public Expression {
   static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
 
   static Node *BuildStd(NPtrVec &&nodes);
+  static Node *BuildIn(NPtrVec &&nodes);
   static Node *BuildInfer(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
 
