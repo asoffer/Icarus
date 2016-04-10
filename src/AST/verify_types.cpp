@@ -706,17 +706,24 @@ void Jump::verify_types() {
   while (scope_ptr) {
     assert(scope_ptr->is_block_scope());
     auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
-    if (block_scope_ptr->type == ScopeType::Function) { break; }
+    if (block_scope_ptr->type == ScopeType::Function) {
+      if (jump_type != JumpType::Return) {
+        error_log.log(line_num, "statement must be contained inside a loop.");
+      }
+      return;
+    }
 
     if (block_scope_ptr->is_loop_scope()) {
-      loop_scope = block_scope_ptr;
+      scope = block_scope_ptr;
       return;
     }
 
     scope_ptr = block_scope_ptr->parent;
   }
 
-  error_log.log(line_num, "Break statement must be contained inside a loop.");
+  assert(false && "How did you get to here?");
+
+
 }
 
 void DummyTypeExpr::verify_types() {}

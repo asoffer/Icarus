@@ -118,6 +118,10 @@ std::string FunctionLiteral::graphviz_label() const {
 }
 std::string EnumLiteral::graphviz_label() const { return "Enum"; }
 std::string Jump::graphviz_label() const {
-  return is_break ? "Break" : "Continue";
+  switch (jump_type) {
+  case JumpType::Break: return "Break";
+  case JumpType::Continue: return "Continue";
+  case JumpType::Return: return "Return";
+  }
 }
 } // namespace AST

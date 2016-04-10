@@ -78,20 +78,7 @@ llvm::Value *Terminal::generate_code() {
   // TODO remove dependence on token() altogether
   switch (terminal_type) {
   case Language::Terminal::Type:
-  case Language::Terminal::Return: {
-
-    llvm::Value *exit_flag_alloc =
-        CurrentScope()->is_function_scope()
-            ? static_cast<FnScope *>(CurrentScope())->exit_flag
-            : CurrentScope()->containing_function_->exit_flag;
-
-    builder.CreateStore(RETURN_FLAG, exit_flag_alloc);
-    builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
-
-    // TODO branch to end of current function scope, and delete everything on
-    // the way out?
-    return nullptr;
-  }
+  case Language::Terminal::Return: assert(false && "Should be unreachable");
   case Language::Terminal::Null: {
     assert(type.is_pointer() && "Null pointer of non-pointer type ");
     return data::null(type);
@@ -969,7 +956,18 @@ llvm::Value *Jump::generate_code() {
           ? static_cast<FnScope *>(CurrentScope())->exit_flag
           : CurrentScope()->containing_function_->exit_flag;
 
-  builder.CreateStore(is_break ? BREAK_FLAG : CONTINUE_FLAG, exit_flag_alloc);
+  switch (jump_type) {
+  case JumpType::Break: {
+    builder.CreateStore(BREAK_FLAG, exit_flag_alloc);
+  } break;
+  case JumpType::Continue: {
+    builder.CreateStore(CONTINUE_FLAG, exit_flag_alloc);
+  } break;
+  case JumpType::Return: {
+    builder.CreateStore(RETURN_FLAG, exit_flag_alloc);
+  } break;
+  }
+
   builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
 
   return nullptr;

@@ -149,11 +149,6 @@ namespace Language {
         AST::Binop::build),
     /* End expression */
 
-    /* Begin void return */
-    Rule(void_return_expression, { {reserved_return}, {newline}},
-        AST::Terminal::build_void_return),
-    /* End void return */
-
     /* Begin paren/bracket operators */
     Rule(expression,
         { {expression}, {left_paren}, {expression}, {right_paren} },
@@ -187,10 +182,6 @@ namespace Language {
 
     Rule(statements, { {statements}, {newline} }, drop_all_but<0>),
     Rule(statements, { {newline}, {statements} }, drop_all_but<1>),
-
-    Rule(statements, { {void_return_expression} },                AST::Statements::build_one),
-    Rule(statements, { {statements}, {void_return_expression} },  AST::Statements::build_more),
-
     /* End statements */
 
     /* Begin comma list */
@@ -237,7 +228,7 @@ namespace Language {
     /* End for loop */
 
     /* Begin loop extras */
-    Rule(STMT_JUMP, { {reserved_break, reserved_continue} }, AST::Jump::build),
+    Rule(STMT_JUMP, { {reserved_break, reserved_continue, reserved_return} }, AST::Jump::build),
     /* End loop extras */
 
     /* Begin structs and enums */

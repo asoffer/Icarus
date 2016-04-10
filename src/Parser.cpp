@@ -86,6 +86,10 @@ bool Parser::should_shift() {
   const auto last_type = stack_.back()->node_type();
   const auto ahead_type = lookahead_->node_type();
 
+  if (last_type == Language::reserved_return) {
+    return ahead_type != Language::newline;
+  }
+
   // If we see an identifier followed by a decl_operator, shift. Without this
   // check present, an identifier would get changed to an expression, and the
   // verification that it really is something defineable would be more

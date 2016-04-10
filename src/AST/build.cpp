@@ -617,8 +617,15 @@ Node *EnumLiteral::build(NPtrVec &&nodes) {
 }
 
 Node *Jump::build(NPtrVec &&nodes) {
-  return new Jump(nodes[0]->line_num,
-                  nodes[0]->node_type() == Language::reserved_break);
+  switch (nodes[0]->node_type()) {
+  case Language::reserved_break:
+    return new Jump(nodes[0]->line_num, JumpType::Break);
+  case Language::reserved_continue:
+    return new Jump(nodes[0]->line_num, JumpType::Continue);
+  case Language::reserved_return:
+    return new Jump(nodes[0]->line_num, JumpType::Return);
+  default: assert(false && "No other options");
+  }
 }
 
 Node *While::build(NPtrVec &&nodes) {

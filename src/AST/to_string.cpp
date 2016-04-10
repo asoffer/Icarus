@@ -263,8 +263,13 @@ std::string Conditional::to_string(size_t n) const {
       << (members.size() == 1 ? " value>\n" : " values>\n");
     return ss.str();
   }
+
   std::string Jump::to_string(size_t n) const {
-    return tabs(n) + (is_break ? "<Break>" : "<Continue>") + "\n";
+    switch (jump_type) {
+    case JumpType::Break: return tabs(n) + "<Break>\n";
+    case JumpType::Continue: return tabs(n) + "<Continue>\n";
+    case JumpType::Return: return tabs(n) + "<Return>\n";
+    }
   }
 
   std::string DummyTypeExpr::to_string(size_t n) const {

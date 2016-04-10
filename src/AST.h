@@ -457,17 +457,19 @@ struct DummyTypeExpr : public Expression {
 };
 
 struct Jump : public Node {
+  enum class JumpType { Break, Continue, Return };
+
   static Node *build(NPtrVec &&nodes);
   virtual ~Jump();
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  Jump(size_t new_line_num, bool is_break = true) : is_break(is_break) {
+  Jump(size_t new_line_num, JumpType jump_type) : jump_type(jump_type) {
     line_num = new_line_num;
   }
 
-  BlockScope *loop_scope;
-  bool is_break;
+  BlockScope *scope;
+  JumpType jump_type;
 };
 } // namespace AST
 

@@ -30,7 +30,6 @@ namespace Language {
     key_value_pair, key_value_pair_list,
     comma_list,
     fn_expression, scope,
-    void_return_expression,
     DECL_LIST,
     statements,
     missing_newline_statements,
