@@ -50,7 +50,7 @@ namespace Language {
   // This doesn't allow include 'void' or other things like that.
 
 #define STMT \
-  STMT_DECL_STD, STMT_DECL_INFER
+  STMT_DECL_STD, STMT_DECL_INFER, STMT_IF, STMT_IF_ELSE, STMT_FOR, STMT_WHILE, STMT_BREAK, STMT_CONTINUE, STMT_ASSIGN
   // TODO add more!
 
   // Here is the definition for all rules in the langugae. For a rule to be
@@ -93,8 +93,6 @@ namespace Language {
         AST::Declaration::BuildStd),
     Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression, fn_expression} },
         AST::Declaration::BuildInfer),
-    Rule(STMT_DECL_IN, { {identifier}, {DECL_OPERATOR_IN}, {expression} },
-        AST::Declaration::BuildInfer),
     Rule(STMT_DECL_GENERATE, { {expression}, {DECL_OPERATOR_GENERATE}, {identifier} },
         AST::Declaration::BuildInfer),
     /* End declaration */
@@ -104,7 +102,7 @@ namespace Language {
     Rule(node_type, { {left_paren}, {node_type}, {right_paren} }, AST::Expression::parenthesize)
 
     PAREN_RULE(expression),
-    PAREN_RULE(assignment),
+    PAREN_RULE(STMT_ASSIGN),
     PAREN_RULE(fn_expression),
     PAREN_RULE(STMT_DECL_STD),
     PAREN_RULE(STMT_DECL_INFER),
@@ -119,7 +117,7 @@ namespace Language {
     /* End declaration list */
 
     /* Begin assignment */
-    Rule(assignment,
+    Rule(STMT_ASSIGN,
         { {STMT_DECL_STD, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
         AST::Assignment::build),
     /* End assignment */
@@ -174,32 +172,24 @@ namespace Language {
     /* End paren/bracket operators */
 
     /* Begin if */
-    Rule(if_statement,      { {reserved_if}, {expression}, {left_brace}, {statements}, {right_brace} },           AST::Conditional::build_if),
-    Rule(if_statement,      { {reserved_if}, {assignment}, {left_brace}, {statements}, {right_brace} },           AST::Conditional::build_if_assignment_error),
-    Rule(if_statement,      { {if_statement}, {reserved_else}, {if_statement} },                                  AST::Conditional::build_else_if),
-    Rule(if_else_statement, { {if_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },       AST::Conditional::build_else),
-    Rule(if_else_statement, { {if_else_statement}, {reserved_else}, {left_brace}, {statements}, {right_brace} },  AST::Conditional::build_extra_else_error),
-    Rule(if_else_statement, { {if_else_statement}, {reserved_else}, {if_statement} },                             AST::Conditional::build_extra_else_if_error),
+    Rule(STMT_IF,      { {reserved_if}, {expression}, {left_brace}, {statements}, {right_brace} },      AST::Conditional::build_if),
+    Rule(STMT_IF,      { {reserved_if}, {STMT_ASSIGN}, {left_brace}, {statements}, {right_brace} },     AST::Conditional::build_if_assignment_error),
+    Rule(STMT_IF,      { {STMT_IF}, {reserved_else}, {STMT_IF} },                                       AST::Conditional::build_else_if),
+    Rule(STMT_IF_ELSE, { {STMT_IF}, {reserved_else}, {left_brace}, {statements}, {right_brace} },       AST::Conditional::build_else),
+    Rule(STMT_IF_ELSE, { {STMT_IF_ELSE}, {reserved_else}, {left_brace}, {statements}, {right_brace} },  AST::Conditional::build_extra_else_error),
+    Rule(STMT_IF_ELSE, { {STMT_IF_ELSE}, {reserved_else}, {STMT_IF} },                                  AST::Conditional::build_extra_else_if_error),
     /* End if */
 
     /* Begin statements */
-    Rule(statements,
-        { {assignment, STMT_DECL_STD, STMT_DECL_INFER, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
-        AST::Statements::build_one),
+    Rule(statements, { {STMT, expression}, {newline} },               AST::Statements::build_one),
+    Rule(statements, { {statements}, {STMT, expression}, {newline} }, AST::Statements::build_more),
 
-    Rule(statements,
-        { {statements}, {assignment, STMT_DECL_STD, STMT_DECL_INFER, expression, if_statement, if_else_statement, for_statement, while_statement, break_statement, continue_statement}, {newline} },
-        AST::Statements::build_more),
-
-
-    Rule(statements, { {void_return_expression} },
-        AST::Statements::build_one),
-
-    Rule(statements, { {statements}, {void_return_expression} },
-        AST::Statements::build_more),
-
-    Rule(statements, { {newline}, {statements} }, drop_all_but<1>),
     Rule(statements, { {statements}, {newline} }, drop_all_but<0>),
+    Rule(statements, { {newline}, {statements} }, drop_all_but<1>),
+
+    Rule(statements, { {void_return_expression} },                AST::Statements::build_one),
+    Rule(statements, { {statements}, {void_return_expression} },  AST::Statements::build_more),
+
     /* End statements */
 
     /* Begin comma list */
@@ -224,11 +214,11 @@ namespace Language {
         AST::KVPairList::build_more),
 
     Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
-        { {assignment}, {rocket_operator}, {expression}, {newline} },
+        { {STMT_ASSIGN}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_one_assignment_error),
 
     Rule(key_value_pair_list, // An error, they probably meant `==` instead of `=`
-        { {key_value_pair_list}, {assignment}, {rocket_operator}, {expression}, {newline} },
+        { {key_value_pair_list}, {STMT_ASSIGN}, {rocket_operator}, {expression}, {newline} },
         AST::KVPairList::build_more_assignment_error),
 
     Rule(expression,
@@ -237,17 +227,17 @@ namespace Language {
     /* End case statements */
 
     /* Begin while loop */
-    Rule(while_statement, { {reserved_while}, {expression}, {left_brace}, {statements}, {right_brace} }, AST::While::build),
-    Rule(while_statement, { {reserved_while}, {assignment}, {left_brace}, {statements}, {right_brace} }, AST::While::build_assignment_error),
+    Rule(STMT_WHILE, { {reserved_while}, {expression}, {left_brace}, {statements}, {right_brace} }, AST::While::build),
+    Rule(STMT_WHILE, { {reserved_while}, {STMT_ASSIGN}, {left_brace}, {statements}, {right_brace} }, AST::While::build_assignment_error),
     /* End while loop */
 
     /* Begin for loop */
-    Rule(for_statement, { {reserved_for}, {expression}, {reserved_in}, {expression}, {left_brace}, {statements}, {right_brace} }, AST::For::build),
+    Rule(STMT_FOR, { {reserved_for}, {identifier}, {reserved_in}, {expression, identifier}, {left_brace}, {statements}, {right_brace} }, AST::For::build),
     /* End for loop */
 
     /* Begin loop extras */
-    Rule(break_statement,    { {reserved_break} },    AST::BreakOrContinue::build_break),
-    Rule(continue_statement, { {reserved_continue} }, AST::BreakOrContinue::build_continue),
+    Rule(STMT_BREAK,    { {reserved_break} },    AST::BreakOrContinue::build_break),
+    Rule(STMT_CONTINUE, { {reserved_continue} }, AST::BreakOrContinue::build_continue),
     /* End loop extras */
 
     /* Begin structs and enums */

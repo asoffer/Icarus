@@ -32,7 +32,7 @@ namespace Language {
     fn_expression, scope,
     void_return_expression,
     DECL_LIST,
-    statements, for_statement, while_statement, if_statement, if_else_statement,
+    statements,
     missing_newline_statements,
 
     // Parens, braces, and brackets
@@ -45,15 +45,15 @@ namespace Language {
     // Figure out the right way to do that given that they may need different masks
     // Reserved words
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_for, 
-    reserved_in, reserved_enum, reserved_while, reserved_continue,
-    reserved_ascii, reserved_import, reserved_string, reserved_alloc,
+    reserved_enum, reserved_while, reserved_continue,
+    reserved_ascii, reserved_import, reserved_string, reserved_alloc, reserved_in,
     reserved_struct,
 
-    break_statement, continue_statement,
+    STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_BREAK, STMT_CONTINUE,
+    STMT_ASSIGN,
 
     STMT_DECL_STD,
     STMT_DECL_INFER,
-    STMT_DECL_IN,
     STMT_DECL_GENERATE,
 
     // BEGIN USING MASKS
@@ -61,9 +61,10 @@ namespace Language {
     // binary operators
     generic_operator = MASK_binary_operator,
 
+    // Note: reserved_in is also a decl operator, but it's not an expression so
+    // we must keep it separate.
     DECL_OPERATOR_STD,
     DECL_OPERATOR_INFER,
-    DECL_OPERATOR_IN,
 
     assign_operator,
     fn_arrow,
@@ -85,7 +86,6 @@ namespace Language {
 
     // expressions
     expression = MASK_expression,
-    assignment,
     reserved_true,
     reserved_false,
     reserved_null,
@@ -142,7 +142,7 @@ inline bool is_operator(NodeType t) { return (t & MASK_operator) != 0; }
 
 inline bool is_decl(NodeType t) {
   return t == DECL_OPERATOR_INFER || t == DECL_OPERATOR_STD ||
-         t == DECL_OPERATOR_GENERATE || t == DECL_OPERATOR_IN;
+         t == DECL_OPERATOR_GENERATE || t == reserved_in;
 }
 
 extern size_t precedence(Language::Operator op);

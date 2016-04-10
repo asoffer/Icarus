@@ -360,11 +360,6 @@ Node *Declaration::BuildInfer(NPtrVec &&nodes) {
                DeclType::Infer);
 }
 
-Node *Declaration::BuildIn(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_IN,
-               DeclType::In);
-}
-
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   auto decl_ptr =
       Scope::make_declaration(nodes[1]->line_num, DeclType::Tick,

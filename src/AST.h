@@ -276,7 +276,6 @@ struct Declaration : public Expression {
 
   static Node *BuildStd(NPtrVec &&nodes);
   static Node *BuildInfer(NPtrVec &&nodes);
-  static Node *BuildIn(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
 
   // TODO is 'op' necessary? anymore?
