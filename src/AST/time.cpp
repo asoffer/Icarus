@@ -77,8 +77,9 @@ Time::Eval While::determine_time() {
 }
 
 Time::Eval For::determine_time() {
-  return time_ = iterator->determine_time() | container->determine_time() |
-                 statements->determine_time();
+  time_ = statements->determine_time();
+  for (auto iter : iterators) { time_ |= iter->determine_time(); }
+  return time_;
 }
 
 Time::Eval StructLiteral::determine_time() {

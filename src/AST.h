@@ -399,8 +399,7 @@ struct For : public Node {
   void GenerateLoopBodyCode(llvm::Function *parent_fn);
   void GenerateLoopExitCode(llvm::BasicBlock *reentry);
 
-  Declaration *iterator;
-  Expression *container;
+  std::vector<Declaration *> iterators;
   Statements *statements;
 
   BlockScope *for_scope;

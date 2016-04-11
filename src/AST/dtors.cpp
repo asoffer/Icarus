@@ -68,8 +68,7 @@ While::~While() {
 }
 
 For::~For() {
-  DELETE(iterator);
-  DELETE(container);
+  for (auto ptr : iterators) { DELETE(ptr); }
   DELETE(for_scope);
 }
 

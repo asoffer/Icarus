@@ -1053,137 +1053,184 @@ void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
 }
 
 llvm::Value *For::generate_code() {
+  // The block you were at just before getting to the loop
   auto start_block = builder.GetInsertBlock();
 
   auto parent_fn = start_block->getParent();
   for_scope->set_parent_function(parent_fn);
 
-  assert(!for_scope->land);
+  auto init_iters = make_block("init.iters", parent_fn);
+  auto incr_iters = make_block("incr.iters", parent_fn);
+  auto phi_block  = make_block("phis", parent_fn);
+  auto cond_block = make_block("cond.block", parent_fn);
 
+  // Make a landing block so you know where to go at the end of the loop.
+  assert(!for_scope->land);
   for_scope->land = make_block("loop.land", parent_fn);
 
-  if (container->type.is_array()) {
-    auto container_val = container->generate_code();
-    assert(container_val && "container_val is nullptr");
 
-    auto len_ptr = builder.CreateGEP(
-        container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-    auto len_val = builder.CreateLoad(len_ptr, "len");
+  builder.SetInsertPoint(cond_block);
+  llvm::Value *done_cmp = data::const_false();
 
-    auto start_ptr = builder.CreateLoad(
-        builder.CreateGEP(container_val,
-                          {data::const_uint(0), data::const_uint(1)}),
-        "start_ptr");
-    auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
+  builder.SetInsertPoint(start_block);
+  builder.CreateBr(init_iters);
 
-    auto cond_block = make_block("loop.cond", parent_fn);
+  auto num_iters = iterators.size();
+  for (size_t i = 0; i < num_iters; ++i) {
+    auto iter      = iterators[i];
+    auto container = iter->type_expr;
+    llvm::PHINode *phi = nullptr;
 
-    builder.CreateBr(cond_block);
-    builder.SetInsertPoint(cond_block);
-    auto phi_node = builder.CreatePHI(*Ptr(iterator->type), 2, "phi");
-    phi_node->addIncoming(start_ptr, start_block);
+    if (container->type.is_array()) {
 
-    iterator->identifier->alloc = phi_node;
+      /* Work on init block */
+      builder.SetInsertPoint(init_iters);
+      auto container_val = container->generate_code();
+      assert(container_val && "container_val is nullptr");
 
-    auto cmp = builder.CreateICmpEQ(phi_node, end_ptr);
-    builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
+      auto start_ptr = builder.CreateLoad(
+          builder.CreateGEP(container_val,
+                            {data::const_uint(0), data::const_uint(1)}),
+          "start_ptr");
 
-    GenerateLoopBodyCode(parent_fn);
+      auto len_ptr = builder.CreateGEP(
+          container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
+      auto len_val = builder.CreateLoad(len_ptr, "len");
+      auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
 
-    auto next = builder.CreateGEP(phi_node, data::const_uint(1));
-    phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
+      /* Work on phi block */
+      builder.SetInsertPoint(phi_block);
+      phi = builder.CreatePHI(*Ptr(iter->type), 2, "phi");
+      phi->addIncoming(start_ptr, init_iters);
 
-    GenerateLoopExitCode(cond_block);
+      /* Work on cond block */
+      builder.SetInsertPoint(cond_block);
+      iter->identifier->alloc = phi;
+      done_cmp = builder.CreateOr(done_cmp, builder.CreateICmpEQ(phi, end_ptr));
 
-  } else if (container->type.is_range()) {
-    bool double_ended_range;
+      /* Work on incr block */
+      builder.SetInsertPoint(incr_iters);
+      auto next = builder.CreateGEP(phi, data::const_uint(1));
+      phi->addIncoming(next, incr_iters);
 
-    if (container->is_binop()) {
-      assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
-      double_ended_range = true;
-    } else if (container->is_unop()) {
-      assert(static_cast<Unop *>(container)->op == Language::Operator::Dots);
-      double_ended_range = false;
-    } else {
-      assert(false);
-    }
+    } else if (container->type.is_range()) {
+      if (container->is_binop()) {
+        assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
 
-    llvm::Value *start_val =
-        double_ended_range
-            ? static_cast<Binop *>(container)->lhs->generate_code()
-            : static_cast<Unop *>(container)->operand->generate_code();
+        /* Work on init block */
+        builder.SetInsertPoint(init_iters);
+        llvm::Value *start_val =
+            static_cast<Binop *>(container)->lhs->generate_code();
+        llvm::Value *end_val =
+            static_cast<Binop *>(container)->rhs->generate_code();
 
-    llvm::Value *end_val =
-        double_ended_range
-            ? static_cast<Binop *>(container)->rhs->generate_code()
-            : nullptr;
+        /* Work on phi block */
+        builder.SetInsertPoint(phi_block);
+        phi = builder.CreatePHI(iter->type, 2, "phi");
+        phi->addIncoming(start_val, init_iters);
 
-    auto cond_block = make_block("loop.cond", parent_fn);
-    builder.CreateBr(cond_block);
-    builder.SetInsertPoint(cond_block);
+        /* Work on cond block */
+        builder.SetInsertPoint(cond_block);
+        builder.CreateStore(phi, iter->identifier->alloc);
+        done_cmp = builder.CreateOr(done_cmp,
+                                    (iter->type == Int)
+                                        ? builder.CreateICmpSGT(phi, end_val)
+                                        : builder.CreateICmpUGT(phi, end_val));
 
-    auto phi_node = builder.CreatePHI(iterator->type, 2, "phi");
-    phi_node->addIncoming(start_val, start_block);
-    builder.CreateStore(phi_node, iterator->identifier->alloc);
+      } else if (container->is_unop()) {
+        assert(static_cast<Unop *>(container)->op == Language::Operator::Dots);
 
-    if (double_ended_range) {
-      llvm::Value *cmp = nullptr;
-      if (iterator->type == Int) {
-        cmp = builder.CreateICmpSGT(phi_node, end_val);
-      } else if (iterator->type == Uint || iterator->type == Char) {
-        cmp = builder.CreateICmpUGT(phi_node, end_val);
+        /* Work on init block */
+        builder.SetInsertPoint(init_iters);
+        llvm::Value *start_val =
+            static_cast<Unop *>(container)->operand->generate_code();
+
+        /* Work on phi block */
+        builder.SetInsertPoint(phi_block);
+        phi = builder.CreatePHI(iter->type, 2, "phi");
+        phi->addIncoming(start_val, init_iters);
+
+        /* Work on cond block */
+        builder.SetInsertPoint(cond_block);
+        builder.CreateStore(phi, iter->identifier->alloc);
+
+      } else {
+        assert(false);
       }
 
-      builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
-
+      /* Work on incr block */
+      builder.SetInsertPoint(incr_iters);
+      llvm::Value *next = builder.CreateAdd(
+          builder.CreateLoad(iter->identifier->alloc),
+          iter->type == Char ? data::const_char(1) : data::const_uint(1));
+      phi->addIncoming(next, incr_iters);
     } else {
-      builder.CreateBr(for_scope->entry);
-    }
+      auto ty = container->evaluate(scope_->context).as_type;
+      assert(ty->is_enum());
+      auto enum_type = static_cast<Enumeration *>(ty);
 
-    GenerateLoopBodyCode(parent_fn);
+      /* Work on init block */
+      // Note: Nothing to do
 
-    llvm::Value *next = builder.CreateAdd(
-        builder.CreateLoad(iterator->identifier->alloc),
-        iterator->type == Char ? data::const_char(1) : data::const_uint(1));
+      /* Work on phi block */
+      builder.SetInsertPoint(phi_block);
+      phi = builder.CreatePHI(Uint, 2, "phi");
+      phi->addIncoming(data::const_uint(0), init_iters);
 
-    phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
-    GenerateLoopExitCode(cond_block);
-
-  } else {
-    // TODO that condition should really be encoded into the loop somewhere to
-    // make it faster to check.
-    auto t = container->evaluate(scope_->context).as_type;
-
-    if (t->is_enum()) {
-      // NOTE: We assume that the entries are numbered starting at zero.
-
-      auto enum_type = static_cast<Enumeration *>(t);
-      // TODO get them by means other than string name
-
-      auto cond_block = make_block("loop.cond", parent_fn);
-
-      builder.CreateBr(cond_block);
+      /* Work on cond block */
       builder.SetInsertPoint(cond_block);
-      auto phi_node = builder.CreatePHI(Uint, 2, "phi");
-      phi_node->addIncoming(data::const_uint(0), start_block);
-      builder.CreateStore(phi_node, iterator->identifier->alloc);
+      done_cmp = builder.CreateOr(
+          done_cmp, builder.CreateICmpEQ(
+                        phi, data::const_uint(enum_type->int_values.size())));
+      builder.CreateStore(phi, iter->identifier->alloc);
 
-      auto cmp = builder.CreateICmpEQ(
-          phi_node, data::const_uint(enum_type->int_values.size()));
-      builder.CreateCondBr(cmp, for_scope->land, for_scope->entry);
-
-      GenerateLoopBodyCode(parent_fn);
-
-      auto next = builder.CreateAdd(
-          builder.CreateLoad(iterator->identifier->alloc), data::const_uint(1));
-      phi_node->addIncoming(next, for_scope->exit); // Comes from exit block
-
-      GenerateLoopExitCode(cond_block);
-
-    } else {
-      assert(false && "Not yet implemented");
+      /* Work on incr block */
+      builder.SetInsertPoint(incr_iters);
+      auto next = builder.CreateAdd(builder.CreateLoad(iter->identifier->alloc),
+                                    data::const_uint(1));
+      phi->addIncoming(next, incr_iters);
     }
   }
+
+  // Link Blocks
+  builder.SetInsertPoint(init_iters);
+  builder.CreateBr(phi_block);
+
+  builder.SetInsertPoint(incr_iters);
+  builder.CreateBr(phi_block);
+
+  builder.SetInsertPoint(phi_block);
+  builder.CreateBr(cond_block);
+
+  builder.SetInsertPoint(cond_block);
+  builder.CreateCondBr(done_cmp, for_scope->land, for_scope->entry);
+
+  // Ready for loop body
+  auto loop_block = make_block("loop.body", parent_fn);
+
+  Scope::Stack.push(for_scope);
+  for_scope->initialize();
+  builder.CreateBr(loop_block);
+
+  builder.SetInsertPoint(loop_block);
+  statements->generate_code();
+  builder.CreateBr(for_scope->exit);
+
+  for_scope->uninitialize();
+
+  auto exit_flag =
+      builder.CreateLoad(for_scope->containing_function_->exit_flag);
+
+  // Switch. By default go back to the start of the loop.
+  auto switch_stmt = builder.CreateSwitch(exit_flag, incr_iters);
+  switch_stmt->addCase(BREAK_FLAG, for_scope->land);
+  assert(for_scope->parent->is_block_scope());
+  auto parent_block_scope = static_cast<BlockScope *>(for_scope->parent);
+  switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
+
+  Scope::Stack.pop();
+
+  builder.SetInsertPoint(for_scope->land);
 
   return nullptr;
 }

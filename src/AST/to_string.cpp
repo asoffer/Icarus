@@ -94,8 +94,9 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string For::to_string(size_t n) const {
     std::stringstream ss;
-    ss << tabs(n) << "<For>\n" << iterator->to_string(n + 1)
-       << container->to_string(n + 1) << statements->to_string(n + 1);
+    ss << tabs(n) << "<For>\n";
+    for (auto iter : iterators) { ss << iter->to_string(n + 1); }
+    ss << statements->to_string(n + 1);
     return ss.str();
   }
 

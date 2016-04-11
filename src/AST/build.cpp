@@ -647,10 +647,19 @@ Node *For::build(NPtrVec &&nodes) {
 
   auto iter_or_iter_list = steal<Expression>(nodes[1]);
   if (iter_or_iter_list->is_comma_list()) {
-    assert(false && "Not yet implemented");
+    // Copy the exprs out
+    auto iter_list = static_cast<ChainOp *>(iter_or_iter_list);
+    for_stmt->iterators.reserve(iter_list->exprs.size());
+
+    for (auto &ex : iter_list->exprs) {
+      assert(ex->is_declaration());
+      for_stmt->iterators.push_back(static_cast<Declaration *>(ex));
+      ex = nullptr;
+    }
+    delete iter_list;
+
   } else {
-    for_stmt->iterator  = static_cast<Declaration *>(iter_or_iter_list);
-    for_stmt->container = for_stmt->iterator->type_expr;
+    for_stmt->iterators = {static_cast<Declaration *>(iter_or_iter_list)};
   }
 
   return for_stmt;

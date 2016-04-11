@@ -39,9 +39,10 @@ void For::assign_scope() {
   for_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(for_scope);
-  iterator->assign_scope();
-  container->assign_scope();
+
+  for (auto iter : iterators) { iter->assign_scope(); }
   statements->assign_scope();
+
   Scope::Stack.pop();
 }
 

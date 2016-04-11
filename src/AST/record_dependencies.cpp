@@ -189,13 +189,14 @@ void For::record_dependencies() {
   // because this isn't allowed at compile-time
   // TODO check evaluate
   Dependency::value_type(this, this);
-  Dependency::type_type(this, iterator);
-  Dependency::value_value(this, iterator);
+  for (auto iter : iterators) {
+    Dependency::type_type(this, iter);
+    Dependency::value_value(this, iter);
+  }
   Dependency::type_type(this, statements);
 
   statements->record_dependencies();
-  iterator->record_dependencies();
-  container->record_dependencies();
+  for (auto iter : iterators) { iter->record_dependencies(); }
 
 }
 

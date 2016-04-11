@@ -40,9 +40,6 @@ Context::Value Identifier::evaluate(Context &ctx) {
     return Context::Value(TypeSystem::get(token()).get);
 
   } else {
-    std::cout << this << std::endl;
-    std::cout << *this << std::endl;
-
     auto val = ctx.get(this);
 
     assert(val.as_type && "Unknown value for identifier in this scope");

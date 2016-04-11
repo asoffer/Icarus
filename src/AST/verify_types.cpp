@@ -310,7 +310,6 @@ void Binop::verify_types() {
       error_log.log(line_num, "Could not match function type");
       return;
     } else if (!lhs->type.is_function()) {
-      std::cout << lhs->type << std::endl;
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
       error_log.log(line_num, "Identifier `" + lhs->token() +
@@ -464,11 +463,6 @@ void Declaration::verify_types() {
     }
   } break;
   case DeclType::In: {
-    // We may have already seen that the container isn't an array (or doesn't
-    // have an indexing operator. However, we don't want to stop here or
-    // segfault, so we need to check here before we cast the type. If it does
-    // fail, we've already logged the error, so we just need to set the type to
-    // be Error.
     if (type_expr->type.is_array()) {
       type = static_cast<Array *>(type_expr->type.get)->data_type;
 
@@ -624,25 +618,8 @@ void While::verify_types() {
 }
 
 void For::verify_types() {
-  // TODO array -> "has operator[]"
-  if (container->type.is_array()) {
-    iterator->type = static_cast<Array *>(container->type.get)->data_type;
-    return;
-
-  } else if (container->type.is_range()) {
-    iterator->type = static_cast<RangeType *>(container->type.get)->end_type;
-    return;
-
-  } else if (container->type == Type_) {
-    auto t = container->evaluate(scope_->context).as_type;
-    if (t->is_enum()) {
-      iterator->type = Type_;
-      return;
-    }
-  }
-
-  error_log.log(line_num, "For loop container must be a range, an array or an enum, but " +
-                              container->type.to_string() + " given.");
+  /*
+                              */
 }
 
 void Conditional::verify_types() {

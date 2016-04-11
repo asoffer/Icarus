@@ -23,10 +23,12 @@ void While::join_identifiers(bool) {
 
 void For::join_identifiers(bool) {
   Scope::Stack.push(for_scope);
-  iterator->identifier = CurrentScope()->identifier(iterator->identifier);
-  set_or_recurse(iterator->type_expr);
+  for (auto &iter : iterators) {
+    iter->identifier = CurrentScope()->identifier(iter->identifier);
+    auto expr = static_cast<Expression *>(iter);
+    set_or_recurse(expr);
+  }
 
-  set_or_recurse(container);
   statements->join_identifiers();
   Scope::Stack.pop();
 }
