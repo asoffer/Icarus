@@ -247,6 +247,7 @@ namespace Language {
 
 
     /* Begin miscellaneous */
+    Rule(comma,       { {comma}, {newline} },       drop_all_but<0>),
     Rule(newline,     { {newline}, {newline} },     drop_all_but<0>),
     Rule(left_brace,  { {newline}, {left_brace} },  drop_all_but<1>),
     Rule(left_brace,  { {left_brace}, {newline} },  drop_all_but<0>),
