@@ -89,13 +89,13 @@ namespace Language {
     /* End literals */
 
     /* Begin declaration */
-    Rule(STMT_DECL_STD, { {identifier}, {DECL_OPERATOR_STD}, {expression, fn_expression} },
+    Rule(STMT_DECL_STD, { {identifier}, {DECL_OPERATOR_STD}, {STMT_DECL_GENERATE, expression, fn_expression} },
         AST::Declaration::BuildStd),
     Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression, fn_expression} },
         AST::Declaration::BuildInfer),
     Rule(DECL_IN, { {identifier}, {reserved_in}, {expression} },
         AST::Declaration::BuildIn),
-    Rule(STMT_DECL_GENERATE, { {expression}, {DECL_OPERATOR_GENERATE}, {identifier} },
+    Rule(STMT_DECL_GENERATE, { {identifier, expression}, {DECL_OPERATOR_GENERATE}, {identifier} }, // TODO Should idenifier be a first option?
         AST::Declaration::BuildGenerate),
     /* End declaration */
 

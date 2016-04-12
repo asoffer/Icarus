@@ -95,7 +95,7 @@ bool Parser::should_shift() {
   // verification that it really is something defineable would be more
   // computationally intensive.
   if (last_type == Language::identifier && Language::is_decl(ahead_type)) {
-    return true;
+    return ahead_type != Language::DECL_OPERATOR_GENERATE;
   }
 
   if (stack_.size() >= 2 && ahead_type == Language::newline &&

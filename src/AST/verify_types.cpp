@@ -320,7 +320,11 @@ void Binop::verify_types() {
     auto in_types = static_cast<Function *>(lhs->type.get)->input;
 
     // TODO Check if it takes any type variables at all.
-
+    if (in_types.is_type_variable()) {
+      std::cout << "I need to test a function with the input " << rhs->type
+                << std::endl
+                << "Then I need to clone the function " << *lhs << std::endl;
+    }
 
     // TODO If rhs is a comma-list, is it's type given by a tuple?
     if (in_types != rhs->type) {
@@ -487,6 +491,7 @@ void Declaration::verify_types() {
       type = Error;
       return;
     }
+
     auto test_func = static_cast<Function *>(type_expr->type.get);
     if (test_func->output != Bool) {
       // TODO What about implicitly cast-able to bool via a user-defined cast?
@@ -494,6 +499,8 @@ void Declaration::verify_types() {
       type = Error;
       return;
     }
+
+    type = Type_;
 
     // TODO can't continue with type verification immediately
 
@@ -562,7 +569,12 @@ void FunctionLiteral::verify_types() {
     input_type = Tup(input_type_vec);
   }
 
-  type = Func(input_type, ret_type);
+  // TODO what if just one argument is a type variable?
+  if (input_type.is_type_variable()) {
+    type = DepType([](TypePtr t){ Ptr(t) });
+  } else {
+    type = Func(input_type, ret_type);
+  }
 
   assert(type && "FunctionLiteral type is nullptr");
 }
