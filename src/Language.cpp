@@ -231,7 +231,7 @@ namespace Language {
     /* End for loop */
 
     /* Begin loop extras */
-    Rule(STMT_JUMP, { {reserved_break, reserved_continue, reserved_return} }, AST::Jump::build),
+    Rule(STMT_JUMP, { {reserved_restart, reserved_break, reserved_repeat, reserved_continue, reserved_return} }, AST::Jump::build),
     /* End loop extras */
 
     /* Begin structs and enums */

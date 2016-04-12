@@ -629,6 +629,10 @@ Node *Jump::build(NPtrVec &&nodes) {
     return new Jump(nodes[0]->line_num, JumpType::Continue);
   case Language::reserved_return:
     return new Jump(nodes[0]->line_num, JumpType::Return);
+  case Language::reserved_restart:
+    return new Jump(nodes[0]->line_num, JumpType::Restart);
+  case Language::reserved_repeat:
+    return new Jump(nodes[0]->line_num, JumpType::Repeat);
   default: assert(false && "No other options");
   }
 }

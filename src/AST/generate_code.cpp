@@ -47,8 +47,10 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
 
-#define BREAK_FLAG data::const_char('\01')
-#define CONTINUE_FLAG data::const_char('\02')
+#define CONTINUE_FLAG data::const_char('\00')
+#define RESTART_FLAG data::const_char('\01')
+#define REPEAT_FLAG data::const_char('\02')
+#define BREAK_FLAG data::const_char('\03')
 #define RETURN_FLAG data::const_char('\04')
 
 namespace AST {
@@ -972,11 +974,17 @@ llvm::Value *Jump::generate_code() {
           : CurrentScope()->containing_function_->exit_flag;
 
   switch (jump_type) {
-  case JumpType::Break: {
-    builder.CreateStore(BREAK_FLAG, exit_flag_alloc);
+  case JumpType::Restart: {
+    builder.CreateStore(RESTART_FLAG, exit_flag_alloc);
   } break;
   case JumpType::Continue: {
     builder.CreateStore(CONTINUE_FLAG, exit_flag_alloc);
+  } break;
+  case JumpType::Repeat: {
+    builder.CreateStore(REPEAT_FLAG, exit_flag_alloc);
+  } break;
+  case JumpType::Break: {
+    builder.CreateStore(BREAK_FLAG, exit_flag_alloc);
   } break;
   case JumpType::Return: {
     builder.CreateStore(RETURN_FLAG, exit_flag_alloc);
@@ -1022,6 +1030,7 @@ llvm::Value *While::generate_code() {
   // Switch. By default go back to the start of the loop.
   auto switch_stmt = builder.CreateSwitch(exit_flag, cond_block);
   switch_stmt->addCase(BREAK_FLAG, while_scope->land);
+
   assert(while_scope->parent->is_block_scope());
   auto parent_block_scope = static_cast<BlockScope *>(while_scope);
   switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
@@ -1031,37 +1040,6 @@ llvm::Value *While::generate_code() {
   builder.SetInsertPoint(while_scope->land);
 
   return nullptr;
-}
-
-void For::GenerateLoopBodyCode(llvm::Function *parent_fn) {
-  auto loop_block = make_block("loop.body", parent_fn);
-
-  Scope::Stack.push(for_scope);
-  for_scope->initialize();
-  builder.CreateBr(loop_block);
-
-  builder.SetInsertPoint(loop_block);
-  statements->generate_code();
-  builder.CreateBr(for_scope->exit);
-  builder.SetInsertPoint(for_scope->exit);
-}
-
-void For::GenerateLoopExitCode(llvm::BasicBlock *reentry) {
-  for_scope->uninitialize();
-
-  auto exit_flag =
-      builder.CreateLoad(for_scope->containing_function_->exit_flag);
-
-  // Switch. By default go back to the start of the loop.
-  auto switch_stmt = builder.CreateSwitch(exit_flag, reentry);
-  switch_stmt->addCase(BREAK_FLAG, for_scope->land);
-  assert(for_scope->parent->is_block_scope());
-  auto parent_block_scope = static_cast<BlockScope *>(for_scope->parent);
-  switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
-
-  Scope::Stack.pop();
-
-  builder.SetInsertPoint(for_scope->land);
 }
 
 llvm::Value *For::generate_code() {
@@ -1148,6 +1126,7 @@ llvm::Value *For::generate_code() {
                                     (iter->type == Int)
                                         ? builder.CreateICmpSGT(phi, end_val)
                                         : builder.CreateICmpUGT(phi, end_val));
+        // ^ TODO should be testing for LE because of edge case 
 
       } else if (container->is_unop()) {
         assert(static_cast<Unop *>(container)->op == Language::Operator::Dots);
@@ -1235,6 +1214,9 @@ llvm::Value *For::generate_code() {
 
   // Switch. By default go back to the start of the loop.
   auto switch_stmt = builder.CreateSwitch(exit_flag, incr_iters);
+  // CONTINUE_FLAG is the default
+  switch_stmt->addCase(RESTART_FLAG, init_iters);
+  switch_stmt->addCase(REPEAT_FLAG, for_scope->entry);
   switch_stmt->addCase(BREAK_FLAG, for_scope->land);
   assert(for_scope->parent->is_block_scope());
   auto parent_block_scope = static_cast<BlockScope *>(for_scope->parent);

@@ -270,8 +270,10 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string Jump::to_string(size_t n) const {
     switch (jump_type) {
-    case JumpType::Break: return tabs(n) + "<Break>\n";
+    case JumpType::Restart: return tabs(n) + "<Restart>\n";
     case JumpType::Continue: return tabs(n) + "<Continue>\n";
+    case JumpType::Repeat: return tabs(n) + "<Repeat>\n";
+    case JumpType::Break: return tabs(n) + "<Break>\n";
     case JumpType::Return: return tabs(n) + "<Return>\n";
     }
   }

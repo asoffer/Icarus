@@ -396,9 +396,6 @@ struct For : public Node {
 
   static Node *build(NPtrVec &&nodes);
 
-  void GenerateLoopBodyCode(llvm::Function *parent_fn);
-  void GenerateLoopExitCode(llvm::BasicBlock *reentry);
-
   std::vector<Declaration *> iterators;
   Statements *statements;
 
@@ -451,7 +448,7 @@ struct DummyTypeExpr : public Expression {
 };
 
 struct Jump : public Node {
-  enum class JumpType { Break, Continue, Return };
+  enum class JumpType { Restart, Continue, Repeat, Break, Return };
 
   static Node *build(NPtrVec &&nodes);
   virtual ~Jump();

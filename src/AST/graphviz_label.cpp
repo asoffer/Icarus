@@ -119,8 +119,10 @@ std::string FunctionLiteral::graphviz_label() const {
 std::string EnumLiteral::graphviz_label() const { return "Enum"; }
 std::string Jump::graphviz_label() const {
   switch (jump_type) {
-  case JumpType::Break: return "Break";
+  case JumpType::Restart: return "Restart";
   case JumpType::Continue: return "Continue";
+  case JumpType::Repeat: return "Repeat";
+  case JumpType::Break: return "Break";
   case JumpType::Return: return "Return";
   }
 }
