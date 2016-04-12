@@ -228,8 +228,11 @@ int main(int argc, char *argv[]) {
 
       if (decl_type.is_function()) {
         if (decl_id->token()[0] != '_') { // Ignore operators
+          auto fn_type = static_cast<Function *>(decl_type.get);
+          auto mangled_name = Mangle(fn_type, decl_ptr->identifier->token());
+
           decl_id->alloc = decl_type.get->allocate();
-          decl_id->alloc->setName(decl_ptr->identifier->token());
+          decl_id->alloc->setName(mangled_name);
         }
       } else {
         assert(decl_type == Type_ && "Global variables not currently allowed.");
