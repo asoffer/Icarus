@@ -47,11 +47,11 @@ void Primitive::call_init(llvm::Value *var) {
 // TODO Change this is array size is known at compile time
 void Array::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
-    auto save_block = builder.GetInsertBlock();
-
     init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
                                       llvm::Function::ExternalLinkage,
                                       "init." + Mangle(this), global_module);
+
+    auto ip = builder.saveIP();
 
     auto block = make_block("entry", init_fn_);
     builder.SetInsertPoint(block);
@@ -64,11 +64,11 @@ void Array::call_init(llvm::Value *var) {
         builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
         *Ptr(data_type));
 
-    builder.CreateStore(ptr, builder.CreateGEP(arg, {data::const_uint(0),
-                                                     data::const_uint(1)}));
+    builder.CreateStore(
+        ptr, builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(1)}));
 
     builder.CreateRetVoid();
-    builder.SetInsertPoint(save_block);
+    builder.restoreIP(ip);
   }
   builder.CreateCall(init_fn_, {var});
 }
@@ -111,11 +111,11 @@ void QuantumType::call_init(llvm::Value *) {
 
 void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
-    auto save_block = builder.GetInsertBlock();
-
     init_fn_ = llvm::Function::Create(*Func(Ptr(this), Void),
                                       llvm::Function::ExternalLinkage,
                                       "init." + Mangle(this), global_module);
+
+    auto ip = builder.saveIP();
 
     auto block = make_block("entry", init_fn_);
     builder.SetInsertPoint(block);
@@ -138,7 +138,7 @@ void Structure::call_init(llvm::Value *var) {
     }
 
     builder.CreateRetVoid();
-    builder.SetInsertPoint(save_block);
+    builder.restoreIP(ip);
   }
 
   builder.CreateCall(init_fn_, {var});

@@ -1,0 +1,13 @@
+main := void -> void {
+  for n in 0 .. {
+    print n
+    if n == 17 {
+      return
+    }
+  }
+
+  a := [2]
+  for x in a {
+    print '\n'
+  }
+}

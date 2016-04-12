@@ -20,6 +20,8 @@ bin/icarus programs/enum.ic
 bin/icarus programs/fn_call.ic
 bin/icarus programs/fn_expression_literal.ic
 bin/icarus programs/for_test.ic
+bin/icarus programs/for_break_continue.ic
+bin/icarus programs/for_uninit.ic
 bin/icarus programs/function_overloading.ic
 bin/icarus programs/if.ic
 bin/icarus programs/import.ic

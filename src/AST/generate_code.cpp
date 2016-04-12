@@ -859,8 +859,20 @@ llvm::Value *ArrayLiteral::generate_code() {
   auto element_type  = type_as_array->data_type;
   size_t num_elems   = elems.size();
 
-  auto array_data = type.get->allocate();
+  auto current_block = builder.GetInsertBlock();
+  assert(CurrentScope()->is_block_scope());
+  auto curr_scope = static_cast<BlockScope *>(CurrentScope());
+  auto entry_block = curr_scope->is_function_scope()
+                         ? curr_scope->entry
+                         : curr_scope->containing_function_->entry;
 
+  builder.SetInsertPoint(entry_block->begin());
+  // It's possible we never use this, in which case we must ensure that our
+  // free-ing it is safe.
+  auto array_data = type.get->allocate();
+  type.get->call_init(array_data);
+
+  builder.SetInsertPoint(current_block);
   type_as_array->initialize_literal(array_data, num_elems);
 
   auto head_ptr = builder.CreateLoad(builder.CreateGEP(
