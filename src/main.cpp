@@ -240,6 +240,14 @@ int main(int argc, char *argv[]) {
     }
   }
 
+
+  global_statements->lrvalue_check();
+  if (error_log.num_errors() != 0) {
+    std::cout << error_log;
+    return error_code::shadow_or_type_error;
+  }
+
+
   // Generate LLVM intermediate representation.
   Scope::Stack.push(Scope::Global);
   global_statements->generate_code();

@@ -1,0 +1,4 @@
+main := void -> void {
+  x := 3
+  4 = x
+}

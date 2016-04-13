@@ -8,7 +8,7 @@ TokenNode::TokenNode(size_t line_num, Language::NodeType in_node_type,
                                           : Language::Operator::NotAnOperator;
 }
 
-Expression::Expression() : type(Unknown) {}
+Expression::Expression() : lvalue(false), type(Unknown) {}
 Declaration::Declaration() : decl_type(DeclType::Std) {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}

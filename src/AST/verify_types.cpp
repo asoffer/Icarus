@@ -569,12 +569,8 @@ void FunctionLiteral::verify_types() {
     input_type = Tup(input_type_vec);
   }
 
-  // TODO what if just one argument is a type variable?
-  if (input_type.is_type_variable()) {
-    type = DepType([](TypePtr t){ Ptr(t) });
-  } else {
-    type = Func(input_type, ret_type);
-  }
+  // TODO generics?
+  type = Func(input_type, ret_type);
 
   assert(type && "FunctionLiteral type is nullptr");
 }

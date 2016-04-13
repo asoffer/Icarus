@@ -57,11 +57,12 @@ using NPtrVec = std::vector<Node *>;
   virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
+  virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual llvm::Value *generate_code() ENDING;                                 \
-  virtual Time::Eval determine_time() ENDING                                   \
+  virtual Time::Eval determine_time() ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   name();                                                                      \
@@ -69,6 +70,7 @@ using NPtrVec = std::vector<Node *>;
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void join_identifiers(bool is_arg = false) ENDING;                   \
+  virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
@@ -88,6 +90,7 @@ struct Node {
 
   virtual std::string to_string(size_t n) const;
   virtual void join_identifiers(bool is_arg = false) {}
+  virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void record_dependencies() {}
   virtual void verify_types() {}
@@ -123,8 +126,6 @@ struct Node {
         time_(Time::error) {}
 
   virtual ~Node() {}
-
-  friend struct Access;
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
     return os << node.to_string(0);
@@ -173,6 +174,7 @@ struct Expression : public Node {
   llvm::Value *llvm_value(Context::Value v);
 
   size_t precedence;
+  bool lvalue;
   TypePtr type;
 };
 
@@ -294,6 +296,7 @@ struct Assignment : public Binop {
   virtual llvm::Value *generate_lvalue();
   virtual Context::Value evaluate(Context &ctx);
   virtual std::string graphviz_label() const;
+  virtual void lrvalue_check();
 };
 
 struct Identifier : public Terminal {
