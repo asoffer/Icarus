@@ -361,7 +361,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
     // type it must represent from the available information. There is very
     // little information here, since it's a generic function, so we simply bind
     // a type variable and return it.
-    ctx.bind(Context::Value(TypeVar(identifier)), identifier);
+    ctx.bind(Context::Value(TypeVar(identifier, type_expr)), identifier);
     return ctx.get(identifier);
   }
   }

@@ -321,9 +321,35 @@ void Binop::verify_types() {
 
     // TODO Check if it takes any type variables at all.
     if (in_types.is_type_variable()) {
-      std::cout << "I need to test a function with the input " << rhs->type
-                << std::endl
-                << "Then I need to clone the function " << *lhs << std::endl;
+      auto test_func = static_cast<TypeVariable *>(in_types.get)->test;
+
+      bool success;
+      {
+        auto call_binop = new Binop();
+        call_binop->op  = Operator::Call;
+        call_binop->lhs = test_func;
+        auto dummy      = new DummyTypeExpr(rhs->line_num, rhs->type.get);
+        call_binop->rhs = dummy;
+        std::cout << rhs << std::endl;
+
+        success = call_binop->evaluate(scope_->context).as_bool;
+
+        dummy->type_value = nullptr;
+        delete dummy;
+
+        call_binop->lhs = nullptr;
+        call_binop->rhs = nullptr;
+        delete call_binop;
+      }
+
+      if (!success) {
+        error_log.log(line_num, "Test fucntion failed.");
+        type = Error;
+        return;
+      }
+
+
+      std::cout << "Then I need to clone the function " << *lhs << std::endl;
     }
 
     // TODO If rhs is a comma-list, is it's type given by a tuple?

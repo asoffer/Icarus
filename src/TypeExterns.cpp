@@ -260,12 +260,12 @@ DependentType *DepType(std::function<TypePtr(TypePtr)> fn) {
   return dep_type;
 }
 
-TypeVariable *TypeVar(AST::Identifier *id) {
+TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {
   // These won't be leaked, but they aren't uniqued.
   auto iter = TypeSystem::vars_.find(id);
   if (iter != TypeSystem::vars_.end()) return iter->second;
 
-  return TypeSystem::vars_[id] = new TypeVariable(id);
+  return TypeSystem::vars_[id] = new TypeVariable(id, test);
 }
 
 QuantumType *Quantum(const std::vector<TypePtr>& vec) {

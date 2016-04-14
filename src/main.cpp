@@ -263,7 +263,6 @@ int main(int argc, char *argv[]) {
     llvm::raw_os_ostream output_file(output_file_stream);
     global_module->print(output_file, nullptr);
   }
-  
 
   std::string input_file_name(argv[1]);
   std::string link_string = "gcc ir.o -o bin/";

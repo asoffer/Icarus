@@ -82,7 +82,7 @@ extern Structure *Struct(const std::string &name,
 extern ParametricStructure *ParamStruct(const std::string &name,
                                         AST::StructLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
-extern TypeVariable *TypeVar(AST::Identifier *id);
+extern TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test = nullptr);
 extern QuantumType *Quantum(const std::vector<TypePtr>& vec);
 extern RangeType *Range(TypePtr t);
 
@@ -341,9 +341,13 @@ struct TypeVariable : public Type {
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  TypeVariable(AST::Identifier *id) : identifier(id) { has_vars = true; }
+  TypeVariable(AST::Identifier *id, AST::Expression *test)
+      : identifier(id), test(test) {
+    has_vars = true;
+  }
 
   AST::Identifier *identifier;
+  AST::Expression *test;
 };
 
 struct QuantumType : public Type {
