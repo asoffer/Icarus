@@ -7,6 +7,14 @@ show := (val: Any`T) -> void {
   print val
 }
 
+show := (val: None`T) -> void {
+  print val
+}
+
 Any := (T: type) -> bool {
   return true
+}
+
+None := (T: type) -> bool {
+  return false 
 }

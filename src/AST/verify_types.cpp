@@ -6,6 +6,68 @@
 
 extern ErrorLog error_log;
 
+TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
+                            AST::Expression *rhs) {
+  // TODO log information about failures to match?
+  //
+  // lhs_type cannot be quantum because we first break apart quantum types at
+  // the calling site of this function.
+  assert(!lhs_type.is_quantum());
+
+  if (lhs_type.is_function()) {
+    auto in_types = static_cast<Function *>(lhs_type.get)->input;
+
+    // TODO Check if it takes any type variables at all.
+    if (in_types.get->has_vars) {
+      auto test_func = static_cast<TypeVariable *>(in_types.get)->test;
+
+      bool success;
+      {
+        auto call_binop = new AST::Binop();
+        call_binop->op  = Language::Operator::Call;
+        call_binop->lhs = test_func;
+        auto dummy      = new AST::DummyTypeExpr(rhs->line_num, rhs->type.get);
+        call_binop->rhs = dummy;
+
+        success = call_binop->evaluate(lhs->scope_->context).as_bool;
+
+        dummy->type_value = nullptr;
+        delete dummy;
+
+        call_binop->lhs = nullptr;
+        call_binop->rhs = nullptr;
+        delete call_binop;
+      }
+
+      return success ? static_cast<Function *>(lhs_type.get)->output : nullptr;
+
+    } else {
+      if (in_types != rhs->type) { return nullptr; }
+
+      // TODO multiple return values. For now just taking the first
+      return static_cast<Function *>(lhs_type.get)->output;
+    }
+
+  } else if (lhs_type == Type_) {
+    // Assume you are not a dufus, and if you're passing a struct to be
+    // "called" that it's a parametric struct. (So we use .as_expr).
+    //
+    // auto lhs_as_expr = lhs->evaluate(scope_->context).as_expr;
+
+    // If it isn't parametric, terribleness will ensue.
+    return Type_;
+
+  } else if (lhs_type.is_dependent_type()) {
+    // TODO treat dependent types as functions
+    auto dep_type = static_cast<DependentType *>(lhs->type.get);
+    return (*dep_type)(rhs->evaluate(lhs->scope_->context).as_type);
+
+  } else {
+    return nullptr;
+  }
+}
+
+
 namespace AST {
 TypePtr operator_lookup(size_t line_num, Language::Operator op, TypePtr lhs_type,
                       TypePtr rhs_type) {
@@ -274,16 +336,46 @@ void Binop::verify_types() {
     return;
   }
   case Operator::Call: {
-    type = Error;
+    if (lhs->type.is_quantum()) {
+      // If the LHS has a quantum type, test all possibilities to see which one
+      // works. Verify that exactly one works.
+      size_t num_matches = 0;
+      TypePtr resulting_type;
+      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
+        auto t = CallResolutionMatch(opt, lhs, rhs);
+        if (t) {
+          ++num_matches;
+          resulting_type = t;
+        }
+      }
 
-    if (lhs->type.is_dependent_type()) {
-      // TODO treat dependent types as functions
-      auto dep_type    = static_cast<DependentType *>(lhs->type.get);
-      auto result_type = (*dep_type)(rhs->evaluate(scope_->context).as_type);
-      type             = result_type;
+      if (num_matches != 1) {
+        type = Error;
+        error_log.log(line_num,
+                      num_matches == 0
+                          ? "No function overload matches call."
+                          : "Multiple function overloads match call.");
+        return;
+      }
+
+      // There is a unique function function overload matching the call.
+      // TODO the return type might depend on the matched input type.
+      type = resulting_type;
+      return;
+
+    } else {
+      type = CallResolutionMatch(lhs->type, lhs, rhs);
+      if (type.get == nullptr) {
+        error_log.log(line_num, "Function has type " +
+                                    lhs->type.get->to_string() +
+                                    " but parameter has type " +
+                                    rhs->type.get->to_string());
+        type = Error;
+      }
       return;
     }
 
+/*
     if (lhs->type == Type_) {
       // TODO (remove this assumption)
       //
@@ -349,7 +441,7 @@ void Binop::verify_types() {
       }
 
 
-      std::cout << "Then I need to clone the function " << *lhs << std::endl;
+      std::cout << "TODO: I need to clone the function " << *lhs << std::endl;
     }
 
     // TODO If rhs is a comma-list, is it's type given by a tuple?
@@ -363,6 +455,7 @@ void Binop::verify_types() {
     assert(type && "return type is null");
 
     return;
+    */
   }
   case Operator::Index: {
     type = Error;
