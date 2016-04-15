@@ -20,10 +20,7 @@ __print__ := (l: list(int)) -> void {
       i += 1u
       print iter.data
       if i != l.size {
-        print ' '
-        print '-'
-        print '>'
-        print ' '
+        print " -> "
       }
       iter = iter.next
     }
@@ -31,7 +28,7 @@ __print__ := (l: list(int)) -> void {
   print ']'
 }
 
-show_lc := (l: list(char)) -> void {
+show := (l: list(char)) -> void {
   iter := l.head
   if l.size == 0u {
     return
@@ -42,10 +39,7 @@ show_lc := (l: list(char)) -> void {
       i += 1u
       print iter.data
       if i != l.size {
-        print ' '
-        print '-'
-        print '>'
-        print ' '
+        print " -> "
       }
       iter = iter.next
     }
@@ -53,7 +47,7 @@ show_lc := (l: list(char)) -> void {
   print ']'
 }
 
-show_llc := (l: list(list(char))) -> void {
+show := (l: list(list(char))) -> void {
   iter := l.head
   if l.size == 0u {
     return
@@ -62,12 +56,9 @@ show_llc := (l: list(list(char))) -> void {
     i := 0u
     while i < l.size {
       i += 1u
-      show_lc(iter.data)
+      show(iter.data)
       if i != l.size {
-        print ' '
-        print '-'
-        print '>'
-        print ' '
+        print " -> "
       }
       iter = iter.next
     }
@@ -92,28 +83,28 @@ main := void -> void {
   print '\n'
 
   l1: list(char)
-  addc(&l1, 'o')
-  addc(&l1, 'l')
-  addc(&l1, 'l')
-  addc(&l1, 'e')
-  addc(&l1, 'h')
-  show_lc(l1)
+  add(&l1, 'o')
+  add(&l1, 'l')
+  add(&l1, 'l')
+  add(&l1, 'e')
+  add(&l1, 'h')
+  show(l1)
   print '\n'
 
   l2: list(char)
-  addc(&l2, 'd')
-  addc(&l2, 'l')
-  addc(&l2, 'r')
-  addc(&l2, 'o')
-  addc(&l2, 'w')
-  show_lc(l2)
+  add(&l2, 'd')
+  add(&l2, 'l')
+  add(&l2, 'r')
+  add(&l2, 'o')
+  add(&l2, 'w')
+  show(l2)
   print '\n'
 
   LLC := list(list(char))
   ll: LLC
-  addlc(&ll, l2)
-  addlc(&ll, l1)
-  show_llc(ll)
+  add(&ll, l2)
+  add(&ll, l1)
+  show(ll)
   print '\n'
 }
 
@@ -124,14 +115,14 @@ add := (l: &list(int), n: int) -> void {
   l.head = nptr
   l.size += 1u
 }
-addc := (l: &list(char), c: char) -> void {
+add := (l: &list(char), c: char) -> void {
   nptr := alloc(node(char))
   nptr.data = c
   nptr.next = l.head
   l.head = nptr
   l.size += 1u
 }
-addlc := (l: &list(list(char)), c: list(char)) -> void {
+add := (l: &list(list(char)), c: list(char)) -> void {
   nptr := alloc(node(list(char)))
   nptr.data = c
   nptr.next = l.head
