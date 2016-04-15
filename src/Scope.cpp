@@ -118,7 +118,7 @@ void Scope::verify_no_shadowing() {
         continue;
       }
 
-      // TODO isblockscope is a standin for not being a struct/enum scope
+      // TODO is_block_scope is a standin for not being a struct/enum scope
       while (scope_ptr != nullptr && scope_ptr->is_block_scope()) {
         if (scope_ptr == decl_ptr2->scope_) {
           error_log.log(decl_ptr1->line_num,

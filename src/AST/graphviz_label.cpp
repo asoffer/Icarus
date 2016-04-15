@@ -103,6 +103,7 @@ std::string Binop::graphviz_label() const {
   case Language::Operator::Div: return "/";
   case Language::Operator::Mod: return "%";
   case Language::Operator::Rocket: return "=>";
+  case Language::Operator::Dots: return "..";
   default: assert(false && "Not an assignment operator");
   }
 }
