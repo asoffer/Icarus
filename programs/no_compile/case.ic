@@ -1,3 +1,4 @@
+main := void -> void {
 temp : real
 temp = 40.0
 
@@ -7,4 +8,5 @@ val = case {
   temp = 32.0   =>  34
   temp < 212.0  =>  51
   else          =>  68
+}
 }

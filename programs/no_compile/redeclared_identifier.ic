@@ -1,8 +1,10 @@
 // This won't compile because `a` is declared twice. It doesn't matter if `a` is
 // redeclared with the same or different type
 // type of `a` is.
+main := void -> void {
 
 a : int = 3
 a = 4
 
 a : int
+}

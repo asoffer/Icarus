@@ -1,3 +1,5 @@
+
+main := void -> void {
 'a'
 'b'
 '\r'
@@ -8,3 +10,4 @@
 '\t'
 'foo'
 'bar
+}

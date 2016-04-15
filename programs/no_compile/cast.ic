@@ -1,3 +1,4 @@
+main := void -> void {
 3 :> bool
 'x' :> int
 3.0 :> int
@@ -7,3 +8,4 @@
 3.1 :> int :> bool
 bool :> int
 17 :> bool :> real :> int :> int :> bool
+}

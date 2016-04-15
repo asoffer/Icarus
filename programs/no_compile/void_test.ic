@@ -1,6 +1,8 @@
+main := void -> void {
+
 x := just_seventeen()
 y := (((do_nothing))())
-
+}
 do_nothing := void -> void {
   return
 }

@@ -1,3 +1,5 @@
+main := void -> void {
+
 x = 3  // declared later.
 
 f : int -> int
@@ -9,3 +11,4 @@ f = (x : int) -> int {
 }
 
 x : int
+}
