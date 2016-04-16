@@ -57,7 +57,7 @@ CSTDLIB(malloc, false, Uint, TypePtr(Ptr(Char)));
 CSTDLIB(putchar, false, Char, Int);
 CSTDLIB(puts, false, TypePtr(Ptr(Char)), Int);
 CSTDLIB(printf, true, TypePtr(Ptr(Char)), Int);
-
+CSTDLIB(scanf, true, TypePtr(Ptr(Char)), Int);
 // TODO Even though it's the same, shouldn't it be RawPtr for return type rather
 // than Ptr(Char)?
 
@@ -132,26 +132,51 @@ namespace data {
 }  // namespace data
 
 namespace builtin {
-  llvm::Function* ascii() {
-    static llvm::Function* ascii_ = nullptr;
-    if (ascii_ != nullptr) return ascii_;
+llvm::Value *input(TypePtr t) {
+  //TODO alloca shouldn't be done here!
+  auto input_field = builder.CreateAlloca(t, nullptr, "tmp");
 
-    ascii_ = llvm::Function::Create(*Func(Uint, Char),
-        llvm::Function::ExternalLinkage, "ascii", global_module);
+  if (t == Int) {
+    builder.CreateCall(cstdlib::scanf(),
+                       {data::global_string("%d"), input_field});
+  } else if (t == Uint) {
+    builder.CreateCall(cstdlib::scanf(),
+                       {data::global_string("%u"), input_field});
+  } else if (t == Char) {
+    builder.CreateCall(cstdlib::scanf(),
+                       {data::global_string("%c"), input_field});
+  } else if (t == Real) {
+    builder.CreateCall(cstdlib::scanf(),
+                       {data::global_string("%lf"), input_field});
 
-    llvm::Value* val = ascii_->args().begin();
-    llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-
-    auto entry_block = make_block("entry", ascii_);
-
-    bldr.SetInsertPoint(entry_block);
-    // TODO check bounds if build option specified
-
-    bldr.CreateRet(bldr.CreateTrunc(val, Char));
-
-    return ascii_;
+  } else {
+    assert(false);
   }
-}  // namespace builtin
+
+  return builder.CreateLoad(input_field);
+}
+
+llvm::Function *ascii() {
+  static llvm::Function *ascii_ = nullptr;
+  if (ascii_ != nullptr) { return ascii_; }
+
+  ascii_ =
+      llvm::Function::Create(*Func(Uint, Char), llvm::Function::ExternalLinkage,
+                             "ascii", global_module);
+
+  llvm::Value *val = ascii_->args().begin();
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+
+  auto entry_block = make_block("entry", ascii_);
+
+  bldr.SetInsertPoint(entry_block);
+  // TODO check bounds if build option specified
+
+  bldr.CreateRet(bldr.CreateTrunc(val, Char));
+
+  return ascii_;
+}
+} // namespace builtin
 
 // TODO make calls to call_repr not have to first check if we pass the
 // object or a pointer to the object.

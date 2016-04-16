@@ -116,6 +116,7 @@ void Terminal::verify_types() {
   case Terminal::Type: type          = Type_; break;
   case Terminal::UInt: type          = Uint; break;
   case Terminal::StringLiteral: type = String; break;
+  case Terminal::Input: /* Already set */ break;
   case Terminal::Alloc: /* Already set */ break;
   case Terminal::Null: /* Already set */ break;
   }

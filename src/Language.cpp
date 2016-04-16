@@ -69,6 +69,7 @@ namespace Language {
     Rule(expression, { {real_literal} },    AST::Terminal::build_real_literal),
     Rule(expression, { {string_literal} },  AST::Terminal::build_string_literal),
     Rule(expression, { {char_literal} },    AST::Terminal::build_char_literal),
+    Rule(expression, { {reserved_input} },  AST::Terminal::build_input),
     Rule(expression, { {reserved_ascii} },  AST::Terminal::build_ASCII),
     Rule(expression, { {reserved_alloc} },  AST::Terminal::build_alloc),
     Rule(expression, { {fn_literal, fn_expression} }, drop_all_but<0>),

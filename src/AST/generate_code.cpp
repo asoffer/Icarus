@@ -22,6 +22,7 @@ extern llvm::Constant *malloc();
 
 namespace builtin {
 extern llvm::Function *ascii();
+extern llvm::Value *input(TypePtr);
 } // namespace builtin
 
 namespace data {
@@ -84,6 +85,10 @@ llvm::Value *Terminal::generate_code() {
   case Language::Terminal::Null: {
     assert(type.is_pointer() && "Null pointer of non-pointer type ");
     return data::null(type);
+  }
+  case Language::Terminal::Input: {
+    // TODO this probably this should just never be called. for dependent types
+    return nullptr;
   }
   case Language::Terminal::ASCII: {
     return builtin::ascii();
@@ -290,7 +295,6 @@ llvm::Value *Binop::generate_code() {
   } else {
     lhs_val = lhs->generate_code();
   }
-  assert(lhs_val);
 
   switch (op) {
   case Language::Operator::Index: {
@@ -352,11 +356,17 @@ llvm::Value *Binop::generate_code() {
       }
 
     } else if (lhs->type.is_dependent_type()) {
-      // TODO make this generic. right now dependent_type implies alloc(...)
       auto t = rhs->evaluate(CurrentContext()).as_type;
-      auto alloc_ptr =
-          builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
-      return builder.CreateBitCast(alloc_ptr, type);
+
+      // TODO this is not generically correct. Currently either lhs_val
+      // evaluates to cstdlib::malloc(), or it is a nullptr (meaning it's input)
+      if (lhs_val) {
+        auto alloc_ptr =
+            builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
+        return builder.CreateBitCast(alloc_ptr, type);
+      } else {
+        return builtin::input(t);
+      }
     }
   }
   default:;

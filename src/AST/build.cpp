@@ -302,6 +302,7 @@ TERMINAL_BUILD(real_literal, Real, Real);
 TERMINAL_BUILD(char_literal, Char, Char);
 TERMINAL_BUILD(void_return, Return, Void);
 TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
+TERMINAL_BUILD(input, Input, DepType([](TypePtr t) { return t; }));
 TERMINAL_BUILD(alloc, Alloc, DepType([](TypePtr t) { return Ptr(t); }));
 #undef TERMINAL_BUILD
 
