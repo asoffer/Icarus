@@ -1,0 +1,15 @@
+main := void -> void {
+  print "Integer to square: "
+  x := input(int)
+  print x
+  print " squared is "
+  print x * x
+  print "\n"
+
+  print "Real number to square: "
+  y := input(real)
+  print y
+  print " squared is "
+  print y * y
+  print "\n"
+}

@@ -27,6 +27,7 @@ bin/icarus programs/if.ic
 bin/icarus programs/import.ic
 bin/icarus programs/import_cycle.ic
 bin/icarus programs/infer_type.ic
+bin/icarus programs/input.ic
 bin/icarus programs/int_ops.ic
 bin/icarus programs/init_struct.ic
 bin/icarus programs/is_digit.ic
