@@ -55,14 +55,8 @@ void Binop::record_dependencies() {
   Dependency::type_type(this, lhs);
   lhs->record_dependencies();
 
-  if (op != Language::Operator::Access) {
-    Dependency::type_type(this, rhs);
-    rhs->record_dependencies();
-  }
-
-//  if (op == Language::Operator::Call) {
-//    Dependency::type_value(this, lhs);
-//  }
+  Dependency::type_type(this, rhs);
+  rhs->record_dependencies();
 
   Dependency::value_value(this, lhs);
   Dependency::value_value(this, rhs);

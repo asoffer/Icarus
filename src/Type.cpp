@@ -20,7 +20,21 @@ extern llvm::Constant *str(const std::string &s);
 } // namespace data
 
 size_t Type::bytes() const {
+  if (!llvm_type) {
+    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
+              << __LINE__ << ")" << std::endl;
+  } 
+
   return (llvm_type == nullptr) ? 0 : data_layout->getTypeStoreSize(llvm_type);
+}
+
+size_t Type::alignment() const {
+  if (!llvm_type) {
+    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
+              << __LINE__ << ")" << std::endl;
+  }
+
+  return (llvm_type == nullptr) ? 0 : data_layout->getABITypeAlignment(llvm_type);
 }
 
 TypePtr::TypePtr(Type *t) : get(t) {}

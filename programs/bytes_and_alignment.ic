@@ -1,0 +1,99 @@
+main := void -> void {
+  print int 
+  print ":\n  "
+  print int.bytes
+  print "  "
+  print int.alignment
+  print "\n\n"
+
+  print char
+  print ":\n  "
+  print char.bytes
+  print "  "
+  print char.alignment
+  print "\n\n"
+
+  print real
+  print ":\n  "
+  print real.bytes
+  print "  "
+  print real.alignment
+  print "\n\n"
+
+  print pair(real)
+  print ":\n  "
+  print pair(real).bytes
+  print "  "
+  print pair(real).alignment
+  print "\n\n"
+
+  print foo
+  print ":\n  "
+  print foo.bytes
+  print "  "
+  print foo.alignment
+  print "\n\n"
+
+  print string
+  print ":\n  "
+  print string.bytes
+  print "  "
+  print string.alignment
+  print "\n\n"
+
+  print color
+  print ":\n  "
+  print color.bytes
+  print "  "
+  print color.alignment
+  print "\n\n"
+
+  print &foo
+  print ":\n  "
+  print (&foo).bytes
+  print "  "
+  print (&foo).alignment
+  print "\n\n"
+
+  print [10; char]
+  print ":\n  "
+  print [10; char].bytes
+  print "  "
+  print [10; char].alignment
+  print "\n\n"
+
+  print [-; char]
+  print ":\n  "
+  print [-; char].bytes
+  print "  "
+  print [-; char].alignment
+  print "\n\n"
+
+  print type 
+  print ":\n  "
+  print type.bytes
+  print "  "
+  print type.alignment
+  print "\n\n"
+}
+
+pair := struct(T: type) {
+  key: T
+  val: T
+}
+
+foo := struct {
+  a: int
+  b: char
+  c: uint
+}
+
+color := enum {
+  red
+  orange
+  yellow
+  green
+  blue
+  indigo
+  violet
+}

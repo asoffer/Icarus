@@ -124,6 +124,7 @@ public:
   virtual operator llvm::Type *() const;
 
   size_t bytes() const;
+  size_t alignment() const;
 
   // Note: this one is special. It functions identically to the rest, but
   // it's special in that it will return nullptr if you haven't imported the

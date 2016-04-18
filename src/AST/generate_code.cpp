@@ -227,13 +227,23 @@ llvm::Value *Unop::generate_code() {
 
 llvm::Value *Access::generate_code() {
   if (operand->type == Type_) {
-    // As of 2/26/16, the only way an operand could be a type is if it's an
-    // enum, as in `Color.Red`. Here Color is an enum with the access
-    // parameter Red.
+    // As of 4/18/16, the only ways an operand can be a type are:
+    // 1. TYPE.bytes (returning the number of bytes taken up by the type)
+    // 2. TYPE.alignment (returning the alignment of the type)
+    // 3. An enum, as in `Color.Red`. Here Color is an enum with the access
+    //    parameter Red.
     //
     // NOTE: this will likely change if we implement UFCS. In that case, this
     // whole method will probably be out of date.
+
     auto expr_as_type = operand->evaluate(CurrentContext()).as_type;
+
+    if (member_name == "bytes") {
+      return data::const_uint(expr_as_type->bytes());
+    } else if (member_name == "alignment") {
+      return data::const_uint(expr_as_type->alignment());
+    }
+
     assert(expr_as_type->is_enum() && "Expression should be an enum");
     return static_cast<Enumeration *>(expr_as_type)->get_value(member_name);
   }

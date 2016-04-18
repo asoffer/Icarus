@@ -7,6 +7,7 @@ bin/icarus programs/array_lit.ic
 bin/icarus programs/bool_assign.ic
 bin/icarus programs/bool_test.ic
 bin/icarus programs/bool_test_with_colon_eq.ic
+bin/icarus programs/bytes_and_alignment.ic
 bin/icarus programs/case.ic
 bin/icarus programs/case_with_type_inference.ic
 bin/icarus programs/cast.ic

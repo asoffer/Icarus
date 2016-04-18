@@ -265,16 +265,23 @@ void Unop::verify_types() {
 }
 
 void Access::verify_types() {
-  if (operand->type == Error) {
+  auto etype = operand->type;
+
+  if (etype == Error) {
     // An error was already found in the types, so just pass silently
     type = Error;
     return;
   }
 
-  auto etype = operand->type;
 
   if (etype == Type_) {
     Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
+
+    if (member_name == "bytes" || member_name == "alignment") {
+      type = Uint;
+      return;
+    }
+
     auto etypename = operand->evaluate(scope_->context).as_type;
     if (etypename->is_enum()) {
       auto enum_type = static_cast<Enumeration *>(etypename);
