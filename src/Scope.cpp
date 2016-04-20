@@ -30,7 +30,8 @@ Scope *CurrentScope() {
 
 AST::Declaration *Scope::make_declaration(size_t line_num,
                                           AST::DeclType decl_type,
-                                          const std::string &id_string, AST::Expression *type_expr) {
+                                          const std::string &id_string,
+                                          AST::Expression *type_expr) {
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
   decl->identifier = new AST::Identifier(line_num, id_string);
@@ -41,7 +42,10 @@ AST::Declaration *Scope::make_declaration(size_t line_num,
   return decl;
 }
 
-Scope::Scope() : parent(Scope::Global), containing_function_(nullptr) {}
+static size_t scope_num_counter = 0;
+Scope::Scope()
+    : parent(Scope::Global), containing_function_(nullptr),
+      name("anon" + std::to_string(scope_num_counter++)) {}
 
 AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
   assert(id_as_eptr->is_identifier());

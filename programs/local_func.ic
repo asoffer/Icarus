@@ -1,0 +1,19 @@
+main := void -> void {
+  f := (n: int) -> int {
+    return n * n
+  }
+
+  print f(17)
+  print '\n'
+
+  g()
+}
+
+g := void -> void {
+  print f(17)
+  print '\n'
+
+  f := (n: int) -> int{
+    return n * n * n
+  }
+}

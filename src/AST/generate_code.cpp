@@ -64,7 +64,7 @@ llvm::Value *Identifier::generate_code() {
     // TODO better way to get functions based on their name
     auto fn_type                     = static_cast<Function *>(type.get);
     llvm::FunctionType *llvm_fn_type = *fn_type;
-    auto mangled_name                = Mangle(fn_type, token());
+    auto mangled_name                = Mangle(fn_type, this);
 
     return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
@@ -285,7 +285,7 @@ llvm::Value *Binop::generate_code() {
 
     llvm::FunctionType *llvm_fn_type = *fn_type;
 
-    auto mangled_name = Mangle(static_cast<Function *>(fn_type), lhs->token());
+    auto mangled_name = Mangle(static_cast<Function *>(fn_type), lhs);
     lhs_val           = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
   } else {
@@ -633,6 +633,8 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
   // Treat functions special
   if (lhs->is_identifier() && rhs->type.is_function()) {
+    static_cast<FunctionLiteral *>(rhs)->fn_scope->name = lhs->token();
+
     if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
       val = rhs->generate_code();
       assert(val && "RHS of assignment generated null code");
@@ -646,7 +648,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     } else {
       auto fn_type                     = static_cast<Function *>(rhs->type.get);
       llvm::FunctionType *llvm_fn_type = *fn_type;
-      auto mangled_name                = Mangle(fn_type, lhs->token());
+      auto mangled_name                = Mangle(fn_type, lhs);
 
       if (rhs->is_function_literal()) {
         auto fn = static_cast<FunctionLiteral *>(rhs);

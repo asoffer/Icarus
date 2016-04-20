@@ -63,6 +63,7 @@ struct Scope {
   Scope *parent;
   FnScope *containing_function_;
   Context context;
+  std::string name;
 };
 
 struct BlockScope : public Scope {
