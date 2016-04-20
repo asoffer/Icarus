@@ -36,10 +36,10 @@ namespace Language {
     // TODO use RESERVED_MACRO to generate these.
     // Figure out the right way to do that given that they may need different masks
     // Reserved words
-    // TODO why is ascii, input not an expression?
+    // TODO why are ascii, input, ord not an expression?
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_for, 
     reserved_enum, reserved_while, reserved_continue,
-    reserved_ascii, reserved_import, reserved_string, reserved_alloc,
+    reserved_ascii, reserved_ord, reserved_import, reserved_string, reserved_alloc,
     reserved_struct, reserved_repeat, reserved_restart, reserved_input,
 
     STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_JUMP, STMT_ASSIGN,
@@ -111,6 +111,7 @@ enum class Operator {
 };
 
 enum class Terminal {
+  Ord,
   ASCII,
   Alloc,
   Input,

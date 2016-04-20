@@ -289,9 +289,9 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
 }
 
 #define TERMINAL_BUILD(name, enum_elem, ty)                                    \
-  Node *Terminal::build_##name(NPtrVec &&nodes) {                             \
+  Node *Terminal::build_##name(NPtrVec &&nodes) {                              \
     return build(Language::Terminal::enum_elem,                                \
-                 std::forward<NPtrVec &&>(nodes), ty);                        \
+                 std::forward<NPtrVec &&>(nodes), ty);                         \
   }
 TERMINAL_BUILD(true, True, Bool);
 TERMINAL_BUILD(false, False, Bool);
@@ -302,6 +302,7 @@ TERMINAL_BUILD(real_literal, Real, Real);
 TERMINAL_BUILD(char_literal, Char, Char);
 TERMINAL_BUILD(void_return, Return, Void);
 TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
+TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
 TERMINAL_BUILD(input, Input, DepType([](TypePtr t) { return t; }));
 TERMINAL_BUILD(alloc, Alloc, DepType([](TypePtr t) { return Ptr(t); }));
 #undef TERMINAL_BUILD

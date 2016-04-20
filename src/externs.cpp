@@ -156,6 +156,26 @@ llvm::Value *input(TypePtr t) {
   return builder.CreateLoad(input_field);
 }
 
+llvm::Function *ord() {
+  static llvm::Function *ord_ = nullptr;
+  if (ord_ != nullptr) { return ord_; }
+
+  ord_ = llvm::Function::Create(
+      *Func(Char, Uint), llvm::Function::ExternalLinkage, "ord", global_module);
+
+  llvm::Value *val = ord_->args().begin();
+  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
+
+  auto entry_block = make_block("entry", ord_);
+
+  bldr.SetInsertPoint(entry_block);
+  // TODO check bounds if build option specified
+
+  bldr.CreateRet(bldr.CreateZExt(val, Uint));
+
+  return ord_;
+}
+
 llvm::Function *ascii() {
   static llvm::Function *ascii_ = nullptr;
   if (ascii_ != nullptr) { return ascii_; }

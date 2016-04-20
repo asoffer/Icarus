@@ -259,6 +259,7 @@ struct Terminal : public Expression {
   static Node *build_real_literal(NPtrVec &&nodes);
   static Node *build_char_literal(NPtrVec &&nodes);
   static Node *build_void_return(NPtrVec &&nodes);
+  static Node *build_ord(NPtrVec &&nodes);
   static Node *build_ASCII(NPtrVec &&nodes);
   static Node *build_input(NPtrVec &&nodes);
   static Node *build_alloc(NPtrVec &&nodes);

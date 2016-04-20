@@ -22,6 +22,7 @@ extern llvm::Constant *malloc();
 
 namespace builtin {
 extern llvm::Function *ascii();
+extern llvm::Function *ord();
 extern llvm::Value *input(TypePtr);
 } // namespace builtin
 
@@ -90,36 +91,21 @@ llvm::Value *Terminal::generate_code() {
     // TODO this probably this should just never be called. for dependent types
     return nullptr;
   }
-  case Language::Terminal::ASCII: {
-    return builtin::ascii();
-  }
-  case Language::Terminal::True: {
-    return data::const_true();
-  }
-  case Language::Terminal::False: {
-    return data::const_false();
-  }
+  case Language::Terminal::Ord:   return builtin::ord();
+  case Language::Terminal::ASCII: return builtin::ascii();
+  case Language::Terminal::True:  return data::const_true();
+  case Language::Terminal::False: return data::const_false();
+  case Language::Terminal::Char:  return data::const_char(token()[0]);
+  case Language::Terminal::Int:   return data::const_int(std::stoi(token()));
+  case Language::Terminal::Real:  return data::const_real(std::stod(token()));
+  case Language::Terminal::UInt:  return data::const_uint(std::stoul(token()));
+  case Language::Terminal::Alloc: return cstdlib::malloc();
   case Language::Terminal::Else:
     return data::const_true();
   // Else is a terminal only in case statements. In this situation, it's
   // corresponding resulting value is always to be the one chosen, so we
   // should have 'else' represent the value true.
-  case Language::Terminal::Char: {
-    return data::const_char(token()[0]);
-  }
-  case Language::Terminal::Int: {
-    return data::const_int(std::stoi(token()));
-  }
-  case Language::Terminal::Real: {
-    return data::const_real(std::stod(token()));
-  }
-  case Language::Terminal::UInt: {
-    return data::const_uint(std::stoul(token()));
-  }
-  case Language::Terminal::Alloc: {
-    return cstdlib::malloc();
-  }
-  case Language::Terminal::StringLiteral: {
+    case Language::Terminal::StringLiteral: {
     auto str = data::global_string(token());
     auto len = data::const_uint(token().size());
 

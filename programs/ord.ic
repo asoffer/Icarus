@@ -1,0 +1,8 @@
+main := void -> void {
+  for c in 'a' .. 'z' {
+    print ord(c)
+    print " => "
+    print c
+    print "\n"
+  }
+}
