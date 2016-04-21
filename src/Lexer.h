@@ -37,6 +37,7 @@ class Lexer {
     AST::TokenNode next_string_literal();
     AST::TokenNode next_char_literal();
     AST::TokenNode next_given_slash();
+    AST::TokenNode next_hashtag();
 };
 
 #endif  // ICARUS_LEXER_H

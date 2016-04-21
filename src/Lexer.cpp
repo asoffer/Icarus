@@ -181,6 +181,9 @@ AST::TokenNode Lexer::next_operator() {
     file_.get();
     return next_string_literal();
   }
+  case '#': {
+    return next_hashtag();
+  }
   case '\'': {
     file_.get();
     return next_char_literal();
@@ -419,7 +422,7 @@ AST::TokenNode Lexer::next_char_literal() {
 
 AST::TokenNode Lexer::next_given_slash() {
   int peek = file_.peek();
-  assert(peek == '/' && "Non-slash character encountered as first character in next_operator.");
+  assert(peek == '/' && "Non-slash character encountered as first character in next_given_slash.");
 
   file_.get();
   peek = file_.peek();
@@ -473,4 +476,15 @@ AST::TokenNode Lexer::next_given_slash() {
   }
 
   return AST::TokenNode(line_num_, Language::generic_operator, "/");
+}
+
+
+AST::TokenNode Lexer::next_hashtag() {
+  int peek = file_.peek();
+  assert(peek == '#' && "Non-hash character encountered as first character in next_hashtag.");
+  file_.get();
+
+  std::string tag = next_word().token();
+
+  return AST::TokenNode(line_num_, Language::hashtag, tag);
 }

@@ -91,6 +91,8 @@ namespace Language {
     /* End literals */
 
     /* Begin declaration */
+    Rule(STMT_DECL_STD, {{STMT_DECL_STD}, {hashtag}}, AST::Declaration::AddHashtag),
+
     Rule(STMT_DECL_STD, { {identifier}, {DECL_OPERATOR_STD}, {STMT_DECL_GENERATE, expression, fn_expression} },
         AST::Declaration::BuildStd),
     Rule(STMT_DECL_INFER, { {identifier}, {DECL_OPERATOR_INFER}, {expression, fn_expression} },

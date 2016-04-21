@@ -277,10 +277,16 @@ struct Declaration : public Expression {
   static Node *BuildInfer(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
 
+  static Node *AddHashtag(NPtrVec &&nodes);
+
   // TODO is 'op' necessary? anymore?
   Language::Operator op;
   Identifier *identifier;
   Expression *type_expr;
+
+  std::vector<std::string> hashtags;
+  // TODO have a global table of hashtags and store a vector of indexes into
+  // that global lookup.
 
   DeclType decl_type;
 };

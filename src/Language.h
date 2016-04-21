@@ -40,7 +40,7 @@ namespace Language {
     reserved_break, reserved_if, reserved_else, reserved_case, reserved_for, 
     reserved_enum, reserved_while, reserved_continue,
     reserved_ascii, reserved_ord, reserved_import, reserved_string, reserved_alloc,
-    reserved_struct, reserved_repeat, reserved_restart, reserved_input,
+    reserved_struct, reserved_repeat, reserved_restart, reserved_input, hashtag,
 
     STMT_FOR, STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_JUMP, STMT_ASSIGN,
 

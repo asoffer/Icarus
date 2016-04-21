@@ -327,6 +327,13 @@ Node *Expression::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
+Node *Declaration::AddHashtag(NPtrVec &&nodes) {
+  auto decl   = steal<Declaration>(nodes[0]);
+  decl->hashtags.push_back(nodes[1]->token());
+
+  return decl;
+}
+
 Node *Declaration::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it

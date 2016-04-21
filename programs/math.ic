@@ -1,0 +1,19 @@
+// trig functions
+sin:  real -> real #cstdlib
+cos:  real -> real #cstdlib
+tan:  real -> real #cstdlib
+asin: real -> real #cstdlib
+acos: real -> real #cstdlib
+atan: real -> real #cstdlib
+
+// hyperbolic trig functions
+sinh:  real -> real #cstdlib
+cosh:  real -> real #cstdlib
+tanh:  real -> real #cstdlib
+asinh: real -> real #cstdlib
+acosh: real -> real #cstdlib
+atanh: real -> real #cstdlib
+
+// logs/exp
+log: real -> real #cstdlib
+exp: real -> real #cstdlib

@@ -48,6 +48,18 @@ std::string Mangle(const Type *t, bool prefix) {
 
 std::string Mangle(const Function *f, AST::Expression *expr) {
   auto name = expr->token();
+  if (expr->is_identifier()) {
+    auto id = static_cast<AST::Identifier*>(expr);
+
+    if (id->decls.size() == 1) {
+      for (const auto &tag : id->decls[0]->hashtags) {
+        if (tag == "cstdlib") {
+          return name;
+        }
+      }
+    }
+  }
+
   if ((name == "main" && f == Func(Void, Void)) || f->time() == Time::compile) { return name; }
 
 

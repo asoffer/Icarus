@@ -633,6 +633,8 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
   // Treat functions special
   if (lhs->is_identifier() && rhs->type.is_function()) {
+    // TODO rhs may not be a function literal. For instance, it could be the
+    // result of composition.
     static_cast<FunctionLiteral *>(rhs)->fn_scope->name = lhs->token();
 
     if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
