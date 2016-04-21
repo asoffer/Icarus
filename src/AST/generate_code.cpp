@@ -271,22 +271,54 @@ llvm::Value *Binop::generate_code() {
 
   llvm::Value *lhs_val = nullptr;
 
+  // TODO this is a lot of work you already did in verify_types.
+  auto decl_scope_of_lhs = scope_;
   if (lhs->type.is_quantum()) {
     Function *fn_type = nullptr;
-    for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
-      fn_type = static_cast<Function *>(opt.get);
-      if (fn_type->input == rhs->type) break;
+
+    if (lhs->is_identifier()) {
+      auto id_token = lhs->token();
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto iter = scope_ptr->ids_.find(id_token);
+        if (iter == scope_ptr->ids_.end()) { continue; }
+        auto id_ptr = iter->second;
+
+        if (id_ptr->type.is_quantum()) {
+          for (auto opt :
+               static_cast<QuantumType *>(id_ptr->type.get)->options) {
+            fn_type = static_cast<Function *>(opt.get);
+            if (fn_type->input == rhs->type) {
+              decl_scope_of_lhs = scope_ptr;
+              goto done_label;
+            }
+          }
+        }
+      }
+
+    } else {
+      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
+        fn_type = static_cast<Function *>(opt.get);
+        if (fn_type->input == rhs->type) {
+          decl_scope_of_lhs = scope_;
+          goto done_label;
+        }
+      }
     }
 
     // Because of type verification we know that if we get here, there is a
     // valid choice for the quantum type. The loop above cannot end normally. It
     // must end at a break statement.
-    assert(fn_type && fn_type->input == rhs->type);
+    assert(
+        false &&
+        "This point should be unreachable. Must jump over it to done_label.");
+
+  done_label:
 
     llvm::FunctionType *llvm_fn_type = *fn_type;
 
-    auto mangled_name = Mangle(static_cast<Function *>(fn_type), lhs);
-    lhs_val           = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+    auto mangled_name =
+        Mangle(static_cast<Function *>(fn_type), lhs, decl_scope_of_lhs);
+    lhs_val = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
   } else {
     lhs_val = lhs->generate_code();

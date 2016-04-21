@@ -207,7 +207,7 @@ int main(int argc, char *argv[]) {
   // scope tree for a node and its ancestor with declared identifiers of the
   // same name. We do not allow shadowing of any kind whatsoever. Errors are
   // generated if shadows are encountered.
-  Scope::Scope::verify_no_shadowing();
+  // TODO rewrite Scope::Scope::verify_no_shadowing();
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::shadow_or_type_error;

@@ -46,7 +46,8 @@ std::string Mangle(const Type *t, bool prefix) {
   return ss.str();
 }
 
-std::string Mangle(const Function *f, AST::Expression *expr) {
+std::string Mangle(const Function *f, AST::Expression *expr,
+                   Scope *starting_scope) {
   auto name = expr->token();
   if (expr->is_identifier()) {
     auto id = static_cast<AST::Identifier*>(expr);
@@ -70,7 +71,7 @@ std::string Mangle(const Function *f, AST::Expression *expr) {
   // For now we're just concatenating pointers to the scopes which is really
   // ugly and makes the ABI impossible. But for now it uniques things correctly.
   // TODO To fix this, we need a way to assign names to scopes.
-  auto scope = expr->scope_;
+  auto scope = starting_scope ? starting_scope : expr->scope_;
   while (scope != Scope::Global) {
     ss << "X" << scope->name.size() << scope->name;
     scope = scope->parent;

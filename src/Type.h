@@ -44,9 +44,11 @@ struct TypeVariable;
 struct QuantumType;
 struct RangeType;
 
+struct Scope;
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
-extern std::string Mangle(const Function *f, AST::Expression *expr);
+extern std::string Mangle(const Function *f, AST::Expression *expr,
+                          Scope *starting_scope = nullptr);
 
 namespace TypeSystem {
 void initialize();

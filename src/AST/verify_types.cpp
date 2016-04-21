@@ -346,16 +346,31 @@ void Binop::verify_types() {
     return;
   }
   case Operator::Call: {
-    if (lhs->type.is_quantum()) {
-      // If the LHS has a quantum type, test all possibilities to see which one
-      // works. Verify that exactly one works.
+    if (lhs->is_identifier()) {
       size_t num_matches = 0;
       TypePtr resulting_type;
-      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
-        auto t = CallResolutionMatch(opt, lhs, rhs);
-        if (t) {
-          ++num_matches;
-          resulting_type = t;
+
+      auto id_token  = lhs->token();
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto iter = scope_ptr->ids_.find(id_token);
+        if (iter == scope_ptr->ids_.end()) { continue; }
+        auto id_ptr = iter->second;
+
+        if (id_ptr->type.is_quantum()) {
+          // If the LHS has a quantum type, test all possibilities to see which
+          // one works. Verify that exactly one works.
+          for (auto opt :
+               static_cast<QuantumType *>(id_ptr->type.get)->options) {
+            auto t = CallResolutionMatch(opt, id_ptr, rhs);
+            if (t) {
+              ++num_matches;
+              resulting_type = t;
+            }
+          }
+
+        } else {
+          resulting_type = CallResolutionMatch(id_ptr->type, id_ptr, rhs);
+          if (resulting_type) { ++num_matches; }
         }
       }
 
@@ -365,107 +380,41 @@ void Binop::verify_types() {
                       num_matches == 0
                           ? "No function overload matches call."
                           : "Multiple function overloads match call.");
-        return;
+      } else {
+        type = resulting_type;
       }
-
-      // There is a unique function function overload matching the call.
-      // TODO the return type might depend on the matched input type.
-      type = resulting_type;
-      return;
 
     } else {
-      type = CallResolutionMatch(lhs->type, lhs, rhs);
-      if (type.get == nullptr) {
-        error_log.log(line_num, "Function has type " +
-                                    lhs->type.get->to_string() +
-                                    " but parameter has type " +
-                                    rhs->type.get->to_string());
+      size_t num_matches = 0;
+      TypePtr resulting_type;
+
+      if (lhs->type.is_quantum()) {
+        // If the LHS has a quantum type, test all possibilities to see which
+        // one works. Verify that exactly one works.
+        for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
+          auto t = CallResolutionMatch(opt, lhs, rhs);
+          if (t) {
+            ++num_matches;
+            resulting_type = t;
+          }
+        }
+
+      } else {
+        resulting_type = CallResolutionMatch(lhs->type, lhs, rhs);
+        if (resulting_type) { ++num_matches; }
+      }
+
+      if (num_matches != 1) {
         type = Error;
+        error_log.log(line_num,
+                      num_matches == 0
+                          ? "No function overload matches call."
+                          : "Multiple function overloads match call.");
+      } else {
+        type = resulting_type;
       }
-      return;
     }
-
-/*
-    if (lhs->type == Type_) {
-      // TODO (remove this assumption)
-      //
-      // Assume you are not a dufus, and if you're passing a struct to be
-      // "called" that it's a parametric struct. (So we use .as_expr).
-      //
-      // auto lhs_as_expr = lhs->evaluate(scope_->context).as_expr;
-
-      // If it isn't parametric, terribleness will ensue.
-      type = Type_;
-      return;
-    }
-
-    if (lhs->type.is_quantum()) {
-      // In the binary operator (), store the index for which quantum type value
-      // you're actually calling.
-      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
-        auto fn_type = static_cast<Function *>(opt.get);
-        if (fn_type->input != rhs->type) continue;
-
-        type = fn_type->output;
-        return;
-      }
-      error_log.log(line_num, "Could not match function type");
-      return;
-    } else if (!lhs->type.is_function()) {
-      // TODO TOKENREMOVAL
-      // TODO lhs might not have a precise token
-      error_log.log(line_num, "Identifier `" + lhs->token() +
-                                  "` does not name a function.");
-      return;
-    }
-
-    auto in_types = static_cast<Function *>(lhs->type.get)->input;
-
-    // TODO Check if it takes any type variables at all.
-    if (in_types.is_type_variable()) {
-      auto test_func = static_cast<TypeVariable *>(in_types.get)->test;
-
-      bool success;
-      {
-        auto call_binop = new Binop();
-        call_binop->op  = Operator::Call;
-        call_binop->lhs = test_func;
-        auto dummy      = new DummyTypeExpr(rhs->line_num, rhs->type.get);
-        call_binop->rhs = dummy;
-        std::cout << rhs << std::endl;
-
-        success = call_binop->evaluate(scope_->context).as_bool;
-
-        dummy->type_value = nullptr;
-        delete dummy;
-
-        call_binop->lhs = nullptr;
-        call_binop->rhs = nullptr;
-        delete call_binop;
-      }
-
-      if (!success) {
-        error_log.log(line_num, "Test fucntion failed.");
-        type = Error;
-        return;
-      }
-
-
-      std::cout << "TODO: I need to clone the function " << *lhs << std::endl;
-    }
-
-    // TODO If rhs is a comma-list, is it's type given by a tuple?
-    if (in_types != rhs->type) {
-      error_log.log(line_num, "Type mismatch on function arguments.");
-      return;
-    }
-
-    // TODO multiple return values. For now just taking the first
-    type = static_cast<Function *>(lhs->type.get)->output;
-    assert(type && "return type is null");
-
     return;
-    */
   }
   case Operator::Index: {
     type = Error;

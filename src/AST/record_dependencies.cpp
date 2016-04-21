@@ -23,6 +23,18 @@ void Identifier::record_dependencies() {
     Dependency::value_value(this, decl);
     Dependency::type_type(this, decl);
   }
+
+  // Also depend on the identifier at higher scopes
+  auto scope_ptr = scope_->parent;
+  while (scope_ptr) {
+    auto id_ptr = scope_ptr->identifier(token());
+    if (id_ptr) {
+      Dependency::value_value(this, id_ptr);
+      Dependency::type_type(this, id_ptr);
+      break;
+    }
+    scope_ptr = scope_ptr->parent;
+  }
 }
 
 void Access::record_dependencies() {
