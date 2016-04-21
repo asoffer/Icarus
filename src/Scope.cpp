@@ -184,6 +184,7 @@ void BlockScope::uninitialize() {
 
     // TODO is this correct?
     if (decl_id->is_arg) continue;
+    if (!decl_id->type.stores_data()) continue;
 
     decl_id->type.get->call_uninit({decl_id->alloc});
   }
@@ -276,12 +277,16 @@ void FnScope::allocate(Scope* scope) {
       continue;
     }
 
-    // TODO make this for compile-time stuff
-    if (decl_type == Type_) {
+    if (decl_type.get->time() == Time::compile) {
       // TODO Set the types name
       continue;
     }
-   
+
+    if (decl_type.is_quantum()) {
+      decl_id->alloc = nullptr;
+      continue;
+    }
+
     decl_id->alloc = decl_type.get->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }

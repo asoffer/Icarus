@@ -48,7 +48,7 @@ std::string Mangle(const Type *t, bool prefix) {
 
 std::string Mangle(const Function *f, AST::Expression *expr) {
   auto name = expr->token();
-  if (name == "main" || f->time() == Time::compile) { return name; }
+  if ((name == "main" && f == Func(Void, Void)) || f->time() == Time::compile) { return name; }
 
 
   std::stringstream ss;
@@ -66,7 +66,5 @@ std::string Mangle(const Function *f, AST::Expression *expr) {
 
   ss << "F" << name.size() << name;
   ss << Mangle(f->input.get, false);
-  auto x = ss.str();
-  std::cout << x << std::endl;
-  return x;
+  return ss.str();
 }

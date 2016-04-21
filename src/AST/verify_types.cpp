@@ -202,6 +202,7 @@ void Unop::verify_types() {
     }
   } break;
   case Operator::Call: {
+    // TODO quantum types
     if (!operand->type.is_function()) {
       error_log.log(line_num,
                     "Identifier `" + operand->token() + "` is not a function.");
