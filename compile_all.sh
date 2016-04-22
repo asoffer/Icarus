@@ -37,6 +37,7 @@ bin/icarus programs/local_func.ic
 bin/icarus programs/local_func2.ic
 bin/icarus programs/local_func3.ic
 bin/icarus programs/local_func4.ic
+bin/icarus programs/local_overloads.ic
 bin/icarus programs/multidim_array.ic
 bin/icarus programs/multiple_args.ic
 bin/icarus programs/mutual_ptrs.ic

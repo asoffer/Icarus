@@ -57,8 +57,44 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
 #define BREAK_FLAG data::const_char('\03')
 #define RETURN_FLAG data::const_char('\04')
 
-namespace AST {
-llvm::Value *Identifier::generate_code() {
+// TODO log which print call is correct in quantum scenarios.
+llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
+                                     TypePtr input_type) {
+  for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
+    auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
+    if (!id_ptr) { continue; }
+
+    if (id_ptr->type.is_quantum()) {
+      for (auto decl : id_ptr->decls) {
+        auto fn_type = static_cast<Function *>(decl->type.get);
+        if (fn_type->input == input_type) {
+          llvm::FunctionType *llvm_fn_type = *fn_type;
+
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+
+          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+        }
+      }
+
+    } else if (id_ptr->type.is_function()) {
+      auto fn_type = static_cast<Function *>(id_ptr->type.get);
+      if (fn_type->input != input_type) { continue; }
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+
+          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+
+    } else {
+      assert(false && "What else could it be?");
+    }
+  }
+  assert(false && "Nothing matched");
+}
+
+  namespace AST {
+  llvm::Value *Identifier::generate_code() {
   if (type == Type_) {
     return nullptr;
 
@@ -149,7 +185,6 @@ llvm::Value *Unop::generate_code() {
     return builder.CreateNot(operand->generate_code());
   }
   case Language::Operator::And: {
-    // TODO ensure that this has an l-value
     return operand->generate_lvalue();
   }
   case Language::Operator::Print: {
@@ -174,45 +209,8 @@ llvm::Value *Unop::generate_code() {
       val = struct_memcpy(operand->type, val);
 
       // TODO ensure that it is generated
-      // TODO log which print call is correct in quantum scenarios.
-      llvm::Value *print_fn = nullptr;
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__print__");
-        if (!id_ptr) { continue; }
-
-        if (id_ptr->type.is_quantum()) {
-          for (auto decl : id_ptr->decls) {
-            auto fn_type = static_cast<Function *>(decl->type.get);
-            if (fn_type->input == operand->type) {
-              llvm::FunctionType *llvm_fn_type = *fn_type;
-
-              auto mangled_name =
-                  Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-              auto print_fn = global_module->getOrInsertFunction(mangled_name,
-                                                                 llvm_fn_type);
-              builder.CreateCall(print_fn, {val});
-
-              return nullptr;
-            }
-          }
-
-        } else if (id_ptr->type.is_function()) {
-          auto fn_type = static_cast<Function *>(id_ptr->type.get);
-          if (fn_type->input != operand->type) { continue; }
-          llvm::FunctionType *llvm_fn_type = *fn_type;
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-
-          auto print_fn =
-              global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-          builder.CreateCall(print_fn, {val});
-          return nullptr;
-
-        } else {
-          assert(false && "What else could it be?");
-        }
-      }
-
+      auto print_fn =
+          GetFunctionReferencedIn(scope_, "__print__", operand->type);
       assert(print_fn && "No print function available");
       builder.CreateCall(print_fn, val);
 
@@ -331,58 +329,10 @@ llvm::Value *Binop::generate_code() {
     return llvm_value(evaluate(CurrentContext()));
   }
 
-  llvm::Value *lhs_val = nullptr;
-
-  // TODO this is a lot of work you already did in verify_types.
-  auto decl_scope_of_lhs = scope_;
-  if (lhs->type.is_quantum()) {
-    Function *fn_type = nullptr;
-
-    if (lhs->is_identifier()) {
-      auto id_token = lhs->token();
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
-        if (!id_ptr) { continue; }
-
-        // TODO if it's not quantum?
-        assert(id_ptr->type.is_quantum() && "Deal with not quantum case");
-        for (auto opt : static_cast<QuantumType *>(id_ptr->type.get)->options) {
-          fn_type = static_cast<Function *>(opt.get);
-          if (fn_type->input == rhs->type) {
-            decl_scope_of_lhs = scope_ptr;
-            goto done_label;
-          }
-        }
-      }
-
-    } else {
-      for (auto opt : static_cast<QuantumType *>(lhs->type.get)->options) {
-        fn_type = static_cast<Function *>(opt.get);
-        if (fn_type->input == rhs->type) {
-          decl_scope_of_lhs = scope_;
-          goto done_label;
-        }
-      }
-    }
-
-    // Because of type verification we know that if we get here, there is a
-    // valid choice for the quantum type. The loop above cannot end normally. It
-    // must end at a break statement.
-    assert(
-        false &&
-        "This point should be unreachable. Must jump over it to done_label.");
-
-  done_label:
-
-    llvm::FunctionType *llvm_fn_type = *fn_type;
-
-    auto mangled_name =
-        Mangle(static_cast<Function *>(fn_type), lhs, decl_scope_of_lhs);
-    lhs_val = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-
-  } else {
-    lhs_val = lhs->generate_code();
-  }
+  llvm::Value *lhs_val =
+      (lhs->is_identifier() && op == Language::Operator::Call)
+          ? GetFunctionReferencedIn(scope_, lhs->token(), rhs->type)
+          : lhs->generate_code();
 
   switch (op) {
   case Language::Operator::Index: {
