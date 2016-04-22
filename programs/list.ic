@@ -28,7 +28,7 @@ __print__ := (l: list(int)) -> void {
   print ']'
 }
 
-show := (l: list(char)) -> void {
+__print__ := (l: list(char)) -> void {
   iter := l.head
   if l.size == 0u {
     return
@@ -47,7 +47,7 @@ show := (l: list(char)) -> void {
   print ']'
 }
 
-show := (l: list(list(char))) -> void {
+__print__ := (l: list(list(char))) -> void {
   iter := l.head
   if l.size == 0u {
     return
@@ -56,7 +56,7 @@ show := (l: list(list(char))) -> void {
     i := 0u
     while i < l.size {
       i += 1u
-      show(iter.data)
+      print iter.data
       if i != l.size {
         print " -> "
       }
@@ -77,7 +77,7 @@ main := void -> void {
   print l
   print '\n'
 
-  emptylist: list(real)
+  emptylist: list(int)
 
   print emptylist
   print '\n'
@@ -88,7 +88,7 @@ main := void -> void {
   add(&l1, 'l')
   add(&l1, 'e')
   add(&l1, 'h')
-  show(l1)
+  print l1
   print '\n'
 
   l2: list(char)
@@ -97,14 +97,14 @@ main := void -> void {
   add(&l2, 'r')
   add(&l2, 'o')
   add(&l2, 'w')
-  show(l2)
+  print l2
   print '\n'
 
   LLC := list(list(char))
   ll: LLC
   add(&ll, l2)
   add(&ll, l1)
-  show(ll)
+  print ll
   print '\n'
 }
 

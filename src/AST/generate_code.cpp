@@ -18,6 +18,8 @@ namespace cstdlib {
 extern llvm::Constant *free();
 extern llvm::Constant *memcpy();
 extern llvm::Constant *malloc();
+extern llvm::Constant *printf();
+extern llvm::Constant *putchar();
 } // namespace cstdlib
 
 namespace builtin {
@@ -151,18 +153,78 @@ llvm::Value *Unop::generate_code() {
     return operand->generate_lvalue();
   }
   case Language::Operator::Print: {
-    // NOTE: Type punning Type* -> llvm::Value*
-    llvm::Value *val = (operand->type == Type_)
-                           ? reinterpret_cast<llvm::Value *>(
-                                 operand->evaluate(CurrentContext()).as_type)
-                           : operand->generate_code();
+    if (operand->type == Type_) {
+      builder.CreateCall(
+          cstdlib::printf(),
+          {data::global_string("%s"),
+           data::global_string(
+               operand->evaluate(CurrentContext()).as_type->to_string())});
+      return nullptr;
+    }
 
+    llvm::Value *val = operand->generate_code();
+
+    // NOTE: this is complicated because if the function is quantum, we cannot
+    // just generate the code from Identifier::generate_code. Knowing which
+    // quanta to pick requires contextual information. 
+    //
+    // TODO We should log that information so we don't repeat this process.
     if (operand->type.is_struct()) {
       // TODO maybe callees should be responsible for the struct memcpy?
       val = struct_memcpy(operand->type, val);
-    }
 
-    operand->type.get->call_print(val);
+      // TODO ensure that it is generated
+      // TODO log which print call is correct in quantum scenarios.
+      llvm::Value *print_fn = nullptr;
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto id_ptr = scope_ptr->IdentifierHereOrNull("__print__");
+        if (!id_ptr) { continue; }
+
+        if (id_ptr->type.is_quantum()) {
+          for (auto decl : id_ptr->decls) {
+            auto fn_type = static_cast<Function *>(decl->type.get);
+            if (fn_type->input == operand->type) {
+              llvm::FunctionType *llvm_fn_type = *fn_type;
+
+              auto mangled_name =
+                  Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+              auto print_fn = global_module->getOrInsertFunction(mangled_name,
+                                                                 llvm_fn_type);
+              builder.CreateCall(print_fn, {val});
+
+              return nullptr;
+            }
+          }
+
+        } else if (id_ptr->type.is_function()) {
+          auto fn_type = static_cast<Function *>(id_ptr->type.get);
+          if (fn_type->input != operand->type) { continue; }
+          llvm::FunctionType *llvm_fn_type = *fn_type;
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+
+          auto print_fn =
+              global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+          builder.CreateCall(print_fn, {val});
+          return nullptr;
+
+        } else {
+          assert(false && "What else could it be?");
+        }
+      }
+
+      assert(print_fn && "No print function available");
+      builder.CreateCall(print_fn, val);
+
+    } else if (operand->type == Char) {
+      builder.CreateCall(cstdlib::putchar(), {val});
+
+    } else if (operand->type == Uint) {
+      builder.CreateCall(cstdlib::printf(), {data::global_string("%u"), val});
+
+    } else {
+      operand->type.get->call_repr(val);
+    }
 
     return nullptr;
   }
@@ -282,7 +344,8 @@ llvm::Value *Binop::generate_code() {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
         if (!id_ptr) { continue; }
 
-        // NOTE: id_ptr.type must be quantum. We checked it up above.
+        // TODO if it's not quantum?
+        assert(id_ptr->type.is_quantum() && "Deal with not quantum case");
         for (auto opt : static_cast<QuantumType *>(id_ptr->type.get)->options) {
           fn_type = static_cast<Function *>(opt.get);
           if (fn_type->input == rhs->type) {
@@ -666,34 +729,23 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     // result of composition.
     static_cast<FunctionLiteral *>(rhs)->fn_scope->name = lhs->token();
 
-    if (lhs->token() == "__print__" || lhs->token() == "__assign__") {
-      val = rhs->generate_code();
-      assert(val && "RHS of assignment generated null code");
+    auto fn_type                     = static_cast<Function *>(rhs->type.get);
+    llvm::FunctionType *llvm_fn_type = *fn_type;
+    auto mangled_name                = Mangle(fn_type, lhs);
 
-      // TODO verify that you are defining print for this struct type.
-      auto rhs_as_func = static_cast<Function *>(rhs->type.get);
-      auto arg_type    = static_cast<Structure *>(rhs_as_func->input.get);
+    if (rhs->is_function_literal()) {
+      auto fn = static_cast<FunctionLiteral *>(rhs);
 
-      arg_type->set_print(static_cast<llvm::Function *>(val));
-
-    } else {
-      auto fn_type                     = static_cast<Function *>(rhs->type.get);
-      llvm::FunctionType *llvm_fn_type = *fn_type;
-      auto mangled_name                = Mangle(fn_type, lhs);
-
-      if (rhs->is_function_literal()) {
-        auto fn = static_cast<FunctionLiteral *>(rhs);
-
-        fn->llvm_fn = static_cast<llvm::Function *>(
-            global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
-      }
-
-      val = rhs->generate_code();
-
-      // Null value can be returned here, if for instance, the rhs is a function
-      // on types.
-      if (val) { val->setName(mangled_name); }
+      fn->llvm_fn = static_cast<llvm::Function *>(
+          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
     }
+
+    val = rhs->generate_code();
+
+    // Null value can be returned here, if for instance, the rhs is a function
+    // on types.
+    if (val) { val->setName(mangled_name); }
+
   } else {
     var = lhs->generate_lvalue();
     assert(var && "LHS of assignment generated null code");

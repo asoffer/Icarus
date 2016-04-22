@@ -137,8 +137,6 @@ public:
 
   virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
 
-  virtual void call_print(llvm::Value *val) { call_repr(val); }
-
   virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type) {
     return nullptr;
   }
@@ -175,7 +173,6 @@ public:
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  virtual void call_print(llvm::Value *val);
   virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   enum class TypeEnum {
@@ -292,9 +289,6 @@ struct Structure : public Type {
 
   TypePtr field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
-
-  virtual void call_print(llvm::Value *val);
-  void set_print(llvm::Function *fn);
 
   AST::StructLiteral *ast_expression;
   std::string bound_name;
