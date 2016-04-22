@@ -37,6 +37,21 @@ size_t Type::alignment() const {
   return (llvm_type == nullptr) ? 0 : data_layout->getABITypeAlignment(llvm_type);
 }
 
+void Type::CallAssignment(llvm::Value *val, llvm::Value *var) {
+  if (is_primitive() || is_pointer() || is_enum()) {
+    builder.CreateStore(val, var);
+
+  } else if (is_array()) {
+    builder.CreateCall(static_cast<Array *>(this)->assign(), {val, var});
+
+  } else if (is_struct()) {
+    builder.CreateCall(static_cast<Structure *>(this)->assign(), {val, var});
+
+  } else {
+    assert(false && "No assignment function to call");
+  }
+}
+
 TypePtr::TypePtr(Type *t) : get(t) {}
 
 std::string TypePtr::to_string() const { return get->to_string(); }
@@ -93,7 +108,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 }
 
 Array::Array(TypePtr t)
-    : init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr), data_type(t) {
+    : init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr),
+      assign_fn_(nullptr), data_type(t) {
   dimension = data_type.is_array()
                   ? 1 + static_cast<Array *>(data_type.get)->dimension
                   : 1;
@@ -172,7 +188,7 @@ QuantumType::QuantumType(const std::vector<TypePtr>& vec) : options(vec) {
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), init_fn_(nullptr),
-      uninit_fn_(nullptr), print_fn_(nullptr) {}
+      uninit_fn_(nullptr), assign_fn_(nullptr) {}
 
 TypePtr Structure::field(const std::string& name) const {
   return field_type AT(field_name_to_num AT(name));

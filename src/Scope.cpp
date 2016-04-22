@@ -208,13 +208,7 @@ void BlockScope::make_return(llvm::Value *val) {
 
   // TODO multiple return values?
 
-  if (fn_scope->fn_type->output.is_big()) {
-    builder.CreateCall(fn_scope->fn_type->output.get->assign(),
-                       {val, fn_scope->return_value});
-  } else {
-    builder.CreateStore(val, fn_scope->return_value);
-  }
-
+  fn_scope->fn_type->output.get->CallAssignment(val, fn_scope->return_value);
   builder.CreateBr(fn_scope->exit);
 }
 

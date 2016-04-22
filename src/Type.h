@@ -97,7 +97,6 @@ extern RangeType *Range(TypePtr t);
   virtual llvm::Value *call_##op(llvm::Value *operand) ENDING;
 
 #define BASIC_METHODS                                                          \
-  virtual llvm::Function *assign() ENDING;                                     \
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
@@ -114,19 +113,22 @@ extern RangeType *Range(TypePtr t);
 
 struct Type {
 public:
-  Type() : assign_fn_(nullptr), llvm_type(nullptr), has_vars(false) {}
+  Type() : llvm_type(nullptr), has_vars(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
 
 #include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 
-  friend struct ::Array;
-
   virtual operator llvm::Type *() const;
 
   size_t bytes() const;
   size_t alignment() const;
+
+  // Assigns val to var. Assume that the types match appropriately. Depending on
+  // the types, this will either simply be a store operation or a call to the
+  // assignment function.
+  void CallAssignment(llvm::Value *val, llvm::Value *var);
 
   // Note: this one is special. It functions identically to the rest, but
   // it's special in that it will return nullptr if you haven't imported the
@@ -159,7 +161,6 @@ public:
   virtual bool is_big() const;
   virtual bool stores_data() const;
 
-  llvm::Function *assign_fn_;
   mutable llvm::Type *llvm_type;
   bool has_vars;
 };
@@ -208,7 +209,9 @@ struct Array : public Type {
 
   virtual llvm::Value *allocate() const;
 
-  llvm::Function *init_fn_, *uninit_fn_, *repr_fn_;
+  llvm::Function *assign();
+
+  llvm::Function *init_fn_, *uninit_fn_, *repr_fn_, *assign_fn_;
 
   TypePtr data_type;
 
@@ -304,8 +307,10 @@ struct Structure : public Type {
 
   std::vector<AST::Expression *> init_values;
 
+  llvm::Function *assign();
+
 private:
-  llvm::Function *init_fn_, *uninit_fn_, *print_fn_;
+  llvm::Function *init_fn_, *uninit_fn_, *assign_fn_;
 };
 
 struct ParametricStructure : public Type {

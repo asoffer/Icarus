@@ -646,9 +646,9 @@ llvm::Value *FunctionLiteral::generate_code() {
     auto decl_id = input_iter->identifier;
 
     if (!decl_id->type.is_big()) {
-      builder.CreateCall(decl_id->type.get->assign(),
-                         {arg, input_iter->identifier->alloc});
+      decl_id->type.get->CallAssignment(arg, input_iter->identifier->alloc);
     }
+
     ++arg;
   }
 
@@ -703,7 +703,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 
-    builder.CreateCall(lhs->type.get->assign(), {val, var});
+    lhs->type.get->CallAssignment(val, var);
   }
 
   return nullptr;
@@ -926,8 +926,7 @@ llvm::Value *ArrayLiteral::generate_code() {
     auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
     element_type.get->call_init(data_ptr);
 
-    builder.CreateCall(element_type.get->assign(),
-                       {elems[i]->generate_code(), data_ptr});
+    element_type.get->CallAssignment(elems[i]->generate_code(), data_ptr);
   }
 
   assert(scope_->is_block_scope());
