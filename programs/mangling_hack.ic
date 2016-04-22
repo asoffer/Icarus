@@ -1,0 +1,16 @@
+// We can use the #cstdlib tag to gain access to a function that we shouldn't
+// be allowed to call.
+
+_ZX3fooF6squarei: int -> int #cstdlib
+
+main := void -> void {
+  print _ZX3fooF6squarei(17)
+  print '\n'
+}
+
+foo := void -> void {
+  square := (n: int) -> int {
+    return n * n
+  }
+
+}

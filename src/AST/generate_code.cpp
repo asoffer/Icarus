@@ -282,14 +282,12 @@ llvm::Value *Binop::generate_code() {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
         if (!id_ptr) { continue; }
 
-        if (id_ptr->type.is_quantum()) {
-          for (auto opt :
-               static_cast<QuantumType *>(id_ptr->type.get)->options) {
-            fn_type = static_cast<Function *>(opt.get);
-            if (fn_type->input == rhs->type) {
-              decl_scope_of_lhs = scope_ptr;
-              goto done_label;
-            }
+        // NOTE: id_ptr.type must be quantum. We checked it up above.
+        for (auto opt : static_cast<QuantumType *>(id_ptr->type.get)->options) {
+          fn_type = static_cast<Function *>(opt.get);
+          if (fn_type->input == rhs->type) {
+            decl_scope_of_lhs = scope_ptr;
+            goto done_label;
           }
         }
       }
