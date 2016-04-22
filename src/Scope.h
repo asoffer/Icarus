@@ -48,7 +48,16 @@ struct Scope {
   virtual bool is_loop_scope();
 
   AST::Identifier *identifier(AST::Expression *id_as_eptr);
-  AST::Identifier *identifier(const std::string &name) const;
+
+  // Returns an identifier pointer if there is a declaration of this identifier
+  // in this scope. Otherwise it returns nullptr. It does *not* look in parent
+  // scopes.
+  AST::Identifier *IdentifierHereOrNull(const std::string &name);
+
+  // Returns the identifier pointer being referenced by this string name, going
+  // up the chaing of scopes as necessary. It returns nullptr if no such
+  // identifier can be found.
+  AST::Identifier *IdentifierBeingReferencedOrNull(const std::string &name);
 
   AST::Expression *get_declared_type(AST::Identifier *id_ptr) const;
 

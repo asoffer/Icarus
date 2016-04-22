@@ -279,9 +279,8 @@ llvm::Value *Binop::generate_code() {
     if (lhs->is_identifier()) {
       auto id_token = lhs->token();
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto iter = scope_ptr->ids_.find(id_token);
-        if (iter == scope_ptr->ids_.end()) { continue; }
-        auto id_ptr = iter->second;
+        auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
+        if (!id_ptr) { continue; }
 
         if (id_ptr->type.is_quantum()) {
           for (auto opt :

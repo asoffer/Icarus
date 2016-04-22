@@ -13,7 +13,7 @@ void DummyTypeExpr::record_dependencies() {}
 void Terminal::record_dependencies() {
   Dependency::value_type(this, this);
   if (terminal_type == Language::Terminal::StringLiteral) {
-    Dependency::type_value(this, Scope::Global->identifier("string"));
+    Dependency::type_value(this, Scope::Global->IdentifierHereOrNull("string"));
   }
 }
 
@@ -27,7 +27,7 @@ void Identifier::record_dependencies() {
   // Also depend on the identifier at higher scopes
   auto scope_ptr = scope_->parent;
   while (scope_ptr) {
-    auto id_ptr = scope_ptr->identifier(token());
+    auto id_ptr = scope_ptr->IdentifierHereOrNull(token());
     if (id_ptr) {
       Dependency::value_value(this, id_ptr);
       Dependency::type_type(this, id_ptr);

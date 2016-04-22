@@ -66,13 +66,21 @@ AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
   return nullptr;
 }
 
-AST::Identifier *Scope::identifier(const std::string &name) const {
+AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
   auto iter = ids_.find(name);
-  if (iter == ids_.end()) {
-    if (parent) return parent->identifier(name);
-    return nullptr;
+  return (iter == ids_.end()) ? nullptr : iter->second;
+}
+
+AST::Identifier *Scope::IdentifierBeingReferencedOrNull(const std::string &name) {
+  auto scope_ptr = this;
+  while (scope_ptr) {
+    auto iter = scope_ptr->ids_.find(name);
+    if (iter != scope_ptr->ids_.end()) { return iter->second; }
+
+    scope_ptr = scope_ptr->parent;
   }
-  return iter->second;
+
+  return nullptr;
 }
 
 // Set pointer to the parent scope. This is an independent concept from LLVM's
