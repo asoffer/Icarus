@@ -1,0 +1,17 @@
+__print__: real -> void
+
+__print__ := (c: char) -> void {
+  print "Integer "
+  print c
+}
+__print__ := (n: int) -> char {
+  print "Integer "
+  print n
+}
+__print__ := (f: foo) -> int {
+  print "Integer "
+  print f.n
+}
+foo := struct {
+  n: int
+}

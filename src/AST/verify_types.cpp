@@ -584,6 +584,29 @@ void Declaration::verify_types() {
   } break;
   }
 
+
+  if (identifier->token() == "__print__") {
+    if (!type.is_function()) {
+      error_log.log(line_num, "Print must be defined to be a function.");
+      return;
+    }
+
+    bool error_raised = false;
+    auto fn_type = static_cast<Function *>(type.get);
+    if (!fn_type->input.is_struct()) {
+      error_log.log(line_num, "Cannot define print function for " +
+                                  fn_type->input.get->to_string());
+      error_raised = true;
+    }
+
+    if (fn_type->output != Void) {
+      error_log.log(line_num, "print function must return void");
+      error_raised = true;
+    }
+
+    if (error_raised) { return; }
+  }
+
   // TODO if RHS is not a type give a nice message instead of segfaulting
 
   if (type_expr->is_terminal()) {
