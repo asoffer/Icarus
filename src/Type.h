@@ -128,7 +128,7 @@ public:
   // Assigns val to var. Assume that the types match appropriately. Depending on
   // the types, this will either simply be a store operation or a call to the
   // assignment function.
-  void CallAssignment(llvm::Value *val, llvm::Value *var);
+  void CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var);
 
   // Note: this one is special. It functions identically to the rest, but
   // it's special in that it will return nullptr if you haven't imported the

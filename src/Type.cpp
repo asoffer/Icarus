@@ -10,6 +10,9 @@
 
 extern llvm::Module* global_module;
 
+extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
+                                            const std::string &fn_name,
+                                            TypePtr input_type);
 namespace cstdlib {
 extern llvm::Constant *malloc();
 } // namespace cstdlib
@@ -37,14 +40,24 @@ size_t Type::alignment() const {
   return (llvm_type == nullptr) ? 0 : data_layout->getABITypeAlignment(llvm_type);
 }
 
-void Type::CallAssignment(llvm::Value *val, llvm::Value *var) {
+void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
   if (is_primitive() || is_pointer() || is_enum()) {
     builder.CreateStore(val, var);
+    return;
+  }
 
-  } else if (is_array()) {
+  if (is_array()) {
     builder.CreateCall(static_cast<Array *>(this)->assign(), {val, var});
 
   } else if (is_struct()) {
+    llvm::Value *assign_fn = nullptr;
+    if (scope) {
+      assign_fn =
+          GetFunctionReferencedIn(scope, "__assign__", Tup({this, Ptr(this)}));
+    }
+
+    // Use default assignment if none is given.
+    if (!assign_fn) { assign_fn = static_cast<Structure *>(this)->assign(); }
     builder.CreateCall(static_cast<Structure *>(this)->assign(), {val, var});
 
   } else {

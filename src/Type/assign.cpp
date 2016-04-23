@@ -87,7 +87,7 @@ llvm::Function *Array::assign() {
   // immeditaely uninitialized safely.
   data_type.get->call_init(to_phi);
 
-  data_type.get->CallAssignment(PtrCallFix(data_type, from_phi), to_phi);
+  data_type.get->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
 
   auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
   auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
@@ -109,9 +109,7 @@ llvm::Function *Array::assign() {
 }
 
 llvm::Function *Structure::assign() {
-  if (assign_fn_ != nullptr){
-    return assign_fn_;
-  }
+  if (assign_fn_ != nullptr) { return assign_fn_; }
 
   assign_fn_ = get_llvm_assign(this);
 
@@ -125,7 +123,7 @@ llvm::Function *Structure::assign() {
   auto var  = ++iter;
 
   // assign all fields
-  for (const auto& iter : field_num_to_llvm_num) {
+  for (const auto &iter : field_num_to_llvm_num) {
     auto the_field_type = field_type AT(iter.first);
     auto field_val = builder.CreateGEP(
         val, {data::const_uint(0), data::const_uint(iter.second)});
@@ -135,7 +133,7 @@ llvm::Function *Structure::assign() {
     auto field_var = builder.CreateGEP(
         var, {data::const_uint(0), data::const_uint(iter.second)});
 
-    the_field_type.get->CallAssignment(field_val, field_var);
+    the_field_type.get->CallAssignment(nullptr, field_val, field_var);
   }
 
   auto exit_block = make_block("exit", assign_fn_);

@@ -205,3 +205,40 @@ llvm::Function *ascii() {
 llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr) {
   return (t.is_big()) ? ptr : builder.CreateLoad(ptr);
 }
+
+
+// TODO log which print call is correct in quantum scenarios.
+llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
+                                     TypePtr input_type) {
+  for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
+    auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
+    if (!id_ptr) { continue; }
+
+    if (id_ptr->type.is_quantum()) {
+      for (auto decl : id_ptr->decls) {
+        auto fn_type = static_cast<Function *>(decl->type.get);
+        if (fn_type->input == input_type) {
+          llvm::FunctionType *llvm_fn_type = *fn_type;
+
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+
+          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+        }
+      }
+
+    } else if (id_ptr->type.is_function()) {
+      auto fn_type = static_cast<Function *>(id_ptr->type.get);
+      if (fn_type->input != input_type) { continue; }
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+
+          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+
+    } else {
+      assert(false && "What else could it be?");
+    }
+  }
+  return nullptr;
+}

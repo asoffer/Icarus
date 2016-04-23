@@ -131,7 +131,7 @@ void Structure::call_init(llvm::Value *var) {
         // Scope::Stack.push(fn_scope);
         auto init_val = init_expr->generate_code();
         // Scope::Stack.pop();
-        the_field_type.get->CallAssignment(init_val, arg);
+        the_field_type.get->CallAssignment(nullptr, init_val, arg);
       } else {
         the_field_type.get->call_init({arg});
       }

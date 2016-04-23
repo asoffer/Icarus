@@ -57,44 +57,12 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
 #define BREAK_FLAG data::const_char('\03')
 #define RETURN_FLAG data::const_char('\04')
 
-// TODO log which print call is correct in quantum scenarios.
-llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
-                                     TypePtr input_type) {
-  for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
-    if (!id_ptr) { continue; }
+extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
+                                            const std::string &fn_name,
+                                            TypePtr input_type);
 
-    if (id_ptr->type.is_quantum()) {
-      for (auto decl : id_ptr->decls) {
-        auto fn_type = static_cast<Function *>(decl->type.get);
-        if (fn_type->input == input_type) {
-          llvm::FunctionType *llvm_fn_type = *fn_type;
-
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-
-          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-        }
-      }
-
-    } else if (id_ptr->type.is_function()) {
-      auto fn_type = static_cast<Function *>(id_ptr->type.get);
-      if (fn_type->input != input_type) { continue; }
-      llvm::FunctionType *llvm_fn_type = *fn_type;
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-
-          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-
-    } else {
-      assert(false && "What else could it be?");
-    }
-  }
-  assert(false && "Nothing matched");
-}
-
-  namespace AST {
-  llvm::Value *Identifier::generate_code() {
+namespace AST {
+llvm::Value *Identifier::generate_code() {
   if (type == Type_) {
     return nullptr;
 
@@ -329,10 +297,30 @@ llvm::Value *Binop::generate_code() {
     return llvm_value(evaluate(CurrentContext()));
   }
 
-  llvm::Value *lhs_val =
-      (lhs->is_identifier() && op == Language::Operator::Call)
-          ? GetFunctionReferencedIn(scope_, lhs->token(), rhs->type)
-          : lhs->generate_code();
+  llvm::Value *lhs_val = nullptr;
+  if (lhs->is_identifier() && op == Language::Operator::Call) {
+    lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
+
+  } else if (lhs->type.is_dependent_type()) {
+    auto t = rhs->evaluate(CurrentContext()).as_type;
+
+    // TODO what if these are formed by some crazy other method?
+    if (lhs->token() == "input") {
+      return builtin::input(t);
+
+    } else if (lhs->token() == "alloc") {
+      auto alloc_ptr =
+          builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
+      return builder.CreateBitCast(alloc_ptr, type);
+      
+    } else {
+      assert(false);
+    }
+
+  } else {
+    lhs_val = lhs->generate_code();
+  }
+  assert(lhs_val);
 
   switch (op) {
   case Language::Operator::Index: {
@@ -646,7 +634,7 @@ llvm::Value *FunctionLiteral::generate_code() {
     auto decl_id = input_iter->identifier;
 
     if (!decl_id->type.is_big()) {
-      decl_id->type.get->CallAssignment(arg, input_iter->identifier->alloc);
+      decl_id->type.get->CallAssignment(scope_, arg, input_iter->identifier->alloc);
     }
 
     ++arg;
@@ -703,7 +691,7 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 
-    lhs->type.get->CallAssignment(val, var);
+    lhs->type.get->CallAssignment(lhs->scope_, val, var);
   }
 
   return nullptr;
@@ -926,7 +914,8 @@ llvm::Value *ArrayLiteral::generate_code() {
     auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
     element_type.get->call_init(data_ptr);
 
-    element_type.get->CallAssignment(elems[i]->generate_code(), data_ptr);
+    element_type.get->CallAssignment(scope_, elems[i]->generate_code(),
+                                     data_ptr);
   }
 
   assert(scope_->is_block_scope());
