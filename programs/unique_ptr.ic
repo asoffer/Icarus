@@ -3,6 +3,7 @@ unique_ptr := struct {
 }
 
 __destroy__ := (uptr: &unique_ptr) -> void {
+  print "Calling global destructor\n"
   free uptr.ptr
 }
 
@@ -13,5 +14,14 @@ __print__ := (uptr: unique_ptr) -> void {
 main := void -> void {
   p: unique_ptr
 
-  print p
+  __destroy__ := (uptr: &unique_ptr) -> void {
+    return
+  }
+
+  foo()
+
+}
+foo := void -> void {
+  p: unique_ptr
+  q: unique_ptr
 }

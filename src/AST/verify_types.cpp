@@ -605,6 +605,62 @@ void Declaration::verify_types() {
     }
 
     if (error_raised) { return; }
+  } else if (identifier->token() == "__assign__") {
+    if (!type.is_function()) {
+      error_log.log(line_num, "Assign must be defined to be a function");
+      return;
+    }
+
+    bool error_raised = false;
+    auto fn_type = static_cast<Function *>(type.get);
+    if (!fn_type->input.is_tuple()) {
+      error_log.log(line_num, "Cannot define assign function for " +
+                                  fn_type->input.get->to_string());
+      error_raised = true;
+    } else {
+      auto in = static_cast<Tuple *>(fn_type->input.get);
+      if (in->entries.size() != 2) {
+        error_log.log(line_num,
+                      "Assignment must be a binary operator, but " +
+                          std::to_string(in->entries.size()) + "argument" +
+                          (in->entries.size() != 1 ? "s" : "") + " given.");
+        error_raised = true;
+      }
+      // TODO more checking.
+    }
+
+    if (fn_type->output != Void) {
+      error_log.log(line_num, "assignment must return void");
+      error_raised = true;
+    }
+
+    if (error_raised) { return; }
+
+  } else if (identifier->token() == "__destroy__") {
+    if (!type.is_function()) {
+      error_log.log(line_num, "Destructor must be defined to be a function.");
+      return;
+    }
+
+    bool error_raised = false;
+    auto fn_type = static_cast<Function *>(type.get);
+    if (!fn_type->input.is_pointer()) {
+      error_log.log(line_num, "Destructor must take one pointer argument.");
+      error_raised = true;
+    } else {
+      auto ptee = static_cast<Pointer *>(fn_type->input.get)->pointee;
+      if (!ptee.is_struct()) {
+        error_log.log(line_num, "Destructor must take a pointer to a struct.");
+        error_raised = true;
+      }
+    }
+
+    if (fn_type->output != Void) {
+      error_log.log(line_num, "Destructor must return void");
+      error_raised = true;
+    }
+
+    if (error_raised) { return; }
   }
 
   // TODO if RHS is not a type give a nice message instead of segfaulting
