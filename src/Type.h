@@ -102,8 +102,7 @@ extern RangeType *Range(TypePtr t);
   virtual void generate_llvm() const ENDING;                                   \
   virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
   virtual void call_init(llvm::Value *var) ENDING;                             \
-  virtual void call_repr(llvm::Value *val) ENDING;                             \
-  virtual void call_uninit(llvm::Value *var) ENDING
+  virtual void call_repr(llvm::Value *val) ENDING                              \
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -129,6 +128,8 @@ public:
   // the types, this will either simply be a store operation or a call to the
   // assignment function.
   void CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var);
+
+  void CallDestroy(Scope *scope, llvm::Value *var);
 
   // Note: this one is special. It functions identically to the rest, but
   // it's special in that it will return nullptr if you haven't imported the
@@ -210,8 +211,9 @@ struct Array : public Type {
   virtual llvm::Value *allocate() const;
 
   llvm::Function *assign();
-
-  llvm::Function *init_fn_, *uninit_fn_, *repr_fn_, *assign_fn_;
+  llvm::Function *destroy();
+  
+  llvm::Function *init_fn_, *destroy_fn_, *repr_fn_, *assign_fn_;
 
   TypePtr data_type;
 
@@ -308,9 +310,10 @@ struct Structure : public Type {
   std::vector<AST::Expression *> init_values;
 
   llvm::Function *assign();
+  llvm::Function *destroy();
 
 private:
-  llvm::Function *init_fn_, *uninit_fn_, *assign_fn_;
+  llvm::Function *init_fn_, *destroy_fn_, *assign_fn_;
 };
 
 struct ParametricStructure : public Type {

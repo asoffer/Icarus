@@ -15,6 +15,7 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             TypePtr input_type);
 namespace cstdlib {
 extern llvm::Constant *malloc();
+extern llvm::Constant *free();
 } // namespace cstdlib
 
 namespace data {
@@ -43,10 +44,8 @@ size_t Type::alignment() const {
 void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
   if (is_primitive() || is_pointer() || is_enum()) {
     builder.CreateStore(val, var);
-    return;
-  }
 
-  if (is_array()) {
+  } else if (is_array()) {
     builder.CreateCall(static_cast<Array *>(this)->assign(), {val, var});
 
   } else if (is_struct()) {
@@ -57,14 +56,48 @@ void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
     }
 
     // Use default assignment if none is given.
-    if (!assign_fn) {
-      assign_fn = static_cast<Structure *>(this)->assign();
-    } else {
-      builder.CreateCall(assign_fn, {val, var});
-    }
+    if (!assign_fn) { assign_fn = static_cast<Structure *>(this)->assign(); }
+    builder.CreateCall(assign_fn, {val, var});
 
   } else {
     assert(false && "No assignment function to call");
+  }
+}
+
+void Type::CallDestroy(Scope *scope, llvm::Value *var) {
+
+  if (is_primitive() || is_pointer() || is_enum()) {
+    return;
+
+  } else if (is_array()) {
+    auto array_type = static_cast<Array *>(this);
+    if (array_type->data_type.get->requires_uninit()) {
+      builder.CreateCall(array_type->destroy(), {var});
+    } else {
+      builder.CreateCall(
+          cstdlib::free(),
+          builder.CreateBitCast(
+              builder.CreateLoad(builder.CreateGEP(
+                  var, {data::const_uint(0), data::const_uint(1)})),
+              RawPtr));
+    }
+
+  } else if (is_struct()) {
+    // TODO if (!requires_uninit()) { return; }
+
+    llvm::Value *destroy_fn = nullptr;
+
+    if (scope) {
+      destroy_fn =
+          GetFunctionReferencedIn(scope, "__destroy__", Ptr(this));
+    }
+
+    // Use default destroy if none is given.
+    if (!destroy_fn) { destroy_fn = static_cast<Structure *>(this)->destroy(); }
+    builder.CreateCall(destroy_fn, {var});
+
+  } else {
+    assert(false && "No destructor to call");
   }
 }
 
@@ -124,7 +157,7 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 }
 
 Array::Array(TypePtr t)
-    : init_fn_(nullptr), uninit_fn_(nullptr), repr_fn_(nullptr),
+    : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
       assign_fn_(nullptr), data_type(t) {
   dimension = data_type.is_array()
                   ? 1 + static_cast<Array *>(data_type.get)->dimension
@@ -204,7 +237,7 @@ QuantumType::QuantumType(const std::vector<TypePtr>& vec) : options(vec) {
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), init_fn_(nullptr),
-      uninit_fn_(nullptr), assign_fn_(nullptr) {}
+      destroy_fn_(nullptr), assign_fn_(nullptr) {}
 
 TypePtr Structure::field(const std::string& name) const {
   return field_type AT(field_name_to_num AT(name));

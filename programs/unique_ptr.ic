@@ -1,0 +1,17 @@
+unique_ptr := struct {
+  ptr := alloc(int)
+}
+
+__destroy__ := (uptr: &unique_ptr) -> void {
+  free uptr.ptr
+}
+
+__print__ := (uptr: unique_ptr) -> void {
+  print @uptr.ptr
+}
+
+main := void -> void {
+  p: unique_ptr
+
+  print p
+}

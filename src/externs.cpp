@@ -228,6 +228,7 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
       }
 
     } else if (id_ptr->type.is_function()) {
+
       auto fn_type = static_cast<Function *>(id_ptr->type.get);
       if (fn_type->input != input_type) { continue; }
       llvm::FunctionType *llvm_fn_type = *fn_type;

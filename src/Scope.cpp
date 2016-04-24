@@ -183,7 +183,8 @@ void BlockScope::uninitialize() {
 
   while (!deferred_uninits.empty()) {
     auto &deferred = deferred_uninits.top();
-    deferred.first.get->call_uninit(deferred.second);
+
+    deferred.first.get->CallDestroy(this, deferred.second);
     deferred_uninits.pop();
   }
 
@@ -194,7 +195,7 @@ void BlockScope::uninitialize() {
     if (decl_id->is_arg) continue;
     if (!decl_id->type.stores_data()) continue;
 
-    decl_id->type.get->call_uninit({decl_id->alloc});
+    decl_id->type.get->CallDestroy(this, decl_id->alloc);
   }
 }
 

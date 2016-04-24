@@ -49,7 +49,7 @@ llvm::Function *Array::assign() {
   var->setName("var");
 
   // release the resources held by var
-  call_uninit(var);
+  CallDestroy(nullptr, var);
 
   auto new_len = builder.CreateLoad(
       builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
