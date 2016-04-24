@@ -57,8 +57,11 @@ void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
     }
 
     // Use default assignment if none is given.
-    if (!assign_fn) { assign_fn = static_cast<Structure *>(this)->assign(); }
-    builder.CreateCall(static_cast<Structure *>(this)->assign(), {val, var});
+    if (!assign_fn) {
+      assign_fn = static_cast<Structure *>(this)->assign();
+    } else {
+      builder.CreateCall(assign_fn, {val, var});
+    }
 
   } else {
     assert(false && "No assignment function to call");
