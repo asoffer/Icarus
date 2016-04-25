@@ -93,22 +93,6 @@ void initialize() {
                                              Func({Uint, Uint}, Uint),
                                              Func({Real, Real}, Real)};
 
-  operator_table[Language::Operator::Sub] = {Func({Int, Int}, Int),
-                                             Func({Uint, Uint}, Uint),
-                                             Func({Real, Real}, Real)};
-
-  operator_table[Language::Operator::Mul] = {Func({Int, Int}, Int),
-                                             Func({Uint, Uint}, Uint),
-                                             Func({Real, Real}, Real)};
-
-  operator_table[Language::Operator::Div] = {Func({Int, Int}, Int),
-                                             Func({Uint, Uint}, Uint),
-                                             Func({Real, Real}, Real)};
-
-  operator_table[Language::Operator::Mod] = {Func({Int, Int}, Int),
-                                             Func({Uint, Uint}, Uint)};
-
-  operator_table[Language::Operator::Not] = {Func(Bool, Bool)};
 }
 
 // TODO make this lookup better

@@ -363,8 +363,7 @@ void Binop::verify_types() {
       error_log.log(line_num, "LHS of rocket must be a bool");
       type = Error;
     }
-    return;
-  }
+  } break;
   case Operator::Call: {
     if (lhs->is_identifier()) {
       size_t num_matches = 0;
@@ -433,8 +432,7 @@ void Binop::verify_types() {
         type = resulting_type;
       }
     }
-    return;
-  }
+  } break;
   case Operator::Index: {
     type = Error;
     if (!lhs->type.is_array()) {
@@ -455,8 +453,7 @@ void Binop::verify_types() {
       return;
     }
 
-    return;
-  }
+  } break;
   case Operator::Cast: {
     // TODO use correct scope
     type = rhs->evaluate(scope_->context).as_type;
@@ -474,8 +471,7 @@ void Binop::verify_types() {
 
     error_log.log(line_num, "Invalid cast from " + lhs->type.to_string() +
                                 " to " + type.to_string());
-    return;
-  }
+  } break;
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
       type = Range(Int);
@@ -491,20 +487,12 @@ void Binop::verify_types() {
                                   lhs->type.to_string() + " .. " +
                                   rhs->type.to_string());
     }
-    return;
-  }
+  } break;
   case Operator::Add: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Int;
-      return;
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Uint;
-      return;
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      type = Real;
-      return;
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__add__");
@@ -524,21 +512,14 @@ void Binop::verify_types() {
                           lhs->type.to_string() + " and " +
                           rhs->type.to_string());
       }
-      return;
     }
-  }
+  } break;
   case Operator::Sub: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Int;
-      return;
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Uint;
-      return;
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      type = Real;
-      return;
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__sub__");
@@ -558,21 +539,14 @@ void Binop::verify_types() {
                           lhs->type.to_string() + " and " +
                           rhs->type.to_string());
       }
-      return;
     }
-  }
+  } break;
   case Operator::Mul: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Int;
-      return;
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Uint;
-      return;
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      type = Real;
-      return;
     } else if (lhs->type.is_function() && rhs->type.is_function()) {
       auto lhs_fn = static_cast<Function *>(lhs->type.get);
       auto rhs_fn = static_cast<Function *>(rhs->type.get);
@@ -583,7 +557,6 @@ void Binop::verify_types() {
         type = Error;
         error_log.log(line_num, "Functions cannot be composed.");
       }
-      return;
 
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
@@ -604,21 +577,14 @@ void Binop::verify_types() {
                           lhs->type.to_string() + " and " +
                           rhs->type.to_string());
       }
-      return;
     }
-  }
+  } break;
   case Operator::Div: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Int;
-      return;
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Uint;
-      return;
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      type = Real;
-      return;
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__div__");
@@ -638,21 +604,14 @@ void Binop::verify_types() {
                           lhs->type.to_string() + " and " +
                           rhs->type.to_string());
       }
-      return;
     }
-  }
+  } break;
   case Operator::Mod: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Int;
-      return;
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Uint;
-      return;
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      type = Real;
-      return;
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__mod__");
@@ -672,21 +631,14 @@ void Binop::verify_types() {
                           lhs->type.to_string() + " and " +
                           rhs->type.to_string());
       }
-      return;
     }
-  }
-
-
-
+  } break;
   default: { // TODO remove this in favor of the more standard function lookup
              // approach
     type = operator_lookup(line_num, op, lhs->type, rhs->type);
     assert(type && "operator_lookup yields nullptr");
-    return;
+  } break;
   }
-  }
-
-  assert(false && "Died in Binop::verify_types");
 }
 
 void ChainOp::verify_types() {
