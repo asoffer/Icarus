@@ -24,21 +24,38 @@ extern llvm::Constant *str(const std::string &s);
 } // namespace data
 
 size_t Type::bytes() const {
-  if (!llvm_type) {
-    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
-              << __LINE__ << ")" << std::endl;
-  } 
+  // All pointers are the same size, so use one we know will already have the
+  // llvm_type field generated.
+  if (is_pointer()) {
+    return data_layout->getTypeStoreSize(RawPtr.get->llvm_type);
+  }
 
-  return (llvm_type == nullptr) ? 0 : data_layout->getTypeStoreSize(llvm_type);
-}
+  if (!stores_data()) { return 0; }
 
-size_t Type::alignment() const {
   if (!llvm_type) {
     std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
               << __LINE__ << ")" << std::endl;
   }
 
-  return (llvm_type == nullptr) ? 0 : data_layout->getABITypeAlignment(llvm_type);
+  return (llvm_type == nullptr) ? 0 : data_layout->getTypeStoreSize(llvm_type);
+}
+
+size_t Type::alignment() const {
+  // All pointers are the same size, so use one we know will already have the
+  // llvm_type field generated.
+  if (is_pointer()) {
+    return data_layout->getTypeStoreSize(RawPtr.get->llvm_type);
+  }
+
+  if (!stores_data()) { return 0; }
+
+  if (!llvm_type) {
+    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
+              << __LINE__ << ")" << std::endl;
+  }
+
+  return (llvm_type == nullptr) ? 0
+                                : data_layout->getABITypeAlignment(llvm_type);
 }
 
 void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {

@@ -31,6 +31,7 @@ void initialize() {
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
   Error   = new Primitive(Primitive::TypeEnum::Error);
   RawPtr  = Ptr(Char);
+  RawPtr.get->generate_llvm();
 
   operator_table[Language::Operator::Arrow] = {Func({Type_, Type_}, Type_)};
 
