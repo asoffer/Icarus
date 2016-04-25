@@ -1,0 +1,29 @@
+vec := struct {
+  x: real
+  y: real
+  z: real
+}
+
+main := void -> void {
+  v1: vec
+  v2: vec
+  v3: vec
+  v4: vec
+
+  v3.x += 0.1
+
+  print v1 == v2 == v3 == v4
+  print '\n'
+  print v1 != v2
+  print '\n'
+
+  __ne__ := (lhs: vec, rhs: vec) -> bool {
+    print "TESTING NON-EQUALITY\n"
+    return !(lhs == rhs)
+  }
+
+  __eq__ := (lhs: vec, rhs: vec) -> bool {
+    print "TESTING EQUALITY\n"
+    return lhs.x == rhs.x & lhs.y == rhs.y & lhs.z == rhs.z
+  }
+}

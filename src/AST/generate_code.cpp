@@ -446,9 +446,9 @@ llvm::Value *Statements::generate_code() {
     llvm::Value *cmp_val = nullptr;                                            \
     switch (ops[i - 1]) {
 
-#define CASE(cmp, llvm_call, op_name)                                          \
-  case Operator::op_name: {                                                    \
-    cmp =                                                                      \
+#define CASE(llvm_call, op_name)                                               \
+  case Language::Operator::op_name: {                                          \
+    cmp_val =                                                                  \
         builder.Create##llvm_call##op_name(lhs_val, rhs_val, #op_name "tmp");  \
   } break
 
@@ -478,12 +478,10 @@ llvm::Value *ChainOp::generate_code() {
     return llvm_value(evaluate(CurrentContext()));
   }
 
-  using Language::Operator;
-
   auto expr_type = exprs[0]->type;
 
   // Boolean xor is separate because it can't be short-circuited
-  if (expr_type == Bool && ops.front() == Operator::Xor) {
+  if (expr_type == Bool && ops.front() == Language::Operator::Xor) {
     llvm::Value *cmp_val = exprs[0]->generate_code();
     for (size_t i = 1; i < exprs.size(); ++i) {
       cmp_val = builder.CreateXor(cmp_val, exprs[i]->generate_code());
@@ -506,52 +504,74 @@ llvm::Value *ChainOp::generate_code() {
   llvm::PHINode *phi = builder.CreatePHI(Bool, num_incoming, "phi");
   if (expr_type == Int) {
     BEGIN_SHORT_CIRCUIT
-    CASE(cmp_val, ICmpS, LT);
-    CASE(cmp_val, ICmpS, LE);
-    CASE(cmp_val, ICmp, EQ);
-    CASE(cmp_val, ICmp, NE);
-    CASE(cmp_val, ICmpS, GE);
-    CASE(cmp_val, ICmpS, GT);
+    CASE(ICmpS, LT);
+    CASE(ICmpS, LE);
+    CASE(ICmp, EQ);
+    CASE(ICmp, NE);
+    CASE(ICmpS, GE);
+    CASE(ICmpS, GT);
     END_SHORT_CIRCUIT
 
   } else if (expr_type == Uint) {
     BEGIN_SHORT_CIRCUIT
-    CASE(cmp_val, ICmpU, LT);
-    CASE(cmp_val, ICmpU, LE);
-    CASE(cmp_val, ICmp, EQ);
-    CASE(cmp_val, ICmp, NE);
-    CASE(cmp_val, ICmpU, GE);
-    CASE(cmp_val, ICmpU, GT);
+    CASE(ICmpU, LT);
+    CASE(ICmpU, LE);
+    CASE(ICmp, EQ);
+    CASE(ICmp, NE);
+    CASE(ICmpU, GE);
+    CASE(ICmpU, GT);
     END_SHORT_CIRCUIT
 
   } else if (expr_type == Char) {
     BEGIN_SHORT_CIRCUIT
-    CASE(cmp_val, ICmp, EQ);
-    CASE(cmp_val, ICmp, NE);
+    CASE(ICmp, EQ);
+    CASE(ICmp, NE);
     END_SHORT_CIRCUIT
 
   } else if (expr_type == Real) {
     BEGIN_SHORT_CIRCUIT
-    CASE(cmp_val, FCmpO, LT);
-    CASE(cmp_val, FCmpO, LE);
-    CASE(cmp_val, FCmpO, EQ); // TODO should we really allow this?
-    CASE(cmp_val, FCmpO, NE); // TODO should we really allow this?
-    CASE(cmp_val, FCmpO, GE);
-    CASE(cmp_val, FCmpO, GT);
+    CASE(FCmpO, LT);
+    CASE(FCmpO, LE);
+    CASE(FCmpO, EQ); // TODO should we really allow this?
+    CASE(FCmpO, NE); // TODO should we really allow this?
+    CASE(FCmpO, GE);
+    CASE(FCmpO, GT);
     END_SHORT_CIRCUIT
 
   } else if (expr_type.is_enum()) {
     BEGIN_SHORT_CIRCUIT
-    CASE(cmp_val, ICmp, EQ);
-    CASE(cmp_val, ICmp, NE);
+    CASE(ICmp, EQ);
+    CASE(ICmp, NE);
     END_SHORT_CIRCUIT
 
-    // TODO struct, function, array, etc
+  } else if (expr_type.is_struct()) {
+#undef CASE
+
+#define CASE(op_name, OP_NAME)                                                 \
+  case Language::Operator::OP_NAME: {                                          \
+    auto call_fn =                                                             \
+        GetFunctionReferencedIn(scope_, "__" #op_name "__",                    \
+                                Tup({exprs[i - 1]->type, exprs[i]->type}));    \
+    assert(call_fn);                                                           \
+    cmp_val =                                                                  \
+        builder.CreateCall(call_fn, {lhs_val, rhs_val}, #op_name ".tmp");      \
+  } break
+
+    BEGIN_SHORT_CIRCUIT
+    CASE(lt, LT);
+    CASE(le, LE);
+    CASE(eq, EQ);
+    CASE(ne, NE);
+    CASE(ge, GE);
+    CASE(gt, GT);
+    END_SHORT_CIRCUIT
+
+    // TODO function, array, etc
   } else if (expr_type == Bool) {
     // TODO in the last case, can't you just come from the last branch taking
     // the yet unknown value rather than doing another branch? Answer: Yes. Do
     // it.
-    if (ops.front() == Operator::And) {
+    if (ops.front() == Language::Operator::And) {
       for (const auto &ex : exprs) {
         builder.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
@@ -563,7 +583,7 @@ llvm::Value *ChainOp::generate_code() {
       builder.SetInsertPoint(curr_block);
       phi->addIncoming(data::const_true(), curr_block);
 
-    } else if (ops.front() == Operator::Or) {
+    } else if (ops.front() == Language::Operator::Or) {
       for (const auto &ex : exprs) {
         builder.SetInsertPoint(curr_block);
         auto next_block = make_block("next", parent_fn);
