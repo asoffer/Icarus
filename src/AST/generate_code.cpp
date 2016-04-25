@@ -111,7 +111,7 @@ llvm::Value *Terminal::generate_code() {
   // Else is a terminal only in case statements. In this situation, it's
   // corresponding resulting value is always to be the one chosen, so we
   // should have 'else' represent the value true.
-    case Language::Terminal::StringLiteral: {
+  case Language::Terminal::StringLiteral: {
     auto str = data::global_string(token());
     auto len = data::const_uint(token().size());
 
@@ -149,9 +149,6 @@ llvm::Value *Unop::generate_code() {
   // We first go through all the possible operators where we don't necessarily
   // need to generate code for the operand.
   switch (op) {
-  case Language::Operator::Not: {
-    return builder.CreateNot(operand->generate_code());
-  }
   case Language::Operator::And: {
     return operand->generate_lvalue();
   }
@@ -173,9 +170,6 @@ llvm::Value *Unop::generate_code() {
     //
     // TODO We should log that information so we don't repeat this process.
     if (operand->type.is_struct()) {
-      // TODO maybe callees should be responsible for the struct memcpy?
-      val = struct_memcpy(operand->type, val);
-
       // TODO ensure that it is generated
       auto print_fn =
           GetFunctionReferencedIn(scope_, "__print__", operand->type);
@@ -199,11 +193,38 @@ llvm::Value *Unop::generate_code() {
 
   llvm::Value *val = operand->generate_code();
   switch (op) {
-  case Language::Operator::Sub: {
-    return operand->type.get->call_neg(val);
-  }
   case Language::Operator::Not: {
-    return operand->type.get->call_not(val);
+    if (operand->type.is_struct()) {
+      auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
+      assert(not_fn && "No 'not' function available");
+      builder.CreateCall(not_fn, val);
+
+    } else if (type == Bool) {
+      return builder.CreateNot(val);
+    } else {
+      assert(false);
+    }
+  }
+  case Language::Operator::Sub: {
+    if (operand->type == Int) {
+      return builder.CreateNeg(val, "neg");
+
+    } else if (operand->type == Real) {
+      return builder.CreateFNeg(val, "fneg");
+
+    } else if (operand->type.is_struct()) {
+      auto neg_fn = GetFunctionReferencedIn(scope_, "__neg__", operand->type);
+      assert(neg_fn && "No negation function available");
+      // TODO put this alloc at the beginning!
+      // TODO what if this returns a primitive, actually return it. otherwise,
+      // use a return parameter like you're doing already
+      auto local_ret = builder.CreateAlloca(type);
+      builder.CreateCall(neg_fn, {val, local_ret});
+      return local_ret;
+
+    } else {
+      assert(false);
+    }
   }
   case Language::Operator::Free: {
     builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, RawPtr)});

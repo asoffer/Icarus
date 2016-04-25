@@ -5,6 +5,9 @@
 #include <sstream>
 
 extern ErrorLog error_log;
+extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
+                                           const std::string &fn_name,
+                                           TypePtr input_type);
 
 TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
                             AST::Expression *rhs) {
@@ -238,6 +241,22 @@ void Unop::verify_types() {
 
     } else if (operand->type == Real) {
       type = Real;
+
+    } else if (operand->type.is_struct()) {
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto id_ptr = scope_ptr->IdentifierHereOrNull("__neg__");
+        if (!id_ptr) { continue; }
+
+        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
+      }
+
+      auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
+      if (t) { type = static_cast<Function *>(t.get)->output; }
+      else {
+        error_log.log(line_num,
+                      type.to_string() + " has no negation operator.");
+        type = Error;
+      }
 
     } else {
       error_log.log(line_num, type.to_string() + " has no negation operator.");

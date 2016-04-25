@@ -240,10 +240,27 @@ void FnScope::initialize() {
   exit_flag = builder.CreateAlloca(Char, nullptr, "exit.flag");
 
   if (fn_type->output != Void) {
+
     // TODO multiple return types
     if (fn_type->output.is_big()) {
-      // TODO which one? This works iff there is only one
       return_value = llvm_fn->args().begin();
+      if (fn_type->input == Void) {
+
+      } else if (fn_type->input.is_tuple()) {
+        auto num_inputs =
+            static_cast<Tuple *>(fn_type->input.get)->entries.size();
+
+        // TODO is there a way to get direct access? Probably. Look it up.
+        auto ret_val_arg = llvm_fn->args().begin();
+        for (size_t i = 0; i < num_inputs; ++i) {
+          ret_val_arg = ++ret_val_arg;
+          return_value = ++return_value;
+        }
+
+      } else {
+        return_value = ++llvm_fn->args().begin();
+      }
+
     } else {
       return_value = builder.CreateAlloca(fn_type->output, nullptr, "retval");
     }

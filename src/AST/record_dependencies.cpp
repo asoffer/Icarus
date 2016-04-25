@@ -49,7 +49,18 @@ void Unop::record_dependencies() {
   Dependency::type_type(this, operand);
   if (op == Language::Operator::Return) {
     Dependency::value_value(this, operand);
+  } else if (op == Language::Operator::Sub) {
+    auto scope_ptr = scope_;
+    while (scope_ptr) {
+      auto id_ptr = scope_ptr->IdentifierHereOrNull(token());
+      if (id_ptr) {
+        Dependency::value_value(this, id_ptr);
+        Dependency::type_type(this, id_ptr);
+      }
+      scope_ptr = scope_ptr->parent;
+    }
   }
+
   operand->record_dependencies();
 }
 

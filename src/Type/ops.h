@@ -37,16 +37,6 @@ llvm::Value *Primitive::call_mod(llvm::Value *lhs, llvm::Value *rhs) {
   else                    return nullptr;
 }
 
-llvm::Value* Primitive::call_neg(llvm::Value* operand) {
-  if (this == Int)        return builder.CreateNeg(operand, "neg");
-  else if (this == Real)  return builder.CreateFNeg(operand, "fneg");
-  else                    return nullptr;
-}
-
-llvm::Value* Primitive::call_not(llvm::Value* operand) {
-  return (this == Char ? builder.CreateNot(operand, "not") : nullptr);
-}
-
 llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
                                  llvm::Value *rhs, Function *fn_type) {
   auto old_block = builder.GetInsertBlock();
@@ -75,26 +65,20 @@ llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
   llvm::Value *TYPE::call_##op(llvm::Value *lhs, llvm::Value *rhs) {           \
     return nullptr;                                                            \
   }
-#define LEFT_UNARY_OPERATOR_MACRO(op)                                          \
-  llvm::Value *TYPE::call_##op(llvm::Value *operand) { return nullptr; }
 
 #define TYPE Array 
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE Tuple
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE Pointer
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE Function
-#include "config/left_unary_operators.conf"
 BINARY_OPERATOR_MACRO(add, +, 16, left)
 BINARY_OPERATOR_MACRO(sub, -, 16, left)
 BINARY_OPERATOR_MACRO(div, /, 17, left)
@@ -102,37 +86,30 @@ BINARY_OPERATOR_MACRO(mod, %, 17, left)
 #undef TYPE
 
 #define TYPE Structure
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE Enumeration
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE DependentType
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE TypeVariable
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE ParametricStructure
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE QuantumType
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
 #define TYPE RangeType
-#include "config/left_unary_operators.conf"
 #include "config/binary_operators.conf"
 #undef TYPE
 
