@@ -1,0 +1,4 @@
+main := void -> void {
+  x: &int = alloc(int)
+  free x
+}

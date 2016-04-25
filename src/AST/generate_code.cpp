@@ -207,8 +207,11 @@ llvm::Value *Unop::generate_code() {
   }
   case Language::Operator::Free: {
     builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, RawPtr)});
-    // TODO only if it has an l-value
-    builder.CreateStore(data::null(operand->type), operand->generate_lvalue());
+    if (operand->lvalue) {
+      builder.CreateStore(data::null(operand->type),
+                          operand->generate_lvalue());
+    }
+
     return nullptr;
   }
   case Language::Operator::Return: {
