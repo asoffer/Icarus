@@ -683,20 +683,27 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
   // Treat functions special
   if (lhs->is_identifier() && rhs->type.is_function()) {
-    // TODO rhs may not be a function literal. For instance, it could be the
-    // result of composition.
-    static_cast<FunctionLiteral *>(rhs)->fn_scope->name = lhs->token();
-
     auto fn_type                     = static_cast<Function *>(rhs->type.get);
     llvm::FunctionType *llvm_fn_type = *fn_type;
     auto mangled_name                = Mangle(fn_type, lhs);
 
+        // Then If it is a function literal, notify the function literal of the code name/scope, etc.
     if (rhs->is_function_literal()) {
       auto fn = static_cast<FunctionLiteral *>(rhs);
+      fn->fn_scope->name = lhs->token();
 
       fn->llvm_fn = static_cast<llvm::Function *>(
           global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
+
+    } else if (rhs->is_binop() &&
+               static_cast<Binop *>(rhs)->op == Language::Operator::Mul) {
+      auto binop   = static_cast<Binop *>(rhs);
+      auto lhs_val = binop->lhs->generate_code();
+      auto rhs_val = binop->rhs->generate_code();
+
+      return FunctionComposition(mangled_name, lhs_val, rhs_val, fn_type);
     }
+
 
     val = rhs->generate_code();
 

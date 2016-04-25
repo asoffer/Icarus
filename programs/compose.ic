@@ -1,3 +1,9 @@
+main := void -> void {
+  print fourth(1.1)
+  print '\n'
+  print a(20)
+}
+
 square := (r: real) -> real {
   return r * r
 }
@@ -19,9 +25,3 @@ d := (r: real) -> int {
 
 b := c * d
 a := b * c
-
-main := void -> void {
-  print fourth(1.1)
-  print '\n'
-  print a(20)
-}

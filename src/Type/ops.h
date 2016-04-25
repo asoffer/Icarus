@@ -47,11 +47,14 @@ llvm::Value* Primitive::call_not(llvm::Value* operand) {
   return (this == Char ? builder.CreateNot(operand, "not") : nullptr);
 }
 
-llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
+llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
+                                 llvm::Value *rhs, Function *fn_type) {
   auto old_block = builder.GetInsertBlock();
-  auto llvm_fn = llvm::Function::Create(
-      static_cast<llvm::FunctionType *>(llvm_type),
-      llvm::Function::ExternalLinkage, "__anon_fn", global_module);
+
+  llvm::FunctionType *llvm_fn_type = *fn_type;
+
+  auto llvm_fn = static_cast<llvm::Function *>(
+      global_module->getOrInsertFunction(name, llvm_fn_type));
 
   auto entry = make_block("entry", llvm_fn);
   builder.SetInsertPoint(entry);
@@ -64,7 +67,9 @@ llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
   return llvm_fn;
 }
 
-
+llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
+  return FunctionComposition("__anon_fn", lhs, rhs, this);
+}
 
 #define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
   llvm::Value *TYPE::call_##op(llvm::Value *lhs, llvm::Value *rhs) {           \

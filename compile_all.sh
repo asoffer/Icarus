@@ -16,6 +16,7 @@ bin/icarus programs/chain_test.ic
 bin/icarus programs/char_array.ic
 bin/icarus programs/code_gen_test.ic
 bin/icarus programs/code_gen_test_with_type_inference.ic
+bin/icarus programs/compose.ic
 bin/icarus programs/destroy.ic
 bin/icarus programs/double_case.ic
 bin/icarus programs/dynamic_allocation.ic
@@ -64,6 +65,7 @@ bin/icarus programs/type_literal.ic
 bin/icarus programs/traits_test.ic
 bin/icarus programs/uint_literal_test.ic
 bin/icarus programs/unique_ptr.ic
+bin/icarus programs/vec.ic
 bin/icarus programs/void_return_test.ic
 bin/icarus programs/water_state.ic
 bin/icarus programs/while_break.ic
