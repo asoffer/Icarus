@@ -9,6 +9,10 @@
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
+extern llvm::Value *FunctionComposition(const std::string &name,
+                                        llvm::Value *lhs, llvm::Value *rhs,
+                                        Function *fn_type);
+
 extern ErrorLog error_log;
 
 extern llvm::Module *global_module;

@@ -13,6 +13,9 @@ extern llvm::Module* global_module;
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             TypePtr input_type);
+extern llvm::Value *FunctionComposition(const std::string &name,
+                                        llvm::Value *lhs, llvm::Value *rhs,
+                                        Function *fn_type);
 namespace cstdlib {
 extern llvm::Constant *malloc();
 extern llvm::Constant *free();
@@ -129,6 +132,10 @@ llvm::Value *Type::CallMul(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
   if ((lhs_type == Int && rhs_type == Int) ||
       (lhs_type == Uint && rhs_type == Uint)) {
     return builder.CreateMul(lhs_val, rhs_val, "mul");
+
+  } else if (lhs_type.is_function() && rhs_type.is_function()) {
+    return FunctionComposition("__anon_fn", lhs_val, rhs_val,
+                               static_cast<Function *>(this));
 
   } else if (lhs_type == Real && rhs_type == Real) {
     return builder.CreateFMul(lhs_val, rhs_val, "fmul");

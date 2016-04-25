@@ -72,8 +72,9 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
 
 
 namespace AST {
-TypePtr operator_lookup(size_t line_num, Language::Operator op, TypePtr lhs_type,
-                      TypePtr rhs_type) {
+// TODO THIS FUNCTION IS DISAPPEARING!
+TypePtr operator_lookup(size_t line_num, Language::Operator op,
+                        TypePtr lhs_type, TypePtr rhs_type) {
   // TODO move this into the get_operator function
   if (lhs_type.is_function() && rhs_type.is_function()) {
     auto lhs_fn = static_cast<Function *>(lhs_type.get);
@@ -572,6 +573,18 @@ void Binop::verify_types() {
     } else if (lhs->type == Real && rhs->type == Real) {
       type = Real;
       return;
+    } else if (lhs->type.is_function() && rhs->type.is_function()) {
+      auto lhs_fn = static_cast<Function *>(lhs->type.get);
+      auto rhs_fn = static_cast<Function *>(rhs->type.get);
+      if (rhs_fn->output == lhs_fn->input) {
+        type = Func(rhs_fn->input, lhs_fn->output);
+
+      } else {
+        type = Error;
+        error_log.log(line_num, "Functions cannot be composed.");
+      }
+      return;
+
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__mul__");

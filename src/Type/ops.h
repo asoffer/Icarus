@@ -37,30 +37,6 @@ llvm::Value *Primitive::call_mod(llvm::Value *lhs, llvm::Value *rhs) {
   else                    return nullptr;
 }
 
-llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
-                                 llvm::Value *rhs, Function *fn_type) {
-  auto old_block = builder.GetInsertBlock();
-
-  llvm::FunctionType *llvm_fn_type = *fn_type;
-
-  auto llvm_fn = static_cast<llvm::Function *>(
-      global_module->getOrInsertFunction(name, llvm_fn_type));
-
-  auto entry = make_block("entry", llvm_fn);
-  builder.SetInsertPoint(entry);
-
-  // TODO multiple args, multiple return values, non-primitives, void return
-  auto arg = llvm_fn->args().begin();
-  builder.CreateRet(builder.CreateCall(lhs, {builder.CreateCall(rhs, {arg})}));
-
-  builder.SetInsertPoint(old_block);
-  return llvm_fn;
-}
-
-llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
-  return FunctionComposition("__anon_fn", lhs, rhs, this);
-}
-
 #define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
   llvm::Value *TYPE::call_##op(llvm::Value *lhs, llvm::Value *rhs) {           \
     return nullptr;                                                            \
@@ -81,6 +57,7 @@ llvm::Value *Function::call_mul(llvm::Value *lhs, llvm::Value *rhs) {
 #define TYPE Function
 BINARY_OPERATOR_MACRO(add, +, 16, left)
 BINARY_OPERATOR_MACRO(sub, -, 16, left)
+BINARY_OPERATOR_MACRO(mul, *, 17, left)
 BINARY_OPERATOR_MACRO(div, /, 17, left)
 BINARY_OPERATOR_MACRO(mod, %, 17, left)
 #undef TYPE
