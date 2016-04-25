@@ -428,11 +428,16 @@ llvm::Value *Binop::generate_code() {
 
   auto rhs_val = rhs->generate_code();
   switch (op) {
-  case Language::Operator::Add: return type.get->call_add(lhs_val, rhs_val);
-  case Language::Operator::Sub: return type.get->call_sub(lhs_val, rhs_val);
-  case Language::Operator::Mul: return type.get->call_mul(lhs_val, rhs_val);
-  case Language::Operator::Div: return type.get->call_div(lhs_val, rhs_val);
-  case Language::Operator::Mod: return type.get->call_mod(lhs_val, rhs_val);
+  case Language::Operator::Add:
+    return type.get->CallAdd(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
+  case Language::Operator::Sub:
+    return type.get->CallSub(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
+  case Language::Operator::Mul:
+    return type.get->CallMul(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
+  case Language::Operator::Div:
+    return type.get->CallDiv(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
+  case Language::Operator::Mod:
+    return type.get->CallMod(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
   default:;
   }
 

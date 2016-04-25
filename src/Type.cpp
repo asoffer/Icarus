@@ -81,6 +81,97 @@ void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
   }
 }
 
+#define CREATE_CALL(fn_name)                                                   \
+  auto fn = GetFunctionReferencedIn(scope, "__" fn_name "__",                  \
+                                    Tup({lhs_type, rhs_type}));                \
+  assert(fn);                                                                  \
+  if (this == Void) {                                                          \
+    builder.CreateCall(fn, {lhs_val, rhs_val});                                \
+    return nullptr;                                                            \
+  } else if (is_big()) {                                                       \
+    auto retval = builder.CreateAlloca(*this);                                 \
+    builder.CreateCall(fn, {lhs_val, rhs_val, retval});                        \
+    return retval;                                                             \
+  } else {                                                                     \
+    return builder.CreateCall(fn, {lhs_val, rhs_val});                         \
+  }
+
+llvm::Value *Type::CallAdd(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
+                           llvm::Value *lhs_val, llvm::Value *rhs_val) {
+  if ((lhs_type == Int && rhs_type == Int) ||
+      (lhs_type == Uint && rhs_type == Uint)) {
+    return builder.CreateAdd(lhs_val, rhs_val, "add");
+
+  } else if (lhs_type == Real && rhs_type == Real) {
+    return builder.CreateFAdd(lhs_val, rhs_val, "fadd");
+
+  } else {
+    CREATE_CALL("add")
+  }
+}
+
+llvm::Value *Type::CallSub(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
+                           llvm::Value *lhs_val, llvm::Value *rhs_val) {
+  if ((lhs_type == Int && rhs_type == Int) ||
+      (lhs_type == Uint && rhs_type == Uint)) {
+    return builder.CreateSub(lhs_val, rhs_val, "sub");
+
+  } else if (lhs_type == Real && rhs_type == Real) {
+    return builder.CreateFSub(lhs_val, rhs_val, "fsub");
+
+  } else {
+    CREATE_CALL("sub")
+  }
+}
+
+llvm::Value *Type::CallMul(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
+                           llvm::Value *lhs_val, llvm::Value *rhs_val) {
+  if ((lhs_type == Int && rhs_type == Int) ||
+      (lhs_type == Uint && rhs_type == Uint)) {
+    return builder.CreateMul(lhs_val, rhs_val, "mul");
+
+  } else if (lhs_type == Real && rhs_type == Real) {
+    return builder.CreateFMul(lhs_val, rhs_val, "fmul");
+
+  } else {
+    CREATE_CALL("mul")
+  }
+}
+
+llvm::Value *Type::CallDiv(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
+                           llvm::Value *lhs_val, llvm::Value *rhs_val) {
+  if (lhs_type == Int && rhs_type == Int) {
+    return builder.CreateSDiv(lhs_val, rhs_val, "sdiv");
+
+  } else if (lhs_type == Uint && rhs_type == Uint) {
+    return builder.CreateUDiv(lhs_val, rhs_val, "udiv");
+
+  } else if (lhs_type == Real && rhs_type == Real) {
+    return builder.CreateFDiv(lhs_val, rhs_val, "fdiv");
+
+  } else {
+    CREATE_CALL("div")
+  }
+}
+
+llvm::Value *Type::CallMod(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
+                           llvm::Value *lhs_val, llvm::Value *rhs_val) {
+  if (lhs_type == Int && rhs_type == Int) {
+    return builder.CreateSRem(lhs_val, rhs_val, "smod");
+
+  } else if (lhs_type == Uint && rhs_type == Uint) {
+    return builder.CreateURem(lhs_val, rhs_val, "umod");
+
+  } else if (lhs_type == Real && rhs_type == Real) {
+    return builder.CreateFRem(lhs_val, rhs_val, "fmod");
+
+  } else {
+    CREATE_CALL("mod")
+  }
+}
+
+#undef CREATE_CALL
+
 void Type::CallDestroy(Scope *scope, llvm::Value *var) {
 
   if (is_primitive() || is_pointer() || is_enum()) {

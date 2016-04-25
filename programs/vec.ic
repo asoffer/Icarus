@@ -25,10 +25,9 @@ __sub__ := (lhs: vec, rhs: vec) -> vec {
   return ret
 }
 
-__mul__ := (lhs: vec, rhs: vec) -> real{
+__mul__ := (lhs: vec, rhs: vec) -> real {
   return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
 }
-
 
 
 main := void -> void {
@@ -54,9 +53,14 @@ main := void -> void {
   print "\nv2 = "
   print v2
 
-  v2 = __add__(v1, v3)
-  print "\nv3 = "
+  v2 = v1 + v3
+  print "\nv2 = "
   print v2
+  v2 = v1 - v3
+  print "\nv2 = "
+  print v2
+  print "\n<v1, v2> = "
+  print v1 * v2
   print "\n"
 
 
