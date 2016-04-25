@@ -1,11 +1,6 @@
 #include "AST.h"
 #include "Context.h"
 
-// This is the only place that needs to know about operators, so rather than
-// keep them in the header everywhere, we just put the necessary templates in
-// this one header.
-#include "Type/ops.h"
-
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
@@ -724,7 +719,8 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     llvm::FunctionType *llvm_fn_type = *fn_type;
     auto mangled_name                = Mangle(fn_type, lhs);
 
-        // Then If it is a function literal, notify the function literal of the code name/scope, etc.
+    // Then If it is a function literal, notify the function literal of the code
+    // name/scope, etc.
     if (rhs->is_function_literal()) {
       auto fn = static_cast<FunctionLiteral *>(rhs);
       fn->fn_scope->name = lhs->token();

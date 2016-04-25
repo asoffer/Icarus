@@ -90,9 +90,6 @@ extern RangeType *Range(TypePtr t);
 
 #define ENDING = 0
 
-#define BINARY_OPERATOR_MACRO(op, symbol, prec, assoc)                         \
-  virtual llvm::Value *call_##op(llvm::Value *lhs, llvm::Value *rhs) ENDING;
-
 #define BASIC_METHODS                                                          \
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() const ENDING;                                      \
@@ -112,8 +109,6 @@ public:
   Type() : llvm_type(nullptr), has_vars(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
-
-#include "config/binary_operators.conf"
 
   virtual operator llvm::Type *() const;
 
@@ -176,7 +171,6 @@ public:
 struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
-#include "config/binary_operators.conf"
 
   virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
@@ -192,7 +186,6 @@ public:
 
 struct Array : public Type {
   TYPE_FNS(Array, array);
-#include "config/binary_operators.conf"
 
   virtual bool requires_uninit() const;
   virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
@@ -219,7 +212,6 @@ struct Array : public Type {
 
 struct Tuple : public Type {
   TYPE_FNS(Tuple, tuple);
-#include "config/binary_operators.conf"
 
   // TODO requires_uninit()
 
@@ -233,7 +225,6 @@ struct Tuple : public Type {
 
 struct Pointer : public Type {
   TYPE_FNS(Pointer, pointer);
-#include "config/binary_operators.conf"
 
   virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
   Pointer(TypePtr t);
@@ -242,7 +233,6 @@ struct Pointer : public Type {
 
 struct Function : public Type {
   TYPE_FNS(Function, function);
-#include "config/binary_operators.conf"
 
   operator llvm::FunctionType *() const;
 
@@ -255,7 +245,6 @@ struct Function : public Type {
 
 struct Enumeration : public Type {
   TYPE_FNS(Enumeration, enum);
-#include "config/binary_operators.conf"
 
   size_t get_index(const std::string &str) const;
   llvm::Value *get_value(const std::string &str) const;
@@ -270,7 +259,6 @@ struct Enumeration : public Type {
 
 struct Structure : public Type {
   TYPE_FNS(Structure, struct);
-#include "config/binary_operators.conf"
 
   Structure(const std::string &name, AST::StructLiteral *expr);
 
@@ -306,7 +294,6 @@ private:
 
 struct ParametricStructure : public Type {
   TYPE_FNS(ParametricStructure, parametric_struct);
-#include "config/binary_operators.conf"
 
   ParametricStructure(const std::string &name, AST::StructLiteral *expr);
 
@@ -318,7 +305,6 @@ struct ParametricStructure : public Type {
 
 struct DependentType : public Type {
   TYPE_FNS(DependentType, dependent_type);
-#include "config/binary_operators.conf"
 
   DependentType(std::function<TypePtr(TypePtr)> fn) : func(fn) {}
 
@@ -329,7 +315,6 @@ struct DependentType : public Type {
 
 struct TypeVariable : public Type {
   TYPE_FNS(TypeVariable, type_variable);
-#include "config/binary_operators.conf"
 
   TypeVariable(AST::Identifier *id, AST::Expression *test)
       : identifier(id), test(test) {
@@ -342,7 +327,6 @@ struct TypeVariable : public Type {
 
 struct QuantumType : public Type {
   TYPE_FNS(QuantumType, quantum);
-#include "config/binary_operators.conf"
 
   QuantumType(const std::vector<TypePtr>& vec);
   // TODO maybe quantum types should only hold functions?
@@ -351,7 +335,6 @@ struct QuantumType : public Type {
 
 struct RangeType : public Type {
   TYPE_FNS(RangeType, range);
-#include "config/binary_operators.conf"
 
   RangeType(TypePtr t) : end_type(t) { has_vars = end_type.get->has_vars; }
 
@@ -362,7 +345,6 @@ std::ostream &operator<<(std::ostream &os, const Type &t);
 
 #undef TYPE_FNS
 #undef BASIC_METHODS
-#undef BINARY_OPERATOR_MACRO
 #undef ENDING
 
 #endif // ICARUS_TYPE_H
