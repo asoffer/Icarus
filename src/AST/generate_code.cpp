@@ -397,12 +397,16 @@ llvm::Value *Binop::generate_code() {
       }
 
       if (type == Void) {
-        builder.CreateCall(static_cast<llvm::Function *>(lhs_val), arg_vals);
+        builder.CreateCall(lhs_val, arg_vals);
         return nullptr;
 
+      } else if (type.is_big()) {
+        arg_vals.push_back(builder.CreateAlloca(type));
+        builder.CreateCall(lhs_val, arg_vals);
+        return arg_vals.back();
+
       } else {
-        return builder.CreateCall(static_cast<llvm::Function *>(lhs_val),
-                                  arg_vals, "calltmp");
+        return builder.CreateCall(lhs_val, arg_vals, "calltmp");
       }
 
     } else if (lhs->type.is_dependent_type()) {

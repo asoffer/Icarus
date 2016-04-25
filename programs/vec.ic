@@ -5,6 +5,32 @@ vec := struct {
   z: real
 }
 
+__add__ := (lhs: vec, rhs: vec) -> vec {
+  ret: vec
+
+  ret.x = lhs.x + rhs.x
+  ret.y = lhs.y + rhs.y
+  ret.z = lhs.z + rhs.z
+
+  return ret
+}
+
+__sub__ := (lhs: vec, rhs: vec) -> vec {
+  ret: vec
+
+  ret.x = lhs.x - rhs.x
+  ret.y = lhs.y - rhs.y
+  ret.z = lhs.z - rhs.z
+
+  return ret
+}
+
+__mul__ := (lhs: vec, rhs: vec) -> real{
+  return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z
+}
+
+
+
 main := void -> void {
   v1: vec
   v2: vec
@@ -27,7 +53,12 @@ main := void -> void {
   print v1
   print "\nv2 = "
   print v2
-  print '\n'
+
+  v2 = __add__(v1, v3)
+  print "\nv3 = "
+  print v2
+  print "\n"
+
 
   __ne__ := (lhs: vec, rhs: vec) -> bool {
     print "TESTING NON-EQUALITY\n"

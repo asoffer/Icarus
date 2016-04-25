@@ -254,8 +254,8 @@ void FnScope::initialize() {
         auto ret_val_arg = llvm_fn->args().begin();
         for (size_t i = 0; i < num_inputs; ++i) {
           ret_val_arg = ++ret_val_arg;
-          return_value = ++return_value;
         }
+        return_value = ret_val_arg;
 
       } else {
         return_value = ++llvm_fn->args().begin();
