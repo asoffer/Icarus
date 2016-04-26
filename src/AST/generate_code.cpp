@@ -370,119 +370,93 @@ llvm::Value *Binop::generate_code() {
     return llvm_value(evaluate(CurrentContext()));
   }
 
+  using Language::Operator;
+
   // The left-hand side may be a declaration
-  if (is_assignment()) {
-    if (lhs->is_declaration()) {
-      // TODO maybe the declarations generate_code ought to return an l-value
-      // for the thing it declares?
-      auto id_ptr = static_cast<Declaration *>(lhs)->identifier;
-      return generate_assignment_code(id_ptr, rhs);
-    }
-
-    using Language::Operator;
-    if (op == Operator::OrEq || op == Operator::XorEq ||
-        op == Operator::AndEq || op == Operator::AddEq ||
-        op == Operator::SubEq || op == Operator::MulEq ||
-        op == Operator::DivEq || op == Operator::ModEq) {
-
-      auto lhs_val = lhs->generate_code();
-      assert(lhs_val && "LHS of assignment generated null code");
-
-      auto lval = lhs->generate_lvalue();
-      assert(lval && "LHS lval of assignment generated null code");
-
-      if (lhs->type == Bool) {
-        switch (op) {
-        case Operator::XorEq: {
-          auto rhs_val = rhs->generate_code();
-          assert(rhs_val && "RHS of assignment generated null code");
-
-          builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"),
-                              lval);
-        } break;
-        case Operator::AndEq: {
-          auto parent_fn   = builder.GetInsertBlock()->getParent();
-          auto more_block  = make_block("more", parent_fn);
-          auto merge_block = make_block("merge", parent_fn);
-          builder.CreateCondBr(lhs_val, more_block, merge_block);
-
-          builder.SetInsertPoint(more_block);
-          auto rhs_val = rhs->generate_code();
-          assert(rhs_val && "RHS of assignment generated null code");
-
-          builder.CreateStore(rhs_val, lval);
-          builder.CreateBr(merge_block);
-          builder.SetInsertPoint(merge_block);
-        } break;
-        case Operator::OrEq: {
-          auto parent_fn   = builder.GetInsertBlock()->getParent();
-          auto more_block  = make_block("more", parent_fn);
-          auto merge_block = make_block("merge", parent_fn);
-          builder.CreateCondBr(lhs_val, merge_block, more_block);
-
-          builder.SetInsertPoint(more_block);
-          auto rhs_val = rhs->generate_code();
-          assert(rhs_val && "RHS of assignment generated null code");
-
-          builder.CreateStore(rhs_val, lval);
-          builder.CreateBr(merge_block);
-          builder.SetInsertPoint(merge_block);
-        } break;
-        default:
-          assert(false && "Invalid assignment operator for boolean type");
-        }
-        return nullptr;
-      }
-
-      auto rhs_val = rhs->generate_code();
-      assert(rhs_val && "RHS of assignment generated null code");
-
-#define CASE(op, llvm_op, symbol)                                              \
-  case Operator::op: {                                                         \
-    val = builder.Create##llvm_op(lhs_val, rhs_val, symbol);                   \
-  } break
-
-      llvm::Value *val = nullptr;
-      if (lhs->type == Int) {
-        switch (op) {
-          CASE(AddEq, Add, "at");
-          CASE(SubEq, Sub, "st");
-          CASE(MulEq, Mul, "mt");
-          CASE(DivEq, SDiv, "dt");
-          CASE(ModEq, SRem, "rt");
-        default: assert(false && "Invalid operator");
-        }
-
-      } else if (lhs->type == Uint) {
-        switch (op) {
-          CASE(AddEq, Add, "at");
-          CASE(SubEq, Sub, "st");
-          CASE(MulEq, Mul, "mt");
-          CASE(DivEq, UDiv, "dt");
-          CASE(ModEq, URem, "rt");
-        default: assert(false && "Invalid operator");
-        }
-
-      } else if (lhs->type == Real) {
-        switch (op) {
-          CASE(AddEq, FAdd, "at");
-          CASE(SubEq, FSub, "st");
-          CASE(MulEq, FMul, "mt");
-          CASE(DivEq, FDiv, "dt");
-        default: assert(false && "Invalid operator");
-        }
-      } else {
-        assert(false && "Not yet implemented");
-      }
-
-      builder.CreateStore(val, lval);
-      return nullptr;
-    }
-
-#undef CASE
-
-    return generate_assignment_code(lhs, rhs);
+  if (op == Operator::Assign) {
+    return generate_assignment_code(
+        (lhs->is_declaration() ? static_cast<Declaration *>(lhs)->identifier
+                               : lhs),
+        rhs);
   }
+
+#define GENERATE_AND_CHECK_LVALS                                               \
+  auto lhs_val = lhs->generate_code();                                         \
+  assert(lhs_val && "LHS of assignment generated null code");                  \
+  auto lval = lhs->generate_lvalue();                                          \
+  assert(lval && "LHS lval of assignment generated null code");
+
+#define CASE(op, int_op, uint_op, real_op, symbol)                             \
+  case Operator::op: {                                                         \
+    GENERATE_AND_CHECK_LVALS                                                   \
+    auto rhs_val = rhs->generate_code();                                       \
+    assert(rhs_val && "RHS of assignment generated null code");                \
+    if (lhs->type == Int && rhs->type == Int) {                                \
+      builder.CreateStore(builder.Create##int_op(lhs_val, rhs_val, symbol),    \
+                          lval);                                               \
+    } else if (lhs->type == Uint && rhs->type == Uint) {                       \
+      builder.CreateStore(builder.Create##uint_op(lhs_val, rhs_val, symbol),   \
+                          lval);                                               \
+    } else if (lhs->type == Real && rhs->type == Real) {                       \
+      builder.CreateStore(builder.Create##real_op(lhs_val, rhs_val, symbol),   \
+                          lval);                                               \
+    } else {                                                                   \
+      assert(false);                                                           \
+    }                                                                          \
+    return nullptr;                                                            \
+  } break;
+
+  switch (op) {
+  case Operator::XorEq: {
+    GENERATE_AND_CHECK_LVALS;
+    auto rhs_val = rhs->generate_code();
+    assert(rhs_val && "RHS of assignment generated null code");
+
+    builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
+    return nullptr;
+  } break;
+  case Operator::AndEq: {
+    GENERATE_AND_CHECK_LVALS;
+    auto parent_fn   = builder.GetInsertBlock()->getParent();
+    auto more_block  = make_block("more", parent_fn);
+    auto merge_block = make_block("merge", parent_fn);
+    builder.CreateCondBr(lhs_val, more_block, merge_block);
+
+    builder.SetInsertPoint(more_block);
+    auto rhs_val = rhs->generate_code();
+    assert(rhs_val && "RHS of assignment generated null code");
+
+    builder.CreateStore(rhs_val, lval);
+    builder.CreateBr(merge_block);
+    builder.SetInsertPoint(merge_block);
+    return nullptr;
+  } break;
+  case Operator::OrEq: {
+    GENERATE_AND_CHECK_LVALS;
+    auto parent_fn   = builder.GetInsertBlock()->getParent();
+    auto more_block  = make_block("more", parent_fn);
+    auto merge_block = make_block("merge", parent_fn);
+    builder.CreateCondBr(lhs_val, merge_block, more_block);
+
+    builder.SetInsertPoint(more_block);
+    auto rhs_val = rhs->generate_code();
+    assert(rhs_val && "RHS of assignment generated null code");
+
+    builder.CreateStore(rhs_val, lval);
+    builder.CreateBr(merge_block);
+    builder.SetInsertPoint(merge_block);
+    return nullptr;
+  } break;
+    CASE(AddEq, Add, Add, FAdd, "add.tmp");
+    CASE(SubEq, Sub, Sub, FSub, "sub.tmp");
+    CASE(MulEq, Mul, Mul, FMul, "mul.tmp");
+    CASE(DivEq, SDiv, UDiv, FDiv, "div.tmp");
+    CASE(ModEq, SRem, URem, FRem, "mod.tmp");
+  default:;
+  }
+
+#undef GENERATE_AND_CHECK
+#undef CASE
 
   llvm::Value *lhs_val = nullptr;
   if (lhs->is_identifier() && op == Language::Operator::Call) {
