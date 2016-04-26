@@ -64,7 +64,8 @@ Node *Access::build(NPtrVec &&nodes) {
 }
 
 Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class,
-                            Binop *binop_ptr, Language::NodeType nt) {
+                            Language::NodeType nt) {
+  auto binop_ptr = new Binop;
   binop_ptr->line_num = nodes[1]->line_num;
 
   binop_ptr->lhs   = steal<Expression>(nodes[0]);
@@ -80,24 +81,24 @@ Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class,
 Node *Binop::build_assignment(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
-                               new Assignment, Language::assign_operator);
+                               Language::assign_operator);
 }
 
 Node *Binop::build(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op, new Binop,
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
                                Language::generic_operator);
 }
 
 Node *Binop::build_paren_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Call, new Binop,
+                               Language::Operator::Call,
                                Language::generic_operator);
 }
 
 Node *Binop::build_bracket_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Index, new Binop,
+                               Language::Operator::Index,
                                Language::generic_operator);
 }
 

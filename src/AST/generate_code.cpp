@@ -315,9 +315,173 @@ llvm::Value *Access::generate_code() {
   }
 }
 
+// This function exists because both '=' and ':=' need to call some version of
+// the same code. it's been factored out here.
+llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
+  llvm::Value *var = nullptr;
+  llvm::Value *val = nullptr;
+
+  // Treat functions special
+  if (lhs->is_identifier() && rhs->type.is_function()) {
+    auto fn_type                     = static_cast<Function *>(rhs->type.get);
+    llvm::FunctionType *llvm_fn_type = *fn_type;
+    auto mangled_name                = Mangle(fn_type, lhs);
+
+    // Then If it is a function literal, notify the function literal of the code
+    // name/scope, etc.
+    if (rhs->is_function_literal()) {
+      auto fn = static_cast<FunctionLiteral *>(rhs);
+      fn->fn_scope->name = lhs->token();
+
+      fn->llvm_fn = static_cast<llvm::Function *>(
+          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
+
+    } else if (rhs->is_binop() &&
+               static_cast<Binop *>(rhs)->op == Language::Operator::Mul) {
+      auto binop   = static_cast<Binop *>(rhs);
+      auto lhs_val = binop->lhs->generate_code();
+      auto rhs_val = binop->rhs->generate_code();
+
+      return FunctionComposition(mangled_name, lhs_val, rhs_val, fn_type);
+    }
+
+
+    val = rhs->generate_code();
+
+    // Null value can be returned here, if for instance, the rhs is a function
+    // on types.
+    if (val) { val->setName(mangled_name); }
+
+  } else {
+    var = lhs->generate_lvalue();
+    assert(var && "LHS of assignment generated null code");
+
+    val = rhs->generate_code();
+    assert(val && "RHS of assignment generated null code");
+
+    lhs->type.get->CallAssignment(lhs->scope_, val, var);
+  }
+
+  return nullptr;
+}
+
 llvm::Value *Binop::generate_code() {
   if (time() == Time::compile) {
     return llvm_value(evaluate(CurrentContext()));
+  }
+
+  // The left-hand side may be a declaration
+  if (is_assignment()) {
+    if (lhs->is_declaration()) {
+      // TODO maybe the declarations generate_code ought to return an l-value
+      // for the thing it declares?
+      auto id_ptr = static_cast<Declaration *>(lhs)->identifier;
+      return generate_assignment_code(id_ptr, rhs);
+    }
+
+    using Language::Operator;
+    if (op == Operator::OrEq || op == Operator::XorEq ||
+        op == Operator::AndEq || op == Operator::AddEq ||
+        op == Operator::SubEq || op == Operator::MulEq ||
+        op == Operator::DivEq || op == Operator::ModEq) {
+
+      auto lhs_val = lhs->generate_code();
+      assert(lhs_val && "LHS of assignment generated null code");
+
+      auto lval = lhs->generate_lvalue();
+      assert(lval && "LHS lval of assignment generated null code");
+
+      if (lhs->type == Bool) {
+        switch (op) {
+        case Operator::XorEq: {
+          auto rhs_val = rhs->generate_code();
+          assert(rhs_val && "RHS of assignment generated null code");
+
+          builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"),
+                              lval);
+        } break;
+        case Operator::AndEq: {
+          auto parent_fn   = builder.GetInsertBlock()->getParent();
+          auto more_block  = make_block("more", parent_fn);
+          auto merge_block = make_block("merge", parent_fn);
+          builder.CreateCondBr(lhs_val, more_block, merge_block);
+
+          builder.SetInsertPoint(more_block);
+          auto rhs_val = rhs->generate_code();
+          assert(rhs_val && "RHS of assignment generated null code");
+
+          builder.CreateStore(rhs_val, lval);
+          builder.CreateBr(merge_block);
+          builder.SetInsertPoint(merge_block);
+        } break;
+        case Operator::OrEq: {
+          auto parent_fn   = builder.GetInsertBlock()->getParent();
+          auto more_block  = make_block("more", parent_fn);
+          auto merge_block = make_block("merge", parent_fn);
+          builder.CreateCondBr(lhs_val, merge_block, more_block);
+
+          builder.SetInsertPoint(more_block);
+          auto rhs_val = rhs->generate_code();
+          assert(rhs_val && "RHS of assignment generated null code");
+
+          builder.CreateStore(rhs_val, lval);
+          builder.CreateBr(merge_block);
+          builder.SetInsertPoint(merge_block);
+        } break;
+        default:
+          assert(false && "Invalid assignment operator for boolean type");
+        }
+        return nullptr;
+      }
+
+      auto rhs_val = rhs->generate_code();
+      assert(rhs_val && "RHS of assignment generated null code");
+
+#define CASE(op, llvm_op, symbol)                                              \
+  case Operator::op: {                                                         \
+    val = builder.Create##llvm_op(lhs_val, rhs_val, symbol);                   \
+  } break
+
+      llvm::Value *val = nullptr;
+      if (lhs->type == Int) {
+        switch (op) {
+          CASE(AddEq, Add, "at");
+          CASE(SubEq, Sub, "st");
+          CASE(MulEq, Mul, "mt");
+          CASE(DivEq, SDiv, "dt");
+          CASE(ModEq, SRem, "rt");
+        default: assert(false && "Invalid operator");
+        }
+
+      } else if (lhs->type == Uint) {
+        switch (op) {
+          CASE(AddEq, Add, "at");
+          CASE(SubEq, Sub, "st");
+          CASE(MulEq, Mul, "mt");
+          CASE(DivEq, UDiv, "dt");
+          CASE(ModEq, URem, "rt");
+        default: assert(false && "Invalid operator");
+        }
+
+      } else if (lhs->type == Real) {
+        switch (op) {
+          CASE(AddEq, FAdd, "at");
+          CASE(SubEq, FSub, "st");
+          CASE(MulEq, FMul, "mt");
+          CASE(DivEq, FDiv, "dt");
+        default: assert(false && "Invalid operator");
+        }
+      } else {
+        assert(false && "Not yet implemented");
+      }
+
+      builder.CreateStore(val, lval);
+      return nullptr;
+    }
+
+#undef CASE
+
+    return generate_assignment_code(lhs, rhs);
   }
 
   llvm::Value *lhs_val = nullptr;
@@ -706,167 +870,6 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   return llvm_fn;
 }
-
-// This function exists because both '=' and ':=' need to call some version of
-// the same code. it's been factored out here.
-llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
-  llvm::Value *var = nullptr;
-  llvm::Value *val = nullptr;
-
-  // Treat functions special
-  if (lhs->is_identifier() && rhs->type.is_function()) {
-    auto fn_type                     = static_cast<Function *>(rhs->type.get);
-    llvm::FunctionType *llvm_fn_type = *fn_type;
-    auto mangled_name                = Mangle(fn_type, lhs);
-
-    // Then If it is a function literal, notify the function literal of the code
-    // name/scope, etc.
-    if (rhs->is_function_literal()) {
-      auto fn = static_cast<FunctionLiteral *>(rhs);
-      fn->fn_scope->name = lhs->token();
-
-      fn->llvm_fn = static_cast<llvm::Function *>(
-          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
-
-    } else if (rhs->is_binop() &&
-               static_cast<Binop *>(rhs)->op == Language::Operator::Mul) {
-      auto binop   = static_cast<Binop *>(rhs);
-      auto lhs_val = binop->lhs->generate_code();
-      auto rhs_val = binop->rhs->generate_code();
-
-      return FunctionComposition(mangled_name, lhs_val, rhs_val, fn_type);
-    }
-
-
-    val = rhs->generate_code();
-
-    // Null value can be returned here, if for instance, the rhs is a function
-    // on types.
-    if (val) { val->setName(mangled_name); }
-
-  } else {
-    var = lhs->generate_lvalue();
-    assert(var && "LHS of assignment generated null code");
-
-    val = rhs->generate_code();
-    assert(val && "RHS of assignment generated null code");
-
-    lhs->type.get->CallAssignment(lhs->scope_, val, var);
-  }
-
-  return nullptr;
-}
-
-#define CASE(op, llvm_op, symbol)                                              \
-  case Operator::op: {                                                         \
-    val = builder.Create##llvm_op(lhs_val, rhs_val, symbol);                   \
-  } break
-
-llvm::Value *Assignment::generate_code() {
-  // The left-hand side may be a declaration
-  if (lhs->is_declaration()) {
-    // TODO maybe the declarations generate_code ought to return an l-value for
-    // the thing it declares?
-    return generate_assignment_code(static_cast<Declaration *>(lhs)->identifier,
-                                    rhs);
-  }
-
-  using Language::Operator;
-  if (op == Operator::OrEq || op == Operator::XorEq || op == Operator::AndEq ||
-      op == Operator::AddEq || op == Operator::SubEq || op == Operator::MulEq ||
-      op == Operator::DivEq || op == Operator::ModEq) {
-
-    auto lhs_val = lhs->generate_code();
-    assert(lhs_val && "LHS of assignment generated null code");
-
-    auto lval = lhs->generate_lvalue();
-    assert(lval && "LHS lval of assignment generated null code");
-
-    if (lhs->type == Bool) {
-      switch (op) {
-      case Operator::XorEq: {
-        auto rhs_val = rhs->generate_code();
-        assert(rhs_val && "RHS of assignment generated null code");
-
-        builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"),
-                            lval);
-      } break;
-      case Operator::AndEq: {
-        auto parent_fn   = builder.GetInsertBlock()->getParent();
-        auto more_block  = make_block("more", parent_fn);
-        auto merge_block = make_block("merge", parent_fn);
-        builder.CreateCondBr(lhs_val, more_block, merge_block);
-
-        builder.SetInsertPoint(more_block);
-        auto rhs_val = rhs->generate_code();
-        assert(rhs_val && "RHS of assignment generated null code");
-
-        builder.CreateStore(rhs_val, lval);
-        builder.CreateBr(merge_block);
-        builder.SetInsertPoint(merge_block);
-      } break;
-      case Operator::OrEq: {
-        auto parent_fn   = builder.GetInsertBlock()->getParent();
-        auto more_block  = make_block("more", parent_fn);
-        auto merge_block = make_block("merge", parent_fn);
-        builder.CreateCondBr(lhs_val, merge_block, more_block);
-
-        builder.SetInsertPoint(more_block);
-        auto rhs_val = rhs->generate_code();
-        assert(rhs_val && "RHS of assignment generated null code");
-
-        builder.CreateStore(rhs_val, lval);
-        builder.CreateBr(merge_block);
-        builder.SetInsertPoint(merge_block);
-      } break;
-      default: assert(false && "Invalid assignment operator for boolean type");
-      }
-      return nullptr;
-    }
-
-    auto rhs_val = rhs->generate_code();
-    assert(rhs_val && "RHS of assignment generated null code");
-
-    llvm::Value *val = nullptr;
-    if (lhs->type == Int) {
-      switch (op) {
-        CASE(AddEq, Add, "at");
-        CASE(SubEq, Sub, "st");
-        CASE(MulEq, Mul, "mt");
-        CASE(DivEq, SDiv, "dt");
-        CASE(ModEq, SRem, "rt");
-      default: assert(false && "Invalid operator");
-      }
-
-    } else if (lhs->type == Uint) {
-      switch (op) {
-        CASE(AddEq, Add, "at");
-        CASE(SubEq, Sub, "st");
-        CASE(MulEq, Mul, "mt");
-        CASE(DivEq, UDiv, "dt");
-        CASE(ModEq, URem, "rt");
-      default: assert(false && "Invalid operator");
-      }
-
-    } else if (lhs->type == Real) {
-      switch (op) {
-        CASE(AddEq, FAdd, "at");
-        CASE(SubEq, FSub, "st");
-        CASE(MulEq, FMul, "mt");
-        CASE(DivEq, FDiv, "dt");
-      default: assert(false && "Invalid operator");
-      }
-    } else {
-      assert(false && "Not yet implemented");
-    }
-
-    builder.CreateStore(val, lval);
-    return nullptr;
-  }
-
-  return generate_assignment_code(lhs, rhs);
-}
-#undef CASE
 
 llvm::Value *Declaration::generate_code() {
   // In the case of something like

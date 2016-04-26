@@ -32,7 +32,7 @@ void Binop::lrvalue_check() {
   }
 }
 
-void ChainOp::lrvalue_check() { 
+void ChainOp::lrvalue_check() {
   lvalue = false;
   for (auto e : exprs) { e->lrvalue_check(); }
 }

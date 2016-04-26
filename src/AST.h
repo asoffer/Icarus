@@ -106,7 +106,6 @@ struct Node {
   virtual bool is_terminal() const { return false; }
   virtual bool is_expression() const { return false; }
   virtual bool is_binop() const { return false; }
-  virtual bool is_assignment() const { return false; }
   virtual bool is_function_literal() const { return false; }
   virtual bool is_chain_op() const { return false; }
   virtual bool is_case() const { return false; }
@@ -211,11 +210,20 @@ struct Binop : public Expression {
   EXPR_FNS(Binop, binop);
 
   static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class,
-                              Binop *binop_ptr, Language::NodeType nt);
+                              Language::NodeType nt);
   static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_bracket_operator(NPtrVec &&nodes);
   static Node *build_array_type(NPtrVec &&nodes);
   static Node *build_assignment(NPtrVec &&nodes);
+
+  bool is_assignment() const {
+    using Language::Operator;
+    return op == Operator::Assign || op == Operator::OrEq ||
+           op == Operator::XorEq || op == Operator::AndEq ||
+           op == Operator::AddEq || op == Operator::SubEq ||
+           op == Operator::MulEq || op == Operator::DivEq ||
+           op == Operator::ModEq;
+  }
 
   Language::Operator op;
   Expression *lhs, *rhs;
@@ -292,13 +300,6 @@ struct Declaration : public Expression {
   // that global lookup.
 
   DeclType decl_type;
-};
-
-struct Assignment : public Binop {
-  Assignment() {}
-
-  virtual bool is_assignment() const { return true; }
-  virtual llvm::Value *generate_code();
 };
 
 struct Identifier : public Terminal {
