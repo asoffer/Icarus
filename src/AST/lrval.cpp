@@ -21,9 +21,15 @@ void Binop::lrvalue_check() {
   lhs->lrvalue_check();
   rhs->lrvalue_check();
 
-  lvalue =
-      (op == Language::Operator::Cast || op == Language::Operator::Index) &&
-      lhs->lvalue;
+  if (is_assignment() && !lhs->lvalue) {
+    // TODO better error message.
+    error_log.log(line_num, "Invalid assignment (to rvalue)");
+
+  } else {
+    lvalue =
+        (op == Language::Operator::Cast || op == Language::Operator::Index) &&
+        lhs->lvalue;
+  }
 }
 
 void ChainOp::lrvalue_check() { 
@@ -42,16 +48,6 @@ void Declaration::lrvalue_check() {
   lvalue = (decl_type == DeclType::Std);
   identifier->lrvalue_check();
   type_expr->lrvalue_check();
-}
-
-void Assignment::lrvalue_check() {
-  lhs->lrvalue_check();
-  rhs->lrvalue_check();
-
-  if (!lhs->lvalue) {
-    // TODO better error message.
-    error_log.log(line_num, "Invalid assignment (to rvalue)");
-  }
 }
 
 void ArrayType::lrvalue_check() { lvalue = false;

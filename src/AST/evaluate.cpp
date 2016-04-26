@@ -316,8 +316,6 @@ Context::Value StructLiteral::evaluate(Context &ctx) {
   return Context::Value(type_value);
 }
 
-Context::Value Assignment::evaluate(Context &) { return nullptr; }
-
 Context::Value Declaration::evaluate(Context &ctx) {
   switch (decl_type) {
   case DeclType::Infer: {

@@ -76,21 +76,6 @@ std::string ChainOp::graphviz_label() const {
   return output;
 }
 
-std::string Assignment::graphviz_label() const {
-  switch (op) {
-  case Language::Operator::OrEq: return "|=";
-  case Language::Operator::XorEq: return "^=";
-  case Language::Operator::AndEq: return "&=";
-  case Language::Operator::AddEq: return "+=";
-  case Language::Operator::SubEq: return "-=";
-  case Language::Operator::MulEq: return "*=";
-  case Language::Operator::DivEq: return "/=";
-  case Language::Operator::ModEq: return "%=";
-  case Language::Operator::Assign: return "=";
-  default: assert(false && "Not an assignment operator");
-  }
-}
-
 std::string Binop::graphviz_label() const {
   switch (op) {
   case Language::Operator::Index: return "Index";
@@ -104,6 +89,16 @@ std::string Binop::graphviz_label() const {
   case Language::Operator::Mod: return "%";
   case Language::Operator::Rocket: return "=>";
   case Language::Operator::Dots: return "..";
+
+  case Language::Operator::OrEq: return "|=";
+  case Language::Operator::XorEq: return "^=";
+  case Language::Operator::AndEq: return "&=";
+  case Language::Operator::AddEq: return "+=";
+  case Language::Operator::SubEq: return "-=";
+  case Language::Operator::MulEq: return "*=";
+  case Language::Operator::DivEq: return "/=";
+  case Language::Operator::ModEq: return "%=";
+  case Language::Operator::Assign: return "=";
   default: assert(false && "Not an assignment operator");
   }
 }

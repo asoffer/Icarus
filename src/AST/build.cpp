@@ -63,13 +63,13 @@ Node *Access::build(NPtrVec &&nodes) {
   return access_ptr;
 }
 
-Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
-  auto binop_ptr      = new Binop;
+Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class,
+                            Binop *binop_ptr, Language::NodeType nt) {
   binop_ptr->line_num = nodes[1]->line_num;
 
   binop_ptr->lhs   = steal<Expression>(nodes[0]);
   binop_ptr->rhs   = steal<Expression>(nodes[2]);
-  binop_ptr->type_ = Language::generic_operator;
+  binop_ptr->type_ = nt;
   binop_ptr->op    = op_class;
 
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
@@ -77,19 +77,28 @@ Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class) {
   return binop_ptr;
 }
 
+Node *Binop::build_assignment(NPtrVec &&nodes) {
+  auto op = static_cast<TokenNode *>(nodes[1])->op;
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
+                               new Assignment, Language::assign_operator);
+}
+
 Node *Binop::build(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op);
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op, new Binop,
+                               Language::generic_operator);
 }
 
 Node *Binop::build_paren_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Call);
+                               Language::Operator::Call, new Binop,
+                               Language::generic_operator);
 }
 
 Node *Binop::build_bracket_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Index);
+                               Language::Operator::Index, new Binop,
+                               Language::generic_operator);
 }
 
 Node *ChainOp::join(NPtrVec &&nodes) {
@@ -306,20 +315,6 @@ TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
 TERMINAL_BUILD(input, Input, DepType([](TypePtr t) { return t; }));
 TERMINAL_BUILD(alloc, Alloc, DepType([](TypePtr t) { return Ptr(t); }));
 #undef TERMINAL_BUILD
-
-Node *Assignment::build(NPtrVec &&nodes) {
-  auto assign_ptr      = new Assignment;
-  assign_ptr->line_num = nodes[1]->line_num;
-
-  assign_ptr->lhs = steal<Expression>(nodes[0]);
-  assign_ptr->rhs = steal<Expression>(nodes[2]);
-
-  assign_ptr->op         = static_cast<TokenNode *>(nodes[1])->op;
-  assign_ptr->type_      = Language::assign_operator;
-  assign_ptr->precedence = Language::precedence(assign_ptr->op);
-
-  return assign_ptr;
-}
 
 Node *Expression::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler

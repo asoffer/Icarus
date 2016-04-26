@@ -106,6 +106,7 @@ struct Node {
   virtual bool is_terminal() const { return false; }
   virtual bool is_expression() const { return false; }
   virtual bool is_binop() const { return false; }
+  virtual bool is_assignment() const { return false; }
   virtual bool is_function_literal() const { return false; }
   virtual bool is_chain_op() const { return false; }
   virtual bool is_case() const { return false; }
@@ -209,10 +210,12 @@ struct Access : public Expression {
 struct Binop : public Expression {
   EXPR_FNS(Binop, binop);
 
-  static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class);
+  static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class,
+                              Binop *binop_ptr, Language::NodeType nt);
   static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_bracket_operator(NPtrVec &&nodes);
   static Node *build_array_type(NPtrVec &&nodes);
+  static Node *build_assignment(NPtrVec &&nodes);
 
   Language::Operator op;
   Expression *lhs, *rhs;
@@ -293,18 +296,9 @@ struct Declaration : public Expression {
 
 struct Assignment : public Binop {
   Assignment() {}
-  virtual ~Assignment() {}
 
-  static Node *build(NPtrVec &&nodes);
-
-  virtual std::string to_string(size_t n) const;
-  virtual void verify_types();
-
+  virtual bool is_assignment() const { return true; }
   virtual llvm::Value *generate_code();
-  virtual llvm::Value *generate_lvalue();
-  virtual Context::Value evaluate(Context &ctx);
-  virtual std::string graphviz_label() const;
-  virtual void lrvalue_check();
 };
 
 struct Identifier : public Terminal {

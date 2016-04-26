@@ -126,27 +126,31 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string Binop::to_string(size_t n) const {
     std::stringstream ss;
-    ss << tabs(n) << "<Binop " << TYPE_OR("") << ": ";
-    switch (op) {
-      case Language::Operator::Cast:    ss << "Cast";   break;
-      case Language::Operator::Arrow:   ss << "->";     break;
-      case Language::Operator::Or:      ss << "Or";     break;
-      case Language::Operator::Xor:     ss << "Xor";    break;
-      case Language::Operator::And:     ss << "And";    break;
-      case Language::Operator::Add:     ss << "Add";    break;
-      case Language::Operator::Sub:     ss << "Sub";    break;
-      case Language::Operator::Mul:     ss << "Mul";    break;
-      case Language::Operator::Div:     ss << "Div";    break;
-      case Language::Operator::Mod:     ss << "Mod";    break;
-      case Language::Operator::Index:   ss << "Index";  break;
-      case Language::Operator::Call:    ss << "Call";   break;
-      case Language::Operator::Dots:    ss << "Dots";   break;
-      case Language::Operator::Tick:    ss << "Tick";   break;
+    ss << tabs(n);
+    if (is_assignment()) {
+      ss << "<Assignment " << TYPE_OR("");
+
+    } else {
+      ss << "<Binop " << TYPE_OR("") << ": ";
+      switch (op) {
+      case Language::Operator::Cast:  ss << "Cast";  break;
+      case Language::Operator::Arrow: ss << "->";    break;
+      case Language::Operator::Or:    ss << "Or";    break;
+      case Language::Operator::Xor:   ss << "Xor";   break;
+      case Language::Operator::And:   ss << "And";   break;
+      case Language::Operator::Add:   ss << "Add";   break;
+      case Language::Operator::Sub:   ss << "Sub";   break;
+      case Language::Operator::Mul:   ss << "Mul";   break;
+      case Language::Operator::Div:   ss << "Div";   break;
+      case Language::Operator::Mod:   ss << "Mod";   break;
+      case Language::Operator::Index: ss << "Index"; break;
+      case Language::Operator::Call:  ss << "Call";  break;
+      case Language::Operator::Dots:  ss << "Dots";  break;
+      case Language::Operator::Tick:  ss << "Tick";  break;
       default: assert(false && "Not a binary operator");
+      }
+      ss << ">\n" << lhs->to_string(n + 1) << rhs->to_string(n + 1);
     }
-    ss << ">\n"
-      << lhs->to_string(n + 1)
-      << rhs->to_string(n + 1);
     return ss.str();
   }
 
@@ -205,11 +209,6 @@ std::string Conditional::to_string(size_t n) const {
 
     return output + TYPE_OR("") + ">\n" + identifier->to_string(n + 1) +
            type_expr->to_string(n + 1);
-  }
-
-  std::string Assignment::to_string(size_t n) const {
-    return tabs(n) + "<Assignment " + TYPE_OR("") + ">\n" +
-           lhs->to_string(n + 1) + rhs->to_string(n + 1);
   }
 
   std::string Case::to_string(size_t n) const {

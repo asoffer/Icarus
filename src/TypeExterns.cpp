@@ -35,30 +35,6 @@ void initialize() {
 
   operator_table[Language::Operator::Arrow] = {Func({Type_, Type_}, Type_)};
 
-  operator_table[Language::Operator::OrEq]  = {Func({Bool, Bool}, Void)};
-  operator_table[Language::Operator::XorEq] = {Func({Bool, Bool}, Void)};
-  operator_table[Language::Operator::AndEq] = {Func({Bool, Bool}, Void)};
-
-  operator_table[Language::Operator::AddEq] = {Func({Int, Int}, Void),
-                                               Func({Uint, Uint}, Void),
-                                               Func({Real, Real}, Void)};
-
-  operator_table[Language::Operator::SubEq] = {Func({Int, Int}, Void),
-                                               Func({Uint, Uint}, Void),
-                                               Func({Real, Real}, Void)};
-
-  operator_table[Language::Operator::MulEq] = {Func({Int, Int}, Void),
-                                               Func({Uint, Uint}, Void),
-                                               Func({Real, Real}, Void)};
-
-  operator_table[Language::Operator::DivEq] = {Func({Int, Int}, Void),
-                                               Func({Uint, Uint}, Void),
-                                               Func({Real, Real}, Void)};
-
-  operator_table[Language::Operator::ModEq] = {Func({Int, Int}, Void),
-                                               Func({Uint, Uint}, Void),
-                                               Func({Real, Real}, Void)};
-
   operator_table[Language::Operator::Or]  = {Func({Bool, Bool}, Bool)};
   operator_table[Language::Operator::Xor] = {Func({Bool, Bool}, Bool)};
   operator_table[Language::Operator::And] = {Func({Bool, Bool}, Bool)};

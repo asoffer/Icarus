@@ -126,7 +126,7 @@ namespace Language {
     /* Begin assignment */
     Rule(STMT_ASSIGN,
         { {STMT_DECL_STD, expression}, {assign_operator}, {expression, fn_expression, fn_literal} },
-        AST::Assignment::build),
+        AST::Binop::build_assignment),
     /* End assignment */
     
     /* Begin expression */

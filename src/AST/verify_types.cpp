@@ -357,6 +357,27 @@ void Binop::verify_types() {
     return;
   }
 
+  // TODO if lhs is reserved?
+  if (op == Language::Operator::Assign) {
+    if (rhs->is_terminal()) {
+      auto term = static_cast<Terminal *>(rhs);
+      if (term->terminal_type == Language::Terminal::Null) {
+        term->type = lhs->type;
+        type       = Void;
+        return;
+      }
+    }
+
+    if (lhs->type != rhs->type) {
+      error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
+                                  lhs->type.to_string() +
+                                  ", but right-hand side has type " +
+                                  rhs->type.to_string());
+    }
+    type = Void;
+    return;
+  }
+
   switch (op) {
   case Operator::Rocket: {
     if (lhs->type != Bool) {
@@ -488,59 +509,71 @@ void Binop::verify_types() {
                                   rhs->type.to_string());
     }
   } break;
-  case Operator::Add: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
-        (lhs->type == Real && rhs->type == Real)) {
-      type = lhs->type;
+  case Language::Operator::XorEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
     } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__add__");
-        if (!id_ptr) { continue; }
-
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
-      }
-
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__add__",
-                                                 Tup({lhs->type, rhs->type}));
-      if (fn_type) {
-        type = static_cast<Function *>(fn_type.get)->output;
-      } else {
-        type = Error;
-        error_log.log(line_num,
-                      "No known operator overload for `+` with types " +
-                          lhs->type.to_string() + " and " +
-                          rhs->type.to_string());
-      }
+      type = Error;
+      error_log.log(line_num, "Operator ^= must take arguments of type bool");
     }
   } break;
-  case Operator::Sub: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
-        (lhs->type == Real && rhs->type == Real)) {
-      type = lhs->type;
-
+  case Language::Operator::AndEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
     } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__sub__");
-        if (!id_ptr) { continue; }
-
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
-      }
-
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__sub__",
-                                                 Tup({lhs->type, rhs->type}));
-      if (fn_type) {
-        type = static_cast<Function *>(fn_type.get)->output;
-      } else {
-        type = Error;
-        error_log.log(line_num,
-                      "No known operator overload for `-` with types " +
-                          lhs->type.to_string() + " and " +
-                          rhs->type.to_string());
-      }
+      type = Error;
+      error_log.log(line_num, "Operator &= must take arguments of type bool");
     }
   } break;
+  case Language::Operator::OrEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
+    } else {
+      type = Error;
+      error_log.log(line_num, "Operator |= must take arguments of type bool");
+    }
+  } break;
+
+#define CASE(OpName, op_name, symbol, ret_type)                                \
+  case Language::Operator::OpName: {                                           \
+    if ((lhs->type == Int && rhs->type == Int) ||                              \
+        (lhs->type == Uint && rhs->type == Uint) ||                            \
+        (lhs->type == Real && rhs->type == Real)) {                            \
+      type = ret_type;                                                         \
+    } else {                                                                   \
+      for (auto scope_ptr = scope_; scope_ptr;                                 \
+           scope_ptr = scope_ptr->parent) {                                    \
+        auto id_ptr = scope_ptr->IdentifierHereOrNull("__" op_name "__");      \
+        if (!id_ptr) { continue; }                                             \
+        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));     \
+      }                                                                        \
+      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__" op_name "__",    \
+                                                 Tup({lhs->type, rhs->type})); \
+      if (fn_type) {                                                           \
+        type = static_cast<Function *>(fn_type.get)->output;                   \
+      } else {                                                                 \
+        type = Error;                                                          \
+        error_log.log(line_num, "No known operator overload for `" symbol     \
+                                "` with types " +                              \
+                                    lhs->type.to_string() + " and " +          \
+                                    rhs->type.to_string());                    \
+      }                                                                        \
+    }                                                                          \
+  } break
+
+    CASE(Add,   "add",    "+",  lhs->type);
+    CASE(Sub,   "sub",    "-",  lhs->type);
+    CASE(Div,   "div",    "/",  lhs->type);
+    CASE(Mod,   "mod",    "%",  lhs->type);
+    CASE(AddEq, "add_eq", "+=", Void);
+    CASE(SubEq, "sub_eq", "-=", Void);
+    CASE(MulEq, "mul_eq", "*=", Void);
+    CASE(DivEq, "div_eq", "/=", Void);
+    CASE(ModEq, "mod_eq", "%=", Void);
+
+#undef CASE
+
+  // Mul is done separately because of the function composition
   case Operator::Mul: {
     if ((lhs->type == Int && rhs->type == Int) ||
         (lhs->type == Uint && rhs->type == Uint) ||
@@ -567,60 +600,6 @@ void Binop::verify_types() {
       }
 
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__mul__",
-                                                 Tup({lhs->type, rhs->type}));
-      if (fn_type) {
-        type = static_cast<Function *>(fn_type.get)->output;
-      } else {
-        type = Error;
-        error_log.log(line_num,
-                      "No known operator overload for `*` with types " +
-                          lhs->type.to_string() + " and " +
-                          rhs->type.to_string());
-      }
-    }
-  } break;
-  case Operator::Div: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
-        (lhs->type == Real && rhs->type == Real)) {
-      type = lhs->type;
-
-    } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__div__");
-        if (!id_ptr) { continue; }
-
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
-      }
-
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__div__",
-                                                 Tup({lhs->type, rhs->type}));
-      if (fn_type) {
-        type = static_cast<Function *>(fn_type.get)->output;
-      } else {
-        type = Error;
-        error_log.log(line_num,
-                      "No known operator overload for `/` with types " +
-                          lhs->type.to_string() + " and " +
-                          rhs->type.to_string());
-      }
-    }
-  } break;
-  case Operator::Mod: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
-        (lhs->type == Real && rhs->type == Real)) {
-      type = lhs->type;
-
-    } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__mod__");
-        if (!id_ptr) { continue; }
-
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
-      }
-
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__mod__",
                                                  Tup({lhs->type, rhs->type}));
       if (fn_type) {
         type = static_cast<Function *>(fn_type.get)->output;
@@ -889,36 +868,6 @@ void FunctionLiteral::verify_types() {
   assert(type && "FunctionLiteral type is nullptr");
 }
 
-void Assignment::verify_types() {
-  if (lhs->type == Error || rhs->type == Error) {
-    type = Error;
-    return;
-  }
-
-  // TODO if lhs is reserved?
-  if (op == Language::Operator::Assign) {
-    if (rhs->is_terminal()) {
-      auto term = static_cast<Terminal *>(rhs);
-      if (term->terminal_type == Language::Terminal::Null) {
-        term->type = lhs->type;
-        type       = Void;
-        return;
-      }
-    }
-
-    if (lhs->type != rhs->type) {
-      error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
-                                  lhs->type.to_string() +
-                                  ", but right-hand side has type " +
-                                  rhs->type.to_string());
-    }
-    type = Void;
-  } else {
-    type = operator_lookup(line_num, op, lhs->type, rhs->type);
-    assert(type && "operator_lookup");
-  }
-}
-
 void Case::verify_types() {
   type = kv->verify_types_with_key(Bool);
   assert(type && "case is nullptr");
@@ -1031,8 +980,6 @@ void Jump::verify_types() {
   }
 
   assert(false && "How did you get to here?");
-
-
 }
 
 void DummyTypeExpr::verify_types() {}
