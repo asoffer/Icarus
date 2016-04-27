@@ -72,40 +72,6 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
 
 
 namespace AST {
-// TODO THIS FUNCTION IS DISAPPEARING!
-TypePtr operator_lookup(size_t line_num, Language::Operator op,
-                        TypePtr lhs_type, TypePtr rhs_type) {
-  // TODO move this into the get_operator function
-  if (lhs_type.is_function() && rhs_type.is_function()) {
-    auto lhs_fn = static_cast<Function *>(lhs_type.get);
-    auto rhs_fn = static_cast<Function *>(rhs_type.get);
-    if (rhs_fn->output == lhs_fn->input) {
-      return Func(rhs_fn->input, lhs_fn->output);
-    }
-  }
-
-  auto ret_type = TypeSystem::get_operator(op, Tup({lhs_type, rhs_type}));
-  if (ret_type.get == nullptr) {
-    std::string tok;
-    switch (op) {
-#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  case Language::Operator::name:                                               \
-    tok = #symbol;                                                             \
-    break;
-#include "config/operator.conf"
-#undef OPERATOR_MACRO
-    }
-
-    error_log.log(line_num, "No known operator overload for `" + tok +
-                                "` with types " + lhs_type.to_string() +
-                                " and " + rhs_type.to_string());
-    return Error;
-  } else {
-    // Otherwise it's an arithmetic operator
-    return ret_type;
-  }
-}
-
 void Terminal::verify_types() {
   using Language::Terminal;
   switch (terminal_type) {
@@ -612,11 +578,23 @@ void Binop::verify_types() {
       }
     }
   } break;
-  default: { // TODO remove this in favor of the more standard function lookup
-             // approach
-    type = operator_lookup(line_num, op, lhs->type, rhs->type);
-    assert(type && "operator_lookup yields nullptr");
+  case Operator::Arrow: {
+    if (lhs->type != Type_) {
+      type = Error;
+      error_log.log(line_num, "From-type for a function must be a type.");
+    }
+    if (rhs->type != Type_) {
+      type = Error;
+      error_log.log(line_num, "To-type for a function must be a type.");
+    }
+
+    if (type != Error) { type = Type_; }
+
   } break;
+  default: {
+    std::cout << *this << std::endl;
+    assert(false);
+  }
   }
 }
 

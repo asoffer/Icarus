@@ -53,7 +53,6 @@ extern std::string Mangle(const Function *f, AST::Expression *expr,
 namespace TypeSystem {
 void initialize();
 extern std::map<std::string, TypePtr> Literals;
-extern TypePtr get_operator(Language::Operator op, TypePtr signature);
 extern TypePtr get(const std::string &name);
 } // namespace TypeSystem
 

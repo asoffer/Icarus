@@ -5,7 +5,6 @@ TypePtr Error, Unknown, NullPtr, Bool, Char, Int, Real, Type_, Uint, Void,
 
 namespace TypeSystem {
 std::map<std::string, TypePtr> Literals;
-std::map<Language::Operator, std::vector<Function *>> operator_table;
 
 // TODO is this even necessary?
 TypePtr get(const std::string &name) {
@@ -32,52 +31,6 @@ void initialize() {
   Error   = new Primitive(Primitive::TypeEnum::Error);
   RawPtr  = Ptr(Char);
   RawPtr.get->generate_llvm();
-
-  operator_table[Language::Operator::Arrow] = {Func({Type_, Type_}, Type_)};
-
-  operator_table[Language::Operator::Or]  = {Func({Bool, Bool}, Bool)};
-  operator_table[Language::Operator::Xor] = {Func({Bool, Bool}, Bool)};
-  operator_table[Language::Operator::And] = {Func({Bool, Bool}, Bool)};
-
-  operator_table[Language::Operator::LT] = {Func({Int, Int}, Bool),
-                                            Func({Uint, Uint}, Bool),
-                                            Func({Real, Real}, Bool)};
-
-  operator_table[Language::Operator::LE] = {Func({Int, Int}, Bool),
-                                            Func({Uint, Uint}, Bool),
-                                            Func({Real, Real}, Bool)};
-
-  operator_table[Language::Operator::EQ] = {
-      Func({Bool, Bool}, Bool), Func({Char, Char}, Bool),
-      Func({Int, Int}, Bool),   Func({Uint, Uint}, Bool),
-      Func({Real, Real}, Bool), Func({Type_, Type_}, Bool)};
-
-  operator_table[Language::Operator::NE] = {
-      Func({Bool, Bool}, Bool), Func({Char, Char}, Bool),
-      Func({Int, Int}, Bool),   Func({Uint, Uint}, Bool),
-      Func({Real, Real}, Bool), Func({Type_, Type_}, Bool)};
-
-  operator_table[Language::Operator::GE] = {Func({Int, Int}, Bool),
-                                            Func({Uint, Uint}, Bool),
-                                            Func({Real, Real}, Bool)};
-
-  operator_table[Language::Operator::GT] = {Func({Int, Int}, Bool),
-                                            Func({Uint, Uint}, Bool),
-                                            Func({Real, Real}, Bool)};
-
-  operator_table[Language::Operator::Add] = {Func({Int, Int}, Int),
-                                             Func({Uint, Uint}, Uint),
-                                             Func({Real, Real}, Real)};
-
-}
-
-// TODO make this lookup better
-TypePtr get_operator(Language::Operator op, TypePtr signature) {
-  auto operator_set = operator_table[op];
-  for (const auto &fn : operator_set) {
-    if (signature == fn->input) { return fn->output; }
-  }
-  return nullptr;
 }
 
 static std::vector<Array *> array_types_;
