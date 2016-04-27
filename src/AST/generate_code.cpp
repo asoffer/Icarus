@@ -452,9 +452,28 @@ llvm::Value *Binop::generate_code() {
   case Operator::OrEq: {
     SHORT_CIRCUITING_OPERATOR(merge_block, more_block);
   } break;
+#undef SHORT_CIRCUITING_OPERATOR
   case Operator::Cast: {
-    return lhs->type.get->call_cast(lhs_val,
-                                rhs->evaluate(CurrentContext()).as_type);
+    TypePtr to_type = rhs->evaluate(CurrentContext()).as_type;
+    if (lhs->type == Bool) {
+      if (to_type == Int || to_type == Uint) {
+        return builder.CreateZExt(lhs_val, to_type, "ext.val");
+      } else if (to_type == Real) {
+        return builder.CreateUIToFP(lhs_val, to_type, "ext.val");
+      }
+    } else if (lhs->type == Int) {
+      if (to_type == Real) {
+        return builder.CreateSIToFP(lhs_val, to_type, "fp.val");
+      } else if (to_type == Uint) {
+        return lhs_val;
+      }
+    } else if (lhs->type == Uint) {
+      if (to_type == Real) {
+        return builder.CreateUIToFP(lhs_val, to_type, "fp.val");
+      } else if (to_type == Int) {
+        return lhs_val;
+      }
+    }
   } break;
   case Operator::Index: {
     if (lhs->type.is_array()) {
@@ -484,8 +503,7 @@ llvm::Value *Binop::generate_code() {
           if (arg_exprs[i]->type.is_struct()) {
             // TODO be sure to allocate this ahead of all loops and reuse it
             // when possible. Also, do this for arrays?
-            arg_vals[i] =
-                struct_memcpy(arg_exprs[i]->type, arg_vals[i]);
+            arg_vals[i] = struct_memcpy(arg_exprs[i]->type, arg_vals[i]);
           }
         }
       } else {

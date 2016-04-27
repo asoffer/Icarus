@@ -129,10 +129,6 @@ public:
 
   virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
 
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type) {
-    return nullptr;
-  }
-
   virtual bool requires_uninit() const { return false; }
 
   virtual bool is_primitive() const { return false; }
@@ -162,8 +158,6 @@ struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
 
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
-
   enum class TypeEnum {
     Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr
   };
@@ -178,7 +172,6 @@ struct Array : public Type {
   TYPE_FNS(Array, array);
 
   virtual bool requires_uninit() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   llvm::Function *initialize();
   llvm::Value *initialize_literal(llvm::Value *alloc, size_t len);
@@ -206,7 +199,6 @@ struct Tuple : public Type {
   // TODO requires_uninit()
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   Tuple(const std::vector<TypePtr> &types);
 
@@ -216,7 +208,6 @@ struct Tuple : public Type {
 struct Pointer : public Type {
   TYPE_FNS(Pointer, pointer);
 
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
   Pointer(TypePtr t);
   TypePtr pointee;
 };
@@ -227,7 +218,6 @@ struct Function : public Type {
   operator llvm::FunctionType *() const;
 
   virtual llvm::Value *allocate() const;
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr to_type);
 
   Function(TypePtr in, TypePtr out);
   TypePtr input, output;
@@ -255,8 +245,6 @@ struct Structure : public Type {
   virtual bool requires_uninit() const;
 
   void set_name(const std::string &name);
-
-  virtual llvm::Value *call_cast(llvm::Value *val, TypePtr t);
 
   TypePtr field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
