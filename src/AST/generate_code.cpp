@@ -60,12 +60,12 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             TypePtr input_type);
 
-llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
-                                 llvm::Value *rhs, Function *fn_type) {
+static llvm::Value *FunctionComposition(const std::string &name,
+                                        llvm::Value *lhs, llvm::Value *rhs,
+                                        Function *fn_type) {
   auto old_block = builder.GetInsertBlock();
 
   llvm::FunctionType *llvm_fn_type = *fn_type;
-
   auto llvm_fn = static_cast<llvm::Function *>(
       global_module->getOrInsertFunction(name, llvm_fn_type));
 
@@ -337,7 +337,7 @@ llvm::Value *Access::generate_code() {
 
 // This function exists because both '=' and ':=' need to call some version of
 // the same code. it's been factored out here.
-llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
+static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
   llvm::Value *var = nullptr;
   llvm::Value *val = nullptr;
 
@@ -383,6 +383,23 @@ llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
   }
 
   return nullptr;
+}
+
+static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
+  if (arg->is_comma_list()) {
+    auto &arg_exprs = static_cast<ChainOp *>(arg)->exprs;
+    auto num_args   = arg_exprs.size();
+
+    std::vector<llvm::Value *> arg_vals(num_args, nullptr);
+
+    for (size_t i = 0; i < num_args; ++i) {
+      arg_vals[i] = arg_exprs[i]->generate_code();
+      assert(arg_vals[i] && "Argument value was null");
+    }
+    return arg_vals;
+  }
+
+  return {arg->generate_code()};
 }
 
 llvm::Value *Binop::generate_code() {
@@ -483,34 +500,7 @@ llvm::Value *Binop::generate_code() {
   } break;
   case Operator::Call: {
     if (lhs->type.is_function() || lhs->type.is_quantum()) {
-      std::vector<llvm::Value *> arg_vals;
-      // This whole section should be pulled out into a function called
-      // "collate_for_function_call" or something like that.
-      if (rhs->is_comma_list()) {
-        auto &arg_exprs = static_cast<ChainOp *>(rhs)->exprs;
-        arg_vals.resize(arg_exprs.size(), nullptr);
-        for (size_t i = 0; i < arg_exprs.size(); ++i) {
-          arg_vals[i] = arg_exprs[i]->generate_code();
-          assert(arg_vals[i] && "Argument value was null");
-
-          if (arg_exprs[i]->type.is_struct()) {
-            // TODO be sure to allocate this ahead of all loops and reuse it
-            // when possible. Also, do this for arrays?
-            arg_vals[i] = struct_memcpy(arg_exprs[i]->type, arg_vals[i]);
-          }
-        }
-      } else {
-        auto rhs_val = rhs->generate_code();
-        assert(rhs_val && "Argument value was null");
-
-        if (rhs->type.is_struct()) {
-          // TODO be sure to allocate this ahead of all loops and reuse it
-          // when possible. Also, do this for arrays?
-          rhs_val = struct_memcpy(rhs->type, rhs_val);
-        }
-
-        arg_vals = {rhs_val};
-      }
+      std::vector<llvm::Value *> arg_vals = CollateArgsForFunctionCall(rhs);
 
       if (type == Void) {
         builder.CreateCall(lhs_val, arg_vals);
