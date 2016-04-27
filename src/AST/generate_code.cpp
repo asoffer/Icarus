@@ -4,9 +4,9 @@
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
-extern llvm::Value *FunctionComposition(const std::string &name,
-                                        llvm::Value *lhs, llvm::Value *rhs,
-                                        Function *fn_type);
+extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
+                                           const std::string &fn_name,
+                                           TypePtr input_type);
 
 extern ErrorLog error_log;
 
@@ -59,6 +59,26 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             TypePtr input_type);
+
+llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
+                                 llvm::Value *rhs, Function *fn_type) {
+  auto old_block = builder.GetInsertBlock();
+
+  llvm::FunctionType *llvm_fn_type = *fn_type;
+
+  auto llvm_fn = static_cast<llvm::Function *>(
+      global_module->getOrInsertFunction(name, llvm_fn_type));
+
+  auto entry = make_block("entry", llvm_fn);
+  builder.SetInsertPoint(entry);
+
+  // TODO multiple args, multiple return values, non-primitives, void return
+  auto arg = llvm_fn->args().begin();
+  builder.CreateRet(builder.CreateCall(lhs, {builder.CreateCall(rhs, {arg})}));
+
+  builder.SetInsertPoint(old_block);
+  return llvm_fn;
+}
 
 namespace AST {
 llvm::Value *Identifier::generate_code() {
@@ -380,84 +400,6 @@ llvm::Value *Binop::generate_code() {
         rhs);
   }
 
-#define GENERATE_AND_CHECK_LVALS                                               \
-  auto lhs_val = lhs->generate_code();                                         \
-  assert(lhs_val && "LHS of assignment generated null code");                  \
-  auto lval = lhs->generate_lvalue();                                          \
-  assert(lval && "LHS lval of assignment generated null code");
-
-#define CASE(op, int_op, uint_op, real_op, symbol)                             \
-  case Operator::op: {                                                         \
-    GENERATE_AND_CHECK_LVALS                                                   \
-    auto rhs_val = rhs->generate_code();                                       \
-    assert(rhs_val && "RHS of assignment generated null code");                \
-    if (lhs->type == Int && rhs->type == Int) {                                \
-      builder.CreateStore(builder.Create##int_op(lhs_val, rhs_val, symbol),    \
-                          lval);                                               \
-    } else if (lhs->type == Uint && rhs->type == Uint) {                       \
-      builder.CreateStore(builder.Create##uint_op(lhs_val, rhs_val, symbol),   \
-                          lval);                                               \
-    } else if (lhs->type == Real && rhs->type == Real) {                       \
-      builder.CreateStore(builder.Create##real_op(lhs_val, rhs_val, symbol),   \
-                          lval);                                               \
-    } else {                                                                   \
-      assert(false);                                                           \
-    }                                                                          \
-    return nullptr;                                                            \
-  } break;
-
-  switch (op) {
-  case Operator::XorEq: {
-    GENERATE_AND_CHECK_LVALS;
-    auto rhs_val = rhs->generate_code();
-    assert(rhs_val && "RHS of assignment generated null code");
-
-    builder.CreateStore(builder.CreateXor(lhs_val, rhs_val, "xortmp"), lval);
-    return nullptr;
-  } break;
-  case Operator::AndEq: {
-    GENERATE_AND_CHECK_LVALS;
-    auto parent_fn   = builder.GetInsertBlock()->getParent();
-    auto more_block  = make_block("more", parent_fn);
-    auto merge_block = make_block("merge", parent_fn);
-    builder.CreateCondBr(lhs_val, more_block, merge_block);
-
-    builder.SetInsertPoint(more_block);
-    auto rhs_val = rhs->generate_code();
-    assert(rhs_val && "RHS of assignment generated null code");
-
-    builder.CreateStore(rhs_val, lval);
-    builder.CreateBr(merge_block);
-    builder.SetInsertPoint(merge_block);
-    return nullptr;
-  } break;
-  case Operator::OrEq: {
-    GENERATE_AND_CHECK_LVALS;
-    auto parent_fn   = builder.GetInsertBlock()->getParent();
-    auto more_block  = make_block("more", parent_fn);
-    auto merge_block = make_block("merge", parent_fn);
-    builder.CreateCondBr(lhs_val, merge_block, more_block);
-
-    builder.SetInsertPoint(more_block);
-    auto rhs_val = rhs->generate_code();
-    assert(rhs_val && "RHS of assignment generated null code");
-
-    builder.CreateStore(rhs_val, lval);
-    builder.CreateBr(merge_block);
-    builder.SetInsertPoint(merge_block);
-    return nullptr;
-  } break;
-    CASE(AddEq, Add, Add, FAdd, "add.tmp");
-    CASE(SubEq, Sub, Sub, FSub, "sub.tmp");
-    CASE(MulEq, Mul, Mul, FMul, "mul.tmp");
-    CASE(DivEq, SDiv, UDiv, FDiv, "div.tmp");
-    CASE(ModEq, SRem, URem, FRem, "mod.tmp");
-  default:;
-  }
-
-#undef GENERATE_AND_CHECK
-#undef CASE
-
   llvm::Value *lhs_val = nullptr;
   if (lhs->is_identifier() && op == Language::Operator::Call) {
     lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
@@ -473,7 +415,7 @@ llvm::Value *Binop::generate_code() {
       auto alloc_ptr =
           builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
       return builder.CreateBitCast(alloc_ptr, type);
-      
+
     } else {
       assert(false);
     }
@@ -483,8 +425,38 @@ llvm::Value *Binop::generate_code() {
   }
   assert(lhs_val);
 
+// This code block tells us what to do of &= and |= operators so that they
+// short-circuit.
+#define SHORT_CIRCUITING_OPERATOR(goto_on_true, goto_on_false)                 \
+  auto lval = lhs->generate_lvalue();                                          \
+  assert(lval && "LHS lval of assignment generated null code");                \
+                                                                               \
+  auto parent_fn   = builder.GetInsertBlock()->getParent();                    \
+  auto more_block  = make_block("more", parent_fn);                            \
+  auto merge_block = make_block("merge", parent_fn);                           \
+                                                                               \
+  builder.CreateCondBr(lhs_val, goto_on_true, goto_on_false);                  \
+  builder.SetInsertPoint(more_block);                                          \
+  auto rhs_val = rhs->generate_code();                                         \
+  assert(rhs_val && "RHS of assignment generated null code");                  \
+                                                                               \
+  builder.CreateStore(rhs_val, lval);                                          \
+  builder.CreateBr(merge_block);                                               \
+  builder.SetInsertPoint(merge_block);                                         \
+  return nullptr;
+
   switch (op) {
-  case Language::Operator::Index: {
+  case Operator::AndEq: {
+    SHORT_CIRCUITING_OPERATOR(more_block, merge_block);
+  } break;
+  case Operator::OrEq: {
+    SHORT_CIRCUITING_OPERATOR(merge_block, more_block);
+  } break;
+  case Operator::Cast: {
+    return lhs->type.get->call_cast(lhs_val,
+                                rhs->evaluate(CurrentContext()).as_type);
+  } break;
+  case Operator::Index: {
     if (lhs->type.is_array()) {
       auto data_ptr = builder.CreateLoad(builder.CreateGEP(
           lhs_val, {data::const_uint(0), data::const_uint(1)}));
@@ -496,12 +468,8 @@ llvm::Value *Binop::generate_code() {
       }
     }
     assert(false && "Not yet implemented");
-  }
-  case Language::Operator::Cast: {
-    return lhs->type.get->call_cast(lhs_val,
-                                rhs->evaluate(CurrentContext()).as_type);
-  }
-  case Language::Operator::Call: {
+  } break;
+  case Operator::Call: {
     if (lhs->type.is_function() || lhs->type.is_quantum()) {
       std::vector<llvm::Value *> arg_vals;
       // This whole section should be pulled out into a function called
@@ -564,17 +532,123 @@ llvm::Value *Binop::generate_code() {
   }
 
   auto rhs_val = rhs->generate_code();
+  assert(rhs_val && "RHS of assignment generated null code");
+
+#define CREATE_CALL(fn_name)                                                   \
+  {                                                                            \
+    auto input_type = Tup({lhs->type, rhs->type});                             \
+    auto fn_type =                                                             \
+        GetFunctionTypeReferencedIn(scope_, "__" fn_name "__", input_type);    \
+    auto fn = GetFunctionReferencedIn(scope_, "__" fn_name "__", input_type);  \
+    assert(fn);                                                                \
+    auto output_type = static_cast<Function *>(fn_type.get)->output;           \
+                                                                               \
+    if (output_type == Void) {                                                 \
+      builder.CreateCall(fn, {lhs_val, rhs_val});                              \
+      return nullptr;                                                          \
+    } else if (output_type.get->is_big()) {                                    \
+      auto retval = builder.CreateAlloca(output_type);                         \
+      builder.CreateCall(fn, {lhs_val, rhs_val, retval});                      \
+      return retval;                                                           \
+    } else {                                                                   \
+      return builder.CreateCall(fn, {lhs_val, rhs_val});                       \
+    }                                                                          \
+  }
+
+#define PRIMITIVE_CALL(prim_type, call_op, name)                               \
+  if (lhs->type == prim_type && rhs->type == prim_type) {                      \
+    return builder.Create##call_op(lhs_val, rhs_val, name);                    \
+  }
+
+#define PRIMITIVE_EQ_CALL(prim_type, call_op, name)                            \
+  if (lhs->type == prim_type && rhs->type == prim_type) {                      \
+    auto tmp = builder.Create##call_op(lhs_val, rhs_val, name ".tmp");         \
+    builder.CreateStore(tmp, lval);                                            \
+    return nullptr;                                                            \
+  }
+
   switch (op) {
-  case Language::Operator::Add:
-    return type.get->CallAdd(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
-  case Language::Operator::Sub:
-    return type.get->CallSub(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
-  case Language::Operator::Mul:
-    return type.get->CallMul(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
-  case Language::Operator::Div:
-    return type.get->CallDiv(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
-  case Language::Operator::Mod:
-    return type.get->CallMod(scope_, lhs->type, rhs->type, lhs_val, rhs_val);
+  case Operator::Add: {
+    PRIMITIVE_CALL(Int, Add, "add")
+    PRIMITIVE_CALL(Uint, Add, "add")
+    PRIMITIVE_CALL(Real, FAdd, "fadd")
+    CREATE_CALL("add")
+  } break;
+  case Operator::Sub: {
+    PRIMITIVE_CALL(Int, Sub, "sub")
+    PRIMITIVE_CALL(Uint, Sub, "sub")
+    PRIMITIVE_CALL(Real, FSub, "fsub")
+    CREATE_CALL("sub")
+  } break;
+  case Operator::Mul: {
+    PRIMITIVE_CALL(Int, Mul, "mul")
+    PRIMITIVE_CALL(Uint, Mul, "mul")
+    PRIMITIVE_CALL(Real, FMul, "fmul")
+    if (lhs->type.is_function() && rhs->type.is_function()) {
+      auto output_type = Func(static_cast<Function *>(rhs->type.get)->input,
+                              static_cast<Function *>(lhs->type.get)->output);
+      return FunctionComposition("__anon_fn", lhs_val, rhs_val, output_type);
+    }
+    CREATE_CALL("mul")
+  } break;
+  case Operator::Div: {
+    PRIMITIVE_CALL(Int, SDiv, "sdiv")
+    PRIMITIVE_CALL(Uint, UDiv, "udiv")
+    PRIMITIVE_CALL(Real, FDiv, "fdiv")
+    CREATE_CALL("div")
+  } break;
+  case Operator::Mod: {
+    PRIMITIVE_CALL(Int, SRem, "smod")
+    PRIMITIVE_CALL(Uint, URem, "umod")
+    PRIMITIVE_CALL(Real, FRem, "fmod")
+    CREATE_CALL("mod")
+  } break;
+  case Operator::AddEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Int, Add, "add")
+    PRIMITIVE_EQ_CALL(Uint, Add, "add")
+    PRIMITIVE_EQ_CALL(Real, FAdd, "fadd")
+    CREATE_CALL("add_eq")
+  } break;
+  case Operator::SubEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Int, Sub, "sub")
+    PRIMITIVE_EQ_CALL(Uint, Sub, "sub")
+    PRIMITIVE_EQ_CALL(Real, FSub, "fsub")
+    CREATE_CALL("sub_eq")
+  } break;
+  case Operator::MulEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Int, Mul, "mul")
+    PRIMITIVE_EQ_CALL(Uint, Mul, "mul")
+    PRIMITIVE_EQ_CALL(Real, FMul, "fmul")
+    CREATE_CALL("mul_eq")
+  } break;
+  case Operator::DivEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Int, SDiv, "sdiv")
+    PRIMITIVE_EQ_CALL(Uint, UDiv, "udiv")
+    PRIMITIVE_EQ_CALL(Real, FDiv, "fdiv")
+    CREATE_CALL("div_eq")
+  } break;
+  case Operator::ModEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Int, SRem, "smod")
+    PRIMITIVE_EQ_CALL(Uint, URem, "umod")
+    PRIMITIVE_EQ_CALL(Real, FRem, "fmod")
+    CREATE_CALL("mod_eq")
+  } break;
+  case Operator::XorEq: {
+    auto lval = lhs->generate_lvalue();
+    assert(lval && "LHS lval of assignment generated null code");
+    PRIMITIVE_EQ_CALL(Bool, Xor, "xor")
+  } break;
+
   default:;
   }
 
@@ -1301,6 +1375,12 @@ llvm::Value *DummyTypeExpr::generate_code() {
 }
 } // namespace AST
 
+
+#undef CREATE_CALL
+#undef PRIMITIVE_CALL
+
 #undef BREAK_FLAG
 #undef CONTINUE_FLAG
 #undef RETURN_FLAG
+#undef REPEAT_FLAG
+#undef RESTART_FLAG

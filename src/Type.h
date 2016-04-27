@@ -120,16 +120,6 @@ public:
   // assignment function.
   void CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var);
   void CallDestroy(Scope *scope, llvm::Value *var);
-  llvm::Value *CallAdd(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
-                       llvm::Value *lhs, llvm::Value *rhs);
-  llvm::Value *CallSub(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
-                       llvm::Value *lhs, llvm::Value *rhs);
-  llvm::Value *CallMul(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
-                       llvm::Value *lhs, llvm::Value *rhs);
-  llvm::Value *CallDiv(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
-                       llvm::Value *lhs, llvm::Value *rhs);
-  llvm::Value *CallMod(Scope *scope, TypePtr lhs_type, TypePtr rhs_type,
-                       llvm::Value *lhs, llvm::Value *rhs);
 
   // Note: this one is special. It functions identically to the rest, but it's
   // special in that it will return nullptr if you haven't imported the string

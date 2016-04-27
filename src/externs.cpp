@@ -264,24 +264,3 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
   }
   return nullptr;
 }
-
-llvm::Value *FunctionComposition(const std::string &name, llvm::Value *lhs,
-                                 llvm::Value *rhs, Function *fn_type) {
-  auto old_block = builder.GetInsertBlock();
-
-  llvm::FunctionType *llvm_fn_type = *fn_type;
-
-  auto llvm_fn = static_cast<llvm::Function *>(
-      global_module->getOrInsertFunction(name, llvm_fn_type));
-
-  auto entry = make_block("entry", llvm_fn);
-  builder.SetInsertPoint(entry);
-
-  // TODO multiple args, multiple return values, non-primitives, void return
-  auto arg = llvm_fn->args().begin();
-  builder.CreateRet(builder.CreateCall(lhs, {builder.CreateCall(rhs, {arg})}));
-
-  builder.SetInsertPoint(old_block);
-  return llvm_fn;
-}
-
