@@ -8,7 +8,7 @@ extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
                                            const std::string &fn_name,
                                            TypePtr input_type);
 
-extern ErrorLog error_log;
+extern llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr);
 
 extern llvm::Module *global_module;
 extern llvm::IRBuilder<> builder;
@@ -476,17 +476,10 @@ llvm::Value *Binop::generate_code() {
     }
   } break;
   case Operator::Index: {
-    if (lhs->type.is_array()) {
-      auto data_ptr = builder.CreateLoad(builder.CreateGEP(
-          lhs_val, {data::const_uint(0), data::const_uint(1)}));
-      if (type.is_big()) {
-        return builder.CreateGEP(data_ptr, {rhs->generate_code()}, "array_val");
-      } else {
-        return builder.CreateLoad(
-            builder.CreateGEP(data_ptr, {rhs->generate_code()}, "array_val"));
-      }
-    }
-    assert(false && "Not yet implemented");
+    auto data_ptr = builder.CreateLoad(
+        builder.CreateGEP(lhs_val, {data::const_uint(0), data::const_uint(1)}));
+    return PtrCallFix(
+        type, builder.CreateGEP(data_ptr, rhs->generate_code(), "array_val"));
   } break;
   case Operator::Call: {
     if (lhs->type.is_function() || lhs->type.is_quantum()) {
