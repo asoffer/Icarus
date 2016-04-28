@@ -10,6 +10,9 @@ extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
 
 extern llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr);
 
+
+extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
+
 extern llvm::Module *global_module;
 extern llvm::IRBuilder<> builder;
 
@@ -419,12 +422,9 @@ llvm::Value *Binop::generate_code() {
 
   llvm::Value *lhs_val = nullptr;
   if (op == Operator::Call) {
-    if (lhs->is_identifier()) {
-      lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
-
-    } else if (lhs->is_function_literal()) {
-      auto fn_lit = static_cast<FunctionLiteral *>(lhs);
-      if (fn_lit->cache.empty()) { lhs_val = lhs->generate_code(); }
+    if (lhs->type.get->has_vars) {
+      auto fn_lit = GetFunctionLiteral(lhs);
+      assert(!fn_lit->cache.empty());
 
       for (auto kv : fn_lit->cache) {
         if (rhs->type == kv.first) {
@@ -432,6 +432,12 @@ llvm::Value *Binop::generate_code() {
           break;
         }
       }
+
+    } else if (lhs->is_identifier()) {
+      lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
+
+    } else if (lhs->is_function_literal()) {
+      lhs_val = lhs->generate_code();
 
     } else if (lhs->type.is_dependent_type()) {
       auto t = rhs->evaluate(CurrentContext()).as_type;

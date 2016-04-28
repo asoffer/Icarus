@@ -9,6 +9,9 @@ extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
                                            const std::string &fn_name,
                                            TypePtr input_type);
 
+
+extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
+
 TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
                             AST::Expression *rhs) {
   // TODO log information about failures to match?
@@ -54,9 +57,12 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       auto old_stack_size = Scope::Stack.size();
       Scope::Stack.push(Scope::Global);
 
+      auto fn_expr = GetFunctionLiteral(lhs);
+
       auto cloned_func =
-          (AST::FunctionLiteral *)lhs->clone(1, lookup_key, lookup_val);
-      cloned_func->scope_ = lhs->scope_; // TODO is that the right scope?
+          (AST::FunctionLiteral *)fn_expr->clone(1, lookup_key, lookup_val);
+
+      cloned_func->scope_ = fn_expr->scope_; // TODO is that the right scope?
       cloned_func->assign_scope();
       cloned_func->join_identifiers();
       Dependency::record(cloned_func);
@@ -65,7 +71,8 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       Scope::Stack.pop();
       assert(Scope::Stack.size() == old_stack_size);
 
-      static_cast<AST::FunctionLiteral *>(lhs)->cache[lookup_val[0]] = cloned_func;
+      static_cast<AST::FunctionLiteral *>(fn_expr)->cache[lookup_val[0]] =
+          cloned_func;
 
       delete[] lookup_key;
       delete[] lookup_val;

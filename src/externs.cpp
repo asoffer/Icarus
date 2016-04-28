@@ -264,3 +264,22 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
   }
   return nullptr;
 }
+
+AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
+  if (expr->is_function_literal()) {
+    return (AST::FunctionLiteral *)expr;
+
+  } else if (expr->is_identifier()) {
+    auto id = (AST::Identifier *)expr;
+    if (id->decls.size() == 1) {
+      assert(id->decls[0]->decl_type == AST::DeclType::Infer);
+      return GetFunctionLiteral(id->decls[0]->type_expr);
+    } else {
+      assert(false && "TODO");
+    }
+  } else {
+    assert(false);
+  }
+}
+
+
