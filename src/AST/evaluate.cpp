@@ -518,8 +518,8 @@ Context::Value Binop::evaluate(Context &ctx) {
         struct_ctx.bind(ctx_vals[i], struct_lit->params[i]->identifier);
       }
 
-      auto cloned_struct =
-          param_struct->ast_expression->clone(cache_loc, struct_ctx);
+      auto cloned_struct = param_struct->ast_expression->CloneStructLiteral(
+          cache_loc, struct_ctx);
 
       std::stringstream ss;
       // TODO if the parameter is not a type?

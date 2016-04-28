@@ -8,8 +8,6 @@ namespace debug {
 }  // namespace debug
 
 namespace AST {
-void DummyTypeExpr::record_dependencies() {}
-
 void Terminal::record_dependencies() {
   Dependency::value_type(this, this);
   if (terminal_type == Language::Terminal::StringLiteral) {
@@ -236,4 +234,6 @@ void EnumLiteral::record_dependencies() {
 }
 
 void Jump::record_dependencies() { Dependency::add_to_table(this); }
+void DummyTypeExpr::record_dependencies() { Dependency::add_to_table(this); }
 } // namespace AST
+ 

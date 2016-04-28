@@ -418,28 +418,44 @@ llvm::Value *Binop::generate_code() {
   }
 
   llvm::Value *lhs_val = nullptr;
-  if (lhs->is_identifier() && op == Language::Operator::Call) {
-    lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
+  if (op == Operator::Call) {
+    if (lhs->is_identifier()) {
+      lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
 
-  } else if (lhs->type.is_dependent_type()) {
-    auto t = rhs->evaluate(CurrentContext()).as_type;
+    } else if (lhs->is_function_literal()) {
+      auto fn_lit = static_cast<FunctionLiteral *>(lhs);
+      if (fn_lit->cache.empty()) { lhs_val = lhs->generate_code(); }
 
-    // TODO what if these are formed by some crazy other method?
-    if (lhs->token() == "input") {
-      return builtin::input(t);
+      for (auto kv : fn_lit->cache) {
+        if (rhs->type == kv.first) {
+          lhs_val = kv.second->generate_code();
+          break;
+        }
+      }
 
-    } else if (lhs->token() == "alloc") {
-      auto alloc_ptr =
-          builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
-      return builder.CreateBitCast(alloc_ptr, type);
+    } else if (lhs->type.is_dependent_type()) {
+      auto t = rhs->evaluate(CurrentContext()).as_type;
+
+      // TODO what if these are formed by some crazy other method?
+      if (lhs->token() == "input") {
+        return builtin::input(t);
+
+      } else if (lhs->token() == "alloc") {
+        auto alloc_ptr = builder.CreateCall(cstdlib::malloc(),
+                                            {data::const_uint(t->bytes())});
+        return builder.CreateBitCast(alloc_ptr, type);
+
+      } else {
+        assert(false);
+      }
 
     } else {
-      assert(false);
+      lhs_val = lhs->generate_code();
     }
-
   } else {
     lhs_val = lhs->generate_code();
   }
+
   assert(lhs_val);
 
 // This code block tells us what to do of &= and |= operators so that they

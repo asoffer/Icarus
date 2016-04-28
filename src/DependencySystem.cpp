@@ -200,6 +200,15 @@ void traverse_from(PtrWithTorV pt) {
   }
 }
 
+// This is terribly inefficient, because you're rechecking everything.
+// TODO do the efficient thing.
+void rebuild_already_seen() {
+  for (const auto &kv : dependencies_) {
+    if (already_seen_.find(kv.first.ptr_) != already_seen_.end()) continue;
+    already_seen_[kv.first.ptr_] = unseen;
+  }
+}
+
 void assign_order() {
   already_seen_.clear();
   for (const auto &kv : dependencies_) {

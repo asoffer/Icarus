@@ -254,7 +254,6 @@ int main(int argc, char *argv[]) {
   Scope::Stack.pop();
 
   // TODO Optimization.
-
   {
     // In this anonymous scope we write the LLVM IR to a file. The point
     // of the anonymous scope is to ensure that the file is written and

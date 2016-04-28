@@ -1,12 +1,55 @@
-show_type := (val : Any`T) -> void {
-  print T
-}
-
 main := void -> void {
-  show_type(3)
-  show_type(3.0)
+  (val : Any`T) -> void {
+    blank: T
+    print blank
+    print ": "
+    print T
+  }('x')
+  print '\n'
+
+  (val : Any`T) -> void {
+    blank: T
+    print blank
+    print ": "
+    print T
+
+  }(3u)
+  print '\n'
+
+  (val : Any`T) -> void {
+    blank: T
+    print blank
+    print ": "
+    print T
+
+  }(3.0)
+  print '\n'
+
+(val : Any`T) -> void {
+    blank: T
+    print blank
+    print ": "
+    print T
+
+  }(p)
+  print '\n'
+
+  p: pie
 }
 
 Any := (T: type) -> bool {
   return true
+}
+
+pie := struct {
+  pi := 3.14159
+  e := 2.71828
+}
+
+__print__ := (p: pie) -> void {
+  print "("
+  print p.pi
+  print ", "
+  print p.e
+  print ")"
 }

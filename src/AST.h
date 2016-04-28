@@ -24,6 +24,7 @@ struct BlockScope;
 struct FnScope;
 struct Structure;
 struct Enumeration;
+struct TypeVariable;
 
 template <typename T> T *steal(AST::Expression *&n) {
 #ifdef DEBUG
@@ -62,7 +63,9 @@ using NPtrVec = std::vector<Node *>;
   virtual std::string graphviz_label() const ENDING;                           \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual llvm::Value *generate_code() ENDING;                                 \
-  virtual Time::Eval determine_time() ENDING
+  virtual Time::Eval determine_time() ENDING;                                  \
+  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
+                      TypePtr *lookup_val) ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   name();                                                                      \
@@ -79,7 +82,9 @@ using NPtrVec = std::vector<Node *>;
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
-  static Node *build(NPtrVec &&nodes)
+  static Node *build(NPtrVec &&nodes);                                         \
+  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
+                      TypePtr *lookup_val) ENDING
 
 struct Node {
   Language::NodeType node_type() const { return type_; }
@@ -95,6 +100,8 @@ struct Node {
   virtual void record_dependencies() {}
   virtual void verify_types() {}
   virtual std::string graphviz_label() const;
+  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
+                      TypePtr *lookup_val);
 
   virtual Context::Value evaluate(Context &ctx) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
@@ -148,6 +155,9 @@ struct TokenNode : public Node {
   static TokenNode string_literal(size_t line_num, const std::string &str_lit) {
     return TokenNode(line_num, Language::string_literal, str_lit);
   }
+
+  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
+                      TypePtr *lookup_val);
 
   virtual bool is_token_node() const { return true; }
   virtual std::string token() const { return tk_; }
@@ -368,6 +378,8 @@ struct FunctionLiteral : public Expression {
   std::vector<Declaration *> inputs;
   llvm::Function *llvm_fn;
   Statements *statements;
+
+  std::map<TypePtr, FunctionLiteral *> cache;
 };
 
 struct Conditional : public Node {
@@ -427,7 +439,7 @@ struct StructLiteral : public Expression {
   static Node *build_parametric(NPtrVec &&nodes);
 
   void build_llvm_internals();
-  StructLiteral *clone(StructLiteral *&, Context &ctx);
+  StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
 
   std::vector<Declaration *> params;
   TypePtr type_value; // Either a Structure or ParametricStructure.

@@ -16,10 +16,10 @@ namespace Dependency {
   extern void traverse_from(PtrWithTorV);
 
   extern void record(AST::Node* node);
-
   extern void mark_as_done(AST::Node* e);
   extern void add_to_table(AST::Node* depender);
   extern void assign_order();
+  extern void rebuild_already_seen();
   extern void write_graphviz();
 }  // namespace Dependency
 

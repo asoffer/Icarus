@@ -42,7 +42,35 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
         delete call_binop;
       }
 
-      return success ? static_cast<Function *>(lhs_type.get)->output : nullptr;
+      if (!success) return nullptr;
+      // In the same scope that this type was declared, make a new declare
+      // with the type specified.
+
+      auto lookup_key = new TypeVariable *[1];
+      lookup_key[0]   = (TypeVariable *)in_types.get; // TODO fix this
+      auto lookup_val = new TypePtr[1];
+      lookup_val[0]   = rhs->type;
+
+      auto old_stack_size = Scope::Stack.size();
+      Scope::Stack.push(Scope::Global);
+
+      auto cloned_func =
+          (AST::FunctionLiteral *)lhs->clone(1, lookup_key, lookup_val);
+      cloned_func->scope_ = lhs->scope_; // TODO is that the right scope?
+      cloned_func->assign_scope();
+      cloned_func->join_identifiers();
+      Dependency::record(cloned_func);
+      Dependency::rebuild_already_seen();
+
+      Scope::Stack.pop();
+      assert(Scope::Stack.size() == old_stack_size);
+
+      static_cast<AST::FunctionLiteral *>(lhs)->cache[lookup_val[0]] = cloned_func;
+
+      delete[] lookup_key;
+      delete[] lookup_val;
+
+      return static_cast<Function *>(lhs_type.get)->output;
 
     } else {
       if (in_types != rhs->type) { return nullptr; }
@@ -592,7 +620,6 @@ void Binop::verify_types() {
 
   } break;
   default: {
-    std::cout << *this << std::endl;
     assert(false);
   }
   }
@@ -960,5 +987,7 @@ void Jump::verify_types() {
   assert(false && "How did you get to here?");
 }
 
-void DummyTypeExpr::verify_types() {}
+void DummyTypeExpr::verify_types() {
+  type = Type_;
+}
 } // namespace AST

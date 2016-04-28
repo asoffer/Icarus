@@ -229,7 +229,7 @@ TypePtr GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
   return nullptr;
 }
 
-// TODO log which print call is correct in quantum scenarios.
+// TODO cache which print call is correct in quantum scenarios.
 llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
                                      TypePtr input_type) {
   for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
