@@ -44,19 +44,14 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
 
 Node *Expression::clone(LOOKUP_ARGS) { assert(false); }
 Node *Binop::clone(LOOKUP_ARGS) { assert(false); }
-Node *ChainOp::clone(LOOKUP_ARGS) { assert(false); }
-Node *Case::clone(LOOKUP_ARGS) { assert(false); }
-Node *Access::clone(LOOKUP_ARGS) { assert(false); }
 Node *ArrayType::clone(LOOKUP_ARGS) { assert(false); }
 Node *StructLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *EnumLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) { assert(false); }
 Node *Jump::clone(LOOKUP_ARGS) { assert(false); }
-Node *KVPairList::clone(LOOKUP_ARGS) { assert(false); }
 Node *For::clone(LOOKUP_ARGS) { assert(false); }
 Node *While::clone(LOOKUP_ARGS) { assert(false); }
 Node *ArrayLiteral::clone(LOOKUP_ARGS) { assert(false); }
-Node *Conditional::clone(LOOKUP_ARGS) { assert(false); }
 Node *TokenNode::clone(LOOKUP_ARGS) { assert(false); }
 Node *Node::clone(LOOKUP_ARGS) { assert(false); }
 
@@ -89,8 +84,60 @@ Node *Unop::clone(LOOKUP_ARGS) {
   return unop;
 }
 
-Node *Terminal::clone(LOOKUP_ARGS) { 
-  return this;
+Node *Conditional::clone(LOOKUP_ARGS) { 
+  auto cond_node = new Conditional;
+  cond_node->conditions.reserve(conditions.size());
+  for (auto c : conditions) {
+    cond_node->conditions.push_back((Expression *)c->CLONE);
+  }
+
+  cond_node->statements.reserve(conditions.size());
+  for (auto s : statements) {
+    cond_node->statements.push_back((Statements *)s->CLONE);
+  }
+
+  auto num_body_scopes = body_scopes.size();
+  cond_node->body_scopes.resize(num_body_scopes);
+  for (size_t i = 0; i < num_body_scopes; ++i) {
+    cond_node->body_scopes[i] = new BlockScope(ScopeType::Conditional);
+  }
+
+  return cond_node;
+}
+
+  Node *ChainOp::clone(LOOKUP_ARGS) {
+  auto chain_node = new ChainOp;
+  chain_node->ops = ops;
+  chain_node->exprs.reserve(exprs.size());
+  for (auto e : exprs) { chain_node->exprs.push_back((Expression *)e->CLONE); }
+
+  return chain_node;
+}
+
+Node *Terminal::clone(LOOKUP_ARGS) { return this; }
+
+Node *Case::clone(LOOKUP_ARGS) { 
+  auto case_node = new Case;
+  case_node->kv = (KVPairList *)kv->CLONE;
+  return case_node;
+}
+
+Node *KVPairList::clone(LOOKUP_ARGS) { 
+  auto kv_node = new KVPairList;
+  kv_node->pairs.reserve(pairs.size());
+  for (auto p : pairs) {
+    kv_node->pairs.emplace_back((Expression *)p.first->CLONE,
+                                (Expression *)p.second->CLONE);
+  }
+
+  return kv_node;
+}
+
+Node *Access::clone(LOOKUP_ARGS) {
+  auto access_node         = new Access;
+  access_node->member_name = member_name;
+  access_node->operand     = (Expression *)operand->CLONE;
+  return access_node;
 }
 
 Node *Declaration::clone(LOOKUP_ARGS) { 

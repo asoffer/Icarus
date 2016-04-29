@@ -2,11 +2,21 @@ main := void -> void {
   print_type_info := foo
   
   foo := (val : Any`T) -> void {
+    print "The type of "
+    print val
+    print " is "
+    print T
+    print "\nA newly created object of this type would be initialized to "
     blank: T
     print blank
-    print ": "
-    print T
-    print '\n'
+
+    print "\nThis type takes up "
+    print T.bytes
+    print " byte"
+    if T.bytes != 1u {
+      print "s"
+    }
+    print " of storage.\n\n"
   }
 
   print_type_info('x')
