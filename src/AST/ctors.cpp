@@ -35,7 +35,8 @@ Identifier::Identifier(size_t input_line_num, const std::string &token_string)
   line_num   = input_line_num;
 }
 
-FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope), llvm_fn(nullptr) {}
+FunctionLiteral::FunctionLiteral()
+    : fn_scope(new FnScope), llvm_fn(nullptr), code_gened(false) {}
 
 StructLiteral::StructLiteral() : type_value(nullptr), type_scope(new Scope) {}
 

@@ -153,7 +153,7 @@ void Array::call_repr(llvm::Value *val) {
     auto data_ptr_ptr = builder.CreateGEP(
         arg, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
     llvm::Value *start_ptr = builder.CreateLoad(data_ptr_ptr, "start_ptr");
-    auto end_ptr           = builder.CreateGEP(start_ptr, {len_val}, "end_ptr");
+    auto end_ptr           = builder.CreateGEP(start_ptr, len_val, "end_ptr");
 
     // TODO make calls to call_repr not have to first check if we pass the
     // object or a pointer to the object.

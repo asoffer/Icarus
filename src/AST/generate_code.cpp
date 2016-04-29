@@ -880,6 +880,8 @@ llvm::Value *ChainOp::generate_code() {
 #undef END_SHORT_CIRCUIT
 
 llvm::Value *FunctionLiteral::generate_code() {
+  if (code_gened) { return llvm_fn; }
+
   if (llvm_fn == nullptr) {
     assert(type.is_function() && "How is the type not a function?");
     auto fn_type = static_cast<Function *>(type.get);
@@ -939,6 +941,7 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   if (old_block) { builder.SetInsertPoint(old_block); }
 
+  code_gened = true;
   return llvm_fn;
 }
 

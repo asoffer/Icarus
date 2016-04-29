@@ -56,15 +56,15 @@ Node *TokenNode::clone(LOOKUP_ARGS) { assert(false); }
 Node *Node::clone(LOOKUP_ARGS) { assert(false); }
 
 Node *FunctionLiteral::clone(LOOKUP_ARGS) {
-  auto fn_lit = new FunctionLiteral;
-
+  auto fn_lit              = new FunctionLiteral;
   fn_lit->return_type_expr = (Expression *)return_type_expr->CLONE;
+  fn_lit->statements       = (Statements *)statements->CLONE;
+  fn_lit->code_gened       = code_gened;
 
   for (auto input : inputs) {
     fn_lit->inputs.push_back((Declaration *)input->CLONE);
   }
 
-  fn_lit->statements = (Statements *)statements->CLONE;
 
   return fn_lit;
 }

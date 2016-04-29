@@ -86,7 +86,7 @@ void Function::call_init(llvm::Value *var) {
 }
 
 void Enumeration::call_init(llvm::Value *var) {
-  builder.CreateStore(data::const_uint(0), {var});
+  builder.CreateStore(data::const_uint(0), var);
 }
 
 void DependentType::call_init(llvm::Value *) {
@@ -133,7 +133,7 @@ void Structure::call_init(llvm::Value *var) {
         // Scope::Stack.pop();
         the_field_type.get->CallAssignment(nullptr, init_val, arg);
       } else {
-        the_field_type.get->call_init({arg});
+        the_field_type.get->call_init(arg);
       }
     }
 

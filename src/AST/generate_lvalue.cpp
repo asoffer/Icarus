@@ -48,7 +48,7 @@ llvm::Value *Binop::generate_lvalue() {
     auto rhs_val  = rhs->generate_code();
     auto data_ptr = builder.CreateLoad(builder.CreateGEP(
         lhs_val, {data::const_uint(0), data::const_uint(1)}));
-    return builder.CreateGEP(data_ptr, {rhs_val}, "array_idx");
+    return builder.CreateGEP(data_ptr, rhs_val, "array_idx");
   }
   return nullptr;
 }

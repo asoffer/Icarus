@@ -173,7 +173,7 @@ void BlockScope::initialize() {
     // } else {
     if (decl_ptr->decl_type == AST::DeclType::In) continue;
     if (decl_id->is_arg) continue;
-    decl_type.get->call_init({decl_id->alloc});
+    decl_type.get->call_init(decl_id->alloc);
     // }
   }
 }

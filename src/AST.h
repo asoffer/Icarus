@@ -379,6 +379,8 @@ struct FunctionLiteral : public Expression {
   llvm::Function *llvm_fn;
   Statements *statements;
 
+  bool code_gened;
+
   std::map<TypePtr, FunctionLiteral *> cache;
 };
 
