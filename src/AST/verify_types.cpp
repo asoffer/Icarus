@@ -89,10 +89,23 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       return static_cast<Function *>(lhs_type.get)->output;
 
     } else {
+
       if (in_types != rhs->type) { return nullptr; }
 
       // TODO multiple return values. For now just taking the first
-      return static_cast<Function *>(lhs_type.get)->output;
+      auto ret_type = ((Function *)lhs_type.get)->output;
+      if (ret_type.get->is_type_variable()) {
+        // TODO more generically, if it has a variable
+        auto tv = (TypeVariable *)ret_type.get;
+        auto new_scope = lhs->scope_->context.spawn();
+
+        // TODO tv->identifier isn't in this scope. is this at all reasonable?
+        auto rhs_eval = rhs->evaluate(lhs->scope_->context).as_type;
+        new_scope.bind(Context::Value(rhs_eval), tv->identifier);
+
+        ret_type = tv->identifier->evaluate(new_scope).as_type;
+      }
+      return ret_type;
     }
 
   } else if (lhs_type == Type_) {
@@ -866,7 +879,7 @@ void ArrayLiteral::verify_types() {
 }
 
 void FunctionLiteral::verify_types() {
-  TypePtr ret_type = return_type_expr->evaluate(scope_->context).as_type;
+  TypePtr ret_type = return_type_expr->evaluate(fn_scope->context).as_type;
   assert(ret_type && "Return type is a nullptr");
   TypePtr input_type;
   size_t inputssize = inputs.size();
