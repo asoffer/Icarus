@@ -12,6 +12,34 @@ extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
+AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
+                                                TypeVariable *input_type,
+                                                TypePtr fn_type) {
+  auto lookup_key = new TypeVariable *[1];
+  lookup_key[0]   = input_type;
+  auto lookup_val = new TypePtr[1];
+  lookup_val[0]   = fn_type;
+
+  auto cloned_func =
+      (AST::FunctionLiteral *)fn_lit->clone(1, lookup_key, lookup_val);
+
+  auto old_stack_size = Scope::Stack.size();
+  Scope::Stack.push(fn_lit->scope_);
+
+  cloned_func->assign_scope();
+  cloned_func->join_identifiers();
+  Dependency::record(cloned_func);
+  Dependency::rebuild_already_seen();
+
+  Scope::Stack.pop();
+  assert(Scope::Stack.size() == old_stack_size);
+
+  delete[] lookup_key;
+  delete[] lookup_val;
+
+  return cloned_func;
+}
+
 TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
                             AST::Expression *rhs) {
   // TODO log information about failures to match?
@@ -49,12 +77,6 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       // In the same scope that this type was declared, make a new declare
       // with the type specified.
 
-      auto lookup_key = new TypeVariable *[1];
-      lookup_key[0]   = (TypeVariable *)in_types.get; // TODO fix this
-      auto lookup_val = new TypePtr[1];
-      lookup_val[0]   = rhs->type;
-
-
       auto fn_expr = GetFunctionLiteral(lhs);
 
       // look in cache to see if the function has already been chosen
@@ -65,25 +87,10 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
         }
       }
 
-      auto cloned_func =
-          (AST::FunctionLiteral *)fn_expr->clone(1, lookup_key, lookup_val);
-
-      auto old_stack_size = Scope::Stack.size();
-      Scope::Stack.push(fn_expr->scope_);
-
-      cloned_func->assign_scope();
-      cloned_func->join_identifiers();
-      Dependency::record(cloned_func);
-      Dependency::rebuild_already_seen();
-
-      Scope::Stack.pop();
-      assert(Scope::Stack.size() == old_stack_size);
-
-      static_cast<AST::FunctionLiteral *>(fn_expr)->cache[lookup_val[0]] =
-          cloned_func;
-
-      delete[] lookup_key;
-      delete[] lookup_val;
+      // Cache the function
+      fn_expr->cache[rhs->type] =
+          GenerateSpecifiedFunction((AST::FunctionLiteral *)fn_expr,
+                                    (TypeVariable *)in_types.get, rhs->type);
 
       // TODO what if T is in the return type?
       return static_cast<Function *>(lhs_type.get)->output;
