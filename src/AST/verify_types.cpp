@@ -59,6 +59,14 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
 
       auto fn_expr = GetFunctionLiteral(lhs);
 
+      // look in cache to see if the function has already been chosen
+      for (auto &gen : fn_expr->cache) {
+        if (gen.first == rhs->type) {
+          // TODO what if T is in the return type?
+          return static_cast<Function *>(lhs_type.get)->output;
+        }
+      }
+
       auto cloned_func =
           (AST::FunctionLiteral *)fn_expr->clone(1, lookup_key, lookup_val);
 
@@ -77,6 +85,7 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       delete[] lookup_key;
       delete[] lookup_val;
 
+      // TODO what if T is in the return type?
       return static_cast<Function *>(lhs_type.get)->output;
 
     } else {

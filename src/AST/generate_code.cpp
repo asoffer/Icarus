@@ -1045,7 +1045,7 @@ llvm::Value *ArrayLiteral::generate_code() {
 
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
-    auto data_ptr = builder.CreateGEP(head_ptr, {data::const_uint(i)});
+    auto data_ptr = builder.CreateGEP(head_ptr, data::const_uint(i));
     element_type.get->call_init(data_ptr);
 
     element_type.get->CallAssignment(scope_, elems[i]->generate_code(),

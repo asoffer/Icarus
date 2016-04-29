@@ -25,6 +25,18 @@ main := void -> void {
   print_type_info(3.0)
   print_type_info(p)
 
+  print_type_info('x')
+  print_type_info(3)
+  print_type_info(3u)
+  print_type_info(3.0)
+  print_type_info(p)
+
+  print_type_info('x')
+  print_type_info(3)
+  print_type_info(3u)
+  print_type_info(3.0)
+  print_type_info(p)
+
   p: pie
 
 }

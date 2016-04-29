@@ -86,6 +86,8 @@ Node *Unop::clone(LOOKUP_ARGS) {
 
 Node *Conditional::clone(LOOKUP_ARGS) { 
   auto cond_node = new Conditional;
+  cond_node->else_line_num = else_line_num;
+
   cond_node->conditions.reserve(conditions.size());
   for (auto c : conditions) {
     cond_node->conditions.push_back((Expression *)c->CLONE);
@@ -97,15 +99,16 @@ Node *Conditional::clone(LOOKUP_ARGS) {
   }
 
   auto num_body_scopes = body_scopes.size();
-  cond_node->body_scopes.resize(num_body_scopes);
+  cond_node->body_scopes.reserve(num_body_scopes);
+
   for (size_t i = 0; i < num_body_scopes; ++i) {
-    cond_node->body_scopes[i] = new BlockScope(ScopeType::Conditional);
+    cond_node->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   }
 
   return cond_node;
 }
 
-  Node *ChainOp::clone(LOOKUP_ARGS) {
+Node *ChainOp::clone(LOOKUP_ARGS) {
   auto chain_node = new ChainOp;
   chain_node->ops = ops;
   chain_node->exprs.reserve(exprs.size());
