@@ -287,6 +287,13 @@ void FnScope::leave() {
 
 
 void FnScope::allocate(Scope* scope) {
+  // Check that on the way up you don't hit a FnScope. This makes it so you
+  // don't allocate for a function declared in a function.
+  if (scope != this &&
+      (scope->is_function_scope() || scope->containing_function_ != this)) {
+    return;
+  }
+
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
