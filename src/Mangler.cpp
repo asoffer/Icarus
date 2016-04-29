@@ -72,6 +72,7 @@ std::string Mangle(const Function *f, AST::Expression *expr,
   // ugly and makes the ABI impossible. But for now it uniques things correctly.
   // TODO To fix this, we need a way to assign names to scopes.
   auto scope = starting_scope ? starting_scope : expr->scope_;
+
   while (scope != Scope::Global) {
     ss << "X" << scope->name.size() << scope->name;
     scope = scope->parent;

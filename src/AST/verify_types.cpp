@@ -54,8 +54,6 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       auto lookup_val = new TypePtr[1];
       lookup_val[0]   = rhs->type;
 
-      auto old_stack_size = Scope::Stack.size();
-      Scope::Stack.push(Scope::Global);
 
       auto fn_expr = GetFunctionLiteral(lhs);
 
@@ -70,7 +68,9 @@ TypePtr CallResolutionMatch(TypePtr lhs_type, AST::Expression *lhs,
       auto cloned_func =
           (AST::FunctionLiteral *)fn_expr->clone(1, lookup_key, lookup_val);
 
-      cloned_func->scope_ = fn_expr->scope_; // TODO is that the right scope?
+      auto old_stack_size = Scope::Stack.size();
+      Scope::Stack.push(fn_expr->scope_);
+
       cloned_func->assign_scope();
       cloned_func->join_identifiers();
       Dependency::record(cloned_func);

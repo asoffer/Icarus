@@ -941,6 +941,12 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   if (old_block) { builder.SetInsertPoint(old_block); }
 
+  assert(type.is_function());
+  assert(token_ == "");
+  token_ = fn_scope->name;
+
+  llvm_fn->setName(Mangle((Function *)type.get, this));
+
   code_gened = true;
   return llvm_fn;
 }
@@ -958,7 +964,18 @@ llvm::Value *Declaration::generate_code() {
         ->initialize_literal(identifier->alloc, len);
   }
 
-  if (decl_type == DeclType::Std || type.get->time() == Time::compile) {
+  if (decl_type == DeclType::Std) {
+    return nullptr;
+  }
+
+  if (type.get->time() == Time::compile) {
+    if (identifier->type.is_function() && decl_type == DeclType::Infer &&
+        type_expr->is_function_literal()) {
+      auto fn_expr = (FunctionLiteral *)type_expr;
+      for (auto &gen : fn_expr->cache) {
+        gen.second->fn_scope->name = identifier->token();
+      }
+    }
     return nullptr;
   }
   // For the most part, declarations are preallocated at the beginning

@@ -84,8 +84,8 @@ Node *Unop::clone(LOOKUP_ARGS) {
   return unop;
 }
 
-Node *Conditional::clone(LOOKUP_ARGS) { 
-  auto cond_node = new Conditional;
+Node *Conditional::clone(LOOKUP_ARGS) {
+  auto cond_node           = new Conditional;
   cond_node->else_line_num = else_line_num;
 
   cond_node->conditions.reserve(conditions.size());
@@ -111,6 +111,7 @@ Node *Conditional::clone(LOOKUP_ARGS) {
 Node *ChainOp::clone(LOOKUP_ARGS) {
   auto chain_node = new ChainOp;
   chain_node->ops = ops;
+
   chain_node->exprs.reserve(exprs.size());
   for (auto e : exprs) { chain_node->exprs.push_back((Expression *)e->CLONE); }
 
@@ -119,14 +120,16 @@ Node *ChainOp::clone(LOOKUP_ARGS) {
 
 Node *Terminal::clone(LOOKUP_ARGS) { return this; }
 
-Node *Case::clone(LOOKUP_ARGS) { 
+Node *Case::clone(LOOKUP_ARGS) {
   auto case_node = new Case;
-  case_node->kv = (KVPairList *)kv->CLONE;
+  case_node->kv  = (KVPairList *)kv->CLONE;
+
   return case_node;
 }
 
-Node *KVPairList::clone(LOOKUP_ARGS) { 
+Node *KVPairList::clone(LOOKUP_ARGS) {
   auto kv_node = new KVPairList;
+
   kv_node->pairs.reserve(pairs.size());
   for (auto p : pairs) {
     kv_node->pairs.emplace_back((Expression *)p.first->CLONE,
