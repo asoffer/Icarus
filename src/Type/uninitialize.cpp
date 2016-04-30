@@ -27,7 +27,7 @@ llvm::Function *Array::destroy() {
   auto save_block = builder.GetInsertBlock();
 
   destroy_fn_ = llvm::Function::Create(
-      llvm::FunctionType::get(Void, {TypePtr(Ptr(this))}, false),
+      llvm::FunctionType::get(*Void, {*Ptr(this)}, false),
       llvm::Function::ExternalLinkage, "destr." + Mangle(this), global_module);
 
   auto entry_block = make_block("entry", destroy_fn_);
@@ -58,14 +58,14 @@ llvm::Function *Array::destroy() {
                        land_block);
 
   builder.SetInsertPoint(loop_block);
-  data_type.get->CallDestroy(nullptr, phi);
+  data_type->CallDestroy(nullptr, phi);
   auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
 
   builder.CreateBr(cond_block);
   phi->addIncoming(next_ptr, loop_block);
 
   builder.SetInsertPoint(land_block);
-  builder.CreateCall(cstdlib::free(), builder.CreateBitCast(data_ptr, RawPtr));
+  builder.CreateCall(cstdlib::free(), builder.CreateBitCast(data_ptr, *RawPtr));
 
   builder.CreateRetVoid();
   builder.SetInsertPoint(save_block);
@@ -87,10 +87,10 @@ llvm::Function *Structure::destroy() {
     auto the_field_type = field_type AT(kv.first);
     auto val_to_destr   = destroy_fn_->args().begin();
 
-    if (the_field_type.get->requires_uninit()) {
+    if (the_field_type->requires_uninit()) {
       auto arg = builder.CreateGEP(
           val_to_destr, {data::const_uint(0), data::const_uint(kv.second)});
-      the_field_type.get->CallDestroy(nullptr, arg);
+      the_field_type->CallDestroy(nullptr, arg);
     }
   }
 

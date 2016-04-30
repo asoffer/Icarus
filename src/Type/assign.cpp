@@ -13,7 +13,7 @@ extern llvm::Module* global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
-extern llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr);
+extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
 
 namespace cstdlib {
 extern llvm::Constant *malloc();
@@ -57,7 +57,7 @@ llvm::Function *Array::assign() {
                                                        data::const_uint(0)}));
 
   auto bytes_to_alloc =
-      builder.CreateMul(new_len, data::const_uint(data_type.get->bytes()));
+      builder.CreateMul(new_len, data::const_uint(data_type->bytes()));
   auto malloc_call = builder.CreateBitCast(
       builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
   builder.CreateStore(
@@ -85,9 +85,9 @@ llvm::Function *Array::assign() {
 
   // This is ludicrous, but we have to init it here so that it can be
   // immeditaely uninitialized safely.
-  data_type.get->call_init(to_phi);
+  data_type->call_init(to_phi);
 
-  data_type.get->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
+  data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
 
   auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
   auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
@@ -127,13 +127,13 @@ llvm::Function *Structure::assign() {
     auto the_field_type = field_type AT(iter.first);
     auto field_val = builder.CreateGEP(
         val, {data::const_uint(0), data::const_uint(iter.second)});
-    if (!the_field_type.get->is_big()) {
-      field_val = builder.CreateLoad(the_field_type, field_val);
+    if (!the_field_type->is_big()) {
+      field_val = builder.CreateLoad(*the_field_type, field_val);
     }
     auto field_var = builder.CreateGEP(
         var, {data::const_uint(0), data::const_uint(iter.second)});
 
-    the_field_type.get->CallAssignment(nullptr, field_val, field_var);
+    the_field_type->CallAssignment(nullptr, field_val, field_var);
   }
 
   auto exit_block = make_block("exit", assign_fn_);

@@ -104,11 +104,11 @@ void traverse_from(PtrWithTorV pt) {
           auto unop = static_cast<AST::Unop *>(ptr);
           if (unop->op == Language::Operator::At) {
             auto t = unop->operand->type;
-            while (t.is_pointer()) t = static_cast<Pointer *>(t.get)->pointee;
-            if (t.is_pointer()) {
-              t = static_cast<Pointer *>(t.get)->pointee;
-              if (t.is_struct()) {
-                auto struct_type = static_cast<Structure *>(t.get);
+            while (t->is_pointer()) t = static_cast<Pointer *>(t)->pointee;
+            if (t->is_pointer()) {
+              t = static_cast<Pointer *>(t)->pointee;
+              if (t->is_struct()) {
+                auto struct_type = static_cast<Structure *>(t);
                 PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
                 traverse_from(ptr_with_torv);
               }
@@ -118,9 +118,9 @@ void traverse_from(PtrWithTorV pt) {
         } else if (ptr->is_access()) {
           auto access_ptr = static_cast<AST::Access *>(ptr);
           auto t = access_ptr->operand->type;
-          while (t.is_pointer()) t = static_cast<Pointer *>(t.get)->pointee;
-          if (t.is_struct()) {
-            auto struct_type = static_cast<Structure *>(t.get);
+          while (t->is_pointer()) t = static_cast<Pointer *>(t)->pointee;
+          if (t->is_struct()) {
+            auto struct_type = static_cast<Structure *>(t);
             PtrWithTorV ptr_with_torv(struct_type->ast_expression, false);
             traverse_from(ptr_with_torv);
           }
@@ -280,7 +280,7 @@ std::string graphviz_label(PtrWithTorV x) {
          << escape(x.ptr_->graphviz_label()) << "\t(" << x.ptr_->line_num
          << ")|" << escape(x.ptr_->is_expression()
                                ? static_cast<AST::Expression *>(x.ptr_)
-                                     ->type.to_string()
+                                     ->type->to_string()
                                : "---");
   if (already_seen_.find(x.ptr_) != already_seen_.end()) {
     output << " [" << ShowFlag(already_seen_ AT(x.ptr_)) << "]";

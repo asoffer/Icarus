@@ -6,7 +6,7 @@
 
 #define CLONE clone(num_entries, lookup_key, lookup_val)
 #define LOOKUP_ARGS                                                            \
-  size_t num_entries, TypeVariable **lookup_key, TypePtr *lookup_val
+  size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
 namespace AST {
 StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
@@ -150,7 +150,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
   if (decl_type == DeclType::Tick) {
     for (size_t i = 0; i < num_entries; ++i) {
       if (identifier == lookup_key[i]->identifier) {
-        return new DummyTypeExpr(line_num, lookup_val[i].get);
+        return new DummyTypeExpr(line_num, lookup_val[i]);
       }
     }
     assert(false);
@@ -168,7 +168,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
 Node *Identifier::clone(LOOKUP_ARGS) {
   for (size_t i = 0; i < num_entries; ++i) {
     if (this == lookup_key[i]->identifier) {
-      return new DummyTypeExpr(line_num, lookup_val[i].get);
+      return new DummyTypeExpr(line_num, lookup_val[i]);
     }
   }
 

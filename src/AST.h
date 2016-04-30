@@ -10,7 +10,6 @@
 
 #include "Language.h"
 #include "TimeEval.h"
-#include "TypePtr.h"
 #include "AST/DeclType.h"
 
 #include "Scope.h"
@@ -65,7 +64,7 @@ using NPtrVec = std::vector<Node *>;
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
-                      TypePtr *lookup_val) ENDING
+                      Type **lookup_val) ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   name();                                                                      \
@@ -84,7 +83,7 @@ using NPtrVec = std::vector<Node *>;
   virtual Time::Eval determine_time() ENDING;                                  \
   static Node *build(NPtrVec &&nodes);                                         \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
-                      TypePtr *lookup_val) ENDING
+                      Type **lookup_val) ENDING
 
 struct Node {
   Language::NodeType node_type() const { return type_; }
@@ -101,7 +100,7 @@ struct Node {
   virtual void verify_types() {}
   virtual std::string graphviz_label() const;
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
-                      TypePtr *lookup_val);
+                      Type **lookup_val);
 
   virtual Context::Value evaluate(Context &ctx) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
@@ -157,7 +156,7 @@ struct TokenNode : public Node {
   }
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
-                      TypePtr *lookup_val);
+                      Type **lookup_val);
 
   virtual bool is_token_node() const { return true; }
   virtual std::string token() const { return tk_; }
@@ -177,7 +176,7 @@ struct Expression : public Node {
 
   static Node *parenthesize(NPtrVec &&nodes);
 
-  virtual bool is_literal(TypePtr t) const {
+  virtual bool is_literal(Type *t) const {
     return is_terminal() && !is_identifier() && type == t;
   }
 
@@ -185,7 +184,7 @@ struct Expression : public Node {
 
   size_t precedence;
   bool lvalue;
-  TypePtr type;
+  Type *type;
 };
 
 #undef ENDING
@@ -269,7 +268,7 @@ struct ArrayType : public Expression {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
 
-  static Node *build(Language::Terminal term_type, NPtrVec &&nodes, TypePtr t);
+  static Node *build(Language::Terminal term_type, NPtrVec &&nodes, Type *t);
   static Node *build_type_literal(NPtrVec &&nodes);
   static Node *build_string_literal(NPtrVec &&nodes);
   static Node *build_true(NPtrVec &&nodes);
@@ -330,7 +329,7 @@ struct KVPairList : public Node {
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  virtual TypePtr verify_types_with_key(TypePtr key_type);
+  virtual Type *verify_types_with_key(Type *key_type);
 
   inline size_t size() const { return pairs.size(); }
 
@@ -381,7 +380,7 @@ struct FunctionLiteral : public Expression {
 
   bool code_gened;
 
-  std::map<TypePtr, FunctionLiteral *> cache;
+  std::map<Type *, FunctionLiteral *> cache;
 };
 
 struct Conditional : public Node {
@@ -444,13 +443,13 @@ struct StructLiteral : public Expression {
   StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
 
   std::vector<Declaration *> params;
-  TypePtr type_value; // Either a Structure or ParametricStructure.
+  Type *type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;
 
   // TODO this should be more than just type pointers. Parameters can be ints,
   // etc. Do we allow real?
-  std::map<std::vector<TypePtr>, StructLiteral *> cache;
+  std::map<std::vector<Type *>, StructLiteral *> cache;
 };
 
 struct EnumLiteral : public Expression {
@@ -464,7 +463,7 @@ struct DummyTypeExpr : public Expression {
   EXPR_FNS(DummyTypeExpr, dummy);
   DummyTypeExpr(size_t expr_line_num, Type *t);
 
-  TypePtr type_value;
+  Type *type_value;
 };
 
 struct Jump : public Node {

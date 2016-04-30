@@ -1,13 +1,13 @@
 #include "Type.h"
 
-TypePtr Error, Unknown, NullPtr, Bool, Char, Int, Real, Type_, Uint, Void,
-    RawPtr, String;
+Type *Error, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint,
+    *Void, *RawPtr, *String;
 
 namespace TypeSystem {
-std::map<std::string, TypePtr> Literals;
+std::map<std::string, Type *> Literals;
 
 // TODO is this even necessary?
-TypePtr get(const std::string &name) {
+Type *get(const std::string &name) {
   auto enum_ptr = Enum(name);
   if (enum_ptr) return enum_ptr;
 
@@ -30,14 +30,14 @@ void initialize() {
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
   Error   = new Primitive(Primitive::TypeEnum::Error);
   RawPtr  = Ptr(Char);
-  RawPtr.get->generate_llvm();
+  RawPtr->generate_llvm();
 }
 
 static std::vector<Array *> array_types_;
 static std::vector<Tuple *> tuple_types_;
 static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
-static std::map<TypePtr, RangeType *> ranges_;
+static std::map<Type *, RangeType *> ranges_;
 static std::map<std::string, Enumeration *> enum_types_;
 static std::vector<DependentType *> dep_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
@@ -57,7 +57,7 @@ void GenerateLLVM() {
 
 } // namespace TypeSystem
 
-Array *Arr(TypePtr t) {
+Array *Arr(Type *t) {
   for (auto arr : TypeSystem::array_types_)
     if (arr->data_type == t) return arr;
 
@@ -66,7 +66,7 @@ Array *Arr(TypePtr t) {
   return arr_type;
 }
 
-Tuple *Tup(const std::vector<TypePtr> &types) {
+Tuple *Tup(const std::vector<Type *> &types) {
   for (auto tuple_type : TypeSystem::tuple_types_) {
     if (tuple_type->entries == types) return tuple_type;
   }
@@ -77,7 +77,7 @@ Tuple *Tup(const std::vector<TypePtr> &types) {
   return tuple_type;
 }
 
-Pointer *Ptr(TypePtr t) {
+Pointer *Ptr(Type *t) {
   for (const auto &ptr : TypeSystem::pointer_types_) {
     if (ptr->pointee == t) return ptr;
   }
@@ -87,7 +87,7 @@ Pointer *Ptr(TypePtr t) {
   return ptr_type;
 }
 
-Function *Func(TypePtr in, TypePtr out) {
+Function *Func(Type *in, Type *out) {
   for (const auto &fn_type : TypeSystem::fn_types_) {
     if (fn_type->input != in) continue;
     if (fn_type->output != out) continue;
@@ -99,7 +99,7 @@ Function *Func(TypePtr in, TypePtr out) {
   return fn_type;
 }
 
-Function *Func(std::vector<TypePtr> in, TypePtr out) {
+Function *Func(std::vector<Type *> in, Type *out) {
   switch (in.size()) {
   case 0: return Func(Void, out);
   case 1: return Func(in.front(), out);
@@ -107,7 +107,7 @@ Function *Func(std::vector<TypePtr> in, TypePtr out) {
   }
 }
 
-Function *Func(TypePtr in, std::vector<TypePtr> out) {
+Function *Func(Type *in, std::vector<Type *> out) {
   switch (out.size()) {
   case 0: return Func(in, Void);
   case 1: return Func(in, out.front());
@@ -115,7 +115,7 @@ Function *Func(TypePtr in, std::vector<TypePtr> out) {
   }
 }
 
-Function *Func(std::vector<TypePtr> in, std::vector<TypePtr> out) {
+Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
   switch (in.size()) {
   case 0: return Func(Void, out);
   case 1: return Func(in.front(), out);
@@ -167,7 +167,7 @@ ParametricStructure *ParamStruct(const std::string &name,
 }
 
 // TODO take in a vector of context values instead
-DependentType *DepType(std::function<TypePtr(TypePtr)> fn) {
+DependentType *DepType(std::function<Type *(Type *)> fn) {
   // These won't be leaked, but they aren't uniqued.
   auto dep_type = new DependentType(fn);
   TypeSystem::dep_types_.push_back(dep_type);
@@ -182,12 +182,12 @@ TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {
   return TypeSystem::vars_[id] = new TypeVariable(id, test);
 }
 
-QuantumType *Quantum(const std::vector<TypePtr>& vec) {
+QuantumType *Quantum(const std::vector<Type *> &vec) {
   TypeSystem::quant_.push_back(new QuantumType(vec));
   return TypeSystem::quant_.back();
 }
 
-RangeType *Range(TypePtr t) {
+RangeType *Range(Type *t) {
   // These won't be leaked, but they aren't uniqued.
   auto iter = TypeSystem::ranges_.find(t);
   if (iter != TypeSystem::ranges_.end()) return iter->second;

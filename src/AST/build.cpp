@@ -273,7 +273,7 @@ Node *Terminal::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Terminal::build(Language::Terminal term_type, NPtrVec &&nodes, TypePtr t) {
+Node *Terminal::build(Language::Terminal term_type, NPtrVec &&nodes, Type *t) {
   // TODO token FIXME
   auto term_ptr           = new Terminal;
   term_ptr->line_num      = nodes[0]->line_num;
@@ -313,8 +313,8 @@ TERMINAL_BUILD(char_literal, Char, Char);
 TERMINAL_BUILD(void_return, Return, Void);
 TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
 TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
-TERMINAL_BUILD(input, Input, DepType([](TypePtr t) { return t; }));
-TERMINAL_BUILD(alloc, Alloc, DepType([](TypePtr t) { return Ptr(t); }));
+TERMINAL_BUILD(input, Input, DepType([](Type *t) { return t; }));
+TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
 #undef TERMINAL_BUILD
 
 Node *Expression::build(NPtrVec &&) {

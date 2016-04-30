@@ -17,7 +17,7 @@ extern llvm::Constant *malloc();
 
 namespace data {
 extern llvm::Value *global_string(const std::string &s);
-extern llvm::Value *null_pointer(TypePtr t);
+extern llvm::Value *null_pointer(Type *t);
 extern llvm::ConstantInt *const_int(int n);
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
@@ -131,9 +131,9 @@ void Structure::call_init(llvm::Value *var) {
         // Scope::Stack.push(fn_scope);
         auto init_val = init_expr->generate_code();
         // Scope::Stack.pop();
-        the_field_type.get->CallAssignment(nullptr, init_val, arg);
+        the_field_type->CallAssignment(nullptr, init_val, arg);
       } else {
-        the_field_type.get->call_init(arg);
+        the_field_type->call_init(arg);
       }
     }
 
@@ -151,18 +151,18 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, size_t len) {
 
 // TODO rename? This isn't really about init-ing literals
 llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
-  auto use_calloc         = data_type.is_primitive();
+  auto use_calloc         = data_type->is_primitive();
   llvm::Value *alloc_call = nullptr;
 
   if (use_calloc) {
     alloc_call = builder.CreateBitCast(
         builder.CreateCall(cstdlib::calloc(),
-                           {len, data::const_uint(data_type.get->bytes())}),
+                           {len, data::const_uint(data_type->bytes())}),
         *Ptr(data_type));
 
   } else {
     auto bytes_to_alloc =
-        builder.CreateMul(len, data::const_uint(data_type.get->bytes()));
+        builder.CreateMul(len, data::const_uint(data_type->bytes()));
 
     alloc_call = builder.CreateBitCast(
         builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),

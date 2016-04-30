@@ -119,7 +119,7 @@ void Scope::verify_no_shadowing() {
       // If the shadowing occurs in the same scope, we don't need to display
       // the error message twice.
       if (scope_ptr == decl_ptr2->scope_) {
-        if ((!decl_ptr1->type.is_function() || !decl_ptr2->type.is_function()) &&
+        if ((!decl_ptr1->type->is_function() || !decl_ptr2->type->is_function()) &&
             decl_ptr1->line_num <= decl_ptr2->line_num) {
           error_log.log(decl_ptr1->line_num,
                         "Identifier `" + decl_ptr1->identifier->token() +
@@ -158,7 +158,7 @@ void BlockScope::initialize() {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (!decl_type.stores_data()) continue;
+    if (!decl_type->stores_data()) continue;
 
     // if (decl_type->is_array()) {
     //   auto array_dim = static_cast<Array*>(decl_type)->dimension;
@@ -173,7 +173,7 @@ void BlockScope::initialize() {
     // } else {
     if (decl_ptr->decl_type == AST::DeclType::In) continue;
     if (decl_id->is_arg) continue;
-    decl_type.get->call_init(decl_id->alloc);
+    decl_type->call_init(decl_id->alloc);
     // }
   }
 }
@@ -184,7 +184,7 @@ void BlockScope::uninitialize() {
   while (!deferred_uninits.empty()) {
     auto &deferred = deferred_uninits.top();
 
-    deferred.first.get->CallDestroy(this, deferred.second);
+    deferred.first->CallDestroy(this, deferred.second);
     deferred_uninits.pop();
   }
 
@@ -193,13 +193,13 @@ void BlockScope::uninitialize() {
 
     // TODO is this correct?
     if (decl_id->is_arg) continue;
-    if (!decl_id->type.stores_data()) continue;
+    if (!decl_id->type->stores_data()) continue;
 
-    decl_id->type.get->CallDestroy(this, decl_id->alloc);
+    decl_id->type->CallDestroy(this, decl_id->alloc);
   }
 }
 
-void BlockScope::defer_uninit(TypePtr type, llvm::Value *val) {
+void BlockScope::defer_uninit(Type *type, llvm::Value *val) {
   deferred_uninits.emplace(type, val);
 }
 
@@ -209,7 +209,7 @@ void BlockScope::make_return(llvm::Value *val) {
 
   // TODO multiple return values?
 
-  fn_scope->fn_type->output.get->CallAssignment(this, val, fn_scope->return_value);
+  fn_scope->fn_type->output->CallAssignment(this, val, fn_scope->return_value);
   builder.CreateBr(fn_scope->exit);
 }
 
@@ -237,18 +237,18 @@ void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
 
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
-  exit_flag = builder.CreateAlloca(Char, nullptr, "exit.flag");
+  exit_flag = builder.CreateAlloca(*Char, nullptr, "exit.flag");
 
   if (fn_type->output != Void) {
 
     // TODO multiple return types
-    if (fn_type->output.is_big()) {
+    if (fn_type->output->is_big()) {
       return_value = llvm_fn->args().begin();
       if (fn_type->input == Void) {
 
-      } else if (fn_type->input.is_tuple()) {
+      } else if (fn_type->input->is_tuple()) {
         auto num_inputs =
-            static_cast<Tuple *>(fn_type->input.get)->entries.size();
+            static_cast<Tuple *>(fn_type->input)->entries.size();
 
         // TODO is there a way to get direct access? Probably. Look it up.
         auto ret_val_arg = llvm_fn->args().begin();
@@ -262,7 +262,7 @@ void FnScope::initialize() {
       }
 
     } else {
-      return_value = builder.CreateAlloca(fn_type->output, nullptr, "retval");
+      return_value = builder.CreateAlloca(*fn_type->output, nullptr, "retval");
     }
   }
 
@@ -278,7 +278,7 @@ void FnScope::leave() {
   uninitialize();
   // TODO multiple return values
   auto ret_type = fn_type->output;
-  if (ret_type == Void || ret_type.is_big()) {
+  if (ret_type == Void || ret_type->is_big()) {
     builder.CreateRetVoid();
   } else {
     builder.CreateRet(builder.CreateLoad(return_value));
@@ -299,22 +299,22 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (decl_id->is_arg && decl_type.is_struct()) {
+    if (decl_id->is_arg && decl_type->is_struct()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }
 
-    if (decl_type.get->time() == Time::compile) {
+    if (decl_type->time() == Time::compile) {
       // TODO Set the types name
       continue;
     }
 
-    if (decl_type.is_quantum()) {
+    if (decl_type->is_quantum()) {
       decl_id->alloc = nullptr;
       continue;
     }
 
-    decl_id->alloc = decl_type.get->allocate();
+    decl_id->alloc = decl_type->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token());
   }
 }

@@ -25,7 +25,7 @@ Time::Eval ChainOp::determine_time() {
   return time_;
 }
 
-Time::Eval ArrayLiteral::determine_time() { return time_ = type.get->time(); }
+Time::Eval ArrayLiteral::determine_time() { return time_ = type->time(); }
 
 Time::Eval ArrayType::determine_time() { return time_ = Time::compile; }
 
@@ -34,7 +34,7 @@ Time::Eval Terminal::determine_time() {
                                                              : Time::run;
 }
 
-Time::Eval Identifier::determine_time() { return time_ = type.get->time(); }
+Time::Eval Identifier::determine_time() { return time_ = type->time(); }
 
 Time::Eval Declaration::determine_time() {
   type_expr->determine_time();

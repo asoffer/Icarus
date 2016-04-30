@@ -18,7 +18,6 @@
 #include "Scope.h"
 #include "TimeEval.h"
 #include "Context.h"
-#include "TypePtr.h"
 
 extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
@@ -52,40 +51,41 @@ extern std::string Mangle(const Function *f, AST::Expression *expr,
 
 namespace TypeSystem {
 void initialize();
-extern std::map<std::string, TypePtr> Literals;
-extern TypePtr get(const std::string &name);
+extern std::map<std::string, Type *> Literals;
+extern Type *get(const std::string &name);
 } // namespace TypeSystem
 
-extern TypePtr Error;
-extern TypePtr Unknown;
-extern TypePtr Bool;
-extern TypePtr Char;
-extern TypePtr Int;
-extern TypePtr Real;
-extern TypePtr Type_;
-extern TypePtr Uint;
-extern TypePtr Void;
-extern TypePtr NullPtr;
-extern TypePtr RawPtr;
-extern TypePtr String;
+extern Type *Error;
+extern Type *Unknown;
+extern Type *Bool;
+extern Type *Char;
+extern Type *Int;
+extern Type *Real;
+extern Type *Type_;
+extern Type *Uint;
+extern Type *Void;
+extern Type *NullPtr;
+extern Type *RawPtr;
+extern Type *String;
 
-extern Pointer *Ptr(TypePtr t);
-extern Array *Arr(TypePtr t);
-extern Tuple *Tup(const std::vector<TypePtr> &t);
-extern Function *Func(TypePtr in, TypePtr out);
-extern Function *Func(std::vector<TypePtr> in, TypePtr out);
-extern Function *Func(TypePtr in, std::vector<TypePtr> out);
-extern Function *Func(std::vector<TypePtr> in, std::vector<TypePtr> out);
+extern Pointer *Ptr(Type *t);
+extern Array *Arr(Type *t);
+extern Tuple *Tup(const std::vector<Type *> &t);
+extern Function *Func(Type *in, Type *out);
+extern Function *Func(std::vector<Type *> in, Type *out);
+extern Function *Func(Type *in, std::vector<Type *> out);
+extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
 extern Enumeration *Enum(const std::string &name,
                          const AST::EnumLiteral *e = nullptr);
 extern Structure *Struct(const std::string &name,
                          AST::StructLiteral *expr = nullptr);
 extern ParametricStructure *ParamStruct(const std::string &name,
                                         AST::StructLiteral *expr = nullptr);
-extern DependentType *DepType(std::function<TypePtr(TypePtr)> fn);
-extern TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test = nullptr);
-extern QuantumType *Quantum(const std::vector<TypePtr>& vec);
-extern RangeType *Range(TypePtr t);
+extern DependentType *DepType(std::function<Type *(Type *)> fn);
+extern TypeVariable *TypeVar(AST::Identifier *id,
+                             AST::Expression *test = nullptr);
+extern QuantumType *Quantum(const std::vector<Type *> &vec);
+extern RangeType *Range(Type *t);
 
 #define ENDING = 0
 
@@ -95,7 +95,7 @@ extern RangeType *Range(TypePtr t);
   virtual void generate_llvm() const ENDING;                                   \
   virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
   virtual void call_init(llvm::Value *var) ENDING;                             \
-  virtual void call_repr(llvm::Value *val) ENDING                              \
+  virtual void call_repr(llvm::Value *val) ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -124,7 +124,7 @@ public:
   // special in that it will return nullptr if you haven't imported the string
   // library. This should never come up, because it's only used to add type to a
   // string literal, and using a string literal should import strings.
-  static TypePtr get_string();
+  static Type *get_string();
 
   virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
 
@@ -158,7 +158,16 @@ public:
   TYPE_FNS(Primitive, primitive);
 
   enum class TypeEnum {
-    Error, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr
+    Error,
+    Unknown,
+    Bool,
+    Char,
+    Int,
+    Real,
+    Type,
+    Uint,
+    Void,
+    NullPtr
   };
 
   Primitive::TypeEnum type_;
@@ -180,16 +189,16 @@ struct Array : public Type {
 
   llvm::Function *assign();
   llvm::Function *destroy();
-  
+
   llvm::Function *init_fn_, *destroy_fn_, *repr_fn_, *assign_fn_;
 
-  TypePtr data_type;
+  Type *data_type;
 
   // Not the length of the array, but the dimension. That is, it's how many
   // times you can access an element.
   size_t dimension;
 
-  Array(TypePtr t);
+  Array(Type *t);
 };
 
 struct Tuple : public Type {
@@ -199,16 +208,16 @@ struct Tuple : public Type {
 
   virtual llvm::Value *allocate() const;
 
-  Tuple(const std::vector<TypePtr> &types);
+  Tuple(const std::vector<Type *> &types);
 
-  std::vector<TypePtr> entries;
+  std::vector<Type *> entries;
 };
 
 struct Pointer : public Type {
   TYPE_FNS(Pointer, pointer);
 
-  Pointer(TypePtr t);
-  TypePtr pointee;
+  Pointer(Type *t);
+  Type *pointee;
 };
 
 struct Function : public Type {
@@ -218,8 +227,8 @@ struct Function : public Type {
 
   virtual llvm::Value *allocate() const;
 
-  Function(TypePtr in, TypePtr out);
-  TypePtr input, output;
+  Function(Type *in, Type *out);
+  Type *input, *output;
 };
 
 struct Enumeration : public Type {
@@ -245,19 +254,19 @@ struct Structure : public Type {
 
   void set_name(const std::string &name);
 
-  TypePtr field(const std::string &name) const;
+  Type *field(const std::string &name) const;
   llvm::Value *field_num(const std::string &name) const;
 
   AST::StructLiteral *ast_expression;
   std::string bound_name;
 
-  void insert_field(const std::string &name, TypePtr ty,
+  void insert_field(const std::string &name, Type *ty,
                     AST::Expression *init_val);
 
   // Field database info
   std::map<std::string, size_t> field_name_to_num;
   std::vector<std::string> field_num_to_name;
-  std::vector<TypePtr> field_type;
+  std::vector<Type *> field_type;
   std::map<size_t, size_t> field_num_to_llvm_num;
 
   std::vector<AST::Expression *> init_values;
@@ -283,11 +292,11 @@ struct ParametricStructure : public Type {
 struct DependentType : public Type {
   TYPE_FNS(DependentType, dependent_type);
 
-  DependentType(std::function<TypePtr(TypePtr)> fn) : func(fn) {}
+  DependentType(std::function<Type *(Type *)> fn) : func(fn) {}
 
-  TypePtr operator()(TypePtr t) const { return func(t); }
+  Type *operator()(Type *t) const { return func(t); }
 
-  std::function<TypePtr(TypePtr)> func;
+  std::function<Type *(Type *)> func;
 };
 
 struct TypeVariable : public Type {
@@ -305,17 +314,17 @@ struct TypeVariable : public Type {
 struct QuantumType : public Type {
   TYPE_FNS(QuantumType, quantum);
 
-  QuantumType(const std::vector<TypePtr>& vec);
+  QuantumType(const std::vector<Type *> &vec);
   // TODO maybe quantum types should only hold functions?
-  std::vector<TypePtr> options;
+  std::vector<Type *> options;
 };
 
 struct RangeType : public Type {
   TYPE_FNS(RangeType, range);
 
-  RangeType(TypePtr t) : end_type(t) { has_vars = end_type.get->has_vars; }
+  RangeType(Type *t) : end_type(t) { has_vars = end_type->has_vars; }
 
-  TypePtr end_type;
+  Type *end_type;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

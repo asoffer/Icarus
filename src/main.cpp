@@ -224,14 +224,14 @@ int main(int argc, char *argv[]) {
       if (decl_id->is_arg) continue;
 
       auto decl_type = decl_id->type;
-      if (decl_type.get->llvm_type == nullptr) continue;
+      if (decl_type->llvm_type == nullptr) continue;
 
-      if (decl_type.is_function()) {
+      if (decl_type->is_function()) {
         if (decl_id->token()[0] != '_') { // Ignore operators
-          auto fn_type = static_cast<Function *>(decl_type.get);
+          auto fn_type = static_cast<Function *>(decl_type);
           auto mangled_name = Mangle(fn_type, decl_ptr->identifier);
 
-          decl_id->alloc = decl_type.get->allocate();
+          decl_id->alloc = decl_type->allocate();
           decl_id->alloc->setName(mangled_name);
         }
       } else {

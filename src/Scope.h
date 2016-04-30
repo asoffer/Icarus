@@ -86,11 +86,11 @@ struct BlockScope : public Scope {
   void make_return(llvm::Value *val);
 
   void set_parent_function(llvm::Function *fn);
-  void defer_uninit(TypePtr type, llvm::Value *val);
+  void defer_uninit(Type *type, llvm::Value *val);
 
   ScopeType type;
   llvm::BasicBlock *entry, *exit, *land;
-  std::stack<std::pair<TypePtr, llvm::Value *>> deferred_uninits;
+  std::stack<std::pair<Type *, llvm::Value *>> deferred_uninits;
 };
 
 struct FnScope : public BlockScope {

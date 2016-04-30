@@ -2,7 +2,7 @@
 #include "Type.h"
 #include <sstream>
 
-#define TYPE_OR(other) (type ? type.to_string() : (other))
+#define TYPE_OR(other) (type ? type->to_string() : (other))
 
 namespace AST {
 std::string tabs(size_t n) { return std::string(n << 1, ' '); }
@@ -278,6 +278,6 @@ std::string Conditional::to_string(size_t n) const {
   }
 
   std::string DummyTypeExpr::to_string(size_t n) const {
-    return tabs(n) + "<" + type_value.get->to_string() + ">\n";
+    return tabs(n) + "<" + type_value->to_string() + ">\n";
   }
 }  // namespace AST

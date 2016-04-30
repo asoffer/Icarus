@@ -7,7 +7,7 @@ std::string While::graphviz_label() const { return "While"; }
 std::string For::graphviz_label() const { return "For"; }
 
 std::string DummyTypeExpr::graphviz_label() const {
-  return type_value.get->to_string();
+  return type_value->to_string();
 }
 
 std::string Unop::graphviz_label() const {

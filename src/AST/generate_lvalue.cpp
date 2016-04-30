@@ -32,18 +32,18 @@ llvm::Value *Access::generate_lvalue() {
   auto etype  = operand->type;
   auto e_lval = operand->generate_lvalue();
 
-  while (etype.is_pointer()) {
-    etype  = static_cast<Pointer *>(etype.get)->pointee;
+  while (etype->is_pointer()) {
+    etype  = static_cast<Pointer *>(etype)->pointee;
     e_lval = builder.CreateLoad(e_lval);
   }
 
-  auto struct_type = static_cast<Structure *>(etype.get);
+  auto struct_type = (Structure *)etype;
   return builder.CreateGEP(
       e_lval, {data::const_uint(0), struct_type->field_num(member_name)});
 }
 
 llvm::Value *Binop::generate_lvalue() {
-  if (op == Language::Operator::Index && lhs->type.get->is_array()) {
+  if (op == Language::Operator::Index && lhs->type->is_array()) {
     auto lhs_val  = lhs->generate_lvalue();
     auto rhs_val  = rhs->generate_code();
     auto data_ptr = builder.CreateLoad(builder.CreateGEP(

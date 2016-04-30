@@ -4,12 +4,11 @@
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
-extern TypePtr GetFunctionTypeReferencedIn(Scope *scope,
-                                           const std::string &fn_name,
-                                           TypePtr input_type);
+extern Type *GetFunctionTypeReferencedIn(Scope *scope,
+                                         const std::string &fn_name,
+                                         Type *input_type);
 
-extern llvm::Value *PtrCallFix(TypePtr t, llvm::Value *ptr);
-
+extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
@@ -27,12 +26,12 @@ extern llvm::Constant *putchar();
 namespace builtin {
 extern llvm::Function *ascii();
 extern llvm::Function *ord();
-extern llvm::Value *input(TypePtr);
+extern llvm::Value *input(Type *);
 } // namespace builtin
 
 namespace data {
 extern llvm::Value *null_pointer(Type *t);
-extern llvm::Value *null(TypePtr t);
+extern llvm::Value *null(Type *t);
 extern llvm::ConstantInt *const_true();
 extern llvm::ConstantInt *const_false();
 extern llvm::ConstantInt *const_uint(size_t n);
@@ -42,13 +41,12 @@ extern llvm::ConstantFP *const_real(double d);
 extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
-llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
-  auto arg_ptr  = builder.CreateAlloca(type, nullptr, "struct.tmp");
-  auto tmp_raw  = builder.CreateBitCast(arg_ptr, RawPtr);
-  auto val_raw  = builder.CreateBitCast(val, RawPtr);
+llvm::Value *struct_memcpy(Type *type, llvm::Value *val) {
+  auto arg_ptr  = builder.CreateAlloca(*type, nullptr, "struct.tmp");
+  auto tmp_raw  = builder.CreateBitCast(arg_ptr, *RawPtr);
+  auto val_raw  = builder.CreateBitCast(val, *RawPtr);
   auto mem_copy = builder.CreateCall(
-      cstdlib::memcpy(),
-      {tmp_raw, val_raw, data::const_uint(type.get->bytes())});
+      cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type->bytes())});
 
   return builder.CreateBitCast(mem_copy, *Ptr(type));
 }
@@ -61,7 +59,7 @@ llvm::Value *struct_memcpy(TypePtr type, llvm::Value *val) {
 
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
-                                            TypePtr input_type);
+                                            Type *input_type);
 
 static llvm::Value *FunctionComposition(const std::string &name,
                                         llvm::Value *lhs, llvm::Value *rhs,
@@ -88,15 +86,15 @@ llvm::Value *Identifier::generate_code() {
   if (type == Type_) {
     return nullptr;
 
-  } else if (type.is_function()) {
+  } else if (type->is_function()) {
     // TODO better way to get functions based on their name
-    auto fn_type                     = static_cast<Function *>(type.get);
-    llvm::FunctionType *llvm_fn_type = *fn_type;
-    auto mangled_name                = Mangle(fn_type, this);
+    auto fn_type      = (Function *)type;
+    auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
+    auto mangled_name = Mangle(fn_type, this);
 
     return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
-  } else if (type.is_big()) {
+  } else if (type->is_big()) {
     return alloc;
 
   } else {
@@ -112,7 +110,7 @@ llvm::Value *Terminal::generate_code() {
   case Language::Terminal::Type:
   case Language::Terminal::Return: assert(false && "Should be unreachable");
   case Language::Terminal::Null: {
-    assert(type.is_pointer() && "Null pointer of non-pointer type ");
+    assert(type->is_pointer() && "Null pointer of non-pointer type ");
     return data::null(type);
   }
   case Language::Terminal::Input: {
@@ -137,17 +135,17 @@ llvm::Value *Terminal::generate_code() {
     auto str = data::global_string(token());
     auto len = data::const_uint(token().size());
 
-    auto str_alloc = builder.CreateAlloca(type);
+    auto str_alloc = builder.CreateAlloca(*type);
 
     auto len_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String.get)->field_num("length")},
+                    static_cast<Structure *>(String)->field_num("length")},
         "len_ptr");
     builder.CreateStore(len, len_ptr);
 
     auto char_array_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String.get)->field_num("chars")},
+                    static_cast<Structure *>(String)->field_num("chars")},
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
@@ -191,7 +189,7 @@ llvm::Value *Unop::generate_code() {
     // quanta to pick requires contextual information. 
     //
     // TODO We should log that information so we don't repeat this process.
-    if (operand->type.is_struct()) {
+    if (operand->type->is_struct()) {
       // TODO ensure that it is generated
       auto print_fn =
           GetFunctionReferencedIn(scope_, "__print__", operand->type);
@@ -205,7 +203,7 @@ llvm::Value *Unop::generate_code() {
       builder.CreateCall(cstdlib::printf(), {data::global_string("%u"), val});
 
     } else {
-      operand->type.get->call_repr(val);
+      operand->type->call_repr(val);
     }
 
     return nullptr;
@@ -216,7 +214,7 @@ llvm::Value *Unop::generate_code() {
   llvm::Value *val = operand->generate_code();
   switch (op) {
   case Language::Operator::Not: {
-    if (operand->type.is_struct()) {
+    if (operand->type->is_struct()) {
       auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
       assert(not_fn && "No 'not' function available");
       builder.CreateCall(not_fn, val);
@@ -234,13 +232,13 @@ llvm::Value *Unop::generate_code() {
     } else if (operand->type == Real) {
       return builder.CreateFNeg(val, "fneg");
 
-    } else if (operand->type.is_struct()) {
+    } else if (operand->type->is_struct()) {
       auto neg_fn = GetFunctionReferencedIn(scope_, "__neg__", operand->type);
       assert(neg_fn && "No negation function available");
       // TODO put this alloc at the beginning!
       // TODO what if this returns a primitive, actually return it. otherwise,
       // use a return parameter like you're doing already
-      auto local_ret = builder.CreateAlloca(type);
+      auto local_ret = builder.CreateAlloca(*type);
       builder.CreateCall(neg_fn, {val, local_ret});
       return local_ret;
 
@@ -249,7 +247,7 @@ llvm::Value *Unop::generate_code() {
     }
   }
   case Language::Operator::Free: {
-    builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, RawPtr)});
+    builder.CreateCall(cstdlib::free(), {builder.CreateBitCast(val, *RawPtr)});
     if (operand->lvalue) {
       builder.CreateStore(data::null(operand->type),
                           operand->generate_lvalue());
@@ -263,16 +261,16 @@ llvm::Value *Unop::generate_code() {
     return nullptr;
   }
   case Language::Operator::At: {
-    return type.is_big() ? val : builder.CreateLoad(val);
+    return type->is_big() ? val : builder.CreateLoad(val);
   }
   case Language::Operator::Call: {
-    assert(operand->type.is_function() && "Operand should be a function.");
-    auto out_type = static_cast<Function *>(operand->type.get)->output;
+    assert(operand->type->is_function() && "Operand should be a function.");
+    auto out_type = static_cast<Function *>(operand->type)->output;
     // TODO this whole section needs an overhaul when we totally settle on how
     // to pass large things.
-    if (out_type.is_struct()) {
+    if (out_type->is_struct()) {
       // TODO move this outside of any potential loops
-      auto local_ret = builder.CreateAlloca(out_type);
+      auto local_ret = builder.CreateAlloca(*out_type);
 
       builder.CreateCall(static_cast<llvm::Function *>(val), local_ret);
       return local_ret;
@@ -314,24 +312,24 @@ llvm::Value *Access::generate_code() {
   // To make access pass through all layers of pointers, we loop through
   // loading values while we're looking at pointers.
   auto base_type = operand->type;
-  while (base_type.is_pointer()) {
-    base_type = static_cast<Pointer *>(base_type.get)->pointee;
-    if (!base_type.is_big()) eval = builder.CreateLoad(eval);
+  while (base_type->is_pointer()) {
+    base_type = static_cast<Pointer *>(base_type)->pointee;
+    if (!base_type->is_big()) eval = builder.CreateLoad(eval);
   }
 
-  if (base_type.is_array() &&member_name == "size") {
+  if (base_type->is_array() &&member_name == "size") {
     return builder.CreateLoad(
         builder.CreateGEP(eval, {data::const_uint(0), data::const_uint(0)}));
   }
 
-  if (base_type.is_struct()) {
-    auto struct_type = static_cast<Structure *>(base_type.get);
+  if (base_type->is_struct()) {
+    auto struct_type = static_cast<Structure *>(base_type);
 
-    if (!type.stores_data()) { assert(false && "Not yet implemented"); }
+    if (!type->stores_data()) { assert(false && "Not yet implemented"); }
 
     auto elem_ptr = builder.CreateGEP(
         eval, {data::const_uint(0), struct_type->field_num(member_name)});
-    return type.is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
+    return type->is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
 
   } else {
     assert(false && "Not yet implemented");
@@ -345,10 +343,10 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
   llvm::Value *val = nullptr;
 
   // Treat functions special
-  if (lhs->is_identifier() && rhs->type.is_function()) {
-    auto fn_type                     = static_cast<Function *>(rhs->type.get);
-    llvm::FunctionType *llvm_fn_type = *fn_type;
-    auto mangled_name                = Mangle(fn_type, lhs);
+  if (lhs->is_identifier() && rhs->type->is_function()) {
+    auto fn_type      = (Function *)rhs->type;
+    auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
+    auto mangled_name = Mangle(fn_type, lhs);
 
     // Then If it is a function literal, notify the function literal of the code
     // name/scope, etc.
@@ -382,7 +380,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 
-    lhs->type.get->CallAssignment(lhs->scope_, val, var);
+    lhs->type->CallAssignment(lhs->scope_, val, var);
   }
 
   return nullptr;
@@ -422,7 +420,7 @@ llvm::Value *Binop::generate_code() {
 
   llvm::Value *lhs_val = nullptr;
   if (op == Operator::Call) {
-    if (lhs->type.get->has_vars) {
+    if (lhs->type->has_vars) {
       auto fn_lit = GetFunctionLiteral(lhs);
       assert(!fn_lit->cache.empty());
 
@@ -439,7 +437,7 @@ llvm::Value *Binop::generate_code() {
     } else if (lhs->is_function_literal()) {
       lhs_val = lhs->generate_code();
 
-    } else if (lhs->type.is_dependent_type()) {
+    } else if (lhs->type->is_dependent_type()) {
       auto t = rhs->evaluate(CurrentContext()).as_type;
 
       // TODO what if these are formed by some crazy other method?
@@ -449,7 +447,7 @@ llvm::Value *Binop::generate_code() {
       } else if (lhs->token() == "alloc") {
         auto alloc_ptr = builder.CreateCall(cstdlib::malloc(),
                                             {data::const_uint(t->bytes())});
-        return builder.CreateBitCast(alloc_ptr, type);
+        return builder.CreateBitCast(alloc_ptr, *type);
 
       } else {
         assert(false);
@@ -493,22 +491,22 @@ llvm::Value *Binop::generate_code() {
   } break;
 #undef SHORT_CIRCUITING_OPERATOR
   case Operator::Cast: {
-    TypePtr to_type = rhs->evaluate(CurrentContext()).as_type;
+    Type *to_type = rhs->evaluate(CurrentContext()).as_type;
     if (lhs->type == Bool) {
       if (to_type == Int || to_type == Uint) {
-        return builder.CreateZExt(lhs_val, to_type, "ext.val");
+        return builder.CreateZExt(lhs_val, *to_type, "ext.val");
       } else if (to_type == Real) {
-        return builder.CreateUIToFP(lhs_val, to_type, "ext.val");
+        return builder.CreateUIToFP(lhs_val, *to_type, "ext.val");
       }
     } else if (lhs->type == Int) {
       if (to_type == Real) {
-        return builder.CreateSIToFP(lhs_val, to_type, "fp.val");
+        return builder.CreateSIToFP(lhs_val, *to_type, "fp.val");
       } else if (to_type == Uint) {
         return lhs_val;
       }
     } else if (lhs->type == Uint) {
       if (to_type == Real) {
-        return builder.CreateUIToFP(lhs_val, to_type, "fp.val");
+        return builder.CreateUIToFP(lhs_val, *to_type, "fp.val");
       } else if (to_type == Int) {
         return lhs_val;
       }
@@ -521,15 +519,15 @@ llvm::Value *Binop::generate_code() {
         type, builder.CreateGEP(data_ptr, rhs->generate_code(), "array_val"));
   } break;
   case Operator::Call: {
-    if (lhs->type.is_function() || lhs->type.is_quantum()) {
+    if (lhs->type->is_function() || lhs->type->is_quantum()) {
       std::vector<llvm::Value *> arg_vals = CollateArgsForFunctionCall(rhs);
 
       if (type == Void) {
         builder.CreateCall(lhs_val, arg_vals);
         return nullptr;
 
-      } else if (type.is_big()) {
-        arg_vals.push_back(builder.CreateAlloca(type));
+      } else if (type->is_big()) {
+        arg_vals.push_back(builder.CreateAlloca(*type));
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
 
@@ -537,7 +535,7 @@ llvm::Value *Binop::generate_code() {
         return builder.CreateCall(lhs_val, arg_vals, "calltmp");
       }
 
-    } else if (lhs->type.is_dependent_type()) {
+    } else if (lhs->type->is_dependent_type()) {
       auto t = rhs->evaluate(CurrentContext()).as_type;
 
       // TODO this is not generically correct. Currently either lhs_val
@@ -545,7 +543,7 @@ llvm::Value *Binop::generate_code() {
       if (lhs_val) {
         auto alloc_ptr =
             builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
-        return builder.CreateBitCast(alloc_ptr, type);
+        return builder.CreateBitCast(alloc_ptr, *type);
       } else {
         return builtin::input(t);
       }
@@ -564,13 +562,13 @@ llvm::Value *Binop::generate_code() {
         GetFunctionTypeReferencedIn(scope_, "__" fn_name "__", input_type);    \
     auto fn = GetFunctionReferencedIn(scope_, "__" fn_name "__", input_type);  \
     assert(fn);                                                                \
-    auto output_type = static_cast<Function *>(fn_type.get)->output;           \
+    auto output_type = static_cast<Function *>(fn_type)->output;               \
                                                                                \
     if (output_type == Void) {                                                 \
       builder.CreateCall(fn, {lhs_val, rhs_val});                              \
       return nullptr;                                                          \
-    } else if (output_type.get->is_big()) {                                    \
-      auto retval = builder.CreateAlloca(output_type);                         \
+    } else if (output_type->is_big()) {                                        \
+      auto retval = builder.CreateAlloca(*output_type);                        \
       builder.CreateCall(fn, {lhs_val, rhs_val, retval});                      \
       return retval;                                                           \
     } else {                                                                   \
@@ -607,9 +605,9 @@ llvm::Value *Binop::generate_code() {
     PRIMITIVE_CALL(Int, Mul, "mul")
     PRIMITIVE_CALL(Uint, Mul, "mul")
     PRIMITIVE_CALL(Real, FMul, "fmul")
-    if (lhs->type.is_function() && rhs->type.is_function()) {
-      auto output_type = Func(static_cast<Function *>(rhs->type.get)->input,
-                              static_cast<Function *>(lhs->type.get)->output);
+    if (lhs->type->is_function() && rhs->type->is_function()) {
+      auto output_type = Func(static_cast<Function *>(rhs->type)->input,
+                              static_cast<Function *>(lhs->type)->output);
       return FunctionComposition("__anon_fn", lhs_val, rhs_val, output_type);
     }
     CREATE_CALL("mul")
@@ -768,7 +766,7 @@ llvm::Value *ChainOp::generate_code() {
 
   // Create the phi node
   builder.SetInsertPoint(landing);
-  llvm::PHINode *phi = builder.CreatePHI(Bool, num_incoming, "phi");
+  llvm::PHINode *phi = builder.CreatePHI(*Bool, num_incoming, "phi");
   if (expr_type == Int) {
     BEGIN_SHORT_CIRCUIT
     CASE(ICmpS, LT);
@@ -805,13 +803,13 @@ llvm::Value *ChainOp::generate_code() {
     CASE(FCmpO, GT);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type.is_enum()) {
+  } else if (expr_type->is_enum()) {
     BEGIN_SHORT_CIRCUIT
     CASE(ICmp, EQ);
     CASE(ICmp, NE);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type.is_struct()) {
+  } else if (expr_type->is_struct()) {
 #undef CASE
 
 #define CASE(op_name, OP_NAME)                                                 \
@@ -883,14 +881,14 @@ llvm::Value *FunctionLiteral::generate_code() {
   if (code_gened) { return llvm_fn; }
 
   if (llvm_fn == nullptr) {
-    assert(type.is_function() && "How is the type not a function?");
-    auto fn_type = static_cast<Function *>(type.get);
+    assert(type->is_function() && "How is the type not a function?");
+    auto fn_type = (Function *)type;
 
     if (fn_type->time() == Time::compile) return nullptr;
 
     // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
-        static_cast<llvm::FunctionType *>(type.get->llvm_type),
+        static_cast<llvm::FunctionType *>(type->llvm_type),
         llvm::Function::ExternalLinkage, "__anon_fn", global_module);
   }
 
@@ -901,7 +899,7 @@ llvm::Value *FunctionLiteral::generate_code() {
     // Set alloc
     auto decl_id   = input_iter->identifier;
     auto decl_type = decl_id->type;
-    if (decl_type.is_big()) { decl_id->alloc = arg_iter; }
+    if (decl_type->is_big()) { decl_id->alloc = arg_iter; }
 
     ++arg_iter;
   }
@@ -910,7 +908,7 @@ llvm::Value *FunctionLiteral::generate_code() {
   if (ret_type->is_struct()) { arg_iter->setName("retval"); }
 
   fn_scope->set_parent_function(llvm_fn);
-  fn_scope->fn_type = static_cast<Function *>(type.get);
+  fn_scope->fn_type = (Function *)type;
 
   auto old_block = builder.GetInsertBlock();
   builder.SetInsertPoint(fn_scope->entry);
@@ -922,8 +920,8 @@ llvm::Value *FunctionLiteral::generate_code() {
   for (auto &input_iter : inputs) {
     auto decl_id = input_iter->identifier;
 
-    if (!decl_id->type.is_big()) {
-      decl_id->type.get->CallAssignment(scope_, arg, input_iter->identifier->alloc);
+    if (!decl_id->type->is_big()) {
+      decl_id->type->CallAssignment(scope_, arg, input_iter->identifier->alloc);
     }
 
     ++arg;
@@ -941,11 +939,11 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   if (old_block) { builder.SetInsertPoint(old_block); }
 
-  assert(type.is_function());
+  assert(type->is_function());
   assert(token_ == "");
   token_ = fn_scope->name;
 
-  llvm_fn->setName(Mangle((Function *)type.get, this));
+  llvm_fn->setName(Mangle((Function *)type, this));
 
   code_gened = true;
   return llvm_fn;
@@ -956,20 +954,19 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type.is_array()) {
+  if (decl_type == DeclType::Std && type->is_array()) {
     // TODO uninitialize previous value
     assert(type_expr->is_array_type() && "Not array type");
-    auto len = static_cast<ArrayType *>(type_expr)->length->generate_code();
-    static_cast<Array *>(type.get)
-        ->initialize_literal(identifier->alloc, len);
+    auto len = ((ArrayType *)type_expr)->length->generate_code();
+    ((Array *)type)->initialize_literal(identifier->alloc, len);
   }
 
   if (decl_type == DeclType::Std) {
     return nullptr;
   }
 
-  if (type.get->time() == Time::compile) {
-    if (identifier->type.is_function() && decl_type == DeclType::Infer &&
+  if (type->time() == Time::compile) {
+    if (identifier->type->is_function() && decl_type == DeclType::Infer &&
         type_expr->is_function_literal()) {
       auto fn_expr = (FunctionLiteral *)type_expr;
       for (auto &gen : fn_expr->cache) {
@@ -1006,7 +1003,7 @@ llvm::Value *Case::generate_code() {
   auto case_landing = make_block("case.landing", parent_fn);
   builder.SetInsertPoint(case_landing);
   llvm::PHINode *phi_node = builder.CreatePHI(
-      type, static_cast<unsigned int>(kv->pairs.size()), "phi");
+      *type, static_cast<unsigned int>(kv->pairs.size()), "phi");
   builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
@@ -1040,7 +1037,7 @@ llvm::Value *ArrayLiteral::generate_code() {
   // TODO if this is never assigned to anything, it will be leaked. This should
   // be verified.
 
-  auto type_as_array = static_cast<Array *>(type.get);
+  auto type_as_array = (Array *)type;
   auto element_type  = type_as_array->data_type;
   size_t num_elems   = elems.size();
 
@@ -1054,8 +1051,8 @@ llvm::Value *ArrayLiteral::generate_code() {
   builder.SetInsertPoint(entry_block->begin());
   // It's possible we never use this, in which case we must ensure that our
   // free-ing it is safe.
-  auto array_data = type.get->allocate();
-  type.get->call_init(array_data);
+  auto array_data = type->allocate();
+  type->call_init(array_data);
 
   builder.SetInsertPoint(current_block);
   type_as_array->initialize_literal(array_data, num_elems);
@@ -1066,10 +1063,9 @@ llvm::Value *ArrayLiteral::generate_code() {
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr = builder.CreateGEP(head_ptr, data::const_uint(i));
-    element_type.get->call_init(data_ptr);
+    element_type->call_init(data_ptr);
 
-    element_type.get->CallAssignment(scope_, elems[i]->generate_code(),
-                                     data_ptr);
+    element_type->CallAssignment(scope_, elems[i]->generate_code(), data_ptr);
   }
 
   assert(scope_->is_block_scope());
@@ -1254,7 +1250,7 @@ llvm::Value *For::generate_code() {
     auto container = iter->type_expr;
     llvm::PHINode *phi = nullptr;
 
-    if (container->type.is_array()) {
+    if (container->type->is_array()) {
 
       /* Work on init block */
       builder.SetInsertPoint(init_iters);
@@ -1286,7 +1282,7 @@ llvm::Value *For::generate_code() {
       auto next = builder.CreateGEP(phi, data::const_uint(1));
       phi->addIncoming(next, incr_iters);
 
-    } else if (container->type.is_range()) {
+    } else if (container->type->is_range()) {
       if (container->is_binop()) {
         assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
 
@@ -1299,7 +1295,7 @@ llvm::Value *For::generate_code() {
 
         /* Work on phi block */
         builder.SetInsertPoint(phi_block);
-        phi = builder.CreatePHI(iter->type, 2, "phi");
+        phi = builder.CreatePHI(*iter->type, 2, "phi");
         phi->addIncoming(start_val, init_iters);
 
         /* Work on cond block */
@@ -1321,7 +1317,7 @@ llvm::Value *For::generate_code() {
 
         /* Work on phi block */
         builder.SetInsertPoint(phi_block);
-        phi = builder.CreatePHI(iter->type, 2, "phi");
+        phi = builder.CreatePHI(*iter->type, 2, "phi");
         phi->addIncoming(start_val, init_iters);
 
         /* Work on cond block */
@@ -1348,7 +1344,7 @@ llvm::Value *For::generate_code() {
 
       /* Work on phi block */
       builder.SetInsertPoint(phi_block);
-      phi = builder.CreatePHI(Uint, 2, "phi");
+      phi = builder.CreatePHI(*Uint, 2, "phi");
       phi->addIncoming(data::const_uint(0), init_iters);
 
       /* Work on cond block */
