@@ -268,9 +268,9 @@ struct ArrayType : public Expression {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
 
-  static Node *build(Language::Terminal term_type, NPtrVec &&nodes, Type *t);
   static Node *build_type_literal(NPtrVec &&nodes);
   static Node *build_string_literal(NPtrVec &&nodes);
+  static Node *build_else(NPtrVec &&nodes);
   static Node *build_true(NPtrVec &&nodes);
   static Node *build_false(NPtrVec &&nodes);
   static Node *build_null(NPtrVec &&nodes);

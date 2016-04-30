@@ -81,18 +81,18 @@ AST::TokenNode Lexer::next_word() {
     peek = file_.peek();
   } while (std::isalnum(peek) || peek == '_');
 
-  // Check if the word is reserved and if so, build the appropriate Node
-  for (const auto& res : Language::reserved_words) {
-    if (res.first == token) {
-      return AST::TokenNode(line_num_, res.second, res.first);
-    }
-  }
-
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
   for (const auto& type_lit : TypeSystem::Literals) {
     if (type_lit.first == token) {
       return AST::TokenNode(line_num_, Language::type_literal, token);
+    }
+  }
+
+  // Check if the word is reserved and if so, build the appropriate Node
+  for (const auto& res : Language::reserved_words) {
+    if (res.first == token) {
+      return AST::TokenNode(line_num_, res.second, res.first);
     }
   }
 

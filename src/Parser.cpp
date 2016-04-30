@@ -21,19 +21,20 @@ AST::Node *Parser::parse() {
 
   while (true) { // Main parsing loop start
     switch (mode_) {
-    case Mode::Good: {
+    case ParserMode::Same: assert(false && "This mode should be impossible");
+    case ParserMode::Good: {
       // Shift if you are supposed to, or if you are unable to reduce.
       if (should_shift() || !reduce()) { shift(); }
     } break;
-    case Mode::BadLine:
-    case Mode::BadBlock:
-    case Mode::BadFile:
-    case Mode::Done: return cleanup();
+    case ParserMode::BadLine:
+    case ParserMode::BadBlock:
+    case ParserMode::BadFile:
+    case ParserMode::Done: return cleanup();
     }
 
     if (debug::parser) { show_debug(); }
 
-    if (lookahead_->node_type() == Language::eof) { mode_ = Mode::Done; }
+    if (lookahead_->node_type() == Language::eof) { mode_ = ParserMode::Done; }
   } // Main parsing loop end
 }
 
@@ -81,7 +82,7 @@ void Parser::shift() {
 
 // Construct a parser for the given file
 Parser::Parser(const std::string &filename)
-    : lexer_(filename), mode_(Mode::Good) {
+    : lexer_(filename), mode_(ParserMode::Good) {
   assert(stack_.empty());
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
@@ -257,11 +258,9 @@ bool Parser::reduce() {
 
   // If you make it to the end of the rules and still haven't matched, then
   // return false
-  if (matched_rule_ptr == nullptr)
-    return false;
+  if (matched_rule_ptr == nullptr) { return false; }
 
-  // Apply the rule
-  matched_rule_ptr->apply(stack_);
+  matched_rule_ptr->apply(stack_, mode_);
 
   return true;
 }

@@ -273,38 +273,35 @@ Node *Terminal::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Terminal::build(Language::Terminal term_type, NPtrVec &&nodes, Type *t) {
-  // TODO token FIXME
-  auto term_ptr           = new Terminal;
-  term_ptr->line_num      = nodes[0]->line_num;
-  term_ptr->terminal_type = term_type;
-  term_ptr->type          = t;
-  term_ptr->token_ = nodes[0]->token();
-  term_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
-
-  return term_ptr;
-}
-
-Node *Terminal::build_type_literal(NPtrVec &&nodes) {
-  return build(Language::Terminal::Type, std::forward<NPtrVec &&>(nodes),
-               Type_);
-}
-
 Node *Terminal::build_string_literal(NPtrVec &&nodes) {
   file_queue.emplace("lib/string.ic");
+  auto term_ptr           = new Terminal;
+  term_ptr->line_num      = nodes[0]->line_num;
+  term_ptr->terminal_type = Language::Terminal::StringLiteral;
+  term_ptr->type          = Unknown; // TODO Why not String?
+  term_ptr->token_        = nodes[0]->token();
 
-  return build(Language::Terminal::StringLiteral,
-               std::forward<NPtrVec &&>(nodes), Unknown);
+  term_ptr->precedence =
+      Language::precedence(Language::Operator::NotAnOperator);
+  return term_ptr;
 }
 
 #define TERMINAL_BUILD(name, enum_elem, ty)                                    \
   Node *Terminal::build_##name(NPtrVec &&nodes) {                              \
-    return build(Language::Terminal::enum_elem,                                \
-                 std::forward<NPtrVec &&>(nodes), ty);                         \
+    auto term_ptr           = new Terminal;                                    \
+    term_ptr->line_num      = nodes[0]->line_num;                              \
+    term_ptr->terminal_type = Language::Terminal::enum_elem;                   \
+    term_ptr->type          = ty;                                              \
+    term_ptr->token_        = nodes[0]->token();                               \
+                                                                               \
+    term_ptr->precedence =                                                     \
+        Language::precedence(Language::Operator::NotAnOperator);               \
+    return term_ptr;                                                           \
   }
+
 TERMINAL_BUILD(true, True, Bool);
 TERMINAL_BUILD(false, False, Bool);
+TERMINAL_BUILD(else, Else, Bool);
 TERMINAL_BUILD(null, Null, NullPtr);
 TERMINAL_BUILD(uint_literal, UInt, Uint);
 TERMINAL_BUILD(int_literal, Int, Int);
@@ -315,6 +312,7 @@ TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
 TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
 TERMINAL_BUILD(input, Input, DepType([](Type *t) { return t; }));
 TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
+TERMINAL_BUILD(type_literal, Type, Type_);
 #undef TERMINAL_BUILD
 
 Node *Expression::build(NPtrVec &&) {
@@ -387,14 +385,12 @@ Node *KVPairList::build_one(NPtrVec &&nodes) {
   pair_list->line_num = nodes[0]->line_num;
   Expression *key_ptr;
 
-  if (nodes[0]->node_type() == Language::reserved_else) {
-    // nodes[0] either reclaimed by Terminal::build, or will be deleted for us
-    // by the call to apply(). Nothing to do here.
-    key_ptr = static_cast<Terminal *>(
-        Terminal::build(Language::Terminal::Else, {nodes[0]}, Bool));
-  } else {
-    key_ptr = steal<Expression>(nodes[0]);
-  }
+  // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
+  // the call to apply(). Nothing to do here.
+  key_ptr =
+      (nodes[0]->node_type() == Language::reserved_else)
+          ? (Terminal *)Terminal::build_else(std::forward<NPtrVec &&>(nodes))
+          : steal<Expression>(nodes[0]);
 
   pair_list->pairs.emplace_back(key_ptr, steal<Expression>(nodes[2]));
 
@@ -405,14 +401,12 @@ Node *KVPairList::build_more(NPtrVec &&nodes) {
   auto pair_list = steal<KVPairList>(nodes[0]);
   Expression *key_ptr = nullptr;
 
-  if (nodes[1]->node_type() == Language::reserved_else) {
-    // nodes[0] either reclaimed by Terminal::build, or will be deleted for us
-    // by the call to apply(). Nothing to do here.
-    key_ptr = static_cast<Terminal *>(
-        Terminal::build(Language::Terminal::Else, {nodes[1]}, Bool));
-  } else {
-    key_ptr = steal<Expression>(nodes[1]);
-  }
+  // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
+  // the call to apply(). Nothing to do here.
+  key_ptr = (nodes[1]->node_type() == Language::reserved_else)
+                ? (Terminal *)Terminal::build_else(
+                      std::forward<NPtrVec &&>({nodes[1]}))
+                : steal<Expression>(nodes[1]);
 
   pair_list->pairs.emplace_back(key_ptr, steal<Expression>(nodes[3]));
   return pair_list;

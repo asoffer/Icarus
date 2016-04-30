@@ -4,6 +4,8 @@
 #include <memory>
 #include <iostream>
 
+#include "ParserMode.h"
+
 #include "Lexer.h"
 #include "Rule.h"
 #include "AST.h"
@@ -27,8 +29,7 @@ class Parser {
     NPtrVec stack_;
     std::unique_ptr<AST::TokenNode> lookahead_;
     Lexer lexer_;
-
-    enum class Mode { Good, BadLine, BadBlock, BadFile, Done } mode_;
+    ParserMode mode_;
 };
 
 #endif  // ICARUS_PARSER_H

@@ -7,8 +7,9 @@
     ptr = nullptr;                                                             \
   }
 
-Rule::Rule(Language::NodeType output, const NodeTypeVec& input, fnptr fn)
-  : output_(output), input_(input), fn_(fn) {}
+Rule::Rule(Language::NodeType output, const NodeTypeVec &input, fnptr fn,
+           ParserMode new_mode)
+    : output_(output), input_(input), fn_(fn), new_mode_(new_mode) {}
 
 // Determine if the back of the stack matches the rule
 bool Rule::match(const NPtrVec& node_stack) const {
@@ -31,7 +32,7 @@ bool Rule::match(const NPtrVec& node_stack) const {
   return true;
 }
 
-void Rule::apply(NPtrVec& node_stack) const {
+void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
   // Make a vector for the rule function to take as input. It will begin with
   // size() shared_ptrs.
   NPtrVec nodes_to_reduce(size());
@@ -52,4 +53,6 @@ void Rule::apply(NPtrVec& node_stack) const {
   for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 
   node_stack.push_back(std::move(new_ptr));
+
+  if (new_mode_ != ParserMode::Same) { mode_ = new_mode_; }
 }
