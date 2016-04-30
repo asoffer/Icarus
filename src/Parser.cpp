@@ -26,7 +26,12 @@ AST::Node *Parser::parse() {
       // Shift if you are supposed to, or if you are unable to reduce.
       if (should_shift() || !reduce()) { shift(); }
     } break;
-    case ParserMode::BadLine:
+    case ParserMode::BadLine: {
+      ignore();
+      if (lookahead_->node_type() == Language::newline) {
+        mode_ = ParserMode::Good;
+      }
+    } break;
     case ParserMode::BadBlock:
     case ParserMode::BadFile:
     case ParserMode::Done: return cleanup();
@@ -63,6 +68,14 @@ void Parser::show_debug() const {
   }
 
   std::cin.ignore(1);
+}
+
+void Parser::ignore() {
+  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
+  lexer_ >> *next_node_ptr;
+
+  lookahead_.release();
+  lookahead_ = std::move(next_node_ptr);
 }
 
 void Parser::shift() {

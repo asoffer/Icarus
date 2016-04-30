@@ -21,6 +21,7 @@ class Parser {
   private:
     bool should_shift();
     void shift();
+    void ignore();
     bool reduce();
     AST::Node *cleanup();
 

@@ -149,8 +149,8 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::Tick:  ss << "Tick";  break;
       default: assert(false && "Not a binary operator");
       }
-      ss << ">\n" << lhs->to_string(n + 1) << rhs->to_string(n + 1);
     }
+    ss << ">\n" << lhs->to_string(n + 1) << rhs->to_string(n + 1);
     return ss.str();
   }
 

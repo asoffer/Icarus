@@ -58,20 +58,20 @@ const std::map<std::string, Operator> lookup_operator = {
 // nodes type is set to the given type in the first line.
 const std::vector<Rule> rules = {
     /* Begin literals */
-    Rule(expression, {{reserved_true}},  AST::Terminal::build_true),
+    Rule(expression, {{reserved_true}}, AST::Terminal::build_true),
     Rule(expression, {{reserved_false}}, AST::Terminal::build_false),
-    Rule(expression, {{reserved_null}},  AST::Terminal::build_null),
-    Rule(expression, {{identifier}},     AST::Identifier::build),
-    Rule(expression, {{uint_literal}},   AST::Terminal::build_uint_literal),
-    Rule(expression, {{int_literal}},    AST::Terminal::build_int_literal),
-    Rule(expression, {{real_literal}},   AST::Terminal::build_real_literal),
+    Rule(expression, {{reserved_null}}, AST::Terminal::build_null),
+    Rule(expression, {{identifier}}, AST::Identifier::build),
+    Rule(expression, {{uint_literal}}, AST::Terminal::build_uint_literal),
+    Rule(expression, {{int_literal}}, AST::Terminal::build_int_literal),
+    Rule(expression, {{real_literal}}, AST::Terminal::build_real_literal),
     Rule(expression, {{string_literal}}, AST::Terminal::build_string_literal),
-    Rule(expression, {{char_literal}},   AST::Terminal::build_char_literal),
+    Rule(expression, {{char_literal}}, AST::Terminal::build_char_literal),
     Rule(expression, {{reserved_input}}, AST::Terminal::build_input),
-    Rule(expression, {{reserved_ord}},   AST::Terminal::build_ord),
+    Rule(expression, {{reserved_ord}}, AST::Terminal::build_ord),
     Rule(expression, {{reserved_ascii}}, AST::Terminal::build_ASCII),
     Rule(expression, {{reserved_alloc}}, AST::Terminal::build_alloc),
-    Rule(expression, {{type_literal}},   AST::Terminal::build_type_literal),
+    Rule(expression, {{type_literal}}, AST::Terminal::build_type_literal),
 
     Rule(expression, {{fn_literal, fn_expression}}, drop_all_but<0>),
 
@@ -326,14 +326,10 @@ const std::vector<Rule> rules = {
     Rule(left_brace, {{left_brace}, {newline}}, drop_all_but<0>),
     Rule(right_brace, {{newline}, {right_brace}}, drop_all_but<1>),
 
-    //    Rule(missing_newline_statements,
-    //        { expression, expression },
-    //        AST::Statements::build_double_expression_error),
-    //
-    //    Rule(missing_newline_statements,
-    //        { missing_newline_statements, expression },
-    //        AST::Statements::build_extra_expression_error),
+    Rule(expression, {{expression}, {expression}}, drop_all_but<0>,
+         ParserMode::BadLine)
     /* End miscellaneous */
+
 };
 
 #undef ARGS

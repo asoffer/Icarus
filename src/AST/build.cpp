@@ -106,13 +106,10 @@ Node *ChainOp::join(NPtrVec &&nodes) {
   // TODO FIXME
   auto lhs_prec = static_cast<Expression *>(nodes[0])->precedence;
   auto op_node  = steal<TokenNode>(nodes[1]);
-
   auto op_prec  = Language::precedence(op_node->op);
   auto rhs_prec = static_cast<Expression *>(nodes[2])->precedence;
 
-  if (op_prec != rhs_prec) {
-    return build(std::forward<NPtrVec>(nodes));
-  }
+  if (op_prec != rhs_prec) { return build({nodes[0], op_node, nodes[2]}); }
 
   auto rhs = steal<ChainOp>(nodes[2]);
 
