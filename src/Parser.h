@@ -20,27 +20,15 @@ class Parser {
     bool should_shift();
     void shift();
     bool reduce();
+    AST::Node *cleanup();
 
     void show_debug() const;
 
     NPtrVec stack_;
     std::unique_ptr<AST::TokenNode> lookahead_;
     Lexer lexer_;
+
+    enum class Mode { Good, BadLine, BadBlock, BadFile, Done } mode_;
 };
-
-inline void Parser::shift() {
-  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
-  lexer_ >> *next_node_ptr;
-
-  // Never shift comments onto the stack
-  if (next_node_ptr->node_type() == Language::comment) {
-
-    shift();
-    return;
-  }
-
-  stack_.push_back(lookahead_.release());
-  lookahead_ = std::move(next_node_ptr);
-}
 
 #endif  // ICARUS_PARSER_H

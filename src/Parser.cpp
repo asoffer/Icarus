@@ -1,68 +1,53 @@
 #include "Parser.h"
 #include "AST.h"
+#include "ErrorLog.h"
+
+extern ErrorLog error_log;
 
 namespace debug {
 extern bool parser;
 } // namespace debug
 
-// Construct a parser for the given file
-Parser::Parser(const std::string &filename) : lexer_(filename) {
-  assert(stack_.empty());
-  // Start the lookahead with a newline token. This is a simple way to ensure
-  // proper initialization, because the newline will essentially be ignored.
-  lookahead_.reset(new AST::TokenNode);
-  *lookahead_ = AST::TokenNode::newline();
-}
-
 // Parse the file with a shift-reduce algorithm
 AST::Node *Parser::parse() {
-  // The very first entry is a newline and should be shifted. Do that so we
-  // can be certain the stack is never empty. This allows us to avoid checking
-  // for the empty stack in the should_shift() method.
+  // The very first token node is a newline.
+  assert(lookahead_->node_type() == Language::newline);
+
+  // Any valid program will clean this up eventually. Therefore, shifting on the
+  // newline will not hurt us. The benefit of shifting is that we have now
+  // enforced the invariant that the stack is never empty. This means we do not
+  // need to check for an empty stack in the should_shift method.
   shift();
 
-  while (lookahead_->node_type() != Language::eof) {
+  while (true) { // Main parsing loop start
+    switch (mode_) {
+    case Mode::Good: {
+      // Shift if you are supposed to, or if you are unable to reduce.
+      if (should_shift() || !reduce()) { shift(); }
+    } break;
+    case Mode::BadLine:
+    case Mode::BadBlock:
+    case Mode::BadFile:
+    case Mode::Done: return cleanup();
+    }
 
-    // Deterimine if you should shift or reduce. If you should shift, the
-    // conditional will be true and the body will execute (and therefore
-    // shift). Otherwise, the second part of the conditional will be executed,
-    // and we will attempt to reduce the stream. If we successfully reduce,
-    // the whole conditional will evaluate to false, and we will not execute
-    // the body (i.e., we will not shift). On the other hand, if there was
-    // no reduce possible, then the conditional will evaluate to true, and we
-    // will shift.
-    if (should_shift() || !reduce())
-      shift();
+    if (debug::parser) { show_debug(); }
 
-    // A flag given to the compiler that will tell it to pause at each
-    // shift/reduce step and show the current parse stack.
-    if (debug::parser)
-      show_debug();
-  }
+    if (lookahead_->node_type() == Language::eof) { mode_ = Mode::Done; }
+  } // Main parsing loop end
+}
 
-  // Once we exit the previous loop, we have seen all tokens and reached the
-  // end of the file. There cannot be any more shifting, but there may be more
-  // reductions to complete. While we can reduce, do so.
-
+AST::Node *Parser::cleanup() {
   while (reduce()) {
-    if (debug::parser)
-      show_debug();
+    if (debug::parser) { show_debug(); }
   }
 
-  if (debug::parser) {
-    std::cout << "========== Parsing complete ==========" << std::endl;
-  }
-
-  // It is impossible for the stack to be empty because the lookahead_ starts
-  // with newline and we continue until it's equal to EOF. Thus, at least one
-  // token is shifted onto the stack and each stack operation preserves the
-  // non-empty invariant.
-  //
-  // TODO Make this impossible to be an issue
   if (stack_.size() > 1) {
-    std::cerr << "Parser found several nodes at root level. Handling just the "
-                 "first tree."
-              << std::endl;
+    if (debug::parser) {
+      std::cerr << "Parser error: Exiting with Stack size = " << stack_.size()
+                << std::endl;
+    }
+    error_log.log(0, "Parser error.");
   }
 
   return stack_.back();
@@ -75,8 +60,36 @@ void Parser::show_debug() const {
   for (const auto &node_ptr : stack_) {
     std::cout << *node_ptr;
   }
+
   std::cin.ignore(1);
 }
+
+void Parser::shift() {
+  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
+  lexer_ >> *next_node_ptr;
+
+  // Never shift comments onto the stack
+  if (next_node_ptr->node_type() == Language::comment) {
+
+    shift();
+    return;
+  }
+
+  stack_.push_back(lookahead_.release());
+  lookahead_ = std::move(next_node_ptr);
+}
+
+// Construct a parser for the given file
+Parser::Parser(const std::string &filename)
+    : lexer_(filename), mode_(Mode::Good) {
+  assert(stack_.empty());
+  // Start the lookahead with a newline token. This is a simple way to ensure
+  // proper initialization, because the newline will essentially be ignored.
+  lookahead_.reset(new AST::TokenNode);
+  *lookahead_ = AST::TokenNode::newline();
+}
+
+
 
 // This function determines if a shift should be done, even when a valid
 // reduce is possible. Recall that the stack can never be empty, so calls to

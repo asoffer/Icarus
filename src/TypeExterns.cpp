@@ -30,6 +30,7 @@ void initialize() {
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
   Error   = new Primitive(Primitive::TypeEnum::Error);
   RawPtr  = Ptr(Char);
+
   RawPtr->generate_llvm();
 }
 
