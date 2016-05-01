@@ -1,7 +1,6 @@
 #ifndef ICARUS_PARSER_H
 #define ICARUS_PARSER_H
 
-#include <memory>
 #include "Lexer.h"
 
 class Parser {
@@ -21,7 +20,7 @@ class Parser {
     void show_debug() const;
 
     NPtrVec stack_;
-    std::unique_ptr<AST::TokenNode> lookahead_;
+    AST::TokenNode *lookahead_;
     Lexer lexer_;
     ParserMode mode_;
 };

@@ -393,15 +393,15 @@ void Parser::show_debug() const {
 }
 
 void Parser::ignore() {
-  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
+  auto next_node_ptr = new AST::TokenNode;
   lexer_ >> *next_node_ptr;
 
-  lookahead_.release();
-  lookahead_ = std::move(next_node_ptr);
+  delete lookahead_;
+  lookahead_ = next_node_ptr;
 }
 
 void Parser::shift() {
-  std::unique_ptr<AST::TokenNode> next_node_ptr(new AST::TokenNode);
+  auto next_node_ptr = new AST::TokenNode;
   lexer_ >> *next_node_ptr;
 
   // Never shift comments onto the stack
@@ -411,17 +411,17 @@ void Parser::shift() {
     return;
   }
 
-  stack_.push_back(lookahead_.release());
-  lookahead_ = std::move(next_node_ptr);
+  stack_.push_back(lookahead_);
+  lookahead_ = next_node_ptr;
 }
 
 // Construct a parser for the given file
 Parser::Parser(const std::string &filename)
-    : lexer_(filename), mode_(ParserMode::Good) {
+    : lookahead_(nullptr), lexer_(filename), mode_(ParserMode::Good) {
   assert(stack_.empty());
   // Start the lookahead with a newline token. This is a simple way to ensure
   // proper initialization, because the newline will essentially be ignored.
-  lookahead_.reset(new AST::TokenNode);
+  lookahead_  = new AST::TokenNode;
   *lookahead_ = AST::TokenNode::newline();
 }
 

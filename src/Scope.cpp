@@ -1,7 +1,5 @@
 #include "Scope.h"
 
-#include <algorithm>
-
 #include "ErrorLog.h"
 
 extern llvm::DataLayout* data_layout;
