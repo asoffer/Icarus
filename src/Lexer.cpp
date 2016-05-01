@@ -1,7 +1,4 @@
 #include "Lexer.h"
-#include "ErrorLog.h"
-
-extern ErrorLog error_log;
 
 namespace Language {
 const std::map<std::string, NodeType> reserved_words = {
@@ -11,12 +8,12 @@ const std::map<std::string, NodeType> reserved_words = {
 };
 } // namespace Language
 
-#include "Type.h"
+namespace TypeSystem {
+extern std::map<std::string, Type *> Literals;
+} // namespace TypeSystem
 
 // Local function for recognizing newlines a la std::isalpha, etc.
-bool isnewline(int n) {
-  return n == '\n' || n == '\r';
-}
+bool isnewline(int n) { return n == '\n' || n == '\r'; }
 
 // Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(const std::string& file_name) :
@@ -338,19 +335,19 @@ AST::TokenNode Lexer::next_string_literal() {
       file_.get();
       peek = file_.peek();
       switch (peek) {
-        case '\\': str_lit += '\\'; break;
-        case '"':  str_lit += '"';  break;
-        case 'n':  str_lit += '\n'; break;
-        case 'r':  str_lit += '\r'; break;
-        case 't':  str_lit += '\t'; break;
-        default:
-          {
-            error_log.log(line_num_,
-                "The sequence `\\" + std::to_string(static_cast<char>(peek)) + "` is not an escape character.");
+      case '\\': str_lit += '\\'; break;
+      case '"': str_lit += '"'; break;
+      case 'n': str_lit += '\n'; break;
+      case 'r': str_lit += '\r'; break;
+      case 't': str_lit += '\t'; break;
+      default: {
+        error_log.log(line_num_, "The sequence `\\" +
+                                     std::to_string(static_cast<char>(peek)) +
+                                     "` is not an escape character.");
 
-            str_lit += static_cast<char>(peek);
-            break;
-          }
+        str_lit += static_cast<char>(peek);
+        break;
+      }
       }
       file_.get();
     } else {

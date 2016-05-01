@@ -8,35 +8,16 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-#include "Context.h"
-
 extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
-
 
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
-namespace TypeSystem {
-void initialize();
-extern std::map<std::string, Type *> Literals;
-extern Type *get(const std::string &name);
-} // namespace TypeSystem
-
-extern Type *Error;
-extern Type *Unknown;
-extern Type *Bool;
-extern Type *Char;
-extern Type *Int;
-extern Type *Real;
-extern Type *Type_;
-extern Type *Uint;
-extern Type *Void;
-extern Type *NullPtr;
-extern Type *RawPtr;
-extern Type *String;
+extern Type *Error, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
+    *NullPtr, *RawPtr, *String;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);

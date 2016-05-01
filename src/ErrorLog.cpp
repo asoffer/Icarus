@@ -1,5 +1,8 @@
 #include "ErrorLog.h"
 
+// The global error log
+ErrorLog error_log;
+
 ErrorLog::ErrorLog() : err_num_(0) {}
 
 AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {

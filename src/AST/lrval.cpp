@@ -1,7 +1,3 @@
-#include "ErrorLog.h"
-
-extern ErrorLog error_log;
-
 namespace AST {
 void Identifier::lrvalue_check() { lvalue = true; }
 

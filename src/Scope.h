@@ -2,7 +2,6 @@
 #define ICARUS_SCOPE_H
 
 #include "Type.h"
-#include "Context.h"
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);

@@ -1,7 +1,4 @@
 #include "Scope.h"
-#include "ErrorLog.h"
-
-extern ErrorLog error_log;
 
 namespace std {
 template <> struct less<Dependency::PtrWithTorV> {
@@ -29,8 +26,7 @@ static AST::Node *last_ptr = nullptr;
 #endif
 
 namespace Dependency {
-using DepMap                                     = std::map<PtrWithTorV, std::set<PtrWithTorV>>;
-static DepMap dependencies_                      = {};
+static std::map<PtrWithTorV, std::set<PtrWithTorV>> dependencies_ = {};
 static std::map<AST::Node *, Flag> already_seen_ = {};
 
 void record(AST::Node *node) {

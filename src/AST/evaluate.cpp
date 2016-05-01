@@ -1,8 +1,10 @@
 #include "Type.h"
 #include "Scope.h"
-#include "ErrorLog.h"
 
-extern ErrorLog error_log;
+namespace TypeSystem {
+void initialize();
+extern Type *get(const std::string &name);
+} // namespace TypeSystem
 
 namespace debug {
 extern bool parametric_struct;

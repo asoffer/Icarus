@@ -1,41 +1,13 @@
 #ifndef ICARUS_AST_H
 #define ICARUS_AST_H
 
-namespace llvm {
-struct Function;
-} // namespace llvm
-
 namespace Language {
 extern size_t precedence(Language::Operator op);
 } // namespace Language
 
 extern std::queue<std::string> file_queue;
 
-template <typename T> T *steal(AST::Expression *&n) {
-#ifdef DEBUG
-  auto temp = reinterpret_cast<T *>(n);
-#else
-  auto temp = static_cast<T *>(n);
-#endif
-  assert(temp && "stolen pointer is null");
-  n = nullptr;
-  return temp;
-}
-
-template <typename T> T *steal(AST::Node *&n) {
-#ifdef DEBUG
-  auto temp = reinterpret_cast<T *>(n);
-#else
-  auto temp = static_cast<T *>(n);
-#endif
-  assert(temp && "stolen pointer is null");
-  n = nullptr;
-  return temp;
-}
-
 namespace AST {
-using NPtrVec = std::vector<Node *>;
-
 #define ENDING = 0
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
@@ -299,15 +271,6 @@ struct Statements : public Node {
 
   std::vector<AST::Node *> statements;
 };
-
-
-
-inline Node *Expression::parenthesize(NPtrVec &&nodes) {
-  auto expr_ptr = steal<Expression>(nodes[1]);
-  expr_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
-  return expr_ptr;
-}
 
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);

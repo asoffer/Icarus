@@ -1,8 +1,5 @@
-#include "ErrorLog.h"
-#include "Type.h"
 #include "Scope.h"
 
-extern ErrorLog error_log;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
                                          Type *input_type);
@@ -131,27 +128,11 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
   }
 }
 
-
 namespace AST {
 void Terminal::verify_types() {
-  using Language::Terminal;
-  switch (terminal_type) {
-  case Terminal::ASCII: type         = Func(Uint, Char); break;
-  case Terminal::Return: type        = Void; break;
-  case Terminal::Else: type          = Bool; break;
-  case Terminal::True: type          = Bool; break;
-  case Terminal::False: type         = Bool; break;
-  case Terminal::Char: type          = Char; break;
-  case Terminal::Int: type           = Int; break;
-  case Terminal::Real: type          = Real; break;
-  case Terminal::Type: type          = Type_; break;
-  case Terminal::UInt: type          = Uint; break;
-  case Terminal::StringLiteral: type = String; break;
-  case Terminal::Input: /* Already set */ break;
-  case Terminal::Ord: /* Already set */ break;
-  case Terminal::Alloc: /* Already set */ break;
-  case Terminal::Null: /* Already set */ break;
-  }
+  // Anything other than a string is done when the terminal is created.
+  // TODO Do string literal and then set the values later.
+  if (terminal_type == Language::Terminal::StringLiteral) { type = String; }
 }
 
 void Identifier::verify_types() {

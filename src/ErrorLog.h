@@ -1,8 +1,6 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
-using NPtrVec = std::vector<AST::Node *>;
-
 // TODO depending on whether or not we log to the console, to a browser, etc, we
 // will want to display things differently. For now, just log to the console.
 class ErrorLog {
@@ -32,5 +30,7 @@ void ErrorLog::log(size_t line_num, const std::string &msg) {
   ++err_num_;
   log_[line_num].push_back(msg);
 }
+
+extern ErrorLog error_log;
 
 #endif // ICARUS_ERROR_LOG_H

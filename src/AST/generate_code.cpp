@@ -1,4 +1,3 @@
-#include "Context.h"
 #include "Type.h"
 #include "Scope.h"
 
@@ -125,7 +124,7 @@ llvm::Value *Terminal::generate_code() {
   case Language::Terminal::Char:  return data::const_char(token()[0]);
   case Language::Terminal::Int:   return data::const_int(std::stoi(token()));
   case Language::Terminal::Real:  return data::const_real(std::stod(token()));
-  case Language::Terminal::UInt:  return data::const_uint(std::stoul(token()));
+  case Language::Terminal::Uint:  return data::const_uint(std::stoul(token()));
   case Language::Terminal::Alloc: return cstdlib::malloc();
   case Language::Terminal::Else:
     return data::const_true();

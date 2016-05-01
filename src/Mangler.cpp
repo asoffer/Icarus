@@ -1,6 +1,3 @@
-#include <string>
-#include <sstream>
-
 #include "Type.h"
 #include "Scope.h"
 

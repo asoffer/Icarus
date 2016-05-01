@@ -1,8 +1,5 @@
 #include "Parser.h"
-#include "ErrorLog.h"
 #include "Rule.h"
-
-extern ErrorLog error_log;
 
 namespace Language {
 extern size_t precedence(Language::Operator op);
@@ -20,7 +17,10 @@ inline bool is_decl(NodeType t) {
 
 // This is intentionally not accessible in other translation units.
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
-  return steal<AST::Node>(nodes[N]);
+  auto temp = nodes[N];
+  assert(temp && "stolen pointer is null");
+  nodes[N] = nullptr;
+  return temp;
 }
 
 // TODO we can't have a '/' character, and since all our programs are in the

@@ -1,9 +1,6 @@
 #include "Scope.h"
 
-#include "ErrorLog.h"
-
 extern llvm::DataLayout* data_layout;
-extern ErrorLog error_log;
 
 namespace cstdlib {
 extern llvm::Constant *memcpy();

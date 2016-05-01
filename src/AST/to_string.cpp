@@ -15,7 +15,7 @@ std::string Node::to_string(size_t n) const {
   case Language::comment:                 ss << "Comment";       break;
   case Language::identifier:              ss << "Identifier";    break;
   case Language::int_literal:             ss << "Integer";       break;
-  case Language::uint_literal:            ss << "UInt";          break;
+  case Language::uint_literal:            ss << "Uint";          break;
   case Language::real_literal:            ss << "Real";          break;
   case Language::type_literal:            ss << "Type";          break;
   case Language::char_literal:            ss << "Character";     break;

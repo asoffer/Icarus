@@ -1,10 +1,22 @@
 #include "Type.h"
 #include "Scope.h"
-#include "ErrorLog.h"
-
-extern ErrorLog error_log;
 
 extern std::queue<std::string> file_queue;
+
+template <typename T> T *steal(AST::Expression *&n) {
+  auto temp = (T *)n;
+  assert(temp && "stolen pointer is null");
+  n = nullptr;
+  return temp;
+}
+
+
+template <typename T> T *steal(AST::Node *&n) {
+  auto temp = (T *)n;
+  assert(temp && "stolen pointer is null");
+  n = nullptr;
+  return temp;
+}
 
 namespace AST {
 Node *Identifier::build(NPtrVec &&nodes) {
@@ -298,26 +310,33 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
     return term_ptr;                                                           \
   }
 
-TERMINAL_BUILD(true, True, Bool);
-TERMINAL_BUILD(false, False, Bool);
-TERMINAL_BUILD(else, Else, Bool);
-TERMINAL_BUILD(null, Null, NullPtr);
-TERMINAL_BUILD(uint_literal, UInt, Uint);
-TERMINAL_BUILD(int_literal, Int, Int);
-TERMINAL_BUILD(real_literal, Real, Real);
-TERMINAL_BUILD(char_literal, Char, Char);
-TERMINAL_BUILD(void_return, Return, Void);
-TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
-TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
-TERMINAL_BUILD(input, Input, DepType([](Type *t) { return t; }));
 TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
+TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
+TERMINAL_BUILD(char_literal, Char, Char);
+TERMINAL_BUILD(else, Else, Bool);
+TERMINAL_BUILD(false, False, Bool);
+TERMINAL_BUILD(input, Input, DepType([](Type *t) { return t; }));
+TERMINAL_BUILD(int_literal, Int, Int);
+TERMINAL_BUILD(null, Null, NullPtr);
+TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
+TERMINAL_BUILD(real_literal, Real, Real);
+TERMINAL_BUILD(void_return, Return, Void);
+TERMINAL_BUILD(true, True, Bool);
 TERMINAL_BUILD(type_literal, Type, Type_);
+TERMINAL_BUILD(uint_literal, Uint, Uint);
 #undef TERMINAL_BUILD
 
 Node *Expression::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it
   assert(false && "Called a function that shouldn't be called.");
+}
+
+Node *Expression::parenthesize(NPtrVec &&nodes) {
+  auto expr_ptr = steal<Expression>(nodes[1]);
+  expr_ptr->precedence =
+      Language::precedence(Language::Operator::NotAnOperator);
+  return expr_ptr;
 }
 
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {

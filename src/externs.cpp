@@ -1,6 +1,5 @@
 #include "Type.h"
 #include "Scope.h"
-#include "ErrorLog.h"
 
 // TODO 32 is hard-coded here as an int size. Change it
 
@@ -49,8 +48,6 @@ std::map<std::string, llvm::Value*> global_strings;
 llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
 }
-
-ErrorLog error_log;
 
 #define CSTDLIB(fn, variadic, in, out)                                         \
   llvm::Constant *fn() {                                                       \

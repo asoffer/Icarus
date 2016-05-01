@@ -1,7 +1,6 @@
 #include "Parser.h"
 #include "Type.h"
 #include "Scope.h"
-#include "ErrorLog.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
@@ -17,8 +16,13 @@ namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
-extern ErrorLog error_log;
 extern llvm::IRBuilder<> builder;
+
+namespace TypeSystem {
+void initialize();
+extern Type *get(const std::string &name);
+} // namespace TypeSystem
+
 
 namespace debug {
 extern bool parser;
