@@ -1,30 +1,8 @@
 #ifndef ICARUS_SCOPE_H
 #define ICARUS_SCOPE_H
 
-#include <vector>
-#include <map>
-#include <set>
-#include <string>
-#include <type_traits>
-#include <stack>
-
 #include "Type.h"
-#include "DependencySystem.h"
 #include "Context.h"
-#include "AST/DeclType.h"
-
-#include <iostream>
-
-struct Type;
-struct Function;
-struct BlockScope;
-struct FnScope;
-
-namespace AST {
-struct Declaration;
-struct Identifier;
-struct FunctionLiteral;
-} // namespace AST
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);

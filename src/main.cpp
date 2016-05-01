@@ -1,14 +1,7 @@
-#include <iostream>
-#include <fstream>
-#include <string>
-#include <queue>
-
 #include "Parser.h"
-#include "AST.h"
 #include "Type.h"
 #include "Scope.h"
 #include "ErrorLog.h"
-#include "DependencySystem.h"
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
@@ -40,12 +33,6 @@ extern bool parametric_struct;
 // a datarace will corrupt the memory. When we start threading, we need to lock
 // the map before usage.
 extern std::map<std::string, AST::Statements *> ast_map;
-
-// Each time a file is imported, it will be added to the queue. We then parse
-// each file off the queue until the queue is empty. We avoid circular calls by
-// checking if the map is already filled before parsing.
-extern std::queue<std::string> file_queue;
-
 
 // This is an enum so we can give meaningful names for error codes. However, at
 // the end of the day, we must return ints. Thus, we need to use the implicit
@@ -130,15 +117,13 @@ int main(int argc, char *argv[]) {
     error_log.set_file(file_name);
 
     Parser parser(file_name);
-    ast_map[file_name] = static_cast<AST::Statements *>(parser.parse());
+    ast_map[file_name] = (AST::Statements *)parser.parse();
   }
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::parse_error;
   }
-
-
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());

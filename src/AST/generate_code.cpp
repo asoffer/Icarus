@@ -1,5 +1,6 @@
-#include "AST.h"
 #include "Context.h"
+#include "Type.h"
+#include "Scope.h"
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);

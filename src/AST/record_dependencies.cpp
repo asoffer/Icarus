@@ -1,7 +1,4 @@
-#include "AST.h"
-#include "DependencySystem.h"
-
-#include <cassert>
+#include "Scope.h"
 
 namespace debug {
   extern bool dependency_system;

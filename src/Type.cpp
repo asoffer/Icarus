@@ -1,5 +1,4 @@
 #include "Type.h"
-#include "AST.h"
 
 #ifdef DEBUG
 #define AT(access) .at((access))

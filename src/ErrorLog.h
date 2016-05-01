@@ -1,15 +1,6 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
-#include <string>
-#include <map>
-#include <vector>
-#include <iostream>
-
-namespace AST {
-struct Node;
-}
-
 using NPtrVec = std::vector<AST::Node *>;
 
 // TODO depending on whether or not we log to the console, to a browser, etc, we

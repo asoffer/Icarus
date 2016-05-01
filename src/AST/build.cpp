@@ -1,6 +1,8 @@
-#include "AST.h"
+#include "Type.h"
+#include "Scope.h"
+#include "ErrorLog.h"
 
-#include <queue>
+extern ErrorLog error_log;
 
 extern std::queue<std::string> file_queue;
 

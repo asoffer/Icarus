@@ -1,4 +1,14 @@
-#include "AST.h"
+#include "Scope.h"
+
+namespace Language {
+const std::map<std::string, Operator> lookup_operator = {
+#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+  { #symbol, Operator::name }                                                  \
+  ,
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+};
+} // namespace Language
 
 namespace AST {
 TokenNode::TokenNode(size_t line_num, Language::NodeType in_node_type,

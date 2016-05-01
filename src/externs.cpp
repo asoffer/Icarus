@@ -1,20 +1,32 @@
-#include "AST.h"
-
-#include <map>
-#include <queue>
+#include "Type.h"
+#include "Scope.h"
+#include "ErrorLog.h"
 
 // TODO 32 is hard-coded here as an int size. Change it
 
+namespace Language {
+// Associativity stored in the lowest two bits.
+size_t precedence(Operator op) {
+  switch (op) {
+#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+  case Operator::name:                                                         \
+    return (((prec) << 2) + (assoc));
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+  }
+}
+} // namespace Language
+
 // Debug flags and their default values
 namespace debug {
-  // Turns on step-by-step iteration through the shifting and reducing.
-  bool parser = false;
+// Turns on step-by-step iteration through the shifting and reducing.
+bool parser = false;
 
-  // Turns on dependency graph generation
-  bool dependency_graph = false;
+// Turns on dependency graph generation
+bool dependency_graph = false;
 
-  // Turns on printing of parametric-struct data generation.
-  bool parametric_struct = false;
+// Turns on printing of parametric-struct data generation.
+bool parametric_struct = false;
 }
 
 std::map<std::string, AST::Statements *> ast_map;

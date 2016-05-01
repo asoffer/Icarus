@@ -1,12 +1,6 @@
 #ifndef ICARUS_TYPE_H
 #define ICARUS_TYPE_H
 
-#include <iostream>
-#include <vector>
-#include <string>
-#include <map>
-#include <set>
-
 // TODO Figure out what you need from this.
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/IRBuilder.h"
@@ -14,36 +8,12 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-#include "Language.h"
-#include "Scope.h"
-#include "TimeEval.h"
 #include "Context.h"
 
 extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
 
-namespace AST {
-struct Expression;
-struct Declaration;
-struct EnumLiteral;
-struct StructLiteral;
-} // namespace AST
 
-struct Type;
-struct Primitive;
-struct Array;
-struct Tuple;
-struct Pointer;
-struct Function;
-struct Enumeration;
-struct Structure;
-struct ParametricStructure;
-struct DependentType;
-struct TypeVariable;
-struct QuantumType;
-struct RangeType;
-
-struct Scope;
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,

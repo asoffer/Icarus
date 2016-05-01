@@ -1,5 +1,4 @@
 #include "Context.h"
-#include "AST.h"
 
 Context::Value Context::get(AST::Identifier *idptr) {
   auto iter = bindings_.find(idptr);

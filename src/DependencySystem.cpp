@@ -1,15 +1,18 @@
-// No need to include the corresponding header. Everything here is global and
-// extern
-
-#include <map>
-#include <set>
-#include <iostream>
-#include <vector>
-#include <fstream>
-#include <sstream>
-
-#include "DependencyTypes.h"
 #include "Scope.h"
+#include "ErrorLog.h"
+
+extern ErrorLog error_log;
+
+namespace std {
+template <> struct less<Dependency::PtrWithTorV> {
+  bool operator()(const Dependency::PtrWithTorV &lhs,
+                  const Dependency::PtrWithTorV &rhs) const {
+    if (lhs.ptr_ != rhs.ptr_) return lhs.ptr_ < rhs.ptr_;
+    if (lhs.torv_ != rhs.torv_) return lhs.torv_ < rhs.torv_;
+    return false;
+  }
+};
+} // namespace std
 
 namespace debug {
 extern bool dependency_graph;

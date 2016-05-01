@@ -1,6 +1,6 @@
-#include "AST.h"
+#include "Type.h"
+#include "Scope.h"
 #include "Context.h"
-#include "DependencySystem.h"
 
 // TODO shouldn't we just be calling build functions here mostly?
 

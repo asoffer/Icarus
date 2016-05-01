@@ -1,4 +1,4 @@
-#include "AST.h"
+#include "Type.h"
 
 extern llvm::Module *global_module;
 extern llvm::IRBuilder<> builder;

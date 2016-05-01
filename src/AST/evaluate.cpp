@@ -1,7 +1,8 @@
-#include "AST.h"
-#include "Language.h"
+#include "Type.h"
+#include "Scope.h"
+#include "ErrorLog.h"
 
-#include <sstream>
+extern ErrorLog error_log;
 
 namespace debug {
 extern bool parametric_struct;

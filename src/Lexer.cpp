@@ -1,10 +1,17 @@
 #include "Lexer.h"
-#include "Language.h"
 #include "ErrorLog.h"
 
-#include <map>
-
 extern ErrorLog error_log;
+
+namespace Language {
+const std::map<std::string, NodeType> reserved_words = {
+#define RESERVED_MACRO(res) { #res, reserved_##res },
+#include "config/reserved.conf"
+#undef RESERVED_MACRO
+};
+} // namespace Language
+
+#include "Type.h"
 
 // Local function for recognizing newlines a la std::isalpha, etc.
 bool isnewline(int n) {

@@ -1,10 +1,6 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
-#include <fstream>
-#include <string>
-#include "AST.h"
-
 // class Lexer:
 //
 // This class takes a file name in its only constructor. The contents of the

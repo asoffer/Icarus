@@ -1,4 +1,4 @@
-#include "AST.h"
+#include "Scope.h"
 
 namespace AST {
 void Unop::assign_scope() {

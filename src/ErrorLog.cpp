@@ -1,15 +1,12 @@
 #include "ErrorLog.h"
 
-#include "Language.h"
-#include "AST.h"
-
 ErrorLog::ErrorLog() : err_num_(0) {}
 
 AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {
   log(node->line_num, "Assignment found where boolean expression was expected. "
                       "Did you mean `==` instead of `=`?");
 
-  auto assignment_node = static_cast<AST::Binop *>(node);
+  auto assignment_node = (AST::Binop *)node;
 
   NPtrVec node_vec = {
       assignment_node->lhs,

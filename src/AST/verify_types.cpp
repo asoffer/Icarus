@@ -1,8 +1,6 @@
-#include "AST.h"
 #include "ErrorLog.h"
 #include "Type.h"
-#include "DependencySystem.h"
-#include <sstream>
+#include "Scope.h"
 
 extern ErrorLog error_log;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,

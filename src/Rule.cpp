@@ -1,5 +1,4 @@
 #include "Rule.h"
-#include "AST.h"
 
 #define DELETE(ptr)                                                            \
   {                                                                            \

@@ -1,16 +1,6 @@
 #ifndef ICARUS_CONTEXT_H
 #define ICARUS_CONTEXT_H
 
-#include <iostream>
-#include <map>
-
-struct Type;
-
-namespace AST {
-  struct Identifier;
-  struct Expression;
-}  // namespae AST
-
 class Context {
   public:
     // TODO make to use types of the right size.
@@ -24,7 +14,7 @@ class Context {
       Type*            as_type;
       AST::Expression* as_expr;
 
-      Value(std::nullptr_t ptr = nullptr) { as_null = nullptr; }
+      Value(std::nullptr_t = nullptr) { as_null = nullptr; }
       explicit Value(             bool b) { as_bool = b; }
       explicit Value(             char c) { as_char = c; }
       explicit Value(              int n) { as_int  = n; }

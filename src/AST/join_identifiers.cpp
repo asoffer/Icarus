@@ -1,4 +1,4 @@
-#include "AST.h"
+#include "Scope.h"
 
 void set_or_recurse(AST::Expression *&eptr) {
   // TODO What happens to the line number?

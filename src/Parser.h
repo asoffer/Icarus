@@ -2,14 +2,7 @@
 #define ICARUS_PARSER_H
 
 #include <memory>
-#include <iostream>
-
-#include "ParserMode.h"
-
 #include "Lexer.h"
-#include "Rule.h"
-#include "AST.h"
-#include "Language.h"
 
 class Parser {
   public:

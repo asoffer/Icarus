@@ -1,29 +1,15 @@
 #ifndef ICARUS_AST_H
 #define ICARUS_AST_H
 
-#include <string>
-#include <iostream>
-#include <map>
-#include <set>
-#include <vector>
-#include <queue>
+namespace llvm {
+struct Function;
+} // namespace llvm
 
-#include "Language.h"
-#include "TimeEval.h"
-#include "AST/DeclType.h"
+namespace Language {
+extern size_t precedence(Language::Operator op);
+} // namespace Language
 
-#include "Scope.h"
-#include "ErrorLog.h"
-#include "Context.h"
-
-extern ErrorLog error_log;
 extern std::queue<std::string> file_queue;
-struct Scope;
-struct BlockScope;
-struct FnScope;
-struct Structure;
-struct Enumeration;
-struct TypeVariable;
 
 template <typename T> T *steal(AST::Expression *&n) {
 #ifdef DEBUG
@@ -85,6 +71,7 @@ using NPtrVec = std::vector<Node *>;
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
+
 struct Node {
   Language::NodeType node_type() const { return type_; }
   void set_node_type(Language::NodeType t) { type_ = t; }
@@ -93,7 +80,7 @@ struct Node {
   void set_token(const std::string &token_string) { token_ = token_string; }
 
   virtual std::string to_string(size_t n) const;
-  virtual void join_identifiers(bool is_arg = false) {}
+  virtual void join_identifiers(bool = false) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void record_dependencies() {}
@@ -102,7 +89,7 @@ struct Node {
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
 
-  virtual Context::Value evaluate(Context &ctx) { return nullptr; }
+  virtual Context::Value evaluate(Context &) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
   virtual Time::Eval determine_time() { return Time::error; }
 
@@ -145,6 +132,22 @@ struct Node {
   Time::Eval time_;
 };
 
+struct Expression : public Node {
+  EXPR_FNS(Expression, expression);
+
+  static Node *parenthesize(NPtrVec &&nodes);
+
+  virtual bool is_literal(Type *t) const {
+    return is_terminal() && !is_identifier() && type == t;
+  }
+
+  llvm::Value *llvm_value(Context::Value v);
+
+  size_t precedence;
+  bool lvalue;
+  Type *type;
+};
+
 struct TokenNode : public Node {
   static TokenNode eof(size_t line_num) {
     return TokenNode(line_num, Language::eof);
@@ -171,48 +174,42 @@ struct TokenNode : public Node {
   Language::Operator op;
 };
 
-struct Expression : public Node {
-  EXPR_FNS(Expression, expression);
 
-  static Node *parenthesize(NPtrVec &&nodes);
-
-  virtual bool is_literal(Type *t) const {
-    return is_terminal() && !is_identifier() && type == t;
-  }
-
-  llvm::Value *llvm_value(Context::Value v);
-
-  size_t precedence;
-  bool lvalue;
-  Type *type;
-};
 
 #undef ENDING
 #define ENDING override
 #undef OVERRIDE
 #define OVERRIDE override
-inline Node *Expression::parenthesize(NPtrVec &&nodes) {
-  auto expr_ptr = steal<Expression>(nodes[1]);
-  expr_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
-  return expr_ptr;
-}
 
-struct Unop : public Expression {
-  EXPR_FNS(Unop, unop);
+struct Terminal : public Expression {
+  EXPR_FNS(Terminal, terminal);
 
-  static Node *build_paren_operator(NPtrVec &&nodes);
-  static Node *build_dots(NPtrVec &&nodes);
+  static Node *build_type_literal(NPtrVec &&nodes);
+  static Node *build_string_literal(NPtrVec &&nodes);
+  static Node *build_else(NPtrVec &&nodes);
+  static Node *build_true(NPtrVec &&nodes);
+  static Node *build_false(NPtrVec &&nodes);
+  static Node *build_null(NPtrVec &&nodes);
+  static Node *build_int_literal(NPtrVec &&nodes);
+  static Node *build_uint_literal(NPtrVec &&nodes);
+  static Node *build_real_literal(NPtrVec &&nodes);
+  static Node *build_char_literal(NPtrVec &&nodes);
+  static Node *build_void_return(NPtrVec &&nodes);
+  static Node *build_ord(NPtrVec &&nodes);
+  static Node *build_ASCII(NPtrVec &&nodes);
+  static Node *build_input(NPtrVec &&nodes);
+  static Node *build_alloc(NPtrVec &&nodes);
 
-  Expression *operand;
-  Language::Operator op;
+  Language::Terminal terminal_type;
 };
 
-struct Access : public Expression {
-  EXPR_FNS(Access, access);
+struct Identifier : public Terminal {
+  EXPR_FNS(Identifier, identifier);
+  Identifier(size_t line_num, const std::string &token_string);
 
-  std::string member_name;
-  Expression *operand;
+  llvm::Value *alloc;
+  bool is_arg; // function argument or struct parameter
+  std::vector<Declaration *> decls; // multiple because function overloading
 };
 
 struct Binop : public Expression {
@@ -236,6 +233,97 @@ struct Binop : public Expression {
 
   Language::Operator op;
   Expression *lhs, *rhs;
+};
+
+struct Declaration : public Expression {
+  EXPR_FNS(Declaration, declaration);
+
+  static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
+
+  static Node *BuildStd(NPtrVec &&nodes);
+  static Node *BuildIn(NPtrVec &&nodes);
+  static Node *BuildInfer(NPtrVec &&nodes);
+  static Node *BuildGenerate(NPtrVec &&nodes);
+
+  static Node *AddHashtag(NPtrVec &&nodes);
+
+  // TODO is 'op' necessary? anymore?
+  Language::Operator op;
+  Identifier *identifier;
+  Expression *type_expr;
+
+  std::vector<std::string> hashtags;
+  // TODO have a global table of hashtags and store a vector of indexes into
+  // that global lookup.
+
+  DeclType decl_type;
+};
+
+struct StructLiteral : public Expression {
+  EXPR_FNS(StructLiteral, struct_literal);
+
+  static Node *build_parametric(NPtrVec &&nodes);
+
+  void build_llvm_internals();
+  StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
+
+  std::vector<Declaration *> params;
+  Type *type_value; // Either a Structure or ParametricStructure.
+  Scope *type_scope;
+  std::vector<Declaration *> declarations;
+
+  // TODO this should be more than just type pointers. Parameters can be ints,
+  // etc. Do we allow real?
+  std::map<std::vector<Type *>, StructLiteral *> cache;
+};
+
+struct Statements : public Node {
+  static Node *build_one(NPtrVec &&nodes);
+  static Node *build_more(NPtrVec &&nodes);
+  static Node *build_double_expression_error(NPtrVec &&nodes);
+  static Node *build_extra_expression_error(NPtrVec &&nodes);
+
+  VIRTUAL_METHODS_FOR_NODES;
+
+  inline size_t size() { return statements.size(); }
+  inline void reserve(size_t n) { return statements.reserve(n); }
+
+  void add_nodes(Statements *stmts) {
+    for (auto &stmt : stmts->statements) {
+      statements.push_back(std::move(stmt));
+    }
+  }
+
+  Statements() {}
+  virtual ~Statements();
+
+  std::vector<AST::Node *> statements;
+};
+
+
+
+inline Node *Expression::parenthesize(NPtrVec &&nodes) {
+  auto expr_ptr = steal<Expression>(nodes[1]);
+  expr_ptr->precedence =
+      Language::precedence(Language::Operator::NotAnOperator);
+  return expr_ptr;
+}
+
+struct Unop : public Expression {
+  EXPR_FNS(Unop, unop);
+
+  static Node *build_paren_operator(NPtrVec &&nodes);
+  static Node *build_dots(NPtrVec &&nodes);
+
+  Expression *operand;
+  Language::Operator op;
+};
+
+struct Access : public Expression {
+  EXPR_FNS(Access, access);
+
+  std::string member_name;
+  Expression *operand;
 };
 
 struct ChainOp : public Expression {
@@ -265,61 +353,6 @@ struct ArrayType : public Expression {
   Expression *data_type;
 };
 
-struct Terminal : public Expression {
-  EXPR_FNS(Terminal, terminal);
-
-  static Node *build_type_literal(NPtrVec &&nodes);
-  static Node *build_string_literal(NPtrVec &&nodes);
-  static Node *build_else(NPtrVec &&nodes);
-  static Node *build_true(NPtrVec &&nodes);
-  static Node *build_false(NPtrVec &&nodes);
-  static Node *build_null(NPtrVec &&nodes);
-  static Node *build_int_literal(NPtrVec &&nodes);
-  static Node *build_uint_literal(NPtrVec &&nodes);
-  static Node *build_real_literal(NPtrVec &&nodes);
-  static Node *build_char_literal(NPtrVec &&nodes);
-  static Node *build_void_return(NPtrVec &&nodes);
-  static Node *build_ord(NPtrVec &&nodes);
-  static Node *build_ASCII(NPtrVec &&nodes);
-  static Node *build_input(NPtrVec &&nodes);
-  static Node *build_alloc(NPtrVec &&nodes);
-
-  Language::Terminal terminal_type;
-};
-
-struct Declaration : public Expression {
-  EXPR_FNS(Declaration, declaration);
-
-  static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
-
-  static Node *BuildStd(NPtrVec &&nodes);
-  static Node *BuildIn(NPtrVec &&nodes);
-  static Node *BuildInfer(NPtrVec &&nodes);
-  static Node *BuildGenerate(NPtrVec &&nodes);
-
-  static Node *AddHashtag(NPtrVec &&nodes);
-
-  // TODO is 'op' necessary? anymore?
-  Language::Operator op;
-  Identifier *identifier;
-  Expression *type_expr;
-
-  std::vector<std::string> hashtags;
-  // TODO have a global table of hashtags and store a vector of indexes into
-  // that global lookup.
-
-  DeclType decl_type;
-};
-
-struct Identifier : public Terminal {
-  EXPR_FNS(Identifier, identifier);
-  Identifier(size_t line_num, const std::string &token_string);
-
-  llvm::Value *alloc;
-  bool is_arg; // function argument or struct parameter
-  std::vector<Declaration *> decls; // multiple because function overloading
-};
-
 struct KVPairList : public Node {
   // TODO must have an else. should be stored outside the vector
   static Node *build_one(NPtrVec &&nodes);
@@ -343,29 +376,6 @@ struct Case : public Expression {
   EXPR_FNS(Case, case);
 
   KVPairList *kv;
-};
-
-struct Statements : public Node {
-  static Node *build_one(NPtrVec &&nodes);
-  static Node *build_more(NPtrVec &&nodes);
-  static Node *build_double_expression_error(NPtrVec &&nodes);
-  static Node *build_extra_expression_error(NPtrVec &&nodes);
-
-  VIRTUAL_METHODS_FOR_NODES;
-
-  inline size_t size() { return statements.size(); }
-  inline void reserve(size_t n) { return statements.reserve(n); }
-
-  void add_nodes(Statements *stmts) {
-    for (auto &stmt : stmts->statements) {
-      statements.push_back(std::move(stmt));
-    }
-  }
-
-  Statements() {}
-  virtual ~Statements();
-
-  std::vector<AST::Node *> statements;
 };
 
 struct FunctionLiteral : public Expression {
@@ -434,24 +444,6 @@ struct While : public Node {
   BlockScope *while_scope;
 };
 
-struct StructLiteral : public Expression {
-  EXPR_FNS(StructLiteral, struct_literal);
-
-  static Node *build_parametric(NPtrVec &&nodes);
-
-  void build_llvm_internals();
-  StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
-
-  std::vector<Declaration *> params;
-  Type *type_value; // Either a Structure or ParametricStructure.
-  Scope *type_scope;
-  std::vector<Declaration *> declarations;
-
-  // TODO this should be more than just type pointers. Parameters can be ints,
-  // etc. Do we allow real?
-  std::map<std::vector<Type *>, StructLiteral *> cache;
-};
-
 struct EnumLiteral : public Expression {
   EXPR_FNS(EnumLiteral, enum_literal);
 
@@ -487,4 +479,5 @@ struct Jump : public Node {
 #undef EXPR_FNS
 #undef ENDING
 #undef OVERRIDE
+
 #endif // ICARUS_AST_NODE_H

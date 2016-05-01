@@ -1,15 +1,7 @@
 #ifndef ICARUS_RULE_H
 #define ICARUS_RULE_H
 
-#include <vector>
 #include <memory>
-#include <set>
-#include "Language.h"
-#include "ParserMode.h"
-
-namespace AST {
-struct Node;
-} // namespace AST
 
 class Rule {
   public:
@@ -31,9 +23,5 @@ class Rule {
     fnptr fn_;
     ParserMode new_mode_;
 };
-
-namespace Language {
-extern const std::vector<Rule> rules;
-} // namespace Language
 
 #endif // ICARUS_RULE_H

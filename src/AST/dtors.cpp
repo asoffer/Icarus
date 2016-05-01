@@ -1,4 +1,4 @@
-#include "AST.h"
+#include "Scope.h"
 
 #define DELETE(ptr)                                                            \
   {                                                                            \

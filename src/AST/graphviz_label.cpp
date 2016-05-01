@@ -1,4 +1,4 @@
-#include "AST.h"
+#include "Type.h"
 
 namespace AST {
 std::string Node::graphviz_label() const { return "Generic node"; }

@@ -2,6 +2,7 @@
 #include <sstream>
 
 #include "Type.h"
+#include "Scope.h"
 
 std::string Mangle(const Type *t, bool prefix) {
   if (t->is_primitive()) {

@@ -1,6 +1,4 @@
-#include "AST.h"
 #include "Type.h"
-#include <sstream>
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
