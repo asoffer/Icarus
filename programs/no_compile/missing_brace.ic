@@ -1,0 +1,18 @@
+x := enum int char {
+  hello
+  world
+}
+
+main := void -> void {
+  y := case 3 {
+    false => 3
+    else  => 4
+  }
+}
+
+z := struct int {
+  a: enum {
+    foo
+    bar
+  }
+}

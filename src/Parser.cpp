@@ -23,9 +23,23 @@ template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
   return temp;
 }
 
-AST::Node *missing_lbrace_case(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->loc, "Missing '{' following keyword 'case'.");
-  return drop_all_but<1>(std::forward<NPtrVec&&>(nodes));
+#define EXPECTED_ENCAPSULATOR(leading_keyword, quoted_symbol, name)            \
+  AST::Node *missing_##name##_##leading_keyword(NPtrVec &&nodes) {             \
+    error_log.log(nodes[0]->loc, "Expected '" quoted_symbol                    \
+                                 "' following keyword '" #leading_keyword      \
+                                 "', but '" +                                  \
+                                     nodes[1]->token() + "' found instead.");  \
+    return drop_all_but<1>(std::forward<NPtrVec &&>(nodes));                   \
+  }
+
+EXPECTED_ENCAPSULATOR(case, "{", lbrace)
+EXPECTED_ENCAPSULATOR(enum, "{", lbrace)
+
+AST::Node *missing_struct_encapsulator(NPtrVec &&nodes) {
+  error_log.log(nodes[0]->loc,
+                "Expected '(' or '{' following keyword 'struct', but" +
+                    nodes[1]->token() + "' found instead.");
+  return drop_all_but<1>(std::forward<NPtrVec &&>(nodes));
 }
 
 // TODO we can't have a '/' character, and since all our programs are in the
@@ -44,33 +58,11 @@ AST::Node *import_file(NPtrVec &&nodes) {
   STMT_DECL_STD, STMT_DECL_INFER, STMT_IF, STMT_IF_ELSE, STMT_FOR, STMT_WHILE, \
       STMT_JUMP, STMT_ASSIGN
 
-#define NOT_LBRACE                                                             \
-  unknown, bof, eof, newline, comment, identifier, int_literal, uint_literal,  \
-      real_literal, char_literal, string_literal, type_literal, fn_literal,    \
-      key_value_pair, key_value_pair_list, fn_expression, scope, DECL_LIST,    \
-      statements, missing_newline_statements, left_paren, right_paren,         \
-      right_brace, left_bracket, right_bracket, semicolon, reserved_break,     \
-      reserved_if, reserved_else, reserved_case, reserved_for, reserved_enum,  \
-      reserved_while, reserved_continue, reserved_ascii, reserved_ord,         \
-      reserved_import, reserved_string, reserved_alloc, reserved_struct,       \
-      reserved_repeat, reserved_restart, reserved_input, hashtag, STMT_FOR,    \
-      STMT_WHILE, STMT_IF, STMT_IF_ELSE, STMT_JUMP, STMT_ASSIGN,               \
-      STMT_DECL_STD, STMT_DECL_INFER, STMT_DECL_GENERATE, DECL_IN,             \
-      DECL_IN_LIST, generic_operator, DECL_OPERATOR_STD, DECL_OPERATOR_INFER,  \
-      assign_operator, fn_arrow, binary_boolean_operator, bool_operator,       \
-      comma, dot, rocket_operator, reserved_in, reserved_return,               \
-      reserved_print, reserved_free, dereference, not_operator, indirection,   \
-      negation, dots, expression, reserved_true, reserved_false,               \
-      reserved_null, reserved_type, DECL_OPERATOR_GENERATE
-
-    // Here are the definitions for all rules in the langugae. For a rule to be
-    // applied, the node types on the top of the stack must match those given in
-    // the
-    // list (second line of each rule). If so, then the function given in the
-    // third
-    // line of each rule is applied, replacing the matched nodes. Lastly, the
-    // new
-    // nodes type is set to the given type in the first line.
+// Here are the definitions for all rules in the langugae. For a rule to be
+// applied, the node types on the top of the stack must match those given in the
+// list (second line of each rule). If so, then the function given in the third
+// line of each rule is applied, replacing the matched nodes. Lastly, the new
+// nodes type is set to the given type in the first line.
 static const std::vector<Rule> rules = {
     /* Begin literals */
     Rule(expression, {Opt({reserved_true})}, AST::Terminal::build_true),
@@ -256,21 +248,19 @@ static const std::vector<Rule> rules = {
           Opt({rocket_operator}), Opt({expression}), Opt({newline})},
          AST::KVPairList::build_more),
 
-    Rule(key_value_pair_list, // An error, they probably meant `==` instead
-                              // of
-                              // `=`
-         {Opt({STMT_ASSIGN}), Opt({rocket_operator}), Opt({expression}),
-          Opt({newline})},
+    // An error, they probably meant `==` instead of `=`
+    Rule(key_value_pair_list, {Opt({STMT_ASSIGN}), Opt({rocket_operator}),
+                               Opt({expression}), Opt({newline})},
          AST::KVPairList::build_one_assignment_error),
 
-    Rule(key_value_pair_list, // An error, they probably meant `==` instead
-                              // of
-                              // `=`
+    // An error, they probably meant `==` instead of `=`
+    Rule(key_value_pair_list,
          {Opt({key_value_pair_list}), Opt({STMT_ASSIGN}),
           Opt({rocket_operator}), Opt({expression}), Opt({newline})},
          AST::KVPairList::build_more_assignment_error),
 
-    Rule(reserved_case, {Opt({reserved_case}), Opt({NOT_LBRACE})},
+    // Case must be followed by a left brace
+    Rule(reserved_case, {Opt({reserved_case}), Opt({left_brace}, false)},
          missing_lbrace_case),
 
     Rule(expression, {Opt({reserved_case}), Opt({left_brace}),
@@ -299,20 +289,29 @@ static const std::vector<Rule> rules = {
          AST::Jump::build),
     /* End loop extras */
 
-    /* Begin structs and enums */
-    // TODO tighten this up. Just taking in any statements probably captures
-    // way
-    // too much.
+    /* Begin structs */
     Rule(expression, {Opt({reserved_struct}), Opt({left_brace}),
                       Opt({statements}), Opt({right_brace})},
          AST::StructLiteral::build),
+
     Rule(expression, {Opt({reserved_struct}), Opt({ARGS}), Opt({left_brace}),
                       Opt({statements}), Opt({right_brace})},
          AST::StructLiteral::build_parametric),
+
+    Rule(reserved_enum, {Opt({reserved_enum}), Opt({left_brace, left_paren}, false)},
+         missing_struct_encapsulator),
+ 
+    /* End structs */
+
+    /* Begin enums */
     Rule(expression, {Opt({reserved_enum}), Opt({left_brace}),
                       Opt({statements}), Opt({right_brace})},
          AST::EnumLiteral::build),
-    /* End structs and enums */
+
+    // Enum must be followed by a left brace
+    Rule(reserved_enum, {Opt({reserved_enum}), Opt({left_brace}, false)},
+         missing_lbrace_enum),
+    /* End enums */
 
     /* Begin import */
     Rule(newline,

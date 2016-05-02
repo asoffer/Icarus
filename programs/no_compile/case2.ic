@@ -1,6 +1,0 @@
-main := void -> void {
-  x := case 3 {
-    false => 3
-    else  => 4
-  }
-}
