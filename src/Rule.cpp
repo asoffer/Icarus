@@ -6,7 +6,7 @@
     ptr = nullptr;                                                             \
   }
 
-Rule::Rule(Language::NodeType output, const NodeTypeVec &input, fnptr fn,
+Rule::Rule(Language::NodeType output, const OptVec &input, fnptr fn,
            ParserMode new_mode)
     : output_(output), input_(input), fn_(fn), new_mode_(new_mode) {}
 
@@ -23,8 +23,9 @@ bool Rule::match(const NPtrVec& node_stack) const {
   for (size_t i = 0; i < input_.size();
       ++i, --rule_index, --stack_index) {
 
-    auto iter = input_[rule_index].find(node_stack[stack_index]->node_type());
-    if (iter == input_[rule_index].end()) return false;
+    if (!input_[rule_index].match(node_stack[stack_index]->node_type())) {
+      return false;
+    }
   }
 
   // If you complete the loop, there is a match.
