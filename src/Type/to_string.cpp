@@ -35,19 +35,19 @@ std::string Array::to_string() const {
 std::string Function::to_string() const {
   std::stringstream ss;
   if (input->is_function()) {
-    ss << "(" << input << ")";
+    ss << "(" << *input << ")";
 
   } else {
-    ss << input;
+    ss << *input;
   }
 
   ss << " -> ";
 
   if (output->is_function()) {
-    ss << "(" << output << ")";
+    ss << "(" << *output << ")";
 
   } else {
-    ss << output;
+    ss << *output;
   }
   return ss.str();
 }
@@ -55,9 +55,9 @@ std::string Function::to_string() const {
 std::string Pointer::to_string() const {
   std::stringstream ss;
   if (pointee->is_function()) {
-    ss << "&(" << pointee << ")";
+    ss << "&(" << *pointee << ")";
   } else {
-    ss << "&" << pointee;
+    ss << "&" << *pointee;
   }
   return ss.str();
 }

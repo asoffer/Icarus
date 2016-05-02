@@ -84,6 +84,7 @@ constexpr int MASK_operator =
 
 enum NodeType {
   unknown,
+  keep_current,
   bof,
   eof,
   newline,

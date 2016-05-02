@@ -48,7 +48,7 @@ void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
   }
 
   auto new_ptr = fn_(std::move(nodes_to_reduce));
-  new_ptr->set_node_type(output_);
+  if (output_ != Language::keep_current) { new_ptr->set_node_type(output_); }
 
   for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 
