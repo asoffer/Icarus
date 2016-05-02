@@ -15,7 +15,10 @@ class Parser {
     void shift();
     void ignore();
     bool reduce();
+    bool reduce_singletons();
     AST::Node *cleanup();
+
+    bool reduce_singleton_tokens();
 
     void show_debug() const;
 

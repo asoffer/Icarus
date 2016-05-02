@@ -65,21 +65,10 @@ AST::Node *import_file(NPtrVec &&nodes) {
 // nodes type is set to the given type in the first line.
 static const std::vector<Rule> rules = {
     /* Begin literals */
-    Rule(expression, {Opt({reserved_true})}, AST::Terminal::build_true),
-    Rule(expression, {Opt({reserved_false})}, AST::Terminal::build_false),
-    Rule(expression, {Opt({reserved_null})}, AST::Terminal::build_null),
     Rule(expression, {Opt({identifier})}, AST::Identifier::build),
-    Rule(expression, {Opt({uint_literal})}, AST::Terminal::build_uint_literal),
-    Rule(expression, {Opt({int_literal})}, AST::Terminal::build_int_literal),
-    Rule(expression, {Opt({real_literal})}, AST::Terminal::build_real_literal),
+
     Rule(expression, {Opt({string_literal})},
          AST::Terminal::build_string_literal),
-    Rule(expression, {Opt({char_literal})}, AST::Terminal::build_char_literal),
-    Rule(expression, {Opt({reserved_input})}, AST::Terminal::build_input),
-    Rule(expression, {Opt({reserved_ord})}, AST::Terminal::build_ord),
-    Rule(expression, {Opt({reserved_ascii})}, AST::Terminal::build_ASCII),
-    Rule(expression, {Opt({reserved_alloc})}, AST::Terminal::build_alloc),
-    Rule(expression, {Opt({type_literal})}, AST::Terminal::build_type_literal),
 
     Rule(expression, {Opt({fn_literal, fn_expression})}, drop_all_but<0>),
 
@@ -298,9 +287,10 @@ static const std::vector<Rule> rules = {
                       Opt({statements}), Opt({right_brace})},
          AST::StructLiteral::build_parametric),
 
-    Rule(reserved_enum, {Opt({reserved_enum}), Opt({left_brace, left_paren}, false)},
+    Rule(reserved_enum,
+         {Opt({reserved_enum}), Opt({left_brace, left_paren}, false)},
          missing_struct_encapsulator),
- 
+
     /* End structs */
 
     /* Begin enums */
@@ -357,6 +347,7 @@ AST::Node *Parser::parse() {
     switch (mode_) {
     case ParserMode::Same: assert(false && "This mode should be impossible");
     case ParserMode::Good: {
+      reduce_singletons();
       // Shift if you are supposed to, or if you are unable to reduce.
       if (should_shift() || !reduce()) { shift(); }
     } break;
@@ -468,14 +459,7 @@ bool Parser::should_shift() {
   // Reduce terminals
   switch (last_type) {
   case Language::identifier:
-  case Language::reserved_true:
-  case Language::reserved_false:
-  case Language::int_literal:
-  case Language::uint_literal:
-  case Language::real_literal:
-  case Language::char_literal:
   case Language::string_literal:
-  case Language::type_literal:
   case Language::right_paren:
   case Language::right_bracket: return false;
   default:;
@@ -577,6 +561,33 @@ bool Parser::should_shift() {
     return true;
   }
 
+  return false;
+}
+
+bool Parser::reduce_singletons() {
+#define SINGLETON(output, nt, func)                                            \
+  if (stack_.back()->node_type() == Language::nt) {                            \
+    auto nptr = stack_.back();                                                 \
+    stack_.pop_back();                                                         \
+    stack_.push_back(func({nptr}));                                            \
+    stack_.back()->set_node_type(Language::output);                            \
+    delete nptr;                                                               \
+    return true;                                                               \
+  }
+
+  SINGLETON(expression, reserved_true, AST::Terminal::build_true)
+  SINGLETON(expression, reserved_false, AST::Terminal::build_false)
+  SINGLETON(expression, reserved_null, AST::Terminal::build_null)
+  SINGLETON(expression, uint_literal, AST::Terminal::build_uint_literal)
+  SINGLETON(expression, int_literal, AST::Terminal::build_int_literal)
+  SINGLETON(expression, real_literal, AST::Terminal::build_real_literal)
+  SINGLETON(expression, char_literal, AST::Terminal::build_char_literal)
+  SINGLETON(expression, reserved_input, AST::Terminal::build_input)
+  SINGLETON(expression, reserved_ord, AST::Terminal::build_ord)
+  SINGLETON(expression, reserved_ascii, AST::Terminal::build_ASCII)
+  SINGLETON(expression, reserved_alloc, AST::Terminal::build_alloc)
+  SINGLETON(expression, type_literal, AST::Terminal::build_type_literal)
+#undef SINGLETON
   return false;
 }
 

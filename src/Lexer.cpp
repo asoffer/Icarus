@@ -204,18 +204,17 @@ AST::TokenNode Lexer::next_operator() {
   Language::NodeType node_type;
   switch (peek) {
   case '+':
-    case '*':
-    case '%':
-      lead_char = static_cast<char>(peek);
-      node_type = Language::generic_operator;
-      break;
-    case '<':
-    case '>':
-      lead_char = static_cast<char>(peek);
-      node_type = Language::binary_boolean_operator;
-      break;
-    default:
-      lead_char = 0;
+  case '*':
+  case '%':
+    lead_char = static_cast<char>(peek);
+    node_type = Language::generic_operator;
+    break;
+  case '<':
+  case '>':
+    lead_char = static_cast<char>(peek);
+    node_type = Language::binary_boolean_operator;
+    break;
+  default: lead_char = 0;
   }
 
   if (lead_char != 0) {
