@@ -188,7 +188,7 @@ void traverse_from(PtrWithTorV pt) {
         continue;
 
       } else if ((already_seen_ AT(dep.ptr_) & seen_flag) != 0) {
-        error_log.log(dep.ptr_->line_num, "Cyclic dependency found.");
+        error_log.log(dep.ptr_->loc, "Cyclic dependency found.");
         assert(false && "cyclic dep found");
 
       } else {
@@ -276,7 +276,7 @@ std::string ShowFlag (Flag f) {
 std::string graphviz_label(PtrWithTorV x) {
   std::stringstream output;
   output << (x.torv_ ? "  t" : "  v") << x.ptr_ << "[label=\"{"
-         << escape(x.ptr_->graphviz_label()) << "\t(" << x.ptr_->line_num
+         << escape(x.ptr_->graphviz_label()) << "\t(" << x.ptr_->loc.line_num
          << ")|" << escape(x.ptr_->is_expression()
                                ? static_cast<AST::Expression *>(x.ptr_)
                                      ->type->to_string()

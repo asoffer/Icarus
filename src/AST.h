@@ -85,9 +85,9 @@ struct Node {
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
 
-  Node(size_t line_num = 0, Language::NodeType type = Language::unknown,
+  Node(TokenLocation loc = TokenLocation(), Language::NodeType type = Language::unknown,
        const std::string &token = "")
-      : scope_(nullptr), type_(type), token_(token), line_num(line_num),
+      : scope_(nullptr), type_(type), token_(token), loc(loc),
         time_(Time::error) {}
 
   virtual ~Node() {}
@@ -100,7 +100,7 @@ struct Node {
 
   Language::NodeType type_;
   std::string token_;
-  size_t line_num;
+  TokenLocation loc;
   Time::Eval time_;
 };
 
@@ -121,13 +121,13 @@ struct Expression : public Node {
 };
 
 struct TokenNode : public Node {
-  static TokenNode eof(size_t line_num) {
-    return TokenNode(line_num, Language::eof);
+  static TokenNode eof(TokenLocation loc) {
+    return TokenNode(loc, Language::eof);
   }
 
-  static TokenNode newline() { return TokenNode(0, Language::newline); }
-  static TokenNode string_literal(size_t line_num, const std::string &str_lit) {
-    return TokenNode(line_num, Language::string_literal, str_lit);
+  static TokenNode newline() { return TokenNode(TokenLocation(), Language::newline); }
+  static TokenNode string_literal(TokenLocation loc, const std::string &str_lit) {
+    return TokenNode(loc, Language::string_literal, str_lit);
   }
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
@@ -139,7 +139,7 @@ struct TokenNode : public Node {
   virtual ~TokenNode() {}
 
   // TODO make newline default a bof (beginning of file)
-  TokenNode(size_t line_num = 0,
+  TokenNode(TokenLocation loc = TokenLocation(),
             Language::NodeType in_node_type = Language::newline,
             std::string str_lit = "");
   std::string tk_;
@@ -177,7 +177,7 @@ struct Terminal : public Expression {
 
 struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
-  Identifier(size_t line_num, const std::string &token_string);
+  Identifier(TokenLocation loc, const std::string &token_string);
 
   llvm::Value *alloc;
   bool is_arg; // function argument or struct parameter
@@ -416,7 +416,7 @@ struct EnumLiteral : public Expression {
 
 struct DummyTypeExpr : public Expression {
   EXPR_FNS(DummyTypeExpr, dummy);
-  DummyTypeExpr(size_t expr_line_num, Type *t);
+  DummyTypeExpr(TokenLocation loc, Type *t);
 
   Type *type_value;
 };
@@ -429,9 +429,7 @@ struct Jump : public Node {
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  Jump(size_t new_line_num, JumpType jump_type) : jump_type(jump_type) {
-    line_num = new_line_num;
-  }
+  Jump(TokenLocation new_loc, JumpType jump_type);
 
   BlockScope *scope;
   JumpType jump_type;

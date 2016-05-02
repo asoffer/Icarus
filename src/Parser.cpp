@@ -375,7 +375,7 @@ AST::Node *Parser::cleanup() {
       std::cerr << "Parser error: Exiting with Stack size = " << stack_.size()
                 << std::endl;
     }
-    error_log.log(0, "Parser error.");
+    error_log.log(TokenLocation(), "Parser error.");
   }
 
   return stack_.back();
@@ -548,9 +548,9 @@ bool Parser::should_shift() {
     // TODO figure out if we should exit early here. Is there any reasonable
     // way to continue?
     if (associativity == non_assoc) {
-      error_log.log(lookahead_->line_num, "Non-associative operator found "
-                                          "with no specified association. "
-                                          "Maybe you forgot parentheses?");
+      error_log.log(lookahead_->loc, "Non-associative operator found "
+                                     "with no specified association. "
+                                     "Maybe you forgot parentheses?");
     }
 
     // If the precedence levels are equal, we should shift right-associative

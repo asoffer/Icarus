@@ -8,28 +8,15 @@ public:
   ErrorLog();
   friend std::ostream &operator<<(std::ostream &os, const ErrorLog &log);
 
-  inline size_t num_errors() const;
-  inline void set_file(const std::string &file_name);
-  inline void log(size_t line_num, const std::string &msg);
+  size_t num_errors() const;
+  void log(TokenLocation loc, const std::string &msg);
 
   AST::Node *assignment_vs_equality(AST::Node *node);
 
 private:
   size_t err_num_;
-  std::string file_name_;
-  std::map<size_t, std::vector<std::string>> log_;
+  std::map<std::string, std::map<size_t, std::vector<std::string>>> log_;
 };
-
-size_t ErrorLog::num_errors() const { return log_.size(); }
-
-void ErrorLog::set_file(const std::string &file_name) {
-  file_name_ = file_name;
-}
-
-void ErrorLog::log(size_t line_num, const std::string &msg) {
-  ++err_num_;
-  log_[line_num].push_back(msg);
-}
 
 extern ErrorLog error_log;
 

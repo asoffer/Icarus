@@ -1,0 +1,7 @@
+import "no_compile/other_func.ic"
+
+main := void -> void {
+  a := 3
+  a += 3.3
+  f()
+}

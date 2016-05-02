@@ -18,7 +18,7 @@ void Binop::lrvalue_check() {
 
   if (is_assignment() && !lhs->lvalue) {
     // TODO better error message.
-    error_log.log(line_num, "Invalid assignment (to rvalue)");
+    error_log.log(loc, "Invalid assignment (to rvalue)");
 
   } else {
     lvalue =

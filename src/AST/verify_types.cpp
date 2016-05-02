@@ -54,7 +54,7 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
         auto call_binop = new AST::Binop();
         call_binop->op  = Language::Operator::Call;
         call_binop->lhs = test_func;
-        auto dummy      = new AST::DummyTypeExpr(rhs->line_num, rhs->type);
+        auto dummy      = new AST::DummyTypeExpr(rhs->loc, rhs->type);
         call_binop->rhs = dummy;
 
         success = call_binop->evaluate(lhs->scope_->context).as_bool;
@@ -82,9 +82,8 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
       }
 
       // Cache the function
-      fn_expr->cache[rhs->type] =
-          GenerateSpecifiedFunction((AST::FunctionLiteral *)fn_expr,
-                                    (TypeVariable *)in_types, rhs->type);
+      fn_expr->cache[rhs->type] = GenerateSpecifiedFunction(
+          (AST::FunctionLiteral *)fn_expr, (TypeVariable *)in_types, rhs->type);
 
       // TODO what if T is in the return type?
       return static_cast<Function *>(lhs_type)->output;
@@ -97,7 +96,7 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
       auto ret_type = ((Function *)lhs_type)->output;
       if (ret_type->is_type_variable()) {
         // TODO more generically, if it has a variable
-        auto tv = (TypeVariable *)ret_type;
+        auto tv        = (TypeVariable *)ret_type;
         auto new_scope = lhs->scope_->context.spawn();
 
         // TODO tv->identifier isn't in this scope. is this at all reasonable?
@@ -143,9 +142,7 @@ void Identifier::verify_types() {
     assert(type && "type is null");
   } else {
     std::vector<Type *> vec;
-    for (auto decl : decls) {
-      vec.push_back(decl->type);
-    }
+    for (auto decl : decls) { vec.push_back(decl->type); }
 
     type = new QuantumType(vec);
   }
@@ -185,19 +182,19 @@ void Unop::verify_types() {
   switch (op) {
   case Operator::Free: {
     if (!operand->type->is_pointer()) {
-      error_log.log(line_num, "Free can only be called on pointer types");
+      error_log.log(loc, "Free can only be called on pointer types");
     }
     type = Void;
   } break;
   case Operator::Print: {
     if (operand->type == Void) {
-      error_log.log(line_num, "Void types cannot be printed");
+      error_log.log(loc, "Void types cannot be printed");
     }
     type = Void;
   } break;
   case Operator::Return: {
     if (operand->type == Void) {
-      error_log.log(line_num, "Void types cannot be returned");
+      error_log.log(loc, "Void types cannot be returned");
     }
 
     type = Void;
@@ -207,16 +204,16 @@ void Unop::verify_types() {
       type = static_cast<Pointer *>(operand->type)->pointee;
 
     } else {
-      error_log.log(line_num, "Dereferencing object of type " +
-                                  operand->type->to_string() +
-                                  ", which is not a pointer.");
+      error_log.log(loc, "Dereferencing object of type " +
+                             operand->type->to_string() +
+                             ", which is not a pointer.");
       type = Error;
     }
   } break;
   case Operator::Call: {
     // TODO quantum types
     if (!operand->type->is_function()) {
-      error_log.log(line_num,
+      error_log.log(loc,
                     "Identifier `" + operand->token() + "` is not a function.");
       type = Error;
       return;
@@ -224,8 +221,8 @@ void Unop::verify_types() {
 
     auto fn = static_cast<Function *>(operand->type);
     if (fn->input != Void) {
-      error_log.log(line_num, "Calling function `" + operand->token() +
-                                  "` with no arguments.");
+      error_log.log(loc, "Calling function `" + operand->token() +
+                             "` with no arguments.");
       type = Error;
     } else {
       type = fn->output;
@@ -242,7 +239,7 @@ void Unop::verify_types() {
   } break;
   case Operator::Sub: {
     if (operand->type == Uint) {
-      error_log.log(line_num, "Negation applied to unsigned integer");
+      error_log.log(loc, "Negation applied to unsigned integer");
       type = Int;
 
     } else if (operand->type == Int) {
@@ -260,23 +257,24 @@ void Unop::verify_types() {
       }
 
       auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
-      if (t) { type = static_cast<Function *>(t)->output; }
-      else {
-        error_log.log(line_num,
-                      type->to_string() + " has no negation operator.");
+      if (t) {
+        type = static_cast<Function *>(t)->output;
+      } else {
+        error_log.log(loc, type->to_string() + " has no negation operator.");
         type = Error;
       }
 
     } else {
-      error_log.log(line_num, type->to_string() + " has no negation operator.");
+      error_log.log(loc, type->to_string() + " has no negation operator.");
       type = Error;
     }
   } break;
   case Operator::Dots: {
-    if (operand->type == Uint || operand->type == Int || operand->type == Char) {
+    if (operand->type == Uint || operand->type == Int ||
+        operand->type == Char) {
       type = Range(operand->type);
     } else {
-      error_log.log(line_num, type->to_string() + " cannot be part of a range");
+      error_log.log(loc, type->to_string() + " cannot be part of a range");
       type = Error;
     }
   } break;
@@ -285,7 +283,7 @@ void Unop::verify_types() {
       type = Bool;
     } else {
       error_log.log(
-          line_num,
+          loc,
           "The logical negation operator `!` only applies to boolean values");
       type = Error;
     }
@@ -303,7 +301,6 @@ void Access::verify_types() {
     return;
   }
 
-
   if (etype == Type_) {
     Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
 
@@ -320,8 +317,8 @@ void Access::verify_types() {
         type = operand->evaluate(scope_->context).as_type;
 
       } else {
-        error_log.log(line_num, etypename->to_string() + " has no member " +
-                                    member_name + ".");
+        error_log.log(loc, etypename->to_string() + " has no member " +
+                               member_name + ".");
         type = Error;
       }
       return;
@@ -346,9 +343,8 @@ void Access::verify_types() {
       type = member_type;
 
     } else {
-      error_log.log(line_num, "Objects of type " + etype->to_string() +
-                                  " have no member named `" + member_name +
-                                  "`.");
+      error_log.log(loc, "Objects of type " + etype->to_string() +
+                             " have no member named `" + member_name + "`.");
       type = Error;
     }
   }
@@ -377,10 +373,10 @@ void Binop::verify_types() {
     }
 
     if (lhs->type != rhs->type) {
-      error_log.log(line_num, "Invalid assignment. Left-hand side has type " +
-                                  lhs->type->to_string() +
-                                  ", but right-hand side has type " +
-                                  rhs->type->to_string());
+      error_log.log(loc, "Invalid assignment. Left-hand side has type " +
+                             lhs->type->to_string() +
+                             ", but right-hand side has type " +
+                             rhs->type->to_string());
     }
     type = Void;
     return;
@@ -389,7 +385,7 @@ void Binop::verify_types() {
   switch (op) {
   case Operator::Rocket: {
     if (lhs->type != Bool) {
-      error_log.log(line_num, "LHS of rocket must be a bool");
+      error_log.log(loc, "LHS of rocket must be a bool");
       type = Error;
     }
   } break;
@@ -398,7 +394,7 @@ void Binop::verify_types() {
       size_t num_matches = 0;
       Type *resulting_type;
 
-      auto id_token  = lhs->token();
+      auto id_token = lhs->token();
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
         if (!id_ptr) { continue; }
@@ -406,8 +402,7 @@ void Binop::verify_types() {
         if (id_ptr->type->is_quantum()) {
           // If the LHS has a quantum type, test all possibilities to see which
           // one works. Verify that exactly one works.
-          for (auto opt :
-               static_cast<QuantumType *>(id_ptr->type)->options) {
+          for (auto opt : static_cast<QuantumType *>(id_ptr->type)->options) {
             auto t = CallResolutionMatch(opt, id_ptr, rhs);
             if (t) {
               ++num_matches;
@@ -423,10 +418,9 @@ void Binop::verify_types() {
 
       if (num_matches != 1) {
         type = Error;
-        error_log.log(line_num,
-                      num_matches == 0
-                          ? "No function overload matches call."
-                          : "Multiple function overloads match call.");
+        error_log.log(loc, num_matches == 0
+                               ? "No function overload matches call."
+                               : "Multiple function overloads match call.");
       } else {
         type = resulting_type;
       }
@@ -453,10 +447,9 @@ void Binop::verify_types() {
 
       if (num_matches != 1) {
         type = Error;
-        error_log.log(line_num,
-                      num_matches == 0
-                          ? "No function overload matches call."
-                          : "Multiple function overloads match call.");
+        error_log.log(loc, num_matches == 0
+                               ? "No function overload matches call."
+                               : "Multiple function overloads match call.");
       } else {
         type = resulting_type;
       }
@@ -467,8 +460,8 @@ void Binop::verify_types() {
     if (!lhs->type->is_array()) {
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
-      error_log.log(line_num, "Identifier `" + lhs->token() +
-                                  "` does not name an array.");
+      error_log.log(loc, "Identifier `" + lhs->token() +
+                             "` does not name an array.");
       return;
     }
 
@@ -476,7 +469,7 @@ void Binop::verify_types() {
     assert(type && "array data type is nullptr");
     // TODO allow slice indexing
     if (rhs->type != Int && rhs->type != Uint) {
-      error_log.log(line_num,
+      error_log.log(loc,
                     "Arary must be indexed by an int or uint. You supplied a " +
                         rhs->type->to_string());
       return;
@@ -498,8 +491,8 @@ void Binop::verify_types() {
       return;
     }
 
-    error_log.log(line_num, "Invalid cast from " + lhs->type->to_string() +
-                                " to " + type->to_string());
+    error_log.log(loc, "Invalid cast from " + lhs->type->to_string() + " to " +
+                           type->to_string());
   } break;
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
@@ -512,9 +505,9 @@ void Binop::verify_types() {
       type = Range(Char);
 
     } else {
-      error_log.log(line_num, "No known range construction for types" +
-                                  lhs->type->to_string() + " .. " +
-                                  rhs->type->to_string());
+      error_log.log(loc, "No known range construction for types" +
+                             lhs->type->to_string() + " .. " +
+                             rhs->type->to_string());
     }
   } break;
   case Language::Operator::XorEq: {
@@ -522,7 +515,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Error;
-      error_log.log(line_num, "Operator ^= must take arguments of type bool");
+      error_log.log(loc, "Operator ^= must take arguments of type bool");
     }
   } break;
   case Language::Operator::AndEq: {
@@ -530,7 +523,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Error;
-      error_log.log(line_num, "Operator &= must take arguments of type bool");
+      error_log.log(loc, "Operator &= must take arguments of type bool");
     }
   } break;
   case Language::Operator::OrEq: {
@@ -538,7 +531,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Error;
-      error_log.log(line_num, "Operator |= must take arguments of type bool");
+      error_log.log(loc, "Operator |= must take arguments of type bool");
     }
   } break;
 
@@ -561,18 +554,18 @@ void Binop::verify_types() {
         type = static_cast<Function *>(fn_type)->output;                       \
       } else {                                                                 \
         type = Error;                                                          \
-        error_log.log(line_num, "No known operator overload for `" symbol      \
-                                "` with types " +                              \
-                                    lhs->type->to_string() + " and " +          \
-                                    rhs->type->to_string());                    \
+        error_log.log(loc, "No known operator overload for `" symbol           \
+                           "` with types " +                                   \
+                               lhs->type->to_string() + " and " +              \
+                               rhs->type->to_string());                        \
       }                                                                        \
     }                                                                          \
   } break
 
-    CASE(Add,   "add",    "+",  lhs->type);
-    CASE(Sub,   "sub",    "-",  lhs->type);
-    CASE(Div,   "div",    "/",  lhs->type);
-    CASE(Mod,   "mod",    "%",  lhs->type);
+    CASE(Add, "add", "+", lhs->type);
+    CASE(Sub, "sub", "-", lhs->type);
+    CASE(Div, "div", "/", lhs->type);
+    CASE(Mod, "mod", "%", lhs->type);
     CASE(AddEq, "add_eq", "+=", Void);
     CASE(SubEq, "sub_eq", "-=", Void);
     CASE(MulEq, "mul_eq", "*=", Void);
@@ -596,7 +589,7 @@ void Binop::verify_types() {
 
       } else {
         type = Error;
-        error_log.log(line_num, "Functions cannot be composed.");
+        error_log.log(loc, "Functions cannot be composed.");
       }
 
     } else {
@@ -613,29 +606,26 @@ void Binop::verify_types() {
         type = static_cast<Function *>(fn_type)->output;
       } else {
         type = Error;
-        error_log.log(line_num,
-                      "No known operator overload for `*` with types " +
-                          lhs->type->to_string() + " and " +
-                          rhs->type->to_string());
+        error_log.log(loc, "No known operator overload for `*` with types " +
+                               lhs->type->to_string() + " and " +
+                               rhs->type->to_string());
       }
     }
   } break;
   case Operator::Arrow: {
     if (lhs->type != Type_) {
       type = Error;
-      error_log.log(line_num, "From-type for a function must be a type.");
+      error_log.log(loc, "From-type for a function must be a type.");
     }
     if (rhs->type != Type_) {
       type = Error;
-      error_log.log(line_num, "To-type for a function must be a type.");
+      error_log.log(loc, "To-type for a function must be a type.");
     }
 
     if (type != Error) { type = Type_; }
 
   } break;
-  default: {
-    assert(false);
-  }
+  default: { assert(false); }
   }
 }
 
@@ -670,7 +660,7 @@ void ChainOp::verify_types() {
     ss << "Type error: Types do not all match. Found the following types:\n";
     for (const auto &t : expr_types) { ss << "\t" << *t << "\n"; }
 
-    error_log.log(line_num, ss.str());
+    error_log.log(loc, ss.str());
     type = Error;
   }
 }
@@ -678,7 +668,7 @@ void ChainOp::verify_types() {
 void Declaration::verify_types() {
   if (type_expr->type == Void) {
     type = Error;
-    error_log.log(line_num, "Void types cannot be assigned.");
+    error_log.log(loc, "Void types cannot be assigned.");
     return;
   }
 
@@ -711,7 +701,7 @@ void Declaration::verify_types() {
       if (t->is_enum()) { type = t; }
 
     } else {
-      error_log.log(line_num, "Cannot determine type from in declaration.");
+      error_log.log(loc, "Cannot determine type from in declaration.");
       type = Error;
     }
   } break;
@@ -719,8 +709,7 @@ void Declaration::verify_types() {
     if (!type_expr->type->is_function()) {
       // TODO Need a way better
       error_log.log(
-          line_num,
-          "Cannot generate a type where the tester is not a function");
+          loc, "Cannot generate a type where the tester is not a function");
       type = Error;
       return;
     }
@@ -728,7 +717,7 @@ void Declaration::verify_types() {
     auto test_func = static_cast<Function *>(type_expr->type);
     if (test_func->output != Bool) {
       // TODO What about implicitly cast-able to bool via a user-defined cast?
-      error_log.log(line_num, "Test function must return a bool");
+      error_log.log(loc, "Test function must return a bool");
       type = Error;
       return;
     }
@@ -740,53 +729,52 @@ void Declaration::verify_types() {
   } break;
   }
 
-
   if (identifier->token() == "__print__") {
     if (!type->is_function()) {
-      error_log.log(line_num, "Print must be defined to be a function.");
+      error_log.log(loc, "Print must be defined to be a function.");
       return;
     }
 
     bool error_raised = false;
     auto fn_type = (Function *)type;
     if (!fn_type->input->is_struct()) {
-      error_log.log(line_num, "Cannot define print function for " +
-                                  fn_type->input->to_string());
+      error_log.log(loc, "Cannot define print function for " +
+                             fn_type->input->to_string());
       error_raised = true;
     }
 
     if (fn_type->output != Void) {
-      error_log.log(line_num, "print function must return void");
+      error_log.log(loc, "print function must return void");
       error_raised = true;
     }
 
     if (error_raised) { return; }
   } else if (identifier->token() == "__assign__") {
     if (!type->is_function()) {
-      error_log.log(line_num, "Assign must be defined to be a function");
+      error_log.log(loc, "Assign must be defined to be a function");
       return;
     }
 
     bool error_raised = false;
     auto fn_type = (Function *)type;
     if (!fn_type->input->is_tuple()) {
-      error_log.log(line_num, "Cannot define assign function for " +
-                                  fn_type->input->to_string());
+      error_log.log(loc, "Cannot define assign function for " +
+                             fn_type->input->to_string());
       error_raised = true;
     } else {
       auto in = static_cast<Tuple *>(fn_type->input);
       if (in->entries.size() != 2) {
-        error_log.log(line_num,
-                      "Assignment must be a binary operator, but " +
-                          std::to_string(in->entries.size()) + "argument" +
-                          (in->entries.size() != 1 ? "s" : "") + " given.");
+        error_log.log(loc, "Assignment must be a binary operator, but " +
+                               std::to_string(in->entries.size()) + "argument" +
+                               (in->entries.size() != 1 ? "s" : "") +
+                               " given.");
         error_raised = true;
       }
       // TODO more checking.
     }
 
     if (fn_type->output != Void) {
-      error_log.log(line_num, "assignment must return void");
+      error_log.log(loc, "assignment must return void");
       error_raised = true;
     }
 
@@ -794,25 +782,25 @@ void Declaration::verify_types() {
 
   } else if (identifier->token() == "__destroy__") {
     if (!type->is_function()) {
-      error_log.log(line_num, "Destructor must be defined to be a function.");
+      error_log.log(loc, "Destructor must be defined to be a function.");
       return;
     }
 
     bool error_raised = false;
     auto fn_type = (Function *)type;
     if (!fn_type->input->is_pointer()) {
-      error_log.log(line_num, "Destructor must take one pointer argument.");
+      error_log.log(loc, "Destructor must take one pointer argument.");
       error_raised = true;
     } else {
       auto ptee = static_cast<Pointer *>(fn_type->input)->pointee;
       if (!ptee->is_struct()) {
-        error_log.log(line_num, "Destructor must take a pointer to a struct.");
+        error_log.log(loc, "Destructor must take a pointer to a struct.");
         error_raised = true;
       }
     }
 
     if (fn_type->output != Void) {
-      error_log.log(line_num, "Destructor must return void");
+      error_log.log(loc, "Destructor must return void");
       error_raised = true;
     }
 
@@ -824,7 +812,7 @@ void Declaration::verify_types() {
   if (type_expr->is_terminal()) {
     auto term = static_cast<Terminal *>(type_expr);
     if (term->terminal_type == Language::Terminal::Null) {
-      error_log.log(line_num, "Cannot infer the type of `null`.");
+      error_log.log(loc, "Cannot infer the type of `null`.");
     }
   }
 
@@ -834,7 +822,7 @@ void Declaration::verify_types() {
 void ArrayType::verify_types() {
   // TODO change this to uint
   if (length != nullptr && length->type != Int) {
-    error_log.log(line_num, "Array length indexed by non-integral type");
+    error_log.log(loc, "Array length indexed by non-integral type");
   }
 
   if (data_type->type == Type_) {
@@ -856,8 +844,7 @@ void ArrayLiteral::verify_types() {
   type = Arr(type_to_match);
   for (const auto &el : elems) {
     if (el->type != type_to_match) {
-      error_log.log(line_num,
-                    "Type error: Array literal must have consistent type");
+      error_log.log(loc, "Type error: Array literal must have consistent type");
       type = Error;
     }
   }
@@ -902,8 +889,8 @@ void Statements::verify_types() {
 
 void While::verify_types() {
   if (condition->type != Bool) {
-    error_log.log(line_num, "While loop condition must be a bool, but " +
-                                condition->type->to_string() + " given.");
+    error_log.log(loc, "While loop condition must be a bool, but " +
+                           condition->type->to_string() + " given.");
   }
 }
 
@@ -915,8 +902,8 @@ void For::verify_types() {
 void Conditional::verify_types() {
   for (const auto &cond : conditions) {
     if (cond->type != Bool) {
-      error_log.log(line_num, "Conditional must be a bool, but " +
-                                  cond->type->to_string() + " given.");
+      error_log.log(loc, "Conditional must be a bool, but " +
+                             cond->type->to_string() + " given.");
     }
   }
 }
@@ -955,10 +942,9 @@ Type *KVPairList::verify_types_with_key(Type *key_type) {
       // TODO: give some context for this error message. Why must this be the
       // type?  So far the only instance where this is called is for case
       // statements,
-      error_log.log(line_num, "Type of `____` must be " +
-                                  key_type->to_string() + ", but " +
-                                  kv.first->type->to_string() +
-                                  " found instead.");
+      error_log.log(loc, "Type of `____` must be " + key_type->to_string() +
+                             ", but " + kv.first->type->to_string() +
+                             " found instead.");
       kv.first->type = key_type;
       assert(kv.first->type && "keytype");
     }
@@ -968,8 +954,7 @@ Type *KVPairList::verify_types_with_key(Type *key_type) {
 
   // TODO guess what type was intended
   if (value_types.size() != 1) {
-    error_log.log(line_num,
-                  "Type error: Values do not match in key-value pairs");
+    error_log.log(loc, "Type error: Values do not match in key-value pairs");
     return Error;
   }
 
@@ -985,7 +970,7 @@ void Jump::verify_types() {
     auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
     if (block_scope_ptr->type == ScopeType::Function) {
       if (jump_type != JumpType::Return) {
-        error_log.log(line_num, "statement must be contained inside a loop.");
+        error_log.log(loc, "statement must be contained inside a loop.");
       }
       return;
     }
@@ -1001,7 +986,5 @@ void Jump::verify_types() {
   assert(false && "How did you get to here?");
 }
 
-void DummyTypeExpr::verify_types() {
-  type = Type_;
-}
+void DummyTypeExpr::verify_types() { type = Type_; }
 } // namespace AST

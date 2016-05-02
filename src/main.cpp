@@ -118,7 +118,6 @@ int main(int argc, char *argv[]) {
         << "File '" << file_name << "' does not exist or cannot be accessed."
         << std::endl;
     }
-    error_log.set_file(file_name);
 
     Parser parser(file_name);
     ast_map[file_name] = (AST::Statements *)parser.parse();

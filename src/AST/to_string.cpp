@@ -124,7 +124,6 @@ std::string Conditional::to_string(size_t n) const {
 
   std::string Binop::to_string(size_t n) const {
     std::stringstream ss;
-    ss << tabs(n);
     if (is_assignment()) {
       ss << "<Assignment " << TYPE_OR("");
 

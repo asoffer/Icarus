@@ -95,9 +95,9 @@ Context::Value Unop::evaluate(Context &ctx) {
 
     } else if (operand->type != Type_) {
       // TODO better error message
-      error_log.log(line_num, "Taking the address of a " +
-                                  operand->type->to_string() +
-                                  " is not allowed at compile-time");
+      error_log.log(loc, "Taking the address of a " +
+                             operand->type->to_string() +
+                             " is not allowed at compile-time");
     }
 
     return Context::Value(Ptr(operand->evaluate(ctx).as_type));
@@ -273,7 +273,7 @@ Context::Value Terminal::evaluate(Context &ctx) {
     if (token() == "uint") return Context::Value(Uint);
     if (token() == "void") return Context::Value(Void);
 
-    error_log.log(line_num, "I don't think `" + token() + "` is a type!");
+    error_log.log(loc, "I don't think `" + token() + "` is a type!");
     return Context::Value(Error);
   } else { /* TODO */
   }

@@ -10,7 +10,6 @@ template <typename T> T *steal(AST::Expression *&n) {
   return temp;
 }
 
-
 template <typename T> T *steal(AST::Node *&n) {
   auto temp = (T *)n;
   assert(temp && "stolen pointer is null");
@@ -22,19 +21,19 @@ namespace AST {
 Node *Identifier::build(NPtrVec &&nodes) {
   if (nodes[0]->token() == "string") { file_queue.emplace("lib/string.ic"); }
 
-  return new Identifier(nodes[0]->line_num, nodes[0]->token());
+  return new Identifier(nodes[0]->loc, nodes[0]->token());
 }
 
 Node *Unop::build(NPtrVec &&nodes) {
-  auto unop_ptr      = new Unop;
-  unop_ptr->operand  = steal<Expression>(nodes[1]);
+  auto unop_ptr     = new Unop;
+  unop_ptr->operand = steal<Expression>(nodes[1]);
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node       = static_cast<TokenNode *>(nodes[0]);
-  unop_ptr->line_num = tk_node->line_num;
-  unop_ptr->type_    = Language::expression;
-  unop_ptr->op       = tk_node->op;
+  auto tk_node    = static_cast<TokenNode *>(nodes[0]);
+  unop_ptr->loc   = tk_node->loc;
+  unop_ptr->type_ = Language::expression;
+  unop_ptr->op    = tk_node->op;
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
@@ -42,7 +41,7 @@ Node *Unop::build(NPtrVec &&nodes) {
 
 Node *Unop::build_paren_operator(NPtrVec &&nodes) {
   auto unop_ptr        = new Unop;
-  unop_ptr->line_num   = nodes[1]->line_num;
+  unop_ptr->loc        = nodes[1]->loc;
   unop_ptr->operand    = steal<Expression>(nodes[0]);
   unop_ptr->type_      = Language::expression;
   unop_ptr->op         = Language::Operator::Call;
@@ -53,25 +52,24 @@ Node *Unop::build_paren_operator(NPtrVec &&nodes) {
 
 // More generally, this is correct for any right-unary operation
 Node *Unop::build_dots(NPtrVec &&nodes) {
-  auto unop_ptr      = new Unop;
-  unop_ptr->operand  = steal<Expression>(nodes[0]);
+  auto unop_ptr     = new Unop;
+  unop_ptr->operand = steal<Expression>(nodes[0]);
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node       = static_cast<TokenNode *>(nodes[1]);
-  unop_ptr->line_num = tk_node->line_num;
-  unop_ptr->type_    = Language::expression;
-  unop_ptr->op       = tk_node->op;
+  auto tk_node    = static_cast<TokenNode *>(nodes[1]);
+  unop_ptr->loc   = tk_node->loc;
+  unop_ptr->type_ = Language::expression;
+  unop_ptr->op    = tk_node->op;
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
 }
 
-
 Node *Access::build(NPtrVec &&nodes) {
   auto access_ptr         = new Access;
   access_ptr->member_name = nodes[2]->token();
-  access_ptr->line_num    = nodes[0]->line_num;
+  access_ptr->loc         = nodes[0]->loc;
   access_ptr->operand     = steal<Expression>(nodes[0]);
 
   return access_ptr;
@@ -80,7 +78,7 @@ Node *Access::build(NPtrVec &&nodes) {
 Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class,
                             Language::NodeType nt) {
   auto binop_ptr = new Binop;
-  binop_ptr->line_num = nodes[1]->line_num;
+  binop_ptr->loc = nodes[1]->loc;
 
   binop_ptr->lhs   = steal<Expression>(nodes[0]);
   binop_ptr->rhs   = steal<Expression>(nodes[2]);
@@ -182,7 +180,7 @@ Node *ChainOp::join(NPtrVec &&nodes) {
 
 Node *ChainOp::build(NPtrVec &&nodes) {
   // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
-  auto op_node = static_cast<TokenNode*>(nodes[1]);
+  auto op_node = static_cast<TokenNode *>(nodes[1]);
   auto op_prec = Language::precedence(op_node->op);
 
   ChainOp *chain_ptr = nullptr;
@@ -197,11 +195,11 @@ Node *ChainOp::build(NPtrVec &&nodes) {
     chain_ptr = steal<ChainOp>(nodes[0]);
 
   } else {
-    chain_ptr           = new ChainOp;
-    chain_ptr->line_num = nodes[1]->line_num;
+    chain_ptr      = new ChainOp;
+    chain_ptr->loc = nodes[1]->loc;
 
     chain_ptr->exprs.push_back(steal<Expression>(nodes[0]));
-    nodes[0] = nullptr;
+    nodes[0]              = nullptr;
     chain_ptr->precedence = op_prec;
   }
 
@@ -215,7 +213,7 @@ Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
   array_lit_ptr->precedence =
       Language::precedence(Language::Operator::NotAnOperator);
-  array_lit_ptr->line_num = nodes[0]->line_num;
+  array_lit_ptr->loc = nodes[0]->loc;
 
   if (nodes[1]->is_comma_list()) {
     using std::swap;
@@ -235,10 +233,10 @@ Node *ArrayType::build(NPtrVec &&nodes) {
     auto prev         = steal<Expression>(nodes[3]);
 
     while (iter != length_chain->exprs.rend()) {
-      auto array_type_ptr      = new ArrayType;
-      array_type_ptr->line_num = (*iter)->line_num;
-      array_type_ptr->length   = *iter;
-      *iter                    = nullptr;
+      auto array_type_ptr    = new ArrayType;
+      array_type_ptr->loc    = (*iter)->loc;
+      array_type_ptr->length = *iter;
+      *iter                  = nullptr;
 
       array_type_ptr->precedence =
           Language::precedence(Language::Operator::NotAnOperator);
@@ -252,7 +250,7 @@ Node *ArrayType::build(NPtrVec &&nodes) {
 
   } else {
     auto array_type_ptr       = new ArrayType;
-    array_type_ptr->line_num  = nodes[0]->line_num;
+    array_type_ptr->loc       = nodes[0]->loc;
     array_type_ptr->length    = steal<Expression>(nodes[1]);
     array_type_ptr->data_type = steal<Expression>(nodes[3]);
 
@@ -264,8 +262,8 @@ Node *ArrayType::build(NPtrVec &&nodes) {
 }
 
 Node *ArrayType::build_unknown(NPtrVec &&nodes) {
-  auto array_type_ptr      = new ArrayType;
-  array_type_ptr->line_num = nodes[0]->line_num;
+  auto array_type_ptr = new ArrayType;
+  array_type_ptr->loc = nodes[0]->loc;
 
   // length == nullptr means we do not know the length of the array can
   // change.
@@ -287,7 +285,7 @@ Node *Terminal::build(NPtrVec &&) {
 Node *Terminal::build_string_literal(NPtrVec &&nodes) {
   file_queue.emplace("lib/string.ic");
   auto term_ptr           = new Terminal;
-  term_ptr->line_num      = nodes[0]->line_num;
+  term_ptr->loc           = nodes[0]->loc;
   term_ptr->terminal_type = Language::Terminal::StringLiteral;
   term_ptr->type          = Unknown; // TODO Why not String?
   term_ptr->token_        = nodes[0]->token();
@@ -300,7 +298,7 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
 #define TERMINAL_BUILD(name, enum_elem, ty)                                    \
   Node *Terminal::build_##name(NPtrVec &&nodes) {                              \
     auto term_ptr           = new Terminal;                                    \
-    term_ptr->line_num      = nodes[0]->line_num;                              \
+    term_ptr->loc           = nodes[0]->loc;                                   \
     term_ptr->terminal_type = Language::Terminal::enum_elem;                   \
     term_ptr->type          = ty;                                              \
     term_ptr->token_        = nodes[0]->token();                               \
@@ -340,7 +338,7 @@ Node *Expression::parenthesize(NPtrVec &&nodes) {
 }
 
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {
-  auto decl   = steal<Declaration>(nodes[0]);
+  auto decl = steal<Declaration>(nodes[0]);
   decl->hashtags.push_back(nodes[1]->token());
 
   return decl;
@@ -354,19 +352,19 @@ Node *Declaration::build(NPtrVec &&) {
 
 Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
                          DeclType dt) {
-  auto decl_ptr = Scope::make_declaration(
-      nodes[1]->line_num, dt, nodes[0]->token(), steal<Expression>(nodes[2]));
+  auto decl_ptr = Scope::make_declaration(nodes[1]->loc, dt, nodes[0]->token(),
+                                          steal<Expression>(nodes[2]));
 
   decl_ptr->type_ = node_type;
 
   switch (dt) {
-  case DeclType::Std:   decl_ptr->op = Language::Operator::Colon; break;
+  case DeclType::Std: decl_ptr->op   = Language::Operator::Colon; break;
   case DeclType::Infer: decl_ptr->op = Language::Operator::ColonEq; break;
-  case DeclType::In:    decl_ptr->op = Language::Operator::In; break;
-  case DeclType::Tick:  assert(false); break;
+  case DeclType::In: decl_ptr->op = Language::Operator::In; break;
+  case DeclType::Tick: assert(false); break;
   }
 
-  decl_ptr->precedence  = Language::precedence(decl_ptr->op);
+  decl_ptr->precedence = Language::precedence(decl_ptr->op);
 
   return decl_ptr;
 }
@@ -388,19 +386,19 @@ Node *Declaration::BuildIn(NPtrVec &&nodes) {
 
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   auto decl_ptr =
-      Scope::make_declaration(nodes[1]->line_num, DeclType::Tick,
-                              nodes[2]->token(), steal<Expression>(nodes[0]));
+      Scope::make_declaration(nodes[1]->loc, DeclType::Tick, nodes[2]->token(),
+                              steal<Expression>(nodes[0]));
 
-  decl_ptr->type_       = Language::DECL_OPERATOR_GENERATE;
-  decl_ptr->op          = Language::Operator::Tick;
-  decl_ptr->precedence  = Language::precedence(decl_ptr->op);
+  decl_ptr->type_      = Language::DECL_OPERATOR_GENERATE;
+  decl_ptr->op         = Language::Operator::Tick;
+  decl_ptr->precedence = Language::precedence(decl_ptr->op);
 
   return decl_ptr;
 }
 
 Node *KVPairList::build_one(NPtrVec &&nodes) {
-  auto pair_list      = new KVPairList;
-  pair_list->line_num = nodes[0]->line_num;
+  auto pair_list = new KVPairList;
+  pair_list->loc = nodes[0]->loc;
   Expression *key_ptr;
 
   // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
@@ -416,7 +414,7 @@ Node *KVPairList::build_one(NPtrVec &&nodes) {
 }
 
 Node *KVPairList::build_more(NPtrVec &&nodes) {
-  auto pair_list = steal<KVPairList>(nodes[0]);
+  auto pair_list      = steal<KVPairList>(nodes[0]);
   Expression *key_ptr = nullptr;
 
   // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
@@ -441,14 +439,14 @@ Node *KVPairList::build_more_assignment_error(NPtrVec &&nodes) {
 }
 
 Node *FunctionLiteral::build(NPtrVec &&nodes) {
-  auto fn_lit      = new FunctionLiteral;
-  fn_lit->line_num = nodes[0]->line_num;
+  auto fn_lit = new FunctionLiteral;
+  fn_lit->loc = nodes[0]->loc;
 
   fn_lit->statements = steal<Statements>(nodes[2]);
 
   // TODO scopes inside these statements should point to fn_scope.
 
-  auto binop_ptr           = static_cast<Binop*>(nodes[0]);
+  auto binop_ptr = static_cast<Binop *>(nodes[0]);
 
   // TODO steal not working in this instance. Figure out why.
   // fn_lit->return_type_expr = steal<Expression>(binop_ptr->rhs);
@@ -479,9 +477,9 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
 }
 
 Node *StructLiteral::build(NPtrVec &&nodes) {
-  auto struct_lit_ptr      = new StructLiteral;
-  struct_lit_ptr->line_num = nodes[0]->line_num;
-  struct_lit_ptr->type     = Type_;
+  auto struct_lit_ptr  = new StructLiteral;
+  struct_lit_ptr->loc  = nodes[0]->loc;
+  struct_lit_ptr->type = Type_;
 
   auto stmts = static_cast<Statements *>(nodes[2]);
   for (auto &&stmt : stmts->statements) {
@@ -496,9 +494,9 @@ Node *StructLiteral::build(NPtrVec &&nodes) {
 }
 
 Node *StructLiteral::build_parametric(NPtrVec &&nodes) {
-  auto struct_lit_ptr      = new StructLiteral;
-  struct_lit_ptr->line_num = nodes[0]->line_num;
-  struct_lit_ptr->type     = Type_;
+  auto struct_lit_ptr  = new StructLiteral;
+  struct_lit_ptr->loc  = nodes[0]->loc;
+  struct_lit_ptr->type = Type_;
 
   if (nodes[1]->is_declaration()) {
     struct_lit_ptr->params = {steal<Declaration>(nodes[1])};
@@ -527,7 +525,6 @@ Node *StructLiteral::build_parametric(NPtrVec &&nodes) {
   return struct_lit_ptr;
 }
 
-
 Node *Statements::build_one(NPtrVec &&nodes) {
   auto output = new Statements;
   output->statements.push_back(steal<Node>(nodes[0]));
@@ -543,10 +540,10 @@ Node *Statements::build_more(NPtrVec &&nodes) {
 }
 
 Node *Statements::build_double_expression_error(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->line_num, "Adjacent expressions");
+  error_log.log(nodes[0]->loc, "Adjacent expressions");
 
-  auto output      = new Statements;
-  output->line_num = nodes[0]->line_num;
+  auto output = new Statements;
+  output->loc = nodes[0]->loc;
   output->statements.push_back(steal<Node>(nodes[0]));
   output->statements.push_back(steal<Node>(nodes[1]));
 
@@ -554,7 +551,7 @@ Node *Statements::build_double_expression_error(NPtrVec &&nodes) {
 }
 
 Node *Statements::build_extra_expression_error(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->line_num, "Adjacent expressions");
+  error_log.log(nodes[0]->loc, "Adjacent expressions");
 
   auto output = steal<Statements>(nodes[0]);
   output->statements.push_back(steal<Node>(nodes[1]));
@@ -572,17 +569,17 @@ Node *Conditional::build_if(NPtrVec &&nodes) {
 
 Node *Conditional::build_extra_else_error(NPtrVec &&nodes) {
   auto if_stmt = static_cast<Conditional *>(nodes[0]);
-  error_log.log(nodes[1]->line_num, "If-statement already has an else-branch. "
-                                    "The first else-branch is on line " +
-                                        std::to_string(if_stmt->else_line_num) +
-                                        ".");
+  error_log.log(nodes[1]->loc, "If-statement already has an else-branch. "
+                               "The first else-branch is on line " +
+                                   std::to_string(if_stmt->else_line_num) +
+                                   ".");
 
   return steal<Node>(nodes[0]);
 }
 
 Node *Conditional::build_extra_else_if_error(NPtrVec &&nodes) {
   auto if_stmt = static_cast<Conditional *>(nodes[0]);
-  error_log.log(nodes[1]->line_num,
+  error_log.log(nodes[1]->loc,
                 "Else-if block is unreachable because it follows an else "
                 "block. The else-block is on line " +
                     std::to_string(if_stmt->else_line_num) + ".");
@@ -607,7 +604,7 @@ Node *Conditional::build_else_if(NPtrVec &&nodes) {
 
 Node *Conditional::build_else(NPtrVec &&nodes) {
   auto if_stmt           = steal<Conditional>(nodes[0]);
-  if_stmt->else_line_num = nodes[1]->line_num;
+  if_stmt->else_line_num = nodes[1]->loc.line_num;
   if_stmt->statements.push_back(steal<Statements>(nodes[3]));
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   return if_stmt;
@@ -619,14 +616,14 @@ Node *Conditional::build_if_assignment_error(NPtrVec &&nodes) {
 }
 
 Node *EnumLiteral::build(NPtrVec &&nodes) {
-  auto enum_lit_ptr      = new EnumLiteral;
-  enum_lit_ptr->line_num = nodes[0]->line_num;
-  enum_lit_ptr->type     = Type_;
+  auto enum_lit_ptr  = new EnumLiteral;
+  enum_lit_ptr->loc  = nodes[0]->loc;
+  enum_lit_ptr->type = Type_;
 
   auto stmts = static_cast<Statements *>(nodes[2]);
   for (auto &&stmt : stmts->statements) {
     if (!stmt->is_identifier()) {
-      error_log.log(stmt->line_num, "Enum members must be identifiers.");
+      error_log.log(stmt->loc, "Enum members must be identifiers.");
     }
 
     // TODO repeated terms?
@@ -641,15 +638,15 @@ Node *EnumLiteral::build(NPtrVec &&nodes) {
 Node *Jump::build(NPtrVec &&nodes) {
   switch (nodes[0]->node_type()) {
   case Language::reserved_break:
-    return new Jump(nodes[0]->line_num, JumpType::Break);
+    return new Jump(nodes[0]->loc, JumpType::Break);
   case Language::reserved_continue:
-    return new Jump(nodes[0]->line_num, JumpType::Continue);
+    return new Jump(nodes[0]->loc, JumpType::Continue);
   case Language::reserved_return:
-    return new Jump(nodes[0]->line_num, JumpType::Return);
+    return new Jump(nodes[0]->loc, JumpType::Return);
   case Language::reserved_restart:
-    return new Jump(nodes[0]->line_num, JumpType::Restart);
+    return new Jump(nodes[0]->loc, JumpType::Restart);
   case Language::reserved_repeat:
-    return new Jump(nodes[0]->line_num, JumpType::Repeat);
+    return new Jump(nodes[0]->loc, JumpType::Repeat);
   default: assert(false && "No other options");
   }
 }
@@ -663,7 +660,7 @@ Node *While::build(NPtrVec &&nodes) {
 
 Node *For::build(NPtrVec &&nodes) {
   auto for_stmt        = new For;
-  for_stmt->line_num   = nodes[0]->line_num;
+  for_stmt->loc        = nodes[0]->loc;
   for_stmt->statements = steal<Statements>(nodes[3]);
 
   auto iter_or_iter_list = steal<Expression>(nodes[1]);
@@ -692,9 +689,9 @@ Node *While::build_assignment_error(NPtrVec &&nodes) {
 }
 
 Node *Case::build(NPtrVec &&nodes) {
-  auto case_ptr      = new Case;
-  case_ptr->line_num = nodes[0]->line_num;
-  case_ptr->kv       = steal<KVPairList>(nodes[2]);
+  auto case_ptr = new Case;
+  case_ptr->loc = nodes[0]->loc;
+  case_ptr->kv  = steal<KVPairList>(nodes[2]);
   return case_ptr;
 }
 } // namespace AST

@@ -19,11 +19,11 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
 
     auto type_expr_ptr   = decl->type_expr->evaluate(ctx).as_type;
     auto new_decl        = new Declaration;
-    new_decl->identifier = new Identifier(line_num, decl->identifier->token());
-    new_decl->line_num   = decl->line_num;
+    new_decl->identifier = new Identifier(loc, decl->identifier->token());
+    new_decl->loc        = decl->loc;
     new_decl->decl_type  = decl->decl_type;
 
-    new_decl->type_expr = new DummyTypeExpr(decl->line_num, type_expr_ptr);
+    new_decl->type_expr = new DummyTypeExpr(decl->loc, type_expr_ptr);
 
     Scope::Stack.push(type_scope);
     new_decl->assign_scope();
@@ -150,7 +150,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
   if (decl_type == DeclType::Tick) {
     for (size_t i = 0; i < num_entries; ++i) {
       if (identifier == lookup_key[i]->identifier) {
-        return new DummyTypeExpr(line_num, lookup_val[i]);
+        return new DummyTypeExpr(loc, lookup_val[i]);
       }
     }
     assert(false);
@@ -168,11 +168,11 @@ Node *Declaration::clone(LOOKUP_ARGS) {
 Node *Identifier::clone(LOOKUP_ARGS) {
   for (size_t i = 0; i < num_entries; ++i) {
     if (this == lookup_key[i]->identifier) {
-      return new DummyTypeExpr(line_num, lookup_val[i]);
+      return new DummyTypeExpr(loc, lookup_val[i]);
     }
   }
 
-  return new Identifier(line_num, token_);
+  return new Identifier(loc, token_);
 }
 } // namespace AST
 #undef CLONE

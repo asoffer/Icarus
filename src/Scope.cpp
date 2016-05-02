@@ -21,14 +21,14 @@ Scope *CurrentScope() {
   return Scope::Stack.empty() ? nullptr : Scope::Stack.top();
 }
 
-AST::Declaration *Scope::make_declaration(size_t line_num,
+AST::Declaration *Scope::make_declaration(TokenLocation loc,
                                           AST::DeclType decl_type,
                                           const std::string &id_string,
                                           AST::Expression *type_expr) {
   auto decl = new AST::Declaration;
   decl_registry_.emplace_back(decl);
-  decl->identifier = new AST::Identifier(line_num, id_string);
-  decl->line_num   = line_num;
+  decl->identifier = new AST::Identifier(loc, id_string);
+  decl->loc        = loc;
   decl->decl_type  = decl_type;
   decl->type_expr  = type_expr;
 
@@ -53,8 +53,7 @@ AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
 
   // If you reach here it's because we never saw a declaration for the
   // identifier
-  error_log.log(idptr->line_num,
-                "Undeclared identifier `" + idptr->token() + "`.");
+  error_log.log(idptr->loc, "Undeclared identifier `" + idptr->token() + "`.");
 
   return nullptr;
 }
@@ -112,12 +111,13 @@ void Scope::verify_no_shadowing() {
       // If the shadowing occurs in the same scope, we don't need to display
       // the error message twice.
       if (scope_ptr == decl_ptr2->scope_) {
-        if ((!decl_ptr1->type->is_function() || !decl_ptr2->type->is_function()) &&
-            decl_ptr1->line_num <= decl_ptr2->line_num) {
-          error_log.log(decl_ptr1->line_num,
+        if ((!decl_ptr1->type->is_function() ||
+             !decl_ptr2->type->is_function()) &&
+            decl_ptr1->loc.line_num <= decl_ptr2->loc.line_num) {
+          error_log.log(decl_ptr1->loc,
                         "Identifier `" + decl_ptr1->identifier->token() +
                             "` already declared in this scope (on line " +
-                            std::to_string(decl_ptr2->line_num) + ").");
+                            std::to_string(decl_ptr2->loc.line_num) + ").");
         }
 
         continue;
@@ -126,10 +126,10 @@ void Scope::verify_no_shadowing() {
       // TODO is_block_scope is a standin for not being a struct/enum scope
       while (scope_ptr != nullptr && scope_ptr->is_block_scope()) {
         if (scope_ptr == decl_ptr2->scope_) {
-          error_log.log(decl_ptr1->line_num,
+          error_log.log(decl_ptr1->loc,
                         "Identifier `" + decl_ptr1->identifier->token() +
                             "` shadows identifier declared on line " +
-                            std::to_string(decl_ptr2->line_num) + ".");
+                            std::to_string(decl_ptr2->loc.line_num) + ".");
           // Do NOT skip out here. It's possible to have many shadows and we
           // might as well catch them all.
         }
