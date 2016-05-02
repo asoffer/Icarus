@@ -211,8 +211,6 @@ Node *ChainOp::build(NPtrVec &&nodes) {
 
 Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
-  array_lit_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
   array_lit_ptr->loc = nodes[0]->loc;
 
   if (nodes[1]->is_comma_list()) {
@@ -233,14 +231,10 @@ Node *ArrayType::build(NPtrVec &&nodes) {
     auto prev         = steal<Expression>(nodes[3]);
 
     while (iter != length_chain->exprs.rend()) {
-      auto array_type_ptr    = new ArrayType;
-      array_type_ptr->loc    = (*iter)->loc;
-      array_type_ptr->length = *iter;
-      *iter                  = nullptr;
-
-      array_type_ptr->precedence =
-          Language::precedence(Language::Operator::NotAnOperator);
-
+      auto array_type_ptr       = new ArrayType;
+      array_type_ptr->loc       = (*iter)->loc;
+      array_type_ptr->length    = *iter;
+      *iter                     = nullptr;
       array_type_ptr->data_type = prev;
       prev                      = array_type_ptr;
       ++iter;
@@ -254,9 +248,6 @@ Node *ArrayType::build(NPtrVec &&nodes) {
     array_type_ptr->length    = steal<Expression>(nodes[1]);
     array_type_ptr->data_type = steal<Expression>(nodes[3]);
 
-    array_type_ptr->precedence =
-        Language::precedence(Language::Operator::NotAnOperator);
-
     return array_type_ptr;
   }
 }
@@ -269,9 +260,6 @@ Node *ArrayType::build_unknown(NPtrVec &&nodes) {
   // change.
   array_type_ptr->length    = nullptr;
   array_type_ptr->data_type = steal<Expression>(nodes[3]);
-
-  array_type_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
 
   return array_type_ptr;
 }
@@ -289,9 +277,6 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
   term_ptr->terminal_type = Language::Terminal::StringLiteral;
   term_ptr->type          = Unknown; // TODO Why not String?
   term_ptr->token_        = nodes[0]->token();
-
-  term_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
   return term_ptr;
 }
 
@@ -302,9 +287,6 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
     term_ptr->terminal_type = Language::Terminal::enum_elem;                   \
     term_ptr->type          = ty;                                              \
     term_ptr->token_        = nodes[0]->token();                               \
-                                                                               \
-    term_ptr->precedence =                                                     \
-        Language::precedence(Language::Operator::NotAnOperator);               \
     return term_ptr;                                                           \
   }
 
