@@ -22,7 +22,7 @@ namespace Time {
 
 namespace Language {
 enum class Terminal {
-  Alloc, ASCII, Char, Else, False, Input, Int, Null, Ord, Real, Return,
+  Alloc, ASCII, Char, Else, False, Hole, Input, Int, Null, Ord, Real, Return,
   StringLiteral, True, Type, Uint
 };
 

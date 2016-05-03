@@ -1,4 +1,17 @@
 #include "Lexer.h"
+#include "Type.h"
+
+extern std::queue<std::string> file_queue;
+
+#define RETURN_TERMINAL(term_type, ty, tk)                                     \
+  auto term_ptr           = new AST::Terminal;                                 \
+  term_ptr->loc           = loc_;                                              \
+  term_ptr->terminal_type = Language::Terminal::term_type;                     \
+  term_ptr->type          = ty;                                                \
+  term_ptr->token_        = tk;                                                \
+                                                                               \
+  term_ptr->set_node_type(Language::expression);                               \
+  return term_ptr
 
 namespace Language {
 const std::map<std::string, NodeType> reserved_words = {
@@ -29,48 +42,61 @@ Lexer::Lexer(const std::string &file_name)
 Lexer::~Lexer() { file_.close(); }
 
 // Get the next token
-Lexer& operator>>(Lexer& lexer, AST::TokenNode& node) {
+AST::Node *Lexer::Next() {
   int peek;
 
 restart:
   // This label is used in the case that a space/tab character is encountered.
   // It allows us to repeat until we find a non-space/tab character.
 
-  peek = lexer.file_.peek();
+  peek = file_.peek();
+
+  AST::Node *nptr = nullptr;
 
   // Delegate based on the next character in the file stream
   if (peek == EOF) {
-    node = AST::TokenNode::eof(lexer.loc_);
+    nptr  = new AST::TokenNode;
+    *nptr = AST::TokenNode::eof(loc_);
 
   } else if (isnewline(peek)) {
-    node = AST::TokenNode::newline();
-    ++lexer.loc_.line_num;
-    lexer.file_.get();
+    nptr  = new AST::TokenNode;
+    *nptr = AST::TokenNode::newline(loc_);
+    ++loc_.line_num;
+    file_.get();
 
   } else if (std::isspace(peek)) {
     // Ignore space/tab characters by restarting
-    lexer.file_.get();
+    file_.get();
     goto restart;
 
   } else if (std::isalpha(peek) || peek == '_') {
-    node = lexer.next_word();
+    return next_word();
 
   } else if (std::isdigit(peek)) {
-    node = lexer.next_number();
+    return next_number();
+
+  } else if (peek == '"') {
+    file_.get();
+    file_queue.emplace("lib/string.ic");
+    return next_string_literal();
+
+  } else if (peek == '\'') {
+    file_.get();
+    return next_char_literal();
 
   } else if (std::ispunct(peek)) {
-    node = lexer.next_operator();
+    return next_operator();
 
   } else {
     assert(false && "Lexer found a control character.");
   }
 
-  return lexer;
+  return nptr;
 }
 
 // The next token begins with an alpha character meaning that it is either a
 // reserved word or an identifier.
-AST::TokenNode Lexer::next_word() {
+AST::Node *Lexer::next_word() {
   assert((std::isalpha(file_.peek()) || file_.peek() == '_')
       && "Non-alpha character encountered as first character in next_word.");
 
@@ -88,25 +114,49 @@ AST::TokenNode Lexer::next_word() {
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
-  for (const auto& type_lit : TypeSystem::Literals) {
+  for (const auto &type_lit : TypeSystem::Literals) {
     if (type_lit.first == token) {
-      return AST::TokenNode(loc_, Language::type_literal, token);
+      RETURN_TERMINAL(Type, Type_, token);
     }
   }
 
+  if (token == "true") {
+    RETURN_TERMINAL(True, Bool, "true");
+
+  } else if (token == "false") {
+
+    RETURN_TERMINAL(True, Bool, "false");
+
+  } else if (token == "null") {
+    RETURN_TERMINAL(Null, NullPtr, "null");
+
+  } else if (token == "ord") {
+    RETURN_TERMINAL(Ord, Func(Char, Uint), "ord");
+
+  } else if (token == "ascii") {
+    RETURN_TERMINAL(ASCII, Func(Uint, Char), "ascii");
+
+  } else if (token == "alloc") {
+    RETURN_TERMINAL(Alloc, DepType([](Type *t) { return Ptr(t); }), "alloc");
+
+  } else if (token == "input") {
+    RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
+
+  } 
   // Check if the word is reserved and if so, build the appropriate Node
-  for (const auto& res : Language::reserved_words) {
+  for (const auto &res : Language::reserved_words) {
     if (res.first == token) {
-      return AST::TokenNode(loc_, res.second, res.first);
+      auto nptr = new AST::TokenNode;
+      *nptr     = AST::TokenNode(loc_, res.second, res.first);
+      return nptr;
     }
   }
 
-  // It's an identifier
-  return AST::TokenNode(loc_, Language::identifier, token);
+  if (token == "string") { file_queue.emplace("lib/string.ic"); }
+  return new AST::Identifier(loc_, token);
 }
 
-
-AST::TokenNode Lexer::next_number() {
+AST::Node *Lexer::next_number() {
   assert(std::isdigit(file_.peek())
       && "Non-digit character encountered as first character in next_number.");
 
@@ -124,12 +174,11 @@ AST::TokenNode Lexer::next_number() {
     // If the next character is a 'u' or a 'U', it's an integer literal. We can
     // ignore the character and return.
     file_.get();
-    return AST::TokenNode(loc_, Language::uint_literal, token);
-
+    RETURN_TERMINAL(Uint, Uint, token);
   } else if (peek != '.') {
     // If the next character is not a period, we're looking at an integer and
     // can return.
-    return AST::TokenNode(loc_, Language::int_literal, token);
+    RETURN_TERMINAL(Int, Int, token);
   }
 
   // If the next character was a period, this is a non-integer. Add the period
@@ -139,11 +188,10 @@ AST::TokenNode Lexer::next_number() {
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  return AST::TokenNode(loc_, Language::real_literal, token);
+  RETURN_TERMINAL(Real, Real, token);
 }
 
-
-AST::TokenNode Lexer::next_operator() {
+AST::Node *Lexer::next_operator() {
   // Sanity check:
   // We only call this function if the top character is punctuation
   int peek = file_.peek();
@@ -161,7 +209,7 @@ AST::TokenNode Lexer::next_operator() {
 #define CASE(character, str, name)                                             \
   case character:                                                              \
     file_.get();                                                               \
-    return AST::TokenNode(loc_, Language::name, str)
+    return new AST::TokenNode(loc_, Language::name, str)
     CASE('`', "`", DECL_OPERATOR_GENERATE);
     CASE('@', "@", dereference);
     CASE(',', ",", comma);
@@ -177,21 +225,17 @@ AST::TokenNode Lexer::next_operator() {
     file_.get();
     if (file_.peek() == '.') {
       file_.get();
-      return AST::TokenNode(loc_, Language::dots, "..");
+      return new AST::TokenNode(loc_, Language::dots, "..");
     } else {
-      return AST::TokenNode(loc_, Language::dot, ".");
+      return new AST::TokenNode(loc_, Language::dot, ".");
     }
-  }
-  case '"': {
-    file_.get();
-    return next_string_literal();
   }
   case '#': {
     return next_hashtag();
   }
+  case '"':
   case '\'': {
-    file_.get();
-    return next_char_literal();
+    assert(false);
   }
   }
 
@@ -231,7 +275,7 @@ AST::TokenNode Lexer::next_operator() {
       node_type = Language::assign_operator;
     }
 
-   return AST::TokenNode(loc_, node_type, tok);
+   return new AST::TokenNode(loc_, node_type, tok);
   }
 
   if (peek == ':') {
@@ -240,14 +284,14 @@ AST::TokenNode Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::TokenNode(loc_, Language::DECL_OPERATOR_INFER, ":=");
+      return new AST::TokenNode(loc_, Language::colon_eq, ":=");
 
     } else if (peek == '>') {
       file_.get();
-      return AST::TokenNode(loc_, Language::generic_operator, ":>");
+      return new AST::TokenNode(loc_, Language::generic_operator, ":>");
  
     } else {
-      return AST::TokenNode(loc_, Language::DECL_OPERATOR_STD, ":");
+      return new AST::TokenNode(loc_, Language::colon, ":");
     }
   }
 
@@ -261,10 +305,10 @@ AST::TokenNode Lexer::next_operator() {
       std::string tok = "_=";
       tok[0] = past_peek;
       file_.get();
-      return AST::TokenNode(loc_, Language::assign_operator, tok);
+      return new AST::TokenNode(loc_, Language::assign_operator, tok);
 
     } else {
-      return AST::TokenNode(loc_,
+      return new AST::TokenNode(loc_,
           (past_peek == '&' ? Language::indirection : Language::bool_operator),
           std::string(1, past_peek));
     }
@@ -276,12 +320,11 @@ AST::TokenNode Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return AST::TokenNode(loc_, Language::binary_boolean_operator, "!=");
+      return new AST::TokenNode(loc_, Language::binary_boolean_operator, "!=");
     } else {
-      return AST::TokenNode(loc_, Language::not_operator, "!");
+      return new AST::TokenNode(loc_, Language::not_operator, "!");
     }
   }
-
 
   if (peek == '-' || peek == '=') {
     char lead_char = static_cast<char>(peek);
@@ -294,20 +337,24 @@ AST::TokenNode Lexer::next_operator() {
       Language::NodeType node_type = (lead_char == '-'
           ? Language::assign_operator
           : Language::binary_boolean_operator);
-      return AST::TokenNode(loc_, node_type, std::string(1, lead_char) + "=");
+      return new AST::TokenNode(loc_, node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
       file_.get();
       if (lead_char == '-') {
-        return AST::TokenNode(loc_, Language::fn_arrow, "->");
+        return new AST::TokenNode(loc_, Language::fn_arrow, "->");
       } else {
-        return AST::TokenNode(loc_, Language::rocket_operator, "=>");
+        return new AST::TokenNode(loc_, Language::rocket_operator, "=>");
       }
     } else {
       if (lead_char == '-') {
-        return AST::TokenNode(loc_, Language::negation, "-");
+        if (peek == '-') {
+          file_.get();
+          RETURN_TERMINAL(Hole, Unknown, "--");
+        }
+        return new AST::TokenNode(loc_, Language::negation, "-");
       } else {
-        return AST::TokenNode(loc_, Language::assign_operator, "=");
+        return new AST::TokenNode(loc_, Language::assign_operator, "=");
       }
     }
   }
@@ -320,10 +367,10 @@ AST::TokenNode Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  return AST::TokenNode(loc_, Language::generic_operator, token);
+  return new AST::TokenNode(loc_, Language::generic_operator, token);
 }
 
-AST::TokenNode Lexer::next_string_literal() {
+AST::Node *Lexer::next_string_literal() {
   int peek = file_.peek();
   std::string str_lit = "";
 
@@ -366,10 +413,11 @@ AST::TokenNode Lexer::next_string_literal() {
         "String literal is not closed before the end of the line.");
   }
 
-  return AST::TokenNode::string_literal(loc_, str_lit);
+  // TODO Why not String instead of Unknown for the type?
+  RETURN_TERMINAL(StringLiteral, Unknown, str_lit);
 }
 
-AST::TokenNode Lexer::next_char_literal() {
+AST::Node *Lexer::next_char_literal() {
   int peek = file_.peek();
 
   char output_char;
@@ -382,7 +430,7 @@ AST::TokenNode Lexer::next_char_literal() {
     case '\r':
       {
         error_log.log(loc_, "Cannot use newline inside a character-literal.");
-        return AST::TokenNode(loc_, Language::newline);
+        return new AST::TokenNode(loc_, Language::newline);
       }
     case '\\':
       {
@@ -421,10 +469,10 @@ AST::TokenNode Lexer::next_char_literal() {
     error_log.log(loc_, "Character literal must be followed by a single-quote.");
   }
 
-  return AST::TokenNode(loc_, Language::char_literal, std::string(1, output_char));
+  RETURN_TERMINAL(Char, Char, std::string(1, output_char));
 }
 
-AST::TokenNode Lexer::next_given_slash() {
+AST::Node *Lexer::next_given_slash() {
   int peek = file_.peek();
   assert(peek == '/' && "Non-slash character encountered as first character in next_given_slash.");
 
@@ -441,7 +489,7 @@ AST::TokenNode Lexer::next_given_slash() {
       peek = file_.peek();
     } while (!isnewline(peek));
 
-    return AST::TokenNode(loc_, Language::comment, token);
+    return new AST::TokenNode(loc_, Language::comment, token);
   }
 
   // If the first two characters are '/*' then start a multi-line comment.
@@ -460,7 +508,7 @@ AST::TokenNode Lexer::next_given_slash() {
 
       if (!*this) {  // If we're at the end of the stream
         error_log.log(loc_, "File ended during multi-line comment.");
-        return AST::TokenNode(loc_, Language::comment, "");
+        return new AST::TokenNode(loc_, Language::comment, "");
       }
 
       if (prepeek == '/' && peek == '*') {
@@ -471,24 +519,27 @@ AST::TokenNode Lexer::next_given_slash() {
       }
     }
 
-    return AST::TokenNode(loc_, Language::comment, "MULTILINE COMMENT");
+    return new AST::TokenNode(loc_, Language::comment, "MULTILINE COMMENT");
   }
 
   if (peek == '=') {
     file_.get();
-    return AST::TokenNode(loc_, Language::assign_operator, "/=");
+    return new AST::TokenNode(loc_, Language::assign_operator, "/=");
   }
 
-  return AST::TokenNode(loc_, Language::generic_operator, "/");
+  return new AST::TokenNode(loc_, Language::generic_operator, "/");
 }
 
-
-AST::TokenNode Lexer::next_hashtag() {
+AST::Node *Lexer::next_hashtag() {
   int peek = file_.peek();
   assert(peek == '#' && "Non-hash character encountered as first character in next_hashtag.");
   file_.get();
 
-  std::string tag = next_word().token();
+  auto nptr = next_word();
+  std::string tag = nptr->token();
+  delete nptr;
 
-  return AST::TokenNode(loc_, Language::hashtag, tag);
+  return new AST::TokenNode(loc_, Language::hashtag, tag);
 }
+
+#undef RETURN_TERMINAL

@@ -92,19 +92,13 @@ enum NodeType {
   identifier,
 
   // Literals
-  int_literal,
-  uint_literal,
-  real_literal,
-  char_literal,
-  string_literal,
-  type_literal,
   fn_literal,
 
   key_value_pair,
   key_value_pair_list,
   fn_expression,
   scope,
-  DECL_LIST,
+  decl_list,
   statements,
   missing_newline_statements,
 
@@ -148,8 +142,7 @@ enum NodeType {
   STMT_JUMP,
   STMT_ASSIGN,
 
-  STMT_DECL_STD,
-  STMT_DECL_INFER,
+  declaration,
   STMT_DECL_GENERATE,
   DECL_IN,
   DECL_IN_LIST,
@@ -161,8 +154,8 @@ enum NodeType {
 
   // Note: reserved_in is also a decl operator, but it's not an expression so
   // we must keep it separate.
-  DECL_OPERATOR_STD,
-  DECL_OPERATOR_INFER,
+  colon,
+  colon_eq,
 
   assign_operator,
   fn_arrow,

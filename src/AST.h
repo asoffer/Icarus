@@ -125,9 +125,8 @@ struct TokenNode : public Node {
     return TokenNode(loc, Language::eof);
   }
 
-  static TokenNode newline() { return TokenNode(TokenLocation(), Language::newline); }
-  static TokenNode string_literal(TokenLocation loc, const std::string &str_lit) {
-    return TokenNode(loc, Language::string_literal, str_lit);
+  static TokenNode newline(TokenLocation loc) {
+    return TokenNode(loc, Language::newline);
   }
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
@@ -156,21 +155,8 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
 
-  static Node *build_type_literal(NPtrVec &&nodes);
-  static Node *build_string_literal(NPtrVec &&nodes);
   static Node *build_else(NPtrVec &&nodes);
-  static Node *build_true(NPtrVec &&nodes);
-  static Node *build_false(NPtrVec &&nodes);
-  static Node *build_null(NPtrVec &&nodes);
-  static Node *build_int_literal(NPtrVec &&nodes);
-  static Node *build_uint_literal(NPtrVec &&nodes);
-  static Node *build_real_literal(NPtrVec &&nodes);
-  static Node *build_char_literal(NPtrVec &&nodes);
   static Node *build_void_return(NPtrVec &&nodes);
-  static Node *build_ord(NPtrVec &&nodes);
-  static Node *build_ASCII(NPtrVec &&nodes);
-  static Node *build_input(NPtrVec &&nodes);
-  static Node *build_alloc(NPtrVec &&nodes);
 
   Language::Terminal terminal_type;
 };

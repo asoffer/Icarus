@@ -460,6 +460,8 @@ void Binop::verify_types() {
     if (!lhs->type->is_array()) {
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
+      std::cout << "***" << *lhs->type << std::endl;
+      std::cout << *lhs << std::endl;
       error_log.log(loc, "Identifier `" + lhs->token() +
                              "` does not name an array.");
       return;
@@ -470,7 +472,7 @@ void Binop::verify_types() {
     // TODO allow slice indexing
     if (rhs->type != Int && rhs->type != Uint) {
       error_log.log(loc,
-                    "Arary must be indexed by an int or uint. You supplied a " +
+                    "Array must be indexed by an int or uint. You supplied a " +
                         rhs->type->to_string());
       return;
     }

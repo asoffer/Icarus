@@ -1,5 +1,5 @@
 string := struct {
-  chars: [-; char]
+  chars: [--; char]
   length: uint
 }
 

@@ -10,23 +10,18 @@ std::string Node::to_string(size_t n) const {
   ss << tabs(n) + "[";
   switch (type_) {
   case Language::unknown:                 ss << "Unknown";       break;
+  case Language::bof:                     ss << "BOF";           break;
   case Language::eof:                     ss << "EOF";           break;
   case Language::newline:                 ss << "Newline";       break;
   case Language::comment:                 ss << "Comment";       break;
   case Language::identifier:              ss << "Identifier";    break;
-  case Language::int_literal:             ss << "Integer";       break;
-  case Language::uint_literal:            ss << "Uint";          break;
-  case Language::real_literal:            ss << "Real";          break;
-  case Language::type_literal:            ss << "Type";          break;
-  case Language::char_literal:            ss << "Character";     break;
-  case Language::string_literal:          ss << "String";        break;
   case Language::generic_operator:        ss << "Operator";      break;
   case Language::bool_operator:           ss << "BoolOperator";  break;
   case Language::dot:                     ss << "Dot";           break;
   case Language::dots:                    ss << "Dots";          break;
   case Language::binary_boolean_operator: ss << "BinOperator";   break;
-  case Language::DECL_OPERATOR_STD:       ss << ":";             break;
-  case Language::DECL_OPERATOR_INFER:     ss << ":=";            break;
+  case Language::colon:                   ss << ":";             break;
+  case Language::colon_eq:                ss << ":=";            break;
   case Language::DECL_OPERATOR_GENERATE:  ss << "Tick";          break;
   case Language::assign_operator:         ss << "X=";            break;
   case Language::fn_arrow:                ss << "->";            break;
@@ -49,7 +44,7 @@ std::string Node::to_string(size_t n) const {
   case Language::reserved_##res:          ss << #res;            break;
 #include "config/reserved.conf"
 #undef RESERVED_MACRO
-  default:;
+  default: ss << "???"; break;
   }
 
   ss << (!token_.empty() ? ": " + token_ : "") << "]\n";
@@ -111,7 +106,8 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::At:     ss << "At";     break;
       case Language::Operator::Call:   ss << "Call";   break;
       case Language::Operator::Dots:   ss << "Dots";   break;
-      default: assert(false && "Not a unary operator");
+
+      default: { assert(false && "Not a unary operator"); }
     }
     ss << ">\n" << operand->to_string(n + 1);
     return ss.str();

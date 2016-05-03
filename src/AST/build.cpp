@@ -18,11 +18,7 @@ template <typename T> T *steal(AST::Node *&n) {
 }
 
 namespace AST {
-Node *Identifier::build(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "string") { file_queue.emplace("lib/string.ic"); }
-
-  return new Identifier(nodes[0]->loc, nodes[0]->token());
-}
+Node *Identifier::build(NPtrVec &&nodes) { assert(false); }
 
 Node *Unop::build(NPtrVec &&nodes) {
   auto unop_ptr     = new Unop;
@@ -225,6 +221,11 @@ Node *ArrayLiteral::build(NPtrVec &&nodes) {
 }
 
 Node *ArrayType::build(NPtrVec &&nodes) {
+  if (nodes[1]->is_terminal() &&
+      static_cast<Terminal *>(nodes[1])->terminal_type ==
+          Language::Terminal::Hole) {
+    return build_unknown(std::forward<NPtrVec &&>(nodes));
+  }
   if (nodes[1]->is_comma_list()) {
     auto length_chain = steal<ChainOp>(nodes[1]);
     auto iter         = length_chain->exprs.rbegin();
@@ -270,16 +271,6 @@ Node *Terminal::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Terminal::build_string_literal(NPtrVec &&nodes) {
-  file_queue.emplace("lib/string.ic");
-  auto term_ptr           = new Terminal;
-  term_ptr->loc           = nodes[0]->loc;
-  term_ptr->terminal_type = Language::Terminal::StringLiteral;
-  term_ptr->type          = Unknown; // TODO Why not String?
-  term_ptr->token_        = nodes[0]->token();
-  return term_ptr;
-}
-
 #define TERMINAL_BUILD(name, enum_elem, ty)                                    \
   Node *Terminal::build_##name(NPtrVec &&nodes) {                              \
     auto term_ptr           = new Terminal;                                    \
@@ -290,20 +281,8 @@ Node *Terminal::build_string_literal(NPtrVec &&nodes) {
     return term_ptr;                                                           \
   }
 
-TERMINAL_BUILD(alloc, Alloc, DepType([](Type *t) { return Ptr(t); }));
-TERMINAL_BUILD(ASCII, ASCII, Func(Uint, Char));
-TERMINAL_BUILD(char_literal, Char, Char);
 TERMINAL_BUILD(else, Else, Bool);
-TERMINAL_BUILD(false, False, Bool);
-TERMINAL_BUILD(input, Input, DepType([](Type *t) { return t; }));
-TERMINAL_BUILD(int_literal, Int, Int);
-TERMINAL_BUILD(null, Null, NullPtr);
-TERMINAL_BUILD(ord, Ord, Func(Char, Uint));
-TERMINAL_BUILD(real_literal, Real, Real);
 TERMINAL_BUILD(void_return, Return, Void);
-TERMINAL_BUILD(true, True, Bool);
-TERMINAL_BUILD(type_literal, Type, Type_);
-TERMINAL_BUILD(uint_literal, Uint, Uint);
 #undef TERMINAL_BUILD
 
 Node *Expression::build(NPtrVec &&) {
@@ -352,12 +331,12 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
 }
 
 Node *Declaration::BuildStd(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_STD,
+  return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
                DeclType::Std);
 }
 
 Node *Declaration::BuildInfer(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::DECL_OPERATOR_INFER,
+  return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
                DeclType::Infer);
 }
 

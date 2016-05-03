@@ -15,7 +15,6 @@ class Parser {
     void shift();
     void ignore();
     bool reduce();
-    bool reduce_singletons();
     AST::Node *cleanup();
 
     bool reduce_singleton_tokens();
@@ -23,7 +22,7 @@ class Parser {
     void show_debug() const;
 
     NPtrVec stack_;
-    AST::TokenNode *lookahead_;
+    AST::Node *lookahead_;
     Lexer lexer_;
     ParserMode mode_;
 };

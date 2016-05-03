@@ -117,6 +117,7 @@ llvm::Value *Terminal::generate_code() {
     // TODO this probably this should just never be called. for dependent types
     return nullptr;
   }
+  case Language::Terminal::Hole:  assert(false);
   case Language::Terminal::Ord:   return builtin::ord();
   case Language::Terminal::ASCII: return builtin::ascii();
   case Language::Terminal::True:  return data::const_true();
