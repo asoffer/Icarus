@@ -95,19 +95,17 @@ Node *Binop::build_assignment(NPtrVec &&nodes) {
 Node *Binop::build(NPtrVec &&nodes) {
   auto op = static_cast<TokenNode *>(nodes[1])->op;
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
-                               Language::generic_operator);
+                               Language::binop);
 }
 
 Node *Binop::build_paren_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Call,
-                               Language::generic_operator);
+                               Language::Operator::Call, Language::binop);
 }
 
 Node *Binop::build_bracket_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Index,
-                               Language::generic_operator);
+                               Language::Operator::Index, Language::binop);
 }
 
 Node *ChainOp::join(NPtrVec &&nodes) {
@@ -350,7 +348,7 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
       Scope::make_declaration(nodes[1]->loc, DeclType::Tick, nodes[2]->token(),
                               steal<Expression>(nodes[0]));
 
-  decl_ptr->type_      = Language::DECL_OPERATOR_GENERATE;
+  decl_ptr->type_      = Language::expression;
   decl_ptr->op         = Language::Operator::Tick;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
 

@@ -34,6 +34,10 @@ $(TARGET): $(OBJECTS)
 header:
 	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(PRECOMP) -o bin/Precompiled.h.pch
 
+rules:
+	@touch ~/icarus/src/Parser.cpp
+	@make
+
 rebuild:
 	@make clean
 	@make header

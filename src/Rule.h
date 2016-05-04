@@ -24,13 +24,15 @@ public:
   using OptVec = std::vector<Opt>;
   using fnptr  = AST::Node *(*)(NPtrVec &&);
 
-  Rule(Language::NodeType output, const OptVec &input, fnptr fn,
-       ParserMode new_mode = ParserMode::Same);
+  Rule(unsigned short preced, Language::NodeType output, const OptVec &input,
+       fnptr fn, ParserMode new_mode = ParserMode::Same);
 
   size_t size() const { return input_.size(); }
 
   bool match(const NPtrVec &node_stack) const;
   void apply(NPtrVec &node_stack, ParserMode &mode_) const;
+
+  unsigned short prec;
 
 private:
   Language::NodeType output_;

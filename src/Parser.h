@@ -25,6 +25,9 @@ class Parser {
     AST::Node *lookahead_;
     Lexer lexer_;
     ParserMode mode_;
+
+    AST::Node *get(size_t n);
+    Language::NodeType get_type(size_t n);
 };
 
 #endif  // ICARUS_PARSER_H

@@ -15,10 +15,21 @@ extern std::queue<std::string> file_queue;
 
 namespace Language {
 const std::map<std::string, NodeType> reserved_words = {
-#define RESERVED_MACRO(res) { #res, reserved_##res },
-#include "config/reserved.conf"
-#undef RESERVED_MACRO
-};
+    {"break", reserved_break},
+    {"if", reserved_if},
+    {"in", reserved_in},
+    {"else", reserved_else},
+    {"case", reserved_case},
+    {"for", reserved_for},
+    {"enum", reserved_enum},
+    {"while", reserved_while},
+    {"continue", reserved_continue},
+    {"import", reserved_import},
+    {"string", reserved_string},
+    {"struct", reserved_struct},
+    {"repeat", reserved_repeat},
+    {"restart", reserved_restart},
+    {"print", reserved_print}};
 } // namespace Language
 
 namespace TypeSystem {
@@ -51,18 +62,14 @@ restart:
 
   peek = file_.peek();
 
-  AST::Node *nptr = nullptr;
-
   // Delegate based on the next character in the file stream
   if (peek == EOF) {
-    nptr  = new AST::TokenNode;
-    *nptr = AST::TokenNode::eof(loc_);
+    return AST::TokenNode::Eof(loc_);
 
   } else if (isnewline(peek)) {
-    nptr  = new AST::TokenNode;
-    *nptr = AST::TokenNode::newline(loc_);
     ++loc_.line_num;
     file_.get();
+    return AST::TokenNode::Newline(loc_);
 
   } else if (std::isspace(peek)) {
     // Ignore space/tab characters by restarting
@@ -90,8 +97,6 @@ restart:
   } else {
     assert(false && "Lexer found a control character.");
   }
-
-  return nptr;
 }
 
 // The next token begins with an alpha character meaning that it is either a
@@ -141,8 +146,8 @@ AST::Node *Lexer::next_word() {
 
   } else if (token == "input") {
     RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
+  }
 
-  } 
   // Check if the word is reserved and if so, build the appropriate Node
   for (const auto &res : Language::reserved_words) {
     if (res.first == token) {
@@ -210,9 +215,9 @@ AST::Node *Lexer::next_operator() {
   case character:                                                              \
     file_.get();                                                               \
     return new AST::TokenNode(loc_, Language::name, str)
-    CASE('`', "`", DECL_OPERATOR_GENERATE);
+    CASE('`', "`", tick);
     CASE('@', "@", dereference);
-    CASE(',', ",", comma);
+    CASE(',', ",", chainop);
     CASE(';', ";", semicolon);
     CASE('(', "(", left_paren);
     CASE(')', ")", right_paren);
@@ -221,6 +226,7 @@ AST::Node *Lexer::next_operator() {
     CASE('{', "{", left_brace);
     CASE('}', "}", right_brace);
 #undef CASE
+
   case '.': {
     file_.get();
     if (file_.peek() == '.') {
@@ -230,9 +236,7 @@ AST::Node *Lexer::next_operator() {
       return new AST::TokenNode(loc_, Language::dot, ".");
     }
   }
-  case '#': {
-    return next_hashtag();
-  }
+  case '#': return next_hashtag();
   case '"':
   case '\'': {
     assert(false);
@@ -251,12 +255,12 @@ AST::Node *Lexer::next_operator() {
   case '*':
   case '%':
     lead_char = static_cast<char>(peek);
-    node_type = Language::generic_operator;
+    node_type = Language::binop;
     break;
   case '<':
   case '>':
     lead_char = static_cast<char>(peek);
-    node_type = Language::binary_boolean_operator;
+    node_type = Language::chainop;
     break;
   default: lead_char = 0;
   }
@@ -271,7 +275,7 @@ AST::Node *Lexer::next_operator() {
       file_.get();
     }
 
-    if (node_type == Language::generic_operator && peek == '=') {
+    if (node_type == Language::binop && peek == '=') {
       node_type = Language::assign_operator;
     }
 
@@ -284,14 +288,14 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::colon_eq, ":=");
+      return new AST::TokenNode(loc_, Language::declop, ":=");
 
     } else if (peek == '>') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::generic_operator, ":>");
+      return new AST::TokenNode(loc_, Language::binop, ":>");
  
     } else {
-      return new AST::TokenNode(loc_, Language::colon, ":");
+      return new AST::TokenNode(loc_, Language::declop, ":");
     }
   }
 
@@ -308,8 +312,8 @@ AST::Node *Lexer::next_operator() {
       return new AST::TokenNode(loc_, Language::assign_operator, tok);
 
     } else {
-      return new AST::TokenNode(loc_,
-          (past_peek == '&' ? Language::indirection : Language::bool_operator),
+      return new AST::TokenNode(
+          loc_, (past_peek == '&' ? Language::indirection : Language::chainop),
           std::string(1, past_peek));
     }
   }
@@ -320,7 +324,7 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::binary_boolean_operator, "!=");
+      return new AST::TokenNode(loc_, Language::chainop, "!=");
     } else {
       return new AST::TokenNode(loc_, Language::not_operator, "!");
     }
@@ -334,9 +338,8 @@ AST::Node *Lexer::next_operator() {
     if (peek == '=') {
       file_.get();
 
-      Language::NodeType node_type = (lead_char == '-'
-          ? Language::assign_operator
-          : Language::binary_boolean_operator);
+      Language::NodeType node_type =
+          (lead_char == '-' ? Language::assign_operator : Language::chainop);
       return new AST::TokenNode(loc_, node_type, std::string(1, lead_char) + "=");
       
     } else if (peek == '>') {
@@ -367,7 +370,7 @@ AST::Node *Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  return new AST::TokenNode(loc_, Language::generic_operator, token);
+  return new AST::TokenNode(loc_, Language::binop, token);
 }
 
 AST::Node *Lexer::next_string_literal() {
@@ -527,7 +530,7 @@ AST::Node *Lexer::next_given_slash() {
     return new AST::TokenNode(loc_, Language::assign_operator, "/=");
   }
 
-  return new AST::TokenNode(loc_, Language::generic_operator, "/");
+  return new AST::TokenNode(loc_, Language::binop, "/");
 }
 
 AST::Node *Lexer::next_hashtag() {

@@ -6,9 +6,10 @@
     ptr = nullptr;                                                             \
   }
 
-Rule::Rule(Language::NodeType output, const OptVec &input, fnptr fn,
-           ParserMode new_mode)
-    : output_(output), input_(input), fn_(fn), new_mode_(new_mode) {}
+Rule::Rule(unsigned short preced, Language::NodeType output,
+           const OptVec &input, fnptr fn, ParserMode new_mode)
+    : prec(preced), output_(output), input_(input), fn_(fn),
+      new_mode_(new_mode) {}
 
 // Determine if the back of the stack matches the rule
 bool Rule::match(const NPtrVec& node_stack) const {

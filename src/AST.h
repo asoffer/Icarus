@@ -121,12 +121,12 @@ struct Expression : public Node {
 };
 
 struct TokenNode : public Node {
-  static TokenNode eof(TokenLocation loc) {
-    return TokenNode(loc, Language::eof);
+  static TokenNode *Eof(TokenLocation loc) {
+    return new TokenNode(loc, Language::eof);
   }
 
-  static TokenNode newline(TokenLocation loc) {
-    return TokenNode(loc, Language::newline);
+  static TokenNode *Newline(TokenLocation loc) {
+    return new TokenNode(loc, Language::newline);
   }
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,

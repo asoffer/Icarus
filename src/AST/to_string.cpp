@@ -9,30 +9,26 @@ std::string Node::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) + "[";
   switch (type_) {
+  case Language::keep_current:            assert(false);         break;
   case Language::unknown:                 ss << "Unknown";       break;
   case Language::bof:                     ss << "BOF";           break;
   case Language::eof:                     ss << "EOF";           break;
   case Language::newline:                 ss << "Newline";       break;
   case Language::comment:                 ss << "Comment";       break;
+  case Language::semicolon:               ss << ";";             break;
+  case Language::hashtag:                 ss << "#...";          break;
   case Language::identifier:              ss << "Identifier";    break;
-  case Language::generic_operator:        ss << "Operator";      break;
-  case Language::bool_operator:           ss << "BoolOperator";  break;
+  case Language::binop:                   ss << "Binop";         break;
+  case Language::chainop:                 ss << "Chainop";       break;
   case Language::dot:                     ss << "Dot";           break;
   case Language::dots:                    ss << "Dots";          break;
-  case Language::binary_boolean_operator: ss << "BinOperator";   break;
-  case Language::colon:                   ss << ":";             break;
-  case Language::colon_eq:                ss << ":=";            break;
-  case Language::DECL_OPERATOR_GENERATE:  ss << "Tick";          break;
   case Language::assign_operator:         ss << "X=";            break;
   case Language::fn_arrow:                ss << "->";            break;
-  case Language::comma:                   ss << ",";             break;
-  case Language::semicolon:               ss << ";";             break;
   case Language::dereference:             ss << "@";             break;
   case Language::not_operator:            ss << "!";             break;
   case Language::negation:                ss << "-";             break;
   case Language::indirection:             ss << "&";             break;
   case Language::rocket_operator:         ss << "=>";            break;
-  case Language::key_value_pair:          ss << "( => )";        break;
   case Language::expression:              ss << "Expression";    break;
   case Language::left_paren:              ss << "Left Paren";    break;
   case Language::right_paren:             ss << "Right Paren";   break;
@@ -40,10 +36,6 @@ std::string Node::to_string(size_t n) const {
   case Language::right_brace:             ss << "Right Brace";   break;
   case Language::left_bracket:            ss << "Left Bracket";  break;
   case Language::right_bracket:           ss << "Right Bracket"; break;
-#define RESERVED_MACRO(res)                                                    \
-  case Language::reserved_##res:          ss << #res;            break;
-#include "config/reserved.conf"
-#undef RESERVED_MACRO
   default: ss << "???"; break;
   }
 
@@ -140,6 +132,7 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::Index: ss << "Index"; break;
       case Language::Operator::Call:  ss << "Call";  break;
       case Language::Operator::Dots:  ss << "Dots";  break;
+      case Language::Operator::In:    ss << "In";    break;
       case Language::Operator::Tick:  ss << "Tick";  break;
       default: assert(false && "Not a binary operator");
       }

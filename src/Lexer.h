@@ -1,13 +1,12 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
-// class Lexer:
+// struct Lexer:
 //
 // This class takes a file name in its only constructor. The contents of the
 // file are read character by character and separated into tokens
 // according to syntax of Icarus.
-class Lexer {
-  public:
+struct Lexer {
     explicit Lexer(const std::string& file_name);
  
     ~Lexer();
@@ -18,7 +17,6 @@ class Lexer {
     // Returns true precisely when we have not yet reached EOF
     operator bool () const { return !file_.eof() && !file_.fail(); }
 
-  private:
     std::ifstream file_;
     TokenLocation loc_;
 

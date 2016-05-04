@@ -13,7 +13,7 @@ AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {
 
   NPtrVec node_vec = {
       assignment_node->lhs,
-      new AST::TokenNode(node->loc, Language::generic_operator, "=="),
+      new AST::TokenNode(node->loc, Language::chainop, "=="),
       assignment_node->rhs};
 
   return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
