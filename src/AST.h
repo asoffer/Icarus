@@ -154,10 +154,6 @@ struct TokenNode : public Node {
 
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
-
-  static Node *build_else(NPtrVec &&nodes);
-  static Node *build_void_return(NPtrVec &&nodes);
-
   Language::Terminal terminal_type;
 };
 
@@ -175,6 +171,8 @@ struct Binop : public Expression {
 
   static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class,
                               Language::NodeType nt);
+
+  static Node *BuildElseRocket(NPtrVec &&nodes);
   static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_bracket_operator(NPtrVec &&nodes);
   static Node *build_array_type(NPtrVec &&nodes);
@@ -300,29 +298,10 @@ struct ArrayType : public Expression {
   Expression *data_type;
 };
 
-struct KVPairList : public Node {
-  // TODO must have an else. should be stored outside the vector
-  static Node *build_one(NPtrVec &&nodes);
-  static Node *build_more(NPtrVec &&nodes);
-  static Node *build_one_assignment_error(NPtrVec &&nodes);
-  static Node *build_more_assignment_error(NPtrVec &&nodes);
-
-  VIRTUAL_METHODS_FOR_NODES;
-
-  virtual Type *verify_types_with_key(Type *key_type);
-
-  inline size_t size() const { return pairs.size(); }
-
-  KVPairList() {}
-  ~KVPairList();
-
-  std::vector<std::pair<Expression *, Expression *>> pairs;
-};
-
 struct Case : public Expression {
   EXPR_FNS(Case, case);
 
-  KVPairList *kv;
+  std::vector<std::pair<Expression *, Expression *>> key_vals;
 };
 
 struct FunctionLiteral : public Expression {

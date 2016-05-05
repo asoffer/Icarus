@@ -17,8 +17,6 @@ class Parser {
     bool reduce();
     AST::Node *cleanup();
 
-    bool reduce_singleton_tokens();
-
     void show_debug() const;
 
     NPtrVec stack_;

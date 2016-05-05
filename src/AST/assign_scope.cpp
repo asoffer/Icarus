@@ -87,14 +87,9 @@ void ChainOp::assign_scope() {
 
 void Case::assign_scope() {
   scope_ = CurrentScope();
-  kv->assign_scope();
-}
-
-void KVPairList::assign_scope() {
-  scope_ = CurrentScope();
-  for (auto &pair : pairs) {
-    pair.first->assign_scope();
-    pair.second->assign_scope();
+  for (auto &kv : key_vals) {
+    kv.first->assign_scope();
+    kv.second->assign_scope();
   }
 }
 

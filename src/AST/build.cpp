@@ -98,6 +98,20 @@ Node *Binop::build(NPtrVec &&nodes) {
                                Language::binop);
 }
 
+Node *Binop::BuildElseRocket(NPtrVec &&nodes) {
+  auto term_ptr           = new Terminal;
+  term_ptr->loc           = nodes[0]->loc;
+  term_ptr->terminal_type = Language::Terminal::Else;
+  term_ptr->type          = Bool;
+  term_ptr->token_        = "else";
+  delete nodes[0];
+  nodes[0] = term_ptr;
+  
+  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
+                               Language::Operator::Rocket, Language::binop);
+}
+
+
 Node *Binop::build_paren_operator(NPtrVec &&nodes) {
   return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
                                Language::Operator::Call, Language::binop);
@@ -269,20 +283,6 @@ Node *Terminal::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
-#define TERMINAL_BUILD(name, enum_elem, ty)                                    \
-  Node *Terminal::build_##name(NPtrVec &&nodes) {                              \
-    auto term_ptr           = new Terminal;                                    \
-    term_ptr->loc           = nodes[0]->loc;                                   \
-    term_ptr->terminal_type = Language::Terminal::enum_elem;                   \
-    term_ptr->type          = ty;                                              \
-    term_ptr->token_        = nodes[0]->token();                               \
-    return term_ptr;                                                           \
-  }
-
-TERMINAL_BUILD(else, Else, Bool);
-TERMINAL_BUILD(void_return, Return, Void);
-#undef TERMINAL_BUILD
-
 Node *Expression::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it
@@ -352,48 +352,6 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
 
   return decl_ptr;
-}
-
-Node *KVPairList::build_one(NPtrVec &&nodes) {
-  auto pair_list = new KVPairList;
-  pair_list->loc = nodes[0]->loc;
-  Expression *key_ptr;
-
-  // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
-  // the call to apply(). Nothing to do here.
-  key_ptr =
-      (nodes[0]->node_type() == Language::reserved_else)
-          ? (Terminal *)Terminal::build_else(std::forward<NPtrVec &&>(nodes))
-          : steal<Expression>(nodes[0]);
-
-  pair_list->pairs.emplace_back(key_ptr, steal<Expression>(nodes[2]));
-
-  return pair_list;
-}
-
-Node *KVPairList::build_more(NPtrVec &&nodes) {
-  auto pair_list      = steal<KVPairList>(nodes[0]);
-  Expression *key_ptr = nullptr;
-
-  // nodes[0] either reclaimed by Terminal::build, or will be deleted for us by
-  // the call to apply(). Nothing to do here.
-  key_ptr = (nodes[1]->node_type() == Language::reserved_else)
-                ? (Terminal *)Terminal::build_else(
-                      std::forward<NPtrVec &&>({nodes[1]}))
-                : steal<Expression>(nodes[1]);
-
-  pair_list->pairs.emplace_back(key_ptr, steal<Expression>(nodes[3]));
-  return pair_list;
-}
-
-Node *KVPairList::build_one_assignment_error(NPtrVec &&nodes) {
-  nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_one(std::forward<NPtrVec &&>(nodes));
-}
-
-Node *KVPairList::build_more_assignment_error(NPtrVec &&nodes) {
-  nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_more(std::forward<NPtrVec &&>(nodes));
 }
 
 Node *FunctionLiteral::build(NPtrVec &&nodes) {
@@ -655,7 +613,20 @@ Node *While::build_assignment_error(NPtrVec &&nodes) {
 Node *Case::build(NPtrVec &&nodes) {
   auto case_ptr = new Case;
   case_ptr->loc = nodes[0]->loc;
-  case_ptr->kv  = steal<KVPairList>(nodes[2]);
+
+  auto stmts = (Statements *)(nodes[2]);
+  for (auto stmt : stmts->statements) {
+    if (!stmt->is_binop() ||
+        ((Binop *)(stmt))->op != Language::Operator::Rocket) {
+      error_log.log(stmt->loc,
+                    "Each line in case statement must be a key-value pair.");
+    } else {
+      assert(stmt->is_binop());
+      auto binop = (Binop *)stmt;
+      case_ptr->key_vals.emplace_back(steal<Expression>(binop->lhs),
+                                      steal<Expression>(binop->rhs));
+    }
+  }
   return case_ptr;
 }
 } // namespace AST

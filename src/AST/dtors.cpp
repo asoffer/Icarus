@@ -30,14 +30,13 @@ ArrayType::~ArrayType() {
 
 Terminal::~Terminal() {}
 Identifier::~Identifier() {}
-KVPairList::~KVPairList() {
-  for (auto kv : pairs) {
+
+Case::~Case() {
+  for (auto kv : key_vals) {
     DELETE(kv.first);
     DELETE(kv.second);
   }
 }
-
-Case::~Case() { DELETE(kv); }
 
 Statements::~Statements() {
   for (auto node : statements) DELETE(node);

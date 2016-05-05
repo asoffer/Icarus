@@ -285,14 +285,11 @@ Context::Value FunctionLiteral::evaluate(Context &ctx) {
 }
 
 Context::Value Case::evaluate(Context &ctx) {
-  for (size_t i = 0; i < kv->pairs.size() - 1; ++i) {
-    auto pair = kv->pairs[i];
-
-    if (pair.first->evaluate(ctx).as_bool) {
-      return pair.second->evaluate(ctx);
-    }
+  for (auto kv : key_vals) {
+    if (kv.first->evaluate(ctx).as_bool) { return kv.second->evaluate(ctx); }
   }
-  return kv->pairs.back().second->evaluate(ctx);
+  // Must have an else-clause, so this is unreachable.
+  assert(false);
 }
 
 Context::Value StructLiteral::evaluate(Context &ctx) {
@@ -568,8 +565,6 @@ Context::Value Binop::evaluate(Context &ctx) {
 
   return nullptr;
 }
-
-Context::Value KVPairList::evaluate(Context &) { return nullptr; }
 
 Context::Value Statements::evaluate(Context &ctx) {
   for (auto &stmt : statements) {

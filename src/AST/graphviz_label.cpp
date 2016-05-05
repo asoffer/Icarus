@@ -107,7 +107,6 @@ std::string StructLiteral::graphviz_label() const { return "StructLiteral"; }
 std::string ArrayType::graphviz_label() const { return "ArrayType"; }
 std::string ArrayLiteral::graphviz_label() const { return "ArrayLiteral"; }
 std::string Case::graphviz_label() const { return "Case"; }
-std::string KVPairList::graphviz_label() const { return "KVPairList"; }
 std::string Statements::graphviz_label() const { return "Statements"; }
 std::string FunctionLiteral::graphviz_label() const {
   return "FunctionLiteral";

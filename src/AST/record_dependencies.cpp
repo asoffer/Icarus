@@ -132,15 +132,15 @@ void Declaration::record_dependencies() {
 }
 
 void Case::record_dependencies() {
+  Dependency::add_to_table(this);
   Dependency::value_type(this, this);
-  for (const auto &kv : kv->pairs) {
+  for (const auto &kv : key_vals) {
+    Dependency::add_to_table(kv.first);
+    Dependency::add_to_table(kv.second);
     Dependency::type_type(this, kv.first);
     Dependency::type_type(this, kv.second);
-  }
-
-  for (const auto &kv : kv->pairs) {
-    kv.first->record_dependencies();
-    kv.second->record_dependencies();
+    Dependency::value_value(this, kv.first);
+    Dependency::value_value(this, kv.second);
   }
 }
 
@@ -161,10 +161,6 @@ void FunctionLiteral::record_dependencies() {
 
   return_type_expr->record_dependencies();
   statements->record_dependencies();
-}
-
-void KVPairList::record_dependencies() {
-  assert(false && "KVPairList::record_dependencies() should never be called");
 }
 
 void Statements::record_dependencies() {

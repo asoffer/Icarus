@@ -877,12 +877,28 @@ void FunctionLiteral::verify_types() {
 }
 
 void Case::verify_types() {
-  type = kv->verify_types_with_key(Bool);
-  assert(type && "case is nullptr");
-}
+  std::set<Type *> value_types;
+  for (const auto &kv : key_vals) {
+    if (kv.first->type != Bool) {
+      // TODO: give some context for this error message. Why must this be the
+      // type?  So far the only instance where this is called is for case
+      // statements,
+      error_log.log(loc, "Type of `____` must be bool, but " +
+                             kv.first->type->to_string() + " found instead.");
+      kv.first->type = Bool;
+      assert(kv.first->type && "keytype");
+    }
 
-void KVPairList::verify_types() {
-  assert(false && "Died in KVPairList::verify_types");
+    value_types.insert(kv.second->type);
+  }
+
+  // TODO guess what type was intended
+  if (value_types.size() != 1) {
+    error_log.log(loc, "Type error: Values do not match in key-value pairs");
+    type = Error;
+  } else {
+    type = *value_types.begin();
+  }
 }
 
 void Statements::verify_types() {
@@ -932,37 +948,6 @@ void StructLiteral::verify_types() {
     }
     ++anon_struct_counter;
   }
-}
-
-// Verifies that all keys have the same given type `key_type` and that all
-// values have the same (but unspecified) type.
-Type *KVPairList::verify_types_with_key(Type *key_type) {
-  std::set<Type *> value_types;
-
-  for (const auto &kv : pairs) {
-    if (kv.first->type != key_type) {
-      // TODO: give some context for this error message. Why must this be the
-      // type?  So far the only instance where this is called is for case
-      // statements,
-      error_log.log(loc, "Type of `____` must be " + key_type->to_string() +
-                             ", but " + kv.first->type->to_string() +
-                             " found instead.");
-      kv.first->type = key_type;
-      assert(kv.first->type && "keytype");
-    }
-
-    value_types.insert(kv.second->type);
-  }
-
-  // TODO guess what type was intended
-  if (value_types.size() != 1) {
-    error_log.log(loc, "Type error: Values do not match in key-value pairs");
-    return Error;
-  }
-
-  // FIXME this paradigm fits really well with Case statements but not
-  // KVPairLists so much
-  return *value_types.begin();
 }
 
 void Jump::verify_types() {

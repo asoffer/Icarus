@@ -81,12 +81,10 @@ void ChainOp::join_identifiers(bool is_arg) {
   for (auto &expr : exprs) { set_or_recurse(expr); }
 }
 
-void Case::join_identifiers(bool is_arg) { kv->join_identifiers(); }
-
-void KVPairList::join_identifiers(bool is_arg) {
-  for (auto &pair : pairs) {
-    set_or_recurse(pair.first);
-    set_or_recurse(pair.second);
+void Case::join_identifiers(bool is_arg) {
+  for (auto &kv : key_vals) {
+    set_or_recurse(kv.first);
+    set_or_recurse(kv.second);
   }
 }
 

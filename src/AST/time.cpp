@@ -41,16 +41,14 @@ Time::Eval Declaration::determine_time() {
   return time_ = identifier->determine_time();
 }
 
-Time::Eval KVPairList::determine_time() {
+Time::Eval Case::determine_time() {
   time_ = Time::either;
-  for (auto &kv_pair : pairs) {
-    time_ |= kv_pair.first->determine_time();
-    time_ |= kv_pair.second->determine_time();
+  for (auto &kv : key_vals) {
+    time_ |= kv.first->determine_time();
+    time_ |= kv.second->determine_time();
   }
   return time_;
 }
-
-Time::Eval Case::determine_time() { return time_ = kv->determine_time(); }
 
 Time::Eval Statements::determine_time() {
   for (auto &stmt : statements) { time_ |= stmt->determine_time(); }

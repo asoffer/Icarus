@@ -990,10 +990,11 @@ llvm::Value *Declaration::generate_code() {
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified
 llvm::Value *Case::generate_code() {
-  auto parent_fn = builder.GetInsertBlock()->getParent();
+  size_t num_key_vals = key_vals.size();
+  auto parent_fn      = builder.GetInsertBlock()->getParent();
   // Condition blocks - The ith block is what you reach when you've
   // failed the ith condition, where conditions are labelled starting at zero.
-  std::vector<llvm::BasicBlock *> case_blocks(kv->pairs.size() - 1);
+  std::vector<llvm::BasicBlock *> case_blocks(num_key_vals - 1);
 
   for (auto &block : case_blocks) {
     block = make_block("case.block", parent_fn);
@@ -1004,17 +1005,17 @@ llvm::Value *Case::generate_code() {
   auto case_landing = make_block("case.landing", parent_fn);
   builder.SetInsertPoint(case_landing);
   llvm::PHINode *phi_node = builder.CreatePHI(
-      *type, static_cast<unsigned int>(kv->pairs.size()), "phi");
+      *type, static_cast<unsigned int>(num_key_vals), "phi");
   builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
-    auto cmp_val    = kv->pairs[i].first->generate_code();
+    auto cmp_val    = key_vals[i].first->generate_code();
     auto true_block = make_block("land_true", parent_fn);
 
     // If it's false, move on to the next block
     builder.CreateCondBr(cmp_val, true_block, case_blocks[i]);
     builder.SetInsertPoint(true_block);
-    auto output_val = kv->pairs[i].second->generate_code();
+    auto output_val = key_vals[i].second->generate_code();
 
     // NOTE: You may be tempted to state that you are coming from the
     // block 'true_block'. However, if the code generated for the right-hand
@@ -1025,7 +1026,7 @@ llvm::Value *Case::generate_code() {
 
     builder.SetInsertPoint(case_blocks[i]);
   }
-  auto output_val = kv->pairs.back().second->generate_code();
+  auto output_val = key_vals.back().second->generate_code();
 
   phi_node->addIncoming(output_val, builder.GetInsertBlock());
   builder.CreateBr(case_landing);
@@ -1074,8 +1075,6 @@ llvm::Value *ArrayLiteral::generate_code() {
 
   return array_data;
 }
-
-llvm::Value *KVPairList::generate_code() { return nullptr; }
 
 llvm::Value *Conditional::generate_code() {
   // TODO if you forget this, it causes bad bugs. Make it impossible to forget

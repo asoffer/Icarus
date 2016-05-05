@@ -118,7 +118,7 @@ namespace Language {
 #define OP_BL indirection, dots, negation
 #define OP_L                                                                   \
   not_operator, dereference, reserved_free, reserved_print, reserved_import
-#define OP_B binop, reserved_in, assign_operator
+#define OP_B binop, reserved_in, assign_operator, rocket_operator
 
 #define LEFT_UNOP OP_L, OP_BL
 #define O_LEFT_UNOP Opt({LEFT_UNOP})
@@ -173,6 +173,10 @@ static const std::vector<Rule> Rules = {
     Rule(0x10, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
     Rule(0x10, expression, {O_EXPR, Opt({chainop}), O_EXPR},
          AST::ChainOp::build),
+
+    Rule(0x00, expression,
+         {Opt({reserved_else}), Opt({rocket_operator}), O_EXPR},
+         AST::Binop::BuildElseRocket),
 
     Rule(0x10, expression, {O_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::RightTextNonExpr),
@@ -284,6 +288,10 @@ static const std::vector<Rule> Rules = {
     Rule(0x10, expression,
          {Opt({reserved_struct}), Opt({left_brace}), Opt({right_brace})},
          AST::StructLiteral::build),
+
+    Rule(0x10, expression, {Opt({reserved_case}), Opt({left_brace}),
+                            Opt({statements}), Opt({right_brace})},
+         AST::Case::build),
 
     Rule(0x11, if_stmt, {Opt({reserved_if}), O_EXPR, Opt({left_brace}),
                          Opt({statements}), Opt({right_brace})},

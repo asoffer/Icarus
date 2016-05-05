@@ -59,13 +59,9 @@ void ArrayLiteral::lrvalue_check() {
 
 void Case::lrvalue_check() {
   lvalue = false;
-  kv->lrvalue_check();
-}
-
-void KVPairList::lrvalue_check() {
-  for (auto p : pairs) {
-    p.first->lrvalue_check();
-    p.second->lrvalue_check();
+  for (auto kv : key_vals) {
+    kv.first->lrvalue_check();
+    kv.second->lrvalue_check();
   }
 }
 

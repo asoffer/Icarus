@@ -122,21 +122,12 @@ Node *Terminal::clone(LOOKUP_ARGS) { return this; }
 
 Node *Case::clone(LOOKUP_ARGS) {
   auto case_node = new Case;
-  case_node->kv  = (KVPairList *)kv->CLONE;
-
-  return case_node;
-}
-
-Node *KVPairList::clone(LOOKUP_ARGS) {
-  auto kv_node = new KVPairList;
-
-  kv_node->pairs.reserve(pairs.size());
-  for (auto p : pairs) {
-    kv_node->pairs.emplace_back((Expression *)p.first->CLONE,
-                                (Expression *)p.second->CLONE);
+  for (auto& kv : key_vals) {
+    case_node->key_vals.emplace_back((Expression *)kv.first->CLONE,
+                                     (Expression *)kv.second->CLONE);
   }
 
-  return kv_node;
+  return case_node;
 }
 
 Node *Access::clone(LOOKUP_ARGS) {
