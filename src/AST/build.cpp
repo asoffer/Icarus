@@ -26,10 +26,13 @@ Node *Unop::build(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node    = static_cast<TokenNode *>(nodes[0]);
-  unop_ptr->loc   = tk_node->loc;
+  unop_ptr->loc   = nodes[0]->loc;
   unop_ptr->type_ = Language::expression;
-  unop_ptr->op    = tk_node->op;
+  if (nodes[0]->node_type() == Language::reserved_return) {
+    unop_ptr->op = Language::Operator::Return;
+  } else {
+    unop_ptr->op = ((AST::TokenNode *)(nodes[0]))->op;
+  }
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
@@ -335,7 +338,7 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::ColonEq) {
     return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
                  DeclType::Infer);
-  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::ColonEq) {
+  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::In) {
     return build(std::forward<NPtrVec &&>(nodes), Language::reserved_in,
                  DeclType::In);
   }

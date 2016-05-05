@@ -112,7 +112,6 @@ enum NodeType : short {
   reserved_enum,
   reserved_while,
   reserved_continue,
-  reserved_string,
   reserved_struct,
   reserved_repeat,
   reserved_restart,
@@ -147,6 +146,7 @@ enum NodeType : short {
   declaration = COMPOSITE_,
   if_stmt,
   if_else_stmt,
+  for_stmt,
   while_stmt,
   statements,
   program

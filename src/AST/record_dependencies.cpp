@@ -135,8 +135,8 @@ void Case::record_dependencies() {
   Dependency::add_to_table(this);
   Dependency::value_type(this, this);
   for (const auto &kv : key_vals) {
-    Dependency::add_to_table(kv.first);
-    Dependency::add_to_table(kv.second);
+    kv.first->record_dependencies();
+    kv.second->record_dependencies();
     Dependency::type_type(this, kv.first);
     Dependency::type_type(this, kv.second);
     Dependency::value_value(this, kv.first);

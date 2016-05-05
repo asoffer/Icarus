@@ -15,16 +15,11 @@ extern std::queue<std::string> file_queue;
 
 namespace Language {
 const std::map<std::string, NodeType> reserved_words = {
-    {"if", reserved_if},
-    {"in", reserved_in},
-    {"else", reserved_else},
-    {"case", reserved_case},
-    {"for", reserved_for},
-    {"enum", reserved_enum},
-    {"while", reserved_while},
-    {"import", reserved_import},
-    {"string", reserved_string},
-    {"struct", reserved_struct},
+    {"if", reserved_if},         {"in", reserved_in},
+    {"else", reserved_else},     {"case", reserved_case},
+    {"for", reserved_for},       {"enum", reserved_enum},
+    {"while", reserved_while},   {"free", reserved_free},
+    {"import", reserved_import}, {"struct", reserved_struct},
     {"print", reserved_print}};
 } // namespace Language
 
@@ -144,9 +139,14 @@ AST::Node *Lexer::next_word() {
     RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
 
   } else if (token == "return") {
-    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Return);
-    jmp->set_node_type(Language::reserved_return);
-    return jmp;
+    auto term_ptr           = new AST::Terminal;
+    term_ptr->loc           = loc_;
+    term_ptr->terminal_type = Language::Terminal::Return;
+    term_ptr->type          = Void;
+    term_ptr->token_        = "return";
+
+    term_ptr->set_node_type(Language::reserved_return);
+    return term_ptr;
 
   } else if (token == "continue") {
     auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Continue);

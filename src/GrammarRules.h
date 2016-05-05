@@ -115,19 +115,23 @@ DEFINE_ERR(LeftTextNonIdRightNonExpr, 1,
 #undef DEFINE_INVALID
 
 namespace Language {
-#define OP_BL indirection, dots, negation
+#define OP_BL dots, negation
 #define OP_L                                                                   \
   not_operator, dereference, reserved_free, reserved_print, reserved_import
-#define OP_B binop, reserved_in, assign_operator, rocket_operator
+#define OP_B binop, assign_operator, rocket_operator
 
-#define LEFT_UNOP OP_L, OP_BL
+#define LEFT_UNOP OP_L, OP_BL, indirection
 #define O_LEFT_UNOP Opt({LEFT_UNOP})
 
 #define BINOP OP_B, OP_BL
 #define O_BINOP Opt({BINOP})
 
+#define DECLOP declop, reserved_in
+#define O_DECLOP Opt({DECLOP})
+
 #define O_BCOP                                                                 \
-  Opt({BINOP, chainop, fn_arrow, rocket_operator, assign_operator, reserved_in})
+  Opt({BINOP, chainop, indirection, fn_arrow, rocket_operator,                 \
+       assign_operator, DECLOP})
 
 #define NON_ID_EXPR expression, fn_expression, fn_literal
 #define O_NON_ID_EXPR Opt({NON_ID_EXPR})
@@ -139,20 +143,20 @@ namespace Language {
   reserved_break, reserved_if, reserved_else, reserved_for, reserved_while,    \
       reserved_continue, reserved_import, reserved_repeat, reserved_restart,   \
       reserved_return, reserved_print, reserved_free, reserved_in,             \
-      reserved_enum, reserved_struct, reserved_return
+      reserved_enum, reserved_struct
 #define O_TEXT_NON_EXPR Opt({TEXT_NON_EXPR})
 
 #define NON_EXPR                                                               \
-  TEXT_NON_EXPR, hashtag, right_paren, right_brace, right_bracket,            \
+  TEXT_NON_EXPR, hashtag, right_paren, right_brace, right_bracket,             \
       declaration, semicolon, left_brace, /** Not sure from here on **/ binop, \
       tick, dot, declop, fn_arrow, rocket_operator, assign_operator, chainop,  \
-      dots
+      indirection, dots
 #define O_NON_EXPR Opt({NON_EXPR})
 
 #define NEWLINE_OR_EOF newline, eof
 #define O_NEWLINE_OR_EOF Opt({NEWLINE_OR_EOF})
 
-#define STMT EXPR, reserved_return, if_stmt, if_else_stmt, while_stmt
+#define STMT EXPR, reserved_return, if_stmt, if_else_stmt, while_stmt, for_stmt
 #define O_STMT Opt({STMT})
 
 // Here are the definitions for all rules in the langugae. For a rule to be
@@ -161,7 +165,8 @@ namespace Language {
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
 static const std::vector<Rule> Rules = {
-    Rule(0x11, expression, {O_LEFT_UNOP, O_EXPR}, AST::Unop::build),
+    Rule(0x11, expression, {Opt({LEFT_UNOP, reserved_return}), O_EXPR},
+         AST::Unop::build),
     Rule(0x10, expression, {O_LEFT_UNOP, O_NEWLINE_OR_EOF},
          ErrMsg::NeedExprAtEndOfFileOrLine),
     Rule(0x11, expression, {O_LEFT_UNOP, O_TEXT_NON_EXPR},
@@ -171,20 +176,23 @@ static const std::vector<Rule> Rules = {
     Rule(0x10, fn_expression, {O_EXPR, Opt({fn_arrow}), O_EXPR},
          AST::Binop::build),
     Rule(0x10, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
-    Rule(0x10, expression, {O_EXPR, Opt({chainop}), O_EXPR},
+    Rule(0x10, expression, {O_EXPR, Opt({chainop, indirection}), O_EXPR},
          AST::ChainOp::build),
 
     Rule(0x00, expression,
          {Opt({reserved_else}), Opt({rocket_operator}), O_EXPR},
          AST::Binop::BuildElseRocket),
 
+    Rule(0x10, expression, {O_EXPR, Opt({hashtag})},
+         AST::Declaration::AddHashtag),
+
     Rule(0x10, expression, {O_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::RightTextNonExpr),
-    Rule(0x10, expression, {O_TEXT_NON_EXPR, O_BCOP, O_EXPR},
+    Rule(0x20, expression, {O_TEXT_NON_EXPR, O_BCOP, O_EXPR},
          ErrMsg::Binop::LeftTextNonExpr),
     Rule(0x10, expression, {O_TEXT_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::BothTextNonExpr),
-    Rule(0x11, expression, {O_TEXT_NON_EXPR, O_BCOP, O_NON_EXPR},
+    Rule(0x21, expression, {O_TEXT_NON_EXPR, O_BCOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
     Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
@@ -225,30 +233,30 @@ static const std::vector<Rule> Rules = {
     Rule(0x11, expression, {O_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
          ErrMsg::Binop::TODOBetter),
 
-    Rule(0x10, expression, {Opt({identifier}), Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {Opt({identifier}), O_DECLOP, O_EXPR},
          AST::Declaration::BuildBasic),
 
-    Rule(0x10, expression, {O_NON_ID_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {O_NON_ID_EXPR, O_DECLOP, O_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_EXPR},
          ErrMsg::Declaration::LeftTextNonId),
-    Rule(0x11, expression, {O_NON_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, O_DECLOP, O_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x10, expression, {Opt({identifier}), Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {Opt({identifier}), O_DECLOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::RightTextNonExpr),
-    Rule(0x10, expression, {O_NON_ID_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_NON_ID_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftNonIdRightReserved),
-    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftTextNonIdRightReserved),
-    Rule(0x11, expression, {O_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x11, expression, {O_NON_ID_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {O_NON_ID_EXPR, O_DECLOP, O_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x11, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_NON_EXPR},
          ErrMsg::Declaration::LeftTextNonId),
-    Rule(0x12, expression, {O_NON_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, O_DECLOP, O_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x11, expression, {Opt({identifier}), Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {Opt({identifier}), O_DECLOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
 
     // Haven't even considered errors below here
@@ -258,6 +266,9 @@ static const std::vector<Rule> Rules = {
     Rule(0x10, expression,
          {O_EXPR, Opt({left_paren}), O_EXPR, Opt({right_paren})},
          AST::Binop::build_paren_operator),
+    Rule(0x10, expression, {O_EXPR, Opt({left_paren}), Opt({right_paren})},
+         AST::Unop::build_paren_operator),
+
     Rule(0x11, statements, {Opt({statements}), O_STMT, O_NEWLINE_OR_EOF},
          AST::Statements::build_more),
     Rule(0x12, statements, {O_STMT, O_NEWLINE_OR_EOF},
@@ -274,6 +285,16 @@ static const std::vector<Rule> Rules = {
     Rule(0x10, fn_literal,
          {Opt({fn_expression}), Opt({left_brace}), Opt({right_brace})},
          AST::FunctionLiteral::build),
+
+    Rule(0x10, expression, {Opt({left_bracket}), O_EXPR, Opt({semicolon}),
+                            O_EXPR, Opt({right_bracket})},
+         AST::ArrayType::build),
+    Rule(0x11, expression, {Opt({left_bracket}), O_EXPR, Opt({right_bracket})},
+         AST::ArrayLiteral::build),
+
+    Rule(0x10, expression,
+         {Opt({EXPR}), Opt({left_bracket}), O_EXPR, Opt({right_bracket})},
+         AST::Binop::build_bracket_operator),
 
     Rule(0x10, expression, {Opt({reserved_enum}), Opt({left_brace}),
                             Opt({statements}), Opt({right_brace})},
@@ -314,6 +335,10 @@ static const std::vector<Rule> Rules = {
                             Opt({statements}), Opt({right_brace})},
          AST::While::build),
 
+    Rule(0x00, for_stmt, {Opt({reserved_for}), O_EXPR, Opt({left_brace}),
+                          Opt({statements}), Opt({right_brace})},
+         AST::For::build),
+
     Rule(0x00, newline, {Opt({reserved_import}), O_EXPR}, import_file),
 
     Rule(0x10, program,
@@ -349,14 +374,27 @@ bool Parser::should_shift() {
   }
   if (ahead_type == Language::right_paren) { return false; }
 
-  if ((get_type(2) & Language::OP_) && (ahead_type & Language::OP_)) {
-    auto left_prec  = precedence(((AST::TokenNode *)get(2))->op);
-    auto right_prec = precedence(((AST::TokenNode *)lookahead_)->op);
+  if (get_type(2) & Language::OP_) {
+    auto left_prec = precedence(((AST::TokenNode *)get(2))->op);
+    size_t right_prec;
+    if (ahead_type & Language::OP_) {
+      right_prec = precedence(((AST::TokenNode *)lookahead_)->op);
+
+    } else if (ahead_type == Language::left_paren) {
+      right_prec = precedence(Language::Operator::Call);
+
+    } else if (ahead_type == Language::left_bracket) {
+      right_prec = precedence(Language::Operator::Index);
+
+    } else {
+      goto end;
+    }
 
     if (left_prec < right_prec) { return true; }
     if (left_prec > right_prec) { return false; }
     return (left_prec & assoc_mask) == right_assoc;
   }
 
+end:
   return false;
 }

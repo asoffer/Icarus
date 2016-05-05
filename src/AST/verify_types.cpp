@@ -230,11 +230,7 @@ void Unop::verify_types() {
     }
   } break;
   case Operator::And: {
-    // TODO disallow pointers to goofy things (address of rvalue, e.g.)
-    if (operand->type == Type_)
-      type = Type_;
-    else
-      type = Ptr(operand->type);
+    type = (operand->type == Type_) ? Type_ : Ptr(operand->type);
     assert(type && "&type is null");
   } break;
   case Operator::Sub: {
@@ -627,7 +623,10 @@ void Binop::verify_types() {
     if (type != Error) { type = Type_; }
 
   } break;
-  default: { assert(false); }
+  default: {
+    std::cout << *this << std::endl;
+    assert(false);
+  }
   }
 }
 
