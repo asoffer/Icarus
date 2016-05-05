@@ -130,7 +130,7 @@ namespace Language {
   reserved_break, reserved_if, reserved_else, reserved_for, reserved_while,    \
       reserved_continue, reserved_import, reserved_repeat, reserved_restart,   \
       reserved_return, reserved_print, reserved_free, reserved_in,             \
-      reserved_enum, reserved_struct
+      reserved_enum, reserved_struct, reserved_return
 #define O_TEXT_NON_EXPR Opt({TEXT_NON_EXPR})
 
 #define NON_EXPR                                                               \
@@ -242,9 +242,10 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, expression,
          {O_EXPR, Opt({left_paren}), O_EXPR, Opt({right_paren})},
          AST::Binop::build_paren_operator),
-    Rule(0x01, statements, {Opt({statements}), O_EXPR, O_NEWLINE_OR_EOF},
+    Rule(0x01, statements,
+         {Opt({statements}), Opt({EXPR, reserved_return}), O_NEWLINE_OR_EOF},
          AST::Statements::build_more),
-    Rule(0x02, statements, {O_EXPR, O_NEWLINE_OR_EOF},
+    Rule(0x02, statements, {Opt({EXPR, reserved_return}), O_NEWLINE_OR_EOF},
          AST::Statements::build_one),
 
     Rule(0x10, keep_current, {Opt({statements, left_brace}), O_NEWLINE_OR_EOF},

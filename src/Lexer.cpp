@@ -15,7 +15,6 @@ extern std::queue<std::string> file_queue;
 
 namespace Language {
 const std::map<std::string, NodeType> reserved_words = {
-    {"break", reserved_break},
     {"if", reserved_if},
     {"in", reserved_in},
     {"else", reserved_else},
@@ -23,12 +22,9 @@ const std::map<std::string, NodeType> reserved_words = {
     {"for", reserved_for},
     {"enum", reserved_enum},
     {"while", reserved_while},
-    {"continue", reserved_continue},
     {"import", reserved_import},
     {"string", reserved_string},
     {"struct", reserved_struct},
-    {"repeat", reserved_repeat},
-    {"restart", reserved_restart},
     {"print", reserved_print}};
 } // namespace Language
 
@@ -146,6 +142,31 @@ AST::Node *Lexer::next_word() {
 
   } else if (token == "input") {
     RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
+
+  } else if (token == "return") {
+    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Return);
+    jmp->set_node_type(Language::reserved_return);
+    return jmp;
+
+  } else if (token == "continue") {
+    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Continue);
+    jmp->set_node_type(Language::reserved_continue);
+    return jmp;
+
+  } else if (token == "break") {
+    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Break);
+    jmp->set_node_type(Language::reserved_break);
+    return jmp;
+
+  } else if (token == "repeat") {
+    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Repeat);
+    jmp->set_node_type(Language::reserved_repeat);
+    return jmp;
+
+  } else if (token == "restart") {
+    auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Restart);
+    jmp->set_node_type(Language::reserved_restart);
+    return jmp;
   }
 
   // Check if the word is reserved and if so, build the appropriate Node
