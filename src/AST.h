@@ -198,9 +198,7 @@ struct Declaration : public Expression {
 
   static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
 
-  static Node *BuildStd(NPtrVec &&nodes);
-  static Node *BuildIn(NPtrVec &&nodes);
-  static Node *BuildInfer(NPtrVec &&nodes);
+  static Node *BuildBasic(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
 
   static Node *AddHashtag(NPtrVec &&nodes);

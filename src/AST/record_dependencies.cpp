@@ -168,6 +168,7 @@ void KVPairList::record_dependencies() {
 }
 
 void Statements::record_dependencies() {
+  Dependency::add_to_table(this);
   for (const auto &stmt : statements) {
     Dependency::value_value(this, stmt);
     stmt->record_dependencies();

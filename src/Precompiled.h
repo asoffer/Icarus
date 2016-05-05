@@ -141,8 +141,12 @@ enum NodeType : short {
   reserved_return = EXPR_ + LEFT_ + OP_,
 
   expression = COMPOSITE_ + EXPR_,
+  fn_expression,
+  fn_literal,
 
-  declaration = COMPOSITE_
+  declaration = COMPOSITE_,
+  statements,
+  program
 };
 
 inline bool is_operator(NodeType t) { return (t & OP_) != 0; }

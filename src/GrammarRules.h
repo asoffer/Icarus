@@ -61,18 +61,55 @@ AST::Node *InvalidLeftAndEnd(NPtrVec &&nodes) {
 }
 } // namespace Binop
 namespace Access {
-DEFINE_ERR(InvalidLeft, 0, "Left-hand side of `.` must be an expression")
-DEFINE_ERR(InvalidBoth, 1, "Neither side of `.` operator is an expression")
-DEFINE_ERR(InvalidRight, 2, "Right-hand side of `.` must be an identifier")
+DEFINE_ERR(RightNonId, 2, "Right-hand side of '" + nodes[1]->token() +
+                              "' must be an identifier.")
+DEFINE_ERR(RightTextNonId, 2,
+           "Right-hand side of '" + nodes[1]->token() + "' is a reserved word.")
+DEFINE_ERR(RightNonIdLeftReserved, 1,
+           "Right-hand side of '" + nodes[1]->token() +
+               "' must be an "
+               "identifier. Left-hand side is a reserved word.")
+DEFINE_ERR(RightTextNonIdLeftReserved, 1,
+           "Both sides of '" + nodes[1]->token() + "' are reserved.")
+DEFINE_ERR(RightNonIdLeftNonExpr, 1,
+           "Right-hand side of '" + nodes[1]->token() +
+               "' must be an "
+               "identifier. Left-hand side must be an "
+               "expression.")
+DEFINE_ERR(RightTextNonIdLeftNonExpr, 1,
+           "Right-hand side of '" + nodes[1]->token() +
+               "' is a "
+               "reserved word. Left-hand side must "
+               "be an expression.")
 
 } // namespace Access
+
+namespace Declaration {
+DEFINE_ERR(LeftNonId, 0, "Left-hand side of '" + nodes[1]->token() +
+                             "' must be an identifier.")
+DEFINE_ERR(LeftTextNonId, 0,
+           "Left-hand side of '" + nodes[1]->token() + "' is a reserved word.")
+DEFINE_ERR(LeftNonIdRightReserved, 1,
+           "Left-hand side of '" + nodes[1]->token() +
+               "' must be an identifier. Right-hand side is a reserved word.")
+DEFINE_ERR(LeftTextNonIdRightReserved, 1,
+           "Both sides of '" + nodes[1]->token() + "' are reserved.")
+DEFINE_ERR(
+    LeftNonIdRightNonExpr, 1,
+    "Left-hand side of '" + nodes[1]->token() +
+        "' must be an identifier. Right-hand side must be an expression.")
+DEFINE_ERR(LeftTextNonIdRightNonExpr, 1,
+           "Left-hand side of '" + nodes[1]->token() +
+               "' is a reserved word. Right-hand side must be an expression.")
+} // namespace Declaration
+
 } // namespace ErrMsg
 #undef DEFINE_INVALID
 
 namespace Language {
 #define OP_BL indirection, dots, negation
 #define OP_L not_operator, dereference, reserved_free, reserved_print
-#define OP_B binop, fn_arrow, reserved_in
+#define OP_B binop, reserved_in, assign_operator
 
 #define LEFT_UNOP OP_L, OP_BL
 #define O_LEFT_UNOP Opt({LEFT_UNOP})
@@ -81,10 +118,9 @@ namespace Language {
 #define O_BINOP Opt({BINOP})
 
 #define O_BCOP                                                                 \
-  Opt({BINOP, chainop, dot, tick, declop, fn_arrow, rocket_operator,           \
-       assign_operator, reserved_in})
+  Opt({BINOP, chainop, fn_arrow, rocket_operator, assign_operator, reserved_in})
 
-#define NON_ID_EXPR expression
+#define NON_ID_EXPR expression, fn_expression, fn_literal
 #define O_NON_ID_EXPR Opt({NON_ID_EXPR})
 
 #define EXPR NON_ID_EXPR, identifier
@@ -93,7 +129,8 @@ namespace Language {
 #define TEXT_NON_EXPR                                                          \
   reserved_break, reserved_if, reserved_else, reserved_for, reserved_while,    \
       reserved_continue, reserved_import, reserved_repeat, reserved_restart,   \
-      reserved_return, reserved_print, reserved_free, reserved_in
+      reserved_return, reserved_print, reserved_free, reserved_in,             \
+      reserved_enum, reserved_struct
 #define O_TEXT_NON_EXPR Opt({TEXT_NON_EXPR})
 
 #define NON_EXPR                                                               \
@@ -119,6 +156,8 @@ static const std::vector<Rule> Rules = {
          ErrMsg::Unop::TextNonExpr),
     Rule(0x02, expression, {O_LEFT_UNOP, O_NON_EXPR}, ErrMsg::Unop::NonExpr),
 
+    Rule(0x00, fn_expression, {O_EXPR, Opt({fn_arrow}), O_EXPR},
+         AST::Binop::build),
     Rule(0x00, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
     Rule(0x00, expression, {O_EXPR, Opt({chainop}), O_EXPR},
          AST::ChainOp::build),
@@ -140,35 +179,104 @@ static const std::vector<Rule> Rules = {
     Rule(0x02, expression, {O_NON_EXPR, O_BCOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
 
-    /*
-        Rule(0xf0, expression, {O_NON_EXPR, Opt({OP_B}), O_EXPR},
-             ErrMsg::Binop::InvalidLeft),
-        Rule(0xf0, expression, {O_EXPR, Opt({OP_B}), O_NON_EXPR},
-             ErrMsg::Binop::InvalidRight),
-        Rule(0xf0, expression, {O_NON_EXPR, Opt({OP_B}), O_NON_EXPR},
-             ErrMsg::Binop::InvalidBoth),
+    Rule(0x00, expression, {O_EXPR, Opt({dot}), Opt({identifier})},
+         AST::Access::build),
+    Rule(0x00, expression, {O_EXPR, Opt({tick}), Opt({identifier})},
+         AST::Declaration::BuildGenerate),
 
-            Rule(0xf0, expression, {O_EXPR, Opt({BINOP, dot}),
-       O_NEWLINE_OR_EOF},
-                 ErrMsg::NeedExprAtEndOfFileOrLine),
-            Rule(0xf0, expression, {O_NON_EXPR, Opt({BINOP, dot}),
-           O_NEWLINE_OR_EOF},
-                 ErrMsg::Binop::InvalidLeftAndEnd),
+    // TODO move these out of Access namespace. They apply to ` as well.
+    Rule(0x00, expression, {O_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+         ErrMsg::Access::RightNonId),
+    Rule(0x00, expression, {O_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+         ErrMsg::Access::RightTextNonId),
+    Rule(0x01, expression, {O_EXPR, Opt({dot, tick}), O_NON_EXPR},
+         ErrMsg::Access::RightNonId),
+    Rule(0x00, expression,
+         {O_TEXT_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
+         ErrMsg::Binop::LeftTextNonExpr),
+    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+         ErrMsg::Access::RightNonIdLeftReserved),
+    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+         ErrMsg::Access::RightTextNonIdLeftReserved),
+    Rule(0x01, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
+         ErrMsg::Access::RightNonId),
+    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+         ErrMsg::Access::RightNonId),
+    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+         ErrMsg::Access::RightTextNonId),
+    Rule(0x02, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
+         ErrMsg::Access::RightNonId),
+    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
+         ErrMsg::Binop::TODOBetter),
 
-            Rule(0xf0, expression, {O_EXPR, Opt({dot}), Opt({identifier})},
-                 AST::Access::build),
-            Rule(0xf0, expression, {O_EXPR, Opt({dot}), O_NON_ID_EXPR},
-                 ErrMsg::Access::InvalidRight),
-            Rule(0xf0, expression, {O_EXPR, Opt({dot}), O_NON_EXPR},
-                 ErrMsg::Access::InvalidRight),
+    Rule(0x00, expression, {Opt({identifier}), Opt({declop}), O_EXPR},
+         AST::Declaration::BuildBasic),
 
-            Rule(0xf0, expression, {O_NON_EXPR, Opt({dot}), Opt({identifier})},
-                 ErrMsg::Access::InvalidLeft),
-            Rule(0xf0, expression, {O_NON_EXPR, Opt({dot}), O_NON_ID_EXPR},
-                 ErrMsg::Access::InvalidBoth),
-            Rule(0xf0, expression, {O_NON_EXPR, Opt({dot}), O_NON_EXPR},
-                 ErrMsg::Access::InvalidBoth),
-        */
+    Rule(0x00, expression, {O_NON_ID_EXPR, Opt({declop}), O_EXPR},
+         ErrMsg::Declaration::LeftNonId),
+    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_EXPR},
+         ErrMsg::Declaration::LeftTextNonId),
+    Rule(0x01, expression, {O_NON_EXPR, Opt({declop}), O_EXPR},
+         ErrMsg::Declaration::LeftNonId),
+    Rule(0x00, expression, {Opt({identifier}), Opt({declop}), O_TEXT_NON_EXPR},
+         ErrMsg::Binop::RightTextNonExpr),
+    Rule(0x00, expression, {O_NON_ID_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+         ErrMsg::Declaration::LeftNonIdRightReserved),
+    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+         ErrMsg::Declaration::LeftTextNonIdRightReserved),
+    Rule(0x01, expression, {O_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+         ErrMsg::Declaration::LeftNonId),
+    Rule(0x01, expression, {O_NON_ID_EXPR, Opt({declop}), O_NON_EXPR},
+         ErrMsg::Declaration::LeftNonId),
+    Rule(0x01, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_NON_EXPR},
+         ErrMsg::Declaration::LeftTextNonId),
+    Rule(0x02, expression, {O_NON_EXPR, Opt({declop}), O_NON_EXPR},
+         ErrMsg::Declaration::LeftNonId),
+    Rule(0x01, expression, {Opt({identifier}), Opt({declop}), O_NON_EXPR},
+         ErrMsg::Binop::TODOBetter),
+
+    // Haven't even considered errors below here
+
+    Rule(0x01, expression, {Opt({left_paren}), O_EXPR, Opt({right_paren})},
+         AST::Expression::parenthesize),
+    Rule(0x00, expression,
+         {O_EXPR, Opt({left_paren}), O_EXPR, Opt({right_paren})},
+         AST::Binop::build_paren_operator),
+    Rule(0x01, statements, {Opt({statements}), O_EXPR, O_NEWLINE_OR_EOF},
+         AST::Statements::build_more),
+    Rule(0x02, statements, {O_EXPR, O_NEWLINE_OR_EOF},
+         AST::Statements::build_one),
+
+    Rule(0x10, keep_current, {Opt({statements, left_brace}), O_NEWLINE_OR_EOF},
+
+         drop_all_but<0>),
+    Rule(0x10, keep_current, {Opt({newline}), Opt({statements, left_brace})},
+         drop_all_but<1>),
+
+    Rule(0x00, fn_literal, {Opt({fn_expression}), Opt({left_brace}),
+                            Opt({statements}), Opt({right_brace})},
+         AST::FunctionLiteral::build),
+    Rule(0x00, fn_literal,
+         {Opt({fn_expression}), Opt({left_brace}), Opt({right_brace})},
+         AST::FunctionLiteral::build),
+
+    Rule(0x00, expression, {Opt({reserved_enum}), Opt({left_brace}),
+                            Opt({statements}), Opt({right_brace})},
+         AST::EnumLiteral::build),
+    Rule(0x00, expression,
+         {Opt({reserved_enum}), Opt({left_brace}), Opt({right_brace})},
+         AST::EnumLiteral::build),
+
+    Rule(0x00, expression, {Opt({reserved_struct}), Opt({left_brace}),
+                            Opt({statements}), Opt({right_brace})},
+         AST::StructLiteral::build),
+    Rule(0x00, expression,
+         {Opt({reserved_struct}), Opt({left_brace}), Opt({right_brace})},
+         AST::StructLiteral::build),
+
+    Rule(0x00, program,
+         {Opt({Language::bof}), Opt({statements}), Opt({Language::eof})},
+         drop_all_but<1>),
 };
 
 extern size_t precedence(Language::Operator op);
@@ -188,6 +296,14 @@ bool Parser::should_shift() {
   // We'll need these node types a lot, so lets make it easy to use
   const auto ahead_type = lookahead_->node_type();
 
+  if (ahead_type == Language::left_brace &&
+      (get_type(1) == Language::fn_expression ||
+       get_type(1) == Language::reserved_struct ||
+       get_type(1) == Language::reserved_enum)) {
+    return true;
+  }
+  if (ahead_type == Language::right_paren) { return false; }
+
   if ((get_type(2) & Language::OP_) && (ahead_type & Language::OP_)) {
     auto left_prec  = precedence(((AST::TokenNode *)get(2))->op);
     auto right_prec = precedence(((AST::TokenNode *)lookahead_)->op);
@@ -196,7 +312,6 @@ bool Parser::should_shift() {
     if (left_prec > right_prec) { return false; }
     return (left_prec & assoc_mask) == right_assoc;
   }
-
 
   return false;
 }

@@ -328,19 +328,18 @@ Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
   return decl_ptr;
 }
 
-Node *Declaration::BuildStd(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
-               DeclType::Std);
-}
-
-Node *Declaration::BuildInfer(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
-               DeclType::Infer);
-}
-
-Node *Declaration::BuildIn(NPtrVec &&nodes) {
-  return build(std::forward<NPtrVec &&>(nodes), Language::reserved_in,
-               DeclType::In);
+Node *Declaration::BuildBasic(NPtrVec &&nodes) {
+  if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::Colon) {
+    return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
+                 DeclType::Std);
+  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::ColonEq) {
+    return build(std::forward<NPtrVec &&>(nodes), Language::declaration,
+                 DeclType::Infer);
+  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::ColonEq) {
+    return build(std::forward<NPtrVec &&>(nodes), Language::reserved_in,
+                 DeclType::In);
+  }
+  assert(false);
 }
 
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
@@ -401,15 +400,16 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  fn_lit->statements = steal<Statements>(nodes[2]);
+  if (nodes[2]->node_type() == Language::statements) {
+    fn_lit->statements = steal<Statements>(nodes[2]);
+  } else {
+    fn_lit->statements = new Statements;
+  }
 
   // TODO scopes inside these statements should point to fn_scope.
 
   auto binop_ptr = static_cast<Binop *>(nodes[0]);
 
-  // TODO steal not working in this instance. Figure out why.
-  // fn_lit->return_type_expr = steal<Expression>(binop_ptr->rhs);
-  // auto input_args          = steal<Expression>(binop_ptr->lhs);
   fn_lit->return_type_expr = steal<Expression>(binop_ptr->rhs);
   auto input_args          = steal<Expression>(binop_ptr->lhs);
 
@@ -440,13 +440,16 @@ Node *StructLiteral::build(NPtrVec &&nodes) {
   struct_lit_ptr->loc  = nodes[0]->loc;
   struct_lit_ptr->type = Type_;
 
-  auto stmts = static_cast<Statements *>(nodes[2]);
-  for (auto &&stmt : stmts->statements) {
-    // TODO handle this gracefully
-    assert(stmt->is_declaration() &&
-           "Statement is not a declaration, and that case isn't handled yet.");
+  if (nodes[2]->node_type() == Language::statements) {
+    auto stmts = static_cast<Statements *>(nodes[2]);
+    for (auto &&stmt : stmts->statements) {
+      // TODO handle this gracefully
+      assert(
+          stmt->is_declaration() &&
+          "Statement is not a declaration, and that case isn't handled yet.");
 
-    struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
+      struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
+    }
   }
 
   return struct_lit_ptr;
@@ -579,16 +582,18 @@ Node *EnumLiteral::build(NPtrVec &&nodes) {
   enum_lit_ptr->loc  = nodes[0]->loc;
   enum_lit_ptr->type = Type_;
 
-  auto stmts = static_cast<Statements *>(nodes[2]);
-  for (auto &&stmt : stmts->statements) {
-    if (!stmt->is_identifier()) {
-      error_log.log(stmt->loc, "Enum members must be identifiers.");
-    }
+  if (nodes[2]->node_type() == Language::statements) {
+    auto stmts = static_cast<Statements *>(nodes[2]);
+    for (auto &&stmt : stmts->statements) {
+      if (!stmt->is_identifier()) {
+        error_log.log(stmt->loc, "Enum members must be identifiers.");
+      }
 
-    // TODO repeated terms?
-    // TODO move the string into place
-    enum_lit_ptr->members.emplace_back(
-        static_cast<Identifier *>(stmt)->token());
+      // TODO repeated terms?
+      // TODO move the string into place
+      enum_lit_ptr->members.emplace_back(
+          static_cast<Identifier *>(stmt)->token());
+    }
   }
 
   return enum_lit_ptr;

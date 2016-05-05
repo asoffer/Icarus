@@ -682,7 +682,7 @@ llvm::Value *ArrayType::generate_code() {
 }
 
 llvm::Value *Statements::generate_code() {
-  assert(!statements.empty());
+  if (statements.empty()) { return nullptr; }
 
   auto it = statements.begin();
   (*it)->generate_code();

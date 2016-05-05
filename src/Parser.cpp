@@ -16,12 +16,12 @@ extern bool parser;
 
 // Parse the file with a shift-reduce algorithm
 AST::Node *Parser::parse() {
-  assert(lookahead_->node_type() == Language::newline);
+  assert(lookahead_->node_type() == Language::bof);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
-  // newline will not hurt us. The benefit of shifting is that we have now
-  // enforced the invariant that the stack is never empty. This means we do not
-  // need to check for an empty stack in the should_shift method.
+  // bof will not hurt us. The benefit of shifting is that we have now  enforced
+  // the invariant that the stack is never empty. This means we do not need to
+  // check for an empty stack in the should_shift method.
   shift();
 
   while (true) { // Main parsing loop start
@@ -55,6 +55,14 @@ AST::Node *Parser::parse() {
 }
 
 AST::Node *Parser::cleanup() {
+  while (reduce()) {
+    if (debug::parser) { show_debug(); }
+  }
+  shift(); // Shift on the EOF token
+  assert(get_type(1) == Language::eof);
+
+  // TODO there is one is production using EOF, so this loop is overkill. This
+  // is technically not true beacuse you have NEWLINE_OR_EOF. Think about this.
   while (reduce()) {
     if (debug::parser) { show_debug(); }
   }
@@ -106,9 +114,9 @@ void Parser::shift() {
 Parser::Parser(const std::string &filename)
     : lookahead_(nullptr), lexer_(filename), mode_(ParserMode::Good) {
   assert(stack_.empty());
-  // Start the lookahead with a newline token. This is a simple way to ensure
-  // proper initialization, because the newline will essentially be ignored.
-  lookahead_ = new AST::TokenNode(TokenLocation(), Language::newline);
+  // Start the lookahead with a boftoken. This is a simple way to ensure  proper
+  // initialization, because the newline will essentially be ignored.
+  lookahead_ = new AST::TokenNode(TokenLocation(), Language::bof);
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.
