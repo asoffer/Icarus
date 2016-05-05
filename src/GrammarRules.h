@@ -4,6 +4,14 @@
     return new AST::Identifier(nodes[pos]->loc, "invalid_node");               \
   }
 
+// TODO we can't have a '/' character, and since all our programs are in the
+// programs/ directory for now, we hard-code that. This needs to be removed.
+AST::Node *import_file(NPtrVec &&nodes) {
+  file_queue.emplace("programs/" + nodes[1]->token());
+  return AST::TokenNode::Newline(nodes[0]->loc);
+}
+
+
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
   auto temp = nodes[N];
   assert(temp && "stolen pointer is null");
@@ -108,7 +116,8 @@ DEFINE_ERR(LeftTextNonIdRightNonExpr, 1,
 
 namespace Language {
 #define OP_BL indirection, dots, negation
-#define OP_L not_operator, dereference, reserved_free, reserved_print
+#define OP_L                                                                   \
+  not_operator, dereference, reserved_free, reserved_print, reserved_import
 #define OP_B binop, reserved_in, assign_operator
 
 #define LEFT_UNOP OP_L, OP_BL
@@ -143,141 +152,166 @@ namespace Language {
 #define NEWLINE_OR_EOF newline, eof
 #define O_NEWLINE_OR_EOF Opt({NEWLINE_OR_EOF})
 
+#define STMT EXPR, reserved_return, if_stmt, if_else_stmt, while_stmt
+#define O_STMT Opt({STMT})
+
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
 static const std::vector<Rule> Rules = {
-    Rule(0x01, expression, {O_LEFT_UNOP, O_EXPR}, AST::Unop::build),
-    Rule(0x00, expression, {O_LEFT_UNOP, O_NEWLINE_OR_EOF},
+    Rule(0x11, expression, {O_LEFT_UNOP, O_EXPR}, AST::Unop::build),
+    Rule(0x10, expression, {O_LEFT_UNOP, O_NEWLINE_OR_EOF},
          ErrMsg::NeedExprAtEndOfFileOrLine),
-    Rule(0x01, expression, {O_LEFT_UNOP, O_TEXT_NON_EXPR},
+    Rule(0x11, expression, {O_LEFT_UNOP, O_TEXT_NON_EXPR},
          ErrMsg::Unop::TextNonExpr),
-    Rule(0x02, expression, {O_LEFT_UNOP, O_NON_EXPR}, ErrMsg::Unop::NonExpr),
+    Rule(0x12, expression, {O_LEFT_UNOP, O_NON_EXPR}, ErrMsg::Unop::NonExpr),
 
-    Rule(0x00, fn_expression, {O_EXPR, Opt({fn_arrow}), O_EXPR},
+    Rule(0x10, fn_expression, {O_EXPR, Opt({fn_arrow}), O_EXPR},
          AST::Binop::build),
-    Rule(0x00, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
-    Rule(0x00, expression, {O_EXPR, Opt({chainop}), O_EXPR},
+    Rule(0x10, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
+    Rule(0x10, expression, {O_EXPR, Opt({chainop}), O_EXPR},
          AST::ChainOp::build),
 
-    Rule(0x00, expression, {O_EXPR, O_BCOP, O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::RightTextNonExpr),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, O_BCOP, O_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, O_BCOP, O_EXPR},
          ErrMsg::Binop::LeftTextNonExpr),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::BothTextNonExpr),
-    Rule(0x01, expression, {O_TEXT_NON_EXPR, O_BCOP, O_NON_EXPR},
+    Rule(0x11, expression, {O_TEXT_NON_EXPR, O_BCOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
-    Rule(0x02, expression, {O_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
-    Rule(0x02, expression, {O_EXPR, O_BCOP, O_NON_EXPR},
+    Rule(0x12, expression, {O_EXPR, O_BCOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
-    Rule(0x02, expression, {O_NON_EXPR, O_BCOP, O_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_EXPR},
          ErrMsg::Binop::TODOBetter),
-    Rule(0x02, expression, {O_NON_EXPR, O_BCOP, O_NON_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
 
-    Rule(0x00, expression, {O_EXPR, Opt({dot}), Opt({identifier})},
+    Rule(0x10, expression, {O_EXPR, Opt({dot}), Opt({identifier})},
          AST::Access::build),
-    Rule(0x00, expression, {O_EXPR, Opt({tick}), Opt({identifier})},
+    Rule(0x10, expression, {O_EXPR, Opt({tick}), Opt({identifier})},
          AST::Declaration::BuildGenerate),
 
     // TODO move these out of Access namespace. They apply to ` as well.
-    Rule(0x00, expression, {O_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+    Rule(0x10, expression, {O_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
          ErrMsg::Access::RightNonId),
-    Rule(0x00, expression, {O_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
          ErrMsg::Access::RightTextNonId),
-    Rule(0x01, expression, {O_EXPR, Opt({dot, tick}), O_NON_EXPR},
+    Rule(0x11, expression, {O_EXPR, Opt({dot, tick}), O_NON_EXPR},
          ErrMsg::Access::RightNonId),
-    Rule(0x00, expression,
+    Rule(0x10, expression,
          {O_TEXT_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
          ErrMsg::Binop::LeftTextNonExpr),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
          ErrMsg::Access::RightNonIdLeftReserved),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
          ErrMsg::Access::RightTextNonIdLeftReserved),
-    Rule(0x01, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
+    Rule(0x11, expression, {O_TEXT_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
          ErrMsg::Access::RightNonId),
-    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_ID_EXPR},
          ErrMsg::Access::RightNonId),
-    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, Opt({dot, tick}), O_TEXT_NON_EXPR},
          ErrMsg::Access::RightTextNonId),
-    Rule(0x02, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, Opt({dot, tick}), O_NON_EXPR},
          ErrMsg::Access::RightNonId),
-    Rule(0x01, expression, {O_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
+    Rule(0x11, expression, {O_NON_EXPR, Opt({dot, tick}), Opt({identifier})},
          ErrMsg::Binop::TODOBetter),
 
-    Rule(0x00, expression, {Opt({identifier}), Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {Opt({identifier}), Opt({declop}), O_EXPR},
          AST::Declaration::BuildBasic),
 
-    Rule(0x00, expression, {O_NON_ID_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {O_NON_ID_EXPR, Opt({declop}), O_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_EXPR},
          ErrMsg::Declaration::LeftTextNonId),
-    Rule(0x01, expression, {O_NON_EXPR, Opt({declop}), O_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, Opt({declop}), O_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x00, expression, {Opt({identifier}), Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {Opt({identifier}), Opt({declop}), O_TEXT_NON_EXPR},
          ErrMsg::Binop::RightTextNonExpr),
-    Rule(0x00, expression, {O_NON_ID_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_NON_ID_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftNonIdRightReserved),
-    Rule(0x00, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x10, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftTextNonIdRightReserved),
-    Rule(0x01, expression, {O_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
+    Rule(0x11, expression, {O_NON_EXPR, Opt({declop}), O_TEXT_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x01, expression, {O_NON_ID_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {O_NON_ID_EXPR, Opt({declop}), O_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x01, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {O_TEXT_NON_EXPR, Opt({declop}), O_NON_EXPR},
          ErrMsg::Declaration::LeftTextNonId),
-    Rule(0x02, expression, {O_NON_EXPR, Opt({declop}), O_NON_EXPR},
+    Rule(0x12, expression, {O_NON_EXPR, Opt({declop}), O_NON_EXPR},
          ErrMsg::Declaration::LeftNonId),
-    Rule(0x01, expression, {Opt({identifier}), Opt({declop}), O_NON_EXPR},
+    Rule(0x11, expression, {Opt({identifier}), Opt({declop}), O_NON_EXPR},
          ErrMsg::Binop::TODOBetter),
 
     // Haven't even considered errors below here
 
-    Rule(0x01, expression, {Opt({left_paren}), O_EXPR, Opt({right_paren})},
+    Rule(0x11, expression, {Opt({left_paren}), O_EXPR, Opt({right_paren})},
          AST::Expression::parenthesize),
-    Rule(0x00, expression,
+    Rule(0x10, expression,
          {O_EXPR, Opt({left_paren}), O_EXPR, Opt({right_paren})},
          AST::Binop::build_paren_operator),
-    Rule(0x01, statements,
-         {Opt({statements}), Opt({EXPR, reserved_return}), O_NEWLINE_OR_EOF},
+    Rule(0x11, statements, {Opt({statements}), O_STMT, O_NEWLINE_OR_EOF},
          AST::Statements::build_more),
-    Rule(0x02, statements, {Opt({EXPR, reserved_return}), O_NEWLINE_OR_EOF},
+    Rule(0x12, statements, {O_STMT, O_NEWLINE_OR_EOF},
          AST::Statements::build_one),
 
-    Rule(0x10, keep_current, {Opt({statements, left_brace}), O_NEWLINE_OR_EOF},
-
+    Rule(0x20, keep_current, {Opt({statements, left_brace}), O_NEWLINE_OR_EOF},
          drop_all_but<0>),
-    Rule(0x10, keep_current, {Opt({newline}), Opt({statements, left_brace})},
+    Rule(0x20, keep_current, {Opt({newline}), Opt({statements, left_brace})},
          drop_all_but<1>),
 
-    Rule(0x00, fn_literal, {Opt({fn_expression}), Opt({left_brace}),
+    Rule(0x10, fn_literal, {Opt({fn_expression}), Opt({left_brace}),
                             Opt({statements}), Opt({right_brace})},
          AST::FunctionLiteral::build),
-    Rule(0x00, fn_literal,
+    Rule(0x10, fn_literal,
          {Opt({fn_expression}), Opt({left_brace}), Opt({right_brace})},
          AST::FunctionLiteral::build),
 
-    Rule(0x00, expression, {Opt({reserved_enum}), Opt({left_brace}),
+    Rule(0x10, expression, {Opt({reserved_enum}), Opt({left_brace}),
                             Opt({statements}), Opt({right_brace})},
          AST::EnumLiteral::build),
-    Rule(0x00, expression,
+    Rule(0x10, expression,
          {Opt({reserved_enum}), Opt({left_brace}), Opt({right_brace})},
          AST::EnumLiteral::build),
 
-    Rule(0x00, expression, {Opt({reserved_struct}), Opt({left_brace}),
+    Rule(0x10, expression, {Opt({reserved_struct}), Opt({left_brace}),
                             Opt({statements}), Opt({right_brace})},
          AST::StructLiteral::build),
-    Rule(0x00, expression,
+    Rule(0x10, expression,
          {Opt({reserved_struct}), Opt({left_brace}), Opt({right_brace})},
          AST::StructLiteral::build),
 
-    Rule(0x00, program,
+    Rule(0x11, if_stmt, {Opt({reserved_if}), O_EXPR, Opt({left_brace}),
+                         Opt({statements}), Opt({right_brace})},
+         AST::Conditional::build_if),
+    Rule(0x11, if_stmt, {Opt({if_stmt}), Opt({reserved_else}), Opt({if_stmt})},
+         AST::Conditional::build_else_if),
+    Rule(0x11, if_else_stmt,
+         {Opt({if_stmt}), Opt({reserved_else}), Opt({left_brace}),
+          Opt({statements}), Opt({right_brace})},
+         AST::Conditional::build_else),
+    Rule(0x11, if_else_stmt,
+         {Opt({if_else_stmt}), Opt({reserved_else}), Opt({left_brace}),
+          Opt({statements}), Opt({right_brace})},
+         AST::Conditional::build_extra_else_error),
+    Rule(0x11, if_else_stmt,
+         {Opt({if_else_stmt}), Opt({reserved_else}), Opt({if_stmt})},
+         AST::Conditional::build_extra_else_if_error),
+
+    Rule(0x11, while_stmt, {Opt({reserved_while}), O_EXPR, Opt({left_brace}),
+                            Opt({statements}), Opt({right_brace})},
+         AST::While::build),
+
+    Rule(0x00, newline, {Opt({reserved_import}), O_EXPR}, import_file),
+
+    Rule(0x10, program,
          {Opt({Language::bof}), Opt({statements}), Opt({Language::eof})},
          drop_all_but<1>),
+
 };
 
 extern size_t precedence(Language::Operator op);
@@ -287,7 +321,9 @@ extern size_t precedence(Language::Operator op);
 // reduce is possible. Recall that the stack can never be empty, so calls to
 // stack_.back() are always safe.
 
-AST::Node *Parser::get(size_t n) { return stack_[stack_.size() - n]; }
+AST::Node *Parser::get(size_t n) {
+  return stack_[stack_.size() - n];
+}
 Language::NodeType Parser::get_type(size_t n) { return get(n)->node_type(); }
 
 bool Parser::should_shift() {

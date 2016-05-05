@@ -1,13 +1,6 @@
 #include "Parser.h"
 #include "Rule.h"
 
-// TODO we can't have a '/' character, and since all our programs are in the
-// programs/ directory for now, we hard-code that. This needs to be removed.
-AST::Node *import_file(NPtrVec &&nodes) {
-  file_queue.emplace("programs/" + nodes[1]->token());
-  return AST::TokenNode::Newline(nodes[0]->loc);
-}
-
 namespace debug {
 extern bool parser;
 } // namespace debug
@@ -72,7 +65,6 @@ AST::Node *Parser::cleanup() {
       std::cerr << "Parser error: Exiting with Stack size = " << stack_.size()
                 << std::endl;
     }
-    error_log.log(TokenLocation(), "Parser error.");
   }
 
   return stack_.back();

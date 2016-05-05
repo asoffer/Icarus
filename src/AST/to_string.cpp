@@ -98,6 +98,7 @@ std::string Conditional::to_string(size_t n) const {
       case Language::Operator::At:     ss << "At";     break;
       case Language::Operator::Call:   ss << "Call";   break;
       case Language::Operator::Dots:   ss << "Dots";   break;
+      case Language::Operator::Import: ss << "Import";   break;
 
       default: { assert(false && "Not a unary operator"); }
     }
