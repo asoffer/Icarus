@@ -191,6 +191,8 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, expr, {{fn_expr}, {l_brace}, {stmts}, {r_brace}},
          AST::FunctionLiteral::build),
 
+    // TODO need single statement to be another type to make merging actually
+    // work correctly.
     Rule(0x02, stmts,
          {{kw_expr_block, kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
@@ -403,8 +405,7 @@ bool Parser::should_shift() {
   const auto ahead_type = lookahead_->node_type();
 
   if (ahead_type == Language::l_brace &&
-      (get_type(1) == Language::fn_expr ||
-       // get_type(1) == Language::reserved_struct ||
+      (get_type(1) == Language::fn_expr || get_type(1) == Language::kw_struct ||
        get_type(1) == Language::kw_block)) {
     return true;
   }

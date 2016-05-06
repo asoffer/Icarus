@@ -17,126 +17,218 @@ template <typename T> static T *steal(AST::Node *&n) {
   return temp;
 }
 
-AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
-  static const std::vector<std::string> chain_ops = {
-      ",", "==", "!=", "<", ">", "<=", ">=", "&", "|", "^"};
+static void CheckEqualsNotAssignment(AST::Expression *expr,
+                                     const std::string &msg) {
+  if (expr->is_binop() &&
+      static_cast<AST::Binop *>(expr)->op == Language::Operator::Assign) {
+    error_log.log(expr->loc, msg + "Did you mean '==' instead of '='?");
 
-  for (auto op : chain_ops) {
-    if (nodes[1]->token() == op) {
-      return AST::ChainOp::build(std::forward<NPtrVec &&>(nodes));
+    // TODO allow continuation after error here?
+    static_cast<AST::Binop *>(expr)->op = Language::Operator::EQ;
+  }
+
+}
+
+namespace AST {
+// Input guarantees:
+// [struct] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// Each statement is either a declaration using ':' or ':=', or it's an
+// assignment where the left-hand side is a declaration using ':'. That is, we
+// allow only the following:
+//     a := b
+//     a : b
+//     a : b = c
+Node *StructLiteral::Build(NPtrVec &&nodes) {
+  auto struct_lit_ptr  = new StructLiteral;
+  struct_lit_ptr->loc  = nodes[0]->loc;
+  struct_lit_ptr->type = Type_;
+
+  if (nodes[2]->node_type() == Language::stmts) {
+    auto stmts = static_cast<Statements *>(nodes[2]);
+    for (auto &&stmt : stmts->statements) {
+      if (stmt->is_declaration()) {
+        auto decl = static_cast<Declaration *>(stmt);
+        if (decl->decl_type != DeclType::Std &&
+            decl->decl_type != DeclType::Infer) {
+          error_log.log(decl->loc, "Declaration must be either ':' or ':='");
+          continue;
+        }
+      } else if (stmt->is_binop()) {
+        auto binop = static_cast<Binop *>(stmt);
+        if (binop->op == Language::Operator::Assign) {
+          if (!binop->lhs->is_declaration()) {
+            // TODO better error message
+            error_log.log(binop->loc, "Nothing declared here.");
+            continue;
+          } else {
+            auto decl = static_cast<Declaration *>(binop->lhs);
+            if (decl->decl_type != DeclType::Std &&
+                decl->decl_type != DeclType::Infer) {
+              error_log.log(decl->loc,
+                            "Declaration must be either ':' or ':='");
+              continue;
+            }
+          }
+        } else {
+          // TODO better error message here.
+          error_log.log(stmt->loc,
+                        "Each struct member must be defined using "
+                        "a declaration or an initialized declaration.");
+          continue;
+        }
+      } else {
+        // TODO better error message here.
+        error_log.log(stmt->loc,
+                      "Each struct member must be defined using "
+                      "a declaration or an initialized declaration.");
+        continue;
+      }
+
+      struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
     }
   }
 
-  if (nodes[1]->token() == ".") {
-    return AST::Access::build(std::forward<NPtrVec &&>(nodes));
-  }
-
-  if (nodes[1]->token() == ":" || nodes[1]->token() == ":=" ||
-      nodes[1]->token() == "in") {
-    return AST::Declaration::BuildBasic(std::forward<NPtrVec &&>(nodes));
-  }
-
-  if (nodes[1]->token() == "`") {
-    return AST::Declaration::BuildGenerate(std::forward<NPtrVec &&>(nodes));
-  }
-
-  auto binop_ptr = new AST::Binop;
-  binop_ptr->loc = nodes[1]->loc;
-
-  binop_ptr->lhs   = steal<AST::Expression>(nodes[0]);
-  binop_ptr->rhs   = steal<AST::Expression>(nodes[2]);
-  binop_ptr->type_ = nodes[1]->node_type();
-
-#define LOOKUP_SYMBOL(sym, name)                                               \
-  if (nodes[1]->token() == sym) {                                              \
-    binop_ptr->op = Language::Operator::name;                                  \
-    goto end;                                                                  \
-  }
-
-  LOOKUP_SYMBOL("=>", Rocket)
-  LOOKUP_SYMBOL("=", Assign)
-  LOOKUP_SYMBOL(":>", Cast)
-  LOOKUP_SYMBOL("->", Arrow)
-  LOOKUP_SYMBOL("|=", OrEq)
-  LOOKUP_SYMBOL("&=", AndEq)
-  LOOKUP_SYMBOL("^=", XorEq)
-  LOOKUP_SYMBOL("+=", AddEq)
-  LOOKUP_SYMBOL("-=", SubEq)
-  LOOKUP_SYMBOL("*=", MulEq)
-  LOOKUP_SYMBOL("/=", DivEq)
-  LOOKUP_SYMBOL("%=", ModEq)
-  LOOKUP_SYMBOL("..", Dots)
-  LOOKUP_SYMBOL("+", Add)
-  LOOKUP_SYMBOL("-", Sub)
-  LOOKUP_SYMBOL("*", Mul)
-  LOOKUP_SYMBOL("/", Div)
-  LOOKUP_SYMBOL("%", Mod)
-  LOOKUP_SYMBOL("[", Index)
-  LOOKUP_SYMBOL("(", Call)
-#undef LOOKUP_SYMBOL
-end:
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
-
-  return binop_ptr;
+  return struct_lit_ptr;
 }
 
-AST::Node *BuildKWBlock(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "case") {
-    return AST::Case::build(std::forward<NPtrVec &&>(nodes));
+// Input guarantees:
+// [enum] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// Each statement is an identifier. No identifier is repeated.
+Node *EnumLiteral::Build(NPtrVec &&nodes) {
+  auto enum_lit_ptr  = new EnumLiteral;
+  enum_lit_ptr->loc  = nodes[0]->loc;
+  enum_lit_ptr->type = Type_;
+
+  if (nodes[2]->node_type() == Language::stmts) {
+    auto stmts = static_cast<Statements *>(nodes[2]);
+    for (auto &&stmt : stmts->statements) {
+      if (!stmt->is_identifier()) {
+        error_log.log(stmt->loc, "Enum members must be identifiers.");
+      } else {
+        // TODO repeated terms?
+        // TODO move the string into place
+        enum_lit_ptr->members.emplace_back(
+            static_cast<Identifier *>(stmt)->token());
+      }
+    }
   }
 
-  if (nodes[0]->token() == "enum") {
-    return AST::EnumLiteral::build(std::forward<NPtrVec &&>(nodes));
-  }
-
-  if (nodes[0]->token() == "struct") {
-    return AST::StructLiteral::build(std::forward<NPtrVec &&>(nodes));
-  }
- 
-  assert(false);
+  return enum_lit_ptr;
 }
 
-AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "for") {
-    return AST::For::build(std::forward<NPtrVec &&>(nodes));
+// Input guarantees:
+// [case] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// Each statement is a binary operator using '=>'. The last one has a left-hand
+// side of 'else'
+Node *Case::Build(NPtrVec &&nodes) {
+  auto case_ptr = new Case;
+  case_ptr->loc = nodes[0]->loc;
+
+  auto stmts = static_cast<Statements *>(nodes[2]);
+  auto num_stmts = stmts->statements.size();
+  for (size_t i = 0; i < num_stmts; ++i) {
+    auto stmt = stmts->statements[i];
+    if (!stmt->is_binop() ||
+        static_cast<Binop *>(stmt)->op != Language::Operator::Rocket) {
+      error_log.log(stmt->loc,
+                    "Each line in case statement must be a key-value pair.");
+      continue;
+    }
+
+    auto binop = static_cast<Binop *>(stmt);
+
+    // TODO check for 'else' and make sure it's the last one.
+    case_ptr->key_vals.emplace_back(steal<Expression>(binop->lhs),
+                                    steal<Expression>(binop->rhs));
   }
-  if (nodes[0]->token() == "while") {
-    return AST::While::build(std::forward<NPtrVec &&>(nodes));
-  }
-  if (nodes[0]->token() == "if") {
-    return AST::Conditional::build_if(std::forward<NPtrVec &&>(nodes));
-  }
-  assert(false);
+  return case_ptr;
 }
 
-AST::Node *BuildUnaryOperator(NPtrVec &&nodes) {
-  auto unop_ptr     = new AST::Unop;
-  unop_ptr->operand = steal<AST::Expression>(nodes[1]);
+// Input guarantees:
+// [if] [expression] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// expression is not an assignemnt
+Node *Conditional::BuildIf(NPtrVec &&nodes) {
+  auto if_stmt        = new Conditional;
+  auto cond           = steal<Expression>(nodes[1]);
 
-  // We intentionally do not delete tk_node becasue we only want to read from
-  // it. The apply() call will take care of its deletion.
-  unop_ptr->loc   = nodes[0]->loc;
-  unop_ptr->type_ = Language::expr;
-  if (nodes[0]->token() == "return") {
-    unop_ptr->op = Language::Operator::Return;
-  } else if (nodes[0]->token() == "print") {
-    unop_ptr->op = Language::Operator::Print;
-  } else if (nodes[0]->token() == "import") {
-    // TODO we can't have a '/' character, and since all our programs are in the
-    // programs/ directory for now, we hard-code that. This needs to be removed.
-    file_queue.emplace("programs/" + nodes[1]->token());
-    unop_ptr->op = Language::Operator::Import;
-  } else if (nodes[0]->token() == "Free") {
-    unop_ptr->op = Language::Operator::Free;
-  }
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-  return unop_ptr;
+  if_stmt->conditions = {cond};
+  CheckEqualsNotAssignment(cond, "Expression in while-statement is an assignment. ");
+
+  if_stmt->statements = {steal<Statements>(nodes[3])};
+  if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+  return if_stmt;
 }
 
+// Input guarantees:
+// [while] [expression] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// expression is not an assignment.
+Node *While::Build(NPtrVec &&nodes) {
+  auto while_stmt        = new While;
+  while_stmt->statements = steal<Statements>(nodes[3]);
 
+  while_stmt->condition = steal<Expression>(nodes[1]);
+  CheckEqualsNotAssignment(while_stmt->condition,
+                           "Condition in while-loop is an assignment. ");
 
-namespace AST {
-Node *Identifier::build(NPtrVec &&nodes) { assert(false); }
+  return while_stmt;
+}
+
+static void CheckForLoopDeclaration(Expression *maybe_decl,
+                                    std::vector<Declaration *> &iters) {
+  if (!maybe_decl->is_declaration()) {
+    error_log.log(maybe_decl->loc, "Expect declaration in for-loop.");
+  }
+
+  auto decl = static_cast<Declaration *>(maybe_decl);
+  if (decl->decl_type != DeclType::In) {
+    error_log.log(decl->loc,
+                  "Iterator in for-loop must be declared using 'in'");
+  }
+
+  iters.push_back(decl);
+}
+
+// Input guarantees:
+// [for] [expression] [l_brace] [statements] [r_brace]
+//
+// Internal checks:
+// [expression] is either an in-declaration or a list of in-declarations
+Node *For::Build(NPtrVec &&nodes) {
+  auto for_stmt        = new For;
+  for_stmt->loc        = nodes[0]->loc;
+  for_stmt->statements = steal<Statements>(nodes[3]);
+
+  auto iter = steal<Expression>(nodes[1]);
+
+  if (iter->is_comma_list()) {
+    auto iter_list = static_cast<ChainOp *>(iter);
+    for_stmt->iterators.reserve(iter_list->exprs.size());
+
+    for (auto &ex : iter_list->exprs) {
+      CheckForLoopDeclaration(ex, for_stmt->iterators);
+
+      ex = nullptr;
+    }
+    delete iter_list;
+  } else if (iter->is_declaration()) {
+    CheckForLoopDeclaration(static_cast<Declaration *>(iter),
+                            for_stmt->iterators);
+  } else {
+    error_log.log(nodes[1]->loc, "Expected declaration in for-loop.");
+  }
+
+  return for_stmt;
+}
 
 Node *Unop::build(NPtrVec &&nodes) {
   auto unop_ptr     = new Unop;
@@ -520,25 +612,6 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   return fn_lit;
 }
 
-Node *StructLiteral::build(NPtrVec &&nodes) {
-  auto struct_lit_ptr  = new StructLiteral;
-  struct_lit_ptr->loc  = nodes[0]->loc;
-  struct_lit_ptr->type = Type_;
-
-  if (nodes[2]->node_type() == Language::stmts) {
-    auto stmts = static_cast<Statements *>(nodes[2]);
-    for (auto &&stmt : stmts->statements) {
-      // TODO handle this gracefully
-      assert(
-          stmt->is_declaration() &&
-          "Statement is not a declaration, and that case isn't handled yet.");
-
-      struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
-    }
-  }
-
-  return struct_lit_ptr;
-}
 
 Node *StructLiteral::build_parametric(NPtrVec &&nodes) {
   auto struct_lit_ptr  = new StructLiteral;
@@ -606,14 +679,6 @@ Node *Statements::build_extra_expression_error(NPtrVec &&nodes) {
   return output;
 }
 
-Node *Conditional::build_if(NPtrVec &&nodes) {
-  auto if_stmt        = new Conditional;
-  if_stmt->conditions = {steal<Expression>(nodes[1])};
-  if_stmt->statements = {steal<Statements>(nodes[3])};
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
-  return if_stmt;
-}
-
 Node *Conditional::build_extra_else_error(NPtrVec &&nodes) {
   auto if_stmt = static_cast<Conditional *>(nodes[0]);
   error_log.log(nodes[1]->loc, "If-statement already has an else-branch. "
@@ -657,33 +722,6 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
   return if_stmt;
 }
 
-Node *Conditional::build_if_assignment_error(NPtrVec &&nodes) {
-  nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build_if(std::forward<NPtrVec &&>(nodes));
-}
-
-Node *EnumLiteral::build(NPtrVec &&nodes) {
-  auto enum_lit_ptr  = new EnumLiteral;
-  enum_lit_ptr->loc  = nodes[0]->loc;
-  enum_lit_ptr->type = Type_;
-
-  if (nodes[2]->node_type() == Language::stmts) {
-    auto stmts = static_cast<Statements *>(nodes[2]);
-    for (auto &&stmt : stmts->statements) {
-      if (!stmt->is_identifier()) {
-        error_log.log(stmt->loc, "Enum members must be identifiers.");
-      }
-
-      // TODO repeated terms?
-      // TODO move the string into place
-      enum_lit_ptr->members.emplace_back(
-          static_cast<Identifier *>(stmt)->token());
-    }
-  }
-
-  return enum_lit_ptr;
-}
-
 Node *Jump::build(NPtrVec &&nodes) {
   if (nodes[0]->token() == "break") {
     return new Jump(nodes[0]->loc, JumpType::Break);
@@ -703,60 +741,125 @@ Node *Jump::build(NPtrVec &&nodes) {
   assert(false && "No other options");
 }
 
-Node *While::build(NPtrVec &&nodes) {
-  auto while_stmt        = new While;
-  while_stmt->condition  = steal<Expression>(nodes[1]);
-  while_stmt->statements = steal<Statements>(nodes[3]);
-  return while_stmt;
-}
-
-Node *For::build(NPtrVec &&nodes) {
-  auto for_stmt        = new For;
-  for_stmt->loc        = nodes[0]->loc;
-  for_stmt->statements = steal<Statements>(nodes[3]);
-
-  auto iter_or_iter_list = steal<Expression>(nodes[1]);
-  if (iter_or_iter_list->is_comma_list()) {
-    // Copy the exprs out
-    auto iter_list = static_cast<ChainOp *>(iter_or_iter_list);
-    for_stmt->iterators.reserve(iter_list->exprs.size());
-
-    for (auto &ex : iter_list->exprs) {
-      assert(ex->is_declaration());
-      for_stmt->iterators.push_back(static_cast<Declaration *>(ex));
-      ex = nullptr;
-    }
-    delete iter_list;
-
-  } else {
-    for_stmt->iterators = {static_cast<Declaration *>(iter_or_iter_list)};
-  }
-
-  return for_stmt;
-}
-
-Node *While::build_assignment_error(NPtrVec &&nodes) {
-  nodes[1] = error_log.assignment_vs_equality(nodes[1]);
-  return build(std::forward<NPtrVec &&>(nodes));
-}
-
-Node *Case::build(NPtrVec &&nodes) {
-  auto case_ptr = new Case;
-  case_ptr->loc = nodes[0]->loc;
-
-  auto stmts = (Statements *)(nodes[2]);
-  for (auto stmt : stmts->statements) {
-    if (!stmt->is_binop() ||
-        ((Binop *)(stmt))->op != Language::Operator::Rocket) {
-      error_log.log(stmt->loc,
-                    "Each line in case statement must be a key-value pair.");
-    } else {
-      assert(stmt->is_binop());
-      auto binop = (Binop *)stmt;
-      case_ptr->key_vals.emplace_back(steal<Expression>(binop->lhs),
-                                      steal<Expression>(binop->rhs));
-    }
-  }
-  return case_ptr;
-}
 } // namespace AST
+
+
+AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
+  static const std::vector<std::string> chain_ops = {
+      ",", "==", "!=", "<", ">", "<=", ">=", "&", "|", "^"};
+
+  for (auto op : chain_ops) {
+    if (nodes[1]->token() == op) {
+      return AST::ChainOp::build(std::forward<NPtrVec &&>(nodes));
+    }
+  }
+
+  if (nodes[1]->token() == ".") {
+    return AST::Access::build(std::forward<NPtrVec &&>(nodes));
+  }
+
+  if (nodes[1]->token() == ":" || nodes[1]->token() == ":=" ||
+      nodes[1]->token() == "in") {
+    return AST::Declaration::BuildBasic(std::forward<NPtrVec &&>(nodes));
+  }
+
+  if (nodes[1]->token() == "`") {
+    return AST::Declaration::BuildGenerate(std::forward<NPtrVec &&>(nodes));
+  }
+
+  auto binop_ptr = new AST::Binop;
+  binop_ptr->loc = nodes[1]->loc;
+
+  binop_ptr->lhs   = steal<AST::Expression>(nodes[0]);
+  binop_ptr->rhs   = steal<AST::Expression>(nodes[2]);
+  binop_ptr->type_ = nodes[1]->node_type();
+
+#define LOOKUP_SYMBOL(sym, name)                                               \
+  if (nodes[1]->token() == sym) {                                              \
+    binop_ptr->op = Language::Operator::name;                                  \
+    goto end;                                                                  \
+  }
+
+  LOOKUP_SYMBOL("=>", Rocket)
+  LOOKUP_SYMBOL("=", Assign)
+  LOOKUP_SYMBOL(":>", Cast)
+  LOOKUP_SYMBOL("->", Arrow)
+  LOOKUP_SYMBOL("|=", OrEq)
+  LOOKUP_SYMBOL("&=", AndEq)
+  LOOKUP_SYMBOL("^=", XorEq)
+  LOOKUP_SYMBOL("+=", AddEq)
+  LOOKUP_SYMBOL("-=", SubEq)
+  LOOKUP_SYMBOL("*=", MulEq)
+  LOOKUP_SYMBOL("/=", DivEq)
+  LOOKUP_SYMBOL("%=", ModEq)
+  LOOKUP_SYMBOL("..", Dots)
+  LOOKUP_SYMBOL("+", Add)
+  LOOKUP_SYMBOL("-", Sub)
+  LOOKUP_SYMBOL("*", Mul)
+  LOOKUP_SYMBOL("/", Div)
+  LOOKUP_SYMBOL("%", Mod)
+  LOOKUP_SYMBOL("[", Index)
+  LOOKUP_SYMBOL("(", Call)
+#undef LOOKUP_SYMBOL
+end:
+  binop_ptr->precedence = Language::precedence(binop_ptr->op);
+
+  return binop_ptr;
+}
+
+AST::Node *BuildKWBlock(NPtrVec &&nodes) {
+  if (nodes[0]->token() == "case") {
+    return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
+  }
+
+  if (nodes[0]->token() == "enum") {
+    return AST::EnumLiteral::Build(std::forward<NPtrVec &&>(nodes));
+  }
+
+  if (nodes[0]->token() == "struct") {
+    return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));
+  }
+ 
+  assert(false);
+}
+
+AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
+  if (nodes[0]->token() == "for") {
+    return AST::For::Build(std::forward<NPtrVec &&>(nodes));
+  }
+  if (nodes[0]->token() == "while") {
+    return AST::While::Build(std::forward<NPtrVec &&>(nodes));
+  }
+  if (nodes[0]->token() == "if") {
+    return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
+  }
+  assert(false);
+}
+
+AST::Node *BuildUnaryOperator(NPtrVec &&nodes) {
+  auto unop_ptr     = new AST::Unop;
+  unop_ptr->operand = steal<AST::Expression>(nodes[1]);
+
+  // We intentionally do not delete tk_node becasue we only want to read from
+  // it. The apply() call will take care of its deletion.
+  unop_ptr->loc   = nodes[0]->loc;
+  unop_ptr->type_ = Language::expr;
+  if (nodes[0]->token() == "return") {
+    unop_ptr->op = Language::Operator::Return;
+  } else if (nodes[0]->token() == "print") {
+    unop_ptr->op = Language::Operator::Print;
+  } else if (nodes[0]->token() == "import") {
+    // TODO we can't have a '/' character, and since all our programs are in the
+    // programs/ directory for now, we hard-code that. This needs to be removed.
+    file_queue.emplace("programs/" + nodes[1]->token());
+    unop_ptr->op = Language::Operator::Import;
+  } else if (nodes[0]->token() == "Free") {
+    unop_ptr->op = Language::Operator::Free;
+  }
+  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  return unop_ptr;
+}
+
+
+
+

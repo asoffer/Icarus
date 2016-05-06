@@ -39,7 +39,6 @@ namespace AST {
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
-  static Node *build(NPtrVec &&nodes);                                         \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
@@ -107,7 +106,7 @@ struct Node {
 
 struct Expression : public Node {
   EXPR_FNS(Expression, expression);
-
+  static Node *build(NPtrVec &&nodes);
   static Node *parenthesize(NPtrVec &&nodes);
 
   virtual bool is_literal(Type *t) const {
@@ -155,6 +154,7 @@ struct TokenNode : public Node {
 
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
+  static Node *build(NPtrVec &&nodes);
   Language::Terminal terminal_type;
 };
 
@@ -163,12 +163,13 @@ struct Identifier : public Terminal {
   Identifier(TokenLocation loc, const std::string &token_string);
 
   llvm::Value *alloc;
-  bool is_arg; // function argument or struct parameter
+  bool is_arg;                      // function argument or struct parameter
   std::vector<Declaration *> decls; // multiple because function overloading
 };
 
 struct Binop : public Expression {
   EXPR_FNS(Binop, binop);
+  static Node *build(NPtrVec &&nodes);
 
   static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class,
                               Language::NodeType nt);
@@ -194,8 +195,10 @@ struct Binop : public Expression {
 
 struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
+  static Node *build(NPtrVec &&nodes);
 
-  static Node *build(NPtrVec &&nodes, Language::NodeType node_type, DeclType dt);
+  static Node *build(NPtrVec &&nodes, Language::NodeType node_type,
+                     DeclType dt);
 
   static Node *BuildBasic(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
@@ -216,6 +219,7 @@ struct Declaration : public Expression {
 
 struct StructLiteral : public Expression {
   EXPR_FNS(StructLiteral, struct_literal);
+  static Node *Build(NPtrVec &&nodes);
 
   static Node *build_parametric(NPtrVec &&nodes);
 
@@ -257,6 +261,7 @@ struct Statements : public Node {
 
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
+  static Node *build(NPtrVec &&nodes);
 
   static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_dots(NPtrVec &&nodes);
@@ -267,6 +272,7 @@ struct Unop : public Expression {
 
 struct Access : public Expression {
   EXPR_FNS(Access, access);
+  static Node *build(NPtrVec &&nodes);
 
   std::string member_name;
   Expression *operand;
@@ -274,6 +280,7 @@ struct Access : public Expression {
 
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
+  static Node *build(NPtrVec &&nodes);
 
   static Node *join(NPtrVec &&nodes);
 
@@ -287,6 +294,7 @@ struct ChainOp : public Expression {
 
 struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral, array_literal);
+  static Node *build(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
 
   std::vector<Expression *> elems;
@@ -294,6 +302,7 @@ struct ArrayLiteral : public Expression {
 
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
+  static Node *build(NPtrVec &&nodes);
 
   static Node *build_unknown(NPtrVec &&nodes);
 
@@ -303,12 +312,14 @@ struct ArrayType : public Expression {
 
 struct Case : public Expression {
   EXPR_FNS(Case, case);
+  static Node *Build(NPtrVec &&nodes);
 
   std::vector<std::pair<Expression *, Expression *>> key_vals;
 };
 
 struct FunctionLiteral : public Expression {
   EXPR_FNS(FunctionLiteral, function_literal);
+  static Node *build(NPtrVec &&nodes);
 
   FnScope *fn_scope;
   Expression *return_type_expr;
@@ -323,12 +334,11 @@ struct FunctionLiteral : public Expression {
 };
 
 struct Conditional : public Node {
-  static Node *build_if(NPtrVec &&nodes);
+  static Node *BuildIf(NPtrVec &&nodes);
   static Node *build_else_if(NPtrVec &&nodes);
   static Node *build_else(NPtrVec &&nodes);
   static Node *build_extra_else_error(NPtrVec &&nodes);
   static Node *build_extra_else_if_error(NPtrVec &&nodes);
-  static Node *build_if_assignment_error(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
 
@@ -352,7 +362,7 @@ struct For : public Node {
   virtual ~For();
   VIRTUAL_METHODS_FOR_NODES;
 
-  static Node *build(NPtrVec &&nodes);
+  static Node *Build(NPtrVec &&nodes);
 
   std::vector<Declaration *> iterators;
   Statements *statements;
@@ -365,8 +375,7 @@ struct While : public Node {
   virtual ~While();
   VIRTUAL_METHODS_FOR_NODES;
 
-  static Node *build(NPtrVec &&nodes);
-  static Node *build_assignment_error(NPtrVec &&nodes);
+  static Node *Build(NPtrVec &&nodes);
 
   Expression *condition;
   Statements *statements;
@@ -375,6 +384,7 @@ struct While : public Node {
 
 struct EnumLiteral : public Expression {
   EXPR_FNS(EnumLiteral, enum_literal);
+  static Node *Build(NPtrVec &&nodes);
 
   Enumeration *type_value;
   std::vector<std::string> members;
@@ -382,6 +392,8 @@ struct EnumLiteral : public Expression {
 
 struct DummyTypeExpr : public Expression {
   EXPR_FNS(DummyTypeExpr, dummy);
+  static Node *build(NPtrVec &&nodes);
+
   DummyTypeExpr(TokenLocation loc, Type *t);
 
   Type *type_value;
