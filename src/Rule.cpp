@@ -21,10 +21,10 @@ bool Rule::match(const NPtrVec& node_stack) const {
 
   // Iterate through backwards and exit as soon as you see a node whose
   // type does not match the rule.
-  for (size_t i = 0; i < input_.size();
-      ++i, --rule_index, --stack_index) {
+  for (size_t i = 0; i < input_.size(); ++i, --rule_index, --stack_index) {
 
-    if (!input_[rule_index].match(node_stack[stack_index]->node_type())) {
+    auto nt = node_stack[stack_index]->node_type();
+    if (input_[rule_index].find(nt) == input_[rule_index].end()) {
       return false;
     }
   }

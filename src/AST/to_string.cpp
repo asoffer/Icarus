@@ -9,7 +9,6 @@ std::string Node::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) + "[";
   switch (type_) {
-  case Language::keep_current: assert(false); break;
   case Language::unknown: ss << "Unknown"; break;
   case Language::bof: ss << "BOF"; break;
   case Language::eof: ss << "EOF"; break;
@@ -17,25 +16,18 @@ std::string Node::to_string(size_t n) const {
   case Language::comment: ss << "Comment"; break;
   case Language::semicolon: ss << ";"; break;
   case Language::hashtag: ss << "#..."; break;
-  case Language::identifier: ss << "Identifier"; break;
-  case Language::binop: ss << "Binop"; break;
-  case Language::chainop: ss << "Chainop"; break;
-  case Language::dot: ss << "Dot"; break;
-  case Language::dots: ss << "Dots"; break;
-  case Language::assign_operator: ss << "X="; break;
+  case Language::op_b: ss << "Binop"; break;
+  case Language::op_bl: ss << "Binop or Left Unop"; break;
+  case Language::op_l: ss << "Left Unop"; break;
+  case Language::op_lt: ss << "Left Unop or Terminal"; break;
+  case Language::expr: ss << "Expression"; break;
   case Language::fn_arrow: ss << "->"; break;
-  case Language::dereference: ss << "@"; break;
-  case Language::not_operator: ss << "!"; break;
-  case Language::negation: ss << "-"; break;
-  case Language::indirection: ss << "&"; break;
-  case Language::rocket_operator: ss << "=>"; break;
-  case Language::expression: ss << "Expression"; break;
-  case Language::left_paren: ss << "Left Paren"; break;
-  case Language::right_paren: ss << "Right Paren"; break;
-  case Language::left_brace: ss << "Left Brace"; break;
-  case Language::right_brace: ss << "Right Brace"; break;
-  case Language::left_bracket: ss << "Left Bracket"; break;
-  case Language::right_bracket: ss << "Right Bracket"; break;
+  case Language::l_paren: ss << "Left Paren"; break;
+  case Language::r_paren: ss << "Right Paren"; break;
+  case Language::l_brace: ss << "Left Brace"; break;
+  case Language::r_brace: ss << "Right Brace"; break;
+  case Language::l_bracket: ss << "Left Bracket"; break;
+  case Language::r_bracket: ss << "Right Bracket"; break;
   default: ss << "???"; break;
   }
 

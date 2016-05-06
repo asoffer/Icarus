@@ -106,9 +106,9 @@ void Parser::shift() {
 Parser::Parser(const std::string &filename)
     : lookahead_(nullptr), lexer_(filename), mode_(ParserMode::Good) {
   assert(stack_.empty());
-  // Start the lookahead with a boftoken. This is a simple way to ensure  proper
+  // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.
-  lookahead_ = new AST::TokenNode(TokenLocation(), Language::bof);
+  lookahead_ = new AST::TokenNode(lexer_.loc_, Language::bof);
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.

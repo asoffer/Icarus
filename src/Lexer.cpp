@@ -10,18 +10,13 @@ extern std::queue<std::string> file_queue;
   term_ptr->type          = ty;                                                \
   term_ptr->token_        = tk;                                                \
                                                                                \
-  term_ptr->set_node_type(Language::expression);                               \
+  term_ptr->set_node_type(Language::expr);                                     \
   return term_ptr
 
-namespace Language {
-const std::map<std::string, NodeType> reserved_words = {
-    {"if", reserved_if},         {"in", reserved_in},
-    {"else", reserved_else},     {"case", reserved_case},
-    {"for", reserved_for},       {"enum", reserved_enum},
-    {"while", reserved_while},   {"free", reserved_free},
-    {"import", reserved_import}, {"struct", reserved_struct},
-    {"print", reserved_print}};
-} // namespace Language
+// namespace Language {
+// const std::map<std::string, NodeType> reserved_words = {
+//  {"struct", reserved_struct},
+// } // namespace Language
 
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
@@ -116,12 +111,8 @@ AST::Node *Lexer::next_word() {
     }
   }
 
-  if (token == "true") {
-    RETURN_TERMINAL(True, Bool, "true");
-
-  } else if (token == "false") {
-
-    RETURN_TERMINAL(True, Bool, "false");
+  if (token == "true" || token == "false") {
+    RETURN_TERMINAL(True, Bool, token);
 
   } else if (token == "null") {
     RETURN_TERMINAL(Null, NullPtr, "null");
@@ -138,6 +129,25 @@ AST::Node *Lexer::next_word() {
   } else if (token == "input") {
     RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
 
+  } else if (token == "in") {
+    return new AST::TokenNode(loc_, Language::op_b, "in");
+
+  } else if (token == "print" || token == "import" || token == "free") {
+    return new AST::TokenNode(loc_, Language::op_l, token);
+
+  } else if (token == "while" || token == "for" || token == "if") {
+    return new AST::TokenNode(loc_, Language::kw_expr_block, token);
+
+  } else if (token == "case" || token == "enum") {
+    return new AST::TokenNode(loc_, Language::kw_block, token);
+
+  } else if (token == "struct") {
+    return new AST::TokenNode(loc_, Language::kw_struct, "struct");
+
+
+  } else if (token == "else") {
+    return new AST::TokenNode(loc_, Language::kw_else, "else");
+
   } else if (token == "return") {
     auto term_ptr           = new AST::Terminal;
     term_ptr->loc           = loc_;
@@ -145,38 +155,38 @@ AST::Node *Lexer::next_word() {
     term_ptr->type          = Void;
     term_ptr->token_        = "return";
 
-    term_ptr->set_node_type(Language::reserved_return);
+    term_ptr->set_node_type(Language::op_lt);
     return term_ptr;
 
   } else if (token == "continue") {
     auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Continue);
-    jmp->set_node_type(Language::reserved_continue);
+    jmp->set_node_type(Language::op_lt);
     return jmp;
 
   } else if (token == "break") {
     auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Break);
-    jmp->set_node_type(Language::reserved_break);
+    jmp->set_node_type(Language::op_lt);
     return jmp;
 
   } else if (token == "repeat") {
     auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Repeat);
-    jmp->set_node_type(Language::reserved_repeat);
+    jmp->set_node_type(Language::op_lt);
     return jmp;
 
   } else if (token == "restart") {
     auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Restart);
-    jmp->set_node_type(Language::reserved_restart);
+    jmp->set_node_type(Language::op_lt);
     return jmp;
   }
 
   // Check if the word is reserved and if so, build the appropriate Node
-  for (const auto &res : Language::reserved_words) {
-    if (res.first == token) {
-      auto nptr = new AST::TokenNode;
-      *nptr     = AST::TokenNode(loc_, res.second, res.first);
-      return nptr;
-    }
-  }
+//  for (const auto &res : Language::reserved_words) {
+//    if (res.first == token) {
+//      auto nptr = new AST::TokenNode;
+//      *nptr     = AST::TokenNode(loc_, res.second, res.first);
+//      return nptr;
+//    }
+//  }
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
   return new AST::Identifier(loc_, token);
@@ -236,25 +246,25 @@ AST::Node *Lexer::next_operator() {
   case character:                                                              \
     file_.get();                                                               \
     return new AST::TokenNode(loc_, Language::name, str)
-    CASE('`', "`", tick);
-    CASE('@', "@", dereference);
-    CASE(',', ",", chainop);
+    CASE('`', "`", op_bl);
+    CASE('@', "@", op_l);
+    CASE(',', ",", op_b);
     CASE(';', ";", semicolon);
-    CASE('(', "(", left_paren);
-    CASE(')', ")", right_paren);
-    CASE('[', "[", left_bracket);
-    CASE(']', "]", right_bracket);
-    CASE('{', "{", left_brace);
-    CASE('}', "}", right_brace);
+    CASE('(', "(", l_paren);
+    CASE(')', ")", r_paren);
+    CASE('[', "[", l_bracket);
+    CASE(']', "]", r_bracket);
+    CASE('{', "{", l_brace);
+    CASE('}', "}", r_brace);
 #undef CASE
 
   case '.': {
     file_.get();
     if (file_.peek() == '.') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::dots, "..");
+      return new AST::TokenNode(loc_, Language::op_bl, "..");
     } else {
-      return new AST::TokenNode(loc_, Language::dot, ".");
+      return new AST::TokenNode(loc_, Language::op_b, ".");
     }
   }
   case '#': return next_hashtag();
@@ -270,23 +280,13 @@ AST::Node *Lexer::next_operator() {
   // The case '/' is missing because it has special the cases // and /* to deal
   // with
   char lead_char = 0;
-  Language::NodeType node_type;
   switch (peek) {
   case '+':
   case '*':
   case '%':
-    lead_char = static_cast<char>(peek);
-    node_type = Language::binop;
-    break;
   case '<':
-  case '>':
+  case '>': {
     lead_char = static_cast<char>(peek);
-    node_type = Language::chainop;
-    break;
-  default: lead_char = 0;
-  }
-
-  if (lead_char != 0) {
     file_.get();
     peek = file_.peek();
 
@@ -296,11 +296,9 @@ AST::Node *Lexer::next_operator() {
       file_.get();
     }
 
-    if (node_type == Language::binop && peek == '=') {
-      node_type = Language::assign_operator;
-    }
-
-   return new AST::TokenNode(loc_, node_type, tok);
+    return new AST::TokenNode(loc_, Language::op_b, tok);
+  }
+  default: lead_char = 0;
   }
 
   if (peek == ':') {
@@ -309,14 +307,14 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::declop, ":=");
+      return new AST::TokenNode(loc_, Language::op_b, ":=");
 
     } else if (peek == '>') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::binop, ":>");
- 
+      return new AST::TokenNode(loc_, Language::op_b, ":>");
+
     } else {
-      return new AST::TokenNode(loc_, Language::declop, ":");
+      return new AST::TokenNode(loc_, Language::op_b, ":");
     }
   }
 
@@ -330,11 +328,11 @@ AST::Node *Lexer::next_operator() {
       std::string tok = "_=";
       tok[0] = past_peek;
       file_.get();
-      return new AST::TokenNode(loc_, Language::assign_operator, tok);
+      return new AST::TokenNode(loc_, Language::op_b, tok);
 
     } else {
       return new AST::TokenNode(
-          loc_, (past_peek == '&' ? Language::indirection : Language::chainop),
+          loc_, (past_peek == '&' ? Language::op_bl : Language::op_b),
           std::string(1, past_peek));
     }
   }
@@ -345,9 +343,9 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::chainop, "!=");
+      return new AST::TokenNode(loc_, Language::op_b, "!=");
     } else {
-      return new AST::TokenNode(loc_, Language::not_operator, "!");
+      return new AST::TokenNode(loc_, Language::op_l, "!");
     }
   }
 
@@ -359,16 +357,17 @@ AST::Node *Lexer::next_operator() {
     if (peek == '=') {
       file_.get();
 
-      Language::NodeType node_type =
-          (lead_char == '-' ? Language::assign_operator : Language::chainop);
-      return new AST::TokenNode(loc_, node_type, std::string(1, lead_char) + "=");
-      
+      return new AST::TokenNode(loc_, Language::op_b,
+                                std::string(1, lead_char) + "=");
+
     } else if (peek == '>') {
       file_.get();
       if (lead_char == '-') {
-        return new AST::TokenNode(loc_, Language::fn_arrow, "->");
+        auto nptr = new AST::TokenNode(loc_, Language::fn_arrow, "->");
+        nptr->op  = Language::Operator::Arrow;
+        return nptr;
       } else {
-        return new AST::TokenNode(loc_, Language::rocket_operator, "=>");
+        return new AST::TokenNode(loc_, Language::op_b, "=>");
       }
     } else {
       if (lead_char == '-') {
@@ -376,9 +375,9 @@ AST::Node *Lexer::next_operator() {
           file_.get();
           RETURN_TERMINAL(Hole, Unknown, "--");
         }
-        return new AST::TokenNode(loc_, Language::negation, "-");
+        return new AST::TokenNode(loc_, Language::op_bl, "-");
       } else {
-        return new AST::TokenNode(loc_, Language::assign_operator, "=");
+        return new AST::TokenNode(loc_, Language::op_b, "=");
       }
     }
   }
@@ -391,7 +390,7 @@ AST::Node *Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  return new AST::TokenNode(loc_, Language::binop, token);
+  return new AST::TokenNode(loc_, Language::op_b, token);
 }
 
 AST::Node *Lexer::next_string_literal() {
@@ -546,12 +545,9 @@ AST::Node *Lexer::next_given_slash() {
     return new AST::TokenNode(loc_, Language::comment, "MULTILINE COMMENT");
   }
 
-  if (peek == '=') {
-    file_.get();
-    return new AST::TokenNode(loc_, Language::assign_operator, "/=");
-  }
+  if (peek == '=') { file_.get(); }
 
-  return new AST::TokenNode(loc_, Language::binop, "/");
+  return new AST::TokenNode(loc_, Language::op_b, "/");
 }
 
 AST::Node *Lexer::next_hashtag() {

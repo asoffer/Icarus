@@ -85,7 +85,8 @@ struct Node {
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
 
-  Node(TokenLocation loc = TokenLocation(), Language::NodeType type = Language::unknown,
+  Node(TokenLocation loc = TokenLocation(),
+       Language::NodeType type  = Language::unknown,
        const std::string &token = "")
       : scope_(nullptr), type_(type), token_(token), loc(loc),
         time_(Time::error) {}
@@ -286,6 +287,8 @@ struct ChainOp : public Expression {
 
 struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral, array_literal);
+  static Node *BuildEmpty(NPtrVec &&nodes);
+
   std::vector<Expression *> elems;
 };
 

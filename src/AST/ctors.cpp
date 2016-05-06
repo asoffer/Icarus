@@ -49,7 +49,7 @@ Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
   type       = Unknown;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
   loc        = new_loc;
-  type_      = Language::identifier;
+  type_      = Language::expr;
 }
 
 FunctionLiteral::FunctionLiteral()

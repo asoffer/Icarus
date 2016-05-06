@@ -1,27 +1,9 @@
 #ifndef ICARUS_RULE_H
 #define ICARUS_RULE_H
 
-struct Opt {
-  std::set<Language::NodeType> node_types;
-  bool inside;
-
-  bool match(Language::NodeType nt) const {
-    for (auto elem : node_types) {
-      if (nt == elem) {
-        return inside;
-      }
-    }
-
-    return !inside;
-  }
-
-  Opt(std::set<Language::NodeType> nts, bool in = true)
-      : node_types(nts), inside(in) {}
-};
-
 class Rule {
 public:
-  using OptVec = std::vector<Opt>;
+  using OptVec = std::vector<std::set<Language::NodeType>>;
   using fnptr  = AST::Node *(*)(NPtrVec &&);
 
   Rule(unsigned short preced, Language::NodeType output, const OptVec &input,

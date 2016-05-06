@@ -75,81 +75,104 @@ namespace Language {
 // 8th bit, leaves bits 0-7 for standard enumeration. This is safe because we
 // will never have more than 128 NodeTypes in a given section.
 
-constexpr int OP_        = 1 << 8;
-constexpr int BIN_       = 1 << 9;
-constexpr int CHAIN_     = 1 << 10;
-constexpr int LEFT_      = 1 << 11;
-constexpr int EXPR_      = 1 << 12;
-constexpr int COMPOSITE_ = 1 << 13;
+constexpr int OP_ = 1 << 6;
 
-enum NodeType : short {
-  // Generic
-  unknown,
+enum NodeType : char {
   keep_current,
+  unknown,
   bof,
   eof,
   newline,
   comment,
+  prog,
+  stmts,
+
+  expr,
+  fn_expr,
+
+  l_paren,
+  r_paren,
+  l_bracket,
+  r_bracket,
+  l_brace,
+  r_brace,
 
   semicolon,
   hashtag,
+  kw_expr_block,
+  kw_else,
+  kw_block,
+  kw_struct,
 
-  // Encapsulators
-  left_paren,
-  right_paren,
-  left_brace,
-  right_brace,
-  left_bracket,
-  right_bracket,
-
-  identifier,
-
-  reserved_break,
-  reserved_if,
-  reserved_else,
-  reserved_case,
-  reserved_for,
-  reserved_enum,
-  reserved_while,
-  reserved_continue,
-  reserved_struct,
-  reserved_repeat,
-  reserved_restart,
-
-  binop = BIN_ + OP_,
-  tick,
-  dot,
-  declop,
+  op_l = OP_,
+  op_b,
+  op_bl,
+  op_lt,
   fn_arrow,
-  rocket_operator,
-  assign_operator,
-  reserved_in,
 
-  chainop = CHAIN_ + OP_,
-
-  not_operator = LEFT_ + OP_,
-  dereference,
-  reserved_free,
-  reserved_print,
-  reserved_import,
-
-  indirection = LEFT_ + BIN_ + OP_,
-  dots,
-  negation,
-
-  reserved_return = EXPR_ + LEFT_ + OP_,
-
-  expression = COMPOSITE_ + EXPR_,
-  fn_expression,
-  fn_literal,
-
-  declaration = COMPOSITE_,
-  if_stmt,
-  if_else_stmt,
-  for_stmt,
-  while_stmt,
-  statements,
-  program
+  // Generic
+  //  keep_current,
+  //  newline,
+  //
+  //  semicolon,
+  //  hashtag,
+  //
+  //  // Encapsulators
+  //  left_paren,
+  //  right_paren,
+  //  left_brace,
+  //  right_brace,
+  //  left_bracket,
+  //  right_bracket,
+  //
+  //  identifier,
+  //
+  //  reserved_break,
+  //  reserved_if,
+  //  reserved_else,
+  //  reserved_case,
+  //  reserved_for,
+  //  reserved_enum,
+  //  reserved_while,
+  //  reserved_continue,
+  //  reserved_struct,
+  //  reserved_repeat,
+  //  reserved_restart,
+  //
+  //  binop = BIN_ + OP_,
+  //  tick,
+  //  dot,
+  //  declop,
+  //  fn_arrow,
+  //  rocket_operator,
+  //  assign_operator,
+  //  reserved_in,
+  //
+  //  chainop = CHAIN_ + OP_,
+  //
+  //  not_operator = LEFT_ + OP_,
+  //  dereference,
+  //  reserved_free,
+  //  reserved_print,
+  //  reserved_import,
+  //
+  //  indirection = LEFT_ + BIN_ + OP_,
+  //  dots,
+  //  negation,
+  //
+  //  reserved_return = EXPR_ + LEFT_ + OP_,
+  //
+  //  expression = COMPOSITE_ + EXPR_,
+  //  fn_expression,
+  //  fn_literal,
+  //
+  //  declaration = COMPOSITE_,
+  //  if_stmt,
+  //  if_else_stmt,
+  //  for_stmt,
+  //  while_stmt,
+  //  statements,
+  //  program
 };
 
 inline bool is_operator(NodeType t) { return (t & OP_) != 0; }
