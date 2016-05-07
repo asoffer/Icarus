@@ -177,7 +177,8 @@ static const std::vector<Rule> Rules = {
 
     Rule(0x02, keep_current, {{l_paren, l_bracket, l_brace, stmts}, {newline}},
          drop_all_but<0>),
-    Rule(0x00, keep_current, {{newline}, {r_paren, r_bracket, r_brace, stmts}},
+    Rule(0x00, keep_current,
+         {{newline}, {r_paren, r_bracket, r_brace, l_brace, stmts}},
          drop_all_but<1>),
     Rule(0x00, keep_current, {{r_paren, r_bracket, r_brace}, {newline}},
          drop_all_but<0>),
@@ -200,184 +201,6 @@ static const std::vector<Rule> Rules = {
 
     Rule(0x01, expr, {{kw_block, kw_struct}, {l_brace}, {stmts}, {r_brace}},
          BuildKWBlock),
-
-    /*
-      Rule(0x11, expression, {{LEFT_UNOP, reserved_return}, O_EXPR},
-           AST::Unop::build),
-      Rule(0x10, expression, {O_LEFT_UNOP, O_{newline}INE_OR_EOF},
-           ErrMsg::NeedExprAtEndOfFileOrLine),
-      Rule(0x11, expression, {O_LEFT_UNOP, O_TEXT_NON_EXPR},
-           ErrMsg::Unop::TextNonExpr),
-      Rule(0x12, expression, {O_LEFT_UNOP, O_NON_EXPR}, ErrMsg::Unop::NonExpr),
-
-      Rule(0x10, fn_expression, {O_EXPR, {fn_arrow}, O_EXPR},
-           AST::Binop::build),
-      Rule(0x10, expression, {O_EXPR, O_BINOP, O_EXPR}, AST::Binop::build),
-      Rule(0x10, expression, {O_EXPR, {chainop, indirection}, O_EXPR},
-           AST::ChainOp::build),
-
-      Rule(0x00, expression,
-           {{reserved_else}, {rocket_operator}, O_EXPR},
-           AST::Binop::BuildElseRocket),
-
-      Rule(0x10, expression, {O_EXPR, {hashtag}},
-           AST::Declaration::AddHashtag),
-
-      Rule(0x10, expression, {O_EXPR, O_BCOP, O_TEXT_NON_EXPR},
-           ErrMsg::Binop::RightTextNonExpr),
-      Rule(0x20, expression, {O_TEXT_NON_EXPR, O_BCOP, O_EXPR},
-           ErrMsg::Binop::LeftTextNonExpr),
-      Rule(0x10, expression, {O_TEXT_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
-           ErrMsg::Binop::BothTextNonExpr),
-      Rule(0x21, expression, {O_TEXT_NON_EXPR, O_BCOP, O_NON_EXPR},
-           ErrMsg::Binop::TODOBetter),
-      Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_TEXT_NON_EXPR},
-           ErrMsg::Binop::TODOBetter),
-      Rule(0x12, expression, {O_EXPR, O_BCOP, O_NON_EXPR},
-           ErrMsg::Binop::TODOBetter),
-      Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_EXPR},
-           ErrMsg::Binop::TODOBetter),
-      Rule(0x12, expression, {O_NON_EXPR, O_BCOP, O_NON_EXPR},
-           ErrMsg::Binop::TODOBetter),
-
-      Rule(0x10, expression, {O_EXPR, {dot}, {identifier}},
-           AST::Access::build),
-      Rule(0x10, expression, {O_EXPR, {tick}, {identifier}},
-           AST::Declaration::BuildGenerate),
-
-      // TODO move these out of Access namespace. They apply to ` as well.
-      Rule(0x10, expression, {O_EXPR, {dot, tick}, O_NON_ID_EXPR},
-           ErrMsg::Access::RightNonId),
-      Rule(0x10, expression, {O_EXPR, {dot, tick}, O_TEXT_NON_EXPR},
-           ErrMsg::Access::RightTextNonId),
-      Rule(0x11, expression, {O_EXPR, {dot, tick}, O_NON_EXPR},
-           ErrMsg::Access::RightNonId),
-      Rule(0x10, expression,
-           {O_TEXT_NON_EXPR, {dot, tick}, {identifier}},
-           ErrMsg::Binop::LeftTextNonExpr),
-      Rule(0x10, expression, {O_TEXT_NON_EXPR, {dot, tick}, O_NON_ID_EXPR},
-           ErrMsg::Access::RightNonIdLeftReserved),
-      Rule(0x10, expression, {O_TEXT_NON_EXPR, {dot, tick},
-      O_TEXT_NON_EXPR},
-           ErrMsg::Access::RightTextNonIdLeftReserved),
-      Rule(0x11, expression, {O_TEXT_NON_EXPR, {dot, tick}, O_NON_EXPR},
-           ErrMsg::Access::RightNonId),
-      Rule(0x11, expression, {O_NON_EXPR, {dot, tick}, O_NON_ID_EXPR},
-           ErrMsg::Access::RightNonId),
-      Rule(0x11, expression, {O_NON_EXPR, {dot, tick}, O_TEXT_NON_EXPR},
-           ErrMsg::Access::RightTextNonId),
-      Rule(0x12, expression, {O_NON_EXPR, {dot, tick}, O_NON_EXPR},
-           ErrMsg::Access::RightNonId),
-      Rule(0x11, expression, {O_NON_EXPR, {dot, tick}, {identifier}},
-           ErrMsg::Binop::TODOBetter),
-
-      Rule(0x10, expression, {{identifier}, O_DECLOP, O_EXPR},
-           AST::Declaration::BuildBasic),
-
-      Rule(0x10, expression, {O_NON_ID_EXPR, O_DECLOP, O_EXPR},
-           ErrMsg::Declaration::LeftNonId),
-      Rule(0x10, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_EXPR},
-           ErrMsg::Declaration::LeftTextNonId),
-      Rule(0x11, expression, {O_NON_EXPR, O_DECLOP, O_EXPR},
-           ErrMsg::Declaration::LeftNonId),
-      Rule(0x10, expression, {{identifier}, O_DECLOP, O_TEXT_NON_EXPR},
-           ErrMsg::Binop::RightTextNonExpr),
-      Rule(0x10, expression, {O_NON_ID_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
-           ErrMsg::Declaration::LeftNonIdRightReserved),
-      Rule(0x10, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
-           ErrMsg::Declaration::LeftTextNonIdRightReserved),
-      Rule(0x11, expression, {O_NON_EXPR, O_DECLOP, O_TEXT_NON_EXPR},
-           ErrMsg::Declaration::LeftNonId),
-      Rule(0x11, expression, {O_NON_ID_EXPR, O_DECLOP, O_NON_EXPR},
-           ErrMsg::Declaration::LeftNonId),
-      Rule(0x11, expression, {O_TEXT_NON_EXPR, O_DECLOP, O_NON_EXPR},
-           ErrMsg::Declaration::LeftTextNonId),
-      Rule(0x12, expression, {O_NON_EXPR, O_DECLOP, O_NON_EXPR},
-           ErrMsg::Declaration::LeftNonId),
-      Rule(0x11, expression, {{identifier}, O_DECLOP, O_NON_EXPR},
-           ErrMsg::Binop::TODOBetter),
-
-      // Haven't even considered errors below here
-
-      Rule(0x11, expression, {{left_paren}, O_EXPR, {right_paren}},
-           AST::Expression::parenthesize),
-      Rule(0x10, expression,
-           {O_EXPR, {left_paren}, O_EXPR, {right_paren}},
-           AST::Binop::build_paren_operator),
-      Rule(0x10, expression, {O_EXPR, {left_paren}, {right_paren}},
-           AST::Unop::build_paren_operator),
-
-      Rule(0x11, statements, {{statements}, O_STMT, O_{newline}INE_OR_EOF},
-           AST::Statements::build_more),
-      Rule(0x12, statements, {O_STMT, O_{newline}INE_OR_EOF},
-           AST::Statements::build_one),
-
-      Rule(0x20, keep_current, {{statements, left_brace},
-      O_{newline}INE_OR_EOF},
-           drop_all_but<0>),
-      Rule(0x20, keep_current, {{newline}, {statements, left_brace}},
-           drop_all_but<1>),
-
-      Rule(0x10, fn_literal, {{fn_expression}, {left_brace},
-                              {statements}, {right_brace}},
-           AST::FunctionLiteral::build),
-      Rule(0x10, fn_literal,
-           {{fn_expression}, {left_brace}, {right_brace}},
-           AST::FunctionLiteral::build),
-
-      Rule(0x10, expression, {{left_bracket}, O_EXPR, {semicolon},
-                              O_EXPR, {right_bracket}},
-           AST::ArrayType::build),
-      Rule(0x11, expression, {{left_bracket}, O_EXPR,
-      {right_bracket}},
-           AST::ArrayLiteral::build),
-
-      Rule(0x10, expression,
-           {{EXPR}, {left_bracket}, O_EXPR, {right_bracket}},
-           AST::Binop::build_bracket_operator),
-
-      Rule(0x10, expression, {{reserved_enum}, {left_brace},
-                              {statements}, {right_brace}},
-           AST::EnumLiteral::build),
-      Rule(0x10, expression,
-           {{reserved_enum}, {left_brace}, {right_brace}},
-           AST::EnumLiteral::build),
-
-      Rule(0x10, expression, {{reserved_struct}, {left_brace},
-                              {statements}, {right_brace}},
-           AST::StructLiteral::build),
-      Rule(0x10, expression,
-           {{reserved_struct}, {left_brace}, {right_brace}},
-           AST::StructLiteral::build),
-
-      Rule(0x10, expression, {{reserved_case}, {left_brace},
-                              {statements}, {right_brace}},
-           AST::Case::build),
-
-      Rule(0x11, if_stmt, {{reserved_if}, O_EXPR, {left_brace},
-                           {statements}, {right_brace}},
-           AST::Conditional::build_if),
-      Rule(0x11, if_stmt, {{if_stmt}, {reserved_else},
-      {if_stmt}},
-           AST::Conditional::build_else_if),
-      Rule(0x11, if_else_stmt,
-           {{if_stmt}, {reserved_else}, {left_brace},
-            {statements}, {right_brace}},
-           AST::Conditional::build_else),
-      Rule(0x11, if_else_stmt,
-           {{if_else_stmt}, {reserved_else}, {left_brace},
-            {statements}, {right_brace}},
-           AST::Conditional::build_extra_else_error),
-      Rule(0x11, if_else_stmt,
-           {{if_else_stmt}, {reserved_else}, {if_stmt}},
-           AST::Conditional::build_extra_else_if_error),
-
-      Rule(0x00, for_stmt, {{reserved_for}, O_EXPR, {left_brace},
-                            {statements}, {right_brace}},
-           AST::For::build),
-
-      Rule(0x00, newline, {{reserved_import}, O_EXPR}, import_file),
-  */
 };
 
 extern size_t precedence(Language::Operator op);
@@ -409,7 +232,21 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (ahead_type == Language::r_paren) { return false; }
+  if (get_type(1) == Language::kw_block && ahead_type == Language::newline) {
+    return true;
+  }
+
+  if (get_type(2) == Language::kw_block && get_type(1) == Language::newline) {
+    return true;
+  }
+
+  if (stack_.size() > 2 && get_type(3) == Language::kw_expr_block &&
+      get_type(2) == Language::expr && get_type(1) == Language::newline) {
+    return true;
+  }
+
+  if (ahead_type == Language::r_paren) {
+    return false; }
 
   if (get_type(2) & Language::OP_) {
     auto left_prec = precedence(((AST::TokenNode *)get(2))->op);
