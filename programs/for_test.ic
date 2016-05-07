@@ -1,5 +1,5 @@
 main := void -> void {
-  for x in 'a' .. {
+  for x in 'a' .. 'z' {
     if x == 'c' {
       continue
     }

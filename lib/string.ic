@@ -1,5 +1,5 @@
 string := struct {
-  chars: [--; char]
+  chars: [100; char] // TODO replace 100 with --
   length: uint
 }
 

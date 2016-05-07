@@ -284,6 +284,9 @@ void Unop::verify_types() {
       type = Error;
     }
   } break;
+  case Operator::Import: {
+    type = Void;
+  } break;
   default: assert(false && "Died in Unop::verify_types");
   }
 }

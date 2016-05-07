@@ -28,7 +28,8 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
   }
 }
 
-static void CheckStructMembers(AST::Statements *stmts, AST::StructLiteral* struct_lit_ptr) {
+static void CheckStructMembers(AST::Statements *stmts,
+                               AST::StructLiteral *struct_lit_ptr) {
   for (auto &&stmt : stmts->statements) {
     if (stmt->is_declaration()) {
       auto decl = static_cast<AST::Declaration *>(stmt);
@@ -113,7 +114,6 @@ Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
 
   return struct_lit_ptr;
 }
-
 
 // Input guarantees:
 // [enum] [l_brace] [statements] [r_brace]
@@ -267,16 +267,34 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   // it. The apply() call will take care of its deletion.
   unop_ptr->loc   = nodes[0]->loc;
   unop_ptr->type_ = Language::expr;
+
   if (nodes[0]->token() == "import") {
-    // TODO we can't have a '/' character, and since all our programs are in the
-    // programs/ directory for now, we hard-code that. This needs to be removed.
-    file_queue.emplace("programs/" + nodes[1]->token());
+    // TODO we can't have a '/' character, and since all our programs are in
+    // the programs/ directory for now, we hard-code that. This needs to be
+    // removed.
+    file_queue.emplace("programs/" + unop_ptr->operand->token());
     unop_ptr->op = Language::Operator::Import;
 
   } else if (nodes[0]->token() == "return") {
     unop_ptr->op = Language::Operator::Return;
 
-  } else if (nodes[0]->token() == "Free") {
+  } else if (nodes[0]->token() == "break") {
+    unop_ptr->op = Language::Operator::Break;
+    goto id_check;
+
+  } else if (nodes[0]->token() == "continue") {
+    unop_ptr->op = Language::Operator::Continue;
+    goto id_check;
+
+  } else if (nodes[0]->token() == "restart") {
+    unop_ptr->op = Language::Operator::Restart;
+    goto id_check;
+
+  } else if (nodes[0]->token() == "repeat") {
+    unop_ptr->op = Language::Operator::Repeat;
+    goto id_check;
+
+  } else if (nodes[0]->token() == "free") {
     unop_ptr->op = Language::Operator::Free;
 
   } else if (nodes[0]->token() == "print") {
@@ -293,9 +311,11 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   } else if (nodes[0]->token() == "@") {
     unop_ptr->op = Language::Operator::At;
+
   } else {
     assert(false);
   }
+
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
   if (unop_ptr->operand->is_declaration()) {
@@ -305,6 +325,14 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
     }
   }
 
+  return unop_ptr;
+
+id_check:
+  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  if (!unop_ptr->operand->is_identifier()) {
+    error_log.log(unop_ptr->operand->loc, "Operand to '" + nodes[0]->token() +
+                                              "' must be an identifier.");
+  }
   return unop_ptr;
 }
 

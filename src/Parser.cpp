@@ -131,6 +131,7 @@ bool Parser::reduce() {
              rule.prec != matched_rule_ptr->prec))) {
         std::cout << debug_counter << ", " << debug_match << std::endl;
       }
+
       assert((matched_rule_ptr == nullptr ||
               rule.prec != matched_rule_ptr->prec) &&
              "Two rules matched with the same precedence");

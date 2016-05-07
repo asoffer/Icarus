@@ -77,6 +77,10 @@ std::string Unop::to_string(size_t n) const {
   ss << tabs(n) << "<Unop " << TYPE_OR("") << ": ";
   switch (op) {
   case Language::Operator::Return: ss << "Return"; break;
+  case Language::Operator::Break: ss << "Break"; break;
+  case Language::Operator::Continue: ss << "Continue"; break;
+  case Language::Operator::Repeat: ss << "Repeat"; break;
+  case Language::Operator::Restart: ss << "Restart"; break;
   case Language::Operator::Print: ss << "Print"; break;
   case Language::Operator::Free: ss << "Free"; break;
   case Language::Operator::And: ss << "And"; break;

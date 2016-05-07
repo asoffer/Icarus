@@ -82,6 +82,7 @@ struct Node {
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
+  virtual bool is_jump() const { return false; }
 
   Node(TokenLocation loc = TokenLocation(),
        Language::NodeType type  = Language::unknown,
@@ -106,10 +107,6 @@ struct Node {
 struct Expression : public Node {
   EXPR_FNS(Expression, expression);
   static Node *build(NPtrVec &&nodes);
-
-  virtual bool is_literal(Type *t) const {
-    return is_terminal() && !is_identifier() && type == t;
-  }
 
   llvm::Value *llvm_value(Context::Value v);
 
@@ -384,6 +381,7 @@ struct DummyTypeExpr : public Expression {
 
 struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
+  virtual bool is_jump() const override { return true; }
 
   static Node *build(NPtrVec &&nodes);
   virtual ~Jump();

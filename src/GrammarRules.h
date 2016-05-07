@@ -81,10 +81,10 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 namespace Language {
 #define OP_LT op_lt, kw_else
 #define EXPR                                                                   \
-  { expr, fn_expr, OP_LT }
+  { expr, fn_expr, kw_else }
 // Used in error productions only!
 #define RESERVED                                                               \
-  { kw_expr_block, kw_else, kw_block, kw_struct }
+  { kw_expr_block, kw_else, kw_block, kw_struct, op_lt }
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -109,15 +109,17 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Unary operators
-    Rule(0x02, expr, {{op_l, op_bl, OP_LT}, EXPR}, AST::Unop::BuildLeft),
+    // TODO why does this rule have lower prec than the rule marked XXX
+    Rule(0x01, expr, {{op_l, op_bl, OP_LT}, EXPR}, AST::Unop::BuildLeft),
 
     // Using OP_L with a reserved keyword
-    Rule(0x01, expr, {{op_l, op_bl, OP_LT}, RESERVED}, ErrMsg::Reserved<0, 1>),
+    Rule(0x02, expr, {{op_l, op_bl, OP_LT}, RESERVED}, ErrMsg::Reserved<0, 1>),
 
     // Using OP_L like an OP_B (maybe with reserved keywords)
-    Rule(0x00, expr, {EXPR, {op_l}, EXPR}, ErrMsg::NonBinop),
+    // XXX
+    Rule(0x03, expr, {EXPR, {op_l}, EXPR}, ErrMsg::NonBinop),
     Rule(0x00, expr, {EXPR, {op_l}, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
-    Rule(0x00, expr, {RESERVED, {op_l}, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
+    Rule(0x02, expr, {RESERVED, {op_l}, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
     Rule(0x00, expr, {RESERVED, {op_l}, RESERVED},
          ErrMsg::NonBinopBothReserved),
 
@@ -171,8 +173,10 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, prog, {{bof}, {eof}}, ErrMsg::EmptyFile),
     Rule(0x00, prog, {{bof}, {stmts}, {eof}}, drop_all_but<1>),
 
-    Rule(0x02, stmts, {EXPR, {newline}}, AST::Statements::build_one),
-    Rule(0x01, stmts, {{stmts}, {expr, fn_expr, stmts}, {newline}},
+    Rule(0x03, stmts, {{op_lt}}, AST::Jump::build),
+    Rule(0x02, stmts, {{expr, fn_expr, kw_else, if_stmt, one_stmt}, {newline}},
+         AST::Statements::build_one),
+    Rule(0x01, stmts, {{stmts}, {expr, fn_expr, stmts, if_stmt, one_stmt}, {newline}},
          AST::Statements::build_more),
 
     Rule(0x02, keep_current, {{l_paren, l_bracket, l_brace, stmts}, {newline}},
@@ -188,13 +192,15 @@ static const std::vector<Rule> Rules = {
 
     // TODO need single statement to be another type to make merging actually
     // work correctly.
-    Rule(0x02, stmts, {{kw_expr_block}, EXPR, {l_brace}, {stmts}, {r_brace}},
+    Rule(0x02, one_stmt, {{kw_expr_block}, EXPR, {l_brace}, {stmts}, {r_brace}},
+         BuildKWExprBlock),
+    Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
     Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
-    Rule(0x01, stmts, {{stmts}, {kw_else}, {stmts}},
+    Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {if_stmt}},
          AST::Conditional::build_else_if), // TODO stmts-> if_stmt
-    Rule(0x01, stmts, {{stmts}, {kw_else}, {l_brace}, {stmts}, {r_brace}},
+    Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {l_brace}, {stmts}, {r_brace}},
          AST::Conditional::build_else),
     // TODO missing first statement is an error-production
     // TODO Empty braces
@@ -229,6 +235,10 @@ bool Parser::should_shift() {
   // For now, we require struct params to be in parentheses.
   // TODO determine if this is necessary.
   if (ahead_type == Language::l_paren && get_type(1) == Language::kw_struct) {
+    return true;
+  }
+
+  if (get_type(1) == Language::op_lt && ahead_type != Language::newline) {
     return true;
   }
 

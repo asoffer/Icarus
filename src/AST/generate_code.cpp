@@ -170,6 +170,7 @@ llvm::Value *Unop::generate_code() {
   // We first go through all the possible operators where we don't necessarily
   // need to generate code for the operand.
   switch (op) {
+  case Language::Operator::Import: return nullptr;
   case Language::Operator::And: {
     return operand->generate_lvalue();
   }

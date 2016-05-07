@@ -1,5 +1,5 @@
 main := void -> void {
-  for n in 0u .. {
+  for n in 0u .. 100u { // remove 100
     if n % 2u == 0u {
       continue
     }

@@ -86,6 +86,8 @@ enum NodeType : char {
   comment,
   prog,
   stmts,
+  if_stmt,
+  one_stmt,
 
   expr,
   fn_expr,
@@ -100,6 +102,7 @@ enum NodeType : char {
   semicolon,
   hashtag,
   kw_expr_block,
+  kw_if,
   kw_else,
   kw_block,
   kw_struct,
