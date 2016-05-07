@@ -13,11 +13,6 @@ extern std::queue<std::string> file_queue;
   term_ptr->set_node_type(Language::expr);                                     \
   return term_ptr
 
-// namespace Language {
-// const std::map<std::string, NodeType> reserved_words = {
-//  {"struct", reserved_struct},
-// } // namespace Language
-
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
 } // namespace TypeSystem
@@ -129,6 +124,9 @@ AST::Node *Lexer::next_word() {
   } else if (token == "input") {
     RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
 
+  } else if (token == "else") {
+    RETURN_TERMINAL(Else, Bool, "else");
+
   } else if (token == "in") {
     return new AST::TokenNode(loc_, Language::op_b, "in");
 
@@ -143,10 +141,6 @@ AST::Node *Lexer::next_word() {
 
   } else if (token == "struct") {
     return new AST::TokenNode(loc_, Language::kw_struct, "struct");
-
-
-  } else if (token == "else") {
-    return new AST::TokenNode(loc_, Language::kw_else, "else");
 
   } else if (token == "return") {
     auto term_ptr           = new AST::Terminal;

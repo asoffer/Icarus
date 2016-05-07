@@ -42,7 +42,6 @@ namespace AST {
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
-
 struct Node {
   Language::NodeType node_type() const { return type_; }
   void set_node_type(Language::NodeType t) { type_ = t; }
@@ -144,8 +143,6 @@ struct TokenNode : public Node {
   Language::Operator op;
 };
 
-
-
 #undef ENDING
 #define ENDING override
 #undef OVERRIDE
@@ -207,8 +204,7 @@ struct Declaration : public Expression {
 struct StructLiteral : public Expression {
   EXPR_FNS(StructLiteral, struct_literal);
   static Node *Build(NPtrVec &&nodes);
-
-  static Node *build_parametric(NPtrVec &&nodes);
+  static Node *BuildParametric(NPtrVec &&nodes);
 
   void build_llvm_internals();
   StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);

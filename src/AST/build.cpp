@@ -26,14 +26,55 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
     // TODO allow continuation after error here?
     static_cast<AST::Binop *>(expr)->op = Language::Operator::EQ;
   }
+}
 
+static void CheckStructMembers(AST::Statements *stmts, AST::StructLiteral* struct_lit_ptr) {
+  for (auto &&stmt : stmts->statements) {
+    if (stmt->is_declaration()) {
+      auto decl = static_cast<AST::Declaration *>(stmt);
+      if (decl->decl_type != AST::DeclType::Std &&
+          decl->decl_type != AST::DeclType::Infer) {
+        error_log.log(decl->loc, "Declaration must be either ':' or ':='");
+        continue;
+      }
+    } else if (stmt->is_binop()) {
+      auto binop = static_cast<AST::Binop *>(stmt);
+      if (binop->op == Language::Operator::Assign) {
+        if (!binop->lhs->is_declaration()) {
+          // TODO better error message
+          error_log.log(binop->loc, "Nothing declared here.");
+          continue;
+        } else {
+          auto decl = static_cast<AST::Declaration *>(binop->lhs);
+          if (decl->decl_type != AST::DeclType::Std &&
+              decl->decl_type != AST::DeclType::Infer) {
+            error_log.log(decl->loc, "Declaration must be either ':' or ':='");
+            continue;
+          }
+        }
+      } else {
+        // TODO better error message here.
+        error_log.log(stmt->loc,
+                      "Each struct member must be defined using "
+                      "a declaration or an initialized declaration.");
+        continue;
+      }
+    } else {
+      // TODO better error message here.
+      error_log.log(stmt->loc, "Each struct member must be defined using "
+                               "a declaration or an initialized declaration.");
+      continue;
+    }
+
+    struct_lit_ptr->declarations.emplace_back(steal<AST::Declaration>(stmt));
+  }
 }
 
 namespace AST {
 // Input guarantees:
 // [struct] [l_brace] [statements] [r_brace]
 //
-// Internal checks:
+// Internal checks (checked in CheckStructMembers):
 // Each statement is either a declaration using ':' or ':=', or it's an
 // assignment where the left-hand side is a declaration using ':'. That is, we
 // allow only the following:
@@ -44,54 +85,35 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   auto struct_lit_ptr  = new StructLiteral;
   struct_lit_ptr->loc  = nodes[0]->loc;
   struct_lit_ptr->type = Type_;
+  CheckStructMembers(static_cast<Statements *>(nodes[2]), struct_lit_ptr);
+  return struct_lit_ptr;
+}
 
-  if (nodes[2]->node_type() == Language::stmts) {
-    auto stmts = static_cast<Statements *>(nodes[2]);
-    for (auto &&stmt : stmts->statements) {
-      if (stmt->is_declaration()) {
-        auto decl = static_cast<Declaration *>(stmt);
-        if (decl->decl_type != DeclType::Std &&
-            decl->decl_type != DeclType::Infer) {
-          error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-          continue;
-        }
-      } else if (stmt->is_binop()) {
-        auto binop = static_cast<Binop *>(stmt);
-        if (binop->op == Language::Operator::Assign) {
-          if (!binop->lhs->is_declaration()) {
-            // TODO better error message
-            error_log.log(binop->loc, "Nothing declared here.");
-            continue;
-          } else {
-            auto decl = static_cast<Declaration *>(binop->lhs);
-            if (decl->decl_type != DeclType::Std &&
-                decl->decl_type != DeclType::Infer) {
-              error_log.log(decl->loc,
-                            "Declaration must be either ':' or ':='");
-              continue;
-            }
-          }
-        } else {
-          // TODO better error message here.
-          error_log.log(stmt->loc,
-                        "Each struct member must be defined using "
-                        "a declaration or an initialized declaration.");
-          continue;
-        }
-      } else {
-        // TODO better error message here.
-        error_log.log(stmt->loc,
-                      "Each struct member must be defined using "
-                      "a declaration or an initialized declaration.");
-        continue;
-      }
+Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
+  auto struct_lit_ptr  = new StructLiteral;
+  struct_lit_ptr->loc  = nodes[0]->loc;
+  struct_lit_ptr->type = Type_;
 
-      struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
+  if (nodes[1]->is_declaration()) {
+    struct_lit_ptr->params = {steal<Declaration>(nodes[1])};
+
+  } else if (nodes[1]->is_comma_list()) {
+    auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
+
+    assert(struct_lit_ptr->params.empty());
+    struct_lit_ptr->params.resize(expr_vec.size());
+
+    for (size_t i = 0; i < expr_vec.size(); ++i) {
+      assert(expr_vec[i]->is_declaration());
+      struct_lit_ptr->params[i] = static_cast<Declaration *>(expr_vec[i]);
     }
   }
 
+  CheckStructMembers(static_cast<Statements *>(nodes[3]), struct_lit_ptr);
+
   return struct_lit_ptr;
 }
+
 
 // Input guarantees:
 // [enum] [l_brace] [statements] [r_brace]
@@ -130,7 +152,7 @@ Node *Case::Build(NPtrVec &&nodes) {
   auto case_ptr = new Case;
   case_ptr->loc = nodes[0]->loc;
 
-  auto stmts = static_cast<Statements *>(nodes[2]);
+  auto stmts     = static_cast<Statements *>(nodes[2]);
   auto num_stmts = stmts->statements.size();
   for (size_t i = 0; i < num_stmts; ++i) {
     auto stmt = stmts->statements[i];
@@ -156,11 +178,12 @@ Node *Case::Build(NPtrVec &&nodes) {
 // Internal checks:
 // expression is not an assignemnt
 Node *Conditional::BuildIf(NPtrVec &&nodes) {
-  auto if_stmt        = new Conditional;
-  auto cond           = steal<Expression>(nodes[1]);
+  auto if_stmt = new Conditional;
+  auto cond    = steal<Expression>(nodes[1]);
 
   if_stmt->conditions = {cond};
-  CheckEqualsNotAssignment(cond, "Expression in while-statement is an assignment. ");
+  CheckEqualsNotAssignment(cond,
+                           "Expression in while-statement is an assignment. ");
 
   if_stmt->statements = {steal<Statements>(nodes[3])};
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
@@ -282,7 +305,6 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
     }
   }
 
-
   return unop_ptr;
 }
 
@@ -292,7 +314,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 // Internal checks:
 // Operand is not a declaration
 Node *Unop::BuildParen(NPtrVec &&nodes) {
-  
+
   auto unop_ptr        = new Unop;
   unop_ptr->loc        = nodes[1]->loc;
   unop_ptr->operand    = steal<Expression>(nodes[0]);
@@ -306,7 +328,6 @@ Node *Unop::BuildParen(NPtrVec &&nodes) {
   }
   return unop_ptr;
 }
-
 
 // Input guarantees
 // [expr] [chainop] [expr]
@@ -384,13 +405,12 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
 
   if (binop_ptr->rhs->is_declaration()) {
     auto decl = static_cast<Declaration *>(binop_ptr->rhs);
-    if (decl->decl_type != DeclType::Tick){
+    if (decl->decl_type != DeclType::Tick) {
       error_log.log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
                                          "declaration other than one declared "
                                          "with '`'");
     }
   }
-
 
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
 
@@ -405,7 +425,7 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
 // RHS is not a declaration unless it's a tick
 Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
   return BuildOperator(std::forward<NPtrVec &&>(nodes),
-                        Language::Operator::Call, Language::op_b);
+                       Language::Operator::Call, Language::op_b);
 }
 
 // Input guarantees
@@ -508,7 +528,6 @@ Node *ChainOp::join(NPtrVec &&nodes) {
   // pointers that were part of rhs. Thus, there is nothing to delete.
   return chain_ptr;
 }
-
 
 Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
@@ -657,39 +676,6 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   }
 
   return fn_lit;
-}
-
-
-Node *StructLiteral::build_parametric(NPtrVec &&nodes) {
-  auto struct_lit_ptr  = new StructLiteral;
-  struct_lit_ptr->loc  = nodes[0]->loc;
-  struct_lit_ptr->type = Type_;
-
-  if (nodes[1]->is_declaration()) {
-    struct_lit_ptr->params = {steal<Declaration>(nodes[1])};
-
-  } else if (nodes[1]->is_comma_list()) {
-    auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
-
-    assert(struct_lit_ptr->params.empty());
-    struct_lit_ptr->params.resize(expr_vec.size());
-
-    for (size_t i = 0; i < expr_vec.size(); ++i) {
-      assert(expr_vec[i]->is_declaration());
-      struct_lit_ptr->params[i] = static_cast<Declaration *>(expr_vec[i]);
-    }
-  }
-
-  auto stmts = static_cast<Statements *>(nodes[3]);
-  for (auto &&stmt : stmts->statements) {
-    // TODO handle this gracefully
-    assert(stmt->is_declaration() &&
-           "Statement is not a declaration, and that case isn't handled yet.");
-
-    struct_lit_ptr->declarations.emplace_back(steal<Declaration>(stmt));
-  }
-
-  return struct_lit_ptr;
 }
 
 Node *Statements::build_one(NPtrVec &&nodes) {
@@ -871,7 +857,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   if (nodes[0]->token() == "struct") {
     return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
- 
+
   assert(false);
 }
 
@@ -885,6 +871,10 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   if (nodes[0]->token() == "if") {
     return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
   }
+  if (nodes[0]->token() == "struct") {
+    return AST::StructLiteral::BuildParametric(std::forward<NPtrVec &&>(nodes));
+  }
+
   assert(false);
 }
 

@@ -115,7 +115,11 @@ Parser::Parser(const std::string &filename)
 // Returns true if a rule is matched and applied. Returns false otherwise.
 bool Parser::reduce() {
   const Rule *matched_rule_ptr = nullptr;
+  size_t debug_counter         = 0;
+  size_t debug_match           = 0;
+
   for (const Rule &rule : Language::Rules) {
+    ++debug_counter;
     // If we've already matched a rule, ignore rules of lower precedence (higher
     // integer value). I.e., 0x00 is the highest precedence. 0xff is the lowest.
     if (matched_rule_ptr != nullptr && matched_rule_ptr->prec < rule.prec) {
@@ -123,10 +127,15 @@ bool Parser::reduce() {
     }
 
     if (rule.match(stack_)) {
+      if (!((matched_rule_ptr == nullptr ||
+             rule.prec != matched_rule_ptr->prec))) {
+        std::cout << debug_counter << ", " << debug_match << std::endl;
+      }
       assert((matched_rule_ptr == nullptr ||
               rule.prec != matched_rule_ptr->prec) &&
              "Two rules matched with the same precedence");
 
+      debug_match = debug_counter;
       // Extract a pointer to the rule. It's safe to take a pointer here,
       // because
       // Language::rules is const.

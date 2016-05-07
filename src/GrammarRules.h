@@ -17,7 +17,6 @@ template <typename T> static T *steal(AST::Node *&n) {
   return temp;
 }
 
-
 namespace ErrMsg {
 AST::Node *EmptyFile(NPtrVec &&nodes) {
   error_log.log(nodes[0]->loc, "File is empty.");
@@ -80,11 +79,9 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 } // namespace ErrMsg
 
 namespace Language {
-#define OP_L {op_l}
-#define OP_B {op_b}
-#define OP_BL {op_bl}
-#define OP_LT {op_lt}
-#define EXPR {expr, fn_expr}
+#define OP_LT op_lt, kw_else
+#define EXPR                                                                   \
+  { expr, fn_expr, OP_LT }
 // Used in error productions only!
 #define RESERVED                                                               \
   { kw_expr_block, kw_else, kw_block, kw_struct }
@@ -107,15 +104,15 @@ static const std::vector<Rule> Rules = {
 
     // Using OP_B or OP_BL with a reserved keyword
     Rule(0x00, expr, {EXPR, {op_b, op_bl}, RESERVED}, ErrMsg::Reserved<1, 2>),
-    Rule(0x00, expr, {RESERVED, {op_b, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
+    Rule(0x01, expr, {RESERVED, {op_b, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(0x00, expr, {RESERVED, {op_b, op_bl}, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Unary operators
-    Rule(0x01, expr, {{op_l, op_bl, op_lt}, EXPR}, AST::Unop::BuildLeft),
+    Rule(0x02, expr, {{op_l, op_bl, OP_LT}, EXPR}, AST::Unop::BuildLeft),
 
     // Using OP_L with a reserved keyword
-    Rule(0x01, expr, {{op_l, op_bl, op_lt}, RESERVED}, ErrMsg::Reserved<0, 1>),
+    Rule(0x01, expr, {{op_l, op_bl, OP_LT}, RESERVED}, ErrMsg::Reserved<0, 1>),
 
     // Using OP_L like an OP_B (maybe with reserved keywords)
     Rule(0x00, expr, {EXPR, {op_l}, EXPR}, ErrMsg::NonBinop),
@@ -190,8 +187,9 @@ static const std::vector<Rule> Rules = {
 
     // TODO need single statement to be another type to make merging actually
     // work correctly.
-    Rule(0x02, stmts,
-         {{kw_expr_block, kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
+    Rule(0x02, stmts, {{kw_expr_block}, EXPR, {l_brace}, {stmts}, {r_brace}},
+         BuildKWExprBlock),
+    Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
     Rule(0x01, stmts, {{stmts}, {kw_else}, {stmts}},
          AST::Conditional::build_else_if), // TODO stmts-> if_stmt
@@ -389,9 +387,7 @@ extern size_t precedence(Language::Operator op);
 // reduce is possible. Recall that the stack can never be empty, so calls to
 // stack_.back() are always safe.
 
-AST::Node *Parser::get(size_t n) {
-  return stack_[stack_.size() - n];
-}
+AST::Node *Parser::get(size_t n) { return stack_[stack_.size() - n]; }
 Language::NodeType Parser::get_type(size_t n) { return get(n)->node_type(); }
 
 bool Parser::should_shift() {
@@ -406,6 +402,13 @@ bool Parser::should_shift() {
        get_type(1) == Language::kw_block)) {
     return true;
   }
+
+  // For now, we require struct params to be in parentheses.
+  // TODO determine if this is necessary.
+  if (ahead_type == Language::l_paren && get_type(1) == Language::kw_struct) {
+    return true;
+  }
+
   if (ahead_type == Language::r_paren) { return false; }
 
   if (get_type(2) & Language::OP_) {
