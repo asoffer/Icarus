@@ -107,7 +107,6 @@ struct Node {
 struct Expression : public Node {
   EXPR_FNS(Expression, expression);
   static Node *build(NPtrVec &&nodes);
-  static Node *parenthesize(NPtrVec &&nodes);
 
   virtual bool is_literal(Type *t) const {
     return is_terminal() && !is_identifier() && type == t;
@@ -154,7 +153,6 @@ struct TokenNode : public Node {
 
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
-  static Node *build(NPtrVec &&nodes);
   Language::Terminal terminal_type;
 };
 
@@ -169,16 +167,10 @@ struct Identifier : public Terminal {
 
 struct Binop : public Expression {
   EXPR_FNS(Binop, binop);
-  static Node *build(NPtrVec &&nodes);
-
-  static Node *build_operator(NPtrVec &&nodes, Language::Operator op_class,
-                              Language::NodeType nt);
-
   static Node *BuildElseRocket(NPtrVec &&nodes);
-  static Node *build_paren_operator(NPtrVec &&nodes);
-  static Node *build_bracket_operator(NPtrVec &&nodes);
-  static Node *build_array_type(NPtrVec &&nodes);
-  static Node *build_assignment(NPtrVec &&nodes);
+  static Node *BuildCallOperator(NPtrVec &&nodes);
+  static Node *BuildIndexOperator(NPtrVec &&nodes);
+  static Node *BuildArrayType(NPtrVec &&nodes);
 
   bool is_assignment() const {
     using Language::Operator;
@@ -195,11 +187,6 @@ struct Binop : public Expression {
 
 struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
-  static Node *build(NPtrVec &&nodes);
-
-  static Node *build(NPtrVec &&nodes, Language::NodeType node_type,
-                     DeclType dt);
-
   static Node *BuildBasic(NPtrVec &&nodes);
   static Node *BuildGenerate(NPtrVec &&nodes);
 
@@ -261,9 +248,9 @@ struct Statements : public Node {
 
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
-  static Node *build(NPtrVec &&nodes);
+  static Node *BuildLeft(NPtrVec &&nodes);
+  static Node *BuildParen(NPtrVec &&nodes);
 
-  static Node *build_paren_operator(NPtrVec &&nodes);
   static Node *build_dots(NPtrVec &&nodes);
 
   Expression *operand;
@@ -272,7 +259,7 @@ struct Unop : public Expression {
 
 struct Access : public Expression {
   EXPR_FNS(Access, access);
-  static Node *build(NPtrVec &&nodes);
+  static Node *Build(NPtrVec &&nodes);
 
   std::string member_name;
   Expression *operand;
@@ -280,7 +267,7 @@ struct Access : public Expression {
 
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
-  static Node *build(NPtrVec &&nodes);
+  static Node *Build(NPtrVec &&nodes);
 
   static Node *join(NPtrVec &&nodes);
 

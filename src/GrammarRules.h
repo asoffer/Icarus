@@ -1,8 +1,7 @@
 extern AST::Node *BuildBinaryOperator(NPtrVec &&nodes);
-extern AST::Node *BuildUnaryOperator(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
-
+extern AST::Node *Parenthesize(NPtrVec &&nodes);
 
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
   auto temp = nodes[N];
@@ -113,7 +112,7 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Unary operators
-    Rule(0x01, expr, {{op_l, op_bl, op_lt}, EXPR}, BuildUnaryOperator),
+    Rule(0x01, expr, {{op_l, op_bl, op_lt}, EXPR}, AST::Unop::BuildLeft),
 
     // Using OP_L with a reserved keyword
     Rule(0x01, expr, {{op_l, op_bl, op_lt}, RESERVED}, ErrMsg::Reserved<0, 1>),
@@ -127,11 +126,10 @@ static const std::vector<Rule> Rules = {
 
     // Call and Index operators
     Rule(0x00, expr, {EXPR, {l_paren}, EXPR, {r_paren}},
-         AST::Binop::build_paren_operator),
-    Rule(0x00, expr, {EXPR, {l_paren}, {r_paren}},
-         AST::Unop::build_paren_operator),
+         AST::Binop::BuildCallOperator),
+    Rule(0x00, expr, {EXPR, {l_paren}, {r_paren}}, AST::Unop::BuildParen),
     Rule(0x00, expr, {EXPR, {l_bracket}, EXPR, {r_bracket}},
-         AST::Binop::build_bracket_operator),
+         AST::Binop::BuildIndexOperator),
 
     // Call and index operator with reserved words. We can't put reserved words
     // in the first slot because that might conflict with a real use case. For
@@ -142,8 +140,7 @@ static const std::vector<Rule> Rules = {
          ErrMsg::Reserved<0, 2>),
 
     // Parenthesization and bracketing (array literals)
-    Rule(0x01, expr, {{l_paren}, EXPR, {r_paren}},
-         AST::Expression::parenthesize),
+    Rule(0x01, expr, {{l_paren}, EXPR, {r_paren}}, Parenthesize),
     Rule(0x01, expr, {{l_bracket}, EXPR, {r_bracket}},
          AST::ArrayLiteral::build),
     Rule(0x00, expr, {{l_bracket}, {r_bracket}}, AST::ArrayLiteral::BuildEmpty),

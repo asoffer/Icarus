@@ -230,25 +230,69 @@ Node *For::Build(NPtrVec &&nodes) {
   return for_stmt;
 }
 
-Node *Unop::build(NPtrVec &&nodes) {
-  auto unop_ptr     = new Unop;
-  unop_ptr->operand = steal<Expression>(nodes[1]);
+// Input guarantees:
+// [unop] [expression]
+//
+// Internal checks:
+// Operand cannot be a declaration unless it's a tick.
+// Operand cannot be an assignment of any kind.
+Node *Unop::BuildLeft(NPtrVec &&nodes) {
+  auto unop_ptr     = new AST::Unop;
+  unop_ptr->operand = steal<AST::Expression>(nodes[1]);
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
   unop_ptr->loc   = nodes[0]->loc;
   unop_ptr->type_ = Language::expr;
-  if (nodes[0]->token() == "return") {
+  if (nodes[0]->token() == "import") {
+    // TODO we can't have a '/' character, and since all our programs are in the
+    // programs/ directory for now, we hard-code that. This needs to be removed.
+    file_queue.emplace("programs/" + nodes[1]->token());
+    unop_ptr->op = Language::Operator::Import;
+
+  } else if (nodes[0]->token() == "return") {
     unop_ptr->op = Language::Operator::Return;
+
+  } else if (nodes[0]->token() == "Free") {
+    unop_ptr->op = Language::Operator::Free;
+
+  } else if (nodes[0]->token() == "print") {
+    unop_ptr->op = Language::Operator::Print;
+
+  } else if (nodes[0]->token() == "&") {
+    unop_ptr->op = Language::Operator::And;
+
+  } else if (nodes[0]->token() == "-") {
+    unop_ptr->op = Language::Operator::Sub;
+
+  } else if (nodes[0]->token() == "!") {
+    unop_ptr->op = Language::Operator::Not;
+
+  } else if (nodes[0]->token() == "@") {
+    unop_ptr->op = Language::Operator::At;
   } else {
-    unop_ptr->op = ((AST::TokenNode *)(nodes[0]))->op;
+    assert(false);
+  }
+  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+
+  if (unop_ptr->operand->is_declaration()) {
+    auto decl = static_cast<Declaration *>(unop_ptr->operand);
+    if (decl->decl_type != DeclType::Tick) {
+      error_log.log(decl->loc, "Invalid use of declaration.");
+    }
   }
 
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+
   return unop_ptr;
 }
 
-Node *Unop::build_paren_operator(NPtrVec &&nodes) {
+// Input guarantees:
+// [expr] [l_paren] [r_paren]
+//
+// Internal checks:
+// Operand is not a declaration
+Node *Unop::BuildParen(NPtrVec &&nodes) {
+  
   auto unop_ptr        = new Unop;
   unop_ptr->loc        = nodes[1]->loc;
   unop_ptr->operand    = steal<Expression>(nodes[0]);
@@ -256,7 +300,133 @@ Node *Unop::build_paren_operator(NPtrVec &&nodes) {
   unop_ptr->op         = Language::Operator::Call;
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
+  if (unop_ptr->operand->is_declaration()) {
+    error_log.log(unop_ptr->operand->loc,
+                  "Invalid declaration. You cannot call a declaration.");
+  }
   return unop_ptr;
+}
+
+
+// Input guarantees
+// [expr] [chainop] [expr]
+//
+// Internal checks: None
+Node *ChainOp::Build(NPtrVec &&nodes) {
+  // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
+  auto op_node = static_cast<TokenNode *>(nodes[1]);
+  auto op_prec = Language::precedence(op_node->op);
+
+  ChainOp *chain_ptr = nullptr;
+
+  // Add to a chain so long as the precedence levels match. The only thing at
+  // that precedence level should be the operators which can be chained.
+  bool use_old_chain_op =
+      nodes[0]->is_chain_op() &&
+      static_cast<ChainOp *>(nodes[0])->precedence == op_prec;
+
+  if (use_old_chain_op) {
+    chain_ptr = steal<ChainOp>(nodes[0]);
+
+  } else {
+    chain_ptr      = new ChainOp;
+    chain_ptr->loc = nodes[1]->loc;
+
+    chain_ptr->exprs.push_back(steal<Expression>(nodes[0]));
+    nodes[0]              = nullptr;
+    chain_ptr->precedence = op_prec;
+  }
+
+  chain_ptr->ops.push_back(op_node->op);
+  chain_ptr->exprs.push_back(steal<Expression>(nodes[2]));
+
+  return chain_ptr;
+}
+
+// Input guarantees
+// [expr] [dot] [expr]
+//
+// Internal checks:
+// LHS is not a declaration
+// RHS is an identifier
+Node *Access::Build(NPtrVec &&nodes) {
+  auto access_ptr         = new Access;
+  access_ptr->member_name = nodes[2]->token();
+  access_ptr->loc         = nodes[0]->loc;
+  access_ptr->operand     = steal<Expression>(nodes[0]);
+
+  if (access_ptr->operand->is_declaration()) {
+    error_log.log(access_ptr->operand->loc,
+                  "Left-hand side cannot be a declaration");
+  }
+
+  if (!nodes[2]->is_identifier()) {
+    error_log.log(nodes[2]->loc, "Right-hand side must be an identifier");
+  }
+
+  return access_ptr;
+}
+
+static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
+                           Language::NodeType nt) {
+  auto binop_ptr = new Binop;
+  binop_ptr->loc = nodes[1]->loc;
+
+  binop_ptr->lhs   = steal<Expression>(nodes[0]);
+  binop_ptr->rhs   = steal<Expression>(nodes[2]);
+  binop_ptr->type_ = nt;
+  binop_ptr->op    = op_class;
+
+  if (binop_ptr->lhs->is_declaration()) {
+    error_log.log(binop_ptr->lhs->loc,
+                  "Left-hand side cannot be a declaration");
+  }
+
+  if (binop_ptr->rhs->is_declaration()) {
+    auto decl = static_cast<Declaration *>(binop_ptr->rhs);
+    if (decl->decl_type != DeclType::Tick){
+      error_log.log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
+                                         "declaration other than one declared "
+                                         "with '`'");
+    }
+  }
+
+
+  binop_ptr->precedence = Language::precedence(binop_ptr->op);
+
+  return binop_ptr;
+}
+
+// Input guarantees
+// [expr] [l_paren] [expr] [r_paren]
+//
+// Internal checks: (checked in BuildOperator)
+// LHS is not a declaration
+// RHS is not a declaration unless it's a tick
+Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
+  return BuildOperator(std::forward<NPtrVec &&>(nodes),
+                        Language::Operator::Call, Language::op_b);
+}
+
+// Input guarantees
+// [expr] [l_bracket] [expr] [r_bracket]
+//
+// Internal checks: (checked in BuildOperator)
+// LHS is not a declaration
+// RHS is not a declaration unless it's a tick
+Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
+  return BuildOperator(std::forward<NPtrVec &&>(nodes),
+                       Language::Operator::Index, Language::op_b);
+}
+
+// Input guarantee:
+// [expression] [l_bracket] [r_bracket]
+//
+// Internal checks: None
+Node *ArrayLiteral::BuildEmpty(NPtrVec &&nodes) {
+  auto array_lit_ptr = new ArrayLiteral;
+  array_lit_ptr->loc = nodes[0]->loc;
+  return array_lit_ptr;
 }
 
 // More generally, this is correct for any right-unary operation
@@ -273,66 +443,6 @@ Node *Unop::build_dots(NPtrVec &&nodes) {
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
-}
-
-Node *Access::build(NPtrVec &&nodes) {
-  auto access_ptr         = new Access;
-  access_ptr->member_name = nodes[2]->token();
-  access_ptr->loc         = nodes[0]->loc;
-  access_ptr->operand     = steal<Expression>(nodes[0]);
-
-  return access_ptr;
-}
-
-Node *Binop::build_operator(NPtrVec &&nodes, Language::Operator op_class,
-                            Language::NodeType nt) {
-  auto binop_ptr = new Binop;
-  binop_ptr->loc = nodes[1]->loc;
-
-  binop_ptr->lhs   = steal<Expression>(nodes[0]);
-  binop_ptr->rhs   = steal<Expression>(nodes[2]);
-  binop_ptr->type_ = nt;
-  binop_ptr->op    = op_class;
-
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
-
-  return binop_ptr;
-}
-
-Node *Binop::build_assignment(NPtrVec &&nodes) {
-  auto op = static_cast<TokenNode *>(nodes[1])->op;
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
-                               Language::op_b);
-}
-
-Node *Binop::build(NPtrVec &&nodes) {
-  auto op = static_cast<TokenNode *>(nodes[1])->op;
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes), op,
-                               Language::op_b);
-}
-
-Node *Binop::BuildElseRocket(NPtrVec &&nodes) {
-  auto term_ptr           = new Terminal;
-  term_ptr->loc           = nodes[0]->loc;
-  term_ptr->terminal_type = Language::Terminal::Else;
-  term_ptr->type          = Bool;
-  term_ptr->token_        = "else";
-  delete nodes[0];
-  nodes[0] = term_ptr;
-  
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Rocket, Language::op_b);
-}
-
-
-Node *Binop::build_paren_operator(NPtrVec &&nodes) {
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Call, Language::op_b);
-}
-
-Node *Binop::build_bracket_operator(NPtrVec &&nodes) {
-  return Binop::build_operator(std::forward<NPtrVec &&>(nodes),
-                               Language::Operator::Index, Language::op_b);
 }
 
 Node *ChainOp::join(NPtrVec &&nodes) {
@@ -399,42 +509,6 @@ Node *ChainOp::join(NPtrVec &&nodes) {
   return chain_ptr;
 }
 
-Node *ChainOp::build(NPtrVec &&nodes) {
-  // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
-  auto op_node = static_cast<TokenNode *>(nodes[1]);
-  auto op_prec = Language::precedence(op_node->op);
-
-  ChainOp *chain_ptr = nullptr;
-
-  // Add to a chain so long as the precedence levels match. The only thing at
-  // that precedence level should be the operators which can be chained.
-  bool use_old_chain_op =
-      nodes[0]->is_chain_op() &&
-      static_cast<ChainOp *>(nodes[0])->precedence == op_prec;
-
-  if (use_old_chain_op) {
-    chain_ptr = steal<ChainOp>(nodes[0]);
-
-  } else {
-    chain_ptr      = new ChainOp;
-    chain_ptr->loc = nodes[1]->loc;
-
-    chain_ptr->exprs.push_back(steal<Expression>(nodes[0]));
-    nodes[0]              = nullptr;
-    chain_ptr->precedence = op_prec;
-  }
-
-  chain_ptr->ops.push_back(op_node->op);
-  chain_ptr->exprs.push_back(steal<Expression>(nodes[2]));
-
-  return chain_ptr;
-}
-
-Node *ArrayLiteral::BuildEmpty(NPtrVec &&nodes) {
-  auto array_lit_ptr = new ArrayLiteral;
-  array_lit_ptr->loc = nodes[0]->loc;
-  return array_lit_ptr;
-}
 
 Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
@@ -496,23 +570,10 @@ Node *ArrayType::build_unknown(NPtrVec &&nodes) {
   return array_type_ptr;
 }
 
-Node *Terminal::build(NPtrVec &&) {
-  // This function is only here to make the macro generation simpler
-  // TODO remove it?
-  assert(false && "Called a function that shouldn't be called.");
-}
-
 Node *Expression::build(NPtrVec &&) {
   // This function is only here to make the macro generation simpler
   // TODO remove it
   assert(false && "Called a function that shouldn't be called.");
-}
-
-Node *Expression::parenthesize(NPtrVec &&nodes) {
-  auto expr_ptr = steal<Expression>(nodes[1]);
-  expr_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
-  return expr_ptr;
 }
 
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {
@@ -522,43 +583,30 @@ Node *Declaration::AddHashtag(NPtrVec &&nodes) {
   return decl;
 }
 
-Node *Declaration::build(NPtrVec &&) {
-  // This function is only here to make the macro generation simpler
-  // TODO remove it
-  assert(false && "Called a function that shouldn't be called.");
-}
+Node *Declaration::BuildBasic(NPtrVec &&nodes) {
+  auto op = ((AST::TokenNode *)(nodes[1]))->op;
+  DeclType dt;
 
-Node *Declaration::build(NPtrVec &&nodes, Language::NodeType node_type,
-                         DeclType dt) {
+  if (op == Language::Operator::Colon) {
+    dt = DeclType::Std;
+
+  } else if (op == Language::Operator::ColonEq) {
+    dt = DeclType::Infer;
+
+  } else if (op == Language::Operator::In) {
+    dt = DeclType::In;
+
+  } else {
+    assert(false);
+  }
+
   auto decl_ptr = Scope::make_declaration(nodes[1]->loc, dt, nodes[0]->token(),
                                           steal<Expression>(nodes[2]));
 
-  decl_ptr->type_ = node_type;
-
-  switch (dt) {
-  case DeclType::Std: decl_ptr->op   = Language::Operator::Colon; break;
-  case DeclType::Infer: decl_ptr->op = Language::Operator::ColonEq; break;
-  case DeclType::In: decl_ptr->op = Language::Operator::In; break;
-  case DeclType::Tick: assert(false); break;
-  }
-
+  decl_ptr->type_      = Language::op_b;
+  decl_ptr->op         = op;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
-
   return decl_ptr;
-}
-
-Node *Declaration::BuildBasic(NPtrVec &&nodes) {
-  if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::Colon) {
-    return build(std::forward<NPtrVec &&>(nodes), Language::op_b,
-                 DeclType::Std);
-  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::ColonEq) {
-    return build(std::forward<NPtrVec &&>(nodes), Language::op_b,
-                 DeclType::Infer);
-  } else if (((AST::TokenNode *)(nodes[1]))->op == Language::Operator::In) {
-    return build(std::forward<NPtrVec &&>(nodes), Language::op_b,
-                 DeclType::In);
-  }
-  assert(false);
 }
 
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
@@ -569,7 +617,6 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   decl_ptr->type_      = Language::expr;
   decl_ptr->op         = Language::Operator::Tick;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
-
   return decl_ptr;
 }
 
@@ -743,19 +790,24 @@ Node *Jump::build(NPtrVec &&nodes) {
 
 } // namespace AST
 
-
 AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
-  static const std::vector<std::string> chain_ops = {
-      ",", "==", "!=", "<", ">", "<=", ">=", "&", "|", "^"};
+  static const std::map<std::string, Language::Operator> chain_ops = {
+      {",", Language::Operator::Comma}, {"==", Language::Operator::EQ},
+      {"!=", Language::Operator::NE},   {"<", Language::Operator::LT},
+      {">", Language::Operator::GT},    {"<=", Language::Operator::LE},
+      {">=", Language::Operator::GE},   {"&", Language::Operator::And},
+      {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
+  };
 
   for (auto op : chain_ops) {
-    if (nodes[1]->token() == op) {
-      return AST::ChainOp::build(std::forward<NPtrVec &&>(nodes));
+    if (nodes[1]->token() == op.first) {
+      static_cast<AST::TokenNode *>(nodes[1])->op = op.second;
+      return AST::ChainOp::Build(std::forward<NPtrVec &&>(nodes));
     }
   }
 
   if (nodes[1]->token() == ".") {
-    return AST::Access::build(std::forward<NPtrVec &&>(nodes));
+    return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
   }
 
   if (nodes[1]->token() == ":" || nodes[1]->token() == ":=" ||
@@ -836,30 +888,9 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   assert(false);
 }
 
-AST::Node *BuildUnaryOperator(NPtrVec &&nodes) {
-  auto unop_ptr     = new AST::Unop;
-  unop_ptr->operand = steal<AST::Expression>(nodes[1]);
-
-  // We intentionally do not delete tk_node becasue we only want to read from
-  // it. The apply() call will take care of its deletion.
-  unop_ptr->loc   = nodes[0]->loc;
-  unop_ptr->type_ = Language::expr;
-  if (nodes[0]->token() == "return") {
-    unop_ptr->op = Language::Operator::Return;
-  } else if (nodes[0]->token() == "print") {
-    unop_ptr->op = Language::Operator::Print;
-  } else if (nodes[0]->token() == "import") {
-    // TODO we can't have a '/' character, and since all our programs are in the
-    // programs/ directory for now, we hard-code that. This needs to be removed.
-    file_queue.emplace("programs/" + nodes[1]->token());
-    unop_ptr->op = Language::Operator::Import;
-  } else if (nodes[0]->token() == "Free") {
-    unop_ptr->op = Language::Operator::Free;
-  }
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-  return unop_ptr;
+AST::Node *Parenthesize(NPtrVec &&nodes) {
+  auto expr_ptr = steal<AST::Expression>(nodes[1]);
+  expr_ptr->precedence =
+      Language::precedence(Language::Operator::NotAnOperator);
+  return expr_ptr;
 }
-
-
-
-
