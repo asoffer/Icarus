@@ -573,11 +573,6 @@ Node *ArrayLiteral::build(NPtrVec &&nodes) {
 }
 
 Node *ArrayType::build(NPtrVec &&nodes) {
-  if (nodes[1]->is_terminal() &&
-      static_cast<Terminal *>(nodes[1])->terminal_type ==
-          Language::Terminal::Hole) {
-    return build_unknown(std::forward<NPtrVec &&>(nodes));
-  }
   if (nodes[1]->is_comma_list()) {
     auto length_chain = steal<ChainOp>(nodes[1]);
     auto iter         = length_chain->exprs.rbegin();
@@ -603,18 +598,6 @@ Node *ArrayType::build(NPtrVec &&nodes) {
 
     return array_type_ptr;
   }
-}
-
-Node *ArrayType::build_unknown(NPtrVec &&nodes) {
-  auto array_type_ptr = new ArrayType;
-  array_type_ptr->loc = nodes[0]->loc;
-
-  // length == nullptr means we do not know the length of the array can
-  // change.
-  array_type_ptr->length    = nullptr;
-  array_type_ptr->data_type = steal<Expression>(nodes[3]);
-
-  return array_type_ptr;
 }
 
 Node *Expression::build(NPtrVec &&) {

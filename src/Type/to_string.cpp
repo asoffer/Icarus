@@ -24,7 +24,7 @@ std::string Array::to_string() const {
   if (fixed_length) {
     ss << len;
   } else {
-    ss << "-";
+    ss << "--";
   }
   Type *const *type_ptr_ptr = &data_type;
 
@@ -34,7 +34,7 @@ std::string Array::to_string() const {
     if (array_ptr->fixed_length) {
       ss << array_ptr->len;
     } else {
-      ss << "-";
+      ss << "--";
     }
 
     type_ptr_ptr = &array_ptr->data_type;

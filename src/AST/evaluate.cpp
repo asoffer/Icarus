@@ -245,6 +245,7 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 }
 
 Context::Value ArrayType::evaluate(Context &ctx) {
+  assert(length);
   return Context::Value(length->is_hole()
                             ? Arr(data_type->evaluate(ctx).as_type)
                             : Arr(data_type->evaluate(ctx).as_type,
@@ -554,7 +555,6 @@ Context::Value Binop::evaluate(Context &ctx) {
       }
 
       return Context::Value(cloned_struct->type_value);
-
     } else {
       assert(false);
     }

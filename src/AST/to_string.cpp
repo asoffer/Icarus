@@ -135,8 +135,9 @@ std::string Binop::to_string(size_t n) const {
 }
 
 std::string ArrayType::to_string(size_t n) const {
+  assert(length);
   std::string output = tabs(n) + "<ArrayType>\n";
-  return output + data_type->to_string(n + 1);
+  return output + length->to_string(n + 1) + data_type->to_string(n + 1);
 }
 
 std::string ChainOp::to_string(size_t n) const {

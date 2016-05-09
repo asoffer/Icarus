@@ -16,10 +16,10 @@ void Array::generate_llvm() const {
 
   } else {
     data_type->generate_llvm();
+
     auto struct_type = llvm::StructType::create(global_module->getContext());
 
     struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
-
     struct_type->setName(Mangle(this));
     llvm_type = struct_type;
   }
@@ -30,7 +30,6 @@ void Pointer::generate_llvm() const {
   pointee->generate_llvm();
   llvm_type = llvm::PointerType::getUnqual(pointee->llvm_type);
 }
-
 
 void Function::generate_llvm() const {
   if (llvm_type) return;

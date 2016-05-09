@@ -150,7 +150,7 @@ llvm::Value *Terminal::generate_code() {
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
-    Arr(Char)->initialize_literal(char_array_ptr, token().size());
+    Arr(Char)->initialize_literal(char_array_ptr, len);
 
     auto char_data_ptr = builder.CreateLoad(
         builder.CreateGEP(char_array_ptr,
@@ -406,6 +406,25 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 }
 
 llvm::Value *Binop::generate_code() {
+  // Hack: Need to deal with dependent type before compile/runtime eval.
+  // TODO streamline this.
+  if (lhs->type->is_dependent_type()) {
+    auto t = rhs->evaluate(CurrentContext()).as_type;
+
+    // TODO what if these are formed by some crazy other method?
+    if (lhs->token() == "input") {
+      return builtin::input(t);
+
+    } else if (lhs->token() == "alloc") {
+      auto alloc_ptr =
+          builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
+      return builder.CreateBitCast(alloc_ptr, *type);
+
+    } else {
+      assert(false);
+    }
+  }
+
   if (time() == Time::compile) {
     return llvm_value(evaluate(CurrentContext()));
   }
@@ -438,22 +457,6 @@ llvm::Value *Binop::generate_code() {
 
     } else if (lhs->is_function_literal()) {
       lhs_val = lhs->generate_code();
-
-    } else if (lhs->type->is_dependent_type()) {
-      auto t = rhs->evaluate(CurrentContext()).as_type;
-
-      // TODO what if these are formed by some crazy other method?
-      if (lhs->token() == "input") {
-        return builtin::input(t);
-
-      } else if (lhs->token() == "alloc") {
-        auto alloc_ptr = builder.CreateCall(cstdlib::malloc(),
-                                            {data::const_uint(t->bytes())});
-        return builder.CreateBitCast(alloc_ptr, *type);
-
-      } else {
-        assert(false);
-      }
 
     } else {
       lhs_val = lhs->generate_code();
@@ -970,7 +973,15 @@ llvm::Value *Declaration::generate_code() {
 
     auto len_expr = ((ArrayType *)type_expr)->length;
     if (len_expr->time() & Time::run) {
+      // TODO have a Hole type primitive.
+      if (len_expr->is_terminal() &&
+          static_cast<Terminal *>(len_expr)->terminal_type ==
+              Language::Terminal::Hole) {
+        return nullptr;
+      }
+
       auto len = len_expr->generate_code();
+      len->dump();
       ((Array *)type)->initialize_literal(identifier->alloc, len);
     }
   }
@@ -1070,19 +1081,13 @@ llvm::Value *ArrayLiteral::generate_code() {
   type->call_init(array_data);
 
   builder.SetInsertPoint(current_block);
-  type_as_array->initialize_literal(array_data, num_elems);
 
-  llvm::Value *head_ptr;
-  if (type_as_array->fixed_length) {
-    head_ptr = builder.CreateGEP(array_data,
-                                 {data::const_uint(0), data::const_uint(0)});
-  } else {
-    head_ptr = builder.CreateLoad(builder.CreateGEP(
-        array_data, {data::const_uint(0), data::const_uint(1)}));
-  }
+  assert(type_as_array->fixed_length);
+
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
-    auto data_ptr = builder.CreateGEP(head_ptr, data::const_uint(i));
+    auto data_ptr =
+        builder.CreateGEP(array_data, {data::const_uint(0), data::const_uint(i)});
     element_type->call_init(data_ptr);
 
     element_type->CallAssignment(scope_, elems[i]->generate_code(), data_ptr);

@@ -132,7 +132,6 @@ void Terminal::verify_types() {
   // Anything other than a string is done when the terminal is created.
   // TODO Do string literal and then set the values later.
   if (terminal_type == Language::Terminal::StringLiteral) { type = String; }
-  determine_time();
 }
 
 void Identifier::verify_types() {
@@ -825,17 +824,19 @@ void Declaration::verify_types() {
 }
 
 void ArrayType::verify_types() {
-  // TODO change this to uint
-  if (length != nullptr && length->type != Int) {
-    error_log.log(loc, "Array length indexed by non-integral type");
+  assert(length && data_type->type == Type_);
+  type = Type_;
+
+  // TODO have a Hole type primitive.
+  if (length->is_terminal() &&
+      static_cast<Terminal *>(length)->terminal_type ==
+          Language::Terminal::Hole) {
+    return;
   }
 
-  if (data_type->type == Type_) {
-    type = Type_;
-  } else {
-
-    type = Arr(data_type->type);
-    assert(type && "arrayType nullptr");
+  // TODO change this to just uint
+  if (length->type != Int && length->type != Uint) {
+    error_log.log(loc, "Array length indexed by non-integral type");
   }
 }
 

@@ -158,17 +158,7 @@ void Structure::call_init(llvm::Value *var) {
   builder.CreateCall(init_fn_, {var});
 }
 
-// TODO no need to return anything here.
-llvm::Value *Array::initialize_literal(llvm::Value *alloc, size_t len) {
-  if (!data_type->is_primitive()) {
-    for (size_t i = 0; i < len; ++i) {
-      assert(false);
-    }
-  }
-  return alloc;
-}
-
-// TODO rename? This isn't really about init-ing literals
+// TODO rename? This isn't really about init-ing literals. it's more about allocating
 llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
   auto use_calloc         = data_type->is_primitive();
   llvm::Value *alloc_call = nullptr;

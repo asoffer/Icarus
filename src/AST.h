@@ -287,8 +287,6 @@ struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
   static Node *build(NPtrVec &&nodes);
 
-  static Node *build_unknown(NPtrVec &&nodes);
-
   Expression *length;
   Expression *data_type;
 };

@@ -135,7 +135,6 @@ struct Array : public Type {
   virtual bool requires_uninit() const;
 
   llvm::Function *initialize();
-  llvm::Value *initialize_literal(llvm::Value *alloc, size_t len);
   llvm::Value *initialize_literal(llvm::Value *alloc, llvm::Value *len);
 
   virtual llvm::Value *allocate() const;
