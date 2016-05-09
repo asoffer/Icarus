@@ -133,54 +133,68 @@ void Array::call_repr(llvm::Value *val) {
 
     auto enter_block = make_block("enter", repr_fn_);
     builder.SetInsertPoint(enter_block);
-
     builder.CreateCall(cstdlib::putchar(), {data::const_char('[')});
 
-    auto len_ptr =
-        builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
-    auto len_val = builder.CreateLoad(len_ptr);
+    if (fixed_length) {
+      if (len > 0) {
+        auto start_ptr =
+            builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
+        data_type->call_repr(PtrCallFix(data_type, start_ptr));
+      }
 
-    auto loop_block      = make_block("loop.body", repr_fn_);
-    auto loop_head_block = make_block("loop.head", repr_fn_);
-    auto done_block      = make_block("exit", repr_fn_);
+      for (size_t i = 1; i < len; ++i) {
+        builder.CreateCall(cstdlib::printf(), {data::global_string(", ")});
+        auto ptr =
+            builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(i)});
+        data_type->call_repr(PtrCallFix(data_type, ptr));
+      }
+    } else {
 
-    builder.CreateCondBr(builder.CreateICmpEQ(len_val, data::const_uint(0)),
-                         done_block, loop_head_block);
+      auto len_ptr =
+          builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)});
+      auto len_val = builder.CreateLoad(len_ptr);
 
-    builder.SetInsertPoint(loop_head_block);
+      auto loop_block      = make_block("loop.body", repr_fn_);
+      auto loop_head_block = make_block("loop.head", repr_fn_);
+      auto done_block      = make_block("exit", repr_fn_);
 
-    // Start at position 1, not zero
-    auto data_ptr_ptr = builder.CreateGEP(
-        arg, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
-    llvm::Value *start_ptr = builder.CreateLoad(data_ptr_ptr, "start_ptr");
-    auto end_ptr           = builder.CreateGEP(start_ptr, len_val, "end_ptr");
+      builder.CreateCondBr(builder.CreateICmpEQ(len_val, data::const_uint(0)),
+                           done_block, loop_head_block);
 
-    // TODO make calls to call_repr not have to first check if we pass the
-    // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(data_type, start_ptr));
+      builder.SetInsertPoint(loop_head_block);
 
-    start_ptr =
-        builder.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
-    builder.CreateCondBr(builder.CreateICmpEQ(start_ptr, end_ptr), done_block,
-                         loop_block);
+      // Start at position 1, not zero
+      auto data_ptr_ptr = builder.CreateGEP(
+          arg, {data::const_uint(0), data::const_uint(1)}, "data_ptr_ptr");
+      llvm::Value *start_ptr = builder.CreateLoad(data_ptr_ptr, "start_ptr");
+      auto end_ptr           = builder.CreateGEP(start_ptr, len_val, "end_ptr");
 
-    // Otherwise, print ", element" repeatedly.
-    builder.SetInsertPoint(loop_block);
-    auto phi = builder.CreatePHI(*Ptr(data_type), 2, "loop_phi");
-    phi->addIncoming(start_ptr, loop_head_block);
+      // TODO make calls to call_repr not have to first check if we pass the
+      // object or a pointer to the object.
+      data_type->call_repr(PtrCallFix(data_type, start_ptr));
 
-    builder.CreateCall(cstdlib::printf(), {data::global_string(", ")});
+      start_ptr =
+          builder.CreateGEP(start_ptr, data::const_uint(1), "second_elem");
+      builder.CreateCondBr(builder.CreateICmpEQ(start_ptr, end_ptr), done_block,
+                           loop_block);
 
-    // TODO make calls to call_repr not have to first check if we pass the
-    // object or a pointer to the object.
-    data_type->call_repr(PtrCallFix(data_type, phi));
+      // Otherwise, print ", element" repeatedly.
+      builder.SetInsertPoint(loop_block);
+      auto phi = builder.CreatePHI(*Ptr(data_type), 2, "loop_phi");
+      phi->addIncoming(start_ptr, loop_head_block);
 
-    auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
-    builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,
-                         done_block);
-    phi->addIncoming(next_ptr, loop_block);
-    builder.SetInsertPoint(done_block);
+      builder.CreateCall(cstdlib::printf(), {data::global_string(", ")});
 
+      // TODO make calls to call_repr not have to first check if we pass the
+      // object or a pointer to the object.
+      data_type->call_repr(PtrCallFix(data_type, phi));
+
+      auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
+      builder.CreateCondBr(builder.CreateICmpULT(next_ptr, end_ptr), loop_block,
+                           done_block);
+      phi->addIncoming(next_ptr, loop_block);
+      builder.SetInsertPoint(done_block);
+    }
     builder.CreateCall(cstdlib::putchar(), {data::const_char(']')});
     builder.CreateRetVoid();
   }

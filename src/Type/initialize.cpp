@@ -57,19 +57,33 @@ void Array::call_init(llvm::Value *var) {
     builder.SetInsertPoint(block);
     auto arg = init_fn_->args().begin();
 
-    builder.CreateStore(
-        data::const_uint(0),
-        builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)}));
-    auto ptr = builder.CreateBitCast(
-        builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
-        *Ptr(data_type));
+    if (fixed_length) {
+      // TODO This seems to be wasteful. Shouldn't we share?
+      // TODO out of laziness now i will just generate something correct rather
+      // than something fast/compact.
 
-    builder.CreateStore(
-        ptr, builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(1)}));
+      // Repeatedly call_init on the entries. Probably a fancy loop makes more sense.
+      for (size_t i = 0; i < len; ++i) {
+        data_type->call_init(
+            builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(i)}));
+      }
+
+    } else {
+      builder.CreateStore(
+          data::const_uint(0),
+          builder.CreateGEP(arg, {data::const_uint(0), data::const_uint(0)}));
+      auto ptr = builder.CreateBitCast(
+          builder.CreateCall(cstdlib::malloc(), {data::const_uint(0)}),
+          *Ptr(data_type));
+
+      builder.CreateStore(ptr, builder.CreateGEP(arg, {data::const_uint(0),
+                                                       data::const_uint(1)}));
+    }
 
     builder.CreateRetVoid();
     builder.restoreIP(ip);
   }
+
   builder.CreateCall(init_fn_, {var});
 }
 
@@ -146,7 +160,12 @@ void Structure::call_init(llvm::Value *var) {
 
 // TODO no need to return anything here.
 llvm::Value *Array::initialize_literal(llvm::Value *alloc, size_t len) {
-  return initialize_literal(alloc, data::const_uint(len));
+  if (!data_type->is_primitive()) {
+    for (size_t i = 0; i < len; ++i) {
+      assert(false);
+    }
+  }
+  return alloc;
 }
 
 // TODO rename? This isn't really about init-ing literals

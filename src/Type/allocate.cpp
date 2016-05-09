@@ -13,7 +13,7 @@ llvm::Value *Function::allocate() const {
 
 llvm::Value *Array::allocate() const {
   auto alloc = builder.CreateAlloca(*this);
-  alloc->setName("tmp_array");
+  if (!fixed_length) { alloc->setName("tmp_array"); }
   return alloc;
 }
 

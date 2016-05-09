@@ -51,56 +51,68 @@ llvm::Function *Array::assign() {
   // release the resources held by var
   CallDestroy(nullptr, var);
 
-  auto new_len = builder.CreateLoad(
-      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
-  builder.CreateStore(new_len, builder.CreateGEP(var, {data::const_uint(0),
-                                                       data::const_uint(0)}));
+  if (fixed_length) {
+    for (size_t i = 0; i < len; ++i) {
+      auto from_ptr =
+          builder.CreateGEP(val, {data::const_uint(0), data::const_uint(i)});
+      auto to_ptr =
+          builder.CreateGEP(var, {data::const_uint(0), data::const_uint(i)});
+      data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_ptr),
+                                to_ptr);
+    }
+  } else {
+    auto new_len = builder.CreateLoad(
+        builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
+    builder.CreateStore(new_len, builder.CreateGEP(var, {data::const_uint(0),
+                                                         data::const_uint(0)}));
 
-  auto bytes_to_alloc =
-      builder.CreateMul(new_len, data::const_uint(data_type->bytes()));
-  auto malloc_call = builder.CreateBitCast(
-      builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}), *Ptr(data_type));
-  builder.CreateStore(
-      malloc_call,
-      builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
+    auto bytes_to_alloc =
+        builder.CreateMul(new_len, data::const_uint(data_type->bytes()));
+    auto malloc_call = builder.CreateBitCast(
+        builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
+        *Ptr(data_type));
+    builder.CreateStore(
+        malloc_call,
+        builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
 
-  auto copy_from_ptr = builder.CreateLoad(
-      builder.CreateGEP(val, {data::const_uint(0), data::const_uint(1)}));
-  auto end_ptr = builder.CreateGEP(copy_from_ptr, new_len);
+    auto copy_from_ptr = builder.CreateLoad(
+        builder.CreateGEP(val, {data::const_uint(0), data::const_uint(1)}));
+    auto end_ptr = builder.CreateGEP(copy_from_ptr, new_len);
 
-  auto cond_block = make_block("cond", assign_fn_);
-  auto loop_block = make_block("loop", assign_fn_);
-  auto exit_block = make_block("exit", assign_fn_);
+    auto cond_block = make_block("cond", assign_fn_);
+    auto loop_block = make_block("loop", assign_fn_);
+    auto exit_block = make_block("exit", assign_fn_);
 
-  builder.CreateBr(cond_block);
-  builder.SetInsertPoint(cond_block);
+    builder.CreateBr(cond_block);
+    builder.SetInsertPoint(cond_block);
 
-  auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
-  auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
-  builder.CreateCondBr(builder.CreateICmpULT(from_phi, end_ptr),
-                       loop_block, exit_block);
+    auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
+    auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
+    builder.CreateCondBr(builder.CreateICmpULT(from_phi, end_ptr), loop_block,
+                         exit_block);
 
-  // Write loop body
-  builder.SetInsertPoint(loop_block);
+    // Write loop body
+    builder.SetInsertPoint(loop_block);
 
-  // This is ludicrous, but we have to init it here so that it can be
-  // immeditaely uninitialized safely.
-  data_type->call_init(to_phi);
+    // This is ludicrous, but we have to init it here so that it can be
+    // immeditaely uninitialized safely.
+    data_type->call_init(to_phi);
 
-  data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
+    data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
 
-  auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
-  auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
+    auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
+    auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
 
-  from_phi->addIncoming(next_from_ptr, loop_block);
-  to_phi->addIncoming(next_to_ptr, loop_block);
+    from_phi->addIncoming(next_from_ptr, loop_block);
+    to_phi->addIncoming(next_to_ptr, loop_block);
 
-  from_phi->addIncoming(copy_from_ptr, entry_block);
-  to_phi->addIncoming(malloc_call, entry_block);
+    from_phi->addIncoming(copy_from_ptr, entry_block);
+    to_phi->addIncoming(malloc_call, entry_block);
 
-  builder.CreateBr(cond_block);
+    builder.CreateBr(cond_block);
 
-  builder.SetInsertPoint(exit_block);
+    builder.SetInsertPoint(exit_block);
+  }
   builder.CreateRetVoid();
 
   builder.SetInsertPoint(save_block);

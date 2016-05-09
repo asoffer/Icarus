@@ -10,13 +10,19 @@ extern llvm::Module* global_module;
 
 void Array::generate_llvm() const {
   if (llvm_type) return;
-  data_type->generate_llvm();
-  auto struct_type = llvm::StructType::create(global_module->getContext());
 
-  struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
+  if (fixed_length) {
+    llvm_type = llvm::ArrayType::get(*data_type, len);
 
-  struct_type->setName(Mangle(this));
-  llvm_type = struct_type;
+  } else {
+    data_type->generate_llvm();
+    auto struct_type = llvm::StructType::create(global_module->getContext());
+
+    struct_type->setBody({*Uint, *Ptr(data_type)}, /* isPacked = */ false);
+
+    struct_type->setName(Mangle(this));
+    llvm_type = struct_type;
+  }
 }
 
 void Pointer::generate_llvm() const {

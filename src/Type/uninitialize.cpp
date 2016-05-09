@@ -35,38 +35,40 @@ llvm::Function *Array::destroy() {
   auto array = destroy_fn_->args().begin();
   array->setName("array");
 
-  auto data_ptr = builder.CreateLoad(
-      builder.CreateGEP(array, {data::const_uint(0), data::const_uint(1)}),
-      "ptr_to_free");
+  if (!fixed_length) {
+    auto data_ptr = builder.CreateLoad(
+        builder.CreateGEP(array, {data::const_uint(0), data::const_uint(1)}),
+        "ptr_to_free");
 
-  auto len_ptr = builder.CreateGEP(
-      array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-  auto len_val = builder.CreateLoad(len_ptr, "len_val");
-  auto end_ptr = builder.CreateGEP(data_ptr, len_val, "end_ptr");
+    auto len_ptr = builder.CreateGEP(
+        array, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
+    auto len_val = builder.CreateLoad(len_ptr, "len_val");
+    auto end_ptr = builder.CreateGEP(data_ptr, len_val, "end_ptr");
 
-  auto cond_block = make_block("cond", destroy_fn_);
-  auto loop_block = make_block("loop", destroy_fn_);
-  auto land_block = make_block("land", destroy_fn_);
+    auto cond_block = make_block("cond", destroy_fn_);
+    auto loop_block = make_block("loop", destroy_fn_);
+    auto land_block = make_block("land", destroy_fn_);
 
-  builder.CreateBr(cond_block);
-  builder.SetInsertPoint(cond_block);
+    builder.CreateBr(cond_block);
+    builder.SetInsertPoint(cond_block);
 
-  auto phi = builder.CreatePHI(*Ptr(data_type), 2, "phi");
-  phi->addIncoming(data_ptr, entry_block);
+    auto phi = builder.CreatePHI(*Ptr(data_type), 2, "phi");
+    phi->addIncoming(data_ptr, entry_block);
 
-  builder.CreateCondBr(builder.CreateICmpULT(phi, end_ptr), loop_block,
-                       land_block);
+    builder.CreateCondBr(builder.CreateICmpULT(phi, end_ptr), loop_block,
+                         land_block);
 
-  builder.SetInsertPoint(loop_block);
-  data_type->CallDestroy(nullptr, phi);
-  auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
+    builder.SetInsertPoint(loop_block);
+    data_type->CallDestroy(nullptr, phi);
+    auto next_ptr = builder.CreateGEP(phi, data::const_uint(1));
 
-  builder.CreateBr(cond_block);
-  phi->addIncoming(next_ptr, loop_block);
+    builder.CreateBr(cond_block);
+    phi->addIncoming(next_ptr, loop_block);
 
-  builder.SetInsertPoint(land_block);
-  builder.CreateCall(cstdlib::free(), builder.CreateBitCast(data_ptr, *RawPtr));
-
+    builder.SetInsertPoint(land_block);
+    builder.CreateCall(cstdlib::free(),
+                       builder.CreateBitCast(data_ptr, *RawPtr));
+  }
   builder.CreateRetVoid();
   builder.SetInsertPoint(save_block);
   return destroy_fn_;

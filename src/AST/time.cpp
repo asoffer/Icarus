@@ -31,7 +31,7 @@ Time::Eval ArrayType::determine_time() { return time_ = Time::compile; }
 
 Time::Eval Terminal::determine_time() {
   return time_ = (terminal_type == Language::Terminal::Type) ? Time::compile
-                                                             : Time::run;
+                                                             : Time::either;
 }
 
 Time::Eval Identifier::determine_time() { return time_ = type->time(); }

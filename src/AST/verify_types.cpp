@@ -132,6 +132,7 @@ void Terminal::verify_types() {
   // Anything other than a string is done when the terminal is created.
   // TODO Do string literal and then set the values later.
   if (terminal_type == Language::Terminal::StringLiteral) { type = String; }
+  determine_time();
 }
 
 void Identifier::verify_types() {

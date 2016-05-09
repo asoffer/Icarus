@@ -86,12 +86,16 @@ void Type::CallDestroy(Scope *scope, llvm::Value *var) {
     if (array_type->data_type->requires_uninit()) {
       builder.CreateCall(array_type->destroy(), {var});
     } else {
-      builder.CreateCall(
-          cstdlib::free(),
-          builder.CreateBitCast(
-              builder.CreateLoad(builder.CreateGEP(
-                  var, {data::const_uint(0), data::const_uint(1)})),
-              *RawPtr));
+      if (array_type->fixed_length) {
+        // TODO
+      } else {
+        builder.CreateCall(
+            cstdlib::free(),
+            builder.CreateBitCast(
+                builder.CreateLoad(builder.CreateGEP(
+                    var, {data::const_uint(0), data::const_uint(1)})),
+                *RawPtr));
+      }
     }
 
   } else if (is_struct()) {

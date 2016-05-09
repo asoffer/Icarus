@@ -44,11 +44,16 @@ llvm::Value *Access::generate_lvalue() {
 
 llvm::Value *Binop::generate_lvalue() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
+    auto array_type = (Array*)lhs->type;
     auto lhs_val  = lhs->generate_lvalue();
     auto rhs_val  = rhs->generate_code();
-    auto data_ptr = builder.CreateLoad(builder.CreateGEP(
-        lhs_val, {data::const_uint(0), data::const_uint(1)}));
-    return builder.CreateGEP(data_ptr, rhs_val, "array_idx");
+    if (array_type->fixed_length) {
+      return builder.CreateGEP(lhs_val, {data::const_uint(0), rhs_val});
+    } else {
+        auto data_ptr = builder.CreateLoad(builder.CreateGEP(
+            lhs_val, {data::const_uint(0), data::const_uint(1)}));
+      return builder.CreateGEP(data_ptr, rhs_val, "array_idx");
+    }
   }
   return nullptr;
 }

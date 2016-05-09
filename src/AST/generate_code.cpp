@@ -515,10 +515,18 @@ llvm::Value *Binop::generate_code() {
     }
   } break;
   case Operator::Index: {
-    auto data_ptr = builder.CreateLoad(
-        builder.CreateGEP(lhs_val, {data::const_uint(0), data::const_uint(1)}));
-    return PtrCallFix(
-        type, builder.CreateGEP(data_ptr, rhs->generate_code(), "array_val"));
+    assert(lhs->type->is_array() && "Type is not an array");
+    auto array_type = (Array *)lhs->type;
+    if (array_type->fixed_length) {
+      return PtrCallFix(type, builder.CreateGEP(lhs_val, {data::const_uint(0),
+                                                          rhs->generate_code()},
+                                                "array_val"));
+    } else {
+      auto data_ptr = builder.CreateLoad(builder.CreateGEP(
+          lhs_val, {data::const_uint(0), data::const_uint(1)}));
+      return PtrCallFix(
+          type, builder.CreateGEP(data_ptr, rhs->generate_code(), "array_val"));
+    }
   } break;
   case Operator::Call: {
     if (lhs->type->is_function() || lhs->type->is_quantum()) {
@@ -959,8 +967,12 @@ llvm::Value *Declaration::generate_code() {
   if (decl_type == DeclType::Std && type->is_array()) {
     // TODO uninitialize previous value
     assert(type_expr->is_array_type() && "Not array type");
-    auto len = ((ArrayType *)type_expr)->length->generate_code();
-    ((Array *)type)->initialize_literal(identifier->alloc, len);
+
+    auto len_expr = ((ArrayType *)type_expr)->length;
+    if (len_expr->time() & Time::run) {
+      auto len = len_expr->generate_code();
+      ((Array *)type)->initialize_literal(identifier->alloc, len);
+    }
   }
 
   if (decl_type == DeclType::Std) {
@@ -1060,9 +1072,14 @@ llvm::Value *ArrayLiteral::generate_code() {
   builder.SetInsertPoint(current_block);
   type_as_array->initialize_literal(array_data, num_elems);
 
-  auto head_ptr = builder.CreateLoad(builder.CreateGEP(
-      array_data, {data::const_uint(0), data::const_uint(1)}));
-
+  llvm::Value *head_ptr;
+  if (type_as_array->fixed_length) {
+    head_ptr = builder.CreateGEP(array_data,
+                                 {data::const_uint(0), data::const_uint(0)});
+  } else {
+    head_ptr = builder.CreateLoad(builder.CreateGEP(
+        array_data, {data::const_uint(0), data::const_uint(1)}));
+  }
   // Initialize the literal
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr = builder.CreateGEP(head_ptr, data::const_uint(i));
@@ -1258,15 +1275,27 @@ llvm::Value *For::generate_code() {
       auto container_val = container->generate_code();
       assert(container_val && "container_val is nullptr");
 
-      auto start_ptr = builder.CreateLoad(
-          builder.CreateGEP(container_val,
-                            {data::const_uint(0), data::const_uint(1)}),
-          "start_ptr");
+      llvm::Value *start_ptr, *end_ptr;
 
-      auto len_ptr = builder.CreateGEP(
-          container_val, {data::const_uint(0), data::const_uint(0)}, "len_ptr");
-      auto len_val = builder.CreateLoad(len_ptr, "len");
-      auto end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
+      auto array_type = (Array *)container->type;
+      if (array_type->fixed_length) {
+        start_ptr = builder.CreateGEP(
+            container_val, {data::const_uint(0), data::const_uint(0)});
+
+        end_ptr = builder.CreateGEP(
+            start_ptr, data::const_uint(array_type->len), "end_ptr");
+      } else {
+        start_ptr = builder.CreateLoad(
+            builder.CreateGEP(container_val,
+                              {data::const_uint(0), data::const_uint(1)}),
+            "start_ptr");
+
+        auto len_ptr = builder.CreateGEP(
+            container_val, {data::const_uint(0), data::const_uint(0)},
+            "len_ptr");
+        auto len_val = builder.CreateLoad(len_ptr, "len");
+        end_ptr = builder.CreateGEP(start_ptr, len_val, "end_ptr");
+      }
 
       /* Work on phi block */
       builder.SetInsertPoint(phi_block);
