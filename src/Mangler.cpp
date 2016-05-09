@@ -24,7 +24,9 @@ std::string Mangle(const Type *t, bool prefix) {
   if (prefix) ss << "_Z";
 
   if (t->is_array()) {
-    ss << "A0" << Mangle(static_cast<const Array *>(t)->data_type, false);
+    auto array_type = static_cast<const Array*>(t);
+    ss << 'A' << (array_type->fixed_length ? array_type->len : 0)
+       << Mangle(array_type->data_type, false);
 
   } else if (t->is_pointer()) {
     ss << "P" << Mangle(static_cast<const Pointer *>(t)->pointee, false);
