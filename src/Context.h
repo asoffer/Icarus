@@ -7,7 +7,7 @@ class Context {
     union Value {
       bool             as_bool;
       char             as_char;
-      int              as_int;
+      long             as_int;
       double           as_real;
       size_t           as_uint;
       void*            as_null;
@@ -17,7 +17,7 @@ class Context {
       Value(std::nullptr_t = nullptr) { as_null = nullptr; }
       explicit Value(             bool b) { as_bool = b; }
       explicit Value(             char c) { as_char = c; }
-      explicit Value(              int n) { as_int  = n; }
+      explicit Value(             long n) { as_int  = n; }
       explicit Value(           double d) { as_real = d; }
       explicit Value(           size_t n) { as_uint = n; }
       explicit Value(            Type* t) { as_type = t; }

@@ -84,6 +84,9 @@ struct Node {
   virtual bool is_dummy() const { return false; }
   virtual bool is_jump() const { return false; }
 
+  //TODO there's a cheaper way to do this (without string comparisons).
+  bool is_hole() const { return token() == "--"; }
+
   Node(TokenLocation loc = TokenLocation(),
        Language::NodeType type  = Language::unknown,
        const std::string &token = "")

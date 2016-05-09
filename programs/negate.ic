@@ -4,7 +4,7 @@ a := -n
 n = 0
 b := -n
 x := 3.14
-c := -----x
+c := -(-(-(-(-x)))) // TODO fix lexing bug
 print a
 print '\n'
 print b

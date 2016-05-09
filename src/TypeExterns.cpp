@@ -58,9 +58,18 @@ void GenerateLLVM() {
 
 } // namespace TypeSystem
 
+Array *Arr(Type *t, size_t len) {
+  for (auto arr : TypeSystem::array_types_)
+    if (arr->fixed_length && arr->len == len && arr->data_type == t) return arr;
+
+  auto arr_type = new Array(t, len);
+  TypeSystem::array_types_.push_back(arr_type);
+  return arr_type;
+}
+
 Array *Arr(Type *t) {
   for (auto arr : TypeSystem::array_types_)
-    if (arr->data_type == t) return arr;
+    if (!arr->fixed_length && arr->data_type == t) return arr;
 
   auto arr_type = new Array(t);
   TypeSystem::array_types_.push_back(arr_type);

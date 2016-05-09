@@ -138,10 +138,21 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 
 Array::Array(Type *t)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), data_type(t) {
+      assign_fn_(nullptr), data_type(t), len(0), fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + static_cast<Array *>(data_type)->dimension : 1;
 
+  std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
+  init_args[0] = *Ptr(this);
+  has_vars     = data_type->has_vars;
+}
+
+Array::Array(Type *t, size_t l)
+    : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
+      assign_fn_(nullptr), data_type(t), len(l), fixed_length(true) {
+  dimension = data_type->is_array()
+                  ? 1 + static_cast<Array *>(data_type)->dimension
+                  : 1;
   std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
   init_args[0] = *Ptr(this);
   has_vars     = data_type->has_vars;

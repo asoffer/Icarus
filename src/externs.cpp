@@ -95,7 +95,7 @@ llvm::Value *null(Type *t) {
   return null_pointer(static_cast<Pointer *>(t)->pointee);
 }
 
-llvm::ConstantInt *const_int(int n) {
+llvm::ConstantInt *const_int(long n) {
   return llvm::ConstantInt::get(
       llvm::getGlobalContext(),
       llvm::APInt(32, static_cast<unsigned int>(n), false));

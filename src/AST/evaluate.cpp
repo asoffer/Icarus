@@ -13,7 +13,7 @@ extern bool parametric_struct;
 namespace data {
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_char(char c);
-extern llvm::ConstantInt *const_int(int n);
+extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantFP *const_real(double d);
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
@@ -245,8 +245,10 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 }
 
 Context::Value ArrayType::evaluate(Context &ctx) {
-  // TODO what if this is just a compile time array in shorthand?
-  return Context::Value(Arr(data_type->evaluate(ctx).as_type));
+  return Context::Value(length->is_hole()
+                            ? Arr(data_type->evaluate(ctx).as_type)
+                            : Arr(data_type->evaluate(ctx).as_type,
+                                  length->evaluate(ctx).as_uint));
 }
 
 Context::Value ArrayLiteral::evaluate(Context &) { return nullptr; }
@@ -259,7 +261,7 @@ Context::Value Terminal::evaluate(Context &ctx) {
   } else if (type == Char) {
     return Context::Value(token()[0]);
   } else if (type == Int) {
-    return Context::Value(std::stoi(token()));
+    return Context::Value(std::stol(token()));
   } else if (type == Real) {
     return Context::Value(std::stod(token()));
   } else if (type == Uint) {

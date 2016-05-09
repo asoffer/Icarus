@@ -18,7 +18,7 @@ extern llvm::Constant *malloc();
 namespace data {
 extern llvm::Value *global_string(const std::string &s);
 extern llvm::Value *null_pointer(Type *t);
-extern llvm::ConstantInt *const_int(int n);
+extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);

@@ -832,6 +832,7 @@ void ArrayType::verify_types() {
   if (data_type->type == Type_) {
     type = Type_;
   } else {
+
     type = Arr(data_type->type);
     assert(type && "arrayType nullptr");
   }
@@ -845,7 +846,7 @@ void ArrayLiteral::verify_types() {
     return;
   }
 
-  type = Arr(type_to_match);
+  type = Arr(type_to_match, elems.size());
   for (const auto &el : elems) {
     if (el->type != type_to_match) {
       error_log.log(loc, "Type error: Array literal must have consistent type");

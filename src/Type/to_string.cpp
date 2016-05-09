@@ -20,15 +20,27 @@ std::string Primitive::to_string() const {
 
 std::string Array::to_string() const {
   std::stringstream ss;
-  ss << "[-";
+  ss << "[";
+  if (fixed_length) {
+    ss << len;
+  } else {
+    ss << "-";
+  }
   Type *const *type_ptr_ptr = &data_type;
 
   while ((*type_ptr_ptr)->is_array()) {
-    ss << ", -";
-    type_ptr_ptr = &static_cast<const Array *>(*type_ptr_ptr)->data_type;
+    auto array_ptr = static_cast<const Array *>(*type_ptr_ptr);
+    ss << ", ";
+    if (array_ptr->fixed_length) {
+      ss << array_ptr->len;
+    } else {
+      ss << "-";
+    }
+
+    type_ptr_ptr = &array_ptr->data_type;
   }
 
-  ss << "; " << *type_ptr_ptr << "]";
+  ss << "; " << **type_ptr_ptr << "]";
   return ss.str();
 }
 

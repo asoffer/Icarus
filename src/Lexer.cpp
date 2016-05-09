@@ -365,10 +365,10 @@ AST::Node *Lexer::next_operator() {
       }
     } else {
       if (lead_char == '-') {
-        //if (peek == '-') {
-        //  file_.get();
-        //  RETURN_TERMINAL(Hole, Unknown, "--");
-        //}
+        if (peek == '-') {
+          file_.get();
+          RETURN_TERMINAL(Hole, Unknown, "--");
+        }
         return new AST::TokenNode(loc_, Language::op_bl, "-");
       } else {
         return new AST::TokenNode(loc_, Language::op_b, "=");

@@ -21,6 +21,7 @@ extern Type *Error, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
+extern Array *Arr(Type *t, size_t len);
 extern Tuple *Tup(const std::vector<Type *> &t);
 extern Function *Func(Type *in, Type *out);
 extern Function *Func(std::vector<Type *> in, Type *out);
@@ -129,6 +130,7 @@ public:
 
 struct Array : public Type {
   TYPE_FNS(Array, array);
+  Array(Type *t, size_t l);
 
   virtual bool requires_uninit() const;
 
@@ -144,6 +146,8 @@ struct Array : public Type {
   llvm::Function *init_fn_, *destroy_fn_, *repr_fn_, *assign_fn_;
 
   Type *data_type;
+  size_t len;
+  bool fixed_length;
 
   // Not the length of the array, but the dimension. That is, it's how many
   // times you can access an element.
