@@ -537,11 +537,6 @@ llvm::Value *Binop::generate_code() {
       } else if (type->is_big()) {
         arg_vals.push_back(builder.CreateAlloca(*type));
 
-        for (auto x : arg_vals) {
-          x->dump();
-        }
-        lhs_val->dump();
-
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
 
@@ -983,7 +978,6 @@ llvm::Value *Declaration::generate_code() {
       }
 
       auto len = len_expr->generate_code();
-      len->dump();
       ((Array *)type)->initialize_literal(identifier->alloc, len);
     }
   }

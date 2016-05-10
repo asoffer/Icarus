@@ -293,7 +293,7 @@ void FnScope::allocate(Scope* scope) {
     auto decl_id = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
-    if (decl_id->is_arg && decl_type->is_struct()) {
+    if (decl_id->is_arg && decl_type->is_big()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }

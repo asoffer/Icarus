@@ -45,7 +45,6 @@ extern RangeType *Range(Type *t);
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
-  virtual bool add_llvm_input(std::vector<llvm::Type *> &llvm_in) ENDING;      \
   virtual void call_init(llvm::Value *var) ENDING;                             \
   virtual void call_repr(llvm::Value *val) ENDING
 

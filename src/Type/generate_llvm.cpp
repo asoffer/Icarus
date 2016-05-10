@@ -31,6 +31,27 @@ void Pointer::generate_llvm() const {
   llvm_type = llvm::PointerType::getUnqual(pointee->llvm_type);
 }
 
+static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
+  if (t->is_pointer()) {
+    input_vec.push_back(*t);
+    return;
+  }
+
+  if (t == Void || t == Type_ || t->has_vars) { return; }
+  assert(t->llvm_type);
+
+  if (t->is_primitive() || t->is_enum()) {
+    input_vec.push_back(*t);
+
+  } else if (t->is_big()) {
+    input_vec.push_back(*Ptr(t));
+
+  } else {
+    std::cerr << *t << std::endl;
+    assert(false && "Not yet implemented");
+  }
+}
+
 void Function::generate_llvm() const {
   if (llvm_type) return;
   input->generate_llvm();
@@ -40,27 +61,16 @@ void Function::generate_llvm() const {
 
   if (input->is_tuple()) {
     auto in_tup = static_cast<Tuple *>(input);
-    for (auto t : in_tup->entries) {
-      if (!t->add_llvm_input(llvm_in)) {
-        llvm_type = nullptr;
-        return;
-      }
-    }
+    for (auto t : in_tup->entries) { AddLLVMInput(t, llvm_in); }
+
   } else {
-    if (!input->add_llvm_input(llvm_in)) {
-      llvm_type = nullptr;
-      return;
-    }
+    AddLLVMInput(input, llvm_in);
   }
 
   if (output->is_tuple()) {
     auto out_tup = static_cast<Tuple *>(output);
-    for (auto t : out_tup->entries) {
-      if (!Ptr(t)->add_llvm_input(llvm_in)) {
-        llvm_type = nullptr;
-        return;
-      }
-    }
+    for (auto t : out_tup->entries) { AddLLVMInput(Ptr(t), llvm_in); }
+
   } else if (output->is_enum() || output->is_primitive()) {
     llvm_out = *output;
     if (llvm_out == nullptr) {
@@ -69,10 +79,7 @@ void Function::generate_llvm() const {
     }
 
   } else {
-    if (!Ptr(output)->add_llvm_input(llvm_in)) {
-      llvm_type = nullptr;
-      return;
-    }
+    AddLLVMInput(Ptr(output), llvm_in);
   }
 
   llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
