@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 namespace AST {
 std::string Node::graphviz_label() const { return "Generic node"; }

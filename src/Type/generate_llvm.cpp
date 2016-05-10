@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 #ifdef DEBUG
 #define AT(access) .at( (access) )
@@ -136,3 +138,4 @@ void AST::StructLiteral::build_llvm_internals() {
     assert(false);
   }
 }
+#undef AT

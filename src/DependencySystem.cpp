@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 namespace std {
 template <> struct less<Dependency::PtrWithTorV> {

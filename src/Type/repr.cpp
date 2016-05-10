@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
 

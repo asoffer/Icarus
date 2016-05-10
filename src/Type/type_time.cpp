@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 Time::Eval Primitive::time() const {
   // Type::compile_time has a value of 1, and either_time has a value of 0

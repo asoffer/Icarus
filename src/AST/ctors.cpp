@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 namespace Language {
 const std::map<std::string, Operator> lookup_operator = {

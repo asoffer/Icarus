@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 #ifdef DEBUG
 #define AT(access) .at( (access) )

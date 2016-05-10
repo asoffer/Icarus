@@ -1,6 +1,8 @@
-#include "Type.h"
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#include "Type.h"
 #include "Context.h"
+#endif
 
 // TODO shouldn't we just be calling build functions here mostly?
 

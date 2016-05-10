@@ -1,7 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
-
-#include <iostream>
+#endif
 
 #ifdef DEBUG
 #define AT(access) .at( (access) )
@@ -149,3 +149,5 @@ llvm::Function *Structure::assign() {
   builder.SetInsertPoint(save_block);
   return assign_fn_;
 }
+
+#undef AT

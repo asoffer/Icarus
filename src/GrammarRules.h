@@ -10,7 +10,7 @@ template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
   return temp;
 }
 
-template <typename T> static T *steal(AST::Node *&n) {
+template <typename T> static T *steal_node(AST::Node *&n) {
   auto temp = (T *)n;
   assert(temp && "stolen pointer is null");
   n = nullptr;
@@ -28,8 +28,8 @@ template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
                                            nodes[PrevIndex]->token() + "'?");
 
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, Language::comma, ",");
-  return BuildBinaryOperator({steal<AST::Node>(nodes[PrevIndex]), tk_node,
-                              steal<AST::Node>(nodes[PrevIndex + 1])});
+  return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
+                              steal_node<AST::Node>(nodes[PrevIndex + 1])});
 }
 
 template <size_t RTN, size_t RES> AST::Node *Reserved(NPtrVec &&nodes) {

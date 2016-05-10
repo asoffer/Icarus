@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 

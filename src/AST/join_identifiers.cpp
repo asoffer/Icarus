@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 void set_or_recurse(AST::Expression *&eptr) {
   // TODO What happens to the line number?

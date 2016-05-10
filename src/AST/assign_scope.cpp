@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 namespace AST {
 void Unop::assign_scope() {

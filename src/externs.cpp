@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 // TODO 32 is hard-coded here as an int size. Change it
 

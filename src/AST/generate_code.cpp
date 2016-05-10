@@ -1,5 +1,7 @@
-#include "Type.h"
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#include "Type.h"
+#endif
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);

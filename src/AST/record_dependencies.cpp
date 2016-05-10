@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 namespace debug {
   extern bool dependency_system;

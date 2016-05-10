@@ -1,6 +1,8 @@
+#ifndef ICARUS_UNITY
 #include "Parser.h"
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"

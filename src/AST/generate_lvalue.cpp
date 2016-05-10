@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 extern llvm::Module *global_module;
 extern llvm::IRBuilder<> builder;

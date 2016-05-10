@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 std::string Mangle(const Type *t, bool prefix) {
   if (t->is_primitive()) {

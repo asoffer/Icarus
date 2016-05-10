@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include "Scope.h"
+#endif
 
 #ifdef DEBUG
 #define AT(access) .at((access))
@@ -191,3 +193,5 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
 
   return alloc;
 }
+
+#undef AT

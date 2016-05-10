@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 Type *Error, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint,
     *Void, *RawPtr, *String;

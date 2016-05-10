@@ -1,5 +1,7 @@
-#include "Type.h"
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#include "Type.h"
+#endif
 
 namespace TypeSystem {
 void initialize();

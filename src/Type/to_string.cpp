@@ -1,7 +1,9 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 
 #include <string>
 #include <sstream>
+#endif
 
 std::string Primitive::to_string() const {
   switch (type_) {

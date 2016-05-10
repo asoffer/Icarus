@@ -1,5 +1,8 @@
 #include "Parser.h"
+
+#ifndef ICARUS_UNITY
 #include "Rule.h"
+#endif
 
 namespace debug {
 extern bool parser;

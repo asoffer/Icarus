@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 #define DELETE(ptr)                                                            \
   {                                                                            \

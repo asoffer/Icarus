@@ -1,7 +1,9 @@
 #ifndef ICARUS_PARSER_H
 #define ICARUS_PARSER_H
 
+#ifndef ICARUS_UNITY
 #include "Lexer.h"
+#endif
 
 class Parser {
   public:

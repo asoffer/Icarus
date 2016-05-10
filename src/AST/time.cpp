@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 namespace AST {
 Time::Eval Unop::determine_time() {

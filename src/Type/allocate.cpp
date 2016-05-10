@@ -1,5 +1,7 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
 #include <iostream>
+#endif
 
 extern llvm::Module *global_module;
 

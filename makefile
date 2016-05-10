@@ -34,6 +34,9 @@ $(TARGET): $(OBJECTS)
 header:
 	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(PRECOMP) -o bin/Precompiled.h.pch
 
+unity:
+	@$(COMPILER) $(STDS) $(WARN) $(BUILD_FLAGS) $(OPTS) $(LLVM_CXX) $(LLVM_LINK) $(LINK_FLAGS) src/unity.cc -o $(TARGET)
+
 rules:
 	@touch ~/icarus/src/Parser.cpp
 	@make
@@ -41,14 +44,7 @@ rules:
 rebuild:
 	@make clean
 	@make header
-	@make
-
-unity:
-	@mkdir -p build
-	@mkdir -p bin
-	@rm -f build/unity.cpp
-	@printf '$(patsubst src/%.cpp,#include "%.cpp"\n,$(SOURCES))' > build/unity.cpp
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM) build/unity.cpp -o $(TARGET)
+	@make unity
 
 clean:
 	@rm -f $(TARGET) $(OBJECTS) $(DEPENDS) bin/Precompiled.h.pch

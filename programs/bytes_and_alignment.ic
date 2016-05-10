@@ -62,12 +62,12 @@ main := void -> void {
   print [10; char].alignment
   print "\n\n"
 
-//  print [--; char]
-//  print ":\n  "
-//  print [--; char].bytes
-//  print "  "
-//  print [--; char].alignment
-//  print "\n\n"
+  print [--; char]
+  print ":\n  "
+  print [--; char].bytes
+  print "  "
+  print [--; char].alignment
+  print "\n\n"
 
   print type 
   print ":\n  "

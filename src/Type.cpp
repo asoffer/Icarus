@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Type.h"
+#endif
 
 #ifdef DEBUG
 #define AT(access) .at((access))
@@ -351,3 +353,5 @@ bool Type::stores_data() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }
+
+#undef AT

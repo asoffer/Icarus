@@ -1,4 +1,6 @@
+#ifndef ICARUS_UNITY
 #include "Scope.h"
+#endif
 
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
