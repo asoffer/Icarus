@@ -29,6 +29,9 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
     new_decl->assign_scope();
     Scope::Stack.pop();
 
+    // Set the scope of this cloned object to be the same as the original.
+    cache_loc->scope_ = scope_;
+
     // no need to do type verification
     new_decl->type = type_expr_ptr;
 
