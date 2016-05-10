@@ -238,7 +238,6 @@ int main(int argc, char *argv[]) {
     return error_code::shadow_or_type_error;
   }
 
-
   // Generate LLVM intermediate representation.
   Scope::Stack.push(Scope::Global);
   global_statements->generate_code();

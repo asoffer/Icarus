@@ -966,7 +966,8 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type->is_array()) {
+  if (decl_type == DeclType::Std && type->is_array() &&
+      !type_expr->is_dummy()) {
     // TODO uninitialize previous value
     assert(type_expr->is_array_type() && "Not array type");
 

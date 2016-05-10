@@ -866,6 +866,12 @@ void ArrayType::verify_types() {
 }
 
 void ArrayLiteral::verify_types() {
+  if (elems.empty()) {
+    type = Error;
+    error_log.log(loc, "Cannot infer the type of an empty array.");
+    return;
+  }
+
   auto type_to_match = elems.front()->type;
   assert(type_to_match && "type to match is nullptr");
   if (type_to_match == Error) {

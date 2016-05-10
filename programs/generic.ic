@@ -16,6 +16,13 @@ main := void -> void {
     if T.bytes != 1u {
       print "s"
     }
+
+    print "\n    alignment = "
+    print T.alignment
+    print " byte"
+    if T.alignment != 1u {
+      print "s"
+    }
     print "\n"
   }
 
@@ -30,6 +37,12 @@ main := void -> void {
   print_type_info(4u)
   print_type_info(4.0)
   print_type_info(q)
+ 
+  print_type_info([4.0])
+  print_type_info([[[4.0, 2.0, 1.0]]])
+  print_type_info([[[1.0, 2.0, 4.0],[4.0, 2.0, 1.0]]])
+  a: [--; char] = ['1', '2', '3']
+  print_type_info(a)
 
   p: pie
   q: pie

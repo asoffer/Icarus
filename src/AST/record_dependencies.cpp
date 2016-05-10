@@ -62,6 +62,10 @@ void Unop::record_dependencies() {
 }
 
 void ArrayLiteral::record_dependencies() {
+  // Need to add it to the table because if the array literal is empty, nothing
+  // will happen.
+  Dependency::add_to_table(this);
+
   for (const auto &el : elems) {
     Dependency::type_type(this, el);
     Dependency::value_type(this, this);
