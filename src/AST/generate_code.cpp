@@ -41,16 +41,6 @@ extern llvm::ConstantFP *const_real(double d);
 extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
-llvm::Value *struct_memcpy(Type *type, llvm::Value *val) {
-  auto arg_ptr  = builder.CreateAlloca(*type, nullptr, "struct.tmp");
-  auto tmp_raw  = builder.CreateBitCast(arg_ptr, *RawPtr);
-  auto val_raw  = builder.CreateBitCast(val, *RawPtr);
-  auto mem_copy = builder.CreateCall(
-      cstdlib::memcpy(), {tmp_raw, val_raw, data::const_uint(type->bytes())});
-
-  return builder.CreateBitCast(mem_copy, *Ptr(type));
-}
-
 #define CONTINUE_FLAG data::const_char('\00')
 #define RESTART_FLAG data::const_char('\01')
 #define REPEAT_FLAG data::const_char('\02')
@@ -541,6 +531,12 @@ llvm::Value *Binop::generate_code() {
 
       } else if (type->is_big()) {
         arg_vals.push_back(builder.CreateAlloca(*type));
+
+        for (auto x : arg_vals) {
+          x->dump();
+        }
+        lhs_val->dump();
+
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
 

@@ -61,7 +61,7 @@ void Function::generate_llvm() const {
         return;
       }
     }
-  } else if (output->is_enum() || output->is_array() || output->is_primitive()) {
+  } else if (output->is_enum() || output->is_primitive()) {
     llvm_out = *output;
     if (llvm_out == nullptr) {
       llvm_type = nullptr;
