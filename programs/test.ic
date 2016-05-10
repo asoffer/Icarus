@@ -1,1 +1,40 @@
-a == b in c
+main := void -> void {
+  a: [--; int] 
+  b: [4; int]
+  c: [10; int]
+
+  for i in 0 .. 3 {
+    b[i] = i
+  }
+
+
+  for i in 0 .. 9 {
+    c[i] = i
+  }
+
+  a = b
+
+  print a
+  print '\n'
+  print b
+  print '\n'
+  print c
+  print '\n'
+
+  a = c
+
+  print a
+  print '\n'
+  print b
+  print '\n'
+  print c
+  print '\n'
+}
+
+// main := void -> void {
+//   print rotate(3.14159/4.0)
+// }
+// 
+// rotate := (theta: real) -> [2, 2; real] {
+//   return [[ cos(theta), -sin(theta) ], [ sin(theta),  cos(theta) ]]
+// }

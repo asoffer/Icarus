@@ -24,95 +24,84 @@ extern llvm::Value *global_string(const std::string &s);
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
-llvm::Function *get_llvm_assign(Type *type) {
-  return llvm::Function::Create(*Func({type, Ptr(type)}, Void),
-                                llvm::Function::ExternalLinkage,
-                                "assign." + type->to_string(), global_module);
-}
-
 llvm::Function *Array::assign() {
   if (assign_fn_ != nullptr) return assign_fn_;
 
   auto save_block = builder.GetInsertBlock();
 
-  assign_fn_ = llvm::Function::Create(*Func({Ptr(this), Ptr(this)}, Void),
-                                      llvm::Function::ExternalLinkage,
-                                      "assign." + Mangle(this), global_module);
+  assign_fn_ = llvm::Function::Create(
+      *Func({Ptr(this), Uint, Ptr(data_type)}, Void),
+      llvm::Function::ExternalLinkage, "assign." + Mangle(this), global_module);
 
   auto entry_block = make_block("entry", assign_fn_);
   builder.SetInsertPoint(entry_block);
 
-  auto iter = assign_fn_->args().begin();
-  auto val  = iter;
-  auto var = ++iter;
-  val->setName("val");
+  auto iter    = assign_fn_->args().begin();
+  auto var     = iter;
+  auto len     = ++iter;
+  auto rhs_ptr = ++iter;
+  len->setName("len");
+  rhs_ptr->setName("rhs.ptr");
   var->setName("var");
 
   // release the resources held by var
   CallDestroy(nullptr, var);
 
+  llvm::Value *to_head = nullptr;
+
   if (fixed_length) {
-    for (size_t i = 0; i < len; ++i) {
-      auto from_ptr =
-          builder.CreateGEP(val, {data::const_uint(0), data::const_uint(i)});
-      auto to_ptr =
-          builder.CreateGEP(var, {data::const_uint(0), data::const_uint(i)});
-      data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_ptr),
-                                to_ptr);
-    }
+    to_head =
+        builder.CreateGEP(var, {data::const_uint(0), data::const_uint(0)});
   } else {
-    auto new_len = builder.CreateLoad(
-        builder.CreateGEP(val, {data::const_uint(0), data::const_uint(0)}));
-    builder.CreateStore(new_len, builder.CreateGEP(var, {data::const_uint(0),
-                                                         data::const_uint(0)}));
+    builder.CreateStore(len, builder.CreateGEP(var, {data::const_uint(0),
+                                                     data::const_uint(0)}));
 
     auto bytes_to_alloc =
-        builder.CreateMul(new_len, data::const_uint(data_type->bytes()));
+        builder.CreateMul(len, data::const_uint(data_type->bytes()));
     auto malloc_call = builder.CreateBitCast(
         builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
         *Ptr(data_type));
     builder.CreateStore(
         malloc_call,
         builder.CreateGEP(var, {data::const_uint(0), data::const_uint(1)}));
-
-    auto copy_from_ptr = builder.CreateLoad(
-        builder.CreateGEP(val, {data::const_uint(0), data::const_uint(1)}));
-    auto end_ptr = builder.CreateGEP(copy_from_ptr, new_len);
-
-    auto cond_block = make_block("cond", assign_fn_);
-    auto loop_block = make_block("loop", assign_fn_);
-    auto exit_block = make_block("exit", assign_fn_);
-
-    builder.CreateBr(cond_block);
-    builder.SetInsertPoint(cond_block);
-
-    auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
-    auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
-    builder.CreateCondBr(builder.CreateICmpULT(from_phi, end_ptr), loop_block,
-                         exit_block);
-
-    // Write loop body
-    builder.SetInsertPoint(loop_block);
-
-    // This is ludicrous, but we have to init it here so that it can be
-    // immeditaely uninitialized safely.
-    data_type->call_init(to_phi);
-
-    data_type->CallAssignment(nullptr, PtrCallFix(data_type, from_phi), to_phi);
-
-    auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
-    auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
-
-    from_phi->addIncoming(next_from_ptr, loop_block);
-    to_phi->addIncoming(next_to_ptr, loop_block);
-
-    from_phi->addIncoming(copy_from_ptr, entry_block);
-    to_phi->addIncoming(malloc_call, entry_block);
-
-    builder.CreateBr(cond_block);
-
-    builder.SetInsertPoint(exit_block);
+    to_head = malloc_call;
   }
+
+  auto end_ptr = builder.CreateGEP(rhs_ptr, len);
+
+  auto cond_block = make_block("cond", assign_fn_);
+  auto loop_block = make_block("loop", assign_fn_);
+  auto exit_block = make_block("exit", assign_fn_);
+
+  builder.CreateBr(cond_block);
+  builder.SetInsertPoint(cond_block);
+
+  auto from_phi = builder.CreatePHI(*Ptr(data_type), 2, "from_phi");
+  auto to_phi = builder.CreatePHI(*Ptr(data_type), 2, "to_phi");
+  builder.CreateCondBr(builder.CreateICmpULT(from_phi, end_ptr), loop_block,
+                       exit_block);
+
+  // Write loop body
+  builder.SetInsertPoint(loop_block);
+
+  // This is ludicrous, but we have to init it here so that it can be
+  // immeditaely uninitialized safely.
+  data_type->call_init(to_phi);
+  Type::CallAssignment(Scope::Global, data_type, data_type,
+                       to_phi, PtrCallFix(data_type, from_phi));
+
+  auto next_from_ptr = builder.CreateGEP(from_phi, data::const_uint(1));
+  auto next_to_ptr   = builder.CreateGEP(to_phi, data::const_uint(1));
+
+  from_phi->addIncoming(next_from_ptr, loop_block);
+  to_phi->addIncoming(next_to_ptr, loop_block);
+
+  from_phi->addIncoming(rhs_ptr, entry_block);
+  to_phi->addIncoming(to_head, entry_block);
+
+  builder.CreateBr(cond_block);
+
+  builder.SetInsertPoint(exit_block);
   builder.CreateRetVoid();
 
   builder.SetInsertPoint(save_block);
@@ -123,7 +112,10 @@ llvm::Function *Array::assign() {
 llvm::Function *Structure::assign() {
   if (assign_fn_ != nullptr) { return assign_fn_; }
 
-  assign_fn_ = get_llvm_assign(this);
+  // TODO name mangling
+  assign_fn_ = llvm::Function::Create(
+      *Func({Ptr(this), Ptr(this)}, Void), llvm::Function::ExternalLinkage,
+      "assign." + to_string(), global_module);
 
   auto save_block = builder.GetInsertBlock();
 
@@ -131,8 +123,8 @@ llvm::Function *Structure::assign() {
   builder.SetInsertPoint(block);
 
   auto iter = assign_fn_->args().begin();
-  auto val  = iter;
-  auto var  = ++iter;
+  auto var  = iter;
+  auto val  = ++iter;
 
   // assign all fields
   for (const auto &iter : field_num_to_llvm_num) {
@@ -145,7 +137,8 @@ llvm::Function *Structure::assign() {
     auto field_var = builder.CreateGEP(
         var, {data::const_uint(0), data::const_uint(iter.second)});
 
-    the_field_type->CallAssignment(nullptr, field_val, field_var);
+    Type::CallAssignment(ast_expression->scope_, the_field_type, the_field_type,
+                         field_var, field_val);
   }
 
   auto exit_block = make_block("exit", assign_fn_);

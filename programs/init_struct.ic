@@ -19,7 +19,22 @@ square := (n: int) -> int {
 }
 
 main := void -> void {
+  func := (num: int) -> int {
+    return 17 * num
+  }
+  
   p: pair
+  f: foo
   print p
   print '\n'
+  print f
+  print '\n'
+
+  foo := struct {
+    n := func(4)
+  }
+
+  __print__ := (a: foo) -> void {
+    print a.n
+  }
 }

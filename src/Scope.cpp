@@ -202,7 +202,8 @@ void BlockScope::make_return(llvm::Value *val) {
 
   // TODO multiple return values?
 
-  fn_scope->fn_type->output->CallAssignment(this, val, fn_scope->return_value);
+  Type::CallAssignment(this, fn_scope->fn_type->output,
+                       fn_scope->fn_type->output, fn_scope->return_value, val);
   builder.CreateBr(fn_scope->exit);
 }
 

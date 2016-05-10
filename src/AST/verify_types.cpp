@@ -372,10 +372,34 @@ void Binop::verify_types() {
     }
 
     if (lhs->type != rhs->type) {
-      error_log.log(loc, "Invalid assignment. Left-hand side has type " +
-                             lhs->type->to_string() +
-                             ", but right-hand side has type " +
-                             rhs->type->to_string());
+      if (lhs->type->is_array() && rhs->type->is_array()) {
+        auto lhs_array_type = (Array *)lhs->type;
+        auto rhs_array_type = (Array *)rhs->type;
+        if (lhs_array_type->data_type != rhs_array_type->data_type) {
+          error_log.log(
+              loc,
+              "Invalid assignment. Data in arrays are of different types.");
+        } else if (lhs_array_type->fixed_length &&
+                   rhs_array_type->fixed_length) {
+          error_log.log(loc,
+                        "Invalid assignment. Arrays are of different lengths.");
+
+        } else if (lhs_array_type->fixed_length) {
+          error_log.log(loc, "Invalid assignment. Array on right-hand side has "
+                             "unknown length, but lhs is known to be of "
+                             "length " +
+                                 std::to_string(lhs_array_type->len));
+        } else {
+          assert(rhs_array_type->fixed_length);
+          return;
+        }
+
+      } else {
+        error_log.log(loc, "Invalid assignment. Left-hand side has type " +
+                               lhs->type->to_string() +
+                               ", but right-hand side has type " +
+                               rhs->type->to_string());
+      }
     }
     type = Void;
     return;

@@ -9,7 +9,7 @@ main := void -> void {
 }
 
 func1 := void -> void {
-  __assign__ := (from: foo, to: &foo) -> void {
+  __assign__ := (lhs: &foo, rhs: foo) -> void {
     print "USED ASSIGN IN FUNC1\n"
   }
 
@@ -20,7 +20,7 @@ func1 := void -> void {
 }
 
 func2 := void -> void {
-  __assign__ := (from: foo, to: &foo) -> void {
+  __assign__ := (lhs: &foo, rhs: foo) -> void {
     print "USED ASSIGN IN FUNC2\n"
   }
 

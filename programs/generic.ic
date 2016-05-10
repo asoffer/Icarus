@@ -31,7 +31,6 @@ main := void -> void {
   print_type_info(4.0)
   print_type_info(q)
 
-
   p: pie
   q: pie
 }

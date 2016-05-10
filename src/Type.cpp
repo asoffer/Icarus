@@ -53,26 +53,44 @@ size_t Type::alignment() const {
                                 : data_layout->getABITypeAlignment(llvm_type);
 }
 
-void Type::CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var) {
-  if (is_primitive() || is_pointer() || is_enum()) {
-    builder.CreateStore(val, var);
+void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                          llvm::Value *lhs_ptr, llvm::Value *rhs) {
+  assert(scope);
+  auto assign_fn = GetFunctionReferencedIn(scope, "__assign__",
+                                           Tup({Ptr(lhs_type), rhs_type}));
+  if (assign_fn) {
+    builder.CreateCall(assign_fn, {lhs_ptr, rhs});
+  } else if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
+             lhs_type->is_enum()) {
+    builder.CreateStore(rhs, lhs_ptr);
 
-  } else if (is_array()) {
-    builder.CreateCall(static_cast<Array *>(this)->assign(), {val, var});
+  } else if (lhs_type->is_struct()) {
+    builder.CreateCall(static_cast<Structure *>(lhs_type)->assign(),
+                       {lhs_ptr, rhs});
 
-  } else if (is_struct()) {
-    llvm::Value *assign_fn = nullptr;
-    if (scope) {
-      assign_fn =
-          GetFunctionReferencedIn(scope, "__assign__", Tup({this, Ptr(this)}));
+  } else if (lhs_type->is_array()) {
+    auto assign_fn = static_cast<Array *>(lhs_type)->assign();
+    assert(rhs_type->is_array());
+    auto rhs_array_type = (Array *)rhs_type;
+
+    llvm::Value *rhs_len, *rhs_ptr;
+    if (rhs_array_type->fixed_length) {
+      rhs_len = data::const_uint(rhs_array_type->len);
+      rhs_ptr =
+          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(0)});
+    } else {
+      rhs_len = builder.CreateLoad(
+          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(0)}));
+      rhs_ptr = builder.CreateLoad(
+          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(1)}));
     }
 
-    // Use default assignment if none is given.
-    if (!assign_fn) { assign_fn = static_cast<Structure *>(this)->assign(); }
-    builder.CreateCall(assign_fn, {val, var});
+    builder.CreateCall(assign_fn, {lhs_ptr, rhs_len, rhs_ptr});
 
   } else {
-    assert(false && "No assignment function to call");
+    std::cerr << "LHS type = " << *lhs_type << std::endl;
+    std::cerr << "RHS type = " << *rhs_type << std::endl;
+    assert(false);
   }
 }
 

@@ -66,10 +66,13 @@ public:
   size_t bytes() const;
   size_t alignment() const;
 
-  // Assigns val to var. Assume that the types match appropriately. Depending on
-  // the types, this will either simply be a store operation or a call to the
-  // assignment function.
-  void CallAssignment(Scope *scope, llvm::Value *val, llvm::Value *var);
+  // Assigns val to var. We need this to dispatch based on both the lhs and rhs
+  // types. Assume that the types match appropriately. Depending on the types,
+  // this will either simply be a store operation or a call to the assignment
+  // function.
+  static void CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                             llvm::Value *val, llvm::Value *var);
+
   void CallDestroy(Scope *scope, llvm::Value *var);
 
   // Note: this one is special. It functions identically to the rest, but it's
