@@ -300,7 +300,16 @@ void Access::verify_types() {
     return;
   }
 
-  if (etype == Type_) {
+  // Access passes through pointers
+  while (etype->is_pointer()) {
+    etype = static_cast<Pointer *>(etype)->pointee;
+  }
+
+  if (etype->is_array() && member_name == "size") {
+    type = Uint;
+    return;
+
+  } else if (etype == Type_) {
     Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
 
     if (member_name == "bytes" || member_name == "alignment") {
@@ -322,16 +331,6 @@ void Access::verify_types() {
       }
       return;
     }
-  }
-
-  // Access passes through pointers
-  while (etype->is_pointer()) {
-    etype = static_cast<Pointer *>(etype)->pointee;
-  }
-
-  if (etype->is_array() && member_name == "size") {
-    type = Uint;
-    return;
   }
 
   if (etype->is_struct()) {

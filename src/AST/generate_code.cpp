@@ -296,6 +296,11 @@ llvm::Value *Access::generate_code() {
 
     assert(expr_as_type->is_enum() && "Expression should be an enum");
     return static_cast<Enumeration *>(expr_as_type)->get_value(member_name);
+
+  } else if (operand->type->is_array() && member_name == "size" &&
+             static_cast<Array *>(operand->type)->fixed_length) {
+    // Fixed length arrays shouldn't bother to do any real code-gen
+    return data::const_uint(static_cast<Array *>(operand->type)->len);
   }
 
   // Generate the code for the operand
@@ -309,7 +314,7 @@ llvm::Value *Access::generate_code() {
     if (!base_type->is_big()) eval = builder.CreateLoad(eval);
   }
 
-  if (base_type->is_array() &&member_name == "size") {
+  if (base_type->is_array() && member_name == "size") {
     return builder.CreateLoad(
         builder.CreateGEP(eval, {data::const_uint(0), data::const_uint(0)}));
   }
