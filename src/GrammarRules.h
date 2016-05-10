@@ -27,7 +27,7 @@ template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
   error_log.log(nodes[PrevIndex]->loc, "Are you missing a comma after '" +
                                            nodes[PrevIndex]->token() + "'?");
 
-  auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, Language::op_b, ",");
+  auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, Language::comma, ",");
   return BuildBinaryOperator({steal<AST::Node>(nodes[PrevIndex]), tk_node,
                               steal<AST::Node>(nodes[PrevIndex + 1])});
 }
@@ -79,6 +79,7 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 } // namespace ErrMsg
 
 namespace Language {
+#define OP_B op_b, comma
 #define OP_LT op_lt, kw_else
 #define EXPR                                                                   \
   { expr, fn_expr, kw_else }
@@ -94,7 +95,7 @@ namespace Language {
 static const std::vector<Rule> Rules = {
     // Binary operators
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, EXPR}, BuildBinaryOperator),
-    Rule(0x00, expr, {EXPR, {op_bl, op_b}, EXPR}, BuildBinaryOperator),
+    Rule(0x00, expr, {EXPR, {op_bl, OP_B}, EXPR}, BuildBinaryOperator),
 
     // Using fn_arrow with a reserved keyword
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, RESERVED}, ErrMsg::Reserved<1, 2>),
@@ -103,9 +104,9 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Using OP_B or OP_BL with a reserved keyword
-    Rule(0x00, expr, {EXPR, {op_b, op_bl}, RESERVED}, ErrMsg::Reserved<1, 2>),
-    Rule(0x01, expr, {RESERVED, {op_b, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
-    Rule(0x00, expr, {RESERVED, {op_b, op_bl}, RESERVED},
+    Rule(0x00, expr, {EXPR, {OP_B, op_bl}, RESERVED}, ErrMsg::Reserved<1, 2>),
+    Rule(0x01, expr, {RESERVED, {OP_B, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
+    Rule(0x00, expr, {RESERVED, {OP_B, op_bl}, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Unary operators
@@ -144,6 +145,9 @@ static const std::vector<Rule> Rules = {
          AST::ArrayLiteral::build),
     Rule(0x00, expr, {{l_bracket}, {r_bracket}}, AST::ArrayLiteral::BuildEmpty),
 
+    // TODO allow hashtags on any expression
+    Rule(0x00, expr, {EXPR, {hashtag}}, AST::Declaration::AddHashtag),
+
     // Maybe missing comma
     Rule(0x00, expr, {{l_paren}, EXPR, EXPR, {r_paren}},
          ErrMsg::MaybeMissingComma<1>),
@@ -176,10 +180,12 @@ static const std::vector<Rule> Rules = {
     Rule(0x03, stmts, {{op_lt}}, AST::Jump::build),
     Rule(0x02, stmts, {{expr, fn_expr, kw_else, if_stmt, one_stmt}, {newline}},
          AST::Statements::build_one),
-    Rule(0x01, stmts, {{stmts}, {expr, fn_expr, stmts, if_stmt, one_stmt}, {newline}},
+    Rule(0x01, stmts,
+         {{stmts}, {expr, fn_expr, stmts, if_stmt, one_stmt}, {newline}},
          AST::Statements::build_more),
 
-    Rule(0x02, keep_current, {{l_paren, l_bracket, l_brace, stmts}, {newline}},
+    Rule(0x02, keep_current,
+         {{comma, l_paren, l_bracket, l_brace, stmts}, {newline}},
          drop_all_but<0>),
     Rule(0x00, keep_current,
          {{newline}, {r_paren, r_bracket, r_brace, l_brace, stmts}},
@@ -230,6 +236,10 @@ bool Parser::should_shift() {
       (get_type(1) == Language::fn_expr || get_type(1) == Language::kw_struct ||
        get_type(1) == Language::kw_block)) {
     return true;
+  }
+
+  if (get_type(1) == Language::newline && get_type(2) == Language::comma) {
+    return false;
   }
 
   // For now, we require struct params to be in parentheses.

@@ -108,7 +108,7 @@ enum NodeType : char {
   kw_struct,
 
   op_l = OP_,
-  op_b,
+  op_b, comma,
   op_bl,
   op_lt,
   fn_arrow,

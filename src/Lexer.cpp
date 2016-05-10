@@ -242,7 +242,7 @@ AST::Node *Lexer::next_operator() {
     return new AST::TokenNode(loc_, Language::name, str)
     CASE('`', "`", op_bl);
     CASE('@', "@", op_l);
-    CASE(',', ",", op_b);
+    CASE(',', ",", comma);
     CASE(';', ";", semicolon);
     CASE('(', "(", l_paren);
     CASE(')', ")", r_paren);
