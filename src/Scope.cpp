@@ -263,7 +263,8 @@ void FnScope::initialize() {
   if (fn_type->output != Void) {
 
     // TODO multiple return types
-    if (fn_type->output->is_big()) {
+    if (fn_type->output->is_big() && !fn_type->output->is_function()) {
+      // Start here and move forward until it's in place.
       return_value = llvm_fn->args().begin();
 
       if (fn_type->input == Void) {
@@ -284,7 +285,10 @@ void FnScope::initialize() {
       }
 
     } else {
-      return_value = builder.CreateAlloca(*fn_type->output, nullptr, "retval");
+      return_value = builder.CreateAlloca(*(fn_type->output->is_function()
+                                                ? Ptr(fn_type->output)
+                                                : fn_type->output),
+                                          nullptr, "retval");
     }
   }
 
@@ -300,7 +304,7 @@ void FnScope::leave() {
   uninitialize();
   // TODO multiple return values
   auto ret_type = fn_type->output;
-  if (ret_type == Void || ret_type->is_big()) {
+  if (ret_type == Void || (ret_type->is_big() && !ret_type->is_function())) {
     builder.CreateRetVoid();
   } else {
     builder.CreateRet(builder.CreateLoad(return_value));

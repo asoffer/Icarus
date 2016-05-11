@@ -88,15 +88,10 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     }
 
     builder.CreateCall(assign_fn, {lhs_ptr, rhs_len, rhs_ptr});
-//  } else if (lhs_type->is_function()) {
-//    std::cout << "*****" << std::endl;
-//    lhs_ptr->dump();
-//    std::cout << "'''''" << std::endl;
-//    rhs->dump();
-//    std::cout << "-----" << std::endl;
+  } else if (lhs_type->is_function()) {
+    builder.CreateStore(rhs, lhs_ptr);
+
   } else {
-//    lhs_ptr->dump();
-    rhs->dump();
     std::cerr << "LHS type = " << *lhs_type << std::endl;
     std::cerr << "RHS type = " << *rhs_type << std::endl;
     assert(false);
