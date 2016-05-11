@@ -11,6 +11,7 @@ extern llvm::Constant *memcpy();
 namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
+extern llvm::Value *null_pointer(Type *t);
 } // namespace data
 
 BlockScope *Scope::Global = nullptr; // Initialized in main
@@ -247,6 +248,11 @@ llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
   }
 
   auto local_ret = builder.CreateAlloca(*type, nullptr, "local.ret");
+
+  // TODO optimize this by only setting what needs to be set. For example,
+  // arrays of primitives, you only need to set the pointer to null.
+  type->call_init(local_ret);
+
   builder.restoreIP(ip);
   return local_ret;
 }

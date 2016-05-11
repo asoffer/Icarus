@@ -63,6 +63,7 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
 namespace cstdlib {
 CSTDLIB(free, false, *Ptr(Char), *Void);
 CSTDLIB(malloc, false, *Uint, *Ptr(Char));
+
 // CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }),
 // Ptr(Char));
 CSTDLIB(putchar, false, *Char, *Int);
@@ -305,4 +306,69 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   }
 }
 
+/* DEBUG free and malloc wrappers
+namespace cstdlib {
+llvm::Constant *real_free() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "free", llvm::FunctionType::get(*Void, {*Ptr(Char)}, false));
+  return func_;
+}
+llvm::Constant *real_malloc() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "malloc", llvm::FunctionType::get(*Ptr(Char), {*Uint}, false));
+  return func_;
+}
 
+
+llvm::Constant *free() {
+  static llvm::Function *func = nullptr;
+
+  if (func) { return func; }
+
+  auto ip = builder.saveIP();
+
+  func = llvm::Function::Create(
+      llvm::FunctionType::get(*Void, {*RawPtr}, false),
+      llvm::Function::ExternalLinkage, "debug.free", global_module);
+  builder.SetInsertPoint(make_block("entry", func));
+
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string("Freeing %#x\n"), func->args().begin()});
+
+  builder.CreateCall(real_free(), {func->args().begin()});
+  builder.CreateRetVoid();
+
+  builder.restoreIP(ip);
+
+  return func;
+}
+
+llvm::Constant *malloc() {
+  static llvm::Function *func = nullptr;
+
+  if (func) { return func; }
+
+  auto ip = builder.saveIP();
+
+  func = llvm::Function::Create(
+      llvm::FunctionType::get(*Ptr(Char), {*Uint}, false),
+      llvm::Function::ExternalLinkage, "debug.malloc", global_module);
+  builder.SetInsertPoint(make_block("entry", func));
+  auto ptr = builder.CreateAlloca(*RawPtr);
+
+  builder.CreateStore(
+      builder.CreateCall(real_malloc(), {func->args().begin()}), ptr);
+
+  auto alloced_ptr = builder.CreateLoad(ptr);
+
+  builder.CreateCall(cstdlib::printf(),
+                     {data::global_string("Mallocating %d at %#x\n"), func->args().begin(), alloced_ptr});
+
+  builder.CreateRet(alloced_ptr);
+
+  builder.restoreIP(ip);
+
+  return func;
+}
+}
+*/
