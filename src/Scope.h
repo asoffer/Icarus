@@ -64,6 +64,8 @@ struct BlockScope : public Scope {
   void uninitialize();
   void make_return(llvm::Value *val);
 
+  llvm::Value *CreateLocalReturn(Type *type);
+
   void set_parent_function(llvm::Function *fn);
   void defer_uninit(Type *type, llvm::Value *val);
 

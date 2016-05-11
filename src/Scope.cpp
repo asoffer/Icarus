@@ -238,6 +238,19 @@ llvm::Value *FnScope::ExitFlag() {
   return exit_flag_;
 }
 
+llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
+  auto ip = builder.saveIP();
+  if (entry->empty()) {
+    builder.SetInsertPoint(entry);
+   } else {
+    builder.SetInsertPoint(entry->begin());
+  }
+
+  auto local_ret = builder.CreateAlloca(*type, nullptr, "local.ret");
+  builder.restoreIP(ip);
+  return local_ret;
+}
+
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
 

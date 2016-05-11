@@ -232,7 +232,9 @@ llvm::Value *Unop::generate_code() {
       // TODO put this alloc at the beginning!
       // TODO what if this returns a primitive, actually return it. otherwise,
       // use a return parameter like you're doing already
-      auto local_ret = builder.CreateAlloca(*type);
+      assert(scope_->is_block_scope());
+      auto local_ret =
+          static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
       builder.CreateCall(neg_fn, {val, local_ret});
       return local_ret;
 
@@ -264,7 +266,9 @@ llvm::Value *Unop::generate_code() {
     // to pass large things.
     if (out_type->is_struct()) {
       // TODO move this outside of any potential loops
-      auto local_ret = builder.CreateAlloca(*out_type);
+      assert(scope_->is_block_scope());
+      auto local_ret =
+          static_cast<BlockScope *>(scope_)->CreateLocalReturn(out_type);
 
       builder.CreateCall(static_cast<llvm::Function *>(val), local_ret);
       return local_ret;
@@ -539,7 +543,10 @@ llvm::Value *Binop::generate_code() {
         return nullptr;
 
       } else if (type->is_big()) {
-        arg_vals.push_back(builder.CreateAlloca(*type));
+        assert(scope_->is_block_scope());
+        auto local_ret =
+            static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
+        arg_vals.push_back(local_ret);
 
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
@@ -581,9 +588,11 @@ llvm::Value *Binop::generate_code() {
       builder.CreateCall(fn, {lhs_val, rhs_val});                              \
       return nullptr;                                                          \
     } else if (output_type->is_big()) {                                        \
-      auto retval = builder.CreateAlloca(*output_type);                        \
-      builder.CreateCall(fn, {lhs_val, rhs_val, retval});                      \
-      return retval;                                                           \
+      assert(scope_->is_block_scope());                                        \
+      auto local_ret =                                                         \
+          static_cast<BlockScope *>(scope_)->CreateLocalReturn(output_type);   \
+      builder.CreateCall(fn, {lhs_val, rhs_val, local_ret});                   \
+      return local_ret;                                                        \
     } else {                                                                   \
       return builder.CreateCall(fn, {lhs_val, rhs_val});                       \
     }                                                                          \
@@ -1089,7 +1098,10 @@ llvm::Value *ArrayLiteral::generate_code() {
   for (size_t i = 0; i < num_elems; ++i) {
     auto data_ptr =
         builder.CreateGEP(array_data, {data::const_uint(0), data::const_uint(i)});
-    element_type->call_init(data_ptr);
+
+    // TODO determine when initialization is necessary. Certainly it's not for
+    // primitive types
+    if (!element_type->is_primitive()) { element_type->call_init(data_ptr); }
 
     Type::CallAssignment(scope_, element_type, element_type, data_ptr,
                          elems[i]->generate_code());
