@@ -88,8 +88,15 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     }
 
     builder.CreateCall(assign_fn, {lhs_ptr, rhs_len, rhs_ptr});
-
+//  } else if (lhs_type->is_function()) {
+//    std::cout << "*****" << std::endl;
+//    lhs_ptr->dump();
+//    std::cout << "'''''" << std::endl;
+//    rhs->dump();
+//    std::cout << "-----" << std::endl;
   } else {
+//    lhs_ptr->dump();
+    rhs->dump();
     std::cerr << "LHS type = " << *lhs_type << std::endl;
     std::cerr << "RHS type = " << *rhs_type << std::endl;
     assert(false);
@@ -346,7 +353,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
   has_vars |= ty->has_vars;
 }
 
-bool Type::is_big() const { return is_array() || is_struct(); }
+bool Type::is_big() const { return is_array() || is_struct() || is_function(); }
 bool Type::stores_data() const {
   return this != Type_ && !is_quantum() && !is_function() &&
          !is_dependent_type() && !is_type_variable();

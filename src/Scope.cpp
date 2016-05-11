@@ -203,7 +203,6 @@ void BlockScope::make_return(llvm::Value *val) {
       is_function_scope() ? static_cast<FnScope *>(this) : containing_function_;
 
   // TODO multiple return values?
-
   Type::CallAssignment(this, fn_scope->fn_type->output,
                        fn_scope->fn_type->output, fn_scope->return_value, val);
   builder.CreateBr(fn_scope->exit);
@@ -240,6 +239,7 @@ void FnScope::initialize() {
     // TODO multiple return types
     if (fn_type->output->is_big()) {
       return_value = llvm_fn->args().begin();
+
       if (fn_type->input == Void) {
 
       } else if (fn_type->input->is_tuple()) {

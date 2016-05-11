@@ -21,6 +21,7 @@ bin/icarus programs/destroy.ic
 bin/icarus programs/double_case.ic
 bin/icarus programs/dynamic_allocation.ic
 bin/icarus programs/enum.ic
+bin/icarus programs/fn_arg.ic
 bin/icarus programs/fn_call.ic
 bin/icarus programs/fn_expression_literal.ic
 bin/icarus programs/for_test.ic

@@ -80,10 +80,10 @@ std::string Tuple::to_string() const {
   std::stringstream ss;
 
   auto iter = entries.begin();
-  ss << "(" << *iter;
+  ss << "(" << **iter;
   ++iter;
   while (iter != entries.end()) {
-    ss << ", " << *iter;
+    ss << ", " << **iter;
     ++iter;
   }
   ss << ")";

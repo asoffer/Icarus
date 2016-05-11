@@ -255,10 +255,15 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
         if (fn_type->input == input_type) {
           llvm::FunctionType *llvm_fn_type = *fn_type;
 
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+          if (id_ptr->is_arg) {
+            return id_ptr->alloc;
+          } else {
+            auto mangled_name =
+                Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
 
-          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+            return global_module->getOrInsertFunction(mangled_name,
+                                                      llvm_fn_type);
+          }
         }
       }
 
@@ -266,10 +271,15 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
       auto fn_type = static_cast<Function *>(id_ptr->type);
       if (fn_type->input != input_type) { continue; }
       llvm::FunctionType *llvm_fn_type = *fn_type;
+
+      if (id_ptr->is_arg) {
+          return id_ptr->alloc;
+      } else {
           auto mangled_name =
               Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
 
           return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+      }
 
     } else {
       assert(false && "What else could it be?");

@@ -1,0 +1,14 @@
+square := (n: int) -> int {
+  return n * n
+}
+
+main := void -> void {
+ print &@&@&square
+ print '\n'
+ print CallThree(square)
+ print '\n'
+}
+
+CallThree := (f: int -> int) -> int {
+  return f(3)
+}

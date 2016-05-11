@@ -270,6 +270,8 @@ llvm::Value *Unop::generate_code() {
       return local_ret;
 
     } else {
+      std::cout << *this << std::endl;
+      val->dump();
       return builder.CreateCall(static_cast<llvm::Function *>(val));
     }
   }

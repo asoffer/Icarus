@@ -79,6 +79,8 @@ void Function::generate_llvm() const {
       llvm_type = nullptr;
       return;
     }
+  } else if (output->is_function()) {
+    llvm_out = *Ptr(output);
 
   } else {
     AddLLVMInput(Ptr(output), llvm_in);
