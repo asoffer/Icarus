@@ -84,9 +84,13 @@ struct FnScope : public BlockScope {
   void leave();
   void allocate(Scope *scope);
 
+  // Return the exit flag if it exists. If it doesn't create the flag,
+  // initialize it, and return it.
+  llvm::Value *ExitFlag();
+
   Function *fn_type;
   llvm::Function *llvm_fn;
-  llvm::Value *return_value, *exit_flag;
+  llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
 };
 

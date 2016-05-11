@@ -144,11 +144,6 @@ void Scope::verify_no_shadowing() {
 void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
 
-  builder.CreateStore(data::const_char('\00'),
-                      is_function_scope()
-                          ? static_cast<FnScope *>(this)->exit_flag
-                          : containing_function_->exit_flag);
-
   for (auto decl_ptr : ordered_decls_) {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
@@ -210,7 +205,7 @@ void BlockScope::make_return(llvm::Value *val) {
 
 FnScope::FnScope(llvm::Function *fn)
     : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
-      exit_flag(nullptr) {
+      exit_flag_(nullptr) {
   set_parent_function(fn);
 }
 
@@ -230,9 +225,21 @@ void BlockScope::set_parent_function(llvm::Function *fn) {
 void FnScope::add_scope(Scope *scope) { innards_.insert(scope); }
 void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
 
+llvm::Value *FnScope::ExitFlag() {
+  if (exit_flag_) { return exit_flag_; }
+  auto ip = builder.saveIP();
+  if (entry->empty()) {
+    builder.SetInsertPoint(entry);
+  } else {
+    builder.SetInsertPoint(entry->begin());
+  }
+  exit_flag_ = builder.CreateAlloca(*Char, nullptr, "exit.flag");
+  builder.restoreIP(ip);
+  return exit_flag_;
+}
+
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
-  exit_flag = builder.CreateAlloca(*Char, nullptr, "exit.flag");
 
   if (fn_type->output != Void) {
 

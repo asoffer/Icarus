@@ -1153,7 +1153,7 @@ llvm::Value *Conditional::generate_code() {
     body_scopes[i]->uninitialize();
 
     auto exit_flag =
-        builder.CreateLoad(body_scopes[i]->containing_function_->exit_flag);
+        builder.CreateLoad(body_scopes[i]->containing_function_->ExitFlag());
 
     assert(body_scopes[i]->parent->is_block_scope());
     auto parent_block_scope = static_cast<BlockScope *>(body_scopes[i]->parent);
@@ -1172,10 +1172,20 @@ llvm::Value *EnumLiteral::generate_code() { return nullptr; }
 llvm::Value *StructLiteral::generate_code() { return nullptr; }
 
 llvm::Value *Jump::generate_code() {
-  llvm::Value *exit_flag_alloc =
-      CurrentScope()->is_function_scope()
-          ? static_cast<FnScope *>(CurrentScope())->exit_flag
-          : CurrentScope()->containing_function_->exit_flag;
+  llvm::Value *exit_flag_alloc = nullptr;
+  if (CurrentScope()->is_function_scope()) {
+    if (jump_type == JumpType::Return) {
+      // Don't generate the exit flag if we're returning from the base level.
+      builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
+      return nullptr;
+    } else {
+      // But do generate it if we're not at the base level.
+      exit_flag_alloc = static_cast<FnScope *>(CurrentScope())->ExitFlag();
+    }
+  } else {
+    // Otherwise generate the exit flag for the containing scope
+    exit_flag_alloc = CurrentScope()->containing_function_->ExitFlag();
+  }
 
   switch (jump_type) {
   case JumpType::Restart: {
@@ -1229,7 +1239,7 @@ llvm::Value *While::generate_code() {
   while_scope->uninitialize();
 
   auto exit_flag =
-      builder.CreateLoad(while_scope->containing_function_->exit_flag);
+      builder.CreateLoad(while_scope->containing_function_->ExitFlag());
 
   // Switch. By default go back to the start of the loop.
   auto switch_stmt = builder.CreateSwitch(exit_flag, cond_block);
@@ -1426,7 +1436,7 @@ llvm::Value *For::generate_code() {
   for_scope->uninitialize();
 
   auto exit_flag =
-      builder.CreateLoad(for_scope->containing_function_->exit_flag);
+      builder.CreateLoad(for_scope->containing_function_->ExitFlag());
 
   // Switch. By default go back to the start of the loop.
   auto switch_stmt = builder.CreateSwitch(exit_flag, incr_iters);
