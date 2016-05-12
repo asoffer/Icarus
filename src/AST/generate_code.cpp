@@ -1332,18 +1332,42 @@ llvm::Value *For::generate_code() {
 
       // TODO assume slices aren't first-class types and only defined literally
       // here.
-      assert(container->is_binop() &&
-             static_cast<Binop *>(container)->op == Language::Operator::Index &&
-             static_cast<Binop *>(container)->lhs->type->is_array() &&
-             static_cast<Binop *>(container)->rhs->type->is_range());
-      assert(static_cast<Binop *>(container)->rhs->is_binop());
+      assert(container->is_binop());
 
-          auto array  = static_cast<Binop *>(container)->lhs;
+      auto container_as_binop = static_cast<Binop *>(container);
+      assert(container_as_binop->op == Language::Operator::Index &&
+             container_as_binop->lhs->type->is_array());
+
+      assert(container_as_binop->rhs->type->is_range());
+
+      auto array      = container_as_binop->lhs;
       auto array_val  = array->generate_code();
       auto array_type = static_cast<Array *>(array->type);
-      auto range      = static_cast<Binop *>(static_cast<Binop *>(container)->rhs);
-      auto start_num  = range->lhs->generate_code();
-      auto end_num    = range->rhs->generate_code();
+
+      auto range      = container_as_binop->rhs;
+      llvm::Value *start_num, *end_num;
+      if (container_as_binop->rhs->is_binop()) {
+        start_num = static_cast<Binop *>(range)->lhs->generate_code();
+        end_num   = static_cast<Binop *>(range)->rhs->generate_code();
+      } else {
+        assert(container_as_binop->rhs->is_unop());
+        auto range_as_unop = static_cast<Unop *>(range);
+        assert(range_as_unop->op == Language::Operator::Dots);
+        start_num = range_as_unop->operand->generate_code();
+
+        if (array_type->fixed_length) {
+          end_num = data::const_uint(array_type->len);
+
+        } else {
+          // TODO you're subtracting one so that adding one below is safe.
+          // Probably will be optimized away, but you should fix it by hand
+          // anyways.
+          end_num = builder.CreateSub(
+              builder.CreateLoad(builder.CreateGEP(
+                  array_val, {data::const_uint(0), data::const_uint(0)})),
+              data::const_uint(1));
+        }
+      }
 
       auto head_ptr =
           (array_type->fixed_length)

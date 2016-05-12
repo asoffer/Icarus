@@ -224,10 +224,6 @@ void Pointer::call_repr(llvm::Value *val) {
 }
 
 void Enumeration::call_repr(llvm::Value *val) {
-  // TODO print the enum's name as a string. This requires preallocating
-  // an array of global strings and accesssing that.
-  //
-  // For now, just print the number in brackets after the enums name
   auto val_str = builder.CreateLoad(
       builder.CreateGEP(string_data, {data::const_uint(0), val}));
   builder.CreateCall(cstdlib::printf(),

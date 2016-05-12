@@ -1,0 +1,27 @@
+main := void -> void {
+  a: [10, 10; int]
+  for i in 0 .. 9 {
+    for j in 0 .. 9 {
+      a[i][j] = (i * j) % 10
+    }
+  }
+
+  for row in a {
+    for entry in row {
+      print entry, ", "
+    }
+    print "\n"
+  }
+
+  print "\n\n\n"
+
+  for i in 0u .. a.size - 3u {
+    for subrow in a[i .. i + 2u] {
+      for entry in subrow[i .. i + 2u] {
+        print entry, ", "
+      }
+      print "\n"
+    }
+    print "\n\n"
+  }
+}

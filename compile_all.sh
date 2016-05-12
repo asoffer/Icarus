@@ -4,6 +4,7 @@ bin/icarus programs/alloc_loop.ic
 bin/icarus programs/alloc_loop2.ic
 bin/icarus programs/array.ic
 bin/icarus programs/array_lit.ic
+bin/icarus programs/array_range.ic
 bin/icarus programs/assign.ic
 bin/icarus programs/bool_assign.ic
 bin/icarus programs/bool_test.ic

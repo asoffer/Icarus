@@ -13,16 +13,16 @@ Time::Eval Unop::determine_time() {
 }
 
 Time::Eval Access::determine_time() {
+  if (type->is_enum()) { return time_ = Time::either; }
   return time_ = operand->determine_time();
 }
 
 Time::Eval Binop::determine_time() {
   if (op == Language::Operator::Cast) {
     return time_ = lhs->determine_time();
+
   } else if (op == Language::Operator::Call) {
-    if (lhs->type->has_vars) {
-      return time_ = rhs->determine_time();
-    }
+    return time_ = rhs->determine_time();
   }
   return time_ = lhs->determine_time() | rhs->determine_time();
 }
