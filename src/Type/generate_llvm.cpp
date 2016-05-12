@@ -11,7 +11,7 @@
 extern llvm::Module* global_module;
 
 void Array::generate_llvm() const {
-  if (llvm_type) return;
+  if (time() == Time::compile || llvm_type) { return; }
 
   if (fixed_length) {
     llvm_type = llvm::ArrayType::get(*data_type, len);
@@ -28,7 +28,7 @@ void Array::generate_llvm() const {
 }
 
 void Pointer::generate_llvm() const {
-  if (llvm_type) return;
+  if (time() == Time::compile || llvm_type) { return; }
   pointee->generate_llvm();
   llvm_type = llvm::PointerType::getUnqual(pointee->llvm_type);
 }
@@ -55,7 +55,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
 }
 
 void Function::generate_llvm() const {
-  if (llvm_type) return;
+  if (time() == Time::compile || llvm_type) return;
   input->generate_llvm();
   output->generate_llvm();
   std::vector<llvm::Type *> llvm_in;
@@ -90,12 +90,12 @@ void Function::generate_llvm() const {
 }
 
 void Tuple::generate_llvm() const {
-  if (llvm_type) return;
+  if (time() == Time::compile || llvm_type) return;
   for (auto t : entries) t->generate_llvm();
 }
 
 void Structure::generate_llvm() const {
-  if (llvm_type) return;
+  if (time() == Time::compile || llvm_type) return;
 
   auto struct_type = llvm::StructType::create(global_module->getContext());
   llvm_type = struct_type;

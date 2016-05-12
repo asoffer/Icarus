@@ -179,9 +179,11 @@ Array::Array(Type *t, size_t l)
   dimension = data_type->is_array()
                   ? 1 + static_cast<Array *>(data_type)->dimension
                   : 1;
-  std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
-  init_args[0] = *Ptr(this);
-  has_vars     = data_type->has_vars;
+  if (time() != Time::compile) {
+    std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
+    init_args[0] = *Ptr(this);
+  }
+  has_vars = data_type->has_vars;
 }
 
 Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {

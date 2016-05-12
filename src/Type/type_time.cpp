@@ -8,21 +8,9 @@ Time::Eval Primitive::time() const {
   return static_cast<Time::Eval>(this == Type_);
 }
 
-Time::Eval Array::time() const {
-  // has_dynamic_length() will either be 0 or 2.
-  // As a Time::Eval object, that's either "either_time"
-  // or "run_time" respectively.
-  return data_type->time() & Time::run;
-}
-
+Time::Eval Array::time() const { return data_type->time(); }
 Time::Eval Function::time() const { return input->time() | output->time(); }
-
-Time::Eval Pointer::time() const {
-  // It's not allowed to be a pointer to a compile-time type,
-  // but we need not check this here. This will be checked by
-  // verify_types().
-  return Time::run;
-}
+Time::Eval Pointer::time() const { return pointee->time(); }
 
 Time::Eval Tuple::time() const {
   Time::Eval output = Time::either;

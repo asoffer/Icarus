@@ -149,6 +149,7 @@ void BlockScope::initialize() {
     auto decl_id   = decl_ptr->identifier;
     auto decl_type = decl_id->type;
 
+    if (decl_type->time() == Time::compile) continue;
     if (!decl_type->stores_data()) continue;
 
     // if (decl_type->is_array()) {
