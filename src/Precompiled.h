@@ -110,6 +110,7 @@ enum NodeType : char {
   op_l = OP_,
   op_b, comma,
   op_bl,
+  dots,
   op_lt,
   fn_arrow,
 };

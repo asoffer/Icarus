@@ -79,7 +79,7 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 } // namespace ErrMsg
 
 namespace Language {
-#define OP_B op_b, comma
+#define OP_B op_b, comma, dots
 #define OP_LT op_lt, kw_else
 #define EXPR                                                                   \
   { expr, fn_expr, kw_else }
@@ -97,6 +97,11 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, EXPR}, BuildBinaryOperator),
     Rule(0x00, expr, {EXPR, {op_bl, OP_B}, EXPR}, BuildBinaryOperator),
 
+    // Right unary operator
+    Rule(0x01, expr, {EXPR, {dots}}, AST::Unop::BuildDots),
+    Rule(0x02, expr, {RESERVED, {dots}}, ErrMsg::Reserved<1, 0>),
+
+
     // Using fn_arrow with a reserved keyword
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, RESERVED}, ErrMsg::Reserved<1, 2>),
     Rule(0x00, fn_expr, {RESERVED, {fn_arrow}, EXPR}, ErrMsg::Reserved<1, 0>),
@@ -104,7 +109,7 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Using OP_B or OP_BL with a reserved keyword
-    Rule(0x00, expr, {EXPR, {OP_B, op_bl}, RESERVED}, ErrMsg::Reserved<1, 2>),
+    Rule(0x00, expr, {EXPR, {OP_B, op_bl, dots}, RESERVED}, ErrMsg::Reserved<1, 2>),
     Rule(0x01, expr, {RESERVED, {OP_B, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(0x00, expr, {RESERVED, {OP_B, op_bl}, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
@@ -231,6 +236,13 @@ bool Parser::should_shift() {
 
   // We'll need these node types a lot, so lets make it easy to use
   const auto ahead_type = lookahead_->node_type();
+
+  if (get_type(1) == Language::dots) {
+    return (ahead_type == Language::op_bl || ahead_type == Language::op_l ||
+            ahead_type == Language::op_lt || ahead_type == Language::expr ||
+            ahead_type == Language::fn_expr ||
+            ahead_type == Language::l_paren || ahead_type == Language::l_bracket);
+  }
 
   if (ahead_type == Language::l_brace && get_type(1) == Language::fn_expr &&
       get_type(2) == Language::fn_arrow) {

@@ -479,8 +479,11 @@ Node *ArrayLiteral::BuildEmpty(NPtrVec &&nodes) {
   return array_lit_ptr;
 }
 
-// More generally, this is correct for any right-unary operation
-Node *Unop::build_dots(NPtrVec &&nodes) {
+// Input guarantee:
+// [expression] [dots]
+//
+// Internal checks: None
+Node *Unop::BuildDots(NPtrVec &&nodes) {
   auto unop_ptr     = new Unop;
   unop_ptr->operand = steal<Expression>(nodes[0]);
 

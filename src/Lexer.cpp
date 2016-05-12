@@ -262,7 +262,7 @@ AST::Node *Lexer::next_operator() {
     file_.get();
     if (file_.peek() == '.') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::op_bl, "..");
+      return new AST::TokenNode(loc_, Language::dots, "..");
     } else {
       return new AST::TokenNode(loc_, Language::op_b, ".");
     }
