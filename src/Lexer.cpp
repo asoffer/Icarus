@@ -109,8 +109,11 @@ AST::Node *Lexer::next_word() {
     }
   }
 
-  if (token == "true" || token == "false") {
+  if (token == "true") {
     RETURN_TERMINAL(True, Bool, token);
+
+  } else if (token == "false") {
+    RETURN_TERMINAL(False, Bool, token);
 
   } else if (token == "null") {
     RETURN_TERMINAL(Null, NullPtr, "null");

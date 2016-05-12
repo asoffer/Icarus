@@ -540,12 +540,17 @@ llvm::Value *Binop::generate_code() {
         builder.CreateCall(lhs_val, arg_vals);
         return nullptr;
 
-      } else if (type->is_big()) {
+      } else if (type->is_big() && !type->is_function()) {
         assert(scope_->is_block_scope());
+
         auto local_ret =
             static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
         arg_vals.push_back(local_ret);
 
+        lhs_val->dump();
+        for (auto x : arg_vals) {
+        x->dump();
+        }
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
 
@@ -807,7 +812,7 @@ llvm::Value *ChainOp::generate_code() {
     CASE(ICmpU, GT);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type == Char) {
+  } else if (expr_type == Char || expr_type == Bool) {
     BEGIN_SHORT_CIRCUIT
     CASE(ICmp, EQ);
     CASE(ICmp, NE);

@@ -97,9 +97,7 @@ void Pointer::call_init(llvm::Value *var) {
   builder.CreateStore(data::null_pointer(pointee), var);
 }
 
-void Function::call_init(llvm::Value *var) {
-  assert(false && "Cannot initialize a function. They are constant");
-}
+void Function::call_init(llvm::Value *var) {}
 
 void Enumeration::call_init(llvm::Value *var) {
   builder.CreateStore(data::const_uint(0), var);

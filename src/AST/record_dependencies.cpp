@@ -179,10 +179,12 @@ void Statements::record_dependencies() {
 
 void Conditional::record_dependencies() {
   for (auto &stmt : statements) {
+    Dependency::type_type(this, stmt);
     Dependency::value_value(this, stmt);
     stmt->record_dependencies();
   }
   for (auto &cond : conditions) {
+    Dependency::type_type(this, cond);
     Dependency::value_value(this, cond);
     cond->record_dependencies();
   }

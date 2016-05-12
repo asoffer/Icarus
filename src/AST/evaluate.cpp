@@ -248,10 +248,14 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
 Context::Value ArrayType::evaluate(Context &ctx) {
   assert(length);
-  return Context::Value(length->is_hole()
-                            ? Arr(data_type->evaluate(ctx).as_type)
-                            : Arr(data_type->evaluate(ctx).as_type,
-                                  length->evaluate(ctx).as_uint));
+  if (data_type->time() == Time::compile || data_type->time() == Time::either) {
+    return Context::Value(length->is_hole()
+                              ? Arr(data_type->evaluate(ctx).as_type)
+                              : Arr(data_type->evaluate(ctx).as_type,
+                                    length->evaluate(ctx).as_uint));
+  } else {
+    return Context::Value(Arr(data_type->evaluate(ctx).as_type));
+  }
 }
 
 Context::Value ArrayLiteral::evaluate(Context &) { return nullptr; }

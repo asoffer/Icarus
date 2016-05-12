@@ -232,6 +232,11 @@ bool Parser::should_shift() {
   // We'll need these node types a lot, so lets make it easy to use
   const auto ahead_type = lookahead_->node_type();
 
+  if (ahead_type == Language::l_brace && get_type(1) == Language::fn_expr &&
+      get_type(2) == Language::fn_arrow) {
+    return false;
+  }
+
   if (ahead_type == Language::l_brace &&
       (get_type(1) == Language::fn_expr || get_type(1) == Language::kw_struct ||
        get_type(1) == Language::kw_block)) {
