@@ -47,6 +47,7 @@ static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
 static std::vector<QuantumType *> quant_;
+static std::map<Array *, SliceType *> slices_;
 
 void GenerateLLVM() {
   for (auto t : array_types_) t->generate_llvm();
@@ -200,10 +201,15 @@ QuantumType *Quantum(const std::vector<Type *> &vec) {
 }
 
 RangeType *Range(Type *t) {
-  // These won't be leaked, but they aren't uniqued.
   auto iter = TypeSystem::ranges_.find(t);
   if (iter != TypeSystem::ranges_.end()) return iter->second;
 
   return TypeSystem::ranges_[t] = new RangeType(t);
 }
 
+SliceType *Slice(Array *a) {
+  auto iter = TypeSystem::slices_.find(a);
+  if (iter != TypeSystem::slices_.end())return iter->second;
+
+  return TypeSystem::slices_[a] = new SliceType(a);
+}

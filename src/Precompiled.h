@@ -50,6 +50,7 @@ struct DependentType;
 struct TypeVariable;
 struct QuantumType;
 struct RangeType;
+struct SliceType;
 
 struct Scope;
 struct BlockScope;

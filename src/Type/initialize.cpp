@@ -111,6 +111,10 @@ void RangeType::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a range type");
 }
 
+void SliceType::call_init(llvm::Value *) {
+  assert(false && "Cannot initialize a slice type");
+}
+
 void TypeVariable::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a type variable");
 }

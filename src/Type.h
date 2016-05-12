@@ -38,6 +38,7 @@ extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
 extern QuantumType *Quantum(const std::vector<Type *> &vec);
 extern RangeType *Range(Type *t);
+extern SliceType *Slice(Array *a);
 
 #define ENDING = 0
 
@@ -96,6 +97,7 @@ public:
   virtual bool is_type_variable() const { return false; }
   virtual bool is_quantum() const { return false; }
   virtual bool is_range() const { return false; }
+  virtual bool is_slice() const { return false; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;
@@ -283,6 +285,13 @@ struct RangeType : public Type {
   Type *end_type;
 };
 
+struct SliceType : public Type {
+  TYPE_FNS(SliceType, slice);
+
+  SliceType(Array *a) : array_type(a) { has_vars = array_type->has_vars; }
+
+  Array *array_type;
+};
 std::ostream &operator<<(std::ostream &os, const Type &t);
 
 #undef TYPE_FNS

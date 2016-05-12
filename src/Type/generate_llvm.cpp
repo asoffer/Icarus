@@ -110,6 +110,7 @@ void DependentType::generate_llvm() const {}
 void TypeVariable::generate_llvm() const {}
 void QuantumType::generate_llvm() const {}
 void RangeType::generate_llvm() const {} // TODO Assert false?
+void SliceType::generate_llvm() const {} // TODO Assert false?
 
 void Enumeration::generate_llvm() const { /* Generated on creation */ }
 void Primitive::generate_llvm() const { /* Generated on creation */ }

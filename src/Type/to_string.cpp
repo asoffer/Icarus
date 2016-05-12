@@ -107,3 +107,6 @@ std::string QuantumType::to_string() const {
 std::string RangeType::to_string() const {
   return "Range(" + end_type->to_string() + ")";
 }
+std::string SliceType::to_string() const {
+  return array_type->to_string() + "[..]";
+}

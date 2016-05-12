@@ -489,15 +489,21 @@ void Binop::verify_types() {
       return;
     }
 
+    if (rhs->type->is_range()) {
+      type = Slice(static_cast<Array *>(lhs->type));
+      break;
+    }
+
     type = static_cast<Array *>(lhs->type)->data_type;
     assert(type && "array data type is nullptr");
     // TODO allow slice indexing
-    if (rhs->type != Int && rhs->type != Uint) {
-      error_log.log(loc,
-                    "Array must be indexed by an int or uint. You supplied a " +
-                        rhs->type->to_string());
-      return;
-    }
+    if (rhs->type == Int) { break; }
+    if (rhs->type == Uint) { break; }
+
+    error_log.log(loc,
+                  "Array must be indexed by an int or uint. You supplied a " +
+                      rhs->type->to_string());
+    return;
 
   } break;
   case Operator::Cast: {
@@ -718,6 +724,9 @@ void Declaration::verify_types() {
   case DeclType::In: {
     if (type_expr->type->is_array()) {
       type = static_cast<Array *>(type_expr->type)->data_type;
+
+    } else if (type_expr->type->is_slice()) {
+      type = static_cast<SliceType *>(type_expr->type)->array_type->data_type;
 
     } else if (type_expr->type->is_range()) {
       type = static_cast<RangeType *>(type_expr->type)->end_type;

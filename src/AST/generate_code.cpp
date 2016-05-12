@@ -701,6 +701,7 @@ llvm::Value *Binop::generate_code() {
   default:;
   }
 
+  std::cerr << *this << std::endl;
   assert(false && "Reached end of Binop::generate_code");
 }
 
@@ -1325,8 +1326,52 @@ llvm::Value *For::generate_code() {
     auto container = iter->type_expr;
     llvm::PHINode *phi = nullptr;
 
-    if (container->type->is_array()) {
+    if (container->type->is_slice()) {
+      /* Work on init block */
+      builder.SetInsertPoint(init_iters);
 
+      // TODO assume slices aren't first-class types and only defined literally
+      // here.
+      assert(container->is_binop() &&
+             static_cast<Binop *>(container)->op == Language::Operator::Index &&
+             static_cast<Binop *>(container)->lhs->type->is_array() &&
+             static_cast<Binop *>(container)->rhs->type->is_range());
+      assert(static_cast<Binop *>(container)->rhs->is_binop());
+
+          auto array  = static_cast<Binop *>(container)->lhs;
+      auto array_val  = array->generate_code();
+      auto array_type = static_cast<Array *>(array->type);
+      auto range      = static_cast<Binop *>(static_cast<Binop *>(container)->rhs);
+      auto start_num  = range->lhs->generate_code();
+      auto end_num    = range->rhs->generate_code();
+
+      auto head_ptr =
+          (array_type->fixed_length)
+              ? builder.CreateGEP(array_val,
+                                  {data::const_uint(0), data::const_uint(0)})
+              : builder.CreateLoad(builder.CreateGEP(
+                    array_val, {data::const_uint(0), data::const_uint(1)}));
+
+      auto start_ptr = builder.CreateGEP(head_ptr, start_num, "start_ptr");
+      auto end_ptr = builder.CreateGEP(
+          head_ptr, builder.CreateAdd(end_num, data::const_uint(1)), "end_ptr");
+
+      /* Work on phi block */
+      builder.SetInsertPoint(phi_block);
+      phi = builder.CreatePHI(*Ptr(iter->type), 2, "phi");
+      phi->addIncoming(start_ptr, init_iters);
+
+      /* Work on cond block */
+      builder.SetInsertPoint(cond_block);
+      iter->identifier->alloc = phi;
+      done_cmp = builder.CreateOr(done_cmp, builder.CreateICmpEQ(phi, end_ptr));
+
+      /* Work on incr block */
+      builder.SetInsertPoint(incr_iters);
+      auto next = builder.CreateGEP(phi, data::const_uint(1));
+      phi->addIncoming(next, incr_iters);
+
+    } else if (container->type->is_array()) {
       /* Work on init block */
       builder.SetInsertPoint(init_iters);
       auto container_val = container->generate_code();
