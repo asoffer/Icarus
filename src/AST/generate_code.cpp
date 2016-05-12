@@ -156,6 +156,39 @@ llvm::Value *Terminal::generate_code() {
   }
 }
 
+static void CallPrint(Expression *expr) {
+  if (expr->type == Type_) {
+    builder.CreateCall(cstdlib::printf(),
+                       {data::global_string("%s"),
+                        data::global_string(expr->evaluate(CurrentContext())
+                                                .as_type->to_string())});
+    return;
+  }
+
+  llvm::Value *val = expr->generate_code();
+
+  // NOTE: this is complicated because if the function is quantum, we cannot
+  // just generate the code from Identifier::generate_code. Knowing which
+  // quanta to pick requires contextual information.
+  //
+  // TODO We should log that information so we don't repeat this process.
+  if (expr->type->is_struct()) {
+    // TODO ensure that it is generated
+    auto print_fn = GetFunctionReferencedIn(expr->scope_, "__print__", expr->type);
+    assert(print_fn && "No print function available");
+    builder.CreateCall(print_fn, val);
+
+  } else if (expr->type == Char) {
+    builder.CreateCall(cstdlib::putchar(), {val});
+
+  } else if (expr->type == Uint) {
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%u"), val});
+
+  } else {
+    expr->type->call_repr(val);
+  }
+}
+
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Unop::generate_code() {
@@ -167,39 +200,13 @@ llvm::Value *Unop::generate_code() {
     return operand->generate_lvalue();
   }
   case Language::Operator::Print: {
-    if (operand->type == Type_) {
-      builder.CreateCall(
-          cstdlib::printf(),
-          {data::global_string("%s"),
-           data::global_string(
-               operand->evaluate(CurrentContext()).as_type->to_string())});
-      return nullptr;
-    }
-
-    llvm::Value *val = operand->generate_code();
-
-    // NOTE: this is complicated because if the function is quantum, we cannot
-    // just generate the code from Identifier::generate_code. Knowing which
-    // quanta to pick requires contextual information. 
-    //
-    // TODO We should log that information so we don't repeat this process.
-    if (operand->type->is_struct()) {
-      // TODO ensure that it is generated
-      auto print_fn =
-          GetFunctionReferencedIn(scope_, "__print__", operand->type);
-      assert(print_fn && "No print function available");
-      builder.CreateCall(print_fn, val);
-
-    } else if (operand->type == Char) {
-      builder.CreateCall(cstdlib::putchar(), {val});
-
-    } else if (operand->type == Uint) {
-      builder.CreateCall(cstdlib::printf(), {data::global_string("%u"), val});
-
+    if (operand->is_comma_list()) {
+      for (auto expr: static_cast<ChainOp *>(operand)->exprs) {
+        CallPrint(expr);
+      }
     } else {
-      operand->type->call_repr(val);
+      CallPrint(operand);
     }
-
     return nullptr;
   }
   default:;

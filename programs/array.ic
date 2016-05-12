@@ -5,18 +5,13 @@ main := void -> void {
   r : [20; real]
   c : [5; char]
 
-  print "\nSize of n = " 
-  print n.size
-  print "\nSize of r = " 
-  print r.size
-  print "\nSize of literal = "
-  print [0,0,0,0,0].size
+  print "\nSize of n = ", n.size
+  print "\nSize of r = ", r.size
+  print "\nSize of literal = ", [0,0,0,0,0].size
 
 
   foo: [--; int]
-  print "\nSize of foo = "
-  print foo.size
-  print '\n'
+  print "\nSize of foo = ", foo.size, '\n'
 
   r[19] = 1 :> real
   c[4] = 'x'
@@ -29,14 +24,12 @@ main := void -> void {
 
   i = 0u
   while i < 20u {
-    print r[i]
-    print '\n'
+    print r[i], '\n'
     i += 1u
   }
 
   for x in r {
-    print x
-    print ' '
+    print x, ' '
   }
   print '\n'
 }

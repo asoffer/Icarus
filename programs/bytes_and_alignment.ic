@@ -1,80 +1,14 @@
 main := void -> void {
-  print int 
-  print ":\n  "
-  print int.bytes
-  print "  "
-  print int.alignment
-  print "\n\n"
-
-  print char
-  print ":\n  "
-  print char.bytes
-  print "  "
-  print char.alignment
-  print "\n\n"
-
-  print real
-  print ":\n  "
-  print real.bytes
-  print "  "
-  print real.alignment
-  print "\n\n"
-
-  print pair(real)
-  print ":\n  "
-  print pair(real).bytes
-  print "  "
-  print pair(real).alignment
-  print "\n\n"
-
-  print foo
-  print ":\n  "
-  print foo.bytes
-  print "  "
-  print foo.alignment
-  print "\n\n"
-
-  print string
-  print ":\n  "
-  print string.bytes
-  print "  "
-  print string.alignment
-  print "\n\n"
-
-  print color
-  print ":\n  "
-  print color.bytes
-  print "  "
-  print color.alignment
-  print "\n\n"
-
-  print &foo
-  print ":\n  "
-  print (&foo).bytes
-  print "  "
-  print (&foo).alignment
-  print "\n\n"
-
-  print [10; char]
-  print ":\n  "
-  print [10; char].bytes
-  print "  "
-  print [10; char].alignment
-  print "\n\n"
-
-  print [--; char]
-  print ":\n  "
-  print [--; char].bytes
-  print "  "
-  print [--; char].alignment
-  print "\n\n"
-
-  print type 
-  print ":\n  "
-  print type.bytes
-  print "  "
-  print type.alignment
-  print "\n\n"
+  print int,        ":\n  ", int.bytes,        "  ", int.alignment,        "\n\n"
+  print real,       ":\n  ", real.bytes,       "  ", real.alignment,       "\n\n"
+  print pair(real), ":\n  ", pair(real).bytes, "  ", pair(real).alignment, "\n\n"
+  print foo,        ":\n  ", foo.bytes,        "  ", foo.alignment,        "\n\n"
+  print string,     ":\n  ", string.bytes,     "  ", string.alignment,     "\n\n"
+  print color,      ":\n  ", color.bytes,      "  ", color.alignment,      "\n\n"
+  print &foo,       ":\n  ", (&foo).bytes,     "  ", (&foo).alignment,     "\n\n"
+  print [10; char], ":\n  ", [10; char].bytes, "  ", [10; char].alignment, "\n\n"
+  print [--; char], ":\n  ", [--; char].bytes, "  ", [--; char].alignment, "\n\n"
+  print type,       ":\n  ", type.bytes,       "  ", type.alignment,       "\n\n"
 }
 
 pair := struct(T: type) {

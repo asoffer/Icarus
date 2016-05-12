@@ -1,19 +1,13 @@
 main := void -> void {
   // bools
-  print true
-  print ','
-  print 1 < 2 < 3
-  print ','
-  print 1 < 2 > 3
-  print ','
-  print false
-  print ','
+  print true, ','
+  print 1 < 2 < 3, ','
+  print 1 < 2 > 3, ','
+  print false, ','
   b1 : bool = true  // longhand definition
   b2 := false  // shorthand definition
-  print b1
-  print ','
-  print b2
-  print '\n'
+  print b1, ',', b2,
+  print b2, '\n'
   
   // characters
   print 'a'  // literal

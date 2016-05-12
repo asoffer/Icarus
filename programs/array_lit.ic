@@ -5,8 +5,7 @@ main := void -> void {
   
   i := 0
   while i < 5 {
-    print array_lit[i]
-    print '\n'
+    print array_lit[i], '\n'
     i += 1
   }
   
@@ -19,8 +18,6 @@ main := void -> void {
   a := [[0]]
   print a
   a[0][0] += 1
-  print a
-  print '\n'
-  print x
-  print '\n'
+  print a, '\n'
+  print x, '\n'
 }

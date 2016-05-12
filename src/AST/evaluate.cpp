@@ -20,6 +20,27 @@ extern llvm::ConstantFP *const_real(double d);
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
+static void AppendValueToStream(Type *type, Context::Value ctx_val,
+                                std::stringstream &ss) {
+  if (type == Bool) {
+    ss << (ctx_val.as_bool ? "true" : "false");
+  } else if (type == Char) {
+    ss << ctx_val.as_char;
+
+  } else if (type == Int) {
+    ss << ctx_val.as_int;
+
+  } else if (type == Real) {
+    ss << ctx_val.as_real;
+
+  } else if (type == Uint) {
+    ss << ctx_val.as_uint;
+
+  } else if (type == Type_) {
+    ss << ctx_val.as_type->to_string();
+  }
+}
+
 namespace AST {
 llvm::Value *Expression::llvm_value(Context::Value v) {
   assert(type != Type_ && "Type_ conversion to llvm::Value*");
@@ -251,8 +272,10 @@ Context::Value ArrayType::evaluate(Context &ctx) {
   determine_time();
   if ((length->time() == Time::either || length->time() == Time::compile) &&
       !length->is_hole()) {
-    return Context::Value(
-        Arr(data_type->evaluate(ctx).as_type, length->evaluate(ctx).as_uint));
+    auto data_type_eval = data_type->evaluate(ctx).as_type;
+    auto length_eval    = length->evaluate(ctx).as_uint;
+
+    return Context::Value(Arr(data_type_eval, length_eval));
   }
 
   return Context::Value(Arr(data_type->evaluate(ctx).as_type));
@@ -532,9 +555,15 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       std::stringstream ss;
       // TODO if the parameter is not a type?
-      ss << param_struct->bound_name << "(" << ctx_vals[0].as_type->to_string();
+      ss << param_struct->bound_name << "(";
+
+      auto param_type = struct_lit->params[0]->identifier->type;
+      AppendValueToStream(param_type, ctx_vals[0], ss);
+
       for (size_t i = 1; i < arg_vals.size(); ++i) {
-        ss << ", " << ctx_vals[i].as_type->to_string();
+        auto parameter_type = struct_lit->params[0]->identifier->type;
+        ss << ", ";
+        AppendValueToStream(parameter_type, ctx_vals[i], ss);
       }
       ss << ")";
 

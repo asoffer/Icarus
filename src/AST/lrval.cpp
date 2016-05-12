@@ -1,15 +1,33 @@
+#ifndef ICARUS_UNITY
+#include "Type.h"
+#endif
+
 namespace AST {
 void Identifier::lrvalue_check() { lvalue = true; }
 
 void Unop::lrvalue_check() {
   operand->lrvalue_check();
+  if (op == Language::Operator::And) {
+    if (!operand->lvalue && operand->type != Type_) {
+      error_log.log(loc, "Cannot take address");
+    }
+  }
   lvalue = (op == Language::Operator::At || op == Language::Operator::And) &&
            operand->lvalue;
 }
 
 void Access::lrvalue_check() {
   operand->lrvalue_check();
-  lvalue = operand->lvalue;
+  if (operand->type == Type_ &&
+      (member_name == "bytes" || member_name == "alignment")) {
+    lvalue = false;
+  } else if (operand->type->is_array() &&
+             static_cast<Array *>(operand->type)->fixed_length &&
+             member_name == "size") {
+    lvalue = false;
+  } else {
+    lvalue = operand->lvalue;
+  }
 }
 
 void Binop::lrvalue_check() {

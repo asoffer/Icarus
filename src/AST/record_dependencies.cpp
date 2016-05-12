@@ -87,15 +87,11 @@ void Binop::record_dependencies() {
 }
 
 void ArrayType::record_dependencies() {
+  Dependency::value_type(this, this);
 
-  if (length != nullptr) {
-    Dependency::value_value(this, length);
-
-    // Maybe later when we have length dependency?
-    Dependency::type_type(this, length);
-
-    length->record_dependencies();
-  }
+  Dependency::value_value(this, length);
+  Dependency::type_type(this, length);
+  length->record_dependencies();
 
   Dependency::value_type(this, data_type);
   Dependency::type_type(this, data_type);
