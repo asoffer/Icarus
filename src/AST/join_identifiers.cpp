@@ -47,7 +47,7 @@ void Identifier::join_identifiers(bool) { Terminal::join_identifiers(); }
 void Conditional::join_identifiers(bool) {
   for (size_t i = 0; i < conditions.size(); ++i) {
     Scope::Stack.push(body_scopes[i]);
-    conditions[i]->join_identifiers();
+    set_or_recurse(conditions[i]);
     Scope::Stack.pop();
   }
   for (size_t i = 0; i < statements.size(); ++i) {

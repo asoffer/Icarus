@@ -547,10 +547,6 @@ llvm::Value *Binop::generate_code() {
             static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
         arg_vals.push_back(local_ret);
 
-        lhs_val->dump();
-        for (auto x : arg_vals) {
-        x->dump();
-        }
         builder.CreateCall(lhs_val, arg_vals);
         return arg_vals.back();
 
@@ -770,13 +766,32 @@ llvm::Value *ChainOp::generate_code() {
 
   auto expr_type = exprs[0]->type;
 
-  // Boolean xor is separate because it can't be short-circuited
-  if (expr_type == Bool && ops.front() == Language::Operator::Xor) {
-    llvm::Value *cmp_val = exprs[0]->generate_code();
-    for (size_t i = 1; i < exprs.size(); ++i) {
-      cmp_val = builder.CreateXor(cmp_val, exprs[i]->generate_code());
+  // Boolean values that cannot be short-circuited.
+  if (expr_type == Bool) {
+    auto num_exprs = exprs.size();
+    if (ops.front() == Language::Operator::Xor) {
+      llvm::Value *cmp_val = exprs[0]->generate_code();
+      for (size_t i = 1; i < num_exprs; ++i) {
+        cmp_val = builder.CreateXor(cmp_val, exprs[i]->generate_code());
+      }
+      return cmp_val;
     }
-    return cmp_val;
+    if (Language::precedence(ops.front()) ==
+        Language::precedence(Language::Operator::EQ)) {
+
+      llvm::Value *cmp_val = exprs[0]->generate_code();
+      for (size_t i = 0; i < num_exprs; ++i) {
+        switch (ops[i]) {
+        case Language::Operator::EQ: {
+          cmp_val = builder.CreateAnd(cmp_val, exprs[i]->generate_code());
+        } break;
+        case Language::Operator::NE: {
+          cmp_val = builder.CreateAnd(cmp_val, exprs[i]->generate_code());
+        } break;
+        default: assert(false && "Invalid chain-operation on bools");
+        }
+      }
+    }
   }
 
   auto parent_fn  = builder.GetInsertBlock()->getParent();
@@ -812,7 +827,7 @@ llvm::Value *ChainOp::generate_code() {
     CASE(ICmpU, GT);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type == Char || expr_type == Bool) {
+  } else if (expr_type == Char) {
     BEGIN_SHORT_CIRCUIT
     CASE(ICmp, EQ);
     CASE(ICmp, NE);
@@ -1041,8 +1056,10 @@ llvm::Value *Case::generate_code() {
   auto current_block = builder.GetInsertBlock();
   auto case_landing = make_block("case.landing", parent_fn);
   builder.SetInsertPoint(case_landing);
-  llvm::PHINode *phi_node = builder.CreatePHI(
-      *type, static_cast<unsigned int>(num_key_vals), "phi");
+
+  llvm::PHINode *phi_node =
+      builder.CreatePHI(*(type->is_function() ? Ptr(type) : type),
+                        static_cast<unsigned int>(num_key_vals), "phi");
   builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
@@ -1090,6 +1107,7 @@ llvm::Value *ArrayLiteral::generate_code() {
   builder.SetInsertPoint(entry_block->begin());
   // It's possible we never use this, in which case we must ensure that our
   // free-ing it is safe.
+
   auto array_data = type->allocate();
   type->call_init(array_data);
 

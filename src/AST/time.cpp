@@ -37,7 +37,9 @@ Time::Eval ArrayLiteral::determine_time() { return time_ = type->time(); }
 
 Time::Eval ArrayType::determine_time() {
   length->determine_time();
-  return time_ = Time::compile; }
+  data_type->determine_time();
+  return time_ = Time::compile;
+}
 
 Time::Eval Terminal::determine_time() {
   return time_ = (terminal_type == Language::Terminal::Type) ? Time::compile
