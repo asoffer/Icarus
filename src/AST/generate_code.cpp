@@ -1066,7 +1066,7 @@ llvm::Value *Case::generate_code() {
   builder.SetInsertPoint(case_landing);
 
   llvm::PHINode *phi_node =
-      builder.CreatePHI(*(type->is_function() ? Ptr(type) : type),
+      builder.CreatePHI(*(type->is_big() ? Ptr(type) : type),
                         static_cast<unsigned int>(num_key_vals), "phi");
   builder.SetInsertPoint(current_block);
 
@@ -1088,6 +1088,7 @@ llvm::Value *Case::generate_code() {
 
     builder.SetInsertPoint(case_blocks[i]);
   }
+
   auto output_val = key_vals.back().second->generate_code();
 
   phi_node->addIncoming(output_val, builder.GetInsertBlock());
