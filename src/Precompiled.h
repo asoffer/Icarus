@@ -12,6 +12,13 @@
 #include <sstream>
 #include <fstream>
 
+// TODO Figure out what you need from this.
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
+
 // Each time a file is imported, it will be added to the queue. We then parse
 // each file off the queue until the queue is empty. We avoid circular calls by
 // checking if the map is already filled before parsing.

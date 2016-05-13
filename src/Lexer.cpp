@@ -545,7 +545,10 @@ AST::Node *Lexer::next_given_slash() {
     return new AST::TokenNode(loc_, Language::comment, "MULTILINE COMMENT");
   }
 
-  if (peek == '=') { file_.get(); }
+  if (peek == '=') {
+    file_.get();
+    return new AST::TokenNode(loc_, Language::op_b, "/=");
+  }
 
   return new AST::TokenNode(loc_, Language::op_b, "/");
 }

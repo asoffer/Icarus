@@ -54,10 +54,8 @@ std::string Mangle(const Function *f, AST::Expression *expr,
   if (expr->is_identifier()) {
     auto id = static_cast<AST::Identifier *>(expr);
 
-    if (id->decls.size() == 1) {
-      for (const auto &tag : id->decls[0]->hashtags) {
-        if (tag == "cstdlib") { return name; }
-      }
+    if (id->decls.size() == 1 && id->decls[0]->HasHashtag("cstdlib")) {
+      return name;
     }
   }
 

@@ -14,14 +14,6 @@ namespace TypeSystem {
 extern void GenerateLLVM();
 } // namespace TypeSystem
 
-namespace data {
-extern llvm::ConstantInt *const_bool(bool b);
-extern llvm::ConstantInt *const_char(char c);
-extern llvm::ConstantInt *const_int(long n);
-extern llvm::ConstantFP *const_real(double d);
-extern llvm::ConstantInt *const_uint(size_t n);
-} // namespace data
-
 extern llvm::IRBuilder<> builder;
 
 namespace TypeSystem {
@@ -216,80 +208,70 @@ int main(int argc, char *argv[]) {
     return error_code::shadow_or_type_error;
   }
 
-  // Program has been verified. We can now proceed with code generation.
-  // Initialize the global scope.
+  { // Program has been verified. We can now proceed with code generation.
+    for (auto decl : Scope::Global->ordered_decls_) {
+      auto id = decl->identifier;
+      if (id->is_arg) { continue; }
 
-  { // Initialize Global scope
-    for (auto decl_ptr : Scope::Global->ordered_decls_) {
-      auto decl_id = decl_ptr->identifier;
-      if (decl_id->is_arg) continue;
+      auto type = decl->type;
+      if (type->time() == Time::compile) { continue; }
 
-      auto decl_type = decl_id->type;
-      if (decl_type->llvm_type == nullptr) continue;
+      Scope::Stack.push(Scope::Global);
 
-      if (decl_type->is_function()) {
-        if (decl_id->token()[0] != '_') { // Ignore operators
-          auto fn_type = static_cast<Function *>(decl_type);
-          auto mangled_name = Mangle(fn_type, decl_ptr->identifier);
-
-          decl_id->alloc = decl_type->allocate();
-          decl_id->alloc->setName(mangled_name);
-        }
-      } else if (decl_type->is_primitive()) {
+      if (type->is_primitive() || type->is_array() || type->is_pointer()) {
         auto gvar = new llvm::GlobalVariable(
             /*      Module = */ *global_module,
-            /*        Type = */ *decl_type,
-            /*  isConstant = */ false,
+            /*        Type = */ *type,
+            /*  isConstant = */ decl->HasHashtag("const"),
             /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
             /* Initializer = */ 0, // might be specified below
-            /*        Name = */ decl_id->token());
+            /*        Name = */ id->token());
 
-        if (decl_ptr->decl_type == AST::DeclType::Infer) {
-          Scope::Stack.push(Scope::Global);
+        switch(decl->decl_type) {
+        case AST::DeclType::Std: {
+          gvar->setInitializer(type->InitialValue());
+        } break;
+        case AST::DeclType::Infer: {
+          // TODO meld this into GetGlobal
+          // decl->evaluate(Scope::Global->context);
 
-          llvm::Constant *constant = nullptr;
-
-          decl_ptr->evaluate(Scope::Global->context);
-
-          if (decl_type == Bool) {
-            constant = data::const_bool(
-                decl_ptr->type_expr->evaluate(Scope::Global->context).as_bool);
-
-          } else if (decl_type == Char) {
-            constant = data::const_char(
-                decl_ptr->type_expr->evaluate(Scope::Global->context).as_char);
-
-          } else if (decl_type == Int) {
-            constant = data::const_int(
-                decl_ptr->type_expr->evaluate(Scope::Global->context).as_int);
-
-          } else if (decl_type == Real) {
-            constant = data::const_real(
-                decl_ptr->type_expr->evaluate(Scope::Global->context).as_real);
-
-          } else if (decl_type == Uint) {
-            constant = data::const_uint(
-                decl_ptr->type_expr->evaluate(Scope::Global->context).as_uint);
-          }
-
-          assert(constant);
-          gvar->setInitializer(constant);
-
-          Scope::Stack.pop();
+          auto global_val = decl->type_expr->GetGlobal(Scope::Global->context);
+          assert(llvm::isa<llvm::Constant>(global_val) &&
+                 "Value is not a constant");
+          gvar->setInitializer(global_val);
+        } break;
+        default: assert(false);
         }
 
-        decl_id->alloc = gvar;
+        id->alloc = gvar;
+
+      } else if (type->is_array()) {
+
+      } else if (type->is_function()) {
+        auto fn_type      = static_cast<Function *>(type);
+        auto mangled_name = Mangle(fn_type, decl->identifier);
+
+        id->alloc = type->allocate();
+        id->alloc->setName(mangled_name);
+        decl->generate_code();
 
       } else {
-        assert(decl_type == Type_ && "Global variables not currently allowed.");
+        std::cerr << *type << std::endl;
+        assert(false && "Global variables not currently allowed.");
       }
+
+      Scope::Stack.pop();
     }
   }
 
-  // Generate LLVM intermediate representation.
-  Scope::Stack.push(Scope::Global);
-  global_statements->generate_code();
-  Scope::Stack.pop();
+  { // Generate code for everything else
+    Scope::Stack.push(Scope::Global);
+    for (auto stmt : global_statements->statements) {
+      if (stmt->is_declaration()) { continue; }
+      stmt->generate_code();
+    }
+    Scope::Stack.pop();
+  }
 
   // TODO Optimization.
   {

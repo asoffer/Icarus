@@ -32,8 +32,8 @@ extern llvm::Value *input(Type *);
 } // namespace builtin
 
 namespace data {
-extern llvm::Value *null_pointer(Type *t);
-extern llvm::Value *null(Type *t);
+extern llvm::Constant *null_pointer(Type *t);
+extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_true();
 extern llvm::ConstantInt *const_false();
 extern llvm::ConstantInt *const_uint(size_t n);

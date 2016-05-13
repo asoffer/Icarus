@@ -32,7 +32,7 @@ $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(LLVM_LINK) $(LINK_FLAGS) $(OBJECTS) -o $@
 
 header:
-	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(PRECOMP) -o bin/Precompiled.h.pch
+	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(LLVM_CXX) $(PRECOMP) -o bin/Precompiled.h.pch
 
 unity:
 	@$(COMPILER) $(STDS) $(WARN) $(BUILD_FLAGS) $(OPTS) $(LLVM_CXX) $(LLVM_LINK) $(LINK_FLAGS) src/unity.cc -o $(TARGET)

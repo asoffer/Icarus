@@ -287,7 +287,7 @@ Context::Value Terminal::evaluate(Context &ctx) {
   if (type == Bool) {
     assert((token() == "true" || token() == "false") &&
            "Bool literal other than true or false");
-    return Context::Value(token() == "true");
+    return Context::Value(terminal_type == Language::Terminal::True);
   } else if (type == Char) {
     return Context::Value(token()[0]);
   } else if (type == Int) {

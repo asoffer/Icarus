@@ -32,6 +32,7 @@ bin/icarus programs/for_uninit.ic
 bin/icarus programs/free.ic
 bin/icarus programs/function_overloading.ic
 bin/icarus programs/generic.ic
+bin/icarus programs/globals.ic
 bin/icarus programs/if.ic
 bin/icarus programs/import.ic
 bin/icarus programs/import_cycle.ic

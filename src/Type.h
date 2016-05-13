@@ -1,13 +1,6 @@
 #ifndef ICARUS_TYPE_H
 #define ICARUS_TYPE_H
 
-// TODO Figure out what you need from this.
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-
 extern llvm::IRBuilder<> builder;
 extern llvm::DataLayout *data_layout;
 
@@ -47,7 +40,8 @@ extern SliceType *Slice(Array *a);
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
   virtual void call_init(llvm::Value *var) ENDING;                             \
-  virtual void call_repr(llvm::Value *val) ENDING
+  virtual void call_repr(llvm::Value *val) ENDING;                             \
+  virtual llvm::Constant *InitialValue() const ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -55,7 +49,7 @@ extern SliceType *Slice(Array *a);
   virtual bool is_##checkname() const { return true; }                         \
   BASIC_METHODS
 
-struct Type {
+    struct Type {
 public:
   Type() : llvm_type(nullptr), has_vars(false) {}
   virtual ~Type() {}

@@ -39,6 +39,7 @@ namespace AST {
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual Time::Eval determine_time() ENDING;                                  \
+  virtual llvm::Constant *GetGlobal(Context &ctx) ENDING;                      \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
@@ -197,6 +198,12 @@ struct Declaration : public Expression {
   std::vector<std::string> hashtags;
   // TODO have a global table of hashtags and store a vector of indexes into
   // that global lookup.
+  bool HasHashtag(const std::string &str) const {
+    for (const auto& tag : hashtags) {
+      if (str == tag) return true;
+    }
+    return false;
+  }
 
   DeclType decl_type;
 };

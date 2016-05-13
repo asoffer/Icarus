@@ -89,13 +89,13 @@ llvm::Constant *memcpy() {
 #undef CSTDLIB
 
 namespace data {
-llvm::Value *null_pointer(Type *t) {
+llvm::Constant *null_pointer(Type *t) {
   return llvm::ConstantPointerNull::get(llvm::PointerType::get(*t, 0));
 }
 
-llvm::Value *null(Type *t) {
+llvm::Constant *null(const Type *t) {
   assert(t->is_pointer() && "type must be a pointer to have a null value");
-  return null_pointer(static_cast<Pointer *>(t)->pointee);
+  return null_pointer(static_cast<const Pointer *>(t)->pointee);
 }
 
 llvm::ConstantInt *const_int(long n) {

@@ -18,8 +18,8 @@ extern llvm::Constant *malloc();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Value *global_string(const std::string &s);
-extern llvm::Value *null_pointer(Type *t);
+extern llvm::Constant *global_string(const std::string &s);
+extern llvm::Constant *null_pointer(Type *t);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
