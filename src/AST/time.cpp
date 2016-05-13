@@ -48,6 +48,11 @@ Time::Eval Terminal::determine_time() {
 
 Time::Eval Identifier::determine_time() { return time_ = type->time(); }
 
+Time::Eval InDecl::determine_time() {
+  container->determine_time();
+  return time_ = identifier->determine_time();
+}
+
 Time::Eval Declaration::determine_time() {
   type_expr->determine_time();
   return time_ = identifier->determine_time();

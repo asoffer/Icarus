@@ -64,6 +64,7 @@ llvm::Constant *Unop::GetGlobal(Context &ctx) {
 #define NOT_YET(type)                                                          \
   llvm::Constant *type::GetGlobal(Context &ctx) { assert(false); }
 
+NOT_YET(InDecl)
 NOT_YET(Declaration)
 NOT_YET(Binop)
 NOT_YET(ChainOp)

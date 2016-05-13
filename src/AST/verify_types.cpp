@@ -137,6 +137,8 @@ void Terminal::verify_types() {
 }
 
 void Identifier::verify_types() {
+  if (type != Unknown) { return; }
+
   // We have already checked in Declaration::verify_types that either there is
   // one type, or there are functions
   if (decls.size() == 1) {
@@ -166,9 +168,6 @@ void Identifier::verify_types() {
         auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
         scope_->context.bind(Context::Value(flit), this);
       }
-    } break;
-    case DeclType::In: {
-      // TODO does anything need to happen here?
     } break;
     case DeclType::Tick: {
       // TODO do we need to do anything here?
@@ -697,6 +696,34 @@ void ChainOp::verify_types() {
   }
 }
 
+void InDecl::verify_types() {
+  if (container->type == Void) {
+    type = Error;
+    error_log.log(loc, "Cannot iterate over a void type.");
+    return;
+  }
+
+  if (container->type->is_array()) {
+    type = static_cast<Array *>(container->type)->data_type;
+
+  } else if (container->type->is_slice()) {
+    type = static_cast<SliceType *>(container->type)->array_type->data_type;
+
+  } else if (container->type->is_range()) {
+    type = static_cast<RangeType *>(container->type)->end_type;
+
+  } else if (container->type == Type_) {
+    auto t = container->evaluate(scope_->context).as_type;
+    if (t->is_enum()) { type = t; }
+
+  } else {
+    error_log.log(loc, "Cannot determine type from in declaration.");
+    type = Error;
+  }
+
+  identifier->type = type;
+}
+
 void Declaration::verify_types() {
   if (type_expr->type == Void) {
     type = Error;
@@ -719,25 +746,6 @@ void Declaration::verify_types() {
         scope_->context.bind(Context::Value(type_expr_as_struct->type_value),
                              identifier);
       }
-    }
-  } break;
-  case DeclType::In: {
-    if (type_expr->type->is_array()) {
-      type = static_cast<Array *>(type_expr->type)->data_type;
-
-    } else if (type_expr->type->is_slice()) {
-      type = static_cast<SliceType *>(type_expr->type)->array_type->data_type;
-
-    } else if (type_expr->type->is_range()) {
-      type = static_cast<RangeType *>(type_expr->type)->end_type;
-
-    } else if (type_expr->type == Type_) {
-      auto t = type_expr->evaluate(scope_->context).as_type;
-      if (t->is_enum()) { type = t; }
-
-    } else {
-      error_log.log(loc, "Cannot determine type from in declaration.");
-      type = Error;
     }
   } break;
   case DeclType::Tick: {

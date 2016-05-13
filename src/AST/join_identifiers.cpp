@@ -69,6 +69,11 @@ void ArrayType::join_identifiers(bool) {
   set_or_recurse(data_type);
 }
 
+void InDecl::join_identifiers(bool is_arg) {
+  identifier = CurrentScope()->identifier(identifier);
+  set_or_recurse(container);
+}
+
 void Declaration::join_identifiers(bool is_arg) {
   identifier = CurrentScope()->identifier(identifier);
   if (is_arg) {

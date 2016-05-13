@@ -44,6 +44,11 @@ Statements::~Statements() {
   for (auto node : statements) DELETE(node);
 }
 
+InDecl::~InDecl() {
+  DELETE(identifier);
+  DELETE(container);
+}
+
 Declaration::~Declaration() {
   DELETE(identifier);
   DELETE(type_expr);

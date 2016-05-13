@@ -348,6 +348,8 @@ Context::Value StructLiteral::evaluate(Context &ctx) {
   return Context::Value(type_value);
 }
 
+Context::Value InDecl::evaluate(Context &ctx) { return nullptr; }
+
 Context::Value Declaration::evaluate(Context &ctx) {
   switch (decl_type) {
   case DeclType::Infer: {
@@ -383,9 +385,6 @@ Context::Value Declaration::evaluate(Context &ctx) {
     } else { /* There's nothing to do */
     }
   } break;
-  case DeclType::In: {
-    return nullptr;
-  }
   case DeclType::Tick: {
     // Being asked to evaluate a tick, is just being asked to figure out what
     // type it must represent from the available information. There is very

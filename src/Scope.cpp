@@ -163,7 +163,6 @@ void BlockScope::initialize() {
     //   continue;
 
     // } else {
-    if (decl_ptr->decl_type == AST::DeclType::In) continue;
     if (decl_id->is_arg) continue;
     decl_type->call_init(decl_id->alloc);
     // }
@@ -240,22 +239,28 @@ llvm::Value *FnScope::ExitFlag() {
   return exit_flag_;
 }
 
-llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
+llvm::Value *BlockScope::AllocateLocally(Type *type, const std::string& name) {
   auto ip = builder.saveIP();
-  if (entry->empty()) {
-    builder.SetInsertPoint(entry);
+  auto entry_block = is_function_scope() ? entry : containing_function_->entry;
+
+  if (entry_block->empty()) {
+    builder.SetInsertPoint(entry_block);
    } else {
-    builder.SetInsertPoint(entry->begin());
+    builder.SetInsertPoint(entry_block->begin());
   }
 
-  auto local_ret = builder.CreateAlloca(*type, nullptr, "local.ret");
+  auto local = builder.CreateAlloca(*type, nullptr, name);
 
   // TODO optimize this by only setting what needs to be set. For example,
   // arrays of primitives, you only need to set the pointer to null.
-  type->call_init(local_ret);
+  type->call_init(local);
 
   builder.restoreIP(ip);
-  return local_ret;
+  return local;
+}
+
+llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
+  return AllocateLocally(type, "local.ret");
 }
 
 void FnScope::initialize() {

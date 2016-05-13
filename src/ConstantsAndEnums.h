@@ -35,9 +35,7 @@ enum class Operator {
 
 
 namespace AST {
-  enum class DeclType {
-    Std, Infer, In, Tick
-  };
+enum class DeclType { Std, Infer, Tick };
 } // namespace AST;
 
 

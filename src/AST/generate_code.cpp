@@ -998,6 +998,8 @@ llvm::Value *FunctionLiteral::generate_code() {
   return llvm_fn;
 }
 
+llvm::Value *InDecl::generate_code() { assert(false); }
+
 llvm::Value *Declaration::generate_code() {
   // In the case of something like
   // foo: [10; char], an actual allocation needs to occur.
@@ -1324,7 +1326,13 @@ llvm::Value *For::generate_code() {
   auto num_iters = iterators.size();
   for (size_t i = 0; i < num_iters; ++i) {
     auto iter      = iterators[i];
-    auto container = iter->type_expr;
+    if (!iter->identifier->alloc) {
+      assert(iter->scope_->is_block_scope());
+      auto block_scope = (BlockScope *)(iter->scope_);
+      iter->identifier->alloc = block_scope->AllocateLocally(
+          iter->identifier->type, iter->identifier->token());
+    }
+    auto container = iter->container;
     llvm::PHINode *phi = nullptr;
 
     if (container->type->is_slice()) {

@@ -32,10 +32,14 @@ std::string Declaration::graphviz_label() const {
   switch (decl_type) {
   case DeclType::Std: return identifier->token() + " : ...";
   case DeclType::Infer: return identifier->token() + " := ...";
-  case DeclType::In: return identifier->token() + " in ...";
   case DeclType::Tick: return identifier->token() + " ... `";
   }
 }
+
+std::string InDecl::graphviz_label() const {
+  return identifier->token() + " in ...";
+}
+
 
 std::string Access::graphviz_label() const { return "." + member_name; }
 

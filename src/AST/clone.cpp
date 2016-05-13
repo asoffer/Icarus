@@ -142,6 +142,13 @@ Node *Access::clone(LOOKUP_ARGS) {
   return access_node;
 }
 
+Node *InDecl::clone(LOOKUP_ARGS) {
+  auto in_decl        = new InDecl;
+  in_decl->identifier = (Identifier *)identifier->CLONE;
+  in_decl->container  = (Expression *)container->CLONE;
+  return in_decl;
+}
+
 Node *Declaration::clone(LOOKUP_ARGS) { 
   if (decl_type == DeclType::Tick) {
     for (size_t i = 0; i < num_entries; ++i) {

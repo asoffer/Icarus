@@ -176,6 +176,10 @@ std::string Identifier::to_string(size_t n) const {
   return tabs(n) + "<Identifier " + TYPE_OR("") + ": " + token() + ">\n";
 }
 
+std::string InDecl::to_string(size_t n) const {
+  return tabs(n) + "<"+ identifier->token() + " in>\n" + container->to_string(n + 1);
+}
+
 std::string Declaration::to_string(size_t n) const {
   std::string output = tabs(n) + "<Declaration ";
   switch (decl_type) {
@@ -184,9 +188,6 @@ std::string Declaration::to_string(size_t n) const {
   } break;
   case DeclType::Infer: {
     output += "(:=)";
-  } break;
-  case DeclType::In: {
-    output += "(in)";
   } break;
   case DeclType::Tick: {
     output += "(`)";

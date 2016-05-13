@@ -76,6 +76,7 @@ struct Node {
   virtual bool is_unop() const { return false; }
   virtual bool is_access() const { return false; }
   virtual bool is_comma_list() const { return false; }
+  virtual bool is_in_decl() const { return false; }
   virtual bool is_declaration() const { return false; }
   virtual bool is_array_type() const { return false; }
   virtual bool is_struct_literal() const { return false; }
@@ -194,6 +195,7 @@ struct Declaration : public Expression {
   Language::Operator op;
   Identifier *identifier;
   Expression *type_expr;
+  Expression *init_expr;
 
   std::vector<std::string> hashtags;
   // TODO have a global table of hashtags and store a vector of indexes into
@@ -206,6 +208,14 @@ struct Declaration : public Expression {
   }
 
   DeclType decl_type;
+};
+
+struct InDecl : public Expression {
+  EXPR_FNS(InDecl, in_decl);
+  static Node *Build(NPtrVec &&nodes);
+
+  Identifier *identifier;
+  Expression *container;
 };
 
 struct StructLiteral : public Expression {
@@ -351,7 +361,7 @@ struct For : public Node {
 
   static Node *Build(NPtrVec &&nodes);
 
-  std::vector<Declaration *> iterators;
+  std::vector<InDecl *> iterators;
   Statements *statements;
 
   BlockScope *for_scope;

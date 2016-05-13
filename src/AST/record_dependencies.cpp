@@ -107,25 +107,34 @@ void ChainOp::record_dependencies() {
   }
 }
 
+void InDecl::record_dependencies() {
+  Dependency::type_type(identifier, this);
+  Dependency::value_value(identifier, this);
+
+  Dependency::type_value(this, container);
+  Dependency::type_type(this, container);
+  Dependency::value_value(this, container);
+  Dependency::value_type(this, this);
+
+  identifier->record_dependencies();
+  container->record_dependencies();
+}
+
 void Declaration::record_dependencies() {
+  Dependency::value_type(this, this);
+
   switch (decl_type) {
   case DeclType::Std: {
-    Dependency::value_type(this, this);
     Dependency::type_value(this, type_expr);
   } break;
-  case DeclType::In:
-    Dependency::type_value(this, type_expr);
-    // Note: Intentionally falling through
   case DeclType::Infer: {
     Dependency::type_type(this, type_expr);
     Dependency::value_value(this, type_expr);
-    Dependency::value_type(this, this);
   } break;
   case DeclType::Tick: {
     Dependency::type_type(this, type_expr);
-    Dependency::type_value(this, type_expr);
-    Dependency::value_type(this, this);
     Dependency::value_value(this, type_expr);
+    Dependency::type_value(this, type_expr);
   } break;
   }
 

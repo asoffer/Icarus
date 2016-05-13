@@ -57,6 +57,12 @@ void FunctionLiteral::lrvalue_check() {
   for (auto decl : inputs) { decl->lrvalue_check(); }
 }
 
+void InDecl::lrvalue_check() {
+  lvalue = false;
+  identifier->lrvalue_check();
+  container->lrvalue_check();
+}
+
 void Declaration::lrvalue_check() {
   lvalue = (decl_type == DeclType::Std);
   identifier->lrvalue_check();

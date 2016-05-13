@@ -209,18 +209,12 @@ Node *While::Build(NPtrVec &&nodes) {
 }
 
 static void CheckForLoopDeclaration(Expression *maybe_decl,
-                                    std::vector<Declaration *> &iters) {
-  if (!maybe_decl->is_declaration()) {
-    error_log.log(maybe_decl->loc, "Expect declaration in for-loop.");
+                                    std::vector<InDecl *> &iters) {
+  if (!maybe_decl->is_in_decl()) {
+    error_log.log(maybe_decl->loc, "Expect 'in' declaration in for-loop.");
+  } else {
+    iters.push_back(static_cast<InDecl *>(maybe_decl));
   }
-
-  auto decl = static_cast<Declaration *>(maybe_decl);
-  if (decl->decl_type != DeclType::In) {
-    error_log.log(decl->loc,
-                  "Iterator in for-loop must be declared using 'in'");
-  }
-
-  iters.push_back(decl);
 }
 
 // Input guarantees:
@@ -245,11 +239,9 @@ Node *For::Build(NPtrVec &&nodes) {
       ex = nullptr;
     }
     delete iter_list;
-  } else if (iter->is_declaration()) {
-    CheckForLoopDeclaration(static_cast<Declaration *>(iter),
-                            for_stmt->iterators);
+
   } else {
-    error_log.log(nodes[1]->loc, "Expected declaration in for-loop.");
+    CheckForLoopDeclaration(iter, for_stmt->iterators);
   }
 
   return for_stmt;
@@ -618,6 +610,18 @@ Node *Declaration::AddHashtag(NPtrVec &&nodes) {
   return decl;
 }
 
+Node *InDecl::Build(NPtrVec &&nodes) {
+  auto op = ((AST::TokenNode *)(nodes[1]))->op;
+  assert(op == Language::Operator::In);
+
+  auto in_decl_ptr        = new InDecl;
+  in_decl_ptr->loc        = nodes[1]->loc;
+  in_decl_ptr->identifier = steal<Identifier>(nodes[0]);
+  in_decl_ptr->container  = steal<Expression>(nodes[2]);
+  in_decl_ptr->precedence = Language::precedence(Language::Operator::In);
+  return in_decl_ptr;
+}
+
 Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   auto op = ((AST::TokenNode *)(nodes[1]))->op;
   DeclType dt;
@@ -627,9 +631,6 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
 
   } else if (op == Language::Operator::ColonEq) {
     dt = DeclType::Infer;
-
-  } else if (op == Language::Operator::In) {
-    dt = DeclType::In;
 
   } else {
     assert(false);
@@ -812,9 +813,12 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
   }
 
-  if (nodes[1]->token() == ":" || nodes[1]->token() == ":=" ||
-      nodes[1]->token() == "in") {
+  if (nodes[1]->token() == ":" || nodes[1]->token() == ":=") {
     return AST::Declaration::BuildBasic(std::forward<NPtrVec &&>(nodes));
+  }
+
+  if (nodes[1]->token() == "in") {
+    return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
   }
 
   if (nodes[1]->token() == "`") {

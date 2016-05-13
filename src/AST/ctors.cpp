@@ -24,6 +24,7 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(Unknown) {}
 Declaration::Declaration() : decl_type(DeclType::Std) {}
+InDecl::InDecl() {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}
 ChainOp::ChainOp() {}
