@@ -195,7 +195,7 @@ std::string Declaration::to_string(size_t n) const {
   }
 
   return output + TYPE_OR("") + ">\n" + identifier->to_string(n + 1) +
-         type_expr->to_string(n + 1);
+         expr->to_string(n + 1);
 }
 
 std::string Case::to_string(size_t n) const {

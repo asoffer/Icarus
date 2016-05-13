@@ -125,21 +125,21 @@ void Declaration::record_dependencies() {
 
   switch (decl_type) {
   case DeclType::Std: {
-    Dependency::type_value(this, type_expr);
+    Dependency::type_value(this, expr);
   } break;
   case DeclType::Infer: {
-    Dependency::type_type(this, type_expr);
-    Dependency::value_value(this, type_expr);
+    Dependency::type_type(this, expr);
+    Dependency::value_value(this, expr);
   } break;
   case DeclType::Tick: {
-    Dependency::type_type(this, type_expr);
-    Dependency::value_value(this, type_expr);
-    Dependency::type_value(this, type_expr);
+    Dependency::type_type(this, expr);
+    Dependency::value_value(this, expr);
+    Dependency::type_value(this, expr);
   } break;
   }
 
   identifier->record_dependencies();
-  type_expr->record_dependencies();
+  expr->record_dependencies();
 }
 
 void Case::record_dependencies() {

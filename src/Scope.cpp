@@ -24,20 +24,6 @@ Scope *CurrentScope() {
   return Scope::Stack.empty() ? nullptr : Scope::Stack.top();
 }
 
-AST::Declaration *Scope::make_declaration(TokenLocation loc,
-                                          AST::DeclType decl_type,
-                                          const std::string &id_string,
-                                          AST::Expression *type_expr) {
-  auto decl = new AST::Declaration;
-  decl_registry_.emplace_back(decl);
-  decl->identifier = new AST::Identifier(loc, id_string);
-  decl->loc        = loc;
-  decl->decl_type  = decl_type;
-  decl->type_expr  = type_expr;
-
-  return decl;
-}
-
 static size_t scope_num_counter = 0;
 Scope::Scope()
     : parent(Scope::Global), containing_function_(nullptr),

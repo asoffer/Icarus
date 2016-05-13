@@ -335,11 +335,11 @@ Context::Value StructLiteral::evaluate(Context &ctx) {
       for (auto decl : declarations) {
         bool is_inferred = (decl->decl_type == DeclType::Infer);
         Type *field      = is_inferred
-                          ? decl->type_expr->type
-                          : decl->type_expr->evaluate(scope_->context).as_type;
+                          ? decl->expr->type
+                          : decl->expr->evaluate(scope_->context).as_type;
         assert(field && "field is nullptr");
         struct_type->insert_field(decl->identifier->token(), field,
-                                  is_inferred ? decl->type_expr : nullptr);
+                                  is_inferred ? decl->expr : nullptr);
       }
     }
   }
@@ -353,13 +353,13 @@ Context::Value InDecl::evaluate(Context &ctx) { return nullptr; }
 Context::Value Declaration::evaluate(Context &ctx) {
   switch (decl_type) {
   case DeclType::Infer: {
-    if (type_expr->type->is_function()) {
-      ctx.bind(Context::Value(type_expr), identifier);
+    if (expr->type->is_function()) {
+      ctx.bind(Context::Value(expr), identifier);
     } else {
-      auto type_as_ctx_val = type_expr->evaluate(ctx);
+      auto type_as_ctx_val = expr->evaluate(ctx);
       ctx.bind(type_as_ctx_val, identifier);
 
-      if (type_expr->is_struct_literal()) {
+      if (expr->is_struct_literal()) {
         if (type_as_ctx_val.as_type->is_struct()) {
           static_cast<Structure *>(type_as_ctx_val.as_type)
               ->set_name(identifier->token());
@@ -370,7 +370,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
           assert(false);
         }
 
-      } else if (type_expr->is_enum_literal()) {
+      } else if (expr->is_enum_literal()) {
         assert(type_as_ctx_val.as_type->is_enum());
         static_cast<Enumeration *>(type_as_ctx_val.as_type)->bound_name =
             identifier->token();
@@ -378,9 +378,9 @@ Context::Value Declaration::evaluate(Context &ctx) {
     }
   } break;
   case DeclType::Std: {
-    if (type_expr->type == Type_) {
+    if (expr->type == Type_) {
       ctx.bind(Context::Value(TypeVar(identifier)), identifier);
-    } else if (type_expr->type->is_type_variable()) {
+    } else if (expr->type->is_type_variable()) {
       // TODO Should we just skip this?
     } else { /* There's nothing to do */
     }
@@ -390,7 +390,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
     // type it must represent from the available information. There is very
     // little information here, since it's a generic function, so we simply bind
     // a type variable and return it.
-    ctx.bind(Context::Value(TypeVar(identifier, type_expr)), identifier);
+    ctx.bind(Context::Value(TypeVar(identifier, expr)), identifier);
     return ctx.get(identifier);
   }
   }
@@ -580,11 +580,11 @@ Context::Value Binop::evaluate(Context &ctx) {
           bool is_inferred = (decl->decl_type == DeclType::Infer);
 
           Type *field =
-              is_inferred ? decl->type_expr->type
-                          : decl->type_expr->evaluate(scope_->context).as_type;
+              is_inferred ? decl->expr->type
+                          : decl->expr->evaluate(scope_->context).as_type;
           assert(field && "field is nullptr");
           struct_type->insert_field(decl->identifier->token(), field,
-                                    is_inferred ? decl->type_expr : nullptr);
+                                    is_inferred ? decl->expr : nullptr);
         }
       }
 

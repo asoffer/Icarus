@@ -23,7 +23,8 @@ TokenNode::TokenNode(TokenLocation loc, Language::NodeType in_node_type,
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(Unknown) {}
-Declaration::Declaration() : decl_type(DeclType::Std) {}
+Declaration::Declaration()
+    : expr(nullptr), decl_type(DeclType::Std) {}
 InDecl::InDecl() {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}

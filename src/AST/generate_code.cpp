@@ -1005,12 +1005,11 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type->is_array() &&
-      !type_expr->is_dummy()) {
+  if (decl_type == DeclType::Std && type->is_array() && !expr->is_dummy()) {
     // TODO uninitialize previous value
-    assert(type_expr->is_array_type() && "Not array type");
+    assert(expr->is_array_type() && "Not array type");
 
-    auto len_expr = ((ArrayType *)type_expr)->length;
+    auto len_expr = ((ArrayType *)expr)->length;
     if (len_expr->time() & Time::run) {
       // TODO have a Hole type primitive.
       if (len_expr->is_terminal() &&
@@ -1030,8 +1029,8 @@ llvm::Value *Declaration::generate_code() {
 
   if (type->time() == Time::compile) {
     if (identifier->type->is_function() && decl_type == DeclType::Infer &&
-        type_expr->is_function_literal()) {
-      auto fn_expr = (FunctionLiteral *)type_expr;
+        expr->is_function_literal()) {
+      auto fn_expr = (FunctionLiteral *)expr;
       for (auto &gen : fn_expr->cache) {
         gen.second->fn_scope->name = identifier->token();
       }
@@ -1042,12 +1041,7 @@ llvm::Value *Declaration::generate_code() {
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.
 
-  // Remember, type_expr is not really the right name in the inference case.
-  // It's the thing whose type we are inferring.
-  //
-  // TODO change the name of this member variable to describe what it actually
-  // is in both ':' and ':=" cases
-  return generate_assignment_code(identifier, type_expr);
+  return generate_assignment_code(identifier, expr);
 }
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified

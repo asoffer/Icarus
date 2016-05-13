@@ -160,12 +160,12 @@ void Identifier::verify_types() {
     } break;
 
     case DeclType::Infer: {
-      if (decl->type_expr->is_struct_literal()) {
+      if (decl->expr->is_struct_literal()) {
         //      auto tlit_type_val =
-        //          static_cast<StructLiteral *>(decl->type_expr)->type_value;
+        //          static_cast<StructLiteral *>(decl->expr)->type_value;
         //      scope_->context.bind(Context::Value(tlit_type_val), this);
-      } else if (decl->type_expr->is_function_literal()) {
-        auto flit = static_cast<FunctionLiteral *>(decl->type_expr);
+      } else if (decl->expr->is_function_literal()) {
+        auto flit = static_cast<FunctionLiteral *>(decl->expr);
         scope_->context.bind(Context::Value(flit), this);
       }
     } break;
@@ -725,7 +725,7 @@ void InDecl::verify_types() {
 }
 
 void Declaration::verify_types() {
-  if (type_expr->type == Void) {
+  if (expr->type == Void) {
     type = Error;
     error_log.log(loc, "Void types cannot be assigned.");
     return;
@@ -733,23 +733,23 @@ void Declaration::verify_types() {
 
   switch (decl_type) {
   case DeclType::Std: {
-    type = type_expr->evaluate(scope_->context).as_type;
+    type = expr->evaluate(scope_->context).as_type;
   } break;
   case DeclType::Infer: {
-    type = type_expr->type;
+    type = expr->type;
 
     // TODO if it's compile-time
     if (type == Type_) {
-      if (type_expr->is_struct_literal()) {
-        auto type_expr_as_struct = static_cast<StructLiteral *>(type_expr);
-        assert(type_expr_as_struct->type_value);
-        scope_->context.bind(Context::Value(type_expr_as_struct->type_value),
+      if (expr->is_struct_literal()) {
+        auto expr_as_struct = (StructLiteral *)expr;
+        assert(expr_as_struct->type_value);
+        scope_->context.bind(Context::Value(expr_as_struct->type_value),
                              identifier);
       }
     }
   } break;
   case DeclType::Tick: {
-    if (!type_expr->type->is_function()) {
+    if (!expr->type->is_function()) {
       // TODO Need a way better
       error_log.log(
           loc, "Cannot generate a type where the tester is not a function");
@@ -757,7 +757,7 @@ void Declaration::verify_types() {
       return;
     }
 
-    auto test_func = static_cast<Function *>(type_expr->type);
+    auto test_func = static_cast<Function *>(expr->type);
     if (test_func->output != Bool) {
       // TODO What about implicitly cast-able to bool via a user-defined cast?
       error_log.log(loc, "Test function must return a bool");
@@ -852,8 +852,8 @@ void Declaration::verify_types() {
 
   // TODO if RHS is not a type give a nice message instead of segfaulting
 
-  if (type_expr->is_terminal()) {
-    auto term = static_cast<Terminal *>(type_expr);
+  if (expr->is_terminal()) {
+    auto term = (Terminal *)expr;
     if (term->terminal_type == Language::Terminal::Null) {
       error_log.log(loc, "Cannot infer the type of `null`.");
     }

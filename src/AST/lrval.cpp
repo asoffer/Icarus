@@ -66,7 +66,7 @@ void InDecl::lrvalue_check() {
 void Declaration::lrvalue_check() {
   lvalue = (decl_type == DeclType::Std);
   identifier->lrvalue_check();
-  type_expr->lrvalue_check();
+  expr->lrvalue_check();
 }
 
 void ArrayType::lrvalue_check() { lvalue = false;

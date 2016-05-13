@@ -95,7 +95,7 @@ void Declaration::assign_scope() {
   scope_->ids_[identifier->token()]->decls.push_back(this);
 
   identifier->assign_scope();
-  type_expr->assign_scope();
+  expr->assign_scope();
 }
 
 void ChainOp::assign_scope() {

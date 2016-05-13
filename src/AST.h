@@ -194,8 +194,7 @@ struct Declaration : public Expression {
   // TODO is 'op' necessary? anymore?
   Language::Operator op;
   Identifier *identifier;
-  Expression *type_expr;
-  Expression *init_expr;
+  Expression *expr;
 
   std::vector<std::string> hashtags;
   // TODO have a global table of hashtags and store a vector of indexes into
@@ -227,6 +226,8 @@ struct StructLiteral : public Expression {
   StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
 
   std::vector<Declaration *> params;
+  std::vector<llvm::Constant *> init_vals;
+
   Type *type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;

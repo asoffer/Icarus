@@ -14,10 +14,6 @@ struct Scope {
   static std::stack<Scope *> Stack;
   static void verify_no_shadowing();
   static BlockScope *Global; // TODO Should this be it's own type
-  static AST::Declaration *make_declaration(TokenLocation loc,
-                                            AST::DeclType decl_type,
-                                            const std::string &id_string,
-                                            AST::Expression *type_expr);
   static std::vector<AST::Declaration *> decl_registry_;
 
   void set_parent(Scope *parent);

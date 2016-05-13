@@ -54,7 +54,7 @@ Time::Eval InDecl::determine_time() {
 }
 
 Time::Eval Declaration::determine_time() {
-  type_expr->determine_time();
+  expr->determine_time();
   return time_ = identifier->determine_time();
 }
 

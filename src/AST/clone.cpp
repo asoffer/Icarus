@@ -19,13 +19,13 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
     Dependency::PtrWithTorV ptr_with_torv(decl, false);
     Dependency::traverse_from(ptr_with_torv);
 
-    auto type_expr_ptr   = decl->type_expr->evaluate(ctx).as_type;
+    auto expr_ptr        = decl->expr->evaluate(ctx).as_type;
     auto new_decl        = new Declaration;
     new_decl->identifier = new Identifier(loc, decl->identifier->token());
     new_decl->loc        = decl->loc;
     new_decl->decl_type  = decl->decl_type;
 
-    new_decl->type_expr = new DummyTypeExpr(decl->loc, type_expr_ptr);
+    new_decl->expr = new DummyTypeExpr(decl->loc, expr_ptr);
 
     Scope::Stack.push(type_scope);
     new_decl->assign_scope();
@@ -35,9 +35,9 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
     cache_loc->scope_ = scope_;
 
     // no need to do type verification
-    new_decl->type = type_expr_ptr;
+    new_decl->type = expr_ptr;
 
-    if (!type_expr_ptr->has_vars) { type_expr_ptr->generate_llvm(); }
+    if (!expr_ptr->has_vars) { expr_ptr->generate_llvm(); }
 
     cache_loc->declarations.push_back(new_decl);
   }
@@ -163,7 +163,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
     decl->identifier = (Identifier *)identifier->CLONE;
     decl->hashtags   = hashtags;
     decl->op         = op;
-    decl->type_expr  = (Expression *)type_expr->CLONE;
+    decl->expr       = (Expression *)expr->CLONE;
     return decl;
   }
 }

@@ -81,7 +81,7 @@ void Declaration::join_identifiers(bool is_arg) {
     identifier->is_arg = true;
   }
 
-  set_or_recurse(type_expr);
+  set_or_recurse(expr);
 }
 
 void ChainOp::join_identifiers(bool is_arg) {

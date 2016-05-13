@@ -623,33 +623,33 @@ Node *InDecl::Build(NPtrVec &&nodes) {
 }
 
 Node *Declaration::BuildBasic(NPtrVec &&nodes) {
-  auto op = ((AST::TokenNode *)(nodes[1]))->op;
-  DeclType dt;
-
-  if (op == Language::Operator::Colon) {
-    dt = DeclType::Std;
-
-  } else if (op == Language::Operator::ColonEq) {
-    dt = DeclType::Infer;
-
-  } else {
-    assert(false);
-  }
-
-  auto decl_ptr = Scope::make_declaration(nodes[1]->loc, dt, nodes[0]->token(),
-                                          steal<Expression>(nodes[2]));
-
+  auto decl_ptr        = new Declaration;
+  decl_ptr->identifier = new Identifier(nodes[0]->loc, nodes[0]->token());
+  decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->type_      = Language::op_b;
-  decl_ptr->op         = op;
+  decl_ptr->op         = ((AST::TokenNode *)(nodes[1]))->op;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
+  decl_ptr->expr       = steal<Expression>(nodes[2]);
+  decl_ptr->decl_type  = (decl_ptr->op == Language::Operator::Colon)
+                            ? DeclType::Std
+                            : DeclType::Infer;
+
+  assert(decl_ptr->op == Language::Operator::Colon ||
+         decl_ptr->op == Language::Operator::ColonEq);
+
+
+  Scope::decl_registry_.emplace_back(decl_ptr);
+
   return decl_ptr;
 }
 
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
-  auto decl_ptr =
-      Scope::make_declaration(nodes[1]->loc, DeclType::Tick, nodes[2]->token(),
-                              steal<Expression>(nodes[0]));
-
+  auto decl_ptr = new AST::Declaration;
+  Scope::decl_registry_.emplace_back(decl_ptr);
+  decl_ptr->identifier = new AST::Identifier(nodes[2]->loc, nodes[2]->token());
+  decl_ptr->loc        = nodes[1]->loc;
+  decl_ptr->decl_type  = DeclType::Tick;
+  decl_ptr->expr       = steal<Expression>(nodes[0]);
   decl_ptr->type_      = Language::expr;
   decl_ptr->op         = Language::Operator::Tick;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
