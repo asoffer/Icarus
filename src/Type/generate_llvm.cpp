@@ -69,16 +69,16 @@ void Function::generate_llvm() const {
     AddLLVMInput(input, llvm_in);
   }
 
-  if (output->is_tuple()) {
-    auto out_tup = static_cast<Tuple *>(output);
-    for (auto t : out_tup->entries) { AddLLVMInput(Ptr(t), llvm_in); }
-
-  } else if (output->is_enum() || output->is_primitive()) {
+  if (!output->is_big()) {
     llvm_out = *output;
     if (llvm_out == nullptr) {
       llvm_type = nullptr;
       return;
     }
+  } else if (output->is_tuple()) {
+    auto out_tup = (Tuple *)output;
+    for (auto t : out_tup->entries) { AddLLVMInput(Ptr(t), llvm_in); }
+
   } else if (output->is_function()) {
     llvm_out = *Ptr(output);
 

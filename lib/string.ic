@@ -4,8 +4,8 @@ string := struct {
 }
 
 __print__ := (s: string) -> void {
-  for i in 0u .. s.length - 1u {
-    print s.chars[i]
+  for c in s.chars[0u .. s.length - 1u] {
+    print c
   }
 }
 

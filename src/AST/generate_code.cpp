@@ -851,7 +851,7 @@ llvm::Value *ChainOp::generate_code() {
     CASE(FCmpO, GT);
     END_SHORT_CIRCUIT
 
-  } else if (expr_type->is_enum()) {
+  } else if (expr_type->is_enum() || expr_type->is_pointer()) {
     BEGIN_SHORT_CIRCUIT
     CASE(ICmp, EQ);
     CASE(ICmp, NE);
