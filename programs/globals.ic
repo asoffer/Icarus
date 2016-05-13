@@ -1,0 +1,9 @@
+days_per_week := 7
+c := 'x'
+weeks_per_year := 52
+
+main := void -> void {
+  weeks_per_year += 10
+  print days_per_week, ", ", weeks_per_year
+  // print "there are ", days_per_week, " days in a week.\n"
+}

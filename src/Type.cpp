@@ -216,7 +216,7 @@ Enumeration::Enumeration(const std::string &name,
     int_values[idstr] = i;
 
     auto enum_str = new llvm::GlobalVariable(
-        *global_module,
+        /*      Module = */ *global_module,
         /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
         /*  isConstant = */ true,
         /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
@@ -232,7 +232,7 @@ Enumeration::Enumeration(const std::string &name,
     ++i;
   }
   string_data = new llvm::GlobalVariable(
-      *global_module,
+      /*      Module = */ *global_module,
       /*        Type = */ llvm::ArrayType::get(*Ptr(Char), num_members),
       /*  isConstant = */ false,
       /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,

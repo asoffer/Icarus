@@ -15,6 +15,10 @@ extern void GenerateLLVM();
 } // namespace TypeSystem
 
 namespace data {
+extern llvm::ConstantInt *const_bool(bool b);
+extern llvm::ConstantInt *const_char(char c);
+extern llvm::ConstantInt *const_int(long n);
+extern llvm::ConstantFP *const_real(double d);
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
@@ -206,6 +210,12 @@ int main(int argc, char *argv[]) {
 
   global_statements->determine_time();
 
+  global_statements->lrvalue_check();
+  if (error_log.num_errors() != 0) {
+    std::cout << error_log;
+    return error_code::shadow_or_type_error;
+  }
+
   // Program has been verified. We can now proceed with code generation.
   // Initialize the global scope.
 
@@ -225,17 +235,55 @@ int main(int argc, char *argv[]) {
           decl_id->alloc = decl_type->allocate();
           decl_id->alloc->setName(mangled_name);
         }
+      } else if (decl_type->is_primitive()) {
+        auto gvar = new llvm::GlobalVariable(
+            /*      Module = */ *global_module,
+            /*        Type = */ *decl_type,
+            /*  isConstant = */ false,
+            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+            /* Initializer = */ 0, // might be specified below
+            /*        Name = */ decl_id->token());
+
+        if (decl_ptr->decl_type == AST::DeclType::Infer) {
+          Scope::Stack.push(Scope::Global);
+
+          llvm::Constant *constant = nullptr;
+
+          decl_ptr->evaluate(Scope::Global->context);
+
+          if (decl_type == Bool) {
+            constant = data::const_bool(
+                decl_ptr->type_expr->evaluate(Scope::Global->context).as_bool);
+
+          } else if (decl_type == Char) {
+            constant = data::const_char(
+                decl_ptr->type_expr->evaluate(Scope::Global->context).as_char);
+
+          } else if (decl_type == Int) {
+            constant = data::const_int(
+                decl_ptr->type_expr->evaluate(Scope::Global->context).as_int);
+
+          } else if (decl_type == Real) {
+            constant = data::const_real(
+                decl_ptr->type_expr->evaluate(Scope::Global->context).as_real);
+
+          } else if (decl_type == Uint) {
+            constant = data::const_uint(
+                decl_ptr->type_expr->evaluate(Scope::Global->context).as_uint);
+          }
+
+          assert(constant);
+          gvar->setInitializer(constant);
+
+          Scope::Stack.pop();
+        }
+
+        decl_id->alloc = gvar;
+
       } else {
         assert(decl_type == Type_ && "Global variables not currently allowed.");
       }
     }
-  }
-
-
-  global_statements->lrvalue_check();
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::shadow_or_type_error;
   }
 
   // Generate LLVM intermediate representation.
