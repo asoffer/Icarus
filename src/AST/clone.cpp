@@ -16,8 +16,9 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
   cache_loc->declarations.reserve(declarations.size());
 
   for (auto decl : declarations) {
-    Dependency::PtrWithTorV ptr_with_torv(decl, false);
-    Dependency::traverse_from(ptr_with_torv);
+    decl->verify_types();
+//    Dependency::PtrWithTorV ptr_with_torv(decl, false);
+//    Dependency::traverse_from(ptr_with_torv);
 
     auto expr_ptr        = decl->expr->evaluate(ctx).as_type;
     auto new_decl        = new Declaration;
@@ -43,7 +44,7 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
   }
 
   // we need to generate it's dependencies.
-  Dependency::mark_as_done(cache_loc);
+  // Dependency::mark_as_done(cache_loc);
   return cache_loc;
 }
 

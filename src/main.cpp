@@ -176,11 +176,14 @@ int main(int argc, char *argv[]) {
   //
   // For each identifier, figure out which other identifiers are needed in
   // order to declare this one. This cannot generate compilation errors.
-  Dependency::record(global_statements);
+  // Dependency::record(global_statements);
   // To assign type orders, we traverse the dependency graph looking for a
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
-  Dependency::assign_order();
+  // Dependency::assign_order();
+  for (auto stmts : global_statements->statements) {
+    stmts->verify_types();
+  }
   TypeSystem::GenerateLLVM();
 
   if (error_log.num_errors() != 0) {
@@ -210,6 +213,7 @@ int main(int argc, char *argv[]) {
 
   { // Program has been verified. We can now proceed with code generation.
     for (auto decl : Scope::Global->ordered_decls_) {
+
       auto id = decl->identifier;
       if (id->is_arg) { continue; }
 

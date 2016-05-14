@@ -1,5 +1,11 @@
 unique_ptr := struct {
-  ptr := alloc(int)
+  ptr: &int
+}
+
+Get := void -> unique_ptr {
+  ptr: unique_ptr
+  ptr.ptr = alloc(int)
+  return ptr
 }
 
 __destroy__ := (uptr: &unique_ptr) -> void {
@@ -12,7 +18,7 @@ __print__ := (uptr: unique_ptr) -> void {
 }
 
 main := void -> void {
-  p: unique_ptr
+  p := Get()
 
   __destroy__ := (uptr: &unique_ptr) -> void {
     return
@@ -22,6 +28,6 @@ main := void -> void {
 
 }
 foo := void -> void {
-  p: unique_ptr
-  q: unique_ptr
+  p := Get()
+  q := Get()
 }

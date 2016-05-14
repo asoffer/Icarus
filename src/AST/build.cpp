@@ -709,46 +709,6 @@ Node *Statements::build_more(NPtrVec &&nodes) {
   return output;
 }
 
-Node *Statements::build_double_expression_error(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->loc, "Adjacent expressions");
-
-  auto output = new Statements;
-  output->loc = nodes[0]->loc;
-  output->statements.push_back(steal<Node>(nodes[0]));
-  output->statements.push_back(steal<Node>(nodes[1]));
-
-  return output;
-}
-
-Node *Statements::build_extra_expression_error(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->loc, "Adjacent expressions");
-
-  auto output = steal<Statements>(nodes[0]);
-  output->statements.push_back(steal<Node>(nodes[1]));
-
-  return output;
-}
-
-Node *Conditional::build_extra_else_error(NPtrVec &&nodes) {
-  auto if_stmt = static_cast<Conditional *>(nodes[0]);
-  error_log.log(nodes[1]->loc, "If-statement already has an else-branch. "
-                               "The first else-branch is on line " +
-                                   std::to_string(if_stmt->else_line_num) +
-                                   ".");
-
-  return steal<Node>(nodes[0]);
-}
-
-Node *Conditional::build_extra_else_if_error(NPtrVec &&nodes) {
-  auto if_stmt = static_cast<Conditional *>(nodes[0]);
-  error_log.log(nodes[1]->loc,
-                "Else-if block is unreachable because it follows an else "
-                "block. The else-block is on line " +
-                    std::to_string(if_stmt->else_line_num) + ".");
-
-  return steal<Node>(nodes[0]);
-}
-
 Node *Conditional::build_else_if(NPtrVec &&nodes) {
   auto if_stmt = steal<Conditional>(nodes[0]);
   auto else_if = steal<Conditional>(nodes[2]);

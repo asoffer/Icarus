@@ -14,7 +14,6 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void assign_scope() ENDING;                                          \
-  virtual void record_dependencies() ENDING;                                   \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
@@ -32,7 +31,6 @@ namespace AST {
   virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
-  virtual void record_dependencies() ENDING;                                   \
   virtual void verify_types() ENDING;                                          \
   virtual std::string graphviz_label() const ENDING;                           \
   virtual llvm::Value *generate_code() ENDING;                                 \
@@ -54,7 +52,6 @@ struct Node {
   virtual void join_identifiers(bool = false) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
-  virtual void record_dependencies() {}
   virtual void verify_types() {}
   virtual std::string graphviz_label() const;
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
@@ -240,8 +237,6 @@ struct StructLiteral : public Expression {
 struct Statements : public Node {
   static Node *build_one(NPtrVec &&nodes);
   static Node *build_more(NPtrVec &&nodes);
-  static Node *build_double_expression_error(NPtrVec &&nodes);
-  static Node *build_extra_expression_error(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
 
@@ -335,8 +330,6 @@ struct Conditional : public Node {
   static Node *BuildIf(NPtrVec &&nodes);
   static Node *build_else_if(NPtrVec &&nodes);
   static Node *build_else(NPtrVec &&nodes);
-  static Node *build_extra_else_error(NPtrVec &&nodes);
-  static Node *build_extra_else_if_error(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
 

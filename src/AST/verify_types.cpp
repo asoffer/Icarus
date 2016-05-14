@@ -24,8 +24,9 @@ AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
 
   cloned_func->assign_scope();
   cloned_func->join_identifiers();
-  Dependency::record(cloned_func);
-  Dependency::rebuild_already_seen();
+  cloned_func->verify_types();
+  // Dependency::record(cloned_func);
+  // Dependency::rebuild_already_seen();
 
   Scope::Stack.pop();
   assert(Scope::Stack.size() == old_stack_size);
@@ -129,15 +130,24 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
   }
 }
 
+#define STARTING_CHECK                                                         \
+  assert(type != Unknown && "Cyclic dependency");                              \
+  if (type) { return; }                                                        \
+  type = Unknown
+
 namespace AST {
 void Terminal::verify_types() {
   // Anything other than a string is done when the terminal is created.
   // TODO Do string literal and then set the values later.
-  if (terminal_type == Language::Terminal::StringLiteral) { type = String; }
+  if (terminal_type == Language::Terminal::StringLiteral) {
+    auto string_decl = Scope::Global->IdentifierHereOrNull("string");
+    string_decl->verify_types();
+    type = String;
+  }
 }
-
 void Identifier::verify_types() {
-  if (type != Unknown) { return; }
+  STARTING_CHECK;
+  for (auto decl : decls) { decl->verify_types(); }
 
   // We have already checked in Declaration::verify_types that either there is
   // one type, or there are functions
@@ -179,6 +189,10 @@ void Identifier::verify_types() {
 }
 
 void Unop::verify_types() {
+  STARTING_CHECK;
+  operand->verify_types();
+
+
   using Language::Operator;
   switch (op) {
   case Operator::Free: {
@@ -250,7 +264,7 @@ void Unop::verify_types() {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__neg__");
         if (!id_ptr) { continue; }
 
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
+        // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
       }
 
       auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
@@ -293,10 +307,12 @@ void Unop::verify_types() {
 }
 
 void Access::verify_types() {
+  STARTING_CHECK;
+  operand->verify_types();
   auto etype = operand->type;
 
+  // Propogate errors silently.
   if (etype == Error) {
-    // An error was already found in the types, so just pass silently
     type = Error;
     return;
   }
@@ -311,7 +327,7 @@ void Access::verify_types() {
     return;
 
   } else if (etype == Type_) {
-    Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
+    // Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
 
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
@@ -353,6 +369,10 @@ void Access::verify_types() {
 }
 
 void Binop::verify_types() {
+  STARTING_CHECK;
+  lhs->verify_types();
+  rhs->verify_types();
+
   using Language::Operator;
   if (lhs->type == Error || rhs->type == Error) {
     // An error was already found in the types, so just pass silently
@@ -575,7 +595,6 @@ void Binop::verify_types() {
            scope_ptr = scope_ptr->parent) {                                    \
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__" op_name "__");      \
         if (!id_ptr) { continue; }                                             \
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));     \
       }                                                                        \
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__" op_name "__",    \
                                                  Tup({lhs->type, rhs->type})); \
@@ -590,6 +609,9 @@ void Binop::verify_types() {
       }                                                                        \
     }                                                                          \
   } break
+
+    // from above macro
+    // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
 
     CASE(Add, "add", "+", lhs->type);
     CASE(Sub, "sub", "-", lhs->type);
@@ -626,7 +648,7 @@ void Binop::verify_types() {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__mul__");
         if (!id_ptr) { continue; }
 
-        Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
+        // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
       }
 
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__mul__",
@@ -661,6 +683,9 @@ void Binop::verify_types() {
 }
 
 void ChainOp::verify_types() {
+  STARTING_CHECK;
+  for (auto e : exprs) { e->verify_types(); }
+
   if (is_comma_list()) {
     std::vector<Type *> type_vec(exprs.size(), nullptr);
 
@@ -697,6 +722,9 @@ void ChainOp::verify_types() {
 }
 
 void InDecl::verify_types() {
+  STARTING_CHECK;
+  container->verify_types();
+
   if (container->type == Void) {
     type = Error;
     error_log.log(loc, "Cannot iterate over a void type.");
@@ -725,6 +753,11 @@ void InDecl::verify_types() {
 }
 
 void Declaration::verify_types() {
+  STARTING_CHECK;
+  expr->verify_types();
+
+  scope_->ordered_decls_.push_back(this);
+
   if (expr->type == Void) {
     type = Error;
     error_log.log(loc, "Void types cannot be assigned.");
@@ -738,12 +771,23 @@ void Declaration::verify_types() {
   case DeclType::Infer: {
     type = expr->type;
 
-    // TODO if it's compile-time
     if (type == Type_) {
       if (expr->is_struct_literal()) {
         auto expr_as_struct = (StructLiteral *)expr;
+        expr_as_struct->evaluate(scope_->context);
         assert(expr_as_struct->type_value);
         scope_->context.bind(Context::Value(expr_as_struct->type_value),
+                             identifier);
+        if (identifier->token() == "string") {
+          assert(expr_as_struct->type_value->is_struct());
+          static_cast<Structure *>(expr_as_struct
+              ->type_value)->set_name("string");
+        }
+      } else if (expr->is_enum_literal()) {
+        auto expr_as_enum = (EnumLiteral *)expr;
+        expr_as_enum->evaluate(scope_->context);
+        assert(expr_as_enum->type_value);
+        scope_->context.bind(Context::Value(expr_as_enum->type_value),
                              identifier);
       }
     }
@@ -771,6 +815,8 @@ void Declaration::verify_types() {
 
   } break;
   }
+
+  identifier->type = type;
 
   if (identifier->token() == "__print__") {
     if (!type->is_function()) {
@@ -863,6 +909,10 @@ void Declaration::verify_types() {
 }
 
 void ArrayType::verify_types() {
+  STARTING_CHECK;
+  length->verify_types();
+  data_type->verify_types();
+
   assert(length && data_type->type == Type_);
   type = Type_;
 
@@ -880,6 +930,9 @@ void ArrayType::verify_types() {
 }
 
 void ArrayLiteral::verify_types() {
+  STARTING_CHECK;
+  for (auto e : elems) { e->verify_types(); }
+
   if (elems.empty()) {
     type = Error;
     error_log.log(loc, "Cannot infer the type of an empty array.");
@@ -903,6 +956,11 @@ void ArrayLiteral::verify_types() {
 }
 
 void FunctionLiteral::verify_types() {
+  STARTING_CHECK;
+  for (auto in : inputs) { in->verify_types(); }
+  statements->verify_types();
+  return_type_expr->verify_types();
+
   Type *ret_type = return_type_expr->evaluate(fn_scope->context).as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
@@ -927,6 +985,12 @@ void FunctionLiteral::verify_types() {
 }
 
 void Case::verify_types() {
+  STARTING_CHECK;
+  for (auto kv : key_vals) {
+    kv.first->verify_types();
+    kv.second->verify_types();
+  }
+
   std::set<Type *> value_types;
   for (const auto &kv : key_vals) {
     if (kv.first->type != Bool) {
@@ -952,10 +1016,15 @@ void Case::verify_types() {
 }
 
 void Statements::verify_types() {
+  for (auto stmt : statements) { stmt->verify_types(); }
+
   // TODO Verify that a return statement, if present, is the last thing
 }
 
 void While::verify_types() {
+  condition->verify_types();
+  statements->verify_types();
+
   if (condition->type != Bool) {
     error_log.log(loc, "While loop condition must be a bool, but " +
                            condition->type->to_string() + " given.");
@@ -963,11 +1032,14 @@ void While::verify_types() {
 }
 
 void For::verify_types() {
-  /*
-                              */
+  for (auto iter : iterators) { iter->verify_types(); }
+  statements->verify_types();
 }
 
 void Conditional::verify_types() {
+  for (auto cond : conditions) { cond->verify_types(); }
+  for (auto stmts : statements) { stmts->verify_types(); }
+
   for (const auto &cond : conditions) {
     if (cond->type != Bool) {
       error_log.log(loc, "Conditional must be a bool, but " +
@@ -985,6 +1057,8 @@ void EnumLiteral::verify_types() {
 }
 
 void StructLiteral::verify_types() {
+  for (auto decl : declarations) { decl->verify_types(); }
+
   static size_t anon_struct_counter = 0;
   type                              = Type_;
 
@@ -1023,5 +1097,10 @@ void Jump::verify_types() {
   assert(false && "How did you get to here?");
 }
 
-void DummyTypeExpr::verify_types() { type = Type_; }
+void DummyTypeExpr::verify_types() {
+  STARTING_CHECK;
+  type = Type_;
+}
 } // namespace AST
+
+#undef STARTING_CHECK

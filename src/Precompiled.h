@@ -76,7 +76,7 @@ struct TokenLocation {
 #include "Context.h"
 #include "ErrorLog.h"
 
-#include "DependencyFunctions.h"
+//#include "DependencyFunctions.h"
 
 namespace Language {
 // Using masks to make determination node types easier. Starting masks in the

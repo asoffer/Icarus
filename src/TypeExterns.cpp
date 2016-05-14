@@ -53,7 +53,7 @@ void GenerateLLVM() {
   for (auto t : array_types_) t->generate_llvm();
   for (auto t : tuple_types_) t->generate_llvm();
   for (auto t : pointer_types_) t->generate_llvm();
-  for (auto t : fn_types_) t->generate_llvm();
+  for (auto t : fn_types_) { t->generate_llvm(); }
   for (auto kv : struct_types_) kv.second->generate_llvm();
   for (auto kv : struct_types_)
     kv.second->ast_expression->build_llvm_internals();

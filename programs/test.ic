@@ -1,40 +1,40 @@
-main := void -> void {
-  a: [--; int] 
-  b: [4; int]
-  c: [10; int]
-
-  for i in 0 .. 3 {
-    b[i] = i
-  }
-
-
-  for i in 0 .. 9 {
-    c[i] = i
-  }
-
-  a = b
-
-  print a
-  print '\n'
-  print b
-  print '\n'
-  print c
-  print '\n'
-
-  a = c
-
-  print a
-  print '\n'
-  print b
-  print '\n'
-  print c
-  print '\n'
+unique_ptr := struct {
+  ptr: &int
 }
 
-// main := void -> void {
-//   print rotate(3.14159/4.0)
+Get := void -> unique_ptr {
+  ptr: unique_ptr
+  ptr.ptr = alloc(int)
+  print "calling Get               = ", ptr.ptr, "\n"
+  return ptr
+}
+
+__destroy__ := (uptr: &unique_ptr) -> void {
+  print "Calling global destructor = ", uptr.ptr, "\n"
+  free uptr.ptr
+}
+
+// __print__ := (uptr: unique_ptr) -> void {
+//   print @uptr.ptr
 // }
-// 
-// rotate := (theta: real) -> [2, 2; real] {
-//   return [[ cos(theta), -sin(theta) ], [ sin(theta),  cos(theta) ]]
-// }
+
+main := void -> void {
+print "alloc = ", alloc(int), "\n"
+print "alloc = ", alloc(int), "\n"
+print "alloc = ", alloc(int), "\n"
+
+
+  p := Get()
+
+  __destroy__ := (uptr: &unique_ptr) -> void {
+    return
+  }
+
+print "--------\n"
+  foo()
+print "--------\n"
+}
+foo := void -> void {
+  p := Get()
+  q := Get()
+}
