@@ -1,21 +1,9 @@
 #include "Context.h"
 
-Context::Value Context::get(AST::Identifier *idptr) {
-  auto iter = bindings_.find(idptr);
-  if (iter == bindings_.end()) {
-    return !parent_ ? nullptr : parent_->get(idptr);
-  }
-
-  return iter->second;
-}
-
 Context Context::spawn() {
   Context ctx;
   ctx.parent_ = this;
   return ctx;
-}
-void Context::bind(Context::Value v, AST::Identifier *idptr) {
-  bindings_.emplace(idptr, v);
 }
 
 void Context::set_return_value(Value v) {

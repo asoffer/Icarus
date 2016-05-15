@@ -103,8 +103,8 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
         auto new_scope = lhs->scope_->context.spawn();
 
         // TODO tv->identifier isn't in this scope. is this at all reasonable?
-        auto rhs_eval = rhs->evaluate(lhs->scope_->context).as_type;
-        new_scope.bind(Context::Value(rhs_eval), tv->identifier);
+        auto rhs_eval         = rhs->evaluate(lhs->scope_->context).as_type;
+        tv->identifier->value = Context::Value(rhs_eval);
 
         ret_type = tv->identifier->evaluate(new_scope).as_type;
       }
@@ -350,6 +350,14 @@ void Access::verify_types() {
                              " have no member named `" + member_name + "`.");
       type = Error;
     }
+  }
+
+  if (base_type->is_primitive() || base_type->is_array() ||
+      base_type->is_function()) {
+    error_log.log(loc, base_type->to_string() + " has no field named '" +
+                           member_name + "'.");
+    type = Error;
+    return;
   }
 
   assert(type && "type is nullptr in access");
@@ -765,7 +773,7 @@ void Declaration::verify_types() {
         auto expr_as_struct = (StructLiteral *)expr;
         assert(expr_as_struct->value.as_type);
         assert(expr_as_struct->value.as_type->is_struct());
-        scope_->context.bind(expr_as_struct->value, identifier);
+        identifier->value = expr_as_struct->value;
         // TODO mangle the name correctly
         static_cast<Structure *>(expr_as_struct->value.as_type)
             ->set_name(identifier->token());
@@ -774,11 +782,11 @@ void Declaration::verify_types() {
         auto expr_as_enum = (EnumLiteral *)expr;
         expr_as_enum->evaluate(scope_->context);
         assert(expr_as_enum->value.as_type);
-        scope_->context.bind(expr_as_enum->value, identifier);
+        identifier->value = expr_as_enum->value;
       }
     } else if (expr->is_function_literal()) {
       identifier->verify_types();
-      scope_->context.bind(Context::Value(expr), identifier);
+      identifier->value = Context::Value(expr);
     }
 
   } break;

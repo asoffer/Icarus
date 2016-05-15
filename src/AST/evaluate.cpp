@@ -59,19 +59,11 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
 
 Context::Value Identifier::evaluate(Context &ctx) {
   // TODO log the struct name in the context of the scope
-  if (type != Type_) {
-    return ctx.get(this);
-
-  } else if (type->is_struct()) {
+  if (type == Type_ && type->is_struct()) {
     return Context::Value(TypeSystem::get(token()));
-
-  } else {
-    auto val = ctx.get(this);
-
-    assert(val.as_type && "Unknown value for identifier in this scope");
-
-    return val;
   }
+
+  return value;
 }
 
 Context::Value DummyTypeExpr::evaluate(Context &) { return value; }
@@ -331,32 +323,31 @@ Context::Value Declaration::evaluate(Context &ctx) {
   switch (decl_type) {
   case DeclType::Infer: {
     if (expr->type->is_function()) {
-      ctx.bind(Context::Value(expr), identifier);
+      identifier->value = Context::Value(expr);
     } else {
-      auto type_as_ctx_val = expr->evaluate(ctx);
-      ctx.bind(type_as_ctx_val, identifier);
+      identifier->value = expr->evaluate(ctx);
 
       if (expr->is_struct_literal()) {
-        if (type_as_ctx_val.as_type->is_struct()) {
-          static_cast<Structure *>(type_as_ctx_val.as_type)
+        if (identifier->value.as_type->is_struct()) {
+          static_cast<Structure *>(identifier->value.as_type)
               ->set_name(identifier->token());
-        } else if (type_as_ctx_val.as_type->is_parametric_struct()) {
-          static_cast<ParametricStructure *>(type_as_ctx_val.as_type)
+        } else if (identifier->value.as_type->is_parametric_struct()) {
+          static_cast<ParametricStructure *>(identifier->value.as_type)
               ->set_name(identifier->token());
         } else {
           assert(false);
         }
 
       } else if (expr->is_enum_literal()) {
-        assert(type_as_ctx_val.as_type->is_enum());
-        static_cast<Enumeration *>(type_as_ctx_val.as_type)->bound_name =
+        assert(identifier->value.as_type->is_enum());
+        static_cast<Enumeration *>(identifier->value.as_type)->bound_name =
             identifier->token();
       }
     }
   } break;
   case DeclType::Std: {
     if (expr->type == Type_) {
-      ctx.bind(Context::Value(TypeVar(identifier)), identifier);
+      identifier->value = Context::Value(TypeVar(identifier));
     } else if (expr->type->is_type_variable()) {
       // TODO Should we just skip this?
     } else { /* There's nothing to do */
@@ -367,8 +358,8 @@ Context::Value Declaration::evaluate(Context &ctx) {
     // type it must represent from the available information. There is very
     // little information here, since it's a generic function, so we simply bind
     // a type variable and return it.
-    ctx.bind(Context::Value(TypeVar(identifier, expr)), identifier);
-    return ctx.get(identifier);
+    identifier->value = Context::Value(TypeVar(identifier, expr));
+    return identifier->value;
   }
   }
 
@@ -410,12 +401,15 @@ Context::Value Binop::evaluate(Context &ctx) {
         ctx_vals.push_back(rhs_eval);
       }
 
-      Context fn_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        fn_ctx.bind(ctx_vals[i], fn_ptr->inputs[i]->identifier);
+        // TODO do we need to clean this up? I think not. It should just be
+        // overwritten next time the function is called, right?
+        fn_ptr->inputs[i]->identifier->value = ctx_vals[i];
       }
 
-      return fn_ptr->evaluate(fn_ctx);
+      // TODO do we even need the new context spawned here?
+      auto new_ctx = ctx.spawn();
+      return fn_ptr->evaluate(new_ctx);
 
     } else if (lhs->type == Type_) {
       auto lhs_evaled = lhs->evaluate(ctx).as_type;
@@ -521,7 +515,7 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       Context struct_ctx = ctx.spawn();
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        struct_ctx.bind(ctx_vals[i], struct_lit->params[i]->identifier);
+        struct_lit->params[i]->identifier->value = ctx_vals[i];
       }
 
       auto cloned_struct = param_struct->ast_expression->CloneStructLiteral(
