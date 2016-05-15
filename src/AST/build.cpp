@@ -85,17 +85,26 @@ namespace AST {
 //     a : b
 //     a : b = c
 Node *StructLiteral::Build(NPtrVec &&nodes) {
-  auto struct_lit_ptr  = new StructLiteral;
-  struct_lit_ptr->loc  = nodes[0]->loc;
-  struct_lit_ptr->type = Type_;
+  static size_t anon_struct_counter = 0;
+
+  auto struct_lit_ptr   = new StructLiteral;
+  struct_lit_ptr->loc   = nodes[0]->loc;
+  struct_lit_ptr->type  = Type_;
+  struct_lit_ptr->value = Context::Value(Struct(
+      "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
   CheckStructMembers(static_cast<Statements *>(nodes[2]), struct_lit_ptr);
   return struct_lit_ptr;
 }
 
 Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
-  auto struct_lit_ptr  = new StructLiteral;
-  struct_lit_ptr->loc  = nodes[0]->loc;
-  struct_lit_ptr->type = Type_;
+  static size_t anon_struct_counter = 0;
+
+  auto struct_lit_ptr   = new StructLiteral;
+  struct_lit_ptr->loc   = nodes[0]->loc;
+  struct_lit_ptr->type  = Type_;
+  struct_lit_ptr->value = Context::Value(
+      ParamStruct("__anon.param.struct" + std::to_string(anon_struct_counter),
+                  struct_lit_ptr));
 
   if (nodes[1]->is_declaration()) {
     struct_lit_ptr->params = {steal<Declaration>(nodes[1])};

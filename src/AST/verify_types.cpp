@@ -2,11 +2,13 @@
 #include "Scope.h"
 #endif
 
+extern std::queue<AST::Node *> VerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
                                          Type *input_type);
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
+
 
 AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
                                                 TypeVariable *input_type,
@@ -25,8 +27,6 @@ AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   cloned_func->assign_scope();
   cloned_func->join_identifiers();
   cloned_func->verify_types();
-  // Dependency::record(cloned_func);
-  // Dependency::rebuild_already_seen();
 
   Scope::Stack.pop();
   assert(Scope::Stack.size() == old_stack_size);
@@ -62,7 +62,7 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
 
         success = call_binop->evaluate(lhs->scope_->context).as_bool;
 
-        dummy->type_value = nullptr;
+        dummy->value = nullptr;
         delete dummy;
 
         call_binop->lhs = nullptr;
@@ -136,6 +136,22 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
   type = Unknown
 
 namespace AST {
+// TODO In what file should this be placed?
+// TODO this should take a context because flushing it out depends on the context.
+void StructLiteral::FlushOut() {
+  assert(value.as_type && value.as_type->is_struct());
+  assert(params.empty());
+
+  auto tval = static_cast<Structure *>(value.as_type);
+  if (!tval->field_num_to_name.empty()) { return; }
+
+  for (auto d :  declarations) {
+    d->verify_types();
+    tval->insert_field(d->identifier->token(), d->identifier->type,
+                       d->decl_type == DeclType::Infer ? d->expr : nullptr);
+  }
+}
+
 void Terminal::verify_types() {
   // Anything other than a string is done when the terminal is created.
   // TODO Do string literal and then set the values later.
@@ -145,47 +161,23 @@ void Terminal::verify_types() {
     type = String;
   }
 }
-void Identifier::verify_types() {
-  STARTING_CHECK;
-  for (auto decl : decls) { decl->verify_types(); }
 
-  // We have already checked in Declaration::verify_types that either there is
-  // one type, or there are functions
-  if (decls.size() == 1) {
-    type = decls[0]->type;
-    assert(type && "type is null");
+void Identifier::AppendType(Type *t) {
+  if (!type) {
+    type = t;
+    return;
   } else {
-    std::vector<Type *> vec;
-    for (auto decl : decls) { vec.push_back(decl->type); }
-
-    type = new QuantumType(vec);
-  }
-
-  for (const auto decl : decls) {
-    switch (decl->decl_type) {
-    case DeclType::Std: {
-      if (type == Type_) {
-        scope_->context.bind(Context::Value(TypeVar(this)), this);
-      }
-    } break;
-
-    case DeclType::Infer: {
-      if (decl->expr->is_struct_literal()) {
-        //      auto tlit_type_val =
-        //          static_cast<StructLiteral *>(decl->expr)->type_value;
-        //      scope_->context.bind(Context::Value(tlit_type_val), this);
-      } else if (decl->expr->is_function_literal()) {
-        auto flit = static_cast<FunctionLiteral *>(decl->expr);
-        scope_->context.bind(Context::Value(flit), this);
-      }
-    } break;
-    case DeclType::Tick: {
-      // TODO do we need to do anything here?
-    } break;
+    if (type->is_quantum()) {
+      auto q = static_cast<QuantumType *>(type);
+      q->options.push_back(t);
+    } else {
+      type = Quantum({type, t});
     }
   }
+}
 
-  assert(type && "Expression type is nullptr in Identifier::verify_types()");
+void Identifier::verify_types() {
+  for (auto decl : decls) { decl->verify_types(); }
 }
 
 void Unop::verify_types() {
@@ -264,7 +256,7 @@ void Unop::verify_types() {
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__neg__");
         if (!id_ptr) { continue; }
 
-        // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
+        id_ptr->verify_types();
       }
 
       auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
@@ -309,40 +301,38 @@ void Unop::verify_types() {
 void Access::verify_types() {
   STARTING_CHECK;
   operand->verify_types();
-  auto etype = operand->type;
+  auto base_type = operand->type;
 
   // Propogate errors silently.
-  if (etype == Error) {
+  if (base_type == Error) {
     type = Error;
     return;
   }
 
   // Access passes through pointers
-  while (etype->is_pointer()) {
-    etype = static_cast<Pointer *>(etype)->pointee;
+  while (base_type->is_pointer()) {
+    base_type = static_cast<Pointer *>(base_type)->pointee;
   }
 
-  if (etype->is_array() && member_name == "size") {
+  if (base_type->is_array() && member_name == "size") {
     type = Uint;
     return;
 
-  } else if (etype == Type_) {
-    // Dependency::traverse_from(Dependency::PtrWithTorV(operand, false));
-
+  } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
       return;
     }
 
-    auto etypename = operand->evaluate(scope_->context).as_type;
-    if (etypename->is_enum()) {
-      auto enum_type = static_cast<Enumeration *>(etypename);
+    auto evaled_type = operand->evaluate(scope_->context).as_type;
+    if (evaled_type->is_enum()) {
+      auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
         type = operand->evaluate(scope_->context).as_type;
 
       } else {
-        error_log.log(loc, etypename->to_string() + " has no member " +
+        error_log.log(loc, evaled_type->to_string() + " has no member " +
                                member_name + ".");
         type = Error;
       }
@@ -350,15 +340,13 @@ void Access::verify_types() {
     }
   }
 
-  if (etype->is_struct()) {
-    assert(static_cast<Structure *>(etype)->field_type.size());
-
-    auto member_type = static_cast<Structure *>(etype)->field(member_name);
+  if (base_type->is_struct()) {
+    auto member_type = static_cast<Structure *>(base_type)->field(member_name);
     if (member_type) {
       type = member_type;
 
     } else {
-      error_log.log(loc, "Objects of type " + etype->to_string() +
+      error_log.log(loc, "Objects of type " + base_type->to_string() +
                              " have no member named `" + member_name + "`.");
       type = Error;
     }
@@ -595,6 +583,7 @@ void Binop::verify_types() {
            scope_ptr = scope_ptr->parent) {                                    \
         auto id_ptr = scope_ptr->IdentifierHereOrNull("__" op_name "__");      \
         if (!id_ptr) { continue; }                                             \
+        id_ptr->verify_types();                                                \
       }                                                                        \
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__" op_name "__",    \
                                                  Tup({lhs->type, rhs->type})); \
@@ -609,9 +598,6 @@ void Binop::verify_types() {
       }                                                                        \
     }                                                                          \
   } break
-
-    // from above macro
-    // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
 
     CASE(Add, "add", "+", lhs->type);
     CASE(Sub, "sub", "-", lhs->type);
@@ -767,6 +753,9 @@ void Declaration::verify_types() {
   switch (decl_type) {
   case DeclType::Std: {
     type = expr->evaluate(scope_->context).as_type;
+    if (type->is_struct()) {
+      static_cast<Structure *>(type)->ast_expression->FlushOut();
+    }
   } break;
   case DeclType::Infer: {
     type = expr->type;
@@ -774,23 +763,24 @@ void Declaration::verify_types() {
     if (type == Type_) {
       if (expr->is_struct_literal()) {
         auto expr_as_struct = (StructLiteral *)expr;
-        expr_as_struct->evaluate(scope_->context);
-        assert(expr_as_struct->type_value);
-        scope_->context.bind(Context::Value(expr_as_struct->type_value),
-                             identifier);
-        if (identifier->token() == "string") {
-          assert(expr_as_struct->type_value->is_struct());
-          static_cast<Structure *>(expr_as_struct
-              ->type_value)->set_name("string");
-        }
+        assert(expr_as_struct->value.as_type);
+        assert(expr_as_struct->value.as_type->is_struct());
+        scope_->context.bind(expr_as_struct->value, identifier);
+        // TODO mangle the name correctly
+        static_cast<Structure *>(expr_as_struct->value.as_type)
+            ->set_name(identifier->token());
+
       } else if (expr->is_enum_literal()) {
         auto expr_as_enum = (EnumLiteral *)expr;
         expr_as_enum->evaluate(scope_->context);
-        assert(expr_as_enum->type_value);
-        scope_->context.bind(Context::Value(expr_as_enum->type_value),
-                             identifier);
+        assert(expr_as_enum->value.as_type);
+        scope_->context.bind(expr_as_enum->value, identifier);
       }
+    } else if (expr->is_function_literal()) {
+      identifier->verify_types();
+      scope_->context.bind(Context::Value(expr), identifier);
     }
+
   } break;
   case DeclType::Tick: {
     if (!expr->type->is_function()) {
@@ -816,7 +806,7 @@ void Declaration::verify_types() {
   } break;
   }
 
-  identifier->type = type;
+  identifier->AppendType(type);
 
   if (identifier->token() == "__print__") {
     if (!type->is_function()) {
@@ -958,7 +948,7 @@ void ArrayLiteral::verify_types() {
 void FunctionLiteral::verify_types() {
   STARTING_CHECK;
   for (auto in : inputs) { in->verify_types(); }
-  statements->verify_types();
+  VerificationQueue.push(statements);
   return_type_expr->verify_types();
 
   Type *ret_type = return_type_expr->evaluate(fn_scope->context).as_type;
@@ -1051,27 +1041,15 @@ void Conditional::verify_types() {
 void EnumLiteral::verify_types() {
   static size_t anon_enum_counter = 0;
 
-  type       = Type_;
-  type_value = Enum("__anon.enum" + std::to_string(anon_enum_counter), this);
+  type  = Type_;
+  value = Context::Value(
+      Enum("__anon.enum" + std::to_string(anon_enum_counter), this));
   ++anon_enum_counter;
 }
 
 void StructLiteral::verify_types() {
-  for (auto decl : declarations) { decl->verify_types(); }
-
-  static size_t anon_struct_counter = 0;
-  type                              = Type_;
-
-  if (!type_value) {
-    if (params.empty()) {
-      type_value =
-          Struct("__anon.struct" + std::to_string(anon_struct_counter), this);
-    } else {
-      type_value = ParamStruct(
-          "__anon.param.struct" + std::to_string(anon_struct_counter), this);
-    }
-    ++anon_struct_counter;
-  }
+  // for (auto decl : declarations) { decl->verify_types(); }
+  for (auto decl : declarations) { VerificationQueue.push(decl); }
 }
 
 void Jump::verify_types() {
@@ -1104,3 +1082,4 @@ void DummyTypeExpr::verify_types() {
 } // namespace AST
 
 #undef STARTING_CHECK
+#undef AT

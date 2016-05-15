@@ -98,9 +98,18 @@ void Structure::generate_llvm() const {
   if (time() == Time::compile || llvm_type) return;
 
   auto struct_type = llvm::StructType::create(global_module->getContext());
-  llvm_type = struct_type;
+  llvm_type        = struct_type;
 
   for (const auto &f : field_type) f->generate_llvm();
+
+  size_t num_data_fields = field_num_to_llvm_num.size();
+  std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
+  for (const auto &kv : field_num_to_llvm_num) {
+    llvm_fields[kv.second] = field_type AT(kv.first)->llvm_type;
+  }
+
+  static_cast<llvm::StructType *>(llvm_type)
+      ->setBody(std::move(llvm_fields), /* isPacked = */ false);
 
   struct_type->setName(bound_name);
 }
@@ -115,30 +124,4 @@ void SliceType::generate_llvm() const {} // TODO Assert false?
 void Enumeration::generate_llvm() const { /* Generated on creation */ }
 void Primitive::generate_llvm() const { /* Generated on creation */ }
 
-// TODO make this a member of Structure instead
-void AST::StructLiteral::build_llvm_internals() {
-  if (params.empty()) {
-    assert(type_value->is_struct());
-    auto tval = static_cast<Structure *>(type_value);
-
-    auto llvm_struct_type =
-        static_cast<llvm::StructType *>(tval->llvm_type);
-    if (!llvm_struct_type->isOpaque()) return;
-  
-    for (const auto &decl : declarations) {
-      if (decl->type->has_vars) return;
-    }
-  
-    size_t num_data_fields = tval->field_num_to_llvm_num.size();
-    std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
-    for (const auto& kv : tval->field_num_to_llvm_num) {
-      llvm_fields[kv.second] = tval->field_type AT(kv.first)->llvm_type;
-    }
-
-    static_cast<llvm::StructType *>(tval->llvm_type)
-        ->setBody(std::move(llvm_fields), /* isPacked = */ false);
-  } else {
-    assert(false);
-  }
-}
 #undef AT

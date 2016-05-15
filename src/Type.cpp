@@ -253,7 +253,8 @@ QuantumType::QuantumType(const std::vector<Type *> &vec) : options(vec) {
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), init_fn_(nullptr),
-      destroy_fn_(nullptr), assign_fn_(nullptr) {}
+      destroy_fn_(nullptr), assign_fn_(nullptr) {
+}
 
 Type *Structure::field(const std::string &name) const {
   return field_type AT(field_name_to_num AT(name));
@@ -297,12 +298,12 @@ void ParametricStructure::set_name(const std::string &name) {
   bound_name = name;
   assert(ast_expression);
   for (auto &kv : ast_expression->cache) {
-    assert(kv.second->type_value);
+    assert(kv.second->value.as_type);
     // NOTE This is pretty hacky: Find the first paren.
     // TODO better way would be to cache not just the struct but it's parameters
     // as well.
     auto &str_name =
-        static_cast<Structure *>(kv.second->type_value)->bound_name;
+        static_cast<Structure *>(kv.second->value.as_type)->bound_name;
     size_t paren_pos = str_name.find('(');
     assert(paren_pos != std::string::npos);
     str_name =

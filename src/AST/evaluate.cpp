@@ -74,9 +74,7 @@ Context::Value Identifier::evaluate(Context &ctx) {
   }
 }
 
-Context::Value DummyTypeExpr::evaluate(Context &) {
-  return Context::Value(type_value);
-}
+Context::Value DummyTypeExpr::evaluate(Context &) { return value; }
 
 Context::Value Unop::evaluate(Context &ctx) {
   if (op == Language::Operator::Return) {
@@ -117,6 +115,7 @@ Context::Value Unop::evaluate(Context &ctx) {
       assert(false);
 
     } else if (operand->type != Type_) {
+      std::cout << *this << operand->type << std::endl;
       // TODO better error message
       error_log.log(loc, "Taking the address of a " +
                              operand->type->to_string() +
@@ -324,29 +323,7 @@ Context::Value Case::evaluate(Context &ctx) {
   assert(false);
 }
 
-Context::Value StructLiteral::evaluate(Context &ctx) {
-  if (!(params.empty() && type_value)) {
-    // TODO don't really need to call verify types;
-    verify_types();
-
-  } else if (params.empty()) {
-    auto struct_type = static_cast<Structure *>(type_value);
-    if (struct_type->field_type.size() == 0) {
-      for (auto decl : declarations) {
-        bool is_inferred = (decl->decl_type == DeclType::Infer);
-        Type *field      = is_inferred
-                          ? decl->expr->type
-                          : decl->expr->evaluate(scope_->context).as_type;
-        assert(field && "field is nullptr");
-        struct_type->insert_field(decl->identifier->token(), field,
-                                  is_inferred ? decl->expr : nullptr);
-      }
-    }
-  }
-
-
-  return Context::Value(type_value);
-}
+Context::Value StructLiteral::evaluate(Context &ctx) { return value; }
 
 Context::Value InDecl::evaluate(Context &ctx) { return nullptr; }
 
@@ -398,9 +375,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
   return nullptr;
 }
 
-Context::Value EnumLiteral::evaluate(Context &) {
-  return Context::Value(type_value);
-}
+Context::Value EnumLiteral::evaluate(Context &) { return value; }
 
 Context::Value Access::evaluate(Context &ctx) {
   if (type->is_enum()) {
@@ -514,7 +489,7 @@ Context::Value Binop::evaluate(Context &ctx) {
           std::cout << "   - Found a match." << std::endl;
         }
         // If you get down here, you have found the right thing.
-        return Context::Value(cached_val.second->type_value);
+        return cached_val.second->value;
 
       outer_continue:;
       }
@@ -531,8 +506,8 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       // TODO move the functionality of verify_types out into another function
       // and have this call that function and verify_types call that as well.
-      // The naming is wacky. The call here is just to use the type_value
-      // assignment functionality.
+      // The naming is wacky. The call here is just to use the value assignment
+      // functionality.
       cache_loc->verify_types();
 
       if (debug::parametric_struct) {
@@ -568,13 +543,13 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       // TODO move the functionality of verify_types out into another function
       // and have this call that function and verify_types call that as well.
-      // The naming is wacky. The call here is just to use the type_value
-      // assignment functionality.
+      // The naming is wacky. The call here is just to use the value assignment
+      // functionality.
       cloned_struct->verify_types();
-      static_cast<Structure *>(cloned_struct->type_value)->set_name(ss.str());
+      static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
 
       auto struct_type =
-          static_cast<Structure *>(cloned_struct->type_value);
+          static_cast<Structure *>(cloned_struct->value.as_type);
       if (struct_type->field_type.size() == 0) {
         for (auto decl : cloned_struct->declarations) {
           bool is_inferred = (decl->decl_type == DeclType::Infer);
@@ -588,7 +563,7 @@ Context::Value Binop::evaluate(Context &ctx) {
         }
       }
 
-      return Context::Value(cloned_struct->type_value);
+      return cloned_struct->value;
     } else {
       assert(false);
     }

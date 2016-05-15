@@ -15,6 +15,7 @@ extern void GenerateLLVM();
 } // namespace TypeSystem
 
 extern llvm::IRBuilder<> builder;
+std::queue<AST::Node *> VerificationQueue;
 
 namespace TypeSystem {
 void initialize();
@@ -181,8 +182,11 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   // Dependency::assign_order();
-  for (auto stmts : global_statements->statements) {
-    stmts->verify_types();
+  VerificationQueue.push(global_statements);
+  while (!VerificationQueue.empty()) {
+    auto node_to_verify = VerificationQueue.front();
+    node_to_verify->verify_types();
+    VerificationQueue.pop();
   }
   TypeSystem::GenerateLLVM();
 

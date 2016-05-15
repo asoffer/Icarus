@@ -256,6 +256,6 @@ std::string Jump::to_string(size_t n) const {
 }
 
 std::string DummyTypeExpr::to_string(size_t n) const {
-  return tabs(n) + "<" + type_value->to_string() + ">\n";
+  return tabs(n) + "<" + value.as_type->to_string() + ">\n";
 }
 } // namespace AST

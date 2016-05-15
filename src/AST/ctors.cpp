@@ -22,7 +22,7 @@ TokenNode::TokenNode(TokenLocation loc, Language::NodeType in_node_type,
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(false), type(nullptr) {}
+      lvalue(false), type(nullptr), value(nullptr) {}
 Declaration::Declaration()
     : expr(nullptr), decl_type(DeclType::Std) {}
 InDecl::InDecl() {}
@@ -37,8 +37,9 @@ ArrayType::ArrayType() {}
 
 DummyTypeExpr::DummyTypeExpr() { assert(false); }
 
-DummyTypeExpr::DummyTypeExpr(TokenLocation new_loc, Type *t) : type_value(t) {
+DummyTypeExpr::DummyTypeExpr(TokenLocation new_loc, Type *t) {
   loc = new_loc;
+  value = Context::Value(t);
 }
 
 Jump::Jump(TokenLocation new_loc, JumpType jump_type) : jump_type(jump_type) {
@@ -60,9 +61,9 @@ FunctionLiteral::FunctionLiteral()
     : fn_scope(new FnScope), llvm_fn(nullptr), statements(nullptr),
       code_gened(false) {}
 
-StructLiteral::StructLiteral() : type_value(nullptr), type_scope(new Scope) {}
+StructLiteral::StructLiteral() : type_scope(new Scope) {}
 
-EnumLiteral::EnumLiteral() : type_value(nullptr) {}
+EnumLiteral::EnumLiteral() {}
 
 While::While() : while_scope(new BlockScope(ScopeType::While)) {}
 For::For() : for_scope(new BlockScope(ScopeType::For)) {}

@@ -55,10 +55,7 @@ void GenerateLLVM() {
   for (auto t : pointer_types_) t->generate_llvm();
   for (auto t : fn_types_) { t->generate_llvm(); }
   for (auto kv : struct_types_) kv.second->generate_llvm();
-  for (auto kv : struct_types_)
-    kv.second->ast_expression->build_llvm_internals();
 }
-
 } // namespace TypeSystem
 
 Array *Arr(Type *t, size_t len) {
@@ -159,7 +156,7 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   if (t == nullptr) return nullptr;
 
   auto struct_type = new Structure(name, t);
-  t->type_value = struct_type;
+  t->value = Context::Value(struct_type);
 
   return TypeSystem::struct_types_[name] = struct_type;
 }

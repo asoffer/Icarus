@@ -115,6 +115,7 @@ struct Expression : public Node {
   size_t precedence;
   bool lvalue;
   Type *type;
+  Context::Value value;
 };
 
 struct TokenNode : public Node {
@@ -155,6 +156,8 @@ struct Terminal : public Expression {
 struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
   Identifier(TokenLocation loc, const std::string &token_string);
+
+  void AppendType(Type *t);
 
   llvm::Value *alloc;
   bool is_arg;                      // function argument or struct parameter
@@ -219,13 +222,12 @@ struct StructLiteral : public Expression {
   static Node *Build(NPtrVec &&nodes);
   static Node *BuildParametric(NPtrVec &&nodes);
 
-  void build_llvm_internals();
   StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
+  void FlushOut();
 
   std::vector<Declaration *> params;
   std::vector<llvm::Constant *> init_vals;
 
-  Type *type_value; // Either a Structure or ParametricStructure.
   Scope *type_scope;
   std::vector<Declaration *> declarations;
 
@@ -377,7 +379,6 @@ struct EnumLiteral : public Expression {
   EXPR_FNS(EnumLiteral, enum_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  Enumeration *type_value;
   std::vector<std::string> members;
 };
 
@@ -386,8 +387,6 @@ struct DummyTypeExpr : public Expression {
   static Node *build(NPtrVec &&nodes);
 
   DummyTypeExpr(TokenLocation loc, Type *t);
-
-  Type *type_value;
 };
 
 struct Jump : public Node {
