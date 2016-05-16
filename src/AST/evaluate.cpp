@@ -75,9 +75,10 @@ Context::Value Unop::evaluate(Context &ctx) {
   if (op == Language::Operator::Return) {
     ctx.set_return_value(operand->evaluate(ctx));
 
-    return nullptr;
+    return value = nullptr;
 
   } else if (op == Language::Operator::Print) {
+    // TODO Don't print. Raise an error.
     auto val = operand->evaluate(ctx);
     if (operand->type == Bool)
       std::cout << (val.as_bool ? "true" : "false");
@@ -95,7 +96,7 @@ Context::Value Unop::evaluate(Context &ctx) {
     }
 
     std::cout.flush();
-    return nullptr;
+    return value = nullptr;
 
   } else if (op == Language::Operator::Sub) {
     if (type == Int) {
@@ -112,7 +113,7 @@ Context::Value Unop::evaluate(Context &ctx) {
                              " is not allowed at compile-time");
     }
 
-    return Context::Value(Ptr(operand->evaluate(ctx).as_type));
+    return value = Context::Value(Ptr(operand->evaluate(ctx).as_type));
   }
 
   assert(false && "Unop eval: I don't know what to do.");
@@ -128,22 +129,22 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       for (auto &expr : exprs) {
         expr_val = (expr_val != expr->evaluate(ctx).as_bool);
       }
-      return Context::Value(expr_val);
+      return value = Context::Value(expr_val);
     }
     case Operator::And:
       for (auto &expr : exprs) {
-        if (expr->evaluate(ctx).as_bool) return Context::Value(false);
+        if (expr->evaluate(ctx).as_bool) return value = Context::Value(false);
       }
-      return Context::Value(true);
+      return value = Context::Value(true);
     case Operator::Or:
       for (auto &expr : exprs) {
-        if (expr->evaluate(ctx).as_bool) { return Context::Value(true); }
+        if (expr->evaluate(ctx).as_bool) { return value = Context::Value(true); }
       }
-      return Context::Value(false);
+      return value = Context::Value(false);
     default: assert(false && "Invalid chainop for bool in evaluate()");
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
 
   } else if (expr_type == Int) {
     bool total = true;
@@ -161,12 +162,12 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       default: assert(false && "Invalid chainop for int in evaluate()");
       }
 
-      if (!total) { return Context::Value(false); }
+      if (!total) { return value = Context::Value(false); }
 
       last = next;
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
 
   } else if (expr_type == Type_) {
     bool total = true;
@@ -180,12 +181,12 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       default: assert(false && "Invalid chainop for type in evaluate()");
       }
 
-      if (!total) { return Context::Value(false); }
+      if (!total) { return value = Context::Value(false); }
 
       last = next;
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
 
   } else if (expr_type == Uint) {
     bool total = true;
@@ -203,12 +204,12 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       default: assert(false && "Invalid chainop for uint in evaluate()");
       }
 
-      if (!total) { return Context::Value(false); }
+      if (!total) { return value = Context::Value(false); }
 
       last = next;
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
 
   } else if (expr_type == Real) {
     bool total = true;
@@ -226,12 +227,12 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       default: assert(false && "Invalid chainop for uint in evaluate()");
       }
 
-      if (!total) { return Context::Value(false); }
+      if (!total) { return value = Context::Value(false); }
 
       last = next;
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
 
   } else if (expr_type->is_enum()) {
     bool total = true;
@@ -245,13 +246,14 @@ Context::Value ChainOp::evaluate(Context &ctx) {
       default: assert(false && "Invalid chainop for enum in evaluate()");
       }
 
-      if (!total) { return Context::Value(false); }
+      if (!total) { return value = Context::Value(false); }
 
       last = next;
     }
 
-    return Context::Value(true);
+    return value = Context::Value(true);
   } else {
+    std::cerr << *this << std::endl;
     assert(false && "ChainOp::evaluate case unhandled");
   }
 }
@@ -264,10 +266,10 @@ Context::Value ArrayType::evaluate(Context &ctx) {
     auto data_type_eval = data_type->evaluate(ctx).as_type;
     auto length_eval    = length->evaluate(ctx).as_uint;
 
-    return Context::Value(Arr(data_type_eval, length_eval));
+    return value = Context::Value(Arr(data_type_eval, length_eval));
   }
 
-  return Context::Value(Arr(data_type->evaluate(ctx).as_type));
+  return value = Context::Value(Arr(data_type->evaluate(ctx).as_type));
 }
 
 Context::Value ArrayLiteral::evaluate(Context &) { return nullptr; }
@@ -487,7 +489,7 @@ Context::Value Binop::evaluate(Context &ctx) {
           std::cout << *(cached_val.first[0]) << std::endl;
         }
         // If you get down here, you have found the right thing.
-        return cached_val.second->value;
+        return value = cached_val.second->value;
 
       outer_continue:;
       }
@@ -545,7 +547,7 @@ Context::Value Binop::evaluate(Context &ctx) {
       cloned_struct->verify_types();
       static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
 
-      return cloned_struct->value;
+      return value = cloned_struct->value;
     } else {
       assert(false);
     }

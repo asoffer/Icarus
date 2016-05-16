@@ -1,19 +1,84 @@
 main := void -> void {
-  print int,        ":\n  ", int.bytes,        "  ", int.alignment,        "\n\n"
-  print real,       ":\n  ", real.bytes,       "  ", real.alignment,       "\n\n"
-  print pair(real), ":\n  ", pair(real).bytes, "  ", pair(real).alignment, "\n\n"
-  print foo,        ":\n  ", foo.bytes,        "  ", foo.alignment,        "\n\n"
-  print string,     ":\n  ", string.bytes,     "  ", string.alignment,     "\n\n"
-  print color,      ":\n  ", color.bytes,      "  ", color.alignment,      "\n\n"
-  print &foo,       ":\n  ", (&foo).bytes,     "  ", (&foo).alignment,     "\n\n"
-  print [10; char], ":\n  ", [10; char].bytes, "  ", [10; char].alignment, "\n\n"
-  print [--; char], ":\n  ", [--; char].bytes, "  ", [--; char].alignment, "\n\n"
-  print type,       ":\n  ", type.bytes,       "  ", type.alignment,       "\n\n"
+  print int, ":\n",
+  "    bytes = ", int.bytes,
+  "alignment = ", int.alignment, "\n\n"
+
+  print real, ":\n",
+  "    bytes = ", real.bytes,
+  "alignment = ", real.alignment, "\n\n"
+
+  print pair(real, bool), ":\n",
+  "    bytes = ", pair(real, bool).bytes,
+  "alignment = ", pair(real, bool).alignment, "\n\n"
+
+  print pair(bool, real), ":\n",
+  "    bytes = ", pair(bool, real).bytes,
+  "alignment = ", pair(bool, real).alignment, "\n\n"
+
+  print RBB, ":\n",
+  "    bytes = ", RBB.bytes,
+  "alignment = ", RBB.alignment, "\n\n"
+
+  print BRB, ":\n",
+  "    bytes = ", BRB.bytes,
+  "alignment = ", BRB.alignment, "\n\n"
+
+  print BBR, ":\n",
+  "    bytes = ", BBR.bytes,
+  "alignment = ", BBR.alignment, "\n\n"
+
+  print foo, ":\n",
+  "    bytes = ", foo.bytes,
+  "alignment = ", foo.alignment, "\n\n"
+
+  print &foo, ":\n",
+  "    bytes = ", (&foo).bytes,
+  "alignment = ", (&foo).alignment, "\n\n"
+
+  print fooptr, ":\n",
+  "    bytes = ", fooptr.bytes,
+  "alignment = ", fooptr.alignment, "\n\n"
+
+  print color, ":\n",
+  "    bytes = ", color.bytes,
+  "alignment = ", color.alignment, "\n\n"
+
+  print string, ":\n",
+  "    bytes = ", string.bytes,
+  "alignment = ", string.alignment, "\n\n"
+
+  print [10; char], ":\n",
+  "    bytes = ", [10; char].bytes,
+  "alignment = ", [10; char].alignment, "\n\n"
+
+  print [--; char], ":\n",
+  "    bytes = ", [--; char].bytes,
+  "alignment = ", [--; char].alignment, "\n\n"
+
+  print void, ":\n",
+  "    bytes = ", void.bytes,
+  "alignment = ", void.alignment, "\n\n"
+
+  print type, ":\n",
+  "    bytes = ", type.bytes,
+  "alignment = ", type.alignment, "\n\n"
+
+  fooptr := &foo
 }
 
-pair := struct(T: type) {
-  key: T
-  val: T
+pair := struct (K: type, V: type) {
+  key: K
+  val: V
+}
+
+BRB := triple(bool, real, bool)
+BBR := triple(bool, bool, real)
+RBB := triple(real, bool, bool)
+
+triple := struct (A: type, B: type, C: type) {
+  a: A
+  b: B
+  c: C
 }
 
 foo := struct {

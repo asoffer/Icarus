@@ -31,12 +31,8 @@ size_t Type::bytes() const {
 
   if (!stores_data()) { return 0; }
 
-  if (!llvm_type) {
-    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
-              << __LINE__ << ")" << std::endl;
-  }
-
-  return (llvm_type == nullptr) ? 0 : data_layout->getTypeStoreSize(llvm_type);
+  assert(llvm_type);
+  return data_layout->getTypeStoreSize(llvm_type);
 }
 
 size_t Type::alignment() const {
@@ -46,13 +42,8 @@ size_t Type::alignment() const {
 
   if (!stores_data()) { return 0; }
 
-  if (!llvm_type) {
-    std::cout << "Debug warning: llvm_type is null in " << __FILE__ << "("
-              << __LINE__ << ")" << std::endl;
-  }
-
-  return (llvm_type == nullptr) ? 0
-                                : data_layout->getABITypeAlignment(llvm_type);
+  assert(llvm_type);
+  return data_layout->getABITypeAlignment(llvm_type);
 }
 
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,

@@ -320,6 +320,8 @@ void Access::verify_types() {
 
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
+      if (!operand->value.as_type) { operand->evaluate(scope_->context); }
+      assert(operand->value.as_type);
       type = Uint;
       return;
     }
@@ -793,6 +795,8 @@ void Declaration::verify_types() {
         expr_as_enum->evaluate(scope_->context);
         assert(expr_as_enum->value.as_type);
         identifier->value = expr_as_enum->value;
+        static_cast<Enumeration *>(expr_as_enum->value.as_type)->bound_name =
+            identifier->token();
       }
     } else if (expr->is_function_literal()) {
       identifier->verify_types();
