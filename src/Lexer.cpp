@@ -5,12 +5,17 @@
 #endif
 
 extern std::queue<std::string> file_queue;
+namespace builtin {
+llvm::Function *ord();
+llvm::Function *ascii();
+} // namespace builtin
 
-#define RETURN_TERMINAL(term_type, ty, tk)                                     \
+#define RETURN_TERMINAL(term_type, ty, val, tk)                                \
   auto term_ptr           = new AST::Terminal;                                 \
   term_ptr->loc           = loc_;                                              \
   term_ptr->terminal_type = Language::Terminal::term_type;                     \
   term_ptr->type          = ty;                                                \
+  term_ptr->value         = val;                                               \
   term_ptr->token_        = tk;                                                \
                                                                                \
   term_ptr->set_node_type(Language::expr);                                     \
@@ -105,30 +110,38 @@ AST::Node *Lexer::next_word() {
   // appropriate Node.
   for (const auto &type_lit : TypeSystem::Literals) {
     if (type_lit.first == token) {
-      RETURN_TERMINAL(Type, Type_, token);
+      RETURN_TERMINAL(Type, Type_, Context::Value(Type_), token);
     }
   }
 
   if (token == "true") {
-    RETURN_TERMINAL(True, Bool, token);
+    RETURN_TERMINAL(True, Bool, Context::Value(true), token);
 
   } else if (token == "false") {
-    RETURN_TERMINAL(False, Bool, token);
+    RETURN_TERMINAL(False, Bool, Context::Value(false), token);
 
   } else if (token == "null") {
-    RETURN_TERMINAL(Null, NullPtr, "null");
+    RETURN_TERMINAL(Null, NullPtr, nullptr, "null");
 
   } else if (token == "ord") {
-    RETURN_TERMINAL(Ord, Func(Char, Uint), "ord");
+    // TODO If you want to remove nullptr, and instead use
+    // Context::Value(builtin::ord()), you can, but you need to also initialize
+    // the global_module before you make a call to the lexer.
+    RETURN_TERMINAL(Ord, Func(Char, Uint), nullptr, "ord");
 
   } else if (token == "ascii") {
-    RETURN_TERMINAL(ASCII, Func(Uint, Char), "ascii");
+    // TODO If you want to remove nullptr, and instead use
+    // Context::Value(builtin::ascii()), you can, but you need to also
+    // initialize the global_module before you make a call to the lexer.
+    RETURN_TERMINAL(ASCII, Func(Uint, Char), nullptr, "ascii");
 
   } else if (token == "alloc") {
-    RETURN_TERMINAL(Alloc, DepType([](Type *t) { return Ptr(t); }), "alloc");
+    RETURN_TERMINAL(Alloc, DepType([](Type *t) { return Ptr(t); }), nullptr,
+                    "alloc"); // TODO nullptr
 
   } else if (token == "input") {
-    RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), "input");
+    RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), nullptr,
+                    "input"); // TODO nullptr
 
   } else if (token == "else") {
     auto term_ptr           = new AST::Terminal;
@@ -210,11 +223,11 @@ AST::Node *Lexer::next_number() {
     // If the next character is a 'u' or a 'U', it's an integer literal. We can
     // ignore the character and return.
     file_.get();
-    RETURN_TERMINAL(Uint, Uint, token);
+    RETURN_TERMINAL(Uint, Uint, nullptr, token); // TODO nullptr
   } else if (peek != '.') {
     // If the next character is not a period, we're looking at an integer and
     // can return.
-    RETURN_TERMINAL(Int, Int, token);
+    RETURN_TERMINAL(Int, Int, nullptr, token); // TODO nullptr
   }
 
   // If the next character was a period, this is a non-integer. Add the period
@@ -224,7 +237,7 @@ AST::Node *Lexer::next_number() {
     peek = file_.peek();
   } while (std::isdigit(peek));
 
-  RETURN_TERMINAL(Real, Real, token);
+  RETURN_TERMINAL(Real, Real, nullptr, token); // TODO nullptr
 }
 
 AST::Node *Lexer::next_operator() {
@@ -373,7 +386,7 @@ AST::Node *Lexer::next_operator() {
       if (lead_char == '-') {
         if (peek == '-') {
           file_.get();
-          RETURN_TERMINAL(Hole, Unknown, "--");
+          RETURN_TERMINAL(Hole, Unknown, nullptr, "--"); // TODO nullptr
         }
         return new AST::TokenNode(loc_, Language::op_bl, "-");
       } else {
@@ -437,7 +450,7 @@ AST::Node *Lexer::next_string_literal() {
   }
 
   // TODO Why not String instead of Unknown for the type?
-  RETURN_TERMINAL(StringLiteral, Unknown, str_lit);
+  RETURN_TERMINAL(StringLiteral, Unknown, nullptr, str_lit); // TODO nullptr
 }
 
 AST::Node *Lexer::next_char_literal() {
@@ -492,7 +505,8 @@ AST::Node *Lexer::next_char_literal() {
     error_log.log(loc_, "Character literal must be followed by a single-quote.");
   }
 
-  RETURN_TERMINAL(Char, Char, std::string(1, output_char));
+  RETURN_TERMINAL(Char, Char, Context::Value(output_char),
+                  std::string(1, output_char));
 }
 
 AST::Node *Lexer::next_given_slash() {

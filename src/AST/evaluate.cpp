@@ -58,9 +58,10 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
 }
 
 Context::Value Identifier::evaluate(Context &ctx) {
-  // TODO log the struct name in the context of the scope
-  if (type == Type_ && type->is_struct()) {
-    return Context::Value(TypeSystem::get(token()));
+  // What about when it's, e.g., an int with the value 0?
+  if (type == Type_ && !value.as_type) {
+    assert(decls.size() == 1);
+    decls[0]->evaluate(ctx);
   }
 
   return value;
@@ -69,6 +70,8 @@ Context::Value Identifier::evaluate(Context &ctx) {
 Context::Value DummyTypeExpr::evaluate(Context &) { return value; }
 
 Context::Value Unop::evaluate(Context &ctx) {
+  operand->verify_types();
+
   if (op == Language::Operator::Return) {
     ctx.set_return_value(operand->evaluate(ctx));
 
@@ -102,12 +105,7 @@ Context::Value Unop::evaluate(Context &ctx) {
       return Context::Value(-operand->evaluate(ctx).as_real);
     }
   } else if (op == Language::Operator::And) {
-    if (operand->type == Unknown) {
-      // Create a cached value for the operand
-      assert(false);
-
-    } else if (operand->type != Type_) {
-      std::cout << *this << operand->type << std::endl;
+    if (operand->type != Type_) {
       // TODO better error message
       error_log.log(loc, "Taking the address of a " +
                              operand->type->to_string() +
@@ -419,32 +417,37 @@ Context::Value Binop::evaluate(Context &ctx) {
       auto struct_lit   = param_struct->ast_expression;
 
       if (debug::parametric_struct) {
+        assert(struct_lit->value.as_type);
+        assert(struct_lit->value.as_type->is_parametric_struct());
         std::cout << "\n== Evaluating a parametric struct call ==\n"
-                  << *struct_lit << std::endl;
+                  << static_cast<ParametricStructure *>(struct_lit->value.as_type)
+                         ->bound_name
+                  << std::endl;
       }
-      std::vector<Expression *> arg_vals;
-      if (rhs->is_comma_list()) {
-        arg_vals = static_cast<ChainOp *>(rhs)->exprs;
-      } else {
-        arg_vals.push_back(rhs);
-      }
-
-      auto num_args = arg_vals.size();
+      std::vector<Context::Value> arg_vals;
+      int arg_val_counter = 0;
 
       if (debug::parametric_struct) {
         std::cout << " * Argument values:" << std::endl;
       }
-      std::vector<Context::Value> ctx_vals;
-      // Populate the function context with arguments
-      for (size_t i = 0; i < num_args; ++i) {
-        auto rhs_eval = arg_vals[i]->evaluate(ctx);
-        ctx_vals.push_back(rhs_eval);
 
-        if (debug::parametric_struct) {
-          std::cout << "   " << i << ". " << *ctx_vals.back().as_type
-                    << std::endl;
+      if (rhs->is_comma_list()) {
+        for (auto elem : static_cast<ChainOp *>(rhs)->exprs) {
+          arg_vals.push_back(elem->evaluate(ctx));
+          if (debug::parametric_struct) {
+            std::cout << "   " << arg_val_counter++ << ". "
+                      << *arg_vals.back().as_type << std::endl;
+          }
         }
+      } else {
+        arg_vals.push_back(rhs->evaluate(ctx));
+        if (debug::parametric_struct) {
+          std::cout << "   " << arg_val_counter++ << ". "
+                    << *arg_vals.back().as_type << std::endl;
+          }
       }
+
+      auto num_args = arg_vals.size();
 
       if (debug::parametric_struct) { std::cout << std::endl; }
 
@@ -454,7 +457,7 @@ Context::Value Binop::evaluate(Context &ctx) {
       size_t cache_num = 0;
       for (const auto &cached_val : struct_lit->cache) {
         if (debug::parametric_struct) {
-          std::cout << " * Checking match against cache position " << cache_num
+          std::cout << " * Checking match against cache position " << cache_num++
                     << std::endl;
         }
 
@@ -469,7 +472,7 @@ Context::Value Binop::evaluate(Context &ctx) {
 
         for (size_t i = 0; i < num_args; ++i) {
           // TODO not always a type
-          if (ctx_vals[i].as_type != cached_val.first[i]) {
+          if (arg_vals[i].as_type != cached_val.first[i]) {
 
             if (debug::parametric_struct) {
               std::cout << "   - Failed matching argument " << i << std::endl;
@@ -481,6 +484,7 @@ Context::Value Binop::evaluate(Context &ctx) {
 
         if (debug::parametric_struct) {
           std::cout << "   - Found a match." << std::endl;
+          std::cout << *(cached_val.first[0]) << std::endl;
         }
         // If you get down here, you have found the right thing.
         return cached_val.second->value;
@@ -493,16 +497,36 @@ Context::Value Binop::evaluate(Context &ctx) {
       // through the cache using this key.
       std::vector<Type *> vec_key;
       for (size_t i = 0; i < num_args; ++i) {
-        vec_key.push_back(ctx_vals[i].as_type);
+        vec_key.push_back(arg_vals[i].as_type);
       }
         
       auto &cache_loc = (struct_lit->cache[vec_key] = new StructLiteral);
 
-      // TODO move the functionality of verify_types out into another function
-      // and have this call that function and verify_types call that as well.
-      // The naming is wacky. The call here is just to use the value assignment
-      // functionality.
-      cache_loc->verify_types();
+      Context struct_ctx = ctx.spawn();
+      // TODO do we need to clean this up? I think not. It should just be
+      // overwritten next time the generic struct is called, right?
+      for (size_t i = 0; i < num_args; ++i) {
+        struct_lit->params[i]->identifier->value = arg_vals[i];
+      }
+
+      std::stringstream ss;
+      // TODO if the parameter is not a type?
+      ss << param_struct->bound_name << "(";
+
+      // auto param_type = struct_lit->params[0]->identifier->type;
+
+      // TODO you haven't done type verification of the fields yet, so using
+      // param_type above will likely return 0x0.
+      AppendValueToStream(Type_, arg_vals[0], ss);
+
+      for (size_t i = 1; i < num_args; ++i) {
+        auto parameter_type = struct_lit->params[i]->expr->value.as_type;
+        ss << ", ";
+        AppendValueToStream(parameter_type, arg_vals[i], ss);
+      }
+      ss << ")";
+
+      cache_loc->value = Context::Value(Struct(ss.str(), cache_loc));
 
       if (debug::parametric_struct) {
         std::cout << " * No match found.\n"
@@ -510,52 +534,16 @@ Context::Value Binop::evaluate(Context &ctx) {
                      " * Cache size is now "
                   << struct_lit->cache.size() << " for " << struct_lit << "."
                   << std::endl;
+        // For debugging so we don't get too far generating these things.
         assert(struct_lit->cache.size() < 5);
-      }
-
-      Context struct_ctx = ctx.spawn();
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
-        struct_lit->params[i]->identifier->value = ctx_vals[i];
       }
 
       auto cloned_struct = param_struct->ast_expression->CloneStructLiteral(
           cache_loc, struct_ctx);
 
-      std::stringstream ss;
-      // TODO if the parameter is not a type?
-      ss << param_struct->bound_name << "(";
 
-      auto param_type = struct_lit->params[0]->identifier->type;
-      AppendValueToStream(param_type, ctx_vals[0], ss);
-
-      for (size_t i = 1; i < arg_vals.size(); ++i) {
-        auto parameter_type = struct_lit->params[0]->identifier->type;
-        ss << ", ";
-        AppendValueToStream(parameter_type, ctx_vals[i], ss);
-      }
-      ss << ")";
-
-      // TODO move the functionality of verify_types out into another function
-      // and have this call that function and verify_types call that as well.
-      // The naming is wacky. The call here is just to use the value assignment
-      // functionality.
       cloned_struct->verify_types();
       static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
-
-      auto struct_type =
-          static_cast<Structure *>(cloned_struct->value.as_type);
-      if (struct_type->field_type.size() == 0) {
-        for (auto decl : cloned_struct->declarations) {
-          bool is_inferred = (decl->decl_type == DeclType::Infer);
-
-          Type *field =
-              is_inferred ? decl->expr->type
-                          : decl->expr->evaluate(scope_->context).as_type;
-          assert(field && "field is nullptr");
-          struct_type->insert_field(decl->identifier->token(), field,
-                                    is_inferred ? decl->expr : nullptr);
-        }
-      }
 
       return cloned_struct->value;
     } else {

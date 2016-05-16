@@ -4,8 +4,6 @@
 #include "Context.h"
 #endif
 
-// TODO shouldn't we just be calling build functions here mostly?
-
 #define CLONE clone(num_entries, lookup_key, lookup_val)
 #define LOOKUP_ARGS                                                            \
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
@@ -16,35 +14,37 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
   cache_loc->declarations.reserve(declarations.size());
 
   for (auto decl : declarations) {
-    decl->verify_types();
-//    Dependency::PtrWithTorV ptr_with_torv(decl, false);
-//    Dependency::traverse_from(ptr_with_torv);
+    auto type_val               = decl->expr->evaluate(ctx).as_type;
+    auto new_decl               = new Declaration;
+    new_decl->identifier        = new Identifier(loc, decl->identifier->token());
+    new_decl->identifier->value = decl->identifier->value;
+    new_decl->loc               = decl->loc;
+    new_decl->decl_type         = decl->decl_type;
+    new_decl->expr              = new DummyTypeExpr(decl->loc, type_val);
+    new_decl->identifier->decls = {new_decl};
+    new_decl->identifier->type  = nullptr;
+    // This last one is nullptr, even though we know the answer is type_val.
+    // The reason for this is that when we call verify_types(), we will set the
+    // value in the AppendType call. It may seem like we could just set the
+    // types here and avoid that whole call, but this is not so. We have to call
+    // verify types because we may need to flush out a struct or something more
+    // complictaed that's streamlined in verify_types(). F
 
-    auto expr_ptr        = decl->expr->evaluate(ctx).as_type;
-    auto new_decl        = new Declaration;
-    new_decl->identifier = new Identifier(loc, decl->identifier->token());
-    new_decl->loc        = decl->loc;
-    new_decl->decl_type  = decl->decl_type;
-
-    new_decl->expr = new DummyTypeExpr(decl->loc, expr_ptr);
 
     Scope::Stack.push(type_scope);
     new_decl->assign_scope();
     Scope::Stack.pop();
 
-    // Set the scope of this cloned object to be the same as the original.
-    cache_loc->scope_ = scope_;
+    cache_loc->scope_ = scope_; // Same scope as original.
 
-    // no need to do type verification
-    new_decl->type = expr_ptr;
-
-    if (!expr_ptr->has_vars) { expr_ptr->generate_llvm(); }
+    new_decl->verify_types();
 
     cache_loc->declarations.push_back(new_decl);
+    cache_loc->verify_types();
   }
 
-  // we need to generate it's dependencies.
-  // Dependency::mark_as_done(cache_loc);
+  cache_loc->FlushOut();
+
   return cache_loc;
 }
 

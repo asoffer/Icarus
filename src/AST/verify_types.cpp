@@ -145,7 +145,7 @@ void StructLiteral::FlushOut() {
   auto tval = static_cast<Structure *>(value.as_type);
   if (!tval->field_num_to_name.empty()) { return; }
 
-  for (auto d :  declarations) {
+  for (auto d : declarations) {
     d->verify_types();
     tval->insert_field(d->identifier->token(), d->identifier->type,
                        d->decl_type == DeclType::Infer ? d->expr : nullptr);
@@ -752,6 +752,7 @@ void Declaration::verify_types() {
 
   scope_->ordered_decls_.push_back(this);
 
+
   if (expr->type == Void) {
     type = Error;
     error_log.log(loc, "Void types cannot be assigned.");
@@ -772,11 +773,20 @@ void Declaration::verify_types() {
       if (expr->is_struct_literal()) {
         auto expr_as_struct = (StructLiteral *)expr;
         assert(expr_as_struct->value.as_type);
-        assert(expr_as_struct->value.as_type->is_struct());
+        if (expr_as_struct->params.empty()) {
+          assert(expr_as_struct->value.as_type->is_struct());
+          // TODO mangle the name correctly
+          static_cast<Structure *>(expr_as_struct->value.as_type)
+              ->set_name(identifier->token());
+        } else {
+          assert(expr_as_struct->value.as_type->is_parametric_struct());
+          identifier->value = expr_as_struct->value;
+          // TODO mangle the name correctly
+          static_cast<ParametricStructure *>(expr_as_struct->value.as_type)
+              ->set_name(identifier->token());
+        }
+
         identifier->value = expr_as_struct->value;
-        // TODO mangle the name correctly
-        static_cast<Structure *>(expr_as_struct->value.as_type)
-            ->set_name(identifier->token());
 
       } else if (expr->is_enum_literal()) {
         auto expr_as_enum = (EnumLiteral *)expr;
@@ -1057,7 +1067,9 @@ void EnumLiteral::verify_types() {
 
 void StructLiteral::verify_types() {
   // for (auto decl : declarations) { decl->verify_types(); }
-  for (auto decl : declarations) { VerificationQueue.push(decl); }
+  if (params.empty()) {
+    for (auto decl : declarations) { VerificationQueue.push(decl); }
+  }
 }
 
 void Jump::verify_types() {

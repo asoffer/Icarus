@@ -22,6 +22,11 @@ Time::Eval Binop::determine_time() {
     return time_ = lhs->determine_time();
 
   } else if (op == Language::Operator::Call) {
+    if (lhs->type->is_parametric_struct()) {
+      assert(type->is_struct());
+      return time_ = static_cast<Structure *>(type)
+                         ->ast_expression->determine_time();
+    }
     return time_ = rhs->determine_time();
   }
   return time_ = lhs->determine_time() | rhs->determine_time();
@@ -98,6 +103,8 @@ Time::Eval For::determine_time() {
 }
 
 Time::Eval StructLiteral::determine_time() {
+  if (value.as_type->is_parametric_struct()) { return time_ = Time::compile; }
+
   time_ = Time::either;
   for (auto &d : declarations) { time_ |= d->determine_time(); }
   return time_;

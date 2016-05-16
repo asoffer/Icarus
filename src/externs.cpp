@@ -202,12 +202,10 @@ llvm::Function *ascii() {
   llvm::IRBuilder<> bldr(llvm::getGlobalContext());
 
   auto entry_block = make_block("entry", ascii_);
-
   bldr.SetInsertPoint(entry_block);
   // TODO check bounds if build option specified
 
   bldr.CreateRet(bldr.CreateTrunc(val, *Char));
-
   return ascii_;
 }
 } // namespace builtin

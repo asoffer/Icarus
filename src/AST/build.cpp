@@ -103,7 +103,7 @@ Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
   struct_lit_ptr->loc   = nodes[0]->loc;
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(
-      ParamStruct("__anon.param.struct" + std::to_string(anon_struct_counter),
+      ParamStruct("__anon.param.struct" + std::to_string(anon_struct_counter++),
                   struct_lit_ptr));
 
   if (nodes[1]->is_declaration()) {
