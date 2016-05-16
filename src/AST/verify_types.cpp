@@ -112,12 +112,12 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
     }
 
   } else if (lhs_type == Type_) {
-    // Assume you are not a dufus, and if you're passing a struct to be
-    // "called" that it's a parametric struct. (So we use .as_expr).
-    //
-    // auto lhs_as_expr = lhs->evaluate(scope_->context).as_expr;
+    if (!lhs->value.as_type->is_parametric_struct()) {
+      error_log.log(lhs->loc, "Invalid call of () operator on a type. LHS is "
+                              "not a parametric struct");
+      return nullptr;
+    }
 
-    // If it isn't parametric, terribleness will ensue.
     return Type_;
 
   } else if (lhs_type->is_dependent_type()) {
