@@ -9,8 +9,9 @@
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
 namespace AST {
-StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
-                                                 Context &ctx) {
+StructLiteral *
+ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
+                                            Context &ctx) {
   cache_loc->declarations.reserve(declarations.size());
 
   for (auto decl : declarations) {
@@ -35,13 +36,15 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
     new_decl->assign_scope();
     Scope::Stack.pop();
 
-    cache_loc->scope_ = scope_; // Same scope as original.
-
     new_decl->verify_types();
 
     cache_loc->declarations.push_back(new_decl);
-    cache_loc->verify_types();
+
   }
+  delete cache_loc->type_scope;
+  cache_loc->type_scope = type_scope;
+  cache_loc->scope_ = scope_; // Same scope as original.
+  cache_loc->verify_types();
 
   cache_loc->FlushOut();
 
@@ -51,6 +54,7 @@ StructLiteral *StructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
 Node *Expression::clone(LOOKUP_ARGS) { assert(false); }
 Node *Binop::clone(LOOKUP_ARGS) { assert(false); }
 Node *ArrayType::clone(LOOKUP_ARGS) { assert(false); }
+Node *ParametricStructLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *StructLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *EnumLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) { assert(false); }

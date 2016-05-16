@@ -62,7 +62,9 @@ llvm::Constant *Unop::GetGlobal(Context &ctx) {
 }
 
 #define NOT_YET(type)                                                          \
-  llvm::Constant *type::GetGlobal(Context &ctx) { assert(false); }
+  llvm::Constant *type::GetGlobal(Context &ctx) {                              \
+    assert(false && "Not yet implemented");                                    \
+  }
 
 NOT_YET(InDecl)
 NOT_YET(Declaration)
@@ -74,6 +76,7 @@ NOT_YET(Access)
 NOT_YET(ArrayType)
 NOT_YET(EnumLiteral)
 NOT_YET(StructLiteral)
+NOT_YET(ParametricStructLiteral)
 NOT_YET(FunctionLiteral)
 
 } // namespace AST

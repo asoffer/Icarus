@@ -31,7 +31,7 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
 }
 
 static void CheckStructMembers(AST::Statements *stmts,
-                               AST::StructLiteral *struct_lit_ptr) {
+                               std::vector<AST::Declaration *> &decls) {
   for (auto &&stmt : stmts->statements) {
     if (stmt->is_declaration()) {
       auto decl = static_cast<AST::Declaration *>(stmt);
@@ -69,7 +69,7 @@ static void CheckStructMembers(AST::Statements *stmts,
       continue;
     }
 
-    struct_lit_ptr->declarations.emplace_back(steal<AST::Declaration>(stmt));
+    decls.emplace_back(steal<AST::Declaration>(stmt));
   }
 }
 
@@ -92,14 +92,14 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
-  CheckStructMembers(static_cast<Statements *>(nodes[2]), struct_lit_ptr);
+  CheckStructMembers(static_cast<Statements *>(nodes[2]), struct_lit_ptr->declarations);
   return struct_lit_ptr;
 }
 
-Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
+Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
   static size_t anon_struct_counter = 0;
 
-  auto struct_lit_ptr   = new StructLiteral;
+  auto struct_lit_ptr   = new ParametricStructLiteral;
   struct_lit_ptr->loc   = nodes[0]->loc;
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(
@@ -121,7 +121,7 @@ Node *StructLiteral::BuildParametric(NPtrVec &&nodes) {
     }
   }
 
-  CheckStructMembers(static_cast<Statements *>(nodes[3]), struct_lit_ptr);
+  CheckStructMembers(static_cast<Statements *>(nodes[3]), struct_lit_ptr->declarations);
 
   return struct_lit_ptr;
 }
@@ -861,7 +861,7 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
     return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
   }
   if (nodes[0]->token() == "struct") {
-    return AST::StructLiteral::BuildParametric(std::forward<NPtrVec &&>(nodes));
+    return AST::ParametricStructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
 
   assert(false);

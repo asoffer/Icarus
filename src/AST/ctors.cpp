@@ -62,6 +62,7 @@ FunctionLiteral::FunctionLiteral()
       code_gened(false) {}
 
 StructLiteral::StructLiteral() : type_scope(new Scope) {}
+ParametricStructLiteral::ParametricStructLiteral() : type_scope(new Scope) {}
 
 EnumLiteral::EnumLiteral() {}
 

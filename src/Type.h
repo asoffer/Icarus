@@ -24,8 +24,9 @@ extern Enumeration *Enum(const std::string &name,
                          const AST::EnumLiteral *e = nullptr);
 extern Structure *Struct(const std::string &name,
                          AST::StructLiteral *expr = nullptr);
-extern ParametricStructure *ParamStruct(const std::string &name,
-                                        AST::StructLiteral *expr = nullptr);
+extern ParametricStructure *
+ParamStruct(const std::string &name,
+            AST::ParametricStructLiteral *expr = nullptr);
 extern DependentType *DepType(std::function<Type *(Type *)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
@@ -233,11 +234,11 @@ private:
 struct ParametricStructure : public Type {
   TYPE_FNS(ParametricStructure, parametric_struct);
 
-  ParametricStructure(const std::string &name, AST::StructLiteral *expr);
+  ParametricStructure(const std::string &name, AST::ParametricStructLiteral *expr);
 
   void set_name(const std::string &name);
 
-  AST::StructLiteral *ast_expression;
+  AST::ParametricStructLiteral *ast_expression;
   std::string bound_name;
 };
 

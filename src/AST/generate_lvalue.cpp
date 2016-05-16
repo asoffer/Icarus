@@ -18,6 +18,7 @@ llvm::Value *Unop::generate_lvalue() {
   return nullptr;
 }
 
+// TODO these should all be assert(false)
 llvm::Value *ChainOp::generate_lvalue() { return nullptr; }
 llvm::Value *ArrayType::generate_lvalue() { return nullptr; }
 llvm::Value *ArrayLiteral::generate_lvalue() { return nullptr; }
@@ -27,6 +28,7 @@ llvm::Value *Case::generate_lvalue() { return nullptr; }
 llvm::Value *InDecl::generate_lvalue() { return nullptr; }
 llvm::Value *Declaration::generate_lvalue() { return nullptr; }
 llvm::Value *StructLiteral::generate_lvalue() { return nullptr; }
+llvm::Value *ParametricStructLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *EnumLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *DummyTypeExpr::generate_lvalue() { return nullptr; }
 

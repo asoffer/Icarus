@@ -303,6 +303,7 @@ llvm::Value *Access::generate_code() {
 
     if (member_name == "bytes") {
       return data::const_uint(expr_as_type->bytes());
+
     } else if (member_name == "alignment") {
       return data::const_uint(expr_as_type->alignment());
     }
@@ -1205,9 +1206,9 @@ llvm::Value *Conditional::generate_code() {
   return nullptr;
 }
 
-// No code to generate for this, constants added automatically.
-llvm::Value *EnumLiteral::generate_code() { return nullptr; }
-llvm::Value *StructLiteral::generate_code() { return nullptr; }
+llvm::Value *EnumLiteral::generate_code() { assert(false); }
+llvm::Value *StructLiteral::generate_code() { assert(false); }
+llvm::Value *ParametricStructLiteral::generate_code() { assert(false); }
 
 llvm::Value *Jump::generate_code() {
   llvm::Value *exit_flag_alloc = nullptr;

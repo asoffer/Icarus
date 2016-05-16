@@ -76,6 +76,7 @@ struct Node {
   virtual bool is_in_decl() const { return false; }
   virtual bool is_declaration() const { return false; }
   virtual bool is_array_type() const { return false; }
+  virtual bool is_parametric_struct_literal() const { return false; }
   virtual bool is_struct_literal() const { return false; }
   virtual bool is_enum_literal() const { return false; }
   virtual bool is_array_literal() const { return false; }
@@ -217,13 +218,11 @@ struct InDecl : public Expression {
   Expression *container;
 };
 
-struct StructLiteral : public Expression {
-  EXPR_FNS(StructLiteral, struct_literal);
+struct ParametricStructLiteral : public Expression {
+  EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
-  static Node *BuildParametric(NPtrVec &&nodes);
 
   StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
-  void FlushOut();
 
   std::vector<Declaration *> params;
   std::vector<llvm::Constant *> init_vals;
@@ -232,8 +231,20 @@ struct StructLiteral : public Expression {
   std::vector<Declaration *> declarations;
 
   // TODO this should be more than just type pointers. Parameters can be ints,
-  // etc. Do we allow real?
+  // etc. Do we allow real? Make this hold a vector of Context::Values
   std::map<std::vector<Type *>, StructLiteral *> cache;
+};
+
+struct StructLiteral : public Expression {
+  EXPR_FNS(StructLiteral, struct_literal);
+  static Node *Build(NPtrVec &&nodes);
+
+  void FlushOut();
+
+  std::vector<llvm::Constant *> init_vals;
+
+  Scope *type_scope;
+  std::vector<Declaration *> declarations;
 };
 
 struct Statements : public Node {

@@ -140,7 +140,6 @@ namespace AST {
 // TODO this should take a context because flushing it out depends on the context.
 void StructLiteral::FlushOut() {
   assert(value.as_type && value.as_type->is_struct());
-  assert(params.empty());
 
   auto tval = static_cast<Structure *>(value.as_type);
   if (!tval->field_num_to_name.empty()) { return; }
@@ -314,9 +313,23 @@ void Access::verify_types() {
     base_type = static_cast<Pointer *>(base_type)->pointee;
   }
 
-  if (base_type->is_array() && member_name == "size") {
-    type = Uint;
-    return;
+  if (base_type->is_array()) {
+    if (member_name == "size") {
+      type = Uint;
+      return;
+    } else if (member_name == "resize") {
+      auto array_base_type = static_cast<Array *>(base_type);
+      if (array_base_type->fixed_length) {
+        error_log.log(loc, "Cannot resize a fixed-length array.");
+        type = Error;
+        return;
+      }
+      
+      // TODO Kinda hacky, because the type should really take the array into
+      // account, but we're just dealing with it at code-gen time?
+      type = Func(/*Ptr(operand->type), */Uint, Void);
+      return;
+    }
 
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
@@ -773,31 +786,29 @@ void Declaration::verify_types() {
 
     if (type == Type_) {
       if (expr->is_struct_literal()) {
-        auto expr_as_struct = (StructLiteral *)expr;
-        assert(expr_as_struct->value.as_type);
-        if (expr_as_struct->params.empty()) {
-          assert(expr_as_struct->value.as_type->is_struct());
-          // TODO mangle the name correctly
-          static_cast<Structure *>(expr_as_struct->value.as_type)
-              ->set_name(identifier->token());
-        } else {
-          assert(expr_as_struct->value.as_type->is_parametric_struct());
-          identifier->value = expr_as_struct->value;
-          // TODO mangle the name correctly
-          static_cast<ParametricStructure *>(expr_as_struct->value.as_type)
-              ->set_name(identifier->token());
-        }
+        assert(expr->value.as_type && expr->value.as_type->is_struct());
 
-        identifier->value = expr_as_struct->value;
+        // TODO mangle the name correctly
+        static_cast<Structure *>(expr->value.as_type)
+            ->set_name(identifier->token());
+
+      } else if (expr->is_parametric_struct_literal()) {
+        assert(expr->value.as_type &&
+               expr->value.as_type->is_parametric_struct());
+        // TODO mangle the name correctly
+        static_cast<ParametricStructure *>(expr->value.as_type)
+            ->set_name(identifier->token());
 
       } else if (expr->is_enum_literal()) {
-        auto expr_as_enum = (EnumLiteral *)expr;
-        expr_as_enum->evaluate(scope_->context);
-        assert(expr_as_enum->value.as_type);
-        identifier->value = expr_as_enum->value;
-        static_cast<Enumeration *>(expr_as_enum->value.as_type)->bound_name =
+        expr->evaluate(scope_->context); // TODO do we need to evaluate here?
+        assert(expr->value.as_type);
+        // TODO mangle name properly.
+        static_cast<Enumeration *>(expr->value.as_type)->bound_name =
             identifier->token();
       }
+
+      identifier->value = expr->value;
+
     } else if (expr->is_function_literal()) {
       identifier->verify_types();
       identifier->value = Context::Value(expr);
@@ -1069,11 +1080,10 @@ void EnumLiteral::verify_types() {
   ++anon_enum_counter;
 }
 
+void ParametricStructLiteral::verify_types() {}
+
 void StructLiteral::verify_types() {
-  // for (auto decl : declarations) { decl->verify_types(); }
-  if (params.empty()) {
-    for (auto decl : declarations) { VerificationQueue.push(decl); }
-  }
+  for (auto decl : declarations) { VerificationQueue.push(decl); }
 }
 
 void Jump::verify_types() {

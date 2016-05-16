@@ -126,12 +126,21 @@ void FunctionLiteral::assign_scope() {
   Scope::Stack.pop();
 }
 
-void StructLiteral::assign_scope() {
+void ParametricStructLiteral::assign_scope() {
   scope_ = CurrentScope();
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
   for (auto &param : params) { param->assign_scope(); }
+  for (auto &decl : declarations) { decl->assign_scope(); }
+  Scope::Stack.pop();
+}
+
+void StructLiteral::assign_scope() {
+  scope_ = CurrentScope();
+  type_scope->set_parent(CurrentScope());
+
+  Scope::Stack.push(type_scope);
   for (auto &decl : declarations) { decl->assign_scope(); }
   Scope::Stack.pop();
 }

@@ -230,6 +230,13 @@ std::string FunctionLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
+std::string ParametricStructLiteral::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<ParametricStruct>\n";
+  for (const auto &decl : declarations) { ss << decl->to_string(n + 1); }
+
+  return ss.str();
+}
 std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Struct>\n";

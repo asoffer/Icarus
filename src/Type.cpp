@@ -233,7 +233,7 @@ Enumeration::Enumeration(const std::string &name,
 }
 
 ParametricStructure::ParametricStructure(const std::string &name,
-                                         AST::StructLiteral *expr)
+                                         AST::ParametricStructLiteral *expr)
     : ast_expression(expr), bound_name(name) {}
 
 QuantumType::QuantumType(const std::vector<Type *> &vec) : options(vec) {

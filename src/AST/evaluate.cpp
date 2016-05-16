@@ -315,6 +315,7 @@ Context::Value Case::evaluate(Context &ctx) {
   assert(false);
 }
 
+Context::Value ParametricStructLiteral::evaluate(Context &ctx) { return value; }
 Context::Value StructLiteral::evaluate(Context &ctx) { return value; }
 
 Context::Value InDecl::evaluate(Context &ctx) { return nullptr; }

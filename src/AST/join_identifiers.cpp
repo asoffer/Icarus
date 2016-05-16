@@ -115,13 +115,15 @@ void FunctionLiteral::join_identifiers(bool is_arg) {
   Scope::Stack.pop();
 }
 
+void ParametricStructLiteral::join_identifiers(bool) {
+  Scope::Stack.push(type_scope);
+  for (auto &param : params) { param->join_identifiers(true); }
+  for (auto &decl : declarations) { decl->join_identifiers(); }
+  Scope::Stack.pop();
+}
 void StructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
-
-  for (auto &param : params) { param->join_identifiers(true); }
-
   for (auto &decl : declarations) { decl->join_identifiers(); }
-
   Scope::Stack.pop();
 }
 

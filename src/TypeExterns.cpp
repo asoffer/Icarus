@@ -162,7 +162,7 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
 }
 
 ParametricStructure *ParamStruct(const std::string &name,
-                                 AST::StructLiteral *t) {
+                                 AST::ParametricStructLiteral *t) {
   auto iter = TypeSystem::param_struct_types_.find(name);
   if (iter != TypeSystem::param_struct_types_.end()) return iter->second;
 

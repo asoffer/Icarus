@@ -3,11 +3,6 @@
 #endif
 
 namespace AST {
-std::string Node::graphviz_label() const { return "Generic node"; }
-std::string Conditional::graphviz_label() const { return "If"; }
-std::string While::graphviz_label() const { return "While"; }
-std::string For::graphviz_label() const { return "For"; }
-
 std::string DummyTypeExpr::graphviz_label() const {
   return value.as_type->to_string();
 }
@@ -109,15 +104,23 @@ std::string Binop::graphviz_label() const {
   }
 }
 
-std::string StructLiteral::graphviz_label() const { return "StructLiteral"; }
-std::string ArrayType::graphviz_label() const { return "ArrayType"; }
-std::string ArrayLiteral::graphviz_label() const { return "ArrayLiteral"; }
-std::string Case::graphviz_label() const { return "Case"; }
-std::string Statements::graphviz_label() const { return "Statements"; }
-std::string FunctionLiteral::graphviz_label() const {
-  return "FunctionLiteral";
-}
-std::string EnumLiteral::graphviz_label() const { return "Enum"; }
+#define EASY(struct_name) \
+std::string struct_name::graphviz_label() const { return #struct_name; }
+
+EASY(ParametricStructLiteral)
+EASY(StructLiteral)
+EASY(ArrayType)
+EASY(ArrayLiteral)
+EASY(Case)
+EASY(Statements)
+EASY(FunctionLiteral)
+EASY(EnumLiteral)
+EASY(Node)
+EASY(Conditional)
+EASY(For)
+EASY(While)
+#undef EASY
+
 std::string Jump::graphviz_label() const {
   switch (jump_type) {
   case JumpType::Restart: return "Restart";

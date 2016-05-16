@@ -102,9 +102,11 @@ Time::Eval For::determine_time() {
   return time_;
 }
 
-Time::Eval StructLiteral::determine_time() {
-  if (value.as_type->is_parametric_struct()) { return time_ = Time::compile; }
+Time::Eval ParametricStructLiteral::determine_time() {
+  return time_ = Time::compile;
+}
 
+Time::Eval StructLiteral::determine_time() {
   time_ = Time::either;
   for (auto &d : declarations) { time_ |= d->determine_time(); }
   return time_;
