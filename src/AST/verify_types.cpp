@@ -25,7 +25,7 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   }
 
   auto cloned_func =
-      (AST::FunctionLiteral *)fn_lit->clone(1, lookup_key, lookup_val);
+      (AST::FunctionLiteral *)fn_lit->clone(num_matches, lookup_key, lookup_val);
 
   auto old_stack_size = Scope::Stack.size();
   Scope::Stack.push(fn_lit->scope_);
@@ -654,6 +654,7 @@ void Binop::verify_types() {
                 return;
               }
             }
+
             // Cache the function
             fn_expr->cache[rhs->type] =
                 GenerateSpecifiedFunction(fn_expr, match_vec[0]);

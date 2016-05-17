@@ -53,14 +53,11 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
 }
 
 Node *Expression::clone(LOOKUP_ARGS) { assert(false); }
-Node *Binop::clone(LOOKUP_ARGS) { assert(false); }
-Node *ArrayType::clone(LOOKUP_ARGS) { assert(false); }
 Node *ParametricStructLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *StructLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *EnumLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) { assert(false); }
 Node *Jump::clone(LOOKUP_ARGS) { assert(false); }
-Node *For::clone(LOOKUP_ARGS) { assert(false); }
 Node *While::clone(LOOKUP_ARGS) { assert(false); }
 Node *ArrayLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *TokenNode::clone(LOOKUP_ARGS) { assert(false); }
@@ -80,10 +77,38 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   return fn_lit;
 }
 
+Node *Binop::clone(LOOKUP_ARGS) {
+  auto binop = new Binop;
+  binop->op  = op;
+  binop->lhs = (Expression *)lhs->CLONE;
+  binop->rhs = (Expression *)rhs->CLONE;
+  return binop;
+}
+
+Node *For::clone(LOOKUP_ARGS) {
+  auto for_stmt        = new For;
+  for_stmt->statements = (Statements *)statements->CLONE;
+
+  for_stmt->iterators.reserve(iterators.size());
+  for (auto i : iterators) {
+    for_stmt->iterators.push_back((InDecl *)i->CLONE);
+  }
+
+  return for_stmt;
+}
+
 Node *Statements::clone(LOOKUP_ARGS) {
   auto stmts = new Statements;
   for (auto s : statements) { stmts->statements.push_back(s->CLONE); }
   return stmts;
+}
+
+
+Node *ArrayType::clone(LOOKUP_ARGS) {
+  auto array_type       = new ArrayType;
+  array_type->length    = (Expression *)length->CLONE;
+  array_type->data_type = (Expression *)data_type->CLONE;
+  return array_type;
 }
 
 Node *Unop::clone(LOOKUP_ARGS) {
@@ -162,6 +187,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
         return new DummyTypeExpr(loc, lookup_val[i]);
       }
     }
+
     assert(false);
 
   } else {

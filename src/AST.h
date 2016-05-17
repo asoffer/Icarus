@@ -156,7 +156,6 @@ struct Binop : public Expression {
   static Node *BuildElseRocket(NPtrVec &&nodes);
   static Node *BuildCallOperator(NPtrVec &&nodes);
   static Node *BuildIndexOperator(NPtrVec &&nodes);
-  static Node *BuildArrayType(NPtrVec &&nodes);
 
   bool is_assignment() const {
     using Language::Operator;
