@@ -23,7 +23,7 @@ bool Rule::match(const NPtrVec& node_stack) const {
   // type does not match the rule.
   for (size_t i = 0; i < input_.size(); ++i, --rule_index, --stack_index) {
 
-    auto nt = node_stack[stack_index]->node_type();
+    auto nt = node_stack[stack_index]->node_type;
     if (input_[rule_index].find(nt) == input_[rule_index].end()) {
       return false;
     }
@@ -49,7 +49,7 @@ void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
   }
 
   auto new_ptr = fn_(std::move(nodes_to_reduce));
-  if (output_ != Language::keep_current) { new_ptr->set_node_type(output_); }
+  if (output_ != Language::keep_current) { new_ptr->node_type = output_; }
 
   for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 

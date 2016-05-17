@@ -9,10 +9,9 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
-
-AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
-                                                TypeVariable *input_type,
-                                                Type *fn_type) {
+static AST::FunctionLiteral *
+GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
+                          TypeVariable *input_type, Type *fn_type) {
   auto lookup_key = new TypeVariable *[1];
   lookup_key[0]   = input_type;
   auto lookup_val = new Type *[1];
@@ -37,8 +36,8 @@ AST::FunctionLiteral *GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   return cloned_func;
 }
 
-Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
-                          AST::Expression *rhs) {
+static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
+                                 AST::Expression *rhs, TokenLocation rhs_loc) {
   // TODO log information about failures to match?
   //
   // lhs_type cannot be quantum because we first break apart quantum types at
@@ -57,7 +56,7 @@ Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
         auto call_binop = new AST::Binop();
         call_binop->op  = Language::Operator::Call;
         call_binop->lhs = test_func;
-        auto dummy      = new AST::DummyTypeExpr(rhs->loc, rhs->type);
+        auto dummy      = new AST::DummyTypeExpr(rhs_loc, rhs->type);
         call_binop->rhs = dummy;
 
         success = call_binop->evaluate(lhs->scope_->context).as_bool;
@@ -457,7 +456,7 @@ void Binop::verify_types() {
           // If the LHS has a quantum type, test all possibilities to see which
           // one works. Verify that exactly one works.
           for (auto opt : static_cast<QuantumType *>(id_ptr->type)->options) {
-            auto t = CallResolutionMatch(opt, id_ptr, rhs);
+            auto t = CallResolutionMatch(opt, id_ptr, rhs, rhs->loc);
             if (t) {
               ++num_matches;
               resulting_type = t;
@@ -465,7 +464,7 @@ void Binop::verify_types() {
           }
 
         } else {
-          resulting_type = CallResolutionMatch(id_ptr->type, id_ptr, rhs);
+          resulting_type = CallResolutionMatch(id_ptr->type, id_ptr, rhs, rhs->loc);
           if (resulting_type) { ++num_matches; }
         }
       }
@@ -487,7 +486,7 @@ void Binop::verify_types() {
         // If the LHS has a quantum type, test all possibilities to see which
         // one works. Verify that exactly one works.
         for (auto opt : static_cast<QuantumType *>(lhs->type)->options) {
-          auto t = CallResolutionMatch(opt, lhs, rhs);
+          auto t = CallResolutionMatch(opt, lhs, rhs, rhs->loc);
           if (t) {
             ++num_matches;
             resulting_type = t;
@@ -495,7 +494,7 @@ void Binop::verify_types() {
         }
 
       } else {
-        resulting_type = CallResolutionMatch(lhs->type, lhs, rhs);
+        resulting_type = CallResolutionMatch(lhs->type, lhs, rhs, rhs->loc);
         if (resulting_type) { ++num_matches; }
       }
 

@@ -17,8 +17,7 @@ llvm::Function *ascii();
   term_ptr->type          = ty;                                                \
   term_ptr->value         = val;                                               \
   term_ptr->token_        = tk;                                                \
-                                                                               \
-  term_ptr->set_node_type(Language::expr);                                     \
+  term_ptr->node_type     = Language::expr;                                    \
   return term_ptr
 
 namespace TypeSystem {
@@ -150,7 +149,7 @@ AST::Node *Lexer::next_word() {
     term_ptr->type          = Bool;
     term_ptr->token_        = "else";
 
-    term_ptr->set_node_type(Language::kw_else);
+    term_ptr->node_type =Language::kw_else;
     return term_ptr;
 
   } else if (token == "in") {
@@ -172,8 +171,8 @@ AST::Node *Lexer::next_word() {
     return new AST::TokenNode(loc_, Language::kw_struct, "struct");
 
 #define RETURN_JUMP(Name)                                                      \
-  auto jmp = new AST::Jump(loc_, AST::Jump::JumpType::Name);                   \
-  jmp->set_node_type(Language::op_lt);                                         \
+  auto jmp       = new AST::Jump(loc_, AST::Jump::JumpType::Name);             \
+  jmp->node_type = Language::op_lt;                                            \
   return jmp
 
   } else if (token == "return") {

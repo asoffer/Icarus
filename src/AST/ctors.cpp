@@ -2,6 +2,12 @@
 #include "Scope.h"
 #endif
 
+#ifdef DEBUG
+#define AT(access) .at((access))
+#else
+#define AT(access) [(access)]
+#endif
+
 namespace Language {
 const std::map<std::string, Operator> lookup_operator = {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
@@ -16,8 +22,8 @@ namespace AST {
 TokenNode::TokenNode(TokenLocation loc, Language::NodeType in_node_type,
                      std::string str_lit)
     : Node(loc, in_node_type), tk_(std::move(str_lit)) {
-  op = Language::is_operator(node_type()) ? Language::lookup_operator.at(tk_)
-                                          : Language::Operator::NotAnOperator;
+  op = Language::is_operator(node_type) ? Language::lookup_operator AT (tk_)
+                                        : Language::Operator::NotAnOperator;
 }
 
 Expression::Expression()
@@ -54,7 +60,7 @@ Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
   loc        = new_loc;
-  type_      = Language::expr;
+  node_type  = Language::expr;
 }
 
 FunctionLiteral::FunctionLiteral()
@@ -69,3 +75,5 @@ EnumLiteral::EnumLiteral() {}
 While::While() : while_scope(new BlockScope(ScopeType::While)) {}
 For::For() : for_scope(new BlockScope(ScopeType::For)) {}
 } // namespace AST
+
+#undef DEBUG

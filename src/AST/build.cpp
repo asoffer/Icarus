@@ -136,7 +136,7 @@ Node *EnumLiteral::Build(NPtrVec &&nodes) {
   enum_lit_ptr->loc  = nodes[0]->loc;
   enum_lit_ptr->type = Type_;
 
-  if (nodes[2]->node_type() == Language::stmts) {
+  if (nodes[2]->node_type == Language::stmts) {
     auto stmts = static_cast<Statements *>(nodes[2]);
     for (auto &&stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
@@ -268,8 +268,8 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  unop_ptr->loc   = nodes[0]->loc;
-  unop_ptr->type_ = Language::expr;
+  unop_ptr->loc       = nodes[0]->loc;
+  unop_ptr->node_type = Language::expr;
 
   if (nodes[0]->token() == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
@@ -349,7 +349,7 @@ Node *Unop::BuildParen(NPtrVec &&nodes) {
   auto unop_ptr        = new Unop;
   unop_ptr->loc        = nodes[1]->loc;
   unop_ptr->operand    = steal<Expression>(nodes[0]);
-  unop_ptr->type_      = Language::expr;
+  unop_ptr->node_type  = Language::expr;
   unop_ptr->op         = Language::Operator::Call;
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
@@ -424,10 +424,10 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
   auto binop_ptr = new Binop;
   binop_ptr->loc = nodes[1]->loc;
 
-  binop_ptr->lhs   = steal<Expression>(nodes[0]);
-  binop_ptr->rhs   = steal<Expression>(nodes[2]);
-  binop_ptr->type_ = nt;
-  binop_ptr->op    = op_class;
+  binop_ptr->lhs       = steal<Expression>(nodes[0]);
+  binop_ptr->rhs       = steal<Expression>(nodes[2]);
+  binop_ptr->node_type = nt;
+  binop_ptr->op        = op_class;
 
   if (binop_ptr->lhs->is_declaration()) {
     error_log.log(binop_ptr->lhs->loc,
@@ -490,10 +490,10 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node    = static_cast<TokenNode *>(nodes[1]);
-  unop_ptr->loc   = tk_node->loc;
-  unop_ptr->type_ = Language::expr;
-  unop_ptr->op    = tk_node->op;
+  auto tk_node        = static_cast<TokenNode *>(nodes[1]);
+  unop_ptr->loc       = tk_node->loc;
+  unop_ptr->node_type = Language::expr;
+  unop_ptr->op        = tk_node->op;
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
@@ -635,7 +635,7 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   auto decl_ptr        = new Declaration;
   decl_ptr->identifier = new Identifier(nodes[0]->loc, nodes[0]->token());
   decl_ptr->loc        = nodes[1]->loc;
-  decl_ptr->type_      = Language::op_b;
+  decl_ptr->node_type  = Language::op_b;
   decl_ptr->op         = ((AST::TokenNode *)(nodes[1]))->op;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
   decl_ptr->expr       = steal<Expression>(nodes[2]);
@@ -659,7 +659,7 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->decl_type  = DeclType::Tick;
   decl_ptr->expr       = steal<Expression>(nodes[0]);
-  decl_ptr->type_      = Language::expr;
+  decl_ptr->node_type  = Language::expr;
   decl_ptr->op         = Language::Operator::Tick;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
   return decl_ptr;
@@ -669,7 +669,7 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  if (nodes[2]->node_type() == Language::stmts) {
+  if (nodes[2]->node_type == Language::stmts) {
     fn_lit->statements = steal<Statements>(nodes[2]);
   } else {
     fn_lit->statements = new Statements;
@@ -797,9 +797,9 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   auto binop_ptr = new AST::Binop;
   binop_ptr->loc = nodes[1]->loc;
 
-  binop_ptr->lhs   = steal<AST::Expression>(nodes[0]);
-  binop_ptr->rhs   = steal<AST::Expression>(nodes[2]);
-  binop_ptr->type_ = nodes[1]->node_type();
+  binop_ptr->lhs       = steal<AST::Expression>(nodes[0]);
+  binop_ptr->rhs       = steal<AST::Expression>(nodes[2]);
+  binop_ptr->node_type = nodes[1]->node_type;
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
   if (nodes[1]->token() == sym) {                                              \

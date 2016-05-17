@@ -10,7 +10,7 @@ std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 std::string Node::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) + "[";
-  switch (type_) {
+  switch (node_type) {
   case Language::unknown: ss << "Unknown"; break;
   case Language::bof: ss << "BOF"; break;
   case Language::eof: ss << "EOF"; break;

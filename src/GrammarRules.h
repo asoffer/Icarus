@@ -228,14 +228,14 @@ extern size_t precedence(Language::Operator op);
 // stack_.back() are always safe.
 
 AST::Node *Parser::get(size_t n) { return stack_[stack_.size() - n]; }
-Language::NodeType Parser::get_type(size_t n) { return get(n)->node_type(); }
+Language::NodeType Parser::get_type(size_t n) { return get(n)->node_type; }
 
 bool Parser::should_shift() {
   // If the size is just 1, no rule will match so don't bother checking.
   if (stack_.size() < 2) { return true; }
 
   // We'll need these node types a lot, so lets make it easy to use
-  const auto ahead_type = lookahead_->node_type();
+  const auto ahead_type = lookahead_->node_type;
 
   if (get_type(1) == Language::dots) {
     return (ahead_type == Language::op_bl || ahead_type == Language::op_l ||

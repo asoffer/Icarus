@@ -12,7 +12,7 @@ extern bool parser;
 
 // Parse the file with a shift-reduce algorithm
 AST::Node *Parser::parse() {
-  assert(lookahead_->node_type() == Language::bof);
+  assert(lookahead_->node_type == Language::bof);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
   // bof will not hurt us. The benefit of shifting is that we have now  enforced
@@ -35,7 +35,7 @@ AST::Node *Parser::parse() {
         stack_.pop_back();
       }
 
-      while (lookahead_->node_type() != Language::newline) { ignore(); }
+      while (lookahead_->node_type != Language::newline) { ignore(); }
       mode_ = ParserMode::Good;
 
     } break;
@@ -46,7 +46,7 @@ AST::Node *Parser::parse() {
 
     if (debug::parser) { show_debug(); }
 
-    if (lookahead_->node_type() == Language::eof) { mode_ = ParserMode::Done; }
+    if (lookahead_->node_type == Language::eof) { mode_ = ParserMode::Done; }
   } // Main parsing loop end
 }
 
@@ -95,7 +95,7 @@ void Parser::shift() {
   auto next_node_ptr = lexer_.Next();
 
   // Never shift comments onto the stack
-  if (next_node_ptr->node_type() == Language::comment) {
+  if (next_node_ptr->node_type == Language::comment) {
 
     shift();
     return;

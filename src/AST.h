@@ -42,9 +42,6 @@ namespace AST {
                       Type **lookup_val) ENDING
 
 struct Node {
-  Language::NodeType node_type() const { return type_; }
-  void set_node_type(Language::NodeType t) { type_ = t; }
-
   virtual std::string token() const { return token_; }
   void set_token(const std::string &token_string) { token_ = token_string; }
 
@@ -88,9 +85,8 @@ struct Node {
   bool is_hole() const { return token() == "--"; }
 
   Node(TokenLocation loc = TokenLocation(),
-       Language::NodeType type  = Language::unknown,
-       const std::string &token = "")
-      : scope_(nullptr), type_(type), token_(token), loc(loc),
+       Language::NodeType ntype = Language::unknown, const std::string &token = "")
+      : scope_(nullptr), node_type(ntype), token_(token), loc(loc),
         time_(Time::error) {}
 
   virtual ~Node() {}
@@ -101,7 +97,7 @@ struct Node {
 
   Scope *scope_;
 
-  Language::NodeType type_;
+  Language::NodeType node_type;
   std::string token_;
   TokenLocation loc;
   Time::Eval time_;
