@@ -10,3 +10,5 @@ build/
 src/code
 
 *.o
+
+programs/test.ic

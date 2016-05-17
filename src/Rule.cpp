@@ -7,23 +7,22 @@
   }
 
 Rule::Rule(unsigned short preced, Language::NodeType output,
-           const OptVec &input, fnptr fn, ParserMode new_mode)
-    : prec(preced), output_(output), input_(input), fn_(fn),
-      new_mode_(new_mode) {}
+           const OptVec &input, fnptr fn)
+    : prec(preced), output_(output), input_(input), fn_(fn) {}
 
 // Determine if the back of the stack matches the rule
-bool Rule::match(const NPtrVec& node_stack) const {
+bool Rule::match(const std::vector<Language::NodeType> &node_type_stack) const {
   // The stack needs to be long enough to match.
-  if (input_.size() > node_stack.size()) return false;
+  if (input_.size() > node_type_stack.size()) return false;
 
-  size_t stack_index = node_stack.size() - 1;
-  size_t rule_index = input_.size() - 1;
+  size_t stack_index = node_type_stack.size() - 1;
+  size_t rule_index  = input_.size() - 1;
 
   // Iterate through backwards and exit as soon as you see a node whose
   // type does not match the rule.
   for (size_t i = 0; i < input_.size(); ++i, --rule_index, --stack_index) {
 
-    auto nt = node_stack[stack_index]->node_type;
+    auto nt = node_type_stack[stack_index];
     if (input_[rule_index].find(nt) == input_[rule_index].end()) {
       return false;
     }
@@ -33,7 +32,8 @@ bool Rule::match(const NPtrVec& node_stack) const {
   return true;
 }
 
-void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
+void Rule::apply(NPtrVec &node_stack,
+                 std::vector<Language::NodeType> &node_type_stack) const {
   // Make a vector for the rule function to take as input. It will begin with
   // size() shared_ptrs.
   NPtrVec nodes_to_reduce(size());
@@ -44,7 +44,9 @@ void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
   for (int i = static_cast<int>(size()) - 1; i >= 0; --i) {
     // We need an unsigned value to index nodes_to_reduce. This is why we cast
     // back to size_t.
-    nodes_to_reduce[ static_cast<size_t>(i) ] = std::move(node_stack.back());
+    nodes_to_reduce[static_cast<size_t>(i)] = std::move(node_stack.back());
+
+    node_type_stack.pop_back();
     node_stack.pop_back();
   }
 
@@ -54,6 +56,5 @@ void Rule::apply(NPtrVec& node_stack, ParserMode& mode_) const {
   for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 
   node_stack.push_back(std::move(new_ptr));
-
-  if (new_mode_ != ParserMode::Same) { mode_ = new_mode_; }
+  node_type_stack.push_back(new_ptr->node_type);
 }

@@ -12,7 +12,7 @@ extern bool parser;
 
 // Parse the file with a shift-reduce algorithm
 AST::Node *Parser::parse() {
-  assert(lookahead_->node_type == Language::bof);
+  assert(lookahead_type_ == Language::bof);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
   // bof will not hurt us. The benefit of shifting is that we have now  enforced
@@ -20,34 +20,16 @@ AST::Node *Parser::parse() {
   // check for an empty stack in the should_shift method.
   shift();
 
-  while (true) { // Main parsing loop start
-    switch (mode_) {
-    case ParserMode::Same: assert(false && "This mode should be impossible");
-    case ParserMode::Good: {
-      // Shift if you are supposed to, or if you are unable to reduce.
-      if (should_shift() || !reduce()) { shift(); }
-    } break;
-    case ParserMode::BadLine: {
-      size_t line_num = stack_.back()->loc.line_num;
-
-      // Kill the whole line backwards
-      while (!stack_.empty() && stack_.back()->loc.line_num == line_num) {
-        stack_.pop_back();
-      }
-
-      while (lookahead_->node_type != Language::newline) { ignore(); }
-      mode_ = ParserMode::Good;
-
-    } break;
-    case ParserMode::BadBlock:
-    case ParserMode::BadFile:
-    case ParserMode::Done: return cleanup();
-    }
+  while (lookahead_type_ != Language::eof) {
+    assert(node_type_stack_.size() == node_stack_.size());
+    assert(node_type_stack_.back() == node_stack_.back()->node_type);
+    // Shift if you are supposed to, or if you are unable to reduce.
+    if (should_shift() || !reduce()) { shift(); }
 
     if (debug::parser) { show_debug(); }
+  }
 
-    if (lookahead_->node_type == Language::eof) { mode_ = ParserMode::Done; }
-  } // Main parsing loop end
+  return cleanup();
 }
 
 AST::Node *Parser::cleanup() {
@@ -63,21 +45,23 @@ AST::Node *Parser::cleanup() {
     if (debug::parser) { show_debug(); }
   }
 
-  if (stack_.size() > 1) {
-    if (debug::parser) {
-      std::cerr << "Parser error: Exiting with Stack size = " << stack_.size()
-                << std::endl;
-    }
+  if (node_stack_.size() > 1) {
+    error_log.log(TokenLocation(), "Parser error.");
   }
 
-  return stack_.back();
+  return node_stack_.back();
 }
 
 // Print out the debug information for the parse stack, and pause.
 void Parser::show_debug() const {
   // Clear the screen
   std::cout << "\033[2J\033[1;1H" << std::endl;
-  for (const auto &node_ptr : stack_) {
+  for (auto x : node_type_stack_) {
+    std::cout << x << ", ";
+  }
+  std::cout << std::endl;
+
+  for (const auto &node_ptr : node_stack_) {
     std::cout << *node_ptr;
   }
 
@@ -89,29 +73,34 @@ void Parser::ignore() {
 
   delete lookahead_;
   lookahead_ = next_node_ptr;
+  lookahead_type_ = next_node_ptr->node_type;
 }
 
 void Parser::shift() {
-  auto next_node_ptr = lexer_.Next();
+  auto next_node = lexer_.Next();
+  auto node_type        = next_node->node_type;
 
   // Never shift comments onto the stack
-  if (next_node_ptr->node_type == Language::comment) {
-
+  if (node_type == Language::comment) {
+    delete next_node;
     shift();
     return;
   }
 
-  stack_.push_back(lookahead_);
-  lookahead_ = next_node_ptr;
+  node_type_stack_.push_back(lookahead_type_);
+  node_stack_.push_back(lookahead_);
+  lookahead_ = next_node;
+  lookahead_type_ = node_type;
 }
 
 // Construct a parser for the given file
 Parser::Parser(const std::string &filename)
-    : lookahead_(nullptr), lexer_(filename), mode_(ParserMode::Good) {
-  assert(stack_.empty());
+    : lookahead_(nullptr), lexer_(filename) {
+  assert(node_stack_.empty() && node_type_stack_.empty());
   // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.
   lookahead_ = new AST::TokenNode(lexer_.loc_, Language::bof);
+  lookahead_type_ = Language::bof;
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.
@@ -129,7 +118,7 @@ bool Parser::reduce() {
       continue;
     }
 
-    if (rule.match(stack_)) {
+    if (rule.match(node_type_stack_)) {
       if (!((matched_rule_ptr == nullptr ||
              rule.prec != matched_rule_ptr->prec))) {
         std::cout << debug_counter << ", " << debug_match << std::endl;
@@ -151,7 +140,7 @@ bool Parser::reduce() {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->apply(stack_, mode_);
+  matched_rule_ptr->apply(node_stack_, node_type_stack_);
 
   return true;
 }

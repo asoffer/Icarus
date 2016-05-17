@@ -76,8 +76,6 @@ struct TokenLocation {
 #include "Context.h"
 #include "ErrorLog.h"
 
-//#include "DependencyFunctions.h"
-
 namespace Language {
 // Using masks to make determination node types easier. Starting masks in the
 // 8th bit, leaves bits 0-7 for standard enumeration. This is safe because we

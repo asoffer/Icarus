@@ -7,12 +7,12 @@ public:
   using fnptr  = AST::Node *(*)(NPtrVec &&);
 
   Rule(unsigned short preced, Language::NodeType output, const OptVec &input,
-       fnptr fn, ParserMode new_mode = ParserMode::Same);
+       fnptr fn);
 
   size_t size() const { return input_.size(); }
 
-  bool match(const NPtrVec &node_stack) const;
-  void apply(NPtrVec &node_stack, ParserMode &mode_) const;
+  bool match(const std::vector<Language::NodeType> &node_type_stack) const;
+  void apply(NPtrVec &node_stack, std::vector<Language::NodeType> &node_type_stack) const;
 
   unsigned short prec;
 
@@ -20,7 +20,6 @@ private:
   Language::NodeType output_;
   OptVec input_;
   fnptr fn_;
-  ParserMode new_mode_;
 };
 
 #endif // ICARUS_RULE_H

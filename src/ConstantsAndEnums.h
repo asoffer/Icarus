@@ -5,11 +5,6 @@ constexpr size_t non_assoc   = 2;
 constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask  = 3;
 
-enum class ParserMode {
-  Good, BadLine, BadBlock, BadFile, Done, Same
-};
-
-
 namespace Time {
   using Eval = int;
   constexpr Eval either  = 0x0;
@@ -37,16 +32,3 @@ enum class Operator {
 namespace AST {
 enum class DeclType { Std, Infer, Tick };
 } // namespace AST;
-
-
-namespace Dependency {
-enum Flag : char {
-  unseen    = 0x00,
-  type_seen = 0x01,
-  val_seen  = 0x04,
-  tv_seen   = 0x05,
-  type_done = 0x02,
-  val_done  = 0x08,
-  tv_done   = 0x0a
-};
-} // namespace Dependency

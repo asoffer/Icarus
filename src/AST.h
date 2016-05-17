@@ -43,9 +43,8 @@ namespace AST {
 
 struct Node {
   virtual std::string token() const { return token_; }
-  void set_token(const std::string &token_string) { token_ = token_string; }
 
-  virtual std::string to_string(size_t n) const;
+  virtual std::string to_string(size_t n) const = 0;
   virtual void join_identifiers(bool = false) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
@@ -123,6 +122,8 @@ struct TokenNode : public Node {
   static TokenNode *Newline(TokenLocation loc) {
     return new TokenNode(loc, Language::newline);
   }
+
+  virtual std::string to_string(size_t n) const;
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);

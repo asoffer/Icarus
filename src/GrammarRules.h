@@ -101,7 +101,6 @@ static const std::vector<Rule> Rules = {
     Rule(0x01, expr, {EXPR, {dots}}, AST::Unop::BuildDots),
     Rule(0x02, expr, {RESERVED, {dots}}, ErrMsg::Reserved<1, 0>),
 
-
     // Using fn_arrow with a reserved keyword
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, RESERVED}, ErrMsg::Reserved<1, 2>),
     Rule(0x00, fn_expr, {RESERVED, {fn_arrow}, EXPR}, ErrMsg::Reserved<1, 0>),
@@ -109,7 +108,8 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Using OP_B or OP_BL with a reserved keyword
-    Rule(0x00, expr, {EXPR, {OP_B, op_bl, dots}, RESERVED}, ErrMsg::Reserved<1, 2>),
+    Rule(0x00, expr, {EXPR, {OP_B, op_bl, dots}, RESERVED},
+         ErrMsg::Reserved<1, 2>),
     Rule(0x01, expr, {RESERVED, {OP_B, op_bl}, EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(0x00, expr, {RESERVED, {OP_B, op_bl}, RESERVED},
          ErrMsg::BothReserved<1, 0, 2>),
@@ -227,29 +227,31 @@ extern size_t precedence(Language::Operator op);
 // reduce is possible. Recall that the stack can never be empty, so calls to
 // stack_.back() are always safe.
 
-AST::Node *Parser::get(size_t n) { return stack_[stack_.size() - n]; }
-Language::NodeType Parser::get_type(size_t n) { return get(n)->node_type; }
+AST::Node *Parser::get(size_t n) { return node_stack_[node_stack_.size() - n]; }
+Language::NodeType Parser::get_type(size_t n) {
+  return node_type_stack_[node_type_stack_.size() - n];
+}
 
 bool Parser::should_shift() {
   // If the size is just 1, no rule will match so don't bother checking.
-  if (stack_.size() < 2) { return true; }
-
-  // We'll need these node types a lot, so lets make it easy to use
-  const auto ahead_type = lookahead_->node_type;
+  if (node_stack_.size() < 2) { return true; }
 
   if (get_type(1) == Language::dots) {
-    return (ahead_type == Language::op_bl || ahead_type == Language::op_l ||
-            ahead_type == Language::op_lt || ahead_type == Language::expr ||
-            ahead_type == Language::fn_expr ||
-            ahead_type == Language::l_paren || ahead_type == Language::l_bracket);
+    return (lookahead_type_ == Language::op_bl ||
+            lookahead_type_ == Language::op_l ||
+            lookahead_type_ == Language::op_lt ||
+            lookahead_type_ == Language::expr ||
+            lookahead_type_ == Language::fn_expr ||
+            lookahead_type_ == Language::l_paren ||
+            lookahead_type_ == Language::l_bracket);
   }
 
-  if (ahead_type == Language::l_brace && get_type(1) == Language::fn_expr &&
-      get_type(2) == Language::fn_arrow) {
+  if (lookahead_type_ == Language::l_brace &&
+      get_type(1) == Language::fn_expr && get_type(2) == Language::fn_arrow) {
     return false;
   }
 
-  if (ahead_type == Language::l_brace &&
+  if (lookahead_type_ == Language::l_brace &&
       (get_type(1) == Language::fn_expr || get_type(1) == Language::kw_struct ||
        get_type(1) == Language::kw_block)) {
     return true;
@@ -261,15 +263,17 @@ bool Parser::should_shift() {
 
   // For now, we require struct params to be in parentheses.
   // TODO determine if this is necessary.
-  if (ahead_type == Language::l_paren && get_type(1) == Language::kw_struct) {
+  if (lookahead_type_ == Language::l_paren &&
+      get_type(1) == Language::kw_struct) {
     return true;
   }
 
-  if (get_type(1) == Language::op_lt && ahead_type != Language::newline) {
+  if (get_type(1) == Language::op_lt && lookahead_type_ != Language::newline) {
     return true;
   }
 
-  if (get_type(1) == Language::kw_block && ahead_type == Language::newline) {
+  if (get_type(1) == Language::kw_block &&
+      lookahead_type_ == Language::newline) {
     return true;
   }
 
@@ -277,24 +281,23 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (stack_.size() > 2 && get_type(3) == Language::kw_expr_block &&
+  if (node_stack_.size() > 2 && get_type(3) == Language::kw_expr_block &&
       get_type(2) == Language::expr && get_type(1) == Language::newline) {
     return true;
   }
 
-  if (ahead_type == Language::r_paren) {
-    return false; }
+  if (lookahead_type_ == Language::r_paren) { return false; }
 
   if (get_type(2) & Language::OP_) {
     auto left_prec = precedence(((AST::TokenNode *)get(2))->op);
     size_t right_prec;
-    if (ahead_type & Language::OP_) {
+    if (lookahead_type_ & Language::OP_) {
       right_prec = precedence(((AST::TokenNode *)lookahead_)->op);
 
-    } else if (ahead_type == Language::l_paren) {
+    } else if (lookahead_type_ == Language::l_paren) {
       right_prec = precedence(Language::Operator::Call);
 
-    } else if (ahead_type == Language::l_bracket) {
+    } else if (lookahead_type_ == Language::l_bracket) {
       right_prec = precedence(Language::Operator::Index);
 
     } else {

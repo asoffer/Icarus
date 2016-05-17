@@ -21,10 +21,11 @@ class Parser {
 
     void show_debug() const;
 
-    NPtrVec stack_;
+    std::vector<Language::NodeType> node_type_stack_;
+    NPtrVec node_stack_;
     AST::Node *lookahead_;
+    Language::NodeType lookahead_type_;
     Lexer lexer_;
-    ParserMode mode_;
 
     AST::Node *get(size_t n);
     Language::NodeType get_type(size_t n);

@@ -5,9 +5,9 @@
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
 namespace AST {
-std::string tabs(size_t n) { return std::string(n << 1, ' '); }
+static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
-std::string Node::to_string(size_t n) const {
+std::string TokenNode::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) + "[";
   switch (node_type) {
@@ -30,6 +30,7 @@ std::string Node::to_string(size_t n) const {
   case Language::r_brace: ss << "Right Brace"; break;
   case Language::l_bracket: ss << "Left Bracket"; break;
   case Language::r_bracket: ss << "Right Bracket"; break;
+  case Language::kw_struct: ss << "struct"; break;
   default: ss << "???"; break;
   }
 
