@@ -17,9 +17,10 @@ llvm::Function *ascii();
   term_ptr->type          = ty;                                                \
   term_ptr->value         = val;                                               \
   term_ptr->token_        = tk;                                                \
-  term_ptr->node_type     = Language::expr;                                    \
-  return term_ptr
+  return NNT(term_ptr, Language::expr);
 
+#define RETURN_NNT(tk, nt)                                                     \
+  return NNT(new AST::TokenNode(loc_, tk), Language::nt);
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
 } // namespace TypeSystem
@@ -41,7 +42,7 @@ Lexer::Lexer(const std::string &file_name)
 Lexer::~Lexer() { file_.close(); }
 
 // Get the next token
-AST::Node *Lexer::Next() {
+NNT Lexer::Next() {
   int peek;
 
 restart:
@@ -52,12 +53,12 @@ restart:
 
   // Delegate based on the next character in the file stream
   if (peek == EOF) {
-    return AST::TokenNode::Eof(loc_);
+    RETURN_NNT("", eof);
 
   } else if (isnewline(peek)) {
     ++loc_.line_num;
     file_.get();
-    return AST::TokenNode::Newline(loc_);
+    RETURN_NNT("", newline);
 
   } else if (std::isspace(peek)) {
     // Ignore space/tab characters by restarting
@@ -89,7 +90,7 @@ restart:
 
 // The next token begins with an alpha character meaning that it is either a
 // reserved word or an identifier.
-AST::Node *Lexer::next_word() {
+NNT Lexer::next_word() {
   assert((std::isalpha(file_.peek()) || file_.peek() == '_')
       && "Non-alpha character encountered as first character in next_word.");
 
@@ -149,62 +150,36 @@ AST::Node *Lexer::next_word() {
     term_ptr->type          = Bool;
     term_ptr->token_        = "else";
 
-    term_ptr->node_type =Language::kw_else;
-    return term_ptr;
+    return NNT(term_ptr, Language::kw_else);
 
   } else if (token == "in") {
-    return new AST::TokenNode(loc_, Language::op_b, "in");
+    RETURN_NNT("in", op_b);
 
   } else if (token == "print" || token == "import" || token == "free") {
-    return new AST::TokenNode(loc_, Language::op_l, token);
+    RETURN_NNT(token, op_l);
 
   } else if (token == "while" || token == "for") {
-    return new AST::TokenNode(loc_, Language::kw_expr_block, token);
+    RETURN_NNT(token, kw_expr_block);
 
   } else if (token == "if") {
-    return new AST::TokenNode(loc_, Language::kw_if, token);
+    RETURN_NNT(token, kw_if);
 
   } else if (token == "case" || token == "enum") {
-    return new AST::TokenNode(loc_, Language::kw_block, token);
+    RETURN_NNT(token, kw_block);
 
   } else if (token == "struct") {
-    return new AST::TokenNode(loc_, Language::kw_struct, "struct");
+    RETURN_NNT(token, kw_struct);
 
-#define RETURN_JUMP(Name)                                                      \
-  auto jmp       = new AST::Jump(loc_, AST::Jump::JumpType::Name);             \
-  jmp->node_type = Language::op_lt;                                            \
-  return jmp
-
-  } else if (token == "return") {
-    return new AST::TokenNode(loc_, Language::op_lt, "return");
-
-  } else if (token == "continue") {
-    return new AST::TokenNode(loc_, Language::op_lt, "continue");
-
-  } else if (token == "break") {
-    return new AST::TokenNode(loc_, Language::op_lt, "break");
-
-  } else if (token == "repeat") {
-    return new AST::TokenNode(loc_, Language::op_lt, "repeat");
-
-  } else if (token == "restart") {
-    return new AST::TokenNode(loc_, Language::op_lt, "restart");
- }
-#undef RETURN_JUMP
-  // Check if the word is reserved and if so, build the appropriate Node
-//  for (const auto &res : Language::reserved_words) {
-//    if (res.first == token) {
-//      auto nptr = new AST::TokenNode;
-//      *nptr     = AST::TokenNode(loc_, res.second, res.first);
-//      return nptr;
-//    }
-//  }
+  } else if (token == "return" || token == "continue" || token == "break" ||
+             token == "repeat" || token == "restart") {
+    RETURN_NNT(token, op_lt);
+  }
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
-  return new AST::Identifier(loc_, token);
+  return NNT(new AST::Identifier(loc_, token), Language::expr);
 }
 
-AST::Node *Lexer::next_number() {
+NNT Lexer::next_number() {
   assert(std::isdigit(file_.peek())
       && "Non-digit character encountered as first character in next_number.");
 
@@ -239,7 +214,7 @@ AST::Node *Lexer::next_number() {
   RETURN_TERMINAL(Real, Real, nullptr, token); // TODO nullptr
 }
 
-AST::Node *Lexer::next_operator() {
+NNT Lexer::next_operator() {
   // Sanity check:
   // We only call this function if the top character is punctuation
   int peek = file_.peek();
@@ -247,17 +222,10 @@ AST::Node *Lexer::next_operator() {
       std::ispunct(peek) &&
       "Non-punct character encountered as first character in next_operator.");
 
-  // In general, we're going to take all punctuation characters, lump them
-  // together, and call that an operator. However, some operators are just one
-  // character and should be taken by themselves.
-  //
-  // For example, the characters '(', ')', '[', ']', '{', '}', '"', '\'', if
-  // encountered should be considered on their own.
-  switch (peek) {
 #define CASE(character, str, name)                                             \
-  case character:                                                              \
-    file_.get();                                                               \
-    return new AST::TokenNode(loc_, Language::name, str)
+  case character: file_.get(); RETURN_NNT(str, name)
+
+  switch (peek) {
     CASE('`', "`", op_bl);
     CASE('@', "@", op_l);
     CASE(',', ",", comma);
@@ -268,15 +236,14 @@ AST::Node *Lexer::next_operator() {
     CASE(']', "]", r_bracket);
     CASE('{', "{", l_brace);
     CASE('}', "}", r_brace);
-#undef CASE
 
   case '.': {
     file_.get();
     if (file_.peek() == '.') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::dots, "..");
+      RETURN_NNT("..", dots);
     } else {
-      return new AST::TokenNode(loc_, Language::op_b, ".");
+      RETURN_NNT(".", op_b);
     }
   }
   case '#': return next_hashtag();
@@ -285,6 +252,8 @@ AST::Node *Lexer::next_operator() {
     assert(false);
   }
   }
+
+#undef CASE
 
   if (peek == '/') { return next_given_slash(); }
 
@@ -308,7 +277,7 @@ AST::Node *Lexer::next_operator() {
       file_.get();
     }
 
-    return new AST::TokenNode(loc_, Language::op_b, tok);
+    RETURN_NNT(tok, op_b);
   }
   default: lead_char = 0;
   }
@@ -319,14 +288,14 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::op_b, ":=");
+      RETURN_NNT(":=", op_b);
 
     } else if (peek == '>') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::op_b, ":>");
+      RETURN_NNT(":>", op_b);
 
     } else {
-      return new AST::TokenNode(loc_, Language::op_b, ":");
+      RETURN_NNT(":", op_b);
     }
   }
 
@@ -340,12 +309,13 @@ AST::Node *Lexer::next_operator() {
       std::string tok = "_=";
       tok[0] = past_peek;
       file_.get();
-      return new AST::TokenNode(loc_, Language::op_b, tok);
+      RETURN_NNT(tok, op_b);
+
+    } else if (past_peek == '&') {
+        RETURN_NNT("&", op_bl);
 
     } else {
-      return new AST::TokenNode(
-          loc_, (past_peek == '&' ? Language::op_bl : Language::op_b),
-          std::string(1, past_peek));
+      RETURN_NNT(std::string(1, past_peek), op_b);
     }
   }
 
@@ -355,9 +325,9 @@ AST::Node *Lexer::next_operator() {
 
     if (peek == '=') {
       file_.get();
-      return new AST::TokenNode(loc_, Language::op_b, "!=");
+      RETURN_NNT("!=", op_b);
     } else {
-      return new AST::TokenNode(loc_, Language::op_l, "!");
+      RETURN_NNT("!", op_l);
     }
   }
 
@@ -369,17 +339,17 @@ AST::Node *Lexer::next_operator() {
     if (peek == '=') {
       file_.get();
 
-      return new AST::TokenNode(loc_, Language::op_b,
-                                std::string(1, lead_char) + "=");
+      RETURN_NNT((std::string(1, lead_char) + "="), op_b);
 
     } else if (peek == '>') {
       file_.get();
       if (lead_char == '-') {
-        auto nptr = new AST::TokenNode(loc_, Language::fn_arrow, "->");
+        auto nptr = new AST::TokenNode(loc_, "->");
         nptr->op  = Language::Operator::Arrow;
-        return nptr;
+        return NNT(nptr, Language::fn_arrow);
+
       } else {
-        return new AST::TokenNode(loc_, Language::op_b, "=>");
+        RETURN_NNT("=>", op_b);
       }
     } else {
       if (lead_char == '-') {
@@ -387,9 +357,10 @@ AST::Node *Lexer::next_operator() {
           file_.get();
           RETURN_TERMINAL(Hole, Unknown, nullptr, "--"); // TODO nullptr
         }
-        return new AST::TokenNode(loc_, Language::op_bl, "-");
+        RETURN_NNT("-", op_bl);
       } else {
-        return new AST::TokenNode(loc_, Language::op_b, "=");
+
+        RETURN_NNT("=", op_b);
       }
     }
   }
@@ -402,10 +373,10 @@ AST::Node *Lexer::next_operator() {
     peek = file_.peek();
   } while (std::ispunct(peek));
 
-  return new AST::TokenNode(loc_, Language::op_b, token);
+  RETURN_NNT(token, op_b);
 }
 
-AST::Node *Lexer::next_string_literal() {
+NNT Lexer::next_string_literal() {
   int peek = file_.peek();
   std::string str_lit = "";
 
@@ -452,7 +423,7 @@ AST::Node *Lexer::next_string_literal() {
   RETURN_TERMINAL(StringLiteral, Unknown, nullptr, str_lit); // TODO nullptr
 }
 
-AST::Node *Lexer::next_char_literal() {
+NNT Lexer::next_char_literal() {
   int peek = file_.peek();
 
   char output_char;
@@ -465,7 +436,7 @@ AST::Node *Lexer::next_char_literal() {
     case '\r':
       {
         error_log.log(loc_, "Cannot use newline inside a character-literal.");
-        return new AST::TokenNode(loc_, Language::newline);
+        RETURN_NNT("", newline);
       }
     case '\\':
       {
@@ -508,7 +479,7 @@ AST::Node *Lexer::next_char_literal() {
                   std::string(1, output_char));
 }
 
-AST::Node *Lexer::next_given_slash() {
+NNT Lexer::next_given_slash() {
   int peek = file_.peek();
   assert(peek == '/' && "Non-slash character encountered as first character in next_given_slash.");
 
@@ -525,7 +496,7 @@ AST::Node *Lexer::next_given_slash() {
       peek = file_.peek();
     } while (!isnewline(peek));
 
-    return new AST::TokenNode(loc_, Language::comment, token);
+    RETURN_NNT(token, comment);
   }
 
   // If the first two characters are '/*' then start a multi-line comment.
@@ -544,7 +515,7 @@ AST::Node *Lexer::next_given_slash() {
 
       if (!*this) {  // If we're at the end of the stream
         error_log.log(loc_, "File ended during multi-line comment.");
-        return new AST::TokenNode(loc_, Language::comment, "");
+        RETURN_NNT("", comment);
       }
 
       if (prepeek == '/' && peek == '*') {
@@ -555,27 +526,28 @@ AST::Node *Lexer::next_given_slash() {
       }
     }
 
-    return new AST::TokenNode(loc_, Language::comment, "MULTILINE COMMENT");
+    RETURN_NNT("", comment);
   }
 
   if (peek == '=') {
     file_.get();
-    return new AST::TokenNode(loc_, Language::op_b, "/=");
+    RETURN_NNT("/=", op_b);
   }
 
-  return new AST::TokenNode(loc_, Language::op_b, "/");
+  RETURN_NNT("/", op_b);
 }
 
-AST::Node *Lexer::next_hashtag() {
+NNT Lexer::next_hashtag() {
   int peek = file_.peek();
   assert(peek == '#' && "Non-hash character encountered as first character in next_hashtag.");
   file_.get();
 
   auto nptr = next_word();
-  std::string tag = nptr->token();
-  delete nptr;
+  std::string tag = nptr.node->token();
+  delete nptr.node;
 
-  return new AST::TokenNode(loc_, Language::hashtag, tag);
+  RETURN_NNT(tag, hashtag);
 }
 
+#undef RETURN_NNT
 #undef RETURN_TERMINAL

@@ -23,8 +23,7 @@ class Parser {
 
     std::vector<Language::NodeType> node_type_stack_;
     NPtrVec node_stack_;
-    AST::Node *lookahead_;
-    Language::NodeType lookahead_type_;
+    NNT lookahead_;
     Lexer lexer_;
 
     AST::Node *get(size_t n);

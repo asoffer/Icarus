@@ -76,6 +76,7 @@ void InDecl::join_identifiers(bool is_arg) {
 
 void Declaration::join_identifiers(bool is_arg) {
   identifier = CurrentScope()->identifier(identifier);
+
   if (is_arg) {
     assert(identifier);
     identifier->is_arg = true;

@@ -1,40 +1,14 @@
-unique_ptr := struct {
-  ptr: &int
+f := (val: &Any`T) -> void {
+  print T == int | T == real, '\n', @val, '\n'
 }
-
-Get := void -> unique_ptr {
-  ptr: unique_ptr
-  ptr.ptr = alloc(int)
-  print "calling Get               = ", ptr.ptr, "\n"
-  return ptr
-}
-
-__destroy__ := (uptr: &unique_ptr) -> void {
-  print "Calling global destructor = ", uptr.ptr, "\n"
-  free uptr.ptr
-}
-
-// __print__ := (uptr: unique_ptr) -> void {
-//   print @uptr.ptr
-// }
 
 main := void -> void {
-print "alloc = ", alloc(int), "\n"
-print "alloc = ", alloc(int), "\n"
-print "alloc = ", alloc(int), "\n"
-
-
-  p := Get()
-
-  __destroy__ := (uptr: &unique_ptr) -> void {
-    return
-  }
-
-print "--------\n"
-  foo()
-print "--------\n"
+  n: int
+  r: real
+  f(&n)
+  f(&r)
 }
-foo := void -> void {
-  p := Get()
-  q := Get()
+
+Any := (T: type) -> bool {
+  return true
 }

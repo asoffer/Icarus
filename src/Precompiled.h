@@ -84,7 +84,6 @@ namespace Language {
 constexpr int OP_ = 1 << 6;
 
 enum NodeType : char {
-  keep_current,
   unknown,
   bof,
   eof,

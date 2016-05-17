@@ -12,7 +12,7 @@ extern bool parser;
 
 // Parse the file with a shift-reduce algorithm
 AST::Node *Parser::parse() {
-  assert(lookahead_type_ == Language::bof);
+  assert(lookahead_.node_type == Language::bof);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
   // bof will not hurt us. The benefit of shifting is that we have now  enforced
@@ -20,9 +20,8 @@ AST::Node *Parser::parse() {
   // check for an empty stack in the should_shift method.
   shift();
 
-  while (lookahead_type_ != Language::eof) {
+  while (lookahead_.node_type != Language::eof) {
     assert(node_type_stack_.size() == node_stack_.size());
-    assert(node_type_stack_.back() == node_stack_.back()->node_type);
     // Shift if you are supposed to, or if you are unable to reduce.
     if (should_shift() || !reduce()) { shift(); }
 
@@ -69,38 +68,33 @@ void Parser::show_debug() const {
 }
 
 void Parser::ignore() {
-  auto next_node_ptr = lexer_.Next();
+  auto next = lexer_.Next();
 
-  delete lookahead_;
-  lookahead_ = next_node_ptr;
-  lookahead_type_ = next_node_ptr->node_type;
+  delete lookahead_.node;
+  lookahead_ = next;
 }
 
 void Parser::shift() {
-  auto next_node = lexer_.Next();
-  auto node_type        = next_node->node_type;
+  auto next = lexer_.Next();
 
   // Never shift comments onto the stack
-  if (node_type == Language::comment) {
-    delete next_node;
+  if (next.node_type == Language::comment) {
+    delete next.node;
     shift();
     return;
   }
 
-  node_type_stack_.push_back(lookahead_type_);
-  node_stack_.push_back(lookahead_);
-  lookahead_ = next_node;
-  lookahead_type_ = node_type;
+  node_type_stack_.push_back(lookahead_.node_type);
+  node_stack_.push_back(lookahead_.node);
+  lookahead_ = next;
 }
 
 // Construct a parser for the given file
-Parser::Parser(const std::string &filename)
-    : lookahead_(nullptr), lexer_(filename) {
+Parser::Parser(const std::string &filename) : lexer_(filename) {
   assert(node_stack_.empty() && node_type_stack_.empty());
   // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.
-  lookahead_ = new AST::TokenNode(lexer_.loc_, Language::bof);
-  lookahead_type_ = Language::bof;
+  lookahead_ = NNT(new AST::TokenNode(lexer_.loc_), Language::bof);
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.

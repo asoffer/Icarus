@@ -11,7 +11,7 @@ extern llvm::Constant *memcpy();
 namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
-extern llvm::Value *null_pointer(Type *t);
+extern llvm::Constant *null_pointer(Type *t);
 } // namespace data
 
 BlockScope *Scope::Global = nullptr; // Initialized in main

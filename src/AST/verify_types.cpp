@@ -11,11 +11,18 @@ extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 static AST::FunctionLiteral *
 GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
-                          TypeVariable *input_type, Type *fn_type) {
-  auto lookup_key = new TypeVariable *[1];
-  lookup_key[0]   = input_type;
-  auto lookup_val = new Type *[1];
-  lookup_val[0]   = fn_type;
+                          const std::map<TypeVariable *, Type *> &matches) {
+
+  auto num_matches = matches.size();
+  auto lookup_key  = new TypeVariable *[num_matches];
+  auto lookup_val  = new Type *[num_matches];
+
+  size_t i = 0;
+  for (auto kv : matches) {
+    lookup_key[i] = kv.first;
+    lookup_val[i] = kv.second;
+    ++i;
+  }
 
   auto cloned_func =
       (AST::FunctionLiteral *)fn_lit->clone(1, lookup_key, lookup_val);
@@ -34,6 +41,144 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   delete[] lookup_val;
 
   return cloned_func;
+}
+
+// TODO:
+//  * Send back error messages to be logged if not exactly one match occurs
+//  * Log locations?
+static bool MatchCall(Type *lhs, Type *rhs,
+                      std::map<TypeVariable *, Type *> &matches) {
+
+  if (!lhs->has_vars) { return lhs == rhs; }
+
+  if (lhs->is_type_variable()) {
+    auto lhs_var = (TypeVariable *)lhs;
+    assert(lhs_var->test);
+    auto test_fn_expr =
+        lhs_var->test->evaluate(lhs_var->identifier->scope_->context).as_expr;
+    assert(test_fn_expr->is_function_literal());
+    auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
+
+    assert(test_fn->inputs.size() == 1 && test_fn->inputs[0]->type == Type_);
+
+    // Do a function call
+    test_fn->inputs[0]->identifier->value = Context::Value(rhs);
+    assert(test_fn->type->is_function() &&
+           static_cast<Function *>(test_fn->type)->output == Bool);
+    bool test_result = test_fn->evaluate(test_fn->scope_->context).as_bool;
+
+    if (test_result) {
+      // TODO check if you've already inserted lhs_var and make sure you have
+      // valid matches. Track errors to log if not.
+      matches[lhs_var] = rhs;
+      return true;
+    }
+    return false;
+  }
+
+  if (lhs->is_pointer()) {
+    return (rhs->is_pointer()) &&
+           MatchCall(static_cast<Pointer *>(lhs)->pointee,
+                     static_cast<Pointer *>(rhs)->pointee, matches);
+  }
+
+  if (lhs->is_array()) {
+    if (!rhs->is_array()) { return false; }
+
+    auto lhs_array = static_cast<Array *>(lhs);
+    auto rhs_array = static_cast<Array *>(rhs);
+
+    if (lhs_array->fixed_length != rhs_array->fixed_length) { return false; }
+
+    if (lhs_array->fixed_length) {
+      return (lhs_array->len == rhs_array->len) &&
+             MatchCall(lhs_array->data_type, rhs_array->data_type, matches);
+    } else {
+      return MatchCall(lhs_array->data_type, rhs_array->data_type, matches);
+    }
+  }
+
+  if (lhs->is_function()) {
+    if (!rhs->is_function()) { return false; }
+
+    auto lhs_in  = static_cast<Function *>(lhs)->input;
+    auto rhs_in  = static_cast<Function *>(rhs)->input;
+    auto lhs_out = static_cast<Function *>(lhs)->output;
+    auto rhs_out = static_cast<Function *>(rhs)->output;
+
+    return MatchCall(lhs_in, rhs_in, matches) &&
+           MatchCall(lhs_out, rhs_out, matches);
+  }
+
+  if (lhs->is_struct()) {
+    std::cout << *lhs << std::endl;
+    assert(false && "Not yet implemented");
+  }
+
+  if (lhs->is_tuple()) {
+    auto lhs_tuple = (Tuple *)lhs;
+    auto rhs_tuple = (Tuple *)rhs;
+    if (lhs_tuple->entries.size() != rhs_tuple->entries.size()) {
+      return false;
+    }
+
+    size_t num_entries = lhs_tuple->entries.size();
+
+    for (size_t i = 0; i < num_entries; ++i) {
+      if (!MatchCall(lhs_tuple->entries[i], rhs_tuple->entries[i], matches)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  assert(false);
+}
+
+static Type *EvalWithVars(Type *type,
+                          const std::map<TypeVariable *, Type *> &lookup) {
+  if (!type->has_vars) { return type; }
+
+  if (type->is_type_variable())  {
+    auto iter =lookup.find((TypeVariable *)type);
+    return (iter == lookup.end()) ? type : iter->second;
+  }
+
+  if (type->is_pointer()) {
+    auto ptr_type = static_cast<Pointer *>(type);
+    return Ptr(EvalWithVars(ptr_type->pointee, lookup));
+  }
+
+  if (type->is_array()) {
+    auto array_type = (Array *)type;
+    if (array_type->fixed_length) {
+      return Arr(EvalWithVars(array_type->data_type, lookup), array_type->len);
+    } else {
+      return Arr(EvalWithVars(array_type->data_type, lookup));
+    }
+  }
+
+  if (type->is_function()) {
+    auto func_type = (Function *)type;
+    return Func(EvalWithVars(func_type->input, lookup),
+                EvalWithVars(func_type->output, lookup));
+  }
+
+  if (type->is_tuple()) {
+    auto tup_type = (Tuple*)type;
+    std::vector<Type *> entries;
+    entries.reserve(tup_type->entries.size());
+
+    for (auto entry : tup_type->entries) {
+      entries.push_back(EvalWithVars(entry, lookup));
+    }
+
+    return Tup(entries);
+  }
+
+
+  std::cout << *type << std::endl;
+  assert(false);
 }
 
 static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
@@ -84,8 +229,8 @@ static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
       }
 
       // Cache the function
-      fn_expr->cache[rhs->type] = GenerateSpecifiedFunction(
-          (AST::FunctionLiteral *)fn_expr, (TypeVariable *)in_types, rhs->type);
+//      fn_expr->cache[rhs->type] = GenerateSpecifiedFunction(
+//          (AST::FunctionLiteral *)fn_expr, (TypeVariable *)in_types, rhs->type);
 
       // TODO what if T is in the return type?
       return static_cast<Function *>(lhs_type)->output;
@@ -445,27 +590,46 @@ void Binop::verify_types() {
   case Operator::Call: {
     if (lhs->is_identifier()) {
       size_t num_matches = 0;
-      Type *resulting_type;
+      std::vector<std::map<TypeVariable *, Type *>> match_vec;
+      Type *id_ptr_type;
 
       auto id_token = lhs->token();
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
         if (!id_ptr) { continue; }
 
-        if (id_ptr->type->is_quantum()) {
+        id_ptr_type = id_ptr->type;
+        if (id_ptr_type->is_quantum()) {
           // If the LHS has a quantum type, test all possibilities to see which
           // one works. Verify that exactly one works.
-          for (auto opt : static_cast<QuantumType *>(id_ptr->type)->options) {
-            auto t = CallResolutionMatch(opt, id_ptr, rhs, rhs->loc);
-            if (t) {
+          for (auto opt : static_cast<QuantumType *>(id_ptr_type)->options) {
+            std::map<TypeVariable *, Type *> matches;
+            assert(opt->is_function());
+            auto in_type = static_cast<Function *>(opt)->input;
+            if (MatchCall(in_type, rhs->type, matches)) {
               ++num_matches;
-              resulting_type = t;
+              match_vec.push_back(matches);
             }
           }
 
         } else {
-          resulting_type = CallResolutionMatch(id_ptr->type, id_ptr, rhs, rhs->loc);
-          if (resulting_type) { ++num_matches; }
+          if (id_ptr_type->is_function()) {
+            std::map<TypeVariable *, Type *> matches;
+            auto in_type = static_cast<Function *>(id_ptr_type)->input;
+
+            if (MatchCall(in_type, rhs->type, matches)) {
+              ++num_matches;
+              match_vec.push_back(matches);
+            }
+          } else {
+            if (id_ptr_type == Type_) {
+              assert(id_ptr->value.as_type->is_parametric_struct());
+              ++num_matches;
+              match_vec.push_back({});
+            } else {
+              assert(false);
+            }
+          }
         }
       }
 
@@ -475,7 +639,29 @@ void Binop::verify_types() {
                                ? "No function overload matches call."
                                : "Multiple function overloads match call.");
       } else {
-        type = resulting_type;
+        assert(match_vec.size() == 1);
+        auto evaled_type = EvalWithVars(id_ptr_type, match_vec[0]);
+
+        if (evaled_type->is_function()) {
+          type = static_cast<Function *>(evaled_type)->output;
+
+          if (id_ptr_type->has_vars) {
+            auto fn_expr = GetFunctionLiteral(lhs);
+
+            // look in cache to see if the function has already been chosen
+            for (auto &gen : fn_expr->cache) {
+              if (gen.first == static_cast<Function *>(evaled_type)->input) {
+                return;
+              }
+            }
+            // Cache the function
+            fn_expr->cache[rhs->type] =
+                GenerateSpecifiedFunction(fn_expr, match_vec[0]);
+          }
+        } else {
+          type = evaled_type;
+          return;
+        }
       }
 
     } else {
@@ -765,7 +951,6 @@ void Declaration::verify_types() {
   expr->verify_types();
 
   scope_->ordered_decls_.push_back(this);
-
 
   if (expr->type == Void) {
     type = Error;

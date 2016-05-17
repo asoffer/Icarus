@@ -74,6 +74,7 @@ struct Node {
   virtual bool is_array_type() const { return false; }
   virtual bool is_parametric_struct_literal() const { return false; }
   virtual bool is_struct_literal() const { return false; }
+  virtual bool is_statements() const { return false; }
   virtual bool is_enum_literal() const { return false; }
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
@@ -83,10 +84,8 @@ struct Node {
   //TODO there's a cheaper way to do this (without string comparisons).
   bool is_hole() const { return token() == "--"; }
 
-  Node(TokenLocation loc = TokenLocation(),
-       Language::NodeType ntype = Language::unknown, const std::string &token = "")
-      : scope_(nullptr), node_type(ntype), token_(token), loc(loc),
-        time_(Time::error) {}
+  Node(TokenLocation loc = TokenLocation(), const std::string &token = "")
+      : scope_(nullptr), token_(token), loc(loc), time_(Time::error) {}
 
   virtual ~Node() {}
 
@@ -96,7 +95,6 @@ struct Node {
 
   Scope *scope_;
 
-  Language::NodeType node_type;
   std::string token_;
   TokenLocation loc;
   Time::Eval time_;
@@ -115,14 +113,6 @@ struct Expression : public Node {
 };
 
 struct TokenNode : public Node {
-  static TokenNode *Eof(TokenLocation loc) {
-    return new TokenNode(loc, Language::eof);
-  }
-
-  static TokenNode *Newline(TokenLocation loc) {
-    return new TokenNode(loc, Language::newline);
-  }
-
   virtual std::string to_string(size_t n) const;
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
@@ -134,9 +124,8 @@ struct TokenNode : public Node {
   virtual ~TokenNode() {}
 
   // TODO make newline default a bof (beginning of file)
-  TokenNode(TokenLocation loc = TokenLocation(),
-            Language::NodeType in_node_type = Language::newline,
-            std::string str_lit = "");
+  TokenNode(TokenLocation loc = TokenLocation(), std::string str_lit = "");
+
   std::string tk_;
   Language::Operator op;
 };
@@ -158,8 +147,8 @@ struct Identifier : public Terminal {
   void AppendType(Type *t);
 
   llvm::Value *alloc;
-  bool is_arg;                      // function argument or struct parameter
   std::vector<Declaration *> decls; // multiple because function overloading
+  bool is_arg;                      // function argument or struct parameter
 };
 
 struct Binop : public Expression {
@@ -252,6 +241,8 @@ struct Statements : public Node {
 
   inline size_t size() { return statements.size(); }
   inline void reserve(size_t n) { return statements.reserve(n); }
+
+  bool is_statements() const override { return true; }
 
   void add_nodes(Statements *stmts) {
     for (auto &stmt : stmts->statements) {

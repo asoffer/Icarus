@@ -14,13 +14,11 @@
 #include "AST/graphviz_label.cpp"
 #include "AST/join_identifiers.cpp"
 #include "AST/lrval.cpp"
-#include "AST/record_dependencies.cpp"
 #include "AST/time.cpp"
 #include "AST/to_string.cpp"
 #include "AST/verify_types.cpp"
 
 #include "Context.cpp"
-#include "DependencySystem.cpp"
 #include "ErrorLog.cpp"
 #include "externs.cpp"
 #include "Lexer.cpp"

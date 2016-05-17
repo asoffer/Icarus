@@ -766,6 +766,9 @@ llvm::Value *Statements::generate_code() {
     return phi;
 
 llvm::Value *ChainOp::generate_code() {
+  // TODO Should have already been done
+  determine_time();
+
   // TODO eval of enums at compile-time is wrong. This could be
   // 1. That the eval function is wrong, or
   // 2. That they shouldn't be determined at compile-time

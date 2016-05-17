@@ -37,6 +37,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
     Scope::Stack.pop();
 
     new_decl->verify_types();
+    new_decl->determine_time();
 
     cache_loc->declarations.push_back(new_decl);
 

@@ -108,24 +108,14 @@ main := void -> void {
   print '\n'
 }
 
-add := (l: &list(int), n: int) -> void {
-  nptr := alloc(node(int))
+add := (l: &list(Any`T), n: T) -> void {
+  nptr := alloc(node(T))
   nptr.data = n
   nptr.next = l.head
   l.head = nptr
   l.size += 1u
 }
-add := (l: &list(char), c: char) -> void {
-  nptr := alloc(node(char))
-  nptr.data = c
-  nptr.next = l.head
-  l.head = nptr
-  l.size += 1u
-}
-add := (l: &list(list(char)), c: list(char)) -> void {
-  nptr := alloc(node(list(char)))
-  nptr.data = c
-  nptr.next = l.head
-  l.head = nptr
-  l.size += 1u
+
+Any := (T: type) -> bool {
+  return true
 }

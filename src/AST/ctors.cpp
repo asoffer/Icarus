@@ -19,11 +19,14 @@ const std::map<std::string, Operator> lookup_operator = {
 } // namespace Language
 
 namespace AST {
-TokenNode::TokenNode(TokenLocation loc, Language::NodeType in_node_type,
-                     std::string str_lit)
-    : Node(loc, in_node_type), tk_(std::move(str_lit)) {
-  op = Language::is_operator(node_type) ? Language::lookup_operator AT (tk_)
-                                        : Language::Operator::NotAnOperator;
+TokenNode::TokenNode(TokenLocation loc, std::string str_lit)
+    : Node(loc), tk_(str_lit) {
+  auto iter = Language::lookup_operator.find(tk_);
+  if (iter == Language::lookup_operator.end()) {
+    op = Language::Operator::NotAnOperator;
+  } else {
+    op = iter->second;
+  }
 }
 
 Expression::Expression()
@@ -60,7 +63,6 @@ Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
   loc        = new_loc;
-  node_type  = Language::expr;
 }
 
 FunctionLiteral::FunctionLiteral()

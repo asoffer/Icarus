@@ -248,15 +248,15 @@ Structure::Structure(const std::string &name, AST::StructLiteral *expr)
 }
 
 Type *Structure::field(const std::string &name) const {
-  return field_type AT(field_name_to_num AT(name));
+  return field_type.at(field_name_to_num.at(name));
 }
 
 llvm::Value *Structure::field_num(const std::string &name) const {
-  auto num = field_name_to_num AT(name);
+  auto num = field_name_to_num.at(name);
   auto t = field_type AT(num);
   assert(!t->is_function() && t != Type_ && "Invalid data field");
 
-  return data::const_uint(field_num_to_llvm_num AT(num));
+  return data::const_uint(field_num_to_llvm_num.at(num));
 }
 
 size_t Enumeration::get_index(const std::string &str) const {

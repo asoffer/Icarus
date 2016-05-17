@@ -436,18 +436,23 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       if (rhs->is_comma_list()) {
         for (auto elem : static_cast<ChainOp *>(rhs)->exprs) {
-          arg_vals.push_back(elem->evaluate(ctx));
+          auto evaled_elem = elem->evaluate(ctx);
+          assert(!evaled_elem.as_type->has_vars);
+          arg_vals.push_back(evaled_elem);
           if (debug::parametric_struct) {
             std::cout << "   " << arg_val_counter++ << ". "
-                      << *arg_vals.back().as_type << std::endl;
+                      << *evaled_elem.as_type << std::endl;
           }
         }
       } else {
-        arg_vals.push_back(rhs->evaluate(ctx));
+        auto evaled_rhs = rhs->evaluate(ctx);
+        assert(!evaled_rhs.as_type->has_vars);
+
+        arg_vals.push_back(evaled_rhs);
         if (debug::parametric_struct) {
-          std::cout << "   " << arg_val_counter++ << ". "
-                    << *arg_vals.back().as_type << std::endl;
-          }
+          std::cout << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type
+                    << std::endl;
+        }
       }
 
       auto num_args = arg_vals.size();

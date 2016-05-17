@@ -27,7 +27,7 @@ template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
   error_log.log(nodes[PrevIndex]->loc, "Are you missing a comma after '" +
                                            nodes[PrevIndex]->token() + "'?");
 
-  auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, Language::comma, ",");
+  auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
                               steal_node<AST::Node>(nodes[PrevIndex + 1])});
 }
@@ -189,14 +189,21 @@ static const std::vector<Rule> Rules = {
          {{stmts}, {expr, fn_expr, stmts, if_stmt, one_stmt}, {newline}},
          AST::Statements::build_more),
 
-    Rule(0x02, keep_current,
-         {{comma, l_paren, l_bracket, l_brace, stmts}, {newline}},
-         drop_all_but<0>),
-    Rule(0x00, keep_current,
-         {{newline}, {r_paren, r_bracket, r_brace, l_brace, stmts}},
-         drop_all_but<1>),
-    Rule(0x00, keep_current, {{r_paren, r_bracket, r_brace}, {newline}},
-         drop_all_but<0>),
+    Rule(0x02, comma, {{comma}, {newline}}, drop_all_but<0>),
+    Rule(0x02, l_paren, {{l_paren}, {newline}}, drop_all_but<0>),
+    Rule(0x02, l_bracket, {{l_bracket}, {newline}}, drop_all_but<0>),
+    Rule(0x02, l_brace, {{l_brace}, {newline}}, drop_all_but<0>),
+    Rule(0x02, stmts, {{stmts}, {newline}}, drop_all_but<0>),
+
+    Rule(0x00, r_paren, {{newline}, {r_paren}}, drop_all_but<1>),
+    Rule(0x00, r_bracket, {{newline}, {r_bracket}}, drop_all_but<1>),
+    Rule(0x00, r_brace, {{newline}, {r_brace}}, drop_all_but<1>),
+    Rule(0x00, l_brace, {{newline}, {l_brace}}, drop_all_but<1>),
+    Rule(0x00, stmts, {{newline}, {stmts}}, drop_all_but<1>),
+
+    Rule(0x00, r_paren, {{r_paren}, {newline}}, drop_all_but<0>),
+    Rule(0x00, r_bracket, {{r_bracket}, {newline}}, drop_all_but<0>),
+    Rule(0x00, r_brace, {{r_brace}, {newline}}, drop_all_but<0>),
 
     Rule(0x00, expr, {{fn_expr}, {l_brace}, {stmts}, {r_brace}},
          AST::FunctionLiteral::build),
@@ -237,21 +244,21 @@ bool Parser::should_shift() {
   if (node_stack_.size() < 2) { return true; }
 
   if (get_type(1) == Language::dots) {
-    return (lookahead_type_ == Language::op_bl ||
-            lookahead_type_ == Language::op_l ||
-            lookahead_type_ == Language::op_lt ||
-            lookahead_type_ == Language::expr ||
-            lookahead_type_ == Language::fn_expr ||
-            lookahead_type_ == Language::l_paren ||
-            lookahead_type_ == Language::l_bracket);
+    return (lookahead_.node_type == Language::op_bl ||
+            lookahead_.node_type == Language::op_l ||
+            lookahead_.node_type == Language::op_lt ||
+            lookahead_.node_type == Language::expr ||
+            lookahead_.node_type == Language::fn_expr ||
+            lookahead_.node_type == Language::l_paren ||
+            lookahead_.node_type == Language::l_bracket);
   }
 
-  if (lookahead_type_ == Language::l_brace &&
+  if (lookahead_.node_type == Language::l_brace &&
       get_type(1) == Language::fn_expr && get_type(2) == Language::fn_arrow) {
     return false;
   }
 
-  if (lookahead_type_ == Language::l_brace &&
+  if (lookahead_.node_type == Language::l_brace &&
       (get_type(1) == Language::fn_expr || get_type(1) == Language::kw_struct ||
        get_type(1) == Language::kw_block)) {
     return true;
@@ -263,17 +270,17 @@ bool Parser::should_shift() {
 
   // For now, we require struct params to be in parentheses.
   // TODO determine if this is necessary.
-  if (lookahead_type_ == Language::l_paren &&
+  if (lookahead_.node_type == Language::l_paren &&
       get_type(1) == Language::kw_struct) {
     return true;
   }
 
-  if (get_type(1) == Language::op_lt && lookahead_type_ != Language::newline) {
+  if (get_type(1) == Language::op_lt && lookahead_.node_type != Language::newline) {
     return true;
   }
 
   if (get_type(1) == Language::kw_block &&
-      lookahead_type_ == Language::newline) {
+      lookahead_.node_type == Language::newline) {
     return true;
   }
 
@@ -286,18 +293,18 @@ bool Parser::should_shift() {
     return true;
   }
 
-  if (lookahead_type_ == Language::r_paren) { return false; }
+  if (lookahead_.node_type == Language::r_paren) { return false; }
 
   if (get_type(2) & Language::OP_) {
     auto left_prec = precedence(((AST::TokenNode *)get(2))->op);
     size_t right_prec;
-    if (lookahead_type_ & Language::OP_) {
-      right_prec = precedence(((AST::TokenNode *)lookahead_)->op);
+    if (lookahead_.node_type & Language::OP_) {
+      right_prec = precedence(((AST::TokenNode *)lookahead_.node)->op);
 
-    } else if (lookahead_type_ == Language::l_paren) {
+    } else if (lookahead_.node_type == Language::l_paren) {
       right_prec = precedence(Language::Operator::Call);
 
-    } else if (lookahead_type_ == Language::l_bracket) {
+    } else if (lookahead_.node_type == Language::l_bracket) {
       right_prec = precedence(Language::Operator::Index);
 
     } else {

@@ -63,7 +63,6 @@ std::string canonicalize_file_name(const std::string &filename) {
 }
 
 int main(int argc, char *argv[]) {
-  std::cout << argv[1] << std::endl;
   // This includes naming all basic types, so it must be done even before
   // lexing.
   TypeSystem::initialize();

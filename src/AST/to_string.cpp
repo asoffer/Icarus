@@ -9,32 +9,7 @@ static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
 std::string TokenNode::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) + "[";
-  switch (node_type) {
-  case Language::unknown: ss << "Unknown"; break;
-  case Language::bof: ss << "BOF"; break;
-  case Language::eof: ss << "EOF"; break;
-  case Language::newline: ss << "Newline"; break;
-  case Language::comment: ss << "Comment"; break;
-  case Language::semicolon: ss << ";"; break;
-  case Language::hashtag: ss << "#..."; break;
-  case Language::op_b: ss << "Binop"; break;
-  case Language::op_bl: ss << "Binop or Left Unop"; break;
-  case Language::op_l: ss << "Left Unop"; break;
-  case Language::op_lt: ss << "Left Unop or Terminal"; break;
-  case Language::expr: ss << "Expression"; break;
-  case Language::fn_arrow: ss << "->"; break;
-  case Language::l_paren: ss << "Left Paren"; break;
-  case Language::r_paren: ss << "Right Paren"; break;
-  case Language::l_brace: ss << "Left Brace"; break;
-  case Language::r_brace: ss << "Right Brace"; break;
-  case Language::l_bracket: ss << "Left Bracket"; break;
-  case Language::r_bracket: ss << "Right Bracket"; break;
-  case Language::kw_struct: ss << "struct"; break;
-  default: ss << "???"; break;
-  }
-
-  ss << (!token_.empty() ? ": " + token_ : "") << "]\n";
+  ss << tabs(n) << "[" << token() << "]\n";
   return ss.str();
 }
 

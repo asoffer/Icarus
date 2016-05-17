@@ -51,10 +51,9 @@ void Rule::apply(NPtrVec &node_stack,
   }
 
   auto new_ptr = fn_(std::move(nodes_to_reduce));
-  if (output_ != Language::keep_current) { new_ptr->node_type = output_; }
 
   for (auto ptr : nodes_to_reduce) { DELETE(ptr); }
 
   node_stack.push_back(std::move(new_ptr));
-  node_type_stack.push_back(new_ptr->node_type);
+  node_type_stack.push_back(output_);
 }

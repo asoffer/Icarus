@@ -5,22 +5,7 @@ ErrorLog error_log;
 
 ErrorLog::ErrorLog() : err_num_(0) {}
 
-AST::Node *ErrorLog::assignment_vs_equality(AST::Node *node) {
-  log(node->loc, "Assignment found where boolean expression was expected. "
-                 "Did you mean `==` instead of `=`?");
-
-  auto assignment_node = (AST::Binop *)node;
-
-  NPtrVec node_vec = {
-      assignment_node->lhs,
-      new AST::TokenNode(node->loc, Language::op_b, "=="),
-      assignment_node->rhs};
-
-  return AST::ChainOp::join(std::forward<NPtrVec>(node_vec));
-}
-
 std::ostream &operator<<(std::ostream &os, const ErrorLog &log) {
-
   for (const auto &file_log : log.log_) {
     //NOTE: No sense in robustifying this. It probably won't last.
     size_t num_eqs = 38 - file_log.first.size() / 2;

@@ -1,6 +1,11 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
+struct NNT {
+  AST::Node *node;
+  Language::NodeType node_type;
+  NNT(AST::Node *n = nullptr, Language::NodeType nt = Language::unknown) : node(n), node_type(nt) {}
+};
 // struct Lexer:
 //
 // This class takes a file name in its only constructor. The contents of the
@@ -12,7 +17,7 @@ struct Lexer {
     ~Lexer();
 
     // Reads the next token from the lexer into a node
-    AST::Node *Next();
+    NNT Next();
 
     // Returns true precisely when we have not yet reached EOF
     operator bool () const { return !file_.eof() && !file_.fail(); }
@@ -22,13 +27,13 @@ struct Lexer {
 
     Lexer() = delete;
 
-    AST::Node *next_word();
-    AST::Node *next_number();
-    AST::Node *next_operator();
-    AST::Node *next_string_literal();
-    AST::Node *next_char_literal();
-    AST::Node *next_given_slash();
-    AST::Node *next_hashtag();
+    NNT next_word();
+    NNT next_number();
+    NNT next_operator();
+    NNT next_string_literal();
+    NNT next_char_literal();
+    NNT next_given_slash();
+    NNT next_hashtag();
 };
 
 #endif  // ICARUS_LEXER_H
