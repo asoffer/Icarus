@@ -301,6 +301,8 @@ llvm::Value *Access::generate_code() {
 
     auto expr_as_type = operand->evaluate(CurrentContext()).as_type;
 
+    // TODO in the process of moving this into evaluate (because it's
+    // compile-time) Remove it from here.
     if (member_name == "bytes") {
       return data::const_uint(expr_as_type->bytes());
 

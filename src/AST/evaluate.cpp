@@ -374,6 +374,15 @@ Context::Value Access::evaluate(Context &ctx) {
     auto enum_type = (Enumeration *)type;
     return Context::Value(enum_type->get_index(member_name));
   }
+
+  if (member_name == "bytes") {
+    return Context::Value(operand->evaluate(ctx).as_type->bytes());
+
+  } else if (member_name == "alignment") {
+    return Context::Value(operand->evaluate(ctx).as_type->alignment());
+  }
+
+  std::cout << *this << std::endl;
   assert(false && "not yet implemented");
 }
 

@@ -2,24 +2,18 @@ main := void -> void {
   print_type_info := foo
   
   foo := (val : Any`T) -> void {
-    print "\n        value = "
-    print val
-    print "\n         type = "
-    print T
-    print "\ninitial value = "
     blank: T
-    print blank
 
-    print "\n         size = "
-    print T.bytes
-    print " byte"
+    print "\n        value = ", val
+    print "\n         type = ", T
+    print "\ninitial value = ", blank
+
+    print "\n         size = ", T.bytes, " byte"
     if T.bytes != 1u {
       print "s"
     }
 
-    print "\n    alignment = "
-    print T.alignment
-    print " byte"
+    print "\n    alignment = ", T.alignment, " byte"
     if T.alignment != 1u {
       print "s"
     }

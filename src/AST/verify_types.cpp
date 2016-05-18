@@ -591,41 +591,50 @@ void Binop::verify_types() {
     if (lhs->is_identifier()) {
       size_t num_matches = 0;
       std::vector<std::map<TypeVariable *, Type *>> match_vec;
-      Type *id_ptr_type;
+      Identifier *matched_id = nullptr;
+      Type *matched_type;
 
       auto id_token = lhs->token();
+
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
+
         if (!id_ptr) { continue; }
 
-        id_ptr_type = id_ptr->type;
-        if (id_ptr_type->is_quantum()) {
+        if (id_ptr->type->is_quantum()) {
           // If the LHS has a quantum type, test all possibilities to see which
           // one works. Verify that exactly one works.
-          for (auto opt : static_cast<QuantumType *>(id_ptr_type)->options) {
+          for (auto opt : static_cast<QuantumType *>(id_ptr->type)->options) {
             std::map<TypeVariable *, Type *> matches;
             assert(opt->is_function());
             auto in_type = static_cast<Function *>(opt)->input;
             if (MatchCall(in_type, rhs->type, matches)) {
               ++num_matches;
               match_vec.push_back(matches);
+              matched_type = opt;
+              matched_id   = id_ptr;
             }
           }
 
         } else {
-          if (id_ptr_type->is_function()) {
+          if (id_ptr->type->is_function()) {
             std::map<TypeVariable *, Type *> matches;
-            auto in_type = static_cast<Function *>(id_ptr_type)->input;
+            auto in_type = static_cast<Function *>(id_ptr->type)->input;
 
             if (MatchCall(in_type, rhs->type, matches)) {
               ++num_matches;
               match_vec.push_back(matches);
+              matched_type = id_ptr->type;
+              matched_id   = id_ptr;
             }
           } else {
-            if (id_ptr_type == Type_) {
+            if (id_ptr->type == Type_) {
               assert(id_ptr->value.as_type->is_parametric_struct());
               ++num_matches;
               match_vec.push_back({});
+              matched_type = id_ptr->type;
+              matched_id   = id_ptr;
+
             } else {
               assert(false);
             }
@@ -633,19 +642,20 @@ void Binop::verify_types() {
         }
       }
 
+      assert(match_vec.size() == num_matches);
+
       if (num_matches != 1) {
         type = Error;
         error_log.log(loc, num_matches == 0
                                ? "No function overload matches call."
                                : "Multiple function overloads match call.");
       } else {
-        assert(match_vec.size() == 1);
-        auto evaled_type = EvalWithVars(id_ptr_type, match_vec[0]);
+        auto evaled_type = EvalWithVars(matched_type, match_vec[0]);
 
         if (evaled_type->is_function()) {
           type = static_cast<Function *>(evaled_type)->output;
 
-          if (id_ptr_type->has_vars) {
+          if (matched_id->type->has_vars && !matched_id->is_arg) {
             auto fn_expr = GetFunctionLiteral(lhs);
 
             // look in cache to see if the function has already been chosen
