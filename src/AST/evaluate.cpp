@@ -283,34 +283,8 @@ Context::Value ArrayType::evaluate() {
 
 Context::Value ArrayLiteral::evaluate() { assert(false); }
 
-Context::Value Terminal::evaluate() {
-  if (type == Bool) {
-    assert((token == "true" || token == "false") &&
-           "Bool literal other than true or false");
-    return Context::Value(terminal_type == Language::Terminal::True);
-  } else if (type == Char) {
-    return Context::Value(token[0]);
-  } else if (type == Int) {
-    return Context::Value(std::stol(token));
-  } else if (type == Real) {
-    return Context::Value(std::stod(token));
-  } else if (type == Uint) {
-    return Context::Value(std::stoul(token));
-  } else if (type == Type_) {
-    if (token == "bool") return Context::Value(Bool);
-    if (token == "char") return Context::Value(Char);
-    if (token == "int") return Context::Value(Int);
-    if (token == "real") return Context::Value(Real);
-    if (token == "type") return Context::Value(Type_);
-    if (token == "uint") return Context::Value(Uint);
-    if (token == "void") return Context::Value(Void);
-
-    error_log.log(loc, "I don't think `" + token + "` is a type!");
-    return Context::Value(Error);
-  } else { /* TODO */
-  }
-  return nullptr;
-}
+// TODO ord, ascii
+Context::Value Terminal::evaluate() { return value; }
 
 Context::Value FunctionLiteral::evaluate() { return statements->evaluate(); }
 

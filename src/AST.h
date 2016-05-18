@@ -134,12 +134,13 @@ struct Terminal : public Expression {
     return terminal_type == Language::Terminal::Hole;
   }
 
-  std::string token;
 };
 
 struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
   Identifier(TokenLocation loc, const std::string &token_string);
+
+  std::string token;
 
   void AppendType(Type *t);
 

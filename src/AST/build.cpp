@@ -277,9 +277,11 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
-    assert(unop_ptr->operand->is_terminal());
-    file_queue.emplace("programs/" +
-                       static_cast<Terminal *>(unop_ptr->operand)->token);
+    assert(unop_ptr->operand->is_terminal() &&
+           static_cast<Terminal *>(unop_ptr->operand)->terminal_type ==
+               Language::Terminal::StringLiteral);
+    file_queue.emplace(std::string("programs/") +
+                       std::string(unop_ptr->operand->value.as_str));
 
     unop_ptr->op = Language::Operator::Import;
 

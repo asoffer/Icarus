@@ -1,6 +1,7 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
 #include "Type.h"
+#include <cstring>
 #endif
 
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -96,30 +97,14 @@ llvm::Value *Identifier::generate_code() {
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Terminal::generate_code() {
-  switch (terminal_type) {
-  case Language::Terminal::Type:
-  case Language::Terminal::Return: assert(false && "Should be unreachable");
-  case Language::Terminal::Null: {
-    assert(type->is_pointer() && "Null pointer of non-pointer type ");
-    return data::null(type);
-  }
-  case Language::Terminal::Hole:  assert(false);
-  case Language::Terminal::Ord:   return builtin::ord();
-  case Language::Terminal::ASCII: return builtin::ascii();
-  case Language::Terminal::True:  return data::const_true();
-  case Language::Terminal::False: return data::const_false();
-  case Language::Terminal::Char:  return data::const_char(token[0]);
-  case Language::Terminal::Int:   return data::const_int(std::stoi(token));
-  case Language::Terminal::Real:  return data::const_real(std::stod(token));
-  case Language::Terminal::Uint:  return data::const_uint(std::stoul(token));
-  case Language::Terminal::Else:
-    return data::const_true();
   // Else is a terminal only in case statements. In this situation, it's
-  // corresponding resulting value is always to be the one chosen, so we
-  // should have 'else' represent the value true.
-  case Language::Terminal::StringLiteral: {
-    auto str = data::global_string(token);
-    auto len = data::const_uint(token.size());
+  // corresponding resulting value is always to be the one chosen, so we should
+  // have 'else' represent the value true.
+  if (terminal_type == Language::Terminal::Else) { return data::const_true(); }
+
+  if (terminal_type == Language::Terminal::StringLiteral) {
+    auto str = data::global_string(value.as_str);
+    auto len = data::const_uint(std::strlen(value.as_str));
 
     auto str_alloc = builder.CreateAlloca(*type);
 
@@ -146,7 +131,8 @@ llvm::Value *Terminal::generate_code() {
 
     return str_alloc;
   }
-  }
+
+  return GetGlobal();
 }
 
 static void CallPrint(Expression *expr) {

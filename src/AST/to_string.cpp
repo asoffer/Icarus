@@ -130,19 +130,28 @@ std::string ChainOp::to_string(size_t n) const {
 }
 
 std::string Terminal::to_string(size_t n) const {
-  auto str = tabs(n) + "<Terminal " + TYPE_OR("") + ": ";
+  std::stringstream ss;
+  ss << tabs(n) << "<Terminal " << TYPE_OR("") << ": ";
 
-  if (token == "\n")
-    str += "\\n";
-  else if (token == "\t")
-    str += "\\t";
-  else if (token == "\r")
-    str += "\\r";
-  else if (token == " ")
-    str += "' '";
-  else
-    str += token;
-  return str + ">\n";
+  switch (terminal_type) {
+  case Language::Terminal::ASCII: ss << "ascii"; break;
+  case Language::Terminal::Char: ss << "'" << value.as_char << "'"; break;
+  case Language::Terminal::Else: ss << "else"; break;
+  case Language::Terminal::False: ss << "false"; break;
+  case Language::Terminal::Hole: ss << "--"; break;
+  case Language::Terminal::Int: ss << value.as_int; break;
+  case Language::Terminal::Null: ss << "null"; break;
+  case Language::Terminal::Ord: ss << "ord"; break;
+  case Language::Terminal::Real: ss << value.as_real; break;
+  case Language::Terminal::Return: ss << "return"; break;
+  case Language::Terminal::StringLiteral: ss << value.as_str; break;
+  case Language::Terminal::True: ss << "true"; break;
+  case Language::Terminal::Type: ss << "type"; break; // TODO FIXME
+  case Language::Terminal::Uint: ss << value.as_uint; break;
+  }
+
+  ss << ">\n";
+  return ss.str();
 }
 
 std::string Identifier::to_string(size_t n) const {

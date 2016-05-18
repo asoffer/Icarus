@@ -9,27 +9,34 @@ extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantFP *const_real(double d);
 extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_true();
+extern llvm::ConstantInt *const_false();
+extern llvm::Constant *null(const Type *t);
 } // namespace data
+
+namespace builtin {
+extern llvm::Function *ascii();
+extern llvm::Function *ord();
+} // namespace builtin
 
 namespace AST {
 llvm::Constant *Terminal::GetGlobal() {
-  if (type == Bool) {
-    return data::const_bool(terminal_type == Language::Terminal::True);
-
-  } else if (type == Char) {
-    return data::const_char(token[0]);
-
-  } else if (type == Int) {
-    return data::const_int(std::stol(token));
-
-  } else if (type == Real) {
-    return data::const_real(std::stod(token));
-
-  } else if (type == Uint) {
-    return data::const_uint(std::stoul(token));
+  switch (terminal_type) {
+  case Language::Terminal::ASCII: return builtin::ascii();
+  case Language::Terminal::Char: return data::const_char(value.as_char);
+  case Language::Terminal::Else: assert(false);
+  case Language::Terminal::False: return data::const_false();
+  case Language::Terminal::Hole: assert(false && "TODO");
+  case Language::Terminal::Int: return data::const_int(value.as_int);
+  case Language::Terminal::Null: return data::null(type);
+  case Language::Terminal::Ord: return builtin::ord();
+  case Language::Terminal::Real: return data::const_real(value.as_real);
+  case Language::Terminal::Return: assert(false);
+  case Language::Terminal::StringLiteral: assert(false && "TODO");
+  case Language::Terminal::True: return data::const_true();
+  case Language::Terminal::Type: assert(false);
+  case Language::Terminal::Uint: return data::const_uint(value.as_uint);
   }
-
-  assert(false);
 }
 
 llvm::Constant *ArrayLiteral::GetGlobal() {
