@@ -35,14 +35,14 @@ AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
 
   Scope *scope_ptr = this;
   while (scope_ptr != nullptr) {
-    auto iter = scope_ptr->ids_.find(idptr->token());
+    auto iter = scope_ptr->ids_.find(idptr->token);
     if (iter != scope_ptr->ids_.end()) { return iter->second; }
     scope_ptr = scope_ptr->parent;
   }
 
   // If you reach here it's because we never saw a declaration for the
   // identifier
-  error_log.log(idptr->loc, "Undeclared identifier `" + idptr->token() + "`.");
+  error_log.log(idptr->loc, "Undeclared identifier `" + idptr->token + "`.");
 
   return nullptr;
 }
@@ -93,7 +93,7 @@ void Scope::verify_no_shadowing() {
   for (auto decl_ptr1 : decl_registry_) {
     for (auto decl_ptr2 : decl_registry_) {
       if (decl_ptr1 == decl_ptr2) continue;
-      if (decl_ptr1->identifier->token() != decl_ptr2->identifier->token())
+      if (decl_ptr1->identifier->token != decl_ptr2->identifier->token)
         continue;
 
       auto scope_ptr = decl_ptr1->scope_;
@@ -104,7 +104,7 @@ void Scope::verify_no_shadowing() {
              !decl_ptr2->type->is_function()) &&
             decl_ptr1->loc.line_num <= decl_ptr2->loc.line_num) {
           error_log.log(decl_ptr1->loc,
-                        "Identifier `" + decl_ptr1->identifier->token() +
+                        "Identifier `" + decl_ptr1->identifier->token +
                             "` already declared in this scope (on line " +
                             std::to_string(decl_ptr2->loc.line_num) + ").");
         }
@@ -116,7 +116,7 @@ void Scope::verify_no_shadowing() {
       while (scope_ptr != nullptr && scope_ptr->is_block_scope()) {
         if (scope_ptr == decl_ptr2->scope_) {
           error_log.log(decl_ptr1->loc,
-                        "Identifier `" + decl_ptr1->identifier->token() +
+                        "Identifier `" + decl_ptr1->identifier->token +
                             "` shadows identifier declared on line " +
                             std::to_string(decl_ptr2->loc.line_num) + ".");
           // Do NOT skip out here. It's possible to have many shadows and we
@@ -333,7 +333,7 @@ void FnScope::allocate(Scope* scope) {
     }
 
     decl_id->alloc = decl_type->allocate();
-    decl_id->alloc->setName(decl_ptr->identifier->token());
+    decl_id->alloc->setName(decl_ptr->identifier->token);
   }
 }
 

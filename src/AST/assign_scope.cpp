@@ -77,13 +77,13 @@ void InDecl::assign_scope() {
   scope_ = CurrentScope();
   // TODO this only works if they're in identical scopes. If there's a parent
   // scope relationship, we fail.
-  auto iter = scope_->ids_.find(identifier->token());
+  auto iter = scope_->ids_.find(identifier->token);
   if (iter == scope_->ids_.end()) {
-    scope_->ids_[identifier->token()] = identifier;
+    scope_->ids_[identifier->token] = identifier;
   }
 
   // TODO Shouldn't we register this declaration?
-  // scope_->ids_[identifier->token()]->decls.push_back(this);
+  // scope_->ids_[identifier->token]->decls.push_back(this);
 
   identifier->assign_scope();
   container->assign_scope();
@@ -93,12 +93,12 @@ void Declaration::assign_scope() {
   scope_ = CurrentScope();
   // TODO this only works if they're in identical scopes. If there's a parent
   // scope relationship, we fail.
-  auto iter = scope_->ids_.find(identifier->token());
+  auto iter = scope_->ids_.find(identifier->token);
   if (iter == scope_->ids_.end()) {
-    scope_->ids_[identifier->token()] = identifier;
+    scope_->ids_[identifier->token] = identifier;
   }
 
-  scope_->ids_[identifier->token()]->decls.push_back(this);
+  scope_->ids_[identifier->token]->decls.push_back(this);
   identifier->assign_scope();
   expr->assign_scope();
 }

@@ -17,22 +17,22 @@ llvm::Constant *Terminal::GetGlobal(Context &ctx) {
     return data::const_bool(terminal_type == Language::Terminal::True);
 
   } else if (type == Char) {
-    return data::const_char(token()[0]);
+    return data::const_char(token[0]);
 
   } else if (type == Int) {
-    return data::const_int(std::stol(token()));
+    return data::const_int(std::stol(token));
 
   } else if (type == Real) {
-    return data::const_real(std::stod(token()));
+    return data::const_real(std::stod(token));
 
   } else if (type == Uint) {
-    return data::const_uint(std::stoul(token()));
+    return data::const_uint(std::stoul(token));
   }
 
   assert(false);
 }
 
-llvm::Constant *ArrayLiteral::GetGlobal(Context &ctx) { 
+llvm::Constant *ArrayLiteral::GetGlobal(Context &ctx) {
   assert(type->is_array());
   auto array_type = (Array *)type;
   assert(array_type->fixed_length);

@@ -3,6 +3,21 @@ extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
 extern AST::Node *Parenthesize(NPtrVec &&nodes);
 
+#define RESERVED_MSG(index)                                                    \
+  {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
+    assert(nodes[index]->is_token_node());                                     \
+    auto tok = static_cast<AST::TokenNode *>(nodes[index])->token;            \
+    error_log.log(nodes[index]->loc, "'" + tok + "' is a reserved keyword.");  \
+  }
+
+#define NOT_BINOP_MSG(index)                                                   \
+  {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
+    assert(nodes[index]->is_token_node());                                     \
+    auto tok = static_cast<AST::TokenNode *>(nodes[index])->token;            \
+    error_log.log(nodes[index]->loc,                                           \
+                  "Operator '" + tok + "' is not a binary operator.");         \
+  }
+
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
   auto temp = nodes[N];
   assert(temp && "stolen pointer is null");
@@ -23,9 +38,23 @@ AST::Node *EmptyFile(NPtrVec &&nodes) {
   return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
 }
 
+// Passing a char because it's a number < 80
+std::string underline(size_t pointer_loc) {
+  std::string output(81, '~');
+  output[0] = '\n';
+  output[pointer_loc + 1] = '^';
+  return output;
+}
+
 template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
-  error_log.log(nodes[PrevIndex]->loc, "Are you missing a comma after '" +
-                                           nodes[PrevIndex]->token() + "'?");
+  std::stringstream ss;
+  ss << "Are you missing a comma?'\n"
+     << "................................LINE OF CODE "
+        "HERE..............................."
+     << underline((size_t)nodes[PrevIndex]->loc.offset);
+
+  // TODO Actually show line
+  error_log.log(nodes[PrevIndex]->loc, ss.str());
 
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
@@ -33,51 +62,38 @@ template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
 }
 
 template <size_t RTN, size_t RES> AST::Node *Reserved(NPtrVec &&nodes) {
-  error_log.log(nodes[RES]->loc,
-                "'" + nodes[RES]->token() + "' is a reserved keyword.");
+  RESERVED_MSG(RES)
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
 AST::Node *BothReserved(NPtrVec &&nodes) {
-  error_log.log(nodes[RES1]->loc,
-                "'" + nodes[RES1]->token() + "' is a reserved keyword.");
-
-  error_log.log(nodes[RES2]->loc,
-                "'" + nodes[RES2]->token() + "' is a reserved keyword.");
-
+  RESERVED_MSG(RES1)
+  RESERVED_MSG(RES2)
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 AST::Node *NonBinop(NPtrVec &&nodes) {
-  error_log.log(nodes[1]->loc, "Operator '" + nodes[1]->token() +
-                                   "' is not a binary operator.");
+  NOT_BINOP_MSG(1)
   return new AST::Identifier(nodes[1]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES> AST::Node *NonBinopReserved(NPtrVec &&nodes) {
-  error_log.log(nodes[1]->loc, "Operator '" + nodes[1]->token() +
-                                   "' is not a binary operator.");
-  error_log.log(nodes[RES]->loc,
-                "'" + nodes[RES]->token() + "' is a reserved keyword.");
+  NOT_BINOP_MSG(1)
+  RESERVED_MSG(RES)
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->loc,
-                "'" + nodes[0]->token() + "' is a reserved keyword.");
-
-  error_log.log(nodes[1]->loc, "Operator '" + nodes[1]->token() +
-                                   "' is not a binary operator.");
-
-  error_log.log(nodes[2]->loc,
-                "'" + nodes[2]->token() + "' is a reserved keyword.");
-
+  RESERVED_MSG(0)
+  NOT_BINOP_MSG(1)
+  RESERVED_MSG(2)
   return new AST::Identifier(nodes[1]->loc, "invalid_node");
 }
 
 } // namespace ErrMsg
-
+#undef RESERVED_MSG
+#undef NOT_BINOP_MSG
 namespace Language {
 #define OP_B op_b, comma, dots
 #define OP_LT op_lt, kw_else

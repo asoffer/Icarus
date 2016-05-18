@@ -90,14 +90,13 @@ llvm::Value *Identifier::generate_code() {
     return alloc;
 
   } else {
-    return builder.CreateLoad(alloc, token());
+    return builder.CreateLoad(alloc, token);
   }
 }
 
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Terminal::generate_code() {
-  // TODO remove dependence on token() altogether
   switch (terminal_type) {
   case Language::Terminal::Type:
   case Language::Terminal::Return: assert(false && "Should be unreachable");
@@ -114,10 +113,10 @@ llvm::Value *Terminal::generate_code() {
   case Language::Terminal::ASCII: return builtin::ascii();
   case Language::Terminal::True:  return data::const_true();
   case Language::Terminal::False: return data::const_false();
-  case Language::Terminal::Char:  return data::const_char(token()[0]);
-  case Language::Terminal::Int:   return data::const_int(std::stoi(token()));
-  case Language::Terminal::Real:  return data::const_real(std::stod(token()));
-  case Language::Terminal::Uint:  return data::const_uint(std::stoul(token()));
+  case Language::Terminal::Char:  return data::const_char(token[0]);
+  case Language::Terminal::Int:   return data::const_int(std::stoi(token));
+  case Language::Terminal::Real:  return data::const_real(std::stod(token));
+  case Language::Terminal::Uint:  return data::const_uint(std::stoul(token));
   case Language::Terminal::Alloc: return cstdlib::malloc();
   case Language::Terminal::Else:
     return data::const_true();
@@ -125,8 +124,8 @@ llvm::Value *Terminal::generate_code() {
   // corresponding resulting value is always to be the one chosen, so we
   // should have 'else' represent the value true.
   case Language::Terminal::StringLiteral: {
-    auto str = data::global_string(token());
-    auto len = data::const_uint(token().size());
+    auto str = data::global_string(token);
+    auto len = data::const_uint(token.size());
 
     auto str_alloc = builder.CreateAlloca(*type);
 
@@ -357,6 +356,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
   // Treat functions special
   if (lhs->is_identifier() && rhs->type->is_function()) {
+    auto id           = static_cast<Identifier *>(lhs);
     auto fn_type      = (Function *)rhs->type;
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
     auto mangled_name = Mangle(fn_type, lhs);
@@ -365,7 +365,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     // name/scope, etc.
     if (rhs->is_function_literal()) {
       auto fn = static_cast<FunctionLiteral *>(rhs);
-      fn->fn_scope->name = lhs->token();
+      fn->fn_scope->name = id->token;
 
       fn->llvm_fn = static_cast<llvm::Function *>(
           global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
@@ -422,11 +422,12 @@ llvm::Value *Binop::generate_code() {
   if (lhs->type->is_dependent_type()) {
     auto t = rhs->evaluate(CurrentContext()).as_type;
 
+    assert(lhs->is_terminal());
     // TODO what if these are formed by some crazy other method?
-    if (lhs->token() == "input") {
+    if (static_cast<Terminal *>(lhs)->token == "input") {
       return builtin::input(t);
 
-    } else if (lhs->token() == "alloc") {
+    } else if (static_cast<Identifier *>(lhs)->token == "alloc") {
       auto alloc_ptr =
           builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
       return builder.CreateBitCast(alloc_ptr, *type);
@@ -464,7 +465,8 @@ llvm::Value *Binop::generate_code() {
       }
 
     } else if (lhs->is_identifier()) {
-      lhs_val = GetFunctionReferencedIn(scope_, lhs->token(), rhs->type);
+      lhs_val = GetFunctionReferencedIn(
+          scope_, static_cast<Identifier *>(lhs)->token, rhs->type);
 
     } else if (lhs->is_function_literal()) {
       lhs_val = lhs->generate_code();
@@ -949,7 +951,7 @@ llvm::Value *FunctionLiteral::generate_code() {
   // Name the inputs
   auto arg_iter = llvm_fn->args().begin();
   for (const auto &input_iter : inputs) {
-    arg_iter->setName(input_iter->identifier->token());
+    arg_iter->setName(input_iter->identifier->token);
     // Set alloc
     auto decl_id   = input_iter->identifier;
     auto decl_type = decl_id->type;
@@ -995,8 +997,6 @@ llvm::Value *FunctionLiteral::generate_code() {
   if (old_block) { builder.SetInsertPoint(old_block); }
 
   assert(type->is_function());
-  assert(token_ == "");
-  token_ = fn_scope->name;
 
   llvm_fn->setName(Mangle((Function *)type, this));
 
@@ -1038,7 +1038,7 @@ llvm::Value *Declaration::generate_code() {
         expr->is_function_literal()) {
       auto fn_expr = (FunctionLiteral *)expr;
       for (auto &gen : fn_expr->cache) {
-        gen.second->fn_scope->name = identifier->token();
+        gen.second->fn_scope->name = identifier->token;
       }
     }
     return nullptr;
@@ -1330,7 +1330,7 @@ llvm::Value *For::generate_code() {
       assert(iter->scope_->is_block_scope());
       auto block_scope = (BlockScope *)(iter->scope_);
       iter->identifier->alloc = block_scope->AllocateLocally(
-          iter->identifier->type, iter->identifier->token());
+          iter->identifier->type, iter->identifier->token);
     }
     auto container = iter->container;
     llvm::PHINode *phi = nullptr;

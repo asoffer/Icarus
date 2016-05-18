@@ -1,14 +1,8 @@
-f := (val: &Any`T) -> void {
-  print T == int | T == real, '\n', @val, '\n'
-}
+//allocate := (T: type) -> &T {
+//  malloc: uint -> &void #cstdlib
+//  return malloc(T.bytes) :> &T
+//}
 
 main := void -> void {
-  n: int
-  r: real
-  f(&n)
-  f(&r)
-}
-
-Any := (T: type) -> bool {
-  return true
+  allocate(int)
 }

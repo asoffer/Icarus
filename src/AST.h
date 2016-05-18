@@ -16,7 +16,6 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual std::string graphviz_label() const ENDING;                           \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING;                                  \
@@ -32,7 +31,6 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual void verify_types() ENDING;                                          \
-  virtual std::string graphviz_label() const ENDING;                           \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Context &ctx) ENDING;                        \
@@ -42,14 +40,11 @@ namespace AST {
                       Type **lookup_val) ENDING
 
 struct Node {
-  virtual std::string token() const { return token_; }
-
   virtual std::string to_string(size_t n) const = 0;
   virtual void join_identifiers(bool = false) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void verify_types() {}
-  virtual std::string graphviz_label() const;
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
 
@@ -80,12 +75,10 @@ struct Node {
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
   virtual bool is_jump() const { return false; }
+  virtual bool is_hole() const { return false; }
 
-  //TODO there's a cheaper way to do this (without string comparisons).
-  bool is_hole() const { return token() == "--"; }
-
-  Node(TokenLocation loc = TokenLocation(), const std::string &token = "")
-      : scope_(nullptr), token_(token), loc(loc), time_(Time::error) {}
+  Node(TokenLocation loc = TokenLocation())
+      : scope_(nullptr), loc(loc), time_(Time::error) {}
 
   virtual ~Node() {}
 
@@ -95,7 +88,6 @@ struct Node {
 
   Scope *scope_;
 
-  std::string token_;
   TokenLocation loc;
   Time::Eval time_;
 };
@@ -119,14 +111,13 @@ struct TokenNode : public Node {
                       Type **lookup_val);
 
   virtual bool is_token_node() const { return true; }
-  virtual std::string token() const { return tk_; }
 
   virtual ~TokenNode() {}
 
   // TODO make newline default a bof (beginning of file)
   TokenNode(TokenLocation loc = TokenLocation(), std::string str_lit = "");
 
-  std::string tk_;
+  std::string token;
   Language::Operator op;
 };
 
@@ -138,6 +129,12 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
   Language::Terminal terminal_type;
+
+  virtual bool is_hole() const override {
+    return terminal_type == Language::Terminal::Hole;
+  }
+
+  std::string token;
 };
 
 struct Identifier : public Terminal {
@@ -276,8 +273,6 @@ struct Access : public Expression {
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
   static Node *Build(NPtrVec &&nodes);
-
-  static Node *join(NPtrVec &&nodes);
 
   virtual bool is_comma_list() const override {
     return ops.front() == Language::Operator::Comma;

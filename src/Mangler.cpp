@@ -50,7 +50,9 @@ std::string Mangle(const Type *t, bool prefix) {
 
 std::string Mangle(const Function *f, AST::Expression *expr,
                    Scope *starting_scope) {
-  auto name = expr->token();
+  std::string name =
+      expr->is_identifier() ? ((AST::Identifier *)expr)->token : "";
+
   if (expr->is_identifier()) {
     auto id = static_cast<AST::Identifier *>(expr);
 

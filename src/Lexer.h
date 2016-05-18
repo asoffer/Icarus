@@ -27,6 +27,8 @@ struct Lexer {
 
     Lexer() = delete;
 
+    int GetChar();
+
     NNT next_word();
     NNT next_number();
     NNT next_operator();

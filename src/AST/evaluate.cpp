@@ -276,27 +276,27 @@ Context::Value ArrayLiteral::evaluate(Context &) { return nullptr; }
 
 Context::Value Terminal::evaluate(Context &ctx) {
   if (type == Bool) {
-    assert((token() == "true" || token() == "false") &&
+    assert((token == "true" || token == "false") &&
            "Bool literal other than true or false");
     return Context::Value(terminal_type == Language::Terminal::True);
   } else if (type == Char) {
-    return Context::Value(token()[0]);
+    return Context::Value(token[0]);
   } else if (type == Int) {
-    return Context::Value(std::stol(token()));
+    return Context::Value(std::stol(token));
   } else if (type == Real) {
-    return Context::Value(std::stod(token()));
+    return Context::Value(std::stod(token));
   } else if (type == Uint) {
-    return Context::Value(std::stoul(token()));
+    return Context::Value(std::stoul(token));
   } else if (type == Type_) {
-    if (token() == "bool") return Context::Value(Bool);
-    if (token() == "char") return Context::Value(Char);
-    if (token() == "int") return Context::Value(Int);
-    if (token() == "real") return Context::Value(Real);
-    if (token() == "type") return Context::Value(Type_);
-    if (token() == "uint") return Context::Value(Uint);
-    if (token() == "void") return Context::Value(Void);
+    if (token == "bool") return Context::Value(Bool);
+    if (token == "char") return Context::Value(Char);
+    if (token == "int") return Context::Value(Int);
+    if (token == "real") return Context::Value(Real);
+    if (token == "type") return Context::Value(Type_);
+    if (token == "uint") return Context::Value(Uint);
+    if (token == "void") return Context::Value(Void);
 
-    error_log.log(loc, "I don't think `" + token() + "` is a type!");
+    error_log.log(loc, "I don't think `" + token + "` is a type!");
     return Context::Value(Error);
   } else { /* TODO */
   }
@@ -331,10 +331,10 @@ Context::Value Declaration::evaluate(Context &ctx) {
       if (expr->is_struct_literal()) {
         if (identifier->value.as_type->is_struct()) {
           static_cast<Structure *>(identifier->value.as_type)
-              ->set_name(identifier->token());
+              ->set_name(identifier->token);
         } else if (identifier->value.as_type->is_parametric_struct()) {
           static_cast<ParametricStructure *>(identifier->value.as_type)
-              ->set_name(identifier->token());
+              ->set_name(identifier->token);
         } else {
           assert(false);
         }
@@ -342,7 +342,7 @@ Context::Value Declaration::evaluate(Context &ctx) {
       } else if (expr->is_enum_literal()) {
         assert(identifier->value.as_type->is_enum());
         static_cast<Enumeration *>(identifier->value.as_type)->bound_name =
-            identifier->token();
+            identifier->token;
       }
     }
   } break;

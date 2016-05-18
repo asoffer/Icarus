@@ -9,7 +9,7 @@ static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
 std::string TokenNode::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "[" << token() << "]\n";
+  ss << tabs(n) << "[" << token << "]\n";
   return ss.str();
 }
 
@@ -121,9 +121,6 @@ std::string ArrayType::to_string(size_t n) const {
 std::string ChainOp::to_string(size_t n) const {
   std::string output = tabs(n) + "<Chain: ";
   // TODO lookup table show token
-  // for (const auto& op : ops) {
-  //   output += op->token() + " ";
-  // }
 
   output += ", prec: " + std::to_string(precedence) + ">\n";
 
@@ -135,25 +132,25 @@ std::string ChainOp::to_string(size_t n) const {
 std::string Terminal::to_string(size_t n) const {
   auto str = tabs(n) + "<Terminal " + TYPE_OR("") + ": ";
 
-  if (token_ == "\n")
+  if (token == "\n")
     str += "\\n";
-  else if (token_ == "\t")
+  else if (token == "\t")
     str += "\\t";
-  else if (token_ == "\r")
+  else if (token == "\r")
     str += "\\r";
-  else if (token_ == " ")
+  else if (token == " ")
     str += "' '";
   else
-    str += token_;
+    str += token;
   return str + ">\n";
 }
 
 std::string Identifier::to_string(size_t n) const {
-  return tabs(n) + "<Identifier " + TYPE_OR("") + ": " + token() + ">\n";
+  return tabs(n) + "<Identifier " + TYPE_OR("") + ": " + token + ">\n";
 }
 
 std::string InDecl::to_string(size_t n) const {
-  return tabs(n) + "<"+ identifier->token() + " in>\n" + container->to_string(n + 1);
+  return tabs(n) + "<"+ identifier->token + " in>\n" + container->to_string(n + 1);
 }
 
 std::string Declaration::to_string(size_t n) const {

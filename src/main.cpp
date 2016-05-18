@@ -233,7 +233,7 @@ int main(int argc, char *argv[]) {
             /*  isConstant = */ decl->HasHashtag("const"),
             /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
             /* Initializer = */ 0, // might be specified below
-            /*        Name = */ id->token());
+            /*        Name = */ id->token);
 
         switch(decl->decl_type) {
         case AST::DeclType::Std: {

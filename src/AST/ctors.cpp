@@ -20,8 +20,8 @@ const std::map<std::string, Operator> lookup_operator = {
 
 namespace AST {
 TokenNode::TokenNode(TokenLocation loc, std::string str_lit)
-    : Node(loc), tk_(str_lit) {
-  auto iter = Language::lookup_operator.find(tk_);
+    : Node(loc), token(str_lit) {
+  auto iter = Language::lookup_operator.find(token);
   if (iter == Language::lookup_operator.end()) {
     op = Language::Operator::NotAnOperator;
   } else {
@@ -59,7 +59,7 @@ Identifier::Identifier() { assert(false); }
 
 Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
     : alloc(nullptr), is_arg(false) {
-  token_     = token_string;
+  token      = token_string;
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
   loc        = new_loc;

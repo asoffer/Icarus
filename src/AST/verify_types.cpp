@@ -290,7 +290,7 @@ void StructLiteral::FlushOut() {
 
   for (auto d : declarations) {
     d->verify_types();
-    tval->insert_field(d->identifier->token(), d->identifier->type,
+    tval->insert_field(d->identifier->token, d->identifier->type,
                        d->decl_type == DeclType::Infer ? d->expr : nullptr);
   }
 }
@@ -363,16 +363,14 @@ void Unop::verify_types() {
   case Operator::Call: {
     // TODO quantum types
     if (!operand->type->is_function()) {
-      error_log.log(loc,
-                    "Identifier `" + operand->token() + "` is not a function.");
+      error_log.log(loc, "Operand is not a function.");
       type = Error;
       return;
     }
 
     auto fn = static_cast<Function *>(operand->type);
     if (fn->input != Void) {
-      error_log.log(loc, "Calling function `" + operand->token() +
-                             "` with no arguments.");
+      error_log.log(loc, "Calling function with no arguments.");
       type = Error;
     } else {
       type = fn->output;
@@ -594,7 +592,7 @@ void Binop::verify_types() {
       Identifier *matched_id = nullptr;
       Type *matched_type;
 
-      auto id_token = lhs->token();
+      auto id_token = static_cast<AST::Identifier *>(lhs)->token;
 
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
@@ -710,8 +708,7 @@ void Binop::verify_types() {
     if (!lhs->type->is_array()) {
       // TODO TOKENREMOVAL
       // TODO lhs might not have a precise token
-      error_log.log(loc, "Identifier `" + lhs->token() +
-                             "` does not name an array.");
+      error_log.log(loc, "LHS does not name an array.");
       return;
     }
 
@@ -985,21 +982,21 @@ void Declaration::verify_types() {
 
         // TODO mangle the name correctly
         static_cast<Structure *>(expr->value.as_type)
-            ->set_name(identifier->token());
+            ->set_name(identifier->token);
 
       } else if (expr->is_parametric_struct_literal()) {
         assert(expr->value.as_type &&
                expr->value.as_type->is_parametric_struct());
         // TODO mangle the name correctly
         static_cast<ParametricStructure *>(expr->value.as_type)
-            ->set_name(identifier->token());
+            ->set_name(identifier->token);
 
       } else if (expr->is_enum_literal()) {
         expr->evaluate(scope_->context); // TODO do we need to evaluate here?
         assert(expr->value.as_type);
         // TODO mangle name properly.
         static_cast<Enumeration *>(expr->value.as_type)->bound_name =
-            identifier->token();
+            identifier->token;
       }
 
       identifier->value = expr->value;
@@ -1036,7 +1033,7 @@ void Declaration::verify_types() {
 
   identifier->AppendType(type);
 
-  if (identifier->token() == "__print__") {
+  if (identifier->token == "__print__") {
     if (!type->is_function()) {
       error_log.log(loc, "Print must be defined to be a function.");
       return;
@@ -1056,7 +1053,7 @@ void Declaration::verify_types() {
     }
 
     if (error_raised) { return; }
-  } else if (identifier->token() == "__assign__") {
+  } else if (identifier->token == "__assign__") {
     if (!type->is_function()) {
       error_log.log(loc, "Assign must be defined to be a function");
       return;
@@ -1087,7 +1084,7 @@ void Declaration::verify_types() {
 
     if (error_raised) { return; }
 
-  } else if (identifier->token() == "__destroy__") {
+  } else if (identifier->token == "__destroy__") {
     if (!type->is_function()) {
       error_log.log(loc, "Destructor must be defined to be a function.");
       return;

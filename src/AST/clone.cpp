@@ -17,7 +17,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
   for (auto decl : declarations) {
     auto type_val               = decl->expr->evaluate(ctx).as_type;
     auto new_decl               = new Declaration;
-    new_decl->identifier        = new Identifier(loc, decl->identifier->token());
+    new_decl->identifier        = new Identifier(loc, decl->identifier->token);
     new_decl->identifier->value = decl->identifier->value;
     new_decl->loc               = decl->loc;
     new_decl->decl_type         = decl->decl_type;
@@ -208,7 +208,7 @@ Node *Identifier::clone(LOOKUP_ARGS) {
     }
   }
 
-  return new Identifier(loc, token_);
+  return new Identifier(loc, token);
 }
 } // namespace AST
 #undef CLONE

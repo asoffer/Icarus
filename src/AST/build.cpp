@@ -145,7 +145,7 @@ Node *EnumLiteral::Build(NPtrVec &&nodes) {
         // TODO repeated terms?
         // TODO move the string into place
         enum_lit_ptr->members.emplace_back(
-            static_cast<Identifier *>(stmt)->token());
+            static_cast<Identifier *>(stmt)->token);
       }
     }
   }
@@ -268,50 +268,56 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  unop_ptr->loc       = nodes[0]->loc;
+  unop_ptr->loc = nodes[0]->loc;
 
-  if (nodes[0]->token() == "import") {
+  assert(nodes[0]->is_token_node());
+  auto tk = static_cast<TokenNode *>(nodes[0])->token;
+
+  if (tk == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
-    file_queue.emplace("programs/" + unop_ptr->operand->token());
+    assert(unop_ptr->operand->is_terminal());
+    file_queue.emplace("programs/" +
+                       static_cast<Terminal *>(unop_ptr->operand)->token);
+
     unop_ptr->op = Language::Operator::Import;
 
-  } else if (nodes[0]->token() == "return") {
+  } else if (tk == "return") {
     unop_ptr->op = Language::Operator::Return;
 
-  } else if (nodes[0]->token() == "break") {
+  } else if (tk == "break") {
     unop_ptr->op = Language::Operator::Break;
     goto id_check;
 
-  } else if (nodes[0]->token() == "continue") {
+  } else if (tk == "continue") {
     unop_ptr->op = Language::Operator::Continue;
     goto id_check;
 
-  } else if (nodes[0]->token() == "restart") {
+  } else if (tk == "restart") {
     unop_ptr->op = Language::Operator::Restart;
     goto id_check;
 
-  } else if (nodes[0]->token() == "repeat") {
+  } else if (tk == "repeat") {
     unop_ptr->op = Language::Operator::Repeat;
     goto id_check;
 
-  } else if (nodes[0]->token() == "free") {
+  } else if (tk == "free") {
     unop_ptr->op = Language::Operator::Free;
 
-  } else if (nodes[0]->token() == "print") {
+  } else if (tk == "print") {
     unop_ptr->op = Language::Operator::Print;
 
-  } else if (nodes[0]->token() == "&") {
+  } else if (tk == "&") {
     unop_ptr->op = Language::Operator::And;
 
-  } else if (nodes[0]->token() == "-") {
+  } else if (tk == "-") {
     unop_ptr->op = Language::Operator::Sub;
 
-  } else if (nodes[0]->token() == "!") {
+  } else if (tk == "!") {
     unop_ptr->op = Language::Operator::Not;
 
-  } else if (nodes[0]->token() == "@") {
+  } else if (tk == "@") {
     unop_ptr->op = Language::Operator::At;
 
   } else {
@@ -332,8 +338,8 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 id_check:
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   if (!unop_ptr->operand->is_identifier()) {
-    error_log.log(unop_ptr->operand->loc, "Operand to '" + nodes[0]->token() +
-                                              "' must be an identifier.");
+    error_log.log(unop_ptr->operand->loc,
+                  "Operand to '" + tk + "' must be an identifier.");
   }
   return unop_ptr;
 }
@@ -400,10 +406,9 @@ Node *ChainOp::Build(NPtrVec &&nodes) {
 // LHS is not a declaration
 // RHS is an identifier
 Node *Access::Build(NPtrVec &&nodes) {
-  auto access_ptr         = new Access;
-  access_ptr->member_name = nodes[2]->token();
-  access_ptr->loc         = nodes[0]->loc;
-  access_ptr->operand     = steal<Expression>(nodes[0]);
+  auto access_ptr     = new Access;
+  access_ptr->loc     = nodes[0]->loc;
+  access_ptr->operand = steal<Expression>(nodes[0]);
 
   if (access_ptr->operand->is_declaration()) {
     error_log.log(access_ptr->operand->loc,
@@ -412,8 +417,9 @@ Node *Access::Build(NPtrVec &&nodes) {
 
   if (!nodes[2]->is_identifier()) {
     error_log.log(nodes[2]->loc, "Right-hand side must be an identifier");
+  } else {
+    access_ptr->member_name = static_cast<Identifier *>(nodes[2])->token;
   }
-
   return access_ptr;
 }
 
@@ -495,70 +501,6 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
   return unop_ptr;
 }
 
-Node *ChainOp::join(NPtrVec &&nodes) {
-  // TODO FIXME
-  auto lhs_prec = static_cast<Expression *>(nodes[0])->precedence;
-  auto op_node  = steal<TokenNode>(nodes[1]);
-  auto op_prec  = Language::precedence(op_node->op);
-  auto rhs_prec = static_cast<Expression *>(nodes[2])->precedence;
-
-  if (op_prec != rhs_prec) { return build({nodes[0], op_node, nodes[2]}); }
-
-  auto rhs = steal<ChainOp>(nodes[2]);
-
-  ChainOp *chain_ptr = nullptr;
-  if (lhs_prec == op_prec && op_prec == rhs_prec) {
-    chain_ptr = steal<ChainOp>(nodes[0]);
-
-    chain_ptr->ops.push_back(op_node->op);
-
-    chain_ptr->ops.insert(chain_ptr->ops.end(), rhs->ops.begin(),
-                          rhs->ops.end());
-
-    chain_ptr->ops.insert(chain_ptr->ops.begin(), rhs->ops.begin(),
-                          rhs->ops.end());
-
-  } else { // op_prec == rhs_prec
-    chain_ptr = new ChainOp;
-    chain_ptr->exprs.emplace_back(steal<Expression>(nodes[0]));
-
-    const std::string &token = nodes[1]->token();
-    using Language::Operator;
-    // TODO move to lookup table
-    if (token == "<") {
-      chain_ptr->ops.push_back(Operator::LT);
-    } else if (token == "<=") {
-      chain_ptr->ops.push_back(Operator::LE);
-    } else if (token == "==") {
-      chain_ptr->ops.push_back(Operator::EQ);
-    } else if (token == "!=") {
-      chain_ptr->ops.push_back(Operator::NE);
-    } else if (token == ">=") {
-      chain_ptr->ops.push_back(Operator::GE);
-    } else if (token == ">") {
-      chain_ptr->ops.push_back(Operator::GT);
-    } else if (token == "|") {
-      chain_ptr->ops.push_back(Operator::Or);
-    } else if (token == "^") {
-      chain_ptr->ops.push_back(Operator::Xor);
-    } else if (token == "&") {
-      chain_ptr->ops.push_back(Operator::And);
-    } else if (token == ",") {
-      chain_ptr->ops.push_back(Operator::Comma);
-    }
-
-    chain_ptr->ops.insert(chain_ptr->ops.end(), rhs->ops.begin(),
-                          rhs->ops.end());
-
-    chain_ptr->exprs.insert(chain_ptr->exprs.begin(), rhs->exprs.begin(),
-                            rhs->exprs.end());
-  }
-
-  // NOTE: All of rhs is copied into chain, so chain now owns all of the
-  // pointers that were part of rhs. Thus, there is nothing to delete.
-  return chain_ptr;
-}
-
 Node *ArrayLiteral::build(NPtrVec &&nodes) {
   auto array_lit_ptr = new ArrayLiteral;
   array_lit_ptr->loc = nodes[0]->loc;
@@ -610,7 +552,8 @@ Node *Expression::build(NPtrVec &&) {
 
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {
   auto decl = steal<Declaration>(nodes[0]);
-  decl->hashtags.push_back(nodes[1]->token());
+  assert(nodes[1]->is_token_node());
+  decl->hashtags.push_back(static_cast<TokenNode *>(nodes[1])->token);
 
   return decl;
 }
@@ -629,7 +572,6 @@ Node *InDecl::Build(NPtrVec &&nodes) {
 
 Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   auto decl_ptr        = new Declaration;
-  decl_ptr->identifier = new Identifier(nodes[0]->loc, nodes[0]->token());
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->op         = ((AST::TokenNode *)(nodes[1]))->op;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
@@ -637,6 +579,10 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   decl_ptr->decl_type  = (decl_ptr->op == Language::Operator::Colon)
                             ? DeclType::Std
                             : DeclType::Infer;
+
+  assert(nodes[0]->is_identifier());
+  decl_ptr->identifier = new Identifier(
+      nodes[0]->loc, static_cast<Identifier *>(nodes[0])->token);
 
   assert(decl_ptr->op == Language::Operator::Colon ||
          decl_ptr->op == Language::Operator::ColonEq);
@@ -650,12 +596,17 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
 Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   auto decl_ptr = new AST::Declaration;
   Scope::decl_registry_.emplace_back(decl_ptr);
-  decl_ptr->identifier = new AST::Identifier(nodes[2]->loc, nodes[2]->token());
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->decl_type  = DeclType::Tick;
   decl_ptr->expr       = steal<Expression>(nodes[0]);
   decl_ptr->op         = Language::Operator::Tick;
   decl_ptr->precedence = Language::precedence(decl_ptr->op);
+
+  assert(nodes[2]->is_identifier());
+  decl_ptr->identifier = new Identifier(
+      nodes[2]->loc, static_cast<Identifier *>(nodes[2])->token);
+
+
   return decl_ptr;
 }
 
@@ -736,19 +687,21 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
 }
 
 Node *Jump::build(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "break") {
+  assert(nodes[0]->is_token_node());
+  auto tk = static_cast<TokenNode *>(nodes[0])->token;
+  if (tk == "break") {
     return new Jump(nodes[0]->loc, JumpType::Break);
 
-  } else if (nodes[0]->token() == "continue") {
+  } else if (tk == "continue") {
     return new Jump(nodes[0]->loc, JumpType::Continue);
 
-  } else if (nodes[0]->token() == "return") {
+  } else if (tk == "return") {
     return new Jump(nodes[0]->loc, JumpType::Return);
 
-  } else if (nodes[0]->token() == "repeat") {
+  } else if (tk == "repeat") {
     return new Jump(nodes[0]->loc, JumpType::Repeat);
 
-  } else if (nodes[0]->token() == "restart") {
+  } else if (tk == "restart") {
     return new Jump(nodes[0]->loc, JumpType::Restart);
   }
   assert(false && "No other options");
@@ -765,26 +718,26 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 
+  assert(nodes[1]->is_token_node());
+  auto tk = static_cast<AST::TokenNode *>(nodes[1])->token;
+
   for (auto op : chain_ops) {
-    if (nodes[1]->token() == op.first) {
+    if (tk == op.first) {
       static_cast<AST::TokenNode *>(nodes[1])->op = op.second;
       return AST::ChainOp::Build(std::forward<NPtrVec &&>(nodes));
     }
   }
 
-  if (nodes[1]->token() == ".") {
+  if (tk == ".") {
     return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
-  }
 
-  if (nodes[1]->token() == ":" || nodes[1]->token() == ":=") {
+  } else if (tk == ":" || tk == ":=") {
     return AST::Declaration::BuildBasic(std::forward<NPtrVec &&>(nodes));
-  }
 
-  if (nodes[1]->token() == "in") {
+  } else if (tk == "in") {
     return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
-  }
 
-  if (nodes[1]->token() == "`") {
+  } else if (tk == "`") {
     return AST::Declaration::BuildGenerate(std::forward<NPtrVec &&>(nodes));
   }
 
@@ -795,7 +748,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   binop_ptr->rhs       = steal<AST::Expression>(nodes[2]);
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
-  if (nodes[1]->token() == sym) {                                              \
+  if (tk == sym) {                                              \
     binop_ptr->op = Language::Operator::name;                                  \
     goto end;                                                                  \
   }
@@ -828,15 +781,17 @@ end:
 }
 
 AST::Node *BuildKWBlock(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "case") {
+  assert(nodes[0]->is_token_node());
+  auto tk = static_cast<AST::TokenNode *>(nodes[0])->token;
+
+
+  if (tk == "case") {
     return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
-  }
 
-  if (nodes[0]->token() == "enum") {
+  } else if (tk == "enum") {
     return AST::EnumLiteral::Build(std::forward<NPtrVec &&>(nodes));
-  }
 
-  if (nodes[0]->token() == "struct") {
+  } else if (tk == "struct") {
     return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
 
@@ -844,16 +799,19 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
 }
 
 AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
-  if (nodes[0]->token() == "for") {
+  assert(nodes[0]->is_token_node());
+  auto tk = static_cast<AST::TokenNode *>(nodes[0])->token;
+
+  if (tk == "for") {
     return AST::For::Build(std::forward<NPtrVec &&>(nodes));
-  }
-  if (nodes[0]->token() == "while") {
+
+  } else if (tk == "while") {
     return AST::While::Build(std::forward<NPtrVec &&>(nodes));
-  }
-  if (nodes[0]->token() == "if") {
+
+  } else if (tk == "if") {
     return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
-  }
-  if (nodes[0]->token() == "struct") {
+
+  } else if (tk == "struct") {
     return AST::ParametricStructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
 
