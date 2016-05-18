@@ -1,10 +1,19 @@
+Any := (T: type) -> bool {
+  return true
+}
+
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
 main := void -> void {
   x : &int
   y : &char = null
  
   print x
   print '\n'
-  x = alloc(int)
+  alloc(&x)
   print x
   print '\n'
   @x = 17
@@ -15,7 +24,7 @@ main := void -> void {
   print "\n============================\n"
   print y
   print '\n'
-  y = alloc(char)
+  alloc(&y)
   print y
   print '\n'
   @y = ascii(65u)

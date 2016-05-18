@@ -744,6 +744,8 @@ void Binop::verify_types() {
       return;
     }
 
+    if (lhs->type->is_pointer() && type->is_pointer()) { return; }
+
     error_log.log(loc, "Invalid cast from " + lhs->type->to_string() + " to " +
                            type->to_string());
   } break;

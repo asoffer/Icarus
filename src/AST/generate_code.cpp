@@ -117,7 +117,6 @@ llvm::Value *Terminal::generate_code() {
   case Language::Terminal::Int:   return data::const_int(std::stoi(token));
   case Language::Terminal::Real:  return data::const_real(std::stod(token));
   case Language::Terminal::Uint:  return data::const_uint(std::stoul(token));
-  case Language::Terminal::Alloc: return cstdlib::malloc();
   case Language::Terminal::Else:
     return data::const_true();
   // Else is a terminal only in case statements. In this situation, it's
@@ -427,11 +426,6 @@ llvm::Value *Binop::generate_code() {
     if (static_cast<Terminal *>(lhs)->token == "input") {
       return builtin::input(t);
 
-    } else if (static_cast<Identifier *>(lhs)->token == "alloc") {
-      auto alloc_ptr =
-          builder.CreateCall(cstdlib::malloc(), {data::const_uint(t->bytes())});
-      return builder.CreateBitCast(alloc_ptr, *type);
-
     } else {
       assert(false);
     }
@@ -528,7 +522,10 @@ llvm::Value *Binop::generate_code() {
       } else if (to_type == Int) {
         return lhs_val;
       }
+    } else if (lhs->type->is_pointer() && to_type->is_pointer()) {
+      return builder.CreateBitCast(lhs_val, *to_type);
     }
+    assert(false);
   } break;
   case Operator::Index: {
     assert(lhs->type->is_array() && "Type is not an array");

@@ -1,3 +1,13 @@
+Any := (T: type) -> bool {
+  return true
+}
+
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
+
 list := struct(T: type) {
   size: uint
   head: &node(T)
@@ -109,7 +119,8 @@ main := void -> void {
 }
 
 add := (l: &list(Any`T), n: T) -> void {
-  nptr := alloc(node(T))
+  nptr: &node(T)
+  alloc(&nptr)
   nptr.data = n
   nptr.next = l.head
   l.head = nptr

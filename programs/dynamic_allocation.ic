@@ -1,5 +1,17 @@
+Any := (T: type) -> bool {
+  return true
+}
+
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
+
+
 main := void -> void {
-  nptr := alloc(int)
+  nptr: &int
+  alloc(&nptr)
   @nptr = 17
   print nptr
   print '\n'

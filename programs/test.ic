@@ -1,8 +1,37 @@
-//allocate := (T: type) -> &T {
-//  malloc: uint -> &void #cstdlib
-//  return malloc(T.bytes) :> &T
+Any := (T: type) -> bool {
+  return true
+}
+
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
+//Basic := (T: type) -> bool {
+//  return  T == int | T == uint | T == char | T == real
+//}
+//
+//input := (ptr: &Basic`T) -> void {
+//  scanf: &char -> int #cstdlib
+//  if T == int {
+//    @ptr = scanf("%d"c)
+//  }
+//  if T == uint {
+//    @ptr = scanf("%u"c)
+//  }
+//  if T == char {
+//    @ptr = scanf("%c"c)
+//  }
+//  if T == real {
+//    @ptr = scanf("%lf"c)
+//  }
 //}
 
 main := void -> void {
-  allocate(int)
+  ptr: &int
+  for i in 1 .. 10 {
+  alloc(&ptr)
+  print ptr, '\n'
+  free ptr
+  }
 }

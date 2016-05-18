@@ -1,10 +1,20 @@
+Any := (T: type) -> bool {
+  return true
+}
+
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
+
 unique_ptr := struct {
   ptr: &int
 }
 
 Get := void -> unique_ptr {
   ptr: unique_ptr
-  ptr.ptr = alloc(int)
+  alloc(&ptr.ptr)
   return ptr
 }
 
