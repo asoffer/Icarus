@@ -1,7 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
 #include "Type.h"
-#include "Context.h"
 #endif
 
 #define CLONE clone(num_entries, lookup_key, lookup_val)
@@ -10,12 +9,11 @@
 
 namespace AST {
 StructLiteral *
-ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
-                                            Context &ctx) {
+ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   cache_loc->declarations.reserve(declarations.size());
 
   for (auto decl : declarations) {
-    auto type_val               = decl->expr->evaluate(ctx).as_type;
+    auto type_val               = decl->expr->evaluate().as_type;
     auto new_decl               = new Declaration;
     new_decl->identifier        = new Identifier(loc, decl->identifier->token);
     new_decl->identifier->value = decl->identifier->value;
@@ -59,7 +57,6 @@ Node *EnumLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) { assert(false); }
 Node *Jump::clone(LOOKUP_ARGS) { assert(false); }
 Node *While::clone(LOOKUP_ARGS) { assert(false); }
-Node *ArrayLiteral::clone(LOOKUP_ARGS) { assert(false); }
 Node *TokenNode::clone(LOOKUP_ARGS) { assert(false); }
 Node *Node::clone(LOOKUP_ARGS) { assert(false); }
 
@@ -75,6 +72,13 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
 
 
   return fn_lit;
+}
+
+Node *ArrayLiteral::clone(LOOKUP_ARGS) {
+  auto array_lit = new ArrayLiteral;
+  array_lit->elems.reserve(elems.size());
+  for (auto el : elems) { array_lit->elems.push_back((Expression *)el->CLONE); }
+  return array_lit;
 }
 
 Node *Binop::clone(LOOKUP_ARGS) {

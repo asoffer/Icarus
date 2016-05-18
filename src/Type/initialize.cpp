@@ -103,10 +103,6 @@ void Enumeration::call_init(llvm::Value *var) {
   builder.CreateStore(data::const_uint(0), var);
 }
 
-void DependentType::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a dependent type");
-}
-
 void RangeType::call_init(llvm::Value *) {
   assert(false && "Cannot initialize a range type");
 }

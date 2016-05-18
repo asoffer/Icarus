@@ -345,7 +345,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
 bool Type::is_big() const { return is_array() || is_struct() || is_function(); }
 bool Type::stores_data() const {
   return this != Type_ && !is_quantum() && !is_function() &&
-         !is_dependent_type() && !is_type_variable();
+         !is_type_variable();
 }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }

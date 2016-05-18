@@ -28,7 +28,6 @@ extern llvm::Constant *putchar();
 namespace builtin {
 extern llvm::Function *ascii();
 extern llvm::Function *ord();
-extern llvm::Value *input(Type *);
 } // namespace builtin
 
 namespace data {
@@ -104,10 +103,6 @@ llvm::Value *Terminal::generate_code() {
     assert(type->is_pointer() && "Null pointer of non-pointer type ");
     return data::null(type);
   }
-  case Language::Terminal::Input: {
-    // TODO this probably this should just never be called. for dependent types
-    return nullptr;
-  }
   case Language::Terminal::Hole:  assert(false);
   case Language::Terminal::Ord:   return builtin::ord();
   case Language::Terminal::ASCII: return builtin::ascii();
@@ -156,10 +151,10 @@ llvm::Value *Terminal::generate_code() {
 
 static void CallPrint(Expression *expr) {
   if (expr->type == Type_) {
-    builder.CreateCall(cstdlib::printf(),
-                       {data::global_string("%s"),
-                        data::global_string(expr->evaluate(CurrentContext())
-                                                .as_type->to_string())});
+    builder.CreateCall(
+        cstdlib::printf(),
+        {data::global_string("%s"),
+         data::global_string(expr->evaluate().as_type->to_string())});
     return;
   }
 
@@ -297,7 +292,7 @@ llvm::Value *Access::generate_code() {
     // NOTE: this will likely change if we implement UFCS. In that case, this
     // whole method will probably be out of date.
 
-    auto expr_as_type = operand->evaluate(CurrentContext()).as_type;
+    auto expr_as_type = operand->evaluate().as_type;
 
     // TODO in the process of moving this into evaluate (because it's
     // compile-time) Remove it from here.
@@ -416,24 +411,7 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 }
 
 llvm::Value *Binop::generate_code() {
-  // Hack: Need to deal with dependent type before compile/runtime eval.
-  // TODO streamline this.
-  if (lhs->type->is_dependent_type()) {
-    auto t = rhs->evaluate(CurrentContext()).as_type;
-
-    assert(lhs->is_terminal());
-    // TODO what if these are formed by some crazy other method?
-    if (static_cast<Terminal *>(lhs)->token == "input") {
-      return builtin::input(t);
-
-    } else {
-      assert(false);
-    }
-  }
-
-  if (time() == Time::compile) {
-    return llvm_value(evaluate(CurrentContext()));
-  }
+  if (time() == Time::compile) { return llvm_value(evaluate()); }
 
   using Language::Operator;
 
@@ -503,7 +481,7 @@ llvm::Value *Binop::generate_code() {
   } break;
 #undef SHORT_CIRCUITING_OPERATOR
   case Operator::Cast: {
-    Type *to_type = rhs->evaluate(CurrentContext()).as_type;
+    Type *to_type = rhs->evaluate().as_type;
     if (lhs->type == Bool) {
       if (to_type == Int || to_type == Uint) {
         return builder.CreateZExt(lhs_val, *to_type, "ext.val");
@@ -561,19 +539,6 @@ llvm::Value *Binop::generate_code() {
 
       } else {
         return builder.CreateCall(lhs_val, arg_vals, "calltmp");
-      }
-
-    } else if (lhs->type->is_dependent_type()) {
-      auto t = rhs->evaluate(CurrentContext()).as_type;
-
-      // TODO this is not generically correct. Currently either lhs_val
-      // evaluates to cstdlib::malloc(), or it is a nullptr (meaning it's input)
-      if (lhs_val) {
-        auto alloc_ptr =
-            builder.CreateCall(lhs_val, {data::const_uint(t->bytes())});
-        return builder.CreateBitCast(alloc_ptr, *type);
-      } else {
-        return builtin::input(t);
       }
     }
   }
@@ -773,9 +738,7 @@ llvm::Value *ChainOp::generate_code() {
   // TODO eval of enums at compile-time is wrong. This could be
   // 1. That the eval function is wrong, or
   // 2. That they shouldn't be determined at compile-time
-  if (time() == Time::compile) {
-    return llvm_value(evaluate(CurrentContext()));
-  }
+  if (time() == Time::compile) { return llvm_value(evaluate()); }
 
   auto expr_type = exprs[0]->type;
 
@@ -957,7 +920,7 @@ llvm::Value *FunctionLiteral::generate_code() {
     ++arg_iter;
   }
 
-  auto ret_type = return_type_expr->evaluate(CurrentContext()).as_type;
+  auto ret_type = return_type_expr->evaluate().as_type;
   if (ret_type->is_struct()) { arg_iter->setName("retval"); }
 
   fn_scope->set_parent_function(llvm_fn);
@@ -1497,7 +1460,7 @@ llvm::Value *For::generate_code() {
           iter->type == Char ? data::const_char(1) : data::const_uint(1));
       phi->addIncoming(next, incr_iters);
     } else {
-      auto ty = container->evaluate(scope_->context).as_type;
+      auto ty = container->evaluate().as_type;
       assert(ty->is_enum());
       auto enum_type = static_cast<Enumeration *>(ty);
 

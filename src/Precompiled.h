@@ -53,7 +53,6 @@ struct Function;
 struct Enumeration;
 struct Structure;
 struct ParametricStructure;
-struct DependentType;
 struct TypeVariable;
 struct QuantumType;
 struct RangeType;
@@ -73,7 +72,29 @@ struct TokenLocation {
   TokenLocation() : file(""), line_num(0), offset(0){};
 };
 
-#include "Context.h"
+namespace Context {
+// TODO make to use types of the right size.
+union Value {
+  bool as_bool;
+  char as_char;
+  long as_int;
+  double as_real;
+  size_t as_uint;
+  void *as_null;
+  Type *as_type;
+  AST::Expression *as_expr;
+
+  Value(std::nullptr_t = nullptr) { as_null = nullptr; }
+  explicit Value(bool b) { as_bool = b; }
+  explicit Value(char c) { as_char = c; }
+  explicit Value(long n) { as_int = n; }
+  explicit Value(double d) { as_real = d; }
+  explicit Value(size_t n) { as_uint = n; }
+  explicit Value(Type *t) { as_type = t; }
+  explicit Value(AST::Expression *e) { as_expr = e; }
+};
+} // namespace Context
+
 #include "ErrorLog.h"
 
 namespace Language {

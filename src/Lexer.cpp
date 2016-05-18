@@ -142,10 +142,6 @@ NNT Lexer::next_word() {
     // initialize the global_module before you make a call to the lexer.
     RETURN_TERMINAL(ASCII, Func(Uint, Char), nullptr, "ascii");
 
-  } else if (token == "input") {
-    RETURN_TERMINAL(Input, DepType([](Type *t) { return t; }), nullptr,
-                    "input"); // TODO nullptr
-
   } else if (token == "else") {
     auto term_ptr           = new AST::Terminal;
     term_ptr->loc           = loc_;

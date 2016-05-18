@@ -91,12 +91,7 @@ std::string Tuple::to_string() const {
   return ss.str();
 }
 
-std::string DependentType::to_string() const { return "(DependentType)"; }
-
-std::string TypeVariable::to_string() const {
-  return "`" + identifier->token;
-}
-
+std::string TypeVariable::to_string() const { return "`" + identifier->token; }
 std::string Structure::to_string() const { return bound_name; }
 std::string ParametricStructure::to_string() const { return bound_name; }
 std::string Enumeration::to_string() const { return bound_name; }

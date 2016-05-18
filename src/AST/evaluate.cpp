@@ -20,24 +20,24 @@ extern llvm::ConstantFP *const_real(double d);
 extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
-static void AppendValueToStream(Type *type, Context::Value ctx_val,
+static void AppendValueToStream(Type *type, Context::Value val,
                                 std::stringstream &ss) {
   if (type == Bool) {
-    ss << (ctx_val.as_bool ? "true" : "false");
+    ss << (val.as_bool ? "true" : "false");
   } else if (type == Char) {
-    ss << ctx_val.as_char;
+    ss << val.as_char;
 
   } else if (type == Int) {
-    ss << ctx_val.as_int;
+    ss << val.as_int;
 
   } else if (type == Real) {
-    ss << ctx_val.as_real;
+    ss << val.as_real;
 
   } else if (type == Uint) {
-    ss << ctx_val.as_uint;
+    ss << val.as_uint;
 
   } else if (type == Type_) {
-    ss << ctx_val.as_type->to_string();
+    ss << val.as_type->to_string();
   }
 }
 
@@ -57,29 +57,29 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
   return nullptr;
 }
 
-Context::Value Identifier::evaluate(Context &ctx) {
+Context::Value Identifier::evaluate() {
   // What about when it's, e.g., an int with the value 0?
   if (type == Type_ && !value.as_type) {
     assert(decls.size() == 1);
-    decls[0]->evaluate(ctx);
+    decls[0]->evaluate();
   }
 
   return value;
 }
 
-Context::Value DummyTypeExpr::evaluate(Context &) { return value; }
+Context::Value DummyTypeExpr::evaluate() { return value; }
 
-Context::Value Unop::evaluate(Context &ctx) {
+Context::Value Unop::evaluate() {
   operand->verify_types();
 
   if (op == Language::Operator::Return) {
-    ctx.set_return_value(operand->evaluate(ctx));
+    scope_->SetCTRV(operand->evaluate());
 
     return value = nullptr;
 
   } else if (op == Language::Operator::Print) {
     // TODO Don't print. Raise an error.
-    auto val = operand->evaluate(ctx);
+    auto val = operand->evaluate();
     if (operand->type == Bool)
       std::cout << (val.as_bool ? "true" : "false");
     else if (operand->type == Char)
@@ -100,10 +100,10 @@ Context::Value Unop::evaluate(Context &ctx) {
 
   } else if (op == Language::Operator::Sub) {
     if (type == Int) {
-      return Context::Value(-operand->evaluate(ctx).as_int);
+      return Context::Value(-operand->evaluate().as_int);
 
     } else if (type == Real) {
-      return Context::Value(-operand->evaluate(ctx).as_real);
+      return Context::Value(-operand->evaluate().as_real);
     }
   } else if (op == Language::Operator::And) {
     if (operand->type != Type_) {
@@ -113,13 +113,13 @@ Context::Value Unop::evaluate(Context &ctx) {
                              " is not allowed at compile-time");
     }
 
-    return value = Context::Value(Ptr(operand->evaluate(ctx).as_type));
+    return value = Context::Value(Ptr(operand->evaluate().as_type));
   }
 
   assert(false && "Unop eval: I don't know what to do.");
 }
 
-Context::Value ChainOp::evaluate(Context &ctx) {
+Context::Value ChainOp::evaluate() {
   using Language::Operator;
   auto expr_type = exprs[0]->type;
   if (expr_type == Bool) {
@@ -127,18 +127,18 @@ Context::Value ChainOp::evaluate(Context &ctx) {
     case Operator::Xor: {
       bool expr_val = false;
       for (auto &expr : exprs) {
-        expr_val = (expr_val != expr->evaluate(ctx).as_bool);
+        expr_val = (expr_val != expr->evaluate().as_bool);
       }
       return value = Context::Value(expr_val);
     }
     case Operator::And:
       for (auto &expr : exprs) {
-        if (expr->evaluate(ctx).as_bool) return value = Context::Value(false);
+        if (expr->evaluate().as_bool) return value = Context::Value(false);
       }
       return value = Context::Value(true);
     case Operator::Or:
       for (auto &expr : exprs) {
-        if (expr->evaluate(ctx).as_bool) { return value = Context::Value(true); }
+        if (expr->evaluate().as_bool) { return value = Context::Value(true); }
       }
       return value = Context::Value(false);
     default: assert(false && "Invalid chainop for bool in evaluate()");
@@ -148,9 +148,9 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
   } else if (expr_type == Int) {
     bool total = true;
-    auto last = exprs[0]->evaluate(ctx);
+    auto last = exprs[0]->evaluate();
     for (size_t i = 0; i < ops.size(); ++i) {
-      auto next = exprs[i + 1]->evaluate(ctx);
+      auto next = exprs[i + 1]->evaluate();
 
       switch (ops[i]) {
       case Operator::LT: total &= (last.as_int < next.as_int); break;
@@ -170,10 +170,19 @@ Context::Value ChainOp::evaluate(Context &ctx) {
     return value = Context::Value(true);
 
   } else if (expr_type == Type_) {
+    // TODO remove assumption that if you're using a comma, it's all types
+    if (ops[0] == Operator::Comma) {
+      std::vector<Type *> types;
+      for (size_t i = 0; i < exprs.size(); ++i) {
+        types.push_back(exprs[i]->evaluate().as_type);
+      }
+      return Context::Value(Tup(types));
+    }
+
     bool total = true;
-    auto last = exprs[0]->evaluate(ctx);
+    auto last = exprs[0]->evaluate();
     for (size_t i = 0; i < ops.size(); ++i) {
-      auto next = exprs[i + 1]->evaluate(ctx);
+      auto next = exprs[i + 1]->evaluate();
 
       switch (ops[i]) {
       case Operator::EQ: total &= (last.as_type == next.as_type); break;
@@ -190,9 +199,9 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
   } else if (expr_type == Uint) {
     bool total = true;
-    auto last = exprs[0]->evaluate(ctx);
+    auto last = exprs[0]->evaluate();
     for (size_t i = 0; i < ops.size(); ++i) {
-      auto next = exprs[i + 1]->evaluate(ctx);
+      auto next = exprs[i + 1]->evaluate();
 
       switch (ops[i]) {
       case Operator::LT: total &= (last.as_int < next.as_int); break;
@@ -213,9 +222,9 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
   } else if (expr_type == Real) {
     bool total = true;
-    auto last = exprs[0]->evaluate(ctx);
+    auto last = exprs[0]->evaluate();
     for (size_t i = 0; i < ops.size(); ++i) {
-      auto next = exprs[i + 1]->evaluate(ctx);
+      auto next = exprs[i + 1]->evaluate();
 
       switch (ops[i]) {
       case Operator::LT: total &= (last.as_real < next.as_real); break;
@@ -236,9 +245,9 @@ Context::Value ChainOp::evaluate(Context &ctx) {
 
   } else if (expr_type->is_enum()) {
     bool total = true;
-    auto last = exprs[0]->evaluate(ctx);
+    auto last = exprs[0]->evaluate();
     for (size_t i = 0; i < ops.size(); ++i) {
-      auto next = exprs[i + 1]->evaluate(ctx);
+      auto next = exprs[i + 1]->evaluate();
 
       switch (ops[i]) {
       case Operator::EQ: total &= (last.as_uint == next.as_uint); break;
@@ -258,23 +267,23 @@ Context::Value ChainOp::evaluate(Context &ctx) {
   }
 }
 
-Context::Value ArrayType::evaluate(Context &ctx) {
+Context::Value ArrayType::evaluate() {
   assert(length);
   determine_time();
   if ((length->time() == Time::either || length->time() == Time::compile) &&
       !length->is_hole()) {
-    auto data_type_eval = data_type->evaluate(ctx).as_type;
-    auto length_eval    = length->evaluate(ctx).as_uint;
+    auto data_type_eval = data_type->evaluate().as_type;
+    auto length_eval    = length->evaluate().as_uint;
 
     return value = Context::Value(Arr(data_type_eval, length_eval));
   }
 
-  return value = Context::Value(Arr(data_type->evaluate(ctx).as_type));
+  return value = Context::Value(Arr(data_type->evaluate().as_type));
 }
 
-Context::Value ArrayLiteral::evaluate(Context &) { return nullptr; }
+Context::Value ArrayLiteral::evaluate() { assert(false); }
 
-Context::Value Terminal::evaluate(Context &ctx) {
+Context::Value Terminal::evaluate() {
   if (type == Bool) {
     assert((token == "true" || token == "false") &&
            "Bool literal other than true or false");
@@ -303,30 +312,27 @@ Context::Value Terminal::evaluate(Context &ctx) {
   return nullptr;
 }
 
-Context::Value FunctionLiteral::evaluate(Context &ctx) {
-  return statements->evaluate(ctx);
-}
+Context::Value FunctionLiteral::evaluate() { return statements->evaluate(); }
 
-Context::Value Case::evaluate(Context &ctx) {
+Context::Value Case::evaluate() {
   for (auto kv : key_vals) {
-    if (kv.first->evaluate(ctx).as_bool) { return kv.second->evaluate(ctx); }
+    if (kv.first->evaluate().as_bool) { return kv.second->evaluate(); }
   }
   // Must have an else-clause, so this is unreachable.
   assert(false);
 }
 
-Context::Value ParametricStructLiteral::evaluate(Context &ctx) { return value; }
-Context::Value StructLiteral::evaluate(Context &ctx) { return value; }
+Context::Value ParametricStructLiteral::evaluate() { return value; }
+Context::Value StructLiteral::evaluate() { return value; }
+Context::Value InDecl::evaluate() { return nullptr; }
 
-Context::Value InDecl::evaluate(Context &ctx) { return nullptr; }
-
-Context::Value Declaration::evaluate(Context &ctx) {
+Context::Value Declaration::evaluate() {
   switch (decl_type) {
   case DeclType::Infer: {
     if (expr->type->is_function()) {
       identifier->value = Context::Value(expr);
     } else {
-      identifier->value = expr->evaluate(ctx);
+      identifier->value = expr->evaluate();
 
       if (expr->is_struct_literal()) {
         if (identifier->value.as_type->is_struct()) {
@@ -367,30 +373,30 @@ Context::Value Declaration::evaluate(Context &ctx) {
   return nullptr;
 }
 
-Context::Value EnumLiteral::evaluate(Context &) { return value; }
+Context::Value EnumLiteral::evaluate() { return value; }
 
-Context::Value Access::evaluate(Context &ctx) {
+Context::Value Access::evaluate() {
   if (type->is_enum()) {
     auto enum_type = (Enumeration *)type;
     return Context::Value(enum_type->get_index(member_name));
   }
 
   if (member_name == "bytes") {
-    return Context::Value(operand->evaluate(ctx).as_type->bytes());
+    return Context::Value(operand->evaluate().as_type->bytes());
 
   } else if (member_name == "alignment") {
-    return Context::Value(operand->evaluate(ctx).as_type->alignment());
+    return Context::Value(operand->evaluate().as_type->alignment());
   }
 
   std::cout << *this << std::endl;
   assert(false && "not yet implemented");
 }
 
-Context::Value Binop::evaluate(Context &ctx) {
+Context::Value Binop::evaluate() {
   using Language::Operator;
   if (op == Operator::Call) {
     if (lhs->type->is_function()) {
-      auto lhs_val = lhs->evaluate(ctx).as_expr;
+      auto lhs_val = lhs->evaluate().as_expr;
       assert(lhs_val);
       auto fn_ptr = static_cast<FunctionLiteral *>(lhs_val);
 
@@ -403,26 +409,25 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       assert(arg_vals.size() == fn_ptr->inputs.size());
 
-      std::vector<Context::Value> ctx_vals;
+      std::vector<Context::Value> vals;
 
       // Populate the function context with arguments
       for (size_t i = 0; i < arg_vals.size(); ++i) {
-        auto rhs_eval = arg_vals[i]->evaluate(ctx);
-        ctx_vals.push_back(rhs_eval);
+        auto rhs_eval = arg_vals[i]->evaluate();
+        vals.push_back(rhs_eval);
       }
 
       for (size_t i = 0; i < arg_vals.size(); ++i) {
         // TODO do we need to clean this up? I think not. It should just be
         // overwritten next time the function is called, right?
-        fn_ptr->inputs[i]->identifier->value = ctx_vals[i];
+        fn_ptr->inputs[i]->identifier->value = vals[i];
       }
 
-      // TODO do we even need the new context spawned here?
-      auto new_ctx = ctx.spawn();
-      return fn_ptr->evaluate(new_ctx);
+      fn_ptr->fn_scope->ClearCTRV();
+      return fn_ptr->evaluate();
 
     } else if (lhs->type == Type_) {
-      auto lhs_evaled = lhs->evaluate(ctx).as_type;
+      auto lhs_evaled = lhs->evaluate().as_type;
       assert(lhs_evaled->is_parametric_struct());
 
       auto param_struct = static_cast<ParametricStructure *>(lhs_evaled);
@@ -445,7 +450,7 @@ Context::Value Binop::evaluate(Context &ctx) {
 
       if (rhs->is_comma_list()) {
         for (auto elem : static_cast<ChainOp *>(rhs)->exprs) {
-          auto evaled_elem = elem->evaluate(ctx);
+          auto evaled_elem = elem->evaluate();
           assert(!evaled_elem.as_type->has_vars);
           arg_vals.push_back(evaled_elem);
           if (debug::parametric_struct) {
@@ -454,7 +459,7 @@ Context::Value Binop::evaluate(Context &ctx) {
           }
         }
       } else {
-        auto evaled_rhs = rhs->evaluate(ctx);
+        auto evaled_rhs = rhs->evaluate();
         assert(!evaled_rhs.as_type->has_vars);
 
         arg_vals.push_back(evaled_rhs);
@@ -519,7 +524,6 @@ Context::Value Binop::evaluate(Context &ctx) {
         
       auto &cache_loc = (struct_lit->cache[vec_key] = new StructLiteral);
 
-      Context struct_ctx = ctx.spawn();
       // TODO do we need to clean this up? I think not. It should just be
       // overwritten next time the generic struct is called, right?
       for (size_t i = 0; i < num_args; ++i) {
@@ -555,9 +559,8 @@ Context::Value Binop::evaluate(Context &ctx) {
         assert(struct_lit->cache.size() < 5);
       }
 
-      auto cloned_struct = param_struct->ast_expression->CloneStructLiteral(
-          cache_loc, struct_ctx);
-
+      auto cloned_struct =
+          param_struct->ast_expression->CloneStructLiteral(cache_loc);
 
       cloned_struct->verify_types();
       static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
@@ -568,50 +571,42 @@ Context::Value Binop::evaluate(Context &ctx) {
     }
 
   } else if (op == Operator::Arrow) {
-    auto lhs_type = lhs->evaluate(ctx).as_type;
-    auto rhs_type = rhs->evaluate(ctx).as_type;
+    auto lhs_type = lhs->evaluate().as_type;
+    auto rhs_type = rhs->evaluate().as_type;
     return Context::Value(Func(lhs_type, rhs_type));
   }
 
   return nullptr;
 }
 
-Context::Value Statements::evaluate(Context &ctx) {
+Context::Value Statements::evaluate() {
   for (auto &stmt : statements) {
-    stmt->evaluate(ctx);
-    if (ctx.has_return()) { return ctx.return_value(); }
+    stmt->evaluate();
+    if (scope_->HasCTRV()) {
+      return scope_->GetCTRV();
+    }
   }
 
   return nullptr;
 }
 
-Context::Value Conditional::evaluate(Context &ctx) {
+Context::Value Conditional::evaluate() {
   for (size_t i = 0; i < conditions.size(); ++i) {
-    if (conditions[i]->evaluate(ctx).as_bool) {
-      Context cond_ctx(&ctx);
-      statements[i]->evaluate(cond_ctx);
-      if (cond_ctx.has_return()) { return cond_ctx.return_value(); }
+    if (conditions[i]->evaluate().as_bool) {
+      statements[i]->evaluate();
+      if (scope_->HasCTRV()) { return scope_->GetCTRV(); }
     }
   }
 
   if (has_else()) {
-    Context cond_ctx(&ctx);
-    statements.back()->evaluate(cond_ctx);
-    if (cond_ctx.has_return()) { return cond_ctx.return_value(); }
+    statements.back()->evaluate();
+    if (scope_->HasCTRV()) { return scope_->GetCTRV(); }
   }
 
   return nullptr;
 }
 
-Context::Value Jump::evaluate(Context &) {
-  assert(false && "Not yet implemented");
-}
-
-Context::Value While::evaluate(Context &) {
-  assert(false && "Not yet implemented");
-}
-
-Context::Value For::evaluate(Context &) {
-  assert(false && "Not yet implemented");
-}
+Context::Value Jump::evaluate() { assert(false && "Not yet implemented"); }
+Context::Value While::evaluate() { assert(false && "Not yet implemented"); }
+Context::Value For::evaluate() { assert(false && "Not yet implemented"); }
 } // namespace AST

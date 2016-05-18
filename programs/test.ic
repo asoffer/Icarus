@@ -1,37 +1,19 @@
-Any := (T: type) -> bool {
+factorial := (n: int) -> int {
+  return case {
+    n < 2 => 1
+    else  => n * factorial(n - 1)
+  }
+}
+
+f := (val: Some`T) -> void {
+  print val
+}
+
+Some := (T: type) -> bool {
+ print factorial(4)
   return true
 }
 
-alloc := (ptr: &&Any`T) -> void {
-  malloc: uint -> &char #cstdlib
-  @ptr = malloc(T.bytes) :> &T
-}
-
-//Basic := (T: type) -> bool {
-//  return  T == int | T == uint | T == char | T == real
-//}
-//
-//input := (ptr: &Basic`T) -> void {
-//  scanf: &char -> int #cstdlib
-//  if T == int {
-//    @ptr = scanf("%d"c)
-//  }
-//  if T == uint {
-//    @ptr = scanf("%u"c)
-//  }
-//  if T == char {
-//    @ptr = scanf("%c"c)
-//  }
-//  if T == real {
-//    @ptr = scanf("%lf"c)
-//  }
-//}
-
 main := void -> void {
-  ptr: &int
-  for i in 1 .. 10 {
-  alloc(&ptr)
-  print ptr, '\n'
-  free ptr
-  }
+  f(3)
 }

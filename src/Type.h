@@ -27,7 +27,6 @@ extern Structure *Struct(const std::string &name,
 extern ParametricStructure *
 ParamStruct(const std::string &name,
             AST::ParametricStructLiteral *expr = nullptr);
-extern DependentType *DepType(std::function<Type *(Type *)> fn);
 extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
 extern QuantumType *Quantum(const std::vector<Type *> &vec);
@@ -88,7 +87,6 @@ public:
   virtual bool is_struct() const { return false; }
   virtual bool is_parametric_struct() const { return false; }
   virtual bool is_enum() const { return false; }
-  virtual bool is_dependent_type() const { return false; }
   virtual bool is_type_variable() const { return false; }
   virtual bool is_quantum() const { return false; }
   virtual bool is_range() const { return false; }
@@ -240,16 +238,6 @@ struct ParametricStructure : public Type {
 
   AST::ParametricStructLiteral *ast_expression;
   std::string bound_name;
-};
-
-struct DependentType : public Type {
-  TYPE_FNS(DependentType, dependent_type);
-
-  DependentType(std::function<Type *(Type *)> fn) : func(fn) {}
-
-  Type *operator()(Type *t) const { return func(t); }
-
-  std::function<Type *(Type *)> func;
 };
 
 struct TypeVariable : public Type {

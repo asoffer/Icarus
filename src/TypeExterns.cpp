@@ -42,7 +42,6 @@ static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
 static std::map<std::string, Enumeration *> enum_types_;
-static std::vector<DependentType *> dep_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
@@ -174,14 +173,6 @@ ParametricStructure *ParamStruct(const std::string &name,
   auto param_struct_type = new ParametricStructure(name, t);
 
   return TypeSystem::param_struct_types_[name] = param_struct_type;
-}
-
-// TODO take in a vector of context values instead
-DependentType *DepType(std::function<Type *(Type *)> fn) {
-  // These won't be leaked, but they aren't uniqued.
-  auto dep_type = new DependentType(fn);
-  TypeSystem::dep_types_.push_back(dep_type);
-  return dep_type;
 }
 
 TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {

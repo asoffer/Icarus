@@ -213,12 +213,6 @@ void Function::call_repr(llvm::Value *val) {
                       data::global_string("<function " + to_string() + ">")});
 }
 
-void DependentType::call_repr(llvm::Value *val) {
-  builder.CreateCall(cstdlib::printf(),
-                     {data::global_string("%s"),
-                      data::global_string("<dependent " + to_string() + ">")});
-}
-
 void Pointer::call_repr(llvm::Value *val) {
   builder.CreateCall(cstdlib::printf(), {data::global_string("&_%x"), val});
 }

@@ -55,7 +55,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto lhs_var = (TypeVariable *)lhs;
     assert(lhs_var->test);
     auto test_fn_expr =
-        lhs_var->test->evaluate(lhs_var->identifier->scope_->context).as_expr;
+        lhs_var->test->evaluate().as_expr;
     assert(test_fn_expr->is_function_literal());
     auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
 
@@ -65,7 +65,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     test_fn->inputs[0]->identifier->value = Context::Value(rhs);
     assert(test_fn->type->is_function() &&
            static_cast<Function *>(test_fn->type)->output == Bool);
-    bool test_result = test_fn->evaluate(test_fn->scope_->context).as_bool;
+    bool test_result = test_fn->evaluate().as_bool;
 
     if (test_result) {
       // TODO check if you've already inserted lhs_var and make sure you have
@@ -204,7 +204,7 @@ static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
         auto dummy      = new AST::DummyTypeExpr(rhs_loc, rhs->type);
         call_binop->rhs = dummy;
 
-        success = call_binop->evaluate(lhs->scope_->context).as_bool;
+        success = call_binop->evaluate().as_bool;
 
         dummy->value = nullptr;
         delete dummy;
@@ -243,14 +243,13 @@ static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
       auto ret_type = ((Function *)lhs_type)->output;
       if (ret_type->is_type_variable()) {
         // TODO more generically, if it has a variable
-        auto tv        = (TypeVariable *)ret_type;
-        auto new_scope = lhs->scope_->context.spawn();
+        auto tv = (TypeVariable *)ret_type;
 
         // TODO tv->identifier isn't in this scope. is this at all reasonable?
-        auto rhs_eval         = rhs->evaluate(lhs->scope_->context).as_type;
+        auto rhs_eval         = rhs->evaluate().as_type;
         tv->identifier->value = Context::Value(rhs_eval);
 
-        ret_type = tv->identifier->evaluate(new_scope).as_type;
+        ret_type = tv->identifier->evaluate().as_type;
       }
       return ret_type;
     }
@@ -263,11 +262,6 @@ static Type *CallResolutionMatch(Type *lhs_type, AST::Expression *lhs,
     }
 
     return Type_;
-
-  } else if (lhs_type->is_dependent_type()) {
-    // TODO treat dependent types as functions
-    auto dep_type = static_cast<DependentType *>(lhs->type);
-    return (*dep_type)(rhs->evaluate(lhs->scope_->context).as_type);
 
   } else {
     return nullptr;
@@ -475,18 +469,18 @@ void Access::verify_types() {
 
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
-      if (!operand->value.as_type) { operand->evaluate(scope_->context); }
+      if (!operand->value.as_type) { operand->evaluate(); }
       assert(operand->value.as_type);
       type = Uint;
       return;
     }
 
-    auto evaled_type = operand->evaluate(scope_->context).as_type;
+    auto evaled_type = operand->evaluate().as_type;
     if (evaled_type->is_enum()) {
       auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
-        type = operand->evaluate(scope_->context).as_type;
+        type = operand->evaluate().as_type;
 
       } else {
         error_log.log(loc, evaled_type->to_string() + " has no member " +
@@ -731,7 +725,7 @@ void Binop::verify_types() {
   } break;
   case Operator::Cast: {
     // TODO use correct scope
-    type = rhs->evaluate(scope_->context).as_type;
+    type = rhs->evaluate().as_type;
     if (type == Error) return;
     assert(type && "cast to nullptr?");
 
@@ -891,14 +885,20 @@ void ChainOp::verify_types() {
   for (auto e : exprs) { e->verify_types(); }
 
   if (is_comma_list()) {
+    // If the tuple consists of a list of types, it should be interpretted as a
+    // type itself rather than a tuple. This is a limitation in your support of
+    // full tuples.
+    bool all_types = true;
+
     std::vector<Type *> type_vec(exprs.size(), nullptr);
 
     size_t position = 0;
     for (const auto &eptr : exprs) {
       type_vec[position] = eptr->type;
+      all_types &= (eptr->type == Type_);
       ++position;
     }
-    type = Tup(type_vec);
+    type = all_types ? Type_ : Tup(type_vec);
     assert(type && "tuple yields nullptr");
     return;
   }
@@ -945,7 +945,7 @@ void InDecl::verify_types() {
     type = static_cast<RangeType *>(container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = container->evaluate(scope_->context).as_type;
+    auto t = container->evaluate().as_type;
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -970,7 +970,7 @@ void Declaration::verify_types() {
 
   switch (decl_type) {
   case DeclType::Std: {
-    type = expr->evaluate(scope_->context).as_type;
+    type = expr->evaluate().as_type;
     if (type->is_struct()) {
       static_cast<Structure *>(type)->ast_expression->FlushOut();
     }
@@ -994,7 +994,7 @@ void Declaration::verify_types() {
             ->set_name(identifier->token);
 
       } else if (expr->is_enum_literal()) {
-        expr->evaluate(scope_->context); // TODO do we need to evaluate here?
+        expr->evaluate(); // TODO do we need to evaluate here?
         assert(expr->value.as_type);
         // TODO mangle name properly.
         static_cast<Enumeration *>(expr->value.as_type)->bound_name =
@@ -1178,7 +1178,7 @@ void FunctionLiteral::verify_types() {
   VerificationQueue.push(statements);
   return_type_expr->verify_types();
 
-  Type *ret_type = return_type_expr->evaluate(fn_scope->context).as_type;
+  Type *ret_type = return_type_expr->evaluate().as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t inputssize = inputs.size();

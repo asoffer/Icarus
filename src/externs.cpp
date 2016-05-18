@@ -146,30 +146,6 @@ llvm::ConstantInt *const_uint(size_t n) {
 }  // namespace data
 
 namespace builtin {
-llvm::Value *input(Type *t) {
-  //TODO alloca shouldn't be done here!
-  auto input_field = builder.CreateAlloca(*t, nullptr, "tmp");
-
-  if (t == Int) {
-    builder.CreateCall(cstdlib::scanf(),
-                       {data::global_string("%d"), input_field});
-  } else if (t == Uint) {
-    builder.CreateCall(cstdlib::scanf(),
-                       {data::global_string("%u"), input_field});
-  } else if (t == Char) {
-    builder.CreateCall(cstdlib::scanf(),
-                       {data::global_string("%c"), input_field});
-  } else if (t == Real) {
-    builder.CreateCall(cstdlib::scanf(),
-                       {data::global_string("%lf"), input_field});
-
-  } else {
-    assert(false);
-  }
-
-  return builder.CreateLoad(input_field);
-}
-
 llvm::Function *ord() {
   static llvm::Function *ord_ = nullptr;
   if (ord_ != nullptr) { return ord_; }

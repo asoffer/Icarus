@@ -12,7 +12,7 @@ extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 namespace AST {
-llvm::Constant *Terminal::GetGlobal(Context &ctx) {
+llvm::Constant *Terminal::GetGlobal() {
   if (type == Bool) {
     return data::const_bool(terminal_type == Language::Terminal::True);
 
@@ -32,7 +32,7 @@ llvm::Constant *Terminal::GetGlobal(Context &ctx) {
   assert(false);
 }
 
-llvm::Constant *ArrayLiteral::GetGlobal(Context &ctx) {
+llvm::Constant *ArrayLiteral::GetGlobal() {
   assert(type->is_array());
   auto array_type = (Array *)type;
   assert(array_type->fixed_length);
@@ -40,31 +40,29 @@ llvm::Constant *ArrayLiteral::GetGlobal(Context &ctx) {
   std::vector<llvm::Constant *> constants(array_type->len, nullptr);
 
   for (size_t i = 0; i < array_type->len; ++i) {
-    constants[i] = elems[i]->GetGlobal(ctx);
+    constants[i] = elems[i]->GetGlobal();
   }
 
   return llvm::ConstantArray::get(
       static_cast<llvm::ArrayType *>(array_type->llvm_type), constants);
 }
 
-llvm::Constant *Identifier::GetGlobal(Context &ctx) {
+llvm::Constant *Identifier::GetGlobal() {
   assert(alloc);
   return (llvm::Constant *)alloc;
 }
 
-llvm::Constant *Unop::GetGlobal(Context &ctx) {
+llvm::Constant *Unop::GetGlobal() {
   switch (op) {
   case Language::Operator::And: {
-    return operand->GetGlobal(ctx);
+    return operand->GetGlobal();
   } break;
   default: assert(false);
   }
 }
 
 #define NOT_YET(type)                                                          \
-  llvm::Constant *type::GetGlobal(Context &ctx) {                              \
-    assert(false && "Not yet implemented");                                    \
-  }
+  llvm::Constant *type::GetGlobal() { assert(false && "Not yet implemented"); }
 
 NOT_YET(InDecl)
 NOT_YET(Declaration)

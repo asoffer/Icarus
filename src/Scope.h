@@ -44,9 +44,13 @@ struct Scope {
   std::map<std::string, AST::Identifier *> ids_;
   std::vector<AST::Declaration *> ordered_decls_;
 
+  void SetCTRV(Context::Value v);
+  Context::Value GetCTRV();
+  void ClearCTRV();
+  bool HasCTRV();
+
   Scope *parent;
   FnScope *containing_function_;
-  Context context;
   std::string name;
 };
 
@@ -91,6 +95,10 @@ struct FnScope : public BlockScope {
   llvm::Function *llvm_fn;
   llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
+
+  bool has_ctrv;
+  Context::Value ct_ret_val; // Used to store the return value when functions
+                             // are evaluated at compile-time
 };
 
 // TODO these are not threadsafe! When we access the stack, when compilation is
@@ -98,6 +106,5 @@ struct FnScope : public BlockScope {
 // stack
 
 Scope *CurrentScope();
-Context &CurrentContext();
 
 #endif // ICARUS_SCOPE_H

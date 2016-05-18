@@ -124,7 +124,6 @@ void Statements::assign_scope() {
 void FunctionLiteral::assign_scope() {
   scope_ = CurrentScope();
   fn_scope->set_parent(CurrentScope());
-
   Scope::Stack.push(fn_scope);
   for (auto &in : inputs) { in->assign_scope(); }
   statements->assign_scope();

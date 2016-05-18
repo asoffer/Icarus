@@ -44,7 +44,6 @@ llvm::Constant *Pointer::InitialValue() const { return data::null(this); }
 llvm::Constant *Tuple::InitialValue() const { assert(false); }
 llvm::Constant *Enumeration::InitialValue() const { assert(false); }
 llvm::Constant *Function::InitialValue() const { assert(false); }
-llvm::Constant *DependentType::InitialValue() const { assert(false); }
 llvm::Constant *Structure::InitialValue() const { assert(false); }
 llvm::Constant *TypeVariable::InitialValue() const { assert(false); }
 llvm::Constant *ParametricStructure::InitialValue() const { assert(false); }

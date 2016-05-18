@@ -17,8 +17,8 @@ namespace Time {
 
 namespace Language {
 enum class Terminal {
-  ASCII, Char, Else, False, Hole, Input, Int, Null, Ord, Real, Return,
-  StringLiteral, True, Type, Uint
+  ASCII, Char, Else, False, Hole, Int, Null, Ord, Real, Return, StringLiteral,
+  True, Type, Uint
 };
 
 enum class Operator {

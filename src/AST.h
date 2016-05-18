@@ -16,7 +16,7 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual Context::Value evaluate(Context &ctx) ENDING;                        \
+  virtual Context::Value evaluate() ENDING;                                    \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
@@ -33,9 +33,9 @@ namespace AST {
   virtual void verify_types() ENDING;                                          \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
-  virtual Context::Value evaluate(Context &ctx) ENDING;                        \
+  virtual Context::Value evaluate() ENDING;                                    \
   virtual Time::Eval determine_time() ENDING;                                  \
-  virtual llvm::Constant *GetGlobal(Context &ctx) ENDING;                      \
+  virtual llvm::Constant *GetGlobal() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
@@ -48,7 +48,7 @@ struct Node {
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
 
-  virtual Context::Value evaluate(Context &) { return nullptr; }
+  virtual Context::Value evaluate() { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
   virtual Time::Eval determine_time() { return Time::error; }
 
@@ -204,7 +204,7 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  StructLiteral *CloneStructLiteral(StructLiteral *&, Context &ctx);
+  StructLiteral *CloneStructLiteral(StructLiteral *&);
 
   std::vector<Declaration *> params;
   std::vector<llvm::Constant *> init_vals;

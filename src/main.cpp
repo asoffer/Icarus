@@ -241,9 +241,9 @@ int main(int argc, char *argv[]) {
         } break;
         case AST::DeclType::Infer: {
           // TODO meld this into GetGlobal
-          // decl->evaluate(Scope::Global->context);
+          // decl->evaluate();
 
-          auto global_val = decl->expr->GetGlobal(Scope::Global->context);
+          auto global_val = decl->expr->GetGlobal();
           assert(llvm::isa<llvm::Constant>(global_val) &&
                  "Value is not a constant");
           gvar->setInitializer(global_val);
