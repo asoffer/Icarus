@@ -1,19 +1,16 @@
 factorial := (n: int) -> int {
-  return case {
-    n < 2 => 1
-    else  => n * factorial(n - 1)
-  }
-}
-
-f := (val: Some`T) -> void {
-  print val
-}
-
-Some := (T: type) -> bool {
- print factorial(4)
-  return true
+  if n == 0 { return 1 } else if n == 1 { return 1 } else { return n * factorial(n - 1)
+    }
 }
 
 main := void -> void {
-  f(3)
+
+
+
+
+
+
+
+
+
 }

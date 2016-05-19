@@ -9,6 +9,4 @@ __print__ := (s: string) -> void {
   }
 }
 
-size := (s: string) -> uint {
-  return s.length
-}
+size := (s: string) -> uint { return s.length }

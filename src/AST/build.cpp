@@ -612,6 +612,18 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   return decl_ptr;
 }
 
+Node *FunctionLiteral::BuildOneLiner(NPtrVec &&nodes) {
+  nodes[2] = Statements::build_one({steal<Node>(nodes[2]), nullptr});
+  return FunctionLiteral::build(std::forward<NPtrVec &&>(nodes));
+}
+
+Node *FunctionLiteral::BuildNoLiner(NPtrVec &&nodes) {
+  nodes.push_back(nodes.back());
+  nodes[nodes.size() - 2] = new Statements;
+
+  return FunctionLiteral::build(std::forward<NPtrVec &&>(nodes));
+}
+
 Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
@@ -686,6 +698,18 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
   if_stmt->statements.push_back(steal<Statements>(nodes[3]));
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   return if_stmt;
+}
+
+Node *Conditional::BuildElseOneLiner(NPtrVec &&nodes) {
+  nodes[3] = AST::Statements::build_one({steal<AST::Node>(nodes[3]), nullptr});
+  return build_else(std::forward<NPtrVec &&>(nodes));
+}
+
+Node *Conditional::BuildElseNoLiner(NPtrVec &&nodes) {
+  nodes.push_back(nodes.back());
+  nodes[nodes.size() - 2] = new Statements;
+
+  return build_else(std::forward<NPtrVec &&>(nodes));
 }
 
 Node *Jump::build(NPtrVec &&nodes) {
@@ -818,6 +842,18 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   }
 
   assert(false);
+}
+
+AST::Node *BuildKWExprBlockOneLiner(NPtrVec &&nodes) {
+  nodes[2] = AST::Statements::build_one({steal<AST::Node>(nodes[2]), nullptr});
+  return BuildKWExprBlock(std::forward<NPtrVec &&>(nodes));
+}
+
+AST::Node *BuildKWExprBlockNoLiner(NPtrVec &&nodes) {
+  nodes.push_back(nodes.back());
+  nodes[nodes.size() - 2] = new AST::Statements;
+
+  return BuildKWExprBlock(std::forward<NPtrVec &&>(nodes));
 }
 
 AST::Node *Parenthesize(NPtrVec &&nodes) {

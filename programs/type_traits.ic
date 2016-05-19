@@ -1,10 +1,6 @@
-Any := (T: type) -> bool {
-  return true
-}
+Any := (T: type) -> bool { return true }
 
-IsNumeric := (T: type) -> bool {
-  return T == real | T == uint | T == int
-}
+IsNumeric := (T: type) -> bool { return T == real | T == uint | T == int }
 
 bytes := (T: type) -> uint {
   return case {

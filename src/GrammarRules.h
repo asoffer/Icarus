@@ -1,5 +1,7 @@
 extern AST::Node *BuildBinaryOperator(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
+extern AST::Node *BuildKWExprBlockOneLiner(NPtrVec &&nodes);
+extern AST::Node *BuildKWExprBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
 extern AST::Node *Parenthesize(NPtrVec &&nodes);
 
@@ -223,19 +225,42 @@ static const std::vector<Rule> Rules = {
 
     Rule(0x00, expr, {{fn_expr}, {l_brace}, {stmts}, {r_brace}},
          AST::FunctionLiteral::build),
+    Rule(0x00, expr, {{fn_expr}, {l_brace}, {expr, fn_expr}, {r_brace}},
+         AST::FunctionLiteral::BuildOneLiner),
+    Rule(0x00, expr, {{fn_expr}, {l_brace}, {r_brace}},
+         AST::FunctionLiteral::BuildNoLiner),
 
     // TODO need single statement to be another type to make merging actually
     // work correctly.
     Rule(0x02, one_stmt, {{kw_expr_block}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
+    Rule(0x02, one_stmt,
+         {{kw_expr_block}, EXPR, {l_brace}, {expr, fn_expr}, {r_brace}},
+         BuildKWExprBlockOneLiner),
+    Rule(0x02, one_stmt, {{kw_expr_block}, EXPR, {l_brace}, {r_brace}},
+         BuildKWExprBlockNoLiner),
     Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
+    Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {expr, fn_expr}, {r_brace}},
+         BuildKWExprBlockOneLiner),
+    Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {r_brace}},
+         BuildKWExprBlockNoLiner),
     Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
+    Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {r_brace}},
+         BuildKWExprBlockOneLiner),
+    Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {r_brace}},
+         BuildKWExprBlockNoLiner),
     Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {if_stmt}},
          AST::Conditional::build_else_if), // TODO stmts-> if_stmt
     Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {l_brace}, {stmts}, {r_brace}},
          AST::Conditional::build_else),
+    Rule(0x01, if_stmt,
+         {{if_stmt}, {kw_else}, {l_brace}, {expr, fn_expr}, {r_brace}},
+         AST::Conditional::BuildElseOneLiner),
+    Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {l_brace}, {r_brace}},
+         AST::Conditional::BuildElseNoLiner),
+
     // TODO missing first statement is an error-production
     // TODO Empty braces
 
