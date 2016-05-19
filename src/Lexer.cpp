@@ -512,6 +512,8 @@ NNT Lexer::next_given_slash() {
       prepeek = peek;
       peek = GetChar();
 
+      if (isnewline(peek)) { ++loc_.line_num; loc_.offset = 0; }
+
       if (!*this) {  // If we're at the end of the stream
         error_log.log(loc_, "File ended during multi-line comment.");
         RETURN_NNT("", comment);
