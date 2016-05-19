@@ -1,16 +1,11 @@
-factorial := (n: int) -> int {
-  if n == 0 { return 1 } else if n == 1 { return 1 } else { return n * factorial(n - 1)
-    }
-}
-
 main := void -> void {
+  f:= (n: int) -> int {
+    return n
+  }
 
+  f := (r: real) -> real {
+    return r
+  }
 
-/*
-
-
-
-*/
-
-saethu
+  f('x')
 }
