@@ -823,6 +823,17 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
 
   assert(false);
 }
+AST::Node *BuildKWBlockOneLiner(NPtrVec &&nodes) {
+  nodes[2] = AST::Statements::build_one({steal<AST::Node>(nodes[2]), nullptr});
+  return BuildKWBlock(std::forward<NPtrVec &&>(nodes));
+}
+
+AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes) {
+  nodes.push_back(nodes.back());
+  nodes[nodes.size() - 2] = new AST::Statements;
+
+  return BuildKWBlock(std::forward<NPtrVec &&>(nodes));
+}
 
 AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());

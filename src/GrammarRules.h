@@ -3,6 +3,8 @@ extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlockOneLiner(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
+extern AST::Node *BuildKWBlockOneLiner(NPtrVec &&nodes);
+extern AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *Parenthesize(NPtrVec &&nodes);
 
 #define RESERVED_MSG(index)                                                    \
@@ -239,18 +241,21 @@ static const std::vector<Rule> Rules = {
          BuildKWExprBlockOneLiner),
     Rule(0x02, one_stmt, {{kw_expr_block}, EXPR, {l_brace}, {r_brace}},
          BuildKWExprBlockNoLiner),
+
     Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
     Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {expr, fn_expr}, {r_brace}},
          BuildKWExprBlockOneLiner),
     Rule(0x02, if_stmt, {{kw_if}, EXPR, {l_brace}, {r_brace}},
          BuildKWExprBlockNoLiner),
+
     Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {stmts}, {r_brace}},
          BuildKWExprBlock),
     Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {r_brace}},
          BuildKWExprBlockOneLiner),
     Rule(0x02, expr, {{kw_struct}, EXPR, {l_brace}, {r_brace}},
          BuildKWExprBlockNoLiner),
+
     Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {if_stmt}},
          AST::Conditional::build_else_if), // TODO stmts-> if_stmt
     Rule(0x01, if_stmt, {{if_stmt}, {kw_else}, {l_brace}, {stmts}, {r_brace}},
@@ -266,6 +271,11 @@ static const std::vector<Rule> Rules = {
 
     Rule(0x01, expr, {{kw_block, kw_struct}, {l_brace}, {stmts}, {r_brace}},
          BuildKWBlock),
+    Rule(0x01, expr, {{kw_block, kw_struct}, {l_brace}, {expr, fn_expr}, {r_brace}},
+         BuildKWBlockOneLiner),
+    Rule(0x01, expr, {{kw_block, kw_struct}, {l_brace}, {r_brace}},
+         BuildKWBlockNoLiner),
+
 };
 
 extern size_t precedence(Language::Operator op);
