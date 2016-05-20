@@ -205,7 +205,9 @@ struct Structure : public Type {
 
   void set_name(const std::string &name);
 
+  // Return the type of a field, or a nullptr if it doesn't exist
   Type *field(const std::string &name) const;
+
   llvm::Value *field_num(const std::string &name) const;
 
   AST::StructLiteral *ast_expression;

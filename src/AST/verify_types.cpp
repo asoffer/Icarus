@@ -346,6 +346,10 @@ void Unop::verify_types() {
 
 void Access::verify_types() {
   STARTING_CHECK;
+  Verify(true);
+}
+
+void Access::Verify(bool emit_errors) {
   operand->verify_types();
   auto base_type = operand->type;
 
@@ -403,27 +407,33 @@ void Access::verify_types() {
   }
 
   if (base_type->is_struct()) {
-    auto member_type = static_cast<Structure *>(base_type)->field(member_name);
+    auto struct_type = static_cast<Structure *>(base_type);
+    struct_type->ast_expression->FlushOut();
+
+    auto member_type = struct_type->field(member_name);
     if (member_type) {
       type = member_type;
 
     } else {
-      error_log.log(loc, "Objects of type " + base_type->to_string() +
-                             " have no member named `" + member_name + "`.");
+      if (emit_errors) {
+        error_log.log(loc, "Objects of type " + base_type->to_string() +
+                               " have no member named `" + member_name + "`.");
+      }
       type = Error;
     }
   }
 
   if (base_type->is_primitive() || base_type->is_array() ||
       base_type->is_function()) {
-    error_log.log(loc, base_type->to_string() + " has no field named '" +
-                           member_name + "'.");
+    if (emit_errors) {
+      error_log.log(loc, base_type->to_string() + " has no field named '" +
+                             member_name + "'.");
+    }
     type = Error;
     return;
   }
 
   assert(type && "type is nullptr in access");
-  return;
 }
 
 struct MatchData {
@@ -454,6 +464,54 @@ static void AddToPotentialCallInterpretations(
 
 void Binop::verify_types() {
   STARTING_CHECK;
+
+  if (op == Language::Operator::Call && lhs->is_access()){
+    // This has a lot in common with rhs access
+    auto lhs_access = (Access *)lhs;
+    lhs_access->Verify(false);
+
+    // If the field doesn't exist, it's meant to be UFCS. Modify the AST to make
+    // that correct.
+    if (lhs_access->type == Error && lhs_access->operand->type != Error) {
+      auto new_lhs =
+          scope_->IdentifierBeingReferencedOrNull(lhs_access->member_name);
+      if (!new_lhs) {
+        assert(false); // TODO log error
+      }
+
+      // TODO What if it's indirected >= 2 times? This only deals with 0 or 1
+      // indirections
+      Expression *ufcs_ptr;
+      if (lhs_access->operand->type->is_pointer()) {
+        ufcs_ptr = lhs_access->operand;
+      } else {
+        auto unop     = new Unop;
+        unop->op      = Language::Operator::And;
+        unop->operand = lhs_access->operand;
+        unop->type    = Ptr(unop->operand->type);
+        ufcs_ptr      = unop;
+        // TODO line number?
+      }
+
+      ChainOp* new_rhs;
+      if (rhs->is_comma_list()) {
+        auto rhs_chainop = (ChainOp *)rhs;
+        rhs_chainop->ops.push_back(Language::Operator::Comma);
+        rhs_chainop->exprs.insert(rhs_chainop->exprs.begin(), ufcs_ptr);
+        new_rhs = rhs_chainop;
+      } else {
+        // TODO line number?
+        new_rhs = new ChainOp;
+        new_rhs->ops.push_back(Language::Operator::Comma);
+        new_rhs->exprs.push_back(ufcs_ptr);
+        new_rhs->exprs.push_back(rhs); // Pointer to rhs?
+      }
+
+      lhs = new_lhs;
+      rhs = new_rhs;
+    }
+  }
+
   lhs->verify_types();
   rhs->verify_types();
 
@@ -652,7 +710,7 @@ void Binop::verify_types() {
       type = Range(Char);
 
     } else {
-      error_log.log(loc, "No known range construction for types" +
+      error_log.log(loc, "No known range construction for types " +
                              lhs->type->to_string() + " .. " +
                              rhs->type->to_string());
     }

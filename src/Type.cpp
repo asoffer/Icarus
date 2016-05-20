@@ -248,7 +248,9 @@ Structure::Structure(const std::string &name, AST::StructLiteral *expr)
 }
 
 Type *Structure::field(const std::string &name) const {
-  return field_type.at(field_name_to_num.at(name));
+  auto iter = field_name_to_num.find(name);
+  return (iter == field_name_to_num.end()) ? nullptr
+                                           : field_type.at(iter->second);
 }
 
 llvm::Value *Structure::field_num(const std::string &name) const {

@@ -267,6 +267,7 @@ struct Access : public Expression {
   EXPR_FNS(Access, access);
   static Node *Build(NPtrVec &&nodes);
 
+  void Verify(bool emit_errors);
   std::string member_name;
   Expression *operand;
 };
