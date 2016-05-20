@@ -110,13 +110,13 @@ llvm::Value *Terminal::generate_code() {
 
     auto len_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String)->field_num("length")},
+                    static_cast<Structure *>(String)->field_num("_length")},
         "len_ptr");
     builder.CreateStore(len, len_ptr);
 
     auto char_array_ptr = builder.CreateGEP(
         str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String)->field_num("chars")},
+                    static_cast<Structure *>(String)->field_num("_chars")},
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
@@ -244,24 +244,6 @@ llvm::Value *Unop::generate_code() {
   }
   case Language::Operator::At: {
     return type->is_big() ? val : builder.CreateLoad(val);
-  }
-  case Language::Operator::Call: {
-    assert(operand->type->is_function() && "Operand should be a function.");
-    auto out_type = static_cast<Function *>(operand->type)->output;
-    // TODO this whole section needs an overhaul when we totally settle on how
-    // to pass large things.
-    if (out_type->is_struct()) {
-      // TODO move this outside of any potential loops
-      assert(scope_->is_block_scope());
-      auto local_ret =
-          static_cast<BlockScope *>(scope_)->CreateLocalReturn(out_type);
-
-      builder.CreateCall(static_cast<llvm::Function *>(val), local_ret);
-      return local_ret;
-
-    } else {
-      return builder.CreateCall(static_cast<llvm::Function *>(val));
-    }
   }
   default: assert(false && "Unimplemented unary operator codegen");
   }
@@ -411,6 +393,24 @@ llvm::Value *Binop::generate_code() {
 
   llvm::Value *lhs_val = nullptr;
   if (op == Operator::Call) {
+    if (!rhs) {
+      assert(lhs->type->is_function() && "Operand should be a function.");
+      auto out_type = static_cast<Function *>(lhs->type)->output;
+      lhs_val = lhs->generate_code();
+      if (out_type->is_struct()) {
+        // TODO move this outside of any potential loops
+        assert(scope_->is_block_scope());
+        auto local_ret =
+            static_cast<BlockScope *>(scope_)->CreateLocalReturn(out_type);
+
+        builder.CreateCall((llvm::Function *)lhs_val, local_ret);
+        return local_ret;
+
+      } else {
+        return builder.CreateCall((llvm::Function *)lhs_val);
+      }
+    }
+
     if (lhs->type->has_vars) {
       auto fn_lit = GetFunctionLiteral(lhs);
       assert(!fn_lit->cache.empty());

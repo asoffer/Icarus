@@ -254,7 +254,9 @@ Type *Structure::field(const std::string &name) const {
 }
 
 llvm::Value *Structure::field_num(const std::string &name) const {
-  auto num = field_name_to_num.at(name);
+  auto iter = field_name_to_num.find(name);
+  if (iter == field_name_to_num.end()) { return nullptr; }
+  auto num = iter->second;
   auto t = field_type AT(num);
   assert(!t->is_function() && t != Type_ && "Invalid data field");
 

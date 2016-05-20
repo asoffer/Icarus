@@ -70,7 +70,7 @@ void ArrayLiteral::assign_scope() {
 void Binop::assign_scope() {
   scope_ = CurrentScope();
   lhs->assign_scope();
-  rhs->assign_scope();
+  if (rhs) { rhs->assign_scope(); }
 }
 
 void InDecl::assign_scope() {

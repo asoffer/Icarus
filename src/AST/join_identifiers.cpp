@@ -61,7 +61,7 @@ void Access::join_identifiers(bool) { set_or_recurse(operand); }
 
 void Binop::join_identifiers(bool) {
   set_or_recurse(lhs);
-  set_or_recurse(rhs);
+  if (rhs) { set_or_recurse(rhs); }
 }
 
 void ArrayType::join_identifiers(bool) {

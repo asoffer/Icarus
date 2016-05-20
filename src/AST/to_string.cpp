@@ -65,7 +65,6 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Sub: ss << "Sub"; break;
   case Language::Operator::Not: ss << "Not"; break;
   case Language::Operator::At: ss << "At"; break;
-  case Language::Operator::Call: ss << "Call"; break;
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Import: ss << "Import"; break;
 
@@ -108,7 +107,7 @@ std::string Binop::to_string(size_t n) const {
     default: assert(false && "Not a binary operator");
     }
   }
-  ss << ">\n" << lhs->to_string(n + 1) << rhs->to_string(n + 1);
+  ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0");
   return ss.str();
 }
 

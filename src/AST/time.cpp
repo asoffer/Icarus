@@ -27,8 +27,11 @@ Time::Eval Binop::determine_time() {
       return time_ = static_cast<Structure *>(type)
                          ->ast_expression->determine_time();
     }
-    return time_ = rhs->determine_time();
+
+    return time_ = rhs ? rhs->determine_time() : Time::either;
   }
+
+  assert(rhs);
   return time_ = lhs->determine_time() | rhs->determine_time();
 }
 

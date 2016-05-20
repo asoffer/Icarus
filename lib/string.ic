@@ -1,12 +1,12 @@
 string := struct {
-  chars: [--; char]
-  length: uint
+  _chars: [--; char]
+  _length: uint
 }
 
 __print__ := (s: string) -> void {
-  for c in s.chars[0u .. s.length - 1u] {
+  for c in s._chars[0u .. s._length - 1u] {
     print c
   }
 }
 
-size := (s: string) -> uint { return s.length }
+size := (s: &string) -> uint { return s._length }

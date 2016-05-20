@@ -13,7 +13,7 @@ main := void -> void {
   foo.n = 17
 
   print foo.bar(baz, 13), '\n'
-  g(&foo)
+  foo.g()
 }
 
 g := (foo: &MyStruct) -> void {

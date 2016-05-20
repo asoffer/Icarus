@@ -6,6 +6,7 @@ extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlockOneLiner(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *Parenthesize(NPtrVec &&nodes);
+extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
 
 #define RESERVED_MSG(index)                                                    \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
@@ -152,7 +153,7 @@ static const std::vector<Rule> Rules = {
     // Call and Index operators
     Rule(0x00, expr, {EXPR, {l_paren}, EXPR, {r_paren}},
          AST::Binop::BuildCallOperator),
-    Rule(0x00, expr, {EXPR, {l_paren}, {r_paren}}, AST::Unop::BuildParen),
+    Rule(0x00, expr, {EXPR, {l_paren}, {r_paren}}, BuildEmptyParen),
     Rule(0x00, expr, {EXPR, {l_bracket}, EXPR, {r_bracket}},
          AST::Binop::BuildIndexOperator),
 

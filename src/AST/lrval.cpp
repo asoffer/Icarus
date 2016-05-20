@@ -32,7 +32,7 @@ void Access::lrvalue_check() {
 
 void Binop::lrvalue_check() {
   lhs->lrvalue_check();
-  rhs->lrvalue_check();
+  if (rhs) { rhs->lrvalue_check(); }
 
   if (is_assignment() && !lhs->lvalue) {
     // TODO better error message.

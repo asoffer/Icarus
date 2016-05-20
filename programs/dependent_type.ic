@@ -1,7 +1,0 @@
-INPUT := (T: type) -> T {
-  return input(T)
-}
-
-main := void -> void {
-  INPUT(int)
-}

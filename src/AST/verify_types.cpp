@@ -265,23 +265,6 @@ void Unop::verify_types() {
       type = Error;
     }
   } break;
-  case Operator::Call: {
-    // TODO quantum types
-    if (!operand->type->is_function()) {
-      error_log.log(loc, "Operand is not a function.");
-      type = Error;
-      return;
-    }
-
-    auto fn = static_cast<Function *>(operand->type);
-    if (fn->input != Void) {
-      error_log.log(loc, "Calling function with no arguments.");
-      type = Error;
-    } else {
-      type = fn->output;
-      assert(type && "fn return type is nullptr");
-    }
-  } break;
   case Operator::And: {
     type = (operand->type == Type_) ? Type_ : Ptr(operand->type);
     assert(type && "&type is null");
@@ -494,26 +477,53 @@ void Binop::verify_types() {
       }
 
       ChainOp* new_rhs;
-      if (rhs->is_comma_list()) {
-        auto rhs_chainop = (ChainOp *)rhs;
-        rhs_chainop->ops.push_back(Language::Operator::Comma);
-        rhs_chainop->exprs.insert(rhs_chainop->exprs.begin(), ufcs_ptr);
-        new_rhs = rhs_chainop;
+      if (!rhs) {
+        rhs = ufcs_ptr;
       } else {
-        // TODO line number?
-        new_rhs = new ChainOp;
-        new_rhs->ops.push_back(Language::Operator::Comma);
-        new_rhs->exprs.push_back(ufcs_ptr);
-        new_rhs->exprs.push_back(rhs); // Pointer to rhs?
-      }
+        if (rhs->is_comma_list()) {
+          auto rhs_chainop = (ChainOp *)rhs;
+          rhs_chainop->ops.push_back(Language::Operator::Comma);
+          rhs_chainop->exprs.insert(rhs_chainop->exprs.begin(), ufcs_ptr);
+          new_rhs = rhs_chainop;
+        } else {
+          // TODO line number?
+          new_rhs = new ChainOp;
+          new_rhs->ops.push_back(Language::Operator::Comma);
+          new_rhs->exprs.push_back(ufcs_ptr);
+          new_rhs->exprs.push_back(rhs); // Pointer to rhs?
+        }
 
+        rhs = new_rhs;
+      }
       lhs = new_lhs;
-      rhs = new_rhs;
     }
   }
 
   lhs->verify_types();
-  rhs->verify_types();
+
+  if (rhs) {
+    rhs->verify_types();
+  } else {
+    // If rhs == 0x0, this means it's the unary call operator.
+    assert(op == Language::Operator::Call);
+
+    // TODO quantum types
+    if (!lhs->type->is_function()) {
+      error_log.log(loc, "Operand is not a function.");
+      type = Error;
+      return;
+    }
+
+    auto fn = static_cast<Function *>(lhs->type);
+    if (fn->input != Void) {
+      error_log.log(loc, "Calling function with no arguments.");
+      type = Error;
+    } else {
+      type = fn->output;
+      assert(type && "fn return type is nullptr");
+    }
+    return;
+  }
 
   using Language::Operator;
   if (lhs->type == Error || rhs->type == Error) {
@@ -1196,7 +1206,10 @@ void While::verify_types() {
   condition->verify_types();
   statements->verify_types();
 
+  if (condition->type == Error) { return; }
+
   if (condition->type != Bool) {
+
     error_log.log(loc, "While loop condition must be a bool, but " +
                            condition->type->to_string() + " given.");
   }
@@ -1212,6 +1225,7 @@ void Conditional::verify_types() {
   for (auto stmts : statements) { stmts->verify_types(); }
 
   for (const auto &cond : conditions) {
+    if (cond->type == Error) { continue; }
     if (cond->type != Bool) {
       error_log.log(loc, "Conditional must be a bool, but " +
                              cond->type->to_string() + " given.");

@@ -73,6 +73,26 @@ static void CheckStructMembers(AST::Statements *stmts,
   }
 }
 
+// Input guarantees:
+// [expr] [l_paren] [r_paren]
+//
+// Internal checks:
+// Operand is not a declaration
+AST::Node *BuildEmptyParen(NPtrVec &&nodes) {
+  auto binop_ptr        = new AST::Binop;
+  binop_ptr->loc        = nodes[1]->loc;
+  binop_ptr->lhs        = steal<AST::Expression>(nodes[0]);
+  binop_ptr->rhs        = nullptr;
+  binop_ptr->op         = Language::Operator::Call;
+  binop_ptr->precedence = Language::precedence(binop_ptr->op);
+
+  if (binop_ptr->lhs->is_declaration()) {
+    error_log.log(binop_ptr->lhs->loc,
+                  "Invalid declaration. You cannot call a declaration.");
+  }
+  return binop_ptr;
+}
+
 namespace AST {
 // Input guarantees:
 // [struct] [l_brace] [statements] [r_brace]
@@ -342,26 +362,6 @@ id_check:
   if (!unop_ptr->operand->is_identifier()) {
     error_log.log(unop_ptr->operand->loc,
                   "Operand to '" + tk + "' must be an identifier.");
-  }
-  return unop_ptr;
-}
-
-// Input guarantees:
-// [expr] [l_paren] [r_paren]
-//
-// Internal checks:
-// Operand is not a declaration
-Node *Unop::BuildParen(NPtrVec &&nodes) {
-
-  auto unop_ptr        = new Unop;
-  unop_ptr->loc        = nodes[1]->loc;
-  unop_ptr->operand    = steal<Expression>(nodes[0]);
-  unop_ptr->op         = Language::Operator::Call;
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-
-  if (unop_ptr->operand->is_declaration()) {
-    error_log.log(unop_ptr->operand->loc,
-                  "Invalid declaration. You cannot call a declaration.");
   }
   return unop_ptr;
 }
