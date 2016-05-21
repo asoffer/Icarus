@@ -1,21 +1,22 @@
 // Implementation of a stack with a linked list
-node := struct {
+node := struct (T: type) {
   _data: int
-  _next: &node
+  _next: &node(int)
 }
 
-stack := struct {
+stack := struct (T: type) {
   _size: uint
-  _head: &node
+  _head: &node(T)
 }
 
-size  := (this: &stack) -> uint { return this._size }
-empty := (this: &stack) -> bool { return this._size == 0u }
+int_stack := stack(int)
 
-push := (this: &stack, n: int) -> &stack {
-  new: &node
+size  := (this: &int_stack) -> uint { return this._size }
+empty := (this: &int_stack) -> bool { return this._size == 0u }
+
+push := (this: &int_stack, n: int) -> &int_stack {
+  new: &node(int)
   allocate(&new)
-  // new.allocate()
 
   new._data = n
   new._next = this._head
@@ -24,12 +25,12 @@ push := (this: &stack, n: int) -> &stack {
   return this
 }
 
-// Unsafe if stack is empty. This is a good place to use #ensure to enforce a
-// check at the call-size that the stack is non-empty
-peek := (this: &stack) -> int {
+// Unsafe if int_stack is empty. This is a good place to use #ensure to enforce a
+// check at the call-size that the int_stack is non-empty
+peek := (this: &int_stack) -> int {
   // Alternatively, we can use a check like this, but this is worse, because the
   // callee has no way to know the correct behavior in the context. It's also
-  // indistinguishable from correct behavior where the top of the stack has the
+  // indistinguishable from correct behavior where the top of the int_stack has the
   // default value.
   return case {
     !this.empty() => this._head._data
@@ -37,8 +38,8 @@ peek := (this: &stack) -> int {
   }
 }
 
-pop := (this: &stack) -> &stack {
-  x: &node
+pop := (this: &int_stack) -> &int_stack {
+  x: &node(int)
   if this._head != x {
     old := this._head
     this._head = this._head._next
@@ -48,28 +49,42 @@ pop := (this: &stack) -> &stack {
   return this
 }
 
-__destroy__ := (s: &stack) -> void {
-  while !s.empty() { s.pop() }
+__destroy__ := (s: &int_stack) -> void {
+  ptrptr := &s._head._next
+  nullptr: &node(int)
+
+  while @ptrptr != nullptr {
+    to_free := @ptrptr
+    ptrptr = &ptrptr._next
+    free to_free
+  }
 }
 
 main := void -> void {
-  __print__ := (s: stack) -> void {
-    next := s._head
-    x: &node
-
-    while next != x {
-      print next._data, " -> "
-      next = next._next
+  __print__ := (s: int_stack) -> void {
+    if s.empty() {
+      print "{}"
+      return
     }
+
+    print "{ ", s._head._data
+
+    current := s._head._next
+    x: &node(int)
+
+    while current != x {
+      print " -> ", current._data
+      current = current._next
+    }
+
+    print " }"
   }
 
-  st: stack
+  st: int_stack
   print @st.push(1).push(2).push(3).pop().pop().push(7)
 }
 
-Any := (T: type) -> bool {
-  return true
-}
+Any := (T: type) -> bool { return true }
 
 allocate := (ptr: &&Any`T) -> void {
   malloc: uint -> &char #cstdlib

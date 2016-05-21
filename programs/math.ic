@@ -15,5 +15,23 @@ acosh: real -> real #cstdlib
 atanh: real -> real #cstdlib
 
 // logs/exp
+// log := (base: real, x: real) -> real {
+//   // TODO: Speed, safety, and accuracy
+//   return log(x) / log(base)
+// }
 log: real -> real #cstdlib
 exp: real -> real #cstdlib
+
+abs := (val: real) -> real {
+  return case {
+    val < 0.0  =>  val
+    else       =>  -val
+  }
+}
+
+abs := (val: int) -> int {
+  return case {
+    val < 0  =>  val
+    else     =>  -val
+  }
+}

@@ -1,0 +1,17 @@
+now := void -> uint {
+  clock: void -> uint #cstdlib // is uint close enough to a clock_t type?
+  return clock()
+}
+
+import "fibonacci.ic"
+
+main := void -> void {
+  n := 30
+
+  start := now()
+  f_n := fib(n)
+  end := now()
+
+  print "fib(", n, ") = ", f_n, "\n"
+  print "That took ", end - start, " clock ticks to compute."
+}
