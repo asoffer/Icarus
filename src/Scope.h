@@ -44,6 +44,11 @@ struct Scope {
   std::map<std::string, AST::Identifier *> ids_;
   std::vector<AST::Declaration *> ordered_decls_;
 
+  // Contains all of the identifiers used in this scope, regardless of whether
+  // or not they are declared here. If there are any that are not declared here,
+  // we've encountered some form of a closure.
+  std::vector<AST::Identifier *> ReferenceRegistry;
+
   void SetCTRV(Context::Value v);
   Context::Value GetCTRV();
   void ClearCTRV();

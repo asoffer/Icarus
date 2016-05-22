@@ -12,7 +12,14 @@ void Access::assign_scope() {
   operand->assign_scope();
 }
 
-void Identifier::assign_scope() { scope_ = CurrentScope(); }
+void Identifier::assign_scope() {
+  scope_ = CurrentScope();
+  { // TODO These should be tied together
+    registry_pos_ = scope_->ReferenceRegistry.size();
+    scope_->ReferenceRegistry.push_back(this);
+  }
+}
+
 void Terminal::assign_scope() { scope_ = CurrentScope(); }
 void EnumLiteral::assign_scope() { scope_ = CurrentScope(); }
 
@@ -125,6 +132,7 @@ void FunctionLiteral::assign_scope() {
   scope_ = CurrentScope();
   fn_scope->set_parent(CurrentScope());
   Scope::Stack.push(fn_scope);
+  return_type_expr->assign_scope();
   for (auto &in : inputs) { in->assign_scope(); }
   statements->assign_scope();
   Scope::Stack.pop();

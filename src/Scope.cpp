@@ -30,7 +30,7 @@ Scope::Scope()
 
 AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
   assert(id_as_eptr->is_identifier());
-  auto idptr = static_cast<AST::Identifier *>(id_as_eptr);
+  auto idptr = (AST::Identifier *)id_as_eptr;
 
   Scope *scope_ptr = this;
   while (scope_ptr != nullptr) {

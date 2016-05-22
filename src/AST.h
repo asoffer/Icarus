@@ -144,6 +144,7 @@ struct Identifier : public Terminal {
 
   void AppendType(Type *t);
 
+  size_t registry_pos_;
   llvm::Value *alloc;
   std::vector<Declaration *> decls; // multiple because function overloading
   bool is_arg;                      // function argument or struct parameter

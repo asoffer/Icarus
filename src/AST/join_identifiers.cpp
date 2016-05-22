@@ -5,7 +5,17 @@
 void set_or_recurse(AST::Expression *&eptr) {
   // TODO What happens to the line number?
   if (eptr->is_identifier()) {
-    eptr = CurrentScope()->identifier(eptr);
+    auto new_id = CurrentScope()->identifier(eptr);
+    auto old_id = (AST::Identifier *)eptr;
+    if (new_id != old_id) {
+      { // TODO Tie these together (registry maintentance)
+        auto &registry                  = old_id->scope_->ReferenceRegistry;
+        registry[old_id->registry_pos_] = registry.back();
+        registry.back()->registry_pos_ = old_id->registry_pos_;
+        registry.pop_back();
+      }
+      eptr = new_id;
+    }
   } else {
     eptr->join_identifiers();
   }
