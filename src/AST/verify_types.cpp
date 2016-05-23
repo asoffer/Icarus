@@ -12,7 +12,6 @@ extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 static AST::FunctionLiteral *
 GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
                           const std::map<TypeVariable *, Type *> &matches) {
-
   auto num_matches = matches.size();
   auto lookup_key  = new TypeVariable *[num_matches];
   auto lookup_val  = new Type *[num_matches];
@@ -223,7 +222,15 @@ static Type *EvalWithVars(Type *type,
 #define STARTING_CHECK                                                         \
   assert(type != Unknown && "Cyclic dependency");                              \
   if (type) { return; }                                                        \
+  /*std::cout << "\033[2J\033[1;1H" << std::endl;                                \
+  std::cout << *this << std::endl;                                             \
+  std::cin.ignore(1);                                                          */\
   type = Unknown
+
+#define ENDING_SHOW                                                            \
+  /*std::cout << "\033[2J\033[1;1H" << std::endl;                                \
+  std::cout << "COMPLETE:\n" << *this << std::endl;                            \
+  std::cin.ignore(1)*/
 
 namespace AST {
 // TODO In what file should this be placed?
@@ -1145,6 +1152,7 @@ void Declaration::verify_types() {
   }
 
   assert(type && "decl expr is nullptr");
+  ENDING_SHOW;
 }
 
 void ArrayType::verify_types() {
@@ -1225,8 +1233,8 @@ void FunctionLiteral::verify_types() {
 
   // TODO generics?
   type = Func(input_type, ret_type);
-
   assert(type && "FunctionLiteral type is nullptr");
+  ENDING_SHOW;
 }
 
 void Case::verify_types() {
@@ -1266,6 +1274,7 @@ void Case::verify_types() {
   } else {
     type = *value_types.begin();
   }
+  ENDING_SHOW;
 }
 
 void Statements::verify_types() {

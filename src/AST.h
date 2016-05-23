@@ -206,7 +206,7 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  StructLiteral *CloneStructLiteral(StructLiteral *&);
+  StructLiteral *CloneStructLiteral(StructLiteral *&, bool has_vars);
   Context::Value CreateOrGetCached(const std::vector<Context::Value>& arg_vals);
 
   std::vector<Declaration *> params;

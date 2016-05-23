@@ -107,7 +107,7 @@ std::string Binop::to_string(size_t n) const {
     default: assert(false && "Not a binary operator");
     }
   }
-  ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0");
+  ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
   return ss.str();
 }
 
@@ -145,7 +145,7 @@ std::string Terminal::to_string(size_t n) const {
   case Language::Terminal::Return: ss << "return"; break;
   case Language::Terminal::StringLiteral: ss << value.as_str; break;
   case Language::Terminal::True: ss << "true"; break;
-  case Language::Terminal::Type: ss << "type"; break; // TODO FIXME
+  case Language::Terminal::Type: ss << *value.as_type; break;
   case Language::Terminal::Uint: ss << value.as_uint; break;
   }
 
@@ -205,9 +205,10 @@ std::string Statements::to_string(size_t n) const {
 
 std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<FunctionLiteral>\n";
+  ss << tabs(n) << "<FunctionLiteral " << TYPE_OR("") << ">\n";
   for (const auto &kv : inputs) { ss << kv->to_string(n + 1); }
-  ss << tabs(n + 1) << "Body:\n" << statements->to_string(n + 2);
+  ss << return_type_expr->to_string(n + 1) << tabs(n + 1) << "Body:\n"
+     << statements->to_string(n + 2);
   return ss.str();
 }
 

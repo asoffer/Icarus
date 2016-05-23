@@ -98,11 +98,13 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(
 
   auto &cache_loc = (cache[vec_key] = new StructLiteral);
   reverse_cache[cache_loc] = vec_key;
+  bool has_vars            = false;
 
   // TODO do we need to clean this up? I think not. It should just be
   // overwritten next time the generic struct is called, right?
   for (size_t i = 0; i < num_args; ++i) {
     params[i]->identifier->value = arg_vals[i];
+    has_vars |= arg_vals[i].as_type->has_vars;
   }
 
   std::stringstream ss;
@@ -133,8 +135,14 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(
     assert(cache.size() < 5);
   }
 
+
   auto cloned_struct =
-      param_struct->ast_expression->CloneStructLiteral(cache_loc);
+      param_struct->ast_expression->CloneStructLiteral(cache_loc, has_vars);
+
+  for (size_t i = 0; i < num_args; ++i) {
+    params[i]->identifier->value = nullptr;
+  }
+
 
   cloned_struct->verify_types();
   static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
@@ -536,7 +544,6 @@ Context::Value Binop::evaluate() {
         }
       } else {
         auto evaled_rhs = rhs->evaluate();
-
         arg_vals.push_back(evaled_rhs);
         if (debug::parametric_struct) {
           std::cerr << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type

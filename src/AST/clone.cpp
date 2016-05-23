@@ -9,7 +9,8 @@
 
 namespace AST {
 StructLiteral *
-ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
+ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
+                                            bool has_vars) {
   cache_loc->declarations.reserve(declarations.size());
 
   cache_loc->value.as_type->has_vars = false;
@@ -41,14 +42,15 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
     cache_loc->value.as_type->has_vars |= new_decl->type->has_vars;
 
     cache_loc->declarations.push_back(new_decl);
-
   }
+
   delete cache_loc->type_scope;
   cache_loc->type_scope = type_scope;
   cache_loc->scope_ = scope_; // Same scope as original.
   cache_loc->verify_types();
 
-  cache_loc->FlushOut();
+  cache_loc->value.as_type->has_vars = has_vars;
+  if (!has_vars) { cache_loc->FlushOut(); }
 
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());
@@ -91,7 +93,7 @@ Node *Binop::clone(LOOKUP_ARGS) {
   auto binop = new Binop;
   binop->op  = op;
   binop->lhs = (Expression *)lhs->CLONE;
-  binop->rhs = (Expression *)rhs->CLONE;
+  if (rhs) { binop->rhs = (Expression *)rhs->CLONE; }
   return binop;
 }
 
