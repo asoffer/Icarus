@@ -207,6 +207,7 @@ struct ParametricStructLiteral : public Expression {
   static Node *Build(NPtrVec &&nodes);
 
   StructLiteral *CloneStructLiteral(StructLiteral *&);
+  Context::Value CreateOrGetCached(const std::vector<Context::Value>& arg_vals);
 
   std::vector<Declaration *> params;
   std::vector<llvm::Constant *> init_vals;
@@ -217,6 +218,7 @@ struct ParametricStructLiteral : public Expression {
   // TODO this should be more than just type pointers. Parameters can be ints,
   // etc. Do we allow real? Make this hold a vector of Context::Values
   std::map<std::vector<Type *>, StructLiteral *> cache;
+  std::map<StructLiteral *, std::vector<Type *>> reverse_cache;
 };
 
 struct StructLiteral : public Expression {

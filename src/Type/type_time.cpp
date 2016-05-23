@@ -20,8 +20,7 @@ Time::Eval Tuple::time() const {
 }
 
 Time::Eval Structure::time() const {
-  // TODO
-  return Time::run;
+  return has_vars ? Time::compile : Time::run;
 }
 
 Time::Eval Enumeration::time() const { return Time::either; }

@@ -42,6 +42,105 @@ static void AppendValueToStream(Type *type, Context::Value val,
 }
 
 namespace AST {
+// TODO there's definitely a better way to do this.
+Context::Value ParametricStructLiteral::CreateOrGetCached(
+    const std::vector<Context::Value> &arg_vals) {
+
+  size_t cache_num = 0;
+  auto num_args = arg_vals.size();
+  assert(value.as_type);
+  assert(value.as_type->is_parametric_struct());
+  auto param_struct = (ParametricStructure *)value.as_type;
+
+  for (const auto &cached_val : cache) {
+    if (debug::parametric_struct) {
+      std::cerr << " * Checking match against cache position " << cache_num++
+                << std::endl;
+    }
+
+    if (cached_val.first.size() != num_args) {
+      if (debug::parametric_struct) {
+        std::cerr << "   - Parameter number mismatch (" << num_args << " vs "
+                  << cached_val.first.size() << ")" << std::endl;
+      }
+      continue;
+    }
+
+    for (size_t i = 0; i < num_args; ++i) {
+      // TODO not always a type
+      if (arg_vals[i].as_type != cached_val.first[i]) {
+
+        if (debug::parametric_struct) {
+          std::cerr << "   - Failed matching argument " << i << std::endl;
+        }
+
+        goto outer_continue;
+      }
+    }
+
+    if (debug::parametric_struct) {
+      std::cerr << "   - Found a match." << std::endl;
+      std::cerr << *(cached_val.first[0]) << std::endl;
+    }
+    // If you get down here, you have found the right thing.
+    return cached_val.second->value;
+
+  outer_continue:;
+  }
+
+  // TODO there's definitely a way to consolidate/speed up this stuff.
+  // Create the key earlier and do a binary rather than linear search
+  // through the cache using this key.
+  std::vector<Type *> vec_key;
+  for (size_t i = 0; i < num_args; ++i) {
+    vec_key.push_back(arg_vals[i].as_type);
+  }
+
+  auto &cache_loc = (cache[vec_key] = new StructLiteral);
+  reverse_cache[cache_loc] = vec_key;
+
+  // TODO do we need to clean this up? I think not. It should just be
+  // overwritten next time the generic struct is called, right?
+  for (size_t i = 0; i < num_args; ++i) {
+    params[i]->identifier->value = arg_vals[i];
+  }
+
+  std::stringstream ss;
+  // TODO if the parameter is not a type?
+  ss << param_struct->bound_name << "(";
+
+  // auto param_type = params[0]->identifier->type;
+
+  // TODO you haven't done type verification of the fields yet, so using
+  // param_type above will likely return 0x0.
+  AppendValueToStream(Type_, arg_vals[0], ss);
+
+  for (size_t i = 1; i < num_args; ++i) {
+    auto parameter_type = params[i]->expr->value.as_type;
+    ss << ", ";
+    AppendValueToStream(parameter_type, arg_vals[i], ss);
+  }
+  ss << ")";
+
+  cache_loc->value = Context::Value(Struct(ss.str(), cache_loc));
+
+  if (debug::parametric_struct) {
+    std::cerr << " * No match found.\n"
+                 " * Creating new cached value.\n"
+                 " * Cache size is now "
+              << cache.size() << " for " << *this << "." << std::endl;
+    // For debugging so we don't get too far generating these things.
+    assert(cache.size() < 5);
+  }
+
+  auto cloned_struct =
+      param_struct->ast_expression->CloneStructLiteral(cache_loc);
+
+  cloned_struct->verify_types();
+  static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
+
+  return cloned_struct->value;
+}
 llvm::Value *Expression::llvm_value(Context::Value v) {
   assert(type != Type_ && "Type_ conversion to llvm::Value*");
   assert(type != Error && "Error conversion to llvm::Value*");
@@ -362,7 +461,6 @@ Context::Value Access::evaluate() {
     return Context::Value(operand->evaluate().as_type->alignment());
   }
 
-  std::cout << *this << std::endl;
   assert(false && "not yet implemented");
 }
 
@@ -402,16 +500,21 @@ Context::Value Binop::evaluate() {
 
     } else if (lhs->type == Type_) {
       auto lhs_evaled = lhs->evaluate().as_type;
+
       assert(lhs_evaled->is_parametric_struct());
 
-      auto param_struct = static_cast<ParametricStructure *>(lhs_evaled);
-      auto struct_lit   = param_struct->ast_expression;
+      auto struct_lit =
+          static_cast<ParametricStructure *>(lhs_evaled)->ast_expression;
+
+      assert(struct_lit->value.as_type);
+      assert(struct_lit->value.as_type->is_parametric_struct());
 
       if (debug::parametric_struct) {
         assert(struct_lit->value.as_type);
         assert(struct_lit->value.as_type->is_parametric_struct());
-        std::cout << "\n== Evaluating a parametric struct call ==\n"
-                  << static_cast<ParametricStructure *>(struct_lit->value.as_type)
+        std::cerr << "\n== Evaluating a parametric struct call ==\n"
+                  << static_cast<ParametricStructure *>(
+                         struct_lit->value.as_type)
                          ->bound_name
                   << std::endl;
       }
@@ -419,127 +522,32 @@ Context::Value Binop::evaluate() {
       int arg_val_counter = 0;
 
       if (debug::parametric_struct) {
-        std::cout << " * Argument values:" << std::endl;
+        std::cerr << " * Argument values:" << std::endl;
       }
 
       if (rhs->is_comma_list()) {
         for (auto elem : static_cast<ChainOp *>(rhs)->exprs) {
           auto evaled_elem = elem->evaluate();
-          assert(!evaled_elem.as_type->has_vars);
           arg_vals.push_back(evaled_elem);
           if (debug::parametric_struct) {
-            std::cout << "   " << arg_val_counter++ << ". "
+            std::cerr << "   " << arg_val_counter++ << ". "
                       << *evaled_elem.as_type << std::endl;
           }
         }
       } else {
         auto evaled_rhs = rhs->evaluate();
-        assert(!evaled_rhs.as_type->has_vars);
 
         arg_vals.push_back(evaled_rhs);
         if (debug::parametric_struct) {
-          std::cout << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type
+          std::cerr << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type
                     << std::endl;
         }
       }
 
-      auto num_args = arg_vals.size();
+      if (debug::parametric_struct) { std::cerr << std::endl; }
 
-      if (debug::parametric_struct) { std::cout << std::endl; }
+      return value = struct_lit->CreateOrGetCached(arg_vals);
 
-      // look through the cache
-      // TODO there's definitely a better way to do this.
-
-      size_t cache_num = 0;
-      for (const auto &cached_val : struct_lit->cache) {
-        if (debug::parametric_struct) {
-          std::cout << " * Checking match against cache position " << cache_num++
-                    << std::endl;
-        }
-
-        if (cached_val.first.size() != num_args) {
-          if (debug::parametric_struct) {
-            std::cout << "   - Parameter number mismatch (" << num_args
-                      << " vs " << cached_val.first.size() << ")"
-                      << std::endl;
-          }
-          continue;
-        }
-
-        for (size_t i = 0; i < num_args; ++i) {
-          // TODO not always a type
-          if (arg_vals[i].as_type != cached_val.first[i]) {
-
-            if (debug::parametric_struct) {
-              std::cout << "   - Failed matching argument " << i << std::endl;
-            }
-
-            goto outer_continue;
-          }
-        }
-
-        if (debug::parametric_struct) {
-          std::cout << "   - Found a match." << std::endl;
-          std::cout << *(cached_val.first[0]) << std::endl;
-        }
-        // If you get down here, you have found the right thing.
-        return value = cached_val.second->value;
-
-      outer_continue:;
-      }
-
-      // TODO there's definitely a way to consolidate/speed up this stuff.
-      // Create the key earlier and do a binary rather than linear search
-      // through the cache using this key.
-      std::vector<Type *> vec_key;
-      for (size_t i = 0; i < num_args; ++i) {
-        vec_key.push_back(arg_vals[i].as_type);
-      }
-        
-      auto &cache_loc = (struct_lit->cache[vec_key] = new StructLiteral);
-
-      // TODO do we need to clean this up? I think not. It should just be
-      // overwritten next time the generic struct is called, right?
-      for (size_t i = 0; i < num_args; ++i) {
-        struct_lit->params[i]->identifier->value = arg_vals[i];
-      }
-
-      std::stringstream ss;
-      // TODO if the parameter is not a type?
-      ss << param_struct->bound_name << "(";
-
-      // auto param_type = struct_lit->params[0]->identifier->type;
-
-      // TODO you haven't done type verification of the fields yet, so using
-      // param_type above will likely return 0x0.
-      AppendValueToStream(Type_, arg_vals[0], ss);
-
-      for (size_t i = 1; i < num_args; ++i) {
-        auto parameter_type = struct_lit->params[i]->expr->value.as_type;
-        ss << ", ";
-        AppendValueToStream(parameter_type, arg_vals[i], ss);
-      }
-      ss << ")";
-
-      cache_loc->value = Context::Value(Struct(ss.str(), cache_loc));
-
-      if (debug::parametric_struct) {
-        std::cout << " * No match found.\n"
-                     " * Creating new cached value.\n"
-                     " * Cache size is now "
-                  << struct_lit->cache.size() << " for " << struct_lit << "."
-                  << std::endl;
-        // For debugging so we don't get too far generating these things.
-        assert(struct_lit->cache.size() < 5);
-      }
-
-      auto cloned_struct =
-          param_struct->ast_expression->CloneStructLiteral(cache_loc);
-
-      cloned_struct->verify_types();
-      static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
-
-      return value = cloned_struct->value;
     } else {
       assert(false);
     }

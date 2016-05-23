@@ -141,8 +141,8 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
     }
   }
 
-  CheckStructMembers(static_cast<Statements *>(nodes[3]), struct_lit_ptr->declarations);
-
+  CheckStructMembers(static_cast<Statements *>(nodes[3]),
+                     struct_lit_ptr->declarations);
   return struct_lit_ptr;
 }
 

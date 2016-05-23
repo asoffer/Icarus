@@ -12,6 +12,7 @@ StructLiteral *
 ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   cache_loc->declarations.reserve(declarations.size());
 
+  cache_loc->value.as_type->has_vars = false;
   for (auto decl : declarations) {
     auto type_val               = decl->expr->evaluate().as_type;
     auto new_decl               = new Declaration;
@@ -37,6 +38,8 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
     new_decl->verify_types();
     new_decl->determine_time();
 
+    cache_loc->value.as_type->has_vars |= new_decl->type->has_vars;
+
     cache_loc->declarations.push_back(new_decl);
 
   }
@@ -47,6 +50,9 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
 
   cache_loc->FlushOut();
 
+  assert(value.as_type->is_parametric_struct());
+  assert(cache_loc->value.as_type->is_struct());
+  static_cast<Structure *>(cache_loc->value.as_type)->creator = this;
   return cache_loc;
 }
 

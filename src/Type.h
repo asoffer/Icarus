@@ -223,6 +223,7 @@ struct Structure : public Type {
   std::map<size_t, size_t> field_num_to_llvm_num;
 
   std::vector<AST::Expression *> init_values;
+  AST::ParametricStructLiteral *creator;
 
   llvm::Function *assign();
   llvm::Function *destroy();

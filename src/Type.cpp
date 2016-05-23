@@ -243,9 +243,8 @@ QuantumType::QuantumType(const std::vector<Type *> &vec) : options(vec) {
 
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
-    : ast_expression(expr), bound_name(name), init_fn_(nullptr),
-      destroy_fn_(nullptr), assign_fn_(nullptr) {
-}
+    : ast_expression(expr), bound_name(name), creator(nullptr),
+      init_fn_(nullptr), destroy_fn_(nullptr), assign_fn_(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);

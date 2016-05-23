@@ -48,7 +48,6 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
 //  * Log locations?
 static bool MatchCall(Type *lhs, Type *rhs,
                       std::map<TypeVariable *, Type *> &matches) {
-
   if (!lhs->has_vars) { return lhs == rhs; }
 
   if (lhs->is_type_variable()) {
@@ -61,6 +60,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     assert(test_fn->inputs.size() == 1 && test_fn->inputs[0]->type == Type_);
 
     // Do a function call
+
     test_fn->inputs[0]->identifier->value = Context::Value(rhs);
     assert(test_fn->type->is_function() &&
            static_cast<Function *>(test_fn->type)->output == Bool);
@@ -110,8 +110,26 @@ static bool MatchCall(Type *lhs, Type *rhs,
   }
 
   if (lhs->is_struct()) {
-    std::cout << *lhs << std::endl;
-    assert(false && "Not yet implemented");
+    if (!rhs->is_struct()) { return false; }
+
+    // TODO parameters are not necessarily a collection of types.
+
+    auto lhs_struct = (Structure *)lhs;
+    auto rhs_struct = (Structure *)rhs;
+    if (lhs_struct->creator != rhs_struct->creator) { return false; }
+
+    auto lhs_params =
+        lhs_struct->creator->reverse_cache[lhs_struct->ast_expression];
+    auto rhs_params =
+        rhs_struct->creator->reverse_cache[rhs_struct->ast_expression];
+    if (lhs_params.size() != rhs_params.size()) { return false; }
+
+    auto num_params = lhs_params.size();
+    bool coherent_matches = true;
+    for (size_t i = 0; i < num_params; ++i) {
+      coherent_matches &= MatchCall(lhs_params[i], rhs_params[i], matches);
+    }
+    return coherent_matches;
   }
 
   if (lhs->is_tuple()) {
@@ -144,7 +162,7 @@ static Type *EvalWithVars(Type *type,
   }
 
   if (type->is_pointer()) {
-    auto ptr_type = static_cast<Pointer *>(type);
+    auto ptr_type = (Pointer *)type;
     return Ptr(EvalWithVars(ptr_type->pointee, lookup));
   }
 
@@ -175,7 +193,30 @@ static Type *EvalWithVars(Type *type,
     return Tup(entries);
   }
 
-  std::cout << *type << std::endl;
+  if (type->is_struct()) {
+    auto struct_type = (Structure *)type;
+    assert(struct_type->creator);
+    assert(
+        struct_type->creator->reverse_cache.find(struct_type->ast_expression) !=
+        struct_type->creator->reverse_cache.end());
+
+    auto params =
+        struct_type->creator->reverse_cache[struct_type->ast_expression];
+
+    auto evaled_params = std::vector<Context::Value>();
+
+    for (auto p : params) {
+      // TODO not all parameters have to be types (but to be fixed elsewhere)
+      // Also, we're wrapping these in a Walue, only to be unwrapped in the
+      // CreateOrGetCached method? Hopefully the above generalization will fix
+      // this awfulness, and everything will just be a Value.
+      evaled_params.push_back(Context::Value(EvalWithVars(p, lookup)));
+    }
+
+    return struct_type->creator->CreateOrGetCached(evaled_params).as_type;
+  }
+
+  std::cerr << *type << std::endl;
   assert(false);
 }
 
@@ -920,6 +961,7 @@ void InDecl::verify_types() {
   identifier->type = type;
 }
 
+// TODO Declaration is responsible for the type verification of it's identifier?
 void Declaration::verify_types() {
   STARTING_CHECK;
   expr->verify_types();
@@ -935,7 +977,7 @@ void Declaration::verify_types() {
   switch (decl_type) {
   case DeclType::Std: {
     type = expr->evaluate().as_type;
-    if (type->is_struct()) {
+    if (type->is_struct() /* TODO && !type->has_vars */) {
       static_cast<Structure *>(type)->ast_expression->FlushOut();
     }
   } break;
@@ -1237,6 +1279,7 @@ void EnumLiteral::verify_types() {
   static size_t anon_enum_counter = 0;
 
   type  = Type_;
+
   value = Context::Value(
       Enum("__anon.enum" + std::to_string(anon_enum_counter), this));
   ++anon_enum_counter;
