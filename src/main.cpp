@@ -5,30 +5,31 @@
 #endif
 
 #include <iomanip>
-#include <ctime>
+#include <mach/mach.h>
+#include <mach/mach_time.h>
+
 
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
 #define TIMER_IGNORE_PRINT(msg)                                                \
-  end_time = clock();                                                          \
+  end_time = mach_absolute_time();                                             \
   if (debug::timing) {                                                         \
     saved_time += end_time - start_time;                                       \
     std::cout << msg << std::endl;                                             \
   }                                                                            \
-  start_time = clock();
+  start_time = mach_absolute_time();
 
 #define TIMER_BREAK(msg)                                                       \
-  end_time = clock();                                                          \
+  end_time = mach_absolute_time();                                             \
   if (debug::timing) {                                                         \
     saved_time += (end_time - start_time);                                     \
-    std::cout << std::setw(20) << msg << std::setw(10) << saved_time           \
-              << " clock ticks (" << ((double)saved_time / CLOCKS_PER_SEC)     \
-              << " sec)" << std::endl;                                         \
+    std::cout << std::setw(20) << msg << std::setw(15) << saved_time << "ns"   \
+              << std::endl;                                                    \
   }                                                                            \
   total_time += saved_time;                                                    \
   saved_time = 0;                                                              \
-  start_time = clock();
+  start_time = mach_absolute_time();
 
 extern llvm::Module *global_module;
 extern llvm::DataLayout *data_layout;
@@ -90,7 +91,7 @@ int main(int argc, char *argv[]) {
   size_t start_time, end_time, saved_time, total_time;
   saved_time = 0;
   total_time = 0;
-  start_time = clock();
+  start_time = mach_absolute_time();
 
   // This includes naming all basic types, so it must be done even before
   // lexing.
@@ -163,7 +164,7 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
-  start_time = clock();
+  start_time = mach_absolute_time();
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
@@ -332,16 +333,22 @@ int main(int argc, char *argv[]) {
   size_t end = input_file_name.find('.', 0);
   link_string += input_file_name.substr(start, end - start);
 
-  TIMER_BREAK("LLVM:");
 
   system("llc -filetype=obj ir.ll");
   system(link_string.c_str());
   system("rm ir.o");
 
+  end_time = mach_absolute_time();
   if (debug::timing) {
-    std::cout << "TOTAL (excluding syscalls):\n" << std::setw(20) << ""
-              << std::setw(10) << total_time << " clock ticks ("
-              << ((double)total_time / CLOCKS_PER_SEC) << " sec)" << std::endl;
+    saved_time += (end_time - start_time);
+    total_time += saved_time;
+    std::cout << std::setw(20) << "LLVM:" << std::setw(15) << saved_time << "ns"
+              << std::endl
+              << std::setw(20) << "TOTAL:" << std::setw(15) << total_time
+              << "ns" << std::endl
+              << "LLVM accounts for "
+              << ((double)(100 * saved_time) / total_time)
+              << "% of the compilation time." << std::endl;
   }
 
   return error_code::success;
