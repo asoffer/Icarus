@@ -4,8 +4,31 @@
 #include "Scope.h"
 #endif
 
+#include <iomanip>
+#include <ctime>
+
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
+
+#define TIMER_IGNORE_PRINT(msg)                                                \
+  end_time = clock();                                                          \
+  if (debug::timing) {                                                         \
+    saved_time += end_time - start_time;                                       \
+    std::cout << msg << std::endl;                                             \
+  }                                                                            \
+  start_time = clock();
+
+#define TIMER_BREAK(msg)                                                       \
+  end_time = clock();                                                          \
+  if (debug::timing) {                                                         \
+    saved_time += (end_time - start_time);                                     \
+    std::cout << std::setw(20) << msg << std::setw(10) << saved_time           \
+              << " clock ticks (" << ((double)saved_time / CLOCKS_PER_SEC)     \
+              << " sec)" << std::endl;                                         \
+  }                                                                            \
+  total_time += saved_time;                                                    \
+  saved_time = 0;                                                              \
+  start_time = clock();
 
 extern llvm::Module *global_module;
 extern llvm::DataLayout *data_layout;
@@ -24,8 +47,8 @@ extern Type *get(const std::string &name);
 
 
 namespace debug {
+extern bool timing;
 extern bool parser;
-extern bool dependency_graph;
 extern bool parametric_struct;
 } // namespace debug
 
@@ -49,7 +72,7 @@ enum {
   file_does_not_exist,
   invalid_arguments,
   parse_error,
-  shadow_or_type_error,
+  timing_or_lvalue,
   undeclared_identifier
 };
 } // namespace error_code
@@ -64,6 +87,11 @@ std::string canonicalize_file_name(const std::string &filename) {
 
 int main(int argc, char *argv[]) {
   std::cout << argv[1] << std::endl;
+  size_t start_time, end_time, saved_time, total_time;
+  saved_time = 0;
+  total_time = 0;
+  start_time = clock();
+
   // This includes naming all basic types, so it must be done even before
   // lexing.
   TypeSystem::initialize();
@@ -80,8 +108,8 @@ int main(int argc, char *argv[]) {
     if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
       debug::parser = true;
 
-    } else if (strcmp(arg, "-D") == 0 || strcmp(arg, "-d") == 0) {
-      debug::dependency_graph = true;
+    } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
+      debug::timing = true;
 
     } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
       debug::parametric_struct = true;
@@ -98,6 +126,8 @@ int main(int argc, char *argv[]) {
 
     ++arg_num;
   }
+
+  TIMER_BREAK("Argument parsing:");
 
   // Add the file to the queue
   file_queue.emplace(argv[file_index]);
@@ -119,14 +149,21 @@ int main(int argc, char *argv[]) {
         << std::endl;
     }
 
+    TIMER_IGNORE_PRINT(file_name);
+    TIMER_BREAK("...locating");
+
     Parser parser(file_name);
     ast_map[file_name] = (AST::Statements *)parser.parse();
+
+    TIMER_BREAK("...parsing");
   }
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::parse_error;
   }
+
+  start_time = clock();
 
   // Init global module, function, etc.
   global_module = new llvm::Module("global_module", llvm::getGlobalContext());
@@ -168,10 +205,13 @@ int main(int argc, char *argv[]) {
   global_statements->join_identifiers();
   Scope::Stack.pop();
 
+
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
     return error_code::undeclared_identifier;
   }
+
+  TIMER_BREAK("AST setup:");
 
   // COMPILATION STEP:
   //
@@ -194,26 +234,17 @@ int main(int argc, char *argv[]) {
     std::cout << error_log;
     return error_code::cyclic_dependency;
   }
-
-  // COMPILATION STEP:
-  //
-  // The name should be self-explanatory. This function looks through the
-  // scope tree for a node and its ancestor with declared identifiers of the
-  // same name. We do not allow shadowing of any kind whatsoever. Errors are
-  // generated if shadows are encountered.
-  // TODO rewrite Scope::Scope::verify_no_shadowing();
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::shadow_or_type_error;
-  }
+  TIMER_BREAK("Type verification:");
 
   global_statements->determine_time();
-
   global_statements->lrvalue_check();
+
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
-    return error_code::shadow_or_type_error;
+    return error_code::timing_or_lvalue;
   }
+
+  TIMER_BREAK("(L/R)value check:");
 
   { // Program has been verified. We can now proceed with code generation.
     for (auto decl : Scope::Global->ordered_decls_) {
@@ -281,6 +312,8 @@ int main(int argc, char *argv[]) {
     Scope::Stack.pop();
   }
 
+  TIMER_BREAK("Code-gen:");
+
   // TODO Optimization.
   {
     // In this anonymous scope we write the LLVM IR to a file. The point
@@ -297,9 +330,17 @@ int main(int argc, char *argv[]) {
   size_t end = input_file_name.find('.', 0);
   link_string += input_file_name.substr(start, end - start);
 
+  TIMER_BREAK("LLVM:");
+
   system("llc -filetype=obj ir.ll");
   system(link_string.c_str());
   system("rm ir.o");
+
+  if (debug::timing) {
+    std::cout << "TOTAL (excluding syscalls):\n" << std::setw(20) << ""
+              << std::setw(10) << total_time << " clock ticks ("
+              << ((double)total_time / CLOCKS_PER_SEC) << " sec)" << std::endl;
+  }
 
   return error_code::success;
 }

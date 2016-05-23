@@ -23,8 +23,8 @@ namespace debug {
 // Turns on step-by-step iteration through the shifting and reducing.
 bool parser = false;
 
-// Turns on dependency graph generation
-bool dependency_graph = false;
+// Turns on timing printout
+bool timing = false;
 
 // Turns on printing of parametric-struct data generation.
 bool parametric_struct = false;
