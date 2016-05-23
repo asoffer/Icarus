@@ -65,6 +65,7 @@ bin/icarus programs/print_array.ic
 bin/icarus programs/print_overload_test.ic
 bin/icarus programs/print_test.ic
 bin/icarus programs/squares.ic
+bin/icarus programs/stack.ic
 bin/icarus programs/string_test.ic
 bin/icarus programs/type.ic
 bin/icarus programs/type_computation.ic

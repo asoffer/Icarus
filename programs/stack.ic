@@ -9,13 +9,11 @@ stack := struct (T: type) {
   _head: &node(T)
 }
 
-int_stack := stack(int)
+size  := (this: &stack(Any`A)) -> uint { return this._size }
+empty := (this: &stack(Any`B)) -> bool { return this._size == 0u }
 
-size  := (this: &stack(Any`T)) -> uint { return this._size }
-empty := (this: &int_stack) -> bool { return this._size == 0u }
-
-push := (this: &int_stack, n: int) -> &int_stack {
-  new: &node(int)
+push := (this: &stack(Any`C), n: C) -> &stack(C) {
+  new: &node(C)
   allocate(&new)
 
   new._data = n
@@ -25,12 +23,12 @@ push := (this: &int_stack, n: int) -> &int_stack {
   return this
 }
 
-// Unsafe if int_stack is empty. This is a good place to use #ensure to enforce a
-// check at the call-size that the int_stack is non-empty
-peek := (this: &stack(Any`T)) -> int {
+// Unsafe if stack is empty. This is a good place to use #ensure to enforce a
+// check at the call-size that the stack is non-empty
+peek := (this: &stack(Any`D)) -> int {
   // Alternatively, we can use a check like this, but this is worse, because the
   // callee has no way to know the correct behavior in the context. It's also
-  // indistinguishable from correct behavior where the top of the int_stack has the
+  // indistinguishable from correct behavior where the top of the stack has the
   // default value.
   return case {
     !this.empty() => this._head._data
@@ -38,8 +36,8 @@ peek := (this: &stack(Any`T)) -> int {
   }
 }
 
-pop := (this: &int_stack) -> &int_stack {
-  x: &node(int)
+pop := (this: &stack(Any`G)) -> &stack(G) {
+  x: &node(G)
   if this._head != x {
     old := this._head
     this._head = this._head._next
@@ -49,9 +47,9 @@ pop := (this: &int_stack) -> &int_stack {
   return this
 }
 
-__destroy__ := (s: &int_stack) -> void {
+__destroy__ := (s: &stack(Any`H)) -> void {
   ptrptr := &s._head._next
-  nullptr: &node(int)
+  nullptr: &node(H)
 
   while @ptrptr != nullptr {
     to_free := @ptrptr
@@ -61,7 +59,7 @@ __destroy__ := (s: &int_stack) -> void {
 }
 
 main := void -> void {
-  __print__ := (s: int_stack) -> void {
+  __print__ := (s: stack(int)) -> void {
     if s.empty() {
       print "{}"
       return
@@ -80,15 +78,15 @@ main := void -> void {
     print " }"
   }
 
-  st: int_stack
+  st: stack(int)
   print @st.push(1).push(2).push(3).pop().pop().push(7)
 }
 
 Any := (T: type) -> bool { return true }
 
-allocate := (ptr: &&Any`T) -> void {
+allocate := (ptr: &&Any`E) -> void {
   malloc: uint -> &char #cstdlib
-  @ptr = malloc(T.bytes) :> &T
+  @ptr = malloc(E.bytes) :> &E
 }
 
 

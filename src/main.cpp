@@ -290,9 +290,11 @@ int main(int argc, char *argv[]) {
         auto fn_type      = static_cast<Function *>(type);
         auto mangled_name = Mangle(fn_type, decl->identifier);
 
-        id->alloc = type->allocate();
-        id->alloc->setName(mangled_name);
-        decl->generate_code();
+        if (!type->has_vars) {
+          id->alloc = type->allocate();
+          id->alloc->setName(mangled_name);
+          decl->generate_code();
+        }
 
       } else {
         std::cerr << *type << std::endl;
