@@ -82,9 +82,17 @@ Time::Eval Statements::determine_time() {
 
 Time::Eval FunctionLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &in : inputs) { time_ |= in->determine_time(); }
+  bool input_has_vars = false;
+  for (auto &in : inputs) {
+    input_has_vars |= in->type->has_vars;
+    time_ |= in->determine_time();
+  }
 
-  return (time_ |= statements->determine_time());
+  if (input_has_vars) {
+    return Time::compile;
+  } else {
+    return (time_ |= statements->determine_time());
+  }
 }
 
 Time::Eval Conditional::determine_time() {

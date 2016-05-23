@@ -53,8 +53,13 @@ void ChainOp::lrvalue_check() {
 void FunctionLiteral::lrvalue_check() {
   lvalue = false;
   return_type_expr->lrvalue_check();
-  statements->lrvalue_check();
-  for (auto decl : inputs) { decl->lrvalue_check(); }
+  bool input_has_vars = false;
+  for (auto in : inputs) {
+    in->lrvalue_check();
+    input_has_vars |= in->type->has_vars;
+  }
+
+  if (!input_has_vars) { statements->lrvalue_check(); }
 }
 
 void InDecl::lrvalue_check() {

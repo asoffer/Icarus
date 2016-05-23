@@ -273,6 +273,10 @@ void Identifier::verify_types() {
 void Unop::verify_types() {
   STARTING_CHECK;
   operand->verify_types();
+  if (operand->type == Error) {
+    type = Error;
+    return;
+  }
 
   using Language::Operator;
   switch (op) {
@@ -674,9 +678,21 @@ void Binop::verify_types() {
 
     if (match_vec.size() != 1) {
       type = Error;
-      error_log.log(loc, match_vec.empty()
-                             ? "No function overload matches call."
-                             : "Multiple function overloads match call.");
+
+      if (match_vec.empty()) {
+        std::string msg = "No function overload matches call.\n";
+        for (auto pmo : potential_match_options) {
+          // TODO stringstream
+          // TODO file if it's not in the same file.
+          msg += "      " +
+                 static_cast<Function *>(pmo.match)->input->to_string() +
+                 " vs. " + rhs->type->to_string() + " on line " +
+                 std::to_string(pmo.expr->loc.line_num);
+        }
+        error_log.log(loc, msg);
+      } else {
+        error_log.log(loc, "Multiple function overloads match call.");
+      }
       return;
     }
 
@@ -733,7 +749,7 @@ void Binop::verify_types() {
   case Operator::Cast: {
     // TODO use correct scope
     type = rhs->evaluate().as_type;
-    if (type == Error) return;
+    if (type == Error) { return; }
     assert(type && "cast to nullptr?");
 
     if (lhs->type == type ||
@@ -1180,8 +1196,14 @@ void ArrayLiteral::verify_types() {
 
 void FunctionLiteral::verify_types() {
   STARTING_CHECK;
-  for (auto in : inputs) { in->verify_types(); }
-  VerificationQueue.push(statements);
+  bool input_has_vars = false;
+  for (auto in : inputs) {
+    in->verify_types();
+    input_has_vars |= in->type->has_vars;
+  }
+
+  if (!input_has_vars) { VerificationQueue.push(statements); }
+
   return_type_expr->verify_types();
 
   Type *ret_type = return_type_expr->evaluate().as_type;
@@ -1215,8 +1237,13 @@ void Case::verify_types() {
   }
 
   std::set<Type *> value_types;
-  for (const auto &kv : key_vals) {
-    if (kv.first->type != Bool) {
+
+  for (auto &kv : key_vals) {
+    if (kv.first->type == Error) {
+      kv.first->type = Bool;
+      if (kv.second->type == Error) { continue; }
+
+    } else if (kv.first->type != Bool) {
       // TODO: give some context for this error message. Why must this be the
       // type?  So far the only instance where this is called is for case
       // statements,
@@ -1230,8 +1257,11 @@ void Case::verify_types() {
   }
 
   // TODO guess what type was intended
+
   if (value_types.size() != 1) {
-    error_log.log(loc, "Type error: Values do not match in key-value pairs");
+    if (!value_types.empty()) {
+      error_log.log(loc, "Type error: Values do not match in key-value pairs");
+    }
     type = Error;
   } else {
     type = *value_types.begin();

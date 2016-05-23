@@ -1,7 +1,7 @@
 // Implementation of a stack with a linked list
 node := struct (T: type) {
   _data: int
-  _next: &node(int)
+  _next: &node(T)
 }
 
 stack := struct (T: type) {
@@ -11,7 +11,7 @@ stack := struct (T: type) {
 
 int_stack := stack(int)
 
-size  := (this: &int_stack) -> uint { return this._size }
+size  := (this: &stack(Any`T)) -> uint { return this._size }
 empty := (this: &int_stack) -> bool { return this._size == 0u }
 
 push := (this: &int_stack, n: int) -> &int_stack {
@@ -27,7 +27,7 @@ push := (this: &int_stack, n: int) -> &int_stack {
 
 // Unsafe if int_stack is empty. This is a good place to use #ensure to enforce a
 // check at the call-size that the int_stack is non-empty
-peek := (this: &int_stack) -> int {
+peek := (this: &stack(Any`T)) -> int {
   // Alternatively, we can use a check like this, but this is worse, because the
   // callee has no way to know the correct behavior in the context. It's also
   // indistinguishable from correct behavior where the top of the int_stack has the
