@@ -55,7 +55,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
 }
 
 void Function::generate_llvm() const {
-  if (time() == Time::compile || llvm_type) return;
+  if (time() == Time::compile || time() == Time::mixed || llvm_type) return;
   input->generate_llvm();
   output->generate_llvm();
   std::vector<llvm::Type *> llvm_in;

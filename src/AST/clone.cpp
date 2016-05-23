@@ -124,8 +124,7 @@ Node *ArrayType::clone(LOOKUP_ARGS) {
 }
 
 Node *Unop::clone(LOOKUP_ARGS) {
-  auto unop = new Unop;
-
+  auto unop     = new Unop;
   unop->op      = op;
   unop->operand = (Expression *)operand->CLONE;
 

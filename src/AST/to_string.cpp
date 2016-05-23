@@ -154,7 +154,10 @@ std::string Terminal::to_string(size_t n) const {
 }
 
 std::string Identifier::to_string(size_t n) const {
-  return tabs(n) + "<Identifier " + TYPE_OR("") + ": " + token + ">\n";
+  std::stringstream ss;
+  ss << tabs(n) << "<Identifier " << TYPE_OR("") << ": " << token << ">" << this
+     << "\n";
+  return ss.str();
 }
 
 std::string InDecl::to_string(size_t n) const {
