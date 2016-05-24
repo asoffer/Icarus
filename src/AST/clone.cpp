@@ -11,37 +11,24 @@ namespace AST {
 StructLiteral *
 ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
                                             bool has_vars) {
-  cache_loc->declarations.reserve(declarations.size());
+  auto num = data.ids.size();
+  cache_loc->data.ids.reserve(num);
+  cache_loc->data.types.reserve(num);
+  cache_loc->data.init_vals.reserve(num);
 
   cache_loc->value.as_type->has_vars = false;
-  for (auto decl : declarations) {
-    auto type_val               = decl->expr->evaluate().as_type;
-    auto new_decl               = new Declaration;
-    new_decl->identifier        = new Identifier(loc, decl->identifier->token);
-    new_decl->identifier->value = decl->identifier->value;
-    new_decl->loc               = decl->loc;
-    new_decl->decl_type         = decl->decl_type;
-    new_decl->expr              = new DummyTypeExpr(decl->loc, type_val);
-    new_decl->identifier->decls = {new_decl};
-    new_decl->identifier->type  = nullptr;
-    // This last one is nullptr, even though we know the answer is type_val.
-    // The reason for this is that when we call verify_types(), we will set the
-    // value in the AppendType call. It may seem like we could just set the
-    // types here and avoid that whole call, but this is not so. We have to call
-    // verify types because we may need to flush out a struct or something more
-    // complictaed that's streamlined in verify_types(). F
+  for (size_t i = 0; i < num; ++i) {
+    auto curr_id   = data.ids[i];
+    auto curr_type = data.types[i];
+    auto curr_init = data.init_vals[i];
 
+    cache_loc->data.ids.push_back(curr_id);
+    cache_loc->data.types.push_back(curr_type);
+    cache_loc->data.init_vals.push_back(curr_init);
+    // TODO Can init have a contextual dependence?
 
-    Scope::Stack.push(type_scope);
-    new_decl->assign_scope();
-    Scope::Stack.pop();
-
-    new_decl->verify_types();
-    new_decl->determine_time();
-
-    cache_loc->value.as_type->has_vars |= new_decl->type->has_vars;
-
-    cache_loc->declarations.push_back(new_decl);
+//    cache_loc->value.as_type->has_vars |=
+//        cache_loc->data.types.back()->has_vars;
   }
 
   delete cache_loc->type_scope;

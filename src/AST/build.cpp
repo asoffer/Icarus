@@ -30,29 +30,46 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
   }
 }
 
-static void CheckStructMembers(AST::Statements *stmts,
-                               std::vector<AST::Declaration *> &decls) {
+// NOTE: This function takes ownership of stmts.
+static void CheckStructMembers(AST::Node *&stmts_arg,
+                               AST::StructInternalData &data) {
+  assert(stmts_arg->is_statements());
+  auto stmts = steal<AST::Statements>(stmts_arg);
   for (auto &&stmt : stmts->statements) {
     if (stmt->is_declaration()) {
       auto decl = static_cast<AST::Declaration *>(stmt);
-      if (decl->decl_type != AST::DeclType::Std &&
-          decl->decl_type != AST::DeclType::Infer) {
+      switch (decl->decl_type) {
+      case AST::DeclType::Std: {
+        data.ids.push_back(decl->identifier->token);
+        data.types.push_back(nullptr);
+        data.type_exprs.push_back(steal<AST::Expression>(decl->expr));
+        data.init_vals.push_back(nullptr);
+      } break;
+      case AST::DeclType::Infer: {
+        data.ids.push_back(decl->identifier->token);
+        data.types.push_back(nullptr);
+        data.type_exprs.push_back(nullptr);
+        data.init_vals.push_back(steal<AST::Expression>(decl->expr));
+      } break;
+      case AST::DeclType::Tick: {
         error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-        continue;
+      } break;
       }
     } else if (stmt->is_binop()) {
-      auto binop = static_cast<AST::Binop *>(stmt);
+      auto binop = (AST::Binop *)stmt;
       if (binop->op == Language::Operator::Assign) {
         if (!binop->lhs->is_declaration()) {
           // TODO better error message
           error_log.log(binop->loc, "Nothing declared here.");
-          continue;
         } else {
           auto decl = static_cast<AST::Declaration *>(binop->lhs);
-          if (decl->decl_type != AST::DeclType::Std &&
-              decl->decl_type != AST::DeclType::Infer) {
+          if (decl->decl_type == AST::DeclType::Std) {
+            data.ids.push_back(decl->identifier->token);
+            data.types.push_back(nullptr);
+            data.type_exprs.push_back(steal<AST::Expression>(decl->expr));
+            data.init_vals.push_back(steal<AST::Expression>(binop->rhs));
+          } else {
             error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-            continue;
           }
         }
       } else {
@@ -60,17 +77,14 @@ static void CheckStructMembers(AST::Statements *stmts,
         error_log.log(stmt->loc,
                       "Each struct member must be defined using "
                       "a declaration or an initialized declaration.");
-        continue;
       }
     } else {
       // TODO better error message here.
       error_log.log(stmt->loc, "Each struct member must be defined using "
                                "a declaration or an initialized declaration.");
-      continue;
     }
-
-    decls.emplace_back(steal<AST::Declaration>(stmt));
   }
+  delete stmts;
 }
 
 // Input guarantees:
@@ -112,7 +126,8 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
-  CheckStructMembers(static_cast<Statements *>(nodes[2]), struct_lit_ptr->declarations);
+  CheckStructMembers(nodes[2], struct_lit_ptr->data);
+
   return struct_lit_ptr;
 }
 
@@ -141,8 +156,7 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
     }
   }
 
-  CheckStructMembers(static_cast<Statements *>(nodes[3]),
-                     struct_lit_ptr->declarations);
+  CheckStructMembers(nodes[3], struct_lit_ptr->data);
   return struct_lit_ptr;
 }
 

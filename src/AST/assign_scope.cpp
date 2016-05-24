@@ -2,6 +2,12 @@
 #include "Scope.h"
 #endif
 
+#define ITERATE_OR_SKIP(container)                                             \
+  for (auto ptr : container) {                                                 \
+    if (!ptr) { continue; }                                                    \
+    ptr->assign_scope();                                                       \
+  }
+
 namespace AST {
 void Unop::assign_scope() {
   scope_ = CurrentScope();
@@ -144,7 +150,8 @@ void ParametricStructLiteral::assign_scope() {
 
   Scope::Stack.push(type_scope);
   for (auto &param : params) { param->assign_scope(); }
-  for (auto &decl : declarations) { decl->assign_scope(); }
+  ITERATE_OR_SKIP(data.type_exprs)
+  ITERATE_OR_SKIP(data.init_vals)
   Scope::Stack.pop();
 }
 
@@ -153,10 +160,12 @@ void StructLiteral::assign_scope() {
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
-  for (auto &decl : declarations) { decl->assign_scope(); }
+  ITERATE_OR_SKIP(data.type_exprs)
+  ITERATE_OR_SKIP(data.init_vals)
   Scope::Stack.pop();
 }
 
 void Jump::assign_scope() { scope_ = CurrentScope(); }
 void DummyTypeExpr::assign_scope() { scope_ = CurrentScope(); }
 } // namespace AST
+#undef ITERATE_OR_SKIP

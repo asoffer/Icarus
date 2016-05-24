@@ -119,7 +119,10 @@ Time::Eval ParametricStructLiteral::determine_time() {
 
 Time::Eval StructLiteral::determine_time() {
   time_ = Time::either;
-  for (auto &d : declarations) { time_ |= d->determine_time(); }
+  for (auto e : data.init_vals) {
+    if (!e) { continue; }
+    time_ |= e->determine_time();
+  }
   return time_;
 }
 

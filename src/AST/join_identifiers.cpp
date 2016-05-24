@@ -2,6 +2,12 @@
 #include "Scope.h"
 #endif
 
+#define ITERATE_OR_SKIP(container)                                             \
+  for (auto ptr : container) {                                                 \
+    if (!ptr) { continue; }                                                    \
+    ptr->join_identifiers();                                                   \
+  }
+
 void set_or_recurse(AST::Expression *&eptr) {
   // TODO What happens to the line number?
   if (eptr->is_identifier()) {
@@ -129,14 +135,18 @@ void FunctionLiteral::join_identifiers(bool is_arg) {
 void ParametricStructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
   for (auto &param : params) { param->join_identifiers(true); }
-  for (auto &decl : declarations) { decl->join_identifiers(); }
+  ITERATE_OR_SKIP(data.type_exprs);
+  ITERATE_OR_SKIP(data.init_vals);
   Scope::Stack.pop();
 }
 void StructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
-  for (auto &decl : declarations) { decl->join_identifiers(); }
+  ITERATE_OR_SKIP(data.type_exprs);
+  ITERATE_OR_SKIP(data.init_vals);
   Scope::Stack.pop();
 }
 
 void EnumLiteral::join_identifiers(bool) {}
 } // namespace AST
+
+#undef ITERATE_OR_SKIP

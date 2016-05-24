@@ -1,11 +1,10 @@
+foo := struct {
+  n :  int
+  r := 3.0
+  c :  char = 'x'
+}
+
 main := void -> void {
-  f:= (n: int) -> int {
-    return n
-  }
-
-  f := (r: real) -> real {
-    return r
-  }
-
-  f('x')
+  f: foo
+  print f.n, ", ", f.r, ", ", f.c
 }

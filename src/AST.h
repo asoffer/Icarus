@@ -202,6 +202,13 @@ struct InDecl : public Expression {
   Expression *container;
 };
 
+struct StructInternalData {
+  std::vector<std::string> ids;
+  std::vector<Type *> types;
+  std::vector<Expression *> type_exprs;
+  std::vector<Expression *> init_vals;
+};
+
 struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
@@ -210,10 +217,9 @@ struct ParametricStructLiteral : public Expression {
   Context::Value CreateOrGetCached(const std::vector<Context::Value>& arg_vals);
 
   std::vector<Declaration *> params;
-  std::vector<llvm::Constant *> init_vals;
 
   Scope *type_scope;
-  std::vector<Declaration *> declarations;
+  StructInternalData data;
 
   // TODO this should be more than just type pointers. Parameters can be ints,
   // etc. Do we allow real? Make this hold a vector of Context::Values
@@ -227,10 +233,9 @@ struct StructLiteral : public Expression {
 
   void FlushOut();
 
-  std::vector<llvm::Constant *> init_vals;
-
   Scope *type_scope;
-  std::vector<Declaration *> declarations;
+
+  StructInternalData data;
 };
 
 struct Statements : public Node {

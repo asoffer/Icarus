@@ -79,11 +79,13 @@ For::~For() {
 }
 
 ParametricStructLiteral::~ParametricStructLiteral() {
-  for (auto ptr : declarations) DELETE(ptr);
+  for (auto ptr : data.types) DELETE(ptr);
+  for (auto ptr : data.init_vals) DELETE(ptr);
   DELETE(type_scope);
 }
 StructLiteral::~StructLiteral() {
-  for (auto ptr : declarations) DELETE(ptr);
+  for (auto ptr : data.types) DELETE(ptr);
+  for (auto ptr : data.init_vals) DELETE(ptr);
   DELETE(type_scope);
 }
 

@@ -311,10 +311,13 @@ void StructLiteral::FlushOut() {
   auto tval = static_cast<Structure *>(value.as_type);
   if (!tval->field_num_to_name.empty()) { return; }
 
-  for (auto d : declarations) {
-    d->verify_types();
-    tval->insert_field(d->identifier->token, d->identifier->type,
-                       d->decl_type == DeclType::Infer ? d->expr : nullptr);
+  for (size_t i = 0; i < data.ids.size(); ++i) {
+    if (data.init_vals[i]) { data.init_vals[i]->verify_types(); }
+
+    tval->insert_field(data.ids[i], data.type_exprs[i]
+                                        ? data.type_exprs[i]->evaluate().as_type
+                                        : data.init_vals[i]->type,
+                       data.init_vals[i]);
   }
 }
 
@@ -1401,10 +1404,7 @@ void EnumLiteral::verify_types() {
 }
 
 void ParametricStructLiteral::verify_types() {}
-
-void StructLiteral::verify_types() {
-  for (auto decl : declarations) { VerificationQueue.push(decl); }
-}
+void StructLiteral::verify_types() {}
 
 void Jump::verify_types() {
   auto scope_ptr = scope_;

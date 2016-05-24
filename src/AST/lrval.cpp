@@ -118,17 +118,8 @@ void While::lrvalue_check(){
   statements->lrvalue_check();
 }
 
-void ParametricStructLiteral::lrvalue_check() {
-  lvalue = false;
-  for (auto decl : params) { decl->lrvalue_check(); }
-  for (auto decl : declarations) { decl->lrvalue_check(); }
-}
-
-void StructLiteral::lrvalue_check() {
-  lvalue = false;
-  for (auto decl : declarations) { decl->lrvalue_check(); }
-}
-
+void ParametricStructLiteral::lrvalue_check() { lvalue = false; }
+void StructLiteral::lrvalue_check() { lvalue = false; }
 void Terminal::lrvalue_check() { lvalue = false; }
 void EnumLiteral::lrvalue_check() { lvalue = false; }
 void DummyTypeExpr::lrvalue_check() { lvalue = false; }
