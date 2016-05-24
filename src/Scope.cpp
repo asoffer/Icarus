@@ -147,7 +147,8 @@ void BlockScope::initialize() {
     //   continue;
 
     // } else {
-    if (decl_id->is_arg) continue;
+    if (decl_id->is_arg || !decl_ptr->init) continue;
+ 
     decl_type->call_init(decl_id->alloc);
     // }
   }

@@ -326,7 +326,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     // Then If it is a function literal, notify the function literal of the code
     // name/scope, etc.
     if (rhs->is_function_literal()) {
-      auto fn = static_cast<FunctionLiteral *>(rhs);
+      auto fn            = static_cast<FunctionLiteral *>(rhs);
       fn->fn_scope->name = id->token;
 
       fn->llvm_fn = static_cast<llvm::Function *>(
@@ -341,7 +341,6 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
       return FunctionComposition(mangled_name, lhs_val, rhs_val, fn_type);
     }
 
-
     val = rhs->generate_code();
 
     // Null value can be returned here, if for instance, the rhs is a function
@@ -352,6 +351,11 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     var = lhs->generate_lvalue();
     assert(var && "LHS of assignment generated null code");
 
+    if (rhs->is_terminal() &&
+        static_cast<Terminal *>(rhs)->terminal_type ==
+            Language::Terminal::Hole) {
+      return nullptr;
+    }
     val = rhs->generate_code();
     assert(val && "RHS of assignment generated null code");
 

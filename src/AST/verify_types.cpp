@@ -574,7 +574,7 @@ static void AddToPotentialCallInterpretations(
 void Binop::verify_types() {
   STARTING_CHECK;
 
-  if (op == Language::Operator::Call && lhs->is_access()){
+  if (op == Language::Operator::Call && lhs->is_access()) {
     // This has a lot in common with rhs access
     auto lhs_access = (Access *)lhs;
     lhs_access->Verify(false);
@@ -661,10 +661,18 @@ void Binop::verify_types() {
   // TODO if lhs is reserved?
   if (op == Language::Operator::Assign) {
     if (rhs->is_terminal()) {
-      auto term = static_cast<Terminal *>(rhs);
+      auto term = (Terminal *)rhs;
       if (term->terminal_type == Language::Terminal::Null) {
         term->type = lhs->type;
         type       = Void;
+        return;
+      }
+
+      if (term->terminal_type == Language::Terminal::Hole) {
+        term->type = lhs->type;
+        type       = Void;
+        if (lhs->is_declaration()) { ((Declaration *)lhs)->init = false; }
+
         return;
       }
     }

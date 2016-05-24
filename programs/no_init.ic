@@ -17,5 +17,5 @@ main := void -> void {
   k: my_int = --
   l: my_int = --
   m: my_int
-  print a, b, c, d, e, f, g, h, i, j, k, l, "-->\n", m
+  print a, b, c, d, e, f, g, h, i, j, k, l, "--> ", m
 }

@@ -193,7 +193,6 @@ Node *Declaration::clone(LOOKUP_ARGS) {
     decl->identifier = (Identifier *)identifier->CLONE;
     decl->hashtags   = hashtags;
     decl->decl_type  = decl_type;
-    decl->op         = op;
     decl->expr       = (Expression *)expr->CLONE;
     return decl;
   }

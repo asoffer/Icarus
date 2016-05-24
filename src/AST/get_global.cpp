@@ -26,7 +26,7 @@ llvm::Constant *Terminal::GetGlobal() {
   case Language::Terminal::Char: return data::const_char(value.as_char);
   case Language::Terminal::Else: assert(false);
   case Language::Terminal::False: return data::const_false();
-  case Language::Terminal::Hole: assert(false && "TODO");
+  case Language::Terminal::Hole: assert(false);
   case Language::Terminal::Int: return data::const_int(value.as_int);
   case Language::Terminal::Null: return data::null(type);
   case Language::Terminal::Ord: return builtin::ord();

@@ -176,8 +176,6 @@ struct Declaration : public Expression {
 
   static Node *AddHashtag(NPtrVec &&nodes);
 
-  // TODO is 'op' necessary? anymore?
-  Language::Operator op;
   Identifier *identifier;
   Expression *expr;
 
@@ -185,13 +183,14 @@ struct Declaration : public Expression {
   // TODO have a global table of hashtags and store a vector of indexes into
   // that global lookup.
   bool HasHashtag(const std::string &str) const {
-    for (const auto& tag : hashtags) {
+    for (const auto &tag : hashtags) {
       if (str == tag) return true;
     }
     return false;
   }
 
   DeclType decl_type;
+  bool init;
 };
 
 struct InDecl : public Expression {
