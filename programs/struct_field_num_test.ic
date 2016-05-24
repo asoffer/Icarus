@@ -3,11 +3,8 @@
 // llvm because f and g do not get stored.
 foo := struct {
   f : void -> bool
-  g := void -> bool {
-    return true
-  }
-
-  n := 17
+  g :              = void -> bool { return true }
+  n :              = 17
 }
 
 main := void -> void {

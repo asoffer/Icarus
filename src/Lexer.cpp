@@ -292,7 +292,7 @@ NNT Lexer::next_operator() {
       RETURN_NNT(":>", op_b);
 
     } else {
-      RETURN_NNT(":", op_b);
+      RETURN_NNT(":", colon);
     }
   }
 
@@ -357,7 +357,7 @@ NNT Lexer::next_operator() {
         RETURN_NNT("-", op_bl);
       } else {
 
-        RETURN_NNT("=", op_b);
+        RETURN_NNT("=", eq);
       }
     }
   }

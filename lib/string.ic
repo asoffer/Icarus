@@ -4,9 +4,7 @@ string := struct {
 }
 
 __print__ := (s: string) -> void {
-  for c in s._chars[0u .. s._length - 1u] {
-    print c
-  }
+  for c in s._chars[0u .. s._length - 1u] { print c }
 }
 
 size := (s: &string) -> uint { return s._length }

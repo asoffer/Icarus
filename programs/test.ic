@@ -1,6 +1,6 @@
 foo := struct {
   n :  int
-  r := 3.0
+  r :       = 3.0
   c :  char = 'x'
 }
 

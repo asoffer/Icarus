@@ -37,6 +37,14 @@ template <typename T> static T *steal_node(AST::Node *&n) {
   return temp;
 }
 
+AST::Node *CombineColonEq(NPtrVec &&nodes) {
+  auto tk_node   = static_cast<AST::TokenNode *>(nodes[0]);
+  tk_node->token = ":=";
+  tk_node->op    = Language::Operator::ColonEq;
+
+  return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
+}
+
 namespace ErrMsg {
 AST::Node *EmptyFile(NPtrVec &&nodes) {
   error_log.log(nodes[0]->loc, "File is empty.");
@@ -100,7 +108,7 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 #undef RESERVED_MSG
 #undef NOT_BINOP_MSG
 namespace Language {
-#define OP_B op_b, comma, dots
+#define OP_B op_b, comma, dots, colon, eq
 #define OP_LT op_lt, kw_else
 #define EXPR                                                                   \
   { expr, fn_expr, kw_else }
@@ -117,6 +125,8 @@ static const std::vector<Rule> Rules = {
     // Binary operators
     Rule(0x00, fn_expr, {EXPR, {fn_arrow}, EXPR}, BuildBinaryOperator),
     Rule(0x00, expr, {EXPR, {op_bl, OP_B}, EXPR}, BuildBinaryOperator),
+
+    Rule(0x00, op_b, {{colon}, {eq}}, CombineColonEq),
 
     // Right unary operator
     Rule(0x01, expr, {EXPR, {dots}}, AST::Unop::BuildDots),

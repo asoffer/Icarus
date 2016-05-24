@@ -136,7 +136,7 @@ enum NodeType : char {
   kw_struct,
 
   op_l = OP_,
-  op_b, comma,
+  op_b, colon, eq, comma,
   op_bl,
   dots,
   op_lt,
