@@ -1,0 +1,17 @@
+foo := (val: &Numeric`T) -> void { print "foo" }
+foo := (val: bool) -> void { print "foo" }
+foo := (val: &char) -> void { print "foo" }
+
+x: void -> void -> void
+main := void -> void {
+  foo(3)
+  foo(5.0)
+  foo('x')
+  foo(3u)
+  foo(main)
+  foo(x)
+  foo(x())
+  foo(x()())
+}
+
+Numeric := (T: type) -> bool { return T == int | T == real }

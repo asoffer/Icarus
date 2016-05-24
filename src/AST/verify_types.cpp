@@ -45,67 +45,134 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
 // TODO:
 //  * Send back error messages to be logged if not exactly one match occurs
 //  * Log locations?
+
+// This function is handed two types. The left-hand side argument is the input
+// to a function, and the right-hand side argument is the arguments a function
+// is called with. This function attempts to match the inputs to determine if
+// this particular call is possible.
+//
+// This function is not concerned with overload resolution. Rather, for each
+// possible overload, this function is called and is used to determine whether a
+// particular option is viable. At another place in the code, we ensure that
+// exactly one overload is viable.
+//
+// Instead, this function is tasked with attempting to match the arguments
+// provided to a potential overload. While at first glance, it seems like we
+// could just test for the equality of the types, this is more complicated for
+// two reasons.
+//
+// First, to give good error messages, we need to know why the
+// match failed. For example, we want to know if we provided a pointer instead
+// of a value, or if we provided an array with a run-time length instead of a
+// fixed-length array.
+//
+// Second, with generic declarations (the ` operator), we need to (if a match
+// exists) log a map for how to match provided argument types to the generic
+// ones.
 static bool MatchCall(Type *lhs, Type *rhs,
-                      std::map<TypeVariable *, Type *> &matches) {
-  if (!lhs->has_vars) { return lhs == rhs; }
+                      std::map<TypeVariable *, Type *> &matches,
+                      std::string &error_message) {
+  if (!lhs->has_vars) {
+    if (lhs == rhs) { return true; }
+    error_message +=
+        rhs->to_string() + " does not match " + lhs->to_string() + ".\n";
+    return false;
+  }
 
   if (lhs->is_type_variable()) {
     auto lhs_var = (TypeVariable *)lhs;
     assert(lhs_var->test);
+
     auto test_fn_expr = lhs_var->test->evaluate().as_expr;
     assert(test_fn_expr->is_function_literal());
+
     auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
 
-    assert(test_fn->inputs.size() == 1 && test_fn->inputs[0]->type == Type_);
+    assert(test_fn->type == Func(Type_, Bool));
 
     // Do a function call
-
     test_fn->inputs[0]->identifier->value = Context::Value(rhs);
-    assert(test_fn->type->is_function() &&
-           static_cast<Function *>(test_fn->type)->output == Bool);
-    bool test_result = test_fn->evaluate().as_bool;
+    bool test_result                      = test_fn->evaluate().as_bool;
+    test_fn->inputs[0]->identifier->value = nullptr;
 
     if (test_result) {
-      // TODO check if you've already inserted lhs_var and make sure you have
-      // valid matches. Track errors to log if not.
-      matches[lhs_var] = rhs;
-      return true;
+      auto iter = matches.find(lhs_var);
+      if (iter == matches.end()) {
+        matches[lhs_var] = rhs;
+        return true;
+
+      } else if (iter->second == rhs) {
+        return true;
+      } else {
+        // TODO better message. Log locations of other options and explain that
+        // those positions are wrong because this one is authoritative.
+        error_message +=
+            "Failure to match parameter " + lhs_var->to_string() + ".\n";
+        return false;
+      }
+    } else {
+      // Test result failed
+      error_message += "Type " + rhs->to_string() + " failed test for " +
+                       lhs_var->identifier->token + ".";
+
+      if (lhs_var->test->is_identifier()) {
+        auto id_test = (AST::Identifier *)(lhs_var->test);
+        assert (id_test->decls.size() == 1);
+        error_message += " (See line " +
+                         std::to_string(id_test->decls[0]->loc.line_num) + ")";
+      }
+      error_message += "\n";
+      return false;
     }
-    return false;
   }
 
   if (lhs->is_pointer()) {
-    return (rhs->is_pointer()) &&
-           MatchCall(static_cast<Pointer *>(lhs)->pointee,
-                     static_cast<Pointer *>(rhs)->pointee, matches);
+    if (!rhs->is_pointer()) {
+      error_message +=
+          "Expected pointer, but received " + rhs->to_string() + ".\n";
+      return false;
+    }
+
+    return MatchCall(static_cast<Pointer *>(lhs)->pointee,
+                     static_cast<Pointer *>(rhs)->pointee, matches,
+                     error_message);
   }
 
   if (lhs->is_array()) {
-    if (!rhs->is_array()) { return false; }
+    if (!rhs->is_array()) {
+      error_message += "Expected array, but received" + rhs->to_string() + ".\n";
+      return false;
+    }
 
-    auto lhs_array = static_cast<Array *>(lhs);
-    auto rhs_array = static_cast<Array *>(rhs);
+    auto lhs_array = (Array *)lhs;
+    auto rhs_array = (Array *)rhs;
 
     if (lhs_array->fixed_length != rhs_array->fixed_length) { return false; }
 
     if (lhs_array->fixed_length) {
       return (lhs_array->len == rhs_array->len) &&
-             MatchCall(lhs_array->data_type, rhs_array->data_type, matches);
+             MatchCall(lhs_array->data_type, rhs_array->data_type, matches,
+                       error_message);
     } else {
-      return MatchCall(lhs_array->data_type, rhs_array->data_type, matches);
+      return MatchCall(lhs_array->data_type, rhs_array->data_type, matches,
+                       error_message);
     }
   }
 
   if (lhs->is_function()) {
-    if (!rhs->is_function()) { return false; }
+    if (!rhs->is_function()) {
+      error_message +=
+          "Expected function, but received" + rhs->to_string() + ".\n";
+      return false;
+    }
 
     auto lhs_in  = static_cast<Function *>(lhs)->input;
     auto rhs_in  = static_cast<Function *>(rhs)->input;
     auto lhs_out = static_cast<Function *>(lhs)->output;
     auto rhs_out = static_cast<Function *>(rhs)->output;
 
-    return MatchCall(lhs_in, rhs_in, matches) &&
-           MatchCall(lhs_out, rhs_out, matches);
+    return MatchCall(lhs_in, rhs_in, matches, error_message) &&
+           MatchCall(lhs_out, rhs_out, matches, error_message);
   }
 
   if (lhs->is_struct()) {
@@ -126,7 +193,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto num_params = lhs_params.size();
     bool coherent_matches = true;
     for (size_t i = 0; i < num_params; ++i) {
-      coherent_matches &= MatchCall(lhs_params[i], rhs_params[i], matches);
+      coherent_matches &=
+          MatchCall(lhs_params[i], rhs_params[i], matches, error_message);
     }
     return coherent_matches;
   }
@@ -141,7 +209,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
     size_t num_entries = lhs_tuple->entries.size();
 
     for (size_t i = 0; i < num_entries; ++i) {
-      if (!MatchCall(lhs_tuple->entries[i], rhs_tuple->entries[i], matches)) {
+      if (!MatchCall(lhs_tuple->entries[i], rhs_tuple->entries[i], matches,
+                     error_message)) {
         return false;
       }
     }
@@ -474,6 +543,7 @@ void Access::Verify(bool emit_errors) {
 struct MatchData {
   Type *match;
   Expression *expr;
+  std::string err;
   MatchData(Type *t = nullptr, Expression *e = nullptr) : match(t), expr(e) {}
 };
 
@@ -484,6 +554,7 @@ static void AddToPotentialCallInterpretations(
     // one works. Verify that exactly one works.
     for (auto opt : static_cast<QuantumType *>(expr->type)->options) {
       assert(opt->is_function());
+      // TODO better line number logging.
       potential_match_options.emplace_back(opt, expr);
     }
 
@@ -658,13 +729,14 @@ void Binop::verify_types() {
     MatchData matched_data;
     bool has_vars_flag = false;
 
-    for (auto opt : potential_match_options) {
+    for (auto& opt : potential_match_options) {
       std::map<TypeVariable *, Type *> matches;
       // Receiving either a function or a parametric struct as the opt.match
       // parameter
       if (opt.match->is_function()) {
         if (MatchCall(static_cast<Function *>(opt.match)->input, rhs->type,
-                      matches)) {
+                      matches, opt.err)) {
+
           match_vec.push_back(matches);
           matched_data = opt;
 
@@ -687,16 +759,20 @@ void Binop::verify_types() {
       type = Error;
 
       if (match_vec.empty()) {
-        std::string msg = "No function overload matches call.\n";
-        for (auto pmo : potential_match_options) {
+        std::stringstream msg;
+        msg << "No function overload matches call.\n";
+        for (const auto& pmo : potential_match_options) {
           // TODO stringstream
           // TODO file if it's not in the same file.
-          msg += "      " +
+          msg << "      "
+              << "Line " << pmo.expr->loc.line_num << ": " << pmo.err;
+          /*
                  static_cast<Function *>(pmo.match)->input->to_string() +
                  " vs. " + rhs->type->to_string() + " on line " +
                  std::to_string(pmo.expr->loc.line_num);
+                 */
         }
-        error_log.log(loc, msg);
+        error_log.log(loc, msg.str());
       } else {
         error_log.log(loc, "Multiple function overloads match call.");
       }

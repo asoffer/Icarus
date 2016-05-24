@@ -55,14 +55,7 @@ std::string Function::to_string() const {
     ss << *input;
   }
 
-  ss << " -> ";
-
-  if (output->is_function()) {
-    ss << "(" << *output << ")";
-
-  } else {
-    ss << *output;
-  }
+  ss << " -> " << *output;
   return ss.str();
 }
 
@@ -91,7 +84,8 @@ std::string Tuple::to_string() const {
   return ss.str();
 }
 
-std::string TypeVariable::to_string() const { return "`" + identifier->token; }
+std::string TypeVariable::to_string() const { return identifier->token; }
+
 std::string Structure::to_string() const { return bound_name; }
 std::string ParametricStructure::to_string() const { return bound_name; }
 std::string Enumeration::to_string() const { return bound_name; }
