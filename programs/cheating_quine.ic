@@ -1,0 +1,56 @@
+File := struct {
+  _handle: &uint
+}
+
+FileMode := enum {
+  Read
+  Write
+}
+
+FileOpen := (name: &char, m: FileMode) -> File {
+  fopen: (&char, &char) -> &uint #cstdlib
+
+  mode: [2; char]
+  mode[0] = case {
+    m == FileMode.Read  =>  'r'
+    else                =>  'w'
+  }
+
+  result: File
+  result._handle = fopen(name, &mode[0])
+  return result
+}
+
+Next := (this: &File) -> char {
+  fgetc: &uint -> uint #cstdlib
+  EOF := -1 :> uint
+
+  n := this._handle.fgetc()
+
+  return ascii(case {
+    n == EOF  =>  0u
+    else      =>  n
+  })
+
+  __destroy__ := (f: &File) -> void {} // Don't destroy files in this function
+}
+
+main := void -> void { 
+  // Because we don't yet support C-strings
+  name := ['p','r','o','g','r','a','m','s','/',
+  'c','h','e','a','t','i','n','g','_','q','u','i','n','e','.','i','c',
+  ascii(0u)]
+
+  f := FileOpen(&name[0], FileMode.Read)
+  
+  c := f.Next()
+  while c != ascii(0u) {
+    print c
+    c = f.Next()
+  }
+
+  __destroy__ := (f: &File) -> void {
+    fclose: &uint -> int #cstdlib
+    f._handle.fclose()
+  }
+}
