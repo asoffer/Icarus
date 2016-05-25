@@ -18,4 +18,9 @@ main := void -> void {
   l: my_int = --
   m: my_int
   print a, b, c, d, e, f, g, h, i, j, k, l, "--> ", m
+
+  for i in 0 .. 10 {
+    x: int = --
+    print x, " "
+  }
 }

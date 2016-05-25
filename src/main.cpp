@@ -8,28 +8,25 @@
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 
-
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
-#define TIMER_IGNORE_PRINT(msg)                                                \
-  end_time = mach_absolute_time();                                             \
-  if (debug::timing) {                                                         \
-    saved_time += end_time - start_time;                                       \
-    std::cout << msg << std::endl;                                             \
-  }                                                                            \
-  start_time = mach_absolute_time();
+static size_t start_time;
+static size_t end_time;
+static size_t total_time;
+static size_t saved_time;
 
-#define TIMER_BREAK(msg)                                                       \
-  end_time = mach_absolute_time();                                             \
-  if (debug::timing) {                                                         \
-    saved_time += (end_time - start_time);                                     \
-    std::cout << std::setw(20) << msg << std::setw(15) << saved_time << "ns"   \
-              << std::endl;                                                    \
-  }                                                                            \
-  total_time += saved_time;                                                    \
-  saved_time = 0;                                                              \
-  start_time = mach_absolute_time();
+// Abusing a for-loop to do timings correctly.
+#define TIME(msg)                                                              \
+  for (bool TIME_FLAG = true;                                                  \
+      start_time  = mach_absolute_time(), TIME_FLAG;                           \
+      end_time    = mach_absolute_time(),                                      \
+      saved_time  = end_time - start_time,                                     \
+      total_time += saved_time,                                                \
+      debug::timing &&                                                         \
+      (std::cout << std::setw(20) << (msg + std::string(":"))                  \
+                << std::setw(15) << saved_time << "ns" << std::endl),          \
+      TIME_FLAG = false)
 
 extern llvm::Module *global_module;
 extern llvm::DataLayout *data_layout;
@@ -88,47 +85,45 @@ std::string canonicalize_file_name(const std::string &filename) {
 
 int main(int argc, char *argv[]) {
   std::cout << argv[1] << std::endl;
-  size_t start_time, end_time, saved_time, total_time;
-  saved_time = 0;
-  total_time = 0;
-  start_time = mach_absolute_time();
 
-  // This includes naming all basic types, so it must be done even before
-  // lexing.
-  TypeSystem::initialize();
+  TIME("Initialization") {
+    // This includes naming all basic types, so it must be done even before
+    // lexing.
+    TypeSystem::initialize();
 
-  // Initialize the global scope
-  Scope::Global  = new BlockScope(ScopeType::Global);
-  builder.SetInsertPoint(Scope::Global->entry);
+    // Initialize the global scope
+    Scope::Global = new BlockScope(ScopeType::Global);
+    builder.SetInsertPoint(Scope::Global->entry);
+  }
 
   int arg_num    = 1;  // iterator over argv
   int file_index = -1; // Index of where file name is in argv
-  while (arg_num < argc) {
-    auto arg = argv[arg_num];
+  TIME("Argument parsing") {
+    while (arg_num < argc) {
+      auto arg = argv[arg_num];
 
-    if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
-      debug::parser = true;
+      if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
+        debug::parser = true;
 
-    } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
-      debug::timing = true;
+      } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
+        debug::timing = true;
 
-    } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
-      debug::parametric_struct = true;
+      } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
+        debug::parametric_struct = true;
 
-    } else if (file_index == -1) {
-      // If we haven't seen a file yet, point to it
-      file_index = arg_num;
+      } else if (file_index == -1) {
+        // If we haven't seen a file yet, point to it
+        file_index = arg_num;
 
-    } else {
-      // If we have found a file already, error out.
-      std::cerr << "Provide exactly one file name." << std::endl;
-      return error_code::invalid_arguments;
+      } else {
+        // If we have found a file already, error out.
+        std::cerr << "Provide exactly one file name." << std::endl;
+        return error_code::invalid_arguments;
+      }
+
+      ++arg_num;
     }
-
-    ++arg_num;
   }
-
-  TIMER_BREAK("Argument parsing:");
 
   // Add the file to the queue
   file_queue.emplace(argv[file_index]);
@@ -150,13 +145,11 @@ int main(int argc, char *argv[]) {
         << std::endl;
     }
 
-    TIMER_IGNORE_PRINT(file_name);
-    TIMER_BREAK("...locating");
-
-    Parser parser(file_name);
-    ast_map[file_name] = (AST::Statements *)parser.parse();
-
-    TIMER_BREAK("...parsing");
+    TIME(file_name + "\n         ...parsing") {
+      Parser parser(file_name);
+      ast_map[file_name] = (AST::Statements *)parser.parse();
+    }
+    
   }
 
   if (error_log.num_errors() != 0) {
@@ -164,55 +157,49 @@ int main(int argc, char *argv[]) {
     return error_code::parse_error;
   }
 
-  start_time = mach_absolute_time();
+  AST::Statements *global_statements;
 
-  // Init global module, function, etc.
-  global_module = new llvm::Module("global_module", llvm::getGlobalContext());
-  data_layout = new llvm::DataLayout(global_module);
+  TIME("AST Setup") {
+    // Init global module, function, etc.
+    global_module = new llvm::Module("global_module", llvm::getGlobalContext());
+    data_layout   = new llvm::DataLayout(global_module);
 
-  // TODO write the language rules to guarantee that the parser produces a
-  // Statements node at top level.
-    
+    // TODO write the language rules to guarantee that the parser produces a
+    // Statements node at top level.
 
-  // Combine all statement nodes from separately-parsed files.
-  auto global_statements = new AST::Statements;
+    // Combine all statement nodes from separately-parsed files.
+    global_statements = new AST::Statements;
 
-  // Reserve enough space for all of them to avoid unneeded copies
-  size_t num_statements = 0;
-  for (const auto& kv : ast_map) {
-    num_statements += kv.second->size();
+    // Reserve enough space for all of them to avoid unneeded copies
+    size_t num_statements = 0;
+    for (const auto &kv : ast_map) { num_statements += kv.second->size(); }
+    global_statements->reserve(num_statements);
+
+    for (auto &kv : ast_map) { global_statements->add_nodes(kv.second); }
+
+    // COMPILATION STEP:
+    //
+    // Determine which declarations go in which scopes. Store that information
+    // with the scopes. Note that assign_scope cannot possibly generate
+    // compilation errors, so we don't check for them here.
+    Scope::Stack.push(Scope::Global);
+    global_statements->assign_scope();
+
+    // COMPILATION STEP:
+    //
+    // Join the identifiers turning the syntax tree into a syntax DAG. This must
+    // happen after the declarations are assigned to each scope so we have a
+    // specific identifier to point to that is easy to find. This can generate
+    // an
+    // undeclared identifier error.
+    global_statements->join_identifiers();
+    Scope::Stack.pop();
+
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return error_code::undeclared_identifier;
+    }
   }
-  global_statements->reserve(num_statements);
-
-  for (auto& kv : ast_map) {
-    global_statements->add_nodes(kv.second);
-  }
-
-
-  // COMPILATION STEP:
-  //
-  // Determine which declarations go in which scopes. Store that information
-  // with the scopes. Note that assign_scope cannot possibly generate
-  // compilation errors, so we don't check for them here.
-  Scope::Stack.push(Scope::Global);
-  global_statements->assign_scope();
-
-  // COMPILATION STEP:
-  //
-  // Join the identifiers turning the syntax tree into a syntax DAG. This must
-  // happen after the declarations are assigned to each scope so we have a
-  // specific identifier to point to that is easy to find. This can generate an
-  // undeclared identifier error.
-  global_statements->join_identifiers();
-  Scope::Stack.pop();
-
-
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::undeclared_identifier;
-  }
-
-  TIMER_BREAK("AST setup:");
 
   // COMPILATION STEP:
   //
@@ -223,128 +210,124 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   // Dependency::assign_order();
-  VerificationQueue.push(global_statements);
-  while (!VerificationQueue.empty()) {
-    auto node_to_verify = VerificationQueue.front();
-    node_to_verify->verify_types();
-    VerificationQueue.pop();
-  }
-  TypeSystem::GenerateLLVM();
+  TIME("Type verification") {
+    VerificationQueue.push(global_statements);
+    while (!VerificationQueue.empty()) {
+      auto node_to_verify = VerificationQueue.front();
+      node_to_verify->verify_types();
+      VerificationQueue.pop();
+    }
+    TypeSystem::GenerateLLVM();
 
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::cyclic_dependency;
-  }
-  TIMER_BREAK("Type verification:");
-
-  global_statements->determine_time();
-  global_statements->lrvalue_check();
-
-  if (error_log.num_errors() != 0) {
-    std::cout << error_log;
-    return error_code::timing_or_lvalue;
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return error_code::cyclic_dependency;
+    }
   }
 
-  TIMER_BREAK("(L/R)value check:");
+  TIME("(L/R)value checking") {
+    global_statements->determine_time();
+    global_statements->lrvalue_check();
 
-  { // Program has been verified. We can now proceed with code generation.
-    for (auto decl : Scope::Global->ordered_decls_) {
+    if (error_log.num_errors() != 0) {
+      std::cout << error_log;
+      return error_code::timing_or_lvalue;
+    }
+  }
 
-      auto id = decl->identifier;
-      if (id->is_arg) { continue; }
+  TIME("Code-gen") {
+    { // Program has been verified. We can now proceed with code generation.
+      for (auto decl : Scope::Global->ordered_decls_) {
 
-      auto type = decl->type;
-      if (type->time() == Time::compile) { continue; }
+        auto id = decl->identifier;
+        if (id->is_arg) { continue; }
 
-      Scope::Stack.push(Scope::Global);
+        auto type = decl->type;
+        if (type->time() == Time::compile) { continue; }
 
-      if (type->is_primitive() || type->is_array() || type->is_pointer()) {
-        auto gvar = new llvm::GlobalVariable(
-            /*      Module = */ *global_module,
-            /*        Type = */ *type,
-            /*  isConstant = */ decl->HasHashtag("const"),
-            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-            /* Initializer = */ 0, // might be specified below
-            /*        Name = */ id->token);
+        Scope::Stack.push(Scope::Global);
 
-        switch(decl->decl_type) {
-        case AST::DeclType::Std: {
-          gvar->setInitializer(type->InitialValue());
-        } break;
-        case AST::DeclType::Infer: {
-          // TODO meld this into GetGlobal
-          // decl->evaluate();
+        if (type->is_primitive() || type->is_array() || type->is_pointer()) {
+          auto gvar = new llvm::GlobalVariable(
+              /*      Module = */ *global_module,
+              /*        Type = */ *type,
+              /*  isConstant = */ decl->HasHashtag("const"),
+              /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+              /* Initializer = */ 0, // might be specified below
+              /*        Name = */ id->token);
 
-          auto global_val = decl->expr->GetGlobal();
-          assert(llvm::isa<llvm::Constant>(global_val) &&
-                 "Value is not a constant");
-          gvar->setInitializer(global_val);
-        } break;
-        default: assert(false);
+          switch (decl->decl_type) {
+          case AST::DeclType::Std: {
+            gvar->setInitializer(type->InitialValue());
+          } break;
+          case AST::DeclType::Infer: {
+            // TODO meld this into GetGlobal
+            // decl->evaluate();
+
+            auto global_val = decl->expr->GetGlobal();
+            assert(llvm::isa<llvm::Constant>(global_val) &&
+                   "Value is not a constant");
+            gvar->setInitializer(global_val);
+          } break;
+          default: assert(false);
+          }
+
+          id->alloc = gvar;
+
+        } else if (type->is_array()) {
+
+        } else if (type->is_function()) {
+          auto fn_type      = static_cast<Function *>(type);
+          auto mangled_name = Mangle(fn_type, decl->identifier);
+
+          if (!type->has_vars) {
+            id->alloc = type->allocate();
+            id->alloc->setName(mangled_name);
+            decl->generate_code();
+          }
+
+        } else {
+          std::cerr << *type << std::endl;
+          assert(false && "Global variables not currently allowed.");
         }
 
-        id->alloc = gvar;
-
-      } else if (type->is_array()) {
-
-      } else if (type->is_function()) {
-        auto fn_type      = static_cast<Function *>(type);
-        auto mangled_name = Mangle(fn_type, decl->identifier);
-
-        if (!type->has_vars) {
-          id->alloc = type->allocate();
-          id->alloc->setName(mangled_name);
-          decl->generate_code();
-        }
-
-      } else {
-        std::cerr << *type << std::endl;
-        assert(false && "Global variables not currently allowed.");
+        Scope::Stack.pop();
       }
+    }
 
+    { // Generate code for everything else
+      Scope::Stack.push(Scope::Global);
+      for (auto stmt : global_statements->statements) {
+        if (stmt->is_declaration()) { continue; }
+        stmt->generate_code();
+      }
       Scope::Stack.pop();
     }
   }
 
-  { // Generate code for everything else
-    Scope::Stack.push(Scope::Global);
-    for (auto stmt : global_statements->statements) {
-      if (stmt->is_declaration()) { continue; }
-      stmt->generate_code();
+  TIME("LLVM") {
+    // TODO Optimization.
+    {
+      // In this anonymous scope we write the LLVM IR to a file. The point
+      // of the anonymous scope is to ensure that the file is written and
+      // closed before we make system calls on it (e.g., for linking).
+      std::ofstream output_file_stream("ir.ll");
+      llvm::raw_os_ostream output_file(output_file_stream);
+      global_module->print(output_file, nullptr);
     }
-    Scope::Stack.pop();
+
+    std::string input_file_name(argv[1]);
+    std::string link_string = "gcc ir.o -o bin/";
+    size_t start            = input_file_name.find('/', 0) + 1;
+    size_t end = input_file_name.find('.', 0);
+    link_string += input_file_name.substr(start, end - start);
+
+    std::string sys_call = "llc -filetype=obj ir.ll;" + link_string + "; rm ir.o";
+    system(sys_call.c_str());
   }
 
-  TIMER_BREAK("Code-gen:");
-
-  // TODO Optimization.
-  {
-    // In this anonymous scope we write the LLVM IR to a file. The point
-    // of the anonymous scope is to ensure that the file is written and
-    // closed before we make system calls on it (e.g., for linking).
-    std::ofstream output_file_stream("ir.ll");
-    llvm::raw_os_ostream output_file(output_file_stream);
-    global_module->print(output_file, nullptr);
-  }
-
-  std::string input_file_name(argv[1]);
-  std::string link_string = "gcc ir.o -o bin/";
-  size_t start = input_file_name.find('/', 0) + 1;
-  size_t end = input_file_name.find('.', 0);
-  link_string += input_file_name.substr(start, end - start);
-
-
-  system("llc -filetype=obj ir.ll");
-  system(link_string.c_str());
-  system("rm ir.o");
-
-  end_time = mach_absolute_time();
   if (debug::timing) {
-    saved_time += (end_time - start_time);
-    total_time += saved_time;
-    std::cout << std::setw(20) << "LLVM:" << std::setw(15) << saved_time << "ns"
-              << std::endl
-              << std::setw(20) << "TOTAL:" << std::setw(15) << total_time
+    std::cout << std::setw(20) << "TOTAL:" << std::setw(15) << total_time
               << "ns" << std::endl
               << "LLVM accounts for "
               << ((double)(100 * saved_time) / total_time)
@@ -353,3 +336,5 @@ int main(int argc, char *argv[]) {
 
   return error_code::success;
 }
+
+#undef TIME
