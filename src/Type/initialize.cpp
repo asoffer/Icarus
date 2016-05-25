@@ -136,15 +136,15 @@ void Structure::call_init(llvm::Value *var) {
 
     // initialize all fields
     for (const auto &kv : field_num_to_llvm_num) {
+      auto init_expr = init_values AT(kv.first);
+      if (init_expr && init_expr->is_hole()) { continue; }
+
       auto the_field_type = field_type AT(kv.first);
       auto arg =
           builder.CreateGEP(init_fn_->args().begin(),
                             {data::const_uint(0), data::const_uint(kv.second)});
-      auto init_expr = init_values AT(kv.first);
       if (init_expr) {
-        // Scope::Stack.push(fn_scope);
         auto init_val = init_expr->generate_code();
-        // Scope::Stack.pop();
 
         Type::CallAssignment(ast_expression->scope_, the_field_type,
                              the_field_type, arg, init_val);

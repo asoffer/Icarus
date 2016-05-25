@@ -2,7 +2,15 @@ my_int := struct {
   n: int = 17
 }
 
+pair := struct {
+  x: int = 17
+  y: int = --
+}
+
+
 __print__ := (n: my_int) -> void { print n.n, "\n" }
+__print__ := (p: pair) -> void { print "(", p.x, ", ", p.y, ")\n" }
+
 main := void -> void {
   a: my_int = --
   b: my_int = --
@@ -23,4 +31,11 @@ main := void -> void {
     x: int = --
     print x, " "
   }
+
+  for i in 0 .. 10 {
+    p: pair = --
+    p.x += 1
+    print p
+  }
+
 }
