@@ -34,30 +34,9 @@ void Primitive::call_repr(llvm::Value *val) {
   auto prev_block = builder.GetInsertBlock();
 
   if (this == Bool) {
-    if (repr_fn_ == nullptr) {
-      repr_fn_ = llvm::Function::Create(*Func(this, Void),
-                                        llvm::Function::ExternalLinkage,
-                                        "repr.bool", global_module);
-      llvm::Value *arg = repr_fn_->args().begin();
-      arg->setName("b");
-
-      auto entry       = make_block("entry", repr_fn_);
-      auto true_block  = make_block("true.block", repr_fn_);
-      auto false_block = make_block("false.block", repr_fn_);
-      builder.SetInsertPoint(entry);
-      builder.CreateCondBr(arg, true_block, false_block);
-
-      builder.SetInsertPoint(true_block);
-      builder.CreateCall(cstdlib::printf(), data::global_string("true"));
-      builder.CreateRetVoid();
-
-      builder.SetInsertPoint(false_block);
-      builder.CreateCall(cstdlib::printf(), data::global_string("false"));
-      builder.CreateRetVoid();
-    }
-
-    builder.SetInsertPoint(prev_block);
-    builder.CreateCall(repr_fn_, {val});
+    auto to_show = builder.CreateSelect(val, data::global_string("true"),
+                                        data::global_string("false"));
+    builder.CreateCall(cstdlib::printf(), {data::global_string("%s"), to_show});
 
   } else if (this == Char) {
     if (repr_fn_ == nullptr) {
