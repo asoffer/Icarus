@@ -33,7 +33,7 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(nullptr), value(nullptr) {}
 Declaration::Declaration()
-    : expr(nullptr), decl_type(DeclType::Std), init(true) {}
+    : type_expr(nullptr), init_val(nullptr), decl_type(DeclType::Std) {}
 InDecl::InDecl() {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}

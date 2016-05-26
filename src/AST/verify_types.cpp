@@ -83,7 +83,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto lhs_var = (TypeVariable *)lhs;
     assert(lhs_var->test);
 
-    auto test_fn_expr = lhs_var->test->evaluate().as_expr;
+    Ctx ctx;
+    auto test_fn_expr = lhs_var->test->evaluate(ctx).as_expr;
     assert(test_fn_expr->is_function_literal());
 
     auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
@@ -92,7 +93,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
 
     // Do a function call
     test_fn->inputs[0]->identifier->value = Context::Value(rhs);
-    bool test_result                      = test_fn->evaluate().as_bool;
+    bool test_result                      = test_fn->evaluate(ctx).as_bool;
     test_fn->inputs[0]->identifier->value = nullptr;
 
     if (test_result) {
@@ -178,10 +179,11 @@ static bool MatchCall(Type *lhs, Type *rhs,
   if (lhs->is_struct()) {
     if (!rhs->is_struct()) { return false; }
 
-    // TODO parameters are not necessarily a collection of types.
-
     auto lhs_struct = (Structure *)lhs;
     auto rhs_struct = (Structure *)rhs;
+
+    // We know that LHS has a creator because it has variables. Thus, passing
+    // this test means that these are instances of the same parametric struct.
     if (lhs_struct->creator != rhs_struct->creator) { return false; }
 
     auto lhs_params =
@@ -193,8 +195,12 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto num_params = lhs_params.size();
     bool coherent_matches = true;
     for (size_t i = 0; i < num_params; ++i) {
-      coherent_matches &=
-          MatchCall(lhs_params[i], rhs_params[i], matches, error_message);
+      // TODO what if these aren't types?
+      for (auto kv : lhs_params) {
+        coherent_matches &=
+            MatchCall(kv.second.as_type, rhs_params[kv.first].as_type, matches,
+                      error_message);
+      }
     }
     return coherent_matches;
   }
@@ -271,14 +277,12 @@ static Type *EvalWithVars(Type *type,
     auto params =
         struct_type->creator->reverse_cache[struct_type->ast_expression];
 
-    auto evaled_params = std::vector<Context::Value>();
+    Ctx evaled_params;
 
     for (auto p : params) {
-      // TODO not all parameters have to be types (but to be fixed elsewhere)
-      // Also, we're wrapping these in a Walue, only to be unwrapped in the
-      // CreateOrGetCached method? Hopefully the above generalization will fix
-      // this awfulness, and everything will just be a Value.
-      evaled_params.push_back(Context::Value(EvalWithVars(p, lookup)));
+      // TODO not all parameters have to be types
+      evaled_params[p.first] =
+          Context::Value(EvalWithVars(p.second.as_type, lookup));
     }
 
     return struct_type->creator->CreateOrGetCached(evaled_params).as_type;
@@ -306,8 +310,9 @@ void StructLiteral::FlushOut() {
   for (size_t i = 0; i < data.ids.size(); ++i) {
     if (data.init_vals[i]) { data.init_vals[i]->verify_types(); }
 
+    Ctx ctx;
     tval->insert_field(data.ids[i], data.type_exprs[i]
-                                        ? data.type_exprs[i]->evaluate().as_type
+                                        ? data.type_exprs[i]->evaluate(ctx).as_type
                                         : data.init_vals[i]->type,
                        data.init_vals[i]);
   }
@@ -483,18 +488,21 @@ void Access::Verify(bool emit_errors) {
 
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
-      if (!operand->value.as_type) { operand->evaluate(); }
+      Ctx ctx;
+      if (!operand->value.as_type) { operand->evaluate(ctx); }
       assert(operand->value.as_type);
       type = Uint;
       return;
     }
 
-    auto evaled_type = operand->evaluate().as_type;
+    Ctx ctx;
+    auto evaled_type = operand->evaluate(ctx).as_type;
     if (evaled_type->is_enum()) {
       auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
-        type = operand->evaluate().as_type;
+        Ctx ctx;
+        type = operand->evaluate(ctx).as_type;
 
       } else {
         error_log.log(loc, evaled_type->to_string() + " has no member " +
@@ -661,9 +669,10 @@ void Binop::verify_types() {
       }
 
       if (term->terminal_type == Language::Terminal::Hole) {
+        // TODO this should become a noop
         term->type = lhs->type;
         type       = Void;
-        if (lhs->is_declaration()) { ((Declaration *)lhs)->init = false; }
+        // if (lhs->is_declaration()) { ((Declaration *)lhs)->init = false; }
 
         return;
       }
@@ -834,7 +843,8 @@ void Binop::verify_types() {
   } break;
   case Operator::Cast: {
     // TODO use correct scope
-    type = rhs->evaluate().as_type;
+    Ctx ctx;
+    type = rhs->evaluate(ctx).as_type;
     if (type == Error) { return; }
     assert(type && "cast to nullptr?");
 
@@ -1052,7 +1062,8 @@ void InDecl::verify_types() {
     type = static_cast<RangeType *>(container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = container->evaluate().as_type;
+    Ctx ctx;
+    auto t = container->evaluate(ctx).as_type;
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -1066,11 +1077,12 @@ void InDecl::verify_types() {
 // TODO Declaration is responsible for the type verification of it's identifier?
 void Declaration::verify_types() {
   STARTING_CHECK;
-  expr->verify_types();
+  if (type_expr) { type_expr->verify_types(); }
+  if (init_val) { init_val->verify_types(); }
 
   scope_->ordered_decls_.push_back(this);
 
-  if (expr->type == Void) {
+  if (type_expr->type == Void) {
     type = Error;
     error_log.log(loc, "Void types cannot be assigned.");
     return;
@@ -1078,47 +1090,49 @@ void Declaration::verify_types() {
 
   switch (decl_type) {
   case DeclType::Std: {
-    type = expr->evaluate().as_type;
+    Ctx ctx;
+    type = type_expr->evaluate(ctx).as_type;
     if (type->is_struct() /* TODO && !type->has_vars */) {
       static_cast<Structure *>(type)->ast_expression->FlushOut();
     }
   } break;
   case DeclType::Infer: {
-    type = expr->type;
+    type = type_expr->type;
 
     if (type == Type_) {
-      if (expr->is_struct_literal()) {
-        assert(expr->value.as_type && expr->value.as_type->is_struct());
+      if (type_expr->is_struct_literal()) {
+        assert(type_expr->value.as_type && type_expr->value.as_type->is_struct());
 
         // TODO mangle the name correctly
-        static_cast<Structure *>(expr->value.as_type)
+        static_cast<Structure *>(type_expr->value.as_type)
             ->set_name(identifier->token);
 
-      } else if (expr->is_parametric_struct_literal()) {
-        assert(expr->value.as_type &&
-               expr->value.as_type->is_parametric_struct());
+      } else if (type_expr->is_parametric_struct_literal()) {
+        assert(type_expr->value.as_type &&
+               type_expr->value.as_type->is_parametric_struct());
         // TODO mangle the name correctly
-        static_cast<ParametricStructure *>(expr->value.as_type)
+        static_cast<ParametricStructure *>(type_expr->value.as_type)
             ->set_name(identifier->token);
 
-      } else if (expr->is_enum_literal()) {
-        expr->evaluate(); // TODO do we need to evaluate here?
-        assert(expr->value.as_type);
+      } else if (type_expr->is_enum_literal()) {
+        Ctx ctx;
+        type_expr->evaluate(ctx); // TODO do we need to evaluate here?
+        assert(type_expr->value.as_type);
         // TODO mangle name properly.
-        static_cast<Enumeration *>(expr->value.as_type)->bound_name =
+        static_cast<Enumeration *>(type_expr->value.as_type)->bound_name =
             identifier->token;
       }
 
-      identifier->value = expr->value;
+      identifier->value = type_expr->value;
 
-    } else if (expr->is_function_literal()) {
+    } else if (type_expr->is_function_literal()) {
       identifier->verify_types();
-      identifier->value = Context::Value(expr);
+      identifier->value = Context::Value(type_expr);
     }
 
   } break;
   case DeclType::Tick: {
-    if (!expr->type->is_function()) {
+    if (!type_expr->type->is_function()) {
       // TODO Need a way better
       error_log.log(
           loc, "Cannot generate a type where the tester is not a function");
@@ -1126,7 +1140,7 @@ void Declaration::verify_types() {
       return;
     }
 
-    auto test_func = static_cast<Function *>(expr->type);
+    auto test_func = static_cast<Function *>(type_expr->type);
     if (test_func->output != Bool) {
       // TODO What about implicitly cast-able to bool via a user-defined cast?
       error_log.log(loc, "Test function must return a bool");
@@ -1223,8 +1237,8 @@ void Declaration::verify_types() {
 
   // TODO if RHS is not a type give a nice message instead of segfaulting
 
-  if (expr->is_terminal()) {
-    auto term = (Terminal *)expr;
+  if (type_expr->is_terminal()) {
+    auto term = (Terminal *)type_expr;
     if (term->terminal_type == Language::Terminal::Null) {
       error_log.log(loc, "Cannot infer the type of `null`.");
     }
@@ -1292,7 +1306,8 @@ void FunctionLiteral::verify_types() {
 
   return_type_expr->verify_types();
 
-  Type *ret_type = return_type_expr->evaluate().as_type;
+  Ctx ctx;
+  Type *ret_type = return_type_expr->evaluate(ctx).as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t inputssize = inputs.size();

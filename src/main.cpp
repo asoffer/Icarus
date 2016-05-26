@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
             // TODO meld this into GetGlobal
             // decl->evaluate();
 
-            auto global_val = decl->expr->GetGlobal();
+            auto global_val = decl->type_expr->GetGlobal();
             assert(llvm::isa<llvm::Constant>(global_val) &&
                    "Value is not a constant");
             gvar->setInitializer(global_val);

@@ -147,8 +147,10 @@ void BlockScope::initialize() {
     //   continue;
 
     // } else {
-    if (decl_id->is_arg || !decl_ptr->init) continue;
- 
+    if (decl_id->is_arg ||
+        (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
+      continue;
+    }
     decl_type->call_init(decl_id->alloc);
     // }
   }

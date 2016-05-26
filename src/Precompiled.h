@@ -95,6 +95,19 @@ union Value {
   explicit Value(char *c_str) { as_str = c_str; }
   explicit Value(AST::Expression *e) { as_expr = e; }
 };
+
+inline bool operator==(const Value &lhs, const Value &rhs) {
+  return lhs.as_real == rhs.as_real;
+}
+
+inline bool operator!=(const Value &lhs, const Value &rhs) {
+  return !(lhs == rhs);
+}
+
+// For std::map<>s
+inline bool operator<(const Value &lhs, const Value &rhs) {
+  return lhs.as_real < rhs.as_real;
+}
 } // namespace Context
 
 #include "ErrorLog.h"

@@ -113,7 +113,8 @@ void Declaration::assign_scope() {
 
   scope_->ids_[identifier->token]->decls.push_back(this);
   identifier->assign_scope();
-  expr->assign_scope();
+  if (type_expr) { type_expr->assign_scope(); }
+  if (init_val) { init_val->assign_scope(); }
 }
 
 void ChainOp::assign_scope() {
@@ -149,9 +150,10 @@ void ParametricStructLiteral::assign_scope() {
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
-  for (auto &param : params) { param->assign_scope(); }
   ITERATE_OR_SKIP(data.type_exprs)
   ITERATE_OR_SKIP(data.init_vals)
+  ITERATE_OR_SKIP(params.type_exprs)
+  ITERATE_OR_SKIP(params.init_vals)
   Scope::Stack.pop();
 }
 

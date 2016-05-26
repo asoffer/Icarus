@@ -137,10 +137,11 @@ llvm::Value *Terminal::generate_code() {
 
 static void CallPrint(Expression *expr) {
   if (expr->type == Type_) {
+    Ctx ctx;
     builder.CreateCall(
         cstdlib::printf(),
         {data::global_string("%s"),
-         data::global_string(expr->evaluate().as_type->to_string())});
+         data::global_string(expr->evaluate(ctx).as_type->to_string())});
     return;
   }
 
@@ -260,7 +261,8 @@ llvm::Value *Access::generate_code() {
     // NOTE: this will likely change if we implement UFCS. In that case, this
     // whole method will probably be out of date.
 
-    auto expr_as_type = operand->evaluate().as_type;
+    Ctx ctx;
+    auto expr_as_type = operand->evaluate(ctx).as_type;
 
     // TODO in the process of moving this into evaluate (because it's
     // compile-time) Remove it from here.
@@ -326,7 +328,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     // Then If it is a function literal, notify the function literal of the code
     // name/scope, etc.
     if (rhs->is_function_literal()) {
-      auto fn            = static_cast<FunctionLiteral *>(rhs);
+      auto fn            = (FunctionLiteral *)rhs;
       fn->fn_scope->name = id->token;
 
       fn->llvm_fn = static_cast<llvm::Function *>(
@@ -334,7 +336,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
     } else if (rhs->is_binop() &&
                static_cast<Binop *>(rhs)->op == Language::Operator::Mul) {
-      auto binop   = static_cast<Binop *>(rhs);
+      auto binop   = (Binop *)rhs;
       auto lhs_val = binop->lhs->generate_code();
       auto rhs_val = binop->rhs->generate_code();
 
@@ -383,7 +385,10 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 }
 
 llvm::Value *Binop::generate_code() {
-  if (time() == Time::compile) { return llvm_value(evaluate()); }
+  if (time() == Time::compile) {
+    Ctx ctx;
+    return llvm_value(evaluate(ctx));
+  }
 
   using Language::Operator;
 
@@ -471,7 +476,8 @@ llvm::Value *Binop::generate_code() {
   } break;
 #undef SHORT_CIRCUITING_OPERATOR
   case Operator::Cast: {
-    Type *to_type = rhs->evaluate().as_type;
+    Ctx ctx;
+    Type *to_type = rhs->evaluate(ctx).as_type;
     if (lhs->type == Bool) {
       if (to_type == Int || to_type == Uint) {
         return builder.CreateZExt(lhs_val, *to_type, "ext.val");
@@ -728,7 +734,10 @@ llvm::Value *ChainOp::generate_code() {
   // TODO eval of enums at compile-time is wrong. This could be
   // 1. That the eval function is wrong, or
   // 2. That they shouldn't be determined at compile-time
-  if (time() == Time::compile) { return llvm_value(evaluate()); }
+  if (time() == Time::compile) {
+    Ctx ctx;
+    return llvm_value(evaluate(ctx));
+  }
 
   auto expr_type = exprs[0]->type;
 
@@ -910,7 +919,8 @@ llvm::Value *FunctionLiteral::generate_code() {
     ++arg_iter;
   }
 
-  auto ret_type = return_type_expr->evaluate().as_type;
+  Ctx ctx;
+  auto ret_type = return_type_expr->evaluate(ctx).as_type;
   if (ret_type->is_struct()) { arg_iter->setName("retval"); }
 
   fn_scope->set_parent_function(llvm_fn);
@@ -961,11 +971,11 @@ llvm::Value *Declaration::generate_code() {
   // foo: [10; char], an actual allocation needs to occur.
   // TODO maybe this should be moved into the scope?
   // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type->is_array() && !expr->is_dummy()) {
+  if (decl_type == DeclType::Std && type->is_array() && !type_expr->is_dummy()) {
     // TODO uninitialize previous value
-    assert(expr->is_array_type() && "Not array type");
+    assert(type_expr->is_array_type() && "Not array type");
 
-    auto len_expr = ((ArrayType *)expr)->length;
+    auto len_expr = ((ArrayType *)type_expr)->length;
     if (len_expr->time() & Time::run) {
       // TODO have a Hole type primitive.
       if (len_expr->is_terminal() &&
@@ -979,14 +989,17 @@ llvm::Value *Declaration::generate_code() {
     }
   }
 
-  if (decl_type == DeclType::Std) {
-    return nullptr;
+  if (init_val && !init_val->is_hole()) {
+    Type::CallAssignment(scope_, type, init_val->type, identifier->alloc,
+                         init_val->generate_code());
   }
+
+  if (decl_type == DeclType::Std) { return nullptr; }
 
   if (type->time() == Time::compile) {
     if (identifier->type->is_function() && decl_type == DeclType::Infer &&
-        expr->is_function_literal()) {
-      auto fn_expr = (FunctionLiteral *)expr;
+        type_expr->is_function_literal()) {
+      auto fn_expr = (FunctionLiteral *)type_expr;
       for (auto &gen : fn_expr->cache) {
         gen.second->fn_scope->name = identifier->token;
       }
@@ -997,7 +1010,7 @@ llvm::Value *Declaration::generate_code() {
   // of each scope, so there's no need to do anything if a heap allocation
   // isn't required.
 
-  return generate_assignment_code(identifier, expr);
+  return generate_assignment_code(identifier, type_expr);
 }
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified
@@ -1450,7 +1463,8 @@ llvm::Value *For::generate_code() {
           iter->type == Char ? data::const_char(1) : data::const_uint(1));
       phi->addIncoming(next, incr_iters);
     } else {
-      auto ty = container->evaluate().as_type;
+      Ctx ctx;
+      auto ty = container->evaluate(ctx).as_type;
       assert(ty->is_enum());
       auto enum_type = static_cast<Enumeration *>(ty);
 

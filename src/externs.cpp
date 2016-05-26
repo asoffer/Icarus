@@ -105,9 +105,6 @@ llvm::ConstantInt *const_int(long n) {
 }
 
 llvm::ConstantInt *const_uint(size_t n) {
-  assert(n <= (1 << 30) &&
-         "Potential overflow on compile-time integer constants");
-
   // The safety of this cast is verified only in debug mode
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(32, static_cast<size_t>(n), false));
@@ -271,7 +268,7 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
     auto id = (AST::Identifier *)expr;
     if (id->decls.size() == 1) {
       assert(id->decls[0]->decl_type == AST::DeclType::Infer);
-      return GetFunctionLiteral(id->decls[0]->expr);
+      return GetFunctionLiteral(id->decls[0]->type_expr);
     } else {
       assert(false && "TODO");
     }

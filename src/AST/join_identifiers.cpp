@@ -98,7 +98,8 @@ void Declaration::join_identifiers(bool is_arg) {
     identifier->is_arg = true;
   }
 
-  set_or_recurse(expr);
+  if (type_expr) { set_or_recurse(type_expr); }
+  if (init_val) { set_or_recurse(init_val); }
 }
 
 void ChainOp::join_identifiers(bool is_arg) {
@@ -134,9 +135,10 @@ void FunctionLiteral::join_identifiers(bool is_arg) {
 
 void ParametricStructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
-  for (auto &param : params) { param->join_identifiers(true); }
   ITERATE_OR_SKIP(data.type_exprs);
   ITERATE_OR_SKIP(data.init_vals);
+  ITERATE_OR_SKIP(params.type_exprs);
+  ITERATE_OR_SKIP(params.init_vals);
   Scope::Stack.pop();
 }
 void StructLiteral::join_identifiers(bool) {

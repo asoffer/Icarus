@@ -164,21 +164,24 @@ std::string InDecl::to_string(size_t n) const {
 }
 
 std::string Declaration::to_string(size_t n) const {
-  std::string output = tabs(n) + "<Declaration ";
+  std::stringstream ss;
+  ss << tabs(n) << "<Declaration ";
   switch (decl_type) {
   case DeclType::Std: {
-    output += "(:)";
+    ss << "(:)";
   } break;
   case DeclType::Infer: {
-    output += "(:=)";
+    ss << "(:=)";
   } break;
   case DeclType::Tick: {
-    output += "(`)";
+    ss << "(`)";
   } break;
   }
 
-  return output + TYPE_OR("") + ">\n" + identifier->to_string(n + 1) +
-         expr->to_string(n + 1);
+  ss << TYPE_OR("") << ">\n" << identifier->to_string(n + 1);
+  if (type_expr) { ss << type_expr->to_string(n + 1); }
+  if (init_val) { ss << init_val->to_string(n + 1); }
+  return ss.str();
 }
 
 std::string Case::to_string(size_t n) const {

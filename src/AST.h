@@ -7,6 +7,9 @@ extern size_t precedence(Language::Operator op);
 
 extern std::queue<std::string> file_queue;
 
+// TODO Fix this later.
+using Ctx = std::map<std::string, Context::Value>;
+
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
@@ -16,7 +19,7 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual Context::Value evaluate() ENDING;                                    \
+  virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
@@ -33,7 +36,7 @@ namespace AST {
   virtual void verify_types() ENDING;                                          \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
-  virtual Context::Value evaluate() ENDING;                                    \
+  virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
   virtual Time::Eval determine_time() ENDING;                                  \
   virtual llvm::Constant *GetGlobal() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
@@ -48,7 +51,7 @@ struct Node {
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
 
-  virtual Context::Value evaluate() { return nullptr; }
+  virtual Context::Value evaluate(Ctx &ctx) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
   virtual Time::Eval determine_time() { return Time::error; }
 
@@ -177,7 +180,8 @@ struct Declaration : public Expression {
   static Node *AddHashtag(NPtrVec &&nodes);
 
   Identifier *identifier;
-  Expression *expr;
+  Expression *type_expr;
+  Expression *init_val;
 
   std::vector<std::string> hashtags;
   // TODO have a global table of hashtags and store a vector of indexes into
@@ -190,7 +194,6 @@ struct Declaration : public Expression {
   }
 
   DeclType decl_type;
-  bool init;
 };
 
 struct InDecl : public Expression {
@@ -212,18 +215,14 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  StructLiteral *CloneStructLiteral(StructLiteral *&, bool has_vars);
-  Context::Value CreateOrGetCached(const std::vector<Context::Value>& arg_vals);
-
-  std::vector<Declaration *> params;
+  StructLiteral *CloneStructLiteral(StructLiteral *&);
+  Context::Value CreateOrGetCached(const Ctx& arg_vals);
 
   Scope *type_scope;
-  StructInternalData data;
+  StructInternalData data, params;
 
-  // TODO this should be more than just type pointers. Parameters can be ints,
-  // etc. Do we allow real? Make this hold a vector of Context::Values
-  std::map<std::vector<Type *>, StructLiteral *> cache;
-  std::map<StructLiteral *, std::vector<Type *>> reverse_cache;
+  std::map<Ctx, StructLiteral *> cache;
+  std::map<StructLiteral *, Ctx> reverse_cache;
 };
 
 struct StructLiteral : public Expression {

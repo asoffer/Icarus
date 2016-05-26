@@ -30,61 +30,56 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
   }
 }
 
-// NOTE: This function takes ownership of stmts.
-static void CheckStructMembers(AST::Node *&stmts_arg,
-                               AST::StructInternalData &data) {
-  assert(stmts_arg->is_statements());
-  auto stmts = steal<AST::Statements>(stmts_arg);
-  for (auto &&stmt : stmts->statements) {
-    if (stmt->is_declaration()) {
-      auto decl = static_cast<AST::Declaration *>(stmt);
-      switch (decl->decl_type) {
-      case AST::DeclType::Std: {
-        data.ids.push_back(decl->identifier->token);
-        data.types.push_back(nullptr);
-        data.type_exprs.push_back(steal<AST::Expression>(decl->expr));
-        data.init_vals.push_back(nullptr);
-      } break;
-      case AST::DeclType::Infer: {
-        data.ids.push_back(decl->identifier->token);
-        data.types.push_back(nullptr);
-        data.type_exprs.push_back(nullptr);
-        data.init_vals.push_back(steal<AST::Expression>(decl->expr));
-      } break;
-      case AST::DeclType::Tick: {
-        error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-      } break;
-      }
-    } else if (stmt->is_binop()) {
-      auto binop = (AST::Binop *)stmt;
-      if (binop->op == Language::Operator::Assign) {
-        if (!binop->lhs->is_declaration()) {
-          // TODO better error message
-          error_log.log(binop->loc, "Nothing declared here.");
-        } else {
-          auto decl = static_cast<AST::Declaration *>(binop->lhs);
-          if (decl->decl_type == AST::DeclType::Std) {
-            data.ids.push_back(decl->identifier->token);
-            data.types.push_back(nullptr);
-            data.type_exprs.push_back(steal<AST::Expression>(decl->expr));
-            data.init_vals.push_back(steal<AST::Expression>(binop->rhs));
-          } else {
-            error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-          }
-        }
+// Takes ownership of the node
+static void CheckAndClaimDeclaration(AST::Node *&node, AST::StructInternalData &data) {
+  if (node->is_declaration()) {
+    auto decl = (AST::Declaration *)node;
+    switch (decl->decl_type) {
+    case AST::DeclType::Std: {
+      data.ids.push_back(decl->identifier->token);
+      data.types.push_back(nullptr);
+      data.type_exprs.push_back(steal<AST::Expression>(decl->type_expr));
+      data.init_vals.push_back(nullptr);
+    } break;
+    case AST::DeclType::Infer: {
+      data.ids.push_back(decl->identifier->token);
+      data.types.push_back(nullptr);
+      data.type_exprs.push_back(nullptr);
+      data.init_vals.push_back(steal<AST::Expression>(decl->type_expr));
+    } break;
+    case AST::DeclType::Tick: {
+      error_log.log(decl->loc, "Declaration must be either ':' or ':='");
+    } break;
+    }
+  } else if (node->is_binop()) {
+    auto binop = (AST::Binop *)node;
+    if (binop->op == Language::Operator::Assign) {
+      if (!binop->lhs->is_declaration()) {
+        // TODO better error message
+        error_log.log(binop->loc, "Nothing declared here.");
       } else {
-        // TODO better error message here.
-        error_log.log(stmt->loc,
-                      "Each struct member must be defined using "
-                      "a declaration or an initialized declaration.");
+        auto decl = static_cast<AST::Declaration *>(binop->lhs);
+        if (decl->decl_type == AST::DeclType::Std) {
+          data.ids.push_back(decl->identifier->token);
+          data.types.push_back(nullptr);
+          data.type_exprs.push_back(steal<AST::Expression>(decl->type_expr));
+          data.init_vals.push_back(steal<AST::Expression>(binop->rhs));
+        } else {
+          error_log.log(decl->loc, "Declaration must be either ':' or ':='");
+        }
       }
     } else {
       // TODO better error message here.
-      error_log.log(stmt->loc, "Each struct member must be defined using "
+      error_log.log(node->loc, "Each struct member must be defined using "
                                "a declaration or an initialized declaration.");
     }
+  } else {
+    // TODO better error message here.
+    error_log.log(node->loc, "Each struct member must be defined using "
+                             "a declaration or an initialized declaration.");
   }
-  delete stmts;
+  delete node;
+  node = nullptr;
 }
 
 // Input guarantees:
@@ -111,7 +106,7 @@ namespace AST {
 // Input guarantees:
 // [struct] [l_brace] [statements] [r_brace]
 //
-// Internal checks (checked in CheckStructMembers):
+// Internal checks (checked in CheckAndClaimDeclaration):
 // Each statement is either a declaration using ':' or ':=', or it's an
 // assignment where the left-hand side is a declaration using ':'. That is, we
 // allow only the following:
@@ -126,7 +121,9 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
-  CheckStructMembers(nodes[2], struct_lit_ptr->data);
+  for (auto &&n : static_cast<Statements *>(nodes[2])->statements) {
+    CheckAndClaimDeclaration(n, struct_lit_ptr->data);
+  }
 
   return struct_lit_ptr;
 }
@@ -142,21 +139,20 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
                   struct_lit_ptr));
 
   if (nodes[1]->is_declaration()) {
-    struct_lit_ptr->params = {steal<Declaration>(nodes[1])};
+    CheckAndClaimDeclaration(nodes[1], struct_lit_ptr->params);
 
   } else if (nodes[1]->is_comma_list()) {
     auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
-
-    assert(struct_lit_ptr->params.empty());
-    struct_lit_ptr->params.resize(expr_vec.size());
-
-    for (size_t i = 0; i < expr_vec.size(); ++i) {
-      assert(expr_vec[i]->is_declaration());
-      struct_lit_ptr->params[i] = static_cast<Declaration *>(expr_vec[i]);
+    for (auto &&e : expr_vec) {
+      AST::Node *n = (AST::Node *)e;
+      CheckAndClaimDeclaration(n, struct_lit_ptr->params);
     }
   }
 
-  CheckStructMembers(nodes[3], struct_lit_ptr->data);
+  for (auto &&node : static_cast<Statements *>(nodes[3])->statements) {
+    CheckAndClaimDeclaration(node, struct_lit_ptr->data);
+  }
+
   return struct_lit_ptr;
 }
 
@@ -591,7 +587,7 @@ Node *Declaration::BuildBasic(NPtrVec &&nodes) {
   auto decl_ptr        = new Declaration;
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->precedence = Language::precedence(op);
-  decl_ptr->expr = steal<Expression>(nodes[2]);
+  decl_ptr->type_expr = steal<Expression>(nodes[2]);
   decl_ptr->decl_type =
       (op == Language::Operator::Colon) ? DeclType::Std : DeclType::Infer;
 
@@ -609,7 +605,7 @@ Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
   Scope::decl_registry_.emplace_back(decl_ptr);
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->decl_type  = DeclType::Tick;
-  decl_ptr->expr       = steal<Expression>(nodes[0]);
+  decl_ptr->type_expr  = steal<Expression>(nodes[0]);
   decl_ptr->precedence = Language::precedence(Language::Operator::Tick);
 
   assert(nodes[2]->is_identifier());
@@ -775,6 +771,25 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     return AST::Declaration::BuildGenerate(std::forward<NPtrVec &&>(nodes));
   }
 
+  if (tk == "=") {
+    if (nodes[0]->is_declaration()) {
+      // TODO Disallow a := b = c
+      auto decl      = steal<AST::Declaration>(nodes[0]);
+      decl->init_val = steal<AST::Expression>(nodes[2]);
+      return decl;
+    } else {
+      auto binop_ptr = new AST::Binop;
+      binop_ptr->loc = nodes[1]->loc;
+
+      binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
+      binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
+
+      binop_ptr->op         = Language::Operator::Assign;
+      binop_ptr->precedence = Language::precedence(binop_ptr->op);
+      return binop_ptr;
+    }
+  }
+
   auto binop_ptr = new AST::Binop;
   binop_ptr->loc = nodes[1]->loc;
 
@@ -782,13 +797,12 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   binop_ptr->rhs       = steal<AST::Expression>(nodes[2]);
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
-  if (tk == sym) {                                              \
+  if (tk == sym) {                                                             \
     binop_ptr->op = Language::Operator::name;                                  \
     goto end;                                                                  \
   }
 
   LOOKUP_SYMBOL("=>", Rocket)
-  LOOKUP_SYMBOL("=", Assign)
   LOOKUP_SYMBOL(":>", Cast)
   LOOKUP_SYMBOL("->", Arrow)
   LOOKUP_SYMBOL("|=", OrEq)

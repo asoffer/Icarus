@@ -49,7 +49,7 @@ extern SliceType *Slice(Array *a);
   virtual bool is_##checkname() const { return true; }                         \
   BASIC_METHODS
 
-    struct Type {
+struct Type {
 public:
   Type() : llvm_type(nullptr), has_vars(false) {}
   virtual ~Type() {}

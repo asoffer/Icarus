@@ -9,26 +9,32 @@
 
 namespace AST {
 StructLiteral *
-ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc,
-                                            bool has_vars) {
-  auto num = data.ids.size();
+ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
+  bool has_vars = false;
+  auto& arg_vals = reverse_cache[cache_loc];
+
+  auto num = arg_vals.size();
+
   cache_loc->data.ids.reserve(num);
   cache_loc->data.types.reserve(num);
   cache_loc->data.init_vals.reserve(num);
 
-  cache_loc->value.as_type->has_vars = false;
   for (size_t i = 0; i < num; ++i) {
-    auto curr_id   = data.ids[i];
-    auto curr_type = data.types[i];
-    auto curr_init = data.init_vals[i];
+    auto curr_id        = data.ids[i];
+    // auto curr_type      = data.types[i];
+    auto curr_type_expr = data.type_exprs[i];
+    // auto curr_init      = data.init_vals[i];
+
+    auto new_type = curr_type_expr->evaluate(arg_vals).as_type;
 
     cache_loc->data.ids.push_back(curr_id);
-    cache_loc->data.types.push_back(curr_type);
-    cache_loc->data.init_vals.push_back(curr_init);
-    // TODO Can init have a contextual dependence?
+    cache_loc->data.types.push_back(new_type);
+    cache_loc->data.init_vals.push_back(nullptr); // TODO
+    cache_loc->data.type_exprs.push_back(
+        new DummyTypeExpr(curr_type_expr->loc, new_type));
 
-//    cache_loc->value.as_type->has_vars |=
-//        cache_loc->data.types.back()->has_vars;
+    cache_loc->value.as_type->has_vars |=
+        cache_loc->data.types.back()->has_vars;
   }
 
   delete cache_loc->type_scope;
@@ -192,8 +198,15 @@ Node *Declaration::clone(LOOKUP_ARGS) {
     auto decl        = new Declaration;
     decl->identifier = (Identifier *)identifier->CLONE;
     decl->hashtags   = hashtags;
-    decl->decl_type  = decl_type;
-    decl->expr       = (Expression *)expr->CLONE;
+    decl->decl_type = decl_type;
+
+    if (type_expr) {
+      decl->type_expr = (Expression *)type_expr->CLONE;
+    }
+    if (init_val) {
+      decl->init_val = (Expression *)init_val->CLONE;
+    }
+
     return decl;
   }
 }

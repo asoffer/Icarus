@@ -51,7 +51,8 @@ InDecl::~InDecl() {
 
 Declaration::~Declaration() {
   DELETE(identifier);
-  DELETE(expr);
+  DELETE(type_expr);
+  DELETE(init_val);
 }
 
 FunctionLiteral::~FunctionLiteral() {
