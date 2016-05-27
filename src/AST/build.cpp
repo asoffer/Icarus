@@ -30,58 +30,6 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
   }
 }
 
-// Takes ownership of the node
-static void CheckAndClaimDeclaration(AST::Node *&node, AST::StructInternalData &data) {
-  if (node->is_declaration()) {
-    auto decl = (AST::Declaration *)node;
-    switch (decl->decl_type) {
-    case AST::DeclType::Std: {
-      data.ids.push_back(decl->identifier->token);
-      data.types.push_back(nullptr);
-      data.type_exprs.push_back(steal<AST::Expression>(decl->type_expr));
-      data.init_vals.push_back(nullptr);
-    } break;
-    case AST::DeclType::Infer: {
-      data.ids.push_back(decl->identifier->token);
-      data.types.push_back(nullptr);
-      data.type_exprs.push_back(nullptr);
-      data.init_vals.push_back(steal<AST::Expression>(decl->type_expr));
-    } break;
-    case AST::DeclType::Tick: {
-      error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-    } break;
-    }
-  } else if (node->is_binop()) {
-    auto binop = (AST::Binop *)node;
-    if (binop->op == Language::Operator::Assign) {
-      if (!binop->lhs->is_declaration()) {
-        // TODO better error message
-        error_log.log(binop->loc, "Nothing declared here.");
-      } else {
-        auto decl = static_cast<AST::Declaration *>(binop->lhs);
-        if (decl->decl_type == AST::DeclType::Std) {
-          data.ids.push_back(decl->identifier->token);
-          data.types.push_back(nullptr);
-          data.type_exprs.push_back(steal<AST::Expression>(decl->type_expr));
-          data.init_vals.push_back(steal<AST::Expression>(binop->rhs));
-        } else {
-          error_log.log(decl->loc, "Declaration must be either ':' or ':='");
-        }
-      }
-    } else {
-      // TODO better error message here.
-      error_log.log(node->loc, "Each struct member must be defined using "
-                               "a declaration or an initialized declaration.");
-    }
-  } else {
-    // TODO better error message here.
-    error_log.log(node->loc, "Each struct member must be defined using "
-                             "a declaration or an initialized declaration.");
-  }
-  delete node;
-  node = nullptr;
-}
-
 // Input guarantees:
 // [expr] [l_paren] [r_paren]
 //
@@ -106,13 +54,8 @@ namespace AST {
 // Input guarantees:
 // [struct] [l_brace] [statements] [r_brace]
 //
-// Internal checks (checked in CheckAndClaimDeclaration):
-// Each statement is either a declaration using ':' or ':=', or it's an
-// assignment where the left-hand side is a declaration using ':'. That is, we
-// allow only the following:
-//     a := b
-//     a : b
-//     a : b = c
+// Internal checks:
+// Each statement is a valid declaration
 Node *StructLiteral::Build(NPtrVec &&nodes) {
   static size_t anon_struct_counter = 0;
 
@@ -122,7 +65,12 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   struct_lit_ptr->value = Context::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
   for (auto &&n : static_cast<Statements *>(nodes[2])->statements) {
-    CheckAndClaimDeclaration(n, struct_lit_ptr->data);
+    if (n->is_declaration()) {
+      struct_lit_ptr->decls.push_back(steal<Declaration>(n));
+    } else {
+      error_log.log(n->loc,
+                    "Each struct member must be defined using a declaration.");
+    }
   }
 
   return struct_lit_ptr;
@@ -139,18 +87,18 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
                   struct_lit_ptr));
 
   if (nodes[1]->is_declaration()) {
-    CheckAndClaimDeclaration(nodes[1], struct_lit_ptr->params);
+    struct_lit_ptr->params.push_back(steal<Declaration>(nodes[1]));
 
   } else if (nodes[1]->is_comma_list()) {
     auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
     for (auto &&e : expr_vec) {
       AST::Node *n = (AST::Node *)e;
-      CheckAndClaimDeclaration(n, struct_lit_ptr->params);
+      struct_lit_ptr->params.push_back(steal<Declaration>(n));
     }
   }
 
   for (auto &&node : static_cast<Statements *>(nodes[3])->statements) {
-    CheckAndClaimDeclaration(node, struct_lit_ptr->data);
+    struct_lit_ptr->decls.push_back(steal<Declaration>(node));
   }
 
   return struct_lit_ptr;
@@ -290,7 +238,7 @@ Node *For::Build(NPtrVec &&nodes) {
 // [unop] [expression]
 //
 // Internal checks:
-// Operand cannot be a declaration unless it's a tick.
+// Operand cannot be a declaration.
 // Operand cannot be an assignment of any kind.
 Node *Unop::BuildLeft(NPtrVec &&nodes) {
   auto unop_ptr     = new AST::Unop;
@@ -360,9 +308,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   if (unop_ptr->operand->is_declaration()) {
     auto decl = static_cast<Declaration *>(unop_ptr->operand);
-    if (decl->decl_type != DeclType::Tick) {
-      error_log.log(decl->loc, "Invalid use of declaration.");
-    }
+    error_log.log(decl->loc, "Invalid use of declaration.");
   }
 
   return unop_ptr;
@@ -450,12 +396,9 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
   }
 
   if (binop_ptr->rhs->is_declaration()) {
-    auto decl = static_cast<Declaration *>(binop_ptr->rhs);
-    if (decl->decl_type != DeclType::Tick) {
-      error_log.log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
-                                         "declaration other than one declared "
-                                         "with '`'");
-    }
+    error_log.log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
+                                       "declaration other than one declared "
+                                       "with '`'");
   }
 
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
@@ -468,7 +411,7 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
 //
 // Internal checks: (checked in BuildOperator)
 // LHS is not a declaration
-// RHS is not a declaration unless it's a tick
+// RHS is not a declaration
 Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
   return BuildOperator(std::forward<NPtrVec &&>(nodes),
                        Language::Operator::Call, Language::op_b);
@@ -479,7 +422,7 @@ Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
 //
 // Internal checks: (checked in BuildOperator)
 // LHS is not a declaration
-// RHS is not a declaration unless it's a tick
+// RHS is not a declaration
 Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
   return BuildOperator(std::forward<NPtrVec &&>(nodes),
                        Language::Operator::Index, Language::op_b);
@@ -582,38 +525,39 @@ Node *InDecl::Build(NPtrVec &&nodes) {
   return in_decl_ptr;
 }
 
-Node *Declaration::BuildBasic(NPtrVec &&nodes) {
+Node *Declaration::Build(NPtrVec &&nodes) {
   auto op              = ((AST::TokenNode *)(nodes[1]))->op;
   auto decl_ptr        = new Declaration;
   decl_ptr->loc        = nodes[1]->loc;
   decl_ptr->precedence = Language::precedence(op);
-  decl_ptr->type_expr = steal<Expression>(nodes[2]);
-  decl_ptr->decl_type =
-      (op == Language::Operator::Colon) ? DeclType::Std : DeclType::Infer;
+
+  if (op == Language::Operator::Colon) {
+    decl_ptr->type_expr = steal<Expression>(nodes[2]);
+  } else {
+    decl_ptr->init_val  = steal<Expression>(nodes[2]);
+  }
 
   assert(nodes[0]->is_identifier());
-  decl_ptr->identifier = new Identifier(
-      nodes[0]->loc, static_cast<Identifier *>(nodes[0])->token);
+  decl_ptr->identifier = steal<Identifier>(nodes[0]);
 
   Scope::decl_registry_.emplace_back(decl_ptr);
 
   return decl_ptr;
 }
 
-Node *Declaration::BuildGenerate(NPtrVec &&nodes) {
-  auto decl_ptr = new AST::Declaration;
-  Scope::decl_registry_.emplace_back(decl_ptr);
-  decl_ptr->loc        = nodes[1]->loc;
-  decl_ptr->decl_type  = DeclType::Tick;
-  decl_ptr->type_expr  = steal<Expression>(nodes[0]);
-  decl_ptr->precedence = Language::precedence(Language::Operator::Tick);
+Node *Generic::Build(NPtrVec &&nodes) {
+  auto generic        = new Generic;
+  generic->loc        = nodes[1]->loc;
+  generic->test_fn    = steal<Expression>(nodes[0]);
+  generic->precedence = Language::precedence(Language::Operator::Tick);
+
+  // TODO Is registration necessary?
+  // Scope::decl_registry_.emplace_back(decl_ptr);
 
   assert(nodes[2]->is_identifier());
-  decl_ptr->identifier = new Identifier(
-      nodes[2]->loc, static_cast<Identifier *>(nodes[2])->token);
+  generic->identifier = steal<Identifier>(nodes[2]);
 
-
-  return decl_ptr;
+  return generic;
 }
 
 Node *FunctionLiteral::BuildOneLiner(NPtrVec &&nodes) {
@@ -762,13 +706,13 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
 
   } else if (tk == ":" || tk == ":=") {
-    return AST::Declaration::BuildBasic(std::forward<NPtrVec &&>(nodes));
+    return AST::Declaration::Build(std::forward<NPtrVec &&>(nodes));
 
   } else if (tk == "in") {
     return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
 
   } else if (tk == "`") {
-    return AST::Declaration::BuildGenerate(std::forward<NPtrVec &&>(nodes));
+    return AST::Generic::Build(std::forward<NPtrVec &&>(nodes));
   }
 
   if (tk == "=") {

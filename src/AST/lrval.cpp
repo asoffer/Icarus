@@ -62,6 +62,12 @@ void FunctionLiteral::lrvalue_check() {
   if (!input_has_vars) { statements->lrvalue_check(); }
 }
 
+void Generic::lrvalue_check() {
+  lvalue = false;
+  identifier->lrvalue_check();
+  test_fn->lrvalue_check();
+}
+
 void InDecl::lrvalue_check() {
   lvalue = false;
   identifier->lrvalue_check();
@@ -69,7 +75,7 @@ void InDecl::lrvalue_check() {
 }
 
 void Declaration::lrvalue_check() {
-  lvalue = (decl_type == DeclType::Std);
+  lvalue = false;
   identifier->lrvalue_check();
   if (type_expr) { type_expr->lrvalue_check(); }
   if (init_val) { init_val->lrvalue_check(); }

@@ -32,9 +32,9 @@ TokenNode::TokenNode(TokenLocation loc, std::string str_lit)
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(nullptr), value(nullptr) {}
-Declaration::Declaration()
-    : type_expr(nullptr), init_val(nullptr), decl_type(DeclType::Std) {}
-InDecl::InDecl() {}
+Declaration::Declaration() : type_expr(nullptr), init_val(nullptr) {}
+Generic::Generic() : identifier(nullptr), test_fn(nullptr) {}
+InDecl::InDecl() : identifier(nullptr), container(nullptr) {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}
 ChainOp::ChainOp() {}

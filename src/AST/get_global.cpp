@@ -71,6 +71,7 @@ llvm::Constant *Unop::GetGlobal() {
 #define NOT_YET(type)                                                          \
   llvm::Constant *type::GetGlobal() { assert(false && "Not yet implemented"); }
 
+NOT_YET(Generic)
 NOT_YET(InDecl)
 NOT_YET(Declaration)
 NOT_YET(Binop)

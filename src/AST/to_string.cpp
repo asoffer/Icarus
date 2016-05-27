@@ -159,28 +159,21 @@ std::string Identifier::to_string(size_t n) const {
   return ss.str();
 }
 
+std::string Generic::to_string(size_t n) const {
+  return tabs(n) + "<"+ identifier->token + " in>\n" + test_fn->to_string(n + 1);
+}
+
 std::string InDecl::to_string(size_t n) const {
   return tabs(n) + "<"+ identifier->token + " in>\n" + container->to_string(n + 1);
 }
 
 std::string Declaration::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Declaration ";
-  switch (decl_type) {
-  case DeclType::Std: {
-    ss << "(:)";
-  } break;
-  case DeclType::Infer: {
-    ss << "(:=)";
-  } break;
-  case DeclType::Tick: {
-    ss << "(`)";
-  } break;
-  }
+  ss << tabs(n) << "<Declaration " << (IsInferred() ? "(:=)" : "(:)")
+     << TYPE_OR("") << ">\n" << identifier->to_string(n + 1);
 
-  ss << TYPE_OR("") << ">\n" << identifier->to_string(n + 1);
-  if (type_expr) { ss << type_expr->to_string(n + 1); }
-  if (init_val) { ss << init_val->to_string(n + 1); }
+  if (type_expr) { ss << "Type: " << type_expr->to_string(n + 1); }
+  if (init_val) { ss << "Init: " << init_val->to_string(n + 1); }
   return ss.str();
 }
 
@@ -220,14 +213,18 @@ std::string FunctionLiteral::to_string(size_t n) const {
 std::string ParametricStructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<ParametricStruct>\n";
-  for (const auto& id_str: data.ids) { ss << tabs(n + 1) << id_str << "\n"; }
+  for (const auto &d : decls) {
+    ss << tabs(n + 1) << d->identifier->token << "\n";
+  }
 
   return ss.str();
 }
 std::string StructLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Struct>\n";
-  for (const auto& id_str: data.ids) { ss << tabs(n + 1) << id_str << "\n"; }
+  for (const auto &d : decls) {
+    ss << tabs(n + 1) << d->identifier->token << "\n";
+  }
   return ss.str();
 }
 

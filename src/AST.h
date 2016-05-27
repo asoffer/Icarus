@@ -61,6 +61,7 @@ struct Node {
   virtual bool is_terminal() const { return false; }
   virtual bool is_expression() const { return false; }
   virtual bool is_binop() const { return false; }
+  virtual bool is_generic() const { return false; }
   virtual bool is_function_literal() const { return false; }
   virtual bool is_chain_op() const { return false; }
   virtual bool is_case() const { return false; }
@@ -100,6 +101,24 @@ struct Expression : public Node {
   static Node *build(NPtrVec &&nodes);
 
   llvm::Value *llvm_value(Context::Value v);
+
+  // Use these two functions to verify that an identifier can be declared using
+  // these expressions. We pass in a string representing the identifier being
+  // declared to be used in error messages.
+  //
+  // VerifyTypeForDeclaration verifies that the expresison represents a type and
+  // returns the type it represents (or Error if the type is invalid). An
+  // expression could be invalid if it doesn't represent a type or it represnts
+  // void or  parametric struct.
+  Type *VerifyTypeForDeclaration(const std::string &id_tok);
+
+  // VerifyValueForDeclaration verifies that the expression's type can be used
+  // for a declaration. In practice, it is typically used on initial values for
+  // a declaration. That is, when we see "foo := bar", we verify that the type
+  // of bar is valid. This function has the same return characteristics as
+  // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
+  // type is invalid.
+  Type *VerifyValueForDeclaration(const std::string &id_tok);
 
   size_t precedence;
   bool lvalue;
@@ -174,14 +193,22 @@ struct Binop : public Expression {
 
 struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
-  static Node *BuildBasic(NPtrVec &&nodes);
-  static Node *BuildGenerate(NPtrVec &&nodes);
+  static Node *Build(NPtrVec &&nodes);
 
   static Node *AddHashtag(NPtrVec &&nodes);
 
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;
+
+  inline bool IsInferred() const { return !type_expr; }
+  inline bool IsDefaultInitialized() const { return !init_val; }
+  inline bool IsCustomInitialized() const {
+    return init_val && !init_val->is_hole();
+  }
+  inline bool IsUninitialized() const {
+    return init_val && init_val->is_hole();
+  }
 
   std::vector<std::string> hashtags;
   // TODO have a global table of hashtags and store a vector of indexes into
@@ -192,9 +219,16 @@ struct Declaration : public Expression {
     }
     return false;
   }
-
-  DeclType decl_type;
 };
+
+struct Generic : public Expression {
+  EXPR_FNS(Generic, generic);
+  static Node *Build(NPtrVec &&nodes);
+
+  Identifier *identifier;
+  Expression *test_fn;
+};
+
 
 struct InDecl : public Expression {
   EXPR_FNS(InDecl, in_decl);
@@ -202,13 +236,6 @@ struct InDecl : public Expression {
 
   Identifier *identifier;
   Expression *container;
-};
-
-struct StructInternalData {
-  std::vector<std::string> ids;
-  std::vector<Type *> types;
-  std::vector<Expression *> type_exprs;
-  std::vector<Expression *> init_vals;
 };
 
 struct ParametricStructLiteral : public Expression {
@@ -219,7 +246,7 @@ struct ParametricStructLiteral : public Expression {
   Context::Value CreateOrGetCached(const Ctx& arg_vals);
 
   Scope *type_scope;
-  StructInternalData data, params;
+  std::vector<Declaration *> decls, params;
 
   std::map<Ctx, StructLiteral *> cache;
   std::map<StructLiteral *, Ctx> reverse_cache;
@@ -233,7 +260,7 @@ struct StructLiteral : public Expression {
 
   Scope *type_scope;
 
-  StructInternalData data;
+  std::vector<Declaration *> decls;
 };
 
 struct Statements : public Node {

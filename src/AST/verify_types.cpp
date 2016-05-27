@@ -307,14 +307,15 @@ void StructLiteral::FlushOut() {
   auto tval = static_cast<Structure *>(value.as_type);
   if (!tval->field_num_to_name.empty()) { return; }
 
-  for (size_t i = 0; i < data.ids.size(); ++i) {
-    if (data.init_vals[i]) { data.init_vals[i]->verify_types(); }
+  for (size_t i = 0; i < decls.size(); ++i) {
+    decls[i]->verify_types();
 
     Ctx ctx;
-    tval->insert_field(data.ids[i], data.type_exprs[i]
-                                        ? data.type_exprs[i]->evaluate(ctx).as_type
-                                        : data.init_vals[i]->type,
-                       data.init_vals[i]);
+    tval->insert_field(decls[i]->identifier->token,
+                       decls[i]->type_expr
+                           ? decls[i]->type_expr->evaluate(ctx).as_type
+                           : decls[i]->init_val->type,
+                       decls[i]->init_val);
   }
 }
 
@@ -1042,6 +1043,38 @@ void ChainOp::verify_types() {
   }
 }
 
+void Generic::verify_types() {
+  STARTING_CHECK;
+  test_fn->verify_types();
+
+  bool has_err = false;
+
+  if (!test_fn->type->is_function()) {
+    // TODO Need a way better
+    error_log.log(loc,
+                  "Cannot generate a type where the tester is not a function");
+    type = Error;
+    return;
+  }
+
+  auto test_func_type = (Function *)(test_fn->type);
+  if (test_func_type->output != Bool) {
+    // TODO What about implicitly cast-able to bool via a user-defined cast?
+    error_log.log(loc, "Test function must return a bool");
+    type = Error;
+    has_err = true;
+  }
+
+  if (test_func_type->input != Type_) {
+    // TODO will this always be true?
+    error_log.log(loc, "Test function must take a type");
+    type = Error;
+    has_err = true;
+  }
+
+  if (!has_err) { type = Type_; }
+}
+
 void InDecl::verify_types() {
   STARTING_CHECK;
   container->verify_types();
@@ -1074,177 +1107,224 @@ void InDecl::verify_types() {
   identifier->type = type;
 }
 
+Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
+  assert(type && type != Unknown);
+
+  if (type != Type_) {
+    error_log.log(loc, "Identifier \"" + id_tok +
+                           "\" being declared with an invalid type.");
+    return Error;
+  } else {
+    Ctx ctx;
+    auto t = evaluate(ctx).as_type;
+    if (t == Void) {
+      error_log.log(loc, "Identifier being declared as having void type.");
+      return Error;
+    } else if (t->is_parametric_struct()) {
+      // TODO is this actually what we want?
+      error_log.log(loc,
+                    "Identifier being declared as having a parametric type.");
+      return Error;
+    } else {
+      return t;
+    }
+  }
+}
+
+// TODO refactor this and VerifyTypeForDeclaration because they have extreme
+// commonalities.
+Type *Expression::VerifyValueForDeclaration(const std::string &id_tok) {
+  assert(type && type != Unknown);
+
+  if (type == Void) {
+    error_log.log(loc, "Identifier being declared as having void type.");
+    return Error;
+
+  } else if (type->is_parametric_struct()) {
+    // TODO is this actually what we want?
+    error_log.log(loc,
+                  "Identifier being declared as having a parametric type.");
+    return Error;
+  }
+  return type;
+}
+
+static void VerifyDeclarationForMagicPrint(Type *type, TokenLocation loc) {
+  if (!type->is_function()) {
+    error_log.log(loc, "Print must be defined to be a function.");
+    return;
+  }
+
+  auto fn_type = (Function *)type;
+  if (!fn_type->input->is_struct()) {
+    error_log.log(loc, "Cannot define print function for " +
+                           fn_type->input->to_string());
+  }
+
+  if (fn_type->output != Void) {
+    error_log.log(loc, "print function must return void");
+  }
+}
+
+static void VerifyDeclarationForMagicAssign(Type *type, TokenLocation loc) {
+  if (!type->is_function()) {
+    error_log.log(loc, "Assign must be defined to be a function");
+    return;
+  }
+
+  auto fn_type = (Function *)type;
+  if (!fn_type->input->is_tuple()) {
+    error_log.log(loc, "Cannot define assign function for " +
+                           fn_type->input->to_string());
+  } else {
+    auto in = (Tuple *)(fn_type->input);
+    if (in->entries.size() != 2) {
+      error_log.log(loc, "Assignment must be a binary operator, but " +
+                             std::to_string(in->entries.size()) + "argument" +
+                             (in->entries.size() != 1 ? "s" : "") + " given.");
+    }
+    // TODO more checking.
+  }
+
+  if (fn_type->output != Void) {
+    error_log.log(loc, "assignment must return void");
+  }
+}
+
+static void VerifyDeclarationForMagicDestroy(Type *type, TokenLocation loc) {
+  if (!type->is_function()) {
+    error_log.log(loc, "Destructor must be defined to be a function.");
+    return;
+  }
+
+  auto fn_type = (Function *)type;
+  if (!fn_type->input->is_pointer()) {
+    error_log.log(loc, "Destructor must take one pointer argument.");
+
+  } else if (!((Pointer *)(fn_type->input))->pointee->is_struct()) {
+    error_log.log(loc, "Destructor must take a pointer to a struct.");
+  }
+
+  if (fn_type->output != Void) {
+    error_log.log(loc, "Destructor must return void");
+  }
+}
+
 // TODO Declaration is responsible for the type verification of it's identifier?
+// TODO rewrite/simplify
 void Declaration::verify_types() {
   STARTING_CHECK;
   if (type_expr) { type_expr->verify_types(); }
   if (init_val) { init_val->verify_types(); }
 
+  // TODO figure out what's going on with this.
   scope_->ordered_decls_.push_back(this);
 
-  if (type_expr->type == Void) {
-    type = Error;
-    error_log.log(loc, "Void types cannot be assigned.");
-    return;
-  }
+  // There are four cases for the form of a declaration.
+  //   1. I: T
+  //   2. I := V
+  //   3. I: T = V
+  //   4. I: T = --
+  //
+  // Here 'I' stands for "identifier". This is the identifier being declared.
+  // 'T' stands for "type", the type of the identifier being declared.
+  // 'V' stands for "value", the initial value of the identifier being declared.
 
-  switch (decl_type) {
-  case DeclType::Std: {
-    Ctx ctx;
-    type = type_expr->evaluate(ctx).as_type;
-    if (type->is_struct() /* TODO && !type->has_vars */) {
-      static_cast<Structure *>(type)->ast_expression->FlushOut();
-    }
-  } break;
-  case DeclType::Infer: {
-    type = type_expr->type;
+  if (IsDefaultInitialized()) {
+    type = type_expr->VerifyTypeForDeclaration(identifier->token);
 
-    if (type == Type_) {
-      if (type_expr->is_struct_literal()) {
-        assert(type_expr->value.as_type && type_expr->value.as_type->is_struct());
+  } else if (IsInferred()) {
+    type = init_val->VerifyValueForDeclaration(identifier->token);
 
-        // TODO mangle the name correctly
-        static_cast<Structure *>(type_expr->value.as_type)
-            ->set_name(identifier->token);
-
-      } else if (type_expr->is_parametric_struct_literal()) {
-        assert(type_expr->value.as_type &&
-               type_expr->value.as_type->is_parametric_struct());
-        // TODO mangle the name correctly
-        static_cast<ParametricStructure *>(type_expr->value.as_type)
-            ->set_name(identifier->token);
-
-      } else if (type_expr->is_enum_literal()) {
-        Ctx ctx;
-        type_expr->evaluate(ctx); // TODO do we need to evaluate here?
-        assert(type_expr->value.as_type);
-        // TODO mangle name properly.
-        static_cast<Enumeration *>(type_expr->value.as_type)->bound_name =
-            identifier->token;
-      }
-
-      identifier->value = type_expr->value;
-
-    } else if (type_expr->is_function_literal()) {
-      identifier->verify_types();
-      identifier->value = Context::Value(type_expr);
-    }
-
-  } break;
-  case DeclType::Tick: {
-    if (!type_expr->type->is_function()) {
-      // TODO Need a way better
+  } else if (IsCustomInitialized()) {
+    type   = type_expr->VerifyTypeForDeclaration(identifier->token);
+    auto t = init_val->VerifyValueForDeclaration(identifier->token);
+    if (type == Error) { type = t; }
+    if (type != t) {
       error_log.log(
-          loc, "Cannot generate a type where the tester is not a function");
-      type = Error;
-      return;
+          loc, "Initial value does not have a type that matches declaration.");
     }
 
-    auto test_func = static_cast<Function *>(type_expr->type);
-    if (test_func->output != Bool) {
-      // TODO What about implicitly cast-able to bool via a user-defined cast?
-      error_log.log(loc, "Test function must return a bool");
-      type = Error;
-      return;
-    }
+  } else if (IsUninitialized()) {
+    type   = type_expr->VerifyTypeForDeclaration(identifier->token);
+    init_val->type = type;
 
-    type = Type_;
-
-    // TODO can't continue with type verification immediately
-
-  } break;
+  } else {
+    assert(false && "Unreachable");
   }
 
+
+  if (type == Error) { return; }
+
+  if (type->is_struct()) { ((Structure *)type)->ast_expression->FlushOut(); }
+
+  if (type == Type_ && IsInferred()) {
+    if (init_val->is_struct_literal()) {
+      assert(init_val->value.as_type && init_val->value.as_type->is_struct());
+      // Declaration looks like
+      //
+      // foo := struct { ... }
+
+      // Set the name of the struct.
+      // TODO mangle the name correctly (Where should this be done?)
+      ((Structure *)(init_val->value.as_type))->set_name(identifier->token);
+
+    } else if (init_val->is_parametric_struct_literal()) {
+      // Declarations look like
+      // 
+      // foo := struct (...) { ... }
+      assert(init_val->value.as_type &&
+             init_val->value.as_type->is_parametric_struct());
+
+      // Set the name of the parametric struct.
+      // TODO mangle the name correctly (Where should this be done?)
+      ((ParametricStructure *)(init_val->value.as_type))
+          ->set_name(identifier->token);
+
+    } else if (init_val->is_enum_literal()) {
+      // TODO this evaluation should just be done when it's built.
+      Ctx ctx;
+      init_val->evaluate(ctx); // TODO do we need to evaluate here?
+      assert(init_val->value.as_type);
+
+      // Set the name of the parametric struct.
+      // TODO mangle the name correctly (Where should this be done?)
+      ((Enumeration *)(init_val->value.as_type))->bound_name =
+          identifier->token;
+    }
+
+    // TODO If the identifier's type is quantum? This shouldn't be allowed
+    // because we only allow quantum types for functions, but perhaps this is
+    // something we need to be concerned with.
+    identifier->value = init_val->value;
+  }
+
+  // TODO determine type of null. In particular, log an error for
+  //
+  // foo := null
+  //
+  // and set the type of the null terminal for something like
+  // 
+  // foo: T = null
+  //
+  // (If T is not a pointer, we should log an error in that case too).
+
+
+
+
+  // If you get here, you can be assured that the type is valid. So we add it to
+  // the identifier.
   identifier->AppendType(type);
 
   if (identifier->token == "__print__") {
-    if (!type->is_function()) {
-      error_log.log(loc, "Print must be defined to be a function.");
-      return;
-    }
+    VerifyDeclarationForMagicPrint(type, loc);
 
-    bool error_raised = false;
-    auto fn_type = (Function *)type;
-    if (!fn_type->input->is_struct()) {
-      error_log.log(loc, "Cannot define print function for " +
-                             fn_type->input->to_string());
-      error_raised = true;
-    }
-
-    if (fn_type->output != Void) {
-      error_log.log(loc, "print function must return void");
-      error_raised = true;
-    }
-
-    if (error_raised) { return; }
   } else if (identifier->token == "__assign__") {
-    if (!type->is_function()) {
-      error_log.log(loc, "Assign must be defined to be a function");
-      return;
-    }
-
-    bool error_raised = false;
-    auto fn_type = (Function *)type;
-    if (!fn_type->input->is_tuple()) {
-      error_log.log(loc, "Cannot define assign function for " +
-                             fn_type->input->to_string());
-      error_raised = true;
-    } else {
-      auto in = static_cast<Tuple *>(fn_type->input);
-      if (in->entries.size() != 2) {
-        error_log.log(loc, "Assignment must be a binary operator, but " +
-                               std::to_string(in->entries.size()) + "argument" +
-                               (in->entries.size() != 1 ? "s" : "") +
-                               " given.");
-        error_raised = true;
-      }
-      // TODO more checking.
-    }
-
-    if (fn_type->output != Void) {
-      error_log.log(loc, "assignment must return void");
-      error_raised = true;
-    }
-
-    if (error_raised) { return; }
+    VerifyDeclarationForMagicAssign(type, loc);
 
   } else if (identifier->token == "__destroy__") {
-    if (!type->is_function()) {
-      error_log.log(loc, "Destructor must be defined to be a function.");
-      return;
-    }
-
-    bool error_raised = false;
-    auto fn_type = (Function *)type;
-    if (!fn_type->input->is_pointer()) {
-      error_log.log(loc, "Destructor must take one pointer argument.");
-      error_raised = true;
-    } else {
-      auto ptee = static_cast<Pointer *>(fn_type->input)->pointee;
-      if (!ptee->is_struct()) {
-        error_log.log(loc, "Destructor must take a pointer to a struct.");
-        error_raised = true;
-      }
-    }
-
-    if (fn_type->output != Void) {
-      error_log.log(loc, "Destructor must return void");
-      error_raised = true;
-    }
-
-    if (error_raised) { return; }
-  }
-
-  // TODO if RHS is not a type give a nice message instead of segfaulting
-
-  if (type_expr->is_terminal()) {
-    auto term = (Terminal *)type_expr;
-    if (term->terminal_type == Language::Terminal::Null) {
-      error_log.log(loc, "Cannot infer the type of `null`.");
-    }
-  }
-
-  assert(type && "decl expr is nullptr");
+    VerifyDeclarationForMagicDestroy(type, loc);
+  } 
 }
 
 void ArrayType::verify_types() {

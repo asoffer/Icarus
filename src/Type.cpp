@@ -79,7 +79,10 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     }
 
     builder.CreateCall(assign_fn, {lhs_ptr, rhs_len, rhs_ptr});
+
   } else if (lhs_type->is_function()) {
+    rhs->dump();
+    lhs_ptr->dump();
     builder.CreateStore(rhs, lhs_ptr);
 
   } else {

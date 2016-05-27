@@ -92,29 +92,31 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   ss << param_struct->bound_name << "(";
 
   Type *parameter_type;
-  if (params.type_exprs[0]) {
+  if (params[0]->type_expr) {
     Ctx ctx;
-    parameter_type = params.type_exprs[0]->evaluate(ctx).as_type;
+    parameter_type = params[0]->type_expr->evaluate(ctx).as_type;
   } else {
-    assert(params.init_vals[0]);
-    params.init_vals[0]->verify_types();
-    parameter_type = params.init_vals[0]->type;
+    assert(params[0]->init_val);
+    params[0]->init_val->verify_types();
+    parameter_type = params[0]->init_val->type;
   }
 
-  AppendValueToStream(parameter_type, arg_vals.at(params.ids[0]), ss);
+  AppendValueToStream(parameter_type, arg_vals.at(params[0]->identifier->token),
+                      ss);
 
   for (size_t i = 1; i < num_args; ++i) {
-    if (params.type_exprs[i]) {
+    if (params[0]->type_expr) {
       Ctx ctx;
-      parameter_type = params.type_exprs[i]->evaluate(ctx).as_type;
+      parameter_type = params[i]->type_expr->evaluate(ctx).as_type;
     } else {
-      assert(params.init_vals[i]);
-      params.init_vals[i]->verify_types();
-      parameter_type = params.init_vals[i]->type;
+      assert(params[i]->init_val);
+      params[i]->init_val->verify_types();
+      parameter_type = params[i]->init_val->type;
     }
 
     ss << ", ";
-    AppendValueToStream(parameter_type, arg_vals.at(params.ids[0]), ss);
+    AppendValueToStream(parameter_type,
+                        arg_vals.at(params[0]->identifier->token), ss);
   }
   ss << ")";
 
@@ -398,19 +400,27 @@ Context::Value Case::evaluate(Ctx& ctx) {
   assert(false);
 }
 
-Context::Value ParametricStructLiteral::evaluate(Ctx& ctx) { return value; }
-Context::Value StructLiteral::evaluate(Ctx& ctx) { return value; }
-Context::Value InDecl::evaluate(Ctx& ctx) { return nullptr; }
+Context::Value ParametricStructLiteral::evaluate(Ctx &ctx) { return value; }
+Context::Value StructLiteral::evaluate(Ctx &ctx) { return value; }
+Context::Value InDecl::evaluate(Ctx &ctx) { return nullptr; }
 
-Context::Value Declaration::evaluate(Ctx& ctx) {
-  switch (decl_type) {
-  case DeclType::Infer: {
-    if (type_expr->type->is_function()) {
-      identifier->value = Context::Value(type_expr);
+Context::Value Generic::evaluate(Ctx &ctx) {
+  // Being asked to evaluate a tick, is just being asked to figure out what type
+  // it must represent from the available information. There is very little
+  // information here, since it's a generic function, so we simply bind a type
+  // variable and return it.
+  identifier->value = Context::Value(TypeVar(identifier, test_fn));
+  return identifier->value;
+}
+
+Context::Value Declaration::evaluate(Ctx &ctx) {
+  if (IsInferred()) {
+    if (init_val->type->is_function()) {
+      identifier->value = Context::Value(init_val);
     } else {
-      identifier->value = type_expr->evaluate(ctx);
+      identifier->value = init_val->evaluate(ctx);
 
-      if (type_expr->is_struct_literal()) {
+      if (init_val->is_struct_literal()) {
         if (identifier->value.as_type->is_struct()) {
           static_cast<Structure *>(identifier->value.as_type)
               ->set_name(identifier->token);
@@ -421,31 +431,20 @@ Context::Value Declaration::evaluate(Ctx& ctx) {
           assert(false);
         }
 
-      } else if (type_expr->is_enum_literal()) {
+      } else if (init_val->is_enum_literal()) {
         assert(identifier->value.as_type->is_enum());
         static_cast<Enumeration *>(identifier->value.as_type)->bound_name =
             identifier->token;
       }
     }
-  } break;
-  case DeclType::Std: {
+  } else {
     if (type_expr->type == Type_) {
       identifier->value = Context::Value(TypeVar(identifier));
     } else if (type_expr->type->is_type_variable()) {
       // TODO Should we just skip this?
     } else { /* There's nothing to do */
     }
-  } break;
-  case DeclType::Tick: {
-    // Being asked to evaluate a tick, is just being asked to figure out what
-    // type it must represent from the available information. There is very
-    // little information here, since it's a generic function, so we simply bind
-    // a type variable and return it.
-    identifier->value = Context::Value(TypeVar(identifier, type_expr));
-    return identifier->value;
   }
-  }
-
   return nullptr;
 }
 
@@ -536,8 +535,8 @@ Context::Value Binop::evaluate(Ctx& ctx) {
         // verified this.
         const auto &elems = static_cast<ChainOp*>(rhs)->exprs;
         for (size_t i = 0; i < elems.size(); ++i) {
-          auto evaled_elem                             = elems[i]->evaluate(ctx);
-          param_struct_args[struct_lit->params.ids[i]] = evaled_elem;
+          auto evaled_elem = elems[i]->evaluate(ctx);
+          param_struct_args[struct_lit->params[i]->identifier->token] = evaled_elem;
           if (debug::parametric_struct) {
             std::cerr << "   " << arg_val_counter++ << ". "
                       << *evaled_elem.as_type << std::endl;
@@ -545,7 +544,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
         }
       } else {
         auto evaled_rhs = rhs->evaluate(ctx);
-        param_struct_args[struct_lit->params.ids[0]] = rhs->evaluate(ctx);
+        param_struct_args[struct_lit->params[0]->identifier->token] = rhs->evaluate(ctx);
         arg_vals.push_back(evaled_rhs);
         if (debug::parametric_struct) {
           std::cerr << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type

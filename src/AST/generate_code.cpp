@@ -964,53 +964,46 @@ llvm::Value *FunctionLiteral::generate_code() {
   return llvm_fn;
 }
 
+llvm::Value *Generic::generate_code() { assert(false); }
 llvm::Value *InDecl::generate_code() { assert(false); }
 
 llvm::Value *Declaration::generate_code() {
-  // In the case of something like
-  // foo: [10; char], an actual allocation needs to occur.
-  // TODO maybe this should be moved into the scope?
-  // Or maybe declarations in scope should be moved here?
-  if (decl_type == DeclType::Std && type->is_array() && !type_expr->is_dummy()) {
-    // TODO uninitialize previous value
-    assert(type_expr->is_array_type() && "Not array type");
+  if (time() == Time::compile) { return nullptr; }
 
-    auto len_expr = ((ArrayType *)type_expr)->length;
-    if (len_expr->time() & Time::run) {
-      // TODO have a Hole type primitive.
-      if (len_expr->is_terminal() &&
-          static_cast<Terminal *>(len_expr)->terminal_type ==
-              Language::Terminal::Hole) {
-        return nullptr;
-      }
+  if (IsCustomInitialized() && type->is_function()) {
+    auto fn_type      = (Function *)type;
+    auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
+    auto mangled_name = Mangle(fn_type, identifier);
 
-      auto len = len_expr->generate_code();
-      ((Array *)type)->initialize_literal(identifier->alloc, len);
+    if (init_val->is_function_literal()) {
+      auto func            = (FunctionLiteral *)init_val;
+      func->fn_scope->name = identifier->token;
+
+      func->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+          mangled_name, llvm_fn_type);
+
+    } else if (init_val->is_binop()) {
+      assert(((Binop *)init_val)->op == Language::Operator::Mul);
+      auto binop   = (Binop *)init_val;
+      auto lhs_val = binop->lhs->generate_code();
+      auto rhs_val = binop->rhs->generate_code();
+
+      return FunctionComposition(mangled_name, lhs_val, rhs_val, fn_type);
     }
+
+    llvm::Value *val = init_val->generate_code();
+    assert(val);
+    val->setName(mangled_name);
+
+  } else if (!IsDefaultInitialized() && !IsUninitialized()) {
+    llvm::Value *var = identifier->generate_lvalue();
+    llvm::Value *val = init_val->generate_code();
+
+    assert(var && val);
+
+    Type::CallAssignment(scope_, identifier->type, init_val->type, var, val);
   }
-
-  if (init_val && !init_val->is_hole()) {
-    Type::CallAssignment(scope_, type, init_val->type, identifier->alloc,
-                         init_val->generate_code());
-  }
-
-  if (decl_type == DeclType::Std) { return nullptr; }
-
-  if (type->time() == Time::compile) {
-    if (identifier->type->is_function() && decl_type == DeclType::Infer &&
-        type_expr->is_function_literal()) {
-      auto fn_expr = (FunctionLiteral *)type_expr;
-      for (auto &gen : fn_expr->cache) {
-        gen.second->fn_scope->name = identifier->token;
-      }
-    }
-    return nullptr;
-  }
-  // For the most part, declarations are preallocated at the beginning
-  // of each scope, so there's no need to do anything if a heap allocation
-  // isn't required.
-
-  return generate_assignment_code(identifier, type_expr);
+  return nullptr;
 }
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified

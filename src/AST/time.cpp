@@ -56,6 +56,12 @@ Time::Eval Terminal::determine_time() {
 
 Time::Eval Identifier::determine_time() { return time_ = type->time(); }
 
+Time::Eval Generic::determine_time() {
+  // TODO is this right?
+  test_fn->determine_time();
+  return time_ = identifier->determine_time();
+}
+
 Time::Eval InDecl::determine_time() {
   container->determine_time();
   return time_ = identifier->determine_time();
@@ -120,10 +126,7 @@ Time::Eval ParametricStructLiteral::determine_time() {
 
 Time::Eval StructLiteral::determine_time() {
   time_ = Time::either;
-  for (auto e : data.init_vals) {
-    if (!e) { continue; }
-    time_ |= e->determine_time();
-  }
+  for (auto d : decls) { time_ |= d->determine_time(); }
   return time_;
 }
 

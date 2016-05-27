@@ -44,6 +44,11 @@ Statements::~Statements() {
   for (auto node : statements) DELETE(node);
 }
 
+Generic::~Generic() {
+  DELETE(identifier);
+  DELETE(test_fn);
+}
+
 InDecl::~InDecl() {
   DELETE(identifier);
   DELETE(container);
@@ -80,13 +85,12 @@ For::~For() {
 }
 
 ParametricStructLiteral::~ParametricStructLiteral() {
-  for (auto ptr : data.types) DELETE(ptr);
-  for (auto ptr : data.init_vals) DELETE(ptr);
+  for (auto d : decls) DELETE(d);
+  for (auto p : params) DELETE(p);
   DELETE(type_scope);
 }
 StructLiteral::~StructLiteral() {
-  for (auto ptr : data.types) DELETE(ptr);
-  for (auto ptr : data.init_vals) DELETE(ptr);
+  for (auto d : decls) DELETE(d);
   DELETE(type_scope);
 }
 

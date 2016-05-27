@@ -130,19 +130,18 @@ void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
 
   for (auto decl_ptr : ordered_decls_) {
-    auto decl_id   = decl_ptr->identifier;
-    auto decl_type = decl_id->type;
+    auto decl_id = decl_ptr->identifier;
 
-    if (decl_type->time() == Time::compile) continue;
-    if (!decl_type->stores_data()) continue;
+    if (decl_ptr->type->time() == Time::compile) continue;
+    if (!decl_ptr->type->stores_data()) continue;
 
-    // if (decl_type->is_array()) {
-    //   auto array_dim = static_cast<Array*>(decl_type)->dimension;
+    // if (decl_ptr->type->is_array()) {
+    //   auto array_dim = static_cast<Array*>(decl_ptr->type)->dimension;
     //   std::vector<llvm::Value*> init_args(array_dim + 1,
     //   data::const_uint(0));
     //   init_args[0] = decl_id->alloc;
     //   // TODO
-    //   // auto array_type = static_cast<Array*>(decl_type);
+    //   // auto array_type = static_cast<Array*>(decl_ptr->type);
     //   // builder.CreateCall(array_type->initialize(), init_args);
     //   continue;
 
@@ -151,7 +150,7 @@ void BlockScope::initialize() {
         (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
       continue;
     }
-    decl_type->call_init(decl_id->alloc);
+    decl_ptr->type->call_init(decl_id->alloc);
     // }
   }
 }
@@ -356,24 +355,24 @@ void FnScope::allocate(Scope* scope) {
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
-    auto decl_type = decl_id->type;
 
-    if (decl_id->is_arg && decl_type->is_big()) {
+    if (decl_id->is_arg && decl_ptr->type->is_big()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }
 
-    if (decl_type->time() == Time::compile) {
+    if (decl_ptr->type->time() == Time::compile) {
       // TODO Set the types name
       continue;
     }
 
-    if (decl_type->is_quantum()) {
+    if (decl_ptr->type->is_quantum()) {
+      // TODO can this even happen?
       decl_id->alloc = nullptr;
       continue;
     }
 
-    decl_id->alloc = decl_type->allocate();
+    decl_id->alloc = decl_ptr->type->allocate();
     decl_id->alloc->setName(decl_ptr->identifier->token);
   }
 }

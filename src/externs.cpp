@@ -267,8 +267,8 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   } else if (expr->is_identifier()) {
     auto id = (AST::Identifier *)expr;
     if (id->decls.size() == 1) {
-      assert(id->decls[0]->decl_type == AST::DeclType::Infer);
-      return GetFunctionLiteral(id->decls[0]->type_expr);
+      assert(id->decls[0]->IsInferred());
+      return GetFunctionLiteral(id->decls[0]->init_val);
     } else {
       assert(false && "TODO");
     }

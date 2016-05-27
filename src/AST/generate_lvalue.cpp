@@ -25,6 +25,7 @@ llvm::Value *ArrayLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *Terminal::generate_lvalue() { return nullptr; }
 llvm::Value *FunctionLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *Case::generate_lvalue() { return nullptr; }
+llvm::Value *Generic::generate_lvalue() { return nullptr; }
 llvm::Value *InDecl::generate_lvalue() { return nullptr; }
 llvm::Value *Declaration::generate_lvalue() { return nullptr; }
 llvm::Value *StructLiteral::generate_lvalue() { return nullptr; }

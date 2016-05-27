@@ -256,20 +256,17 @@ int main(int argc, char *argv[]) {
               /* Initializer = */ 0, // might be specified below
               /*        Name = */ id->token);
 
-          switch (decl->decl_type) {
-          case AST::DeclType::Std: {
-            gvar->setInitializer(type->InitialValue());
-          } break;
-          case AST::DeclType::Infer: {
+          if (decl->IsInferred()) {
             // TODO meld this into GetGlobal
             // decl->evaluate();
 
-            auto global_val = decl->type_expr->GetGlobal();
+            auto global_val = decl->init_val->GetGlobal();
             assert(llvm::isa<llvm::Constant>(global_val) &&
                    "Value is not a constant");
             gvar->setInitializer(global_val);
-          } break;
-          default: assert(false);
+
+          } else {
+            gvar->setInitializer(type->InitialValue());
           }
 
           id->alloc = gvar;

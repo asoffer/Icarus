@@ -2,12 +2,6 @@
 #include "Scope.h"
 #endif
 
-#define ITERATE_OR_SKIP(container)                                             \
-  for (auto ptr : container) {                                                 \
-    if (!ptr) { continue; }                                                    \
-    ptr->join_identifiers();                                                   \
-  }
-
 void set_or_recurse(AST::Expression *&eptr) {
   // TODO What happens to the line number?
   if (eptr->is_identifier()) {
@@ -85,6 +79,11 @@ void ArrayType::join_identifiers(bool) {
   set_or_recurse(data_type);
 }
 
+void Generic::join_identifiers(bool is_arg) {
+  identifier = CurrentScope()->identifier(identifier);
+  set_or_recurse(test_fn);
+}
+
 void InDecl::join_identifiers(bool is_arg) {
   identifier = CurrentScope()->identifier(identifier);
   set_or_recurse(container);
@@ -135,20 +134,16 @@ void FunctionLiteral::join_identifiers(bool is_arg) {
 
 void ParametricStructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
-  ITERATE_OR_SKIP(data.type_exprs);
-  ITERATE_OR_SKIP(data.init_vals);
-  ITERATE_OR_SKIP(params.type_exprs);
-  ITERATE_OR_SKIP(params.init_vals);
+  for (auto p : params) { p->join_identifiers(true); }
+  for (auto d : decls) { d->join_identifiers(); }
   Scope::Stack.pop();
 }
+
 void StructLiteral::join_identifiers(bool) {
   Scope::Stack.push(type_scope);
-  ITERATE_OR_SKIP(data.type_exprs);
-  ITERATE_OR_SKIP(data.init_vals);
+  for (auto d : decls) { d->join_identifiers(); }
   Scope::Stack.pop();
 }
 
 void EnumLiteral::join_identifiers(bool) {}
 } // namespace AST
-
-#undef ITERATE_OR_SKIP

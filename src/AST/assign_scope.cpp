@@ -86,6 +86,22 @@ void Binop::assign_scope() {
   if (rhs) { rhs->assign_scope(); }
 }
 
+void Generic::assign_scope() {
+  scope_ = CurrentScope();
+  // TODO this only works if they're in identical scopes. If there's a parent
+  // scope relationship, we fail.
+  auto iter = scope_->ids_.find(identifier->token);
+  if (iter == scope_->ids_.end()) {
+    scope_->ids_[identifier->token] = identifier;
+  }
+
+  // TODO Shouldn't we register this declaration?
+  // scope_->ids_[identifier->token]->decls.push_back(this);
+
+  identifier->assign_scope();
+  test_fn->assign_scope();
+}
+
 void InDecl::assign_scope() {
   scope_ = CurrentScope();
   // TODO this only works if they're in identical scopes. If there's a parent
@@ -150,10 +166,8 @@ void ParametricStructLiteral::assign_scope() {
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
-  ITERATE_OR_SKIP(data.type_exprs)
-  ITERATE_OR_SKIP(data.init_vals)
-  ITERATE_OR_SKIP(params.type_exprs)
-  ITERATE_OR_SKIP(params.init_vals)
+  for (auto p : params) { p->assign_scope(); }
+  for (auto d : decls) { d->assign_scope(); }
   Scope::Stack.pop();
 }
 
@@ -162,8 +176,7 @@ void StructLiteral::assign_scope() {
   type_scope->set_parent(CurrentScope());
 
   Scope::Stack.push(type_scope);
-  ITERATE_OR_SKIP(data.type_exprs)
-  ITERATE_OR_SKIP(data.init_vals)
+  for (auto d : decls) { d->assign_scope(); }
   Scope::Stack.pop();
 }
 

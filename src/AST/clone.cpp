@@ -10,6 +10,7 @@
 namespace AST {
 StructLiteral *
 ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
+  /*
   bool has_vars = false;
   auto& arg_vals = reverse_cache[cache_loc];
 
@@ -48,6 +49,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());
   static_cast<Structure *>(cache_loc->value.as_type)->creator = this;
+  */
   return cache_loc;
 }
 
@@ -177,6 +179,20 @@ Node *Access::clone(LOOKUP_ARGS) {
   return access_node;
 }
 
+
+Node *Generic::clone(LOOKUP_ARGS) {
+  for (size_t i = 0; i < num_entries; ++i) {
+    if (identifier == lookup_key[i]->identifier) {
+      return new DummyTypeExpr(loc, lookup_val[i]);
+    }
+  }
+
+  auto generic        = new Generic;
+  generic->identifier = (Identifier *)identifier->CLONE;
+  generic->test_fn    = (Expression *)test_fn->CLONE;
+  return generic;
+}
+
 Node *InDecl::clone(LOOKUP_ARGS) {
   auto in_decl        = new InDecl;
   in_decl->identifier = (Identifier *)identifier->CLONE;
@@ -184,31 +200,15 @@ Node *InDecl::clone(LOOKUP_ARGS) {
   return in_decl;
 }
 
-Node *Declaration::clone(LOOKUP_ARGS) { 
-  if (decl_type == DeclType::Tick) {
-    for (size_t i = 0; i < num_entries; ++i) {
-      if (identifier == lookup_key[i]->identifier) {
-        return new DummyTypeExpr(loc, lookup_val[i]);
-      }
-    }
+Node *Declaration::clone(LOOKUP_ARGS) {
+  auto decl        = new Declaration;
+  decl->identifier = (Identifier *)identifier->CLONE;
+  decl->hashtags   = hashtags;
 
-    assert(false);
+  if (type_expr) { decl->type_expr = (Expression *)type_expr->CLONE; }
+  if (init_val) { decl->init_val = (Expression *)init_val->CLONE; }
 
-  } else {
-    auto decl        = new Declaration;
-    decl->identifier = (Identifier *)identifier->CLONE;
-    decl->hashtags   = hashtags;
-    decl->decl_type = decl_type;
-
-    if (type_expr) {
-      decl->type_expr = (Expression *)type_expr->CLONE;
-    }
-    if (init_val) {
-      decl->init_val = (Expression *)init_val->CLONE;
-    }
-
-    return decl;
-  }
+  return decl;
 }
 
 Node *Identifier::clone(LOOKUP_ARGS) {

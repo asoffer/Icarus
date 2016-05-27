@@ -27,8 +27,3 @@ enum class Operator {
 #undef OPERATOR_MACRO
 };
 } // namespace Lanugage
-
-
-namespace AST {
-enum class DeclType { Std, Infer, Tick };
-} // namespace AST;

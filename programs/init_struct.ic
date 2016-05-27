@@ -1,17 +1,11 @@
-pair := struct {
+triple := struct {
   x := square(4) + 1
   y := 'x'
   z : int
 }
 
-__print__ := (p: pair) -> void {
-  print '('
-  print p.x
-  print ','
-  print p.y
-  print ','
-  print p.z
-  print ')'
+__print__ := (t: triple) -> void {
+  print '(', t.x, ',', t.y, ',', t.z, ')'
 }
 
 square := (n: int) -> int {
@@ -19,22 +13,16 @@ square := (n: int) -> int {
 }
 
 main := void -> void {
-  func := (num: int) -> int {
-    return 17 * num
-  }
+  func := (num: int) -> int { return 17 * num }
   
-  p: pair
+  t: triple
   f: foo
-  print p
-  print '\n'
-  print f
-  print '\n'
+  print t, '\n'
+  print f, '\n'
 
   foo := struct {
     n := func(4)
   }
 
-  __print__ := (a: foo) -> void {
-    print a.n
-  }
+  __print__ := (a: foo) -> void { print a.n }
 }
