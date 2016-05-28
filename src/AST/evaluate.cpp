@@ -3,6 +3,14 @@
 #include "Type.h"
 #endif
 
+#define STARTING_VALUE_CHECK                                                   \
+  verify_types();                                                              \
+  switch (value_flag) {                                                        \
+  case ValueFlag::In: assert(false && "Cyclic value dependency");              \
+  case ValueFlag::Done: return value;                                          \
+  case ValueFlag::Not: value_flag = ValueFlag::In;                             \
+  }
+
 namespace TypeSystem {
 void initialize();
 extern Type *get(const std::string &name);
@@ -157,22 +165,32 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
 }
 
 Context::Value Identifier::evaluate(Ctx &ctx) {
-  // What about when it's, e.g., an int with the value 0?
-  auto iter = ctx.find(token);
-  if (iter != ctx.end()) { return iter->second; }
+  verify_types();
+
+  if (is_arg) {
+    auto iter = ctx.find(token);
+    if (iter != ctx.end()) { return iter->second; }
+  }
+
+  value_flag = ValueFlag::In;
 
   if (type == Type_ && !value.as_type) {
     assert(decls.size() == 1);
     decls[0]->evaluate(ctx);
   }
 
+  assert(decls.size() == 1); // TODO What if this is quantum?
+  decls[0]->evaluate(ctx);
+  value = decls[0]->value;
+
+  value_flag = ValueFlag::Done;
   return value;
 }
 
 Context::Value DummyTypeExpr::evaluate(Ctx &) { return value; }
 
 Context::Value Unop::evaluate(Ctx &ctx) {
-  operand->verify_types();
+  STARTING_VALUE_CHECK;
 
   if (op == Language::Operator::Return) {
     scope_->SetCTRV(operand->evaluate(ctx));
@@ -198,13 +216,17 @@ Context::Value Unop::evaluate(Ctx &ctx) {
     }
 
     std::cout.flush();
+
+    value_flag   = ValueFlag::Done;
     return value = nullptr;
 
   } else if (op == Language::Operator::Sub) {
     if (type == Int) {
+      value_flag = ValueFlag::Done;
       return Context::Value(-operand->evaluate(ctx).as_int);
 
     } else if (type == Real) {
+      value_flag = ValueFlag::Done;
       return Context::Value(-operand->evaluate(ctx).as_real);
     }
   } else if (op == Language::Operator::And) {
@@ -215,6 +237,7 @@ Context::Value Unop::evaluate(Ctx &ctx) {
                              " is not allowed at compile-time");
     }
 
+    value_flag   = ValueFlag::Done;
     return value = Context::Value(Ptr(operand->evaluate(ctx).as_type));
   }
 
@@ -222,6 +245,8 @@ Context::Value Unop::evaluate(Ctx &ctx) {
 }
 
 Context::Value ChainOp::evaluate(Ctx &ctx) {
+  STARTING_VALUE_CHECK;
+
   using Language::Operator;
   auto expr_type = exprs[0]->type;
   if (expr_type == Bool) {
@@ -370,29 +395,36 @@ Context::Value ChainOp::evaluate(Ctx &ctx) {
 }
 
 Context::Value ArrayType::evaluate(Ctx &ctx) {
-  assert(length);
-  determine_time();
-  if ((length->time() == Time::either || length->time() == Time::compile) &&
-      !length->is_hole()) {
-    auto data_type_eval = data_type->evaluate(ctx).as_type;
-    auto length_eval    = length->evaluate(ctx).as_uint;
+  STARTING_VALUE_CHECK;
 
-    return value = Context::Value(Arr(data_type_eval, length_eval));
+  // TODO what if the length is given but isn't a compile-time value? e.g.,
+  //
+  //   [input(int); char] // a char-array of length given by user input
+  auto data_type_eval = data_type->evaluate(ctx).as_type;
+  if (length->is_hole()) {
+    value = Context::Value(Arr(data_type_eval));
+  } else {
+    auto length_eval = length->evaluate(ctx).as_uint;
+    value            = Context::Value(Arr(data_type_eval, length_eval));
   }
 
-  return value = Context::Value(Arr(data_type->evaluate(ctx).as_type));
+  value_flag = ValueFlag::Done;
+  return value;
 }
 
 Context::Value ArrayLiteral::evaluate(Ctx &ctx) { assert(false); }
 
-// TODO ord, ascii
 Context::Value Terminal::evaluate(Ctx &ctx) { return value; }
 
-Context::Value FunctionLiteral::evaluate(Ctx &ctx) {
-  return statements->evaluate(ctx);
-}
+// Values determined when they are built.
+Context::Value FunctionLiteral::evaluate(Ctx &ctx) { return value; }
+Context::Value ParametricStructLiteral::evaluate(Ctx &ctx) { return value; }
+Context::Value StructLiteral::evaluate(Ctx &ctx) { return value; }
+Context::Value EnumLiteral::evaluate(Ctx& ctx) { return value; }
 
 Context::Value Case::evaluate(Ctx& ctx) {
+  STARTING_VALUE_CHECK;
+
   for (auto kv : key_vals) {
     if (kv.first->evaluate(ctx).as_bool) { return kv.second->evaluate(ctx); }
   }
@@ -400,8 +432,6 @@ Context::Value Case::evaluate(Ctx& ctx) {
   assert(false);
 }
 
-Context::Value ParametricStructLiteral::evaluate(Ctx &ctx) { return value; }
-Context::Value StructLiteral::evaluate(Ctx &ctx) { return value; }
 Context::Value InDecl::evaluate(Ctx &ctx) { return nullptr; }
 
 Context::Value Generic::evaluate(Ctx &ctx) {
@@ -409,48 +439,52 @@ Context::Value Generic::evaluate(Ctx &ctx) {
   // it must represent from the available information. There is very little
   // information here, since it's a generic function, so we simply bind a type
   // variable and return it.
-  identifier->value = Context::Value(TypeVar(identifier, test_fn));
-  return identifier->value;
+  value = identifier->value = Context::Value(TypeVar(identifier, test_fn));
+  return value;
 }
 
 Context::Value Declaration::evaluate(Ctx &ctx) {
+  STARTING_VALUE_CHECK;
+
   if (IsInferred()) {
     if (init_val->type->is_function()) {
-      identifier->value = Context::Value(init_val);
+      value = Context::Value(init_val);
+
     } else {
-      identifier->value = init_val->evaluate(ctx);
+      value = init_val->evaluate(ctx);
 
       if (init_val->is_struct_literal()) {
-        if (identifier->value.as_type->is_struct()) {
-          static_cast<Structure *>(identifier->value.as_type)
-              ->set_name(identifier->token);
-        } else if (identifier->value.as_type->is_parametric_struct()) {
-          static_cast<ParametricStructure *>(identifier->value.as_type)
-              ->set_name(identifier->token);
-        } else {
-          assert(false);
-        }
+        assert(identifier->value.as_type->is_struct());
+        ((Structure *)(identifier->value.as_type))->set_name(identifier->token);
+
+      } else if (init_val->is_parametric_struct_literal()) {
+        assert(identifier->value.as_type->is_parametric_struct());
+        ((ParametricStructure *)(identifier->value.as_type))
+            ->set_name(identifier->token);
 
       } else if (init_val->is_enum_literal()) {
         assert(identifier->value.as_type->is_enum());
-        static_cast<Enumeration *>(identifier->value.as_type)->bound_name =
+        ((Enumeration *)(identifier->value.as_type))->bound_name =
             identifier->token;
       }
     }
   } else {
     if (type_expr->type == Type_) {
-      identifier->value = Context::Value(TypeVar(identifier));
+      value = Context::Value(TypeVar(identifier));
     } else if (type_expr->type->is_type_variable()) {
       // TODO Should we just skip this?
     } else { /* There's nothing to do */
     }
   }
+
+  value_flag = ValueFlag::Done;
   return nullptr;
 }
 
-Context::Value EnumLiteral::evaluate(Ctx& ctx) { return value; }
 
 Context::Value Access::evaluate(Ctx& ctx) {
+  STARTING_VALUE_CHECK;
+
   if (type->is_enum()) {
     auto enum_type = (Enumeration *)type;
     return Context::Value(enum_type->get_index(member_name));
@@ -467,6 +501,8 @@ Context::Value Access::evaluate(Ctx& ctx) {
 }
 
 Context::Value Binop::evaluate(Ctx& ctx) {
+  STARTING_VALUE_CHECK;
+
   using Language::Operator;
   if (op == Operator::Call) {
     if (lhs->type->is_function()) {
@@ -600,3 +636,5 @@ Context::Value Jump::evaluate(Ctx& ctx) { assert(false && "Not yet implemented")
 Context::Value While::evaluate(Ctx& ctx) { assert(false && "Not yet implemented"); }
 Context::Value For::evaluate(Ctx& ctx) { assert(false && "Not yet implemented"); }
 } // namespace AST
+
+#undef STARTING_VALUE_CHECK

@@ -14,6 +14,11 @@ namespace Time {
   constexpr Eval error   = 0x7;
 }  // namespace Time
 
+enum ValueFlag : char {
+  Not, // Not yet computed
+  In,  // Startet to compute
+  Done // Finished computing
+};
 
 namespace Language {
 enum class Terminal {

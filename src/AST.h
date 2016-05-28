@@ -124,6 +124,7 @@ struct Expression : public Node {
   bool lvalue;
   Type *type;
   Context::Value value;
+  ValueFlag value_flag;
 };
 
 struct TokenNode : public Node {
@@ -256,7 +257,7 @@ struct StructLiteral : public Expression {
   EXPR_FNS(StructLiteral, struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  void FlushOut();
+  void CompleteDefinition();
 
   Scope *type_scope;
 

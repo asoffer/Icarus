@@ -160,7 +160,7 @@ std::string Identifier::to_string(size_t n) const {
 }
 
 std::string Generic::to_string(size_t n) const {
-  return tabs(n) + "<"+ identifier->token + " in>\n" + test_fn->to_string(n + 1);
+  return tabs(n) + "<"+ identifier->token + "`>\n" + test_fn->to_string(n + 1);
 }
 
 std::string InDecl::to_string(size_t n) const {

@@ -44,7 +44,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   cache_loc->verify_types();
 
   cache_loc->value.as_type->has_vars = has_vars;
-  if (!has_vars) { cache_loc->FlushOut(); }
+  if (!has_vars) { cache_loc->CompleteDefinition(); }
 
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());

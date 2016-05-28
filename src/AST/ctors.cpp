@@ -31,7 +31,8 @@ TokenNode::TokenNode(TokenLocation loc, std::string str_lit)
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(false), type(nullptr), value(nullptr) {}
+      lvalue(false), type(nullptr), value(nullptr), value_flag(ValueFlag::Not) {
+}
 Declaration::Declaration() : type_expr(nullptr), init_val(nullptr) {}
 Generic::Generic() : identifier(nullptr), test_fn(nullptr) {}
 InDecl::InDecl() : identifier(nullptr), container(nullptr) {}

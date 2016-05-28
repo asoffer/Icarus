@@ -72,6 +72,7 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
 static bool MatchCall(Type *lhs, Type *rhs,
                       std::map<TypeVariable *, Type *> &matches,
                       std::string &error_message) {
+
   if (!lhs->has_vars) {
     if (lhs == rhs) { return true; }
     error_message +=
@@ -92,9 +93,9 @@ static bool MatchCall(Type *lhs, Type *rhs,
     assert(test_fn->type == Func(Type_, Bool));
 
     // Do a function call
-    test_fn->inputs[0]->identifier->value = Context::Value(rhs);
-    bool test_result                      = test_fn->evaluate(ctx).as_bool;
-    test_fn->inputs[0]->identifier->value = nullptr;
+    ctx.clear();
+    ctx[lhs_var->identifier->token] = Context::Value(rhs);
+    bool test_result                = test_fn->statements->evaluate(ctx).as_bool;
 
     if (test_result) {
       auto iter = matches.find(lhs_var);
@@ -301,7 +302,7 @@ namespace AST {
 // TODO In what file should this be placed?
 // TODO this should take a context because flushing it out depends on the
 // context.
-void StructLiteral::FlushOut() {
+void StructLiteral::CompleteDefinition() {
   assert(value.as_type && value.as_type->is_struct());
 
   auto tval = static_cast<Structure *>(value.as_type);
@@ -474,7 +475,7 @@ void Access::Verify(bool emit_errors) {
       type = Uint;
       return;
     } else if (member_name == "resize") {
-      auto array_base_type = static_cast<Array *>(base_type);
+      auto array_base_type = (Array *)base_type;
       if (array_base_type->fixed_length) {
         error_log.log(loc, "Cannot resize a fixed-length array.");
         type = Error;
@@ -490,8 +491,7 @@ void Access::Verify(bool emit_errors) {
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
       Ctx ctx;
-      if (!operand->value.as_type) { operand->evaluate(ctx); }
-      assert(operand->value.as_type);
+      operand->evaluate(ctx);
       type = Uint;
       return;
     }
@@ -516,7 +516,7 @@ void Access::Verify(bool emit_errors) {
 
   if (base_type->is_struct()) {
     auto struct_type = static_cast<Structure *>(base_type);
-    struct_type->ast_expression->FlushOut();
+    struct_type->ast_expression->CompleteDefinition();
 
     auto member_type = struct_type->field(member_name);
     if (member_type) {
@@ -746,7 +746,9 @@ void Binop::verify_types() {
       std::map<TypeVariable *, Type *> matches;
       // Receiving either a function or a parametric struct as the opt.match
       // parameter
+
       if (opt.match->is_function()) {
+
         if (MatchCall(static_cast<Function *>(opt.match)->input, rhs->type,
                       matches, opt.err)) {
 
@@ -1054,6 +1056,7 @@ void Generic::verify_types() {
     error_log.log(loc,
                   "Cannot generate a type where the tester is not a function");
     type = Error;
+    identifier->type = Error;
     return;
   }
 
@@ -1073,6 +1076,7 @@ void Generic::verify_types() {
   }
 
   if (!has_err) { type = Type_; }
+  identifier->type = type;
 }
 
 void InDecl::verify_types() {
@@ -1256,8 +1260,13 @@ void Declaration::verify_types() {
 
   if (type == Error) { return; }
 
-  if (type->is_struct()) { ((Structure *)type)->ast_expression->FlushOut(); }
+  if (type->is_struct()) {
+    ((Structure *)type)->ast_expression->CompleteDefinition();
+  }
 
+  // TODO this section is also in Declaration::evaluate. It makes more sense
+  // there. You need to decide on how to deal with this. Do you wait to call it?
+  // Do you call it here? Probably that one.
   if (type == Type_ && IsInferred()) {
     if (init_val->is_struct_literal()) {
       assert(init_val->value.as_type && init_val->value.as_type->is_struct());
