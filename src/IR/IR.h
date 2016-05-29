@@ -59,6 +59,8 @@ struct Cmd {
   Value result;
   Cmd(Op o, Value v) : op_code(o), args(1, v) {}
   void dump(size_t indent = 0);
+
+  Value eval(const std::vector<Value>& vals);
 };
 
 struct Block {
@@ -105,6 +107,8 @@ struct Func {
 
   void dump();
 };
+
+Value Call(Func *f, const std::vector<Value>& arg_vals);
 
 Cmd BNot(Value);
 

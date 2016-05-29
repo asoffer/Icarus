@@ -93,15 +93,12 @@ static bool MatchCall(Type *lhs, Type *rhs,
     assert(test_fn->type == Func(Type_, Bool));
 
     // Do a function call
-    ctx.clear();
-    ctx[lhs_var->identifier->token] = Context::Value(rhs);
-    bool test_result                = test_fn->statements->evaluate(ctx).as_bool;
-    std::cout << *test_fn << std::endl;
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
-    f.val.as_func->dump();
+    auto test_result = IR::Call(f.val.as_func, {});
+    assert(test_result.flag == IR::ValType::B);
 
-    if (test_result) {
+    if (test_result.val.as_bool) {
       auto iter = matches.find(lhs_var);
       if (iter == matches.end()) {
         matches[lhs_var] = rhs;
