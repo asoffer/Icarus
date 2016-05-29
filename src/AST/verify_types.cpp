@@ -96,6 +96,10 @@ static bool MatchCall(Type *lhs, Type *rhs,
     ctx.clear();
     ctx[lhs_var->identifier->token] = Context::Value(rhs);
     bool test_result                = test_fn->statements->evaluate(ctx).as_bool;
+    std::cout << *test_fn << std::endl;
+    auto f = test_fn->EmitIR();
+    assert(f.flag == IR::ValType::F);
+    f.val.as_func->dump();
 
     if (test_result) {
       auto iter = matches.find(lhs_var);

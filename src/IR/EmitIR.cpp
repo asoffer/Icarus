@@ -8,7 +8,7 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             Type *input_type);
 
 namespace AST {
-IR::Value Terminal::EmitIR() const {
+IR::Value Terminal::EmitIR() {
   switch (terminal_type) {
   case Language::Terminal::ASCII: NOT_YET;
   case Language::Terminal::Char: NOT_YET;
@@ -27,10 +27,12 @@ IR::Value Terminal::EmitIR() const {
   }
 }
 
-IR::Value Unop::EmitIR() const {
+IR::Value Unop::EmitIR() {
   switch (op) {
   case Language::Operator::Import: NOT_YET;
-  case Language::Operator::Return: NOT_YET;
+  case Language::Operator::Return: {
+    return Ret(operand->EmitIR());
+  } break;
   case Language::Operator::Break: NOT_YET;
   case Language::Operator::Continue: NOT_YET;
   case Language::Operator::Repeat: NOT_YET;
@@ -74,7 +76,7 @@ IR::Value Unop::EmitIR() const {
   }
 }
 
-IR::Value Binop::EmitIR() const {
+IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: NOT_YET;
   case Language::Operator::Cast: NOT_YET;
@@ -191,20 +193,38 @@ IR::Value Binop::EmitIR() const {
   }
 }
 
-IR::Value ChainOp::EmitIR() const { NOT_YET; }
-IR::Value Identifier::EmitIR() const { NOT_YET; }
-IR::Value Declaration::EmitIR() const { NOT_YET; }
-IR::Value Generic::EmitIR() const { NOT_YET; }
-IR::Value InDecl::EmitIR() const { NOT_YET; }
-IR::Value ParametricStructLiteral::EmitIR() const { NOT_YET; }
-IR::Value StructLiteral::EmitIR() const { NOT_YET; }
-IR::Value Case::EmitIR() const { NOT_YET; }
-IR::Value Access::EmitIR() const { NOT_YET; }
-IR::Value ArrayLiteral::EmitIR() const { NOT_YET; }
-IR::Value FunctionLiteral::EmitIR() const { NOT_YET; }
-IR::Value EnumLiteral::EmitIR() const { NOT_YET; }
-IR::Value DummyTypeExpr::EmitIR() const { NOT_YET; }
-IR::Value ArrayType::EmitIR() const { NOT_YET; }
+IR::Value FunctionLiteral::EmitIR() {
+  auto func          = new IR::Func;
+  IR::Func::Current  = func;
+  IR::Block::Current = func->entry;
+  statements->EmitIR();
+  return IR::Value(func);
+}
+
+IR::Value Statements::EmitIR() {
+  for (auto stmt : statements) {
+    stmt->EmitIR();
+  }
+  return IR::Value();
+}
+
+IR::Value Conditional::EmitIR() { assert(false); }
+IR::Value For::EmitIR() { assert(false); }
+IR::Value While::EmitIR() { assert(false); }
+IR::Value Jump::EmitIR() { assert(false); }
+IR::Value ChainOp::EmitIR() { NOT_YET; }
+IR::Value Identifier::EmitIR() { NOT_YET; }
+IR::Value Declaration::EmitIR() { NOT_YET; }
+IR::Value Generic::EmitIR() { NOT_YET; }
+IR::Value InDecl::EmitIR() { NOT_YET; }
+IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }
+IR::Value StructLiteral::EmitIR() { NOT_YET; }
+IR::Value Case::EmitIR() { NOT_YET; }
+IR::Value Access::EmitIR() { NOT_YET; }
+IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
+IR::Value EnumLiteral::EmitIR() { NOT_YET; }
+IR::Value DummyTypeExpr::EmitIR() { NOT_YET; }
+IR::Value ArrayType::EmitIR() { NOT_YET; }
 } // namespace AST
 
 #undef NOT_YET

@@ -1,26 +1,29 @@
 #include "IR.h"
-#define BLOCK Block::Current()
 
 #define ONE_ARG_CMD(name)                                                      \
-  Value name(Value v) {                                                        \
+  Cmd name(Value v) {                                                          \
     Cmd cmd(Op::name, v);                                                      \
-    cmd.dump();                                                                \
-    BLOCK->cmds.push_back(cmd);                                                \
-    return cmd.result;                                                         \
+    Block::Current->cmds.push_back(cmd);                                       \
+    return cmd;                                                                \
   }
 
 #define TWO_ARG_CMD(name)                                                      \
-  Value name(Value arg1, Value arg2) {                                         \
+  Cmd name(Value arg1, Value arg2) {                                           \
     Cmd cmd(Op::name, arg1);                                                   \
-    cmd.dump();                                                                \
     cmd.args.push_back(arg2); /* Put this in the constructor */                \
-    BLOCK->cmds.push_back(cmd);                                                \
-    return cmd.result;                                                         \
+    Block::Current->cmds.push_back(cmd);                                       \
+    return cmd;                                                                \
   }
 
 // TODO what Value number to return????
 namespace IR {
-std::stack<Block *> Block::Stack;
+Func *Func::Current;
+Block *Block::Current;
+
+Value::Value() : flag(ValType::Ref) {
+  val.as_arg = Func::Current->num_cmds;
+  Func::Current->num_cmds++;
+}
 
 ONE_ARG_CMD(BNot)
 
@@ -29,6 +32,7 @@ ONE_ARG_CMD(FNeg)
 
 ONE_ARG_CMD(Load)
 TWO_ARG_CMD(Store)
+ONE_ARG_CMD(Ret)
 
 TWO_ARG_CMD(IAdd)
 TWO_ARG_CMD(UAdd)
@@ -57,6 +61,7 @@ static std::string OpCodeString(Op op_code) {
   case Op::FNeg:  return "fneg ";
   case Op::Load:  return "load ";
   case Op::Store: return "store";
+  case Op::Ret:   return "ret  ";
   case Op::IAdd:  return "iadd ";
   case Op::UAdd:  return "uadd ";
   case Op::FAdd:  return "fadd ";
@@ -75,51 +80,56 @@ static std::string OpCodeString(Op op_code) {
   }
 }
 
-#define STREAMIFY(stream, value)                                               \
-  if ((value).flag == B) {                                                     \
-    stream << ((value).val.as_bool ? "true" : "false");                        \
-  } else if ((value).flag == C) {                                              \
-    stream << (value).val.as_char;                                             \
-  } else if ((value).flag == I) {                                              \
-    stream << (value).val.as_int;                                              \
-  } else if ((value).flag == R) {                                              \
-    stream << (value).val.as_real;                                             \
-  } else if ((value).flag == U) {                                              \
-    stream << (value).val.as_uint;                                             \
-  } else if ((value).flag == T) {                                              \
-    stream << (value).val.as_type;                                             \
-  } else if ((value).flag == Ref) {                                            \
-    stream << "%" << (value).val.as_ref;                                       \
-  } else {                                                                     \
-    assert(false);                                                             \
+std::ostream &operator<<(std::ostream& os, const Value& value) {
+  switch(value.flag) {
+  case ValType::B: return os << (value.val.as_bool ? "true" : "false");
+  case ValType::C: return os << value.val.as_char;
+  case ValType::I: return os << value.val.as_int;
+  case ValType::R: return os << value.val.as_real;
+  case ValType::U: return os << value.val.as_uint;
+  case ValType::T: return os << value.val.as_type;
+  case ValType::F: return os << "f_" << value.val.as_func->name;
+  case ValType::Ref: return os << "%" << value.val.as_ref;
+  case ValType::Arg: return os << "$" << value.val.as_arg;
   }
+}
 
 void Cmd::dump(size_t indent) {
-  std::cout << std::string(indent, ' ') << "%";
-  STREAMIFY(std::cout, result);
-  std::cout << " = " << OpCodeString(op_code);
+  std::cout << std::string(indent, ' ') << result << "\t= "
+            << OpCodeString(op_code);
 
   auto iter = args.begin();
 
-  std::cout << " ";
-  STREAMIFY(std::cout, *iter);
+  std::cout << " " << *iter;
 
   ++iter;
   for (; iter != args.end(); ++iter) {
-    std::cout << ", ";
-    STREAMIFY(std::cout, *iter);
+    std::cout << ", " << *iter;
   }
   std::cout << std::endl;
 }
 
 void Block::dump() {
-  std::cout << "block-" << block_num << ":\n";
+  if (block_num == 0) {
+    std::cout << "  entry:\n";
+  } else {
+    std::cout << "  block-" << block_num << ":\n";
+  }
   for (auto c : cmds) { c.dump(4); }
 }
 
+void Func::dump() {
+  std::cout << "func " << name;
+  if (args.empty()) {
+    std::cout << "():" << std::endl;
+  } else {
+    std::cout << "(#$" << args.size() << "):" << std::endl;
+  }
+
+  entry->dump();
+  for (auto b : blocks) { b->dump(); }
+}
 } // namespace IR
-#undef STREAMIFY
 
 #undef TWO_ARG_CMD
 #undef ONE_ARG_CMD
-#undef BLOCK

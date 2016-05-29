@@ -24,6 +24,7 @@ namespace AST {
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual Time::Eval determine_time() ENDING;                                  \
+  virtual IR::Value EmitIR() ENDING;                                           \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
@@ -35,8 +36,8 @@ namespace AST {
   virtual void join_identifiers(bool is_arg = false) ENDING;                   \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
+  virtual IR::Value EmitIR() ENDING;                                           \
   virtual void verify_types() ENDING;                                          \
-  virtual IR::Value EmitIR() const ENDING;                                     \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
@@ -53,6 +54,7 @@ struct Node {
   virtual void verify_types() {}
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
+  virtual IR::Value EmitIR() = 0;
 
   virtual Context::Value evaluate(Ctx &ctx) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
@@ -135,6 +137,8 @@ struct TokenNode : public Node {
 
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
+
+  virtual IR::Value EmitIR() { assert(false); }
 
   virtual bool is_token_node() const { return true; }
 

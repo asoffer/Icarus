@@ -4,10 +4,12 @@
 // Not to be confused with LLVM's IR!
 
 namespace IR {
-enum ValueType { X, B, C, I, R, U, T, Ref };
+enum class ValType { B, C, I, R, U, T, F, Ref, Arg };
+
+struct Func;
 
 struct Value {
-  ValueType flag;
+  ValType flag;
 
   union {
     bool as_bool;
@@ -15,25 +17,31 @@ struct Value {
     long as_int;
     double as_real;
     size_t as_uint;
-    size_t as_ref;
     Type *as_type;
+    Func *as_func;
+    size_t as_ref;
+    size_t as_arg;
   } val;
 
-  explicit Value(bool b) : flag(B) { val.as_bool = b; }
-  explicit Value(char c) : flag(C) { val.as_char = c; }
-  explicit Value(long n) : flag(I) { val.as_int = n; }
-  explicit Value(double d) : flag(R) { val.as_real = d; }
-  explicit Value(size_t n) : flag(U) { val.as_uint = n; }
-  explicit Value(Type *t) : flag(T) { val.as_type = t; }
+  explicit Value(bool b) : flag(ValType::B) { val.as_bool = b; }
+  explicit Value(char c) : flag(ValType::C) { val.as_char = c; }
+  explicit Value(long n) : flag(ValType::I) { val.as_int = n; }
+  explicit Value(double d) : flag(ValType::R) { val.as_real = d; }
+  explicit Value(size_t n) : flag(ValType::U) { val.as_uint = n; }
+  explicit Value(Func *f) : flag(ValType::F) { val.as_func = f; }
+  explicit Value(Type *t) : flag(ValType::T) { val.as_type = t; }
 
-  Value() : flag(X) {}
+  Value();
 };
+
+std::ostream &operator<<(std::ostream &os, const Value &value);
 
 enum class Op {
   BNot,
   INeg, FNeg,
 
   Load, Store,
+  Ret,
 
   IAdd, UAdd, FAdd,
   ISub, USub, FSub,
@@ -45,20 +53,21 @@ enum class Op {
 struct Cmd {
   Op op_code;
   std::vector<Value> args;
+
+  operator Value() { return result; }
+
   Value result;
   Cmd(Op o, Value v) : op_code(o), args(1, v) {}
   void dump(size_t indent = 0);
 };
 
 struct Block {
-  static void Push(Block *b) { Stack.push(b); }
+  static Block *Current;
 
-  static void Pop() {
-    assert(!Stack.empty());
-    Stack.pop();
-  }
-  static Block *Current() { return Stack.top(); }
-  static std::stack<Block *> Stack;
+  Block(size_t n) : block_num(n) {}
+  virtual ~Block() {}
+
+  void push(const Cmd &cmd) { cmds.push_back(cmd); }
 
   size_t block_num;
   std::vector<Cmd> cmds;
@@ -67,40 +76,64 @@ struct Block {
 };
 
 struct UncondBlock : public Block {
+  UncondBlock(size_t n) : Block(n) {}
+  virtual ~UncondBlock() {}
   Block *next_block;
 };
 
 struct CondBlock : public Block {
+  CondBlock(size_t n) : Block(n) {}
+  virtual ~CondBlock() {}
   Block *true_block, *false_block;
 };
 
-Value BNot(Value);
+struct Func {
+  static Func *Current;
 
-Value INeg(Value);
-Value FNeg(Value);
 
-Value Load(Value);
-Value Store(Value, Value);
+  std::vector<Block *> blocks;
+  std::vector<Value *> args;
+  std::string name;
+  Block *entry;
+  size_t num_cmds;
 
-Value IAdd(Value, Value);
-Value UAdd(Value, Value);
-Value FAdd(Value, Value);
+  Func() : entry(new UncondBlock(0)), num_cmds(0) {}
+  ~Func() {
+    delete entry;
+    for (auto b : blocks) { delete b; }
+  }
 
-Value ISub(Value, Value);
-Value USub(Value, Value);
-Value FSub(Value, Value);
+  void dump();
+};
 
-Value IMul(Value, Value);
-Value UMul(Value, Value);
-Value FMul(Value, Value);
+Cmd BNot(Value);
 
-Value IDiv(Value, Value);
-Value UDiv(Value, Value);
-Value FDiv(Value, Value);
+Cmd INeg(Value);
+Cmd FNeg(Value);
 
-Value IMod(Value, Value);
-Value UMod(Value, Value);
-Value FMod(Value, Value);
+Cmd Load(Value);
+Cmd Store(Value, Value);
+Cmd Ret(Value);
+
+Cmd IAdd(Value, Value);
+Cmd UAdd(Value, Value);
+Cmd FAdd(Value, Value);
+
+Cmd ISub(Value, Value);
+Cmd USub(Value, Value);
+Cmd FSub(Value, Value);
+
+Cmd IMul(Value, Value);
+Cmd UMul(Value, Value);
+Cmd FMul(Value, Value);
+
+Cmd IDiv(Value, Value);
+Cmd UDiv(Value, Value);
+Cmd FDiv(Value, Value);
+
+Cmd IMod(Value, Value);
+Cmd UMod(Value, Value);
+Cmd FMod(Value, Value);
 } // namespace IR
 
 #endif // ICARUS_IR_H

@@ -1,26 +1,10 @@
-my_int := struct {
-  n: int = 17
+Any := (T: type) -> bool { return true }
+
+show := (val: Any`T) -> void {
+  print val, ": ", T, "\n"
 }
 
-__print__ := (n: my_int) -> void { print n.n, "\n" }
 main := void -> void {
-  a: my_int = --
-  b: my_int = --
-  c: my_int = --
-  d: my_int = --
-  e: my_int = --
-  f: my_int = --
-  g: my_int = --
-  h: my_int = --
-  i: my_int = --
-  j: my_int = --
-  k: my_int = --
-  l: my_int = --
-  m: my_int
-  print a, b, c, d, e, f, g, h, i, j, k, l, "--> ", m
-
-  for i in 0 .. 10 {
-    x: int = --
-    print x, " "
-  }
+  show(3)
+  show(17.0)
 }

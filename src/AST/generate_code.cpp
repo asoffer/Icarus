@@ -3,7 +3,7 @@
 #include "Type.h"
 #include <cstring>
 #endif
-
+#include "IR/IR.h"
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
