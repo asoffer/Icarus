@@ -11,6 +11,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
+#include "IR/IR.h"
+
 static size_t start_time;
 static size_t end_time;
 static size_t total_time;

@@ -10,6 +10,8 @@ extern std::queue<std::string> file_queue;
 // TODO Fix this later.
 using Ctx = std::map<std::string, Context::Value>;
 
+#include "IR/IR.h"
+
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
@@ -34,6 +36,7 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual void verify_types() ENDING;                                          \
+  virtual IR::Value EmitIR() const ENDING;                                     \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \

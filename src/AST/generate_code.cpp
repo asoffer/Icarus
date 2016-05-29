@@ -195,15 +195,12 @@ llvm::Value *Unop::generate_code() {
   llvm::Value *val = operand->generate_code();
   switch (op) {
   case Language::Operator::Not: {
-    if (operand->type->is_struct()) {
+    if (operand->type == Bool) {
+      return builder.CreateNot(val);
+    } else {
       auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
       assert(not_fn && "No 'not' function available");
       builder.CreateCall(not_fn, val);
-
-    } else if (type == Bool) {
-      return builder.CreateNot(val);
-    } else {
-      assert(false);
     }
   }
   case Language::Operator::Sub: {
@@ -220,8 +217,7 @@ llvm::Value *Unop::generate_code() {
       // TODO what if this returns a primitive, actually return it. otherwise,
       // use a return parameter like you're doing already
       assert(scope_->is_block_scope());
-      auto local_ret =
-          static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
+      auto local_ret = ((BlockScope *)scope_)->CreateLocalReturn(type);
       builder.CreateCall(neg_fn, {val, local_ret});
       return local_ret;
 
