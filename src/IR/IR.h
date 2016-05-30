@@ -60,7 +60,7 @@ struct Cmd {
   Cmd(Op o, Value v) : op_code(o), args(1, v) {}
   void dump(size_t indent = 0);
 
-  Value eval(const std::vector<Value>& vals);
+  Value eval(const std::vector<Value> &vals, const std::vector<Value> &fn_args);
 };
 
 struct Block {
