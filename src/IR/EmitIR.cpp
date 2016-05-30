@@ -193,6 +193,8 @@ IR::Value Binop::EmitIR() {
   }
 }
 
+IR::Value ChainOp::EmitIR() { NOT_YET; }
+
 IR::Value FunctionLiteral::EmitIR() {
   auto func          = new IR::Func;
   IR::Func::Current  = func;
@@ -208,11 +210,10 @@ IR::Value Statements::EmitIR() {
   return IR::Value();
 }
 
-IR::Value Conditional::EmitIR() { assert(false); }
-IR::Value For::EmitIR() { assert(false); }
-IR::Value While::EmitIR() { assert(false); }
-IR::Value Jump::EmitIR() { assert(false); }
-IR::Value ChainOp::EmitIR() { NOT_YET; }
+IR::Value Conditional::EmitIR() { NOT_YET; }
+IR::Value For::EmitIR() { NOT_YET; }
+IR::Value While::EmitIR() { NOT_YET; }
+IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Identifier::EmitIR() { NOT_YET; }
 IR::Value Declaration::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }

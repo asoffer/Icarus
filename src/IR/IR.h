@@ -47,7 +47,16 @@ enum class Op {
   ISub, USub, FSub,
   IMul, UMul, FMul,
   IDiv, UDiv, FDiv,
-  IMod, UMod, FMod
+  IMod, UMod, FMod,
+
+  /*
+  ILT, ULT, FLT,
+  ILE, ULE, FLE,
+  IEQ, UEQ, FEQ,
+  INE, UNE, FNE,
+  IGE, UGE, FGE,
+  IGT, UGT, FGT,
+  */
 };
 
 struct Cmd {
@@ -66,27 +75,31 @@ struct Cmd {
 struct Block {
   static Block *Current;
 
-  Block(size_t n) : block_num(n) {}
-  virtual ~Block() {}
+  // Passing a char into the condition to trigger it's type to be C. We don't
+  // care that it's C specifically, so long as it isn't B, Arg, or Ref.
+  Block(size_t n) : block_num(n), cond('x') {}
+  ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
+
+  Block *execute_jump(const std::vector<Value> &vals,
+                              const std::vector<Value> &fn_args);
 
   size_t block_num;
   std::vector<Cmd> cmds;
 
-  void dump();
-};
-
-struct UncondBlock : public Block {
-  UncondBlock(size_t n) : Block(n) {}
-  virtual ~UncondBlock() {}
-  Block *next_block;
-};
-
-struct CondBlock : public Block {
-  CondBlock(size_t n) : Block(n) {}
-  virtual ~CondBlock() {}
+  // This is wacky: If the block is conditional, then you jump based on the
+  // value cond. If not, then we just take true_block. In order to determine
+  // which case you are in, you need to check the type of cond. If it's an Arg,
+  // a Ref, or a B, then the block is conditional. Otherwise, it's
+  // unconditional.
+  //
+  // TODO there's probably a way to use unions to simplify this, but my first
+  // guess raised warnings, so I'll figure it out later.
   Block *true_block, *false_block;
+  Value cond;
+
+  void dump();
 };
 
 struct Func {
@@ -99,7 +112,7 @@ struct Func {
   Block *entry;
   size_t num_cmds;
 
-  Func() : entry(new UncondBlock(0)), num_cmds(0) {}
+  Func() : entry(new Block(0)), num_cmds(0) {}
   ~Func() {
     delete entry;
     for (auto b : blocks) { delete b; }
