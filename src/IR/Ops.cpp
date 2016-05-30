@@ -33,7 +33,6 @@ ONE_ARG_CMD(FNeg)
 
 ONE_ARG_CMD(Load)
 TWO_ARG_CMD(Store)
-ONE_ARG_CMD(Ret)
 
 Cmd Phi() {
   Cmd phi;
@@ -72,7 +71,6 @@ static std::string OpCodeString(Op op_code) {
   case Op::Load:  return "load ";
   case Op::Store: return "store";
   case Op::Phi:   return "phi  ";
-  case Op::Ret:   return "ret  ";
   case Op::IAdd:  return "iadd ";
   case Op::UAdd:  return "uadd ";
   case Op::FAdd:  return "fadd ";
@@ -136,18 +134,25 @@ void Block::dump() {
   }
   for (auto c : cmds) { c.dump(4); }
 
-  if (cond.flag == ValType::Arg || cond.flag == ValType::Ref ||
-      cond.flag == ValType::B) {
-    std::cout << "    cond br " << cond << " [T: block-"
-              << true_block->block_num << "] [F: block-"
-              << false_block->block_num << "]\n\n";
-  } else {
-    std::cout << "    br block-";
-    if (true_block) {
-      std::cout << true_block->block_num << "\n\n";
-    } else {
-      std::cout << "undef\n\n" << std::endl;
-    }
+  exit.dump(4);
+}
+
+void Exit::dump(size_t indent) {
+  std::cout << std::string(indent, ' ');
+
+  switch (flag) {
+  case Strategy::Uncond:
+    std::cout << "jmp block-" << true_block->block_num << "\n\n";
+    return;
+
+  case Strategy::Cond:
+    std::cout << "cond br " << val << " [T: block-" << true_block->block_num
+              << "] [F: block-" << false_block->block_num << "]\n\n";
+    return;
+
+  case Strategy::Return:
+    std::cout << "ret " << val << "\n\n";
+    return;
   }
 }
 

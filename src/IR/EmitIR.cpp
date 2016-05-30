@@ -31,7 +31,9 @@ IR::Value Unop::EmitIR() {
   switch (op) {
   case Language::Operator::Import: NOT_YET;
   case Language::Operator::Return: {
-    return Ret(operand->EmitIR());
+    auto result = operand->EmitIR();
+    IR::Block::Current->exit.SetReturn(result);
+    return IR::Value();
   } break;
   case Language::Operator::Break: NOT_YET;
   case Language::Operator::Continue: NOT_YET;
@@ -217,7 +219,7 @@ IR::Value ChainOp::EmitIR() {
       IR::Func::Current->blocks.push_back(b);
     }
 
-    IR::Block::Current->set_unconditional_jump(blocks.front());
+    IR::Block::Current->exit.SetUnconditional(blocks.front());
 
     // Create the landing block
     IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
@@ -227,14 +229,15 @@ IR::Value ChainOp::EmitIR() {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       IR::Block::Current = blocks[i];
       auto result = exprs[i]->EmitIR();
-      IR::Block::Current->set_conditional_jump(result, blocks[i + 1], landing_block);
+      IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
+                                              landing_block);
 
       phi.AddIncoming(IR::Block::Current, early_exit_value);
     }
 
     IR::Block::Current = blocks.back();
     auto last_result = exprs.back()->EmitIR();
-    IR::Block::Current->set_unconditional_jump(landing_block);
+    IR::Block::Current->exit.SetUnconditional(landing_block);
     phi.AddIncoming(IR::Block::Current, last_result);
 
     IR::Block::Current = landing_block;
@@ -251,7 +254,6 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
   statements->EmitIR();
-  ir_func->dump();
   return IR::Value(ir_func);
 }
 

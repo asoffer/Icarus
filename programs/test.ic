@@ -1,4 +1,4 @@
-Any := (T: type) -> bool { return !!( true & !true & true) }
+Any := (T: type) -> bool { return !!( true & !!!!true & true) }
 
 show := (val: Any`T) -> void {
   print val, ": ", T, "\n"

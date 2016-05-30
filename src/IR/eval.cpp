@@ -17,8 +17,7 @@ Value Cmd::eval(const std::vector<Value> &vals, const std::vector<Value> &fn_arg
   case Op::FNeg: return Value(-cmd_inputs[0].val.as_real);
   case Op::Load: NOT_YET;
   case Op::Store: NOT_YET;
-  case Op::Phi: NOT_YET;
-  case Op::Ret: return cmd_inputs[0];
+  case Op::Phi: assert(false && "Implemented elsewhere");
   case Op::IAdd:
     return Value(cmd_inputs[0].val.as_int + cmd_inputs[1].val.as_int);
   case Op::UAdd:
@@ -56,40 +55,76 @@ Value Cmd::eval(const std::vector<Value> &vals, const std::vector<Value> &fn_arg
 
 Block *Block::execute_jump(const std::vector<Value> &vals,
                            const std::vector<Value> &fn_args) {
-  if (cond.flag == ValType::Ref) {
-    return vals[cond.val.as_ref].val.as_bool ? true_block : false_block;
-
-  } else if (cond.flag == ValType::Arg) {
-    return fn_args[cond.val.as_ref].val.as_bool ? true_block : false_block;
-
-  } else if (cond.flag == ValType::B) {
-    return cond.val.as_bool ? true_block : false_block;
-
-  } else {
-    return true_block;
+  switch(exit.flag) {
+  case Exit::Strategy::Uncond: return exit.true_block;
+  case Exit::Strategy::Return: return nullptr;
+  case Exit::Strategy::Cond: {
+    Value v = exit.val;
+    if (exit.val.flag == ValType::Ref) {
+      v = vals[v.val.as_ref];
+    } else if (exit.val.flag == ValType::Arg) {
+      v = fn_args[v.val.as_arg];
+    }
+    return v.val.as_bool ? exit.true_block : exit.false_block;
+  }
   }
 }
 
 Value Call(Func *f, const std::vector<Value>& arg_vals) {
   std::vector<Value> vals(f->num_cmds);
-  Block *block_ptr = f->entry();
+  Block *prev_block_ptr  = nullptr;
+  Block *block_ptr       = f->entry();
   size_t cmd_index = 0;
 
-  while (true) {
-    vals[cmd_index] = block_ptr->cmds[cmd_index].eval(vals, arg_vals);
-    if (block_ptr->cmds[cmd_index].op_code == Op::Ret) {
-      return vals[cmd_index];
+eval_loop_start:
+  // std::cout << "block-" << block_ptr->block_num << ": " << cmd_index
+  //           << std::endl;
+  if (cmd_index == block_ptr->cmds.size()) {
+    prev_block_ptr = block_ptr;
+    block_ptr      = block_ptr->execute_jump(vals, arg_vals);
+
+    if (!block_ptr) { // It's a return
+      if (prev_block_ptr->exit.val.flag == ValType::Ref) {
+        return vals[prev_block_ptr->exit.val.val.as_ref];
+
+      } else if (prev_block_ptr->exit.val.flag == ValType::Arg) {
+        return vals[prev_block_ptr->exit.val.val.as_arg];
+
+      } else {
+        return prev_block_ptr->exit.val;
+      }
+
+    } else {
+      cmd_index = 0;
+      // std::cout << "  jumped to block-" << block_ptr->block_num << std::endl;
+      // std::cin.ignore(1);
     }
 
+  } else {
+    auto cmd = block_ptr->cmds[cmd_index];
+    assert(cmd.result.flag == ValType::Ref);
+    if (cmd.op_code == Op::Phi) {
+      Value chosen_val;
+      for (size_t i = 0; i < cmd.incoming_blocks.size(); ++i) {
+        if (prev_block_ptr == cmd.incoming_blocks[i]) {
+          chosen_val = cmd.args[i];
+          goto found_match;
+        }
+      }
+      assert(false && "No selection made from phi block");
+    found_match:
+      vals[cmd.result.val.as_ref] = chosen_val;
+
+    } else {
+      vals[cmd.result.val.as_ref] = cmd.eval(vals, arg_vals);
+    }
+
+    // std::cout << "  " << cmd.result << " = " << vals[cmd.result.val.as_ref]
+    //           << std::endl;
+    // std::cin.ignore(1);
     ++cmd_index;
-
-    if (cmd_index == block_ptr->cmds.size()) {
-      block_ptr = block_ptr->execute_jump(vals, arg_vals);
-    }
   }
-
-  auto val = block_ptr->cmds[cmd_index];
-  return Value();
+  goto eval_loop_start;
 }
 
 } // namespace IR

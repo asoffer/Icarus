@@ -43,7 +43,6 @@ enum class Op {
 
   Load, Store,
   Phi,
-  Ret,
 
   IAdd, UAdd, FAdd,
   ISub, USub, FSub,
@@ -68,8 +67,8 @@ struct Cmd {
   std::vector<Value> args;
 
   operator Value() { return result; }
-
   Value result;
+
   Cmd(Op o, Value v) : op_code(o), args(1, v) {}
   void dump(size_t indent = 0);
 
@@ -86,44 +85,65 @@ private:
   Cmd() {}
 };
 
+// Models we should exit the block. There are a few options:
+// 1. An unconditional jump to another block
+// 2. A conditional jump to one of two branches
+// 3. Return from the current function.
+struct Exit {
+  friend struct Block;
+  friend Value Call(Func *, const std::vector<Value> &);
+
+private:
+  enum class Strategy { Uncond, Cond, Return } flag;
+
+  Value val; // This is the return value in the case of a return, and the value
+             // to branch on in the case of a conditional branch.
+  Block *true_block; // This is the branch to take in the case of an
+                     // unconditional jump, or in the case of a conditional jump
+                     // when the condition is true
+  Block *false_block; // This is the branch to take in the case of a conditional
+                      // jump when that condition is false.
+
+  Exit() : flag(Strategy::Return), val(false), true_block(nullptr), false_block(nullptr) {}
+
+public:
+  void SetReturn(Value v) {
+    flag = Strategy::Return;
+    val  = v;
+  }
+
+  void SetUnconditional(Block *b) {
+    flag       = Strategy::Uncond;
+    true_block = b;
+  }
+
+  void SetConditional(Value v, Block *t, Block *f) {
+    flag        = Strategy::Cond;
+    val         = v;
+    true_block  = t;
+    false_block = f;
+  }
+
+  void dump(size_t indent);
+};
+
 struct Block {
   static Block *Current;
 
   // Passing a char into the condition to trigger it's type to be C. We don't
   // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block(size_t n)
-      : block_num(n), true_block(nullptr), false_block(nullptr), cond('x') {}
+  Block(size_t n) : block_num(n) {}
   ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
 
-  void set_conditional_jump(Value val, Block *t_block, Block *f_block) {
-    cond        = val;
-    true_block  = t_block;
-    false_block = f_block;
-  }
-
-  void set_unconditional_jump(Block *b) {
-    cond       = Value('x');
-    true_block = b;
-  }
-
   Block *execute_jump(const std::vector<Value> &vals,
-                              const std::vector<Value> &fn_args);
+                      const std::vector<Value> &fn_args);
 
   size_t block_num;
   std::vector<Cmd> cmds;
 
-  // This is wacky: If the block is conditional, then you jump based on the
-  // value cond. If not, then we just take true_block. In order to determine
-  // which case you are in, you need to check the type of cond. If it's an Arg,
-  // a Ref, or a B, then the block is conditional. Otherwise, it's
-  // unconditional.
-  //
-  // TODO there's probably a way to use unions to simplify this, but my first
-  // guess raised warnings, so I'll figure it out later.
-  Block *true_block, *false_block;
-  Value cond;
+  Exit exit;
 
   void dump();
 };
