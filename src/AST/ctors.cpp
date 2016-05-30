@@ -68,7 +68,7 @@ Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
 
 FunctionLiteral::FunctionLiteral()
     : fn_scope(new FnScope), llvm_fn(nullptr), statements(nullptr),
-      code_gened(false) {}
+      ir_func(nullptr), code_gened(false) {}
 
 StructLiteral::StructLiteral() : type_scope(new Scope) {}
 ParametricStructLiteral::ParametricStructLiteral() : type_scope(new Scope) {}

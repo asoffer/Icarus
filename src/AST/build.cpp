@@ -1,6 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
-#include "Type.h"
+#include "Type/Type.h"
 #endif
 
 extern std::queue<std::string> file_queue;

@@ -1,5 +1,5 @@
 #include "IR.h"
-#include "Type.h"
+#include "Type/Type.h"
 
 #define NOT_YET assert(false && "Not yet implemented")
 
@@ -193,20 +193,70 @@ IR::Value Binop::EmitIR() {
   }
 }
 
-IR::Value ChainOp::EmitIR() { NOT_YET; }
+IR::Value ChainOp::EmitIR() {
+  assert(!ops.empty());
+
+  if (ops[0] == Language::Operator::Xor) {
+    std::vector<IR::Value> vals;
+    for (auto e : exprs) { vals.push_back(e->EmitIR()); }
+
+    IR::Value v = vals[0];
+    for (size_t i = 1; i < vals.size(); ++i) { v = BXor(v, vals[i]); }
+    return v;
+
+  } else if (ops[0] == Language::Operator::And ||
+             ops[0] == Language::Operator::Or) {
+    std::vector<IR::Block *> blocks(exprs.size(), nullptr);
+    // If it's an or, an early exit is because we already know the value is true.
+    // If it's an and, an early exit is beacause we already know the value is false.
+    IR::Value early_exit_value = IR::Value(ops[0] == Language::Operator::Or);
+
+    for (auto &b: blocks) {
+      // TODO roll this all into one function
+      b = new IR::Block(IR::Func::Current->blocks.size());
+      IR::Func::Current->blocks.push_back(b);
+    }
+
+    IR::Block::Current->set_unconditional_jump(blocks.front());
+
+    // Create the landing block
+    IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
+    IR::Func::Current->blocks.push_back(landing_block);
+    auto phi = IR::Phi();
+
+    for (size_t i = 0; i < exprs.size() - 1; ++i) {
+      IR::Block::Current = blocks[i];
+      auto result = exprs[i]->EmitIR();
+      IR::Block::Current->set_conditional_jump(result, blocks[i + 1], landing_block);
+
+      phi.AddIncoming(IR::Block::Current, early_exit_value);
+    }
+
+    IR::Block::Current = blocks.back();
+    auto last_result = exprs.back()->EmitIR();
+    IR::Block::Current->set_unconditional_jump(landing_block);
+    phi.AddIncoming(IR::Block::Current, last_result);
+
+    IR::Block::Current = landing_block;
+    landing_block->cmds.push_back(phi);
+
+    return phi;
+  }
+  NOT_YET;
+}
 
 IR::Value FunctionLiteral::EmitIR() {
-  auto func          = new IR::Func;
-  IR::Func::Current  = func;
-  IR::Block::Current = func->entry;
+  if (ir_func) { return IR::Value(ir_func); }
+  ir_func            = new IR::Func;
+  IR::Func::Current  = ir_func;
+  IR::Block::Current = ir_func->entry();
   statements->EmitIR();
-  return IR::Value(func);
+  ir_func->dump();
+  return IR::Value(ir_func);
 }
 
 IR::Value Statements::EmitIR() {
-  for (auto stmt : statements) {
-    stmt->EmitIR();
-  }
+  for (auto stmt : statements) { stmt->EmitIR(); }
   return IR::Value();
 }
 

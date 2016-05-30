@@ -1,6 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
-#include "Type.h"
+#include "Type/Type.h"
 #endif
 
 #define CLONE clone(num_entries, lookup_key, lookup_val)

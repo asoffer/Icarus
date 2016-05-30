@@ -1,6 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
-#include "Type.h"
+#include "Type/Type.h"
 #endif
 
 #define STARTING_VALUE_CHECK                                                   \

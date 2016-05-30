@@ -17,6 +17,7 @@ Value Cmd::eval(const std::vector<Value> &vals, const std::vector<Value> &fn_arg
   case Op::FNeg: return Value(-cmd_inputs[0].val.as_real);
   case Op::Load: NOT_YET;
   case Op::Store: NOT_YET;
+  case Op::Phi: NOT_YET;
   case Op::Ret: return cmd_inputs[0];
   case Op::IAdd:
     return Value(cmd_inputs[0].val.as_int + cmd_inputs[1].val.as_int);
@@ -48,6 +49,8 @@ Value Cmd::eval(const std::vector<Value> &vals, const std::vector<Value> &fn_arg
     return Value(cmd_inputs[0].val.as_uint % cmd_inputs[1].val.as_uint);
   case Op::FMod:
     return Value(fmod(cmd_inputs[0].val.as_real, cmd_inputs[1].val.as_real));
+  case Op::BXor:
+    return Value(cmd_inputs[0].val.as_bool != cmd_inputs[1].val.as_bool);
   }
 }
 
@@ -69,7 +72,7 @@ Block *Block::execute_jump(const std::vector<Value> &vals,
 
 Value Call(Func *f, const std::vector<Value>& arg_vals) {
   std::vector<Value> vals(f->num_cmds);
-  Block *block_ptr = f->entry;
+  Block *block_ptr = f->entry();
   size_t cmd_index = 0;
 
   while (true) {

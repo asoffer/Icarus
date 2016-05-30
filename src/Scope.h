@@ -2,7 +2,7 @@
 #define ICARUS_SCOPE_H
 
 #ifndef ICARUS_UNITY
-#include "Type.h"
+#include "Type/Type.h"
 #endif
 
 extern llvm::BasicBlock *make_block(const std::string &name,

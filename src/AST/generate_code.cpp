@@ -1,6 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
-#include "Type.h"
+#include "Type/Type.h"
 #include <cstring>
 #endif
 #include "IR/IR.h"

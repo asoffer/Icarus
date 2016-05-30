@@ -1,6 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Parser.h"
-#include "Type.h"
+#include "Type/Type.h"
 #include "Scope.h"
 #endif
 

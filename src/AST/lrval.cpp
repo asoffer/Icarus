@@ -1,5 +1,5 @@
 #ifndef ICARUS_UNITY
-#include "Type.h"
+#include "Type/Type.h"
 #endif
 
 namespace AST {

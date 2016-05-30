@@ -10,8 +10,6 @@ extern std::queue<std::string> file_queue;
 // TODO Fix this later.
 using Ctx = std::map<std::string, Context::Value>;
 
-#include "IR/IR.h"
-
 namespace AST {
 #define ENDING = 0
 #define OVERRIDE
@@ -359,6 +357,8 @@ struct FunctionLiteral : public Expression {
   std::vector<Declaration *> inputs;
   llvm::Function *llvm_fn;
   Statements *statements;
+
+  IR::Func *ir_func;
 
   bool code_gened;
 

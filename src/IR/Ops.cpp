@@ -35,6 +35,13 @@ ONE_ARG_CMD(Load)
 TWO_ARG_CMD(Store)
 ONE_ARG_CMD(Ret)
 
+Cmd Phi() {
+  Cmd phi;
+  phi.op_code = Op::Phi;
+  // Block::Current->cmds.push_back(phi);
+  return phi;
+}
+
 TWO_ARG_CMD(IAdd)
 TWO_ARG_CMD(UAdd)
 TWO_ARG_CMD(FAdd)
@@ -55,6 +62,8 @@ TWO_ARG_CMD(IMod)
 TWO_ARG_CMD(UMod)
 TWO_ARG_CMD(FMod)
 
+TWO_ARG_CMD(BXor)
+
 static std::string OpCodeString(Op op_code) {
   switch (op_code) {
   case Op::BNot:  return "not  ";
@@ -62,6 +71,7 @@ static std::string OpCodeString(Op op_code) {
   case Op::FNeg:  return "fneg ";
   case Op::Load:  return "load ";
   case Op::Store: return "store";
+  case Op::Phi:   return "phi  ";
   case Op::Ret:   return "ret  ";
   case Op::IAdd:  return "iadd ";
   case Op::UAdd:  return "uadd ";
@@ -78,6 +88,7 @@ static std::string OpCodeString(Op op_code) {
   case Op::IMod:  return "imod ";
   case Op::UMod:  return "umod ";
   case Op::FMod:  return "fmod ";
+  case Op::BXor:  return "bxor ";
   }
 }
 
@@ -96,18 +107,25 @@ std::ostream &operator<<(std::ostream& os, const Value& value) {
 }
 
 void Cmd::dump(size_t indent) {
-  std::cout << std::string(indent, ' ') << result << "\t= "
-            << OpCodeString(op_code);
+  std::cout << std::string(indent, ' ') << result << "\t= ";
 
-  auto iter = args.begin();
+  if (op_code == Op::Phi) {
+    std::cout << "phi (" << incoming_blocks.size() << ")";
+    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
+      std::cout << "\n" << std::string(indent + 2, ' ') << "block-"
+                << incoming_blocks[i]->block_num << " => " << args[i];
+    }
+    std::cout << std::endl;
+  } else {
+    std::cout << OpCodeString(op_code);
+    auto iter = args.begin();
 
-  std::cout << " " << *iter;
+    std::cout << " " << *iter;
 
-  ++iter;
-  for (; iter != args.end(); ++iter) {
-    std::cout << ", " << *iter;
+    ++iter;
+    for (; iter != args.end(); ++iter) { std::cout << ", " << *iter; }
+    std::cout << std::endl;
   }
-  std::cout << std::endl;
 }
 
 void Block::dump() {
@@ -117,6 +135,20 @@ void Block::dump() {
     std::cout << "  block-" << block_num << ":\n";
   }
   for (auto c : cmds) { c.dump(4); }
+
+  if (cond.flag == ValType::Arg || cond.flag == ValType::Ref ||
+      cond.flag == ValType::B) {
+    std::cout << "    cond br " << cond << " [T: block-"
+              << true_block->block_num << "] [F: block-"
+              << false_block->block_num << "]\n\n";
+  } else {
+    std::cout << "    br block-";
+    if (true_block) {
+      std::cout << true_block->block_num << "\n\n";
+    } else {
+      std::cout << "undef\n\n" << std::endl;
+    }
+  }
 }
 
 void Func::dump() {
@@ -127,7 +159,6 @@ void Func::dump() {
     std::cout << "(#$" << args.size() << "):" << std::endl;
   }
 
-  entry->dump();
   for (auto b : blocks) { b->dump(); }
 }
 

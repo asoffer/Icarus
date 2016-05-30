@@ -7,6 +7,7 @@ namespace IR {
 enum class ValType { B, C, I, R, U, T, F, Ref, Arg };
 
 struct Func;
+struct Block;
 
 struct Value {
   ValType flag;
@@ -41,6 +42,7 @@ enum class Op {
   INeg, FNeg,
 
   Load, Store,
+  Phi,
   Ret,
 
   IAdd, UAdd, FAdd,
@@ -49,6 +51,7 @@ enum class Op {
   IDiv, UDiv, FDiv,
   IMod, UMod, FMod,
 
+  BXor,
   /*
   ILT, ULT, FLT,
   ILE, ULE, FLE,
@@ -61,6 +64,7 @@ enum class Op {
 
 struct Cmd {
   Op op_code;
+  std::vector<Block *> incoming_blocks; // Only used for phi cmds
   std::vector<Value> args;
 
   operator Value() { return result; }
@@ -69,7 +73,17 @@ struct Cmd {
   Cmd(Op o, Value v) : op_code(o), args(1, v) {}
   void dump(size_t indent = 0);
 
+  // Only used for phi cmds
+  friend Cmd Phi();
+  void AddIncoming(Block *block, Value output_val) {
+    incoming_blocks.push_back(block);
+    args.push_back(output_val);
+  }
+
   Value eval(const std::vector<Value> &vals, const std::vector<Value> &fn_args);
+
+private:
+  Cmd() {}
 };
 
 struct Block {
@@ -77,10 +91,22 @@ struct Block {
 
   // Passing a char into the condition to trigger it's type to be C. We don't
   // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block(size_t n) : block_num(n), cond('x') {}
+  Block(size_t n)
+      : block_num(n), true_block(nullptr), false_block(nullptr), cond('x') {}
   ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
+
+  void set_conditional_jump(Value val, Block *t_block, Block *f_block) {
+    cond        = val;
+    true_block  = t_block;
+    false_block = f_block;
+  }
+
+  void set_unconditional_jump(Block *b) {
+    cond       = Value('x');
+    true_block = b;
+  }
 
   Block *execute_jump(const std::vector<Value> &vals,
                               const std::vector<Value> &fn_args);
@@ -105,16 +131,15 @@ struct Block {
 struct Func {
   static Func *Current;
 
-
   std::vector<Block *> blocks;
   std::vector<Value *> args;
   std::string name;
-  Block *entry;
+
+  Block *entry() { return blocks.front(); }
   size_t num_cmds;
 
-  Func() : entry(new Block(0)), num_cmds(0) {}
+  Func() : num_cmds(0) { blocks.push_back(new Block(0)); }
   ~Func() {
-    delete entry;
     for (auto b : blocks) { delete b; }
   }
 
@@ -130,6 +155,7 @@ Cmd FNeg(Value);
 
 Cmd Load(Value);
 Cmd Store(Value, Value);
+Cmd Phi();
 Cmd Ret(Value);
 
 Cmd IAdd(Value, Value);
@@ -151,6 +177,9 @@ Cmd FDiv(Value, Value);
 Cmd IMod(Value, Value);
 Cmd UMod(Value, Value);
 Cmd FMod(Value, Value);
+
+
+Cmd BXor(Value, Value);
 } // namespace IR
 
 #endif // ICARUS_IR_H

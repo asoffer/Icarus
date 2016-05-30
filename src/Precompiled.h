@@ -159,6 +159,7 @@ enum NodeType : char {
 inline bool is_operator(NodeType t) { return (t & OP_) != 0; }
 } // namespace Language
 
-#include "AST.h"
+#include "IR/IR.h"
+#include "AST/AST.h"
 
 #endif // ICARUS_PRECOMPILED_H
