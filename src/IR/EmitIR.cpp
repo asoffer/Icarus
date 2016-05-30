@@ -1,5 +1,6 @@
 #include "IR.h"
 #include "Type/Type.h"
+#include "Scope.h"
 
 #define NOT_YET assert(false && "Not yet implemented")
 
@@ -254,6 +255,7 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
   statements->EmitIR();
+  ir_func->dump();
   return IR::Value(ir_func);
 }
 

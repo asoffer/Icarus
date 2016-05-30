@@ -61,6 +61,17 @@ enum class Op {
   */
 };
 
+struct StackFrame {
+  std::vector<Value> reg;
+  std::vector<Value> allocs;
+  const std::vector<Value>& args;
+
+  size_t inst_ptr;
+  Block *curr_block, *prev_block;
+
+  StackFrame(Func *f, const std::vector<Value> &args);
+};
+
 struct Cmd {
   Op op_code;
   std::vector<Block *> incoming_blocks; // Only used for phi cmds
@@ -79,7 +90,7 @@ struct Cmd {
     args.push_back(output_val);
   }
 
-  Value eval(const std::vector<Value> &vals, const std::vector<Value> &fn_args);
+  void Execute(StackFrame &frame);
 
 private:
   Cmd() {}
@@ -137,8 +148,7 @@ struct Block {
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
 
-  Block *execute_jump(const std::vector<Value> &vals,
-                      const std::vector<Value> &fn_args);
+  Block *ExecuteJump(StackFrame &frame);
 
   size_t block_num;
   std::vector<Cmd> cmds;
