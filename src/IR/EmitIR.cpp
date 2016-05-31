@@ -196,74 +196,75 @@ IR::Value Binop::EmitIR() {
   default: NOT_YET;
   }
 }
-static IR::Value EmitComparison(Language::Operator op, IR::Value lhs, IR::Value rhs) {
+static IR::Value EmitComparison(Type *op_type, Language::Operator op,
+                                IR::Value lhs, IR::Value rhs) {
   if (op == Language::Operator::LT) {
-    if (lhs.flag == IR::ValType::I) {
+    if (op_type == Int) {
       return ILT(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FLT(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return ULT(lhs, rhs);
     }
 
   } else if (op == Language::Operator::LE) {
-    if (lhs.flag == IR::ValType::I) {
+    if (op_type == Int) {
       return ILE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FLE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return ULE(lhs, rhs);
     }
 
   } else if (op == Language::Operator::EQ) {
-    if (lhs.flag == IR::ValType::B) {
+    if (op_type == Bool) {
       return BEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::C) {
+    } else if (op_type == Char) {
       return CEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::I) {
+    } else if (op_type == Int) {
       return IEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return UEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::T) {
+    } else if (op_type == Type_) {
       return TEQ(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::F) {
+    } else if (op_type->is_function()) {
       return FnEQ(lhs, rhs);
     }
 
   } else if (op == Language::Operator::NE) {
-    if (lhs.flag == IR::ValType::B) {
+    if (op_type == Bool) {
       return BNE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::C) {
+    } else if (op_type == Char) {
       return CNE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::I) {
+    } else if (op_type == Int) {
       return INE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FNE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return UNE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::T) {
+    } else if (op_type == Type_) {
       return TNE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::F) {
+    } else if (op_type->is_function()) {
       return FnNE(lhs, rhs);
     }
 
   } else if (op == Language::Operator::GE) {
-    if (lhs.flag == IR::ValType::I) {
+    if (op_type == Int) {
       return IGE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FGE(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return UGE(lhs, rhs);
     }
 
   } else if (op == Language::Operator::GT) {
-    if (lhs.flag == IR::ValType::I) {
+    if (op_type == Int) {
       return IGT(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::R) {
+    } else if (op_type == Real) {
       return FGT(lhs, rhs);
-    } else if (lhs.flag == IR::ValType::U) {
+    } else if (op_type == Uint) {
       return UGT(lhs, rhs);
     }
   }
@@ -347,7 +348,7 @@ IR::Value ChainOp::EmitIR() {
       IR::Block::Current = blocks[i];
       lhs                = rhs;
       rhs                = exprs[i + 1]->EmitIR();
-      result             = EmitComparison(ops[i], lhs, rhs);
+      result             = EmitComparison(exprs[i]->type, ops[i], lhs, rhs);
 
       // Early exit
       IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
@@ -359,7 +360,7 @@ IR::Value ChainOp::EmitIR() {
 
     lhs              = rhs;
     rhs              = exprs.back()->EmitIR();
-    auto last_result = EmitComparison(ops.back(), lhs, rhs);
+    auto last_result = EmitComparison(exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->exit.SetUnconditional(landing_block);
     phi.AddIncoming(IR::Block::Current, last_result);
 
@@ -376,7 +377,7 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
   statements->EmitIR();
-  ir_func->dump();
+  // ir_func->dump();
   return IR::Value(ir_func);
 }
 
@@ -387,6 +388,22 @@ IR::Value Statements::EmitIR() {
 
 IR::Value Identifier::EmitIR() {
   if (arg_val && arg_val->is_function_literal()) {
+    // TODO Iterating through linearly is probably not smart.
+    auto fn = (FunctionLiteral *)arg_val;
+    size_t arg_num = 0;
+    for (auto in : fn->inputs) {
+      if (this != in->identifier) {
+        ++arg_num;
+        continue;
+      }
+
+      // Here you found a match
+      IR::Value v;
+      v.flag       = IR::ValType::Arg;
+      v.val.as_arg = arg_num;
+      return v;
+    }
+    assert(false && "Failed to match argument");
   }
   NOT_YET;
 }

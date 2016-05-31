@@ -8,5 +8,4 @@ show := (val: Numeric`T) -> void {
 main := void -> void {
   show(3)
   show(17.0)
-  show('x')
 }

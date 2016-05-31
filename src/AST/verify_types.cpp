@@ -95,7 +95,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     // Do a function call
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
-    auto test_result = IR::Call(f.val.as_func, {});
+    auto test_result = IR::Call(f.val.as_func, {IR::Value(rhs)});
     assert(test_result.flag == IR::ValType::B);
 
     if (test_result.val.as_bool) {
