@@ -25,7 +25,16 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::Load: NOT_YET;
   case Op::Store: NOT_YET;
-  case Op::Phi: assert(false && "Implemented elsewhere");
+  case Op::Phi: {
+    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
+      if (frame.prev_block == incoming_blocks[i]) {
+        frame.reg[result.val.as_ref] = cmd_inputs[i];
+        goto exit_successfully;
+      }
+    }
+    assert(false && "No selection made from phi block");
+  exit_successfully:;
+  } break;
   case Op::IAdd: {
     frame.reg[result.val.as_ref] =
         Value(cmd_inputs[0].val.as_int + cmd_inputs[1].val.as_int);
