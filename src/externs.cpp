@@ -43,7 +43,6 @@ std::map<Lib, AST::Identifier *> lib_type;
 std::queue<std::string> file_queue;
 
 llvm::Module* global_module;
-llvm::DataLayout* data_layout;
 
 std::map<std::string, llvm::Value*> global_strings;
 

@@ -14,7 +14,7 @@ STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic -Weffc++
 OPTS = -iquote$(shell pwd)/src -include-pch bin/Precompiled.h.pch
 LLVM_CXX = $(shell llvm-config --cxxflags)
-LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs core)
+LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs)
 all: $(TARGET)
 
 .PHONY: release

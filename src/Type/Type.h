@@ -2,7 +2,6 @@
 #define ICARUS_TYPE_H
 
 extern llvm::IRBuilder<> builder;
-extern llvm::DataLayout *data_layout;
 
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);

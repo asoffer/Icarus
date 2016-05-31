@@ -2,8 +2,6 @@
 #include "Scope.h"
 #endif
 
-extern llvm::DataLayout* data_layout;
-
 namespace cstdlib {
 extern llvm::Constant *memcpy();
 } // namespace cstdlib

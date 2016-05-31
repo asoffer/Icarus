@@ -11,6 +11,14 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
+#include "llvm/Support/FileSystem.h"
+#include "llvm/Support/TargetRegistry.h"
+#include "llvm/Support/TargetSelect.h"
+#include "llvm/MC/SubTargetFeature.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+#include "llvm/IR/LegacyPassManager.h"
+
 #include "IR/IR.h"
 
 static size_t start_time;
@@ -26,12 +34,11 @@ static size_t saved_time;
       saved_time  = end_time - start_time,                                     \
       total_time += saved_time,                                                \
       debug::timing &&                                                         \
-      (std::cout << std::setw(20) << (msg + std::string(":"))                  \
+      (std::cout << std::setw(25) << (msg + std::string(":"))                  \
                 << std::setw(15) << saved_time << "ns" << std::endl),          \
       TIME_FLAG = false)
 
 extern llvm::Module *global_module;
-extern llvm::DataLayout *data_layout;
 
 namespace TypeSystem {
 extern void GenerateLLVM();
@@ -67,10 +74,8 @@ extern std::map<std::string, AST::Statements *> ast_map;
 namespace error_code {
 enum {
   success = 0, // returning 0 denotes succes
-
   cyclic_dependency,
   file_does_not_exist,
-  invalid_arguments,
   parse_error,
   timing_or_lvalue,
   undeclared_identifier
@@ -85,50 +90,70 @@ std::string canonicalize_file_name(const std::string &filename) {
   return (found_dot == std::string::npos) ? filename + ".ic" : filename;
 }
 
-int main(int argc, char *argv[]) {
-  std::cout << argv[1] << std::endl;
+void ParseArguments(int argc, char *argv[]) {
+  for (int arg_num = 1; arg_num < argc; ++arg_num) {
+    auto arg = argv[arg_num];
 
-  TIME("Initialization") {
-    // This includes naming all basic types, so it must be done even before
-    // lexing.
+    if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
+      debug::parser = true;
+
+    } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
+      debug::timing = true;
+
+    } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
+      debug::parametric_struct = true;
+
+    } else {
+      // Add the file to the queue
+      file_queue.emplace(arg);
+    }
+  }
+}
+
+int main(int argc, char *argv[]) {
+  TIME("Argument parsing") { ParseArguments(argc, argv); }
+
+
+  llvm::TargetMachine *target_machine = nullptr;
+  TIME("Icarus initialization") {
+    // Initialize the names for all the primitive types. Used by the lexer.
     TypeSystem::initialize();
 
     // Initialize the global scope
     Scope::Global = new BlockScope(ScopeType::Global);
     builder.SetInsertPoint(Scope::Global->entry);
+
   }
 
-  int arg_num    = 1;  // iterator over argv
-  int file_index = -1; // Index of where file name is in argv
-  TIME("Argument parsing") {
-    while (arg_num < argc) {
-      auto arg = argv[arg_num];
+  TIME("LLVM initialization") {
+    LLVMInitializeAllTargets();
+    LLVMInitializeAllTargetInfos();
+    LLVMInitializeAllTargetMCs();
+    LLVMInitializeAllAsmPrinters();
+    LLVMInitializeAllAsmParsers();
 
-      if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
-        debug::parser = true;
-
-      } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
-        debug::timing = true;
-
-      } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
-        debug::parametric_struct = true;
-
-      } else if (file_index == -1) {
-        // If we haven't seen a file yet, point to it
-        file_index = arg_num;
-
-      } else {
-        // If we have found a file already, error out.
-        std::cerr << "Provide exactly one file name." << std::endl;
-        return error_code::invalid_arguments;
+    llvm::StringMap<bool> host_features;
+    llvm::SubtargetFeatures features;
+    if (llvm::sys::getHostCPUFeatures(host_features)) {
+      for (auto &feat: host_features) {
+        features.AddFeature(feat.first(), feat.second);
       }
-
-      ++arg_num;
     }
-  }
 
-  // Add the file to the queue
-  file_queue.emplace(argv[file_index]);
+    llvm::TargetOptions opt;
+    std::string error = "";
+    auto target = llvm::TargetRegistry::lookupTarget(
+        llvm::sys::getDefaultTargetTriple(), error);
+    if (error != "") {
+      std::cout << error << std::endl;
+      assert(false && "Error in target string lookup");
+    }
+
+    target_machine = target->createTargetMachine(
+        llvm::sys::getDefaultTargetTriple(), llvm::sys::getHostCPUName(),
+        features.getString(), opt);
+    assert(target_machine);
+  }
 
   while (!file_queue.empty()) {
     std::string file_name = canonicalize_file_name(file_queue.front());
@@ -147,7 +172,7 @@ int main(int argc, char *argv[]) {
         << std::endl;
     }
 
-    TIME(file_name + "\n         ...parsing") {
+    TIME(file_name + "\n              ...parsing") {
       Parser parser(file_name);
       ast_map[file_name] = (AST::Statements *)parser.parse();
     }
@@ -164,7 +189,8 @@ int main(int argc, char *argv[]) {
   TIME("AST Setup") {
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
-    data_layout   = new llvm::DataLayout(global_module);
+
+    global_module->setDataLayout(target_machine->createDataLayout());
 
     // TODO write the language rules to guarantee that the parser produces a
     // Statements node at top level.
@@ -305,32 +331,33 @@ int main(int argc, char *argv[]) {
   }
 
   TIME("LLVM") {
-    // TODO Optimization.
-    {
-      // In this anonymous scope we write the LLVM IR to a file. The point
-      // of the anonymous scope is to ensure that the file is written and
-      // closed before we make system calls on it (e.g., for linking).
-      std::ofstream output_file_stream("ir.ll");
-      llvm::raw_os_ostream output_file(output_file_stream);
-      global_module->print(output_file, nullptr);
-    }
+    std::error_code EC;
+    llvm::raw_fd_ostream destination("obj.o", EC, llvm::sys::fs::F_None);
+    if (EC) { assert(false && "Not yet implemented: Write error handling."); }
 
+    llvm::legacy::PassManager pass;
+
+    assert(!target_machine->addPassesToEmitFile(
+               pass, destination, llvm::TargetMachine::CGFT_ObjectFile) &&
+           "TargetMachine can't emit a file of this type");
+
+    pass.run(*global_module);
+
+    destination.flush();
+  }
+
+  TIME("Link/system") {
     std::string input_file_name(argv[1]);
-    std::string link_string = "gcc ir.o -o bin/";
-    size_t start            = input_file_name.find('/', 0) + 1;
-    size_t end = input_file_name.find('.', 0);
-    link_string += input_file_name.substr(start, end - start);
 
-    std::string sys_call = "llc -filetype=obj ir.ll;" + link_string + "; rm ir.o";
-    system(sys_call.c_str());
+    size_t start = input_file_name.find('/', 0) + 1;
+    size_t end   = input_file_name.find('.', 0);
+
+    system(("gcc obj.o -o bin/" + input_file_name.substr(start, end - start)).c_str());
   }
 
   if (debug::timing) {
-    std::cout << std::setw(20) << "TOTAL:" << std::setw(15) << total_time
-              << "ns" << std::endl
-              << "LLVM accounts for "
-              << ((double)(100 * saved_time) / total_time)
-              << "% of the compilation time." << std::endl;
+    std::cout << std::setw(25) << "TOTAL:" << std::setw(15) << total_time
+              << "ns" << std::endl;
   }
 
   return error_code::success;
