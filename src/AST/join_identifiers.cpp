@@ -22,18 +22,18 @@ void set_or_recurse(AST::Expression *&eptr) {
 }
 
 namespace AST {
-void DummyTypeExpr::join_identifiers(bool) {}
+void DummyTypeExpr::join_identifiers(Expression *) {}
 
-void Unop::join_identifiers(bool) { set_or_recurse(operand); }
+void Unop::join_identifiers(Expression *) { set_or_recurse(operand); }
 
-void While::join_identifiers(bool) {
+void While::join_identifiers(Expression *) {
   Scope::Stack.push(while_scope);
   condition->join_identifiers();
   statements->join_identifiers();
   Scope::Stack.pop();
 }
 
-void For::join_identifiers(bool) {
+void For::join_identifiers(Expression *) {
   Scope::Stack.push(for_scope);
   for (auto &iter : iterators) {
     iter->identifier = CurrentScope()->identifier(iter->identifier);
@@ -45,16 +45,16 @@ void For::join_identifiers(bool) {
   Scope::Stack.pop();
 }
 
-void ArrayLiteral::join_identifiers(bool) {
+void ArrayLiteral::join_identifiers(Expression *) {
   for (auto &el : elems) { set_or_recurse(el); }
 }
 
-void Terminal::join_identifiers(bool) {}
-void Jump::join_identifiers(bool) {}
+void Terminal::join_identifiers(Expression *) {}
+void Jump::join_identifiers(Expression *) {}
 
-void Identifier::join_identifiers(bool) { Terminal::join_identifiers(); }
+void Identifier::join_identifiers(Expression *) { Terminal::join_identifiers(); }
 
-void Conditional::join_identifiers(bool) {
+void Conditional::join_identifiers(Expression *) {
   for (size_t i = 0; i < conditions.size(); ++i) {
     Scope::Stack.push(body_scopes[i]);
     set_or_recurse(conditions[i]);
@@ -67,52 +67,49 @@ void Conditional::join_identifiers(bool) {
   }
 }
 
-void Access::join_identifiers(bool) { set_or_recurse(operand); }
+void Access::join_identifiers(Expression *) { set_or_recurse(operand); }
 
-void Binop::join_identifiers(bool) {
+void Binop::join_identifiers(Expression *) {
   set_or_recurse(lhs);
   if (rhs) { set_or_recurse(rhs); }
 }
 
-void ArrayType::join_identifiers(bool) {
+void ArrayType::join_identifiers(Expression *) {
   if (length != nullptr) { set_or_recurse(length); }
   set_or_recurse(data_type);
 }
 
-void Generic::join_identifiers(bool is_arg) {
+void Generic::join_identifiers(Expression *arg) {
   identifier = CurrentScope()->identifier(identifier);
   set_or_recurse(test_fn);
 }
 
-void InDecl::join_identifiers(bool is_arg) {
+void InDecl::join_identifiers(Expression *arg) {
   identifier = CurrentScope()->identifier(identifier);
   set_or_recurse(container);
 }
 
-void Declaration::join_identifiers(bool is_arg) {
+void Declaration::join_identifiers(Expression *arg) {
   identifier = CurrentScope()->identifier(identifier);
 
-  if (is_arg) {
-    assert(identifier);
-    identifier->is_arg = true;
-  }
+  identifier->arg_val = arg;
 
   if (type_expr) { set_or_recurse(type_expr); }
   if (init_val) { set_or_recurse(init_val); }
 }
 
-void ChainOp::join_identifiers(bool is_arg) {
+void ChainOp::join_identifiers(Expression *arg) {
   for (auto &expr : exprs) { set_or_recurse(expr); }
 }
 
-void Case::join_identifiers(bool is_arg) {
+void Case::join_identifiers(Expression *arg) {
   for (auto &kv : key_vals) {
     set_or_recurse(kv.first);
     set_or_recurse(kv.second);
   }
 }
 
-void Statements::join_identifiers(bool is_arg) {
+void Statements::join_identifiers(Expression *arg) {
   for (auto &ptr : statements) {
     if (ptr->is_identifier()) {
       ptr = CurrentScope()->identifier(static_cast<Expression *>(ptr));
@@ -122,9 +119,9 @@ void Statements::join_identifiers(bool is_arg) {
   }
 }
 
-void FunctionLiteral::join_identifiers(bool is_arg) {
+void FunctionLiteral::join_identifiers(Expression *arg) {
   Scope::Stack.push(fn_scope);
-  for (auto &in : inputs) { in->join_identifiers(true); }
+  for (auto &in : inputs) { in->join_identifiers(this); }
 
   set_or_recurse(return_type_expr);
   statements->join_identifiers();
@@ -132,18 +129,18 @@ void FunctionLiteral::join_identifiers(bool is_arg) {
   Scope::Stack.pop();
 }
 
-void ParametricStructLiteral::join_identifiers(bool) {
+void ParametricStructLiteral::join_identifiers(Expression *) {
   Scope::Stack.push(type_scope);
-  for (auto p : params) { p->join_identifiers(true); }
+  for (auto p : params) { p->join_identifiers(this); }
   for (auto d : decls) { d->join_identifiers(); }
   Scope::Stack.pop();
 }
 
-void StructLiteral::join_identifiers(bool) {
+void StructLiteral::join_identifiers(Expression *) {
   Scope::Stack.push(type_scope);
   for (auto d : decls) { d->join_identifiers(); }
   Scope::Stack.pop();
 }
 
-void EnumLiteral::join_identifiers(bool) {}
+void EnumLiteral::join_identifiers(Expression *) {}
 } // namespace AST

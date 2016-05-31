@@ -167,7 +167,7 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
 Context::Value Identifier::evaluate(Ctx &ctx) {
   verify_types();
 
-  if (is_arg) {
+  if (arg_val) {
     auto iter = ctx.find(token);
     if (iter != ctx.end()) { return iter->second; }
   }

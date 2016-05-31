@@ -242,7 +242,7 @@ int main(int argc, char *argv[]) {
       for (auto decl : Scope::Global->ordered_decls_) {
 
         auto id = decl->identifier;
-        if (id->is_arg) { continue; }
+        if (id->arg_val) { continue; }
 
         auto type = decl->type;
         if (type->time() == Time::compile) { continue; }

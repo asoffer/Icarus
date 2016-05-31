@@ -146,7 +146,7 @@ void BlockScope::initialize() {
     //   continue;
 
     // } else {
-    if (decl_id->is_arg ||
+    if (decl_id->arg_val ||
         (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
       continue;
     }
@@ -169,7 +169,7 @@ void BlockScope::uninitialize() {
     auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
 
     // TODO is this correct?
-    if (decl_id->is_arg) continue;
+    if (decl_id->arg_val) continue;
     if (!decl_id->type->stores_data()) continue;
 
     decl_id->type->CallDestroy(this, decl_id->alloc);
@@ -356,7 +356,7 @@ void FnScope::allocate(Scope* scope) {
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
 
-    if (decl_id->is_arg && decl_ptr->type->is_big()) {
+    if (decl_id->arg_val && decl_ptr->type->is_big()) {
       // Insert this alloc in the FunctionLiteral node
       continue;
     }

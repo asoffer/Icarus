@@ -760,7 +760,7 @@ void Binop::verify_types() {
           if (matched_data.expr->is_identifier()) {
             // TODO why is this condition necessary?
             has_vars_flag &=
-                !static_cast<Identifier *>(matched_data.expr)->is_arg;
+                !static_cast<Identifier *>(matched_data.expr)->arg_val;
           }
         }
       } else {

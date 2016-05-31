@@ -11,11 +11,12 @@ extern std::queue<std::string> file_queue;
 using Ctx = std::map<std::string, Context::Value>;
 
 namespace AST {
+
 #define ENDING = 0
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(bool is_arg = false) ENDING;                   \
+  virtual void join_identifiers(Expression *arg = nullptr) ENDING;             \
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
@@ -31,7 +32,7 @@ namespace AST {
   virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(bool is_arg = false) ENDING;                   \
+  virtual void join_identifiers(Expression *arg = nullptr) ENDING;             \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual IR::Value EmitIR() ENDING;                                           \
@@ -46,7 +47,7 @@ namespace AST {
 
 struct Node {
   virtual std::string to_string(size_t n) const = 0;
-  virtual void join_identifiers(bool = false) {}
+  virtual void join_identifiers(Expression *arg = nullptr) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void verify_types() {}
@@ -175,7 +176,8 @@ struct Identifier : public Terminal {
   size_t registry_pos_;
   llvm::Value *alloc;
   std::vector<Declaration *> decls; // multiple because function overloading
-  bool is_arg;                      // function argument or struct parameter
+
+  Expression *arg_val;
 };
 
 struct Binop : public Expression {

@@ -42,6 +42,7 @@ struct Statements;
 struct FunctionLiteral;
 struct EnumLiteral;
 struct StructLiteral;
+struct ParametricStructLiteral;
 } // namespace AST
 
 struct Type;

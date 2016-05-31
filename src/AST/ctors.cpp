@@ -59,7 +59,7 @@ Jump::Jump(TokenLocation new_loc, JumpType jump_type) : jump_type(jump_type) {
 Identifier::Identifier() { assert(false); }
 
 Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
-    : registry_pos_(~0u), alloc(nullptr), is_arg(false) {
+    : registry_pos_(~0u), alloc(nullptr) {
   token      = token_string;
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);

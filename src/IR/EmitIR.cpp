@@ -385,11 +385,16 @@ IR::Value Statements::EmitIR() {
   return IR::Value();
 }
 
+IR::Value Identifier::EmitIR() {
+  if (arg_val && arg_val->is_function_literal()) {
+  }
+  NOT_YET;
+}
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
-IR::Value Identifier::EmitIR() { NOT_YET; }
 IR::Value Declaration::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
