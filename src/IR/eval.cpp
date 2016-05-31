@@ -99,6 +99,111 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] =
         Value(cmd_inputs[0].val.as_bool != cmd_inputs[1].val.as_bool);
   } break;
+  case Op::ILT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int < cmd_inputs[1].val.as_int);
+  } break;
+  case Op::ULT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint < cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FLT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_real < cmd_inputs[1].val.as_real);
+  } break;
+  case Op::ILE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int <= cmd_inputs[1].val.as_int);
+  } break;
+  case Op::ULE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint <= cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FLE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_real <= cmd_inputs[1].val.as_real);
+  } break;
+  case Op::IEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int == cmd_inputs[1].val.as_int);
+  } break;
+  case Op::UEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint == cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_char == cmd_inputs[1].val.as_char);
+  } break;
+  case Op::BEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_bool == cmd_inputs[1].val.as_bool);
+  } break;
+  case Op::CEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_char == cmd_inputs[1].val.as_char);
+  } break;
+  case Op::TEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_type == cmd_inputs[1].val.as_type);
+  } break;
+  case Op::FnEQ: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_func == cmd_inputs[1].val.as_func);
+  } break;
+  case Op::INE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int != cmd_inputs[1].val.as_int);
+  } break;
+  case Op::UNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint != cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_char != cmd_inputs[1].val.as_char);
+  } break;
+  case Op::BNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_bool != cmd_inputs[1].val.as_bool);
+  } break;
+  case Op::CNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_char != cmd_inputs[1].val.as_char);
+  } break;
+  case Op::TNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_type != cmd_inputs[1].val.as_type);
+  } break;
+  case Op::FnNE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_func != cmd_inputs[1].val.as_func);
+  } break;
+  case Op::IGE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int >= cmd_inputs[1].val.as_int);
+  } break;
+  case Op::UGE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint >= cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FGE: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_real >= cmd_inputs[1].val.as_real);
+  } break;
+  case Op::IGT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_int > cmd_inputs[1].val.as_int);
+  } break;
+  case Op::UGT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_uint > cmd_inputs[1].val.as_uint);
+  } break;
+  case Op::FGT: {
+    frame.reg[result.val.as_ref] =
+        Value(cmd_inputs[0].val.as_real > cmd_inputs[1].val.as_real);
+  } break;
+
   }
 }
 
@@ -145,30 +250,17 @@ eval_loop_start:
 
     } else {
       frame.inst_ptr = 0;
-      // std::cout << "  jumped to block-" << frame.curr_block->block_num << std::endl;
+      // std::cout << "  jumped to block-" << frame.curr_block->block_num
+      //           << std::endl;
       // std::cin.ignore(1);
     }
 
   } else {
     auto cmd = frame.curr_block->cmds[frame.inst_ptr];
     assert(cmd.result.flag == ValType::Ref);
-    if (cmd.op_code == Op::Phi) {
-      Value chosen_val;
-      for (size_t i = 0; i < cmd.incoming_blocks.size(); ++i) {
-        if (frame.prev_block == cmd.incoming_blocks[i]) {
-          chosen_val = cmd.args[i];
-          goto found_match;
-        }
-      }
-      assert(false && "No selection made from phi block");
-    found_match:
-      frame.reg[cmd.result.val.as_ref] = chosen_val;
+    cmd.Execute(frame);
 
-    } else {
-      cmd.Execute(frame);
-    }
-
-    // std::cout << "  " << cmd.result << " = " << vals[cmd.result.val.as_ref]
+    // std::cout << "  " << cmd.result << " = " << frame.reg[cmd.result.val.as_ref]
     //           << std::endl;
     // std::cin.ignore(1);
     ++frame.inst_ptr;

@@ -1,12 +1,12 @@
-Any := (T: type) -> bool {
-  return true
-}
+Any := (T: type) -> bool { return true }
+Numeric := (T: type) -> bool { return T == real | T == int }
 
-show := (val: Any`T) -> void {
+show := (val: Numeric`T) -> void {
   print val, ": ", T, "\n"
 }
 
 main := void -> void {
   show(3)
   show(17.0)
+  show('x')
 }

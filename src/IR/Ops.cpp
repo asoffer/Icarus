@@ -1,21 +1,6 @@
 #include "IR.h"
 #include <cmath>
 
-#define ONE_ARG_CMD(name)                                                      \
-  Cmd name(Value v) {                                                          \
-    Cmd cmd(Op::name, v);                                                      \
-    Block::Current->cmds.push_back(cmd);                                       \
-    return cmd;                                                                \
-  }
-
-#define TWO_ARG_CMD(name)                                                      \
-  Cmd name(Value arg1, Value arg2) {                                           \
-    Cmd cmd(Op::name, arg1);                                                   \
-    cmd.args.push_back(arg2); /* Put this in the constructor */                \
-    Block::Current->cmds.push_back(cmd);                                       \
-    return cmd;                                                                \
-  }
-
 // TODO what Value number to return????
 namespace IR {
 Func *Func::Current;
@@ -25,43 +10,6 @@ Value::Value() : flag(ValType::Ref) {
   val.as_arg = Func::Current->num_cmds;
   Func::Current->num_cmds++;
 }
-
-ONE_ARG_CMD(BNot)
-
-ONE_ARG_CMD(INeg)
-ONE_ARG_CMD(FNeg)
-
-ONE_ARG_CMD(Load)
-TWO_ARG_CMD(Store)
-
-Cmd Phi() {
-  Cmd phi;
-  phi.op_code = Op::Phi;
-  // Block::Current->cmds.push_back(phi);
-  return phi;
-}
-
-TWO_ARG_CMD(IAdd)
-TWO_ARG_CMD(UAdd)
-TWO_ARG_CMD(FAdd)
-
-TWO_ARG_CMD(ISub)
-TWO_ARG_CMD(USub)
-TWO_ARG_CMD(FSub)
-
-TWO_ARG_CMD(IMul)
-TWO_ARG_CMD(UMul)
-TWO_ARG_CMD(FMul)
-
-TWO_ARG_CMD(IDiv)
-TWO_ARG_CMD(UDiv)
-TWO_ARG_CMD(FDiv)
-
-TWO_ARG_CMD(IMod)
-TWO_ARG_CMD(UMod)
-TWO_ARG_CMD(FMod)
-
-TWO_ARG_CMD(BXor)
 
 static std::string OpCodeString(Op op_code) {
   switch (op_code) {
@@ -87,6 +35,32 @@ static std::string OpCodeString(Op op_code) {
   case Op::UMod:  return "umod ";
   case Op::FMod:  return "fmod ";
   case Op::BXor:  return "bxor ";
+  case Op::ILT:   return "ilt  ";
+  case Op::ULT:   return "ult  ";
+  case Op::FLT:   return "flt  ";
+  case Op::ILE:   return "ile  ";
+  case Op::ULE:   return "ule  ";
+  case Op::FLE:   return "fle  ";
+  case Op::IEQ:   return "ieq  ";
+  case Op::UEQ:   return "ueq  ";
+  case Op::FEQ:   return "feq  ";
+  case Op::BEQ:   return "beq  ";
+  case Op::CEQ:   return "ceq  ";
+  case Op::FnEQ:  return "fneq ";
+  case Op::TEQ:   return "teq  ";
+  case Op::INE:   return "ine  ";
+  case Op::UNE:   return "une  ";
+  case Op::FNE:   return "fne  ";
+  case Op::BNE:   return "bne  ";
+  case Op::CNE:   return "cne  ";
+  case Op::FnNE:  return "fnne ";
+  case Op::TNE:   return "tne  ";
+  case Op::IGT:   return "igt  ";
+  case Op::UGT:   return "ugt  ";
+  case Op::FGT:   return "fgt  ";
+  case Op::IGE:   return "ige  ";
+  case Op::UGE:   return "uge  ";
+  case Op::FGE:   return "fge  ";
   }
 }
 
@@ -168,6 +142,3 @@ void Func::dump() {
 }
 
 } // namespace IR
-
-#undef TWO_ARG_CMD
-#undef ONE_ARG_CMD

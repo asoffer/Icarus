@@ -51,14 +51,14 @@ enum class Op {
   IMod, UMod, FMod,
 
   BXor,
-  /*
+
   ILT, ULT, FLT,
   ILE, ULE, FLE,
-  IEQ, UEQ, FEQ,
-  INE, UNE, FNE,
+  IEQ, UEQ, FEQ, BEQ, CEQ, TEQ, FnEQ,
+  INE, UNE, FNE, BNE, CNE, TNE, FnNE,
   IGE, UGE, FGE,
   IGT, UGT, FGT,
-  */
+
 };
 
 struct StackFrame {
@@ -178,38 +178,91 @@ struct Func {
 
 Value Call(Func *f, const std::vector<Value>& arg_vals);
 
-Cmd BNot(Value);
+#define ONE_ARG_CMD(name)                                                      \
+  inline Cmd name(Value v) {                                                   \
+    Cmd cmd(Op::name, v);                                                      \
+    Block::Current->cmds.push_back(cmd);                                       \
+    return cmd;                                                                \
+  }
 
-Cmd INeg(Value);
-Cmd FNeg(Value);
+#define TWO_ARG_CMD(name)                                                      \
+  inline Cmd name(Value arg1, Value arg2) {                                    \
+    Cmd cmd(Op::name, arg1);                                                   \
+    cmd.args.push_back(arg2); /* Put this in the constructor */                \
+    Block::Current->cmds.push_back(cmd);                                       \
+    return cmd;                                                                \
+  }
 
-Cmd Load(Value);
-Cmd Store(Value, Value);
-Cmd Phi();
-Cmd Ret(Value);
+ONE_ARG_CMD(BNot)
 
-Cmd IAdd(Value, Value);
-Cmd UAdd(Value, Value);
-Cmd FAdd(Value, Value);
+ONE_ARG_CMD(INeg)
+ONE_ARG_CMD(FNeg)
 
-Cmd ISub(Value, Value);
-Cmd USub(Value, Value);
-Cmd FSub(Value, Value);
+ONE_ARG_CMD(Load)
+TWO_ARG_CMD(Store)
 
-Cmd IMul(Value, Value);
-Cmd UMul(Value, Value);
-Cmd FMul(Value, Value);
+inline Cmd Phi() {
+  Cmd phi;
+  phi.op_code = Op::Phi;
+  // Block::Current->cmds.push_back(phi);
+  return phi;
+}
 
-Cmd IDiv(Value, Value);
-Cmd UDiv(Value, Value);
-Cmd FDiv(Value, Value);
+TWO_ARG_CMD(IAdd)
+TWO_ARG_CMD(UAdd)
+TWO_ARG_CMD(FAdd)
 
-Cmd IMod(Value, Value);
-Cmd UMod(Value, Value);
-Cmd FMod(Value, Value);
+TWO_ARG_CMD(ISub)
+TWO_ARG_CMD(USub)
+TWO_ARG_CMD(FSub)
 
+TWO_ARG_CMD(IMul)
+TWO_ARG_CMD(UMul)
+TWO_ARG_CMD(FMul)
 
-Cmd BXor(Value, Value);
+TWO_ARG_CMD(IDiv)
+TWO_ARG_CMD(UDiv)
+TWO_ARG_CMD(FDiv)
+
+TWO_ARG_CMD(IMod)
+TWO_ARG_CMD(UMod)
+TWO_ARG_CMD(FMod)
+
+TWO_ARG_CMD(BXor)
+
+TWO_ARG_CMD(ILT)
+TWO_ARG_CMD(ULT)
+TWO_ARG_CMD(FLT)
+
+TWO_ARG_CMD(ILE)
+TWO_ARG_CMD(ULE)
+TWO_ARG_CMD(FLE)
+
+TWO_ARG_CMD(BEQ)
+TWO_ARG_CMD(CEQ)
+TWO_ARG_CMD(IEQ)
+TWO_ARG_CMD(UEQ)
+TWO_ARG_CMD(FEQ)
+TWO_ARG_CMD(TEQ)
+TWO_ARG_CMD(FnEQ)
+
+TWO_ARG_CMD(BNE)
+TWO_ARG_CMD(CNE)
+TWO_ARG_CMD(INE)
+TWO_ARG_CMD(UNE)
+TWO_ARG_CMD(FNE)
+TWO_ARG_CMD(TNE)
+TWO_ARG_CMD(FnNE)
+
+TWO_ARG_CMD(IGE)
+TWO_ARG_CMD(UGE)
+TWO_ARG_CMD(FGE)
+
+TWO_ARG_CMD(IGT)
+TWO_ARG_CMD(UGT)
+TWO_ARG_CMD(FGT)
 } // namespace IR
+#undef TWO_ARG_CMD
+#undef ONE_ARG_CMD
 
 #endif // ICARUS_IR_H

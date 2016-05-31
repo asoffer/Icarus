@@ -10,21 +10,22 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
 
 namespace AST {
 IR::Value Terminal::EmitIR() {
+  // TODO translation from Context::Value to IR::Value should be removed
   switch (terminal_type) {
   case Language::Terminal::ASCII: NOT_YET;
   case Language::Terminal::Char: NOT_YET;
   case Language::Terminal::Else: return IR::Value(true);
   case Language::Terminal::False: return IR::Value(false);
   case Language::Terminal::Hole: NOT_YET;
-  case Language::Terminal::Int: NOT_YET;
+  case Language::Terminal::Int: return IR::Value(value.as_int);
   case Language::Terminal::Null: NOT_YET;
   case Language::Terminal::Ord: NOT_YET;
-  case Language::Terminal::Real: NOT_YET;
+  case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: NOT_YET;
   case Language::Terminal::StringLiteral: NOT_YET;
   case Language::Terminal::True: return IR::Value(true);
-  case Language::Terminal::Type: NOT_YET; 
-  case Language::Terminal::Uint: NOT_YET; 
+  case Language::Terminal::Type: return IR::Value(value.as_type);
+  case Language::Terminal::Uint: return IR::Value(value.as_uint);
   }
 }
 
@@ -195,6 +196,79 @@ IR::Value Binop::EmitIR() {
   default: NOT_YET;
   }
 }
+static IR::Value EmitComparison(Language::Operator op, IR::Value lhs, IR::Value rhs) {
+  if (op == Language::Operator::LT) {
+    if (lhs.flag == IR::ValType::I) {
+      return ILT(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FLT(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return ULT(lhs, rhs);
+    }
+
+  } else if (op == Language::Operator::LE) {
+    if (lhs.flag == IR::ValType::I) {
+      return ILE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FLE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return ULE(lhs, rhs);
+    }
+
+  } else if (op == Language::Operator::EQ) {
+    if (lhs.flag == IR::ValType::B) {
+      return BEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::C) {
+      return CEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::I) {
+      return IEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return UEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::T) {
+      return TEQ(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::F) {
+      return FnEQ(lhs, rhs);
+    }
+
+  } else if (op == Language::Operator::NE) {
+    if (lhs.flag == IR::ValType::B) {
+      return BNE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::C) {
+      return CNE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::I) {
+      return INE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FNE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return UNE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::T) {
+      return TNE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::F) {
+      return FnNE(lhs, rhs);
+    }
+
+  } else if (op == Language::Operator::GE) {
+    if (lhs.flag == IR::ValType::I) {
+      return IGE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FGE(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return UGE(lhs, rhs);
+    }
+
+  } else if (op == Language::Operator::GT) {
+    if (lhs.flag == IR::ValType::I) {
+      return IGT(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::R) {
+      return FGT(lhs, rhs);
+    } else if (lhs.flag == IR::ValType::U) {
+      return UGT(lhs, rhs);
+    }
+  }
+  assert(false);
+}
 
 IR::Value ChainOp::EmitIR() {
   assert(!ops.empty());
@@ -212,7 +286,8 @@ IR::Value ChainOp::EmitIR() {
     std::vector<IR::Block *> blocks(exprs.size(), nullptr);
     // If it's an or, an early exit is because we already know the value is true.
     // If it's an and, an early exit is beacause we already know the value is false.
-    IR::Value early_exit_value = IR::Value(ops[0] == Language::Operator::Or);
+    bool using_or = (ops[0] == Language::Operator::Or);
+    IR::Value early_exit_value = IR::Value(using_or);
 
     for (auto &b: blocks) {
       // TODO roll this all into one function
@@ -230,9 +305,13 @@ IR::Value ChainOp::EmitIR() {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       IR::Block::Current = blocks[i];
       auto result = exprs[i]->EmitIR();
-      IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
-                                              landing_block);
-
+      if (using_or) {
+        IR::Block::Current->exit.SetConditional(result, landing_block,
+                                                blocks[i + 1]);
+      } else {
+        IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
+                                                landing_block);
+      }
       phi.AddIncoming(IR::Block::Current, early_exit_value);
     }
 
@@ -244,6 +323,48 @@ IR::Value ChainOp::EmitIR() {
     IR::Block::Current = landing_block;
     landing_block->cmds.push_back(phi);
 
+    return phi;
+  } else if (Language::precedence(ops.front()) ==
+             Language::precedence(Language::Operator::EQ)) {
+    // Operators here can be <, <=, ==, !=, >=, or >.
+    std::vector<IR::Block *> blocks(exprs.size() - 1, nullptr);
+
+    for (auto &b: blocks) {
+      // TODO roll this all into one function
+      b = new IR::Block(IR::Func::Current->blocks.size());
+      IR::Func::Current->blocks.push_back(b);
+    }
+
+    IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
+    IR::Func::Current->blocks.push_back(landing_block);
+    auto phi = IR::Phi();
+
+    IR::Value result, lhs;
+    IR::Value rhs = exprs[0]->EmitIR();
+    IR::Block::Current->exit.SetUnconditional(blocks.front());
+    assert(exprs.size() >= 2);
+    for (size_t i = 0; i < exprs.size() - 2; ++i) {
+      IR::Block::Current = blocks[i];
+      lhs                = rhs;
+      rhs                = exprs[i + 1]->EmitIR();
+      result             = EmitComparison(ops[i], lhs, rhs);
+
+      // Early exit
+      IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
+                                              landing_block);
+      phi.AddIncoming(IR::Block::Current, IR::Value(false));
+    }
+
+    IR::Block::Current = blocks.back();
+
+    lhs              = rhs;
+    rhs              = exprs.back()->EmitIR();
+    auto last_result = EmitComparison(ops.back(), lhs, rhs);
+    IR::Block::Current->exit.SetUnconditional(landing_block);
+    phi.AddIncoming(IR::Block::Current, last_result);
+
+    IR::Block::Current = landing_block;
+    landing_block->cmds.push_back(phi);
     return phi;
   }
   NOT_YET;
