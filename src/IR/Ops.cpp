@@ -13,56 +13,11 @@ Value::Value() : flag(ValType::Ref) {
 
 static std::string OpCodeString(Op op_code) {
   switch (op_code) {
-  case Op::BNot: return "not";
-  case Op::INeg: return "ineg";
-  case Op::FNeg: return "fneg";
-  case Op::Load: return "load";
-  case Op::Store: return "store";
-  case Op::Phi: return "phi";
-  case Op::IAdd: return "iadd";
-  case Op::UAdd: return "uadd";
-  case Op::FAdd: return "fadd";
-  case Op::ISub: return "isub";
-  case Op::USub: return "usub";
-  case Op::FSub: return "fsub";
-  case Op::IMul: return "imul";
-  case Op::UMul: return "umul";
-  case Op::FMul: return "fmul";
-  case Op::IDiv: return "idiv";
-  case Op::UDiv: return "udiv";
-  case Op::FDiv: return "fdiv";
-  case Op::IMod: return "imod";
-  case Op::UMod: return "umod";
-  case Op::FMod: return "fmod";
-  case Op::BXor: return "bxor";
-  case Op::ILT: return "ilt";
-  case Op::ULT: return "ult";
-  case Op::FLT: return "flt";
-  case Op::ILE: return "ile";
-  case Op::ULE: return "ule";
-  case Op::FLE: return "fle";
-  case Op::IEQ: return "ieq";
-  case Op::UEQ: return "ueq";
-  case Op::FEQ: return "feq";
-  case Op::BEQ: return "beq";
-  case Op::CEQ: return "ceq";
-  case Op::FnEQ: return "fneq";
-  case Op::TEQ: return "teq";
-  case Op::INE: return "ine";
-  case Op::UNE: return "une";
-  case Op::FNE: return "fne";
-  case Op::BNE: return "bne";
-  case Op::CNE: return "cne";
-  case Op::FnNE: return "fnne";
-  case Op::TNE: return "tne";
-  case Op::IGT: return "igt";
-  case Op::UGT: return "ugt";
-  case Op::FGT: return "fgt";
-  case Op::IGE: return "ige";
-  case Op::UGE: return "uge";
-  case Op::FGE: return "fge";
-  case Op::TC_Ptr: return "tcptr";
-  case Op::TC_Arrow: return "tcarrow";
+#define IR_MACRO(OpCode, op_code_str, num_args)                                \
+  case Op::OpCode:                                                             \
+    return op_code_str;
+#include "config/IR.conf"
+#undef IR_MACRO
   }
 }
 

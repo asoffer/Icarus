@@ -38,29 +38,9 @@ struct Value {
 std::ostream &operator<<(std::ostream &os, const Value &value);
 
 enum class Op {
-  BNot,
-  INeg, FNeg,
-
-  Load, Store,
-  Phi,
-
-  IAdd, UAdd, FAdd,
-  ISub, USub, FSub,
-  IMul, UMul, FMul,
-  IDiv, UDiv, FDiv,
-  IMod, UMod, FMod,
-
-  BXor,
-
-  ILT, ULT, FLT,
-  ILE, ULE, FLE,
-  IEQ, UEQ, FEQ, BEQ, CEQ, TEQ, FnEQ,
-  INE, UNE, FNE, BNE, CNE, TNE, FnNE,
-  IGE, UGE, FGE,
-  IGT, UGT, FGT,
-
-  // Type construction
-  TC_Ptr, TC_Arrow
+#define IR_MACRO(OpCode, op_code_str, num_args) OpCode,
+#include "../config/IR.conf"
+#undef IR_MACRO
 };
 
 struct StackFrame {
@@ -180,28 +160,28 @@ struct Func {
 
 Value Call(Func *f, const std::vector<Value>& arg_vals);
 
-#define ONE_ARG_CMD(name)                                                      \
+#define CMD_WITH_1_ARGS(name)                                                  \
   inline Cmd name(Value v) {                                                   \
     Cmd cmd(Op::name, v);                                                      \
     Block::Current->cmds.push_back(cmd);                                       \
     return cmd;                                                                \
   }
 
-#define TWO_ARG_CMD(name)                                                      \
+#define CMD_WITH_2_ARGS(name)                                                  \
   inline Cmd name(Value arg1, Value arg2) {                                    \
     Cmd cmd(Op::name, arg1);                                                   \
-    cmd.args.push_back(arg2); /* Put this in the constructor */                \
+    cmd.args.push_back(arg2); /* TODO Put this in the constructor */           \
     Block::Current->cmds.push_back(cmd);                                       \
     return cmd;                                                                \
   }
 
-ONE_ARG_CMD(BNot)
+// Intentionally empty. Variadic must be hand implemented
+#define CMD_WITH_V_ARGS(name)
 
-ONE_ARG_CMD(INeg)
-ONE_ARG_CMD(FNeg)
-
-ONE_ARG_CMD(Load)
-TWO_ARG_CMD(Store)
+#define IR_MACRO(OpCode, op_code_str, num_args)                                \
+  CMD_WITH_##num_args##_ARGS(OpCode)
+#include "../config/IR.conf"
+#undef IR_MACRO
 
 inline Cmd Phi() {
   Cmd phi;
@@ -210,64 +190,10 @@ inline Cmd Phi() {
   return phi;
 }
 
-TWO_ARG_CMD(IAdd)
-TWO_ARG_CMD(UAdd)
-TWO_ARG_CMD(FAdd)
+#undef CMD_WITH_V_ARGS
+#undef CMD_WITH_1_ARGS
+#undef CMD_WITH_2_ARGS
 
-TWO_ARG_CMD(ISub)
-TWO_ARG_CMD(USub)
-TWO_ARG_CMD(FSub)
-
-TWO_ARG_CMD(IMul)
-TWO_ARG_CMD(UMul)
-TWO_ARG_CMD(FMul)
-
-TWO_ARG_CMD(IDiv)
-TWO_ARG_CMD(UDiv)
-TWO_ARG_CMD(FDiv)
-
-TWO_ARG_CMD(IMod)
-TWO_ARG_CMD(UMod)
-TWO_ARG_CMD(FMod)
-
-TWO_ARG_CMD(BXor)
-
-TWO_ARG_CMD(ILT)
-TWO_ARG_CMD(ULT)
-TWO_ARG_CMD(FLT)
-
-TWO_ARG_CMD(ILE)
-TWO_ARG_CMD(ULE)
-TWO_ARG_CMD(FLE)
-
-TWO_ARG_CMD(BEQ)
-TWO_ARG_CMD(CEQ)
-TWO_ARG_CMD(IEQ)
-TWO_ARG_CMD(UEQ)
-TWO_ARG_CMD(FEQ)
-TWO_ARG_CMD(TEQ)
-TWO_ARG_CMD(FnEQ)
-
-TWO_ARG_CMD(BNE)
-TWO_ARG_CMD(CNE)
-TWO_ARG_CMD(INE)
-TWO_ARG_CMD(UNE)
-TWO_ARG_CMD(FNE)
-TWO_ARG_CMD(TNE)
-TWO_ARG_CMD(FnNE)
-
-TWO_ARG_CMD(IGE)
-TWO_ARG_CMD(UGE)
-TWO_ARG_CMD(FGE)
-
-TWO_ARG_CMD(IGT)
-TWO_ARG_CMD(UGT)
-TWO_ARG_CMD(FGT)
-
-ONE_ARG_CMD(TC_Ptr);
-TWO_ARG_CMD(TC_Arrow);
 } // namespace IR
-#undef TWO_ARG_CMD
-#undef ONE_ARG_CMD
 
 #endif // ICARUS_IR_H
