@@ -1,5 +1,5 @@
 #include "Type/Type.h"
-
+#include <cstdio>
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
@@ -206,6 +206,30 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::FGT: {
     frame.reg[result.val.as_ref] =
         Value(cmd_inputs[0].val.as_real > cmd_inputs[1].val.as_real);
+  } break;
+  case Op::Print: {
+    if (cmd_inputs[0].flag == ValType::B) {
+      std::printf(cmd_inputs[0].val.as_bool ? "true" : "false");
+
+    } else if (cmd_inputs[0].flag == ValType::C) {
+      std::printf("%c", cmd_inputs[0].val.as_char);
+
+    } else if (cmd_inputs[0].flag == ValType::I) {
+      std::printf("%ld", cmd_inputs[0].val.as_int);
+
+    } else if (cmd_inputs[0].flag == ValType::R) {
+      std::printf("%lf", cmd_inputs[0].val.as_real);
+
+    } else if (cmd_inputs[0].flag == ValType::U) {
+      std::printf("%lu", cmd_inputs[0].val.as_uint);
+
+    } else if (cmd_inputs[0].flag == ValType::T) {
+      std::printf("%s", cmd_inputs[0].val.as_type->to_string().c_str());
+
+    } else if (cmd_inputs[0].flag == ValType::F) {
+      NOT_YET;
+    }
+    frame.reg[result.val.as_ref] = Value(nullptr);
   } break;
   case Op::TC_Ptr: {
     frame.reg[result.val.as_ref] = Value(Ptr(cmd_inputs[0].val.as_type));

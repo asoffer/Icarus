@@ -33,6 +33,14 @@ IR::Value Terminal::EmitIR() {
   }
 }
 
+void EmitPrintExpr(Expression *expr) {
+  if (expr->type->is_primitive()) {
+    IR::Print(expr->EmitIR());
+  } else {
+    NOT_YET;
+  }
+}
+
 IR::Value Unop::EmitIR() {
   switch (op) {
   case Language::Operator::Import: NOT_YET;
@@ -46,7 +54,15 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::Repeat: NOT_YET;
   case Language::Operator::Restart: NOT_YET;
   case Language::Operator::Free: NOT_YET;
-  case Language::Operator::Print: NOT_YET;
+  case Language::Operator::Print: {
+    if (operand->is_comma_list()) {
+      auto operand_as_chainop = (ChainOp *)operand;
+      for (auto op : operand_as_chainop->exprs) { EmitPrintExpr(op); }
+    } else {
+      EmitPrintExpr(operand);
+    }
+    return IR::Value();
+  } break;
   case Language::Operator::And: {
     auto val = operand->EmitIR();
     if (operand->type == Type_) {
