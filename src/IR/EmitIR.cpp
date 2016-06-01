@@ -8,6 +8,10 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             Type *input_type);
 
+namespace debug {
+extern bool ct_eval;
+} // namespace debug
+
 namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
@@ -387,7 +391,9 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
   statements->EmitIR();
-  ir_func->dump();
+
+  if (debug::ct_eval) { ir_func->dump(); }
+
   return IR::Value(ir_func);
 }
 

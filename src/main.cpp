@@ -57,6 +57,7 @@ namespace debug {
 extern bool timing;
 extern bool parser;
 extern bool parametric_struct;
+extern bool ct_eval;
 } // namespace debug
 
 // The keys in this map represent the file names, and the values represent the
@@ -102,6 +103,9 @@ void ParseArguments(int argc, char *argv[]) {
 
     } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
       debug::parametric_struct = true;
+
+    } else if (strcmp(arg, "-E") == 0 || strcmp(arg, "-e") == 0) {
+      debug::ct_eval = true;
 
     } else {
       // Add the file to the queue

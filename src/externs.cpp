@@ -20,14 +20,16 @@ size_t precedence(Operator op) {
 
 // Debug flags and their default values
 namespace debug {
-// Turns on step-by-step iteration through the shifting and reducing.
-bool parser = false;
 
-// Turns on timing printout
-bool timing = false;
+bool parser = false; // Turns on step-by-step iteration through the shifting and
+                     // reducing of the parser.
 
-// Turns on printing of parametric-struct data generation.
-bool parametric_struct = false;
+bool timing = false; // Turns on timing printout
+
+bool parametric_struct = false; // Turns on printing for debug info of
+                                // parametric-struct code-generation.
+
+bool ct_eval = false; // Step through compile-time function evaluation.
 }
 
 std::map<std::string, AST::Statements *> ast_map;

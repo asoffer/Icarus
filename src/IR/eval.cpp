@@ -2,6 +2,10 @@
 
 #include "Type/Type.h"
 
+namespace debug {
+extern bool ct_eval;
+} // namespace debug
+
 namespace IR {
 void Cmd::Execute(StackFrame& frame) {
   std::vector<Value> cmd_inputs = args;
@@ -248,8 +252,10 @@ Value Call(Func *f, const std::vector<Value>& arg_vals) {
   StackFrame frame(f, arg_vals);
 
 eval_loop_start:
-   // std::cout << "block-" << frame.curr_block->block_num << ": " << frame.inst_ptr
-   //           << std::endl;
+  if (debug::ct_eval) {
+    std::cout << "block-" << frame.curr_block->block_num << ": "
+              << frame.inst_ptr << std::endl;
+  }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
     frame.prev_block = frame.curr_block;
     frame.curr_block = frame.curr_block->ExecuteJump(frame);
@@ -267,9 +273,11 @@ eval_loop_start:
 
     } else {
       frame.inst_ptr = 0;
-      // std::cout << "  jumped to block-" << frame.curr_block->block_num
-      //           << std::endl;
-      // std::cin.ignore(1);
+      if (debug::ct_eval) {
+        std::cout << "  jumped to block-" << frame.curr_block->block_num
+                  << std::endl;
+        std::cin.ignore(1);
+      }
     }
 
   } else {
@@ -277,9 +285,11 @@ eval_loop_start:
     assert(cmd.result.flag == ValType::Ref);
     cmd.Execute(frame);
 
-    // std::cout << "  " << cmd.result << " = " << frame.reg[cmd.result.val.as_ref]
-    //           << std::endl;
-    // std::cin.ignore(1);
+    if (debug::ct_eval) {
+      std::cout << "  " << cmd.result << " = "
+                << frame.reg[cmd.result.val.as_ref] << std::endl;
+      std::cin.ignore(1);
+    }
     ++frame.inst_ptr;
   }
   goto eval_loop_start;
