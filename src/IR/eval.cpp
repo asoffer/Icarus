@@ -212,8 +212,14 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] =
         Value(::Func(cmd_inputs[0].val.as_type, cmd_inputs[1].val.as_type));
   } break;
-
-
+  case Op::TC_Arr1: {
+    frame.reg[result.val.as_ref] =
+        Value(Arr(cmd_inputs[0].val.as_type));
+  } break;
+  case Op::TC_Arr2: {
+    frame.reg[result.val.as_ref] =
+        Value(Arr(cmd_inputs[1].val.as_type, cmd_inputs[0].val.as_uint));
+  } break;
 
   }
 }
@@ -242,8 +248,8 @@ Value Call(Func *f, const std::vector<Value>& arg_vals) {
   StackFrame frame(f, arg_vals);
 
 eval_loop_start:
-  // std::cout << "block-" << frame.curr_block->block_num << ": " << frame.inst_ptr
-  //           << std::endl;
+   // std::cout << "block-" << frame.curr_block->block_num << ": " << frame.inst_ptr
+   //           << std::endl;
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
     frame.prev_block = frame.curr_block;
     frame.curr_block = frame.curr_block->ExecuteJump(frame);

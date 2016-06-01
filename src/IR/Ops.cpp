@@ -1,5 +1,6 @@
 #include "IR.h"
 #include <cmath>
+#include "Type/Type.h"
 
 // TODO what Value number to return????
 namespace IR {
@@ -28,7 +29,7 @@ std::ostream &operator<<(std::ostream& os, const Value& value) {
   case ValType::I: return os << value.val.as_int;
   case ValType::R: return os << value.val.as_real;
   case ValType::U: return os << value.val.as_uint;
-  case ValType::T: return os << value.val.as_type;
+  case ValType::T: return os << *value.val.as_type;
   case ValType::F: return os << "f_" << value.val.as_func->name;
   case ValType::Ref: return os << "%" << value.val.as_ref;
   case ValType::Arg: return os << "$" << value.val.as_arg;

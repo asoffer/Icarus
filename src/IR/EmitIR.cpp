@@ -387,7 +387,7 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
   statements->EmitIR();
-  // ir_func->dump();
+  ir_func->dump();
   return IR::Value(ir_func);
 }
 
@@ -418,6 +418,14 @@ IR::Value Identifier::EmitIR() {
   NOT_YET;
 }
 
+IR::Value ArrayType::EmitIR() {
+  if (length->is_hole()) {
+    return IR::TC_Arr1(data_type->EmitIR());
+  } else {
+    return IR::TC_Arr2(length->EmitIR(), data_type->EmitIR());
+  }
+}
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
@@ -432,7 +440,6 @@ IR::Value Access::EmitIR() { NOT_YET; }
 IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }
 IR::Value DummyTypeExpr::EmitIR() { NOT_YET; }
-IR::Value ArrayType::EmitIR() { NOT_YET; }
 } // namespace AST
 
 #undef NOT_YET

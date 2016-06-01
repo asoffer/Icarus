@@ -1,15 +1,18 @@
 Foo := (T: type) -> bool {
-  return T == (int -> char)
+  return T == (int -> char) | T == [--; int] | T == [3,2; char]
 }
 
 typeof := (val: Foo`T) -> void {
   print T
 }
 
+t := (val: Any`T) -> void { print T }
+Any := (T: type) -> bool { return true }
+
 main := void -> void {
-  a := 0
-  typeof(a)
+  a: [2; char]
+  t([a, a, a])
+  typeof([a, a, a])
   f: int -> int
   typeof(f)
-  typeof(g)
 }
