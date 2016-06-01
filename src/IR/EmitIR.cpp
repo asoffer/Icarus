@@ -43,7 +43,14 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::Restart: NOT_YET;
   case Language::Operator::Free: NOT_YET;
   case Language::Operator::Print: NOT_YET;
-  case Language::Operator::And: NOT_YET;
+  case Language::Operator::And: {
+    auto val = operand->EmitIR();
+    if (operand->type == Type_) {
+      return IR::TC_Ptr(val);
+    } else {
+      NOT_YET;
+    }
+  } break;
   case Language::Operator::Sub: {
     auto val = operand->EmitIR();
     if (operand->type == Int) {
@@ -84,6 +91,9 @@ IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: NOT_YET;
   case Language::Operator::Cast: NOT_YET;
+  case Language::Operator::Arrow: {
+    return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
+  } break;
   case Language::Operator::OrEq: NOT_YET;
   case Language::Operator::XorEq: NOT_YET;
   case Language::Operator::AndEq: NOT_YET;

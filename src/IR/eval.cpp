@@ -1,5 +1,7 @@
 #define NOT_YET assert(false && "Not yet implemented")
 
+#include "Type/Type.h"
+
 namespace IR {
 void Cmd::Execute(StackFrame& frame) {
   std::vector<Value> cmd_inputs = args;
@@ -203,6 +205,15 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] =
         Value(cmd_inputs[0].val.as_real > cmd_inputs[1].val.as_real);
   } break;
+  case Op::TC_Ptr: {
+    frame.reg[result.val.as_ref] = Value(Ptr(cmd_inputs[0].val.as_type));
+  } break;
+  case Op::TC_Arrow: {
+    frame.reg[result.val.as_ref] =
+        Value(::Func(cmd_inputs[0].val.as_type, cmd_inputs[1].val.as_type));
+  } break;
+
+
 
   }
 }

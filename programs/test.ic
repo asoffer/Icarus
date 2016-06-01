@@ -1,4 +1,15 @@
-main := void -> void {
-    print "hello world"
-  }
+Foo := (T: type) -> bool {
+  return T == (int -> char)
+}
 
+typeof := (val: Foo`T) -> void {
+  print T
+}
+
+main := void -> void {
+  a := 0
+  typeof(a)
+  f: int -> int
+  typeof(f)
+  typeof(g)
+}

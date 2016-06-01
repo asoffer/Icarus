@@ -59,6 +59,8 @@ enum class Op {
   IGE, UGE, FGE,
   IGT, UGT, FGT,
 
+  // Type construction
+  TC_Ptr, TC_Arrow
 };
 
 struct StackFrame {
@@ -261,6 +263,9 @@ TWO_ARG_CMD(FGE)
 TWO_ARG_CMD(IGT)
 TWO_ARG_CMD(UGT)
 TWO_ARG_CMD(FGT)
+
+ONE_ARG_CMD(TC_Ptr);
+TWO_ARG_CMD(TC_Arrow);
 } // namespace IR
 #undef TWO_ARG_CMD
 #undef ONE_ARG_CMD
