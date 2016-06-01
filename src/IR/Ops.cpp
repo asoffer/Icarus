@@ -85,6 +85,11 @@ void Exit::dump(size_t indent) {
   case Strategy::Return:
     std::cout << "ret " << val << "\n\n";
     return;
+
+  case Strategy::ReturnVoid:
+    std::cout << "ret\n\n";
+    return;
+
   }
 }
 

@@ -13,6 +13,7 @@ struct Value {
   ValType flag;
 
   union {
+    void *as_ptr;
     bool as_bool;
     char as_char;
     long as_int;
@@ -31,6 +32,8 @@ struct Value {
   explicit Value(size_t n) : flag(ValType::U) { val.as_uint = n; }
   explicit Value(Func *f) : flag(ValType::F) { val.as_func = f; }
   explicit Value(Type *t) : flag(ValType::T) { val.as_type = t; }
+  explicit Value(void *p) : flag(ValType::T) { val.as_ptr = p; }
+  explicit Value(std::nullptr_t) : flag(ValType::T) { val.as_ptr = nullptr; }
 
   Value();
 };
@@ -87,7 +90,7 @@ struct Exit {
   friend Value Call(Func *, const std::vector<Value> &);
 
 private:
-  enum class Strategy { Uncond, Cond, Return } flag;
+  enum class Strategy { Uncond, Cond, Return, ReturnVoid } flag;
 
   Value val; // This is the return value in the case of a return, and the value
              // to branch on in the case of a conditional branch.
@@ -97,9 +100,13 @@ private:
   Block *false_block; // This is the branch to take in the case of a conditional
                       // jump when that condition is false.
 
-  Exit() : flag(Strategy::Return), val(false), true_block(nullptr), false_block(nullptr) {}
+  Exit()
+      : flag(Strategy::Return), val(false), true_block(nullptr),
+        false_block(nullptr) {}
 
 public:
+  void SetReturnVoid() { flag = Strategy::ReturnVoid; }
+
   void SetReturn(Value v) {
     flag = Strategy::Return;
     val  = v;

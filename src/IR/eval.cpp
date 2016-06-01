@@ -1,5 +1,3 @@
-#define NOT_YET assert(false && "Not yet implemented")
-
 #include "Type/Type.h"
 
 namespace debug {
@@ -231,6 +229,7 @@ void Cmd::Execute(StackFrame& frame) {
 Block *Block::ExecuteJump(StackFrame &frame) {
   switch(exit.flag) {
   case Exit::Strategy::Uncond: return exit.true_block;
+  case Exit::Strategy::ReturnVoid:
   case Exit::Strategy::Return: return nullptr;
   case Exit::Strategy::Cond: {
     Value v = exit.val;
@@ -260,8 +259,11 @@ eval_loop_start:
     frame.prev_block = frame.curr_block;
     frame.curr_block = frame.curr_block->ExecuteJump(frame);
 
-    if (!frame.curr_block) { // It's a return
-      if (frame.prev_block->exit.val.flag == ValType::Ref) {
+    if (!frame.curr_block) { // It's a return (perhaps void)
+      if (frame.prev_block->exit.flag == Exit::Strategy::ReturnVoid) {
+        return Value(nullptr);
+
+      } else if (frame.prev_block->exit.val.flag == ValType::Ref) {
         return frame.reg[frame.prev_block->exit.val.val.as_ref];
 
       } else if (frame.prev_block->exit.val.flag == ValType::Arg) {
@@ -296,5 +298,3 @@ eval_loop_start:
 }
 
 } // namespace IR
-
-#undef NOT_YET

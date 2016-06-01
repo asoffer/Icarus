@@ -2,12 +2,9 @@
 #include "Type/Type.h"
 #include "Scope.h"
 
-#define NOT_YET assert(false && "Not yet implemented")
-
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             Type *input_type);
-
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
@@ -17,15 +14,18 @@ IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
   switch (terminal_type) {
   case Language::Terminal::ASCII: NOT_YET;
-  case Language::Terminal::Char: NOT_YET;
+  case Language::Terminal::Char: return IR::Value(value.as_char);
   case Language::Terminal::Else: return IR::Value(true);
   case Language::Terminal::False: return IR::Value(false);
-  case Language::Terminal::Hole: NOT_YET;
+  case Language::Terminal::Hole: UNREACHABLE;
   case Language::Terminal::Int: return IR::Value(value.as_int);
-  case Language::Terminal::Null: NOT_YET;
+  case Language::Terminal::Null: return IR::Value(nullptr);
   case Language::Terminal::Ord: NOT_YET;
   case Language::Terminal::Real: return IR::Value(value.as_real);
-  case Language::Terminal::Return: NOT_YET;
+  case Language::Terminal::Return: {
+    IR::Block::Current->exit.SetReturnVoid();
+    return IR::Value();
+  } break;
   case Language::Terminal::StringLiteral: NOT_YET;
   case Language::Terminal::True: return IR::Value(true);
   case Language::Terminal::Type: return IR::Value(value.as_type);
@@ -447,5 +447,3 @@ IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }
 IR::Value DummyTypeExpr::EmitIR() { NOT_YET; }
 } // namespace AST
-
-#undef NOT_YET

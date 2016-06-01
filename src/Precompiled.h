@@ -26,6 +26,9 @@ extern std::queue<std::string> file_queue;
 
 #include "ConstantsAndEnums.h"
 
+#define NOT_YET assert(false && "Not yet implemented")
+#define UNREACHABLE assert(false && "Unreachable code-ptah")
+
 namespace llvm {
 class Value;
 class Function;

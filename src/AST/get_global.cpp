@@ -68,23 +68,18 @@ llvm::Constant *Unop::GetGlobal() {
   }
 }
 
-#define NOT_YET(type)                                                          \
-  llvm::Constant *type::GetGlobal() { assert(false && "Not yet implemented"); }
-
-NOT_YET(Generic)
-NOT_YET(InDecl)
-NOT_YET(Declaration)
-NOT_YET(Binop)
-NOT_YET(ChainOp)
-NOT_YET(Case)
-NOT_YET(DummyTypeExpr)
-NOT_YET(Access)
-NOT_YET(ArrayType)
-NOT_YET(EnumLiteral)
-NOT_YET(StructLiteral)
-NOT_YET(ParametricStructLiteral)
-NOT_YET(FunctionLiteral)
+llvm::Constant *Generic::GetGlobal() { NOT_YET; }
+llvm::Constant *InDecl::GetGlobal() { NOT_YET; }
+llvm::Constant *Declaration::GetGlobal() { NOT_YET; }
+llvm::Constant *Binop::GetGlobal() { NOT_YET; }
+llvm::Constant *ChainOp::GetGlobal() { NOT_YET; }
+llvm::Constant *Case::GetGlobal() { NOT_YET; }
+llvm::Constant *DummyTypeExpr::GetGlobal() { NOT_YET; }
+llvm::Constant *Access::GetGlobal() { NOT_YET; }
+llvm::Constant *ArrayType::GetGlobal() { NOT_YET; }
+llvm::Constant *EnumLiteral::GetGlobal() { NOT_YET; }
+llvm::Constant *StructLiteral::GetGlobal() { NOT_YET; }
+llvm::Constant *ParametricStructLiteral::GetGlobal() { NOT_YET; }
+llvm::Constant *FunctionLiteral::GetGlobal() { NOT_YET; }
 
 } // namespace AST
-
-#undef NOT_YET
