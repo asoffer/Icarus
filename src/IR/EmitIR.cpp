@@ -413,6 +413,8 @@ IR::Value ArrayType::EmitIR() {
   }
 }
 
+IR::Value DummyTypeExpr::EmitIR() { return IR::Value(type); }
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
@@ -426,5 +428,4 @@ IR::Value Case::EmitIR() { NOT_YET; }
 IR::Value Access::EmitIR() { NOT_YET; }
 IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }
-IR::Value DummyTypeExpr::EmitIR() { NOT_YET; }
 } // namespace AST
