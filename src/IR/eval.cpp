@@ -241,7 +241,10 @@ void Cmd::Execute(StackFrame& frame) {
     } else if (cmd_inputs[0].flag == ValType::F) {
       NOT_YET;
     }
-    frame.reg[result.val.as_ref] = Value(nullptr);
+    // Even though this operation is void, we pick a nice value like true to
+    // return because in debug we want to be able to print something.
+    // TODO make void return types not use registers.
+    frame.reg[result.val.as_ref] = Value(true);
   } break;
   case Op::TC_Ptr: {
     frame.reg[result.val.as_ref] = Value(Ptr(cmd_inputs[0].val.as_type));

@@ -91,10 +91,6 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::At: {
     return IR::Load(operand->EmitIR());
   } break;
-  case Language::Operator::Call: {
-                                   NOT_YET;
-    // return IRB.AddCall(neg_fn->ir);
-  } break;
   default: NOT_YET;
   }
 }
@@ -166,12 +162,14 @@ IR::Value Binop::EmitIR() {
 
   case Language::Operator::Call: {
     auto result = IR::CallCmd(lhs->EmitIR());
-    if (rhs->is_comma_list()) {
-      for (auto expr : ((ChainOp *)rhs)->exprs) {
-        result.args.push_back(expr->EmitIR());
+    if (rhs) {
+      if (rhs->is_comma_list()) {
+        for (auto expr : ((ChainOp *)rhs)->exprs) {
+          result.args.push_back(expr->EmitIR());
+        }
+      } else {
+        result.args.push_back(rhs->EmitIR());
       }
-    } else {
-      result.args.push_back(rhs->EmitIR());
     }
 
     IR::Block::Current->cmds.push_back(result);

@@ -1,13 +1,14 @@
-g := (n: int) -> int {
-  return n + 1
+g := void -> int {
+  return 17
 }
 
 f := (n: int) -> int {
-  return g(g(n) * g(2))
+  print n
+  return g()
 }
 
 Any := (T: type) -> bool {
-  print '>', ' ', f(3), '\n'
+  print '>', ' ', f(3), '!', '\n'
   return true
 }
 

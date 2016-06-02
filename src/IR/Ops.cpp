@@ -7,8 +7,15 @@ namespace IR {
 Func *Func::Current;
 Block *Block::Current;
 
-Value::Value() : flag(ValType::Ref) {
-  val.as_arg = Func::Current->num_cmds;
+Cmd::Cmd(Op o, Value v) : op_code(o), args(1, v) {
+  result.flag       = ValType::Ref;
+  result.val.as_ref = Func::Current->num_cmds;
+  Func::Current->num_cmds++;
+}
+
+Cmd::Cmd() {
+  result.flag       = ValType::Ref;
+  result.val.as_ref = Func::Current->num_cmds;
   Func::Current->num_cmds++;
 }
 
@@ -21,11 +28,17 @@ static std::string OpCodeString(Op op_code) {
 #undef IR_MACRO
   }
 }
+static std::string Escape(char c) {
+  if (c == '\n') { return "\\n"; }
+  if (c == '\r') { return "\\r"; }
+  if (c == '\t') { return "\\t"; }
+  return std::string(1, c);
+}
 
 std::ostream &operator<<(std::ostream& os, const Value& value) {
   switch(value.flag) {
   case ValType::B: return os << (value.val.as_bool ? "true" : "false");
-  case ValType::C: return os << value.val.as_char;
+  case ValType::C: return os << "'" << Escape(value.val.as_char) << "'";
   case ValType::I: return os << value.val.as_int;
   case ValType::R: return os << value.val.as_real;
   case ValType::U: return os << value.val.as_uint;

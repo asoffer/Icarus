@@ -35,7 +35,7 @@ struct Value {
   explicit Value(void *p) : flag(ValType::T) { val.as_ptr = p; }
   explicit Value(std::nullptr_t) : flag(ValType::T) { val.as_ptr = nullptr; }
 
-  Value();
+  Value() : flag(ValType::Ref) {}
 };
 
 std::ostream &operator<<(std::ostream &os, const Value &value);
@@ -66,12 +66,14 @@ struct Cmd {
   operator Value() { return result; }
   Value result;
 
-  Cmd(Op o, Value v) : op_code(o), args(1, v) {}
+  Cmd(Op o, Value v);
+
   void dump(size_t indent = 0);
+
+  friend Cmd CallCmd(Value);
 
   // Only used for phi cmds
   friend Cmd Phi();
-  friend Cmd CallCmd(Value);
   void AddIncoming(Block *block, Value output_val) {
     incoming_blocks.push_back(block);
     args.push_back(output_val);
@@ -80,7 +82,7 @@ struct Cmd {
   void Execute(StackFrame &frame);
 
 private:
-  Cmd() {}
+  Cmd();
 };
 
 // Models we should exit the block. There are a few options:
@@ -172,7 +174,7 @@ Value Call(Func *f, const std::vector<Value>& arg_vals);
 #define CMD_WITH_1_ARGS(name)                                                  \
   inline Cmd name(Value v) {                                                   \
     Cmd cmd(Op::name, v);                                                      \
-    Block::Current->cmds.push_back(cmd);                                       \
+    Block::Current->push(cmd);                                                 \
     return cmd;                                                                \
   }
 
@@ -180,7 +182,7 @@ Value Call(Func *f, const std::vector<Value>& arg_vals);
   inline Cmd name(Value arg1, Value arg2) {                                    \
     Cmd cmd(Op::name, arg1);                                                   \
     cmd.args.push_back(arg2); /* TODO Put this in the constructor */           \
-    Block::Current->cmds.push_back(cmd);                                       \
+    Block::Current->push(cmd);                                                 \
     return cmd;                                                                \
   }
 
