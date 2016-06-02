@@ -30,7 +30,15 @@ std::ostream &operator<<(std::ostream& os, const Value& value) {
   case ValType::R: return os << value.val.as_real;
   case ValType::U: return os << value.val.as_uint;
   case ValType::T: return os << *value.val.as_type;
-  case ValType::F: return os << "f_" << value.val.as_func->name;
+  case ValType::F: {
+    os << "fn.";
+    if (value.val.as_func->name != "") {
+      os << value.val.as_func->name;
+    } else {
+      os << value.val.as_func;
+    }
+    return os;
+  }
   case ValType::Ref: return os << "%" << value.val.as_ref;
   case ValType::Arg: return os << "$" << value.val.as_arg;
   }
@@ -94,7 +102,13 @@ void Exit::dump(size_t indent) {
 }
 
 void Func::dump() {
-  std::cout << "func " << name;
+  std::cout << "func ";
+  if (name != "") {
+    std::cout << name;
+  } else {
+    std::cout << this;
+  }
+
   if (args.empty()) {
     std::cout << "():" << std::endl;
   } else {

@@ -50,6 +50,7 @@ struct StackFrame {
   std::vector<Value> reg;
   std::vector<Value> allocs;
   const std::vector<Value>& args;
+  Func *curr_func;
 
   size_t inst_ptr;
   Block *curr_block, *prev_block;
@@ -70,6 +71,7 @@ struct Cmd {
 
   // Only used for phi cmds
   friend Cmd Phi();
+  friend Cmd CallCmd(Value);
   void AddIncoming(Block *block, Value output_val) {
     incoming_blocks.push_back(block);
     args.push_back(output_val);
@@ -195,6 +197,13 @@ inline Cmd Phi() {
   phi.op_code = Op::Phi;
   // Block::Current->cmds.push_back(phi);
   return phi;
+}
+
+inline Cmd CallCmd(Value lhs) {
+  Cmd call;
+  call.op_code = Op::Call;
+  call.args.push_back(lhs);
+  return call;
 }
 
 #undef CMD_WITH_V_ARGS

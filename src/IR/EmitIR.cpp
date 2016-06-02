@@ -82,7 +82,7 @@ IR::Value Unop::EmitIR() {
     } else {
       auto neg_fn = GetFunctionReferencedIn(scope_, "__neg__", operand->type);
       assert(neg_fn && "No 'not' function available.");
-      NOT_YET; // return IR::Call(neg_fn, {val});
+      NOT_YET; // return IR::CallCmd(neg_fn, {val});
     }
   } break;
   case Language::Operator::Not: {
@@ -93,7 +93,7 @@ IR::Value Unop::EmitIR() {
     } else {
       auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
       assert(not_fn && "No 'not' function available.");
-      NOT_YET; // return IR::Call(not_fn, {val});
+      NOT_YET; // return IR::CallCmd(not_fn, {val});
     }
   } break;
   case Language::Operator::At: {
@@ -117,113 +117,82 @@ IR::Value Binop::EmitIR() {
   case Language::Operator::OrEq: NOT_YET;
   case Language::Operator::XorEq: NOT_YET;
   case Language::Operator::AndEq: NOT_YET;
-  case Language::Operator::AddEq: {
-    auto lval    = lhs->EmitIR(); //EmitLValue();
-    auto lhs_val = IR::Load(lval);
-    auto rhs_val = rhs->EmitIR();
 
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::Store(IR::IAdd(lhs_val, rhs_val), lval);
+#define ARITHMETIC_EQ_CASE(Op, op)                                             \
+  case Language::Operator::Op##Eq: {                                           \
+    auto lval    = lhs->EmitIR(); /* EmitLValue(); */                          \
+    auto lhs_val = IR::Load(lval);                                             \
+    auto rhs_val = rhs->EmitIR();                                              \
+                                                                               \
+    if (lhs->type == Int && rhs->type == Int) {                                \
+      return IR::Store(IR::I##Op(lhs_val, rhs_val), lval);                     \
+                                                                               \
+    } else if (lhs->type == Uint && rhs->type == Uint) {                       \
+      return IR::Store(IR::U##Op(lhs_val, rhs_val), lval);                     \
+                                                                               \
+    } else if (lhs->type == Real && rhs->type == Real) {                       \
+      return IR::Store(IR::F##Op(lhs_val, rhs_val), lval);                     \
+                                                                               \
+    } else {                                                                   \
+      auto op##_eq_fn = GetFunctionReferencedIn(scope_, "__" #op "_eq__",      \
+                                                Tup({lhs->type, rhs->type}));  \
+      assert(op##_eq_fn && "No '" #op "_eq' function available");              \
+      NOT_YET; /* return IR::CallCmd(op##_fn, {lhs_val, rhs_val}); */          \
+    }                                                                          \
+  } break
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::Store(IR::UAdd(lhs_val, rhs_val), lval);
+    ARITHMETIC_EQ_CASE(Add, add);
+    ARITHMETIC_EQ_CASE(Sub, sub);
+    ARITHMETIC_EQ_CASE(Mul, mul);
+    ARITHMETIC_EQ_CASE(Div, div);
+    ARITHMETIC_EQ_CASE(Mod, mod);
 
-    } else if (lhs->type == Real && rhs->type == Real) {
-      return IR::Store(IR::FAdd(lhs_val, rhs_val), lval);
+#undef ARITHMETIC_EQ_CASE
 
+#define ARITHMETIC_CASE(Op, op)                                                \
+  case Language::Operator::Op: {                                               \
+    auto lhs_val = lhs->EmitIR();                                              \
+    auto rhs_val = rhs->EmitIR();                                              \
+    if (lhs->type == Int && rhs->type == Int) {                                \
+      return IR::I##Op(lhs_val, rhs_val);                                      \
+                                                                               \
+    } else if (lhs->type == Uint && rhs->type == Uint) {                       \
+      return IR::U##Op(lhs_val, rhs_val);                                      \
+                                                                               \
+    } else if (lhs->type == Real && rhs->type == Real) {                       \
+      return IR::F##Op(lhs_val, rhs_val);                                      \
+                                                                               \
+    } else {                                                                   \
+      auto op##_fn = GetFunctionReferencedIn(scope_, "__" #op "__",            \
+                                             Tup({lhs->type, rhs->type}));     \
+      assert(op##_fn && "No '" #op "' function available");                    \
+      NOT_YET; /* return IR::CallCmd(op##_fn, {lhs_val, rhs_val}); */          \
+    }                                                                          \
+  } break
+
+    ARITHMETIC_CASE(Add, add);
+    ARITHMETIC_CASE(Sub, sub);
+    ARITHMETIC_CASE(Mul, mul);
+    ARITHMETIC_CASE(Div, div);
+    ARITHMETIC_CASE(Mod, mod);
+
+#undef ARITHMETIC_CASE
+
+  case Language::Operator::Call: {
+    auto result = IR::CallCmd(lhs->EmitIR());
+    if (rhs->is_comma_list()) {
+      for (auto expr : ((ChainOp *)rhs)->exprs) {
+        result.args.push_back(expr->EmitIR());
+      }
     } else {
-      auto add_eq_fn = GetFunctionReferencedIn(scope_, "__add_eq__",
-                                               Tup({lhs->type, rhs->type}));
-      assert(add_eq_fn && "No 'add_eq' function available");
-      NOT_YET; // return IR::Call(add_eq_fn, {lhs_val, rhs_val});
+      result.args.push_back(rhs->EmitIR());
     }
-  } break;
-  case Language::Operator::SubEq: {
-    auto lval    = lhs->EmitIR(); //EmitLValue();
-    auto lhs_val = IR::Load(lval);
-    auto rhs_val = rhs->EmitIR();
 
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::Store(IR::ISub(lhs_val, rhs_val), lval);
+    IR::Block::Current->cmds.push_back(result);
 
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::Store(IR::USub(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      return IR::Store(IR::FSub(lhs_val, rhs_val), lval);
-
-    } else {
-      auto sub_eq_fn = GetFunctionReferencedIn(scope_, "__sub_eq__",
-                                               Tup({lhs->type, rhs->type}));
-      assert(sub_eq_fn && "No 'sub_eq' function available");
-      NOT_YET; // return IR::Call(sub_eq_fn, {lhs_val, rhs_val});
-    }
-  } break;
-  case Language::Operator::MulEq: {
-    auto lval    = lhs->EmitIR(); // EmitLValue();
-    auto lhs_val = IR::Load(lval);
-    auto rhs_val = rhs->EmitIR();
-
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::Store(IR::IMul(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::Store(IR::UMul(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      return IR::Store(IR::FMul(lhs_val, rhs_val), lval);
-
-    } else {
-      auto mul_eq_fn = GetFunctionReferencedIn(scope_, "__mul_eq__",
-                                               Tup({lhs->type, rhs->type}));
-      assert(mul_eq_fn && "No 'mul_eq' function available");
-      NOT_YET; // return IR::Call(mul_eq_fn, {lhs_val, rhs_val});
-    }
-  } break;
-  case Language::Operator::DivEq: {
-    auto lval    = lhs->EmitIR(); //EmitLValue();
-    auto lhs_val = IR::Load(lval);
-    auto rhs_val = rhs->EmitIR();
-
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::Store(IR::IDiv(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::Store(IR::UDiv(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      return IR::Store(IR::FDiv(lhs_val, rhs_val), lval);
-
-    } else {
-      auto div_eq_fn = GetFunctionReferencedIn(scope_, "__div_eq__",
-                                               Tup({lhs->type, rhs->type}));
-      assert(div_eq_fn && "No 'div_eq' function available");
-      NOT_YET; // return IR::Call(div_eq_fn, {lhs_val, rhs_val});
-    }
-  } break;
-  case Language::Operator::ModEq: {
-    auto lval    = lhs->EmitIR(); //EmitLValue();
-    auto lhs_val = IR::Load(lval);
-    auto rhs_val = rhs->EmitIR();
-
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::Store(IR::IMod(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::Store(IR::UMod(lhs_val, rhs_val), lval);
-
-    } else if (lhs->type == Real && rhs->type == Real) {
-      return IR::Store(IR::FMod(lhs_val, rhs_val), lval);
-
-    } else {
-      auto mod_eq_fn = GetFunctionReferencedIn(scope_, "__mod_eq__",
-                                               Tup({lhs->type, rhs->type}));
-      assert(mod_eq_fn && "No 'mod_eq' function available");
-      NOT_YET; // return IR::Call(mod_eq_fn, {lhs_val, rhs_val});
-    }
-  } break;
-
-  default: NOT_YET;
+    return result;
+  }
+  default: std::cout << *this << std::endl; NOT_YET;
   }
 }
 static IR::Value EmitComparison(Type *op_type, Language::Operator op,
@@ -406,6 +375,7 @@ IR::Value FunctionLiteral::EmitIR() {
   ir_func            = new IR::Func;
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
+  statements->verify_types();
   statements->EmitIR();
 
   if (debug::ct_eval) { ir_func->dump(); }
@@ -436,7 +406,18 @@ IR::Value Identifier::EmitIR() {
       return v;
     }
     assert(false && "Failed to match argument");
+  } else if (type->is_function()) {
+    Ctx ctx;
+    evaluate(ctx);
+    assert(value.as_expr);
+    auto current_func  = IR::Func::Current;
+    auto current_block = IR::Block::Current;
+    auto func_to_call  = value.as_expr->EmitIR();
+    IR::Block::Current = current_block;
+    IR::Func::Current  = current_func;
+    return func_to_call;
   }
+  std::cout << *this << std::endl;
   NOT_YET;
 }
 

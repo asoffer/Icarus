@@ -39,6 +39,18 @@ void Cmd::Execute(StackFrame& frame) {
     assert(false && "No selection made from phi block");
   exit_successfully:;
   } break;
+  case Op::Call: {
+    auto iter = cmd_inputs.begin();
+    auto fn = *iter;
+    assert(fn.flag == ValType::F);
+    ++iter;
+    std::vector<Value> call_args;
+
+    // TODO std::copy wasn't working for some reason I don't understand. Just
+    // gonna do this by hand for now.
+    for (; iter != cmd_inputs.end(); ++iter) { call_args.push_back(*iter); }
+    frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, call_args);
+  } break;
   case Op::IAdd: {
     frame.reg[result.val.as_ref] =
         Value(cmd_inputs[0].val.as_int + cmd_inputs[1].val.as_int);
@@ -268,15 +280,15 @@ Block *Block::ExecuteJump(StackFrame &frame) {
 }
 
 StackFrame::StackFrame(Func *f, const std::vector<Value> &args)
-    : reg(f->num_cmds), args(args), inst_ptr(0), curr_block(f->entry()),
-      prev_block(nullptr) {}
+    : reg(f->num_cmds), args(args), curr_func(f), inst_ptr(0),
+      curr_block(f->entry()), prev_block(nullptr) {}
 
 Value Call(Func *f, const std::vector<Value>& arg_vals) {
   StackFrame frame(f, arg_vals);
 
 eval_loop_start:
   if (debug::ct_eval) {
-    std::cout << "block-" << frame.curr_block->block_num << ": "
+    std::cout << frame.curr_func << ".block-" << frame.curr_block->block_num << ": "
               << frame.inst_ptr << std::endl;
   }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
