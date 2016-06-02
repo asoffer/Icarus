@@ -1,10 +1,6 @@
 #include "IR.h"
 #include "Type/Type.h"
-#include "Scope.h"
 
-extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
-                                            const std::string &fn_name,
-                                            Type *input_type);
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
@@ -80,9 +76,7 @@ IR::Value Unop::EmitIR() {
       return IR::FNeg(val);
 
     } else {
-      auto neg_fn = GetFunctionReferencedIn(scope_, "__neg__", operand->type);
-      assert(neg_fn && "No 'not' function available.");
-      NOT_YET; // return IR::CallCmd(neg_fn, {val});
+      NOT_YET;
     }
   } break;
   case Language::Operator::Not: {
@@ -91,9 +85,7 @@ IR::Value Unop::EmitIR() {
       return BNot(val);
 
     } else {
-      auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
-      assert(not_fn && "No 'not' function available.");
-      NOT_YET; // return IR::CallCmd(not_fn, {val});
+      NOT_YET;
     }
   } break;
   case Language::Operator::At: {
@@ -134,10 +126,7 @@ IR::Value Binop::EmitIR() {
       return IR::Store(IR::F##Op(lhs_val, rhs_val), lval);                     \
                                                                                \
     } else {                                                                   \
-      auto op##_eq_fn = GetFunctionReferencedIn(scope_, "__" #op "_eq__",      \
-                                                Tup({lhs->type, rhs->type}));  \
-      assert(op##_eq_fn && "No '" #op "_eq' function available");              \
-      NOT_YET; /* return IR::CallCmd(op##_fn, {lhs_val, rhs_val}); */          \
+      NOT_YET;                                                                 \
     }                                                                          \
   } break
 
@@ -163,10 +152,7 @@ IR::Value Binop::EmitIR() {
       return IR::F##Op(lhs_val, rhs_val);                                      \
                                                                                \
     } else {                                                                   \
-      auto op##_fn = GetFunctionReferencedIn(scope_, "__" #op "__",            \
-                                             Tup({lhs->type, rhs->type}));     \
-      assert(op##_fn && "No '" #op "' function available");                    \
-      NOT_YET; /* return IR::CallCmd(op##_fn, {lhs_val, rhs_val}); */          \
+      NOT_YET;                                                                 \
     }                                                                          \
   } break
 
@@ -192,7 +178,7 @@ IR::Value Binop::EmitIR() {
 
     return result;
   }
-  default: std::cout << *this << std::endl; NOT_YET;
+  default: std::cerr << *this << std::endl; NOT_YET;
   }
 }
 static IR::Value EmitComparison(Type *op_type, Language::Operator op,
@@ -371,7 +357,7 @@ IR::Value ChainOp::EmitIR() {
 }
 
 IR::Value FunctionLiteral::EmitIR() {
-  if (ir_func) { return IR::Value(ir_func); }
+  if (ir_func) { return IR::Value(ir_func); } // Cache
   ir_func            = new IR::Func;
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
@@ -417,7 +403,7 @@ IR::Value Identifier::EmitIR() {
     IR::Func::Current  = current_func;
     return func_to_call;
   }
-  std::cout << *this << std::endl;
+  std::cerr << *this << std::endl;
   NOT_YET;
 }
 
