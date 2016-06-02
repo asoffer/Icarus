@@ -1,5 +1,6 @@
 #include "IR.h"
 #include "Type/Type.h"
+#include "Scope.h"
 
 namespace debug {
 extern bool ct_eval;
@@ -97,7 +98,14 @@ IR::Value Unop::EmitIR() {
 
 IR::Value Binop::EmitIR() {
   switch (op) {
-  case Language::Operator::Assign: NOT_YET;
+  case Language::Operator::Assign: {
+    // TODO this is what EmitLVal should do (Alloc of frame_map)
+    // TODO currently assuming we only have identifier here
+    assert(lhs->is_identifier());
+    return IR::Store(
+        rhs->EmitIR(),
+        IR::Value::Alloc(IR::Func::Current->frame_map.at((Identifier *)lhs)));
+  } break;
   case Language::Operator::Cast: NOT_YET;
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
@@ -359,6 +367,23 @@ IR::Value FunctionLiteral::EmitIR() {
   ir_func            = new IR::Func;
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
+
+  size_t frame_alignment_mask = 0;
+  for (auto decl : fn_scope->ordered_decls_) {
+    if (decl->identifier->arg_val) { continue; }
+
+    // Set new alignment
+    size_t align_mask = decl->type->alignment() - 1;
+    ir_func->frame_size = ((ir_func->frame_size - 1) | align_mask) + 1;
+
+    ir_func->frame_map[decl->identifier] = ir_func->frame_size;
+    ir_func->frame_size += decl->type->bytes();
+
+    frame_alignment_mask |= align_mask;
+  }
+
+  ir_func->frame_alignment = frame_alignment_mask + 1;
+
   statements->verify_types();
   statements->EmitIR();
 
@@ -368,7 +393,10 @@ IR::Value FunctionLiteral::EmitIR() {
 }
 
 IR::Value Statements::EmitIR() {
-  for (auto stmt : statements) { stmt->EmitIR(); }
+  for (auto stmt : statements) {
+    if (stmt->is_declaration()) { continue; }
+    stmt->EmitIR();
+  }
   return IR::Value();
 }
 
@@ -390,6 +418,7 @@ IR::Value Identifier::EmitIR() {
       return v;
     }
     assert(false && "Failed to match argument");
+
   } else if (type->is_function()) {
     Ctx ctx;
     evaluate(ctx);
@@ -400,6 +429,9 @@ IR::Value Identifier::EmitIR() {
     IR::Block::Current = current_block;
     IR::Func::Current  = current_func;
     return func_to_call;
+
+  } else {
+    return IR::Load(IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
   }
   std::cerr << *this << std::endl;
   NOT_YET;
@@ -413,13 +445,14 @@ IR::Value ArrayType::EmitIR() {
   }
 }
 
+IR::Value Declaration::EmitIR() { NOT_YET; }
+
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(type); }
 
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
-IR::Value Declaration::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }

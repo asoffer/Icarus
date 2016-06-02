@@ -3,7 +3,11 @@ g := void -> int {
 }
 
 f := (n: int) -> int {
-  print n
+  x: real
+  c: char
+  m: int
+  x = 3.14
+  print ':', x, ':', ' '
   return g()
 }
 

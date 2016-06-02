@@ -52,8 +52,11 @@ std::ostream &operator<<(std::ostream& os, const Value& value) {
     }
     return os;
   }
+
+  case ValType::Ptr: return os << value.val.as_ptr;
   case ValType::Ref: return os << "%" << value.val.as_ref;
   case ValType::Arg: return os << "$" << value.val.as_arg;
+  case ValType::Alloc: return os << "#" << value.val.as_alloc;
   }
 }
 

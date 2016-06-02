@@ -4,7 +4,7 @@
 // Not to be confused with LLVM's IR!
 
 namespace IR {
-enum class ValType { B, C, I, R, U, T, F, Ref, Arg };
+enum class ValType { B, C, I, R, U, T, F, Ptr, Ref, Arg, Alloc };
 
 struct Func;
 struct Block;
@@ -23,6 +23,7 @@ struct Value {
     Func *as_func;
     size_t as_ref;
     size_t as_arg;
+    size_t as_alloc;
   } val;
 
   explicit Value(bool b) : flag(ValType::B) { val.as_bool = b; }
@@ -32,10 +33,17 @@ struct Value {
   explicit Value(size_t n) : flag(ValType::U) { val.as_uint = n; }
   explicit Value(Func *f) : flag(ValType::F) { val.as_func = f; }
   explicit Value(Type *t) : flag(ValType::T) { val.as_type = t; }
-  explicit Value(void *p) : flag(ValType::T) { val.as_ptr = p; }
-  explicit Value(std::nullptr_t) : flag(ValType::T) { val.as_ptr = nullptr; }
+  explicit Value(void *p) : flag(ValType::Ptr) { val.as_ptr = p; }
+  explicit Value(std::nullptr_t) : flag(ValType::Ptr) { val.as_ptr = nullptr; }
 
   Value() : flag(ValType::Ref) {}
+
+  static Value Alloc(size_t n) {
+    Value v;
+    v.flag = ValType::Alloc;
+    v.val.as_alloc = n;
+    return v;
+  }
 };
 
 std::ostream &operator<<(std::ostream &os, const Value &value);
@@ -48,7 +56,9 @@ enum class Op {
 
 struct StackFrame {
   std::vector<Value> reg;
-  std::vector<Value> allocs;
+  // TODO demand alignment
+  char *allocs; // array of local variable data
+
   const std::vector<Value>& args;
   Func *curr_func;
 
@@ -56,6 +66,7 @@ struct StackFrame {
   Block *curr_block, *prev_block;
 
   StackFrame(Func *f, const std::vector<Value> &args);
+  ~StackFrame() { delete allocs; }
 };
 
 struct Cmd {
@@ -156,12 +167,15 @@ struct Func {
 
   std::vector<Block *> blocks;
   std::vector<Value *> args;
+  std::map<AST::Identifier *, size_t> frame_map;
   std::string name;
 
   Block *entry() { return blocks.front(); }
-  size_t num_cmds;
+  size_t num_cmds, frame_size, frame_alignment;
 
-  Func() : num_cmds(0) { blocks.push_back(new Block(0)); }
+  Func() : num_cmds(0), frame_size(0), frame_alignment(1) {
+    blocks.push_back(new Block(0));
+  }
   ~Func() {
     for (auto b : blocks) { delete b; }
   }
@@ -186,8 +200,8 @@ Value Call(Func *f, const std::vector<Value>& arg_vals);
     return cmd;                                                                \
   }
 
-// Intentionally empty. Variadic must be hand implemented
-#define CMD_WITH_V_ARGS(name)
+// Intentionally empty. Must be hand implemented
+#define CMD_WITH_NA_ARGS(name)
 
 #define IR_MACRO(OpCode, op_code_str, num_args)                                \
   CMD_WITH_##num_args##_ARGS(OpCode)

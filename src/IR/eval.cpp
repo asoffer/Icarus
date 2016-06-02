@@ -1,5 +1,6 @@
 #include "Type/Type.h"
 #include <cstdio>
+
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
@@ -27,17 +28,14 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::FNeg: {
     frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_real);
   } break;
-  case Op::Load: NOT_YET;
-  case Op::Store: NOT_YET;
-  case Op::Phi: {
-    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
-      if (frame.prev_block == incoming_blocks[i]) {
-        frame.reg[result.val.as_ref] = cmd_inputs[i];
-        goto exit_successfully;
-      }
-    }
-    assert(false && "No selection made from phi block");
-  exit_successfully:;
+  case Op::Load: {
+    frame.reg[result.val.as_ref] =
+        Value(*(double *)(frame.allocs + cmd_inputs[0].val.as_alloc));
+  } break;
+  case Op::Store: {
+    double *ptr                  = (double *)(frame.allocs + cmd_inputs[1].val.as_alloc);
+    *ptr                         = cmd_inputs[0].val.as_real;
+    frame.reg[result.val.as_ref] = Value(true);
   } break;
   case Op::Call: {
     auto iter = cmd_inputs.begin();
@@ -50,6 +48,16 @@ void Cmd::Execute(StackFrame& frame) {
     // gonna do this by hand for now.
     for (; iter != cmd_inputs.end(); ++iter) { call_args.push_back(*iter); }
     frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, call_args);
+  } break;
+  case Op::Phi: {
+    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
+      if (frame.prev_block == incoming_blocks[i]) {
+        frame.reg[result.val.as_ref] = cmd_inputs[i];
+        goto exit_successfully;
+      }
+    }
+    assert(false && "No selection made from phi block");
+  exit_successfully:;
   } break;
   case Op::IAdd: {
     frame.reg[result.val.as_ref] =
@@ -254,19 +262,17 @@ void Cmd::Execute(StackFrame& frame) {
         Value(::Func(cmd_inputs[0].val.as_type, cmd_inputs[1].val.as_type));
   } break;
   case Op::TC_Arr1: {
-    frame.reg[result.val.as_ref] =
-        Value(Arr(cmd_inputs[0].val.as_type));
+    frame.reg[result.val.as_ref] = Value(Arr(cmd_inputs[0].val.as_type));
   } break;
   case Op::TC_Arr2: {
     frame.reg[result.val.as_ref] =
         Value(Arr(cmd_inputs[1].val.as_type, cmd_inputs[0].val.as_uint));
   } break;
-
   }
 }
 
 Block *Block::ExecuteJump(StackFrame &frame) {
-  switch(exit.flag) {
+  switch (exit.flag) {
   case Exit::Strategy::Uncond: return exit.true_block;
   case Exit::Strategy::ReturnVoid:
   case Exit::Strategy::Return: return nullptr;
@@ -284,9 +290,11 @@ Block *Block::ExecuteJump(StackFrame &frame) {
 
 StackFrame::StackFrame(Func *f, const std::vector<Value> &args)
     : reg(f->num_cmds), args(args), curr_func(f), inst_ptr(0),
-      curr_block(f->entry()), prev_block(nullptr) {}
+      curr_block(f->entry()), prev_block(nullptr) {
+  allocs = (char *)malloc(f->frame_size);
+}
 
-Value Call(Func *f, const std::vector<Value>& arg_vals) {
+Value Call(Func *f, const std::vector<Value> &arg_vals) {
   StackFrame frame(f, arg_vals);
 
 eval_loop_start:
