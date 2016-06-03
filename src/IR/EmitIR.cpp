@@ -99,12 +99,7 @@ IR::Value Unop::EmitIR() {
 IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: {
-    // TODO this is what EmitLVal should do (Alloc of frame_map)
-    // TODO currently assuming we only have identifier here
-    assert(lhs->is_identifier());
-    return IR::Store(
-        rhs->EmitIR(),
-        IR::Value::Alloc(IR::Func::Current->frame_map.at((Identifier *)lhs)));
+    return IR::Store(rhs->EmitIR(), lhs->EmitLVal());
   } break;
   case Language::Operator::Cast: NOT_YET;
   case Language::Operator::Arrow: {
@@ -116,7 +111,7 @@ IR::Value Binop::EmitIR() {
 
 #define ARITHMETIC_EQ_CASE(Op, op)                                             \
   case Language::Operator::Op##Eq: {                                           \
-    auto lval    = lhs->EmitIR(); /* EmitLValue(); */                          \
+    auto lval    = lhs->EmitLVal();                                            \
     auto lhs_val = IR::Load(lval);                                             \
     auto rhs_val = rhs->EmitIR();                                              \
                                                                                \
@@ -447,7 +442,7 @@ IR::Value ArrayType::EmitIR() {
 
 IR::Value Declaration::EmitIR() { NOT_YET; }
 
-IR::Value DummyTypeExpr::EmitIR() { return IR::Value(type); }
+IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }

@@ -36,6 +36,7 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual IR::Value EmitIR() ENDING;                                           \
+  virtual IR::Value EmitLVal() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \

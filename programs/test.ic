@@ -6,6 +6,10 @@ f := (n: int) -> int {
   x: real
   c: char
   m: int
+  x = 1.01
+  print ':', x
+  x *= x
+  print ':', x
   x = 3.14
   print ':', x, ':', ' '
   return g()
