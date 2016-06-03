@@ -29,13 +29,49 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_real);
   } break;
   case Op::Load: {
-    frame.reg[result.val.as_ref] =
-        Value(*(double *)(frame.allocs + cmd_inputs[0].val.as_alloc));
+    size_t offset = cmd_inputs[0].val.as_alloc;
+    Type *t = frame.func->allocated_types.at(offset);
+    assert(t->is_primitive() &&
+           "Non-primitive local variables are not yet implemented");
+
+#define DO_LOAD_IF(StoredType, stored_type)                                    \
+  if (t == StoredType) {                                                       \
+    frame.reg[result.val.as_ref] =                                             \
+        Value(*(stored_type *)(frame.allocs + offset));                        \
+    break;                                                                     \
+  }
+
+    DO_LOAD_IF(Bool, bool);
+    DO_LOAD_IF(Char, char);
+    DO_LOAD_IF(Int, long);
+    DO_LOAD_IF(Real, double);
+    DO_LOAD_IF(Uint, size_t);
+    DO_LOAD_IF(Type_, Type *);
+
+#undef DO_LOAD_IF
   } break;
   case Op::Store: {
-    double *ptr                  = (double *)(frame.allocs + cmd_inputs[1].val.as_alloc);
-    *ptr                         = cmd_inputs[0].val.as_real;
-    frame.reg[result.val.as_ref] = Value(true);
+    size_t offset = cmd_inputs[1].val.as_alloc;
+    Type *t = frame.func->allocated_types.at(offset);
+    assert(t->is_primitive() &&
+           "Non-primitive local variables are not yet implemented");
+
+#define DO_STORE_IF(StoredType, store_type, type_name)                         \
+  if (t == StoredType) {                                                       \
+    store_type *ptr              = (store_type *)(frame.allocs + offset);      \
+    *ptr                         = cmd_inputs[0].val.as_##type_name;           \
+    frame.reg[result.val.as_ref] = Value(true);                                \
+    break;                                                                     \
+  }
+
+    DO_STORE_IF(Bool, bool, bool);
+    DO_STORE_IF(Char, char, char);
+    DO_STORE_IF(Int, long, int);
+    DO_STORE_IF(Real, double, real);
+    DO_STORE_IF(Uint, size_t, uint);
+    DO_STORE_IF(Type_, Type *, type);
+
+#undef DO_STORE_IF
   } break;
   case Op::Call: {
     auto iter = cmd_inputs.begin();
@@ -295,7 +331,7 @@ Block *Block::ExecuteJump(StackFrame &frame) {
 }
 
 StackFrame::StackFrame(Func *f, const std::vector<Value> &args)
-    : reg(f->num_cmds), args(args), curr_func(f), inst_ptr(0),
+    : reg(f->num_cmds), args(args), func(f), inst_ptr(0),
       curr_block(f->entry()), prev_block(nullptr) {
   allocs = (char *)malloc(f->frame_size);
 }
@@ -305,7 +341,7 @@ Value Call(Func *f, const std::vector<Value> &arg_vals) {
 
 eval_loop_start:
   if (debug::ct_eval) {
-    std::cout << frame.curr_func << ".block-" << frame.curr_block->block_num << ": "
+    std::cout << frame.func << ".block-" << frame.curr_block->block_num << ": "
               << frame.inst_ptr << std::endl;
   }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {

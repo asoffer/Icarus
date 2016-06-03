@@ -1,13 +1,16 @@
-Any := (T: type) -> bool { return true }
+Any := (T: type) -> bool {
+  MutableType: type
 
-Small := (T: type) -> bool {
-  print suit.diamonds
-  print T, '.', 'b', 'y', 't', 'e', 's', ' ', '=', ' ', T.bytes, '\n'
-  print T, '.', 'a', 'l', 'i', 'g', 'n', 'm', 'e', 'n', 't', ' ', '=', ' ', T.alignment, '\n', '\n'
-  return T.bytes <= 4u | T.alignment > 4u
+  MutableType = int
+  print MutableType
+
+  MutableType = char
+  print MutableType
+
+  return true
 }
 
-foo := (val: Small`T) -> void {
+foo := (val: Any`T) -> void {
   print val
 }
 

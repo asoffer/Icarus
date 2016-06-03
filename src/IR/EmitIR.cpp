@@ -381,6 +381,7 @@ IR::Value FunctionLiteral::EmitIR() {
         MoveForwardToAlignment(ir_func->frame_size, alignment);
 
     ir_func->frame_map[decl->identifier] = ir_func->frame_size;
+    ir_func->allocated_types[ir_func->frame_size] = decl->type;
     ir_func->frame_size += decl->type->bytes();
 
     frame_alignment_mask |= (alignment - 1);

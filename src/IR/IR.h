@@ -60,7 +60,7 @@ struct StackFrame {
   char *allocs; // array of local variable data
 
   const std::vector<Value>& args;
-  Func *curr_func;
+  const Func *const func;
 
   size_t inst_ptr;
   Block *curr_block, *prev_block;
@@ -168,6 +168,7 @@ struct Func {
   std::vector<Block *> blocks;
   std::vector<Value *> args;
   std::map<AST::Identifier *, size_t> frame_map;
+  std::map<size_t, Type *> allocated_types;
   std::string name;
 
   Block *entry() { return blocks.front(); }
