@@ -357,29 +357,37 @@ IR::Value ChainOp::EmitIR() {
   NOT_YET;
 }
 
+inline static size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
+  return ((ptr - 1) | (alignment - 1)) + 1;
+}
+
 IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   ir_func            = new IR::Func;
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
 
+  statements->verify_types();
+  if(error_log.num_errors() != 0) {
+    std::cerr << error_log << std::endl;
+  }
+
   size_t frame_alignment_mask = 0;
   for (auto decl : fn_scope->ordered_decls_) {
     if (decl->identifier->arg_val) { continue; }
 
-    // Set new alignment
-    size_t align_mask = decl->type->alignment() - 1;
-    ir_func->frame_size = ((ir_func->frame_size - 1) | align_mask) + 1;
+    size_t alignment = decl->type->alignment();
+    ir_func->frame_size =
+        MoveForwardToAlignment(ir_func->frame_size, alignment);
 
     ir_func->frame_map[decl->identifier] = ir_func->frame_size;
     ir_func->frame_size += decl->type->bytes();
 
-    frame_alignment_mask |= align_mask;
+    frame_alignment_mask |= (alignment - 1);
   }
 
   ir_func->frame_alignment = frame_alignment_mask + 1;
 
-  statements->verify_types();
   statements->EmitIR();
 
   if (debug::ct_eval) { ir_func->dump(); }
@@ -444,6 +452,50 @@ IR::Value Declaration::EmitIR() { NOT_YET; }
 
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 
+IR::Value Case::EmitIR() {
+  std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
+
+  for (auto &b : key_blocks) {
+    // TODO roll this all into one function
+    b = new IR::Block(IR::Func::Current->blocks.size());
+    IR::Func::Current->blocks.push_back(b);
+  }
+
+  // Create the landing block
+  IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
+  IR::Func::Current->blocks.push_back(landing_block);
+  auto phi = IR::Phi();
+
+  IR::Block::Current->exit.SetUnconditional(key_blocks.front());
+
+  IR::Value result;
+  for (size_t i = 0; i < key_vals.size() - 1; ++i) {
+    auto compute_block = new IR::Block(IR::Func::Current->blocks.size());
+    IR::Func::Current->blocks.push_back(compute_block);
+
+    IR::Block::Current = key_blocks[i];
+    result = key_vals[i].first->EmitIR();
+    IR::Block::Current->exit.SetConditional(result, compute_block,
+                                            key_blocks[i + 1]);
+
+    IR::Block::Current = compute_block;
+    result = key_vals[i].second->EmitIR();
+    IR::Block::Current->exit.SetUnconditional(landing_block);
+    phi.AddIncoming(IR::Block::Current, result);
+  }
+
+  // Assume last entry is "else => ___".
+  IR::Block::Current = key_blocks.back();
+  result = key_vals.back().second->EmitIR();
+  IR::Block::Current->exit.SetUnconditional(landing_block);
+  phi.AddIncoming(IR::Block::Current, result);
+
+  IR::Block::Current = landing_block;
+  landing_block->cmds.push_back(phi);
+
+  return phi;
+}
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
@@ -452,7 +504,6 @@ IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }
 IR::Value StructLiteral::EmitIR() { NOT_YET; }
-IR::Value Case::EmitIR() { NOT_YET; }
 IR::Value Access::EmitIR() { NOT_YET; }
 IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }

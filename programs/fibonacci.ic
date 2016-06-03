@@ -1,5 +1,4 @@
-fib : int -> int
-fib = (n : int) -> int {
+fib := (n : int) -> int {
    return case {
      n < 0 & n % 2 == 0  =>  fib(0 - n)
      n < 0               =>  0 - fib(0 - n)
