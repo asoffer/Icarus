@@ -582,7 +582,40 @@ IR::Value While::EmitIR() {
   return IR::Value();
 }
 
-IR::Value Conditional::EmitIR() { NOT_YET; }
+IR::Value Conditional::EmitIR() {
+  std::vector<IR::Block *> cond_blocks(conditions.size(), nullptr);
+  std::vector<IR::Block *> body_blocks(body_scopes.size(), nullptr);
+
+  for (auto &b : cond_blocks) { b = IR::Func::Current->AddBlock(); }
+  for (auto &b : body_blocks) { b = IR::Func::Current->AddBlock(); }
+  auto land_block = IR::Func::Current->AddBlock();
+
+  IR::Block::Current->exit.SetUnconditional(cond_blocks[0]);
+
+  for (size_t i = 0; i < conditions.size() - 1; ++i) {
+    IR::Block::Current = cond_blocks[i];
+    auto cond_val = conditions[i]->EmitIR();
+    IR::Block::Current->exit.SetConditional(cond_val, body_blocks[i],
+                                            cond_blocks[i + 1]);
+  }
+
+  IR::Block::Current = cond_blocks.back();
+  auto cond_val      = conditions.back()->EmitIR();
+  IR::Block::Current->exit.SetConditional(
+      cond_val, body_blocks[conditions.size() - 1],
+      has_else() ? body_blocks.back() : land_block);
+
+  for (size_t i = 0; i < body_scopes.size(); ++i) {
+    IR::Block::Current = body_blocks[i];
+    statements[i]->EmitIR();
+    // TODO break, return, etc flags? Destruction?
+    IR::Block::Current->exit.SetUnconditional(land_block);
+  }
+
+  IR::Block::Current = land_block;
+  return IR::Value();
+}
+
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }

@@ -349,12 +349,6 @@ eval_loop_start:
       int x = frame.allocs[i];
       std::cout << x << " ";
     }
-    std::cout << "| ";
-    for (size_t i = IR::Func::Current->frame_size;
-         i < IR::Func::Current->frame_size + 8; ++i) {
-      int x = frame.allocs[i];
-      std::cout << x << " ";
-    }
     std::cout << std::dec << std::endl;
 
     std::cout << frame.func << ".block-" << frame.curr_block->block_num << ": "
@@ -389,12 +383,6 @@ eval_loop_start:
           int x = frame.allocs[i];
           std::cout << x << " ";
         }
-        std::cout << "| ";
-        for (size_t i = IR::Func::Current->frame_size;
-             i < IR::Func::Current->frame_size + 8; ++i) {
-          int x = frame.allocs[i];
-          std::cout << x << " ";
-        }
 
         std::cout << std::dec << "\n  jumped to block-"
                   << frame.curr_block->block_num << std::endl;
@@ -413,12 +401,6 @@ eval_loop_start:
 
       std::cout << std::hex;
       for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
-        int x = frame.allocs[i];
-        std::cout << x << " ";
-      }
-      std::cout << "| ";
-      for (size_t i = IR::Func::Current->frame_size;
-           i < IR::Func::Current->frame_size + 8; ++i) {
         int x = frame.allocs[i];
         std::cout << x << " ";
       }
