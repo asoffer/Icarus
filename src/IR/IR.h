@@ -16,7 +16,7 @@ struct Value {
     void *as_ptr;
     bool as_bool;
     char as_char;
-    long as_int;
+    int as_int;
     double as_real;
     size_t as_uint;
     Type *as_type;
@@ -28,7 +28,7 @@ struct Value {
 
   explicit Value(bool b) : flag(ValType::B) { val.as_bool = b; }
   explicit Value(char c) : flag(ValType::C) { val.as_char = c; }
-  explicit Value(long n) : flag(ValType::I) { val.as_int = n; }
+  explicit Value(int n) : flag(ValType::I) { val.as_int = n; }
   explicit Value(double d) : flag(ValType::R) { val.as_real = d; }
   explicit Value(size_t n) : flag(ValType::U) { val.as_uint = n; }
   explicit Value(Func *f) : flag(ValType::F) { val.as_func = f; }
@@ -172,11 +172,12 @@ struct Func {
   std::string name;
 
   Block *entry() { return blocks.front(); }
-  size_t num_cmds, frame_size, frame_alignment;
+  size_t num_cmds, frame_size;
 
-  Func() : num_cmds(0), frame_size(0), frame_alignment(1) {
-    blocks.push_back(new Block(0));
-  }
+  void PushLocal(AST::Declaration *decl);
+  Block *AddBlock();
+
+  Func() : num_cmds(0), frame_size(0) { blocks.push_back(new Block(0)); }
   ~Func() {
     for (auto b : blocks) { delete b; }
   }

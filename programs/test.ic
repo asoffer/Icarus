@@ -1,10 +1,11 @@
 Any := (T: type) -> bool {
-  TT := case {
-    (T.bytes <=  4u) => int
-    else             => real
+  i := 0
+  while i < 10 {
+    x := i
+    print x, ' '
+    i += 1
   }
-  val: TT
-  print (T.bytes <=  4u), ' ', TT, ' ', '-', '>', ' ', val, '\n'
+  print '\n'
 
   return true
 }
@@ -18,4 +19,3 @@ main := void -> void {
   foo(3.0)
   foo('x')
 }
-

@@ -43,7 +43,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     DO_LOAD_IF(Bool, bool);
     DO_LOAD_IF(Char, char);
-    DO_LOAD_IF(Int, long);
+    DO_LOAD_IF(Int, int);
     DO_LOAD_IF(Real, double);
     DO_LOAD_IF(Uint, size_t);
     DO_LOAD_IF(Type_, Type *);
@@ -66,7 +66,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     DO_STORE_IF(Bool, bool, bool);
     DO_STORE_IF(Char, char, char);
-    DO_STORE_IF(Int, long, int);
+    DO_STORE_IF(Int, int, int);
     DO_STORE_IF(Real, double, real);
     DO_STORE_IF(Uint, size_t, uint);
     DO_STORE_IF(Type_, Type *, type);
@@ -271,7 +271,7 @@ void Cmd::Execute(StackFrame& frame) {
       std::printf("%c", cmd_inputs[0].val.as_char);
 
     } else if (cmd_inputs[0].flag == ValType::I) {
-      std::printf("%ld", cmd_inputs[0].val.as_int);
+      std::printf("%d", cmd_inputs[0].val.as_int);
 
     } else if (cmd_inputs[0].flag == ValType::R) {
       std::printf("%lf", cmd_inputs[0].val.as_real);
@@ -341,6 +341,22 @@ Value Call(Func *f, const std::vector<Value> &arg_vals) {
 
 eval_loop_start:
   if (debug::ct_eval) {
+    std::cout << "\033[2J\033[1;1H" << std::endl;
+    frame.curr_block->dump();
+
+    std::cout << std::hex;
+    for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+      int x = frame.allocs[i];
+      std::cout << x << " ";
+    }
+    std::cout << "| ";
+    for (size_t i = IR::Func::Current->frame_size;
+         i < IR::Func::Current->frame_size + 8; ++i) {
+      int x = frame.allocs[i];
+      std::cout << x << " ";
+    }
+    std::cout << std::dec << std::endl;
+
     std::cout << frame.func << ".block-" << frame.curr_block->block_num << ": "
               << frame.inst_ptr << std::endl;
   }
@@ -365,8 +381,23 @@ eval_loop_start:
     } else {
       frame.inst_ptr = 0;
       if (debug::ct_eval) {
-        std::cout << "  jumped to block-" << frame.curr_block->block_num
-                  << std::endl;
+        std::cout << "\033[2J\033[1;1H" << std::endl;
+        frame.curr_block->dump();
+
+        std::cout << std::hex;
+        for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+          int x = frame.allocs[i];
+          std::cout << x << " ";
+        }
+        std::cout << "| ";
+        for (size_t i = IR::Func::Current->frame_size;
+             i < IR::Func::Current->frame_size + 8; ++i) {
+          int x = frame.allocs[i];
+          std::cout << x << " ";
+        }
+
+        std::cout << std::dec << "\n  jumped to block-"
+                  << frame.curr_block->block_num << std::endl;
         std::cin.ignore(1);
       }
     }
@@ -377,7 +408,22 @@ eval_loop_start:
     cmd.Execute(frame);
 
     if (debug::ct_eval) {
-      std::cout << "  " << cmd.result << " = "
+      std::cout << "\033[2J\033[1;1H" << std::endl;
+      frame.curr_block->dump();
+
+      std::cout << std::hex;
+      for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+        int x = frame.allocs[i];
+        std::cout << x << " ";
+      }
+      std::cout << "| ";
+      for (size_t i = IR::Func::Current->frame_size;
+           i < IR::Func::Current->frame_size + 8; ++i) {
+        int x = frame.allocs[i];
+        std::cout << x << " ";
+      }
+
+      std::cout << std::dec << "\n  " << cmd.result << " = "
                 << frame.reg[cmd.result.val.as_ref] << std::endl;
       std::cin.ignore(1);
     }

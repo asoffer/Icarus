@@ -6,6 +6,25 @@ namespace debug {
 extern bool ct_eval;
 } // namespace debug
 
+inline static size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
+  return ((ptr - 1) | (alignment - 1)) + 1;
+}
+
+void IR::Func::PushLocal(AST::Declaration *decl) {
+  size_t alignment = decl->type->alignment();
+  size_t bytes     = decl->type->bytes();
+
+  // Compile-time variables actually take up space in the IR!
+  if (bytes == 0) { bytes = sizeof(Type *); }
+  if (alignment == 0) { alignment = sizeof(Type *); }
+
+  frame_size = MoveForwardToAlignment(frame_size, alignment);
+
+  frame_map[decl->identifier] = frame_size;
+  allocated_types[frame_size] = decl->type;
+  frame_size += bytes;
+}
+
 namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
@@ -15,7 +34,7 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Else: return IR::Value(true);
   case Language::Terminal::False: return IR::Value(false);
   case Language::Terminal::Hole: UNREACHABLE;
-  case Language::Terminal::Int: return IR::Value(value.as_int);
+  case Language::Terminal::Int: return IR::Value((int)value.as_int); // TODO Context::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value(nullptr);
   case Language::Terminal::Ord: NOT_YET;
   case Language::Terminal::Real: return IR::Value(value.as_real);
@@ -276,17 +295,12 @@ IR::Value ChainOp::EmitIR() {
     bool using_or = (ops[0] == Language::Operator::Or);
     IR::Value early_exit_value = IR::Value(using_or);
 
-    for (auto &b: blocks) {
-      // TODO roll this all into one function
-      b = new IR::Block(IR::Func::Current->blocks.size());
-      IR::Func::Current->blocks.push_back(b);
-    }
+    for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
 
     IR::Block::Current->exit.SetUnconditional(blocks.front());
 
     // Create the landing block
-    IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
-    IR::Func::Current->blocks.push_back(landing_block);
+    IR::Block *landing_block = IR::Func::Current->AddBlock();
     auto phi = IR::Phi();
 
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
@@ -316,14 +330,9 @@ IR::Value ChainOp::EmitIR() {
     // Operators here can be <, <=, ==, !=, >=, or >.
     std::vector<IR::Block *> blocks(exprs.size() - 1, nullptr);
 
-    for (auto &b: blocks) {
-      // TODO roll this all into one function
-      b = new IR::Block(IR::Func::Current->blocks.size());
-      IR::Func::Current->blocks.push_back(b);
-    }
+    for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
 
-    IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
-    IR::Func::Current->blocks.push_back(landing_block);
+    IR::Block *landing_block = IR::Func::Current->AddBlock();
     auto phi = IR::Phi();
 
     IR::Value result, lhs;
@@ -357,10 +366,6 @@ IR::Value ChainOp::EmitIR() {
   NOT_YET;
 }
 
-inline static size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
-  return ((ptr - 1) | (alignment - 1)) + 1;
-}
-
 IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   ir_func            = new IR::Func;
@@ -372,28 +377,17 @@ IR::Value FunctionLiteral::EmitIR() {
     std::cerr << error_log << std::endl;
   }
 
-  size_t frame_alignment_mask = 0;
   for (auto decl : fn_scope->ordered_decls_) {
     if (decl->identifier->arg_val) { continue; }
-
-    size_t alignment = decl->type->alignment();
-    size_t bytes     = decl->type->bytes();
-
-    // Compile-time variables actually take up space in the IR!
-    if (bytes == 0) { bytes = sizeof(Type *); }
-    if (alignment == 0) { alignment = sizeof(Type *); }
-
-    ir_func->frame_size =
-        MoveForwardToAlignment(ir_func->frame_size, alignment);
-
-    ir_func->frame_map[decl->identifier] = ir_func->frame_size;
-    ir_func->allocated_types[ir_func->frame_size] = decl->type;
-    ir_func->frame_size += bytes;
-
-    frame_alignment_mask |= (alignment - 1);
+    ir_func->PushLocal(decl);
   }
 
-  ir_func->frame_alignment = frame_alignment_mask + 1;
+  for (auto scope : fn_scope->innards_) {
+    for (auto decl : scope->ordered_decls_) {
+      if (decl->identifier->arg_val) { continue; }
+      ir_func->PushLocal(decl);
+    }
+  }
 
   statements->EmitIR();
 
@@ -482,7 +476,7 @@ IR::Value Declaration::EmitIR() {
         IR::Store(IR::Value((char)0), id_val);
 
       } else if (type == Int) {
-        IR::Store(IR::Value((long)0), id_val);
+        IR::Store(IR::Value((int)0), id_val);
 
       } else if (type == Real) {
         IR::Store(IR::Value(0.0), id_val);
@@ -516,23 +510,17 @@ IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 IR::Value Case::EmitIR() {
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
 
-  for (auto &b : key_blocks) {
-    // TODO roll this all into one function
-    b = new IR::Block(IR::Func::Current->blocks.size());
-    IR::Func::Current->blocks.push_back(b);
-  }
+  for (auto &b : key_blocks) { b = IR::Func::Current->AddBlock(); }
 
   // Create the landing block
-  IR::Block *landing_block = new IR::Block(IR::Func::Current->blocks.size());
-  IR::Func::Current->blocks.push_back(landing_block);
+  IR::Block *landing_block = IR::Func::Current->AddBlock();
   auto phi = IR::Phi();
 
   IR::Block::Current->exit.SetUnconditional(key_blocks.front());
 
   IR::Value result;
   for (size_t i = 0; i < key_vals.size() - 1; ++i) {
-    auto compute_block = new IR::Block(IR::Func::Current->blocks.size());
-    IR::Func::Current->blocks.push_back(compute_block);
+    auto compute_block = IR::Func::Current->AddBlock();
 
     IR::Block::Current = key_blocks[i];
     result = key_vals[i].first->EmitIR();
@@ -571,9 +559,31 @@ IR::Value Access::EmitIR() {
   }
 }
 
+IR::Value While::EmitIR() {
+  auto cond_block = IR::Func::Current->AddBlock();
+  auto body_block = IR::Func::Current->AddBlock();
+  auto land_block = IR::Func::Current->AddBlock();
+
+  IR::Block::Current->exit.SetUnconditional(cond_block);
+
+  IR::Block::Current = cond_block;
+  auto cond_val = condition->EmitIR();
+  IR::Block::Current->exit.SetConditional(cond_val, body_block, land_block);
+
+  IR::Block::Current = body_block;
+  // for (auto decl : while_scope->ordered_decls_) { /* TODO Initialize */ }
+  statements->EmitIR();
+  // TODO Exit/cleanup
+
+  // TODO Exit flag. For now, there are no breaks/continues
+  IR::Block::Current->exit.SetUnconditional(cond_block);
+
+  IR::Block::Current = land_block;
+  return IR::Value();
+}
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
-IR::Value While::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }

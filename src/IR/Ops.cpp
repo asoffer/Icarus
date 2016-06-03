@@ -134,4 +134,10 @@ void Func::dump() {
   for (auto b : blocks) { b->dump(); }
 }
 
+Block *Func::AddBlock() {
+  auto result = new IR::Block(blocks.size());
+  blocks.push_back(result);
+  return result;
+}
+
 } // namespace IR
