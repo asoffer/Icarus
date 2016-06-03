@@ -1,5 +1,6 @@
 #include "Type/Type.h"
 #include <cstdio>
+#include "IR/Stack.h"
 
 namespace debug {
 extern bool ct_eval;
@@ -37,9 +38,10 @@ void Cmd::Execute(StackFrame& frame) {
 #define DO_LOAD_IF(StoredType, stored_type)                                    \
   if (t == StoredType) {                                                       \
     frame.reg[result.val.as_ref] =                                             \
-        Value(*(stored_type *)(frame.allocs + offset));                        \
+        Value(*(stored_type *)(frame.stack->allocs + frame.offset + offset));  \
     break;                                                                     \
   }
+
 
     DO_LOAD_IF(Bool, bool);
     DO_LOAD_IF(Char, char);
@@ -58,7 +60,8 @@ void Cmd::Execute(StackFrame& frame) {
 
 #define DO_STORE_IF(StoredType, store_type, type_name)                         \
   if (t == StoredType) {                                                       \
-    store_type *ptr              = (store_type *)(frame.allocs + offset);      \
+    store_type *ptr =                                                          \
+        (store_type *)(frame.stack->allocs + frame.offset + offset);           \
     *ptr                         = cmd_inputs[0].val.as_##type_name;           \
     frame.reg[result.val.as_ref] = Value(true);                                \
     break;                                                                     \
@@ -82,9 +85,8 @@ void Cmd::Execute(StackFrame& frame) {
 
     // TODO std::copy wasn't working for some reason I don't understand. Just
     // gonna do this by hand for now.
-    std::cerr << "--" << fn << "!!" << std::endl;
     for (; iter != cmd_inputs.end(); ++iter) { call_args.push_back(*iter); }
-    frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, call_args);
+    frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, frame.stack, call_args);
   } break;
   case Op::GEP: {
     NOT_YET;
@@ -334,30 +336,52 @@ Block *Block::ExecuteJump(StackFrame &frame) {
   }
 }
 
-StackFrame::StackFrame(Func *f, const std::vector<Value> &args)
-    : reg(f->num_cmds), args(args), func(f), inst_ptr(0),
-      curr_block(f->entry()), prev_block(nullptr) {
-
-  allocs = (char *)malloc(f->frame_size);
+StackFrame::StackFrame(Func *f, LocalStack *local_stack,
+                       const std::vector<Value> &args)
+    : reg(f->num_cmds), stack(local_stack), args(args), func(f), alignment(16),
+      size(f->frame_size), offset(0), inst_ptr(0), curr_block(f->entry()),
+      prev_block(nullptr) {
+  stack->AddFrame(this);
+  // TODO determine frame alignment and make it correct!
 }
 
-Value Call(Func *f, const std::vector<Value> &arg_vals) {
-  StackFrame frame(f, arg_vals);
+
+void LocalStack::AddFrame(StackFrame *fr) {
+  size_t old_use_size = used;
+
+  used       = MoveForwardToAlignment(used, fr->alignment);
+  fr->offset = used;
+  used += fr->size;
+
+  if (used <= capacity) { return; }
+
+  while (used > capacity) { capacity *= 2; }
+  char *new_allocs = (char *)malloc(capacity);
+  memcpy(new_allocs, allocs, old_use_size);
+  free(allocs);
+  allocs = new_allocs;
+}
+
+void LocalStack::RemoveFrame(StackFrame *fr) { used = fr->offset; }
+
+Value Call(Func *f, LocalStack *local_stack, const std::vector<Value> &arg_vals) {
+  StackFrame frame(f, local_stack, arg_vals);
 
 eval_loop_start:
   if (debug::ct_eval) {
-    std::cout << "\033[2J\033[1;1H" << std::endl;
+    std::cerr << "\033[2J\033[1;1H" << std::endl;
     frame.curr_block->dump();
 
-    std::cout << std::hex;
+    std::cerr << std::hex;
     for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
-      int x = frame.allocs[i];
-      std::cout << x << " ";
+      int x = frame.stack->allocs[i];
+      std::cerr << x << " ";
     }
-    std::cout << std::dec << std::endl;
+    std::cerr << std::dec << std::endl;
 
-    std::cout << frame.func << ".block-" << frame.curr_block->block_num << ": "
+    std::cerr << frame.func << ".block-" << frame.curr_block->block_num << ": "
               << frame.inst_ptr << std::endl;
+    std::cin.ignore(1);
   }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
     frame.prev_block = frame.curr_block;
@@ -380,16 +404,16 @@ eval_loop_start:
     } else {
       frame.inst_ptr = 0;
       if (debug::ct_eval) {
-        std::cout << "\033[2J\033[1;1H" << std::endl;
+        std::cerr << "\033[2J\033[1;1H" << std::endl;
         frame.curr_block->dump();
 
-        std::cout << std::hex;
+        std::cerr << std::hex;
         for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
-          int x = frame.allocs[i];
-          std::cout << x << " ";
+          int x = frame.stack->allocs[i];
+          std::cerr << x << " ";
         }
 
-        std::cout << std::dec << "\n  jumped to block-"
+        std::cerr << std::dec << "\n  jumped to block-"
                   << frame.curr_block->block_num << std::endl;
         std::cin.ignore(1);
       }
@@ -401,16 +425,16 @@ eval_loop_start:
     cmd.Execute(frame);
 
     if (debug::ct_eval) {
-      std::cout << "\033[2J\033[1;1H" << std::endl;
+      std::cerr << "\033[2J\033[1;1H" << std::endl;
       frame.curr_block->dump();
 
-      std::cout << std::hex;
+      std::cerr << std::hex;
       for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
-        int x = frame.allocs[i];
-        std::cout << x << " ";
+        int x = frame.stack->allocs[i];
+        std::cerr << x << " ";
       }
 
-      std::cout << std::dec << "\n  " << cmd.result << " = "
+      std::cerr << std::dec << "\n  " << cmd.result << " = "
                 << frame.reg[cmd.result.val.as_ref] << std::endl;
       std::cin.ignore(1);
     }

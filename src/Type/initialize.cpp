@@ -186,22 +186,10 @@ void Primitive::EmitInit(IR::Value id_val) {
   }
 }
 
-struct SaveCurrents {
-  IR::Func *saved_func;
-  IR::Block *saved_block;
-
-  SaveCurrents()
-      : saved_func(IR::Func::Current), saved_block(IR::Block::Current) {}
-
-  ~SaveCurrents(){
-    IR::Func::Current  = saved_func;
-    IR::Block::Current = saved_block;
-  }
-};
-
 void Array::EmitInit(IR::Value id_val) {
   if (!init_func) {
-    SaveCurrents();
+    auto saved_func  = IR::Func::Current;
+    auto saved_block = IR::Block::Current;
 
     init_func          = new IR::Func;
     IR::Func::Current  = init_func;
@@ -216,9 +204,11 @@ void Array::EmitInit(IR::Value id_val) {
     } else {
       NOT_YET;
     }
+
+    IR::Func::Current  = saved_func;
+    IR::Block::Current = saved_block;
   }
   assert(init_func);
-  init_func->dump();
 
   auto call = IR::CallCmd(IR::Value(init_func));
   call.args.push_back(id_val);

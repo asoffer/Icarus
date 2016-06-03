@@ -2,6 +2,8 @@
 #include "Scope.h"
 #endif
 
+#include "IR/Stack.h"
+
 extern std::queue<AST::Node *> VerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
@@ -93,9 +95,10 @@ static bool MatchCall(Type *lhs, Type *rhs,
     assert(test_fn->type == Func(Type_, Bool));
 
     // Do a function call
+    auto local_stack = new IR::LocalStack;
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
-    auto test_result = IR::Call(f.val.as_func, {IR::Value(rhs)});
+    auto test_result = IR::Call(f.val.as_func, local_stack, {IR::Value(rhs)});
     assert(test_result.flag == IR::ValType::B);
 
     if (test_result.val.as_bool) {

@@ -1,14 +1,11 @@
 #include "IR.h"
 #include "Type/Type.h"
 #include "Scope.h"
+#include "Stack.h"
 
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
-
-inline static size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
-  return ((ptr - 1) | (alignment - 1)) + 1;
-}
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
   size_t alignment = decl->type->alignment();
@@ -374,6 +371,7 @@ IR::Value ChainOp::EmitIR() {
 IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   ir_func            = new IR::Func;
+
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
 

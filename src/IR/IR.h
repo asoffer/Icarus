@@ -8,6 +8,8 @@ enum class ValType { B, C, I, R, U, T, F, Ptr, Ref, Arg, Alloc };
 
 struct Func;
 struct Block;
+struct LocalStack;
+struct StackFrame;
 
 struct Value {
   ValType flag;
@@ -61,21 +63,6 @@ enum class Op {
 #undef IR_MACRO
 };
 
-struct StackFrame {
-  std::vector<Value> reg;
-  // TODO demand alignment
-  char *allocs; // array of local variable data
-
-  const std::vector<Value>& args;
-  const Func *const func;
-
-  size_t inst_ptr;
-  Block *curr_block, *prev_block;
-
-  StackFrame(Func *f, const std::vector<Value> &args);
-  ~StackFrame() { delete allocs; }
-};
-
 struct Cmd {
   Op op_code;
   std::vector<Block *> incoming_blocks; // Only used for phi cmds
@@ -110,7 +97,7 @@ private:
 // 3. Return from the current function.
 struct Exit {
   friend struct Block;
-  friend Value Call(Func *, const std::vector<Value> &);
+  friend Value Call(Func *, LocalStack *, const std::vector<Value> &);
 
 private:
   enum class Strategy { Uncond, Cond, Return, ReturnVoid } flag;
@@ -193,7 +180,8 @@ struct Func {
   void dump();
 };
 
-Value Call(Func *f, const std::vector<Value>& arg_vals);
+Value Call(Func *f, LocalStack *local_stack,
+           const std::vector<Value> &arg_vals);
 
 #define CMD_WITH_1_ARGS(name)                                                  \
   inline Cmd name(Value v) {                                                   \
