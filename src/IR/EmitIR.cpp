@@ -377,12 +377,18 @@ IR::Value FunctionLiteral::EmitIR() {
     if (decl->identifier->arg_val) { continue; }
 
     size_t alignment = decl->type->alignment();
+    size_t bytes     = decl->type->bytes();
+
+    // Compile-time variables actually take up space in the IR!
+    if (bytes == 0) { bytes = sizeof(Type *); }
+    if (alignment == 0) { alignment = sizeof(Type *); }
+
     ir_func->frame_size =
         MoveForwardToAlignment(ir_func->frame_size, alignment);
 
     ir_func->frame_map[decl->identifier] = ir_func->frame_size;
     ir_func->allocated_types[ir_func->frame_size] = decl->type;
-    ir_func->frame_size += decl->type->bytes();
+    ir_func->frame_size += bytes;
 
     frame_alignment_mask |= (alignment - 1);
   }
@@ -398,7 +404,6 @@ IR::Value FunctionLiteral::EmitIR() {
 
 IR::Value Statements::EmitIR() {
   for (auto stmt : statements) {
-    if (stmt->is_declaration()) { continue; }
     stmt->EmitIR();
   }
   return IR::Value();
@@ -449,7 +454,62 @@ IR::Value ArrayType::EmitIR() {
   }
 }
 
-IR::Value Declaration::EmitIR() { NOT_YET; }
+static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                           IR::Value lhs_ptr, IR::Value rhs) {
+  assert(scope);
+  if (lhs_type == rhs_type) {
+    if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
+        lhs_type->is_enum()) {
+      IR::Store(rhs, lhs_ptr);
+    }
+  } else {
+    NOT_YET;
+  }
+}
+
+IR::Value Declaration::EmitIR() {
+  if (IsUninitialized()) {
+    return IR::Value();
+
+  } else if (IsDefaultInitialized()) {
+    // Pull this out somewhere where it is useful
+    auto id_val  = identifier->EmitLVal();
+    if (type->is_primitive()) {
+      if (type == Bool) {
+        IR::Store(IR::Value(false), id_val);
+
+      } else if (type == Char) {
+        IR::Store(IR::Value((char)0), id_val);
+
+      } else if (type == Int) {
+        IR::Store(IR::Value((long)0), id_val);
+
+      } else if (type == Real) {
+        IR::Store(IR::Value(0.0), id_val);
+
+      } else if (type == Uint) {
+        IR::Store(IR::Value((size_t)0), id_val);
+
+      } else if (type == Type_) {
+        // Because types are supposed to be immutable, a local declaration like
+        //   T: type
+        // would be nonsense.
+        UNREACHABLE;
+
+      } else {
+        UNREACHABLE;
+      }
+    } else {
+      NOT_YET;
+    }
+  } else {
+    auto id_val  = identifier->EmitLVal();
+    auto rhs_val = init_val->EmitIR();
+
+    EmitAssignment(scope_, identifier->type, init_val->type, id_val, rhs_val);
+  }
+  return IR::Value();
+}
 
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 

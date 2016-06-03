@@ -1,11 +1,10 @@
 Any := (T: type) -> bool {
-  MutableType: type
-
-  MutableType = int
-  print MutableType
-
-  MutableType = char
-  print MutableType
+  TT := case {
+    (T.bytes <=  4u) => int
+    else             => real
+  }
+  val: TT
+  print (T.bytes <=  4u), ' ', TT, ' ', '-', '>', ' ', val, '\n'
 
   return true
 }
@@ -20,9 +19,3 @@ main := void -> void {
   foo('x')
 }
 
-suit := enum {
-  clubs
-  diamonds
-  hearts
-  spades
-}
