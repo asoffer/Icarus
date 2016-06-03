@@ -2,12 +2,6 @@
 #include "Scope.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at((access))
-#else
-#define AT(access) [(access)]
-#endif
-
 namespace Language {
 const std::map<std::string, Operator> lookup_operator = {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
@@ -78,5 +72,3 @@ EnumLiteral::EnumLiteral() {}
 While::While() : while_scope(new BlockScope(ScopeType::While)) {}
 For::For() : for_scope(new BlockScope(ScopeType::For)) {}
 } // namespace AST
-
-#undef DEBUG

@@ -82,8 +82,12 @@ void Cmd::Execute(StackFrame& frame) {
 
     // TODO std::copy wasn't working for some reason I don't understand. Just
     // gonna do this by hand for now.
+    std::cerr << "--" << fn << "!!" << std::endl;
     for (; iter != cmd_inputs.end(); ++iter) { call_args.push_back(*iter); }
     frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, call_args);
+  } break;
+  case Op::GEP: {
+    NOT_YET;
   } break;
   case Op::Phi: {
     for (size_t i = 0; i < incoming_blocks.size(); ++i) {
@@ -333,6 +337,7 @@ Block *Block::ExecuteJump(StackFrame &frame) {
 StackFrame::StackFrame(Func *f, const std::vector<Value> &args)
     : reg(f->num_cmds), args(args), func(f), inst_ptr(0),
       curr_block(f->entry()), prev_block(nullptr) {
+
   allocs = (char *)malloc(f->frame_size);
 }
 

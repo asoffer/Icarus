@@ -38,6 +38,7 @@ extern SliceType *Slice(Array *a);
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
+  virtual void EmitInit(IR::Value id_val) ENDING;                              \
   virtual void call_init(llvm::Value *var) ENDING;                             \
   virtual void call_repr(llvm::Value *val) ENDING;                             \
   virtual llvm::Constant *InitialValue() const ENDING
@@ -139,6 +140,7 @@ struct Array : public Type {
   llvm::Function *destroy();
 
   llvm::Function *init_fn_, *destroy_fn_, *repr_fn_, *assign_fn_;
+  IR::Func *init_func;
 
   Type *data_type;
   size_t len;

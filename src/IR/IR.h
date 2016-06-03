@@ -44,6 +44,13 @@ struct Value {
     v.val.as_alloc = n;
     return v;
   }
+  
+  static Value Arg(size_t n) {
+    Value v;
+    v.flag       = IR::ValType::Arg;
+    v.val.as_arg = n;
+    return v;
+  }
 };
 
 std::ostream &operator<<(std::ostream &os, const Value &value);
@@ -82,6 +89,7 @@ struct Cmd {
   void dump(size_t indent = 0);
 
   friend Cmd CallCmd(Value);
+  friend Cmd GEP(Value lhs, std::vector<int> indices);
 
   // Only used for phi cmds
   friend Cmd Phi();
@@ -221,6 +229,14 @@ inline Cmd CallCmd(Value lhs) {
   Cmd call;
   call.op_code = Op::Call;
   call.args.push_back(lhs);
+  return call;
+}
+
+inline Cmd GEP(Value lhs, std::vector<int> indices) {
+  Cmd call;
+  call.op_code = Op::GEP;
+  call.args.push_back(lhs);
+  for (auto i : indices) { call.args.push_back(Value(i)); }
   return call;
 }
 

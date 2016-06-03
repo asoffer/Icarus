@@ -34,7 +34,9 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Else: return IR::Value(true);
   case Language::Terminal::False: return IR::Value(false);
   case Language::Terminal::Hole: UNREACHABLE;
-  case Language::Terminal::Int: return IR::Value((int)value.as_int); // TODO Context::Value shouldn't use longs
+  case Language::Terminal::Int:
+    return IR::Value(
+        (int)value.as_int); // TODO Context::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value(nullptr);
   case Language::Terminal::Ord: NOT_YET;
   case Language::Terminal::Real: return IR::Value(value.as_real);
@@ -182,6 +184,9 @@ IR::Value Binop::EmitIR() {
 
 #undef ARITHMETIC_CASE
 
+  case Language::Operator::Index: {
+    NOT_YET;
+  } break;
   case Language::Operator::Call: {
     auto result = IR::CallCmd(lhs->EmitIR());
     if (rhs) {
@@ -397,9 +402,7 @@ IR::Value FunctionLiteral::EmitIR() {
 }
 
 IR::Value Statements::EmitIR() {
-  for (auto stmt : statements) {
-    stmt->EmitIR();
-  }
+  for (auto stmt : statements) { stmt->EmitIR(); }
   return IR::Value();
 }
 
@@ -415,10 +418,7 @@ IR::Value Identifier::EmitIR() {
       }
 
       // Here you found a match
-      IR::Value v;
-      v.flag       = IR::ValType::Arg;
-      v.val.as_arg = arg_num;
-      return v;
+      return IR::Value::Arg(arg_num);
     }
     assert(false && "Failed to match argument");
 
@@ -466,36 +466,8 @@ IR::Value Declaration::EmitIR() {
     return IR::Value();
 
   } else if (IsDefaultInitialized()) {
-    // Pull this out somewhere where it is useful
-    auto id_val  = identifier->EmitLVal();
-    if (type->is_primitive()) {
-      if (type == Bool) {
-        IR::Store(IR::Value(false), id_val);
+    type->EmitInit(identifier->EmitLVal());
 
-      } else if (type == Char) {
-        IR::Store(IR::Value((char)0), id_val);
-
-      } else if (type == Int) {
-        IR::Store(IR::Value((int)0), id_val);
-
-      } else if (type == Real) {
-        IR::Store(IR::Value(0.0), id_val);
-
-      } else if (type == Uint) {
-        IR::Store(IR::Value((size_t)0), id_val);
-
-      } else if (type == Type_) {
-        // Because types are supposed to be immutable, a local declaration like
-        //   T: type
-        // would be nonsense.
-        UNREACHABLE;
-
-      } else {
-        UNREACHABLE;
-      }
-    } else {
-      NOT_YET;
-    }
   } else {
     auto id_val  = identifier->EmitLVal();
     auto rhs_val = init_val->EmitIR();
@@ -616,12 +588,13 @@ IR::Value Conditional::EmitIR() {
   return IR::Value();
 }
 
+IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
+
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }
 IR::Value StructLiteral::EmitIR() { NOT_YET; }
-IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }
 } // namespace AST

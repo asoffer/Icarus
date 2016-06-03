@@ -2,12 +2,6 @@
 #include "Type.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at((access))
-#else
-#define AT(access) [(access)]
-#endif
-
 extern llvm::Module *global_module;
 
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
@@ -162,7 +156,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 
 Array::Array(Type *t)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), data_type(t), len(0), fixed_length(false) {
+      assign_fn_(nullptr), init_func(nullptr), data_type(t), len(0),
+      fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + static_cast<Array *>(data_type)->dimension : 1;
 
@@ -173,7 +168,8 @@ Array::Array(Type *t)
 
 Array::Array(Type *t, size_t l)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), data_type(t), len(l), fixed_length(true) {
+      assign_fn_(nullptr), init_func(nullptr), data_type(t), len(l),
+      fixed_length(true) {
   dimension = data_type->is_array()
                   ? 1 + static_cast<Array *>(data_type)->dimension
                   : 1;
@@ -359,5 +355,3 @@ bool Type::stores_data() const {
 }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }
-
-#undef AT

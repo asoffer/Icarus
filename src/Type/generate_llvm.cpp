@@ -2,12 +2,6 @@
 #include "Type.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at( (access) )
-#else
-#define AT(access) [ (access) ]
-#endif
-
 extern llvm::Module* global_module;
 
 void Array::generate_llvm() const {

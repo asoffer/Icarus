@@ -3,12 +3,6 @@
 #include "Scope.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at( (access) )
-#else
-#define AT(access) [ (access) ]
-#endif
-
 extern llvm::Module* global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
@@ -149,5 +143,3 @@ llvm::Function *Structure::assign() {
   builder.SetInsertPoint(save_block);
   return assign_fn_;
 }
-
-#undef AT

@@ -3,12 +3,6 @@
 #include "Scope.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at( (access) )
-#else
-#define AT(access) [ (access) ]
-#endif
-
 extern llvm::Module *global_module;
 
 namespace cstdlib {

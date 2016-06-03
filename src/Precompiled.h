@@ -29,6 +29,13 @@ extern std::queue<std::string> file_queue;
 #define NOT_YET assert(false && "Not yet implemented")
 #define UNREACHABLE assert(false && "Unreachable code-ptah")
 
+#ifdef DEBUG
+#define AT(access) .at((access))
+#else
+#define AT(access) [(access)]
+#endif
+
+
 namespace llvm {
 class Value;
 class Function;

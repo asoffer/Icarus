@@ -3,12 +3,6 @@
 #include "Scope.h"
 #endif
 
-#ifdef DEBUG
-#define AT(access) .at((access))
-#else
-#define AT(access) [(access)]
-#endif
-
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
@@ -89,9 +83,7 @@ void Array::call_init(llvm::Value *var) {
   builder.CreateCall(init_fn_, {var});
 }
 
-void Tuple::call_init(llvm::Value *var) {
-  // TODO
-}
+void Tuple::call_init(llvm::Value *var) { NOT_YET; }
 
 void Pointer::call_init(llvm::Value *var) {
   builder.CreateStore(data::null_pointer(pointee), var);
@@ -103,25 +95,11 @@ void Enumeration::call_init(llvm::Value *var) {
   builder.CreateStore(data::const_uint(0), var);
 }
 
-void RangeType::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a range type");
-}
-
-void SliceType::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a slice type");
-}
-
-void TypeVariable::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a type variable");
-}
-
-void ParametricStructure::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a parametric struct");
-}
-
-void QuantumType::call_init(llvm::Value *) {
-  assert(false && "Cannot initialize a quantum type");
-}
+void RangeType::call_init(llvm::Value *) { UNREACHABLE; }
+void SliceType::call_init(llvm::Value *) { UNREACHABLE; }
+void TypeVariable::call_init(llvm::Value *) { UNREACHABLE; }
+void ParametricStructure::call_init(llvm::Value *) { UNREACHABLE; }
+void QuantumType::call_init(llvm::Value *) { UNREACHABLE; }
 
 void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
@@ -192,4 +170,73 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
   return alloc;
 }
 
-#undef AT
+
+void Primitive::EmitInit(IR::Value id_val) {
+  switch (type_) {
+  case TypeEnum::Error: UNREACHABLE;
+  case TypeEnum::Unknown: UNREACHABLE;
+  case TypeEnum::Type: UNREACHABLE;
+  case TypeEnum::Void: UNREACHABLE;
+  case TypeEnum::NullPtr: UNREACHABLE;
+  case TypeEnum::Bool: IR::Store(IR::Value(false), id_val); return;
+  case TypeEnum::Char: IR::Store(IR::Value((char)0), id_val); return;
+  case TypeEnum::Int: IR::Store(IR::Value((int)0), id_val); return;
+  case TypeEnum::Real: IR::Store(IR::Value(0.0), id_val); return;
+  case TypeEnum::Uint: IR::Store(IR::Value((size_t)0), id_val); return;
+  }
+}
+
+struct SaveCurrents {
+  IR::Func *saved_func;
+  IR::Block *saved_block;
+
+  SaveCurrents()
+      : saved_func(IR::Func::Current), saved_block(IR::Block::Current) {}
+
+  ~SaveCurrents(){
+    IR::Func::Current  = saved_func;
+    IR::Block::Current = saved_block;
+  }
+};
+
+void Array::EmitInit(IR::Value id_val) {
+  if (!init_func) {
+    SaveCurrents();
+
+    init_func          = new IR::Func;
+    IR::Func::Current  = init_func;
+    IR::Block::Current = init_func->entry();
+
+    if (fixed_length) {
+      for (size_t i = 0; i < len; ++i) {
+        auto gep = IR::GEP(IR::Value::Arg(0), {0, (int)i});
+        IR::Block::Current->push(gep);
+        data_type->EmitInit(gep);
+      }
+    } else {
+      NOT_YET;
+    }
+  }
+  assert(init_func);
+  init_func->dump();
+
+  auto call = IR::CallCmd(IR::Value(init_func));
+  call.args.push_back(id_val);
+  IR::Block::Current->cmds.push_back(call);
+}
+
+void Pointer::EmitInit(IR::Value id_val) {
+  IR::Store(IR::Value(nullptr), id_val);
+}
+
+void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
+void Structure::EmitInit(IR::Value id_val) { NOT_YET; }
+void Enumeration::EmitInit(IR::Value id_val) { NOT_YET; }
+
+void Function::EmitInit(IR::Value id_val) {}
+
+void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
+void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
+void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }
+void ParametricStructure::EmitInit(IR::Value id_val) { UNREACHABLE; }
+void QuantumType::EmitInit(IR::Value id_val) { UNREACHABLE; }

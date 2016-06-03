@@ -1,24 +1,5 @@
 Any := (T: type) -> bool {
-  i := 1
-  while i <= 50 {
-    x := i
-    if x % 15 == 0 {
-      print 'f', 'b'
-
-    } else if x % 3 == 0 {
-      print 'f'
-
-    } else if x % 5 == 0 {
-      print 'b'
-
-    } else {
-      print x
-    }
-
-    print ' '
-    i += 1
-  }
-  print '\n'
+  a: [5; int]
 
   return true
 }
