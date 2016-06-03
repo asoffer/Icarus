@@ -268,6 +268,12 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] =
         Value(Arr(cmd_inputs[1].val.as_type, cmd_inputs[0].val.as_uint));
   } break;
+  case Op::Bytes: {
+    frame.reg[result.val.as_ref] = Value(cmd_inputs[0].val.as_type->bytes());
+  } break;
+  case Op::Alignment: {
+    frame.reg[result.val.as_ref] = Value(cmd_inputs[0].val.as_type->alignment());
+  } break;
   }
 }
 

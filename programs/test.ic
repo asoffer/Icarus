@@ -1,17 +1,25 @@
-import "fibonacci.ic"
+Any := (T: type) -> bool { return true }
 
-Any := (T: type) -> bool {
-  print fib(10), ' '
-  return true
+Small := (T: type) -> bool {
+  print suit.diamonds
+  print T, '.', 'b', 'y', 't', 'e', 's', ' ', '=', ' ', T.bytes, '\n'
+  print T, '.', 'a', 'l', 'i', 'g', 'n', 'm', 'e', 'n', 't', ' ', '=', ' ', T.alignment, '\n', '\n'
+  return T.bytes <= 4u | T.alignment > 4u
 }
 
-foo := (val: Any`T) -> void {
+foo := (val: Small`T) -> void {
   print val
 }
 
 main := void -> void {
-  print '-', ' ', fib(10), ' ', '-', '\n'
   foo(3)
   foo(3.0)
   foo('x')
+}
+
+suit := enum {
+  clubs
+  diamonds
+  hearts
+  spades
 }

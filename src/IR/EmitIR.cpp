@@ -496,6 +496,20 @@ IR::Value Case::EmitIR() {
   return phi;
 }
 
+IR::Value Access::EmitIR() {
+  if (operand->type == Type_) {
+    if (member_name == "bytes") {
+      return IR::Bytes(operand->EmitIR());
+
+    } else if (member_name == "alignment") {
+      return IR::Alignment(operand->EmitIR());
+    }
+    NOT_YET;
+  } else {
+    NOT_YET;
+  }
+}
+
 IR::Value Conditional::EmitIR() { NOT_YET; }
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value While::EmitIR() { NOT_YET; }
@@ -504,7 +518,6 @@ IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }
 IR::Value StructLiteral::EmitIR() { NOT_YET; }
-IR::Value Access::EmitIR() { NOT_YET; }
 IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
 IR::Value EnumLiteral::EmitIR() { NOT_YET; }
 } // namespace AST
