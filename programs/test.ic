@@ -6,6 +6,13 @@ Any := (T: type) -> bool {
   return true
 }
 
+Small := (T: type) -> type {
+  return case {
+    T.bytes < (&T).bytes  =>  T
+    else                  =>  &T
+  }
+}
+
 bar := void -> void {
   c := 'B'
   a: [5; int]
@@ -16,5 +23,9 @@ foo := (val: Any`T) -> void {
 }
 
 main := void -> void {
-  foo(3)
+  // foo(3)
+  print Small(int), '\n'
+  print Small(uint), '\n'
+  print Small(char), '\n'
+  print Small(real), '\n'
 }

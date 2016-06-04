@@ -99,6 +99,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
     auto test_result = IR::Call(f.val.as_func, local_stack, {IR::Value(rhs)});
+    delete local_stack;
     assert(test_result.flag == IR::ValType::B);
 
     if (test_result.val.as_bool) {

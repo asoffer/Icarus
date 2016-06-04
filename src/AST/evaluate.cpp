@@ -3,6 +3,9 @@
 #include "Type/Type.h"
 #endif
 
+#include "IR/IR.h"
+#include "IR/Stack.h"
+
 #define STARTING_VALUE_CHECK                                                   \
   verify_types();                                                              \
   switch (value_flag) {                                                        \
@@ -507,34 +510,64 @@ Context::Value Binop::evaluate(Ctx& ctx) {
   if (op == Operator::Call) {
     if (lhs->type->is_function()) {
       auto lhs_val = lhs->evaluate(ctx).as_expr;
-      assert(lhs_val);
-      auto fn_ptr = static_cast<FunctionLiteral *>(lhs_val);
+      assert(lhs_val && lhs_val->is_function_literal());
+      auto fn_ptr = (FunctionLiteral *)lhs_val;
+
 
       std::vector<Expression *> arg_vals;
       if (rhs->is_comma_list()) {
-        arg_vals = static_cast<ChainOp *>(rhs)->exprs;
+        arg_vals = ((ChainOp *)rhs)->exprs;
       } else {
         arg_vals.push_back(rhs);
       }
 
       assert(arg_vals.size() == fn_ptr->inputs.size());
 
-      std::vector<Context::Value> vals;
-
-      // Populate the function context with arguments
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
-        auto rhs_eval = arg_vals[i]->evaluate(ctx);
-        vals.push_back(rhs_eval);
+      std::vector<IR::Value> args;
+      for (auto a : arg_vals) {
+        // Doing value conversion
+        if (a->type == Bool) {
+          args.emplace_back(a->evaluate(ctx).as_bool);
+        } else if (a->type == Char) {
+          args.emplace_back(a->evaluate(ctx).as_char);
+        } else if (a->type == Int) {
+          args.emplace_back((int)a->evaluate(ctx).as_int);
+        } else if (a->type == Real) {
+          args.emplace_back(a->evaluate(ctx).as_real);
+        } else if (a->type == Uint) {
+          args.emplace_back(a->evaluate(ctx).as_uint);
+        } else if (a->type == Type_) {
+          args.emplace_back(a->evaluate(ctx).as_type);
+        } else {
+          NOT_YET;
+        }
       }
 
-      for (size_t i = 0; i < arg_vals.size(); ++i) {
-        // TODO do we need to clean this up? I think not. It should just be
-        // overwritten next time the function is called, right?
-        fn_ptr->inputs[i]->identifier->value = vals[i];
-      }
+      auto local_stack = new IR::LocalStack;
+      IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+      auto result      = IR::Call(func, local_stack, args);
+      delete local_stack;
 
-      fn_ptr->fn_scope->ClearCTRV();
-      return fn_ptr->evaluate(ctx);
+      // Doing value conversion
+      if (result.flag == IR::ValType::B) {
+        return Context::Value(result.val.as_bool);
+
+      } else if (result.flag == IR::ValType::C) {
+        return Context::Value(result.val.as_char);
+
+      } else if (result.flag == IR::ValType::I) {
+        return Context::Value((long)result.val.as_int);
+
+      } else if (result.flag == IR::ValType::R) {
+        return Context::Value(result.val.as_real);
+
+      } else if (result.flag == IR::ValType::U) {
+        return Context::Value(result.val.as_uint);
+
+      } else if (result.flag == IR::ValType::T) {
+        return Context::Value(result.val.as_type);
+      }
+      NOT_YET;
 
     } else if (lhs->type == Type_) {
       auto lhs_evaled = lhs->evaluate(ctx).as_type;

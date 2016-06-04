@@ -587,7 +587,6 @@ IR::Value Conditional::EmitIR() {
 }
 
 IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
-
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }

@@ -1455,7 +1455,7 @@ llvm::Value *For::generate_code() {
       Ctx ctx;
       auto ty = container->evaluate(ctx).as_type;
       assert(ty->is_enum());
-      auto enum_type = static_cast<Enumeration *>(ty);
+      auto enum_type = (Enumeration *)ty;
 
       /* Work on init block */
       // Note: Nothing to do
