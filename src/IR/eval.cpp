@@ -29,7 +29,7 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   init_pair(1, COLOR_BLACK, COLOR_WHITE);
   for (const auto &cmd : frame.curr_block->cmds) {
     std::stringstream ss;
-    ss << " " << OpCodeString(cmd.op_code);
+    ss << "%%" << cmd.result.val.as_ref << " = " << OpCodeString(cmd.op_code);
     auto iter = cmd.args.begin();
     ss << " " << *iter;
     ++iter;

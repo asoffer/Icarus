@@ -1,6 +1,6 @@
 Any := (T: type) -> bool {
   b: bar
-  print b.n, ':', b.r
+  print "hello"
 
   return true
 }
@@ -14,8 +14,8 @@ main := void -> void {
 }
 
 bar := struct {
-  n: int
   r: real
+  n: int
   c1: char
   c2: char
   c3: char

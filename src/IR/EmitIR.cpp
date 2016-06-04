@@ -33,7 +33,7 @@ IR::Value Terminal::EmitIR() {
   switch (terminal_type) {
   case Language::Terminal::ASCII: NOT_YET;
   case Language::Terminal::Char: return IR::Value(value.as_char);
-  case Language::Terminal::Else: return IR::Value(true);
+  case Language::Terminal::Else: UNREACHABLE;
   case Language::Terminal::False: return IR::Value(false);
   case Language::Terminal::Hole: UNREACHABLE;
   case Language::Terminal::Int:
@@ -128,10 +128,43 @@ IR::Value Binop::EmitIR() {
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
   } break;
-  case Language::Operator::OrEq: NOT_YET;
-  case Language::Operator::XorEq: NOT_YET;
-  case Language::Operator::AndEq: NOT_YET;
+  case Language::Operator::OrEq:
+  case Language::Operator::AndEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      auto lval    = lhs->EmitLVal();
+      auto lhs_val = IR::Load(lhs->type, lval);
 
+      auto load_rhs_block = IR::Func::Current->AddBlock();
+      auto land_block     = IR::Func::Current->AddBlock();
+
+      IR::Block::Current->exit.SetConditional(
+          lhs_val,
+          (op == Language::Operator::OrEq) ? land_block : load_rhs_block,
+          (op == Language::Operator::AndEq) ? land_block : load_rhs_block);
+
+      IR::Block::Current = load_rhs_block;
+      auto rhs_val       = rhs->EmitIR();
+      IR::Store(Bool, rhs_val, lval);
+
+      IR::Block::Current->exit.SetUnconditional(land_block);
+
+      IR::Block::Current = load_rhs_block;
+      return IR::Value();
+    } else {
+      NOT_YET;
+    }
+  } break;
+  case Language::Operator::XorEq: {
+    auto lval    = lhs->EmitLVal();
+    auto lhs_val = IR::Load(lhs->type, lval);
+    auto rhs_val = rhs->EmitIR();
+
+    if (lhs->type == Bool && rhs->type == Bool) {
+      return IR::Store(Bool, IR::BXor(lhs_val, rhs_val), lval);
+    } else {
+      NOT_YET;
+    }
+  } break;
 #define ARITHMETIC_EQ_CASE(Op, op)                                             \
   case Language::Operator::Op##Eq: {                                           \
     auto lval    = lhs->EmitLVal();                                            \
@@ -437,8 +470,8 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
-    return IR::Load(type,
-                    IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
+    return IR::PtrCallFix(
+        type, IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
   }
   std::cerr << *this << std::endl;
   NOT_YET;
