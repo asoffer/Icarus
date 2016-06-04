@@ -178,11 +178,11 @@ void Primitive::EmitInit(IR::Value id_val) {
   case TypeEnum::Type: UNREACHABLE;
   case TypeEnum::Void: UNREACHABLE;
   case TypeEnum::NullPtr: UNREACHABLE;
-  case TypeEnum::Bool: IR::Store(IR::Value(false), id_val); return;
-  case TypeEnum::Char: IR::Store(IR::Value((char)0), id_val); return;
-  case TypeEnum::Int: IR::Store(IR::Value((int)0), id_val); return;
-  case TypeEnum::Real: IR::Store(IR::Value(0.0), id_val); return;
-  case TypeEnum::Uint: IR::Store(IR::Value((size_t)0), id_val); return;
+  case TypeEnum::Bool: IR::Store(this, IR::Value(false), id_val); return;
+  case TypeEnum::Char: IR::Store(this, IR::Value((char)0), id_val); return;
+  case TypeEnum::Int: IR::Store(this, IR::Value((int)0), id_val); return;
+  case TypeEnum::Real: IR::Store(this, IR::Value(0.0), id_val); return;
+  case TypeEnum::Uint: IR::Store(this, IR::Value((size_t)0), id_val); return;
   }
 }
 
@@ -197,7 +197,7 @@ void Array::EmitInit(IR::Value id_val) {
 
     if (fixed_length) {
       for (size_t i = 0; i < len; ++i) {
-        auto gep = IR::GEP(IR::Value::Arg(0), {0, (int)i});
+        auto gep = IR::GEP(this, IR::Value::Arg(0), {0, (int)i});
         IR::Block::Current->push(gep);
         data_type->EmitInit(gep);
       }
@@ -216,7 +216,7 @@ void Array::EmitInit(IR::Value id_val) {
 }
 
 void Pointer::EmitInit(IR::Value id_val) {
-  IR::Store(IR::Value(nullptr), id_val);
+  IR::Store(this, IR::Value(nullptr), id_val);
 }
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }

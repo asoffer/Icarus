@@ -1,7 +1,12 @@
 Any := (T: type) -> bool {
-  a: [5; int]
+  n: int = 17
+  bar()
 
   return true
+}
+
+bar := void -> void {
+  a: [5; char]
 }
 
 foo := (val: Any`T) -> void {
@@ -10,6 +15,4 @@ foo := (val: Any`T) -> void {
 
 main := void -> void {
   foo(3)
-  foo(3.0)
-  foo('x')
 }

@@ -30,18 +30,17 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_real);
   } break;
   case Op::Load: {
-    size_t offset = cmd_inputs[0].val.as_alloc;
-    Type *t = frame.func->allocated_types.at(offset);
+    size_t offset = cmd_inputs[1].val.as_alloc;
+    Type *t = cmd_inputs[0].val.as_type;
     assert(t->is_primitive() &&
            "Non-primitive local variables are not yet implemented");
 
 #define DO_LOAD_IF(StoredType, stored_type)                                    \
   if (t == StoredType) {                                                       \
     frame.reg[result.val.as_ref] =                                             \
-        Value(*(stored_type *)(frame.stack->allocs + frame.offset + offset));  \
+        Value(*(stored_type *)(frame.stack->allocs + offset));                 \
     break;                                                                     \
   }
-
 
     DO_LOAD_IF(Bool, bool);
     DO_LOAD_IF(Char, char);
@@ -53,18 +52,17 @@ void Cmd::Execute(StackFrame& frame) {
 #undef DO_LOAD_IF
   } break;
   case Op::Store: {
-    size_t offset = cmd_inputs[1].val.as_alloc;
-    Type *t = frame.func->allocated_types.at(offset);
+    size_t offset = cmd_inputs[2].val.as_alloc;
+    Type *t = cmd_inputs[0].val.as_type;
     assert(t->is_primitive() &&
            "Non-primitive local variables are not yet implemented");
 
-#define DO_STORE_IF(StoredType, store_type, type_name)                         \
-  if (t == StoredType) {                                                       \
-    store_type *ptr =                                                          \
-        (store_type *)(frame.stack->allocs + frame.offset + offset);           \
-    *ptr                         = cmd_inputs[0].val.as_##type_name;           \
-    frame.reg[result.val.as_ref] = Value(true);                                \
-    break;                                                                     \
+#define DO_STORE_IF(StoredType, store_type, type_name)                           \
+  if (t == StoredType) {                                                         \
+    store_type *ptr              = (store_type *)(frame.stack->allocs + offset); \
+    *ptr                         = cmd_inputs[1].val.as_##type_name;             \
+    frame.reg[result.val.as_ref] = Value(true);                                  \
+    break;                                                                       \
   }
 
     DO_STORE_IF(Bool, bool, bool);
@@ -89,7 +87,27 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, frame.stack, call_args);
   } break;
   case Op::GEP: {
-    NOT_YET;
+    if (cmd_inputs[0].val.as_type->is_array()) {
+      auto array_type = (Array *)(cmd_inputs[0].val.as_type);
+      if (array_type->fixed_length) {
+        if (cmd_inputs[1].flag == ValType::Alloc) {
+          auto xx = cmd_inputs[1].val.as_alloc +
+                    (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
+
+          // TODO what about alignment?
+          // TODO longer sequences?
+          xx += (size_t)(cmd_inputs[3].val.as_int) *
+                array_type->data_type->bytes();
+          frame.reg[result.val.as_ref] = Value::Alloc(xx);
+        } else {
+          NOT_YET;
+        }
+      } else {
+        NOT_YET;
+      }
+    } else {
+      NOT_YET;
+    }
   } break;
   case Op::Phi: {
     for (size_t i = 0; i < incoming_blocks.size(); ++i) {
@@ -342,7 +360,8 @@ StackFrame::StackFrame(Func *f, LocalStack *local_stack,
       size(f->frame_size), offset(0), inst_ptr(0), curr_block(f->entry()),
       prev_block(nullptr) {
   stack->AddFrame(this);
-  // TODO determine frame alignment and make it correct!
+  // TODO determine frame alignment and make it correct! Currently just assuming
+  // 16-bytes for safety.
 }
 
 
@@ -373,7 +392,7 @@ eval_loop_start:
     frame.curr_block->dump();
 
     std::cerr << std::hex;
-    for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+    for (size_t i = 0; i < frame.stack->used; ++i) {
       int x = frame.stack->allocs[i];
       std::cerr << x << " ";
     }
@@ -381,6 +400,8 @@ eval_loop_start:
 
     std::cerr << frame.func << ".block-" << frame.curr_block->block_num << ": "
               << frame.inst_ptr << std::endl;
+
+        std::cout << frame.offset << std::endl;
     std::cin.ignore(1);
   }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
@@ -408,13 +429,14 @@ eval_loop_start:
         frame.curr_block->dump();
 
         std::cerr << std::hex;
-        for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+        for (size_t i = 0; i < frame.stack->used; ++i) {
           int x = frame.stack->allocs[i];
           std::cerr << x << " ";
         }
 
         std::cerr << std::dec << "\n  jumped to block-"
                   << frame.curr_block->block_num << std::endl;
+        std::cout << frame.offset << std::endl;
         std::cin.ignore(1);
       }
     }
@@ -429,13 +451,15 @@ eval_loop_start:
       frame.curr_block->dump();
 
       std::cerr << std::hex;
-      for (size_t i = 0; i < IR::Func::Current->frame_size; ++i) {
+      for (size_t i = 0; i < frame.stack->used; ++i) {
         int x = frame.stack->allocs[i];
         std::cerr << x << " ";
       }
 
       std::cerr << std::dec << "\n  " << cmd.result << " = "
                 << frame.reg[cmd.result.val.as_ref] << std::endl;
+
+        std::cout << frame.offset << std::endl;
       std::cin.ignore(1);
     }
     ++frame.inst_ptr;

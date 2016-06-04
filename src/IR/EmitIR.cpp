@@ -18,7 +18,6 @@ void IR::Func::PushLocal(AST::Declaration *decl) {
   frame_size = MoveForwardToAlignment(frame_size, alignment);
 
   frame_map[decl->identifier] = frame_size;
-  allocated_types[frame_size] = decl->type;
   frame_size += bytes;
 }
 
@@ -108,7 +107,7 @@ IR::Value Unop::EmitIR() {
     }
   } break;
   case Language::Operator::At: {
-    return IR::Load(operand->EmitIR());
+    return IR::Load(operand->type, operand->EmitIR());
   } break;
   default: NOT_YET;
   }
@@ -117,7 +116,7 @@ IR::Value Unop::EmitIR() {
 IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: {
-    return IR::Store(rhs->EmitIR(), lhs->EmitLVal());
+    return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
   } break;
   case Language::Operator::Cast: NOT_YET;
   case Language::Operator::Arrow: {
@@ -130,17 +129,17 @@ IR::Value Binop::EmitIR() {
 #define ARITHMETIC_EQ_CASE(Op, op)                                             \
   case Language::Operator::Op##Eq: {                                           \
     auto lval    = lhs->EmitLVal();                                            \
-    auto lhs_val = IR::Load(lval);                                             \
+    auto lhs_val = IR::Load(lhs->type, lval);                                  \
     auto rhs_val = rhs->EmitIR();                                              \
                                                                                \
     if (lhs->type == Int && rhs->type == Int) {                                \
-      return IR::Store(IR::I##Op(lhs_val, rhs_val), lval);                     \
+      return IR::Store(Int, IR::I##Op(lhs_val, rhs_val), lval);                \
                                                                                \
     } else if (lhs->type == Uint && rhs->type == Uint) {                       \
-      return IR::Store(IR::U##Op(lhs_val, rhs_val), lval);                     \
+      return IR::Store(Uint, IR::U##Op(lhs_val, rhs_val), lval);               \
                                                                                \
     } else if (lhs->type == Real && rhs->type == Real) {                       \
-      return IR::Store(IR::F##Op(lhs_val, rhs_val), lval);                     \
+      return IR::Store(Real, IR::F##Op(lhs_val, rhs_val), lval);               \
                                                                                \
     } else {                                                                   \
       NOT_YET;                                                                 \
@@ -432,7 +431,8 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
-    return IR::Load(IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
+    return IR::Load(type,
+                    IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
   }
   std::cerr << *this << std::endl;
   NOT_YET;
@@ -452,7 +452,7 @@ static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   if (lhs_type == rhs_type) {
     if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
         lhs_type->is_enum()) {
-      IR::Store(rhs, lhs_ptr);
+      IR::Store(rhs_type, rhs, lhs_ptr);
     }
   } else {
     NOT_YET;

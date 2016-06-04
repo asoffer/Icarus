@@ -76,7 +76,7 @@ struct Cmd {
   void dump(size_t indent = 0);
 
   friend Cmd CallCmd(Value);
-  friend Cmd GEP(Value lhs, std::vector<int> indices);
+  friend Cmd GEP(Type *t, Value lhs, std::vector<int> indices);
 
   // Only used for phi cmds
   friend Cmd Phi();
@@ -163,7 +163,6 @@ struct Func {
   std::vector<Block *> blocks;
   std::vector<Value *> args;
   std::map<AST::Identifier *, size_t> frame_map;
-  std::map<size_t, Type *> allocated_types;
   std::string name;
 
   Block *entry() { return blocks.front(); }
@@ -198,6 +197,22 @@ Value Call(Func *f, LocalStack *local_stack,
     return cmd;                                                                \
   }
 
+inline Cmd Store(Type *t, Value arg1, Value arg2) {
+  Cmd cmd(Op::Store, Value(t));
+  cmd.args.push_back(arg1); /* TODO Put this in the constructor */
+  cmd.args.push_back(arg2); /* TODO Put this in the constructor */
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+inline Cmd Load(Type *t, Value arg1) {
+  Cmd cmd(Op::Load, Value(t));
+  cmd.args.push_back(arg1); /* TODO Put this in the constructor */
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+
 // Intentionally empty. Must be hand implemented
 #define CMD_WITH_NA_ARGS(name)
 
@@ -220,9 +235,10 @@ inline Cmd CallCmd(Value lhs) {
   return call;
 }
 
-inline Cmd GEP(Value lhs, std::vector<int> indices) {
+inline Cmd GEP(Type *t, Value lhs, std::vector<int> indices) {
   Cmd call;
   call.op_code = Op::GEP;
+  call.args.emplace_back(t);
   call.args.push_back(lhs);
   for (auto i : indices) { call.args.push_back(Value(i)); }
   return call;
