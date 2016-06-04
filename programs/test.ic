@@ -1,21 +1,8 @@
 Any := (T: type) -> bool {
-  n: int = 49374
-  x: real
-  c := 'A'
-  bar()
+  b: bar
+  print b.n, ':', b.r
+
   return true
-}
-
-Small := (T: type) -> type {
-  return case {
-    T.bytes < (&T).bytes  =>  T
-    else                  =>  &T
-  }
-}
-
-bar := void -> void {
-  c := 'B'
-  a: [5; int]
 }
 
 foo := (val: Any`T) -> void {
@@ -23,9 +10,13 @@ foo := (val: Any`T) -> void {
 }
 
 main := void -> void {
-  // foo(3)
-  print Small(int), '\n'
-  print Small(uint), '\n'
-  print Small(char), '\n'
-  print Small(real), '\n'
+  foo(3)
+}
+
+bar := struct {
+  n: int
+  r: real
+  c1: char
+  c2: char
+  c3: char
 }

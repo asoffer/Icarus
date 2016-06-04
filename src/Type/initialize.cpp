@@ -219,12 +219,35 @@ void Pointer::EmitInit(IR::Value id_val) {
   IR::Store(this, IR::Value(nullptr), id_val);
 }
 
+void Structure::EmitInit(IR::Value id_val) {
+  if (!init_func) {
+    auto saved_func  = IR::Func::Current;
+    auto saved_block = IR::Block::Current;
+
+    init_func          = new IR::Func;
+    IR::Func::Current  = init_func;
+    IR::Block::Current = init_func->entry();
+
+    // TODO init expressions?
+    for (size_t i = 0; i < field_type.size(); ++i) {
+      auto gep = IR::GEP(this, IR::Value::Arg(0), {0, (int)i});
+      IR::Block::Current->push(gep);
+      field_type[i]->EmitInit(gep);
+    }
+
+    IR::Func::Current  = saved_func;
+    IR::Block::Current = saved_block;
+  }
+  assert(init_func);
+
+  auto call = IR::CallCmd(IR::Value(init_func));
+  call.args.push_back(id_val);
+  IR::Block::Current->cmds.push_back(call);
+}
+
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
-void Structure::EmitInit(IR::Value id_val) { NOT_YET; }
 void Enumeration::EmitInit(IR::Value id_val) { NOT_YET; }
-
 void Function::EmitInit(IR::Value id_val) {}
-
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }

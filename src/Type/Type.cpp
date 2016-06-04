@@ -19,29 +19,58 @@ extern llvm::Constant *str(const std::string &s);
 } // namespace data
 
 size_t Type::bytes() const {
-  // All pointers are the same size, so use one we know will already have the
-  // llvm_type field generated.
-  if (is_pointer()) {
-    return global_module->getDataLayout().getTypeStoreSize(RawPtr->llvm_type);
+  // TODO make this platform specific
+  if (this == Type_) { return 0; }
+  if (this == Bool || this == Char) { return 1; }
+  if (this == Int || this == Uint) { return 4; }
+  if (this == Real || is_pointer()) { return 8; }
+  if (is_array()) {
+    auto array_type = (Array *)this;
+    if (array_type->fixed_length) {
+      return MoveForwardToAlignment(
+          array_type->data_type->bytes() * array_type->len, alignment());
+    } else {
+      return 16;
+    }
+  }
+  if (is_struct()) {
+    auto struct_type = (Structure *)this;
+    size_t num_bytes = 0;
+    for (auto ft : struct_type->field_type) {
+      num_bytes += ft->bytes();
+      num_bytes = MoveForwardToAlignment(num_bytes, ft->alignment());
+    }
+
+    return MoveForwardToAlignment(num_bytes, alignment());
   }
 
-  if (!stores_data()) { return 0; }
-
-  assert(llvm_type);
-  return global_module->getDataLayout().getTypeStoreSize(llvm_type);
+  NOT_YET;
 }
 
 size_t Type::alignment() const {
-  // All pointers are the same size, so use one we know will already have the
-  // llvm_type field generated.
-  if (is_pointer()) {
-    return global_module->getDataLayout().getTypeStoreSize(RawPtr->llvm_type);
+  // TODO make this platform specific
+  if (this == Type_) { return 0; }
+  if (this == Bool || this == Char) { return 1; }
+  if (this == Int || this == Uint) { return 4; }
+  if (this == Real || is_pointer()) { return 8; }
+  if (is_array()) {
+    auto array_type = (Array *)this;
+    if (array_type->fixed_length) {
+      return array_type->data_type->alignment();
+    } else {
+      return 8;
+    }
   }
-
-  if (!stores_data()) { return 0; }
-
-  assert(llvm_type);
-  return global_module->getDataLayout().getABITypeAlignment(llvm_type);
+  if (is_struct()) {
+    auto struct_type = (Structure *)this;
+    size_t alignment_val = 0;
+    for (auto ft : struct_type->field_type) {
+      auto a = ft->alignment();
+      if (alignment_val <= a) { alignment_val = a; }
+    }
+    return alignment_val;
+  }
+  NOT_YET;
 }
 
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
@@ -247,7 +276,8 @@ QuantumType::QuantumType(const std::vector<Type *> &vec) : options(vec) {
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), creator(nullptr),
-      init_fn_(nullptr), destroy_fn_(nullptr), assign_fn_(nullptr) {}
+      init_fn_(nullptr), destroy_fn_(nullptr), assign_fn_(nullptr),
+      init_func(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
@@ -324,6 +354,15 @@ Function::operator llvm::FunctionType *() const {
 
 void Structure::insert_field(const std::string &name, Type *ty,
                              AST::Expression *init_val) {
+
+  // TODO what if ty->alignment() == 0?
+  size_t last_field_offset = field_offsets.empty() ? 0 : field_offsets.back();
+  size_t next_offset = MoveForwardToAlignment(
+      last_field_offset + (field_type.empty() ? 0 : field_type.back()->bytes()),
+      ty->alignment());
+  field_offsets.push_back(next_offset);
+
+
   auto next_num           = field_num_to_name.size();
   field_name_to_num[name] = next_num;
   field_num_to_name.push_back(name);

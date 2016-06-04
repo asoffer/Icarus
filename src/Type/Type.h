@@ -222,6 +222,7 @@ struct Structure : public Type {
   std::vector<std::string> field_num_to_name;
   std::vector<Type *> field_type;
   std::map<size_t, size_t> field_num_to_llvm_num;
+  std::vector<size_t> field_offsets;
 
   std::vector<AST::Expression *> init_values;
   AST::ParametricStructLiteral *creator;
@@ -231,6 +232,7 @@ struct Structure : public Type {
 
 private:
   llvm::Function *init_fn_, *destroy_fn_, *assign_fn_;
+  IR::Func *init_func;
 };
 
 struct ParametricStructure : public Type {

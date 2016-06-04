@@ -170,6 +170,10 @@ enum NodeType : char {
 inline bool is_operator(NodeType t) { return (t & OP_) != 0; }
 } // namespace Language
 
+inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
+  return ((ptr - 1) | (alignment - 1)) + 1;
+}
+
 #include "IR/IR.h"
 #include "AST/AST.h"
 

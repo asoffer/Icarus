@@ -1,10 +1,6 @@
 #ifndef ICARUS_IR_STACK_H
 #define ICARUS_IR_STACK_H
 
-inline static size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
-  return ((ptr - 1) | (alignment - 1)) + 1;
-}
-
 namespace IR {
 struct StackFrame;
 

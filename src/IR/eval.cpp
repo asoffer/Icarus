@@ -161,6 +161,16 @@ void Cmd::Execute(StackFrame& frame) {
       } else {
         NOT_YET;
       }
+    } else if (cmd_inputs[0].val.as_type->is_struct()) {
+      auto struct_type = (Structure *)(cmd_inputs[0].val.as_type);
+      auto ptr = cmd_inputs[1].val.as_alloc +
+                 (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
+
+      assert(cmd_inputs.size() == 4);
+      size_t field_index = (size_t)(cmd_inputs[3].val.as_int);
+
+      ptr += struct_type->field_offsets AT(field_index);
+      frame.reg[result.val.as_ref] = Value::Alloc(ptr);
     } else {
       NOT_YET;
     }
