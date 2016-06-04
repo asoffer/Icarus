@@ -1,12 +1,14 @@
 Any := (T: type) -> bool {
-  n: int = 17
+  n: int = 49374
+  x: real
+  c := 'A'
   bar()
-
   return true
 }
 
 bar := void -> void {
-  a: [5; char]
+  c := 'B'
+  a: [5; int]
 }
 
 foo := (val: Any`T) -> void {

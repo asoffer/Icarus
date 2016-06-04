@@ -9,7 +9,7 @@ DEPENDS := $(SOURCES:src/%.cpp=build/%.d)
 
 COMPILER := clang++
 BUILD_FLAGS := -g -O0 -D DEBUG
-LINK_FLAGS := 
+LINK_FLAGS := -lncurses
 STDS = -std=c++11
 WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic -Weffc++
 OPTS = -iquote$(shell pwd)/src -include-pch bin/Precompiled.h.pch

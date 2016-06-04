@@ -2,11 +2,60 @@
 #include <cstdio>
 #include "IR/Stack.h"
 
+#include <ncurses.h>
+
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
 
 namespace IR {
+extern std::string OpCodeString(Op op_code);
+
+void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
+  clear();
+  int height = 1 + ((int)local_stack->used) / 4;
+  for (int i = 0; i < height; ++i) {
+    mvprintw(i, 0, "%2d. [ %2x %2x %2x %2x ]", 4 * i,
+             local_stack->allocs[4 * i] & 0xff,
+             local_stack->allocs[4 * i + 1] & 0xff,
+             local_stack->allocs[4 * i + 2] & 0xff,
+             local_stack->allocs[4 * i + 3] & 0xff);
+  }
+  mvprintw(height, 0, "    [-------------]");
+
+  int row = 0;
+  mvprintw(0, 30, "block-%ld", frame.curr_block->block_num);
+  start_color();
+  init_pair(1, COLOR_BLACK, COLOR_WHITE);
+  for (const auto &cmd : frame.curr_block->cmds) {
+    std::stringstream ss;
+    ss << " " << OpCodeString(cmd.op_code);
+    auto iter = cmd.args.begin();
+    ss << " " << *iter;
+    ++iter;
+    for (; iter != cmd.args.end(); ++iter) { ss << ", " << *iter; }
+    ss << " ";
+    auto output = ss.str();
+
+    if (row == (int)frame.inst_ptr) {
+      attron(COLOR_PAIR(1));
+      mvprintw(++row, 34, output.c_str());
+      attroff(COLOR_PAIR(1));
+    } else {
+      mvprintw(++row, 34, output.c_str());
+    }
+  }
+
+  mvprintw(20, 50, "Stack size:     %ld", local_stack->used);
+  mvprintw(21, 50, "Stack capacity: %ld", local_stack->capacity);
+  mvprintw(22, 50, "Frame offset:   %ld", frame.offset);
+  mvprintw(23, 50, "Instr. Pointer: %ld", frame.inst_ptr);
+
+  getch();
+  refresh();
+}
+
+
 void Cmd::Execute(StackFrame& frame) {
   std::vector<Value> cmd_inputs = args;
 
@@ -16,7 +65,11 @@ void Cmd::Execute(StackFrame& frame) {
       i = frame.reg[i.val.as_ref];
     } else if (i.flag == ValType::Arg) {
       i = frame.args[i.val.as_arg];
+    } else if (i.flag == ValType::RelAlloc) {
+      i.flag = ValType::Alloc;
+      i.val.as_alloc += frame.offset;
     }
+
   }
 
   switch (op_code) {
@@ -53,6 +106,7 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::Store: {
     size_t offset = cmd_inputs[2].val.as_alloc;
+
     Type *t = cmd_inputs[0].val.as_type;
     assert(t->is_primitive() &&
            "Non-primitive local variables are not yet implemented");
@@ -91,14 +145,16 @@ void Cmd::Execute(StackFrame& frame) {
       auto array_type = (Array *)(cmd_inputs[0].val.as_type);
       if (array_type->fixed_length) {
         if (cmd_inputs[1].flag == ValType::Alloc) {
-          auto xx = cmd_inputs[1].val.as_alloc +
-                    (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
+          auto ptr = cmd_inputs[1].val.as_alloc +
+                     (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
 
-          // TODO what about alignment?
-          // TODO longer sequences?
-          xx += (size_t)(cmd_inputs[3].val.as_int) *
-                array_type->data_type->bytes();
-          frame.reg[result.val.as_ref] = Value::Alloc(xx);
+          for (size_t i = 3; i < cmd_inputs.size(); ++i) {
+            ptr += (size_t)(cmd_inputs[i].val.as_int) *
+                   array_type->data_type->bytes();
+            // TODO What about alignment?
+          }
+
+          frame.reg[result.val.as_ref] = Value::Alloc(ptr);
         } else {
           NOT_YET;
         }
@@ -367,7 +423,6 @@ StackFrame::StackFrame(Func *f, LocalStack *local_stack,
 
 void LocalStack::AddFrame(StackFrame *fr) {
   size_t old_use_size = used;
-
   used       = MoveForwardToAlignment(used, fr->alignment);
   fr->offset = used;
   used += fr->size;
@@ -387,23 +442,7 @@ Value Call(Func *f, LocalStack *local_stack, const std::vector<Value> &arg_vals)
   StackFrame frame(f, local_stack, arg_vals);
 
 eval_loop_start:
-  if (debug::ct_eval) {
-    std::cerr << "\033[2J\033[1;1H" << std::endl;
-    frame.curr_block->dump();
 
-    std::cerr << std::hex;
-    for (size_t i = 0; i < frame.stack->used; ++i) {
-      int x = frame.stack->allocs[i];
-      std::cerr << x << " ";
-    }
-    std::cerr << std::dec << std::endl;
-
-    std::cerr << frame.func << ".block-" << frame.curr_block->block_num << ": "
-              << frame.inst_ptr << std::endl;
-
-        std::cout << frame.offset << std::endl;
-    std::cin.ignore(1);
-  }
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
     frame.prev_block = frame.curr_block;
     frame.curr_block = frame.curr_block->ExecuteJump(frame);
@@ -424,44 +463,15 @@ eval_loop_start:
 
     } else {
       frame.inst_ptr = 0;
-      if (debug::ct_eval) {
-        std::cerr << "\033[2J\033[1;1H" << std::endl;
-        frame.curr_block->dump();
-
-        std::cerr << std::hex;
-        for (size_t i = 0; i < frame.stack->used; ++i) {
-          int x = frame.stack->allocs[i];
-          std::cerr << x << " ";
-        }
-
-        std::cerr << std::dec << "\n  jumped to block-"
-                  << frame.curr_block->block_num << std::endl;
-        std::cout << frame.offset << std::endl;
-        std::cin.ignore(1);
-      }
     }
 
   } else {
     auto cmd = frame.curr_block->cmds[frame.inst_ptr];
     assert(cmd.result.flag == ValType::Ref);
+
+    if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
     cmd.Execute(frame);
 
-    if (debug::ct_eval) {
-      std::cerr << "\033[2J\033[1;1H" << std::endl;
-      frame.curr_block->dump();
-
-      std::cerr << std::hex;
-      for (size_t i = 0; i < frame.stack->used; ++i) {
-        int x = frame.stack->allocs[i];
-        std::cerr << x << " ";
-      }
-
-      std::cerr << std::dec << "\n  " << cmd.result << " = "
-                << frame.reg[cmd.result.val.as_ref] << std::endl;
-
-        std::cout << frame.offset << std::endl;
-      std::cin.ignore(1);
-    }
     ++frame.inst_ptr;
   }
   goto eval_loop_start;

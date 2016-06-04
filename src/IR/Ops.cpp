@@ -19,7 +19,7 @@ Cmd::Cmd() {
   Func::Current->num_cmds++;
 }
 
-static std::string OpCodeString(Op op_code) {
+std::string OpCodeString(Op op_code) {
   switch (op_code) {
 #define IR_MACRO(OpCode, op_code_str, num_args)                                \
   case Op::OpCode:                                                             \
@@ -57,6 +57,7 @@ std::ostream &operator<<(std::ostream& os, const Value& value) {
   case ValType::Ref: return os << "%" << value.val.as_ref;
   case ValType::Arg: return os << "#" << value.val.as_arg;
   case ValType::Alloc: return os << "$" << value.val.as_alloc;
+  case ValType::RelAlloc: return os << "`$" << value.val.as_alloc;
   }
 }
 

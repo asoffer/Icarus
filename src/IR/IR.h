@@ -4,7 +4,7 @@
 // Not to be confused with LLVM's IR!
 
 namespace IR {
-enum class ValType { B, C, I, R, U, T, F, Ptr, Ref, Arg, Alloc };
+enum class ValType { B, C, I, R, U, T, F, Ptr, Ref, Arg, Alloc, RelAlloc };
 
 struct Func;
 struct Block;
@@ -26,6 +26,7 @@ struct Value {
     size_t as_ref;
     size_t as_arg;
     size_t as_alloc;
+    size_t as_rel_alloc;
   } val;
 
   explicit Value(bool b) : flag(ValType::B) { val.as_bool = b; }
@@ -39,6 +40,13 @@ struct Value {
   explicit Value(std::nullptr_t) : flag(ValType::Ptr) { val.as_ptr = nullptr; }
 
   Value() : flag(ValType::Ref) {}
+
+  static Value RelAlloc(size_t n) {
+    Value v;
+    v.flag = ValType::RelAlloc;
+    v.val.as_alloc = n;
+    return v;
+  }
 
   static Value Alloc(size_t n) {
     Value v;

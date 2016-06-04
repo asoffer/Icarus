@@ -21,6 +21,7 @@
 
 #include "IR/IR.h"
 
+#include <ncurses.h>
 static size_t start_time;
 static size_t end_time;
 static size_t total_time;
@@ -117,6 +118,7 @@ void ParseArguments(int argc, char *argv[]) {
 int main(int argc, char *argv[]) {
   TIME("Argument parsing") { ParseArguments(argc, argv); }
 
+  if (debug::ct_eval) { initscr(); }
 
   llvm::TargetMachine *target_machine = nullptr;
   TIME("Icarus initialization") {
@@ -185,6 +187,8 @@ int main(int argc, char *argv[]) {
 
   if (error_log.num_errors() != 0) {
     std::cout << error_log;
+
+    if (debug::ct_eval) { endwin(); }
     return error_code::parse_error;
   }
 
@@ -229,6 +233,8 @@ int main(int argc, char *argv[]) {
 
     if (error_log.num_errors() != 0) {
       std::cout << error_log;
+
+      if (debug::ct_eval) { endwin(); }
       return error_code::undeclared_identifier;
     }
   }
@@ -253,6 +259,8 @@ int main(int argc, char *argv[]) {
 
     if (error_log.num_errors() != 0) {
       std::cout << error_log;
+
+      if (debug::ct_eval) { endwin(); }
       return error_code::cyclic_dependency;
     }
   }
@@ -263,6 +271,8 @@ int main(int argc, char *argv[]) {
 
     if (error_log.num_errors() != 0) {
       std::cout << error_log;
+
+      if (debug::ct_eval) { endwin(); }
       return error_code::timing_or_lvalue;
     }
   }
@@ -364,6 +374,7 @@ int main(int argc, char *argv[]) {
               << "ns" << std::endl;
   }
 
+  if (debug::ct_eval) { endwin(); }
   return error_code::success;
 }
 
