@@ -1,6 +1,8 @@
-Any := (T: type) -> bool { return true }
-f := (n: Any`T) -> T { return n }
-
 main := void -> void {
-  print f(17.0), '\n', f(17), '\n'
+  print pair(bool, real).bytes
+}
+
+pair := struct (K: type, V: type) {
+  key: K
+  val: V
 }

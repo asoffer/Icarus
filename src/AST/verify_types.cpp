@@ -648,6 +648,9 @@ void Binop::verify_types() {
   }
 
   if (op == Language::Operator::Call) {
+    std::string err_msg; // TODO for now we mostly ignore this.
+    std::map<TypeVariable *, Type *> matches;
+
     if (lhs->is_identifier()) {
       auto id_token = ((AST::Identifier *)lhs)->token;
 
@@ -663,253 +666,174 @@ void Binop::verify_types() {
 
       if (rhs) { rhs->verify_types(); }
 
+      // Look for valid matches by looking at any declaration which has a
+      // matching token.
       for (auto decl : decls_with_matching_id) {
-        std::string err_msg;
-        std::map<TypeVariable *, Type *> matches;
-
         if (decl->type->is_function()) {
-          if (!rhs) {
-            if (((Function *)decl->type)->input == Void) {
-              valid_matches.emplace_back(decl);
-            }
-            continue;
+          if (!rhs && ((Function *)decl->type)->input == Void) {
+            // If there is no input, and the function takes Void as its input,
+            // we found a match.
+            valid_matches.emplace_back(decl);
 
-          } else if (!MatchCall(((Function *)decl->type)->input, rhs->type,
-                                matches, err_msg)) {
-            continue;
+          } else if (MatchCall(((Function *)decl->type)->input, rhs->type,
+                               matches, err_msg)) {
+
+            if (decl->type->has_vars) { NOT_YET; }
+
+            valid_matches.emplace_back(decl);
           }
 
-          // If you found a match
-          if (decl->type->has_vars) { NOT_YET; }
+        } else {
+          assert(decl->type == Type_ &&
+                 "Should have caught the bad-type of the decl earlier");
 
-          valid_matches.emplace_back(decl);
-        } else if (decl->type == Type_) {
           Ctx ctx;
           decl->evaluate(ctx);
           if (decl->value.as_type->is_parametric_struct()) {
             auto param_ast_expr =
                 ((ParametricStructure *)decl->value.as_type)->ast_expression;
 
-            std::vector<Type *> param_types;
+            // Get the types of parameter entries
+            std::vector<Type *> param_type_vec;
             for (auto p : param_ast_expr->params) {
-              param_types.push_back(p->type);
+              param_type_vec.push_back(p->type);
             }
+            Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
+                                                          : Tup(param_type_vec);
 
-            std::vector<Type *> input_types;
+            rhs->verify_types();
+            // TODO can you have a parametric struct taking no arguments? If so,
+            // rhs could be empty and we have a bug!
+
+            // Get the input types we're trying to match
+            std::vector<Type *> input_type_vec;
+            Type *input_type = nullptr;
             if (rhs->is_chain_op()) {
               for (auto elem : ((ChainOp *)rhs)->exprs) {
-                input_types.push_back(elem->type);
+                input_type_vec.push_back(elem->type);
               }
+              input_type = Tup(input_type_vec);
+            } else {
+              input_type = rhs->type;
             }
 
-            if (!MatchCall(Tup(param_types),
-                           rhs->is_chain_op() ? Tup(input_types) : rhs->type,
-                           matches, err_msg)) {
-              std::cout << *Tup(param_types) << *rhs << std::endl;
-
-              continue;
+            if (MatchCall(param_type, input_type, matches, err_msg)) {
+              valid_matches.emplace_back(decl);
             }
-
-            if (decl->type->has_vars) { NOT_YET; }
-
-            valid_matches.emplace_back(decl);
-          } else {
-            NOT_YET;
           }
-        } else {
-          std::cerr << *decl << std::endl;
-          NOT_YET;
         }
-      }
+      } // End of decl loop
 
-      if (valid_matches.empty()) {
-        // TODO better error message
-        error_log.log(loc, "No valid matches");
-        type      = Error;
-        lhs->type = Error;
-
-      } else if (valid_matches.size() > 1) {
-        // TODO better error message
-        error_log.log(loc, "Ambiguous call");
-        type      = Error;
-        lhs->type = Error;
+      if (valid_matches.size() == 1) {
+        lhs->type = valid_matches[0]->type;
+        ((Identifier*)lhs)->decl = valid_matches[0];
 
       } else {
-        assert(lhs->is_identifier());
-        lhs->type = valid_matches[0]->type;
-        ((Identifier *)lhs)->decl = valid_matches[0];
-        // TODO the two previous should be rolled together in a function because
-        // I always want to call them together.
-
-        if (lhs->type == Type_) {
-          NOT_YET;
-        } else {
-          assert(lhs->type->is_function());
-          type = ((Function *)valid_matches[0]->type)->output;
-        }
+        // Use err_msg
+        error_log.log(loc, valid_matches.empty() ? "No valid matches"
+                                                 : "Ambiguous call");
+        type      = Error;
+        lhs->type = Error;
+        return;
       }
-
-
     } else {
       lhs->verify_types();
-      rhs->verify_types();
+      if (rhs) { rhs->verify_types(); }
 
       if (lhs->type->is_function()) {
-        std::string err_msg;
-        std::map<TypeVariable *, Type *> matches;
-        if (MatchCall(((Function *)lhs->type)->input, rhs->type, matches,
-                      err_msg)) {
-          auto evaled_type = EvalWithVars(lhs->type, matches);
-          type             = ((Function *)evaled_type)->output;
-
-          if (lhs->type->has_vars) {
-            auto fn_expr = GetFunctionLiteral(lhs);
-
-            // If it's in the cache, we're done.
-            for (auto &gen : fn_expr->cache) {
-              if (gen.first == ((Function *)evaled_type)->input) { return; }
-            }
-
-            // Cache the function
-            fn_expr->cache[rhs->type] =
-                GenerateSpecifiedFunction(fn_expr, matches);
-          }
-
-        } else {
+        if (!MatchCall(((Function *)lhs->type)->input, rhs->type, matches,
+                       err_msg)) {
           error_log.log(loc, err_msg);
+          type      = Error;
+          lhs->type = Error;
+          return;
+        }
+      } else {
+        assert(lhs->type == Type_ &&
+               "Should have caught the bad-type of lhs earlier");
+
+        Ctx ctx;
+        lhs->evaluate(ctx);
+        if (lhs->value.as_type->is_parametric_struct()) {
+          auto param_ast_expr =
+              ((ParametricStructure *)lhs->value.as_type)->ast_expression;
+
+          // Get the types of parameter entries
+          std::vector<Type *> param_type_vec;
+          for (auto p : param_ast_expr->params) {
+            param_type_vec.push_back(p->type);
+          }
+          Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
+                                                        : Tup(param_type_vec);
+
+          rhs->verify_types();
+          // TODO can you have a parametric struct taking no arguments? If so,
+          // rhs could be empty and we have a bug!
+
+          // Get the input types we're trying to match
+          std::vector<Type *> input_type_vec;
+          Type *input_type = nullptr;
+          if (rhs->is_chain_op()) {
+            for (auto elem : ((ChainOp *)rhs)->exprs) {
+              input_type_vec.push_back(elem->type);
+            }
+            input_type = Tup(input_type_vec);
+          }
+          input_type = rhs->type;
+
+          if (!MatchCall(param_type, input_type, matches, err_msg)) {
+            error_log.log(loc, err_msg);
+            type      = Error;
+            lhs->type = Error;
+            return;
+          }
+        } else {
+          error_log.log(loc, "Object is not callable");
+          if (rhs) { rhs->verify_types(); }
           type = Error;
         }
-        return;
-      } else if (lhs->type->is_parametric_struct()) {
-        NOT_YET;
-
-      } else {
-        error_log.log(loc, "Object is not callable.");
-        type = Error;
       }
     }
-    return;
-  }
-  //    std::vector<std::map<TypeVariable *, Type *>> match_vec;
-  //    std::vector<MatchData> potential_match_options;
-  //
-  //    if (lhs->is_identifier()) {
-  //      auto id_token = ((AST::Identifier *)lhs)->token;
-  //
-  //      LOOP_OVER_DECLS_FROM(scope_) {
-  //        if (d->identifier->token == id_token) {
-  //          AddToPotentialCallInterpretations(d->identifier,
-  //                                            potential_match_options);
-  //        }
-  //      }
-  //
-  //    } else {
-  //      AddToPotentialCallInterpretations(lhs, potential_match_options);
-  //    }
-  //
-  //    MatchData matched_data;
-  //    bool has_vars_flag = false;
-  //
-  //    for (auto& opt : potential_match_options) {
-  //      std::map<TypeVariable *, Type *> matches;
-  //      // Receiving either a function or a parametric struct as the opt.match
-  //      // parameter
-  //
-  //      if (opt.match->is_function()) {
-  //
-  //        if (MatchCall(((Function *)opt.match)->input, rhs->type, matches,
-  //                      opt.err)) {
-  //
-  //          match_vec.push_back(matches);
-  //          matched_data = opt;
-  //
-  //          has_vars_flag = matched_data.expr->type->has_vars;
-  //          if (matched_data.expr->is_identifier()) {
-  //            // TODO why is this condition necessary?
-  //            has_vars_flag &= !((Identifier *)matched_data.expr)->arg_val;
-  //          }
-  //        }
-  //      } else {
-  //        assert(opt.expr->value.as_type->is_parametric_struct());
-  //        match_vec.push_back(matches);
-  //        matched_data  = opt;
-  //        has_vars_flag = false; // TODO FIXME WHAT SHOULD THIS BE?!
-  //      }
-  //    }
-  //
-  //    if (match_vec.size() != 1) {
-  //      type = Error;
-  //
-  //      if (match_vec.empty()) {
-  //        std::stringstream msg;
-  //        msg << "No function overload matches call.\n";
-  //        for (const auto& pmo : potential_match_options) {
-  //          // TODO stringstream
-  //          // TODO file if it's not in the same file.
-  //          msg << "      "
-  //              << "Line " << pmo.expr->loc.line_num << ": " << pmo.err;
-  //          /*
-  //                 ((Function *)pmo.match)->input->to_string() +
-  //                 " vs. " + rhs->type->to_string() + " on line " +
-  //                 std::to_string(pmo.expr->loc.line_num);
-  //                 */
-  //        }
-  //        error_log.log(loc, msg.str());
-  //      } else {
-  //        error_log.log(loc, "Multiple function overloads match call.");
-  //      }
-  //      return;
-  //    }
-  //
-  //    auto evaled_type = EvalWithVars(matched_data.match, match_vec[0]);
-  //
-  //    if (evaled_type->is_function()) {
-  //      type = ((Function *)evaled_type)->output;
-  //
-  //      if (has_vars_flag) {
-  //        auto fn_expr = GetFunctionLiteral(lhs);
-  //
-  //        // look in cache to see if the function has already been chosen
-  //        for (auto &gen : fn_expr->cache) {
-  //          if (gen.first == ((Function *)evaled_type)->input) {
-  //            return;
-  //          }
-  //        }
-  //
-  //        // Cache the function
-  //        fn_expr->cache[rhs->type] =
-  //            GenerateSpecifiedFunction(fn_expr, match_vec[0]);
-  //      }
-  //    } else {
-  //      type = evaled_type;
-  //    }
-  //
 
-  lhs->verify_types();
+    if (rhs) { rhs->verify_types(); }
 
-  if (rhs) {
-    rhs->verify_types();
-  } else {
-    // If rhs == 0x0, this means it's the unary call operator.
-    assert(op == Language::Operator::Call);
+    // If you get here, you know the types all match. We just need to compute
+    // the type of the call.
+    if (lhs->type->is_function()) {
+      auto evaled_type = EvalWithVars(lhs->type, matches);
+      type             = ((Function *)evaled_type)->output;
 
-    // TODO quantum types
-    if (!lhs->type->is_function()) {
-      error_log.log(loc, "Operand is not a function.");
-      type = Error;
-      return;
-    }
+      // Generate if you need to
+      if (lhs->type->has_vars) {
+        auto fn_expr = GetFunctionLiteral(lhs);
 
-    auto fn = (Function *)lhs->type;
-    if (fn->input != Void) {
-      error_log.log(loc, "Calling function with no arguments.");
-      type = Error;
+        auto in_type = ((Function *)evaled_type)->input;
+        for (auto &cached_fn : fn_expr->cache) {
+          if (cached_fn.first == in_type) { return; }
+        }
+
+        // If you have variables, the input cannot be void.
+        assert(rhs);
+
+        // If you can't find it in the cache, generate it.
+        fn_expr->cache[rhs->type] = GenerateSpecifiedFunction(fn_expr, matches);
+      }
+
     } else {
-      type = fn->output;
-      assert(type && "fn return type is nullptr");
+      assert(lhs->type == Type_ &&
+             "Should have caught the bad-type of lhs earlier");
+
+      type = EvalWithVars(lhs->type, matches);
     }
+
+    assert(type);
+    assert(type != Unknown);
     return;
   }
+
+  assert(rhs);
+  lhs->verify_types();
+  rhs->verify_types();
 
   using Language::Operator;
   if (lhs->type == Error || rhs->type == Error) {
