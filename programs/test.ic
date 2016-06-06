@@ -1,8 +1,8 @@
 main := void -> void {
-  print pair(bool, real).bytes
+  x: wrapper(int)
+  x.value = 3
 }
 
-pair := struct (K: type, V: type) {
-  key: K
-  val: V
+wrapper := struct (T: type) {
+  value: T
 }

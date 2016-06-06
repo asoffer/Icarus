@@ -11,7 +11,7 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
-/* static */ AST::FunctionLiteral *
+static AST::FunctionLiteral *
 GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
                           const std::map<TypeVariable *, Type *> &matches) {
   auto num_matches = matches.size();
@@ -565,34 +565,6 @@ void Access::Verify(bool emit_errors) {
   assert(type && "type is nullptr in access");
 }
 
-struct MatchData {
-  Type *match;
-  Expression *expr;
-  std::string err;
-  MatchData(Type *t = nullptr, Expression *e = nullptr) : match(t), expr(e) {}
-};
-
-/* static */ void AddToPotentialCallInterpretations(
-    Expression *expr, std::vector<MatchData> &potential_match_options) {
-  if (expr->type->is_quantum()) {
-    // If the LHS has a quantum type, test all possibilities to see which
-    // one works. Verify that exactly one works.
-    for (auto opt : ((QuantumType *)expr->type)->options) {
-      assert(opt->is_function());
-      // TODO better line number logging.
-      potential_match_options.emplace_back(opt, expr);
-    }
-
-  } else if (expr->type->is_function() || expr->type == Type_) {
-    // Assert that if it's a type, then it's a parametric struct.
-    assert(expr->type != Type_ || expr->value.as_type->is_parametric_struct());
-
-    potential_match_options.emplace_back(expr->type, expr);
-  } else {
-    assert(false);
-  }
-}
-
 void Binop::verify_types() {
   STARTING_CHECK;
 
@@ -658,13 +630,19 @@ void Binop::verify_types() {
       LOOP_OVER_DECLS_FROM(scope_) {
         if (d->identifier->token == id_token) {
           d->verify_types();
-          decls_with_matching_id.push_back(d);
+          if (d->type != Error) { decls_with_matching_id.push_back(d); }
         }
       }
 
       std::vector<Declaration *> valid_matches;
 
-      if (rhs) { rhs->verify_types(); }
+      if (rhs) {
+        rhs->verify_types();
+        if (rhs->type == Error) {
+          type = Error;
+          return;
+        }
+      }
 
       // Look for valid matches by looking at any declaration which has a
       // matching token.
@@ -702,6 +680,11 @@ void Binop::verify_types() {
                                                           : Tup(param_type_vec);
 
             rhs->verify_types();
+            if (rhs->type == Error) {
+              type = Error;
+              return;
+            }
+
             // TODO can you have a parametric struct taking no arguments? If so,
             // rhs could be empty and we have a bug!
 
@@ -738,7 +721,18 @@ void Binop::verify_types() {
       }
     } else {
       lhs->verify_types();
-      if (rhs) { rhs->verify_types(); }
+      if (lhs->type == Error) {
+        type = Error;
+        return;
+      }
+
+      if (rhs) {
+        rhs->verify_types();
+        if (rhs->type == Error) {
+          type = Error;
+          return;
+        }
+      }
 
       if (lhs->type->is_function()) {
         if (!MatchCall(((Function *)lhs->type)->input, rhs->type, matches,
@@ -767,6 +761,10 @@ void Binop::verify_types() {
                                                         : Tup(param_type_vec);
 
           rhs->verify_types();
+          if (rhs->type == Error) {
+            type = Error;
+            return;
+          }
           // TODO can you have a parametric struct taking no arguments? If so,
           // rhs could be empty and we have a bug!
 
@@ -795,7 +793,13 @@ void Binop::verify_types() {
       }
     }
 
-    if (rhs) { rhs->verify_types(); }
+    if (rhs) {
+      rhs->verify_types();
+      if (rhs->type == Error) {
+        type = Error;
+        return;
+      }
+    }
 
     // If you get here, you know the types all match. We just need to compute
     // the type of the call.
@@ -834,14 +838,13 @@ void Binop::verify_types() {
   assert(rhs);
   lhs->verify_types();
   rhs->verify_types();
-
-  using Language::Operator;
   if (lhs->type == Error || rhs->type == Error) {
     // An error was already found in the types, so just pass silently
     type = Error;
     return;
   }
 
+  using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Language::Operator::Assign) {
     if (rhs->is_terminal()) {
