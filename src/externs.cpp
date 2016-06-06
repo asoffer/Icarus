@@ -262,7 +262,6 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
 
   } else if (expr->is_identifier()) {
     auto id = (AST::Identifier *)expr;
-    std::cout << "***" << *expr << std::endl;
     assert(id->decl->IsInferred());
     return GetFunctionLiteral(id->decl->init_val);
 

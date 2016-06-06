@@ -209,7 +209,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
 
 Node *Identifier::clone(LOOKUP_ARGS) {
   for (size_t i = 0; i < num_entries; ++i) {
-    if (this == lookup_key[i]->identifier) {
+    if (token == lookup_key[i]->identifier->token) {
       return new DummyTypeExpr(loc, lookup_val[i]);
     }
   }

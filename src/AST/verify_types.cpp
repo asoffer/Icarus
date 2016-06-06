@@ -356,6 +356,7 @@ void Identifier::verify_types() {
   if (potential_decls.empty()) {
     type = Error;
     error_log.log(loc, "Undeclared identifier '" + token + "'.");
+    NOT_YET;
     return;
   }
 
@@ -656,8 +657,6 @@ void Binop::verify_types() {
 
           } else if (MatchCall(((Function *)decl->type)->input, rhs->type,
                                matches, err_msg)) {
-
-            if (decl->type->has_vars) { NOT_YET; }
 
             valid_matches.emplace_back(decl);
           }
