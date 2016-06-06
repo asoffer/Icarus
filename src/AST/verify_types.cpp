@@ -319,6 +319,7 @@ void StructLiteral::CompleteDefinition() {
                            ? decls[i]->type_expr->evaluate(ctx).as_type
                            : decls[i]->init_val->type,
                        decls[i]->init_val);
+
   }
 }
 
@@ -1314,6 +1315,7 @@ void Declaration::verify_types() {
   if (init_val) { init_val->verify_types(); }
 
   // TODO figure out what's going on with this.
+  assert(scope_);
   scope_->ordered_decls_.push_back(this);
 
   // There are four cases for the form of a declaration.

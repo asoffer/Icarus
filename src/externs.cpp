@@ -262,6 +262,7 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
 
   } else if (expr->is_identifier()) {
     auto id = (AST::Identifier *)expr;
+    std::cout << "***" << *expr << std::endl;
     assert(id->decl->IsInferred());
     return GetFunctionLiteral(id->decl->init_val);
 
@@ -269,9 +270,9 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
     auto decl = (AST::Declaration *)expr;
     assert(decl->IsInferred());
     return GetFunctionLiteral(decl->init_val);
-
+  } else if (expr->is_binop()) {
+    NOT_YET;
   } else {
-    std::cerr << *expr << std::endl;
     assert(false);
   }
 }

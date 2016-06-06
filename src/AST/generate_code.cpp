@@ -427,16 +427,14 @@ llvm::Value *Binop::generate_code() {
     } else if (lhs->is_identifier()) {
       assert(((Identifier *)lhs)->decl);
       auto lhs_id   = (Identifier *)lhs;
-      auto fn_lit   = GetFunctionLiteral(lhs);
-      auto fn_type  = (Function *)fn_lit->type;
+      auto fn_type  = (Function *)((Identifier *)lhs)->decl->type;
 
       llvm::FunctionType *llvm_fn_type = *fn_type;
 
       if (lhs_id->arg_val) {
         lhs_val = lhs_id->decl->alloc;
       } else {
-        auto mangled_name =
-            Mangle((Function *)fn_type, lhs_id, lhs_id->decl->scope_);
+        auto mangled_name = Mangle(fn_type, lhs_id, lhs_id->decl->scope_);
         lhs_val = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
       }
       assert(lhs_val);
@@ -671,12 +669,10 @@ llvm::Value *Binop::generate_code() {
   }
 
   std::cerr << *this << std::endl;
-  assert(false && "Reached end of Binop::generate_code");
+  UNREACHABLE;
 }
 
-llvm::Value *ArrayType::generate_code() {
-  assert(false && "Not valid for code-gen");
-}
+llvm::Value *ArrayType::generate_code() { UNREACHABLE; }
 
 llvm::Value *Statements::generate_code() {
   if (statements.empty()) { return nullptr; }

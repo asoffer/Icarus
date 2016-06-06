@@ -170,7 +170,6 @@ struct Identifier : public Terminal {
   std::string token;
 
   Declaration *decl;
-
   Expression *arg_val;
 };
 

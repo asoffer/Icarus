@@ -52,7 +52,7 @@ size_t Type::alignment() const {
   if (this == Type_) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (this == Int || this == Uint) { return 4; }
-  if (this == Real || is_pointer()) { return 8; }
+  if (this == Real || is_pointer() || is_function()) { return 8; }
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {

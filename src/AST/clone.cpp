@@ -10,46 +10,42 @@
 namespace AST {
 StructLiteral *
 ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
-  /*
-  bool has_vars = false;
-  auto& arg_vals = reverse_cache[cache_loc];
+  auto arg_vals  = reverse_cache[cache_loc];
+  auto num_decls = arg_vals.size();
+  cache_loc->decls.reserve(num_decls);
 
-  auto num = arg_vals.size();
+  for (size_t i = 0; i < num_decls; ++i) {
+    auto new_decl = new Declaration;
+    new_decl->identifier =
+        new Identifier(decls[i]->identifier->loc, decls[i]->identifier->token);
+    new_decl->identifier->decl = new_decl;
+    new_decl->hashtags = decls[i]->hashtags;
 
-  cache_loc->data.ids.reserve(num);
-  cache_loc->data.types.reserve(num);
-  cache_loc->data.init_vals.reserve(num);
+    if (decls[i]->type_expr) {
+      // This is kinda hacky to get the right eval. TODO move arg_vals into
+      // declaration node.
+      new_decl->type_expr =
+          new DummyTypeExpr(decls[i]->type_expr->loc,
+                            decls[i]->type_expr->evaluate(arg_vals).as_type);
+    }
+    if (decls[i]->init_val) {
+      NOT_YET;
+    }
 
-  for (size_t i = 0; i < num; ++i) {
-    auto curr_id        = data.ids[i];
-    // auto curr_type      = data.types[i];
-    auto curr_type_expr = data.type_exprs[i];
-    // auto curr_init      = data.init_vals[i];
-
-    auto new_type = curr_type_expr->evaluate(arg_vals).as_type;
-
-    cache_loc->data.ids.push_back(curr_id);
-    cache_loc->data.types.push_back(new_type);
-    cache_loc->data.init_vals.push_back(nullptr); // TODO
-    cache_loc->data.type_exprs.push_back(
-        new DummyTypeExpr(curr_type_expr->loc, new_type));
-
-    cache_loc->value.as_type->has_vars |=
-        cache_loc->data.types.back()->has_vars;
+    cache_loc->decls.push_back(new_decl);
   }
 
-  delete cache_loc->type_scope;
-  cache_loc->type_scope = type_scope;
-  cache_loc->scope_ = scope_; // Same scope as original.
-  cache_loc->verify_types();
+  Scope::Stack.push(scope_);
+  cache_loc->assign_scope();
+  Scope::Stack.pop();
 
-  cache_loc->value.as_type->has_vars = has_vars;
-  if (!has_vars) { cache_loc->CompleteDefinition(); }
+  assert(cache_loc == ((Structure *)cache_loc->value.as_type)->ast_expression);
+  cache_loc->CompleteDefinition();
 
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());
-  static_cast<Structure *>(cache_loc->value.as_type)->creator = this;
-  */
+  ((Structure *)cache_loc->value.as_type)->creator = this;
+  
   return cache_loc;
 }
 

@@ -116,7 +116,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
                       ss);
 
   for (size_t i = 1; i < num_args; ++i) {
-    if (params[0]->type_expr) {
+    if (params[i]->type_expr) {
       Ctx ctx;
       parameter_type = params[i]->type_expr->evaluate(ctx).as_type;
     } else {
@@ -127,7 +127,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
 
     ss << ", ";
     AppendValueToStream(parameter_type,
-                        arg_vals.at(params[0]->identifier->token), ss);
+                        arg_vals.at(params[i]->identifier->token), ss);
   }
   ss << ")";
 
@@ -142,12 +142,11 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
     assert(cache.size() < 5);
   }
 
-
   auto cloned_struct =
       param_struct->ast_expression->CloneStructLiteral(cache_loc);
 
   cloned_struct->verify_types();
-  static_cast<Structure *>(cloned_struct->value.as_type)->set_name(ss.str());
+  ((Structure *)cloned_struct->value.as_type)->set_name(ss.str());
 
   return cloned_struct->value;
 }
@@ -170,10 +169,9 @@ llvm::Value *Expression::llvm_value(Context::Value v) {
 Context::Value Identifier::evaluate(Ctx &ctx) {
   verify_types();
 
-  if (arg_val) {
-    auto iter = ctx.find(token);
-    if (iter != ctx.end()) { return iter->second; }
-  }
+  auto iter = ctx.find(token);
+  if (iter != ctx.end()) {
+    return iter->second; }
 
   value_flag = ValueFlag::In;
 
@@ -485,13 +483,16 @@ Context::Value Access::evaluate(Ctx& ctx) {
 
   if (type->is_enum()) {
     auto enum_type = (Enumeration *)type;
+    value_flag = ValueFlag::Done;
     return Context::Value(enum_type->get_index(member_name));
   }
 
   if (member_name == "bytes") {
+    value_flag = ValueFlag::Done;
     return Context::Value(operand->evaluate(ctx).as_type->bytes());
 
   } else if (member_name == "alignment") {
+    value_flag = ValueFlag::Done;
     return Context::Value(operand->evaluate(ctx).as_type->alignment());
   }
 
@@ -545,22 +546,28 @@ Context::Value Binop::evaluate(Ctx& ctx) {
 
       // Doing value conversion
       if (result.flag == IR::ValType::B) {
-        return Context::Value(result.val.as_bool);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value(result.val.as_bool);
 
       } else if (result.flag == IR::ValType::C) {
-        return Context::Value(result.val.as_char);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value(result.val.as_char);
 
       } else if (result.flag == IR::ValType::I) {
-        return Context::Value((long)result.val.as_int);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value((long)result.val.as_int);
 
       } else if (result.flag == IR::ValType::R) {
-        return Context::Value(result.val.as_real);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value(result.val.as_real);
 
       } else if (result.flag == IR::ValType::U) {
-        return Context::Value(result.val.as_uint);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value(result.val.as_uint);
 
       } else if (result.flag == IR::ValType::T) {
-        return Context::Value(result.val.as_type);
+        value_flag = ValueFlag::Done;
+        return value = Context::Value(result.val.as_type);
       }
       NOT_YET;
 
@@ -569,8 +576,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
 
       assert(lhs_evaled->is_parametric_struct());
 
-      auto struct_lit =
-          static_cast<ParametricStructure *>(lhs_evaled)->ast_expression;
+      auto struct_lit = ((ParametricStructure *)lhs_evaled)->ast_expression;
 
       assert(struct_lit->value.as_type);
       assert(struct_lit->value.as_type->is_parametric_struct());
@@ -579,8 +585,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
         assert(struct_lit->value.as_type);
         assert(struct_lit->value.as_type->is_parametric_struct());
         std::cerr << "\n== Evaluating a parametric struct call ==\n"
-                  << static_cast<ParametricStructure *>(
-                         struct_lit->value.as_type)
+                  << ((ParametricStructure *)struct_lit->value.as_type)
                          ->bound_name
                   << std::endl;
       }
@@ -597,7 +602,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
       if (rhs->is_comma_list()) {
         // Note: The right number of elements are here because we've already
         // verified this.
-        const auto &elems = static_cast<ChainOp*>(rhs)->exprs;
+        const auto &elems = ((ChainOp *)rhs)->exprs;
         for (size_t i = 0; i < elems.size(); ++i) {
           auto evaled_elem = elems[i]->evaluate(ctx);
           param_struct_args[struct_lit->params[i]->identifier->token] = evaled_elem;
@@ -618,6 +623,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
 
       if (debug::parametric_struct) { std::cerr << std::endl; }
 
+      value_flag   = ValueFlag::Done;
       return value = struct_lit->CreateOrGetCached(param_struct_args);
 
     } else {
@@ -627,7 +633,8 @@ Context::Value Binop::evaluate(Ctx& ctx) {
   } else if (op == Operator::Arrow) {
     auto lhs_type = lhs->evaluate(ctx).as_type;
     auto rhs_type = rhs->evaluate(ctx).as_type;
-    return Context::Value(Func(lhs_type, rhs_type));
+    value_flag    = ValueFlag::Done;
+    return value  = Context::Value(Func(lhs_type, rhs_type));
   }
 
   return nullptr;

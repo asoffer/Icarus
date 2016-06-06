@@ -97,9 +97,11 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
     }
   }
 
-  for (auto &&node : static_cast<Statements *>(nodes[3])->statements) {
+  for (auto &&node : ((Statements *)nodes[3])->statements) {
     struct_lit_ptr->decls.push_back(steal<Declaration>(node));
   }
+
+  for (auto param : struct_lit_ptr->params) { param->identifier->arg_val = struct_lit_ptr; }
 
   return struct_lit_ptr;
 }
@@ -115,15 +117,14 @@ Node *EnumLiteral::Build(NPtrVec &&nodes) {
   enum_lit_ptr->type = Type_;
 
   if (nodes[2]->is_statements()) {
-    auto stmts = static_cast<Statements *>(nodes[2]);
+    auto stmts = (Statements *)nodes[2];
     for (auto &&stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
         error_log.log(stmt->loc, "Enum members must be identifiers.");
       } else {
         // TODO repeated terms?
         // TODO move the string into place
-        enum_lit_ptr->members.emplace_back(
-            static_cast<Identifier *>(stmt)->token);
+        enum_lit_ptr->members.emplace_back(((Identifier *)stmt)->token);
       }
     }
   }
