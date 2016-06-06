@@ -220,23 +220,7 @@ int main(int argc, char *argv[]) {
     // compilation errors, so we don't check for them here.
     Scope::Stack.push(Scope::Global);
     global_statements->assign_scope();
-
-    // COMPILATION STEP:
-    //
-    // Join the identifiers turning the syntax tree into a syntax DAG. This must
-    // happen after the declarations are assigned to each scope so we have a
-    // specific identifier to point to that is easy to find. This can generate
-    // an
-    // undeclared identifier error.
-    global_statements->join_identifiers();
     Scope::Stack.pop();
-
-    if (error_log.num_errors() != 0) {
-      std::cout << error_log;
-
-      if (debug::ct_eval) { endwin(); }
-      return error_code::undeclared_identifier;
-    }
   }
 
   // COMPILATION STEP:
@@ -280,15 +264,14 @@ int main(int argc, char *argv[]) {
   TIME("Code-gen") {
     { // Program has been verified. We can now proceed with code generation.
       for (auto decl : Scope::Global->ordered_decls_) {
-
         auto id = decl->identifier;
+
         if (id->arg_val) { continue; }
 
         auto type = decl->type;
         if (type->time() == Time::compile) { continue; }
 
         Scope::Stack.push(Scope::Global);
-
         if (type->is_primitive() || type->is_array() || type->is_pointer()) {
           auto gvar = new llvm::GlobalVariable(
               /*      Module = */ *global_module,
@@ -311,17 +294,19 @@ int main(int argc, char *argv[]) {
             gvar->setInitializer(type->InitialValue());
           }
 
-          id->alloc = gvar;
+          id->decl->alloc = gvar;
 
         } else if (type->is_array()) {
 
         } else if (type->is_function()) {
-          auto fn_type      = static_cast<Function *>(type);
+          assert(decl->identifier);
+          assert(decl->identifier->decl == decl);
+          auto fn_type      = (Function *)type;
           auto mangled_name = Mangle(fn_type, decl->identifier);
 
           if (!type->has_vars) {
-            id->alloc = type->allocate();
-            id->alloc->setName(mangled_name);
+            id->decl->alloc = type->allocate();
+            id->decl->alloc->setName(mangled_name);
             decl->generate_code();
           }
 
@@ -366,7 +351,8 @@ int main(int argc, char *argv[]) {
     size_t start = input_file_name.find('/', 0) + 1;
     size_t end   = input_file_name.find('.', 0);
 
-    system(("gcc obj.o -o bin/" + input_file_name.substr(start, end - start)).c_str());
+    system(("gcc obj.o -o bin/" + input_file_name.substr(start, end - start))
+               .c_str());
   }
 
   if (debug::timing) {

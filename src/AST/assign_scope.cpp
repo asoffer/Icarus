@@ -18,14 +18,7 @@ void Access::assign_scope() {
   operand->assign_scope();
 }
 
-void Identifier::assign_scope() {
-  scope_ = CurrentScope();
-  { // TODO These should be tied together
-    registry_pos_ = scope_->ReferenceRegistry.size();
-    scope_->ReferenceRegistry.push_back(this);
-  }
-}
-
+void Identifier::assign_scope() { scope_ = CurrentScope(); }
 void Terminal::assign_scope() { scope_ = CurrentScope(); }
 void EnumLiteral::assign_scope() { scope_ = CurrentScope(); }
 
@@ -88,46 +81,21 @@ void Binop::assign_scope() {
 
 void Generic::assign_scope() {
   scope_ = CurrentScope();
-  // TODO this only works if they're in identical scopes. If there's a parent
-  // scope relationship, we fail.
-  auto iter = scope_->ids_.find(identifier->token);
-  if (iter == scope_->ids_.end()) {
-    scope_->ids_[identifier->token] = identifier;
-  }
-
-  // TODO Shouldn't we register this declaration?
-  // scope_->ids_[identifier->token]->decls.push_back(this);
-
+  scope_->DeclRegistry.push_back(this);
   identifier->assign_scope();
   test_fn->assign_scope();
 }
 
 void InDecl::assign_scope() {
   scope_ = CurrentScope();
-  // TODO this only works if they're in identical scopes. If there's a parent
-  // scope relationship, we fail.
-  auto iter = scope_->ids_.find(identifier->token);
-  if (iter == scope_->ids_.end()) {
-    scope_->ids_[identifier->token] = identifier;
-  }
-
-  // TODO Shouldn't we register this declaration?
-  // scope_->ids_[identifier->token]->decls.push_back(this);
-
+  scope_->DeclRegistry.push_back(this);
   identifier->assign_scope();
   container->assign_scope();
 }
 
 void Declaration::assign_scope() {
   scope_ = CurrentScope();
-  // TODO this only works if they're in identical scopes. If there's a parent
-  // scope relationship, we fail.
-  auto iter = scope_->ids_.find(identifier->token);
-  if (iter == scope_->ids_.end()) {
-    scope_->ids_[identifier->token] = identifier;
-  }
-
-  scope_->ids_[identifier->token]->decls.push_back(this);
+  scope_->DeclRegistry.push_back(this);
   identifier->assign_scope();
   if (type_expr) { type_expr->assign_scope(); }
   if (init_val) { init_val->assign_scope(); }

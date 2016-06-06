@@ -11,7 +11,6 @@
 #include "AST/evaluate.cpp"
 #include "AST/generate_code.cpp"
 #include "AST/generate_lvalue.cpp"
-#include "AST/join_identifiers.cpp"
 #include "AST/lrval.cpp"
 #include "AST/time.cpp"
 #include "AST/to_string.cpp"

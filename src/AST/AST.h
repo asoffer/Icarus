@@ -16,7 +16,6 @@ namespace AST {
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(Expression *arg = nullptr) ENDING;             \
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
@@ -32,7 +31,6 @@ namespace AST {
   virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void join_identifiers(Expression *arg = nullptr) ENDING;             \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
   virtual IR::Value EmitIR() ENDING;                                           \
@@ -48,7 +46,6 @@ namespace AST {
 
 struct Node {
   virtual std::string to_string(size_t n) const = 0;
-  virtual void join_identifiers(Expression *arg = nullptr) {}
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void verify_types() {}
@@ -172,11 +169,7 @@ struct Identifier : public Terminal {
 
   std::string token;
 
-  void AppendType(Type *t);
-
-  size_t registry_pos_;
-  llvm::Value *alloc;
-  std::vector<Declaration *> decls; // multiple because function overloading
+  Declaration *decl;
 
   Expression *arg_val;
 };
@@ -209,6 +202,7 @@ struct Declaration : public Expression {
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;
+  llvm::Value *alloc;
 
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }
@@ -230,22 +224,24 @@ struct Declaration : public Expression {
   }
 };
 
-struct Generic : public Expression {
+struct Generic : public Declaration {
   EXPR_FNS(Generic, generic);
   static Node *Build(NPtrVec &&nodes);
 
-  Identifier *identifier;
+  virtual bool is_declaration() const override { return false; }
   Expression *test_fn;
 };
 
 
-struct InDecl : public Expression {
+struct InDecl : public Declaration {
   EXPR_FNS(InDecl, in_decl);
   static Node *Build(NPtrVec &&nodes);
 
-  Identifier *identifier;
+  virtual bool is_declaration() const override { return false; }
   Expression *container;
 };
+
+
 
 struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);

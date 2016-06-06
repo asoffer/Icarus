@@ -1,22 +1,6 @@
-Any := (T: type) -> bool {
-  b: bar
-  print "hello"
-
-  return true
-}
-
-foo := (val: Any`T) -> void {
-  print val
-}
+Any := (T: type) -> bool { return true }
+f := (n: Any`T) -> T { return n }
 
 main := void -> void {
-  foo(3)
-}
-
-bar := struct {
-  r: real
-  n: int
-  c1: char
-  c2: char
-  c3: char
+  print f(17.0), '\n', f(17), '\n'
 }

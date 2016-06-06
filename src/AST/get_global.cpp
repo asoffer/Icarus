@@ -55,8 +55,8 @@ llvm::Constant *ArrayLiteral::GetGlobal() {
 }
 
 llvm::Constant *Identifier::GetGlobal() {
-  assert(alloc);
-  return (llvm::Constant *)alloc;
+  assert(decl->alloc);
+  return (llvm::Constant *)decl->alloc;
 }
 
 llvm::Constant *Unop::GetGlobal() {

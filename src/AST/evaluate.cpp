@@ -177,14 +177,10 @@ Context::Value Identifier::evaluate(Ctx &ctx) {
 
   value_flag = ValueFlag::In;
 
-  if (type == Type_ && !value.as_type) {
-    assert(decls.size() == 1);
-    decls[0]->evaluate(ctx);
-  }
+  if (type == Type_ && !value.as_type) { decl->evaluate(ctx); }
 
-  assert(decls.size() == 1); // TODO What if this is quantum?
-  decls[0]->evaluate(ctx);
-  value = decls[0]->value;
+  decl->evaluate(ctx);
+  value = decl->value;
 
   value_flag = ValueFlag::Done;
   return value;
@@ -483,7 +479,6 @@ Context::Value Declaration::evaluate(Ctx &ctx) {
   value_flag = ValueFlag::Done;
   return nullptr;
 }
-
 
 Context::Value Access::evaluate(Ctx& ctx) {
   STARTING_VALUE_CHECK;

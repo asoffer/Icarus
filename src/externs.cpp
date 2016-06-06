@@ -199,13 +199,11 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
     if (!id_ptr) { continue; }
 
     if (id_ptr->type->is_quantum()) {
-      for (auto decl : id_ptr->decls) {
-        auto fn_type = static_cast<Function *>(decl->type);
-        if (fn_type->input == input_type) { return fn_type; }
-      }
+      auto fn_type = (Function *)id_ptr->decl->type;
+      if (fn_type->input == input_type) { return fn_type; }
 
     } else if (id_ptr->type->is_function()) {
-      auto fn_type = static_cast<Function *>(id_ptr->type);
+      auto fn_type = (Function *)id_ptr->type;
       if (fn_type->input == input_type) { return fn_type; }
 
     } else {
@@ -223,30 +221,27 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
     if (!id_ptr) { continue; }
 
     if (id_ptr->type->is_quantum()) {
-      for (auto decl : id_ptr->decls) {
-        auto fn_type = static_cast<Function *>(decl->type);
-        if (fn_type->input == input_type) {
-          llvm::FunctionType *llvm_fn_type = *fn_type;
+      auto fn_type = (Function *)id_ptr->decl->type;
+      if (fn_type->input == input_type) {
+        llvm::FunctionType *llvm_fn_type = *fn_type;
 
-          if (id_ptr->arg_val) {
-            return id_ptr->alloc;
-          } else {
-            auto mangled_name =
-                Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
+        if (id_ptr->arg_val) {
+          return id_ptr->decl->alloc;
+        } else {
+          auto mangled_name =
+              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
 
-            return global_module->getOrInsertFunction(mangled_name,
-                                                      llvm_fn_type);
-          }
+          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
         }
       }
 
     } else if (id_ptr->type->is_function()) {
-      auto fn_type = static_cast<Function *>(id_ptr->type);
+      auto fn_type = (Function *)id_ptr->type;
       if (fn_type->input != input_type) { continue; }
       llvm::FunctionType *llvm_fn_type = *fn_type;
 
       if (id_ptr->arg_val) {
-          return id_ptr->alloc;
+          return id_ptr->decl->alloc;
       } else {
           auto mangled_name =
               Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
@@ -255,7 +250,7 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
       }
 
     } else {
-      assert(false && "What else could it be?");
+      UNREACHABLE;
     }
   }
   return nullptr;
@@ -267,13 +262,16 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
 
   } else if (expr->is_identifier()) {
     auto id = (AST::Identifier *)expr;
-    if (id->decls.size() == 1) {
-      assert(id->decls[0]->IsInferred());
-      return GetFunctionLiteral(id->decls[0]->init_val);
-    } else {
-      assert(false && "TODO");
-    }
+    assert(id->decl->IsInferred());
+    return GetFunctionLiteral(id->decl->init_val);
+
+  } else if (expr->is_declaration()) {
+    auto decl = (AST::Declaration *)expr;
+    assert(decl->IsInferred());
+    return GetFunctionLiteral(decl->init_val);
+
   } else {
+    std::cerr << *expr << std::endl;
     assert(false);
   }
 }

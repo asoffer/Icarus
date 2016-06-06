@@ -26,36 +26,18 @@ Scope::Scope()
     : parent(Scope::Global), containing_function_(nullptr),
       name("anon" + std::to_string(scope_num_counter++)) {}
 
-AST::Identifier *Scope::identifier(AST::Expression *id_as_eptr) {
-  assert(id_as_eptr->is_identifier());
-  auto idptr = (AST::Identifier *)id_as_eptr;
-
-  Scope *scope_ptr = this;
-  while (scope_ptr != nullptr) {
-    auto iter = scope_ptr->ids_.find(idptr->token);
-    if (iter != scope_ptr->ids_.end()) { return iter->second; }
-    scope_ptr = scope_ptr->parent;
+AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
+  for (auto decl : DeclRegistry) {
+    if (decl->identifier->token == name) { return decl->identifier; }
   }
-
-  // If you reach here it's because we never saw a declaration for the
-  // identifier
-  error_log.log(idptr->loc, "Undeclared identifier `" + idptr->token + "`.");
 
   return nullptr;
 }
 
-AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
-  auto iter = ids_.find(name);
-  return (iter == ids_.end()) ? nullptr : iter->second;
-}
-
 AST::Identifier *Scope::IdentifierBeingReferencedOrNull(const std::string &name) {
-  auto scope_ptr = this;
-  while (scope_ptr) {
-    auto iter = scope_ptr->ids_.find(name);
-    if (iter != scope_ptr->ids_.end()) { return iter->second; }
-
-    scope_ptr = scope_ptr->parent;
+  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
+    auto ptr  = scope_ptr->IdentifierHereOrNull(name);
+    if (ptr) { return ptr; }
   }
 
   return nullptr;
@@ -137,7 +119,7 @@ void BlockScope::initialize() {
     //   auto array_dim = static_cast<Array*>(decl_ptr->type)->dimension;
     //   std::vector<llvm::Value*> init_args(array_dim + 1,
     //   data::const_uint(0));
-    //   init_args[0] = decl_id->alloc;
+    //   init_args[0] = decl_ptr->alloc;
     //   // TODO
     //   // auto array_type = static_cast<Array*>(decl_ptr->type);
     //   // builder.CreateCall(array_type->initialize(), init_args);
@@ -148,7 +130,7 @@ void BlockScope::initialize() {
         (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
       continue;
     }
-    decl_ptr->type->call_init(decl_id->alloc);
+    decl_ptr->type->call_init(decl_ptr->alloc);
     // }
   }
 }
@@ -163,14 +145,15 @@ void BlockScope::uninitialize() {
     deferred_uninits.pop();
   }
 
-  for (int i = static_cast<int>(ordered_decls_.size()) - 1; i >= 0; --i) {
-    auto decl_id = ordered_decls_[static_cast<size_t>(i)]->identifier;
+  for (int i = (int)ordered_decls_.size() - 1; i >= 0; --i) {
+    auto decl_ptr = ordered_decls_[(size_t)i];
+    auto decl_id  = decl_ptr->identifier;
 
     // TODO is this correct?
     if (decl_id->arg_val) continue;
     if (!decl_id->type->stores_data()) continue;
 
-    decl_id->type->CallDestroy(this, decl_id->alloc);
+    decl_id->type->CallDestroy(this, decl_ptr->alloc);
   }
 }
 
@@ -366,12 +349,12 @@ void FnScope::allocate(Scope* scope) {
 
     if (decl_ptr->type->is_quantum()) {
       // TODO can this even happen?
-      decl_id->alloc = nullptr;
+      decl_ptr->alloc = nullptr;
       continue;
     }
 
-    decl_id->alloc = decl_ptr->type->allocate();
-    decl_id->alloc->setName(decl_ptr->identifier->token);
+    decl_ptr->alloc = decl_ptr->type->allocate();
+    decl_ptr->alloc->setName(decl_ptr->identifier->token);
   }
 }
 

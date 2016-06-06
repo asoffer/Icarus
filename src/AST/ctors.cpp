@@ -27,9 +27,10 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(nullptr), value(nullptr), value_flag(ValueFlag::Not) {
 }
-Declaration::Declaration() : type_expr(nullptr), init_val(nullptr) {}
-Generic::Generic() : identifier(nullptr), test_fn(nullptr) {}
-InDecl::InDecl() : identifier(nullptr), container(nullptr) {}
+Declaration::Declaration()
+    : identifier(nullptr), type_expr(nullptr), init_val(nullptr), alloc(nullptr) {}
+Generic::Generic() : test_fn(nullptr) {}
+InDecl::InDecl() : container(nullptr) {}
 ArrayLiteral::ArrayLiteral() {}
 Access::Access() {}
 ChainOp::ChainOp() {}
@@ -53,7 +54,7 @@ Jump::Jump(TokenLocation new_loc, JumpType jump_type) : jump_type(jump_type) {
 Identifier::Identifier() { assert(false); }
 
 Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
-    : registry_pos_(~0u), alloc(nullptr) {
+    : decl(nullptr), arg_val(nullptr) {
   token      = token_string;
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);

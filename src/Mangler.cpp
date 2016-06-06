@@ -54,17 +54,13 @@ std::string Mangle(const Function *f, AST::Expression *expr,
       expr->is_identifier() ? ((AST::Identifier *)expr)->token : "";
 
   if (expr->is_identifier()) {
-    auto id = static_cast<AST::Identifier *>(expr);
-
-    if (id->decls.size() == 1 && id->decls[0]->HasHashtag("cstdlib")) {
-      return name;
-    }
+    auto id = (AST::Identifier *)expr;
+    if (id->decl->HasHashtag("cstdlib")) { return name; }
   }
 
   if ((name == "main" && f == Func(Void, Void)) || f->time() == Time::compile) {
     return name;
   }
-
   std::stringstream ss;
   ss << "_Z";
 

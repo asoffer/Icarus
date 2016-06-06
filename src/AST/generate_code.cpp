@@ -82,15 +82,14 @@ llvm::Value *Identifier::generate_code() {
     // TODO better way to get functions based on their name
     auto fn_type      = (Function *)type;
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
-    auto mangled_name = Mangle(fn_type, this);
-
+    auto mangled_name = Mangle(fn_type, this, decl->scope_);
     return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
 
   } else if (type->is_big()) {
-    return alloc;
+    return decl->alloc;
 
   } else {
-    return builder.CreateLoad(alloc, token);
+    return builder.CreateLoad(decl->alloc, token);
   }
 }
 
@@ -391,22 +390,20 @@ llvm::Value *Binop::generate_code() {
   // The left-hand side may be a declaration
   if (op == Operator::Assign) {
     return generate_assignment_code(
-        (lhs->is_declaration() ? static_cast<Declaration *>(lhs)->identifier
-                               : lhs),
-        rhs);
+        (lhs->is_declaration() ? ((Declaration *)lhs)->identifier : lhs), rhs);
   }
 
   llvm::Value *lhs_val = nullptr;
   if (op == Operator::Call) {
     if (!rhs) {
       assert(lhs->type->is_function() && "Operand should be a function.");
-      auto out_type = static_cast<Function *>(lhs->type)->output;
+      auto out_type = ((Function *)lhs->type)->output;
       lhs_val = lhs->generate_code();
       if (out_type->is_struct()) {
         // TODO move this outside of any potential loops
         assert(scope_->is_block_scope());
         auto local_ret =
-            static_cast<BlockScope *>(scope_)->CreateLocalReturn(out_type);
+            ((BlockScope *)scope_)->CreateLocalReturn(out_type);
 
         builder.CreateCall((llvm::Function *)lhs_val, local_ret);
         return local_ret;
@@ -428,8 +425,21 @@ llvm::Value *Binop::generate_code() {
       }
 
     } else if (lhs->is_identifier()) {
-      lhs_val = GetFunctionReferencedIn(
-          scope_, static_cast<Identifier *>(lhs)->token, rhs->type);
+      assert(((Identifier *)lhs)->decl);
+      auto lhs_id   = (Identifier *)lhs;
+      auto fn_lit   = GetFunctionLiteral(lhs);
+      auto fn_type  = (Function *)fn_lit->type;
+
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+
+      if (lhs_id->arg_val) {
+        lhs_val = lhs_id->decl->alloc;
+      } else {
+        auto mangled_name =
+            Mangle((Function *)fn_type, lhs_id, lhs_id->decl->scope_);
+        lhs_val = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+      }
+      assert(lhs_val);
 
     } else if (lhs->is_function_literal()) {
       lhs_val = lhs->generate_code();
@@ -910,7 +920,7 @@ llvm::Value *FunctionLiteral::generate_code() {
     // Set alloc
     auto decl_id   = input_iter->identifier;
     auto decl_type = decl_id->type;
-    if (decl_type->is_big()) { decl_id->alloc = arg_iter; }
+    if (decl_type->is_big()) { input_iter->alloc = arg_iter; }
 
     ++arg_iter;
   }
@@ -934,7 +944,7 @@ llvm::Value *FunctionLiteral::generate_code() {
 
     if (!decl_id->type->is_big()) {
       Type::CallAssignment(scope_, decl_id->type, decl_id->type,
-                           input_iter->identifier->alloc, arg);
+                           input_iter->alloc, arg);
     }
 
     ++arg;
@@ -969,7 +979,7 @@ llvm::Value *Declaration::generate_code() {
   if (IsCustomInitialized() && type->is_function()) {
     auto fn_type      = (Function *)type;
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
-    auto mangled_name = Mangle(fn_type, identifier);
+    auto mangled_name = Mangle(fn_type, identifier, scope_);
 
     if (init_val->is_function_literal()) {
       auto func            = (FunctionLiteral *)init_val;
@@ -1278,10 +1288,13 @@ llvm::Value *For::generate_code() {
   auto num_iters = iterators.size();
   for (size_t i = 0; i < num_iters; ++i) {
     auto iter      = iterators[i];
-    if (!iter->identifier->alloc) {
+    assert(iter->identifier);
+    assert(iter->identifier->decl);
+    assert(iter->identifier->decl->alloc);
+    if (!iter->identifier->decl->alloc) {
       assert(iter->scope_->is_block_scope());
       auto block_scope = (BlockScope *)(iter->scope_);
-      iter->identifier->alloc = block_scope->AllocateLocally(
+      iter->identifier->decl->alloc = block_scope->AllocateLocally(
           iter->identifier->type, iter->identifier->token);
     }
     auto container = iter->container;
@@ -1348,7 +1361,7 @@ llvm::Value *For::generate_code() {
 
       /* Work on cond block */
       builder.SetInsertPoint(cond_block);
-      iter->identifier->alloc = phi;
+      iter->identifier->decl->alloc = phi;
       done_cmp = builder.CreateOr(done_cmp, builder.CreateICmpEQ(phi, end_ptr));
 
       /* Work on incr block */
@@ -1391,7 +1404,7 @@ llvm::Value *For::generate_code() {
 
       /* Work on cond block */
       builder.SetInsertPoint(cond_block);
-      iter->identifier->alloc = phi;
+      iter->identifier->decl->alloc = phi;
       done_cmp = builder.CreateOr(done_cmp, builder.CreateICmpEQ(phi, end_ptr));
 
       /* Work on incr block */
@@ -1417,7 +1430,7 @@ llvm::Value *For::generate_code() {
 
         /* Work on cond block */
         builder.SetInsertPoint(cond_block);
-        builder.CreateStore(phi, iter->identifier->alloc);
+        builder.CreateStore(phi, iter->identifier->decl->alloc);
         done_cmp = builder.CreateOr(done_cmp,
                                     (iter->type == Int)
                                         ? builder.CreateICmpSGT(phi, end_val)
@@ -1439,7 +1452,7 @@ llvm::Value *For::generate_code() {
 
         /* Work on cond block */
         builder.SetInsertPoint(cond_block);
-        builder.CreateStore(phi, iter->identifier->alloc);
+        builder.CreateStore(phi, iter->identifier->decl->alloc);
 
       } else {
         assert(false);
@@ -1448,7 +1461,7 @@ llvm::Value *For::generate_code() {
       /* Work on incr block */
       builder.SetInsertPoint(incr_iters);
       llvm::Value *next = builder.CreateAdd(
-          builder.CreateLoad(iter->identifier->alloc),
+          builder.CreateLoad(iter->identifier->decl->alloc),
           iter->type == Char ? data::const_char(1) : data::const_uint(1));
       phi->addIncoming(next, incr_iters);
     } else {
@@ -1470,11 +1483,11 @@ llvm::Value *For::generate_code() {
       done_cmp = builder.CreateOr(
           done_cmp, builder.CreateICmpEQ(
                         phi, data::const_uint(enum_type->int_values.size())));
-      builder.CreateStore(phi, iter->identifier->alloc);
+      builder.CreateStore(phi, iter->identifier->decl->alloc);
 
       /* Work on incr block */
       builder.SetInsertPoint(incr_iters);
-      auto next = builder.CreateAdd(builder.CreateLoad(iter->identifier->alloc),
+      auto next = builder.CreateAdd(builder.CreateLoad(iter->identifier->decl->alloc),
                                     data::const_uint(1));
       phi->addIncoming(next, incr_iters);
     }

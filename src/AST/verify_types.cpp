@@ -11,7 +11,7 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
-static AST::FunctionLiteral *
+/* static */ AST::FunctionLiteral *
 GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
                           const std::map<TypeVariable *, Type *> &matches) {
   auto num_matches = matches.size();
@@ -32,7 +32,6 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   Scope::Stack.push(fn_lit->scope_);
 
   cloned_func->assign_scope();
-  cloned_func->join_identifiers();
   cloned_func->verify_types();
 
   Scope::Stack.pop();
@@ -124,9 +123,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
 
       if (lhs_var->test->is_identifier()) {
         auto id_test = (AST::Identifier *)(lhs_var->test);
-        assert (id_test->decls.size() == 1);
         error_message += " (See line " +
-                         std::to_string(id_test->decls[0]->loc.line_num) + ")";
+                         std::to_string(id_test->decl->loc.line_num) + ")";
       }
       error_message += "\n";
       return false;
@@ -140,9 +138,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
       return false;
     }
 
-    return MatchCall(static_cast<Pointer *>(lhs)->pointee,
-                     static_cast<Pointer *>(rhs)->pointee, matches,
-                     error_message);
+    return MatchCall(((Pointer *)lhs)->pointee, ((Pointer *)rhs)->pointee,
+                     matches, error_message);
   }
 
   if (lhs->is_array()) {
@@ -173,10 +170,10 @@ static bool MatchCall(Type *lhs, Type *rhs,
       return false;
     }
 
-    auto lhs_in  = static_cast<Function *>(lhs)->input;
-    auto rhs_in  = static_cast<Function *>(rhs)->input;
-    auto lhs_out = static_cast<Function *>(lhs)->output;
-    auto rhs_out = static_cast<Function *>(rhs)->output;
+    auto lhs_in  = ((Function *)lhs)->input;
+    auto rhs_in  = ((Function *)rhs)->input;
+    auto lhs_out = ((Function *)lhs)->output;
+    auto rhs_out = ((Function *)rhs)->output;
 
     return MatchCall(lhs_in, rhs_in, matches, error_message) &&
            MatchCall(lhs_out, rhs_out, matches, error_message);
@@ -310,7 +307,7 @@ namespace AST {
 void StructLiteral::CompleteDefinition() {
   assert(value.as_type && value.as_type->is_struct());
 
-  auto tval = static_cast<Structure *>(value.as_type);
+  auto tval = (Structure *)value.as_type;
   if (!tval->field_num_to_name.empty()) { return; }
 
   for (size_t i = 0; i < decls.size(); ++i) {
@@ -335,22 +332,41 @@ void Terminal::verify_types() {
   }
 }
 
-void Identifier::AppendType(Type *t) {
-  if (!type) {
-    type = t;
-    return;
-  } else {
-    if (type->is_quantum()) {
-      auto q = static_cast<QuantumType *>(type);
-      q->options.push_back(t);
-    } else {
-      type = Quantum({type, t});
-    }
-  }
-}
+#define LOOP_OVER_DECLS_FROM(s)                                                \
+  for (auto scope_ptr = s; scope_ptr; scope_ptr = scope_ptr->parent)           \
+    for (auto d : scope_ptr->DeclRegistry)
 
 void Identifier::verify_types() {
-  for (auto decl : decls) { decl->verify_types(); }
+  STARTING_CHECK;
+
+  if (decl) {
+    decl->verify_types();
+    type = decl->type;
+    return;
+  }
+
+  std::vector<Declaration *> potential_decls;
+
+  LOOP_OVER_DECLS_FROM(scope_) {
+    if (token != d->identifier->token) { continue; }
+    potential_decls.push_back(d);
+  }
+
+  if (potential_decls.empty()) {
+    type = Error;
+    error_log.log(loc, "Undeclared identifier '" + token + "'.");
+    return;
+  }
+
+  if (potential_decls.size() > 1)  {
+    type = Error;
+    error_log.log(loc, "Ambiguous reference to identifier '" + token + "'.");
+    return;
+  }
+
+  decl = potential_decls[0];
+  decl->verify_types();
+  type = decl->type;
 }
 
 void Unop::verify_types() {
@@ -384,7 +400,7 @@ void Unop::verify_types() {
   } break;
   case Operator::At: {
     if (operand->type->is_pointer()) {
-      type = static_cast<Pointer *>(operand->type)->pointee;
+      type = ((Pointer *)operand->type)->pointee;
 
     } else {
       error_log.log(loc, "Dereferencing object of type " +
@@ -418,7 +434,7 @@ void Unop::verify_types() {
 
       auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
       if (t) {
-        type = static_cast<Function *>(t)->output;
+        type = ((Function *)t)->output;
       } else {
         error_log.log(loc, type->to_string() + " has no negation operator.");
         type = Error;
@@ -472,7 +488,7 @@ void Access::Verify(bool emit_errors) {
 
   // Access passes through pointers
   while (base_type->is_pointer()) {
-    base_type = static_cast<Pointer *>(base_type)->pointee;
+    base_type = ((Pointer *)base_type)->pointee;
   }
 
   if (base_type->is_array()) {
@@ -520,7 +536,7 @@ void Access::Verify(bool emit_errors) {
   }
 
   if (base_type->is_struct()) {
-    auto struct_type = static_cast<Structure *>(base_type);
+    auto struct_type = (Structure *)base_type;
     struct_type->ast_expression->CompleteDefinition();
 
     auto member_type = struct_type->field(member_name);
@@ -556,12 +572,12 @@ struct MatchData {
   MatchData(Type *t = nullptr, Expression *e = nullptr) : match(t), expr(e) {}
 };
 
-static void AddToPotentialCallInterpretations(
+/* static */ void AddToPotentialCallInterpretations(
     Expression *expr, std::vector<MatchData> &potential_match_options) {
   if (expr->type->is_quantum()) {
     // If the LHS has a quantum type, test all possibilities to see which
     // one works. Verify that exactly one works.
-    for (auto opt : static_cast<QuantumType *>(expr->type)->options) {
+    for (auto opt : ((QuantumType *)expr->type)->options) {
       assert(opt->is_function());
       // TODO better line number logging.
       potential_match_options.emplace_back(opt, expr);
@@ -631,6 +647,244 @@ void Binop::verify_types() {
     }
   }
 
+  if (op == Language::Operator::Call) {
+    if (lhs->is_identifier()) {
+      auto id_token = ((AST::Identifier *)lhs)->token;
+
+      std::vector<Declaration *> decls_with_matching_id;
+      LOOP_OVER_DECLS_FROM(scope_) {
+        if (d->identifier->token == id_token) {
+          d->verify_types();
+          decls_with_matching_id.push_back(d);
+        }
+      }
+
+      std::vector<Declaration *> valid_matches;
+
+      if (rhs) { rhs->verify_types(); }
+
+      for (auto decl : decls_with_matching_id) {
+        std::string err_msg;
+        std::map<TypeVariable *, Type *> matches;
+
+        if (decl->type->is_function()) {
+          if (!rhs) {
+            if (((Function *)decl->type)->input == Void) {
+              valid_matches.emplace_back(decl);
+            }
+            continue;
+
+          } else if (!MatchCall(((Function *)decl->type)->input, rhs->type,
+                                matches, err_msg)) {
+            continue;
+          }
+
+          // If you found a match
+          if (decl->type->has_vars) { NOT_YET; }
+
+          valid_matches.emplace_back(decl);
+        } else if (decl->type == Type_) {
+          Ctx ctx;
+          decl->evaluate(ctx);
+          if (decl->value.as_type->is_parametric_struct()) {
+            auto param_ast_expr =
+                ((ParametricStructure *)decl->value.as_type)->ast_expression;
+
+            std::vector<Type *> param_types;
+            for (auto p : param_ast_expr->params) {
+              param_types.push_back(p->type);
+            }
+
+            std::vector<Type *> input_types;
+            if (rhs->is_chain_op()) {
+              for (auto elem : ((ChainOp *)rhs)->exprs) {
+                input_types.push_back(elem->type);
+              }
+            }
+
+            if (!MatchCall(Tup(param_types),
+                           rhs->is_chain_op() ? Tup(input_types) : rhs->type,
+                           matches, err_msg)) {
+              std::cout << *Tup(param_types) << *rhs << std::endl;
+
+              continue;
+            }
+
+            if (decl->type->has_vars) { NOT_YET; }
+
+            valid_matches.emplace_back(decl);
+          } else {
+            NOT_YET;
+          }
+        } else {
+          std::cerr << *decl << std::endl;
+          NOT_YET;
+        }
+      }
+
+      if (valid_matches.empty()) {
+        // TODO better error message
+        error_log.log(loc, "No valid matches");
+        type      = Error;
+        lhs->type = Error;
+
+      } else if (valid_matches.size() > 1) {
+        // TODO better error message
+        error_log.log(loc, "Ambiguous call");
+        type      = Error;
+        lhs->type = Error;
+
+      } else {
+        assert(lhs->is_identifier());
+        lhs->type = valid_matches[0]->type;
+        ((Identifier *)lhs)->decl = valid_matches[0];
+        // TODO the two previous should be rolled together in a function because
+        // I always want to call them together.
+
+        if (lhs->type == Type_) {
+          NOT_YET;
+        } else {
+          assert(lhs->type->is_function());
+          type = ((Function *)valid_matches[0]->type)->output;
+        }
+      }
+
+
+    } else {
+      lhs->verify_types();
+      rhs->verify_types();
+
+      if (lhs->type->is_function()) {
+        std::string err_msg;
+        std::map<TypeVariable *, Type *> matches;
+        if (MatchCall(((Function *)lhs->type)->input, rhs->type, matches,
+                      err_msg)) {
+          auto evaled_type = EvalWithVars(lhs->type, matches);
+          type             = ((Function *)evaled_type)->output;
+
+          if (lhs->type->has_vars) {
+            auto fn_expr = GetFunctionLiteral(lhs);
+
+            // If it's in the cache, we're done.
+            for (auto &gen : fn_expr->cache) {
+              if (gen.first == ((Function *)evaled_type)->input) { return; }
+            }
+
+            // Cache the function
+            fn_expr->cache[rhs->type] =
+                GenerateSpecifiedFunction(fn_expr, matches);
+          }
+
+        } else {
+          error_log.log(loc, err_msg);
+          type = Error;
+        }
+        return;
+      } else if (lhs->type->is_parametric_struct()) {
+        NOT_YET;
+
+      } else {
+        error_log.log(loc, "Object is not callable.");
+        type = Error;
+      }
+    }
+    return;
+  }
+  //    std::vector<std::map<TypeVariable *, Type *>> match_vec;
+  //    std::vector<MatchData> potential_match_options;
+  //
+  //    if (lhs->is_identifier()) {
+  //      auto id_token = ((AST::Identifier *)lhs)->token;
+  //
+  //      LOOP_OVER_DECLS_FROM(scope_) {
+  //        if (d->identifier->token == id_token) {
+  //          AddToPotentialCallInterpretations(d->identifier,
+  //                                            potential_match_options);
+  //        }
+  //      }
+  //
+  //    } else {
+  //      AddToPotentialCallInterpretations(lhs, potential_match_options);
+  //    }
+  //
+  //    MatchData matched_data;
+  //    bool has_vars_flag = false;
+  //
+  //    for (auto& opt : potential_match_options) {
+  //      std::map<TypeVariable *, Type *> matches;
+  //      // Receiving either a function or a parametric struct as the opt.match
+  //      // parameter
+  //
+  //      if (opt.match->is_function()) {
+  //
+  //        if (MatchCall(((Function *)opt.match)->input, rhs->type, matches,
+  //                      opt.err)) {
+  //
+  //          match_vec.push_back(matches);
+  //          matched_data = opt;
+  //
+  //          has_vars_flag = matched_data.expr->type->has_vars;
+  //          if (matched_data.expr->is_identifier()) {
+  //            // TODO why is this condition necessary?
+  //            has_vars_flag &= !((Identifier *)matched_data.expr)->arg_val;
+  //          }
+  //        }
+  //      } else {
+  //        assert(opt.expr->value.as_type->is_parametric_struct());
+  //        match_vec.push_back(matches);
+  //        matched_data  = opt;
+  //        has_vars_flag = false; // TODO FIXME WHAT SHOULD THIS BE?!
+  //      }
+  //    }
+  //
+  //    if (match_vec.size() != 1) {
+  //      type = Error;
+  //
+  //      if (match_vec.empty()) {
+  //        std::stringstream msg;
+  //        msg << "No function overload matches call.\n";
+  //        for (const auto& pmo : potential_match_options) {
+  //          // TODO stringstream
+  //          // TODO file if it's not in the same file.
+  //          msg << "      "
+  //              << "Line " << pmo.expr->loc.line_num << ": " << pmo.err;
+  //          /*
+  //                 ((Function *)pmo.match)->input->to_string() +
+  //                 " vs. " + rhs->type->to_string() + " on line " +
+  //                 std::to_string(pmo.expr->loc.line_num);
+  //                 */
+  //        }
+  //        error_log.log(loc, msg.str());
+  //      } else {
+  //        error_log.log(loc, "Multiple function overloads match call.");
+  //      }
+  //      return;
+  //    }
+  //
+  //    auto evaled_type = EvalWithVars(matched_data.match, match_vec[0]);
+  //
+  //    if (evaled_type->is_function()) {
+  //      type = ((Function *)evaled_type)->output;
+  //
+  //      if (has_vars_flag) {
+  //        auto fn_expr = GetFunctionLiteral(lhs);
+  //
+  //        // look in cache to see if the function has already been chosen
+  //        for (auto &gen : fn_expr->cache) {
+  //          if (gen.first == ((Function *)evaled_type)->input) {
+  //            return;
+  //          }
+  //        }
+  //
+  //        // Cache the function
+  //        fn_expr->cache[rhs->type] =
+  //            GenerateSpecifiedFunction(fn_expr, match_vec[0]);
+  //      }
+  //    } else {
+  //      type = evaled_type;
+  //    }
+  //
+
   lhs->verify_types();
 
   if (rhs) {
@@ -646,7 +900,7 @@ void Binop::verify_types() {
       return;
     }
 
-    auto fn = static_cast<Function *>(lhs->type);
+    auto fn = (Function *)lhs->type;
     if (fn->input != Void) {
       error_log.log(loc, "Calling function with no arguments.");
       type = Error;
@@ -725,104 +979,6 @@ void Binop::verify_types() {
       type = Error;
     }
   } break;
-  case Operator::Call: {
-    std::vector<std::map<TypeVariable *, Type *>> match_vec;
-
-    std::vector<MatchData> potential_match_options;
-
-    if (lhs->is_identifier()) {
-      auto id_token = static_cast<AST::Identifier *>(lhs)->token;
-
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull(id_token);
-        if (!id_ptr) { continue; }
-
-        AddToPotentialCallInterpretations(id_ptr, potential_match_options);
-      }
-
-    } else {
-      AddToPotentialCallInterpretations(lhs, potential_match_options);
-    }
-
-    MatchData matched_data;
-    bool has_vars_flag = false;
-
-    for (auto& opt : potential_match_options) {
-      std::map<TypeVariable *, Type *> matches;
-      // Receiving either a function or a parametric struct as the opt.match
-      // parameter
-
-      if (opt.match->is_function()) {
-
-        if (MatchCall(static_cast<Function *>(opt.match)->input, rhs->type,
-                      matches, opt.err)) {
-
-          match_vec.push_back(matches);
-          matched_data = opt;
-
-          has_vars_flag = matched_data.expr->type->has_vars;
-          if (matched_data.expr->is_identifier()) {
-            // TODO why is this condition necessary?
-            has_vars_flag &=
-                !static_cast<Identifier *>(matched_data.expr)->arg_val;
-          }
-        }
-      } else {
-        assert(opt.expr->value.as_type->is_parametric_struct());
-        match_vec.push_back(matches);
-        matched_data  = opt;
-        has_vars_flag = false; // TODO FIXME WHAT SHOULD THIS BE?!
-      }
-    }
-
-    if (match_vec.size() != 1) {
-      type = Error;
-
-      if (match_vec.empty()) {
-        std::stringstream msg;
-        msg << "No function overload matches call.\n";
-        for (const auto& pmo : potential_match_options) {
-          // TODO stringstream
-          // TODO file if it's not in the same file.
-          msg << "      "
-              << "Line " << pmo.expr->loc.line_num << ": " << pmo.err;
-          /*
-                 static_cast<Function *>(pmo.match)->input->to_string() +
-                 " vs. " + rhs->type->to_string() + " on line " +
-                 std::to_string(pmo.expr->loc.line_num);
-                 */
-        }
-        error_log.log(loc, msg.str());
-      } else {
-        error_log.log(loc, "Multiple function overloads match call.");
-      }
-      return;
-    }
-
-    auto evaled_type = EvalWithVars(matched_data.match, match_vec[0]);
-
-    if (evaled_type->is_function()) {
-      type = static_cast<Function *>(evaled_type)->output;
-
-      if (has_vars_flag) {
-        auto fn_expr = GetFunctionLiteral(lhs);
-
-        // look in cache to see if the function has already been chosen
-        for (auto &gen : fn_expr->cache) {
-          if (gen.first == static_cast<Function *>(evaled_type)->input) {
-            return;
-          }
-        }
-
-        // Cache the function
-        fn_expr->cache[rhs->type] =
-            GenerateSpecifiedFunction(fn_expr, match_vec[0]);
-      }
-    } else {
-      type = evaled_type;
-    }
-
-  } break;
   case Operator::Index: {
     type = Error;
     if (!lhs->type->is_array()) {
@@ -833,11 +989,11 @@ void Binop::verify_types() {
     }
 
     if (rhs->type->is_range()) {
-      type = Slice(static_cast<Array *>(lhs->type));
+      type = Slice((Array *)lhs->type);
       break;
     }
 
-    type = static_cast<Array *>(lhs->type)->data_type;
+    type = ((Array *)lhs->type)->data_type;
     assert(type && "array data type is nullptr");
     // TODO allow slice indexing
     if (rhs->type == Int) { break; }
@@ -927,7 +1083,7 @@ void Binop::verify_types() {
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__" op_name "__",    \
                                                  Tup({lhs->type, rhs->type})); \
       if (fn_type) {                                                           \
-        type = static_cast<Function *>(fn_type)->output;                       \
+        type = ((Function *)fn_type)->output;                                  \
       } else {                                                                 \
         type = Error;                                                          \
         error_log.log(loc, "No known operator overload for `" symbol           \
@@ -979,7 +1135,7 @@ void Binop::verify_types() {
       auto fn_type = GetFunctionTypeReferencedIn(scope_, "__mul__",
                                                  Tup({lhs->type, rhs->type}));
       if (fn_type) {
-        type = static_cast<Function *>(fn_type)->output;
+        type = ((Function *)fn_type)->output;
       } else {
         type = Error;
         error_log.log(loc, "No known operator overload for `*` with types " +
@@ -1001,7 +1157,7 @@ void Binop::verify_types() {
     if (type != Error) { type = Type_; }
 
   } break;
-  default: { assert(false); }
+  default: UNREACHABLE;
   }
 }
 
@@ -1088,20 +1244,24 @@ void InDecl::verify_types() {
   STARTING_CHECK;
   container->verify_types();
 
+  // TODO figure out what's going on with this.
+  scope_->ordered_decls_.push_back(this);
+
   if (container->type == Void) {
     type = Error;
+    identifier->type = Error;
     error_log.log(loc, "Cannot iterate over a void type.");
     return;
   }
 
   if (container->type->is_array()) {
-    type = static_cast<Array *>(container->type)->data_type;
+    type = ((Array *)container->type)->data_type;
 
   } else if (container->type->is_slice()) {
-    type = static_cast<SliceType *>(container->type)->array_type->data_type;
+    type = ((SliceType *)container->type)->array_type->data_type;
 
   } else if (container->type->is_range()) {
-    type = static_cast<RangeType *>(container->type)->end_type;
+    type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
     Ctx ctx;
@@ -1241,9 +1401,11 @@ void Declaration::verify_types() {
 
   if (IsDefaultInitialized()) {
     type = type_expr->VerifyTypeForDeclaration(identifier->token);
+    identifier->type = type;
 
   } else if (IsInferred()) {
     type = init_val->VerifyValueForDeclaration(identifier->token);
+    identifier->type = type;
 
   } else if (IsCustomInitialized()) {
     type   = type_expr->VerifyTypeForDeclaration(identifier->token);
@@ -1256,14 +1418,17 @@ void Declaration::verify_types() {
 
   } else if (IsUninitialized()) {
     type   = type_expr->VerifyTypeForDeclaration(identifier->token);
+    identifier->type = type;
     init_val->type = type;
 
   } else {
-    assert(false && "Unreachable");
+    UNREACHABLE;
   }
 
-
-  if (type == Error) { return; }
+  if (type == Error) {
+    identifier->type = Error;
+    return;
+  }
 
   if (type->is_struct()) {
     ((Structure *)type)->ast_expression->CompleteDefinition();
@@ -1323,12 +1488,8 @@ void Declaration::verify_types() {
   //
   // (If T is not a pointer, we should log an error in that case too).
 
-
-
-
   // If you get here, you can be assured that the type is valid. So we add it to
   // the identifier.
-  identifier->AppendType(type);
 
   if (identifier->token == "__print__") {
     VerifyDeclarationForMagicPrint(type, loc);
@@ -1351,8 +1512,7 @@ void ArrayType::verify_types() {
 
   // TODO have a Hole type primitive.
   if (length->is_terminal() &&
-      static_cast<Terminal *>(length)->terminal_type ==
-          Language::Terminal::Hole) {
+      ((Terminal *)length)->terminal_type == Language::Terminal::Hole) {
     return;
   }
 
@@ -1509,14 +1669,17 @@ void EnumLiteral::verify_types() {
   ++anon_enum_counter;
 }
 
-void ParametricStructLiteral::verify_types() {}
+void ParametricStructLiteral::verify_types() {
+  for (auto p : params) { p->verify_types(); }
+}
+
 void StructLiteral::verify_types() {}
 
 void Jump::verify_types() {
   auto scope_ptr = scope_;
   while (scope_ptr) {
     assert(scope_ptr->is_block_scope());
-    auto block_scope_ptr = static_cast<BlockScope *>(scope_ptr);
+    auto block_scope_ptr = (BlockScope *)scope_ptr;
     if (block_scope_ptr->type == ScopeType::Function) {
       if (jump_type != JumpType::Return) {
         error_log.log(loc, "statement must be contained inside a loop.");
@@ -1541,5 +1704,5 @@ void DummyTypeExpr::verify_types() {
 }
 } // namespace AST
 
+#undef LOOP_OVER_DECLS_FROM
 #undef STARTING_CHECK
-#undef AT

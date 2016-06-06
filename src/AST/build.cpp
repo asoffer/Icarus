@@ -307,7 +307,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
   if (unop_ptr->operand->is_declaration()) {
-    auto decl = static_cast<Declaration *>(unop_ptr->operand);
+    auto decl = (Declaration *)unop_ptr->operand;
     error_log.log(decl->loc, "Invalid use of declaration.");
   }
 
@@ -517,11 +517,12 @@ Node *InDecl::Build(NPtrVec &&nodes) {
   auto op = ((AST::TokenNode *)(nodes[1]))->op;
   assert(op == Language::Operator::In);
 
-  auto in_decl_ptr        = new InDecl;
-  in_decl_ptr->loc        = nodes[1]->loc;
-  in_decl_ptr->identifier = steal<Identifier>(nodes[0]);
-  in_decl_ptr->container  = steal<Expression>(nodes[2]);
-  in_decl_ptr->precedence = Language::precedence(Language::Operator::In);
+  auto in_decl_ptr              = new InDecl;
+  in_decl_ptr->loc              = nodes[1]->loc;
+  in_decl_ptr->identifier       = steal<Identifier>(nodes[0]);
+  in_decl_ptr->identifier->decl = in_decl_ptr;
+  in_decl_ptr->container        = steal<Expression>(nodes[2]);
+  in_decl_ptr->precedence       = Language::precedence(Language::Operator::In);
   return in_decl_ptr;
 }
 
@@ -538,7 +539,8 @@ Node *Declaration::Build(NPtrVec &&nodes) {
   }
 
   assert(nodes[0]->is_identifier());
-  decl_ptr->identifier = steal<Identifier>(nodes[0]);
+  decl_ptr->identifier       = steal<Identifier>(nodes[0]);
+  decl_ptr->identifier->decl = decl_ptr;
 
   Scope::decl_registry_.emplace_back(decl_ptr);
 
@@ -555,7 +557,8 @@ Node *Generic::Build(NPtrVec &&nodes) {
   // Scope::decl_registry_.emplace_back(decl_ptr);
 
   assert(nodes[2]->is_identifier());
-  generic->identifier = steal<Identifier>(nodes[2]);
+  generic->identifier       = steal<Identifier>(nodes[2]);
+  generic->identifier->decl = generic;
 
   return generic;
 }

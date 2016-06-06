@@ -10,7 +10,7 @@ extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 namespace AST {
-llvm::Value *Identifier::generate_lvalue() { return alloc; }
+llvm::Value *Identifier::generate_lvalue() { return decl->alloc; }
 
 llvm::Value *Unop::generate_lvalue() {
   if (op == Language::Operator::At) { return operand->generate_code(); }
