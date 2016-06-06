@@ -155,9 +155,13 @@ int main(int argc, char *argv[]) {
       assert(false && "Error in target string lookup");
     }
 
+    // Hack to get the right target triple on my system:
+    std::string triple_string = llvm::sys::getDefaultTargetTriple();
+    auto last_pos             = triple_string.rfind("15");
+    triple_string             = triple_string.substr(0, last_pos) + "10.11";
+
     target_machine = target->createTargetMachine(
-        llvm::sys::getDefaultTargetTriple(), llvm::sys::getHostCPUName(),
-        features.getString(), opt);
+        triple_string, llvm::sys::getHostCPUName(), features.getString(), opt);
     assert(target_machine);
   }
 
