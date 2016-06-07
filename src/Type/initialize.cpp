@@ -99,7 +99,6 @@ void RangeType::call_init(llvm::Value *) { UNREACHABLE; }
 void SliceType::call_init(llvm::Value *) { UNREACHABLE; }
 void TypeVariable::call_init(llvm::Value *) { UNREACHABLE; }
 void ParametricStructure::call_init(llvm::Value *) { UNREACHABLE; }
-void QuantumType::call_init(llvm::Value *) { UNREACHABLE; }
 
 void Structure::call_init(llvm::Value *var) {
   if (init_fn_ == nullptr) {
@@ -252,4 +251,3 @@ void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void ParametricStructure::EmitInit(IR::Value id_val) { UNREACHABLE; }
-void QuantumType::EmitInit(IR::Value id_val) { UNREACHABLE; }

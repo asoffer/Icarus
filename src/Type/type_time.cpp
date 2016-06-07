@@ -28,10 +28,3 @@ Time::Eval RangeType::time() const { return end_type->time(); }
 Time::Eval SliceType::time() const { return array_type->time(); }
 Time::Eval TypeVariable::time() const { return Time::compile; }
 Time::Eval ParametricStructure::time() const { return Time::compile; }
-
-Time::Eval QuantumType::time() const {
-  auto time = Time::either;
-  for (auto opt : options) { time |= opt->time(); }
-
-  return time;
-}

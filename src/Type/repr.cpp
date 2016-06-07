@@ -207,6 +207,5 @@ void Tuple::call_repr(llvm::Value *val) {}
 void Structure::call_repr(llvm::Value *val) {}
 void TypeVariable::call_repr(llvm::Value *val) {}
 void ParametricStructure::call_repr(llvm::Value *val) {}
-void QuantumType::call_repr(llvm::Value *val) {}
 void RangeType::call_repr(llvm::Value *val) {}
 void SliceType::call_repr(llvm::Value *val) {}

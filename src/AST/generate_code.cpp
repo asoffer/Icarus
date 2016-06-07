@@ -75,10 +75,9 @@ static llvm::Value *FunctionComposition(const std::string &name,
 
 namespace AST {
 llvm::Value *Identifier::generate_code() {
-  if (type == Type_) {
-    return nullptr;
+  if (type->time() == Time::compile) { return nullptr; }
 
-  } else if (type->is_function()) {
+  if (type->is_function()) {
     // TODO better way to get functions based on their name
     auto fn_type      = (Function *)type;
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
@@ -96,9 +95,12 @@ llvm::Value *Identifier::generate_code() {
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Terminal::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
+
   // Else is a terminal only in case statements. In this situation, it's
   // corresponding resulting value is always to be the one chosen, so we should
   // have 'else' represent the value true.
+  // TODO is this even reachable? Probably doesn't need to be.
   if (terminal_type == Language::Terminal::Else) { return data::const_true(); }
 
   if (terminal_type == Language::Terminal::StringLiteral) {
@@ -146,11 +148,7 @@ static void CallPrint(Expression *expr) {
 
   llvm::Value *val = expr->generate_code();
 
-  // NOTE: this is complicated because if the function is quantum, we cannot
-  // just generate the code from Identifier::generate_code. Knowing which
-  // quanta to pick requires contextual information.
-  //
-  // TODO We should log that information so we don't repeat this process.
+  // TODO Does this need to be fixed since we removed quantum info?
   if (expr->type->is_struct()) {
     // TODO ensure that it is generated
     auto print_fn = GetFunctionReferencedIn(expr->scope_, "__print__", expr->type);
@@ -171,6 +169,7 @@ static void CallPrint(Expression *expr) {
 // Invariant:
 // Only returns nullptr if the expression type is void or a type
 llvm::Value *Unop::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
   // We first go through all the possible operators where we don't necessarily
   // need to generate code for the operand.
   switch (op) {
@@ -246,6 +245,8 @@ llvm::Value *Unop::generate_code() {
 }
 
 llvm::Value *Access::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
+
   if (operand->type == Type_) {
     // As of 4/18/16, the only ways an operand can be a type are:
     // 1. TYPE.bytes (returning the number of bytes taken up by the type)
@@ -380,6 +381,7 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 }
 
 llvm::Value *Binop::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
   using Language::Operator;
 
   // The left-hand side may be a declaration
@@ -515,7 +517,7 @@ llvm::Value *Binop::generate_code() {
     }
   } break;
   case Operator::Call: {
-    if (lhs->type->is_function() || lhs->type->is_quantum()) {
+    if (lhs->type->is_function()) {
       std::vector<llvm::Value *> arg_vals = CollateArgsForFunctionCall(rhs);
 
       if (type == Void) {
@@ -725,7 +727,14 @@ llvm::Value *Statements::generate_code() {
     return phi;
 
 llvm::Value *ChainOp::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
+
   auto expr_type = exprs[0]->type;
+  if (expr_type == Type_) {
+    Ctx ctx;
+    return llvm_value(evaluate(ctx));
+  }
+
 
   // Boolean values that cannot be short-circuited.
   if (expr_type == Bool) {
@@ -879,6 +888,8 @@ llvm::Value *ChainOp::generate_code() {
 #undef END_SHORT_CIRCUIT
 
 llvm::Value *FunctionLiteral::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
+
   if (code_gened) { return llvm_fn; }
 
   if (llvm_fn == nullptr) {
@@ -951,7 +962,7 @@ llvm::Value *Generic::generate_code() { assert(false); }
 llvm::Value *InDecl::generate_code() { assert(false); }
 
 llvm::Value *Declaration::generate_code() {
-  if (type == Type_) { return nullptr; }
+  if (type->time() == Time::compile) { return nullptr; }
 
   if (IsCustomInitialized() && type->is_function()) {
     auto fn_type      = (Function *)type;
@@ -992,6 +1003,7 @@ llvm::Value *Declaration::generate_code() {
 
 // TODO cleanup. Nothing incorrect here that I know of, just can be simplified
 llvm::Value *Case::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
   size_t num_key_vals = key_vals.size();
   auto parent_fn      = builder.GetInsertBlock()->getParent();
   // Condition blocks - The ith block is what you reach when you've
@@ -1041,6 +1053,7 @@ llvm::Value *Case::generate_code() {
 }
 
 llvm::Value *ArrayLiteral::generate_code() {
+  if (type->time() == Time::compile) { return nullptr; }
   // TODO if this is never assigned to anything, it will be leaked. This should
   // be verified.
 
@@ -1517,10 +1530,7 @@ llvm::Value *For::generate_code() {
   return nullptr;
 }
 
-llvm::Value *DummyTypeExpr::generate_code() {
-  assert(false);
-  return nullptr;
-}
+llvm::Value *DummyTypeExpr::generate_code() { UNREACHABLE; }
 } // namespace AST
 
 

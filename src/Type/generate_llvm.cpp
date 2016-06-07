@@ -110,7 +110,6 @@ void Structure::generate_llvm() const {
 
 void ParametricStructure::generate_llvm() const {}
 void TypeVariable::generate_llvm() const {}
-void QuantumType::generate_llvm() const {}
 void RangeType::generate_llvm() const {} // TODO Assert false?
 void SliceType::generate_llvm() const {} // TODO Assert false?
 

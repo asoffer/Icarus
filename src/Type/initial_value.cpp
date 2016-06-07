@@ -47,6 +47,5 @@ llvm::Constant *Function::InitialValue() const { assert(false); }
 llvm::Constant *Structure::InitialValue() const { assert(false); }
 llvm::Constant *TypeVariable::InitialValue() const { assert(false); }
 llvm::Constant *ParametricStructure::InitialValue() const { assert(false); }
-llvm::Constant *QuantumType::InitialValue() const { assert(false); }
 llvm::Constant *RangeType::InitialValue() const { assert(false); }
 llvm::Constant *SliceType::InitialValue() const { assert(false); }

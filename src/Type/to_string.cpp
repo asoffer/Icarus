@@ -90,9 +90,6 @@ std::string Structure::to_string() const { return bound_name; }
 std::string ParametricStructure::to_string() const { return bound_name; }
 std::string Enumeration::to_string() const { return bound_name; }
 
-std::string QuantumType::to_string() const {
-  return "Quantum(" + std::to_string(options.size()) + ")";
-}
 std::string RangeType::to_string() const {
   return "Range(" + end_type->to_string() + ")";
 }

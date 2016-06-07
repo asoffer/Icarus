@@ -45,7 +45,6 @@ static std::map<std::string, Enumeration *> enum_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<std::string, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
-static std::vector<QuantumType *> quant_;
 static std::map<Array *, SliceType *> slices_;
 
 void GenerateLLVM() {
@@ -181,11 +180,6 @@ TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {
   if (iter != TypeSystem::vars_.end()) return iter->second;
 
   return TypeSystem::vars_[id] = new TypeVariable(id, test);
-}
-
-QuantumType *Quantum(const std::vector<Type *> &vec) {
-  TypeSystem::quant_.push_back(new QuantumType(vec));
-  return TypeSystem::quant_.back();
 }
 
 RangeType *Range(Type *t) {

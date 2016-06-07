@@ -1404,9 +1404,6 @@ void Declaration::verify_types() {
           identifier->token;
     }
 
-    // TODO If the identifier's type is quantum? This shouldn't be allowed
-    // because we only allow quantum types for functions, but perhaps this is
-    // something we need to be concerned with.
     identifier->value = init_val->value;
   }
 

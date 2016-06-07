@@ -337,21 +337,11 @@ void FnScope::allocate(Scope* scope) {
   for (const auto& decl_ptr : scope->ordered_decls_) {
     auto decl_id = decl_ptr->identifier;
 
-    if (decl_id->arg_val && decl_ptr->type->is_big()) {
-      // Insert this alloc in the FunctionLiteral node
-      continue;
-    }
+    // Insert this alloc in the FunctionLiteral node
+    if (decl_id->arg_val && decl_ptr->type->is_big()) { continue; }
 
-    if (decl_ptr->type->time() == Time::compile) {
-      // TODO Set the types name
-      continue;
-    }
-
-    if (decl_ptr->type->is_quantum()) {
-      // TODO can this even happen?
-      decl_ptr->alloc = nullptr;
-      continue;
-    }
+    // TODO Set the types name
+    if (decl_ptr->type->time() == Time::compile) { continue; }
 
     decl_ptr->alloc = decl_ptr->type->allocate();
     decl_ptr->alloc->setName(decl_ptr->identifier->token);

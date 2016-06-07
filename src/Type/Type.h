@@ -28,7 +28,6 @@ ParamStruct(const std::string &name,
             AST::ParametricStructLiteral *expr = nullptr);
 extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
-extern QuantumType *Quantum(const std::vector<Type *> &vec);
 extern RangeType *Range(Type *t);
 extern SliceType *Slice(Array *a);
 
@@ -88,7 +87,6 @@ public:
   virtual bool is_parametric_struct() const { return false; }
   virtual bool is_enum() const { return false; }
   virtual bool is_type_variable() const { return false; }
-  virtual bool is_quantum() const { return false; }
   virtual bool is_range() const { return false; }
   virtual bool is_slice() const { return false; }
 
@@ -256,14 +254,6 @@ struct TypeVariable : public Type {
 
   AST::Identifier *identifier;
   AST::Expression *test;
-};
-
-struct QuantumType : public Type {
-  TYPE_FNS(QuantumType, quantum);
-
-  QuantumType(const std::vector<Type *> &vec);
-  // TODO maybe quantum types should only hold functions?
-  std::vector<Type *> options;
 };
 
 struct RangeType : public Type {

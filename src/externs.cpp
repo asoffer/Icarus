@@ -193,11 +193,7 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
     auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
     if (!id_ptr) { continue; }
 
-    if (id_ptr->type->is_quantum()) {
-      auto fn_type = (Function *)id_ptr->decl->type;
-      if (fn_type->input == input_type) { return fn_type; }
-
-    } else if (id_ptr->type->is_function()) {
+    if (id_ptr->type->is_function()) {
       auto fn_type = (Function *)id_ptr->type;
       if (fn_type->input == input_type) { return fn_type; }
 
@@ -208,29 +204,13 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
   return nullptr;
 }
 
-// TODO cache which print call is correct in quantum scenarios.
 llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
                                      Type *input_type) {
   for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
     if (!id_ptr) { continue; }
 
-    if (id_ptr->type->is_quantum()) {
-      auto fn_type = (Function *)id_ptr->decl->type;
-      if (fn_type->input == input_type) {
-        llvm::FunctionType *llvm_fn_type = *fn_type;
-
-        if (id_ptr->arg_val) {
-          return id_ptr->decl->alloc;
-        } else {
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-
-          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-        }
-      }
-
-    } else if (id_ptr->type->is_function()) {
+    if (id_ptr->type->is_function()) {
       auto fn_type = (Function *)id_ptr->type;
       if (fn_type->input != input_type) { continue; }
       llvm::FunctionType *llvm_fn_type = *fn_type;

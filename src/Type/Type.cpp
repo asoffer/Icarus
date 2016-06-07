@@ -268,11 +268,6 @@ ParametricStructure::ParametricStructure(const std::string &name,
                                          AST::ParametricStructLiteral *expr)
     : ast_expression(expr), bound_name(name) {}
 
-QuantumType::QuantumType(const std::vector<Type *> &vec) : options(vec) {
-  has_vars = false;
-  for (auto opt : options) { has_vars |= opt->has_vars; }
-}
-
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), creator(nullptr),
@@ -389,8 +384,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
 
 bool Type::is_big() const { return is_array() || is_struct() || is_function(); }
 bool Type::stores_data() const {
-  return this != Type_ && !is_quantum() && !is_function() &&
-         !is_type_variable();
+  return this != Type_ && !is_function() && !is_type_variable();
 }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }

@@ -65,7 +65,6 @@ struct Enumeration;
 struct Structure;
 struct ParametricStructure;
 struct TypeVariable;
-struct QuantumType;
 struct RangeType;
 struct SliceType;
 

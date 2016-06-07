@@ -17,7 +17,10 @@ std::string Mangle(const Type *t, bool prefix) {
       return "u";
     } else if (t == Void) {
       return "v";
+    } else if (t == Type_) {
+      return "t";
     } else {
+      std::cerr << *t << std::endl;
       assert(false && "Invalid type name to be mangled");
     }
   }
