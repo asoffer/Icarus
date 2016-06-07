@@ -380,11 +380,6 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 }
 
 llvm::Value *Binop::generate_code() {
-  if (time() == Time::compile) {
-    Ctx ctx;
-    return llvm_value(evaluate(ctx));
-  }
-
   using Language::Operator;
 
   // The left-hand side may be a declaration
@@ -730,17 +725,6 @@ llvm::Value *Statements::generate_code() {
     return phi;
 
 llvm::Value *ChainOp::generate_code() {
-  // TODO Should have already been done
-  determine_time();
-
-  // TODO eval of enums at compile-time is wrong. This could be
-  // 1. That the eval function is wrong, or
-  // 2. That they shouldn't be determined at compile-time
-  if (time() == Time::compile) {
-    Ctx ctx;
-    return llvm_value(evaluate(ctx));
-  }
-
   auto expr_type = exprs[0]->type;
 
   // Boolean values that cannot be short-circuited.
@@ -899,9 +883,6 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   if (llvm_fn == nullptr) {
     assert(type->is_function() && "How is the type not a function?");
-    auto fn_type = (Function *)type;
-
-    if (fn_type->time() == Time::compile) return nullptr;
 
     // NOTE: This means a function is not assigned, but has been declared.
     llvm_fn = llvm::Function::Create(
@@ -970,7 +951,7 @@ llvm::Value *Generic::generate_code() { assert(false); }
 llvm::Value *InDecl::generate_code() { assert(false); }
 
 llvm::Value *Declaration::generate_code() {
-  if (time() == Time::compile) { return nullptr; }
+  if (type == Type_) { return nullptr; }
 
   if (IsCustomInitialized() && type->is_function()) {
     auto fn_type      = (Function *)type;
@@ -1001,7 +982,8 @@ llvm::Value *Declaration::generate_code() {
     llvm::Value *var = identifier->generate_lvalue();
     llvm::Value *val = init_val->generate_code();
 
-    assert(var && val);
+    assert(var);
+    assert(val);
 
     Type::CallAssignment(scope_, identifier->type, init_val->type, var, val);
   }

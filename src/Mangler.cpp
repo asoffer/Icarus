@@ -58,9 +58,7 @@ std::string Mangle(const Function *f, AST::Expression *expr,
     if (id->decl->HasHashtag("cstdlib")) { return name; }
   }
 
-  if ((name == "main" && f == Func(Void, Void)) || f->time() == Time::compile) {
-    return name;
-  }
+  if (name == "main" && f == Func(Void, Void)) { return name; }
   std::stringstream ss;
   ss << "_Z";
 

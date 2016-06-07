@@ -254,7 +254,6 @@ int main(int argc, char *argv[]) {
   }
 
   TIME("(L/R)value checking") {
-    global_statements->determine_time();
     global_statements->lrvalue_check();
 
     if (error_log.num_errors() != 0) {

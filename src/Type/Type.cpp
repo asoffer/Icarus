@@ -22,7 +22,7 @@ size_t Type::bytes() const {
   // TODO make this platform specific
   if (this == Type_) { return 0; }
   if (this == Bool || this == Char) { return 1; }
-  if (this == Int || this == Uint) { return 4; }
+  if (this == Int || this == Uint|| is_enum()) { return 4; }
   if (this == Real || is_pointer()) { return 8; }
   if (is_array()) {
     auto array_type = (Array *)this;
@@ -51,7 +51,7 @@ size_t Type::alignment() const {
   // TODO make this platform specific
   if (this == Type_) { return 0; }
   if (this == Bool || this == Char) { return 1; }
-  if (this == Int || this == Uint) { return 4; }
+  if (this == Int || this == Uint || is_enum()) { return 4; }
   if (this == Real || is_pointer() || is_function()) { return 8; }
   if (is_array()) {
     auto array_type = (Array *)this;

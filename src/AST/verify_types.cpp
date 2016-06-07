@@ -1336,9 +1336,13 @@ void Declaration::verify_types() {
     identifier->type = type;
 
   } else if (IsCustomInitialized()) {
-    type   = type_expr->VerifyTypeForDeclaration(identifier->token);
+    type             = type_expr->VerifyTypeForDeclaration(identifier->token);
+    identifier->type = type;
     auto t = init_val->VerifyValueForDeclaration(identifier->token);
-    if (type == Error) { type = t; }
+    if (type == Error) {
+      type             = t;
+      identifier->type = t;
+    }
     if (type != t) {
       error_log.log(
           loc, "Initial value does not have a type that matches declaration.");

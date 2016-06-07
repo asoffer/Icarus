@@ -21,7 +21,6 @@ namespace AST {
   virtual void verify_types() ENDING;                                          \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
   virtual llvm::Value *generate_code() ENDING;                                 \
-  virtual Time::Eval determine_time() ENDING;                                  \
   virtual IR::Value EmitIR() ENDING;                                           \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
@@ -39,7 +38,6 @@ namespace AST {
   virtual llvm::Value *generate_code() ENDING;                                 \
   virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
-  virtual Time::Eval determine_time() ENDING;                                  \
   virtual llvm::Constant *GetGlobal() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
@@ -55,9 +53,6 @@ struct Node {
 
   virtual Context::Value evaluate(Ctx &ctx) { return nullptr; }
   virtual llvm::Value *generate_code() { return nullptr; }
-  virtual Time::Eval determine_time() { return Time::error; }
-
-  Time::Eval time() { return time_; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
