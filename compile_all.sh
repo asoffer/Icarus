@@ -1,82 +1,82 @@
-bin/icarus programs/access.ic
-bin/icarus programs/alloc_init.ic
-bin/icarus programs/alloc_loop.ic
-bin/icarus programs/alloc_loop2.ic
-bin/icarus programs/array.ic
-bin/icarus programs/array_lit.ic
-bin/icarus programs/array_range.ic
-bin/icarus programs/assign.ic
-bin/icarus programs/bool_assign.ic
-bin/icarus programs/bool_test.ic
-bin/icarus programs/bool_test_with_colon_eq.ic
-bin/icarus programs/bytes_and_alignment.ic
-bin/icarus programs/case.ic
-bin/icarus programs/case_with_type_inference.ic
-bin/icarus programs/cast.ic
-bin/icarus programs/chain_test.ic
-bin/icarus programs/char_array.ic
-bin/icarus programs/code_gen_test.ic
-bin/icarus programs/code_gen_test_with_type_inference.ic
-bin/icarus programs/compose.ic
-bin/icarus programs/destroy.ic
-bin/icarus programs/doomsday.ic
-bin/icarus programs/double_case.ic
-bin/icarus programs/dynamic_allocation.ic
-bin/icarus programs/enum.ic
-bin/icarus programs/fn_arg.ic
-bin/icarus programs/fn_params.ic
-bin/icarus programs/fn_call.ic
-bin/icarus programs/fn_expression_literal.ic
-bin/icarus programs/for_test.ic
-bin/icarus programs/for_break_continue.ic
-bin/icarus programs/for_uninit.ic
-bin/icarus programs/free.ic
-bin/icarus programs/function_overloading.ic
-bin/icarus programs/generic.ic
-bin/icarus programs/globals.ic
-bin/icarus programs/if.ic
-bin/icarus programs/import.ic
-bin/icarus programs/import_cycle.ic
-bin/icarus programs/infer_type.ic
-bin/icarus programs/input.ic
-bin/icarus programs/int_ops.ic
-bin/icarus programs/init_struct.ic
-bin/icarus programs/is_digit.ic
-bin/icarus programs/list.ic
-bin/icarus programs/local_func.ic
-bin/icarus programs/local_func2.ic
-bin/icarus programs/local_func3.ic
-bin/icarus programs/local_func4.ic
-bin/icarus programs/local_func_alloc.ic
-bin/icarus programs/local_overloads.ic
-bin/icarus programs/multidim_array.ic
-bin/icarus programs/multiple_args.ic
-bin/icarus programs/mutual_ptrs.ic
-bin/icarus programs/mutual_ptrs2.ic
-bin/icarus programs/negate.ic
-bin/icarus programs/nullptr.ic
-bin/icarus programs/pair.ic
-bin/icarus programs/paren_test.ic
-bin/icarus programs/pi.ic
-bin/icarus programs/pointer.ic
-bin/icarus programs/prime_loop.ic
-bin/icarus programs/primes_recursive.ic
-bin/icarus programs/print_array.ic
-bin/icarus programs/print_overload_test.ic
-bin/icarus programs/print_test.ic
-bin/icarus programs/squares.ic
-bin/icarus programs/stack.ic
-bin/icarus programs/string_test.ic
-bin/icarus programs/type.ic
-bin/icarus programs/type_computation.ic
-bin/icarus programs/type_return.ic
-bin/icarus programs/type_literal.ic
-bin/icarus programs/traits_test.ic
-bin/icarus programs/ufcs.ic
-bin/icarus programs/uint_literal_test.ic
-bin/icarus programs/unique_ptr.ic
-bin/icarus programs/vec.ic
-bin/icarus programs/void_return_test.ic
-bin/icarus programs/water_state.ic
-bin/icarus programs/while_break.ic
-bin/icarus programs/wrapper.ic
+bin/icarus programs/access.ic --file-type=ir
+bin/icarus programs/alloc_init.ic --file-type=ir
+bin/icarus programs/alloc_loop.ic --file-type=ir
+bin/icarus programs/alloc_loop2.ic --file-type=ir
+bin/icarus programs/array.ic --file-type=ir
+bin/icarus programs/array_lit.ic --file-type=ir
+bin/icarus programs/array_range.ic --file-type=ir
+bin/icarus programs/assign.ic --file-type=ir
+bin/icarus programs/bool_assign.ic --file-type=ir
+bin/icarus programs/bool_test.ic --file-type=ir
+bin/icarus programs/bool_test_with_colon_eq.ic --file-type=ir
+bin/icarus programs/bytes_and_alignment.ic --file-type=ir
+bin/icarus programs/case.ic --file-type=ir
+bin/icarus programs/case_with_type_inference.ic --file-type=ir
+bin/icarus programs/cast.ic --file-type=ir
+bin/icarus programs/chain_test.ic --file-type=ir
+bin/icarus programs/char_array.ic --file-type=ir
+bin/icarus programs/code_gen_test.ic --file-type=ir
+bin/icarus programs/code_gen_test_with_type_inference.ic --file-type=ir
+bin/icarus programs/compose.ic --file-type=ir
+bin/icarus programs/destroy.ic --file-type=ir
+bin/icarus programs/doomsday.ic --file-type=ir
+bin/icarus programs/double_case.ic --file-type=ir
+bin/icarus programs/dynamic_allocation.ic --file-type=ir
+bin/icarus programs/enum.ic --file-type=ir
+bin/icarus programs/fn_arg.ic --file-type=ir
+bin/icarus programs/fn_params.ic --file-type=ir
+bin/icarus programs/fn_call.ic --file-type=ir
+bin/icarus programs/fn_expression_literal.ic --file-type=ir
+bin/icarus programs/for_test.ic --file-type=ir
+bin/icarus programs/for_break_continue.ic --file-type=ir
+bin/icarus programs/for_uninit.ic --file-type=ir
+bin/icarus programs/free.ic --file-type=ir
+bin/icarus programs/function_overloading.ic --file-type=ir
+bin/icarus programs/generic.ic --file-type=ir
+bin/icarus programs/globals.ic --file-type=ir
+bin/icarus programs/if.ic --file-type=ir
+bin/icarus programs/import.ic --file-type=ir
+bin/icarus programs/import_cycle.ic --file-type=ir
+bin/icarus programs/infer_type.ic --file-type=ir
+bin/icarus programs/input.ic --file-type=ir
+bin/icarus programs/int_ops.ic --file-type=ir
+bin/icarus programs/init_struct.ic --file-type=ir
+bin/icarus programs/is_digit.ic --file-type=ir
+bin/icarus programs/list.ic --file-type=ir
+bin/icarus programs/local_func.ic --file-type=ir
+bin/icarus programs/local_func2.ic --file-type=ir
+bin/icarus programs/local_func3.ic --file-type=ir
+bin/icarus programs/local_func4.ic --file-type=ir
+bin/icarus programs/local_func_alloc.ic --file-type=ir
+bin/icarus programs/local_overloads.ic --file-type=ir
+bin/icarus programs/multidim_array.ic --file-type=ir
+bin/icarus programs/multiple_args.ic --file-type=ir
+bin/icarus programs/mutual_ptrs.ic --file-type=ir
+bin/icarus programs/mutual_ptrs2.ic --file-type=ir
+bin/icarus programs/negate.ic --file-type=ir
+bin/icarus programs/nullptr.ic --file-type=ir
+bin/icarus programs/pair.ic --file-type=ir
+bin/icarus programs/paren_test.ic --file-type=ir
+bin/icarus programs/pi.ic --file-type=ir
+bin/icarus programs/pointer.ic --file-type=ir
+bin/icarus programs/prime_loop.ic --file-type=ir
+bin/icarus programs/primes_recursive.ic --file-type=ir
+bin/icarus programs/print_array.ic --file-type=ir
+bin/icarus programs/print_overload_test.ic --file-type=ir
+bin/icarus programs/print_test.ic --file-type=ir
+bin/icarus programs/squares.ic --file-type=ir
+bin/icarus programs/stack.ic --file-type=ir
+bin/icarus programs/string_test.ic --file-type=ir
+bin/icarus programs/type.ic --file-type=ir
+bin/icarus programs/type_computation.ic --file-type=ir
+bin/icarus programs/type_return.ic --file-type=ir
+bin/icarus programs/type_literal.ic --file-type=ir
+bin/icarus programs/traits_test.ic --file-type=ir
+bin/icarus programs/ufcs.ic --file-type=ir
+bin/icarus programs/uint_literal_test.ic --file-type=ir
+bin/icarus programs/unique_ptr.ic --file-type=ir
+bin/icarus programs/vec.ic --file-type=ir
+bin/icarus programs/void_return_test.ic --file-type=ir
+bin/icarus programs/water_state.ic --file-type=ir
+bin/icarus programs/while_break.ic --file-type=ir
+bin/icarus programs/wrapper.ic --file-type=ir

@@ -22,44 +22,52 @@
 #include "IR/IR.h"
 
 #include <ncurses.h>
+
+#include "clargs.h"
 static size_t start_time;
 static size_t end_time;
-static size_t total_time;
-static size_t saved_time;
 
+struct Timer {
+  Timer(){};
+
+  std::vector<const char *> msgs;
+  std::vector<size_t> times;
+
+  ~Timer() {
+    if (debug::timer) {
+      size_t total = 0;
+      for (auto time : times) { total += time; }
+
+      for (size_t i = 0; i < msgs.size(); ++i) {
+        char percent_buffer[10];
+        sprintf(percent_buffer, "(%.2f%%)", ((double)(100 * times[i])) / total);
+        fprintf(stderr, "%25s:%15luns %9s\n", msgs[i], times[i],
+                percent_buffer);
+      }
+
+      fprintf(stderr, "%25s:%15luns\n", "Total", total);
+    }
+  }
+} timer;
 // Abusing a for-loop to do timings correctly.
 #define TIME(msg)                                                              \
   for (bool TIME_FLAG = true;                                                  \
+                                                                               \
       start_time  = mach_absolute_time(), TIME_FLAG;                           \
+                                                                               \
       end_time    = mach_absolute_time(),                                      \
-      saved_time  = end_time - start_time,                                     \
-      total_time += saved_time,                                                \
-      debug::timing &&                                                         \
-      (std::cout << std::setw(25) << (msg + std::string(":"))                  \
-                << std::setw(15) << saved_time << "ns" << std::endl),          \
+      timer.msgs.push_back(msg),                                               \
+      timer.times.push_back(end_time - start_time),                            \
       TIME_FLAG = false)
 
 extern llvm::Module *global_module;
-
+extern llvm::TargetMachine *target_machine;
 namespace TypeSystem {
 extern void GenerateLLVM();
 } // namespace TypeSystem
 
 extern llvm::IRBuilder<> builder;
 std::queue<AST::Node *> VerificationQueue;
-
-namespace TypeSystem {
-void initialize();
-extern Type *get(const std::string &name);
-} // namespace TypeSystem
-
-
-namespace debug {
-extern bool timing;
-extern bool parser;
-extern bool parametric_struct;
-extern bool ct_eval;
-} // namespace debug
 
 // The keys in this map represent the file names, and the values represent the
 // syntax trees from the parsed file.
@@ -76,59 +84,52 @@ extern std::map<std::string, AST::Statements *> ast_map;
 namespace error_code {
 enum {
   success = 0, // returning 0 denotes succes
+  CL_arg_failure,
   cyclic_dependency,
   file_does_not_exist,
   parse_error,
-  timing_or_lvalue,
+  lvalue,
   undeclared_identifier
 };
 } // namespace error_code
 
-// If the file name does not have an extension, add ".ic" to the end of it.
-//
-// TODO this is extremely not robust and probably has system dependencies.
-std::string canonicalize_file_name(const std::string &filename) {
-  auto found_dot = filename.find('.');
-  return (found_dot == std::string::npos) ? filename + ".ic" : filename;
-}
+void WriteObjectFile(const char *out_file) {
+  TIME("LLVM") {
+    std::error_code EC;
+    llvm::raw_fd_ostream destination(out_file, EC, llvm::sys::fs::F_None);
+    if (EC) { assert(false && "Not yet implemented: Write error handling."); }
 
-void ParseArguments(int argc, char *argv[]) {
-  for (int arg_num = 1; arg_num < argc; ++arg_num) {
-    auto arg = argv[arg_num];
+    llvm::legacy::PassManager pass;
 
-    if (strcmp(arg, "-P") == 0 || strcmp(arg, "-p") == 0) {
-      debug::parser = true;
+    assert(!target_machine->addPassesToEmitFile(
+               pass, destination, llvm::TargetMachine::CGFT_ObjectFile) &&
+           "TargetMachine can't emit a file of this type");
 
-    } else if (strcmp(arg, "-T") == 0 || strcmp(arg, "-t") == 0) {
-      debug::timing = true;
+    pass.run(*global_module);
 
-    } else if (strcmp(arg, "-S") == 0 || strcmp(arg, "-s") == 0) {
-      debug::parametric_struct = true;
-
-    } else if (strcmp(arg, "-E") == 0 || strcmp(arg, "-e") == 0) {
-      debug::ct_eval = true;
-
-    } else {
-      // Add the file to the queue
-      file_queue.emplace(arg);
-    }
+    destination.flush();
   }
 }
 
 int main(int argc, char *argv[]) {
-  TIME("Argument parsing") { ParseArguments(argc, argv); }
 
-  if (debug::ct_eval) { initscr(); }
+  TIME("Argument parsing") {
+    switch(ParseCLArguments(argc, argv)) {
+      case CLArgFlag::QuitSuccessfully: return error_code::success;
+      case CLArgFlag::QuitWithFailure: return error_code::CL_arg_failure;
+      case CLArgFlag::Continue:;
+    }
+  }
 
-  llvm::TargetMachine *target_machine = nullptr;
-  TIME("Icarus initialization") {
+  TIME("Icarus Initialization") {
+    if (debug::ct_eval) { initscr(); }
+
     // Initialize the names for all the primitive types. Used by the lexer.
     TypeSystem::initialize();
 
     // Initialize the global scope
     Scope::Global = new BlockScope(ScopeType::Global);
     builder.SetInsertPoint(Scope::Global->entry);
-
   }
 
   TIME("LLVM initialization") {
@@ -151,7 +152,7 @@ int main(int argc, char *argv[]) {
     auto target = llvm::TargetRegistry::lookupTarget(
         llvm::sys::getDefaultTargetTriple(), error);
     if (error != "") {
-      std::cout << error << std::endl;
+      std::cerr << error << std::endl;
       assert(false && "Error in target string lookup");
     }
 
@@ -166,7 +167,7 @@ int main(int argc, char *argv[]) {
   }
 
   while (!file_queue.empty()) {
-    std::string file_name = canonicalize_file_name(file_queue.front());
+    std::string file_name = file_queue.front();
     file_queue.pop();
     auto iter = ast_map.find(file_name);
 
@@ -182,15 +183,14 @@ int main(int argc, char *argv[]) {
         << std::endl;
     }
 
-    TIME(file_name + "\n              ...parsing") {
+    TIME("Parsing a file") {
       Parser parser(file_name);
       ast_map[file_name] = (AST::Statements *)parser.parse();
     }
-    
   }
 
   if (error_log.num_errors() != 0) {
-    std::cout << error_log;
+    std::cerr << error_log;
 
     if (debug::ct_eval) { endwin(); }
     return error_code::parse_error;
@@ -246,7 +246,7 @@ int main(int argc, char *argv[]) {
     TypeSystem::GenerateLLVM();
 
     if (error_log.num_errors() != 0) {
-      std::cout << error_log;
+      std::cerr << error_log;
 
       if (debug::ct_eval) { endwin(); }
       return error_code::cyclic_dependency;
@@ -258,10 +258,10 @@ int main(int argc, char *argv[]) {
     global_statements->lrvalue_check();
 
     if (error_log.num_errors() != 0) {
-      std::cout << error_log;
+      std::cerr << error_log;
 
       if (debug::ct_eval) { endwin(); }
-      return error_code::timing_or_lvalue;
+      return error_code::lvalue;
     }
   }
 
@@ -333,35 +333,33 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  TIME("LLVM") {
-    std::error_code EC;
-    llvm::raw_fd_ostream destination("obj.o", EC, llvm::sys::fs::F_None);
-    if (EC) { assert(false && "Not yet implemented: Write error handling."); }
+  switch (file_type) {
+  case FileType::IR: {
+    TIME("Writing IR") {
+      std::ofstream output_file_stream(output_file_name);
+      llvm::raw_os_ostream output_file(output_file_stream);
+      global_module->print(output_file, nullptr);
+    }
+  } break;
 
-    llvm::legacy::PassManager pass;
+  case FileType::Nat: {
+    WriteObjectFile(output_file_name);
 
-    assert(!target_machine->addPassesToEmitFile(
-               pass, destination, llvm::TargetMachine::CGFT_ObjectFile) &&
-           "TargetMachine can't emit a file of this type");
+  } break;
 
-    pass.run(*global_module);
+  case FileType::Bin: {
+    WriteObjectFile("obj.o");
 
-    destination.flush();
-  }
-
-  TIME("Link/system") {
-    std::string input_file_name(argv[1]);
-
-    size_t start = input_file_name.find('/', 0) + 1;
-    size_t end   = input_file_name.find('.', 0);
-
-    system(("gcc obj.o -o bin/" + input_file_name.substr(start, end - start))
-               .c_str());
-  }
-
-  if (debug::timing) {
-    std::cout << std::setw(25) << "TOTAL:" << std::setw(15) << total_time
-              << "ns" << std::endl;
+    TIME("Link/system") {
+      int buff_size  = (int)(strlen(output_file_name) + 24);
+      char *link_str = new char[buff_size];
+      int num_bytes_written =
+          sprintf(link_str, "gcc obj.o -o %s; rm obj.o", output_file_name);
+      assert(buff_size = num_bytes_written + 1);
+      system(link_str);
+      delete[] link_str;
+    }
+  } break;
   }
 
   if (debug::ct_eval) { endwin(); }

@@ -1,17 +1,3 @@
-MyStruct := struct {
-  n: int
-  baz: int -> real
-}
-
 main := void -> void {
-  bar := (this: &MyStruct, n: int, m: int) -> int {
-    return this.n * n - m
-  }
-
-  foo: MyStruct
-  baz := 3
-  foo.n = 17
-
-  print foo.bar(baz, 13), '\n'
+  print "foo\n"
 }
-

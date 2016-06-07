@@ -20,16 +20,10 @@ size_t precedence(Operator op) {
 
 // Debug flags and their default values
 namespace debug {
-
-bool parser = false; // Turns on step-by-step iteration through the shifting and
-                     // reducing of the parser.
-
-bool timing = false; // Turns on timing printout
-
-bool parametric_struct = false; // Turns on printing for debug info of
-                                // parametric-struct code-generation.
-
-bool ct_eval = false; // Step through compile-time function evaluation.
+bool parser            = false;
+bool timer             = false;
+bool parametric_struct = false;
+bool ct_eval           = false;
 }
 
 std::map<std::string, AST::Statements *> ast_map;
@@ -44,7 +38,8 @@ enum class Lib {
 std::map<Lib, AST::Identifier *> lib_type;
 std::queue<std::string> file_queue;
 
-llvm::Module* global_module;
+llvm::Module *global_module         = nullptr;
+llvm::TargetMachine *target_machine = nullptr;
 
 std::map<std::string, llvm::Value*> global_strings;
 

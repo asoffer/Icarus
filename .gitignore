@@ -12,3 +12,5 @@ src/code
 *.o
 
 programs/test.ic
+
+a.out
