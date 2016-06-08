@@ -132,12 +132,16 @@ int main(int argc, char *argv[]) {
     builder.SetInsertPoint(Scope::Global->entry);
   }
 
+  // TODO this initialization can be done asynchronosly. We don't touch LLVM initially.
   TIME("LLVM initialization") {
-    LLVMInitializeAllTargets();
-    LLVMInitializeAllTargetInfos();
-    LLVMInitializeAllTargetMCs();
-    LLVMInitializeAllAsmPrinters();
-    LLVMInitializeAllAsmParsers();
+
+    // TODO Assuming X86 architecture. If a command-line arg says otherwise,
+    // load the appropriate tools
+    LLVMInitializeX86Target();
+    LLVMInitializeX86TargetInfo();
+    LLVMInitializeX86TargetMC();
+    LLVMInitializeX86AsmPrinter();
+    LLVMInitializeX86AsmParser();
 
     llvm::StringMap<bool> host_features;
     llvm::SubtargetFeatures features;
