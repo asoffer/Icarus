@@ -312,7 +312,7 @@ int main(int argc, char *argv[]) {
           auto mangled_name = Mangle(fn_type, decl->identifier);
 
           if (!type->has_vars) {
-            id->decl->alloc = type->allocate();
+            id->decl->alloc = fn_type->allocate();
             id->decl->alloc->setName(mangled_name);
             decl->generate_code();
           }

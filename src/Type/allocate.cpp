@@ -8,8 +8,8 @@ extern llvm::Module *global_module;
 // This method allocates stack space for each particular type.
 
 llvm::Value *Function::allocate() const {
-  return llvm::Function::Create(static_cast<llvm::FunctionType *>(llvm_type),
-                                llvm::Function::ExternalLinkage, "",
+  return llvm::Function::Create((llvm::FunctionType *)llvm_type,
+                                llvm::Function::ExternalLinkage, "__anon.fn",
                                 global_module);
 }
 

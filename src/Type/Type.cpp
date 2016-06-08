@@ -6,7 +6,7 @@ extern llvm::Module *global_module;
 
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
-                                            Type *input_type);
+                                            Function *fn_type);
 
 namespace cstdlib {
 extern llvm::Constant *malloc();
@@ -77,7 +77,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                           llvm::Value *lhs_ptr, llvm::Value *rhs) {
   assert(scope);
   auto assign_fn = GetFunctionReferencedIn(scope, "__assign__",
-                                           Tup({Ptr(lhs_type), rhs_type}));
+                                           Func(Tup({Ptr(lhs_type), rhs_type}), Void));
   if (assign_fn) {
     builder.CreateCall(assign_fn, {lhs_ptr, rhs});
   } else if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
@@ -147,11 +147,12 @@ void Type::CallDestroy(Scope *scope, llvm::Value *var) {
     llvm::Value *destroy_fn = nullptr;
 
     if (scope) {
-      destroy_fn = GetFunctionReferencedIn(scope, "__destroy__", Ptr(this));
+      destroy_fn =
+          GetFunctionReferencedIn(scope, "__destroy__", Func(Ptr(this), Void));
     }
 
     // Use default destroy if none is given.
-    if (!destroy_fn) { destroy_fn = static_cast<Structure *>(this)->destroy(); }
+    if (!destroy_fn) { destroy_fn = ((Structure *)this)->destroy(); }
     builder.CreateCall(destroy_fn, {var});
 
   } else {

@@ -51,7 +51,7 @@ extern llvm::Value *global_string(const std::string &s);
 
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
-                                            Type *input_type);
+                                            Function *fn_type);
 
 static llvm::Value *FunctionComposition(const std::string &name,
                                         llvm::Value *lhs, llvm::Value *rhs,
@@ -59,6 +59,7 @@ static llvm::Value *FunctionComposition(const std::string &name,
   auto old_block = builder.GetInsertBlock();
 
   llvm::FunctionType *llvm_fn_type = *fn_type;
+  // TODO mangle name!
   auto llvm_fn =
       (llvm::Function *)global_module->getOrInsertFunction(name, llvm_fn_type);
 
@@ -152,7 +153,8 @@ static void CallPrint(Expression *expr) {
   // TODO Does this need to be fixed since we removed quantum info?
   if (expr->type->is_struct()) {
     // TODO ensure that it is generated
-    auto print_fn = GetFunctionReferencedIn(expr->scope_, "__print__", expr->type);
+    auto print_fn = GetFunctionReferencedIn(expr->scope_, "__print__",
+                                            Func(expr->type, Void));
     assert(print_fn && "No print function available");
     builder.CreateCall(print_fn, val);
 
@@ -195,7 +197,8 @@ llvm::Value *Unop::generate_code() {
     if (operand->type == Bool) {
       return builder.CreateNot(val);
     } else {
-      auto not_fn = GetFunctionReferencedIn(scope_, "__not__", operand->type);
+      auto not_fn =
+          GetFunctionReferencedIn(scope_, "__not__", Func(operand->type, type));
       assert(not_fn && "No 'not' function available");
       builder.CreateCall(not_fn, val);
     }
@@ -208,7 +211,8 @@ llvm::Value *Unop::generate_code() {
       return builder.CreateFNeg(val, "fneg");
 
     } else if (operand->type->is_struct()) {
-      auto neg_fn = GetFunctionReferencedIn(scope_, "__neg__", operand->type);
+      auto neg_fn =
+          GetFunctionReferencedIn(scope_, "__neg__", Func(operand->type, type));
       assert(neg_fn && "No negation function available");
       // TODO put this alloc at the beginning!
       // TODO what if this returns a primitive, actually return it. otherwise,
@@ -430,6 +434,7 @@ llvm::Value *Binop::generate_code() {
         lhs_val = lhs_id->decl->alloc;
       } else {
         auto mangled_name = Mangle(fn_type, lhs_id, lhs_id->decl->scope_);
+
         lhs_val = global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
       }
       assert(lhs_val);
@@ -544,19 +549,16 @@ llvm::Value *Binop::generate_code() {
 
 #define CREATE_CALL(fn_name)                                                   \
   {                                                                            \
-    auto input_type = Tup({lhs->type, rhs->type});                             \
-    auto fn_type =                                                             \
-        GetFunctionTypeReferencedIn(scope_, "__" fn_name "__", input_type);    \
-    auto fn = GetFunctionReferencedIn(scope_, "__" fn_name "__", input_type);  \
+    auto fn = GetFunctionReferencedIn(                                         \
+        scope_, "__" fn_name "__", Func(Tup({lhs->type, rhs->type}), type));   \
     assert(fn);                                                                \
-    auto output_type = ((Function *)fn_type)->output;                          \
                                                                                \
-    if (output_type == Void) {                                                 \
+    if (type == Void) {                                                        \
       builder.CreateCall(fn, {lhs_val, rhs_val});                              \
       return nullptr;                                                          \
-    } else if (output_type->is_big()) {                                        \
+    } else if (type->is_big()) {                                               \
       assert(scope_->is_block_scope());                                        \
-      auto local_ret = ((BlockScope *)scope_)->CreateLocalReturn(output_type); \
+      auto local_ret = ((BlockScope *)scope_)->CreateLocalReturn(type);        \
       builder.CreateCall(fn, {lhs_val, rhs_val, local_ret});                   \
       return local_ret;                                                        \
     } else {                                                                   \
@@ -820,9 +822,9 @@ llvm::Value *ChainOp::generate_code() {
 
 #define CASE(op_name, OP_NAME)                                                 \
   case Language::Operator::OP_NAME: {                                          \
-    auto call_fn =                                                             \
-        GetFunctionReferencedIn(scope_, "__" #op_name "__",                    \
-                                Tup({exprs[i - 1]->type, exprs[i]->type}));    \
+    auto call_fn = GetFunctionReferencedIn(                                    \
+        scope_, "__" #op_name "__",                                            \
+        Func(Tup({exprs[i - 1]->type, exprs[i]->type}), Bool));                \
     assert(call_fn);                                                           \
     cmp_val =                                                                  \
         builder.CreateCall(call_fn, {lhs_val, rhs_val}, #op_name ".tmp");      \
@@ -889,12 +891,9 @@ llvm::Value *FunctionLiteral::generate_code() {
   if (code_gened) { return llvm_fn; }
 
   if (llvm_fn == nullptr) {
-    assert(type->is_function() && "How is the type not a function?");
-
-    // NOTE: This means a function is not assigned, but has been declared.
-    llvm_fn = llvm::Function::Create((llvm::FunctionType *)type->llvm_type,
-                                     llvm::Function::ExternalLinkage,
-                                     "__anon_fn", global_module);
+    assert(type->is_function());
+    llvm_fn = (llvm::Function *)type->allocate();
+    llvm_fn->setName(Mangle((Function *)type, this));
   }
 
   // Name the inputs
@@ -948,8 +947,6 @@ llvm::Value *FunctionLiteral::generate_code() {
 
   assert(type->is_function());
 
-  llvm_fn->setName(Mangle((Function *)type, this));
-
   code_gened = true;
   return llvm_fn;
 }
@@ -970,9 +967,9 @@ llvm::Value *Declaration::generate_code() {
       auto func            = (FunctionLiteral *)init_val;
       func->fn_scope->name = identifier->token;
 
-      func->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-          mangled_name, llvm_fn_type);
-      alloc = func->llvm_fn;
+      alloc = func->llvm_fn =
+          (llvm::Function *)global_module->getOrInsertFunction(mangled_name,
+                                                               llvm_fn_type);
 
     } else if (init_val->is_binop()) {
       assert(((Binop *)init_val)->op == Language::Operator::Mul);

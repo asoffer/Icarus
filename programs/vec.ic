@@ -1,4 +1,3 @@
-
 vec := struct {
   x: real
   y: real
@@ -38,30 +37,21 @@ main := void -> void {
 
   v3.x += 0.1
 
-  print v1 == v2 == v3 == v4
-  print '\n'
-  print v1 != v2
-  print '\n'
+  print v1 == v2 == v3 == v4, '\n'
+  print v1 != v2, '\n'
   v1.x = 3.0
   v1.y = 4.0
   v1.z = 12.0
-  print "\nv1.x = "
-  print v1.x
+  print "\nv1.x = ", v1.x
   v2 = -v1
-  print "\nv1 = "
-  print v1
-  print "\nv2 = "
-  print v2
+  print "\nv1 = ", v1
+  print "\nv2 = ", v2
 
   v2 = v1 + v3
-  print "\nv2 = "
-  print v2
+  print "\nv2 = ", v2
   v2 = v1 - v3
-  print "\nv2 = "
-  print v2
-  print "\n<v1, v2> = "
-  print v1 * v2
-  print "\n"
+  print "\nv2 = ", v2
+  print "\n<v1, v2> = ", v1 * v2, '\n'
 
 
   __ne__ := (lhs: vec, rhs: vec) -> bool {
@@ -75,13 +65,7 @@ main := void -> void {
   }
 
   __print__ := (v: vec) -> void {
-    print "("
-    print v.x
-    print ", "
-    print v.y
-    print ", "
-    print v.z
-    print ")"
+    print "(", v.x, ", ", v.y, ", ", v.z, ")"
   }
 
   __neg__ := (v: vec) -> vec {

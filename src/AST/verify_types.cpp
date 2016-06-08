@@ -1001,25 +1001,49 @@ void Binop::verify_types() {
         (lhs->type == Real && rhs->type == Real)) {                            \
       type = ret_type;                                                         \
     } else {                                                                   \
+      /* Store a vector containing the valid matches */                        \
+      std::vector<Declaration *> matched_op_name;                              \
+                                                                               \
       for (auto scope_ptr = scope_; scope_ptr;                                 \
            scope_ptr = scope_ptr->parent) {                                    \
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__" op_name "__");      \
-        if (!id_ptr) { continue; }                                             \
-        id_ptr->verify_types();                                                \
+        /* TODO this linear search is probably not ideal.   */                 \
+        for (auto decl : scope_ptr->DeclRegistry) {                            \
+          if (decl->identifier->token == "__" op_name "__") {                  \
+            decl->verify_types();                                              \
+            matched_op_name.push_back(decl);                                   \
+          }                                                                    \
+        }                                                                      \
       }                                                                        \
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__" op_name "__",    \
-                                                 Tup({lhs->type, rhs->type})); \
-      if (fn_type) {                                                           \
-        type = ((Function *)fn_type)->output;                                  \
-      } else {                                                                 \
+                                                                               \
+      Declaration *correct_decl = nullptr;                                     \
+      for (auto decl : matched_op_name) {                                      \
+        if (!decl->type->is_function()) { continue; }                          \
+        auto fn_type = (Function *)decl->type;                                 \
+        if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
+        /* If you get here, you've found a match. Hope there is only one       \
+         * TODO if there is more than one, log them all and give a good        \
+         * *error message. For now, we just fail */                            \
+        if (correct_decl) {                                                    \
+          error_log.log(loc, "Already found a match for operator `" symbol     \
+                             "` with types " +                                 \
+                                 lhs->type->to_string() + " and " +            \
+                                 rhs->type->to_string());                      \
+          type = Error;                                                        \
+        } else {                                                               \
+          correct_decl = decl;                                                 \
+        }                                                                      \
+      }                                                                        \
+      if (!correct_decl) {                                                     \
         type = Error;                                                          \
         error_log.log(loc, "No known operator overload for `" symbol           \
                            "` with types " +                                   \
                                lhs->type->to_string() + " and " +              \
                                rhs->type->to_string());                        \
+      } else if (type != Error) {                                              \
+        type = ((Function *)correct_decl->type)->output;                       \
       }                                                                        \
     }                                                                          \
-  } break
+  } break;
 
     CASE(Add, "add", "+", lhs->type);
     CASE(Sub, "sub", "-", lhs->type);

@@ -359,7 +359,14 @@ void FnScope::allocate(Scope* scope) {
     if (decl_ptr->type->time() == Time::compile) { continue; }
 
     decl_ptr->alloc = decl_ptr->type->allocate();
-    decl_ptr->alloc->setName(decl_ptr->identifier->token);
+    if (decl_ptr->type->is_function()) {
+      auto fn_type      = (Function *)decl_ptr->type;
+      auto mangled_name = Mangle(fn_type, decl_ptr->identifier);
+
+      decl_ptr->alloc->setName(mangled_name);
+    } else {
+      decl_ptr->alloc->setName(decl_ptr->identifier->token);
+    }
   }
 }
 

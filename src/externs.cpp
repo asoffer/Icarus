@@ -204,8 +204,7 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
 }
 
 llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
-                                     Type *input_type) {
-  Function *fn_type = Func(input_type, Void);
+                                     Function *fn_type) {
   Scope *scope_ptr = scope;
   AST::Declaration *decl;
 
@@ -219,7 +218,6 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
   if (!decl) { return nullptr; }
 
   auto mangled_name = Mangle(fn_type, decl->identifier, scope_ptr);
-
   llvm::FunctionType *llvm_fn_type = *fn_type;
 
   if(!decl->alloc) {
