@@ -110,8 +110,6 @@ void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
 
   for (auto decl_ptr : ordered_decls_) {
-    auto decl_id = decl_ptr->identifier;
-
     if (decl_ptr->type->time() == Time::compile) continue;
     if (!decl_ptr->type->stores_data()) continue;
 
@@ -126,7 +124,7 @@ void BlockScope::initialize() {
     //   continue;
 
     // } else {
-    if (decl_id->arg_val ||
+    if (decl_ptr->arg_val ||
         (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
       continue;
     }
@@ -150,7 +148,7 @@ void BlockScope::uninitialize() {
     auto decl_id  = decl_ptr->identifier;
 
     // TODO is this correct?
-    if (decl_id->arg_val) continue;
+    if (decl_ptr->arg_val) continue;
     if (!decl_id->type->stores_data()) continue;
 
     decl_id->type->CallDestroy(this, decl_ptr->alloc);
@@ -335,10 +333,8 @@ void FnScope::allocate(Scope* scope) {
 
   // TODO iterate through fn args
   for (const auto& decl_ptr : scope->ordered_decls_) {
-    auto decl_id = decl_ptr->identifier;
-
     // Insert this alloc in the FunctionLiteral node
-    if (decl_id->arg_val && decl_ptr->type->is_big()) { continue; }
+    if (decl_ptr->arg_val && decl_ptr->type->is_big()) { continue; }
 
     // TODO Set the types name
     if (decl_ptr->type->time() == Time::compile) { continue; }

@@ -63,10 +63,12 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   auto fn_lit              = new FunctionLiteral;
   fn_lit->return_type_expr = (Expression *)return_type_expr->CLONE;
   fn_lit->statements       = (Statements *)statements->CLONE;
-  fn_lit->code_gened       = code_gened;
+  fn_lit->code_gened       = code_gened; // TODO really?? Seems fishy
 
   for (auto input : inputs) {
-    fn_lit->inputs.push_back((Declaration *)input->CLONE);
+    auto cloned_input     = (Declaration *)input->CLONE;
+    cloned_input->arg_val = this;
+    fn_lit->inputs.push_back(cloned_input);
   }
 
 
@@ -197,9 +199,10 @@ Node *InDecl::clone(LOOKUP_ARGS) {
 }
 
 Node *Declaration::clone(LOOKUP_ARGS) {
-  auto decl        = new Declaration;
-  decl->identifier = (Identifier *)identifier->CLONE;
-  decl->hashtags   = hashtags;
+  auto decl              = new Declaration;
+  decl->identifier       = (Identifier *)identifier->CLONE;
+  decl->identifier->decl = decl;
+  decl->hashtags         = hashtags;
 
   if (type_expr) { decl->type_expr = (Expression *)type_expr->CLONE; }
   if (init_val) { decl->init_val = (Expression *)init_val->CLONE; }

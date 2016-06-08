@@ -165,7 +165,6 @@ struct Identifier : public Terminal {
   std::string token;
 
   Declaration *decl;
-  Expression *arg_val;
 };
 
 struct Binop : public Expression {
@@ -197,6 +196,10 @@ struct Declaration : public Expression {
   Expression *type_expr;
   Expression *init_val;
   llvm::Value *alloc;
+
+  // If it's an argument, this points to the function/parametric-struct for
+  // which it's an argument. Otherwise this field is null.
+  Expression *arg_val;
 
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }

@@ -419,13 +419,13 @@ IR::Value FunctionLiteral::EmitIR() {
   }
 
   for (auto decl : fn_scope->ordered_decls_) {
-    if (decl->identifier->arg_val) { continue; }
+    if (decl->arg_val) { continue; }
     ir_func->PushLocal(decl);
   }
 
   for (auto scope : fn_scope->innards_) {
     for (auto decl : scope->ordered_decls_) {
-      if (decl->identifier->arg_val) { continue; }
+      if (decl->arg_val) { continue; }
       ir_func->PushLocal(decl);
     }
   }
@@ -443,12 +443,12 @@ IR::Value Statements::EmitIR() {
 }
 
 IR::Value Identifier::EmitIR() {
-  if (arg_val && arg_val->is_function_literal()) {
+  if (decl->arg_val && decl->arg_val->is_function_literal()) {
     // TODO Iterating through linearly is probably not smart.
-    auto fn = (FunctionLiteral *)arg_val;
+    auto fn = (FunctionLiteral *)decl->arg_val;
     size_t arg_num = 0;
     for (auto in : fn->inputs) {
-      if (this != in->identifier) {
+      if (decl != in) {
         ++arg_num;
         continue;
       }
@@ -470,6 +470,8 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
+    assert(IR::Func::Current->frame_map.find(this) !=
+           IR::Func::Current->frame_map.end());
     return IR::PtrCallFix(
         type, IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
   }

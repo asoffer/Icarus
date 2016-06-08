@@ -59,8 +59,8 @@ static llvm::Value *FunctionComposition(const std::string &name,
   auto old_block = builder.GetInsertBlock();
 
   llvm::FunctionType *llvm_fn_type = *fn_type;
-  auto llvm_fn = static_cast<llvm::Function *>(
-      global_module->getOrInsertFunction(name, llvm_fn_type));
+  auto llvm_fn =
+      (llvm::Function *)global_module->getOrInsertFunction(name, llvm_fn_type);
 
   auto entry = make_block("entry", llvm_fn);
   builder.SetInsertPoint(entry);
@@ -110,14 +110,14 @@ llvm::Value *Terminal::generate_code() {
     auto str_alloc = builder.CreateAlloca(*type);
 
     auto len_ptr = builder.CreateGEP(
-        str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String)->field_num("_length")},
+        str_alloc,
+        {data::const_uint(0), ((Structure *)String)->field_num("_length")},
         "len_ptr");
     builder.CreateStore(len, len_ptr);
 
     auto char_array_ptr = builder.CreateGEP(
-        str_alloc, {data::const_uint(0),
-                    static_cast<Structure *>(String)->field_num("_chars")},
+        str_alloc,
+        {data::const_uint(0), ((Structure *)String)->field_num("_chars")},
         "char_array_ptr");
 
     // NOTE: no need to uninitialize because we never initialized it.
@@ -428,7 +428,7 @@ llvm::Value *Binop::generate_code() {
 
       llvm::FunctionType *llvm_fn_type = *fn_type;
 
-      if (lhs_id->arg_val) {
+      if (lhs_id->decl->arg_val) {
         lhs_val = lhs_id->decl->alloc;
       } else {
         auto mangled_name = Mangle(fn_type, lhs_id, lhs_id->decl->scope_);
@@ -1063,7 +1063,7 @@ llvm::Value *ArrayLiteral::generate_code() {
 
   auto current_block = builder.GetInsertBlock();
   assert(CurrentScope()->is_block_scope());
-  auto curr_scope = static_cast<BlockScope *>(CurrentScope());
+  auto curr_scope = (BlockScope *)CurrentScope();
   auto entry_block = curr_scope->is_function_scope()
                          ? curr_scope->entry
                          : curr_scope->containing_function_->entry;
@@ -1093,7 +1093,7 @@ llvm::Value *ArrayLiteral::generate_code() {
   }
 
   assert(scope_->is_block_scope());
-  static_cast<BlockScope *>(scope_)->defer_uninit(type, array_data);
+  ((BlockScope *)scope_)->defer_uninit(type, array_data);
 
   return array_data;
 }
@@ -1153,7 +1153,7 @@ llvm::Value *Conditional::generate_code() {
         builder.CreateLoad(body_scopes[i]->containing_function_->ExitFlag());
 
     assert(body_scopes[i]->parent->is_block_scope());
-    auto parent_block_scope = static_cast<BlockScope *>(body_scopes[i]->parent);
+    auto parent_block_scope = (BlockScope *)body_scopes[i]->parent;
     auto is_zero = builder.CreateICmpEQ(exit_flag, data::const_char('\00'));
     builder.CreateCondBr(is_zero, land_block, parent_block_scope->exit);
 
@@ -1173,11 +1173,11 @@ llvm::Value *Jump::generate_code() {
   if (CurrentScope()->is_function_scope()) {
     if (jump_type == JumpType::Return) {
       // Don't generate the exit flag if we're returning from the base level.
-      builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
+      builder.CreateBr(((BlockScope *)CurrentScope())->exit);
       return nullptr;
     } else {
       // But do generate it if we're not at the base level.
-      exit_flag_alloc = static_cast<FnScope *>(CurrentScope())->ExitFlag();
+      exit_flag_alloc = ((FnScope *)CurrentScope())->ExitFlag();
     }
   } else {
     // Otherwise generate the exit flag for the containing scope
@@ -1202,7 +1202,7 @@ llvm::Value *Jump::generate_code() {
   } break;
   }
 
-  builder.CreateBr(static_cast<BlockScope *>(CurrentScope())->exit);
+  builder.CreateBr(((BlockScope *)CurrentScope())->exit);
 
   return nullptr;
 }
@@ -1243,7 +1243,7 @@ llvm::Value *While::generate_code() {
   switch_stmt->addCase(BREAK_FLAG, while_scope->land);
 
   assert(while_scope->parent->is_block_scope());
-  auto parent_block_scope = static_cast<BlockScope *>(while_scope);
+  auto parent_block_scope = (BlockScope *)while_scope;
   switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
 
   // Landing
@@ -1299,7 +1299,7 @@ llvm::Value *For::generate_code() {
       // here.
       assert(container->is_binop());
 
-      auto container_as_binop = static_cast<Binop *>(container);
+      auto container_as_binop = (Binop *)container;
       assert(container_as_binop->op == Language::Operator::Index &&
              container_as_binop->lhs->type->is_array());
 
@@ -1307,7 +1307,7 @@ llvm::Value *For::generate_code() {
 
       auto array      = container_as_binop->lhs;
       auto array_val  = array->generate_code();
-      auto array_type = static_cast<Array *>(array->type);
+      auto array_type = (Array *)array->type;
 
       auto range      = container_as_binop->rhs;
       llvm::Value *start_num, *end_num;
@@ -1316,7 +1316,7 @@ llvm::Value *For::generate_code() {
         end_num   = static_cast<Binop *>(range)->rhs->generate_code();
       } else {
         assert(container_as_binop->rhs->is_unop());
-        auto range_as_unop = static_cast<Unop *>(range);
+        auto range_as_unop = (Unop *)range;
         assert(range_as_unop->op == Language::Operator::Dots);
         start_num = range_as_unop->operand->generate_code();
 
@@ -1409,10 +1409,8 @@ llvm::Value *For::generate_code() {
 
         /* Work on init block */
         builder.SetInsertPoint(init_iters);
-        llvm::Value *start_val =
-            static_cast<Binop *>(container)->lhs->generate_code();
-        llvm::Value *end_val =
-            static_cast<Binop *>(container)->rhs->generate_code();
+        llvm::Value *start_val = ((Binop *)container)->lhs->generate_code();
+        llvm::Value *end_val   = ((Binop *)container)->rhs->generate_code();
 
         /* Work on phi block */
         builder.SetInsertPoint(phi_block);
@@ -1429,12 +1427,11 @@ llvm::Value *For::generate_code() {
         // ^ TODO should be testing for LE because of edge case 
 
       } else if (container->is_unop()) {
-        assert(static_cast<Unop *>(container)->op == Language::Operator::Dots);
+        assert(((Unop *)container)->op == Language::Operator::Dots);
 
         /* Work on init block */
         builder.SetInsertPoint(init_iters);
-        llvm::Value *start_val =
-            static_cast<Unop *>(container)->operand->generate_code();
+        llvm::Value *start_val = ((Unop *)container)->operand->generate_code();
 
         /* Work on phi block */
         builder.SetInsertPoint(phi_block);
@@ -1520,7 +1517,7 @@ llvm::Value *For::generate_code() {
   switch_stmt->addCase(REPEAT_FLAG, for_scope->entry);
   switch_stmt->addCase(BREAK_FLAG, for_scope->land);
   assert(for_scope->parent->is_block_scope());
-  auto parent_block_scope = static_cast<BlockScope *>(for_scope->parent);
+  auto parent_block_scope = ((BlockScope *)for_scope->parent);
   switch_stmt->addCase(RETURN_FLAG, parent_block_scope->exit);
 
   Scope::Stack.pop();

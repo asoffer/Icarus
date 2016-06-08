@@ -215,7 +215,7 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
       if (fn_type->input != input_type) { continue; }
       llvm::FunctionType *llvm_fn_type = *fn_type;
 
-      if (id_ptr->arg_val) {
+      if (id_ptr->decl->arg_val) {
           return id_ptr->decl->alloc;
       } else {
           auto mangled_name =

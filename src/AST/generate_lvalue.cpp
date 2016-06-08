@@ -10,7 +10,10 @@ extern llvm::ConstantInt *const_uint(size_t n);
 } // namespace data
 
 namespace AST {
-llvm::Value *Identifier::generate_lvalue() { return decl->alloc; }
+llvm::Value *Identifier::generate_lvalue() { 
+  assert(decl);
+  return decl->alloc;
+}
 
 llvm::Value *Unop::generate_lvalue() {
   if (op == Language::Operator::At) { return operand->generate_code(); }
@@ -39,7 +42,7 @@ llvm::Value *Access::generate_lvalue() {
   auto e_lval = operand->generate_lvalue();
 
   while (etype->is_pointer()) {
-    etype  = static_cast<Pointer *>(etype)->pointee;
+    etype  = ((Pointer *)etype)->pointee;
     e_lval = builder.CreateLoad(e_lval);
   }
 

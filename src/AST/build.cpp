@@ -101,7 +101,7 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
     struct_lit_ptr->decls.push_back(steal<Declaration>(node));
   }
 
-  for (auto param : struct_lit_ptr->params) { param->identifier->arg_val = struct_lit_ptr; }
+  for (auto param : struct_lit_ptr->params) { param->arg_val = struct_lit_ptr; }
 
   return struct_lit_ptr;
 }
@@ -580,23 +580,19 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  if (nodes[2]->is_statements()) {
-    fn_lit->statements = steal<Statements>(nodes[2]);
-  } else {
-    fn_lit->statements = new Statements;
-  }
+  fn_lit->statements =
+      nodes[2]->is_statements() ? steal<Statements>(nodes[2]) : new Statements;
 
   // TODO scopes inside these statements should point to fn_scope.
 
-  auto binop_ptr = static_cast<Binop *>(nodes[0]);
+  auto binop_ptr = (Binop *)nodes[0];
 
   fn_lit->return_type_expr = steal<Expression>(binop_ptr->rhs);
   auto input_args          = steal<Expression>(binop_ptr->lhs);
 
-  // TODO What if the fn_expression is more complicated, like a function
-  // of the form (int -> int) -> int? I'm not sure how robust this is
   if (input_args->is_declaration()) {
-    fn_lit->inputs.push_back(static_cast<Declaration *>(input_args));
+    fn_lit->inputs.push_back((Declaration *)input_args);
+    ((Declaration *)input_args)->arg_val = fn_lit;
 
   } else if (input_args->is_comma_list()) {
     auto decl_list = steal<ChainOp>(input_args);
@@ -606,7 +602,10 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
 
     size_t index = 0;
     for (auto &&expr : decl_list->exprs) {
-      fn_lit->inputs[index++] = steal<Declaration>(expr);
+      assert(expr->is_declaration());
+      fn_lit->inputs[index] = steal<Declaration>(expr);
+      ((Declaration *)fn_lit->inputs[index])->arg_val = fn_lit;
+      ++index;
     }
     delete input_args;
     input_args = nullptr;
