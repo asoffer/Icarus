@@ -363,6 +363,8 @@ int main(int argc, char *argv[]) {
       delete[] link_str;
     }
   } break;
+
+  case FileType::None: /* Do nothing, just exit */ break;
   }
 
   if (debug::ct_eval) { endwin(); }

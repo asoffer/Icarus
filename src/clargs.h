@@ -9,7 +9,7 @@ extern bool ct_eval;
 } // namespace debug
 
 enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
-enum class FileType { Bin, IR, Nat };
+enum class FileType { Bin, IR, Nat, None };
 
 FileType file_type = FileType::Bin;
 const char *output_file_name = "a.out";
@@ -24,15 +24,19 @@ ShowUsage(char *argv0) {
           "Usage: %s [options] input_file... -o output_file\n\n"
           "  -o output_file                 Default is a.out\n\n"
           "  -e, --eval                     Run compile-time evaluator step-by-step (debug).\n\n"
-          "  --file-type=[ir|nat|bin]       Output a file of the specified type:\n"
-          "                                   ir  - LLVM intermediate representation\n"
-          "                                   nat - Output a native object file\n"
-          "                                   bin - Output a single native object file and link it (requires gcc).\n"
-          "                                         This is the default option.\n\n"
+          "  --file-type=[ir|nat|bin|none]  Output a file of the specified type:\n"
+          "                                   ir   - LLVM intermediate representation\n"
+          "                                   nat  - Output a native object file\n"
+          "                                   bin  - Output a single native object file and\n"
+          "                                          link it (requires gcc)\n"
+          "                                   none - Do not write any files (debug)\n"
+          "                                          This is the default option.\n\n"
           "  -h, --help                     Display this usage message.\n\n"
           "  -p, --parser                   Display step-by-step file parsing (debug).\n\n"
-          "  -s, --param-struct             Display debug information for parametric struct cloning (debug).\n\n"
-          "  -t, --timer                    Display timing information for compilation steps (debug).\n\n"
+          "  -s, --param-struct             Display debug information for parametric struct\n"
+          "                                 cloning (debug).\n\n"
+          "  -t, --timer                    Display timing information for each of the\n"
+          "                                 compilation steps (debug).\n\n"
           "\n",
           argv0);
 }
@@ -79,6 +83,11 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
 
             } else if (strcmp(ptr, "bin") == 0) {
               file_type = FileType::Bin;
+              *ptr = '=';
+              goto next_arg;
+
+            } else if (strcmp(ptr, "none") == 0) {
+              file_type = FileType::None;
               *ptr = '=';
               goto next_arg;
 
