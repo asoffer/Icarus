@@ -110,6 +110,7 @@ void BlockScope::initialize() {
   builder.SetInsertPoint(entry);
 
   for (auto decl_ptr : ordered_decls_) {
+    if (decl_ptr->is_indecl()) continue;
     if (decl_ptr->type->time() == Time::compile) continue;
     if (!decl_ptr->type->stores_data()) continue;
 

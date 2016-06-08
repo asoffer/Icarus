@@ -128,6 +128,7 @@ llvm::Value *Terminal::generate_code() {
                           {data::const_uint(0), data::const_uint(1)}),
         "char_data_ptr");
 
+
     builder.CreateCall(cstdlib::memcpy(), {char_data_ptr, str, len});
 
     return str_alloc;
@@ -179,9 +180,7 @@ llvm::Value *Unop::generate_code() {
   }
   case Language::Operator::Print: {
     if (operand->is_comma_list()) {
-      for (auto expr: static_cast<ChainOp *>(operand)->exprs) {
-        CallPrint(expr);
-      }
+      for (auto expr : ((ChainOp *)operand)->exprs) { CallPrint(expr); }
     } else {
       CallPrint(operand);
     }
@@ -234,7 +233,7 @@ llvm::Value *Unop::generate_code() {
   }
   case Language::Operator::Return: {
     assert(scope_->is_block_scope());
-    static_cast<BlockScope *>(scope_)->make_return(val);
+    ((BlockScope *)scope_)->make_return(val);
     return nullptr;
   }
   case Language::Operator::At: {
@@ -270,12 +269,12 @@ llvm::Value *Access::generate_code() {
     }
 
     assert(expr_as_type->is_enum() && "Expression should be an enum");
-    return static_cast<Enumeration *>(expr_as_type)->get_value(member_name);
+    return ((Enumeration *)expr_as_type)->get_value(member_name);
 
   } else if (operand->type->is_array() && member_name == "size" &&
-             static_cast<Array *>(operand->type)->fixed_length) {
+             ((Array *)operand->type)->fixed_length) {
     // Fixed length arrays shouldn't bother to do any real code-gen
-    return data::const_uint(static_cast<Array *>(operand->type)->len);
+    return data::const_uint(((Array *)operand->type)->len);
   }
 
   // Generate the code for the operand
@@ -285,7 +284,7 @@ llvm::Value *Access::generate_code() {
   // loading values while we're looking at pointers.
   auto base_type = operand->type;
   while (base_type->is_pointer()) {
-    base_type = static_cast<Pointer *>(base_type)->pointee;
+    base_type = ((Pointer *)base_type)->pointee;
     if (!base_type->is_big()) eval = builder.CreateLoad(eval);
   }
 
@@ -295,7 +294,7 @@ llvm::Value *Access::generate_code() {
   }
 
   if (base_type->is_struct()) {
-    auto struct_type = static_cast<Structure *>(base_type);
+    auto struct_type = (Structure *)base_type;
 
     if (!type->stores_data()) { assert(false && "Not yet implemented"); }
 
@@ -316,7 +315,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
   // Treat functions special
   if (lhs->is_identifier() && rhs->type->is_function()) {
-    auto id           = static_cast<Identifier *>(lhs);
+    auto id           = (Identifier *)lhs;
     auto fn_type      = (Function *)rhs->type;
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
     auto mangled_name = Mangle(fn_type, lhs);
@@ -327,11 +326,11 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
       auto fn            = (FunctionLiteral *)rhs;
       fn->fn_scope->name = id->token;
 
-      fn->llvm_fn = static_cast<llvm::Function *>(
-          global_module->getOrInsertFunction(mangled_name, llvm_fn_type));
+      fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+          mangled_name, llvm_fn_type);
 
     } else if (rhs->is_binop() &&
-               static_cast<Binop *>(rhs)->op == Language::Operator::Mul) {
+               ((Binop *)rhs)->op == Language::Operator::Mul) {
       auto binop   = (Binop *)rhs;
       auto lhs_val = binop->lhs->generate_code();
       auto rhs_val = binop->rhs->generate_code();
@@ -350,8 +349,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
     assert(var && "LHS of assignment generated null code");
 
     if (rhs->is_terminal() &&
-        static_cast<Terminal *>(rhs)->terminal_type ==
-            Language::Terminal::Hole) {
+        ((Terminal *)rhs)->terminal_type == Language::Terminal::Hole) {
       return nullptr;
     }
     val = rhs->generate_code();
@@ -365,7 +363,7 @@ static llvm::Value *generate_assignment_code(Expression *lhs, Expression *rhs) {
 
 static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
   if (arg->is_comma_list()) {
-    auto &arg_exprs = static_cast<ChainOp *>(arg)->exprs;
+    auto &arg_exprs = ((ChainOp *)arg)->exprs;
     auto num_args   = arg_exprs.size();
 
     std::vector<llvm::Value *> arg_vals(num_args, nullptr);
@@ -527,8 +525,7 @@ llvm::Value *Binop::generate_code() {
       } else if (type->is_big() && !type->is_function()) {
         assert(scope_->is_block_scope());
 
-        auto local_ret =
-            static_cast<BlockScope *>(scope_)->CreateLocalReturn(type);
+        auto local_ret = ((BlockScope *)scope_)->CreateLocalReturn(type);
         arg_vals.push_back(local_ret);
 
         builder.CreateCall(lhs_val, arg_vals);
@@ -552,15 +549,14 @@ llvm::Value *Binop::generate_code() {
         GetFunctionTypeReferencedIn(scope_, "__" fn_name "__", input_type);    \
     auto fn = GetFunctionReferencedIn(scope_, "__" fn_name "__", input_type);  \
     assert(fn);                                                                \
-    auto output_type = static_cast<Function *>(fn_type)->output;               \
+    auto output_type = ((Function *)fn_type)->output;                          \
                                                                                \
     if (output_type == Void) {                                                 \
       builder.CreateCall(fn, {lhs_val, rhs_val});                              \
       return nullptr;                                                          \
     } else if (output_type->is_big()) {                                        \
       assert(scope_->is_block_scope());                                        \
-      auto local_ret =                                                         \
-          static_cast<BlockScope *>(scope_)->CreateLocalReturn(output_type);   \
+      auto local_ret = ((BlockScope *)scope_)->CreateLocalReturn(output_type); \
       builder.CreateCall(fn, {lhs_val, rhs_val, local_ret});                   \
       return local_ret;                                                        \
     } else {                                                                   \
@@ -598,8 +594,8 @@ llvm::Value *Binop::generate_code() {
     PRIMITIVE_CALL(Uint, Mul, "mul")
     PRIMITIVE_CALL(Real, FMul, "fmul")
     if (lhs->type->is_function() && rhs->type->is_function()) {
-      auto output_type = Func(static_cast<Function *>(rhs->type)->input,
-                              static_cast<Function *>(lhs->type)->output);
+      auto output_type = Func(((Function *)rhs->type)->input,
+                              ((Function *)lhs->type)->output);
       return FunctionComposition("__anon_fn", lhs_val, rhs_val, output_type);
     }
     CREATE_CALL("mul")
@@ -771,7 +767,7 @@ llvm::Value *ChainOp::generate_code() {
   // Count the number of incoming branches into the phi node. This is equal to
   // the number of exprs, unless it's & or |. In those instances, it is one more
   // than the number of expressions.
-  auto num_incoming = static_cast<unsigned int>(exprs.size());
+  auto num_incoming = (unsigned int)exprs.size();
   if (expr_type == Bool) ++num_incoming;
 
   // Create the phi node
@@ -896,9 +892,9 @@ llvm::Value *FunctionLiteral::generate_code() {
     assert(type->is_function() && "How is the type not a function?");
 
     // NOTE: This means a function is not assigned, but has been declared.
-    llvm_fn = llvm::Function::Create(
-        static_cast<llvm::FunctionType *>(type->llvm_type),
-        llvm::Function::ExternalLinkage, "__anon_fn", global_module);
+    llvm_fn = llvm::Function::Create((llvm::FunctionType *)type->llvm_type,
+                                     llvm::Function::ExternalLinkage,
+                                     "__anon_fn", global_module);
   }
 
   // Name the inputs
@@ -1019,9 +1015,8 @@ llvm::Value *Case::generate_code() {
   auto case_landing = make_block("case.landing", parent_fn);
   builder.SetInsertPoint(case_landing);
 
-  llvm::PHINode *phi_node =
-      builder.CreatePHI(*(type->is_big() ? Ptr(type) : type),
-                        static_cast<unsigned int>(num_key_vals), "phi");
+  llvm::PHINode *phi_node = builder.CreatePHI(
+      *(type->is_big() ? Ptr(type) : type), (unsigned int)num_key_vals, "phi");
   builder.SetInsertPoint(current_block);
 
   for (size_t i = 0; i < case_blocks.size(); ++i) {
@@ -1312,8 +1307,8 @@ llvm::Value *For::generate_code() {
       auto range      = container_as_binop->rhs;
       llvm::Value *start_num, *end_num;
       if (container_as_binop->rhs->is_binop()) {
-        start_num = static_cast<Binop *>(range)->lhs->generate_code();
-        end_num   = static_cast<Binop *>(range)->rhs->generate_code();
+        start_num = ((Binop *)range)->lhs->generate_code();
+        end_num   = ((Binop *)range)->rhs->generate_code();
       } else {
         assert(container_as_binop->rhs->is_unop());
         auto range_as_unop = (Unop *)range;
@@ -1405,7 +1400,7 @@ llvm::Value *For::generate_code() {
 
     } else if (container->type->is_range()) {
       if (container->is_binop()) {
-        assert(static_cast<Binop *>(container)->op == Language::Operator::Dots);
+        assert(((Binop *)container)->op == Language::Operator::Dots);
 
         /* Work on init block */
         builder.SetInsertPoint(init_iters);

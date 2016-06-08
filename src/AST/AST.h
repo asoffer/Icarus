@@ -67,6 +67,7 @@ struct Node {
   virtual bool is_comma_list() const { return false; }
   virtual bool is_in_decl() const { return false; }
   virtual bool is_declaration() const { return false; }
+  virtual bool is_indecl() const { return false; }
   virtual bool is_array_type() const { return false; }
   virtual bool is_parametric_struct_literal() const { return false; }
   virtual bool is_struct_literal() const { return false; }
@@ -234,6 +235,7 @@ struct InDecl : public Declaration {
   EXPR_FNS(InDecl, in_decl);
   static Node *Build(NPtrVec &&nodes);
 
+  virtual bool is_indecl() const override { return true; }
   virtual bool is_declaration() const override { return false; }
   Expression *container;
 };
