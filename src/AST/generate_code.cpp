@@ -965,12 +965,14 @@ llvm::Value *Declaration::generate_code() {
     auto llvm_fn_type = (llvm::FunctionType *)fn_type->llvm_type;
     auto mangled_name = Mangle(fn_type, identifier, scope_);
 
+    assert(init_val);
     if (init_val->is_function_literal()) {
       auto func            = (FunctionLiteral *)init_val;
       func->fn_scope->name = identifier->token;
 
       func->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
           mangled_name, llvm_fn_type);
+      alloc = func->llvm_fn;
 
     } else if (init_val->is_binop()) {
       assert(((Binop *)init_val)->op == Language::Operator::Mul);

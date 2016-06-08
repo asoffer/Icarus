@@ -51,6 +51,7 @@ std::string Mangle(const Type *t, bool prefix) {
   return ss.str();
 }
 
+// TODO Mangle could just take a declaration and the type could be pulled out.
 std::string Mangle(const Function *f, AST::Expression *expr,
                    Scope *starting_scope) {
   std::string name =

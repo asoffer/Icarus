@@ -26,6 +26,24 @@ Scope::Scope()
     : parent(Scope::Global), containing_function_(nullptr),
       name("anon" + std::to_string(scope_num_counter++)) {}
 
+AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
+                                        Type *declared_type) {
+  for (auto decl : DeclRegistry) {
+    if (decl->type == declared_type && decl->identifier->token == name) {
+      return decl;
+    }
+  }
+  return nullptr;
+}
+
+AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name, Type *declared_type) {
+  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
+    auto ptr = scope_ptr->DeclHereOrNull(name, declared_type);
+    if (ptr) { return ptr; }
+  }
+  return nullptr;
+}
+
 AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
   for (auto decl : DeclRegistry) {
     if (decl->identifier->token == name) { return decl->identifier; }

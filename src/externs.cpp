@@ -91,28 +91,27 @@ llvm::Constant *null_pointer(Type *t) {
 
 llvm::Constant *null(const Type *t) {
   assert(t->is_pointer() && "type must be a pointer to have a null value");
-  return null_pointer(static_cast<const Pointer *>(t)->pointee);
+  return null_pointer(((const Pointer *)t)->pointee);
 }
 
 llvm::ConstantInt *const_int(long n) {
-  return llvm::ConstantInt::get(
-      llvm::getGlobalContext(),
-      llvm::APInt(32, static_cast<unsigned int>(n), false));
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(32, (unsigned int)n, false));
 }
 
 llvm::ConstantInt *const_uint(size_t n) {
   // The safety of this cast is verified only in debug mode
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                llvm::APInt(32, static_cast<size_t>(n), false));
-  }
+                                llvm::APInt(32, (size_t)n, false));
+}
 
-  llvm::ConstantFP *const_real(double d) {
-    return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(d));
-  }
+llvm::ConstantFP *const_real(double d) {
+  return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(d));
+}
 
-  llvm::ConstantInt* const_false() {
-    return llvm::ConstantInt::get(llvm::getGlobalContext(),
-        llvm::APInt(1, 0, false));
+llvm::ConstantInt *const_false() {
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(1, 0, false));
   }
 
   llvm::ConstantInt *const_true() {
@@ -127,7 +126,7 @@ llvm::ConstantInt *const_uint(size_t n) {
   llvm::ConstantInt* const_char(char c) {
     // TODO check safety of char cast
     return llvm::ConstantInt::get(llvm::getGlobalContext(),
-        llvm::APInt(8, static_cast<size_t>(c), false));
+                                  llvm::APInt(8, (size_t)c, false));
   }
 
   llvm::Value *global_string(const std::string &s) {
@@ -206,29 +205,28 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
 
 llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
                                      Type *input_type) {
-  for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
-    if (!id_ptr) { continue; }
+  Function *fn_type = Func(input_type, Void);
+  Scope *scope_ptr = scope;
+  AST::Declaration *decl;
 
-    if (id_ptr->type->is_function()) {
-      auto fn_type = (Function *)id_ptr->type;
-      if (fn_type->input != input_type) { continue; }
-      llvm::FunctionType *llvm_fn_type = *fn_type;
+  decl = scope->DeclReferencedOrNull(fn_name, fn_type);
 
-      if (id_ptr->decl->arg_val) {
-          return id_ptr->decl->alloc;
-      } else {
-          auto mangled_name =
-              Mangle(static_cast<Function *>(fn_type), id_ptr, scope_ptr);
-
-          return global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-      }
-
-    } else {
-      UNREACHABLE;
-    }
+  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
+    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
+    if (decl) { break; }
   }
-  return nullptr;
+
+  if (!decl) { return nullptr; }
+
+  auto mangled_name = Mangle(fn_type, decl->identifier, scope_ptr);
+
+  llvm::FunctionType *llvm_fn_type = *fn_type;
+
+  if(!decl->alloc) {
+    decl->alloc =
+        global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
+  }
+  return decl->alloc;
 }
 
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {

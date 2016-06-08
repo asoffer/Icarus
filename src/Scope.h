@@ -32,7 +32,12 @@ struct Scope {
   // identifier can be found.
   AST::Identifier *IdentifierBeingReferencedOrNull(const std::string &name);
 
-  AST::Expression *get_declared_type(AST::Identifier *id_ptr) const;
+  AST::Declaration *DeclHereOrNull(const std::string &name,
+                                   Type *declared_type);
+
+  AST::Declaration *DeclReferencedOrNull(const std::string &name,
+                                         Type *declared_type);
+
 
   Scope();
   Scope(const Scope&) = delete;

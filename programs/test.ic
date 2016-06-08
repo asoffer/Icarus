@@ -1,3 +1,11 @@
 main := void -> void {
-  print "foo\n"
+  p: pie
+  print p
 }
+
+pie := struct {
+  pi := 3.14159
+  e := 2.71828
+}
+
+__print__ := (p: pie) -> void { print "(", p.pi, ", ", p.e, ")" }
