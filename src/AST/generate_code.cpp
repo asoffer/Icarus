@@ -384,7 +384,16 @@ static std::vector<llvm::Value *> CollateArgsForFunctionCall(Expression *arg) {
 
 llvm::Value *Binop::generate_code() {
   if (type->time() == Time::compile) { return nullptr; }
+
   using Language::Operator;
+
+  // TODO: Currently using a hack here. Calls that take types really ought to
+  // bake their values.
+  if (op == Language::Operator::Call && rhs && rhs->type == Type_) {
+    Ctx ctx;
+    return llvm_value(evaluate(ctx));
+  }
+
 
   // The left-hand side may be a declaration
   if (op == Operator::Assign) {

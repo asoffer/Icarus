@@ -341,7 +341,6 @@ void FnScope::leave() {
   }
 }
 
-
 void FnScope::allocate(Scope* scope) {
   // Check that on the way up you don't hit a FnScope. This makes it so you
   // don't allocate for a function declared in a function.

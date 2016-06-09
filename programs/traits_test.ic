@@ -8,19 +8,19 @@ main := void -> void {
   print IsNumeric(real)
   print '\n'
 
-  print bytes(bool)
+  print num_bytes(bool)
   print ','
-  print bytes(char)
+  print num_bytes(char)
   print ','
-  print bytes(int)
+  print num_bytes(int)
   print ','
-  print bytes(real)
+  print num_bytes(real)
   print ','
-  print bytes(uint)
+  print num_bytes(uint)
   print ','
-  print bytes(type)
+  print num_bytes(type)
   print ','
-  print bytes(void)
+  print num_bytes(void)
   print '\n'
 
   print IsBig(bool)

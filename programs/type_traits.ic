@@ -2,7 +2,7 @@ Any := (T: type) -> bool { return true }
 
 IsNumeric := (T: type) -> bool { return T == real | T == uint | T == int }
 
-bytes := (T: type) -> uint {
+num_bytes := (T: type) -> uint {
   return case {
     T == bool  =>  1u
     T == char  =>  1u
@@ -15,7 +15,7 @@ bytes := (T: type) -> uint {
 }
 
 IsBig := (T: type) -> bool {
-  if bytes(T) > 4u {
+  if num_bytes(T) > 4u {
     return true
   } else {
     return false
