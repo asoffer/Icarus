@@ -1,11 +1,52 @@
+alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
+  @ptr = malloc(T.bytes) :> &T
+}
+
+
+list := struct(T: type) {
+  size: uint
+  head: &node(T)
+}
+
+
+node := struct(T: type) {
+  data: T
+  next: &node(T)
+}
+
+
+__print__ := (l: list(int)) -> void {
+  iter := l.head
+  print '['
+  if l.size > 0u {
+    i := 0u
+    while i < l.size {
+      i += 1u
+      print iter.data
+      if i != l.size {
+        print " -> "
+      }
+      iter = iter.next
+    }
+  } 
+  print ']'
+}
+
 main := void -> void {
-  p: pie
-  print p
+  l: list(int)
+  l.add(3).add(5).add(7)
+  print l, '\n'
 }
 
-pie := struct {
-  pi := 3.14159
-  e := 2.71828
+add := (this: &list(Any`T), n: T) -> &list(T) {
+  nptr: &node(T)
+  alloc(&nptr)
+  nptr.data = n
+  nptr.next = this.head
+  this.head = nptr
+  this.size += 1u
+  return this
 }
 
-__print__ := (p: pie) -> void { print "(", p.pi, ", ", p.e, ")" }
+Any := (T: type) -> bool { return true }

@@ -11,8 +11,9 @@ namespace AST {
 StructLiteral *
 ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   auto arg_vals  = reverse_cache[cache_loc];
-  auto num_decls = arg_vals.size();
+  auto num_decls = decls.size();
   cache_loc->decls.reserve(num_decls);
+
 
   for (size_t i = 0; i < num_decls; ++i) {
     auto new_decl = new Declaration;
