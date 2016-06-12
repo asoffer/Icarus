@@ -5,7 +5,7 @@
 Time::Eval Primitive::time() const {
   // Type::compile_time has a value of 1, and either_time has a value of 0
   // so we can use the casts bool -> int -> Time::eval
-  return static_cast<Time::Eval>(this == Type_);
+  return (Time::Eval)(this == Type_);
 }
 
 Time::Eval Array::time() const { return data_type->time(); }

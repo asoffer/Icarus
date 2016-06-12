@@ -50,8 +50,8 @@ llvm::Constant *ArrayLiteral::GetGlobal() {
     constants[i] = elems[i]->GetGlobal();
   }
 
-  return llvm::ConstantArray::get(
-      static_cast<llvm::ArrayType *>(array_type->llvm_type), constants);
+  return llvm::ConstantArray::get((llvm::ArrayType *)array_type->llvm_type,
+                                  constants);
 }
 
 llvm::Constant *Identifier::GetGlobal() {

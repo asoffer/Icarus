@@ -31,7 +31,7 @@ std::string Array::to_string() const {
   Type *const *type_ptr_ptr = &data_type;
 
   while ((*type_ptr_ptr)->is_array()) {
-    auto array_ptr = static_cast<const Array *>(*type_ptr_ptr);
+    auto array_ptr = (const Array *)*type_ptr_ptr;
     ss << ", ";
     if (array_ptr->fixed_length) {
       ss << array_ptr->len;

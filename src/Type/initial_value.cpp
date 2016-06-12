@@ -31,7 +31,7 @@ llvm::Constant *Array::InitialValue() const {
     auto init_elem = data_type->InitialValue();
 
     return llvm::ConstantArray::get(
-        static_cast<llvm::ArrayType *>(llvm_type),
+        (llvm::ArrayType *)llvm_type,
         std::vector<llvm::Constant *>(len, init_elem));
 
   } else {

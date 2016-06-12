@@ -28,6 +28,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
       new_decl->type_expr =
           new DummyTypeExpr(decls[i]->type_expr->loc,
                             decls[i]->type_expr->evaluate(arg_vals).as_type);
+
     }
     if (decls[i]->init_val) {
       NOT_YET;
@@ -46,7 +47,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());
   ((Structure *)cache_loc->value.as_type)->creator = this;
-  
+ 
   return cache_loc;
 }
 

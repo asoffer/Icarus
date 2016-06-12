@@ -29,20 +29,20 @@ std::string Mangle(const Type *t, bool prefix) {
   if (prefix) ss << "_Z";
 
   if (t->is_array()) {
-    auto array_type = static_cast<const Array*>(t);
+    auto array_type = (Array *)t;
     ss << 'A' << (array_type->fixed_length ? array_type->len : 0)
        << Mangle(array_type->data_type, false);
 
   } else if (t->is_pointer()) {
-    ss << "P" << Mangle(static_cast<const Pointer *>(t)->pointee, false);
+    ss << "P" << Mangle(((Pointer *)t)->pointee, false);
 
   } else if (t->is_struct()) {
-    auto struct_type = static_cast<const Structure *>(t);
+    auto struct_type = (Structure *)t;
     ss << "S" << struct_type->bound_name.size() << struct_type->bound_name;
 
   } else if (t->is_function()) {
     // TODO treat as function pointer?
-    ss << "F" << Mangle(static_cast<const Function *>(t)->input, false);
+    ss << "F" << Mangle(((Function *)t)->input, false);
 
   } else {
     ss << t->to_string();

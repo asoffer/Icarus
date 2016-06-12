@@ -22,11 +22,11 @@ template <typename T> static T *steal(AST::Node *&n) {
 static void CheckEqualsNotAssignment(AST::Expression *expr,
                                      const std::string &msg) {
   if (expr->is_binop() &&
-      static_cast<AST::Binop *>(expr)->op == Language::Operator::Assign) {
+      ((AST::Binop *)expr)->op == Language::Operator::Assign) {
     error_log.log(expr->loc, msg + "Did you mean '==' instead of '='?");
 
     // TODO allow continuation after error here?
-    static_cast<AST::Binop *>(expr)->op = Language::Operator::EQ;
+    ((AST::Binop *)expr)->op = Language::Operator::EQ;
   }
 }
 
@@ -64,7 +64,7 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   struct_lit_ptr->type  = Type_;
   struct_lit_ptr->value = Context::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
-  for (auto &&n : static_cast<Statements *>(nodes[2])->statements) {
+  for (auto &&n : ((Statements *)nodes[2])->statements) {
     if (n->is_declaration()) {
       struct_lit_ptr->decls.push_back(steal<Declaration>(n));
     } else {

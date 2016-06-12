@@ -11,14 +11,14 @@ extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
 #define RESERVED_MSG(index)                                                    \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
-    auto tok = static_cast<AST::TokenNode *>(nodes[index])->token;            \
+    auto tok = ((AST::TokenNode *)nodes[index])->token;            \
     error_log.log(nodes[index]->loc, "'" + tok + "' is a reserved keyword.");  \
   }
 
 #define NOT_BINOP_MSG(index)                                                   \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
-    auto tok = static_cast<AST::TokenNode *>(nodes[index])->token;            \
+    auto tok = ((AST::TokenNode *)nodes[index])->token;                         \
     error_log.log(nodes[index]->loc,                                           \
                   "Operator '" + tok + "' is not a binary operator.");         \
   }
@@ -38,7 +38,7 @@ template <typename T> static T *steal_node(AST::Node *&n) {
 }
 
 AST::Node *CombineColonEq(NPtrVec &&nodes) {
-  auto tk_node   = static_cast<AST::TokenNode *>(nodes[0]);
+  auto tk_node   = (AST::TokenNode *)nodes[0];
   tk_node->token = ":=";
   tk_node->op    = Language::Operator::ColonEq;
 

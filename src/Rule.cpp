@@ -41,10 +41,10 @@ void Rule::apply(NPtrVec &node_stack,
   // A rule's size cannot be empty, so the int value for i will always start at
   // a non-negative integer. We use an int so we can condition on i >= 0.
   // (unsigned values always satisfy that condition).
-  for (int i = static_cast<int>(size()) - 1; i >= 0; --i) {
+  for (int i = (int)size() - 1; i >= 0; --i) {
     // We need an unsigned value to index nodes_to_reduce. This is why we cast
     // back to size_t.
-    nodes_to_reduce[static_cast<size_t>(i)] = std::move(node_stack.back());
+    nodes_to_reduce[(size_t)i] = std::move(node_stack.back());
 
     node_type_stack.pop_back();
     node_stack.pop_back();

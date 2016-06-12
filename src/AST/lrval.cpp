@@ -22,7 +22,7 @@ void Access::lrvalue_check() {
       (member_name == "bytes" || member_name == "alignment")) {
     lvalue = false;
   } else if (operand->type->is_array() &&
-             static_cast<Array *>(operand->type)->fixed_length &&
+             ((Array *)operand->type)->fixed_length &&
              member_name == "size") {
     lvalue = false;
   } else {

@@ -73,7 +73,6 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
 static bool MatchCall(Type *lhs, Type *rhs,
                       std::map<TypeVariable *, Type *> &matches,
                       std::string &error_message) {
-
   if (!lhs->has_vars) {
     if (lhs == rhs) { return true; }
     error_message +=
@@ -231,6 +230,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
 
 static Type *EvalWithVars(Type *type,
                           const std::map<TypeVariable *, Type *> &lookup) {
+
   if (!type->has_vars) { return type; }
 
   if (type->is_type_variable()) {
@@ -314,10 +314,11 @@ void StructLiteral::CompleteDefinition() {
     decls[i]->verify_types();
 
     Ctx ctx;
-    tval->insert_field(decls[i]->identifier->token,
-                       decls[i]->type_expr
-                           ? decls[i]->type_expr->evaluate(ctx).as_type
-                           : decls[i]->init_val->type,
+    auto decl_type = decls[i]->type_expr
+                         ? decls[i]->type_expr->evaluate(ctx).as_type
+                         : decls[i]->init_val->type;
+
+    tval->insert_field(decls[i]->identifier->token, decl_type,
                        decls[i]->init_val);
 
   }

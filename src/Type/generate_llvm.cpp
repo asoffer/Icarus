@@ -56,7 +56,7 @@ void Function::generate_llvm() const {
   llvm::Type *llvm_out = *Void;
 
   if (input->is_tuple()) {
-    auto in_tup = static_cast<Tuple *>(input);
+    auto in_tup = (Tuple *)input;
     for (auto t : in_tup->entries) { AddLLVMInput(t, llvm_in); }
 
   } else {
@@ -102,8 +102,9 @@ void Structure::generate_llvm() const {
     llvm_fields[kv.second] = field_type AT(kv.first)->llvm_type;
   }
 
-  static_cast<llvm::StructType *>(llvm_type)
-      ->setBody(std::move(llvm_fields), /* isPacked = */ false);
+  ((llvm::StructType *)llvm_type)
+      ->setBody(std::move(llvm_fields),
+                /* isPacked = */ false);
 
   struct_type->setName(bound_name);
 }
