@@ -85,11 +85,10 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     builder.CreateStore(rhs, lhs_ptr);
 
   } else if (lhs_type->is_struct()) {
-    builder.CreateCall(static_cast<Structure *>(lhs_type)->assign(),
-                       {lhs_ptr, rhs});
+    builder.CreateCall(((Structure *)lhs_type)->assign(), {lhs_ptr, rhs});
 
   } else if (lhs_type->is_array()) {
-    auto assign_fn = static_cast<Array *>(lhs_type)->assign();
+    auto assign_fn = ((Array *)lhs_type)->assign();
     assert(rhs_type->is_array());
     auto rhs_array_type = (Array *)rhs_type;
 
@@ -125,7 +124,7 @@ void Type::CallDestroy(Scope *scope, llvm::Value *var) {
     return;
 
   } else if (is_array()) {
-    auto array_type = static_cast<Array *>(this);
+    auto array_type = (Array *)this;
     if (array_type->data_type->requires_uninit()) {
       builder.CreateCall(array_type->destroy(), {var});
     } else {
@@ -189,7 +188,7 @@ Array::Array(Type *t)
       assign_fn_(nullptr), init_func(nullptr), data_type(t), len(0),
       fixed_length(false) {
   dimension =
-      data_type->is_array() ? 1 + static_cast<Array *>(data_type)->dimension : 1;
+      data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
 
   std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
   init_args[0] = *Ptr(this);
@@ -200,9 +199,7 @@ Array::Array(Type *t, size_t l)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
       assign_fn_(nullptr), init_func(nullptr), data_type(t), len(l),
       fixed_length(true) {
-  dimension = data_type->is_array()
-                  ? 1 + static_cast<Array *>(data_type)->dimension
-                  : 1;
+  dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
   if (time() != Time::compile) {
     std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
     init_args[0] = *Ptr(this);
@@ -325,8 +322,7 @@ void ParametricStructure::set_name(const std::string &name) {
     // NOTE This is pretty hacky: Find the first paren.
     // TODO better way would be to cache not just the struct but it's parameters
     // as well.
-    auto &str_name =
-        static_cast<Structure *>(kv.second->value.as_type)->bound_name;
+    auto &str_name   = ((Structure *)kv.second->value.as_type)->bound_name;
     size_t paren_pos = str_name.find('(');
     assert(paren_pos != std::string::npos);
     str_name =
@@ -345,7 +341,7 @@ Type::operator llvm::Type *() const {
 
 Function::operator llvm::FunctionType *() const {
   generate_llvm();
-  return static_cast<llvm::FunctionType *>(llvm_type);
+  return (llvm::FunctionType *)llvm_type;
 }
 
 void Structure::insert_field(const std::string &name, Type *ty,

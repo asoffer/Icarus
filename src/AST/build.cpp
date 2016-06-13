@@ -142,18 +142,18 @@ Node *Case::Build(NPtrVec &&nodes) {
   auto case_ptr = new Case;
   case_ptr->loc = nodes[0]->loc;
 
-  auto stmts     = static_cast<Statements *>(nodes[2]);
+  auto stmts     = (Statements *)nodes[2];
   auto num_stmts = stmts->statements.size();
   for (size_t i = 0; i < num_stmts; ++i) {
     auto stmt = stmts->statements[i];
     if (!stmt->is_binop() ||
-        static_cast<Binop *>(stmt)->op != Language::Operator::Rocket) {
+        ((Binop *)stmt)->op != Language::Operator::Rocket) {
       error_log.log(stmt->loc,
                     "Each line in case statement must be a key-value pair.");
       continue;
     }
 
-    auto binop = static_cast<Binop *>(stmt);
+    auto binop = (Binop *)stmt;
 
     // TODO check for 'else' and make sure it's the last one.
     case_ptr->key_vals.emplace_back(steal<Expression>(binop->lhs),
@@ -201,7 +201,7 @@ static void CheckForLoopDeclaration(Expression *maybe_decl,
   if (!maybe_decl->is_in_decl()) {
     error_log.log(maybe_decl->loc, "Expect 'in' declaration in for-loop.");
   } else {
-    iters.push_back(static_cast<InDecl *>(maybe_decl));
+    iters.push_back((InDecl *)maybe_decl);
   }
 }
 
@@ -218,7 +218,7 @@ Node *For::Build(NPtrVec &&nodes) {
   auto iter = steal<Expression>(nodes[1]);
 
   if (iter->is_comma_list()) {
-    auto iter_list = static_cast<ChainOp *>(iter);
+    auto iter_list = (ChainOp *)iter;
     for_stmt->iterators.reserve(iter_list->exprs.size());
 
     for (auto &ex : iter_list->exprs) {
@@ -250,14 +250,14 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->loc = nodes[0]->loc;
 
   assert(nodes[0]->is_token_node());
-  auto tk = static_cast<TokenNode *>(nodes[0])->token;
+  auto tk = ((TokenNode *)nodes[0])->token;
 
   if (tk == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
     assert(unop_ptr->operand->is_terminal() &&
-           static_cast<Terminal *>(unop_ptr->operand)->terminal_type ==
+           ((Terminal *)unop_ptr->operand)->terminal_type ==
                Language::Terminal::StringLiteral);
     file_queue.emplace(std::string("programs/") +
                        std::string(unop_ptr->operand->value.as_str));
@@ -329,7 +329,7 @@ id_check:
 // Internal checks: None
 Node *ChainOp::Build(NPtrVec &&nodes) {
   // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
-  auto op_node = static_cast<TokenNode *>(nodes[1]);
+  auto op_node = (TokenNode *)nodes[1];
   auto op_prec = Language::precedence(op_node->op);
 
   ChainOp *chain_ptr = nullptr;
@@ -338,7 +338,7 @@ Node *ChainOp::Build(NPtrVec &&nodes) {
   // that precedence level should be the operators which can be chained.
   bool use_old_chain_op =
       nodes[0]->is_chain_op() &&
-      static_cast<ChainOp *>(nodes[0])->precedence == op_prec;
+      ((ChainOp *)nodes[0])->precedence == op_prec;
 
   if (use_old_chain_op) {
     chain_ptr = steal<ChainOp>(nodes[0]);
@@ -377,7 +377,7 @@ Node *Access::Build(NPtrVec &&nodes) {
   if (!nodes[2]->is_identifier()) {
     error_log.log(nodes[2]->loc, "Right-hand side must be an identifier");
   } else {
-    access_ptr->member_name = static_cast<Identifier *>(nodes[2])->token;
+    access_ptr->member_name = ((Identifier *)nodes[2])->token;
   }
   return access_ptr;
 }
@@ -449,7 +449,7 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node        = static_cast<TokenNode *>(nodes[1]);
+  auto tk_node        = (TokenNode *)nodes[1];
   unop_ptr->loc       = tk_node->loc;
   unop_ptr->op        = tk_node->op;
 
@@ -463,7 +463,7 @@ Node *ArrayLiteral::build(NPtrVec &&nodes) {
 
   if (nodes[1]->is_comma_list()) {
     using std::swap;
-    swap(array_lit_ptr->elems, static_cast<ChainOp *>(nodes[1])->exprs);
+    swap(array_lit_ptr->elems, ((ChainOp *)nodes[1])->exprs);
 
   } else {
     array_lit_ptr->elems.push_back(steal<Expression>(nodes[1]));
@@ -509,7 +509,7 @@ Node *Expression::build(NPtrVec &&) {
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {
   auto decl = steal<Declaration>(nodes[0]);
   assert(nodes[1]->is_token_node());
-  decl->hashtags.push_back(static_cast<TokenNode *>(nodes[1])->token);
+  decl->hashtags.push_back(((TokenNode *)nodes[1])->token);
 
   return decl;
 }
@@ -665,7 +665,7 @@ Node *Conditional::BuildElseNoLiner(NPtrVec &&nodes) {
 
 Node *Jump::build(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
-  auto tk = static_cast<TokenNode *>(nodes[0])->token;
+  auto tk = ((TokenNode *)nodes[0])->token;
   if (tk == "break") {
     return new Jump(nodes[0]->loc, JumpType::Break);
 
@@ -696,11 +696,11 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   };
 
   assert(nodes[1]->is_token_node());
-  auto tk = static_cast<AST::TokenNode *>(nodes[1])->token;
+  auto tk = ((AST::TokenNode *)nodes[1])->token;
 
   for (auto op : chain_ops) {
     if (tk == op.first) {
-      static_cast<AST::TokenNode *>(nodes[1])->op = op.second;
+      ((AST::TokenNode *)nodes[1])->op = op.second;
       return AST::ChainOp::Build(std::forward<NPtrVec &&>(nodes));
     }
   }
@@ -777,8 +777,7 @@ end:
 
 AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
-  auto tk = static_cast<AST::TokenNode *>(nodes[0])->token;
-
+  auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "case") {
     return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
@@ -806,7 +805,7 @@ AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes) {
 
 AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
-  auto tk = static_cast<AST::TokenNode *>(nodes[0])->token;
+  auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "for") {
     return AST::For::Build(std::forward<NPtrVec &&>(nodes));

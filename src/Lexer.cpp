@@ -108,7 +108,7 @@ NNT Lexer::next_word() {
   // character).
   int peek;
   do {
-    token += static_cast<char>(GetChar());
+    token += (char)GetChar();
     peek = file_.peek();
   } while (std::isalnum(peek) || peek == '_');
 
@@ -186,7 +186,7 @@ NNT Lexer::next_number() {
   // Add digits
   int peek;
   do {
-    token += static_cast<char>(GetChar());
+    token += (char)GetChar();
     peek = file_.peek();
   } while (std::isdigit(peek));
 
@@ -204,7 +204,7 @@ NNT Lexer::next_number() {
   // If the next character was a period, this is a non-integer. Add the period
   // and keep going with more digits.
   do {
-    token += static_cast<char>(GetChar());
+    token += (char)GetChar();
     peek = file_.peek();
   } while (std::isdigit(peek));
 
@@ -264,7 +264,7 @@ NNT Lexer::next_operator() {
   case '%':
   case '<':
   case '>': {
-    lead_char = static_cast<char>(peek);
+    lead_char = (char)peek;
     GetChar();
     peek = file_.peek();
 
@@ -297,7 +297,7 @@ NNT Lexer::next_operator() {
   }
 
   if (peek == '|' || peek == '^' || peek == '&') {
-    char past_peek = static_cast<char>(peek);
+    char past_peek = (char)peek;
 
     GetChar();
     peek = file_.peek();
@@ -329,7 +329,7 @@ NNT Lexer::next_operator() {
   }
 
   if (peek == '-' || peek == '=') {
-    char lead_char = static_cast<char>(peek);
+    char lead_char = (char)peek;
     GetChar();
     peek = file_.peek();
 
@@ -366,7 +366,7 @@ NNT Lexer::next_operator() {
   // in as many characters as possible.
   std::string token;
   do {
-    token += static_cast<char>(GetChar());
+    token += (char)GetChar();
     peek = file_.peek();
   } while (std::ispunct(peek));
 
@@ -391,17 +391,16 @@ NNT Lexer::next_string_literal() {
       case 'r': str_lit += '\r'; break;
       case 't': str_lit += '\t'; break;
       default: {
-        error_log.log(loc_, "The sequence `\\" +
-                                     std::to_string(static_cast<char>(peek)) +
-                                     "` is not an escape character.");
+        error_log.log(loc_, "The sequence `\\" + std::to_string((char)peek) +
+                                "` is not an escape character.");
 
-        str_lit += static_cast<char>(peek);
+        str_lit += (char)peek;
         break;
       }
       }
       GetChar();
     } else {
-      str_lit += static_cast<char>(GetChar());
+      str_lit += (char)GetChar();
     }
 
     peek = file_.peek();
@@ -453,17 +452,14 @@ NNT Lexer::next_char_literal() {
           case 'n':  output_char = '\n'; break;
           case 'r':  output_char = '\r'; break;
           default:
-                     error_log.log(loc_,
-                         "The specified character is not an escape character.");
-          output_char = static_cast<char>(peek);
+            error_log.log(
+                loc_, "The specified character is not an escape character.");
+            output_char = (char)peek;
         }
 
         break;
       }
-    default:
-      {
-        output_char = static_cast<char>(peek);
-      }
+      default: { output_char = (char)peek; }
   }
 
   GetChar();
@@ -491,7 +487,7 @@ NNT Lexer::next_given_slash() {
 
     // Add characters while we're not looking at a newline
     do {
-      token += static_cast<char>(GetChar());
+      token += (char)GetChar();
       peek = file_.peek();
     } while (!isnewline(peek));
 
@@ -548,10 +544,10 @@ NNT Lexer::next_hashtag() {
 
   auto nptr = next_word();
   if (nptr.node->is_identifier()) {
-    tag = static_cast<AST::Identifier *>(nptr.node)->token;
+    tag = ((AST::Identifier *)nptr.node)->token;
 
   } else if (nptr.node->is_token_node()) {
-    tag = static_cast<AST::TokenNode *>(nptr.node)->token;
+    tag = ((AST::TokenNode *)nptr.node)->token;
 
   } else {
     assert(false);

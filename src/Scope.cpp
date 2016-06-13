@@ -75,7 +75,7 @@ void Scope::set_parent(Scope* new_parent) {
   parent = new_parent;
 
   containing_function_ = new_parent->is_function_scope()
-                             ? static_cast<FnScope *>(parent)
+                             ? (FnScope *)parent
                              : parent->containing_function_;
 
   if (containing_function_) { containing_function_->add_scope(this); }
@@ -133,12 +133,12 @@ void BlockScope::initialize() {
     if (!decl_ptr->type->stores_data()) continue;
 
     // if (decl_ptr->type->is_array()) {
-    //   auto array_dim = static_cast<Array*>(decl_ptr->type)->dimension;
+    //   auto array_dim = ((Array*)decl_ptr->type)->dimension;
     //   std::vector<llvm::Value*> init_args(array_dim + 1,
     //   data::const_uint(0));
     //   init_args[0] = decl_ptr->alloc;
     //   // TODO
-    //   // auto array_type = static_cast<Array*>(decl_ptr->type);
+    //   // auto array_type = (Array*)decl_ptr->type;
     //   // builder.CreateCall(array_type->initialize(), init_args);
     //   continue;
 
@@ -180,7 +180,7 @@ void BlockScope::defer_uninit(Type *type, llvm::Value *val) {
 
 void BlockScope::make_return(llvm::Value *val) {
   FnScope *fn_scope =
-      is_function_scope() ? static_cast<FnScope *>(this) : containing_function_;
+      is_function_scope() ? (FnScope *)this : containing_function_;
 
   // TODO multiple return values?
   Type::CallAssignment(this, fn_scope->fn_type->output,
@@ -196,7 +196,7 @@ FnScope::FnScope(llvm::Function *fn)
 
 void BlockScope::set_parent_function(llvm::Function *fn) {
   // NOTE previously you also checked if fn was a nullptr. Must you still do this?
-  if (is_function_scope()) { static_cast<FnScope *>(this)->llvm_fn = fn; }
+  if (is_function_scope()) { ((FnScope *)this)->llvm_fn = fn; }
 
   if (entry && entry->getParent()) { entry->removeFromParent(); }
   if (exit && exit->getParent()) { exit->removeFromParent(); }
@@ -209,7 +209,7 @@ void BlockScope::set_parent_function(llvm::Function *fn) {
 
 Context::Value Scope::GetCTRV() {
   if (is_function_scope()) {
-    return static_cast<FnScope *>(this)->ct_ret_val;
+    return ((FnScope *)this)->ct_ret_val;
   } else {
     assert(containing_function_);
     return containing_function_->ct_ret_val;
@@ -218,7 +218,7 @@ Context::Value Scope::GetCTRV() {
 
 bool Scope::HasCTRV() {
   if (is_function_scope()) {
-    return static_cast<FnScope *>(this)->has_ctrv;
+    return ((FnScope *)this)->has_ctrv;
   } else {
     assert(containing_function_);
     return containing_function_->has_ctrv;
@@ -227,7 +227,7 @@ bool Scope::HasCTRV() {
 
 void Scope::ClearCTRV() { 
   if (is_function_scope()) {
-    static_cast<FnScope *>(this)->has_ctrv = false;
+    ((FnScope *)this)->has_ctrv = false;
   } else {
     assert(containing_function_);
     containing_function_->has_ctrv = false;
@@ -238,7 +238,7 @@ void Scope::SetCTRV(Context::Value v) {
   FnScope *fnscope= nullptr;
 
   if (is_function_scope()) {
-    fnscope = static_cast<FnScope *>(this);
+    fnscope = (FnScope *)this;
   } else {
     assert(containing_function_);
     fnscope = containing_function_;
@@ -300,8 +300,7 @@ void FnScope::initialize() {
       if (fn_type->input == Void) {
 
       } else if (fn_type->input->is_tuple()) {
-        auto num_inputs =
-            static_cast<Tuple *>(fn_type->input)->entries.size();
+        auto num_inputs = ((Tuple *)fn_type->input)->entries.size();
 
         // TODO is there a way to get direct access? Probably. Look it up.
         auto ret_val_arg = llvm_fn->args().begin();
@@ -371,6 +370,6 @@ void FnScope::allocate(Scope* scope) {
 
 bool Scope::is_loop_scope() {
   if (!is_block_scope()) return false;
-  auto bs = static_cast<BlockScope*>(this);
+  auto bs = (BlockScope *)this;
   return bs->type == ScopeType::For || bs->type == ScopeType::While;
 }
