@@ -707,7 +707,6 @@ void Binop::verify_types() {
 
       } else {
         // Use err_msg
-        assert(false);
         error_log.log(loc, valid_matches.empty() ? "No valid matches"
                                                  : "Ambiguous call");
         type      = Error;
@@ -1354,17 +1353,40 @@ void Declaration::verify_types() {
     type = init_val->VerifyValueForDeclaration(identifier->token);
     identifier->type = type;
 
+    if (type == NullPtr) {
+      error_log.log(loc, "Cannot initialize a declaration with 'null'.");
+      type = Error;
+    }
+
   } else if (IsCustomInitialized()) {
     type             = type_expr->VerifyTypeForDeclaration(identifier->token);
     identifier->type = type;
     auto t = init_val->VerifyValueForDeclaration(identifier->token);
+
     if (type == Error) {
       type             = t;
       identifier->type = t;
-    }
-    if (type != t) {
-      error_log.log(
-          loc, "Initial value does not have a type that matches declaration.");
+
+      if (type != t) {
+        error_log.log(
+            loc,
+            "Initial value does not have a type that matches declaration.");
+      }
+
+    } else if (t == NullPtr) {
+      if (type->is_pointer()) {
+        identifier->type = type;
+        init_val->type   = type;
+      } else {
+        auto new_type = Ptr(type);
+        error_log.log(loc, "Cannot initialize an identifier of type " +
+                               type->to_string() +
+                               " with null. Did you mean to declare it as " +
+                               new_type->to_string() + "?");
+        type             = new_type;
+        identifier->type = new_type;
+        init_val->type   = new_type;
+      }
     }
 
   } else if (IsUninitialized()) {

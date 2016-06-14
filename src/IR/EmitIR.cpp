@@ -414,9 +414,6 @@ IR::Value FunctionLiteral::EmitIR() {
   IR::Block::Current = ir_func->entry();
 
   statements->verify_types();
-  if(error_log.num_errors() != 0) {
-    std::cerr << error_log << std::endl;
-  }
 
   for (auto decl : fn_scope->ordered_decls_) {
     if (decl->arg_val) { continue; }

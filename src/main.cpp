@@ -4,7 +4,6 @@
 #include "Scope.h"
 #endif
 
-#include <iomanip>
 #include <mach/mach.h>
 #include <mach/mach_time.h>
 
