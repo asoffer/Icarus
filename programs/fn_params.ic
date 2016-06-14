@@ -1,9 +1,7 @@
 main := void -> void {
   a: [--; int] = [0, 1, 2, 3, 4, 5, 6]
 
-  print map((n: int) -> int {
-    return n * n 
-  }, a)
+  print map((n: int) -> int { return n * n }, a)
 
   print '\n'
 
@@ -13,22 +11,15 @@ main := void -> void {
 }
 
 map := (f: A -> A, data: [--; Any`A]) -> [--; A] {
-  ret := data
+  result := data
   for i in 0u .. data.size {
-    ret[i] = f(data[i])
+    result[i] = f(data[i])
   }
 
-  return ret
+  return result
 }
 
-Any := (T: type) -> bool {
-  return true
-}
+Any := (T: type) -> bool { return true }
 
-three := void -> (void -> int) {
-  return void -> int {
-    return 3
-  }
-
-}
+three := void -> (void -> int) { return void -> int { return 3 } }
 

@@ -729,8 +729,8 @@ void Binop::verify_types() {
       }
 
       if (lhs->type->is_function()) {
-        if (!MatchCall(((Function *)lhs->type)->input, rhs->type, matches,
-                       err_msg)) {
+        if (!MatchCall(((Function *)lhs->type)->input, (rhs ? rhs->type : Void),
+                       matches, err_msg)) {
           error_log.log(loc, err_msg);
           type      = Error;
           lhs->type = Error;

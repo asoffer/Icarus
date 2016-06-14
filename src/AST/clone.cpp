@@ -187,16 +187,18 @@ Node *Generic::clone(LOOKUP_ARGS) {
     }
   }
 
-  auto generic        = new Generic;
-  generic->identifier = (Identifier *)identifier->CLONE;
-  generic->test_fn    = (Expression *)test_fn->CLONE;
+  auto generic              = new Generic;
+  generic->identifier       = (Identifier *)identifier->CLONE;
+  generic->test_fn          = (Expression *)test_fn->CLONE;
+  generic->identifier->decl = generic;
   return generic;
 }
 
 Node *InDecl::clone(LOOKUP_ARGS) {
-  auto in_decl        = new InDecl;
-  in_decl->identifier = (Identifier *)identifier->CLONE;
-  in_decl->container  = (Expression *)container->CLONE;
+  auto in_decl              = new InDecl;
+  in_decl->identifier       = (Identifier *)identifier->CLONE;
+  in_decl->container        = (Expression *)container->CLONE;
+  in_decl->identifier->decl = in_decl;
   return in_decl;
 }
 
