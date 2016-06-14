@@ -375,6 +375,7 @@ void Identifier::verify_types() {
 void Unop::verify_types() {
   STARTING_CHECK;
   operand->verify_types();
+
   if (operand->type == Error) {
     type = Error;
     return;
@@ -637,8 +638,6 @@ void Binop::verify_types() {
         }
       }
 
-      std::vector<Declaration *> valid_matches;
-
       if (rhs) {
         rhs->verify_types();
         if (rhs->type == Error) {
@@ -647,10 +646,13 @@ void Binop::verify_types() {
         }
       }
 
+      std::vector<Declaration *> valid_matches;
+
       // Look for valid matches by looking at any declaration which has a
       // matching token.
       for (auto decl : decls_with_matching_id) {
         if (decl->type->is_function()) {
+
           if (!rhs && ((Function *)decl->type)->input == Void) {
             // If there is no input, and the function takes Void as its input,
             // we found a match.
@@ -680,15 +682,6 @@ void Binop::verify_types() {
             Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
                                                           : Tup(param_type_vec);
 
-            rhs->verify_types();
-            if (rhs->type == Error) {
-              type = Error;
-              return;
-            }
-
-            // TODO can you have a parametric struct taking no arguments? If so,
-            // rhs could be empty and we have a bug!
-
             // Get the input types we're trying to match
             std::vector<Type *> input_type_vec;
             Type *input_type = nullptr;
@@ -714,6 +707,7 @@ void Binop::verify_types() {
 
       } else {
         // Use err_msg
+        assert(false);
         error_log.log(loc, valid_matches.empty() ? "No valid matches"
                                                  : "Ambiguous call");
         type      = Error;
@@ -1504,13 +1498,16 @@ void ArrayLiteral::verify_types() {
 
 void FunctionLiteral::verify_types() {
   STARTING_CHECK;
+
   bool input_has_vars = false;
   for (auto in : inputs) {
     in->verify_types();
     input_has_vars |= in->type->has_vars;
   }
 
-  if (!input_has_vars) { VerificationQueue.push(statements); }
+  if (!input_has_vars) {
+    VerificationQueue.push(statements);
+  }
 
   return_type_expr->verify_types();
 
@@ -1518,11 +1515,11 @@ void FunctionLiteral::verify_types() {
   Type *ret_type = return_type_expr->evaluate(ctx).as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
-  size_t inputssize = inputs.size();
-  if (inputssize == 0) {
+  size_t num_inputs = inputs.size();
+  if (num_inputs == 0) {
     input_type = Void;
 
-  } else if (inputssize == 1) {
+  } else if (num_inputs == 1) {
     input_type = inputs.front()->type;
 
   } else {

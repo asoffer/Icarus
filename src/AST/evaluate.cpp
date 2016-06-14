@@ -99,6 +99,12 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   auto &cache_loc = (cache[arg_vals] = new StructLiteral);
   reverse_cache[cache_loc] = arg_vals;
 
+  bool has_vars = false;
+  for (const auto &arg : arg_vals) {
+    // TODO What if the argument isn't a type
+    has_vars |= arg.second.as_type->has_vars;
+  }
+
   std::stringstream ss;
   ss << param_struct->bound_name << "(";
 
@@ -131,7 +137,9 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   }
   ss << ")";
 
-  cache_loc->value = Context::Value(Struct(ss.str(), cache_loc));
+  auto struct_val      = Struct(ss.str(), cache_loc);
+  struct_val->has_vars = has_vars;
+  cache_loc->value     = Context::Value(struct_val);
 
   if (debug::parametric_struct) {
     std::cerr << " * No match found.\n"
