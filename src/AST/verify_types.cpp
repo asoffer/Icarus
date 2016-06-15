@@ -355,6 +355,7 @@ void Identifier::verify_types() {
   }
 
   if (potential_decls.empty()) {
+    std::cerr << *this << std::endl;
     type = Error;
     error_log.log(loc, "Undeclared identifier '" + token + "'.");
     NOT_YET;

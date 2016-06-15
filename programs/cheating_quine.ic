@@ -44,13 +44,10 @@ main := void -> void {
   f := FileOpen(&name[0], FileMode.Read)
   
   c := f.Next()
-  while c != ascii(0u) {
-    print c
-    c = f.Next()
-  }
+  while c != ascii(0u) { print c \\ c = f.Next() }
 
-  __destroy__ := (f: &File) -> void {
+  __destroy__ := (file_ptr: &File) -> void {
     fclose: &uint -> int #cstdlib
-    f._handle.fclose()
+    file_ptr._handle.fclose()
   }
 }

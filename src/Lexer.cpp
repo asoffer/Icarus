@@ -251,6 +251,16 @@ NNT Lexer::next_operator() {
   }
 
 #undef CASE
+  if (peek == '\\') {
+    GetChar();
+    peek = file_.peek();
+    if (peek == '\\') {
+      GetChar();
+      RETURN_NNT("", newline);
+    } else {
+      NOT_YET;
+    }
+  }
 
   if (peek == '/') { return next_given_slash(); }
 

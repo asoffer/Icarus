@@ -1,4 +1,2 @@
-main := void -> void {
-  x := 0
-  print x
+main := void -> void { x := 17 \\ print x
 }

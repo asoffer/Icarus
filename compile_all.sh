@@ -14,6 +14,7 @@ bin/icarus programs/case.ic --file-type=none
 bin/icarus programs/case_with_type_inference.ic --file-type=none
 bin/icarus programs/cast.ic --file-type=none
 bin/icarus programs/chain_test.ic --file-type=none
+bin/icarus programs/cheating_quine.ic --file-type=none
 bin/icarus programs/char_array.ic --file-type=none
 bin/icarus programs/code_gen_test.ic --file-type=none
 bin/icarus programs/code_gen_test_with_type_inference.ic --file-type=none
