@@ -44,6 +44,11 @@ size_t Type::bytes() const {
     return MoveForwardToAlignment(num_bytes, alignment());
   }
 
+  // kludgy. Should be fixed by making this uncallable
+  if (is_type_variable()) { return 0; }
+
+
+  std::cerr << *this << std::endl;
   NOT_YET;
 }
 
@@ -70,6 +75,11 @@ size_t Type::alignment() const {
     }
     return alignment_val;
   }
+
+  // kludgy. Should be fixed by making this uncallable
+  if (is_type_variable()) { return 0; }
+
+  std::cerr << *this << std::endl;
   NOT_YET;
 }
 
@@ -266,9 +276,9 @@ ParametricStructure::ParametricStructure(const std::string &name,
 
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
-    : ast_expression(expr), bound_name(name), creator(nullptr),
-      init_fn_(nullptr), destroy_fn_(nullptr), assign_fn_(nullptr),
-      init_func(nullptr) {}
+    : ast_expression(expr), bound_name(name), field_offsets(1, 0),
+      creator(nullptr), init_fn_(nullptr), destroy_fn_(nullptr),
+      assign_fn_(nullptr), init_func(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
@@ -346,7 +356,7 @@ void Structure::insert_field(const std::string &name, Type *ty,
                              AST::Expression *init_val) {
 
   // TODO what if ty->alignment() == 0?
-  size_t last_field_offset = field_offsets.empty() ? 0 : field_offsets.back();
+  size_t last_field_offset = field_offsets.back();
   size_t next_offset = MoveForwardToAlignment(
       last_field_offset + (field_type.empty() ? 0 : field_type.back()->bytes()),
       ty->alignment());

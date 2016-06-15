@@ -8,19 +8,17 @@
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
 namespace AST {
-StructLiteral *
-ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
+void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   auto arg_vals  = reverse_cache[cache_loc];
   auto num_decls = decls.size();
   cache_loc->decls.reserve(num_decls);
-
 
   for (size_t i = 0; i < num_decls; ++i) {
     auto new_decl = new Declaration;
     new_decl->identifier =
         new Identifier(decls[i]->identifier->loc, decls[i]->identifier->token);
     new_decl->identifier->decl = new_decl;
-    new_decl->hashtags = decls[i]->hashtags;
+    new_decl->hashtags         = decls[i]->hashtags;
 
     if (decls[i]->type_expr) {
       // This is kinda hacky to get the right eval. TODO move arg_vals into
@@ -30,9 +28,7 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
                             decls[i]->type_expr->evaluate(arg_vals).as_type);
 
     }
-    if (decls[i]->init_val) {
-      NOT_YET;
-    }
+    if (decls[i]->init_val) { NOT_YET; }
 
     cache_loc->decls.push_back(new_decl);
   }
@@ -47,8 +43,6 @@ ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   assert(value.as_type->is_parametric_struct());
   assert(cache_loc->value.as_type->is_struct());
   ((Structure *)cache_loc->value.as_type)->creator = this;
- 
-  return cache_loc;
 }
 
 Node *Expression::clone(LOOKUP_ARGS) { assert(false); }
@@ -66,6 +60,7 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   fn_lit->return_type_expr = (Expression *)return_type_expr->CLONE;
   fn_lit->statements       = (Statements *)statements->CLONE;
   fn_lit->code_gened       = code_gened; // TODO really?? Seems fishy
+  fn_lit->loc              = loc;
 
   for (auto input : inputs) {
     auto cloned_input     = (Declaration *)input->CLONE;
@@ -79,6 +74,7 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
 
 Node *ArrayLiteral::clone(LOOKUP_ARGS) {
   auto array_lit = new ArrayLiteral;
+  array_lit->loc = loc;
   array_lit->elems.reserve(elems.size());
   for (auto el : elems) { array_lit->elems.push_back((Expression *)el->CLONE); }
   return array_lit;
@@ -88,6 +84,8 @@ Node *Binop::clone(LOOKUP_ARGS) {
   auto binop = new Binop;
   binop->op  = op;
   binop->lhs = (Expression *)lhs->CLONE;
+  binop->loc = loc;
+
   if (rhs) { binop->rhs = (Expression *)rhs->CLONE; }
   return binop;
 }
@@ -95,6 +93,7 @@ Node *Binop::clone(LOOKUP_ARGS) {
 Node *For::clone(LOOKUP_ARGS) {
   auto for_stmt        = new For;
   for_stmt->statements = (Statements *)statements->CLONE;
+  for_stmt->loc        = loc;
 
   for_stmt->iterators.reserve(iterators.size());
   for (auto i : iterators) {
@@ -106,6 +105,8 @@ Node *For::clone(LOOKUP_ARGS) {
 
 Node *Statements::clone(LOOKUP_ARGS) {
   auto stmts = new Statements;
+  stmts->loc = loc;
+
   for (auto s : statements) { stmts->statements.push_back(s->CLONE); }
   return stmts;
 }
@@ -115,6 +116,7 @@ Node *ArrayType::clone(LOOKUP_ARGS) {
   auto array_type       = new ArrayType;
   array_type->length    = (Expression *)length->CLONE;
   array_type->data_type = (Expression *)data_type->CLONE;
+  array_type->loc       = loc;
   return array_type;
 }
 
@@ -122,6 +124,7 @@ Node *Unop::clone(LOOKUP_ARGS) {
   auto unop     = new Unop;
   unop->op      = op;
   unop->operand = (Expression *)operand->CLONE;
+  unop->loc     = loc;
 
   return unop;
 }
@@ -129,6 +132,7 @@ Node *Unop::clone(LOOKUP_ARGS) {
 Node *Conditional::clone(LOOKUP_ARGS) {
   auto cond_node           = new Conditional;
   cond_node->else_line_num = else_line_num;
+  cond_node->loc           = loc;
 
   cond_node->conditions.reserve(conditions.size());
   for (auto c : conditions) {
@@ -153,6 +157,7 @@ Node *Conditional::clone(LOOKUP_ARGS) {
 Node *ChainOp::clone(LOOKUP_ARGS) {
   auto chain_node = new ChainOp;
   chain_node->ops = ops;
+  chain_node->loc = loc;
 
   chain_node->exprs.reserve(exprs.size());
   for (auto e : exprs) { chain_node->exprs.push_back((Expression *)e->CLONE); }
@@ -164,6 +169,8 @@ Node *Terminal::clone(LOOKUP_ARGS) { return this; }
 
 Node *Case::clone(LOOKUP_ARGS) {
   auto case_node = new Case;
+  case_node->loc = loc;
+
   for (auto& kv : key_vals) {
     case_node->key_vals.emplace_back((Expression *)kv.first->CLONE,
                                      (Expression *)kv.second->CLONE);
@@ -176,6 +183,7 @@ Node *Access::clone(LOOKUP_ARGS) {
   auto access_node         = new Access;
   access_node->member_name = member_name;
   access_node->operand     = (Expression *)operand->CLONE;
+  access_node->loc         = loc;
   return access_node;
 }
 
@@ -191,6 +199,7 @@ Node *Generic::clone(LOOKUP_ARGS) {
   generic->identifier       = (Identifier *)identifier->CLONE;
   generic->test_fn          = (Expression *)test_fn->CLONE;
   generic->identifier->decl = generic;
+  generic->loc              = loc;
   return generic;
 }
 
@@ -199,6 +208,7 @@ Node *InDecl::clone(LOOKUP_ARGS) {
   in_decl->identifier       = (Identifier *)identifier->CLONE;
   in_decl->container        = (Expression *)container->CLONE;
   in_decl->identifier->decl = in_decl;
+  in_decl->loc              = loc;
   return in_decl;
 }
 
@@ -207,6 +217,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
   decl->identifier       = (Identifier *)identifier->CLONE;
   decl->identifier->decl = decl;
   decl->hashtags         = hashtags;
+  decl->loc              = loc;
 
   if (type_expr) { decl->type_expr = (Expression *)type_expr->CLONE; }
   if (init_val) { decl->init_val = (Expression *)init_val->CLONE; }

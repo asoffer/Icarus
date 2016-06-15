@@ -167,7 +167,7 @@ void Cmd::Execute(StackFrame& frame) {
                  (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
 
       assert(cmd_inputs.size() == 4);
-      size_t field_index = (size_t)(cmd_inputs[3].val.as_int);
+      size_t field_index = (size_t)(cmd_inputs[3].val.as_int) + 1;
 
       ptr += struct_type->field_offsets AT(field_index);
       frame.reg[result.val.as_ref] = Value::Alloc(ptr);

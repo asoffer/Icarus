@@ -6,14 +6,6 @@
 #include "IR/IR.h"
 #include "IR/Stack.h"
 
-#define STARTING_VALUE_CHECK                                                   \
-  verify_types();                                                              \
-  switch (value_flag) {                                                        \
-  case ValueFlag::In: assert(false && "Cyclic value dependency");              \
-  case ValueFlag::Done: return value;                                          \
-  case ValueFlag::Not: value_flag = ValueFlag::In;                             \
-  }
-
 namespace TypeSystem {
 void initialize();
 extern Type *get(const std::string &name);
@@ -142,21 +134,20 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   cache_loc->value     = Context::Value(struct_val);
 
   if (debug::parametric_struct) {
-    std::cerr << " * No match found.\n"
-                 " * Creating new cached value.\n"
-                 " * Cache size is now "
-              << cache.size() << " for " << *this << "." << std::endl;
+    fprintf(stderr, " * No match found.\n"
+                    " * Creating new cached value.\n"
+                    " * Cache size is now %lu for %s.\n",
+            cache.size(), to_string(0).c_str());
     // For debugging so we don't get too far generating these things.
     assert(cache.size() < 5);
   }
 
-  auto cloned_struct =
-      param_struct->ast_expression->CloneStructLiteral(cache_loc);
+  param_struct->ast_expression->CloneStructLiteral(cache_loc);
 
-  cloned_struct->verify_types();
-  ((Structure *)cloned_struct->value.as_type)->set_name(ss.str());
+  cache_loc->verify_types();
+  ((Structure *)cache_loc->value.as_type)->set_name(ss.str());
 
-  return cloned_struct->value;
+  return cache_loc->value;
 }
 
 llvm::Value *Expression::llvm_value(Context::Value v) {
@@ -195,8 +186,6 @@ Context::Value Identifier::evaluate(Ctx &ctx) {
 Context::Value DummyTypeExpr::evaluate(Ctx &) { return value; }
 
 Context::Value Unop::evaluate(Ctx &ctx) {
-  STARTING_VALUE_CHECK;
-
   if (op == Language::Operator::Return) {
     scope_->SetCTRV(operand->evaluate(ctx));
 
@@ -235,6 +224,7 @@ Context::Value Unop::evaluate(Ctx &ctx) {
       return Context::Value(-operand->evaluate(ctx).as_real);
     }
   } else if (op == Language::Operator::And) {
+    operand->verify_types();
     if (operand->type != Type_) {
       // TODO better error message
       error_log.log(loc, "Taking the address of a " +
@@ -250,8 +240,6 @@ Context::Value Unop::evaluate(Ctx &ctx) {
 }
 
 Context::Value ChainOp::evaluate(Ctx &ctx) {
-  STARTING_VALUE_CHECK;
-
   using Language::Operator;
   auto expr_type = exprs[0]->type;
   if (expr_type == Bool) {
@@ -400,8 +388,6 @@ Context::Value ChainOp::evaluate(Ctx &ctx) {
 }
 
 Context::Value ArrayType::evaluate(Ctx &ctx) {
-  STARTING_VALUE_CHECK;
-
   // TODO what if the length is given but isn't a compile-time value? e.g.,
   //
   //   [input(int); char] // a char-array of length given by user input
@@ -428,8 +414,6 @@ Context::Value StructLiteral::evaluate(Ctx &ctx) { return value; }
 Context::Value EnumLiteral::evaluate(Ctx& ctx) { return value; }
 
 Context::Value Case::evaluate(Ctx& ctx) {
-  STARTING_VALUE_CHECK;
-
   for (auto kv : key_vals) {
     if (kv.first->evaluate(ctx).as_bool) { return kv.second->evaluate(ctx); }
   }
@@ -449,8 +433,6 @@ Context::Value Generic::evaluate(Ctx &ctx) {
 }
 
 Context::Value Declaration::evaluate(Ctx &ctx) {
-  STARTING_VALUE_CHECK;
-
   if (IsInferred()) {
     if (init_val->type->is_function()) {
       value = Context::Value(init_val);
@@ -487,8 +469,6 @@ Context::Value Declaration::evaluate(Ctx &ctx) {
 }
 
 Context::Value Access::evaluate(Ctx& ctx) {
-  STARTING_VALUE_CHECK;
-
   if (type->is_enum()) {
     auto enum_type = (Enumeration *)type;
     value_flag = ValueFlag::Done;
@@ -508,8 +488,6 @@ Context::Value Access::evaluate(Ctx& ctx) {
 }
 
 Context::Value Binop::evaluate(Ctx& ctx) {
-  STARTING_VALUE_CHECK;
-
   using Language::Operator;
   if (op == Operator::Call) {
     if (lhs->type->is_function()) {
@@ -621,7 +599,8 @@ Context::Value Binop::evaluate(Ctx& ctx) {
         }
       } else {
         auto evaled_rhs = rhs->evaluate(ctx);
-        param_struct_args[struct_lit->params[0]->identifier->token] = rhs->evaluate(ctx);
+        param_struct_args[struct_lit->params[0]->identifier->token] =
+            rhs->evaluate(ctx);
         arg_vals.push_back(evaled_rhs);
         if (debug::parametric_struct) {
           std::cerr << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type
@@ -679,5 +658,3 @@ Context::Value Jump::evaluate(Ctx& ctx) { assert(false && "Not yet implemented")
 Context::Value While::evaluate(Ctx& ctx) { assert(false && "Not yet implemented"); }
 Context::Value For::evaluate(Ctx& ctx) { assert(false && "Not yet implemented"); }
 } // namespace AST
-
-#undef STARTING_VALUE_CHECK

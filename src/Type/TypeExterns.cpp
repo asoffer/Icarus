@@ -43,7 +43,7 @@ static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
 static std::map<std::string, Enumeration *> enum_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
-static std::map<std::string, Structure *> struct_types_;
+static std::map<AST::StructLiteral *, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
 static std::map<Array *, SliceType *> slices_;
 
@@ -145,7 +145,7 @@ Enumeration *Enum(const std::string &name, const AST::EnumLiteral *e) {
 }
 
 Structure *Struct(const std::string &name, AST::StructLiteral *t) {
-  auto iter = TypeSystem::struct_types_.find(name);
+  auto iter = TypeSystem::struct_types_.find(t);
   if (iter != TypeSystem::struct_types_.end()) return iter->second;
 
   // If you don't provide something to create it with,
@@ -156,7 +156,7 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   auto struct_type = new Structure(name, t);
   t->value = Context::Value(struct_type);
 
-  return TypeSystem::struct_types_[name] = struct_type;
+  return TypeSystem::struct_types_[t] = struct_type;
 }
 
 ParametricStructure *ParamStruct(const std::string &name,

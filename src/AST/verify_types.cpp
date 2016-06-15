@@ -652,7 +652,6 @@ void Binop::verify_types() {
       // matching token.
       for (auto decl : decls_with_matching_id) {
         if (decl->type->is_function()) {
-
           if (!rhs && ((Function *)decl->type)->input == Void) {
             // If there is no input, and the function takes Void as its input,
             // we found a match.

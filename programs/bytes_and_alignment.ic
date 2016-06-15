@@ -1,67 +1,55 @@
+show_data := (num_bytes: uint, alignment: uint) -> void {
+  print "      bytes = ", num_bytes, "\n",
+        "  alignment = ", alignment, "\n\n"
+}
 main := void -> void {
-  print int, ":\n",
-  "      bytes = ", int.bytes, "\n",
-  "  alignment = ", int.alignment, "\n\n"
+  print int, ":\n"
+  show_data(int.bytes, int.alignment)
 
-  print real, ":\n",
-  "      bytes = ", real.bytes, "\n",
-  "  alignment = ", real.alignment, "\n\n"
+  print real, ":\n"
+  show_data(real.bytes, real.alignment)
 
-  print pair(real, bool), ":\n",
-  "      bytes = ", pair(real, bool).bytes, "\n",
-  "  alignment = ", pair(real, bool).alignment, "\n\n"
+  print pair(real, bool), ":\n"
+  show_data(pair(real, bool).bytes, pair(real, bool).alignment)
 
-  print pair(bool, real), ":\n",
-  "      bytes = ", pair(bool, real).bytes, "\n",
-  "  alignment = ", pair(bool, real).alignment, "\n\n"
+  print pair(bool, real), ":\n"
+  show_data(pair(bool, real).bytes, pair(bool, real).alignment)
 
-  print RBB, ":\n",
-  "      bytes = ", RBB.bytes, "\n",
-  "  alignment = ", RBB.alignment, "\n\n"
+  print RBB, ":\n"
+  show_data(RBB.bytes, RBB.alignment)
 
-  print BRB, ":\n",
-  "      bytes = ", BRB.bytes, "\n",
-  "  alignment = ", BRB.alignment, "\n\n"
+  print BRB, ":\n"
+  show_data(BRB.bytes, BRB.alignment)
 
-  print BBR, ":\n",
-  "      bytes = ", BBR.bytes, "\n",
-  "  alignment = ", BBR.alignment, "\n\n"
+  print BBR, ":\n"
+  show_data(BBR.bytes, BBR.alignment)
 
-  print foo, ":\n",
-  "      bytes = ", foo.bytes, "\n",
-  "  alignment = ", foo.alignment, "\n\n"
+  print foo, ":\n"
+  show_data(foo.bytes, foo.alignment)
 
-  print &foo, ":\n",
-  "      bytes = ", (&foo).bytes, "\n",
-  "  alignment = ", (&foo).alignment, "\n\n"
+  print &foo, ":\n"
+  show_data((&foo).bytes, (&foo).alignment)
 
-  print fooptr, ":\n",
-  "      bytes = ", fooptr.bytes, "\n",
-  "  alignment = ", fooptr.alignment, "\n\n"
+  print fooptr, ":\n"
+  show_data(fooptr.bytes, fooptr.alignment)
 
-  print color, ":\n",
-  "      bytes = ", color.bytes, "\n",
-  "  alignment = ", color.alignment, "\n\n"
+  print color, ":\n"
+  show_data(color.bytes, color.alignment)
 
-  print string, ":\n",
-  "      bytes = ", string.bytes, "\n",
-  "  alignment = ", string.alignment, "\n\n"
+  print string, ":\n"
+  show_data(string.bytes, string.alignment)
 
-  print [10; char], ":\n",
-  "      bytes = ", [10; char].bytes, "\n",
-  "  alignment = ", [10; char].alignment, "\n\n"
+  print [10; char], ":\n"
+  show_data([10; char].bytes, [10; char].alignment)
 
-  print [--; char], ":\n",
-  "      bytes = ", [--; char].bytes, "\n",
-  "  alignment = ", [--; char].alignment, "\n\n"
+  print [--; char], ":\n"
+  show_data([--; char].bytes, [--; char].alignment)
 
-//  print void, ":\n",
-//  "      bytes = ", void.bytes, "\n",
-//  "  alignment = ", void.alignment, "\n\n"
+//  print void, ":\n"
+//  show_data(void.bytes, void.alignment)
 
-  print type, ":\n",
-  "      bytes = ", type.bytes, "\n",
-  "  alignment = ", type.alignment, "\n\n"
+  print type, ":\n"
+  show_data(type.bytes, type.alignment)
 
   fooptr := &foo
 }
