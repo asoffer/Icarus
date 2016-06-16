@@ -4,6 +4,8 @@
 #include <cstring>
 #endif
 #include "IR/IR.h"
+#include "IR/Stack.h"
+
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
@@ -242,6 +244,35 @@ llvm::Value *Unop::generate_code() {
   }
   case Language::Operator::At: {
     return type->is_big() ? val : builder.CreateLoad(val);
+  }
+  case Language::Operator::Eval: {
+    // TODO copied this from Binop::evaluate. Should compress these into one
+    // function.
+    Ctx ctx;
+    auto fn_ptr = (FunctionLiteral *)operand->evaluate(ctx).as_expr;
+
+    auto local_stack = new IR::LocalStack;
+    IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+    auto result      = IR::Call(func, local_stack, {});
+    delete local_stack;
+
+    // Doing value conversion
+    if (result.flag == IR::ValType::B) {
+      return result.val.as_bool ? data::const_true() : data::const_false();
+
+    } else if (result.flag == IR::ValType::C) {
+      return data::const_char(result.val.as_char);
+
+    } else if (result.flag == IR::ValType::I) {
+      return data::const_int((long)result.val.as_int);
+
+    } else if (result.flag == IR::ValType::R) {
+      return data::const_real(result.val.as_real);
+
+    } else if (result.flag == IR::ValType::U) {
+      return data::const_uint(result.val.as_uint);
+    }
+    NOT_YET;
   }
   default: assert(false && "Unimplemented unary operator codegen");
   }

@@ -289,6 +289,9 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   } else if (tk == "print") {
     unop_ptr->op = Language::Operator::Print;
 
+  } else if (tk == "eval") {
+    unop_ptr->op = Language::Operator::Eval;
+
   } else if (tk == "&") {
     unop_ptr->op = Language::Operator::And;
 

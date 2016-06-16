@@ -467,6 +467,7 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
+    std::cerr << *this;
     assert(IR::Func::Current->frame_map.find(this) !=
            IR::Func::Current->frame_map.end());
     return IR::PtrCallFix(

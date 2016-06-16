@@ -67,6 +67,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::At: ss << "At"; break;
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Import: ss << "Import"; break;
+  case Language::Operator::Eval: ss << "Eval"; break;
 
   default: { assert(false && "Not a unary operator"); }
   }

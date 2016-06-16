@@ -465,12 +465,24 @@ void Unop::verify_types() {
     } else {
       error_log.log(
           loc,
-          "The logical negation operator `!` only applies to boolean values");
+          "The logical inversion operator `!` only applies to boolean values");
       type = Error;
     }
   } break;
   case Operator::Import: {
     type = Void;
+  } break;
+  case Operator::Eval: {
+    if (!operand->type->is_function()) {
+      type = Error;
+      error_log.log(loc, "Currently we can only evaluate functions");
+    } else if (((Function *)operand->type)->input != Void) {
+      type = Error;
+      error_log.log(loc,
+                    "Currently we can only evaluate functions with void input");
+    } else {
+      type = ((Function *)operand->type)->output;
+    }
   } break;
   default: assert(false && "Died in Unop::verify_types");
   }

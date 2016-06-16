@@ -152,7 +152,7 @@ NNT Lexer::next_word() {
   } else if (token == "in") {
     RETURN_NNT("in", op_b);
 
-  } else if (token == "print" || token == "import" || token == "free") {
+  } else if (token == "print" || token == "import" || token == "free" || token == "eval") {
     RETURN_NNT(token, op_l);
 
   } else if (token == "while" || token == "for") {
