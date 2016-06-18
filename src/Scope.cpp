@@ -190,7 +190,7 @@ void BlockScope::make_return(llvm::Value *val) {
 
 FnScope::FnScope(llvm::Function *fn)
     : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
-      exit_flag_(nullptr), ct_ret_val(nullptr) {
+      exit_flag_(nullptr) {
   set_parent_function(fn);
 }
 
@@ -205,46 +205,6 @@ void BlockScope::set_parent_function(llvm::Function *fn) {
     entry->insertInto(fn);
     exit->insertInto(fn);
   }
-}
-
-Context::Value Scope::GetCTRV() {
-  if (is_function_scope()) {
-    return ((FnScope *)this)->ct_ret_val;
-  } else {
-    assert(containing_function_);
-    return containing_function_->ct_ret_val;
-  }
-}
-
-bool Scope::HasCTRV() {
-  if (is_function_scope()) {
-    return ((FnScope *)this)->has_ctrv;
-  } else {
-    assert(containing_function_);
-    return containing_function_->has_ctrv;
-  }
-}
-
-void Scope::ClearCTRV() { 
-  if (is_function_scope()) {
-    ((FnScope *)this)->has_ctrv = false;
-  } else {
-    assert(containing_function_);
-    containing_function_->has_ctrv = false;
-  }
-}
-
-void Scope::SetCTRV(Context::Value v) {
-  FnScope *fnscope= nullptr;
-
-  if (is_function_scope()) {
-    fnscope = (FnScope *)this;
-  } else {
-    assert(containing_function_);
-    fnscope = containing_function_;
-  }
-  fnscope->has_ctrv = true;
-  fnscope->ct_ret_val = v;
 }
 
 void FnScope::add_scope(Scope *scope) { innards_.insert(scope); }

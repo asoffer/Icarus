@@ -47,11 +47,6 @@ struct Scope {
   std::vector<AST::Declaration *> ordered_decls_;
   std::vector<AST::Declaration *> DeclRegistry;
 
-  void SetCTRV(Context::Value v);
-  Context::Value GetCTRV();
-  void ClearCTRV();
-  bool HasCTRV();
-
   Scope *parent;
   FnScope *containing_function_;
   std::string name;
@@ -98,10 +93,6 @@ struct FnScope : public BlockScope {
   llvm::Function *llvm_fn;
   llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
-
-  bool has_ctrv;
-  Context::Value ct_ret_val; // Used to store the return value when functions
-                             // are evaluated at compile-time
 };
 
 // TODO these are not threadsafe! When we access the stack, when compilation is

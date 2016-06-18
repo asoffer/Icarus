@@ -187,8 +187,6 @@ Context::Value DummyTypeExpr::evaluate(Ctx &) { return value; }
 
 Context::Value Unop::evaluate(Ctx &ctx) {
   if (op == Language::Operator::Return) {
-    scope_->SetCTRV(operand->evaluate(ctx));
-
     return value = nullptr;
 
   } else if (op == Language::Operator::Print) {
@@ -628,28 +626,16 @@ Context::Value Binop::evaluate(Ctx& ctx) {
 }
 
 Context::Value Statements::evaluate(Ctx& ctx) {
-  for (auto &stmt : statements) {
-    stmt->evaluate(ctx);
-    if (scope_->HasCTRV()) {
-      return scope_->GetCTRV();
-    }
-  }
-
+  for (auto &stmt : statements) { stmt->evaluate(ctx); }
   return nullptr;
 }
 
 Context::Value Conditional::evaluate(Ctx& ctx) {
   for (size_t i = 0; i < conditions.size(); ++i) {
-    if (conditions[i]->evaluate(ctx).as_bool) {
-      statements[i]->evaluate(ctx);
-      if (scope_->HasCTRV()) { return scope_->GetCTRV(); }
-    }
+    if (conditions[i]->evaluate(ctx).as_bool) { statements[i]->evaluate(ctx); }
   }
 
-  if (has_else()) {
-    statements.back()->evaluate(ctx);
-    if (scope_->HasCTRV()) { return scope_->GetCTRV(); }
-  }
+  if (has_else()) { statements.back()->evaluate(ctx); }
 
   return nullptr;
 }
