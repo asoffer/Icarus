@@ -1,0 +1,18 @@
+collatz := (n: uint) -> uint {
+  if n == 1u {
+    print n, '\n'
+    return 1u
+
+  } else if n % 2u == 0u { 
+    print n, ',', ' '
+    return collatz(n / 2u)
+
+  } else {
+    print n, ',', ' '
+    return collatz(3u * n + 1u)
+  }
+}
+
+main := void -> void {
+  for i in 1u .. 50u { collatz(i) }
+}
