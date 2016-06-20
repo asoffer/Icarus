@@ -231,9 +231,26 @@ NNT Lexer::next_operator() {
     CASE(')', ")", r_paren);
     CASE('[', "[", l_bracket);
     CASE(']', "]", r_bracket);
-    CASE('{', "{", l_brace);
-    CASE('}', "}", r_brace);
+  case '{': {
+    GetChar();
+    if (file_.peek() == '{') {
+      GetChar();
+      RETURN_NNT("{{", l_eval);
 
+    } else {
+      RETURN_NNT("{", l_brace);
+    }
+  }
+  case '}': {
+    GetChar();
+    if (file_.peek() == '}') {
+      GetChar();
+      RETURN_NNT("}}", r_eval);
+
+    } else {
+      RETURN_NNT("}", r_brace);
+    }
+  }
   case '.': {
     GetChar();
     if (file_.peek() == '.') {

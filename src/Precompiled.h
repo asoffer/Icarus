@@ -149,6 +149,8 @@ enum NodeType : char {
   r_bracket,
   l_brace,
   r_brace,
+  l_eval,
+  r_eval,
 
   semicolon,
   hashtag,
