@@ -294,6 +294,7 @@ struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
+  static Node *BuildEval(NPtrVec &&nodes);
 
   Expression *operand;
   Language::Operator op;

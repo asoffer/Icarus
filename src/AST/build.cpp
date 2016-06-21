@@ -289,9 +289,6 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   } else if (tk == "print") {
     unop_ptr->op = Language::Operator::Print;
 
-  } else if (tk == "eval") {
-    unop_ptr->op = Language::Operator::Eval;
-
   } else if (tk == "&") {
     unop_ptr->op = Language::Operator::And;
 
@@ -457,6 +454,17 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
   unop_ptr->op        = tk_node->op;
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  return unop_ptr;
+}
+
+
+Node *Unop::BuildEval(NPtrVec &&nodes) {
+  auto unop_ptr     = new Unop;
+  unop_ptr->operand = steal<Expression>(nodes[1]);
+  unop_ptr->loc     = nodes[0]->loc;
+  unop_ptr->op      = Language::Operator::Eval;
+
+  unop_ptr->precedence = Language::precedence(Language::Operator::Eval);
   return unop_ptr;
 }
 

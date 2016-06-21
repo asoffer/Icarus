@@ -1,52 +1,19 @@
-alloc := (ptr: &&Any`T) -> void {
-  malloc: uint -> &char #cstdlib
-  @ptr = malloc(T.bytes) :> &T
+hello_world := void -> void {
+  print  'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'
 }
 
-
-list := struct(T: type) {
-  size: uint
-  head: &node(T)
-}
-
-
-node := struct(T: type) {
-  data: T
-  next: &node(T)
-}
-
-
-__print__ := (l: list(int)) -> void {
-  iter := l.head
-  print '['
-  if l.size > 0u {
-    i := 0u
-    while i < l.size {
-      i += 1u
-      print iter.data
-      if i != l.size {
-        print " -> "
-      }
-      iter = iter.next
-    }
-  } 
-  print ']'
+fibonacci := (n: int) -> int {
+  return case {
+    n == 0 => 0
+    n == 1 => 1
+    else   => fibonacci(n - 1) + fibonacci(n - 2)
+  }
 }
 
 main := void -> void {
-  l: list(int)
-  l.add(3).add(5).add(7)
-  print l, '\n'
-}
+  fib_of_20 := void -> int { return fibonacci(20) }
 
-add := (this: &list(Any`T), n: T) -> &list(T) {
-  nptr: &node(T)
-  alloc(&nptr)
-  nptr.data = n
-  nptr.next = this.head
-  this.head = nptr
-  this.size += 1u
-  return this
-}
+  {{ hello_world() }}
 
-Any := (T: type) -> bool { return true }
+  print {{ fib_of_20() }}
+}
