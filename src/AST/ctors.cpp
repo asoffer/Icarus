@@ -40,6 +40,7 @@ Binop::Binop() {}
 Unop::Unop() {}
 Terminal::Terminal() {}
 ArrayType::ArrayType() {}
+Eval::Eval() : expr(nullptr) {}
 
 DummyTypeExpr::DummyTypeExpr() { assert(false); }
 
@@ -63,8 +64,8 @@ Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
 }
 
 FunctionLiteral::FunctionLiteral()
-    : fn_scope(new FnScope), llvm_fn(nullptr), statements(nullptr),
-      ir_func(nullptr), code_gened(false) {}
+    : fn_scope(new FnScope), return_type_expr(nullptr), llvm_fn(nullptr),
+      statements(nullptr), ir_func(nullptr), code_gened(false) {}
 
 StructLiteral::StructLiteral() : type_scope(new Scope) {}
 ParametricStructLiteral::ParametricStructLiteral() : type_scope(new Scope) {}

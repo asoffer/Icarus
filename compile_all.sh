@@ -24,6 +24,7 @@ bin/icarus programs/doomsday.ic --file-type=none
 bin/icarus programs/double_case.ic --file-type=none
 bin/icarus programs/dynamic_allocation.ic --file-type=none
 bin/icarus programs/enum.ic --file-type=none
+bin/icarus programs/eval.ic --file-type=none
 bin/icarus programs/fn_arg.ic --file-type=none
 bin/icarus programs/fn_params.ic --file-type=none
 bin/icarus programs/fn_call.ic --file-type=none

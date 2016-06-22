@@ -177,7 +177,7 @@ static const std::vector<Rule> Rules = {
 
     // Parenthesization and bracketing (array literals)
     Rule(0x01, expr, {{l_paren}, EXPR, {r_paren}}, Parenthesize),
-    Rule(0x01, expr, {{l_eval}, EXPR, {r_eval}}, AST::Unop::BuildEval),
+    Rule(0x01, expr, {{l_eval}, EXPR, {r_eval}}, AST::Eval::Build),
     Rule(0x01, expr, {{l_bracket}, EXPR, {r_bracket}},
          AST::ArrayLiteral::build),
     Rule(0x00, expr, {{l_bracket}, {r_bracket}}, AST::ArrayLiteral::BuildEmpty),

@@ -32,6 +32,7 @@ ArrayType::~ArrayType() {
 
 Terminal::~Terminal() {}
 Identifier::~Identifier() {}
+Eval::~Eval() { DELETE(expr); }
 
 Case::~Case() {
   for (auto kv : key_vals) {
@@ -63,7 +64,7 @@ Declaration::~Declaration() {
 FunctionLiteral::~FunctionLiteral() {
   DELETE(fn_scope);
   DELETE(return_type_expr);
-  for (auto decl : inputs) DELETE(decl);
+  for (auto decl : inputs) { DELETE(decl); }
   DELETE(statements);
 }
 

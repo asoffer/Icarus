@@ -61,6 +61,8 @@ void EmitPrintExpr(Expression *expr) {
   }
 }
 
+IR::Value Eval::EmitIR() { NOT_YET; }
+
 IR::Value Unop::EmitIR() {
   switch (op) {
   case Language::Operator::Import: NOT_YET;

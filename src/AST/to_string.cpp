@@ -237,6 +237,12 @@ std::string EnumLiteral::to_string(size_t n) const {
   return ss.str();
 }
 
+std::string Eval::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<Eval>\n" << expr;
+  return ss.str();
+}
+
 std::string Jump::to_string(size_t n) const {
   switch (jump_type) {
   case JumpType::Restart: return tabs(n) + "<Restart>\n";

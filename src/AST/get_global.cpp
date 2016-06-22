@@ -68,6 +68,7 @@ llvm::Constant *Unop::GetGlobal() {
   }
 }
 
+llvm::Constant *Eval::GetGlobal() { NOT_YET; }
 llvm::Constant *Generic::GetGlobal() { NOT_YET; }
 llvm::Constant *InDecl::GetGlobal() { NOT_YET; }
 llvm::Constant *Declaration::GetGlobal() { NOT_YET; }

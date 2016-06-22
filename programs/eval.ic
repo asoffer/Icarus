@@ -1,5 +1,5 @@
-hello_world := void -> void {
-  print  'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd', '!', '\n'
+hi := void -> void {
+  print  'H', 'i', '\n'
 }
 
 fibonacci := (n: int) -> int {
@@ -13,7 +13,8 @@ fibonacci := (n: int) -> int {
 main := void -> void {
   fib_of_20 := void -> int { return fibonacci(20) }
 
-  {{ hello_world() }}
+  {{ hi() }}
 
+  {{ print fib_of_20(), '\n' }}
   print {{ fib_of_20() }}
 }

@@ -278,6 +278,53 @@ llvm::Value *Unop::generate_code() {
   }
 }
 
+llvm::Value *Eval::generate_code() {
+  // NOTE: We're not setting everything here, and it could be problematic. For
+  // example, we don't reset the function scope when we make this "ghost
+  // function wrapper."
+
+  auto ret        = new Unop;
+  ret->operand    = expr;
+  ret->op         = Language::Operator::Return;
+  ret->precedence = Language::precedence(ret->op);
+
+  auto stmts = new Statements;
+  stmts->statements.push_back(ret);
+
+  auto fn_ptr              = new FunctionLiteral;
+  fn_ptr->statements       = stmts;
+  fn_ptr->return_type_expr = new DummyTypeExpr(expr->loc, type);
+
+  auto local_stack = new IR::LocalStack;
+  IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+  auto result      = IR::Call(func, local_stack, {});
+  delete local_stack;
+
+  // Cleanup
+  ret->operand = nullptr;
+  delete fn_ptr; // Because delete is called recursively, this is all we need to
+                 // do. The Statements and Unop nodes are owned by the function.
+
+  // Doing value conversion
+  if (result.flag == IR::ValType::B) {
+    return result.val.as_bool ? data::const_true() : data::const_false();
+
+  } else if (result.flag == IR::ValType::C) {
+    return data::const_char(result.val.as_char);
+
+  } else if (result.flag == IR::ValType::I) {
+    return data::const_int((long)result.val.as_int);
+
+  } else if (result.flag == IR::ValType::R) {
+    return data::const_real(result.val.as_real);
+
+  } else if (result.flag == IR::ValType::U) {
+    return data::const_uint(result.val.as_uint);
+  } else {
+    NOT_YET;
+  }
+}
+
 llvm::Value *Access::generate_code() {
   if (type->time() == Time::compile) { return nullptr; }
 

@@ -458,14 +458,12 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
 }
 
 
-Node *Unop::BuildEval(NPtrVec &&nodes) {
-  auto unop_ptr     = new Unop;
-  unop_ptr->operand = steal<Expression>(nodes[1]);
-  unop_ptr->loc     = nodes[0]->loc;
-  unop_ptr->op      = Language::Operator::Eval;
-
-  unop_ptr->precedence = Language::precedence(Language::Operator::Eval);
-  return unop_ptr;
+Node *Eval::Build(NPtrVec &&nodes) {
+  auto eval_ptr        = new Eval;
+  eval_ptr->expr       = steal<Expression>(nodes[1]);
+  eval_ptr->loc        = nodes[0]->loc;
+  eval_ptr->precedence = Language::precedence(Language::Operator::Eval);
+  return eval_ptr;
 }
 
 Node *ArrayLiteral::build(NPtrVec &&nodes) {

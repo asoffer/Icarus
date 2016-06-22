@@ -45,15 +45,16 @@ void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   ((Structure *)cache_loc->value.as_type)->creator = this;
 }
 
-Node *Expression::clone(LOOKUP_ARGS) { assert(false); }
-Node *ParametricStructLiteral::clone(LOOKUP_ARGS) { assert(false); }
-Node *StructLiteral::clone(LOOKUP_ARGS) { assert(false); }
-Node *EnumLiteral::clone(LOOKUP_ARGS) { assert(false); }
-Node *DummyTypeExpr::clone(LOOKUP_ARGS) { assert(false); }
-Node *Jump::clone(LOOKUP_ARGS) { assert(false); }
-Node *While::clone(LOOKUP_ARGS) { assert(false); }
-Node *TokenNode::clone(LOOKUP_ARGS) { assert(false); }
-Node *Node::clone(LOOKUP_ARGS) { assert(false); }
+Node *Expression::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *ParametricStructLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *StructLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *EnumLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *DummyTypeExpr::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *TokenNode::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *Node::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *Eval::clone(LOOKUP_ARGS) { NOT_YET; }
 
 Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   auto fn_lit              = new FunctionLiteral;

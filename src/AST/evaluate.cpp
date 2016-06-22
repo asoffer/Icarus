@@ -184,6 +184,7 @@ Context::Value Identifier::evaluate(Ctx &ctx) {
 }
 
 Context::Value DummyTypeExpr::evaluate(Ctx &) { return value; }
+Context::Value Eval::evaluate(Ctx &) { NOT_YET; }
 
 Context::Value Unop::evaluate(Ctx &ctx) {
   if (op == Language::Operator::Return) {

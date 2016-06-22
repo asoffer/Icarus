@@ -62,6 +62,7 @@ struct Node {
   virtual bool is_function_literal() const { return false; }
   virtual bool is_chain_op() const { return false; }
   virtual bool is_case() const { return false; }
+  virtual bool is_eval() const { return true; }
   virtual bool is_unop() const { return false; }
   virtual bool is_access() const { return false; }
   virtual bool is_comma_list() const { return false; }
@@ -290,11 +291,17 @@ struct Statements : public Node {
   std::vector<AST::Node *> statements;
 };
 
+struct Eval : public Expression {
+  EXPR_FNS(Eval, eval);
+  static Node *Build(NPtrVec &&nodes);
+
+  Expression *expr;
+};
+
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
-  static Node *BuildEval(NPtrVec &&nodes);
 
   Expression *operand;
   Language::Operator op;

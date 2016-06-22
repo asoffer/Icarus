@@ -472,20 +472,14 @@ void Unop::verify_types() {
   case Operator::Import: {
     type = Void;
   } break;
-  case Operator::Eval: {
-    if (!operand->type->is_function()) {
-      type = Error;
-      error_log.log(loc, "Currently we can only evaluate functions");
-    } else if (((Function *)operand->type)->input != Void) {
-      type = Error;
-      error_log.log(loc,
-                    "Currently we can only evaluate functions with void input");
-    } else {
-      type = ((Function *)operand->type)->output;
-    }
-  } break;
   default: assert(false && "Died in Unop::verify_types");
   }
+}
+
+void Eval::verify_types() {
+  STARTING_CHECK;
+  expr->verify_types();
+  type = expr->type;
 }
 
 void Access::verify_types() {
