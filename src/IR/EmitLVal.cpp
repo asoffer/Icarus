@@ -2,7 +2,7 @@
 
 namespace AST {
 IR::Value Identifier::EmitLVal() {
-  return IR::Value::RelAlloc(IR::Func::Current->frame_map.at(this));
+  return IR::Value::RelAlloc(IR::Func::Current->frame_map.at(decl));
 }
 
 IR::Value Unop::EmitLVal() { NOT_YET; }

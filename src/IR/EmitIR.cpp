@@ -23,7 +23,7 @@ void IR::Func::PushLocal(AST::Declaration *decl) {
 
   frame_size = MoveForwardToAlignment(frame_size, alignment);
 
-  frame_map[decl->identifier] = frame_size;
+  frame_map[decl] = frame_size;
   frame_size += bytes;
 }
 
@@ -56,7 +56,8 @@ IR::Value Terminal::EmitIR() {
 void EmitPrintExpr(Expression *expr) {
   if (expr->type->is_primitive()) {
     IR::Print(expr->EmitIR());
-  } else {
+  } else if (expr->type->is_function()) {
+
     NOT_YET;
   }
 }
@@ -469,14 +470,11 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
-    std::cerr << *this;
-    assert(IR::Func::Current->frame_map.find(this) !=
+    assert(IR::Func::Current->frame_map.find(decl) !=
            IR::Func::Current->frame_map.end());
     return IR::PtrCallFix(
-        type, IR::Value::Alloc(IR::Func::Current->frame_map.at(this)));
+        type, IR::Value::Alloc(IR::Func::Current->frame_map.at(decl)));
   }
-  std::cerr << *this << std::endl;
-  NOT_YET;
 }
 
 IR::Value ArrayType::EmitIR() {
