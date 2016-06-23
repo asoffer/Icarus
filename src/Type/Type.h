@@ -59,6 +59,10 @@ public:
   size_t bytes() const;
   size_t alignment() const;
 
+  inline size_t SpaceInArray() const {
+    return MoveForwardToAlignment(bytes(), alignment());
+  }
+
   // Assigns val to var. We need this to dispatch based on both the lhs and rhs
   // types. Assume that the types match appropriately. Depending on the types,
   // this will either simply be a store operation or a call to the assignment

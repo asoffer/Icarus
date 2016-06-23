@@ -150,8 +150,7 @@ void Cmd::Execute(StackFrame& frame) {
 
           for (size_t i = 3; i < cmd_inputs.size(); ++i) {
             ptr += (size_t)(cmd_inputs[i].val.as_int) *
-                   array_type->data_type->bytes();
-            // TODO What about alignment?
+                   array_type->data_type->SpaceInArray();
           }
 
           frame.reg[result.val.as_ref] = Value::Alloc(ptr);

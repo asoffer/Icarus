@@ -229,7 +229,16 @@ IR::Value Binop::EmitIR() {
 #undef ARITHMETIC_CASE
 
   case Language::Operator::Index: {
-    NOT_YET;
+    if (lhs->type->is_array()) {
+      auto array_type = (Array*)lhs->type;
+      if (array_type->fixed_length){
+        return PtrCallFix(type, EmitLVal());
+      } else {
+        NOT_YET;
+      }
+    } else {
+      NOT_YET;
+    }
   } break;
   case Language::Operator::Call: {
     auto result = IR::CallCmd(lhs->EmitIR());
@@ -493,11 +502,34 @@ IR::Value ArrayType::EmitIR() {
 
 static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                            IR::Value lhs_ptr, IR::Value rhs) {
+
   assert(scope);
-  if (lhs_type == rhs_type) {
-    if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-        lhs_type->is_enum()) {
+  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
+      lhs_type->is_enum()) {
+    if (lhs_type == rhs_type) {
       IR::Store(rhs_type, rhs, lhs_ptr);
+    } else {
+      NOT_YET;
+    }
+  } else if (lhs_type->is_array()) {
+    assert(rhs_type->is_array());
+    auto lhs_array_type = (Array *)lhs_type;
+    if (lhs_array_type->fixed_length) {
+      // Implies rhs has fixed length of same length as well.
+
+
+      // TODO move this into a real Array method.
+      for (int i = 0; i < (int)lhs_array_type->len; ++i) {
+        auto lhs_gep = IR::GEP(lhs_array_type, lhs_ptr, {0, i});
+        IR::Block::Current->push(lhs_gep);
+
+        auto rhs_gep = IR::GEP(lhs_array_type, rhs, {0, i});
+        IR::Block::Current->push(rhs_gep);
+
+        EmitAssignment(scope, lhs_array_type->data_type,
+                       lhs_array_type->data_type, lhs_gep,
+                       PtrCallFix(lhs_array_type->data_type, rhs_gep));
+      }
     }
   } else {
     NOT_YET;
@@ -666,21 +698,16 @@ IR::Value Conditional::EmitIR() {
 
 IR::Value ArrayLiteral::EmitIR() {
   // TODO delete allocation
-  auto tmp_alloc = IR::Value::Alloc(
+  auto tmp_alloc = IR::Value::RelAlloc(
       IR::Func::Current->PushSpace(type->bytes(), type->alignment()));
   auto num_elems = elems.size();
 
   assert(type->is_array());
   auto data_type = ((Array *)type)->data_type;
-
-  auto space_per_entry =
-      MoveForwardToAlignment(data_type->bytes(), data_type->alignment());
-
   for (size_t i = 0; i < num_elems; ++i) {
-    EmitAssignment(
-        scope_, data_type, elems[i]->type,
-        IR::Value::RelAlloc(tmp_alloc.val.as_alloc + i * space_per_entry),
-        elems[i]->EmitIR());
+    auto gep = IR::GEP(type, tmp_alloc, {0, (int)i});
+    IR::Block::Current->push(gep);
+    EmitAssignment(scope_, data_type, elems[i]->type, gep, elems[i]->EmitIR());
   }
 
   return tmp_alloc;
