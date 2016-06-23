@@ -1,5 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Type/Type.h"
+#include "IR/IR.h"
 #include "Scope.h"
 #endif
 
@@ -177,6 +178,52 @@ llvm::Function *ascii() {
   return ascii_;
 }
 } // namespace builtin
+
+namespace IR {
+Func *AsciiFunc() {
+  static IR::Func *ascii_ = nullptr;
+
+  if (ascii_) { return ascii_; }
+  ascii_ = new IR::Func;
+
+  auto saved_func  = Func::Current;
+  auto saved_block = Block::Current;
+
+  Func::Current  = ascii_;
+  Block::Current = ascii_->entry();
+
+  auto cast_result = IR::Cast(Char, IR::Value::Arg(0));
+
+  Block::Current->exit.SetReturn(cast_result);
+
+  Func::Current  = saved_func;
+  Block::Current = saved_block;
+
+  return ascii_;
+}
+
+Func *OrdFunc() {
+  static IR::Func *ord_ = nullptr;
+
+  if (ord_) { return ord_; }
+  ord_ = new IR::Func;
+
+  auto saved_func  = Func::Current;
+  auto saved_block = Block::Current;
+
+  Func::Current  = ord_;
+  Block::Current = ord_->entry();
+
+  auto cast_result = IR::Cast(Uint, IR::Value::Arg(0));
+  Block::Current->exit.SetReturn(cast_result);
+
+  Func::Current  = saved_func;
+  Block::Current = saved_block;
+
+  return ord_;
+}
+} // namespace IR
+
 
 // TODO make calls to call_repr not have to first check if we pass the
 // object or a pointer to the object.

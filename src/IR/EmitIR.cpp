@@ -8,6 +8,9 @@ extern bool ct_eval;
 } // namespace debug
 
 namespace IR {
+extern Func *AsciiFunc();
+extern Func *OrdFunc();
+
 static Value PtrCallFix(Type *t, IR::Value v) {
   return t->is_big() ? v : IR::Load(t, v);
 }
@@ -35,7 +38,7 @@ namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
   switch (terminal_type) {
-  case Language::Terminal::ASCII: NOT_YET;
+  case Language::Terminal::ASCII: return IR::Value(IR::AsciiFunc());
   case Language::Terminal::Char: return IR::Value(value.as_char);
   case Language::Terminal::Else: UNREACHABLE;
   case Language::Terminal::False: return IR::Value(false);
@@ -44,7 +47,7 @@ IR::Value Terminal::EmitIR() {
     return IR::Value(
         (int)value.as_int); // TODO Context::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value(nullptr);
-  case Language::Terminal::Ord: NOT_YET;
+  case Language::Terminal::Ord: return IR::Value(IR::OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: {
     IR::Block::Current->exit.SetReturnVoid();

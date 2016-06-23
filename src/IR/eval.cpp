@@ -82,6 +82,20 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::FNeg: {
     frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_real);
   } break;
+  case Op::Cast: {
+    // This really only converts char <-> uint for ord/ascii. This needs to be
+    // thoroughly flushed out.
+    if (cmd_inputs[0].val.as_type == Char) {
+      frame.reg[result.val.as_ref] = Value((char)cmd_inputs[1].val.as_uint);
+
+    } else if (cmd_inputs[0].val.as_type == Uint) {
+      frame.reg[result.val.as_ref] = Value((size_t)cmd_inputs[1].val.as_char);
+
+    } else {
+      NOT_YET;
+    }
+
+  } break;
   case Op::Load: {
     size_t offset = cmd_inputs[1].val.as_alloc;
     Type *t = cmd_inputs[0].val.as_type;

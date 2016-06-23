@@ -85,6 +85,7 @@ struct Cmd {
 
   friend Cmd CallCmd(Value);
   friend Cmd GEP(Type *t, Value lhs, std::vector<int> indices);
+  friend Cmd Cast(Type *to, Value v);
 
   // Only used for phi cmds
   friend Cmd Phi();
@@ -251,6 +252,15 @@ inline Cmd GEP(Type *t, Value lhs, std::vector<int> indices) {
   call.args.push_back(lhs);
   for (auto i : indices) { call.args.push_back(Value(i)); }
   return call;
+}
+
+inline Cmd Cast(Type *to, Value v) {
+  Cmd cast;
+  cast.op_code = Op::Cast;
+  cast.args.emplace_back(to);
+  cast.args.emplace_back(v);
+  Block::Current->push(cast);
+  return cast;
 }
 
 #undef CMD_WITH_V_ARGS
