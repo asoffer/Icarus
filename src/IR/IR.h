@@ -176,6 +176,7 @@ struct Func {
   Block *entry() { return blocks.front(); }
   size_t num_cmds, frame_size;
 
+  size_t PushSpace(size_t bytes, size_t alignment);
   void PushLocal(AST::Declaration *decl);
   Block *AddBlock();
 

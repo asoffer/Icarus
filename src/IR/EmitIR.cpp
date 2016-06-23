@@ -13,18 +13,22 @@ static Value PtrCallFix(Type *t, IR::Value v) {
 }
 } // namespace IR
 
-void IR::Func::PushLocal(AST::Declaration *decl) {
-  size_t alignment = decl->type->alignment();
-  size_t bytes     = decl->type->bytes();
-
+size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
   // Compile-time variables actually take up space in the IR!
   if (bytes == 0) { bytes = sizeof(Type *); }
   if (alignment == 0) { alignment = sizeof(Type *); }
 
   frame_size = MoveForwardToAlignment(frame_size, alignment);
 
-  frame_map[decl] = frame_size;
+  auto result = frame_size;
   frame_size += bytes;
+
+  return result;
+}
+
+void IR::Func::PushLocal(AST::Declaration *decl) {
+  frame_map[decl] = frame_size;
+  PushSpace(decl->type->bytes(), decl->type->alignment());
 }
 
 namespace AST {
@@ -58,6 +62,8 @@ void EmitPrintExpr(Expression *expr) {
     IR::Print(expr->EmitIR());
   } else if (expr->type->is_function()) {
 
+    NOT_YET;
+  } else {
     NOT_YET;
   }
 }
@@ -658,7 +664,28 @@ IR::Value Conditional::EmitIR() {
   return IR::Value();
 }
 
-IR::Value ArrayLiteral::EmitIR() { NOT_YET; }
+IR::Value ArrayLiteral::EmitIR() {
+  // TODO delete allocation
+  auto tmp_alloc = IR::Value::Alloc(
+      IR::Func::Current->PushSpace(type->bytes(), type->alignment()));
+  auto num_elems = elems.size();
+
+  assert(type->is_array());
+  auto data_type = ((Array *)type)->data_type;
+
+  auto space_per_entry =
+      MoveForwardToAlignment(data_type->bytes(), data_type->alignment());
+
+  for (size_t i = 0; i < num_elems; ++i) {
+    EmitAssignment(
+        scope_, data_type, elems[i]->type,
+        IR::Value::RelAlloc(tmp_alloc.val.as_alloc + i * space_per_entry),
+        elems[i]->EmitIR());
+  }
+
+  return tmp_alloc;
+}
+
 IR::Value For::EmitIR() { NOT_YET; }
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
