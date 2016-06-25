@@ -111,6 +111,7 @@ void WriteObjectFile(const char *out_file) {
 }
 
 int main(int argc, char *argv[]) {
+  std::cerr << argv[1] << std::endl;
 
   TIME("Argument parsing") {
     switch(ParseCLArguments(argc, argv)) {

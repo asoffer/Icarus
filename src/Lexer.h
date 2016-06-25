@@ -1,6 +1,8 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
+#include "util/pstr.h"
+
 struct NNT {
   AST::Node *node;
   Language::NodeType node_type;
@@ -21,22 +23,38 @@ struct Lexer {
     NNT Next();
 
     // Returns true precisely when we have not yet reached EOF
-    operator bool () const { return !file_.eof() && !file_.fail(); }
+    operator bool () const { return !ifs.eof() && !ifs.fail(); }
 
-    std::ifstream file_;
+    std::ifstream ifs;
     TokenLocation loc_;
+
+    struct Cursor {
+      Cursor() : offset_(0), line_num_(0) {}
+
+      pstr line_;
+      size_t offset_;
+      size_t line_num_;
+
+      // Get the character that the cursor is currently pointing to
+      inline char &operator*(void) const { return *(line_.ptr + offset_); }
+
+    } cursor;
+
+    std::vector<pstr> lines;
 
     Lexer() = delete;
 
-    int GetChar();
+    void IncrementCursor();
 
-    NNT next_word();
-    NNT next_number();
     NNT next_operator();
     NNT next_string_literal();
     NNT next_char_literal();
     NNT next_given_slash();
     NNT next_hashtag();
+
+  private:
+    NNT NextWord();
+    NNT NextNumber();
 };
 
 #endif  // ICARUS_LEXER_H

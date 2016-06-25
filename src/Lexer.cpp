@@ -5,17 +5,13 @@
 #endif
 
 extern std::queue<std::string> file_queue;
-namespace builtin {
-llvm::Function *ord();
-llvm::Function *ascii();
-} // namespace builtin
 
-#define RETURN_TERMINAL(term_type, ty, val)                                \
+#define RETURN_TERMINAL(term_type, ty, val)                                    \
   auto term_ptr           = new AST::Terminal;                                 \
   term_ptr->loc           = loc_;                                              \
   term_ptr->terminal_type = Language::Terminal::term_type;                     \
   term_ptr->type          = ty;                                                \
-  term_ptr->value         = val;                                               \
+  term_ptr->value = val;                                                       \
   return NNT(term_ptr, Language::expr);
 
 #define RETURN_NNT(tk, nt)                                                     \
@@ -28,89 +24,91 @@ extern std::map<std::string, Type *> Literals;
 bool isnewline(int n) { return n == '\n' || n == '\r'; }
 
 // Take a filename as a string or a C-string and opens the named file
-Lexer::Lexer(const std::string &file_name)
-    : file_(file_name, std::ifstream::in) {
-    loc_.file = file_name.c_str();
-    loc_.line_num = 1;
-    loc_.offset = 0;
+Lexer::Lexer(const std::string &file_name) : ifs(file_name, std::ifstream::in) {
+  loc_.file     = file_name.c_str();
+  loc_.line_num = 1;
+  loc_.offset   = 0;
+
+  std::string temp;
+  std::getline(ifs, temp);
+
+  cursor.line_ = pstr(temp.c_str());
+  lines.push_back(cursor.line_);
+  ++cursor.line_num_;
+}
+
+Lexer::~Lexer() { ifs.close(); }
+
+void Lexer::IncrementCursor() {
+  if (*cursor != '\0') {
+    ++cursor.offset_;
+    ++loc_.offset;
+
+  } else {
+    assert(!ifs.eof());
+    std::string temp;
+    std::getline(ifs, temp);
+
+    cursor.offset_            = 0;
+    cursor.line_              = pstr(temp.c_str());
+    ++cursor.line_num_;
+    lines.push_back(cursor.line_);
   }
+}
 
-// Lexer destructor:
-//
-// Closes the file opened by the constructor
-Lexer::~Lexer() { file_.close(); }
-
-int Lexer::GetChar() {
-  ++loc_.offset;
-  int output = file_.get();
-  return output;
+static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
+static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
+static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
+static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+static inline bool IsAlphaOrUnderscore(char c) {
+  return IsAlpha(c) || (c == '_');
+}
+static inline bool IsAlphaNumericOrUnderscore(char c) {
+  return IsAlphaNumeric(c) || (c == '_');
 }
 
 // Get the next token
 NNT Lexer::Next() {
-  int peek;
-
 restart:
-  // This label is used in the case that a space/tab character is encountered.
-  // It allows us to repeat until we find a non-space/tab character.
-
-  peek = file_.peek();
-
   // Delegate based on the next character in the file stream
-  if (peek == EOF) {
+  if (ifs.eof()) {
     RETURN_NNT("", eof);
 
-  } else if (isnewline(peek)) {
-    ++loc_.line_num;
-    GetChar();
-    loc_.offset = 0;
-    RETURN_NNT("", newline);
+  } else if (IsAlphaOrUnderscore(*cursor)) {
+    return NextWord();
 
-  } else if (std::isspace(peek)) {
-    // Ignore space/tab characters by restarting
-    GetChar();
-    goto restart;
+  } else if (IsDigit(*cursor)) {
+    return NextNumber();
+  }
 
-  } else if (std::isalpha(peek) || peek == '_') {
-    return next_word();
-
-  } else if (std::isdigit(peek)) {
-    return next_number();
-
-  } else if (peek == '"') {
-    GetChar();
+  switch (*cursor) {
+  case ' ': IncrementCursor(); goto restart; // Explicit TCO
+  case '"':
+    IncrementCursor();
     file_queue.emplace("lib/string.ic");
     return next_string_literal();
 
-  } else if (peek == '\'') {
-    GetChar();
-    return next_char_literal();
-
-  } else if (std::ispunct(peek)) {
-    return next_operator();
-
-  } else {
-    assert(false && "Lexer found a control character.");
+  case '\'': IncrementCursor(); return next_char_literal();
+  case '\0': IncrementCursor(); RETURN_NNT("", newline);
+  default: return next_operator();
   }
 }
 
-// The next token begins with an alpha character meaning that it is either a
-// reserved word or an identifier.
-NNT Lexer::next_word() {
-  assert((std::isalpha(file_.peek()) || file_.peek() == '_')
-      && "Non-alpha character encountered as first character in next_word.");
+NNT Lexer::NextWord() {
+  // Match [a-zA-Z_][a-zA-Z0-9_]*
+  // We have already matched the first character
 
-  // Used to store the word
-  std::string token;
+  auto starting_offset = cursor.offset_;
 
-  // Repeatedly add characters to the word so long as the word only uses
-  // characters in the range a-z, A-Z, 0-9, and _ (and starts with an alpha
-  // character).
-  int peek;
   do {
-    token += (char)GetChar();
-    peek = file_.peek();
-  } while (std::isalnum(peek) || peek == '_');
+    IncrementCursor();
+  } while (IsAlphaNumericOrUnderscore(*cursor));
+
+  char old_char     = *cursor;
+  *cursor           = '\0';
+  std::string token = cursor.line_.ptr + starting_offset;
+  *cursor           = old_char;
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
@@ -176,51 +174,56 @@ NNT Lexer::next_word() {
   return NNT(new AST::Identifier(loc_, token), Language::expr);
 }
 
-NNT Lexer::next_number() {
-  assert(std::isdigit(file_.peek())
-      && "Non-digit character encountered as first character in next_number.");
+NNT Lexer::NextNumber() {
+  auto starting_offset = cursor.offset_;
 
-  // Used to store the number
-  std::string token;
+  do { IncrementCursor(); } while (IsDigit(*cursor));
 
-  // Add digits
-  int peek;
-  do {
-    token += (char)GetChar();
-    peek = file_.peek();
-  } while (std::isdigit(peek));
+  switch (*cursor) {
+  case 'u':
+  case 'U': {
+    IncrementCursor();
 
-  if (peek == 'u' || peek == 'U') {
-    // If the next character is a 'u' or a 'U', it's an integer literal. We can
-    // ignore the character and return.
-    GetChar();
-    RETURN_TERMINAL(Uint, Uint, Context::Value(std::stoul(token))); // TODO nullptr
-  } else if (peek != '.') {
-    // If the next character is not a period, we're looking at an integer and
-    // can return.
-    RETURN_TERMINAL(Int, Int, Context::Value(std::stol(token))); // TODO nullptr
+    char old_char = *cursor;
+    *cursor       = '\0';
+    auto uint_val = std::stoul(cursor.line_.ptr + starting_offset);
+    *cursor       = old_char;
+
+    RETURN_TERMINAL(Uint, Uint, Context::Value(uint_val));
+  } break;
+
+  case '.': {
+    // TODO what about in a loop: "for i in 0..3
+    do { IncrementCursor(); } while (IsDigit(*cursor));
+
+    char old_char = *cursor;
+    *cursor       = '\0';
+    auto real_val = std::stod(cursor.line_.ptr + starting_offset);
+    *cursor       = old_char;
+
+    RETURN_TERMINAL(Real, Real, Context::Value(real_val));
+  } break;
+
+  default: {
+    char old_char = *cursor;
+    *cursor       = '\0';
+    auto int_val = std::stol(cursor.line_.ptr + starting_offset);
+    *cursor       = old_char;
+    RETURN_TERMINAL(Int, Int, Context::Value(int_val));
+  } break;
   }
-
-  // If the next character was a period, this is a non-integer. Add the period
-  // and keep going with more digits.
-  do {
-    token += (char)GetChar();
-    peek = file_.peek();
-  } while (std::isdigit(peek));
-
-  RETURN_TERMINAL(Real, Real, Context::Value(std::stod(token))); // TODO nullptr
 }
 
 NNT Lexer::next_operator() {
   // Sanity check:
   // We only call this function if the top character is punctuation
-  int peek = file_.peek();
+  int peek = *cursor;
   assert(
       std::ispunct(peek) &&
       "Non-punct character encountered as first character in next_operator.");
 
 #define CASE(character, str, name)                                             \
-  case character: GetChar(); RETURN_NNT(str, name)
+  case character: IncrementCursor(); RETURN_NNT(str, name)
 
   switch (peek) {
     CASE('`', "`", op_bl);
@@ -232,9 +235,9 @@ NNT Lexer::next_operator() {
     CASE('[', "[", l_bracket);
     CASE(']', "]", r_bracket);
   case '{': {
-    GetChar();
-    if (file_.peek() == '{') {
-      GetChar();
+    IncrementCursor();
+    if (*cursor == '{') {
+      IncrementCursor();
       RETURN_NNT("{{", l_eval);
 
     } else {
@@ -242,9 +245,9 @@ NNT Lexer::next_operator() {
     }
   }
   case '}': {
-    GetChar();
-    if (file_.peek() == '}') {
-      GetChar();
+    IncrementCursor();
+    if (*cursor == '}') {
+      IncrementCursor();
       RETURN_NNT("}}", r_eval);
 
     } else {
@@ -252,9 +255,9 @@ NNT Lexer::next_operator() {
     }
   }
   case '.': {
-    GetChar();
-    if (file_.peek() == '.') {
-      GetChar();
+    IncrementCursor();
+    if (*cursor == '.') {
+      IncrementCursor();
       RETURN_NNT("..", dots);
     } else {
       RETURN_NNT(".", op_b);
@@ -269,10 +272,10 @@ NNT Lexer::next_operator() {
 
 #undef CASE
   if (peek == '\\') {
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
     if (peek == '\\') {
-      GetChar();
+      IncrementCursor();
       RETURN_NNT("", newline);
     } else {
       NOT_YET;
@@ -292,13 +295,13 @@ NNT Lexer::next_operator() {
   case '<':
   case '>': {
     lead_char = (char)peek;
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
 
     std::string tok(1, lead_char);
     if (peek == '=') {
       tok += "=";
-      GetChar();
+      IncrementCursor();
     }
 
     RETURN_NNT(tok, op_b);
@@ -307,15 +310,15 @@ NNT Lexer::next_operator() {
   }
 
   if (peek == ':') {
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
 
     if (peek == '=') {
-      GetChar();
+      IncrementCursor();
       RETURN_NNT(":=", op_b);
 
     } else if (peek == '>') {
-      GetChar();
+      IncrementCursor();
       RETURN_NNT(":>", op_b);
 
     } else {
@@ -326,13 +329,13 @@ NNT Lexer::next_operator() {
   if (peek == '|' || peek == '^' || peek == '&') {
     char past_peek = (char)peek;
 
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
 
     if (peek == '=') {
       std::string tok = "_=";
       tok[0] = past_peek;
-      GetChar();
+      IncrementCursor();
       RETURN_NNT(tok, op_b);
 
     } else if (past_peek == '&') {
@@ -344,11 +347,11 @@ NNT Lexer::next_operator() {
   }
 
   if (peek == '!') {
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
 
     if (peek == '=') {
-      GetChar();
+      IncrementCursor();
       RETURN_NNT("!=", op_b);
     } else {
       RETURN_NNT("!", op_l);
@@ -357,16 +360,16 @@ NNT Lexer::next_operator() {
 
   if (peek == '-' || peek == '=') {
     char lead_char = (char)peek;
-    GetChar();
-    peek = file_.peek();
+    IncrementCursor();
+    peek = *cursor;
 
     if (peek == '=') {
-      GetChar();
+      IncrementCursor();
 
       RETURN_NNT((std::string(1, lead_char) + "="), op_b);
 
     } else if (peek == '>') {
-      GetChar();
+      IncrementCursor();
       if (lead_char == '-') {
         auto nptr = new AST::TokenNode(loc_, "->");
         nptr->op  = Language::Operator::Arrow;
@@ -378,7 +381,7 @@ NNT Lexer::next_operator() {
     } else {
       if (lead_char == '-') {
         if (peek == '-') {
-          GetChar();
+          IncrementCursor();
           RETURN_TERMINAL(Hole, Unknown, nullptr); // TODO nullptr
         }
         RETURN_NNT("-", op_bl);
@@ -393,15 +396,16 @@ NNT Lexer::next_operator() {
   // in as many characters as possible.
   std::string token;
   do {
-    token += (char)GetChar();
-    peek = file_.peek();
+    token += *cursor;
+    IncrementCursor();
+    peek = *cursor;
   } while (std::ispunct(peek));
 
   RETURN_NNT(token, op_b);
 }
 
 NNT Lexer::next_string_literal() {
-  int peek = file_.peek();
+  int peek = *cursor;
   std::string str_lit = "";
 
   // Repeat until you see a double-quote to end the string, or a newline
@@ -409,8 +413,8 @@ NNT Lexer::next_string_literal() {
   while (!(peek == '"' || isnewline(peek))) {
     // If you see a backslash, the next character is escaped
     if (peek == '\\') {
-      GetChar();
-      peek = file_.peek();
+      IncrementCursor();
+      peek = *cursor;
       switch (peek) {
       case '\\': str_lit += '\\'; break;
       case '"': str_lit += '"'; break;
@@ -425,17 +429,18 @@ NNT Lexer::next_string_literal() {
         break;
       }
       }
-      GetChar();
+      IncrementCursor();
     } else {
-      str_lit += (char)GetChar();
+      str_lit += *cursor;
+      IncrementCursor();
     }
 
-    peek = file_.peek();
+    peek = *cursor;
   }
 
   if (peek == '"') {
     // Ignore the last quotation mark if it exists
-    GetChar();
+    IncrementCursor();
   }
   else {
     error_log.log(loc_,
@@ -450,7 +455,7 @@ NNT Lexer::next_string_literal() {
 }
 
 NNT Lexer::next_char_literal() {
-  int peek = file_.peek();
+  int peek = *cursor;
 
   char output_char;
 
@@ -466,8 +471,8 @@ NNT Lexer::next_char_literal() {
       }
     case '\\':
       {
-        GetChar();
-        peek = file_.peek();
+        IncrementCursor();
+        peek = *cursor;
         switch (peek) {
           case '\'': output_char = '\''; break;
           case '\"': output_char = '"';
@@ -489,11 +494,11 @@ NNT Lexer::next_char_literal() {
       default: { output_char = (char)peek; }
   }
 
-  GetChar();
-  peek = file_.peek();
+  IncrementCursor();
+  peek = *cursor;
 
   if (peek == '\'') {
-    GetChar();
+    IncrementCursor();
   } else {
     error_log.log(loc_, "Character literal must be followed by a single-quote.");
   }
@@ -502,11 +507,11 @@ NNT Lexer::next_char_literal() {
 }
 
 NNT Lexer::next_given_slash() {
-  int peek = file_.peek();
+  int peek = *cursor;
   assert(peek == '/' && "Non-slash character encountered as first character in next_given_slash.");
 
-  GetChar();
-  peek = file_.peek();
+  IncrementCursor();
+  peek = *cursor;
 
   // If the first two characters are '//', then it's a single-line comment
   if (peek == '/') {
@@ -514,8 +519,9 @@ NNT Lexer::next_given_slash() {
 
     // Add characters while we're not looking at a newline
     do {
-      token += (char)GetChar();
-      peek = file_.peek();
+      token += *cursor;
+      IncrementCursor();
+      peek = *cursor;
     } while (!isnewline(peek));
 
     RETURN_NNT(token, comment);
@@ -533,7 +539,8 @@ NNT Lexer::next_given_slash() {
 
     while (comment_layer != 0) {
       prepeek = peek;
-      peek = GetChar();
+      peek = *cursor;
+      IncrementCursor();
 
       if (isnewline(peek)) { ++loc_.line_num; loc_.offset = 0; }
 
@@ -554,7 +561,7 @@ NNT Lexer::next_given_slash() {
   }
 
   if (peek == '=') {
-    GetChar();
+    IncrementCursor();
     RETURN_NNT("/=", op_b);
   }
 
@@ -562,14 +569,14 @@ NNT Lexer::next_given_slash() {
 }
 
 NNT Lexer::next_hashtag() {
-  int peek = file_.peek();
+  int peek = *cursor;
   assert(peek == '#' &&
          "Non-hash character encountered as first character in next_hashtag.");
-  GetChar();
+  IncrementCursor();
 
   std::string tag;
 
-  auto nptr = next_word();
+  auto nptr = NextWord();
   if (nptr.node->is_identifier()) {
     tag = ((AST::Identifier *)nptr.node)->token;
 
