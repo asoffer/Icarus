@@ -77,7 +77,7 @@ using NPtrVec = std::vector<AST::Node *>;
 struct TokenLocation {
   std::string file;
   size_t line_num;
-  char offset;
+  size_t offset;
 
   TokenLocation() : file(""), line_num(0), offset(0){};
 };

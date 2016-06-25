@@ -94,7 +94,7 @@ Parser::Parser(const std::string &filename) : lexer_(filename) {
   assert(node_stack_.empty() && node_type_stack_.empty());
   // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.
-  lookahead_ = NNT(new AST::TokenNode(lexer_.loc_), Language::bof);
+  lookahead_ = NNT(new AST::TokenNode(lexer_.cursor.Location()), Language::bof);
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.

@@ -25,36 +25,42 @@ struct Lexer {
     // Returns true precisely when we have not yet reached EOF
     operator bool () const { return !ifs.eof() && !ifs.fail(); }
 
-    std::ifstream ifs;
-    TokenLocation loc_;
-
+    // TODO is a token location just a cursor?
     struct Cursor {
-      Cursor() : offset_(0), line_num_(0) {}
+      Cursor(const std::string &file_name)
+          : offset_(0), line_num_(0), file_name_(file_name) {}
 
       pstr line_;
       size_t offset_;
       size_t line_num_;
+      std::string file_name_;
 
       // Get the character that the cursor is currently pointing to
       inline char &operator*(void) const { return *(line_.ptr + offset_); }
 
+      inline TokenLocation Location() {
+        TokenLocation result;
+        result.line_num = line_num_;
+        result.offset   = offset_;
+        result.file     = file_name_;
+        return result;
+      }
+
     } cursor;
+
+    std::ifstream ifs;
 
     std::vector<pstr> lines;
 
     Lexer() = delete;
 
     void IncrementCursor();
-
-    NNT next_operator();
-    NNT next_string_literal();
-    NNT next_char_literal();
-    NNT next_given_slash();
-    NNT next_hashtag();
+    void SkipToEndOfLine();
 
   private:
     NNT NextWord();
     NNT NextNumber();
+    NNT NextOperator();
 };
 
 #endif  // ICARUS_LEXER_H
