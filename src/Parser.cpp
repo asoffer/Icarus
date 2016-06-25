@@ -11,7 +11,7 @@ extern bool parser;
 #include "GrammarRules.h"
 
 // Parse the file with a shift-reduce algorithm
-AST::Node *Parser::parse() {
+void Parser::parse() {
   assert(lookahead_.node_type == Language::bof);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
@@ -28,10 +28,10 @@ AST::Node *Parser::parse() {
     if (debug::parser) { show_debug(); }
   }
 
-  return cleanup();
+  cleanup();
 }
 
-AST::Node *Parser::cleanup() {
+void Parser::cleanup() {
   while (reduce()) {
     if (debug::parser) { show_debug(); }
   }
@@ -48,7 +48,8 @@ AST::Node *Parser::cleanup() {
     error_log.log(TokenLocation(), "Parser error.");
   }
 
-  return node_stack_.back();
+  assert(node_stack_.back()->is_statements());
+  source_file_->ast = (AST::Statements *)node_stack_.back();
 }
 
 // Print out the debug information for the parse stack, and pause.
@@ -89,8 +90,7 @@ void Parser::shift() {
   lookahead_ = next;
 }
 
-// Construct a parser for the given file
-Parser::Parser(const std::string &filename) : lexer_(filename) {
+Parser::Parser(SourceFile *sf) : lexer_(sf), source_file_(sf) {
   assert(node_stack_.empty() && node_type_stack_.empty());
   // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.

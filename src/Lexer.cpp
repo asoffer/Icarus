@@ -21,13 +21,21 @@ extern std::map<std::string, Type *> Literals;
 } // namespace TypeSystem
 
 // Take a filename as a string or a C-string and opens the named file
-Lexer::Lexer(const std::string &file_name)
-    : cursor(file_name), ifs(file_name, std::ifstream::in) {
+Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
+  char *file_name = new char[source_file_->name.size() + 1];
+  std::strcpy(file_name, source_file_->name.c_str());
+  cursor.file_name_ = file_name;
+
+  ifs = std::ifstream(file_name, std::ifstream::in);
+
   std::string temp;
   std::getline(ifs, temp);
 
+  pstr temp_blank;
+  source_file_->lines.push_back(temp_blank); // Blank line since we 1-index.
+
   cursor.line_ = pstr(temp.c_str());
-  lines.push_back(cursor.line_);
+  source_file_->lines.push_back(cursor.line_);
   ++cursor.line_num_;
 }
 
@@ -45,7 +53,7 @@ void Lexer::IncrementCursor() {
     cursor.offset_            = 0;
     cursor.line_              = pstr(temp.c_str());
     ++cursor.line_num_;
-    lines.push_back(cursor.line_);
+    source_file_->lines.push_back(cursor.line_);
   }
 }
 
@@ -412,6 +420,7 @@ NNT Lexer::NextOperator() {
     file_queue.emplace("lib/string.ic");
 
     std::string str_lit = "";
+    // TODO keep track of the first place it would make sense to end the string, just in case they forgot to end it.
 
     while (*cursor != '"' && *cursor != '\0') {
       if (*cursor == '\\') {
@@ -437,8 +446,8 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      error_log.log(cursor.Location(),
-                    "String literal is not closed before the end of the line.");
+      error_log.log(Err::Message(Err::MessageID::RunawayStringLit,
+                                 cursor.Location(), 0, 1));
     } else {
       IncrementCursor();
     }
@@ -466,20 +475,27 @@ NNT Lexer::NextOperator() {
     case '\\': {
       IncrementCursor();
       switch (*cursor) {
-      case '\'': result = '\''; break;
-      case '\"':
+      case '\"': {
         result = '"';
-        error_log.log(
-            cursor.Location(),
-            "Warning: the character '\"' does not need to be escaped.");
-        break;
+        TokenLocation loc = cursor.Location();
+        --loc.offset;
+        error_log.log(Err::Message(Err::MessageID::EscapedDoubleQuoteInCharLit,
+                                   loc, 0, 2));
+      } break;
       case '\\': result = '\\'; break;
-      case 't': result  = '\t'; break;
+      case '\'': result = '\''; break;
+      case 'a': result  = '\a'; break;
+      case 'b': result  = '\b'; break;
+      case 'f': result  = '\f'; break;
       case 'n': result  = '\n'; break;
       case 'r': result  = '\r'; break;
+      case 't': result  = '\t'; break;
+      case 'v': result  = '\v'; break;
       default:
-        error_log.log(cursor.Location(),
-                      "The specified character is not an escape character.");
+        TokenLocation loc = cursor.Location();
+        --loc.offset;
+        error_log.log(Err::Message(Err::MessageID::InvalidEscapeCharInCharLit,
+                                   loc, 0, 2));
         result = *cursor;
       }
       break;

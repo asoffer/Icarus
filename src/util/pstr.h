@@ -10,6 +10,7 @@ struct pstr {
   pstr(const pstr& p);
   ~pstr() {}
 
+  inline operator std::string() { return std::string(ptr); }
 
   static char *current_block;
   static char *current_head;

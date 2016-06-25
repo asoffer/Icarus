@@ -68,13 +68,10 @@ extern void GenerateLLVM();
 extern llvm::IRBuilder<> builder;
 std::queue<AST::Node *> VerificationQueue;
 
-// The keys in this map represent the file names, and the values represent the
-// syntax trees from the parsed file.
-//
 // TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
 // a datarace will corrupt the memory. When we start threading, we need to lock
 // the map before usage.
-extern std::map<std::string, AST::Statements *> ast_map;
+std::map<std::string, SourceFile *> source_map;
 
 // This is an enum so we can give meaningful names for error codes. However, at
 // the end of the day, we must return ints. Thus, we need to use the implicit
@@ -111,8 +108,6 @@ void WriteObjectFile(const char *out_file) {
 }
 
 int main(int argc, char *argv[]) {
-  std::cerr << argv[1] << std::endl;
-
   TIME("Argument parsing") {
     switch(ParseCLArguments(argc, argv)) {
       case CLArgFlag::QuitSuccessfully: return error_code::success;
@@ -173,10 +168,10 @@ int main(int argc, char *argv[]) {
   while (!file_queue.empty()) {
     std::string file_name = file_queue.front();
     file_queue.pop();
-    auto iter = ast_map.find(file_name);
+    auto iter = source_map.find(file_name);
 
     // If we've already parsed this file, don't parse it again.
-    if (iter != ast_map.end()) continue;
+    if (iter != source_map.end()) continue;
 
     // Check if file exists
     std::ifstream infile(file_name);
@@ -188,8 +183,10 @@ int main(int argc, char *argv[]) {
     }
 
     TIME("Parsing a file") {
-      Parser parser(file_name);
-      ast_map[file_name] = (AST::Statements *)parser.parse();
+      auto source_file      = new SourceFile(file_name);
+      source_map[file_name] = source_file;
+      Parser parser(source_file);
+      parser.parse();
     }
   }
 
@@ -216,10 +213,14 @@ int main(int argc, char *argv[]) {
 
     // Reserve enough space for all of them to avoid unneeded copies
     size_t num_statements = 0;
-    for (const auto &kv : ast_map) { num_statements += kv.second->size(); }
+    for (const auto &kv : source_map) {
+      num_statements += kv.second->ast->size();
+    }
     global_statements->reserve(num_statements);
 
-    for (auto &kv : ast_map) { global_statements->add_nodes(kv.second); }
+    for (auto &kv : source_map) {
+      global_statements->add_nodes(kv.second->ast);
+    }
 
     // COMPILATION STEP:
     //

@@ -1,15 +1,42 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
-// TODO depending on whether or not we log to the console, to a browser, etc, we
-// will want to display things differently. For now, just log to the console.
+namespace Err {
+enum class MessageID {
+  RunawayMultilineComment,
+  InvalidEscapeCharInStringLit,
+  InvalidEscapeCharInCharLit,
+  RunawayStringLit,
+  NewlineInCharLit,
+  EscapedDoubleQuoteInCharLit,
+  RunawayCharLit
+};
+
+struct Message {
+  Message(MessageID msg_id, const TokenLocation &tok_loc, size_t rad,
+          size_t under_len)
+      : loc(tok_loc), context_radius(rad), underline_length(under_len),
+        mid(msg_id) {}
+
+  TokenLocation loc;
+  size_t context_radius; // Number of lines surrounding this one to show.
+  size_t underline_length;
+  MessageID mid;
+};
+
+} // namespace Err
+
 class ErrorLog {
 public:
+  static bool ImmediateMode;
+
   ErrorLog();
   friend std::ostream &operator<<(std::ostream &os, const ErrorLog &log);
 
   size_t num_errors() const;
   void log(TokenLocation loc, const std::string &msg);
+
+  void log(const Err::Message& msg);
 
   AST::Node *assignment_vs_equality(AST::Node *node);
 

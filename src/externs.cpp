@@ -27,8 +27,6 @@ bool parametric_struct = false;
 bool ct_eval           = false;
 }
 
-std::map<std::string, AST::Statements *> ast_map;
-
 std::vector<AST::StructLiteral*> created_types;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
 

@@ -1,7 +1,7 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
-#include "util/pstr.h"
+#include "SourceFile.h"
 
 struct NNT {
   AST::Node *node;
@@ -15,52 +15,49 @@ struct NNT {
 // file are read character by character and separated into tokens
 // according to syntax of Icarus.
 struct Lexer {
-    explicit Lexer(const std::string& file_name);
- 
-    ~Lexer();
+public:
+  explicit Lexer(SourceFile *source_file);
 
-    // Reads the next token from the lexer into a node
-    NNT Next();
+  ~Lexer();
 
-    // Returns true precisely when we have not yet reached EOF
-    operator bool () const { return !ifs.eof() && !ifs.fail(); }
+  // Reads the next token from the lexer into a node
+  NNT Next();
 
-    // TODO is a token location just a cursor?
-    struct Cursor {
-      Cursor(const std::string &file_name)
-          : offset_(0), line_num_(0), file_name_(file_name) {}
+  // TODO is a token location just a cursor?
+  struct Cursor {
+    Cursor() : offset_(0), line_num_(0), file_name_(nullptr) {}
 
-      pstr line_;
-      size_t offset_;
-      size_t line_num_;
-      std::string file_name_;
+    pstr line_;
+    size_t offset_;
+    size_t line_num_;
+    const char *file_name_;
 
-      // Get the character that the cursor is currently pointing to
-      inline char &operator*(void) const { return *(line_.ptr + offset_); }
+    // Get the character that the cursor is currently pointing to
+    inline char &operator*(void) const { return *(line_.ptr + offset_); }
 
-      inline TokenLocation Location() {
-        TokenLocation result;
-        result.line_num = line_num_;
-        result.offset   = offset_;
-        result.file     = file_name_;
-        return result;
-      }
+    inline TokenLocation Location() {
+      TokenLocation result;
+      result.line_num = line_num_;
+      result.offset   = offset_;
+      result.file     = file_name_;
+      return result;
+    }
 
-    } cursor;
+  } cursor;
 
-    std::ifstream ifs;
+  std::ifstream ifs;
 
-    std::vector<pstr> lines;
+  SourceFile *source_file_;
 
-    Lexer() = delete;
+  Lexer() = delete;
 
-    void IncrementCursor();
-    void SkipToEndOfLine();
+  void IncrementCursor();
+  void SkipToEndOfLine();
 
-  private:
-    NNT NextWord();
-    NNT NextNumber();
-    NNT NextOperator();
+private:
+  NNT NextWord();
+  NNT NextNumber();
+  NNT NextOperator();
 };
 
-#endif  // ICARUS_LEXER_H
+#endif // ICARUS_LEXER_H

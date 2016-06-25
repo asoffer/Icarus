@@ -32,6 +32,9 @@ ShowUsage(char *argv0) {
           "                                   none - Do not write any files (debug)\n"
           "                                          This is the default option.\n\n"
           "  -h, --help                     Display this usage message.\n\n"
+          "  --immediate-errors             Display error messages as soon as they are encountered.\n"
+          "                                 By default, error messages are logged, organized, and\n"
+          "                                 then displayed.\n\n"
           "  -p, --parser                   Display step-by-step file parsing (debug).\n\n"
           "  -s, --param-struct             Display debug information for parametric struct\n"
           "                                 cloning (debug).\n\n"
@@ -119,6 +122,10 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
             debug::timer = true;
             goto next_arg;
 
+          } else if (strcmp(arg + 2, "immediate-errors") == 0) {
+            ErrorLog::ImmediateMode = true;
+            goto next_arg;
+
           } else if (strcmp(arg + 2, "param-struct") == 0) {
             debug::parametric_struct = true;
             goto next_arg;
@@ -158,7 +165,5 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
 
   return CLArgFlag::Continue;
 }
-
-
 
 #endif // ICARUS_CLARGS_H
