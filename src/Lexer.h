@@ -52,7 +52,7 @@ public:
   Lexer() = delete;
 
   void IncrementCursor();
-  void BackupCursor();
+  void BackUpCursor();
   void MoveCursorToNextLine();
   void SkipToEndOfLine();
 

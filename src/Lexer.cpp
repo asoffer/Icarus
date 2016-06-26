@@ -6,6 +6,8 @@
 
 extern std::queue<std::string> file_queue;
 
+// TODO }}} should be lexed conditionally. Track the last instances you saw of {
+// versus {{ and attempt to match them.
 
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
@@ -92,7 +94,7 @@ void Lexer::IncrementCursor() {
   }
 }
 
-void Lexer::BackupCursor() {
+void Lexer::BackUpCursor() {
   // You can't back up to a previous line.
   assert(cursor.offset_ > 0);
   --cursor.offset_;
@@ -220,7 +222,14 @@ NNT Lexer::NextNumber() {
   } break;
 
   case '.': {
-    // TODO what about in a loop: "for i in 0..3
+    IncrementCursor();
+    if (*cursor == '.') {
+      BackUpCursor();
+      goto return_int_label;
+    }
+
+    // Just one dot. Should be interpretted as a decimal point.
+    IncrementCursor();
     do { IncrementCursor(); } while (IsDigit(*cursor));
 
     char old_char = *cursor;
@@ -231,7 +240,8 @@ NNT Lexer::NextNumber() {
     RETURN_TERMINAL(Real, Real, Context::Value(real_val));
   } break;
 
-  default: {
+  default:
+  return_int_label : {
     char old_char = *cursor;
     *cursor       = '\0';
     auto int_val = std::stol(cursor.line_.ptr + starting_offset);
@@ -368,7 +378,7 @@ NNT Lexer::NextOperator() {
       if (*cursor == '/') {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
-        BackupCursor();
+        BackUpCursor();
         RETURN_NNT("*", op_b);
       } else {
         TokenLocation loc = cursor.Location();
@@ -564,7 +574,6 @@ NNT Lexer::NextOperator() {
       Error::Log::Log(Error::MsgId::TabInCharLit, cursor.Location(), 0, 1);
       result = '\t';
       break;
-      // TODO what about other non-visual characters \b, \v, \a, etc.
 
     case '\0': {
       Error::Log::Log(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1);
