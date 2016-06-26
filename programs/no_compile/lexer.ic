@@ -1,0 +1,14 @@
+main := void -> void {
+    '\"'
+    x: int = "\'"
+    x := "hello world \\ print x
+    y := "blah\x
+    print "\x
+    print '
+    $$~??
+
+  print a \             + b 
+
+    foo /*
+  /* */
+}

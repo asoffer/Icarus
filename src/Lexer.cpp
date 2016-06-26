@@ -66,6 +66,9 @@ static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
 static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+static inline bool IsWhitespace(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
 static inline bool IsAlphaOrUnderscore(char c) {
   return IsAlpha(c) || (c == '_');
 }
@@ -257,12 +260,36 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '\\': {
+    TokenLocation loc = cursor.Location();
+    size_t dist = 1;
+
     IncrementCursor();
-    if (*cursor == '\\') {
+    ++dist;
+    switch(*cursor) {
+    case '\\':
       IncrementCursor();
       RETURN_NNT("", newline);
-    } else {
-      NOT_YET;
+      break;
+    case '\0':
+      // Ignore the following newline
+      IncrementCursor();
+      return Next();
+    case ' ':
+    case '\t':
+      while (IsWhitespace(*cursor)) {
+        IncrementCursor();
+        ++dist;
+      }
+      if (*cursor == '\0') {
+        IncrementCursor();
+        return Next();
+      }
+
+    // Intentionally falling through. Looking at a non-whitespace after a '\'
+    default:
+      Error::Log::Log(Error::Msg(Error::MsgId::NonWhitespaceAfterNewlineEscape,
+                                 loc, 0, dist));
+      return Next();
     }
   } break;
 
@@ -272,8 +299,7 @@ NNT Lexer::NextOperator() {
     do { IncrementCursor(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
     // TODO what if the hashtag is empty? what if it's not immediately followed
-    // by
-    // an identifier?
+    // by an identifier?
 
     char old_char   = *cursor;
     *cursor         = '\0';
@@ -394,6 +420,7 @@ NNT Lexer::NextOperator() {
         if (ifs.eof()) {
           Error::Log::Log(Error::Msg(Error::MsgId::RunawayMultilineComment,
                                      cursor.Location(), 0, 2));
+          RETURN_NNT("", eof);
 
         } else if (back_one == '/' && *cursor == '*') {
           ++comment_layer;
@@ -420,7 +447,6 @@ NNT Lexer::NextOperator() {
     file_queue.emplace("lib/string.ic");
 
     std::string str_lit = "";
-    // TODO keep track of the first place it would make sense to end the string, just in case they forgot to end it.
 
     while (*cursor != '"' && *cursor != '\0') {
       if (*cursor == '\\') {
@@ -448,7 +474,7 @@ NNT Lexer::NextOperator() {
           TokenLocation loc = cursor.Location();
           --loc.offset;
           Error::Log::Log(
-              Error::Msg(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2));
+              Error::Msg(Error::MsgId::InvalidEscapeCharInStringLit, loc, 0, 2));
 
             str_lit += *cursor;
           } break;
@@ -479,9 +505,7 @@ NNT Lexer::NextOperator() {
 
     switch (*cursor) {
     case '\t': NOT_YET;
-    case '\n':
-    case '\r': {
-                 // TODO how can you even get here?
+    case '\0': {
       Error::Log::Log(
           Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));
 
@@ -530,9 +554,23 @@ NNT Lexer::NextOperator() {
     RETURN_TERMINAL(Char, Char, Context::Value(result));
   } break;
 
-  case '$': NOT_YET;
-  case '?': NOT_YET;
-  case '~': NOT_YET;
+  case '$':
+    Error::Log::Log(Error::Msg(Error::MsgId::InvalidCharDollarSign,
+                               cursor.Location(), 0, 1));
+    IncrementCursor();
+    return Next();
+
+  case '?':
+    Error::Log::Log(Error::Msg(Error::MsgId::InvalidCharQuestionMark,
+                               cursor.Location(), 0, 1));
+    IncrementCursor();
+    return Next();
+
+  case '~':
+    Error::Log::Log(
+        Error::Msg(Error::MsgId::InvalidCharTilde, cursor.Location(), 0, 1));
+    IncrementCursor();
+    return Next();
 
   case '_': UNREACHABLE;
   default: UNREACHABLE;

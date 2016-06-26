@@ -3,14 +3,21 @@
 
 namespace Error {
 enum class MsgId {
-  RunawayMultilineComment,
   InvalidEscapeCharInStringLit,
   InvalidEscapeCharInCharLit,
-  RunawayStringLit,
-  NewlineInCharLit,
+
   EscapedDoubleQuoteInCharLit,
   EscapedSingleQuoteInStringLit,
-  RunawayCharLit
+
+  NonWhitespaceAfterNewlineEscape,
+
+  RunawayMultilineComment,
+  RunawayStringLit,
+  RunawayCharLit,
+
+  InvalidCharDollarSign,
+  InvalidCharQuestionMark,
+  InvalidCharTilde
 };
 
 struct Msg {
