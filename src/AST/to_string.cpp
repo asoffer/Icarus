@@ -67,10 +67,10 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::At: ss << "At"; break;
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Import: ss << "Import"; break;
-  case Language::Operator::Eval: ss << "Eval"; break;
 
   default: { assert(false && "Not a unary operator"); }
   }
+  
   ss << ">\n" << operand->to_string(n + 1);
   return ss.str();
 }
@@ -239,7 +239,7 @@ std::string EnumLiteral::to_string(size_t n) const {
 
 std::string Eval::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Eval>\n" << expr;
+  ss << tabs(n) << "<Eval>\n" << expr->to_string(n + 1);
   return ss.str();
 }
 

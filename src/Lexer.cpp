@@ -21,9 +21,9 @@ static inline bool IsAlphaOrUnderscore(char c) {
 static inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
+// static inline bool IsNewline(char c) { return (char)10 <= c && c <= (char)13; }
 static inline bool IsNonGraphic(char c) {
-  return ((int)c < 32 && (int)c != 9 && (int)c != 11 && (int)c != 13) ||
-         (int)c == 127;
+  return c < (char)9 || ((char)13 < c && c < (char)32) || c == (char)127;
 }
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
@@ -36,6 +36,7 @@ static inline bool IsNonGraphic(char c) {
 
 #define RETURN_NNT(tk, nt)                                                     \
   return NNT(new AST::TokenNode(cursor.Location(), tk), Language::nt);
+
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
 } // namespace TypeSystem
@@ -56,6 +57,9 @@ Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
 
 Lexer::~Lexer() { ifs.close(); }
 
+// Copy in the next line of text from the file, and scrub away non-graphic
+// characters (replacing them with ' '). We leave characters in the range 32-126
+// as well as 9-13.
 void Lexer::MoveCursorToNextLine() {
   assert(!ifs.eof());
   std::string temp;
@@ -113,6 +117,7 @@ restart:
   }
 
   switch (*cursor) {
+  case '\t':
   case ' ': IncrementCursor(); goto restart; // Explicit TCO
   case '\0': IncrementCursor(); RETURN_NNT("", newline);
   default: return NextOperator();
@@ -248,18 +253,29 @@ NNT Lexer::NextOperator() {
   case ']': IncrementCursor(); RETURN_NNT("]", r_bracket);
 
   case '{': {
-    IncrementCursor();
-    if (*cursor == '{') {
+    // TODO O(n^2). Probably want to do this check once and cache the result.
+    size_t saved_offset = cursor.offset_;
+
+    // Note: We have a null-terminator, so this loop is safe
+    while (*cursor == '{') { ++cursor.offset_; }
+
+    bool odd_num_lbraces = (cursor.offset_ - saved_offset) & 1;
+    cursor.offset_       = saved_offset;
+
+    if (odd_num_lbraces) {
+      IncrementCursor();
+      RETURN_NNT("{", l_brace);
+    } else {
+      IncrementCursor();
       IncrementCursor();
       RETURN_NNT("{{", l_eval);
-
-    } else {
-      RETURN_NNT("{", l_brace);
     }
   } break;
 
   case '}': {
     IncrementCursor();
+    // Greedily parsing these parses them the way we want (as "}} }} }" rather
+    // than "} }} }}").
     if (*cursor == '}') {
       IncrementCursor();
       RETURN_NNT("}}", r_eval);
