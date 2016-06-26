@@ -17,7 +17,8 @@ enum class MsgId {
   RunawayStringLit,
   RunawayCharLit,
   InvalidCharQuestionMark,
-  InvalidCharTilde
+  InvalidCharTilde,
+  InvalidHashtag
 };
 
 struct Msg {

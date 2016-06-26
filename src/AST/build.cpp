@@ -507,6 +507,7 @@ Node *Expression::build(NPtrVec &&) {
 }
 
 Node *Declaration::AddHashtag(NPtrVec &&nodes) {
+  assert(nodes[0]->is_declaration());
   auto decl = steal<Declaration>(nodes[0]);
   assert(nodes[1]->is_token_node());
   decl->hashtags.push_back(((TokenNode *)nodes[1])->token);

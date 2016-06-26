@@ -127,6 +127,11 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     msg_head = "There are too many consecutive '.' characters. I am assuming "
                "you meant \"..\".";
     break;
+  case Error::MsgId::InvalidHashtag:
+    msg_head = "I found a '#' that wasn't followed by an alphabetic character "
+               "or underscore.";
+    msg_foot = "Hashtags must be a valid identifier.";
+    break;
   }
 
   pstr line = source_map AT(loc.file)->lines AT(loc.line_num);

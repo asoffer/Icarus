@@ -9,6 +9,8 @@ main := void -> void {
     for i in 0.....3 {
       print i 
     }
+#!foo
+#123abc
 */
   print a \             + b 
 

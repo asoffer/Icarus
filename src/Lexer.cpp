@@ -227,7 +227,7 @@ NNT Lexer::NextNumber() {
 
     // Just one dot. Should be interpretted as a decimal point.
     IncrementCursor();
-    do { IncrementCursor(); } while (IsDigit(*cursor));
+    while (IsDigit(*cursor)) { IncrementCursor(); }
 
     char old_char = *cursor;
     *cursor       = '\0';
@@ -314,12 +314,20 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '#': {
-    auto starting_offset = cursor.offset_ + 1; // Skip the '#' character.
+    IncrementCursor();
+    TokenLocation loc    = cursor.Location();
+    auto starting_offset = cursor.offset_;
+
+    if (!IsAlpha(*cursor)) {
+      Error::Log::Log(Error::MsgId::InvalidHashtag, loc, 0, 1);
+      return Next();
+    }
 
     do { IncrementCursor(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
-    // TODO what if the hashtag is empty? what if it's not immediately followed
-    // by an identifier?
+    if (cursor.offset_ - starting_offset == 0) {
+      Error::Log::Log(Error::MsgId::InvalidHashtag, loc, 0, 1);
+    }
 
     char old_char   = *cursor;
     *cursor         = '\0';
