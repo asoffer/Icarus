@@ -291,13 +291,6 @@ struct Statements : public Node {
   std::vector<AST::Node *> statements;
 };
 
-struct Eval : public Expression {
-  EXPR_FNS(Eval, eval);
-  static Node *Build(NPtrVec &&nodes);
-
-  Expression *expr;
-};
-
 struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
   static Node *BuildLeft(NPtrVec &&nodes);

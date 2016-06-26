@@ -16,7 +16,6 @@ enum class MsgId {
   RunawayMultilineComment,
   RunawayStringLit,
   RunawayCharLit,
-  InvalidCharDollarSign,
   InvalidCharQuestionMark,
   InvalidCharTilde
 };

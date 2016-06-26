@@ -4,7 +4,6 @@
 
 namespace AST {
 void Identifier::lrvalue_check() { lvalue = true; }
-void Eval::lrvalue_check() { lvalue = false; }
 
 void Unop::lrvalue_check() {
   operand->lrvalue_check();

@@ -39,7 +39,6 @@ IR::Value DummyTypeExpr::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }
 IR::Value InDecl::EmitLVal() { NOT_YET; }
 IR::Value Access::EmitLVal() { NOT_YET; }
-IR::Value Eval::EmitLVal() { NOT_YET; }
 
 IR::Value Terminal::EmitLVal() { UNREACHABLE; }
 IR::Value Declaration::EmitLVal() { UNREACHABLE; }

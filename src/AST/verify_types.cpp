@@ -384,6 +384,9 @@ void Unop::verify_types() {
 
   using Language::Operator;
   switch (op) {
+  case Operator::Eval: {
+    type = operand->type;
+  } break;
   case Operator::Free: {
     if (!operand->type->is_pointer()) {
       Error::Log::Log(loc, "Free can only be called on pointer types");
@@ -472,14 +475,8 @@ void Unop::verify_types() {
   case Operator::Import: {
     type = Void;
   } break;
-  default: assert(false && "Died in Unop::verify_types");
+  default: UNREACHABLE;
   }
-}
-
-void Eval::verify_types() {
-  STARTING_CHECK;
-  expr->verify_types();
-  type = expr->type;
 }
 
 void Access::verify_types() {

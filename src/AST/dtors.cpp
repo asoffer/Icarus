@@ -32,7 +32,6 @@ ArrayType::~ArrayType() {
 
 Terminal::~Terminal() {}
 Identifier::~Identifier() {}
-Eval::~Eval() { DELETE(expr); }
 
 Case::~Case() {
   for (auto kv : key_vals) {

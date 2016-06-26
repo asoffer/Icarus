@@ -100,14 +100,9 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     msg_head = "You are missing a quotation mark at the end of your "
                "character-literal.";
     break;
-  case Error::MsgId::InvalidCharDollarSign:
-    msg_head = "The character '$' is not used in Icarus. I am going to ignore "
-               "it and continue processing.";
-    break;
   case Error::MsgId::InvalidCharQuestionMark:
     msg_head = "The character '?' is not used in Icarus. I am going to ignore "
                "it and continue processing.";
-
     break;
   case Error::MsgId::InvalidCharTilde:
     msg_head = "The character '~' is not used in Icarus. I am going to ignore "

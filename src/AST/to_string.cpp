@@ -65,6 +65,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Sub: ss << "Sub"; break;
   case Language::Operator::Not: ss << "Not"; break;
   case Language::Operator::At: ss << "At"; break;
+  case Language::Operator::Eval: ss << "Eval"; break;
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Import: ss << "Import"; break;
 
@@ -234,12 +235,6 @@ std::string EnumLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Enum with " << members.size()
      << (members.size() == 1 ? " value>\n" : " values>\n");
-  return ss.str();
-}
-
-std::string Eval::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << tabs(n) << "<Eval>\n" << expr->to_string(n + 1);
   return ss.str();
 }
 

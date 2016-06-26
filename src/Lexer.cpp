@@ -6,9 +6,6 @@
 
 extern std::queue<std::string> file_queue;
 
-// TODO }}} should be lexed conditionally. Track the last instances you saw of {
-// versus {{ and attempt to match them.
-
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
@@ -261,39 +258,9 @@ NNT Lexer::NextOperator() {
   case ')': IncrementCursor(); RETURN_NNT(")", r_paren);
   case '[': IncrementCursor(); RETURN_NNT("[", l_bracket);
   case ']': IncrementCursor(); RETURN_NNT("]", r_bracket);
-
-  case '{': {
-    // TODO O(n^2). Probably want to do this check once and cache the result.
-    size_t saved_offset = cursor.offset_;
-
-    // Note: We have a null-terminator, so this loop is safe
-    while (*cursor == '{') { ++cursor.offset_; }
-
-    bool odd_num_lbraces = (cursor.offset_ - saved_offset) & 1;
-    cursor.offset_       = saved_offset;
-
-    if (odd_num_lbraces) {
-      IncrementCursor();
-      RETURN_NNT("{", l_brace);
-    } else {
-      IncrementCursor();
-      IncrementCursor();
-      RETURN_NNT("{{", l_eval);
-    }
-  } break;
-
-  case '}': {
-    IncrementCursor();
-    // Note: Greedily parsing these parses them the way we want (as "}} }} }"
-    // rather than "} }} }}").
-    if (*cursor == '}') {
-      IncrementCursor();
-      RETURN_NNT("}}", r_eval);
-
-    } else {
-      RETURN_NNT("}", r_brace);
-    }
-  } break;
+  case '{': IncrementCursor(); RETURN_NNT("{", l_brace);
+  case '}': IncrementCursor(); RETURN_NNT("}", r_brace);
+  case '$': IncrementCursor(); RETURN_NNT("$", op_l);
 
   case '.': {
     TokenLocation loc   = cursor.Location();
@@ -626,12 +593,6 @@ NNT Lexer::NextOperator() {
 
     RETURN_TERMINAL(Char, Char, Context::Value(result));
   } break;
-
-  case '$':
-    Error::Log::Log(Error::MsgId::InvalidCharDollarSign, cursor.Location(), 0,
-                    1);
-    IncrementCursor();
-    return Next();
 
   case '?':
     Error::Log::Log(Error::MsgId::InvalidCharQuestionMark, cursor.Location(), 0,

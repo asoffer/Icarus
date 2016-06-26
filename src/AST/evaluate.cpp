@@ -184,36 +184,10 @@ Context::Value Identifier::evaluate(Ctx &ctx) {
 }
 
 Context::Value DummyTypeExpr::evaluate(Ctx &) { return value; }
-Context::Value Eval::evaluate(Ctx &) { NOT_YET; }
 
 Context::Value Unop::evaluate(Ctx &ctx) {
-  if (op == Language::Operator::Return) {
-    return value = nullptr;
-
-  } else if (op == Language::Operator::Print) {
-    // TODO Don't print. Raise an error.
-    auto val = operand->evaluate(ctx);
-    if (operand->type == Bool)
-      std::cout << (val.as_bool ? "true" : "false");
-    else if (operand->type == Char)
-      std::cout << val.as_char;
-    else if (operand->type == Int)
-      std::cout << val.as_int;
-    else if (operand->type == Real)
-      std::cout << val.as_real;
-    else if (operand->type == Type_)
-      std::cout << val.as_type->to_string();
-    else if (operand->type == Uint)
-      std::cout << val.as_uint;
-    else { /* TODO */
-    }
-
-    std::cout.flush();
-
-    value_flag   = ValueFlag::Done;
-    return value = nullptr;
-
-  } else if (op == Language::Operator::Sub) {
+  switch (op) {
+  case Language::Operator::Sub:
     if (type == Int) {
       value_flag = ValueFlag::Done;
       return Context::Value(-operand->evaluate(ctx).as_int);
@@ -222,20 +196,26 @@ Context::Value Unop::evaluate(Ctx &ctx) {
       value_flag = ValueFlag::Done;
       return Context::Value(-operand->evaluate(ctx).as_real);
     }
-  } else if (op == Language::Operator::And) {
-    operand->verify_types();
-    if (operand->type != Type_) {
-      // TODO better error message
-      Error::Log::Log(loc, "Taking the address of a " +
-                             operand->type->to_string() +
-                             " is not allowed at compile-time");
+  case Language::Operator::And:
+    if (op == Language::Operator::And) {
+      operand->verify_types();
+      if (operand->type != Type_) {
+        // TODO better error message
+        Error::Log::Log(loc, "Taking the address of a " +
+                                 operand->type->to_string() +
+                                 " is not allowed at compile-time");
+      }
+
+      value_flag   = ValueFlag::Done;
+      return value = Context::Value(Ptr(operand->evaluate(ctx).as_type));
     }
+  case Language::Operator::Eval: NOT_YET;
 
-    value_flag   = ValueFlag::Done;
-    return value = Context::Value(Ptr(operand->evaluate(ctx).as_type));
+  /* These calls are illegal. */
+  case Language::Operator::Return: UNREACHABLE;
+  case Language::Operator::Print: UNREACHABLE;
+  default: NOT_YET;
   }
-
-  assert(false && "Unop eval: I don't know what to do.");
 }
 
 Context::Value ChainOp::evaluate(Ctx &ctx) {

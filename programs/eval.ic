@@ -13,8 +13,7 @@ fibonacci := (n: int) -> int {
 main := void -> void {
   fib_of_20 := void -> int { return fibonacci(20) }
 
-  {{ hi() }}
-
-  {{ print fib_of_20(), '\n' }}
-  print {{ fib_of_20() }}
+  $(hi())
+  $print fib_of_20(), '\n'
+  print $(fib_of_20())
 }

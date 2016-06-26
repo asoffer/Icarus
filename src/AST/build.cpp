@@ -242,15 +242,12 @@ Node *For::Build(NPtrVec &&nodes) {
 // Operand cannot be a declaration.
 // Operand cannot be an assignment of any kind.
 Node *Unop::BuildLeft(NPtrVec &&nodes) {
-  auto unop_ptr     = new AST::Unop;
-  unop_ptr->operand = steal<AST::Expression>(nodes[1]);
-
-  // We intentionally do not delete tk_node becasue we only want to read from
-  // it. The apply() call will take care of its deletion.
-  unop_ptr->loc = nodes[0]->loc;
-
   assert(nodes[0]->is_token_node());
   auto tk = ((TokenNode *)nodes[0])->token;
+
+  auto unop_ptr     = new AST::Unop;
+  unop_ptr->operand = steal<Expression>(nodes[1]);
+  unop_ptr->loc     = nodes[0]->loc;
 
   if (tk == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
@@ -301,8 +298,11 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   } else if (tk == "@") {
     unop_ptr->op = Language::Operator::At;
 
+  } else if (tk == "$") {
+    unop_ptr->op = Language::Operator::Eval;
+
   } else {
-    assert(false);
+    UNREACHABLE;
   }
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
@@ -455,15 +455,6 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
-}
-
-
-Node *Eval::Build(NPtrVec &&nodes) {
-  auto eval_ptr        = new Eval;
-  eval_ptr->expr       = steal<Expression>(nodes[1]);
-  eval_ptr->loc        = nodes[0]->loc;
-  eval_ptr->precedence = Language::precedence(Language::Operator::Eval);
-  return eval_ptr;
 }
 
 Node *ArrayLiteral::build(NPtrVec &&nodes) {

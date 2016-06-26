@@ -34,7 +34,6 @@ llvm::Value *Declaration::generate_lvalue() { return nullptr; }
 llvm::Value *StructLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *ParametricStructLiteral::generate_lvalue() { return nullptr; }
 llvm::Value *EnumLiteral::generate_lvalue() { return nullptr; }
-llvm::Value *Eval::generate_lvalue() { return nullptr; }
 llvm::Value *DummyTypeExpr::generate_lvalue() { return nullptr; }
 
 llvm::Value *Access::generate_lvalue() {

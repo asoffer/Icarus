@@ -5,7 +5,7 @@
 namespace Language {
 const std::map<std::string, Operator> lookup_operator = {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  { #symbol, Operator::name }                                                  \
+  { symbol, Operator::name }                                                   \
   ,
 #include "config/operator.conf"
 #undef OPERATOR_MACRO
@@ -37,10 +37,9 @@ Access::Access() {}
 ChainOp::ChainOp() {}
 Case::Case() {}
 Binop::Binop() {}
-Unop::Unop() {}
+Unop::Unop() : operand(nullptr) {}
 Terminal::Terminal() {}
 ArrayType::ArrayType() {}
-Eval::Eval() : expr(nullptr) {}
 
 DummyTypeExpr::DummyTypeExpr() { assert(false); }
 

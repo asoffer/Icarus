@@ -178,7 +178,6 @@ static const std::vector<Rule> Rules = {
 
     // Parenthesization and bracketing (array literals)
     Rule(0x01, expr, {{l_paren}, EXPR, {r_paren}}, Parenthesize),
-    Rule(0x01, expr, {{l_eval}, EXPR, {r_eval}}, AST::Eval::Build),
     Rule(0x01, expr, {{l_bracket}, EXPR, {r_bracket}},
          AST::ArrayLiteral::build),
     Rule(0x00, expr, {{l_bracket}, {r_bracket}}, AST::ArrayLiteral::BuildEmpty),
@@ -226,20 +225,17 @@ static const std::vector<Rule> Rules = {
     Rule(0x02, l_paren, {{l_paren}, {newline}}, drop_all_but<0>),
     Rule(0x02, l_bracket, {{l_bracket}, {newline}}, drop_all_but<0>),
     Rule(0x02, l_brace, {{l_brace}, {newline}}, drop_all_but<0>),
-    Rule(0x02, l_eval, {{l_eval}, {newline}}, drop_all_but<0>),
     Rule(0x02, stmts, {{stmts}, {newline}}, drop_all_but<0>),
 
     Rule(0x00, r_paren, {{newline}, {r_paren}}, drop_all_but<1>),
     Rule(0x00, r_bracket, {{newline}, {r_bracket}}, drop_all_but<1>),
     Rule(0x00, r_brace, {{newline}, {r_brace}}, drop_all_but<1>),
     Rule(0x00, l_brace, {{newline}, {l_brace}}, drop_all_but<1>),
-    Rule(0x00, l_eval, {{newline}, {l_eval}}, drop_all_but<1>),
     Rule(0x00, stmts, {{newline}, {stmts}}, drop_all_but<1>),
 
     Rule(0x00, r_paren, {{r_paren}, {newline}}, drop_all_but<0>),
     Rule(0x00, r_bracket, {{r_bracket}, {newline}}, drop_all_but<0>),
     Rule(0x00, r_brace, {{r_brace}, {newline}}, drop_all_but<0>),
-    Rule(0x00, r_eval, {{r_eval}, {newline}}, drop_all_but<0>),
 
     Rule(0x00, expr, {{fn_expr}, {l_brace}, {stmts}, {r_brace}},
          AST::FunctionLiteral::build),
