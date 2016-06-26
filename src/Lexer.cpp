@@ -57,6 +57,12 @@ void Lexer::IncrementCursor() {
   }
 }
 
+void Lexer::BackupCursor() {
+  // You can't back up to a previous line.
+  assert(cursor.offset_ > 0);
+  --cursor.offset_;
+}
+
 void Lexer::SkipToEndOfLine() {
   while (*cursor != '\0') { ++cursor.offset_; }
 }
@@ -328,14 +334,19 @@ NNT Lexer::NextOperator() {
   case '*':
     IncrementCursor();
     if (*cursor == '/') {
-      // TODO what about *// should that be parsed as (*)(//) or (*/)(/)
       IncrementCursor();
-      TokenLocation loc = cursor.Location();
-      loc.offset -= 2;
-      Error::Log::Log(
-          Error::Msg(Error::MsgId::NotInMultilineComment, loc, 0, 2));
-      return Next();
-
+      if (*cursor == '/') {
+        // Looking at "*//" which should be parsed as an asterisk followed by a
+        // one-line comment.
+        BackupCursor();
+        RETURN_NNT("*", op_b);
+      } else {
+        TokenLocation loc = cursor.Location();
+        loc.offset -= 2;
+        Error::Log::Log(
+            Error::Msg(Error::MsgId::NotInMultilineComment, loc, 0, 2));
+        return Next();
+      }
     } else if (*cursor == '=') {
       IncrementCursor();
       RETURN_NNT("*=", op_b);
