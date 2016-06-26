@@ -26,7 +26,7 @@ extern llvm::Module *global_module;
 
 void Primitive::call_init(llvm::Value *var) {
   switch (type_) {
-  case TypeEnum::Error: assert(false && "Constructor called for type Error");
+  case TypeEnum::Err: assert(false && "Constructor called for type Err");
   case TypeEnum::Unknown:
     assert(false && "Constructor called for unknown type");
   case TypeEnum::Type: assert(false && "Constructor called for type");
@@ -172,7 +172,7 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
 
 void Primitive::EmitInit(IR::Value id_val) {
   switch (type_) {
-  case TypeEnum::Error: UNREACHABLE;
+  case TypeEnum::Err: UNREACHABLE;
   case TypeEnum::Unknown: UNREACHABLE;
   case TypeEnum::Type: UNREACHABLE;
   case TypeEnum::Void: UNREACHABLE;

@@ -8,7 +8,7 @@ extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
-extern Type *Error, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
     *NullPtr, *RawPtr, *String;
 
 extern Pointer *Ptr(Type *t);
@@ -109,16 +109,7 @@ public:
   TYPE_FNS(Primitive, primitive);
 
   enum class TypeEnum {
-    Error,
-    Unknown,
-    Bool,
-    Char,
-    Int,
-    Real,
-    Type,
-    Uint,
-    Void,
-    NullPtr
+    Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr
   };
 
   Primitive::TypeEnum type_;

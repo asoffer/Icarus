@@ -2,8 +2,8 @@
 #include "Type/Type.h"
 #endif
 
-Type *Error, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint,
-    *Void, *RawPtr, *String;
+Type *Err, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
+    *RawPtr, *String;
 
 namespace TypeSystem {
 std::map<std::string, Type *> Literals;
@@ -30,7 +30,7 @@ void initialize() {
 
   Unknown = new Primitive(Primitive::TypeEnum::Unknown);
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
-  Error   = new Primitive(Primitive::TypeEnum::Error);
+  Err     = new Primitive(Primitive::TypeEnum::Err);
   RawPtr  = Ptr(Char);
 
   RawPtr->generate_llvm();

@@ -426,15 +426,28 @@ NNT Lexer::NextOperator() {
       if (*cursor == '\\') {
         IncrementCursor();
         switch (*cursor) {
-          case '\\': str_lit += '\\'; break;
-          case '"': str_lit += '"'; break;
-          case 'n': str_lit += '\n'; break;
-          case 'r': str_lit += '\r'; break;
-          case 't': str_lit += '\t'; break;
-          default: {
-            error_log.log(cursor.Location(),
-                          "The sequence `\\" + std::to_string(*cursor) +
-                              "` is not an escape character.");
+        case '\'': {
+          str_lit += '\'';
+          TokenLocation loc = cursor.Location();
+          --loc.offset;
+          error_log.log(Error::Msg(Error::MsgId::EscapedSingleQuoteInStringLit,
+                                   loc, 0, 2));
+        } break;
+
+        case '\\': str_lit += '\\'; break;
+        case '"':  str_lit += '"';  break;
+        case 'a':  str_lit += '\a'; break;
+        case 'b':  str_lit += '\b'; break;
+        case 'f':  str_lit += '\f'; break;
+        case 'n':  str_lit += '\n'; break;
+        case 'r':  str_lit += '\r'; break;
+        case 't':  str_lit += '\t'; break;
+        case 'v':  str_lit += '\v'; break;
+
+        default: {
+          error_log.log(cursor.Location(), "The sequence `\\" +
+                                               std::to_string(*cursor) +
+                                               "` is not an escape character.");
             str_lit += *cursor;
           } break;
         }
@@ -446,8 +459,8 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      error_log.log(Err::Message(Err::MessageID::RunawayStringLit,
-                                 cursor.Location(), 0, 1));
+      error_log.log(
+          Error::Msg(Error::MsgId::RunawayStringLit, cursor.Location(), 0, 1));
     } else {
       IncrementCursor();
     }
@@ -479,8 +492,8 @@ NNT Lexer::NextOperator() {
         result = '"';
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        error_log.log(Err::Message(Err::MessageID::EscapedDoubleQuoteInCharLit,
-                                   loc, 0, 2));
+        error_log.log(
+            Error::Msg(Error::MsgId::EscapedDoubleQuoteInCharLit, loc, 0, 2));
       } break;
       case '\\': result = '\\'; break;
       case '\'': result = '\''; break;
@@ -494,8 +507,8 @@ NNT Lexer::NextOperator() {
       default:
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        error_log.log(Err::Message(Err::MessageID::InvalidEscapeCharInCharLit,
-                                   loc, 0, 2));
+        error_log.log(
+            Error::Msg(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2));
         result = *cursor;
       }
       break;

@@ -7,7 +7,7 @@
 
 std::string Primitive::to_string() const {
   switch (type_) {
-  case TypeEnum::Error: return "!!!";
+  case TypeEnum::Err: return "Err";
   case TypeEnum::Unknown: return "???";
   case TypeEnum::Bool: return "bool";
   case TypeEnum::Char: return "char";

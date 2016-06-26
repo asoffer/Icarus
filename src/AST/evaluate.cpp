@@ -152,7 +152,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
 
 llvm::Value *Expression::llvm_value(Context::Value v) {
   assert(type != Type_ && "Type_ conversion to llvm::Value*");
-  assert(type != Error && "Error conversion to llvm::Value*");
+  assert(type != Err && "Error conversion to llvm::Value*");
   assert(type != Unknown && "Unknown conversion to llvm::Value*");
 
   if (type == Bool) return data::const_bool(v.as_bool);

@@ -39,47 +39,59 @@ void ErrorLog::log(TokenLocation loc, const std::string &msg) {
 
 extern std::map<std::string, SourceFile *> source_map;
 
-void ErrorLog::log(const Err::Message &m) {
+static inline size_t NumDigits(size_t n) {
+  if (n == 0) return 1;
+  size_t counter = 0;
+  while (n != 0) {
+    n /= 10;
+    ++counter;
+  }
+  return counter;
+}
+
+void ErrorLog::log(const Error::Msg &m) {
   const char *msg_head = "";
   const char *msg_foot = "";
   switch (m.mid) {
-  case Err::MessageID::RunawayMultilineComment: msg_head = ""; break;
-  case Err::MessageID::InvalidEscapeCharInStringLit: msg_head = ""; break;
-  case Err::MessageID::InvalidEscapeCharInCharLit:
+  case Error::MsgId::RunawayMultilineComment: msg_head      = ""; break;
+  case Error::MsgId::InvalidEscapeCharInStringLit: msg_head = ""; break;
+  case Error::MsgId::InvalidEscapeCharInCharLit:
     msg_head =
         "I encounterd an invalid escape sequence in your character-literal.";
     msg_foot = "The valid escape sequences for characters are '\\\\', "
                "'\'', '\\a', '\\b', '\\f', '\\n', '\\r, '\\t', and '\\v'.";
     break;
-  case Err::MessageID::RunawayStringLit:
+  case Error::MsgId::RunawayStringLit:
     msg_head = "You are missing a quotation mark at the end of your string. I "
                "think it goes here:";
     break;
-  case Err::MessageID::NewlineInCharLit: msg_head = ""; break;
-  case Err::MessageID::EscapedDoubleQuoteInCharLit:
+  case Error::MsgId::NewlineInCharLit: msg_head = ""; break;
+  case Error::MsgId::EscapedDoubleQuoteInCharLit:
     msg_head = "The double quotation mark character '\"' does not need to be "
                "esacped in a character literal.";
     break;
-  case Err::MessageID::RunawayCharLit: msg_head = ""; break;
+  case Error::MsgId::EscapedSingleQuoteInStringLit:
+    msg_head = "The single quotation mark character \"'\" does not need to be "
+               "esacped in a string literal.";
+    break;
+  case Error::MsgId::RunawayCharLit: msg_head = ""; break;
   }
 
   pstr line = source_map AT(m.loc.file)->lines AT(m.loc.line_num);
 
-  int left_border_width;
+  size_t left_border_width = NumDigits(m.loc.line_num) + 2;
 
-  fprintf(stderr, "%s\n", msg_head);
-  fprintf(stderr, "%lu| %n", m.loc.line_num, &left_border_width);
-
-  std::string underline(std::strlen(line.ptr) + (size_t)left_border_width + 1,
-                        ' ');
-
-  for (int i = left_border_width + (int)m.loc.offset;
-       i < left_border_width + (int)(m.loc.offset + m.underline_length); ++i) {
-    underline[(size_t)i] = '^';
+  // Extra + 1 at the end because we might point after the end of the line.
+  std::string underline(std::strlen(line.ptr) + left_border_width + 1, ' ');
+  for (size_t i = left_border_width + m.loc.offset;
+       i < left_border_width + m.loc.offset + m.underline_length; ++i) {
+    underline[i] = '^';
   }
 
   fprintf(stderr, "%s\n"
+                  "%lu| "
+                  "%s\n"
                   "%s\n"
                   "%s\n",
-          line.ptr, underline.c_str(), msg_foot);
+          msg_head, m.loc.line_num, line.ptr, underline.c_str(), msg_foot);
 }
