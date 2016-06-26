@@ -10,7 +10,7 @@ void Unop::lrvalue_check() {
   operand->lrvalue_check();
   if (op == Language::Operator::And) {
     if (!operand->lvalue && operand->type != Type_) {
-      error_log.log(loc, "Cannot take address");
+      Error::Log::Log(loc, "Cannot take address");
     }
   }
   lvalue = (op == Language::Operator::At || op == Language::Operator::And) &&
@@ -37,7 +37,7 @@ void Binop::lrvalue_check() {
 
   if (is_assignment() && !lhs->lvalue) {
     // TODO better error message.
-    error_log.log(loc, "Invalid assignment (to rvalue)");
+    Error::Log::Log(loc, "Invalid assignment (to rvalue)");
 
   } else {
     lvalue =

@@ -123,7 +123,7 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
             goto next_arg;
 
           } else if (strcmp(arg + 2, "immediate-errors") == 0) {
-            ErrorLog::ImmediateMode = true;
+            Error::Log::ImmediateMode = true;
             goto next_arg;
 
           } else if (strcmp(arg + 2, "param-struct") == 0) {

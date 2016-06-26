@@ -45,7 +45,7 @@ void Parser::cleanup() {
   }
 
   if (node_stack_.size() > 1) {
-    error_log.log(TokenLocation(), "Parser error.");
+    Error::Log::Log(TokenLocation(), "Parser error.");
   }
 
   assert(node_stack_.back()->is_statements());

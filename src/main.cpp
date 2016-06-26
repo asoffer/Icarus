@@ -190,8 +190,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (error_log.num_errors() != 0) {
-    std::cerr << error_log;
+  if (Error::Log::NumErrors() != 0) {
+    Error::Log::Dump();
 
     if (debug::ct_eval) { endwin(); }
     return error_code::parse_error;
@@ -250,8 +250,8 @@ int main(int argc, char *argv[]) {
     }
     TypeSystem::GenerateLLVM();
 
-    if (error_log.num_errors() != 0) {
-      std::cerr << error_log;
+    if (Error::Log::NumErrors() != 0) {
+      Error::Log::Dump();
 
       if (debug::ct_eval) { endwin(); }
       return error_code::cyclic_dependency;
@@ -261,8 +261,8 @@ int main(int argc, char *argv[]) {
   TIME("(L/R)value checking") {
     global_statements->lrvalue_check();
 
-    if (error_log.num_errors() != 0) {
-      std::cerr << error_log;
+    if (Error::Log::NumErrors() != 0) {
+      Error::Log::Dump();
 
       if (debug::ct_eval) { endwin(); }
       return error_code::lvalue;

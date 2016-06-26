@@ -99,7 +99,7 @@ void Scope::verify_no_shadowing() {
         if ((!decl_ptr1->type->is_function() ||
              !decl_ptr2->type->is_function()) &&
             decl_ptr1->loc.line_num <= decl_ptr2->loc.line_num) {
-          error_log.log(decl_ptr1->loc,
+          Error::Log::Log(decl_ptr1->loc,
                         "Identifier `" + decl_ptr1->identifier->token +
                             "` already declared in this scope (on line " +
                             std::to_string(decl_ptr2->loc.line_num) + ").");
@@ -111,7 +111,7 @@ void Scope::verify_no_shadowing() {
       // TODO is_block_scope is a standin for not being a struct/enum scope
       while (scope_ptr != nullptr && scope_ptr->is_block_scope()) {
         if (scope_ptr == decl_ptr2->scope_) {
-          error_log.log(decl_ptr1->loc,
+          Error::Log::Log(decl_ptr1->loc,
                         "Identifier `" + decl_ptr1->identifier->token +
                             "` shadows identifier declared on line " +
                             std::to_string(decl_ptr2->loc.line_num) + ".");

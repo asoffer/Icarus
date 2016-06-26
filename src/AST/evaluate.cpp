@@ -226,7 +226,7 @@ Context::Value Unop::evaluate(Ctx &ctx) {
     operand->verify_types();
     if (operand->type != Type_) {
       // TODO better error message
-      error_log.log(loc, "Taking the address of a " +
+      Error::Log::Log(loc, "Taking the address of a " +
                              operand->type->to_string() +
                              " is not allowed at compile-time");
     }

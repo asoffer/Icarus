@@ -392,8 +392,8 @@ NNT Lexer::NextOperator() {
 
       while (comment_layer != 0) {
         if (ifs.eof()) {
-          error_log.log(cursor.Location(),
-                        "File ended during multi-line comment.");
+          Error::Log::Log(Error::Msg(Error::MsgId::RunawayMultilineComment,
+                                     cursor.Location(), 0, 2));
 
         } else if (back_one == '/' && *cursor == '*') {
           ++comment_layer;
@@ -430,7 +430,7 @@ NNT Lexer::NextOperator() {
           str_lit += '\'';
           TokenLocation loc = cursor.Location();
           --loc.offset;
-          error_log.log(Error::Msg(Error::MsgId::EscapedSingleQuoteInStringLit,
+          Error::Log::Log(Error::Msg(Error::MsgId::EscapedSingleQuoteInStringLit,
                                    loc, 0, 2));
         } break;
 
@@ -445,9 +445,11 @@ NNT Lexer::NextOperator() {
         case 'v':  str_lit += '\v'; break;
 
         default: {
-          error_log.log(cursor.Location(), "The sequence `\\" +
-                                               std::to_string(*cursor) +
-                                               "` is not an escape character.");
+          TokenLocation loc = cursor.Location();
+          --loc.offset;
+          Error::Log::Log(
+              Error::Msg(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2));
+
             str_lit += *cursor;
           } break;
         }
@@ -459,7 +461,7 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      error_log.log(
+      Error::Log::Log(
           Error::Msg(Error::MsgId::RunawayStringLit, cursor.Location(), 0, 1));
     } else {
       IncrementCursor();
@@ -475,14 +477,14 @@ NNT Lexer::NextOperator() {
     IncrementCursor();
     char result;
 
-    // TODO
-    // 1. deal with the case of a tab character literally between single quotes.
-    // 2. robust error handling
     switch (*cursor) {
+    case '\t': NOT_YET;
     case '\n':
     case '\r': {
-      error_log.log(cursor.Location(),
-                    "Cannot use newline inside a character-literal.");
+                 // TODO how can you even get here?
+      Error::Log::Log(
+          Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));
+
       RETURN_TERMINAL(Char, Char, Context::Value('\0'));
     }
     case '\\': {
@@ -492,7 +494,7 @@ NNT Lexer::NextOperator() {
         result = '"';
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        error_log.log(
+        Error::Log::Log(
             Error::Msg(Error::MsgId::EscapedDoubleQuoteInCharLit, loc, 0, 2));
       } break;
       case '\\': result = '\\'; break;
@@ -507,7 +509,7 @@ NNT Lexer::NextOperator() {
       default:
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        error_log.log(
+        Error::Log::Log(
             Error::Msg(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2));
         result = *cursor;
       }
@@ -521,8 +523,8 @@ NNT Lexer::NextOperator() {
     if (*cursor == '\'') {
       IncrementCursor();
     } else {
-      error_log.log(cursor.Location(),
-                    "Character literal must be followed by a single-quote.");
+      Error::Log::Log(
+          Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));
     }
 
     RETURN_TERMINAL(Char, Char, Context::Value(result));

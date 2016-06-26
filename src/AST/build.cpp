@@ -23,7 +23,7 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
                                      const std::string &msg) {
   if (expr->is_binop() &&
       ((AST::Binop *)expr)->op == Language::Operator::Assign) {
-    error_log.log(expr->loc, msg + "Did you mean '==' instead of '='?");
+    Error::Log::Log(expr->loc, msg + "Did you mean '==' instead of '='?");
 
     // TODO allow continuation after error here?
     ((AST::Binop *)expr)->op = Language::Operator::EQ;
@@ -44,7 +44,7 @@ AST::Node *BuildEmptyParen(NPtrVec &&nodes) {
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
 
   if (binop_ptr->lhs->is_declaration()) {
-    error_log.log(binop_ptr->lhs->loc,
+    Error::Log::Log(binop_ptr->lhs->loc,
                   "Invalid declaration. You cannot call a declaration.");
   }
   return binop_ptr;
@@ -68,7 +68,7 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
     if (n->is_declaration()) {
       struct_lit_ptr->decls.push_back(steal<Declaration>(n));
     } else {
-      error_log.log(n->loc,
+      Error::Log::Log(n->loc,
                     "Each struct member must be defined using a declaration.");
     }
   }
@@ -120,7 +120,7 @@ Node *EnumLiteral::Build(NPtrVec &&nodes) {
     auto stmts = (Statements *)nodes[2];
     for (auto &&stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
-        error_log.log(stmt->loc, "Enum members must be identifiers.");
+        Error::Log::Log(stmt->loc, "Enum members must be identifiers.");
       } else {
         // TODO repeated terms?
         // TODO move the string into place
@@ -148,7 +148,7 @@ Node *Case::Build(NPtrVec &&nodes) {
     auto stmt = stmts->statements[i];
     if (!stmt->is_binop() ||
         ((Binop *)stmt)->op != Language::Operator::Rocket) {
-      error_log.log(stmt->loc,
+      Error::Log::Log(stmt->loc,
                     "Each line in case statement must be a key-value pair.");
       continue;
     }
@@ -199,7 +199,7 @@ Node *While::Build(NPtrVec &&nodes) {
 static void CheckForLoopDeclaration(Expression *maybe_decl,
                                     std::vector<InDecl *> &iters) {
   if (!maybe_decl->is_in_decl()) {
-    error_log.log(maybe_decl->loc, "Expect 'in' declaration in for-loop.");
+    Error::Log::Log(maybe_decl->loc, "Expect 'in' declaration in for-loop.");
   } else {
     iters.push_back((InDecl *)maybe_decl);
   }
@@ -309,7 +309,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   if (unop_ptr->operand->is_declaration()) {
     auto decl = (Declaration *)unop_ptr->operand;
-    error_log.log(decl->loc, "Invalid use of declaration.");
+    Error::Log::Log(decl->loc, "Invalid use of declaration.");
   }
 
   return unop_ptr;
@@ -317,7 +317,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 id_check:
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   if (!unop_ptr->operand->is_identifier()) {
-    error_log.log(unop_ptr->operand->loc,
+    Error::Log::Log(unop_ptr->operand->loc,
                   "Operand to '" + tk + "' must be an identifier.");
   }
   return unop_ptr;
@@ -370,12 +370,12 @@ Node *Access::Build(NPtrVec &&nodes) {
   access_ptr->operand = steal<Expression>(nodes[0]);
 
   if (access_ptr->operand->is_declaration()) {
-    error_log.log(access_ptr->operand->loc,
+    Error::Log::Log(access_ptr->operand->loc,
                   "Left-hand side cannot be a declaration");
   }
 
   if (!nodes[2]->is_identifier()) {
-    error_log.log(nodes[2]->loc, "Right-hand side must be an identifier");
+    Error::Log::Log(nodes[2]->loc, "Right-hand side must be an identifier");
   } else {
     access_ptr->member_name = ((Identifier *)nodes[2])->token;
   }
@@ -392,12 +392,12 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
   binop_ptr->op        = op_class;
 
   if (binop_ptr->lhs->is_declaration()) {
-    error_log.log(binop_ptr->lhs->loc,
+    Error::Log::Log(binop_ptr->lhs->loc,
                   "Left-hand side cannot be a declaration");
   }
 
   if (binop_ptr->rhs->is_declaration()) {
-    error_log.log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
+    Error::Log::Log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
                                        "declaration other than one declared "
                                        "with '`'");
   }

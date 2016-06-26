@@ -11,16 +11,17 @@ extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
 #define RESERVED_MSG(index)                                                    \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
-    auto tok = ((AST::TokenNode *)nodes[index])->token;            \
-    error_log.log(nodes[index]->loc, "'" + tok + "' is a reserved keyword.");  \
+    auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
+    Error::Log::Log(nodes[index]->loc, "'" + tok + "' is a reserved "          \
+                                                   "keyword.");                \
   }
 
 #define NOT_BINOP_MSG(index)                                                   \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
-    auto tok = ((AST::TokenNode *)nodes[index])->token;                         \
-    error_log.log(nodes[index]->loc,                                           \
-                  "Operator '" + tok + "' is not a binary operator.");         \
+    auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
+    Error::Log::Log(nodes[index]->loc,                                         \
+                    "Operator '" + tok + "' is not a binary operator.");       \
   }
 
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
@@ -47,7 +48,7 @@ AST::Node *CombineColonEq(NPtrVec &&nodes) {
 
 namespace ErrMsg {
 AST::Node *EmptyFile(NPtrVec &&nodes) {
-  error_log.log(nodes[0]->loc, "File is empty.");
+  Error::Log::Log(nodes[0]->loc, "File is empty.");
   return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
 }
 
@@ -67,7 +68,7 @@ template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
      << underline((size_t)nodes[PrevIndex]->loc.offset);
 
   // TODO Actually show line
-  error_log.log(nodes[PrevIndex]->loc, ss.str());
+  Error::Log::Log(nodes[PrevIndex]->loc, ss.str());
 
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,

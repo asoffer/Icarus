@@ -24,27 +24,17 @@ struct Msg {
   MsgId mid;
 };
 
-} // namespace Err
+namespace Log {
+extern size_t num_errs_;
+extern std::map<std::string, std::map<size_t, std::vector<std::string>>> log_;
 
-class ErrorLog {
-public:
-  static bool ImmediateMode;
+extern bool ImmediateMode;
+void Dump();
+inline size_t NumErrors() { return num_errs_; }
+void Log(TokenLocation loc, const std::string &msg);
+void Log(const Error::Msg &msg);
+} // namespace Log
 
-  ErrorLog();
-  friend std::ostream &operator<<(std::ostream &os, const ErrorLog &log);
-
-  size_t num_errors() const;
-  void log(TokenLocation loc, const std::string &msg);
-
-  void log(const Error::Msg &msg);
-
-  AST::Node *assignment_vs_equality(AST::Node *node);
-
-private:
-  size_t err_num_;
-  std::map<std::string, std::map<size_t, std::vector<std::string>>> log_;
-};
-
-extern ErrorLog error_log;
+} // namespace Error
 
 #endif // ICARUS_ERROR_LOG_H
