@@ -310,7 +310,6 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '+':
-  case '*':
   case '%':
   case '<': 
   case '>': 
@@ -325,6 +324,24 @@ NNT Lexer::NextOperator() {
     }
     RETURN_NNT(token, op_b);
   } break;
+
+  case '*':
+    IncrementCursor();
+    if (*cursor == '/') {
+      // TODO what about *// should that be parsed as (*)(//) or (*/)(/)
+      IncrementCursor();
+      TokenLocation loc = cursor.Location();
+      loc.offset -= 2;
+      Error::Log::Log(
+          Error::Msg(Error::MsgId::NotInMultilineComment, loc, 0, 2));
+      return Next();
+
+    } else if (*cursor == '=') {
+      IncrementCursor();
+      RETURN_NNT("*=", op_b);
+    } else {
+      RETURN_NNT("*", op_b);
+    }
 
   case '&': {
     IncrementCursor();
@@ -504,7 +521,13 @@ NNT Lexer::NextOperator() {
     char result;
 
     switch (*cursor) {
-    case '\t': NOT_YET;
+    case '\t':
+      Error::Log::Log(
+          Error::Msg(Error::MsgId::TabInCharLit, cursor.Location(), 0, 1));
+      result = '\t';
+      break;
+      // TODO what about other non-visual characters \b, \v, \a, etc.
+
     case '\0': {
       Error::Log::Log(
           Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));

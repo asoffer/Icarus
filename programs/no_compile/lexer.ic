@@ -6,7 +6,7 @@ main := void -> void {
     print "\x
     print '
     $$~??
-
+*/
   print a \             + b 
 
     foo /*

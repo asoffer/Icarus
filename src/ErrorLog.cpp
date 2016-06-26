@@ -54,7 +54,8 @@ void Error::Log::Log(const Error::Msg &m) {
   const char *msg_foot = nullptr;
   switch (m.mid) {
   case Error::MsgId::RunawayMultilineComment:
-    // TODO give more context
+    // TODO give more context. How many layers deep are you? What lines were
+    // they opened on?
     fprintf(stderr, "Finished reading file during multi-line comment.\n\n");
     return;
 
@@ -105,7 +106,15 @@ void Error::Log::Log(const Error::Msg &m) {
     msg_foot = "Backslashes are used to ignore line-breaks and therefore must "
                "be followed by a newline (whitespace between the backslash and "
                "the newline is okay).";
-        break;
+    break;
+  case Error::MsgId::NotInMultilineComment:
+    msg_head = "I found a token representing the end of a multi-line comment "
+               "(*/), but it was not part of a comment block.";
+    break;
+  case Error::MsgId::TabInCharLit:
+    msg_head = "I found a tab '\t' in your character-literal. You need to use "
+               "\\t instead.";
+    break;
   }
 
   pstr line = source_map AT(m.loc.file)->lines AT(m.loc.line_num);

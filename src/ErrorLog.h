@@ -5,16 +5,14 @@ namespace Error {
 enum class MsgId {
   InvalidEscapeCharInStringLit,
   InvalidEscapeCharInCharLit,
-
+  TabInCharLit,
   EscapedDoubleQuoteInCharLit,
   EscapedSingleQuoteInStringLit,
-
   NonWhitespaceAfterNewlineEscape,
-
+  NotInMultilineComment,
   RunawayMultilineComment,
   RunawayStringLit,
   RunawayCharLit,
-
   InvalidCharDollarSign,
   InvalidCharQuestionMark,
   InvalidCharTilde
