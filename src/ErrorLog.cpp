@@ -1,7 +1,8 @@
 #include "ErrorLog.h"
-
 #include "util/pstr.h"
 #include "SourceFile.h"
+
+// TODO null characters in string mess me up.
 
 extern std::map<std::string, SourceFile *> source_map;
 
@@ -59,7 +60,18 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     // they opened on?
     fprintf(stderr, "Finished reading file during multi-line comment.\n\n");
     return;
-
+  case Error::MsgId::NullCharInSource:
+    fprintf(stderr, "I found a null-character in your source file on line %lu. "
+                    "I am ignoring it and moving on. Are you sure \"%s\" is a "
+                    "source file?\n\n",
+            loc.line_num, loc.file.c_str());
+    return;
+  case Error::MsgId::NonGraphicCharInSource:
+    fprintf(stderr, "I found a non-graphic-character in your source file on "
+                    "line %lu. I am ignoring it and moving on. Are you sure "
+                    "\"%s\" is a source file?\n\n",
+            loc.line_num, loc.file.c_str());
+    return;
   case Error::MsgId::InvalidEscapeCharInStringLit:
     msg_head =
         "I encounterd an invalid escape sequence in your string-literal.";

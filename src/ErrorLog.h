@@ -3,6 +3,8 @@
 
 namespace Error {
 enum class MsgId {
+  NullCharInSource,
+  NonGraphicCharInSource,
   InvalidEscapeCharInStringLit,
   InvalidEscapeCharInCharLit,
   TabInCharLit,

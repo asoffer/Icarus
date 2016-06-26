@@ -53,6 +53,7 @@ public:
 
   void IncrementCursor();
   void BackupCursor();
+  void MoveCursorToNextLine();
   void SkipToEndOfLine();
 
 private:

@@ -6,9 +6,29 @@
 
 extern std::queue<std::string> file_queue;
 
+
+static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
+static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
+static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
+static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+static inline bool IsWhitespace(char c) {
+  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
+}
+static inline bool IsAlphaOrUnderscore(char c) {
+  return IsAlpha(c) || (c == '_');
+}
+static inline bool IsAlphaNumericOrUnderscore(char c) {
+  return IsAlphaNumeric(c) || (c == '_');
+}
+static inline bool IsNonGraphic(char c) {
+  return ((int)c < 32 && (int)c != 9 && (int)c != 11 && (int)c != 13) ||
+         (int)c == 127;
+}
+
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
   auto term_ptr           = new AST::Terminal;                                 \
-  term_ptr->loc           = cursor.Location();                                              \
+  term_ptr->loc           = cursor.Location();                                 \
   term_ptr->terminal_type = Language::Terminal::term_type;                     \
   term_ptr->type          = ty;                                                \
   term_ptr->value = val;                                                       \
@@ -28,32 +48,43 @@ Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
 
   ifs = std::ifstream(file_name, std::ifstream::in);
 
-  std::string temp;
-  std::getline(ifs, temp);
-
   pstr temp_blank;
   source_file_->lines.push_back(temp_blank); // Blank line since we 1-index.
 
-  cursor.line_ = pstr(temp.c_str());
-  source_file_->lines.push_back(cursor.line_);
-  ++cursor.line_num_;
+  MoveCursorToNextLine();
 }
 
 Lexer::~Lexer() { ifs.close(); }
 
+void Lexer::MoveCursorToNextLine() {
+  assert(!ifs.eof());
+  std::string temp;
+  std::getline(ifs, temp);
+
+  // Check for null characters in line
+  size_t line_length = temp.size();
+  for (size_t i = 0; i < line_length; ++i) {
+    if (temp[i] == '\0') {
+      temp[i] = ' ';
+      Error::Log::Log(Error::MsgId::NullCharInSource, cursor.Location(), 0, 0);
+    } else if (IsNonGraphic(temp[i])) {
+      temp[i] = ' ';
+      Error::Log::Log(Error::MsgId::NonGraphicCharInSource, cursor.Location(), 0, 0);
+    }
+  }
+
+  cursor.offset_ = 0;
+  cursor.line_   = pstr(temp.c_str());
+
+  ++cursor.line_num_;
+  source_file_->lines.push_back(cursor.line_);
+}
+
 void Lexer::IncrementCursor() {
   if (*cursor != '\0') {
     ++cursor.offset_;
-
   } else {
-    assert(!ifs.eof());
-    std::string temp;
-    std::getline(ifs, temp);
-
-    cursor.offset_            = 0;
-    cursor.line_              = pstr(temp.c_str());
-    ++cursor.line_num_;
-    source_file_->lines.push_back(cursor.line_);
+    MoveCursorToNextLine();
   }
 }
 
@@ -65,21 +96,6 @@ void Lexer::BackupCursor() {
 
 void Lexer::SkipToEndOfLine() {
   while (*cursor != '\0') { ++cursor.offset_; }
-}
-
-static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
-static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
-static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
-static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
-static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
-static inline bool IsWhitespace(char c) {
-  return c == ' ' || c == '\t' || c == '\n' || c == '\r';
-}
-static inline bool IsAlphaOrUnderscore(char c) {
-  return IsAlpha(c) || (c == '_');
-}
-static inline bool IsAlphaNumericOrUnderscore(char c) {
-  return IsAlphaNumeric(c) || (c == '_');
 }
 
 // Get the next token
@@ -136,15 +152,13 @@ NNT Lexer::NextWord() {
     RETURN_TERMINAL(Null, NullPtr, nullptr);
 
   } else if (token == "ord") {
-    // TODO If you want to remove nullptr, and instead use
-    // Context::Value(builtin::ord()), you can, but you need to also initialize
-    // the global_module before you make a call to the lexer.
+    // NOTE: Cannot use Context::Value(builtin::ord()) because it hasn't been
+    // initialized yet.
     RETURN_TERMINAL(Ord, Func(Char, Uint), nullptr);
 
   } else if (token == "ascii") {
-    // TODO If you want to remove nullptr, and instead use
-    // Context::Value(builtin::ascii()), you can, but you need to also
-    // initialize the global_module before you make a call to the lexer.
+    // NOTE: Cannot use Context::Value(builtin::ascii()) because it hasn't been
+    // initialized yet.
     RETURN_TERMINAL(ASCII, Func(Uint, Char), nullptr);
 
   } else if (token == "else") {
