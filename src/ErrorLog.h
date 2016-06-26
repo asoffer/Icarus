@@ -37,7 +37,8 @@ extern bool ImmediateMode;
 void Dump();
 inline size_t NumErrors() { return num_errs_; }
 void Log(TokenLocation loc, const std::string &msg);
-void Log(const Error::Msg &msg);
+void Log(MsgId mid, TokenLocation loc, size_t context_radius,
+         size_t underline_length);
 } // namespace Log
 
 } // namespace Error

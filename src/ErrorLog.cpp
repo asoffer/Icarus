@@ -48,11 +48,12 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-void Error::Log::Log(const Error::Msg &m) {
+void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
+         size_t underline_length) {
   ++num_errs_;
   const char *msg_head = "";
   const char *msg_foot = nullptr;
-  switch (m.mid) {
+  switch (mid) {
   case Error::MsgId::RunawayMultilineComment:
     // TODO give more context. How many layers deep are you? What lines were
     // they opened on?
@@ -117,21 +118,21 @@ void Error::Log::Log(const Error::Msg &m) {
     break;
   }
 
-  pstr line = source_map AT(m.loc.file)->lines AT(m.loc.line_num);
+  pstr line = source_map AT(loc.file)->lines AT(loc.line_num);
 
-  size_t left_border_width = NumDigits(m.loc.line_num) + 4;
+  size_t left_border_width = NumDigits(loc.line_num) + 4;
 
   // Extra + 1 at the end because we might point after the end of the line.
   std::string underline(std::strlen(line.ptr) + left_border_width + 1, ' ');
-  for (size_t i = left_border_width + m.loc.offset;
-       i < left_border_width + m.loc.offset + m.underline_length; ++i) {
+  for (size_t i = left_border_width + loc.offset;
+       i < left_border_width + loc.offset + underline_length; ++i) {
     underline[i] = '^';
   }
 
   fprintf(stderr, "%s\n\n"
                   "  %lu| %s\n"
                   "%s\n",
-          msg_head, m.loc.line_num, line.ptr, underline.c_str());
+          msg_head, loc.line_num, line.ptr, underline.c_str());
 
   if (msg_foot) {
     fprintf(stderr, "%s\n\n", msg_foot);

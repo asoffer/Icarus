@@ -293,8 +293,8 @@ NNT Lexer::NextOperator() {
 
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
-      Error::Log::Log(Error::Msg(Error::MsgId::NonWhitespaceAfterNewlineEscape,
-                                 loc, 0, dist));
+      Error::Log::Log(Error::MsgId::NonWhitespaceAfterNewlineEscape, loc, 0,
+                      dist);
       return Next();
     }
   } break;
@@ -343,8 +343,7 @@ NNT Lexer::NextOperator() {
       } else {
         TokenLocation loc = cursor.Location();
         loc.offset -= 2;
-        Error::Log::Log(
-            Error::Msg(Error::MsgId::NotInMultilineComment, loc, 0, 2));
+        Error::Log::Log(Error::MsgId::NotInMultilineComment, loc, 0, 2);
         return Next();
       }
     } else if (*cursor == '=') {
@@ -446,8 +445,8 @@ NNT Lexer::NextOperator() {
 
       while (comment_layer != 0) {
         if (ifs.eof()) {
-          Error::Log::Log(Error::Msg(Error::MsgId::RunawayMultilineComment,
-                                     cursor.Location(), 0, 2));
+          Error::Log::Log(Error::MsgId::RunawayMultilineComment,
+                          cursor.Location(), 0, 2);
           RETURN_NNT("", eof);
 
         } else if (back_one == '/' && *cursor == '*') {
@@ -484,8 +483,8 @@ NNT Lexer::NextOperator() {
           str_lit += '\'';
           TokenLocation loc = cursor.Location();
           --loc.offset;
-          Error::Log::Log(Error::Msg(Error::MsgId::EscapedSingleQuoteInStringLit,
-                                   loc, 0, 2));
+          Error::Log::Log(Error::MsgId::EscapedSingleQuoteInStringLit, loc, 0,
+                          2);
         } break;
 
         case '\\': str_lit += '\\'; break;
@@ -501,8 +500,8 @@ NNT Lexer::NextOperator() {
         default: {
           TokenLocation loc = cursor.Location();
           --loc.offset;
-          Error::Log::Log(
-              Error::Msg(Error::MsgId::InvalidEscapeCharInStringLit, loc, 0, 2));
+          Error::Log::Log(Error::MsgId::InvalidEscapeCharInStringLit, loc, 0,
+                          2);
 
             str_lit += *cursor;
           } break;
@@ -515,8 +514,7 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      Error::Log::Log(
-          Error::Msg(Error::MsgId::RunawayStringLit, cursor.Location(), 0, 1));
+      Error::Log::Log(Error::MsgId::RunawayStringLit, cursor.Location(), 0, 1);
     } else {
       IncrementCursor();
     }
@@ -533,15 +531,13 @@ NNT Lexer::NextOperator() {
 
     switch (*cursor) {
     case '\t':
-      Error::Log::Log(
-          Error::Msg(Error::MsgId::TabInCharLit, cursor.Location(), 0, 1));
+      Error::Log::Log(Error::MsgId::TabInCharLit, cursor.Location(), 0, 1);
       result = '\t';
       break;
       // TODO what about other non-visual characters \b, \v, \a, etc.
 
     case '\0': {
-      Error::Log::Log(
-          Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));
+      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1);
 
       RETURN_TERMINAL(Char, Char, Context::Value('\0'));
     }
@@ -552,8 +548,7 @@ NNT Lexer::NextOperator() {
         result = '"';
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        Error::Log::Log(
-            Error::Msg(Error::MsgId::EscapedDoubleQuoteInCharLit, loc, 0, 2));
+        Error::Log::Log(Error::MsgId::EscapedDoubleQuoteInCharLit, loc, 0, 2);
       } break;
       case '\\': result = '\\'; break;
       case '\'': result = '\''; break;
@@ -567,8 +562,7 @@ NNT Lexer::NextOperator() {
       default:
         TokenLocation loc = cursor.Location();
         --loc.offset;
-        Error::Log::Log(
-            Error::Msg(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2));
+        Error::Log::Log(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2);
         result = *cursor;
       }
       break;
@@ -581,28 +575,26 @@ NNT Lexer::NextOperator() {
     if (*cursor == '\'') {
       IncrementCursor();
     } else {
-      Error::Log::Log(
-          Error::Msg(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1));
+      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1);
     }
 
     RETURN_TERMINAL(Char, Char, Context::Value(result));
   } break;
 
   case '$':
-    Error::Log::Log(Error::Msg(Error::MsgId::InvalidCharDollarSign,
-                               cursor.Location(), 0, 1));
+    Error::Log::Log(Error::MsgId::InvalidCharDollarSign, cursor.Location(), 0,
+                    1);
     IncrementCursor();
     return Next();
 
   case '?':
-    Error::Log::Log(Error::Msg(Error::MsgId::InvalidCharQuestionMark,
-                               cursor.Location(), 0, 1));
+    Error::Log::Log(Error::MsgId::InvalidCharQuestionMark, cursor.Location(), 0,
+                    1);
     IncrementCursor();
     return Next();
 
   case '~':
-    Error::Log::Log(
-        Error::Msg(Error::MsgId::InvalidCharTilde, cursor.Location(), 0, 1));
+    Error::Log::Log(Error::MsgId::InvalidCharTilde, cursor.Location(), 0, 1);
     IncrementCursor();
     return Next();
 
