@@ -6,6 +6,9 @@ main := void -> void {
     print "\x
     print '
     $$~??
+    for i in 0.....3 {
+      print i 
+    }
 */
   print a \             + b 
 

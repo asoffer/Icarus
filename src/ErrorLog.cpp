@@ -128,6 +128,10 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     msg_head = "I found a tab '\t' in your character-literal. You need to use "
                "\\t instead.";
     break;
+  case Error::MsgId::TooManyDots:
+    msg_head = "There are too many consecutive '.' characters. I am assuming "
+               "you meant \"..\".";
+    break;
   }
 
   pstr line = source_map AT(loc.file)->lines AT(loc.line_num);

@@ -5,6 +5,7 @@ namespace Error {
 enum class MsgId {
   NullCharInSource,
   NonGraphicCharInSource,
+  TooManyDots,
   InvalidEscapeCharInStringLit,
   InvalidEscapeCharInCharLit,
   TabInCharLit,

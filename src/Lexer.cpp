@@ -284,8 +284,8 @@ NNT Lexer::NextOperator() {
 
   case '}': {
     IncrementCursor();
-    // Greedily parsing these parses them the way we want (as "}} }} }" rather
-    // than "} }} }}").
+    // Note: Greedily parsing these parses them the way we want (as "}} }} }"
+    // rather than "} }} }}").
     if (*cursor == '}') {
       IncrementCursor();
       RETURN_NNT("}}", r_eval);
@@ -296,12 +296,19 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '.': {
-    IncrementCursor();
-    if (*cursor == '.') {
-      IncrementCursor();
-      RETURN_NNT("..", dots);
-    } else {
+    TokenLocation loc   = cursor.Location();
+    size_t saved_offset = cursor.offset_;
+    // Note: safe because we know we have a null-terminator
+    while (*cursor == '.') { IncrementCursor(); }
+    size_t num_dots = cursor.offset_ - saved_offset;
+
+    if (num_dots == 1) {
       RETURN_NNT(".", op_b);
+    } else {
+      if (num_dots > 2) {
+        Error::Log::Log(Error::MsgId::TooManyDots, loc, 0, num_dots);
+      }
+      RETURN_NNT("..", dots);
     }
   } break;
 
