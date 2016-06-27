@@ -506,13 +506,13 @@ Node *Expression::build(NPtrVec &&) {
   assert(false && "Called a function that shouldn't be called.");
 }
 
-Node *Declaration::AddHashtag(NPtrVec &&nodes) {
-  assert(nodes[0]->is_declaration());
-  auto decl = steal<Declaration>(nodes[0]);
+Node *Expression::AddHashtag(NPtrVec &&nodes) {
+  assert(nodes[0]->is_expression());
+  auto expr= steal<Expression>(nodes[0]);
   assert(nodes[1]->is_token_node());
-  decl->hashtags.push_back(((TokenNode *)nodes[1])->token);
+  expr->hashtags.push_back(((TokenNode *)nodes[1])->token);
 
-  return decl;
+  return expr;
 }
 
 Node *InDecl::Build(NPtrVec &&nodes) {
@@ -566,7 +566,7 @@ Node *Generic::Build(NPtrVec &&nodes) {
 }
 
 Node *FunctionLiteral::BuildOneLiner(NPtrVec &&nodes) {
-  nodes[2] = Statements::build_one({steal<Node>(nodes[2]), nullptr});
+  nodes[2] = Statements::build_one({steal<Node>(nodes[2])});
   return FunctionLiteral::build(std::forward<NPtrVec &&>(nodes));
 }
 
@@ -581,8 +581,12 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  fn_lit->statements =
-      nodes[2]->is_statements() ? steal<Statements>(nodes[2]) : new Statements;
+  if (nodes[2]->is_statements() ) {
+    fn_lit->statements = steal<Statements>(nodes[2]);
+  } else {
+    fn_lit->statements = new Statements;
+    fn_lit->statements->statements.push_back(steal<Node>(nodes[2]));
+  }
 
   // TODO scopes inside these statements should point to fn_scope.
 

@@ -195,28 +195,44 @@ llvm::Value *Unop::generate_code() {
     // example, we don't reset the function scope when we make this "ghost
     // function wrapper."
 
-    auto ret        = new Unop;
-    ret->operand    = operand;
-    ret->op         = Language::Operator::Return;
-    ret->precedence = Language::precedence(ret->op);
+    auto fn_ptr                = new FunctionLiteral;
+    fn_ptr->scope_             = scope_;
+    fn_ptr->statements         = new Statements;
+    fn_ptr->statements->scope_ = fn_ptr->fn_scope;
+    fn_ptr->return_type_expr   = new DummyTypeExpr(operand->loc, type);
+    Unop *ret                  = nullptr;
 
-    auto stmts = new Statements;
-    stmts->statements.push_back(ret);
-
-    auto fn_ptr              = new FunctionLiteral;
-    fn_ptr->statements       = stmts;
-    fn_ptr->return_type_expr = new DummyTypeExpr(operand->loc, type);
+    if (operand->type != Void) {
+      ret             = new Unop;
+      ret->scope_     = fn_ptr->fn_scope;
+      ret->operand    = operand;
+      ret->op         = Language::Operator::Return;
+      ret->precedence = Language::precedence(ret->op);
+      fn_ptr->statements->statements.push_back(ret);
+    } else {
+      fn_ptr->statements->statements.push_back(operand);
+    }
 
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitIR().val.as_func;
-    auto result      = IR::Call(func, local_stack, {});
+
+    if (operand->type == Void) {
+      // Assumptions:
+      //  * There's only one exit block.
+      //  * The current block is pointing to it. This is NOT threadsafe.
+      IR::Block::Current->exit.SetReturnVoid();
+    }
+
+    auto result = IR::Call(func, local_stack, {});
     delete local_stack;
 
     // Cleanup
-    ret->operand = nullptr;
+    // ret->operand = nullptr;
     delete fn_ptr; // Because delete is called recursively, this is all we need
-                   // to
-    // do. The Statements and Unop nodes are owned by the function.
+                   // to do. The Statements and Unop nodes are owned by the
+                   // function.
+
+    if (type == Void) { return nullptr; }
 
     // Doing value conversion
     if (result.flag == IR::ValType::B) {

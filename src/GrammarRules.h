@@ -52,24 +52,8 @@ AST::Node *EmptyFile(NPtrVec &&nodes) {
   return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
 }
 
-// Passing a char because it's a number < 80
-std::string underline(size_t pointer_loc) {
-  std::string output(81, '~');
-  output[0] = '\n';
-  output[pointer_loc + 1] = '^';
-  return output;
-}
-
 template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
-  std::stringstream ss;
-  ss << "Are you missing a comma?'\n"
-     << "................................LINE OF CODE "
-        "HERE..............................."
-     << underline((size_t)nodes[PrevIndex]->loc.offset);
-
-  // TODO Actually show line
-  Error::Log::Log(nodes[PrevIndex]->loc, ss.str());
-
+  Error::Log::Log(Error::MsgId::MissingComma, nodes[PrevIndex]->loc, 0, 1);
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
                               steal_node<AST::Node>(nodes[PrevIndex + 1])});
@@ -183,7 +167,7 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, expr, {{l_bracket}, {r_bracket}}, AST::ArrayLiteral::BuildEmpty),
 
     // TODO allow hashtags on any expression
-    Rule(0x00, expr, {EXPR, {hashtag}}, AST::Declaration::AddHashtag),
+    Rule(0x00, expr, {EXPR, {hashtag}}, AST::Expression::AddHashtag),
 
     // Maybe missing comma
     Rule(0x00, expr, {{l_paren}, EXPR, EXPR, {r_paren}},
@@ -279,7 +263,6 @@ static const std::vector<Rule> Rules = {
          AST::Conditional::BuildElseNoLiner),
 
     // TODO missing first statement is an error-production
-    // TODO Empty braces
 
     Rule(0x01, expr, {{kw_block, kw_struct}, {l_brace}, {stmts}, {r_brace}},
          BuildKWBlock),

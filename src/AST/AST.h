@@ -98,6 +98,7 @@ struct Node {
 struct Expression : public Node {
   EXPR_FNS(Expression, expression);
   static Node *build(NPtrVec &&nodes);
+  static Node *AddHashtag(NPtrVec &&nodes);
 
   llvm::Value *llvm_value(Context::Value v);
 
@@ -118,6 +119,16 @@ struct Expression : public Node {
   // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
   // type is invalid.
   Type *VerifyValueForDeclaration(const std::string &id_tok);
+
+  std::vector<std::string> hashtags;
+  // TODO have a global table of hashtags and store a vector of indexes into
+  // that global lookup.
+  inline bool HasHashtag(const std::string &str) const {
+    for (const auto &tag : hashtags) {
+      if (str == tag) return true;
+    }
+    return false;
+  }
 
   size_t precedence;
   bool lvalue;
@@ -191,8 +202,6 @@ struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
   static Node *Build(NPtrVec &&nodes);
 
-  static Node *AddHashtag(NPtrVec &&nodes);
-
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;
@@ -209,16 +218,6 @@ struct Declaration : public Expression {
   }
   inline bool IsUninitialized() const {
     return init_val && init_val->is_hole();
-  }
-
-  std::vector<std::string> hashtags;
-  // TODO have a global table of hashtags and store a vector of indexes into
-  // that global lookup.
-  bool HasHashtag(const std::string &str) const {
-    for (const auto &tag : hashtags) {
-      if (str == tag) return true;
-    }
-    return false;
   }
 };
 

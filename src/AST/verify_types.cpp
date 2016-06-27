@@ -226,7 +226,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     return true;
   }
 
-  assert(false);
+  UNREACHABLE;
 }
 
 static Type *EvalWithVars(Type *type,
@@ -293,7 +293,7 @@ static Type *EvalWithVars(Type *type,
   }
 
   std::cerr << *type << std::endl;
-  assert(false);
+  UNREACHABLE;
 }
 
 #define STARTING_CHECK                                                         \
@@ -355,7 +355,6 @@ void Identifier::verify_types() {
   }
 
   if (potential_decls.empty()) {
-    std::cerr << *this << std::endl;
     type = Err;
     Error::Log::Log(loc, "Undeclared identifier '" + token + "'.");
     NOT_YET;
@@ -1669,7 +1668,7 @@ void Jump::verify_types() {
     scope_ptr = block_scope_ptr->parent;
   }
 
-  assert(false && "How did you get to here?");
+  UNREACHABLE;
 }
 
 void DummyTypeExpr::verify_types() {

@@ -193,11 +193,12 @@ std::string Case::to_string(size_t n) const {
 }
 
 std::string Statements::to_string(size_t n) const {
-  std::string output = tabs(n) + "<Statements>\n";
+  std::stringstream ss;
+  ss << tabs(n) << "<Statements>\n";
 
-  for (const auto &exprs : statements) { output += exprs->to_string(n + 1); }
+  for (const auto &exprs : statements) { ss << exprs->to_string(n + 1); }
 
-  return output;
+  return ss.str();
 }
 
 std::string FunctionLiteral::to_string(size_t n) const {

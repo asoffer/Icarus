@@ -114,7 +114,6 @@ void Exit::dump(size_t indent) {
   case Strategy::ReturnVoid:
     std::cout << "ret\n\n";
     return;
-
   }
 }
 

@@ -20,7 +20,7 @@ extern llvm::Constant *str(const std::string &s);
 
 size_t Type::bytes() const {
   // TODO make this platform specific
-  if (this == Type_) { return 0; }
+  if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (this == Int || this == Uint|| is_enum()) { return 4; }
   if (this == Real || is_pointer()) { return 8; }
@@ -47,14 +47,13 @@ size_t Type::bytes() const {
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }
 
-
   std::cerr << *this << std::endl;
   NOT_YET;
 }
 
 size_t Type::alignment() const {
   // TODO make this platform specific
-  if (this == Type_) { return 0; }
+  if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (this == Int || this == Uint || is_enum()) { return 4; }
   if (this == Real || is_pointer() || is_function()) { return 8; }

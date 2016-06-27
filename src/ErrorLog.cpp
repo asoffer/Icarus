@@ -2,8 +2,6 @@
 #include "util/pstr.h"
 #include "SourceFile.h"
 
-// TODO null characters in string mess me up.
-
 extern std::map<std::string, SourceFile *> source_map;
 
 std::map<std::string, std::map<size_t, std::vector<std::string>>>
@@ -132,6 +130,9 @@ void Error::Log::Log(MsgId mid, const Cursor &loc, size_t context_radius,
                "or underscore.";
     msg_foot = "Hashtags must be a valid identifier.";
     break;
+  case Error::MsgId::MissingComma:
+    msg_head =
+        "There are two consecutive expressions. Are you missing a comma?";
   }
 
   pstr line = source_map AT(loc.file_name)->lines AT(loc.line_num);

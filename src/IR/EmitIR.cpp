@@ -64,8 +64,8 @@ void EmitPrintExpr(Expression *expr) {
   if (expr->type->is_primitive()) {
     IR::Print(expr->EmitIR());
   } else if (expr->type->is_function()) {
-
     NOT_YET;
+
   } else {
     NOT_YET;
   }

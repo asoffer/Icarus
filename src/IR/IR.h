@@ -120,7 +120,7 @@ private:
                       // jump when that condition is false.
 
   Exit()
-      : flag(Strategy::Return), val(false), true_block(nullptr),
+      : flag(Strategy::ReturnVoid), val(false), true_block(nullptr),
         false_block(nullptr) {}
 
 public:
