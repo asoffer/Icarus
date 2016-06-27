@@ -80,8 +80,8 @@ struct Node {
   virtual bool is_jump() const { return false; }
   virtual bool is_hole() const { return false; }
 
-  Node(TokenLocation loc = TokenLocation())
-      : scope_(nullptr), loc(loc), time_(Time::error) {}
+  Node(Cursor cursor = Cursor())
+      : scope_(nullptr), loc(cursor), time_(Time::error) {}
 
   virtual ~Node() {}
 
@@ -91,7 +91,7 @@ struct Node {
 
   Scope *scope_;
 
-  TokenLocation loc;
+  Cursor loc;
   Time::Eval time_;
 };
 
@@ -138,8 +138,7 @@ struct TokenNode : public Node {
 
   virtual ~TokenNode() {}
 
-  // TODO make newline default a bof (beginning of file)
-  TokenNode(TokenLocation loc = TokenLocation(), std::string str_lit = "");
+  TokenNode(const Cursor &cursor = Cursor(), std::string str_lit = "");
 
   std::string token;
   Language::Operator op;
@@ -162,7 +161,7 @@ struct Terminal : public Expression {
 
 struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
-  Identifier(TokenLocation loc, const std::string &token_string);
+  Identifier(const Cursor &cursor, const std::string &token_string);
 
   std::string token;
 
@@ -424,7 +423,7 @@ struct DummyTypeExpr : public Expression {
   EXPR_FNS(DummyTypeExpr, dummy);
   static Node *build(NPtrVec &&nodes);
 
-  DummyTypeExpr(TokenLocation loc, Type *t);
+  DummyTypeExpr(const Cursor &cursor, Type *t);
 };
 
 struct Jump : public Node {
@@ -436,7 +435,7 @@ struct Jump : public Node {
 
   VIRTUAL_METHODS_FOR_NODES;
 
-  Jump(TokenLocation new_loc, JumpType jump_type);
+  Jump(const Cursor &new_cursor, JumpType jump_type);
 
   BlockScope *scope;
   JumpType jump_type;

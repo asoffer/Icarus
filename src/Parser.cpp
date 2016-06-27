@@ -45,7 +45,7 @@ void Parser::cleanup() {
   }
 
   if (node_stack_.size() > 1) {
-    Error::Log::Log(TokenLocation(), "Parser error.");
+    Error::Log::Log(Cursor(), "Parser error.");
   }
 
   assert(node_stack_.back()->is_statements());
@@ -94,7 +94,7 @@ Parser::Parser(SourceFile *sf) : lexer_(sf), source_file_(sf) {
   assert(node_stack_.empty() && node_type_stack_.empty());
   // Start the lookahead with a bof token. This is a simple way to ensure  proper
   // initialization, because the newline will essentially be ignored.
-  lookahead_ = NNT(new AST::TokenNode(lexer_.cursor.Location()), Language::bof);
+  lookahead_ = NNT(new AST::TokenNode(lexer_.cursor), Language::bof);
 }
 
 // Reduces the stack according to the language rules spceified in Language.cpp.

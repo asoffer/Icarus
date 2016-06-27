@@ -34,9 +34,9 @@ void Error::Log::Dump() {
   std::cerr << " found." << std::endl;
 }
 
-void Error::Log::Log(TokenLocation loc, const std::string &msg) {
+void Error::Log::Log(const Cursor &loc, const std::string &msg) {
   ++num_errs_;
-  log_[loc.file][loc.line_num].push_back(msg);
+  log_[(std::string)loc.file_name][loc.line_num].push_back(msg);
 }
 
 static inline size_t NumDigits(size_t n) {
@@ -49,8 +49,8 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
-         size_t underline_length) {
+void Error::Log::Log(MsgId mid, const Cursor &loc, size_t context_radius,
+                     size_t underline_length) {
   ++num_errs_;
   const char *msg_head = "";
   const char *msg_foot = nullptr;
@@ -64,13 +64,13 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     fprintf(stderr, "I found a null-character in your source file on line %lu. "
                     "I am ignoring it and moving on. Are you sure \"%s\" is a "
                     "source file?\n\n",
-            loc.line_num, loc.file.c_str());
+            loc.line_num, loc.file_name);
     return;
   case Error::MsgId::NonGraphicCharInSource:
     fprintf(stderr, "I found a non-graphic-character in your source file on "
                     "line %lu. I am ignoring it and moving on. Are you sure "
                     "\"%s\" is a source file?\n\n",
-            loc.line_num, loc.file.c_str());
+            loc.line_num, loc.file_name);
     return;
   case Error::MsgId::InvalidEscapeCharInStringLit:
     msg_head =
@@ -134,7 +134,7 @@ void Error::Log::Log(MsgId mid, TokenLocation loc, size_t context_radius,
     break;
   }
 
-  pstr line = source_map AT(loc.file)->lines AT(loc.line_num);
+  pstr line = source_map AT(loc.file_name)->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 4;
 

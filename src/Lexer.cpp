@@ -27,14 +27,14 @@ static inline bool IsNonGraphic(char c) {
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
   auto term_ptr           = new AST::Terminal;                                 \
-  term_ptr->loc           = cursor.Location();                                 \
+  term_ptr->loc           = cursor;                                            \
   term_ptr->terminal_type = Language::Terminal::term_type;                     \
   term_ptr->type          = ty;                                                \
   term_ptr->value = val;                                                       \
   return NNT(term_ptr, Language::expr);
 
 #define RETURN_NNT(tk, nt)                                                     \
-  return NNT(new AST::TokenNode(cursor.Location(), tk), Language::nt);
+  return NNT(new AST::TokenNode(cursor, tk), Language::nt);
 
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
@@ -44,7 +44,7 @@ extern std::map<std::string, Type *> Literals;
 Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
   char *file_name = new char[source_file_->name.size() + 1];
   std::strcpy(file_name, source_file_->name.c_str());
-  cursor.file_name_ = file_name;
+  cursor.file_name = file_name;
 
   ifs = std::ifstream(file_name, std::ifstream::in);
 
@@ -69,23 +69,23 @@ void Lexer::MoveCursorToNextLine() {
   for (size_t i = 0; i < line_length; ++i) {
     if (temp[i] == '\0') {
       temp[i] = ' ';
-      Error::Log::Log(Error::MsgId::NullCharInSource, cursor.Location(), 0, 0);
+      Error::Log::Log(Error::MsgId::NullCharInSource, cursor, 0, 0);
     } else if (IsNonGraphic(temp[i])) {
       temp[i] = ' ';
-      Error::Log::Log(Error::MsgId::NonGraphicCharInSource, cursor.Location(), 0, 0);
+      Error::Log::Log(Error::MsgId::NonGraphicCharInSource, cursor, 0, 0);
     }
   }
 
-  cursor.offset_ = 0;
-  cursor.line_   = pstr(temp.c_str());
+  cursor.offset = 0;
+  cursor.line   = pstr(temp.c_str());
 
-  ++cursor.line_num_;
-  source_file_->lines.push_back(cursor.line_);
+  ++cursor.line_num;
+  source_file_->lines.push_back(cursor.line);
 }
 
 void Lexer::IncrementCursor() {
   if (*cursor != '\0') {
-    ++cursor.offset_;
+    ++cursor.offset;
   } else {
     MoveCursorToNextLine();
   }
@@ -93,12 +93,12 @@ void Lexer::IncrementCursor() {
 
 void Lexer::BackUpCursor() {
   // You can't back up to a previous line.
-  assert(cursor.offset_ > 0);
-  --cursor.offset_;
+  assert(cursor.offset > 0);
+  --cursor.offset;
 }
 
 void Lexer::SkipToEndOfLine() {
-  while (*cursor != '\0') { ++cursor.offset_; }
+  while (*cursor != '\0') { ++cursor.offset; }
 }
 
 // Get the next token
@@ -127,7 +127,7 @@ NNT Lexer::NextWord() {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
 
-  auto starting_offset = cursor.offset_;
+  auto starting_offset = cursor.offset;
 
   do {
     IncrementCursor();
@@ -135,7 +135,7 @@ NNT Lexer::NextWord() {
 
   char old_char     = *cursor;
   *cursor           = '\0';
-  std::string token = cursor.line_.ptr + starting_offset;
+  std::string token = cursor.line.ptr + starting_offset;
   *cursor           = old_char;
 
   // Check if the word is a type primitive/literal and if so, build the
@@ -167,7 +167,7 @@ NNT Lexer::NextWord() {
 
   } else if (token == "else") {
     auto term_ptr           = new AST::Terminal;
-    term_ptr->loc           = cursor.Location();
+    term_ptr->loc           = cursor;
     term_ptr->terminal_type = Language::Terminal::Else;
     term_ptr->type          = Bool;
 
@@ -197,11 +197,11 @@ NNT Lexer::NextWord() {
   }
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
-  return NNT(new AST::Identifier(cursor.Location(), token), Language::expr);
+  return NNT(new AST::Identifier(cursor, token), Language::expr);
 }
 
 NNT Lexer::NextNumber() {
-  auto starting_offset = cursor.offset_;
+  auto starting_offset = cursor.offset;
 
   do { IncrementCursor(); } while (IsDigit(*cursor));
 
@@ -212,7 +212,7 @@ NNT Lexer::NextNumber() {
 
     char old_char = *cursor;
     *cursor       = '\0';
-    auto uint_val = std::stoul(cursor.line_.ptr + starting_offset);
+    auto uint_val = std::stoul(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
     RETURN_TERMINAL(Uint, Uint, Context::Value(uint_val));
@@ -231,7 +231,7 @@ NNT Lexer::NextNumber() {
 
     char old_char = *cursor;
     *cursor       = '\0';
-    auto real_val = std::stod(cursor.line_.ptr + starting_offset);
+    auto real_val = std::stod(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
     RETURN_TERMINAL(Real, Real, Context::Value(real_val));
@@ -241,7 +241,7 @@ NNT Lexer::NextNumber() {
   return_int_label : {
     char old_char = *cursor;
     *cursor       = '\0';
-    auto int_val = std::stol(cursor.line_.ptr + starting_offset);
+    auto int_val = std::stol(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
     RETURN_TERMINAL(Int, Int, Context::Value(int_val));
   } break;
@@ -263,24 +263,24 @@ NNT Lexer::NextOperator() {
   case '$': IncrementCursor(); RETURN_NNT("$", op_l);
 
   case '.': {
-    TokenLocation loc   = cursor.Location();
-    size_t saved_offset = cursor.offset_;
+    Cursor cursor_copy  = cursor;
+
     // Note: safe because we know we have a null-terminator
     while (*cursor == '.') { IncrementCursor(); }
-    size_t num_dots = cursor.offset_ - saved_offset;
+    size_t num_dots = cursor.offset - cursor_copy.offset;
 
     if (num_dots == 1) {
       RETURN_NNT(".", op_b);
     } else {
       if (num_dots > 2) {
-        Error::Log::Log(Error::MsgId::TooManyDots, loc, 0, num_dots);
+        Error::Log::Log(Error::MsgId::TooManyDots, cursor_copy, 0, num_dots);
       }
       RETURN_NNT("..", dots);
     }
   } break;
 
   case '\\': {
-    TokenLocation loc = cursor.Location();
+    Cursor cursor_copy = cursor;
     size_t dist = 1;
 
     IncrementCursor();
@@ -307,31 +307,30 @@ NNT Lexer::NextOperator() {
 
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
-      Error::Log::Log(Error::MsgId::NonWhitespaceAfterNewlineEscape, loc, 0,
-                      dist);
+      Error::Log::Log(Error::MsgId::NonWhitespaceAfterNewlineEscape,
+                      cursor_copy, 0, dist);
       return Next();
     }
   } break;
 
   case '#': {
     IncrementCursor();
-    TokenLocation loc    = cursor.Location();
-    auto starting_offset = cursor.offset_;
+    Cursor cursor_copy = cursor;
 
     if (!IsAlpha(*cursor)) {
-      Error::Log::Log(Error::MsgId::InvalidHashtag, loc, 0, 1);
+      Error::Log::Log(Error::MsgId::InvalidHashtag, cursor_copy, 0, 1);
       return Next();
     }
 
     do { IncrementCursor(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
-    if (cursor.offset_ - starting_offset == 0) {
-      Error::Log::Log(Error::MsgId::InvalidHashtag, loc, 0, 1);
+    if (cursor.offset - cursor_copy.offset == 0) {
+      Error::Log::Log(Error::MsgId::InvalidHashtag, cursor_copy, 0, 1);
     }
 
     char old_char   = *cursor;
     *cursor         = '\0';
-    std::string tag = cursor.line_.ptr + starting_offset;
+    std::string tag = cursor.line.ptr + cursor_copy.offset;
     *cursor         = old_char;
 
     RETURN_NNT(tag, hashtag);
@@ -363,9 +362,9 @@ NNT Lexer::NextOperator() {
         BackUpCursor();
         RETURN_NNT("*", op_b);
       } else {
-        TokenLocation loc = cursor.Location();
-        loc.offset -= 2;
-        Error::Log::Log(Error::MsgId::NotInMultilineComment, loc, 0, 2);
+        Cursor cursor_copy = cursor;
+        cursor_copy.offset -= 2;
+        Error::Log::Log(Error::MsgId::NotInMultilineComment, cursor_copy, 0, 2);
         return Next();
       }
     } else if (*cursor == '=') {
@@ -419,7 +418,7 @@ NNT Lexer::NextOperator() {
 
     } else if (*cursor == '>') {
       IncrementCursor();
-      auto nptr = new AST::TokenNode(cursor.Location(), "->");
+      auto nptr = new AST::TokenNode(cursor, "->");
       nptr->op = Language::Operator::Arrow;
       return NNT(nptr, Language::fn_arrow);
 
@@ -467,8 +466,7 @@ NNT Lexer::NextOperator() {
 
       while (comment_layer != 0) {
         if (ifs.eof()) {
-          Error::Log::Log(Error::MsgId::RunawayMultilineComment,
-                          cursor.Location(), 0, 2);
+          Error::Log::Log(Error::MsgId::RunawayMultilineComment, cursor, 0, 2);
           RETURN_NNT("", eof);
 
         } else if (back_one == '/' && *cursor == '*') {
@@ -503,10 +501,10 @@ NNT Lexer::NextOperator() {
         switch (*cursor) {
         case '\'': {
           str_lit += '\'';
-          TokenLocation loc = cursor.Location();
-          --loc.offset;
-          Error::Log::Log(Error::MsgId::EscapedSingleQuoteInStringLit, loc, 0,
-                          2);
+          Cursor cursor_copy = cursor;
+          --cursor_copy.offset;
+          Error::Log::Log(Error::MsgId::EscapedSingleQuoteInStringLit,
+                          cursor_copy, 0, 2);
         } break;
 
         case '\\': str_lit += '\\'; break;
@@ -520,10 +518,10 @@ NNT Lexer::NextOperator() {
         case 'v':  str_lit += '\v'; break;
 
         default: {
-          TokenLocation loc = cursor.Location();
-          --loc.offset;
-          Error::Log::Log(Error::MsgId::InvalidEscapeCharInStringLit, loc, 0,
-                          2);
+          Cursor cursor_copy = cursor;
+          --cursor_copy.offset;
+          Error::Log::Log(Error::MsgId::InvalidEscapeCharInStringLit,
+                          cursor_copy, 0, 2);
 
             str_lit += *cursor;
           } break;
@@ -536,7 +534,7 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      Error::Log::Log(Error::MsgId::RunawayStringLit, cursor.Location(), 0, 1);
+      Error::Log::Log(Error::MsgId::RunawayStringLit, cursor, 0, 1);
     } else {
       IncrementCursor();
     }
@@ -553,12 +551,12 @@ NNT Lexer::NextOperator() {
 
     switch (*cursor) {
     case '\t':
-      Error::Log::Log(Error::MsgId::TabInCharLit, cursor.Location(), 0, 1);
+      Error::Log::Log(Error::MsgId::TabInCharLit, cursor, 0, 1);
       result = '\t';
       break;
 
     case '\0': {
-      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1);
+      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor, 0, 1);
 
       RETURN_TERMINAL(Char, Char, Context::Value('\0'));
     }
@@ -567,9 +565,9 @@ NNT Lexer::NextOperator() {
       switch (*cursor) {
       case '\"': {
         result = '"';
-        TokenLocation loc = cursor.Location();
-        --loc.offset;
-        Error::Log::Log(Error::MsgId::EscapedDoubleQuoteInCharLit, loc, 0, 2);
+        Cursor cursor_copy = cursor;
+        --cursor_copy.offset;
+        Error::Log::Log(Error::MsgId::EscapedDoubleQuoteInCharLit, cursor_copy, 0, 2);
       } break;
       case '\\': result = '\\'; break;
       case '\'': result = '\''; break;
@@ -581,9 +579,10 @@ NNT Lexer::NextOperator() {
       case 't': result  = '\t'; break;
       case 'v': result  = '\v'; break;
       default:
-        TokenLocation loc = cursor.Location();
-        --loc.offset;
-        Error::Log::Log(Error::MsgId::InvalidEscapeCharInCharLit, loc, 0, 2);
+        Cursor cursor_copy = cursor;
+        --cursor_copy.offset;
+        Error::Log::Log(Error::MsgId::InvalidEscapeCharInCharLit, cursor_copy,
+                        0, 2);
         result = *cursor;
       }
       break;
@@ -596,20 +595,19 @@ NNT Lexer::NextOperator() {
     if (*cursor == '\'') {
       IncrementCursor();
     } else {
-      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor.Location(), 0, 1);
+      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor, 0, 1);
     }
 
     RETURN_TERMINAL(Char, Char, Context::Value(result));
   } break;
 
   case '?':
-    Error::Log::Log(Error::MsgId::InvalidCharQuestionMark, cursor.Location(), 0,
-                    1);
+    Error::Log::Log(Error::MsgId::InvalidCharQuestionMark, cursor, 0, 1);
     IncrementCursor();
     return Next();
 
   case '~':
-    Error::Log::Log(Error::MsgId::InvalidCharTilde, cursor.Location(), 0, 1);
+    Error::Log::Log(Error::MsgId::InvalidCharTilde, cursor, 0, 1);
     IncrementCursor();
     return Next();
 

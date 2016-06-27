@@ -19,6 +19,8 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
+#include "util/pstr.h"
+
 // Each time a file is imported, it will be added to the queue. We then parse
 // each file off the queue until the queue is empty. We avoid circular calls by
 // checking if the map is already filled before parsing.
@@ -74,12 +76,16 @@ struct FnScope;
 
 using NPtrVec = std::vector<AST::Node *>;
 
-struct TokenLocation {
-  std::string file;
-  size_t line_num;
-  size_t offset;
+struct Cursor {
+  Cursor() : offset(0), line_num(0), file_name("") {}
 
-  TokenLocation() : file(""), line_num(0), offset(0){};
+  pstr line;
+  size_t offset;
+  size_t line_num;
+  const char *file_name;
+
+  // Get the character that the cursor is currently pointing to
+  inline char &operator*(void) const { return *(line.ptr + offset); }
 };
 
 namespace Context {

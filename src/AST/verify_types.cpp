@@ -1266,7 +1266,7 @@ Type *Expression::VerifyValueForDeclaration(const std::string &id_tok) {
   return type;
 }
 
-static void VerifyDeclarationForMagicPrint(Type *type, TokenLocation loc) {
+static void VerifyDeclarationForMagicPrint(Type *type, const Cursor &loc) {
   if (!type->is_function()) {
     Error::Log::Log(loc, "Print must be defined to be a function.");
     return;
@@ -1283,7 +1283,7 @@ static void VerifyDeclarationForMagicPrint(Type *type, TokenLocation loc) {
   }
 }
 
-static void VerifyDeclarationForMagicAssign(Type *type, TokenLocation loc) {
+static void VerifyDeclarationForMagicAssign(Type *type, const Cursor &loc) {
   if (!type->is_function()) {
     Error::Log::Log(loc, "Assign must be defined to be a function");
     return;
@@ -1308,7 +1308,7 @@ static void VerifyDeclarationForMagicAssign(Type *type, TokenLocation loc) {
   }
 }
 
-static void VerifyDeclarationForMagicDestroy(Type *type, TokenLocation loc) {
+static void VerifyDeclarationForMagicDestroy(Type *type, const Cursor &loc) {
   if (!type->is_function()) {
     Error::Log::Log(loc, "Destructor must be defined to be a function.");
     return;

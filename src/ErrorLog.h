@@ -22,11 +22,11 @@ enum class MsgId {
 };
 
 struct Msg {
-  Msg(MsgId msg_id, const TokenLocation &tok_loc, size_t rad, size_t under_len)
+  Msg(MsgId msg_id, const Cursor &tok_loc, size_t rad, size_t under_len)
       : loc(tok_loc), context_radius(rad), underline_length(under_len),
         mid(msg_id) {}
 
-  TokenLocation loc;
+  Cursor loc;
   size_t context_radius; // Number of lines surrounding this one to show.
   size_t underline_length;
   MsgId mid;
@@ -39,8 +39,8 @@ extern std::map<std::string, std::map<size_t, std::vector<std::string>>> log_;
 extern bool ImmediateMode;
 void Dump();
 inline size_t NumErrors() { return num_errs_; }
-void Log(TokenLocation loc, const std::string &msg);
-void Log(MsgId mid, TokenLocation loc, size_t context_radius,
+void Log(const Cursor &loc, const std::string &msg);
+void Log(MsgId mid, const Cursor &loc, size_t context_radius,
          size_t underline_length);
 } // namespace Log
 

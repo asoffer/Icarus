@@ -13,14 +13,12 @@ const std::map<std::string, Operator> lookup_operator = {
 } // namespace Language
 
 namespace AST {
-TokenNode::TokenNode(TokenLocation loc, std::string str_lit)
+TokenNode::TokenNode(const Cursor &loc, std::string str_lit)
     : Node(loc), token(str_lit) {
   auto iter = Language::lookup_operator.find(token);
-  if (iter == Language::lookup_operator.end()) {
-    op = Language::Operator::NotAnOperator;
-  } else {
-    op = iter->second;
-  }
+  op = (iter == Language::lookup_operator.end())
+           ? Language::Operator::NotAnOperator
+           : iter->second;
 }
 
 Expression::Expression()
@@ -43,18 +41,18 @@ ArrayType::ArrayType() {}
 
 DummyTypeExpr::DummyTypeExpr() { assert(false); }
 
-DummyTypeExpr::DummyTypeExpr(TokenLocation new_loc, Type *t) {
+DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   loc = new_loc;
   value = Context::Value(t);
 }
 
-Jump::Jump(TokenLocation new_loc, JumpType jump_type) : jump_type(jump_type) {
+Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;
 }
 
 Identifier::Identifier() { assert(false); }
 
-Identifier::Identifier(TokenLocation new_loc, const std::string &token_string)
+Identifier::Identifier(const Cursor &new_loc, const std::string &token_string)
     : decl(nullptr) {
   token      = token_string;
   type       = nullptr;

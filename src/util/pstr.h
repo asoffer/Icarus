@@ -11,6 +11,7 @@ struct pstr {
   ~pstr() {}
 
   inline operator std::string() { return std::string(ptr); }
+  inline operator const char *() { return ptr; }
 
   static char *current_block;
   static char *current_head;
