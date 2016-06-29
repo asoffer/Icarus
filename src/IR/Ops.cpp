@@ -4,83 +4,133 @@
 
 // TODO what Value number to return????
 namespace IR {
+#define CMD_WITH_1_ARGS(name, out_type)                                        \
+  Cmd name(Value v) {                                                          \
+    Cmd cmd(Op::name, out_type != Void);                                       \
+    cmd.args.push_back(v);                                                     \
+    cmd.result.type = out_type;                                                \
+    Block::Current->push(cmd);                                                 \
+    return cmd;                                                                \
+  }
+
+#define CMD_WITH_2_ARGS(name, out_type)                                        \
+  Cmd name(Value arg1, Value arg2) {                                           \
+    Cmd cmd(Op::name, out_type != Void);                                       \
+    cmd.args.push_back(arg1);                                                  \
+    cmd.args.push_back(arg2);                                                  \
+    cmd.result.type = out_type;                                                \
+    Block::Current->push(cmd);                                                 \
+    return cmd;                                                                \
+  }
+
+// Intentionally empty. Must be hand implemented
+#define CMD_WITH_NA_ARGS(name, out_type)
+
+#define IR_MACRO(OpCode, op_code_str, num_args, out_type)                      \
+  CMD_WITH_##num_args##_ARGS(OpCode, out_type)
+#include "../config/IR.conf"
+#undef IR_MACRO
+
+#undef CMD_WITH_V_ARGS
+#undef CMD_WITH_1_ARGS
+#undef CMD_WITH_2_ARGS
+
+Cmd Cast(Type *in, Type *out, Value arg) {
+  Cmd cmd(Op::Cast, true);
+  cmd.args        = {Value(in), Value(out), arg};
+  cmd.result.type = out;
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+Cmd Call(Type *out, Value fn, const std::vector<Value> &args) {
+  Cmd cmd(Op::Call, out != Void);
+  cmd.args.push_back(fn);
+  for (const auto elem : args) { cmd.args.push_back(elem); }
+  cmd.result.type = out;
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+Cmd Phi(Type *ret_type) {
+  Cmd cmd(Op::Phi, true);
+  cmd.result.type = ret_type;
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+Cmd Store(Type *rhs_type, Value lhs, Value rhs) {
+  Cmd cmd(Op::Store, false);
+  cmd.args        = {Value(rhs_type), lhs, rhs};
+  cmd.result.type = Void;
+  Block::Current->push(cmd);
+  return cmd;
+}
+
+Cmd Load(Type *load_type, Value v) {
+  Cmd cmd(Op::Load, true);
+  cmd.args        = {v};
+  cmd.result.type = load_type;
+  Block::Current->push(cmd);
+  return cmd;
+}
+
 Func *Func::Current;
 Block *Block::Current;
 
-Cmd::Cmd(Op o, Value v) : op_code(o), args(1, v) {
-  result.flag       = ValType::Ref;
-  result.val.as_ref = Func::Current->num_cmds;
-  Func::Current->num_cmds++;
-}
-
-Cmd::Cmd() {
-  result.flag       = ValType::Ref;
-  result.val.as_ref = Func::Current->num_cmds;
-  Func::Current->num_cmds++;
+Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
+  result.reg = has_ret ? Func::Current->num_cmds : ~0u;
+  if (has_ret) { Func::Current->num_cmds++; }
 }
 
 std::string OpCodeString(Op op_code) {
   switch (op_code) {
-#define IR_MACRO(OpCode, op_code_str, num_args)                                \
+#define IR_MACRO(OpCode, op_code_str, num_args, out_type)                      \
   case Op::OpCode:                                                             \
     return op_code_str;
 #include "config/IR.conf"
 #undef IR_MACRO
   }
 }
-static std::string Escape(char c) {
+
+static inline std::string Escape(char c) {
   if (c == '\n') { return "\\n"; }
   if (c == '\r') { return "\\r"; }
   if (c == '\t') { return "\\t"; }
   return std::string(1, c);
 }
 
-std::ostream &operator<<(std::ostream& os, const Value& value) {
-  switch(value.flag) {
-  case ValType::B: return os << (value.val.as_bool ? "true" : "false");
-  case ValType::C: return os << "'" << Escape(value.val.as_char) << "'";
-  case ValType::I: return os << value.val.as_int;
-  case ValType::R: return os << value.val.as_real;
-  case ValType::U: return os << value.val.as_uint;
-  case ValType::T: return os << *value.val.as_type;
+std::ostream &operator<<(std::ostream &os, const Value &value) {
+  switch (value.flag) {
+  case ValType::B: return os << (value.as_bool ? "true" : "false");
+  case ValType::C: return os << "'" << Escape(value.as_char) << "'";
+  case ValType::I: return os << value.as_int;
+  case ValType::R: return os << value.as_real;
+  case ValType::U: return os << value.as_uint << 'u';
+  case ValType::T: return os << *value.as_type;
   case ValType::F: {
     os << "fn.";
-    if (value.val.as_func->name != "") {
-      os << value.val.as_func->name;
+    if (value.as_func->name != "") {
+      os << value.as_func->name;
     } else {
-      os << value.val.as_func;
+      os << value.as_func;
     }
     return os;
   }
-
-  case ValType::Ptr: return os << value.val.as_ptr;
-  case ValType::Ref: return os << "%" << value.val.as_ref;
-  case ValType::Arg: return os << "#" << value.val.as_arg;
-  case ValType::Alloc: return os << "$" << value.val.as_alloc;
-  case ValType::RelAlloc: return os << "`$" << value.val.as_alloc;
+  case ValType::Ptr: return os << "ptr " << value.as_ptr;
+  case ValType::Reg: return os << "%" << value.as_reg;
+  case ValType::Arg: return os << "#" << value.as_arg;
+  case ValType::Alloc: return os << "$" << value.as_alloc;
+  case ValType::RelAlloc: return os << "~$" << value.as_rel_alloc;
+  case ValType::Block: return os << "block-" << value.as_block->block_num;
   }
 }
 
 void Cmd::dump(size_t indent) {
-  std::cout << std::string(indent, ' ') << result << "\t= ";
-
-  if (op_code == Op::Phi) {
-    std::cout << "phi (" << incoming_blocks.size() << ")";
-    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
-      std::cout << "\n" << std::string(indent + 2, ' ') << "block-"
-                << incoming_blocks[i]->block_num << " => " << args[i];
-    }
-    std::cout << std::endl;
-  } else {
-    std::cout << OpCodeString(op_code);
-    auto iter = args.begin();
-
-    std::cout << " " << *iter;
-
-    ++iter;
-    for (; iter != args.end(); ++iter) { std::cout << ", " << *iter; }
-    std::cout << std::endl;
-  }
+  std::cerr << std::string(indent, ' ') << result.type->to_string();
+  if (result.type != Void) { std::cerr << " %" << result.reg << "\t= "; }
+  assert(!args.empty());
+  for (size_t i = 0; i < args.size(); ++i) { std::cerr << ", " << args[i]; }
 }
 
 void Block::dump() {
@@ -96,21 +146,17 @@ void Block::dump() {
 
 void Exit::dump(size_t indent) {
   std::cout << std::string(indent, ' ');
-
   switch (flag) {
   case Strategy::Uncond:
     std::cout << "jmp block-" << true_block->block_num << "\n\n";
     return;
-
   case Strategy::Cond:
     std::cout << "cond br " << val << " [T: block-" << true_block->block_num
               << "] [F: block-" << false_block->block_num << "]\n\n";
     return;
-
   case Strategy::Return:
     std::cout << "ret " << val << "\n\n";
     return;
-
   case Strategy::ReturnVoid:
     std::cout << "ret\n\n";
     return;

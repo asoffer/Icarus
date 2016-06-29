@@ -29,21 +29,43 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   init_pair(1, COLOR_BLACK, COLOR_WHITE);
   for (const auto &cmd : frame.curr_block->cmds) {
     std::stringstream ss;
-    ss << "%%" << cmd.result.val.as_ref << " = " << OpCodeString(cmd.op_code);
-    auto iter = cmd.args.begin();
-    ss << " " << *iter;
-    ++iter;
-    for (; iter != cmd.args.end(); ++iter) { ss << ", " << *iter; }
-    ss << " ";
+    ss << *cmd.result.type;
+    if (cmd.result.type == Void) {
+      ss << "\t\t  ";
+    } else {
+      ss << " %" << cmd.result.reg << "\t= ";
+    }
+    ss << OpCodeString(cmd.op_code) << " " << cmd.args[0];
+    for (size_t i = 1; i < cmd.args.size(); ++i) { ss << ", " << cmd.args[i]; }
+
     auto output = ss.str();
 
     if (row == (int)frame.inst_ptr) {
       attron(COLOR_PAIR(1));
-      mvprintw(++row, 34, output.c_str());
+      mvprintw(++row, 34, "%s", output.c_str());
       attroff(COLOR_PAIR(1));
     } else {
-      mvprintw(++row, 34, output.c_str());
+      mvprintw(++row, 34, "%s", output.c_str());
     }
+  }
+  switch(frame.curr_block->exit.flag) {
+  case Exit::Strategy::Uncond: {
+    mvprintw(++row, 34, "jmp block-%lu",
+             frame.curr_block->exit.true_block->block_num);
+  } break;
+  case Exit::Strategy::Cond: {
+    std::stringstream ss;
+    ss << frame.curr_block->exit.val;
+    mvprintw(++row, 34, "br %s [T: block-%lu] [F: block-%lu]", ss.str().c_str(),
+             frame.curr_block->exit.true_block->block_num,
+             frame.curr_block->exit.false_block->block_num);
+  } break;
+  case Exit::Strategy::Return: {
+    std::stringstream ss;
+    ss << frame.curr_block->exit.val;
+    mvprintw(++row, 34, "ret %s", ss.str().c_str());
+  } break;
+  case Exit::Strategy::ReturnVoid: mvprintw(++row, 34, "ret void"); break;
   }
 
   mvprintw(20, 50, "Stack size:     %ld", local_stack->used);
@@ -55,143 +77,171 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   refresh();
 }
 
+static Value ResolveValue(const StackFrame &frame, const Value &v) {
+  if (v.flag == ValType::Reg) { return frame.reg[v.as_reg]; }
+  if (v.flag == ValType::Arg) { return frame.args[v.as_arg]; }
+  if (v.flag == ValType::RelAlloc) {
+    return Value::Alloc(v.as_rel_alloc + frame.offset);
+  }
+  return v;
+}
 
 void Cmd::Execute(StackFrame& frame) {
-  std::vector<Value> cmd_inputs = args;
-
-  // Load the command inputs from the registers or arguments if needed.
-  for (auto &i : cmd_inputs) {
-    if (i.flag == ValType::Ref) {
-      i = frame.reg[i.val.as_ref];
-    } else if (i.flag == ValType::Arg) {
-      i = frame.args[i.val.as_arg];
-    } else if (i.flag == ValType::RelAlloc) {
-      i.flag = ValType::Alloc;
-      i.val.as_alloc += frame.offset;
-    }
-
+  std::vector<Value> cmd_inputs;
+  for (size_t i = 0; i < args.size(); ++i) {
+    cmd_inputs.push_back(ResolveValue(frame, args[i]));
   }
 
   switch (op_code) {
   case Op::BNot: {
-    frame.reg[result.val.as_ref] = Value(!cmd_inputs[0].val.as_bool);
+    frame.reg[result.reg] = Value(!cmd_inputs[0].as_bool);
   } break;
   case Op::INeg: {
-    frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_int);
+    frame.reg[result.reg] = Value(-cmd_inputs[0].as_int);
   } break;
   case Op::FNeg: {
-    frame.reg[result.val.as_ref] = Value(-cmd_inputs[0].val.as_real);
+    frame.reg[result.reg] = Value(-cmd_inputs[0].as_real);
+  } break;
+  case Op::Call: {
+    assert(cmd_inputs[0].flag == ValType::F);
+
+    std::vector<Value> call_args;
+    for (size_t i = 1; i < cmd_inputs.size(); ++i) {
+      call_args.push_back(cmd_inputs[i]);
+    }
+
+    auto call_result =
+        IR::Call(cmd_inputs[0].as_func, frame.stack, call_args);
+    if (result.type != Void) { frame.reg[result.reg] = call_result; }
   } break;
   case Op::Cast: {
-    // This really only converts char <-> uint for ord/ascii. This needs to be
-    // thoroughly flushed out.
-    if (cmd_inputs[0].val.as_type == Char) {
-      frame.reg[result.val.as_ref] = Value((char)cmd_inputs[1].val.as_uint);
-
-    } else if (cmd_inputs[0].val.as_type == Uint) {
-      frame.reg[result.val.as_ref] = Value((size_t)cmd_inputs[1].val.as_char);
-
+    assert(cmd_inputs[0].flag == ValType::T);
+    assert(cmd_inputs[1].flag == ValType::T);
+    if (cmd_inputs[0].as_type == Char) {
+      auto c = cmd_inputs[2].as_char;
+      if (cmd_inputs[1].as_type == Char) {
+        frame.reg[result.reg] = Value(c);
+      } else if (cmd_inputs[1].as_type == Uint) {
+        frame.reg[result.reg] = Value((size_t)c);
+      } else {
+        NOT_YET;
+      }
+    } else if (cmd_inputs[0].as_type == Int) {
+      auto i = cmd_inputs[2].as_int;
+      if (cmd_inputs[1].as_type == Char) {
+        frame.reg[result.reg] = Value((char)i);
+      } else if (cmd_inputs[1].as_type == Int) {
+        frame.reg[result.reg] = Value(i);
+      } else if (cmd_inputs[1].as_type == Real) {
+        frame.reg[result.reg] = Value((double)i);
+      } else if (cmd_inputs[1].as_type == Uint) {
+        frame.reg[result.reg] = Value((size_t)i);
+      } else {
+        NOT_YET;
+      }
+    } else if (cmd_inputs[0].as_type == Uint) {
+      auto u = cmd_inputs[2].as_uint;
+      if (cmd_inputs[1].as_type == Char) {
+        frame.reg[result.reg] = Value((char)u);
+      } else if (cmd_inputs[1].as_type == Int) {
+        frame.reg[result.reg] = Value((int)u);
+      } else if (cmd_inputs[1].as_type == Real) {
+        frame.reg[result.reg] = Value((double)u);
+      } else if (cmd_inputs[1].as_type == Uint) {
+        frame.reg[result.reg] = Value(u);
+      } else {
+        NOT_YET;
+      }
     } else {
       NOT_YET;
     }
-
   } break;
   case Op::Load: {
-    size_t offset = cmd_inputs[1].val.as_alloc;
-    Type *t = cmd_inputs[0].val.as_type;
-    assert(t->is_primitive() &&
+    assert(cmd_inputs[0].flag == ValType::Alloc);
+    assert(result.type->is_primitive() &&
            "Non-primitive local variables are not yet implemented");
+    size_t offset = cmd_inputs[0].as_alloc;
 
-#define DO_LOAD_IF(StoredType, stored_type)                                    \
-  if (t == StoredType) {                                                       \
-    frame.reg[result.val.as_ref] =                                             \
+#define DO_LOAD(StoredType, stored_type)                                       \
+  if (result.type == StoredType) {                                             \
+    frame.reg[result.reg] =                                                    \
         Value(*(stored_type *)(frame.stack->allocs + offset));                 \
     break;                                                                     \
   }
 
-    DO_LOAD_IF(Bool, bool);
-    DO_LOAD_IF(Char, char);
-    DO_LOAD_IF(Int, int);
-    DO_LOAD_IF(Real, double);
-    DO_LOAD_IF(Uint, size_t);
-    DO_LOAD_IF(Type_, Type *);
+    DO_LOAD(Bool, bool);
+    DO_LOAD(Char, char);
+    DO_LOAD(Int, int);
+    DO_LOAD(Real, double);
+    DO_LOAD(Uint, size_t);
+    DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD_IF
   } break;
+
   case Op::Store: {
-    size_t offset = cmd_inputs[2].val.as_alloc;
+    assert(cmd_inputs[0].flag == ValType::T &&
+           cmd_inputs[0].as_type->is_primitive());
+    assert(cmd_inputs[2].flag == ValType::Alloc);
+    size_t offset = cmd_inputs[2].as_alloc;
 
-    Type *t = cmd_inputs[0].val.as_type;
-    assert(t->is_primitive() &&
-           "Non-primitive local variables are not yet implemented");
-
-#define DO_STORE_IF(StoredType, store_type, type_name)                           \
-  if (t == StoredType) {                                                         \
-    store_type *ptr              = (store_type *)(frame.stack->allocs + offset); \
-    *ptr                         = cmd_inputs[1].val.as_##type_name;             \
-    frame.reg[result.val.as_ref] = Value(true);                                  \
-    break;                                                                       \
+#define DO_STORE(cpp_type, t, T)                                               \
+  if (cmd_inputs[0].as_type == T) {                                            \
+    auto ptr = (cpp_type *)(frame.stack->allocs + offset);                     \
+    *ptr     = cmd_inputs[1].as_##t;                                           \
+    break;                                                                     \
   }
 
-    DO_STORE_IF(Bool, bool, bool);
-    DO_STORE_IF(Char, char, char);
-    DO_STORE_IF(Int, int, int);
-    DO_STORE_IF(Real, double, real);
-    DO_STORE_IF(Uint, size_t, uint);
-    DO_STORE_IF(Type_, Type *, type);
+    DO_STORE(bool, bool, Bool);
+    DO_STORE(char, char, Char);
+    DO_STORE(int, int, Int);
+    DO_STORE(double, real, Real);
+    DO_STORE(size_t, uint, Uint);
+    DO_STORE(Type *, type, Type_);
 
-#undef DO_STORE_IF
+#undef DO_STORE
   } break;
-  case Op::Call: {
-    auto iter = cmd_inputs.begin();
-    auto fn = *iter;
-    assert(fn.flag == ValType::F);
-    ++iter;
-    std::vector<Value> call_args;
-
-    // TODO std::copy wasn't working for some reason I don't understand. Just
-    // gonna do this by hand for now.
-    for (; iter != cmd_inputs.end(); ++iter) { call_args.push_back(*iter); }
-    frame.reg[result.val.as_ref] = IR::Call(fn.val.as_func, frame.stack, call_args);
-  } break;
+                  /*
   case Op::GEP: {
-    if (cmd_inputs[0].val.as_type->is_array()) {
-      auto array_type = (Array *)(cmd_inputs[0].val.as_type);
+    if (cmd_inputs[0].as_type->is_array()) {
+      auto array_type = (Array *)(cmd_inputs[0].as_type);
       if (array_type->fixed_length) {
         if (cmd_inputs[1].flag == ValType::Alloc) {
-          auto ptr = cmd_inputs[1].val.as_alloc +
-                     (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
+          auto ptr = cmd_inputs[1].as_alloc +
+                     (size_t)(cmd_inputs[2].as_int) * sizeof(char *);
 
           for (size_t i = 3; i < cmd_inputs.size(); ++i) {
-            ptr += (size_t)(cmd_inputs[i].val.as_int) *
+            ptr += (size_t)(cmd_inputs[i].as_int) *
                    array_type->data_type->SpaceInArray();
           }
 
-          frame.reg[result.val.as_ref] = Value::Alloc(ptr);
+          // frame.reg[result.reg] = Value::Alloc(ptr);
         } else {
           NOT_YET;
         }
       } else {
         NOT_YET;
       }
-    } else if (cmd_inputs[0].val.as_type->is_struct()) {
-      auto struct_type = (Structure *)(cmd_inputs[0].val.as_type);
-      auto ptr = cmd_inputs[1].val.as_alloc +
-                 (size_t)(cmd_inputs[2].val.as_int) * sizeof(char *);
+    } else if (cmd_inputs[0].as_type->is_struct()) {
+      auto struct_type = (Structure *)(cmd_inputs[0].as_type);
+      auto ptr = cmd_inputs[1].as_alloc +
+                 (size_t)(cmd_inputs[2].as_int) * sizeof(char *);
 
       assert(cmd_inputs.size() == 4);
-      size_t field_index = (size_t)(cmd_inputs[3].val.as_int) + 1;
+      size_t field_index = (size_t)(cmd_inputs[3].as_int) + 1;
 
       ptr += struct_type->field_offsets AT(field_index);
-      frame.reg[result.val.as_ref] = Value::Alloc(ptr);
+      frame.reg[result.value] = Value::Alloc(ptr);
     } else {
       NOT_YET;
     }
   } break;
+  */
   case Op::Phi: {
-    for (size_t i = 0; i < incoming_blocks.size(); ++i) {
-      if (frame.prev_block == incoming_blocks[i]) {
-        frame.reg[result.val.as_ref] = cmd_inputs[i];
+    assert((cmd_inputs.size() & 1u) == 0u);
+    for (size_t i = 0; i < cmd_inputs.size(); i += 2) {
+      if (frame.prev_block == cmd_inputs[i].as_block) {
+        frame.reg[result.reg] = cmd_inputs[i + 1];
         goto exit_successfully;
       }
     }
@@ -199,219 +249,214 @@ void Cmd::Execute(StackFrame& frame) {
   exit_successfully:;
   } break;
   case Op::IAdd: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int + cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int + cmd_inputs[1].as_int);
   } break;
   case Op::UAdd: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint + cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint + cmd_inputs[1].as_uint);
   } break;
   case Op::FAdd: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real + cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real + cmd_inputs[1].as_real);
   } break;
   case Op::ISub: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int - cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int - cmd_inputs[1].as_int);
   } break;
   case Op::USub: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint - cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint - cmd_inputs[1].as_uint);
   } break;
   case Op::FSub: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real - cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real - cmd_inputs[1].as_real);
   } break;
   case Op::IMul: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int * cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int * cmd_inputs[1].as_int);
   } break;
   case Op::UMul: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint * cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint * cmd_inputs[1].as_uint);
   } break;
   case Op::FMul: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real * cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real * cmd_inputs[1].as_real);
   } break;
   case Op::IDiv: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int / cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int / cmd_inputs[1].as_int);
   } break;
   case Op::UDiv: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint / cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint / cmd_inputs[1].as_uint);
   } break;
   case Op::FDiv: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real / cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real / cmd_inputs[1].as_real);
   } break;
   case Op::IMod: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int % cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int % cmd_inputs[1].as_int);
   } break;
   case Op::UMod: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint % cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint % cmd_inputs[1].as_uint);
   } break;
   case Op::FMod: {
-    frame.reg[result.val.as_ref] =
-        Value(fmod(cmd_inputs[0].val.as_real, cmd_inputs[1].val.as_real));
+    frame.reg[result.reg] =
+        Value(fmod(cmd_inputs[0].as_real, cmd_inputs[1].as_real));
   } break;
   case Op::BXor: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_bool != cmd_inputs[1].val.as_bool);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_bool != cmd_inputs[1].as_bool);
   } break;
   case Op::ILT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int < cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int < cmd_inputs[1].as_int);
   } break;
   case Op::ULT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint < cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint < cmd_inputs[1].as_uint);
   } break;
   case Op::FLT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real < cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real < cmd_inputs[1].as_real);
   } break;
   case Op::ILE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int <= cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int <= cmd_inputs[1].as_int);
   } break;
   case Op::ULE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint <= cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint <= cmd_inputs[1].as_uint);
   } break;
   case Op::FLE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real <= cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real <= cmd_inputs[1].as_real);
   } break;
   case Op::IEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int == cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int == cmd_inputs[1].as_int);
   } break;
   case Op::UEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint == cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint == cmd_inputs[1].as_uint);
   } break;
   case Op::FEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_char == cmd_inputs[1].val.as_char);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_char == cmd_inputs[1].as_char);
   } break;
   case Op::BEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_bool == cmd_inputs[1].val.as_bool);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_bool == cmd_inputs[1].as_bool);
   } break;
   case Op::CEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_char == cmd_inputs[1].val.as_char);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_char == cmd_inputs[1].as_char);
   } break;
   case Op::TEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_type == cmd_inputs[1].val.as_type);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_type == cmd_inputs[1].as_type);
   } break;
   case Op::FnEQ: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_func == cmd_inputs[1].val.as_func);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_func == cmd_inputs[1].as_func);
   } break;
   case Op::INE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int != cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int != cmd_inputs[1].as_int);
   } break;
   case Op::UNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint != cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint != cmd_inputs[1].as_uint);
   } break;
   case Op::FNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_char != cmd_inputs[1].val.as_char);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_char != cmd_inputs[1].as_char);
   } break;
   case Op::BNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_bool != cmd_inputs[1].val.as_bool);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_bool != cmd_inputs[1].as_bool);
   } break;
   case Op::CNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_char != cmd_inputs[1].val.as_char);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_char != cmd_inputs[1].as_char);
   } break;
   case Op::TNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_type != cmd_inputs[1].val.as_type);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_type != cmd_inputs[1].as_type);
   } break;
   case Op::FnNE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_func != cmd_inputs[1].val.as_func);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_func != cmd_inputs[1].as_func);
   } break;
   case Op::IGE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int >= cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int >= cmd_inputs[1].as_int);
   } break;
   case Op::UGE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint >= cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint >= cmd_inputs[1].as_uint);
   } break;
   case Op::FGE: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real >= cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real >= cmd_inputs[1].as_real);
   } break;
   case Op::IGT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_int > cmd_inputs[1].val.as_int);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_int > cmd_inputs[1].as_int);
   } break;
   case Op::UGT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_uint > cmd_inputs[1].val.as_uint);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_uint > cmd_inputs[1].as_uint);
   } break;
   case Op::FGT: {
-    frame.reg[result.val.as_ref] =
-        Value(cmd_inputs[0].val.as_real > cmd_inputs[1].val.as_real);
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_real > cmd_inputs[1].as_real);
   } break;
   case Op::Print: {
-    if (cmd_inputs[0].flag == ValType::B) {
-      std::printf(cmd_inputs[0].val.as_bool ? "true" : "false");
+    if (cmd_inputs[0].as_type == Bool) {
+      fprintf(stderr, cmd_inputs[1].as_bool ? "true" : "false");
 
-    } else if (cmd_inputs[0].flag == ValType::C) {
-      std::printf("%c", cmd_inputs[0].val.as_char);
+    } else if (cmd_inputs[0].as_type == Char) {
+      fprintf(stderr, "%c", cmd_inputs[1].as_char);
 
-    } else if (cmd_inputs[0].flag == ValType::I) {
-      std::printf("%d", cmd_inputs[0].val.as_int);
+    } else if (cmd_inputs[0].as_type == Int) {
+      fprintf(stderr, "%d", cmd_inputs[1].as_int);
 
-    } else if (cmd_inputs[0].flag == ValType::R) {
-      std::printf("%lf", cmd_inputs[0].val.as_real);
+    } else if (cmd_inputs[0].as_type == Real) {
+      fprintf(stderr, "%lf", cmd_inputs[1].as_real);
 
-    } else if (cmd_inputs[0].flag == ValType::U) {
-      std::printf("%lu", cmd_inputs[0].val.as_uint);
+    } else if (cmd_inputs[0].as_type == Uint) {
+      fprintf(stderr, "%lu", cmd_inputs[1].as_uint);
 
-    } else if (cmd_inputs[0].flag == ValType::T) {
-      std::printf("%s", cmd_inputs[0].val.as_type->to_string().c_str());
-
-    } else if (cmd_inputs[0].flag == ValType::F) {
+    } else if (cmd_inputs[0].as_type == Type_) {
+      fprintf(stderr, "%s", cmd_inputs[1].as_type->to_string().c_str());
+    }else {
       NOT_YET;
     }
-    // Even though this operation is void, we pick a nice value like true to
-    // return because in debug we want to be able to print something.
-    // TODO make void return types not use registers.
-    frame.reg[result.val.as_ref] = Value(true);
   } break;
   case Op::TC_Ptr: {
-    frame.reg[result.val.as_ref] = Value(Ptr(cmd_inputs[0].val.as_type));
+    frame.reg[result.reg] = Value(Ptr(cmd_inputs[0].as_type));
   } break;
   case Op::TC_Arrow: {
-    frame.reg[result.val.as_ref] =
-        Value(::Func(cmd_inputs[0].val.as_type, cmd_inputs[1].val.as_type));
+    frame.reg[result.reg] =
+        Value(::Func(cmd_inputs[0].as_type, cmd_inputs[1].as_type));
   } break;
   case Op::TC_Arr1: {
-    frame.reg[result.val.as_ref] = Value(Arr(cmd_inputs[0].val.as_type));
+    frame.reg[result.reg] = Value(Arr(cmd_inputs[0].as_type));
   } break;
   case Op::TC_Arr2: {
-    frame.reg[result.val.as_ref] =
-        Value(Arr(cmd_inputs[1].val.as_type, cmd_inputs[0].val.as_uint));
+    frame.reg[result.reg] =
+        Value(Arr(cmd_inputs[1].as_type, cmd_inputs[0].as_uint));
   } break;
   case Op::Bytes: {
-    frame.reg[result.val.as_ref] = Value(cmd_inputs[0].val.as_type->bytes());
+    frame.reg[result.reg] = Value(cmd_inputs[0].as_type->bytes());
   } break;
   case Op::Alignment: {
-    frame.reg[result.val.as_ref] = Value(cmd_inputs[0].val.as_type->alignment());
+    frame.reg[result.reg] = Value(cmd_inputs[0].as_type->alignment());
   } break;
   }
 }
@@ -423,12 +468,12 @@ Block *Block::ExecuteJump(StackFrame &frame) {
   case Exit::Strategy::Return: return nullptr;
   case Exit::Strategy::Cond: {
     Value v = exit.val;
-    if (exit.val.flag == ValType::Ref) {
-      v = frame.reg[v.val.as_ref];
+    if (exit.val.flag == ValType::Reg) {
+      v = frame.reg[v.as_reg];
     } else if (exit.val.flag == ValType::Arg) {
-      v = frame.args[v.val.as_arg];
+      v = frame.args[v.as_arg];
     }
-    return v.val.as_bool ? exit.true_block : exit.false_block;
+    return v.as_bool ? exit.true_block : exit.false_block;
   }
   }
 }
@@ -461,43 +506,40 @@ void LocalStack::AddFrame(StackFrame *fr) {
 
 void LocalStack::RemoveFrame(StackFrame *fr) { used = fr->offset; }
 
-Value Call(Func *f, LocalStack *local_stack, const std::vector<Value> &arg_vals) {
+Value Call(Func *f, LocalStack *local_stack,
+           const std::vector<Value> &arg_vals) {
   StackFrame frame(f, local_stack, arg_vals);
 
-eval_loop_start:
+  eval_loop_start:
+    if (frame.inst_ptr == frame.curr_block->cmds.size()) {
+      frame.prev_block = frame.curr_block;
+      frame.curr_block = frame.curr_block->ExecuteJump(frame);
 
-  if (frame.inst_ptr == frame.curr_block->cmds.size()) {
-    frame.prev_block = frame.curr_block;
-    frame.curr_block = frame.curr_block->ExecuteJump(frame);
+      if (!frame.curr_block) { // It's a return (perhaps void)
+        if (frame.prev_block->exit.flag == Exit::Strategy::ReturnVoid) {
+          return Value(nullptr);
 
-    if (!frame.curr_block) { // It's a return (perhaps void)
-      if (frame.prev_block->exit.flag == Exit::Strategy::ReturnVoid) {
-        return Value(nullptr);
+        } else if (frame.prev_block->exit.val.flag == ValType::Reg) {
+          return frame.reg[frame.prev_block->exit.val.as_reg];
 
-      } else if (frame.prev_block->exit.val.flag == ValType::Ref) {
-        return frame.reg[frame.prev_block->exit.val.val.as_ref];
+        } else if (frame.prev_block->exit.val.flag == ValType::Arg) {
+          return frame.reg[frame.prev_block->exit.val.as_arg];
 
-      } else if (frame.prev_block->exit.val.flag == ValType::Arg) {
-        return frame.reg[frame.prev_block->exit.val.val.as_arg];
+        } else {
+          return frame.prev_block->exit.val;
+        }
 
       } else {
-        return frame.prev_block->exit.val;
+        frame.inst_ptr = 0;
       }
 
     } else {
-      frame.inst_ptr = 0;
+      if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
+
+      frame.curr_block->cmds[frame.inst_ptr].Execute(frame);
+      ++frame.inst_ptr;
     }
-
-  } else {
-    auto cmd = frame.curr_block->cmds[frame.inst_ptr];
-    assert(cmd.result.flag == ValType::Ref);
-
-    if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
-    cmd.Execute(frame);
-
-    ++frame.inst_ptr;
-  }
-  goto eval_loop_start;
+    goto eval_loop_start;
 }
 
 } // namespace IR

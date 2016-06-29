@@ -9,21 +9,19 @@ IR::Value Identifier::EmitLVal() {
 IR::Value Binop::EmitLVal() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
     auto array_type = (Array*)lhs->type;
-    auto lhs_val  = lhs->EmitLVal();
+    // auto lhs_val  = lhs->EmitLVal();
     auto rhs_val  = rhs->EmitIR();
     int index;
     if (rhs_val.flag == IR::ValType::U) {
-      index = (int)rhs_val.val.as_uint;
+      index = (int)rhs_val.as_uint;
     } else if (rhs_val.flag == IR::ValType::I) {
-      index = rhs_val.val.as_int;
+      index = rhs_val.as_int;
     } else {
       assert(false);
     }
 
     if (array_type->fixed_length) {
-      auto gep = IR::GEP(array_type, lhs_val, {0, index});
-      IR::Block::Current->push(gep);
-      return gep;
+      NOT_YET;
     } else {
       NOT_YET;
     }

@@ -505,34 +505,34 @@ Context::Value Binop::evaluate(Ctx& ctx) {
       }
 
       auto local_stack = new IR::LocalStack;
-      IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+      IR::Func *func   = fn_ptr->EmitIR().as_func;
       auto result      = IR::Call(func, local_stack, args);
       delete local_stack;
 
       // Doing value conversion
       if (result.flag == IR::ValType::B) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value(result.val.as_bool);
+        return value = Context::Value(result.as_bool);
 
       } else if (result.flag == IR::ValType::C) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value(result.val.as_char);
+        return value = Context::Value(result.as_char);
 
       } else if (result.flag == IR::ValType::I) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value((long)result.val.as_int);
+        return value = Context::Value((long)result.as_int);
 
       } else if (result.flag == IR::ValType::R) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value(result.val.as_real);
+        return value = Context::Value(result.as_real);
 
       } else if (result.flag == IR::ValType::U) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value(result.val.as_uint);
+        return value = Context::Value(result.as_uint);
 
       } else if (result.flag == IR::ValType::T) {
         value_flag = ValueFlag::Done;
-        return value = Context::Value(result.val.as_type);
+        return value = Context::Value(result.as_type);
       }
       NOT_YET;
 

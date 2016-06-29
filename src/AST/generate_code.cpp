@@ -214,7 +214,7 @@ llvm::Value *Unop::generate_code() {
     }
 
     auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+    IR::Func *func   = fn_ptr->EmitIR().as_func;
 
     if (operand->type == Void) {
       // Assumptions:
@@ -236,19 +236,19 @@ llvm::Value *Unop::generate_code() {
 
     // Doing value conversion
     if (result.flag == IR::ValType::B) {
-      return result.val.as_bool ? data::const_true() : data::const_false();
+      return result.as_bool ? data::const_true() : data::const_false();
 
     } else if (result.flag == IR::ValType::C) {
-      return data::const_char(result.val.as_char);
+      return data::const_char(result.as_char);
 
     } else if (result.flag == IR::ValType::I) {
-      return data::const_int((long)result.val.as_int);
+      return data::const_int((long)result.as_int);
 
     } else if (result.flag == IR::ValType::R) {
-      return data::const_real(result.val.as_real);
+      return data::const_real(result.as_real);
 
     } else if (result.flag == IR::ValType::U) {
-      return data::const_uint(result.val.as_uint);
+      return data::const_uint(result.as_uint);
     } else {
       NOT_YET;
     }
@@ -316,25 +316,25 @@ llvm::Value *Unop::generate_code() {
     auto fn_ptr = (FunctionLiteral *)operand->evaluate(ctx).as_expr;
 
     auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitIR().val.as_func;
+    IR::Func *func   = fn_ptr->EmitIR().as_func;
     auto result      = IR::Call(func, local_stack, {});
     delete local_stack;
 
     // Doing value conversion
     if (result.flag == IR::ValType::B) {
-      return result.val.as_bool ? data::const_true() : data::const_false();
+      return result.as_bool ? data::const_true() : data::const_false();
 
     } else if (result.flag == IR::ValType::C) {
-      return data::const_char(result.val.as_char);
+      return data::const_char(result.as_char);
 
     } else if (result.flag == IR::ValType::I) {
-      return data::const_int((long)result.val.as_int);
+      return data::const_int((long)result.as_int);
 
     } else if (result.flag == IR::ValType::R) {
-      return data::const_real(result.val.as_real);
+      return data::const_real(result.as_real);
 
     } else if (result.flag == IR::ValType::U) {
-      return data::const_uint(result.val.as_uint);
+      return data::const_uint(result.as_uint);
     }
     NOT_YET;
   }

@@ -12,7 +12,7 @@ extern Func *AsciiFunc();
 extern Func *OrdFunc();
 
 static Value PtrCallFix(Type *t, IR::Value v) {
-  return t->is_big() ? v : IR::Load(t, v);
+  return t->is_big() ? v : IR::Value::Reg(IR::Load(t, v).result.reg);
 }
 } // namespace IR
 
@@ -60,9 +60,10 @@ IR::Value Terminal::EmitIR() {
   }
 }
 
-void EmitPrintExpr(Expression *expr) {
+static void EmitPrintExpr(Expression *expr) {
   if (expr->type->is_primitive()) {
-    IR::Print(expr->EmitIR());
+    IR::Print(IR::Value(expr->type), expr->EmitIR());
+
   } else if (expr->type->is_function()) {
     NOT_YET;
 
@@ -73,18 +74,17 @@ void EmitPrintExpr(Expression *expr) {
 
 IR::Value Unop::EmitIR() {
   switch (op) {
-  case Language::Operator::Import: NOT_YET;
+  // case Language::Operator::Import: NOT_YET;
   case Language::Operator::Return: {
-    auto result = operand->EmitIR();
-    IR::Block::Current->exit.SetReturn(result);
+    IR::Block::Current->exit.SetReturn(operand->EmitIR());
     return IR::Value();
   } break;
-  case Language::Operator::Break: NOT_YET;
-  case Language::Operator::Continue: NOT_YET;
-  case Language::Operator::Repeat: NOT_YET;
-  case Language::Operator::Restart: NOT_YET;
-  case Language::Operator::Free: NOT_YET;
-  case Language::Operator::Eval: NOT_YET;
+  // case Language::Operator::Break: NOT_YET;
+  // case Language::Operator::Continue: NOT_YET;
+  // case Language::Operator::Repeat: NOT_YET;
+  // case Language::Operator::Restart: NOT_YET;
+  // case Language::Operator::Free: NOT_YET;
+  // case Language::Operator::Eval: NOT_YET;
   case Language::Operator::Print: {
     if (operand->is_comma_list()) {
       auto operand_as_chainop = (ChainOp *)operand;
@@ -97,7 +97,7 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::And: {
     auto val = operand->EmitIR();
     if (operand->type == Type_) {
-      return IR::TC_Ptr(val);
+      return IR::Value::Reg(IR::TC_Ptr(val).result.reg);
     } else {
       NOT_YET;
     }
@@ -105,10 +105,10 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::Sub: {
     auto val = operand->EmitIR();
     if (operand->type == Int) {
-      return IR::INeg(val);
+      return IR::Value::Reg(IR::INeg(val).result.reg);
 
     } else if (operand->type == Real) {
-      return IR::FNeg(val);
+      return IR::Value::Reg(IR::FNeg(val).result.reg);
 
     } else {
       NOT_YET;
@@ -117,14 +117,13 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::Not: {
     auto val = operand->EmitIR();
     if (operand->type == Bool) {
-      return BNot(val);
-
+      return IR::Value::Reg(IR::BNot(val).result.reg);
     } else {
       NOT_YET;
     }
   } break;
   case Language::Operator::At: {
-    return IR::Load(operand->type, operand->EmitIR());
+    return IR::Value::Reg(IR::Load(operand->type, operand->EmitIR()).result.reg);
   } break;
   default: NOT_YET;
   }
@@ -133,17 +132,23 @@ IR::Value Unop::EmitIR() {
 IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: {
-    return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
+    if (rhs->type->is_primitive()) {
+      return IR::Value::Reg(
+          IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal()).result.reg);
+    } else {
+      NOT_YET;
+    }
   } break;
   case Language::Operator::Cast: NOT_YET;
   case Language::Operator::Arrow: {
-    return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
+    return IR::Value::Reg(
+        IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR()).result.reg);
   } break;
   case Language::Operator::OrEq:
   case Language::Operator::AndEq: {
     if (lhs->type == Bool && rhs->type == Bool) {
       auto lval    = lhs->EmitLVal();
-      auto lhs_val = IR::Load(lhs->type, lval);
+      auto lhs_val = IR::Value::Reg(IR::Load(lhs->type, lval).result.reg);
 
       auto load_rhs_block = IR::Func::Current->AddBlock();
       auto land_block     = IR::Func::Current->AddBlock();
@@ -154,12 +159,12 @@ IR::Value Binop::EmitIR() {
           (op == Language::Operator::AndEq) ? land_block : load_rhs_block);
 
       IR::Block::Current = load_rhs_block;
-      auto rhs_val       = rhs->EmitIR();
+      auto rhs_val = rhs->EmitIR();
       IR::Store(Bool, rhs_val, lval);
 
       IR::Block::Current->exit.SetUnconditional(land_block);
 
-      IR::Block::Current = load_rhs_block;
+      IR::Block::Current = land_block;
       return IR::Value();
     } else {
       NOT_YET;
@@ -167,40 +172,47 @@ IR::Value Binop::EmitIR() {
   } break;
   case Language::Operator::XorEq: {
     auto lval    = lhs->EmitLVal();
-    auto lhs_val = IR::Load(lhs->type, lval);
+    auto lhs_val = IR::Value::Reg(IR::Load(lhs->type, lval).result.reg);
     auto rhs_val = rhs->EmitIR();
 
     if (lhs->type == Bool && rhs->type == Bool) {
-      return IR::Store(Bool, IR::BXor(lhs_val, rhs_val), lval);
+      IR::Store(Bool, IR::Value::Reg(IR::BXor(lhs_val, rhs_val).result.reg),
+                lval);
+      return IR::Value();
     } else {
       NOT_YET;
     }
   } break;
+
 #define ARITHMETIC_EQ_CASE(Op, op)                                             \
   case Language::Operator::Op##Eq: {                                           \
     auto lval    = lhs->EmitLVal();                                            \
-    auto lhs_val = IR::Load(lhs->type, lval);                                  \
+    auto lhs_val = IR::Value::Reg(IR::Load(lhs->type, lval).result.reg);       \
     auto rhs_val = rhs->EmitIR();                                              \
                                                                                \
     if (lhs->type == Int && rhs->type == Int) {                                \
-      return IR::Store(Int, IR::I##Op(lhs_val, rhs_val), lval);                \
+      IR::Store(Int, IR::Value::Reg(IR::I##Op(lhs_val, rhs_val).result.reg),   \
+                lval);                                                         \
                                                                                \
     } else if (lhs->type == Uint && rhs->type == Uint) {                       \
-      return IR::Store(Uint, IR::U##Op(lhs_val, rhs_val), lval);               \
+      IR::Store(Uint, IR::Value::Reg(IR::U##Op(lhs_val, rhs_val).result.reg),  \
+                lval);                                                         \
                                                                                \
     } else if (lhs->type == Real && rhs->type == Real) {                       \
-      return IR::Store(Real, IR::F##Op(lhs_val, rhs_val), lval);               \
+      IR::Store(Real, IR::Value::Reg(IR::F##Op(lhs_val, rhs_val).result.reg),  \
+                lval);                                                         \
                                                                                \
     } else {                                                                   \
       NOT_YET;                                                                 \
     }                                                                          \
+    return IR::Value();                                                        \
   } break
 
-    ARITHMETIC_EQ_CASE(Add, add);
-    ARITHMETIC_EQ_CASE(Sub, sub);
-    ARITHMETIC_EQ_CASE(Mul, mul);
-    ARITHMETIC_EQ_CASE(Div, div);
-    ARITHMETIC_EQ_CASE(Mod, mod);
+ARITHMETIC_EQ_CASE(Add, add);
+ARITHMETIC_EQ_CASE(Sub, sub);
+ARITHMETIC_EQ_CASE(Mul, mul);
+ARITHMETIC_EQ_CASE(Div, div);
+ARITHMETIC_EQ_CASE(Mod, mod);
 
 #undef ARITHMETIC_EQ_CASE
 
@@ -209,25 +221,26 @@ IR::Value Binop::EmitIR() {
     auto lhs_val = lhs->EmitIR();                                              \
     auto rhs_val = rhs->EmitIR();                                              \
     if (lhs->type == Int && rhs->type == Int) {                                \
-      return IR::I##Op(lhs_val, rhs_val);                                      \
+      auto cmd = IR::I##Op(lhs_val, rhs_val);                                  \
+      return IR::Value::Reg(cmd.result.reg);                                   \
                                                                                \
     } else if (lhs->type == Uint && rhs->type == Uint) {                       \
-      return IR::U##Op(lhs_val, rhs_val);                                      \
+      auto cmd = IR::U##Op(lhs_val, rhs_val);                                  \
+      return IR::Value::Reg(cmd.result.reg);                                   \
                                                                                \
     } else if (lhs->type == Real && rhs->type == Real) {                       \
-      return IR::F##Op(lhs_val, rhs_val);                                      \
+      auto cmd = IR::F##Op(lhs_val, rhs_val);                                  \
+      return IR::Value::Reg(cmd.result.reg);                                   \
                                                                                \
     } else {                                                                   \
       NOT_YET;                                                                 \
     }                                                                          \
   } break
-
     ARITHMETIC_CASE(Add, add);
     ARITHMETIC_CASE(Sub, sub);
     ARITHMETIC_CASE(Mul, mul);
     ARITHMETIC_CASE(Div, div);
     ARITHMETIC_CASE(Mod, mod);
-
 #undef ARITHMETIC_CASE
 
   case Language::Operator::Index: {
@@ -242,98 +255,96 @@ IR::Value Binop::EmitIR() {
       NOT_YET;
     }
   } break;
+
   case Language::Operator::Call: {
-    auto result = IR::CallCmd(lhs->EmitIR());
     if (rhs) {
       if (rhs->is_comma_list()) {
-        for (auto expr : ((ChainOp *)rhs)->exprs) {
-          result.args.push_back(expr->EmitIR());
-        }
+        NOT_YET;
       } else {
-        result.args.push_back(rhs->EmitIR());
+        return IR::Value::Reg(
+            IR::Call(type, lhs->EmitIR(), {rhs->EmitIR()}).result.reg);
       }
+    } else {
+      return IR::Value::Reg(IR::Call(type, lhs->EmitIR(), {}).result.reg);
     }
-
-    IR::Block::Current->cmds.push_back(result);
-
-    return result;
   }
   default: std::cerr << *this << std::endl; NOT_YET;
   }
 }
+
 static IR::Value EmitComparison(Type *op_type, Language::Operator op,
                                 IR::Value lhs, IR::Value rhs) {
   if (op == Language::Operator::LT) {
     if (op_type == Int) {
-      return ILT(lhs, rhs);
+      return IR::Value(ILT(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FLT(lhs, rhs);
+      return IR::Value(FLT(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return ULT(lhs, rhs);
+      return IR::Value(ULT(lhs, rhs).result.reg);
     }
 
   } else if (op == Language::Operator::LE) {
     if (op_type == Int) {
-      return ILE(lhs, rhs);
+      return IR::Value(ILE(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FLE(lhs, rhs);
+      return IR::Value(FLE(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return ULE(lhs, rhs);
+      return IR::Value(ULE(lhs, rhs).result.reg);
     }
 
   } else if (op == Language::Operator::EQ) {
     if (op_type == Bool) {
-      return BEQ(lhs, rhs);
+      return IR::Value(BEQ(lhs, rhs).result.reg);
     } else if (op_type == Char) {
-      return CEQ(lhs, rhs);
+      return IR::Value(CEQ(lhs, rhs).result.reg);
     } else if (op_type == Int) {
-      return IEQ(lhs, rhs);
+      return IR::Value(IEQ(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FEQ(lhs, rhs);
+      return IR::Value(FEQ(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return UEQ(lhs, rhs);
+      return IR::Value(UEQ(lhs, rhs).result.reg);
     } else if (op_type == Type_) {
-      return TEQ(lhs, rhs);
+      return IR::Value(TEQ(lhs, rhs).result.reg);
     } else if (op_type->is_function()) {
-      return FnEQ(lhs, rhs);
+      return IR::Value(FnEQ(lhs, rhs).result.reg);
     }
 
   } else if (op == Language::Operator::NE) {
     if (op_type == Bool) {
-      return BNE(lhs, rhs);
+      return IR::Value(BNE(lhs, rhs).result.reg);
     } else if (op_type == Char) {
-      return CNE(lhs, rhs);
+      return IR::Value(CNE(lhs, rhs).result.reg);
     } else if (op_type == Int) {
-      return INE(lhs, rhs);
+      return IR::Value(INE(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FNE(lhs, rhs);
+      return IR::Value(FNE(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return UNE(lhs, rhs);
+      return IR::Value(UNE(lhs, rhs).result.reg);
     } else if (op_type == Type_) {
-      return TNE(lhs, rhs);
+      return IR::Value(TNE(lhs, rhs).result.reg);
     } else if (op_type->is_function()) {
-      return FnNE(lhs, rhs);
+      return IR::Value(FnNE(lhs, rhs).result.reg);
     }
 
   } else if (op == Language::Operator::GE) {
     if (op_type == Int) {
-      return IGE(lhs, rhs);
+      return IR::Value(IGE(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FGE(lhs, rhs);
+      return IR::Value(FGE(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return UGE(lhs, rhs);
+      return IR::Value(UGE(lhs, rhs).result.reg);
     }
 
   } else if (op == Language::Operator::GT) {
     if (op_type == Int) {
-      return IGT(lhs, rhs);
+      return IR::Value(IGT(lhs, rhs).result.reg);
     } else if (op_type == Real) {
-      return FGT(lhs, rhs);
+      return IR::Value(FGT(lhs, rhs).result.reg);
     } else if (op_type == Uint) {
-      return UGT(lhs, rhs);
+      return IR::Value(UGT(lhs, rhs).result.reg);
     }
   }
-  assert(false);
+  UNREACHABLE;
 }
 
 IR::Value ChainOp::EmitIR() {
@@ -344,15 +355,19 @@ IR::Value ChainOp::EmitIR() {
     for (auto e : exprs) { vals.push_back(e->EmitIR()); }
 
     IR::Value v = vals[0];
-    for (size_t i = 1; i < vals.size(); ++i) { v = BXor(v, vals[i]); }
+    for (size_t i = 1; i < vals.size(); ++i) {
+      v = IR::Value::Reg(IR::BXor(v, vals[i]).result.reg);
+    }
     return v;
 
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     std::vector<IR::Block *> blocks(exprs.size(), nullptr);
-    // If it's an or, an early exit is because we already know the value is true.
-    // If it's an and, an early exit is beacause we already know the value is false.
-    bool using_or = (ops[0] == Language::Operator::Or);
+    // If it's an or, an early exit is because we already know the value is
+    // true.
+    // If it's an and, an early exit is beacause we already know the value is
+    // false.
+    bool using_or              = (ops[0] == Language::Operator::Or);
     IR::Value early_exit_value = IR::Value(using_or);
 
     for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
@@ -361,7 +376,7 @@ IR::Value ChainOp::EmitIR() {
 
     // Create the landing block
     IR::Block *landing_block = IR::Func::Current->AddBlock();
-    auto phi = IR::Phi();
+    auto phi                 = IR::Phi(Bool);
 
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       IR::Block::Current = blocks[i];
@@ -373,18 +388,19 @@ IR::Value ChainOp::EmitIR() {
         IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
                                                 landing_block);
       }
-      phi.AddIncoming(IR::Block::Current, early_exit_value);
+      phi.args.push_back(IR::Value(IR::Block::Current));
+      phi.args.push_back(early_exit_value);
     }
 
     IR::Block::Current = blocks.back();
     auto last_result = exprs.back()->EmitIR();
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.AddIncoming(IR::Block::Current, last_result);
+    phi.args.push_back(IR::Value(IR::Block::Current));
+    phi.args.push_back(last_result);
 
     IR::Block::Current = landing_block;
-    landing_block->cmds.push_back(phi);
+    return IR::Value(phi.result.reg);
 
-    return phi;
   } else if (Language::precedence(ops.front()) ==
              Language::precedence(Language::Operator::EQ)) {
     // Operators here can be <, <=, ==, !=, >=, or >.
@@ -393,7 +409,7 @@ IR::Value ChainOp::EmitIR() {
     for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
 
     IR::Block *landing_block = IR::Func::Current->AddBlock();
-    auto phi = IR::Phi();
+    auto phi                 = IR::Phi(Bool);
 
     IR::Value result, lhs;
     IR::Value rhs = exprs[0]->EmitIR();
@@ -408,7 +424,8 @@ IR::Value ChainOp::EmitIR() {
       // Early exit
       IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
                                               landing_block);
-      phi.AddIncoming(IR::Block::Current, IR::Value(false));
+      phi.args.push_back(IR::Value(IR::Block::Current));
+      phi.args.push_back(IR::Value(false));
     }
 
     IR::Block::Current = blocks.back();
@@ -417,11 +434,13 @@ IR::Value ChainOp::EmitIR() {
     rhs              = exprs.back()->EmitIR();
     auto last_result = EmitComparison(exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.AddIncoming(IR::Block::Current, last_result);
+    phi.args.push_back(IR::Value(IR::Block::Current));
+    phi.args.push_back(last_result);
 
     IR::Block::Current = landing_block;
     landing_block->cmds.push_back(phi);
-    return phi;
+
+    return IR::Value::Reg(phi.result.reg);
   }
   NOT_YET;
 }
@@ -490,21 +509,19 @@ IR::Value Identifier::EmitIR() {
     assert(IR::Func::Current->frame_map.find(decl) !=
            IR::Func::Current->frame_map.end());
     return IR::PtrCallFix(
-        type, IR::Value::Alloc(IR::Func::Current->frame_map.at(decl)));
+        type, IR::Value::RelAlloc(IR::Func::Current->frame_map.at(decl)));
   }
 }
 
 IR::Value ArrayType::EmitIR() {
-  if (length->is_hole()) {
-    return IR::TC_Arr1(data_type->EmitIR());
-  } else {
-    return IR::TC_Arr2(length->EmitIR(), data_type->EmitIR());
-  }
+  return IR::Value::Reg(
+      (length->is_hole() ? IR::TC_Arr1(data_type->EmitIR())
+                         : IR::TC_Arr2(length->EmitIR(), data_type->EmitIR()))
+          .result.reg);
 }
 
 static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                            IR::Value lhs_ptr, IR::Value rhs) {
-
   assert(scope);
   if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
       lhs_type->is_enum()) {
@@ -514,11 +531,11 @@ static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
       NOT_YET;
     }
   } else if (lhs_type->is_array()) {
+    /*
     assert(rhs_type->is_array());
     auto lhs_array_type = (Array *)lhs_type;
     if (lhs_array_type->fixed_length) {
       // Implies rhs has fixed length of same length as well.
-
 
       // TODO move this into a real Array method.
       for (int i = 0; i < (int)lhs_array_type->len; ++i) {
@@ -533,6 +550,8 @@ static void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                        PtrCallFix(lhs_array_type->data_type, rhs_gep));
       }
     }
+    */
+    NOT_YET;
   } else {
     NOT_YET;
   }
@@ -557,6 +576,8 @@ IR::Value Declaration::EmitIR() {
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 
 IR::Value Case::EmitIR() {
+  NOT_YET;
+  /*
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
 
   for (auto &b : key_blocks) { b = IR::Func::Current->AddBlock(); }
@@ -579,69 +600,74 @@ IR::Value Case::EmitIR() {
     IR::Block::Current = compute_block;
     result = key_vals[i].second->EmitIR();
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.AddIncoming(IR::Block::Current, result);
+    phi.args.push_back(IR::Block::Current);
+    phi.args.push_back(result);
   }
 
   // Assume last entry is "else => ___".
   IR::Block::Current = key_blocks.back();
   result = key_vals.back().second->EmitIR();
   IR::Block::Current->exit.SetUnconditional(landing_block);
-  phi.AddIncoming(IR::Block::Current, result);
+  phi.args.push_back(IR::Block::Current);
+  phi.args.push_back(result);
 
   IR::Block::Current = landing_block;
   landing_block->cmds.push_back(phi);
 
   return phi;
+  */
 }
 
 IR::Value Access::EmitIR() {
-  // TODO we don't allow pointers to types?
-  if (operand->type == Type_) {
-    if (member_name == "bytes") {
-      return IR::Bytes(operand->EmitIR());
+  /*
+ // TODO we don't allow pointers to types?
+ if (operand->type == Type_) {
+   if (member_name == "bytes") {
+     return IR::Bytes(operand->EmitIR());
 
-    } else if (member_name == "alignment") {
-      return IR::Alignment(operand->EmitIR());
-    }
-  }
+   } else if (member_name == "alignment") {
+     return IR::Alignment(operand->EmitIR());
+   }
+ }
 
-  // Pass through pointers
-  auto eval      = operand->EmitIR();
-  auto base_type = operand->type;
-  while (base_type->is_pointer()) {
-    base_type = ((Pointer *)base_type)->pointee;
-    if (!base_type->is_big()) { eval = IR::Load(base_type, eval); }
-  }
+ // Pass through pointers
+ auto eval      = operand->EmitIR();
+ auto base_type = operand->type;
+ while (base_type->is_pointer()) {
+   base_type = ((Pointer *)base_type)->pointee;
+   // if (!base_type->is_big()) { eval = IR::Load(base_type, eval); }
+ }
 
-  // Array size
-  if (base_type->is_array() && member_name == "size") {
-    auto array_type = (Array *)base_type;
-    if (array_type->fixed_length) {
-      return IR::Value(array_type->len);
-    } else {
-      auto gep = IR::GEP(array_type, eval, {0, 0});
-      IR::Block::Current->push(gep);
-      return IR::Load(array_type->data_type, gep);
-    }
-  }
+ // Array size
+ if (base_type->is_array() && member_name == "size") {
+   auto array_type = (Array *)base_type;
+   if (array_type->fixed_length) {
+     return IR::Value(array_type->len);
+   } else {
+     auto gep = IR::GEP(array_type, eval, {0, 0});
+     IR::Block::Current->push(gep);
+     return IR::Load(array_type->data_type, gep);
+   }
+ }
 
-  if (base_type->is_struct()) {
-    auto struct_type = (Structure *)base_type;
+ if (base_type->is_struct()) {
+   auto struct_type = (Structure *)base_type;
 
-    if (!type->stores_data()) { NOT_YET; }
+   if (!type->stores_data()) { NOT_YET; }
 
-    auto elem_ptr =
-        IR::GEP(struct_type, eval,
-                {0, (int)(struct_type->field_name_to_num AT(member_name))});
-    IR::Block::Current->push(elem_ptr);
+   auto elem_ptr =
+       IR::GEP(struct_type, eval,
+               {0, (int)(struct_type->field_name_to_num AT(member_name))});
+   IR::Block::Current->push(elem_ptr);
 
-    return IR::PtrCallFix(type, elem_ptr);
-  }
-
+   return IR::PtrCallFix(type, elem_ptr);
+ }
+*/
   NOT_YET;
 }
 
 IR::Value While::EmitIR() {
+  /*
   auto cond_block = IR::Func::Current->AddBlock();
   auto body_block = IR::Func::Current->AddBlock();
   auto land_block = IR::Func::Current->AddBlock();
@@ -653,7 +679,7 @@ IR::Value While::EmitIR() {
   IR::Block::Current->exit.SetConditional(cond_val, body_block, land_block);
 
   IR::Block::Current = body_block;
-  // for (auto decl : while_scope->ordered_decls_) { /* TODO Initialize */ }
+  // for (auto decl : while_scope->ordered_decls_) {  TODO Initialize  }
   statements->EmitIR();
   // TODO Exit/cleanup
 
@@ -661,10 +687,12 @@ IR::Value While::EmitIR() {
   IR::Block::Current->exit.SetUnconditional(cond_block);
 
   IR::Block::Current = land_block;
+  */
   return IR::Value();
 }
 
 IR::Value Conditional::EmitIR() {
+  /*
   std::vector<IR::Block *> cond_blocks(conditions.size(), nullptr);
   std::vector<IR::Block *> body_blocks(body_scopes.size(), nullptr);
 
@@ -695,10 +723,12 @@ IR::Value Conditional::EmitIR() {
   }
 
   IR::Block::Current = land_block;
+  */
   return IR::Value();
 }
 
 IR::Value ArrayLiteral::EmitIR() {
+  /*
   // TODO delete allocation
   auto tmp_alloc = IR::Value::RelAlloc(
       IR::Func::Current->PushSpace(type->bytes(), type->alignment()));
@@ -713,6 +743,8 @@ IR::Value ArrayLiteral::EmitIR() {
   }
 
   return tmp_alloc;
+  */
+  NOT_YET;
 }
 
 IR::Value For::EmitIR() { NOT_YET; }

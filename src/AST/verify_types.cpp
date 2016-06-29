@@ -96,11 +96,11 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto local_stack = new IR::LocalStack;
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
-    auto test_result = IR::Call(f.val.as_func, local_stack, {IR::Value(rhs)});
+    auto test_result = IR::Call(f.as_func, local_stack, {IR::Value(rhs)});
     delete local_stack;
     assert(test_result.flag == IR::ValType::B);
 
-    if (test_result.val.as_bool) {
+    if (test_result.as_bool) {
       auto iter = matches.find(lhs_var);
       if (iter == matches.end()) {
         matches[lhs_var] = rhs;

@@ -4,18 +4,18 @@
 // Not to be confused with LLVM's IR!
 
 namespace IR {
-enum class ValType { B, C, I, R, U, T, F, Ptr, Ref, Arg, Alloc, RelAlloc };
+enum class ValType : char {
+  B, C, I, R, U, T, F, Ptr, Block, Reg, Arg, Alloc, RelAlloc
+};
 
 struct Func;
 struct Block;
 struct LocalStack;
 struct StackFrame;
+struct Value;
 
 struct Value {
-  ValType flag;
-
   union {
-    void *as_ptr;
     bool as_bool;
     char as_char;
     int as_int;
@@ -23,81 +23,80 @@ struct Value {
     size_t as_uint;
     Type *as_type;
     Func *as_func;
-    size_t as_ref;
+    void *as_ptr;
+    size_t as_reg;
     size_t as_arg;
-    size_t as_alloc;
-    size_t as_rel_alloc;
-  } val;
+    Block *as_block;
+    size_t as_alloc; // Distance from head of entire stack
+    size_t as_rel_alloc; // Distance from current stack frame head
+  };
 
-  explicit Value(bool b) : flag(ValType::B) { val.as_bool = b; }
-  explicit Value(char c) : flag(ValType::C) { val.as_char = c; }
-  explicit Value(int n) : flag(ValType::I) { val.as_int = n; }
-  explicit Value(double d) : flag(ValType::R) { val.as_real = d; }
-  explicit Value(size_t n) : flag(ValType::U) { val.as_uint = n; }
-  explicit Value(Func *f) : flag(ValType::F) { val.as_func = f; }
-  explicit Value(Type *t) : flag(ValType::T) { val.as_type = t; }
-  explicit Value(void *p) : flag(ValType::Ptr) { val.as_ptr = p; }
-  explicit Value(std::nullptr_t) : flag(ValType::Ptr) { val.as_ptr = nullptr; }
+  ValType flag;
 
-  Value() : flag(ValType::Ref) {}
+  explicit Value(bool b) : as_bool(b), flag(ValType::B) {}
+  explicit Value(char c) : as_char(c), flag(ValType::C) {}
+  explicit Value(int n) : as_int(n), flag(ValType::I) {}
+  explicit Value(double d) : as_real(d), flag(ValType::R) {}
+  explicit Value(size_t n) : as_uint(n), flag(ValType::U) {}
+  explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
+  explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
+  explicit Value(void *p) : as_ptr(p), flag(ValType::Ptr) {}
+  explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
+  explicit Value(std::nullptr_t) : as_ptr(nullptr), flag(ValType::Ptr) {}
+
+  Value() : flag(ValType::Reg) {}
+
+  static Value Reg(size_t n) {
+    Value v;
+    v.flag       = ValType::Reg;
+    v.as_reg = n;
+    return v;
+  }
 
   static Value RelAlloc(size_t n) {
     Value v;
-    v.flag = ValType::RelAlloc;
-    v.val.as_alloc = n;
+    v.flag         = ValType::RelAlloc;
+    v.as_rel_alloc = n;
     return v;
   }
 
   static Value Alloc(size_t n) {
     Value v;
-    v.flag = ValType::Alloc;
-    v.val.as_alloc = n;
+    v.flag     = ValType::Alloc;
+    v.as_alloc = n;
     return v;
   }
   
   static Value Arg(size_t n) {
     Value v;
     v.flag       = IR::ValType::Arg;
-    v.val.as_arg = n;
+    v.as_arg = n;
     return v;
   }
 };
 
 std::ostream &operator<<(std::ostream &os, const Value &value);
 
-enum class Op {
-#define IR_MACRO(OpCode, op_code_str, num_args) OpCode,
+enum class Op : char {
+#define IR_MACRO(OpCode, op_code_str, num_args, out_type) OpCode,
 #include "../config/IR.conf"
 #undef IR_MACRO
 };
 
 struct Cmd {
-  Op op_code;
-  std::vector<Block *> incoming_blocks; // Only used for phi cmds
   std::vector<Value> args;
+  Op op_code;
 
-  operator Value() { return result; }
-  Value result;
+  struct Result {
+    Type *type;
+    size_t reg;
+  } result;
 
-  Cmd(Op o, Value v);
+  Cmd(Op op_code, bool has_ret);
 
-  void dump(size_t indent = 0);
-
-  friend Cmd CallCmd(Value);
-  friend Cmd GEP(Type *t, Value lhs, std::vector<int> indices);
-  friend Cmd Cast(Type *to, Value v);
-
-  // Only used for phi cmds
-  friend Cmd Phi();
-  void AddIncoming(Block *block, Value output_val) {
-    incoming_blocks.push_back(block);
-    args.push_back(output_val);
-  }
+  void dump(size_t indent);
 
   void Execute(StackFrame &frame);
-
-private:
-  Cmd();
 };
 
 // Models we should exit the block. There are a few options:
@@ -107,6 +106,7 @@ private:
 struct Exit {
   friend struct Block;
   friend Value Call(Func *, LocalStack *, const std::vector<Value> &);
+  friend void RefreshDisplay(const StackFrame &, LocalStack *);
 
 private:
   enum class Strategy { Uncond, Cond, Return, ReturnVoid } flag;
@@ -192,80 +192,30 @@ struct Func {
 Value Call(Func *f, LocalStack *local_stack,
            const std::vector<Value> &arg_vals);
 
-#define CMD_WITH_1_ARGS(name)                                                  \
-  inline Cmd name(Value v) {                                                   \
-    Cmd cmd(Op::name, v);                                                      \
-    Block::Current->push(cmd);                                                 \
-    return cmd;                                                                \
-  }
+#define CMD_WITH_1_ARGS(name, out_type) Cmd name(Value);
 
-#define CMD_WITH_2_ARGS(name)                                                  \
-  inline Cmd name(Value arg1, Value arg2) {                                    \
-    Cmd cmd(Op::name, arg1);                                                   \
-    cmd.args.push_back(arg2); /* TODO Put this in the constructor */           \
-    Block::Current->push(cmd);                                                 \
-    return cmd;                                                                \
-  }
-
-inline Cmd Store(Type *t, Value arg1, Value arg2) {
-  Cmd cmd(Op::Store, Value(t));
-  cmd.args.push_back(arg1); /* TODO Put this in the constructor */
-  cmd.args.push_back(arg2); /* TODO Put this in the constructor */
-  Block::Current->push(cmd);
-  return cmd;
-}
-
-inline Cmd Load(Type *t, Value arg1) {
-  Cmd cmd(Op::Load, Value(t));
-  cmd.args.push_back(arg1); /* TODO Put this in the constructor */
-  Block::Current->push(cmd);
-  return cmd;
-}
-
+#define CMD_WITH_2_ARGS(name, out_type) Cmd name(Value, Value);
 
 // Intentionally empty. Must be hand implemented
-#define CMD_WITH_NA_ARGS(name)
+#define CMD_WITH_NA_ARGS(name, out_type)
 
-#define IR_MACRO(OpCode, op_code_str, num_args)                                \
-  CMD_WITH_##num_args##_ARGS(OpCode)
+#define IR_MACRO(OpCode, op_code_str, num_args, out_type)                      \
+  CMD_WITH_##num_args##_ARGS(OpCode, out_type)
 #include "../config/IR.conf"
 #undef IR_MACRO
 
-inline Cmd Phi() {
-  Cmd phi;
-  phi.op_code = Op::Phi;
-  // Block::Current->cmds.push_back(phi);
-  return phi;
-}
+Cmd Call(Type *out, Value, const std::vector<Value> &);
 
-inline Cmd CallCmd(Value lhs) {
-  Cmd call;
-  call.op_code = Op::Call;
-  call.args.push_back(lhs);
-  return call;
-}
-
-inline Cmd GEP(Type *t, Value lhs, std::vector<int> indices) {
-  Cmd call;
-  call.op_code = Op::GEP;
-  call.args.emplace_back(t);
-  call.args.push_back(lhs);
-  for (auto i : indices) { call.args.push_back(Value(i)); }
-  return call;
-}
-
-inline Cmd Cast(Type *to, Value v) {
-  Cmd cast;
-  cast.op_code = Op::Cast;
-  cast.args.emplace_back(to);
-  cast.args.emplace_back(v);
-  Block::Current->push(cast);
-  return cast;
-}
+Cmd Store(Type *rhs_type, Value, Value);
+Cmd Load(Type *load_type, Value);
+Cmd Cast(Type *in, Type *out, Value);
+Cmd Phi(Type *ret_type);
 
 #undef CMD_WITH_V_ARGS
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
+
+
 
 } // namespace IR
 

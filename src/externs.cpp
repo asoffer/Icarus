@@ -25,7 +25,7 @@ bool parser            = false;
 bool timer             = false;
 bool parametric_struct = false;
 bool ct_eval           = false;
-}
+} // namespace debug
 
 std::vector<AST::StructLiteral*> created_types;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
@@ -190,9 +190,8 @@ Func *AsciiFunc() {
   Func::Current  = ascii_;
   Block::Current = ascii_->entry();
 
-  auto cast_result = IR::Cast(Char, IR::Value::Arg(0));
-
-  Block::Current->exit.SetReturn(cast_result);
+  Block::Current->exit.SetReturn(
+      IR::Value::Reg(IR::Cast(Uint, Char, IR::Value::Arg(0)).result.reg));
 
   Func::Current  = saved_func;
   Block::Current = saved_block;
@@ -212,8 +211,8 @@ Func *OrdFunc() {
   Func::Current  = ord_;
   Block::Current = ord_->entry();
 
-  auto cast_result = IR::Cast(Uint, IR::Value::Arg(0));
-  Block::Current->exit.SetReturn(cast_result);
+  Block::Current->exit.SetReturn(
+      IR::Value::Reg(IR::Cast(Char, Uint, IR::Value::Arg(0)).result.reg));
 
   Func::Current  = saved_func;
   Block::Current = saved_block;
