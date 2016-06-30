@@ -196,6 +196,7 @@ llvm::Value *Unop::generate_code() {
     // function wrapper."
 
     auto fn_ptr                = new FunctionLiteral;
+    fn_ptr->type               = Func(Void, operand->type);
     fn_ptr->scope_             = scope_;
     fn_ptr->statements         = new Statements;
     fn_ptr->statements->scope_ = fn_ptr->fn_scope;
@@ -309,35 +310,7 @@ llvm::Value *Unop::generate_code() {
   case Language::Operator::At: {
     return type->is_big() ? val : builder.CreateLoad(val);
   }
-  case Language::Operator::Eval: {
-    // TODO copied this from Binop::evaluate. Should compress these into one
-    // function.
-    Ctx ctx;
-    auto fn_ptr = (FunctionLiteral *)operand->evaluate(ctx).as_expr;
 
-    auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitIR().as_func;
-    auto result      = IR::Call(func, local_stack, {});
-    delete local_stack;
-
-    // Doing value conversion
-    if (result.flag == IR::ValType::B) {
-      return result.as_bool ? data::const_true() : data::const_false();
-
-    } else if (result.flag == IR::ValType::C) {
-      return data::const_char(result.as_char);
-
-    } else if (result.flag == IR::ValType::I) {
-      return data::const_int((long)result.as_int);
-
-    } else if (result.flag == IR::ValType::R) {
-      return data::const_real(result.as_real);
-
-    } else if (result.flag == IR::ValType::U) {
-      return data::const_uint(result.as_uint);
-    }
-    NOT_YET;
-  }
   default: assert(false && "Unimplemented unary operator codegen");
   }
 }

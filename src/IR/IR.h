@@ -108,8 +108,10 @@ struct Exit {
   friend Value Call(Func *, LocalStack *, const std::vector<Value> &);
   friend void RefreshDisplay(const StackFrame &, LocalStack *);
 
+public:
+  enum class Strategy { Unset, Uncond, Cond, Return, ReturnVoid } flag;
+
 private:
-  enum class Strategy { Uncond, Cond, Return, ReturnVoid } flag;
 
   Value val; // This is the return value in the case of a return, and the value
              // to branch on in the case of a conditional branch.
@@ -120,7 +122,7 @@ private:
                       // jump when that condition is false.
 
   Exit()
-      : flag(Strategy::ReturnVoid), val(false), true_block(nullptr),
+      : flag(Strategy::Unset), val(false), true_block(nullptr),
         false_block(nullptr) {}
 
 public:
@@ -178,6 +180,8 @@ struct Func {
   size_t num_cmds, frame_size;
 
   size_t PushSpace(size_t bytes, size_t alignment);
+  size_t PushSpace(Type *t);
+
   void PushLocal(AST::Declaration *decl);
   Block *AddBlock();
 
@@ -192,9 +196,9 @@ struct Func {
 Value Call(Func *f, LocalStack *local_stack,
            const std::vector<Value> &arg_vals);
 
-#define CMD_WITH_1_ARGS(name, out_type) Cmd name(Value);
+#define CMD_WITH_1_ARGS(name, out_type) Value name(Value);
 
-#define CMD_WITH_2_ARGS(name, out_type) Cmd name(Value, Value);
+#define CMD_WITH_2_ARGS(name, out_type) Value name(Value, Value);
 
 // Intentionally empty. Must be hand implemented
 #define CMD_WITH_NA_ARGS(name, out_type)
@@ -204,18 +208,15 @@ Value Call(Func *f, LocalStack *local_stack,
 #include "../config/IR.conf"
 #undef IR_MACRO
 
-Cmd Call(Type *out, Value, const std::vector<Value> &);
-
-Cmd Store(Type *rhs_type, Value, Value);
-Cmd Load(Type *load_type, Value);
-Cmd Cast(Type *in, Type *out, Value);
+Value Call(Type *out, Value, const std::vector<Value> &);
+Value Store(Type *rhs_type, Value, Value);
+Value Load(Type *load_type, Value);
+Value Cast(Type *in, Type *out, Value);
 Cmd Phi(Type *ret_type);
 
 #undef CMD_WITH_V_ARGS
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
-
-
 
 } // namespace IR
 

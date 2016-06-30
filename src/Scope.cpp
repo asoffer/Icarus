@@ -6,6 +6,9 @@ namespace cstdlib {
 extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
+extern void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                           IR::Value lhs_ptr, IR::Value rhs);
+
 namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
@@ -83,7 +86,8 @@ void Scope::set_parent(Scope* new_parent) {
 
 BlockScope::BlockScope(ScopeType st)
     : type(st), entry(make_block("entry", nullptr)),
-      exit(make_block("exit", nullptr)), land(nullptr) {}
+      exit(make_block("exit", nullptr)), land(nullptr), entry_block(nullptr),
+      exit_block(nullptr), land_block(nullptr) {}
 
 void Scope::verify_no_shadowing() {
   for (auto decl_ptr1 : decl_registry_) {
@@ -188,9 +192,20 @@ void BlockScope::make_return(llvm::Value *val) {
   builder.CreateBr(fn_scope->exit);
 }
 
+void BlockScope::MakeReturn(IR::Value val) {
+  FnScope *fn_scope =
+      is_function_scope() ? (FnScope *)this : containing_function_;
+
+  // TODO actual returned type (second type arg) may be different
+  EmitAssignment(this, fn_scope->fn_type->output, fn_scope->fn_type->output,
+                 fn_scope->ret_val, val);
+
+  IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
+}
+
 FnScope::FnScope(llvm::Function *fn)
     : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
-      exit_flag_(nullptr) {
+      exit_flag_(nullptr), exit_flag(nullptr) {
   set_parent_function(fn);
 }
 
@@ -249,7 +264,6 @@ llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
 
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
-
   if (fn_type->output != Void) {
 
     // TODO multiple return types

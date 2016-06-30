@@ -61,6 +61,7 @@ struct BlockScope : public Scope {
   virtual void initialize();
   void uninitialize();
   void make_return(llvm::Value *val);
+  void MakeReturn(IR::Value val);
 
   llvm::Value *AllocateLocally(Type *type, const std::string &name);
   llvm::Value *CreateLocalReturn(Type *type);
@@ -70,6 +71,7 @@ struct BlockScope : public Scope {
 
   ScopeType type;
   llvm::BasicBlock *entry, *exit, *land;
+  IR::Block *entry_block, *exit_block, *land_block;
   std::stack<std::pair<Type *, llvm::Value *>> deferred_uninits;
 };
 
@@ -93,6 +95,8 @@ struct FnScope : public BlockScope {
   llvm::Function *llvm_fn;
   llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
+
+  IR::Value exit_flag, ret_val;
 };
 
 // TODO these are not threadsafe! When we access the stack, when compilation is

@@ -190,8 +190,7 @@ Func *AsciiFunc() {
   Func::Current  = ascii_;
   Block::Current = ascii_->entry();
 
-  Block::Current->exit.SetReturn(
-      IR::Value::Reg(IR::Cast(Uint, Char, IR::Value::Arg(0)).result.reg));
+  Block::Current->exit.SetReturn(IR::Cast(Uint, Char, IR::Value::Arg(0)));
 
   Func::Current  = saved_func;
   Block::Current = saved_block;
@@ -211,8 +210,7 @@ Func *OrdFunc() {
   Func::Current  = ord_;
   Block::Current = ord_->entry();
 
-  Block::Current->exit.SetReturn(
-      IR::Value::Reg(IR::Cast(Char, Uint, IR::Value::Arg(0)).result.reg));
+  Block::Current->exit.SetReturn(IR::Cast(Char, Uint, IR::Value::Arg(0)));
 
   Func::Current  = saved_func;
   Block::Current = saved_block;

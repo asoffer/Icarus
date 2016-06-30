@@ -66,6 +66,7 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
     mvprintw(++row, 34, "ret %s", ss.str().c_str());
   } break;
   case Exit::Strategy::ReturnVoid: mvprintw(++row, 34, "ret void"); break;
+  case Exit::Strategy::Unset: UNREACHABLE;
   }
 
   mvprintw(20, 50, "Stack size:     %ld", local_stack->used);
@@ -475,6 +476,7 @@ Block *Block::ExecuteJump(StackFrame &frame) {
     }
     return v.as_bool ? exit.true_block : exit.false_block;
   }
+  case Exit::Strategy::Unset: UNREACHABLE;
   }
 }
 
@@ -487,7 +489,6 @@ StackFrame::StackFrame(Func *f, LocalStack *local_stack,
   // TODO determine frame alignment and make it correct! Currently just assuming
   // 16-bytes for safety.
 }
-
 
 void LocalStack::AddFrame(StackFrame *fr) {
   size_t old_use_size = used;
@@ -510,36 +511,26 @@ Value Call(Func *f, LocalStack *local_stack,
            const std::vector<Value> &arg_vals) {
   StackFrame frame(f, local_stack, arg_vals);
 
-  eval_loop_start:
-    if (frame.inst_ptr == frame.curr_block->cmds.size()) {
-      frame.prev_block = frame.curr_block;
-      frame.curr_block = frame.curr_block->ExecuteJump(frame);
+eval_loop_start:
+  if (frame.inst_ptr == frame.curr_block->cmds.size()) {
+    if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
+    frame.prev_block = frame.curr_block;
+    frame.curr_block = frame.curr_block->ExecuteJump(frame);
 
-      if (!frame.curr_block) { // It's a return (perhaps void)
-        if (frame.prev_block->exit.flag == Exit::Strategy::ReturnVoid) {
-          return Value(nullptr);
-
-        } else if (frame.prev_block->exit.val.flag == ValType::Reg) {
-          return frame.reg[frame.prev_block->exit.val.as_reg];
-
-        } else if (frame.prev_block->exit.val.flag == ValType::Arg) {
-          return frame.reg[frame.prev_block->exit.val.as_arg];
-
-        } else {
-          return frame.prev_block->exit.val;
-        }
-
-      } else {
-        frame.inst_ptr = 0;
-      }
-
+    if (!frame.curr_block) { // It's a return (perhaps void)
+      return (frame.prev_block->exit.flag == Exit::Strategy::Return)
+                 ? ResolveValue(frame, frame.prev_block->exit.val)
+                 : Value();
     } else {
-      if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
-
-      frame.curr_block->cmds[frame.inst_ptr].Execute(frame);
-      ++frame.inst_ptr;
+      frame.inst_ptr = 0;
     }
-    goto eval_loop_start;
-}
 
+  } else {
+    if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
+
+    frame.curr_block->cmds[frame.inst_ptr].Execute(frame);
+    ++frame.inst_ptr;
+  }
+  goto eval_loop_start;
+}
 } // namespace IR

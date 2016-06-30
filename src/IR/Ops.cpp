@@ -5,22 +5,22 @@
 // TODO what Value number to return????
 namespace IR {
 #define CMD_WITH_1_ARGS(name, out_type)                                        \
-  Cmd name(Value v) {                                                          \
+  Value name(Value v) {                                                        \
     Cmd cmd(Op::name, out_type != Void);                                       \
     cmd.args.push_back(v);                                                     \
     cmd.result.type = out_type;                                                \
     Block::Current->push(cmd);                                                 \
-    return cmd;                                                                \
+    return Value::Reg(cmd.result.reg);                                         \
   }
 
 #define CMD_WITH_2_ARGS(name, out_type)                                        \
-  Cmd name(Value arg1, Value arg2) {                                           \
+  Value name(Value arg1, Value arg2) {                                         \
     Cmd cmd(Op::name, out_type != Void);                                       \
     cmd.args.push_back(arg1);                                                  \
     cmd.args.push_back(arg2);                                                  \
     cmd.result.type = out_type;                                                \
     Block::Current->push(cmd);                                                 \
-    return cmd;                                                                \
+    return Value::Reg(cmd.result.reg);                                         \
   }
 
 // Intentionally empty. Must be hand implemented
@@ -35,44 +35,43 @@ namespace IR {
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
 
-Cmd Cast(Type *in, Type *out, Value arg) {
+Value Cast(Type *in, Type *out, Value arg) {
   Cmd cmd(Op::Cast, true);
   cmd.args        = {Value(in), Value(out), arg};
   cmd.result.type = out;
   Block::Current->push(cmd);
-  return cmd;
+  return Value::Reg(cmd.result.reg);
 }
 
-Cmd Call(Type *out, Value fn, const std::vector<Value> &args) {
+Value Call(Type *out, Value fn, const std::vector<Value> &args) {
   Cmd cmd(Op::Call, out != Void);
   cmd.args.push_back(fn);
   for (const auto elem : args) { cmd.args.push_back(elem); }
   cmd.result.type = out;
   Block::Current->push(cmd);
-  return cmd;
+  return Value::Reg(cmd.result.reg);
 }
 
 Cmd Phi(Type *ret_type) {
   Cmd cmd(Op::Phi, true);
   cmd.result.type = ret_type;
-  Block::Current->push(cmd);
   return cmd;
 }
 
-Cmd Store(Type *rhs_type, Value lhs, Value rhs) {
+Value Store(Type *rhs_type, Value lhs, Value rhs) {
   Cmd cmd(Op::Store, false);
   cmd.args        = {Value(rhs_type), lhs, rhs};
   cmd.result.type = Void;
   Block::Current->push(cmd);
-  return cmd;
+  return Value();
 }
 
-Cmd Load(Type *load_type, Value v) {
+Value Load(Type *load_type, Value v) {
   Cmd cmd(Op::Load, true);
   cmd.args        = {v};
   cmd.result.type = load_type;
   Block::Current->push(cmd);
-  return cmd;
+  return Value::Reg(cmd.result.reg);
 }
 
 Func *Func::Current;
@@ -128,9 +127,15 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
 
 void Cmd::dump(size_t indent) {
   std::cerr << std::string(indent, ' ') << result.type->to_string();
-  if (result.type != Void) { std::cerr << " %" << result.reg << "\t= "; }
+  if (result.type != Void) {
+    std::cerr << " %" << result.reg << "\t= ";
+  } else {
+    std::cerr << "  \t  ";
+  }
   assert(!args.empty());
-  for (size_t i = 0; i < args.size(); ++i) { std::cerr << ", " << args[i]; }
+  std::cerr << OpCodeString(op_code) << ' ' << args[0];
+  for (size_t i = 1; i < args.size(); ++i) { std::cerr << ", " << args[i]; }
+  std::cerr << '\n';
 }
 
 void Block::dump() {
@@ -145,21 +150,18 @@ void Block::dump() {
 }
 
 void Exit::dump(size_t indent) {
-  std::cout << std::string(indent, ' ');
+  std::cerr << std::string(indent, ' ');
   switch (flag) {
   case Strategy::Uncond:
-    std::cout << "jmp block-" << true_block->block_num << "\n\n";
-    return;
+    std::cerr << "jmp block-" << true_block->block_num << "\n\n";
+    break;
   case Strategy::Cond:
-    std::cout << "cond br " << val << " [T: block-" << true_block->block_num
+    std::cerr << "cond br " << val << " [T: block-" << true_block->block_num
               << "] [F: block-" << false_block->block_num << "]\n\n";
-    return;
-  case Strategy::Return:
-    std::cout << "ret " << val << "\n\n";
-    return;
-  case Strategy::ReturnVoid:
-    std::cout << "ret\n\n";
-    return;
+    break;
+  case Strategy::Return: std::cerr << "ret " << val << "\n\n"; break;
+  case Strategy::ReturnVoid: std::cerr << "ret\n\n"; break;
+  case Strategy::Unset: UNREACHABLE;
   }
 }
 
