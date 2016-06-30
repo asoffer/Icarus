@@ -202,6 +202,23 @@ void Cmd::Execute(StackFrame& frame) {
 
 #undef DO_STORE
   } break;
+  case Op::Field: {
+    auto struct_type = (Structure *)(cmd_inputs[0].as_type);
+
+    // TODO what if it's heap-allocated?
+    assert(cmd_inputs[1].flag == ValType::Alloc);
+    assert(cmd_inputs[2].flag == ValType::U);
+
+    auto ptr = cmd_inputs[1].as_alloc;
+
+    size_t field_index = cmd_inputs[2].as_uint;
+
+    // field_index + 1 is correct because it simplifies the offset computation
+    // to have the zero present.
+    ptr += struct_type->field_offsets AT(field_index + 1);
+    frame.reg[result.reg] = Value::Alloc(ptr);
+  } break;
+
                   /*
   case Op::GEP: {
     if (cmd_inputs[0].as_type->is_array()) {

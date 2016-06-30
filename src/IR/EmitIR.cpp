@@ -450,7 +450,8 @@ IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   ir_func = new IR::Func;
 
-  fn_scope->exit_block = ir_func->AddBlock();
+  fn_scope->entry_block = ir_func->entry();
+  fn_scope->exit_block  = ir_func->AddBlock();
 
   assert(type);
   assert(type->is_function());
@@ -473,12 +474,18 @@ IR::Value FunctionLiteral::EmitIR() {
     }
   }
 
+  fn_scope->IR_Init();
+
   statements->EmitIR();
 
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
   IR::Block::Current = fn_scope->exit_block;
-  IR::Block::Current->exit.SetReturn(
-      IR::Load(((Function *)type)->output, fn_scope->ret_val));
+  if (((Function *)type)->output == Void) {
+    IR::Block::Current->exit.SetReturnVoid();
+  } else {
+    IR::Block::Current->exit.SetReturn(
+        IR::Load(((Function *)type)->output, fn_scope->ret_val));
+  }
 
   return IR::Value(ir_func);
 }
@@ -530,6 +537,7 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
+  /*
   if (IsUninitialized()) {
     return IR::Value();
 
@@ -542,6 +550,7 @@ IR::Value Declaration::EmitIR() {
 
     EmitAssignment(scope_, identifier->type, init_val->type, id_val, rhs_val);
   }
+  */
   return IR::Value();
 }
 

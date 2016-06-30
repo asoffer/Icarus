@@ -262,6 +262,24 @@ llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
   return AllocateLocally(type, "local.ret");
 }
 
+void BlockScope::IR_Init() {
+  for (auto decl_ptr : ordered_decls_) {
+    if (decl_ptr->is_indecl()) continue;
+    if (!decl_ptr->type->stores_data()) continue;
+
+    if (decl_ptr->arg_val ||
+        (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
+      continue;
+    }
+
+    assert(IR::Func::Current->frame_map.find(decl_ptr) !=
+           IR::Func::Current->frame_map.end());
+
+    decl_ptr->type->EmitInit(IR::Value::RelAlloc(
+        IR::Func::Current->frame_map.find(decl_ptr)->second));
+  }
+}
+
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
   if (fn_type->output != Void) {

@@ -35,6 +35,14 @@ namespace IR {
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
 
+Value Field(Structure *struct_type, Value ptr, size_t field_num) {
+  Cmd cmd(Op::Field, true);
+  cmd.args        = {Value(struct_type), ptr, Value(field_num)};
+  cmd.result.type = Ptr(struct_type->field_type AT(field_num));
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Value Cast(Type *in, Type *out, Value arg) {
   Cmd cmd(Op::Cast, true);
   cmd.args        = {Value(in), Value(out), arg};

@@ -5,6 +5,8 @@
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
+extern void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                           IR::Value lhs_ptr, IR::Value rhs);
 
 namespace cstdlib {
 extern llvm::Constant *calloc();
@@ -177,13 +179,11 @@ void Primitive::EmitInit(IR::Value id_val) {
   case TypeEnum::Type: UNREACHABLE;
   case TypeEnum::Void: UNREACHABLE;
   case TypeEnum::NullPtr: UNREACHABLE;
-  case TypeEnum::Bool: /*  IR::Store(this, IR::Value(false), id_val); */ return;
-  case TypeEnum::Char: /*  IR::Store(this, IR::Value((char)0), id_val);*/
-    return;
-  case TypeEnum::Int: /* IR::Store(this, IR::Value((int)0), id_val); */ return;
-  case TypeEnum::Real: /*  IR::Store(this, IR::Value(0.0), id_val); */ return;
-  case TypeEnum::Uint: /*  IR::Store(this, IR::Value((size_t)0), id_val);*/
-    return;
+  case TypeEnum::Bool: IR::Store(this, IR::Value(false), id_val); return;
+  case TypeEnum::Char: IR::Store(this, IR::Value((char)0), id_val); return;
+  case TypeEnum::Int: IR::Store(this, IR::Value((int)0), id_val); return;
+  case TypeEnum::Real: IR::Store(this, IR::Value(0.0), id_val); return;
+  case TypeEnum::Uint: IR::Store(this, IR::Value((size_t)0), id_val); return;
   }
 }
 
@@ -230,20 +230,26 @@ void Structure::EmitInit(IR::Value id_val) {
     IR::Block::Current = init_func->entry();
 
     // TODO init expressions?
+
     for (size_t i = 0; i < field_type.size(); ++i) {
-      // auto gep = IR::GEP(this, IR::Value::Arg(0), {0, (int)i});
-      // IR::Block::Current->push(gep);
-      // field_type[i]->EmitInit(gep);
+      if (init_values[i]) {
+        if (init_values[i]->is_hole()) { continue; }
+        EmitAssignment(
+            init_values[i]->scope_, field_type[i], init_values[i]->type,
+            IR::Field(this, IR::Value::Arg(0), i), init_values[i]->EmitIR());
+      } else {
+        field_type[i]->EmitInit(IR::Field(this, IR::Value::Arg(0), i));
+      }
     }
+
+    IR::Block::Current->exit.SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;
   }
   assert(init_func);
 
-//   auto call    = IR::CallCmd(IR::Value(init_func));
-//   call.args[0] = id_val; // TODO this is wrong
-//   IR::Block::Current->cmds.push_back(call);
+  IR::Call(Void, IR::Value(init_func), {id_val});
 }
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }

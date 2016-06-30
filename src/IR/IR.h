@@ -212,6 +212,8 @@ Value Call(Type *out, Value, const std::vector<Value> &);
 Value Store(Type *rhs_type, Value, Value);
 Value Load(Type *load_type, Value);
 Value Cast(Type *in, Type *out, Value);
+Value Field(Structure *struct_type, Value ptr, size_t field_num);
+
 Cmd Phi(Type *ret_type);
 
 #undef CMD_WITH_V_ARGS

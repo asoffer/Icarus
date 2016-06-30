@@ -36,7 +36,22 @@ IR::Value ChainOp::EmitLVal() { NOT_YET; }
 IR::Value DummyTypeExpr::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }
 IR::Value InDecl::EmitLVal() { NOT_YET; }
-IR::Value Access::EmitLVal() { NOT_YET; }
+
+IR::Value Access::EmitLVal() { 
+  // Automatically pass through pointers
+  auto etype  = operand->type;
+  auto e_lval = operand->EmitLVal();
+
+  while (etype->is_pointer()) {
+    etype  = ((Pointer *)etype)->pointee;
+    e_lval = IR::Load(etype, e_lval);
+  }
+
+  assert(etype->is_struct());
+  auto struct_type = (Structure *)etype;
+  return IR::Field(struct_type, e_lval,
+                   struct_type->field_name_to_num AT(member_name));
+}
 
 IR::Value Terminal::EmitLVal() { UNREACHABLE; }
 IR::Value Declaration::EmitLVal() { UNREACHABLE; }
