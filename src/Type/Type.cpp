@@ -22,8 +22,8 @@ size_t Type::bytes() const {
   // TODO make this platform specific
   if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
-  if (this == Int || is_enum()) { return 4; }
-  if (this == Uint || this == Real || is_pointer()) { return 8; }
+  if (is_enum()) { return 4; }
+  if (this == Int || this == Uint || this == Real || is_pointer()) { return 8; }
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -55,8 +55,8 @@ size_t Type::alignment() const {
   // TODO make this platform specific
   if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
-  if (this == Int || is_enum()) { return 4; }
-  if (this == Uint || this == Real || is_pointer() || is_function()) { return 8; }
+  if (is_enum()) { return 4; }
+  if (this == Int || this == Uint || this == Real || is_pointer() || is_function()) { return 8; }
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -192,8 +192,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 
 Array::Array(Type *t)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr), data_type(t), len(0),
-      fixed_length(false) {
+      assign_fn_(nullptr), init_func(nullptr), repr_func(nullptr), data_type(t),
+      len(0), fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
 
@@ -204,8 +204,8 @@ Array::Array(Type *t)
 
 Array::Array(Type *t, size_t l)
     : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr), data_type(t), len(l),
-      fixed_length(true) {
+      assign_fn_(nullptr), init_func(nullptr), repr_func(nullptr), data_type(t),
+      len(l), fixed_length(true) {
   dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
   if (time() != Time::compile) {
     std::vector<llvm::Type *> init_args(dimension + 1, *Uint);

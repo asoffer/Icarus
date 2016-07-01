@@ -10,11 +10,9 @@ extern bool ct_eval;
 namespace IR {
 extern Func *AsciiFunc();
 extern Func *OrdFunc();
-
-static Value PtrCallFix(Type *t, IR::Value v) {
-  return t->is_big() ? v : IR::Load(t, v);
-}
 } // namespace IR
+
+extern IR::Value PtrCallFix(Type *t, IR::Value v);
 
 size_t IR::Func::PushSpace(Type *t) {
   return PushSpace(t->bytes(), t->alignment());
@@ -86,7 +84,7 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Hole: UNREACHABLE;
   case Language::Terminal::Int:
     return IR::Value(
-        (int)value.as_int); // TODO Context::Value shouldn't use longs
+        (long)value.as_int); // TODO Context::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value(nullptr);
   case Language::Terminal::Ord: return IR::Value(IR::OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
@@ -105,8 +103,8 @@ static void EmitPrintExpr(Expression *expr) {
   if (expr->type->is_primitive()) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
 
-  } else if (expr->type->is_function()) {
-    NOT_YET;
+  } else if (expr->type->is_function() || expr->type->is_array()) {
+    expr->type->EmitRepr(expr->EmitIR());
 
   } else {
     NOT_YET;
@@ -525,7 +523,7 @@ IR::Value Identifier::EmitIR() {
   } else {
     assert(IR::Func::Current->frame_map.find(decl) !=
            IR::Func::Current->frame_map.end());
-    return IR::PtrCallFix(
+    return PtrCallFix(
         type, IR::Value::RelAlloc(IR::Func::Current->frame_map.at(decl)));
   }
 }
@@ -638,7 +636,7 @@ IR::Value Access::EmitIR() {
                {0, (int)(struct_type->field_name_to_num AT(member_name))});
    IR::Block::Current->push(elem_ptr);
 
-   return IR::PtrCallFix(type, elem_ptr);
+   return PtrCallFix(type, elem_ptr);
  }
 */
   NOT_YET;

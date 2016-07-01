@@ -11,9 +11,9 @@ IR::Value Binop::EmitLVal() {
     auto array_type = (Array*)lhs->type;
     // auto lhs_val  = lhs->EmitLVal();
     auto rhs_val  = rhs->EmitIR();
-    int index;
+    long index;
     if (rhs_val.flag == IR::ValType::U) {
-      index = (int)rhs_val.as_uint;
+      index = (long)rhs_val.as_uint;
     } else if (rhs_val.flag == IR::ValType::I) {
       index = rhs_val.as_int;
     } else {
@@ -21,7 +21,8 @@ IR::Value Binop::EmitLVal() {
     }
 
     if (array_type->fixed_length) {
-      NOT_YET;
+      return IR::Access(((Array *)lhs->type)->data_type, rhs_val,
+                        lhs->EmitLVal());
     } else {
       NOT_YET;
     }

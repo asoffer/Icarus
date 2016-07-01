@@ -181,7 +181,7 @@ void Primitive::EmitInit(IR::Value id_val) {
   case TypeEnum::NullPtr: UNREACHABLE;
   case TypeEnum::Bool: IR::Store(this, IR::Value(false), id_val); return;
   case TypeEnum::Char: IR::Store(this, IR::Value((char)0), id_val); return;
-  case TypeEnum::Int: IR::Store(this, IR::Value((int)0), id_val); return;
+  case TypeEnum::Int: IR::Store(this, IR::Value((long)0), id_val); return;
   case TypeEnum::Real: IR::Store(this, IR::Value(0.0), id_val); return;
   case TypeEnum::Uint: IR::Store(this, IR::Value((size_t)0), id_val); return;
   }
@@ -198,22 +198,21 @@ void Array::EmitInit(IR::Value id_val) {
 
     if (fixed_length) {
       for (size_t i = 0; i < len; ++i) {
-        // auto gep = IR::GEP(this, IR::Value::Arg(0), {0, (int)i});
-        // IR::Block::Current->push(gep);
-        // data_type->EmitInit(gep);
+        data_type->EmitInit(
+            IR::Access(data_type, IR::Value(i), IR::Value::Arg(0)));
       }
     } else {
       NOT_YET;
     }
+
+    IR::Block::Current->exit.SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;
   }
   assert(init_func);
 
-//   auto call    = IR::CallCmd(IR::Value(init_func));
-//   call.args[0] = id_val; // TODO this is wrong
-//   IR::Block::Current->cmds.push_back(call);
+  IR::Call(Void, IR::Value(init_func), {id_val});
 }
 
 void Pointer::EmitInit(IR::Value id_val) {

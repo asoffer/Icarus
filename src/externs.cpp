@@ -228,6 +228,10 @@ llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr) {
   return (t->is_big()) ? ptr : builder.CreateLoad(ptr);
 }
 
+IR::Value PtrCallFix(Type *t, IR::Value v) {
+  return t->is_big() ? v : IR::Load(t, v);
+}
+
 Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
                                   Type *input_type) {
   for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {

@@ -492,7 +492,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
         } else if (a->type == Char) {
           args.emplace_back(a->evaluate(ctx).as_char);
         } else if (a->type == Int) {
-          args.emplace_back((int)a->evaluate(ctx).as_int);
+          args.emplace_back((long)a->evaluate(ctx).as_int);
         } else if (a->type == Real) {
           args.emplace_back(a->evaluate(ctx).as_real);
         } else if (a->type == Uint) {

@@ -4,6 +4,7 @@
 #endif
 
 extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
+extern IR::Value PtrCallFix(Type *t, IR::Value v);
 
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -28,6 +29,75 @@ void add_branch(llvm::Function *fn, llvm::SwitchInst *switch_stmt,
   builder.SetInsertPoint(branch);
   builder.CreateCall(cstdlib::printf(), {data::global_string(display_as)});
   builder.CreateRetVoid();
+}
+
+void Primitive::EmitRepr(IR::Value val) {
+  if (this == Bool) {
+    IR::Print(IR::Value(Bool), val);
+  } else if (this == Char) {
+    // TODO switch on val to generate "\t" instead of a tab literal.
+    IR::Print(IR::Value(Char), IR::Value('\''));
+    IR::Print(IR::Value(Char), val);
+    IR::Print(IR::Value(Char), IR::Value('\''));
+
+  } else if (this == Int) {
+    IR::Print(IR::Value(Int), val);
+
+  } else if (this == Uint) {
+    IR::Print(IR::Value(Uint), val);
+    IR::Print(IR::Value(Char), IR::Value('u'));
+
+  } else if (this == Type_) {
+    NOT_YET;
+
+  } else {
+    NOT_YET;
+  }
+}
+
+void Function::EmitRepr(IR::Value) {
+  IR::Print(IR::Value(Char), IR::Value('{'));
+  IR::Print(IR::Value(Type_), IR::Value(this));
+  IR::Print(IR::Value(Char), IR::Value('}'));
+}
+
+void Enumeration::EmitRepr(IR::Value val) { NOT_YET; }
+void Pointer::EmitRepr(IR::Value val) { NOT_YET; }
+
+void Array::EmitRepr(IR::Value val) {
+  if (!repr_func) {
+    auto saved_func  = IR::Func::Current;
+    auto saved_block = IR::Block::Current;
+
+    repr_func          = new IR::Func;
+    IR::Func::Current  = repr_func;
+    IR::Block::Current = repr_func->entry();
+
+    IR::Print(IR::Value(Char), IR::Value('['));
+    if (fixed_length) {
+      if (len >= 1) {
+        data_type->EmitRepr(PtrCallFix(
+            data_type, IR::Access(data_type, IR::Value(0ul), IR::Value::Arg(0))));
+      } 
+      // TODO at some length we want to loop so code-gen isn't too expensive
+
+      for (size_t i = 1; i < len; ++i) {
+        IR::Print(IR::Value(Char), IR::Value(','));
+        IR::Print(IR::Value(Char), IR::Value(' '));
+        data_type->EmitRepr(PtrCallFix(
+            data_type, IR::Access(data_type, IR::Value(i), IR::Value::Arg(0))));
+      }
+    }
+    IR::Print(IR::Value(Char), IR::Value(']'));
+
+    IR::Block::Current->exit.SetReturnVoid();
+
+    IR::Func::Current  = saved_func;
+    IR::Block::Current = saved_block;
+  }
+  assert(init_func);
+
+  IR::Call(Void, IR::Value(repr_func), {val});
 }
 
 void Primitive::call_repr(llvm::Value *val) {
@@ -203,9 +273,16 @@ void Enumeration::call_repr(llvm::Value *val) {
                      {data::global_string(to_string() + ".%s"), val_str});
 }
 
-void Tuple::call_repr(llvm::Value *val) {}
-void Structure::call_repr(llvm::Value *val) {}
-void TypeVariable::call_repr(llvm::Value *val) {}
-void ParametricStructure::call_repr(llvm::Value *val) {}
-void RangeType::call_repr(llvm::Value *val) {}
-void SliceType::call_repr(llvm::Value *val) {}
+void Tuple::call_repr(llvm::Value *val) { NOT_YET; }
+void Structure::call_repr(llvm::Value *val) { NOT_YET; }
+void TypeVariable::call_repr(llvm::Value *val) { NOT_YET; }
+void ParametricStructure::call_repr(llvm::Value *val) { NOT_YET; }
+void RangeType::call_repr(llvm::Value *val) { NOT_YET; }
+void SliceType::call_repr(llvm::Value *val) { NOT_YET; }
+
+void Tuple::EmitRepr(IR::Value val) { NOT_YET; }
+void Structure::EmitRepr(IR::Value val) { NOT_YET; }
+void TypeVariable::EmitRepr(IR::Value val) { NOT_YET; }
+void ParametricStructure::EmitRepr(IR::Value val) { NOT_YET; }
+void RangeType::EmitRepr(IR::Value val) { NOT_YET; }
+void SliceType::EmitRepr(IR::Value val) { NOT_YET; }

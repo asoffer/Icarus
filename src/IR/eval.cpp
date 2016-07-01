@@ -23,6 +23,10 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   }
   mvprintw(height, 0, "    [-------------]");
 
+  for (size_t i = 0; i < frame.reg.size(); ++i) {
+    mvprintw((int)i, 80, "%2d.> %8d", i, frame.reg[i].as_uint);
+  }
+
   int row = 0;
   mvprintw(0, 30, "block-%ld", frame.curr_block->block_num);
   start_color();
@@ -145,7 +149,7 @@ void Cmd::Execute(StackFrame& frame) {
       if (cmd_inputs[1].as_type == Char) {
         frame.reg[result.reg] = Value((char)u);
       } else if (cmd_inputs[1].as_type == Int) {
-        frame.reg[result.reg] = Value((int)u);
+        frame.reg[result.reg] = Value((long)u);
       } else if (cmd_inputs[1].as_type == Real) {
         frame.reg[result.reg] = Value((double)u);
       } else if (cmd_inputs[1].as_type == Uint) {
@@ -172,7 +176,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     DO_LOAD(Bool, bool);
     DO_LOAD(Char, char);
-    DO_LOAD(Int, int);
+    DO_LOAD(Int, long);
     DO_LOAD(Real, double);
     DO_LOAD(Uint, size_t);
     DO_LOAD(Type_, Type *);
@@ -195,7 +199,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     DO_STORE(bool, bool, Bool);
     DO_STORE(char, char, Char);
-    DO_STORE(int, int, Int);
+    DO_STORE(long, int, Int);
     DO_STORE(double, real, Real);
     DO_STORE(size_t, uint, Uint);
     DO_STORE(Type *, type, Type_);
@@ -218,7 +222,11 @@ void Cmd::Execute(StackFrame& frame) {
     ptr += struct_type->field_offsets AT(field_index + 1);
     frame.reg[result.reg] = Value::Alloc(ptr);
   } break;
-
+  case Op::Access: {
+    frame.reg[result.reg] = Value::Alloc(
+        cmd_inputs[2].as_alloc +
+        cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
+  } break;
                   /*
   case Op::GEP: {
     if (cmd_inputs[0].as_type->is_array()) {
@@ -240,18 +248,6 @@ void Cmd::Execute(StackFrame& frame) {
       } else {
         NOT_YET;
       }
-    } else if (cmd_inputs[0].as_type->is_struct()) {
-      auto struct_type = (Structure *)(cmd_inputs[0].as_type);
-      auto ptr = cmd_inputs[1].as_alloc +
-                 (size_t)(cmd_inputs[2].as_int) * sizeof(char *);
-
-      assert(cmd_inputs.size() == 4);
-      size_t field_index = (size_t)(cmd_inputs[3].as_int) + 1;
-
-      ptr += struct_type->field_offsets AT(field_index);
-      frame.reg[result.value] = Value::Alloc(ptr);
-    } else {
-      NOT_YET;
     }
   } break;
   */
@@ -442,7 +438,7 @@ void Cmd::Execute(StackFrame& frame) {
       fprintf(stderr, "%c", cmd_inputs[1].as_char);
 
     } else if (cmd_inputs[0].as_type == Int) {
-      fprintf(stderr, "%d", cmd_inputs[1].as_int);
+      fprintf(stderr, "%ld", cmd_inputs[1].as_int);
 
     } else if (cmd_inputs[0].as_type == Real) {
       fprintf(stderr, "%lf", cmd_inputs[1].as_real);

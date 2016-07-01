@@ -18,7 +18,7 @@ struct Value {
   union {
     bool as_bool;
     char as_char;
-    int as_int;
+    long as_int;
     double as_real;
     size_t as_uint;
     Type *as_type;
@@ -35,7 +35,7 @@ struct Value {
 
   explicit Value(bool b) : as_bool(b), flag(ValType::B) {}
   explicit Value(char c) : as_char(c), flag(ValType::C) {}
-  explicit Value(int n) : as_int(n), flag(ValType::I) {}
+  explicit Value(long n) : as_int(n), flag(ValType::I) {}
   explicit Value(double d) : as_real(d), flag(ValType::R) {}
   explicit Value(size_t n) : as_uint(n), flag(ValType::U) {}
   explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
@@ -213,7 +213,7 @@ Value Store(Type *rhs_type, Value, Value);
 Value Load(Type *load_type, Value);
 Value Cast(Type *in, Type *out, Value);
 Value Field(Structure *struct_type, Value ptr, size_t field_num);
-
+Value Access(Type *type, Value index, Value ptr);
 Cmd Phi(Type *ret_type);
 
 #undef CMD_WITH_V_ARGS
