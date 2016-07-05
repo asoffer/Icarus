@@ -174,7 +174,6 @@ struct Func {
 
   std::vector<Block *> blocks;
   std::vector<Value *> args;
-  std::map<AST::Declaration *, size_t> frame_map;
   std::string name;
 
   Block *entry() { return blocks.front(); }

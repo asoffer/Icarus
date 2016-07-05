@@ -73,13 +73,13 @@ Cmd NOp() {
   return cmd;
 }
 
-
 Cmd Phi(Type *ret_type) {
   Cmd cmd(Op::Phi, true);
   cmd.result.type = ret_type;
   return cmd;
 }
 
+// NOTE: Void rhs-type means stack address
 Value Store(Type *rhs_type, Value lhs, Value rhs) {
   Cmd cmd(Op::Store, false);
   cmd.args        = {Value(rhs_type), lhs, rhs};

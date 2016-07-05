@@ -274,11 +274,7 @@ void BlockScope::IR_Init() {
       continue;
     }
 
-    assert(IR::Func::Current->frame_map.find(decl_ptr) !=
-           IR::Func::Current->frame_map.end());
-
-    decl_ptr->type->EmitInit(IR::Value::RelAlloc(
-        IR::Func::Current->frame_map.find(decl_ptr)->second));
+    decl_ptr->type->EmitInit(decl_ptr->stack_loc);
   }
   IR::Block::Current = old_block;
 }

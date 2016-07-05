@@ -26,28 +26,31 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   for (size_t i = 0; i < frame.reg.size(); ++i) {
     switch (frame.reg[i].flag) {
       case ValType::B: {
-        mvprintw((int)i, 80, "%2d.> %8s", i,
+        mvprintw((int)i, 100, "%2d.> %8s", i,
                  (frame.reg[i].as_bool ? "true" : "false"));
       } break;
       case ValType::C: {
         switch (frame.reg[i].as_char) {
-        case '\n': mvprintw((int)i, 80, "%2d.>      '\\n'", i); break;
-        case '\r': mvprintw((int)i, 80, "%2d.>      '\\r'", i); break;
-        case '\t': mvprintw((int)i, 80, "%2d.>      '\\t'", i); break;
-        case '\b': mvprintw((int)i, 80, "%2d.>      '\\b'", i); break;
-        case '\v': mvprintw((int)i, 80, "%2d.>      '\\v'", i); break;
-        case '\a': mvprintw((int)i, 80, "%2d.>      '\\a'", i); break;
-        default: mvprintw((int)i, 80, "%2d.>      '%c'", i, frame.reg[i].as_char);
+        case '\n': mvprintw((int)i, 100, "%2d.>      '\\n'", i); break;
+        case '\r': mvprintw((int)i, 100, "%2d.>      '\\r'", i); break;
+        case '\t': mvprintw((int)i, 100, "%2d.>      '\\t'", i); break;
+        case '\b': mvprintw((int)i, 100, "%2d.>      '\\b'", i); break;
+        case '\v': mvprintw((int)i, 100, "%2d.>      '\\v'", i); break;
+        case '\a': mvprintw((int)i, 100, "%2d.>      '\\a'", i); break;
+        default: mvprintw((int)i, 100, "%2d.>      '%c'", i, frame.reg[i].as_char);
         }
       } break;
       case ValType::I: {
-        mvprintw((int)i, 80, "%2d.> %8ldi", i, frame.reg[i].as_int);
+        mvprintw((int)i, 100, "%2d.> %8ldi", i, frame.reg[i].as_int);
       } break;
       case ValType::U: {
-        mvprintw((int)i, 80, "%2d.> %8luu", i, frame.reg[i].as_uint);
+        mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
+      } break;
+      case ValType::Alloc: {
+        mvprintw((int)i, 100, "%2d.> %8lu (stack pos)", i, frame.reg[i].as_alloc);
       } break;
       default: {
-        mvprintw((int)i, 80, "%2d.> ........", i);
+        mvprintw((int)i, 100, "%2d.> ........", i);
       } break;
     }
   }
@@ -229,7 +232,13 @@ void Cmd::Execute(StackFrame& frame) {
     DO_STORE(size_t, uint, Uint);
     DO_STORE(Type *, type, Type_);
 
+    if (cmd_inputs[0].as_type == Void) {
+      auto ptr = (void *)(frame.stack->allocs + offset);
+      *(size_t *)ptr = cmd_inputs[1].as_alloc;
+      break;
+    }
 #undef DO_STORE
+    UNREACHABLE;
   } break;
   case Op::Field: {
     auto struct_type = (Structure *)(cmd_inputs[0].as_type);
@@ -248,9 +257,14 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] = Value::Alloc(ptr);
   } break;
   case Op::Access: {
-    frame.reg[result.reg] = Value::Alloc(
-        cmd_inputs[2].as_alloc +
-        cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
+    switch (cmd_inputs[2].flag) {
+    case ValType::Alloc:
+      frame.reg[result.reg] =
+          Value::Alloc(cmd_inputs[2].as_alloc +
+                cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
+      break;
+    default: std::cerr << cmd_inputs[2] << '\n'; UNREACHABLE;
+    }
   } break;
                   /*
   case Op::GEP: {
@@ -395,6 +409,9 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::FEQ: {
     frame.reg[result.reg] =
         Value(cmd_inputs[0].as_char == cmd_inputs[1].as_char);
+  } break;
+  case Op::PtrEQ: {
+    frame.reg[result.reg] = Value(cmd_inputs[0].as_ptr == cmd_inputs[1].as_ptr);
   } break;
   case Op::BEQ: {
     frame.reg[result.reg] =

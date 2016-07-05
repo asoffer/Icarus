@@ -206,6 +206,7 @@ struct Declaration : public Expression {
   Expression *type_expr;
   Expression *init_val;
   llvm::Value *alloc;
+  IR::Value stack_loc;
 
   // If it's an argument, this points to the function/parametric-struct for
   // which it's an argument. Otherwise this field is null.

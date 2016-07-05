@@ -32,7 +32,7 @@ size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
 }
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
-  frame_map[decl] = PushSpace(decl->type);
+  decl->stack_loc = IR::Value::RelAlloc(PushSpace(decl->type));
 }
 
 void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
@@ -91,7 +91,7 @@ IR::Value Terminal::EmitIR() {
     IR::Block::Current->exit.SetReturnVoid();
     return IR::Value();
   } break;
-  case Language::Terminal::StringLiteral: NOT_YET;
+  case Language::Terminal::StringLiteral: return IR::Value(value.as_cstr);
   case Language::Terminal::True: return IR::Value(true);
   case Language::Terminal::Type: return IR::Value(value.as_type);
   case Language::Terminal::Uint: return IR::Value(value.as_uint);
@@ -520,10 +520,7 @@ IR::Value Identifier::EmitIR() {
     return func_to_call;
 
   } else {
-    assert(IR::Func::Current->frame_map.find(decl) !=
-           IR::Func::Current->frame_map.end());
-    return PtrCallFix(
-        type, IR::Value::RelAlloc(IR::Func::Current->frame_map.at(decl)));
+    return PtrCallFix(type, decl->stack_loc);
   }
 }
 
@@ -758,7 +755,6 @@ IR::Value For::EmitIR() {
       auto start_val     = ((Binop *)container)->lhs->EmitIR();
       auto end_val       = ((Binop *)container)->rhs->EmitIR();
 
-
       IR::Block::Current = phi_block;
       phi                = IR::Phi(iter->type);
       phi.args.emplace_back(init_block);
@@ -781,30 +777,64 @@ IR::Value For::EmitIR() {
         UNREACHABLE;
       }
 
+      IR::Block::Current = incr_block;
+      IR::Value next;
+      if (iter->identifier->type == Uint) {
+        next = IR::UAdd(IR::Load(Uint, iter->identifier->EmitLVal()),
+                        IR::Value(1ul));
+      } else if (iter->identifier->type == Int) {
+        next = IR::IAdd(IR::Load(Int, iter->identifier->EmitLVal()),
+                        IR::Value(1l));
 
-    } else {
+      } else if (iter->identifier->type == Char) {
+        next = IR::CAdd(IR::Load(Char, iter->identifier->EmitLVal()),
+                        IR::Value('\01'));
+
+      } else {
+        UNREACHABLE;
+      }
+
+      phi.args.emplace_back(incr_block);
+      phi.args.emplace_back(next);
+
+    } else if (container->type->is_slice()) {
       NOT_YET;
-    }
+    } else if (container->type->is_array()) {
+      IR::Block::Current = init_block;
+      auto container_val = container->EmitIR();
 
-    IR::Block::Current = incr_block;
-    IR::Value next;
-    if (iter->identifier->type == Uint) {
-      next = IR::UAdd(IR::Load(Uint, iter->identifier->EmitLVal()),
-                      IR::Value(1ul));
-    } else if (iter->identifier->type == Int) {
-      next =
-          IR::IAdd(IR::Load(Int, iter->identifier->EmitLVal()), IR::Value(1l));
+      IR::Value start_ptr, end_ptr;
 
-    } else if (iter->identifier->type == Char) {
-      next = IR::CAdd(IR::Load(Char, iter->identifier->EmitLVal()),
-                      IR::Value('\01'));
+      auto array_type = (Array *)container->type;
+      if (array_type->fixed_length) {
+        start_ptr = container_val;
+        end_ptr = IR::Access(array_type->data_type, IR::Value(array_type->len),
+                             container_val);
+      } else {
+        NOT_YET;
+      }
 
+      IR::Block::Current = phi_block;
+      phi                = IR::Phi(Ptr(iter->type));
+      auto phi_result = IR::Value::Reg(phi.result.reg);
+      phi.args.emplace_back(init_block);
+      phi.args.emplace_back(start_ptr);
+
+      IR::Block::Current = cond_block;
+      iter->stack_loc    = phi_result;
+      done_cmp = IR::BOr(done_cmp, IR::PtrEQ(phi_result, end_ptr));
+
+      IR::Block::Current = incr_block;
+      auto next = IR::Access(array_type->data_type, IR::Value(1ul), phi_result);
+      phi.args.emplace_back(incr_block);
+      phi.args.emplace_back(next);
+
+    } else if (container->type == Type_) {
+      NOT_YET;
     } else {
       UNREACHABLE;
     }
 
-    phi.args.emplace_back(incr_block);
-    phi.args.emplace_back(next);
     phi_block->push(phi);
   }
 
@@ -813,6 +843,9 @@ IR::Value For::EmitIR() {
 
   assert(!for_scope->entry_block);
   for_scope->entry_block = IR::Func::Current->AddBlock("for-entry");
+
+  assert(!for_scope->exit_block);
+  for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
 
   // Link blocks
   init_block->exit.SetUnconditional(phi_block);
@@ -826,7 +859,7 @@ IR::Value For::EmitIR() {
   for_scope->IR_Init();
   for_scope->entry_block->exit.SetUnconditional(body_block);
 
-  IR::Block::Current = for_scope->entry_block;
+  IR::Block::Current = body_block;
   statements->EmitIR();
   IR::Block::Current->exit.SetUnconditional(for_scope->exit_block);
 

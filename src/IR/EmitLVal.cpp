@@ -2,9 +2,7 @@
 #include "Type/Type.h"
 
 namespace AST {
-IR::Value Identifier::EmitLVal() {
-  return IR::Value::RelAlloc(IR::Func::Current->frame_map.at(decl));
-}
+IR::Value Identifier::EmitLVal() { return decl->stack_loc; }
 
 IR::Value Binop::EmitLVal() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
