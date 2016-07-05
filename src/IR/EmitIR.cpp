@@ -595,50 +595,43 @@ IR::Value Case::EmitIR() {
 }
 
 IR::Value Access::EmitIR() {
-  /*
- // TODO we don't allow pointers to types?
- if (operand->type == Type_) {
-   if (member_name == "bytes") {
-     return IR::Bytes(operand->EmitIR());
+  // TODO we don't allow pointers to types?
+  if (operand->type == Type_) {
+    if (member_name == "bytes") {
+      return IR::Bytes(operand->EmitIR());
 
-   } else if (member_name == "alignment") {
-     return IR::Alignment(operand->EmitIR());
-   }
- }
+    } else if (member_name == "alignment") {
+      return IR::Alignment(operand->EmitIR());
+    }
+  }
 
- // Pass through pointers
- auto eval      = operand->EmitIR();
- auto base_type = operand->type;
- while (base_type->is_pointer()) {
-   base_type = ((Pointer *)base_type)->pointee;
-   // if (!base_type->is_big()) { eval = IR::Load(base_type, eval); }
- }
+  // Pass through pointers
+  auto eval      = operand->EmitIR();
+  auto base_type = operand->type;
+  while (base_type->is_pointer()) {
+    base_type = ((Pointer *)base_type)->pointee;
+    if (!base_type->is_big()) { eval = IR::Load(base_type, eval); }
+  }
 
- // Array size
- if (base_type->is_array() && member_name == "size") {
-   auto array_type = (Array *)base_type;
-   if (array_type->fixed_length) {
-     return IR::Value(array_type->len);
-   } else {
-     auto gep = IR::GEP(array_type, eval, {0, 0});
-     IR::Block::Current->push(gep);
-     return IR::Load(array_type->data_type, gep);
-   }
- }
+  // Array size
+  if (base_type->is_array() && member_name == "size") {
+    auto array_type = (Array *)base_type;
+    if (array_type->fixed_length) {
+      return IR::Value(array_type->len);
+    } else {
+      NOT_YET;
+    }
+  }
 
- if (base_type->is_struct()) {
-   auto struct_type = (Structure *)base_type;
+  if (base_type->is_struct()) {
+    auto struct_type = (Structure *)base_type;
 
-   if (!type->stores_data()) { NOT_YET; }
+    if (!type->stores_data()) { NOT_YET; }
+    auto index = struct_type->field_name_to_num AT(member_name);
+    return PtrCallFix(struct_type->field_type AT(index),
+                      IR::Field(struct_type, eval, index));
+  }
 
-   auto elem_ptr =
-       IR::GEP(struct_type, eval,
-               {0, (int)(struct_type->field_name_to_num AT(member_name))});
-   IR::Block::Current->push(elem_ptr);
-
-   return PtrCallFix(type, elem_ptr);
- }
-*/
   NOT_YET;
 }
 
