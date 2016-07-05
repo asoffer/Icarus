@@ -24,11 +24,36 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   mvprintw(height, 0, "    [-------------]");
 
   for (size_t i = 0; i < frame.reg.size(); ++i) {
-    mvprintw((int)i, 80, "%2d.> %8d", i, frame.reg[i].as_uint);
+    switch (frame.reg[i].flag) {
+      case ValType::B: {
+        mvprintw((int)i, 80, "%2d.> %8s", i,
+                 (frame.reg[i].as_bool ? "true" : "false"));
+      } break;
+      case ValType::C: {
+        switch (frame.reg[i].as_char) {
+        case '\n': mvprintw((int)i, 80, "%2d.>      '\\n'", i); break;
+        case '\r': mvprintw((int)i, 80, "%2d.>      '\\r'", i); break;
+        case '\t': mvprintw((int)i, 80, "%2d.>      '\\t'", i); break;
+        case '\b': mvprintw((int)i, 80, "%2d.>      '\\b'", i); break;
+        case '\v': mvprintw((int)i, 80, "%2d.>      '\\v'", i); break;
+        case '\a': mvprintw((int)i, 80, "%2d.>      '\\a'", i); break;
+        default: mvprintw((int)i, 80, "%2d.>      '%c'", i, frame.reg[i].as_char);
+        }
+      } break;
+      case ValType::I: {
+        mvprintw((int)i, 80, "%2d.> %8ldi", i, frame.reg[i].as_int);
+      } break;
+      case ValType::U: {
+        mvprintw((int)i, 80, "%2d.> %8luu", i, frame.reg[i].as_uint);
+      } break;
+      default: {
+        mvprintw((int)i, 80, "%2d.> ........", i);
+      } break;
+    }
   }
 
   int row = 0;
-  mvprintw(0, 30, "block-%ld", frame.curr_block->block_num);
+  mvprintw(0, 30, "%s", frame.curr_block->block_name);
   start_color();
   init_pair(1, COLOR_BLACK, COLOR_WHITE);
   for (const auto &cmd : frame.curr_block->cmds) {
@@ -54,15 +79,15 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   }
   switch(frame.curr_block->exit.flag) {
   case Exit::Strategy::Uncond: {
-    mvprintw(++row, 34, "jmp block-%lu",
-             frame.curr_block->exit.true_block->block_num);
+    mvprintw(++row, 34, "jmp %s",
+             frame.curr_block->exit.true_block->block_name);
   } break;
   case Exit::Strategy::Cond: {
     std::stringstream ss;
     ss << frame.curr_block->exit.val;
-    mvprintw(++row, 34, "br %s [T: block-%lu] [F: block-%lu]", ss.str().c_str(),
-             frame.curr_block->exit.true_block->block_num,
-             frame.curr_block->exit.false_block->block_num);
+    mvprintw(++row, 34, "br %s [T: %s] [F: %s]", ss.str().c_str(),
+             frame.curr_block->exit.true_block->block_name,
+             frame.curr_block->exit.false_block->block_name);
   } break;
   case Exit::Strategy::Return: {
     std::stringstream ss;
@@ -259,8 +284,13 @@ void Cmd::Execute(StackFrame& frame) {
         goto exit_successfully;
       }
     }
+    std::cerr << frame.prev_block << '\n';
     assert(false && "No selection made from phi block");
   exit_successfully:;
+  } break;
+  case Op::CAdd: {
+    frame.reg[result.reg] =
+        Value((char)(cmd_inputs[0].as_char + cmd_inputs[1].as_char));
   } break;
   case Op::IAdd: {
     frame.reg[result.reg] =
@@ -321,6 +351,10 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::FMod: {
     frame.reg[result.reg] =
         Value(fmod(cmd_inputs[0].as_real, cmd_inputs[1].as_real));
+  } break;
+  case Op::BOr: {
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_bool || cmd_inputs[1].as_bool);
   } break;
   case Op::BXor: {
     frame.reg[result.reg] =
@@ -418,6 +452,10 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] =
         Value(cmd_inputs[0].as_real >= cmd_inputs[1].as_real);
   } break;
+  case Op::CGT: {
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].as_char > cmd_inputs[1].as_char);
+  } break;
   case Op::IGT: {
     frame.reg[result.reg] =
         Value(cmd_inputs[0].as_int > cmd_inputs[1].as_int);
@@ -430,6 +468,7 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] =
         Value(cmd_inputs[0].as_real > cmd_inputs[1].as_real);
   } break;
+  case Op::NOp: break;
   case Op::Print: {
     if (cmd_inputs[0].as_type == Bool) {
       fprintf(stderr, cmd_inputs[1].as_bool ? "true" : "false");

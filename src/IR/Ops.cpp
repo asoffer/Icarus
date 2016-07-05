@@ -68,6 +68,12 @@ Value Call(Type *out, Value fn, const std::vector<Value> &args) {
   return Value::Reg(cmd.result.reg);
 }
 
+Cmd NOp() {
+  Cmd cmd(Op::NOp, false);
+  return cmd;
+}
+
+
 Cmd Phi(Type *ret_type) {
   Cmd cmd(Op::Phi, true);
   cmd.result.type = ret_type;
@@ -137,7 +143,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::Arg: return os << "#" << value.as_arg;
   case ValType::Alloc: return os << "$" << value.as_alloc;
   case ValType::RelAlloc: return os << "~$" << value.as_rel_alloc;
-  case ValType::Block: return os << "block-" << value.as_block->block_num;
+  case ValType::Block: return os << value.as_block->block_name;
   }
 }
 
@@ -155,11 +161,7 @@ void Cmd::dump(size_t indent) {
 }
 
 void Block::dump() {
-  if (block_num == 0) {
-    std::cout << "  entry:\n";
-  } else {
-    std::cout << "  block-" << block_num << ":\n";
-  }
+  std::cerr << "  " << block_name << ":\n";
   for (auto c : cmds) { c.dump(4); }
 
   exit.dump(4);
@@ -169,15 +171,15 @@ void Exit::dump(size_t indent) {
   std::cerr << std::string(indent, ' ');
   switch (flag) {
   case Strategy::Uncond:
-    std::cerr << "jmp block-" << true_block->block_num << "\n\n";
+    std::cerr << "jmp " << true_block->block_name << "\n\n";
     break;
   case Strategy::Cond:
-    std::cerr << "cond br " << val << " [T: block-" << true_block->block_num
-              << "] [F: block-" << false_block->block_num << "]\n\n";
+    std::cerr << "cond br " << val << " [T: " << true_block->block_name
+              << "] [F: " << false_block->block_name << "]\n\n";
     break;
   case Strategy::Return: std::cerr << "ret " << val << "\n\n"; break;
   case Strategy::ReturnVoid: std::cerr << "ret\n\n"; break;
-  case Strategy::Unset: UNREACHABLE;
+  case Strategy::Unset: std::cerr << "UNSET EXIT!\n\n"; break;
   }
 }
 
@@ -198,8 +200,9 @@ void Func::dump() {
   for (auto b : blocks) { b->dump(); }
 }
 
-Block *Func::AddBlock() {
-  auto result = new IR::Block(blocks.size());
+Block *Func::AddBlock(const char *block_name) {
+  auto result        = new IR::Block(blocks.size());
+  result->block_name = block_name;
   blocks.push_back(result);
   return result;
 }

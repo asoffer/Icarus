@@ -153,7 +153,7 @@ struct Block {
 
   // Passing a char into the condition to trigger it's type to be C. We don't
   // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block(size_t n) : block_num(n) {}
+  Block(size_t n) : block_num(n), block_name("unnamed-block") {}
   ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
@@ -161,6 +161,7 @@ struct Block {
   Block *ExecuteJump(StackFrame &frame);
 
   size_t block_num;
+  const char *block_name;
   std::vector<Cmd> cmds;
 
   Exit exit;
@@ -183,9 +184,12 @@ struct Func {
   size_t PushSpace(Type *t);
 
   void PushLocal(AST::Declaration *decl);
-  Block *AddBlock();
+  Block *AddBlock(const char *block_name);
 
-  Func() : num_cmds(0), frame_size(0) { blocks.push_back(new Block(0)); }
+  Func() : num_cmds(0), frame_size(0) {
+    blocks.push_back(new Block(0));
+    blocks.back()->block_name = "entry";
+  }
   ~Func() {
     for (auto b : blocks) { delete b; }
   }
@@ -215,6 +219,7 @@ Value Cast(Type *in, Type *out, Value);
 Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Cmd Phi(Type *ret_type);
+Cmd NOp();
 
 #undef CMD_WITH_V_ARGS
 #undef CMD_WITH_1_ARGS

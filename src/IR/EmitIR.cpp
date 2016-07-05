@@ -32,8 +32,7 @@ size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
 }
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
-  frame_map[decl] = frame_size;
-  PushSpace(decl->type);
+  frame_map[decl] = PushSpace(decl->type);
 }
 
 void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
@@ -192,8 +191,8 @@ IR::Value Binop::EmitIR() {
       auto lval    = lhs->EmitLVal();
       auto lhs_val = IR::Load(lhs->type, lval);
 
-      auto load_rhs_block = IR::Func::Current->AddBlock();
-      auto land_block     = IR::Func::Current->AddBlock();
+      auto load_rhs_block = IR::Func::Current->AddBlock("load-rhs");
+      auto land_block     = IR::Func::Current->AddBlock("binop-land");
 
       IR::Block::Current->exit.SetConditional(
           lhs_val,
@@ -367,12 +366,12 @@ IR::Value ChainOp::EmitIR() {
     bool using_or              = (ops[0] == Language::Operator::Or);
     IR::Value early_exit_value = IR::Value(using_or);
 
-    for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
+    for (auto &b : blocks) { b = IR::Func::Current->AddBlock("chainop-block"); }
 
     IR::Block::Current->exit.SetUnconditional(blocks.front());
 
     // Create the landing block
-    IR::Block *landing_block = IR::Func::Current->AddBlock();
+    IR::Block *landing_block = IR::Func::Current->AddBlock("chainop-landing");
     auto phi                 = IR::Phi(Bool);
 
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
@@ -385,15 +384,15 @@ IR::Value ChainOp::EmitIR() {
         IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
                                                 landing_block);
       }
-      phi.args.push_back(IR::Value(IR::Block::Current));
-      phi.args.push_back(early_exit_value);
+      phi.args.emplace_back(IR::Block::Current);
+      phi.args.emplace_back(early_exit_value);
     }
 
     IR::Block::Current = blocks.back();
     auto last_result = exprs.back()->EmitIR();
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.args.push_back(IR::Value(IR::Block::Current));
-    phi.args.push_back(last_result);
+    phi.args.emplace_back(IR::Block::Current);
+    phi.args.emplace_back(last_result);
 
     IR::Block::Current = landing_block;
     IR::Block::Current->push(phi);
@@ -405,9 +404,9 @@ IR::Value ChainOp::EmitIR() {
     // Operators here can be <, <=, ==, !=, >=, or >.
     std::vector<IR::Block *> blocks(exprs.size() - 1, nullptr);
 
-    for (auto &b : blocks) { b = IR::Func::Current->AddBlock(); }
+    for (auto &b : blocks) { b = IR::Func::Current->AddBlock("eq-block"); }
 
-    IR::Block *landing_block = IR::Func::Current->AddBlock();
+    IR::Block *landing_block = IR::Func::Current->AddBlock("eq-land");
     auto phi                 = IR::Phi(Bool);
 
     IR::Value result, lhs;
@@ -423,8 +422,8 @@ IR::Value ChainOp::EmitIR() {
       // Early exit
       IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
                                               landing_block);
-      phi.args.push_back(IR::Value(IR::Block::Current));
-      phi.args.push_back(IR::Value(false));
+      phi.args.emplace_back(IR::Block::Current);
+      phi.args.emplace_back(false);
     }
 
     IR::Block::Current = blocks.back();
@@ -433,8 +432,8 @@ IR::Value ChainOp::EmitIR() {
     rhs              = exprs.back()->EmitIR();
     auto last_result = EmitComparison(exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.args.push_back(IR::Value(IR::Block::Current));
-    phi.args.push_back(last_result);
+    phi.args.emplace_back(IR::Block::Current);
+    phi.args.emplace_back(last_result);
 
     IR::Block::Current = landing_block;
     IR::Block::Current->push(phi);
@@ -449,7 +448,7 @@ IR::Value FunctionLiteral::EmitIR() {
   ir_func = new IR::Func;
 
   fn_scope->entry_block = ir_func->entry();
-  fn_scope->exit_block  = ir_func->AddBlock();
+  fn_scope->exit_block  = ir_func->AddBlock("func-exit");
 
   assert(type);
   assert(type->is_function());
@@ -558,16 +557,16 @@ IR::Value Case::EmitIR() {
 
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
 
-  for (auto &b : key_blocks) { b = IR::Func::Current->AddBlock(); }
+  for (auto &b : key_blocks) { b = IR::Func::Current->AddBlock("key-block"); }
   IR::Block::Current->exit.SetUnconditional(key_blocks.front());
 
   // Create the landing block
-  IR::Block *landing_block = IR::Func::Current->AddBlock();
+  IR::Block *landing_block = IR::Func::Current->AddBlock("case-land");
   auto phi                 = IR::Phi(Bool);
 
   IR::Value result;
   for (size_t i = 0; i < key_vals.size() - 1; ++i) {
-    auto compute_block = IR::Func::Current->AddBlock();
+    auto compute_block = IR::Func::Current->AddBlock("case-compute");
 
     IR::Block::Current = key_blocks[i];
     result = key_vals[i].first->EmitIR();
@@ -577,16 +576,16 @@ IR::Value Case::EmitIR() {
     IR::Block::Current = compute_block;
     result = key_vals[i].second->EmitIR();
     IR::Block::Current->exit.SetUnconditional(landing_block);
-    phi.args.push_back(IR::Value(IR::Block::Current));
-    phi.args.push_back(result);
+    phi.args.emplace_back(IR::Block::Current);
+    phi.args.emplace_back(result);
   }
 
   // Assume last entry is "else => ___".
   IR::Block::Current = key_blocks.back();
   result = key_vals.back().second->EmitIR();
   IR::Block::Current->exit.SetUnconditional(landing_block);
-  phi.args.push_back(IR::Value(IR::Block::Current));
-  phi.args.push_back(result);
+  phi.args.emplace_back(IR::Block::Current);
+  phi.args.emplace_back(result);
 
   IR::Block::Current = landing_block;
   IR::Block::Current->push(phi);
@@ -636,9 +635,9 @@ IR::Value Access::EmitIR() {
 }
 
 IR::Value While::EmitIR() {
-  auto cond_block = IR::Func::Current->AddBlock();
-  auto body_block = IR::Func::Current->AddBlock();
-  auto land_block = IR::Func::Current->AddBlock();
+  auto cond_block = IR::Func::Current->AddBlock("while-cond");
+  auto body_block = IR::Func::Current->AddBlock("while-body");
+  auto land_block = IR::Func::Current->AddBlock("while-land");
 
   IR::Block::Current->exit.SetUnconditional(cond_block);
 
@@ -664,14 +663,14 @@ IR::Value Conditional::EmitIR() {
   std::vector<IR::Block *> cond_blocks(conditions.size(), nullptr);
   std::vector<IR::Block *> body_blocks(body_scopes.size(), nullptr);
 
-  auto land_block = IR::Func::Current->AddBlock();
+  auto land_block = IR::Func::Current->AddBlock("cond-land");
 
-  for (auto &b : cond_blocks) { b = IR::Func::Current->AddBlock(); }
-  for (auto &b : body_blocks) { b = IR::Func::Current->AddBlock(); }
+  for (auto &b : cond_blocks) { b = IR::Func::Current->AddBlock("cond-cond"); }
+  for (auto &b : body_blocks) { b = IR::Func::Current->AddBlock("cond-body"); }
   for (auto &s : body_scopes) {
     s->land_block  = land_block;
-    s->entry_block = IR::Func::Current->AddBlock();
-    s->exit_block  = IR::Func::Current->AddBlock();
+    s->entry_block = IR::Func::Current->AddBlock("cond-entry");
+    s->exit_block  = IR::Func::Current->AddBlock("cond-exit");
   }
 
   assert(!cond_blocks.empty());
@@ -733,7 +732,115 @@ IR::Value ArrayLiteral::EmitIR() {
   NOT_YET;
 }
 
-IR::Value For::EmitIR() { NOT_YET; }
+IR::Value For::EmitIR() {
+  auto init_block = IR::Func::Current->AddBlock("for-init");
+  auto incr_block = IR::Func::Current->AddBlock("for-incr");
+  auto phi_block  = IR::Func::Current->AddBlock("for-phi");
+  auto cond_block = IR::Func::Current->AddBlock("for-cond");
+
+  IR::Block::Current->exit.SetUnconditional(init_block);
+
+  auto done_cmp = IR::Value(false);
+
+  auto num_iters = iterators.size();
+  for (size_t i = 0; i < num_iters; ++i) {
+    auto iter      = iterators[i];
+    auto container = iter->container;
+
+    IR::Cmd phi = IR::NOp();
+
+    if (container->type->is_range()) {
+
+      if (container->is_unop()) { NOT_YET; }
+      assert(container->is_binop());
+
+      IR::Block::Current = init_block;
+      auto start_val     = ((Binop *)container)->lhs->EmitIR();
+      auto end_val       = ((Binop *)container)->rhs->EmitIR();
+
+
+      IR::Block::Current = phi_block;
+      phi                = IR::Phi(iter->type);
+      phi.args.emplace_back(init_block);
+      phi.args.emplace_back(start_val);
+
+      IR::Block::Current = cond_block;
+      IR::Store(((Binop *)container)->lhs->type, IR::Value::Reg(phi.result.reg),
+                iter->identifier->EmitLVal());
+
+      if (iter->type == Int) {
+        done_cmp =
+            IR::BOr(done_cmp, IR::IGT(IR::Value::Reg(phi.result.reg), end_val));
+      } else if (iter->type == Uint) {
+        done_cmp =
+            IR::BOr(done_cmp, IR::UGT(IR::Value::Reg(phi.result.reg), end_val));
+      } else if (iter->type == Char) {
+        done_cmp =
+            IR::BOr(done_cmp, IR::CGT(IR::Value::Reg(phi.result.reg), end_val));
+      } else {
+        UNREACHABLE;
+      }
+
+
+    } else {
+      NOT_YET;
+    }
+
+    IR::Block::Current = incr_block;
+    IR::Value next;
+    if (iter->identifier->type == Uint) {
+      next = IR::UAdd(IR::Load(Uint, iter->identifier->EmitLVal()),
+                      IR::Value(1ul));
+    } else if (iter->identifier->type == Int) {
+      next =
+          IR::IAdd(IR::Load(Int, iter->identifier->EmitLVal()), IR::Value(1l));
+
+    } else if (iter->identifier->type == Char) {
+      next = IR::CAdd(IR::Load(Char, iter->identifier->EmitLVal()),
+                      IR::Value('\01'));
+
+    } else {
+      UNREACHABLE;
+    }
+
+    phi.args.emplace_back(incr_block);
+    phi.args.emplace_back(next);
+    phi_block->push(phi);
+  }
+
+  assert(!for_scope->land_block);
+  for_scope->land_block = IR::Func::Current->AddBlock("for-land");
+
+  assert(!for_scope->entry_block);
+  for_scope->entry_block = IR::Func::Current->AddBlock("for-entry");
+
+  // Link blocks
+  init_block->exit.SetUnconditional(phi_block);
+  incr_block->exit.SetUnconditional(phi_block);
+  phi_block->exit.SetUnconditional(cond_block);
+  cond_block->exit.SetConditional(done_cmp, for_scope->land_block,
+                                  for_scope->entry_block);
+
+
+  auto body_block = IR::Func::Current->AddBlock("for-body");
+  for_scope->IR_Init();
+  for_scope->entry_block->exit.SetUnconditional(body_block);
+
+  IR::Block::Current = for_scope->entry_block;
+  statements->EmitIR();
+  IR::Block::Current->exit.SetUnconditional(for_scope->exit_block);
+
+  // TODO  for_scope->IR_destroy();
+
+  // auto exit_flag = IR::Load(Char, ___);
+  // FIXME for now, ...
+  IR::Block::Current->exit.SetUnconditional(incr_block);
+
+  IR::Block::Current = for_scope->land_block;
+
+  return IR::Value();
+}
+
 IR::Value Jump::EmitIR() { NOT_YET; }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
