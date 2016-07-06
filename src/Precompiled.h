@@ -96,7 +96,7 @@ union Value {
   long as_int;
   double as_real;
   size_t as_uint;
-  char *as_str;
+  char *as_cstr;
   void *as_null;
   Type *as_type;
   AST::Expression *as_expr;
@@ -108,7 +108,7 @@ union Value {
   explicit Value(double d) { as_real = d; }
   explicit Value(size_t n) { as_uint = n; }
   explicit Value(Type *t) { as_type = t; }
-  explicit Value(char *c_str) { as_str = c_str; }
+  explicit Value(char *c_str) { as_cstr = c_str; }
   explicit Value(AST::Expression *e) { as_expr = e; }
 };
 

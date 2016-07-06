@@ -273,6 +273,39 @@ llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
   return decl->alloc;
 }
 
+IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+                              Function *fn_type) {
+  Scope *scope_ptr = scope;
+  AST::Declaration *decl;
+
+  decl = scope->DeclReferencedOrNull(fn_name, fn_type);
+
+  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
+    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
+    if (decl) { break; }
+  }
+
+  if (!decl) { return nullptr; }
+
+  // TODO change name of this stack_loc -> alloc or something similar.
+  if(!decl->stack_loc.as_func) {
+    if (decl->init_val->is_function_literal()) {
+      auto old_func = IR::Func::Current;
+      auto old_block = IR::Block::Current;
+
+      decl->stack_loc = decl->init_val->EmitIR();
+      decl->stack_loc.as_func->name =
+          Mangle(fn_type, decl->identifier, scope_ptr);
+
+      IR::Func::Current  = old_func;
+      IR::Block::Current = old_block;
+    } else {
+      NOT_YET;
+    }
+  }
+  return decl->stack_loc.as_func;
+}
+
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   if (expr->is_function_literal()) {
     return (AST::FunctionLiteral *)expr;

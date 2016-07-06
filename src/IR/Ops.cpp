@@ -138,6 +138,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
     }
     return os;
   }
+  case ValType::CStr: return os << "\"" << (void *)value.as_cstr;
   case ValType::Ptr: return os << "ptr " << value.as_ptr;
   case ValType::Reg: return os << "%" << value.as_reg;
   case ValType::Arg: return os << "#" << value.as_arg;

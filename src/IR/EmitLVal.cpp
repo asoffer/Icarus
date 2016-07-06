@@ -42,8 +42,8 @@ IR::Value Access::EmitLVal() {
   auto e_lval = operand->EmitLVal();
 
   while (etype->is_pointer()) {
-    etype  = ((Pointer *)etype)->pointee;
     e_lval = IR::Load(etype, e_lval);
+    etype  = ((Pointer *)etype)->pointee;
   }
 
   assert(etype->is_struct());

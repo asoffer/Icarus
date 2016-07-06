@@ -27,7 +27,7 @@ Expression::Expression()
 }
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),
-      alloc(nullptr), arg_val(nullptr) {}
+      alloc(nullptr), stack_loc(nullptr), arg_val(nullptr) {}
 Generic::Generic() : test_fn(nullptr) {}
 InDecl::InDecl() : container(nullptr) {}
 ArrayLiteral::ArrayLiteral() {}

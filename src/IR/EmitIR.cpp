@@ -12,7 +12,11 @@ extern Func *AsciiFunc();
 extern Func *OrdFunc();
 } // namespace IR
 
+extern std::string Mangle(const Function *f, AST::Expression *expr,
+                          Scope *starting_scope);
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
+extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+                                     Function *fn_type);
 
 size_t IR::Func::PushSpace(Type *t) {
   return PushSpace(t->bytes(), t->alignment());
@@ -68,7 +72,10 @@ void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     */
     NOT_YET;
   } else {
-    NOT_YET;
+    auto fn = GetFuncReferencedIn(scope, "__assign__",
+                                  Func(Tup({Ptr(lhs_type), rhs_type}), Void));
+    assert(fn);
+    IR::Call(Void, IR::Value(fn), {lhs_ptr, rhs});
   }
 }
 
@@ -99,20 +106,28 @@ IR::Value Terminal::EmitIR() {
 }
 
 static void EmitPrintExpr(Expression *expr) {
-  if (expr->type->is_primitive()) {
+  // TODO make string primitive
+  if (expr->type->is_primitive() || expr->type == String) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
 
   } else if (expr->type->is_function() || expr->type->is_array()) {
     expr->type->EmitRepr(expr->EmitIR());
 
   } else {
-    NOT_YET;
+    auto fn =
+        GetFuncReferencedIn(expr->scope_, "__print__", Func(expr->type, Void));
+    assert(fn);
+    IR::Call(Void, IR::Value(fn), {expr->EmitIR()});
   }
 }
 
 IR::Value Unop::EmitIR() {
   switch (op) {
-  // case Language::Operator::Import: NOT_YET;
+  // NOTE: Not sure if Import will always be disallowed (in which case we need
+  // TODO stricter checking earlier) or if we allow it to some degree
+  // (hopefully, but details need to be worked out). For now it is deemed
+  // illegal.
+  case Language::Operator::Import: UNREACHABLE;
   case Language::Operator::Return: {
     // Note: Because we're loading the current block, and the EmitIR call can
     // change that, we must first compute the ret then set the return. The order
@@ -124,12 +139,8 @@ IR::Value Unop::EmitIR() {
     block_scope->MakeReturn(ret);
     return IR::Value();
   } break;
-  // case Language::Operator::Break: NOT_YET;
-  // case Language::Operator::Continue: NOT_YET;
-  // case Language::Operator::Repeat: NOT_YET;
-  // case Language::Operator::Restart: NOT_YET;
-  // case Language::Operator::Free: NOT_YET;
-  // case Language::Operator::Eval: NOT_YET;
+  case Language::Operator::Free: NOT_YET;
+  case Language::Operator::Eval: NOT_YET;
   case Language::Operator::Print: {
     if (operand->is_comma_list()) {
       auto operand_as_chainop = (ChainOp *)operand;
@@ -144,7 +155,11 @@ IR::Value Unop::EmitIR() {
     if (operand->type == Type_) {
       return IR::TC_Ptr(val);
     } else {
-      NOT_YET;
+      auto fn =
+          GetFuncReferencedIn(scope_, "__addr__", Func(operand->type, type));
+      assert(fn);
+      IR::Call(Void, IR::Value(fn), {operand->EmitIR()});
+      return IR::Value();
     }
   } break;
   case Language::Operator::Sub: {
@@ -154,7 +169,9 @@ IR::Value Unop::EmitIR() {
     } else if (operand->type == Real) {
       return IR::FNeg(val);
     } else {
-      NOT_YET;
+      auto fn =
+          GetFuncReferencedIn(scope_, "__neg__", Func(operand->type, type));
+      return IR::Call(type, IR::Value(fn), {val});
     }
   } break;
   case Language::Operator::Not: {
@@ -162,7 +179,9 @@ IR::Value Unop::EmitIR() {
     if (operand->type == Bool) {
       return IR::BNot(val);
     } else {
-      NOT_YET;
+      auto fn =
+          GetFuncReferencedIn(scope_, "__not__", Func(operand->type, type));
+      return IR::Call(type, IR::Value(fn), {val});
     }
   } break;
   case Language::Operator::At: {
@@ -178,7 +197,9 @@ IR::Value Binop::EmitIR() {
     if (rhs->type->is_primitive()) {
       return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
     } else {
-      NOT_YET;
+      EmitAssignment(scope_, lhs->type, rhs->type, lhs->EmitLVal(),
+                     rhs->EmitIR());
+      return IR::Value();
     }
   } break;
   case Language::Operator::Cast: NOT_YET;
@@ -208,7 +229,10 @@ IR::Value Binop::EmitIR() {
       IR::Block::Current = land_block;
       return IR::Value();
     } else {
-      NOT_YET;
+      auto fn = GetFuncReferencedIn(
+          scope_, op == Language::Operator::AndEq ? "__and_eq__" : "__or_eq__",
+          Func(Tup({lhs->type, rhs->type}), type));
+      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
   case Language::Operator::XorEq: {
@@ -219,7 +243,9 @@ IR::Value Binop::EmitIR() {
     if (lhs->type == Bool && rhs->type == Bool) {
       return IR::Store(Bool, IR::BXor(lhs_val, rhs_val), lval);
     } else {
-      NOT_YET;
+      auto fn = GetFuncReferencedIn(scope_, "__xor_eq__",
+                                    Func(Tup({lhs->type, rhs->type}), type));
+      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
 
@@ -238,15 +264,17 @@ IR::Value Binop::EmitIR() {
     if (lhs->type == Real && rhs->type == Real) {                              \
       return IR::Store(Real, IR::F##Op(lhs_val, rhs_val), lval);               \
     }                                                                          \
-    NOT_YET;                                                                   \
+    auto fn =                                                                  \
+        GetFuncReferencedIn(scope_, "__" #op "_eq__",                          \
+                            Func(Tup({Ptr(lhs->type), rhs->type}), type));     \
+    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
   } break
 
-ARITHMETIC_EQ_CASE(Add, add);
-ARITHMETIC_EQ_CASE(Sub, sub);
-ARITHMETIC_EQ_CASE(Mul, mul);
-ARITHMETIC_EQ_CASE(Div, div);
-ARITHMETIC_EQ_CASE(Mod, mod);
-
+    ARITHMETIC_EQ_CASE(Add, add);
+    ARITHMETIC_EQ_CASE(Sub, sub);
+    ARITHMETIC_EQ_CASE(Mul, mul);
+    ARITHMETIC_EQ_CASE(Div, div);
+    ARITHMETIC_EQ_CASE(Mod, mod);
 #undef ARITHMETIC_EQ_CASE
 
 #define ARITHMETIC_CASE(Op, op)                                                \
@@ -262,8 +290,11 @@ ARITHMETIC_EQ_CASE(Mod, mod);
     if (lhs->type == Real && rhs->type == Real) {                              \
       return IR::F##Op(lhs_val, rhs_val);                                      \
     }                                                                          \
-    NOT_YET;                                                                   \
+    auto fn = GetFuncReferencedIn(scope_, "__" #op "__",                       \
+                                  Func(Tup({lhs->type, rhs->type}), type));    \
+    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
   } break
+
     ARITHMETIC_CASE(Add, add);
     ARITHMETIC_CASE(Sub, sub);
     ARITHMETIC_CASE(Mul, mul);
@@ -273,21 +304,26 @@ ARITHMETIC_EQ_CASE(Mod, mod);
 
   case Language::Operator::Index: {
     if (lhs->type->is_array()) {
-      auto array_type = (Array*)lhs->type;
+      auto array_type = (Array *)lhs->type;
       if (array_type->fixed_length){
         return PtrCallFix(type, EmitLVal());
       } else {
         NOT_YET;
       }
     } else {
-      NOT_YET;
+      auto fn = GetFuncReferencedIn(scope_, "__bracket__",
+                                    Func(Tup({lhs->type, rhs->type}), type));
+      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
 
   case Language::Operator::Call: {
     if (rhs) {
       if (rhs->is_comma_list()) {
-        NOT_YET;
+        std::vector<IR::Value> args;
+        for (auto v : ((ChainOp *)rhs)->exprs) { args.push_back(v->EmitIR()); }
+        return IR::Call(type, lhs->EmitIR(), args);
+
       } else {
         return IR::Call(type, lhs->EmitIR(), {rhs->EmitIR()});
       }
@@ -295,6 +331,7 @@ ARITHMETIC_EQ_CASE(Mod, mod);
       return IR::Call(type, lhs->EmitIR(), {});
     }
   }
+
   default: std::cerr << *this << std::endl; NOT_YET;
   }
 }
@@ -349,16 +386,17 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
 IR::Value ChainOp::EmitIR() {
   assert(!ops.empty());
 
-  if (ops[0] == Language::Operator::Xor) {
+  switch (ops[0]) {
+  case Language::Operator::Xor: {
     std::vector<IR::Value> vals;
     for (auto e : exprs) { vals.push_back(e->EmitIR()); }
 
     IR::Value v = vals[0];
     for (size_t i = 1; i < vals.size(); ++i) { v = IR::BXor(v, vals[i]); }
     return v;
-
-  } else if (ops[0] == Language::Operator::And ||
-             ops[0] == Language::Operator::Or) {
+  } break;
+  case Language::Operator::And:
+  case Language::Operator::Or: {
     std::vector<IR::Block *> blocks(exprs.size(), nullptr);
     // If it's an or, an early exit is because we already know the value is
     // true. If it's an and, an early exit is beacause we already know the value
@@ -398,9 +436,13 @@ IR::Value ChainOp::EmitIR() {
     IR::Block::Current->push(phi);
 
     return IR::Value(phi.result.reg);
-
-  } else if (Language::precedence(ops.front()) ==
-             Language::precedence(Language::Operator::EQ)) {
+  } break;
+  case Language::Operator::LT:
+  case Language::Operator::LE:
+  case Language::Operator::EQ:
+  case Language::Operator::NE:
+  case Language::Operator::GE:
+  case Language::Operator::GT: {
     // Operators here can be <, <=, ==, !=, >=, or >.
     std::vector<IR::Block *> blocks(exprs.size() - 1, nullptr);
 
@@ -439,8 +481,10 @@ IR::Value ChainOp::EmitIR() {
     IR::Block::Current->push(phi);
 
     return IR::Value::Reg(phi.result.reg);
+  } break;
+  case Language::Operator::Comma: NOT_YET;
+  default: UNREACHABLE;
   }
-  NOT_YET;
 }
 
 IR::Value FunctionLiteral::EmitIR() {
@@ -460,7 +504,42 @@ IR::Value FunctionLiteral::EmitIR() {
   statements->verify_types();
 
   for (auto decl : fn_scope->ordered_decls_) {
-    if (decl->arg_val) { continue; }
+    if (decl->arg_val) {
+      if (decl->arg_val->is_function_literal()) {
+        auto fn_lit = (FunctionLiteral *)decl->arg_val;
+
+        size_t arg_num = 0;
+        for (const auto& d : fn_lit->inputs) {
+          if (decl == d) {
+            decl->stack_loc = IR::Value::Arg(arg_num);
+            goto success_fn;
+          }
+          ++arg_num;
+        }
+
+        UNREACHABLE;
+
+      success_fn:
+        continue;
+
+      } else if (decl->arg_val->is_parametric_struct_literal()) {
+        auto param_struct = (ParametricStructLiteral *)decl->arg_val;
+        size_t param_num = 0;
+        for (const auto &p : param_struct->params) {
+          if (decl == p) {
+            decl->stack_loc = IR::Value::Arg(param_num);
+            goto success_param_struct;
+          }
+          ++param_num;
+        }
+
+        UNREACHABLE;
+
+      success_param_struct:
+        continue;
+      }
+      UNREACHABLE;
+    }
     ir_func->PushLocal(decl);
   }
 
@@ -514,10 +593,11 @@ IR::Value Identifier::EmitIR() {
     assert(value.as_expr);
     auto current_func  = IR::Func::Current;
     auto current_block = IR::Block::Current;
-    auto func_to_call  = value.as_expr->EmitIR();
+    auto fn            = value.as_expr->EmitIR();
+    fn.as_func->name   = Mangle((Function *)type, this, decl->scope_);
     IR::Block::Current = current_block;
     IR::Func::Current  = current_func;
-    return func_to_call;
+    return fn;
 
   } else {
     return PtrCallFix(type, decl->stack_loc);
@@ -874,7 +954,11 @@ IR::Value For::EmitIR() {
   return IR::Value();
 }
 
-IR::Value Jump::EmitIR() { NOT_YET; }
+IR::Value Jump::EmitIR() {
+  // TODO not correct. Must call destructors
+  IR::Block::Current->exit.SetReturnVoid();
+  return IR::Value();
+}
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }

@@ -193,6 +193,7 @@ void Array::EmitInit(IR::Value id_val) {
     auto saved_block = IR::Block::Current;
 
     init_func          = new IR::Func;
+    init_func->name    = "init." + Mangle(this);
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 
@@ -225,6 +226,7 @@ void Structure::EmitInit(IR::Value id_val) {
     auto saved_block = IR::Block::Current;
 
     init_func          = new IR::Func;
+    init_func->name    = "init." + Mangle(this);
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 

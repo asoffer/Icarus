@@ -191,8 +191,8 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::Load: {
     assert(cmd_inputs[0].flag == ValType::Alloc);
-    assert(result.type->is_primitive() &&
-           "Non-primitive local variables are not yet implemented");
+    assert((result.type->is_primitive() || result.type->is_pointer()) &&
+           "Non-primitive/pointer local variables are not yet implemented");
     size_t offset = cmd_inputs[0].as_alloc;
 
 #define DO_LOAD(StoredType, stored_type)                                       \
@@ -210,6 +210,11 @@ void Cmd::Execute(StackFrame& frame) {
     DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD_IF
+    if (result.type->is_pointer()) {
+      frame.reg[result.reg] = Value::Alloc(offset);
+    } else {
+      UNREACHABLE;
+    }
   } break;
 
   case Op::Store: {
@@ -504,8 +509,12 @@ void Cmd::Execute(StackFrame& frame) {
 
     } else if (cmd_inputs[0].as_type == Type_) {
       fprintf(stderr, "%s", cmd_inputs[1].as_type->to_string().c_str());
-    }else {
-      NOT_YET;
+
+    } else if(cmd_inputs[0].as_type == String) {
+      fprintf(stderr, "%s", cmd_inputs[1].as_cstr);
+
+    } else {
+      UNREACHABLE;
     }
   } break;
   case Op::TC_Ptr: {

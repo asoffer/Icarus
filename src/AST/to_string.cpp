@@ -142,7 +142,7 @@ std::string Terminal::to_string(size_t n) const {
   case Language::Terminal::Ord: ss << "ord"; break;
   case Language::Terminal::Real: ss << value.as_real; break;
   case Language::Terminal::Return: ss << "return"; break;
-  case Language::Terminal::StringLiteral: ss << value.as_str; break;
+  case Language::Terminal::StringLiteral: ss << value.as_cstr; break;
   case Language::Terminal::True: ss << "true"; break;
   case Language::Terminal::Type: ss << *value.as_type; break;
   case Language::Terminal::Uint: ss << value.as_uint; break;

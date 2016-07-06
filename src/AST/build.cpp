@@ -257,7 +257,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
            ((Terminal *)unop_ptr->operand)->terminal_type ==
                Language::Terminal::StringLiteral);
     file_queue.emplace(std::string("programs/") +
-                       std::string(unop_ptr->operand->value.as_str));
+                       std::string(unop_ptr->operand->value.as_cstr));
 
     unop_ptr->op = Language::Operator::Import;
 

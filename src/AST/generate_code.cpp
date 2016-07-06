@@ -107,8 +107,8 @@ llvm::Value *Terminal::generate_code() {
   if (terminal_type == Language::Terminal::Else) { return data::const_true(); }
 
   if (terminal_type == Language::Terminal::StringLiteral) {
-    auto str = data::global_string(value.as_str);
-    auto len = data::const_uint(std::strlen(value.as_str));
+    auto str = data::global_string(value.as_cstr);
+    auto len = data::const_uint(std::strlen(value.as_cstr));
 
     auto str_alloc = builder.CreateAlloca(*type);
 
@@ -216,6 +216,7 @@ llvm::Value *Unop::generate_code() {
 
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitIR().as_func;
+    func->name       = "anonymous-func";
 
     if (operand->type == Void) {
       // Assumptions:

@@ -5,7 +5,7 @@
 
 namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, Ptr, Block, Reg, Arg, Alloc, RelAlloc
+  B, C, I, R, U, T, F, CStr, Ptr, Block, Reg, Arg, Alloc, RelAlloc
 };
 
 struct Func;
@@ -23,6 +23,7 @@ struct Value {
     size_t as_uint;
     Type *as_type;
     Func *as_func;
+    char *as_cstr;
     void *as_ptr;
     size_t as_reg;
     size_t as_arg;
@@ -40,6 +41,7 @@ struct Value {
   explicit Value(size_t n) : as_uint(n), flag(ValType::U) {}
   explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
   explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
+  explicit Value(char *p) : as_cstr(p), flag(ValType::CStr) {}
   explicit Value(void *p) : as_ptr(p), flag(ValType::Ptr) {}
   explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
   explicit Value(std::nullptr_t) : as_ptr(nullptr), flag(ValType::Ptr) {}
