@@ -203,7 +203,12 @@ IR::Value Binop::EmitIR() {
       return IR::Value();
     }
   } break;
-  case Language::Operator::Cast: NOT_YET;
+  case Language::Operator::Cast: {
+    auto rhs_val = rhs->EmitIR();
+    // NOTE: Demand knowing the type now rather than at eval time
+    assert(rhs_val.flag == IR::ValType::T);
+    return IR::Cast(lhs->type, rhs_val.as_type, lhs->EmitIR());
+  };
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
   } break;
