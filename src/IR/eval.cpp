@@ -205,8 +205,10 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::Load: {
     assert(cmd_inputs[0].flag == ValType::StackAddr);
-    assert((result.type->is_primitive() || result.type->is_pointer()) &&
-           "Non-primitive/pointer local variables are not yet implemented");
+    assert(
+        (result.type->is_primitive() || result.type->is_pointer() ||
+         result.type->is_enum()) &&
+        "Non-primitive/pointer/enum local variables are not yet implemented");
     size_t offset = cmd_inputs[0].as_stack_addr;
 
 #define DO_LOAD(StoredType, stored_type)                                       \
@@ -224,10 +226,11 @@ void Cmd::Execute(StackFrame& frame) {
     DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD_IF
+    assert(result.type->is_pointer() || result.type->is_enum());
     if (result.type->is_pointer()) {
       frame.reg[result.reg] = Value::StackAddr(offset);
     } else {
-      UNREACHABLE;
+      frame.reg[result.reg] = Value(*(size_t *)(frame.stack->allocs + offset));
     }
   } break;
 
@@ -505,6 +508,11 @@ void Cmd::Execute(StackFrame& frame) {
 
     } else if(cmd_inputs[0].as_type == String) {
       fprintf(stderr, "%s", cmd_inputs[1].as_cstr);
+
+    } else if (cmd_inputs[0].as_type->is_enum()) {
+      // TODO read the actual names rather than just the numeric values
+      fprintf(stderr, "%s.%lu", cmd_inputs[0].as_type->to_string().c_str(),
+              cmd_inputs[1].as_uint);
 
     } else {
       UNREACHABLE;

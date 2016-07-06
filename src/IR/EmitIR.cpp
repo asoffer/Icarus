@@ -67,7 +67,7 @@ IR::Value Terminal::EmitIR() {
 
 static void EmitPrintExpr(Expression *expr) {
   // TODO make string primitive
-  if (expr->type->is_primitive() || expr->type == String) {
+  if (expr->type->is_primitive() || expr->type == String || expr->type->is_enum()) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
 
   } else if (expr->type->is_function() || expr->type->is_array()) {
