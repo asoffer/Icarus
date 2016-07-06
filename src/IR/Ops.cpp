@@ -68,6 +68,14 @@ Value Call(Type *out, Value fn, const std::vector<Value> &args) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value ArrayData(Array *type, Value array_ptr) {
+  Cmd cmd(Op::ArrayData, true);
+  cmd.args        = {IR::Value(type), array_ptr};
+  cmd.result.type = Ptr(type->data_type);
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Cmd NOp() {
   Cmd cmd(Op::NOp, false);
   return cmd;
@@ -139,11 +147,11 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
     return os;
   }
   case ValType::CStr: return os << "\"" << (void *)value.as_cstr;
-  case ValType::Ptr: return os << "ptr " << value.as_ptr;
   case ValType::Reg: return os << "%" << value.as_reg;
   case ValType::Arg: return os << "#" << value.as_arg;
-  case ValType::Alloc: return os << "$" << value.as_alloc;
-  case ValType::RelAlloc: return os << "~$" << value.as_rel_alloc;
+  case ValType::StackAddr: return os << "$" << value.as_stack_addr;
+  case ValType::FrameAddr: return os << "`$`" << value.as_frame_addr;
+  case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
   case ValType::Block: return os << value.as_block->block_name;
   }
 }

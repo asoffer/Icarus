@@ -6,25 +6,12 @@ IR::Value Identifier::EmitLVal() { return decl->stack_loc; }
 
 IR::Value Binop::EmitLVal() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
-    auto array_type = (Array*)lhs->type;
-    // auto lhs_val  = lhs->EmitLVal();
-    auto rhs_val  = rhs->EmitIR();
-    long index;
-    if (rhs_val.flag == IR::ValType::U) {
-      index = (long)rhs_val.as_uint;
-    } else if (rhs_val.flag == IR::ValType::I) {
-      index = rhs_val.as_int;
-    } else {
-      assert(false);
-    }
+    auto array_type = (Array *)lhs->type;
 
-    if (array_type->fixed_length) {
-      return IR::Access(((Array *)lhs->type)->data_type, rhs_val,
-                        lhs->EmitLVal());
-    } else {
-      NOT_YET;
-    }
-
+    return IR::Access(array_type->data_type, rhs->EmitIR(),
+                      array_type->fixed_length
+                          ? lhs->EmitLVal()
+                          : IR::ArrayData((Array *)lhs->type, lhs->EmitLVal()));
   } else {
     NOT_YET;
   }

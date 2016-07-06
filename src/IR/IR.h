@@ -5,7 +5,7 @@
 
 namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Ptr, Block, Reg, Arg, Alloc, RelAlloc
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr
 };
 
 struct Func;
@@ -24,12 +24,12 @@ struct Value {
     Type *as_type;
     Func *as_func;
     char *as_cstr;
-    void *as_ptr;
     size_t as_reg;
     size_t as_arg;
     Block *as_block;
-    size_t as_alloc; // Distance from head of entire stack
-    size_t as_rel_alloc; // Distance from current stack frame head
+    size_t as_stack_addr;
+    size_t as_frame_addr;
+    size_t as_heap_addr;
   };
 
   ValType flag;
@@ -42,9 +42,7 @@ struct Value {
   explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
   explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
   explicit Value(char *p) : as_cstr(p), flag(ValType::CStr) {}
-  explicit Value(void *p) : as_ptr(p), flag(ValType::Ptr) {}
   explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
-  explicit Value(std::nullptr_t) : as_ptr(nullptr), flag(ValType::Ptr) {}
 
   Value() : flag(ValType::Reg) {}
 
@@ -55,19 +53,27 @@ struct Value {
     return v;
   }
 
-  static Value RelAlloc(size_t n) {
+  static Value FrameAddr(size_t n) {
     Value v;
-    v.flag         = ValType::RelAlloc;
-    v.as_rel_alloc = n;
+    v.flag          = ValType::FrameAddr;
+    v.as_frame_addr = n;
     return v;
   }
 
-  static Value Alloc(size_t n) {
+  static Value StackAddr(size_t n) {
     Value v;
-    v.flag     = ValType::Alloc;
-    v.as_alloc = n;
+    v.flag          = ValType::StackAddr;
+    v.as_stack_addr = n;
     return v;
   }
+
+  static Value HeapAddr(size_t n) {
+    Value v;
+    v.flag         = ValType::HeapAddr;
+    v.as_heap_addr = n;
+    return v;
+  }
+
   
   static Value Arg(size_t n) {
     Value v;
@@ -219,6 +225,8 @@ Value Load(Type *load_type, Value);
 Value Cast(Type *in, Type *out, Value);
 Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
+Value ArrayData(Array *type, Value array_ptr);
+
 Cmd Phi(Type *ret_type);
 Cmd NOp();
 

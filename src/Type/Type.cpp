@@ -93,27 +93,25 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Store(rhs_type, from_val, to_var);
 
   } else if (lhs_type->is_array()) {
-    /*
     assert(rhs_type->is_array());
     auto lhs_array_type = (Array *)lhs_type;
     if (lhs_array_type->fixed_length) {
       // Implies rhs has fixed length of same length as well.
 
       // TODO move this into a real Array method.
-      for (int i = 0; i < (int)lhs_array_type->len; ++i) {
-        auto lhs_gep = IR::GEP(lhs_array_type, lhs_ptr, {0, i});
-        IR::Block::Current->push(lhs_gep);
+      for (size_t i = 0; i < lhs_array_type->len; ++i) {
+        auto to_ptr =
+            IR::Access(lhs_array_type->data_type, IR::Value(i), to_var);
+        auto from_ptr =
+            IR::Access(lhs_array_type->data_type, IR::Value(i), from_val);
+        auto from_val = IR::Load(lhs_array_type->data_type, from_ptr);
 
-        auto rhs_gep = IR::GEP(lhs_array_type, rhs, {0, i});
-        IR::Block::Current->push(rhs_gep);
-
-        EmitAssignment(scope, lhs_array_type->data_type,
-                       lhs_array_type->data_type, lhs_gep,
-                       PtrCallFix(lhs_array_type->data_type, rhs_gep));
+        IR_CallAssignment(scope, lhs_array_type->data_type,
+                          lhs_array_type->data_type, from_val, to_ptr);
       }
+    } else {
+      NOT_YET;
     }
-    */
-    NOT_YET;
 
   } else {
     auto fn = GetFuncReferencedIn(scope, "__assign__",

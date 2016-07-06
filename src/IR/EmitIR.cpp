@@ -36,7 +36,7 @@ size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
 }
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
-  decl->stack_loc = IR::Value::RelAlloc(PushSpace(decl->type));
+  decl->stack_loc = IR::Value::FrameAddr(PushSpace(decl->type));
 }
 
 namespace AST {
@@ -51,7 +51,7 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Int:
     return IR::Value(
         (long)value.as_int); // TODO Context::Value shouldn't use longs
-  case Language::Terminal::Null: return IR::Value(nullptr);
+  case Language::Terminal::Null: return IR::Value::HeapAddr(0);
   case Language::Terminal::Ord: return IR::Value(IR::OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: {
@@ -188,7 +188,7 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::At: {
     return IR::Load(operand->type, operand->EmitIR());
   } break;
-  default: NOT_YET;
+  default: UNREACHABLE;
   }
 }
 
@@ -310,12 +310,8 @@ IR::Value Binop::EmitIR() {
 
   case Language::Operator::Index: {
     if (lhs->type->is_array()) {
-      auto array_type = (Array *)lhs->type;
-      if (array_type->fixed_length){
-        return PtrCallFix(type, EmitLVal());
-      } else {
-        NOT_YET;
-      }
+      return PtrCallFix(type, EmitLVal());
+
     } else {
       auto fn = GetFuncReferencedIn(scope_, "__bracket__",
                                     Func(Tup({lhs->type, rhs->type}), type));
@@ -337,8 +333,7 @@ IR::Value Binop::EmitIR() {
       return IR::Call(type, lhs->EmitIR(), {});
     }
   }
-
-  default: std::cerr << *this << std::endl; NOT_YET;
+  default: UNREACHABLE;
   }
 }
 
@@ -488,7 +483,7 @@ IR::Value ChainOp::EmitIR() {
 
     return IR::Value::Reg(phi.result.reg);
   } break;
-  case Language::Operator::Comma: NOT_YET;
+  case Language::Operator::Comma: UNREACHABLE;
   default: UNREACHABLE;
   }
 }
@@ -503,7 +498,7 @@ IR::Value FunctionLiteral::EmitIR() {
   assert(type);
   assert(type->is_function());
   fn_scope->ret_val =
-      IR::Value::RelAlloc(ir_func->PushSpace(((Function *)type)->output));
+      IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
 
@@ -699,11 +694,8 @@ IR::Value Access::EmitIR() {
   // Array size
   if (base_type->is_array() && member_name == "size") {
     auto array_type = (Array *)base_type;
-    if (array_type->fixed_length) {
-      return IR::Value(array_type->len);
-    } else {
-      NOT_YET;
-    }
+    return array_type->fixed_length ? IR::Value(array_type->len)
+                                    : IR::ArrayLength(eval);
   }
 
   if (base_type->is_struct()) {
@@ -715,7 +707,7 @@ IR::Value Access::EmitIR() {
                       IR::Field(struct_type, eval, index));
   }
 
-  NOT_YET;
+  UNREACHABLE;
 }
 
 IR::Value While::EmitIR() {
@@ -797,24 +789,19 @@ IR::Value Conditional::EmitIR() {
 }
 
 IR::Value ArrayLiteral::EmitIR() {
-  /*
   // TODO delete allocation
-  auto tmp_alloc = IR::Value::RelAlloc(
-      IR::Func::Current->PushSpace(type);
+  auto tmp_addr  = IR::Value::FrameAddr(IR::Func::Current->PushSpace(type));
   auto num_elems = elems.size();
 
   assert(type->is_array());
   auto data_type = ((Array *)type)->data_type;
   for (size_t i = 0; i < num_elems; ++i) {
-    auto gep = IR::GEP(type, tmp_alloc, {0, (int)i});
-    IR::Block::Current->push(gep);
-    Type::IR_CallAssignment(scope_, data_type, elems[i]->type, gep,
-  elems[i]->EmitIR());
+    auto ptr = IR::Access(data_type, IR::Value(i), tmp_addr);
+    Type::IR_CallAssignment(scope_, data_type, elems[i]->type,
+                            elems[i]->EmitIR(), ptr);
   }
 
-  return tmp_alloc;
-  */
-  NOT_YET;
+  return tmp_addr;
 }
 
 IR::Value For::EmitIR() {
@@ -835,13 +822,8 @@ IR::Value For::EmitIR() {
     IR::Cmd phi = IR::NOp();
 
     if (container->type->is_range()) {
-
-      if (container->is_unop()) { NOT_YET; }
-      assert(container->is_binop());
-
       IR::Block::Current = init_block;
       auto start_val     = ((Binop *)container)->lhs->EmitIR();
-      auto end_val       = ((Binop *)container)->rhs->EmitIR();
 
       IR::Block::Current = phi_block;
       phi                = IR::Phi(iter->type);
@@ -852,17 +834,20 @@ IR::Value For::EmitIR() {
       IR::Store(((Binop *)container)->lhs->type, IR::Value::Reg(phi.result.reg),
                 iter->identifier->EmitLVal());
 
-      if (iter->type == Int) {
-        done_cmp =
-            IR::BOr(done_cmp, IR::IGT(IR::Value::Reg(phi.result.reg), end_val));
-      } else if (iter->type == Uint) {
-        done_cmp =
-            IR::BOr(done_cmp, IR::UGT(IR::Value::Reg(phi.result.reg), end_val));
-      } else if (iter->type == Char) {
-        done_cmp =
-            IR::BOr(done_cmp, IR::CGT(IR::Value::Reg(phi.result.reg), end_val));
-      } else {
-        UNREACHABLE;
+      if (container->is_binop()) {
+        auto end_val = ((Binop *)container)->rhs->EmitIR();
+        if (iter->type == Int) {
+          done_cmp = IR::BOr(done_cmp,
+                             IR::IGT(IR::Value::Reg(phi.result.reg), end_val));
+        } else if (iter->type == Uint) {
+          done_cmp = IR::BOr(done_cmp,
+                             IR::UGT(IR::Value::Reg(phi.result.reg), end_val));
+        } else if (iter->type == Char) {
+          done_cmp = IR::BOr(done_cmp,
+                             IR::CGT(IR::Value::Reg(phi.result.reg), end_val));
+        } else {
+          UNREACHABLE;
+        }
       }
 
       IR::Block::Current = incr_block;
@@ -969,7 +954,8 @@ IR::Value Jump::EmitIR() {
 }
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
-IR::Value ParametricStructLiteral::EmitIR() { NOT_YET; }
-IR::Value StructLiteral::EmitIR() { NOT_YET; }
-IR::Value EnumLiteral::EmitIR() { NOT_YET; }
+
+IR::Value ParametricStructLiteral::EmitIR() { return IR::Value(value.as_type); }
+IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }
+IR::Value EnumLiteral::EmitIR() { return IR::Value(value.as_type); }
 } // namespace AST

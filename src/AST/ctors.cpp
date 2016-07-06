@@ -25,9 +25,13 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(false), type(nullptr), value(nullptr), value_flag(ValueFlag::Not) {
 }
+
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),
-      alloc(nullptr), stack_loc(nullptr), arg_val(nullptr) {}
+      alloc(nullptr), arg_val(nullptr) {
+  stack_loc = IR::Value::StackAddr((size_t)~0);
+}
+
 Generic::Generic() : test_fn(nullptr) {}
 InDecl::InDecl() : container(nullptr) {}
 ArrayLiteral::ArrayLiteral() {}

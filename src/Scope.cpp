@@ -199,9 +199,10 @@ void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
 }
 
+// TODO what should the exit_flag default be?
 FnScope::FnScope(llvm::Function *fn)
     : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
-      exit_flag_(nullptr), exit_flag(nullptr) {
+      exit_flag_(nullptr), exit_flag('\0') {
   set_parent_function(fn);
 }
 

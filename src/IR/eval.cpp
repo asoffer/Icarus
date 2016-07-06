@@ -25,33 +25,37 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
 
   for (size_t i = 0; i < frame.reg.size(); ++i) {
     switch (frame.reg[i].flag) {
-      case ValType::B: {
-        mvprintw((int)i, 100, "%2d.> %8s", i,
-                 (frame.reg[i].as_bool ? "true" : "false"));
-      } break;
-      case ValType::C: {
-        switch (frame.reg[i].as_char) {
-        case '\n': mvprintw((int)i, 100, "%2d.>      '\\n'", i); break;
-        case '\r': mvprintw((int)i, 100, "%2d.>      '\\r'", i); break;
-        case '\t': mvprintw((int)i, 100, "%2d.>      '\\t'", i); break;
-        case '\b': mvprintw((int)i, 100, "%2d.>      '\\b'", i); break;
-        case '\v': mvprintw((int)i, 100, "%2d.>      '\\v'", i); break;
-        case '\a': mvprintw((int)i, 100, "%2d.>      '\\a'", i); break;
-        default: mvprintw((int)i, 100, "%2d.>      '%c'", i, frame.reg[i].as_char);
-        }
-      } break;
-      case ValType::I: {
-        mvprintw((int)i, 100, "%2d.> %8ldi", i, frame.reg[i].as_int);
-      } break;
-      case ValType::U: {
-        mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
-      } break;
-      case ValType::Alloc: {
-        mvprintw((int)i, 100, "%2d.> %8lu (stack pos)", i, frame.reg[i].as_alloc);
-      } break;
-      default: {
-        mvprintw((int)i, 100, "%2d.> ........", i);
-      } break;
+    case ValType::B: {
+      mvprintw((int)i, 100, "%2d.> %8s", i,
+               (frame.reg[i].as_bool ? "true" : "false"));
+    } break;
+    case ValType::C: {
+      switch (frame.reg[i].as_char) {
+      case '\n': mvprintw((int)i, 100, "%2d.>      '\\n'", i); break;
+      case '\r': mvprintw((int)i, 100, "%2d.>      '\\r'", i); break;
+      case '\t': mvprintw((int)i, 100, "%2d.>      '\\t'", i); break;
+      case '\b': mvprintw((int)i, 100, "%2d.>      '\\b'", i); break;
+      case '\v': mvprintw((int)i, 100, "%2d.>      '\\v'", i); break;
+      case '\a': mvprintw((int)i, 100, "%2d.>      '\\a'", i); break;
+      default:
+        mvprintw((int)i, 100, "%2d.>      '%c'", i, frame.reg[i].as_char);
+      }
+    } break;
+    case ValType::I: {
+      mvprintw((int)i, 100, "%2d.> %8ldi", i, frame.reg[i].as_int);
+    } break;
+    case ValType::U: {
+      mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
+    } break;
+    case ValType::HeapAddr: {
+      mvprintw((int)i, 100, "%2d.> %8lu (heap addr)", i,
+               frame.reg[i].as_heap_addr);
+    } break;
+    case ValType::StackAddr: {
+      mvprintw((int)i, 100, "%2d.> %8lu (stack addr)", i,
+               frame.reg[i].as_stack_addr);
+    } break;
+    default: { mvprintw((int)i, 100, "%2d.> ........", i); } break;
     }
   }
 
@@ -113,8 +117,8 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
 static Value ResolveValue(const StackFrame &frame, const Value &v) {
   if (v.flag == ValType::Reg) { return frame.reg[v.as_reg]; }
   if (v.flag == ValType::Arg) { return frame.args[v.as_arg]; }
-  if (v.flag == ValType::RelAlloc) {
-    return Value::Alloc(v.as_rel_alloc + frame.offset);
+  if (v.flag == ValType::FrameAddr) {
+    return Value::StackAddr(v.as_frame_addr + frame.offset);
   }
   return v;
 }
@@ -189,11 +193,21 @@ void Cmd::Execute(StackFrame& frame) {
       NOT_YET;
     }
   } break;
+  case Op::ArrayLength: {
+    if (cmd_inputs[1].flag == ValType::StackAddr) {
+      frame.reg[result.reg] =
+          Value(*(size_t *)(frame.stack->allocs + cmd_inputs[0].as_stack_addr));
+    } else if (cmd_inputs[1].flag == ValType::HeapAddr) {
+      NOT_YET;
+    } else {
+      UNREACHABLE;
+    }
+  } break;
   case Op::Load: {
-    assert(cmd_inputs[0].flag == ValType::Alloc);
+    assert(cmd_inputs[0].flag == ValType::StackAddr);
     assert((result.type->is_primitive() || result.type->is_pointer()) &&
            "Non-primitive/pointer local variables are not yet implemented");
-    size_t offset = cmd_inputs[0].as_alloc;
+    size_t offset = cmd_inputs[0].as_stack_addr;
 
 #define DO_LOAD(StoredType, stored_type)                                       \
   if (result.type == StoredType) {                                             \
@@ -211,7 +225,7 @@ void Cmd::Execute(StackFrame& frame) {
 
 #undef DO_LOAD_IF
     if (result.type->is_pointer()) {
-      frame.reg[result.reg] = Value::Alloc(offset);
+      frame.reg[result.reg] = Value::StackAddr(offset);
     } else {
       UNREACHABLE;
     }
@@ -220,8 +234,8 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::Store: {
     assert(cmd_inputs[0].flag == ValType::T &&
            cmd_inputs[0].as_type->is_primitive());
-    assert(cmd_inputs[2].flag == ValType::Alloc);
-    size_t offset = cmd_inputs[2].as_alloc;
+    assert(cmd_inputs[2].flag == ValType::StackAddr);
+    size_t offset = cmd_inputs[2].as_stack_addr;
 
 #define DO_STORE(cpp_type, t, T)                                               \
   if (cmd_inputs[0].as_type == T) {                                            \
@@ -239,7 +253,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     if (cmd_inputs[0].as_type == Void) {
       auto ptr = (void *)(frame.stack->allocs + offset);
-      *(size_t *)ptr = cmd_inputs[1].as_alloc;
+      *(size_t *)ptr = cmd_inputs[1].as_stack_addr;
       break;
     }
 #undef DO_STORE
@@ -249,52 +263,28 @@ void Cmd::Execute(StackFrame& frame) {
     auto struct_type = (Structure *)(cmd_inputs[0].as_type);
 
     // TODO what if it's heap-allocated?
-    assert(cmd_inputs[1].flag == ValType::Alloc);
+    assert(cmd_inputs[1].flag == ValType::StackAddr);
     assert(cmd_inputs[2].flag == ValType::U);
 
-    auto ptr = cmd_inputs[1].as_alloc;
+    auto ptr = cmd_inputs[1].as_stack_addr;
 
     size_t field_index = cmd_inputs[2].as_uint;
 
     // field_index + 1 is correct because it simplifies the offset computation
     // to have the zero present.
     ptr += struct_type->field_offsets AT(field_index + 1);
-    frame.reg[result.reg] = Value::Alloc(ptr);
+    frame.reg[result.reg] = Value::StackAddr(ptr);
   } break;
   case Op::Access: {
     switch (cmd_inputs[2].flag) {
-    case ValType::Alloc:
-      frame.reg[result.reg] =
-          Value::Alloc(cmd_inputs[2].as_alloc +
-                cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
+    case ValType::StackAddr:
+      frame.reg[result.reg] = Value::StackAddr(
+          cmd_inputs[2].as_stack_addr +
+          cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
       break;
     default: std::cerr << cmd_inputs[2] << '\n'; UNREACHABLE;
     }
   } break;
-                  /*
-  case Op::GEP: {
-    if (cmd_inputs[0].as_type->is_array()) {
-      auto array_type = (Array *)(cmd_inputs[0].as_type);
-      if (array_type->fixed_length) {
-        if (cmd_inputs[1].flag == ValType::Alloc) {
-          auto ptr = cmd_inputs[1].as_alloc +
-                     (size_t)(cmd_inputs[2].as_int) * sizeof(char *);
-
-          for (size_t i = 3; i < cmd_inputs.size(); ++i) {
-            ptr += (size_t)(cmd_inputs[i].as_int) *
-                   array_type->data_type->SpaceInArray();
-          }
-
-          // frame.reg[result.reg] = Value::Alloc(ptr);
-        } else {
-          NOT_YET;
-        }
-      } else {
-        NOT_YET;
-      }
-    }
-  } break;
-  */
   case Op::Phi: {
     assert((cmd_inputs.size() & 1u) == 0u);
     for (size_t i = 0; i < cmd_inputs.size(); i += 2) {
@@ -416,7 +406,10 @@ void Cmd::Execute(StackFrame& frame) {
         Value(cmd_inputs[0].as_char == cmd_inputs[1].as_char);
   } break;
   case Op::PtrEQ: {
-    frame.reg[result.reg] = Value(cmd_inputs[0].as_ptr == cmd_inputs[1].as_ptr);
+    // We can use as_heap_addr because it's the same size as stack_addr
+    frame.reg[result.reg] =
+        Value(cmd_inputs[0].flag == cmd_inputs[1].flag &&
+              cmd_inputs[0].as_heap_addr == cmd_inputs[1].as_heap_addr);
   } break;
   case Op::BEQ: {
     frame.reg[result.reg] =
@@ -536,6 +529,9 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::Alignment: {
     frame.reg[result.reg] = Value(cmd_inputs[0].as_type->alignment());
+  } break;
+  case Op::ArrayData: {
+    NOT_YET;
   } break;
   }
 }
