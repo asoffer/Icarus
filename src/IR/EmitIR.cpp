@@ -803,6 +803,26 @@ IR::Value ArrayLiteral::EmitIR() {
 
   return tmp_addr;
 }
+static void EmitSliceOrArray(IR::Block *init_block, IR::Block *phi_block,
+                             IR::Block *cond_block, IR::Block *incr_block,
+                             Array *array, InDecl *indecl, IR::Cmd *phi,
+                             IR::Value *done_cmp, IR::Value start_ptr,
+                             IR::Value end_ptr) {
+  IR::Block::Current = phi_block;
+  *phi               = IR::Phi(Ptr(indecl->type));
+  auto phi_result = IR::Value::Reg(phi->result.reg);
+  phi->args.emplace_back(init_block);
+  phi->args.emplace_back(start_ptr);
+
+  IR::Block::Current = cond_block;
+  indecl->stack_loc  = phi_result;
+  *done_cmp          = IR::BOr(*done_cmp, IR::PtrEQ(phi_result, end_ptr));
+
+  IR::Block::Current = incr_block;
+  auto next = IR::Access(array->data_type, IR::Value(1ul), phi_result);
+  phi->args.emplace_back(incr_block);
+  phi->args.emplace_back(next);
+}
 
 IR::Value For::EmitIR() {
   auto init_block = IR::Func::Current->AddBlock("for-init");
@@ -871,39 +891,92 @@ IR::Value For::EmitIR() {
       phi.args.emplace_back(next);
 
     } else if (container->type->is_slice()) {
-      NOT_YET;
+      assert(container->is_binop());
+      IR::Block::Current   = init_block;
+      auto array_container = ((Binop *)container)->lhs;
+      auto container_val   = array_container->EmitIR();
+
+      IR::Value start_ptr, head_ptr, start_offset, end_offset, end_ptr;
+
+      auto array_type = (Array *)array_container->type;
+      if (array_type->fixed_length) {
+        head_ptr = container_val;
+      } else {
+        head_ptr = IR::ArrayData(array_type, container_val);
+      }
+
+      auto range = ((Binop *)container)->rhs;
+      assert(range->type->is_range());
+
+      if (range->is_binop()) {
+        start_offset = ((Binop *)range)->lhs->EmitIR();
+        end_offset   = ((Binop *)range)->rhs->EmitIR();
+
+        assert(((Binop *)range)->rhs->type == Int ||
+               ((Binop *)range)->rhs->type == Uint);
+        if (((Binop *)range)->rhs->type == Int) {
+          end_offset = IR::UAdd(end_offset, IR::Value(1ul));
+        } else {
+          end_offset = IR::IAdd(end_offset, IR::Value(1l));
+        }
+
+      } else if (range->is_unop()) {
+        start_offset = ((Unop *)range)->operand->EmitIR();
+        end_offset = array_type->fixed_length ? IR::Value(array_type->len)
+                                              : IR::ArrayLength(container_val);
+      } else {
+        UNREACHABLE;
+      }
+
+      start_ptr = IR::Access(array_type->data_type, start_offset, head_ptr);
+      end_ptr   = IR::Access(array_type->data_type, end_offset, head_ptr);
+
+      EmitSliceOrArray(init_block, phi_block, cond_block, incr_block,
+                       array_type, iter, &phi, &done_cmp, start_ptr, end_ptr);
+
     } else if (container->type->is_array()) {
       IR::Block::Current = init_block;
       auto container_val = container->EmitIR();
 
-      IR::Value start_ptr, end_ptr;
+      IR::Value start_ptr, len_val, end_ptr;
 
       auto array_type = (Array *)container->type;
       if (array_type->fixed_length) {
         start_ptr = container_val;
-        end_ptr = IR::Access(array_type->data_type, IR::Value(array_type->len),
-                             container_val);
+        len_val   = IR::Value(array_type->len);
       } else {
-        NOT_YET;
+        start_ptr = IR::ArrayData(array_type, container_val);
+        len_val   = IR::ArrayLength(container_val);
       }
+      end_ptr = IR::Access(array_type->data_type, len_val, start_ptr);
+
+      EmitSliceOrArray(init_block, phi_block, cond_block, incr_block,
+                       array_type, iter, &phi, &done_cmp, start_ptr, end_ptr);
+
+    } else if (container->type == Type_) {
+      Ctx ctx;
+      auto container_type = container->evaluate(ctx).as_type;
+      assert(container_type->is_enum());
+      auto enum_type = (Enumeration *)container_type;
 
       IR::Block::Current = phi_block;
-      phi                = IR::Phi(Ptr(iter->type));
-      auto phi_result = IR::Value::Reg(phi.result.reg);
+      phi                = IR::Phi(Uint);
       phi.args.emplace_back(init_block);
-      phi.args.emplace_back(start_ptr);
+      phi.args.emplace_back(IR::Value(0ul));
+
 
       IR::Block::Current = cond_block;
-      iter->stack_loc    = phi_result;
-      done_cmp = IR::BOr(done_cmp, IR::PtrEQ(phi_result, end_ptr));
+      auto phi_result    = IR::Value::Reg(phi.result.reg);
+      done_cmp =
+          IR::BOr(done_cmp,
+                  IR::UEQ(phi_result, IR::Value(enum_type->int_values.size())));
+      IR::Store(Uint, phi_result, iter->identifier->EmitLVal());
 
       IR::Block::Current = incr_block;
-      auto next = IR::Access(array_type->data_type, IR::Value(1ul), phi_result);
+      auto next          = IR::UAdd(iter->identifier->EmitIR(), IR::Value(1ul));
       phi.args.emplace_back(incr_block);
       phi.args.emplace_back(next);
 
-    } else if (container->type == Type_) {
-      NOT_YET;
     } else {
       UNREACHABLE;
     }

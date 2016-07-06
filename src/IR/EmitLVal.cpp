@@ -11,7 +11,7 @@ IR::Value Binop::EmitLVal() {
     return IR::Access(array_type->data_type, rhs->EmitIR(),
                       array_type->fixed_length
                           ? lhs->EmitLVal()
-                          : IR::ArrayData((Array *)lhs->type, lhs->EmitLVal()));
+                          : IR::ArrayData(array_type, lhs->EmitLVal()));
   } else {
     NOT_YET;
   }

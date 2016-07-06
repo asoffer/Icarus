@@ -371,15 +371,14 @@ llvm::Value *Access::generate_code() {
   if (base_type->is_struct()) {
     auto struct_type = (Structure *)base_type;
 
-    if (!type->stores_data()) { assert(false && "Not yet implemented"); }
+    if (!type->stores_data()) { NOT_YET; }
 
     auto elem_ptr = builder.CreateGEP(
         eval, {data::const_uint(0), struct_type->field_num(member_name)});
     return type->is_big() ? elem_ptr : builder.CreateLoad(elem_ptr);
 
-  } else {
-    assert(false && "Not yet implemented");
   }
+  UNREACHABLE;
 }
 
 // This function exists because both '=' and ':=' need to call some version of
