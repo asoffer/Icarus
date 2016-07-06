@@ -71,6 +71,9 @@ public:
   static void CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                              llvm::Value *val, llvm::Value *var);
 
+  static void IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                                IR::Value from_val, IR::Value to_var);
+
   void CallDestroy(Scope *scope, llvm::Value *var);
 
   // Note: this one is special. It functions identically to the rest, but it's

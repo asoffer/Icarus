@@ -63,7 +63,7 @@ struct BlockScope : public Scope {
 
   void uninitialize();
   void make_return(llvm::Value *val);
-  void MakeReturn(IR::Value val);
+  void MakeReturn(Type *ret_type, IR::Value val);
 
   llvm::Value *AllocateLocally(Type *type, const std::string &name);
   llvm::Value *CreateLocalReturn(Type *type);

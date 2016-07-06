@@ -7,6 +7,8 @@ extern llvm::Module *global_module;
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             Function *fn_type);
+extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+                                     Function *fn_type);
 
 namespace cstdlib {
 extern llvm::Constant *malloc();
@@ -80,6 +82,45 @@ size_t Type::alignment() const {
 
   std::cerr << *this << std::endl;
   NOT_YET;
+}
+
+void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+                             IR::Value from_val, IR::Value to_var) {
+  assert(scope);
+  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
+      lhs_type->is_enum()) {
+    assert(lhs_type == rhs_type);
+    IR::Store(rhs_type, from_val, to_var);
+
+  } else if (lhs_type->is_array()) {
+    /*
+    assert(rhs_type->is_array());
+    auto lhs_array_type = (Array *)lhs_type;
+    if (lhs_array_type->fixed_length) {
+      // Implies rhs has fixed length of same length as well.
+
+      // TODO move this into a real Array method.
+      for (int i = 0; i < (int)lhs_array_type->len; ++i) {
+        auto lhs_gep = IR::GEP(lhs_array_type, lhs_ptr, {0, i});
+        IR::Block::Current->push(lhs_gep);
+
+        auto rhs_gep = IR::GEP(lhs_array_type, rhs, {0, i});
+        IR::Block::Current->push(rhs_gep);
+
+        EmitAssignment(scope, lhs_array_type->data_type,
+                       lhs_array_type->data_type, lhs_gep,
+                       PtrCallFix(lhs_array_type->data_type, rhs_gep));
+      }
+    }
+    */
+    NOT_YET;
+
+  } else {
+    auto fn = GetFuncReferencedIn(scope, "__assign__",
+                                  Func(Tup({Ptr(lhs_type), rhs_type}), Void));
+    assert(fn);
+    IR::Call(Void, IR::Value(fn), {to_var, from_val});
+  }
 }
 
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,

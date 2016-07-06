@@ -5,8 +5,6 @@
 
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
-extern void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                           IR::Value lhs_ptr, IR::Value rhs);
 
 namespace cstdlib {
 extern llvm::Constant *calloc();
@@ -235,7 +233,7 @@ void Structure::EmitInit(IR::Value id_val) {
     for (size_t i = 0; i < field_type.size(); ++i) {
       if (init_values[i]) {
         if (init_values[i]->is_hole()) { continue; }
-        EmitAssignment(
+        Type::IR_CallAssignment(
             init_values[i]->scope_, field_type[i], init_values[i]->type,
             IR::Field(this, IR::Value::Arg(0), i), init_values[i]->EmitIR());
       } else {

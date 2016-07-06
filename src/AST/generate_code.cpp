@@ -197,6 +197,7 @@ llvm::Value *Unop::generate_code() {
 
     auto fn_ptr                = new FunctionLiteral;
     fn_ptr->type               = Func(Void, operand->type);
+    fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
     fn_ptr->scope_             = scope_;
     fn_ptr->statements         = new Statements;
     fn_ptr->statements->scope_ = fn_ptr->fn_scope;
@@ -216,6 +217,7 @@ llvm::Value *Unop::generate_code() {
 
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitIR().as_func;
+
     func->name       = "anonymous-func";
 
     if (operand->type == Void) {

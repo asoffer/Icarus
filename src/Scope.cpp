@@ -6,9 +6,6 @@ namespace cstdlib {
 extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
-extern void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                           IR::Value lhs_ptr, IR::Value rhs);
-
 namespace data {
 extern llvm::ConstantInt *const_uint(size_t n);
 extern llvm::ConstantInt *const_char(char c);
@@ -192,13 +189,12 @@ void BlockScope::make_return(llvm::Value *val) {
   builder.CreateBr(fn_scope->exit);
 }
 
-void BlockScope::MakeReturn(IR::Value val) {
+void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   FnScope *fn_scope =
       is_function_scope() ? (FnScope *)this : containing_function_;
 
   // TODO actual returned type (second type arg) may be different
-  EmitAssignment(this, fn_scope->fn_type->output, fn_scope->fn_type->output,
-                 fn_scope->ret_val, val);
+  Type::IR_CallAssignment(this, ret_type, ret_type, val, fn_scope->ret_val);
 
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
 }

@@ -39,46 +39,6 @@ void IR::Func::PushLocal(AST::Declaration *decl) {
   decl->stack_loc = IR::Value::RelAlloc(PushSpace(decl->type));
 }
 
-void EmitAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                    IR::Value lhs_ptr, IR::Value rhs) {
-  assert(scope);
-  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-      lhs_type->is_enum()) {
-    if (lhs_type == rhs_type) {
-      IR::Store(rhs_type, rhs, lhs_ptr);
-    } else {
-      NOT_YET;
-    }
-  } else if (lhs_type->is_array()) {
-    /*
-    assert(rhs_type->is_array());
-    auto lhs_array_type = (Array *)lhs_type;
-    if (lhs_array_type->fixed_length) {
-      // Implies rhs has fixed length of same length as well.
-
-      // TODO move this into a real Array method.
-      for (int i = 0; i < (int)lhs_array_type->len; ++i) {
-        auto lhs_gep = IR::GEP(lhs_array_type, lhs_ptr, {0, i});
-        IR::Block::Current->push(lhs_gep);
-
-        auto rhs_gep = IR::GEP(lhs_array_type, rhs, {0, i});
-        IR::Block::Current->push(rhs_gep);
-
-        EmitAssignment(scope, lhs_array_type->data_type,
-                       lhs_array_type->data_type, lhs_gep,
-                       PtrCallFix(lhs_array_type->data_type, rhs_gep));
-      }
-    }
-    */
-    NOT_YET;
-  } else {
-    auto fn = GetFuncReferencedIn(scope, "__assign__",
-                                  Func(Tup({Ptr(lhs_type), rhs_type}), Void));
-    assert(fn);
-    IR::Call(Void, IR::Value(fn), {lhs_ptr, rhs});
-  }
-}
-
 namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
@@ -133,14 +93,55 @@ IR::Value Unop::EmitIR() {
     // change that, we must first compute the ret then set the return. The order
     // here is important!
     auto ret = operand->EmitIR();
-    assert(scope_->is_block_scope() || scope_->is_function_scope());
+    assert(scope_->is_block_scope());
     auto block_scope = (BlockScope *)scope_;
 
-    block_scope->MakeReturn(ret);
+    block_scope->MakeReturn(operand->type, ret);
     return IR::Value();
   } break;
   case Language::Operator::Free: NOT_YET;
-  case Language::Operator::Eval: NOT_YET;
+  case Language::Operator::Eval: {
+    auto fn_ptr                = new FunctionLiteral;
+    fn_ptr->type               = Func(Void, operand->type);
+    fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
+    fn_ptr->scope_             = scope_;
+    fn_ptr->statements         = new Statements;
+    fn_ptr->statements->scope_ = fn_ptr->fn_scope;
+    fn_ptr->return_type_expr   = new DummyTypeExpr(operand->loc, type);
+    Unop *ret                  = nullptr;
+
+    if (operand->type != Void) {
+      ret             = new Unop;
+      ret->scope_     = fn_ptr->fn_scope;
+      ret->operand    = operand;
+      ret->op         = Language::Operator::Return;
+      ret->precedence = Language::precedence(ret->op);
+      fn_ptr->statements->statements.push_back(ret);
+    } else {
+      fn_ptr->statements->statements.push_back(operand);
+    }
+
+    auto local_stack = new IR::LocalStack;
+    IR::Func *func   = fn_ptr->EmitIR().as_func;
+    func->name       = "anonymous-func";
+
+    if (operand->type == Void) {
+      // Assumptions:
+      //  * There's only one exit block.
+      //  * The current block is pointing to it. This is NOT threadsafe.
+      IR::Block::Current->exit.SetReturnVoid();
+    }
+
+    auto result = IR::Call(func, local_stack, {});
+    delete local_stack;
+
+    // Cleanup
+    // ret->operand = nullptr;
+    delete fn_ptr; // Because delete is called recursively, this is all we need
+                   // to do. The Statements and Unop nodes are owned by the
+                   // function.
+    return result;
+  } break;
   case Language::Operator::Print: {
     if (operand->is_comma_list()) {
       auto operand_as_chainop = (ChainOp *)operand;
@@ -197,8 +198,8 @@ IR::Value Binop::EmitIR() {
     if (rhs->type->is_primitive()) {
       return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
     } else {
-      EmitAssignment(scope_, lhs->type, rhs->type, lhs->EmitLVal(),
-                     rhs->EmitIR());
+      Type::IR_CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
+                              lhs->EmitLVal());
       return IR::Value();
     }
   } break;
@@ -622,7 +623,8 @@ IR::Value Declaration::EmitIR() {
     auto id_val  = identifier->EmitLVal();
     auto rhs_val = init_val->EmitIR();
 
-    EmitAssignment(scope_, identifier->type, init_val->type, id_val, rhs_val);
+    Type::IR_CallAssignment(scope_, identifier->type, init_val->type,
+  rhs_val, id_val);
   }
   */
   return IR::Value();
@@ -801,7 +803,8 @@ IR::Value ArrayLiteral::EmitIR() {
   for (size_t i = 0; i < num_elems; ++i) {
     auto gep = IR::GEP(type, tmp_alloc, {0, (int)i});
     IR::Block::Current->push(gep);
-    EmitAssignment(scope_, data_type, elems[i]->type, gep, elems[i]->EmitIR());
+    Type::IR_CallAssignment(scope_, data_type, elems[i]->type, gep,
+  elems[i]->EmitIR());
   }
 
   return tmp_alloc;
