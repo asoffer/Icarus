@@ -4,7 +4,7 @@
 #include "Scope.h"
 #endif
 
-// TODO 32 is hard-coded here as an int size. Change it
+// TODO 64 is hard-coded here as an int size. Change it
 
 namespace Language {
 // Associativity stored in the lowest two bits.
@@ -30,9 +30,7 @@ bool ct_eval           = false;
 std::vector<AST::StructLiteral*> created_types;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
-enum class Lib {
-  String
-};
+enum class Lib { String };
 
 std::map<Lib, AST::Identifier *> lib_type;
 std::queue<std::string> file_queue;
@@ -95,13 +93,13 @@ llvm::Constant *null(const Type *t) {
 
 llvm::ConstantInt *const_int(long n) {
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                llvm::APInt(32, (unsigned int)n, false));
+                                llvm::APInt(64, (unsigned int)n, false));
 }
 
 llvm::ConstantInt *const_uint(size_t n) {
   // The safety of this cast is verified only in debug mode
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                llvm::APInt(32, (size_t)n, false));
+                                llvm::APInt(64, (size_t)n, false));
 }
 
 llvm::ConstantFP *const_real(double d) {
@@ -176,49 +174,6 @@ llvm::Function *ascii() {
   return ascii_;
 }
 } // namespace builtin
-
-namespace IR {
-Func *AsciiFunc() {
-  static IR::Func *ascii_ = nullptr;
-
-  if (ascii_) { return ascii_; }
-  ascii_ = new IR::Func;
-
-  auto saved_func  = Func::Current;
-  auto saved_block = Block::Current;
-
-  Func::Current  = ascii_;
-  Block::Current = ascii_->entry();
-
-  Block::Current->exit.SetReturn(IR::Cast(Uint, Char, IR::Value::Arg(0)));
-
-  Func::Current  = saved_func;
-  Block::Current = saved_block;
-
-  return ascii_;
-}
-
-Func *OrdFunc() {
-  static IR::Func *ord_ = nullptr;
-
-  if (ord_) { return ord_; }
-  ord_ = new IR::Func;
-
-  auto saved_func  = Func::Current;
-  auto saved_block = Block::Current;
-
-  Func::Current  = ord_;
-  Block::Current = ord_->entry();
-
-  Block::Current->exit.SetReturn(IR::Cast(Char, Uint, IR::Value::Arg(0)));
-
-  Func::Current  = saved_func;
-  Block::Current = saved_block;
-
-  return ord_;
-}
-} // namespace IR
-
 
 // TODO make calls to call_repr not have to first check if we pass the
 // object or a pointer to the object.

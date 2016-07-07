@@ -262,6 +262,7 @@ llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
 void BlockScope::IR_Init() {
   auto old_block = IR::Block::Current;
   IR::Block::Current = entry_block;
+
   for (auto decl_ptr : ordered_decls_) {
     if (decl_ptr->is_indecl()) continue;
     if (!decl_ptr->type->stores_data()) continue;

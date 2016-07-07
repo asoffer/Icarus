@@ -214,13 +214,13 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
     llvm_type = llvm::Type::getInt8Ty(llvm::getGlobalContext());
     break;
   case Primitive::TypeEnum::Int:
-    llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());
+    llvm_type = llvm::Type::getInt64Ty(llvm::getGlobalContext());
     break;
   case Primitive::TypeEnum::Real:
     llvm_type = llvm::Type::getDoubleTy(llvm::getGlobalContext());
     break;
   case Primitive::TypeEnum::Uint:
-    llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());
+    llvm_type = llvm::Type::getInt64Ty(llvm::getGlobalContext());
     break;
   case Primitive::TypeEnum::Void:
     llvm_type = llvm::Type::getVoidTy(llvm::getGlobalContext());

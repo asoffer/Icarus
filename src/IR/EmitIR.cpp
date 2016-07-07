@@ -7,10 +7,45 @@ namespace debug {
 extern bool ct_eval;
 } // namespace debug
 
-namespace IR {
-extern Func *AsciiFunc();
-extern Func *OrdFunc();
-} // namespace IR
+static IR::Func *AsciiFunc() {
+  static IR::Func *ascii_ = nullptr;
+
+  if (ascii_) { return ascii_; }
+  ascii_ = new IR::Func(Func(Uint, Char));
+
+  auto saved_func  = IR::Func::Current;
+  auto saved_block = IR::Block::Current;
+
+  IR::Func::Current  = ascii_;
+  IR::Block::Current = ascii_->entry();
+
+  IR::Block::Current->exit.SetReturn(IR::Cast(Uint, Char, IR::Value::Arg(0)));
+
+  IR::Func::Current  = saved_func;
+  IR::Block::Current = saved_block;
+
+  return ascii_;
+}
+
+static IR::Func *OrdFunc() {
+  static IR::Func *ord_ = nullptr;
+
+  if (ord_) { return ord_; }
+  ord_ = new IR::Func(Func(Char, Uint));
+
+  auto saved_func  = IR::Func::Current;
+  auto saved_block = IR::Block::Current;
+
+  IR::Func::Current  = ord_;
+  IR::Block::Current = ord_->entry();
+
+  IR::Block::Current->exit.SetReturn(IR::Cast(Char, Uint, IR::Value::Arg(0)));
+
+  IR::Func::Current  = saved_func;
+  IR::Block::Current = saved_block;
+
+  return ord_;
+}
 
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope);
@@ -27,7 +62,7 @@ size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
   if (bytes == 0) { bytes = sizeof(Type *); }
   if (alignment == 0) { alignment = sizeof(Type *); }
 
-  frame_size = MoveForwardToAlignment(frame_size, alignment);
+    frame_size = MoveForwardToAlignment(frame_size, alignment);
 
   auto result = frame_size;
   frame_size += bytes;
@@ -37,13 +72,14 @@ size_t IR::Func::PushSpace(size_t bytes, size_t alignment) {
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
   decl->stack_loc = IR::Value::FrameAddr(PushSpace(decl->type));
+  frame_map[decl->stack_loc.as_frame_addr] = decl;
 }
 
 namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
   switch (terminal_type) {
-  case Language::Terminal::ASCII: return IR::Value(IR::AsciiFunc());
+  case Language::Terminal::ASCII: return IR::Value(AsciiFunc());
   case Language::Terminal::Char: return IR::Value(value.as_char);
   case Language::Terminal::Else: UNREACHABLE;
   case Language::Terminal::False: return IR::Value(false);
@@ -52,7 +88,7 @@ IR::Value Terminal::EmitIR() {
     return IR::Value(
         (long)value.as_int); // TODO Context::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value::HeapAddr(0);
-  case Language::Terminal::Ord: return IR::Value(IR::OrdFunc());
+  case Language::Terminal::Ord: return IR::Value(OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: {
     IR::Block::Current->exit.SetReturnVoid();
@@ -490,10 +526,11 @@ IR::Value ChainOp::EmitIR() {
 
 IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
-  ir_func = new IR::Func;
+  assert(type->is_function());
+  ir_func = new IR::Func((Function *)type);
 
   fn_scope->entry_block = ir_func->entry();
-  fn_scope->exit_block  = ir_func->AddBlock("func-exit");
+  fn_scope->exit_block  = ir_func->AddBlock("fn-exit");
 
   assert(type);
   assert(type->is_function());
@@ -612,7 +649,6 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
-  /*
   if (IsUninitialized()) {
     return IR::Value();
 
@@ -626,7 +662,7 @@ IR::Value Declaration::EmitIR() {
     Type::IR_CallAssignment(scope_, identifier->type, init_val->type,
   rhs_val, id_val);
   }
-  */
+
   return IR::Value();
 }
 

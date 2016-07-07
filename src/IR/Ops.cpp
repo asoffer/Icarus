@@ -2,6 +2,8 @@
 #include <cmath>
 #include "Type/Type.h"
 
+extern llvm::Module *global_module;
+
 // TODO what Value number to return????
 namespace IR {
 #define CMD_WITH_1_ARGS(name, out_type)                                        \
@@ -34,6 +36,16 @@ namespace IR {
 #undef CMD_WITH_V_ARGS
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
+
+Func::Func(Function *fn_type)
+    : fn_type(fn_type), llvm_fn(nullptr), num_cmds(0), frame_size(0) {
+  llvm::FunctionType *llvm_fn_type = *fn_type;
+  llvm_fn =
+      (llvm::Function *)global_module->getOrInsertFunction(name, llvm_fn_type);
+
+  blocks.push_back(new Block(0));
+  blocks.back()->block_name = "fn-entry";
+}
 
 Value Access(Type *type, Value index, Value ptr) {
   Cmd cmd(Op::Access, true);

@@ -116,10 +116,7 @@ struct Exit {
   friend Value Call(Func *, LocalStack *, const std::vector<Value> &);
   friend void RefreshDisplay(const StackFrame &, LocalStack *);
 
-public:
   enum class Strategy { Unset, Uncond, Cond, Return, ReturnVoid } flag;
-
-private:
 
   Value val; // This is the return value in the case of a return, and the value
              // to branch on in the case of a conditional branch.
@@ -133,7 +130,6 @@ private:
       : flag(Strategy::Unset), val(false), true_block(nullptr),
         false_block(nullptr) {}
 
-public:
   void SetReturnVoid() { flag = Strategy::ReturnVoid; }
 
   void SetReturn(Value v) {
@@ -166,11 +162,15 @@ struct Block {
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
 
+  llvm::BasicBlock *GenerateLLVM(IR::Func *ir_fn);
+
   Block *ExecuteJump(StackFrame &frame);
 
   size_t block_num;
   const char *block_name;
   std::vector<Cmd> cmds;
+
+  llvm::BasicBlock *llvm_block;
 
   Exit exit;
 
@@ -179,10 +179,13 @@ struct Block {
 
 struct Func {
   static Func *Current;
+  std::map<size_t, AST::Declaration *> frame_map;
 
   std::vector<Block *> blocks;
   std::vector<Value *> args;
   std::string name;
+  Function *fn_type;
+  llvm::Function *llvm_fn;
 
   Block *entry() { return blocks.front(); }
   size_t num_cmds, frame_size;
@@ -190,13 +193,13 @@ struct Func {
   size_t PushSpace(size_t bytes, size_t alignment);
   size_t PushSpace(Type *t);
 
+  void GenerateLLVM();
+
   void PushLocal(AST::Declaration *decl);
   Block *AddBlock(const char *block_name);
 
-  Func() : num_cmds(0), frame_size(0) {
-    blocks.push_back(new Block(0));
-    blocks.back()->block_name = "entry";
-  }
+  Func(Function *fn_type);
+
   ~Func() {
     for (auto b : blocks) { delete b; }
   }

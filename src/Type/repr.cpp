@@ -69,7 +69,7 @@ void Array::EmitRepr(IR::Value val) {
     auto saved_func  = IR::Func::Current;
     auto saved_block = IR::Block::Current;
 
-    repr_func          = new IR::Func;
+    repr_func          = new IR::Func(Func(this, Void));
     IR::Func::Current  = repr_func;
     IR::Block::Current = repr_func->entry();
 

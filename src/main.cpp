@@ -269,6 +269,16 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  TIME("Emit-IR") {
+    for (auto decl : Scope::Global->ordered_decls_) {
+      auto id = decl->identifier;
+
+      if (decl->arg_val) { continue; }
+
+      if (id->type->is_function()) { id->EmitIR(); }
+    }
+  }
+
   TIME("Code-gen") {
     { // Program has been verified. We can now proceed with code generation.
       for (auto decl : Scope::Global->ordered_decls_) {
@@ -313,9 +323,14 @@ int main(int argc, char *argv[]) {
           auto mangled_name = Mangle(fn_type, decl->identifier);
 
           if (!type->has_vars) {
-            id->decl->alloc = fn_type->allocate();
+            // id->decl->alloc = fn_type->allocate();
+            // id->decl->alloc->setName(mangled_name);
+            // decl->generate_code();
+
+            ((AST::FunctionLiteral *)decl->init_val)->ir_func->GenerateLLVM();
+            id->decl->alloc =
+                ((AST::FunctionLiteral *)decl->init_val)->ir_func->llvm_fn;
             id->decl->alloc->setName(mangled_name);
-            decl->generate_code();
           }
 
         } else {
