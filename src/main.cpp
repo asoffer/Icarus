@@ -26,6 +26,8 @@
 static size_t start_time;
 static size_t end_time;
 
+extern std::vector<IR::Func *> implicit_functions;
+
 struct Timer {
   Timer(){};
 
@@ -315,6 +317,7 @@ int main(int argc, char *argv[]) {
           id->decl->alloc = gvar;
 
         } else if (type->is_array()) {
+          NOT_YET;
 
         } else if (type->is_function()) {
           assert(decl->identifier);
@@ -341,6 +344,9 @@ int main(int argc, char *argv[]) {
         Scope::Stack.pop();
       }
     }
+
+    // Generate the implicit functions
+    for (auto f : implicit_functions) { f->GenerateLLVM(); }
 
     { // Generate code for everything else
       Scope::Stack.push(Scope::Global);

@@ -137,6 +137,16 @@ struct Exit {
     val  = v;
   }
 
+  void SetTrueBranch(Block *b) {
+    assert(flag == Strategy::Cond);
+    true_block = b;
+  }
+
+  void SetFalseBranch(Block *b) {
+    assert(flag == Strategy::Cond);
+    false_block = b;
+  }
+
   void SetUnconditional(Block *b) {
     flag       = Strategy::Uncond;
     true_block = b;
@@ -162,7 +172,9 @@ struct Block {
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
 
-  llvm::BasicBlock *GenerateLLVM(IR::Func *ir_fn);
+  llvm::BasicBlock *
+  GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
+               std::vector<std::pair<IR::Block *, size_t>> &phis);
 
   Block *ExecuteJump(StackFrame &frame);
 
@@ -179,18 +191,18 @@ struct Block {
 
 struct Func {
   static Func *Current;
-  std::map<size_t, AST::Declaration *> frame_map;
+  std::map<size_t, llvm::Value *> frame_map;
 
   std::vector<Block *> blocks;
   std::vector<Value *> args;
   std::string name;
   Function *fn_type;
   llvm::Function *llvm_fn;
+  llvm::BasicBlock *alloc_block;
 
   Block *entry() { return blocks.front(); }
   size_t num_cmds, frame_size;
 
-  size_t PushSpace(size_t bytes, size_t alignment);
   size_t PushSpace(Type *t);
 
   void GenerateLLVM();
@@ -229,6 +241,7 @@ Value Cast(Type *in, Type *out, Value);
 Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Value ArrayData(Array *type, Value array_ptr);
+Value PtrIncr(Pointer *type, Value ptr, Value incr);
 
 Cmd Phi(Type *ret_type);
 Cmd NOp();

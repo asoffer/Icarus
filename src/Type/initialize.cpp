@@ -3,6 +3,7 @@
 #include "Scope.h"
 #endif
 
+extern std::vector<IR::Func *> implicit_functions;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
@@ -192,6 +193,8 @@ void Array::EmitInit(IR::Value id_val) {
 
     init_func          = new IR::Func(Func(Ptr(this), Void));
     init_func->name    = "init." + Mangle(this);
+    implicit_functions.push_back(init_func);
+
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 

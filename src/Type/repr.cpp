@@ -3,6 +3,8 @@
 #include "Scope.h"
 #endif
 
+extern std::vector<IR::Func *> implicit_functions;
+
 extern llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr);
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
 
@@ -47,6 +49,9 @@ void Primitive::EmitRepr(IR::Value val) {
     IR::Print(IR::Value(Uint), val);
     IR::Print(IR::Value(Char), IR::Value('u'));
 
+  } else if (this == Real) {
+    IR::Print(IR::Value(Real), val);
+
   } else if (this == Type_) {
     NOT_YET;
 
@@ -70,6 +75,8 @@ void Array::EmitRepr(IR::Value val) {
     auto saved_block = IR::Block::Current;
 
     repr_func          = new IR::Func(Func(this, Void));
+    repr_func->name    = "repr." + Mangle(this);
+    implicit_functions.push_back(repr_func);
     IR::Func::Current  = repr_func;
     IR::Block::Current = repr_func->entry();
 

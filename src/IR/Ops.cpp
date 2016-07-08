@@ -3,6 +3,8 @@
 #include "Type/Type.h"
 
 extern llvm::Module *global_module;
+extern llvm::BasicBlock *make_block(const std::string &name,
+                                    llvm::Function *fn);
 
 // TODO what Value number to return????
 namespace IR {
@@ -38,10 +40,12 @@ namespace IR {
 #undef CMD_WITH_2_ARGS
 
 Func::Func(Function *fn_type)
-    : fn_type(fn_type), llvm_fn(nullptr), num_cmds(0), frame_size(0) {
+    : fn_type(fn_type), llvm_fn(nullptr), alloc_block(nullptr), num_cmds(0),
+      frame_size(0) {
   llvm::FunctionType *llvm_fn_type = *fn_type;
   llvm_fn =
       (llvm::Function *)global_module->getOrInsertFunction(name, llvm_fn_type);
+  alloc_block = make_block("entry", llvm_fn);
 
   blocks.push_back(new Block(0));
   blocks.back()->block_name = "fn-entry";
@@ -84,6 +88,14 @@ Value ArrayData(Array *type, Value array_ptr) {
   Cmd cmd(Op::ArrayData, true);
   cmd.args        = {IR::Value(type), array_ptr};
   cmd.result.type = Ptr(type->data_type);
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
+Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
+  Cmd cmd(Op::PtrIncr, true);
+  cmd.args = {IR::Value(ptr_type), ptr, incr};
+  cmd.result.type = ptr_type;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
@@ -164,7 +176,13 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::StackAddr: return os << "$" << value.as_stack_addr;
   case ValType::FrameAddr: return os << "`$`" << value.as_frame_addr;
   case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
-  case ValType::Block: return os << value.as_block->block_name;
+  case ValType::Block:
+    if (value.as_block) {
+      return os << value.as_block->block_name << "("
+                << value.as_block->block_num << ")";
+    } else {
+      return os << "0x0";
+    }
   }
 }
 
@@ -182,7 +200,7 @@ void Cmd::dump(size_t indent) {
 }
 
 void Block::dump() {
-  std::cerr << "  " << block_name << ":\n";
+  std::cerr << "  " << block_name << '(' << block_num << ')' << ":\n";
   for (auto c : cmds) { c.dump(4); }
 
   exit.dump(4);
@@ -192,11 +210,24 @@ void Exit::dump(size_t indent) {
   std::cerr << std::string(indent, ' ');
   switch (flag) {
   case Strategy::Uncond:
-    std::cerr << "jmp " << true_block->block_name << "\n\n";
+    std::cerr << "jmp " << true_block->block_name << "(" << true_block->block_num
+              << ")\n\n";
     break;
   case Strategy::Cond:
-    std::cerr << "cond br " << val << " [T: " << true_block->block_name
-              << "] [F: " << false_block->block_name << "]\n\n";
+    std::cerr << "cond br " << val;
+    if (true_block) {
+      std::cerr << " [T: " << true_block->block_name << "("
+                << true_block->block_num << ")]";
+    } else {
+      std::cerr << " [T: 0x0]";
+    }
+
+    if (false_block) {
+      std::cerr << " [F: " << false_block->block_name << "("
+                << false_block->block_num << ")]\n\n";
+    } else {
+      std::cerr << " [F: 0x0]\n\n";
+    }
     break;
   case Strategy::Return: std::cerr << "ret " << val << "\n\n"; break;
   case Strategy::ReturnVoid: std::cerr << "ret\n\n"; break;

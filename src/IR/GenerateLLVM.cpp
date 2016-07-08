@@ -21,26 +21,6 @@ extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 namespace IR {
-void Func::GenerateLLVM() {
-  std::vector<llvm::BasicBlock *> llvm_blocks(blocks.size(), nullptr);
-  auto alloc_block = make_block("entry", llvm_fn);
-  builder.SetInsertPoint(alloc_block);
-  for (auto kv : frame_map) { kv.second->alloc = kv.second->type->allocate(); }
-
-  for (const auto &b : blocks) {
-    b->llvm_block = make_block(b->block_name, llvm_fn);
-  }
-
-
-  for (const auto &b : blocks) {
-    llvm_blocks AT(b->block_num) = b->GenerateLLVM(this);
-  }
-
-  builder.SetInsertPoint(alloc_block);
-  assert(!llvm_blocks.empty());
-  builder.CreateBr(llvm_blocks[0]);
-}
-
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
   switch (cmd_arg.flag) {
@@ -60,237 +40,309 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     return reinterpret_cast<llvm::Value *>(cmd_arg.as_block);
   case ValType::Reg:
     return registers[cmd_arg.as_reg];
-  case ValType::Arg: NOT_YET;
+  case ValType::Arg: {
+    auto arg_num = (long)cmd_arg.as_arg;
+    auto iter = ir_fn->llvm_fn->args().begin();
+    while (arg_num --> 0) { iter++; }
+    return iter;
+  } break;
   case ValType::StackAddr: NOT_YET;
   case ValType::FrameAddr:
-    return ir_fn->frame_map[cmd_arg.as_frame_addr]->alloc;
+    assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
+    return ir_fn->frame_map[cmd_arg.as_frame_addr];
   case ValType::HeapAddr: NOT_YET;
   }
 }
 
-llvm::BasicBlock *Block::GenerateLLVM(IR::Func *ir_fn) {
+static void CompletePhiDefinition(IR::Func *ir_fn, IR::Block *block,
+                                  size_t cmd_index,
+                                  std::vector<llvm::Value *> &registers) {
+  auto &cmd = block->cmds[cmd_index];
+  auto reg = (llvm::PHINode *)registers[cmd.result.reg];
+  for (size_t i = 0; i < cmd.args.size(); i += 2) {
+    assert(cmd.args[i].flag == ValType::Block);
+    assert(cmd.args[i].as_block);
+    auto val = IR_to_LLVM(ir_fn, cmd.args[i + 1], registers);
+    assert(val);
+    reg->addIncoming(val, cmd.args[i].as_block->llvm_block);
+  }
+}
+
+void Func::GenerateLLVM() {
+  std::vector<llvm::BasicBlock *> llvm_blocks(blocks.size(), nullptr);
+  llvm_fn->setName(name);
+
+  for (const auto &b : blocks) {
+    b->llvm_block = make_block(b->block_name, llvm_fn);
+  }
+
+  std::vector<llvm::Value *> registers(num_cmds, nullptr);
+  std::vector<std::pair<IR::Block *, size_t>> phis;
+  for (const auto &b : blocks) {
+    llvm_blocks AT(b->block_num) = b->GenerateLLVM(this, registers, phis);
+  }
+
+  for (auto phi_loc_pair : phis) {
+    CompletePhiDefinition(this, phi_loc_pair.first, phi_loc_pair.second,
+                          registers);
+  }
+
+
+
+  builder.SetInsertPoint(alloc_block);
+  assert(!llvm_blocks.empty());
+  builder.CreateBr(llvm_blocks[0]);
+}
+
+llvm::BasicBlock *
+Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
+                    std::vector<std::pair<IR::Block *, size_t>> &phis) {
   assert(llvm_block);
   builder.SetInsertPoint(llvm_block);
 
   // NOTE this is larger than necessary but definitely big enough.
   // TODO get the size just right when we know it.
-  std::vector<llvm::Value *> registers(cmds.size(), nullptr);
-
-  for (const auto &cmd : cmds) {
-    std::vector<llvm::Value *> args(cmd.args.size(), nullptr);
-    for (size_t i = 0; i < cmd.args.size(); ++i) {
-      args[i] = IR_to_LLVM(ir_fn, cmd.args[i], registers);
-    }
-
-    switch (cmd.op_code) {
-    case IR::Op::BNot:
-      registers[cmd.result.reg] = builder.CreateNot(args[0]);
-      break;
-    case IR::Op::INeg:
-      registers[cmd.result.reg] = builder.CreateNeg(args[0]);
-      break;
-    case IR::Op::FNeg:
-      registers[cmd.result.reg] = builder.CreateFNeg(args[0]);
-      break;
-
-    case IR::Op::CAdd:
-    case IR::Op::IAdd:
-    case IR::Op::UAdd:
-      registers[cmd.result.reg] = builder.CreateAdd(args[0], args[1]);
-      break;
-
-    case IR::Op::FAdd:
-      registers[cmd.result.reg] = builder.CreateFAdd(args[0], args[1]);
-      break;
-
-    case IR::Op::ISub:
-    case IR::Op::USub:
-      registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
-      break;
-    case IR::Op::FSub:
-      registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
-      break;
-
-    case IR::Op::IMul:
-    case IR::Op::UMul:
-      registers[cmd.result.reg] = builder.CreateMul(args[0], args[1]);
-      break;
-    case IR::Op::FMul:
-      registers[cmd.result.reg] = builder.CreateMul(args[0], args[1]);
-      break;
-
-    case IR::Op::IDiv:
-      registers[cmd.result.reg] = builder.CreateSDiv(args[0], args[1]);
-      break;
-    case IR::Op::UDiv:
-      registers[cmd.result.reg] = builder.CreateUDiv(args[0], args[1]);
-      break;
-    case IR::Op::FDiv:
-      registers[cmd.result.reg] = builder.CreateFDiv(args[0], args[1]);
-      break;
-
-    case IR::Op::IMod:
-      registers[cmd.result.reg] = builder.CreateSRem(args[0], args[1]);
-      break;
-    case IR::Op::UMod:
-      registers[cmd.result.reg] = builder.CreateURem(args[0], args[1]);
-      break;
-    case IR::Op::FMod:
-      registers[cmd.result.reg] = builder.CreateFRem(args[0], args[1]);
-      break;
-
-    case IR::Op::BOr:
-      registers[cmd.result.reg] = builder.CreateOr(args[0], args[1]);
-      break;
-    case IR::Op::BXor:
-      registers[cmd.result.reg] = builder.CreateXor(args[0], args[1]);
-      break;
-
-    case IR::Op::ILT:
-      registers[cmd.result.reg] = builder.CreateICmpSLT(args[0], args[1]);
-      break;
-    case IR::Op::ULT:
-      registers[cmd.result.reg] = builder.CreateICmpULT(args[0], args[1]);
-      break;
-    case IR::Op::FLT:
-      registers[cmd.result.reg] = builder.CreateFCmpOLT(args[0], args[1]);
-      break;
-    case IR::Op::ILE:
-      registers[cmd.result.reg] = builder.CreateICmpSLE(args[0], args[1]);
-      break;
-    case IR::Op::ULE:
-      registers[cmd.result.reg] = builder.CreateICmpULE(args[0], args[1]);
-      break;
-    case IR::Op::FLE:
-      registers[cmd.result.reg] = builder.CreateFCmpOLE(args[0], args[1]);
-      break;
-
-    case IR::Op::PtrEQ: NOT_YET;
-    case IR::Op::TEQ: NOT_YET;
-    case IR::Op::FnEQ: NOT_YET;
-
-    case IR::Op::BEQ:
-      registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
-      break;
-    case IR::Op::CEQ:
-      registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
-      break;
-    case IR::Op::IEQ:
-      registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
-      break;
-    case IR::Op::UEQ:
-      registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
-      break;
-    case IR::Op::FEQ:
-      registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
-      break;
-
-    case IR::Op::TNE: NOT_YET;
-    case IR::Op::FnNE: NOT_YET;
-
-    case IR::Op::BNE:
-      registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
-      break;
-    case IR::Op::CNE:
-      registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
-      break;
-    case IR::Op::INE:
-      registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
-      break;
-    case IR::Op::UNE:
-      registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
-      break;
-    case IR::Op::FNE:
-      registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
-      break;
-
-    case IR::Op::IGE:
-      registers[cmd.result.reg] = builder.CreateICmpSGE(args[0], args[1]);
-      break;
-    case IR::Op::UGE:
-      registers[cmd.result.reg] = builder.CreateICmpUGE(args[0], args[1]);
-      break;
-    case IR::Op::FGE:
-      registers[cmd.result.reg] = builder.CreateFCmpOGE(args[0], args[1]);
-      break;
-    case IR::Op::CGT:
-      registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
-      break;
-    case IR::Op::IGT:
-      registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
-      break;
-    case IR::Op::UGT:
-      registers[cmd.result.reg] = builder.CreateICmpUGT(args[0], args[1]);
-      break;
-    case IR::Op::FGT:
-      registers[cmd.result.reg] = builder.CreateFCmpOGT(args[0], args[1]);
-      break;
-
-    case IR::Op::ArrayLength: NOT_YET;
-    case IR::Op::ArrayData: NOT_YET;
-    case IR::Op::Print: {
-      auto print_type = reinterpret_cast<Type *>(args[0]);
-      if (print_type == Bool) {
-        NOT_YET;
-      } else if (print_type == Bool) {
-        auto to_show = builder.CreateSelect(
-            args[1], data::global_string("true"), data::global_string("false"));
-        builder.CreateCall(cstdlib::printf(),
-                           {data::global_string("%s"), to_show});
-      } else if (print_type == Char) {
-        builder.CreateCall(cstdlib::printf(),
-                           {data::global_string("%c"), args[1]});
-      } else if (print_type == Int) {
-        builder.CreateCall(cstdlib::printf(),
-                           {data::global_string("%ld"), args[1]});
-     } else if (print_type == Real) {
-       builder.CreateCall(cstdlib::printf(),
-                          {data::global_string("%f"), args[1]});
-      } else if (print_type == Uint) {
-       builder.CreateCall(cstdlib::printf(),
-                          {data::global_string("%lu"), args[1]});
-      } else if (print_type == Type_) {
-        auto type_to_print = reinterpret_cast<Type *>(args[1]);
-        builder.CreateCall(
-            cstdlib::printf(),
-            {data::global_string("%s"),
-             data::global_string(type_to_print->to_string().c_str())});
+  {
+    size_t cmd_counter = 0;
+    for (const auto &cmd : cmds) {
+      switch (cmd.op_code) {
+      case IR::Op::Phi: {
+        registers[cmd.result.reg] = builder.CreatePHI(
+            *cmd.result.type, (unsigned int)cmd.args.size() >> 1, "phi");
+        phis.emplace_back(this, cmd_counter);
       }
-    } break;
-    case IR::Op::Call: {
-      auto fn = args[0];
-      args.erase(args.begin());
-      builder.CreateCall(fn, args);
-    } break;
-    case IR::Op::Load:
-      registers[cmd.result.reg] = builder.CreateLoad(args[0]);
-      break;
-    case IR::Op::Store: builder.CreateStore(args[1], args[2]); break;
-    case IR::Op::Cast: NOT_YET;
-    case IR::Op::NOp: NOT_YET;
+        continue;
+      case IR::Op::TC_Ptr: NOT_YET;
+      case IR::Op::TC_Arrow: NOT_YET;
+      case IR::Op::TC_Arr1: NOT_YET;
+      case IR::Op::TC_Arr2: {
+        size_t length = 0;
+        if (cmd.args[0].flag == ValType::I) {
+          length = (size_t)cmd.args[0].as_int;
+        } else if (cmd.args[0].flag == ValType::U) {
+          length = cmd.args[0].as_uint;
+        } else {
+          UNREACHABLE;
+        }
 
-    case IR::Op::Phi: {
-      llvm::PHINode *phi = builder.CreatePHI(
-          *cmd.result.type, (unsigned int)args.size() >> 1, "phi");
+        Type *data_type = nullptr;
+        if (cmd.args[1].flag == ValType::T) {
+          data_type = cmd.args[1].as_type;
+        } else if (cmd.args[1].flag == ValType::Reg) {
+          data_type = reinterpret_cast<Type *>(registers[cmd.args[1].as_reg]);
 
-      for (size_t i = 0; i < args.size(); i += 2) {
-        phi->addIncoming(args[i + 1], ((Block *)args[i])->llvm_block);
+        } else {
+          const_cast<Cmd &>(cmd).dump(10);
+          UNREACHABLE;
+        }
+
+        registers[cmd.result.reg] =
+            reinterpret_cast<llvm::Value *>(Arr(data_type, length));
       }
-      registers[cmd.result.reg] = phi;
-    } break;
-    case IR::Op::Field: NOT_YET;
-    case IR::Op::Access: NOT_YET;
-    case IR::Op::TC_Ptr: NOT_YET;
-    case IR::Op::TC_Arrow: NOT_YET;
-    case IR::Op::TC_Arr1: NOT_YET;
-    case IR::Op::TC_Arr2: NOT_YET;
-    case IR::Op::Bytes: NOT_YET;
-    case IR::Op::Alignment: NOT_YET;
+        continue;
+      default:;
+      }
+
+      std::vector<llvm::Value *> args(cmd.args.size(), nullptr);
+      for (size_t i = 0; i < cmd.args.size(); ++i) {
+        args[i] = IR_to_LLVM(ir_fn, cmd.args[i], registers);
+      }
+
+      switch (cmd.op_code) {
+      case IR::Op::BNot:
+        registers[cmd.result.reg] = builder.CreateNot(args[0]);
+        break;
+      case IR::Op::INeg:
+        registers[cmd.result.reg] = builder.CreateNeg(args[0]);
+        break;
+      case IR::Op::FNeg:
+        registers[cmd.result.reg] = builder.CreateFNeg(args[0]);
+        break;
+
+      case IR::Op::CAdd:
+      case IR::Op::IAdd:
+      case IR::Op::UAdd:
+        registers[cmd.result.reg] = builder.CreateAdd(args[0], args[1]);
+        break;
+
+      case IR::Op::FAdd:
+        registers[cmd.result.reg] = builder.CreateFAdd(args[0], args[1]);
+        break;
+
+      case IR::Op::ISub:
+      case IR::Op::USub:
+        registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
+        break;
+      case IR::Op::FSub:
+        registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
+        break;
+
+      case IR::Op::IMul:
+      case IR::Op::UMul:
+        registers[cmd.result.reg] = builder.CreateMul(args[0], args[1]);
+        break;
+      case IR::Op::FMul:
+        registers[cmd.result.reg] = builder.CreateFMul(args[0], args[1]);
+        break;
+
+      case IR::Op::IDiv:
+        registers[cmd.result.reg] = builder.CreateSDiv(args[0], args[1]);
+        break;
+      case IR::Op::UDiv:
+        registers[cmd.result.reg] = builder.CreateUDiv(args[0], args[1]);
+        break;
+      case IR::Op::FDiv:
+        registers[cmd.result.reg] = builder.CreateFDiv(args[0], args[1]);
+        break;
+
+      case IR::Op::IMod:
+        registers[cmd.result.reg] = builder.CreateSRem(args[0], args[1]);
+        break;
+      case IR::Op::UMod:
+        registers[cmd.result.reg] = builder.CreateURem(args[0], args[1]);
+        break;
+      case IR::Op::FMod:
+        registers[cmd.result.reg] = builder.CreateFRem(args[0], args[1]);
+        break;
+
+      case IR::Op::BOr:
+        registers[cmd.result.reg] = builder.CreateOr(args[0], args[1]);
+        break;
+      case IR::Op::BXor:
+        registers[cmd.result.reg] = builder.CreateXor(args[0], args[1]);
+        break;
+
+      case IR::Op::ILT:
+        registers[cmd.result.reg] = builder.CreateICmpSLT(args[0], args[1]);
+        break;
+      case IR::Op::ULT:
+        registers[cmd.result.reg] = builder.CreateICmpULT(args[0], args[1]);
+        break;
+      case IR::Op::FLT:
+        registers[cmd.result.reg] = builder.CreateFCmpOLT(args[0], args[1]);
+        break;
+      case IR::Op::ILE:
+        registers[cmd.result.reg] = builder.CreateICmpSLE(args[0], args[1]);
+        break;
+      case IR::Op::ULE:
+        registers[cmd.result.reg] = builder.CreateICmpULE(args[0], args[1]);
+        break;
+      case IR::Op::FLE:
+        registers[cmd.result.reg] = builder.CreateFCmpOLE(args[0], args[1]);
+        break;
+
+      case IR::Op::TEQ: NOT_YET;
+      case IR::Op::FnEQ: NOT_YET;
+
+      case IR::Op::UEQ:
+      case IR::Op::IEQ:
+      case IR::Op::CEQ:
+      case IR::Op::BEQ:
+      case IR::Op::PtrEQ:
+        registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
+        break;
+      case IR::Op::FEQ:
+        registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
+        break;
+
+      case IR::Op::TNE: NOT_YET;
+      case IR::Op::FnNE: NOT_YET;
+
+      case IR::Op::BNE:
+      case IR::Op::CNE:
+      case IR::Op::INE:
+      case IR::Op::UNE:
+      case IR::Op::FNE:
+        registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
+        break;
+
+      case IR::Op::IGE:
+        registers[cmd.result.reg] = builder.CreateICmpSGE(args[0], args[1]);
+        break;
+      case IR::Op::UGE:
+        registers[cmd.result.reg] = builder.CreateICmpUGE(args[0], args[1]);
+        break;
+      case IR::Op::FGE:
+        registers[cmd.result.reg] = builder.CreateFCmpOGE(args[0], args[1]);
+        break;
+      case IR::Op::CGT:
+        registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
+        break;
+      case IR::Op::IGT:
+        registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
+        break;
+      case IR::Op::UGT:
+        registers[cmd.result.reg] = builder.CreateICmpUGT(args[0], args[1]);
+        break;
+      case IR::Op::FGT:
+        registers[cmd.result.reg] = builder.CreateFCmpOGT(args[0], args[1]);
+        break;
+
+      case IR::Op::ArrayLength: NOT_YET;
+      case IR::Op::ArrayData: NOT_YET;
+      case IR::Op::Print: {
+        auto print_type = reinterpret_cast<Type *>(args[0]);
+        if (print_type == Bool) {
+          auto to_show =
+              builder.CreateSelect(args[1], data::global_string("true"),
+                                   data::global_string("false"));
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%s"), to_show});
+        } else if (print_type == Char) {
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%c"), args[1]});
+        } else if (print_type == Int) {
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%ld"), args[1]});
+        } else if (print_type == Real) {
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%f"), args[1]});
+        } else if (print_type == Uint) {
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%lu"), args[1]});
+        } else if (print_type == Type_) {
+          auto type_to_print = reinterpret_cast<Type *>(args[1]);
+          builder.CreateCall(
+              cstdlib::printf(),
+              {data::global_string("%s"),
+               data::global_string(type_to_print->to_string().c_str())});
+        }
+      } break;
+      case IR::Op::Call: {
+        auto fn = args[0];
+        args.erase(args.begin());
+        builder.CreateCall(fn, args);
+      } break;
+      case IR::Op::Load:
+        registers[cmd.result.reg] = builder.CreateLoad(args[0]);
+        break;
+      case IR::Op::Store: builder.CreateStore(args[1], args[2]); break;
+      case IR::Op::Cast: NOT_YET;
+      case IR::Op::NOp: NOT_YET;
+
+      case IR::Op::Field: NOT_YET;
+      case IR::Op::PtrIncr:
+        registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
+        break;
+      case IR::Op::Access:
+        registers[cmd.result.reg] =
+            builder.CreateGEP(args[2], {data::const_uint(0), args[1]});
+        break;
+      case IR::Op::Phi: UNREACHABLE;
+      case IR::Op::TC_Ptr: UNREACHABLE;
+      case IR::Op::TC_Arrow: UNREACHABLE;
+      case IR::Op::TC_Arr1: UNREACHABLE;
+      case IR::Op::TC_Arr2: UNREACHABLE;
+
+      case IR::Op::Bytes: NOT_YET;
+      case IR::Op::Alignment: NOT_YET;
+      }
+      ++cmd_counter;
     }
   }
 
   switch (exit.flag) {
-  case Exit::Strategy::Unset: UNREACHABLE;
+  case Exit::Strategy::Unset: ir_fn->dump(); UNREACHABLE;
   case Exit::Strategy::Uncond:
     builder.CreateBr(exit.true_block->llvm_block);
     break;

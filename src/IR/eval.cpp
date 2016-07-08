@@ -278,6 +278,20 @@ void Cmd::Execute(StackFrame& frame) {
     ptr += struct_type->field_offsets AT(field_index + 1);
     frame.reg[result.reg] = Value::StackAddr(ptr);
   } break;
+  case Op::PtrIncr: {
+    switch (cmd_inputs[1].flag) {
+    case ValType::StackAddr: {
+      assert(cmd_inputs[0].as_type->is_pointer());
+      // TODO space in array or bytes()?
+      auto pointee_size =
+          ((Pointer *)cmd_inputs[0].as_type)->pointee->SpaceInArray();
+      frame.reg[result.reg] = Value::StackAddr(
+          cmd_inputs[1].as_stack_addr + cmd_inputs[2].as_uint * pointee_size);
+    } break;
+    default: std::cerr << cmd_inputs[1] << '\n'; UNREACHABLE;
+    }
+
+  } break;
   case Op::Access: {
     switch (cmd_inputs[2].flag) {
     case ValType::StackAddr:

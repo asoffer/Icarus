@@ -6,6 +6,8 @@
 
 // TODO 64 is hard-coded here as an int size. Change it
 
+std::vector<IR::Func *> implicit_functions;
+
 namespace Language {
 // Associativity stored in the lowest two bits.
 size_t precedence(Operator op) {
@@ -109,30 +111,30 @@ llvm::ConstantFP *const_real(double d) {
 llvm::ConstantInt *const_false() {
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(1, 0, false));
-  }
+}
 
-  llvm::ConstantInt *const_true() {
-    return llvm::ConstantInt::get(llvm::getGlobalContext(),
-        llvm::APInt(1, 1, false));
-  }
+llvm::ConstantInt *const_true() {
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(1, 1, false));
+}
 
-  llvm::ConstantInt *const_bool(bool b) {
-    return b ? const_true() : const_false();
-  }
+llvm::ConstantInt *const_bool(bool b) {
+  return b ? const_true() : const_false();
+}
 
-  llvm::ConstantInt* const_char(char c) {
-    // TODO check safety of char cast
-    return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                  llvm::APInt(8, (size_t)c, false));
-  }
+llvm::ConstantInt *const_char(char c) {
+  // TODO check safety of char cast
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(8, (size_t)c, false));
+}
 
-  llvm::Value *global_string(const std::string &s) {
-    auto iter = global_strings.find(s);
-    return iter == global_strings.end()
-               ? global_strings[s] = builder.CreateGlobalStringPtr(s)
-               : iter->second;
-  }
-}  // namespace data
+llvm::Value *global_string(const std::string &s) {
+  auto iter = global_strings.find(s);
+  return iter == global_strings.end()
+             ? global_strings[s] = builder.CreateGlobalStringPtr(s)
+             : iter->second;
+}
+} // namespace data
 
 namespace builtin {
 llvm::Function *ord() {
