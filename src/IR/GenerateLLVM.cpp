@@ -14,6 +14,7 @@ extern llvm::Constant *null_pointer(Type *t);
 extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint32(size_t n);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
@@ -106,6 +107,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
     size_t cmd_counter = 0;
     for (const auto &cmd : cmds) {
       switch (cmd.op_code) {
+      case IR::Op::Field: {
+        assert(cmd.args[2].flag == IR::ValType::U);
+        registers[cmd.result.reg] = builder.CreateGEP(
+            IR_to_LLVM(ir_fn, cmd.args[1], registers),
+            {data::const_uint(0), data::const_uint32(cmd.args[2].as_uint)});
+      }
+        continue;
       case IR::Op::Phi: {
         registers[cmd.result.reg] = builder.CreatePHI(
             *cmd.result.type, (unsigned int)cmd.args.size() >> 1, "phi");
@@ -306,6 +314,11 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
               cstdlib::printf(),
               {data::global_string("%s"),
                data::global_string(type_to_print->to_string().c_str())});
+        } else if (print_type->is_pointer()) {
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("0x%zx"), args[1]});
+        } else {
+          UNREACHABLE;
         }
       } break;
       case IR::Op::Call: {
@@ -319,8 +332,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Store: builder.CreateStore(args[1], args[2]); break;
       case IR::Op::Cast: NOT_YET;
       case IR::Op::NOp: NOT_YET;
-
-      case IR::Op::Field: NOT_YET;
       case IR::Op::PtrIncr:
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
@@ -328,6 +339,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] =
             builder.CreateGEP(args[2], {data::const_uint(0), args[1]});
         break;
+      case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
       case IR::Op::TC_Ptr: UNREACHABLE;
       case IR::Op::TC_Arrow: UNREACHABLE;

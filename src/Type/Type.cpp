@@ -116,8 +116,11 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   } else {
     auto fn = GetFuncReferencedIn(scope, "__assign__",
                                   Func(Tup({Ptr(lhs_type), rhs_type}), Void));
-    assert(fn);
-    IR::Call(Void, IR::Value(fn), {to_var, from_val});
+    if (fn) {
+      IR::Call(Void, IR::Value(fn), {to_var, from_val});
+    } else {
+      ((Structure *)lhs_type)->EmitDefaultAssign(to_var, from_val);
+    }
   }
 }
 
@@ -316,7 +319,7 @@ ParametricStructure::ParametricStructure(const std::string &name,
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), field_offsets(1, 0),
       creator(nullptr), init_fn_(nullptr), destroy_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr) {}
+      assign_fn_(nullptr), init_func(nullptr), assign_func(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);

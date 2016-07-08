@@ -218,6 +218,7 @@ void Array::EmitInit(IR::Value id_val) {
 }
 
 void Pointer::EmitInit(IR::Value id_val) {
+  // TODO
   // IR::Store(this, IR::Value(nullptr), id_val);
 }
 

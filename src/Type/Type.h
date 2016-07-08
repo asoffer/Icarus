@@ -199,6 +199,8 @@ struct Structure : public Type {
 
   Structure(const std::string &name, AST::StructLiteral *expr);
 
+  void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
+
   virtual bool requires_uninit() const;
 
   void set_name(const std::string &name);
@@ -229,7 +231,7 @@ struct Structure : public Type {
 
 private:
   llvm::Function *init_fn_, *destroy_fn_, *assign_fn_;
-  IR::Func *init_func;
+  IR::Func *init_func, *assign_func;
 };
 
 struct ParametricStructure : public Type {

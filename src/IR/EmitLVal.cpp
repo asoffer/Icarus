@@ -17,7 +17,11 @@ IR::Value Binop::EmitLVal() {
   }
 }
 
-IR::Value Unop::EmitLVal() { NOT_YET; }
+IR::Value Unop::EmitLVal() {
+  // TODO EmitIR or EmitLVal?
+  if (op == Language::Operator::At) { return operand->EmitIR(); }
+  NOT_YET;
+}
 IR::Value ChainOp::EmitLVal() { NOT_YET; }
 IR::Value DummyTypeExpr::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }

@@ -105,7 +105,8 @@ IR::Value Terminal::EmitIR() {
 
 static void EmitPrintExpr(Expression *expr) {
   // TODO make string primitive
-  if (expr->type->is_primitive() || expr->type == String || expr->type->is_enum()) {
+  if (expr->type->is_primitive() || expr->type == String ||
+      expr->type->is_enum() || expr->type->is_pointer()) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
 
   } else if (expr->type->is_function() || expr->type->is_array()) {
@@ -195,18 +196,9 @@ IR::Value Unop::EmitIR() {
     }
     return IR::Value();
   } break;
-  case Language::Operator::And: {
-    auto val = operand->EmitIR();
-    if (operand->type == Type_) {
-      return IR::TC_Ptr(val);
-    } else {
-      auto fn =
-          GetFuncReferencedIn(scope_, "__addr__", Func(operand->type, type));
-      assert(fn);
-      IR::Call(Void, IR::Value(fn), {operand->EmitIR()});
-      return IR::Value();
-    }
-  } break;
+  case Language::Operator::And:
+    return (operand->type == Type_) ? IR::TC_Ptr(operand->EmitIR())
+                                    : operand->EmitLVal();
   case Language::Operator::Sub: {
     auto val = operand->EmitIR();
     if (operand->type == Int) {
