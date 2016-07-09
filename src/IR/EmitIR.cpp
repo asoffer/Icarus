@@ -639,6 +639,8 @@ IR::Value Statements::EmitIR() {
 }
 
 IR::Value Identifier::EmitIR() {
+  if (decl->is_in_decl()) { return decl->stack_loc; }
+
   if (decl->arg_val && decl->arg_val->is_function_literal()) {
     // TODO Iterating through linearly is probably not smart.
     auto fn = (FunctionLiteral *)decl->arg_val;
@@ -878,6 +880,8 @@ IR::Value ArrayLiteral::EmitIR() {
 
   assert(type->is_array());
   auto data_type = ((Array *)type)->data_type;
+  // TODO doing this incrementally instead of accessing from the head. This will
+  // likely make register allocation better.
   for (size_t i = 0; i < num_elems; ++i) {
     auto ptr = IR::Access(data_type, IR::Value(i), tmp_addr);
     Type::IR_CallAssignment(scope_, data_type, elems[i]->type,
@@ -1016,22 +1020,21 @@ IR::Value For::EmitIR() {
       result = IR::PtrEQ(phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_range()) {
-      IR::Value result;
       if (iter->type == Int) {
-        result = IR::IGT(start_vals[i], end_vals[i]);
+        result = IR::IGT(phi_vals[i], end_vals[i]);
       } else if (iter->type == Uint) {
-        result = IR::UGT(start_vals[i], end_vals[i]);
+        result = IR::UGT(phi_vals[i], end_vals[i]);
       } else if (iter->type == Char) {
-        result = IR::CGT(start_vals[i], end_vals[i]);
+        result = IR::CGT(phi_vals[i], end_vals[i]);
       } else {
         UNREACHABLE;
       }
 
     } else if (iter->container->type->is_slice()) {
-      result = IR::PtrEQ(start_vals[i], end_vals[i]);
+      result = IR::PtrEQ(phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type == Type_) {
-      result = IR::UEQ(start_vals[i], end_vals[i]);
+      result = IR::UEQ(phi_vals[i], end_vals[i]);
 
     } else {
       UNREACHABLE;

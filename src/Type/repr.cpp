@@ -44,7 +44,6 @@ static void AddSpecialCharacter(IR::Value val, char c, char vis,
   IR::Print(IR::Value(Char), IR::Value('\\'));
   IR::Print(IR::Value(Char), IR::Value(vis));
   IR::Block::Current->exit.SetUnconditional(land);
-  special_block->dump();
   IR::Block::Current = next_block;
 }
 

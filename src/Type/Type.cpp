@@ -10,6 +10,8 @@ extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
 extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                                      Function *fn_type);
 
+extern IR::Value PtrCallFix(Type *t, IR::Value v);
+
 namespace cstdlib {
 extern llvm::Constant *malloc();
 extern llvm::Constant *free();
@@ -108,7 +110,7 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
             IR::Access(lhs_array_type->data_type, IR::Value(i), to_var);
         auto from_ptr =
             IR::Access(lhs_array_type->data_type, IR::Value(i), from_val);
-        auto from_val = IR::Load(lhs_array_type->data_type, from_ptr);
+        auto from_val = PtrCallFix(lhs_array_type->data_type, from_ptr);
 
         IR_CallAssignment(scope, lhs_array_type->data_type,
                           lhs_array_type->data_type, from_val, to_ptr);

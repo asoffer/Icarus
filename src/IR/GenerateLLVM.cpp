@@ -140,7 +140,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
           data_type = reinterpret_cast<Type *>(registers[cmd.args[1].as_reg]);
 
         } else {
-          const_cast<Cmd &>(cmd).dump(10);
           UNREACHABLE;
         }
 
@@ -404,7 +403,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
   }
 
   switch (exit.flag) {
-  case Exit::Strategy::Unset: ir_fn->dump(); UNREACHABLE;
+  case Exit::Strategy::Unset: UNREACHABLE;
   case Exit::Strategy::Uncond:
     builder.CreateBr(exit.true_block->llvm_block);
     break;
