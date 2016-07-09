@@ -356,13 +356,17 @@ struct FunctionLiteral : public Expression {
   llvm::Function *llvm_fn;
   Statements *statements;
 
-  IR::Value EmitAnonymousIR();
+  inline IR::Value EmitAnonymousIR() { return Emit(false); }
 
   IR::Func *ir_func;
 
   bool code_gened;
 
   std::map<Type *, FunctionLiteral *> cache;
+
+private:
+  IR::Value Emit(bool should_gen);
+
 };
 
 struct Conditional : public Node {

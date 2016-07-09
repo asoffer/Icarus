@@ -286,8 +286,16 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateFCmpOGT(args[0], args[1]);
         break;
 
-      case IR::Op::ArrayLength: NOT_YET;
-      case IR::Op::ArrayData: NOT_YET;
+      case IR::Op::ArrayLength:
+        registers[cmd.result.reg] = builder.CreateLoad(
+            builder.CreateGEP(data::const_uint(0), data::const_uint(0)));
+        break;
+
+      case IR::Op::ArrayData:
+        registers[cmd.result.reg] = builder.CreateLoad(
+            builder.CreateGEP(data::const_uint(0), data::const_uint(1)));
+        break;
+
       case IR::Op::Print: {
         auto print_type = reinterpret_cast<Type *>(args[0]);
         if (print_type == Bool) {

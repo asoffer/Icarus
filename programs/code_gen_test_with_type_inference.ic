@@ -11,9 +11,10 @@ wat := (x : real) -> real {
 }
 
 foo := (n : int) -> int {
-  n *= n
-  n += n
-  return n + 3
+  m := n
+  m *= n
+  m += n
+  return m + 3
 }
 
 main := void -> void {

@@ -48,6 +48,8 @@ void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
                               the_field_type, field_val, field_var);
     }
 
+    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current = IR::Func::Current->exit();
     IR::Block::Current->exit.SetReturnVoid();
 
     IR::Func::Current  = saved_func;

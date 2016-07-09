@@ -3,6 +3,8 @@
 #include "Scope.h"
 #include "Stack.h"
 
+extern std::vector<IR::Func *> implicit_functions;
+
 namespace debug {
 extern bool ct_eval;
 } // namespace debug
@@ -12,6 +14,7 @@ static IR::Func *AsciiFunc() {
 
   if (ascii_) { return ascii_; }
   ascii_ = new IR::Func(Func(Uint, Char));
+  implicit_functions.push_back(ascii_);
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -32,6 +35,7 @@ static IR::Func *OrdFunc() {
 
   if (ord_) { return ord_; }
   ord_ = new IR::Func(Func(Char, Uint));
+  implicit_functions.push_back(ord_);
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -395,6 +399,7 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
     if (op_type == Int) { return IEQ(lhs, rhs); }
     if (op_type == Real) { return FEQ(lhs, rhs); }
     if (op_type == Uint) { return UEQ(lhs, rhs); }
+    if (op_type->is_enum()) { return UEQ(lhs, rhs); }
     if (op_type == Type_) { return TEQ(lhs, rhs); }
     if (op_type->is_function()) { return FnEQ(lhs, rhs); }
 
@@ -404,6 +409,7 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
     if (op_type == Int) { return INE(lhs, rhs); }
     if (op_type == Real) { return FNE(lhs, rhs); }
     if (op_type == Uint) { return UNE(lhs, rhs); }
+    if (op_type->is_enum()) { return UNE(lhs, rhs); }
     if (op_type == Type_) { return TNE(lhs, rhs); }
     if (op_type->is_function()) { return FnNE(lhs, rhs); }
 
@@ -417,6 +423,7 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
     if (op_type == Real) { return FGT(lhs, rhs); }
     if (op_type == Uint) { return UGT(lhs, rhs); }
   }
+
   UNREACHABLE;
 }
 
@@ -543,13 +550,16 @@ IR::Value ChainOp::EmitIR() {
   }
 }
 
-// TODO this is almost identical to EmitIR(). Reuse code.
-IR::Value FunctionLiteral::EmitAnonymousIR() {
+IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
+
+IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
+
   assert(type->is_function());
-  ir_func = new IR::Func((Function *)type, false);
+  ir_func = new IR::Func((Function *)type, should_gen);
 
   fn_scope->entry_block = ir_func->entry();
+  fn_scope->exit_block  = ir_func->exit();
 
   assert(type);
   assert(type->is_function());
@@ -609,85 +619,6 @@ IR::Value FunctionLiteral::EmitAnonymousIR() {
 
   statements->EmitIR();
 
-  fn_scope->exit_block  = ir_func->AddBlock("fn-exit");
-  IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
-  IR::Block::Current = fn_scope->exit_block;
-  if (((Function *)type)->output == Void) {
-    IR::Block::Current->exit.SetReturnVoid();
-  } else {
-    IR::Block::Current->exit.SetReturn(
-        IR::Load(((Function *)type)->output, fn_scope->ret_val));
-  }
-
-  return IR::Value(ir_func);
-}
-
-IR::Value FunctionLiteral::EmitIR() {
-  if (ir_func) { return IR::Value(ir_func); } // Cache
-  assert(type->is_function());
-  ir_func = new IR::Func((Function *)type);
-
-  fn_scope->entry_block = ir_func->entry();
-
-  assert(type);
-  assert(type->is_function());
-  fn_scope->ret_val =
-      IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
-  IR::Func::Current  = ir_func;
-  IR::Block::Current = ir_func->entry();
-
-  statements->verify_types();
-
-  for (auto decl : fn_scope->ordered_decls_) {
-    if (decl->arg_val) {
-      if (decl->arg_val->is_function_literal()) {
-        auto fn_lit = (FunctionLiteral *)decl->arg_val;
-
-        size_t arg_num = 0;
-        for (const auto& d : fn_lit->inputs) {
-          if (decl == d) {
-            decl->stack_loc = IR::Value::Arg(arg_num);
-            goto success_fn;
-          }
-          ++arg_num;
-        }
-
-        UNREACHABLE;
-
-      success_fn:
-        continue;
-
-      } else if (decl->arg_val->is_parametric_struct_literal()) {
-        auto param_struct = (ParametricStructLiteral *)decl->arg_val;
-        size_t param_num = 0;
-        for (const auto &p : param_struct->params) {
-          if (decl == p) {
-            decl->stack_loc = IR::Value::Arg(param_num);
-            goto success_param_struct;
-          }
-          ++param_num;
-        }
-
-        UNREACHABLE;
-
-      success_param_struct:
-        continue;
-      }
-      UNREACHABLE;
-    }
-    ir_func->PushLocal(decl);
-  }
-
-  for (auto scope : fn_scope->innards_) {
-    for (auto decl : scope->ordered_decls_) {
-      if (decl->arg_val) { continue; }
-      ir_func->PushLocal(decl);
-    }
-  }
-
-  statements->EmitIR();
-
-  fn_scope->exit_block  = ir_func->AddBlock("fn-exit");
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
   IR::Block::Current = fn_scope->exit_block;
   if (((Function *)type)->output == Void) {
@@ -701,7 +632,9 @@ IR::Value FunctionLiteral::EmitIR() {
 }
 
 IR::Value Statements::EmitIR() {
-  for (auto stmt : statements) { stmt->EmitIR(); }
+  for (auto stmt : statements) {
+    stmt->EmitIR();
+  }
   return IR::Value();
 }
 
@@ -745,6 +678,9 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
+  auto current_func  = IR::Func::Current;
+  auto current_block = IR::Block::Current;
+
   if (IsUninitialized()) {
     return IR::Value();
 
@@ -758,6 +694,9 @@ IR::Value Declaration::EmitIR() {
     Type::IR_CallAssignment(scope_, identifier->type, init_val->type,
   rhs_val, id_val);
   }
+
+  IR::Block::Current = current_block;
+  IR::Func::Current  = current_func;
 
   return IR::Value();
 }
@@ -839,6 +778,18 @@ IR::Value Access::EmitIR() {
                       IR::Field(struct_type, eval, index));
   }
 
+  Ctx ctx;
+
+  if (base_type == Type_) {
+    auto ty = operand->evaluate(ctx).as_type;
+    if (ty->is_enum()) {
+      return IR::Value(((Enumeration *)ty)->int_values AT(member_name));
+    } else {
+      UNREACHABLE;
+    }
+  }
+
+  std::cerr << *this << std::endl;
   UNREACHABLE;
 }
 

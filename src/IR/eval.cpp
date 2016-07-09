@@ -105,10 +105,10 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   case Exit::Strategy::Unset: UNREACHABLE;
   }
 
-  mvprintw(20, 50, "Stack size:     %ld", local_stack->used);
-  mvprintw(21, 50, "Stack capacity: %ld", local_stack->capacity);
-  mvprintw(22, 50, "Frame offset:   %ld", frame.offset);
-  mvprintw(23, 50, "Instr. Pointer: %ld", frame.inst_ptr);
+  mvprintw(39, 2, "Stack size:     %ld", local_stack->used);
+  mvprintw(40, 2, "Stack capacity: %ld", local_stack->capacity);
+  mvprintw(41, 2, "Frame offset:   %ld", frame.offset);
+  mvprintw(42, 2, "Instr. Pointer: %ld", frame.inst_ptr);
 
   getch();
   refresh();

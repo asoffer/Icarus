@@ -51,6 +51,9 @@ Func::Func(Function *fn_type, bool should_gen)
 
   blocks.push_back(new Block(0));
   blocks.back()->block_name = "fn-entry";
+  blocks.push_back(new Block(1));
+  blocks.back()->block_name = "fn-exit";
+
 }
 
 Value Access(Type *type, Value index, Value ptr) {
@@ -130,8 +133,8 @@ Value Load(Type *load_type, Value v) {
   return Value::Reg(cmd.result.reg);
 }
 
-Func *Func::Current;
-Block *Block::Current;
+Func *Func::Current = nullptr;
+Block *Block::Current = nullptr;
 
 Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
   result.reg = has_ret ? Func::Current->num_cmds : ~0u;

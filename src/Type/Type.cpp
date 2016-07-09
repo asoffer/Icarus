@@ -46,6 +46,8 @@ size_t Type::bytes() const {
     return MoveForwardToAlignment(num_bytes, alignment());
   }
 
+  if (is_function()) { return 8; }
+
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }
 
@@ -76,6 +78,8 @@ size_t Type::alignment() const {
     }
     return alignment_val;
   }
+
+  if (is_function()) { return 8; }
 
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }

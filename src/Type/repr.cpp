@@ -33,13 +33,39 @@ void add_branch(llvm::Function *fn, llvm::SwitchInst *switch_stmt,
   builder.CreateRetVoid();
 }
 
+static void AddSpecialCharacter(IR::Value val, char c, char vis,
+                                IR::Block *land) {
+  auto eq            = IR::CEQ(val, IR::Value(c));
+  auto special_block = IR::Func::Current->AddBlock("special");
+  auto next_block    = IR::Func::Current->AddBlock("next");
+
+  IR::Block::Current->exit.SetConditional(eq, special_block, next_block);
+  IR::Block::Current = special_block;
+  IR::Print(IR::Value(Char), IR::Value('\\'));
+  IR::Print(IR::Value(Char), IR::Value(vis));
+  IR::Block::Current->exit.SetUnconditional(land);
+  special_block->dump();
+  IR::Block::Current = next_block;
+}
+
 void Primitive::EmitRepr(IR::Value val) {
   if (this == Bool) {
     IR::Print(IR::Value(Bool), val);
   } else if (this == Char) {
-    // TODO switch on val to generate "\t" instead of a tab literal.
+    // TODO pull this out into a function.
     IR::Print(IR::Value(Char), IR::Value('\''));
+
+    auto land_block = IR::Func::Current->AddBlock("land");
+    AddSpecialCharacter(val, '\a', 'a', land_block);
+    AddSpecialCharacter(val, '\b', 'b', land_block);
+    AddSpecialCharacter(val, '\n', 'n', land_block);
+    AddSpecialCharacter(val, '\r', 'r', land_block);
+    AddSpecialCharacter(val, '\t', 't', land_block);
+    AddSpecialCharacter(val, '\v', 'v', land_block);
+
     IR::Print(IR::Value(Char), val);
+    IR::Block::Current->exit.SetUnconditional(land_block);
+    IR::Block::Current = land_block;
     IR::Print(IR::Value(Char), IR::Value('\''));
 
   } else if (this == Int) {
@@ -97,12 +123,14 @@ void Array::EmitRepr(IR::Value val) {
     }
     IR::Print(IR::Value(Char), IR::Value(']'));
 
+    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current = IR::Func::Current->exit();
     IR::Block::Current->exit.SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;
   }
-  assert(init_func);
+  assert(repr_func);
 
   IR::Call(Void, IR::Value(repr_func), {val});
 }

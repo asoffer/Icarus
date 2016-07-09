@@ -1,10 +1,9 @@
 main := void -> void {
-  array_len := 256
   print ['x', 'y', 'z', '\\', '\n', '\t', '\r']
-  char_array : [array_len; char]
+  char_array : [256; char]
   
   i := 0
-  while i < array_len {
+  while i < 256 {
     char_array[i] = ascii(i :> uint)
     i += 1
   }

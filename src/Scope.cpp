@@ -196,6 +196,7 @@ void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   // TODO actual returned type (second type arg) may be different
   Type::IR_CallAssignment(this, ret_type, ret_type, val, fn_scope->ret_val);
 
+  assert(fn_scope->exit_block);
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
 }
 

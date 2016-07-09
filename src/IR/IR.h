@@ -201,6 +201,8 @@ struct Func {
   llvm::BasicBlock *alloc_block;
 
   Block *entry() { return blocks.front(); }
+  Block *exit() { return blocks AT(1); }
+
   size_t num_cmds, frame_size;
 
   size_t PushSpace(Type *t);
