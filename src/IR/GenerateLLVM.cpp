@@ -348,8 +348,32 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
       case IR::Op::Store: builder.CreateStore(args[1], args[2]); break;
-      case IR::Op::Cast: NOT_YET;
-      case IR::Op::NOp: NOT_YET;
+      case IR::Op::Cast: {
+        auto from_type = reinterpret_cast<Type *>(args[0]);
+        auto to_type   = reinterpret_cast<Type *>(args[1]);
+
+        if (from_type == to_type) { registers[cmd.result.reg] = args[2]; }
+
+        if (from_type == Bool) {
+          registers[cmd.result.reg] =
+              (to_type == Real)
+                  ? builder.CreateUIToFP(args[2], *to_type, "ext.val")
+                  : builder.CreateZExt(args[2], *to_type, "ext.val");
+        } else if (from_type == Int) {
+          registers[cmd.result.reg] =
+              (to_type == Real)
+                  ? builder.CreateSIToFP(args[2], *to_type, "fp.val")
+                  : args[2];
+        } else if (from_type == Uint) {
+          registers[cmd.result.reg] =
+              (to_type == Real)
+                  ? builder.CreateUIToFP(args[2], *to_type, "fp.val")
+                  : args[2];
+        } else if (from_type->is_pointer() && to_type->is_pointer()) {
+          registers[cmd.result.reg] = builder.CreateBitCast(args[2], *to_type);
+        }
+      } break;
+      case IR::Op::NOp: break;
       case IR::Op::PtrIncr:
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
