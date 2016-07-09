@@ -59,7 +59,6 @@ struct BlockScope : public Scope {
   virtual bool is_block_scope() { return true; }
 
   virtual void initialize();
-  virtual void IR_Init();
 
   void uninitialize();
   void make_return(llvm::Value *val);

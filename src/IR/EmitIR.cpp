@@ -164,7 +164,7 @@ IR::Value Unop::EmitIR() {
     }
 
     auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitIR().as_func;
+    IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
     func->name       = "anonymous-func";
 
     if (operand->type == Void) {
@@ -543,6 +543,85 @@ IR::Value ChainOp::EmitIR() {
   }
 }
 
+// TODO this is almost identical to EmitIR(). Reuse code.
+IR::Value FunctionLiteral::EmitAnonymousIR() {
+  if (ir_func) { return IR::Value(ir_func); } // Cache
+  assert(type->is_function());
+  ir_func = new IR::Func((Function *)type, false);
+
+  fn_scope->entry_block = ir_func->entry();
+
+  assert(type);
+  assert(type->is_function());
+  fn_scope->ret_val =
+      IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
+  IR::Func::Current  = ir_func;
+  IR::Block::Current = ir_func->entry();
+
+  statements->verify_types();
+
+  for (auto decl : fn_scope->ordered_decls_) {
+    if (decl->arg_val) {
+      if (decl->arg_val->is_function_literal()) {
+        auto fn_lit = (FunctionLiteral *)decl->arg_val;
+
+        size_t arg_num = 0;
+        for (const auto& d : fn_lit->inputs) {
+          if (decl == d) {
+            decl->stack_loc = IR::Value::Arg(arg_num);
+            goto success_fn;
+          }
+          ++arg_num;
+        }
+
+        UNREACHABLE;
+
+      success_fn:
+        continue;
+
+      } else if (decl->arg_val->is_parametric_struct_literal()) {
+        auto param_struct = (ParametricStructLiteral *)decl->arg_val;
+        size_t param_num = 0;
+        for (const auto &p : param_struct->params) {
+          if (decl == p) {
+            decl->stack_loc = IR::Value::Arg(param_num);
+            goto success_param_struct;
+          }
+          ++param_num;
+        }
+
+        UNREACHABLE;
+
+      success_param_struct:
+        continue;
+      }
+      UNREACHABLE;
+    }
+    ir_func->PushLocal(decl);
+  }
+
+  for (auto scope : fn_scope->innards_) {
+    for (auto decl : scope->ordered_decls_) {
+      if (decl->arg_val) { continue; }
+      ir_func->PushLocal(decl);
+    }
+  }
+
+  statements->EmitIR();
+
+  fn_scope->exit_block  = ir_func->AddBlock("fn-exit");
+  IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
+  IR::Block::Current = fn_scope->exit_block;
+  if (((Function *)type)->output == Void) {
+    IR::Block::Current->exit.SetReturnVoid();
+  } else {
+    IR::Block::Current->exit.SetReturn(
+        IR::Load(((Function *)type)->output, fn_scope->ret_val));
+  }
+
+  return IR::Value(ir_func);
+}
+
 IR::Value FunctionLiteral::EmitIR() {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   assert(type->is_function());
@@ -605,8 +684,6 @@ IR::Value FunctionLiteral::EmitIR() {
       ir_func->PushLocal(decl);
     }
   }
-
-  // fn_scope->IR_Init();
 
   statements->EmitIR();
 

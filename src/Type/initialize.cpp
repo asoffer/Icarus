@@ -229,6 +229,8 @@ void Structure::EmitInit(IR::Value id_val) {
 
     init_func          = new IR::Func(Func(Ptr(this), Void));
     init_func->name    = "init." + Mangle(this);
+    implicit_functions.push_back(init_func);
+
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 

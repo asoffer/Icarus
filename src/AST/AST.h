@@ -356,6 +356,8 @@ struct FunctionLiteral : public Expression {
   llvm::Function *llvm_fn;
   Statements *statements;
 
+  IR::Value EmitAnonymousIR();
+
   IR::Func *ir_func;
 
   bool code_gened;

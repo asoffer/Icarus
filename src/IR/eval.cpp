@@ -101,7 +101,7 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
     ss << frame.curr_block->exit.val;
     mvprintw(++row, 34, "ret %s", ss.str().c_str());
   } break;
-  case Exit::Strategy::ReturnVoid: mvprintw(++row, 34, "ret void"); break;
+  case Exit::Strategy::ReturnVoid: mvprintw(++row, 34, "ret"); break;
   case Exit::Strategy::Unset: UNREACHABLE;
   }
 

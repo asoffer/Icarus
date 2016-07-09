@@ -259,24 +259,6 @@ llvm::Value *BlockScope::CreateLocalReturn(Type *type) {
   return AllocateLocally(type, "local.ret");
 }
 
-void BlockScope::IR_Init() {
-  auto old_block = IR::Block::Current;
-  IR::Block::Current = entry_block;
-
-  for (auto decl_ptr : ordered_decls_) {
-    if (decl_ptr->is_indecl()) continue;
-    if (!decl_ptr->type->stores_data()) continue;
-
-    if (decl_ptr->arg_val ||
-        (decl_ptr->init_val && decl_ptr->init_val->is_hole())) {
-      continue;
-    }
-
-    decl_ptr->type->EmitInit(decl_ptr->stack_loc);
-  }
-  IR::Block::Current = old_block;
-}
-
 void FnScope::initialize() {
   builder.SetInsertPoint(entry);
   if (fn_type->output != Void) {

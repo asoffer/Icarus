@@ -3,6 +3,7 @@
 #include "Scope.h"
 #endif
 
+extern std::vector<IR::Func *> implicit_functions;
 extern llvm::Module* global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
@@ -25,6 +26,8 @@ void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
 
     assign_func        = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
     assign_func->name  = "assign." + Mangle(this);
+    implicit_functions.push_back(assign_func);
+
     IR::Func::Current  = assign_func;
     IR::Block::Current = assign_func->entry();
 

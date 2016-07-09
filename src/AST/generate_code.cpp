@@ -216,7 +216,7 @@ llvm::Value *Unop::generate_code() {
     }
 
     auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitIR().as_func;
+    IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
 
     func->name       = "anonymous-func";
 

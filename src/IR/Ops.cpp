@@ -39,12 +39,14 @@ namespace IR {
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
 
-Func::Func(Function *fn_type)
+Func::Func(Function *fn_type, bool should_gen)
     : fn_type(fn_type), llvm_fn(nullptr), alloc_block(nullptr), num_cmds(0),
       frame_size(0) {
   llvm::FunctionType *llvm_fn_type = *fn_type;
-  llvm_fn =
-      (llvm::Function *)global_module->getOrInsertFunction(name, llvm_fn_type);
+  if (should_gen) {
+    llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+        name, llvm_fn_type);
+  }
   alloc_block = make_block("entry", llvm_fn);
 
   blocks.push_back(new Block(0));

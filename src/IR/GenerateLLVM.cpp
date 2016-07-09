@@ -324,7 +324,25 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Call: {
         auto fn = args[0];
         args.erase(args.begin());
-        builder.CreateCall(fn, args);
+
+        auto call_fn_type = cmd.args[0].as_func->fn_type;
+        auto ret_type = call_fn_type->output;
+        if (ret_type->is_primitive()) {
+          if (ret_type == Void) {
+            builder.CreateCall(fn, args);
+          } else {
+            registers[cmd.result.reg] = builder.CreateCall(fn, args);
+          }
+        } else if (!ret_type->is_primitive()) {
+          if (ret_type->is_tuple()) {
+            NOT_YET;
+          } else {
+            auto ret_val = builder.CreateAlloca(*ret_type);
+            args.push_back(ret_val);
+            registers[cmd.result.reg] = ret_val;
+          }
+        }
+
       } break;
       case IR::Op::Load:
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
@@ -363,7 +381,15 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                          exit.true_block->llvm_block,
                          exit.false_block->llvm_block);
     break;
-  case Exit::Strategy::Return: NOT_YET;
+  case Exit::Strategy::Return:
+    if (ir_fn->fn_type->output->is_primitive()) {
+      assert(ir_fn->fn_type->output != Void);
+      builder.CreateRet(IR_to_LLVM(ir_fn, exit.val, registers));
+    } else {
+      // TODO return some other value
+      builder.CreateRetVoid();
+    }
+    break;
   case Exit::Strategy::ReturnVoid: builder.CreateRetVoid(); break;
   }
   return llvm_block;

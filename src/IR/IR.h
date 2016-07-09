@@ -210,7 +210,7 @@ struct Func {
   void PushLocal(AST::Declaration *decl);
   Block *AddBlock(const char *block_name);
 
-  Func(Function *fn_type);
+  Func(Function *fn_type, bool should_gen = true);
 
   ~Func() {
     for (auto b : blocks) { delete b; }
