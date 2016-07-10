@@ -1,10 +1,8 @@
-square : real -> real
-square = (x : real) -> real {
+square : real -> real = (x : real) -> real {
   return x * x
 }
 
-wat : real -> real
-wat = (x : real) -> real {
+wat : real -> real = (x : real) -> real {
   y : real
   y = 3.0
   y += x
@@ -12,8 +10,8 @@ wat = (x : real) -> real {
   return y * y
 }
 
-foo : int -> int
-foo = (n : int) -> int {
+foo : int -> int = (m : int) -> int {
+  n := m
   n *= n
   n += n
   return n + 3

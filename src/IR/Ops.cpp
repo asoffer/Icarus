@@ -97,6 +97,22 @@ Value ArrayData(Array *type, Value array_ptr) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value Trunc(Value val) {
+  Cmd cmd(Op::Trunc, true);
+  cmd.args        = {val};
+  cmd.result.type = Char;
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
+Value ZExt(Value val) {
+  Cmd cmd(Op::ZExt, true);
+  cmd.args        = {val};
+  cmd.result.type = Uint;
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
   Cmd cmd(Op::PtrIncr, true);
   cmd.args = {IR::Value(ptr_type), ptr, incr};

@@ -244,6 +244,8 @@ Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Value ArrayData(Array *type, Value array_ptr);
 Value PtrIncr(Pointer *type, Value ptr, Value incr);
+Value Trunc(Value val);
+Value ZExt(Value val);
 
 Cmd Phi(Type *ret_type);
 Cmd NOp();

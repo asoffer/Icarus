@@ -552,6 +552,14 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::Alignment: {
     frame.reg[result.reg] = Value(cmd_inputs[0].as_type->alignment());
   } break;
+  case Op::Trunc: {
+    frame.reg[result.reg] = Value((char)cmd_inputs[0].as_uint);
+    break;
+  }
+  case Op::ZExt: {
+    frame.reg[result.reg] = Value((size_t)cmd_inputs[0].as_char);
+    break;
+  }
   case Op::ArrayData: {
     NOT_YET;
   } break;

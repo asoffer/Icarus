@@ -14,6 +14,7 @@ static IR::Func *AsciiFunc() {
 
   if (ascii_) { return ascii_; }
   ascii_ = new IR::Func(Func(Uint, Char));
+  ascii_->name = "ascii";
   implicit_functions.push_back(ascii_);
 
   auto saved_func  = IR::Func::Current;
@@ -22,7 +23,11 @@ static IR::Func *AsciiFunc() {
   IR::Func::Current  = ascii_;
   IR::Block::Current = ascii_->entry();
 
-  IR::Block::Current->exit.SetReturn(IR::Cast(Uint, Char, IR::Value::Arg(0)));
+  auto val = IR::Trunc(IR::Value::Arg(0));
+
+  IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+  IR::Block::Current = IR::Func::Current->exit();
+  IR::Block::Current->exit.SetReturn(val);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
@@ -35,6 +40,7 @@ static IR::Func *OrdFunc() {
 
   if (ord_) { return ord_; }
   ord_ = new IR::Func(Func(Char, Uint));
+  ord_->name = "ord";
   implicit_functions.push_back(ord_);
 
   auto saved_func  = IR::Func::Current;
@@ -43,7 +49,11 @@ static IR::Func *OrdFunc() {
   IR::Func::Current  = ord_;
   IR::Block::Current = ord_->entry();
 
-  IR::Block::Current->exit.SetReturn(IR::Cast(Char, Uint, IR::Value::Arg(0)));
+  auto val = IR::ZExt(IR::Value::Arg(0));
+
+  IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+  IR::Block::Current = IR::Func::Current->exit();
+  IR::Block::Current->exit.SetReturn(val);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
@@ -61,17 +71,13 @@ size_t IR::Func::PushSpace(Type *t) {
   size_t bytes     = t->bytes();
   size_t alignment = t->alignment();
 
-  // Compile-time variables actually take up space in the IR!
-  if (bytes == 0) { bytes = sizeof(Type *); }
-  if (alignment == 0) { alignment = sizeof(Type *); }
-
   frame_size = MoveForwardToAlignment(frame_size, alignment);
 
   auto result = frame_size;
   frame_size += bytes;
 
   builder.SetInsertPoint(alloc_block);
-  if (t->bytes() != 0) { frame_map[result] = t->allocate(); }
+  if (t != Void && t != Type_) { frame_map[result] = t->allocate(); }
 
   return result;
 }
@@ -360,6 +366,11 @@ IR::Value Binop::EmitIR() {
   } break;
 
   case Language::Operator::Call: {
+    if (type == Type_) { // TODO move this to wherever it should be
+      Ctx ctx;
+      return IR::Value(evaluate(ctx).as_type);
+    }
+
     if (rhs) {
       if (rhs->is_comma_list()) {
         std::vector<IR::Value> args;
@@ -555,6 +566,9 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
 
+  auto saved_func  = IR::Func::Current;
+  auto saved_block = IR::Block::Current;
+
   assert(type->is_function());
   ir_func = new IR::Func((Function *)type, should_gen);
 
@@ -607,6 +621,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       }
       UNREACHABLE;
     }
+
     ir_func->PushLocal(decl);
   }
 
@@ -628,6 +643,9 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
         IR::Load(((Function *)type)->output, fn_scope->ret_val));
   }
 
+  IR::Func::Current  = saved_func;
+  IR::Block::Current = saved_block;
+
   return IR::Value(ir_func);
 }
 
@@ -639,6 +657,11 @@ IR::Value Statements::EmitIR() {
 }
 
 IR::Value Identifier::EmitIR() {
+  if (type == Type_) { // TODO move this to wherever it should be
+    Ctx ctx;
+    return IR::Value(evaluate(ctx).as_type);
+  }
+
   if (decl->is_in_decl()) { return decl->stack_loc; }
 
   if (decl->arg_val && decl->arg_val->is_function_literal()) {
@@ -660,12 +683,11 @@ IR::Value Identifier::EmitIR() {
     Ctx ctx;
     evaluate(ctx);
     assert(value.as_expr);
-    auto current_func  = IR::Func::Current;
-    auto current_block = IR::Block::Current;
+    // TODO Is this really the place to name the function? Shouldn't that be
+    // done in its declaration?
+
     auto fn            = value.as_expr->EmitIR();
     fn.as_func->name   = Mangle((Function *)type, this, decl->scope_);
-    IR::Block::Current = current_block;
-    IR::Func::Current  = current_func;
     return fn;
 
   } else {
@@ -680,9 +702,6 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
-  auto current_func  = IR::Func::Current;
-  auto current_block = IR::Block::Current;
-
   if (IsUninitialized()) {
     return IR::Value();
 
@@ -696,9 +715,6 @@ IR::Value Declaration::EmitIR() {
     Type::IR_CallAssignment(scope_, identifier->type, init_val->type,
   rhs_val, id_val);
   }
-
-  IR::Block::Current = current_block;
-  IR::Func::Current  = current_func;
 
   return IR::Value();
 }
@@ -714,7 +730,7 @@ IR::Value Case::EmitIR() {
 
   // Create the landing block
   IR::Block *landing_block = IR::Func::Current->AddBlock("case-land");
-  auto phi                 = IR::Phi(Bool);
+  auto phi                 = IR::Phi(type);
 
   IR::Value result;
   for (size_t i = 0; i < key_vals.size() - 1; ++i) {
@@ -1008,6 +1024,10 @@ IR::Value For::EmitIR() {
     phi_block->push(phi);
     phi_vals.push_back(IR::Value::Reg(phi.result.reg));
     iter->stack_loc = IR::Value::Reg(phi.result.reg);
+    if (iter->container->type->is_array() ||
+        iter->container->type->is_slice()) {
+      iter->stack_loc = PtrCallFix(iter->type, iter->stack_loc);
+    }
   }
 
   auto land_block = IR::Func::Current->AddBlock("for-land");

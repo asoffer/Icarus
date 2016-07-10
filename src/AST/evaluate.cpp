@@ -169,8 +169,7 @@ Context::Value Identifier::evaluate(Ctx &ctx) {
   verify_types();
 
   auto iter = ctx.find(token);
-  if (iter != ctx.end()) {
-    return iter->second; }
+  if (iter != ctx.end()) { return iter->second; }
 
   value_flag = ValueFlag::In;
 
@@ -412,7 +411,7 @@ Context::Value Generic::evaluate(Ctx &ctx) {
 }
 
 Context::Value Declaration::evaluate(Ctx &ctx) {
-  if (IsInferred()) {
+  if (IsInferred() || IsCustomInitialized()) {
     if (init_val->type->is_function()) {
       value = Context::Value(init_val);
 
@@ -434,13 +433,9 @@ Context::Value Declaration::evaluate(Ctx &ctx) {
             identifier->token;
       }
     }
-  } else {
-    if (type_expr->type == Type_) {
-      value = Context::Value(TypeVar(identifier));
-    } else if (type_expr->type->is_type_variable()) {
-      // TODO Should we just skip this?
-    } else { /* There's nothing to do */
-    }
+
+  } else if (IsUninitialized()) {
+    NOT_YET;
   }
 
   value_flag = ValueFlag::Done;

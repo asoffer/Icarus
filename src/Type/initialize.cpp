@@ -198,13 +198,12 @@ void Array::EmitInit(IR::Value id_val) {
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 
-    if (fixed_length) {
-      for (size_t i = 0; i < len; ++i) {
-        data_type->EmitInit(
-            IR::Access(data_type, IR::Value(i), IR::Value::Arg(0)));
-      }
-    } else {
-      NOT_YET;
+    auto val = fixed_length ? IR::Value::Arg(0)
+                            : IR::ArrayData(this, IR::Value::Arg(0));
+
+
+    for (size_t i = 0; i < len; ++i) {
+      data_type->EmitInit(IR::Access(data_type, IR::Value(i), val));
     }
 
     IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
@@ -257,6 +256,7 @@ void Structure::EmitInit(IR::Value id_val) {
     IR::Block::Current = saved_block;
   }
   assert(init_func);
+  init_func->dump();
 
   IR::Call(Void, IR::Value(init_func), {id_val});
 }

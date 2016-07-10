@@ -82,7 +82,7 @@ public:
   // string literal, and using a string literal should import strings.
   static Type *get_string();
 
-  virtual llvm::Value *allocate() const { return builder.CreateAlloca(*this); }
+  virtual llvm::Value *allocate() const;
 
   virtual bool requires_uninit() const { return false; }
 

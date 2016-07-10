@@ -47,7 +47,7 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     while (arg_num --> 0) { iter++; }
     return iter;
   } break;
-  case ValType::StackAddr: NOT_YET;
+  case ValType::StackAddr: UNREACHABLE;
   case ValType::FrameAddr:
     assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
     return ir_fn->frame_map[cmd_arg.as_frame_addr];
@@ -111,7 +111,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         assert(cmd.args[2].flag == IR::ValType::U);
         registers[cmd.result.reg] = builder.CreateGEP(
             IR_to_LLVM(ir_fn, cmd.args[1], registers),
-            {data::const_uint(0), data::const_uint32(cmd.args[2].as_uint)});
+            {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint)});
       }
         continue;
       case IR::Op::Phi: {
@@ -181,7 +181,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
         break;
       case IR::Op::FSub:
-        registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
+        registers[cmd.result.reg] = builder.CreateFSub(args[0], args[1]);
         break;
 
       case IR::Op::IMul:
@@ -238,7 +238,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateFCmpOLE(args[0], args[1]);
         break;
 
-      case IR::Op::TEQ: NOT_YET;
+      case IR::Op::TEQ:
+        assert((reinterpret_cast<Type *>(args[0])->time() & Time::run) != 0);
+        assert((reinterpret_cast<Type *>(args[1])->time() & Time::run) != 0);
+        registers[cmd.result.reg] =
+            data::const_bool(reinterpret_cast<Type *>(args[0]) ==
+                             reinterpret_cast<Type *>(args[1]));
+        break;
       case IR::Op::FnEQ: NOT_YET;
 
       case IR::Op::UEQ:
@@ -252,7 +258,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
         break;
 
-      case IR::Op::TNE: NOT_YET;
+      case IR::Op::TNE:
+        assert((reinterpret_cast<Type *>(args[0])->time() & Time::run) != 0);
+        assert((reinterpret_cast<Type *>(args[1])->time() & Time::run) != 0);
+        registers[cmd.result.reg] =
+            data::const_bool(reinterpret_cast<Type *>(args[0]) !=
+                             reinterpret_cast<Type *>(args[1]));
+        break;
       case IR::Op::FnNE: NOT_YET;
 
       case IR::Op::BNE:
@@ -286,13 +298,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         break;
 
       case IR::Op::ArrayLength:
-        registers[cmd.result.reg] = builder.CreateLoad(
-            builder.CreateGEP(data::const_uint(0), data::const_uint(0)));
+        registers[cmd.result.reg] = builder.CreateLoad(builder.CreateGEP(
+            args[1], {data::const_uint32(0), data::const_uint32(0)}));
         break;
 
       case IR::Op::ArrayData:
-        registers[cmd.result.reg] = builder.CreateLoad(
-            builder.CreateGEP(data::const_uint(0), data::const_uint(1)));
+        registers[cmd.result.reg] = builder.CreateLoad(builder.CreateGEP(
+            args[1], {data::const_uint32(0), data::const_uint32(1)}));
         break;
 
       case IR::Op::Print: {
@@ -324,6 +336,14 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         } else if (print_type->is_pointer()) {
           builder.CreateCall(cstdlib::printf(),
                              {data::global_string("0x%zx"), args[1]});
+        } else if (print_type->is_enum()) {
+          auto enum_type = (Enumeration *)print_type;
+          // TODO change enums to be 32-bit and remove this (then unnecessary) cast
+          auto val_str = builder.CreateLoad(builder.CreateGEP(
+              enum_type->string_data, {data::const_uint32(0), args[1]}));
+          builder.CreateCall(
+              cstdlib::printf(),
+              {data::global_string(enum_type->to_string() + ".%s"), val_str});
         } else {
           UNREACHABLE;
         }
@@ -334,13 +354,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
         auto call_fn_type = cmd.args[0].as_func->fn_type;
         auto ret_type = call_fn_type->output;
-        if (ret_type->is_primitive()) {
+        if (ret_type->is_primitive() || ret_type->is_enum()) {
           if (ret_type == Void) {
             builder.CreateCall(fn, args);
           } else {
             registers[cmd.result.reg] = builder.CreateCall(fn, args);
           }
-        } else if (!ret_type->is_primitive()) {
+        } else {
           if (ret_type->is_tuple()) {
             NOT_YET;
           } else {
@@ -354,7 +374,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Load:
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
-      case IR::Op::Store: builder.CreateStore(args[1], args[2]); break;
+      case IR::Op::Store: {
+        // TODO or do we want to actually do the store (it'll be easily
+        // optimized out)
+        if (reinterpret_cast<Type *>(args[0]) == Type_) { break; }
+        builder.CreateStore(args[1], args[2]);
+      } break;
       case IR::Op::Cast: {
         auto from_type = reinterpret_cast<Type *>(args[0]);
         auto to_type   = reinterpret_cast<Type *>(args[1]);
@@ -384,10 +409,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::PtrIncr:
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
-      case IR::Op::Access:
+      case IR::Op::Access: {
+          args[1]->dump();
+          args[2]->dump();
         registers[cmd.result.reg] =
-            builder.CreateGEP(args[2], {data::const_uint(0), args[1]});
-        break;
+            builder.CreateGEP(args[2], {data::const_uint32(0), args[1]});
+      } break;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
       case IR::Op::TC_Ptr: UNREACHABLE;
@@ -397,13 +424,19 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       case IR::Op::Bytes: NOT_YET;
       case IR::Op::Alignment: NOT_YET;
-      }
+      case IR::Op::Trunc:
+        registers[cmd.result.reg] = builder.CreateTrunc(args[0], *Char);
+        break;
+      case IR::Op::ZExt:
+        registers[cmd.result.reg] = builder.CreateZExt(args[0], *Uint);
+        break;
+     }
       ++cmd_counter;
     }
   }
 
   switch (exit.flag) {
-  case Exit::Strategy::Unset: UNREACHABLE;
+  case Exit::Strategy::Unset: ir_fn->dump(); UNREACHABLE;
   case Exit::Strategy::Uncond:
     builder.CreateBr(exit.true_block->llvm_block);
     break;
