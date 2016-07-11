@@ -298,9 +298,7 @@ void Cmd::Execute(StackFrame& frame) {
             cmd_inputs[0].as_type->is_pointer()));
     assert(cmd_inputs[2].flag == ValType::StackAddr ||
            cmd_inputs[2].flag == ValType::HeapAddr);
-
-    if (cmd_inputs[2].flag == ValType::StackAddr) {
-      size_t offset = cmd_inputs[2].as_stack_addr;
+    size_t offset = cmd_inputs[2].as_stack_addr;
 
 #define DO_STORE(cpp_type, t, T)                                               \
   if (cmd_inputs[0].as_type == T) {                                            \
@@ -309,55 +307,29 @@ void Cmd::Execute(StackFrame& frame) {
     break;                                                                     \
   }
 
-      DO_STORE(bool, bool, Bool);
-      DO_STORE(char, char, Char);
-      DO_STORE(long, int, Int);
-      DO_STORE(double, real, Real);
-      DO_STORE(size_t, uint, Uint);
-      DO_STORE(Type *, type, Type_);
+    DO_STORE(bool, bool, Bool);
+    DO_STORE(char, char, Char);
+    DO_STORE(long, int, Int);
+    DO_STORE(double, real, Real);
+    DO_STORE(size_t, uint, Uint);
+    DO_STORE(Type *, type, Type_);
 
-      if (cmd_inputs[0].as_type->is_pointer()) {
-        auto ptr = (void **)(frame.stack->allocs + offset);
-        switch (cmd_inputs[1].flag) {
-        case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
-        default: NOT_YET;
-        }
-        break;
+
+    if (cmd_inputs[0].as_type->is_pointer()) {
+      auto ptr = (void **)(frame.stack->allocs + offset);
+      switch (cmd_inputs[1].flag) {
+      case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
+      default: NOT_YET;
       }
-
-      if (cmd_inputs[0].as_type == Void) {
-        auto ptr = (void *)(frame.stack->allocs + offset);
-        *(size_t *)ptr = cmd_inputs[1].as_stack_addr;
-        break;
-      }
-#undef DO_STORE
-    } else {
-
-#define DO_STORE(cpp_type, t, T)                                               \
-  if (cmd_inputs[0].as_type == T) {                                            \
-    auto ptr = (cpp_type *)(cmd_inputs[2].as_heap_addr);                       \
-    *ptr     = cmd_inputs[1].as_##t;                                           \
-    break;                                                                     \
-  }
-
-      DO_STORE(bool, bool, Bool);
-      DO_STORE(char, char, Char);
-      DO_STORE(long, int, Int);
-      DO_STORE(double, real, Real);
-      DO_STORE(size_t, uint, Uint);
-      DO_STORE(Type *, type, Type_);
-
-      if (cmd_inputs[0].as_type->is_pointer()) {
-        NOT_YET;
-        break;
-      }
-
-      if (cmd_inputs[0].as_type == Void) {
-        NOT_YET;
-        break;
-      }
-#undef DO_STORE
+      break;
     }
+
+    if (cmd_inputs[0].as_type == Void) {
+      auto ptr = (void *)(frame.stack->allocs + offset);
+      *(size_t *)ptr = cmd_inputs[1].as_stack_addr;
+      break;
+    }
+#undef DO_STORE
     UNREACHABLE;
   } break;
   case Op::Field: {
@@ -387,7 +359,6 @@ void Cmd::Execute(StackFrame& frame) {
           cmd_inputs[1].as_stack_addr + cmd_inputs[2].as_uint * pointee_size);
     } break;
     case ValType::HeapAddr: {
-      assert(cmd_inputs[0].flag == ValType::T);
       assert(cmd_inputs[0].as_type->is_pointer());
       // TODO space in array or bytes()?
       auto pointee_size =

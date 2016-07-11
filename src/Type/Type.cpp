@@ -101,23 +101,80 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   } else if (lhs_type->is_array()) {
     assert(rhs_type->is_array());
     auto lhs_array_type = (Array *)lhs_type;
-    if (lhs_array_type->fixed_length) {
-      // Implies rhs has fixed length of same length as well.
+    auto rhs_array_type = (Array *)rhs_type;
 
-      // TODO move this into a real Array method.
-      for (size_t i = 0; i < lhs_array_type->len; ++i) {
-        auto to_ptr =
-            IR::Access(lhs_array_type->data_type, IR::Value(i), to_var);
-        auto from_ptr =
-            IR::Access(lhs_array_type->data_type, IR::Value(i), from_val);
-        auto from_val = PtrCallFix(lhs_array_type->data_type, from_ptr);
-
-        IR_CallAssignment(scope, lhs_array_type->data_type,
-                          lhs_array_type->data_type, from_val, to_ptr);
-      }
+    IR::Value lhs_ptr, rhs_ptr, rhs_len, rhs_end_ptr;
+    if (rhs_array_type->fixed_length) {
+      rhs_ptr = IR::Access(rhs_array_type->data_type, IR::Value(0ul), from_val);
+      rhs_len = IR::Value(rhs_array_type->len);
     } else {
-      NOT_YET;
+      rhs_ptr = IR::Load(rhs_array_type->data_type,
+                         IR::ArrayData(rhs_array_type, from_val));
+      rhs_len = IR::Load(Uint, IR::ArrayLength(from_val));
     }
+    rhs_end_ptr = IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_ptr, rhs_len);
+
+    if (lhs_array_type->fixed_length) {
+      lhs_ptr = IR::Access(lhs_array_type->data_type, IR::Value(0ul), to_var);
+    } else {
+      // TODO delete first time. currently just delete
+      auto rhs_bytes =
+          IR::UMul(rhs_len,
+                   IR::Value(lhs_array_type->data_type
+                                 ->bytes())); // TODO round up for alignment?
+      auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
+      auto array_data = IR::ArrayData(lhs_array_type, to_var);
+      IR::Store(Ptr(lhs_array_type->data_type), ptr, array_data);
+      lhs_ptr = IR::Load(Ptr(lhs_array_type->data_type), array_data);
+
+      IR::Store(Uint, rhs_len, IR::ArrayLength(to_var));
+    }
+
+    auto init_block   = IR::Block::Current;
+    auto loop_phi     = IR::Func::Current->AddBlock("loop-phi");
+    auto loop_cond    = IR::Func::Current->AddBlock("loop-cond");
+    auto loop_body    = IR::Func::Current->AddBlock("loop-body");
+    auto land         = IR::Func::Current->AddBlock("land");
+    IR::Block::Current->exit.SetUnconditional(loop_phi);
+    IR::Block::Current = loop_phi;
+
+    auto lhs_phi = IR::Phi(Ptr(lhs_array_type->data_type));
+    lhs_phi.args.emplace_back(init_block);
+    lhs_phi.args.emplace_back(lhs_ptr);
+    auto lhs_phi_reg = IR::Value::Reg(lhs_phi.result.reg);
+
+    auto rhs_phi = IR::Phi(Ptr(rhs_array_type->data_type));
+    rhs_phi.args.emplace_back(init_block);
+    rhs_phi.args.emplace_back(rhs_ptr);
+    auto rhs_phi_reg = IR::Value::Reg(rhs_phi.result.reg);
+
+    loop_phi->exit.SetUnconditional(loop_cond);
+    IR::Block::Current = loop_cond;
+
+    auto cond = IR::PtrEQ(rhs_phi_reg, rhs_end_ptr);
+    IR::Block::Current->exit.SetConditional(cond, land, loop_body);
+    IR::Block::Current = loop_body;
+
+    // TODO Are these the right types?
+    IR_CallAssignment(
+        scope, lhs_array_type->data_type, lhs_array_type->data_type,
+        PtrCallFix(rhs_array_type->data_type, rhs_phi_reg), lhs_phi_reg);
+    auto next_lhs =
+        IR::PtrIncr(Ptr(lhs_array_type->data_type), lhs_phi_reg, IR::Value(1ul));
+    auto next_rhs =
+        IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_phi_reg, IR::Value(1ul));
+
+    lhs_phi.args.emplace_back(IR::Block::Current);
+    lhs_phi.args.emplace_back(next_lhs);
+    rhs_phi.args.emplace_back(IR::Block::Current);
+    rhs_phi.args.emplace_back(next_rhs);
+
+    IR::Block::Current->exit.SetUnconditional(loop_phi);
+
+    loop_phi->push(lhs_phi);
+    loop_phi->push(rhs_phi);
+
+    IR::Block::Current = land;
 
   } else {
     auto fn = GetFuncReferencedIn(scope, "__assign__",

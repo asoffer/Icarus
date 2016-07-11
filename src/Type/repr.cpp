@@ -119,7 +119,57 @@ void Array::EmitRepr(IR::Value val) {
         data_type->EmitRepr(PtrCallFix(
             data_type, IR::Access(data_type, IR::Value(i), IR::Value::Arg(0))));
       }
+    } else {
+      // TODO length == 1 special case (don't print extra ,)
+      auto ptr =
+          IR::Load(Ptr(data_type), IR::ArrayData(this, IR::Value::Arg(0)));
+      auto len = IR::Load(Uint, IR::ArrayLength(IR::Value::Arg(0)));
+
+      auto init_block = IR::Func::Current->AddBlock("loop-init");
+      auto land       = IR::Func::Current->AddBlock("land");
+
+      IR::Block::Current->exit.SetConditional(IR::UEQ(len, IR::Value(0ul)),
+                                              land, init_block);
+
+      IR::Block::Current = init_block;
+      data_type->EmitRepr(PtrCallFix(data_type, ptr));
+
+      auto end_ptr = IR::PtrIncr(Ptr(data_type), ptr, len);
+
+      auto loop_phi   = IR::Func::Current->AddBlock("loop-phi");
+      auto loop_cond  = IR::Func::Current->AddBlock("loop-cond");
+      auto loop_body  = IR::Func::Current->AddBlock("loop-body");
+
+      IR::Block::Current->exit.SetUnconditional(loop_phi);
+      IR::Block::Current = loop_phi;
+
+      auto phi = IR::Phi(Ptr(data_type));
+      phi.args.emplace_back(init_block);
+      phi.args.emplace_back(ptr);
+
+      auto phi_reg = IR::Value::Reg(phi.result.reg);
+
+      loop_phi->exit.SetUnconditional(loop_cond);
+      IR::Block::Current = loop_cond;
+
+      auto elem_ptr = IR::PtrIncr(Ptr(data_type), phi_reg, IR::Value(1ul));
+      auto cond = IR::PtrEQ(elem_ptr, end_ptr);
+      IR::Block::Current->exit.SetConditional(cond, land, loop_body);
+      IR::Block::Current = loop_body;
+
+      IR::Print(IR::Value(Char), IR::Value(','));
+      IR::Print(IR::Value(Char), IR::Value(' '));
+      data_type->EmitRepr(PtrCallFix(data_type, elem_ptr));
+
+      phi.args.emplace_back(IR::Block::Current);
+      phi.args.emplace_back(elem_ptr);
+
+      IR::Block::Current->exit.SetUnconditional(loop_phi);
+      loop_phi->push(phi);
+
+      IR::Block::Current = land;
     }
+
     IR::Print(IR::Value(Char), IR::Value(']'));
 
     IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
