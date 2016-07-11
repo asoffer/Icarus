@@ -991,8 +991,8 @@ IR::Value For::EmitIR() {
       ComputeAndStoreArrayBounds(array_type, container_val, head_ptr, len_val);
 
       start_vals[i] =
-          IR::Access(array_type->data_type, IR::Value(0ul), head_ptr);
-      end_vals[i] = IR::Access(array_type->data_type, len_val, head_ptr);
+          IR::PtrIncr(Ptr(array_type->data_type), head_ptr, IR::Value(0ul));
+      end_vals[i] = IR::PtrIncr(Ptr(array_type->data_type), head_ptr, len_val);
 
     } else if (iter->container->type->is_range()) {
       ComputeAndStoreRangeValues(iter->container, start_vals[i], end_vals[i]);
@@ -1018,8 +1018,10 @@ IR::Value For::EmitIR() {
         end_offset = IR::IAdd(end_offset, IR::Value(1l));
       }
 
-      start_vals[i] = IR::Access(array_type->data_type, start_offset, head_ptr);
-      end_vals[i]   = IR::Access(array_type->data_type, end_offset, head_ptr);
+      start_vals[i] =
+          IR::PtrIncr(Ptr(array_type->data_type), head_ptr, start_offset);
+      end_vals[i] =
+          IR::PtrIncr(Ptr(array_type->data_type), head_ptr, end_offset);
 
     } else if (iter->container->type == Type_) {
       Ctx ctx;

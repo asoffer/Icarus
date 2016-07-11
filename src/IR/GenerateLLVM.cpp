@@ -422,7 +422,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
       case IR::Op::Access: {
-        registers[cmd.result.reg] = builder.CreateGEP(args[2], {data::const_uint32(0), args[1]});
+        registers[cmd.result.reg] =
+            builder.CreateGEP(args[2], {data::const_uint32(0), args[1]});
       } break;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;

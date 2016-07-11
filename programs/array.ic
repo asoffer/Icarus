@@ -1,7 +1,5 @@
 main := void -> void {
-  n_len := 10
-  
-  n : [n_len; int]
+  n : [--; int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
   r : [20; real]
   c : [5; char]
 
