@@ -5,7 +5,7 @@
 
 namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalCStr
 };
 
 struct Func;
@@ -29,7 +29,8 @@ struct Value {
     Block *as_block;
     size_t as_stack_addr;
     size_t as_frame_addr;
-    size_t as_heap_addr;
+    void *as_heap_addr;
+    size_t as_global_cstr;
   };
 
   ValType flag;
@@ -45,6 +46,13 @@ struct Value {
   explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
 
   Value() : flag(ValType::Reg) {}
+
+  static Value GlobalCStr(size_t n) {
+    Value v;
+    v.flag           = ValType::GlobalCStr;
+    v.as_global_cstr = n;
+    return v;
+  }
 
   static Value Reg(size_t n) {
     Value v;
@@ -67,10 +75,10 @@ struct Value {
     return v;
   }
 
-  static Value HeapAddr(size_t n) {
+  static Value HeapAddr(void *ptr) {
     Value v;
     v.flag         = ValType::HeapAddr;
-    v.as_heap_addr = n;
+    v.as_heap_addr = ptr;
     return v;
   }
 
@@ -243,6 +251,8 @@ Value Cast(Type *in, Type *out, Value);
 Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Value ArrayData(Array *type, Value array_ptr);
+Value Malloc(Type *type, Value num);
+Value Memcpy(Value dest, Value source, Value num_bytes);
 Value PtrIncr(Pointer *type, Value ptr, Value incr);
 Value Trunc(Value val);
 Value ZExt(Value val);

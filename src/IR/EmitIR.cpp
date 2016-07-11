@@ -87,6 +87,25 @@ void IR::Func::PushLocal(AST::Declaration *decl) {
   decl->stack_loc = IR::Value::FrameAddr(PushSpace(decl->type));
 }
 
+static std::vector<const char *> const_strs_;
+const char *GetGlobalStringNumbered(size_t index) {
+  assert(index < const_strs_.size());
+  return const_strs_[index];
+}
+
+static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
+  auto num_strs = const_strs_.size();
+  for (size_t i = 0; i < num_strs; ++i) {
+    if (std::strcmp(const_strs_[i], cstr) == 0) {
+      return IR::Value::GlobalCStr(i);
+    }
+  }
+  char *new_cstr = new char[std::strlen(cstr) + 1];
+  std::strcpy(new_cstr, cstr);
+  const_strs_.push_back(new_cstr);
+  return IR::Value::GlobalCStr(num_strs);
+}
+
 namespace AST {
 IR::Value Terminal::EmitIR() {
   // TODO translation from Context::Value to IR::Value should be removed
@@ -106,7 +125,23 @@ IR::Value Terminal::EmitIR() {
     IR::Block::Current->exit.SetReturnVoid();
     return IR::Value();
   } break;
-  case Language::Terminal::StringLiteral: return IR::Value(value.as_cstr);
+  case Language::Terminal::StringLiteral:  {
+    assert(String->is_struct());
+    auto token     = value.as_cstr;
+    auto tk_len    = IR::Value((size_t)std::strlen(value.as_cstr));
+    auto ptr_index = FindOrInsertGlobalCStr(token);
+    auto cstr_tmp  = IR::Value::FrameAddr(IR::Func::Current->PushSpace(String));
+    auto array_ptr = IR::Field((Structure *)String, cstr_tmp, 0);
+    IR::Store(Uint, tk_len, IR::ArrayLength(array_ptr));
+    IR::Store(Uint, tk_len, IR::Field((Structure *)String, cstr_tmp, 1));
+
+    auto ptr = IR::Malloc(Char, IR::Value(tk_len));
+    IR::Memcpy(ptr, ptr_index, IR::Value(tk_len));
+
+    IR::Store(Ptr(Char), ptr, IR::ArrayData(Arr(Char), array_ptr));
+
+    return cstr_tmp;
+  } break;
   case Language::Terminal::True: return IR::Value(true);
   case Language::Terminal::Type: return IR::Value(value.as_type);
   case Language::Terminal::Uint: return IR::Value(value.as_uint);
@@ -115,8 +150,8 @@ IR::Value Terminal::EmitIR() {
 
 static void EmitPrintExpr(Expression *expr) {
   // TODO make string primitive
-  if (expr->type->is_primitive() || expr->type == String ||
-      expr->type->is_enum() || expr->type->is_pointer()) {
+  if (expr->type->is_primitive() || expr->type->is_enum() ||
+      expr->type->is_pointer()) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
 
   } else if (expr->type->is_function() || expr->type->is_array()) {
@@ -126,6 +161,7 @@ static void EmitPrintExpr(Expression *expr) {
     auto fn =
         GetFuncReferencedIn(expr->scope_, "__print__", Func(expr->type, Void));
     assert(fn);
+
     IR::Call(Void, IR::Value(fn), {expr->EmitIR()});
   }
 }
@@ -784,7 +820,7 @@ IR::Value Access::EmitIR() {
   if (base_type->is_array() && member_name == "size") {
     auto array_type = (Array *)base_type;
     return array_type->fixed_length ? IR::Value(array_type->len)
-                                    : IR::ArrayLength(eval);
+                                    : IR::Load(Uint, IR::ArrayLength(eval));
   }
 
   if (base_type->is_struct()) {
@@ -928,8 +964,9 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
     head_ptr = container_val;
     len_val  = IR::Value(array_type->len);
   } else {
-    head_ptr = IR::ArrayData(array_type, container_val);
-    len_val  = IR::ArrayLength(container_val);
+    head_ptr = IR::Load(Ptr(array_type->data_type),
+                        IR::ArrayData(array_type, container_val));
+    len_val  = IR::Load(Uint, IR::ArrayLength(container_val));
   }
 }
 

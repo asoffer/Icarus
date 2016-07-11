@@ -89,10 +89,27 @@ Value Call(Type *out, Value fn, const std::vector<Value> &args) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value Memcpy(Value dest, Value source, Value num_bytes) {
+  Cmd cmd(Op::Memcpy, false);
+  cmd.args = {dest, source, num_bytes};
+  cmd.result.type = Void;
+  Block::Current->push(cmd);
+  return Value();
+}
+
 Value ArrayData(Array *type, Value array_ptr) {
   Cmd cmd(Op::ArrayData, true);
   cmd.args        = {IR::Value(type), array_ptr};
-  cmd.result.type = Ptr(type->data_type);
+  cmd.result.type = Ptr(Ptr(type->data_type));
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
+
+Value Malloc(Type *type, Value num) {
+  Cmd cmd(Op::Malloc, true);
+  cmd.args        = {num};
+  cmd.result.type = Ptr(type);
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
@@ -197,6 +214,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::StackAddr: return os << "$" << value.as_stack_addr;
   case ValType::FrameAddr: return os << "`$`" << value.as_frame_addr;
   case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
+  case ValType::GlobalCStr: return os << "c\"#" << value.as_global_cstr;
   case ValType::Block:
     if (value.as_block) {
       return os << value.as_block->block_name << "("

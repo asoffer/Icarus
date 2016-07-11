@@ -8,6 +8,8 @@ namespace debug {
 extern bool ct_eval;
 } // namespace debug
 
+extern const char *GetGlobalStringNumbered(size_t index);
+
 namespace IR {
 extern std::string OpCodeString(Op op_code);
 
@@ -193,23 +195,39 @@ void Cmd::Execute(StackFrame& frame) {
       NOT_YET;
     }
   } break;
-  case Op::ArrayLength: {
-    if (cmd_inputs[1].flag == ValType::StackAddr) {
-      frame.reg[result.reg] =
-          Value(*(size_t *)(frame.stack->allocs + cmd_inputs[0].as_stack_addr));
-    } else if (cmd_inputs[1].flag == ValType::HeapAddr) {
-      NOT_YET;
-    } else {
-      UNREACHABLE;
+  case Op::Malloc: {
+    auto ptr = malloc(cmd_inputs[0].as_uint);
+    if (!ptr) {
+      fprintf(stderr, "malloc failed to allocate %lu byte(s).\n",
+              cmd_inputs[1].as_uint);
+      std::exit(-1);
     }
+    frame.reg[result.reg] = Value::HeapAddr(ptr);
+  } break;
+  case Op::Memcpy: {
+    void *dest;
+    switch (cmd_inputs[0].flag) {
+    case ValType::HeapAddr: dest = cmd_inputs[0].as_heap_addr; break;
+    default: UNREACHABLE;
+    }
+
+    const void *source;
+    switch (cmd_inputs[1].flag) {
+    case ValType::GlobalCStr:
+      source = GetGlobalStringNumbered(cmd_inputs[1].as_global_cstr);
+      break;
+    default: UNREACHABLE;
+    }
+
+    memcpy(dest, source, cmd_inputs[2].as_uint);
   } break;
   case Op::Load: {
-    assert(cmd_inputs[0].flag == ValType::StackAddr);
     assert(
         (result.type->is_primitive() || result.type->is_pointer() ||
          result.type->is_enum()) &&
         "Non-primitive/pointer/enum local variables are not yet implemented");
-    size_t offset = cmd_inputs[0].as_stack_addr;
+    if (cmd_inputs[0].flag == ValType::StackAddr) {
+      size_t offset = cmd_inputs[0].as_stack_addr;
 
 #define DO_LOAD(StoredType, stored_type)                                       \
   if (result.type == StoredType) {                                             \
@@ -218,25 +236,66 @@ void Cmd::Execute(StackFrame& frame) {
     break;                                                                     \
   }
 
-    DO_LOAD(Bool, bool);
-    DO_LOAD(Char, char);
-    DO_LOAD(Int, long);
-    DO_LOAD(Real, double);
-    DO_LOAD(Uint, size_t);
-    DO_LOAD(Type_, Type *);
+      DO_LOAD(Bool, bool);
+      DO_LOAD(Char, char);
+      DO_LOAD(Int, long);
+      DO_LOAD(Real, double);
+      DO_LOAD(Uint, size_t);
+      DO_LOAD(Type_, Type *);
 
-#undef DO_LOAD_IF
-    assert(result.type->is_pointer() || result.type->is_enum());
-    if (result.type->is_pointer()) {
-      frame.reg[result.reg] = Value::StackAddr(offset);
+#undef DO_LOAD
+      assert(result.type->is_pointer() || result.type->is_enum());
+      if (result.type->is_pointer()) {
+        // TODO how do we determine if it's heap or stack?
+        auto ptr_as_uint = *(size_t *)(frame.stack->allocs + offset);
+        if (ptr_as_uint > 0xffff) { // NOTE hack to guess if it's a heap address
+          frame.reg[result.reg] = Value::HeapAddr((void *)ptr_as_uint);
+        } else {
+          frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
+        }
+      } else {
+        frame.reg[result.reg] =
+            Value(*(size_t *)(frame.stack->allocs + offset));
+      }
+
+    } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
+#define DO_LOAD(StoredType, stored_type)                                       \
+  if (result.type == StoredType) {                                             \
+    frame.reg[result.reg] =                                                    \
+        Value(*(stored_type *)(cmd_inputs[0].as_heap_addr));                   \
+    break;                                                                     \
+  }
+
+      DO_LOAD(Bool, bool);
+      DO_LOAD(Char, char);
+      DO_LOAD(Int, long);
+      DO_LOAD(Real, double);
+      DO_LOAD(Uint, size_t);
+      DO_LOAD(Type_, Type *);
+
+#undef DO_LOAD
+      assert(result.type->is_pointer() || result.type->is_enum());
+      if (result.type->is_pointer()) {
+        // TODO how do we determine if it's heap or stack?
+        auto ptr_as_uint = *(size_t *)(cmd_inputs[0].as_heap_addr);
+        if (ptr_as_uint > 0xffff) { // NOTE hack to guess if it's a heap address
+          frame.reg[result.reg] = Value::HeapAddr((void *)ptr_as_uint);
+        } else {
+          frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
+        }
+      } else {
+        frame.reg[result.reg] = Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
+      }
+
     } else {
-      frame.reg[result.reg] = Value(*(size_t *)(frame.stack->allocs + offset));
+      UNREACHABLE;
     }
   } break;
 
   case Op::Store: {
     assert(cmd_inputs[0].flag == ValType::T &&
-           cmd_inputs[0].as_type->is_primitive());
+           (cmd_inputs[0].as_type->is_primitive() ||
+            cmd_inputs[0].as_type->is_pointer()));
     assert(cmd_inputs[2].flag == ValType::StackAddr);
     size_t offset = cmd_inputs[2].as_stack_addr;
 
@@ -253,6 +312,16 @@ void Cmd::Execute(StackFrame& frame) {
     DO_STORE(double, real, Real);
     DO_STORE(size_t, uint, Uint);
     DO_STORE(Type *, type, Type_);
+
+
+    if (cmd_inputs[0].as_type->is_pointer()) {
+      auto ptr = (void **)(frame.stack->allocs + offset);
+      switch (cmd_inputs[1].flag) {
+      case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
+      default: NOT_YET;
+      }
+      break;
+    }
 
     if (cmd_inputs[0].as_type == Void) {
       auto ptr = (void *)(frame.stack->allocs + offset);
@@ -288,6 +357,15 @@ void Cmd::Execute(StackFrame& frame) {
       frame.reg[result.reg] = Value::StackAddr(
           cmd_inputs[1].as_stack_addr + cmd_inputs[2].as_uint * pointee_size);
     } break;
+    case ValType::HeapAddr: {
+      assert(cmd_inputs[0].as_type->is_pointer());
+      // TODO space in array or bytes()?
+      auto pointee_size =
+          ((Pointer *)cmd_inputs[0].as_type)->pointee->SpaceInArray();
+      frame.reg[result.reg] =
+          Value::HeapAddr((char *)cmd_inputs[1].as_heap_addr +
+                          cmd_inputs[2].as_uint * pointee_size);
+    } break;
     default: std::cerr << cmd_inputs[1] << '\n'; UNREACHABLE;
     }
 
@@ -297,6 +375,11 @@ void Cmd::Execute(StackFrame& frame) {
     case ValType::StackAddr:
       frame.reg[result.reg] = Value::StackAddr(
           cmd_inputs[2].as_stack_addr +
+          cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
+      break;
+    case ValType::HeapAddr:
+      frame.reg[result.reg] = Value::HeapAddr(
+          (char *)(cmd_inputs[2].as_heap_addr) +
           cmd_inputs[1].as_uint * cmd_inputs[0].as_type->SpaceInArray());
       break;
     default: std::cerr << cmd_inputs[2] << '\n'; UNREACHABLE;
@@ -560,8 +643,26 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] = Value((size_t)cmd_inputs[0].as_char);
     break;
   }
+  case Op::ArrayLength: {
+    if (cmd_inputs[0].flag == ValType::StackAddr) {
+      frame.reg[result.reg] = cmd_inputs[0];
+
+    } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
+      NOT_YET;
+    } else {
+      UNREACHABLE;
+    }
+  } break;
   case Op::ArrayData: {
-    NOT_YET;
+    if (cmd_inputs[1].flag == ValType::StackAddr) {
+      frame.reg[result.reg] =
+          IR::Value::StackAddr(cmd_inputs[1].as_stack_addr + sizeof(char *));
+
+    } else if (cmd_inputs[1].flag == ValType::HeapAddr) {
+      NOT_YET;
+    } else {
+      UNREACHABLE;
+    }
   } break;
   }
 }

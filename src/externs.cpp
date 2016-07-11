@@ -250,7 +250,7 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
   if (!decl) { return nullptr; }
 
   // TODO change name of this stack_loc -> alloc or something similar.
-  if(!decl->stack_loc.as_func) {
+  if(decl->stack_loc.as_uint == ~0ul) {
     if (decl->init_val->is_function_literal()) {
       auto old_func = IR::Func::Current;
       auto old_block = IR::Block::Current;

@@ -5,8 +5,12 @@ extern llvm::IRBuilder<> builder;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
+extern const char *GetGlobalStringNumbered(size_t index);
+
 namespace cstdlib {
 extern llvm::Constant *printf();
+extern llvm::Constant *malloc();
+extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
 namespace data {
@@ -52,6 +56,8 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
     return ir_fn->frame_map[cmd_arg.as_frame_addr];
   case ValType::HeapAddr: NOT_YET;
+  case ValType::GlobalCStr:
+    return data::global_string(GetGlobalStringNumbered(cmd_arg.as_global_cstr));
   }
 }
 
@@ -297,14 +303,19 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateFCmpOGT(args[0], args[1]);
         break;
 
+      case IR::Op::Malloc:
+        registers[cmd.result.reg] = builder.CreateBitCast(
+            builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);
+        break;
+
       case IR::Op::ArrayLength:
-        registers[cmd.result.reg] = builder.CreateLoad(builder.CreateGEP(
-            args[1], {data::const_uint32(0), data::const_uint32(0)}));
+        registers[cmd.result.reg] = builder.CreateGEP(
+            args[0], {data::const_uint32(0), data::const_uint32(0)});
         break;
 
       case IR::Op::ArrayData:
-        registers[cmd.result.reg] = builder.CreateLoad(builder.CreateGEP(
-            args[1], {data::const_uint32(0), data::const_uint32(1)}));
+        registers[cmd.result.reg] = builder.CreateGEP(
+            args[1], {data::const_uint32(0), data::const_uint32(1)});
         break;
 
       case IR::Op::Print: {
@@ -410,10 +421,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
       case IR::Op::Access: {
-          args[1]->dump();
-          args[2]->dump();
-        registers[cmd.result.reg] =
-            builder.CreateGEP(args[2], {data::const_uint32(0), args[1]});
+        registers[cmd.result.reg] = builder.CreateGEP(args[2], args[1]);
       } break;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
@@ -430,6 +438,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::ZExt:
         registers[cmd.result.reg] = builder.CreateZExt(args[0], *Uint);
         break;
+      case IR::Op::Memcpy: builder.CreateCall(cstdlib::memcpy(), args); break;
      }
       ++cmd_counter;
     }

@@ -198,9 +198,16 @@ void Array::EmitInit(IR::Value id_val) {
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 
-    auto val = fixed_length ? IR::Value::Arg(0)
-                            : IR::ArrayData(this, IR::Value::Arg(0));
-
+    IR::Value val;
+    if (fixed_length) {
+      val = IR::Value::Arg(0);
+    } else {
+      auto len_ptr = IR::ArrayLength(IR::Value::Arg(0));
+      IR::Store(Uint, IR::Value(0ul), len_ptr);
+      auto ptr = IR::ArrayData(this, IR::Value::Arg(0));
+      IR::Store(Ptr(data_type), IR::Malloc(data_type, IR::Value(0ul)), ptr);
+      val = IR::Load(Ptr(data_type), ptr);
+    }
 
     for (size_t i = 0; i < len; ++i) {
       data_type->EmitInit(IR::Access(data_type, IR::Value(i), val));
@@ -256,7 +263,6 @@ void Structure::EmitInit(IR::Value id_val) {
     IR::Block::Current = saved_block;
   }
   assert(init_func);
-  init_func->dump();
 
   IR::Call(Void, IR::Value(init_func), {id_val});
 }
