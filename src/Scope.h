@@ -5,13 +5,9 @@
 #include "Type/Type.h"
 #endif
 
-extern llvm::BasicBlock *make_block(const std::string &name,
-                                    llvm::Function *fn);
-
 enum class ScopeType { While, For, Conditional, Function, Global };
 
 struct Scope {
-  static std::stack<Scope *> Stack;
   static void verify_no_shadowing();
   static BlockScope *Global; // TODO Should this be it's own type
   static std::vector<AST::Declaration *> decl_registry_;
@@ -58,53 +54,31 @@ struct BlockScope : public Scope {
   virtual ~BlockScope(){}
   virtual bool is_block_scope() { return true; }
 
-  virtual void initialize();
-
-  void uninitialize();
-  void make_return(llvm::Value *val);
   void MakeReturn(Type *ret_type, IR::Value val);
 
   llvm::Value *AllocateLocally(Type *type, const std::string &name);
   llvm::Value *CreateLocalReturn(Type *type);
 
-  void set_parent_function(llvm::Function *fn);
   void defer_uninit(Type *type, llvm::Value *val);
 
   ScopeType type;
-  llvm::BasicBlock *entry, *exit, *land;
   IR::Block *entry_block, *exit_block, *land_block;
   std::stack<std::pair<Type *, llvm::Value *>> deferred_uninits;
 };
 
 struct FnScope : public BlockScope {
-  FnScope(llvm::Function *fn = nullptr);
+  FnScope();
   virtual bool is_function_scope() { return true; }
   virtual ~FnScope(){}
 
   void add_scope(Scope *scope);
   void remove_scope(Scope *scope);
 
-  virtual void initialize();
-
-  void leave();
-  void allocate(Scope *scope);
-
-  // Return the exit flag if it exists. If it doesn't create the flag,
-  // initialize it, and return it.
-  llvm::Value *ExitFlag();
-
   Function *fn_type;
-  llvm::Function *llvm_fn;
   llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
 
   IR::Value exit_flag, ret_val;
 };
-
-// TODO these are not threadsafe! When we access the stack, when compilation is
-// multi-threaded, we should probably grab a mutex before getting the top of the
-// stack
-
-Scope *CurrentScope();
 
 #endif // ICARUS_SCOPE_H

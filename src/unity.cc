@@ -9,8 +9,6 @@
 #include "AST/ctors.cpp"
 #include "AST/dtors.cpp"
 #include "AST/evaluate.cpp"
-#include "AST/generate_code.cpp"
-#include "AST/generate_lvalue.cpp"
 #include "AST/lrval.cpp"
 #include "AST/time.cpp"
 #include "AST/to_string.cpp"
@@ -22,7 +20,7 @@
 #include "Lexer.cpp"
 #include "Mangler.cpp"
 #include "Rule.cpp"
-#include "Parser.cpp"
+#include "Parse.cpp"
 #include "main.cpp"
 #include "Scope.cpp"
 #include "Type.cpp"
@@ -35,6 +33,5 @@
 #include "Type/repr.cpp"
 #include "Type/to_string.cpp"
 #include "Type/type_time.cpp"
-#include "Type/uninitialize.cpp"
 
 #undef ICARUS_UNITY

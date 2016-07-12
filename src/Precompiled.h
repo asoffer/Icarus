@@ -26,6 +26,14 @@
 // checking if the map is already filled before parsing.
 extern std::queue<std::string> file_queue;
 
+namespace debug {
+extern bool timer;
+extern bool parser;
+extern bool parametric_struct;
+extern bool ct_eval;
+} // namespace debug
+
+
 #include "ConstantsAndEnums.h"
 
 #define NOT_YET assert(false && "Not yet implemented")
@@ -129,6 +137,8 @@ inline bool operator<(const Value &lhs, const Value &rhs) {
 #include "ErrorLog.h"
 
 namespace Language {
+extern size_t precedence(Operator op);
+
 // Using masks to make determination node types easier. Starting masks in the
 // 8th bit, leaves bits 0-7 for standard enumeration. This is safe because we
 // will never have more than 128 NodeTypes in a given section.
@@ -136,11 +146,9 @@ namespace Language {
 constexpr int OP_ = 1 << 6;
 
 enum NodeType : char {
-  unknown,
   bof,
   eof,
   newline,
-  comment,
   prog,
   stmts,
   if_stmt,

@@ -10,6 +10,7 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          Type *input_type);
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
+extern std::stack<Scope *> ScopeStack;
 
 static AST::FunctionLiteral *
 GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
@@ -28,14 +29,14 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   auto cloned_func = (AST::FunctionLiteral *)fn_lit->clone(
       num_matches, lookup_key, lookup_val);
 
-  auto old_stack_size = Scope::Stack.size();
-  Scope::Stack.push(fn_lit->scope_);
+  auto old_stack_size = ScopeStack.size();
+  ScopeStack.push(fn_lit->scope_);
 
   cloned_func->assign_scope();
   cloned_func->verify_types();
 
-  Scope::Stack.pop();
-  assert(Scope::Stack.size() == old_stack_size);
+  ScopeStack.pop();
+  assert(ScopeStack.size() == old_stack_size);
 
   delete[] lookup_key;
   delete[] lookup_val;

@@ -1,5 +1,5 @@
 #ifndef ICARUS_UNITY
-#include "Parser.h"
+#include "SourceFile.h"
 #include "Type/Type.h"
 #include "Scope.h"
 #endif
@@ -22,44 +22,17 @@
 
 #include <ncurses.h>
 
-#include "clargs.h"
+#include "util/command_line_args.h"
+#include "util/timer.h"
+
 static size_t start_time;
 static size_t end_time;
 
 extern std::vector<IR::Func *> implicit_functions;
+extern void Parse(SourceFile *sf);
+extern std::stack<Scope *> ScopeStack;
 
-struct Timer {
-  Timer(){};
-
-  std::vector<const char *> msgs;
-  std::vector<size_t> times;
-
-  ~Timer() {
-    if (debug::timer) {
-      size_t total = 0;
-      for (auto time : times) { total += time; }
-
-      for (size_t i = 0; i < msgs.size(); ++i) {
-        char percent_buffer[10];
-        sprintf(percent_buffer, "(%.2f%%)", ((double)(100 * times[i])) / total);
-        fprintf(stderr, "%25s:%15luns %9s\n", msgs[i], times[i],
-                percent_buffer);
-      }
-
-      fprintf(stderr, "%25s:%15luns\n", "Total", total);
-    }
-  }
-} timer;
-// Abusing a for-loop to do timings correctly.
-#define TIME(msg)                                                              \
-  for (bool TIME_FLAG = true;                                                  \
-                                                                               \
-      start_time  = mach_absolute_time(), TIME_FLAG;                           \
-                                                                               \
-      end_time    = mach_absolute_time(),                                      \
-      timer.msgs.push_back(msg),                                               \
-      timer.times.push_back(end_time - start_time),                            \
-      TIME_FLAG = false)
+static Timer timer;
 
 extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
@@ -67,7 +40,6 @@ namespace TypeSystem {
 extern void GenerateLLVM();
 } // namespace TypeSystem
 
-extern llvm::IRBuilder<> builder;
 std::queue<AST::Node *> VerificationQueue;
 
 // TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
@@ -92,7 +64,7 @@ enum {
 } // namespace error_code
 
 void WriteObjectFile(const char *out_file) {
-  TIME("LLVM") {
+  RUN(timer, "LLVM") {
     std::error_code EC;
     llvm::raw_fd_ostream destination(out_file, EC, llvm::sys::fs::F_None);
     if (EC) { assert(false && "Not yet implemented: Write error handling."); }
@@ -110,7 +82,7 @@ void WriteObjectFile(const char *out_file) {
 }
 
 int main(int argc, char *argv[]) {
-  TIME("Argument parsing") {
+  RUN(timer, "Argument parsing") {
     switch(ParseCLArguments(argc, argv)) {
       case CLArgFlag::QuitSuccessfully: return error_code::success;
       case CLArgFlag::QuitWithFailure: return error_code::CL_arg_failure;
@@ -118,19 +90,17 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  TIME("Icarus Initialization") {
+  RUN(timer, "Icarus Initialization") {
     if (debug::ct_eval) { initscr(); }
 
-    // Initialize the names for all the primitive types. Used by the lexer.
     TypeSystem::initialize();
 
     // Initialize the global scope
     Scope::Global = new BlockScope(ScopeType::Global);
-    builder.SetInsertPoint(Scope::Global->entry);
   }
 
   // TODO this initialization can be done asynchronosly. We don't touch LLVM initially.
-  TIME("LLVM initialization") {
+  RUN(timer, "LLVM initialization") {
 
     // TODO Assuming X86 architecture. If a command-line arg says otherwise,
     // load the appropriate tools
@@ -184,11 +154,10 @@ int main(int argc, char *argv[]) {
         << std::endl;
     }
 
-    TIME("Parsing a file") {
+    RUN(timer, "Parsing a file") {
       auto source_file      = new SourceFile(file_name);
       source_map[file_name] = source_file;
-      Parser parser(source_file);
-      parser.parse();
+      Parse(source_file);
     }
   }
 
@@ -201,7 +170,7 @@ int main(int argc, char *argv[]) {
 
   AST::Statements *global_statements;
 
-  TIME("AST Setup") {
+  RUN(timer, "AST Setup") {
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
@@ -229,9 +198,9 @@ int main(int argc, char *argv[]) {
     // Determine which declarations go in which scopes. Store that information
     // with the scopes. Note that assign_scope cannot possibly generate
     // compilation errors, so we don't check for them here.
-    Scope::Stack.push(Scope::Global);
+    ScopeStack.push(Scope::Global);
     global_statements->assign_scope();
-    Scope::Stack.pop();
+    ScopeStack.pop();
   }
 
   // COMPILATION STEP:
@@ -243,7 +212,7 @@ int main(int argc, char *argv[]) {
   // valid ordering in which we can determine the types of the nodes. This can
   // generate compilation errors if no valid ordering exists.
   // Dependency::assign_order();
-  TIME("Type verification") {
+  RUN(timer, "Type verification") {
     VerificationQueue.push(global_statements);
     while (!VerificationQueue.empty()) {
       auto node_to_verify = VerificationQueue.front();
@@ -260,7 +229,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  TIME("(L/R)value checking") {
+  RUN(timer, "(L/R)value checking") {
     global_statements->lrvalue_check();
 
     if (Error::Log::NumErrors() != 0) {
@@ -271,7 +240,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  TIME("Emit-IR") {
+  RUN(timer, "Emit-IR") {
     for (auto decl : Scope::Global->ordered_decls_) {
       auto id = decl->identifier;
 
@@ -281,7 +250,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  TIME("Code-gen") {
+  RUN(timer, "Code-gen") {
     { // Program has been verified. We can now proceed with code generation.
       for (auto decl : Scope::Global->ordered_decls_) {
         auto id = decl->identifier;
@@ -291,7 +260,7 @@ int main(int argc, char *argv[]) {
         auto type = decl->type;
         if (type->time() == Time::compile) { continue; }
 
-        Scope::Stack.push(Scope::Global);
+        ScopeStack.push(Scope::Global);
         if (type->is_primitive() || type->is_array() || type->is_pointer()) {
           auto gvar = new llvm::GlobalVariable(
               /*      Module = */ *global_module,
@@ -341,7 +310,7 @@ int main(int argc, char *argv[]) {
           assert(false && "Global variables not currently allowed.");
         }
 
-        Scope::Stack.pop();
+        ScopeStack.pop();
       }
     }
 
@@ -349,18 +318,19 @@ int main(int argc, char *argv[]) {
     for (auto f : implicit_functions) { f->GenerateLLVM(); }
 
     { // Generate code for everything else
-      Scope::Stack.push(Scope::Global);
+      ScopeStack.push(Scope::Global);
       for (auto stmt : global_statements->statements) {
         if (stmt->is_declaration()) { continue; }
-        stmt->generate_code();
+        NOT_YET;
+        // stmt->generate_code();
       }
-      Scope::Stack.pop();
+      ScopeStack.pop();
     }
   }
 
   switch (file_type) {
   case FileType::IR: {
-    TIME("Writing IR") {
+    RUN(timer, "Writing IR") {
       std::ofstream output_file_stream(output_file_name);
       llvm::raw_os_ostream output_file(output_file_stream);
       global_module->print(output_file, nullptr);
@@ -375,7 +345,7 @@ int main(int argc, char *argv[]) {
   case FileType::Bin: {
     WriteObjectFile("obj.o");
 
-    TIME("Link/system") {
+    RUN(timer, "Link/system") {
       int buff_size  = (int)(strlen(output_file_name) + 24);
       char *link_str = new char[buff_size];
       int num_bytes_written =
@@ -392,5 +362,3 @@ int main(int argc, char *argv[]) {
   if (debug::ct_eval) { endwin(); }
   return error_code::success;
 }
-
-#undef TIME

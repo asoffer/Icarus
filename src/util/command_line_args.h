@@ -1,13 +1,6 @@
 #ifndef ICARUS_CLARGS_H
 #define ICARUS_CLARGS_H
 
-namespace debug {
-extern bool timer;
-extern bool parser;
-extern bool parametric_struct;
-extern bool ct_eval;
-} // namespace debug
-
 enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
 enum class FileType { Bin, IR, Nat, None };
 

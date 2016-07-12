@@ -11,10 +11,6 @@ void initialize();
 extern Type *get(const std::string &name);
 } // namespace TypeSystem
 
-namespace debug {
-extern bool parametric_struct;
-} // namespace debug
-
 namespace data {
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_char(char c);

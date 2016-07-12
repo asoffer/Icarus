@@ -7,6 +7,8 @@
 #define LOOKUP_ARGS                                                            \
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
+extern std::stack<Scope *> ScopeStack;
+
 namespace AST {
 void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   auto arg_vals  = reverse_cache[cache_loc];
@@ -33,9 +35,9 @@ void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
     cache_loc->decls.push_back(new_decl);
   }
 
-  Scope::Stack.push(scope_);
+  ScopeStack.push(scope_);
   cache_loc->assign_scope();
-  Scope::Stack.pop();
+  ScopeStack.pop();
 
   assert(cache_loc == ((Structure *)cache_loc->value.as_type)->ast_expression);
   cache_loc->CompleteDefinition();

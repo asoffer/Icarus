@@ -5,10 +5,6 @@
 
 extern std::vector<IR::Func *> implicit_functions;
 
-namespace debug {
-extern bool ct_eval;
-} // namespace debug
-
 static IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
@@ -280,8 +276,8 @@ IR::Value Binop::EmitIR() {
     if (rhs->type->is_primitive()) {
       return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
     } else {
-      Type::IR_CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
-                              lhs->EmitLVal());
+      Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
+                           lhs->EmitLVal());
       return IR::Value();
     }
   } break;
@@ -748,8 +744,8 @@ IR::Value Declaration::EmitIR() {
     auto id_val  = identifier->EmitLVal();
     auto rhs_val = init_val->EmitIR();
 
-    Type::IR_CallAssignment(scope_, identifier->type, init_val->type,
-  rhs_val, id_val);
+    Type::CallAssignment(scope_, identifier->type, init_val->type, rhs_val,
+                         id_val);
   }
 
   return IR::Value();
@@ -936,8 +932,8 @@ IR::Value ArrayLiteral::EmitIR() {
   // likely make register allocation better.
   for (size_t i = 0; i < num_elems; ++i) {
     auto ptr = IR::Access(data_type, IR::Value(i), tmp_addr);
-    Type::IR_CallAssignment(scope_, data_type, elems[i]->type,
-                            elems[i]->EmitIR(), ptr);
+    Type::CallAssignment(scope_, data_type, elems[i]->type, elems[i]->EmitIR(),
+                         ptr);
   }
 
   return tmp_addr;

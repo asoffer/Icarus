@@ -39,8 +39,6 @@ extern SliceType *Slice(Array *a);
   virtual void generate_llvm() const ENDING;                                   \
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
   virtual void EmitRepr(IR::Value id_val) ENDING;                              \
-  virtual void call_init(llvm::Value *var) ENDING;                             \
-  virtual void call_repr(llvm::Value *val) ENDING;                             \
   virtual llvm::Constant *InitialValue() const ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
@@ -69,12 +67,7 @@ public:
   // this will either simply be a store operation or a call to the assignment
   // function.
   static void CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                             llvm::Value *val, llvm::Value *var);
-
-  static void IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                                IR::Value from_val, IR::Value to_var);
-
-  void CallDestroy(Scope *scope, llvm::Value *var);
+                             IR::Value from_val, IR::Value to_var);
 
   // Note: this one is special. It functions identically to the rest, but it's
   // special in that it will return nullptr if you haven't imported the string
@@ -133,10 +126,6 @@ struct Array : public Type {
 
   virtual llvm::Value *allocate() const;
 
-  llvm::Function *assign();
-  llvm::Function *destroy();
-
-  llvm::Function *init_fn_, *destroy_fn_, *repr_fn_, *assign_fn_;
   IR::Func *init_func, *repr_func;
 
   Type *data_type;
@@ -226,11 +215,7 @@ struct Structure : public Type {
   std::vector<AST::Expression *> init_values;
   AST::ParametricStructLiteral *creator;
 
-  llvm::Function *assign();
-  llvm::Function *destroy();
-
 private:
-  llvm::Function *init_fn_, *destroy_fn_, *assign_fn_;
   IR::Func *init_func, *assign_func;
 };
 

@@ -1,12 +1,6 @@
 #ifndef ICARUS_AST_H
 #define ICARUS_AST_H
 
-namespace Language {
-extern size_t precedence(Language::Operator op);
-} // namespace Language
-
-extern std::queue<std::string> file_queue;
-
 // TODO Fix this later.
 using Ctx = std::map<std::string, Context::Value>;
 
@@ -20,7 +14,6 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
-  virtual llvm::Value *generate_code() ENDING;                                 \
   virtual IR::Value EmitIR() ENDING;                                           \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
@@ -35,8 +28,6 @@ namespace AST {
   virtual IR::Value EmitIR() ENDING;                                           \
   virtual IR::Value EmitLVal() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual llvm::Value *generate_code() ENDING;                                 \
-  virtual llvm::Value *generate_lvalue() ENDING;                               \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
   virtual llvm::Constant *GetGlobal() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
@@ -52,7 +43,6 @@ struct Node {
   virtual IR::Value EmitIR() = 0;
 
   virtual Context::Value evaluate(Ctx &ctx) { return nullptr; }
-  virtual llvm::Value *generate_code() { return nullptr; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }

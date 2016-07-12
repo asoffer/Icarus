@@ -8,6 +8,16 @@
     ptr->assign_scope();                                                       \
   }
 
+
+// TODO these are not threadsafe! When we access the stack, when compilation is
+// multi-threaded, we should probably grab a mutex before getting the top of the
+// stack
+
+std::stack<Scope *> ScopeStack;
+static Scope *CurrentScope() {
+  return ScopeStack.empty() ? nullptr : ScopeStack.top();
+}
+
 namespace AST {
 void Unop::assign_scope() {
   scope_ = CurrentScope();
@@ -34,16 +44,16 @@ void Conditional::assign_scope() {
     body_scopes[i]->set_parent(CurrentScope());
     conditions[i]->assign_scope();
 
-    Scope::Stack.push(body_scopes[i]);
+    ScopeStack.push(body_scopes[i]);
     statements[i]->assign_scope();
-    Scope::Stack.pop();
+    ScopeStack.pop();
   }
 
   if (has_else()) {
     body_scopes.back()->set_parent(CurrentScope());
-    Scope::Stack.push(body_scopes.back());
+    ScopeStack.push(body_scopes.back());
     statements.back()->assign_scope();
-    Scope::Stack.pop();
+    ScopeStack.pop();
   }
 }
 
@@ -51,21 +61,21 @@ void For::assign_scope() {
   scope_ = CurrentScope();
   for_scope->set_parent(CurrentScope());
 
-  Scope::Stack.push(for_scope);
+  ScopeStack.push(for_scope);
 
   for (auto iter : iterators) { iter->assign_scope(); }
   statements->assign_scope();
 
-  Scope::Stack.pop();
+  ScopeStack.pop();
 }
 
 void While::assign_scope() {
   scope_ = CurrentScope();
   while_scope->set_parent(CurrentScope());
   condition->assign_scope();
-  Scope::Stack.push(while_scope);
+  ScopeStack.push(while_scope);
   statements->assign_scope();
-  Scope::Stack.pop();
+  ScopeStack.pop();
 }
 
 void ArrayLiteral::assign_scope() {
@@ -122,30 +132,30 @@ void Statements::assign_scope() {
 void FunctionLiteral::assign_scope() {
   scope_ = CurrentScope();
   fn_scope->set_parent(CurrentScope());
-  Scope::Stack.push(fn_scope);
+  ScopeStack.push(fn_scope);
   return_type_expr->assign_scope();
   for (auto &in : inputs) { in->assign_scope(); }
   statements->assign_scope();
-  Scope::Stack.pop();
+  ScopeStack.pop();
 }
 
 void ParametricStructLiteral::assign_scope() {
   scope_ = CurrentScope();
   type_scope->set_parent(CurrentScope());
 
-  Scope::Stack.push(type_scope);
+  ScopeStack.push(type_scope);
   for (auto p : params) { p->assign_scope(); }
   for (auto d : decls) { d->assign_scope(); }
-  Scope::Stack.pop();
+  ScopeStack.pop();
 }
 
 void StructLiteral::assign_scope() {
   scope_ = CurrentScope();
   type_scope->set_parent(CurrentScope());
 
-  Scope::Stack.push(type_scope);
+  ScopeStack.push(type_scope);
   for (auto d : decls) { d->assign_scope(); }
-  Scope::Stack.pop();
+  ScopeStack.pop();
 }
 
 void Jump::assign_scope() { scope_ = CurrentScope(); }

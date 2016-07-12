@@ -1,6 +1,5 @@
 #ifndef ICARUS_UNITY
 #include "Type.h"
-#include <iostream>
 #endif
 
 extern llvm::Module *global_module;
@@ -24,4 +23,4 @@ llvm::Value *Array::allocate() const {
   return alloc;
 }
 
-llvm::Value *Tuple::allocate() const { return nullptr; /* TODO*/ }
+llvm::Value *Tuple::allocate() const { NOT_YET; }

@@ -98,7 +98,7 @@ size_t Type::alignment() const {
   NOT_YET;
 }
 
-void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                              IR::Value from_val, IR::Value to_var) {
   assert(scope);
   if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
@@ -164,9 +164,9 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Block::Current = loop_body;
 
     // TODO Are these the right types?
-    IR_CallAssignment(
-        scope, lhs_array_type->data_type, lhs_array_type->data_type,
-        PtrCallFix(rhs_array_type->data_type, rhs_phi_reg), lhs_phi_reg);
+    CallAssignment(scope, lhs_array_type->data_type, lhs_array_type->data_type,
+                   PtrCallFix(rhs_array_type->data_type, rhs_phi_reg),
+                   lhs_phi_reg);
     auto next_lhs =
         IR::PtrIncr(Ptr(lhs_array_type->data_type), lhs_phi_reg, IR::Value(1ul));
     auto next_rhs =
@@ -195,90 +195,6 @@ void Type::IR_CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   }
 }
 
-void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                          llvm::Value *lhs_ptr, llvm::Value *rhs) {
-  assert(scope);
-  auto assign_fn = GetFunctionReferencedIn(scope, "__assign__",
-                                           Func(Tup({Ptr(lhs_type), rhs_type}), Void));
-  if (assign_fn) {
-    builder.CreateCall(assign_fn, {lhs_ptr, rhs});
-  } else if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-             lhs_type->is_enum()) {
-    builder.CreateStore(rhs, lhs_ptr);
-
-  } else if (lhs_type->is_struct()) {
-    builder.CreateCall(((Structure *)lhs_type)->assign(), {lhs_ptr, rhs});
-
-  } else if (lhs_type->is_array()) {
-    auto assign_fn = ((Array *)lhs_type)->assign();
-    assert(rhs_type->is_array());
-    auto rhs_array_type = (Array *)rhs_type;
-
-    llvm::Value *rhs_len, *rhs_ptr;
-    if (rhs_array_type->fixed_length) {
-      rhs_len = data::const_uint(rhs_array_type->len);
-      rhs_ptr =
-          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(0)});
-    } else {
-      rhs_len = builder.CreateLoad(
-          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(0)}));
-      rhs_ptr = builder.CreateLoad(
-          builder.CreateGEP(rhs, {data::const_uint(0), data::const_uint(1)}));
-    }
-
-    builder.CreateCall(assign_fn, {lhs_ptr, rhs_len, rhs_ptr});
-
-  } else if (lhs_type->is_function()) {
-    builder.CreateStore(rhs, lhs_ptr);
-
-  } else {
-    std::cerr << "LHS type = " << *lhs_type << std::endl;
-    std::cerr << "RHS type = " << *rhs_type << std::endl;
-    assert(false);
-  }
-}
-
-void Type::CallDestroy(Scope *scope, llvm::Value *var) {
-
-  if (is_primitive() || is_pointer() || is_enum()) {
-    return;
-
-  } else if (is_array()) {
-    auto array_type = (Array *)this;
-    if (array_type->data_type->requires_uninit()) {
-      builder.CreateCall(array_type->destroy(), {var});
-    } else {
-      if (array_type->fixed_length) {
-        // TODO
-      } else {
-        builder.CreateCall(
-            cstdlib::free(),
-            builder.CreateBitCast(
-                builder.CreateLoad(builder.CreateGEP(
-                    var, {data::const_uint(0), data::const_uint(1)})),
-                *RawPtr));
-      }
-    }
-
-  } else if (is_struct()) {
-    // TODO if (!requires_uninit()) { return; }
-
-    llvm::Value *destroy_fn = nullptr;
-
-    if (scope) {
-      destroy_fn =
-          GetFunctionReferencedIn(scope, "__destroy__", Func(Ptr(this), Void));
-    }
-
-    // Use default destroy if none is given.
-    if (!destroy_fn) { destroy_fn = ((Structure *)this)->destroy(); }
-    builder.CreateCall(destroy_fn, {var});
-
-  } else {
-    assert(false && "No destructor to call");
-  }
-}
-
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
   switch (type_) {
   case Primitive::TypeEnum::Bool:
@@ -304,9 +220,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 }
 
 Array::Array(Type *t)
-    : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr), repr_func(nullptr), data_type(t),
-      len(0), fixed_length(false) {
+    : init_func(nullptr), repr_func(nullptr), data_type(t), len(0),
+      fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
 
@@ -316,9 +231,8 @@ Array::Array(Type *t)
 }
 
 Array::Array(Type *t, size_t l)
-    : init_fn_(nullptr), destroy_fn_(nullptr), repr_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr), repr_func(nullptr), data_type(t),
-      len(l), fixed_length(true) {
+    : init_func(nullptr), repr_func(nullptr), data_type(t), len(l),
+      fixed_length(true) {
   dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
   if (time() != Time::compile) {
     std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
@@ -389,8 +303,7 @@ ParametricStructure::ParametricStructure(const std::string &name,
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), field_offsets(1, 0),
-      creator(nullptr), init_fn_(nullptr), destroy_fn_(nullptr),
-      assign_fn_(nullptr), init_func(nullptr), assign_func(nullptr) {}
+      creator(nullptr), init_func(nullptr), assign_func(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);

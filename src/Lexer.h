@@ -6,8 +6,7 @@
 struct NNT {
   AST::Node *node;
   Language::NodeType node_type;
-  NNT(AST::Node *n = nullptr, Language::NodeType nt = Language::unknown)
-      : node(n), node_type(nt) {}
+  NNT(AST::Node *n, Language::NodeType nt) : node(n), node_type(nt) {}
 };
 // struct Lexer:
 //

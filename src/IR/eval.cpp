@@ -4,10 +4,6 @@
 
 #include <ncurses.h>
 
-namespace debug {
-extern bool ct_eval;
-} // namespace debug
-
 extern const char *GetGlobalStringNumbered(size_t index);
 
 namespace IR {
