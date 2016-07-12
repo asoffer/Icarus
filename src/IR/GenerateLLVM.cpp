@@ -127,9 +127,60 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         phis.emplace_back(this, cmd_counter);
       }
         continue;
-      case IR::Op::TC_Ptr: NOT_YET;
-      case IR::Op::TC_Arrow: NOT_YET;
-      case IR::Op::TC_Arr1: NOT_YET;
+      case IR::Op::TC_Ptr: {
+        Type *pointee = nullptr;
+        if (cmd.args[0].flag == ValType::T) {
+          pointee = cmd.args[0].as_type;
+        } else if (cmd.args[0].flag == ValType::Reg) {
+          pointee = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+        } else {
+          UNREACHABLE;
+        }
+        assert(pointee);
+
+        registers[cmd.result.reg] =
+            reinterpret_cast<llvm::Value *>(Ptr(pointee));
+      } continue;
+      case IR::Op::TC_Arrow: {
+        Type *from = nullptr;
+        if (cmd.args[0].flag == ValType::T) {
+          from = cmd.args[0].as_type;
+        } else if (cmd.args[0].flag == ValType::Reg) {
+          from = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+        } else {
+          UNREACHABLE;
+        }
+        assert(from);
+
+        Type *to = nullptr;
+        if (cmd.args[1].flag == ValType::T) {
+          to = cmd.args[1].as_type;
+        } else if (cmd.args[1].flag == ValType::Reg) {
+          to = reinterpret_cast<Type *>(registers[cmd.args[1].as_reg]);
+        } else {
+          UNREACHABLE;
+        }
+        assert(to);
+
+        registers[cmd.result.reg] =
+            reinterpret_cast<llvm::Value *>(::Func(from, to));
+
+      } continue;
+      case IR::Op::TC_Arr1: {
+        Type *data_type = nullptr;
+        if (cmd.args[0].flag == ValType::T) {
+          data_type = cmd.args[0].as_type;
+        } else if (cmd.args[0].flag == ValType::Reg) {
+          data_type = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+        } else {
+          dump();
+          UNREACHABLE;
+        }
+        assert(data_type);
+
+        registers[cmd.result.reg] =
+            reinterpret_cast<llvm::Value *>(::Arr(data_type));
+      } continue;
       case IR::Op::TC_Arr2: {
         size_t length = 0;
         if (cmd.args[0].flag == ValType::I) {
@@ -149,11 +200,27 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         } else {
           UNREACHABLE;
         }
+        assert(data_type);
 
         registers[cmd.result.reg] =
             reinterpret_cast<llvm::Value *>(Arr(data_type, length));
-      }
-        continue;
+      } continue;
+      case IR::Op::Bytes: 
+      case IR::Op::Alignment: {
+        Type *t = nullptr;
+        if (cmd.args[0].flag == ValType::T) {
+          t = cmd.args[0].as_type;
+        } else if (cmd.args[0].flag == ValType::Reg) {
+          t = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+
+        } else {
+          const_cast<Cmd &>(cmd).dump(0);
+          UNREACHABLE;
+        }
+        assert(t);
+        registers[cmd.result.reg] = data::const_uint(
+            cmd.op_code == IR::Op::Bytes ? t->bytes() : t->alignment());
+      } continue;
       default:;
       }
 
@@ -431,9 +498,9 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::TC_Arrow: UNREACHABLE;
       case IR::Op::TC_Arr1: UNREACHABLE;
       case IR::Op::TC_Arr2: UNREACHABLE;
+      case IR::Op::Bytes: UNREACHABLE;
+      case IR::Op::Alignment: UNREACHABLE;
 
-      case IR::Op::Bytes: NOT_YET;
-      case IR::Op::Alignment: NOT_YET;
       case IR::Op::Trunc:
         registers[cmd.result.reg] = builder.CreateTrunc(args[0], *Char);
         break;

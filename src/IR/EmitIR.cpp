@@ -961,7 +961,7 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
                                        IR::Value &head_ptr,
                                        IR::Value &len_val) {
   if (array_type->fixed_length) {
-    head_ptr = container_val;
+    head_ptr = IR::Access(array_type, IR::Value(0ul), container_val);
     len_val  = IR::Value(array_type->len);
   } else {
     head_ptr = IR::Load(Ptr(array_type->data_type),

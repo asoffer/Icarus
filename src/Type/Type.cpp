@@ -27,7 +27,10 @@ size_t Type::bytes() const {
   if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (is_enum()) { return 4; }
-  if (this == Int || this == Uint || this == Real || is_pointer()) { return 8; }
+  if (this == Int || this == Uint || this == Real || is_pointer() ||
+      is_function()) {
+    return 8;
+  }
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -39,6 +42,8 @@ size_t Type::bytes() const {
   }
   if (is_struct()) {
     auto struct_type = (Structure *)this;
+    assert(struct_type->ast_expression);
+    struct_type->ast_expression->CompleteDefinition();
     size_t num_bytes = 0;
     for (auto ft : struct_type->field_type) {
       num_bytes += ft->bytes();
@@ -47,8 +52,6 @@ size_t Type::bytes() const {
 
     return MoveForwardToAlignment(num_bytes, alignment());
   }
-
-  if (is_function()) { return 8; }
 
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }
@@ -62,7 +65,10 @@ size_t Type::alignment() const {
   if (this == Type_ || this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (is_enum()) { return 4; }
-  if (this == Int || this == Uint || this == Real || is_pointer() || is_function()) { return 8; }
+  if (this == Int || this == Uint || this == Real || is_pointer() ||
+      is_function()) {
+    return 8;
+  }
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -73,6 +79,8 @@ size_t Type::alignment() const {
   }
   if (is_struct()) {
     auto struct_type = (Structure *)this;
+    assert(struct_type->ast_expression);
+    struct_type->ast_expression->CompleteDefinition();
     size_t alignment_val = 0;
     for (auto ft : struct_type->field_type) {
       auto a = ft->alignment();
