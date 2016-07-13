@@ -96,10 +96,16 @@ void Structure::generate_llvm() const {
 
   for (const auto &f : field_type) f->generate_llvm();
 
-  size_t num_data_fields = field_num_to_llvm_num.size();
+  size_t num_data_fields = field_type.size();
   std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
-  for (const auto &kv : field_num_to_llvm_num) {
-    llvm_fields[kv.second] = field_type AT(kv.first)->llvm_type;
+  for (size_t i = 0; i < num_data_fields; ++i) {
+    auto t = field_type[i];
+
+    if (t->is_function()) {
+      t = Ptr(t);
+      t->generate_llvm();
+    }
+    llvm_fields[i] = t->llvm_type;
   }
 
   ((llvm::StructType *)llvm_type)

@@ -214,14 +214,10 @@ Type *Structure::field(const std::string &name) const {
                                            : field_type.at(iter->second);
 }
 
-llvm::Value *Structure::field_num(const std::string &name) const {
+size_t Structure::field_num(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
-  if (iter == field_name_to_num.end()) { return nullptr; }
-  auto num = iter->second;
-  auto t = field_type AT(num);
-  assert(!t->is_function() && t != Type_ && "Invalid data field");
-
-  return data::const_uint(field_num_to_llvm_num.at(num));
+  assert(iter != field_name_to_num.end());
+  return iter->second;
 }
 
 size_t Enumeration::get_index(const std::string &str) const {
@@ -302,11 +298,6 @@ void Structure::insert_field(const std::string &name, Type *ty,
     size_t size3 = field_type.size();
     assert(size1 == size2 && size2 == size3 &&
            "Size mismatch in struct database");
-  }
-
-  if (!ty->is_function() && ty != Type_) {
-    size_t next_llvm                = field_num_to_llvm_num.size();
-    field_num_to_llvm_num[next_num] = next_llvm;
   }
 
   // By default, init_val is nullptr;

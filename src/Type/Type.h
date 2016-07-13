@@ -197,7 +197,7 @@ struct Structure : public Type {
   // Return the type of a field, or a nullptr if it doesn't exist
   Type *field(const std::string &name) const;
 
-  llvm::Value *field_num(const std::string &name) const;
+  size_t field_num(const std::string &name) const;
 
   AST::StructLiteral *ast_expression;
   std::string bound_name;
@@ -209,7 +209,6 @@ struct Structure : public Type {
   std::map<std::string, size_t> field_name_to_num;
   std::vector<std::string> field_num_to_name;
   std::vector<Type *> field_type;
-  std::map<size_t, size_t> field_num_to_llvm_num;
   std::vector<size_t> field_offsets;
 
   std::vector<AST::Expression *> init_values;
