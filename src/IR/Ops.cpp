@@ -2,6 +2,8 @@
 #include <cmath>
 #include "Type/Type.h"
 
+extern std::vector<IR::Func *> all_functions;
+
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
@@ -41,19 +43,25 @@ namespace IR {
 
 Func::Func(Function *fn_type, bool should_gen)
     : fn_type(fn_type), llvm_fn(nullptr), alloc_block(nullptr), num_cmds(0),
-      frame_size(0) {
-  llvm::FunctionType *llvm_fn_type = *fn_type;
-  if (should_gen) {
-    llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-        name, llvm_fn_type);
+      frame_size(0), generated(false) {
+
+  if (!fn_type->has_vars) {
+    should_gen &=
+        (fn_type->time() == Time::run || fn_type->time() == Time::either);
+
+   llvm::FunctionType *llvm_fn_type = *fn_type;
+    if (should_gen) {
+      all_functions.push_back(this);
+      llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+          name, llvm_fn_type);
+    }
+    alloc_block = make_block("entry", llvm_fn);
+
+    blocks.push_back(new Block(0));
+    blocks.back()->block_name = "fn-entry";
+    blocks.push_back(new Block(1));
+    blocks.back()->block_name = "fn-exit";
   }
-  alloc_block = make_block("entry", llvm_fn);
-
-  blocks.push_back(new Block(0));
-  blocks.back()->block_name = "fn-entry";
-  blocks.push_back(new Block(1));
-  blocks.back()->block_name = "fn-exit";
-
 }
 
 Value Access(Type *type, Value index, Value ptr) {
@@ -208,6 +216,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
     }
     return os;
   }
+  case ValType::Null: return os << "null";
   case ValType::CStr: return os << "\"" << (void *)value.as_cstr;
   case ValType::Reg: return os << "%" << value.as_reg;
   case ValType::Arg: return os << "#" << value.as_arg;

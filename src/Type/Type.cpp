@@ -7,11 +7,6 @@ extern llvm::Module *global_module;
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
                                             const std::string &fn_name,
                                             Function *fn_type);
-extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
-                                     Function *fn_type);
-
-extern IR::Value PtrCallFix(Type *t, IR::Value v);
-
 namespace cstdlib {
 extern llvm::Constant *malloc();
 extern llvm::Constant *free();
@@ -34,8 +29,12 @@ size_t Type::bytes() const {
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
-      return MoveForwardToAlignment(
+      auto size = MoveForwardToAlignment(
           array_type->data_type->bytes() * array_type->len, alignment());
+      // TODO fix this hack that forces arrays to take of at least a byte so we
+      // don't have overlapping structs. this is only an issue because we index
+      // allocations by their stack location. we need to stop doing that.
+      return size ? size : 1;
     } else {
       return 16;
     }
@@ -62,8 +61,9 @@ size_t Type::bytes() const {
 
 size_t Type::alignment() const {
   // TODO make this platform specific
-  if (this == Type_ || this == Void) { return 0; }
-  if (this == Bool || this == Char) { return 1; }
+  if (this == Type_ || this == Void || this == Bool || this == Char) {
+    return 1;
+  }
   if (is_enum()) { return 4; }
   if (this == Int || this == Uint || this == Real || is_pointer() ||
       is_function()) {
@@ -96,103 +96,6 @@ size_t Type::alignment() const {
 
   std::cerr << *this << std::endl;
   NOT_YET;
-}
-
-void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                             IR::Value from_val, IR::Value to_var) {
-  assert(scope);
-  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-      lhs_type->is_enum()) {
-    assert(lhs_type == rhs_type);
-    IR::Store(rhs_type, from_val, to_var);
-
-  } else if (lhs_type->is_array()) {
-    assert(rhs_type->is_array());
-    auto lhs_array_type = (Array *)lhs_type;
-    auto rhs_array_type = (Array *)rhs_type;
-
-    IR::Value lhs_ptr, rhs_ptr, rhs_len, rhs_end_ptr;
-    if (rhs_array_type->fixed_length) {
-      rhs_ptr = IR::Access(rhs_array_type->data_type, IR::Value(0ul), from_val);
-      rhs_len = IR::Value(rhs_array_type->len);
-    } else {
-      rhs_ptr = IR::Load(rhs_array_type->data_type,
-                         IR::ArrayData(rhs_array_type, from_val));
-      rhs_len = IR::Load(Uint, IR::ArrayLength(from_val));
-    }
-    rhs_end_ptr = IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_ptr, rhs_len);
-
-    if (lhs_array_type->fixed_length) {
-      lhs_ptr = IR::Access(lhs_array_type->data_type, IR::Value(0ul), to_var);
-    } else {
-      // TODO delete first time. currently just delete
-      auto rhs_bytes =
-          IR::UMul(rhs_len,
-                   IR::Value(lhs_array_type->data_type
-                                 ->bytes())); // TODO round up for alignment?
-      auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
-      auto array_data = IR::ArrayData(lhs_array_type, to_var);
-      IR::Store(Ptr(lhs_array_type->data_type), ptr, array_data);
-      lhs_ptr = IR::Load(Ptr(lhs_array_type->data_type), array_data);
-
-      IR::Store(Uint, rhs_len, IR::ArrayLength(to_var));
-    }
-
-    auto init_block   = IR::Block::Current;
-    auto loop_phi     = IR::Func::Current->AddBlock("loop-phi");
-    auto loop_cond    = IR::Func::Current->AddBlock("loop-cond");
-    auto loop_body    = IR::Func::Current->AddBlock("loop-body");
-    auto land         = IR::Func::Current->AddBlock("land");
-    IR::Block::Current->exit.SetUnconditional(loop_phi);
-    IR::Block::Current = loop_phi;
-
-    auto lhs_phi = IR::Phi(Ptr(lhs_array_type->data_type));
-    lhs_phi.args.emplace_back(init_block);
-    lhs_phi.args.emplace_back(lhs_ptr);
-    auto lhs_phi_reg = IR::Value::Reg(lhs_phi.result.reg);
-
-    auto rhs_phi = IR::Phi(Ptr(rhs_array_type->data_type));
-    rhs_phi.args.emplace_back(init_block);
-    rhs_phi.args.emplace_back(rhs_ptr);
-    auto rhs_phi_reg = IR::Value::Reg(rhs_phi.result.reg);
-
-    loop_phi->exit.SetUnconditional(loop_cond);
-    IR::Block::Current = loop_cond;
-
-    auto cond = IR::PtrEQ(rhs_phi_reg, rhs_end_ptr);
-    IR::Block::Current->exit.SetConditional(cond, land, loop_body);
-    IR::Block::Current = loop_body;
-
-    // TODO Are these the right types?
-    CallAssignment(scope, lhs_array_type->data_type, lhs_array_type->data_type,
-                   PtrCallFix(rhs_array_type->data_type, rhs_phi_reg),
-                   lhs_phi_reg);
-    auto next_lhs =
-        IR::PtrIncr(Ptr(lhs_array_type->data_type), lhs_phi_reg, IR::Value(1ul));
-    auto next_rhs =
-        IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_phi_reg, IR::Value(1ul));
-
-    lhs_phi.args.emplace_back(IR::Block::Current);
-    lhs_phi.args.emplace_back(next_lhs);
-    rhs_phi.args.emplace_back(IR::Block::Current);
-    rhs_phi.args.emplace_back(next_rhs);
-
-    IR::Block::Current->exit.SetUnconditional(loop_phi);
-
-    loop_phi->push(lhs_phi);
-    loop_phi->push(rhs_phi);
-
-    IR::Block::Current = land;
-
-  } else {
-    auto fn = GetFuncReferencedIn(scope, "__assign__",
-                                  Func(Tup({Ptr(lhs_type), rhs_type}), Void));
-    if (fn) {
-      IR::Call(Void, IR::Value(fn), {to_var, from_val});
-    } else {
-      ((Structure *)lhs_type)->EmitDefaultAssign(to_var, from_val);
-    }
-  }
 }
 
 Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {

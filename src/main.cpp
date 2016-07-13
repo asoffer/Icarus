@@ -28,7 +28,7 @@
 static size_t start_time;
 static size_t end_time;
 
-extern std::vector<IR::Func *> implicit_functions;
+extern std::vector<IR::Func *> all_functions;
 extern void Parse(SourceFile *sf);
 extern std::stack<Scope *> ScopeStack;
 
@@ -299,6 +299,7 @@ int main(int argc, char *argv[]) {
             // id->decl->alloc->setName(mangled_name);
             // decl->generate_code();
 
+            // TODO is this even necessary?
             ((AST::FunctionLiteral *)decl->init_val)->ir_func->GenerateLLVM();
             id->decl->alloc =
                 ((AST::FunctionLiteral *)decl->init_val)->ir_func->llvm_fn;
@@ -315,7 +316,7 @@ int main(int argc, char *argv[]) {
     }
 
     // Generate the implicit functions
-    for (auto f : implicit_functions) { f->GenerateLLVM(); }
+    for (auto f : all_functions) { f->GenerateLLVM(); }
 
     { // Generate code for everything else
       ScopeStack.push(Scope::Global);

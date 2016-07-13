@@ -29,13 +29,13 @@ main := void -> void {
   i := 0u
 
   for c in A {
-    c = ascii(65u + i)
+    A[i] = ascii(65u + i)
     i += 1u
   }
 
   i = 0u
   for c in a {
-    c = ascii(97u + i)
+    a[i] = ascii(97u + i)
     i += 1u
   }
 

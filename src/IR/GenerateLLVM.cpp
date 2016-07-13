@@ -14,7 +14,6 @@ extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Constant *null_pointer(Type *t);
 extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
@@ -28,12 +27,14 @@ extern llvm::Value *global_string(const std::string &s);
 namespace IR {
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
+
   switch (cmd_arg.flag) {
   case ValType::B: return data::const_bool(cmd_arg.as_bool);
   case ValType::C: return data::const_char(cmd_arg.as_char);
   case ValType::I: return data::const_int(cmd_arg.as_int);
   case ValType::R: return data::const_real(cmd_arg.as_real);
   case ValType::U: return data::const_uint(cmd_arg.as_uint);
+  case ValType::Null: return data::null(cmd_arg.as_null);
   case ValType::T:
     // TODO is this what I want? Used for just a few ops like print.
     return reinterpret_cast<llvm::Value *>(cmd_arg.as_type);
@@ -76,6 +77,7 @@ static void CompletePhiDefinition(IR::Func *ir_fn, IR::Block *block,
 }
 
 void Func::GenerateLLVM() {
+  if (generated) { return; }
   std::vector<llvm::BasicBlock *> llvm_blocks(blocks.size(), nullptr);
   llvm_fn->setName(name);
 
@@ -99,6 +101,7 @@ void Func::GenerateLLVM() {
   builder.SetInsertPoint(alloc_block);
   assert(!llvm_blocks.empty());
   builder.CreateBr(llvm_blocks[0]);
+  generated = true;
 }
 
 llvm::BasicBlock *
@@ -345,6 +348,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::CNE:
       case IR::Op::INE:
       case IR::Op::UNE:
+        registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
+        break;
       case IR::Op::FNE:
         registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
         break;
@@ -359,8 +364,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateFCmpOGE(args[0], args[1]);
         break;
       case IR::Op::CGT:
-        registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
-        break;
       case IR::Op::IGT:
         registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
         break;
@@ -431,8 +434,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         auto fn = args[0];
         args.erase(args.begin());
 
-        auto call_fn_type = cmd.args[0].as_func->fn_type;
-        auto ret_type = call_fn_type->output;
+        auto ret_type = cmd.result.type;
+
         if (ret_type->is_primitive() || ret_type->is_enum()) {
           if (ret_type == Void) {
             builder.CreateCall(fn, args);
@@ -451,12 +454,17 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
-        registers[cmd.result.reg] = builder.CreateLoad(args[0]);
+        if (cmd.result.type->is_function()) {
+          registers[cmd.result.reg] = args[0];
+        } else {
+          registers[cmd.result.reg] = builder.CreateLoad(args[0]);
+        }
         break;
       case IR::Op::Store: {
         // TODO or do we want to actually do the store (it'll be easily
         // optimized out)
         if (reinterpret_cast<Type *>(args[0]) == Type_) { break; }
+
         builder.CreateStore(args[1], args[2]);
       } break;
       case IR::Op::Cast: {

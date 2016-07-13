@@ -45,6 +45,10 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
     case ValType::U: {
       mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
     } break;
+    case ValType::F: {
+      mvprintw((int)i, 100, "%2d.> %8lu (func)", i,
+               frame.reg[i].as_func);
+    } break;
     case ValType::HeapAddr: {
       mvprintw((int)i, 100, "%2d.> %8lu (heap addr)", i,
                frame.reg[i].as_heap_addr);
@@ -146,7 +150,7 @@ void Cmd::Execute(StackFrame& frame) {
     }
 
     auto call_result =
-        IR::Call(cmd_inputs[0].as_func, frame.stack, call_args);
+        cmd_inputs[0].as_func->Call(frame.stack, call_args);
     if (result.type != Void) { frame.reg[result.reg] = call_result; }
   } break;
   case Op::Cast: {
@@ -220,7 +224,7 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::Load: {
     assert(
         (result.type->is_primitive() || result.type->is_pointer() ||
-         result.type->is_enum()) &&
+         result.type->is_enum() || result.type->is_function()) &&
         "Non-primitive/pointer/enum local variables are not yet implemented");
     if (cmd_inputs[0].flag == ValType::StackAddr) {
       size_t offset = cmd_inputs[0].as_stack_addr;
@@ -240,7 +244,8 @@ void Cmd::Execute(StackFrame& frame) {
       DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD
-      assert(result.type->is_pointer() || result.type->is_enum());
+      assert(result.type->is_pointer() || result.type->is_enum() ||
+             result.type->is_function());
       if (result.type->is_pointer()) {
         // TODO how do we determine if it's heap or stack?
         auto ptr_as_uint = *(size_t *)(frame.stack->allocs + offset);
@@ -249,6 +254,8 @@ void Cmd::Execute(StackFrame& frame) {
         } else {
           frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
         }
+      } else if (result.type->is_function()) {
+        frame.reg[result.reg] = Value(*(Func **)(frame.stack->allocs + offset));
       } else {
         frame.reg[result.reg] =
             Value(*(size_t *)(frame.stack->allocs + offset));
@@ -283,7 +290,10 @@ void Cmd::Execute(StackFrame& frame) {
         frame.reg[result.reg] = Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
       }
 
+    } else if (cmd_inputs[0].flag == ValType::F) {
+      frame.reg[result.reg] = cmd_inputs[0];
     } else {
+      frame.curr_block->dump();
       UNREACHABLE;
     }
   } break;
@@ -291,7 +301,8 @@ void Cmd::Execute(StackFrame& frame) {
   case Op::Store: {
     assert(cmd_inputs[0].flag == ValType::T &&
            (cmd_inputs[0].as_type->is_primitive() ||
-            cmd_inputs[0].as_type->is_pointer()));
+            cmd_inputs[0].as_type->is_pointer() ||
+            cmd_inputs[0].as_type->is_function()));
     assert(cmd_inputs[2].flag == ValType::StackAddr ||
            cmd_inputs[2].flag == ValType::HeapAddr);
 
@@ -316,6 +327,18 @@ void Cmd::Execute(StackFrame& frame) {
         auto ptr = (void **)(frame.stack->allocs + offset);
         switch (cmd_inputs[1].flag) {
         case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
+        case ValType::Null: *ptr = nullptr; break;
+        default: NOT_YET;
+        }
+        break;
+      }
+
+      if (cmd_inputs[0].as_type->is_function()) {
+        auto ptr = (void **)(frame.stack->allocs + offset);
+        switch (cmd_inputs[1].flag) {
+        case ValType::F: *ptr = cmd_inputs[1].as_func; break;
+        case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
+        case ValType::Null: *ptr = nullptr; break;
         default: NOT_YET;
         }
         break;
@@ -343,12 +366,15 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
 
-      if (cmd_inputs[0].as_type->is_pointer()) {
+      if (cmd_inputs[0].as_type->is_function()) {
         NOT_YET;
         break;
-      }
 
-      if (cmd_inputs[0].as_type == Void) {
+      } else if (cmd_inputs[0].as_type->is_pointer()) {
+        NOT_YET;
+        break;
+
+      } else if (cmd_inputs[0].as_type == Void) {
         NOT_YET;
         break;
       }
@@ -640,6 +666,9 @@ void Cmd::Execute(StackFrame& frame) {
       fprintf(stderr, "%s.%lu", cmd_inputs[0].as_type->to_string().c_str(),
               cmd_inputs[1].as_uint);
 
+    } else if (cmd_inputs[0].as_type->is_pointer()) {
+      fprintf(stderr, "0x%lx", cmd_inputs[0].as_uint);
+
     } else {
       UNREACHABLE;
     }
@@ -741,9 +770,9 @@ void LocalStack::AddFrame(StackFrame *fr) {
 
 void LocalStack::RemoveFrame(StackFrame *fr) { used = fr->offset; }
 
-Value Call(Func *f, LocalStack *local_stack,
-           const std::vector<Value> &arg_vals) {
-  StackFrame frame(f, local_stack, arg_vals);
+Value IR::Func::Call(LocalStack *local_stack,
+                     const std::vector<Value> &arg_vals) {
+  StackFrame frame(this, local_stack, arg_vals);
 
 eval_loop_start:
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {

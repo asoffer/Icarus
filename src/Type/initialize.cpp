@@ -3,8 +3,6 @@
 #include "Scope.h"
 #endif
 
-extern std::vector<IR::Func *> implicit_functions;
-
 /*
 // TODO rename? This isn't really about init-ing literals. it's more about allocating
 llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
@@ -61,7 +59,6 @@ void Array::EmitInit(IR::Value id_val) {
 
     init_func          = new IR::Func(Func(Ptr(this), Void));
     init_func->name    = "init." + Mangle(this);
-    implicit_functions.push_back(init_func);
 
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
@@ -94,8 +91,7 @@ void Array::EmitInit(IR::Value id_val) {
 }
 
 void Pointer::EmitInit(IR::Value id_val) {
-  // TODO
-  // IR::Store(this, IR::Value(nullptr), id_val);
+  IR::Store(this, IR::Value::Null(this), id_val);
 }
 
 void Structure::EmitInit(IR::Value id_val) {
@@ -105,7 +101,6 @@ void Structure::EmitInit(IR::Value id_val) {
 
     init_func          = new IR::Func(Func(Ptr(this), Void));
     init_func->name    = "init." + Mangle(this);
-    implicit_functions.push_back(init_func);
 
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
@@ -115,9 +110,9 @@ void Structure::EmitInit(IR::Value id_val) {
     for (size_t i = 0; i < field_type.size(); ++i) {
       if (init_values[i]) {
         if (init_values[i]->is_hole()) { continue; }
-        Type::CallAssignment(
-            init_values[i]->scope_, field_type[i], init_values[i]->type,
-            IR::Field(this, IR::Value::Arg(0), i), init_values[i]->EmitIR());
+        Type::CallAssignment(init_values[i]->scope_, field_type[i],
+                             init_values[i]->type, init_values[i]->EmitIR(),
+                             IR::Field(this, IR::Value::Arg(0), i));
       } else {
         field_type[i]->EmitInit(IR::Field(this, IR::Value::Arg(0), i));
       }
@@ -137,7 +132,7 @@ void Structure::EmitInit(IR::Value id_val) {
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
 void Enumeration::EmitInit(IR::Value id_val) { NOT_YET; }
-void Function::EmitInit(IR::Value id_val) {}
+void Function::EmitInit(IR::Value id_val) { /* Intentionally do nothing */ }
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }

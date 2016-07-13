@@ -497,7 +497,7 @@ Context::Value Binop::evaluate(Ctx& ctx) {
 
       auto local_stack = new IR::LocalStack;
       IR::Func *func   = fn_ptr->EmitIR().as_func;
-      auto result      = IR::Call(func, local_stack, args);
+      auto result      = func->Call(local_stack, args);
       delete local_stack;
 
       // Doing value conversion

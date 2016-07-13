@@ -5,7 +5,7 @@
 
 namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalCStr
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalCStr, Null
 };
 
 struct Func;
@@ -30,6 +30,7 @@ struct Value {
     size_t as_stack_addr;
     size_t as_frame_addr;
     void *as_heap_addr;
+    Type *as_null;
     size_t as_global_cstr;
   };
 
@@ -54,9 +55,16 @@ struct Value {
     return v;
   }
 
+  static Value Null(Type *t) {
+    Value v;
+    v.flag    = ValType::Null;
+    v.as_null = t;
+    return v;
+  }
+
   static Value Reg(size_t n) {
     Value v;
-    v.flag       = ValType::Reg;
+    v.flag   = ValType::Reg;
     v.as_reg = n;
     return v;
   }
@@ -120,8 +128,8 @@ struct Cmd {
 // 2. A conditional jump to one of two branches
 // 3. Return from the current function.
 struct Exit {
+  friend struct Func;
   friend struct Block;
-  friend Value Call(Func *, LocalStack *, const std::vector<Value> &);
   friend void RefreshDisplay(const StackFrame &, LocalStack *);
 
   enum class Strategy { Unset, Uncond, Cond, Return, ReturnVoid } flag;
@@ -211,9 +219,13 @@ struct Func {
   Block *entry() { return blocks.front(); }
   Block *exit() { return blocks AT(1); }
 
+  Value Call(LocalStack *, const std::vector<Value> &);
+
   size_t num_cmds, frame_size;
 
   size_t PushSpace(Type *t);
+
+  bool generated;
 
   void GenerateLLVM();
 
@@ -228,9 +240,6 @@ struct Func {
 
   void dump();
 };
-
-Value Call(Func *f, LocalStack *local_stack,
-           const std::vector<Value> &arg_vals);
 
 #define CMD_WITH_1_ARGS(name, out_type) Value name(Value);
 

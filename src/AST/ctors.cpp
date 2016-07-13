@@ -29,7 +29,7 @@ Expression::Expression()
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),
       alloc(nullptr), arg_val(nullptr) {
-  stack_loc = IR::Value::StackAddr((size_t)~0);
+  stack_loc = IR::Value::StackAddr(~0ul);
 }
 
 Generic::Generic() : test_fn(nullptr) {}

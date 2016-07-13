@@ -3,7 +3,6 @@
 #include "Scope.h"
 #include "Stack.h"
 
-extern std::vector<IR::Func *> implicit_functions;
 
 static IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
@@ -11,7 +10,6 @@ static IR::Func *AsciiFunc() {
   if (ascii_) { return ascii_; }
   ascii_ = new IR::Func(Func(Uint, Char));
   ascii_->name = "ascii";
-  implicit_functions.push_back(ascii_);
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -37,7 +35,6 @@ static IR::Func *OrdFunc() {
   if (ord_) { return ord_; }
   ord_ = new IR::Func(Func(Char, Uint));
   ord_->name = "ord";
-  implicit_functions.push_back(ord_);
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -74,6 +71,7 @@ size_t IR::Func::PushSpace(Type *t) {
 
   builder.SetInsertPoint(alloc_block);
   if (t != Void && t != Type_) { frame_map[result] = t->allocate(); }
+
 
   return result;
 }
@@ -114,7 +112,7 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Int:
     return IR::Value(
         (long)value.as_int); // TODO Context::Value shouldn't use longs
-  case Language::Terminal::Null: return IR::Value::HeapAddr(0);
+  case Language::Terminal::Null: return IR::Value::Null(type);
   case Language::Terminal::Ord: return IR::Value(OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: {
@@ -219,7 +217,7 @@ IR::Value Unop::EmitIR() {
     IR::Func::Current  = old_func;
     IR::Block::Current = old_block;
 
-    auto result = IR::Call(func, local_stack, {});
+    auto result = func->Call(local_stack, {});
     delete local_stack;
 
     // Cleanup
@@ -264,7 +262,7 @@ IR::Value Unop::EmitIR() {
     }
   } break;
   case Language::Operator::At: {
-    return IR::Load(operand->type, operand->EmitIR());
+    return PtrCallFix(type, operand->EmitIR());
   } break;
   default: UNREACHABLE;
   }
@@ -273,13 +271,10 @@ IR::Value Unop::EmitIR() {
 IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: {
-    if (rhs->type->is_primitive()) {
-      return IR::Store(rhs->type, rhs->EmitIR(), lhs->EmitLVal());
-    } else {
-      Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
-                           lhs->EmitLVal());
-      return IR::Value();
-    }
+    // TODO what if rhs doesn't have an lvalue?
+    Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
+                         lhs->EmitLVal());
+    return IR::Value();
   } break;
   case Language::Operator::Cast: {
     auto rhs_val = rhs->EmitIR();
@@ -597,6 +592,7 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
+  if (type->has_vars) { return IR::Value(); }
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -652,9 +648,11 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
         continue;
       }
       UNREACHABLE;
+    } else if (decl->type->is_function()) {
+      continue; // TODO is this right?
+    } else {
+      ir_func->PushLocal(decl);
     }
-
-    ir_func->PushLocal(decl);
   }
 
   for (auto scope : fn_scope->innards_) {
@@ -712,15 +710,25 @@ IR::Value Identifier::EmitIR() {
     assert(false && "Failed to match argument");
 
   } else if (type->is_function()) {
-    Ctx ctx;
-    evaluate(ctx);
-    assert(value.as_expr);
+    if (decl->stack_loc.as_uint != ~0ul) { return decl->stack_loc; }
+
+    auto fn_type = (Function *)type;
+    
     // TODO Is this really the place to name the function? Shouldn't that be
     // done in its declaration?
 
-    auto fn            = value.as_expr->EmitIR();
-    fn.as_func->name   = Mangle((Function *)type, this, decl->scope_);
-    return fn;
+    auto old_func  = IR::Func::Current;
+    auto old_block = IR::Block::Current;
+
+    decl->stack_loc = decl->init_val->EmitIR();
+
+    decl->stack_loc.as_func->name =
+        Mangle(fn_type, decl->identifier, decl->scope_);
+
+    IR::Func::Current  = old_func;
+    IR::Block::Current = old_block;
+
+    return decl->stack_loc;
 
   } else {
     return PtrCallFix(type, decl->stack_loc);
@@ -734,6 +742,8 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
+  if (type->is_function()) { return IR::Value(); }
+
   if (IsUninitialized()) {
     return IR::Value();
 
@@ -741,11 +751,9 @@ IR::Value Declaration::EmitIR() {
     type->EmitInit(identifier->EmitLVal());
 
   } else {
-    auto id_val  = identifier->EmitLVal();
-    auto rhs_val = init_val->EmitIR();
-
-    Type::CallAssignment(scope_, identifier->type, init_val->type, rhs_val,
-                         id_val);
+    // TODO what if rhs doesn't have an lvalue?
+    Type::CallAssignment(scope_, identifier->type, init_val->type,
+                         init_val->EmitIR(), identifier->EmitLVal());
   }
 
   return IR::Value();

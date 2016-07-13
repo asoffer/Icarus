@@ -3,7 +3,6 @@
 #include "Scope.h"
 #endif
 
-extern std::vector<IR::Func *> implicit_functions;
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
 
 static void AddSpecialCharacter(IR::Value val, char c, char vis,
@@ -74,7 +73,6 @@ void Array::EmitRepr(IR::Value val) {
 
     repr_func          = new IR::Func(Func(this, Void));
     repr_func->name    = "repr." + Mangle(this);
-    implicit_functions.push_back(repr_func);
     IR::Func::Current  = repr_func;
     IR::Block::Current = repr_func->entry();
 

@@ -6,7 +6,7 @@
 
 // TODO 64 is hard-coded here as an int size. Change it
 
-std::vector<IR::Func *> implicit_functions;
+std::vector<IR::Func *> all_functions;
 
 namespace Language {
 // Associativity stored in the lowest two bits.
@@ -265,6 +265,7 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
       NOT_YET;
     }
   }
+  assert(decl->stack_loc.as_uint != ~0ul);
   return decl->stack_loc.as_func;
 }
 
