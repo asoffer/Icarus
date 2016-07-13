@@ -357,14 +357,13 @@ void Identifier::verify_types() {
 
   if (potential_decls.empty()) {
     type = Err;
-    Error::Log::Log(loc, "Undeclared identifier '" + token + "'.");
-    NOT_YET;
+    Error::Log::UndeclaredIdentifier(loc, token.c_str());
     return;
   }
 
   if (potential_decls.size() > 1) {
     type = Err;
-    Error::Log::Log(loc, "Ambiguous reference to identifier '" + token + "'.");
+    Error::Log::AmbiguousIdentifier(loc, token.c_str());
     return;
   }
 

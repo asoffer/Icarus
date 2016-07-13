@@ -69,10 +69,10 @@ void Lexer::MoveCursorToNextLine() {
   for (size_t i = 0; i < line_length; ++i) {
     if (temp[i] == '\0') {
       temp[i] = ' ';
-      Error::Log::Log(Error::MsgId::NullCharInSource, cursor, 0, 0);
+      Error::Log::NullCharInSrc(cursor);
     } else if (IsNonGraphic(temp[i])) {
       temp[i] = ' ';
-      Error::Log::Log(Error::MsgId::NonGraphicCharInSource, cursor, 0, 0);
+      Error::Log::NonGraphicCharInSrc(cursor);
     }
   }
 
@@ -167,7 +167,9 @@ NNT Lexer::NextWord() {
 
   } else if (token == "else") {
     auto term_ptr           = new AST::Terminal;
-    term_ptr->loc           = cursor;
+    Cursor loc              = cursor;
+    loc.offset              = starting_offset;
+    term_ptr->loc           = loc;
     term_ptr->terminal_type = Language::Terminal::Else;
     term_ptr->type          = Bool;
 
@@ -197,7 +199,9 @@ NNT Lexer::NextWord() {
   }
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
-  return NNT(new AST::Identifier(cursor, token), Language::expr);
+  Cursor loc = cursor;
+  loc.offset = starting_offset;
+  return NNT(new AST::Identifier(loc, token), Language::expr);
 }
 
 NNT Lexer::NextNumber() {
@@ -272,9 +276,7 @@ NNT Lexer::NextOperator() {
     if (num_dots == 1) {
       RETURN_NNT(".", op_b);
     } else {
-      if (num_dots > 2) {
-        Error::Log::Log(Error::MsgId::TooManyDots, cursor_copy, 0, num_dots);
-      }
+      if (num_dots > 2) { Error::Log::TooManyDots(cursor_copy, num_dots); }
       RETURN_NNT("..", dots);
     }
   } break;
@@ -307,8 +309,7 @@ NNT Lexer::NextOperator() {
 
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
-      Error::Log::Log(Error::MsgId::NonWhitespaceAfterNewlineEscape,
-                      cursor_copy, 0, dist);
+      Error::Log::NonWhitespaceAfterNewlineEscape(cursor_copy, dist);
       return Next();
     }
   } break;
@@ -318,14 +319,14 @@ NNT Lexer::NextOperator() {
     Cursor cursor_copy = cursor;
 
     if (!IsAlpha(*cursor)) {
-      Error::Log::Log(Error::MsgId::InvalidHashtag, cursor_copy, 0, 1);
+      Error::Log::InvalidHashtag(cursor_copy);
       return Next();
     }
 
     do { IncrementCursor(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
     if (cursor.offset - cursor_copy.offset == 0) {
-      Error::Log::Log(Error::MsgId::InvalidHashtag, cursor_copy, 0, 1);
+      Error::Log::InvalidHashtag(cursor_copy);
     }
 
     char old_char   = *cursor;
@@ -364,7 +365,7 @@ NNT Lexer::NextOperator() {
       } else {
         Cursor cursor_copy = cursor;
         cursor_copy.offset -= 2;
-        Error::Log::Log(Error::MsgId::NotInMultilineComment, cursor_copy, 0, 2);
+        Error::Log::NotInMultilineComment(cursor_copy);
         return Next();
       }
     } else if (*cursor == '=') {
@@ -466,7 +467,7 @@ NNT Lexer::NextOperator() {
 
       while (comment_layer != 0) {
         if (ifs.eof()) {
-          Error::Log::Log(Error::MsgId::RunawayMultilineComment, cursor, 0, 2);
+          Error::Log::RunawayMultilineComment();
           RETURN_NNT("", eof);
 
         } else if (back_one == '/' && *cursor == '*') {
@@ -503,8 +504,7 @@ NNT Lexer::NextOperator() {
           str_lit += '\'';
           Cursor cursor_copy = cursor;
           --cursor_copy.offset;
-          Error::Log::Log(Error::MsgId::EscapedSingleQuoteInStringLit,
-                          cursor_copy, 0, 2);
+          Error::Log::EscapedSingleQuoteInStringLit(cursor_copy);
         } break;
 
         case '\\': str_lit += '\\'; break;
@@ -520,11 +520,10 @@ NNT Lexer::NextOperator() {
         default: {
           Cursor cursor_copy = cursor;
           --cursor_copy.offset;
-          Error::Log::Log(Error::MsgId::InvalidEscapeCharInStringLit,
-                          cursor_copy, 0, 2);
+          Error::Log::InvalidEscapeCharInStringLit(cursor_copy);
 
-            str_lit += *cursor;
-          } break;
+          str_lit += *cursor;
+        } break;
         }
       } else {
         str_lit += *cursor;
@@ -534,7 +533,7 @@ NNT Lexer::NextOperator() {
     }
 
     if (*cursor == '\0') {
-      Error::Log::Log(Error::MsgId::RunawayStringLit, cursor, 0, 1);
+      Error::Log::RunawayStringLit(cursor);
     } else {
       IncrementCursor();
     }
@@ -551,12 +550,12 @@ NNT Lexer::NextOperator() {
 
     switch (*cursor) {
     case '\t':
-      Error::Log::Log(Error::MsgId::TabInCharLit, cursor, 0, 1);
+      Error::Log::TabInCharLit(cursor);
       result = '\t';
       break;
 
     case '\0': {
-      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor, 0, 1);
+      Error::Log::RunawayCharLit(cursor);
 
       RETURN_TERMINAL(Char, Char, Context::Value('\0'));
     }
@@ -567,7 +566,7 @@ NNT Lexer::NextOperator() {
         result = '"';
         Cursor cursor_copy = cursor;
         --cursor_copy.offset;
-        Error::Log::Log(Error::MsgId::EscapedDoubleQuoteInCharLit, cursor_copy, 0, 2);
+        Error::Log::EscapedDoubleQuoteInCharLit(cursor_copy);
       } break;
       case '\\': result = '\\'; break;
       case '\'': result = '\''; break;
@@ -581,8 +580,7 @@ NNT Lexer::NextOperator() {
       default:
         Cursor cursor_copy = cursor;
         --cursor_copy.offset;
-        Error::Log::Log(Error::MsgId::InvalidEscapeCharInCharLit, cursor_copy,
-                        0, 2);
+        Error::Log::InvalidEscapeCharInCharLit(cursor_copy);
         result = *cursor;
       }
       break;
@@ -595,19 +593,19 @@ NNT Lexer::NextOperator() {
     if (*cursor == '\'') {
       IncrementCursor();
     } else {
-      Error::Log::Log(Error::MsgId::RunawayCharLit, cursor, 0, 1);
+      Error::Log::RunawayCharLit(cursor);
     }
 
     RETURN_TERMINAL(Char, Char, Context::Value(result));
   } break;
 
   case '?':
-    Error::Log::Log(Error::MsgId::InvalidCharQuestionMark, cursor, 0, 1);
+    Error::Log::InvalidCharQuestionMark(cursor);
     IncrementCursor();
     return Next();
 
   case '~':
-    Error::Log::Log(Error::MsgId::InvalidCharTilde, cursor, 0, 1);
+    Error::Log::InvalidCharTilde(cursor);
     IncrementCursor();
     return Next();
 

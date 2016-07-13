@@ -2,38 +2,6 @@
 #define ICARUS_ERROR_LOG_H
 
 namespace Error {
-enum class MsgId {
-  NullCharInSource,
-  NonGraphicCharInSource,
-  TooManyDots,
-  InvalidEscapeCharInStringLit,
-  InvalidEscapeCharInCharLit,
-  TabInCharLit,
-  EscapedDoubleQuoteInCharLit,
-  EscapedSingleQuoteInStringLit,
-  NonWhitespaceAfterNewlineEscape,
-  NotInMultilineComment,
-  RunawayMultilineComment,
-  RunawayStringLit,
-  RunawayCharLit,
-  InvalidCharQuestionMark,
-  InvalidCharTilde,
-  InvalidHashtag,
-
-  MissingComma,
-};
-
-struct Msg {
-  Msg(MsgId msg_id, const Cursor &tok_loc, size_t rad, size_t under_len)
-      : loc(tok_loc), context_radius(rad), underline_length(under_len),
-        mid(msg_id) {}
-
-  Cursor loc;
-  size_t context_radius; // Number of lines surrounding this one to show.
-  size_t underline_length;
-  MsgId mid;
-};
-
 namespace Log {
 extern size_t num_errs_;
 extern std::map<std::string, std::map<size_t, std::vector<std::string>>> log_;
@@ -42,10 +10,28 @@ extern bool ImmediateMode;
 void Dump();
 inline size_t NumErrors() { return num_errs_; }
 void Log(const Cursor &loc, const std::string &msg);
-void Log(MsgId mid, const Cursor &loc, size_t context_radius,
-         size_t underline_length);
-} // namespace Log
 
+void NullCharInSrc(const Cursor &loc);
+void NonGraphicCharInSrc(const Cursor &loc);
+void TooManyDots(const Cursor &loc, size_t num_dots);
+void NonWhitespaceAfterNewlineEscape(const Cursor &loc, size_t dist);
+void InvalidHashtag(const Cursor &loc);
+void NotInMultilineComment(const Cursor &loc);
+void RunawayMultilineComment();
+void EscapedDoubleQuoteInCharLit(const Cursor &loc);
+void EscapedSingleQuoteInStringLit(const Cursor &loc);
+void RunawayStringLit(const Cursor &loc);
+void RunawayCharLit(const Cursor &loc);
+void InvalidEscapeCharInStringLit(const Cursor &loc);
+void InvalidEscapeCharInCharLit(const Cursor &loc);
+void InvalidCharQuestionMark(const Cursor &loc);
+void InvalidCharTilde(const Cursor &loc);
+void TabInCharLit(const Cursor &loc);
+void MissingComma(const Cursor &loc);
+void UndeclaredIdentifier(const Cursor &loc, const char *token);
+void AmbiguousIdentifier(const Cursor &loc, const char *token);
+
+} // namespace Log
 } // namespace Error
 
 #endif // ICARUS_ERROR_LOG_H

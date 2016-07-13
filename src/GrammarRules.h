@@ -53,7 +53,7 @@ AST::Node *EmptyFile(NPtrVec &&nodes) {
 }
 
 template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
-  Error::Log::Log(Error::MsgId::MissingComma, nodes[PrevIndex]->loc, 0, 1);
+  Error::Log::MissingComma(nodes[PrevIndex]->loc);
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
                               steal_node<AST::Node>(nodes[PrevIndex + 1])});

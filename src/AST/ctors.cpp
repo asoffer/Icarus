@@ -43,7 +43,7 @@ Unop::Unop() : operand(nullptr) {}
 Terminal::Terminal() {}
 ArrayType::ArrayType() {}
 
-DummyTypeExpr::DummyTypeExpr() { assert(false); }
+DummyTypeExpr::DummyTypeExpr() { UNREACHABLE; }
 
 DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   loc = new_loc;
@@ -54,7 +54,7 @@ Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;
 }
 
-Identifier::Identifier() { assert(false); }
+Identifier::Identifier() { UNREACHABLE; }
 
 Identifier::Identifier(const Cursor &new_loc, const std::string &token_string)
     : decl(nullptr) {
