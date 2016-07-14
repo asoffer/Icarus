@@ -3,7 +3,6 @@
 #include "Scope.h"
 #include "Stack.h"
 
-
 static IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
@@ -328,7 +327,7 @@ IR::Value Binop::EmitIR() {
     }
   } break;
 
-#define ARITHMETIC_EQ_CASE(Op, op)                                             \
+#define ARITHMETIC_EQ_CASE(Op, op_str)                                         \
   case Language::Operator::Op##Eq: {                                           \
     auto lval    = lhs->EmitLVal();                                            \
     auto lhs_val = IR::Load(lhs->type, lval);                                  \
@@ -343,20 +342,19 @@ IR::Value Binop::EmitIR() {
     if (lhs->type == Real && rhs->type == Real) {                              \
       return IR::Store(Real, IR::F##Op(lhs_val, rhs_val), lval);               \
     }                                                                          \
-    auto fn =                                                                  \
-        GetFuncReferencedIn(scope_, "__" #op "_eq__",                          \
-                            Func(Tup({Ptr(lhs->type), rhs->type}), type));     \
+    auto fn = GetFuncReferencedIn(                                             \
+        scope_, op_str, Func(Tup({Ptr(lhs->type), rhs->type}), type));         \
     return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
   } break
 
-    ARITHMETIC_EQ_CASE(Add, add);
-    ARITHMETIC_EQ_CASE(Sub, sub);
-    ARITHMETIC_EQ_CASE(Mul, mul);
-    ARITHMETIC_EQ_CASE(Div, div);
-    ARITHMETIC_EQ_CASE(Mod, mod);
+    ARITHMETIC_EQ_CASE(Add, "__add__");
+    ARITHMETIC_EQ_CASE(Sub, "__sub__");
+    ARITHMETIC_EQ_CASE(Mul, "__mul__");
+    ARITHMETIC_EQ_CASE(Div, "__div__");
+    ARITHMETIC_EQ_CASE(Mod, "__mod__");
 #undef ARITHMETIC_EQ_CASE
 
-#define ARITHMETIC_CASE(Op, op)                                                \
+#define ARITHMETIC_CASE(Op, op_str)                                            \
   case Language::Operator::Op: {                                               \
     auto lhs_val = lhs->EmitIR();                                              \
     auto rhs_val = rhs->EmitIR();                                              \
@@ -369,17 +367,68 @@ IR::Value Binop::EmitIR() {
     if (lhs->type == Real && rhs->type == Real) {                              \
       return IR::F##Op(lhs_val, rhs_val);                                      \
     }                                                                          \
-    auto fn = GetFuncReferencedIn(scope_, "__" #op "__",                       \
+    auto fn = GetFuncReferencedIn(scope_, op_str,                              \
                                   Func(Tup({lhs->type, rhs->type}), type));    \
     return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
   } break
 
-    ARITHMETIC_CASE(Add, add);
-    ARITHMETIC_CASE(Sub, sub);
-    ARITHMETIC_CASE(Mul, mul);
-    ARITHMETIC_CASE(Div, div);
-    ARITHMETIC_CASE(Mod, mod);
+    ARITHMETIC_CASE(Add, "__add__");
+    ARITHMETIC_CASE(Sub, "__sub__");
+    ARITHMETIC_CASE(Div, "__div__");
+    ARITHMETIC_CASE(Mod, "__mod__");
 #undef ARITHMETIC_CASE
+
+  case Language::Operator::Mul: {
+    auto lhs_val = lhs->EmitIR();
+    auto rhs_val = rhs->EmitIR();
+    if (lhs->type == Int && rhs->type == Int) {
+      return IR::IMul(lhs_val, rhs_val);
+    }
+    if (lhs->type == Uint && rhs->type == Uint) {
+      return IR::UMul(lhs_val, rhs_val);
+    }
+    if (lhs->type == Real && rhs->type == Real) {
+      return IR::FMul(lhs_val, rhs_val);
+    }
+    if (lhs->type->is_function() && rhs->type->is_function() &&
+        ((Function *)lhs)->input == ((Function *)lhs)->input) {
+      assert(type->is_function());
+      auto fn_type   = (Function *)type;
+      auto composite = new IR::Func(fn_type);
+
+      auto saved_func  = IR::Func::Current;
+      auto saved_block = IR::Block::Current;
+
+      IR::Func::Current  = composite;
+      IR::Block::Current = composite->entry();
+
+      std::vector<IR::Value> args = {};
+      auto num_entries = fn_type->input->is_tuple()
+                             ? ((Tuple *)fn_type->input)->entries.size()
+                             : 1;
+      for (size_t i = 0; i < num_entries; ++i) {
+        args.push_back(IR::Value::Arg(i));
+      }
+
+      auto intermediate_val =
+          IR::Call(((Function *)rhs->type)->output, rhs->EmitIR(), args);
+
+      auto result =
+          IR::Call(fn_type->output, lhs->EmitIR(), {intermediate_val});
+
+      IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+      IR::Block::Current = IR::Func::Current->exit();
+      IR::Block::Current->exit.SetReturn(result);
+
+      IR::Func::Current  = saved_func;
+      IR::Block::Current = saved_block;
+
+      return IR::Value(composite);
+    }
+    auto fn = GetFuncReferencedIn(scope_, "__mul__",
+                                  Func(Tup({lhs->type, rhs->type}), type));
+    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
+  } break;
 
   case Language::Operator::Index: {
     if (lhs->type->is_array()) {

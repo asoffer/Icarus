@@ -42,6 +42,9 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
     case ValType::I: {
       mvprintw((int)i, 100, "%2d.> %8ldi", i, frame.reg[i].as_int);
     } break;
+    case ValType::R: {
+      mvprintw((int)i, 100, "%2d.> %8lff", i, frame.reg[i].as_real);
+    } break;
     case ValType::U: {
       mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
     } break;

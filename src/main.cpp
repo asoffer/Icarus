@@ -293,19 +293,6 @@ int main(int argc, char *argv[]) {
           assert(decl->identifier->decl == decl);
           auto fn_type      = (Function *)type;
           auto mangled_name = Mangle(fn_type, decl->identifier);
-
-          if (!type->has_vars) {
-            // id->decl->alloc = fn_type->allocate();
-            // id->decl->alloc->setName(mangled_name);
-            // decl->generate_code();
-
-            // TODO is this even necessary?
-            ((AST::FunctionLiteral *)decl->init_val)->ir_func->GenerateLLVM();
-            id->decl->alloc =
-                ((AST::FunctionLiteral *)decl->init_val)->ir_func->llvm_fn;
-            id->decl->alloc->setName(mangled_name);
-          }
-
         } else {
           std::cerr << *type << std::endl;
           assert(false && "Global variables not currently allowed.");
