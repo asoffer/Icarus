@@ -207,6 +207,9 @@ void Cmd::Execute(StackFrame& frame) {
     }
     frame.reg[result.reg] = Value::HeapAddr(ptr);
   } break;
+  case Op::Free: {
+    free(cmd_inputs[0].as_heap_addr);
+  } break;
   case Op::Memcpy: {
     void *dest;
     switch (cmd_inputs[0].flag) {

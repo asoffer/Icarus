@@ -177,7 +177,10 @@ IR::Value Unop::EmitIR() {
     block_scope->MakeReturn(operand->type, ret);
     return IR::Value();
   } break;
-  case Language::Operator::Free: NOT_YET;
+  case Language::Operator::Free: {
+    IR::Free(operand->EmitIR());
+    return IR::Value();
+  } break;
   case Language::Operator::Eval: {
     auto old_func  = IR::Func::Current;
     auto old_block = IR::Block::Current;
@@ -771,6 +774,7 @@ IR::Value Identifier::EmitIR() {
 
     decl->stack_loc = decl->init_val->EmitIR();
 
+    std::cerr << *decl;
     decl->stack_loc.as_func->name =
         Mangle(fn_type, decl->identifier, decl->scope_);
 

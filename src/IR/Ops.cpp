@@ -113,7 +113,6 @@ Value ArrayData(Array *type, Value array_ptr) {
   return Value::Reg(cmd.result.reg);
 }
 
-
 Value Malloc(Type *type, Value num) {
   Cmd cmd(Op::Malloc, true);
   cmd.args        = {num};

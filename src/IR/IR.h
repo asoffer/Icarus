@@ -261,6 +261,7 @@ Value Field(Structure *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Value ArrayData(Array *type, Value array_ptr);
 Value Malloc(Type *type, Value num);
+Value Free(Value val);
 Value Memcpy(Value dest, Value source, Value num_bytes);
 Value PtrIncr(Pointer *type, Value ptr, Value incr);
 Value Trunc(Value val);

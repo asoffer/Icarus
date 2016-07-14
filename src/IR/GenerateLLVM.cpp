@@ -10,6 +10,7 @@ extern const char *GetGlobalStringNumbered(size_t index);
 namespace cstdlib {
 extern llvm::Constant *printf();
 extern llvm::Constant *malloc();
+extern llvm::Constant *free();
 extern llvm::Constant *memcpy();
 } // namespace cstdlib
 
@@ -378,7 +379,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateBitCast(
             builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);
         break;
-
+      case IR::Op::Free: builder.CreateCall(cstdlib::free(), args[0]); break;
       case IR::Op::ArrayLength:
         registers[cmd.result.reg] = builder.CreateGEP(
             args[0], {data::const_uint32(0), data::const_uint32(0)});
