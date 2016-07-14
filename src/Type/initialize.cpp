@@ -38,18 +38,7 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
 */
 
 void Primitive::EmitInit(IR::Value id_val) {
-  switch (type_) {
-  case TypeEnum::Err: UNREACHABLE;
-  case TypeEnum::Unknown: UNREACHABLE;
-  case TypeEnum::Type: UNREACHABLE;
-  case TypeEnum::Void: UNREACHABLE;
-  case TypeEnum::NullPtr: UNREACHABLE;
-  case TypeEnum::Bool: IR::Store(this, IR::Value(false), id_val); return;
-  case TypeEnum::Char: IR::Store(this, IR::Value((char)0), id_val); return;
-  case TypeEnum::Int: IR::Store(this, IR::Value((long)0), id_val); return;
-  case TypeEnum::Real: IR::Store(this, IR::Value(0.0), id_val); return;
-  case TypeEnum::Uint: IR::Store(this, IR::Value((size_t)0), id_val); return;
-  }
+  IR::Store(this, EmitInitialValue(), id_val);
 }
 
 void Array::EmitInit(IR::Value id_val) {

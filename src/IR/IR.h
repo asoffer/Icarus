@@ -5,7 +5,8 @@
 
 namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalCStr, Null
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr,
+  GlobalCStr, Null,
 };
 
 struct Func;
@@ -27,8 +28,7 @@ struct Value {
     size_t as_reg;
     size_t as_arg;
     Block *as_block;
-    size_t as_stack_addr;
-    size_t as_frame_addr;
+    size_t as_stack_addr, as_frame_addr, as_global_addr;
     void *as_heap_addr;
     Type *as_null;
     size_t as_global_cstr;
@@ -82,6 +82,8 @@ struct Value {
     v.as_stack_addr = n;
     return v;
   }
+
+  static Value CreateGlobal();
 
   static Value HeapAddr(void *ptr) {
     Value v;

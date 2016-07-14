@@ -7,9 +7,20 @@ extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
-
-// TODO what Value number to return????
 namespace IR {
+std::vector<IR::Value> InitialGlobals;
+std::vector<llvm::Value *> LLVMGlobals;
+
+Value Value::CreateGlobal() {
+  static size_t global_num_ = 0;
+  Value v;
+  v.flag          = ValType::GlobalAddr;
+  v.as_stack_addr = global_num_++;
+  InitialGlobals.emplace_back(~0ul);
+  LLVMGlobals.emplace_back(nullptr);
+  return v;
+}
+
 #define CMD_WITH_1_ARGS(name, out_type)                                        \
   Value name(Value v) {                                                        \
     Cmd cmd(Op::name, out_type != Void);                                       \
@@ -50,6 +61,7 @@ Func::Func(Function *fn_type, bool should_gen)
         (fn_type->time() == Time::run || fn_type->time() == Time::either);
 
    llvm::FunctionType *llvm_fn_type = *fn_type;
+
     if (should_gen) {
       all_functions.push_back(this);
       llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
@@ -222,6 +234,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::StackAddr: return os << "$" << value.as_stack_addr;
   case ValType::FrameAddr: return os << "`$`" << value.as_frame_addr;
   case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
+  case ValType::GlobalAddr: return os << "g." << value.as_global_addr;
   case ValType::GlobalCStr: return os << "c\"#" << value.as_global_cstr;
   case ValType::Block:
     if (value.as_block) {

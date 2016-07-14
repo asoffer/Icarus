@@ -3,7 +3,7 @@
 #include "Scope.h"
 #include "Stack.h"
 
-static IR::Func *AsciiFunc() {
+IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
   if (ascii_) { return ascii_; }
@@ -28,7 +28,7 @@ static IR::Func *AsciiFunc() {
   return ascii_;
 }
 
-static IR::Func *OrdFunc() {
+IR::Func *OrdFunc() {
   static IR::Func *ord_ = nullptr;
 
   if (ord_) { return ord_; }
@@ -467,21 +467,26 @@ IR::Value Binop::EmitIR() {
   }
 }
 
-static IR::Value EmitComparison(Type *op_type, Language::Operator op,
+static IR::Value EmitComparison(Scope *scope, Type *op_type, Language::Operator op,
                                 IR::Value lhs, IR::Value rhs) {
+  // TODO pass in lhs and rhs types and output type
   if (op == Language::Operator::LT) {
-    if (op_type == Int) {
-      return ILT(lhs, rhs);
-    } else if (op_type == Real) {
-      return FLT(lhs, rhs);
-    } else if (op_type == Uint) {
-      return ULT(lhs, rhs);
-    }
+    if (op_type == Int) { return ILT(lhs, rhs); }
+    if (op_type == Real) { return FLT(lhs, rhs); }
+    if (op_type == Uint) { return ULT(lhs, rhs); }
+
+    auto fn = GetFuncReferencedIn(scope, "__lt__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
 
   } else if (op == Language::Operator::LE) {
     if (op_type == Int) { return ILE(lhs, rhs); }
     if (op_type == Real) { return FLE(lhs, rhs); }
     if (op_type == Uint) { return ULE(lhs, rhs); }
+
+    auto fn = GetFuncReferencedIn(scope, "__le__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
 
   } else if (op == Language::Operator::EQ) {
     if (op_type == Bool) { return BEQ(lhs, rhs); }
@@ -493,6 +498,10 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
     if (op_type == Type_) { return TEQ(lhs, rhs); }
     if (op_type->is_function()) { return FnEQ(lhs, rhs); }
 
+    auto fn = GetFuncReferencedIn(scope, "__eq__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+
   } else if (op == Language::Operator::NE) {
     if (op_type == Bool) { return BNE(lhs, rhs); }
     if (op_type == Char) { return CNE(lhs, rhs); }
@@ -503,15 +512,27 @@ static IR::Value EmitComparison(Type *op_type, Language::Operator op,
     if (op_type == Type_) { return TNE(lhs, rhs); }
     if (op_type->is_function()) { return FnNE(lhs, rhs); }
 
+    auto fn = GetFuncReferencedIn(scope, "__ne__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+
   } else if (op == Language::Operator::GE) {
     if (op_type == Int) { return IGE(lhs, rhs); }
     if (op_type == Real) { return FGE(lhs, rhs); }
     if (op_type == Uint) { return UGE(lhs, rhs); }
 
+    auto fn = GetFuncReferencedIn(scope, "__ge__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+
   } else if (op == Language::Operator::GT) {
     if (op_type == Int) { return IGT(lhs, rhs); }
     if (op_type == Real) { return FGT(lhs, rhs); }
     if (op_type == Uint) { return UGT(lhs, rhs); }
+
+    auto fn = GetFuncReferencedIn(scope, "__gt__",
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
   }
 
   UNREACHABLE;
@@ -612,7 +633,7 @@ IR::Value ChainOp::EmitIR() {
       IR::Block::Current = blocks[i];
       lhs                = rhs;
       rhs                = exprs[i + 1]->EmitIR();
-      result             = EmitComparison(exprs[i]->type, ops[i], lhs, rhs);
+      result             = EmitComparison(scope_, exprs[i]->type, ops[i], lhs, rhs);
 
       // Early exit
       IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
@@ -625,7 +646,8 @@ IR::Value ChainOp::EmitIR() {
 
     lhs              = rhs;
     rhs              = exprs.back()->EmitIR();
-    auto last_result = EmitComparison(exprs.back()->type, ops.back(), lhs, rhs);
+    auto last_result =
+        EmitComparison(scope_, exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->exit.SetUnconditional(landing_block);
     phi.args.emplace_back(IR::Block::Current);
     phi.args.emplace_back(last_result);
@@ -774,7 +796,6 @@ IR::Value Identifier::EmitIR() {
 
     decl->stack_loc = decl->init_val->EmitIR();
 
-    std::cerr << *decl;
     decl->stack_loc.as_func->name =
         Mangle(fn_type, decl->identifier, decl->scope_);
 

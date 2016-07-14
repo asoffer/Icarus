@@ -24,17 +24,17 @@ llvm::Constant *Terminal::GetGlobal() {
   switch (terminal_type) {
   case Language::Terminal::ASCII: return builtin::ascii();
   case Language::Terminal::Char: return data::const_char(value.as_char);
-  case Language::Terminal::Else: assert(false);
+  case Language::Terminal::Else: UNREACHABLE;
   case Language::Terminal::False: return data::const_false();
-  case Language::Terminal::Hole: assert(false);
+  case Language::Terminal::Hole: UNREACHABLE;
   case Language::Terminal::Int: return data::const_int(value.as_int);
   case Language::Terminal::Null: return data::null(type);
   case Language::Terminal::Ord: return builtin::ord();
   case Language::Terminal::Real: return data::const_real(value.as_real);
-  case Language::Terminal::Return: assert(false);
-  case Language::Terminal::StringLiteral: assert(false && "TODO");
+  case Language::Terminal::Return: UNREACHABLE;
+  case Language::Terminal::StringLiteral: NOT_YET;
   case Language::Terminal::True: return data::const_true();
-  case Language::Terminal::Type: assert(false);
+  case Language::Terminal::Type: UNREACHABLE;
   case Language::Terminal::Uint: return data::const_uint(value.as_uint);
   }
 }

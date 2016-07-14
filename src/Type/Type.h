@@ -38,6 +38,7 @@ extern SliceType *Slice(Array *a);
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
+  virtual IR::Value EmitInitialValue() const ENDING;                           \
   virtual void EmitRepr(IR::Value id_val) ENDING;                              \
   virtual llvm::Constant *InitialValue() const ENDING
 

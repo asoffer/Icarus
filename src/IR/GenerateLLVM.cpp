@@ -26,6 +26,7 @@ extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 namespace IR {
+extern std::vector<llvm::Value *> LLVMGlobals;
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
 
@@ -53,10 +54,12 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     while (arg_num --> 0) { iter++; }
     return iter;
   } break;
-  case ValType::StackAddr: UNREACHABLE;
+  case ValType::StackAddr: ir_fn->dump(); UNREACHABLE;
   case ValType::FrameAddr:
     assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
     return ir_fn->frame_map[cmd_arg.as_frame_addr];
+  case ValType::GlobalAddr:
+    return LLVMGlobals[cmd_arg.as_global_addr];
   case ValType::HeapAddr: NOT_YET;
   case ValType::GlobalCStr:
     return data::global_string(GetGlobalStringNumbered(cmd_arg.as_global_cstr));

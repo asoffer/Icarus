@@ -8,6 +8,7 @@ extern const char *GetGlobalStringNumbered(size_t index);
 
 namespace IR {
 extern std::string OpCodeString(Op op_code);
+extern std::vector<IR::Value> InitialGlobals;
 
 void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   clear();
@@ -296,8 +297,12 @@ void Cmd::Execute(StackFrame& frame) {
         frame.reg[result.reg] = Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
       }
 
+    } else if (cmd_inputs[0].flag == ValType::GlobalAddr) {
+      frame.reg[result.reg] = InitialGlobals[cmd_inputs[0].as_global_addr];
+
     } else if (cmd_inputs[0].flag == ValType::F) {
       frame.reg[result.reg] = cmd_inputs[0];
+
     } else {
       frame.curr_block->dump();
       UNREACHABLE;
@@ -310,7 +315,8 @@ void Cmd::Execute(StackFrame& frame) {
             cmd_inputs[0].as_type->is_pointer() ||
             cmd_inputs[0].as_type->is_function()));
     assert(cmd_inputs[2].flag == ValType::StackAddr ||
-           cmd_inputs[2].flag == ValType::HeapAddr);
+           cmd_inputs[2].flag == ValType::HeapAddr ||
+           cmd_inputs[2].flag == ValType::GlobalAddr);
 
     if (cmd_inputs[2].flag == ValType::StackAddr) {
       size_t offset = cmd_inputs[2].as_stack_addr;
@@ -356,7 +362,7 @@ void Cmd::Execute(StackFrame& frame) {
         break;
       }
 #undef DO_STORE
-    } else {
+    } else if (cmd_inputs[2].flag == ValType::HeapAddr) {
 
 #define DO_STORE(cpp_type, t, T)                                               \
   if (cmd_inputs[0].as_type == T) {                                            \
@@ -385,6 +391,9 @@ void Cmd::Execute(StackFrame& frame) {
         break;
       }
 #undef DO_STORE
+    } else {
+      InitialGlobals[cmd_inputs[2].as_global_addr] = cmd_inputs[1];
+      break;
     }
     UNREACHABLE;
   } break;

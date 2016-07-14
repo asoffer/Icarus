@@ -25,6 +25,17 @@
 #include "util/command_line_args.h"
 #include "util/timer.h"
 
+namespace data {
+extern llvm::Constant *null(const Type *t);
+extern llvm::ConstantInt *const_bool(bool b);
+extern llvm::ConstantInt *const_uint(size_t n);
+extern llvm::ConstantInt *const_uint32(size_t n);
+extern llvm::ConstantInt *const_int(long n);
+extern llvm::ConstantInt *const_char(char c);
+extern llvm::ConstantFP *const_real(double d);
+extern llvm::Value *global_string(const std::string &s);
+} // namespace data
+
 static size_t start_time;
 static size_t end_time;
 
@@ -36,9 +47,15 @@ static Timer timer;
 
 extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
+
 namespace TypeSystem {
 extern void GenerateLLVM();
 } // namespace TypeSystem
+
+namespace IR {
+extern std::vector<IR::Value> InitialGlobals;
+extern std::vector<llvm::Value *> LLVMGlobals;
+} // namespace IR
 
 std::queue<AST::Node *> VerificationQueue;
 
@@ -242,11 +259,23 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Emit-IR") {
     for (auto decl : Scope::Global->ordered_decls_) {
-      auto id = decl->identifier;
+      if (decl->arg_val || decl->type->is_function()) { continue; }
+      decl->stack_loc = IR::Value::CreateGlobal();
+      if (decl->IsInferred() || decl->IsCustomInitialized()) {
+        assert(decl->init_val);
+        IR::InitialGlobals[decl->stack_loc.as_global_addr] =
+            decl->init_val->EmitIR();
+      } else if (decl->IsDefaultInitialized()) {
+        IR::InitialGlobals[decl->stack_loc.as_global_addr] =
+            decl->type->EmitInitialValue();
+      } else {
+        NOT_YET;
+      }
+    }
 
-      if (decl->arg_val) { continue; }
-
-      if (id->type->is_function()) { id->EmitIR(); }
+    for (auto decl : Scope::Global->ordered_decls_) {
+      if (decl->arg_val || !decl->type->is_function()) { continue; }
+      decl->identifier->EmitIR();
     }
   }
 
@@ -270,19 +299,29 @@ int main(int argc, char *argv[]) {
               /* Initializer = */ 0, // might be specified below
               /*        Name = */ id->token);
 
-          if (decl->IsInferred()) {
-            // TODO meld this into GetGlobal
-            // decl->evaluate();
-
-            auto global_val = decl->init_val->GetGlobal();
-            assert(llvm::isa<llvm::Constant>(global_val) &&
-                   "Value is not a constant");
-            gvar->setInitializer(global_val);
-
-          } else {
-            gvar->setInitializer(type->InitialValue());
+          auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
+          llvm::Constant *init_val;
+          switch (ir_val.flag) {
+          case IR::ValType::B:
+            init_val = data::const_bool(ir_val.as_bool);
+            break;
+          case IR::ValType::C:
+            init_val = data::const_char(ir_val.as_char);
+            break;
+          case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
+          case IR::ValType::R:
+            init_val = data::const_real(ir_val.as_real);
+            break;
+          case IR::ValType::U:
+            init_val = data::const_uint(ir_val.as_uint);
+            break;
+          default: NOT_YET;
           }
 
+          gvar->setInitializer(init_val);
+          IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
+
+          // TODO is this useful?
           id->decl->alloc = gvar;
 
         } else if (type->is_array()) {
