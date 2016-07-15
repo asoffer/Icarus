@@ -352,7 +352,7 @@ struct FunctionLiteral : public Expression {
 
   bool code_gened;
 
-  std::map<Type *, FunctionLiteral *> cache;
+  std::map<Type *, Declaration *> cache;
 
 private:
   IR::Value Emit(bool should_gen);

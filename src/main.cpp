@@ -274,7 +274,9 @@ int main(int argc, char *argv[]) {
     }
 
     for (auto decl : Scope::Global->ordered_decls_) {
-      if (decl->arg_val || !decl->type->is_function()) { continue; }
+      if (decl->arg_val || !decl->type->is_function() || decl->type->has_vars) {
+        continue;
+      }
       decl->identifier->EmitIR();
     }
   }

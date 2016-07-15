@@ -12,9 +12,9 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 extern std::stack<Scope *> ScopeStack;
 
-static AST::FunctionLiteral *
-GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
-                          const std::map<TypeVariable *, Type *> &matches) {
+static AST::Declaration *
+GenerateSpecifiedFunctionDecl(AST::FunctionLiteral *fn_lit,
+                              const std::map<TypeVariable *, Type *> &matches) {
   auto num_matches = matches.size();
   auto lookup_key  = new TypeVariable *[num_matches];
   auto lookup_val  = new Type *[num_matches];
@@ -41,7 +41,19 @@ GenerateSpecifiedFunction(AST::FunctionLiteral *fn_lit,
   delete[] lookup_key;
   delete[] lookup_val;
 
-  return cloned_func;
+  auto new_id      = new AST::Identifier(fn_lit->loc, "_______");
+  auto decl        = new AST::Declaration;
+  new_id->decl     = decl;
+  new_id->type     = cloned_func->type;
+  new_id->scope_   = fn_lit->scope_;
+  decl->loc        = fn_lit->loc;
+  decl->scope_     = fn_lit->scope_;
+  decl->identifier = new_id;
+  decl->init_val   = cloned_func;
+  decl->alloc      = nullptr;
+  decl->stack_loc  = IR::Value(~0ul);
+  decl->arg_val    = nullptr;
+  return decl;
 }
 
 // TODO:
@@ -97,6 +109,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto local_stack = new IR::LocalStack;
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
+    std::cerr << *rhs << std::endl;
     auto test_result = f.as_func->Call(local_stack, {IR::Value(rhs)});
     delete local_stack;
     assert(test_result.flag == IR::ValType::B);
@@ -302,6 +315,15 @@ static Type *EvalWithVars(Type *type,
   if (type) { return; }                                                        \
   type = Unknown
 
+#define VERIFY_AND_RETURN_ON_ERROR(expr)                                       \
+  do {                                                                         \
+    expr->verify_types();                                                      \
+    if (expr->type == Err) {                                                   \
+      type = Err;                                                              \
+      return;                                                                  \
+    }                                                                          \
+  } while (false)
+
 namespace AST {
 // TODO In what file should this be placed?
 // TODO this should take a context because flushing it out depends on the
@@ -335,7 +357,7 @@ void Terminal::verify_types() {
   }
 }
 
-#define LOOP_OVER_DECLS_FROM(s)                                                \
+#define LOOP_OVER_DECLS_FROM(s, d)                                             \
   for (auto scope_ptr = s; scope_ptr; scope_ptr = scope_ptr->parent)           \
     for (auto d : scope_ptr->DeclRegistry)
 
@@ -350,7 +372,7 @@ void Identifier::verify_types() {
 
   std::vector<Declaration *> potential_decls;
 
-  LOOP_OVER_DECLS_FROM(scope_) {
+  LOOP_OVER_DECLS_FROM(scope_, d) {
     if (token != d->identifier->token) { continue; }
     potential_decls.push_back(d);
   }
@@ -374,12 +396,8 @@ void Identifier::verify_types() {
 
 void Unop::verify_types() {
   STARTING_CHECK;
-  operand->verify_types();
 
-  if (operand->type == Err) {
-    type = Err;
-    return;
-  }
+  VERIFY_AND_RETURN_ON_ERROR(operand);
 
   using Language::Operator;
   switch (op) {
@@ -485,13 +503,8 @@ void Access::verify_types() {
 
 void Access::Verify(bool emit_errors) {
   operand->verify_types();
+  VERIFY_AND_RETURN_ON_ERROR(operand);
   auto base_type = operand->type;
-
-  // Propogate errors silently.
-  if (base_type == Err) {
-    type = Err;
-    return;
-  }
 
   // Access passes through pointers
   while (base_type->is_pointer()) {
@@ -572,6 +585,19 @@ void Access::Verify(bool emit_errors) {
   assert(type && "type is nullptr in access");
 }
 
+static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
+                                                        const std::string &id) {
+  std::vector<Declaration *> matching_decls;
+  LOOP_OVER_DECLS_FROM(scope, d) {
+    if (d->identifier->token != id) { continue; }
+    d->verify_types();
+    if (d->type == Err) { continue; }
+    matching_decls.push_back(d);
+  }
+  return matching_decls;
+}
+
+
 void Binop::verify_types() {
   STARTING_CHECK;
 
@@ -631,104 +657,68 @@ void Binop::verify_types() {
     std::map<TypeVariable *, Type *> matches;
 
     if (lhs->is_identifier()) {
-      auto id_token = ((AST::Identifier *)lhs)->token;
-
-      std::vector<Declaration *> decls_with_matching_id;
-      LOOP_OVER_DECLS_FROM(scope_) {
-        if (d->identifier->token == id_token) {
-          d->verify_types();
-          if (d->type != Err) { decls_with_matching_id.push_back(d); }
-        }
-      }
-
-      if (rhs) {
-        rhs->verify_types();
-        if (rhs->type == Err) {
-          type = Err;
-          return;
-        }
-      }
-
-      std::vector<Declaration *> valid_matches;
+      auto lhs_id = (Identifier *)lhs;
+      auto matching_decls = AllDeclsInScopeWithId(scope_, lhs_id->token);
+      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       // Look for valid matches by looking at any declaration which has a
       // matching token.
-      for (auto decl : decls_with_matching_id) {
+      std::vector<Declaration *> valid_matches;
+      for (auto decl : matching_decls) {
         if (decl->type->is_function()) {
-          if (!rhs && ((Function *)decl->type)->input == Void) {
-            // If there is no input, and the function takes Void as its input,
-            // we found a match.
-            valid_matches.emplace_back(decl);
-
-          } else if (MatchCall(((Function *)decl->type)->input, rhs->type,
-                               matches, err_msg)) {
-
+          auto fn_type = (Function *)decl->type;
+          // If there is no input, and the function takes Void as its input, or
+          // if the types just match, then add it to your list of matches.
+          if ((!rhs && fn_type->input == Void) ||
+              MatchCall(fn_type->input, rhs->type, matches, err_msg)) {
             valid_matches.emplace_back(decl);
           }
-
         } else {
-          assert(decl->type == Type_ &&
-                 "Should have caught the bad-type of the decl earlier");
-
+          assert(decl->type == Type_);
           Ctx ctx;
           decl->evaluate(ctx);
-          if (decl->value.as_type->is_parametric_struct()) {
-            auto param_ast_expr =
-                ((ParametricStructure *)decl->value.as_type)->ast_expression;
+          if (!decl->value.as_type->is_parametric_struct()) { continue; }
+          auto param_expr =
+              ((ParametricStructure *)decl->value.as_type)->ast_expression;
 
-            // Get the types of parameter entries
-            std::vector<Type *> param_type_vec;
-            for (auto p : param_ast_expr->params) {
-              param_type_vec.push_back(p->type);
-            }
-            Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
-                                                          : Tup(param_type_vec);
+          // Get the types of parameter entries
+          std::vector<Type *> param_types;
+          for (auto p : param_expr->params) { param_types.push_back(p->type); }
+          Type *param_type =
+              param_types.size() == 1 ? param_types[0] : Tup(param_types);
 
-            // Get the input types we're trying to match
-            std::vector<Type *> input_type_vec;
-            Type *input_type = nullptr;
-            if (rhs->is_chain_op()) {
-              for (auto elem : ((ChainOp *)rhs)->exprs) {
-                input_type_vec.push_back(elem->type);
-              }
-              input_type = Tup(input_type_vec);
-            } else {
-              input_type = rhs->type;
+          // Get the input types we're trying to match
+          std::vector<Type *> input_type_vec;
+          Type *input_type = nullptr;
+          if (rhs->is_chain_op()) {
+            for (auto elem : ((ChainOp *)rhs)->exprs) {
+              input_type_vec.push_back(elem->type);
             }
+            input_type = Tup(input_type_vec);
+          } else {
+            input_type = rhs->type;
+          }
 
-            if (MatchCall(param_type, input_type, matches, err_msg)) {
-              valid_matches.emplace_back(decl);
-            }
+          if (MatchCall(param_type, input_type, matches, err_msg)) {
+            valid_matches.emplace_back(decl);
           }
         }
       } // End of decl loop
 
-      if (valid_matches.size() == 1) {
-        lhs->type = valid_matches[0]->type;
-        ((Identifier *)lhs)->decl = valid_matches[0];
-
-      } else {
-        // Use err_msg
+      if (valid_matches.size() != 1) {
+        UNREACHABLE;
         Error::Log::Log(loc, valid_matches.empty() ? "No valid matches"
-                                                 : "Ambiguous call");
-        type      = Err;
-        lhs->type = Err;
-        return;
-      }
-    } else {
-      lhs->verify_types();
-      if (lhs->type == Err) {
-        type = Err;
+                                                   : "Ambiguous call");
+        type = lhs->type = Err;
         return;
       }
 
-      if (rhs) {
-        rhs->verify_types();
-        if (rhs->type == Err) {
-          type = Err;
-          return;
-        }
-      }
+      lhs->type = valid_matches[0]->type;
+      ((Identifier *)lhs)->decl = valid_matches[0];
+
+    } else {
+      VERIFY_AND_RETURN_ON_ERROR(lhs);
+      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       if (lhs->type->is_function()) {
         if (!MatchCall(((Function *)lhs->type)->input, (rhs ? rhs->type : Void),
@@ -756,11 +746,8 @@ void Binop::verify_types() {
           Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
                                                         : Tup(param_type_vec);
 
-          rhs->verify_types();
-          if (rhs->type == Err) {
-            type = Err;
-            return;
-          }
+          VERIFY_AND_RETURN_ON_ERROR(rhs);
+
           // TODO can you have a parametric struct taking no arguments? If so,
           // rhs could be empty and we have a bug!
 
@@ -789,13 +776,7 @@ void Binop::verify_types() {
       }
     }
 
-    if (rhs) {
-      rhs->verify_types();
-      if (rhs->type == Err) {
-        type = Err;
-        return;
-      }
-    }
+    if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
     // If you get here, you know the types all match. We just need to compute
     // the type of the call.
@@ -816,7 +797,11 @@ void Binop::verify_types() {
         assert(rhs);
 
         // If you can't find it in the cache, generate it.
-        fn_expr->cache[rhs->type] = GenerateSpecifiedFunction(fn_expr, matches);
+        fn_expr->cache[rhs->type] = GenerateSpecifiedFunctionDecl(fn_expr, matches);
+        if(lhs->is_identifier()) {
+          ((Identifier *)lhs)->decl = fn_expr->cache[rhs->type];
+        }
+
       }
 
     } else {
@@ -834,11 +819,7 @@ void Binop::verify_types() {
   assert(rhs);
   lhs->verify_types();
   rhs->verify_types();
-  if (lhs->type == Err || rhs->type == Err) {
-    // An error was already found in the types, so just pass silently
-    type = Err;
-    return;
-  }
+  if (lhs->type == Err || rhs->type == Err) { type = Err; return; }
 
   using Language::Operator;
   // TODO if lhs is reserved?
@@ -1677,5 +1658,6 @@ void DummyTypeExpr::verify_types() {
 }
 } // namespace AST
 
+#undef VERIFY_AND_RETURN_ON_ERROR
 #undef LOOP_OVER_DECLS_FROM
 #undef STARTING_CHECK

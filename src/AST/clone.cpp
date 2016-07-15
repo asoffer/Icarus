@@ -47,11 +47,18 @@ void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
   ((Structure *)cache_loc->value.as_type)->creator = this;
 }
 
+Node *DummyTypeExpr::clone(LOOKUP_ARGS) {
+  if (value.as_type->has_vars) {
+    NOT_YET;
+  } else {
+    return new DummyTypeExpr(loc, value.as_type);
+  }
+}
+
 Node *Expression::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *ParametricStructLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *StructLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *EnumLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
-Node *DummyTypeExpr::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *TokenNode::clone(LOOKUP_ARGS) { NOT_YET; }
@@ -66,10 +73,9 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
 
   for (auto input : inputs) {
     auto cloned_input     = (Declaration *)input->CLONE;
-    cloned_input->arg_val = this;
+    cloned_input->arg_val = fn_lit;
     fn_lit->inputs.push_back(cloned_input);
   }
-
 
   return fn_lit;
 }

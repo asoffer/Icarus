@@ -787,6 +787,7 @@ void LocalStack::RemoveFrame(StackFrame *fr) { used = fr->offset; }
 
 Value IR::Func::Call(LocalStack *local_stack,
                      const std::vector<Value> &arg_vals) {
+  dump();
   StackFrame frame(this, local_stack, arg_vals);
 
 eval_loop_start:
