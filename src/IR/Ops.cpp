@@ -54,7 +54,7 @@ Value Value::CreateGlobal() {
 
 Func::Func(Function *fn_type, bool should_gen)
     : fn_type(fn_type), llvm_fn(nullptr), alloc_block(nullptr), num_cmds(0),
-      frame_size(0), generated(false) {
+      frame_size(0), generated(Gen::NotYet) {
 
   if (!fn_type->has_vars) {
     should_gen &=

@@ -3,6 +3,9 @@
 #include "Scope.h"
 #include "Stack.h"
 
+extern std::vector<IR::Func *> all_functions;
+extern llvm::Module *global_module;
+
 IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
@@ -279,9 +282,8 @@ IR::Value Binop::EmitIR() {
     return IR::Value();
   } break;
   case Language::Operator::Cast: {
-    auto rhs_val = rhs->EmitIR();
-    // NOTE: Demand knowing the type now rather than at eval time
-    assert(rhs_val.flag == IR::ValType::T);
+    Ctx ctx;
+    auto rhs_val = rhs->evaluate(ctx);
     return IR::Cast(lhs->type, rhs_val.as_type, lhs->EmitIR());
   };
   case Language::Operator::Arrow: {
@@ -654,7 +656,6 @@ IR::Value ChainOp::EmitIR() {
 
     IR::Block::Current = landing_block;
     IR::Block::Current->push(phi);
-
     return IR::Value::Reg(phi.result.reg);
   } break;
   case Language::Operator::Comma: UNREACHABLE;
@@ -762,8 +763,20 @@ IR::Value Statements::EmitIR() {
 
 IR::Value Identifier::EmitIR() {
   if (type == Type_) { // TODO move this to wherever it should be
-    Ctx ctx;
-    return IR::Value(evaluate(ctx).as_type);
+    if (decl->arg_val) {
+      if (decl->arg_val->is_function_literal()) {
+        auto fn_lit = (FunctionLiteral *)decl->arg_val;
+        for (size_t i = 0; i < fn_lit->inputs.size(); ++i) {
+          if (decl == fn_lit->inputs[i]) { return IR::Value::Arg(i); }
+        }
+      } else {
+        NOT_YET;
+      }
+      UNREACHABLE;
+    } else {
+      Ctx ctx;
+      return IR::Value(evaluate(ctx).as_type);
+    }
   }
 
   if (decl->is_in_decl()) { return decl->stack_loc; }
@@ -787,17 +800,31 @@ IR::Value Identifier::EmitIR() {
     if (decl->stack_loc.as_uint != ~0ul) { return decl->stack_loc; }
 
     auto fn_type = (Function *)type;
-    
+
     // TODO Is this really the place to name the function? Shouldn't that be
     // done in its declaration?
 
     auto old_func  = IR::Func::Current;
     auto old_block = IR::Block::Current;
 
-    decl->stack_loc = decl->init_val->EmitIR();
-
-    decl->stack_loc.as_func->name =
-        Mangle(fn_type, decl->identifier, decl->scope_);
+    if (decl->init_val) {
+      decl->stack_loc = decl->init_val->EmitIR();
+      decl->stack_loc.as_func->name =
+          Mangle(fn_type, decl->identifier, decl->scope_);
+    } else if (decl->HasHashtag("cstdlib")) {
+      auto fn = new IR::Func(fn_type, false);
+      // TODO call mangle even though it's known to be cstdlib?
+      fn->name                         = token;
+      fn->generated                    = IR::Func::Gen::ToLink;
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+      all_functions.push_back(fn);
+      fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+          fn->name, llvm_fn_type);
+      decl->stack_loc = IR::Value(fn);
+    } else {
+      std::cerr << *decl << '\n';
+      NOT_YET;
+    }
 
     IR::Func::Current  = old_func;
     IR::Block::Current = old_block;
@@ -1039,7 +1066,7 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
                                        IR::Value &head_ptr,
                                        IR::Value &len_val) {
   if (array_type->fixed_length) {
-    head_ptr = IR::Access(array_type, IR::Value(0ul), container_val);
+    head_ptr = IR::Access(array_type->data_type, IR::Value(0ul), container_val);
     len_val  = IR::Value(array_type->len);
   } else {
     head_ptr = IR::Load(Ptr(array_type->data_type),

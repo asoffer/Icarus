@@ -350,6 +350,11 @@ int main(int argc, char *argv[]) {
       ScopeStack.push(Scope::Global);
       for (auto stmt : global_statements->statements) {
         if (stmt->is_declaration()) { continue; }
+        if (stmt->is_unop() &&
+            ((AST::Unop *)stmt)->op == Language::Operator::Import) {
+          continue;
+        }
+        std::cerr << *stmt<< std::endl;
         NOT_YET;
         // stmt->generate_code();
       }

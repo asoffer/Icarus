@@ -8,10 +8,12 @@ IR::Value Binop::EmitLVal() {
   if (op == Language::Operator::Index && lhs->type->is_array()) {
     auto array_type = (Array *)lhs->type;
 
-    return IR::Access(array_type->data_type, rhs->EmitIR(),
-                      array_type->fixed_length
-                          ? lhs->EmitLVal()
-                          : IR::ArrayData(array_type, lhs->EmitLVal()));
+    return IR::Access(
+        array_type->data_type, rhs->EmitIR(),
+        array_type->fixed_length
+            ? lhs->EmitLVal()
+            : IR::Load(Ptr(array_type->data_type),
+                       IR::ArrayData(array_type, lhs->EmitLVal())));
   } else {
     NOT_YET;
   }

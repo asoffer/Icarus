@@ -227,7 +227,11 @@ struct Func {
 
   size_t PushSpace(Type *t);
 
-  bool generated;
+  // NotYet - Should generate the code to this function but have not yet.
+  // ToLink - This is just a stub. It should never have it's code generated
+  //   Done - Code has been generated
+  enum class Gen : char { NotYet, ToLink, Done };
+  Gen generated;
 
   void GenerateLLVM();
 

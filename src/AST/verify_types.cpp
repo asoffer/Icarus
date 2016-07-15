@@ -32,15 +32,6 @@ GenerateSpecifiedFunctionDecl(AST::FunctionLiteral *fn_lit,
   auto old_stack_size = ScopeStack.size();
   ScopeStack.push(fn_lit->scope_);
 
-  cloned_func->assign_scope();
-  cloned_func->verify_types();
-
-  ScopeStack.pop();
-  assert(ScopeStack.size() == old_stack_size);
-
-  delete[] lookup_key;
-  delete[] lookup_val;
-
   auto new_id      = new AST::Identifier(fn_lit->loc, "_______");
   auto decl        = new AST::Declaration;
   new_id->decl     = decl;
@@ -53,6 +44,16 @@ GenerateSpecifiedFunctionDecl(AST::FunctionLiteral *fn_lit,
   decl->alloc      = nullptr;
   decl->stack_loc  = IR::Value(~0ul);
   decl->arg_val    = nullptr;
+
+  decl->assign_scope();
+  decl->verify_types();
+
+  ScopeStack.pop();
+  assert(ScopeStack.size() == old_stack_size);
+
+  delete[] lookup_key;
+  delete[] lookup_val;
+
   return decl;
 }
 
@@ -109,7 +110,6 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto local_stack = new IR::LocalStack;
     auto f = test_fn->EmitIR();
     assert(f.flag == IR::ValType::F);
-    std::cerr << *rhs << std::endl;
     auto test_result = f.as_func->Call(local_stack, {IR::Value(rhs)});
     delete local_stack;
     assert(test_result.flag == IR::ValType::B);
@@ -790,7 +790,11 @@ void Binop::verify_types() {
 
         auto in_type = ((Function *)evaled_type)->input;
         for (auto &cached_fn : fn_expr->cache) {
-          if (cached_fn.first == in_type) { return; }
+          if (cached_fn.first != in_type) { continue; }
+          if (lhs->is_identifier()) {
+            ((Identifier *)lhs)->decl = cached_fn.second;
+          }
+          return;
         }
 
         // If you have variables, the input cannot be void.

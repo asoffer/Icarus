@@ -81,7 +81,7 @@ static void CompletePhiDefinition(IR::Func *ir_fn, IR::Block *block,
 }
 
 void Func::GenerateLLVM() {
-  if (generated) { return; }
+  if (generated != Gen::NotYet) { return; }
   std::vector<llvm::BasicBlock *> llvm_blocks(blocks.size(), nullptr);
   llvm_fn->setName(name);
 
@@ -105,7 +105,7 @@ void Func::GenerateLLVM() {
   builder.SetInsertPoint(alloc_block);
   assert(!llvm_blocks.empty());
   builder.CreateBr(llvm_blocks[0]);
-  generated = true;
+  generated = Gen::Done;
 }
 
 llvm::BasicBlock *
@@ -320,8 +320,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         break;
 
       case IR::Op::TEQ:
-        assert((reinterpret_cast<Type *>(args[0])->time() & Time::run) != 0);
-        assert((reinterpret_cast<Type *>(args[1])->time() & Time::run) != 0);
         registers[cmd.result.reg] =
             data::const_bool(reinterpret_cast<Type *>(args[0]) ==
                              reinterpret_cast<Type *>(args[1]));
@@ -340,8 +338,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         break;
 
       case IR::Op::TNE:
-        assert((reinterpret_cast<Type *>(args[0])->time() & Time::run) != 0);
-        assert((reinterpret_cast<Type *>(args[1])->time() & Time::run) != 0);
         registers[cmd.result.reg] =
             data::const_bool(reinterpret_cast<Type *>(args[0]) !=
                              reinterpret_cast<Type *>(args[1]));
@@ -382,7 +378,10 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateBitCast(
             builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);
         break;
-      case IR::Op::Free: builder.CreateCall(cstdlib::free(), args[0]); break;
+      case IR::Op::Free:
+        builder.CreateCall(cstdlib::free(),
+                           builder.CreateBitCast(args[0], *RawPtr));
+        break;
       case IR::Op::ArrayLength:
         registers[cmd.result.reg] = builder.CreateGEP(
             args[0], {data::const_uint32(0), data::const_uint32(0)});
@@ -501,8 +500,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(args[1], args[2]);
         break;
       case IR::Op::Access: {
-        registers[cmd.result.reg] =
-            builder.CreateGEP(args[2], {data::const_uint32(0), args[1]});
+        registers[cmd.result.reg] = builder.CreateGEP(
+            builder.CreateBitCast(args[2], *cmd.result.type), args[1]);
       } break;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
