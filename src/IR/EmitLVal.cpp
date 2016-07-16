@@ -29,14 +29,41 @@ IR::Value DummyTypeExpr::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }
 IR::Value InDecl::EmitLVal() { NOT_YET; }
 
-IR::Value Access::EmitLVal() { 
+IR::Value Access::EmitLVal() {
   // Automatically pass through pointers
   auto etype  = operand->type;
   auto e_lval = operand->EmitLVal();
+  /*
+     assert(etype->is_pointer());
+    auto ptee = ((Pointer *)etype)->pointee;
+    while (ptee->is_pointer()) {
+      e_lval = IR::Load(ptee, e_lval);
+      etype  = ptee;
+      ptee   = ((Pointer *)ptee)->pointee;
+    }
 
-  while (etype->is_pointer()) {
-    e_lval = IR::Load(etype, e_lval);
-    etype  = ((Pointer *)etype)->pointee;
+    assert(ptee->is_struct());
+    auto struct_type = (Structure *)ptee;
+    return IR::Field(struct_type, e_lval,
+                     struct_type->field_name_to_num AT(member_name));
+  }
+   */
+  // TODO This might be a hack
+  if (e_lval.flag ==IR::ValType::Arg) {
+    assert(etype->is_pointer());
+    auto ptee = ((Pointer *)etype)->pointee;
+    while (ptee->is_pointer()) {
+      e_lval = IR::Load(ptee, e_lval);
+      etype  = ptee;
+      ptee   = ((Pointer *)ptee)->pointee;
+    }
+    etype = ptee;
+
+  } else {
+    while (etype->is_pointer()) {
+      e_lval = IR::Load(etype, e_lval);
+      etype  = ((Pointer *)etype)->pointee;
+    }
   }
 
   assert(etype->is_struct());

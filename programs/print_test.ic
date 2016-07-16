@@ -6,7 +6,7 @@ main := void -> void {
   print false, ','
   b1 : bool = true  // longhand definition
   b2 := false  // shorthand definition
-  print b1, ',', b2,
+  print b1, ',', b2
   print b2, '\n'
   
   // characters

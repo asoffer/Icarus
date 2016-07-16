@@ -852,9 +852,10 @@ IR::Value Declaration::EmitIR() {
     type->EmitInit(identifier->EmitLVal());
 
   } else {
-    // TODO what if rhs doesn't have an lvalue?
-    Type::CallAssignment(scope_, identifier->type, init_val->type,
-                         init_val->EmitIR(), identifier->EmitLVal());
+    if (type != Type_) {
+      Type::CallAssignment(scope_, identifier->type, init_val->type,
+                           init_val->EmitIR(), identifier->EmitLVal());
+    }
   }
 
   return IR::Value();

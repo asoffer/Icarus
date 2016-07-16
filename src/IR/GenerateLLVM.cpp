@@ -123,9 +123,14 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       switch (cmd.op_code) {
       case IR::Op::Field: {
         assert(cmd.args[2].flag == IR::ValType::U);
+        // dump();
+        // builder.GetInsertBlock()->dump();
+        // std::cerr << cmd.args[2].as_uint << std::endl;
+
         registers[cmd.result.reg] = builder.CreateGEP(
             IR_to_LLVM(ir_fn, cmd.args[1], registers),
             {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint)});
+        // std::cerr << "------------------\n";
       }
         continue;
       case IR::Op::Phi: {
