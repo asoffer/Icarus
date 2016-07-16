@@ -143,44 +143,44 @@ extern size_t precedence(Operator op);
 // 8th bit, leaves bits 0-7 for standard enumeration. This is safe because we
 // will never have more than 128 NodeTypes in a given section.
 
-constexpr int OP_ = 1 << 6;
+enum NodeType : unsigned int {
+  bof           = 1u << 0,
+  eof           = 1u << 1,
+  newline       = 1u << 3,
+  prog          = 1u << 4,
+  stmts         = 1u << 5,
+  if_stmt       = 1u << 6,
+  one_stmt      = 1u << 7,
+  expr          = 1u << 8,
+  fn_expr       = 1u << 9,
+  l_paren       = 1u << 10,
+  r_paren       = 1u << 11,
+  l_bracket     = 1u << 12,
+  r_bracket     = 1u << 13,
+  l_brace       = 1u << 14,
+  r_brace       = 1u << 15,
+  semicolon     = 1u << 16,
+  hashtag       = 1u << 17,
+  kw_expr_block = 1u << 18,
+  kw_if         = 1u << 19,
+  kw_else       = 1u << 20,
+  kw_block      = 1u << 21,
+  kw_struct     = 1u << 22,
 
-enum NodeType : char {
-  bof,
-  eof,
-  newline,
-  prog,
-  stmts,
-  if_stmt,
-  one_stmt,
-
-  expr,
-  fn_expr,
-
-  l_paren,
-  r_paren,
-  l_bracket,
-  r_bracket,
-  l_brace,
-  r_brace,
-
-  semicolon,
-  hashtag,
-  kw_expr_block,
-  kw_if,
-  kw_else,
-  kw_block,
-  kw_struct,
-
-  op_l = OP_,
-  op_b, colon, eq, comma,
-  op_bl,
-  dots,
-  op_lt,
-  fn_arrow,
+  op_l          = 1u << 23,
+  op_b          = 1u << 24,
+  colon         = 1u << 25,
+  eq            = 1u << 26,
+  comma         = 1u << 27,
+  op_bl         = 1u << 28,
+  dots          = 1u << 29,
+  op_lt         = 1u << 30,
+  fn_arrow      = 1u << 31,
 };
 
-inline bool is_operator(NodeType t) { return (t & OP_) != 0; }
+constexpr unsigned int OP_ =
+    op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
+
 } // namespace Language
 
 inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {

@@ -25,6 +25,11 @@
 #include "util/command_line_args.h"
 #include "util/timer.h"
 
+namespace TypeSystem {
+void Initialize();
+} // namespace TypeSystem
+
+
 namespace data {
 extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
@@ -110,48 +115,51 @@ int main(int argc, char *argv[]) {
   RUN(timer, "Icarus Initialization") {
     if (debug::ct_eval) { initscr(); }
 
-    TypeSystem::initialize();
+    TypeSystem::Initialize();
 
     // Initialize the global scope
     Scope::Global = new BlockScope(ScopeType::Global);
   }
 
-  // TODO this initialization can be done asynchronosly. We don't touch LLVM initially.
-  RUN(timer, "LLVM initialization") {
+  // TODO this initialization can be done asynchronosly. We don't touch LLVM
+  // initially.
+  if (file_type != FileType::None) {
+    RUN(timer, "LLVM initialization") {
+      // TODO Assuming X86 architecture. If a command-line arg says otherwise,
+      // load the appropriate tools
+      LLVMInitializeX86Target();
+      LLVMInitializeX86TargetInfo();
+      LLVMInitializeX86TargetMC();
+      LLVMInitializeX86AsmPrinter();
+      LLVMInitializeX86AsmParser();
 
-    // TODO Assuming X86 architecture. If a command-line arg says otherwise,
-    // load the appropriate tools
-    LLVMInitializeX86Target();
-    LLVMInitializeX86TargetInfo();
-    LLVMInitializeX86TargetMC();
-    LLVMInitializeX86AsmPrinter();
-    LLVMInitializeX86AsmParser();
-
-    llvm::StringMap<bool> host_features;
-    llvm::SubtargetFeatures features;
-    if (llvm::sys::getHostCPUFeatures(host_features)) {
-      for (auto &feat: host_features) {
-        features.AddFeature(feat.first(), feat.second);
+      llvm::StringMap<bool> host_features;
+      llvm::SubtargetFeatures features;
+      if (llvm::sys::getHostCPUFeatures(host_features)) {
+        for (auto &feat : host_features) {
+          features.AddFeature(feat.first(), feat.second);
+        }
       }
+
+      llvm::TargetOptions opt;
+      std::string error = "";
+      auto target = llvm::TargetRegistry::lookupTarget(
+          llvm::sys::getDefaultTargetTriple(), error);
+      if (error != "") {
+        std::cerr << error << std::endl;
+        assert(false && "Error in target string lookup");
+      }
+
+      // Hack to get the right target triple on my system:
+      std::string triple_string = llvm::sys::getDefaultTargetTriple();
+      auto last_pos             = triple_string.rfind("15");
+      triple_string             = triple_string.substr(0, last_pos) + "10.11";
+
+      target_machine = target->createTargetMachine(triple_string,
+                                                   llvm::sys::getHostCPUName(),
+                                                   features.getString(), opt);
+      assert(target_machine);
     }
-
-    llvm::TargetOptions opt;
-    std::string error = "";
-    auto target = llvm::TargetRegistry::lookupTarget(
-        llvm::sys::getDefaultTargetTriple(), error);
-    if (error != "") {
-      std::cerr << error << std::endl;
-      assert(false && "Error in target string lookup");
-    }
-
-    // Hack to get the right target triple on my system:
-    std::string triple_string = llvm::sys::getDefaultTargetTriple();
-    auto last_pos             = triple_string.rfind("15");
-    triple_string             = triple_string.substr(0, last_pos) + "10.11";
-
-    target_machine = target->createTargetMachine(
-        triple_string, llvm::sys::getHostCPUName(), features.getString(), opt);
-    assert(target_machine);
   }
 
   while (!file_queue.empty()) {
@@ -191,7 +199,9 @@ int main(int argc, char *argv[]) {
     // Init global module, function, etc.
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
 
-    global_module->setDataLayout(target_machine->createDataLayout());
+    if (file_type != FileType::None) {
+      global_module->setDataLayout(target_machine->createDataLayout());
+    }
 
     // TODO write the language rules to guarantee that the parser produces a
     // Statements node at top level.
@@ -373,7 +383,6 @@ int main(int argc, char *argv[]) {
 
   case FileType::Nat: {
     WriteObjectFile(output_file_name);
-
   } break;
 
   case FileType::Bin: {

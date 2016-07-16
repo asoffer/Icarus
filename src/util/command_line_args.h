@@ -7,10 +7,6 @@ enum class FileType { Bin, IR, Nat, None };
 FileType file_type = FileType::Bin;
 const char *output_file_name = "a.out";
 
-namespace TypeSystem {
-void initialize();
-} // namespace TypeSystem
-
 static void
 ShowUsage(char *argv0) {
   fprintf(stderr,

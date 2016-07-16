@@ -18,7 +18,7 @@ Type *get(const std::string &name) {
   return struct_ptr;
 }
 
-void initialize() {
+void Initialize() {
   // TODO do we need to pair of strings and their types?
   Literals["bool"] = Bool = new Primitive(Primitive::TypeEnum::Bool);
   Literals["char"] = Char = new Primitive(Primitive::TypeEnum::Char);

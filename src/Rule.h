@@ -3,7 +3,7 @@
 
 class Rule {
 public:
-  using OptVec = std::vector<std::set<Language::NodeType>>;
+  using OptVec = std::vector<unsigned int>;
   using fnptr  = AST::Node *(*)(NPtrVec &&);
 
   Rule(unsigned short preced, Language::NodeType output, const OptVec &input,

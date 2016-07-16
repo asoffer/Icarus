@@ -23,9 +23,7 @@ bool Rule::match(const std::vector<Language::NodeType> &node_type_stack) const {
   for (size_t i = 0; i < input_.size(); ++i, --rule_index, --stack_index) {
 
     auto nt = node_type_stack[stack_index];
-    if (input_[rule_index].find(nt) == input_[rule_index].end()) {
-      return false;
-    }
+    if ((input_[rule_index] & nt) == 0) { return false; }
   }
 
   // If you complete the loop, there is a match.

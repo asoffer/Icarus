@@ -29,7 +29,6 @@ namespace AST {
   virtual IR::Value EmitLVal() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
   virtual Context::Value evaluate(Ctx &ctx) ENDING;                            \
-  virtual llvm::Constant *GetGlobal() ENDING;                                  \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 
