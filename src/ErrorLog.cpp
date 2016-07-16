@@ -1,6 +1,8 @@
 #include "ErrorLog.h"
 #include "util/pstr.h"
 #include "SourceFile.h"
+#include "AST/AST.h"
+#include "Type/Type.h"
 
 extern std::map<std::string, SourceFile *> source_map;
 
@@ -78,7 +80,8 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
 
 void Error::Log::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
-  // TODO also log the declarations of the ambiguously declared identifiers and display them.
+  // TODO also log the declarations of the ambiguously declared identifiers and
+  // display them.
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
 
   for (const auto &file_log : log_) {
@@ -263,6 +266,26 @@ void MissingComma(const Cursor &loc) {
       "There are two consecutive expressions. Are you missing a comma?";
   ++num_errs_;
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
+}
+
+void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
+  ++num_errs_;
+  DisplayErrorMessage(msg.c_str(), nullptr, unop->loc, 1);
+}
+
+void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type) {
+  std::string msg_head = "Array is being indexed by an expression of type " +
+                         index_type->to_string() + ".";
+  ++num_errs_;
+  DisplayErrorMessage(
+      msg_head.c_str(),
+      "Arrays must be indexed by integral types (either int or uint)", loc, 1);
+}
+
+void EmptyArrayLit(const Cursor &loc) {
+  ++num_errs_;
+  DisplayErrorMessage("Cannot infer the type of an empty array literal.",
+                      nullptr, loc, 2);
 }
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {

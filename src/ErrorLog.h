@@ -1,6 +1,10 @@
 #ifndef ICARUS_ERROR_LOG_H
 #define ICARUS_ERROR_LOG_H
 
+namespace AST {
+  struct Unop;
+}// namespace AST
+
 namespace Error {
 namespace Log {
 extern size_t num_errs_;
@@ -30,7 +34,9 @@ void TabInCharLit(const Cursor &loc);
 void MissingComma(const Cursor &loc);
 void UndeclaredIdentifier(const Cursor &loc, const char *token);
 void AmbiguousIdentifier(const Cursor &loc, const char *token);
-
+void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
+void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type);
+void EmptyArrayLit(const Cursor &loc);
 } // namespace Log
 } // namespace Error
 

@@ -33,8 +33,12 @@ static inline bool IsNonGraphic(char c) {
   term_ptr->value = val;                                                       \
   return NNT(term_ptr, Language::expr);
 
-#define RETURN_NNT(tk, nt)                                                     \
-  return NNT(new AST::TokenNode(cursor, tk), Language::nt);
+#define RETURN_NNT(tk, nt, tk_len)                                             \
+  {                                                                            \
+    Cursor loc = cursor;                                                       \
+    loc.offset -= tk_len;                                                      \
+    return NNT(new AST::TokenNode(loc, tk), Language::nt);                     \
+  }
 
 namespace TypeSystem {
 extern std::map<std::string, Type *> Literals;
@@ -106,7 +110,7 @@ NNT Lexer::Next() {
 restart:
   // Delegate based on the next character in the file stream
   if (ifs.eof()) {
-    RETURN_NNT("", eof);
+    RETURN_NNT("", eof, 0);
 
   } else if (IsAlphaOrUnderscore(*cursor)) {
     return NextWord();
@@ -118,7 +122,7 @@ restart:
   switch (*cursor) {
   case '\t':
   case ' ': IncrementCursor(); goto restart; // Explicit TCO
-  case '\0': IncrementCursor(); RETURN_NNT("", newline);
+  case '\0': IncrementCursor(); RETURN_NNT("", newline, 0);
   default: return NextOperator();
   }
 }
@@ -176,26 +180,26 @@ NNT Lexer::NextWord() {
     return NNT(term_ptr, Language::kw_else);
 
   } else if (token == "in") {
-    RETURN_NNT("in", op_b);
+    RETURN_NNT("in", op_b, 2);
 
   } else if (token == "print" || token == "import" || token == "free") {
-    RETURN_NNT(token, op_l);
+    RETURN_NNT(token, op_l, token.size());
 
   } else if (token == "while" || token == "for") {
-    RETURN_NNT(token, kw_expr_block);
+    RETURN_NNT(token, kw_expr_block, token.size());
 
   } else if (token == "if") {
-    RETURN_NNT(token, kw_if);
+    RETURN_NNT(token, kw_if, token.size());
 
   } else if (token == "case" || token == "enum") {
-    RETURN_NNT(token, kw_block);
+    RETURN_NNT(token, kw_block, token.size());
 
   } else if (token == "struct") {
-    RETURN_NNT(token, kw_struct);
+    RETURN_NNT(token, kw_struct, token.size());
 
   } else if (token == "return" || token == "continue" || token == "break" ||
              token == "repeat" || token == "restart") {
-    RETURN_NNT(token, op_lt);
+    RETURN_NNT(token, op_lt, token.size());
   }
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
@@ -254,17 +258,17 @@ NNT Lexer::NextNumber() {
 
 NNT Lexer::NextOperator() {
   switch (*cursor) {
-  case '`': IncrementCursor(); RETURN_NNT("`", op_bl);
-  case '@': IncrementCursor(); RETURN_NNT("@", op_l);
-  case ',': IncrementCursor(); RETURN_NNT(",", comma);
-  case ';': IncrementCursor(); RETURN_NNT(";", semicolon);
-  case '(': IncrementCursor(); RETURN_NNT("(", l_paren);
-  case ')': IncrementCursor(); RETURN_NNT(")", r_paren);
-  case '[': IncrementCursor(); RETURN_NNT("[", l_bracket);
-  case ']': IncrementCursor(); RETURN_NNT("]", r_bracket);
-  case '{': IncrementCursor(); RETURN_NNT("{", l_brace);
-  case '}': IncrementCursor(); RETURN_NNT("}", r_brace);
-  case '$': IncrementCursor(); RETURN_NNT("$", op_l);
+  case '`': IncrementCursor(); RETURN_NNT("`", op_bl, 1);
+  case '@': IncrementCursor(); RETURN_NNT("@", op_l, 1);
+  case ',': IncrementCursor(); RETURN_NNT(",", comma, 1);
+  case ';': IncrementCursor(); RETURN_NNT(";", semicolon, 1);
+  case '(': IncrementCursor(); RETURN_NNT("(", l_paren, 1);
+  case ')': IncrementCursor(); RETURN_NNT(")", r_paren, 1);
+  case '[': IncrementCursor(); RETURN_NNT("[", l_bracket, 1);
+  case ']': IncrementCursor(); RETURN_NNT("]", r_bracket, 1);
+  case '{': IncrementCursor(); RETURN_NNT("{", l_brace, 1);
+  case '}': IncrementCursor(); RETURN_NNT("}", r_brace, 1);
+  case '$': IncrementCursor(); RETURN_NNT("$", op_l, 1);
 
   case '.': {
     Cursor cursor_copy  = cursor;
@@ -274,10 +278,10 @@ NNT Lexer::NextOperator() {
     size_t num_dots = cursor.offset - cursor_copy.offset;
 
     if (num_dots == 1) {
-      RETURN_NNT(".", op_b);
+      RETURN_NNT(".", op_b, 1);
     } else {
       if (num_dots > 2) { Error::Log::TooManyDots(cursor_copy, num_dots); }
-      RETURN_NNT("..", dots);
+      RETURN_NNT("..", dots, 2);
     }
   } break;
 
@@ -290,7 +294,7 @@ NNT Lexer::NextOperator() {
     switch(*cursor) {
     case '\\':
       IncrementCursor();
-      RETURN_NNT("", newline);
+      RETURN_NNT("", newline, 0);
       break;
     case '\0':
       // Ignore the following newline
@@ -334,7 +338,7 @@ NNT Lexer::NextOperator() {
     std::string tag = cursor.line.ptr + cursor_copy.offset;
     *cursor         = old_char;
 
-    RETURN_NNT(tag, hashtag);
+    RETURN_NNT(tag, hashtag, tag.size() + 1);
   } break;
 
   case '+':
@@ -350,7 +354,7 @@ NNT Lexer::NextOperator() {
       IncrementCursor();
       token[1] = '=';
     }
-    RETURN_NNT(token, op_b);
+    RETURN_NNT(token, op_b, token.size());
   } break;
 
   case '*':
@@ -361,7 +365,7 @@ NNT Lexer::NextOperator() {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
         BackUpCursor();
-        RETURN_NNT("*", op_b);
+        RETURN_NNT("*", op_b, 1);
       } else {
         Cursor cursor_copy = cursor;
         cursor_copy.offset -= 2;
@@ -370,18 +374,18 @@ NNT Lexer::NextOperator() {
       }
     } else if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("*=", op_b);
+      RETURN_NNT("*=", op_b, 2);
     } else {
-      RETURN_NNT("*", op_b);
+      RETURN_NNT("*", op_b, 1);
     }
 
   case '&': {
     IncrementCursor();
     if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("&=", op_b);
+      RETURN_NNT("&=", op_b, 2);
     } else {
-      RETURN_NNT("&", op_bl);
+      RETURN_NNT("&", op_bl, 1);
     }
   } break;
 
@@ -390,14 +394,14 @@ NNT Lexer::NextOperator() {
 
     if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT(":=", op_b);
+      RETURN_NNT(":=", op_b, 2);
 
     } else if (*cursor == '>') {
       IncrementCursor();
-      RETURN_NNT(":>", op_b);
+      RETURN_NNT(":>", op_b, 2);
 
     } else {
-      RETURN_NNT(":", colon);
+      RETURN_NNT(":", colon, 1);
     }
   } break;
 
@@ -405,9 +409,9 @@ NNT Lexer::NextOperator() {
     IncrementCursor();
     if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("!=", op_b);
+      RETURN_NNT("!=", op_b, 2);
     } else {
-      RETURN_NNT("!", op_l);
+      RETURN_NNT("!", op_l, 1);
     }
   } break;
 
@@ -415,7 +419,7 @@ NNT Lexer::NextOperator() {
     IncrementCursor();
     if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("-=", op_b);
+      RETURN_NNT("-=", op_b, 2);
 
     } else if (*cursor == '>') {
       IncrementCursor();
@@ -428,7 +432,7 @@ NNT Lexer::NextOperator() {
       RETURN_TERMINAL(Hole, Unknown, nullptr);
 
     } else {
-      RETURN_NNT("-", op_bl);
+      RETURN_NNT("-", op_bl, 1);
     }
   } break;
 
@@ -436,14 +440,14 @@ NNT Lexer::NextOperator() {
     IncrementCursor();
     if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("==", op_b);
+      RETURN_NNT("==", op_b, 2);
 
     } else if (*cursor == '>') {
       IncrementCursor();
-      RETURN_NNT("=>", op_b);
+      RETURN_NNT("=>", op_b, 2);
 
     } else {
-      RETURN_NNT("=", eq);
+      RETURN_NNT("=", eq, 1);
     }
   } break;
 
@@ -456,7 +460,7 @@ NNT Lexer::NextOperator() {
 
     } else if (*cursor == '=') {
       IncrementCursor();
-      RETURN_NNT("/=", op_b);
+      RETURN_NNT("/=", op_b, 2);
 
     } else if (*cursor == '*') {
       IncrementCursor();
@@ -468,7 +472,7 @@ NNT Lexer::NextOperator() {
       while (comment_layer != 0) {
         if (ifs.eof()) {
           Error::Log::RunawayMultilineComment();
-          RETURN_NNT("", eof);
+          RETURN_NNT("", eof, 0);
 
         } else if (back_one == '/' && *cursor == '*') {
           ++comment_layer;
@@ -485,7 +489,7 @@ NNT Lexer::NextOperator() {
       return Next();
 
     } else {
-      RETURN_NNT("/", op_b);
+      RETURN_NNT("/", op_b, 1);
     }
 
   } break;

@@ -406,19 +406,23 @@ void Unop::verify_types() {
   } break;
   case Operator::Free: {
     if (!operand->type->is_pointer()) {
-      Error::Log::Log(loc, "Free can only be called on pointer types");
+      std::string msg = "Attempting to free an object of type " +
+                        operand->type->to_string() + ".";
+      Error::Log::UnopTypeFail(msg, this);
     }
     type = Void;
   } break;
   case Operator::Print: {
-    if (operand->type == Void) {
-      Error::Log::Log(loc, "Void types cannot be printed");
-    }
+   if (operand->type == Void) {
+     Error::Log::UnopTypeFail(
+         "Attempting to print an expression with type void.", this);
+   }
     type = Void;
   } break;
   case Operator::Return: {
     if (operand->type == Void) {
-      Error::Log::Log(loc, "Void types cannot be returned");
+      Error::Log::UnopTypeFail(
+          "Attempting to return an expression with type void", this);
     }
 
     type = Void;
@@ -428,9 +432,9 @@ void Unop::verify_types() {
       type = ((Pointer *)operand->type)->pointee;
 
     } else {
-      Error::Log::Log(loc, "Dereferencing object of type " +
-                             operand->type->to_string() +
-                             ", which is not a pointer.");
+      std::string msg = "Attempting to dereference an expression of type " +
+                        operand->type->to_string() + ".";
+      Error::Log::UnopTypeFail(msg, this);
       type = Err;
     }
   } break;
@@ -440,7 +444,8 @@ void Unop::verify_types() {
   } break;
   case Operator::Sub: {
     if (operand->type == Uint) {
-      Error::Log::Log(loc, "Negation applied to unsigned integer");
+      Error::Log::UnopTypeFail(
+          "Attempting to negate an unsigned integer (uint).", this);
       type = Int;
 
     } else if (operand->type == Int) {
@@ -475,6 +480,7 @@ void Unop::verify_types() {
         operand->type == Char) {
       type = Range(operand->type);
     } else {
+
       Error::Log::Log(loc, type->to_string() + " cannot be part of a range");
       type = Err;
     }
@@ -483,9 +489,10 @@ void Unop::verify_types() {
     if (operand->type == Bool) {
       type = Bool;
     } else {
-      Error::Log::Log(
-          loc,
-          "The logical inversion operator `!` only applies to boolean values");
+      Error::Log::UnopTypeFail("Attempting to apply the logical negation "
+                               "operator (!) to an expression of type " +
+                                   operand->type->to_string() + ".",
+                               this);
       type = Err;
     }
   } break;
@@ -904,12 +911,8 @@ void Binop::verify_types() {
     type = ((Array *)lhs->type)->data_type;
     assert(type && "array data type is nullptr");
     // TODO allow slice indexing
-    if (rhs->type == Int) { break; }
-    if (rhs->type == Uint) { break; }
-
-    Error::Log::Log(loc,
-                  "Array must be indexed by an int or uint. You supplied a " +
-                      rhs->type->to_string());
+    if (rhs->type == Int || rhs->type == Uint) { break; }
+    Error::Log::NonIntegralArrayIndex(loc, rhs->type);
     return;
 
   } break;
@@ -1005,10 +1008,10 @@ void Binop::verify_types() {
          * TODO if there is more than one, log them all and give a good        \
          * *error message. For now, we just fail */                            \
         if (correct_decl) {                                                    \
-          Error::Log::Log(loc, "Already found a match for operator `" symbol     \
-                             "` with types " +                                 \
-                                 lhs->type->to_string() + " and " +            \
-                                 rhs->type->to_string());                      \
+          Error::Log::Log(loc, "Already found a match for operator `" symbol   \
+                               "` with types " +                               \
+                                   lhs->type->to_string() + " and " +          \
+                                   rhs->type->to_string());                    \
           type = Err;                                                          \
         } else {                                                               \
           correct_decl = decl;                                                 \
@@ -1016,10 +1019,10 @@ void Binop::verify_types() {
       }                                                                        \
       if (!correct_decl) {                                                     \
         type = Err;                                                            \
-        Error::Log::Log(loc, "No known operator overload for `" symbol           \
-                           "` with types " +                                   \
-                               lhs->type->to_string() + " and " +              \
-                               rhs->type->to_string());                        \
+        Error::Log::Log(loc, "No known operator overload for `" symbol         \
+                             "` with types " +                                 \
+                                 lhs->type->to_string() + " and " +            \
+                                 rhs->type->to_string());                      \
       } else if (type != Err) {                                                \
         type = ((Function *)correct_decl->type)->output;                       \
       }                                                                        \
@@ -1485,7 +1488,7 @@ void ArrayLiteral::verify_types() {
 
   if (elems.empty()) {
     type = Err;
-    Error::Log::Log(loc, "Cannot infer the type of an empty array.");
+    Error::Log::EmptyArrayLit(loc);
     return;
   }
 
