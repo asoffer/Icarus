@@ -60,13 +60,13 @@ Func::Func(Function *fn_type, bool should_gen)
     should_gen &=
         (fn_type->time() == Time::run || fn_type->time() == Time::either);
 
-   llvm::FunctionType *llvm_fn_type = *fn_type;
-
+    llvm::FunctionType *llvm_fn_type = *fn_type;
     if (should_gen) {
       all_functions.push_back(this);
       llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
           name, llvm_fn_type);
     }
+
     alloc_block = make_block("entry", llvm_fn);
 
     blocks.push_back(new Block(0));
@@ -220,8 +220,8 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::T: return os << *value.as_type;
   case ValType::F: {
     os << "fn.";
-    if (value.as_func->name != "") {
-      os << value.as_func->name;
+    if (value.as_func->GetName() != "") {
+      os << value.as_func->GetName();
     } else {
       os << value.as_func;
     }

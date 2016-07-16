@@ -213,13 +213,18 @@ struct Func {
 
   std::vector<Block *> blocks;
   std::vector<Value *> args;
-  std::string name;
   Function *fn_type;
   llvm::Function *llvm_fn;
   llvm::BasicBlock *alloc_block;
 
   Block *entry() { return blocks.front(); }
   Block *exit() { return blocks AT(1); }
+
+  void SetName(const std::string &new_name) {
+    name = new_name;
+    if (llvm_fn) { llvm_fn->setName(name); }
+  }
+  const std::string &GetName() const { return name; }
 
   Value Call(LocalStack *, const std::vector<Value> &);
 
@@ -245,6 +250,9 @@ struct Func {
   }
 
   void dump();
+
+private:
+  std::string name;
 };
 
 #define CMD_WITH_1_ARGS(name, out_type) Value name(Value);

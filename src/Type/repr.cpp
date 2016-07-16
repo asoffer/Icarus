@@ -72,9 +72,9 @@ void Array::EmitRepr(IR::Value val) {
     auto saved_block = IR::Block::Current;
 
     repr_func          = new IR::Func(Func(this, Void));
-    repr_func->name    = "repr." + Mangle(this);
     IR::Func::Current  = repr_func;
     IR::Block::Current = repr_func->entry();
+    repr_func->SetName("repr." + Mangle(this));
 
     IR::Print(IR::Value(Char), IR::Value('['));
     if (fixed_length) {

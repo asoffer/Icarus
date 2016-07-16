@@ -1,6 +1,6 @@
 // Implementation of a stack with a linked list
 node := struct (T: type) {
-  _data: int
+  _data: T
   _next: &node(T)
 }
 

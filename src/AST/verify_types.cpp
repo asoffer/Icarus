@@ -13,7 +13,8 @@ extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 extern std::stack<Scope *> ScopeStack;
 
 static AST::Declaration *
-GenerateSpecifiedFunctionDecl(AST::FunctionLiteral *fn_lit,
+GenerateSpecifiedFunctionDecl(const std::string &name,
+                              AST::FunctionLiteral *fn_lit,
                               const std::map<TypeVariable *, Type *> &matches) {
   auto num_matches = matches.size();
   auto lookup_key  = new TypeVariable *[num_matches];
@@ -32,7 +33,7 @@ GenerateSpecifiedFunctionDecl(AST::FunctionLiteral *fn_lit,
   auto old_stack_size = ScopeStack.size();
   ScopeStack.push(fn_lit->scope_);
 
-  auto new_id      = new AST::Identifier(fn_lit->loc, "_______");
+  auto new_id      = new AST::Identifier(fn_lit->loc, name);
   auto decl        = new AST::Declaration;
   new_id->decl     = decl;
   new_id->type     = cloned_func->type;
@@ -808,10 +809,18 @@ void Binop::verify_types() {
         assert(rhs);
 
         // If you can't find it in the cache, generate it.
-        fn_expr->cache[rhs->type] = GenerateSpecifiedFunctionDecl(fn_expr, matches);
-        if(lhs->is_identifier()) {
-          ((Identifier *)lhs)->decl = fn_expr->cache[rhs->type];
+        if (lhs->is_identifier()) {
+          auto lhs_id  = (Identifier *)lhs;
+          lhs_id->decl = fn_expr->cache[rhs->type] =
+              GenerateSpecifiedFunctionDecl(lhs_id->token, fn_expr, matches);
+          lhs_id->type = lhs_id->decl->type; // TODO I need to do something like
+                                             // this, but maybe this needs to be
+                                             // done more generally?
+        } else {
+          fn_expr->cache[rhs->type] =
+              GenerateSpecifiedFunctionDecl("anon-fn", fn_expr, matches);
         }
+
 
       }
 

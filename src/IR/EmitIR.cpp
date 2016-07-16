@@ -11,7 +11,7 @@ IR::Func *AsciiFunc() {
 
   if (ascii_) { return ascii_; }
   ascii_ = new IR::Func(Func(Uint, Char));
-  ascii_->name = "ascii";
+  ascii_->SetName("ascii");
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -36,7 +36,7 @@ IR::Func *OrdFunc() {
 
   if (ord_) { return ord_; }
   ord_ = new IR::Func(Func(Char, Uint));
-  ord_->name = "ord";
+  ord_->SetName("ord");
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -210,7 +210,7 @@ IR::Value Unop::EmitIR() {
 
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
-    func->name       = "anonymous-func";
+    func->SetName("anonymous-func");
 
     if (operand->type == Void) {
       // Assumptions:
@@ -266,9 +266,7 @@ IR::Value Unop::EmitIR() {
       return IR::Call(type, IR::Value(fn), {val});
     }
   } break;
-  case Language::Operator::At: {
-    return PtrCallFix(type, operand->EmitIR());
-  } break;
+  case Language::Operator::At: return PtrCallFix(type, operand->EmitIR());
   default: UNREACHABLE;
   }
 }
@@ -809,17 +807,17 @@ IR::Value Identifier::EmitIR() {
 
     if (decl->init_val) {
       decl->stack_loc = decl->init_val->EmitIR();
-      decl->stack_loc.as_func->name =
-          Mangle(fn_type, decl->identifier, decl->scope_);
+      decl->stack_loc.as_func->SetName(
+          Mangle(fn_type, decl->identifier, decl->scope_));
     } else if (decl->HasHashtag("cstdlib")) {
       auto fn = new IR::Func(fn_type, false);
       // TODO call mangle even though it's known to be cstdlib?
-      fn->name                         = token;
+      fn->SetName(token);
       fn->generated                    = IR::Func::Gen::ToLink;
       llvm::FunctionType *llvm_fn_type = *fn_type;
       all_functions.push_back(fn);
       fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-          fn->name, llvm_fn_type);
+          fn->GetName(), llvm_fn_type);
       decl->stack_loc = IR::Value(fn);
     } else {
       std::cerr << *decl << '\n';

@@ -256,8 +256,8 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
       auto old_block = IR::Block::Current;
 
       decl->stack_loc = decl->init_val->EmitIR();
-      decl->stack_loc.as_func->name =
-          Mangle(fn_type, decl->identifier, scope_ptr);
+      decl->stack_loc.as_func->SetName(
+          Mangle(fn_type, decl->identifier, scope_ptr));
 
       IR::Func::Current  = old_func;
       IR::Block::Current = old_block;

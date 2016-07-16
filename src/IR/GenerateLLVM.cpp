@@ -123,14 +123,9 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       switch (cmd.op_code) {
       case IR::Op::Field: {
         assert(cmd.args[2].flag == IR::ValType::U);
-        // dump();
-        // builder.GetInsertBlock()->dump();
-        // std::cerr << cmd.args[2].as_uint << std::endl;
-
         registers[cmd.result.reg] = builder.CreateGEP(
             IR_to_LLVM(ir_fn, cmd.args[1], registers),
             {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint)});
-        // std::cerr << "------------------\n";
       }
         continue;
       case IR::Op::Phi: {
@@ -444,7 +439,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
         auto ret_type = cmd.result.type;
 
-        if (ret_type->is_primitive() || ret_type->is_enum()) {
+        if (ret_type->is_primitive() || ret_type->is_pointer() ||
+            ret_type->is_enum()) {
           if (ret_type == Void) {
             builder.CreateCall(fn, args);
           } else {
@@ -539,7 +535,9 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                          exit.false_block->llvm_block);
     break;
   case Exit::Strategy::Return:
-    if (ir_fn->fn_type->output->is_primitive()) {
+    if (ir_fn->fn_type->output->is_primitive() ||
+        ir_fn->fn_type->output->is_pointer() ||
+        ir_fn->fn_type->output->is_enum()) {
       assert(ir_fn->fn_type->output != Void);
       builder.CreateRet(IR_to_LLVM(ir_fn, exit.val, registers));
     } else {

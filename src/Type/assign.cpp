@@ -111,8 +111,8 @@ void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
     auto saved_func  = IR::Func::Current;
     auto saved_block = IR::Block::Current;
 
-    assign_func        = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
-    assign_func->name  = "assign." + Mangle(this);
+    assign_func = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
+    assign_func->SetName("assign." + Mangle(this));
 
     IR::Func::Current  = assign_func;
     IR::Block::Current = assign_func->entry();
