@@ -12,6 +12,10 @@ extern Type *GetFunctionTypeReferencedIn(Scope *scope,
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 extern std::stack<Scope *> ScopeStack;
 
+static Scope *CurrentScope() {
+  return ScopeStack.empty() ? nullptr : ScopeStack.top();
+}
+
 static AST::Declaration *
 GenerateSpecifiedFunctionDecl(const std::string &name,
                               AST::FunctionLiteral *fn_lit,
@@ -46,7 +50,15 @@ GenerateSpecifiedFunctionDecl(const std::string &name,
   decl->stack_loc  = IR::Value(~0ul);
   decl->arg_val    = nullptr;
 
-  decl->assign_scope();
+  // We don't want to run decl->assign_scope() because that automatically adds
+  // it to the scopes DeclRegistry. This will mean it can be looked up in type
+  // verification. We want this function to be matched by its generic form and
+  // then looked up in the cache rather than matching outright.
+
+  decl->scope_= CurrentScope();
+  decl->identifier->assign_scope();
+  if (decl->type_expr) { decl->type_expr->assign_scope(); }
+  if (decl->init_val) { decl->init_val->assign_scope(); }
   decl->verify_types();
 
   ScopeStack.pop();
@@ -608,7 +620,6 @@ static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
 
 void Binop::verify_types() {
   STARTING_CHECK;
-
   if (op == Language::Operator::Call && lhs->is_access()) {
     // This has a lot in common with rhs access
     auto lhs_access = (Access *)lhs;
@@ -617,11 +628,11 @@ void Binop::verify_types() {
     // If the field doesn't exist, it's meant to be UFCS. Modify the AST to make
     // that correct.
     if (lhs_access->type == Err && lhs_access->operand->type != Err) {
-      auto new_lhs =
+
+      // TODO log Error in this case
+      auto ufcs_func =
           scope_->IdentifierBeingReferencedOrNull(lhs_access->member_name);
-      if (!new_lhs) {
-        assert(false); // TODO log error
-      }
+      assert(ufcs_func);
 
       // TODO What if it's indirected >= 2 times? This only deals with 0 or 1
       // indirections
@@ -656,7 +667,7 @@ void Binop::verify_types() {
 
         rhs = new_rhs;
       }
-      lhs = new_lhs;
+      lhs = new Identifier(ufcs_func->loc, lhs_access->member_name);
     }
   }
 
@@ -820,7 +831,6 @@ void Binop::verify_types() {
           fn_expr->cache[rhs->type] =
               GenerateSpecifiedFunctionDecl("anon-fn", fn_expr, matches);
         }
-
 
       }
 

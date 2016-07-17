@@ -12,9 +12,10 @@ llvm::Value *Type::allocate() const {
 // This method allocates stack space for each particular type.
 
 llvm::Value *Function::allocate() const {
-  return llvm::Function::Create((llvm::FunctionType *)llvm_type,
-                                llvm::Function::ExternalLinkage, "__anon.fn",
-                                global_module);
+  return builder.CreateAlloca(*Ptr(const_cast<Function *>(this)));
+//  return llvm::Function::Create((llvm::FunctionType *)llvm_type,
+//                                llvm::Function::ExternalLinkage, "__anon.fn",
+//                                global_module);
 }
 
 llvm::Value *Array::allocate() const {

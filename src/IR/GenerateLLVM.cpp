@@ -100,8 +100,6 @@ void Func::GenerateLLVM() {
                           registers);
   }
 
-
-
   builder.SetInsertPoint(alloc_block);
   assert(!llvm_blocks.empty());
   builder.CreateBr(llvm_blocks[0]);
@@ -438,22 +436,17 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         args.erase(args.begin());
 
         auto ret_type = cmd.result.type;
-
-        if (ret_type->is_primitive() || ret_type->is_pointer() ||
-            ret_type->is_enum()) {
-          if (ret_type == Void) {
-            builder.CreateCall(fn, args);
-          } else {
-            registers[cmd.result.reg] = builder.CreateCall(fn, args);
-          }
-        } else {
-          if (ret_type->is_tuple()) {
+        if (ret_type == Void) {
+          builder.CreateCall(fn, args);
+        } else if (ret_type->is_primitive() || ret_type->is_pointer() ||
+                   ret_type->is_enum()) {
+          registers[cmd.result.reg] = builder.CreateCall(fn, args);
+        } else if (ret_type->is_tuple()) {
             NOT_YET;
-          } else {
-            auto ret_val = builder.CreateAlloca(*ret_type);
-            args.push_back(ret_val);
-            registers[cmd.result.reg] = ret_val;
-          }
+        } else {
+          auto ret_val = builder.CreateAlloca(*ret_type);
+          args.push_back(ret_val);
+          registers[cmd.result.reg] = ret_val;
         }
 
       } break;
