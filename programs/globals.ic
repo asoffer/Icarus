@@ -2,8 +2,8 @@ constant_array := [1.0, 2.0, 3.0, 4.0, 5.0]
 
 eight_ptr := &eight
 
-seven := 7 // this might change!
-eight := 8 #const
+seven := 7 #const
+eight := 8 // this might change!
 
 
 True := true // the truth is malleable

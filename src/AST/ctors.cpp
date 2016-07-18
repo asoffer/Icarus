@@ -23,8 +23,8 @@ TokenNode::TokenNode(const Cursor &loc, std::string str_lit)
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(false), type(nullptr), value(nullptr), value_flag(ValueFlag::Not) {
-}
+      lvalue(Assign::Unset), type(nullptr), value(nullptr),
+      value_flag(ValueFlag::Not) {}
 
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),

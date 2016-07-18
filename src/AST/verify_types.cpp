@@ -111,8 +111,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto lhs_var = (TypeVariable *)lhs;
     assert(lhs_var->test);
 
-    Ctx ctx;
-    auto test_fn_expr = lhs_var->test->evaluate(ctx).as_expr;
+    auto test_fn_expr = lhs_var->test->evaluate().as_expr;
     assert(test_fn_expr->is_function_literal());
 
     auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
@@ -350,9 +349,8 @@ void StructLiteral::CompleteDefinition() {
   for (size_t i = 0; i < decls.size(); ++i) {
     decls[i]->verify_types();
 
-    Ctx ctx;
     auto decl_type = decls[i]->type_expr
-                         ? decls[i]->type_expr->evaluate(ctx).as_type
+                         ? decls[i]->type_expr->evaluate().as_type
                          : decls[i]->init_val->type;
 
     tval->insert_field(decls[i]->identifier->token, decl_type,
@@ -566,20 +564,18 @@ void Access::Verify(bool emit_errors) {
 
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
-      Ctx ctx;
-      operand->evaluate(ctx);
+      operand->evaluate();
       type = Uint;
       return;
     }
 
-    Ctx ctx;
-    auto evaled_type = operand->evaluate(ctx).as_type;
+    auto evaled_type = operand->evaluate().as_type;
     if (evaled_type->is_enum()) {
       auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
         Ctx ctx;
-        type = operand->evaluate(ctx).as_type;
+        type = operand->evaluate().as_type;
 
       } else {
         Error::Log::Log(loc, evaled_type->to_string() + " has no member " +
@@ -709,8 +705,7 @@ void Binop::verify_types() {
           }
         } else {
           assert(decl->type == Type_);
-          Ctx ctx;
-          decl->evaluate(ctx);
+          decl->evaluate();
           if (!decl->value.as_type->is_parametric_struct()) { continue; }
           auto param_expr =
               ((ParametricStructure *)decl->value.as_type)->ast_expression;
@@ -766,8 +761,7 @@ void Binop::verify_types() {
         assert(lhs->type == Type_ &&
                "Should have caught the bad-type of lhs earlier");
 
-        Ctx ctx;
-        lhs->evaluate(ctx);
+        lhs->evaluate();
         if (lhs->value.as_type->is_parametric_struct()) {
           auto param_ast_expr =
               ((ParametricStructure *)lhs->value.as_type)->ast_expression;
@@ -923,16 +917,12 @@ void Binop::verify_types() {
 
   switch (op) {
   case Operator::Rocket: {
-    if (lhs->type != Bool) {
-      Error::Log::Log(loc, "LHS of rocket must be a bool");
-      type = Err;
-    }
+    // TODO rocket encountered outside case statement.
+    UNREACHABLE;
   } break;
   case Operator::Index: {
     type = Err;
     if (!lhs->type->is_array()) {
-      // TODO TOKENREMOVAL
-      // TODO lhs might not have a precise token
       Error::Log::Log(loc, "LHS does not name an array.");
       return;
     }
@@ -952,8 +942,7 @@ void Binop::verify_types() {
   } break;
   case Operator::Cast: {
     // TODO use correct scope
-    Ctx ctx;
-    type = rhs->evaluate(ctx).as_type;
+    type = rhs->evaluate().as_type;
     if (type == Err) { return; }
     assert(type && "cast to nullptr?");
 
@@ -1233,8 +1222,7 @@ void InDecl::verify_types() {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    Ctx ctx;
-    auto t = container->evaluate(ctx).as_type;
+    auto t = container->evaluate().as_type;
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -1253,8 +1241,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
                            "\" being declared with an invalid type.");
     return Err;
   } else {
-    Ctx ctx;
-    auto t = evaluate(ctx).as_type;
+    auto t = evaluate().as_type;
     if (t == Void) {
       Error::Log::Log(loc, "Identifier being declared as having void type.");
       return Err;
@@ -1459,8 +1446,7 @@ void Declaration::verify_types() {
 
     } else if (init_val->is_enum_literal()) {
       // TODO this evaluation should just be done when it's built.
-      Ctx ctx;
-      init_val->evaluate(ctx); // TODO do we need to evaluate here?
+      init_val->evaluate(); // TODO do we need to evaluate here?
       assert(init_val->value.as_type);
 
       // Set the name of the parametric struct.
@@ -1555,8 +1541,7 @@ void FunctionLiteral::verify_types() {
 
   return_type_expr->verify_types();
 
-  Ctx ctx;
-  Type *ret_type = return_type_expr->evaluate(ctx).as_type;
+  Type *ret_type = return_type_expr->evaluate().as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t num_inputs = inputs.size();
@@ -1593,13 +1578,8 @@ void Case::verify_types() {
       if (kv.second->type == Err) { continue; }
 
     } else if (kv.first->type != Bool) {
-      // TODO: give some context for this error message. Why must this be the
-      // type?  So far the only instance where this is called is for case
-      // statements,
-      Error::Log::Log(loc, "Type of `____` must be bool, but " +
-                             kv.first->type->to_string() + " found instead.");
+      Error::Log::CaseLHSBool(loc, kv.first->loc, kv.first->type);
       kv.first->type = Bool;
-      assert(kv.first->type && "keytype");
     }
 
     value_types.insert(kv.second->type);

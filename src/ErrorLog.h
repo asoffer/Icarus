@@ -38,6 +38,10 @@ void InvalidCapture(const Cursor &loc, const AST::Declaration *decl);
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type);
 void EmptyArrayLit(const Cursor &loc);
+void InvalidAddress(const Cursor &loc, Assign mode);
+void InvalidAssignment(const Cursor &loc, Assign mode);
+void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t);
+
 } // namespace Log
 } // namespace Error
 

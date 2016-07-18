@@ -17,9 +17,12 @@ typedef std::map<Token,
 typedef std::map<const AST::Declaration *,
                  std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
     DeclToErrorMap;
+typedef std::map<Cursor, std::map<LineNum, std::vector<LineOffset>>>
+    LocToErrorMap;
 
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
 static DeclToErrorMap invalid_capture;
+static LocToErrorMap case_errors;
 
 std::map<std::string, std::map<size_t, std::vector<std::string>>>
     Error::Log::log_;
@@ -81,7 +84,7 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
     }
   }
 }
-static void GatherAndDisplay(const char *fmt, const DeclToErrorMap &log) {
+static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
   // TODO display file names too.
   for (const auto &kv : log) {
     const char *token   = kv.first->identifier->token.c_str();
@@ -94,7 +97,7 @@ static void GatherAndDisplay(const char *fmt, const DeclToErrorMap &log) {
       }
     }
 
-    fprintf(stderr, fmt, token);
+    fprintf(stderr, fmt_head, token);
     if (num_uses == 1) {
       fprintf(stderr, ".\n\n");
     } else if (num_uses == 2) {
@@ -336,6 +339,51 @@ void EmptyArrayLit(const Cursor &loc) {
   DisplayErrorMessage("Cannot infer the type of an empty array literal.",
                       nullptr, loc, 2);
 }
+
+void InvalidAddress(const Cursor &loc, Assign mode) {
+  ++num_errs_;
+  if (mode == Assign::Const) {
+    DisplayErrorMessage(
+        "Attempting to take the address of an identifier marked as #const",
+        "Marking an identifier as #const means that it is a compile-time "
+        "constant. The value may not actually be associated with a storage "
+        "address. For this reason, it is illegal to take the address.",
+        loc, 1);
+  } else if (mode == Assign::RVal) {
+    DisplayErrorMessage(
+        "Attempting to take the address of a temporary expression.", nullptr, loc,
+        1);
+  } else {
+    UNREACHABLE;
+  }
+}
+
+void InvalidAssignment(const Cursor &loc, Assign mode) {
+  ++num_errs_;
+  if (mode == Assign::Const) {
+    DisplayErrorMessage(
+        "Attempting to assign to an identifier marked as #const",
+        "Marking an identifier as #const means that it is a compile-time "
+        "constant and cannot be modified at run-time.",
+        loc, 1);
+  } else if (mode == Assign::RVal) {
+    DisplayErrorMessage(
+        "Attempting to assign to a temporary expression.", nullptr, loc,
+        1);
+  } else {
+    UNREACHABLE;
+  }
+}
+
+void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t) {
+  std::string msg_head = "In a case statement, the lefthand-side of a case "
+                         "must have type bool. However, the expression has "
+                         "type " +
+                         t->to_string() + ".";
+  ++num_errs_;
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;

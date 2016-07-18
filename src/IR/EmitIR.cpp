@@ -280,8 +280,7 @@ IR::Value Binop::EmitIR() {
     return IR::Value();
   } break;
   case Language::Operator::Cast: {
-    Ctx ctx;
-    auto rhs_val = rhs->evaluate(ctx);
+    auto rhs_val = rhs->evaluate();
     return IR::Cast(lhs->type, rhs_val.as_type, lhs->EmitIR());
   };
   case Language::Operator::Arrow: {
@@ -446,8 +445,7 @@ IR::Value Binop::EmitIR() {
 
   case Language::Operator::Call: {
     if (type == Type_) { // TODO move this to wherever it should be
-      Ctx ctx;
-      return IR::Value(evaluate(ctx).as_type);
+      return IR::Value(evaluate().as_type);
     }
 
     if (rhs) {
@@ -772,8 +770,7 @@ IR::Value Identifier::EmitIR() {
       }
       UNREACHABLE;
     } else {
-      Ctx ctx;
-      return IR::Value(evaluate(ctx).as_type);
+      return IR::Value(evaluate().as_type);
     }
   }
 
@@ -936,10 +933,8 @@ IR::Value Access::EmitIR() {
                       IR::Field(struct_type, eval, index));
   }
 
-  Ctx ctx;
-
   if (base_type == Type_) {
-    auto ty = operand->evaluate(ctx).as_type;
+    auto ty = operand->evaluate().as_type;
     if (ty->is_enum()) {
       return IR::Value(((Enumeration *)ty)->int_values AT(member_name));
     } else {
@@ -1128,8 +1123,7 @@ IR::Value For::EmitIR() {
           IR::PtrIncr(Ptr(array_type->data_type), head_ptr, end_offset);
 
     } else if (iter->container->type == Type_) {
-      Ctx ctx;
-      auto container_type = iter->container->evaluate(ctx).as_type;
+      auto container_type = iter->container->evaluate().as_type;
       assert(container_type->is_enum());
       auto enum_type = (Enumeration *)container_type;
 

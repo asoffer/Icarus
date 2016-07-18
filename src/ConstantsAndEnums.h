@@ -31,4 +31,7 @@ enum class Operator {
 #include "config/operator.conf"
 #undef OPERATOR_MACRO
 };
+
 } // namespace Lanugage
+
+enum class Assign : char { Unset, Const, LVal, RVal };

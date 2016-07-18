@@ -27,7 +27,7 @@ void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
       // declaration node.
       new_decl->type_expr =
           new DummyTypeExpr(decls[i]->type_expr->loc,
-                            decls[i]->type_expr->evaluate(arg_vals).as_type);
+                            decls[i]->type_expr->evaluate(/* arg_vals */).as_type);
 
     }
     if (decls[i]->init_val) { NOT_YET; }
