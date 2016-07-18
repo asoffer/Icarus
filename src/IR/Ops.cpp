@@ -69,9 +69,9 @@ Func::Func(Function *fn_type, bool should_gen)
 
     alloc_block = make_block("entry", llvm_fn);
 
-    blocks.push_back(new Block(0));
+    blocks.push_back(new Block());
     blocks.back()->block_name = "fn-entry";
-    blocks.push_back(new Block(1));
+    blocks.push_back(new Block());
     blocks.back()->block_name = "fn-exit";
   }
 }
@@ -304,16 +304,19 @@ void Func::dump() {
   }
 
   if (args.empty()) {
-    std::cout << "():" << std::endl;
+    std::cout << ":" << std::endl;
   } else {
     std::cout << "(#$" << args.size() << "):" << std::endl;
   }
 
-  for (auto b : blocks) { b->dump(); }
+  for (auto b : blocks) {
+    if (!b) { continue; }
+    b->dump();
+  }
 }
 
 Block *Func::AddBlock(const char *block_name) {
-  auto result        = new IR::Block(blocks.size());
+  auto result        = new IR::Block();
   result->block_name = block_name;
   blocks.push_back(result);
   return result;

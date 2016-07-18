@@ -26,7 +26,7 @@ extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 namespace IR {
-extern std::vector<llvm::Value *> LLVMGlobals;
+extern std::vector<llvm::Constant *> LLVMGlobals;
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
 
@@ -86,13 +86,14 @@ void Func::GenerateLLVM() {
   llvm_fn->setName(name);
 
   for (const auto &b : blocks) {
+    if (!b) { continue; }
     b->llvm_block = make_block(b->block_name, llvm_fn);
   }
 
   std::vector<llvm::Value *> registers(num_cmds, nullptr);
   std::vector<std::pair<IR::Block *, size_t>> phis;
-  for (const auto &b : blocks) {
-    llvm_blocks AT(b->block_num) = b->GenerateLLVM(this, registers, phis);
+  for (size_t i = 0; i < blocks.size(); ++i) {
+    llvm_blocks[i] = blocks[i]->GenerateLLVM(this, registers, phis);
   }
 
   for (auto phi_loc_pair : phis) {

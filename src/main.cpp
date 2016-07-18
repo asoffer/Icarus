@@ -59,7 +59,7 @@ extern void GenerateLLVM();
 
 namespace IR {
 extern std::vector<IR::Value> InitialGlobals;
-extern std::vector<llvm::Value *> LLVMGlobals;
+extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
 std::queue<AST::Node *> VerificationQueue;
@@ -327,6 +327,9 @@ int main(int argc, char *argv[]) {
           case IR::ValType::U:
             init_val = data::const_uint(ir_val.as_uint);
             break;
+          case IR::ValType::GlobalAddr:
+            init_val = IR::LLVMGlobals[ir_val.as_global_addr];
+            break;
           default: NOT_YET;
           }
 
@@ -353,7 +356,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    // Generate the implicit functions
+    // Generate all the functions
     for (auto f : all_functions) { f->GenerateLLVM(); }
 
     { // Generate code for everything else

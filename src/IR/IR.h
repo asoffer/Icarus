@@ -130,10 +130,6 @@ struct Cmd {
 // 2. A conditional jump to one of two branches
 // 3. Return from the current function.
 struct Exit {
-  friend struct Func;
-  friend struct Block;
-  friend void RefreshDisplay(const StackFrame &, LocalStack *);
-
   enum class Strategy { Unset, Uncond, Cond, Return, ReturnVoid } flag;
 
   Value val; // This is the return value in the case of a return, and the value
@@ -185,7 +181,7 @@ struct Block {
 
   // Passing a char into the condition to trigger it's type to be C. We don't
   // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block(size_t n) : block_num(n), block_name("unnamed-block") {}
+  Block() : block_name("unnamed-block") {}
   ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }

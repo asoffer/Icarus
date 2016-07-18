@@ -48,7 +48,7 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
 
     fprintf(stderr, fmt, token);
     if (num_uses == 1) {
-      fprintf(stderr, " used once.\n\n");
+      fprintf(stderr, ".\n\n");
     } else if (num_uses == 2) {
       fprintf(stderr, " used twice.\n\n");
     } else {
