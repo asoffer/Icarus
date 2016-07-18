@@ -14,8 +14,12 @@ typedef std::string Token;
 typedef std::map<Token,
                  std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
     TokenToErrorMap;
+typedef std::map<const AST::Declaration *,
+                 std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
+    DeclToErrorMap;
 
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
+static DeclToErrorMap invalid_capture;
 
 std::map<std::string, std::map<size_t, std::vector<std::string>>>
     Error::Log::log_;
@@ -77,12 +81,57 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
     }
   }
 }
+static void GatherAndDisplay(const char *fmt, const DeclToErrorMap &log) {
+  // TODO display file names too.
+  for (const auto &kv : log) {
+    const char *token   = kv.first->identifier->token.c_str();
+    size_t token_length = kv.first->identifier->token.size();
+
+    size_t num_uses = 0;
+    for (const auto &file_and_locs : kv.second) {
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        num_uses += line_and_offsets.second.size();
+      }
+    }
+
+    fprintf(stderr, fmt, token);
+    if (num_uses == 1) {
+      fprintf(stderr, ".\n\n");
+    } else if (num_uses == 2) {
+      fprintf(stderr, " used twice.\n\n");
+    } else {
+      fprintf(stderr, " used %lu times.\n\n", num_uses);
+    }
+
+    for (const auto &file_and_locs : kv.second) {
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        pstr line = source_map AT(file_and_locs.first)
+                        ->lines AT(line_and_offsets.first);
+
+        size_t left_border_width = NumDigits(line_and_offsets.first) + 4;
+        size_t line_length       = strlen(line) + 1;
+        char *underline          = new char[left_border_width + line_length + 1];
+        underline[line_length + left_border_width] = '\0';
+        memset(underline, ' ', left_border_width + line_length);
+
+        for (const auto offset : line_and_offsets.second) {
+          memset(underline + left_border_width + offset, '^', token_length);
+        }
+
+        fprintf(stderr, "  %lu| %s\n"
+                        "%s\n",
+                line_and_offsets.first, line.ptr, underline);
+      }
+    }
+  }
+}
 
 void Error::Log::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
   // TODO also log the declarations of the ambiguously declared identifiers and
   // display them.
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
+  GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
 
   for (const auto &file_log : log_) {
     // NOTE: No sense in robustifying this. It probably won't last.
@@ -291,6 +340,12 @@ void EmptyArrayLit(const Cursor &loc) {
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;
   undeclared_identifiers[token][loc.file_name][loc.line_num].push_back(
+      loc.offset);
+}
+
+void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
+  ++num_errs_;
+  invalid_capture[decl][loc.file_name][loc.line_num].push_back(
       loc.offset);
 }
 

@@ -34,6 +34,7 @@ void TabInCharLit(const Cursor &loc);
 void MissingComma(const Cursor &loc);
 void UndeclaredIdentifier(const Cursor &loc, const char *token);
 void AmbiguousIdentifier(const Cursor &loc, const char *token);
+void InvalidCapture(const Cursor &loc, const AST::Declaration *decl);
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type);
 void EmptyArrayLit(const Cursor &loc);

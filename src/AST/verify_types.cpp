@@ -405,6 +405,21 @@ void Identifier::verify_types() {
   decl = potential_decls[0];
   decl->verify_types();
   type = decl->type;
+
+  // You are allowed to capture, functions, globals, and const objects
+  // TODO what about #const pointers?
+  if (type == Type_ || type->is_function() || decl->scope_ == Scope::Global ||
+      decl->HasHashtag("const")) {
+    return;
+  }
+
+  for (auto scope_ptr = scope_; scope_ptr != potential_decls[0]->scope_;
+       scope_ptr = scope_ptr->parent) {
+    if (scope_ptr->is_function_scope()) {
+      Error::Log::InvalidCapture(loc, decl);
+      return;
+    }
+  }
 }
 
 void Unop::verify_types() {
