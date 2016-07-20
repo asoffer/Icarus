@@ -12,16 +12,17 @@ extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
     auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
-    Error::Log::Log(nodes[index]->loc, "'" + tok + "' is a reserved "          \
-                                                   "keyword.");                \
+    Error::Log::Log(nodes[index]->loc, "'" + std::string(tok) +                \
+                                           "' is a reserved "                  \
+                                           "keyword.");                        \
   }
 
 #define NOT_BINOP_MSG(index)                                                   \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
     auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
-    Error::Log::Log(nodes[index]->loc,                                         \
-                    "Operator '" + tok + "' is not a binary operator.");       \
+    Error::Log::Log(nodes[index]->loc, "Operator '" + std::string(tok) +       \
+                                           "' is not a binary operator.");     \
   }
 
 template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {

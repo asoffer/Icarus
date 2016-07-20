@@ -249,7 +249,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->operand = steal<Expression>(nodes[1]);
   unop_ptr->loc     = nodes[0]->loc;
 
-  if (tk == "import") {
+  if (strcmp(tk, "import") == 0) {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
@@ -261,44 +261,44 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
     unop_ptr->op = Language::Operator::Import;
 
-  } else if (tk == "return") {
+  } else if (strcmp(tk, "return") == 0) {
     unop_ptr->op = Language::Operator::Return;
 
-  } else if (tk == "break") {
+  } else if (strcmp(tk, "break") == 0) {
     unop_ptr->op = Language::Operator::Break;
     goto id_check;
 
-  } else if (tk == "continue") {
+  } else if (strcmp(tk, "continue") == 0) {
     unop_ptr->op = Language::Operator::Continue;
     goto id_check;
 
-  } else if (tk == "restart") {
+  } else if (strcmp(tk, "restart") == 0) {
     unop_ptr->op = Language::Operator::Restart;
     goto id_check;
 
-  } else if (tk == "repeat") {
+  } else if (strcmp(tk, "repeat") == 0) {
     unop_ptr->op = Language::Operator::Repeat;
     goto id_check;
 
-  } else if (tk == "free") {
+  } else if (strcmp(tk, "free") == 0) {
     unop_ptr->op = Language::Operator::Free;
 
-  } else if (tk == "print") {
+  } else if (strcmp(tk, "print") == 0) {
     unop_ptr->op = Language::Operator::Print;
 
-  } else if (tk == "&") {
+  } else if (strcmp(tk, "&") == 0) {
     unop_ptr->op = Language::Operator::And;
 
-  } else if (tk == "-") {
+  } else if (strcmp(tk, "-") == 0) {
     unop_ptr->op = Language::Operator::Sub;
 
-  } else if (tk == "!") {
+  } else if (strcmp(tk, "!") == 0) {
     unop_ptr->op = Language::Operator::Not;
 
-  } else if (tk == "@") {
+  } else if (strcmp(tk, "@") == 0) {
     unop_ptr->op = Language::Operator::At;
 
-  } else if (tk == "$") {
+  } else if (strcmp(tk, "$") == 0) {
     unop_ptr->op = Language::Operator::Eval;
 
   } else {
@@ -318,7 +318,7 @@ id_check:
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   if (!unop_ptr->operand->is_identifier()) {
     Error::Log::Log(unop_ptr->operand->loc,
-                  "Operand to '" + tk + "' must be an identifier.");
+                  "Operand to '" + std::string(tk) + "' must be an identifier.");
   }
   return unop_ptr;
 }
@@ -671,19 +671,19 @@ Node *Conditional::BuildElseNoLiner(NPtrVec &&nodes) {
 Node *Jump::build(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk = ((TokenNode *)nodes[0])->token;
-  if (tk == "break") {
+  if (strcmp(tk, "break") == 0) {
     return new Jump(nodes[0]->loc, JumpType::Break);
 
-  } else if (tk == "continue") {
+  } else if (strcmp(tk, "continue") == 0) {
     return new Jump(nodes[0]->loc, JumpType::Continue);
 
-  } else if (tk == "return") {
+  } else if (strcmp(tk, "return") == 0) {
     return new Jump(nodes[0]->loc, JumpType::Return);
 
-  } else if (tk == "repeat") {
+  } else if (strcmp(tk, "repeat") == 0) {
     return new Jump(nodes[0]->loc, JumpType::Repeat);
 
-  } else if (tk == "restart") {
+  } else if (strcmp(tk, "restart") == 0) {
     return new Jump(nodes[0]->loc, JumpType::Restart);
   }
   assert(false && "No other options");
@@ -710,20 +710,20 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     }
   }
 
-  if (tk == ".") {
+  if (strcmp(tk, ".") == 0) {
     return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == ":" || tk == ":=") {
+  } else if (strcmp(tk, ":") == 0 || strcmp(tk, ":=") == 0) {
     return AST::Declaration::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "in") {
+  } else if (strcmp(tk, "in") == 0) {
     return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "`") {
+  } else if (strcmp(tk, "`") == 0) {
     return AST::Generic::Build(std::forward<NPtrVec &&>(nodes));
   }
 
-  if (tk == "=") {
+  if (strcmp(tk, "=") == 0) {
     if (nodes[0]->is_declaration()) {
       // TODO Disallow a := b = c
       auto decl      = steal<AST::Declaration>(nodes[0]);
@@ -749,7 +749,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   binop_ptr->rhs       = steal<AST::Expression>(nodes[2]);
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
-  if (tk == sym) {                                                             \
+  if (strcmp(tk, sym) == 0) {                                                  \
     binop_ptr->op = Language::Operator::name;                                  \
     goto end;                                                                  \
   }
@@ -784,13 +784,13 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
-  if (tk == "case") {
+  if (strcmp(tk, "case") == 0) {
     return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "enum") {
+  } else if (strcmp(tk, "enum") == 0) {
     return AST::EnumLiteral::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "struct") {
+  } else if (strcmp(tk, "struct") == 0) {
     return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
 
@@ -812,16 +812,16 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
-  if (tk == "for") {
+  if (strcmp(tk, "for") == 0) {
     return AST::For::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "while") {
+  } else if (strcmp(tk, "while") == 0) {
     return AST::While::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "if") {
+  } else if (strcmp(tk, "if") == 0) {
     return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
 
-  } else if (tk == "struct") {
+  } else if (strcmp(tk, "struct") == 0) {
     return AST::ParametricStructLiteral::Build(std::forward<NPtrVec &&>(nodes));
   }
 

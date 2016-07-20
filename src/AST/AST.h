@@ -1,9 +1,6 @@
 #ifndef ICARUS_AST_H
 #define ICARUS_AST_H
 
-// TODO Fix this later.
-using Ctx = std::map<std::string, Context::Value>;
-
 namespace AST {
 
 #define ENDING = 0
@@ -138,9 +135,9 @@ struct TokenNode : public Node {
 
   virtual ~TokenNode() {}
 
-  TokenNode(const Cursor &cursor = Cursor(), std::string str_lit = "");
+  TokenNode(const Cursor &cursor = Cursor(), const char *str_lit = "");
 
-  std::string token;
+  const char *token;
   Language::Operator op;
 };
 
@@ -235,15 +232,15 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  Context::Value CreateOrGetCached(const Ctx& arg_vals);
+  Context::Value CreateOrGetCached(const std::vector<Context::Value> &arg_vals);
 
   IR::Func *ir_func;
 
   Scope *type_scope;
   std::vector<Declaration *> decls, params;
 
-  std::map<Ctx, StructLiteral *> cache;
-  std::map<StructLiteral *, Ctx> reverse_cache;
+  std::map<std::vector<Context::Value>, StructLiteral *> cache;
+  std::map<StructLiteral *, std::vector<Context::Value>> reverse_cache;
 };
 
 struct StructLiteral : public Expression {

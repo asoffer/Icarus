@@ -224,12 +224,9 @@ static bool MatchCall(Type *lhs, Type *rhs,
     auto num_params       = lhs_params.size();
     bool coherent_matches = true;
     for (size_t i = 0; i < num_params; ++i) {
-      // TODO what if these aren't types?
-      for (auto kv : lhs_params) {
-        coherent_matches &=
-            MatchCall(kv.second.as_type, rhs_params[kv.first].as_type, matches,
-                      error_message);
-      }
+      // TODO what if params aren't types
+      coherent_matches &= MatchCall(
+          lhs_params[i].as_type, rhs_params[i].as_type, matches, error_message);
     }
     return coherent_matches;
   }
@@ -307,11 +304,10 @@ static Type *EvalWithVars(Type *type,
     auto params =
         struct_type->creator->reverse_cache[struct_type->ast_expression];
 
-    Ctx evaled_params;
-    for (auto p : params) {
+    std::vector<Context::Value> evaled_params;
+    for (size_t i = 0; i < params.size(); ++i) {
       // TODO not all parameters have to be types
-      evaled_params[p.first] =
-          Context::Value(EvalWithVars(p.second.as_type, lookup));
+      evaled_params.emplace_back(EvalWithVars(params[i].as_type, lookup));
     }
 
     return struct_type->creator->CreateOrGetCached(evaled_params).as_type;
@@ -1644,17 +1640,15 @@ void EnumLiteral::verify_types() {
 }
 
 void ParametricStructLiteral::verify_types() {
+  type = Type_;
   for (auto p : params) { p->verify_types(); }
   for (auto d : decls) {
     d->identifier->decl = d;
     if (d->type_expr) { d->type_expr->verify_types(); }
-    if (d->init_val) {
-      d->init_val->verify_types();
-    } // TODO could be problematic
   }
 }
 
-void StructLiteral::verify_types() {}
+void StructLiteral::verify_types() { type = Type_; }
 
 void Jump::verify_types() {
   auto scope_ptr = scope_;

@@ -179,28 +179,30 @@ NNT Lexer::NextWord() {
 
     return NNT(term_ptr, Language::kw_else);
 
-  } else if (token == "in") {
-    RETURN_NNT("in", op_b, 2);
-
-  } else if (token == "print" || token == "import" || token == "free") {
-    RETURN_NNT(token, op_l, token.size());
-
-  } else if (token == "while" || token == "for") {
-    RETURN_NNT(token, kw_expr_block, token.size());
-
-  } else if (token == "if") {
-    RETURN_NNT(token, kw_if, token.size());
-
-  } else if (token == "case" || token == "enum") {
-    RETURN_NNT(token, kw_block, token.size());
-
-  } else if (token == "struct") {
-    RETURN_NNT(token, kw_struct, token.size());
-
-  } else if (token == "return" || token == "continue" || token == "break" ||
-             token == "repeat" || token == "restart") {
-    RETURN_NNT(token, op_lt, token.size());
   }
+
+#define CASE_RETURN_NNT(str, op, len)                                          \
+  if (strcmp(token_cstr, str) == 0) { RETURN_NNT(str, op, len); }
+
+  auto token_cstr = token.c_str();
+
+  CASE_RETURN_NNT("in",       op_b,          2)
+  CASE_RETURN_NNT("print",    op_l,          5)
+  CASE_RETURN_NNT("import",   op_l,          6)
+  CASE_RETURN_NNT("free",     op_l,          4)
+  CASE_RETURN_NNT("while",    kw_expr_block, 5)
+  CASE_RETURN_NNT("for",      kw_expr_block, 3)
+  CASE_RETURN_NNT("if",       kw_if,         2)
+  CASE_RETURN_NNT("case",     kw_block,      4)
+  CASE_RETURN_NNT("enum",     kw_block,      4)
+  CASE_RETURN_NNT("struct",   kw_struct,     6)
+  CASE_RETURN_NNT("return",   op_lt,         6)
+  CASE_RETURN_NNT("continue", op_lt,         8)
+  CASE_RETURN_NNT("break",    op_lt,         5)
+  CASE_RETURN_NNT("repeat",   op_lt,         6)
+  CASE_RETURN_NNT("restart",  op_lt,         7)
+
+#undef CASE_RETURN_NNT
 
   if (token == "string") { file_queue.emplace("lib/string.ic"); }
   Cursor loc = cursor;
@@ -333,12 +335,15 @@ NNT Lexer::NextOperator() {
       Error::Log::InvalidHashtag(cursor_copy);
     }
 
-    char old_char   = *cursor;
-    *cursor         = '\0';
-    std::string tag = cursor.line.ptr + cursor_copy.offset;
-    *cursor         = old_char;
+    char old_char       = *cursor;
+    *cursor             = '\0';
+    const char *tag_ref = cursor.line.ptr + cursor_copy.offset;
+    size_t tag_len      = strlen(tag_ref);
+    char *tag           = new char[tag_len + 1];
+    strcpy(tag, tag_ref);
+    *cursor             = old_char;
 
-    RETURN_NNT(tag, hashtag, tag.size() + 1);
+    RETURN_NNT(tag, hashtag, tag_len + 1);
   } break;
 
   case '+':
@@ -349,12 +354,18 @@ NNT Lexer::NextOperator() {
   case '^': {
     char first_char = *cursor;
     IncrementCursor();
-    std::string token(*cursor == '=' ? 2 : 1, first_char);
+
+    char *token = new char[3];
+    token[0] = first_char;
     if (*cursor == '=') {
       IncrementCursor();
       token[1] = '=';
+    } else {
+      token[1] = '\0';
     }
-    RETURN_NNT(token, op_b, token.size());
+    token[2] = '\0';
+
+    RETURN_NNT(token, op_b, strlen(token));
   } break;
 
   case '*':

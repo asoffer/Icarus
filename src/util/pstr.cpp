@@ -17,7 +17,7 @@ pstr::pstr(const char *c_string) {
   assert(input_length <= max_string_length);
 
   if (input_length > current_space) {
-    current_block = (char *)std::malloc(page_size - malloc_overhead);
+    current_block = (char *)malloc(page_size - malloc_overhead);
     current_head = current_block;
     current_space = page_size - malloc_overhead;
   }

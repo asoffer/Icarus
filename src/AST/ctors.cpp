@@ -2,23 +2,17 @@
 #include "Scope.h"
 #endif
 
-namespace Language {
-const std::map<std::string, Operator> lookup_operator = {
+namespace AST {
+TokenNode::TokenNode(const Cursor &loc, const char *str_lit)
+    : Node(loc), token(str_lit) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  { symbol, Operator::name }                                                   \
-  ,
+  if (strcmp(token, symbol) == 0) {                                            \
+    op = Language::Operator::name;                                             \
+    return;                                                                    \
+  }
 #include "config/operator.conf"
 #undef OPERATOR_MACRO
-};
-} // namespace Language
-
-namespace AST {
-TokenNode::TokenNode(const Cursor &loc, std::string str_lit)
-    : Node(loc), token(str_lit) {
-  auto iter = Language::lookup_operator.find(token);
-  op = (iter == Language::lookup_operator.end())
-           ? Language::Operator::NotAnOperator
-           : iter->second;
+  op = Language::Operator::NotAnOperator;
 }
 
 Expression::Expression()

@@ -44,7 +44,8 @@ static void AppendValueToStream(Type *type, const Context::Value val,
 
 namespace AST {
 // TODO there's definitely a better way to do this.
-Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
+Context::Value ParametricStructLiteral::CreateOrGetCached(
+    const std::vector<Context::Value> &arg_vals) {
   size_t cache_num = 0;
   auto num_args = arg_vals.size();
   assert(value.as_type);
@@ -65,11 +66,10 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
       continue;
     }
 
-    for (auto kv : arg_vals) {
-      if (cached_val.first.at(kv.first) != kv.second) {
+    for (size_t i = 0; i < num_args; ++i) {
+      if (cached_val.first[i] != arg_vals[i]) {
         if (debug::parametric_struct) {
-          std::cerr << "   - Failed matching argument " << kv.first
-                    << std::endl;
+          std::cerr << "   - Failed matching argument " << std::endl;
         }
         goto outer_continue;
       }
@@ -87,9 +87,9 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   }
 
   bool has_vars = false;
-  for (const auto &arg : arg_vals) {
+  for (const auto &a : arg_vals) {
     // TODO What if the argument isn't a type
-    has_vars |= arg.second.as_type->has_vars;
+    has_vars |= a.as_type->has_vars;
   }
 
   std::stringstream ss;
@@ -104,8 +104,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
     parameter_type = params[0]->init_val->type;
   }
 
-  AppendValueToStream(parameter_type, arg_vals.at(params[0]->identifier->token),
-                      ss);
+  AppendValueToStream(parameter_type, arg_vals[0], ss);
 
   for (size_t i = 1; i < num_args; ++i) {
     if (params[i]->type_expr) {
@@ -117,8 +116,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
     }
 
     ss << ", ";
-    AppendValueToStream(parameter_type,
-                        arg_vals.at(params[i]->identifier->token), ss);
+    AppendValueToStream(parameter_type, arg_vals[i], ss);
   }
   ss << ")";
 
@@ -134,9 +132,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   std::vector<IR::Value> args;
   for (size_t i = 0; i < num_args; ++i) {
     // TODO what other things can be plugged in?
-    auto iter = arg_vals.find(params[i]->identifier->token);
-    assert(iter != arg_vals.end());
-    args.push_back(IR::Value(iter->second.as_type));
+    args.push_back(IR::Value(arg_vals[i].as_type));
   }
   auto local_stack = new IR::LocalStack;
   auto f = EmitIR();
@@ -558,10 +554,7 @@ Context::Value Binop::evaluate() {
                   << std::endl;
       }
 
-      Ctx param_struct_args;
-
-      std::vector<Context::Value> arg_vals;
-      int arg_val_counter = 0;
+      std::vector<Context::Value> param_struct_args;
 
       if (debug::parametric_struct) {
         std::cerr << " * Argument values:" << std::endl;
@@ -572,29 +565,14 @@ Context::Value Binop::evaluate() {
         // verified this.
         const auto &elems = ((ChainOp *)rhs)->exprs;
         for (size_t i = 0; i < elems.size(); ++i) {
-          auto evaled_elem = elems[i]->evaluate();
-          param_struct_args[struct_lit->params[i]->identifier->token] = evaled_elem;
-          if (debug::parametric_struct) {
-            std::cerr << "   " << arg_val_counter++ << ". "
-                      << *evaled_elem.as_type << std::endl;
-          }
+          param_struct_args.push_back(elems[i]->evaluate());
         }
       } else {
-        auto evaled_rhs = rhs->evaluate();
-        param_struct_args[struct_lit->params[0]->identifier->token] =
-            rhs->evaluate();
-        arg_vals.push_back(evaled_rhs);
-        if (debug::parametric_struct) {
-          std::cerr << "   " << arg_val_counter++ << ". " << *evaled_rhs.as_type
-                    << std::endl;
-        }
+        param_struct_args.push_back(rhs->evaluate());
       }
 
-      if (debug::parametric_struct) { std::cerr << std::endl; }
+      value_flag = ValueFlag::Done;
 
-      value_flag   = ValueFlag::Done;
-
-      // std::cerr << *struct_lit << std::endl;
       return value = struct_lit->CreateOrGetCached(param_struct_args);
 
     } else {
