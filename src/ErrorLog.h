@@ -41,7 +41,12 @@ void EmptyArrayLit(const Cursor &loc);
 void InvalidAddress(const Cursor &loc, Assign mode);
 void InvalidAssignment(const Cursor &loc, Assign mode);
 void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t);
-
+void ResizingFixedArray(const Cursor &loc);
+void MissingMember(const Cursor &loc, const std::string &member_name,
+                   const Type *t);
+void IndexingNonArray(const Cursor &loc, const Type *t);
+void SlicingNonArray(const Cursor &loc, const Type *t);
+void InvalidCast(const Cursor &loc, const Type *from, const Type *to);
 } // namespace Log
 } // namespace Error
 

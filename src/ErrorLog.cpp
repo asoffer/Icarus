@@ -384,6 +384,39 @@ void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
 
+void ResizingFixedArray(const Cursor &loc) {
+  ++num_errs_;
+  DisplayErrorMessage("Cannot resize a fixed-length array.", nullptr, loc, 1);
+}
+
+void MissingMember(const Cursor &loc, const std::string &member_name,
+                   const Type *t) {
+  ++num_errs_;
+  std::string msg_head = "Expressions of type `" + t->to_string() + "` have no member named '" +
+                         member_name + "'.";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
+void IndexingNonArray(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  std::string msg_foot = "Indexed type is a `" + t->to_string() + "`.";
+  DisplayErrorMessage("Cannot index into a non-array type.", msg_foot.c_str(),
+                      loc, 1);
+}
+
+void SlicingNonArray(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  std::string msg_foot = "Sliced type is a `" + t->to_string() + "`.";
+  DisplayErrorMessage("Cannot slice a non-array type.", msg_foot.c_str(), loc,
+                      1);
+}
+
+void InvalidCast(const Cursor &loc, const Type *from, const Type *to) {
+  ++num_errs_;
+  std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
+                         to->to_string() + "`.";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 2);
+}
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;

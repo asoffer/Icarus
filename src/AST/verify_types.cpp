@@ -427,8 +427,8 @@ void Unop::verify_types() {
   } break;
   case Operator::Free: {
     if (!operand->type->is_pointer()) {
-      std::string msg = "Attempting to free an object of type " +
-                        operand->type->to_string() + ".";
+      std::string msg = "Attempting to free an object of type `" +
+                        operand->type->to_string() + "`.";
       Error::Log::UnopTypeFail(msg, this);
     }
     type = Void;
@@ -436,14 +436,13 @@ void Unop::verify_types() {
   case Operator::Print: {
    if (operand->type == Void) {
      Error::Log::UnopTypeFail(
-         "Attempting to print an expression with type void.", this);
+         "Attempting to print an expression with type `void`.", this);
    }
     type = Void;
   } break;
   case Operator::Return: {
     if (operand->type == Void) {
-      Error::Log::UnopTypeFail(
-          "Attempting to return an expression with type void", this);
+      Error::Log::UnopTypeFail("Attempting to return an expression which has type `void`.", this);
     }
 
     type = Void;
@@ -453,8 +452,8 @@ void Unop::verify_types() {
       type = ((Pointer *)operand->type)->pointee;
 
     } else {
-      std::string msg = "Attempting to dereference an expression of type " +
-                        operand->type->to_string() + ".";
+      std::string msg = "Attempting to dereference an expression of type `" +
+                        operand->type->to_string() + "`.";
       Error::Log::UnopTypeFail(msg, this);
       type = Err;
     }
@@ -487,12 +486,16 @@ void Unop::verify_types() {
       if (t) {
         type = ((Function *)t)->output;
       } else {
-        Error::Log::Log(loc, type->to_string() + " has no negation operator.");
+        Error::Log::UnopTypeFail("Type `" + operand->type->to_string() +
+                                     "` has no unary negation operator.",
+                                 this);
         type = Err;
       }
 
     } else {
-      Error::Log::Log(loc, type->to_string() + " has no negation operator.");
+      Error::Log::UnopTypeFail("Type `" + operand->type->to_string() +
+                                   "` has no unary negation operator.",
+                               this);
       type = Err;
     }
   } break;
@@ -511,8 +514,8 @@ void Unop::verify_types() {
       type = Bool;
     } else {
       Error::Log::UnopTypeFail("Attempting to apply the logical negation "
-                               "operator (!) to an expression of type " +
-                                   operand->type->to_string() + ".",
+                               "operator (!) to an expression of type `" +
+                                   operand->type->to_string() + "`.",
                                this);
       type = Err;
     }
@@ -545,18 +548,15 @@ void Access::Verify(bool emit_errors) {
       return;
     } else if (member_name == "resize") {
       auto array_base_type = (Array *)base_type;
+
       if (array_base_type->fixed_length) {
-        Error::Log::Log(loc, "Cannot resize a fixed-length array.");
-        type = Err;
-        return;
+        Error::Log::ResizingFixedArray(loc);
       }
 
-      // TODO Kinda hacky, because the type should really take the array into
-      // account, but we're just dealing with it at code-gen time?
-      type = Func(/*Ptr(operand->type), */ Uint, Void);
+      // TODO Can we have this without a member?
+      type = Void;
       return;
     }
-
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
       operand->evaluate();
@@ -572,8 +572,7 @@ void Access::Verify(bool emit_errors) {
         type = operand->evaluate().as_type;
 
       } else {
-        Error::Log::Log(loc, evaled_type->to_string() + " has no member " +
-                               member_name + ".");
+        Error::Log::MissingMember(loc, member_name, evaled_type);
         type = Err;
       }
       return;
@@ -590,8 +589,7 @@ void Access::Verify(bool emit_errors) {
 
     } else {
       if (emit_errors) {
-        Error::Log::Log(loc, "Objects of type " + base_type->to_string() +
-                               " have no member named `" + member_name + "`.");
+        Error::Log::MissingMember(loc, member_name, base_type);
       }
       type = Err;
     }
@@ -599,10 +597,7 @@ void Access::Verify(bool emit_errors) {
 
   if (base_type->is_primitive() || base_type->is_array() ||
       base_type->is_function()) {
-    if (emit_errors) {
-      Error::Log::Log(loc, base_type->to_string() + " has no field named '" +
-                             member_name + "'.");
-    }
+    if (emit_errors) { Error::Log::MissingMember(loc, member_name, base_type); }
     type = Err;
     return;
   }
@@ -914,26 +909,25 @@ void Binop::verify_types() {
     // TODO rocket encountered outside case statement.
     UNREACHABLE;
   } break;
-  case Operator::Index: {
+  case Operator::Index:
     type = Err;
     if (!lhs->type->is_array()) {
-      Error::Log::Log(loc, "LHS does not name an array.");
-      return;
-    }
-
-    if (rhs->type->is_range()) {
+      if (rhs->type->is_range()) {
+        Error::Log::SlicingNonArray(loc, lhs->type);
+      } else {
+        Error::Log::IndexingNonArray(loc, lhs->type);
+      }
+    } else if (rhs->type->is_range()) {
       type = Slice((Array *)lhs->type);
       break;
+    } else {
+      type = ((Array *)lhs->type)->data_type;
+      assert(type && "array data type is nullptr");
+      // TODO allow slice indexing
+      if (rhs->type == Int || rhs->type == Uint) { break; }
+      Error::Log::NonIntegralArrayIndex(loc, rhs->type);
     }
-
-    type = ((Array *)lhs->type)->data_type;
-    assert(type && "array data type is nullptr");
-    // TODO allow slice indexing
-    if (rhs->type == Int || rhs->type == Uint) { break; }
-    Error::Log::NonIntegralArrayIndex(loc, rhs->type);
     return;
-
-  } break;
   case Operator::Cast: {
     // TODO use correct scope
     type = rhs->evaluate().as_type;
@@ -951,8 +945,7 @@ void Binop::verify_types() {
 
     if (lhs->type->is_pointer() && type->is_pointer()) { return; }
 
-    Error::Log::Log(loc, "Invalid cast from " + lhs->type->to_string() + " to " +
-                           type->to_string());
+    Error::Log::InvalidCast(loc, lhs->type, type);
   } break;
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
