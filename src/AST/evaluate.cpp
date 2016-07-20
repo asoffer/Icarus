@@ -6,6 +6,8 @@
 #include "IR/IR.h"
 #include "IR/Stack.h"
 
+extern std::stack<Scope *> ScopeStack;
+
 namespace TypeSystem {
 void initialize();
 extern Type *get(const std::string &name);
@@ -84,9 +86,6 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   outer_continue:;
   }
 
-  auto &cache_loc = (cache[arg_vals] = nullptr);
-  reverse_cache[cache_loc] = arg_vals;
-
   bool has_vars = false;
   for (const auto &arg : arg_vals) {
     // TODO What if the argument isn't a type
@@ -132,19 +131,33 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
     assert(cache.size() < 5);
   }
 
+  std::vector<IR::Value> args;
+  for (size_t i = 0; i < num_args; ++i) {
+    // TODO what other things can be plugged in?
+    auto iter = arg_vals.find(params[i]->identifier->token);
+    assert(iter != arg_vals.end());
+    args.push_back(IR::Value(iter->second.as_type));
+  }
   auto local_stack = new IR::LocalStack;
   auto f = EmitIR();
   assert(f.flag == IR::ValType::F);
-  auto result = f.as_func->Call(local_stack, {/* TODO */});
+  auto result = f.as_func->Call(local_stack, args);
   assert(result.flag == IR::ValType::T);
 
   assert(result.as_type->is_struct());
-  auto struct_result = ((Structure *)result.as_type);
-  struct_result->set_name(ss.str());
-  cache_loc->value = Context::Value(struct_result);
 
   delete local_stack;
-  cache_loc = struct_result->ast_expression;
+
+  auto struct_result = ((Structure *)result.as_type);
+  struct_result->set_name(ss.str());
+
+  auto &cache_loc = (cache[arg_vals] = struct_result->ast_expression);
+  reverse_cache[cache_loc] = arg_vals;
+  cache_loc->value         = Context::Value(struct_result);
+
+  ScopeStack.push(scope_);
+  cache_loc->assign_scope();
+  ScopeStack.pop();
 
   cache_loc->verify_types();
 

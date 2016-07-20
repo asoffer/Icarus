@@ -9,61 +9,8 @@
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
 extern std::stack<Scope *> ScopeStack;
-extern AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr,
-                                                  const Ctx &ctx);
 
 namespace AST {
-void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
-  auto arg_vals  = reverse_cache[cache_loc];
-  auto num_decls = decls.size();
-  cache_loc->decls.reserve(num_decls);
-
-  for (size_t i = 0; i < num_decls; ++i) {
-    auto new_decl = new Declaration;
-    new_decl->identifier =
-        new Identifier(decls[i]->identifier->loc, decls[i]->identifier->token);
-    new_decl->identifier->decl = new_decl;
-    new_decl->hashtags         = decls[i]->hashtags;
-
-    if (decls[i]->type_expr) {
-      auto old_func  = IR::Func::Current;
-      auto old_block = IR::Block::Current;
-
-      // This is kinda hacky to get the right eval. TODO move arg_vals into
-      // declaration node.
-      auto fn_ptr = WrapExprIntoFunction(decls[i]->type_expr, arg_vals);
-      auto local_stack = new IR::LocalStack;
-      IR::Func *func = fn_ptr->EmitAnonymousIR().as_func;
-      func->SetName("anonymous-func");
-
-      IR::Func::Current  = old_func;
-      IR::Block::Current = old_block;
-
-      auto result = func->Call(local_stack, {});
-      delete local_stack;
-
-      delete fn_ptr;
-
-      new_decl->type_expr =
-          new DummyTypeExpr(decls[i]->type_expr->loc, result.as_type);
-    }
-    if (decls[i]->init_val) { NOT_YET; }
-
-    cache_loc->decls.push_back(new_decl);
-  }
-
-  ScopeStack.push(scope_);
-  cache_loc->assign_scope();
-  ScopeStack.pop();
-
-  assert(cache_loc == ((Structure *)cache_loc->value.as_type)->ast_expression);
-  cache_loc->CompleteDefinition();
-
-  assert(value.as_type->is_parametric_struct());
-  assert(cache_loc->value.as_type->is_struct());
-  ((Structure *)cache_loc->value.as_type)->creator = this;
-}
-
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) {
   if (value.as_type->has_vars) {
     NOT_YET;

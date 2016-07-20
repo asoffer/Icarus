@@ -235,7 +235,6 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  void CloneStructLiteral(StructLiteral *&);
   Context::Value CreateOrGetCached(const Ctx& arg_vals);
 
   IR::Func *ir_func;

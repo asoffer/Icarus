@@ -6,26 +6,10 @@
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 
-using Ctx = std::map<std::string, Context::Value>;
-
-AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr,
-                                           const Ctx &ctx) {
-  Type *input_type;
+static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   auto fn_ptr = new AST::FunctionLiteral;
-  Cursor loc;
-  if (ctx.empty()) {
-    input_type = Void;
-  } else {
-    for (const auto &kv : ctx) {
-      auto input_decl        = new AST::Declaration;
-      auto id                = new AST::Identifier(loc, kv.first);
-      id->decl               = input_decl;
-      input_decl->identifier = id;
-      input_decl->type_expr  = new AST::DummyTypeExpr(loc, Type_); // TODO
-    }
-  }
 
-  fn_ptr->type               = Func(input_type, expr->type);
+  fn_ptr->type               = Func(Void, expr->type);
   fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
   fn_ptr->scope_             = expr->scope_;
   fn_ptr->statements         = new AST::Statements;
@@ -231,7 +215,7 @@ IR::Value Unop::EmitIR() {
     auto old_func  = IR::Func::Current;
     auto old_block = IR::Block::Current;
 
-    auto fn_ptr      = WrapExprIntoFunction(operand, {});
+    auto fn_ptr      = WrapExprIntoFunction(operand);
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
     func->SetName("anonymous-func");
