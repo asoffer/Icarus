@@ -308,7 +308,6 @@ static Type *EvalWithVars(Type *type,
         struct_type->creator->reverse_cache[struct_type->ast_expression];
 
     Ctx evaled_params;
-
     for (auto p : params) {
       // TODO not all parameters have to be types
       evaled_params[p.first] =
@@ -574,7 +573,6 @@ void Access::Verify(bool emit_errors) {
       auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
-        Ctx ctx;
         type = operand->evaluate().as_type;
 
       } else {
@@ -1339,6 +1337,7 @@ static void VerifyDeclarationForMagicDestroy(Type *type, const Cursor &loc) {
 // TODO rewrite/simplify
 void Declaration::verify_types() {
   STARTING_CHECK;
+
   if (type_expr) { type_expr->verify_types(); }
   if (init_val) { init_val->verify_types(); }
 
@@ -1646,6 +1645,13 @@ void EnumLiteral::verify_types() {
 
 void ParametricStructLiteral::verify_types() {
   for (auto p : params) { p->verify_types(); }
+  for (auto d : decls) {
+    d->identifier->decl = d;
+    if (d->type_expr) { d->type_expr->verify_types(); }
+    if (d->init_val) {
+      d->init_val->verify_types();
+    } // TODO could be problematic
+  }
 }
 
 void StructLiteral::verify_types() {}

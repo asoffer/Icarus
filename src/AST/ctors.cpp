@@ -66,10 +66,11 @@ Identifier::Identifier(const Cursor &new_loc, const std::string &token_string)
 
 FunctionLiteral::FunctionLiteral()
     : fn_scope(new FnScope), return_type_expr(nullptr), llvm_fn(nullptr),
-      statements(nullptr), ir_func(nullptr), code_gened(false) {}
+      statements(nullptr), ir_func(nullptr) {}
 
 StructLiteral::StructLiteral() : type_scope(new Scope) {}
-ParametricStructLiteral::ParametricStructLiteral() : type_scope(new Scope) {}
+ParametricStructLiteral::ParametricStructLiteral()
+    : ir_func(nullptr), type_scope(new Scope) {}
 
 EnumLiteral::EnumLiteral() {}
 

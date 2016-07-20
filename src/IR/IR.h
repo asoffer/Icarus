@@ -192,7 +192,6 @@ struct Block {
 
   Block *ExecuteJump(StackFrame &frame);
 
-  size_t block_num;
   const char *block_name;
   std::vector<Cmd> cmds;
 
@@ -276,6 +275,8 @@ Value Memcpy(Value dest, Value source, Value num_bytes);
 Value PtrIncr(Pointer *type, Value ptr, Value incr);
 Value Trunc(Value val);
 Value ZExt(Value val);
+Value PushField(Value fields, const char *name, Value ty, Value init);
+Value InitFieldVec(size_t num_decls);
 
 Cmd Phi(Type *ret_type);
 Cmd NOp();

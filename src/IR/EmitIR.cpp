@@ -6,6 +6,49 @@
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 
+using Ctx = std::map<std::string, Context::Value>;
+
+AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr,
+                                           const Ctx &ctx) {
+  Type *input_type;
+  auto fn_ptr = new AST::FunctionLiteral;
+  Cursor loc;
+  if (ctx.empty()) {
+    input_type = Void;
+  } else {
+    for (const auto &kv : ctx) {
+      auto input_decl        = new AST::Declaration;
+      auto id                = new AST::Identifier(loc, kv.first);
+      id->decl               = input_decl;
+      input_decl->identifier = id;
+      input_decl->type_expr  = new AST::DummyTypeExpr(loc, Type_); // TODO
+    }
+  }
+
+  fn_ptr->type               = Func(input_type, expr->type);
+  fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
+  fn_ptr->scope_             = expr->scope_;
+  fn_ptr->statements         = new AST::Statements;
+  fn_ptr->statements->scope_ = fn_ptr->fn_scope;
+  fn_ptr->return_type_expr   = new AST::DummyTypeExpr(expr->loc, expr->type);
+  AST::Unop *ret             = nullptr;
+
+  if (expr->type != Void) {
+    ret             = new AST::Unop;
+    ret->scope_     = fn_ptr->fn_scope;
+    ret->operand    = expr;
+    ret->op         = Language::Operator::Return;
+    ret->precedence = Language::precedence(ret->op);
+    fn_ptr->statements->statements.push_back(ret);
+  } else {
+    fn_ptr->statements->statements.push_back(expr);
+  }
+
+  fn_ptr->verify_types();
+
+  return fn_ptr;
+}
+
 IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
@@ -188,26 +231,7 @@ IR::Value Unop::EmitIR() {
     auto old_func  = IR::Func::Current;
     auto old_block = IR::Block::Current;
 
-    auto fn_ptr                = new FunctionLiteral;
-    fn_ptr->type               = Func(Void, operand->type);
-    fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
-    fn_ptr->scope_             = scope_;
-    fn_ptr->statements         = new Statements;
-    fn_ptr->statements->scope_ = fn_ptr->fn_scope;
-    fn_ptr->return_type_expr   = new DummyTypeExpr(operand->loc, type);
-    Unop *ret                  = nullptr;
-
-    if (operand->type != Void) {
-      ret             = new Unop;
-      ret->scope_     = fn_ptr->fn_scope;
-      ret->operand    = operand;
-      ret->op         = Language::Operator::Return;
-      ret->precedence = Language::precedence(ret->op);
-      fn_ptr->statements->statements.push_back(ret);
-    } else {
-      fn_ptr->statements->statements.push_back(operand);
-    }
-
+    auto fn_ptr      = WrapExprIntoFunction(operand, {});
     auto local_stack = new IR::LocalStack;
     IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
     func->SetName("anonymous-func");
@@ -227,9 +251,7 @@ IR::Value Unop::EmitIR() {
 
     // Cleanup
     // ret->operand = nullptr;
-    delete fn_ptr; // Because delete is called recursively, this is all we need
-                   // to do. The Statements and Unop nodes are owned by the
-                   // function.
+    delete fn_ptr;
     return result;
   } break;
   case Language::Operator::Print: {
@@ -766,7 +788,11 @@ IR::Value Identifier::EmitIR() {
           if (decl == fn_lit->inputs[i]) { return IR::Value::Arg(i); }
         }
       } else {
-        NOT_YET;
+        assert(decl->arg_val->is_parametric_struct_literal());
+        auto param_struct_lit = (ParametricStructLiteral *)decl->arg_val;
+        for (size_t i = 0; i < param_struct_lit->params.size(); ++i) {
+          if (decl == param_struct_lit->params[i]) { return IR::Value::Arg(i); }
+        }
       }
       UNREACHABLE;
     } else {
@@ -1275,7 +1301,48 @@ IR::Value Jump::EmitIR() {
 IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 
-IR::Value ParametricStructLiteral::EmitIR() { return IR::Value(value.as_type); }
+IR::Value ParametricStructLiteral::EmitIR() {
+  if (ir_func) { return IR::Value(ir_func); } // Cache
+  verify_types();
+
+  auto saved_func  = IR::Func::Current;
+  auto saved_block = IR::Block::Current;
+
+  std::vector<Type *> param_types;
+  for (auto p : params) { param_types.push_back(p->type); }
+
+  ir_func = new IR::Func(Func(Tup(param_types), Type_), false);
+  ir_func->SetName("anon-param-struct-func");
+
+  IR::Func::Current  = ir_func;
+  IR::Block::Current = ir_func->entry();
+
+  auto vec = IR::InitFieldVec(decls.size());
+  for (size_t i = 0; i < decls.size(); ++i) {
+    size_t len   = decls[i]->identifier->token.size();
+    char *id_str = new char[len + 1];
+    strcpy(id_str, decls[i]->identifier->token.c_str());
+    // TODO Leaking id_str
+
+    IR::PushField(vec, id_str,
+                  decls[i]->type_expr ? decls[i]->type_expr->EmitIR()
+                                      : IR::Value((void *)nullptr),
+                  decls[i]->init_val ? decls[i]->init_val->EmitIR()
+                                     : IR::Value((void *)nullptr));
+  }
+
+  auto result_type = IR::CreateStruct(vec);
+
+  IR::Block::Current->exit.SetUnconditional(ir_func->exit());
+  IR::Block::Current = ir_func->exit();
+  IR::Block::Current->exit.SetReturn(result_type);
+
+  IR::Func::Current  = saved_func;
+  IR::Block::Current = saved_block;
+
+  return IR::Value(ir_func);
+}
+
 IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }
 IR::Value EnumLiteral::EmitIR() { return IR::Value(value.as_type); }
 } // namespace AST

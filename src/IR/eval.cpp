@@ -737,6 +737,46 @@ void Cmd::Execute(StackFrame& frame) {
       UNREACHABLE;
     }
   } break;
+  case Op::PushField: {
+    // NOTE: Hack. It's not a heap address, it's a vector pointer
+    auto vec_ptr =
+        (std::vector<std::tuple<const char *, Value, Value>> *)cmd_inputs[0]
+            .as_heap_addr;
+    vec_ptr->emplace_back(cmd_inputs[1].as_cstr, cmd_inputs[2], cmd_inputs[3]);
+  } break;
+  case Op::InitFieldVec: {
+    auto vec_ptr = new std::vector<std::tuple<const char *, Value, Value>>;
+    vec_ptr->reserve(cmd_inputs[0].as_uint);
+    frame.reg[result.reg] = Value::HeapAddr(vec_ptr);
+  } break;
+  case Op::CreateStruct: {
+    auto vec_ptr =
+        (std::vector<std::tuple<const char *, Value, Value>> *)cmd_inputs[0]
+            .as_heap_addr;
+
+    Cursor loc;
+    auto struct_lit = new AST::StructLiteral;
+    for (const auto &tuple_val : *vec_ptr) {
+      auto id          = new AST::Identifier(loc, std::get<0>(tuple_val));
+      auto decl        = new AST::Declaration;
+      decl->identifier = id;
+      id->decl         = decl;
+
+      if (std::get<1>(tuple_val).flag == ValType::T) {
+        decl->type_expr =
+            new AST::DummyTypeExpr(loc, std::get<1>(tuple_val).as_type);
+      } else if (std::get<1>(tuple_val).flag == ValType::HeapAddr) {
+        decl->type_expr = nullptr;
+      } else {
+        UNREACHABLE;
+      }
+
+      decl->init_val = nullptr; // TODO
+      struct_lit->decls.push_back(decl);
+    }
+
+    frame.reg[result.reg] = Value(Struct("anon", struct_lit));
+  } break;
   }
 }
 

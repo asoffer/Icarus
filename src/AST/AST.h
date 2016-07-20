@@ -238,6 +238,8 @@ struct ParametricStructLiteral : public Expression {
   void CloneStructLiteral(StructLiteral *&);
   Context::Value CreateOrGetCached(const Ctx& arg_vals);
 
+  IR::Func *ir_func;
+
   Scope *type_scope;
   std::vector<Declaration *> decls, params;
 
@@ -348,8 +350,6 @@ struct FunctionLiteral : public Expression {
   inline IR::Value EmitAnonymousIR() { return Emit(false); }
 
   IR::Func *ir_func;
-
-  bool code_gened;
 
   std::map<Type *, Declaration *> cache;
 

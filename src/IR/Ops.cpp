@@ -92,6 +92,22 @@ Value Field(Structure *struct_type, Value ptr, size_t field_num) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value PushField(Value fields, const char *name, Value ty, Value init) {
+  Cmd cmd(Op::PushField, false);
+  cmd.args        = {fields, Value(const_cast<char *>(name)), ty, init};
+  cmd.result.type = Void;
+  Block::Current->push(cmd);
+  return Value();
+}
+
+Value InitFieldVec(size_t num_decls) {
+  Cmd cmd(Op::InitFieldVec, true);
+  cmd.args        = {Value(num_decls)};
+  cmd.result.type = RawPtr;
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Value Cast(Type *in, Type *out, Value arg) {
   Cmd cmd(Op::Cast, true);
   cmd.args        = {Value(in), Value(out), arg};
@@ -238,8 +254,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::GlobalCStr: return os << "c\"#" << value.as_global_cstr;
   case ValType::Block:
     if (value.as_block) {
-      return os << value.as_block->block_name << "("
-                << value.as_block->block_num << ")";
+      return os << value.as_block->block_name;
     } else {
       return os << "0x0";
     }
@@ -260,7 +275,7 @@ void Cmd::dump(size_t indent) {
 }
 
 void Block::dump() {
-  std::cerr << "  " << block_name << '(' << block_num << ')' << ":\n";
+  std::cerr << "  " << block_name << ":\n";
   for (auto c : cmds) { c.dump(4); }
 
   exit.dump(4);
@@ -270,21 +285,18 @@ void Exit::dump(size_t indent) {
   std::cerr << std::string(indent, ' ');
   switch (flag) {
   case Strategy::Uncond:
-    std::cerr << "jmp " << true_block->block_name << "(" << true_block->block_num
-              << ")\n\n";
+    std::cerr << "jmp " << true_block->block_name << "\n\n";
     break;
   case Strategy::Cond:
     std::cerr << "cond br " << val;
     if (true_block) {
-      std::cerr << " [T: " << true_block->block_name << "("
-                << true_block->block_num << ")]";
+      std::cerr << " [T: " << true_block->block_name << "]";
     } else {
       std::cerr << " [T: 0x0]";
     }
 
     if (false_block) {
-      std::cerr << " [F: " << false_block->block_name << "("
-                << false_block->block_num << ")]\n\n";
+      std::cerr << " [F: " << false_block->block_name << "]\n\n";
     } else {
       std::cerr << " [F: 0x0]\n\n";
     }

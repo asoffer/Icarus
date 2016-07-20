@@ -1,6 +1,7 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
 #include "Type/Type.h"
+#include "IR/Stack.h"
 #endif
 
 #define CLONE clone(num_entries, lookup_key, lookup_val)
@@ -8,6 +9,8 @@
   size_t num_entries, TypeVariable **lookup_key, Type **lookup_val
 
 extern std::stack<Scope *> ScopeStack;
+extern AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr,
+                                                  const Ctx &ctx);
 
 namespace AST {
 void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
@@ -23,12 +26,26 @@ void ParametricStructLiteral::CloneStructLiteral(StructLiteral *&cache_loc) {
     new_decl->hashtags         = decls[i]->hashtags;
 
     if (decls[i]->type_expr) {
+      auto old_func  = IR::Func::Current;
+      auto old_block = IR::Block::Current;
+
       // This is kinda hacky to get the right eval. TODO move arg_vals into
       // declaration node.
-      new_decl->type_expr =
-          new DummyTypeExpr(decls[i]->type_expr->loc,
-                            decls[i]->type_expr->evaluate(/* arg_vals */).as_type);
+      auto fn_ptr = WrapExprIntoFunction(decls[i]->type_expr, arg_vals);
+      auto local_stack = new IR::LocalStack;
+      IR::Func *func = fn_ptr->EmitAnonymousIR().as_func;
+      func->SetName("anonymous-func");
 
+      IR::Func::Current  = old_func;
+      IR::Block::Current = old_block;
+
+      auto result = func->Call(local_stack, {});
+      delete local_stack;
+
+      delete fn_ptr;
+
+      new_decl->type_expr =
+          new DummyTypeExpr(decls[i]->type_expr->loc, result.as_type);
     }
     if (decls[i]->init_val) { NOT_YET; }
 
@@ -68,7 +85,6 @@ Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   auto fn_lit              = new FunctionLiteral;
   fn_lit->return_type_expr = (Expression *)return_type_expr->CLONE;
   fn_lit->statements       = (Statements *)statements->CLONE;
-  fn_lit->code_gened       = code_gened; // TODO really?? Seems fishy
   fn_lit->loc              = loc;
 
   for (auto input : inputs) {

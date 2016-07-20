@@ -498,6 +498,9 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(
             builder.CreateBitCast(args[2], *cmd.result.type), args[1]);
       } break;
+      case IR::Op::InitFieldVec: UNREACHABLE;
+      case IR::Op::PushField: UNREACHABLE;
+      case IR::Op::CreateStruct: UNREACHABLE;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
       case IR::Op::TC_Ptr: UNREACHABLE;

@@ -84,7 +84,7 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   outer_continue:;
   }
 
-  auto &cache_loc = (cache[arg_vals] = new StructLiteral);
+  auto &cache_loc = (cache[arg_vals] = nullptr);
   reverse_cache[cache_loc] = arg_vals;
 
   bool has_vars = false;
@@ -123,10 +123,6 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
   }
   ss << ")";
 
-  auto struct_val      = Struct(ss.str(), cache_loc);
-  struct_val->has_vars = has_vars;
-  cache_loc->value     = Context::Value(struct_val);
-
   if (debug::parametric_struct) {
     fprintf(stderr, " * No match found.\n"
                     " * Creating new cached value.\n"
@@ -136,10 +132,21 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(const Ctx &arg_vals) {
     assert(cache.size() < 5);
   }
 
-  param_struct->ast_expression->CloneStructLiteral(cache_loc);
+  auto local_stack = new IR::LocalStack;
+  auto f = EmitIR();
+  assert(f.flag == IR::ValType::F);
+  auto result = f.as_func->Call(local_stack, {/* TODO */});
+  assert(result.flag == IR::ValType::T);
+
+  assert(result.as_type->is_struct());
+  auto struct_result = ((Structure *)result.as_type);
+  struct_result->set_name(ss.str());
+  cache_loc->value = Context::Value(struct_result);
+
+  delete local_stack;
+  cache_loc = struct_result->ast_expression;
 
   cache_loc->verify_types();
-  ((Structure *)cache_loc->value.as_type)->set_name(ss.str());
 
   return cache_loc->value;
 }
@@ -573,6 +580,8 @@ Context::Value Binop::evaluate() {
       if (debug::parametric_struct) { std::cerr << std::endl; }
 
       value_flag   = ValueFlag::Done;
+
+      // std::cerr << *struct_lit << std::endl;
       return value = struct_lit->CreateOrGetCached(param_struct_args);
 
     } else {
