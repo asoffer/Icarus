@@ -588,23 +588,4 @@ Context::Value Binop::evaluate() {
 
   return nullptr;
 }
-
-Context::Value Statements::evaluate() {
-  for (auto &stmt : statements) { stmt->evaluate(); }
-  return nullptr;
-}
-
-Context::Value Conditional::evaluate() {
-  for (size_t i = 0; i < conditions.size(); ++i) {
-    if (conditions[i]->evaluate().as_bool) { statements[i]->evaluate(); }
-  }
-
-  if (has_else()) { statements.back()->evaluate(); }
-
-  return nullptr;
-}
-
-Context::Value Jump::evaluate() { NOT_YET; }
-Context::Value While::evaluate() { NOT_YET; }
-Context::Value For::evaluate() { NOT_YET; }
 } // namespace AST

@@ -10,7 +10,6 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual Context::Value evaluate() ENDING;                                    \
   virtual IR::Value EmitIR() ENDING;                                           \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
@@ -37,8 +36,6 @@ struct Node {
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
   virtual IR::Value EmitIR() = 0;
-
-  virtual Context::Value evaluate() { return nullptr; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
