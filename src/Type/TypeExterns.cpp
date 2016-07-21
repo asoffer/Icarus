@@ -6,17 +6,7 @@ Type *Err, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
     *RawPtr, *String;
 
 namespace TypeSystem {
-std::map<std::string, Type *> Literals;
-
-// TODO is this even necessary?
-Type *get(const std::string &name) {
-  auto enum_ptr = Enum(name);
-  if (enum_ptr) return enum_ptr;
-
-  auto struct_ptr = Struct(name);
-  assert(struct_ptr && "No struct found matching this name");
-  return struct_ptr;
-}
+std::map<const char *, Type *> Literals;
 
 void Initialize() {
   // TODO do we need to pair of strings and their types?
@@ -47,6 +37,7 @@ static std::map<AST::StructLiteral *, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
 static std::map<Array *, SliceType *> slices_;
 
+// TODO Not sure this is necessary
 void GenerateLLVM() {
   for (auto t : array_types_) t->generate_llvm();
   for (auto t : tuple_types_) t->generate_llvm();

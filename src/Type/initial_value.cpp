@@ -3,7 +3,7 @@
 #endif
 
 namespace data {
-extern llvm::ConstantInt *const_false();
+extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantFP *const_real(double d);
@@ -42,20 +42,16 @@ IR::Value RangeType::EmitInitialValue() const { NOT_YET; }
 IR::Value SliceType::EmitInitialValue() const { NOT_YET; }
 
 llvm::Constant *Primitive::InitialValue() const {
-  if (this == Bool) {
-    return data::const_false();
-  } else if (this == Char) {
-    return data::const_char('\0');
-  } else if (this == Int) {
-    return data::const_int(0);
-  } else if (this == Real) {
-    return data::const_real(0);
-  } else if (this == Uint) {
-    return data::const_uint(0);
-  } else {
-    assert(false && "Unknown initialization");
+  switch (type_) {
+  case TypeEnum::Bool: return data::const_bool(false);
+  case TypeEnum::Char: return data::const_char('\0');
+  case TypeEnum::Int: return data::const_int(0);
+  case TypeEnum::Real: return data::const_real(0);
+  case TypeEnum::Uint: return data::const_uint(0);
+  default: UNREACHABLE;
   }
 }
+
 llvm::Constant *Array::InitialValue() const {
   if (fixed_length) {
     auto init_elem = data_type->InitialValue();

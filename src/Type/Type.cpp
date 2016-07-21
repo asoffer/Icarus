@@ -123,8 +123,8 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
 }
 
 Array::Array(Type *t)
-    : init_func(nullptr), repr_func(nullptr), data_type(t), len(0),
-      fixed_length(false) {
+    : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),
+      data_type(t), len(0), fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
 
@@ -134,8 +134,8 @@ Array::Array(Type *t)
 }
 
 Array::Array(Type *t, size_t l)
-    : init_func(nullptr), repr_func(nullptr), data_type(t), len(l),
-      fixed_length(true) {
+    : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),
+      data_type(t), len(l), fixed_length(true) {
   dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
   if (time() != Time::compile) {
     std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
@@ -206,7 +206,8 @@ ParametricStructure::ParametricStructure(const std::string &name,
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), field_offsets(1, 0),
-      creator(nullptr), init_func(nullptr), assign_func(nullptr) {}
+      creator(nullptr), init_func(nullptr), assign_func(nullptr),
+      destroy_func(nullptr) {}
 
 Type *Structure::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
@@ -231,14 +232,6 @@ size_t Enumeration::get_index(const std::string &str) const {
 
 llvm::Value *Enumeration::get_value(const std::string &str) const {
   return data::const_uint(get_index(str));
-}
-
-bool Array::requires_uninit() const { return true; }
-bool Structure::requires_uninit() const {
-  for (const auto t : field_type) {
-    if (t->requires_uninit()) return true;
-  }
-  return false;
 }
 
 void Structure::set_name(const std::string &name) {

@@ -47,6 +47,7 @@ void MissingMember(const Cursor &loc, const std::string &member_name,
 void IndexingNonArray(const Cursor &loc, const Type *t);
 void SlicingNonArray(const Cursor &loc, const Type *t);
 void InvalidCast(const Cursor &loc, const Type *from, const Type *to);
+void GlobalNonDecl(const Cursor &loc);
 } // namespace Log
 } // namespace Error
 

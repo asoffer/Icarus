@@ -38,6 +38,7 @@ extern SliceType *Slice(Array *a);
   virtual Time::Eval time() const ENDING;                                      \
   virtual void generate_llvm() const ENDING;                                   \
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
+  virtual void EmitDestroy(IR::Value id_val) ENDING;                           \
   virtual IR::Value EmitInitialValue() const ENDING;                           \
   virtual void EmitRepr(IR::Value id_val) ENDING;                              \
   virtual llvm::Constant *InitialValue() const ENDING
@@ -75,10 +76,6 @@ public:
   // library. This should never come up, because it's only used to add type to a
   // string literal, and using a string literal should import strings.
   static Type *get_string();
-
-  virtual llvm::Value *allocate() const;
-
-  virtual bool requires_uninit() const { return false; }
 
   virtual bool is_primitive() const { return false; }
   virtual bool is_array() const { return false; }
@@ -120,14 +117,10 @@ struct Array : public Type {
   TYPE_FNS(Array, array);
   Array(Type *t, size_t l);
 
-  virtual bool requires_uninit() const;
-
   llvm::Function *initialize();
   llvm::Value *initialize_literal(llvm::Value *alloc, llvm::Value *len);
 
-  virtual llvm::Value *allocate() const;
-
-  IR::Func *init_func, *repr_func;
+  IR::Func *init_func, *repr_func, *destroy_func;
 
   Type *data_type;
   size_t len;
@@ -142,10 +135,6 @@ struct Array : public Type {
 
 struct Tuple : public Type {
   TYPE_FNS(Tuple, tuple);
-
-  // TODO requires_uninit()
-
-  virtual llvm::Value *allocate() const;
 
   Tuple(const std::vector<Type *> &types);
 
@@ -163,8 +152,6 @@ struct Function : public Type {
   TYPE_FNS(Function, function);
 
   operator llvm::FunctionType *() const;
-
-  virtual llvm::Value *allocate() const;
 
   Function(Type *in, Type *out);
   Type *input, *output;
@@ -191,8 +178,6 @@ struct Structure : public Type {
 
   void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
 
-  virtual bool requires_uninit() const;
-
   void set_name(const std::string &name);
 
   // Return the type of a field, or a nullptr if it doesn't exist
@@ -216,7 +201,7 @@ struct Structure : public Type {
   AST::ParametricStructLiteral *creator;
 
 private:
-  IR::Func *init_func, *assign_func;
+  IR::Func *init_func, *assign_func, *destroy_func;
 };
 
 struct ParametricStructure : public Type {

@@ -26,7 +26,7 @@
 #include "util/timer.h"
 
 namespace TypeSystem {
-void Initialize();
+extern void Initialize();
 } // namespace TypeSystem
 
 
@@ -78,10 +78,9 @@ enum {
   success = 0, // returning 0 denotes succes
   CL_arg_failure,
   cyclic_dependency,
-  file_does_not_exist,
   parse_error,
   lvalue,
-  undeclared_identifier
+  other
 };
 } // namespace error_code
 
@@ -267,6 +266,24 @@ int main(int argc, char *argv[]) {
     }
   }
 
+  RUN(timer, "Top-level verification") {
+    for (auto stmt : global_statements->statements) {
+      if (stmt->is_declaration() ||
+          (stmt->is_unop() &&
+           ((AST::Unop *)stmt)->op == Language::Operator::Import)) {
+        continue;
+      }
+      Error::Log::GlobalNonDecl(stmt->loc);
+    }
+
+    if (Error::Log::NumErrors() != 0) {
+      Error::Log::Dump();
+
+      if (debug::ct_eval) { endwin(); }
+      return error_code::other;
+    }
+  }
+
   RUN(timer, "Emit-IR") {
     for (auto decl : Scope::Global->ordered_decls_) {
       if (decl->arg_val || decl->type->is_function()) { continue; }
@@ -292,68 +309,54 @@ int main(int argc, char *argv[]) {
   }
 
   RUN(timer, "Code-gen") {
-    { // Program has been verified. We can now proceed with code generation.
-      for (auto decl : Scope::Global->ordered_decls_) {
-        auto id = decl->identifier;
+    // Globals
+    for (auto decl : Scope::Global->ordered_decls_) {
+      assert(!decl->arg_val);
+      auto id   = decl->identifier;
+      auto type = decl->type;
 
-        if (decl->arg_val) { continue; }
+      if (type->is_struct() || type->is_parametric_struct() ||
+          type->is_range() || type->is_slice() || type->time() == Time::compile) {
+        continue;
+      }
 
-        auto type = decl->type;
-        if (type->time() == Time::compile) { continue; }
+      if (type->is_function()) { continue; /* TODO what if it's #mutable */ }
 
-        ScopeStack.push(Scope::Global);
-        if (type->is_primitive() || type->is_array() || type->is_pointer()) {
-          auto gvar = new llvm::GlobalVariable(
-              /*      Module = */ *global_module,
-              /*        Type = */ *type,
-              /*  isConstant = */ decl->HasHashtag("const"),
-              /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-              /* Initializer = */ 0, // might be specified below
-              /*        Name = */ id->token);
+      if (type->is_primitive() || type->is_array() || type->is_pointer()) {
+        std::cerr << *type << std::endl;
+        auto gvar = new llvm::GlobalVariable(
+            /*      Module = */ *global_module,
+            /*        Type = */ *type,
+            /*  isConstant = */ decl->HasHashtag("const"),
+            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+            /* Initializer = */ 0, // might be specified below
+            /*        Name = */ id->token);
 
-          auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
-          llvm::Constant *init_val;
-          switch (ir_val.flag) {
-          case IR::ValType::B:
-            init_val = data::const_bool(ir_val.as_bool);
-            break;
-          case IR::ValType::C:
-            init_val = data::const_char(ir_val.as_char);
-            break;
-          case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
-          case IR::ValType::R:
-            init_val = data::const_real(ir_val.as_real);
-            break;
-          case IR::ValType::U:
-            init_val = data::const_uint(ir_val.as_uint);
-            break;
-          case IR::ValType::GlobalAddr:
-            init_val = IR::LLVMGlobals[ir_val.as_global_addr];
-            break;
-          default: NOT_YET;
-          }
-
-          gvar->setInitializer(init_val);
-          IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
-
-          // TODO is this useful?
-          id->decl->alloc = gvar;
-
-        } else if (type->is_array()) {
-          NOT_YET;
-
-        } else if (type->is_function()) {
-          assert(decl->identifier);
-          assert(decl->identifier->decl == decl);
-          auto fn_type      = (Function *)type;
-          auto mangled_name = Mangle(fn_type, decl->identifier);
-        } else {
-          std::cerr << *type << std::endl;
-          assert(false && "Global variables not currently allowed.");
+        auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
+        llvm::Constant *init_val;
+        switch (ir_val.flag) {
+        case IR::ValType::B: init_val = data::const_bool(ir_val.as_bool); break;
+        case IR::ValType::C: init_val = data::const_char(ir_val.as_char); break;
+        case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
+        case IR::ValType::R: init_val = data::const_real(ir_val.as_real); break;
+        case IR::ValType::U: init_val = data::const_uint(ir_val.as_uint); break;
+        case IR::ValType::GlobalAddr:
+          init_val = IR::LLVMGlobals[ir_val.as_global_addr];
+          break;
+        default: NOT_YET;
         }
 
-        ScopeStack.pop();
+        gvar->setInitializer(init_val);
+        IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
+
+        // TODO is this useful?
+        id->decl->alloc = gvar;
+
+        continue;
       }
+
+      std::cerr << *type << std::endl;
+      UNREACHABLE;
     }
 
     // Generate all the functions

@@ -99,8 +99,9 @@ size_t IR::Func::PushSpace(Type *t) {
   frame_size += bytes;
 
   builder.SetInsertPoint(alloc_block);
-  if (t != Void && t != Type_) { frame_map[result] = t->allocate(); }
-
+  if (t != Void && t != Type_) {
+    frame_map[result] = builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
+  }
 
   return result;
 }
@@ -743,6 +744,19 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
   IR::Block::Current = fn_scope->exit_block;
+
+  for (auto decl : fn_scope->ordered_decls_) {
+    if (decl->arg_val) { continue; }
+    decl->type->EmitDestroy(decl->identifier->EmitIR());
+  }
+
+  for (auto scope : fn_scope->innards_) {
+    for (auto decl : scope->ordered_decls_) {
+      if (decl->arg_val) { continue; }
+      decl->type->EmitDestroy(decl->identifier->EmitIR());
+    }
+  }
+
   if (((Function *)type)->output == Void) {
     IR::Block::Current->exit.SetReturnVoid();
   } else {

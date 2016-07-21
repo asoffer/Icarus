@@ -41,7 +41,7 @@ static inline bool IsNonGraphic(char c) {
   }
 
 namespace TypeSystem {
-extern std::map<std::string, Type *> Literals;
+extern std::map<const char *, Type *> Literals;
 } // namespace TypeSystem
 
 // Take a filename as a string or a C-string and opens the named file

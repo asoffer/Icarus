@@ -113,18 +113,9 @@ llvm::ConstantFP *const_real(double d) {
   return llvm::ConstantFP::get(llvm::getGlobalContext(), llvm::APFloat(d));
 }
 
-llvm::ConstantInt *const_false() {
-  return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                llvm::APInt(1, 0, false));
-}
-
-llvm::ConstantInt *const_true() {
-  return llvm::ConstantInt::get(llvm::getGlobalContext(),
-                                llvm::APInt(1, 1, false));
-}
-
 llvm::ConstantInt *const_bool(bool b) {
-  return b ? const_true() : const_false();
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(1, b ? 1 : 0, false));
 }
 
 llvm::ConstantInt *const_char(char c) {

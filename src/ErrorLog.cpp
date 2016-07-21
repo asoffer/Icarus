@@ -418,6 +418,14 @@ void InvalidCast(const Cursor &loc, const Type *from, const Type *to) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 2);
 }
 
+void GlobalNonDecl(const Cursor &loc) {
+  ++num_errs_;
+  // TODO pull all these together
+  DisplayErrorMessage("Found an invalid statement at the top level. All "
+                      "top-level statements must either be declarations or "
+                      "imports.", nullptr, loc, 1);
+}
+
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;
   undeclared_identifiers[token][loc.file_name][loc.line_num].push_back(
