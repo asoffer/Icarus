@@ -544,8 +544,6 @@ Node *Declaration::Build(NPtrVec &&nodes) {
   decl_ptr->identifier       = steal<Identifier>(nodes[0]);
   decl_ptr->identifier->decl = decl_ptr;
 
-  Scope::decl_registry_.emplace_back(decl_ptr);
-
   return decl_ptr;
 }
 
@@ -554,9 +552,6 @@ Node *Generic::Build(NPtrVec &&nodes) {
   generic->loc        = nodes[1]->loc;
   generic->test_fn    = steal<Expression>(nodes[0]);
   generic->precedence = Language::precedence(Language::Operator::Tick);
-
-  // TODO Is registration necessary?
-  // Scope::decl_registry_.emplace_back(decl_ptr);
 
   assert(nodes[2]->is_identifier());
   generic->identifier       = steal<Identifier>(nodes[2]);

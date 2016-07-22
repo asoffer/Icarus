@@ -40,8 +40,7 @@ extern SliceType *Slice(Array *a);
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
   virtual void EmitDestroy(IR::Value id_val) ENDING;                           \
   virtual IR::Value EmitInitialValue() const ENDING;                           \
-  virtual void EmitRepr(IR::Value id_val) ENDING;                              \
-  virtual llvm::Constant *InitialValue() const ENDING
+  virtual void EmitRepr(IR::Value id_val) ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \

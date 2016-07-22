@@ -462,7 +462,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         // TODO or do we want to actually do the store (it'll be easily
         // optimized out)
         if (reinterpret_cast<Type *>(args[0]) == Type_) { break; }
-
         builder.CreateStore(args[1], args[2]);
       } break;
       case IR::Op::Cast: {

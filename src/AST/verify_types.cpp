@@ -998,14 +998,11 @@ void Binop::verify_types() {
       /* Store a vector containing the valid matches */                        \
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
-      for (auto scope_ptr = scope_; scope_ptr;                                 \
-           scope_ptr = scope_ptr->parent) {                                    \
-        /* TODO this linear search is probably not ideal.   */                 \
-        for (auto decl : scope_ptr->DeclRegistry) {                            \
-          if (decl->identifier->token == "__" op_name "__") {                  \
-            decl->verify_types();                                              \
-            matched_op_name.push_back(decl);                                   \
-          }                                                                    \
+      /* TODO this linear search is probably not ideal.   */                   \
+      LOOP_OVER_DECLS_FROM(scope_, decl) {                                     \
+        if (decl->identifier->token == "__" op_name "__") {                    \
+          decl->verify_types();                                                \
+          matched_op_name.push_back(decl);                                     \
         }                                                                      \
       }                                                                        \
                                                                                \
@@ -1189,9 +1186,6 @@ void InDecl::verify_types() {
   STARTING_CHECK;
   container->verify_types();
 
-  // TODO figure out what's going on with this.
-  scope_->ordered_decls_.push_back(this);
-
   if (container->type == Void) {
     type             = Err;
     identifier->type = Err;
@@ -1303,25 +1297,6 @@ static void VerifyDeclarationForMagicAssign(Type *type, const Cursor &loc) {
   }
 }
 
-static void VerifyDeclarationForMagicDestroy(Type *type, const Cursor &loc) {
-  if (!type->is_function()) {
-    Error::Log::Log(loc, "Destructor must be defined to be a function.");
-    return;
-  }
-
-  auto fn_type = (Function *)type;
-  if (!fn_type->input->is_pointer()) {
-    Error::Log::Log(loc, "Destructor must take one pointer argument.");
-
-  } else if (!((Pointer *)(fn_type->input))->pointee->is_struct()) {
-    Error::Log::Log(loc, "Destructor must take a pointer to a struct.");
-  }
-
-  if (fn_type->output != Void) {
-    Error::Log::Log(loc, "Destructor must return void");
-  }
-}
-
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
 void Declaration::verify_types() {
@@ -1332,7 +1307,6 @@ void Declaration::verify_types() {
 
   // TODO figure out what's going on with this.
   assert(scope_);
-  scope_->ordered_decls_.push_back(this);
 
   // There are four cases for the form of a declaration.
   //   1. I: T
@@ -1464,9 +1438,6 @@ void Declaration::verify_types() {
 
   } else if (identifier->token == "__assign__") {
     VerifyDeclarationForMagicAssign(type, loc);
-
-  } else if (identifier->token == "__destroy__") {
-    VerifyDeclarationForMagicDestroy(type, loc);
   }
 }
 

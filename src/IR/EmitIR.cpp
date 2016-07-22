@@ -106,7 +106,6 @@ size_t IR::Func::PushSpace(Type *t) {
   return result;
 }
 
-
 void IR::Func::PushLocal(AST::Declaration *decl) {
   decl->stack_loc = IR::Value::FrameAddr(PushSpace(decl->type));
 }
@@ -683,6 +682,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   assert(type);
   assert(type->is_function());
+
   fn_scope->ret_val =
       IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
   IR::Func::Current  = ir_func;
@@ -690,7 +690,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   statements->verify_types();
 
-  for (auto decl : fn_scope->ordered_decls_) {
+  for (auto decl : fn_scope->DeclRegistry) {
     if (decl->arg_val) {
       if (decl->arg_val->is_function_literal()) {
         auto fn_lit = (FunctionLiteral *)decl->arg_val;
@@ -734,28 +734,23 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   }
 
   for (auto scope : fn_scope->innards_) {
-    for (auto decl : scope->ordered_decls_) {
-      if (decl->arg_val) { continue; }
+    if (!scope->is_block_scope() || scope->is_function_scope()) { continue; }
+    for (auto decl : scope->DeclRegistry) {
+      if (decl->arg_val || decl->is_in_decl() ||
+          decl->type->time() == Time::compile) {
+        continue;
+      }
       ir_func->PushLocal(decl);
     }
   }
 
+  IR::Block::Current->exit.SetUnconditional(fn_scope->entry_block);
+  fn_scope->InsertInit();
+
   statements->EmitIR();
 
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
-  IR::Block::Current = fn_scope->exit_block;
-
-  for (auto decl : fn_scope->ordered_decls_) {
-    if (decl->arg_val) { continue; }
-    decl->type->EmitDestroy(decl->identifier->EmitIR());
-  }
-
-  for (auto scope : fn_scope->innards_) {
-    for (auto decl : scope->ordered_decls_) {
-      if (decl->arg_val) { continue; }
-      decl->type->EmitDestroy(decl->identifier->EmitIR());
-    }
-  }
+  fn_scope->InsertDestroy();
 
   if (((Function *)type)->output == Void) {
     IR::Block::Current->exit.SetReturnVoid();
@@ -975,20 +970,25 @@ IR::Value While::EmitIR() {
   auto body_block = IR::Func::Current->AddBlock("while-body");
   auto land_block = IR::Func::Current->AddBlock("while-land");
 
+  while_scope->entry_block = IR::Func::Current->AddBlock("while-entry");
+  while_scope->exit_block  = IR::Func::Current->AddBlock("while-entry");
+
   IR::Block::Current->exit.SetUnconditional(cond_block);
 
   IR::Block::Current = cond_block;
   auto cond_val = condition->EmitIR();
-  IR::Block::Current->exit.SetConditional(cond_val, body_block, land_block);
+  IR::Block::Current->exit.SetConditional(cond_val, while_scope->entry_block,
+                                          land_block);
 
+  while_scope->InsertInit();
+  IR::Block::Current->exit.SetUnconditional(body_block);
   IR::Block::Current = body_block;
-//  for (auto decl : while_scope->ordered_decls_) { /*TODO Initialize*/
-//  }
   statements->EmitIR();
-  // TODO Exit/cleanup
 
-  // TODO Exit flag. For now, there are no breaks/continues
+  IR::Block::Current->exit.SetUnconditional(while_scope->exit_block);
+  while_scope->InsertDestroy();
   IR::Block::Current->exit.SetUnconditional(cond_block);
+  // TODO Exit flag. For now, there are no breaks/continues
 
   IR::Block::Current = land_block;
 
@@ -1004,7 +1004,6 @@ IR::Value Conditional::EmitIR() {
   for (auto &b : cond_blocks) { b = IR::Func::Current->AddBlock("cond-cond"); }
   for (auto &b : body_blocks) { b = IR::Func::Current->AddBlock("cond-body"); }
   for (auto &s : body_scopes) {
-    s->land_block  = land_block;
     s->entry_block = IR::Func::Current->AddBlock("cond-entry");
     s->exit_block  = IR::Func::Current->AddBlock("cond-exit");
   }
@@ -1028,19 +1027,15 @@ IR::Value Conditional::EmitIR() {
 
   for (size_t i = 0; i < body_scopes.size(); ++i) {
     IR::Block::Current = body_scopes[i]->entry_block;
-    // TODO Initialize!
+    body_scopes[i]->InsertInit();
     IR::Block::Current->exit.SetUnconditional(body_blocks[i]);
     IR::Block::Current = body_blocks[i];
 
     statements[i]->EmitIR();
 
-    if (IR::Block::Current->exit.flag == IR::Exit::Strategy::Unset) {
-      IR::Block::Current->exit.SetUnconditional(body_scopes[i]->exit_block);
-    }
-
-    IR::Block::Current = body_scopes[i]->exit_block;
-    // TODO Destroy!
-    body_scopes[i]->exit_block->exit.SetUnconditional(land_block);
+    IR::Block::Current->exit.SetUnconditional(body_scopes[i]->exit_block);
+    body_scopes[i]->InsertDestroy();
+    IR::Block::Current->exit.SetUnconditional(land_block);
     // TODO get exit flag
   }
 
@@ -1231,14 +1226,14 @@ IR::Value For::EmitIR() {
   assert(!for_scope->entry_block);
   for_scope->entry_block = IR::Func::Current->AddBlock("for-entry");
   IR::Block::Current->exit.SetUnconditional(for_scope->entry_block);
-  IR::Block::Current = for_scope->entry_block;
+  for_scope->InsertInit();
 
   statements->EmitIR();
 
   assert(!for_scope->exit_block);
   for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
   IR::Block::Current->exit.SetUnconditional(for_scope->exit_block);
-  IR::Block::Current = for_scope->exit_block;
+  for_scope->InsertDestroy();
 
   std::vector<IR::Value> incr_vals;
   for (size_t i = 0; i < num_iters; ++i) {

@@ -285,7 +285,7 @@ int main(int argc, char *argv[]) {
   }
 
   RUN(timer, "Emit-IR") {
-    for (auto decl : Scope::Global->ordered_decls_) {
+    for (auto decl : Scope::Global->DeclRegistry) {
       if (decl->arg_val || decl->type->is_function()) { continue; }
       decl->stack_loc = IR::Value::CreateGlobal();
       if (decl->IsInferred() || decl->IsCustomInitialized()) {
@@ -300,7 +300,7 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    for (auto decl : Scope::Global->ordered_decls_) {
+    for (auto decl : Scope::Global->DeclRegistry) {
       if (decl->arg_val || !decl->type->is_function() || decl->type->has_vars) {
         continue;
       }
@@ -310,7 +310,7 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Code-gen") {
     // Globals
-    for (auto decl : Scope::Global->ordered_decls_) {
+    for (auto decl : Scope::Global->DeclRegistry) {
       assert(!decl->arg_val);
       auto id   = decl->identifier;
       auto type = decl->type;

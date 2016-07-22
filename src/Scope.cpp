@@ -1,19 +1,9 @@
 #ifndef ICARUS_UNITY
 #include "Scope.h"
+#include "IR/IR.h"
 #endif
 
-namespace cstdlib {
-extern llvm::Constant *memcpy();
-} // namespace cstdlib
-
-namespace data {
-extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_char(char c);
-extern llvm::Constant *null_pointer(Type *t);
-} // namespace data
-
 BlockScope *Scope::Global = nullptr; // Initialized in main
-std::vector<AST::Declaration *> Scope::decl_registry_ = {};
 
 static size_t scope_num_counter = 0;
 Scope::Scope()
@@ -30,7 +20,8 @@ AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
   return nullptr;
 }
 
-AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name, Type *declared_type) {
+AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
+                                              Type *declared_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto ptr = scope_ptr->DeclHereOrNull(name, declared_type);
     if (ptr) { return ptr; }
@@ -42,7 +33,6 @@ AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
   for (auto decl : DeclRegistry) {
     if (decl->identifier->token == name) { return decl->identifier; }
   }
-
   return nullptr;
 }
 
@@ -51,19 +41,18 @@ AST::Identifier *Scope::IdentifierBeingReferencedOrNull(const std::string &name)
     auto ptr  = scope_ptr->IdentifierHereOrNull(name);
     if (ptr) { return ptr; }
   }
-
   return nullptr;
 }
 
 // Set pointer to the parent scope. This is an independent concept from LLVM's
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.
-void Scope::set_parent(Scope* new_parent) {
+void Scope::set_parent(Scope *new_parent) {
   assert(new_parent && "Setting scope's parent to be a nullptr.");
   assert(new_parent != this && "Setting parent as self");
 
   if (parent && parent->containing_function_) {
-    parent->containing_function_->remove_scope(this);
+    parent->containing_function_->innards_.erase(this);
   }
 
   parent = new_parent;
@@ -72,55 +61,11 @@ void Scope::set_parent(Scope* new_parent) {
                              ? (FnScope *)parent
                              : parent->containing_function_;
 
-  if (containing_function_) { containing_function_->add_scope(this); }
+  if (containing_function_) { containing_function_->innards_.insert(this); }
 }
 
 BlockScope::BlockScope(ScopeType st)
-    : type(st), entry_block(nullptr), exit_block(nullptr), land_block(nullptr) {
-}
-
-void Scope::verify_no_shadowing() {
-  for (auto decl_ptr1 : decl_registry_) {
-    for (auto decl_ptr2 : decl_registry_) {
-      if (decl_ptr1 == decl_ptr2) continue;
-      if (decl_ptr1->identifier->token != decl_ptr2->identifier->token)
-        continue;
-
-      auto scope_ptr = decl_ptr1->scope_;
-      // If the shadowing occurs in the same scope, we don't need to display
-      // the error message twice.
-      if (scope_ptr == decl_ptr2->scope_) {
-        if ((!decl_ptr1->type->is_function() ||
-             !decl_ptr2->type->is_function()) &&
-            decl_ptr1->loc.line_num <= decl_ptr2->loc.line_num) {
-          Error::Log::Log(decl_ptr1->loc,
-                        "Identifier `" + decl_ptr1->identifier->token +
-                            "` already declared in this scope (on line " +
-                            std::to_string(decl_ptr2->loc.line_num) + ").");
-        }
-
-        continue;
-      }
-
-      // TODO is_block_scope is a standin for not being a struct/enum scope
-      while (scope_ptr != nullptr && scope_ptr->is_block_scope()) {
-        if (scope_ptr == decl_ptr2->scope_) {
-          Error::Log::Log(decl_ptr1->loc,
-                        "Identifier `" + decl_ptr1->identifier->token +
-                            "` shadows identifier declared on line " +
-                            std::to_string(decl_ptr2->loc.line_num) + ".");
-          // Do NOT skip out here. It's possible to have many shadows and we
-          // might as well catch them all.
-        }
-        scope_ptr = scope_ptr->parent;
-      }
-    }
-  }
-}
-
-void BlockScope::defer_uninit(Type *type, llvm::Value *val) {
-  deferred_uninits.emplace(type, val);
-}
+    : type(st), entry_block(nullptr), exit_block(nullptr) {}
 
 void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   FnScope *fn_scope =
@@ -133,13 +78,38 @@ void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
 }
 
+void BlockScope::InsertInit() {
+  assert(entry_block);
+
+  IR::Block::Current = entry_block;
+
+  for (auto decl : DeclRegistry) {
+    if (decl->arg_val || decl->is_in_decl() ||
+        decl->type->time() == Time::compile) {
+      continue;
+    }
+
+    decl->type->EmitInit(decl->identifier->EmitLVal());
+  }
+}
+
+void BlockScope::InsertDestroy() {
+  assert(exit_block);
+
+  IR::Block::Current = exit_block;
+
+  for (auto decl : DeclRegistry) {
+    if (decl->arg_val || decl->is_in_decl() ||
+        decl->type->time() == Time::compile) {
+      continue;
+    }
+    decl->type->EmitDestroy(decl->identifier->EmitLVal());
+  }
+}
+
 // TODO what should the exit_flag default be?
 FnScope::FnScope()
-    : BlockScope(ScopeType::Function), fn_type(nullptr), return_value(nullptr),
-      exit_flag_(nullptr), exit_flag('\0') {}
-
-void FnScope::add_scope(Scope *scope) { innards_.insert(scope); }
-void FnScope::remove_scope(Scope *scope) { innards_.erase(scope); }
+    : BlockScope(ScopeType::Function), fn_type(nullptr), exit_flag('\0') {}
 
 /* TODO delete this once it's copied into IR correctly
 llvm::Value *FnScope::ExitFlag() {

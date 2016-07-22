@@ -5,12 +5,10 @@
 #include "Type/Type.h"
 #endif
 
-enum class ScopeType { While, For, Conditional, Function, Global };
+enum class ScopeType { While, For, Conditional, Function, Global, Type };
 
 struct Scope {
-  static void verify_no_shadowing();
   static BlockScope *Global; // TODO Should this be it's own type
-  static std::vector<AST::Declaration *> decl_registry_;
 
   void set_parent(Scope *parent);
 
@@ -34,13 +32,11 @@ struct Scope {
   AST::Declaration *DeclReferencedOrNull(const std::string &name,
                                          Type *declared_type);
 
-
   Scope();
-  Scope(const Scope&) = delete;
-  Scope(Scope&&) = delete;
+  Scope(const Scope &) = delete;
+  Scope(Scope &&) = delete;
   virtual ~Scope() {}
 
-  std::vector<AST::Declaration *> ordered_decls_;
   std::vector<AST::Declaration *> DeclRegistry;
 
   Scope *parent;
@@ -51,31 +47,24 @@ struct Scope {
 struct BlockScope : public Scope {
   BlockScope() = delete;
   BlockScope(ScopeType st);
-  virtual ~BlockScope(){}
+  virtual ~BlockScope() {}
   virtual bool is_block_scope() { return true; }
+
+  void InsertInit();
+  void InsertDestroy();
 
   void MakeReturn(Type *ret_type, IR::Value val);
 
-  llvm::Value *AllocateLocally(Type *type, const std::string &name);
-  llvm::Value *CreateLocalReturn(Type *type);
-
-  void defer_uninit(Type *type, llvm::Value *val);
-
   ScopeType type;
-  IR::Block *entry_block, *exit_block, *land_block;
-  std::stack<std::pair<Type *, llvm::Value *>> deferred_uninits;
+  IR::Block *entry_block, *exit_block;
 };
 
 struct FnScope : public BlockScope {
   FnScope();
   virtual bool is_function_scope() { return true; }
-  virtual ~FnScope(){}
-
-  void add_scope(Scope *scope);
-  void remove_scope(Scope *scope);
+  virtual ~FnScope() {}
 
   Function *fn_type;
-  llvm::Value *return_value, *exit_flag_;
   std::set<Scope *> innards_;
 
   IR::Value exit_flag, ret_val;

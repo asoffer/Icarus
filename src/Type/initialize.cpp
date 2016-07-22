@@ -40,6 +40,9 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
 void Primitive::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
+void Enumeration::EmitInit(IR::Value id_val) {
+  IR::Store(this, EmitInitialValue(), id_val);
+}
 
 void Array::EmitInit(IR::Value id_val) {
   if (!init_func) {
@@ -120,7 +123,6 @@ void Structure::EmitInit(IR::Value id_val) {
 }
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
-void Enumeration::EmitInit(IR::Value id_val) { NOT_YET; }
 void Function::EmitInit(IR::Value id_val) { /* Intentionally do nothing */ }
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
