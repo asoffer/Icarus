@@ -54,7 +54,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     auto loop_cond    = IR::Func::Current->AddBlock("loop-cond");
     auto loop_body    = IR::Func::Current->AddBlock("loop-body");
     auto land         = IR::Func::Current->AddBlock("land");
-    IR::Block::Current->exit.SetUnconditional(loop_phi);
+    IR::Block::Current->SetUnconditional(loop_phi);
     IR::Block::Current = loop_phi;
 
     auto lhs_phi = IR::Phi(Ptr(lhs_array_type->data_type));
@@ -67,11 +67,11 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     rhs_phi.args.emplace_back(rhs_ptr);
     auto rhs_phi_reg = IR::Value::Reg(rhs_phi.result.reg);
 
-    loop_phi->exit.SetUnconditional(loop_cond);
+    loop_phi->SetUnconditional(loop_cond);
     IR::Block::Current = loop_cond;
 
     auto cond = IR::PtrEQ(rhs_phi_reg, rhs_end_ptr);
-    IR::Block::Current->exit.SetConditional(cond, land, loop_body);
+    IR::Block::Current->SetConditional(cond, land, loop_body);
     IR::Block::Current = loop_body;
 
     // TODO Are these the right types?
@@ -88,7 +88,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     rhs_phi.args.emplace_back(IR::Block::Current);
     rhs_phi.args.emplace_back(next_rhs);
 
-    IR::Block::Current->exit.SetUnconditional(loop_phi);
+    IR::Block::Current->SetUnconditional(loop_phi);
 
     loop_phi->push(lhs_phi);
     loop_phi->push(rhs_phi);
@@ -134,9 +134,9 @@ void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
                            the_field_type, field_val, field_var);
     }
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;

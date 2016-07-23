@@ -520,30 +520,55 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
     }
   }
 
-  switch (exit.flag) {
-  case Exit::Strategy::Unset: ir_fn->dump(); UNREACHABLE;
-  case Exit::Strategy::Uncond:
-    builder.CreateBr(exit.true_block->llvm_block);
-    break;
-  case Exit::Strategy::Cond:
-    builder.CreateCondBr(IR_to_LLVM(ir_fn, exit.val, registers),
-                         exit.true_block->llvm_block,
-                         exit.false_block->llvm_block);
-    break;
-  case Exit::Strategy::Return:
-    if (ir_fn->fn_type->output->is_primitive() ||
-        ir_fn->fn_type->output->is_pointer() ||
-        ir_fn->fn_type->output->is_enum()) {
-      assert(ir_fn->fn_type->output != Void);
-      builder.CreateRet(IR_to_LLVM(ir_fn, exit.val, registers));
-    } else {
-      // TODO return some other value
-      builder.CreateRetVoid();
-    }
-    break;
-  case Exit::Strategy::ReturnVoid: builder.CreateRetVoid(); break;
-  }
+  exit->GenerateLLVM(ir_fn, registers);
   return llvm_block;
 }
 
+static llvm::ConstantInt *LLVMConstant(Value val) {
+  switch (val.flag) {
+    case ValType::B: return data::const_bool(val.as_bool);
+    case ValType::C: return data::const_char(val.as_char);
+    case ValType::I: return data::const_int(val.as_int);
+    case ValType::U: return data::const_uint(val.as_uint);
+    default: UNREACHABLE;
+  }
+}
+
+void Exit::Switch::GenerateLLVM(
+    Func *fn, const std::vector<llvm::Value *> &registers) {
+  auto switch_stmt = builder.CreateSwitch(IR_to_LLVM(fn, cond, registers),
+                                          default_block->llvm_block,
+                                          (unsigned int)table.size());
+
+  for (auto entry : table) {
+    switch_stmt->addCase(LLVMConstant(entry.first), entry.second->llvm_block);
+  }
+}
+
+void Exit::Unconditional::GenerateLLVM(
+    Func *fn, const std::vector<llvm::Value *> &registers) {
+  builder.CreateBr(block->llvm_block);
+}
+
+void Exit::Conditional::GenerateLLVM(
+    Func *fn, const std::vector<llvm::Value *> &registers) {
+  builder.CreateCondBr(IR_to_LLVM(fn, cond, registers), true_block->llvm_block,
+                       false_block->llvm_block);
+}
+void Exit::Return::GenerateLLVM(Func *fn,
+                                const std::vector<llvm::Value *> &registers) {
+  if (fn->fn_type->output->is_primitive() ||
+      fn->fn_type->output->is_pointer() || fn->fn_type->output->is_enum()) {
+    assert(fn->fn_type->output != Void);
+    builder.CreateRet(IR_to_LLVM(fn, ret_val, registers));
+  } else {
+    // TODO return some other value
+    builder.CreateRetVoid();
+  }
+}
+
+void Exit::ReturnVoid::GenerateLLVM(
+    Func *fn, const std::vector<llvm::Value *> &registers) {
+  builder.CreateRetVoid();
+}
 } // nmaespace IR

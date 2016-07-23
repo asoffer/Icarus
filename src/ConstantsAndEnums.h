@@ -35,3 +35,10 @@ enum class Operator {
 } // namespace Lanugage
 
 enum class Assign : char { Unset, Const, LVal, RVal };
+
+#define NORMAL_FLAG IR::Value('\0')
+#define RESTART_FLAG IR::Value('\1')
+#define CONTINUE_FLAG IR::Value('\2')
+#define REPEAT_FLAG IR::Value('\3')
+#define BREAK_FLAG IR::Value('\4')
+#define RETURN_FLAG IR::Value('\5')

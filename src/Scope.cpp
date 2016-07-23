@@ -68,18 +68,21 @@ BlockScope::BlockScope(ScopeType st)
     : type(st), entry_block(nullptr), exit_block(nullptr) {}
 
 void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
-  FnScope *fn_scope =
-      is_function_scope() ? (FnScope *)this : containing_function_;
-
   // TODO actual returned type (second type arg) may be different
-  Type::CallAssignment(this, ret_type, ret_type, val, fn_scope->ret_val);
+  Type::CallAssignment(this, ret_type, ret_type, val, GetFnScope()->ret_val);
 
-  assert(fn_scope->exit_block);
-  IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
+  IR::Store(Char, RETURN_FLAG, GetFnScope()->exit_flag);
+  IR::Block::Current->SetUnconditional(exit_block);
+  // TODO set current block to be unreachable. access to it should trigger an
+  // error that no code there will ever be executed.
 }
 
 void BlockScope::InsertInit() {
   assert(entry_block);
+
+  if (is_loop_scope()) {
+    IR::Store(Char, IR::Value('\0'), GetFnScope()->exit_flag);
+  }
 
   IR::Block::Current = entry_block;
 

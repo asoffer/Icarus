@@ -201,7 +201,7 @@ Value Load(Type *load_type, Value v) {
   return Value::Reg(cmd.result.reg);
 }
 
-Func *Func::Current = nullptr;
+Func *Func::Current   = nullptr;
 Block *Block::Current = nullptr;
 
 Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
@@ -223,6 +223,7 @@ static inline std::string Escape(char c) {
   if (c == '\n') { return "\\n"; }
   if (c == '\r') { return "\\r"; }
   if (c == '\t') { return "\\t"; }
+  if (c < 32) { return "\\" + std::to_string(c); }
   return std::string(1, c);
 }
 
@@ -278,34 +279,51 @@ void Block::dump() {
   std::cerr << "  " << block_name << ":\n";
   for (auto c : cmds) { c.dump(4); }
 
-  exit.dump(4);
+  exit->dump(4);
 }
 
-void Exit::dump(size_t indent) {
-  std::cerr << std::string(indent, ' ');
-  switch (flag) {
-  case Strategy::Uncond:
-    std::cerr << "jmp " << true_block->block_name << "\n\n";
-    break;
-  case Strategy::Cond:
-    std::cerr << "cond br " << val;
-    if (true_block) {
-      std::cerr << " [T: " << true_block->block_name << "]";
-    } else {
-      std::cerr << " [T: 0x0]";
-    }
+namespace Exit {
+void Unconditional::dump(size_t indent) {
+  std::cerr << std::string(indent, ' ') << "jmp " << block->block_name
+            << "\n\n";
+}
 
-    if (false_block) {
-      std::cerr << " [F: " << false_block->block_name << "]\n\n";
-    } else {
-      std::cerr << " [F: 0x0]\n\n";
-    }
-    break;
-  case Strategy::Return: std::cerr << "ret " << val << "\n\n"; break;
-  case Strategy::ReturnVoid: std::cerr << "ret\n\n"; break;
-  case Strategy::Unset: std::cerr << "UNSET EXIT!\n\n"; break;
+void Conditional::dump(size_t indent) {
+  std::cerr << std::string(indent, ' ');
+  std::cerr << "cond br " << cond;
+  if (true_block) {
+    std::cerr << " [T: " << true_block->block_name << "]";
+  } else {
+    std::cerr << " [T: 0x0]";
+  }
+
+  if (false_block) {
+    std::cerr << " [F: " << false_block->block_name << "]\n\n";
+  } else {
+    std::cerr << " [F: 0x0]\n\n";
   }
 }
+
+void Switch::dump(size_t indent) {
+  std::cerr << std::string(indent, ' ') << "switch " << cond << " ("
+            << table.size() << ")\n";
+  for (auto row : table) {
+    std::cerr << std::string(indent + 2, ' ') << "[" << row.first << " => "
+              << row.second->block_name << "]\n";
+  }
+  std::cerr << std::string(indent + 2, ' ') << "=> "
+            << default_block->block_name << '\n';
+}
+
+
+void ReturnVoid::dump(size_t indent) {
+  std::cerr << std::string(indent, ' ') << "ret\n\n";
+}
+
+void Return::dump(size_t indent) {
+  std::cerr << std::string(indent, ' ') << "ret " << ret_val << "\n\n";
+}
+} // namespace Exit
 
 void Func::dump() {
   std::cout << "func ";

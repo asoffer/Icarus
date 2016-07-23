@@ -11,11 +11,11 @@ static void AddSpecialCharacter(IR::Value val, char c, char vis,
   auto special_block = IR::Func::Current->AddBlock("special");
   auto next_block    = IR::Func::Current->AddBlock("next");
 
-  IR::Block::Current->exit.SetConditional(eq, special_block, next_block);
+  IR::Block::Current->SetConditional(eq, special_block, next_block);
   IR::Block::Current = special_block;
   IR::Print(IR::Value(Char), IR::Value('\\'));
   IR::Print(IR::Value(Char), IR::Value(vis));
-  IR::Block::Current->exit.SetUnconditional(land);
+  IR::Block::Current->SetUnconditional(land);
   IR::Block::Current = next_block;
 }
 
@@ -35,7 +35,7 @@ void Primitive::EmitRepr(IR::Value val) {
     AddSpecialCharacter(val, '\v', 'v', land_block);
 
     IR::Print(IR::Value(Char), val);
-    IR::Block::Current->exit.SetUnconditional(land_block);
+    IR::Block::Current->SetUnconditional(land_block);
     IR::Block::Current = land_block;
     IR::Print(IR::Value(Char), IR::Value('\''));
 
@@ -99,7 +99,7 @@ void Array::EmitRepr(IR::Value val) {
       auto init_block = IR::Func::Current->AddBlock("loop-init");
       auto land       = IR::Func::Current->AddBlock("land");
 
-      IR::Block::Current->exit.SetConditional(IR::UEQ(len, IR::Value(0ul)),
+      IR::Block::Current->SetConditional(IR::UEQ(len, IR::Value(0ul)),
                                               land, init_block);
 
       IR::Block::Current = init_block;
@@ -111,7 +111,7 @@ void Array::EmitRepr(IR::Value val) {
       auto loop_cond  = IR::Func::Current->AddBlock("loop-cond");
       auto loop_body  = IR::Func::Current->AddBlock("loop-body");
 
-      IR::Block::Current->exit.SetUnconditional(loop_phi);
+      IR::Block::Current->SetUnconditional(loop_phi);
       IR::Block::Current = loop_phi;
 
       auto phi = IR::Phi(Ptr(data_type));
@@ -120,12 +120,12 @@ void Array::EmitRepr(IR::Value val) {
 
       auto phi_reg = IR::Value::Reg(phi.result.reg);
 
-      loop_phi->exit.SetUnconditional(loop_cond);
+      loop_phi->SetUnconditional(loop_cond);
       IR::Block::Current = loop_cond;
 
       auto elem_ptr = IR::PtrIncr(Ptr(data_type), phi_reg, IR::Value(1ul));
       auto cond = IR::PtrEQ(elem_ptr, end_ptr);
-      IR::Block::Current->exit.SetConditional(cond, land, loop_body);
+      IR::Block::Current->SetConditional(cond, land, loop_body);
       IR::Block::Current = loop_body;
 
       IR::Print(IR::Value(Char), IR::Value(','));
@@ -135,7 +135,7 @@ void Array::EmitRepr(IR::Value val) {
       phi.args.emplace_back(IR::Block::Current);
       phi.args.emplace_back(elem_ptr);
 
-      IR::Block::Current->exit.SetUnconditional(loop_phi);
+      IR::Block::Current->SetUnconditional(loop_phi);
       loop_phi->push(phi);
 
       IR::Block::Current = land;
@@ -143,9 +143,9 @@ void Array::EmitRepr(IR::Value val) {
 
     IR::Print(IR::Value(Char), IR::Value(']'));
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;

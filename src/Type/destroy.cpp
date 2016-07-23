@@ -36,9 +36,9 @@ void Array::EmitDestroy(IR::Value id_val) {
 
     if (!fixed_length) { IR::Free(IR::Load(Ptr(data_type), ptr)); }
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;
@@ -64,9 +64,9 @@ void Structure::EmitDestroy(IR::Value id_val) {
       field_type[i]->EmitDestroy(IR::Field(this, IR::Value::Arg(0), i));
     }
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;

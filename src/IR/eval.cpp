@@ -90,26 +90,8 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
       mvprintw(++row, 34, "%s", output.c_str());
     }
   }
-  switch(frame.curr_block->exit.flag) {
-  case Exit::Strategy::Uncond: {
-    mvprintw(++row, 34, "jmp %s",
-             frame.curr_block->exit.true_block->block_name);
-  } break;
-  case Exit::Strategy::Cond: {
-    std::stringstream ss;
-    ss << frame.curr_block->exit.val;
-    mvprintw(++row, 34, "br %s [T: %s] [F: %s]", ss.str().c_str(),
-             frame.curr_block->exit.true_block->block_name,
-             frame.curr_block->exit.false_block->block_name);
-  } break;
-  case Exit::Strategy::Return: {
-    std::stringstream ss;
-    ss << frame.curr_block->exit.val;
-    mvprintw(++row, 34, "ret %s", ss.str().c_str());
-  } break;
-  case Exit::Strategy::ReturnVoid: mvprintw(++row, 34, "ret"); break;
-  case Exit::Strategy::Unset: UNREACHABLE;
-  }
+
+  frame.curr_block->exit->ShowExit(row);
 
   mvprintw(39, 2, "Stack size:     %ld", local_stack->used);
   mvprintw(40, 2, "Stack capacity: %ld", local_stack->capacity);
@@ -118,6 +100,35 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
 
   getch();
   refresh();
+}
+
+void Exit::Unconditional::ShowExit(int &row) {
+  mvprintw(++row, 34, "jmp %s", block->block_name);
+}
+
+void Exit::Conditional::ShowExit(int &row) {
+  std::stringstream ss;
+  ss << cond;
+  mvprintw(++row, 34, "br %s [T: %s] [F: %s]", ss.str().c_str(),
+           true_block->block_name, false_block->block_name);
+}
+
+void Exit::Return::ShowExit(int &row) {
+  std::stringstream ss;
+  ss << ret_val;
+  mvprintw(++row, 34, "ret %s", ss.str().c_str());
+}
+
+void Exit::ReturnVoid::ShowExit(int &row) { mvprintw(++row, 34, "ret"); }
+
+void Exit::Switch::ShowExit(int &row) {
+  mvprintw(++row, 34, "switch (%llu)", table.size());
+  for (auto entry : table) {
+    std::stringstream ss;
+    ss << entry.first;
+    mvprintw(++row, 36, "[%s => %s]", ss.str().c_str(),
+             entry.second->block_name);
+  }
 }
 
 static Value ResolveValue(const StackFrame &frame, const Value &v) {
@@ -780,21 +791,25 @@ void Cmd::Execute(StackFrame& frame) {
   }
 }
 
-Block *Block::ExecuteJump(StackFrame &frame) {
-  switch (exit.flag) {
-  case Exit::Strategy::Uncond: return exit.true_block;
-  case Exit::Strategy::ReturnVoid:
-  case Exit::Strategy::Return: return nullptr;
-  case Exit::Strategy::Cond: {
-    Value v = exit.val;
-    if (exit.val.flag == ValType::Reg) {
-      v = frame.reg[v.as_reg];
-    } else if (exit.val.flag == ValType::Arg) {
-      v = frame.args[v.as_arg];
+Block *Exit::ReturnVoid::JumpBlock(StackFrame &fr) { return nullptr; }
+Block *Exit::Return::JumpBlock(StackFrame &fr) { return nullptr; }
+Block *Exit::Unconditional::JumpBlock(StackFrame &fr) { return block; }
+Block *Exit::Conditional::JumpBlock(StackFrame &fr) {
+  Value val = ResolveValue(fr, cond);
+  assert(val.flag == ValType::B);
+  return val.as_bool ? true_block : false_block;
+}
+
+Block *Exit::Switch::JumpBlock(StackFrame &fr) {
+  Value val = ResolveValue(fr, cond);
+  switch (cond.flag) {
+  case ValType::C:
+    for (auto entry : table) {
+      if (entry.first.as_char != val.as_char) { continue; }
+      return entry.second;
     }
-    return v.as_bool ? exit.true_block : exit.false_block;
-  }
-  case Exit::Strategy::Unset: UNREACHABLE;
+    return default_block;
+  default: UNREACHABLE;
   }
 }
 
@@ -833,11 +848,12 @@ eval_loop_start:
   if (frame.inst_ptr == frame.curr_block->cmds.size()) {
     if (debug::ct_eval) { RefreshDisplay(frame, frame.stack); }
     frame.prev_block = frame.curr_block;
-    frame.curr_block = frame.curr_block->ExecuteJump(frame);
+    frame.curr_block = frame.curr_block->exit->JumpBlock(frame);
 
     if (!frame.curr_block) { // It's a return (perhaps void)
-      return (frame.prev_block->exit.flag == Exit::Strategy::Return)
-                 ? ResolveValue(frame, frame.prev_block->exit.val)
+      return (frame.prev_block->exit->is_return())
+                 ? ResolveValue(
+                       frame, ((Exit::Return *)frame.prev_block->exit)->ret_val)
                  : Value();
     } else {
       frame.inst_ptr = 0;

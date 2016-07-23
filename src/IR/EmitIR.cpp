@@ -48,9 +48,9 @@ IR::Func *AsciiFunc() {
 
   auto val = IR::Trunc(IR::Value::Arg(0));
 
-  IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+  IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
   IR::Block::Current = IR::Func::Current->exit();
-  IR::Block::Current->exit.SetReturn(val);
+  IR::Block::Current->SetReturn(val);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
@@ -73,9 +73,9 @@ IR::Func *OrdFunc() {
 
   auto val = IR::ZExt(IR::Value::Arg(0));
 
-  IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+  IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
   IR::Block::Current = IR::Func::Current->exit();
-  IR::Block::Current->exit.SetReturn(val);
+  IR::Block::Current->SetReturn(val);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
@@ -145,10 +145,15 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Ord: return IR::Value(OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
   case Language::Terminal::Return: {
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Store(Char, RETURN_FLAG, scope_->GetFnScope()->exit_flag);
+    assert(scope_->is_block_scope() || scope_->is_function_scope());
+    IR::Block::Current->SetUnconditional(((BlockScope *)scope_)->exit_block);
+
+    // TODO set current block to be unreachable. access to it should trigger an
+    // error that no code there will ever be executed.
     return IR::Value();
   } break;
-  case Language::Terminal::StringLiteral:  {
+  case Language::Terminal::StringLiteral: {
     assert(String->is_struct());
     auto token     = value.as_cstr;
     auto tk_len    = IR::Value((size_t)std::strlen(value.as_cstr));
@@ -217,14 +222,14 @@ IR::Value Unop::EmitIR() {
 
     auto fn_ptr      = WrapExprIntoFunction(operand);
     auto local_stack = new IR::LocalStack;
-    IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
+    IR::Func *func = fn_ptr->EmitAnonymousIR().as_func;
     func->SetName("anonymous-func");
 
     if (operand->type == Void) {
       // Assumptions:
       //  * There's only one exit block.
       //  * The current block is pointing to it. This is NOT threadsafe.
-      IR::Block::Current->exit.SetReturnVoid();
+      IR::Block::Current->SetReturnVoid();
     }
 
     IR::Func::Current  = old_func;
@@ -301,7 +306,7 @@ IR::Value Binop::EmitIR() {
       auto load_rhs_block = IR::Func::Current->AddBlock("load-rhs");
       auto land_block     = IR::Func::Current->AddBlock("binop-land");
 
-      IR::Block::Current->exit.SetConditional(
+      IR::Block::Current->SetConditional(
           lhs_val,
           (op == Language::Operator::OrEq) ? land_block : load_rhs_block,
           (op == Language::Operator::AndEq) ? land_block : load_rhs_block);
@@ -310,7 +315,7 @@ IR::Value Binop::EmitIR() {
       auto rhs_val = rhs->EmitIR();
       IR::Store(Bool, rhs_val, lval);
 
-      IR::Block::Current->exit.SetUnconditional(land_block);
+      IR::Block::Current->SetUnconditional(land_block);
 
       IR::Block::Current = land_block;
       return IR::Value();
@@ -424,9 +429,9 @@ IR::Value Binop::EmitIR() {
       auto result =
           IR::Call(fn_type->output, lhs->EmitIR(), {intermediate_val});
 
-      IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+      IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
       IR::Block::Current = IR::Func::Current->exit();
-      IR::Block::Current->exit.SetReturn(result);
+      IR::Block::Current->SetReturn(result);
 
       IR::Func::Current  = saved_func;
       IR::Block::Current = saved_block;
@@ -471,8 +476,9 @@ IR::Value Binop::EmitIR() {
   }
 }
 
-static IR::Value EmitComparison(Scope *scope, Type *op_type, Language::Operator op,
-                                IR::Value lhs, IR::Value rhs) {
+static IR::Value EmitComparison(Scope *scope, Type *op_type,
+                                Language::Operator op, IR::Value lhs,
+                                IR::Value rhs) {
   // TODO pass in lhs and rhs types and output type
   if (op == Language::Operator::LT) {
     if (op_type == Int) { return ILT(lhs, rhs); }
@@ -565,7 +571,7 @@ IR::Value ChainOp::EmitIR() {
 
     for (auto &b : blocks) { b = IR::Func::Current->AddBlock("chainop-block"); }
 
-    IR::Block::Current->exit.SetUnconditional(blocks.front());
+    IR::Block::Current->SetUnconditional(blocks.front());
 
     std::vector<IR::Value> phi_args;
 
@@ -580,36 +586,36 @@ IR::Value ChainOp::EmitIR() {
       auto result = exprs[i]->EmitIR();
       end_blocks.push_back(IR::Block::Current);
       if (using_or) {
-        IR::Block::Current->exit.SetConditional(result, nullptr, blocks[i + 1]);
+        IR::Block::Current->SetConditional(result, nullptr, blocks[i + 1]);
       } else {
-        IR::Block::Current->exit.SetConditional(result, blocks[i + 1], nullptr);
+        IR::Block::Current->SetConditional(result, blocks[i + 1], nullptr);
       }
       phi_args.emplace_back(IR::Block::Current);
       phi_args.emplace_back(early_exit_value);
     }
 
     IR::Block::Current = blocks.back();
-    auto last_result = exprs.back()->EmitIR();
+    auto last_result   = exprs.back()->EmitIR();
 
     // Create the landing block
     IR::Block *landing_block = IR::Func::Current->AddBlock("chainop-landing");
 
-    IR::Block::Current->exit.SetUnconditional(landing_block);
+    IR::Block::Current->SetUnconditional(landing_block);
     phi_args.emplace_back(IR::Block::Current);
     phi_args.emplace_back(last_result);
 
-
     for (auto &b : end_blocks) {
+      assert(b->exit->is_conditional());
       if (using_or) {
-        b->exit.SetTrueBranch(landing_block);
+        ((IR::Exit::Conditional *)b->exit)->true_block = landing_block;
       } else {
-        b->exit.SetFalseBranch(landing_block);
+        ((IR::Exit::Conditional *)b->exit)->false_block = landing_block;
       }
     }
 
     // TODO clean up API.
-    auto phi = IR::Phi(Bool);
-    phi.args = std::move(phi_args);
+    auto phi           = IR::Phi(Bool);
+    phi.args           = std::move(phi_args);
     IR::Block::Current = landing_block;
     IR::Block::Current->push(phi);
 
@@ -631,7 +637,7 @@ IR::Value ChainOp::EmitIR() {
 
     IR::Value result, lhs;
     IR::Value rhs = exprs[0]->EmitIR();
-    IR::Block::Current->exit.SetUnconditional(blocks.front());
+    IR::Block::Current->SetUnconditional(blocks.front());
     assert(exprs.size() >= 2);
     for (size_t i = 0; i < exprs.size() - 2; ++i) {
       IR::Block::Current = blocks[i];
@@ -640,19 +646,18 @@ IR::Value ChainOp::EmitIR() {
       result             = EmitComparison(scope_, exprs[i]->type, ops[i], lhs, rhs);
 
       // Early exit
-      IR::Block::Current->exit.SetConditional(result, blocks[i + 1],
-                                              landing_block);
+      IR::Block::Current->SetConditional(result, blocks[i + 1], landing_block);
       phi.args.emplace_back(IR::Block::Current);
       phi.args.emplace_back(false);
     }
 
     IR::Block::Current = blocks.back();
 
-    lhs              = rhs;
-    rhs              = exprs.back()->EmitIR();
+    lhs = rhs;
+    rhs = exprs.back()->EmitIR();
     auto last_result =
         EmitComparison(scope_, exprs.back()->type, ops.back(), lhs, rhs);
-    IR::Block::Current->exit.SetUnconditional(landing_block);
+    IR::Block::Current->SetUnconditional(landing_block);
     phi.args.emplace_back(IR::Block::Current);
     phi.args.emplace_back(last_result);
 
@@ -685,6 +690,8 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   fn_scope->ret_val =
       IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
+  fn_scope->exit_flag = IR::Value::FrameAddr(ir_func->PushSpace(Char));
+
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
 
@@ -696,7 +703,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
         auto fn_lit = (FunctionLiteral *)decl->arg_val;
 
         size_t arg_num = 0;
-        for (const auto& d : fn_lit->inputs) {
+        for (const auto &d : fn_lit->inputs) {
           if (decl == d) {
             decl->stack_loc = IR::Value::Arg(arg_num);
             goto success_fn;
@@ -744,18 +751,18 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
     }
   }
 
-  IR::Block::Current->exit.SetUnconditional(fn_scope->entry_block);
+  IR::Block::Current->SetUnconditional(fn_scope->entry_block);
   fn_scope->InsertInit();
 
   statements->EmitIR();
 
-  IR::Block::Current->exit.SetUnconditional(fn_scope->exit_block);
+  IR::Block::Current->SetUnconditional(fn_scope->exit_block);
   fn_scope->InsertDestroy();
 
   if (((Function *)type)->output == Void) {
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
   } else {
-    IR::Block::Current->exit.SetReturn(
+    IR::Block::Current->SetReturn(
         IR::Load(((Function *)type)->output, fn_scope->ret_val));
   }
 
@@ -766,9 +773,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 }
 
 IR::Value Statements::EmitIR() {
-  for (auto stmt : statements) {
-    stmt->EmitIR();
-  }
+  for (auto stmt : statements) { stmt->EmitIR(); }
   return IR::Value();
 }
 
@@ -797,7 +802,7 @@ IR::Value Identifier::EmitIR() {
 
   if (decl->arg_val && decl->arg_val->is_function_literal()) {
     // TODO Iterating through linearly is probably not smart.
-    auto fn = (FunctionLiteral *)decl->arg_val;
+    auto fn        = (FunctionLiteral *)decl->arg_val;
     size_t arg_num = 0;
     for (auto in : fn->inputs) {
       if (decl != in) {
@@ -882,7 +887,7 @@ IR::Value Case::EmitIR() {
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
 
   for (auto &b : key_blocks) { b = IR::Func::Current->AddBlock("key-block"); }
-  IR::Block::Current->exit.SetUnconditional(key_blocks.front());
+  IR::Block::Current->SetUnconditional(key_blocks.front());
 
   // Create the landing block
   IR::Block *landing_block = IR::Func::Current->AddBlock("case-land");
@@ -894,12 +899,12 @@ IR::Value Case::EmitIR() {
 
     IR::Block::Current = key_blocks[i];
     result = key_vals[i].first->EmitIR();
-    IR::Block::Current->exit.SetConditional(result, compute_block,
-                                            key_blocks[i + 1]);
+    IR::Block::Current->SetConditional(result, compute_block,
+                                       key_blocks[i + 1]);
 
     IR::Block::Current = compute_block;
     result = key_vals[i].second->EmitIR();
-    IR::Block::Current->exit.SetUnconditional(landing_block);
+    IR::Block::Current->SetUnconditional(landing_block);
     phi.args.emplace_back(IR::Block::Current);
     phi.args.emplace_back(result);
   }
@@ -907,7 +912,7 @@ IR::Value Case::EmitIR() {
   // Assume last entry is "else => ___".
   IR::Block::Current = key_blocks.back();
   result = key_vals.back().second->EmitIR();
-  IR::Block::Current->exit.SetUnconditional(landing_block);
+  IR::Block::Current->SetUnconditional(landing_block);
   phi.args.emplace_back(IR::Block::Current);
   phi.args.emplace_back(result);
 
@@ -971,24 +976,34 @@ IR::Value While::EmitIR() {
   auto land_block = IR::Func::Current->AddBlock("while-land");
 
   while_scope->entry_block = IR::Func::Current->AddBlock("while-entry");
-  while_scope->exit_block  = IR::Func::Current->AddBlock("while-entry");
+  while_scope->exit_block  = IR::Func::Current->AddBlock("while-exit");
 
-  IR::Block::Current->exit.SetUnconditional(cond_block);
+  IR::Block::Current->SetUnconditional(cond_block);
 
   IR::Block::Current = cond_block;
   auto cond_val = condition->EmitIR();
-  IR::Block::Current->exit.SetConditional(cond_val, while_scope->entry_block,
-                                          land_block);
+  IR::Block::Current->SetConditional(cond_val, while_scope->entry_block,
+                                     land_block);
 
   while_scope->InsertInit();
-  IR::Block::Current->exit.SetUnconditional(body_block);
+  IR::Block::Current->SetUnconditional(body_block);
   IR::Block::Current = body_block;
   statements->EmitIR();
 
-  IR::Block::Current->exit.SetUnconditional(while_scope->exit_block);
+  IR::Block::Current->SetUnconditional(while_scope->exit_block);
   while_scope->InsertDestroy();
-  IR::Block::Current->exit.SetUnconditional(cond_block);
-  // TODO Exit flag. For now, there are no breaks/continues
+  IR::Block::Current->SetSwitch(
+      IR::Load(Char, while_scope->GetFnScope()->exit_flag), cond_block);
+  IR::Exit::Switch *while_exit_switch =
+      (IR::Exit::Switch *)IR::Block::Current->exit;
+  // TODO what about RESTART_FLAG?
+  while_exit_switch->AddEntry(CONTINUE_FLAG, cond_block);
+  while_exit_switch->AddEntry(REPEAT_FLAG, while_scope->entry_block);
+  while_exit_switch->AddEntry(BREAK_FLAG, land_block);
+  assert(while_scope->parent->is_block_scope() ||
+         while_scope->parent->is_function_scope());
+  while_exit_switch->AddEntry(RETURN_FLAG,
+                              ((BlockScope *)while_scope->parent)->exit_block);
 
   IR::Block::Current = land_block;
 
@@ -1009,34 +1024,39 @@ IR::Value Conditional::EmitIR() {
   }
 
   assert(!cond_blocks.empty());
-  IR::Block::Current->exit.SetUnconditional(cond_blocks.front());
+  IR::Block::Current->SetUnconditional(cond_blocks.front());
 
   for (size_t i = 0; i < conditions.size() - 1; ++i) {
     IR::Block::Current = cond_blocks[i];
     auto cond_val = conditions[i]->EmitIR();
-    IR::Block::Current->exit.SetConditional(
-        cond_val, body_scopes[i]->entry_block, cond_blocks[i + 1]);
+    IR::Block::Current->SetConditional(cond_val, body_scopes[i]->entry_block,
+                                       cond_blocks[i + 1]);
   }
 
   // Last step
   IR::Block::Current = cond_blocks.back();
-  auto cond_val      = conditions.back()->EmitIR();
-  IR::Block::Current->exit.SetConditional(
+  auto cond_val = conditions.back()->EmitIR();
+  IR::Block::Current->SetConditional(
       cond_val, body_scopes[conditions.size() - 1]->entry_block,
       has_else() ? body_scopes.back()->entry_block : land_block);
 
   for (size_t i = 0; i < body_scopes.size(); ++i) {
     IR::Block::Current = body_scopes[i]->entry_block;
     body_scopes[i]->InsertInit();
-    IR::Block::Current->exit.SetUnconditional(body_blocks[i]);
+    IR::Block::Current->SetUnconditional(body_blocks[i]);
     IR::Block::Current = body_blocks[i];
 
     statements[i]->EmitIR();
 
-    IR::Block::Current->exit.SetUnconditional(body_scopes[i]->exit_block);
+    IR::Block::Current->SetUnconditional(body_scopes[i]->exit_block);
     body_scopes[i]->InsertDestroy();
-    IR::Block::Current->exit.SetUnconditional(land_block);
-    // TODO get exit flag
+
+    assert(body_scopes[i]->parent && body_scopes[i]->parent->is_block_scope() &&
+           ((BlockScope *)body_scopes[i]->parent)->exit_block);
+    IR::Block::Current->SetConditional(
+        IR::CEQ(IR::Load(Char, body_scopes[i]->GetFnScope()->exit_flag),
+                NORMAL_FLAG),
+        land_block, ((BlockScope *)body_scopes[i]->parent)->exit_block);
   }
 
   IR::Block::Current = land_block;
@@ -1084,7 +1104,7 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
   } else {
     head_ptr = IR::Load(Ptr(array_type->data_type),
                         IR::ArrayData(array_type, container_val));
-    len_val  = IR::Load(Uint, IR::ArrayLength(container_val));
+    len_val = IR::Load(Uint, IR::ArrayLength(container_val));
   }
 }
 
@@ -1092,7 +1112,7 @@ IR::Value For::EmitIR() {
   auto num_iters = iterators.size();
 
   auto init_block = IR::Func::Current->AddBlock("for-init");
-  IR::Block::Current->exit.SetUnconditional(init_block);
+  IR::Block::Current->SetUnconditional(init_block);
   IR::Block::Current = init_block;
 
   std::vector<IR::Value> start_vals(num_iters);
@@ -1156,7 +1176,7 @@ IR::Value For::EmitIR() {
   auto end_init = IR::Block::Current;
 
   auto phi_block = IR::Func::Current->AddBlock("for-phi");
-  IR::Block::Current->exit.SetUnconditional(phi_block);
+  IR::Block::Current->SetUnconditional(phi_block);
   IR::Block::Current = phi_block;
 
   // Fill in the phi values later.
@@ -1217,24 +1237,43 @@ IR::Value For::EmitIR() {
     }
 
     auto cond_block = IR::Func::Current->AddBlock("for-cond");
-    IR::Block::Current->exit.SetConditional(result, land_block, cond_block);
+    IR::Block::Current->SetConditional(result, land_block, cond_block);
     IR::Block::Current = cond_block;
   }
 
   // Rename the last block. Use it as a jumping off point to the entry.
   IR::Block::Current->block_name = "for-cond-true";
+
   assert(!for_scope->entry_block);
   for_scope->entry_block = IR::Func::Current->AddBlock("for-entry");
-  IR::Block::Current->exit.SetUnconditional(for_scope->entry_block);
+
+  assert(!for_scope->exit_block);
+  for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
+
+  IR::Block::Current->SetUnconditional(for_scope->entry_block);
   for_scope->InsertInit();
 
   statements->EmitIR();
 
-  assert(!for_scope->exit_block);
-  for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
-  IR::Block::Current->exit.SetUnconditional(for_scope->exit_block);
-  for_scope->InsertDestroy();
+  auto incr_block = IR::Func::Current->AddBlock("for-incr");
 
+  IR::Block::Current->SetUnconditional(for_scope->exit_block);
+  for_scope->InsertDestroy();
+  IR::Block::Current->SetSwitch(
+      IR::Load(Char, for_scope->GetFnScope()->exit_flag), incr_block);
+  IR::Exit::Switch *for_exit_switch =
+      (IR::Exit::Switch *)IR::Block::Current->exit;
+  for_exit_switch->AddEntry(RESTART_FLAG, init_block);
+  for_exit_switch->AddEntry(CONTINUE_FLAG, incr_block);
+  for_exit_switch->AddEntry(REPEAT_FLAG, phi_block);
+  for_exit_switch->AddEntry(BREAK_FLAG, land_block);
+  assert(for_scope->parent->is_block_scope() ||
+         for_scope->parent->is_function_scope());
+  for_exit_switch->AddEntry(RETURN_FLAG,
+                              ((BlockScope *)for_scope->parent)->exit_block);
+  auto for_exit = IR::Block::Current;
+
+  IR::Block::Current = incr_block;
   std::vector<IR::Value> incr_vals;
   for (size_t i = 0; i < num_iters; ++i) {
     auto iter = iterators[i];
@@ -1266,7 +1305,7 @@ IR::Value For::EmitIR() {
       UNREACHABLE;
     }
   }
-  IR::Block::Current->exit.SetUnconditional(phi_block);
+  IR::Block::Current->SetUnconditional(phi_block);
 
   auto end_incr = IR::Block::Current;
 
@@ -1277,6 +1316,10 @@ IR::Value For::EmitIR() {
     assert(phi_block->cmds[i].op_code == IR::Op::Phi);
     phi_block->cmds[i].args.emplace_back(end_init);
     phi_block->cmds[i].args.emplace_back(start_vals[i]);
+
+    phi_block->cmds[i].args.emplace_back(for_exit);
+    phi_block->cmds[i].args.emplace_back(phi_vals[i]);
+
     phi_block->cmds[i].args.emplace_back(end_incr);
     phi_block->cmds[i].args.emplace_back(incr_vals[i]);
   }
@@ -1287,8 +1330,21 @@ IR::Value For::EmitIR() {
 }
 
 IR::Value Jump::EmitIR() {
-  // TODO not correct. Must call destructors
-  IR::Block::Current->exit.SetReturnVoid();
+  IR::Value flag;
+  switch (jump_type) {
+  case JumpType::Restart: flag  = RESTART_FLAG; break;
+  case JumpType::Continue: flag = CONTINUE_FLAG; break;
+  case JumpType::Repeat: flag   = REPEAT_FLAG; break;
+  case JumpType::Break: flag    = BREAK_FLAG; break;
+  case JumpType::Return: flag   = RETURN_FLAG; break;
+  }
+
+  IR::Store(Char, flag, scope_->GetFnScope()->exit_flag);
+  assert(scope_->is_block_scope() || scope_->is_function_scope());
+  IR::Block::Current->SetUnconditional(((BlockScope *)scope_)->exit_block);
+
+  // TODO set current block to be unreachable. access to it should trigger an
+  // error that no code there will ever be executed.
   return IR::Value();
 }
 IR::Value Generic::EmitIR() { NOT_YET; }
@@ -1326,9 +1382,9 @@ IR::Value ParametricStructLiteral::EmitIR() {
 
   auto result_type = IR::CreateStruct(vec);
 
-  IR::Block::Current->exit.SetUnconditional(ir_func->exit());
+  IR::Block::Current->SetUnconditional(ir_func->exit());
   IR::Block::Current = ir_func->exit();
-  IR::Block::Current->exit.SetReturn(result_type);
+  IR::Block::Current->SetReturn(result_type);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;

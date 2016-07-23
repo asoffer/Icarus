@@ -125,63 +125,98 @@ struct Cmd {
   void Execute(StackFrame &frame);
 };
 
-// Models we should exit the block. There are a few options:
-// 1. An unconditional jump to another block
-// 2. A conditional jump to one of two branches
-// 3. Return from the current function.
-struct Exit {
-  enum class Strategy { Unset, Uncond, Cond, Return, ReturnVoid } flag;
+namespace Exit {
+struct Strategy {
+  virtual void dump(size_t indent) = 0;
+  virtual void ShowExit(int &row) = 0;
+  virtual Block *JumpBlock(StackFrame &fr) = 0;
+  virtual void GenerateLLVM(Func *fn,
+                            const std::vector<llvm::Value *> &registers) = 0;
+  virtual ~Strategy() {}
 
-  Value val; // This is the return value in the case of a return, and the value
-             // to branch on in the case of a conditional branch.
-  Block *true_block; // This is the branch to take in the case of an
-                     // unconditional jump, or in the case of a conditional jump
-                     // when the condition is true
-  Block *false_block; // This is the branch to take in the case of a conditional
-                      // jump when that condition is false.
+  virtual bool is_conditional() { return false; }
+  virtual bool is_return() { return false; }
+};
 
-  Exit()
-      : flag(Strategy::Unset), val(false), true_block(nullptr),
-        false_block(nullptr) {}
+struct Switch : public Strategy {
+  Switch(Value val, Block *default_block)
+      : cond(val), default_block(default_block) {}
+  Switch(const Switch &) = delete;
+  ~Switch() {}
 
-  void SetReturnVoid() { flag = Strategy::ReturnVoid; }
+  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
+  Block *JumpBlock(StackFrame &fr);
+  void ShowExit(int &row);
+  void dump(size_t indent);
+  inline void AddEntry(Value v, Block *b) { table.emplace_back(v, b); }
 
-  void SetReturn(Value v) {
-    flag = Strategy::Return;
-    val  = v;
-  }
+  Value cond;
+  Block *default_block;
+  std::vector<std::pair<Value, Block *>> table;
+};
 
-  void SetTrueBranch(Block *b) {
-    assert(flag == Strategy::Cond);
-    true_block = b;
-  }
+struct ReturnVoid : public Strategy {
+  ReturnVoid() {}
+  ReturnVoid(const ReturnVoid &) = delete;
+  ~ReturnVoid() {}
 
-  void SetFalseBranch(Block *b) {
-    assert(flag == Strategy::Cond);
-    false_block = b;
-  }
-
-  void SetUnconditional(Block *b) {
-    flag       = Strategy::Uncond;
-    true_block = b;
-  }
-
-  void SetConditional(Value v, Block *t, Block *f) {
-    flag        = Strategy::Cond;
-    val         = v;
-    true_block  = t;
-    false_block = f;
-  }
-
+  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
+  Block *JumpBlock(StackFrame &fr);
+  void ShowExit(int &row);
   void dump(size_t indent);
 };
+
+struct Return : public Strategy {
+  Return() = delete;
+  Return(const Return &) = delete;
+  ~Return() {}
+  Return(Value v) : ret_val(v) {}
+
+  bool is_return() { return true; }
+
+  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
+  Block *JumpBlock(StackFrame &fr);
+  void ShowExit(int &row);
+  void dump(size_t indent);
+  Value ret_val;
+};
+
+struct Conditional : public Strategy {
+  bool is_conditional() { return true; }
+  Conditional() = delete;
+  Conditional(const Conditional &) = delete;
+  ~Conditional() {}
+  Conditional(Value v, Block *t, Block *f)
+      : cond(v), true_block(t), false_block(f) {}
+
+  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
+  Block *JumpBlock(StackFrame &fr);
+  void ShowExit(int &row);
+  void dump(size_t indent);
+  Value cond;
+  Block *true_block, *false_block;
+};
+
+struct Unconditional : public Strategy {
+  Unconditional() = delete;
+  Unconditional(const Unconditional &) = delete;
+  ~Unconditional() {}
+  Unconditional(Block *b) : block(b) {}
+
+  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
+  Block *JumpBlock(StackFrame &fr);
+  void ShowExit(int &row);
+  void dump(size_t indent);
+  Block *block;
+};
+} // namespace Exit
 
 struct Block {
   static Block *Current;
 
   // Passing a char into the condition to trigger it's type to be C. We don't
   // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block() : block_name("unnamed-block") {}
+  Block() : block_name("unnamed-block"), exit(nullptr) {}
   ~Block() {}
 
   void push(const Cmd &cmd) { cmds.push_back(cmd); }
@@ -190,14 +225,33 @@ struct Block {
   GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                std::vector<std::pair<IR::Block *, size_t>> &phis);
 
-  Block *ExecuteJump(StackFrame &frame);
-
   const char *block_name;
   std::vector<Cmd> cmds;
 
   llvm::BasicBlock *llvm_block;
 
-  Exit exit;
+  Exit::Strategy *exit;
+
+  inline void SetReturnVoid() {
+    delete exit;
+    exit = new Exit::ReturnVoid;
+  }
+  inline void SetReturn(Value v) {
+    delete exit;
+    exit = new Exit::Return(v);
+  }
+  inline void SetUnconditional(Block *b) {
+    delete exit;
+    exit = new Exit::Unconditional(b);
+  }
+  inline void SetConditional(Value v, Block *t, Block *f) {
+    delete exit;
+    exit = new Exit::Conditional(v, t, f);
+  }
+  inline void SetSwitch(Value cond, Block *default_block) {
+    delete exit;
+    exit = new Exit::Switch(cond, default_block);
+  }
 
   void dump();
 };

@@ -70,9 +70,9 @@ void Array::EmitInit(IR::Value id_val) {
       data_type->EmitInit(IR::Access(data_type, IR::Value(i), val));
     }
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;
@@ -110,9 +110,9 @@ void Structure::EmitInit(IR::Value id_val) {
       }
     }
 
-    IR::Block::Current->exit.SetUnconditional(IR::Func::Current->exit());
+    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
     IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->exit.SetReturnVoid();
+    IR::Block::Current->SetReturnVoid();
 
     IR::Func::Current  = saved_func;
     IR::Block::Current = saved_block;

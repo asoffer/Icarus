@@ -12,6 +12,10 @@ struct Scope {
 
   void set_parent(Scope *parent);
 
+  FnScope *GetFnScope() {
+    return is_function_scope() ? (FnScope *)this : containing_function_;
+  }
+
   virtual bool is_block_scope() { return false; }
   virtual bool is_function_scope() { return false; }
   virtual bool is_loop_scope();
