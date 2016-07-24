@@ -426,6 +426,28 @@ void GlobalNonDecl(const Cursor &loc) {
                       "imports.", nullptr, loc, 1);
 }
 
+void NotAType(const Cursor &loc, const std::string &id_tok) {
+  ++num_errs_;
+  std::string msg_head = "In declaration of `" + id_tok +
+                         "`, the declared type is not a actually a type.";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
+void DeclaredVoidType(const Cursor &loc, const std::string &id_tok) {
+  ++num_errs_;
+  std::string msg_head =
+      "Identifier `" + id_tok + "`is declared to have type `void`.";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
+void DeclaredParametricType(const Cursor &loc, const std::string &id_tok) {
+  ++num_errs_;
+  std::string msg_head =
+      "In declaration of `" + id_tok +
+      "`, the declared type is parametric and has no parameters provided.";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;
   undeclared_identifiers[token][loc.file_name][loc.line_num].push_back(

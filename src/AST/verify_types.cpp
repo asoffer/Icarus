@@ -4,6 +4,7 @@
 
 #include "IR/Stack.h"
 
+extern IR::Value Evaluate(AST::Expression *expr);
 extern std::queue<AST::Node *> VerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
@@ -344,9 +345,18 @@ void StructLiteral::CompleteDefinition() {
   for (size_t i = 0; i < decls.size(); ++i) {
     decls[i]->verify_types();
 
-    auto decl_type = decls[i]->type_expr
-                         ? decls[i]->type_expr->evaluate().as_type
-                         : decls[i]->init_val->type;
+    Type *decl_type;
+    if (decls[i]->type_expr) {
+      if (decls[i]->type_expr->type == Err ||
+          decls[i]->type_expr->type == Void ||
+          decls[i]->type_expr->type->is_parametric_struct()) {
+        decl_type = Err;
+      } else {
+        decl_type = decls[i]->type_expr->evaluate().as_type;
+      }
+    } else {
+      decl_type = decls[i]->init_val->type;
+    }
 
     tval->insert_field(decls[i]->identifier->token, decl_type,
                        decls[i]->init_val);
@@ -1218,23 +1228,22 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
   assert(type && type != Unknown);
 
   if (type != Type_) {
-    Error::Log::Log(loc, "Identifier \"" + id_tok +
-                           "\" being declared with an invalid type.");
+    Error::Log::NotAType(loc, id_tok);
     return Err;
-  } else {
-    auto t = evaluate().as_type;
-    if (t == Void) {
-      Error::Log::Log(loc, "Identifier being declared as having void type.");
-      return Err;
-    } else if (t->is_parametric_struct()) {
-      // TODO is this actually what we want?
-      Error::Log::Log(loc,
-                    "Identifier being declared as having a parametric type.");
-      return Err;
-    } else {
-      return t;
-    }
   }
+
+  Type *t = evaluate().as_type;
+  if (t == Void) {
+    Error::Log::DeclaredVoidType(loc, id_tok);
+    return Err;
+  } 
+  
+  if (t->is_parametric_struct()) {
+    Error::Log::DeclaredParametricType(loc, id_tok);
+    return Err;
+  }
+
+  return t;
 }
 
 // TODO refactor this and VerifyTypeForDeclaration because they have extreme
@@ -1319,12 +1328,12 @@ void Declaration::verify_types() {
   // 'V' stands for "value", the initial value of the identifier being declared.
 
   if (IsDefaultInitialized()) {
-    type             = type_expr->VerifyTypeForDeclaration(identifier->token);
-    identifier->type = type;
+    identifier->type = type =
+        type_expr->VerifyTypeForDeclaration(identifier->token);
 
   } else if (IsInferred()) {
-    type             = init_val->VerifyValueForDeclaration(identifier->token);
-    identifier->type = type;
+    identifier->type = type =
+        init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == NullPtr) {
       Error::Log::Log(loc, "Cannot initialize a declaration with 'null'.");
@@ -1332,8 +1341,8 @@ void Declaration::verify_types() {
     }
 
   } else if (IsCustomInitialized()) {
-    type             = type_expr->VerifyTypeForDeclaration(identifier->token);
-    identifier->type = type;
+    identifier->type = type =
+        type_expr->VerifyTypeForDeclaration(identifier->token);
     auto t           = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == Err) {
@@ -1606,13 +1615,15 @@ void EnumLiteral::verify_types() {
 void ParametricStructLiteral::verify_types() {
   type = Type_;
   for (auto p : params) { p->verify_types(); }
-  for (auto d : decls) {
-    d->identifier->decl = d;
-    if (d->type_expr) { d->type_expr->verify_types(); }
-  }
+//  for (auto d : decls) {
+//    d->identifier->decl = d;
+//    if (d->type_expr) { d->type_expr->verify_types(); }
+//  }
 }
 
-void StructLiteral::verify_types() { type = Type_; }
+void StructLiteral::verify_types() { type = Type_;
+  for (auto d : decls) { VerificationQueue.push(d); }
+}
 
 void Jump::verify_types() {
   auto scope_ptr = scope_;

@@ -6,6 +6,7 @@
 #include "IR/IR.h"
 #include "IR/Stack.h"
 
+extern AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr);
 extern std::stack<Scope *> ScopeStack;
 
 namespace TypeSystem {
@@ -84,12 +85,6 @@ Context::Value ParametricStructLiteral::CreateOrGetCached(
     return cached_val.second->value;
 
   outer_continue:;
-  }
-
-  bool has_vars = false;
-  for (const auto &a : arg_vals) {
-    // TODO What if the argument isn't a type
-    has_vars |= a.as_type->has_vars;
   }
 
   std::stringstream ss;
@@ -589,3 +584,23 @@ Context::Value Binop::evaluate() {
   return nullptr;
 }
 } // namespace AST
+
+IR::Value Evaluate(AST::Expression *expr) {
+  auto old_func  = IR::Func::Current;
+  auto old_block = IR::Block::Current;
+
+  auto fn_ptr      = WrapExprIntoFunction(expr);
+  auto local_stack = new IR::LocalStack;
+  IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
+
+  func->SetName("anonymous-func");
+
+  expr->verify_types();
+  IR::Func::Current  = old_func;
+  IR::Block::Current = old_block;
+
+  auto result = func->Call(local_stack, {});
+  delete local_stack;
+  delete fn_ptr;
+  return result;
+}

@@ -52,6 +52,8 @@ size_t Type::bytes() const {
     return MoveForwardToAlignment(num_bytes, alignment());
   }
 
+  if (this == Err) { return 0; }
+
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }
 
@@ -90,9 +92,11 @@ size_t Type::alignment() const {
   }
 
   if (is_function()) { return 8; }
+  if (this == Err) { return 0; }
 
   // kludgy. Should be fixed by making this uncallable
   if (is_type_variable()) { return 0; }
+
 
   std::cerr << *this << std::endl;
   NOT_YET;

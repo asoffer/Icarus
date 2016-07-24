@@ -48,6 +48,9 @@ void IndexingNonArray(const Cursor &loc, const Type *t);
 void SlicingNonArray(const Cursor &loc, const Type *t);
 void InvalidCast(const Cursor &loc, const Type *from, const Type *to);
 void GlobalNonDecl(const Cursor &loc);
+void NotAType(const Cursor &loc, const std::string &id_tok);
+void DeclaredVoidType(const Cursor &loc, const std::string &id_tok);
+void DeclaredParametricType(const Cursor &loc, const std::string &id_tok);
 } // namespace Log
 } // namespace Error
 

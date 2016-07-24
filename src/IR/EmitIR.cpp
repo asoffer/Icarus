@@ -6,7 +6,7 @@
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 
-static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
+AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   auto fn_ptr = new AST::FunctionLiteral;
 
   fn_ptr->type               = Func(Void, expr->type);
