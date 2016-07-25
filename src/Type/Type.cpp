@@ -19,10 +19,10 @@ extern llvm::Constant *str(const std::string &s);
 
 size_t Type::bytes() const {
   // TODO make this platform specific
-  if (this == Type_ || this == Void) { return 0; }
+  if (this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (is_enum()) { return 4; }
-  if (this == Int || this == Uint || this == Real || is_pointer() ||
+  if (this == Type_ || this == Int || this == Uint || this == Real || is_pointer() ||
       is_function()) {
     return 8;
   }
@@ -63,12 +63,12 @@ size_t Type::bytes() const {
 
 size_t Type::alignment() const {
   // TODO make this platform specific
-  if (this == Type_ || this == Void || this == Bool || this == Char) {
+  if (this == Void || this == Bool || this == Char) {
     return 1;
   }
   if (is_enum()) { return 4; }
   if (this == Int || this == Uint || this == Real || is_pointer() ||
-      is_function()) {
+      is_function() || this == Type_) {
     return 8;
   }
   if (is_array()) {
@@ -246,17 +246,17 @@ void Structure::set_name(const std::string &name) {
 void ParametricStructure::set_name(const std::string &name) {
   bound_name = name;
   assert(ast_expression);
-  for (auto &kv : ast_expression->cache) {
-    assert(kv.second->value.as_type);
-    // NOTE This is pretty hacky: Find the first paren.
-    // TODO better way would be to cache not just the struct but it's parameters
-    // as well.
-    auto &str_name   = ((Structure *)kv.second->value.as_type)->bound_name;
-    size_t paren_pos = str_name.find('(');
-    assert(paren_pos != std::string::npos);
-    str_name =
-        bound_name + str_name.substr(paren_pos, str_name.size() - paren_pos);
-  }
+//  for (auto &kv : ast_expression->cache) {
+//    assert(kv.second->value.as_type);
+//    // NOTE This is pretty hacky: Find the first paren.
+//    // TODO better way would be to cache not just the struct but it's parameters
+//    // as well.
+//    auto &str_name   = ((Structure *)kv.second->value.as_type)->bound_name;
+//    size_t paren_pos = str_name.find('(');
+//    assert(paren_pos != std::string::npos);
+//    str_name =
+//        bound_name + str_name.substr(paren_pos, str_name.size() - paren_pos);
+//  }
 }
 
 std::ostream &operator<<(std::ostream &os, const Type &t) {

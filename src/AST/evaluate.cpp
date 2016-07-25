@@ -14,6 +14,35 @@ void initialize();
 extern Type *get(const std::string &name);
 } // namespace TypeSystem
 
+IR::Value Evaluate(AST::Expression *expr) {
+  auto old_func  = IR::Func::Current;
+  auto old_block = IR::Block::Current;
+
+  auto fn_ptr      = WrapExprIntoFunction(expr);
+  auto local_stack = new IR::LocalStack;
+  IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
+
+  func->SetName("anonymous-func");
+
+  expr->verify_types();
+  IR::Func::Current  = old_func;
+  IR::Block::Current = old_block;
+
+  auto result = func->Call(local_stack, {});
+  delete local_stack;
+
+  if (fn_ptr->type == Func(Void, Void)) {
+    fn_ptr->statements->statements[0] = nullptr;
+  } else {
+    auto ret = fn_ptr->statements->statements.front();
+    assert(ret->is_unop() && ((AST::Unop *)ret)->op == Language::Operator::Return);
+    ((AST::Unop *)ret)->operand = nullptr;
+  }
+  delete fn_ptr;
+
+  return result;
+}
+
 namespace data {
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_char(char c);
@@ -505,71 +534,37 @@ Context::Value Binop::evaluate() {
 
       // Doing value conversion
       if (result.flag == IR::ValType::B) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_bool);
 
       } else if (result.flag == IR::ValType::C) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_char);
 
       } else if (result.flag == IR::ValType::I) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value((long)result.as_int);
 
       } else if (result.flag == IR::ValType::R) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_real);
 
       } else if (result.flag == IR::ValType::U) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_uint);
 
       } else if (result.flag == IR::ValType::T) {
-        value_flag = ValueFlag::Done;
+        value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_type);
       }
       NOT_YET;
 
     } else if (lhs->type == Type_) {
       auto lhs_evaled = lhs->evaluate().as_type;
-
       assert(lhs_evaled->is_parametric_struct());
-
-      auto struct_lit = ((ParametricStructure *)lhs_evaled)->ast_expression;
-
-      assert(struct_lit->value.as_type);
-      assert(struct_lit->value.as_type->is_parametric_struct());
-
-      if (debug::parametric_struct) {
-        assert(struct_lit->value.as_type);
-        assert(struct_lit->value.as_type->is_parametric_struct());
-        std::cerr << "\n== Evaluating a parametric struct call ==\n"
-                  << ((ParametricStructure *)struct_lit->value.as_type)
-                         ->bound_name
-                  << std::endl;
-      }
-
-      std::vector<Context::Value> param_struct_args;
-
-      if (debug::parametric_struct) {
-        std::cerr << " * Argument values:" << std::endl;
-      }
-
-      if (rhs->is_comma_list()) {
-        // Note: The right number of elements are here because we've already
-        // verified this.
-        const auto &elems = ((ChainOp *)rhs)->exprs;
-        for (size_t i = 0; i < elems.size(); ++i) {
-          param_struct_args.push_back(elems[i]->evaluate());
-        }
-      } else {
-        param_struct_args.push_back(rhs->evaluate());
-      }
-
+      value      = Context::Value(Evaluate(this).as_type);
       value_flag = ValueFlag::Done;
-
-      return value = struct_lit->CreateOrGetCached(param_struct_args);
-
+      return value;
     } else {
       assert(false);
     }
@@ -584,23 +579,3 @@ Context::Value Binop::evaluate() {
   return nullptr;
 }
 } // namespace AST
-
-IR::Value Evaluate(AST::Expression *expr) {
-  auto old_func  = IR::Func::Current;
-  auto old_block = IR::Block::Current;
-
-  auto fn_ptr      = WrapExprIntoFunction(expr);
-  auto local_stack = new IR::LocalStack;
-  IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
-
-  func->SetName("anonymous-func");
-
-  expr->verify_types();
-  IR::Func::Current  = old_func;
-  IR::Block::Current = old_block;
-
-  auto result = func->Call(local_stack, {});
-  delete local_stack;
-  delete fn_ptr;
-  return result;
-}

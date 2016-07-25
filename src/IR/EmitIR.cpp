@@ -238,7 +238,8 @@ IR::Value Unop::EmitIR() {
     auto result = func->Call(local_stack, {});
     delete local_stack;
 
-    // Cleanup
+    // Cleanup (Need to set ret->operand to null so it isn't cleaned up by
+    // deleting the fn_ptr). TODO
     // ret->operand = nullptr;
     delete fn_ptr;
     return result;
@@ -455,23 +456,16 @@ IR::Value Binop::EmitIR() {
   } break;
 
   case Language::Operator::Call: {
-    if (type == Type_) { // TODO move this to wherever it should be
-      return IR::Value(evaluate().as_type);
-    }
-
+    std::vector<IR::Value> args;
     if (rhs) {
       if (rhs->is_comma_list()) {
-        std::vector<IR::Value> args;
         for (auto v : ((ChainOp *)rhs)->exprs) { args.push_back(v->EmitIR()); }
-        return IR::Call(type, lhs->EmitIR(), args);
-
       } else {
-        return IR::Call(type, lhs->EmitIR(), {rhs->EmitIR()});
+        args = {rhs->EmitIR()};
       }
-    } else {
-      return IR::Call(type, lhs->EmitIR(), {});
     }
-  }
+    return IR::Call(type, lhs->EmitIR(), args);
+  } break;
   default: UNREACHABLE;
   }
 }
@@ -794,7 +788,12 @@ IR::Value Identifier::EmitIR() {
       }
       UNREACHABLE;
     } else {
-      return IR::Value(evaluate().as_type);
+      auto t = evaluate().as_type;
+      if (t->is_parametric_struct()) {
+        return ((ParametricStructure *)t)->ast_expression->EmitIR();
+      } else {
+        return IR::Value(evaluate().as_type);
+      }
     }
   }
 
@@ -1366,6 +1365,16 @@ IR::Value ParametricStructLiteral::EmitIR() {
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
 
+  auto found_block     = IR::Func::Current->AddBlock("found-rhs");
+  auto not_found_block = IR::Func::Current->AddBlock("not-found-rhs");
+
+  auto cached_val = IR::GetFromCache(IR::Value(evaluate().as_type));
+  auto found = IR::TEQ(cached_val, IR::Value::None());
+  IR::Block::Current->SetConditional(found, not_found_block, found_block);
+
+  found_block->SetReturn(cached_val);
+  IR::Block::Current = not_found_block;
+
   auto vec = IR::InitFieldVec(decls.size());
   for (size_t i = 0; i < decls.size(); ++i) {
     size_t len   = decls[i]->identifier->token.size();
@@ -1373,14 +1382,16 @@ IR::Value ParametricStructLiteral::EmitIR() {
     strcpy(id_str, decls[i]->identifier->token.c_str());
     // TODO Leaking id_str
 
-    IR::PushField(vec, id_str,
-                  decls[i]->type_expr ? decls[i]->type_expr->EmitIR()
-                                      : IR::Value((void *)nullptr),
-                  decls[i]->init_val ? decls[i]->init_val->EmitIR()
-                                     : IR::Value((void *)nullptr));
+    if (decls[i]->type_expr) { decls[i]->type_expr->verify_types(); }
+    if (decls[i]->init_val) { decls[i]->init_val->verify_types(); }
+
+    IR::PushField(
+        vec, id_str,
+        decls[i]->type_expr ? decls[i]->type_expr->EmitIR() : IR::Value::None(),
+        decls[i]->init_val ? decls[i]->init_val->EmitIR() : IR::Value::None());
   }
 
-  auto result_type = IR::CreateStruct(vec);
+  auto result_type = IR::CreateStruct(vec, IR::Value::HeapAddr(this));
 
   IR::Block::Current->SetUnconditional(ir_func->exit());
   IR::Block::Current = ir_func->exit();

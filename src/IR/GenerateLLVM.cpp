@@ -1,5 +1,6 @@
 #include "IR/IR.h"
 #include "Type/Type.h"
+#include "Stack.h"
 
 extern llvm::IRBuilder<> builder;
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -125,14 +126,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(
             IR_to_LLVM(ir_fn, cmd.args[1], registers),
             {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint)});
-      }
-        continue;
+      } continue;
       case IR::Op::Phi: {
         registers[cmd.result.reg] = builder.CreatePHI(
             *cmd.result.type, (unsigned int)cmd.args.size() >> 1, "phi");
         phis.emplace_back(this, cmd_counter);
-      }
-        continue;
+      } continue;
       case IR::Op::TC_Ptr: {
         Type *pointee = nullptr;
         if (cmd.args[0].flag == ValType::T) {
@@ -227,6 +226,22 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = data::const_uint(
             cmd.op_code == IR::Op::Bytes ? t->bytes() : t->alignment());
       } continue;
+      case IR::Op::Call: {
+        if (cmd.result.type == Type_) {
+          auto local_stack = new IR::LocalStack;
+          auto fn          = cmd.args[0].as_func;
+          std::vector<IR::Value> cmd_args;
+          for (size_t i = 1; i < cmd.args.size(); ++i) {
+            cmd_args.push_back(cmd.args[i]);
+          }
+          auto result = fn->Call(local_stack, cmd_args);
+          delete local_stack;
+          registers[cmd.result.reg] = IR_to_LLVM(ir_fn, result, registers);
+          continue;
+        } else {
+          break;
+        }
+      } UNREACHABLE;
       default:;
       }
 
@@ -500,6 +515,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::InitFieldVec: UNREACHABLE;
       case IR::Op::PushField: UNREACHABLE;
       case IR::Op::CreateStruct: UNREACHABLE;
+      case IR::Op::GetFromCache: UNREACHABLE;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
       case IR::Op::TC_Ptr: UNREACHABLE;

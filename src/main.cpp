@@ -29,6 +29,7 @@ namespace TypeSystem {
 extern void Initialize();
 } // namespace TypeSystem
 
+extern IR::Value Evaluate(AST::Expression *expr);
 
 namespace data {
 extern llvm::Constant *null(const Type *t);
@@ -291,7 +292,7 @@ int main(int argc, char *argv[]) {
       if (decl->IsInferred() || decl->IsCustomInitialized()) {
         assert(decl->init_val);
         IR::InitialGlobals[decl->stack_loc.as_global_addr] =
-            decl->init_val->EmitIR();
+            Evaluate(decl->init_val);
       } else if (decl->IsDefaultInitialized()) {
         IR::InitialGlobals[decl->stack_loc.as_global_addr] =
             decl->type->EmitInitialValue();

@@ -234,7 +234,12 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::I: return os << value.as_int;
   case ValType::R: return os << value.as_real;
   case ValType::U: return os << value.as_uint << 'u';
-  case ValType::T: return os << *value.as_type;
+  case ValType::T:
+    if (value.as_type) {
+      return os << *value.as_type;
+    } else {
+      return os << "--";
+    }
   case ValType::F: {
     os << "fn.";
     if (value.as_func->GetName() != "") {

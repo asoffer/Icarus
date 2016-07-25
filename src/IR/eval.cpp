@@ -5,6 +5,7 @@
 #include <ncurses.h>
 
 extern const char *GetGlobalStringNumbered(size_t index);
+extern std::stack<Scope *> ScopeStack;
 
 namespace IR {
 extern std::string OpCodeString(Op op_code);
@@ -48,6 +49,14 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
     } break;
     case ValType::U: {
       mvprintw((int)i, 100, "%2d.> %8luu", i, frame.reg[i].as_uint);
+    } break;
+    case ValType::T: {
+      if (frame.reg[i].as_type) {
+        mvprintw((int)i, 100, "%2d.> %s", i,
+                 frame.reg[i].as_type->to_string().c_str());
+      } else {
+        mvprintw((int)i, 100, "%2d.> --", i);
+      }
     } break;
     case ValType::F: {
       mvprintw((int)i, 100, "%2d.> %8lu (func)", i,
@@ -760,33 +769,101 @@ void Cmd::Execute(StackFrame& frame) {
     vec_ptr->reserve(cmd_inputs[0].as_uint);
     frame.reg[result.reg] = Value::HeapAddr(vec_ptr);
   } break;
+  case Op::GetFromCache: {
+    assert(cmd_inputs[0].as_type->is_parametric_struct());
+    auto param_struct_type = (ParametricStructure *)cmd_inputs[0].as_type;
+
+    std::vector<Context::Value> param_vals;
+    for (auto a : frame.args) {
+      assert(a.flag == ValType::T); // What if an argument isn't a type?
+      param_vals.push_back(Context::Value(a.as_type));
+    }
+    auto iter = param_struct_type->ast_expression->cache.find(param_vals);
+    if (iter == param_struct_type->ast_expression->cache.end()) {
+      auto struct_lit = new AST::StructLiteral;
+      param_struct_type->ast_expression->cache[param_vals] = struct_lit;
+      auto struct_type = new Structure("anon", struct_lit);
+      struct_lit->value = Context::Value(struct_type);
+
+      frame.reg[result.reg] = IR::Value::None();
+    } else {
+      frame.reg[result.reg] = IR::Value(iter->second->value.as_type);
+    }
+  } break;
   case Op::CreateStruct: {
     auto vec_ptr =
         (std::vector<std::tuple<const char *, Value, Value>> *)cmd_inputs[0]
             .as_heap_addr;
 
+    auto param_struct_lit =
+        (AST::ParametricStructLiteral *)cmd_inputs[1].as_heap_addr;
+    std::vector<Context::Value> param_vals;
+    for (auto a : frame.args) {
+      assert(a.flag == ValType::T); // What if an argument isn't a type?
+      param_vals.push_back(Context::Value(a.as_type));
+    }
+    auto struct_lit                             = param_struct_lit->cache[param_vals];
+    param_struct_lit->reverse_cache[struct_lit] = param_vals;
+
     Cursor loc;
-    auto struct_lit = new AST::StructLiteral;
     for (const auto &tuple_val : *vec_ptr) {
       auto id          = new AST::Identifier(loc, std::get<0>(tuple_val));
       auto decl        = new AST::Declaration;
       decl->identifier = id;
       id->decl         = decl;
 
-      if (std::get<1>(tuple_val).flag == ValType::T) {
-        decl->type_expr =
-            new AST::DummyTypeExpr(loc, std::get<1>(tuple_val).as_type);
-      } else if (std::get<1>(tuple_val).flag == ValType::HeapAddr) {
-        decl->type_expr = nullptr;
-      } else {
-        UNREACHABLE;
-      }
+      assert(std::get<1>(tuple_val).flag == ValType::T);
+      auto ty = std::get<1>(tuple_val).as_type;
+      decl->type_expr = ty ? new AST::DummyTypeExpr(loc, ty) : nullptr;
 
-      decl->init_val = nullptr; // TODO
+      auto init_val = std::get<2>(tuple_val);
+      if (!(init_val.flag == ValType::T && init_val.as_type == nullptr)) {
+        // If it's not null,
+        auto term      = new AST::Terminal;
+        term->loc      = loc;
+        decl->init_val = term;
+        switch (init_val.flag) {
+        case ValType::B:
+          term->terminal_type = init_val.as_bool ? Language::Terminal::True
+                                                 : Language::Terminal::False;
+          term->type  = Bool;
+          term->value = Context::Value(init_val.as_bool);
+          break;
+        case ValType::C:
+          term->terminal_type = Language::Terminal::Char;
+          term->type          = Char;
+          term->value         = Context::Value(init_val.as_char);
+          break;
+        case ValType::I:
+          term->terminal_type = Language::Terminal::Int;
+          term->type          = Int;
+          term->value         = Context::Value(init_val.as_int);
+          break;
+        case ValType::R:
+          term->terminal_type = Language::Terminal::Real;
+          term->type          = Real;
+          term->value         = Context::Value(init_val.as_real);
+          break;
+        case ValType::U:
+          term->terminal_type = Language::Terminal::Uint;
+          term->type          = Uint;
+          term->value         = Context::Value(init_val.as_uint);
+          break;
+
+        default: NOT_YET;
+        }
+      }
       struct_lit->decls.push_back(decl);
     }
 
-    frame.reg[result.reg] = Value(Struct("anon", struct_lit));
+    ScopeStack.push(struct_lit->type_scope);
+    for (auto d : struct_lit->decls) { d->assign_scope(); }
+    ScopeStack.pop();
+
+    struct_lit->verify_types();
+    struct_lit->CompleteDefinition();
+
+    frame.reg[result.reg] = Value(struct_lit->value.as_type);
   } break;
   }
 }

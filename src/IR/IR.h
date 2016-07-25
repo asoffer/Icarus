@@ -6,7 +6,7 @@
 namespace IR {
 enum class ValType : char {
   B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr,
-  GlobalCStr, Null,
+  GlobalCStr, Null
 };
 
 struct Func;
@@ -52,6 +52,13 @@ struct Value {
     Value v;
     v.flag           = ValType::GlobalCStr;
     v.as_global_cstr = n;
+    return v;
+  }
+
+  static Value None() {
+    Value v;
+    v.flag    = ValType::T;
+    v.as_type = nullptr;
     return v;
   }
 

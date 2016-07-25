@@ -1233,6 +1233,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
   }
 
   Type *t = evaluate().as_type;
+
   if (t == Void) {
     Error::Log::DeclaredVoidType(loc, id_tok);
     return Err;
@@ -1330,7 +1331,6 @@ void Declaration::verify_types() {
   if (IsDefaultInitialized()) {
     identifier->type = type =
         type_expr->VerifyTypeForDeclaration(identifier->token);
-
   } else if (IsInferred()) {
     identifier->type = type =
         init_val->VerifyValueForDeclaration(identifier->token);
@@ -1621,7 +1621,8 @@ void ParametricStructLiteral::verify_types() {
 //  }
 }
 
-void StructLiteral::verify_types() { type = Type_;
+void StructLiteral::verify_types() {
+  type = Type_;
   for (auto d : decls) { VerificationQueue.push(d); }
 }
 
