@@ -2,6 +2,7 @@
 #include "Type.h"
 #endif
 
+extern FileType file_type;
 extern llvm::Module *global_module;
 
 extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
@@ -131,20 +132,13 @@ Array::Array(Type *t)
       data_type(t), len(0), fixed_length(false) {
   dimension =
       data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
-
-  std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
-  init_args[0] = *Ptr(this);
-  has_vars     = data_type->has_vars;
+  has_vars = data_type->has_vars;
 }
 
 Array::Array(Type *t, size_t l)
     : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),
       data_type(t), len(l), fixed_length(true) {
   dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
-  if (time() != Time::compile) {
-    std::vector<llvm::Type *> init_args(dimension + 1, *Uint);
-    init_args[0] = *Ptr(this);
-  }
   has_vars = data_type->has_vars;
 }
 
@@ -164,43 +158,11 @@ Function::Function(Type *in, Type *out) : input(in), output(out) {
 Enumeration::Enumeration(const std::string &name,
                          const AST::EnumLiteral *enumlit)
     : bound_name(name), string_data(nullptr) {
-  llvm_type = *Uint;
-
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-
-  // TODO Use bldr to create a global array of enum_size char ptrs
-
-  auto num_members = enumlit->members.size();
-  std::vector<llvm::Constant *> enum_str_elems(num_members, nullptr);
+  if (file_type != FileType::None) { llvm_type = *Uint; }
 
   size_t i = 0;
-  for (const auto &idstr : enumlit->members) {
-    int_values[idstr] = i;
-
-    auto enum_str = new llvm::GlobalVariable(
-        /*      Module = */ *global_module,
-        /*        Type = */ llvm::ArrayType::get(*Char, idstr.size() + 1),
-        /*  isConstant = */ true,
-        /*     Linkage = */ llvm::GlobalValue::PrivateLinkage,
-        /* Initializer = */ llvm::ConstantDataArray::getString(
-            llvm::getGlobalContext(), idstr, true),
-        /*        Name = */ idstr);
-    enum_str->setAlignment(1);
-    enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
-        llvm::ArrayType::get(*Char, idstr.size() + 1), enum_str,
-        llvm::ArrayRef<llvm::Constant *>{data::const_uint(0),
-                                         data::const_uint(0)});
-
-    ++i;
-  }
-  string_data = new llvm::GlobalVariable(
-      /*      Module = */ *global_module,
-      /*        Type = */ llvm::ArrayType::get(*Ptr(Char), num_members),
-      /*  isConstant = */ false,
-      /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-      /* Initializer = */ llvm::ConstantArray::get(
-          llvm::ArrayType::get(*Ptr(Char), num_members), enum_str_elems),
-      /*        Name = */ bound_name + ".name.array");
+  for (const auto &idstr : enumlit->members) { int_values[idstr] = i++; }
+  // TODO save names in global for printing 
 }
 
 ParametricStructure::ParametricStructure(const std::string &name,

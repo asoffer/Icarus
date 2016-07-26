@@ -5,6 +5,7 @@
 
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
+extern FileType file_type;
 
 extern IR::Value Evaluate(AST::Expression *expr);
 
@@ -129,14 +130,16 @@ size_t IR::Func::PushSpace(Type *t) {
   auto result = frame_size;
   frame_size += bytes;
 
-  auto ip = builder.saveIP();
+  if (file_type != FileType::None) {
+    auto ip = builder.saveIP();
+    builder.SetInsertPoint(alloc_block);
+    if (t != Void && t != Type_) {
+      frame_map[result] =
+          builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
+    }
 
-  builder.SetInsertPoint(alloc_block);
-  if (t != Void && t != Type_) {
-    frame_map[result] = builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
+    builder.restoreIP(ip);
   }
-
-  builder.restoreIP(ip);
 
   return result;
 }
@@ -882,10 +885,14 @@ IR::Value Identifier::EmitIR() {
       // TODO call mangle even though it's known to be cstdlib?
       fn->SetName(token);
       fn->generated                    = IR::Func::Gen::ToLink;
-      llvm::FunctionType *llvm_fn_type = *fn_type;
       all_functions.push_back(fn);
-      fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-          fn->GetName(), llvm_fn_type);
+
+      if (file_type != FileType::None) {
+        llvm::FunctionType *llvm_fn_type = *fn_type;
+        fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+            fn->GetName(), llvm_fn_type);
+      }
+
       decl->stack_loc = IR::Value(fn);
     } else {
       std::cerr << *decl << '\n';

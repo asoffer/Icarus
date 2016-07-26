@@ -90,19 +90,7 @@ int main(int argc, char *argv[]) {
   while (!file_queue.empty()) {
     std::string file_name = file_queue.front();
     file_queue.pop();
-    auto iter = source_map.find(file_name);
-
-    // If we've already parsed this file, don't parse it again.
-    if (iter != source_map.end()) continue;
-
-    // Check if file exists
-    std::ifstream infile(file_name);
-    if (!infile.good()) {
-      // TODO do this with the error log
-      std::cerr
-        << "File '" << file_name << "' does not exist or cannot be accessed."
-        << std::endl;
-    }
+    if (source_map.find(file_name) != source_map.end()) { continue; }
 
     RUN(timer, "Parsing a file") {
       auto source_file      = new SourceFile(file_name);
@@ -111,18 +99,11 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  CHECK_FOR_ERRORS;
+  CHECK_FOR_ERRORS; // Lexing and parsing
 
   AST::Statements *global_statements;
 
   RUN(timer, "AST Setup") {
-    // Init global module, function, etc.
-    global_module = new llvm::Module("global_module", llvm::getGlobalContext());
-
-    if (file_type != FileType::None) {
-      global_module->setDataLayout(target_machine->createDataLayout());
-    }
-
     // TODO write the language rules to guarantee that the parser produces a
     // Statements node at top level.
 
@@ -166,7 +147,8 @@ int main(int argc, char *argv[]) {
       node_to_verify->verify_types();
       VerificationQueue.pop();
     }
-    TypeSystem::GenerateLLVM();
+
+    if (file_type != FileType::None) { TypeSystem::GenerateLLVM(); }
 
     CHECK_FOR_ERRORS;
   }
@@ -265,7 +247,9 @@ int main(int argc, char *argv[]) {
     }
 
     // Generate all the functions
-    for (auto f : all_functions) { f->GenerateLLVM(); }
+    if (file_type != FileType::None) {
+      for (auto f : all_functions) { f->GenerateLLVM(); }
+    }
 
     { // Generate code for everything else
       ScopeStack.push(Scope::Global);

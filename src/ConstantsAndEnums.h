@@ -5,6 +5,8 @@ constexpr size_t non_assoc   = 2;
 constexpr size_t chain_assoc = 3;
 constexpr size_t assoc_mask  = 3;
 
+enum class FileType { Bin, IR, Nat, None };
+
 namespace Time {
   using Eval = int;
   constexpr Eval either  = 0x0;

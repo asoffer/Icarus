@@ -64,5 +64,9 @@ void InitializeLLVM() {
     target_machine = target->createTargetMachine(
         triple_string, llvm::sys::getHostCPUName(), features.getString(), opt);
     assert(target_machine);
+
+    // Init global module, function, etc.
+    global_module = new llvm::Module("global_module", llvm::getGlobalContext());
+    global_module->setDataLayout(target_machine->createDataLayout());
   }
 }
