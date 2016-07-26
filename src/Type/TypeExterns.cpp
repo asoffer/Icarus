@@ -31,7 +31,6 @@ static std::vector<Tuple *> tuple_types_;
 static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
-static std::map<std::string, Enumeration *> enum_types_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<AST::StructLiteral *, Structure *> struct_types_;
 static std::map<std::string, ParametricStructure *> param_struct_types_;
@@ -122,19 +121,6 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
   }
 }
 
-Enumeration *Enum(const std::string &name, const AST::EnumLiteral *e) {
-  auto iter = TypeSystem::enum_types_.find(name);
-  if (iter != TypeSystem::enum_types_.end()) return iter->second;
-
-  // If you don't provide something to create it with,
-  // it's just meant to be a check for existance
-  // TODO merge this with Contexts
-  if (e == nullptr) return nullptr;
-
-  auto enum_type                       = new Enumeration(name, e);
-  return TypeSystem::enum_types_[name] = enum_type;
-}
-
 Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   auto iter = TypeSystem::struct_types_.find(t);
   if (iter != TypeSystem::struct_types_.end()) return iter->second;
@@ -145,7 +131,7 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   if (t == nullptr) return nullptr;
 
   auto struct_type = new Structure(name, t);
-  t->value = Context::Value(struct_type);
+  t->value = IR::Value(struct_type);
 
   return TypeSystem::struct_types_[t] = struct_type;
 }

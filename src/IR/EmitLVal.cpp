@@ -25,7 +25,6 @@ IR::Value Unop::EmitLVal() {
   NOT_YET;
 }
 IR::Value ChainOp::EmitLVal() { NOT_YET; }
-IR::Value DummyTypeExpr::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }
 IR::Value InDecl::EmitLVal() { NOT_YET; }
 
@@ -80,5 +79,6 @@ IR::Value StructLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value ParametricStructLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value Case::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayLiteral::EmitLVal() { UNREACHABLE; }
-IR::Value EnumLiteral::EmitLVal() { UNREACHABLE; }
+
+IR::Value DummyTypeExpr::EmitLVal() { UNREACHABLE; }
 } // namespace AST

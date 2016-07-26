@@ -146,24 +146,24 @@ NNT Lexer::NextWord() {
   // appropriate Node.
   for (const auto &type_lit : TypeSystem::Literals) {
     if (type_lit.first == token) {
-      RETURN_TERMINAL(Type, Type_, Context::Value(type_lit.second));
+      RETURN_TERMINAL(Type, Type_, IR::Value(type_lit.second));
     }
   }
 
   if (token == "true") {
-    RETURN_TERMINAL(True, Bool, Context::Value(true));
+    RETURN_TERMINAL(True, Bool, IR::Value(true));
 
   } else if (token == "false") {
-    RETURN_TERMINAL(False, Bool, Context::Value(false));
+    RETURN_TERMINAL(False, Bool, IR::Value(false));
 
   } else if (token == "null") {
-    RETURN_TERMINAL(Null, NullPtr, nullptr);
+    RETURN_TERMINAL(Null, NullPtr, IR::Value::None());
 
   } else if (token == "ord") {
-    RETURN_TERMINAL(Ord, Func(Char, Uint), nullptr);
+    RETURN_TERMINAL(Ord, Func(Char, Uint), IR::Value::None());
 
   } else if (token == "ascii") {
-    RETURN_TERMINAL(ASCII, Func(Uint, Char), nullptr);
+    RETURN_TERMINAL(ASCII, Func(Uint, Char), IR::Value::None());
 
   } else if (token == "else") {
     auto term_ptr           = new AST::Terminal;
@@ -221,7 +221,7 @@ NNT Lexer::NextNumber() {
     auto uint_val = std::stoul(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
-    RETURN_TERMINAL(Uint, Uint, Context::Value(uint_val));
+    RETURN_TERMINAL(Uint, Uint, IR::Value(uint_val));
   } break;
 
   case '.': {
@@ -240,7 +240,7 @@ NNT Lexer::NextNumber() {
     auto real_val = std::stod(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
-    RETURN_TERMINAL(Real, Real, Context::Value(real_val));
+    RETURN_TERMINAL(Real, Real, IR::Value(real_val));
   } break;
 
   default:
@@ -249,7 +249,7 @@ NNT Lexer::NextNumber() {
     *cursor       = '\0';
     auto int_val = std::stol(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
-    RETURN_TERMINAL(Int, Int, Context::Value(int_val));
+    RETURN_TERMINAL(Int, Int, IR::Value(int_val));
   } break;
   }
 }
@@ -436,7 +436,7 @@ NNT Lexer::NextOperator() {
 
     } else if (*cursor == '-') {
       IncrementCursor();
-      RETURN_TERMINAL(Hole, Unknown, nullptr);
+      RETURN_TERMINAL(Hole, Unknown, IR::Value::None());
 
     } else {
       RETURN_NNT("-", op_bl, 1);
@@ -552,7 +552,7 @@ NNT Lexer::NextOperator() {
     // Not leaked. It's owned by a terminal which is persistent.
     char *cstr = new char[str_lit.size() + 1];
     std::strcpy(cstr, str_lit.c_str());
-    RETURN_TERMINAL(StringLiteral, Unknown, Context::Value(cstr));
+    RETURN_TERMINAL(StringLiteral, Unknown, IR::Value(cstr));
   } break;
 
   case '\'': {
@@ -568,7 +568,7 @@ NNT Lexer::NextOperator() {
     case '\0': {
       Error::Log::RunawayCharLit(cursor);
 
-      RETURN_TERMINAL(Char, Char, Context::Value('\0'));
+      RETURN_TERMINAL(Char, Char, IR::Value('\0'));
     }
     case '\\': {
       IncrementCursor();
@@ -607,7 +607,7 @@ NNT Lexer::NextOperator() {
       Error::Log::RunawayCharLit(cursor);
     }
 
-    RETURN_TERMINAL(Char, Char, Context::Value(result));
+    RETURN_TERMINAL(Char, Char, IR::Value(result));
   } break;
 
   case '?':

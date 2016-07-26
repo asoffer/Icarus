@@ -3,6 +3,8 @@
 #include "Scope.h"
 #include "Stack.h"
 
+extern llvm::IRBuilder<> builder;
+
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 extern FileType file_type;
@@ -169,7 +171,7 @@ static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
 
 namespace AST {
 IR::Value Terminal::EmitIR() {
-  // TODO translation from Context::Value to IR::Value should be removed
+  // TODO translation from IR::Value to IR::Value should be removed
   switch (terminal_type) {
   case Language::Terminal::ASCII: return IR::Value(AsciiFunc());
   case Language::Terminal::Char: return IR::Value(value.as_char);
@@ -178,7 +180,7 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Hole: UNREACHABLE;
   case Language::Terminal::Int:
     return IR::Value(
-        (long)value.as_int); // TODO Context::Value shouldn't use longs
+        (long)value.as_int); // TODO IR::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value::Null(type);
   case Language::Terminal::Ord: return IR::Value(OrdFunc());
   case Language::Terminal::Real: return IR::Value(value.as_real);
@@ -836,7 +838,7 @@ IR::Value Identifier::EmitIR() {
       }
 
       if (!value.as_type) {
-        value = Context::Value(Evaluate(decl->init_val).as_type);
+        value = IR::Value(Evaluate(decl->init_val).as_type);
         // TODO this should be cached in the evaluate method
       }
       auto t = value.as_type;
@@ -934,8 +936,6 @@ IR::Value Declaration::EmitIR() {
   return IR::Value();
 }
 
-IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
-
 IR::Value Case::EmitIR() {
 
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
@@ -1014,7 +1014,7 @@ IR::Value Access::EmitIR() {
   if (base_type == Type_) {
     auto ty = Evaluate(operand).as_type;
     if (ty->is_enum()) {
-      return IR::Value(((Enumeration *)ty)->int_values AT(member_name));
+      return IR::Value(((Enum *)ty)->int_values AT(member_name));
     } else {
       UNREACHABLE;
     }
@@ -1218,7 +1218,7 @@ IR::Value For::EmitIR() {
     } else if (iter->container->type == Type_) {
       auto container_type = Evaluate(iter->container).as_type;
       assert(container_type->is_enum());
-      auto enum_type = (Enumeration *)container_type;
+      auto enum_type = (Enum *)container_type;
 
       start_vals[i] = IR::Value(0ul);
       end_vals[i]   = IR::Value(enum_type->int_values.size());
@@ -1403,7 +1403,7 @@ IR::Value Jump::EmitIR() {
 }
 
 IR::Value Generic::EmitIR() {
-  if (!value.as_type) { value = Context::Value(TypeVar(identifier, test_fn)); }
+  if (!value.as_type) { value = IR::Value(TypeVar(identifier, test_fn)); }
   return IR::Value(value.as_type);
 }
 
@@ -1464,6 +1464,6 @@ IR::Value ParametricStructLiteral::EmitIR() {
   return IR::Value(value.as_type);
 }
 
+IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }
-IR::Value EnumLiteral::EmitIR() { return IR::Value(value.as_type); }
 } // namespace AST

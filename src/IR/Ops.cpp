@@ -13,6 +13,31 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
 }
 
 namespace IR {
+#define STATIC_VALUE(name, flag_name, as_name, param_type)                     \
+  Value Value::name(param_type x) {                                            \
+    Value v;                                                                   \
+    v.flag         = ValType::flag_name;                                       \
+    v.as_##as_name = x;                                                        \
+    return v;                                                                  \
+  }
+
+STATIC_VALUE(GlobalCStr, GlobalCStr, global_cstr, size_t)
+STATIC_VALUE(Arg, Arg, arg, size_t)
+STATIC_VALUE(Null, Null, null, Type *)
+STATIC_VALUE(Reg, Reg, reg, size_t)
+STATIC_VALUE(StackAddr, StackAddr, stack_addr, size_t)
+STATIC_VALUE(HeapAddr, HeapAddr, heap_addr, void *)
+STATIC_VALUE(FrameAddr, FrameAddr, frame_addr, size_t)
+
+#undef STATIC_VALUE
+
+Value Value::None() {
+  Value v;
+  v.flag    = ValType::T;
+  v.as_type = nullptr;
+  return v;
+}
+
 std::vector<IR::Value> InitialGlobals;
 std::vector<llvm::Value *> LLVMGlobals;
 

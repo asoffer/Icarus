@@ -22,7 +22,7 @@ IR::Value Pointer::EmitInitialValue() const {
   return IR::Value::Null(const_cast<Pointer *>(this));
 }
 
-IR::Value Enumeration::EmitInitialValue() const { return IR::Value(0ul); }
+IR::Value Enum::EmitInitialValue() const { return IR::Value(0ul); }
 
 IR::Value Array::EmitInitialValue() const { NOT_YET; }
 IR::Value Tuple::EmitInitialValue() const { NOT_YET; }

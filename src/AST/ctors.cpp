@@ -17,7 +17,7 @@ TokenNode::TokenNode(const Cursor &loc, const char *str_lit)
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(Assign::Unset), type(nullptr), value(nullptr),
+      lvalue(Assign::Unset), type(nullptr), value((Type *)nullptr),
       value_flag(ValueFlag::Not) {}
 
 Declaration::Declaration()
@@ -40,8 +40,9 @@ ArrayType::ArrayType() {}
 DummyTypeExpr::DummyTypeExpr() { UNREACHABLE; }
 
 DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
-  loc = new_loc;
-  value = Context::Value(t);
+  loc   = new_loc;
+  type  = Type_;
+  value = IR::Value(t);
 }
 
 Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
@@ -65,8 +66,6 @@ FunctionLiteral::FunctionLiteral()
 StructLiteral::StructLiteral() : type_scope(new Scope) {}
 ParametricStructLiteral::ParametricStructLiteral()
     : ir_func(nullptr), type_scope(new Scope) {}
-
-EnumLiteral::EnumLiteral() {}
 
 While::While() : while_scope(new BlockScope(ScopeType::While)) {}
 For::For() : for_scope(new BlockScope(ScopeType::For)) {}

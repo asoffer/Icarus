@@ -7,6 +7,8 @@ constexpr size_t assoc_mask  = 3;
 
 enum class FileType { Bin, IR, Nat, None };
 
+constexpr size_t FAIL = ~0ul;
+
 namespace Time {
   using Eval = int;
   constexpr Eval either  = 0x0;

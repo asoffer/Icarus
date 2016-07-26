@@ -62,7 +62,7 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   auto struct_lit_ptr   = new StructLiteral;
   struct_lit_ptr->loc   = nodes[0]->loc;
   struct_lit_ptr->type  = Type_;
-  struct_lit_ptr->value = Context::Value(Struct(
+  struct_lit_ptr->value = IR::Value(Struct(
       "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
   for (auto &&n : ((Statements *)nodes[2])->statements) {
     if (n->is_declaration()) {
@@ -82,7 +82,7 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
   auto struct_lit_ptr   = new ParametricStructLiteral;
   struct_lit_ptr->loc   = nodes[0]->loc;
   struct_lit_ptr->type  = Type_;
-  struct_lit_ptr->value = Context::Value(
+  struct_lit_ptr->value = IR::Value(
       ParamStruct("__anon.param.struct" + std::to_string(anon_struct_counter++),
                   struct_lit_ptr));
 
@@ -111,11 +111,8 @@ Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
 //
 // Internal checks:
 // Each statement is an identifier. No identifier is repeated.
-Node *EnumLiteral::Build(NPtrVec &&nodes) {
-  auto enum_lit_ptr  = new EnumLiteral;
-  enum_lit_ptr->loc  = nodes[0]->loc;
-  enum_lit_ptr->type = Type_;
-
+static Node *BuildEnumLiteral(NPtrVec &&nodes) {
+  std::vector<std::string> members;
   if (nodes[2]->is_statements()) {
     auto stmts = (Statements *)nodes[2];
     for (auto &&stmt : stmts->statements) {
@@ -124,12 +121,15 @@ Node *EnumLiteral::Build(NPtrVec &&nodes) {
       } else {
         // TODO repeated terms?
         // TODO move the string into place
-        enum_lit_ptr->members.emplace_back(((Identifier *)stmt)->token);
+        members.push_back(((Identifier *)stmt)->token);
       }
     }
   }
 
-  return enum_lit_ptr;
+  static size_t anon_enum_counter = 0;
+  return new DummyTypeExpr(
+      nodes[0]->loc,
+      new Enum("__anon.enum" + std::to_string(anon_enum_counter++), members));
 }
 
 // Input guarantees:
@@ -783,7 +783,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
     return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "enum") == 0) {
-    return AST::EnumLiteral::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildEnumLiteral(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "struct") == 0) {
     return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));

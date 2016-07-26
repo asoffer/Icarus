@@ -40,7 +40,7 @@ llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
 void Primitive::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
-void Enumeration::EmitInit(IR::Value id_val) {
+void Enum::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
 

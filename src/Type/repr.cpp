@@ -63,7 +63,7 @@ void Function::EmitRepr(IR::Value) {
   IR::Print(IR::Value(Char), IR::Value('}'));
 }
 
-void Enumeration::EmitRepr(IR::Value val) { NOT_YET; }
+void Enum::EmitRepr(IR::Value val) { NOT_YET; }
 void Pointer::EmitRepr(IR::Value val) { NOT_YET; }
 
 void Array::EmitRepr(IR::Value val) {

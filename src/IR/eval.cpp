@@ -786,17 +786,17 @@ void Cmd::Execute(StackFrame& frame) {
     assert(cmd_inputs[0].as_type->is_parametric_struct());
     auto param_struct_type = (ParametricStructure *)cmd_inputs[0].as_type;
 
-    std::vector<Context::Value> param_vals;
+    std::vector<IR::Value> param_vals;
     for (auto a : frame.args) {
       assert(a.flag == ValType::T); // What if an argument isn't a type?
-      param_vals.push_back(Context::Value(a.as_type));
+      param_vals.push_back(IR::Value(a.as_type));
     }
     auto iter = param_struct_type->ast_expression->cache.find(param_vals);
     if (iter == param_struct_type->ast_expression->cache.end()) {
       auto struct_lit = new AST::StructLiteral;
       param_struct_type->ast_expression->cache[param_vals] = struct_lit;
       auto struct_type = new Structure("anon", struct_lit);
-      struct_lit->value = Context::Value(struct_type);
+      struct_lit->value = IR::Value(struct_type);
 
       frame.reg[result.reg] = IR::Value::None();
     } else {
@@ -810,10 +810,10 @@ void Cmd::Execute(StackFrame& frame) {
 
     auto param_struct_lit =
         (AST::ParametricStructLiteral *)cmd_inputs[1].as_heap_addr;
-    std::vector<Context::Value> param_vals;
+    std::vector<IR::Value> param_vals;
     for (auto a : frame.args) {
       assert(a.flag == ValType::T); // What if an argument isn't a type?
-      param_vals.push_back(Context::Value(a.as_type));
+      param_vals.push_back(IR::Value(a.as_type));
     }
     auto struct_lit                             = param_struct_lit->cache[param_vals];
     param_struct_lit->reverse_cache[struct_lit] = param_vals;
@@ -840,31 +840,27 @@ void Cmd::Execute(StackFrame& frame) {
           term->terminal_type = init_val.as_bool ? Language::Terminal::True
                                                  : Language::Terminal::False;
           term->type  = Bool;
-          term->value = Context::Value(init_val.as_bool);
           break;
         case ValType::C:
           term->terminal_type = Language::Terminal::Char;
           term->type          = Char;
-          term->value         = Context::Value(init_val.as_char);
           break;
         case ValType::I:
           term->terminal_type = Language::Terminal::Int;
           term->type          = Int;
-          term->value         = Context::Value(init_val.as_int);
           break;
         case ValType::R:
           term->terminal_type = Language::Terminal::Real;
           term->type          = Real;
-          term->value         = Context::Value(init_val.as_real);
           break;
         case ValType::U:
           term->terminal_type = Language::Terminal::Uint;
           term->type          = Uint;
-          term->value         = Context::Value(init_val.as_uint);
           break;
 
         default: NOT_YET;
         }
+        term->value = init_val;
       }
       struct_lit->decls.push_back(decl);
     }

@@ -103,7 +103,7 @@ size_t Type::alignment() const {
   NOT_YET;
 }
 
-Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt), repr_fn_(nullptr) {
+Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt) {
   switch (type_) {
   case Primitive::TypeEnum::Bool:
     llvm_type = llvm::Type::getInt1Ty(llvm::getGlobalContext());
@@ -155,13 +155,13 @@ Function::Function(Type *in, Type *out) : input(in), output(out) {
   has_vars = input->has_vars || output->has_vars;
 }
 
-Enumeration::Enumeration(const std::string &name,
-                         const AST::EnumLiteral *enumlit)
-    : bound_name(name), string_data(nullptr) {
+Enum::Enum(const std::string &name, const std::vector<std::string> &members)
+    : bound_name(name), members(members) {
   if (file_type != FileType::None) { llvm_type = *Uint; }
 
-  size_t i = 0;
-  for (const auto &idstr : enumlit->members) { int_values[idstr] = i++; }
+  auto num_members = members.size();
+  for (size_t i = 0; i < num_members; ++i) { int_values[members[i]] = i; }
+
   // TODO save names in global for printing 
 }
 
@@ -187,17 +187,9 @@ size_t Structure::field_num(const std::string &name) const {
   return iter->second;
 }
 
-size_t Enumeration::get_index(const std::string &str) const {
+size_t Enum::IndexOrFail(const std::string &str) const {
   auto iter = int_values.find(str);
-  if (iter == int_values.end()) {
-    assert(false && "Invalid enumeration value");
-  } else {
-    return iter->second;
-  }
-}
-
-llvm::Value *Enumeration::get_value(const std::string &str) const {
-  return data::const_uint(get_index(str));
+  return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
 void Structure::set_name(const std::string &name) {

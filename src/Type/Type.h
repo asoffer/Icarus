@@ -1,8 +1,6 @@
 #ifndef ICARUS_TYPE_H
 #define ICARUS_TYPE_H
 
-extern llvm::IRBuilder<> builder;
-
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,
@@ -19,8 +17,6 @@ extern Function *Func(Type *in, Type *out);
 extern Function *Func(std::vector<Type *> in, Type *out);
 extern Function *Func(Type *in, std::vector<Type *> out);
 extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
-extern Enumeration *Enum(const std::string &name,
-                         const AST::EnumLiteral *e = nullptr);
 extern Structure *Struct(const std::string &name,
                          AST::StructLiteral *expr = nullptr);
 extern ParametricStructure *
@@ -107,7 +103,6 @@ public:
   };
 
   Primitive::TypeEnum type_;
-  llvm::Function *repr_fn_;
 
   Primitive(TypeEnum pt);
 };
@@ -156,18 +151,16 @@ struct Function : public Type {
   Type *input, *output;
 };
 
-struct Enumeration : public Type {
-  TYPE_FNS(Enumeration, enum);
+struct Enum : public Type {
+  TYPE_FNS(Enum, enum);
 
-  size_t get_index(const std::string &str) const;
-  llvm::Value *get_value(const std::string &str) const;
+  size_t IndexOrFail(const std::string &str) const;
 
-  Enumeration(const std::string &name, const AST::EnumLiteral *enumlit);
+  Enum(const std::string &name, const std::vector<std::string> &members);
 
   std::string bound_name;
-  llvm::Function *repr_fn_;
+  std::vector<std::string> members;
   std::map<std::string, size_t> int_values;
-  llvm::GlobalVariable *string_data;
 };
 
 struct Structure : public Type {

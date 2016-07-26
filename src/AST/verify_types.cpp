@@ -550,9 +550,9 @@ void Access::Verify(bool emit_errors) {
 
     auto evaled_type = Evaluate(operand).as_type;
     if (evaled_type->is_enum()) {
-      auto enum_type = (Enumeration *)evaled_type;
+      auto enum_type = (Enum *)evaled_type;
       // If you can get the value,
-      if (enum_type->get_value(member_name)) {
+      if (enum_type->IndexOrFail(member_name) != FAIL) {
         type = Evaluate(operand).as_type;
 
       } else {
@@ -681,9 +681,9 @@ void Binop::verify_types() {
 
           if (decl->IsInferred() || decl->IsCustomInitialized()) {
             if (decl->init_val->type->is_function()) {
-              decl->value = Context::Value(decl->init_val);
+              decl->value = IR::Value(decl->init_val);
             } else {
-              decl->value = Context::Value(Evaluate(decl->init_val).as_type);
+              decl->value = IR::Value(Evaluate(decl->init_val).as_type);
 
               if (decl->init_val->is_struct_literal()) {
                 assert(decl->identifier->value.as_type->is_struct());
@@ -695,9 +695,10 @@ void Binop::verify_types() {
                 ((ParametricStructure *)(decl->identifier->value.as_type))
                     ->set_name(decl->identifier->token);
 
-              } else if (decl->init_val->is_enum_literal()) {
-                assert(decl->identifier->value.as_type->is_enum());
-                ((Enumeration *)(decl->identifier->value.as_type))->bound_name =
+              } else if (decl->init_val->is_dummy() &&
+                         ((DummyTypeExpr *)decl->init_val)
+                             ->value.as_type->is_enum()) {
+                ((Enum *)(decl->identifier->value.as_type))->bound_name =
                     decl->identifier->token;
               }
             }
@@ -1413,13 +1414,11 @@ void Declaration::verify_types() {
       ((ParametricStructure *)(init_val->value.as_type))
           ->set_name(identifier->token);
 
-    } else if (init_val->is_enum_literal()) {
-      assert(init_val->value.as_type);
-
-      // Set the name of the parametric struct.
+    } else if (init_val->is_dummy() &&
+               ((DummyTypeExpr *)init_val)->value.as_type->is_enum()) {
+      // Set the name of the enum
       // TODO mangle the name correctly (Where should this be done?)
-      ((Enumeration *)(init_val->value.as_type))->bound_name =
-          identifier->token;
+      ((Enum *)(init_val->value.as_type))->bound_name = identifier->token;
     }
 
     identifier->value = init_val->value;
@@ -1598,16 +1597,6 @@ void Conditional::verify_types() {
   }
 }
 
-void EnumLiteral::verify_types() {
-  static size_t anon_enum_counter = 0;
-
-  type = Type_;
-
-  value = Context::Value(
-      Enum("__anon.enum" + std::to_string(anon_enum_counter), this));
-  ++anon_enum_counter;
-}
-
 void ParametricStructLiteral::verify_types() {
   type = Type_;
   for (auto p : params) { p->verify_types(); }
@@ -1645,10 +1634,7 @@ void Jump::verify_types() {
   UNREACHABLE;
 }
 
-void DummyTypeExpr::verify_types() {
-  STARTING_CHECK;
-  type = Type_;
-}
+void DummyTypeExpr::verify_types() {}
 } // namespace AST
 
 #undef VERIFY_AND_RETURN_ON_ERROR

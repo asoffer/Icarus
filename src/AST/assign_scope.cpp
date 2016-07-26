@@ -30,7 +30,6 @@ void Access::assign_scope() {
 
 void Identifier::assign_scope() { scope_ = CurrentScope(); }
 void Terminal::assign_scope() { scope_ = CurrentScope(); }
-void EnumLiteral::assign_scope() { scope_ = CurrentScope(); }
 
 void ArrayType::assign_scope() {
   scope_ = CurrentScope();

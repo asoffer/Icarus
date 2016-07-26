@@ -5,7 +5,7 @@
 
 void Primitive::EmitDestroy(IR::Value id_val) {}
 void Pointer::EmitDestroy(IR::Value id_val) {}
-void Enumeration::EmitDestroy(IR::Value id_val) {}
+void Enum::EmitDestroy(IR::Value id_val) {}
 void Function::EmitDestroy(IR::Value id_val) {}
 
 void Array::EmitDestroy(IR::Value id_val) {

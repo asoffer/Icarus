@@ -455,13 +455,11 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
           builder.CreateCall(cstdlib::printf(),
                              {data::global_string("0x%zx"), args[1]});
         } else if (print_type->is_enum()) {
-          auto enum_type = (Enumeration *)print_type;
-          // TODO change enums to be 32-bit and remove this (then unnecessary) cast
-          auto val_str = builder.CreateLoad(builder.CreateGEP(
-              enum_type->string_data, {data::const_uint32(0), args[1]}));
+          auto enum_type = (Enum *)print_type;
+          // TODO show names not numbers
           builder.CreateCall(
               cstdlib::printf(),
-              {data::global_string(enum_type->to_string() + ".%s"), val_str});
+              {data::global_string(enum_type->to_string() + ".%d"), args[1]});
         } else {
           UNREACHABLE;
         }

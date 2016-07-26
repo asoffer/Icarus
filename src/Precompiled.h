@@ -60,7 +60,6 @@ struct Declaration;
 struct Binop;
 struct Statements;
 struct FunctionLiteral;
-struct EnumLiteral;
 struct StructLiteral;
 struct ParametricStructLiteral;
 } // namespace AST
@@ -71,7 +70,7 @@ struct Array;
 struct Tuple;
 struct Pointer;
 struct Function;
-struct Enumeration;
+struct Enum;
 struct Structure;
 struct ParametricStructure;
 struct TypeVariable;
@@ -96,45 +95,77 @@ struct Cursor {
   inline char &operator*(void) const { return *(line.ptr + offset); }
 };
 
-namespace Context {
-// TODO make to use types of the right size.
-union Value {
-  bool as_bool;
-  char as_char;
-  long as_int;
-  double as_real;
-  size_t as_uint;
-  char *as_cstr;
-  void *as_null;
-  Type *as_type;
-  AST::Expression *as_expr;
+#include "ErrorLog.h"
 
-  Value(std::nullptr_t = nullptr) { as_null = nullptr; }
-  explicit Value(bool b) { as_bool = b; }
-  explicit Value(char c) { as_char = c; }
-  explicit Value(long n) { as_int = n; }
-  explicit Value(double d) { as_real = d; }
-  explicit Value(size_t n) { as_uint = n; }
-  explicit Value(Type *t) { as_type = t; }
-  explicit Value(char *c_str) { as_cstr = c_str; }
-  explicit Value(AST::Expression *e) { as_expr = e; }
+namespace IR {
+struct Func;
+struct Block;
+struct LocalStack;
+struct StackFrame;
+
+enum class ValType : char {
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr,
+  GlobalCStr, Null
 };
 
-inline bool operator==(const Value &lhs, const Value &rhs) {
-  return lhs.as_real == rhs.as_real;
-}
+struct Value {
+  union {
+    bool as_bool;
+    char as_char;
+    long as_int;
+    double as_real;
+    size_t as_uint;
+    Type *as_type;
+    Func *as_func;
+    char *as_cstr;
+    size_t as_reg;
+    size_t as_arg;
+    Block *as_block;
+    size_t as_stack_addr, as_frame_addr, as_global_addr;
+    void *as_heap_addr;
+    Type *as_null;
+    size_t as_global_cstr;
+  };
 
+  ValType flag;
+
+  explicit Value(bool b) : as_bool(b), flag(ValType::B) {}
+  explicit Value(char c) : as_char(c), flag(ValType::C) {}
+  explicit Value(long n) : as_int(n), flag(ValType::I) {}
+  explicit Value(double d) : as_real(d), flag(ValType::R) {}
+  explicit Value(size_t n) : as_uint(n), flag(ValType::U) {}
+  explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
+  explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
+  explicit Value(char *p) : as_cstr(p), flag(ValType::CStr) {}
+  explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
+
+  Value() : flag(ValType::Reg) {}
+
+  static Value GlobalCStr(size_t n);
+  static Value None();
+  static Value StackAddr(size_t n);
+  static Value Null(Type *t);
+  static Value Reg(size_t n);
+  static Value FrameAddr(size_t n);
+  static Value CreateGlobal();
+  static Value HeapAddr(void *ptr);
+  static Value Arg(size_t n);
+};
+
+// For std::map<>s
+inline bool operator<(const Value &lhs, const Value &rhs) {
+  return lhs.as_type < rhs.as_type;
+}
+inline bool operator==(const Value &lhs, const Value &rhs) {
+  return lhs.as_type == rhs.as_type;
+}
 inline bool operator!=(const Value &lhs, const Value &rhs) {
   return !(lhs == rhs);
 }
 
-// For std::map<>s
-inline bool operator<(const Value &lhs, const Value &rhs) {
-  return lhs.as_real < rhs.as_real;
-}
-} // namespace Context
+std::ostream &operator<<(std::ostream &os, const Value &value);
 
-#include "ErrorLog.h"
+} // namespace IR
 
 namespace Language {
 extern size_t precedence(Operator op);

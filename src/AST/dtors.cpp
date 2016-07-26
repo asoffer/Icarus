@@ -94,7 +94,6 @@ StructLiteral::~StructLiteral() {
   DELETE(type_scope);
 }
 
-EnumLiteral::~EnumLiteral() {}
 Jump::~Jump() {}
 DummyTypeExpr::~DummyTypeExpr() {}
 

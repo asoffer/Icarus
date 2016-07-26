@@ -137,7 +137,6 @@ void While::lrvalue_check(){
 void ParametricStructLiteral::lrvalue_check() { lvalue = Assign::RVal; }
 void StructLiteral::lrvalue_check() { lvalue = Assign::RVal; }
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
-void EnumLiteral::lrvalue_check() { lvalue = Assign::RVal; }
 void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }
 
 } // namespace AST

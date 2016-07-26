@@ -55,7 +55,6 @@ struct Node {
   virtual bool is_parametric_struct_literal() const { return false; }
   virtual bool is_struct_literal() const { return false; }
   virtual bool is_statements() const { return false; }
-  virtual bool is_enum_literal() const { return false; }
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
@@ -82,7 +81,7 @@ struct Expression : public Node {
   static Node *build(NPtrVec &&nodes);
   static Node *AddHashtag(NPtrVec &&nodes);
 
-  llvm::Value *llvm_value(Context::Value v);
+  llvm::Value *llvm_value(IR::Value v);
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -115,7 +114,7 @@ struct Expression : public Node {
   size_t precedence;
   Assign lvalue;
   Type *type;
-  Context::Value value;
+  IR::Value value;
   ValueFlag value_flag;
 };
 
@@ -212,7 +211,6 @@ struct Generic : public Declaration {
   Expression *test_fn;
 };
 
-
 struct InDecl : public Declaration {
   EXPR_FNS(InDecl, in_decl);
   static Node *Build(NPtrVec &&nodes);
@@ -221,8 +219,6 @@ struct InDecl : public Declaration {
   virtual bool is_declaration() const override { return false; }
   Expression *container;
 };
-
-
 
 struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
@@ -233,8 +229,8 @@ struct ParametricStructLiteral : public Expression {
   Scope *type_scope;
   std::vector<Declaration *> decls, params;
 
-  std::map<std::vector<Context::Value>, StructLiteral *> cache;
-  std::map<StructLiteral *, std::vector<Context::Value>> reverse_cache;
+  std::map<std::vector<IR::Value>, StructLiteral *> cache;
+  std::map<StructLiteral *, std::vector<IR::Value>> reverse_cache;
 };
 
 struct StructLiteral : public Expression {
@@ -395,13 +391,6 @@ struct While : public Node {
   Expression *condition;
   Statements *statements;
   BlockScope *while_scope;
-};
-
-struct EnumLiteral : public Expression {
-  EXPR_FNS(EnumLiteral, enum_literal);
-  static Node *Build(NPtrVec &&nodes);
-
-  std::vector<std::string> members;
 };
 
 struct DummyTypeExpr : public Expression {
