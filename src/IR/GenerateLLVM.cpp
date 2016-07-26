@@ -172,6 +172,10 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
             reinterpret_cast<llvm::Value *>(::Func(from, to));
 
       } continue;
+      case IR::Op::TC_Tup: {
+                             UNREACHABLE;
+
+      } continue;
       case IR::Op::TC_Arr1: {
         Type *data_type = nullptr;
         if (cmd.args[0].flag == ValType::T) {
@@ -230,7 +234,19 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Call: {
         if (cmd.result.type == Type_) {
           auto local_stack = new IR::LocalStack;
-          auto fn          = cmd.args[0].as_func;
+
+          IR::Func *fn;
+          if (cmd.args[0].flag == IR::ValType::T) {
+            assert(cmd.args[0].as_type->is_parametric_struct());
+            auto param_struct = ((ParametricStructure *)cmd.args[0].as_type);
+            assert(param_struct->ast_expression);
+            assert(param_struct->ast_expression->ir_func);
+            fn = param_struct->ast_expression->ir_func;
+          } else {
+            assert(cmd.args[0].flag == IR::ValType::F);
+            fn = cmd.args[0].as_func;
+          }
+
           std::vector<IR::Value> cmd_args;
           for (size_t i = 1; i < cmd.args.size(); ++i) {
             cmd_args.push_back(cmd.args[i]);
@@ -521,6 +537,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::GetFromCache: UNREACHABLE;
       case IR::Op::Field: UNREACHABLE;
       case IR::Op::Phi: UNREACHABLE;
+      case IR::Op::TC_Tup: UNREACHABLE;
       case IR::Op::TC_Ptr: UNREACHABLE;
       case IR::Op::TC_Arrow: UNREACHABLE;
       case IR::Op::TC_Arr1: UNREACHABLE;

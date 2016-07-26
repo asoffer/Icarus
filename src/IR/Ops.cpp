@@ -128,6 +128,14 @@ Value Call(Type *out, Value fn, const std::vector<Value> &args) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value TC_Tup(const std::vector<IR::Value>& vals) {
+  Cmd cmd(Op::TC_Tup, true);
+  cmd.args = vals;
+  cmd.result.type = Type_;
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Value Memcpy(Value dest, Value source, Value num_bytes) {
   Cmd cmd(Op::Memcpy, false);
   cmd.args = {dest, source, num_bytes};

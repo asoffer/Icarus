@@ -338,6 +338,7 @@ Value Trunc(Value val);
 Value ZExt(Value val);
 Value PushField(Value fields, const char *name, Value ty, Value init);
 Value InitFieldVec(size_t num_decls);
+Value TC_Tup(const std::vector<IR::Value> &vals);
 
 Cmd Phi(Type *ret_type);
 Cmd NOp();

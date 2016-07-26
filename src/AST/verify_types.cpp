@@ -1390,9 +1390,6 @@ void Declaration::verify_types() {
     ((Structure *)type)->ast_expression->CompleteDefinition();
   }
 
-  // TODO this section is also in Declaration::evaluate. It makes more sense
-  // there. You need to decide on how to deal with this. Do you wait to call it?
-  // Do you call it here? Probably that one.
   if (type == Type_ && IsInferred()) {
     if (init_val->is_struct_literal()) {
       assert(init_val->value.as_type && init_val->value.as_type->is_struct());

@@ -28,6 +28,7 @@ struct StackFrame {
 
   LocalStack *stack;
 
+  // const std::vector<Value>& args;
   const std::vector<Value>& args;
   const Func *const func;
 

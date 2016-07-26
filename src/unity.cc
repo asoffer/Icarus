@@ -8,7 +8,6 @@
 #include "AST/clone.cpp"
 #include "AST/ctors.cpp"
 #include "AST/dtors.cpp"
-#include "AST/evaluate.cpp"
 #include "AST/lrval.cpp"
 #include "AST/time.cpp"
 #include "AST/to_string.cpp"

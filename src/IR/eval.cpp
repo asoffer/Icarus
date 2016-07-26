@@ -713,6 +713,14 @@ void Cmd::Execute(StackFrame& frame) {
       UNREACHABLE;
     }
   } break;
+  case Op::TC_Tup: {
+    std::vector<Type *> type_vec;
+    for (auto v : cmd_inputs) {
+      assert(v.flag == ValType::T);
+      type_vec.push_back(v.as_type);
+    }
+    frame.reg[result.reg] = Value(Tup(type_vec));
+  } break;
   case Op::TC_Ptr: {
     frame.reg[result.reg] = Value(Ptr(cmd_inputs[0].as_type));
   } break;
