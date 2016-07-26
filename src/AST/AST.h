@@ -24,7 +24,6 @@ namespace AST {
   virtual IR::Value EmitIR() ENDING;                                           \
   virtual IR::Value EmitLVal() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual Context::Value evaluate() ENDING;                                    \
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
                       Type **lookup_val) ENDING
 

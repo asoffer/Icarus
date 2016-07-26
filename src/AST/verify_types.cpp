@@ -678,7 +678,36 @@ void Binop::verify_types() {
           }
         } else {
           assert(decl->type == Type_);
-          auto decl_type = decl->evaluate().as_type;
+
+          if (decl->IsInferred() || decl->IsCustomInitialized()) {
+            if (decl->init_val->type->is_function()) {
+              decl->value = Context::Value(decl->init_val);
+            } else {
+              decl->value = Context::Value(Evaluate(decl->init_val).as_type);
+
+              if (decl->init_val->is_struct_literal()) {
+                assert(decl->identifier->value.as_type->is_struct());
+                ((Structure *)(decl->identifier->value.as_type))
+                    ->set_name(decl->identifier->token);
+
+              } else if (decl->init_val->is_parametric_struct_literal()) {
+                assert(decl->identifier->value.as_type->is_parametric_struct());
+                ((ParametricStructure *)(decl->identifier->value.as_type))
+                    ->set_name(decl->identifier->token);
+
+              } else if (decl->init_val->is_enum_literal()) {
+                assert(decl->identifier->value.as_type->is_enum());
+                ((Enumeration *)(decl->identifier->value.as_type))->bound_name =
+                    decl->identifier->token;
+              }
+            }
+
+          } else if (decl->IsUninitialized()) {
+            NOT_YET;
+          }
+
+          auto decl_type = decl->value.as_type;
+
           if (!decl_type->is_parametric_struct()) { continue; }
           auto param_expr =
               ((ParametricStructure *)decl_type)->ast_expression;
@@ -1204,7 +1233,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
     return Err;
   }
 
-  Type *t = evaluate().as_type;
+  Type *t = Evaluate(this).as_type;
 
   if (t == Void) {
     Error::Log::DeclaredVoidType(loc, id_tok);

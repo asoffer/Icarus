@@ -1,7 +1,6 @@
 bin/icarus programs/access.ic --file-type=none
 bin/icarus programs/alloc_init.ic --file-type=none
 bin/icarus programs/alloc_loop.ic --file-type=none
-bin/icarus programs/alloc_loop2.ic --file-type=none
 bin/icarus programs/array.ic --file-type=none
 bin/icarus programs/array_lit.ic --file-type=none
 bin/icarus programs/array_range.ic --file-type=none

@@ -1,7 +1,0 @@
-main := void -> void {
-  n := 0
-  while true {
-    array : [n; int]
-    n += 1
-  }
-}

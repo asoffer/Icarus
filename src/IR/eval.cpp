@@ -166,6 +166,11 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] = Value(-cmd_inputs[0].as_real);
   } break;
   case Op::Call: {
+    if (cmd_inputs[0].flag == ValType::T) {
+      assert(cmd_inputs[0].as_type->is_parametric_struct());
+      cmd_inputs[0] = IR::Value(((ParametricStructure *)cmd_inputs[0].as_type)
+                                    ->ast_expression->ir_func);
+    }
     assert(cmd_inputs[0].flag == ValType::F);
 
     std::vector<Value> call_args;

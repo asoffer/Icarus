@@ -793,7 +793,12 @@ IR::Value Identifier::EmitIR() {
       }
       UNREACHABLE;
     } else {
-      auto t = evaluate().as_type;
+      assert(decl->init_val);
+      if (!value.as_type) {
+        value = Context::Value(Evaluate(decl->init_val).as_type);
+        // TODO this should be cached in the evaluate method
+      }
+      auto t = value.as_type;
       if (t->is_parametric_struct()) {
         return ((ParametricStructure *)t)->ast_expression->EmitIR();
       } else {
@@ -1355,7 +1360,8 @@ IR::Value Generic::EmitIR() { NOT_YET; }
 IR::Value InDecl::EmitIR() { NOT_YET; }
 
 IR::Value ParametricStructLiteral::EmitIR() {
-  if (ir_func) { return IR::Value(ir_func); } // Cache
+  assert(value.as_type);
+  if (ir_func) { return IR::Value(value.as_type); } // Cache
   verify_types();
 
   auto saved_func  = IR::Func::Current;
@@ -1373,7 +1379,7 @@ IR::Value ParametricStructLiteral::EmitIR() {
   auto found_block     = IR::Func::Current->AddBlock("found-rhs");
   auto not_found_block = IR::Func::Current->AddBlock("not-found-rhs");
 
-  auto cached_val = IR::GetFromCache(IR::Value(evaluate().as_type));
+  auto cached_val = IR::GetFromCache(IR::Value(Evaluate(this).as_type));
   auto found = IR::TEQ(cached_val, IR::Value::None());
   IR::Block::Current->SetConditional(found, not_found_block, found_block);
 
@@ -1405,7 +1411,7 @@ IR::Value ParametricStructLiteral::EmitIR() {
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
 
-  return IR::Value(ir_func);
+  return IR::Value(value.as_type);
 }
 
 IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }
