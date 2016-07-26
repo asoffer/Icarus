@@ -160,13 +160,9 @@ NNT Lexer::NextWord() {
     RETURN_TERMINAL(Null, NullPtr, nullptr);
 
   } else if (token == "ord") {
-    // NOTE: Cannot use Context::Value(builtin::ord()) because it hasn't been
-    // initialized yet.
     RETURN_TERMINAL(Ord, Func(Char, Uint), nullptr);
 
   } else if (token == "ascii") {
-    // NOTE: Cannot use Context::Value(builtin::ascii()) because it hasn't been
-    // initialized yet.
     RETURN_TERMINAL(ASCII, Func(Uint, Char), nullptr);
 
   } else if (token == "else") {

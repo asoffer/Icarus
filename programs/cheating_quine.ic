@@ -1,14 +1,10 @@
-File := struct {
-  _handle: &uint
-}
+FILE := struct {\\} #internal
 
-FileMode := enum {
-  Read
-  Write
-}
+File     := struct { _handle: &FILE }
+FileMode := enum { Read \\ Write \\ }
 
-FileOpen := (name: &char, m: FileMode) -> File {
-  fopen: (&char, &char) -> &uint #cstdlib
+open := (name: &char, m: FileMode) -> &FILE {
+  fopen: (&char, &char) -> &FILE #cstdlib
 
   mode: [2; char]
   mode[0] = case {
@@ -16,14 +12,12 @@ FileOpen := (name: &char, m: FileMode) -> File {
     else                =>  'w'
   }
 
-  result: File
-  result._handle = fopen(name, &mode[0])
-  return result
+  return name.fopen(&mode[0])
 }
 
 Next := (this: &File) -> char {
-  fgetc: &uint -> uint #cstdlib
-  EOF := -1 :> uint
+  fgetc: &FILE -> uint #cstdlib
+  EOF := 4294967295u
 
   n := this._handle.fgetc()
 
@@ -31,24 +25,18 @@ Next := (this: &File) -> char {
     n == EOF  =>  0u
     else      =>  n
   })
-
-  __destroy__ := (f: &File) -> void {} // Don't destroy files in this function
 }
 
 main := void -> void { 
-  // Because we don't yet support C-strings
-  name := ['p','r','o','g','r','a','m','s','/',
-  'c','h','e','a','t','i','n','g','_','q','u','i','n','e','.','i','c',
-  ascii(0u)]
+  name       := "programs/cheating_quine.ic "
+  name_c_str := name.c_str()
 
-  f := FileOpen(&name[0], FileMode.Read)
-  
+  f: File
+  f._handle = name_c_str.open(FileMode.Read)
+
   c := f.Next()
-  while c != ascii(0u) { print c \\ c = f.Next()
-    }
-
-  __destroy__ := (file_ptr: &File) -> void {
-    fclose: &uint -> int #cstdlib
-    file_ptr._handle.fclose()
+  while c != ascii(0u) {
+    print c
+    c = f.Next()
   }
 }

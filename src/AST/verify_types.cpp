@@ -111,17 +111,11 @@ static bool MatchCall(Type *lhs, Type *rhs,
   if (lhs->is_type_variable()) {
     auto lhs_var = (TypeVariable *)lhs;
     assert(lhs_var->test);
-
-    auto test_fn_expr = lhs_var->test->evaluate().as_expr;
-    assert(test_fn_expr->is_function_literal());
-
-    auto test_fn = (AST::FunctionLiteral *)test_fn_expr;
-
-    assert(test_fn->type == Func(Type_, Bool));
+    assert(lhs_var->test->type == Func(Type_, Bool));
 
     // Do a function call
     auto local_stack = new IR::LocalStack;
-    auto f = test_fn->EmitIR();
+    auto f = lhs_var->test->EmitIR();
     assert(f.flag == IR::ValType::F);
     auto test_result = f.as_func->Call(local_stack, {IR::Value(rhs)});
     delete local_stack;
@@ -295,25 +289,6 @@ static Type *EvalWithVars(Type *type,
     return Tup(entries);
   }
 
-  if (type->is_struct()) {
-    auto struct_type = (Structure *)type;
-    assert(struct_type->creator);
-    assert(
-        struct_type->creator->reverse_cache.find(struct_type->ast_expression) !=
-        struct_type->creator->reverse_cache.end());
-
-    auto params =
-        struct_type->creator->reverse_cache[struct_type->ast_expression];
-
-    std::vector<Context::Value> evaled_params;
-    for (size_t i = 0; i < params.size(); ++i) {
-      // TODO not all parameters have to be types
-      evaled_params.emplace_back(EvalWithVars(params[i].as_type, lookup));
-    }
-
-    return struct_type->creator->CreateOrGetCached(evaled_params).as_type;
-  }
-
   std::cerr << *type << std::endl;
   UNREACHABLE;
 }
@@ -352,7 +327,7 @@ void StructLiteral::CompleteDefinition() {
           decls[i]->type_expr->type->is_parametric_struct()) {
         decl_type = Err;
       } else {
-        decl_type = decls[i]->type_expr->evaluate().as_type;
+        decl_type = Evaluate(decls[i]->type_expr).as_type;
       }
     } else {
       decl_type = decls[i]->init_val->type;
@@ -569,17 +544,16 @@ void Access::Verify(bool emit_errors) {
     }
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
-      operand->evaluate();
       type = Uint;
       return;
     }
 
-    auto evaled_type = operand->evaluate().as_type;
+    auto evaled_type = Evaluate(operand).as_type;
     if (evaled_type->is_enum()) {
       auto enum_type = (Enumeration *)evaled_type;
       // If you can get the value,
       if (enum_type->get_value(member_name)) {
-        type = operand->evaluate().as_type;
+        type = Evaluate(operand).as_type;
 
       } else {
         Error::Log::MissingMember(loc, member_name, evaled_type);
@@ -704,10 +678,10 @@ void Binop::verify_types() {
           }
         } else {
           assert(decl->type == Type_);
-          decl->evaluate();
-          if (!decl->value.as_type->is_parametric_struct()) { continue; }
+          auto decl_type = decl->evaluate().as_type;
+          if (!decl_type->is_parametric_struct()) { continue; }
           auto param_expr =
-              ((ParametricStructure *)decl->value.as_type)->ast_expression;
+              ((ParametricStructure *)decl_type)->ast_expression;
 
           // Get the types of parameter entries
           std::vector<Type *> param_types;
@@ -760,7 +734,6 @@ void Binop::verify_types() {
         assert(lhs->type == Type_ &&
                "Should have caught the bad-type of lhs earlier");
 
-        lhs->evaluate();
         if (lhs->value.as_type->is_parametric_struct()) {
           auto param_ast_expr =
               ((ParametricStructure *)lhs->value.as_type)->ast_expression;
@@ -939,8 +912,7 @@ void Binop::verify_types() {
     }
     return;
   case Operator::Cast: {
-    // TODO use correct scope
-    type = rhs->evaluate().as_type;
+    type = Evaluate(rhs).as_type;
     if (type == Err) { return; }
     assert(type && "cast to nullptr?");
 
@@ -1213,7 +1185,7 @@ void InDecl::verify_types() {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = container->evaluate().as_type;
+    auto t = Evaluate(container).as_type;
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -1416,8 +1388,6 @@ void Declaration::verify_types() {
           ->set_name(identifier->token);
 
     } else if (init_val->is_enum_literal()) {
-      // TODO this evaluation should just be done when it's built.
-      init_val->evaluate(); // TODO do we need to evaluate here?
       assert(init_val->value.as_type);
 
       // Set the name of the parametric struct.
@@ -1509,7 +1479,7 @@ void FunctionLiteral::verify_types() {
 
   return_type_expr->verify_types();
 
-  Type *ret_type = return_type_expr->evaluate().as_type;
+  Type *ret_type = Evaluate(return_type_expr).as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t num_inputs = inputs.size();

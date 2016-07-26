@@ -25,8 +25,6 @@ ShowUsage(char *argv0) {
           "                                 By default, error messages are logged, organized, and\n"
           "                                 then displayed.\n\n"
           "  -p, --parser                   Display step-by-step file parsing (debug).\n\n"
-          "  -s, --param-struct             Display debug information for parametric struct\n"
-          "                                 cloning (debug).\n\n"
           "  -t, --timer                    Display timing information for each of the\n"
           "                                 compilation steps (debug).\n\n"
           "\n",
@@ -115,10 +113,6 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
             Error::Log::ImmediateMode = true;
             goto next_arg;
 
-          } else if (strcmp(arg + 2, "param-struct") == 0) {
-            debug::parametric_struct = true;
-            goto next_arg;
-
           } else {
             ShowUsage(argv[0]);
             return CLArgFlag::QuitWithFailure;
@@ -132,7 +126,6 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
           case 'h': ShowUsage(argv[0]); return CLArgFlag::QuitSuccessfully;
           case 'e': debug::ct_eval           = true; break;
           case 'p': debug::parser            = true; break;
-          case 's': debug::parametric_struct = true; break;
           case 't': debug::timer             = true; break;
           case '\0': goto next_arg;
           default: ShowUsage(argv[0]); return CLArgFlag::QuitWithFailure;

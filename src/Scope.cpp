@@ -114,20 +114,6 @@ void BlockScope::InsertDestroy() {
 FnScope::FnScope()
     : BlockScope(ScopeType::Function), fn_type(nullptr), exit_flag('\0') {}
 
-/* TODO delete this once it's copied into IR correctly
-llvm::Value *FnScope::ExitFlag() {
-  if (exit_flag_) { return exit_flag_; }
-  auto ip = builder.saveIP();
-  if (entry->empty()) {
-    builder.SetInsertPoint(entry);
-  } else {
-    builder.SetInsertPoint(entry->begin());
-  }
-  exit_flag_ = builder.CreateAlloca(*Char, nullptr, "exit.flag");
-  builder.restoreIP(ip);
-  return exit_flag_;
-}*/
-
 bool Scope::is_loop_scope() {
   if (!is_block_scope()) return false;
   auto bs = (BlockScope *)this;

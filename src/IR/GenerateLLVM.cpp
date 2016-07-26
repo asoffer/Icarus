@@ -112,6 +112,7 @@ llvm::BasicBlock *
 Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                     std::vector<std::pair<IR::Block *, size_t>> &phis) {
   assert(llvm_block);
+
   builder.SetInsertPoint(llvm_block);
 
   // NOTE this is larger than necessary but definitely big enough.
@@ -237,10 +238,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
           auto result = fn->Call(local_stack, cmd_args);
           delete local_stack;
           registers[cmd.result.reg] = IR_to_LLVM(ir_fn, result, registers);
+
           continue;
         } else {
           break;
         }
+
       } UNREACHABLE;
       default:;
       }

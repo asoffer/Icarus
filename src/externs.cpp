@@ -23,10 +23,9 @@ size_t precedence(Operator op) {
 
 // Debug flags and their default values
 namespace debug {
-bool parser            = false;
-bool timer             = false;
-bool parametric_struct = false;
-bool ct_eval           = false;
+bool parser  = false;
+bool timer   = false;
+bool ct_eval = false;
 } // namespace debug
 
 std::vector<AST::StructLiteral*> created_types;
@@ -39,12 +38,6 @@ std::queue<std::string> file_queue;
 
 llvm::Module *global_module         = nullptr;
 llvm::TargetMachine *target_machine = nullptr;
-
-std::map<std::string, llvm::Value*> global_strings;
-
-llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
-  return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
-}
 
 #define CSTDLIB(fn, variadic, in, out)                                         \
   llvm::Constant *fn() {                                                       \
@@ -125,53 +118,14 @@ llvm::ConstantInt *const_char(char c) {
 }
 
 llvm::Value *global_string(const std::string &s) {
+  static std::map<std::string, llvm::Value *> global_strings;
+
   auto iter = global_strings.find(s);
   return iter == global_strings.end()
              ? global_strings[s] = builder.CreateGlobalStringPtr(s)
              : iter->second;
 }
 } // namespace data
-
-namespace builtin {
-llvm::Function *ord() {
-  static llvm::Function *ord_ = nullptr;
-  if (ord_ != nullptr) { return ord_; }
-
-  ord_ = llvm::Function::Create(
-      *Func(Char, Uint), llvm::Function::ExternalLinkage, "ord", global_module);
-
-  llvm::Value *val = ord_->args().begin();
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-
-  auto entry_block = make_block("entry", ord_);
-
-  bldr.SetInsertPoint(entry_block);
-  // TODO check bounds if build option specified
-
-  bldr.CreateRet(bldr.CreateZExt(val, *Uint));
-
-  return ord_;
-}
-
-llvm::Function *ascii() {
-  static llvm::Function *ascii_ = nullptr;
-  if (ascii_ != nullptr) { return ascii_; }
-
-  ascii_ =
-      llvm::Function::Create(*Func(Uint, Char), llvm::Function::ExternalLinkage,
-                             "ascii", global_module);
-
-  llvm::Value *val = ascii_->args().begin();
-  llvm::IRBuilder<> bldr(llvm::getGlobalContext());
-
-  auto entry_block = make_block("entry", ascii_);
-  bldr.SetInsertPoint(entry_block);
-  // TODO check bounds if build option specified
-
-  bldr.CreateRet(bldr.CreateTrunc(val, *Char));
-  return ascii_;
-}
-} // namespace builtin
 
 // TODO make calls to call_repr not have to first check if we pass the
 // object or a pointer to the object.

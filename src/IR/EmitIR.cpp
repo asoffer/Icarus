@@ -6,6 +6,8 @@
 extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 
+extern IR::Value Evaluate(AST::Expression *expr);
+
 AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   auto fn_ptr = new AST::FunctionLiteral;
 
@@ -98,10 +100,14 @@ size_t IR::Func::PushSpace(Type *t) {
   auto result = frame_size;
   frame_size += bytes;
 
+  auto ip = builder.saveIP();
+
   builder.SetInsertPoint(alloc_block);
   if (t != Void && t != Type_) {
     frame_map[result] = builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
   }
+
+  builder.restoreIP(ip);
 
   return result;
 }
@@ -292,8 +298,7 @@ IR::Value Binop::EmitIR() {
     return IR::Value();
   } break;
   case Language::Operator::Cast: {
-    auto rhs_val = rhs->evaluate();
-    return IR::Cast(lhs->type, rhs_val.as_type, lhs->EmitIR());
+    return IR::Cast(lhs->type, Evaluate(rhs).as_type, lhs->EmitIR());
   };
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
@@ -792,7 +797,7 @@ IR::Value Identifier::EmitIR() {
       if (t->is_parametric_struct()) {
         return ((ParametricStructure *)t)->ast_expression->EmitIR();
       } else {
-        return IR::Value(evaluate().as_type);
+        return IR::Value(t);
       }
     }
   }
@@ -957,7 +962,7 @@ IR::Value Access::EmitIR() {
   }
 
   if (base_type == Type_) {
-    auto ty = operand->evaluate().as_type;
+    auto ty = Evaluate(operand).as_type;
     if (ty->is_enum()) {
       return IR::Value(((Enumeration *)ty)->int_values AT(member_name));
     } else {
@@ -1161,7 +1166,7 @@ IR::Value For::EmitIR() {
           IR::PtrIncr(Ptr(array_type->data_type), head_ptr, end_offset);
 
     } else if (iter->container->type == Type_) {
-      auto container_type = iter->container->evaluate().as_type;
+      auto container_type = Evaluate(iter->container).as_type;
       assert(container_type->is_enum());
       auto enum_type = (Enumeration *)container_type;
 

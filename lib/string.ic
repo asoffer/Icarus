@@ -7,4 +7,11 @@ __print__ := (s: string) -> void {
   for c in s._chars[0u .. s._length - 1u] { print c }
 }
 
+// Set the last character to zero, and return a pointer into the struct
+// NOTE: This is a terrible API! Like... the worst!
+c_str := (s: &string) -> &char {
+  s._chars[s._length - 1u] = ascii(0u)
+  return (&s._chars[0])
+}
+
 size := (s: &string) -> uint { return s._length }

@@ -5,8 +5,11 @@
 extern std::vector<IR::Func *> all_functions;
 
 extern llvm::Module *global_module;
-extern llvm::BasicBlock *make_block(const std::string &name,
-                                    llvm::Function *fn);
+
+llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
+  return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
+}
+
 namespace IR {
 std::vector<IR::Value> InitialGlobals;
 std::vector<llvm::Value *> LLVMGlobals;

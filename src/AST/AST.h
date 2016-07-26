@@ -229,8 +229,6 @@ struct ParametricStructLiteral : public Expression {
   EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
   static Node *Build(NPtrVec &&nodes);
 
-  Context::Value CreateOrGetCached(const std::vector<Context::Value> &arg_vals);
-
   IR::Func *ir_func;
 
   Scope *type_scope;

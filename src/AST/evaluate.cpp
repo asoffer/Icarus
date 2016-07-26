@@ -43,162 +43,7 @@ IR::Value Evaluate(AST::Expression *expr) {
   return result;
 }
 
-namespace data {
-extern llvm::ConstantInt *const_bool(bool b);
-extern llvm::ConstantInt *const_char(char c);
-extern llvm::ConstantInt *const_int(long n);
-extern llvm::ConstantFP *const_real(double d);
-extern llvm::ConstantInt *const_uint(size_t n);
-} // namespace data
-
-static void AppendValueToStream(Type *type, const Context::Value val,
-                                std::ostream &os) {
-  if (type == Bool) {
-    os << (val.as_bool ? "true" : "false");
-  } else if (type == Char) {
-    os << val.as_char;
-
-  } else if (type == Int) {
-    os << val.as_int;
-
-  } else if (type == Real) {
-    os << val.as_real;
-
-  } else if (type == Uint) {
-    os << val.as_uint;
-
-  } else if (type == Type_) {
-    os << val.as_type->to_string();
-  }
-}
-
 namespace AST {
-// TODO there's definitely a better way to do this.
-Context::Value ParametricStructLiteral::CreateOrGetCached(
-    const std::vector<Context::Value> &arg_vals) {
-  size_t cache_num = 0;
-  auto num_args = arg_vals.size();
-  assert(value.as_type);
-  assert(value.as_type->is_parametric_struct());
-  auto param_struct = (ParametricStructure *)value.as_type;
-
-  for (const auto &cached_val : cache) {
-    if (debug::parametric_struct) {
-      std::cerr << " * Checking match against cache position " << cache_num++
-                << std::endl;
-    }
-
-    if (cached_val.first.size() != num_args) {
-      if (debug::parametric_struct) {
-        std::cerr << "   - Parameter number mismatch (" << num_args << " vs "
-                  << cached_val.first.size() << ")" << std::endl;
-      }
-      continue;
-    }
-
-    for (size_t i = 0; i < num_args; ++i) {
-      if (cached_val.first[i] != arg_vals[i]) {
-        if (debug::parametric_struct) {
-          std::cerr << "   - Failed matching argument " << std::endl;
-        }
-        goto outer_continue;
-      }
-    }
-
-    // If you get here, you found a match
-    if (debug::parametric_struct) {
-      std::cerr << "   - Found a match." << std::endl;
-      // TODO which match?
-    }
-    // If you get down here, you have found the right thing.
-    return cached_val.second->value;
-
-  outer_continue:;
-  }
-
-  std::stringstream ss;
-  ss << param_struct->bound_name << "(";
-
-  Type *parameter_type;
-  if (params[0]->type_expr) {
-    parameter_type = params[0]->type_expr->evaluate().as_type;
-  } else {
-    assert(params[0]->init_val);
-    params[0]->init_val->verify_types();
-    parameter_type = params[0]->init_val->type;
-  }
-
-  AppendValueToStream(parameter_type, arg_vals[0], ss);
-
-  for (size_t i = 1; i < num_args; ++i) {
-    if (params[i]->type_expr) {
-      parameter_type = params[i]->type_expr->evaluate().as_type;
-    } else {
-      assert(params[i]->init_val);
-      params[i]->init_val->verify_types();
-      parameter_type = params[i]->init_val->type;
-    }
-
-    ss << ", ";
-    AppendValueToStream(parameter_type, arg_vals[i], ss);
-  }
-  ss << ")";
-
-  if (debug::parametric_struct) {
-    fprintf(stderr, " * No match found.\n"
-                    " * Creating new cached value.\n"
-                    " * Cache size is now %lu for %s.\n",
-            cache.size(), to_string(0).c_str());
-    // For debugging so we don't get too far generating these things.
-    assert(cache.size() < 5);
-  }
-
-  std::vector<IR::Value> args;
-  for (size_t i = 0; i < num_args; ++i) {
-    // TODO what other things can be plugged in?
-    args.push_back(IR::Value(arg_vals[i].as_type));
-  }
-  auto local_stack = new IR::LocalStack;
-  auto f = EmitIR();
-  assert(f.flag == IR::ValType::F);
-  auto result = f.as_func->Call(local_stack, args);
-  assert(result.flag == IR::ValType::T);
-
-  assert(result.as_type->is_struct());
-
-  delete local_stack;
-
-  auto struct_result = ((Structure *)result.as_type);
-  struct_result->set_name(ss.str());
-
-  auto &cache_loc = (cache[arg_vals] = struct_result->ast_expression);
-  reverse_cache[cache_loc] = arg_vals;
-  cache_loc->value         = Context::Value(struct_result);
-
-  ScopeStack.push(scope_);
-  cache_loc->assign_scope();
-  ScopeStack.pop();
-
-  cache_loc->verify_types();
-
-  return cache_loc->value;
-}
-
-llvm::Value *Expression::llvm_value(Context::Value v) {
-  assert(type != Type_ && "Type_ conversion to llvm::Value*");
-  assert(type != Err && "Error conversion to llvm::Value*");
-  assert(type != Unknown && "Unknown conversion to llvm::Value*");
-
-  if (type == Bool) return data::const_bool(v.as_bool);
-  if (type == Char) return data::const_char(v.as_char);
-  if (type == Int) return data::const_int(v.as_int);
-  if (type == Real) return data::const_real(v.as_real);
-  if (type == Uint) return data::const_uint(v.as_uint);
-
-  // TODO
-  return nullptr;
-}
-
 Context::Value Identifier::evaluate() {
   verify_types();
   value_flag = ValueFlag::In;
@@ -410,11 +255,14 @@ Context::Value ArrayType::evaluate() {
   return value;
 }
 
-Context::Value ArrayLiteral::evaluate() { NOT_YET; }
 Context::Value Terminal::evaluate() { return value; }
 
-// Values determined when they are built.
-Context::Value FunctionLiteral::evaluate() { return value; }
+#define NO_LONGER_NEEDED(node)                                                 \
+  Context::Value node::evaluate() { UNREACHABLE; }
+NO_LONGER_NEEDED(ArrayLiteral)
+NO_LONGER_NEEDED(FunctionLiteral)
+#undef NO_LONGER_NEEDED
+
 Context::Value ParametricStructLiteral::evaluate() { return value; }
 Context::Value StructLiteral::evaluate() { return value; }
 Context::Value EnumLiteral::evaluate() { return value; }
@@ -467,7 +315,7 @@ Context::Value Declaration::evaluate() {
   }
 
   value_flag = ValueFlag::Done;
-  return nullptr;
+  return value;
 }
 
 Context::Value Access::evaluate() {
@@ -486,53 +334,15 @@ Context::Value Access::evaluate() {
     return Context::Value(operand->evaluate().as_type->alignment());
   }
 
-  assert(false && "not yet implemented");
+  NOT_YET;
 }
 
 Context::Value Binop::evaluate() {
   using Language::Operator;
   if (op == Operator::Call) {
     if (lhs->type->is_function()) {
-      auto lhs_val = lhs->evaluate().as_expr;
-      assert(lhs_val && lhs_val->is_function_literal());
-      auto fn_ptr = (FunctionLiteral *)lhs_val;
+      auto result = Evaluate(this);
 
-
-      std::vector<Expression *> arg_vals;
-      if (rhs->is_comma_list()) {
-        arg_vals = ((ChainOp *)rhs)->exprs;
-      } else {
-        arg_vals.push_back(rhs);
-      }
-
-      assert(arg_vals.size() == fn_ptr->inputs.size());
-
-      std::vector<IR::Value> args;
-      for (auto a : arg_vals) {
-        // Doing value conversion
-        if (a->type == Bool) {
-          args.emplace_back(a->evaluate().as_bool);
-        } else if (a->type == Char) {
-          args.emplace_back(a->evaluate().as_char);
-        } else if (a->type == Int) {
-          args.emplace_back((long)a->evaluate().as_int);
-        } else if (a->type == Real) {
-          args.emplace_back(a->evaluate().as_real);
-        } else if (a->type == Uint) {
-          args.emplace_back(a->evaluate().as_uint);
-        } else if (a->type == Type_) {
-          args.emplace_back(a->evaluate().as_type);
-        } else {
-          NOT_YET;
-        }
-      }
-
-      auto local_stack = new IR::LocalStack;
-      IR::Func *func   = fn_ptr->EmitIR().as_func;
-      auto result      = func->Call(local_stack, args);
-      delete local_stack;
-
-      // Doing value conversion
       if (result.flag == IR::ValType::B) {
         value_flag   = ValueFlag::Done;
         return value = Context::Value(result.as_bool);
