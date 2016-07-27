@@ -456,10 +456,11 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                              {data::global_string("0x%zx"), args[1]});
         } else if (print_type->is_enum()) {
           auto enum_type = (Enum *)print_type;
-          // TODO show names not numbers
+          auto val_str = builder.CreateLoad(builder.CreateGEP(
+              enum_type->string_data, {data::const_uint32(0), args[1]}));
           builder.CreateCall(
               cstdlib::printf(),
-              {data::global_string(enum_type->to_string() + ".%d"), args[1]});
+              {data::global_string(enum_type->to_string() + ".%s"), val_str});
         } else {
           UNREACHABLE;
         }

@@ -260,7 +260,7 @@ std::string OpCodeString(Op op_code) {
   }
 }
 
-static inline std::string Escape(char c) {
+std::string Escape(char c) {
   if (c == '\n') { return "\\n"; }
   if (c == '\r') { return "\\r"; }
   if (c == '\t') { return "\\t"; }
@@ -352,7 +352,7 @@ void Conditional::dump(size_t indent) {
 
 void Switch::dump(size_t indent) {
   std::cerr << std::string(indent, ' ') << "switch " << cond << " ("
-            << table.size() << ")\n";
+            << table.size() << ") " << cond << "\n";
   for (auto row : table) {
     std::cerr << std::string(indent + 2, ' ') << "[" << row.first << " => "
               << row.second->block_name << "]\n";

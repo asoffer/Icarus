@@ -9,8 +9,6 @@ extern std::vector<IR::Func *> all_functions;
 extern llvm::Module *global_module;
 extern FileType file_type;
 
-extern IR::Value Evaluate(AST::Expression *expr);
-
 AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   auto fn_ptr = new AST::FunctionLiteral;
 
@@ -39,6 +37,7 @@ AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
 }
 
 IR::Value Evaluate(AST::Expression *expr) {
+  if (expr->is_dummy()) { return expr->value; }
   auto old_func  = IR::Func::Current;
   auto old_block = IR::Block::Current;
 

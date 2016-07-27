@@ -161,6 +161,7 @@ struct Enum : public Type {
   std::string bound_name;
   std::vector<std::string> members;
   std::map<std::string, size_t> int_values;
+  llvm::GlobalVariable *string_data;
 };
 
 struct Structure : public Type {

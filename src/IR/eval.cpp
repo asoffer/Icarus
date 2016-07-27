@@ -8,6 +8,7 @@ extern const char *GetGlobalStringNumbered(size_t index);
 extern std::stack<Scope *> ScopeStack;
 
 namespace IR {
+extern std::string Escape(char c);
 extern std::string OpCodeString(Op op_code);
 extern std::vector<IR::Value> InitialGlobals;
 
@@ -38,7 +39,8 @@ void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
       case '\v': mvprintw((int)i, 100, "%2d.>      '\\v'", i); break;
       case '\a': mvprintw((int)i, 100, "%2d.>      '\\a'", i); break;
       default:
-        mvprintw((int)i, 100, "%2d.>      '%c'", i, frame.reg[i].as_char);
+        mvprintw((int)i, 100, "%2d.>      '%s'", i,
+                 Escape(frame.reg[i].as_char).c_str());
       }
     } break;
     case ValType::I: {
@@ -131,7 +133,9 @@ void Exit::Return::ShowExit(int &row) {
 void Exit::ReturnVoid::ShowExit(int &row) { mvprintw(++row, 34, "ret"); }
 
 void Exit::Switch::ShowExit(int &row) {
-  mvprintw(++row, 34, "switch (%llu)", table.size());
+  std::stringstream ss;
+  ss << cond;
+  mvprintw(++row, 34, "switch (%llu) %s", table.size(), ss.str().c_str());
   for (auto entry : table) {
     std::stringstream ss;
     ss << entry.first;
@@ -338,6 +342,7 @@ void Cmd::Execute(StackFrame& frame) {
     assert(cmd_inputs[0].flag == ValType::T &&
            (cmd_inputs[0].as_type->is_primitive() ||
             cmd_inputs[0].as_type->is_pointer() ||
+            cmd_inputs[0].as_type->is_enum() ||
             cmd_inputs[0].as_type->is_function()));
     assert(cmd_inputs[2].flag == ValType::StackAddr ||
            cmd_inputs[2].flag == ValType::HeapAddr ||
@@ -359,6 +364,13 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(double, real, Real);
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
+
+#undef DO_STORE
+      if (cmd_inputs[0].as_type->is_enum()) {
+        auto ptr = (size_t *)(frame.stack->allocs + offset);
+        *ptr = cmd_inputs[1].as_uint;
+        break;
+      }
 
       if (cmd_inputs[0].as_type->is_pointer()) {
         auto ptr = (void **)(frame.stack->allocs + offset);
@@ -386,7 +398,6 @@ void Cmd::Execute(StackFrame& frame) {
         *(size_t *)ptr = cmd_inputs[1].as_stack_addr;
         break;
       }
-#undef DO_STORE
     } else if (cmd_inputs[2].flag == ValType::HeapAddr) {
 
 #define DO_STORE(cpp_type, t, T)                                               \
@@ -403,6 +414,12 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
 
+#undef DO_STORE
+      if (cmd_inputs[0].as_type->is_enum()) {
+        NOT_YET;
+        break;
+      }
+
       if (cmd_inputs[0].as_type->is_function()) {
         NOT_YET;
         break;
@@ -415,7 +432,6 @@ void Cmd::Execute(StackFrame& frame) {
         NOT_YET;
         break;
       }
-#undef DO_STORE
     } else {
       InitialGlobals[cmd_inputs[2].as_global_addr] = cmd_inputs[1];
       break;
@@ -702,9 +718,10 @@ void Cmd::Execute(StackFrame& frame) {
       fprintf(stderr, "%s", cmd_inputs[1].as_cstr);
 
     } else if (cmd_inputs[0].as_type->is_enum()) {
+      auto enum_type = (Enum *)cmd_inputs[0].as_type;
       // TODO read the actual names rather than just the numeric values
-      fprintf(stderr, "%s.%lu", cmd_inputs[0].as_type->to_string().c_str(),
-              cmd_inputs[1].as_uint);
+      fprintf(stderr, "%s.%s", enum_type->to_string().c_str(),
+              enum_type->members[cmd_inputs[1].as_uint].c_str());
 
     } else if (cmd_inputs[0].as_type->is_pointer()) {
       fprintf(stderr, "0x%lx", cmd_inputs[0].as_uint);
@@ -888,7 +905,7 @@ Block *Exit::Conditional::JumpBlock(StackFrame &fr) {
 
 Block *Exit::Switch::JumpBlock(StackFrame &fr) {
   Value val = ResolveValue(fr, cond);
-  switch (cond.flag) {
+  switch (val.flag) {
   case ValType::C:
     for (auto entry : table) {
       if (entry.first.as_char != val.as_char) { continue; }

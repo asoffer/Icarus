@@ -81,7 +81,7 @@ void BlockScope::InsertInit() {
   assert(entry_block);
 
   if (is_loop_scope()) {
-    IR::Store(Char, IR::Value('\0'), GetFnScope()->exit_flag);
+    IR::Store(Char, CONTINUE_FLAG, GetFnScope()->exit_flag);
   }
 
   IR::Block::Current = entry_block;
