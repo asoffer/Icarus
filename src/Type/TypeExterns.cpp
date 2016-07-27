@@ -35,7 +35,6 @@ static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<AST::StructLiteral *, Structure *> struct_types_;
-static std::map<std::string, ParametricStructure *> param_struct_types_;
 static std::map<Array *, SliceType *> slices_;
 
 // TODO Not sure this is necessary
@@ -136,21 +135,6 @@ Structure *Struct(const std::string &name, AST::StructLiteral *t) {
   t->value = IR::Value(struct_type);
 
   return TypeSystem::struct_types_[t] = struct_type;
-}
-
-ParametricStructure *ParamStruct(const std::string &name,
-                                 AST::ParametricStructLiteral *t) {
-  auto iter = TypeSystem::param_struct_types_.find(name);
-  if (iter != TypeSystem::param_struct_types_.end()) return iter->second;
-
-  // If you don't provide something to create it with,
-  // it's just meant to be a check for existance
-  // TODO merge this with Contexts
-  if (t == nullptr) return nullptr;
-
-  auto param_struct_type = new ParametricStructure(name, t);
-
-  return TypeSystem::param_struct_types_[name] = param_struct_type;
 }
 
 TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {

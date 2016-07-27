@@ -127,4 +127,3 @@ void Function::EmitInit(IR::Value id_val) { /* Intentionally do nothing */ }
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }
-void ParametricStructure::EmitInit(IR::Value id_val) { UNREACHABLE; }

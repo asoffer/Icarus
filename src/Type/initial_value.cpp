@@ -29,6 +29,5 @@ IR::Value Tuple::EmitInitialValue() const { NOT_YET; }
 IR::Value Function::EmitInitialValue() const { NOT_YET; }
 IR::Value Structure::EmitInitialValue() const { NOT_YET; }
 IR::Value TypeVariable::EmitInitialValue() const { NOT_YET; }
-IR::Value ParametricStructure::EmitInitialValue() const { NOT_YET; }
 IR::Value RangeType::EmitInitialValue() const { NOT_YET; }
 IR::Value SliceType::EmitInitialValue() const { NOT_YET; }

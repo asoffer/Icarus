@@ -41,8 +41,6 @@ size_t Array::alignment() const {
   return fixed_length ? data_type->alignment() : 8;
 }
 
-size_t ParametricStructure::bytes() const { NOT_YET; }
-size_t ParametricStructure::alignment() const { NOT_YET; }
 size_t Tuple::bytes() const { NOT_YET; }
 size_t Tuple::alignment() const { NOT_YET; }
 size_t SliceType::bytes() const { NOT_YET; }
@@ -89,10 +87,6 @@ Function::Function(Type *in, Type *out) : input(in), output(out) {
   has_vars = input->has_vars || output->has_vars;
 }
 
-ParametricStructure::ParametricStructure(const std::string &name,
-                                         AST::ParametricStructLiteral *expr)
-    : ast_expression(expr), bound_name(name) {}
-
 // Create a opaque struct
 Structure::Structure(const std::string &name, AST::StructLiteral *expr)
     : ast_expression(expr), bound_name(name), field_offsets(1, 0),
@@ -114,11 +108,6 @@ size_t Structure::field_num(const std::string &name) const {
 void Structure::set_name(const std::string &name) {
   bound_name = name;
   if (name == "string") { String = this; }
-}
-
-void ParametricStructure::set_name(const std::string &name) {
-  bound_name = name;
-  assert(ast_expression);
 }
 
 std::ostream &operator<<(std::ostream &os, const Type &t) {

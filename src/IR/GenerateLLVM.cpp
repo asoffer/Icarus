@@ -238,23 +238,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         if (cmd.result.type == Type_) {
           auto local_stack = new IR::LocalStack;
 
-          IR::Func *fn;
-          if (cmd.args[0].flag == IR::ValType::T) {
-            assert(cmd.args[0].as_type->is_parametric_struct());
-            auto param_struct = ((ParametricStructure *)cmd.args[0].as_type);
-            assert(param_struct->ast_expression);
-            assert(param_struct->ast_expression->ir_func);
-            fn = param_struct->ast_expression->ir_func;
-          } else {
-            assert(cmd.args[0].flag == IR::ValType::F);
-            fn = cmd.args[0].as_func;
-          }
+          assert(cmd.args[0].flag == IR::ValType::F);
 
           std::vector<IR::Value> cmd_args;
           for (size_t i = 1; i < cmd.args.size(); ++i) {
             cmd_args.push_back(cmd.args[i]);
           }
-          auto result = fn->Call(local_stack, cmd_args);
+          auto result = cmd.args[0].as_func->Call(local_stack, cmd_args);
           delete local_stack;
           registers[cmd.result.reg] = IR_to_LLVM(ir_fn, result, registers);
 

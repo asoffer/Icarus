@@ -1,26 +1,6 @@
 #ifndef ICARUS_UNITY
 #include "Type.h"
-
-#include <string>
-#include <sstream>
 #endif
-
-std::string Primitive::to_string() const {
-  switch (type_) {
-  case PrimType::Err: return "Err";
-  case PrimType::Unknown: return "???";
-  case PrimType::Bool: return "bool";
-  case PrimType::Char: return "char";
-  case PrimType::Int: return "int";
-  case PrimType::Real: return "real";
-  case PrimType::Type: return "type";
-  case PrimType::Uint: return "uint";
-  case PrimType::Void: return "void";
-  case PrimType::NullPtr: return "null";
-  case PrimType::Uint16: return "uint16";
-  case PrimType::Uint32: return "uint32";
-  }
-}
 
 std::string Array::to_string() const {
   std::stringstream ss;
@@ -89,8 +69,6 @@ std::string Tuple::to_string() const {
 std::string TypeVariable::to_string() const { return identifier->token; }
 
 std::string Structure::to_string() const { return bound_name; }
-std::string ParametricStructure::to_string() const { return bound_name; }
-std::string Enum::to_string() const { return bound_name; }
 
 std::string RangeType::to_string() const {
   return "Range(" + end_type->to_string() + ")";

@@ -689,17 +689,19 @@ void Binop::verify_types() {
                 assert(decl->identifier->value.as_type->is_struct());
                 ((Structure *)(decl->identifier->value.as_type))
                     ->set_name(decl->identifier->token);
+              } else if (decl->init_val->is_dummy()) {
+                auto t = decl->init_val->value.as_type;
+                if (t->is_parametric_struct()) {
+                  assert(
+                      decl->identifier->value.as_type->is_parametric_struct());
+                  ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
+                      decl->identifier->token;
 
-              } else if (decl->init_val->is_parametric_struct_literal()) {
-                assert(decl->identifier->value.as_type->is_parametric_struct());
-                ((ParametricStructure *)(decl->identifier->value.as_type))
-                    ->set_name(decl->identifier->token);
-
-              } else if (decl->init_val->is_dummy() &&
-                         ((DummyTypeExpr *)decl->init_val)
-                             ->value.as_type->is_enum()) {
-                ((Enum *)(decl->identifier->value.as_type))->bound_name =
-                    decl->identifier->token;
+                } else if (t->is_enum()) {
+                  assert(decl->identifier->value.as_type->is_enum());
+                  ((Enum *)(decl->identifier->value.as_type))->bound_name =
+                      decl->identifier->token;
+                }
               }
             }
 
@@ -710,12 +712,13 @@ void Binop::verify_types() {
           auto decl_type = decl->value.as_type;
 
           if (!decl_type->is_parametric_struct()) { continue; }
-          auto param_expr =
-              ((ParametricStructure *)decl_type)->ast_expression;
+          auto param_struct_type = (ParamStruct *)decl_type;
 
           // Get the types of parameter entries
           std::vector<Type *> param_types;
-          for (auto p : param_expr->params) { param_types.push_back(p->type); }
+          for (auto p : param_struct_type->params) {
+            param_types.push_back(p->type);
+          }
           Type *param_type =
               param_types.size() == 1 ? param_types[0] : Tup(param_types);
 
@@ -765,12 +768,11 @@ void Binop::verify_types() {
                "Should have caught the bad-type of lhs earlier");
 
         if (lhs->value.as_type->is_parametric_struct()) {
-          auto param_ast_expr =
-              ((ParametricStructure *)lhs->value.as_type)->ast_expression;
+          auto param_struct_type = (ParamStruct *)lhs->value.as_type;
 
           // Get the types of parameter entries
           std::vector<Type *> param_type_vec;
-          for (auto p : param_ast_expr->params) {
+          for (auto p : param_struct_type->params) {
             param_type_vec.push_back(p->type);
           }
           Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
@@ -1402,23 +1404,18 @@ void Declaration::verify_types() {
       // TODO mangle the name correctly (Where should this be done?)
       ((Structure *)(init_val->value.as_type))->set_name(identifier->token);
 
-    } else if (init_val->is_parametric_struct_literal()) {
-      // Declarations look like
-      //
-      // foo := struct (...) { ... }
-      assert(init_val->value.as_type &&
-             init_val->value.as_type->is_parametric_struct());
+    } else if (init_val->is_dummy()) {
+      auto t = init_val->value.as_type;
+      if (t->is_parametric_struct()) {
+        // Set the name of the parametric struct.
+        // TODO mangle the name correctly (Where should this be done?)
+        ((ParamStruct *)t)->bound_name = identifier->token;
 
-      // Set the name of the parametric struct.
-      // TODO mangle the name correctly (Where should this be done?)
-      ((ParametricStructure *)(init_val->value.as_type))
-          ->set_name(identifier->token);
-
-    } else if (init_val->is_dummy() &&
-               ((DummyTypeExpr *)init_val)->value.as_type->is_enum()) {
-      // Set the name of the enum
-      // TODO mangle the name correctly (Where should this be done?)
-      ((Enum *)(init_val->value.as_type))->bound_name = identifier->token;
+      } else if (t->is_enum()) {
+        // Set the name of the enum
+        // TODO mangle the name correctly (Where should this be done?)
+        ((Enum *)t)->bound_name = identifier->token;
+      }
     }
 
     identifier->value = init_val->value;
@@ -1597,15 +1594,6 @@ void Conditional::verify_types() {
   }
 }
 
-void ParametricStructLiteral::verify_types() {
-  type = Type_;
-  for (auto p : params) { p->verify_types(); }
-//  for (auto d : decls) {
-//    d->identifier->decl = d;
-//    if (d->type_expr) { d->type_expr->verify_types(); }
-//  }
-}
-
 void StructLiteral::verify_types() {
   type = Type_;
   for (auto d : decls) { VerificationQueue.push(d); }
@@ -1634,7 +1622,16 @@ void Jump::verify_types() {
   UNREACHABLE;
 }
 
-void DummyTypeExpr::verify_types() {}
+void DummyTypeExpr::verify_types() {
+  if (value.as_type->is_parametric_struct()) {
+    auto ps = (ParamStruct *)value.as_type;
+    for (auto p : ps->params) { p->verify_types(); }
+    //  for (auto d : ps->decls) {
+    //    d->identifier->decl = d;
+    //    if (d->type_expr) { d->type_expr->verify_types(); }
+    //  }
+  }
+}
 } // namespace AST
 
 #undef VERIFY_AND_RETURN_ON_ERROR

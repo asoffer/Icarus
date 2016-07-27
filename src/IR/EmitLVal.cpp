@@ -76,7 +76,6 @@ IR::Value Declaration::EmitLVal() { UNREACHABLE; }
 IR::Value FunctionLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayType::EmitLVal() { UNREACHABLE; }
 IR::Value StructLiteral::EmitLVal() { UNREACHABLE; }
-IR::Value ParametricStructLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value Case::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayLiteral::EmitLVal() { UNREACHABLE; }
 

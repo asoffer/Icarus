@@ -84,11 +84,6 @@ For::~For() {
   DELETE(for_scope);
 }
 
-ParametricStructLiteral::~ParametricStructLiteral() {
-  for (auto d : decls) DELETE(d);
-  for (auto p : params) DELETE(p);
-  DELETE(type_scope);
-}
 StructLiteral::~StructLiteral() {
   for (auto d : decls) DELETE(d);
   DELETE(type_scope);

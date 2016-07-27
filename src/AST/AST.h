@@ -52,7 +52,6 @@ struct Node {
   virtual bool is_declaration() const { return false; }
   virtual bool is_indecl() const { return false; }
   virtual bool is_array_type() const { return false; }
-  virtual bool is_parametric_struct_literal() const { return false; }
   virtual bool is_struct_literal() const { return false; }
   virtual bool is_statements() const { return false; }
   virtual bool is_array_literal() const { return false; }
@@ -90,7 +89,7 @@ struct Expression : public Node {
   // VerifyTypeForDeclaration verifies that the expresison represents a type and
   // returns the type it represents (or Error if the type is invalid). An
   // expression could be invalid if it doesn't represent a type or it represnts
-  // void or  parametric struct.
+  // void or parametric struct.
   Type *VerifyTypeForDeclaration(const std::string &id_tok);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
@@ -218,19 +217,6 @@ struct InDecl : public Declaration {
   virtual bool is_indecl() const override { return true; }
   virtual bool is_declaration() const override { return false; }
   Expression *container;
-};
-
-struct ParametricStructLiteral : public Expression {
-  EXPR_FNS(ParametricStructLiteral, parametric_struct_literal);
-  static Node *Build(NPtrVec &&nodes);
-
-  IR::Func *ir_func;
-
-  Scope *type_scope;
-  std::vector<Declaration *> decls, params;
-
-  std::map<std::vector<IR::Value>, StructLiteral *> cache;
-  std::map<StructLiteral *, std::vector<IR::Value>> reverse_cache;
 };
 
 struct StructLiteral : public Expression {

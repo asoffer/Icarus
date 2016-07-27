@@ -80,4 +80,3 @@ void Tuple::EmitDestroy(IR::Value id_val) { NOT_YET; }
 void RangeType::EmitDestroy(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitDestroy(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitDestroy(IR::Value id_val) { UNREACHABLE; }
-void ParametricStructure::EmitDestroy(IR::Value id_val) { UNREACHABLE; }

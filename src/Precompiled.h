@@ -61,7 +61,6 @@ struct Binop;
 struct Statements;
 struct FunctionLiteral;
 struct StructLiteral;
-struct ParametricStructLiteral;
 } // namespace AST
 
 struct Type;
@@ -72,7 +71,7 @@ struct Pointer;
 struct Function;
 struct Enum;
 struct Structure;
-struct ParametricStructure;
+struct ParamStruct;
 struct TypeVariable;
 struct RangeType;
 struct SliceType;

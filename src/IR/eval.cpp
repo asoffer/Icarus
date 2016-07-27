@@ -170,11 +170,6 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] = Value(-cmd_inputs[0].as_real);
   } break;
   case Op::Call: {
-    if (cmd_inputs[0].flag == ValType::T) {
-      assert(cmd_inputs[0].as_type->is_parametric_struct());
-      cmd_inputs[0] = IR::Value(((ParametricStructure *)cmd_inputs[0].as_type)
-                                    ->ast_expression->ir_func);
-    }
     assert(cmd_inputs[0].flag == ValType::F);
 
     std::vector<Value> call_args;
@@ -791,17 +786,17 @@ void Cmd::Execute(StackFrame& frame) {
   } break;
   case Op::GetFromCache: {
     assert(cmd_inputs[0].as_type->is_parametric_struct());
-    auto param_struct_type = (ParametricStructure *)cmd_inputs[0].as_type;
+    auto param_struct_type = (ParamStruct *)cmd_inputs[0].as_type;
 
     std::vector<IR::Value> param_vals;
     for (auto a : frame.args) {
       assert(a.flag == ValType::T); // What if an argument isn't a type?
       param_vals.push_back(IR::Value(a.as_type));
     }
-    auto iter = param_struct_type->ast_expression->cache.find(param_vals);
-    if (iter == param_struct_type->ast_expression->cache.end()) {
+    auto iter = param_struct_type->cache.find(param_vals);
+    if (iter == param_struct_type->cache.end()) {
       auto struct_lit = new AST::StructLiteral;
-      param_struct_type->ast_expression->cache[param_vals] = struct_lit;
+      param_struct_type->cache[param_vals] = struct_lit;
       auto struct_type = new Structure("anon", struct_lit);
       struct_lit->value = IR::Value(struct_type);
 
@@ -815,15 +810,14 @@ void Cmd::Execute(StackFrame& frame) {
         (std::vector<std::tuple<const char *, Value, Value>> *)cmd_inputs[0]
             .as_heap_addr;
 
-    auto param_struct_lit =
-        (AST::ParametricStructLiteral *)cmd_inputs[1].as_heap_addr;
+    auto param_struct = (ParamStruct *)cmd_inputs[1].as_heap_addr;
     std::vector<IR::Value> param_vals;
     for (auto a : frame.args) {
       assert(a.flag == ValType::T); // What if an argument isn't a type?
       param_vals.push_back(IR::Value(a.as_type));
     }
-    auto struct_lit                             = param_struct_lit->cache[param_vals];
-    param_struct_lit->reverse_cache[struct_lit] = param_vals;
+    auto struct_lit                         = param_struct->cache[param_vals];
+    param_struct->reverse_cache[struct_lit] = param_vals;
 
     Cursor loc;
     for (const auto &tuple_val : *vec_ptr) {

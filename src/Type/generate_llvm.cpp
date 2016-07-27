@@ -115,12 +115,10 @@ void Structure::generate_llvm() const {
   struct_type->setName(bound_name);
 }
 
-void ParametricStructure::generate_llvm() const {}
 void TypeVariable::generate_llvm() const {}
 void RangeType::generate_llvm() const {} // TODO Assert false?
 void SliceType::generate_llvm() const {} // TODO Assert false?
 
-void Enum::generate_llvm() const {}      // Generated on creation
-void Primitive::generate_llvm() const {} // Generated on creation
-
-#undef AT
+void ParamStruct::generate_llvm() const {} // Never to be called
+void Enum::generate_llvm() const {}        // Generated on creation
+void Primitive::generate_llvm() const {}   // Generated on creation

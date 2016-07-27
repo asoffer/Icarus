@@ -97,3 +97,5 @@ IR::Value Enum::EmitLiteral(const std::string &member_name) const {
   default: UNREACHABLE;
   }
 }
+
+std::string Enum::to_string() const { return bound_name; }

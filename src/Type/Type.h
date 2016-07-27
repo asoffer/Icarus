@@ -1,5 +1,6 @@
 #ifndef ICARUS_TYPE_H
 #define ICARUS_TYPE_H
+#include "Scope.h"
 
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
@@ -19,9 +20,6 @@ extern Function *Func(Type *in, std::vector<Type *> out);
 extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
 extern Structure *Struct(const std::string &name,
                          AST::StructLiteral *expr = nullptr);
-extern ParametricStructure *
-ParamStruct(const std::string &name,
-            AST::ParametricStructLiteral *expr = nullptr);
 extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
 extern RangeType *Range(Type *t);
@@ -188,21 +186,29 @@ struct Structure : public Type {
   std::vector<size_t> field_offsets;
 
   std::vector<AST::Expression *> init_values;
-  AST::ParametricStructLiteral *creator;
+  ParamStruct *creator;
 
 private:
   IR::Func *init_func, *assign_func, *destroy_func;
 };
 
-struct ParametricStructure : public Type {
-  TYPE_FNS(ParametricStructure, parametric_struct);
+struct ParamStruct : public Type {
+  TYPE_FNS(ParamStruct, parametric_struct);
 
-  ParametricStructure(const std::string &name, AST::ParametricStructLiteral *expr);
+  ParamStruct(const std::string &name,
+                      const std::vector<AST::Declaration *> params,
+                      const std::vector<AST::Declaration *> decls);
 
-  void set_name(const std::string &name);
+  IR::Func *IRFunc();
 
-  AST::ParametricStructLiteral *ast_expression;
   std::string bound_name;
+  Scope *type_scope;
+  std::vector<AST::Declaration *> params, decls;
+  std::map<std::vector<IR::Value>, AST::StructLiteral *> cache;
+  std::map<AST::StructLiteral *, std::vector<IR::Value>> reverse_cache;
+
+private:
+  IR::Func *ir_func;
 };
 
 struct TypeVariable : public Type {

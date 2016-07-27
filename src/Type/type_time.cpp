@@ -27,4 +27,4 @@ Time::Eval Enum::time() const { return Time::either; }
 Time::Eval RangeType::time() const { return end_type->time(); }
 Time::Eval SliceType::time() const { return array_type->time(); }
 Time::Eval TypeVariable::time() const { return Time::compile; }
-Time::Eval ParametricStructure::time() const { return Time::compile; }
+Time::Eval ParamStruct::time() const { return Time::compile; }

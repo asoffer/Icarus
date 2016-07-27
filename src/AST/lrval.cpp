@@ -134,7 +134,6 @@ void While::lrvalue_check(){
   statements->lrvalue_check();
 }
 
-void ParametricStructLiteral::lrvalue_check() { lvalue = Assign::RVal; }
 void StructLiteral::lrvalue_check() { lvalue = Assign::RVal; }
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
 void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }

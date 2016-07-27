@@ -138,16 +138,6 @@ void FunctionLiteral::assign_scope() {
   ScopeStack.pop();
 }
 
-void ParametricStructLiteral::assign_scope() {
-  scope_ = CurrentScope();
-  type_scope->set_parent(CurrentScope());
-
-  ScopeStack.push(type_scope);
-  for (auto p : params) { p->assign_scope(); }
-  for (auto d : decls) { d->assign_scope(); }
-  ScopeStack.pop();
-}
-
 void StructLiteral::assign_scope() {
   scope_ = CurrentScope();
   type_scope->set_parent(CurrentScope());
@@ -158,6 +148,18 @@ void StructLiteral::assign_scope() {
 }
 
 void Jump::assign_scope() { scope_ = CurrentScope(); }
-void DummyTypeExpr::assign_scope() { scope_ = CurrentScope(); }
+
+void DummyTypeExpr::assign_scope() {
+  scope_ = CurrentScope();
+  if (value.as_type->is_parametric_struct()) {
+    auto ps = (ParamStruct *)value.as_type;
+    ps->type_scope->set_parent(CurrentScope());
+
+    ScopeStack.push(ps->type_scope);
+    for (auto p : ps->params) { p->assign_scope(); }
+    for (auto d : ps->decls) { d->assign_scope(); }
+    ScopeStack.pop();
+  }
+}
 } // namespace AST
 #undef ITERATE_OR_SKIP

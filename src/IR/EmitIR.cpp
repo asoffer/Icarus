@@ -502,7 +502,15 @@ IR::Value Binop::EmitIR() {
         args = {rhs->EmitIR()};
       }
     }
-    return IR::Call(type, lhs->EmitIR(), args);
+
+    if (lhs->type == Type_) {
+      auto t = Evaluate(lhs).as_type;
+      assert(t->is_parametric_struct());
+      return IR::Call(type, IR::Value(((ParamStruct *)t)->IRFunc()),
+                      args);
+    } else {
+      return IR::Call(type, lhs->EmitIR(), args);
+    }
   } break;
   default: UNREACHABLE;
   }
@@ -753,8 +761,9 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       success_fn:
         continue;
 
-      } else if (decl->arg_val->is_parametric_struct_literal()) {
-        auto param_struct = (ParametricStructLiteral *)decl->arg_val;
+      } else if (decl->arg_val->is_dummy() &&
+                 decl->arg_val->value.as_type->is_parametric_struct()) {
+        auto param_struct = (ParamStruct *)decl->arg_val->value.as_type;
         size_t param_num = 0;
         for (const auto &p : param_struct->params) {
           if (decl == p) {
@@ -823,10 +832,11 @@ IR::Value Identifier::EmitIR() {
           if (decl == fn_lit->inputs[i]) { return IR::Value::Arg(i); }
         }
       } else {
-        assert(decl->arg_val->is_parametric_struct_literal());
-        auto param_struct_lit = (ParametricStructLiteral *)decl->arg_val;
-        for (size_t i = 0; i < param_struct_lit->params.size(); ++i) {
-          if (decl == param_struct_lit->params[i]) { return IR::Value::Arg(i); }
+        assert(decl->arg_val->is_dummy() &&
+               decl->arg_val->value.as_type->is_parametric_struct());
+        auto param_struct = (ParamStruct *)decl->arg_val->value.as_type;
+        for (size_t i = 0; i < param_struct->params.size(); ++i) {
+          if (decl == param_struct->params[i]) { return IR::Value::Arg(i); }
         }
       }
       UNREACHABLE;
@@ -840,12 +850,7 @@ IR::Value Identifier::EmitIR() {
         value = IR::Value(Evaluate(decl->init_val).as_type);
         // TODO this should be cached in the evaluate method
       }
-      auto t = value.as_type;
-      if (t->is_parametric_struct()) {
-        return ((ParametricStructure *)t)->ast_expression->EmitIR();
-      } else {
-        return IR::Value(t);
-      }
+      return IR::Value(value.as_type);
     }
   }
 
@@ -1408,61 +1413,6 @@ IR::Value Generic::EmitIR() {
 }
 
 IR::Value InDecl::EmitIR() { UNREACHABLE; }
-
-IR::Value ParametricStructLiteral::EmitIR() {
-  assert(value.as_type);
-  if (ir_func) { return IR::Value(value.as_type); } // Cache
-  verify_types();
-
-  auto saved_func  = IR::Func::Current;
-  auto saved_block = IR::Block::Current;
-
-  std::vector<Type *> param_types;
-  for (auto p : params) { param_types.push_back(p->type); }
-
-  ir_func = new IR::Func(Func(Tup(param_types), Type_), false);
-  ir_func->SetName("anon-param-struct-func");
-
-  IR::Func::Current  = ir_func;
-  IR::Block::Current = ir_func->entry();
-
-  auto found_block     = IR::Func::Current->AddBlock("found-rhs");
-  auto not_found_block = IR::Func::Current->AddBlock("not-found-rhs");
-
-  auto cached_val = IR::GetFromCache(IR::Value(Evaluate(this).as_type));
-  auto found = IR::TEQ(cached_val, IR::Value::None());
-  IR::Block::Current->SetConditional(found, not_found_block, found_block);
-
-  found_block->SetReturn(cached_val);
-  IR::Block::Current = not_found_block;
-
-  auto vec = IR::InitFieldVec(decls.size());
-  for (size_t i = 0; i < decls.size(); ++i) {
-    size_t len   = decls[i]->identifier->token.size();
-    char *id_str = new char[len + 1];
-    strcpy(id_str, decls[i]->identifier->token.c_str());
-    // TODO Leaking id_str
-
-    if (decls[i]->type_expr) { decls[i]->type_expr->verify_types(); }
-    if (decls[i]->init_val) { decls[i]->init_val->verify_types(); }
-
-    IR::PushField(
-        vec, id_str,
-        decls[i]->type_expr ? decls[i]->type_expr->EmitIR() : IR::Value::None(),
-        decls[i]->init_val ? decls[i]->init_val->EmitIR() : IR::Value::None());
-  }
-
-  auto result_type = IR::CreateStruct(vec, IR::Value::HeapAddr(this));
-
-  IR::Block::Current->SetUnconditional(ir_func->exit());
-  IR::Block::Current = ir_func->exit();
-  IR::Block::Current->SetReturn(result_type);
-
-  IR::Func::Current  = saved_func;
-  IR::Block::Current = saved_block;
-
-  return IR::Value(value.as_type);
-}
 
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
 IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }

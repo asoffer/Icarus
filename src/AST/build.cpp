@@ -76,34 +76,31 @@ Node *StructLiteral::Build(NPtrVec &&nodes) {
   return struct_lit_ptr;
 }
 
-Node *ParametricStructLiteral::Build(NPtrVec &&nodes) {
-  static size_t anon_struct_counter = 0;
-
-  auto struct_lit_ptr   = new ParametricStructLiteral;
-  struct_lit_ptr->loc   = nodes[0]->loc;
-  struct_lit_ptr->type  = Type_;
-  struct_lit_ptr->value = IR::Value(
-      ParamStruct("__anon.param.struct" + std::to_string(anon_struct_counter++),
-                  struct_lit_ptr));
-
+static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
+  std::vector<Declaration *> params, decls;
   if (nodes[1]->is_declaration()) {
-    struct_lit_ptr->params.push_back(steal<Declaration>(nodes[1]));
+    params.push_back(steal<Declaration>(nodes[1]));
 
   } else if (nodes[1]->is_comma_list()) {
     auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
     for (auto &&e : expr_vec) {
       AST::Node *n = (AST::Node *)e;
-      struct_lit_ptr->params.push_back(steal<Declaration>(n));
+      params.push_back(steal<Declaration>(n));
     }
   }
 
   for (auto &&node : ((Statements *)nodes[3])->statements) {
-    struct_lit_ptr->decls.push_back(steal<Declaration>(node));
+    decls.push_back(steal<Declaration>(node));
   }
 
-  for (auto param : struct_lit_ptr->params) { param->arg_val = struct_lit_ptr; }
+  static size_t anon_param_struct_counter = 0;
+  auto param_struct_type = new ParamStruct(
+      "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
+      params, decls);
 
-  return struct_lit_ptr;
+  auto dummy = new DummyTypeExpr(nodes[0]->loc, param_struct_type);
+  for (auto param : params) { param->arg_val = dummy; }
+  return dummy;
 }
 
 // Input guarantees:
@@ -817,7 +814,7 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
     return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "struct") == 0) {
-    return AST::ParametricStructLiteral::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
   assert(false);
