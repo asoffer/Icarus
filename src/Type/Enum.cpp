@@ -56,8 +56,8 @@ size_t Enum::IndexOrFail(const std::string &str) const {
   return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
-size_t Enum::BytesAndAlignment() const {
-  auto num_members = members.size();
+static size_t BytesAndAlignment(const Enum *e) {
+  auto num_members = e->members.size();
   if (num_members < (1ul << (1ul << 3ul))) { return 1; }
   if (num_members < (1ul << (1ul << 4ul))) { return 2; }
   if (num_members < (1ul << (1ul << 5ul))) { return 4; }
@@ -65,12 +65,35 @@ size_t Enum::BytesAndAlignment() const {
   return 8;
 }
 
+size_t Enum::bytes() const { return BytesAndAlignment(this); }
+size_t Enum::alignment() const { return BytesAndAlignment(this); }
+
 Type *Enum::ProxyType() const {
-  switch (BytesAndAlignment()) {
+  switch (BytesAndAlignment(this)) {
   case 1: return Char;
   case 2: return Uint16;
   case 4: return Uint32;
   case 8: return Uint;
+  default: UNREACHABLE;
+  }
+}
+
+IR::Value Enum::EmitInitialValue() const {
+  switch (BytesAndAlignment(this)) {
+  case 1: return IR::Value('\0');
+  case 2: return IR::Value((uint16_t)0);
+  case 4: return IR::Value((uint32_t)0);
+  case 8: return IR::Value(0ul);
+  default: UNREACHABLE;
+  }
+}
+
+IR::Value Enum::EmitLiteral(const std::string &member_name) const {
+  switch (BytesAndAlignment(this)) {
+  case 1: return IR::Value((char)int_values.at(member_name));
+  case 2: return IR::Value((uint16_t)int_values.at(member_name));
+  case 4: return IR::Value((uint32_t)int_values.at(member_name));
+  case 8: return IR::Value((size_t)int_values.at(member_name));
   default: UNREACHABLE;
   }
 }

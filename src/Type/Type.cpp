@@ -7,124 +7,58 @@ extern llvm::Constant *malloc();
 extern llvm::Constant *free();
 } // namespace cstdlib
 
-size_t Type::bytes() const {
-  // TODO make this platform specific
-  if (this == Void) { return 0; }
-  if (this == Bool || this == Char) { return 1; }
-  if (this == Type_ || this == Int || this == Uint || this == Real ||
-      is_pointer() || is_function()) {
-    return 8;
-  }
+// TODO make bytes() and alignment() platform specific
+size_t Pointer::bytes() const { return 8; }
+size_t Function::bytes() const { return 8; }
+size_t TypeVariable::bytes() const { return 0; } // TODO should be uncallable
 
-  if (is_enum()) { return ((Enum *)this)->BytesAndAlignment(); }
-
-  if (is_array()) {
-    auto array_type = (Array *)this;
-    if (array_type->fixed_length) {
-      auto size = MoveForwardToAlignment(
-          array_type->data_type->bytes() * array_type->len, alignment());
-      // TODO fix this hack that forces arrays to take of at least a byte so we
-      // don't have overlapping structs. this is only an issue because we index
-      // allocations by their stack location. we need to stop doing that.
-      return size ? size : 1;
-    } else {
-      return 16;
-    }
-  }
-  if (is_struct()) {
-    auto struct_type = (Structure *)this;
-    assert(struct_type->ast_expression);
-    struct_type->ast_expression->CompleteDefinition();
-    size_t num_bytes = 0;
-    for (auto ft : struct_type->field_type) {
-      num_bytes += ft->bytes();
-      num_bytes = MoveForwardToAlignment(num_bytes, ft->alignment());
-    }
-
-    return MoveForwardToAlignment(num_bytes, alignment());
-  }
-
-  if (this == Err) { return 0; }
-
-  // kludgy. Should be fixed by making this uncallable
-  if (is_type_variable()) { return 0; }
-
-  std::cerr << *this << std::endl;
-  NOT_YET;
+size_t Array::bytes() const {
+  if (!fixed_length) { return 16; }
+  auto size = MoveForwardToAlignment(data_type->bytes() * len, alignment());
+  // TODO fix this hack that forces arrays to take of at least a byte so we
+  // don't have overlapping structs. this is only an issue because we index
+  // allocations by their stack location. we need to stop doing that.
+  return size ? size : 1;
 }
 
-size_t Type::alignment() const {
-  // TODO make this platform specific
-  if (this == Void || this == Bool || this == Char) {
-    return 1;
+size_t Structure::bytes() const {
+  assert(ast_expression);
+  ast_expression->CompleteDefinition();
+  size_t num_bytes = 0;
+  for (auto ft : field_type) {
+    num_bytes += ft->bytes();
+    num_bytes = MoveForwardToAlignment(num_bytes, ft->alignment());
   }
 
-  if (this == Int || this == Uint || this == Real || is_pointer() ||
-      is_function() || this == Type_) {
-    return 8;
-  }
-
-  if (is_enum()) { return ((Enum *)this)->BytesAndAlignment(); }
-
-  if (is_array()) {
-    auto array_type = (Array *)this;
-    if (array_type->fixed_length) {
-      return array_type->data_type->alignment();
-    } else {
-      return 8;
-    }
-  }
-  if (is_struct()) {
-    auto struct_type = (Structure *)this;
-    assert(struct_type->ast_expression);
-    struct_type->ast_expression->CompleteDefinition();
-    size_t alignment_val = 0;
-    for (auto ft : struct_type->field_type) {
-      auto a = ft->alignment();
-      if (alignment_val <= a) { alignment_val = a; }
-    }
-    return alignment_val;
-  }
-
-  if (is_function()) { return 8; }
-  if (this == Err) { return 0; }
-
-  // kludgy. Should be fixed by making this uncallable
-  if (is_type_variable()) { return 0; }
-
-
-  std::cerr << *this << std::endl;
-  NOT_YET;
+  return MoveForwardToAlignment(num_bytes, alignment());
 }
 
-Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt) {
-  switch (type_) {
-  case Primitive::TypeEnum::Bool:
-    llvm_type = llvm::Type::getInt1Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Char:
-    llvm_type = llvm::Type::getInt8Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Int:
-    llvm_type = llvm::Type::getInt64Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Real:
-    llvm_type = llvm::Type::getDoubleTy(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Uint16:
-    llvm_type = llvm::Type::getInt16Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Uint32:
-    llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Uint:
-    llvm_type = llvm::Type::getInt64Ty(llvm::getGlobalContext());
-    break;
-  case Primitive::TypeEnum::Void:
-    llvm_type = llvm::Type::getVoidTy(llvm::getGlobalContext());
-    break;
-  default: llvm_type = nullptr;
+size_t Pointer::alignment() const { return 8; }
+size_t Function::alignment() const { return 8; }
+size_t TypeVariable::alignment() const { return 0; } // TODO should be uncallable
+
+size_t Array::alignment() const {
+  return fixed_length ? data_type->alignment() : 8;
+}
+
+size_t ParametricStructure::bytes() const { NOT_YET; }
+size_t ParametricStructure::alignment() const { NOT_YET; }
+size_t Tuple::bytes() const { NOT_YET; }
+size_t Tuple::alignment() const { NOT_YET; }
+size_t SliceType::bytes() const { NOT_YET; }
+size_t SliceType::alignment() const { NOT_YET; }
+size_t RangeType::bytes() const { NOT_YET; }
+size_t RangeType::alignment() const { NOT_YET; }
+
+size_t Structure::alignment() const {
+  assert(ast_expression);
+  ast_expression->CompleteDefinition();
+  size_t alignment_val = 0;
+  for (auto ft : field_type) {
+    auto a = ft->alignment();
+    if (alignment_val <= a) { alignment_val = a; }
   }
+  return alignment_val;
 }
 
 Array::Array(Type *t)

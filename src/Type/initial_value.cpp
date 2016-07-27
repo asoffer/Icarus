@@ -4,34 +4,24 @@
 
 IR::Value Primitive::EmitInitialValue() const {
   switch (type_) {
-  case TypeEnum::Err: UNREACHABLE;
-  case TypeEnum::Unknown: UNREACHABLE;
-  case TypeEnum::Type: UNREACHABLE;
-  case TypeEnum::Void: UNREACHABLE;
-  case TypeEnum::NullPtr: UNREACHABLE;
-  case TypeEnum::Bool: return IR::Value(false);
-  case TypeEnum::Char: return IR::Value('\0');
-  case TypeEnum::Int: return IR::Value(0l);
-  case TypeEnum::Real: return IR::Value(0.0);
-  case TypeEnum::Uint: return IR::Value(0ul);
-  case TypeEnum::Uint16: return IR::Value((uint16_t)0);
-  case TypeEnum::Uint32: return IR::Value((uint32_t)0);
+  case PrimType::Err: UNREACHABLE;
+  case PrimType::Unknown: UNREACHABLE;
+  case PrimType::Type: UNREACHABLE;
+  case PrimType::Void: UNREACHABLE;
+  case PrimType::NullPtr: UNREACHABLE;
+  case PrimType::Bool: return IR::Value(false);
+  case PrimType::Char: return IR::Value('\0');
+  case PrimType::Int: return IR::Value(0l);
+  case PrimType::Real: return IR::Value(0.0);
+  case PrimType::Uint: return IR::Value(0ul);
+  case PrimType::Uint16: return IR::Value((uint16_t)0);
+  case PrimType::Uint32: return IR::Value((uint32_t)0);
   }
 }
 
 // TODO ugly const_cast
 IR::Value Pointer::EmitInitialValue() const {
   return IR::Value::Null(const_cast<Pointer *>(this));
-}
-
-IR::Value Enum::EmitInitialValue() const {
-  switch (BytesAndAlignment()) {
-  case 1: return IR::Value('\0');
-  case 2: return IR::Value((uint16_t)0);
-  case 4: return IR::Value((uint32_t)0);
-  case 8: return IR::Value(0ul);
-  default: UNREACHABLE;
-  }
 }
 
 IR::Value Array::EmitInitialValue() const { NOT_YET; }

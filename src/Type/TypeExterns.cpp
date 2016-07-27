@@ -10,19 +10,19 @@ std::map<const char *, Type *> Literals;
 
 void Initialize() {
   // TODO do we need to pair of strings and their types?
-  Literals["bool"] = Bool = new Primitive(Primitive::TypeEnum::Bool);
-  Literals["char"] = Char = new Primitive(Primitive::TypeEnum::Char);
-  Literals["int"] = Int = new Primitive(Primitive::TypeEnum::Int);
-  Literals["real"] = Real = new Primitive(Primitive::TypeEnum::Real);
-  Literals["type"] = Type_ = new Primitive(Primitive::TypeEnum::Type);
-  Literals["uint"] = Uint = new Primitive(Primitive::TypeEnum::Uint);
-  Literals["void"] = Void = new Primitive(Primitive::TypeEnum::Void);
+  Literals["bool"] = Bool = new Primitive(PrimType::Bool);
+  Literals["char"] = Char = new Primitive(PrimType::Char);
+  Literals["int"] = Int = new Primitive(PrimType::Int);
+  Literals["real"] = Real = new Primitive(PrimType::Real);
+  Literals["type"] = Type_ = new Primitive(PrimType::Type);
+  Literals["uint"] = Uint = new Primitive(PrimType::Uint);
+  Literals["void"] = Void = new Primitive(PrimType::Void);
 
-  Uint16  = new Primitive(Primitive::TypeEnum::Uint16);
-  Uint32  = new Primitive(Primitive::TypeEnum::Uint32);
-  Unknown = new Primitive(Primitive::TypeEnum::Unknown);
-  NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
-  Err     = new Primitive(Primitive::TypeEnum::Err);
+  Uint16  = new Primitive(PrimType::Uint16);
+  Uint32  = new Primitive(PrimType::Uint32);
+  Unknown = new Primitive(PrimType::Unknown);
+  NullPtr = new Primitive(PrimType::NullPtr);
+  Err     = new Primitive(PrimType::Err);
   RawPtr  = Ptr(Char);
 
   RawPtr->generate_llvm();

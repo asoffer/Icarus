@@ -7,18 +7,18 @@
 
 std::string Primitive::to_string() const {
   switch (type_) {
-  case TypeEnum::Err: return "Err";
-  case TypeEnum::Unknown: return "???";
-  case TypeEnum::Bool: return "bool";
-  case TypeEnum::Char: return "char";
-  case TypeEnum::Int: return "int";
-  case TypeEnum::Real: return "real";
-  case TypeEnum::Type: return "type";
-  case TypeEnum::Uint: return "uint";
-  case TypeEnum::Void: return "void";
-  case TypeEnum::NullPtr: return "null";
-  case TypeEnum::Uint16: return "uint16";
-  case TypeEnum::Uint32: return "uint32";
+  case PrimType::Err: return "Err";
+  case PrimType::Unknown: return "???";
+  case PrimType::Bool: return "bool";
+  case PrimType::Char: return "char";
+  case PrimType::Int: return "int";
+  case PrimType::Real: return "real";
+  case PrimType::Type: return "type";
+  case PrimType::Uint: return "uint";
+  case PrimType::Void: return "void";
+  case PrimType::NullPtr: return "null";
+  case PrimType::Uint16: return "uint16";
+  case PrimType::Uint32: return "uint32";
   }
 }
 

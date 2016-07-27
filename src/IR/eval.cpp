@@ -258,9 +258,10 @@ void Cmd::Execute(StackFrame& frame) {
     memcpy(dest, source, cmd_inputs[2].as_uint);
   } break;
   case Op::Load: {
+    if (result.type->is_enum()) { result.type = ((Enum *)result.type)->ProxyType(); }
     assert(
         (result.type->is_primitive() || result.type->is_pointer() ||
-         result.type->is_enum() || result.type->is_function()) &&
+         result.type->is_function()) &&
         "Non-primitive/pointer/enum local variables are not yet implemented");
     if (cmd_inputs[0].flag == ValType::StackAddr) {
       size_t offset = cmd_inputs[0].as_stack_addr;
@@ -276,12 +277,13 @@ void Cmd::Execute(StackFrame& frame) {
       DO_LOAD(Char, char);
       DO_LOAD(Int, long);
       DO_LOAD(Real, double);
+      DO_LOAD(Uint16, uint16_t);
+      DO_LOAD(Uint32, uint32_t);
       DO_LOAD(Uint, size_t);
       DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD
-      assert(result.type->is_pointer() || result.type->is_enum() ||
-             result.type->is_function());
+      assert(result.type->is_pointer() || result.type->is_function());
       if (result.type->is_pointer()) {
         // TODO how do we determine if it's heap or stack?
         auto ptr_as_uint = *(size_t *)(frame.stack->allocs + offset);
@@ -290,33 +292,9 @@ void Cmd::Execute(StackFrame& frame) {
         } else {
           frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
         }
-      } else if (result.type->is_function()) {
-        frame.reg[result.reg] = Value(*(Func **)(frame.stack->allocs + offset));
       } else {
-        switch (((Enum *)result.type)->BytesAndAlignment()) {
-        case 1:
-          frame.reg[result.reg] =
-              Value(*(char *)(frame.stack->allocs + offset));
-          break;
-
-        case 2:
-          frame.reg[result.reg] =
-              Value(*(uint16_t *)(frame.stack->allocs + offset));
-          break;
-
-        case 4:
-          frame.reg[result.reg] =
-              Value(*(uint32_t *)(frame.stack->allocs + offset));
-          break;
-
-        case 8:
-          frame.reg[result.reg] =
-              Value(*(size_t *)(frame.stack->allocs + offset));
-          break;
-        default: UNREACHABLE;
-        }
+        frame.reg[result.reg] = Value(*(Func **)(frame.stack->allocs + offset));
       }
-
     } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
 #define DO_LOAD(StoredType, stored_type)                                       \
   if (result.type == StoredType) {                                             \
@@ -329,41 +307,19 @@ void Cmd::Execute(StackFrame& frame) {
       DO_LOAD(Char, char);
       DO_LOAD(Int, long);
       DO_LOAD(Real, double);
+      DO_LOAD(Uint16, uint16_t);
+      DO_LOAD(Uint32, uint32_t);
       DO_LOAD(Uint, size_t);
       DO_LOAD(Type_, Type *);
 
 #undef DO_LOAD
-      assert(result.type->is_pointer() || result.type->is_enum());
-      if (result.type->is_pointer()) {
-        // TODO how do we determine if it's heap or stack?
-        auto ptr_as_uint = *(size_t *)(cmd_inputs[0].as_heap_addr);
-        if (ptr_as_uint > 0xffff) { // NOTE hack to guess if it's a heap address
-          frame.reg[result.reg] = Value::HeapAddr((void *)ptr_as_uint);
-        } else {
-          frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
-        }
+      assert(result.type->is_pointer());
+      // TODO how do we determine if it's heap or stack?
+      auto ptr_as_uint = *(size_t *)(cmd_inputs[0].as_heap_addr);
+      if (ptr_as_uint > 0xffff) { // NOTE hack to guess if it's a heap address
+        frame.reg[result.reg] = Value::HeapAddr((void *)ptr_as_uint);
       } else {
-        switch (((Enum *)result.type)->BytesAndAlignment()) {
-        case 1:
-          frame.reg[result.reg] = Value(*(char *)(cmd_inputs[0].as_heap_addr));
-          break;
-
-        case 2:
-          frame.reg[result.reg] =
-              Value(*(uint16_t *)(cmd_inputs[0].as_heap_addr));
-          break;
-
-        case 4:
-          frame.reg[result.reg] =
-              Value(*(uint32_t *)(cmd_inputs[0].as_heap_addr));
-          break;
-
-        case 8:
-          frame.reg[result.reg] =
-              Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
-          break;
-        default: UNREACHABLE;
-        }
+        frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
       }
 
     } else if (cmd_inputs[0].flag == ValType::GlobalAddr) {
@@ -382,7 +338,6 @@ void Cmd::Execute(StackFrame& frame) {
     assert(cmd_inputs[0].flag == ValType::T &&
            (cmd_inputs[0].as_type->is_primitive() ||
             cmd_inputs[0].as_type->is_pointer() ||
-            cmd_inputs[0].as_type->is_enum() ||
             cmd_inputs[0].as_type->is_function()));
     assert(cmd_inputs[2].flag == ValType::StackAddr ||
            cmd_inputs[2].flag == ValType::HeapAddr ||
@@ -401,37 +356,13 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(bool, bool, Bool);
       DO_STORE(char, char, Char);
       DO_STORE(long, int, Int);
+      DO_STORE(uint16_t, uint16, Uint16);
+      DO_STORE(uint32_t, uint32, Uint32);
       DO_STORE(double, real, Real);
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
 
 #undef DO_STORE
-      if (cmd_inputs[0].as_type->is_enum()) {
-        auto ptr = (size_t *)(frame.stack->allocs + offset);
-        *ptr     = cmd_inputs[1].as_uint;
-
-        switch (((Enum *)result.type)->BytesAndAlignment()) {
-        case 1: {
-          auto ptr = (char *)(frame.stack->allocs + offset);
-          *ptr     = cmd_inputs[1].as_char;
-        } break;
-        case 2: {
-          auto ptr = (uint16_t *)(frame.stack->allocs + offset);
-          *ptr     = cmd_inputs[1].as_uint16;
-        } break;
-        case 4: {
-          auto ptr = (uint32_t *)(frame.stack->allocs + offset);
-          *ptr     = cmd_inputs[1].as_uint32;
-        } break;
-        case 8: {
-          auto ptr = (size_t *)(frame.stack->allocs + offset);
-          *ptr     = cmd_inputs[1].as_uint;
-        } break;
-        default: UNREACHABLE;
-        }
-
-        break;
-      }
 
       if (cmd_inputs[0].as_type->is_pointer()) {
         auto ptr = (void **)(frame.stack->allocs + offset);
@@ -472,15 +403,12 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(char, char, Char);
       DO_STORE(long, int, Int);
       DO_STORE(double, real, Real);
+      DO_STORE(uint16_t, uint16, Uint16);
+      DO_STORE(uint32_t, uint32, Uint32);
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
 
 #undef DO_STORE
-      if (cmd_inputs[0].as_type->is_enum()) {
-        NOT_YET;
-        break;
-      }
-
       if (cmd_inputs[0].as_type->is_function()) {
         NOT_YET;
         break;
@@ -497,6 +425,7 @@ void Cmd::Execute(StackFrame& frame) {
       InitialGlobals[cmd_inputs[2].as_global_addr] = cmd_inputs[1];
       break;
     }
+
     UNREACHABLE;
   } break;
   case Op::Field: {

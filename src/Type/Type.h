@@ -36,7 +36,9 @@ extern SliceType *Slice(Array *a);
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
   virtual void EmitDestroy(IR::Value id_val) ENDING;                           \
   virtual IR::Value EmitInitialValue() const ENDING;                           \
-  virtual void EmitRepr(IR::Value id_val) ENDING
+  virtual void EmitRepr(IR::Value id_val) ENDING;                              \
+  virtual size_t bytes() const ENDING;                                         \
+  virtual size_t alignment() const ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -51,9 +53,6 @@ public:
   BASIC_METHODS;
 
   virtual operator llvm::Type *() const;
-
-  size_t bytes() const;
-  size_t alignment() const;
 
   size_t SpaceInArray() const {
     return MoveForwardToAlignment(bytes(), alignment());
@@ -98,13 +97,10 @@ struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
 
-  enum class TypeEnum {
-    Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, Uint16, Uint32
-  };
+  Primitive(PrimType pt);
 
-  Primitive::TypeEnum type_;
-
-  Primitive(TypeEnum pt);
+private:
+  PrimType type_;
 };
 
 struct Array : public Type {
@@ -153,12 +149,11 @@ struct Function : public Type {
 
 struct Enum : public Type {
   TYPE_FNS(Enum, enum);
+  Enum(const std::string &name, const std::vector<std::string> &members);
 
   size_t IndexOrFail(const std::string &str) const;
-  size_t BytesAndAlignment() const;
   Type *ProxyType() const;
-
-  Enum(const std::string &name, const std::vector<std::string> &members);
+  IR::Value EmitLiteral(const std::string &member_name) const;
 
   std::string bound_name;
   std::vector<std::string> members;

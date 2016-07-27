@@ -1013,13 +1013,8 @@ IR::Value Access::EmitIR() {
   if (base_type == Type_) {
     auto ty = Evaluate(operand).as_type;
     if (ty->is_enum()) {
-      auto enum_type = (Enum *)ty;
-      switch (enum_type->BytesAndAlignment()) {
-      case 1: return IR::Value((char)enum_type->int_values AT(member_name));
-      case 2: return IR::Value((uint16_t)enum_type->int_values AT(member_name));
-      case 4: return IR::Value((uint32_t)enum_type->int_values AT(member_name));
-      case 8: return IR::Value((size_t)enum_type->int_values AT(member_name));
-      }
+      return ((Enum *)ty)->EmitLiteral(member_name);
+
     } else {
       UNREACHABLE;
     }
