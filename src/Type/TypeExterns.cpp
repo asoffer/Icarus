@@ -3,7 +3,7 @@
 #endif
 
 Type *Err, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
-    *RawPtr, *String;
+    *RawPtr, *String, *Uint16, *Uint32;
 
 namespace TypeSystem {
 std::map<const char *, Type *> Literals;
@@ -18,6 +18,8 @@ void Initialize() {
   Literals["uint"] = Uint = new Primitive(Primitive::TypeEnum::Uint);
   Literals["void"] = Void = new Primitive(Primitive::TypeEnum::Void);
 
+  Uint16  = new Primitive(Primitive::TypeEnum::Uint16);
+  Uint32  = new Primitive(Primitive::TypeEnum::Uint32);
   Unknown = new Primitive(Primitive::TypeEnum::Unknown);
   NullPtr = new Primitive(Primitive::TypeEnum::NullPtr);
   Err     = new Primitive(Primitive::TypeEnum::Err);

@@ -33,7 +33,8 @@ namespace data {
 extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_uint32(size_t n);
+extern llvm::ConstantInt *const_uint16(uint16_t n);
+extern llvm::ConstantInt *const_uint32(uint32_t n);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
@@ -195,75 +196,92 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  RUN(timer, "Code-gen") {
-    // Globals
-    for (auto decl : Scope::Global->DeclRegistry) {
-      assert(!decl->arg_val);
-      auto id   = decl->identifier;
-      auto type = decl->type;
+  if (file_type != FileType::None) {
+    RUN(timer, "Code-gen") {
+      // Globals
+      for (auto decl : Scope::Global->DeclRegistry) {
+        assert(!decl->arg_val);
+        auto id   = decl->identifier;
+        auto type = decl->type;
 
-      if (type->is_struct() || type->is_parametric_struct() ||
-          type->is_range() || type->is_slice() || type->time() == Time::compile) {
-        continue;
-      }
-
-      if (type->is_function()) { continue; /* TODO what if it's #mutable */ }
-
-      if (type->is_primitive() || type->is_array() || type->is_pointer()) {
-        std::cerr << *type << std::endl;
-        auto gvar = new llvm::GlobalVariable(
-            /*      Module = */ *global_module,
-            /*        Type = */ *type,
-            /*  isConstant = */ decl->HasHashtag("const"),
-            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-            /* Initializer = */ 0, // might be specified below
-            /*        Name = */ id->token);
-
-        auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
-        llvm::Constant *init_val;
-        switch (ir_val.flag) {
-        case IR::ValType::B: init_val = data::const_bool(ir_val.as_bool); break;
-        case IR::ValType::C: init_val = data::const_char(ir_val.as_char); break;
-        case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
-        case IR::ValType::R: init_val = data::const_real(ir_val.as_real); break;
-        case IR::ValType::U: init_val = data::const_uint(ir_val.as_uint); break;
-        case IR::ValType::GlobalAddr:
-          init_val = IR::LLVMGlobals[ir_val.as_global_addr];
-          break;
-        default: NOT_YET;
-        }
-
-        gvar->setInitializer(init_val);
-        IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
-
-        // TODO is this useful?
-        id->decl->alloc = gvar;
-
-        continue;
-      }
-
-      std::cerr << *type << std::endl;
-      UNREACHABLE;
-    }
-
-    // Generate all the functions
-    if (file_type != FileType::None) {
-      for (auto f : all_functions) { f->GenerateLLVM(); }
-    }
-
-    { // Generate code for everything else
-      ScopeStack.push(Scope::Global);
-      for (auto stmt : global_statements->statements) {
-        if (stmt->is_declaration()) { continue; }
-        if (stmt->is_unop() &&
-            ((AST::Unop *)stmt)->op == Language::Operator::Import) {
+        if (type->is_struct() || type->is_parametric_struct() ||
+            type->is_range() || type->is_slice() ||
+            type->time() == Time::compile) {
           continue;
         }
-        std::cerr << *stmt<< std::endl;
-        NOT_YET;
-        // stmt->generate_code();
+
+        if (type->is_function()) { continue; /* TODO what if it's #mutable */ }
+
+        if (type->is_primitive() || type->is_array() || type->is_pointer() ||
+            type->is_enum()) {
+          auto gvar = new llvm::GlobalVariable(
+              /*      Module = */ *global_module,
+              /*        Type = */ *type,
+              /*  isConstant = */ decl->HasHashtag("const"),
+              /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+              /* Initializer = */ 0, // might be specified below
+              /*        Name = */ id->token);
+
+          auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
+          llvm::Constant *init_val;
+          switch (ir_val.flag) {
+          case IR::ValType::B:
+            init_val = data::const_bool(ir_val.as_bool);
+            break;
+          case IR::ValType::C:
+            init_val = data::const_char(ir_val.as_char);
+            break;
+          case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
+          case IR::ValType::R:
+            init_val = data::const_real(ir_val.as_real);
+            break;
+          case IR::ValType::U16:
+            init_val = data::const_uint16(ir_val.as_uint16);
+            break;
+          case IR::ValType::U32:
+            init_val = data::const_uint32(ir_val.as_uint32);
+            break;
+          case IR::ValType::U:
+            init_val = data::const_uint(ir_val.as_uint);
+            break;
+          case IR::ValType::GlobalAddr:
+            init_val = IR::LLVMGlobals[ir_val.as_global_addr];
+            break;
+          default: NOT_YET;
+          }
+
+          gvar->setInitializer(init_val);
+          IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
+
+          // TODO is this useful?
+          id->decl->alloc = gvar;
+
+          continue;
+        }
+
+        std::cerr << *type << std::endl;
+        UNREACHABLE;
       }
-      ScopeStack.pop();
+
+      // Generate all the functions
+      if (file_type != FileType::None) {
+        for (auto f : all_functions) { f->GenerateLLVM(); }
+      }
+
+      { // Generate code for everything else
+        ScopeStack.push(Scope::Global);
+        for (auto stmt : global_statements->statements) {
+          if (stmt->is_declaration()) { continue; }
+          if (stmt->is_unop() &&
+              ((AST::Unop *)stmt)->op == Language::Operator::Import) {
+            continue;
+          }
+          std::cerr << *stmt << std::endl;
+          NOT_YET;
+          // stmt->generate_code();
+        }
+        ScopeStack.pop();
+      }
     }
   }
 

@@ -1013,7 +1013,13 @@ IR::Value Access::EmitIR() {
   if (base_type == Type_) {
     auto ty = Evaluate(operand).as_type;
     if (ty->is_enum()) {
-      return IR::Value(((Enum *)ty)->int_values AT(member_name));
+      auto enum_type = (Enum *)ty;
+      switch (enum_type->BytesAndAlignment()) {
+      case 1: return IR::Value((char)enum_type->int_values AT(member_name));
+      case 2: return IR::Value((uint16_t)enum_type->int_values AT(member_name));
+      case 4: return IR::Value((uint32_t)enum_type->int_values AT(member_name));
+      case 8: return IR::Value((size_t)enum_type->int_values AT(member_name));
+      }
     } else {
       UNREACHABLE;
     }
@@ -1406,7 +1412,7 @@ IR::Value Generic::EmitIR() {
   return IR::Value(value.as_type);
 }
 
-IR::Value InDecl::EmitIR() { NOT_YET; }
+IR::Value InDecl::EmitIR() { UNREACHABLE; }
 
 IR::Value ParametricStructLiteral::EmitIR() {
   assert(value.as_type);

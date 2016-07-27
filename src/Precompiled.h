@@ -104,7 +104,7 @@ struct LocalStack;
 struct StackFrame;
 
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr,
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr, U16, U32,
   GlobalCStr, Null
 };
 
@@ -114,6 +114,8 @@ struct Value {
     char as_char;
     long as_int;
     double as_real;
+    uint16_t as_uint16;
+    uint32_t as_uint32;
     size_t as_uint;
     Type *as_type;
     Func *as_func;
@@ -138,6 +140,8 @@ struct Value {
   explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
   explicit Value(char *p) : as_cstr(p), flag(ValType::CStr) {}
   explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
+  explicit Value(uint16_t n) : as_uint16(n), flag(ValType::U16) {}
+  explicit Value(uint32_t n) : as_uint32(n), flag(ValType::U32) {}
 
   Value() : flag(ValType::Reg) {}
 

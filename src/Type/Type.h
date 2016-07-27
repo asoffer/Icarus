@@ -7,7 +7,7 @@ extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
-    *NullPtr, *RawPtr, *String;
+    *NullPtr, *RawPtr, *String, *Uint16, *Uint32;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
@@ -99,7 +99,7 @@ public:
   TYPE_FNS(Primitive, primitive);
 
   enum class TypeEnum {
-    Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr
+    Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, Uint16, Uint32
   };
 
   Primitive::TypeEnum type_;
@@ -155,6 +155,8 @@ struct Enum : public Type {
   TYPE_FNS(Enum, enum);
 
   size_t IndexOrFail(const std::string &str) const;
+  size_t BytesAndAlignment() const;
+  Type *ProxyType() const;
 
   Enum(const std::string &name, const std::vector<std::string> &members);
 

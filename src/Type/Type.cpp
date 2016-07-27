@@ -2,30 +2,22 @@
 #include "Type.h"
 #endif
 
-extern FileType file_type;
-extern llvm::Module *global_module;
-
-extern llvm::Value *GetFunctionReferencedIn(Scope *scope,
-                                            const std::string &fn_name,
-                                            Function *fn_type);
 namespace cstdlib {
 extern llvm::Constant *malloc();
 extern llvm::Constant *free();
 } // namespace cstdlib
-
-namespace data {
-extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::Constant *str(const std::string &s);
-} // namespace data
 
 size_t Type::bytes() const {
   // TODO make this platform specific
   if (this == Void) { return 0; }
   if (this == Bool || this == Char) { return 1; }
   if (this == Type_ || this == Int || this == Uint || this == Real ||
-      is_pointer() || is_function() || is_enum()) {
+      is_pointer() || is_function()) {
     return 8;
   }
+
+  if (is_enum()) { return ((Enum *)this)->BytesAndAlignment(); }
+
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -66,11 +58,14 @@ size_t Type::alignment() const {
   if (this == Void || this == Bool || this == Char) {
     return 1;
   }
-  if (is_enum()) { return 4; }
+
   if (this == Int || this == Uint || this == Real || is_pointer() ||
       is_function() || this == Type_) {
     return 8;
   }
+
+  if (is_enum()) { return ((Enum *)this)->BytesAndAlignment(); }
+
   if (is_array()) {
     auto array_type = (Array *)this;
     if (array_type->fixed_length) {
@@ -115,6 +110,12 @@ Primitive::Primitive(Primitive::TypeEnum pt) : type_(pt) {
     break;
   case Primitive::TypeEnum::Real:
     llvm_type = llvm::Type::getDoubleTy(llvm::getGlobalContext());
+    break;
+  case Primitive::TypeEnum::Uint16:
+    llvm_type = llvm::Type::getInt16Ty(llvm::getGlobalContext());
+    break;
+  case Primitive::TypeEnum::Uint32:
+    llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());
     break;
   case Primitive::TypeEnum::Uint:
     llvm_type = llvm::Type::getInt64Ty(llvm::getGlobalContext());
@@ -174,51 +175,6 @@ size_t Structure::field_num(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
   assert(iter != field_name_to_num.end());
   return iter->second;
-}
-
-Enum::Enum(const std::string &name, const std::vector<std::string> &members)
-    : bound_name(name), members(members), string_data(nullptr) {
-  auto num_members = members.size();
-  for (size_t i = 0; i < num_members; ++i) { int_values[members[i]] = i; }
-
-  if (file_type != FileType::None) {
-    llvm_type = *Uint;
-    std::vector<llvm::Constant *> enum_str_elems(num_members, nullptr);
-
-    for (size_t i = 0; i < num_members; ++i) {
-      llvm::Type *char_array_type = *Arr(Char, members[i].size() + 1);
-
-      auto enum_str = new llvm::GlobalVariable(
-          /*      Module = */ *global_module,
-          /*        Type = */ char_array_type,
-          /*  isConstant = */ true,
-          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-          /* Initializer = */ llvm::ConstantDataArray::getString(
-              llvm::getGlobalContext(), members[i], true),
-          /*        Name = */ members[i]);
-      enum_str->setAlignment(1);
-      enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
-          char_array_type, enum_str,
-          llvm::ArrayRef<llvm::Constant *>{data::const_uint(0),
-                                           data::const_uint(0)});
-    }
-
-    llvm::Type *llvm_global_type = *Arr(Ptr(Char), num_members);
-    llvm::ArrayType *char_ptr_array_type = (llvm::ArrayType *)llvm_global_type;
-    string_data = new llvm::GlobalVariable(
-        /*      Module = */ *global_module,
-        /*        Type = */ char_ptr_array_type,
-        /*  isConstant = */ false,
-        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-        /* Initializer = */ llvm::ConstantArray::get(char_ptr_array_type,
-                                                     enum_str_elems),
-        /*        Name = */ bound_name + ".name.array");
-  }
-}
-
-size_t Enum::IndexOrFail(const std::string &str) const {
-  auto iter = int_values.find(str);
-  return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
 void Structure::set_name(const std::string &name) {

@@ -293,8 +293,28 @@ void Cmd::Execute(StackFrame& frame) {
       } else if (result.type->is_function()) {
         frame.reg[result.reg] = Value(*(Func **)(frame.stack->allocs + offset));
       } else {
-        frame.reg[result.reg] =
-            Value(*(size_t *)(frame.stack->allocs + offset));
+        switch (((Enum *)result.type)->BytesAndAlignment()) {
+        case 1:
+          frame.reg[result.reg] =
+              Value(*(char *)(frame.stack->allocs + offset));
+          break;
+
+        case 2:
+          frame.reg[result.reg] =
+              Value(*(uint16_t *)(frame.stack->allocs + offset));
+          break;
+
+        case 4:
+          frame.reg[result.reg] =
+              Value(*(uint32_t *)(frame.stack->allocs + offset));
+          break;
+
+        case 8:
+          frame.reg[result.reg] =
+              Value(*(size_t *)(frame.stack->allocs + offset));
+          break;
+        default: UNREACHABLE;
+        }
       }
 
     } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
@@ -323,7 +343,27 @@ void Cmd::Execute(StackFrame& frame) {
           frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
         }
       } else {
-        frame.reg[result.reg] = Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
+        switch (((Enum *)result.type)->BytesAndAlignment()) {
+        case 1:
+          frame.reg[result.reg] = Value(*(char *)(cmd_inputs[0].as_heap_addr));
+          break;
+
+        case 2:
+          frame.reg[result.reg] =
+              Value(*(uint16_t *)(cmd_inputs[0].as_heap_addr));
+          break;
+
+        case 4:
+          frame.reg[result.reg] =
+              Value(*(uint32_t *)(cmd_inputs[0].as_heap_addr));
+          break;
+
+        case 8:
+          frame.reg[result.reg] =
+              Value(*(size_t *)(cmd_inputs[0].as_heap_addr));
+          break;
+        default: UNREACHABLE;
+        }
       }
 
     } else if (cmd_inputs[0].flag == ValType::GlobalAddr) {
@@ -368,7 +408,28 @@ void Cmd::Execute(StackFrame& frame) {
 #undef DO_STORE
       if (cmd_inputs[0].as_type->is_enum()) {
         auto ptr = (size_t *)(frame.stack->allocs + offset);
-        *ptr = cmd_inputs[1].as_uint;
+        *ptr     = cmd_inputs[1].as_uint;
+
+        switch (((Enum *)result.type)->BytesAndAlignment()) {
+        case 1: {
+          auto ptr = (char *)(frame.stack->allocs + offset);
+          *ptr     = cmd_inputs[1].as_char;
+        } break;
+        case 2: {
+          auto ptr = (uint16_t *)(frame.stack->allocs + offset);
+          *ptr     = cmd_inputs[1].as_uint16;
+        } break;
+        case 4: {
+          auto ptr = (uint32_t *)(frame.stack->allocs + offset);
+          *ptr     = cmd_inputs[1].as_uint32;
+        } break;
+        case 8: {
+          auto ptr = (size_t *)(frame.stack->allocs + offset);
+          *ptr     = cmd_inputs[1].as_uint;
+        } break;
+        default: UNREACHABLE;
+        }
+
         break;
       }
 

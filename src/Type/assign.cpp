@@ -13,9 +13,13 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                              IR::Value from_val, IR::Value to_var) {
   assert(scope);
   if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-      lhs_type->is_enum() || lhs_type->is_function()) {
+      lhs_type->is_function()) {
     assert(lhs_type == rhs_type);
     IR::Store(rhs_type, from_val, to_var);
+
+  } else if (lhs_type->is_enum()) {
+    assert(lhs_type == rhs_type);
+    IR::Store(((Enum *)lhs_type)->ProxyType(), from_val, to_var);
 
   } else if (lhs_type->is_array()) {
     assert(rhs_type->is_array());

@@ -91,13 +91,17 @@ llvm::ConstantInt *const_int(long n) {
                                 llvm::APInt(64, (unsigned int)n, false));
 }
 
-llvm::ConstantInt *const_uint32(size_t n) {
-  // The safety of this cast is verified only in debug mode
+llvm::ConstantInt *const_uint16(uint16_t n) {
+  return llvm::ConstantInt::get(llvm::getGlobalContext(),
+                                llvm::APInt(16, (size_t)n, false));
+}
+
+llvm::ConstantInt *const_uint32(uint32_t n) {
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(32, (size_t)n, false));
 }
+
 llvm::ConstantInt *const_uint(size_t n) {
-  // The safety of this cast is verified only in debug mode
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(64, (size_t)n, false));
 }

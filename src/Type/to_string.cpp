@@ -17,6 +17,8 @@ std::string Primitive::to_string() const {
   case TypeEnum::Uint: return "uint";
   case TypeEnum::Void: return "void";
   case TypeEnum::NullPtr: return "null";
+  case TypeEnum::Uint16: return "uint16";
+  case TypeEnum::Uint32: return "uint32";
   }
 }
 

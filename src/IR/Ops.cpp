@@ -275,6 +275,8 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::I: return os << value.as_int;
   case ValType::R: return os << value.as_real;
   case ValType::U: return os << value.as_uint << 'u';
+  case ValType::U16: return os << value.as_uint16 << "u16";
+  case ValType::U32: return os << value.as_uint32 << "u32";
   case ValType::T:
     if (value.as_type) {
       return os << *value.as_type;

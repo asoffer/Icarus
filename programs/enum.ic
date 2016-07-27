@@ -1,3 +1,5 @@
+global := suit.spade
+
 suit := enum {
   club
   diamond

@@ -41,7 +41,7 @@ void Primitive::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
 void Enum::EmitInit(IR::Value id_val) {
-  IR::Store(this, EmitInitialValue(), id_val);
+  IR::Store(ProxyType(), EmitInitialValue(), id_val);
 }
 
 void Array::EmitInit(IR::Value id_val) {

@@ -1,0 +1,76 @@
+#ifndef ICARUS_UNITY
+#include "Type.h"
+#endif
+
+extern FileType file_type;
+extern llvm::Module *global_module;
+
+namespace data {
+extern llvm::ConstantInt *const_uint(size_t n);
+} // namespace data
+
+Enum::Enum(const std::string &name, const std::vector<std::string> &members)
+    : bound_name(name), members(members), string_data(nullptr) {
+  auto num_members = members.size();
+  for (size_t i = 0; i < num_members; ++i) { int_values[members[i]] = i; }
+
+  if (file_type != FileType::None) {
+
+    llvm_type = *ProxyType();
+
+    std::vector<llvm::Constant *> enum_str_elems(num_members, nullptr);
+    for (size_t i = 0; i < num_members; ++i) {
+      llvm::Type *char_array_type = *Arr(Char, members[i].size() + 1);
+
+      auto enum_str = new llvm::GlobalVariable(
+          /*      Module = */ *global_module,
+          /*        Type = */ char_array_type,
+          /*  isConstant = */ true,
+          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+          /* Initializer = */ llvm::ConstantDataArray::getString(
+              llvm::getGlobalContext(), members[i], true),
+          /*        Name = */ members[i]);
+      enum_str->setAlignment(1);
+      enum_str_elems[i] = llvm::ConstantExpr::getGetElementPtr(
+          char_array_type, enum_str,
+          llvm::ArrayRef<llvm::Constant *>{data::const_uint(0),
+                                           data::const_uint(0)});
+    }
+
+    llvm::Type *llvm_global_type         = *Arr(Ptr(Char), num_members);
+    llvm::ArrayType *char_ptr_array_type = (llvm::ArrayType *)llvm_global_type;
+
+    string_data = new llvm::GlobalVariable(
+        /*      Module = */ *global_module,
+        /*        Type = */ char_ptr_array_type,
+        /*  isConstant = */ false,
+        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+        /* Initializer = */ llvm::ConstantArray::get(char_ptr_array_type,
+                                                     enum_str_elems),
+        /*        Name = */ bound_name + ".name.array");
+  }
+}
+
+size_t Enum::IndexOrFail(const std::string &str) const {
+  auto iter = int_values.find(str);
+  return (iter == int_values.end()) ? FAIL : iter->second;
+}
+
+size_t Enum::BytesAndAlignment() const {
+  auto num_members = members.size();
+  if (num_members < (1ul << (1ul << 3ul))) { return 1; }
+  if (num_members < (1ul << (1ul << 4ul))) { return 2; }
+  if (num_members < (1ul << (1ul << 5ul))) { return 4; }
+  // TODO Error message if you have too many members
+  return 8;
+}
+
+Type *Enum::ProxyType() const {
+  switch (BytesAndAlignment()) {
+  case 1: return Char;
+  case 2: return Uint16;
+  case 4: return Uint32;
+  case 8: return Uint;
+  default: UNREACHABLE;
+  }
+}

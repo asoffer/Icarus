@@ -19,7 +19,8 @@ namespace data {
 extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_uint32(size_t n);
+extern llvm::ConstantInt *const_uint16(uint16_t n);
+extern llvm::ConstantInt *const_uint32(uint32_t n);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
@@ -37,6 +38,8 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
   case ValType::I: return data::const_int(cmd_arg.as_int);
   case ValType::R: return data::const_real(cmd_arg.as_real);
   case ValType::U: return data::const_uint(cmd_arg.as_uint);
+  case ValType::U16: return data::const_uint16(cmd_arg.as_uint16);
+  case ValType::U32: return data::const_uint32(cmd_arg.as_uint32);
   case ValType::Null: return data::null(cmd_arg.as_null);
   case ValType::T:
     // TODO is this what I want? Used for just a few ops like print.
@@ -126,7 +129,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         assert(cmd.args[2].flag == IR::ValType::U);
         registers[cmd.result.reg] = builder.CreateGEP(
             IR_to_LLVM(ir_fn, cmd.args[1], registers),
-            {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint)});
+            {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint32)});
       } continue;
       case IR::Op::Phi: {
         registers[cmd.result.reg] = builder.CreatePHI(
