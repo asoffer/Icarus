@@ -18,8 +18,6 @@ extern Function *Func(Type *in, Type *out);
 extern Function *Func(std::vector<Type *> in, Type *out);
 extern Function *Func(Type *in, std::vector<Type *> out);
 extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
-extern Structure *Struct(const std::string &name,
-                         AST::StructLiteral *expr = nullptr);
 extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
 extern RangeType *Range(Type *t);
@@ -159,10 +157,10 @@ struct Enum : public Type {
   llvm::GlobalVariable *string_data;
 };
 
-struct Structure : public Type {
-  TYPE_FNS(Structure, struct);
+struct Struct : public Type {
+  TYPE_FNS(Struct, struct);
 
-  Structure(const std::string &name, AST::StructLiteral *expr);
+  Struct(const std::string &name);
 
   void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
 
@@ -173,7 +171,11 @@ struct Structure : public Type {
 
   size_t field_num(const std::string &name) const;
 
-  AST::StructLiteral *ast_expression;
+  void CompleteDefinition();
+
+  Scope *type_scope;
+  std::vector<AST::Declaration *> decls;
+
   std::string bound_name;
 
   void insert_field(const std::string &name, Type *ty,
@@ -190,6 +192,7 @@ struct Structure : public Type {
 
 private:
   IR::Func *init_func, *assign_func, *destroy_func;
+  bool completed_;
 };
 
 struct ParamStruct : public Type {
@@ -204,8 +207,8 @@ struct ParamStruct : public Type {
   std::string bound_name;
   Scope *type_scope;
   std::vector<AST::Declaration *> params, decls;
-  std::map<std::vector<IR::Value>, AST::StructLiteral *> cache;
-  std::map<AST::StructLiteral *, std::vector<IR::Value>> reverse_cache;
+  std::map<std::vector<IR::Value>, Struct *> cache;
+  std::map<Struct *, std::vector<IR::Value>> reverse_cache;
 
 private:
   IR::Func *ir_func;

@@ -19,7 +19,7 @@ Time::Eval Tuple::time() const {
   return output;
 }
 
-Time::Eval Structure::time() const {
+Time::Eval Struct::time() const {
   return has_vars ? Time::compile : Time::run;
 }
 

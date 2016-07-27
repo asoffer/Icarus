@@ -138,15 +138,6 @@ void FunctionLiteral::assign_scope() {
   ScopeStack.pop();
 }
 
-void StructLiteral::assign_scope() {
-  scope_ = CurrentScope();
-  type_scope->set_parent(CurrentScope());
-
-  ScopeStack.push(type_scope);
-  for (auto d : decls) { d->assign_scope(); }
-  ScopeStack.pop();
-}
-
 void Jump::assign_scope() { scope_ = CurrentScope(); }
 
 void DummyTypeExpr::assign_scope() {
@@ -158,6 +149,13 @@ void DummyTypeExpr::assign_scope() {
     ScopeStack.push(ps->type_scope);
     for (auto p : ps->params) { p->assign_scope(); }
     for (auto d : ps->decls) { d->assign_scope(); }
+    ScopeStack.pop();
+  } else if (value.as_type->is_struct()) {
+    auto s = (Struct *)value.as_type;
+    s->type_scope->set_parent(CurrentScope());
+
+    ScopeStack.push(s->type_scope);
+    for (auto d : s->decls) { d->assign_scope(); }
     ScopeStack.pop();
   }
 }

@@ -52,7 +52,6 @@ struct Node {
   virtual bool is_declaration() const { return false; }
   virtual bool is_indecl() const { return false; }
   virtual bool is_array_type() const { return false; }
-  virtual bool is_struct_literal() const { return false; }
   virtual bool is_statements() const { return false; }
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
@@ -217,17 +216,6 @@ struct InDecl : public Declaration {
   virtual bool is_indecl() const override { return true; }
   virtual bool is_declaration() const override { return false; }
   Expression *container;
-};
-
-struct StructLiteral : public Expression {
-  EXPR_FNS(StructLiteral, struct_literal);
-  static Node *Build(NPtrVec &&nodes);
-
-  void CompleteDefinition();
-
-  Scope *type_scope;
-
-  std::vector<Declaration *> decls;
 };
 
 struct Statements : public Node {

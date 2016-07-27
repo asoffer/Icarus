@@ -34,7 +34,6 @@ static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
-static std::map<AST::StructLiteral *, Structure *> struct_types_;
 static std::map<Array *, SliceType *> slices_;
 
 // TODO Not sure this is necessary
@@ -43,7 +42,6 @@ void GenerateLLVM() {
   for (auto t : tuple_types_) t->generate_llvm();
   for (auto t : pointer_types_) t->generate_llvm();
   for (auto t : fn_types_) { t->generate_llvm(); }
-  for (auto kv : struct_types_) kv.second->generate_llvm();
 }
 } // namespace TypeSystem
 
@@ -120,21 +118,6 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
   case 1: return Func(in.front(), out);
   default: return Func(Tup(in), out);
   }
-}
-
-Structure *Struct(const std::string &name, AST::StructLiteral *t) {
-  auto iter = TypeSystem::struct_types_.find(t);
-  if (iter != TypeSystem::struct_types_.end()) return iter->second;
-
-  // If you don't provide something to create it with,
-  // it's just meant to be a check for existance
-  // TODO merge this with Contexts
-  if (t == nullptr) return nullptr;
-
-  auto struct_type = new Structure(name, t);
-  t->value = IR::Value(struct_type);
-
-  return TypeSystem::struct_types_[t] = struct_type;
 }
 
 TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {

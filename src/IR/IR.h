@@ -221,7 +221,7 @@ Value Call(Type *out, Value, const std::vector<Value> &);
 Value Store(Type *rhs_type, Value, Value);
 Value Load(Type *load_type, Value);
 Value Cast(Type *in, Type *out, Value);
-Value Field(Structure *struct_type, Value ptr, size_t field_num);
+Value Field(Struct *struct_type, Value ptr, size_t field_num);
 Value Access(Type *type, Value index, Value ptr);
 Value ArrayData(Array *type, Value array_ptr);
 Value Malloc(Type *type, Value num);

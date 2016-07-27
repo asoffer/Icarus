@@ -63,8 +63,6 @@ FunctionLiteral::FunctionLiteral()
     : fn_scope(new FnScope), return_type_expr(nullptr), llvm_fn(nullptr),
       statements(nullptr), ir_func(nullptr) {}
 
-StructLiteral::StructLiteral() : type_scope(new Scope) {}
-
 While::While() : while_scope(new BlockScope(ScopeType::While)) {}
 For::For() : for_scope(new BlockScope(ScopeType::For)) {}
 } // namespace AST

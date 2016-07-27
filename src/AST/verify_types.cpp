@@ -203,17 +203,17 @@ static bool MatchCall(Type *lhs, Type *rhs,
   if (lhs->is_struct()) {
     if (!rhs->is_struct()) { return false; }
 
-    auto lhs_struct = (Structure *)lhs;
-    auto rhs_struct = (Structure *)rhs;
+    auto lhs_struct = (Struct *)lhs;
+    auto rhs_struct = (Struct *)rhs;
 
     // We know that LHS has a creator because it has variables. Thus, passing
     // this test means that these are instances of the same parametric struct.
     if (lhs_struct->creator != rhs_struct->creator) { return false; }
 
     auto lhs_params =
-        lhs_struct->creator->reverse_cache[lhs_struct->ast_expression];
+        lhs_struct->creator->reverse_cache[lhs_struct];
     auto rhs_params =
-        rhs_struct->creator->reverse_cache[rhs_struct->ast_expression];
+        rhs_struct->creator->reverse_cache[rhs_struct];
     if (lhs_params.size() != rhs_params.size()) { return false; }
 
     auto num_params       = lhs_params.size();
@@ -308,36 +308,6 @@ static Type *EvalWithVars(Type *type,
   } while (false)
 
 namespace AST {
-// TODO In what file should this be placed?
-// TODO this should take a context because flushing it out depends on the
-// context.
-void StructLiteral::CompleteDefinition() {
-  assert(value.as_type && value.as_type->is_struct());
-
-  auto tval = (Structure *)value.as_type;
-  if (!tval->field_num_to_name.empty()) { return; }
-
-  for (size_t i = 0; i < decls.size(); ++i) {
-    decls[i]->verify_types();
-
-    Type *decl_type;
-    if (decls[i]->type_expr) {
-      if (decls[i]->type_expr->type == Err ||
-          decls[i]->type_expr->type == Void ||
-          decls[i]->type_expr->type->is_parametric_struct()) {
-        decl_type = Err;
-      } else {
-        decl_type = Evaluate(decls[i]->type_expr).as_type;
-      }
-    } else {
-      decl_type = decls[i]->init_val->type;
-    }
-
-    tval->insert_field(decls[i]->identifier->token, decl_type,
-                       decls[i]->init_val);
-  }
-}
-
 void Terminal::verify_types() {
   // Anything other than a string is done when the terminal is created.
   // TODO Do string literal and then set the values later.
@@ -564,8 +534,8 @@ void Access::Verify(bool emit_errors) {
   }
 
   if (base_type->is_struct()) {
-    auto struct_type = (Structure *)base_type;
-    struct_type->ast_expression->CompleteDefinition();
+    auto struct_type = (Struct *)base_type;
+    struct_type->CompleteDefinition();
 
     auto member_type = struct_type->field(member_name);
     if (member_type) {
@@ -685,13 +655,13 @@ void Binop::verify_types() {
             } else {
               decl->value = IR::Value(Evaluate(decl->init_val).as_type);
 
-              if (decl->init_val->is_struct_literal()) {
-                assert(decl->identifier->value.as_type->is_struct());
-                ((Structure *)(decl->identifier->value.as_type))
-                    ->set_name(decl->identifier->token);
-              } else if (decl->init_val->is_dummy()) {
+              if (decl->init_val->is_dummy()) {
                 auto t = decl->init_val->value.as_type;
-                if (t->is_parametric_struct()) {
+                if (t->is_struct()) {
+                  assert(decl->identifier->value.as_type->is_struct());
+                  ((Struct *)decl->identifier->value.as_type)
+                      ->set_name(decl->identifier->token);
+                } else if (t->is_parametric_struct()) {
                   assert(
                       decl->identifier->value.as_type->is_parametric_struct());
                   ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
@@ -1389,24 +1359,17 @@ void Declaration::verify_types() {
     return;
   }
 
-  if (type->is_struct()) {
-    ((Structure *)type)->ast_expression->CompleteDefinition();
-  }
+  if (type->is_struct()) { ((Struct *)type)->CompleteDefinition(); }
 
   if (type == Type_ && IsInferred()) {
-    if (init_val->is_struct_literal()) {
-      assert(init_val->value.as_type && init_val->value.as_type->is_struct());
-      // Declaration looks like
-      //
-      // foo := struct { ... }
-
-      // Set the name of the struct.
-      // TODO mangle the name correctly (Where should this be done?)
-      ((Structure *)(init_val->value.as_type))->set_name(identifier->token);
-
-    } else if (init_val->is_dummy()) {
+    if (init_val->is_dummy()) {
       auto t = init_val->value.as_type;
-      if (t->is_parametric_struct()) {
+      if (t->is_struct()) {
+        // Set the name of the struct.
+        // TODO mangle the name correctly (Where should this be done?)
+        ((Struct *)t)->set_name(identifier->token);
+
+      } else if (t->is_parametric_struct()) {
         // Set the name of the parametric struct.
         // TODO mangle the name correctly (Where should this be done?)
         ((ParamStruct *)t)->bound_name = identifier->token;
@@ -1594,10 +1557,6 @@ void Conditional::verify_types() {
   }
 }
 
-void StructLiteral::verify_types() {
-  type = Type_;
-  for (auto d : decls) { VerificationQueue.push(d); }
-}
 
 void Jump::verify_types() {
   auto scope_ptr = scope_;
@@ -1626,10 +1585,9 @@ void DummyTypeExpr::verify_types() {
   if (value.as_type->is_parametric_struct()) {
     auto ps = (ParamStruct *)value.as_type;
     for (auto p : ps->params) { p->verify_types(); }
-    //  for (auto d : ps->decls) {
-    //    d->identifier->decl = d;
-    //    if (d->type_expr) { d->type_expr->verify_types(); }
-    //  }
+  } else if (value.as_type->is_struct()) {
+    auto s = (Struct *)value.as_type;
+    for (auto d : s->decls) { VerificationQueue.push(d); }
   }
 }
 } // namespace AST

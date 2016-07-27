@@ -56,24 +56,20 @@ namespace AST {
 //
 // Internal checks:
 // Each statement is a valid declaration
-Node *StructLiteral::Build(NPtrVec &&nodes) {
+static Node *BuildStructLiteral(NPtrVec &&nodes) {
   static size_t anon_struct_counter = 0;
 
-  auto struct_lit_ptr   = new StructLiteral;
-  struct_lit_ptr->loc   = nodes[0]->loc;
-  struct_lit_ptr->type  = Type_;
-  struct_lit_ptr->value = IR::Value(Struct(
-      "__anon.struct" + std::to_string(anon_struct_counter++), struct_lit_ptr));
+  auto struct_type =
+      new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
   for (auto &&n : ((Statements *)nodes[2])->statements) {
     if (n->is_declaration()) {
-      struct_lit_ptr->decls.push_back(steal<Declaration>(n));
+      struct_type->decls.push_back(steal<Declaration>(n));
     } else {
       Error::Log::Log(n->loc,
                     "Each struct member must be defined using a declaration.");
     }
   }
-
-  return struct_lit_ptr;
+  return new DummyTypeExpr(nodes[0]->loc, struct_type);
 }
 
 static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
@@ -783,7 +779,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
     return AST::BuildEnumLiteral(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "struct") == 0) {
-    return AST::StructLiteral::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
   assert(false);

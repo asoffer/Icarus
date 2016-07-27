@@ -86,7 +86,7 @@ void Pointer::EmitInit(IR::Value id_val) {
   IR::Store(this, IR::Value::Null(this), id_val);
 }
 
-void Structure::EmitInit(IR::Value id_val) {
+void Struct::EmitInit(IR::Value id_val) {
   if (!init_func) {
     auto saved_func  = IR::Func::Current;
     auto saved_block = IR::Block::Current;
@@ -123,7 +123,8 @@ void Structure::EmitInit(IR::Value id_val) {
 }
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
-void Function::EmitInit(IR::Value id_val) { /* Intentionally do nothing */ }
+void Function::EmitInit(IR::Value id_val) { /* Intentionally do nothing */
+}
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }

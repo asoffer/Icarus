@@ -20,7 +20,6 @@ Node *DummyTypeExpr::clone(LOOKUP_ARGS) {
 }
 
 Node *Expression::clone(LOOKUP_ARGS) { NOT_YET; }
-Node *StructLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *TokenNode::clone(LOOKUP_ARGS) { NOT_YET; }

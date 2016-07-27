@@ -156,7 +156,7 @@ void Array::EmitRepr(IR::Value val) {
 }
 
 void Tuple::EmitRepr(IR::Value val) { NOT_YET; }
-void Structure::EmitRepr(IR::Value val) { NOT_YET; }
+void Struct::EmitRepr(IR::Value val) { NOT_YET; }
 void TypeVariable::EmitRepr(IR::Value val) { NOT_YET; }
 void RangeType::EmitRepr(IR::Value val) { NOT_YET; }
 void SliceType::EmitRepr(IR::Value val) { NOT_YET; }

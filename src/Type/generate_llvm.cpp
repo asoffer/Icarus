@@ -88,7 +88,7 @@ void Tuple::generate_llvm() const {
   for (auto t : entries) t->generate_llvm();
 }
 
-void Structure::generate_llvm() const {
+void Struct::generate_llvm() const {
   if (time() == Time::compile || llvm_type) return;
 
   auto struct_type = llvm::StructType::create(global_module->getContext());

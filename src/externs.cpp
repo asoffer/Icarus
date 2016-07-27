@@ -28,7 +28,6 @@ bool timer   = false;
 bool ct_eval = false;
 } // namespace debug
 
-std::vector<AST::StructLiteral*> created_types;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 enum class Lib { String };

@@ -84,11 +84,6 @@ For::~For() {
   DELETE(for_scope);
 }
 
-StructLiteral::~StructLiteral() {
-  for (auto d : decls) DELETE(d);
-  DELETE(type_scope);
-}
-
 Jump::~Jump() {}
 DummyTypeExpr::~DummyTypeExpr() {}
 

@@ -42,7 +42,7 @@ IR::Value Access::EmitLVal() {
     }
 
     assert(ptee->is_struct());
-    auto struct_type = (Structure *)ptee;
+    auto struct_type = (Struct *)ptee;
     return IR::Field(struct_type, e_lval,
                      struct_type->field_name_to_num AT(member_name));
   }
@@ -66,7 +66,7 @@ IR::Value Access::EmitLVal() {
   }
 
   assert(etype->is_struct());
-  auto struct_type = (Structure *)etype;
+  auto struct_type = (Struct *)etype;
   return IR::Field(struct_type, e_lval,
                    struct_type->field_name_to_num AT(member_name));
 }
@@ -75,7 +75,6 @@ IR::Value Terminal::EmitLVal() { UNREACHABLE; }
 IR::Value Declaration::EmitLVal() { UNREACHABLE; }
 IR::Value FunctionLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayType::EmitLVal() { UNREACHABLE; }
-IR::Value StructLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value Case::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayLiteral::EmitLVal() { UNREACHABLE; }
 

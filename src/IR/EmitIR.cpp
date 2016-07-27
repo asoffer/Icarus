@@ -193,14 +193,15 @@ IR::Value Terminal::EmitIR() {
     return IR::Value();
   } break;
   case Language::Terminal::StringLiteral: {
+    assert(String);
     assert(String->is_struct());
     auto token     = value.as_cstr;
     auto tk_len    = IR::Value((size_t)std::strlen(value.as_cstr));
     auto ptr_index = FindOrInsertGlobalCStr(token);
     auto cstr_tmp  = IR::Value::FrameAddr(IR::Func::Current->PushSpace(String));
-    auto array_ptr = IR::Field((Structure *)String, cstr_tmp, 0);
+    auto array_ptr = IR::Field((Struct *)String, cstr_tmp, 0);
     IR::Store(Uint, tk_len, IR::ArrayLength(array_ptr));
-    IR::Store(Uint, tk_len, IR::Field((Structure *)String, cstr_tmp, 1));
+    IR::Store(Uint, tk_len, IR::Field((Struct *)String, cstr_tmp, 1));
 
     auto ptr = IR::Malloc(Char, IR::Value(tk_len));
     IR::Memcpy(ptr, ptr_index, IR::Value(tk_len));
@@ -1007,7 +1008,7 @@ IR::Value Access::EmitIR() {
   }
 
   if (base_type->is_struct()) {
-    auto struct_type = (Structure *)base_type;
+    auto struct_type = (Struct *)base_type;
 
     if (!type->stores_data()) { NOT_YET; }
     auto index = struct_type->field_name_to_num AT(member_name);
@@ -1415,5 +1416,4 @@ IR::Value Generic::EmitIR() {
 IR::Value InDecl::EmitIR() { UNREACHABLE; }
 
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
-IR::Value StructLiteral::EmitIR() { return IR::Value(value.as_type); }
 } // namespace AST

@@ -117,7 +117,7 @@ Value Access(Type *type, Value index, Value ptr) {
   return Value::Reg(cmd.result.reg);
 }
 
-Value Field(Structure *struct_type, Value ptr, size_t field_num) {
+Value Field(Struct *struct_type, Value ptr, size_t field_num) {
   Cmd cmd(Op::Field, true);
   cmd.args        = {Value(struct_type), ptr, Value(field_num)};
   cmd.result.type = Ptr(struct_type->field_type AT(field_num));

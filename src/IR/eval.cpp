@@ -424,7 +424,7 @@ void Cmd::Execute(StackFrame& frame) {
     UNREACHABLE;
   } break;
   case Op::Field: {
-    auto struct_type = (Structure *)(cmd_inputs[0].as_type);
+    auto struct_type = (Struct *)cmd_inputs[0].as_type;
 
     // TODO what if it's heap-allocated?
     assert(cmd_inputs[1].flag == ValType::StackAddr);
@@ -795,14 +795,12 @@ void Cmd::Execute(StackFrame& frame) {
     }
     auto iter = param_struct_type->cache.find(param_vals);
     if (iter == param_struct_type->cache.end()) {
-      auto struct_lit = new AST::StructLiteral;
-      param_struct_type->cache[param_vals] = struct_lit;
-      auto struct_type = new Structure("anon", struct_lit);
-      struct_lit->value = IR::Value(struct_type);
+      auto struct_type = new Struct("anon");
+      param_struct_type->cache[param_vals] = struct_type;
 
       frame.reg[result.reg] = IR::Value::None();
     } else {
-      frame.reg[result.reg] = IR::Value(iter->second->value.as_type);
+      frame.reg[result.reg] = IR::Value(iter->second);
     }
   } break;
   case Op::CreateStruct: {
@@ -816,8 +814,9 @@ void Cmd::Execute(StackFrame& frame) {
       assert(a.flag == ValType::T); // What if an argument isn't a type?
       param_vals.push_back(IR::Value(a.as_type));
     }
-    auto struct_lit                         = param_struct->cache[param_vals];
-    param_struct->reverse_cache[struct_lit] = param_vals;
+
+    auto struct_type                         = param_struct->cache[param_vals];
+    param_struct->reverse_cache[struct_type] = param_vals;
 
     Cursor loc;
     for (const auto &tuple_val : *vec_ptr) {
@@ -863,17 +862,17 @@ void Cmd::Execute(StackFrame& frame) {
         }
         term->value = init_val;
       }
-      struct_lit->decls.push_back(decl);
+      struct_type->decls.push_back(decl);
     }
 
-    ScopeStack.push(struct_lit->type_scope);
-    for (auto d : struct_lit->decls) { d->assign_scope(); }
+    ScopeStack.push(struct_type->type_scope);
+    for (auto d : struct_type->decls) { d->assign_scope(); }
     ScopeStack.pop();
 
-    struct_lit->verify_types();
-    struct_lit->CompleteDefinition();
+    // TODO fix this or just delete it: struct_type->verify_types();
+    struct_type->CompleteDefinition();
 
-    frame.reg[result.reg] = Value(struct_lit->value.as_type);
+    frame.reg[result.reg] = Value(struct_type);
   } break;
   }
 }

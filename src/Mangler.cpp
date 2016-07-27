@@ -37,7 +37,7 @@ std::string Mangle(const Type *t, bool prefix) {
     ss << "P" << Mangle(((Pointer *)t)->pointee, false);
 
   } else if (t->is_struct()) {
-    auto struct_type = (Structure *)t;
+    auto struct_type = (Struct *)t;
     ss << "S" << struct_type->bound_name.size() << struct_type->bound_name;
 
   } else if (t->is_function()) {

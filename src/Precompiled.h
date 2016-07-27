@@ -60,7 +60,6 @@ struct Declaration;
 struct Binop;
 struct Statements;
 struct FunctionLiteral;
-struct StructLiteral;
 } // namespace AST
 
 struct Type;
@@ -70,7 +69,7 @@ struct Tuple;
 struct Pointer;
 struct Function;
 struct Enum;
-struct Structure;
+struct Struct;
 struct ParamStruct;
 struct TypeVariable;
 struct RangeType;

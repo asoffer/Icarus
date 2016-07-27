@@ -105,12 +105,12 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     if (fn) {
       IR::Call(Void, IR::Value(fn), {to_var, from_val});
     } else {
-      ((Structure *)lhs_type)->EmitDefaultAssign(to_var, from_val);
+      ((Struct *)lhs_type)->EmitDefaultAssign(to_var, from_val);
     }
   }
 }
 
-void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
+void Struct::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
   if (!assign_func) {
     auto saved_func  = IR::Func::Current;
     auto saved_block = IR::Block::Current;
@@ -134,8 +134,9 @@ void Structure::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
         field_val = IR::Load(the_field_type, field_val);
       }
 
-      Type::CallAssignment(ast_expression->scope_, the_field_type,
-                           the_field_type, field_val, field_var);
+      // TODO is that the right scope?
+      Type::CallAssignment(type_scope, the_field_type, the_field_type,
+                           field_val, field_var);
     }
 
     IR::Block::Current->SetUnconditional(IR::Func::Current->exit());

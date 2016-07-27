@@ -48,8 +48,7 @@ void Array::EmitDestroy(IR::Value id_val) {
   IR::Call(Void, IR::Value(destroy_func), {id_val});
 }
 
-
-void Structure::EmitDestroy(IR::Value id_val) {
+void Struct::EmitDestroy(IR::Value id_val) {
   if (!destroy_func) {
     auto saved_func  = IR::Func::Current;
     auto saved_block = IR::Block::Current;

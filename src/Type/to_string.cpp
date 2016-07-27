@@ -68,8 +68,6 @@ std::string Tuple::to_string() const {
 
 std::string TypeVariable::to_string() const { return identifier->token; }
 
-std::string Structure::to_string() const { return bound_name; }
-
 std::string RangeType::to_string() const {
   return "Range(" + end_type->to_string() + ")";
 }
