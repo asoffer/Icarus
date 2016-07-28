@@ -101,7 +101,9 @@ GenerateSpecifiedFunctionDecl(const std::string &name,
 static bool MatchCall(Type *lhs, Type *rhs,
                       std::map<TypeVariable *, Type *> &matches,
                       std::string &error_message) {
-  if (!lhs->has_vars) {
+
+  // std::cerr << *lhs << " vs " << *rhs << std::endl;
+  if (!lhs->has_vars()) {
     if (lhs == rhs) { return true; }
     error_message +=
         rhs->to_string() + " does not match " + lhs->to_string() + ".\n";
@@ -210,6 +212,13 @@ static bool MatchCall(Type *lhs, Type *rhs,
     // this test means that these are instances of the same parametric struct.
     if (lhs_struct->creator != rhs_struct->creator) { return false; }
 
+    assert(lhs_struct->creator);
+    assert(lhs_struct->creator->reverse_cache.find(lhs_struct) !=
+           lhs_struct->creator->reverse_cache.end());
+    assert(rhs_struct->creator);
+    assert(rhs_struct->creator->reverse_cache.find(rhs_struct) !=
+           rhs_struct->creator->reverse_cache.end());
+
     auto lhs_params =
         lhs_struct->creator->reverse_cache[lhs_struct];
     auto rhs_params =
@@ -250,7 +259,13 @@ static bool MatchCall(Type *lhs, Type *rhs,
 static Type *EvalWithVars(Type *type,
                           const std::map<TypeVariable *, Type *> &lookup) {
 
-  if (!type->has_vars) { return type; }
+  //std::cerr << *type << " with: " << type->has_vars() << "\n";
+  //for (const auto &kv : lookup) {
+  //  std::cerr << "    " << *kv.first << " => " << *kv.second << std::endl;
+  //}
+  //std::cerr << "-\n";
+
+  if (!type->has_vars()) { return type; }
 
   if (type->is_type_variable()) {
     auto iter = lookup.find((TypeVariable *)type);
@@ -289,6 +304,30 @@ static Type *EvalWithVars(Type *type,
     return Tup(entries);
   }
 
+  if (type->is_struct()) {
+    ParamStruct *ps = ((Struct *)type)->creator;
+    assert(ps);
+    auto local_stack = new IR::LocalStack;
+    std::vector<IR::Value> param_vals;
+
+    for (auto p : ps->params) { 
+      // TODO this is hacky and surely incorrect, and doesn't do everything
+      assert(p->type == Type_);
+      for (auto kv : lookup) {
+        if (kv.first->identifier->token != p->identifier->token) { continue; }
+        param_vals.emplace_back(kv.second);
+        goto next_param;
+      }
+      UNREACHABLE;
+    next_param:;
+    }
+
+    auto result = ps->IRFunc()->Call(local_stack, param_vals);
+    delete local_stack;
+    assert(result.flag == IR::ValType::T);
+    return result.as_type;
+  }
+
   std::cerr << *type << std::endl;
   UNREACHABLE;
 }
@@ -322,6 +361,18 @@ void Terminal::verify_types() {
   for (auto scope_ptr = s; scope_ptr; scope_ptr = scope_ptr->parent)           \
     for (auto d : scope_ptr->DeclRegistry)
 
+static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
+                                                        const std::string &id) {
+  std::vector<Declaration *> matching_decls;
+  LOOP_OVER_DECLS_FROM(scope, d) {
+    if (d->identifier->token != id) { continue; }
+    d->verify_types();
+    if (d->type == Err) { continue; }
+    matching_decls.push_back(d);
+  }
+  return matching_decls;
+}
+
 void Identifier::verify_types() {
   STARTING_CHECK;
 
@@ -331,12 +382,7 @@ void Identifier::verify_types() {
     return;
   }
 
-  std::vector<Declaration *> potential_decls;
-
-  LOOP_OVER_DECLS_FROM(scope_, d) {
-    if (token != d->identifier->token) { continue; }
-    potential_decls.push_back(d);
-  }
+  auto potential_decls = AllDeclsInScopeWithId(scope_, token);
 
   if (potential_decls.empty()) {
     type = Err;
@@ -559,19 +605,6 @@ void Access::Verify(bool emit_errors) {
   assert(type && "type is nullptr in access");
 }
 
-static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
-                                                        const std::string &id) {
-  std::vector<Declaration *> matching_decls;
-  LOOP_OVER_DECLS_FROM(scope, d) {
-    if (d->identifier->token != id) { continue; }
-    d->verify_types();
-    if (d->type == Err) { continue; }
-    matching_decls.push_back(d);
-  }
-  return matching_decls;
-}
-
-
 void Binop::verify_types() {
   STARTING_CHECK;
   if (op == Language::Operator::Call && lhs->is_access()) {
@@ -787,7 +820,7 @@ void Binop::verify_types() {
       type             = ((Function *)evaled_type)->output;
 
       // Generate if you need to
-      if (lhs->type->has_vars) {
+      if (lhs->type->has_vars()) {
         auto fn_expr = GetFunctionLiteral(lhs);
 
         auto in_type = ((Function *)evaled_type)->input;
@@ -1457,7 +1490,7 @@ void FunctionLiteral::verify_types() {
   bool input_has_vars = false;
   for (auto in : inputs) {
     in->verify_types();
-    input_has_vars |= in->type->has_vars;
+    input_has_vars |= in->type->has_vars();
   }
 
   if (!input_has_vars) { VerificationQueue.push(statements); }

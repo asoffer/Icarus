@@ -84,3 +84,5 @@ std::string Primitive::to_string() const {
   case PrimType::Uint32: return "uint32";
   }
 }
+
+bool Primitive::private_has_vars() { return false; }

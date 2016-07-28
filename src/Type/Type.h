@@ -27,14 +27,15 @@ extern SliceType *Slice(Array *a);
 
 #define BASIC_METHODS                                                          \
   virtual std::string to_string() const ENDING;                                \
-  virtual Time::Eval time() const ENDING;                                      \
-  virtual void generate_llvm() const ENDING;                                   \
+  virtual Time::Eval time() ENDING;                                            \
+  virtual void generate_llvm() ENDING;                                         \
   virtual void EmitInit(IR::Value id_val) ENDING;                              \
   virtual void EmitDestroy(IR::Value id_val) ENDING;                           \
   virtual IR::Value EmitInitialValue() const ENDING;                           \
   virtual void EmitRepr(IR::Value id_val) ENDING;                              \
   virtual size_t bytes() const ENDING;                                         \
-  virtual size_t alignment() const ENDING
+  virtual size_t alignment() const ENDING;                                     \
+  virtual bool private_has_vars() ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -44,7 +45,7 @@ extern SliceType *Slice(Array *a);
 
 struct Type {
 public:
-  Type() : llvm_type(nullptr), has_vars(false) {}
+  Type() : llvm_type(nullptr), var_check(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
 
@@ -83,7 +84,15 @@ public:
   virtual bool stores_data() const;
 
   mutable llvm::Type *llvm_type;
-  bool has_vars;
+  mutable bool var_check;
+
+  inline bool has_vars() {
+    if (var_check) { return false; }
+    var_check = true;
+    bool result = private_has_vars();
+    var_check = false;
+    return result;
+  }
 };
 
 #undef ENDING
@@ -218,9 +227,7 @@ struct TypeVariable : public Type {
   TYPE_FNS(TypeVariable, type_variable);
 
   TypeVariable(AST::Identifier *id, AST::Expression *test)
-      : identifier(id), test(test) {
-    has_vars = true;
-  }
+      : identifier(id), test(test) {}
 
   AST::Identifier *identifier;
   AST::Expression *test;
@@ -229,7 +236,7 @@ struct TypeVariable : public Type {
 struct RangeType : public Type {
   TYPE_FNS(RangeType, range);
 
-  RangeType(Type *t) : end_type(t) { has_vars = end_type->has_vars; }
+  RangeType(Type *t) : end_type(t) {}
 
   Type *end_type;
 };
@@ -237,7 +244,7 @@ struct RangeType : public Type {
 struct SliceType : public Type {
   TYPE_FNS(SliceType, slice);
 
-  SliceType(Array *a) : array_type(a) { has_vars = array_type->has_vars; }
+  SliceType(Array *a) : array_type(a) {}
 
   Array *array_type;
 };

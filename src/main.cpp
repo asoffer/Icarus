@@ -189,7 +189,8 @@ int main(int argc, char *argv[]) {
     }
 
     for (auto decl : Scope::Global->DeclRegistry) {
-      if (decl->arg_val || !decl->type->is_function() || decl->type->has_vars) {
+      if (decl->arg_val || !decl->type->is_function() ||
+          decl->type->has_vars()) {
         continue;
       }
       decl->identifier->EmitIR();

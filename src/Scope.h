@@ -54,7 +54,6 @@ struct BlockScope : public Scope {
   virtual ~BlockScope() {}
   virtual bool is_block_scope() { return true; }
 
-  void InsertInit();
   void InsertDestroy();
 
   void MakeReturn(Type *ret_type, IR::Value val);

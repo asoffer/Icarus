@@ -6,7 +6,7 @@ IR::Value Primitive::EmitInitialValue() const {
   switch (type_) {
   case PrimType::Err: UNREACHABLE;
   case PrimType::Unknown: UNREACHABLE;
-  case PrimType::Type: UNREACHABLE;
+  case PrimType::Type: return IR::Value(Void);
   case PrimType::Void: UNREACHABLE;
   case PrimType::NullPtr: UNREACHABLE;
   case PrimType::Bool: return IR::Value(false);

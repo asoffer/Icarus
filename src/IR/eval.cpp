@@ -364,7 +364,7 @@ void Cmd::Execute(StackFrame& frame) {
         switch (cmd_inputs[1].flag) {
         case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
         case ValType::Null: *ptr = nullptr; break;
-        default: NOT_YET;
+        default: frame.curr_block->dump(); NOT_YET;
         }
         break;
       }
@@ -795,7 +795,14 @@ void Cmd::Execute(StackFrame& frame) {
     }
     auto iter = param_struct_type->cache.find(param_vals);
     if (iter == param_struct_type->cache.end()) {
-      auto struct_type = new Struct("anon");
+      std::stringstream ss;
+      ss << param_struct_type->bound_name << "(";
+      if (!param_vals.empty()) { ss << param_vals[0]; }
+      for (size_t i = 1; i < param_vals.size(); ++i) {
+        ss << "," << param_vals[i];
+      }
+      ss << ")";
+      auto struct_type = new Struct(ss.str());
       param_struct_type->cache[param_vals] = struct_type;
 
       frame.reg[result.reg] = IR::Value::None();
@@ -817,6 +824,7 @@ void Cmd::Execute(StackFrame& frame) {
 
     auto struct_type                         = param_struct->cache[param_vals];
     param_struct->reverse_cache[struct_type] = param_vals;
+    struct_type->creator                     = param_struct;
 
     Cursor loc;
     for (const auto &tuple_val : *vec_ptr) {
@@ -869,7 +877,6 @@ void Cmd::Execute(StackFrame& frame) {
     for (auto d : struct_type->decls) { d->assign_scope(); }
     ScopeStack.pop();
 
-    // TODO fix this or just delete it: struct_type->verify_types();
     struct_type->CompleteDefinition();
 
     frame.reg[result.reg] = Value(struct_type);

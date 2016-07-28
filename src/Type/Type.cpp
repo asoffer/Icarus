@@ -39,42 +39,49 @@ size_t RangeType::alignment() const { NOT_YET; }
 Array::Array(Type *t)
     : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),
       data_type(t), len(0), fixed_length(false) {
-  dimension =
-      data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
-  has_vars = data_type->has_vars;
+  dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
 }
+
+bool Array::private_has_vars() { return data_type->has_vars(); }
 
 Array::Array(Type *t, size_t l)
     : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),
       data_type(t), len(l), fixed_length(true) {
   dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
-  has_vars = data_type->has_vars;
 }
 
-Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {
+Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {}
+
+bool Tuple::private_has_vars() {
   for (const auto &entry : entries) {
-    if (has_vars) break;
-    has_vars = entry->has_vars;
+    if (entry->has_vars()) { return true; }
   }
+  return false;
 }
 
-Pointer::Pointer(Type *t) : pointee(t) { has_vars = pointee->has_vars; }
+Pointer::Pointer(Type *t) : pointee(t) {}
+bool Pointer::private_has_vars() { return pointee->has_vars(); }
+bool SliceType::private_has_vars() { return array_type->has_vars(); }
+bool RangeType::private_has_vars() { return end_type->has_vars(); }
+bool TypeVariable::private_has_vars() { return true; }
 
-Function::Function(Type *in, Type *out) : input(in), output(out) {
-  has_vars = input->has_vars || output->has_vars;
-}
+Function::Function(Type *in, Type *out) : input(in), output(out) {}
+
+bool Function::private_has_vars() { return input->has_vars() || output->has_vars(); }
 
 std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
 
 Type::operator llvm::Type *() const {
-  generate_llvm();
+  // TODO propogate the annoying constness
+  const_cast<Type *>(this)->generate_llvm();
   return llvm_type;
 }
 
 Function::operator llvm::FunctionType *() const {
-  generate_llvm();
+  // TODO propogate the annoying constness
+  const_cast<Function *>(this)->generate_llvm();
   return (llvm::FunctionType *)llvm_type;
 }
 

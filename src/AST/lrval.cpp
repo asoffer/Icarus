@@ -64,7 +64,7 @@ void FunctionLiteral::lrvalue_check() {
   bool input_has_vars = false;
   for (auto in : inputs) {
     in->lrvalue_check();
-    input_has_vars |= in->type->has_vars;
+    input_has_vars |= in->type->has_vars();
   }
 
   if (!input_has_vars) { statements->lrvalue_check(); }

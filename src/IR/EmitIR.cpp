@@ -37,7 +37,7 @@ AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
 }
 
 IR::Value Evaluate(AST::Expression *expr) {
-  if (expr->is_dummy()) { return expr->value; }
+  if (expr->value != IR::Value::None()) { return expr->value; }
   auto old_func  = IR::Func::Current;
   auto old_block = IR::Block::Current;
 
@@ -507,8 +507,7 @@ IR::Value Binop::EmitIR() {
     if (lhs->type == Type_) {
       auto t = Evaluate(lhs).as_type;
       assert(t->is_parametric_struct());
-      return IR::Call(type, IR::Value(((ParamStruct *)t)->IRFunc()),
-                      args);
+      return IR::Call(type, IR::Value(((ParamStruct *)t)->IRFunc()), args);
     } else {
       return IR::Call(type, lhs->EmitIR(), args);
     }
@@ -720,7 +719,7 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
-  if (type->has_vars) { return IR::Value(); }
+  if (type->has_vars()) { return IR::Value(); }
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -799,7 +798,6 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   }
 
   IR::Block::Current->SetUnconditional(fn_scope->entry_block);
-  fn_scope->InsertInit();
 
   statements->EmitIR();
 
@@ -1045,7 +1043,8 @@ IR::Value While::EmitIR() {
   IR::Block::Current->SetConditional(cond_val, while_scope->entry_block,
                                      land_block);
 
-  while_scope->InsertInit();
+  IR::Block::Current = while_scope->entry_block;
+  IR::Store(Char, CONTINUE_FLAG, while_scope->GetFnScope()->exit_flag);
   IR::Block::Current->SetUnconditional(body_block);
   IR::Block::Current = body_block;
   statements->EmitIR();
@@ -1102,7 +1101,6 @@ IR::Value Conditional::EmitIR() {
 
   for (size_t i = 0; i < body_scopes.size(); ++i) {
     IR::Block::Current = body_scopes[i]->entry_block;
-    body_scopes[i]->InsertInit();
     IR::Block::Current->SetUnconditional(body_blocks[i]);
     IR::Block::Current = body_blocks[i];
 
@@ -1311,8 +1309,9 @@ IR::Value For::EmitIR() {
   for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
 
   IR::Block::Current->SetUnconditional(for_scope->entry_block);
-  for_scope->InsertInit();
 
+  IR::Block::Current = for_scope->entry_block;
+  IR::Store(Char, CONTINUE_FLAG, for_scope->GetFnScope()->exit_flag);
   statements->EmitIR();
 
   auto incr_block = IR::Func::Current->AddBlock("for-incr");

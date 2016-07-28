@@ -4,7 +4,7 @@
 
 extern llvm::Module* global_module;
 
-void Array::generate_llvm() const {
+void Array::generate_llvm() {
   if (time() == Time::compile || llvm_type) { return; }
 
   if (fixed_length) {
@@ -21,7 +21,7 @@ void Array::generate_llvm() const {
   }
 }
 
-void Pointer::generate_llvm() const {
+void Pointer::generate_llvm() {
   if (time() == Time::compile || llvm_type) { return; }
   pointee->generate_llvm();
   llvm_type = llvm::PointerType::getUnqual(pointee->llvm_type);
@@ -33,7 +33,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
     return;
   }
 
-  if (t == Void || t == Type_ || t->has_vars) { return; }
+  if (t == Void || t == Type_ || t->has_vars()) { return; }
   assert(t->llvm_type);
 
   if (t->is_primitive() || t->is_enum()) {
@@ -48,7 +48,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
   }
 }
 
-void Function::generate_llvm() const {
+void Function::generate_llvm() {
   if (time() == Time::compile || time() == Time::mixed || llvm_type) return;
   input->generate_llvm();
   output->generate_llvm();
@@ -83,18 +83,18 @@ void Function::generate_llvm() const {
   llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
 }
 
-void Tuple::generate_llvm() const {
+void Tuple::generate_llvm() {
   if (time() == Time::compile || llvm_type) return;
   for (auto t : entries) t->generate_llvm();
 }
 
-void Struct::generate_llvm() const {
+void Struct::generate_llvm() {
   if (time() == Time::compile || llvm_type) return;
 
   auto struct_type = llvm::StructType::create(global_module->getContext());
   llvm_type        = struct_type;
 
-  for (const auto &f : field_type) f->generate_llvm();
+  for (auto &f : field_type) f->generate_llvm();
 
   size_t num_data_fields = field_type.size();
   std::vector<llvm::Type *> llvm_fields(num_data_fields, nullptr);
@@ -115,10 +115,10 @@ void Struct::generate_llvm() const {
   struct_type->setName(bound_name);
 }
 
-void TypeVariable::generate_llvm() const {}
-void RangeType::generate_llvm() const {} // TODO Assert false?
-void SliceType::generate_llvm() const {} // TODO Assert false?
+void TypeVariable::generate_llvm() {}
+void RangeType::generate_llvm() {} // TODO Assert false?
+void SliceType::generate_llvm() {} // TODO Assert false?
 
-void ParamStruct::generate_llvm() const {} // Never to be called
-void Enum::generate_llvm() const {}        // Generated on creation
-void Primitive::generate_llvm() const {}   // Generated on creation
+void ParamStruct::generate_llvm() {} // Never to be called
+void Enum::generate_llvm() {}        // Generated on creation
+void Primitive::generate_llvm() {}   // Generated on creation

@@ -36,6 +36,7 @@ IR::Func *ParamStruct::IRFunc() {
 
   auto vec = IR::InitFieldVec(decls.size());
   for (size_t i = 0; i < decls.size(); ++i) {
+
     size_t len   = decls[i]->identifier->token.size();
     char *id_str = new char[len + 1];
     strcpy(id_str, decls[i]->identifier->token.c_str());
@@ -62,6 +63,7 @@ IR::Func *ParamStruct::IRFunc() {
   return ir_func;
 }
 
+bool ParamStruct::private_has_vars() { return false; }
 size_t ParamStruct::bytes() const { NOT_YET; }
 size_t ParamStruct::alignment() const { NOT_YET; }
 

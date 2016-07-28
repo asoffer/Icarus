@@ -77,25 +77,6 @@ void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
   // error that no code there will ever be executed.
 }
 
-void BlockScope::InsertInit() {
-  assert(entry_block);
-
-  if (is_loop_scope()) {
-    IR::Store(Char, CONTINUE_FLAG, GetFnScope()->exit_flag);
-  }
-
-  IR::Block::Current = entry_block;
-
-  for (auto decl : DeclRegistry) {
-    if (decl->arg_val || decl->is_in_decl() ||
-        decl->type->time() == Time::compile) {
-      continue;
-    }
-
-    decl->type->EmitInit(decl->identifier->EmitLVal());
-  }
-}
-
 void BlockScope::InsertDestroy() {
   assert(exit_block);
 

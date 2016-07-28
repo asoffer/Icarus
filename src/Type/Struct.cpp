@@ -34,6 +34,14 @@ void Struct::CompleteDefinition() {
   completed_ = true;
 }
 
+bool Struct::private_has_vars() {
+  CompleteDefinition();
+  for (auto ft: field_type) {
+    if (ft->has_vars()) { return true; }
+  }
+  return false;
+}
+
 size_t Struct::bytes() const {
   assert(completed_);
   size_t num_bytes = 0;
@@ -98,8 +106,6 @@ void Struct::insert_field(const std::string &name, Type *ty,
 
   // By default, init_val is nullptr;
   init_values.emplace_back(init_val);
-
-  has_vars |= ty->has_vars;
 }
 
 std::string Struct::to_string() const { return bound_name; }
