@@ -1,13 +1,12 @@
 extern AST::Node *BuildBinaryOperator(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
-extern AST::Node *BuildKWExprBlockOneLiner(NPtrVec &&nodes);
-extern AST::Node *BuildKWExprBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
-extern AST::Node *BuildKWBlockOneLiner(NPtrVec &&nodes);
-extern AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes);
 extern AST::Node *Parenthesize(NPtrVec &&nodes);
 extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
-
+extern AST::Node *BracedStatements(NPtrVec &&nodes);
+extern AST::Node *OneBracedStatement(NPtrVec &&nodes);
+extern AST::Node *EmptyBraces(NPtrVec &&nodes);
+ 
 #define RESERVED_MSG(index)                                                    \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
@@ -196,11 +195,9 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, prog, {bof, stmts, eof}, drop_all_but<1>),
 
     Rule(0x03, stmts, {op_lt}, AST::Jump::build),
-    Rule(0x02, stmts,
-         {(expr | fn_expr | kw_else | if_stmt | one_stmt), newline},
+    Rule(0x02, stmts, {(expr | fn_expr | kw_else | if_stmt), newline},
          AST::Statements::build_one),
-    Rule(0x01, stmts,
-         {stmts, (expr | fn_expr | stmts | if_stmt | one_stmt), newline},
+    Rule(0x01, stmts, {stmts, (expr | fn_expr | stmts | if_stmt), newline},
          AST::Statements::build_more),
 
     Rule(0x02, comma, {comma, newline}, drop_all_but<0>),
@@ -219,54 +216,25 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, r_bracket, {r_bracket, newline}, drop_all_but<0>),
     Rule(0x00, r_brace, {r_brace, newline}, drop_all_but<0>),
 
-    Rule(0x00, expr, {fn_expr, l_brace, stmts, r_brace},
-         AST::FunctionLiteral::build),
-    Rule(0x00, expr, {fn_expr, l_brace, (expr | fn_expr), r_brace},
-         AST::FunctionLiteral::BuildOneLiner),
-    Rule(0x00, expr, {fn_expr, l_brace, r_brace},
-         AST::FunctionLiteral::BuildNoLiner),
+    Rule(0x00, braced_stmts, {l_brace, stmts, r_brace}, BracedStatements),
+    Rule(0x00, braced_stmts, {l_brace, (expr | fn_expr), r_brace},
+         OneBracedStatement),
+    Rule(0x00, braced_stmts, {l_brace, r_brace}, EmptyBraces),
 
-    // TODO need single statement to be another type to make merging actually
-    // work correctly.
-    Rule(0x02, one_stmt, {kw_expr_block, EXPR, l_brace, stmts, r_brace},
-         BuildKWExprBlock),
-    Rule(0x02, one_stmt,
-         {kw_expr_block, EXPR, l_brace, (expr | fn_expr), r_brace},
-         BuildKWExprBlockOneLiner),
-    Rule(0x02, one_stmt, {kw_expr_block, EXPR, l_brace, r_brace},
-         BuildKWExprBlockNoLiner),
+    Rule(0x00, expr, {fn_expr, braced_stmts}, AST::FunctionLiteral::build),
 
-    Rule(0x02, if_stmt, {kw_if, EXPR, l_brace, stmts, r_brace},
-         BuildKWExprBlock),
-    Rule(0x02, if_stmt, {kw_if, EXPR, l_brace, (expr | fn_expr), r_brace},
-         BuildKWExprBlockOneLiner),
-    Rule(0x02, if_stmt, {kw_if, EXPR, l_brace, r_brace},
-         BuildKWExprBlockNoLiner),
+    Rule(0x02, stmts, {kw_expr_block, EXPR, braced_stmts}, BuildKWExprBlock),
+    Rule(0x02, if_stmt, {kw_if, EXPR, braced_stmts}, BuildKWExprBlock),
 
-    Rule(0x02, expr, {kw_struct, EXPR, l_brace, stmts, r_brace},
-         BuildKWExprBlock),
-    Rule(0x02, expr, {kw_struct, EXPR, l_brace, r_brace},
-         BuildKWExprBlockOneLiner),
-    Rule(0x02, expr, {kw_struct, EXPR, l_brace, r_brace},
-         BuildKWExprBlockNoLiner),
+    Rule(0x02, expr, {kw_struct, EXPR, braced_stmts}, BuildKWExprBlock),
 
     Rule(0x01, if_stmt, {if_stmt, kw_else, if_stmt},
-         AST::Conditional::build_else_if), // TODO stmts-> if_stmt
-    Rule(0x01, if_stmt, {if_stmt, kw_else, l_brace, stmts, r_brace},
+         AST::Conditional::build_else_if),
+    Rule(0x01, if_stmt, {if_stmt, kw_else, braced_stmts},
          AST::Conditional::build_else),
-    Rule(0x01, if_stmt, {if_stmt, kw_else, l_brace, (expr | fn_expr), r_brace},
-         AST::Conditional::BuildElseOneLiner),
-    Rule(0x01, if_stmt, {if_stmt, kw_else, l_brace, r_brace},
-         AST::Conditional::BuildElseNoLiner),
 
     // TODO missing first statement is an error-production
 
-    Rule(0x01, expr, {(kw_block | kw_struct), l_brace, stmts, r_brace},
-         BuildKWBlock),
-    Rule(0x01, expr,
-         {(kw_block | kw_struct), l_brace, (expr | fn_expr), r_brace},
-         BuildKWBlockOneLiner),
-    Rule(0x01, expr, {(kw_block | kw_struct), l_brace, r_brace},
-         BuildKWBlockNoLiner),
+    Rule(0x01, expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 };
 } // namespace Language

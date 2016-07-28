@@ -183,7 +183,7 @@ enum NodeType : unsigned int {
   prog          = 1u << 4,
   stmts         = 1u << 5,
   if_stmt       = 1u << 6,
-  one_stmt      = 1u << 7,
+  braced_stmts  = 1u << 7,
   expr          = 1u << 8,
   fn_expr       = 1u << 9,
   l_paren       = 1u << 10,

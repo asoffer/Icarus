@@ -52,7 +52,7 @@ AST::Node *BuildEmptyParen(NPtrVec &&nodes) {
 
 namespace AST {
 // Input guarantees:
-// [struct] [l_brace] [statements] [r_brace]
+// [struct] [braced_statements]
 //
 // Internal checks:
 // Each statement is a valid declaration
@@ -61,7 +61,8 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
 
   auto struct_type =
       new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
-  for (auto &&n : ((Statements *)nodes[2])->statements) {
+  assert(nodes[1]->is_statements());
+  for (auto &&n : ((Statements *)nodes[1])->statements) {
     if (n->is_declaration()) {
       struct_type->decls.push_back(steal<Declaration>(n));
     } else {
@@ -85,7 +86,7 @@ static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
     }
   }
 
-  for (auto &&node : ((Statements *)nodes[3])->statements) {
+  for (auto &&node : ((Statements *)nodes[2])->statements) {
     decls.push_back(steal<Declaration>(node));
   }
 
@@ -100,14 +101,14 @@ static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
 }
 
 // Input guarantees:
-// [enum] [l_brace] [statements] [r_brace]
+// [enum] [braced_statements]
 //
 // Internal checks:
 // Each statement is an identifier. No identifier is repeated.
 static Node *BuildEnumLiteral(NPtrVec &&nodes) {
   std::vector<std::string> members;
-  if (nodes[2]->is_statements()) {
-    auto stmts = (Statements *)nodes[2];
+  if (nodes[1]->is_statements()) {
+    auto stmts = (Statements *)nodes[1];
     for (auto &&stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
         Error::Log::Log(stmt->loc, "Enum members must be identifiers.");
@@ -126,7 +127,7 @@ static Node *BuildEnumLiteral(NPtrVec &&nodes) {
 }
 
 // Input guarantees:
-// [case] [l_brace] [statements] [r_brace]
+// [case] [braced_statements]
 //
 // Internal checks:
 // Each statement is a binary operator using '=>'. The last one has a left-hand
@@ -135,7 +136,8 @@ Node *Case::Build(NPtrVec &&nodes) {
   auto case_ptr = new Case;
   case_ptr->loc = nodes[0]->loc;
 
-  auto stmts     = (Statements *)nodes[2];
+  assert(nodes[1]->is_statements());
+  auto stmts     = (Statements *)nodes[1];
   auto num_stmts = stmts->statements.size();
   for (size_t i = 0; i < num_stmts; ++i) {
     auto stmt = stmts->statements[i];
@@ -156,7 +158,7 @@ Node *Case::Build(NPtrVec &&nodes) {
 }
 
 // Input guarantees:
-// [if] [expression] [l_brace] [statements] [r_brace]
+// [if] [expression] [braced_statements]
 //
 // Internal checks:
 // expression is not an assignemnt
@@ -168,25 +170,30 @@ Node *Conditional::BuildIf(NPtrVec &&nodes) {
   CheckEqualsNotAssignment(cond,
                            "Expression in while-statement is an assignment. ");
 
-  if_stmt->statements = {steal<Statements>(nodes[3])};
+  assert(nodes[2]->is_statements());
+  if_stmt->statements = {steal<Statements>(nodes[2])};
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   return if_stmt;
 }
 
 // Input guarantees:
-// [while] [expression] [l_brace] [statements] [r_brace]
+// [while] [expression] [braced_statements]
 //
 // Internal checks:
 // expression is not an assignment.
 Node *While::Build(NPtrVec &&nodes) {
+  assert(nodes[2]->is_statements());
   auto while_stmt        = new While;
-  while_stmt->statements = steal<Statements>(nodes[3]);
+  while_stmt->statements = steal<Statements>(nodes[2]);
 
   while_stmt->condition = steal<Expression>(nodes[1]);
   CheckEqualsNotAssignment(while_stmt->condition,
                            "Condition in while-loop is an assignment. ");
 
-  return while_stmt;
+  auto stmts = new AST::Statements;
+  stmts->loc = while_stmt->loc;
+  stmts->statements.push_back(while_stmt);
+  return stmts;
 }
 
 static void CheckForLoopDeclaration(Expression *maybe_decl,
@@ -199,14 +206,14 @@ static void CheckForLoopDeclaration(Expression *maybe_decl,
 }
 
 // Input guarantees:
-// [for] [expression] [l_brace] [statements] [r_brace]
+// [for] [expression] [braced_statements]
 //
 // Internal checks:
 // [expression] is either an in-declaration or a list of in-declarations
 Node *For::Build(NPtrVec &&nodes) {
   auto for_stmt        = new For;
   for_stmt->loc        = nodes[0]->loc;
-  for_stmt->statements = steal<Statements>(nodes[3]);
+  for_stmt->statements = steal<Statements>(nodes[2]);
 
   auto iter = steal<Expression>(nodes[1]);
 
@@ -225,7 +232,10 @@ Node *For::Build(NPtrVec &&nodes) {
     CheckForLoopDeclaration(iter, for_stmt->iterators);
   }
 
-  return for_stmt;
+  auto stmts = new AST::Statements;
+  stmts->loc = for_stmt->loc;
+  stmts->statements.push_back(for_stmt);
+  return stmts;
 }
 
 // Input guarantees:
@@ -553,30 +563,12 @@ Node *Generic::Build(NPtrVec &&nodes) {
   return generic;
 }
 
-Node *FunctionLiteral::BuildOneLiner(NPtrVec &&nodes) {
-  nodes[2] = Statements::build_one({steal<Node>(nodes[2])});
-  return FunctionLiteral::build(std::forward<NPtrVec &&>(nodes));
-}
-
-Node *FunctionLiteral::BuildNoLiner(NPtrVec &&nodes) {
-  nodes.push_back(nodes.back());
-  nodes[nodes.size() - 2] = new Statements;
-
-  return FunctionLiteral::build(std::forward<NPtrVec &&>(nodes));
-}
-
 Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  if (nodes[2]->is_statements() ) {
-    fn_lit->statements = steal<Statements>(nodes[2]);
-  } else {
-    fn_lit->statements = new Statements;
-    fn_lit->statements->statements.push_back(steal<Node>(nodes[2]));
-  }
-
-  // TODO scopes inside these statements should point to fn_scope.
+  assert(nodes[1]->is_statements());
+  fn_lit->statements = steal<Statements>(nodes[1]);
 
   auto binop_ptr = (Binop *)nodes[0];
 
@@ -639,7 +631,7 @@ Node *Conditional::build_else_if(NPtrVec &&nodes) {
 Node *Conditional::build_else(NPtrVec &&nodes) {
   auto if_stmt           = steal<Conditional>(nodes[0]);
   if_stmt->else_line_num = nodes[1]->loc.line_num;
-  if_stmt->statements.push_back(steal<Statements>(nodes[3]));
+  if_stmt->statements.push_back(steal<Statements>(nodes[2]));
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   return if_stmt;
 }
@@ -658,26 +650,52 @@ Node *Conditional::BuildElseNoLiner(NPtrVec &&nodes) {
 
 Node *Jump::build(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
-  auto tk = ((TokenNode *)nodes[0])->token;
+  auto tk   = ((TokenNode *)nodes[0])->token;
+  Jump *jmp = nullptr;
   if (strcmp(tk, "break") == 0) {
-    return new Jump(nodes[0]->loc, JumpType::Break);
+    jmp = new Jump(nodes[0]->loc, JumpType::Break);
 
   } else if (strcmp(tk, "continue") == 0) {
-    return new Jump(nodes[0]->loc, JumpType::Continue);
+    jmp = new Jump(nodes[0]->loc, JumpType::Continue);
 
   } else if (strcmp(tk, "return") == 0) {
-    return new Jump(nodes[0]->loc, JumpType::Return);
+    jmp = new Jump(nodes[0]->loc, JumpType::Return);
 
   } else if (strcmp(tk, "repeat") == 0) {
-    return new Jump(nodes[0]->loc, JumpType::Repeat);
+    jmp = new Jump(nodes[0]->loc, JumpType::Repeat);
 
   } else if (strcmp(tk, "restart") == 0) {
-    return new Jump(nodes[0]->loc, JumpType::Restart);
+    jmp = new Jump(nodes[0]->loc, JumpType::Restart);
   }
-  assert(false && "No other options");
+  assert(jmp);
+
+  auto stmts = new AST::Statements;
+  stmts->loc = jmp->loc;
+  stmts->statements.push_back(jmp);
+  return stmts;
 }
 
 } // namespace AST
+
+AST::Node *BracedStatements(NPtrVec &&nodes) {
+  assert(nodes[1]->is_statements());
+  return steal<AST::Node>(nodes[1]);
+}
+
+AST::Node *OneBracedStatement(NPtrVec &&nodes) {
+  auto stmts = new AST::Statements;
+  stmts->loc = nodes[1]->loc;
+  auto single_stmt = steal<AST::Node>(nodes[1]);
+  stmts->statements.push_back(single_stmt);
+  return stmts;
+}
+
+AST::Node *EmptyBraces(NPtrVec &&nodes) {
+  auto stmts = new AST::Statements;
+  stmts->loc = nodes[0]->loc;
+  return stmts;
+}
+
 
 AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   static const std::map<std::string, Language::Operator> chain_ops = {
@@ -782,18 +800,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
     return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
-  assert(false);
-}
-AST::Node *BuildKWBlockOneLiner(NPtrVec &&nodes) {
-  nodes[2] = AST::Statements::build_one({steal<AST::Node>(nodes[2]), nullptr});
-  return BuildKWBlock(std::forward<NPtrVec &&>(nodes));
-}
-
-AST::Node *BuildKWBlockNoLiner(NPtrVec &&nodes) {
-  nodes.push_back(nodes.back());
-  nodes[nodes.size() - 2] = new AST::Statements;
-
-  return BuildKWBlock(std::forward<NPtrVec &&>(nodes));
+  UNREACHABLE;
 }
 
 AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
@@ -813,19 +820,7 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
     return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
-  assert(false);
-}
-
-AST::Node *BuildKWExprBlockOneLiner(NPtrVec &&nodes) {
-  nodes[2] = AST::Statements::build_one({steal<AST::Node>(nodes[2]), nullptr});
-  return BuildKWExprBlock(std::forward<NPtrVec &&>(nodes));
-}
-
-AST::Node *BuildKWExprBlockNoLiner(NPtrVec &&nodes) {
-  nodes.push_back(nodes.back());
-  nodes[nodes.size() - 2] = new AST::Statements;
-
-  return BuildKWExprBlock(std::forward<NPtrVec &&>(nodes));
+  UNREACHABLE;
 }
 
 AST::Node *Parenthesize(NPtrVec &&nodes) {
