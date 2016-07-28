@@ -466,11 +466,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         if (ret_type == Void) {
           builder.CreateCall(fn, args);
         } else if (ret_type->is_primitive() || ret_type->is_pointer() ||
-                   ret_type->is_enum()) {
+                   ret_type->is_enum() || ret_type->is_function()) {
           registers[cmd.result.reg] = builder.CreateCall(fn, args);
         } else if (ret_type->is_tuple()) {
             NOT_YET;
         } else {
+          // TODO move this to the correct location
           auto ret_val = builder.CreateAlloca(*ret_type);
           args.push_back(ret_val);
           registers[cmd.result.reg] = ret_val;
@@ -478,11 +479,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
-        if (cmd.result.type->is_function()) {
-          registers[cmd.result.reg] = args[0];
-        } else {
-          registers[cmd.result.reg] = builder.CreateLoad(args[0]);
-        }
+        registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
       case IR::Op::Store: {
         // TODO or do we want to actually do the store (it'll be easily
@@ -586,9 +583,11 @@ void Exit::Conditional::GenerateLLVM(
 void Exit::Return::GenerateLLVM(Func *fn,
                                 const std::vector<llvm::Value *> &registers) {
   if (fn->fn_type->output->is_primitive() ||
-      fn->fn_type->output->is_pointer() || fn->fn_type->output->is_enum()) {
+      fn->fn_type->output->is_function() || fn->fn_type->output->is_pointer() ||
+      fn->fn_type->output->is_enum()) {
     assert(fn->fn_type->output != Void);
     builder.CreateRet(IR_to_LLVM(fn, ret_val, registers));
+
   } else {
     // TODO return some other value
     builder.CreateRetVoid();

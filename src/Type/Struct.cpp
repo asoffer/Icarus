@@ -43,7 +43,7 @@ bool Struct::private_has_vars() {
 }
 
 size_t Struct::bytes() const {
-  assert(completed_);
+  const_cast<Struct *>(this)->CompleteDefinition();
   size_t num_bytes = 0;
   for (auto ft : field_type) {
     num_bytes += ft->bytes();
@@ -54,7 +54,7 @@ size_t Struct::bytes() const {
 }
 
 size_t Struct::alignment() const {
-  assert(completed_);
+  const_cast<Struct *>(this)->CompleteDefinition();
   size_t alignment_val = 0;
   for (auto ft : field_type) {
     auto a = ft->alignment();
