@@ -163,7 +163,9 @@ int main(int argc, char *argv[]) {
     for (auto stmt : global_statements->statements) {
       if (stmt->is_declaration() ||
           (stmt->is_unop() &&
-           ((AST::Unop *)stmt)->op == Language::Operator::Import)) {
+           ((((AST::Unop *)stmt)->op == Language::Operator::Eval &&
+             ((AST::Unop *)stmt)->type == Void) ||
+            ((AST::Unop *)stmt)->op == Language::Operator::Import))) {
         continue;
       }
       Error::Log::GlobalNonDecl(stmt->loc);
@@ -266,20 +268,23 @@ int main(int argc, char *argv[]) {
 
       // Generate all the functions
       if (file_type != FileType::None) {
-        for (auto f : all_functions) { f->GenerateLLVM(); }
+        for (auto f : all_functions) {
+          if (f->generated == IR::Func::Gen::ToLink) { continue; }
+          f->GenerateLLVM();
+        }
       }
 
       { // Generate code for everything else
         ScopeStack.push(Scope::Global);
         for (auto stmt : global_statements->statements) {
           if (stmt->is_declaration()) { continue; }
-          if (stmt->is_unop() &&
-              ((AST::Unop *)stmt)->op == Language::Operator::Import) {
+          if (stmt->is_unop()) {
+            if (((AST::Unop *)stmt)->op == Language::Operator::Eval) {
+              Evaluate(((AST::Unop *)stmt)->operand);
+            }
             continue;
           }
-          std::cerr << *stmt << std::endl;
-          NOT_YET;
-          // stmt->generate_code();
+          UNREACHABLE;
         }
         ScopeStack.pop();
       }
