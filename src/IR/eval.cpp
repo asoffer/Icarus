@@ -704,7 +704,6 @@ void Cmd::Execute(StackFrame& frame) {
 
     } else if (cmd_inputs[0].as_type->is_enum()) {
       auto enum_type = (Enum *)cmd_inputs[0].as_type;
-      // TODO read the actual names rather than just the numeric values
       fprintf(stderr, "%s.%s", enum_type->to_string().c_str(),
               enum_type->members[cmd_inputs[1].as_uint].c_str());
 

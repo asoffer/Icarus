@@ -63,10 +63,6 @@ extern std::vector<llvm::Constant *> LLVMGlobals;
 
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
-
-// TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
-// a datarace will corrupt the memory. When we start threading, we need to lock
-// the map before usage.
 std::map<std::string, SourceFile *> source_map;
 
 #include "tools.h"
@@ -105,9 +101,6 @@ int main(int argc, char *argv[]) {
   AST::Statements *global_statements;
 
   RUN(timer, "AST Setup") {
-    // TODO write the language rules to guarantee that the parser produces a
-    // Statements node at top level.
-
     // Combine all statement nodes from separately-parsed files.
     global_statements = new AST::Statements;
 
@@ -184,7 +177,22 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Emit-IR") {
     for (auto decl : Scope::Global->DeclRegistry) {
-      if (decl->arg_val || decl->type->is_function()) { continue; }
+      if (decl->arg_val || decl->type->time() == Time::compile ||
+          decl->type->is_function()) {
+        continue;
+      }
+
+      if (decl->type->is_pointer()) {
+        Error::Log::Log(decl->loc, "We do not support global pointers yet.");
+        continue;
+      }
+
+
+      if (decl->type->is_array()) {
+        Error::Log::Log(decl->loc, "We do not support global arrays yet.");
+        continue;
+      }
+
       decl->stack_loc = IR::Value::CreateGlobal();
       if (decl->IsInferred() || decl->IsCustomInitialized()) {
         assert(decl->init_val);
@@ -206,6 +214,11 @@ int main(int argc, char *argv[]) {
       decl->identifier->EmitIR();
     }
   }
+
+  CHECK_FOR_ERRORS; // NOTE: The only reason we check for errors here is because
+                    // we want to stop due to finding a global array or pointer.
+                    // Once we allow global arrays, we don't need this check
+                    // anymore.
 
   if (file_type != FileType::None) {
     RUN(timer, "Code-gen") {
