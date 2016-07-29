@@ -136,7 +136,7 @@ Value PushField(Value fields, const char *name, Value ty, Value init) {
 Value InitFieldVec(size_t num_decls) {
   Cmd cmd(Op::InitFieldVec, true);
   cmd.args        = {Value(num_decls)};
-  cmd.result.type = RawPtr;
+  cmd.result.type = Ptr(Char);
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }

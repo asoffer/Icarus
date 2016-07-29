@@ -2,17 +2,11 @@
 #include "SourceFile.h"
 #include "Type/Type.h"
 #include "Scope.h"
-#endif
-
-#include <mach/mach.h>
-#include <mach/mach_time.h>
-
 #include "IR/IR.h"
-
-#include <ncurses.h>
-
 #include "util/command_line_args.h"
 #include "util/timer.h"
+#include <ncurses.h>
+#endif
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
@@ -23,9 +17,7 @@
     }                                                                          \
   } while (false)
 
-namespace TypeSystem {
-extern void Initialize();
-} // namespace TypeSystem
+std::vector<IR::Func *> all_functions;
 
 extern IR::Value Evaluate(AST::Expression *expr);
 
@@ -40,9 +32,6 @@ extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
 } // namespace data
 
-static size_t start_time;
-static size_t end_time;
-
 extern std::vector<IR::Func *> all_functions;
 extern void Parse(SourceFile *sf);
 extern std::stack<Scope *> ScopeStack;
@@ -52,9 +41,7 @@ static Timer timer;
 extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
 
-namespace TypeSystem {
-extern void GenerateLLVM();
-} // namespace TypeSystem
+extern void GenerateLLVMTypes();
 
 namespace IR {
 extern std::vector<IR::Value> InitialGlobals;
@@ -78,8 +65,6 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Icarus Initialization") {
     if (debug::ct_eval) { initscr(); }
-    TypeSystem::Initialize();
-    Scope::Global = new BlockScope(ScopeType::Global);
   }
 
   if (file_type != FileType::None) { InitializeLLVM(); }
@@ -152,7 +137,7 @@ int main(int argc, char *argv[]) {
 
     CHECK_FOR_ERRORS;
 
-    if (file_type != FileType::None) { TypeSystem::GenerateLLVM(); }
+    if (file_type != FileType::None) { GenerateLLVMTypes(); }
   }
 
   RUN(timer, "(L/R)value checking") {

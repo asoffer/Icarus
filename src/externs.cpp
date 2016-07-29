@@ -4,15 +4,16 @@
 #include "Scope.h"
 #endif
 
-std::vector<IR::Func *> all_functions;
+llvm::Module *global_module         = nullptr;
+llvm::TargetMachine *target_machine = nullptr;
+llvm::IRBuilder<> builder(llvm::getGlobalContext());
 
 namespace Language {
 // Associativity stored in the lowest two bits.
 size_t precedence(Operator op) {
   switch (op) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  case Operator::name:                                                         \
-    return (((prec) << 2) + (assoc));
+  case Operator::name: return (((prec) << 2) + (assoc));
 #include "config/operator.conf"
 #undef OPERATOR_MACRO
   }
@@ -25,13 +26,6 @@ bool parser  = false;
 bool timer   = false;
 bool ct_eval = false;
 } // namespace debug
-
-llvm::IRBuilder<> builder(llvm::getGlobalContext());
-
-enum class Lib { String };
-
-std::map<Lib, AST::Identifier *> lib_type;
-std::queue<std::string> file_queue;
 
 namespace Hashtag {
 static std::vector<const char *> table = {"const"};
@@ -60,15 +54,10 @@ size_t Get(const std::string &tag) {
 }
 } // namespace Hashtag
 
-llvm::Module *global_module         = nullptr;
-llvm::TargetMachine *target_machine = nullptr;
-
-// TODO Reduce the dependency on the C standard library. This probably means
-// writing platform-specific assembly.
 namespace cstdlib {
 llvm::Constant *malloc() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "malloc", llvm::FunctionType::get(*Uint, {*RawPtr}, false));
+      "malloc", llvm::FunctionType::get(*Uint, {*Ptr(Char)}, false));
   return func_;
 }
 } // namespace cstdlib
@@ -127,14 +116,6 @@ llvm::Value *global_string(const std::string &s) {
              : iter->second;
 }
 } // namespace data
-
-// TODO make calls to call_repr not have to first check if we pass the
-// object or a pointer to the object.
-//
-// This really ought to be inlined, but that's not possible keeping it externed
-llvm::Value *PtrCallFix(Type *t, llvm::Value *ptr) {
-  return (t->is_big()) ? ptr : builder.CreateLoad(ptr);
-}
 
 IR::Value PtrCallFix(Type *t, IR::Value v) {
   return t->is_big() ? v : IR::Load(t, v);

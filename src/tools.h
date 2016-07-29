@@ -1,3 +1,5 @@
+//NOTE: Only to be included by main.cpp
+
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 

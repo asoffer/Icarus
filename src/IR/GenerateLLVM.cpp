@@ -19,14 +19,14 @@ static llvm::Constant *printf() {
 
 static llvm::Constant *free() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "free", llvm::FunctionType::get(*Void, {*RawPtr}, false));
+      "free", llvm::FunctionType::get(*Void, {*Ptr(Char)}, false));
   return func_;
 }
 
 static llvm::Constant *memcpy() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "memcpy",
-      llvm::FunctionType::get(*Ptr(Char), {*RawPtr, *RawPtr, *Uint}, false));
+      "memcpy", llvm::FunctionType::get(
+                    *Ptr(Char), {*Ptr(Char), *Ptr(Char), *Uint}, false));
   return func_;
 }
 } // namespace cstdlib
@@ -422,7 +422,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         break;
       case IR::Op::Free:
         builder.CreateCall(cstdlib::free(),
-                           builder.CreateBitCast(args[0], *RawPtr));
+                           builder.CreateBitCast(args[0], *Ptr(Char)));
         break;
       case IR::Op::ArrayLength:
         registers[cmd.result.reg] = builder.CreateGEP(

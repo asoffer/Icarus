@@ -3,9 +3,9 @@
 #include "IR/IR.h"
 #endif
 
-BlockScope *Scope::Global = nullptr; // Initialized in main
-
 static size_t scope_num_counter = 0;
+BlockScope *Scope::Global       = new BlockScope(ScopeType::Global);
+
 Scope::Scope()
     : parent(Scope::Global), containing_function_(nullptr),
       name("anon" + std::to_string(scope_num_counter++)) {}
@@ -94,9 +94,3 @@ void BlockScope::InsertDestroy() {
 // TODO what should the exit_flag default be?
 FnScope::FnScope()
     : BlockScope(ScopeType::Function), fn_type(nullptr), exit_flag('\0') {}
-
-bool Scope::is_loop_scope() {
-  if (!is_block_scope()) return false;
-  auto bs = (BlockScope *)this;
-  return bs->type == ScopeType::For || bs->type == ScopeType::While;
-}

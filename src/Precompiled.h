@@ -21,11 +21,6 @@
 
 #include "util/pstr.h"
 
-// Each time a file is imported, it will be added to the queue. We then parse
-// each file off the queue until the queue is empty. We avoid circular calls by
-// checking if the map is already filled before parsing.
-extern std::queue<std::string> file_queue;
-
 namespace debug {
 extern bool timer;
 extern bool parser;

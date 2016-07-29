@@ -2,31 +2,24 @@
 #include "Type/Type.h"
 #endif
 
-Type *Err, *Unknown, *NullPtr, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
-    *RawPtr, *String, *Uint16, *Uint32;
+Type *Bool    = new Primitive(PrimType::Bool);
+Type *Char    = new Primitive(PrimType::Char);
+Type *Int     = new Primitive(PrimType::Int);
+Type *Real    = new Primitive(PrimType::Real);
+Type *Type_   = new Primitive(PrimType::Type);
+Type *Uint    = new Primitive(PrimType::Uint);
+Type *Void    = new Primitive(PrimType::Void);
+Type *Uint16  = new Primitive(PrimType::Uint16);
+Type *Uint32  = new Primitive(PrimType::Uint32);
+Type *Unknown = new Primitive(PrimType::Unknown);
+Type *NullPtr = new Primitive(PrimType::NullPtr);
+Type *Err     = new Primitive(PrimType::Err);
+Type *String  = nullptr;
 
-namespace TypeSystem {
-std::map<const char *, Type *> Literals;
-
-void Initialize() {
-  // TODO do we need to pair of strings and their types?
-  Literals["bool"] = Bool = new Primitive(PrimType::Bool);
-  Literals["char"] = Char = new Primitive(PrimType::Char);
-  Literals["int"] = Int = new Primitive(PrimType::Int);
-  Literals["real"] = Real = new Primitive(PrimType::Real);
-  Literals["type"] = Type_ = new Primitive(PrimType::Type);
-  Literals["uint"] = Uint = new Primitive(PrimType::Uint);
-  Literals["void"] = Void = new Primitive(PrimType::Void);
-
-  Uint16  = new Primitive(PrimType::Uint16);
-  Uint32  = new Primitive(PrimType::Uint32);
-  Unknown = new Primitive(PrimType::Unknown);
-  NullPtr = new Primitive(PrimType::NullPtr);
-  Err     = new Primitive(PrimType::Err);
-  RawPtr  = Ptr(Char);
-
-  RawPtr->generate_llvm();
-}
+std::map<const char *, Type *> PrimitiveTypes{
+    {"bool", Bool},  {"char", Char}, {"int", Int},   {"real", Real},
+    {"type", Type_}, {"uint", Uint}, {"void", Void},
+};
 
 static std::vector<Array *> array_types_;
 static std::vector<Tuple *> tuple_types_;
@@ -37,62 +30,61 @@ static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<Array *, SliceType *> slices_;
 
 // TODO Not sure this is necessary
-void GenerateLLVM() {
-  for (auto t : array_types_) t->generate_llvm();
-  for (auto t : tuple_types_) t->generate_llvm();
-  for (auto t : pointer_types_) t->generate_llvm();
+void GenerateLLVMTypes() {
+  for (auto t : array_types_) { t->generate_llvm(); }
+  for (auto t : tuple_types_) { t->generate_llvm(); }
+  for (auto t : pointer_types_) { t->generate_llvm(); }
   for (auto t : fn_types_) { t->generate_llvm(); }
 }
-} // namespace TypeSystem
 
 Array *Arr(Type *t, size_t len) {
-  for (auto arr : TypeSystem::array_types_)
+  for (auto arr : array_types_)
     if (arr->fixed_length && arr->len == len && arr->data_type == t) return arr;
 
   auto arr_type = new Array(t, len);
-  TypeSystem::array_types_.push_back(arr_type);
+  array_types_.push_back(arr_type);
   return arr_type;
 }
 
 Array *Arr(Type *t) {
-  for (auto arr : TypeSystem::array_types_)
+  for (auto arr : array_types_)
     if (!arr->fixed_length && arr->data_type == t) return arr;
 
   auto arr_type = new Array(t);
-  TypeSystem::array_types_.push_back(arr_type);
+  array_types_.push_back(arr_type);
   return arr_type;
 }
 
 Tuple *Tup(const std::vector<Type *> &types) {
-  for (auto tuple_type : TypeSystem::tuple_types_) {
+  for (auto tuple_type : tuple_types_) {
     if (tuple_type->entries == types) return tuple_type;
   }
 
   auto tuple_type = new Tuple(types);
-  TypeSystem::tuple_types_.push_back(tuple_type);
+  tuple_types_.push_back(tuple_type);
 
   return tuple_type;
 }
 
 Pointer *Ptr(Type *t) {
-  for (const auto &ptr : TypeSystem::pointer_types_) {
+  for (const auto &ptr : pointer_types_) {
     if (ptr->pointee == t) return ptr;
   }
 
   auto ptr_type = new Pointer(t);
-  TypeSystem::pointer_types_.push_back(ptr_type);
+  pointer_types_.push_back(ptr_type);
   return ptr_type;
 }
 
 Function *Func(Type *in, Type *out) {
-  for (const auto &fn_type : TypeSystem::fn_types_) {
+  for (const auto &fn_type : fn_types_) {
     if (fn_type->input != in) continue;
     if (fn_type->output != out) continue;
     return fn_type;
   }
 
   auto fn_type = new Function(in, out);
-  TypeSystem::fn_types_.push_back(fn_type);
+  fn_types_.push_back(fn_type);
   return fn_type;
 }
 
@@ -122,22 +114,22 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
 
 TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {
   // These won't be leaked, but they aren't uniqued.
-  auto iter = TypeSystem::vars_.find(id);
-  if (iter != TypeSystem::vars_.end()) return iter->second;
+  auto iter = vars_.find(id);
+  if (iter != vars_.end()) return iter->second;
 
-  return TypeSystem::vars_[id] = new TypeVariable(id, test);
+  return vars_[id] = new TypeVariable(id, test);
 }
 
 RangeType *Range(Type *t) {
-  auto iter = TypeSystem::ranges_.find(t);
-  if (iter != TypeSystem::ranges_.end()) return iter->second;
+  auto iter = ranges_.find(t);
+  if (iter != ranges_.end()) return iter->second;
 
-  return TypeSystem::ranges_[t] = new RangeType(t);
+  return ranges_[t] = new RangeType(t);
 }
 
 SliceType *Slice(Array *a) {
-  auto iter = TypeSystem::slices_.find(a);
-  if (iter != TypeSystem::slices_.end())return iter->second;
+  auto iter = slices_.find(a);
+  if (iter != slices_.end()) return iter->second;
 
-  return TypeSystem::slices_[a] = new SliceType(a);
+  return slices_[a] = new SliceType(a);
 }

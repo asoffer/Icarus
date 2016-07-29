@@ -22,7 +22,7 @@ pstr::pstr(const char *c_string) {
     current_space = page_size - malloc_overhead;
   }
 
-  std::memcpy(current_head, c_string, input_length);
+  memcpy(current_head, c_string, input_length);
   ptr = current_head;
   current_head += input_length;
   current_space -= input_length;

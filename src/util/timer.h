@@ -1,13 +1,18 @@
-#ifndef ICARUS_TIMER_H
-#define ICARUS_TIMER_H
+#ifndef ICARUS_UTIL_TIMER_H
+#define ICARUS_UTIL_TIMER_H
+
+#include <mach/mach.h>
+#include <mach/mach_time.h>
 
 struct Timer {
-  Timer(){};
+  Timer() : start(0), end(0){};
+
+  size_t start, end;
 
   std::vector<const char *> msgs;
   std::vector<size_t> times;
 
-  ~Timer() {
+  ~Timer(){
     if (debug::timer) {
       size_t total = 0;
       for (auto time : times) { total += time; }
@@ -24,12 +29,13 @@ struct Timer {
   }
 };
 
-// Abusing a for-loop to do timings correctly.
+// Abusing a for-loop to get scoping to look correct
 #define RUN(timer, msg)                                                        \
   for (bool TIME_FLAG = true;                                                  \
-      start_time  = mach_absolute_time(), TIME_FLAG;                           \
-      end_time    = mach_absolute_time(),                                      \
+      timer.start  = mach_absolute_time(), TIME_FLAG;                          \
+      timer.end    = mach_absolute_time(),                                     \
       timer.msgs.push_back(msg),                                               \
-      timer.times.push_back(end_time - start_time),                            \
+      timer.times.push_back(timer.end - timer.start),                          \
       TIME_FLAG = false)
-#endif // ICARUS_TIMER_H
+
+#endif // ICARUS_UTIL_TIMER_H

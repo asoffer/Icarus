@@ -5,6 +5,7 @@ enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
 
 FileType file_type = FileType::Bin;
 const char *output_file_name = "a.out";
+std::queue<std::string> file_queue;
 
 static void
 ShowUsage(char *argv0) {

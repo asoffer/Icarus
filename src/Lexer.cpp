@@ -40,9 +40,7 @@ static inline bool IsNonGraphic(char c) {
     return NNT(new AST::TokenNode(loc, tk), Language::nt);                     \
   }
 
-namespace TypeSystem {
-extern std::map<const char *, Type *> Literals;
-} // namespace TypeSystem
+extern std::map<const char *, Type *> PrimitiveTypes;
 
 // Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
@@ -144,7 +142,7 @@ NNT Lexer::NextWord() {
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
-  for (const auto &type_lit : TypeSystem::Literals) {
+  for (const auto &type_lit : PrimitiveTypes) {
     if (type_lit.first == token) {
       RETURN_TERMINAL(Type, Type_, IR::Value(type_lit.second));
     }

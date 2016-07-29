@@ -18,7 +18,7 @@ struct Scope {
 
   virtual bool is_block_scope() { return false; }
   virtual bool is_function_scope() { return false; }
-  virtual bool is_loop_scope();
+  bool is_loop_scope();
 
   // Returns an identifier pointer if there is a declaration of this identifier
   // in this scope. Otherwise it returns nullptr. It does *not* look in parent
@@ -72,5 +72,11 @@ struct FnScope : public BlockScope {
 
   IR::Value exit_flag, ret_val;
 };
+
+inline bool Scope::is_loop_scope() {
+  if (!is_block_scope()) return false;
+  auto bs = (BlockScope *)this;
+  return bs->type == ScopeType::For || bs->type == ScopeType::While;
+}
 
 #endif // ICARUS_SCOPE_H
