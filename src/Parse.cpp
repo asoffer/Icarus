@@ -68,8 +68,7 @@ static bool ShouldShift(ParseState *ps) {
     return false;
   }
 
-  // For now, we require struct params to be in parentheses.
-  // TODO determine if this is necessary.
+  // We require struct params to be in parentheses.
   if (ps->lookahead_.node_type == l_paren && ps->get_type<1>() == kw_struct) {
     return true;
   }

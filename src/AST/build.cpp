@@ -677,7 +677,7 @@ AST::Node *BracedStatements(NPtrVec &&nodes) {
 
 AST::Node *OneBracedStatement(NPtrVec &&nodes) {
   auto stmts = new AST::Statements;
-  stmts->loc = nodes[1]->loc;
+  stmts->loc = nodes[0]->loc;
   auto single_stmt = steal<AST::Node>(nodes[1]);
   stmts->statements.push_back(single_stmt);
   return stmts;
@@ -689,6 +689,20 @@ AST::Node *EmptyBraces(NPtrVec &&nodes) {
   return stmts;
 }
 
+AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes) {
+  assert(nodes[1]->is_statements());
+  auto stmts = steal<AST::Statements>(nodes[1]);
+  stmts->loc = nodes[0]->loc;
+  if (nodes[2]->is_statements()) {
+    auto second_stmts = (AST::Statements *)nodes[2];
+    for (auto s : second_stmts->statements) {
+      stmts->statements.push_back(steal<AST::Node>(s));
+    }
+  } else {
+    stmts->statements.push_back(steal<AST::Node>(nodes[2]));
+  }
+  return stmts;
+}
 
 AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   static const std::map<std::string, Language::Operator> chain_ops = {

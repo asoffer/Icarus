@@ -39,7 +39,7 @@ unity:
 	@$(COMPILER) $(STDS) $(WARN) $(BUILD_FLAGS) $(OPTS) $(LLVM_CXX) $(LLVM_LINK) $(LINK_FLAGS) src/unity.cc -o $(TARGET)
 
 rules:
-	@touch ~/icarus/src/Parser.cpp
+	@touch ~/icarus/src/Parse.cpp
 	@make
 
 rebuild:

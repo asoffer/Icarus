@@ -6,7 +6,7 @@ extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
 extern AST::Node *BracedStatements(NPtrVec &&nodes);
 extern AST::Node *OneBracedStatement(NPtrVec &&nodes);
 extern AST::Node *EmptyBraces(NPtrVec &&nodes);
- 
+extern AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes);
 #define RESERVED_MSG(index)                                                    \
   {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
     assert(nodes[index]->is_token_node());                                     \
@@ -130,7 +130,6 @@ static const std::vector<Rule> Rules = {
          ErrMsg::BothReserved<1, 0, 2>),
 
     // Unary operators
-    // TODO why does this rule have lower prec than the rule marked XXX
     Rule(0x01, expr, {(op_l | op_bl | OP_LT), EXPR}, AST::Unop::BuildLeft),
 
     // Using OP_L with a reserved keyword
@@ -138,7 +137,6 @@ static const std::vector<Rule> Rules = {
          ErrMsg::Reserved<0, 1>),
 
     // Using OP_L like an OP_B (maybe with reserved keywords)
-    // XXX
     Rule(0x03, expr, {EXPR, op_l, EXPR}, ErrMsg::NonBinop),
     Rule(0x00, expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
     Rule(0x02, expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
@@ -164,7 +162,6 @@ static const std::vector<Rule> Rules = {
     Rule(0x01, expr, {l_bracket, EXPR, r_bracket}, AST::ArrayLiteral::build),
     Rule(0x00, expr, {l_bracket, r_bracket}, AST::ArrayLiteral::BuildEmpty),
 
-    // TODO allow hashtags on any expression
     Rule(0x00, expr, {EXPR, hashtag}, AST::Expression::AddHashtag),
 
     // Maybe missing comma
@@ -216,8 +213,11 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, r_bracket, {r_bracket, newline}, drop_all_but<0>),
     Rule(0x00, r_brace, {r_brace, newline}, drop_all_but<0>),
 
+    Rule(0x00, braced_stmts,
+         {l_brace, stmts, stmts | if_stmt | expr | fn_expr, r_brace},
+         BracedStatementsSameLineEnd),
     Rule(0x00, braced_stmts, {l_brace, stmts, r_brace}, BracedStatements),
-    Rule(0x00, braced_stmts, {l_brace, (expr | fn_expr), r_brace},
+    Rule(0x00, braced_stmts, {l_brace, (if_stmt | expr | fn_expr), r_brace},
          OneBracedStatement),
     Rule(0x00, braced_stmts, {l_brace, r_brace}, EmptyBraces),
 
@@ -232,8 +232,6 @@ static const std::vector<Rule> Rules = {
          AST::Conditional::build_else_if),
     Rule(0x01, if_stmt, {if_stmt, kw_else, braced_stmts},
          AST::Conditional::build_else),
-
-    // TODO missing first statement is an error-production
 
     Rule(0x01, expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 };
