@@ -159,30 +159,6 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
   return nullptr;
 }
 
-llvm::Value *GetFunctionReferencedIn(Scope *scope, const std::string &fn_name,
-                                     Function *fn_type) {
-  Scope *scope_ptr = scope;
-  AST::Declaration *decl;
-
-  decl = scope->DeclReferencedOrNull(fn_name, fn_type);
-
-  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
-    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
-    if (decl) { break; }
-  }
-
-  if (!decl) { return nullptr; }
-
-  auto mangled_name = Mangle(fn_type, decl->identifier, scope_ptr);
-  llvm::FunctionType *llvm_fn_type = *fn_type;
-
-  if(!decl->alloc) {
-    decl->alloc =
-        global_module->getOrInsertFunction(mangled_name, llvm_fn_type);
-  }
-  return decl->alloc;
-}
-
 IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                               Function *fn_type) {
   Scope *scope_ptr = scope;

@@ -47,7 +47,6 @@ GenerateSpecifiedFunctionDecl(const std::string &name,
   decl->scope_     = fn_lit->scope_;
   decl->identifier = new_id;
   decl->init_val   = cloned_func;
-  decl->alloc      = nullptr;
   decl->stack_loc  = IR::Value(~0ul);
   decl->arg_val    = nullptr;
 

@@ -184,7 +184,6 @@ struct Declaration : public Expression {
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;
-  llvm::Value *alloc;
   IR::Value stack_loc;
 
   // If it's an argument, this points to the function/parametric-struct for

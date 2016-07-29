@@ -38,7 +38,6 @@ extern llvm::ConstantInt *const_uint32(uint32_t n);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
-extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 static size_t start_time;
@@ -215,8 +214,7 @@ int main(int argc, char *argv[]) {
 
         if (type->is_function()) { continue; /* TODO what if it's #mutable */ }
 
-        if (type->is_primitive() || type->is_array() || type->is_pointer() ||
-            type->is_enum()) {
+        if (type->is_primitive() || type->is_pointer() || type->is_enum()) {
           auto gvar = new llvm::GlobalVariable(
               /*      Module = */ *global_module,
               /*        Type = */ *type,
@@ -255,9 +253,6 @@ int main(int argc, char *argv[]) {
 
           gvar->setInitializer(init_val);
           IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
-
-          // TODO is this useful?
-          id->decl->alloc = gvar;
 
           continue;
         }
