@@ -62,6 +62,7 @@ extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
 std::queue<AST::Node *> VerificationQueue;
+std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
 
 // TODO This is NOT threadsafe! If someone edits the map, it may rebalance and
 // a datarace will corrupt the memory. When we start threading, we need to lock
@@ -148,9 +149,17 @@ int main(int argc, char *argv[]) {
       VerificationQueue.pop();
     }
 
-    if (file_type != FileType::None) { TypeSystem::GenerateLLVM(); }
+    while (!FuncInnardsVerificationQueue.empty()) {
+      auto pair     = FuncInnardsVerificationQueue.front();
+      auto ret_type = pair.first;
+      auto stmts    = pair.second;
+      stmts->VerifyReturnTypes(ret_type);
+      FuncInnardsVerificationQueue.pop();
+    }
 
     CHECK_FOR_ERRORS;
+
+    if (file_type != FileType::None) { TypeSystem::GenerateLLVM(); }
   }
 
   RUN(timer, "(L/R)value checking") {

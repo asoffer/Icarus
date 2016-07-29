@@ -4,8 +4,6 @@
 #include "Scope.h"
 #endif
 
-// TODO 64 is hard-coded here as an int size. Change it
-
 std::vector<IR::Func *> all_functions;
 
 namespace Language {
@@ -38,42 +36,15 @@ std::queue<std::string> file_queue;
 llvm::Module *global_module         = nullptr;
 llvm::TargetMachine *target_machine = nullptr;
 
-#define CSTDLIB(fn, variadic, in, out)                                         \
-  llvm::Constant *fn() {                                                       \
-    static llvm::Constant *func_ = global_module->getOrInsertFunction(         \
-        #fn, llvm::FunctionType::get(out, {in}, variadic));                    \
-    return func_;                                                              \
-  }
-
 // TODO Reduce the dependency on the C standard library. This probably means
 // writing platform-specific assembly.
 namespace cstdlib {
-CSTDLIB(free, false, *Ptr(Char), *Void);
-CSTDLIB(malloc, false, *Uint, *Ptr(Char));
-
-// CSTDLIB(memcpy,  false, Type::get_tuple({ Ptr(Char), Ptr(Char), Uint }),
-// Ptr(Char));
-CSTDLIB(putchar, false, *Char, *Int);
-CSTDLIB(puts, false, *Ptr(Char), *Int);
-CSTDLIB(printf, true, *Ptr(Char), *Int);
-CSTDLIB(scanf, true, *Ptr(Char), *Int);
-// TODO Even though it's the same, shouldn't it be RawPtr for return type rather
-// than Ptr(Char)?
-
-llvm::Constant *calloc() {
+llvm::Constant *malloc() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "calloc", llvm::FunctionType::get(*RawPtr, {*Uint, *Uint}, false));
-  return func_;
-}
-
-llvm::Constant *memcpy() {
-  static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "memcpy",
-      llvm::FunctionType::get(*Ptr(Char), {*RawPtr, *RawPtr, *Uint}, false));
+      "malloc", llvm::FunctionType::get(*Uint, {*RawPtr}, false));
   return func_;
 }
 } // namespace cstdlib
-#undef CSTDLIB
 
 namespace data {
 llvm::Constant *null_pointer(Type *t) {

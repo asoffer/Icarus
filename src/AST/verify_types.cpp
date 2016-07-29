@@ -6,6 +6,8 @@
 
 extern IR::Value Evaluate(AST::Expression *expr);
 extern std::queue<AST::Node *> VerificationQueue;
+extern std::queue<std::pair<Type *, AST::Statements *>>
+    FuncInnardsVerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
                                          Type *input_type);
@@ -1513,6 +1515,10 @@ void FunctionLiteral::verify_types() {
     input_type = Tup(input_type_vec);
   }
 
+  if (!input_has_vars) {
+    FuncInnardsVerificationQueue.emplace(ret_type, statements);
+  }
+
   // TODO generics?
   type = Func(input_type, ret_type);
   assert(type && "FunctionLiteral type is nullptr");
@@ -1554,8 +1560,6 @@ void Case::verify_types() {
 
 void Statements::verify_types() {
   for (auto stmt : statements) { stmt->verify_types(); }
-
-  // TODO Verify that a return statement, if present, is the last thing
 }
 
 void While::verify_types() {
@@ -1622,6 +1626,39 @@ void DummyTypeExpr::verify_types() {
     for (auto d : s->decls) { VerificationQueue.push(d); }
   }
 }
+
+void Unop::VerifyReturnTypes(Type *ret_type) {
+  if (type == Err) { return; }
+  operand->VerifyReturnTypes(ret_type);
+  if (op == Language::Operator::Return) {
+    if (operand->type != ret_type) {
+      Error::Log::InvalidReturnType(loc, operand->type, ret_type);
+    }
+  }
+}
+
+void Statements::VerifyReturnTypes(Type *ret_type) {
+  for (auto stmt : statements) { stmt->VerifyReturnTypes(ret_type); }
+}
+
+void Jump::VerifyReturnTypes(Type *ret_type) {
+  if (jump_type == JumpType::Return && ret_type != Void) {
+    Error::Log::InvalidReturnType(loc, Void, ret_type);
+  }
+}
+
+void Conditional::VerifyReturnTypes(Type *ret_type) {
+  for (auto stmt : statements) { stmt->VerifyReturnTypes(ret_type); }
+}
+
+void For::VerifyReturnTypes(Type *ret_type) {
+  statements->VerifyReturnTypes(ret_type);
+}
+
+void While::VerifyReturnTypes(Type *ret_type) {
+  statements->VerifyReturnTypes(ret_type);
+}
+
 } // namespace AST
 
 #undef VERIFY_AND_RETURN_ON_ERROR

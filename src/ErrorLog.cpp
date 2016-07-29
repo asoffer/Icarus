@@ -456,6 +456,19 @@ void InvalidImport(const Cursor &loc) {
                       "name of the file to be imported.",
                       nullptr, loc, 1);
 }
+void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
+  ++num_errs_;
+  std::string msg_head = "Invalid return type on line " +
+                         std::to_string(loc.line_num) + " in \"" +
+                         loc.file_name + "\".";
+  std::string msg_foot = "Given return type:    " + given->to_string() +
+                         "\n"
+                         "Expected return type: " +
+                         correct->to_string();
+  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), loc,
+                      strlen(loc.line.ptr) - loc.offset);
+}
+
 
 void UnknownParserError(const std::string &file_name,
                         const std::vector<Cursor> &lines) {

@@ -5,14 +5,30 @@
 extern llvm::IRBuilder<> builder;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
-
+extern llvm::Module *global_module;
 extern const char *GetGlobalStringNumbered(size_t index);
 
 namespace cstdlib {
-extern llvm::Constant *printf();
 extern llvm::Constant *malloc();
-extern llvm::Constant *free();
-extern llvm::Constant *memcpy();
+
+static llvm::Constant *printf() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "printf", llvm::FunctionType::get(*Int, {*Ptr(Char)}, true));
+  return func_;
+}
+
+static llvm::Constant *free() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "free", llvm::FunctionType::get(*Void, {*RawPtr}, false));
+  return func_;
+}
+
+static llvm::Constant *memcpy() {
+  static llvm::Constant *func_ = global_module->getOrInsertFunction(
+      "memcpy",
+      llvm::FunctionType::get(*Ptr(Char), {*RawPtr, *RawPtr, *Uint}, false));
+  return func_;
+}
 } // namespace cstdlib
 
 namespace data {

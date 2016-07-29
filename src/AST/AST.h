@@ -32,6 +32,7 @@ struct Node {
   virtual void lrvalue_check() {}
   virtual void assign_scope() {}
   virtual void verify_types() {}
+  virtual void VerifyReturnTypes(Type *) {}
   virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
                       Type **lookup_val);
   virtual IR::Value EmitIR() = 0;
@@ -79,7 +80,7 @@ struct Expression : public Node {
   static Node *build(NPtrVec &&nodes);
   static Node *AddHashtag(NPtrVec &&nodes);
 
-  llvm::Value *llvm_value(IR::Value v);
+  virtual void VerifyReturnTypes(Type *) {}
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -222,6 +223,7 @@ struct Statements : public Node {
   static Node *build_more(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
+  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   inline size_t size() { return statements.size(); }
   inline void reserve(size_t n) { return statements.reserve(n); }
@@ -244,6 +246,7 @@ struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
+  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   Expression *operand;
   Language::Operator op;
@@ -323,6 +326,7 @@ struct Conditional : public Node {
   static Node *build_else(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
+  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   bool has_else() const { return else_line_num != 0; }
 
@@ -346,6 +350,8 @@ struct For : public Node {
 
   static Node *Build(NPtrVec &&nodes);
 
+  virtual void VerifyReturnTypes(Type *ret_val) override;
+
   std::vector<InDecl *> iterators;
   Statements *statements;
 
@@ -356,6 +362,7 @@ struct While : public Node {
   While();
   virtual ~While();
   VIRTUAL_METHODS_FOR_NODES;
+  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   static Node *Build(NPtrVec &&nodes);
 
@@ -374,6 +381,8 @@ struct DummyTypeExpr : public Expression {
 struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
   virtual bool is_jump() const override { return true; }
+
+  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   static Node *build(NPtrVec &&nodes);
   virtual ~Jump();
