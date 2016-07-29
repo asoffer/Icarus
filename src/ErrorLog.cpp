@@ -164,6 +164,7 @@ void Error::Log::Log(const Cursor &loc, const std::string &msg) {
 
 static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
                            const Cursor &loc, size_t underline_length) {
+  assert(loc.file_name);
   pstr line = source_map AT(loc.file_name)->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 4;
@@ -446,6 +447,45 @@ void DeclaredParametricType(const Cursor &loc, const std::string &id_tok) {
       "In declaration of `" + id_tok +
       "`, the declared type is parametric and has no parameters provided.";
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
+void InvalidImport(const Cursor &loc) {
+  ++num_errs_;
+
+  DisplayErrorMessage("Import statements must take a string literal as the "
+                      "name of the file to be imported.",
+                      nullptr, loc, 1);
+}
+
+void UnknownParserError(const std::string &file_name,
+                        const std::vector<Cursor> &lines) {
+
+  if (lines.empty()) {
+    fprintf(stderr,
+            "Parse errors found in \"%s\". Sorry I can't be more specific.",
+            file_name.c_str());
+    ++num_errs_;
+    return;
+  }
+
+  num_errs_ += lines.size();
+  fprintf(stderr, "Parse errors found in \"%s\" on the following lines:\n\n",
+          file_name.c_str());
+
+  size_t left_space     = NumDigits(lines.back().line_num) + 2;
+  std::string fmt       = "%" + std::to_string(left_space) + "lu| %s\n";
+  std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
+
+  size_t last_line_num = lines[0].line_num - 1;
+  for (auto loc : lines) {
+    if (loc.line_num != last_line_num + 1) {
+      fputs(space_fmt.c_str(), stderr);
+    }
+    fprintf(stderr, fmt.c_str(), loc.line_num, loc.line.ptr);
+    last_line_num = loc.line_num;
+  }
+
+  fputc('\n', stderr);
 }
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {

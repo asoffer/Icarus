@@ -321,8 +321,6 @@ struct Conditional : public Node {
   static Node *BuildIf(NPtrVec &&nodes);
   static Node *build_else_if(NPtrVec &&nodes);
   static Node *build_else(NPtrVec &&nodes);
-  static Node *BuildElseOneLiner(NPtrVec &&nodes);
-  static Node *BuildElseNoLiner(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
 

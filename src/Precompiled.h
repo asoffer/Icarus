@@ -172,10 +172,6 @@ std::ostream &operator<<(std::ostream &os, const Value &value);
 namespace Language {
 extern size_t precedence(Operator op);
 
-// Using masks to make determination node types easier. Starting masks in the
-// 8th bit, leaves bits 0-7 for standard enumeration. This is safe because we
-// will never have more than 128 NodeTypes in a given section.
-
 enum NodeType : unsigned int {
   bof           = 1u << 0,
   eof           = 1u << 1,

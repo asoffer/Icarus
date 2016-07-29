@@ -45,90 +45,73 @@ static void Shift(ParseState *ps, Lexer *l) {
 }
 
 static bool ShouldShift(ParseState *ps) {
+  using namespace Language;
   // If the size is just 1, no rule will match so don't bother checking.
   if (ps->node_stack_.size() < 2) { return true; }
 
-  if (ps->get_type<1>() == Language::dots) {
-    return (ps->lookahead_.node_type == Language::op_bl ||
-            ps->lookahead_.node_type == Language::op_l ||
-            ps->lookahead_.node_type == Language::op_lt ||
-            ps->lookahead_.node_type == Language::expr ||
-            ps->lookahead_.node_type == Language::fn_expr ||
-            ps->lookahead_.node_type == Language::l_paren ||
-            ps->lookahead_.node_type == Language::l_bracket);
+  if (ps->get_type<1>() == dots) {
+    return ps->lookahead_.node_type &
+           (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket);
   }
 
-  if (ps->lookahead_.node_type == Language::l_brace &&
-      ps->get_type<1>() == Language::fn_expr &&
-      ps->get_type<2>() == Language::fn_arrow) {
+  if (ps->lookahead_.node_type == l_brace && ps->get_type<1>() == fn_expr &&
+      ps->get_type<2>() == fn_arrow) {
     return false;
   }
 
-  if (ps->lookahead_.node_type == Language::l_brace &&
-      (ps->get_type<1>() == Language::fn_expr ||
-       ps->get_type<1>() == Language::kw_struct ||
-       ps->get_type<1>() == Language::kw_block)) {
+  if (ps->lookahead_.node_type == l_brace &&
+      (ps->get_type<1>() & (fn_expr | kw_struct | kw_block))) {
     return true;
   }
 
-  if (ps->get_type<1>() == Language::newline &&
-      ps->get_type<2>() == Language::comma) {
+  if (ps->get_type<1>() == newline && ps->get_type<2>() == comma) {
     return false;
   }
 
   // For now, we require struct params to be in parentheses.
   // TODO determine if this is necessary.
-  if (ps->lookahead_.node_type == Language::l_paren &&
-      ps->get_type<1>() == Language::kw_struct) {
+  if (ps->lookahead_.node_type == l_paren && ps->get_type<1>() == kw_struct) {
     return true;
   }
 
-  if (ps->get_type<1>() == Language::op_lt &&
-      ps->lookahead_.node_type != Language::newline) {
+  if (ps->get_type<1>() == op_lt && ps->lookahead_.node_type != newline) {
     return true;
   }
 
-  if (ps->get_type<1>() == Language::kw_block &&
-      ps->lookahead_.node_type == Language::newline) {
+  if (ps->get_type<1>() == kw_block && ps->lookahead_.node_type == newline) {
     return true;
   }
 
-  if (ps->get_type<2>() == Language::kw_block &&
-      ps->get_type<1>() == Language::newline) {
+  if (ps->get_type<2>() == kw_block && ps->get_type<1>() == newline) {
     return true;
   }
 
-  if (ps->node_stack_.size() > 2 &&
-      ps->get_type<3>() == Language::kw_expr_block &&
-      ps->get_type<2>() == Language::expr &&
-      ps->get_type<1>() == Language::newline) {
+  if (ps->node_stack_.size() > 2 && ps->get_type<3>() == kw_expr_block &&
+      ps->get_type<2>() == expr && ps->get_type<1>() == newline) {
     return true;
   }
 
-  if (ps->lookahead_.node_type == Language::r_paren) { return false; }
+  if (ps->lookahead_.node_type == r_paren) { return false; }
 
-  if (ps->get_type<2>() & Language::OP_) {
+  if (ps->get_type<2>() & OP_) {
     auto left_prec = precedence(((AST::TokenNode *)ps->get<2>())->op);
     size_t right_prec;
-    if (ps->lookahead_.node_type & Language::OP_) {
+    if (ps->lookahead_.node_type & OP_) {
       right_prec = precedence(((AST::TokenNode *)ps->lookahead_.node)->op);
 
-    } else if (ps->lookahead_.node_type == Language::l_paren) {
-      right_prec = precedence(Language::Operator::Call);
+    } else if (ps->lookahead_.node_type == l_paren) {
+      right_prec = precedence(Operator::Call);
 
-    } else if (ps->lookahead_.node_type == Language::l_bracket) {
-      right_prec = precedence(Language::Operator::Index);
+    } else if (ps->lookahead_.node_type == l_bracket) {
+      right_prec = precedence(Operator::Index);
 
     } else {
-      goto end;
+      return false;
     }
 
-    if (left_prec < right_prec) { return true; }
-    if (left_prec > right_prec) { return false; }
-    return (left_prec & assoc_mask) == right_assoc;
+    return (left_prec < right_prec) ||
+           (left_prec == right_prec && (left_prec & assoc_mask) == right_assoc);
   }
-
-end:
   return false;
 }
 
@@ -209,8 +192,23 @@ void Parse(SourceFile *source) {
   }
 
   // Finish
-  if (state.node_stack_.size() > 1) { Error::Log::Log(Cursor(), "Parse error."); }
+  if (state.node_stack_.size() > 1) {
+    std::vector<Cursor> lines;
 
-  assert(state.get<1>()->is_statements());
+    size_t last_chosen_line = 0;
+    for (size_t i = 0; i < state.node_stack_.size(); ++i) {
+      if (state.node_stack_[i]->loc.line_num == last_chosen_line) { continue; }
+      if (state.node_type_stack_[i] &
+          (Language::braced_stmts | Language::l_paren | Language::r_paren |
+           Language::l_bracket | Language::r_bracket | Language::l_brace |
+           Language::r_brace | Language::semicolon | Language::hashtag |
+           Language::fn_arrow | Language::expr)) {
+        lines.push_back(state.node_stack_[i]->loc);
+        last_chosen_line = state.node_stack_[i]->loc.line_num;
+      }
+    }
+    Error::Log::UnknownParserError(source->name, lines);
+  }
+
   source->ast = (AST::Statements *)state.node_stack_.back();
 }

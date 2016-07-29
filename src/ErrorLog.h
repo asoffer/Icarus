@@ -51,6 +51,9 @@ void GlobalNonDecl(const Cursor &loc);
 void NotAType(const Cursor &loc, const std::string &id_tok);
 void DeclaredVoidType(const Cursor &loc, const std::string &id_tok);
 void DeclaredParametricType(const Cursor &loc, const std::string &id_tok);
+void UnknownParserError(const std::string &file_name,
+                        const std::vector<Cursor> &lines);
+void InvalidImport(const Cursor &loc);
 } // namespace Log
 } // namespace Error
 

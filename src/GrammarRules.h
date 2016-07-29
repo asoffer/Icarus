@@ -24,7 +24,7 @@ extern AST::Node *EmptyBraces(NPtrVec &&nodes);
                                            "' is not a binary operator.");     \
   }
 
-template <size_t N> AST::Node *drop_all_but(NPtrVec &&nodes) {
+template <size_t N> static AST::Node *drop_all_but(NPtrVec &&nodes) {
   auto temp = nodes[N];
   assert(temp && "stolen pointer is null");
   nodes[N] = nullptr;
@@ -38,7 +38,7 @@ template <typename T> static T *steal_node(AST::Node *&n) {
   return temp;
 }
 
-AST::Node *CombineColonEq(NPtrVec &&nodes) {
+static AST::Node *CombineColonEq(NPtrVec &&nodes) {
   auto tk_node   = (AST::TokenNode *)nodes[0];
   tk_node->token = ":=";
   tk_node->op    = Language::Operator::ColonEq;

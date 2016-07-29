@@ -19,11 +19,12 @@ Node *DummyTypeExpr::clone(LOOKUP_ARGS) {
   }
 }
 
-Node *Expression::clone(LOOKUP_ARGS) { NOT_YET; }
+Node *Expression::clone(LOOKUP_ARGS) { UNREACHABLE; }
+Node *TokenNode::clone(LOOKUP_ARGS) { UNREACHABLE; }
+Node *Node::clone(LOOKUP_ARGS) { UNREACHABLE; }
+
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
-Node *TokenNode::clone(LOOKUP_ARGS) { NOT_YET; }
-Node *Node::clone(LOOKUP_ARGS) { NOT_YET; }
 
 Node *FunctionLiteral::clone(LOOKUP_ARGS) {
   auto fn_lit              = new FunctionLiteral;

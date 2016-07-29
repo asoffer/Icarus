@@ -173,6 +173,7 @@ Node *Conditional::BuildIf(NPtrVec &&nodes) {
   assert(nodes[2]->is_statements());
   if_stmt->statements = {steal<Statements>(nodes[2])};
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+  if_stmt->loc = nodes[0]->loc;
   return if_stmt;
 }
 
@@ -256,11 +257,14 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
-    assert(unop_ptr->operand->is_terminal() &&
-           ((Terminal *)unop_ptr->operand)->terminal_type ==
-               Language::Terminal::StringLiteral);
-    file_queue.emplace(std::string("programs/") +
-                       std::string(unop_ptr->operand->value.as_cstr));
+    if (unop_ptr->operand->is_terminal() &&
+        ((Terminal *)unop_ptr->operand)->terminal_type ==
+            Language::Terminal::StringLiteral) {
+      file_queue.emplace(std::string("programs/") +
+                         std::string(unop_ptr->operand->value.as_cstr));
+    } else {
+      Error::Log::InvalidImport(unop_ptr->operand->loc);
+    }
 
     unop_ptr->op = Language::Operator::Import;
 
@@ -390,9 +394,9 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
   auto binop_ptr = new Binop;
   binop_ptr->loc = nodes[1]->loc;
 
-  binop_ptr->lhs       = steal<Expression>(nodes[0]);
-  binop_ptr->rhs       = steal<Expression>(nodes[2]);
-  binop_ptr->op        = op_class;
+  binop_ptr->lhs = steal<Expression>(nodes[0]);
+  binop_ptr->rhs = steal<Expression>(nodes[2]);
+  binop_ptr->op  = op_class;
 
   if (binop_ptr->lhs->is_declaration()) {
     Error::Log::Log(binop_ptr->lhs->loc,
@@ -601,6 +605,7 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
 
 Node *Statements::build_one(NPtrVec &&nodes) {
   auto output = new Statements;
+  output->loc = nodes[0]->loc;
   output->statements.push_back(steal<Node>(nodes[0]));
 
   return output;
@@ -634,18 +639,6 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
   if_stmt->statements.push_back(steal<Statements>(nodes[2]));
   if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
   return if_stmt;
-}
-
-Node *Conditional::BuildElseOneLiner(NPtrVec &&nodes) {
-  nodes[3] = AST::Statements::build_one({steal<AST::Node>(nodes[3]), nullptr});
-  return build_else(std::forward<NPtrVec &&>(nodes));
-}
-
-Node *Conditional::BuildElseNoLiner(NPtrVec &&nodes) {
-  nodes.push_back(nodes.back());
-  nodes[nodes.size() - 2] = new Statements;
-
-  return build_else(std::forward<NPtrVec &&>(nodes));
 }
 
 Node *Jump::build(NPtrVec &&nodes) {
@@ -737,7 +730,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       return decl;
     } else {
       auto binop_ptr = new AST::Binop;
-      binop_ptr->loc = nodes[1]->loc;
+      binop_ptr->loc = nodes[0]->loc;
 
       binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
       binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
@@ -749,10 +742,10 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   }
 
   auto binop_ptr = new AST::Binop;
-  binop_ptr->loc = nodes[1]->loc;
+  binop_ptr->loc = nodes[0]->loc;
 
-  binop_ptr->lhs       = steal<AST::Expression>(nodes[0]);
-  binop_ptr->rhs       = steal<AST::Expression>(nodes[2]);
+  binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
+  binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
   if (strcmp(tk, sym) == 0) {                                                  \
