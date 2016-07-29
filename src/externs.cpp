@@ -107,6 +107,7 @@ llvm::ConstantInt *const_char(char c) {
                                 llvm::APInt(8, (size_t)c, false));
 }
 
+// NOTE: It's important that you pass a std::string because the first char could be '\0'
 llvm::Value *global_string(const std::string &s) {
   static std::map<std::string, llvm::Value *> global_strings;
 

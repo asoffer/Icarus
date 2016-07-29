@@ -14,11 +14,11 @@ Type *Uint32  = new Primitive(PrimType::Uint32);
 Type *Unknown = new Primitive(PrimType::Unknown);
 Type *NullPtr = new Primitive(PrimType::NullPtr);
 Type *Err     = new Primitive(PrimType::Err);
-Type *String  = nullptr;
+Type *String  = new Primitive(PrimType::String);
 
 std::map<const char *, Type *> PrimitiveTypes{
     {"bool", Bool},  {"char", Char}, {"int", Int},   {"real", Real},
-    {"type", Type_}, {"uint", Uint}, {"void", Void},
+    {"type", Type_}, {"uint", Uint}, {"void", Void}, {"string", String},
 };
 
 static std::vector<Array *> array_types_;

@@ -75,11 +75,6 @@ size_t Struct::field_num(const std::string &name) const {
   return iter->second;
 }
 
-void Struct::set_name(const std::string &name) {
-  bound_name = name;
-  if (name == "string") { String = this; }
-}
-
 void Struct::insert_field(const std::string &name, Type *ty,
                              AST::Expression *init_val) {
 

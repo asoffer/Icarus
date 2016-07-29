@@ -27,12 +27,16 @@ Next := (this: &File) -> char {
   })
 }
 
+c_str := (s: &string) -> &char {
+  cpp := s :> &&[0; char]
+  return (&((@@cpp)[1]))
+}
+
 main := void -> void { 
-  name       := "programs/cheating_quine.ic "
-  name_c_str := name.c_str()
+  name := "programs/cheating_quine.ic"
 
   f: File
-  f._handle = name_c_str.open(FileMode.Read)
+  f._handle = name.c_str().open(FileMode.Read)
 
   c := f.Next()
   while c != ascii(0u) {

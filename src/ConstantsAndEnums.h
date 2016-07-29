@@ -24,10 +24,6 @@ enum ValueFlag : char {
   Done // Finished computing
 };
 
-enum class PrimType{
-  Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, Uint16, Uint32
-};
-
 namespace Language {
 enum class Terminal {
   ASCII, Char, Else, False, Hole, Int, Null, Ord, Real, Return, StringLiteral,

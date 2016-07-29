@@ -4,8 +4,6 @@
 #include "Type/Type.h"
 #endif
 
-extern std::queue<std::string> file_queue;
-
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
@@ -45,7 +43,7 @@ extern std::map<const char *, Type *> PrimitiveTypes;
 // Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
   char *file_name = new char[source_file_->name.size() + 1];
-  std::strcpy(file_name, source_file_->name.c_str());
+  strcpy(file_name, source_file_->name.c_str());
   cursor.file_name = file_name;
 
   ifs = std::ifstream(file_name, std::ifstream::in);
@@ -198,7 +196,6 @@ NNT Lexer::NextWord() {
 
 #undef CASE_RETURN_NNT
 
-  if (token == "string") { file_queue.emplace("lib/string.ic"); }
   Cursor loc = cursor;
   loc.offset = starting_offset;
   return NNT(new AST::Identifier(loc, token), Language::expr);
@@ -501,7 +498,6 @@ NNT Lexer::NextOperator() {
 
   case '"': {
     IncrementCursor();
-    file_queue.emplace("lib/string.ic");
 
     std::string str_lit = "";
 
@@ -548,9 +544,10 @@ NNT Lexer::NextOperator() {
     }
 
     // Not leaked. It's owned by a terminal which is persistent.
-    char *cstr = new char[str_lit.size() + 1];
-    std::strcpy(cstr, str_lit.c_str());
-    RETURN_TERMINAL(StringLiteral, Unknown, IR::Value(cstr));
+    char *cstr = new char[str_lit.size() + 2];
+    strcpy(cstr + 1, str_lit.c_str());
+    cstr[0] = '\1';
+    RETURN_TERMINAL(StringLiteral, String, IR::Value(cstr));
   } break;
 
   case '\'': {

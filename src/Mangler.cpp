@@ -5,24 +5,16 @@
 
 std::string Mangle(const Type *t, bool prefix) {
   if (t->is_primitive()) {
-    if (t == Bool) {
-      return "b";
-    } else if (t == Char) {
-      return "c";
-    } else if (t == Int) {
-      return "i";
-    } else if (t == Real) {
-      return "r";
-    } else if (t == Uint) {
-      return "u";
-    } else if (t == Void) {
-      return "v";
-    } else if (t == Type_) {
-      return "t";
-    } else {
-      std::cerr << *t << std::endl;
-      assert(false && "Invalid type name to be mangled");
-    }
+    if (t == Bool) { return "b"; }
+    if (t == Char) { return "c"; }
+    if (t == Int) { return "i"; }
+    if (t == Real) { return "r"; }
+    if (t == Uint) { return "u"; }
+    if (t == Void) { return "v"; }
+    if (t == Type_) { return "t"; }
+    if (t == String) { return "s"; }
+    std::cerr << *t << std::endl;
+    assert(false && "Invalid type name to be mangled");
   }
 
   std::stringstream ss;

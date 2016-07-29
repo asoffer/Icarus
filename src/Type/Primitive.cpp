@@ -28,6 +28,11 @@ Primitive::Primitive(PrimType pt) : type_(pt) {
   case PrimType::Void:
     llvm_type = llvm::Type::getVoidTy(llvm::getGlobalContext());
     break;
+  case PrimType::String:
+    llvm_type = llvm::PointerType::getUnqual(
+        llvm::Type::getInt8Ty(llvm::getGlobalContext()));
+    break;
+
   default: llvm_type = nullptr;
   }
 }
@@ -43,6 +48,7 @@ size_t Primitive::alignment() const {
   case PrimType::Real: return 8;
   case PrimType::Void: return 1;
   case PrimType::Type: return 8;
+  case PrimType::String: return 8;
   // TODO There's a difference between what we want when we use this at
   // compile-time and when we want the value at run-time
 
@@ -61,6 +67,7 @@ size_t Primitive::bytes() const {
   case PrimType::Real: return 8;
   case PrimType::Void: return 0;
   case PrimType::Type: return 8;
+  case PrimType::String: return 8;
   // TODO There's a difference between what we want when we use this at
   // compile-time and when we want the value at run-time
 
@@ -82,6 +89,7 @@ std::string Primitive::to_string() const {
   case PrimType::NullPtr: return "null";
   case PrimType::Uint16: return "uint16";
   case PrimType::Uint32: return "uint32";
+  case PrimType::String: return "string";
   }
 }
 

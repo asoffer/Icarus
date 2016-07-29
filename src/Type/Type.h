@@ -98,10 +98,13 @@ public:
 #undef ENDING
 #define ENDING
 
+enum class PrimType{
+  Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, Uint16, Uint32, String
+};
+
 struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
-
   Primitive(PrimType pt);
 
 private:
@@ -172,8 +175,6 @@ struct Struct : public Type {
   Struct(const std::string &name);
 
   void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
-
-  void set_name(const std::string &name);
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Type *field(const std::string &name) const;

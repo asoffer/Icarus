@@ -348,15 +348,7 @@ static Type *EvalWithVars(Type *type,
   } while (false)
 
 namespace AST {
-void Terminal::verify_types() {
-  // Anything other than a string is done when the terminal is created.
-  // TODO Do string literal and then set the values later.
-  if (terminal_type == Language::Terminal::StringLiteral) {
-    auto string_decl = Scope::Global->IdentifierHereOrNull("string");
-    string_decl->verify_types();
-    type = String;
-  }
-}
+void Terminal::verify_types() {}
 
 #define LOOP_OVER_DECLS_FROM(s, d)                                             \
   for (auto scope_ptr = s; scope_ptr; scope_ptr = scope_ptr->parent)           \
@@ -633,7 +625,7 @@ void Binop::verify_types() {
         unop->operand = lhs_access->operand;
         unop->type    = Ptr(unop->operand->type);
         ufcs_ptr      = unop;
-        // TODO line number?
+        ufcs_ptr->loc = lhs_access->loc;
       }
 
       ChainOp *new_rhs;
@@ -693,8 +685,8 @@ void Binop::verify_types() {
                 auto t = decl->init_val->value.as_type;
                 if (t->is_struct()) {
                   assert(decl->identifier->value.as_type->is_struct());
-                  ((Struct *)decl->identifier->value.as_type)
-                      ->set_name(decl->identifier->token);
+                  ((Struct *)decl->identifier->value.as_type)->bound_name =
+                      decl->identifier->token;
                 } else if (t->is_parametric_struct()) {
                   assert(
                       decl->identifier->value.as_type->is_parametric_struct());
@@ -745,7 +737,6 @@ void Binop::verify_types() {
       } // End of decl loop
 
       if (valid_matches.size() != 1) {
-        UNREACHABLE;
         Error::Log::Log(loc, valid_matches.empty() ? "No valid matches"
                                                    : "Ambiguous call");
         type = lhs->type = Err;
@@ -1401,7 +1392,7 @@ void Declaration::verify_types() {
       if (t->is_struct()) {
         // Set the name of the struct.
         // TODO mangle the name correctly (Where should this be done?)
-        ((Struct *)t)->set_name(identifier->token);
+        ((Struct *)t)->bound_name = identifier->token;
 
       } else if (t->is_parametric_struct()) {
         // Set the name of the parametric struct.

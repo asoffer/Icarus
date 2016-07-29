@@ -156,14 +156,21 @@ const char *GetGlobalStringNumbered(size_t index) {
 }
 
 static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
+  assert(cstr);
+  assert(*cstr == '\1');
+
   auto num_strs = const_strs_.size();
   for (size_t i = 0; i < num_strs; ++i) {
-    if (std::strcmp(const_strs_[i], cstr) == 0) {
+    // + 1 because we're starting with either a 0 or 1 to tell us if we own the
+    // memory associated with the string.
+    if (strcmp(const_strs_[i] + 1, cstr + 1) == 0) {
       return IR::Value::GlobalCStr(i);
     }
   }
-  char *new_cstr = new char[std::strlen(cstr) + 1];
-  std::strcpy(new_cstr, cstr);
+  size_t len = strlen(cstr) + 1;
+  char *new_cstr = new char[len];
+  memcpy(new_cstr, cstr, len);
+  // The + 1 is to skip the first entry telling us if we own the memory or not.
   const_strs_.push_back(new_cstr);
   return IR::Value::GlobalCStr(num_strs);
 }
@@ -192,24 +199,8 @@ IR::Value Terminal::EmitIR() {
     // error that no code there will ever be executed.
     return IR::Value();
   } break;
-  case Language::Terminal::StringLiteral: {
-    assert(String);
-    assert(String->is_struct());
-    auto token     = value.as_cstr;
-    auto tk_len    = IR::Value((size_t)std::strlen(value.as_cstr));
-    auto ptr_index = FindOrInsertGlobalCStr(token);
-    auto cstr_tmp  = IR::Value::FrameAddr(IR::Func::Current->PushSpace(String));
-    auto array_ptr = IR::Field((Struct *)String, cstr_tmp, 0);
-    IR::Store(Uint, tk_len, IR::ArrayLength(array_ptr));
-    IR::Store(Uint, tk_len, IR::Field((Struct *)String, cstr_tmp, 1));
-
-    auto ptr = IR::Malloc(Char, IR::Value(tk_len));
-    IR::Memcpy(ptr, ptr_index, IR::Value(tk_len));
-
-    IR::Store(Ptr(Char), ptr, IR::ArrayData(Arr(Char), array_ptr));
-
-    return cstr_tmp;
-  } break;
+  case Language::Terminal::StringLiteral:
+    return FindOrInsertGlobalCStr(value.as_cstr);
   case Language::Terminal::True: return IR::Value(true);
   case Language::Terminal::Type: return IR::Value(value.as_type);
   case Language::Terminal::Uint: return IR::Value(value.as_uint);

@@ -454,6 +454,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         } else if (print_type == Uint) {
           builder.CreateCall(cstdlib::printf(),
                              {data::global_string("%lu"), args[1]});
+        } else if (print_type == String) {
+          builder.CreateCall(
+              cstdlib::printf(),
+              {data::global_string("%s"),
+               builder.CreateGEP(args[1], data::const_uint32(1))});
+          global_module->dump();
         } else if (print_type == Type_) {
           auto type_to_print = reinterpret_cast<Type *>(args[1]);
           builder.CreateCall(

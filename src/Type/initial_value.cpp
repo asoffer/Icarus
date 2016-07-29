@@ -16,6 +16,7 @@ IR::Value Primitive::EmitInitialValue() const {
   case PrimType::Uint: return IR::Value(0ul);
   case PrimType::Uint16: return IR::Value((uint16_t)0);
   case PrimType::Uint32: return IR::Value((uint32_t)0);
+  case PrimType::String: return IR::Value(const_cast<char *>("\0"));
   }
 }
 
