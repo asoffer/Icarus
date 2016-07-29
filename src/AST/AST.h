@@ -1,6 +1,10 @@
 #ifndef ICARUS_AST_H
 #define ICARUS_AST_H
 
+namespace Hashtag {
+size_t GetOrFailValue(const std::string &tag);
+} // namespace Hashtag
+
 namespace AST {
 
 #define ENDING = 0
@@ -100,12 +104,12 @@ struct Expression : public Node {
   // type is invalid.
   Type *VerifyValueForDeclaration(const std::string &id_tok);
 
-  std::vector<std::string> hashtags;
-  // TODO have a global table of hashtags and store a vector of indexes into
-  // that global lookup.
+  std::vector<size_t> hashtag_indices;
   inline bool HasHashtag(const std::string &str) const {
-    for (const auto &tag : hashtags) {
-      if (str == tag) return true;
+    size_t idx = Hashtag::GetOrFailValue(str);
+    if (idx == FAIL) return false;
+    for (const auto &tag_index : hashtag_indices) {
+      if (tag_index == idx) return true;
     }
     return false;
   }
@@ -114,7 +118,6 @@ struct Expression : public Node {
   Assign lvalue;
   Type *type;
   IR::Value value;
-  ValueFlag value_flag;
 };
 
 struct TokenNode : public Node {

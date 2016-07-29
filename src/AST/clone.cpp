@@ -185,7 +185,7 @@ Node *Declaration::clone(LOOKUP_ARGS) {
   auto decl              = new Declaration;
   decl->identifier       = (Identifier *)identifier->CLONE;
   decl->identifier->decl = decl;
-  decl->hashtags         = hashtags;
+  decl->hashtag_indices  = hashtag_indices;
   decl->loc              = loc;
 
   if (type_expr) { decl->type_expr = (Expression *)type_expr->CLONE; }

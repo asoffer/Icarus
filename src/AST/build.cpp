@@ -3,6 +3,10 @@
 #include "Type/Type.h"
 #endif
 
+namespace Hashtag {
+size_t Get(const std::string &tag);
+} // namespace Hashtag
+
 extern std::queue<std::string> file_queue;
 
 template <typename T> static T *steal(AST::Expression *&n) {
@@ -517,7 +521,7 @@ Node *Expression::AddHashtag(NPtrVec &&nodes) {
   assert(nodes[0]->is_expression());
   auto expr= steal<Expression>(nodes[0]);
   assert(nodes[1]->is_token_node());
-  expr->hashtags.push_back(((TokenNode *)nodes[1])->token);
+  expr->hashtag_indices.push_back(Hashtag::Get(((TokenNode *)nodes[1])->token));
 
   return expr;
 }

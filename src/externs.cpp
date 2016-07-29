@@ -33,6 +33,33 @@ enum class Lib { String };
 std::map<Lib, AST::Identifier *> lib_type;
 std::queue<std::string> file_queue;
 
+namespace Hashtag {
+static std::vector<const char *> table = {"const"};
+
+size_t GetOrFailValue(const std::string &tag) {
+  for (size_t i = 0; i < table.size(); ++i) {
+    if (tag == table[i]) { return i; }
+  }
+
+  return FAIL;
+}
+
+size_t Get(const std::string &tag) {
+  for (size_t i = 0; i < table.size(); ++i) {
+    if (tag == table[i]) { return i; }
+  }
+
+  size_t result = table.size();
+  char *new_tag = new char[tag.size() + 1];
+  strcpy(new_tag, tag.c_str());
+  table.push_back(new_tag);
+
+  assert(table[result] == new_tag);
+
+  return result;
+}
+} // namespace Hashtag
+
 llvm::Module *global_module         = nullptr;
 llvm::TargetMachine *target_machine = nullptr;
 

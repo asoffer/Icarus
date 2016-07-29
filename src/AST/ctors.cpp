@@ -17,8 +17,7 @@ TokenNode::TokenNode(const Cursor &loc, const char *str_lit)
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(Assign::Unset), type(nullptr), value(IR::Value::None()),
-      value_flag(ValueFlag::Not) {}
+      lvalue(Assign::Unset), type(nullptr), value(IR::Value::None()) {}
 
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),
