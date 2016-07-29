@@ -3,6 +3,7 @@
 
 namespace AST {
   struct Unop;
+  struct Case;
 }// namespace AST
 
 namespace Error {
@@ -55,6 +56,7 @@ void UnknownParserError(const std::string &file_name,
                         const std::vector<Cursor> &lines);
 void InvalidImport(const Cursor &loc);
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct);
+void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 } // namespace Log
 } // namespace Error
 

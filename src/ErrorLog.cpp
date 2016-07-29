@@ -469,6 +469,47 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
                       strlen(loc.line.ptr) - loc.offset);
 }
 
+static void DisplayLines(const std::vector<Cursor> &lines) {
+  size_t left_space     = NumDigits(lines.back().line_num) + 2;
+  std::string fmt       = "%" + std::to_string(left_space) + "lu| %s\n";
+  std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
+
+  size_t last_line_num = lines[0].line_num - 1;
+  for (auto loc : lines) {
+    if (loc.line_num != last_line_num + 1) {
+      fputs(space_fmt.c_str(), stderr);
+    }
+    fprintf(stderr, fmt.c_str(), loc.line_num, loc.line.ptr);
+    last_line_num = loc.line_num;
+  }
+
+  fputc('\n', stderr);
+}
+
+void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
+  if (correct) {
+    fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n",
+            case_ptr->loc.line_num, case_ptr->loc.file_name);
+
+    std::vector<Cursor> locs;
+    for (auto kv : case_ptr->key_vals) {
+      ++num_errs_;
+      if (kv.second->type == Err || kv.second->type == correct) { continue; }
+      locs.push_back(kv.second->loc);
+    }
+
+    num_errs_ += locs.size();
+    DisplayLines(locs);
+    fprintf(stderr, "Expected an expression of type %s.\n\n",
+            correct->to_string().c_str());
+
+  } else {
+    ++num_errs_;
+    fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n\n",
+            case_ptr->loc.line_num, case_ptr->loc.file_name);
+  }
+}
+
 
 void UnknownParserError(const std::string &file_name,
                         const std::vector<Cursor> &lines) {
@@ -485,20 +526,7 @@ void UnknownParserError(const std::string &file_name,
   fprintf(stderr, "Parse errors found in \"%s\" on the following lines:\n\n",
           file_name.c_str());
 
-  size_t left_space     = NumDigits(lines.back().line_num) + 2;
-  std::string fmt       = "%" + std::to_string(left_space) + "lu| %s\n";
-  std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
-
-  size_t last_line_num = lines[0].line_num - 1;
-  for (auto loc : lines) {
-    if (loc.line_num != last_line_num + 1) {
-      fputs(space_fmt.c_str(), stderr);
-    }
-    fprintf(stderr, fmt.c_str(), loc.line_num, loc.line.ptr);
-    last_line_num = loc.line_num;
-  }
-
-  fputc('\n', stderr);
+  DisplayLines(lines);
 }
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {

@@ -1531,7 +1531,7 @@ void Case::verify_types() {
     kv.second->verify_types();
   }
 
-  std::set<Type *> value_types;
+  std::map<Type *, size_t> value_types;
 
   for (auto &kv : key_vals) {
     if (kv.first->type == Err) {
@@ -1543,18 +1543,42 @@ void Case::verify_types() {
       kv.first->type = Bool;
     }
 
-    value_types.insert(kv.second->type);
+    ++value_types[kv.second->type];
   }
 
-  // TODO guess what type was intended
-
   if (value_types.size() != 1) {
-    if (!value_types.empty()) {
-      Error::Log::Log(loc, "Type error: Values do not match in key-value pairs");
+    assert(!value_types.empty());
+
+    // In order to give a message saying that a particular type is incorrect, we
+    // need either
+    // * 1/2 of them have the same type
+    // * 1/4 of them have the same type, and no other type hits > 1/8
+    //
+    // NOTE: These numbers were chosen somewhat arbitrarily.
+
+    size_t max_size = 0;
+    size_t min_size = key_vals.size();
+    Type *max_type = nullptr;
+    for (const auto &kv : value_types) {
+      if (kv.second > max_size) {
+        max_size = kv.second;
+        max_type = kv.first;
+      }
+
+      if (kv.second < min_size) { min_size = kv.second; }
     }
-    type = Err;
+
+    if (2 * max_size > key_vals.size() ||
+        (4 * max_size > key_vals.size() &&
+         8 * min_size < key_vals.size())) {
+      Error::Log::CaseTypeMismatch(this, max_type);
+      type = max_type;
+    } else {
+      Error::Log::CaseTypeMismatch(this);
+      type = Err;
+    }
   } else {
-    type = *value_types.begin();
+    type = value_types.begin()->first;
   }
 }
 
