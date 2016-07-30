@@ -274,6 +274,15 @@ void EscapedDoubleQuoteInCharLit(const Cursor &loc) {
   DisplayErrorMessage(msg_head, nullptr, loc, 2);
 }
 
+void InvalidStringIndex(const Cursor &loc, Type *index_type) {
+  std::string msg_head = "String indexed by an invalid type. Expected an int "
+                         "or uint, but encountered a " +
+                         index_type->to_string() + ".";
+  ++num_errs_;
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+
+}
+
 void InvalidEscapeCharInStringLit(const Cursor &loc) {
   const char *msg_head =
       "I encounterd an invalid escape sequence in your string-literal.";

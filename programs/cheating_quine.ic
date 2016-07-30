@@ -1,18 +1,15 @@
-FILE := struct {\\} #internal
+FILE := struct {}
 
 File     := struct { _handle: &FILE }
-FileMode := enum { Read \\ Write \\ }
+FileMode := enum { Read \\ Write }
 
-open := (name: &char, m: FileMode) -> &FILE {
-  fopen: (&char, &char) -> &FILE #cstdlib
+open := (name: &string, m: FileMode) -> &FILE {
+  fopen: (string, string) -> &FILE #cstdlib
 
-  mode: [2; char]
-  mode[0] = case {
-    m == FileMode.Read  =>  'r'
-    else                =>  'w'
-  }
-
-  return name.fopen(&mode[0])
+  return fopen(@name, case {
+    m == FileMode.Read  => "r"
+    else                => "w"
+  })
 }
 
 Next := (this: &File) -> char {
@@ -27,16 +24,11 @@ Next := (this: &File) -> char {
   })
 }
 
-c_str := (s: &string) -> &char {
-  cpp := s :> &&[0; char]
-  return (&((@@cpp)[1]))
-}
-
 main := void -> void { 
   name := "programs/cheating_quine.ic"
 
   f: File
-  f._handle = name.c_str().open(FileMode.Read)
+  f._handle = name.open(FileMode.Read)
 
   c := f.Next()
   while c != ascii(0u) {

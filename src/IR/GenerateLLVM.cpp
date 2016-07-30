@@ -192,8 +192,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } continue;
       case IR::Op::TC_Tup: {
-                             UNREACHABLE;
-
+        UNREACHABLE;
       } continue;
       case IR::Op::TC_Arr1: {
         Type *data_type = nullptr;
@@ -455,11 +454,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
           builder.CreateCall(cstdlib::printf(),
                              {data::global_string("%lu"), args[1]});
         } else if (print_type == String) {
-          builder.CreateCall(
-              cstdlib::printf(),
-              {data::global_string("%s"),
-               builder.CreateGEP(args[1], data::const_uint32(1))});
-          global_module->dump();
+          builder.CreateCall(cstdlib::printf(),
+                             {data::global_string("%s"), args[1]});
         } else if (print_type == Type_) {
           auto type_to_print = reinterpret_cast<Type *>(args[1]);
           builder.CreateCall(
@@ -513,9 +509,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         auto from_type = reinterpret_cast<Type *>(args[0]);
         auto to_type   = reinterpret_cast<Type *>(args[1]);
 
-        if (from_type == to_type) { registers[cmd.result.reg] = args[2]; }
+        if (from_type == to_type ||
+            (from_type == String && to_type == Ptr(Char)) ||
+            (from_type == Ptr(Char) && to_type == String)) {
+          registers[cmd.result.reg] = args[2];
 
-        if (from_type == Bool) {
+        } else if (from_type == Bool) {
           registers[cmd.result.reg] =
               (to_type == Real)
                   ? builder.CreateUIToFP(args[2], *to_type, "ext.val")
@@ -532,6 +531,8 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
                   : args[2];
         } else if (from_type->is_pointer() && to_type->is_pointer()) {
           registers[cmd.result.reg] = builder.CreateBitCast(args[2], *to_type);
+        } else {
+          UNREACHABLE;
         }
       } break;
       case IR::Op::NOp: break;

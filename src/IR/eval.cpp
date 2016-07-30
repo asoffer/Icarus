@@ -358,8 +358,19 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(Type *, type, Type_);
 
 #undef DO_STORE
+      if (cmd_inputs[0].as_type == String) {
+        auto ptr = (void **)(frame.stack->allocs + offset);
+        switch (cmd_inputs[1].flag) {
+        case ValType::GlobalCStr:
+          *ptr = const_cast<char *>(
+              GetGlobalStringNumbered(cmd_inputs[1].as_global_cstr));
+          break;
+        case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
+        default: NOT_YET;
+        }
+        break;
 
-      if (cmd_inputs[0].as_type->is_pointer()) {
+      } else if (cmd_inputs[0].as_type->is_pointer()) {
         auto ptr = (void **)(frame.stack->allocs + offset);
         switch (cmd_inputs[1].flag) {
         case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
@@ -367,14 +378,12 @@ void Cmd::Execute(StackFrame& frame) {
         default: frame.curr_block->dump(); NOT_YET;
         }
         break;
-      }
 
-      if (cmd_inputs[0].as_type->is_function()) {
+      } else if (cmd_inputs[0].as_type->is_function()) {
         auto ptr = (void **)(frame.stack->allocs + offset);
         switch (cmd_inputs[1].flag) {
-        case ValType::F: *ptr = cmd_inputs[1].as_func; break;
+        case ValType::F: *ptr        = cmd_inputs[1].as_func; break;
         case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
-        case ValType::Null: *ptr = nullptr; break;
         default: NOT_YET;
         }
         break;
@@ -393,7 +402,6 @@ void Cmd::Execute(StackFrame& frame) {
     *ptr     = cmd_inputs[1].as_##t;                                           \
     break;                                                                     \
   }
-
       DO_STORE(bool, bool, Bool);
       DO_STORE(char, char, Char);
       DO_STORE(long, int, Int);
@@ -402,9 +410,13 @@ void Cmd::Execute(StackFrame& frame) {
       DO_STORE(uint32_t, uint32, Uint32);
       DO_STORE(size_t, uint, Uint);
       DO_STORE(Type *, type, Type_);
-
 #undef DO_STORE
-      if (cmd_inputs[0].as_type->is_function()) {
+
+      if (cmd_inputs[0].as_type == String) {
+        NOT_YET;
+        break;
+
+      } else if (cmd_inputs[0].as_type->is_function()) {
         NOT_YET;
         break;
 
@@ -700,7 +712,10 @@ void Cmd::Execute(StackFrame& frame) {
       fprintf(stderr, "%s", cmd_inputs[1].as_type->to_string().c_str());
 
     } else if(cmd_inputs[0].as_type == String) {
-      fprintf(stderr, "%s", cmd_inputs[1].as_cstr);
+      if (cmd_inputs[1].flag == ValType::GlobalCStr) {
+        fprintf(stderr, "%s",
+                GetGlobalStringNumbered(cmd_inputs[1].as_global_cstr));
+      }
 
     } else if (cmd_inputs[0].as_type->is_enum()) {
       auto enum_type = (Enum *)cmd_inputs[0].as_type;

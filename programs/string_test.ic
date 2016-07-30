@@ -4,3 +4,9 @@ main := void -> void {
   print t
   print "t has length ", t.size(), '\n'
 }
+
+size := (s: &string) -> uint {
+  for i in 0u .. {
+    if (@s)[i] == ascii(0u) { return i }
+  }
+}

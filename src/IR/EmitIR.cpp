@@ -171,7 +171,7 @@ static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
   char *new_cstr = new char[len];
   memcpy(new_cstr, cstr, len);
   // The + 1 is to skip the first entry telling us if we own the memory or not.
-  const_strs_.push_back(new_cstr);
+  const_strs_.push_back(new_cstr + 1);
   return IR::Value::GlobalCStr(num_strs);
 }
 
@@ -477,6 +477,9 @@ IR::Value Binop::EmitIR() {
   case Language::Operator::Index: {
     if (lhs->type->is_array()) {
       return PtrCallFix(type, EmitLVal());
+
+    } else if (lhs->type == String) {
+      return IR::Load(Char, EmitLVal());
 
     } else {
       auto fn = GetFuncReferencedIn(scope_, "__bracket__",

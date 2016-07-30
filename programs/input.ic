@@ -1,42 +1,33 @@
 Basic := (T: type) -> bool {
   return  T == int | T == uint | T == char | T == real
 }
+
+c_str := (s: &string) -> &char {
+  cpp := s :> &&[0; char]
+  return (&((@@cpp)[1]))
+}
  
 input := (ptr: &Basic`T) -> void {
-  scanf: (&char, &char) -> int #cstdlib
-  if T == int {
-    cstr := ['%', 'd', ascii(0u)]
-    scanf(&(cstr[0]), ptr :> &char)
-
-  } else if T == uint {
-    cstr := ['%', 'u', ascii(0u)]
-    scanf(&cstr[0], ptr :> &char)
-
-  } else if T == char {
-    cstr := ['%', 'c', ascii(0u)]
-    scanf(&cstr[0], ptr :> &char)
-
-  } else if T == real {
-    cstr := ['%', 'l', 'f', ascii(0u)]
-    scanf(&cstr[0], ptr :> &char)
+  fmt := case {
+    T == int   =>  "%ld"
+    T == uint  =>  "%lu"
+    T == char  =>  "%c"
+    T == real  =>  "%lf"
   }
+  scanf(fmt.c_str(), ptr :> &char)
+
+  scanf: (&char, &char) -> int #cstdlib
 }
 
 
 main := void -> void {
   print "Integer to square: "
   x: int
-  input(&x)
-  print x
-  print " squared is "
-  print x * x
-  print "\n"
+  x.input()
+  print x, " squared is ", x * x, "\n"
 
   print "Real number to square: "
   y: real
-  input(&y)
-  print y
-  print " squared is "
-  print y * y
-  print "\n"
+  y.input()
+  print y, " squared is ", y * y, "\n"
 }

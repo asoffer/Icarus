@@ -57,6 +57,7 @@ void UnknownParserError(const std::string &file_name,
 void InvalidImport(const Cursor &loc);
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct);
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
+void InvalidStringIndex(const Cursor &loc, Type *index_type);
 } // namespace Log
 } // namespace Error
 

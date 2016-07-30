@@ -921,7 +921,14 @@ void Binop::verify_types() {
   } break;
   case Operator::Index:
     type = Err;
-    if (!lhs->type->is_array()) {
+    if (lhs->type == String) {
+      if (rhs->type == Int || rhs->type == Uint) {
+        type = Char;
+        break;
+      } else {
+        Error::Log::InvalidStringIndex(loc, rhs->type);
+      }
+    } else if (!lhs->type->is_array()) {
       if (rhs->type->is_range()) {
         Error::Log::SlicingNonArray(loc, lhs->type);
       } else {
