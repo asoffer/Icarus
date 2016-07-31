@@ -177,33 +177,25 @@ static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
 
 namespace AST {
 IR::Value Terminal::EmitIR() {
-  // TODO translation from IR::Value to IR::Value should be removed
   switch (terminal_type) {
   case Language::Terminal::ASCII: return IR::Value(AsciiFunc());
-  case Language::Terminal::Char: return IR::Value(value.as_char);
-  case Language::Terminal::Else: UNREACHABLE;
-  case Language::Terminal::False: return IR::Value(false);
-  case Language::Terminal::Hole: UNREACHABLE;
-  case Language::Terminal::Int:
-    return IR::Value(
-        (long)value.as_int); // TODO IR::Value shouldn't use longs
   case Language::Terminal::Null: return IR::Value::Null(type);
   case Language::Terminal::Ord: return IR::Value(OrdFunc());
-  case Language::Terminal::Real: return IR::Value(value.as_real);
-  case Language::Terminal::Return: {
+  case Language::Terminal::Return:
     IR::Store(Char, RETURN_FLAG, scope_->GetFnScope()->exit_flag);
     assert(scope_->is_block_scope() || scope_->is_function_scope());
     IR::Block::Current->SetUnconditional(((BlockScope *)scope_)->exit_block);
-
-    // TODO set current block to be unreachable. access to it should trigger an
-    // error that no code there will ever be executed.
-    return IR::Value();
-  } break;
+    return IR::Value::None();
   case Language::Terminal::StringLiteral:
     return FindOrInsertGlobalCStr(value.as_cstr);
   case Language::Terminal::True: return IR::Value(true);
-  case Language::Terminal::Type: return IR::Value(value.as_type);
-  case Language::Terminal::Uint: return IR::Value(value.as_uint);
+  case Language::Terminal::False: return IR::Value(false);
+  case Language::Terminal::Char:
+  case Language::Terminal::Int:
+  case Language::Terminal::Type:
+  case Language::Terminal::Real:
+  case Language::Terminal::Uint: return value;
+  default: UNREACHABLE;
   }
 }
 

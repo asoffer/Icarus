@@ -72,6 +72,14 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
     }
 
     for (const auto &file_and_locs : kv.second) {
+      size_t max_line_num = 0;
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        if (max_line_num < line_and_offsets.first) {
+          max_line_num = line_and_offsets.first;
+        }
+      }
+      size_t line_num_width = NumDigits(max_line_num);
+
       size_t num_uses_in_file = 0;
       for (const auto &line_and_offsets : file_and_locs.second) {
         num_uses_in_file += line_and_offsets.second.size();
@@ -83,7 +91,7 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
         pstr line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width = NumDigits(line_and_offsets.first) + 6;
+        size_t left_border_width = line_num_width + 6;
         size_t line_length       = strlen(line) + 1;
         char *underline          = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
@@ -93,9 +101,11 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
           memset(underline + left_border_width + offset, '^', token_length);
         }
 
-        fprintf(stderr, "    %lu| %s\n"
+        fprintf(stderr, "    %*lu| %s\n"
                         "%s\n",
-                line_and_offsets.first, line.ptr, underline);
+                (int)line_num_width, line_and_offsets.first, line.ptr,
+                underline);
+        delete[] underline;
       }
     }
   }
@@ -128,13 +138,19 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
 
       fprintf(stderr, "  %s in '%s':\n", NumTimes(num_uses_in_file, "Used ", true).c_str(), file_and_locs.first);
 
+      size_t max_line_num = 0;
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        if (max_line_num < line_and_offsets.first) { max_line_num = line_and_offsets.first; }
+      }
+      size_t line_num_width = NumDigits(max_line_num);
+
       for (const auto &line_and_offsets : file_and_locs.second) {
         pstr line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width = NumDigits(line_and_offsets.first) + 4;
-        size_t line_length       = strlen(line) + 1;
-        char *underline          = new char[left_border_width + line_length + 1];
+        size_t left_border_width                   = line_num_width + 4;
+        size_t line_length                         = strlen(line) + 1;
+        char *underline                            = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
         memset(underline, ' ', left_border_width + line_length);
 
@@ -142,9 +158,10 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
           memset(underline + left_border_width + offset, '^', token_length);
         }
 
-        fprintf(stderr, "    %lu| %s\n"
+        fprintf(stderr, "    %*lu| %s\n"
                         "%s\n",
-                line_and_offsets.first, line.ptr, underline);
+                (int)line_num_width, line_and_offsets.first, line.ptr, underline);
+        delete[] underline;
       }
     }
   }
@@ -162,22 +179,28 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
     fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
             kv.second.size() == 1 ? "s" : "", kv.first);
 
+    int line_num_width   = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
     for (auto line_num : kv.second) {
       if (line_num - last_line_num == 2) {
         pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
-        fprintf(stderr, "    %lu| %s\n", line_num - 1, line.ptr);
-      }
-      if (line_num - last_line_num == 3) {
+        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
+                line.ptr);
+      } else if (line_num - last_line_num == 3) {
         pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
-        fprintf(stderr, "    %lu| %s\n", line_num - 1, line.ptr);
+        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
+                line.ptr);
 
         line = source_map AT(kv.first)->lines AT(line_num - 2);
-        fprintf(stderr, "    %lu| %s\n", line_num - 2, line.ptr);
+        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 2,
+                line.ptr);
+      } else if (line_num - last_line_num > 3) {
+        fprintf(stderr, "%s...|\n",
+                std::string((size_t)line_num_width + 1, ' ').c_str());
       }
 
       pstr line = source_map AT(kv.first)->lines AT(line_num);
-      fprintf(stderr, ">   %lu| %s\n", line_num, line.ptr);
+      fprintf(stderr, ">   %*lu| %s\n", line_num_width, line_num, line.ptr);
       last_line_num = line_num;
     }
   }
@@ -533,15 +556,12 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
 
 static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t left_space     = NumDigits(lines.back().line_num) + 2;
-  std::string fmt       = "%" + std::to_string(left_space) + "lu| %s\n";
   std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
 
   size_t last_line_num = lines[0].line_num - 1;
   for (auto loc : lines) {
-    if (loc.line_num != last_line_num + 1) {
-      fputs(space_fmt.c_str(), stderr);
-    }
-    fprintf(stderr, fmt.c_str(), loc.line_num, loc.line.ptr);
+    if (loc.line_num != last_line_num + 1) { fputs(space_fmt.c_str(), stderr); }
+    fprintf(stderr, "%*lu| %s\n", (int)left_space, loc.line_num, loc.line.ptr);
     last_line_num = loc.line_num;
   }
 
