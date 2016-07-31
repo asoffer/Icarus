@@ -9,10 +9,6 @@
   }
 
 
-// TODO these are not threadsafe! When we access the stack, when compilation is
-// multi-threaded, we should probably grab a mutex before getting the top of the
-// stack
-
 std::stack<Scope *> ScopeStack;
 static Scope *CurrentScope() {
   return ScopeStack.empty() ? nullptr : ScopeStack.top();

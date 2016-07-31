@@ -265,7 +265,9 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
         ((Terminal *)unop_ptr->operand)->terminal_type ==
             Language::Terminal::StringLiteral) {
       file_queue.emplace(std::string("programs/") +
-                         std::string(unop_ptr->operand->value.as_cstr));
+                         std::string(unop_ptr->operand->value.as_cstr +
+                                     1)); // NOTE: + 1 because we prefix our
+                                          // strings. Probably should fix this.
     } else {
       Error::Log::InvalidImport(unop_ptr->operand->loc);
     }

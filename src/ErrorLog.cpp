@@ -14,6 +14,7 @@ typedef std::string Token;
 typedef std::map<Token,
                  std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
     TokenToErrorMap;
+typedef std::map<FileName, std::vector<LineNum>> FileToLineNumMap;
 typedef std::map<const AST::Declaration *,
                  std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
     DeclToErrorMap;
@@ -23,6 +24,7 @@ typedef std::map<Cursor, std::map<LineNum, std::vector<LineOffset>>>
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
 static DeclToErrorMap invalid_capture;
 static LocToErrorMap case_errors;
+static FileToLineNumMap global_non_decl;
 
 std::map<std::string, std::map<size_t, std::vector<std::string>>>
     Error::Log::log_;
@@ -40,8 +42,17 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
+static inline std::string NumTimes(size_t n, const char *numeric_prefix, bool capitalize) {
+  if (n == 1) { return capitalize ? "Once" : "once"; }
+  if (n == 2) { return capitalize ? "Twice" : "twice"; }
+  if (numeric_prefix) {
+  return numeric_prefix + std::to_string(n) + " times";
+  } else {
+  return std::to_string(n) + " times";
+  }
+}
+
 static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
-  // TODO display file names too.
   for (const auto &kv : log) {
     const char *token   = kv.first.c_str();
     size_t token_length = kv.first.size();
@@ -55,19 +66,24 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
 
     fprintf(stderr, fmt, token);
     if (num_uses == 1) {
-      fprintf(stderr, ".\n\n");
-    } else if (num_uses == 2) {
-      fprintf(stderr, " used twice.\n\n");
+      fprintf(stderr, ".\n");
     } else {
-      fprintf(stderr, " used %lu times.\n\n", num_uses);
+      fprintf(stderr, " used %s.\n", NumTimes(num_uses, nullptr, false).c_str());
     }
 
     for (const auto &file_and_locs : kv.second) {
+      size_t num_uses_in_file = 0;
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        num_uses_in_file += line_and_offsets.second.size();
+      }
+
+      fprintf(stderr, "  %s in '%s':\n", NumTimes(num_uses_in_file, "Used ", true).c_str(), file_and_locs.first);
+
       for (const auto &line_and_offsets : file_and_locs.second) {
         pstr line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width = NumDigits(line_and_offsets.first) + 4;
+        size_t left_border_width = NumDigits(line_and_offsets.first) + 6;
         size_t line_length       = strlen(line) + 1;
         char *underline          = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
@@ -77,15 +93,15 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
           memset(underline + left_border_width + offset, '^', token_length);
         }
 
-        fprintf(stderr, "  %lu| %s\n"
+        fprintf(stderr, "    %lu| %s\n"
                         "%s\n",
                 line_and_offsets.first, line.ptr, underline);
       }
     }
   }
 }
+
 static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
-  // TODO display file names too.
   for (const auto &kv : log) {
     const char *token   = kv.first->identifier->token.c_str();
     size_t token_length = kv.first->identifier->token.size();
@@ -99,14 +115,19 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
 
     fprintf(stderr, fmt_head, token);
     if (num_uses == 1) {
-      fprintf(stderr, ".\n\n");
-    } else if (num_uses == 2) {
-      fprintf(stderr, " used twice.\n\n");
+      fprintf(stderr, ".\n");
     } else {
-      fprintf(stderr, " used %lu times.\n\n", num_uses);
+      fprintf(stderr, " used %s.\n", NumTimes(num_uses, nullptr, false).c_str());
     }
 
     for (const auto &file_and_locs : kv.second) {
+      size_t num_uses_in_file = 0;
+      for (const auto &line_and_offsets : file_and_locs.second) {
+        num_uses_in_file += line_and_offsets.second.size();
+      }
+
+      fprintf(stderr, "  %s in '%s':\n", NumTimes(num_uses_in_file, "Used ", true).c_str(), file_and_locs.first);
+
       for (const auto &line_and_offsets : file_and_locs.second) {
         pstr line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
@@ -121,7 +142,7 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
           memset(underline + left_border_width + offset, '^', token_length);
         }
 
-        fprintf(stderr, "  %lu| %s\n"
+        fprintf(stderr, "    %lu| %s\n"
                         "%s\n",
                 line_and_offsets.first, line.ptr, underline);
       }
@@ -129,12 +150,47 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
   }
 }
 
+static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
+  if (global_non_decl.empty()) { return; }
+
+  size_t num_instances = 0;
+  for (const auto &kv : log) { num_instances += kv.second.size(); }
+
+  fprintf(stderr, fmt, num_instances, num_instances ? "s" : "");
+
+  for (const auto &kv : log) {
+    fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
+            kv.second.size() == 1 ? "s" : "", kv.first);
+
+    size_t last_line_num = kv.second.front();
+    for (auto line_num : kv.second) {
+      if (line_num - last_line_num == 2) {
+        pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
+        fprintf(stderr, "    %lu| %s\n", line_num - 1, line.ptr);
+      }
+      if (line_num - last_line_num == 3) {
+        pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
+        fprintf(stderr, "    %lu| %s\n", line_num - 1, line.ptr);
+
+        line = source_map AT(kv.first)->lines AT(line_num - 2);
+        fprintf(stderr, "    %lu| %s\n", line_num - 2, line.ptr);
+      }
+
+      pstr line = source_map AT(kv.first)->lines AT(line_num);
+      fprintf(stderr, ">   %lu| %s\n", line_num, line.ptr);
+      last_line_num = line_num;
+    }
+  }
+}
+
 void Error::Log::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
-  // TODO also log the declarations of the ambiguously declared identifiers and
-  // display them.
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
   GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
+  GatherAndDisplay("Found %lu non-declaration statement%s at the top level. "
+                   "All top-level statements must either be declarations or "
+                   "imports.",
+                   global_non_decl);
 
   for (const auto &file_log : log_) {
     // NOTE: No sense in robustifying this. It probably won't last.
@@ -177,7 +233,7 @@ static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
   }
 
   fprintf(stderr, "%s\n\n"
-                  "  %lu| %s\n"
+                  "    %lu| %s\n"
                   "%s\n",
           msg_head, loc.line_num, line.ptr, underline.c_str());
 
@@ -251,6 +307,11 @@ void RunawayCharLit(const Cursor &loc) {
       "You are missing a quotation mark at the end of your character-literal.";
   ++num_errs_;
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
+}
+
+void GlobalNonDecl(const Cursor &loc) {
+  ++num_errs_;
+  global_non_decl[loc.file_name].push_back(loc.line_num);
 }
 
 void RunawayStringLit(const Cursor &loc) {
@@ -426,14 +487,6 @@ void InvalidCast(const Cursor &loc, const Type *from, const Type *to) {
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 2);
-}
-
-void GlobalNonDecl(const Cursor &loc) {
-  ++num_errs_;
-  // TODO pull all these together
-  DisplayErrorMessage("Found an invalid statement at the top level. All "
-                      "top-level statements must either be declarations or "
-                      "imports.", nullptr, loc, 1);
 }
 
 void NotAType(const Cursor &loc, const std::string &id_tok) {

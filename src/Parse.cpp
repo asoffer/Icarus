@@ -111,6 +111,7 @@ static bool ShouldShift(ParseState *ps) {
     return (left_prec < right_prec) ||
            (left_prec == right_prec && (left_prec & assoc_mask) == right_assoc);
   }
+
   return false;
 }
 
