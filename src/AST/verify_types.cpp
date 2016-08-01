@@ -1534,13 +1534,16 @@ void Case::verify_types() {
   for (auto &kv : key_vals) {
     if (kv.first->type == Err) {
       kv.first->type = Bool;
-      if (kv.second->type == Err) { continue; }
 
     } else if (kv.first->type != Bool) {
       Error::Log::CaseLHSBool(loc, kv.first->loc, kv.first->type);
       kv.first->type = Bool;
     }
 
+    if (kv.second->type == Err) {
+      type = Err;
+      return;
+    }
     ++value_types[kv.second->type];
   }
 
@@ -1566,6 +1569,7 @@ void Case::verify_types() {
       if (kv.second < min_size) { min_size = kv.second; }
     }
 
+    std::cerr << *this << std::endl;
     if (2 * max_size > key_vals.size() ||
         (4 * max_size > key_vals.size() &&
          8 * min_size < key_vals.size())) {
@@ -1653,6 +1657,7 @@ void Unop::VerifyReturnTypes(Type *ret_type) {
   if (type == Err) { return; }
   operand->VerifyReturnTypes(ret_type);
   if (op == Language::Operator::Return) {
+    if (operand->type == Err) { return; } // Error already logged
     if (operand->type != ret_type) {
       Error::Log::InvalidReturnType(loc, operand->type, ret_type);
     }
