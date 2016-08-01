@@ -482,6 +482,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
         auto ret_type = cmd.result.type;
         if (ret_type == Void) {
+          if (cmd.args[0].flag != ValType::F) { fn = builder.CreateLoad(fn); }
           builder.CreateCall(fn, args);
         } else if (ret_type->is_primitive() || ret_type->is_pointer() ||
                    ret_type->is_enum() || ret_type->is_function()) {

@@ -26,6 +26,7 @@ bin/icarus programs/enum.ic --file-type=none
 bin/icarus programs/eval.ic --file-type=none
 bin/icarus programs/fn_arg.ic --file-type=none
 bin/icarus programs/fn_params.ic --file-type=none
+bin/icarus programs/fn_ptr.ic --file-type=none
 bin/icarus programs/fn_call.ic --file-type=none
 bin/icarus programs/fn_expression_literal.ic --file-type=none
 bin/icarus programs/for_test.ic --file-type=none

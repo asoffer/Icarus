@@ -170,6 +170,18 @@ void Cmd::Execute(StackFrame& frame) {
     frame.reg[result.reg] = Value(-cmd_inputs[0].as_real);
   } break;
   case Op::Call: {
+    // Need to load the right address.
+    switch (cmd_inputs[0].flag) {
+    case ValType::HeapAddr:
+      cmd_inputs[0] = IR::Value(*(Func **)cmd_inputs[0].as_heap_addr);
+      break;
+    case ValType::StackAddr:
+      cmd_inputs[0] = IR::Value(
+          *(Func **)(frame.stack->allocs + cmd_inputs[0].as_stack_addr));
+      break;
+    case ValType::F: break;
+    default: UNREACHABLE;
+    }
     assert(cmd_inputs[0].flag == ValType::F);
 
     std::vector<Value> call_args;

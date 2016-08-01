@@ -25,9 +25,12 @@ IR::Value Pointer::EmitInitialValue() const {
   return IR::Value::Null(const_cast<Pointer *>(this));
 }
 
+IR::Value Function::EmitInitialValue() const {
+  return IR::Value((IR::Func *)nullptr);
+}
+
 IR::Value Array::EmitInitialValue() const { NOT_YET; }
 IR::Value Tuple::EmitInitialValue() const { NOT_YET; }
-IR::Value Function::EmitInitialValue() const { NOT_YET; }
 IR::Value Struct::EmitInitialValue() const { NOT_YET; }
 IR::Value TypeVariable::EmitInitialValue() const { NOT_YET; }
 IR::Value RangeType::EmitInitialValue() const { NOT_YET; }

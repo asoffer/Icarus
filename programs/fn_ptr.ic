@@ -1,0 +1,11 @@
+main := void -> void {
+  f = void -> void { print 10, '\n' }
+ 
+  f()
+ 
+  f = void -> void { print 20, '\n' }
+ 
+  f()
+  f: void -> void
+
+}

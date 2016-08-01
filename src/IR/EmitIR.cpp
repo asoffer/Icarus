@@ -200,7 +200,6 @@ IR::Value Terminal::EmitIR() {
 }
 
 static void EmitPrintExpr(Expression *expr) {
-  // TODO make string primitive
   if (expr->type->is_primitive() || expr->type->is_enum() ||
       expr->type->is_pointer()) {
     IR::Print(IR::Value(expr->type), expr->EmitIR());
@@ -233,11 +232,11 @@ IR::Value Unop::EmitIR() {
     auto block_scope = (BlockScope *)scope_;
 
     block_scope->MakeReturn(operand->type, ret);
-    return IR::Value();
+    return IR::Value::None();
   } break;
   case Language::Operator::Free: {
     IR::Free(operand->EmitIR());
-    return IR::Value();
+    return IR::Value::None();
   } break;
   case Language::Operator::Eval: {
     auto old_func  = IR::Func::Current;
@@ -274,7 +273,7 @@ IR::Value Unop::EmitIR() {
     } else {
       EmitPrintExpr(operand);
     }
-    return IR::Value();
+    return IR::Value::None();
   } break;
   case Language::Operator::And:
     return (operand->type == Type_) ? IR::TC_Ptr(operand->EmitIR())
@@ -309,10 +308,9 @@ IR::Value Unop::EmitIR() {
 IR::Value Binop::EmitIR() {
   switch (op) {
   case Language::Operator::Assign: {
-    // TODO what if rhs doesn't have an lvalue?
     Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
                          lhs->EmitLVal());
-    return IR::Value();
+    return IR::Value::None();
   } break;
   case Language::Operator::Cast: {
     return IR::Cast(lhs->type, Evaluate(rhs).as_type, lhs->EmitIR());
@@ -341,7 +339,7 @@ IR::Value Binop::EmitIR() {
       IR::Block::Current->SetUnconditional(land_block);
 
       IR::Block::Current = land_block;
-      return IR::Value();
+      return IR::Value::None();
     } else {
       auto fn = GetFuncReferencedIn(
           scope_, op == Language::Operator::AndEq ? "__and_eq__" : "__or_eq__",
@@ -705,7 +703,7 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
-  if (type->has_vars()) { return IR::Value(); }
+  if (type->has_vars()) { return IR::Value::None(); }
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -766,7 +764,11 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       }
       UNREACHABLE;
     } else if (decl->type->is_function()) {
-      continue; // TODO is this right?
+      if (decl->IsUninitialized() || decl->IsDefaultInitialized() ||
+          decl->HasHashtag("mutable")) {
+        // If the function is mutable, push space for it on the stack.
+        ir_func->PushLocal(decl);
+      } else { continue; }
     } else {
       ir_func->PushLocal(decl);
     }
@@ -805,7 +807,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
 IR::Value Statements::EmitIR() {
   for (auto stmt : statements) { stmt->EmitIR(); }
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value Identifier::EmitIR() {
@@ -885,6 +887,9 @@ IR::Value Identifier::EmitIR() {
       }
 
       decl->stack_loc = IR::Value(fn);
+    } else if (decl->type->is_function()) {
+      return IR::Load(type, decl->stack_loc);
+
     } else {
       std::cerr << *decl << '\n';
       NOT_YET;
@@ -907,10 +912,11 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
-  if (type->is_function()) { return IR::Value(); }
+  // TODO fix function initialization
+  if (type->is_function()) { return IR::Value::None(); }
 
   if (IsUninitialized()) {
-    return IR::Value();
+    return IR::Value::None();
 
   } else if (IsDefaultInitialized()) {
     type->EmitInit(identifier->EmitLVal());
@@ -922,7 +928,7 @@ IR::Value Declaration::EmitIR() {
     }
   }
 
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value Case::EmitIR() {
@@ -1052,7 +1058,7 @@ IR::Value While::EmitIR() {
 
   IR::Block::Current = land_block;
 
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value Conditional::EmitIR() {
@@ -1104,7 +1110,7 @@ IR::Value Conditional::EmitIR() {
   }
 
   IR::Block::Current = land_block;
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value ArrayLiteral::EmitIR() {
@@ -1134,7 +1140,7 @@ static void ComputeAndStoreRangeValues(Expression *range, IR::Value &left,
     right = ((Binop *)range)->rhs->EmitIR();
   } else {
     left  = ((Unop *)range)->operand->EmitIR();
-    right = IR::Value();
+    right = IR::Value::None();
   }
 }
 
@@ -1371,7 +1377,7 @@ IR::Value For::EmitIR() {
 
   IR::Block::Current = land_block;
 
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value Jump::EmitIR() {
@@ -1390,7 +1396,7 @@ IR::Value Jump::EmitIR() {
 
   // TODO set current block to be unreachable. access to it should trigger an
   // error that no code there will ever be executed.
-  return IR::Value();
+  return IR::Value::None();
 }
 
 IR::Value Generic::EmitIR() {
