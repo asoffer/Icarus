@@ -81,7 +81,6 @@ struct Node {
 
 struct Expression : public Node {
   EXPR_FNS(Expression, expression);
-  static Node *build(NPtrVec &&nodes);
   static Node *AddHashtag(NPtrVec &&nodes);
 
   virtual void VerifyReturnTypes(Type *) {}

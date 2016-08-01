@@ -91,6 +91,6 @@ void BlockScope::InsertDestroy() {
   }
 }
 
-// TODO what should the exit_flag default be?
 FnScope::FnScope()
-    : BlockScope(ScopeType::Function), fn_type(nullptr), exit_flag('\0') {}
+    : BlockScope(ScopeType::Function), fn_type(nullptr),
+      exit_flag(NORMAL_FLAG) {}

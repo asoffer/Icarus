@@ -73,15 +73,13 @@ std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
 
-Type::operator llvm::Type *() const {
-  // TODO propogate the annoying constness
-  const_cast<Type *>(this)->generate_llvm();
+Type::operator llvm::Type *() {
+  generate_llvm();
   return llvm_type;
 }
 
-Function::operator llvm::FunctionType *() const {
-  // TODO propogate the annoying constness
-  const_cast<Function *>(this)->generate_llvm();
+Function::operator llvm::FunctionType *() {
+  generate_llvm();
   return (llvm::FunctionType *)llvm_type;
 }
 

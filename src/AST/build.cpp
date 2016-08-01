@@ -29,7 +29,6 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
       ((AST::Binop *)expr)->op == Language::Operator::Assign) {
     Error::Log::Log(expr->loc, msg + "Did you mean '==' instead of '='?");
 
-    // TODO allow continuation after error here?
     ((AST::Binop *)expr)->op = Language::Operator::EQ;
   }
 }
@@ -117,10 +116,17 @@ static Node *BuildEnumLiteral(NPtrVec &&nodes) {
       if (!stmt->is_identifier()) {
         Error::Log::Log(stmt->loc, "Enum members must be identifiers.");
       } else {
-        // TODO repeated terms?
-        // TODO move the string into place
-        members.push_back(((Identifier *)stmt)->token);
+        const std::string &val_name = ((Identifier *)stmt)->token;
+        for (const auto mem : members) {
+          if (mem == val_name) {
+            Error::Log::RepeatedEnumName(stmt->loc);
+            goto skip_adding_member;
+          }
+        }
+
+        members.push_back(std::move(val_name));
       }
+    skip_adding_member:;
     }
   }
 
@@ -513,12 +519,6 @@ Node *ArrayType::build(NPtrVec &&nodes) {
   }
 }
 
-Node *Expression::build(NPtrVec &&) {
-  // This function is only here to make the macro generation simpler
-  // TODO remove it
-  assert(false && "Called a function that shouldn't be called.");
-}
-
 Node *Expression::AddHashtag(NPtrVec &&nodes) {
   assert(nodes[0]->is_expression());
   auto expr= steal<Expression>(nodes[0]);
@@ -744,7 +744,13 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
 
   if (strcmp(tk, "=") == 0) {
     if (nodes[0]->is_declaration()) {
-      // TODO Disallow a := b = c
+      if (((AST::Declaration *)nodes[0])->IsInferred()) {
+        // NOTE: It might be that this was supposed to be a bool ==? How can we
+        // give a good error message if that's what is intended?
+        Error::Log::DoubleDeclAssignment(nodes[0]->loc, nodes[2]->loc);
+        return steal<AST::Declaration>(nodes[0]);
+      }
+
       auto decl      = steal<AST::Declaration>(nodes[0]);
       decl->init_val = steal<AST::Expression>(nodes[2]);
       return decl;

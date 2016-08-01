@@ -23,7 +23,6 @@ void Primitive::EmitRepr(IR::Value val) {
   if (this == Bool) {
     IR::Print(IR::Value(Bool), val);
   } else if (this == Char) {
-    // TODO pull this out into a function.
     IR::Print(IR::Value(Char), IR::Value('\''));
 
     auto land_block = IR::Func::Current->AddBlock("land");

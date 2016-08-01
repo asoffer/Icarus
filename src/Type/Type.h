@@ -49,7 +49,7 @@ public:
   virtual ~Type() {}
   BASIC_METHODS;
 
-  virtual operator llvm::Type *() const;
+  virtual operator llvm::Type *();
 
   size_t SpaceInArray() const {
     return MoveForwardToAlignment(bytes(), alignment());
@@ -149,7 +149,7 @@ struct Pointer : public Type {
 struct Function : public Type {
   TYPE_FNS(Function, function);
 
-  operator llvm::FunctionType *() const;
+  operator llvm::FunctionType *();
 
   Function(Type *in, Type *out);
   Type *input, *output;

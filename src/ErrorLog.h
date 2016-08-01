@@ -58,6 +58,8 @@ void InvalidImport(const Cursor &loc);
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct);
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 void InvalidStringIndex(const Cursor &loc, Type *index_type);
+void RepeatedEnumName(const Cursor &loc);
+void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc);
 } // namespace Log
 } // namespace Error
 

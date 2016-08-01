@@ -534,6 +534,22 @@ void DeclaredParametricType(const Cursor &loc, const std::string &id_tok) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
 
+void RepeatedEnumName(const Cursor &loc) {
+  ++num_errs_; // TODO better error message here.
+  DisplayErrorMessage("Repeated enum member.", nullptr, loc, 1);
+}
+
+void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc) {
+  ++num_errs_;
+  if (decl_loc.line_num == val_loc.line_num){
+    DisplayErrorMessage("Attempting to initialize an identifier that already "
+                        "has an initial value.",
+                        nullptr, decl_loc, 1);
+  } else {
+    NOT_YET;
+  }
+}
+
 void InvalidImport(const Cursor &loc) {
   ++num_errs_;
 
@@ -553,6 +569,7 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
   DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), loc,
                       strlen(loc.line.ptr) - loc.offset);
 }
+
 
 static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t left_space     = NumDigits(lines.back().line_num) + 2;
