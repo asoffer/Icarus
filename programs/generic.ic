@@ -9,14 +9,10 @@ main := void -> void {
     print "\ninitial value = ", blank
 
     print "\n         size = ", T.bytes, " byte"
-    if T.bytes != 1u {
-      print "s"
-    }
+    if T.bytes != 1u { print "s" }
 
     print "\n    alignment = ", T.alignment, " byte"
-    if T.alignment != 1u {
-      print "s"
-    }
+    if T.alignment != 1u { print "s" }
     print "\n"
   }
 
@@ -48,13 +44,9 @@ Any := (T: type) -> bool {
 
 pie := struct {
   pi := 3.14159
-  e := 2.71828
+   e := 2.71828
 }
 
 __print__ := (p: pie) -> void {
-  print "("
-  print p.pi
-  print ", "
-  print p.e
-  print ")"
+  print "(", p.pi, ", ", p.e, ")"
 }

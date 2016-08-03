@@ -178,13 +178,13 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      decl->stack_loc = IR::Value::CreateGlobal();
+      decl->addr = IR::Value::CreateGlobal();
       if (decl->IsInferred() || decl->IsCustomInitialized()) {
         assert(decl->init_val);
-        IR::InitialGlobals[decl->stack_loc.as_global_addr] =
+        IR::InitialGlobals[decl->addr.as_global_addr] =
             Evaluate(decl->init_val);
       } else if (decl->IsDefaultInitialized()) {
-        IR::InitialGlobals[decl->stack_loc.as_global_addr] =
+        IR::InitialGlobals[decl->addr.as_global_addr] =
             decl->type->EmitInitialValue();
       } else {
         NOT_YET;
@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
               /* Initializer = */ 0, // might be specified below
               /*        Name = */ id->token);
 
-          auto ir_val = IR::InitialGlobals[decl->stack_loc.as_global_addr];
+          auto ir_val = IR::InitialGlobals[decl->addr.as_global_addr];
           llvm::Constant *init_val;
           switch (ir_val.flag) {
           case IR::ValType::B:
@@ -259,7 +259,7 @@ int main(int argc, char *argv[]) {
           }
 
           gvar->setInitializer(init_val);
-          IR::LLVMGlobals[decl->stack_loc.as_global_addr] = gvar;
+          IR::LLVMGlobals[decl->addr.as_global_addr] = gvar;
 
           continue;
         }

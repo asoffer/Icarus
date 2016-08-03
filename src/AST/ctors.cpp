@@ -21,9 +21,7 @@ Expression::Expression()
 
 Declaration::Declaration()
     : identifier(nullptr), type_expr(nullptr), init_val(nullptr),
-      arg_val(nullptr) {
-  stack_loc = IR::Value::StackAddr(~0ul);
-}
+      addr(IR::Value::None()), arg_val(nullptr) {}
 
 Generic::Generic() : test_fn(nullptr) {}
 InDecl::InDecl() : container(nullptr) {}

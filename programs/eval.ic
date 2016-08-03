@@ -10,8 +10,8 @@ fibonacci := (n: int) -> int {
   }
 }
 
+fib_of_20 := void -> int { return fibonacci(20) }
 main := void -> void {
-  fib_of_20 := void -> int { return fibonacci(20) }
 
   $(hi())
   $print fib_of_20(), '\n'

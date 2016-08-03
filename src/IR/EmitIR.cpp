@@ -146,7 +146,7 @@ size_t IR::Func::PushSpace(Type *t) {
 }
 
 void IR::Func::PushLocal(AST::Declaration *decl) {
-  decl->stack_loc = IR::Value::FrameAddr(PushSpace(decl->type));
+  decl->addr = IR::Value::FrameAddr(PushSpace(decl->type));
 }
 
 static std::vector<const char *> const_strs_;
@@ -727,6 +727,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   statements->verify_types();
 
   for (auto decl : fn_scope->DeclRegistry) {
+    if (decl->type->has_vars()) { continue; }
     if (decl->arg_val) {
       if (decl->arg_val->is_function_literal()) {
         auto fn_lit = (FunctionLiteral *)decl->arg_val;
@@ -734,44 +735,32 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
         size_t arg_num = 0;
         for (const auto &d : fn_lit->inputs) {
           if (decl == d) {
-            decl->stack_loc = IR::Value::Arg(arg_num);
-            goto success_fn;
+            decl->addr = IR::Value::Arg(arg_num);
+            goto success;
           }
           ++arg_num;
         }
 
         UNREACHABLE;
-
-      success_fn:
-        continue;
-
       } else if (decl->arg_val->is_dummy() &&
                  decl->arg_val->value.as_type->is_parametric_struct()) {
         auto param_struct = (ParamStruct *)decl->arg_val->value.as_type;
         size_t param_num = 0;
         for (const auto &p : param_struct->params) {
           if (decl == p) {
-            decl->stack_loc = IR::Value::Arg(param_num);
-            goto success_param_struct;
+            decl->addr = IR::Value::Arg(param_num);
+            goto success;
           }
           ++param_num;
         }
 
         UNREACHABLE;
-
-      success_param_struct:
-        continue;
       }
-      UNREACHABLE;
-    } else if (decl->type->is_function()) {
-      if (decl->IsUninitialized() || decl->IsDefaultInitialized() ||
-          decl->HasHashtag("mutable")) {
-        // If the function is mutable, push space for it on the stack.
-        ir_func->PushLocal(decl);
-      } else { continue; }
+
     } else {
       ir_func->PushLocal(decl);
     }
+  success:;
   }
 
   for (auto scope : fn_scope->innards_) {
@@ -841,7 +830,7 @@ IR::Value Identifier::EmitIR() {
     }
   }
 
-  if (decl->is_in_decl()) { return decl->stack_loc; }
+  if (decl->is_in_decl()) { return decl->addr; }
 
   if (decl->arg_val && decl->arg_val->is_function_literal()) {
     // TODO Iterating through linearly is probably not smart.
@@ -859,7 +848,8 @@ IR::Value Identifier::EmitIR() {
     assert(false && "Failed to match argument");
 
   } else if (type->is_function()) {
-    if (decl->stack_loc.as_uint != ~0ul) { return decl->stack_loc; }
+    if (decl->addr != IR::Value::None()) { return decl->addr; }
+    assert(!decl->type->has_vars());
 
     auto fn_type = (Function *)type;
 
@@ -870,8 +860,8 @@ IR::Value Identifier::EmitIR() {
     auto old_block = IR::Block::Current;
 
     if (decl->init_val) {
-      decl->stack_loc = decl->init_val->EmitIR();
-      decl->stack_loc.as_func->SetName(
+      decl->addr = decl->init_val->EmitIR();
+      decl->addr.as_func->SetName(
           Mangle(fn_type, decl->identifier, decl->scope_));
     } else if (decl->HasHashtag("cstdlib")) {
       auto fn = new IR::Func(fn_type, false);
@@ -886,9 +876,9 @@ IR::Value Identifier::EmitIR() {
             fn->GetName(), llvm_fn_type);
       }
 
-      decl->stack_loc = IR::Value(fn);
+      decl->addr = IR::Value(fn);
     } else if (decl->type->is_function()) {
-      return IR::Load(type, decl->stack_loc);
+      return IR::Load(type, decl->addr);
 
     } else {
       std::cerr << *decl << '\n';
@@ -898,10 +888,10 @@ IR::Value Identifier::EmitIR() {
     IR::Func::Current  = old_func;
     IR::Block::Current = old_block;
 
-    return decl->stack_loc;
+    return decl->addr;
 
   } else {
-    return PtrCallFix(type, decl->stack_loc);
+    return PtrCallFix(type, decl->addr);
   }
 }
 
@@ -912,9 +902,6 @@ IR::Value ArrayType::EmitIR() {
 }
 
 IR::Value Declaration::EmitIR() {
-  // TODO fix function initialization
-  if (type->is_function()) { return IR::Value::None(); }
-
   if (IsUninitialized()) {
     return IR::Value::None();
 
@@ -1249,10 +1236,10 @@ IR::Value For::EmitIR() {
     auto phi = IR::Phi(phi_type);
     phi_block->push(phi);
     phi_vals.push_back(IR::Value::Reg(phi.result.reg));
-    iter->stack_loc = IR::Value::Reg(phi.result.reg);
+    iter->addr = IR::Value::Reg(phi.result.reg);
     if (iter->container->type->is_array() ||
         iter->container->type->is_slice()) {
-      iter->stack_loc = PtrCallFix(iter->type, iter->stack_loc);
+      iter->addr = PtrCallFix(iter->type, iter->addr);
     }
   }
 

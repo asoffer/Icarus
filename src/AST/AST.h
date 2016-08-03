@@ -187,7 +187,7 @@ struct Declaration : public Expression {
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;
-  IR::Value stack_loc;
+  IR::Value addr;
 
   // If it's an argument, this points to the function/parametric-struct for
   // which it's an argument. Otherwise this field is null.

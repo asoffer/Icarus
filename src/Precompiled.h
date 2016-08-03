@@ -154,7 +154,7 @@ inline bool operator<(const Value &lhs, const Value &rhs) {
   return lhs.as_type < rhs.as_type;
 }
 inline bool operator==(const Value &lhs, const Value &rhs) {
-  return lhs.as_type == rhs.as_type;
+  return lhs.flag == rhs.flag && lhs.as_type == rhs.as_type;
 }
 inline bool operator!=(const Value &lhs, const Value &rhs) {
   return !(lhs == rhs);

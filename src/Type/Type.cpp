@@ -83,7 +83,7 @@ Function::operator llvm::FunctionType *() {
   return (llvm::FunctionType *)llvm_type;
 }
 
-bool Type::is_big() const { return is_array() || is_struct() || is_function(); }
+bool Type::is_big() const { return is_array() || is_struct(); }
 bool Type::stores_data() const {
   return this != Type_ && !is_function() && !is_type_variable();
 }

@@ -46,7 +46,7 @@ Value Value::CreateGlobal() {
   Value v;
   v.flag          = ValType::GlobalAddr;
   v.as_stack_addr = global_num_++;
-  InitialGlobals.emplace_back(~0ul);
+  InitialGlobals.emplace_back(IR::Value::None());
   LLVMGlobals.emplace_back(nullptr);
   return v;
 }
@@ -246,7 +246,7 @@ Func *Func::Current   = nullptr;
 Block *Block::Current = nullptr;
 
 Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
-  result.reg = has_ret ? Func::Current->num_cmds : ~0u;
+  result.reg = has_ret ? Func::Current->num_cmds : FAIL;
   if (has_ret) { Func::Current->num_cmds++; }
 }
 

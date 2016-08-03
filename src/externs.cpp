@@ -153,14 +153,13 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
 
   if (!decl) { return nullptr; }
 
-  // TODO change name of this stack_loc -> alloc or something similar.
-  if(decl->stack_loc.as_uint == ~0ul) {
+  if(decl->addr == IR::Value::None()) {
     if (decl->init_val->is_function_literal()) {
       auto old_func = IR::Func::Current;
       auto old_block = IR::Block::Current;
 
-      decl->stack_loc = decl->init_val->EmitIR();
-      decl->stack_loc.as_func->SetName(
+      decl->addr = decl->init_val->EmitIR();
+      decl->addr.as_func->SetName(
           Mangle(fn_type, decl->identifier, scope_ptr));
 
       IR::Func::Current  = old_func;
@@ -169,8 +168,8 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
       NOT_YET;
     }
   }
-  assert(decl->stack_loc.as_uint != ~0ul);
-  return decl->stack_loc.as_func;
+  assert(decl->addr != IR::Value::None());
+  return decl->addr.as_func;
 }
 
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {

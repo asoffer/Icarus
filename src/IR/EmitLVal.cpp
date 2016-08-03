@@ -2,7 +2,7 @@
 #include "Type/Type.h"
 
 namespace AST {
-IR::Value Identifier::EmitLVal() { return decl->stack_loc; }
+IR::Value Identifier::EmitLVal() { return decl->addr; }
 
 IR::Value Binop::EmitLVal() {
   if (op == Language::Operator::Index) {
