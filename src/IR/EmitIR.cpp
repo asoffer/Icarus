@@ -5,7 +5,11 @@
 
 extern llvm::IRBuilder<> builder;
 
-extern std::vector<IR::Func *> all_functions;
+namespace IR {
+extern std::vector<IR::Value> InitialGlobals;
+} // namespace IR
+
+extern std::vector<IR::Func *> implicit_functions;
 extern llvm::Module *global_module;
 extern FileType file_type;
 
@@ -134,7 +138,7 @@ size_t IR::Func::PushSpace(Type *t) {
   if (file_type != FileType::None) {
     auto ip = builder.saveIP();
     builder.SetInsertPoint(alloc_block);
-    if (t != Void && t != Type_) {
+    if (t != Void && t->time() != Time::compile) {
       frame_map[result] =
           builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
     }
@@ -800,6 +804,8 @@ IR::Value Statements::EmitIR() {
 }
 
 IR::Value Identifier::EmitIR() {
+  verify_types();
+
   if (type == Type_) { // TODO move this to wherever it should be
     if (decl->arg_val) {
       if (decl->arg_val->is_function_literal()) {
@@ -832,6 +838,30 @@ IR::Value Identifier::EmitIR() {
 
   if (decl->is_in_decl()) { return decl->addr; }
 
+  if (type->time() && type->is_function()) {
+    if (decl->addr == IR::Value::None()) {
+      if (decl->scope_ == Scope::Global) {
+        decl->addr = IR::Value::CreateGlobal();
+        if (decl->IsInferred() || decl->IsCustomInitialized()) {
+          assert(decl->init_val);
+          IR::InitialGlobals[decl->addr.as_global_addr] =
+              Evaluate(decl->init_val);
+        } else if (decl->IsDefaultInitialized()) {
+          IR::InitialGlobals[decl->addr.as_global_addr] =
+              decl->type->EmitInitialValue();
+        } else {
+          NOT_YET;
+        }
+      } else {
+        NOT_YET;
+      }
+
+      assert(decl->addr != IR::Value::None());
+    }
+
+    return IR::Load(type, decl->addr);
+  }
+
   if (decl->arg_val && decl->arg_val->is_function_literal()) {
     // TODO Iterating through linearly is probably not smart.
     auto fn        = (FunctionLiteral *)decl->arg_val;
@@ -846,49 +876,6 @@ IR::Value Identifier::EmitIR() {
       return IR::Value::Arg(arg_num);
     }
     assert(false && "Failed to match argument");
-
-  } else if (type->is_function()) {
-    if (decl->addr != IR::Value::None()) { return decl->addr; }
-    assert(!decl->type->has_vars());
-
-    auto fn_type = (Function *)type;
-
-    // TODO Is this really the place to name the function? Shouldn't that be
-    // done in its declaration?
-
-    auto old_func  = IR::Func::Current;
-    auto old_block = IR::Block::Current;
-
-    if (decl->init_val) {
-      decl->addr = decl->init_val->EmitIR();
-      decl->addr.as_func->SetName(
-          Mangle(fn_type, decl->identifier, decl->scope_));
-    } else if (decl->HasHashtag("cstdlib")) {
-      auto fn = new IR::Func(fn_type, false);
-      // TODO call mangle even though it's known to be cstdlib?
-      fn->SetName(token);
-      fn->generated                    = IR::Func::Gen::ToLink;
-      all_functions.push_back(fn);
-
-      if (file_type != FileType::None) {
-        llvm::FunctionType *llvm_fn_type = *fn_type;
-        fn->llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-            fn->GetName(), llvm_fn_type);
-      }
-
-      decl->addr = IR::Value(fn);
-    } else if (decl->type->is_function()) {
-      return IR::Load(type, decl->addr);
-
-    } else {
-      std::cerr << *decl << '\n';
-      NOT_YET;
-    }
-
-    IR::Func::Current  = old_func;
-    IR::Block::Current = old_block;
-
-    return decl->addr;
 
   } else {
     return PtrCallFix(type, decl->addr);

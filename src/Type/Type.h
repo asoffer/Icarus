@@ -2,6 +2,7 @@
 #define ICARUS_TYPE_H
 #include "Scope.h"
 
+extern std::vector<IR::Func *> implicit_functions;
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,

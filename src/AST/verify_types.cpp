@@ -20,7 +20,7 @@ static Scope *CurrentScope() {
 }
 
 static AST::Declaration *
-GenerateSpecifiedFunctionDecl(const std::string &name,
+GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
                               AST::FunctionLiteral *fn_lit,
                               const std::map<TypeVariable *, Type *> &matches) {
   auto num_matches = matches.size();
@@ -38,15 +38,15 @@ GenerateSpecifiedFunctionDecl(const std::string &name,
       num_matches, lookup_key, lookup_val);
 
   auto old_stack_size = ScopeStack.size();
-  ScopeStack.push(fn_lit->scope_);
+  ScopeStack.push(scope ? scope : fn_lit->scope_);
 
   auto new_id      = new AST::Identifier(fn_lit->loc, name);
   auto decl        = new AST::Declaration;
   new_id->decl     = decl;
   new_id->type     = cloned_func->type;
-  new_id->scope_   = fn_lit->scope_;
+  new_id->scope_   = scope ? scope : fn_lit->scope_;
   decl->loc        = fn_lit->loc;
-  decl->scope_     = fn_lit->scope_;
+  decl->scope_     = scope ? scope : fn_lit->scope_;
   decl->identifier = new_id;
   decl->init_val   = cloned_func;
   decl->addr       = IR::Value::None();
@@ -117,8 +117,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
     assert(lhs_var->test->type == Func(Type_, Bool));
 
     // Do a function call
+    auto f = Evaluate(lhs_var->test);
     auto local_stack = new IR::LocalStack;
-    auto f = lhs_var->test->EmitIR();
     assert(f.flag == IR::ValType::F);
     auto test_result = f.as_func->Call(local_stack, {IR::Value(rhs)});
     delete local_stack;
@@ -831,13 +831,15 @@ void Binop::verify_types() {
         if (lhs->is_identifier()) {
           auto lhs_id  = (Identifier *)lhs;
           lhs_id->decl = fn_expr->cache[rhs->type] =
-              GenerateSpecifiedFunctionDecl(lhs_id->token, fn_expr, matches);
+              GenerateSpecifiedFunctionDecl(lhs_id->decl->scope_, lhs_id->token,
+                                            fn_expr, matches);
           lhs_id->type = lhs_id->decl->type; // TODO I need to do something like
                                              // this, but maybe this needs to be
                                              // done more generally?
         } else {
+          // TODO fix this null scope here.
           fn_expr->cache[rhs->type] =
-              GenerateSpecifiedFunctionDecl("anon-fn", fn_expr, matches);
+              GenerateSpecifiedFunctionDecl(nullptr, "anon-fn", fn_expr, matches);
         }
 
       }

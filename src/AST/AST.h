@@ -184,6 +184,9 @@ struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
   static Node *Build(NPtrVec &&nodes);
 
+  void EmitGlobal();
+  void EmitLLVMGlobal();
+
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;

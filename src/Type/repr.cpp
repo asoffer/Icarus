@@ -71,6 +71,7 @@ void Array::EmitRepr(IR::Value val) {
     auto saved_block = IR::Block::Current;
 
     repr_func          = new IR::Func(Func(this, Void));
+    implicit_functions.push_back(repr_func);
     IR::Func::Current  = repr_func;
     IR::Block::Current = repr_func->entry();
     repr_func->SetName("repr." + Mangle(this));

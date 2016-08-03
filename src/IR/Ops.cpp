@@ -2,10 +2,7 @@
 #include <cmath>
 #include "Type/Type.h"
 
-extern std::vector<IR::Func *> all_functions;
-
 extern FileType file_type;
-
 extern llvm::Module *global_module;
 
 llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
@@ -90,14 +87,10 @@ Func::Func(Function *fn_type, bool should_gen)
     should_gen &=
         (fn_type->time() == Time::run || fn_type->time() == Time::either);
 
-    if (should_gen) {
-      all_functions.push_back(this);
-
-      if (file_type != FileType::None) {
-        llvm::FunctionType *llvm_fn_type = *fn_type;
-        llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-            name, llvm_fn_type);
-      }
+    if (should_gen && file_type != FileType::None) {
+      llvm::FunctionType *llvm_fn_type = *fn_type;
+      llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
+          name, llvm_fn_type);
     }
 
     alloc_block = make_block("entry", llvm_fn);
@@ -246,6 +239,7 @@ Func *Func::Current   = nullptr;
 Block *Block::Current = nullptr;
 
 Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
+  assert(Func::Current);
   result.reg = has_ret ? Func::Current->num_cmds : FAIL;
   if (has_ret) { Func::Current->num_cmds++; }
 }

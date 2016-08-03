@@ -15,6 +15,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
       lhs_type->is_function()) {
     assert(lhs_type == rhs_type);
+
     IR::Store(rhs_type, from_val, to_var);
   } else if (lhs_type->is_enum()) {
     assert(lhs_type == rhs_type);

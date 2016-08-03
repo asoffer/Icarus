@@ -1,2 +1,1 @@
-main := void -> void { x := 17 \\ print x
-}
+main := void -> void { x := 17 \\ print x } #const

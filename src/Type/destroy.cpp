@@ -15,6 +15,7 @@ void Array::EmitDestroy(IR::Value id_val) {
 
     destroy_func = new IR::Func(Func(Ptr(this), Void));
     destroy_func->SetName("destroy." + Mangle(this));
+    implicit_functions.push_back(destroy_func);
 
     IR::Func::Current  = destroy_func;
     IR::Block::Current = destroy_func->entry();
@@ -55,6 +56,7 @@ void Struct::EmitDestroy(IR::Value id_val) {
 
     destroy_func = new IR::Func(Func(Ptr(this), Void));
     destroy_func->SetName("destroy." + Mangle(this));
+    implicit_functions.push_back(destroy_func);
 
     IR::Func::Current  = destroy_func;
     IR::Block::Current = destroy_func->entry();

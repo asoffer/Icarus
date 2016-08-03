@@ -17,7 +17,7 @@
     }                                                                          \
   } while (false)
 
-std::vector<IR::Func *> all_functions;
+std::vector<IR::Func *> implicit_functions;
 
 extern IR::Value Evaluate(AST::Expression *expr);
 
@@ -32,7 +32,6 @@ extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
 } // namespace data
 
-extern std::vector<IR::Func *> all_functions;
 extern void Parse(SourceFile *sf);
 extern std::stack<Scope *> ScopeStack;
 
@@ -54,6 +53,116 @@ std::map<std::string, SourceFile *> source_map;
 
 #include "tools.h"
 
+void AST::Declaration::EmitGlobal() {
+  assert(!arg_val);
+
+  if (type->is_pointer()) {
+    Error::Log::Log(loc, "We do not support global pointers yet.");
+    return;
+  }
+
+  if (type->is_array()) {
+    Error::Log::Log(loc, "We do not support global arrays yet.");
+    return;
+  }
+
+  addr = IR::Value::CreateGlobal();
+  if (IsInferred() || IsCustomInitialized()) {
+    assert(init_val);
+    if (type->has_vars() && init_val->is_function_literal()) {
+      for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
+        kv.second->EmitGlobal();
+      }
+      return;
+    } else {
+      IR::InitialGlobals[addr.as_global_addr] = Evaluate(init_val);
+    }
+  } else if (IsDefaultInitialized()) {
+    IR::InitialGlobals[addr.as_global_addr] =
+        type->EmitInitialValue();
+  } else {
+    NOT_YET;
+  }
+}
+
+void AST::Declaration::EmitLLVMGlobal() {
+  assert(!arg_val);
+  auto type_for_llvm = type; 
+
+  if (type->is_struct() || type->is_parametric_struct() || type->is_range() ||
+      type->is_slice() || type->time() == Time::compile) {
+    return;
+  }
+
+  if (type->has_vars()) {
+    if (init_val && init_val->is_function_literal()) {
+      for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
+        kv.second->EmitLLVMGlobal();
+      }
+    } else {
+      return;
+    }
+  }
+
+  assert(type->is_primitive() || type->is_pointer() || type->is_enum() ||
+         type->is_function());
+
+  if (type->is_function()) {
+    if (HasHashtag("const")) {
+      if (init_val) {
+        if (init_val->is_function_literal()) {
+          // TODO why wasn't this already initialized?
+          auto func = init_val->EmitIR().as_func;
+          func->GenerateLLVM();
+          func->llvm_fn->setName(
+              Mangle((Function *)type, identifier, Scope::Global));
+          return;
+        } else {
+          NOT_YET;
+        }
+      } else {
+        NOT_YET;
+      }
+    } else {
+      type_for_llvm = Ptr(type);
+    }
+  }
+
+  auto gvar = new llvm::GlobalVariable(
+      /*      Module = */ *global_module,
+      /*        Type = */ *type_for_llvm,
+      /*  isConstant = */ HasHashtag("const"),
+      /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+      /* Initializer = */ nullptr,
+      /*        Name = */ identifier->token);
+
+  auto ir_val = IR::InitialGlobals[addr.as_global_addr];
+  llvm::Constant *init_val;
+  switch (ir_val.flag) {
+  case IR::ValType::B: init_val   = data::const_bool(ir_val.as_bool); break;
+  case IR::ValType::C: init_val   = data::const_char(ir_val.as_char); break;
+  case IR::ValType::I: init_val   = data::const_int(ir_val.as_int); break;
+  case IR::ValType::R: init_val   = data::const_real(ir_val.as_real); break;
+  case IR::ValType::U16: init_val = data::const_uint16(ir_val.as_uint16); break;
+  case IR::ValType::U32: init_val = data::const_uint32(ir_val.as_uint32); break;
+  case IR::ValType::U: init_val   = data::const_uint(ir_val.as_uint); break;
+  case IR::ValType::F:
+    ir_val.as_func->GenerateLLVM();
+    assert(ir_val.as_func->llvm_fn);
+    init_val = ir_val.as_func->llvm_fn;
+    break;
+  case IR::ValType::GlobalAddr:
+    init_val = IR::LLVMGlobals[ir_val.as_global_addr];
+    break;
+  default: std::cerr << ir_val << std::endl; NOT_YET;
+  }
+
+  gvar->setInitializer(init_val);
+  IR::LLVMGlobals[addr.as_global_addr] = gvar;
+
+  return;
+}
+
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
     switch(ParseCLArguments(argc, argv)) {
@@ -63,10 +172,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  RUN(timer, "Icarus Initialization") {
-    if (debug::ct_eval) { initscr(); }
-  }
-
+  if (debug::ct_eval) { initscr(); }
   if (file_type != FileType::None) { InitializeLLVM(); }
 
   while (!file_queue.empty()) {
@@ -110,15 +216,6 @@ int main(int argc, char *argv[]) {
     ScopeStack.pop();
   }
 
-  // COMPILATION STEP:
-  //
-  // For each identifier, figure out which other identifiers are needed in
-  // order to declare this one. This cannot generate compilation errors.
-  // Dependency::record(global_statements);
-  // To assign type orders, we traverse the dependency graph looking for a
-  // valid ordering in which we can determine the types of the nodes. This can
-  // generate compilation errors if no valid ordering exists.
-  // Dependency::assign_order();
   RUN(timer, "Type verification") {
     VerificationQueue.push(global_statements);
     while (!VerificationQueue.empty()) {
@@ -162,41 +259,7 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Emit-IR") {
     for (auto decl : Scope::Global->DeclRegistry) {
-      if (decl->arg_val || decl->type->time() == Time::compile ||
-          decl->type->is_function()) {
-        continue;
-      }
-
-      if (decl->type->is_pointer()) {
-        Error::Log::Log(decl->loc, "We do not support global pointers yet.");
-        continue;
-      }
-
-
-      if (decl->type->is_array()) {
-        Error::Log::Log(decl->loc, "We do not support global arrays yet.");
-        continue;
-      }
-
-      decl->addr = IR::Value::CreateGlobal();
-      if (decl->IsInferred() || decl->IsCustomInitialized()) {
-        assert(decl->init_val);
-        IR::InitialGlobals[decl->addr.as_global_addr] =
-            Evaluate(decl->init_val);
-      } else if (decl->IsDefaultInitialized()) {
-        IR::InitialGlobals[decl->addr.as_global_addr] =
-            decl->type->EmitInitialValue();
-      } else {
-        NOT_YET;
-      }
-    }
-
-    for (auto decl : Scope::Global->DeclRegistry) {
-      if (decl->arg_val || !decl->type->is_function() ||
-          decl->type->has_vars()) {
-        continue;
-      }
-      decl->identifier->EmitIR();
+      decl->EmitGlobal();
     }
   }
 
@@ -207,89 +270,25 @@ int main(int argc, char *argv[]) {
 
   if (file_type != FileType::None) {
     RUN(timer, "Code-gen") {
-      // Globals
-      for (auto decl : Scope::Global->DeclRegistry) {
-        assert(!decl->arg_val);
-        auto id   = decl->identifier;
-        auto type = decl->type;
-
-        if (type->is_struct() || type->is_parametric_struct() ||
-            type->is_range() || type->is_slice() ||
-            type->time() == Time::compile) {
-          continue;
-        }
-
-        if (type->is_function()) { continue; /* TODO what if it's #mutable */ }
-
-        if (type->is_primitive() || type->is_pointer() || type->is_enum()) {
-          auto gvar = new llvm::GlobalVariable(
-              /*      Module = */ *global_module,
-              /*        Type = */ *type,
-              /*  isConstant = */ decl->HasHashtag("const"),
-              /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-              /* Initializer = */ 0, // might be specified below
-              /*        Name = */ id->token);
-
-          auto ir_val = IR::InitialGlobals[decl->addr.as_global_addr];
-          llvm::Constant *init_val;
-          switch (ir_val.flag) {
-          case IR::ValType::B:
-            init_val = data::const_bool(ir_val.as_bool);
-            break;
-          case IR::ValType::C:
-            init_val = data::const_char(ir_val.as_char);
-            break;
-          case IR::ValType::I: init_val = data::const_int(ir_val.as_int); break;
-          case IR::ValType::R:
-            init_val = data::const_real(ir_val.as_real);
-            break;
-          case IR::ValType::U16:
-            init_val = data::const_uint16(ir_val.as_uint16);
-            break;
-          case IR::ValType::U32:
-            init_val = data::const_uint32(ir_val.as_uint32);
-            break;
-          case IR::ValType::U:
-            init_val = data::const_uint(ir_val.as_uint);
-            break;
-          case IR::ValType::GlobalAddr:
-            init_val = IR::LLVMGlobals[ir_val.as_global_addr];
-            break;
-          default: NOT_YET;
-          }
-
-          gvar->setInitializer(init_val);
-          IR::LLVMGlobals[decl->addr.as_global_addr] = gvar;
-
-          continue;
-        }
-
-        std::cerr << *type << std::endl;
-        UNREACHABLE;
-      }
+      for (auto decl : Scope::Global->DeclRegistry) { decl->EmitLLVMGlobal(); }
 
       // Generate all the functions
       if (file_type != FileType::None) {
-        for (auto f : all_functions) {
+        for (auto f : implicit_functions) {
           if (f->generated == IR::Func::Gen::ToLink) { continue; }
           f->GenerateLLVM();
         }
       }
 
-      { // Generate code for everything else
-        ScopeStack.push(Scope::Global);
-        for (auto stmt : global_statements->statements) {
-          if (stmt->is_declaration()) { continue; }
-          if (stmt->is_unop()) {
-            if (((AST::Unop *)stmt)->op == Language::Operator::Eval) {
-              Evaluate(((AST::Unop *)stmt)->operand);
-            }
-            continue;
-          }
-          UNREACHABLE;
-        }
-        ScopeStack.pop();
+      // Generate code for everything else (just evals)
+      ScopeStack.push(Scope::Global);
+      for (auto stmt : global_statements->statements) {
+        if (!stmt->is_unop()) { continue; }
+        if (((AST::Unop *)stmt)->op != Language::Operator::Eval) { continue; }
+
+        Evaluate(((AST::Unop *)stmt)->operand);
       }
+      ScopeStack.pop();
     }
   }
 
