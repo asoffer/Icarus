@@ -57,7 +57,7 @@ size_t Get(const std::string &tag) {
 namespace cstdlib {
 llvm::Constant *malloc() {
   static llvm::Constant *func_ = global_module->getOrInsertFunction(
-      "malloc", llvm::FunctionType::get(*Uint, {*Ptr(Char)}, false));
+      "malloc", llvm::FunctionType::get(*Ptr(Char), {*Uint}, false));
   return func_;
 }
 } // namespace cstdlib

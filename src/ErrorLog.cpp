@@ -211,8 +211,8 @@ void Error::Log::Dump() {
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
   GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
   GatherAndDisplay("Found %lu non-declaration statement%s at the top level. "
-                   "All top-level statements must either be declarations or "
-                   "imports.",
+                   "All top-level statements must either be declarations, "
+                   "imports, or void compile-time evaluations.",
                    global_non_decl);
 
   for (const auto &file_log : log_) {

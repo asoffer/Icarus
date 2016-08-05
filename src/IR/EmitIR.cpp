@@ -578,6 +578,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
 IR::Value ChainOp::EmitIR() {
   assert(!ops.empty());
+  verify_types();
 
   switch (ops[0]) {
   case Language::Operator::Xor: {
@@ -708,6 +709,7 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   if (type->has_vars()) { return IR::Value::None(); }
+  verify_types();
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;

@@ -80,7 +80,12 @@ void Function::generate_llvm() {
     AddLLVMInput(Ptr(output), llvm_in);
   }
 
-  llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
+  if (output->is_function()) {
+    llvm_type = llvm::FunctionType::get(llvm::PointerType::getUnqual(llvm_out),
+                                        llvm_in, false);
+  } else {
+    llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
+  }
 }
 
 void Tuple::generate_llvm() {

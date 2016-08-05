@@ -44,7 +44,7 @@ extern void GenerateLLVMTypes();
 
 namespace IR {
 extern std::vector<IR::Value> InitialGlobals;
-extern std::vector<llvm::Constant *> LLVMGlobals;
+extern std::vector<llvm::GlobalVariable *> LLVMGlobals;
 } // namespace IR
 
 std::queue<AST::Node *> VerificationQueue;
@@ -55,6 +55,7 @@ std::map<std::string, SourceFile *> source_map;
 
 void AST::Declaration::EmitGlobal() {
   assert(!arg_val);
+  verify_types();
 
   if (type->is_pointer()) {
     Error::Log::Log(loc, "We do not support global pointers yet.");
@@ -66,8 +67,7 @@ void AST::Declaration::EmitGlobal() {
     return;
   }
 
-  addr = IR::Value::CreateGlobal();
-  if (IsInferred() || IsCustomInitialized()) {
+  if (!IsDefaultInitialized()) {
     assert(init_val);
     if (type->has_vars() && init_val->is_function_literal()) {
       for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
@@ -75,19 +75,34 @@ void AST::Declaration::EmitGlobal() {
       }
       return;
     } else {
+      addr                                    = IR::Value::CreateGlobal();
       IR::InitialGlobals[addr.as_global_addr] = Evaluate(init_val);
     }
-  } else if (IsDefaultInitialized()) {
-    IR::InitialGlobals[addr.as_global_addr] =
-        type->EmitInitialValue();
   } else {
-    NOT_YET;
+    addr                                    = IR::Value::CreateGlobal();
+    IR::InitialGlobals[addr.as_global_addr] = type->EmitInitialValue();
+  }
+
+  if (file_type != FileType::None) {
+    // TODO What if we're returning a struct we haven't created fully yet?
+    auto type_for_llvm =
+        type->is_function() && HasHashtag("const") ? type : Ptr(type);
+    type_for_llvm->generate_llvm();
+
+    IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+        /*      Module = */ *global_module,
+        /*        Type = */ *type_for_llvm,
+        /*  isConstant = */ HasHashtag("const"),
+        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+        /* Initializer = */ nullptr,
+        /*        Name = */ identifier->token);
   }
 }
 
 void AST::Declaration::EmitLLVMGlobal() {
+  if (file_type == FileType::None) { return; }
   assert(!arg_val);
-  auto type_for_llvm = type; 
+  verify_types();
 
   if (type->is_struct() || type->is_parametric_struct() || type->is_range() ||
       type->is_slice() || type->time() == Time::compile) {
@@ -107,58 +122,44 @@ void AST::Declaration::EmitLLVMGlobal() {
   assert(type->is_primitive() || type->is_pointer() || type->is_enum() ||
          type->is_function());
 
-  if (type->is_function()) {
-    if (HasHashtag("const")) {
-      if (init_val) {
-        if (init_val->is_function_literal()) {
-          // TODO why wasn't this already initialized?
-          auto func = init_val->EmitIR().as_func;
-          func->GenerateLLVM();
-          func->llvm_fn->setName(
-              Mangle((Function *)type, identifier, Scope::Global));
-          return;
-        } else {
-          NOT_YET;
-        }
+  if (type->is_function() && HasHashtag("const")) {
+    if (init_val) {
+      if (init_val->is_function_literal()) {
+        auto func = init_val->EmitIR().as_func;
+        func->GenerateLLVM();
+        func->llvm_fn->setName(
+            Mangle((Function *)type, identifier, Scope::Global));
+        return;
       } else {
         NOT_YET;
       }
     } else {
-      type_for_llvm = Ptr(type);
+      NOT_YET;
     }
   }
 
-  auto gvar = new llvm::GlobalVariable(
-      /*      Module = */ *global_module,
-      /*        Type = */ *type_for_llvm,
-      /*  isConstant = */ HasHashtag("const"),
-      /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-      /* Initializer = */ nullptr,
-      /*        Name = */ identifier->token);
-
   auto ir_val = IR::InitialGlobals[addr.as_global_addr];
-  llvm::Constant *init_val;
+  llvm::Constant *llvm_val;
   switch (ir_val.flag) {
-  case IR::ValType::B: init_val   = data::const_bool(ir_val.as_bool); break;
-  case IR::ValType::C: init_val   = data::const_char(ir_val.as_char); break;
-  case IR::ValType::I: init_val   = data::const_int(ir_val.as_int); break;
-  case IR::ValType::R: init_val   = data::const_real(ir_val.as_real); break;
-  case IR::ValType::U16: init_val = data::const_uint16(ir_val.as_uint16); break;
-  case IR::ValType::U32: init_val = data::const_uint32(ir_val.as_uint32); break;
-  case IR::ValType::U: init_val   = data::const_uint(ir_val.as_uint); break;
+  case IR::ValType::B: llvm_val   = data::const_bool(ir_val.as_bool); break;
+  case IR::ValType::C: llvm_val   = data::const_char(ir_val.as_char); break;
+  case IR::ValType::I: llvm_val   = data::const_int(ir_val.as_int); break;
+  case IR::ValType::R: llvm_val   = data::const_real(ir_val.as_real); break;
+  case IR::ValType::U16: llvm_val = data::const_uint16(ir_val.as_uint16); break;
+  case IR::ValType::U32: llvm_val = data::const_uint32(ir_val.as_uint32); break;
+  case IR::ValType::U: llvm_val   = data::const_uint(ir_val.as_uint); break;
   case IR::ValType::F:
+    ir_val.as_func->dump();
     ir_val.as_func->GenerateLLVM();
     assert(ir_val.as_func->llvm_fn);
-    init_val = ir_val.as_func->llvm_fn;
+    llvm_val = ir_val.as_func->llvm_fn;
     break;
   case IR::ValType::GlobalAddr:
-    init_val = IR::LLVMGlobals[ir_val.as_global_addr];
+    llvm_val = IR::LLVMGlobals[ir_val.as_global_addr];
     break;
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
-
-  gvar->setInitializer(init_val);
-  IR::LLVMGlobals[addr.as_global_addr] = gvar;
+  IR::LLVMGlobals[addr.as_global_addr]->setInitializer(llvm_val);
 
   return;
 }
@@ -216,6 +217,30 @@ int main(int argc, char *argv[]) {
     ScopeStack.pop();
   }
 
+  RUN(timer, "Verify and Emit") {
+    for (auto stmt : global_statements->statements) {
+      if (stmt->is_declaration()) {
+        ((AST::Declaration *)stmt)->EmitGlobal();
+
+      } else if (stmt->is_unop()) {
+        switch (((AST::Unop *)stmt)->op) {
+        case Language::Operator::Eval: 
+          if (((AST::Unop *)stmt)->type == Void) {
+            Evaluate(((AST::Unop *)stmt)->operand);
+          } else {
+            Error::Log::GlobalNonDecl(stmt->loc);
+          }
+          case Language::Operator::Import: break;
+          default: Error::Log::GlobalNonDecl(stmt->loc); break;
+        }
+
+      } else {
+        Error::Log::GlobalNonDecl(stmt->loc);
+      }
+    }
+  }
+
+  // Is there anything left here TODO?
   RUN(timer, "Type verification") {
     VerificationQueue.push(global_statements);
     while (!VerificationQueue.empty()) {
@@ -227,7 +252,7 @@ int main(int argc, char *argv[]) {
     while (!FuncInnardsVerificationQueue.empty()) {
       auto pair     = FuncInnardsVerificationQueue.front();
       auto ret_type = pair.first;
-      auto stmts    = pair.second;
+      auto stmts = pair.second;
       stmts->VerifyReturnTypes(ret_type);
       FuncInnardsVerificationQueue.pop();
     }
@@ -240,27 +265,6 @@ int main(int argc, char *argv[]) {
   RUN(timer, "(L/R)value checking") {
     global_statements->lrvalue_check();
     CHECK_FOR_ERRORS;
-  }
-
-  RUN(timer, "Top-level verification") {
-    for (auto stmt : global_statements->statements) {
-      if (stmt->is_declaration() ||
-          (stmt->is_unop() &&
-           ((((AST::Unop *)stmt)->op == Language::Operator::Eval &&
-             ((AST::Unop *)stmt)->type == Void) ||
-            ((AST::Unop *)stmt)->op == Language::Operator::Import))) {
-        continue;
-      }
-      Error::Log::GlobalNonDecl(stmt->loc);
-    }
-
-    CHECK_FOR_ERRORS;
-  }
-
-  RUN(timer, "Emit-IR") {
-    for (auto decl : Scope::Global->DeclRegistry) {
-      decl->EmitGlobal();
-    }
   }
 
   CHECK_FOR_ERRORS; // NOTE: The only reason we check for errors here is because
@@ -279,16 +283,6 @@ int main(int argc, char *argv[]) {
           f->GenerateLLVM();
         }
       }
-
-      // Generate code for everything else (just evals)
-      ScopeStack.push(Scope::Global);
-      for (auto stmt : global_statements->statements) {
-        if (!stmt->is_unop()) { continue; }
-        if (((AST::Unop *)stmt)->op != Language::Operator::Eval) { continue; }
-
-        Evaluate(((AST::Unop *)stmt)->operand);
-      }
-      ScopeStack.pop();
     }
   }
 
