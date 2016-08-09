@@ -396,7 +396,7 @@ void Cmd::Execute(StackFrame& frame) {
         switch (cmd_inputs[1].flag) {
         case ValType::F: *ptr        = cmd_inputs[1].as_func; break;
         case ValType::HeapAddr: *ptr = cmd_inputs[1].as_heap_addr; break;
-        default: NOT_YET;
+        default: dump(0); NOT_YET;
         }
         break;
       }

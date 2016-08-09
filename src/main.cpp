@@ -4,7 +4,6 @@
 #include "Scope.h"
 #include "IR/IR.h"
 #include "util/command_line_args.h"
-#include "util/timer.h"
 #include <ncurses.h>
 #endif
 
@@ -32,26 +31,58 @@ extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
 } // namespace data
 
+extern void CompletelyVerify(AST::Node *node);
 extern void Parse(SourceFile *sf);
+extern void ParseAllFiles();
 extern std::stack<Scope *> ScopeStack;
-
-static Timer timer;
-
+extern Timer timer;
 extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
-
 extern void GenerateLLVMTypes();
 
 namespace IR {
 extern std::vector<IR::Value> InitialGlobals;
-extern std::vector<llvm::GlobalVariable *> LLVMGlobals;
+extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
-std::queue<AST::Node *> VerificationQueue;
-std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
+llvm::Value *main_fn = nullptr;
+extern llvm::IRBuilder<> builder;
+extern llvm::BasicBlock *make_block(const std::string &name,
+                                    llvm::Function *fn);
+
 std::map<std::string, SourceFile *> source_map;
+AST::Statements *global_statements;
 
 #include "tools.h"
+
+void AST::Declaration::AllocateGlobal() {
+  verify_types();
+
+  if (type->has_vars() && init_val->is_function_literal()) {
+    for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
+      kv.second->AllocateGlobal();
+    }
+    return;
+  }
+
+  addr = IR::Value::CreateGlobal();
+
+  if (file_type != FileType::None) {
+    auto ptype = Ptr(type);
+    ptype->generate_llvm();
+
+    IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+        /*      Module = */ *global_module,
+        /*        Type = */ *(type->is_function() ? ptype : type),
+        /*  isConstant = */ false, // TODO HasHashtag("const"),
+        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+        /* Initializer = */ nullptr,
+        /*        Name = */ type->is_function()
+            ? Mangle((Function *)type, identifier, Scope::Global)
+            : identifier->token);
+    // TODO fix mangler to take any types not just functions
+  }
+}
 
 void AST::Declaration::EmitGlobal() {
   assert(!arg_val);
@@ -75,27 +106,16 @@ void AST::Declaration::EmitGlobal() {
       }
       return;
     } else {
-      addr                                    = IR::Value::CreateGlobal();
       IR::InitialGlobals[addr.as_global_addr] = Evaluate(init_val);
     }
   } else {
-    addr                                    = IR::Value::CreateGlobal();
     IR::InitialGlobals[addr.as_global_addr] = type->EmitInitialValue();
   }
 
   if (file_type != FileType::None) {
-    // TODO What if we're returning a struct we haven't created fully yet?
-    auto type_for_llvm =
-        type->is_function() && HasHashtag("const") ? type : Ptr(type);
-    type_for_llvm->generate_llvm();
-
-    IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
-        /*      Module = */ *global_module,
-        /*        Type = */ *type_for_llvm,
-        /*  isConstant = */ HasHashtag("const"),
-        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-        /* Initializer = */ nullptr,
-        /*        Name = */ identifier->token);
+    if (identifier->token == "main") {
+      main_fn = IR::LLVMGlobals[addr.as_global_addr];
+    }
   }
 }
 
@@ -127,6 +147,7 @@ void AST::Declaration::EmitLLVMGlobal() {
       if (init_val->is_function_literal()) {
         auto func = init_val->EmitIR().as_func;
         func->GenerateLLVM();
+        // TODO do we need this here?
         func->llvm_fn->setName(
             Mangle((Function *)type, identifier, Scope::Global));
         return;
@@ -149,7 +170,6 @@ void AST::Declaration::EmitLLVMGlobal() {
   case IR::ValType::U32: llvm_val = data::const_uint32(ir_val.as_uint32); break;
   case IR::ValType::U: llvm_val   = data::const_uint(ir_val.as_uint); break;
   case IR::ValType::F:
-    ir_val.as_func->dump();
     ir_val.as_func->GenerateLLVM();
     assert(ir_val.as_func->llvm_fn);
     llvm_val = ir_val.as_func->llvm_fn;
@@ -159,14 +179,16 @@ void AST::Declaration::EmitLLVMGlobal() {
     break;
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
-  IR::LLVMGlobals[addr.as_global_addr]->setInitializer(llvm_val);
+
+  ((llvm::GlobalVariable *)IR::LLVMGlobals[addr.as_global_addr])
+      ->setInitializer(llvm_val);
 
   return;
 }
 
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
-    switch(ParseCLArguments(argc, argv)) {
+    switch (ParseCLArguments(argc, argv)) {
       case CLArgFlag::QuitSuccessfully: return 0;
       case CLArgFlag::QuitWithFailure: return -1;
       case CLArgFlag::Continue:;
@@ -176,42 +198,17 @@ int main(int argc, char *argv[]) {
   if (debug::ct_eval) { initscr(); }
   if (file_type != FileType::None) { InitializeLLVM(); }
 
-  while (!file_queue.empty()) {
-    std::string file_name = file_queue.front();
-    file_queue.pop();
-    if (source_map.find(file_name) != source_map.end()) { continue; }
-
-    RUN(timer, "Parsing a file") {
-      auto source_file      = new SourceFile(file_name);
-      source_map[file_name] = source_file;
-      Parse(source_file);
-    }
-  }
-
-  CHECK_FOR_ERRORS; // Lexing and parsing
-
-  AST::Statements *global_statements;
+  ParseAllFiles();
+  CHECK_FOR_ERRORS;
 
   RUN(timer, "AST Setup") {
-    // Combine all statement nodes from separately-parsed files.
+    size_t num_stmts = 0;
+    for (const auto &kv : source_map) { num_stmts += kv.second->ast->size(); }
+
     global_statements = new AST::Statements;
+    global_statements->statements.reserve(num_stmts);
+    for (auto &kv : source_map) { global_statements->add(kv.second->ast); }
 
-    // Reserve enough space for all of them to avoid unneeded copies
-    size_t num_statements = 0;
-    for (const auto &kv : source_map) {
-      num_statements += kv.second->ast->size();
-    }
-    global_statements->reserve(num_statements);
-
-    for (auto &kv : source_map) {
-      global_statements->add_nodes(kv.second->ast);
-    }
-
-    // COMPILATION STEP:
-    //
-    // Determine which declarations go in which scopes. Store that information
-    // with the scopes. Note that assign_scope cannot possibly generate
-    // compilation errors, so we don't check for them here.
     ScopeStack.push(Scope::Global);
     global_statements->assign_scope();
     ScopeStack.pop();
@@ -219,19 +216,24 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Verify and Emit") {
     for (auto stmt : global_statements->statements) {
+      if (!stmt->is_declaration()) { continue; }
+      ((AST::Declaration *)stmt)->AllocateGlobal();
+    }
+
+    for (auto stmt : global_statements->statements) {
       if (stmt->is_declaration()) {
         ((AST::Declaration *)stmt)->EmitGlobal();
 
       } else if (stmt->is_unop()) {
         switch (((AST::Unop *)stmt)->op) {
-        case Language::Operator::Eval: 
+        case Language::Operator::Eval:
           if (((AST::Unop *)stmt)->type == Void) {
             Evaluate(((AST::Unop *)stmt)->operand);
           } else {
             Error::Log::GlobalNonDecl(stmt->loc);
           }
-          case Language::Operator::Import: break;
-          default: Error::Log::GlobalNonDecl(stmt->loc); break;
+        case Language::Operator::Import: break;
+        default: Error::Log::GlobalNonDecl(stmt->loc); break;
         }
 
       } else {
@@ -240,28 +242,16 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // Is there anything left here TODO?
   RUN(timer, "Type verification") {
-    VerificationQueue.push(global_statements);
-    while (!VerificationQueue.empty()) {
-      auto node_to_verify = VerificationQueue.front();
-      node_to_verify->verify_types();
-      VerificationQueue.pop();
-    }
-
-    while (!FuncInnardsVerificationQueue.empty()) {
-      auto pair     = FuncInnardsVerificationQueue.front();
-      auto ret_type = pair.first;
-      auto stmts = pair.second;
-      stmts->VerifyReturnTypes(ret_type);
-      FuncInnardsVerificationQueue.pop();
-    }
-
+    CompletelyVerify(global_statements);
     CHECK_FOR_ERRORS;
-
-    if (file_type != FileType::None) { GenerateLLVMTypes(); }
   }
 
+  if (file_type != FileType::None) {
+    RUN(timer, "Generate LLVM types") { GenerateLLVMTypes(); }
+  }
+
+  // TODO needs to be earlier/ part of type verification
   RUN(timer, "(L/R)value checking") {
     global_statements->lrvalue_check();
     CHECK_FOR_ERRORS;
@@ -283,6 +273,16 @@ int main(int argc, char *argv[]) {
           f->GenerateLLVM();
         }
       }
+      llvm::FunctionType *ft = *Func(Void, Void);
+      // TODO this looks fishy
+      llvm::Function *fn =
+          (llvm::Function *)global_module->getOrInsertFunction("main", ft);
+      auto block = make_block("entry", fn);
+
+      assert(main_fn);
+      builder.SetInsertPoint(block);
+      builder.CreateCall(builder.CreateLoad(main_fn), {});
+      builder.CreateRetVoid();
     }
   }
 

@@ -5,9 +5,8 @@
 #include "IR/Stack.h"
 
 extern IR::Value Evaluate(AST::Expression *expr);
-extern std::queue<AST::Node *> VerificationQueue;
-extern std::queue<std::pair<Type *, AST::Statements *>>
-    FuncInnardsVerificationQueue;
+std::queue<AST::Node *> VerificationQueue;
+std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
                                          const std::string &fn_name,
                                          Type *input_type);
@@ -1687,8 +1686,25 @@ void For::VerifyReturnTypes(Type *ret_type) {
 void While::VerifyReturnTypes(Type *ret_type) {
   statements->VerifyReturnTypes(ret_type);
 }
-
 } // namespace AST
+
+void CompletelyVerify(AST::Node *node) {
+  VerificationQueue.push(node);
+
+  while (!VerificationQueue.empty()) {
+    auto node_to_verify = VerificationQueue.front();
+    node_to_verify->verify_types();
+    VerificationQueue.pop();
+  }
+
+  while (!FuncInnardsVerificationQueue.empty()) {
+    auto pair     = FuncInnardsVerificationQueue.front();
+    auto ret_type = pair.first;
+    auto stmts = pair.second;
+    stmts->VerifyReturnTypes(ret_type);
+    FuncInnardsVerificationQueue.pop();
+  }
+}
 
 #undef VERIFY_AND_RETURN_ON_ERROR
 #undef LOOP_OVER_DECLS_FROM

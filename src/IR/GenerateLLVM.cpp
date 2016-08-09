@@ -44,7 +44,7 @@ extern llvm::Value *global_string(const std::string &s);
 } // namespace data
 
 namespace IR {
-extern std::vector<llvm::GlobalVariable *> LLVMGlobals;
+extern std::vector<llvm::Constant *> LLVMGlobals;
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
 
@@ -498,9 +498,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
-                         const_cast<Cmd&>(cmd).dump(0);
-                         std::cerr << args[0] << std::endl;
-                         args[0]->dump();
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
       case IR::Op::Store: {

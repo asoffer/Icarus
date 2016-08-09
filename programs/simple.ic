@@ -1,1 +1,2 @@
-main := void -> void { x := 17 \\ print x } #const
+main := void -> void { x := 17 \\ print x }
+tmain := void -> void { x := 17 \\ print x } #const

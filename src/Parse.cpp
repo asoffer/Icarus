@@ -212,3 +212,20 @@ void Parse(SourceFile *source) {
 
   source->ast = (AST::Statements *)state.node_stack_.back();
 }
+
+extern Timer timer;
+extern std::map<std::string, SourceFile *> source_map;
+extern std::queue<std::string> file_queue;
+void ParseAllFiles() {
+  while (!file_queue.empty()) {
+    std::string file_name = file_queue.front();
+    file_queue.pop();
+    if (source_map.find(file_name) != source_map.end()) { continue; }
+
+    RUN(timer, "Parsing a file") {
+      auto source_file      = new SourceFile(file_name);
+      source_map[file_name] = source_file;
+      Parse(source_file);
+    }
+  }
+}

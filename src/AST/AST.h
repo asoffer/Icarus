@@ -184,6 +184,7 @@ struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
   static Node *Build(NPtrVec &&nodes);
 
+  void AllocateGlobal();
   void EmitGlobal();
   void EmitLLVMGlobal();
 
@@ -231,14 +232,11 @@ struct Statements : public Node {
   virtual void VerifyReturnTypes(Type *ret_val) override;
 
   inline size_t size() { return statements.size(); }
-  inline void reserve(size_t n) { return statements.reserve(n); }
 
   bool is_statements() const override { return true; }
 
-  void add_nodes(Statements *stmts) {
-    for (auto &stmt : stmts->statements) {
-      statements.push_back(std::move(stmt));
-    }
+  void add(Statements *stmts) {
+    for (const auto &stmt : stmts->statements) { statements.push_back(stmt); }
   }
 
   Statements() {}

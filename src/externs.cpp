@@ -7,6 +7,7 @@
 llvm::Module *global_module         = nullptr;
 llvm::TargetMachine *target_machine = nullptr;
 llvm::IRBuilder<> builder(llvm::getGlobalContext());
+Timer timer;
 
 namespace Language {
 // Associativity stored in the lowest two bits.

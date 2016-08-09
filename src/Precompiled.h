@@ -19,15 +19,16 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Verifier.h"
 
-#include "util/pstr.h"
 
 namespace debug {
 extern bool timer;
 extern bool parser;
-extern bool parametric_struct;
 extern bool ct_eval;
 } // namespace debug
 
+
+#include "util/pstr.h"
+#include "util/timer.h"
 
 #include "ConstantsAndEnums.h"
 
