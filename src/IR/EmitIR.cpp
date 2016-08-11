@@ -14,6 +14,8 @@ extern llvm::Module *global_module;
 extern FileType file_type;
 
 AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
+  expr->verify_types();
+
   auto fn_ptr = new AST::FunctionLiteral;
 
   fn_ptr->type               = Func(Void, expr->type);
@@ -35,8 +37,6 @@ AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
     fn_ptr->statements->statements.push_back(expr);
   }
 
-  fn_ptr->verify_types();
-
   return fn_ptr;
 }
 
@@ -51,7 +51,6 @@ IR::Value Evaluate(AST::Expression *expr) {
 
   func->SetName("anonymous-func");
 
-  expr->verify_types();
   IR::Func::Current  = old_func;
   IR::Block::Current = old_block;
 
@@ -123,7 +122,7 @@ IR::Func *OrdFunc() {
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope);
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
-extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+extern IR::Value GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                                      Function *fn_type);
 
 size_t IR::Func::PushSpace(Type *t) {
@@ -214,9 +213,9 @@ static void EmitPrintExpr(Expression *expr) {
   } else {
     auto fn =
         GetFuncReferencedIn(expr->scope_, "__print__", Func(expr->type, Void));
-    assert(fn);
+    assert(fn != IR::Value::None());
 
-    IR::Call(Void, IR::Value(fn), {expr->EmitIR()});
+    IR::Call(Void, fn, {expr->EmitIR()});
   }
 }
 
@@ -291,7 +290,7 @@ IR::Value Unop::EmitIR() {
     } else {
       auto fn =
           GetFuncReferencedIn(scope_, "__neg__", Func(operand->type, type));
-      return IR::Call(type, IR::Value(fn), {val});
+      return IR::Call(type, fn, {val});
     }
   } break;
   case Language::Operator::Not: {
@@ -301,7 +300,7 @@ IR::Value Unop::EmitIR() {
     } else {
       auto fn =
           GetFuncReferencedIn(scope_, "__not__", Func(operand->type, type));
-      return IR::Call(type, IR::Value(fn), {val});
+      return IR::Call(type, fn, {val});
     }
   } break;
   case Language::Operator::At: return PtrCallFix(type, operand->EmitIR());
@@ -348,7 +347,7 @@ IR::Value Binop::EmitIR() {
       auto fn = GetFuncReferencedIn(
           scope_, op == Language::Operator::AndEq ? "__and_eq__" : "__or_eq__",
           Func(Tup({lhs->type, rhs->type}), type));
-      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
+      return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
   case Language::Operator::XorEq: {
@@ -361,7 +360,7 @@ IR::Value Binop::EmitIR() {
     } else {
       auto fn = GetFuncReferencedIn(scope_, "__xor_eq__",
                                     Func(Tup({lhs->type, rhs->type}), type));
-      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
+      return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
 
@@ -382,7 +381,7 @@ IR::Value Binop::EmitIR() {
     }                                                                          \
     auto fn = GetFuncReferencedIn(                                             \
         scope_, op_str, Func(Tup({Ptr(lhs->type), rhs->type}), type));         \
-    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
+    return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});                 \
   } break
 
     ARITHMETIC_EQ_CASE(Add, "__add__");
@@ -407,7 +406,7 @@ IR::Value Binop::EmitIR() {
     }                                                                          \
     auto fn = GetFuncReferencedIn(scope_, op_str,                              \
                                   Func(Tup({lhs->type, rhs->type}), type));    \
-    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});      \
+    return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});                 \
   } break
 
     ARITHMETIC_CASE(Add, "__add__");
@@ -465,7 +464,7 @@ IR::Value Binop::EmitIR() {
     }
     auto fn = GetFuncReferencedIn(scope_, "__mul__",
                                   Func(Tup({lhs->type, rhs->type}), type));
-    return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
+    return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});
   } break;
 
   case Language::Operator::Index: {
@@ -478,7 +477,7 @@ IR::Value Binop::EmitIR() {
     } else {
       auto fn = GetFuncReferencedIn(scope_, "__bracket__",
                                     Func(Tup({lhs->type, rhs->type}), type));
-      return IR::Call(type, IR::Value(fn), {lhs->EmitIR(), rhs->EmitIR()});
+      return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});
     }
   } break;
 
@@ -515,7 +514,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__lt__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
 
   } else if (op == Language::Operator::LE) {
     if (op_type == Int) { return ILE(lhs, rhs); }
@@ -524,7 +523,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__le__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
 
   } else if (op == Language::Operator::EQ) {
     if (op_type == Bool) { return BEQ(lhs, rhs); }
@@ -538,7 +537,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__eq__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
 
   } else if (op == Language::Operator::NE) {
     if (op_type == Bool) { return BNE(lhs, rhs); }
@@ -552,7 +551,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__ne__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
 
   } else if (op == Language::Operator::GE) {
     if (op_type == Int) { return IGE(lhs, rhs); }
@@ -561,7 +560,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__ge__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
 
   } else if (op == Language::Operator::GT) {
     if (op_type == Int) { return IGT(lhs, rhs); }
@@ -570,7 +569,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 
     auto fn = GetFuncReferencedIn(scope, "__gt__",
                                   Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, IR::Value(fn), {lhs, rhs});
+    return IR::Call(Bool, fn, {lhs, rhs});
   }
 
   UNREACHABLE;
@@ -807,6 +806,15 @@ IR::Value Statements::EmitIR() {
 
 IR::Value Identifier::EmitIR() {
   verify_types();
+  if (type->has_vars()) { return IR::Value::None(); }
+
+  assert(decl);
+  assert(type != Err);
+  if (decl->scope_ == Scope::Global && decl->type->time() == Time::compile) {
+    decl->AllocateGlobal();
+    decl->EmitGlobal();
+  }
+
 
   if (type == Type_) { // TODO move this to wherever it should be
     if (decl->arg_val) {
@@ -855,6 +863,7 @@ IR::Value Identifier::EmitIR() {
           NOT_YET;
         }
       } else {
+        std::cerr << *this << std::endl;
         NOT_YET;
       }
 

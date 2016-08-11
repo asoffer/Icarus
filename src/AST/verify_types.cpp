@@ -1397,21 +1397,18 @@ void Declaration::verify_types() {
   if (type == Type_ && IsInferred()) {
     if (init_val->is_dummy()) {
       auto t = init_val->value.as_type;
+
+      std::string *name_ptr = nullptr;
       if (t->is_struct()) {
-        // Set the name of the struct.
-        // TODO mangle the name correctly (Where should this be done?)
-        ((Struct *)t)->bound_name = identifier->token;
-
+        name_ptr = &((Struct *)t)->bound_name;
       } else if (t->is_parametric_struct()) {
-        // Set the name of the parametric struct.
-        // TODO mangle the name correctly (Where should this be done?)
-        ((ParamStruct *)t)->bound_name = identifier->token;
-
+        name_ptr = &((ParamStruct *)t)->bound_name;
       } else if (t->is_enum()) {
-        // Set the name of the enum
-        // TODO mangle the name correctly (Where should this be done?)
-        ((Enum *)t)->bound_name = identifier->token;
+        name_ptr = &((Enum *)t)->bound_name;
       }
+
+      // TODO mangle the name correctly (Where should this be done?)
+      *name_ptr = identifier->token;
     }
 
     identifier->value = init_val->value;
@@ -1570,7 +1567,6 @@ void Case::verify_types() {
       if (kv.second < min_size) { min_size = kv.second; }
     }
 
-    std::cerr << *this << std::endl;
     if (2 * max_size > key_vals.size() ||
         (4 * max_size > key_vals.size() &&
          8 * min_size < key_vals.size())) {

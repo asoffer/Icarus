@@ -44,7 +44,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
 
   } else {
     std::cerr << *t << std::endl;
-    assert(false && "Not yet implemented");
+    NOT_YET;
   }
 }
 

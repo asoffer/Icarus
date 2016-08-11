@@ -140,7 +140,7 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
   return nullptr;
 }
 
-IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+IR::Value GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                               Function *fn_type) {
   Scope *scope_ptr = scope;
   AST::Declaration *decl;
@@ -152,7 +152,7 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
     if (decl) { break; }
   }
 
-  if (!decl) { return nullptr; }
+  if (!decl) { return IR::Value::None(); }
 
   if(decl->addr == IR::Value::None()) {
     if (decl->init_val->is_function_literal()) {
@@ -169,8 +169,9 @@ IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
       NOT_YET;
     }
   }
+
   assert(decl->addr != IR::Value::None());
-  return decl->addr.as_func;
+  return IR::Load(fn_type, decl->addr);
 }
 
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {

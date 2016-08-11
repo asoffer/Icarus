@@ -56,7 +56,9 @@ AST::Statements *global_statements;
 #include "tools.h"
 
 void AST::Declaration::AllocateGlobal() {
+  if (addr != IR::Value::None()) { return; }
   verify_types();
+
 
   if (type->has_vars() && init_val->is_function_literal()) {
     for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
@@ -68,6 +70,8 @@ void AST::Declaration::AllocateGlobal() {
   addr = IR::Value::CreateGlobal();
 
   if (file_type != FileType::None) {
+    if (type->time() == Time::compile) { return; }
+
     auto ptype = Ptr(type);
     ptype->generate_llvm();
 
@@ -85,6 +89,7 @@ void AST::Declaration::AllocateGlobal() {
 }
 
 void AST::Declaration::EmitGlobal() {
+  if (IR::InitialGlobals[addr.as_global_addr] != IR::Value::None()) { return; }
   assert(!arg_val);
   verify_types();
 
@@ -160,7 +165,7 @@ void AST::Declaration::EmitLLVMGlobal() {
   }
 
   auto ir_val = IR::InitialGlobals[addr.as_global_addr];
-  llvm::Constant *llvm_val;
+  llvm::Constant *llvm_val = nullptr;
   switch (ir_val.flag) {
   case IR::ValType::B: llvm_val   = data::const_bool(ir_val.as_bool); break;
   case IR::ValType::C: llvm_val   = data::const_char(ir_val.as_char); break;
@@ -227,6 +232,7 @@ int main(int argc, char *argv[]) {
       } else if (stmt->is_unop()) {
         switch (((AST::Unop *)stmt)->op) {
         case Language::Operator::Eval:
+          stmt->verify_types();
           if (((AST::Unop *)stmt)->type == Void) {
             Evaluate(((AST::Unop *)stmt)->operand);
           } else {

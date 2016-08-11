@@ -3,7 +3,7 @@
 #include "Scope.h"
 #endif
 
-extern IR::Func *GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
+extern IR::Value GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                                      Function *fn_type);
 
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
@@ -102,8 +102,8 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   } else {
     auto fn = GetFuncReferencedIn(scope, "__assign__",
                                   Func(Tup({Ptr(lhs_type), rhs_type}), Void));
-    if (fn) {
-      IR::Call(Void, IR::Value(fn), {to_var, from_val});
+    if (fn != IR::Value::None()) {
+      IR::Call(Void, fn, {to_var, from_val});
     } else {
       ((Struct *)lhs_type)->EmitDefaultAssign(to_var, from_val);
     }
