@@ -75,16 +75,31 @@ void AST::Declaration::AllocateGlobal() {
     auto ptype = Ptr(type);
     ptype->generate_llvm();
 
-    IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
-        /*      Module = */ *global_module,
-        /*        Type = */ *(type->is_function() ? ptype : type),
-        /*  isConstant = */ false, // TODO HasHashtag("const"),
-        /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-        /* Initializer = */ nullptr,
-        /*        Name = */ type->is_function()
-            ? Mangle((Function *)type, identifier, Scope::Global)
-            : identifier->token);
-    // TODO fix mangler to take any types not just functions
+    if (HasHashtag("cstdlib")) {
+      // TODO assuming a function type
+      llvm::FunctionType *ft = *(Function *)type;
+      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+          /*      Module = */ *global_module,
+          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*  isConstant = */ true,
+          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+          /* Initializer = */ global_module->getOrInsertFunction(
+              identifier->token, ft),
+          /*        Name = */ identifier->token);
+      global_module->dump();
+
+    } else {
+      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+          /*      Module = */ *global_module,
+          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*  isConstant = */ false, // TODO HasHashtag("const"),
+          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+          /* Initializer = */ nullptr,
+          /*        Name = */ type->is_function()
+              ? Mangle((Function *)type, identifier, Scope::Global)
+              : identifier->token);
+      // TODO fix mangler to take any types not just functions
+    }
   }
 }
 

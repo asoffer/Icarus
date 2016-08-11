@@ -498,6 +498,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
+                         dump();
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
       case IR::Op::Store: {
