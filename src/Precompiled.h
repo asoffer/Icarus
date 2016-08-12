@@ -98,7 +98,7 @@ struct LocalStack;
 struct StackFrame;
 
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr, U16, U32,
+  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr, U16, U32, ExtFn,
   GlobalCStr, Null
 };
 
@@ -113,6 +113,7 @@ struct Value {
     size_t as_uint;
     Type *as_type;
     Func *as_func;
+    const char *as_ext_fn;
     char *as_cstr;
     size_t as_reg;
     size_t as_arg;
@@ -148,6 +149,7 @@ struct Value {
   static Value CreateGlobal();
   static Value HeapAddr(void *ptr);
   static Value Arg(size_t n);
+  static Value ExtFn(const char *name);
 };
 
 // For std::map<>s

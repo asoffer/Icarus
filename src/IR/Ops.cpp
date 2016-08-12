@@ -25,7 +25,7 @@ STATIC_VALUE(Reg, Reg, reg, size_t)
 STATIC_VALUE(StackAddr, StackAddr, stack_addr, size_t)
 STATIC_VALUE(HeapAddr, HeapAddr, heap_addr, void *)
 STATIC_VALUE(FrameAddr, FrameAddr, frame_addr, size_t)
-
+STATIC_VALUE(ExtFn, ExtFn, ext_fn, const char *)
 #undef STATIC_VALUE
 
 Value Value::None() {
@@ -286,6 +286,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
     }
     return os;
   }
+  case ValType::ExtFn: return os << "fn:" << value.as_ext_fn;
   case ValType::Null: return os << "null";
   case ValType::CStr: return os << "\"" << (void *)value.as_cstr;
   case ValType::Reg: return os << "%" << value.as_reg;

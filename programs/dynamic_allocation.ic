@@ -2,8 +2,8 @@ Any := (T: type) -> bool {
   return true
 }
 
-  malloc: uint -> &char #cstdlib
 alloc := (ptr: &&Any`T) -> void {
+  malloc: uint -> &char #cstdlib
   @ptr = malloc(T.bytes) :> &T
 }
 

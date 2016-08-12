@@ -57,6 +57,7 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
   case ValType::U16: return data::const_uint16(cmd_arg.as_uint16);
   case ValType::U32: return data::const_uint32(cmd_arg.as_uint32);
   case ValType::Null: return data::null(cmd_arg.as_null);
+  case ValType::ExtFn: return global_module->getFunction(cmd_arg.as_ext_fn);
   case ValType::T:
     // TODO is this what I want? Used for just a few ops like print.
     return reinterpret_cast<llvm::Value *>(cmd_arg.as_type);
@@ -498,7 +499,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
-                         dump();
         registers[cmd.result.reg] = builder.CreateLoad(args[0]);
         break;
       case IR::Op::Store: {

@@ -86,8 +86,6 @@ void AST::Declaration::AllocateGlobal() {
           /* Initializer = */ global_module->getOrInsertFunction(
               identifier->token, ft),
           /*        Name = */ identifier->token);
-      global_module->dump();
-
     } else {
       IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
@@ -128,6 +126,10 @@ void AST::Declaration::EmitGlobal() {
     } else {
       IR::InitialGlobals[addr.as_global_addr] = Evaluate(init_val);
     }
+  } else if (HasHashtag("cstdlib")) {
+    auto cstr = new char[identifier->token.size() + 1];
+    strcpy(cstr, identifier->token.c_str());
+    IR::InitialGlobals[addr.as_global_addr] = IR::Value::ExtFn(cstr);
   } else {
     IR::InitialGlobals[addr.as_global_addr] = type->EmitInitialValue();
   }
@@ -161,6 +163,8 @@ void AST::Declaration::EmitLLVMGlobal() {
 
   assert(type->is_primitive() || type->is_pointer() || type->is_enum() ||
          type->is_function());
+
+  if (HasHashtag("cstdlib")) { return; }
 
   if (type->is_function() && HasHashtag("const")) {
     if (init_val) {
@@ -197,6 +201,7 @@ void AST::Declaration::EmitLLVMGlobal() {
   case IR::ValType::GlobalAddr:
     llvm_val = IR::LLVMGlobals[ir_val.as_global_addr];
     break;
+  case IR::ValType::ExtFn: global_module->getFunction(ir_val.as_ext_fn); break;
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
 
