@@ -6,6 +6,7 @@
 extern llvm::IRBuilder<> builder;
 
 namespace IR {
+extern std::vector<llvm::Constant *> LLVMGlobals;
 extern std::vector<IR::Value> InitialGlobals;
 } // namespace IR
 
@@ -760,6 +761,30 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
         }
 
         UNREACHABLE;
+      }
+    } else if (decl->HasHashtag("cstdlib")) {
+      // TODO what if this is referenced in multiple places? Shouldn't they be
+      // uniqued?
+      decl->addr = IR::Value::CreateGlobal();
+      auto cstr = new char[decl->identifier->token.size() + 1];
+      strcpy(cstr, decl->identifier->token.c_str());
+      IR::InitialGlobals[decl->addr.as_global_addr] = IR::Value::ExtFn(cstr);
+
+      if (file_type != FileType::None) {
+        auto ptype = Ptr(decl->type);
+        ptype->generate_llvm();
+
+        // TODO assuming a function type
+        llvm::FunctionType *ft                     = *(Function *)decl->type;
+        IR::LLVMGlobals[decl->addr.as_global_addr] = new llvm::GlobalVariable(
+            /*      Module = */ *global_module,
+            /*        Type = */ *(decl->type->is_function() ? ptype
+                                                            : decl->type),
+            /*  isConstant = */ true,
+            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+            /* Initializer = */ global_module->getOrInsertFunction(
+                decl->identifier->token, ft),
+            /*        Name = */ decl->identifier->token);
       }
 
     } else {

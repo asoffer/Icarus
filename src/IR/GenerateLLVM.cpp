@@ -410,6 +410,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
         break;
       case IR::Op::UGT:
+        dump();
         registers[cmd.result.reg] = builder.CreateICmpUGT(args[0], args[1]);
         break;
       case IR::Op::FGT:
