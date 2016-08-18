@@ -41,6 +41,7 @@ extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
 extern llvm::Value *global_string(const std::string &s);
+extern llvm::Constant *null_pointer(Type *t);
 } // namespace data
 
 namespace IR {
@@ -62,7 +63,10 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     // TODO is this what I want? Used for just a few ops like print.
     return reinterpret_cast<llvm::Value *>(cmd_arg.as_type);
   case ValType::F:
-    return cmd_arg.as_func->llvm_fn;
+    if (cmd_arg.as_func) { return cmd_arg.as_func->llvm_fn; }
+
+    // Type to return doesn't matter. we'll bitcast it later.
+    return data::null_pointer(Char);
   case ValType::CStr:
     return data::global_string(std::string(cmd_arg.as_cstr));
   case ValType::Block:
@@ -276,6 +280,11 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       std::vector<llvm::Value *> args(cmd.args.size(), nullptr);
       for (size_t i = 0; i < cmd.args.size(); ++i) {
         args[i] = IR_to_LLVM(ir_fn, cmd.args[i], registers);
+        if (!args[i]) {
+          dump();
+          const_cast<Cmd &>(cmd).dump(0);
+          assert(false);
+        }
       }
 
       switch (cmd.op_code) {
@@ -410,7 +419,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
         break;
       case IR::Op::UGT:
-        dump();
         registers[cmd.result.reg] = builder.CreateICmpUGT(args[0], args[1]);
         break;
       case IR::Op::FGT:
@@ -506,6 +514,11 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         // TODO or do we want to actually do the store (it'll be easily
         // optimized out)
         if (reinterpret_cast<Type *>(args[0]) == Type_) { break; }
+        if (reinterpret_cast<Type *>(args[0])->is_function() &&
+            args[1] == data::null_pointer(Char)) {
+          args[1] = data::null_pointer(reinterpret_cast<Type *>(args[0]));
+        }
+
         builder.CreateStore(args[1], args[2]);
       } break;
       case IR::Op::Cast: {

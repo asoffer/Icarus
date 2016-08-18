@@ -743,7 +743,7 @@ void Binop::verify_types() {
       }
 
       lhs->type = valid_matches[0]->type;
-      ((Identifier *)lhs)->decl = valid_matches[0];
+      lhs_id->decl = valid_matches[0];
 
     } else {
       VERIFY_AND_RETURN_ON_ERROR(lhs);
@@ -818,7 +818,9 @@ void Binop::verify_types() {
         for (auto &cached_fn : fn_expr->cache) {
           if (cached_fn.first != in_type) { continue; }
           if (lhs->is_identifier()) {
-            ((Identifier *)lhs)->decl = cached_fn.second;
+            auto lhs_id  = (Identifier *)lhs;
+            lhs_id->decl = cached_fn.second;
+            lhs_id->type = lhs_id->decl->type;
           }
           return;
         }

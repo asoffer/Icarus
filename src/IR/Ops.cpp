@@ -9,6 +9,31 @@ llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
 }
 
+static std::vector<IR::Value> initial_globals = {};
+
+// NOTE: This looks like an unnecessary function, but it serves a purpose.
+// Simply assigning to the vector can be dangerous, because sometimes we want to
+// assign the result of Evaluate() to it. The problem is Evaluate might make a
+// call to a generic that then increases the size of the global vector. Because
+// C++ doesn't define an order in which the the LHS and RHS are computed, if the
+// LHS is computed first, that address can become invalid if the vector needs to
+// grow. This function guarantees the call order in a way that is easy to use at
+// the call site.
+void AddInitialGlobal(size_t global_addr, IR::Value initial_val) {
+  assert(global_addr < initial_globals.size());
+  // NOTE: Either the value was null, or we are resetting it with the same
+  // value. This can happen because we may be defining a recursive function.
+  assert(initial_globals[global_addr] == IR::Value::None() ||
+         initial_globals[global_addr] == initial_val);
+  initial_globals[global_addr] = initial_val;
+}
+
+IR::Value GetInitialGlobal(size_t global_addr) {
+  assert(global_addr < initial_globals.size());
+  return initial_globals[global_addr];
+}
+
+
 namespace IR {
 #define STATIC_VALUE(name, flag_name, as_name, param_type)                     \
   Value Value::name(param_type x) {                                            \
@@ -35,7 +60,6 @@ Value Value::None() {
   return v;
 }
 
-std::vector<IR::Value> InitialGlobals;
 std::vector<llvm::Value *> LLVMGlobals;
 
 Value Value::CreateGlobal() {
@@ -43,7 +67,7 @@ Value Value::CreateGlobal() {
   Value v;
   v.flag          = ValType::GlobalAddr;
   v.as_stack_addr = global_num_++;
-  InitialGlobals.emplace_back(IR::Value::None());
+  initial_globals.emplace_back(IR::Value::None());
   LLVMGlobals.emplace_back(nullptr);
   return v;
 }
@@ -279,7 +303,9 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
     }
   case ValType::F: {
     os << "fn.";
-    if (value.as_func->GetName() != "") {
+    if (!value.as_func) {
+      os << "null";
+    } else if (value.as_func->GetName() != "") {
       os << value.as_func->GetName();
     } else {
       os << value.as_func;

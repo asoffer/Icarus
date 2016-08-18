@@ -5,9 +5,10 @@
 
 extern llvm::IRBuilder<> builder;
 
+extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
+
 namespace IR {
 extern std::vector<llvm::Constant *> LLVMGlobals;
-extern std::vector<IR::Value> InitialGlobals;
 } // namespace IR
 
 extern std::vector<IR::Func *> implicit_functions;
@@ -310,6 +311,7 @@ IR::Value Unop::EmitIR() {
 }
 
 IR::Value Binop::EmitIR() {
+  verify_types();
   switch (op) {
   case Language::Operator::Assign: {
     Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
@@ -768,7 +770,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       decl->addr = IR::Value::CreateGlobal();
       auto cstr = new char[decl->identifier->token.size() + 1];
       strcpy(cstr, decl->identifier->token.c_str());
-      IR::InitialGlobals[decl->addr.as_global_addr] = IR::Value::ExtFn(cstr);
+      AddInitialGlobal(decl->addr.as_global_addr, IR::Value::ExtFn(cstr));
 
       if (file_type != FileType::None) {
         auto ptype = Ptr(decl->type);
@@ -835,7 +837,7 @@ IR::Value Identifier::EmitIR() {
 
   assert(decl);
   assert(type != Err);
-  if (decl->scope_ == Scope::Global && decl->type->time() == Time::compile) {
+  if (decl->scope_ == Scope::Global) {
     decl->AllocateGlobal();
     decl->EmitGlobal();
   }
@@ -879,11 +881,9 @@ IR::Value Identifier::EmitIR() {
         decl->addr = IR::Value::CreateGlobal();
         if (decl->IsInferred() || decl->IsCustomInitialized()) {
           assert(decl->init_val);
-          IR::InitialGlobals[decl->addr.as_global_addr] =
-              Evaluate(decl->init_val);
+          AddInitialGlobal(decl->addr.as_global_addr, Evaluate(decl->init_val));
         } else if (decl->IsDefaultInitialized()) {
-          IR::InitialGlobals[decl->addr.as_global_addr] =
-              decl->type->EmitInitialValue();
+          AddInitialGlobal(decl->addr.as_global_addr, decl->type->EmitInitialValue());
         } else {
           NOT_YET;
         }
@@ -894,7 +894,6 @@ IR::Value Identifier::EmitIR() {
 
       assert(decl->addr != IR::Value::None());
     }
-
     return IR::Load(type, decl->addr);
   }
 
@@ -1276,14 +1275,18 @@ IR::Value For::EmitIR() {
       result = IR::PtrEQ(phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_range()) {
-      if (iter->type == Int) {
-        result = IR::IGT(phi_vals[i], end_vals[i]);
-      } else if (iter->type == Uint) {
-        result = IR::UGT(phi_vals[i], end_vals[i]);
-      } else if (iter->type == Char) {
-        result = IR::CGT(phi_vals[i], end_vals[i]);
+      if(iter->container->is_unop()) {
+        result = IR::Value(true);
       } else {
-        UNREACHABLE;
+        if (iter->type == Int) {
+          result = IR::IGT(phi_vals[i], end_vals[i]);
+        } else if (iter->type == Uint) {
+          result = IR::UGT(phi_vals[i], end_vals[i]);
+        } else if (iter->type == Char) {
+          result = IR::CGT(phi_vals[i], end_vals[i]);
+        } else {
+          UNREACHABLE;
+        }
       }
 
     } else if (iter->container->type->is_slice()) {

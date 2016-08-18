@@ -6,11 +6,12 @@
 
 extern const char *GetGlobalStringNumbered(size_t index);
 extern std::stack<Scope *> ScopeStack;
+extern IR::Value GetInitialGlobal(size_t global_addr);
+extern void AddInitialGlobal(size_t global_addr, IR::Value val);
 
 namespace IR {
 extern std::string Escape(char c);
 extern std::string OpCodeString(Op op_code);
-extern std::vector<IR::Value> InitialGlobals;
 
 void RefreshDisplay(const StackFrame &frame, LocalStack *local_stack) {
   clear();
@@ -330,7 +331,7 @@ void Cmd::Execute(StackFrame& frame) {
       }
 
     } else if (cmd_inputs[0].flag == ValType::GlobalAddr) {
-      frame.reg[result.reg] = InitialGlobals[cmd_inputs[0].as_global_addr];
+      frame.reg[result.reg] = GetInitialGlobal(cmd_inputs[0].as_global_addr);
 
     } else if (cmd_inputs[0].flag == ValType::F) {
       frame.reg[result.reg] = cmd_inputs[0];
@@ -441,7 +442,7 @@ void Cmd::Execute(StackFrame& frame) {
         break;
       }
     } else {
-      InitialGlobals[cmd_inputs[2].as_global_addr] = cmd_inputs[1];
+      AddInitialGlobal(cmd_inputs[2].as_global_addr, cmd_inputs[1]);
       break;
     }
 

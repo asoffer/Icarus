@@ -40,8 +40,10 @@ extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
 extern void GenerateLLVMTypes();
 
+extern IR::Value GetInitialGlobal(size_t global_addr);
+extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
+
 namespace IR {
-extern std::vector<IR::Value> InitialGlobals;
 extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
@@ -102,7 +104,7 @@ void AST::Declaration::AllocateGlobal() {
 }
 
 void AST::Declaration::EmitGlobal() {
-  if (IR::InitialGlobals[addr.as_global_addr] != IR::Value::None()) { return; }
+  if (GetInitialGlobal(addr.as_global_addr) != IR::Value::None()) { return; }
   assert(!arg_val);
   verify_types();
 
@@ -124,14 +126,14 @@ void AST::Declaration::EmitGlobal() {
       }
       return;
     } else {
-      IR::InitialGlobals[addr.as_global_addr] = Evaluate(init_val);
+      AddInitialGlobal(addr.as_global_addr, Evaluate(init_val));
     }
   } else if (HasHashtag("cstdlib")) {
     auto cstr = new char[identifier->token.size() + 1];
     strcpy(cstr, identifier->token.c_str());
-    IR::InitialGlobals[addr.as_global_addr] = IR::Value::ExtFn(cstr);
+    AddInitialGlobal(addr.as_global_addr, IR::Value::ExtFn(cstr));
   } else {
-    IR::InitialGlobals[addr.as_global_addr] = type->EmitInitialValue();
+    AddInitialGlobal(addr.as_global_addr, type->EmitInitialValue());
   }
 
   if (file_type != FileType::None) {
@@ -183,7 +185,7 @@ void AST::Declaration::EmitLLVMGlobal() {
     }
   }
 
-  auto ir_val = IR::InitialGlobals[addr.as_global_addr];
+  auto ir_val = GetInitialGlobal(addr.as_global_addr);
   llvm::Constant *llvm_val = nullptr;
   switch (ir_val.flag) {
   case IR::ValType::B: llvm_val   = data::const_bool(ir_val.as_bool); break;
