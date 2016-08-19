@@ -2,8 +2,10 @@
 #include <cmath>
 #include "Type/Type.h"
 
+// TODO rename "implicit_functions"
 extern FileType file_type;
 extern llvm::Module *global_module;
+extern std::vector<IR::Func *> implicit_functions;
 
 llvm::BasicBlock* make_block(const std::string& name, llvm::Function* fn) {
   return llvm::BasicBlock::Create(llvm::getGlobalContext(), name, fn);
@@ -115,6 +117,7 @@ Func::Func(Function *fn_type, bool should_gen)
       llvm::FunctionType *llvm_fn_type = *fn_type;
       llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
           name, llvm_fn_type);
+      implicit_functions.push_back(this);
     }
 
     alloc_block = make_block("entry", llvm_fn);
@@ -124,6 +127,7 @@ Func::Func(Function *fn_type, bool should_gen)
     blocks.push_back(new Block());
     blocks.back()->block_name = "fn-exit";
   }
+
 }
 
 Value Access(Type *type, Value index, Value ptr) {

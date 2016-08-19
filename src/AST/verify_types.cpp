@@ -1654,7 +1654,7 @@ void DummyTypeExpr::verify_types() {
 
 void Unop::VerifyReturnTypes(Type *ret_type) {
   if (type == Err) { return; }
-  operand->VerifyReturnTypes(ret_type);
+
   if (op == Language::Operator::Return) {
     if (operand->type == Err) { return; } // Error already logged
     if (operand->type != ret_type) {

@@ -4,14 +4,13 @@
 #include "Stack.h"
 
 extern llvm::IRBuilder<> builder;
-
 extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
+extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 namespace IR {
 extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
-extern std::vector<IR::Func *> implicit_functions;
 extern llvm::Module *global_module;
 extern FileType file_type;
 
@@ -243,34 +242,7 @@ IR::Value Unop::EmitIR() {
     IR::Free(operand->EmitIR());
     return IR::Value::None();
   } break;
-  case Language::Operator::Eval: {
-    auto old_func  = IR::Func::Current;
-    auto old_block = IR::Block::Current;
-
-    auto fn_ptr      = WrapExprIntoFunction(operand);
-    auto local_stack = new IR::LocalStack;
-    IR::Func *func = fn_ptr->EmitAnonymousIR().as_func;
-    func->SetName("anonymous-func");
-
-    if (operand->type == Void) {
-      // Assumptions:
-      //  * There's only one exit block.
-      //  * The current block is pointing to it. This is NOT threadsafe.
-      IR::Block::Current->SetReturnVoid();
-    }
-
-    IR::Func::Current  = old_func;
-    IR::Block::Current = old_block;
-
-    auto result = func->Call(local_stack, {});
-    delete local_stack;
-
-    // Cleanup (Need to set ret->operand to null so it isn't cleaned up by
-    // deleting the fn_ptr). TODO
-    // ret->operand = nullptr;
-    delete fn_ptr;
-    return result;
-  } break;
+  case Language::Operator::Eval: return Evaluate(operand);
   case Language::Operator::Print: {
     if (operand->is_comma_list()) {
       auto operand_as_chainop = (ChainOp *)operand;
@@ -708,6 +680,72 @@ IR::Value ChainOp::EmitIR() {
 
 IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 
+void AST::Declaration::AllocateLocally(IR::Func *fn) {
+  if (type->has_vars()) {
+    if (!type->is_function()) { return; }
+    assert(IsCustomInitialized());
+    auto fn_lit = GetFunctionLiteral(init_val);
+    for (auto kv : fn_lit->cache) { kv.second->AllocateLocally(fn); }
+
+  } else if (arg_val) {
+    if (arg_val->is_function_literal()) {
+      auto fn_lit = (FunctionLiteral *)arg_val;
+
+      size_t arg_num = 0;
+      for (const auto &d : fn_lit->inputs) {
+        if (this == d) {
+          addr = IR::Value::Arg(arg_num);
+          return;
+        }
+        ++arg_num;
+      }
+
+      UNREACHABLE;
+    } else if (arg_val->is_dummy() &&
+               arg_val->value.as_type->is_parametric_struct()) {
+      auto param_struct = (ParamStruct *)arg_val->value.as_type;
+      size_t param_num = 0;
+      for (const auto &p : param_struct->params) {
+        if (this == p) {
+          addr = IR::Value::Arg(param_num);
+          return;
+        }
+        ++param_num;
+      }
+
+      UNREACHABLE;
+    } else {
+      // TODO is this point unreachable?
+    }
+  } else if (HasHashtag("cstdlib")) {
+    // TODO what if this is referenced in multiple places? Shouldn't they be
+    // uniqued?
+    addr      = IR::Value::CreateGlobal();
+    auto cstr = new char[identifier->token.size() + 1];
+    strcpy(cstr, identifier->token.c_str());
+    AddInitialGlobal(addr.as_global_addr, IR::Value::ExtFn(cstr));
+
+    if (file_type != FileType::None) {
+      auto ptype = Ptr(type);
+      ptype->generate_llvm();
+
+      // TODO assuming a function type
+      llvm::FunctionType *ft               = *(Function *)type;
+      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+          /*      Module = */ *global_module,
+          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*  isConstant = */ true,
+          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+          /* Initializer = */ global_module->getOrInsertFunction(
+              identifier->token, ft),
+          /*        Name = */ identifier->token);
+    }
+
+  } else {
+    fn->PushLocal(this);
+  }
+}
+
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   if (ir_func) { return IR::Value(ir_func); } // Cache
   if (type->has_vars()) { return IR::Value::None(); }
@@ -734,66 +772,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   statements->verify_types();
 
-  for (auto decl : fn_scope->DeclRegistry) {
-    if (decl->type->has_vars()) { continue; }
-    if (decl->arg_val) {
-      if (decl->arg_val->is_function_literal()) {
-        auto fn_lit = (FunctionLiteral *)decl->arg_val;
-
-        size_t arg_num = 0;
-        for (const auto &d : fn_lit->inputs) {
-          if (decl == d) {
-            decl->addr = IR::Value::Arg(arg_num);
-            goto success;
-          }
-          ++arg_num;
-        }
-
-        UNREACHABLE;
-      } else if (decl->arg_val->is_dummy() &&
-                 decl->arg_val->value.as_type->is_parametric_struct()) {
-        auto param_struct = (ParamStruct *)decl->arg_val->value.as_type;
-        size_t param_num = 0;
-        for (const auto &p : param_struct->params) {
-          if (decl == p) {
-            decl->addr = IR::Value::Arg(param_num);
-            goto success;
-          }
-          ++param_num;
-        }
-
-        UNREACHABLE;
-      }
-    } else if (decl->HasHashtag("cstdlib")) {
-      // TODO what if this is referenced in multiple places? Shouldn't they be
-      // uniqued?
-      decl->addr = IR::Value::CreateGlobal();
-      auto cstr = new char[decl->identifier->token.size() + 1];
-      strcpy(cstr, decl->identifier->token.c_str());
-      AddInitialGlobal(decl->addr.as_global_addr, IR::Value::ExtFn(cstr));
-
-      if (file_type != FileType::None) {
-        auto ptype = Ptr(decl->type);
-        ptype->generate_llvm();
-
-        // TODO assuming a function type
-        llvm::FunctionType *ft                     = *(Function *)decl->type;
-        IR::LLVMGlobals[decl->addr.as_global_addr] = new llvm::GlobalVariable(
-            /*      Module = */ *global_module,
-            /*        Type = */ *(decl->type->is_function() ? ptype
-                                                            : decl->type),
-            /*  isConstant = */ true,
-            /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-            /* Initializer = */ global_module->getOrInsertFunction(
-                decl->identifier->token, ft),
-            /*        Name = */ decl->identifier->token);
-      }
-
-    } else {
-      ir_func->PushLocal(decl);
-    }
-  success:;
-  }
+  for (auto decl : fn_scope->DeclRegistry) { decl->AllocateLocally(ir_func); }
 
   for (auto scope : fn_scope->innards_) {
     if (!scope->is_block_scope() || scope->is_function_scope()) { continue; }
@@ -802,12 +781,14 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
           decl->type->time() == Time::compile) {
         continue;
       }
-      ir_func->PushLocal(decl);
+
+      decl->AllocateLocally(ir_func);
     }
   }
 
   IR::Block::Current->SetUnconditional(fn_scope->entry_block);
 
+  IR::Block::Current = fn_scope->entry_block;
   statements->EmitIR();
 
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
@@ -888,7 +869,7 @@ IR::Value Identifier::EmitIR() {
           NOT_YET;
         }
       } else {
-        std::cerr << *this << std::endl;
+        std::cerr << *decl << std::endl;
         NOT_YET;
       }
 

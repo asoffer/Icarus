@@ -108,6 +108,7 @@ static void CompletePhiDefinition(IR::Func *ir_fn, IR::Block *block,
 void Func::GenerateLLVM() {
   if (generated != Gen::NotYet) { return; }
   std::vector<llvm::BasicBlock *> llvm_blocks(blocks.size(), nullptr);
+
   llvm_fn->setName(name);
 
   for (const auto &b : blocks) {
@@ -280,11 +281,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       std::vector<llvm::Value *> args(cmd.args.size(), nullptr);
       for (size_t i = 0; i < cmd.args.size(); ++i) {
         args[i] = IR_to_LLVM(ir_fn, cmd.args[i], registers);
-        if (!args[i]) {
-          dump();
-          const_cast<Cmd &>(cmd).dump(0);
-          assert(false);
-        }
+        if (!args[i]) { assert(false); }
       }
 
       switch (cmd.op_code) {

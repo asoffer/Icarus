@@ -12,6 +12,7 @@ extern IR::Value PtrCallFix(Type *t, IR::Value v);
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                              IR::Value from_val, IR::Value to_var) {
   assert(scope);
+  if (lhs_type->has_vars() || rhs_type->has_vars()) { return; }
   if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
       lhs_type->is_function()) {
     assert(lhs_type == rhs_type);

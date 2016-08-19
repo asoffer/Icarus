@@ -21,7 +21,7 @@ main := void -> void {
   print f, '\n'
 
   foo := struct {
-    n := func(4)
+    n := func(5)
   }
 
   __print__ := (a: foo) -> void { print a.n }

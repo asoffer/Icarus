@@ -3,8 +3,8 @@ FILE := struct {}
 File     := struct { _handle: &FILE }
 FileMode := enum { Read \\ Write }
 
+fopen: (string, string) -> &FILE #cstdlib
 open := (name: &string, m: FileMode) -> &FILE {
-  fopen: (string, string) -> &FILE #cstdlib
 
   return fopen(@name, case {
     m == FileMode.Read  => "r"
@@ -12,8 +12,8 @@ open := (name: &string, m: FileMode) -> &FILE {
   })
 }
 
+fgetc: &FILE -> uint #cstdlib
 Next := (this: &File) -> char {
-  fgetc: &FILE -> uint #cstdlib
   EOF := 4294967295u
 
   n := this._handle.fgetc()

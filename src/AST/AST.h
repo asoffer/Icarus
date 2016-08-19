@@ -188,6 +188,8 @@ struct Declaration : public Expression {
   void EmitGlobal();
   void EmitLLVMGlobal();
 
+  void AllocateLocally(IR::Func *fn);
+
   Identifier *identifier;
   Expression *type_expr;
   Expression *init_val;

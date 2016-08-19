@@ -39,7 +39,7 @@ static void AddLLVMInput(Type *t, std::vector<llvm::Type *> &input_vec) {
   if (t->is_primitive() || t->is_enum()) {
     input_vec.push_back(*t);
 
-  } else if (t->is_big()) {
+  } else if (t->is_big() || t->is_function()) {
     input_vec.push_back(*Ptr(t));
 
   } else {
