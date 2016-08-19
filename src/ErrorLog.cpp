@@ -246,7 +246,7 @@ static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
   assert(loc.file_name);
   pstr line = source_map AT(loc.file_name)->lines AT(loc.line_num);
 
-  size_t left_border_width = NumDigits(loc.line_num) + 4;
+  size_t left_border_width = NumDigits(loc.line_num) + 6;
 
   // Extra + 1 at the end because we might point after the end of the line.
   std::string underline(strlen(line.ptr) + left_border_width + 1, ' ');
@@ -426,6 +426,17 @@ void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type) {
   DisplayErrorMessage(
       msg_head.c_str(),
       "Arrays must be indexed by integral types (either int or uint)", loc, 1);
+}
+
+void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
+  std::string msg_head =
+      "Identifier '" + id->token + "' used before it was declared.";
+  std::string msg_foot = "Declaration can be found on line " +
+                         std::to_string(decl->loc.line_num) + ".";
+  // TODO Provide file name as well.
+  ++num_errs_;
+  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), id->loc,
+                      id->token.size());
 }
 
 void EmptyArrayLit(const Cursor &loc) {

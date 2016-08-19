@@ -66,11 +66,7 @@ main := void -> void {
   }
   print '\n'
    
-  print plus_half
-  print '\n'
-  print zero_or_three
-  print '\n'
-  
+ 
   plus_half : int -> real = (x: int) -> real {  // longhand
     return (x :> real) + 0.5
   }
@@ -82,6 +78,11 @@ main := void -> void {
     }
   }
 
+  print plus_half
+  print '\n'
+  print zero_or_three
+  print '\n'
+ 
   // types
   print int
   print '\n'

@@ -60,6 +60,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 void InvalidStringIndex(const Cursor &loc, Type *index_type);
 void RepeatedEnumName(const Cursor &loc);
 void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc);
+void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
 } // namespace Log
 } // namespace Error
 

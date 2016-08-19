@@ -1,4 +1,5 @@
 main := void -> void {
+  f: void -> void
   f = void -> void { print 10, '\n' }
  
   f()
@@ -6,6 +7,4 @@ main := void -> void {
   f = void -> void { print 20, '\n' }
  
   f()
-  f: void -> void
-
 }

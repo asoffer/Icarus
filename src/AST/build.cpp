@@ -390,7 +390,7 @@ Node *Access::Build(NPtrVec &&nodes) {
 
   if (access_ptr->operand->is_declaration()) {
     Error::Log::Log(access_ptr->operand->loc,
-                  "Left-hand side cannot be a declaration");
+                    "Left-hand side cannot be a declaration");
   }
 
   if (!nodes[2]->is_identifier()) {
@@ -533,7 +533,7 @@ Node *InDecl::Build(NPtrVec &&nodes) {
   assert(op == Language::Operator::In);
 
   auto in_decl_ptr              = new InDecl;
-  in_decl_ptr->loc              = nodes[1]->loc;
+  in_decl_ptr->loc              = nodes[0]->loc;
   in_decl_ptr->identifier       = steal<Identifier>(nodes[0]);
   in_decl_ptr->identifier->decl = in_decl_ptr;
   in_decl_ptr->container        = steal<Expression>(nodes[2]);
@@ -544,7 +544,7 @@ Node *InDecl::Build(NPtrVec &&nodes) {
 Node *Declaration::Build(NPtrVec &&nodes) {
   auto op              = ((AST::TokenNode *)(nodes[1]))->op;
   auto decl_ptr        = new Declaration;
-  decl_ptr->loc        = nodes[1]->loc;
+  decl_ptr->loc        = nodes[0]->loc;
   decl_ptr->precedence = Language::precedence(op);
 
   if (op == Language::Operator::Colon) {
@@ -562,7 +562,7 @@ Node *Declaration::Build(NPtrVec &&nodes) {
 
 Node *Generic::Build(NPtrVec &&nodes) {
   auto generic        = new Generic;
-  generic->loc        = nodes[1]->loc;
+  generic->loc        = nodes[0]->loc;
   generic->test_fn    = steal<Expression>(nodes[0]);
   generic->precedence = Language::precedence(Language::Operator::Tick);
 

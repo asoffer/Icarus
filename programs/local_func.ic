@@ -3,9 +3,7 @@ main := (n: int) -> real {
 }
 
 main := void -> void {
-  f := (n: int) -> int {
-    return n * n
-  }
+  f := (n: int) -> int { return n * n }
 
   print main(3)
   print '\n'
@@ -17,10 +15,8 @@ main := void -> void {
 }
 
 g := void -> void {
+  f := (n: int) -> int { return n * n * n }
+
   print f(17)
   print '\n'
-
-  f := (n: int) -> int{
-    return n * n * n
-  }
 }

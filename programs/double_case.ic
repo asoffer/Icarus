@@ -35,5 +35,5 @@ main := void -> void {
     }
   
   
-  }
+  } #const
 }

@@ -18,6 +18,28 @@ static Scope *CurrentScope() {
   return ScopeStack.empty() ? nullptr : ScopeStack.top();
 }
 
+enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
+CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
+  if (lhs.file_name != rhs.file_name) { return CursorOrder::Unordered; }
+  if (lhs.line_num < rhs.line_num) { return CursorOrder::InOrder; }
+  if (lhs.line_num > rhs.line_num) { return CursorOrder::OutOfOrder; }
+  if (lhs.offset < rhs.offset) { return CursorOrder::InOrder; }
+  if (lhs.offset > rhs.offset) { return CursorOrder::OutOfOrder; }
+  return CursorOrder::Same;
+}
+
+static std::vector<AST::Identifier *> all_ids;
+void VerifyDeclBeforeUsage() {
+  for (auto id : all_ids) {
+    if (id->type == Type_) { continue; }
+    if (id->decl->scope_ == Scope::Global) { continue; }
+    if (id->decl->HasHashtag("const")) { continue; }
+    if (GetOrder(id->decl->loc, id->loc) == CursorOrder::OutOfOrder) {
+      Error::Log::DeclOutOfOrder(id->decl, id);
+    }
+  }
+}
+
 static AST::Declaration *
 GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
                               AST::FunctionLiteral *fn_lit,
@@ -367,6 +389,7 @@ static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
 
 void Identifier::verify_types() {
   STARTING_CHECK;
+  all_ids.push_back(this);
 
   if (decl) {
     decl->verify_types();

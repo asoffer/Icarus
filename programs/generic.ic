@@ -14,7 +14,10 @@ main := void -> void {
     print "\n    alignment = ", T.alignment, " byte"
     if T.alignment != 1u { print "s" }
     print "\n"
-  }
+  } #const
+
+  p: pie
+  q: pie
 
   print_type_info('x')
   print_type_info(3)
@@ -34,8 +37,6 @@ main := void -> void {
   // a: [--; char] = ['1', '2', '3']
   // print_type_info(a)
 
-  p: pie
-  q: pie
 }
 
 Any := (T: type) -> bool {

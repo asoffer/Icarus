@@ -1,13 +1,14 @@
 main := void -> void {
+  b : int
+  a : int
+ 
   a = 5
   b = 3
   
   a += b
   b += a * b
   
-  b : int
-  a : int
-  
+ 
   print a
   print '\n'
   print b

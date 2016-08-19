@@ -31,6 +31,7 @@ extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
 } // namespace data
 
+extern void VerifyDeclBeforeUsage();
 extern void CompletelyVerify(AST::Node *node);
 extern void Parse(SourceFile *sf);
 extern void ParseAllFiles();
@@ -272,6 +273,7 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Type verification") {
     CompletelyVerify(global_statements);
+    VerifyDeclBeforeUsage();
     CHECK_FOR_ERRORS;
   }
 

@@ -5,22 +5,21 @@ main := void -> void {
 
   print f(17)
   print '\n'
-  print f(1.7)
 
   f := (r: real) -> real {
     return r * r
   }
 
+  print f(1.7)
   print '\n'
 
   g()
 }
 
 g := void -> void {
-  print f(17)
-  print '\n'
-
   f := (n: int) -> int{
     return n * n * n
   }
+  print f(17)
+  print '\n'
 }
