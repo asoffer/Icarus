@@ -60,6 +60,10 @@ FunctionLiteral::FunctionLiteral()
     : fn_scope(new FnScope), return_type_expr(nullptr), llvm_fn(nullptr),
       statements(nullptr), ir_func(nullptr) {}
 
-While::While() : while_scope(new BlockScope(ScopeType::While)) {}
-For::For() : for_scope(new BlockScope(ScopeType::For)) {}
+While::While() : while_scope(new BlockScope(ScopeEnum::While)) {}
+For::For() : for_scope(new BlockScope(ScopeEnum::For)) {}
+
+ScopeNode::ScopeNode()
+    : scope_expr(nullptr), expr(nullptr), stmts(nullptr),
+      internal(new BlockScope(ScopeEnum::Standard)) {}
 } // namespace AST

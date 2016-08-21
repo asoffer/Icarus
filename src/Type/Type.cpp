@@ -10,6 +10,7 @@ extern llvm::Constant *free();
 // TODO make bytes() and alignment() platform specific
 size_t Pointer::bytes() const { return 8; }
 size_t Function::bytes() const { return 8; }
+size_t Scope_Type::bytes() const { return 0; }
 size_t TypeVariable::bytes() const { return 0; } // TODO should be uncallable
 
 size_t Array::bytes() const {
@@ -24,7 +25,7 @@ size_t Array::bytes() const {
 size_t Pointer::alignment() const { return 8; }
 size_t Function::alignment() const { return 8; }
 size_t TypeVariable::alignment() const { return 0; } // TODO should be uncallable
-
+size_t Scope_Type::alignment() const { return 0; }
 size_t Array::alignment() const {
   return fixed_length ? data_type->alignment() : 8;
 }
@@ -43,6 +44,7 @@ Array::Array(Type *t)
 }
 
 bool Array::private_has_vars() { return data_type->has_vars(); }
+bool Scope_Type::private_has_vars() { return false; }
 
 Array::Array(Type *t, size_t l)
     : init_func(nullptr), repr_func(nullptr), destroy_func(nullptr),

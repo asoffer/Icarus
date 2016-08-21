@@ -155,5 +155,16 @@ void DummyTypeExpr::assign_scope() {
     ScopeStack.pop();
   }
 }
+
+void ScopeNode::assign_scope() {
+  scope_ = CurrentScope();
+
+  scope_expr->assign_scope();
+  expr->assign_scope();
+
+  ScopeStack.push(internal);
+  stmts->assign_scope();
+  ScopeStack.pop();
+}
 } // namespace AST
 #undef ITERATE_OR_SKIP

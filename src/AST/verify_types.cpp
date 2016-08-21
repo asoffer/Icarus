@@ -1647,7 +1647,7 @@ void Jump::verify_types() {
   while (scope_ptr) {
     assert(scope_ptr->is_block_scope());
     auto block_scope_ptr = (BlockScope *)scope_ptr;
-    if (block_scope_ptr->type == ScopeType::Function) {
+    if (block_scope_ptr->type == ScopeEnum::Function) {
       if (jump_type != JumpType::Return) {
         Error::Log::Log(loc, "statement must be contained inside a loop.");
       }
@@ -1672,6 +1672,18 @@ void DummyTypeExpr::verify_types() {
   } else if (value.as_type->is_struct()) {
     auto s = (Struct *)value.as_type;
     for (auto d : s->decls) { VerificationQueue.push(d); }
+  }
+}
+
+void ScopeNode::verify_types() {
+  scope_expr->verify_types();
+  expr->verify_types();
+  stmts->verify_types();
+  if (scope_expr->type == Err) { return; }
+  if (scope_expr->type->is_scope_type()) {
+    if (scope_expr->type != ScopeType(expr->type)) {
+      // TODO Log an error
+    }
   }
 }
 

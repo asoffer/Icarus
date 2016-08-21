@@ -27,6 +27,7 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
                                      const std::string &msg) {
   if (expr->is_binop() &&
       ((AST::Binop *)expr)->op == Language::Operator::Assign) {
+    Error::Log::EqNotAssign(loc);
     Error::Log::Log(expr->loc, msg + "Did you mean '==' instead of '='?");
 
     ((AST::Binop *)expr)->op = Language::Operator::EQ;
@@ -182,7 +183,7 @@ Node *Conditional::BuildIf(NPtrVec &&nodes) {
 
   assert(nodes[2]->is_statements());
   if_stmt->statements = {steal<Statements>(nodes[2])};
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
   if_stmt->loc = nodes[0]->loc;
   return if_stmt;
 }
@@ -635,7 +636,7 @@ Node *Conditional::build_else_if(NPtrVec &&nodes) {
 
   if_stmt->conditions.push_back(else_if->conditions.front());
   if_stmt->statements.push_back(else_if->statements.front());
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
   return if_stmt;
 }
 
@@ -643,7 +644,7 @@ Node *Conditional::build_else(NPtrVec &&nodes) {
   auto if_stmt           = steal<Conditional>(nodes[0]);
   if_stmt->else_line_num = nodes[1]->loc.line_num;
   if_stmt->statements.push_back(steal<Statements>(nodes[2]));
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
   return if_stmt;
 }
 
@@ -668,12 +669,38 @@ Node *Jump::build(NPtrVec &&nodes) {
   }
   assert(jmp);
 
-  auto stmts = new AST::Statements;
+  auto stmts = new Statements;
   stmts->loc = jmp->loc;
   stmts->statements.push_back(jmp);
   return stmts;
 }
 
+Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
+                     Statements *stmt_node) {
+  auto scope_node        = new ScopeNode;
+  scope_node->loc        = scope_name->loc;
+  scope_node->scope_expr = scope_name;
+  scope_node->expr       = arg_expr;
+  scope_node->stmts      = stmt_node;
+
+  auto stmts = new Statements;
+  stmts->loc = scope_node->loc;
+  stmts->statements.push_back(scope_node);
+  return stmts;
+}
+
+AST::Node *ScopeNode::Build(NPtrVec &&nodes) {
+  assert(nodes[2]->is_statements());
+  return BuildScopeNode(steal<Expression>(nodes[0]),
+                        steal<Expression>(nodes[1]),
+                        steal<Statements>(nodes[2]));
+}
+
+AST::Node *ScopeNode::BuildVoid(NPtrVec &&nodes) {
+  assert(nodes[1]->is_statements());
+  return BuildScopeNode(steal<Expression>(nodes[0]), nullptr,
+                        steal<Statements>(nodes[1]));
+}
 } // namespace AST
 
 AST::Node *BracedStatements(NPtrVec &&nodes) {

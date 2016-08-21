@@ -23,6 +23,7 @@ extern TypeVariable *TypeVar(AST::Identifier *id,
                              AST::Expression *test = nullptr);
 extern RangeType *Range(Type *t);
 extern SliceType *Slice(Array *a);
+extern Scope_Type *ScopeType(Type *t);
 
 #define ENDING = 0
 
@@ -80,6 +81,7 @@ public:
   virtual bool is_type_variable() const { return false; }
   virtual bool is_range() const { return false; }
   virtual bool is_slice() const { return false; }
+  virtual bool is_scope_type() const { return false; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;
@@ -250,6 +252,14 @@ struct SliceType : public Type {
 
   Array *array_type;
 };
+
+struct Scope_Type : public Type {
+  TYPE_FNS(Scope_Type, scope_type);
+
+  Scope_Type(Type *t) : type_(t) {}
+  Type *type_;
+};
+
 std::ostream &operator<<(std::ostream &os, const Type &t);
 
 #undef TYPE_FNS

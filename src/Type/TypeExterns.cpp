@@ -28,6 +28,7 @@ static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
 static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<Array *, SliceType *> slices_;
+static std::map<Type *, Scope_Type *> scopes_;
 
 // TODO Not sure this is necessary
 void GenerateLLVMTypes() {
@@ -132,4 +133,10 @@ SliceType *Slice(Array *a) {
   if (iter != slices_.end()) return iter->second;
 
   return slices_[a] = new SliceType(a);
+}
+
+Scope_Type *ScopeType(Type *t) {
+  auto iter = scopes_.find(t);
+  if (iter != scopes_.end()) return iter->second;
+  return scopes_[t] = new Scope_Type(t);
 }

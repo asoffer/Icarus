@@ -70,6 +70,7 @@ struct ParamStruct;
 struct TypeVariable;
 struct RangeType;
 struct SliceType;
+struct Scope_Type;
 
 struct Scope;
 struct BlockScope;

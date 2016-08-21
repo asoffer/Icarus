@@ -1401,4 +1401,35 @@ IR::Value Generic::EmitIR() {
 IR::Value InDecl::EmitIR() { UNREACHABLE; }
 
 IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
+
+IR::Value ScopeNode::EmitIR() {
+  auto expr_block = IR::Func::Current->AddBlock("scope-expr");
+  auto body_block = IR::Func::Current->AddBlock("scope-body");
+  auto land_block = IR::Func::Current->AddBlock("scope-land");
+
+  internal->entry_block = IR::Func::Current->AddBlock("scope-entry");
+  internal->exit_block  = IR::Func::Current->AddBlock("scope-exit");
+
+  IR::Block::Current->SetUnconditional(expr_block);
+  IR::Block::Current = expr_block;
+  // Do something with scope_expr
+  expr->EmitIR();
+
+  IR::Block::Current->SetUnconditional(internal->entry_block);
+  IR::Block::Current = internal->entry_block;
+
+  IR::Block::Current->SetUnconditional(body_block);
+  IR::Block::Current = body_block;
+  stmts->EmitIR();
+
+  // TODO Destroy
+
+  IR::Block::Current->SetUnconditional(internal->exit_block);
+  IR::Block::Current = internal->exit_block;
+
+  IR::Block::Current->SetUnconditional(land_block);
+  IR::Block::Current = land_block;
+
+  return IR::Value::None();
+}
 } // namespace AST

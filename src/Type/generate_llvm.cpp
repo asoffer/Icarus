@@ -124,6 +124,8 @@ void TypeVariable::generate_llvm() {}
 void RangeType::generate_llvm() {} // TODO Assert false?
 void SliceType::generate_llvm() {} // TODO Assert false?
 
+void Scope_Type::generate_llvm() { UNREACHABLE; }
+
 void ParamStruct::generate_llvm() {} // Never to be called
 void Enum::generate_llvm() {}        // Generated on creation
 void Primitive::generate_llvm() {}   // Generated on creation

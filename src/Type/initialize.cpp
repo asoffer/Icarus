@@ -130,3 +130,4 @@ void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }
 void RangeType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Value id_val) { UNREACHABLE; }
 void TypeVariable::EmitInit(IR::Value id_val) { UNREACHABLE; }
+void Scope_Type::EmitInit(IR::Value id_val) { UNREACHABLE; }

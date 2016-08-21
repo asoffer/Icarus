@@ -399,6 +399,21 @@ struct Jump : public Node {
   BlockScope *scope;
   JumpType jump_type;
 };
+
+struct ScopeNode : public Node {
+  ScopeNode();
+  virtual ~ScopeNode();
+  VIRTUAL_METHODS_FOR_NODES;
+
+  static Node *Build(NPtrVec &&nodes);
+  static Node *BuildVoid(NPtrVec &&nodes);
+  static Node *BuildScopeNode(Expression *scope_name, Expression *arg_expr,
+                              Statements *stmt_node);
+  Expression *scope_expr, *expr;
+  Statements *stmts;
+  BlockScope *internal;
+};
+
 } // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES

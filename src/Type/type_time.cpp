@@ -28,3 +28,4 @@ Time::Eval RangeType::time() { return end_type->time(); }
 Time::Eval SliceType::time() { return array_type->time(); }
 Time::Eval TypeVariable::time() { return Time::compile; }
 Time::Eval ParamStruct::time() { return Time::compile; }
+Time::Eval Scope_Type::time() { return Time::compile; }

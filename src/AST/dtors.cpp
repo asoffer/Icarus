@@ -79,6 +79,13 @@ While::~While() {
   DELETE(while_scope);
 }
 
+ScopeNode::~ScopeNode() {
+  DELETE(scope_expr);
+  DELETE(expr);
+  DELETE(stmts);
+  DELETE(internal);
+}
+
 For::~For() {
   for (auto ptr : iterators) { DELETE(ptr); }
   DELETE(for_scope);

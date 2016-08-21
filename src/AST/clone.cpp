@@ -23,6 +23,7 @@ Node *Expression::clone(LOOKUP_ARGS) { UNREACHABLE; }
 Node *TokenNode::clone(LOOKUP_ARGS) { UNREACHABLE; }
 Node *Node::clone(LOOKUP_ARGS) { UNREACHABLE; }
 
+Node *ScopeNode::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
 
@@ -80,7 +81,6 @@ Node *Statements::clone(LOOKUP_ARGS) {
   return stmts;
 }
 
-
 Node *ArrayType::clone(LOOKUP_ARGS) {
   auto array_type       = new ArrayType;
   array_type->length    = (Expression *)length->CLONE;
@@ -117,7 +117,7 @@ Node *Conditional::clone(LOOKUP_ARGS) {
   cond_node->body_scopes.reserve(num_body_scopes);
 
   for (size_t i = 0; i < num_body_scopes; ++i) {
-    cond_node->body_scopes.push_back(new BlockScope(ScopeType::Conditional));
+    cond_node->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
   }
 
   return cond_node;
@@ -140,7 +140,7 @@ Node *Case::clone(LOOKUP_ARGS) {
   auto case_node = new Case;
   case_node->loc = loc;
 
-  for (auto& kv : key_vals) {
+  for (auto &kv : key_vals) {
     case_node->key_vals.emplace_back((Expression *)kv.first->CLONE,
                                      (Expression *)kv.second->CLONE);
   }
@@ -155,7 +155,6 @@ Node *Access::clone(LOOKUP_ARGS) {
   access_node->loc         = loc;
   return access_node;
 }
-
 
 Node *Generic::clone(LOOKUP_ARGS) {
   for (size_t i = 0; i < num_entries; ++i) {

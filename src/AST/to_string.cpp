@@ -222,6 +222,16 @@ std::string Jump::to_string(size_t n) const {
   }
 }
 
+std::string ScopeNode::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<ScopeNode>\n";
+  ss << scope_expr->to_string(n + 1);
+  if (expr) { ss << expr->to_string(n + 1); }
+  ss << tabs(n + 1) << "Statements:\n";
+  ss << stmts->to_string(n + 2);
+  return ss.str();
+}
+
 std::string DummyTypeExpr::to_string(size_t n) const {
   return tabs(n) + "<" + value.as_type->to_string() + ">\n";
 }

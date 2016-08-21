@@ -4,7 +4,7 @@
 #endif
 
 static size_t scope_num_counter = 0;
-BlockScope *Scope::Global       = new BlockScope(ScopeType::Global);
+BlockScope *Scope::Global       = new BlockScope(ScopeEnum::Global);
 
 Scope::Scope()
     : parent(Scope::Global), containing_function_(nullptr),
@@ -64,7 +64,7 @@ void Scope::set_parent(Scope *new_parent) {
   if (containing_function_) { containing_function_->innards_.insert(this); }
 }
 
-BlockScope::BlockScope(ScopeType st)
+BlockScope::BlockScope(ScopeEnum st)
     : type(st), entry_block(nullptr), exit_block(nullptr) {}
 
 void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
@@ -92,5 +92,5 @@ void BlockScope::InsertDestroy() {
 }
 
 FnScope::FnScope()
-    : BlockScope(ScopeType::Function), fn_type(nullptr),
+    : BlockScope(ScopeEnum::Function), fn_type(nullptr),
       exit_flag(NORMAL_FLAG) {}

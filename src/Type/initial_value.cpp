@@ -35,3 +35,4 @@ IR::Value Struct::EmitInitialValue() const { NOT_YET; }
 IR::Value TypeVariable::EmitInitialValue() const { NOT_YET; }
 IR::Value RangeType::EmitInitialValue() const { NOT_YET; }
 IR::Value SliceType::EmitInitialValue() const { NOT_YET; }
+IR::Value Scope_Type::EmitInitialValue() const { NOT_YET; }

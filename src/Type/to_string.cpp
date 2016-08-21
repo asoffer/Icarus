@@ -74,3 +74,7 @@ std::string RangeType::to_string() const {
 std::string SliceType::to_string() const {
   return array_type->to_string() + "[..]";
 }
+
+std::string Scope_Type::to_string() const {
+  return "Scope(" + type_->to_string() + ")";
+}

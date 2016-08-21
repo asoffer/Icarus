@@ -134,6 +134,12 @@ void While::lrvalue_check(){
   statements->lrvalue_check();
 }
 
+void ScopeNode::lrvalue_check(){
+  scope_expr->lrvalue_check();
+  expr->lrvalue_check();
+  stmts->lrvalue_check();
+}
+
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
 void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }
 
