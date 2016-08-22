@@ -27,8 +27,7 @@ static void CheckEqualsNotAssignment(AST::Expression *expr,
                                      const std::string &msg) {
   if (expr->is_binop() &&
       ((AST::Binop *)expr)->op == Language::Operator::Assign) {
-    Error::Log::EqNotAssign(loc);
-    Error::Log::Log(expr->loc, msg + "Did you mean '==' instead of '='?");
+    ErrorLog::AssignShouldBeEq(expr->loc, msg);
 
     ((AST::Binop *)expr)->op = Language::Operator::EQ;
   }
@@ -48,8 +47,7 @@ AST::Node *BuildEmptyParen(NPtrVec &&nodes) {
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
 
   if (binop_ptr->lhs->is_declaration()) {
-    Error::Log::Log(binop_ptr->lhs->loc,
-                  "Invalid declaration. You cannot call a declaration.");
+    ErrorLog::CallingDeclaration(binop_ptr->lhs->loc);
   }
   return binop_ptr;
 }
@@ -70,8 +68,9 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
     if (n->is_declaration()) {
       struct_type->decls.push_back(steal<Declaration>(n));
     } else {
-      Error::Log::Log(n->loc,
-                    "Each struct member must be defined using a declaration.");
+      // TODO show the entire struct declaration and point to the problematic
+      // lines.
+      ErrorLog::NonDeclInStructDecl(n->loc);
     }
   }
   return new DummyTypeExpr(nodes[0]->loc, struct_type);
@@ -115,12 +114,12 @@ static Node *BuildEnumLiteral(NPtrVec &&nodes) {
     auto stmts = (Statements *)nodes[1];
     for (auto &&stmt : stmts->statements) {
       if (!stmt->is_identifier()) {
-        Error::Log::Log(stmt->loc, "Enum members must be identifiers.");
+        ErrorLog::EnumNeedsIds(stmt->loc);
       } else {
         const std::string &val_name = ((Identifier *)stmt)->token;
         for (const auto mem : members) {
           if (mem == val_name) {
-            Error::Log::RepeatedEnumName(stmt->loc);
+            ErrorLog::RepeatedEnumName(stmt->loc);
             goto skip_adding_member;
           }
         }
@@ -154,8 +153,7 @@ Node *Case::Build(NPtrVec &&nodes) {
     auto stmt = stmts->statements[i];
     if (!stmt->is_binop() ||
         ((Binop *)stmt)->op != Language::Operator::Rocket) {
-      Error::Log::Log(stmt->loc,
-                    "Each line in case statement must be a key-value pair.");
+      ErrorLog::NonKVInCase(stmt->loc);
       continue;
     }
 
@@ -211,7 +209,7 @@ Node *While::Build(NPtrVec &&nodes) {
 static void CheckForLoopDeclaration(Expression *maybe_decl,
                                     std::vector<InDecl *> &iters) {
   if (!maybe_decl->is_in_decl()) {
-    Error::Log::Log(maybe_decl->loc, "Expect 'in' declaration in for-loop.");
+    ErrorLog::NonInDeclInForLoop(maybe_decl->loc);
   } else {
     iters.push_back((InDecl *)maybe_decl);
   }
@@ -276,7 +274,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
                                      1)); // NOTE: + 1 because we prefix our
                                           // strings. Probably should fix this.
     } else {
-      Error::Log::InvalidImport(unop_ptr->operand->loc);
+      ErrorLog::InvalidImport(unop_ptr->operand->loc);
     }
 
     unop_ptr->op = Language::Operator::Import;
@@ -329,7 +327,8 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
   if (unop_ptr->operand->is_declaration()) {
     auto decl = (Declaration *)unop_ptr->operand;
-    Error::Log::Log(decl->loc, "Invalid use of declaration.");
+    // TODO clean up this error message
+    ErrorLog::InvalidDecl(decl->loc);
   }
 
   return unop_ptr;
@@ -337,8 +336,8 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 id_check:
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   if (!unop_ptr->operand->is_identifier()) {
-    Error::Log::Log(unop_ptr->operand->loc,
-                  "Operand to '" + std::string(tk) + "' must be an identifier.");
+    // TODO clean up error message
+    ErrorLog::NonIdJumpOperand(unop_ptr->operand->loc);
   }
   return unop_ptr;
 }
@@ -390,12 +389,11 @@ Node *Access::Build(NPtrVec &&nodes) {
   access_ptr->operand = steal<Expression>(nodes[0]);
 
   if (access_ptr->operand->is_declaration()) {
-    Error::Log::Log(access_ptr->operand->loc,
-                    "Left-hand side cannot be a declaration");
+    ErrorLog::LHSDecl(access_ptr->operand->loc);
   }
 
   if (!nodes[2]->is_identifier()) {
-    Error::Log::Log(nodes[2]->loc, "Right-hand side must be an identifier");
+    ErrorLog::RHSNonIdInAccess(nodes[2]->loc);
   } else {
     access_ptr->member_name = ((Identifier *)nodes[2])->token;
   }
@@ -412,14 +410,11 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
   binop_ptr->op  = op_class;
 
   if (binop_ptr->lhs->is_declaration()) {
-    Error::Log::Log(binop_ptr->lhs->loc,
-                  "Left-hand side cannot be a declaration");
+    ErrorLog::LHSDecl(binop_ptr->lhs->loc);
   }
 
   if (binop_ptr->rhs->is_declaration()) {
-    Error::Log::Log(binop_ptr->rhs->loc, "Right-hand side cannot be a "
-                                       "declaration other than one declared "
-                                       "with '`'");
+    ErrorLog::RHSNonTickDecl(binop_ptr->rhs->loc);
   }
 
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
@@ -774,7 +769,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       if (((AST::Declaration *)nodes[0])->IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        Error::Log::DoubleDeclAssignment(nodes[0]->loc, nodes[2]->loc);
+        ErrorLog::DoubleDeclAssignment(nodes[0]->loc, nodes[2]->loc);
         return steal<AST::Declaration>(nodes[0]);
       }
 

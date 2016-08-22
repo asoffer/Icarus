@@ -9,8 +9,8 @@
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
-    if (Error::Log::NumErrors() != 0) {                                        \
-      Error::Log::Dump();                                                      \
+    if (ErrorLog::NumErrors() != 0) {                                        \
+      ErrorLog::Dump();                                                      \
       if (debug::ct_eval) { endwin(); }                                        \
       return -1;                                                               \
     }                                                                          \
@@ -110,12 +110,12 @@ void AST::Declaration::EmitGlobal() {
   verify_types();
 
   if (type->is_pointer()) {
-    Error::Log::Log(loc, "We do not support global pointers yet.");
+    ErrorLog::GlobalPointerUnsupported(loc);
     return;
   }
 
   if (type->is_array()) {
-    Error::Log::Log(loc, "We do not support global arrays yet.");
+    ErrorLog::GlobalArrayUnsupported(loc);
     return;
   }
 
@@ -259,14 +259,14 @@ int main(int argc, char *argv[]) {
           if (((AST::Unop *)stmt)->type == Void) {
             Evaluate(((AST::Unop *)stmt)->operand);
           } else {
-            Error::Log::GlobalNonDecl(stmt->loc);
+            ErrorLog::GlobalNonDecl(stmt->loc);
           }
         case Language::Operator::Import: break;
-        default: Error::Log::GlobalNonDecl(stmt->loc); break;
+        default: ErrorLog::GlobalNonDecl(stmt->loc); break;
         }
 
       } else {
-        Error::Log::GlobalNonDecl(stmt->loc);
+        ErrorLog::GlobalNonDecl(stmt->loc);
       }
     }
   }

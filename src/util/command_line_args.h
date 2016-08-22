@@ -21,9 +21,6 @@ ShowUsage(char *argv0) {
           "                                   none - Do not write any files (debug)\n"
           "                                          This is the default option.\n\n"
           "  -h, --help                     Display this usage message.\n\n"
-          "  --immediate-errors             Display error messages as soon as they are encountered.\n"
-          "                                 By default, error messages are logged, organized, and\n"
-          "                                 then displayed.\n\n"
           "  -p, --parser                   Display step-by-step file parsing (debug).\n\n"
           "  -t, --timer                    Display timing information for each of the\n"
           "                                 compilation steps (debug).\n\n"
@@ -107,10 +104,6 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
 
           } else if (strcmp(arg + 2, "timer") == 0) {
             debug::timer = true;
-            goto next_arg;
-
-          } else if (strcmp(arg + 2, "immediate-errors") == 0) {
-            Error::Log::ImmediateMode = true;
             goto next_arg;
 
           } else {

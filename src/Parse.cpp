@@ -207,7 +207,7 @@ void Parse(SourceFile *source) {
         last_chosen_line = state.node_stack_[i]->loc.line_num;
       }
     }
-    Error::Log::UnknownParserError(source->name, lines);
+    ErrorLog::UnknownParserError(source->name, lines);
   }
 
   source->ast = (AST::Statements *)state.node_stack_.back();

@@ -7,22 +7,6 @@ extern AST::Node *BracedStatements(NPtrVec &&nodes);
 extern AST::Node *OneBracedStatement(NPtrVec &&nodes);
 extern AST::Node *EmptyBraces(NPtrVec &&nodes);
 extern AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes);
-#define RESERVED_MSG(index)                                                    \
-  {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
-    assert(nodes[index]->is_token_node());                                     \
-    auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
-    Error::Log::Log(nodes[index]->loc, "'" + std::string(tok) +                \
-                                           "' is a reserved "                  \
-                                           "keyword.");                        \
-  }
-
-#define NOT_BINOP_MSG(index)                                                   \
-  {/* Wrap in anonymous scope to ensure that identifier 'tok' isn't leaked */  \
-    assert(nodes[index]->is_token_node());                                     \
-    auto tok = ((AST::TokenNode *)nodes[index])->token;                        \
-    Error::Log::Log(nodes[index]->loc, "Operator '" + std::string(tok) +       \
-                                           "' is not a binary operator.");     \
-  }
 
 template <size_t N> static AST::Node *drop_all_but(NPtrVec &&nodes) {
   auto temp = nodes[N];
@@ -48,50 +32,48 @@ static AST::Node *CombineColonEq(NPtrVec &&nodes) {
 
 namespace ErrMsg {
 AST::Node *EmptyFile(NPtrVec &&nodes) {
-  Error::Log::Log(nodes[0]->loc, "File is empty.");
+  ErrorLog::EmptyFile(nodes[0]->loc);
   return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
 }
 
 template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
-  Error::Log::MissingComma(nodes[PrevIndex]->loc);
+  ErrorLog::MissingComma(nodes[PrevIndex]->loc);
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
   return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
                               steal_node<AST::Node>(nodes[PrevIndex + 1])});
 }
 
 template <size_t RTN, size_t RES> AST::Node *Reserved(NPtrVec &&nodes) {
-  RESERVED_MSG(RES)
+  ErrorLog::Reserved(nodes[RES]->loc, ((AST::TokenNode *)nodes[RES])->token);
+
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
 AST::Node *BothReserved(NPtrVec &&nodes) {
-  RESERVED_MSG(RES1)
-  RESERVED_MSG(RES2)
+  ErrorLog::Reserved(nodes[RES1]->loc, ((AST::TokenNode *)nodes[RES1])->token);
+  ErrorLog::Reserved(nodes[RES2]->loc, ((AST::TokenNode *)nodes[RES2])->token);
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 AST::Node *NonBinop(NPtrVec &&nodes) {
-  NOT_BINOP_MSG(1)
+  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
   return new AST::Identifier(nodes[1]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES> AST::Node *NonBinopReserved(NPtrVec &&nodes) {
-  NOT_BINOP_MSG(1)
-  RESERVED_MSG(RES)
+  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
+  ErrorLog::Reserved(nodes[RES]->loc, ((AST::TokenNode *)nodes[RES])->token);
   return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
 }
 
 AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
-  RESERVED_MSG(0)
-  NOT_BINOP_MSG(1)
-  RESERVED_MSG(2)
+  ErrorLog::Reserved(nodes[0]->loc, ((AST::TokenNode *)nodes[0])->token);
+  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
+  ErrorLog::Reserved(nodes[2]->loc, ((AST::TokenNode *)nodes[2])->token);
   return new AST::Identifier(nodes[1]->loc, "invalid_node");
 }
-
 } // namespace ErrMsg
-#undef RESERVED_MSG
-#undef NOT_BINOP_MSG
 namespace Language {
 static constexpr unsigned int OP_B  = op_b | comma | dots | colon | eq;
 static constexpr unsigned int OP_LT = op_lt | kw_else;

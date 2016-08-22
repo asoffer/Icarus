@@ -26,11 +26,7 @@ static DeclToErrorMap invalid_capture;
 static LocToErrorMap case_errors;
 static FileToLineNumMap global_non_decl;
 
-std::map<std::string, std::map<size_t, std::vector<std::string>>>
-    Error::Log::log_;
-
-size_t Error::Log::num_errs_   = 0;
-bool Error::Log::ImmediateMode = false;
+size_t ErrorLog::num_errs_ = 0;
 
 static inline size_t NumDigits(size_t n) {
   if (n == 0) return 1;
@@ -206,7 +202,7 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
   }
 }
 
-void Error::Log::Dump() {
+void ErrorLog::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
   GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
@@ -215,30 +211,10 @@ void Error::Log::Dump() {
                    "imports, or void compile-time evaluations.",
                    global_non_decl);
 
-  for (const auto &file_log : log_) {
-    // NOTE: No sense in robustifying this. It probably won't last.
-    size_t num_eqs = 38 - file_log.first.size() / 2;
-    std::string eqs(num_eqs, '=');
-    std::cerr << eqs << ' ' << file_log.first << ' ' << eqs << std::endl;
-
-    for (const auto &line_log : file_log.second) {
-      std::cerr << "  (line " << line_log.first << "):\n";
-
-      for (const auto &msg : line_log.second) {
-        std::cerr << "    " << msg << "\n\n";
-      }
-    }
-  }
-
   std::cerr << num_errs_ << " error";
   if (num_errs_ != 1) { std::cerr << "s"; }
 
   std::cerr << " found." << std::endl;
-}
-
-void Error::Log::Log(const Cursor &loc, const std::string &msg) {
-  ++num_errs_;
-  log_[(std::string)loc.file_name][loc.line_num].push_back(msg);
 }
 
 static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
@@ -267,8 +243,7 @@ static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
   }
 }
 
-namespace Error {
-namespace Log {
+namespace ErrorLog {
 void NullCharInSrc(const Cursor &loc) {
   fprintf(stderr, "I found a null-character in your source file on line %lu. "
                   "I am ignoring it and moving on. Are you sure \"%s\" is a "
@@ -283,6 +258,26 @@ void NonGraphicCharInSrc(const Cursor &loc) {
                   "a source file?\n\n",
           loc.line_num, loc.file_name);
   ++num_errs_;
+}
+
+void LogGeneric(const Cursor &loc, const std::string &msg) {
+  ++num_errs_;
+  fprintf(stderr, "%s", msg.c_str());
+}
+
+
+void InvalidRangeType(const Cursor &loc, Type *t) {
+  ++num_errs_;
+  const char *foot_fmt = "Expected type: int, uint, or char\n"
+                         "Given type: %s.";
+  std::string t_str = t->to_string();
+  size_t type_string_size = t_str.size();
+  auto msg_foot = (char *)malloc(strlen(foot_fmt) + type_string_size - 1);
+  sprintf(msg_foot, foot_fmt, t_str.c_str());
+
+  DisplayErrorMessage("Attempting to create a range with an invalid type.",
+                      msg_foot, loc, type_string_size);
+  free(msg_foot);
 }
 
 void TooManyDots(const Cursor &loc, size_t num_dots) {
@@ -303,59 +298,9 @@ void NonWhitespaceAfterNewlineEscape(const Cursor &loc, size_t dist) {
   DisplayErrorMessage(msg_head, msg_foot, loc, dist);
 }
 
-void InvalidHashtag(const Cursor &loc) {
-  const char *msg_head = "I found a '#' that wasn't followed by an alphabetic "
-                         "character or underscore.";
-  const char *msg_foot = "Hashtags must be a valid identifier.";
-
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, msg_foot, loc, 1);
-}
-
-void NotInMultilineComment(const Cursor &loc) {
-  const char *msg_head = "I found a token representing the end of a multi-line "
-                         "comment (*/), but it was not part of a comment "
-                         "block.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 2);
-}
-
 void RunawayMultilineComment() {
   fprintf(stderr, "Finished reading file during multi-line comment.\n\n");
   ++num_errs_;
-}
-
-void RunawayCharLit(const Cursor &loc) {
-  const char *msg_head =
-      "You are missing a quotation mark at the end of your character-literal.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void GlobalNonDecl(const Cursor &loc) {
-  ++num_errs_;
-  global_non_decl[loc.file_name].push_back(loc.line_num);
-}
-
-void RunawayStringLit(const Cursor &loc) {
-  const char *msg_head = "You are missing a quotation mark at the end of your "
-                         "string-literal. I think it goes here:";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void EscapedSingleQuoteInStringLit(const Cursor &loc) {
-  const char *msg_head = "The single quotation mark character (') does not "
-                         "need to be esacped in a string-literal.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 2);
-}
-
-void EscapedDoubleQuoteInCharLit(const Cursor &loc) {
-  const char *msg_head = "The double quotation mark character (\") does not "
-                         "need to be esacped in a character-literal.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 2);
 }
 
 void InvalidStringIndex(const Cursor &loc, Type *index_type) {
@@ -367,57 +312,11 @@ void InvalidStringIndex(const Cursor &loc, Type *index_type) {
 
 }
 
-void InvalidEscapeCharInStringLit(const Cursor &loc) {
-  const char *msg_head =
-      "I encounterd an invalid escape sequence in your string-literal.";
-  const char *msg_foot = "The valid escape sequences in a string-literal are "
-                         "\\\\, \\\", \\a, \\b, \\f, \\n, \\r, \\t, and \\v.";
+void GlobalNonDecl(const Cursor &loc) {
   ++num_errs_;
-  DisplayErrorMessage(msg_head, msg_foot, loc, 2);
+  global_non_decl[loc.file_name].push_back(loc.line_num);
 }
 
-void InvalidEscapeCharInCharLit(const Cursor &loc) {
-  const char *msg_head =
-      "I encounterd an invalid escape sequence in your character-literal.";
-  const char *msg_foot = "The valid escape sequences in a character-literal "
-                         "are \\\\, \\\', \\a, \\b, \\f, \\n, \\r, \\t, and "
-                         "\\v.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, msg_foot, loc, 2);
-}
-
-void InvalidCharQuestionMark(const Cursor &loc) {
-  const char *msg_head = "The character '?' is not used in Icarus. I am going "
-                         "to ignore it and continue processing.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void InvalidCharTilde(const Cursor &loc) {
-  const char *msg_head = "The character '~' is not used in Icarus. I am going "
-                         "to ignore it and continue processing.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void TabInCharLit(const Cursor &loc) {
-  const char *msg_head = "I found a tab '\t' in your character-literal. You "
-                         "need to use '\\t' instead.";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void MissingComma(const Cursor &loc) {
-  const char *msg_head =
-      "There are two consecutive expressions. Are you missing a comma?";
-  ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-}
-
-void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
-  ++num_errs_;
-  DisplayErrorMessage(msg.c_str(), nullptr, unop->loc, 1);
-}
 
 void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type) {
   std::string msg_head = "Array is being indexed by an expression of type " +
@@ -437,12 +336,6 @@ void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
   ++num_errs_;
   DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), id->loc,
                       id->token.size());
-}
-
-void EmptyArrayLit(const Cursor &loc) {
-  ++num_errs_;
-  DisplayErrorMessage("Cannot infer the type of an empty array literal.",
-                      nullptr, loc, 2);
 }
 
 void InvalidAddress(const Cursor &loc, Assign mode) {
@@ -489,11 +382,6 @@ void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
 
-void ResizingFixedArray(const Cursor &loc) {
-  ++num_errs_;
-  DisplayErrorMessage("Cannot resize a fixed-length array.", nullptr, loc, 1);
-}
-
 void MissingMember(const Cursor &loc, const std::string &member_name,
                    const Type *t) {
   ++num_errs_;
@@ -509,12 +397,100 @@ void IndexingNonArray(const Cursor &loc, const Type *t) {
                       loc, 1);
 }
 
+void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
+  ++num_errs_;
+  DisplayErrorMessage(msg.c_str(), nullptr, unop->loc, 1);
+}
+
 void SlicingNonArray(const Cursor &loc, const Type *t) {
   ++num_errs_;
   std::string msg_foot = "Sliced type is a `" + t->to_string() + "`.";
   DisplayErrorMessage("Cannot slice a non-array type.", msg_foot.c_str(), loc,
                       1);
 }
+
+void NonBinaryAssignment(const Cursor &loc, size_t len) {
+  ++num_errs_;
+  const char *head_fmt =
+      "Assignment must be a binary operator, but %llu argument%s given.";
+
+  size_t size_to_malloc = strlen(head_fmt) - 7 + NumDigits(len) +
+                          (len == 1 ? strlen(" was") : strlen("s were"));
+  auto msg_head = (char *)malloc(size_to_malloc);
+  sprintf(msg_head, head_fmt, len, (len == 1 ? " was" : "s were"));
+  // TODO is undeline length correct?
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void AssignmentArrayLength(const Cursor &loc, size_t len) {
+  ++num_errs_;
+  const char *head_fmt = "Invalid assignment. Array on right-hand side has "
+                         "unknown length, but lhs is known to be of "
+                         "length %llu.";
+  auto msg_head = (char *)malloc(strlen(head_fmt) - 3 + NumDigits(len));
+  sprintf(msg_head, head_fmt, len);
+  // TODO is undeline length correct?
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void AlreadyFoundMatch(const Cursor &loc, const char *op_symbol,
+                       const Type *lhs, const Type *rhs) {
+  ++num_errs_;
+  const char *head_fmt =
+      "Already found a match for operator %s` with types %s and %s.";
+  std::string lhs_str = lhs->to_string();
+  std::string rhs_str = rhs->to_string();
+
+  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + strlen(op_symbol) +
+                                 lhs_str.size() + rhs_str.size());
+  sprintf(msg_head, head_fmt, op_symbol, lhs_str.c_str(), rhs_str.c_str());
+  // TODO undeline length is incorrect?
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void NoKnownOverload(const Cursor &loc, const char *op_symbol, const Type *lhs,
+                     const Type *rhs) {
+  ++num_errs_;
+  const char *head_fmt =
+      "No known operator overload for `%s` with types %s and %s.";
+  std::string lhs_str = lhs->to_string();
+  std::string rhs_str = rhs->to_string();
+
+  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + strlen(op_symbol) +
+                                 lhs_str.size() + rhs_str.size());
+  sprintf(msg_head, head_fmt, op_symbol, lhs_str.c_str(), rhs_str.c_str());
+  // TODO undeline length is incorrect?
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void InvalidRangeTypes(const Cursor &loc, const Type *lhs, const Type *rhs) {
+  ++num_errs_;
+  const char *head_fmt = "No range construction for types %s .. %s.";
+  std::string lhs_str = lhs->to_string();
+  std::string rhs_str = rhs->to_string();
+
+  auto msg_head =
+      (char *)malloc(strlen(head_fmt) - 3 + lhs_str.size() + rhs_str.size());
+  sprintf(msg_head, head_fmt, lhs_str.c_str(), rhs_str.c_str());
+  // TODO undeline length is incorrect?
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void AssignmentTypeMismatch(const Cursor &loc, const Type *lhs,
+                            const Type *rhs) {
+  ++num_errs_;
+  std::string msg_head =
+      "Invalid assignment. Left-hand side has type " + lhs->to_string() +
+      ", but right-hand side has type " + rhs->to_string() + ".";
+  // TODO underline isn't what it ought to be.
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
 
 void InvalidCast(const Cursor &loc, const Type *from, const Type *to) {
   ++num_errs_;
@@ -545,11 +521,6 @@ void DeclaredParametricType(const Cursor &loc, const std::string &id_tok) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
 
-void RepeatedEnumName(const Cursor &loc) {
-  ++num_errs_; // TODO better error message here.
-  DisplayErrorMessage("Repeated enum member.", nullptr, loc, 1);
-}
-
 void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc) {
   ++num_errs_;
   if (decl_loc.line_num == val_loc.line_num){
@@ -560,14 +531,94 @@ void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc) {
     NOT_YET;
   }
 }
+void InvalidPrintDefinition(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  const char *msg_fmt = "Cannot define print function for type %s.";
+  std::string t_str   = t->to_string();
+  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, t_str.c_str());
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
 
-void InvalidImport(const Cursor &loc) {
+void InitWithNull(const Cursor &loc, const Type *t, const Type *intended) {
+  ++num_errs_;
+  std::string msg_head = "Cannot initialize an identifier of type " +
+                         t->to_string() +
+                         " with null. Did you mean to declare it as " +
+                         intended->to_string() + "?";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+}
+
+void InvalidAssignDefinition(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  const char *msg_fmt = "Cannot define assignment function for type %s.";
+  std::string t_str   = t->to_string();
+  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, t_str.c_str());
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void CondWithoutBool(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  const char *msg_fmt = "Conditional expression must be a bool, but %s given.";
+  std::string t_str   = t->to_string();
+  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, t_str.c_str());
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void WhileWithoutBool(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  const char *msg_fmt = "While loop condition must be a bool, but %s given.";
+  std::string t_str   = t->to_string();
+  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, t_str.c_str());
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void NotBinary(const Cursor &loc, const char *token) {
+  ++num_errs_;
+  const char *msg_fmt = "Operator '%s' is not a binary operator";
+  auto msg_head = (char *)malloc(strlen(token) + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, token);
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void Reserved(const Cursor &loc, const char *token) {
+  ++num_errs_;
+  const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
+  auto msg_head = (char *)malloc(strlen(token) + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, token);
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
+void EmptyFile(const Cursor &loc) {
+  ++num_errs_;
+  fprintf(stderr, "File '%s' is empty.", loc.file_name);
+}
+
+// TODO better error message for repeated enum name
+#define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
+  void fn_name(const Cursor &loc) {                                            \
+    ++num_errs_;                                                               \
+    DisplayErrorMessage(msg_head, msg_foot, loc, underline_length);            \
+  }
+#include "config/error.conf"
+#undef ERROR_MACRO
+
+void AssignShouldBeEq(const Cursor &loc, const std::string &msg) {
   ++num_errs_;
 
-  DisplayErrorMessage("Import statements must take a string literal as the "
-                      "name of the file to be imported.",
-                      nullptr, loc, 1);
+  std::string msg_head = msg + "Did you mean '==' instead of '='?";
+  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
+
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
   ++num_errs_;
   std::string msg_head = "Invalid return type on line " +
@@ -581,6 +632,14 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
                       strlen(loc.line.ptr) - loc.offset);
 }
 
+void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types) {
+  ++num_errs_;
+  std::stringstream ss;
+  ss << "Found the following types in the expression:\n";
+  for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
+  DisplayErrorMessage("Type do not all match in expression:", ss.str().c_str(),
+                      loc, 1);
+}
 
 static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t left_space     = NumDigits(lines.back().line_num) + 2;
@@ -620,7 +679,6 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   }
 }
 
-
 void UnknownParserError(const std::string &file_name,
                         const std::vector<Cursor> &lines) {
 
@@ -656,6 +714,4 @@ void AmbiguousIdentifier(const Cursor &loc, const char *token) {
   ambiguous_identifiers[token][loc.file_name][loc.line_num].push_back(
       loc.offset);
 }
-
-} // namespace Log
-} // namespace Error
+} // namespace ErrorLog
