@@ -58,6 +58,10 @@ void AssignmentArrayLength(const Cursor &loc, size_t len);
 void NonBinaryAssignment(const Cursor &loc, size_t len);
 void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types);
 
+void NotAType(AST::Expression *expr, Type *t);
+void IndeterminantType(AST::Expression *expr);
+void CyclicDependency(AST::Expression *expr);
+
 void CondWithoutBool(const Cursor &loc, const Type *t);
 void WhileWithoutBool(const Cursor &loc, const Type *t);
 void InvalidRangeType(const Cursor &loc, Type *t);

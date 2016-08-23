@@ -4,6 +4,8 @@
 
 #include "IR/Stack.h"
 
+//TODO catch functions that don't return along all paths.
+
 extern IR::Value Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
@@ -31,7 +33,7 @@ CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
 static std::vector<AST::Identifier *> all_ids;
 void VerifyDeclBeforeUsage() {
   for (auto id : all_ids) {
-    if (id->type == Type_) { continue; }
+    if (id->type == Err || id->type == Type_) { continue; }
     if (id->decl->scope_ == Scope::Global) { continue; }
     if (id->decl->HasHashtag("const")) { continue; }
     if (GetOrder(id->decl->loc, id->loc) == CursorOrder::OutOfOrder) {
@@ -355,7 +357,10 @@ static Type *EvalWithVars(Type *type,
 }
 
 #define STARTING_CHECK                                                         \
-  assert(type != Unknown && "Cyclic dependency");                              \
+  if (type == Unknown) {                                                       \
+    ErrorLog::CyclicDependency(this);                                          \
+    type = Err;                                                                \
+  }                                                                            \
   if (type) { return; }                                                        \
   type = Unknown
 
@@ -396,6 +401,8 @@ void Identifier::verify_types() {
 
     if (potential_decls.empty()) {
       type = Err;
+      // TODO somehow this catches items which have an invalid declaration. Not
+      // ideal, but passable for now.
       ErrorLog::UndeclaredIdentifier(loc, token.c_str());
       return;
     }
@@ -1474,8 +1481,26 @@ void FunctionLiteral::verify_types() {
   if (!input_has_vars) { VerificationQueue.push(statements); }
 
   return_type_expr->verify_types();
+  if (ErrorLog::num_errs_ > 0) {
+    type = Err;
+    return;
+  }
 
-  Type *ret_type = Evaluate(return_type_expr).as_type;
+  auto ret_type_val = Evaluate(return_type_expr);
+  // TODO must this really be undeclared?
+  if (ret_type_val == IR::Value::Error()) {
+    ErrorLog::IndeterminantType(return_type_expr);
+    type = Err;
+  } else if (ret_type_val.flag != IR::ValType::T) {
+    ErrorLog::NotAType(return_type_expr, return_type_expr->type);
+    type = Err;
+    return;
+  } else if (ret_type_val.as_type == Err) {
+    type = Err;
+    return;
+  }
+
+  Type *ret_type = ret_type_val.as_type;
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t num_inputs = inputs.size();

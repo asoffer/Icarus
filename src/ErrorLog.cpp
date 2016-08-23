@@ -311,6 +311,29 @@ void InvalidStringIndex(const Cursor &loc, Type *index_type) {
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 
 }
+void NotAType(AST::Expression *expr, Type *t) {
+  ++num_errs_;
+  auto t_str = t->to_string();
+  const char *head_fmt =
+      "Expression was expected to be a type, but instead it was a(n) %s.";
+  char *msg_head = (char *)malloc(t_str.size() + strlen(head_fmt) - 1);
+  sprintf(msg_head, head_fmt, t_str.c_str());
+
+  DisplayErrorMessage(msg_head, nullptr, expr->loc, 1);
+  free(msg_head);
+}
+
+void IndeterminantType(AST::Expression *expr) {
+  ++num_errs_;
+  DisplayErrorMessage("Cannot determine the type of the expression:", nullptr,
+                      expr->loc, 1);
+}
+
+void CyclicDependency(AST::Expression *expr) {
+  ++num_errs_;
+  DisplayErrorMessage("This expression's type is declared self-referentially.",
+                      nullptr, expr->loc, 1);
+}
 
 void GlobalNonDecl(const Cursor &loc) {
   ++num_errs_;

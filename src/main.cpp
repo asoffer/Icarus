@@ -106,6 +106,9 @@ void AST::Declaration::AllocateGlobal() {
 }
 
 void AST::Declaration::EmitGlobal() {
+  verify_types();
+  if (type == Err) { return; }
+ 
   if (GetInitialGlobal(addr.as_global_addr) != IR::Value::None()) { return; }
   assert(!arg_val);
   verify_types();

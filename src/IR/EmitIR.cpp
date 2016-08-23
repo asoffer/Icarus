@@ -22,6 +22,7 @@ extern FileType file_type;
 
 static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   expr->verify_types();
+  if (ErrorLog::num_errs_ > 0) { return nullptr; }
 
   auto fn_ptr = new AST::FunctionLiteral;
 
