@@ -3,6 +3,12 @@
 #include "Scope.h"
 #include "Stack.h"
 
+#define ENSURE_VERIFIED                                                        \
+  do {                                                                         \
+    verify_types();                                                            \
+    if (ErrorLog::num_errs_ > 0) { return IR::Value::Error(); }                \
+  } while (false)
+
 extern llvm::IRBuilder<> builder;
 extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
@@ -14,7 +20,7 @@ extern std::vector<llvm::Constant *> LLVMGlobals;
 extern llvm::Module *global_module;
 extern FileType file_type;
 
-AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
+static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   expr->verify_types();
 
   auto fn_ptr = new AST::FunctionLiteral;
@@ -47,6 +53,8 @@ IR::Value Evaluate(AST::Expression *expr) {
   auto old_block = IR::Block::Current;
 
   auto fn_ptr      = WrapExprIntoFunction(expr);
+  if (!fn_ptr) { return IR::Value::Error(); }
+
   auto local_stack = new IR::LocalStack;
   IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
 
@@ -181,6 +189,8 @@ static IR::Value FindOrInsertGlobalCStr(const char *cstr) {
 
 namespace AST {
 IR::Value Terminal::EmitIR() {
+  ENSURE_VERIFIED;
+
   switch (terminal_type) {
   case Language::Terminal::ASCII: return IR::Value(AsciiFunc());
   case Language::Terminal::Null: return IR::Value::Null(type);
@@ -221,6 +231,8 @@ static void EmitPrintExpr(Expression *expr) {
 }
 
 IR::Value Unop::EmitIR() {
+  ENSURE_VERIFIED;
+
   switch (op) {
   // NOTE: Not sure if Import will always be disallowed (in which case we need
   // TODO stricter checking earlier) or if we allow it to some degree
@@ -283,7 +295,8 @@ IR::Value Unop::EmitIR() {
 }
 
 IR::Value Binop::EmitIR() {
-  verify_types();
+  ENSURE_VERIFIED;
+
   switch (op) {
   case Language::Operator::Assign: {
     Type::CallAssignment(scope_, lhs->type, rhs->type, rhs->EmitIR(),
@@ -470,8 +483,20 @@ IR::Value Binop::EmitIR() {
       auto t = Evaluate(lhs).as_type;
       assert(t->is_parametric_struct());
       return IR::Call(type, IR::Value(((ParamStruct *)t)->IRFunc()), args);
+    } else if (lhs->type->is_function()) {
+      Type *out = ((Function *)lhs->type)->output;
+      if (out == Void || !out->is_big()) {
+        return IR::Call(type, lhs->EmitIR(), args);
+      } else {
+        if (out->is_tuple()) { NOT_YET; }
+        if (out->is_array()) { NOT_YET; }
+        auto addr = IR::Value::FrameAddr(IR::Func::Current->PushSpace(out));
+        args.push_back(addr);
+        return IR::Call(type, lhs->EmitIR(), args);
+        return addr;
+      }
     } else {
-      return IR::Call(type, lhs->EmitIR(), args);
+      UNREACHABLE;
     }
   } break;
   default: UNREACHABLE;
@@ -553,8 +578,8 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
 }
 
 IR::Value ChainOp::EmitIR() {
+  ENSURE_VERIFIED;
   assert(!ops.empty());
-  verify_types();
 
   switch (ops[0]) {
   case Language::Operator::Xor: {
@@ -680,8 +705,6 @@ IR::Value ChainOp::EmitIR() {
   }
 }
 
-IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
-
 void AST::Declaration::AllocateLocally(IR::Func *fn) {
   if (type->has_vars()) {
     if (!type->is_function()) { return; }
@@ -748,10 +771,13 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
   }
 }
 
+IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 IR::Value FunctionLiteral::Emit(bool should_gen) {
+  ENSURE_VERIFIED;
+  // TODO Also verify internals
+
   if (ir_func) { return IR::Value(ir_func); } // Cache
   if (type->has_vars()) { return IR::Value::None(); }
-  verify_types();
 
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
@@ -796,7 +822,8 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
   fn_scope->InsertDestroy();
 
-  if (((Function *)type)->output == Void) {
+  if (((Function *)type)->output == Void ||
+      ((Function *)type)->output->is_big()) {
     IR::Block::Current->SetReturnVoid();
   } else {
     IR::Block::Current->SetReturn(
@@ -810,12 +837,14 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 }
 
 IR::Value Statements::EmitIR() {
+  ENSURE_VERIFIED;
   for (auto stmt : statements) { stmt->EmitIR(); }
   return IR::Value::None();
 }
 
 IR::Value Identifier::EmitIR() {
-  verify_types();
+  ENSURE_VERIFIED;
+
   if (type->has_vars()) { return IR::Value::None(); }
 
   assert(decl);
@@ -901,12 +930,14 @@ IR::Value Identifier::EmitIR() {
 }
 
 IR::Value ArrayType::EmitIR() {
+  ENSURE_VERIFIED;
   return (length->is_hole()
               ? IR::TC_Arr1(data_type->EmitIR())
               : IR::TC_Arr2(length->EmitIR(), data_type->EmitIR()));
 }
 
 IR::Value Declaration::EmitIR() {
+  ENSURE_VERIFIED;
   if (IsUninitialized()) {
     return IR::Value::None();
 
@@ -924,6 +955,7 @@ IR::Value Declaration::EmitIR() {
 }
 
 IR::Value Case::EmitIR() {
+  ENSURE_VERIFIED;
 
   std::vector<IR::Block *> key_blocks(key_vals.size(), nullptr);
 
@@ -964,6 +996,7 @@ IR::Value Case::EmitIR() {
 }
 
 IR::Value Access::EmitIR() {
+  ENSURE_VERIFIED;
   // TODO we don't allow pointers to types?
   if (operand->type == Type_) {
     if (member_name == "bytes") {
@@ -1013,6 +1046,7 @@ IR::Value Access::EmitIR() {
 }
 
 IR::Value While::EmitIR() {
+  ENSURE_VERIFIED;
   auto cond_block = IR::Func::Current->AddBlock("while-cond");
   auto body_block = IR::Func::Current->AddBlock("while-body");
   auto land_block = IR::Func::Current->AddBlock("while-land");
@@ -1054,6 +1088,7 @@ IR::Value While::EmitIR() {
 }
 
 IR::Value Conditional::EmitIR() {
+  ENSURE_VERIFIED;
   std::vector<IR::Block *> cond_blocks(conditions.size(), nullptr);
   std::vector<IR::Block *> body_blocks(body_scopes.size(), nullptr);
 
@@ -1106,6 +1141,7 @@ IR::Value Conditional::EmitIR() {
 }
 
 IR::Value ArrayLiteral::EmitIR() {
+  ENSURE_VERIFIED;
   // TODO delete allocation
   auto tmp_addr  = IR::Value::FrameAddr(IR::Func::Current->PushSpace(type));
   auto num_elems = elems.size();
@@ -1151,6 +1187,7 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
 }
 
 IR::Value For::EmitIR() {
+  ENSURE_VERIFIED;
   auto num_iters = iterators.size();
 
   auto init_block = IR::Func::Current->AddBlock("for-init");
@@ -1377,6 +1414,7 @@ IR::Value For::EmitIR() {
 }
 
 IR::Value Jump::EmitIR() {
+  ENSURE_VERIFIED;
   IR::Value flag;
   switch (jump_type) {
   case JumpType::Restart: flag  = RESTART_FLAG; break;
@@ -1396,15 +1434,23 @@ IR::Value Jump::EmitIR() {
 }
 
 IR::Value Generic::EmitIR() {
+  ENSURE_VERIFIED;
   if (!value.as_type) { value = IR::Value(TypeVar(identifier, test_fn)); }
   return IR::Value(value.as_type);
 }
 
-IR::Value InDecl::EmitIR() { UNREACHABLE; }
+IR::Value InDecl::EmitIR() {
+  ENSURE_VERIFIED;
+  UNREACHABLE;
+}
 
-IR::Value DummyTypeExpr::EmitIR() { return IR::Value(value.as_type); }
+IR::Value DummyTypeExpr::EmitIR() {
+  ENSURE_VERIFIED;
+  return IR::Value(value.as_type);
+}
 
 IR::Value ScopeNode::EmitIR() {
+  ENSURE_VERIFIED;
   auto expr_block = IR::Func::Current->AddBlock("scope-expr");
   auto body_block = IR::Func::Current->AddBlock("scope-body");
   auto land_block = IR::Func::Current->AddBlock("scope-land");
@@ -1435,3 +1481,4 @@ IR::Value ScopeNode::EmitIR() {
   return IR::Value::None();
 }
 } // namespace AST
+#undef ENSURE_VERIFIED                                                        \

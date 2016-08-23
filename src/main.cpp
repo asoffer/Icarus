@@ -60,8 +60,9 @@ AST::Statements *global_statements;
 
 void AST::Declaration::AllocateGlobal() {
   if (addr != IR::Value::None()) { return; }
-  verify_types();
 
+  verify_types();
+  if (ErrorLog::num_errs_ > 0) { return; }
 
   if (type->has_vars() && init_val->is_function_literal()) {
     for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
@@ -108,9 +109,10 @@ void AST::Declaration::EmitGlobal() {
   if (GetInitialGlobal(addr.as_global_addr) != IR::Value::None()) { return; }
   assert(!arg_val);
   verify_types();
+  if (ErrorLog::num_errs_ > 0) { return; }
 
   if (type->is_pointer()) {
-    AddInitialGlobal(addr.as_global_addr, IR::Value::Error());
+    addr = IR::Value::Error();
     ErrorLog::GlobalPointerUnsupported(loc);
     return;
   }
@@ -129,7 +131,9 @@ void AST::Declaration::EmitGlobal() {
       }
       return;
     } else {
-      AddInitialGlobal(addr.as_global_addr, Evaluate(init_val));
+      auto eval_value = Evaluate(init_val);
+      if (eval_value == IR::Value::Error()) { return; }
+      AddInitialGlobal(addr.as_global_addr, eval_value);
     }
   } else if (HasHashtag("cstdlib")) {
     auto cstr = new char[identifier->token.size() + 1];
@@ -150,6 +154,7 @@ void AST::Declaration::EmitLLVMGlobal() {
   if (file_type == FileType::None) { return; }
   assert(!arg_val);
   verify_types();
+  if (ErrorLog::num_errs_ > 0) { return; }
 
   if (type->is_struct() || type->is_parametric_struct() || type->is_range() ||
       type->is_slice() || type->time() == Time::compile) {
@@ -258,6 +263,8 @@ int main(int argc, char *argv[]) {
         switch (((AST::Unop *)stmt)->op) {
         case Language::Operator::Eval:
           stmt->verify_types();
+          if (ErrorLog::num_errs_ > 0) { continue; }
+
           if (((AST::Unop *)stmt)->type == Void) {
             Evaluate(((AST::Unop *)stmt)->operand);
           } else {
