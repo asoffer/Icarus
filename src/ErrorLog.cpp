@@ -144,7 +144,7 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
         pstr line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width                   = line_num_width + 4;
+        size_t left_border_width                   = line_num_width + 6;
         size_t line_length                         = strlen(line) + 1;
         char *underline                            = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';

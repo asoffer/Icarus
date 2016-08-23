@@ -508,6 +508,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
     if (op_type == Uint) { return UEQ(lhs, rhs); }
     if (op_type->is_enum()) { return UEQ(lhs, rhs); }
     if (op_type == Type_) { return TEQ(lhs, rhs); }
+    if (op_type->is_pointer()) { return PtrEQ(lhs, rhs); }
     if (op_type->is_function()) { return FnEQ(lhs, rhs); }
 
     auto fn = GetFuncReferencedIn(scope, "__eq__",
@@ -522,6 +523,7 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
     if (op_type == Uint) { return UNE(lhs, rhs); }
     if (op_type->is_enum()) { return UNE(lhs, rhs); }
     if (op_type == Type_) { return TNE(lhs, rhs); }
+    if (op_type->is_pointer()) { return PtrEQ(lhs, rhs); }
     if (op_type->is_function()) { return FnNE(lhs, rhs); }
 
     auto fn = GetFuncReferencedIn(scope, "__ne__",

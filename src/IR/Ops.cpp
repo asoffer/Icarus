@@ -62,6 +62,13 @@ Value Value::None() {
   return v;
 }
 
+Value Value::Error() {
+  Value v;
+  v.flag    = ValType::Error;
+  v.as_type = nullptr;
+  return v;
+}
+
 std::vector<llvm::Value *> LLVMGlobals;
 
 Value Value::CreateGlobal() {
@@ -326,6 +333,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value) {
   case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
   case ValType::GlobalAddr: return os << "g." << value.as_global_addr;
   case ValType::GlobalCStr: return os << "c\"#" << value.as_global_cstr;
+  case ValType::Error: return os << "[[Error]]";
   case ValType::Block:
     if (value.as_block) {
       return os << value.as_block->block_name;

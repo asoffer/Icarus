@@ -100,7 +100,7 @@ struct StackFrame;
 
 enum class ValType : char {
   B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr, U16, U32, ExtFn,
-  GlobalCStr, Null
+  GlobalCStr, Null, Error
 };
 
 struct Value {
@@ -143,6 +143,7 @@ struct Value {
 
   static Value GlobalCStr(size_t n);
   static Value None();
+  static Value Error();
   static Value StackAddr(size_t n);
   static Value Null(Type *t);
   static Value Reg(size_t n);

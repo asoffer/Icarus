@@ -9,8 +9,8 @@
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
-    if (ErrorLog::NumErrors() != 0) {                                        \
-      ErrorLog::Dump();                                                      \
+    if (ErrorLog::NumErrors() != 0) {                                          \
+      ErrorLog::Dump();                                                        \
       if (debug::ct_eval) { endwin(); }                                        \
       return -1;                                                               \
     }                                                                          \
@@ -110,11 +110,13 @@ void AST::Declaration::EmitGlobal() {
   verify_types();
 
   if (type->is_pointer()) {
+    AddInitialGlobal(addr.as_global_addr, IR::Value::Error());
     ErrorLog::GlobalPointerUnsupported(loc);
     return;
   }
 
   if (type->is_array()) {
+    AddInitialGlobal(addr.as_global_addr, IR::Value::Error());
     ErrorLog::GlobalArrayUnsupported(loc);
     return;
   }

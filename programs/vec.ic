@@ -52,7 +52,7 @@ main := void -> void {
   v2 = v1 - v3
   print "\nv2 = ", v2
   print "\n<v1, v2> = ", v1 * v2, '\n'
-
+}
 
   __ne__ := (lhs: vec, rhs: vec) -> bool {
     print "TESTING NON-EQUALITY\n"
@@ -75,4 +75,3 @@ main := void -> void {
     ret.z = -v.z
     return ret
   }
-}

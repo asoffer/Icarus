@@ -12,9 +12,11 @@ square := (n: int) -> int {
   return n * n
 }
 
+func := (num: int) -> int { return 17 * num }
+
 main := void -> void {
-  func := (num: int) -> int { return 17 * num }
-  
+  __print__ := (a: foo) -> void { print a.n }
+
   t: triple
   f: foo
   print t, '\n'
@@ -24,5 +26,4 @@ main := void -> void {
     n := func(5)
   }
 
-  __print__ := (a: foo) -> void { print a.n }
 }

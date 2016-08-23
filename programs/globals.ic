@@ -1,6 +1,6 @@
-constant_array := [1.0, 2.0, 3.0, 4.0, 5.0]
+// constant_array := [1.0, 2.0, 3.0, 4.0, 5.0]
 
-eight_ptr := &eight
+// eight_ptr := &eight
 
 seven := 7 #const
 eight := 8 // this might change!
@@ -9,10 +9,10 @@ eight := 8 // this might change!
 True := true // the truth is malleable
 False: bool #const
 
-a := [[1, 2], [3, 4], [5, 6], [7, 8]]
+// a := [[1, 2], [3, 4], [5, 6], [7, 8]]
 
 main := void -> void {
-  print a, "\n"
+  // print a, "\n"
   print seven, "\n", eight, "\n"
   print True, "\n"
 }

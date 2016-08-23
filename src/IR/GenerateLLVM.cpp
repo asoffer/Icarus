@@ -80,6 +80,7 @@ static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
     return iter;
   } break;
   case ValType::StackAddr: ir_fn->dump(); UNREACHABLE;
+  case ValType::Error: UNREACHABLE;
   case ValType::FrameAddr:
     assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
     return ir_fn->frame_map[cmd_arg.as_frame_addr];

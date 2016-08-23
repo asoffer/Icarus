@@ -69,6 +69,10 @@ main := void -> void {
   c.center.x = 1.1
   c.center.y = 1.2
 
+  area := (ci: circle) -> real {
+    return 3.14159 * ci.radius * ci.radius
+  }
+
   print c.radius
   print '!'
   print '\n'
@@ -80,8 +84,6 @@ main := void -> void {
   print area(c)
   print '\n'
 
-  area := (ci: circle) -> real {
-    return 3.14159 * ci.radius * ci.radius
-  }
+
 }
 

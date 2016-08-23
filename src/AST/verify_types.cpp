@@ -391,40 +391,37 @@ void Identifier::verify_types() {
   STARTING_CHECK;
   all_ids.push_back(this);
 
-  if (decl) {
+  if (!decl) {
+    auto potential_decls = AllDeclsInScopeWithId(scope_, token);
+
+    if (potential_decls.empty()) {
+      type = Err;
+      ErrorLog::UndeclaredIdentifier(loc, token.c_str());
+      return;
+    }
+
+    if (potential_decls.size() > 1) {
+      type = Err;
+      ErrorLog::AmbiguousIdentifier(loc, token.c_str());
+      return;
+    }
+
+    decl = potential_decls[0];
     decl->verify_types();
-    type = decl->type;
-    return;
   }
-
-  auto potential_decls = AllDeclsInScopeWithId(scope_, token);
-
-  if (potential_decls.empty()) {
-    type = Err;
-    ErrorLog::UndeclaredIdentifier(loc, token.c_str());
-    return;
-  }
-
-  if (potential_decls.size() > 1) {
-    type = Err;
-    ErrorLog::AmbiguousIdentifier(loc, token.c_str());
-    return;
-  }
-
-  decl = potential_decls[0];
-  decl->verify_types();
   type = decl->type;
 
-  // You are allowed to capture, functions, globals, and const objects
+  // You are allowed to capture, globals, and const objects
   // TODO what about #const pointers?
-  if (type == Type_ || type->is_function() || decl->scope_ == Scope::Global ||
+  if (type == Type_ || decl->scope_ == Scope::Global ||
       decl->HasHashtag("const")) {
     return;
   }
 
-  for (auto scope_ptr = scope_; scope_ptr != potential_decls[0]->scope_;
+  for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr = scope_ptr->parent) {
-    if (scope_ptr->is_function_scope()) {
+    // Note: not a block scope is hack for being a type scope
+    if (scope_ptr->is_function_scope() || !scope_ptr->is_block_scope()) {
       ErrorLog::InvalidCapture(loc, decl);
       return;
     }
@@ -622,6 +619,7 @@ void Access::Verify(bool emit_errors) {
 
 void Binop::verify_types() {
   STARTING_CHECK;
+
   if (op == Language::Operator::Call && lhs->is_access()) {
     // This has a lot in common with rhs access
     auto lhs_access = (Access *)lhs;
@@ -661,7 +659,8 @@ void Binop::verify_types() {
           new_rhs = rhs_chainop;
         } else {
           // TODO line number?
-          new_rhs = new ChainOp;
+          new_rhs         = new ChainOp;
+          new_rhs->scope_ = scope_;
           new_rhs->ops.push_back(Language::Operator::Comma);
           new_rhs->exprs.push_back(ufcs_ptr);
           new_rhs->exprs.push_back(rhs); // Pointer to rhs?
@@ -669,7 +668,8 @@ void Binop::verify_types() {
 
         rhs = new_rhs;
       }
-      lhs = new Identifier(ufcs_func->loc, lhs_access->member_name);
+      lhs         = new Identifier(ufcs_func->loc, lhs_access->member_name);
+      lhs->scope_ = scope_;
     }
   }
 
@@ -769,8 +769,8 @@ void Binop::verify_types() {
         return;
       }
 
-      lhs->type = valid_matches[0]->type;
       lhs_id->decl = valid_matches[0];
+      lhs_id->verify_types();
 
     } else {
       VERIFY_AND_RETURN_ON_ERROR(lhs);
@@ -1332,11 +1332,9 @@ void Declaration::verify_types() {
   // 'V' stands for "value", the initial value of the identifier being declared.
 
   if (IsDefaultInitialized()) {
-    identifier->type = type =
-        type_expr->VerifyTypeForDeclaration(identifier->token);
+    type = type_expr->VerifyTypeForDeclaration(identifier->token);
   } else if (IsInferred()) {
-    identifier->type = type =
-        init_val->VerifyValueForDeclaration(identifier->token);
+    type = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == NullPtr) {
       ErrorLog::NullDeclInit(loc);
@@ -1344,37 +1342,34 @@ void Declaration::verify_types() {
     }
 
   } else if (IsCustomInitialized()) {
-    identifier->type = type =
-        type_expr->VerifyTypeForDeclaration(identifier->token);
-    auto t           = init_val->VerifyValueForDeclaration(identifier->token);
+    type   = type_expr->VerifyTypeForDeclaration(identifier->token);
+    auto t = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == Err) {
       type             = t;
-      identifier->type = t;
     } else if (t == NullPtr) {
       if (type->is_pointer()) {
-        identifier->type = type;
         init_val->type   = type;
       } else {
         auto new_type = Ptr(type);
         ErrorLog::InitWithNull(loc, type, new_type);
         type             = new_type;
-        identifier->type = new_type;
         init_val->type   = new_type;
       }
     }
 
   } else if (IsUninitialized()) {
     type             = type_expr->VerifyTypeForDeclaration(identifier->token);
-    identifier->type = type;
     init_val->type   = type;
 
   } else {
     UNREACHABLE;
   }
 
+  identifier->verify_types();
+
   if (type == Err) {
-    identifier->type = Err;
+    assert(identifier->type == Err);
     return;
   }
 

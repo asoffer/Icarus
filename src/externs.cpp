@@ -129,12 +129,21 @@ Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
     auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
     if (!id_ptr) { continue; }
 
+    if (!id_ptr->type) {
+      // NOTE: IdentifierHereOrNull always returns the identifier bound to the
+      // declaration, so if the type isn't specified, we need to actually verify
+      // the type of it's declaration.
+      assert(id_ptr->decl);
+      id_ptr->decl->verify_types();
+      assert(id_ptr->type);
+    }
+
     if (id_ptr->type->is_function()) {
       auto fn_type = (Function *)id_ptr->type;
       if (fn_type->input == input_type) { return fn_type; }
 
     } else {
-      assert(false && "What else could it be?");
+      UNREACHABLE;
     }
   }
   return nullptr;
