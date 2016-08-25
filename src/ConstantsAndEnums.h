@@ -18,11 +18,7 @@ namespace Time {
   constexpr Eval error   = 0x7;
 }  // namespace Time
 
-enum ValueFlag : char {
-  Not, // Not yet computed
-  In,  // Startet to compute
-  Done // Finished computing
-};
+enum class Order { Less, Equal, Greater };
 
 namespace Language {
 enum class Terminal {
@@ -40,9 +36,9 @@ enum class Operator {
 
 enum class Assign : char { Unset, Const, LVal, RVal };
 
-#define NORMAL_FLAG IR::Value('\0')
-#define RESTART_FLAG IR::Value('\1')
-#define CONTINUE_FLAG IR::Value('\2')
-#define REPEAT_FLAG IR::Value('\3')
-#define BREAK_FLAG IR::Value('\4')
-#define RETURN_FLAG IR::Value('\5')
+#define NORMAL_FLAG IR::Value::Char('\0')
+#define RESTART_FLAG IR::Value::Char('\1')
+#define CONTINUE_FLAG IR::Value::Char('\2')
+#define REPEAT_FLAG IR::Value::Char('\3')
+#define BREAK_FLAG IR::Value::Char('\4')
+#define RETURN_FLAG IR::Value::Char('\5')

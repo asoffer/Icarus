@@ -30,6 +30,12 @@ size_t Array::alignment() const {
   return fixed_length ? data_type->alignment() : 8;
 }
 
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  bool Primitive::is_##name() const { return type_ == PrimType::EnumName; }
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
+
+
 size_t Tuple::bytes() const { NOT_YET; }
 size_t Tuple::alignment() const { NOT_YET; }
 size_t SliceType::bytes() const { NOT_YET; }

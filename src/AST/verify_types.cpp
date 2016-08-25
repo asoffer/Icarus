@@ -21,7 +21,7 @@ static Scope *CurrentScope() {
 }
 
 enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
-CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
+static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
   if (lhs.file_name != rhs.file_name) { return CursorOrder::Unordered; }
   if (lhs.line_num < rhs.line_num) { return CursorOrder::InOrder; }
   if (lhs.line_num > rhs.line_num) { return CursorOrder::OutOfOrder; }
@@ -142,12 +142,13 @@ static bool MatchCall(Type *lhs, Type *rhs,
     // Do a function call
     auto f = Evaluate(lhs_var->test);
     auto local_stack = new IR::LocalStack;
-    assert(f.flag == IR::ValType::F);
-    auto test_result = f.as_func->Call(local_stack, {IR::Value(rhs)});
+    assert(f.flag == IR::ValType::Val);
+    auto test_result =
+        f.as_val->GetFunc()->Call(local_stack, {IR::Value::Type(rhs)});
     delete local_stack;
-    assert(test_result.flag == IR::ValType::B);
 
-    if (test_result.as_bool) {
+    assert(test_result.flag == IR::ValType::Val);
+    if (test_result.as_val->GetBool()) {
       auto iter = matches.find(lhs_var);
       if (iter == matches.end()) {
         matches[lhs_var] = rhs;
@@ -254,7 +255,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     for (size_t i = 0; i < num_params; ++i) {
       // TODO what if params aren't types
       coherent_matches &= MatchCall(
-          lhs_params[i].as_type, rhs_params[i].as_type, matches, error_message);
+          lhs_params[i].as_val->GetType(), rhs_params[i].as_val->GetType(), matches, error_message);
     }
     return coherent_matches;
   }
@@ -339,7 +340,7 @@ static Type *EvalWithVars(Type *type,
       assert(p->type == Type_);
       for (auto kv : lookup) {
         if (kv.first->identifier->token != p->identifier->token) { continue; }
-        param_vals.emplace_back(kv.second);
+        param_vals.emplace_back(IR::Value::Type(kv.second));
         goto next_param;
       }
       UNREACHABLE;
@@ -348,8 +349,8 @@ static Type *EvalWithVars(Type *type,
 
     auto result = ps->IRFunc()->Call(local_stack, param_vals);
     delete local_stack;
-    assert(result.flag == IR::ValType::T);
-    return result.as_type;
+    assert(result.flag == IR::ValType::Val);
+    return result.as_val->GetType();
   }
 
   std::cerr << *type << std::endl;
@@ -583,12 +584,12 @@ void Access::Verify(bool emit_errors) {
       return;
     }
 
-    auto evaled_type = Evaluate(operand).as_type;
+    auto evaled_type = Evaluate(operand).as_val->GetType();
     if (evaled_type->is_enum()) {
       auto enum_type = (Enum *)evaled_type;
       // If you can get the value,
       if (enum_type->IndexOrFail(member_name) != FAIL) {
-        type = Evaluate(operand).as_type;
+        type = Evaluate(operand).as_val->GetType();
 
       } else {
         ErrorLog::MissingMember(loc, member_name, evaled_type);
@@ -706,25 +707,27 @@ void Binop::verify_types() {
 
           if (decl->IsInferred() || decl->IsCustomInitialized()) {
             if (decl->init_val->type->is_function()) {
-              decl->value = IR::Value(decl->init_val);
+              UNREACHABLE; // TODO WTF??? HOW DID THIS EVEN COMPILE?
+              // decl->value = IR::Value(decl->init_val);
             } else {
-              decl->value = IR::Value(Evaluate(decl->init_val).as_type);
+              decl->value =
+                  IR::Value::Type(Evaluate(decl->init_val).as_val->GetType());
 
               if (decl->init_val->is_dummy()) {
-                auto t = decl->init_val->value.as_type;
+                auto t = decl->init_val->value.as_val->GetType();
                 if (t->is_struct()) {
-                  assert(decl->identifier->value.as_type->is_struct());
-                  ((Struct *)decl->identifier->value.as_type)->bound_name =
+                  assert(decl->identifier->value.as_val->GetType()->is_struct());
+                  ((Struct *)decl->identifier->value.as_val->GetType())->bound_name =
                       decl->identifier->token;
                 } else if (t->is_parametric_struct()) {
                   assert(
-                      decl->identifier->value.as_type->is_parametric_struct());
-                  ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
+                      decl->identifier->value.as_val->GetType()->is_parametric_struct());
+                  ((ParamStruct *)decl->identifier->value.as_val->GetType())->bound_name =
                       decl->identifier->token;
 
                 } else if (t->is_enum()) {
-                  assert(decl->identifier->value.as_type->is_enum());
-                  ((Enum *)(decl->identifier->value.as_type))->bound_name =
+                  assert(decl->identifier->value.as_val->GetType()->is_enum());
+                  ((Enum *)(decl->identifier->value.as_val->GetType()))->bound_name =
                       decl->identifier->token;
                 }
               }
@@ -734,7 +737,7 @@ void Binop::verify_types() {
             NOT_YET;
           }
 
-          auto decl_type = decl->value.as_type;
+          auto decl_type = decl->value.as_val->GetType();
 
           if (!decl_type->is_parametric_struct()) { continue; }
           auto param_struct_type = (ParamStruct *)decl_type;
@@ -795,8 +798,8 @@ void Binop::verify_types() {
         assert(lhs->type == Type_ &&
                "Should have caught the bad-type of lhs earlier");
 
-        if (lhs->value.as_type->is_parametric_struct()) {
-          auto param_struct_type = (ParamStruct *)lhs->value.as_type;
+        if (lhs->value.as_val->GetType()->is_parametric_struct()) {
+          auto param_struct_type = (ParamStruct *)lhs->value.as_val->GetType();
 
           // Get the types of parameter entries
           std::vector<Type *> param_type_vec;
@@ -975,7 +978,7 @@ void Binop::verify_types() {
     }
     return;
   case Operator::Cast: {
-    type = Evaluate(rhs).as_type;
+    type = Evaluate(rhs).as_val->GetType();
     if (type == Err) { return; }
     assert(type && "cast to nullptr?");
 
@@ -1232,7 +1235,7 @@ void InDecl::verify_types() {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container).as_type;
+    auto t = Evaluate(container).as_val->GetType();
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -1251,7 +1254,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
     return Err;
   }
 
-  Type *t = Evaluate(this).as_type;
+  Type *t = Evaluate(this).as_val->GetType();
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(loc, id_tok);
@@ -1384,7 +1387,7 @@ void Declaration::verify_types() {
 
   if (type == Type_ && IsInferred()) {
     if (init_val->is_dummy()) {
-      auto t = init_val->value.as_type;
+      auto t = init_val->value.as_val->GetType();
 
       std::string *name_ptr = nullptr;
       if (t->is_struct()) {
@@ -1487,20 +1490,22 @@ void FunctionLiteral::verify_types() {
   }
 
   auto ret_type_val = Evaluate(return_type_expr);
+
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Value::Error()) {
     ErrorLog::IndeterminantType(return_type_expr);
     type = Err;
-  } else if (ret_type_val.flag != IR::ValType::T) {
+  } else if (ret_type_val.flag != IR::ValType::Val ||
+             !ret_type_val.as_val->is_type()) {
     ErrorLog::NotAType(return_type_expr, return_type_expr->type);
     type = Err;
     return;
-  } else if (ret_type_val.as_type == Err) {
+  } else if (ret_type_val.as_val->GetType() == Err) {
     type = Err;
     return;
   }
 
-  Type *ret_type = ret_type_val.as_type;
+  Type *ret_type = ret_type_val.as_val->GetType();
   assert(ret_type && "Return type is a nullptr");
   Type *input_type;
   size_t num_inputs = inputs.size();
@@ -1639,11 +1644,11 @@ void Jump::verify_types() {
 }
 
 void DummyTypeExpr::verify_types() {
-  if (value.as_type->is_parametric_struct()) {
-    auto ps = (ParamStruct *)value.as_type;
+  if (value.as_val->GetType()->is_parametric_struct()) {
+    auto ps = (ParamStruct *)value.as_val->GetType();
     for (auto p : ps->params) { p->verify_types(); }
-  } else if (value.as_type->is_struct()) {
-    auto s = (Struct *)value.as_type;
+  } else if (value.as_val->GetType()->is_struct()) {
+    auto s = (Struct *)value.as_val->GetType();
     for (auto d : s->decls) { VerificationQueue.push(d); }
   }
 }

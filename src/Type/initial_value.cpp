@@ -6,16 +6,16 @@ IR::Value Primitive::EmitInitialValue() const {
   switch (type_) {
   case PrimType::Err: UNREACHABLE;
   case PrimType::Unknown: UNREACHABLE;
-  case PrimType::Type: return IR::Value(Void);
+  case PrimType::Type: return IR::Value::Type(Void);
   case PrimType::Void: UNREACHABLE;
   case PrimType::NullPtr: UNREACHABLE;
-  case PrimType::Bool: return IR::Value(false);
-  case PrimType::Char: return IR::Value('\0');
-  case PrimType::Int: return IR::Value(0l);
-  case PrimType::Real: return IR::Value(0.0);
-  case PrimType::Uint: return IR::Value(0ul);
-  case PrimType::Uint16: return IR::Value((uint16_t)0);
-  case PrimType::Uint32: return IR::Value((uint32_t)0);
+  case PrimType::Bool: return IR::Value::Bool(false);
+  case PrimType::Char: return IR::Value::Char('\0');
+  case PrimType::Int: return IR::Value::Int(0l);
+  case PrimType::Real: return IR::Value::Real(0.0);
+  case PrimType::Uint: return IR::Value::Uint(0ul);
+  case PrimType::U16: return IR::Value::U16((uint16_t)0);
+  case PrimType::U32: return IR::Value::U32((uint32_t)0);
   case PrimType::String: return IR::Value(const_cast<char *>("\0"));
   }
 }
@@ -26,7 +26,7 @@ IR::Value Pointer::EmitInitialValue() const {
 }
 
 IR::Value Function::EmitInitialValue() const {
-  return IR::Value((IR::Func *)nullptr);
+  return IR::Value::Func((IR::Func *)nullptr);
 }
 
 IR::Value Array::EmitInitialValue() const { NOT_YET; }

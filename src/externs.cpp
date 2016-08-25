@@ -28,6 +28,14 @@ bool timer   = false;
 bool ct_eval = false;
 } // namespace debug
 
+std::string Escape(char c) {
+  if (c == '\n') { return "\\n"; }
+  if (c == '\r') { return "\\r"; }
+  if (c == '\t') { return "\\t"; }
+  if (c < 32) { return "\\" + std::to_string(c); }
+  return std::string(1, c);
+}
+
 namespace Hashtag {
 static std::vector<const char *> table = {"const"};
 
@@ -78,12 +86,12 @@ llvm::ConstantInt *const_int(long n) {
                                 llvm::APInt(64, (unsigned int)n, false));
 }
 
-llvm::ConstantInt *const_uint16(uint16_t n) {
+llvm::ConstantInt *const_u16(uint16_t n) {
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(16, (size_t)n, false));
 }
 
-llvm::ConstantInt *const_uint32(uint32_t n) {
+llvm::ConstantInt *const_u32(uint32_t n) {
   return llvm::ConstantInt::get(llvm::getGlobalContext(),
                                 llvm::APInt(32, (size_t)n, false));
 }
@@ -169,7 +177,7 @@ IR::Value GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
       auto old_block = IR::Block::Current;
 
       decl->addr = decl->init_val->EmitIR();
-      decl->addr.as_func->SetName(
+      decl->addr.as_val->GetFunc()->SetName(
           Mangle(fn_type, decl->identifier, scope_ptr));
 
       IR::Func::Current  = old_func;

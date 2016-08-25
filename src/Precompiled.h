@@ -93,73 +93,99 @@ struct Cursor {
 #include "ErrorLog.h"
 
 namespace IR {
-struct Func;
 struct Block;
 struct LocalStack;
 struct StackFrame;
+struct Func;
+} // namespace IR
 
+#include "IR/Val.h"
+#include "IR/Loc.h"
+
+namespace IR {
 enum class ValType : char {
-  B, C, I, R, U, T, F, CStr, Block, Reg, Arg, StackAddr, FrameAddr, HeapAddr, GlobalAddr, U16, U32, ExtFn,
-  GlobalCStr, Null, Error
+  Val, CStr, Block, Loc,  HeapAddr, ExtFn, GlobalCStr, Error, None
 };
 
 struct Value {
   union {
-    bool as_bool;
-    char as_char;
-    long as_int;
-    double as_real;
-    uint16_t as_uint16;
-    uint32_t as_uint32;
-    size_t as_uint;
-    Type *as_type;
-    Func *as_func;
+    IR::Val *as_val;
+    IR::Loc *as_loc;
     const char *as_ext_fn;
     char *as_cstr;
-    size_t as_reg;
-    size_t as_arg;
     Block *as_block;
-    size_t as_stack_addr, as_frame_addr, as_global_addr;
     void *as_heap_addr;
-    Type *as_null;
     size_t as_global_cstr;
+    size_t as_blah;
   };
 
   ValType flag;
 
-  explicit Value(bool b) : as_bool(b), flag(ValType::B) {}
-  explicit Value(char c) : as_char(c), flag(ValType::C) {}
-  explicit Value(long n) : as_int(n), flag(ValType::I) {}
-  explicit Value(double d) : as_real(d), flag(ValType::R) {}
-  explicit Value(size_t n) : as_uint(n), flag(ValType::U) {}
-  explicit Value(Type *t) : as_type(t), flag(ValType::T) {}
-  explicit Value(Func *f) : as_func(f), flag(ValType::F) {}
   explicit Value(char *p) : as_cstr(p), flag(ValType::CStr) {}
   explicit Value(Block *b) : as_block(b), flag(ValType::Block) {}
-  explicit Value(uint16_t n) : as_uint16(n), flag(ValType::U16) {}
-  explicit Value(uint32_t n) : as_uint32(n), flag(ValType::U32) {}
 
-  Value() : flag(ValType::Reg) {}
+  Value() : flag(ValType::None) {}
+  ~Value();
+  Value(const Value &v);
+  Value &operator=(const Value &v);
 
   static Value GlobalCStr(size_t n);
   static Value None();
   static Value Error();
-  static Value StackAddr(size_t n);
-  static Value Null(Type *t);
-  static Value Reg(size_t n);
-  static Value FrameAddr(size_t n);
   static Value CreateGlobal();
   static Value HeapAddr(void *ptr);
-  static Value Arg(size_t n);
   static Value ExtFn(const char *name);
-};
 
-// For std::map<>s
-inline bool operator<(const Value &lhs, const Value &rhs) {
-  return lhs.as_type < rhs.as_type;
+#define VAL_MACRO(TypeName, type_name, cpp_type)                               \
+  static Value TypeName(cpp_type x);
+#include "config/val.conf"
+#undef VAL_MACRO
+
+  static Value Reg(size_t n);
+  static Value Arg(size_t n);
+  static Value StackAddr(size_t n);
+  static Value FrameAddr(size_t n);
+
+};
+inline size_t to_num(ValType v) {
+  switch (v) {
+  case ValType::Val: return 0;
+  case ValType::CStr: return 1;
+  case ValType::Block: return 2;
+  case ValType::Loc: return 3;
+  case ValType::HeapAddr: return 4;
+  case ValType::ExtFn: return 5;
+  case ValType::GlobalCStr: return 6;
+  case ValType::Error: return 7;
+  case ValType::None: return 8;
+  }
 }
+inline bool operator<(const Value &lhs, const Value &rhs) {
+  if (lhs.flag != rhs.flag) { return to_num(lhs.flag) < to_num(rhs.flag); }
+  switch (lhs.flag) {
+  case ValType::Val:
+    return ArbitraryOrdering(lhs.as_val, rhs.as_val) == Order::Less;
+  case ValType::Loc:
+    return ArbitraryOrdering(lhs.as_loc, rhs.as_loc) == Order::Less;
+  case ValType::CStr: return lhs.as_cstr < rhs.as_cstr;
+  case ValType::Block: return lhs.as_block < rhs.as_block;
+  case ValType::HeapAddr: return lhs.as_heap_addr < rhs.as_heap_addr;
+  case ValType::ExtFn:  return lhs.as_ext_fn < rhs.as_ext_fn;
+  case ValType::GlobalCStr: return lhs.as_global_cstr < rhs.as_global_cstr;
+  case ValType::Error:
+  case ValType::None: return false;
+  }
+}
+
 inline bool operator==(const Value &lhs, const Value &rhs) {
-  return lhs.flag == rhs.flag && lhs.as_type == rhs.as_type;
+  if (lhs.flag != rhs.flag) { return false; }
+  switch (lhs.flag) {
+  case ValType::Val:
+    return ArbitraryOrdering(lhs.as_val, rhs.as_val) == Order::Equal;
+  case ValType::Loc:
+    return ArbitraryOrdering(lhs.as_loc, rhs.as_loc) == Order::Equal;
+  default: return lhs.as_blah == rhs.as_blah;
+  }
 }
 inline bool operator!=(const Value &lhs, const Value &rhs) {
   return !(lhs == rhs);

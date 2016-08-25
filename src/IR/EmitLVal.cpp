@@ -55,7 +55,7 @@ IR::Value Access::EmitLVal() {
   }
    */
   // TODO This might be a hack
-  if (e_lval.flag ==IR::ValType::Arg) {
+  if (e_lval.flag == IR::ValType::Loc && e_lval.as_loc->is_arg()) {
     assert(etype->is_pointer());
     auto ptee = ((Pointer *)etype)->pointee;
     while (ptee->is_pointer()) {

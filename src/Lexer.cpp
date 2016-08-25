@@ -142,15 +142,12 @@ NNT Lexer::NextWord() {
   // appropriate Node.
   for (const auto &type_lit : PrimitiveTypes) {
     if (type_lit.first == token) {
-      RETURN_TERMINAL(Type, Type_, IR::Value(type_lit.second));
+      RETURN_TERMINAL(Type, Type_, IR::Value::Type(type_lit.second));
     }
   }
 
-  if (token == "true") {
-    RETURN_TERMINAL(True, Bool, IR::Value(true));
-
-  } else if (token == "false") {
-    RETURN_TERMINAL(False, Bool, IR::Value(false));
+  if (token == "true" || token == "false") {
+    RETURN_TERMINAL(True, Bool, IR::Value::Bool(token == "true"));
 
   } else if (token == "null") {
     RETURN_TERMINAL(Null, NullPtr, IR::Value::None());
@@ -216,7 +213,7 @@ NNT Lexer::NextNumber() {
     auto uint_val = std::stoul(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
-    RETURN_TERMINAL(Uint, Uint, IR::Value(uint_val));
+    RETURN_TERMINAL(Uint, Uint, IR::Value::Uint(uint_val));
   } break;
 
   case '.': {
@@ -235,7 +232,7 @@ NNT Lexer::NextNumber() {
     auto real_val = std::stod(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
 
-    RETURN_TERMINAL(Real, Real, IR::Value(real_val));
+    RETURN_TERMINAL(Real, Real, IR::Value::Real(real_val));
   } break;
 
   default:
@@ -244,7 +241,7 @@ NNT Lexer::NextNumber() {
     *cursor       = '\0';
     auto int_val = std::stol(cursor.line.ptr + starting_offset);
     *cursor       = old_char;
-    RETURN_TERMINAL(Int, Int, IR::Value(int_val));
+    RETURN_TERMINAL(Int, Int, IR::Value::Int(int_val));
   } break;
   }
 }
@@ -563,7 +560,7 @@ NNT Lexer::NextOperator() {
     case '\0': {
       ErrorLog::RunawayCharLit(cursor);
 
-      RETURN_TERMINAL(Char, Char, IR::Value('\0'));
+      RETURN_TERMINAL(Char, Char, IR::Value::Char('\0'));
     }
     case '\\': {
       IncrementCursor();
@@ -602,7 +599,7 @@ NNT Lexer::NextOperator() {
       ErrorLog::RunawayCharLit(cursor);
     }
 
-    RETURN_TERMINAL(Char, Char, IR::Value(result));
+    RETURN_TERMINAL(Char, Char, IR::Value::Char(result));
   } break;
 
   case '?':

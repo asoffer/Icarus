@@ -35,7 +35,6 @@ IR::Value GetInitialGlobal(size_t global_addr) {
   return initial_globals[global_addr];
 }
 
-
 namespace IR {
 #define STATIC_VALUE(name, flag_name, as_name, param_type)                     \
   Value Value::name(param_type x) {                                            \
@@ -46,44 +45,97 @@ namespace IR {
   }
 
 STATIC_VALUE(GlobalCStr, GlobalCStr, global_cstr, size_t)
-STATIC_VALUE(Arg, Arg, arg, size_t)
-STATIC_VALUE(Null, Null, null, Type *)
-STATIC_VALUE(Reg, Reg, reg, size_t)
-STATIC_VALUE(StackAddr, StackAddr, stack_addr, size_t)
 STATIC_VALUE(HeapAddr, HeapAddr, heap_addr, void *)
-STATIC_VALUE(FrameAddr, FrameAddr, frame_addr, size_t)
 STATIC_VALUE(ExtFn, ExtFn, ext_fn, const char *)
 #undef STATIC_VALUE
 
+#define MAKE_LOC(name)                                                         \
+  Value Value::name(size_t n) {                                                \
+    Value v;                                                                   \
+    v.flag   = ValType::Loc;                                                   \
+    v.as_loc = new IR::name(n);                                                \
+    return v;                                                                  \
+  }
+
+MAKE_LOC(StackAddr)
+MAKE_LOC(FrameAddr)
+MAKE_LOC(Arg)
+MAKE_LOC(Reg)
+#undef MAKE_LOC
+
+#define VAL_MACRO(TypeName, type_name, cpp_type)                               \
+  Value Value::TypeName(cpp_type x) {                                          \
+    Value v;                                                                   \
+    auto val = new TypeName##Val;                                              \
+    val->val = x;                                                              \
+    v.as_val = val;                                                            \
+    v.flag   = ValType::Val;                                                   \
+    return v;                                                                  \
+  }
+
+#include "config/val.conf"
+#undef VAL_MACRO
+
+
+std::vector<llvm::Value *> LLVMGlobals;
+Value Value::CreateGlobal() {
+  static size_t global_num_ = 0;
+  Value v;
+  v.flag   = ValType::Loc;
+  v.as_loc = new IR::GlobalAddr(global_num_++);
+  initial_globals.emplace_back(IR::Value::None());
+  LLVMGlobals.emplace_back(nullptr);
+  return v;
+}
+
 Value Value::None() {
   Value v;
-  v.flag    = ValType::T;
-  v.as_type = nullptr;
+  v.flag    = ValType::None;
+  v.as_blah = 0;
   return v;
 }
 
 Value Value::Error() {
   Value v;
   v.flag    = ValType::Error;
-  v.as_type = nullptr;
+  v.as_blah = 0;
   return v;
 }
 
-std::vector<llvm::Value *> LLVMGlobals;
+Value::Value(const Value &v) {
+  flag = v.flag;
+  if (flag == ValType::Val) {
+    as_val = v.as_val->clone();
+  } else if (flag == ValType::Loc) {
+    as_loc = v.as_loc->clone();
+  } else {
+    as_blah = v.as_blah;
+  }
+}
 
-Value Value::CreateGlobal() {
-  static size_t global_num_ = 0;
-  Value v;
-  v.flag          = ValType::GlobalAddr;
-  v.as_stack_addr = global_num_++;
-  initial_globals.emplace_back(IR::Value::None());
-  LLVMGlobals.emplace_back(nullptr);
-  return v;
+Value &Value::operator=(const Value &v) {
+  flag = v.flag;
+  if (flag == ValType::Val) {
+    as_val = v.as_val->clone();
+  } else if (flag == ValType::Loc) {
+    as_loc = v.as_loc->clone();
+  } else {
+    as_blah = v.as_blah;
+  }
+  return *this;
+}
+
+Value::~Value() {
+  if (flag == ValType::Val) {
+    delete as_val;
+  } else if (flag == ValType::Loc) {
+    delete as_loc;
+  }
 }
 
 #define CMD_WITH_1_ARGS(name, out_type)                                        \
   Value name(Value v) {                                                        \
-    Cmd cmd(Op::name, out_type != Void);                                       \
+    Cmd cmd(Op::name, out_type != ::Void);                                     \
     cmd.args.push_back(v);                                                     \
     cmd.result.type = out_type;                                                \
     Block::Current->push(cmd);                                                 \
@@ -92,7 +144,7 @@ Value Value::CreateGlobal() {
 
 #define CMD_WITH_2_ARGS(name, out_type)                                        \
   Value name(Value arg1, Value arg2) {                                         \
-    Cmd cmd(Op::name, out_type != Void);                                       \
+    Cmd cmd(Op::name, out_type != ::Void);                                     \
     cmd.args.push_back(arg1);                                                  \
     cmd.args.push_back(arg2);                                                  \
     cmd.result.type = out_type;                                                \
@@ -108,7 +160,6 @@ Value Value::CreateGlobal() {
 #include "../config/IR.conf"
 #undef IR_MACRO
 
-#undef CMD_WITH_V_ARGS
 #undef CMD_WITH_1_ARGS
 #undef CMD_WITH_2_ARGS
 
@@ -137,9 +188,9 @@ Func::Func(Function *fn_type, bool should_gen)
 
 }
 
-Value Access(Type *type, Value index, Value ptr) {
+Value Access(::Type *type, Value index, Value ptr) {
   Cmd cmd(Op::Access, true);
-  cmd.args        = {Value(type), index, ptr};
+  cmd.args        = {Value::Type(type), index, ptr};
   cmd.result.type = Ptr(type);
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
@@ -147,7 +198,8 @@ Value Access(Type *type, Value index, Value ptr) {
 
 Value Field(Struct *struct_type, Value ptr, size_t field_num) {
   Cmd cmd(Op::Field, true);
-  cmd.args        = {Value(struct_type), ptr, Value(field_num)};
+  // TODO should Uint be U32?
+  cmd.args        = {Value::Type(struct_type), ptr, Value::Uint(field_num)};
   cmd.result.type = Ptr(struct_type->field_type AT(field_num));
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
@@ -158,26 +210,26 @@ Value PushField(Value fields, const char *name, Value ty, Value init) {
   cmd.args        = {fields, Value(const_cast<char *>(name)), ty, init};
   cmd.result.type = Void;
   Block::Current->push(cmd);
-  return Value();
+  return Value::None();
 }
 
 Value InitFieldVec(size_t num_decls) {
   Cmd cmd(Op::InitFieldVec, true);
-  cmd.args        = {Value(num_decls)};
-  cmd.result.type = Ptr(Char);
+  cmd.args        = {Value::Uint(num_decls)};
+  cmd.result.type = ::Ptr(::Char);
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
 
-Value Cast(Type *in, Type *out, Value arg) {
+Value Cast(::Type *in, ::Type *out, Value arg) {
   Cmd cmd(Op::Cast, true);
-  cmd.args        = {Value(in), Value(out), arg};
+  cmd.args        = {Value::Type(in), Value::Type(out), arg};
   cmd.result.type = out;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
 
-Value Call(Type *out, Value fn, const std::vector<Value> &args) {
+Value Call(::Type *out, Value fn, const std::vector<Value> &args) {
   Cmd cmd(Op::Call, out != Void);
   cmd.args.push_back(fn);
   for (const auto elem : args) { cmd.args.push_back(elem); }
@@ -199,18 +251,18 @@ Value Memcpy(Value dest, Value source, Value num_bytes) {
   cmd.args = {dest, source, num_bytes};
   cmd.result.type = Void;
   Block::Current->push(cmd);
-  return Value();
+  return Value::None();
 }
 
 Value ArrayData(Array *type, Value array_ptr) {
   Cmd cmd(Op::ArrayData, true);
-  cmd.args        = {IR::Value(type), array_ptr};
+  cmd.args        = {IR::Value::Type(type), array_ptr};
   cmd.result.type = Ptr(Ptr(type->data_type));
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
 
-Value Malloc(Type *type, Value num) {
+Value Malloc(::Type *type, Value num) {
   Cmd cmd(Op::Malloc, true);
   cmd.args        = {num};
   cmd.result.type = Ptr(type);
@@ -221,7 +273,7 @@ Value Malloc(Type *type, Value num) {
 Value Trunc(Value val) {
   Cmd cmd(Op::Trunc, true);
   cmd.args        = {val};
-  cmd.result.type = Char;
+  cmd.result.type = ::Char;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
@@ -229,14 +281,14 @@ Value Trunc(Value val) {
 Value ZExt(Value val) {
   Cmd cmd(Op::ZExt, true);
   cmd.args        = {val};
-  cmd.result.type = Uint;
+  cmd.result.type = ::Uint;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
 }
 
 Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
   Cmd cmd(Op::PtrIncr, true);
-  cmd.args = {IR::Value(ptr_type), ptr, incr};
+  cmd.args = {IR::Value::Type(ptr_type), ptr, incr};
   cmd.result.type = ptr_type;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
@@ -247,22 +299,22 @@ Cmd NOp() {
   return cmd;
 }
 
-Cmd Phi(Type *ret_type) {
+Cmd Phi(::Type *ret_type) {
   Cmd cmd(Op::Phi, true);
   cmd.result.type = ret_type;
   return cmd;
 }
 
 // NOTE: Void rhs-type means stack address
-Value Store(Type *rhs_type, Value lhs, Value rhs) {
+Value Store(::Type *rhs_type, Value lhs, Value rhs) {
   Cmd cmd(Op::Store, false);
-  cmd.args        = {Value(rhs_type), lhs, rhs};
+  cmd.args        = {Value::Type(rhs_type), lhs, rhs};
   cmd.result.type = Void;
   Block::Current->push(cmd);
-  return Value();
+  return Value::None();
 }
 
-Value Load(Type *load_type, Value v) {
+Value Load(::Type *load_type, Value v) {
   Cmd cmd(Op::Load, true);
   cmd.args        = {v};
   cmd.result.type = load_type;
@@ -270,8 +322,8 @@ Value Load(Type *load_type, Value v) {
   return Value::Reg(cmd.result.reg);
 }
 
-Func *Func::Current   = nullptr;
-Block *Block::Current = nullptr;
+struct Func *Func::Current = nullptr;
+Block *Block::Current      = nullptr;
 
 Cmd::Cmd(Op o, bool has_ret) : op_code(o) {
   assert(Func::Current);
@@ -289,50 +341,15 @@ std::string OpCodeString(Op op_code) {
   }
 }
 
-std::string Escape(char c) {
-  if (c == '\n') { return "\\n"; }
-  if (c == '\r') { return "\\r"; }
-  if (c == '\t') { return "\\t"; }
-  if (c < 32) { return "\\" + std::to_string(c); }
-  return std::string(1, c);
-}
-
 std::ostream &operator<<(std::ostream &os, const Value &value) {
   switch (value.flag) {
-  case ValType::B: return os << (value.as_bool ? "true" : "false");
-  case ValType::C: return os << "'" << Escape(value.as_char) << "'";
-  case ValType::I: return os << value.as_int;
-  case ValType::R: return os << value.as_real;
-  case ValType::U: return os << value.as_uint << 'u';
-  case ValType::U16: return os << value.as_uint16 << "u16";
-  case ValType::U32: return os << value.as_uint32 << "u32";
-  case ValType::T:
-    if (value.as_type) {
-      return os << *value.as_type;
-    } else {
-      return os << "--";
-    }
-  case ValType::F: {
-    os << "fn.";
-    if (!value.as_func) {
-      os << "null";
-    } else if (value.as_func->GetName() != "") {
-      os << value.as_func->GetName();
-    } else {
-      os << value.as_func;
-    }
-    return os;
-  }
+  case ValType::Val: return os << value.as_val->to_string();
   case ValType::ExtFn: return os << "fn:" << value.as_ext_fn;
-  case ValType::Null: return os << "null";
   case ValType::CStr: return os << "\"" << (void *)value.as_cstr;
-  case ValType::Reg: return os << "%" << value.as_reg;
-  case ValType::Arg: return os << "#" << value.as_arg;
-  case ValType::StackAddr: return os << "$" << value.as_stack_addr;
-  case ValType::FrameAddr: return os << "`$`" << value.as_frame_addr;
+  case ValType::Loc: return os << value.as_loc->to_string();
   case ValType::HeapAddr: return os << "&" << value.as_heap_addr;
-  case ValType::GlobalAddr: return os << "g." << value.as_global_addr;
   case ValType::GlobalCStr: return os << "c\"#" << value.as_global_cstr;
+  case ValType::None: return os << "--";
   case ValType::Error: return os << "[[Error]]";
   case ValType::Block:
     if (value.as_block) {

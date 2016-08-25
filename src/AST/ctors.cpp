@@ -39,7 +39,7 @@ DummyTypeExpr::DummyTypeExpr() { UNREACHABLE; }
 DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   loc   = new_loc;
   type  = Type_;
-  value = IR::Value(t);
+  value = IR::Value::Type(t);
 }
 
 Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {

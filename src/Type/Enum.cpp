@@ -71,8 +71,8 @@ size_t Enum::alignment() const { return BytesAndAlignment(this); }
 Type *Enum::ProxyType() const {
   switch (BytesAndAlignment(this)) {
   case 1: return Char;
-  case 2: return Uint16;
-  case 4: return Uint32;
+  case 2: return U16;
+  case 4: return U32;
   case 8: return Uint;
   default: UNREACHABLE;
   }
@@ -80,20 +80,20 @@ Type *Enum::ProxyType() const {
 
 IR::Value Enum::EmitInitialValue() const {
   switch (BytesAndAlignment(this)) {
-  case 1: return IR::Value('\0');
-  case 2: return IR::Value((uint16_t)0);
-  case 4: return IR::Value((uint32_t)0);
-  case 8: return IR::Value(0ul);
+  case 1: return IR::Value::Char('\0');
+  case 2: return IR::Value::U16((uint16_t)0);
+  case 4: return IR::Value::U32((uint32_t)0);
+  case 8: return IR::Value::Uint(0ul);
   default: UNREACHABLE;
   }
 }
 
 IR::Value Enum::EmitLiteral(const std::string &member_name) const {
   switch (BytesAndAlignment(this)) {
-  case 1: return IR::Value((char)int_values.at(member_name));
-  case 2: return IR::Value((uint16_t)int_values.at(member_name));
-  case 4: return IR::Value((uint32_t)int_values.at(member_name));
-  case 8: return IR::Value((size_t)int_values.at(member_name));
+  case 1: return IR::Value::Char((char)int_values.at(member_name));
+  case 2: return IR::Value::U16((uint16_t)int_values.at(member_name));
+  case 4: return IR::Value::U32((uint32_t)int_values.at(member_name));
+  case 8: return IR::Value::Uint((size_t)int_values.at(member_name));
   default: UNREACHABLE;
   }
 }

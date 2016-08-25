@@ -32,11 +32,10 @@ static llvm::Constant *memcpy() {
 } // namespace cstdlib
 
 namespace data {
-extern llvm::Constant *null(const Type *t);
 extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_uint16(uint16_t n);
-extern llvm::ConstantInt *const_uint32(uint32_t n);
+extern llvm::ConstantInt *const_u16(uint16_t n);
+extern llvm::ConstantInt *const_u32(uint32_t n);
 extern llvm::ConstantInt *const_int(long n);
 extern llvm::ConstantInt *const_char(char c);
 extern llvm::ConstantFP *const_real(double d);
@@ -45,47 +44,17 @@ extern llvm::Constant *null_pointer(Type *t);
 } // namespace data
 
 namespace IR {
-extern std::vector<llvm::Constant *> LLVMGlobals;
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
 
   switch (cmd_arg.flag) {
-  case ValType::B: return data::const_bool(cmd_arg.as_bool);
-  case ValType::C: return data::const_char(cmd_arg.as_char);
-  case ValType::I: return data::const_int(cmd_arg.as_int);
-  case ValType::R: return data::const_real(cmd_arg.as_real);
-  case ValType::U: return data::const_uint(cmd_arg.as_uint);
-  case ValType::U16: return data::const_uint16(cmd_arg.as_uint16);
-  case ValType::U32: return data::const_uint32(cmd_arg.as_uint32);
-  case ValType::Null: return data::null(cmd_arg.as_null);
+  case ValType::Val: return cmd_arg.as_val->llvm();
+  case ValType::Loc: return cmd_arg.as_loc->llvm(ir_fn, registers);
   case ValType::ExtFn: return global_module->getFunction(cmd_arg.as_ext_fn);
-  case ValType::T:
-    // TODO is this what I want? Used for just a few ops like print.
-    return reinterpret_cast<llvm::Value *>(cmd_arg.as_type);
-  case ValType::F:
-    if (cmd_arg.as_func) { return cmd_arg.as_func->llvm_fn; }
-
-    // Type to return doesn't matter. we'll bitcast it later.
-    return data::null_pointer(Char);
-  case ValType::CStr:
-    return data::global_string(std::string(cmd_arg.as_cstr));
-  case ValType::Block:
-    return reinterpret_cast<llvm::Value *>(cmd_arg.as_block);
-  case ValType::Reg:
-    return registers[cmd_arg.as_reg];
-  case ValType::Arg: {
-    auto arg_num = (long)cmd_arg.as_arg;
-    auto iter = ir_fn->llvm_fn->args().begin();
-    while (arg_num --> 0) { iter++; }
-    return iter;
-  } break;
-  case ValType::StackAddr: ir_fn->dump(); UNREACHABLE;
+  case ValType::CStr: return data::global_string(std::string(cmd_arg.as_cstr));
+  case ValType::Block: return reinterpret_cast<llvm::Value *>(cmd_arg.as_block);
+  case ValType::None: UNREACHABLE;
   case ValType::Error: UNREACHABLE;
-  case ValType::FrameAddr:
-    assert(ir_fn->frame_map.find(cmd_arg.as_frame_addr) != ir_fn->frame_map.end());
-    return ir_fn->frame_map[cmd_arg.as_frame_addr];
-  case ValType::GlobalAddr:
-    return LLVMGlobals[cmd_arg.as_global_addr];
   case ValType::HeapAddr: NOT_YET;
   case ValType::GlobalCStr:
     return data::global_string(GetGlobalStringNumbered(cmd_arg.as_global_cstr));
@@ -149,10 +118,18 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       ++cmd_counter;
       switch (cmd.op_code) {
       case IR::Op::Field: {
-        assert(cmd.args[2].flag == IR::ValType::U);
-        registers[cmd.result.reg] = builder.CreateGEP(
-            IR_to_LLVM(ir_fn, cmd.args[1], registers),
-            {data::const_uint32(0), data::const_uint32(cmd.args[2].as_uint32)});
+        assert(cmd.args[2].flag == IR::ValType::Val);
+        llvm::Value *val = nullptr;
+        if (cmd.args[2].as_val->is_uint()) {
+          val = data::const_u32((uint32_t)cmd.args[2].as_val->GetUint());
+        } else if (cmd.args[2].as_val->is_u32()) {
+          val = cmd.args[2].as_val->llvm();
+        } else {
+          UNREACHABLE;
+        }
+        registers[cmd.result.reg] =
+            builder.CreateGEP(IR_to_LLVM(ir_fn, cmd.args[1], registers),
+                              {data::const_u32(0), val});
       } continue;
       case IR::Op::Phi: {
         registers[cmd.result.reg] = builder.CreatePHI(
@@ -161,10 +138,13 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       } continue;
       case IR::Op::TC_Ptr: {
         Type *pointee = nullptr;
-        if (cmd.args[0].flag == ValType::T) {
-          pointee = cmd.args[0].as_type;
-        } else if (cmd.args[0].flag == ValType::Reg) {
-          pointee = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+
+        if (cmd.args[0].flag == ValType::Val) {
+          pointee = cmd.args[0].as_val->GetType();
+        } else if (cmd.args[0].flag == ValType::Loc) {
+          // TODO WHAT?
+          pointee =
+              reinterpret_cast<Type *>(registers[cmd.args[0].as_loc->GetReg()]);
         } else {
           UNREACHABLE;
         }
@@ -175,20 +155,25 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       } continue;
       case IR::Op::TC_Arrow: {
         Type *from = nullptr;
-        if (cmd.args[0].flag == ValType::T) {
-          from = cmd.args[0].as_type;
-        } else if (cmd.args[0].flag == ValType::Reg) {
-          from = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+
+        if (cmd.args[0].flag == ValType::Val) {
+          from = cmd.args[0].as_val->GetType();
+        } else if (cmd.args[0].flag == ValType::Loc) {
+          // TODO WHAT?
+          from =
+              reinterpret_cast<Type *>(registers[cmd.args[0].as_loc->GetReg()]);
         } else {
           UNREACHABLE;
         }
         assert(from);
 
         Type *to = nullptr;
-        if (cmd.args[1].flag == ValType::T) {
-          to = cmd.args[1].as_type;
-        } else if (cmd.args[1].flag == ValType::Reg) {
-          to = reinterpret_cast<Type *>(registers[cmd.args[1].as_reg]);
+        if (cmd.args[1].flag == ValType::Val) {
+          to = cmd.args[1].as_val->GetType();
+        } else if (cmd.args[1].flag == ValType::Loc) {
+          // TODO WHAT?
+          to =
+              reinterpret_cast<Type *>(registers[cmd.args[1].as_loc->GetReg()]);
         } else {
           UNREACHABLE;
         }
@@ -196,17 +181,18 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
         registers[cmd.result.reg] =
             reinterpret_cast<llvm::Value *>(::Func(from, to));
-
       } continue;
       case IR::Op::TC_Tup: {
         UNREACHABLE;
       } continue;
       case IR::Op::TC_Arr1: {
         Type *data_type = nullptr;
-        if (cmd.args[0].flag == ValType::T) {
-          data_type = cmd.args[0].as_type;
-        } else if (cmd.args[0].flag == ValType::Reg) {
-          data_type = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
+
+        if (cmd.args[0].flag == ValType::Val) {
+          data_type = cmd.args[0].as_val->GetType();
+        } else if (cmd.args[1].flag == ValType::Loc) {
+          data_type =
+              reinterpret_cast<Type *>(registers[cmd.args[0].as_loc->GetReg()]);
         } else {
           dump();
           UNREACHABLE;
@@ -218,19 +204,21 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       } continue;
       case IR::Op::TC_Arr2: {
         size_t length = 0;
-        if (cmd.args[0].flag == ValType::I) {
-          length = (size_t)cmd.args[0].as_int;
-        } else if (cmd.args[0].flag == ValType::U) {
-          length = cmd.args[0].as_uint;
+
+        if (cmd.args[0].flag == IR::ValType::Val) {
+          length = (size_t)cmd.args[0].as_val->GetInt();
+        } else if (cmd.args[0].flag == IR::ValType::Val) {
+          length = cmd.args[0].as_val->GetUint();
         } else {
           UNREACHABLE;
         }
 
         Type *data_type = nullptr;
-        if (cmd.args[1].flag == ValType::T) {
-          data_type = cmd.args[1].as_type;
-        } else if (cmd.args[1].flag == ValType::Reg) {
-          data_type = reinterpret_cast<Type *>(registers[cmd.args[1].as_reg]);
+        if (cmd.args[1].flag == ValType::Val) {
+          data_type = cmd.args[1].as_val->GetType();
+        } else if (cmd.args[1].flag == ValType::Loc) {
+          data_type = 
+              reinterpret_cast<Type *>(registers[cmd.args[1].as_loc->GetReg()]);
 
         } else {
           UNREACHABLE;
@@ -243,11 +231,10 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Bytes: 
       case IR::Op::Alignment: {
         Type *t = nullptr;
-        if (cmd.args[0].flag == ValType::T) {
-          t = cmd.args[0].as_type;
-        } else if (cmd.args[0].flag == ValType::Reg) {
-          t = reinterpret_cast<Type *>(registers[cmd.args[0].as_reg]);
-
+        if (cmd.args[0].flag == ValType::Val) {
+          t = cmd.args[0].as_val->GetType();
+        } else if (cmd.args[0].flag == ValType::Loc) {
+          t = reinterpret_cast<Type *>(registers[cmd.args[0].as_loc->GetReg()]);
         } else {
           const_cast<Cmd &>(cmd).dump(0);
           UNREACHABLE;
@@ -260,13 +247,14 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         if (cmd.result.type == Type_) {
           auto local_stack = new IR::LocalStack;
 
-          assert(cmd.args[0].flag == IR::ValType::F);
+          assert(cmd.args[0].flag == IR::ValType::Val &&
+                 cmd.args[0].as_val->is_function());
 
           std::vector<IR::Value> cmd_args;
           for (size_t i = 1; i < cmd.args.size(); ++i) {
             cmd_args.push_back(cmd.args[i]);
           }
-          auto result = cmd.args[0].as_func->Call(local_stack, cmd_args);
+          auto result = cmd.args[0].as_val->GetFunc()->Call(local_stack, cmd_args);
           delete local_stack;
           registers[cmd.result.reg] = IR_to_LLVM(ir_fn, result, registers);
 
@@ -433,12 +421,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         break;
       case IR::Op::ArrayLength:
         registers[cmd.result.reg] = builder.CreateGEP(
-            args[0], {data::const_uint32(0), data::const_uint32(0)});
+            args[0], {data::const_u32(0), data::const_u32(0)});
         break;
 
       case IR::Op::ArrayData:
         registers[cmd.result.reg] = builder.CreateGEP(
-            args[1], {data::const_uint32(0), data::const_uint32(1)});
+            args[1], {data::const_u32(0), data::const_u32(1)});
         break;
 
       case IR::Op::Print: {
@@ -476,7 +464,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         } else if (print_type->is_enum()) {
           auto enum_type = (Enum *)print_type;
           auto val_str = builder.CreateLoad(builder.CreateGEP(
-              enum_type->string_data, {data::const_uint32(0), args[1]}));
+              enum_type->string_data, {data::const_u32(0), args[1]}));
           builder.CreateCall(
               cstdlib::printf(),
               {data::global_string(enum_type->to_string() + ".%s"), val_str});
@@ -586,16 +574,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
   return llvm_block;
 }
 
-static llvm::ConstantInt *LLVMConstant(Value val) {
-  switch (val.flag) {
-    case ValType::B: return data::const_bool(val.as_bool);
-    case ValType::C: return data::const_char(val.as_char);
-    case ValType::I: return data::const_int(val.as_int);
-    case ValType::U: return data::const_uint(val.as_uint);
-    default: UNREACHABLE;
-  }
-}
-
 void Exit::Switch::GenerateLLVM(
     Func *fn, const std::vector<llvm::Value *> &registers) {
   auto switch_stmt = builder.CreateSwitch(IR_to_LLVM(fn, cond, registers),
@@ -603,7 +581,14 @@ void Exit::Switch::GenerateLLVM(
                                           (unsigned int)table.size());
 
   for (auto entry : table) {
-    switch_stmt->addCase(LLVMConstant(entry.first), entry.second->llvm_block);
+    assert(entry.first.flag == ValType::Val &&
+           (entry.first.as_val->is_bool() || entry.first.as_val->is_char() ||
+            entry.first.as_val->is_int() || entry.first.as_val->is_uint()));
+
+    // NOTE: This assertion guarantees that we can cast from llvm::Constant* to
+    // llvm::ConstantInt*.
+    switch_stmt->addCase((llvm::ConstantInt *)entry.first.as_val->llvm(),
+                         entry.second->llvm_block);
   }
 }
 

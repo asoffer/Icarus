@@ -23,7 +23,7 @@ void Struct::CompleteDefinition() {
           decls[i]->type_expr->type->is_parametric_struct()) {
         decl_type = Err;
       } else {
-        decl_type = Evaluate(decls[i]->type_expr).as_type;
+        decl_type = Evaluate(decls[i]->type_expr).as_val->GetType();
       }
     } else {
       decl_type = decls[i]->init_val->type;

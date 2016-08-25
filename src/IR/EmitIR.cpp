@@ -53,11 +53,11 @@ IR::Value Evaluate(AST::Expression *expr) {
   auto old_func  = IR::Func::Current;
   auto old_block = IR::Block::Current;
 
-  auto fn_ptr      = WrapExprIntoFunction(expr);
+  auto fn_ptr = WrapExprIntoFunction(expr);
   if (!fn_ptr) { return IR::Value::Error(); }
 
   auto local_stack = new IR::LocalStack;
-  IR::Func *func   = fn_ptr->EmitAnonymousIR().as_func;
+  IR::Func *func   = fn_ptr->EmitAnonymousIR().as_val->GetFunc();
 
   func->SetName("anonymous-func");
 
@@ -193,9 +193,9 @@ IR::Value Terminal::EmitIR() {
   ENSURE_VERIFIED;
 
   switch (terminal_type) {
-  case Language::Terminal::ASCII: return IR::Value(AsciiFunc());
+    case Language::Terminal::ASCII: return IR::Value::Func(AsciiFunc());
   case Language::Terminal::Null: return IR::Value::Null(type);
-  case Language::Terminal::Ord: return IR::Value(OrdFunc());
+  case Language::Terminal::Ord: return IR::Value::Func(OrdFunc());
   case Language::Terminal::Return:
     IR::Store(Char, RETURN_FLAG, scope_->GetFnScope()->exit_flag);
     assert(scope_->is_block_scope() || scope_->is_function_scope());
@@ -203,8 +203,8 @@ IR::Value Terminal::EmitIR() {
     return IR::Value::None();
   case Language::Terminal::StringLiteral:
     return FindOrInsertGlobalCStr(value.as_cstr);
-  case Language::Terminal::True: return IR::Value(true);
-  case Language::Terminal::False: return IR::Value(false);
+  case Language::Terminal::True: return IR::Value::Bool(true);
+  case Language::Terminal::False: return IR::Value::Bool(false);
   case Language::Terminal::Char:
   case Language::Terminal::Int:
   case Language::Terminal::Type:
@@ -217,7 +217,7 @@ IR::Value Terminal::EmitIR() {
 static void EmitPrintExpr(Expression *expr) {
   if (expr->type->is_primitive() || expr->type->is_enum() ||
       expr->type->is_pointer()) {
-    IR::Print(IR::Value(expr->type), expr->EmitIR());
+    IR::Print(IR::Value::Type(expr->type), expr->EmitIR());
 
   } else if (expr->type->is_function() || expr->type->is_array()) {
     expr->type->EmitRepr(expr->EmitIR());
@@ -305,7 +305,7 @@ IR::Value Binop::EmitIR() {
     return IR::Value::None();
   } break;
   case Language::Operator::Cast: {
-    return IR::Cast(lhs->type, Evaluate(rhs).as_type, lhs->EmitIR());
+    return IR::Cast(lhs->type, Evaluate(rhs).as_val->GetType(), lhs->EmitIR());
   };
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
@@ -449,7 +449,7 @@ IR::Value Binop::EmitIR() {
       IR::Func::Current  = saved_func;
       IR::Block::Current = saved_block;
 
-      return IR::Value(composite);
+      return IR::Value::Func(composite);
     }
     auto fn = GetFuncReferencedIn(scope_, "__mul__",
                                   Func(Tup({lhs->type, rhs->type}), type));
@@ -481,9 +481,10 @@ IR::Value Binop::EmitIR() {
     }
 
     if (lhs->type == Type_) {
-      auto t = Evaluate(lhs).as_type;
+      auto t = Evaluate(lhs).as_val->GetType();
       assert(t->is_parametric_struct());
-      return IR::Call(type, IR::Value(((ParamStruct *)t)->IRFunc()), args);
+      return IR::Call(type, IR::Value::Func(((ParamStruct *)t)->IRFunc()),
+                      args);
     } else if (lhs->type->is_function()) {
       Type *out = ((Function *)lhs->type)->output;
       if (out == Void || !out->is_big()) {
@@ -597,8 +598,8 @@ IR::Value ChainOp::EmitIR() {
     // If it's an or, an early exit is because we already know the value is
     // true. If it's an and, an early exit is beacause we already know the value
     // is false.
-    bool using_or              = (ops[0] == Language::Operator::Or);
-    IR::Value early_exit_value = IR::Value(using_or);
+    bool using_or         = (ops[0] == Language::Operator::Or);
+    auto early_exit_value = IR::Value::Bool(using_or);
 
     for (auto &b : blocks) { b = IR::Func::Current->AddBlock("chainop-block"); }
 
@@ -679,7 +680,7 @@ IR::Value ChainOp::EmitIR() {
       // Early exit
       IR::Block::Current->SetConditional(result, blocks[i + 1], landing_block);
       phi.args.emplace_back(IR::Block::Current);
-      phi.args.emplace_back(false);
+      phi.args.emplace_back(IR::Value::Bool(false));
     }
 
     IR::Block::Current = blocks.back();
@@ -728,8 +729,8 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
 
       UNREACHABLE;
     } else if (arg_val->is_dummy() &&
-               arg_val->value.as_type->is_parametric_struct()) {
-      auto param_struct = (ParamStruct *)arg_val->value.as_type;
+               arg_val->value.as_val->GetType()->is_parametric_struct()) {
+      auto param_struct = (ParamStruct *)arg_val->value.as_val->GetType();
       size_t param_num = 0;
       for (const auto &p : param_struct->params) {
         if (this == p) {
@@ -749,15 +750,15 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
     addr      = IR::Value::CreateGlobal();
     auto cstr = new char[identifier->token.size() + 1];
     strcpy(cstr, identifier->token.c_str());
-    AddInitialGlobal(addr.as_global_addr, IR::Value::ExtFn(cstr));
+    AddInitialGlobal(addr.as_loc->GetGlobalAddr(), IR::Value::ExtFn(cstr));
 
     if (file_type != FileType::None) {
       auto ptype = Ptr(type);
       ptype->generate_llvm();
 
       // TODO assuming a function type
-      llvm::FunctionType *ft               = *(Function *)type;
-      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+      llvm::FunctionType *ft = *(Function *)type;
+      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
           /*        Type = */ *(type->is_function() ? ptype : type),
           /*  isConstant = */ true,
@@ -777,7 +778,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   ENSURE_VERIFIED;
   // TODO Also verify internals
 
-  if (ir_func) { return IR::Value(ir_func); } // Cache
+  if (ir_func) { return IR::Value::Func(ir_func); } // Cache
   if (type->has_vars()) { return IR::Value::None(); }
 
   auto saved_func  = IR::Func::Current;
@@ -834,7 +835,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
 
-  return IR::Value(ir_func);
+  return IR::Value::Func(ir_func);
 }
 
 IR::Value Statements::EmitIR() {
@@ -865,8 +866,8 @@ IR::Value Identifier::EmitIR() {
         }
       } else {
         assert(decl->arg_val->is_dummy() &&
-               decl->arg_val->value.as_type->is_parametric_struct());
-        auto param_struct = (ParamStruct *)decl->arg_val->value.as_type;
+               decl->arg_val->value.as_val->GetType()->is_parametric_struct());
+        auto param_struct = (ParamStruct *)decl->arg_val->value.as_val->GetType();
         for (size_t i = 0; i < param_struct->params.size(); ++i) {
           if (decl == param_struct->params[i]) { return IR::Value::Arg(i); }
         }
@@ -878,11 +879,9 @@ IR::Value Identifier::EmitIR() {
         return decl->EmitIR();
       }
 
-      if (!value.as_type) {
-        value = IR::Value(Evaluate(decl->init_val).as_type);
-        // TODO this should be cached in the evaluate method
-      }
-      return IR::Value(value.as_type);
+      // TODO this should be cached in the evaluate method
+      if (value == IR::Value::None()) { value = Evaluate(decl->init_val); }
+      return value;
     }
   }
 
@@ -894,9 +893,10 @@ IR::Value Identifier::EmitIR() {
         decl->addr = IR::Value::CreateGlobal();
         if (decl->IsInferred() || decl->IsCustomInitialized()) {
           assert(decl->init_val);
-          AddInitialGlobal(decl->addr.as_global_addr, Evaluate(decl->init_val));
+          AddInitialGlobal(decl->addr.as_loc->GetGlobalAddr(), Evaluate(decl->init_val));
         } else if (decl->IsDefaultInitialized()) {
-          AddInitialGlobal(decl->addr.as_global_addr, decl->type->EmitInitialValue());
+          AddInitialGlobal(decl->addr.as_loc->GetGlobalAddr(),
+                           decl->type->EmitInitialValue());
         } else {
           NOT_YET;
         }
@@ -1019,7 +1019,7 @@ IR::Value Access::EmitIR() {
   // Array size
   if (base_type->is_array() && member_name == "size") {
     auto array_type = (Array *)base_type;
-    return array_type->fixed_length ? IR::Value(array_type->len)
+    return array_type->fixed_length ? IR::Value::Uint(array_type->len)
                                     : IR::Load(Uint, IR::ArrayLength(eval));
   }
 
@@ -1033,7 +1033,7 @@ IR::Value Access::EmitIR() {
   }
 
   if (base_type == Type_) {
-    auto ty = Evaluate(operand).as_type;
+    auto ty = Evaluate(operand).as_val->GetType();
     if (ty->is_enum()) {
       return ((Enum *)ty)->EmitLiteral(member_name);
 
@@ -1152,7 +1152,7 @@ IR::Value ArrayLiteral::EmitIR() {
   // TODO doing this incrementally instead of accessing from the head. This will
   // likely make register allocation better.
   for (size_t i = 0; i < num_elems; ++i) {
-    auto ptr = IR::Access(data_type, IR::Value(i), tmp_addr);
+    auto ptr = IR::Access(data_type, IR::Value::Uint(i), tmp_addr);
     Type::CallAssignment(scope_, data_type, elems[i]->type, elems[i]->EmitIR(),
                          ptr);
   }
@@ -1178,8 +1178,8 @@ static void ComputeAndStoreArrayBounds(Array *array_type,
                                        IR::Value &head_ptr,
                                        IR::Value &len_val) {
   if (array_type->fixed_length) {
-    head_ptr = IR::Access(array_type->data_type, IR::Value(0ul), container_val);
-    len_val  = IR::Value(array_type->len);
+    head_ptr = IR::Access(array_type->data_type, IR::Value::Uint(0ul), container_val);
+    len_val  = IR::Value::Uint(array_type->len);
   } else {
     head_ptr = IR::Load(Ptr(array_type->data_type),
                         IR::ArrayData(array_type, container_val));
@@ -1209,7 +1209,7 @@ IR::Value For::EmitIR() {
       ComputeAndStoreArrayBounds(array_type, container_val, head_ptr, len_val);
 
       start_vals[i] =
-          IR::PtrIncr(Ptr(array_type->data_type), head_ptr, IR::Value(0ul));
+          IR::PtrIncr(Ptr(array_type->data_type), head_ptr, IR::Value::Uint(0ul));
       end_vals[i] = IR::PtrIncr(Ptr(array_type->data_type), head_ptr, len_val);
 
     } else if (iter->container->type->is_range()) {
@@ -1231,9 +1231,9 @@ IR::Value For::EmitIR() {
       assert(((Binop *)range)->rhs->type == Int ||
              ((Binop *)range)->rhs->type == Uint);
       if (((Binop *)range)->rhs->type == Int) {
-        end_offset = IR::UAdd(end_offset, IR::Value(1ul));
+        end_offset = IR::UAdd(end_offset, IR::Value::Uint(1ul));
       } else {
-        end_offset = IR::IAdd(end_offset, IR::Value(1l));
+        end_offset = IR::IAdd(end_offset, IR::Value::Uint(1l));
       }
 
       start_vals[i] =
@@ -1242,12 +1242,12 @@ IR::Value For::EmitIR() {
           IR::PtrIncr(Ptr(array_type->data_type), head_ptr, end_offset);
 
     } else if (iter->container->type == Type_) {
-      auto container_type = Evaluate(iter->container).as_type;
+      auto container_type = Evaluate(iter->container).as_val->GetType();
       assert(container_type->is_enum());
       auto enum_type = (Enum *)container_type;
 
-      start_vals[i] = IR::Value(0ul);
-      end_vals[i]   = IR::Value(enum_type->int_values.size());
+      start_vals[i] = IR::Value::Uint(0ul);
+      end_vals[i]   = IR::Value::Uint(enum_type->int_values.size());
     } else {
       UNREACHABLE;
     }
@@ -1297,7 +1297,7 @@ IR::Value For::EmitIR() {
 
     } else if (iter->container->type->is_range()) {
       if(iter->container->is_unop()) {
-        result = IR::Value(true);
+        result = IR::Value::Bool(true);
       } else {
         if (iter->type == Int) {
           result = IR::IGT(phi_vals[i], end_vals[i]);
@@ -1366,25 +1366,25 @@ IR::Value For::EmitIR() {
     if (iter->container->type->is_array()) {
       auto array_type = (Array *)iter->container->type;
       incr_vals.push_back(
-          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value(1ul)));
+          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value::Uint(1ul)));
 
     } else if (iter->container->type->is_slice()) {
       auto array_type = (Array *)((Binop *)iter->container)->lhs->type;
       incr_vals.push_back(
-          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value(1ul)));
+          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value::Uint(1ul)));
 
     } else if (iter->container->type->is_range()) {
       if (iter->type == Int) {
-        incr_vals.push_back(IR::IAdd(phi_vals[i], IR::Value(1l)));
+        incr_vals.push_back(IR::IAdd(phi_vals[i], IR::Value::Int(1l)));
       } else if (iter->type == Uint) {
-        incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value(1ul)));
+        incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value::Uint(1ul)));
       } else if (iter->type == Char) {
-        incr_vals.push_back(IR::CAdd(phi_vals[i], IR::Value('\01')));
+        incr_vals.push_back(IR::CAdd(phi_vals[i], IR::Value::Char('\01')));
       } else {
         UNREACHABLE;
       }
     } else if (iter->container->type == Type_) {
-      incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value(1ul)));
+      incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value::Uint(1ul)));
 
     } else {
       UNREACHABLE;
@@ -1436,8 +1436,10 @@ IR::Value Jump::EmitIR() {
 
 IR::Value Generic::EmitIR() {
   ENSURE_VERIFIED;
-  if (!value.as_type) { value = IR::Value(TypeVar(identifier, test_fn)); }
-  return IR::Value(value.as_type);
+  if (value == IR::Value::None()) {
+    value = IR::Value::Type(TypeVar(identifier, test_fn));
+  }
+  return value;
 }
 
 IR::Value InDecl::EmitIR() {
@@ -1447,7 +1449,7 @@ IR::Value InDecl::EmitIR() {
 
 IR::Value DummyTypeExpr::EmitIR() {
   ENSURE_VERIFIED;
-  return IR::Value(value.as_type);
+  return IR::Value::Type(value.as_val->GetType());
 }
 
 IR::Value ScopeNode::EmitIR() {

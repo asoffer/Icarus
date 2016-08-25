@@ -16,10 +16,10 @@ Primitive::Primitive(PrimType pt) : type_(pt) {
   case PrimType::Real:
     llvm_type = llvm::Type::getDoubleTy(llvm::getGlobalContext());
     break;
-  case PrimType::Uint16:
+  case PrimType::U16:
     llvm_type = llvm::Type::getInt16Ty(llvm::getGlobalContext());
     break;
-  case PrimType::Uint32:
+  case PrimType::U32:
     llvm_type = llvm::Type::getInt32Ty(llvm::getGlobalContext());
     break;
   case PrimType::Uint:
@@ -41,8 +41,8 @@ size_t Primitive::alignment() const {
   switch (type_) {
   case PrimType::Bool:
   case PrimType::Char: return 1;
-  case PrimType::Uint16: return 2;
-  case PrimType::Uint32: return 4;
+  case PrimType::U16: return 2;
+  case PrimType::U32: return 4;
   case PrimType::Int:
   case PrimType::Uint:
   case PrimType::Real: return 8;
@@ -60,8 +60,8 @@ size_t Primitive::bytes() const {
   switch (type_) {
   case PrimType::Bool:
   case PrimType::Char: return 1;
-  case PrimType::Uint16: return 2;
-  case PrimType::Uint32: return 4;
+  case PrimType::U16: return 2;
+  case PrimType::U32: return 4;
   case PrimType::Int:
   case PrimType::Uint:
   case PrimType::Real: return 8;
@@ -88,8 +88,8 @@ std::string Primitive::to_string() const {
   case PrimType::Uint: return "uint";
   case PrimType::Void: return "void";
   case PrimType::NullPtr: return "null";
-  case PrimType::Uint16: return "uint16";
-  case PrimType::Uint32: return "uint32";
+  case PrimType::U16: return "uint16";
+  case PrimType::U32: return "uint32";
   case PrimType::String: return "string";
   }
 }

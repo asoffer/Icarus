@@ -4,6 +4,8 @@
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
+extern std::string Escape(char c);
+
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
@@ -133,19 +135,13 @@ std::string Terminal::to_string(size_t n) const {
 
   switch (terminal_type) {
   case Language::Terminal::ASCII: ss << "ascii"; break;
-  case Language::Terminal::Char: ss << "'" << value.as_char << "'"; break;
   case Language::Terminal::Else: ss << "else"; break;
-  case Language::Terminal::False: ss << "false"; break;
   case Language::Terminal::Hole: ss << "--"; break;
-  case Language::Terminal::Int: ss << value.as_int; break;
   case Language::Terminal::Null: ss << "null"; break;
   case Language::Terminal::Ord: ss << "ord"; break;
-  case Language::Terminal::Real: ss << value.as_real; break;
   case Language::Terminal::Return: ss << "return"; break;
   case Language::Terminal::StringLiteral: ss << value.as_cstr; break;
-  case Language::Terminal::True: ss << "true"; break;
-  case Language::Terminal::Type: ss << *value.as_type; break;
-  case Language::Terminal::Uint: ss << value.as_uint; break;
+  default: ss << value.as_val->to_string(); break;
   }
 
   ss << ">\n";
@@ -233,6 +229,7 @@ std::string ScopeNode::to_string(size_t n) const {
 }
 
 std::string DummyTypeExpr::to_string(size_t n) const {
-  return tabs(n) + "<" + value.as_type->to_string() + ">\n";
+  assert(value.as_val && value.as_val->is_type());
+  return tabs(n) + "<" + value.as_val->to_string() + ">\n";
 }
 } // namespace AST

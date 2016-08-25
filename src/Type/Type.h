@@ -9,7 +9,7 @@ extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
-    *NullPtr, *RawPtr, *String, *Uint16, *Uint32;
+    *NullPtr, *RawPtr, *String, *U16, *U32;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
@@ -71,6 +71,11 @@ public:
   static Type *get_string();
 
   virtual bool is_primitive() const { return false; }
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  virtual bool is_##name() const { return false; }
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
+
   virtual bool is_array() const { return false; }
   virtual bool is_tuple() const { return false; }
   virtual bool is_pointer() const { return false; }
@@ -102,13 +107,18 @@ public:
 #define ENDING
 
 enum class PrimType{
-  Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, Uint16, Uint32, String
+  Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, U16, U32, String
 };
 
 struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
   Primitive(PrimType pt);
+
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  virtual bool is_##name() const;
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
 
 private:
   PrimType type_;

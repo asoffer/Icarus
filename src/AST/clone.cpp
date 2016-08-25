@@ -12,10 +12,10 @@ extern std::stack<Scope *> ScopeStack;
 
 namespace AST {
 Node *DummyTypeExpr::clone(LOOKUP_ARGS) {
-  if (value.as_type->has_vars()) {
+  if (value.as_val->GetType()->has_vars()) {
     NOT_YET;
   } else {
-    return new DummyTypeExpr(loc, value.as_type);
+    return new DummyTypeExpr(loc, value.as_val->GetType());
   }
 }
 

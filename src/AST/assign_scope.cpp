@@ -138,16 +138,16 @@ void Jump::assign_scope() { scope_ = CurrentScope(); }
 
 void DummyTypeExpr::assign_scope() {
   scope_ = CurrentScope();
-  if (value.as_type->is_parametric_struct()) {
-    auto ps = (ParamStruct *)value.as_type;
+  if (value.as_val->GetType()->is_parametric_struct()) {
+    auto ps = (ParamStruct *)value.as_val->GetType();
     ps->type_scope->set_parent(CurrentScope());
 
     ScopeStack.push(ps->type_scope);
     for (auto p : ps->params) { p->assign_scope(); }
     for (auto d : ps->decls) { d->assign_scope(); }
     ScopeStack.pop();
-  } else if (value.as_type->is_struct()) {
-    auto s = (Struct *)value.as_type;
+  } else if (value.as_val->GetType()->is_struct()) {
+    auto s = (Struct *)value.as_val->GetType();
     s->type_scope->set_parent(CurrentScope());
 
     ScopeStack.push(s->type_scope);

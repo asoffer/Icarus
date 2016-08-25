@@ -29,8 +29,8 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
 
     IR::Value lhs_ptr, rhs_ptr, rhs_len, rhs_end_ptr;
     if (rhs_array_type->fixed_length) {
-      rhs_ptr = IR::Access(rhs_array_type->data_type, IR::Value(0ul), from_val);
-      rhs_len = IR::Value(rhs_array_type->len);
+      rhs_ptr = IR::Access(rhs_array_type->data_type, IR::Value::Uint(0ul), from_val);
+      rhs_len = IR::Value::Uint(rhs_array_type->len);
     } else {
       rhs_ptr = IR::Load(rhs_array_type->data_type,
                          IR::ArrayData(rhs_array_type, from_val));
@@ -39,12 +39,12 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     rhs_end_ptr = IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_ptr, rhs_len);
 
     if (lhs_array_type->fixed_length) {
-      lhs_ptr = IR::Access(lhs_array_type->data_type, IR::Value(0ul), to_var);
+      lhs_ptr = IR::Access(lhs_array_type->data_type, IR::Value::Uint(0ul), to_var);
     } else {
       // TODO delete first time. currently just delete
       auto rhs_bytes =
           IR::UMul(rhs_len,
-                   IR::Value(lhs_array_type->data_type
+                   IR::Value::Uint(lhs_array_type->data_type
                                  ->bytes())); // TODO round up for alignment?
       auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
       auto array_data = IR::ArrayData(lhs_array_type, to_var);
@@ -84,9 +84,9 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                    PtrCallFix(rhs_array_type->data_type, rhs_phi_reg),
                    lhs_phi_reg);
     auto next_lhs =
-        IR::PtrIncr(Ptr(lhs_array_type->data_type), lhs_phi_reg, IR::Value(1ul));
+        IR::PtrIncr(Ptr(lhs_array_type->data_type), lhs_phi_reg, IR::Value::Uint(1ul));
     auto next_rhs =
-        IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_phi_reg, IR::Value(1ul));
+        IR::PtrIncr(Ptr(rhs_array_type->data_type), rhs_phi_reg, IR::Value::Uint(1ul));
 
     lhs_phi.args.emplace_back(IR::Block::Current);
     lhs_phi.args.emplace_back(next_lhs);
@@ -149,5 +149,5 @@ void Struct::EmitDefaultAssign(IR::Value to_var, IR::Value from_val) {
   }
   assert(assign_func);
 
-  IR::Call(Void, IR::Value(assign_func), {to_var, from_val});
+  IR::Call(Void, IR::Value::Func(assign_func), {to_var, from_val});
 }

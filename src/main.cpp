@@ -22,13 +22,8 @@ extern IR::Value Evaluate(AST::Expression *expr);
 
 namespace data {
 extern llvm::Constant *null(const Type *t);
-extern llvm::ConstantInt *const_bool(bool b);
 extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_uint16(uint16_t n);
-extern llvm::ConstantInt *const_uint32(uint32_t n);
 extern llvm::ConstantInt *const_int(long n);
-extern llvm::ConstantInt *const_char(char c);
-extern llvm::ConstantFP *const_real(double d);
 } // namespace data
 
 extern void VerifyDeclBeforeUsage();
@@ -82,7 +77,7 @@ void AST::Declaration::AllocateGlobal() {
     if (HasHashtag("cstdlib")) {
       // TODO assuming a function type
       llvm::FunctionType *ft = *(Function *)type;
-      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
           /*        Type = */ *(type->is_function() ? ptype : type),
           /*  isConstant = */ true,
@@ -91,7 +86,7 @@ void AST::Declaration::AllocateGlobal() {
               identifier->token, ft),
           /*        Name = */ identifier->token);
     } else {
-      IR::LLVMGlobals[addr.as_global_addr] = new llvm::GlobalVariable(
+      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
           /*        Type = */ *(type->is_function() ? ptype : type),
           /*  isConstant = */ false, // TODO HasHashtag("const"),
@@ -108,8 +103,11 @@ void AST::Declaration::AllocateGlobal() {
 void AST::Declaration::EmitGlobal() {
   verify_types();
   if (type == Err) { return; }
- 
-  if (GetInitialGlobal(addr.as_global_addr) != IR::Value::None()) { return; }
+
+  if (addr == IR::Value::None() ||
+      GetInitialGlobal(addr.as_loc->GetGlobalAddr()) != IR::Value::None()) {
+    return;
+  }
   assert(!arg_val);
   verify_types();
   if (ErrorLog::num_errs_ > 0) { return; }
@@ -117,12 +115,6 @@ void AST::Declaration::EmitGlobal() {
   if (type->is_pointer()) {
     addr = IR::Value::Error();
     ErrorLog::GlobalPointerUnsupported(loc);
-    return;
-  }
-
-  if (type->is_array()) {
-    AddInitialGlobal(addr.as_global_addr, IR::Value::Error());
-    ErrorLog::GlobalArrayUnsupported(loc);
     return;
   }
 
@@ -136,19 +128,19 @@ void AST::Declaration::EmitGlobal() {
     } else {
       auto eval_value = Evaluate(init_val);
       if (eval_value == IR::Value::Error()) { return; }
-      AddInitialGlobal(addr.as_global_addr, eval_value);
+      AddInitialGlobal(addr.as_loc->GetGlobalAddr(), eval_value);
     }
   } else if (HasHashtag("cstdlib")) {
     auto cstr = new char[identifier->token.size() + 1];
     strcpy(cstr, identifier->token.c_str());
-    AddInitialGlobal(addr.as_global_addr, IR::Value::ExtFn(cstr));
+    AddInitialGlobal(addr.as_loc->GetGlobalAddr(), IR::Value::ExtFn(cstr));
   } else {
-    AddInitialGlobal(addr.as_global_addr, type->EmitInitialValue());
+    AddInitialGlobal(addr.as_loc->GetGlobalAddr(), type->EmitInitialValue());
   }
 
   if (file_type != FileType::None) {
     if (identifier->token == "main") {
-      main_fn = IR::LLVMGlobals[addr.as_global_addr];
+      main_fn = IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()];
     }
   }
 }
@@ -182,7 +174,7 @@ void AST::Declaration::EmitLLVMGlobal() {
   if (type->is_function() && HasHashtag("const")) {
     if (init_val) {
       if (init_val->is_function_literal()) {
-        auto func = init_val->EmitIR().as_func;
+        auto func = init_val->EmitIR().as_val->GetFunc();
         func->GenerateLLVM();
         // TODO do we need this here?
         func->llvm_fn->setName(
@@ -196,29 +188,23 @@ void AST::Declaration::EmitLLVMGlobal() {
     }
   }
 
-  auto ir_val = GetInitialGlobal(addr.as_global_addr);
+  auto ir_val = GetInitialGlobal(addr.as_loc->GetGlobalAddr());
   llvm::Constant *llvm_val = nullptr;
   switch (ir_val.flag) {
-  case IR::ValType::B: llvm_val   = data::const_bool(ir_val.as_bool); break;
-  case IR::ValType::C: llvm_val   = data::const_char(ir_val.as_char); break;
-  case IR::ValType::I: llvm_val   = data::const_int(ir_val.as_int); break;
-  case IR::ValType::R: llvm_val   = data::const_real(ir_val.as_real); break;
-  case IR::ValType::U16: llvm_val = data::const_uint16(ir_val.as_uint16); break;
-  case IR::ValType::U32: llvm_val = data::const_uint32(ir_val.as_uint32); break;
-  case IR::ValType::U: llvm_val   = data::const_uint(ir_val.as_uint); break;
-  case IR::ValType::F:
-    ir_val.as_func->GenerateLLVM();
-    assert(ir_val.as_func->llvm_fn);
-    llvm_val = ir_val.as_func->llvm_fn;
-    break;
-  case IR::ValType::GlobalAddr:
-    llvm_val = IR::LLVMGlobals[ir_val.as_global_addr];
+  case IR::ValType::Val: llvm_val = ir_val.as_val->llvm(); break;
+  case IR::ValType::Loc:
+    if (ir_val.as_loc->is_global_addr()) {
+      llvm_val = IR::LLVMGlobals[ir_val.as_loc->GetGlobalAddr()];
+    } else {
+      std::cerr << ir_val << std::endl;
+      NOT_YET;
+    }
     break;
   case IR::ValType::ExtFn: global_module->getFunction(ir_val.as_ext_fn); break;
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
 
-  ((llvm::GlobalVariable *)IR::LLVMGlobals[addr.as_global_addr])
+  ((llvm::GlobalVariable *)IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
       ->setInitializer(llvm_val);
 
   return;

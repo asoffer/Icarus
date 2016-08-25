@@ -63,14 +63,14 @@ void Array::EmitInit(IR::Value id_val) {
       val = IR::Value::Arg(0);
     } else {
       auto len_ptr = IR::ArrayLength(IR::Value::Arg(0));
-      IR::Store(Uint, IR::Value(0ul), len_ptr);
+      IR::Store(Uint, IR::Value::Uint(0ul), len_ptr);
       auto ptr = IR::ArrayData(this, IR::Value::Arg(0));
-      IR::Store(Ptr(data_type), IR::Malloc(data_type, IR::Value(0ul)), ptr);
+      IR::Store(Ptr(data_type), IR::Malloc(data_type, IR::Value::Uint(0ul)), ptr);
       val = IR::Load(Ptr(data_type), ptr);
     }
 
     for (size_t i = 0; i < len; ++i) {
-      data_type->EmitInit(IR::Access(data_type, IR::Value(i), val));
+      data_type->EmitInit(IR::Access(data_type, IR::Value::Uint(i), val));
     }
 
     IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
@@ -82,7 +82,7 @@ void Array::EmitInit(IR::Value id_val) {
   }
   assert(init_func);
 
-  IR::Call(Void, IR::Value(init_func), {id_val});
+  IR::Call(Void, IR::Value::Func(init_func), {id_val});
 }
 
 void Pointer::EmitInit(IR::Value id_val) {
@@ -123,7 +123,7 @@ void Struct::EmitInit(IR::Value id_val) {
   }
   assert(init_func);
 
-  IR::Call(Void, IR::Value(init_func), {id_val});
+  IR::Call(Void, IR::Value::Func(init_func), {id_val});
 }
 
 void Tuple::EmitInit(IR::Value id_val) { NOT_YET; }

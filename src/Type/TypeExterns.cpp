@@ -2,23 +2,17 @@
 #include "Type/Type.h"
 #endif
 
-Type *Bool    = new Primitive(PrimType::Bool);
-Type *Char    = new Primitive(PrimType::Char);
-Type *Int     = new Primitive(PrimType::Int);
-Type *Real    = new Primitive(PrimType::Real);
-Type *Type_   = new Primitive(PrimType::Type);
-Type *Uint    = new Primitive(PrimType::Uint);
-Type *Void    = new Primitive(PrimType::Void);
-Type *Uint16  = new Primitive(PrimType::Uint16);
-Type *Uint32  = new Primitive(PrimType::Uint32);
-Type *Unknown = new Primitive(PrimType::Unknown);
-Type *NullPtr = new Primitive(PrimType::NullPtr);
-Type *Err     = new Primitive(PrimType::Err);
-Type *String  = new Primitive(PrimType::String);
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  Type *GlobalName = new Primitive(PrimType::EnumName);
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
 
 std::map<const char *, Type *> PrimitiveTypes{
-    {"bool", Bool},  {"char", Char}, {"int", Int},   {"real", Real},
-    {"type", Type_}, {"uint", Uint}, {"void", Void}, {"string", String},
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  { #name, GlobalName },
+
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
 };
 
 static std::vector<Array *> array_types_;
@@ -39,8 +33,11 @@ void GenerateLLVMTypes() {
 }
 
 Array *Arr(Type *t, size_t len) {
-  for (auto arr : array_types_)
-    if (arr->fixed_length && arr->len == len && arr->data_type == t) return arr;
+  for (auto arr : array_types_){
+    if (arr->fixed_length && arr->len == len && arr->data_type == t) {
+      return arr;
+    }
+  }
 
   auto arr_type = new Array(t, len);
   array_types_.push_back(arr_type);
@@ -48,8 +45,9 @@ Array *Arr(Type *t, size_t len) {
 }
 
 Array *Arr(Type *t) {
-  for (auto arr : array_types_)
-    if (!arr->fixed_length && arr->data_type == t) return arr;
+  for (auto arr : array_types_){
+    if (!arr->fixed_length && arr->data_type == t) { return arr; }
+  }
 
   auto arr_type = new Array(t);
   array_types_.push_back(arr_type);
@@ -58,7 +56,7 @@ Array *Arr(Type *t) {
 
 Tuple *Tup(const std::vector<Type *> &types) {
   for (auto tuple_type : tuple_types_) {
-    if (tuple_type->entries == types) return tuple_type;
+    if (tuple_type->entries == types) { return tuple_type; }
   }
 
   auto tuple_type = new Tuple(types);
@@ -79,8 +77,8 @@ Pointer *Ptr(Type *t) {
 
 Function *Func(Type *in, Type *out) {
   for (const auto &fn_type : fn_types_) {
-    if (fn_type->input != in) continue;
-    if (fn_type->output != out) continue;
+    if (fn_type->input != in) { continue; }
+    if (fn_type->output != out) { continue; }
     return fn_type;
   }
 
