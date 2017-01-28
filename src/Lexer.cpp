@@ -12,6 +12,9 @@ static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
 static inline bool IsWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
+static inline bool IsDigitOrUnderscore(char c) {
+  return IsDigit(c) || (c == '_');
+}
 static inline bool IsAlphaOrUnderscore(char c) {
   return IsAlpha(c) || (c == '_');
 }
@@ -167,7 +170,6 @@ NNT Lexer::NextWord() {
     term_ptr->type          = Bool;
 
     return NNT(term_ptr, Language::kw_else);
-
   }
 
 #define CASE_RETURN_NNT(str, op, len)                                          \
@@ -198,34 +200,52 @@ NNT Lexer::NextWord() {
   return NNT(new AST::Identifier(loc, token), Language::expr);
 }
 
+template <u64 Base> u64 ToDigit(char c);
+template <> u64 ToDigit<10>(char c) { return static_cast<u64>(c - '0'); }
+template <> u64 ToDigit<8>(char c) { return static_cast<u64>(c - '0'); }
+template <> u64 ToDigit<2>(char c) { return static_cast<u64>(c - '0'); }
+template <> u64 ToDigit<16>(char c) {
+  if ('a' <= c && c <= 'f') { return static_cast<u64>(c - 'a' + 10); }
+  if ('A' <= c && c <= 'F') { return static_cast<u64>(c - 'A' + 10); }
+  return static_cast<u64>(c - '0');
+}
+
+template <u64 Base> u64 ParseInt(char *head, char *end) {
+  u64 result = 0;
+  for(; head < end; ++head) {
+    if (*head == '_') { continue; }
+    result *= Base;
+    result += ToDigit<Base>(*head);
+  }
+  return result;
+}
+
 NNT Lexer::NextNumber() {
   auto starting_offset = cursor.offset;
 
-  do { IncrementCursor(); } while (IsDigit(*cursor));
+  do { IncrementCursor(); } while (IsDigitOrUnderscore(*cursor));
 
   switch (*cursor) {
   case 'u':
   case 'U': {
+    u64 val = ParseInt<10>(cursor.line.ptr + starting_offset,
+                           cursor.line.ptr + cursor.offset);
     IncrementCursor();
-
-    char old_char = *cursor;
-    *cursor       = '\0';
-    auto uint_val = std::stoul(cursor.line.ptr + starting_offset);
-    *cursor       = old_char;
-
-    RETURN_TERMINAL(Uint, Uint, IR::Value::Uint(uint_val));
+    RETURN_TERMINAL(Uint, Uint, IR::Value::Uint(val));
   } break;
 
   case '.': {
     IncrementCursor();
     if (*cursor == '.') {
       BackUpCursor();
-      goto return_int_label;
+      i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
+                                              cursor.line.ptr + cursor.offset));
+      RETURN_TERMINAL(Int, Int, IR::Value::Int(val));
     }
 
     // Just one dot. Should be interpretted as a decimal point.
     IncrementCursor();
-    while (IsDigit(*cursor)) { IncrementCursor(); }
+    while (IsDigitOrUnderscore(*cursor)) { IncrementCursor(); }
 
     char old_char = *cursor;
     *cursor       = '\0';
@@ -235,14 +255,10 @@ NNT Lexer::NextNumber() {
     RETURN_TERMINAL(Real, Real, IR::Value::Real(real_val));
   } break;
 
-  default:
-  return_int_label : {
-    char old_char = *cursor;
-    *cursor       = '\0';
-    auto int_val = std::stol(cursor.line.ptr + starting_offset);
-    *cursor       = old_char;
-    RETURN_TERMINAL(Int, Int, IR::Value::Int(int_val));
-  } break;
+  default: {
+    i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
+                                            cursor.line.ptr + cursor.offset));
+    RETURN_TERMINAL(Int, Int, IR::Value::Int(val));  } break;
   }
 }
 
