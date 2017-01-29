@@ -1,8 +1,6 @@
 #ifndef ICARUS_LEXER_H
 #define ICARUS_LEXER_H
 
-#include "SourceFile.h"
-
 struct NNT {
   AST::Node *node;
   Language::NodeType node_type;
@@ -25,7 +23,6 @@ public:
 
   Cursor cursor;
   std::ifstream ifs;
-  SourceFile *source_file_;
 
 private:
   void IncrementCursor();

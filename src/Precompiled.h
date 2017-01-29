@@ -89,16 +89,26 @@ struct FnScope;
 
 using NPtrVec = std::vector<AST::Node *>;
 
+struct SourceFile {
+  SourceFile(const std::string &file_name = "")
+      : name(file_name), ast(nullptr) {}
+  std::string name;
+  std::vector<pstr> lines;
+  AST::Statements *ast;
+};
+
 struct Cursor {
-  Cursor() : offset(0), line_num(0), file_name("") {}
+  Cursor() : offset(0), line_num(0), source_file(nullptr) {}
 
   pstr line;
   size_t offset;
   size_t line_num;
-  const char *file_name;
+  SourceFile *source_file;
+
+  std::string file_name() const { return source_file->name; }
 
   // Get the character that the cursor is currently pointing to
-  inline char &operator*(void) const { return *(line.ptr + offset); }
+  char &operator*(void) const { return *(line.ptr + offset); }
 };
 
 #include "ErrorLog.h"

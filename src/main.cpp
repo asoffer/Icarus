@@ -1,5 +1,4 @@
 #ifndef ICARUS_UNITY
-#include "SourceFile.h"
 #include "Type/Type.h"
 #include "Scope.h"
 #include "IR/IR.h"

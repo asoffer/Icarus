@@ -44,15 +44,11 @@ static inline bool IsNonGraphic(char c) {
 extern std::map<const char *, Type *> PrimitiveTypes;
 
 // Take a filename as a string or a C-string and opens the named file
-Lexer::Lexer(SourceFile *sf) : source_file_(sf) {
-  char *file_name = new char[source_file_->name.size() + 1];
-  strcpy(file_name, source_file_->name.c_str());
-  cursor.file_name = file_name;
-
-  ifs = std::ifstream(file_name, std::ifstream::in);
-
+Lexer::Lexer(SourceFile *sf) {
+  cursor.source_file = sf;
+  ifs = std::ifstream(sf->name, std::ifstream::in);
   pstr temp_blank;
-  source_file_->lines.push_back(temp_blank); // Blank line since we 1-index.
+  sf->lines.push_back(temp_blank); // Blank line since we 1-index.
 
   MoveCursorToNextLine();
 }
@@ -83,7 +79,7 @@ void Lexer::MoveCursorToNextLine() {
   cursor.line   = pstr(temp.c_str());
 
   ++cursor.line_num;
-  source_file_->lines.push_back(cursor.line);
+  cursor.source_file->lines.push_back(cursor.line);
 }
 
 void Lexer::IncrementCursor() {

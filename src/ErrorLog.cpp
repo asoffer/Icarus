@@ -1,6 +1,5 @@
 #include "ErrorLog.h"
 #include "util/pstr.h"
-#include "SourceFile.h"
 #include "AST/AST.h"
 #include "Type/Type.h"
 
@@ -219,8 +218,7 @@ void ErrorLog::Dump() {
 
 static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
                            const Cursor &loc, size_t underline_length) {
-  assert(loc.file_name);
-  pstr line = source_map AT(loc.file_name)->lines AT(loc.line_num);
+  pstr line = source_map AT(loc.file_name())->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 6;
 
@@ -248,7 +246,7 @@ void NullCharInSrc(const Cursor &loc) {
   fprintf(stderr, "I found a null-character in your source file on line %lu. "
                   "I am ignoring it and moving on. Are you sure \"%s\" is a "
                   "source file?\n\n",
-          loc.line_num, loc.file_name);
+          loc.line_num, loc.file_name().c_str());
   ++num_errs_;
 }
 
@@ -256,7 +254,7 @@ void NonGraphicCharInSrc(const Cursor &loc) {
   fprintf(stderr, "I found a non-graphic-character in your source file on line "
                   "%lu. I am ignoring it and moving on. Are you sure \"%s\" is "
                   "a source file?\n\n",
-          loc.line_num, loc.file_name);
+          loc.line_num, loc.file_name().c_str());
   ++num_errs_;
 }
 
@@ -337,7 +335,7 @@ void CyclicDependency(AST::Expression *expr) {
 
 void GlobalNonDecl(const Cursor &loc) {
   ++num_errs_;
-  global_non_decl[loc.file_name].push_back(loc.line_num);
+  global_non_decl[loc.file_name().c_str()].push_back(loc.line_num);
 }
 
 
@@ -623,7 +621,7 @@ void Reserved(const Cursor &loc, const char *token) {
 
 void EmptyFile(const Cursor &loc) {
   ++num_errs_;
-  fprintf(stderr, "File '%s' is empty.", loc.file_name);
+  fprintf(stderr, "File '%s' is empty.", loc.file_name().c_str());
 }
 
 // TODO better error message for repeated enum name
@@ -646,7 +644,7 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
   ++num_errs_;
   std::string msg_head = "Invalid return type on line " +
                          std::to_string(loc.line_num) + " in \"" +
-                         loc.file_name + "\".";
+                         loc.file_name() + "\".";
   std::string msg_foot = "Given return type:    " + given->to_string() +
                          "\n"
                          "Expected return type: " +
@@ -681,7 +679,7 @@ static void DisplayLines(const std::vector<Cursor> &lines) {
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   if (correct) {
     fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n",
-            case_ptr->loc.line_num, case_ptr->loc.file_name);
+            case_ptr->loc.line_num, case_ptr->loc.file_name().c_str());
 
     std::vector<Cursor> locs;
     for (auto kv : case_ptr->key_vals) {
@@ -698,7 +696,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   } else {
     ++num_errs_;
     fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n\n",
-            case_ptr->loc.line_num, case_ptr->loc.file_name);
+            case_ptr->loc.line_num, case_ptr->loc.file_name().c_str());
   }
 }
 
@@ -722,19 +720,19 @@ void UnknownParserError(const std::string &file_name,
 
 void UndeclaredIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;
-  undeclared_identifiers[token][loc.file_name][loc.line_num].push_back(
-      loc.offset);
+  undeclared_identifiers[token][loc.file_name().c_str()][loc.line_num]
+      .push_back(loc.offset);
 }
 
 void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
   ++num_errs_;
-  invalid_capture[decl][loc.file_name][loc.line_num].push_back(
+  invalid_capture[decl][loc.file_name().c_str()][loc.line_num].push_back(
       loc.offset);
 }
 
 void AmbiguousIdentifier(const Cursor &loc, const char *token) {
   ++num_errs_;
-  ambiguous_identifiers[token][loc.file_name][loc.line_num].push_back(
+  ambiguous_identifiers[token][loc.file_name().c_str()][loc.line_num].push_back(
       loc.offset);
 }
 } // namespace ErrorLog
