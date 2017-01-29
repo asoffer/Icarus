@@ -7,19 +7,30 @@
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
-static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
-static inline bool IsBinaryDigit(char c) { return (c | 1) == '1'; }
-// static inline bool IsOctalDigit(char c) { return (c | 7) == '7'; }
-// static inline bool IsHexDigit(char c) {
-//   return IsDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
-// }
+static inline bool IsDigit(char c){ return ('0' <= c && c <= '9'); }
+
+template <int Base> static inline i32 DigitInBase(char c);
+template <> i32 DigitInBase<10>(char c) {
+  return ('0' <= c && c <= '9') ? (c - '0') : -1;
+}
+template <> i32 DigitInBase<2>(char c) {
+  return ((c | 1) == '1') ? (c - '0') : -1;
+}
+template <> i32 DigitInBase<8>(char c) {
+  return ((c | 7) == '7') ? (c - '0') : -1;
+}
+template <> i32 DigitInBase<16>(char c) {
+  int digit = DigitInBase<10>(c);
+  if (digit != -1) { return digit; }
+  if ('A' <= c && c <= 'F') { return c - 'A' + 10; }
+  if ('a' <= c && c <= 'f') { return c - 'a' + 10; }
+  return -1;
+}
+
 static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
 static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
 static inline bool IsWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
-}
-static inline bool IsDigitOrUnderscore(char c) {
-  return IsDigit(c) || (c == '_');
 }
 static inline bool IsAlphaOrUnderscore(char c) {
   return IsAlpha(c) || (c == '_');
@@ -169,45 +180,16 @@ double ParseDouble(char *head, char *end) {
   return static_cast<double>(int_part) + frac_part;
 }
 
-static NNT NextNumberInDecimal(Cursor& cursor) {
-  auto starting_offset = cursor.offset;
-
-  do { cursor.Increment(); } while (IsDigitOrUnderscore(*cursor));
-
-  switch (*cursor) {
-  case '.': {
-    cursor.Increment();
-    if (*cursor == '.') {
-      cursor.BackUp();
-      i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
-                                              cursor.line.ptr + cursor.offset));
-      RETURN_TERMINAL(Int, Int, IR::Value::Int(val));
-    }
-
-    // Just one dot. Should be interpretted as a decimal point.
-    cursor.Increment();
-    while (IsDigitOrUnderscore(*cursor)) { cursor.Increment(); }
-    double val = ParseDouble(cursor.line.ptr + starting_offset,
-                             cursor.line.ptr + cursor.offset);
-    RETURN_TERMINAL(Real, Real, IR::Value::Real(val));
-  } break;
-
-  default: {
-    i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
-                                            cursor.line.ptr + cursor.offset));
-    RETURN_TERMINAL(Int, Int, IR::Value::Int(val));
-  } break;
-  }
-}
-
 // Precondition: Output parameter points to a value of zero.
 //
 // Consumes longest sequence of alpha-numeric or underscore characters. Returns
 // the number of digit characters read or -1. If the sequence consists only of
-// '0's, '1's, and '_'s, the output parameter points to the parsed value, and
-// the number of digit characters read is returned. Otherwise, -1 is returned
-// and there are no constraints on the value of the output parameter.
-static i32 ConsumeIntegerInBinary(Cursor &cursor, i64 *val) {
+// '_'s or digits in the approprioate base, the output parameter points to the
+// parsed value, and the number of digit characters read is returned. Otherwise,
+// -1 is returned and there are no constraints on the value of the output
+// parameter.
+template<int Base>
+static i32 ConsumeIntegerInBase(Cursor &cursor, i64 *val) {
   i32 chars_read = 0;
 start:
   if (*cursor == '_') {
@@ -215,8 +197,9 @@ start:
     goto start;
   }
 
-  if (IsBinaryDigit(*cursor)) {
-    *val = (*val << 1) + (*cursor - '0');
+  int digit = DigitInBase<Base>(*cursor);
+  if (digit != -1) {
+    *val = (*val * Base) + digit;
     ++chars_read;
     cursor.Increment();
     goto start;
@@ -230,11 +213,17 @@ start:
   return chars_read;
 }
 
-static NNT NextNumberInBinary(Cursor &cursor) {
+template <int Base> static inline int pow(i32 num) {
+  int result = 1;
+  for (int i = 0; i < num; ++i) { result *= Base; }
+  return result;
+}
+
+template <int Base> static NNT NextNumberInBase(Cursor &cursor) {
   // TODO deal with bits_needed
   i64 int_part   = 0;
   i64 frac_part  = 0;
-  i32 int_digits = ConsumeIntegerInBinary(cursor, &int_part);
+  i32 int_digits = ConsumeIntegerInBase<Base>(cursor, &int_part);
   if (int_digits == -1) {
     // TODO log an error
     // TODO Check for '.' and continue reading?
@@ -249,13 +238,14 @@ static NNT NextNumberInBinary(Cursor &cursor) {
     RETURN_TERMINAL(Int, Int, IR::Value::Int(int_part));
   }
 
-  i32 frac_digits = ConsumeIntegerInBinary(cursor, &frac_part);
+  i32 frac_digits = ConsumeIntegerInBase<Base>(cursor, &frac_part);
   if (frac_digits == -1) {
     // TODO log an error
     RETURN_TERMINAL(Real, Real, IR::Value::Real(0));
   }
 
-  double val = int_part + (static_cast<double>(frac_part) / (1 << frac_digits));
+  double val =
+      int_part + (static_cast<double>(frac_part) / pow<Base>(frac_digits));
   RETURN_TERMINAL(Real, Real, IR::Value::Real(val));
 }
 
@@ -263,11 +253,11 @@ static NNT NextZeroInitiatedNumber(Cursor &cursor) {
   cursor.Increment();
 
   switch (*cursor) {
-  case 'b': cursor.Increment(); return NextNumberInBinary(cursor);
-  case 'o': cursor.Increment(); NOT_YET;
-  case 'd': cursor.Increment(); NOT_YET;
-  case 'x': cursor.Increment(); NOT_YET;
-  default: cursor.BackUp(); return NextNumberInDecimal(cursor);
+  case 'b': cursor.Increment(); return NextNumberInBase<2>(cursor);
+  case 'o': cursor.Increment(); return NextNumberInBase<8>(cursor);
+  case 'd': cursor.Increment(); return NextNumberInBase<10>(cursor);
+  case 'x': cursor.Increment(); return NextNumberInBase<16>(cursor);
+  default: cursor.BackUp(); return NextNumberInBase<10>(cursor);
   }
 }
 
@@ -280,7 +270,7 @@ restart:
   } else if (IsAlphaOrUnderscore(*cursor)) {
     return NextWord(cursor);
   } else if (IsNonZeroDigit(*cursor)) {
-    return NextNumberInDecimal(cursor);
+    return NextNumberInBase<10>(cursor);
   } else if (*cursor == '0') {
     return NextZeroInitiatedNumber(cursor);
   }
