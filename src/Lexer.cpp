@@ -170,14 +170,6 @@ static NNT NextNumberInDecimal(Cursor& cursor) {
   do { cursor.Increment(); } while (IsDigitOrUnderscore(*cursor));
 
   switch (*cursor) {
-  case 'u':
-  case 'U': {
-    u64 val = ParseInt<10>(cursor.line.ptr + starting_offset,
-                           cursor.line.ptr + cursor.offset);
-    cursor.Increment();
-    RETURN_TERMINAL(Uint, Uint, IR::Value::Uint(val));
-  } break;
-
   case '.': {
     cursor.Increment();
     if (*cursor == '.') {
