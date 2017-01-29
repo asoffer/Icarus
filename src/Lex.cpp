@@ -256,9 +256,53 @@ static NNT NextStringLiteral(Cursor &cursor) {
   RETURN_TERMINAL(StringLiteral, String, IR::Value(cstr));
 }
 
+static NNT NextCharLiteral(Cursor &cursor) {
+  cursor.Increment();
+  char result;
+
+  switch (*cursor) {
+  case '\t':
+    ErrorLog::TabInCharLit(cursor);
+    result = '\t';
+    break;
+  case ' ':
+    // TODO error log
+    result = '\0';
+    break;
+  case '\0':
+    ErrorLog::RunawayCharLit(cursor);
+    RETURN_TERMINAL(Char, Char, IR::Value::Char('\0'));
+  case '\\': {
+    cursor.Increment();
+    switch (*cursor) {
+    case '\"': {
+      result             = '"';
+      ErrorLog::EscapedDoubleQuoteInCharLit(Cursor::Behind(cursor, 1));
+      cursor.Increment();
+    } break;
+    case '\\': result = '\\'; break;
+    case 'a': result  = '\a'; break;
+    case 'b': result  = '\b'; break;
+    case 'f': result  = '\f'; break;
+    case 'n': result  = '\n'; break;
+    case 'r': result  = '\r'; break;
+    case 's': result  = ' '; break;
+    case 't': result  = '\t'; break;
+    case 'v': result  = '\v'; break;
+    default:
+      ErrorLog::InvalidEscapeCharInCharLit(Cursor::Behind(cursor, 1));
+      result = *cursor;
+    }
+    break;
+  }
+  default: { result = *cursor; } break;
+  }
+  cursor.Increment();
+  RETURN_TERMINAL(Char, Char, IR::Value::Char(result));
+}
+
 static NNT NextOperator(Cursor &cursor) {
   switch (*cursor) {
-  case '`': cursor.Increment(); RETURN_NNT("`", op_bl, 1);
   case '@': cursor.Increment(); RETURN_NNT("@", op_l, 1);
   case ',': cursor.Increment(); RETURN_NNT(",", comma, 1);
   case ';': cursor.Increment(); RETURN_NNT(";", semicolon, 1);
@@ -462,117 +506,50 @@ static NNT NextOperator(Cursor &cursor) {
       RETURN_NNT("=", eq, 1);
     }
   } break;
-
-  case '/': {
-    cursor.Increment();
-    if (*cursor == '/') {
-      // Ignore comments altogether
-      cursor.SkipToEndOfLine();
-      return NNT::Invalid();
-
-    } else if (*cursor == '=') {
-      cursor.Increment();
-      RETURN_NNT("/=", op_b, 2);
-
-    } else if (*cursor == '*') {
-      cursor.Increment();
-      char back_one = *cursor;
-      cursor.Increment();
-
-      size_t comment_layer = 1;
-
-      while (comment_layer != 0) {
-        if (cursor.source_file->ifs.eof()) {
-          ErrorLog::RunawayMultilineComment();
-          RETURN_NNT("", eof, 0);
-
-        } else if (back_one == '/' && *cursor == '*') {
-          ++comment_layer;
-
-        } else if (back_one == '*' && *cursor == '/') {
-          --comment_layer;
-        }
-
-        back_one = *cursor;
-        cursor.Increment();
-      }
-
-      // Ignore comments altogether
-      return NNT::Invalid();
-
-    } else {
-      RETURN_NNT("/", op_b, 1);
-    }
-
-  } break;
-
-  case '\'': {
-    cursor.Increment();
-    char result;
-
-    switch (*cursor) {
-    case '\t':
-      ErrorLog::TabInCharLit(cursor);
-      result = '\t';
-      break;
-
-    case '\0': {
-      ErrorLog::RunawayCharLit(cursor);
-
-      RETURN_TERMINAL(Char, Char, IR::Value::Char('\0'));
-    }
-    case '\\': {
-      cursor.Increment();
-      switch (*cursor) {
-      case '\"': {
-        result             = '"';
-        Cursor cursor_copy = cursor;
-        --cursor_copy.offset;
-        ErrorLog::EscapedDoubleQuoteInCharLit(cursor_copy);
-      } break;
-      case '\\': result = '\\'; break;
-      case '\'': result = '\''; break;
-      case 'a': result  = '\a'; break;
-      case 'b': result  = '\b'; break;
-      case 'f': result  = '\f'; break;
-      case 'n': result  = '\n'; break;
-      case 'r': result  = '\r'; break;
-      case 't': result  = '\t'; break;
-      case 'v': result  = '\v'; break;
-      default:
-        Cursor cursor_copy = cursor;
-        --cursor_copy.offset;
-        ErrorLog::InvalidEscapeCharInCharLit(cursor_copy);
-        result = *cursor;
-      }
-      break;
-    }
-    default: { result = *cursor; } break;
-    }
-
-    cursor.Increment();
-
-    if (*cursor == '\'') {
-      cursor.Increment();
-    } else {
-      ErrorLog::RunawayCharLit(cursor);
-    }
-
-    RETURN_TERMINAL(Char, Char, IR::Value::Char(result));
-  } break;
-
   case '?':
     ErrorLog::InvalidCharQuestionMark(cursor);
     cursor.Increment();
     return NNT::Invalid();
-
   case '~':
     ErrorLog::InvalidCharTilde(cursor);
     cursor.Increment();
     return NNT::Invalid();
-
   case '_': UNREACHABLE;
   default: UNREACHABLE;
+  }
+}
+
+NNT NextSlashInitiatedToken(Cursor &cursor) {
+  cursor.Increment();
+  switch (*cursor) {
+  case '/': // line comment
+    cursor.SkipToEndOfLine();
+    return NNT::Invalid();
+  case '*': { // Multiline comment
+    cursor.Increment();
+    char back_one = *cursor;
+    cursor.Increment();
+
+    u64 comment_layer = 1;
+    while (comment_layer != 0) {
+      if (cursor.source_file->ifs.eof()) {
+        ErrorLog::RunawayMultilineComment();
+        RETURN_NNT("", eof, 0);
+
+      } else if (back_one == '/' && *cursor == '*') {
+        ++comment_layer;
+
+      } else if (back_one == '*' && *cursor == '/') {
+        --comment_layer;
+      }
+
+      back_one = *cursor;
+      cursor.Increment();
+    }
+    return NNT::Invalid();
+  }
+  case '=': cursor.Increment(); RETURN_NNT("/=", op_b, 2);
+  default: RETURN_NNT("/", op_b, 1);
   }
 }
 
@@ -590,7 +567,13 @@ restart:
 
   switch (*cursor) {
   case '0': return NextZeroInitiatedNumber(cursor);
+  case '`': return NextCharLiteral(cursor);
   case '"': return NextStringLiteral(cursor);
+  case '/': {
+    auto nnt = NextSlashInitiatedToken(cursor);
+    if (nnt == NNT::Invalid()) { goto restart; }
+    return nnt;
+  }
   case '\t':
   case ' ': cursor.Increment(); goto restart; // Skip whitespace
   case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
