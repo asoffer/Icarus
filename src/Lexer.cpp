@@ -261,29 +261,7 @@ static NNT NextZeroInitiatedNumber(Cursor &cursor) {
   }
 }
 
-// Get the next token
-NNT Lexer::Next() {
-restart:
-  // Delegate based on the next character in the file stream
-  if ( cursor.source_file->ifs.eof()) {
-    RETURN_NNT("", eof, 0);
-  } else if (IsAlphaOrUnderscore(*cursor)) {
-    return NextWord(cursor);
-  } else if (IsNonZeroDigit(*cursor)) {
-    return NextNumberInBase<10>(cursor);
-  } else if (*cursor == '0') {
-    return NextZeroInitiatedNumber(cursor);
-  }
-
-  switch (*cursor) {
-  case '\t':
-  case ' ': cursor.Increment(); goto restart; // Explicit TCO
-  case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
-  default: return NextOperator();
-  }
-}
-
-NNT Lexer::NextOperator() {
+static NNT NextOperator(Cursor &cursor) {
   switch (*cursor) {
   case '`': cursor.Increment(); RETURN_NNT("`", op_bl, 1);
   case '@': cursor.Increment(); RETURN_NNT("@", op_l, 1);
@@ -300,7 +278,6 @@ NNT Lexer::NextOperator() {
   case '.': {
     Cursor cursor_copy = cursor;
 
-    // Note: safe because we know we have a null-terminator
     while (*cursor == '.') { cursor.Increment(); }
     size_t num_dots = cursor.offset - cursor_copy.offset;
 
@@ -326,7 +303,7 @@ NNT Lexer::NextOperator() {
     case '\0':
       // Ignore the following newline
       cursor.Increment();
-      return Next();
+      return NNT::Invalid();
     case ' ':
     case '\t':
       while (IsWhitespace(*cursor)) {
@@ -335,13 +312,13 @@ NNT Lexer::NextOperator() {
       }
       if (*cursor == '\0') {
         cursor.Increment();
-        return Next();
+        return NNT::Invalid();
       }
 
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
       ErrorLog::NonWhitespaceAfterNewlineEscape(cursor_copy, dist);
-      return Next();
+      return NNT::Invalid();
     }
   } break;
 
@@ -351,7 +328,7 @@ NNT Lexer::NextOperator() {
 
     if (!IsAlpha(*cursor)) {
       ErrorLog::InvalidHashtag(cursor_copy);
-      return Next();
+      return NNT::Invalid();
     }
 
     do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
@@ -406,7 +383,7 @@ NNT Lexer::NextOperator() {
         Cursor cursor_copy = cursor;
         cursor_copy.offset -= 2;
         ErrorLog::NotInMultilineComment(cursor_copy);
-        return Next();
+        return NNT::Invalid();
       }
     } else if (*cursor == '=') {
       cursor.Increment();
@@ -492,7 +469,7 @@ NNT Lexer::NextOperator() {
     if (*cursor == '/') {
       // Ignore comments altogether
       cursor.SkipToEndOfLine();
-      return Next();
+      return NNT::Invalid();
 
     } else if (*cursor == '=') {
       cursor.Increment();
@@ -522,7 +499,7 @@ NNT Lexer::NextOperator() {
       }
 
       // Ignore comments altogether
-      return Next();
+      return NNT::Invalid();
 
     } else {
       RETURN_NNT("/", op_b, 1);
@@ -642,17 +619,42 @@ NNT Lexer::NextOperator() {
   case '?':
     ErrorLog::InvalidCharQuestionMark(cursor);
     cursor.Increment();
-    return Next();
+    return NNT::Invalid();
 
   case '~':
     ErrorLog::InvalidCharTilde(cursor);
     cursor.Increment();
-    return Next();
+    return NNT::Invalid();
 
   case '_': UNREACHABLE;
   default: UNREACHABLE;
   }
 }
 
+// Get the next token
+NNT Lexer::Next() {
+restart:
+  // Delegate based on the next character in the file stream
+  if (cursor.source_file->ifs.eof()) {
+    RETURN_NNT("", eof, 0);
+  } else if (IsAlphaOrUnderscore(*cursor)) {
+    return NextWord(cursor);
+  } else if (IsNonZeroDigit(*cursor)) {
+    return NextNumberInBase<10>(cursor);
+  } else if (*cursor == '0') {
+    return NextZeroInitiatedNumber(cursor);
+  }
+
+  switch (*cursor) {
+  case '\t':
+  case ' ': cursor.Increment(); goto restart; // Explicit TCO
+  case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
+  default: {
+    auto nnt = NextOperator(cursor);
+    if (nnt == NNT::Invalid()) { goto restart; }
+    return nnt;
+  }
+  }
+}
 #undef RETURN_NNT
 #undef RETURN_TERMINAL

@@ -2,10 +2,20 @@
 #define ICARUS_LEXER_H
 
 struct NNT {
-  AST::Node *node;
-  Language::NodeType node_type;
+  NNT() = default;
+  AST::Node *node              = nullptr;
+  Language::NodeType node_type = Language::bof;
   NNT(AST::Node *n, Language::NodeType nt) : node(n), node_type(nt) {}
+  static NNT Invalid() {
+    // Name of this function is clearer than just using default constructor
+    return NNT();
+  }
 };
+inline bool operator==(NNT lhs, NNT rhs) {
+  return lhs.node == rhs.node && lhs.node_type == rhs.node_type;
+}
+inline bool operator!=(NNT lhs, NNT rhs) { return (lhs == rhs); }
+
 // struct Lexer:
 //
 // This class takes a file name in its only constructor. The contents of the
@@ -21,9 +31,6 @@ public:
   NNT Next(); // Reads the next token from the lexer into a node
 
   Cursor cursor;
-
-private:
-  NNT NextOperator();
 };
 
 #endif // ICARUS_LEXER_H
