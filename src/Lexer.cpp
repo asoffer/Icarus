@@ -8,6 +8,11 @@ static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
 static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+static inline bool IsBinaryDigit(char c) { return (c | 1) == '1'; }
+// static inline bool IsOctalDigit(char c) { return (c | 7) == '7'; }
+// static inline bool IsHexDigit(char c) {
+//   return IsDigit(c) || ('A' <= c && c <= 'F') || ('a' <= c && c <= 'f');
+// }
 static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
 static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
 static inline bool IsWhitespace(char c) {
@@ -195,11 +200,70 @@ static NNT NextNumberInDecimal(Cursor& cursor) {
   }
 }
 
+// Precondition: Output parameter points to a value of zero.
+//
+// Consumes longest sequence of alpha-numeric or underscore characters. Returns
+// the number of digit characters read or -1. If the sequence consists only of
+// '0's, '1's, and '_'s, the output parameter points to the parsed value, and
+// the number of digit characters read is returned. Otherwise, -1 is returned
+// and there are no constraints on the value of the output parameter.
+static i32 ConsumeIntegerInBinary(Cursor &cursor, i64 *val) {
+  i32 chars_read = 0;
+start:
+  if (*cursor == '_') {
+    cursor.Increment();
+    goto start;
+  }
+
+  if (IsBinaryDigit(*cursor)) {
+    *val = (*val << 1) + (*cursor - '0');
+    ++chars_read;
+    cursor.Increment();
+    goto start;
+  }
+
+  if (IsAlphaNumeric(*cursor)) {
+    while (IsAlphaNumeric(*cursor)) { cursor.Increment(); }
+    return -1;
+  }
+
+  return chars_read;
+}
+
+static NNT NextNumberInBinary(Cursor &cursor) {
+  // TODO deal with bits_needed
+  i64 int_part   = 0;
+  i64 frac_part  = 0;
+  i32 int_digits = ConsumeIntegerInBinary(cursor, &int_part);
+  if (int_digits == -1) {
+    // TODO log an error
+    // TODO Check for '.' and continue reading?
+    RETURN_TERMINAL(Int, Int, IR::Value::Int(0));
+  }
+
+  if (*cursor != '.') { RETURN_TERMINAL(Int, Int, IR::Value::Int(int_part)); }
+
+  cursor.Increment();
+  if (*cursor == '.') { // Looking at "..", not a fraction
+    cursor.BackUp();
+    RETURN_TERMINAL(Int, Int, IR::Value::Int(int_part));
+  }
+
+  i32 frac_digits = ConsumeIntegerInBinary(cursor, &frac_part);
+  if (frac_digits == -1) {
+    // TODO log an error
+    RETURN_TERMINAL(Real, Real, IR::Value::Real(0));
+  }
+
+  double val = int_part + (static_cast<double>(frac_part) / (1 << frac_digits));
+  RETURN_TERMINAL(Real, Real, IR::Value::Real(val));
+}
+
 static NNT NextZeroInitiatedNumber(Cursor &cursor) {
   cursor.Increment();
 
   switch (*cursor) {
-  case 'b': cursor.Increment(); NOT_YET;
+  case 'b': cursor.Increment(); return NextNumberInBinary(cursor);
   case 'o': cursor.Increment(); NOT_YET;
   case 'd': cursor.Increment(); NOT_YET;
   case 'x': cursor.Increment(); NOT_YET;
