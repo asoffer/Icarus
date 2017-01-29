@@ -220,6 +220,27 @@ template <u64 Base> u64 ParseInt(char *head, char *end) {
   return result;
 }
 
+// TODO this is not rounded correctly.
+double ParseDouble(char *head, char *end) {
+  u64 int_part     = 0;
+  double frac_part = 0;
+  for (; head < end; ++head) {
+    if (*head == '_') { continue; }
+    if (*head == '.') { break; }
+    int_part *= 10;
+    int_part += ToDigit<10>(*head);
+  }
+
+  --end; // end variable is set one passed the last character.
+  for (; head < end; --end) {
+    if (*end == '_') { continue; }
+    if (*end == '.') { break; }
+    frac_part += ToDigit<10>(*end);
+    frac_part /= 10;
+  }
+  return static_cast<double>(int_part) + frac_part;
+}
+
 NNT Lexer::NextNumber() {
   auto starting_offset = cursor.offset;
 
@@ -246,13 +267,9 @@ NNT Lexer::NextNumber() {
     // Just one dot. Should be interpretted as a decimal point.
     IncrementCursor();
     while (IsDigitOrUnderscore(*cursor)) { IncrementCursor(); }
-
-    char old_char = *cursor;
-    *cursor       = '\0';
-    auto real_val = std::stod(cursor.line.ptr + starting_offset);
-    *cursor       = old_char;
-
-    RETURN_TERMINAL(Real, Real, IR::Value::Real(real_val));
+    double val = ParseDouble(cursor.line.ptr + starting_offset,
+                             cursor.line.ptr + cursor.offset);
+    RETURN_TERMINAL(Real, Real, IR::Value::Real(val));
   } break;
 
   default: {
