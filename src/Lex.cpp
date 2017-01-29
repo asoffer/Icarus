@@ -310,10 +310,25 @@ static NNT NextOperator(Cursor &cursor) {
   case ')': cursor.Increment(); RETURN_NNT(")", r_paren, 1);
   case '[': cursor.Increment(); RETURN_NNT("[", l_bracket, 1);
   case ']': cursor.Increment(); RETURN_NNT("]", r_bracket, 1);
-  case '{': cursor.Increment(); RETURN_NNT("{", l_brace, 1);
-  case '}': cursor.Increment(); RETURN_NNT("}", r_brace, 1);
   case '$': cursor.Increment(); RETURN_NNT("$", op_l, 1);
 
+  case '{': {
+    cursor.Increment();
+    if (*cursor =='{') {
+      cursor.Increment();
+      RETURN_NNT("{{", l_double_brace, 2);
+    }
+    RETURN_NNT("{", l_brace, 1);
+  }
+  case '}': {
+    cursor.Increment();
+    if (*cursor =='}') {
+      cursor.Increment();
+      RETURN_NNT("}}", r_double_brace, 2);
+    }
+    RETURN_NNT("}", r_brace, 1);
+  }
+            
   case '.': {
     Cursor cursor_copy = cursor;
 
@@ -423,9 +438,7 @@ static NNT NextOperator(Cursor &cursor) {
         cursor.BackUp();
         RETURN_NNT("*", op_b, 1);
       } else {
-        Cursor cursor_copy = cursor;
-        cursor_copy.offset -= 2;
-        ErrorLog::NotInMultilineComment(cursor_copy);
+        ErrorLog::NotInMultilineComment(Cursor::Behind(cursor, 2));
         return NNT::Invalid();
       }
     } else if (*cursor == '=') {
