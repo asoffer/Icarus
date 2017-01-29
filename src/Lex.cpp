@@ -1,5 +1,3 @@
-#include "Lexer.h"
-
 #ifndef ICARUS_UNITY
 #include "Type/Type.h"
 #endif
@@ -57,15 +55,6 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
   } while (false);
 
 extern std::map<const char *, Type *> PrimitiveTypes;
-
-// Take a filename as a string or a C-string and opens the named file
-Lexer::Lexer(SourceFile *sf) {
-  cursor.source_file = sf;
-  pstr temp_blank;
-  cursor.source_file->lines.push_back(
-      temp_blank); // Blank line since we 1-index.
-  cursor.MoveToNextLine();
-}
 
 NNT NextWord(Cursor &cursor) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
@@ -137,47 +126,6 @@ NNT NextWord(Cursor &cursor) {
   Cursor loc = cursor;
   loc.offset = starting_offset;
   return NNT(new AST::Identifier(loc, token), Language::expr);
-}
-
-template <u64 Base> u64 ToDigit(char c);
-template <> u64 ToDigit<10>(char c) { return static_cast<u64>(c - '0'); }
-template <> u64 ToDigit<8>(char c) { return static_cast<u64>(c - '0'); }
-template <> u64 ToDigit<2>(char c) { return static_cast<u64>(c - '0'); }
-template <> u64 ToDigit<16>(char c) {
-  if ('a' <= c && c <= 'f') { return static_cast<u64>(c - 'a' + 10); }
-  if ('A' <= c && c <= 'F') { return static_cast<u64>(c - 'A' + 10); }
-  return static_cast<u64>(c - '0');
-}
-
-template <u64 Base> u64 ParseInt(char *head, char *end) {
-  u64 result = 0;
-  for (; head < end; ++head) {
-    if (*head == '_') { continue; }
-    result *= Base;
-    result += ToDigit<Base>(*head);
-  }
-  return result;
-}
-
-// TODO this is not rounded correctly.
-double ParseDouble(char *head, char *end) {
-  u64 int_part     = 0;
-  double frac_part = 0;
-  for (; head < end; ++head) {
-    if (*head == '_') { continue; }
-    if (*head == '.') { break; }
-    int_part *= 10;
-    int_part += ToDigit<10>(*head);
-  }
-
-  --end; // end variable is set one passed the last character.
-  for (; head < end; --end) {
-    if (*end == '_') { continue; }
-    if (*end == '.') { break; }
-    frac_part += ToDigit<10>(*end);
-    frac_part /= 10;
-  }
-  return static_cast<double>(int_part) + frac_part;
 }
 
 // Precondition: Output parameter points to a value of zero.
@@ -632,7 +580,7 @@ static NNT NextOperator(Cursor &cursor) {
 }
 
 // Get the next token
-NNT Lexer::Next() {
+NNT NextToken(Cursor &cursor) {
 restart:
   // Delegate based on the next character in the file stream
   if (cursor.source_file->ifs.eof()) {

@@ -312,6 +312,21 @@ inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
   return ((ptr - 1) | (alignment - 1)) + 1;
 }
 
+struct NNT {
+  NNT() = default;
+  AST::Node *node              = nullptr;
+  Language::NodeType node_type = Language::bof;
+  NNT(AST::Node *n, Language::NodeType nt) : node(n), node_type(nt) {}
+  static NNT Invalid() {
+    // Name of this function is clearer than just using default constructor
+    return NNT();
+  }
+};
+inline bool operator==(NNT lhs, NNT rhs) {
+  return lhs.node == rhs.node && lhs.node_type == rhs.node_type;
+}
+inline bool operator!=(NNT lhs, NNT rhs) { return (lhs == rhs); }
+
 #include "IR/IR.h"
 #include "AST/AST.h"
 

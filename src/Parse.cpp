@@ -1,9 +1,10 @@
 #ifndef ICARUS_UNITY
-#include "Lexer.h"
 #include "Rule.h"
 #endif
 
 #include "GrammarRules.h"
+
+extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
 
 struct ParseState {
   std::vector<Language::NodeType> node_type_stack_;
@@ -38,10 +39,10 @@ static void Debug(ParseState *ps) {
   fgetc(stdin);
 }
 
-static void Shift(ParseState *ps, Lexer *l) {
+static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
   ps->node_stack_.push_back(ps->lookahead_.node);
-  ps->lookahead_ = l->Next();
+  ps->lookahead_ = NextToken(*c);
 }
 
 static bool ShouldShift(ParseState *ps) {
@@ -158,19 +159,24 @@ static bool Reduce(ParseState *ps) {
 void Parse(SourceFile *source) {
   // Start the lookahead with a bof token. This is a simple way to ensure proper
   // initialization, because the newline will essentially be ignored.
-  Lexer lexer(source);
-  ParseState state(lexer.cursor);
+  Cursor cursor;
+  cursor.source_file = source;
+  pstr temp_blank; // Blank line since we 1-index.
+  cursor.source_file->lines.push_back(temp_blank);
+  cursor.MoveToNextLine();
+
+  ParseState state(cursor);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
   // bof will not hurt us. The benefit of shifting is that we have now  enforced
   // the invariant that the stack is never empty. This means we do not need to
   // check for an empty stack in the should_shift method.
-  Shift(&state, &lexer);
+  Shift(&state, &cursor);
 
   while (state.lookahead_.node_type != Language::eof) {
     assert(state.node_type_stack_.size() == state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (ShouldShift(&state) || !Reduce(&state)) { Shift(&state, &lexer); }
+    if (ShouldShift(&state) || !Reduce(&state)) { Shift(&state, &cursor); }
 
     if (debug::parser) { Debug(&state); }
   }
@@ -183,7 +189,7 @@ void Parse(SourceFile *source) {
   }
 
   // Shift EOF
-  Shift(&state, &lexer); // Shift on the EOF token
+  Shift(&state, &cursor); // Shift on the EOF token
   assert(state.get_type<1>() == Language::eof);
 
   // Reduce what you can again
