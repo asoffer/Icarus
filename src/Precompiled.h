@@ -91,11 +91,17 @@ using NPtrVec = std::vector<AST::Node *>;
 
 struct SourceFile {
   SourceFile(const std::string &file_name = "")
-      : name(file_name), ast(nullptr) {}
+      : name(file_name), ast(nullptr), ifs(name, std::ifstream::in) {}
+  ~SourceFile() { ifs.close(); }
+
   std::string name;
   std::vector<pstr> lines;
   AST::Statements *ast;
+  std::ifstream ifs;
 };
+
+struct Cursor;
+#include "ErrorLog.h"
 
 struct Cursor {
   Cursor() : offset(0), line_num(0), source_file(nullptr) {}
@@ -109,9 +115,52 @@ struct Cursor {
 
   // Get the character that the cursor is currently pointing to
   char &operator*(void) const { return *(line.ptr + offset); }
-};
 
-#include "ErrorLog.h"
+  void MoveToNextLine() {
+    assert(source_file);
+    assert(!source_file->ifs.eof());
+    std::string temp;
+    std::getline(source_file->ifs, temp);
+
+    // Check for null characters in line
+    size_t line_length = temp.size();
+    for (size_t i = 0; i < line_length; ++i) {
+      if (temp[i] == '\0') {
+        temp[i] = ' ';
+        ErrorLog::NullCharInSrc(*this);
+      } else if (temp[i] < (char)9 ||
+                 ((char)13 < temp[i] && temp[i] < (char)32) ||
+                 temp[i] == (char)127) { // Non-graphic characters
+        temp[i] = ' ';
+        ErrorLog::NonGraphicCharInSrc(*this);
+      }
+    }
+
+    offset = 0;
+    line   = pstr(temp.c_str());
+
+    ++line_num;
+    source_file->lines.push_back(line);
+  }
+
+  void SkipToEndOfLine() {
+    while (**this != '\0') { ++offset; }
+  }
+
+  void BackUp() {
+    // You can't back up to a previous line.
+    assert(offset > 0);
+    --offset;
+  }
+
+  void Increment() {
+    if (**this != '\0') {
+      ++offset;
+    } else {
+      MoveToNextLine();
+    }
+  }
+};
 
 namespace IR {
 struct Block;

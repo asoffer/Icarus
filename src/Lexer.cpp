@@ -21,10 +21,6 @@ static inline bool IsAlphaOrUnderscore(char c) {
 static inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
-// static inline bool IsNewline(char c) { return (char)10 <= c && c <= (char)13; }
-static inline bool IsNonGraphic(char c) {
-  return c < (char)9 || ((char)13 < c && c < (char)32) || c == (char)127;
-}
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
   auto term_ptr           = new AST::Terminal;                                 \
@@ -46,91 +42,19 @@ extern std::map<const char *, Type *> PrimitiveTypes;
 // Take a filename as a string or a C-string and opens the named file
 Lexer::Lexer(SourceFile *sf) {
   cursor.source_file = sf;
-  ifs = std::ifstream(sf->name, std::ifstream::in);
   pstr temp_blank;
-  sf->lines.push_back(temp_blank); // Blank line since we 1-index.
-
-  MoveCursorToNextLine();
+  cursor.source_file->lines.push_back(
+      temp_blank); // Blank line since we 1-index.
+  cursor.MoveToNextLine();
 }
 
-Lexer::~Lexer() { ifs.close(); }
-
-// Copy in the next line of text from the file, and scrub away non-graphic
-// characters (replacing them with ' '). We leave characters in the range 32-126
-// as well as 9-13.
-void Lexer::MoveCursorToNextLine() {
-  assert(!ifs.eof());
-  std::string temp;
-  std::getline(ifs, temp);
-
-  // Check for null characters in line
-  size_t line_length = temp.size();
-  for (size_t i = 0; i < line_length; ++i) {
-    if (temp[i] == '\0') {
-      temp[i] = ' ';
-      ErrorLog::NullCharInSrc(cursor);
-    } else if (IsNonGraphic(temp[i])) {
-      temp[i] = ' ';
-      ErrorLog::NonGraphicCharInSrc(cursor);
-    }
-  }
-
-  cursor.offset = 0;
-  cursor.line   = pstr(temp.c_str());
-
-  ++cursor.line_num;
-  cursor.source_file->lines.push_back(cursor.line);
-}
-
-void Lexer::IncrementCursor() {
-  if (*cursor != '\0') {
-    ++cursor.offset;
-  } else {
-    MoveCursorToNextLine();
-  }
-}
-
-void Lexer::BackUpCursor() {
-  // You can't back up to a previous line.
-  assert(cursor.offset > 0);
-  --cursor.offset;
-}
-
-void Lexer::SkipToEndOfLine() {
-  while (*cursor != '\0') { ++cursor.offset; }
-}
-
-// Get the next token
-NNT Lexer::Next() {
-restart:
-  // Delegate based on the next character in the file stream
-  if (ifs.eof()) {
-    RETURN_NNT("", eof, 0);
-
-  } else if (IsAlphaOrUnderscore(*cursor)) {
-    return NextWord();
-
-  } else if (IsDigit(*cursor)) {
-    return NextNumber();
-  }
-
-  switch (*cursor) {
-  case '\t':
-  case ' ': IncrementCursor(); goto restart; // Explicit TCO
-  case '\0': IncrementCursor(); RETURN_NNT("", newline, 0);
-  default: return NextOperator();
-  }
-}
-
-NNT Lexer::NextWord() {
+NNT NextWord(Cursor &cursor) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
 
   auto starting_offset = cursor.offset;
 
-  do {
-    IncrementCursor();
-  } while (IsAlphaNumericOrUnderscore(*cursor));
+  do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
   char old_char     = *cursor;
   *cursor           = '\0';
@@ -173,21 +97,21 @@ NNT Lexer::NextWord() {
 
   auto token_cstr = token.c_str();
 
-  CASE_RETURN_NNT("in",       op_b,          2)
-  CASE_RETURN_NNT("print",    op_l,          5)
-  CASE_RETURN_NNT("import",   op_l,          6)
-  CASE_RETURN_NNT("free",     op_l,          4)
-  CASE_RETURN_NNT("while",    kw_expr_block, 5)
-  CASE_RETURN_NNT("for",      kw_expr_block, 3)
-  CASE_RETURN_NNT("if",       kw_if,         2)
-  CASE_RETURN_NNT("case",     kw_block,      4)
-  CASE_RETURN_NNT("enum",     kw_block,      4)
-  CASE_RETURN_NNT("struct",   kw_struct,     6)
-  CASE_RETURN_NNT("return",   op_lt,         6)
-  CASE_RETURN_NNT("continue", op_lt,         8)
-  CASE_RETURN_NNT("break",    op_lt,         5)
-  CASE_RETURN_NNT("repeat",   op_lt,         6)
-  CASE_RETURN_NNT("restart",  op_lt,         7)
+  CASE_RETURN_NNT("in", op_b, 2)
+  CASE_RETURN_NNT("print", op_l, 5)
+  CASE_RETURN_NNT("import", op_l, 6)
+  CASE_RETURN_NNT("free", op_l, 4)
+  CASE_RETURN_NNT("while", kw_expr_block, 5)
+  CASE_RETURN_NNT("for", kw_expr_block, 3)
+  CASE_RETURN_NNT("if", kw_if, 2)
+  CASE_RETURN_NNT("case", kw_block, 4)
+  CASE_RETURN_NNT("enum", kw_block, 4)
+  CASE_RETURN_NNT("struct", kw_struct, 6)
+  CASE_RETURN_NNT("return", op_lt, 6)
+  CASE_RETURN_NNT("continue", op_lt, 8)
+  CASE_RETURN_NNT("break", op_lt, 5)
+  CASE_RETURN_NNT("repeat", op_lt, 6)
+  CASE_RETURN_NNT("restart", op_lt, 7)
 
 #undef CASE_RETURN_NNT
 
@@ -208,7 +132,7 @@ template <> u64 ToDigit<16>(char c) {
 
 template <u64 Base> u64 ParseInt(char *head, char *end) {
   u64 result = 0;
-  for(; head < end; ++head) {
+  for (; head < end; ++head) {
     if (*head == '_') { continue; }
     result *= Base;
     result += ToDigit<Base>(*head);
@@ -237,32 +161,32 @@ double ParseDouble(char *head, char *end) {
   return static_cast<double>(int_part) + frac_part;
 }
 
-NNT Lexer::NextNumber() {
+NNT NextNumber(Cursor& cursor) {
   auto starting_offset = cursor.offset;
 
-  do { IncrementCursor(); } while (IsDigitOrUnderscore(*cursor));
+  do { cursor.Increment(); } while (IsDigitOrUnderscore(*cursor));
 
   switch (*cursor) {
   case 'u':
   case 'U': {
     u64 val = ParseInt<10>(cursor.line.ptr + starting_offset,
                            cursor.line.ptr + cursor.offset);
-    IncrementCursor();
+    cursor.Increment();
     RETURN_TERMINAL(Uint, Uint, IR::Value::Uint(val));
   } break;
 
   case '.': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '.') {
-      BackUpCursor();
+      cursor.BackUp();
       i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
                                               cursor.line.ptr + cursor.offset));
       RETURN_TERMINAL(Int, Int, IR::Value::Int(val));
     }
 
     // Just one dot. Should be interpretted as a decimal point.
-    IncrementCursor();
-    while (IsDigitOrUnderscore(*cursor)) { IncrementCursor(); }
+    cursor.Increment();
+    while (IsDigitOrUnderscore(*cursor)) { cursor.Increment(); }
     double val = ParseDouble(cursor.line.ptr + starting_offset,
                              cursor.line.ptr + cursor.offset);
     RETURN_TERMINAL(Real, Real, IR::Value::Real(val));
@@ -271,29 +195,52 @@ NNT Lexer::NextNumber() {
   default: {
     i64 val = static_cast<i64>(ParseInt<10>(cursor.line.ptr + starting_offset,
                                             cursor.line.ptr + cursor.offset));
-    RETURN_TERMINAL(Int, Int, IR::Value::Int(val));  } break;
+    RETURN_TERMINAL(Int, Int, IR::Value::Int(val));
+  } break;
+  }
+}
+
+// Get the next token
+NNT Lexer::Next() {
+restart:
+  // Delegate based on the next character in the file stream
+  if ( cursor.source_file->ifs.eof()) {
+    RETURN_NNT("", eof, 0);
+
+  } else if (IsAlphaOrUnderscore(*cursor)) {
+    return NextWord(cursor);
+
+  } else if (IsDigit(*cursor)) {
+    return NextNumber(cursor);
+  }
+
+  switch (*cursor) {
+  case '\t':
+  case ' ': cursor.Increment(); goto restart; // Explicit TCO
+  case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
+  default: return NextOperator();
   }
 }
 
 NNT Lexer::NextOperator() {
   switch (*cursor) {
-  case '`': IncrementCursor(); RETURN_NNT("`", op_bl, 1);
-  case '@': IncrementCursor(); RETURN_NNT("@", op_l, 1);
-  case ',': IncrementCursor(); RETURN_NNT(",", comma, 1);
-  case ';': IncrementCursor(); RETURN_NNT(";", semicolon, 1);
-  case '(': IncrementCursor(); RETURN_NNT("(", l_paren, 1);
-  case ')': IncrementCursor(); RETURN_NNT(")", r_paren, 1);
-  case '[': IncrementCursor(); RETURN_NNT("[", l_bracket, 1);
-  case ']': IncrementCursor(); RETURN_NNT("]", r_bracket, 1);
-  case '{': IncrementCursor(); RETURN_NNT("{", l_brace, 1);
-  case '}': IncrementCursor(); RETURN_NNT("}", r_brace, 1);
-  case '$': IncrementCursor(); RETURN_NNT("$", op_l, 1);
+  case '`': cursor.Increment(); RETURN_NNT("`", op_bl, 1);
+  case '@': cursor.Increment(); RETURN_NNT("@", op_l, 1);
+  case ',': cursor.Increment(); RETURN_NNT(",", comma, 1);
+  case ';': cursor.Increment(); RETURN_NNT(";", semicolon, 1);
+  case '(': cursor.Increment(); RETURN_NNT("(", l_paren, 1);
+  case ')': cursor.Increment(); RETURN_NNT(")", r_paren, 1);
+  case '[': cursor.Increment(); RETURN_NNT("[", l_bracket, 1);
+  case ']': cursor.Increment(); RETURN_NNT("]", r_bracket, 1);
+  case '{': cursor.Increment(); RETURN_NNT("{", l_brace, 1);
+  case '}': cursor.Increment(); RETURN_NNT("}", r_brace, 1);
+  case '$': cursor.Increment(); RETURN_NNT("$", op_l, 1);
 
   case '.': {
-    Cursor cursor_copy  = cursor;
+    Cursor cursor_copy = cursor;
 
     // Note: safe because we know we have a null-terminator
-    while (*cursor == '.') { IncrementCursor(); }
+    while (*cursor == '.') { cursor.Increment(); }
     size_t num_dots = cursor.offset - cursor_copy.offset;
 
     if (num_dots == 1) {
@@ -306,27 +253,27 @@ NNT Lexer::NextOperator() {
 
   case '\\': {
     Cursor cursor_copy = cursor;
-    size_t dist = 1;
+    size_t dist        = 1;
 
-    IncrementCursor();
+    cursor.Increment();
     ++dist;
-    switch(*cursor) {
+    switch (*cursor) {
     case '\\':
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("", newline, 0);
       break;
     case '\0':
       // Ignore the following newline
-      IncrementCursor();
+      cursor.Increment();
       return Next();
     case ' ':
     case '\t':
       while (IsWhitespace(*cursor)) {
-        IncrementCursor();
+        cursor.Increment();
         ++dist;
       }
       if (*cursor == '\0') {
-        IncrementCursor();
+        cursor.Increment();
         return Next();
       }
 
@@ -338,7 +285,7 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '#': {
-    IncrementCursor();
+    cursor.Increment();
     Cursor cursor_copy = cursor;
 
     if (!IsAlpha(*cursor)) {
@@ -346,7 +293,7 @@ NNT Lexer::NextOperator() {
       return Next();
     }
 
-    do { IncrementCursor(); } while (IsAlphaNumericOrUnderscore(*cursor));
+    do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
     if (cursor.offset - cursor_copy.offset == 0) {
       ErrorLog::InvalidHashtag(cursor_copy);
@@ -356,26 +303,26 @@ NNT Lexer::NextOperator() {
     *cursor             = '\0';
     const char *tag_ref = cursor.line.ptr + cursor_copy.offset;
     size_t tag_len      = strlen(tag_ref);
-    char *tag           = new char[tag_len + 1];
+    char *tag = new char[tag_len + 1];
     strcpy(tag, tag_ref);
-    *cursor             = old_char;
+    *cursor = old_char;
 
     RETURN_NNT(tag, hashtag, tag_len + 1);
   } break;
 
   case '+':
   case '%':
-  case '<': 
-  case '>': 
+  case '<':
+  case '>':
   case '|':
   case '^': {
     char first_char = *cursor;
-    IncrementCursor();
+    cursor.Increment();
 
     char *token = new char[3];
     token[0] = first_char;
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       token[1] = '=';
     } else {
       token[1] = '\0';
@@ -386,13 +333,13 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '*':
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '/') {
-      IncrementCursor();
+      cursor.Increment();
       if (*cursor == '/') {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
-        BackUpCursor();
+        cursor.BackUp();
         RETURN_NNT("*", op_b, 1);
       } else {
         Cursor cursor_copy = cursor;
@@ -401,31 +348,31 @@ NNT Lexer::NextOperator() {
         return Next();
       }
     } else if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("*=", op_b, 2);
     } else {
       RETURN_NNT("*", op_b, 1);
     }
 
   case '&': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("&=", op_b, 2);
     } else {
       RETURN_NNT("&", op_bl, 1);
     }
   } break;
 
-  case ':':  {
-    IncrementCursor();
+  case ':': {
+    cursor.Increment();
 
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT(":=", op_b, 2);
 
     } else if (*cursor == '>') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT(":>", op_b, 2);
 
     } else {
@@ -434,9 +381,9 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '!': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("!=", op_b, 2);
     } else {
       RETURN_NNT("!", op_l, 1);
@@ -444,19 +391,19 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '-': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("-=", op_b, 2);
 
     } else if (*cursor == '>') {
-      IncrementCursor();
+      cursor.Increment();
       auto nptr = new AST::TokenNode(cursor, "->");
       nptr->op = Language::Operator::Arrow;
       return NNT(nptr, Language::fn_arrow);
 
     } else if (*cursor == '-') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_TERMINAL(Hole, Unknown, IR::Value::None());
 
     } else {
@@ -465,13 +412,13 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '=': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("==", op_b, 2);
 
     } else if (*cursor == '>') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("=>", op_b, 2);
 
     } else {
@@ -480,25 +427,25 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '/': {
-    IncrementCursor();
+    cursor.Increment();
     if (*cursor == '/') {
       // Ignore comments altogether
-      SkipToEndOfLine();
+      cursor.SkipToEndOfLine();
       return Next();
 
     } else if (*cursor == '=') {
-      IncrementCursor();
+      cursor.Increment();
       RETURN_NNT("/=", op_b, 2);
 
     } else if (*cursor == '*') {
-      IncrementCursor();
+      cursor.Increment();
       char back_one = *cursor;
-      IncrementCursor();
+      cursor.Increment();
 
       size_t comment_layer = 1;
 
       while (comment_layer != 0) {
-        if (ifs.eof()) {
+        if (cursor.source_file->ifs.eof()) {
           ErrorLog::RunawayMultilineComment();
           RETURN_NNT("", eof, 0);
 
@@ -510,7 +457,7 @@ NNT Lexer::NextOperator() {
         }
 
         back_one = *cursor;
-        IncrementCursor();
+        cursor.Increment();
       }
 
       // Ignore comments altogether
@@ -523,13 +470,13 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '"': {
-    IncrementCursor();
+    cursor.Increment();
 
     std::string str_lit = "";
 
     while (*cursor != '"' && *cursor != '\0') {
       if (*cursor == '\\') {
-        IncrementCursor();
+        cursor.Increment();
         switch (*cursor) {
         case '\'': {
           str_lit += '\'';
@@ -539,14 +486,14 @@ NNT Lexer::NextOperator() {
         } break;
 
         case '\\': str_lit += '\\'; break;
-        case '"':  str_lit += '"';  break;
-        case 'a':  str_lit += '\a'; break;
-        case 'b':  str_lit += '\b'; break;
-        case 'f':  str_lit += '\f'; break;
-        case 'n':  str_lit += '\n'; break;
-        case 'r':  str_lit += '\r'; break;
-        case 't':  str_lit += '\t'; break;
-        case 'v':  str_lit += '\v'; break;
+        case '"': str_lit += '"'; break;
+        case 'a': str_lit += '\a'; break;
+        case 'b': str_lit += '\b'; break;
+        case 'f': str_lit += '\f'; break;
+        case 'n': str_lit += '\n'; break;
+        case 'r': str_lit += '\r'; break;
+        case 't': str_lit += '\t'; break;
+        case 'v': str_lit += '\v'; break;
 
         default: {
           Cursor cursor_copy = cursor;
@@ -560,13 +507,13 @@ NNT Lexer::NextOperator() {
         str_lit += *cursor;
       }
 
-      IncrementCursor();
+      cursor.Increment();
     }
 
     if (*cursor == '\0') {
       ErrorLog::RunawayStringLit(cursor);
     } else {
-      IncrementCursor();
+      cursor.Increment();
     }
 
     // Not leaked. It's owned by a terminal which is persistent.
@@ -577,7 +524,7 @@ NNT Lexer::NextOperator() {
   } break;
 
   case '\'': {
-    IncrementCursor();
+    cursor.Increment();
     char result;
 
     switch (*cursor) {
@@ -592,10 +539,10 @@ NNT Lexer::NextOperator() {
       RETURN_TERMINAL(Char, Char, IR::Value::Char('\0'));
     }
     case '\\': {
-      IncrementCursor();
+      cursor.Increment();
       switch (*cursor) {
       case '\"': {
-        result = '"';
+        result             = '"';
         Cursor cursor_copy = cursor;
         --cursor_copy.offset;
         ErrorLog::EscapedDoubleQuoteInCharLit(cursor_copy);
@@ -620,10 +567,10 @@ NNT Lexer::NextOperator() {
     default: { result = *cursor; } break;
     }
 
-    IncrementCursor();
+    cursor.Increment();
 
     if (*cursor == '\'') {
-      IncrementCursor();
+      cursor.Increment();
     } else {
       ErrorLog::RunawayCharLit(cursor);
     }
@@ -633,12 +580,12 @@ NNT Lexer::NextOperator() {
 
   case '?':
     ErrorLog::InvalidCharQuestionMark(cursor);
-    IncrementCursor();
+    cursor.Increment();
     return Next();
 
   case '~':
     ErrorLog::InvalidCharTilde(cursor);
-    IncrementCursor();
+    cursor.Increment();
     return Next();
 
   case '_': UNREACHABLE;

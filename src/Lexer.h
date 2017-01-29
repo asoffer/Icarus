@@ -17,21 +17,12 @@ public:
 
   Lexer(const Lexer &) = delete;
   Lexer() = delete;
-  ~Lexer();
 
   NNT Next(); // Reads the next token from the lexer into a node
 
   Cursor cursor;
-  std::ifstream ifs;
 
 private:
-  void IncrementCursor();
-  void BackUpCursor();
-  void MoveCursorToNextLine();
-  void SkipToEndOfLine();
-
-  NNT NextWord();
-  NNT NextNumber();
   NNT NextOperator();
 };
 
