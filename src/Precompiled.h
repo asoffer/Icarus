@@ -143,6 +143,13 @@ struct Cursor {
     source_file->lines.push_back(line);
   }
 
+  static Cursor Behind(const Cursor &cursor, u64 dist){
+    assert(cursor.offset > dist);
+      Cursor result = cursor;
+      result.offset -= dist;
+      return result;
+  }
+
   void SkipToEndOfLine() {
     while (**this != '\0') { ++offset; }
   }
@@ -268,7 +275,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value);
 namespace Language {
 extern size_t precedence(Operator op);
 
-enum NodeType : unsigned int {
+enum NodeType : u64 {
   bof           = 1u << 0,
   eof           = 1u << 1,
   newline       = 1u << 3,

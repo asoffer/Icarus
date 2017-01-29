@@ -209,6 +209,53 @@ static NNT NextZeroInitiatedNumber(Cursor &cursor) {
   }
 }
 
+static NNT NextStringLiteral(Cursor &cursor) {
+  cursor.Increment();
+
+  // TODO we assign to this repeatedly which is untenable perf-wise in the long-run.
+  std::string str_lit = "";
+
+  for (; *cursor != '"' && *cursor != '\0'; cursor.Increment()) {
+    if (*cursor != '\\') {
+      str_lit += *cursor;
+      continue;
+    }
+
+    cursor.Increment(); // Iterate past '\\'
+    switch (*cursor) {
+    case '\\': str_lit += '\\'; break;
+    case '"': str_lit += '"'; break;
+    case 'a': str_lit += '\a'; break;
+    case 'b': str_lit += '\b'; break;
+    case 'f': str_lit += '\f'; break;
+    case 'n': str_lit += '\n'; break;
+    case 'r': str_lit += '\r'; break;
+    case 't': str_lit += '\t'; break;
+    case 'v': str_lit += '\v'; break;
+    default:
+      if (*cursor == '\'') {
+        ErrorLog::EscapedSingleQuoteInStringLit(Cursor::Behind(cursor, 1));
+      } else {
+        ErrorLog::InvalidEscapeCharInStringLit(Cursor::Behind(cursor, 1));
+      }
+      str_lit += *cursor;
+      break;
+    }
+  }
+
+  if (*cursor == '\0') {
+    ErrorLog::RunawayStringLit(cursor);
+  } else {
+    cursor.Increment();
+  }
+
+  // Not leaked. It's owned by a terminal which is persistent.
+  char *cstr = new char[str_lit.size() + 2];
+  strcpy(cstr + 1, str_lit.c_str());
+  cstr[0] = '\1';
+  RETURN_TERMINAL(StringLiteral, String, IR::Value(cstr));
+}
+
 static NNT NextOperator(Cursor &cursor) {
   switch (*cursor) {
   case '`': cursor.Increment(); RETURN_NNT("`", op_bl, 1);
@@ -230,6 +277,10 @@ static NNT NextOperator(Cursor &cursor) {
     size_t num_dots = cursor.offset - cursor_copy.offset;
 
     if (num_dots == 1) {
+      if (IsDigit(*cursor)) {
+        cursor.BackUp();
+        return NextNumberInBase<10>(cursor);
+      }
       RETURN_NNT(".", op_b, 1);
     } else {
       if (num_dots > 2) { ErrorLog::TooManyDots(cursor_copy, num_dots); }
@@ -249,7 +300,7 @@ static NNT NextOperator(Cursor &cursor) {
       RETURN_NNT("", newline, 0);
       break;
     case '\0':
-      // Ignore the following newline
+      // Ignore the following newline and retry
       cursor.Increment();
       return NNT::Invalid();
     case ' ':
@@ -455,60 +506,6 @@ static NNT NextOperator(Cursor &cursor) {
 
   } break;
 
-  case '"': {
-    cursor.Increment();
-
-    std::string str_lit = "";
-
-    while (*cursor != '"' && *cursor != '\0') {
-      if (*cursor == '\\') {
-        cursor.Increment();
-        switch (*cursor) {
-        case '\'': {
-          str_lit += '\'';
-          Cursor cursor_copy = cursor;
-          --cursor_copy.offset;
-          ErrorLog::EscapedSingleQuoteInStringLit(cursor_copy);
-        } break;
-
-        case '\\': str_lit += '\\'; break;
-        case '"': str_lit += '"'; break;
-        case 'a': str_lit += '\a'; break;
-        case 'b': str_lit += '\b'; break;
-        case 'f': str_lit += '\f'; break;
-        case 'n': str_lit += '\n'; break;
-        case 'r': str_lit += '\r'; break;
-        case 't': str_lit += '\t'; break;
-        case 'v': str_lit += '\v'; break;
-
-        default: {
-          Cursor cursor_copy = cursor;
-          --cursor_copy.offset;
-          ErrorLog::InvalidEscapeCharInStringLit(cursor_copy);
-
-          str_lit += *cursor;
-        } break;
-        }
-      } else {
-        str_lit += *cursor;
-      }
-
-      cursor.Increment();
-    }
-
-    if (*cursor == '\0') {
-      ErrorLog::RunawayStringLit(cursor);
-    } else {
-      cursor.Increment();
-    }
-
-    // Not leaked. It's owned by a terminal which is persistent.
-    char *cstr = new char[str_lit.size() + 2];
-    strcpy(cstr + 1, str_lit.c_str());
-    cstr[0] = '\1';
-    RETURN_TERMINAL(StringLiteral, String, IR::Value(cstr));
-  } break;
-
   case '\'': {
     cursor.Increment();
     char result;
@@ -589,13 +586,13 @@ restart:
     return NextWord(cursor);
   } else if (IsNonZeroDigit(*cursor)) {
     return NextNumberInBase<10>(cursor);
-  } else if (*cursor == '0') {
-    return NextZeroInitiatedNumber(cursor);
   }
 
   switch (*cursor) {
+  case '0': return NextZeroInitiatedNumber(cursor);
+  case '"': return NextStringLiteral(cursor);
   case '\t':
-  case ' ': cursor.Increment(); goto restart; // Explicit TCO
+  case ' ': cursor.Increment(); goto restart; // Skip whitespace
   case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
   default: {
     auto nnt = NextOperator(cursor);
