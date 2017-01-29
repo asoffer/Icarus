@@ -6,6 +6,7 @@
 
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
+static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
 static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
 static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
@@ -23,19 +24,21 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
 }
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
-  auto term_ptr           = new AST::Terminal;                                 \
-  term_ptr->loc           = cursor;                                            \
-  term_ptr->terminal_type = Language::Terminal::term_type;                     \
-  term_ptr->type          = ty;                                                \
-  term_ptr->value = val;                                                       \
-  return NNT(term_ptr, Language::expr);
+  do {                                                                         \
+    auto term_ptr           = new AST::Terminal;                               \
+    term_ptr->loc           = cursor;                                          \
+    term_ptr->terminal_type = Language::Terminal::term_type;                   \
+    term_ptr->type          = ty;                                              \
+    term_ptr->value = val;                                                     \
+    return NNT(term_ptr, Language::expr);                                      \
+  } while (false);
 
 #define RETURN_NNT(tk, nt, tk_len)                                             \
-  {                                                                            \
+  do {                                                                         \
     Cursor loc = cursor;                                                       \
     loc.offset -= tk_len;                                                      \
     return NNT(new AST::TokenNode(loc, tk), Language::nt);                     \
-  }
+  } while (false);
 
 extern std::map<const char *, Type *> PrimitiveTypes;
 
@@ -161,7 +164,7 @@ double ParseDouble(char *head, char *end) {
   return static_cast<double>(int_part) + frac_part;
 }
 
-NNT NextNumber(Cursor& cursor) {
+static NNT NextNumberInDecimal(Cursor& cursor) {
   auto starting_offset = cursor.offset;
 
   do { cursor.Increment(); } while (IsDigitOrUnderscore(*cursor));
@@ -200,18 +203,30 @@ NNT NextNumber(Cursor& cursor) {
   }
 }
 
+static NNT NextZeroInitiatedNumber(Cursor &cursor) {
+  cursor.Increment();
+
+  switch (*cursor) {
+  case 'b': cursor.Increment(); NOT_YET;
+  case 'o': cursor.Increment(); NOT_YET;
+  case 'd': cursor.Increment(); NOT_YET;
+  case 'x': cursor.Increment(); NOT_YET;
+  default: cursor.BackUp(); return NextNumberInDecimal(cursor);
+  }
+}
+
 // Get the next token
 NNT Lexer::Next() {
 restart:
   // Delegate based on the next character in the file stream
   if ( cursor.source_file->ifs.eof()) {
     RETURN_NNT("", eof, 0);
-
   } else if (IsAlphaOrUnderscore(*cursor)) {
     return NextWord(cursor);
-
-  } else if (IsDigit(*cursor)) {
-    return NextNumber(cursor);
+  } else if (IsNonZeroDigit(*cursor)) {
+    return NextNumberInDecimal(cursor);
+  } else if (*cursor == '0') {
+    return NextZeroInitiatedNumber(cursor);
   }
 
   switch (*cursor) {
