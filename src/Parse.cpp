@@ -168,9 +168,9 @@ void Parse(SourceFile *source) {
   ParseState state(cursor);
 
   // Any valid program will clean this up eventually. Therefore, shifting on the
-  // bof will not hurt us. The benefit of shifting is that we have now  enforced
+  // bof will not hurt us. The benefit of shifting is that we have now enforced
   // the invariant that the stack is never empty. This means we do not need to
-  // check for an empty stack in the should_shift method.
+  // check for an empty stack in the ShouldShift method.
   Shift(&state, &cursor);
 
   while (state.lookahead_.node_type != Language::eof) {

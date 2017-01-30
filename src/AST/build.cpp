@@ -76,6 +76,10 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
   return new DummyTypeExpr(nodes[0]->loc, struct_type);
 }
 
+static Node *BuildScopeLiteral(NPtrVec &&nodes) {
+  return nullptr; // TODO
+}
+
 static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
   std::vector<Declaration *> params, decls;
   if (nodes[1]->is_declaration()) {
@@ -839,6 +843,9 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
 
   } else if (strcmp(tk, "struct") == 0) {
     return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
+
+  } else if (strcmp(tk, "scope") == 0) {
+    return AST::BuildScopeLiteral(std::forward<NPtrVec&&>(nodes));
   }
 
   UNREACHABLE;

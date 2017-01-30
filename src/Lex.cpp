@@ -45,14 +45,11 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
     term_ptr->type          = ty;                                              \
     term_ptr->value = val;                                                     \
     return NNT(term_ptr, Language::expr);                                      \
-  } while (false);
+  } while (false)
 
 #define RETURN_NNT(tk, nt, tk_len)                                             \
-  do {                                                                         \
-    Cursor loc = cursor;                                                       \
-    loc.offset -= tk_len;                                                      \
-    return NNT(new AST::TokenNode(loc, tk), Language::nt);                     \
-  } while (false);
+  return NNT(new AST::TokenNode(Cursor::Behind(cursor, tk_len), tk),           \
+             Language::nt)
 
 extern std::map<const char *, Type *> PrimitiveTypes;
 
@@ -101,25 +98,28 @@ NNT NextWord(Cursor &cursor) {
   }
 
 #define CASE_RETURN_NNT(str, op, len)                                          \
-  if (strcmp(token_cstr, str) == 0) { RETURN_NNT(str, op, len); }
+  do {                                                                         \
+    if (strcmp(token_cstr, str) == 0) { RETURN_NNT(str, op, len); }            \
+  } while (false)
 
   auto token_cstr = token.c_str();
 
-  CASE_RETURN_NNT("in", op_b, 2)
-  CASE_RETURN_NNT("print", op_l, 5)
-  CASE_RETURN_NNT("import", op_l, 6)
-  CASE_RETURN_NNT("free", op_l, 4)
-  CASE_RETURN_NNT("while", kw_expr_block, 5)
-  CASE_RETURN_NNT("for", kw_expr_block, 3)
-  CASE_RETURN_NNT("if", kw_if, 2)
-  CASE_RETURN_NNT("case", kw_block, 4)
-  CASE_RETURN_NNT("enum", kw_block, 4)
-  CASE_RETURN_NNT("struct", kw_struct, 6)
-  CASE_RETURN_NNT("return", op_lt, 6)
-  CASE_RETURN_NNT("continue", op_lt, 8)
-  CASE_RETURN_NNT("break", op_lt, 5)
-  CASE_RETURN_NNT("repeat", op_lt, 6)
-  CASE_RETURN_NNT("restart", op_lt, 7)
+  CASE_RETURN_NNT("in", op_b, 2);
+  CASE_RETURN_NNT("print", op_l, 5);
+  CASE_RETURN_NNT("import", op_l, 6);
+  CASE_RETURN_NNT("free", op_l, 4);
+  CASE_RETURN_NNT("while", kw_expr_block, 5);
+  CASE_RETURN_NNT("for", kw_expr_block, 3);
+  CASE_RETURN_NNT("if", kw_if, 2);
+  CASE_RETURN_NNT("case", kw_block, 4);
+  CASE_RETURN_NNT("enum", kw_block, 4);
+  CASE_RETURN_NNT("struct", kw_struct, 6);
+  CASE_RETURN_NNT("return", op_lt, 6);
+  CASE_RETURN_NNT("continue", op_lt, 8);
+  CASE_RETURN_NNT("break", op_lt, 5);
+  CASE_RETURN_NNT("repeat", op_lt, 6);
+  CASE_RETURN_NNT("restart", op_lt, 7);
+  CASE_RETURN_NNT("scope", kw_struct, 5);
 
 #undef CASE_RETURN_NNT
 
@@ -566,7 +566,6 @@ NNT NextSlashInitiatedToken(Cursor &cursor) {
   }
 }
 
-// Get the next token
 NNT NextToken(Cursor &cursor) {
 restart:
   // Delegate based on the next character in the file stream
@@ -578,24 +577,19 @@ restart:
     return NextNumberInBase<10>(cursor);
   }
 
+  NNT nnt = NNT::Invalid();
   switch (*cursor) {
-  case '0': return NextZeroInitiatedNumber(cursor);
-  case '`': return NextCharLiteral(cursor);
-  case '"': return NextStringLiteral(cursor);
-  case '/': {
-    auto nnt = NextSlashInitiatedToken(cursor);
-    if (nnt == NNT::Invalid()) { goto restart; }
-    return nnt;
-  }
+  case '0': nnt = NextZeroInitiatedNumber(cursor); break;
+  case '`': nnt = NextCharLiteral(cursor); break;
+  case '"': nnt = NextStringLiteral(cursor); break;
+  case '/': nnt = NextSlashInitiatedToken(cursor); break;
   case '\t':
   case ' ': cursor.Increment(); goto restart; // Skip whitespace
   case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
-  default: {
-    auto nnt = NextOperator(cursor);
-    if (nnt == NNT::Invalid()) { goto restart; }
-    return nnt;
+  default: nnt = NextOperator(cursor); break;
   }
-  }
+  if (nnt == NNT::Invalid()) { goto restart; }
+  return nnt;
 }
 #undef RETURN_NNT
 #undef RETURN_TERMINAL

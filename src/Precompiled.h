@@ -144,7 +144,7 @@ struct Cursor {
   }
 
   static Cursor Behind(const Cursor &cursor, u64 dist){
-    assert(cursor.offset > dist);
+    assert(cursor.offset >= dist);
       Cursor result = cursor;
       result.offset -= dist;
       return result;

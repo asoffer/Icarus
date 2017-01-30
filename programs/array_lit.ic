@@ -5,19 +5,19 @@ main := void -> void {
   
   i := 0
   while i < 5 {
-    print array_lit[i], '\n'
+    print array_lit[i], `\n
     i += 1
   }
   
   double_lit : [20; real]
   print double_lit
   
-  print '\n'
+  print `\n
   x := 3
   y := 2
   a := [[0]]
   print a
   a[0][0] += 1
-  print a, '\n'
-  print x, '\n'
+  print a, `\n
+  print x, `\n
 }

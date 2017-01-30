@@ -9,10 +9,10 @@ main := void -> void {
 
 
   foo: [--; int]
-  print "\nSize of foo = ", foo.size, '\n'
+  print "\nSize of foo = ", foo.size, `\n
 
   r[19] = 1 :> real
-  c[4] = 'x'
+  c[4] = `x
   
   i := 0u
   while i < 5u {
@@ -22,12 +22,12 @@ main := void -> void {
 
   i = 0u
   while i < 20u {
-    print r[i], '\n'
+    print r[i], `\n
     i += 1u
   }
 
   for x in r {
-    print x, ' '
+    print x, `\s
   }
-  print '\n'
+  print `\n
 }

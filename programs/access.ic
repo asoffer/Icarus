@@ -14,9 +14,9 @@ main := void -> void {
   f := make_foo()
   fp := &f
   fpp := &fp
-  print f.n, '\n'
+  print f.n, `\n
   x := fp.n
-  print x, '\n', fpp.n, '\n', fpp.r, '\n', (@fpp).r, '\n'
+  print x, `\n, fpp.n, `\n, fpp.r, `\n, (@fpp).r, `\n
   fppp := &fpp
   fpppp := &fppp
   fppppp := &fpppp
@@ -24,13 +24,13 @@ main := void -> void {
   fppppppp := &fpppppp
   fppppppp.n = -17
   (@fppppppp).r = -34.51
-  print @fppppppp, '\n'
-  print fppppppp.n, '\n'
-  print (@fppppppp).n, '\n'
-  print (@@fppppppp).n, '\n'
-  print (@@@fppppppp).n, '\n'
-  print fppppppp.r, '\n'
-  print (@fppppppp).r, '\n'
-  print (@@fppppppp).r, '\n'
-  print (@@@fppppppp).r, '\n'
+  print @fppppppp, `\n
+  print fppppppp.n, `\n
+  print (@fppppppp).n, `\n
+  print (@@fppppppp).n, `\n
+  print (@@@fppppppp).n, `\n
+  print fppppppp.r, `\n
+  print (@fppppppp).r, `\n
+  print (@@fppppppp).r, `\n
+  print (@@@fppppppp).r, `\n
 }
