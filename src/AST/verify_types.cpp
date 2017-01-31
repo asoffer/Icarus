@@ -627,6 +627,7 @@ void Access::Verify(bool emit_errors) {
 
 void Binop::verify_types() {
   STARTING_CHECK;
+restart:
 
   if (op == Language::Operator::Call && lhs->is_access()) {
     // This has a lot in common with rhs access
@@ -1136,6 +1137,11 @@ void Binop::verify_types() {
 
     if (type != Err) { type = Type_; }
 
+  } break;
+  case Operator::Apply: {
+    std::swap(lhs, rhs);
+    op = Language::Operator::Call;
+    goto restart;
   } break;
   default: UNREACHABLE;
   }

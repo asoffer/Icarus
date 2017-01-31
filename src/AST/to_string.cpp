@@ -107,6 +107,7 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::Dots: ss << "Dots"; break;
     case Language::Operator::In: ss << "In"; break;
     case Language::Operator::Tick: ss << "Tick"; break;
+    case Language::Operator::Apply: ss << "Apply"; break;
     case Language::Operator::Rocket: ss << "Rocket"; break;
     default: assert(false && "Not a binary operator");
     }

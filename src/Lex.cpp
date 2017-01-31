@@ -527,6 +527,7 @@ static NNT NextOperator(Cursor &cursor) {
     ErrorLog::InvalidCharTilde(cursor);
     cursor.Increment();
     return NNT::Invalid();
+  case '\'': cursor.Increment(); RETURN_NNT("'", op_bl, 1);
   case '_': UNREACHABLE;
   default: UNREACHABLE;
   }
