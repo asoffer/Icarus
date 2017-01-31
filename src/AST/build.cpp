@@ -799,6 +799,11 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
   binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
 
+  if (strcmp(tk, "'") == 0) {
+    std::swap(binop_ptr->lhs, binop_ptr->rhs);
+    tk = "(";
+  }
+
 #define LOOKUP_SYMBOL(sym, name)                                               \
   do {                                                                         \
     if (strcmp(tk, sym) == 0) {                                                \
@@ -826,7 +831,6 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   LOOKUP_SYMBOL("%", Mod);
   LOOKUP_SYMBOL("[", Index);
   LOOKUP_SYMBOL("(", Call);
-  LOOKUP_SYMBOL("'", Apply);
 #undef LOOKUP_SYMBOL
 end:
   binop_ptr->precedence = Language::precedence(binop_ptr->op);

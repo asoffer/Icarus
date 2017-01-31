@@ -628,11 +628,6 @@ void Access::Verify(bool emit_errors) {
 void Binop::verify_types() {
   STARTING_CHECK;
 
-  if (op == Language::Operator::Apply) {
-    std::swap(lhs, rhs);
-    op = Language::Operator::Call;
-  }
-
   if (op == Language::Operator::Call) {
     std::string err_msg; // TODO for now we mostly ignore this.
     std::map<TypeVariable *, Type *> matches;
