@@ -627,59 +627,10 @@ void Access::Verify(bool emit_errors) {
 
 void Binop::verify_types() {
   STARTING_CHECK;
-restart:
 
-  if (op == Language::Operator::Call && lhs->is_access()) {
-    // This has a lot in common with rhs access
-    auto lhs_access = (Access *)lhs;
-    lhs_access->Verify(false);
-
-    // If the field doesn't exist, it's meant to be UFCS. Modify the AST to make
-    // that correct.
-    if (lhs_access->type == Err && lhs_access->operand->type != Err) {
-
-      // TODO log Error in this case
-      auto ufcs_func =
-          scope_->IdentifierBeingReferencedOrNull(lhs_access->member_name);
-      assert(ufcs_func);
-
-      // TODO What if it's indirected >= 2 times? This only deals with 0 or 1
-      // indirections
-      Expression *ufcs_ptr;
-      if (lhs_access->operand->type->is_pointer()) {
-        ufcs_ptr = lhs_access->operand;
-      } else {
-        auto unop     = new Unop;
-        unop->op      = Language::Operator::And;
-        unop->operand = lhs_access->operand;
-        unop->type    = Ptr(unop->operand->type);
-        ufcs_ptr      = unop;
-        ufcs_ptr->loc = lhs_access->loc;
-      }
-
-      ChainOp *new_rhs;
-      if (!rhs) {
-        rhs = ufcs_ptr;
-      } else {
-        if (rhs->is_comma_list()) {
-          auto rhs_chainop = (ChainOp *)rhs;
-          rhs_chainop->ops.push_back(Language::Operator::Comma);
-          rhs_chainop->exprs.insert(rhs_chainop->exprs.begin(), ufcs_ptr);
-          new_rhs = rhs_chainop;
-        } else {
-          // TODO line number?
-          new_rhs         = new ChainOp;
-          new_rhs->scope_ = scope_;
-          new_rhs->ops.push_back(Language::Operator::Comma);
-          new_rhs->exprs.push_back(ufcs_ptr);
-          new_rhs->exprs.push_back(rhs); // Pointer to rhs?
-        }
-
-        rhs = new_rhs;
-      }
-      lhs         = new Identifier(ufcs_func->loc, lhs_access->member_name);
-      lhs->scope_ = scope_;
-    }
+  if (op == Language::Operator::Apply) {
+    std::swap(lhs, rhs);
+    op = Language::Operator::Call;
   }
 
   if (op == Language::Operator::Call) {
@@ -1137,11 +1088,6 @@ restart:
 
     if (type != Err) { type = Type_; }
 
-  } break;
-  case Operator::Apply: {
-    std::swap(lhs, rhs);
-    op = Language::Operator::Call;
-    goto restart;
   } break;
   default: UNREACHABLE;
   }
