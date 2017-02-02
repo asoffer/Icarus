@@ -77,7 +77,8 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
 }
 
 static Node *BuildScopeLiteral(NPtrVec &&nodes) {
-  return nullptr; // TODO
+  // TODO take arguments as well
+  return new DummyTypeExpr(nodes[0]->loc, ScopeType(Void));
 }
 
 static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {

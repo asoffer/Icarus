@@ -136,7 +136,7 @@ void While::lrvalue_check(){
 
 void ScopeNode::lrvalue_check(){
   scope_expr->lrvalue_check();
-  expr->lrvalue_check();
+  if (expr) { expr->lrvalue_check(); }
   stmts->lrvalue_check();
 }
 

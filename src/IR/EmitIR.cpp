@@ -1464,7 +1464,7 @@ IR::Value ScopeNode::EmitIR() {
   IR::Block::Current->SetUnconditional(expr_block);
   IR::Block::Current = expr_block;
   // Do something with scope_expr
-  expr->EmitIR();
+  if (expr) { expr->EmitIR(); }
 
   IR::Block::Current->SetUnconditional(internal->entry_block);
   IR::Block::Current = internal->entry_block;

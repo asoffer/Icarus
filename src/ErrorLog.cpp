@@ -327,10 +327,10 @@ void IndeterminantType(AST::Expression *expr) {
                       expr->loc, 1);
 }
 
-void CyclicDependency(AST::Expression *expr) {
+void CyclicDependency(AST::Node *node) {
   ++num_errs_;
   DisplayErrorMessage("This expression's type is declared self-referentially.",
-                      nullptr, expr->loc, 1);
+                      nullptr, node->loc, 1);
 }
 
 void GlobalNonDecl(const Cursor &loc) {
@@ -581,6 +581,16 @@ void InvalidAssignDefinition(const Cursor &loc, const Type *t) {
   free(msg_head);
 }
 
+void InvalidScope(const Cursor &loc, const Type *t) {
+  ++num_errs_;
+  const char*msg_fmt = "Object of type '%s' used as if it were as scope.";
+  std::string t_str   = t->to_string();
+  auto msg_head = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, t_str.c_str());
+  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  free(msg_head);
+}
+
 void CondWithoutBool(const Cursor &loc, const Type *t) {
   ++num_errs_;
   const char *msg_fmt = "Conditional expression must be a bool, but %s given.";
@@ -735,4 +745,5 @@ void AmbiguousIdentifier(const Cursor &loc, const char *token) {
   ambiguous_identifiers[token][loc.file_name().c_str()][loc.line_num].push_back(
       loc.offset);
 }
+
 } // namespace ErrorLog

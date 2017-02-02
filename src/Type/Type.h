@@ -268,6 +268,8 @@ struct Scope_Type : public Type {
 
   Scope_Type(Type *t) : type_(t) {}
   Type *type_;
+
+  std::string bound_name;
 };
 
 std::ostream &operator<<(std::ostream &os, const Type &t);

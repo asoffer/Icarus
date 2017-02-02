@@ -1,7 +1,7 @@
 main := void -> void {
-  print fourth(1.1)
-  print '\n'
-  print a(20)
+  print 1.1'fourth
+  print `\n
+  print 20'a
 }
 
 square := (r: real) -> real {

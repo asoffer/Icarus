@@ -60,7 +60,7 @@ void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types);
 
 void NotAType(AST::Expression *expr, Type *t);
 void IndeterminantType(AST::Expression *expr);
-void CyclicDependency(AST::Expression *expr);
+void CyclicDependency(AST::Node *node);
 
 void CondWithoutBool(const Cursor &loc, const Type *t);
 void WhileWithoutBool(const Cursor &loc, const Type *t);
@@ -72,6 +72,7 @@ void SlicingNonArray(const Cursor &loc, const Type *t);
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 void InvalidPrintDefinition(const Cursor &loc, const Type *t);
 void InvalidAssignDefinition(const Cursor &loc, const Type *t);
+void InvalidScope(const Cursor &loc, const Type *t);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const Cursor &loc);

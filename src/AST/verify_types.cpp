@@ -1343,6 +1343,8 @@ void Declaration::verify_types() {
         name_ptr = &((ParamStruct *)t)->bound_name;
       } else if (t->is_enum()) {
         name_ptr = &((Enum *)t)->bound_name;
+      } else if (t->is_scope_type()) {
+        name_ptr = &((Scope_Type*)t)->bound_name;
       }
 
       // TODO mangle the name correctly (Where should this be done?)
@@ -1601,15 +1603,21 @@ void DummyTypeExpr::verify_types() {
 }
 
 void ScopeNode::verify_types() {
+  STARTING_CHECK;
+
   scope_expr->verify_types();
-  expr->verify_types();
+  if (expr) { expr->verify_types(); }
   stmts->verify_types();
   if (scope_expr->type == Err) { return; }
-  if (scope_expr->type->is_scope_type()) {
-    if (scope_expr->type != ScopeType(expr->type)) {
-      // TODO Log an error
+
+  if (!scope_expr->type->is_scope_type()) {
+    if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
+      ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
+      type = Err;
+      return;
     }
   }
+  type = (Type*)0x1;
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

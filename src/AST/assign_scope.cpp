@@ -160,7 +160,7 @@ void ScopeNode::assign_scope() {
   scope_ = CurrentScope();
 
   scope_expr->assign_scope();
-  expr->assign_scope();
+  if (expr) { expr->assign_scope(); }
 
   ScopeStack.push(internal);
   stmts->assign_scope();
