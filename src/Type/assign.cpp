@@ -99,6 +99,9 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     loop_phi->push(rhs_phi);
 
     IR::Block::Current = land;
+  } else if (lhs_type->is_scope_type() && rhs_type->is_scope_type()) {
+    assert(lhs_type == rhs_type);
+    IR::Store(rhs_type, from_val, to_var);
 
   } else {
     auto fn = GetFuncReferencedIn(scope, "__assign__",

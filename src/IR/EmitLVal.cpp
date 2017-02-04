@@ -84,6 +84,7 @@ IR::Value FunctionLiteral::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayType::EmitLVal() { UNREACHABLE; }
 IR::Value Case::EmitLVal() { UNREACHABLE; }
 IR::Value ArrayLiteral::EmitLVal() { UNREACHABLE; }
+IR::Value ScopeLiteral::EmitLVal() { UNREACHABLE; }
 
 IR::Value DummyTypeExpr::EmitLVal() { UNREACHABLE; }
 } // namespace AST

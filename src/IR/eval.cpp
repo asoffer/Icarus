@@ -245,7 +245,7 @@ void Cmd::Execute(StackFrame& frame) {
     if (result.type->is_enum()) { result.type = ((Enum *)result.type)->ProxyType(); }
     assert(
         (result.type->is_primitive() || result.type->is_pointer() ||
-         result.type->is_function()) &&
+         result.type->is_function() || result.type->is_scope_type()) &&
         "Non-primitive/pointer/enum local variables are not yet implemented");
     if (cmd_inputs[0].flag == ValType::Loc &&
         cmd_inputs[0].as_loc->is_stack_addr()) {
@@ -268,7 +268,8 @@ void Cmd::Execute(StackFrame& frame) {
       DO_LOAD(Type, type, Type *);
 
 #undef DO_LOAD
-      assert(result.type->is_pointer() || result.type->is_function());
+      assert(result.type->is_pointer() || result.type->is_function() ||
+             result.type->is_scope_type());
       if (result.type->is_pointer()) {
         // TODO how do we determine if it's heap or stack?
         auto ptr_as_uint = *(size_t *)(frame.stack->allocs + offset);
@@ -328,6 +329,7 @@ void Cmd::Execute(StackFrame& frame) {
            cmd_inputs[0].as_val->is_type() &&
            (cmd_inputs[0].as_val->GetType()->is_primitive() ||
             cmd_inputs[0].as_val->GetType()->is_pointer() ||
+            cmd_inputs[0].as_val->GetType()->is_scope_type() ||
             cmd_inputs[0].as_val->GetType()->is_function()));
     assert((cmd_inputs[2].flag == ValType::Loc &&
             cmd_inputs[2].as_loc->is_stack_addr()) ||

@@ -57,6 +57,7 @@ struct Node {
   virtual bool is_indecl() const { return false; }
   virtual bool is_array_type() const { return false; }
   virtual bool is_statements() const { return false; }
+  virtual bool is_scope() const { return false; }
   virtual bool is_array_literal() const { return false; }
   virtual bool is_token_node() const { return false; }
   virtual bool is_dummy() const { return false; }
@@ -411,15 +412,23 @@ struct ScopeNode : public Node {
   static Node *BuildVoid(NPtrVec &&nodes);
   static Node *BuildScopeNode(Expression *scope_name, Expression *arg_expr,
                               Statements *stmt_node);
-  Expression *scope_expr = nullptr; 
-  Expression *expr = nullptr; // If the scope takes an argument, this is it
-  Statements *stmts = nullptr;
-  BlockScope *internal = nullptr;
+  Expression *scope_expr = nullptr;
+  Expression *expr       = nullptr; // If the scope takes an argument, this is it
+  Statements *stmts      = nullptr;
+  BlockScope *internal   = nullptr;
 
   // Member variable 'type' exists only so we can have this set to Unknown, Err,
   // or some value (0x1) indicating that we have successfully passed type
   // verification.
   Type *type = nullptr;
+};
+
+struct ScopeLiteral : public Expression {
+  ScopeLiteral() = delete;
+  EXPR_FNS(ScopeLiteral, scope);
+
+  Declaration *enter_fn = nullptr;
+  ScopeLiteral(const Cursor &cursor);
 };
 
 } // namespace AST

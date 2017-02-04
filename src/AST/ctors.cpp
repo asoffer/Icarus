@@ -19,12 +19,13 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(Assign::Unset), type(nullptr), value(IR::Value::None()) {}
 
-
 DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   loc   = new_loc;
   type  = Type_;
   value = IR::Value::Type(t);
 }
+
+ScopeLiteral::ScopeLiteral(const Cursor &cursor) { loc = cursor; }
 
 Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;

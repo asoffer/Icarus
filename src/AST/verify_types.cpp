@@ -1608,16 +1608,30 @@ void ScopeNode::verify_types() {
   scope_expr->verify_types();
   if (expr) { expr->verify_types(); }
   stmts->verify_types();
-  if (scope_expr->type == Err) { return; }
 
   if (!scope_expr->type->is_scope_type()) {
-    if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
-      ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
-      type = Err;
-      return;
-    }
+    ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
+    type = Err;
+    return;
   }
+
+  // TODO verify it uses the fields correctly
+  //
+  // ScopeLiteral *lit = Evaluate(scope_expr).as_val->GetScope();
+  // if (!type->is_scope_type()) {
+  //   if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
+  //     ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
+  //     type = Err;
+  //     return;
+  //   }
+  // }
   type = (Type*)0x1;
+}
+
+void ScopeLiteral::verify_types() {
+  STARTING_CHECK;
+  type = ScopeType(Void);
+  // TODO internals
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

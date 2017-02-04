@@ -166,5 +166,17 @@ void ScopeNode::assign_scope() {
   stmts->assign_scope();
   ScopeStack.pop();
 }
+
+void ScopeLiteral::assign_scope() {
+  scope_ = CurrentScope();
+
+  // TODO internals are at their own scope
+  // ScopeStack.push(internal);
+  if (enter_fn) {
+    assert(enter_fn);
+    enter_fn->assign_scope();
+  }
+  // ScopeStack.pop();
+}
 } // namespace AST
 #undef ITERATE_OR_SKIP

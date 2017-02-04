@@ -232,4 +232,11 @@ std::string DummyTypeExpr::to_string(size_t n) const {
   assert(value.as_val && value.as_val->is_type());
   return tabs(n) + "<" + value.as_val->to_string() + ">\n";
 }
+
+std::string ScopeLiteral::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<ScopeLiteral " << TYPE_OR("") << ">\n";
+  if (enter_fn) { ss << enter_fn->to_string(n + 2); }
+  return ss.str();
+}
 } // namespace AST

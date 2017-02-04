@@ -939,6 +939,7 @@ IR::Value ArrayType::EmitIR() {
 
 IR::Value Declaration::EmitIR() {
   ENSURE_VERIFIED;
+    std::cerr << *type;
   if (IsUninitialized()) {
     return IR::Value::None();
 
@@ -946,7 +947,7 @@ IR::Value Declaration::EmitIR() {
     type->EmitInit(identifier->EmitLVal());
 
   } else {
-    if (type != Type_) {
+    if (type != Type_ || !type->is_scope_type()) {
       Type::CallAssignment(scope_, identifier->type, init_val->type,
                            init_val->EmitIR(), identifier->EmitLVal());
     }
@@ -1454,17 +1455,19 @@ IR::Value DummyTypeExpr::EmitIR() {
 
 IR::Value ScopeNode::EmitIR() {
   ENSURE_VERIFIED;
-  auto expr_block = IR::Func::Current->AddBlock("scope-expr");
   auto body_block = IR::Func::Current->AddBlock("scope-body");
   auto land_block = IR::Func::Current->AddBlock("scope-land");
 
   internal->entry_block = IR::Func::Current->AddBlock("scope-entry");
   internal->exit_block  = IR::Func::Current->AddBlock("scope-exit");
 
-  IR::Block::Current->SetUnconditional(expr_block);
-  IR::Block::Current = expr_block;
   // Do something with scope_expr
-  if (expr) { expr->EmitIR(); }
+  if (expr) {
+    auto expr_block = IR::Func::Current->AddBlock("scope-expr");
+    IR::Block::Current->SetUnconditional(expr_block);
+    IR::Block::Current = expr_block;
+    expr->EmitIR();
+  }
 
   IR::Block::Current->SetUnconditional(internal->entry_block);
   IR::Block::Current = internal->entry_block;
@@ -1482,6 +1485,15 @@ IR::Value ScopeNode::EmitIR() {
   IR::Block::Current = land_block;
 
   return IR::Value::None();
+}
+
+IR::Value ScopeLiteral::EmitIR() {
+  ENSURE_VERIFIED;
+  if (!value.as_val) {
+    value.as_val = new IR::ScopeVal();
+    ((IR::ScopeVal *)value.as_val)->val = this;
+  }
+  return value;
 }
 } // namespace AST
 #undef ENSURE_VERIFIED                                                        \

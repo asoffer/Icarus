@@ -91,6 +91,10 @@ For::~For() {
   DELETE(for_scope);
 }
 
+ScopeLiteral::~ScopeLiteral() {
+  DELETE(enter_fn);
+}
+
 Jump::~Jump() {}
 DummyTypeExpr::~DummyTypeExpr() {}
 
