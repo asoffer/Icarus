@@ -19,7 +19,6 @@ namespace AST {
                       Type **lookup_val) ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
-  name();                                                                      \
   virtual ~name();                                                             \
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
@@ -80,6 +79,7 @@ struct Node {
 };
 
 struct Expression : public Node {
+  Expression();
   EXPR_FNS(Expression, expression);
   static Node *AddHashtag(NPtrVec &&nodes);
 
@@ -153,12 +153,12 @@ struct Terminal : public Expression {
 };
 
 struct Identifier : public Terminal {
+  Identifier() = delete;
   EXPR_FNS(Identifier, identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
 
   std::string token;
-
-  Declaration *decl;
+  Declaration *decl = nullptr;
 };
 
 struct Binop : public Expression {
@@ -177,7 +177,7 @@ struct Binop : public Expression {
   }
 
   Language::Operator op;
-  Expression *lhs, *rhs;
+  Expression *lhs = nullptr, *rhs = nullptr;
 };
 
 struct Declaration : public Expression {
@@ -190,14 +190,14 @@ struct Declaration : public Expression {
 
   void AllocateLocally(IR::Func *fn);
 
-  Identifier *identifier;
-  Expression *type_expr;
-  Expression *init_val;
-  IR::Value addr;
+  Identifier *identifier = nullptr;
+  Expression *type_expr  = nullptr;
+  Expression *init_val   = nullptr;
+  IR::Value addr = IR::Value::None();
 
   // If it's an argument, this points to the function/parametric-struct for
   // which it's an argument. Otherwise this field is null.
-  Expression *arg_val;
+  Expression *arg_val = nullptr;
 
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }
@@ -214,7 +214,7 @@ struct Generic : public Declaration {
   static Node *Build(NPtrVec &&nodes);
 
   virtual bool is_declaration() const override { return false; }
-  Expression *test_fn;
+  Expression *test_fn = nullptr;
 };
 
 struct InDecl : public Declaration {
@@ -223,7 +223,7 @@ struct InDecl : public Declaration {
 
   virtual bool is_indecl() const override { return true; }
   virtual bool is_declaration() const override { return false; }
-  Expression *container;
+  Expression *container = nullptr;
 };
 
 struct Statements : public Node {
@@ -253,7 +253,7 @@ struct Unop : public Expression {
   static Node *BuildDots(NPtrVec &&nodes);
   virtual void VerifyReturnTypes(Type *ret_val) override;
 
-  Expression *operand;
+  Expression *operand = nullptr;
   Language::Operator op;
 };
 
@@ -290,8 +290,8 @@ struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
   static Node *build(NPtrVec &&nodes);
 
-  Expression *length;
-  Expression *data_type;
+  Expression *length    = nullptr;
+  Expression *data_type = nullptr;
 };
 
 struct Case : public Expression {
@@ -302,21 +302,22 @@ struct Case : public Expression {
 };
 
 struct FunctionLiteral : public Expression {
+  FunctionLiteral();
   EXPR_FNS(FunctionLiteral, function_literal);
   static Node *build(NPtrVec &&nodes);
   static Node *BuildOneLiner(NPtrVec &&nodes);
   static Node *BuildNoLiner(NPtrVec &&nodes);
 
-  FnScope *fn_scope;
-  Expression *return_type_expr;
+  FnScope *fn_scope            = nullptr;
+  Expression *return_type_expr = nullptr;
 
   std::vector<Declaration *> inputs;
-  llvm::Function *llvm_fn;
-  Statements *statements;
+  llvm::Function *llvm_fn = nullptr;
+  Statements *statements  = nullptr;
 
   inline IR::Value EmitAnonymousIR() { return Emit(false); }
 
-  IR::Func *ir_func;
+  IR::Func *ir_func = nullptr;
 
   std::map<Type *, Declaration *> cache;
 
@@ -377,6 +378,7 @@ struct While : public Node {
 };
 
 struct DummyTypeExpr : public Expression {
+  DummyTypeExpr() = delete;
   EXPR_FNS(DummyTypeExpr, dummy);
   static Node *build(NPtrVec &&nodes);
 
@@ -411,8 +413,8 @@ struct ScopeNode : public Node {
                               Statements *stmt_node);
   Expression *scope_expr = nullptr; 
   Expression *expr = nullptr; // If the scope takes an argument, this is it
-  Statements *stmts;
-  BlockScope *internal;
+  Statements *stmts = nullptr;
+  BlockScope *internal = nullptr;
 
   // Member variable 'type' exists only so we can have this set to Unknown, Err,
   // or some value (0x1) indicating that we have successfully passed type
