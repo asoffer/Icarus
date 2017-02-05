@@ -23,16 +23,6 @@ template <typename T> static T *steal(AST::Node *&n) {
   return temp;
 }
 
-static void CheckEqualsNotAssignment(AST::Expression *expr,
-                                     const std::string &msg) {
-  if (expr->is_binop() &&
-      ((AST::Binop *)expr)->op == Language::Operator::Assign) {
-    ErrorLog::AssignShouldBeEq(expr->loc, msg);
-
-    ((AST::Binop *)expr)->op = Language::Operator::EQ;
-  }
-}
-
 // Input guarantees:
 // [expr] [l_paren] [r_paren]
 //
@@ -84,12 +74,19 @@ static Node *BuildScopeLiteral(NPtrVec &&nodes) {
   for (auto &&n : ((Statements *)nodes[1])->statements) {
     if (!n->is_declaration()) { continue; } // TODO leaking
     auto d = (Declaration*)n;
-    if (d->identifier->token != "enter") {continue; } // TODO leaking
-    scope_lit->enter_fn = steal<Declaration>(n);
+    if (d->identifier->token == "enter") {
+      scope_lit->enter_fn = steal<Declaration>(n);
+    } else if (d->identifier->token == "exit") {
+      scope_lit->exit_fn = steal<Declaration>(n);
+    }
   }
 
   if (!scope_lit->enter_fn) {
-    // log an error
+    // TODO log an error
+  }
+
+  if (!scope_lit->exit_fn) {
+    // TODO log an error
   }
 
   return scope_lit;
@@ -183,26 +180,6 @@ Node *Case::Build(NPtrVec &&nodes) {
                                     steal<Expression>(binop->rhs));
   }
   return case_ptr;
-}
-
-// Input guarantees:
-// [while] [expression] [braced_statements]
-//
-// Internal checks:
-// expression is not an assignment.
-Node *While::Build(NPtrVec &&nodes) {
-  assert(nodes[2]->is_statements());
-  auto while_stmt        = new While;
-  while_stmt->statements = steal<Statements>(nodes[2]);
-
-  while_stmt->condition = steal<Expression>(nodes[1]);
-  CheckEqualsNotAssignment(while_stmt->condition,
-                           "Condition in while-loop is an assignment. ");
-
-  auto stmts = new AST::Statements;
-  stmts->loc = while_stmt->loc;
-  stmts->statements.push_back(while_stmt);
-  return stmts;
 }
 
 static void CheckForLoopDeclaration(Expression *maybe_decl,
@@ -836,9 +813,6 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
 
   if (strcmp(tk, "for") == 0) {
     return AST::For::Build(std::forward<NPtrVec &&>(nodes));
-
-  } else if (strcmp(tk, "while") == 0) {
-    return AST::While::Build(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "struct") == 0) {
     return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));

@@ -342,19 +342,6 @@ struct For : public Node {
   BlockScope *for_scope;
 };
 
-struct While : public Node {
-  While();
-  virtual ~While();
-  VIRTUAL_METHODS_FOR_NODES;
-  virtual void VerifyReturnTypes(Type *ret_val) override;
-
-  static Node *Build(NPtrVec &&nodes);
-
-  Expression *condition;
-  Statements *statements;
-  BlockScope *while_scope;
-};
-
 struct DummyTypeExpr : public Expression {
   DummyTypeExpr() = delete;
   EXPR_FNS(DummyTypeExpr, dummy);
@@ -405,7 +392,8 @@ struct ScopeLiteral : public Expression {
   EXPR_FNS(ScopeLiteral, scope);
 
   Declaration *enter_fn = nullptr;
-  Scope *body_scope     = nullptr;
+  Declaration *exit_fn  = nullptr;
+  Scope *body_scope = nullptr;
   ScopeLiteral(const Cursor &cursor);
 };
 

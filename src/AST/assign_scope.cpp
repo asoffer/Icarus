@@ -45,15 +45,6 @@ void For::assign_scope() {
   ScopeStack.pop();
 }
 
-void While::assign_scope() {
-  scope_ = CurrentScope();
-  while_scope->set_parent(CurrentScope());
-  condition->assign_scope();
-  ScopeStack.push(while_scope);
-  statements->assign_scope();
-  ScopeStack.pop();
-}
-
 void ArrayLiteral::assign_scope() {
   scope_ = CurrentScope();
   for (auto &el : elems) { el->assign_scope(); }
@@ -139,6 +130,7 @@ void DummyTypeExpr::assign_scope() {
 
 void ScopeNode::assign_scope() {
   scope_ = CurrentScope();
+  internal->set_parent(CurrentScope());
 
   scope_expr->assign_scope();
   if (expr) { expr->assign_scope(); }
@@ -154,6 +146,7 @@ void ScopeLiteral::assign_scope() {
   // TODO internals are at their own scope
   ScopeStack.push(body_scope);
   enter_fn->assign_scope();
+  exit_fn->assign_scope();
   ScopeStack.pop();
 }
 } // namespace AST

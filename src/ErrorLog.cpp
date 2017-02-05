@@ -591,16 +591,6 @@ void InvalidScope(const Cursor &loc, const Type *t) {
   free(msg_head);
 }
 
-void WhileWithoutBool(const Cursor &loc, const Type *t) {
-  ++num_errs_;
-  const char *msg_fmt = "While loop condition must be a bool, but %s given.";
-  std::string t_str   = t->to_string();
-  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-  free(msg_head);
-}
-
 void NotBinary(const Cursor &loc, const char *token) {
   ++num_errs_;
   const char *msg_fmt = "Operator '%s' is not a binary operator";
@@ -632,13 +622,6 @@ void EmptyFile(const Cursor &loc) {
   }
 #include "config/error.conf"
 #undef ERROR_MACRO
-
-void AssignShouldBeEq(const Cursor &loc, const std::string &msg) {
-  ++num_errs_;
-
-  std::string msg_head = msg + "Did you mean '==' instead of '='?";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
-}
 
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
   ++num_errs_;

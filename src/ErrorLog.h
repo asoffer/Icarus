@@ -33,7 +33,6 @@ void UnknownParserError(const std::string &file_name,
 void InvalidReturnType(const Cursor &loc, Type *given, Type *correct);
 void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc);
 void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
-void AssignShouldBeEq(const Cursor &loc, const std::string &msg);
 
 void NullCharInSrc(const Cursor &loc);
 void NonGraphicCharInSrc(const Cursor &loc);
@@ -62,7 +61,6 @@ void NotAType(AST::Expression *expr, Type *t);
 void IndeterminantType(AST::Expression *expr);
 void CyclicDependency(AST::Node *node);
 
-void WhileWithoutBool(const Cursor &loc, const Type *t);
 void InvalidRangeType(const Cursor &loc, Type *t);
 void InvalidStringIndex(const Cursor &loc, Type *index_type);
 void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type);

@@ -5,7 +5,7 @@
 #include "Type/Type.h"
 #endif
 
-enum class ScopeEnum { While, For, Function, Global, Type, Standard };
+enum class ScopeEnum { For, Function, Global, Type, Standard };
 
 struct Scope {
   static BlockScope *Global; // TODO Should this be it's own type
@@ -74,9 +74,7 @@ struct FnScope : public BlockScope {
 };
 
 inline bool Scope::is_loop_scope() {
-  if (!is_block_scope()) return false;
-  auto bs = (BlockScope *)this;
-  return bs->type == ScopeEnum::For || bs->type == ScopeEnum::While;
+  return is_block_scope() && ((BlockScope *)this)->type == ScopeEnum::For;
 }
 
 #endif // ICARUS_SCOPE_H

@@ -1035,48 +1035,6 @@ IR::Value Access::EmitIR() {
   UNREACHABLE;
 }
 
-IR::Value While::EmitIR() {
-  ENSURE_VERIFIED;
-  auto cond_block = IR::Func::Current->AddBlock("while-cond");
-  auto body_block = IR::Func::Current->AddBlock("while-body");
-  auto land_block = IR::Func::Current->AddBlock("while-land");
-
-  while_scope->entry_block = IR::Func::Current->AddBlock("while-entry");
-  while_scope->exit_block  = IR::Func::Current->AddBlock("while-exit");
-
-  IR::Block::Current->SetUnconditional(cond_block);
-
-  IR::Block::Current = cond_block;
-  auto cond_val = condition->EmitIR();
-  IR::Block::Current->SetConditional(cond_val, while_scope->entry_block,
-                                     land_block);
-
-  IR::Block::Current = while_scope->entry_block;
-  IR::Store(Char, CONTINUE_FLAG, while_scope->GetFnScope()->exit_flag);
-  IR::Block::Current->SetUnconditional(body_block);
-  IR::Block::Current = body_block;
-  statements->EmitIR();
-
-  IR::Block::Current->SetUnconditional(while_scope->exit_block);
-  while_scope->InsertDestroy();
-  IR::Block::Current->SetSwitch(
-      IR::Load(Char, while_scope->GetFnScope()->exit_flag), cond_block);
-  IR::Exit::Switch *while_exit_switch =
-      (IR::Exit::Switch *)IR::Block::Current->exit;
-  // TODO what about RESTART_FLAG?
-  while_exit_switch->AddEntry(CONTINUE_FLAG, cond_block);
-  while_exit_switch->AddEntry(REPEAT_FLAG, while_scope->entry_block);
-  while_exit_switch->AddEntry(BREAK_FLAG, land_block);
-  assert(while_scope->parent->is_block_scope() ||
-         while_scope->parent->is_function_scope());
-  while_exit_switch->AddEntry(RETURN_FLAG,
-                              ((BlockScope *)while_scope->parent)->exit_block);
-
-  IR::Block::Current = land_block;
-
-  return IR::Value::None();
-}
-
 IR::Value ArrayLiteral::EmitIR() {
   ENSURE_VERIFIED;
   // TODO delete allocation
@@ -1404,9 +1362,11 @@ IR::Value ScopeNode::EmitIR() {
 
   auto scope_lit_scope =
       ((IR::ScopeVal *)Evaluate(scope_expr).as_val)->val->body_scope;
-  // TODO type bool -> bool not always right
-  auto enter_fn =
-      GetFuncReferencedIn(scope_lit_scope, "enter", Func(Bool, Bool));
+  auto enter_fn = GetFuncReferencedIn(scope_lit_scope, "enter",
+                                      Func(expr ? expr->type : Void, Bool));
+  auto exit_fn =
+      GetFuncReferencedIn(scope_lit_scope, "exit", Func(Void, Bool));
+
 
   std::vector<IR::Value> enter_args;
   if (expr) { enter_args = {expr->EmitIR()}; }
@@ -1420,8 +1380,9 @@ IR::Value ScopeNode::EmitIR() {
 
   IR::Block::Current->SetUnconditional(internal->exit_block);
   IR::Block::Current = internal->exit_block;
+  IR::Block::Current->SetConditional(IR::Call(Bool, exit_fn, {}),
+                                     internal->entry_block, land_block);
 
-  IR::Block::Current->SetUnconditional(land_block);
   IR::Block::Current = land_block;
   return IR::Value::None();
 }

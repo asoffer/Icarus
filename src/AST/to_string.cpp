@@ -22,11 +22,6 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return output;
 }
 
-std::string While::to_string(size_t n) const {
-  return tabs(n) + "<While>\n" + condition->to_string(n + 1) +
-         statements->to_string(n + 1);
-}
-
 std::string For::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<For>\n";
@@ -219,7 +214,7 @@ std::string DummyTypeExpr::to_string(size_t n) const {
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<ScopeLiteral " << TYPE_OR("") << ">\n"
-     << enter_fn->to_string(n + 2);
+     << enter_fn->to_string(n + 2) << exit_fn->to_string(n + 2);
   return ss.str();
 }
 } // namespace AST

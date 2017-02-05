@@ -42,9 +42,6 @@ Identifier::Identifier(const Cursor &new_loc, const std::string &token_string) {
 }
 
 FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope) {}
-
-While::While() : while_scope(new BlockScope(ScopeEnum::While)) {}
 For::For() : for_scope(new BlockScope(ScopeEnum::For)) {}
-
 ScopeNode::ScopeNode() : internal(new BlockScope(ScopeEnum::Standard)) {}
 } // namespace AST

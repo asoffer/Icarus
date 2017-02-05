@@ -123,11 +123,6 @@ void For::lrvalue_check() {
   for (auto decl : iterators) { decl->lrvalue_check(); }
 }
 
-void While::lrvalue_check(){
-  condition->lrvalue_check();
-  statements->lrvalue_check();
-}
-
 void ScopeNode::lrvalue_check(){
   scope_expr->lrvalue_check();
   if (expr) { expr->lrvalue_check(); }
@@ -137,6 +132,7 @@ void ScopeNode::lrvalue_check(){
 void ScopeLiteral::lrvalue_check() {
   lvalue = Assign::RVal;
   enter_fn->lrvalue_check();
+  exit_fn->lrvalue_check();
 }
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
 void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }

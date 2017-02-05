@@ -1545,17 +1545,6 @@ void Statements::verify_types() {
   for (auto stmt : statements) { stmt->verify_types(); }
 }
 
-void While::verify_types() {
-  condition->verify_types();
-  statements->verify_types();
-
-  if (condition->type == Err) { return; }
-
-  if (condition->type != Bool) {
-    ErrorLog::WhileWithoutBool(loc, condition->type);
-  }
-}
-
 void For::verify_types() {
   for (auto iter : iterators) { iter->verify_types(); }
   statements->verify_types();
@@ -1621,6 +1610,7 @@ void ScopeNode::verify_types() {
 void ScopeLiteral::verify_types() {
   STARTING_CHECK;
   VERIFY_AND_RETURN_ON_ERROR(enter_fn);
+  VERIFY_AND_RETURN_ON_ERROR(exit_fn);
   if (!enter_fn->type->is_function()) {
     // TODO error must be a function
   }
@@ -1649,10 +1639,6 @@ void Jump::VerifyReturnTypes(Type *ret_type) {
 }
 
 void For::VerifyReturnTypes(Type *ret_type) {
-  statements->VerifyReturnTypes(ret_type);
-}
-
-void While::VerifyReturnTypes(Type *ret_type) {
   statements->VerifyReturnTypes(ret_type);
 }
 } // namespace AST

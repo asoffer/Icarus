@@ -67,12 +67,6 @@ FunctionLiteral::~FunctionLiteral() {
   DELETE(statements);
 }
 
-While::~While() {
-  DELETE(condition);
-  DELETE(statements);
-  DELETE(while_scope);
-}
-
 ScopeNode::~ScopeNode() {
   DELETE(scope_expr);
   DELETE(expr);
@@ -87,6 +81,7 @@ For::~For() {
 
 ScopeLiteral::~ScopeLiteral() {
   DELETE(enter_fn);
+  DELETE(exit_fn);
 }
 
 Jump::~Jump() {}

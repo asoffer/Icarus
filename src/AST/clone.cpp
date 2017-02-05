@@ -25,7 +25,6 @@ Node *Node::clone(LOOKUP_ARGS) { UNREACHABLE; }
 
 Node *ScopeNode::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
-Node *While::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *ScopeLiteral::clone(LOOKUP_ARGS) { NOT_YET; }
 
 Node *FunctionLiteral::clone(LOOKUP_ARGS) {
