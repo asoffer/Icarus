@@ -5,7 +5,7 @@
 #include "Type/Type.h"
 #endif
 
-enum class ScopeEnum { While, For, Conditional, Function, Global, Type, Standard };
+enum class ScopeEnum { While, For, Function, Global, Type, Standard };
 
 struct Scope {
   static BlockScope *Global; // TODO Should this be it's own type

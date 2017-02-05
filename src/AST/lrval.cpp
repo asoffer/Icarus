@@ -118,12 +118,6 @@ void Statements::lrvalue_check() {
 
 void Jump::lrvalue_check() {}
 
-void Conditional::lrvalue_check() {
-  for (auto cond : conditions) { cond->lrvalue_check(); }
-  for (auto stmt : statements) { stmt->lrvalue_check(); }
-}
-
-
 void For::lrvalue_check() {
   statements->lrvalue_check();
   for (auto decl : iterators) { decl->lrvalue_check(); }

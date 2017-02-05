@@ -1077,59 +1077,6 @@ IR::Value While::EmitIR() {
   return IR::Value::None();
 }
 
-IR::Value Conditional::EmitIR() {
-  ENSURE_VERIFIED;
-  std::vector<IR::Block *> cond_blocks(conditions.size(), nullptr);
-  std::vector<IR::Block *> body_blocks(body_scopes.size(), nullptr);
-
-  auto land_block = IR::Func::Current->AddBlock("cond-land");
-
-  for (auto &b : cond_blocks) { b = IR::Func::Current->AddBlock("cond-cond"); }
-  for (auto &b : body_blocks) { b = IR::Func::Current->AddBlock("cond-body"); }
-  for (auto &s : body_scopes) {
-    s->entry_block = IR::Func::Current->AddBlock("cond-entry");
-    s->exit_block  = IR::Func::Current->AddBlock("cond-exit");
-  }
-
-  assert(!cond_blocks.empty());
-  IR::Block::Current->SetUnconditional(cond_blocks.front());
-
-  for (size_t i = 0; i < conditions.size() - 1; ++i) {
-    IR::Block::Current = cond_blocks[i];
-    auto cond_val = conditions[i]->EmitIR();
-    IR::Block::Current->SetConditional(cond_val, body_scopes[i]->entry_block,
-                                       cond_blocks[i + 1]);
-  }
-
-  // Last step
-  IR::Block::Current = cond_blocks.back();
-  auto cond_val = conditions.back()->EmitIR();
-  IR::Block::Current->SetConditional(
-      cond_val, body_scopes[conditions.size() - 1]->entry_block,
-      has_else() ? body_scopes.back()->entry_block : land_block);
-
-  for (size_t i = 0; i < body_scopes.size(); ++i) {
-    IR::Block::Current = body_scopes[i]->entry_block;
-    IR::Block::Current->SetUnconditional(body_blocks[i]);
-    IR::Block::Current = body_blocks[i];
-
-    statements[i]->EmitIR();
-
-    IR::Block::Current->SetUnconditional(body_scopes[i]->exit_block);
-    body_scopes[i]->InsertDestroy();
-
-    assert(body_scopes[i]->parent && body_scopes[i]->parent->is_block_scope() &&
-           ((BlockScope *)body_scopes[i]->parent)->exit_block);
-    IR::Block::Current->SetConditional(
-        IR::CEQ(IR::Load(Char, body_scopes[i]->GetFnScope()->exit_flag),
-                NORMAL_FLAG),
-        land_block, ((BlockScope *)body_scopes[i]->parent)->exit_block);
-  }
-
-  IR::Block::Current = land_block;
-  return IR::Value::None();
-}
-
 IR::Value ArrayLiteral::EmitIR() {
   ENSURE_VERIFIED;
   // TODO delete allocation
@@ -1455,15 +1402,17 @@ IR::Value ScopeNode::EmitIR() {
   IR::Block::Current->SetUnconditional(internal->entry_block);
   IR::Block::Current = internal->entry_block;
 
-  auto enter_fn = ((IR::ScopeVal *)Evaluate(scope_expr).as_val)->val->enter_fn;
-  auto fn_lit   = GetFunctionLiteral(enter_fn);
+  auto scope_lit_scope =
+      ((IR::ScopeVal *)Evaluate(scope_expr).as_val)->val->body_scope;
+  // TODO type bool -> bool not always right
+  auto enter_fn =
+      GetFuncReferencedIn(scope_lit_scope, "enter", Func(Bool, Bool));
 
-  IR::Block::Current->SetConditional(
-      IR::Call(Bool, fn_lit->EmitIR(),
-               (expr ? std::vector<IR::Value>{expr->EmitIR()}
-                     : std::vector<IR::Value>{})),
-      body_block, land_block);
+  std::vector<IR::Value> enter_args;
+  if (expr) { enter_args = {expr->EmitIR()}; }
 
+  IR::Block::Current->SetConditional(IR::Call(Bool, enter_fn, enter_args),
+                                     body_block, land_block);
   IR::Block::Current = body_block;
   stmts->EmitIR();
 

@@ -99,31 +99,6 @@ Node *Unop::clone(LOOKUP_ARGS) {
   return unop;
 }
 
-Node *Conditional::clone(LOOKUP_ARGS) {
-  auto cond_node           = new Conditional;
-  cond_node->else_line_num = else_line_num;
-  cond_node->loc           = loc;
-
-  cond_node->conditions.reserve(conditions.size());
-  for (auto c : conditions) {
-    cond_node->conditions.push_back((Expression *)c->CLONE);
-  }
-
-  cond_node->statements.reserve(conditions.size());
-  for (auto s : statements) {
-    cond_node->statements.push_back((Statements *)s->CLONE);
-  }
-
-  auto num_body_scopes = body_scopes.size();
-  cond_node->body_scopes.reserve(num_body_scopes);
-
-  for (size_t i = 0; i < num_body_scopes; ++i) {
-    cond_node->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
-  }
-
-  return cond_node;
-}
-
 Node *ChainOp::clone(LOOKUP_ARGS) {
   auto chain_node = new ChainOp;
   chain_node->ops = ops;

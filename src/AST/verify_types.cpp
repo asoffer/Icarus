@@ -1561,16 +1561,6 @@ void For::verify_types() {
   statements->verify_types();
 }
 
-void Conditional::verify_types() {
-  for (auto cond : conditions) { cond->verify_types(); }
-  for (auto stmts : statements) { stmts->verify_types(); }
-
-  for (const auto &cond : conditions) {
-    if (cond->type == Err) { continue; }
-    if (cond->type != Bool) { ErrorLog::CondWithoutBool(loc, cond->type); }
-  }
-}
-
 void Jump::verify_types() {
   auto scope_ptr = scope_;
   while (scope_ptr) {
@@ -1656,10 +1646,6 @@ void Jump::VerifyReturnTypes(Type *ret_type) {
   if (jump_type == JumpType::Return && ret_type != Void) {
     ErrorLog::InvalidReturnType(loc, Void, ret_type);
   }
-}
-
-void Conditional::VerifyReturnTypes(Type *ret_type) {
-  for (auto stmt : statements) { stmt->VerifyReturnTypes(ret_type); }
 }
 
 void For::VerifyReturnTypes(Type *ret_type) {

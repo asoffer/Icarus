@@ -67,12 +67,6 @@ FunctionLiteral::~FunctionLiteral() {
   DELETE(statements);
 }
 
-Conditional::~Conditional() {
-  for (auto ptr : conditions) { DELETE(ptr); }
-  for (auto ptr : statements) { DELETE(ptr); }
-  for (auto ptr : body_scopes) { DELETE(ptr); }
-}
-
 While::~While() {
   DELETE(condition);
   DELETE(statements);

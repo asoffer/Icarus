@@ -492,7 +492,12 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
 
       } break;
       case IR::Op::Load:
-        registers[cmd.result.reg] = builder.CreateLoad(args[0]);
+        // TODO this may be a hack. If it's a function, don't load it.
+        if (cmd.args[0].flag == ValType::Val && cmd.args[0].as_val->is_function()) {
+          registers[cmd.result.reg] = args[0];
+        } else {
+          registers[cmd.result.reg] = builder.CreateLoad(args[0]);
+        }
         break;
       case IR::Op::Store: {
         // TODO or do we want to actually do the store (it'll be easily

@@ -15,23 +15,6 @@ std::string TokenNode::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string Conditional::to_string(size_t n) const {
-  std::stringstream ss;
-  ss << tabs(n) << "<Conditional (" << statements.size() << " part"
-     << (statements.size() == 1 ? "" : "s") << ")>\n";
-
-  for (size_t i = 0; i < conditions.size(); ++i) {
-    ss << tabs(n + 1) << "Condition " << i << ":\n"
-       << conditions[i]->to_string(n + 1) << statements[i]->to_string(n + 1);
-  }
-
-  if (has_else()) {
-    ss << tabs(n + 1) << "Else:\n" << statements.back()->to_string(n + 1);
-  }
-
-  return ss.str();
-}
-
 std::string ArrayLiteral::to_string(size_t n) const {
   std::string output = tabs(n) + "<ArrayLiteral>\n";
   for (const auto &el : elems) { output += el->to_string(n + 1); }

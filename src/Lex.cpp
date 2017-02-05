@@ -113,7 +113,6 @@ NNT NextWord(Cursor &cursor) {
   CASE_RETURN_NNT("free", op_l, 4);
   CASE_RETURN_NNT("while", kw_expr_block, 5);
   CASE_RETURN_NNT("for", kw_expr_block, 3);
-  CASE_RETURN_NNT("if", kw_if, 2);
   CASE_RETURN_NNT("case", kw_block, 4);
   CASE_RETURN_NNT("enum", kw_block, 4);
   CASE_RETURN_NNT("struct", kw_struct, 6);

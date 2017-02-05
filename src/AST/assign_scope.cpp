@@ -33,25 +33,6 @@ void ArrayType::assign_scope() {
   data_type->assign_scope();
 }
 
-void Conditional::assign_scope() {
-  scope_ = CurrentScope();
-  for (size_t i = 0; i < conditions.size(); ++i) {
-    body_scopes[i]->set_parent(CurrentScope());
-    conditions[i]->assign_scope();
-
-    ScopeStack.push(body_scopes[i]);
-    statements[i]->assign_scope();
-    ScopeStack.pop();
-  }
-
-  if (has_else()) {
-    body_scopes.back()->set_parent(CurrentScope());
-    ScopeStack.push(body_scopes.back());
-    statements.back()->assign_scope();
-    ScopeStack.pop();
-  }
-}
-
 void For::assign_scope() {
   scope_ = CurrentScope();
   for_scope->set_parent(CurrentScope());

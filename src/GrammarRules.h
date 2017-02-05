@@ -174,9 +174,9 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, prog, {bof, stmts, eof}, drop_all_but<1>),
 
     Rule(0x03, stmts, {op_lt}, AST::Jump::build),
-    Rule(0x02, stmts, {(expr | fn_expr | kw_else | if_stmt), newline},
+    Rule(0x02, stmts, {(expr | fn_expr | kw_else), newline},
          AST::Statements::build_one),
-    Rule(0x01, stmts, {stmts, (expr | fn_expr | stmts | if_stmt), newline},
+    Rule(0x01, stmts, {stmts, (expr | fn_expr | stmts), newline},
          AST::Statements::build_more),
 
     Rule(0x02, comma, {comma, newline}, drop_all_but<0>),
@@ -196,27 +196,21 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, r_brace, {r_brace, newline}, drop_all_but<0>),
 
     Rule(0x00, braced_stmts,
-         {l_brace, stmts, stmts | if_stmt | expr | fn_expr, r_brace},
+         {l_brace, stmts, stmts | expr | fn_expr, r_brace},
          BracedStatementsSameLineEnd),
     Rule(0x00, braced_stmts, {l_brace, stmts, r_brace}, BracedStatements),
-    Rule(0x00, braced_stmts, {l_brace, (if_stmt | expr | fn_expr), r_brace},
+    Rule(0x00, braced_stmts, {l_brace, (expr | fn_expr), r_brace},
          OneBracedStatement),
     Rule(0x00, braced_stmts, {l_brace, r_brace}, EmptyBraces),
 
     Rule(0x00, expr, {fn_expr, braced_stmts}, AST::FunctionLiteral::build),
 
     Rule(0x02, stmts, {kw_expr_block, EXPR, braced_stmts}, BuildKWExprBlock),
-    Rule(0x02, if_stmt, {kw_if, EXPR, braced_stmts}, BuildKWExprBlock),
 
     Rule(0x02, expr, {kw_struct, EXPR, braced_stmts}, BuildKWExprBlock),
 
     Rule(0x03, stmts, {EXPR, EXPR, braced_stmts}, AST::ScopeNode::Build),
     Rule(0x04, stmts, {EXPR, braced_stmts}, AST::ScopeNode::BuildVoid),
-
-    Rule(0x01, if_stmt, {if_stmt, kw_else, if_stmt},
-         AST::Conditional::build_else_if),
-    Rule(0x01, if_stmt, {if_stmt, kw_else, braced_stmts},
-         AST::Conditional::build_else),
 
     Rule(0x01, expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 };

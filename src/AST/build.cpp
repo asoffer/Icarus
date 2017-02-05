@@ -186,26 +186,6 @@ Node *Case::Build(NPtrVec &&nodes) {
 }
 
 // Input guarantees:
-// [if] [expression] [braced_statements]
-//
-// Internal checks:
-// expression is not an assignemnt
-Node *Conditional::BuildIf(NPtrVec &&nodes) {
-  auto if_stmt = new Conditional;
-  auto cond    = steal<Expression>(nodes[1]);
-
-  if_stmt->conditions = {cond};
-  CheckEqualsNotAssignment(cond,
-                           "Expression in while-statement is an assignment. ");
-
-  assert(nodes[2]->is_statements());
-  if_stmt->statements = {steal<Statements>(nodes[2])};
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
-  if_stmt->loc = nodes[0]->loc;
-  return if_stmt;
-}
-
-// Input guarantees:
 // [while] [expression] [braced_statements]
 //
 // Internal checks:
@@ -639,29 +619,6 @@ Node *Statements::build_more(NPtrVec &&nodes) {
   return output;
 }
 
-Node *Conditional::build_else_if(NPtrVec &&nodes) {
-  auto if_stmt = steal<Conditional>(nodes[0]);
-  auto else_if = steal<Conditional>(nodes[2]);
-
-  assert(else_if->conditions.size() == 1 && else_if->statements.size() == 1 &&
-         else_if->body_scopes.size() == 1 && "Else-if statement constructed by "
-                                             "parser with multiple conditional "
-                                             "blocks.");
-
-  if_stmt->conditions.push_back(else_if->conditions.front());
-  if_stmt->statements.push_back(else_if->statements.front());
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
-  return if_stmt;
-}
-
-Node *Conditional::build_else(NPtrVec &&nodes) {
-  auto if_stmt           = steal<Conditional>(nodes[0]);
-  if_stmt->else_line_num = nodes[1]->loc.line_num;
-  if_stmt->statements.push_back(steal<Statements>(nodes[2]));
-  if_stmt->body_scopes.push_back(new BlockScope(ScopeEnum::Conditional));
-  return if_stmt;
-}
-
 Node *Jump::build(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk   = ((TokenNode *)nodes[0])->token;
@@ -882,9 +839,6 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
 
   } else if (strcmp(tk, "while") == 0) {
     return AST::While::Build(std::forward<NPtrVec &&>(nodes));
-
-  } else if (strcmp(tk, "if") == 0) {
-    return AST::Conditional::BuildIf(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "struct") == 0) {
     return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));

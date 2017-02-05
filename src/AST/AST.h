@@ -327,29 +327,6 @@ private:
 
 };
 
-struct Conditional : public Node {
-  static Node *BuildIf(NPtrVec &&nodes);
-  static Node *build_else_if(NPtrVec &&nodes);
-  static Node *build_else(NPtrVec &&nodes);
-
-  VIRTUAL_METHODS_FOR_NODES;
-  virtual void VerifyReturnTypes(Type *ret_val) override;
-
-  bool has_else() const { return else_line_num != 0; }
-
-  Conditional() : else_line_num(0) {}
-  virtual ~Conditional();
-
-  std::vector<Expression *> conditions;
-  std::vector<Statements *> statements;
-  std::vector<BlockScope *> body_scopes;
-
-  // We use else_line_num to determine if an else branch exists (when it's
-  // non-zero) and also for error generation (if multiple else-blocks are
-  // present).
-  size_t else_line_num;
-};
-
 struct For : public Node {
   For();
   virtual ~For();

@@ -62,7 +62,6 @@ void NotAType(AST::Expression *expr, Type *t);
 void IndeterminantType(AST::Expression *expr);
 void CyclicDependency(AST::Node *node);
 
-void CondWithoutBool(const Cursor &loc, const Type *t);
 void WhileWithoutBool(const Cursor &loc, const Type *t);
 void InvalidRangeType(const Cursor &loc, Type *t);
 void InvalidStringIndex(const Cursor &loc, Type *index_type);

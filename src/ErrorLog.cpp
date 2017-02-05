@@ -591,16 +591,6 @@ void InvalidScope(const Cursor &loc, const Type *t) {
   free(msg_head);
 }
 
-void CondWithoutBool(const Cursor &loc, const Type *t) {
-  ++num_errs_;
-  const char *msg_fmt = "Conditional expression must be a bool, but %s given.";
-  std::string t_str   = t->to_string();
-  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
-  free(msg_head);
-}
-
 void WhileWithoutBool(const Cursor &loc, const Type *t) {
   ++num_errs_;
   const char *msg_fmt = "While loop condition must be a bool, but %s given.";
