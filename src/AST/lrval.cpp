@@ -142,7 +142,7 @@ void ScopeNode::lrvalue_check(){
 
 void ScopeLiteral::lrvalue_check() {
   lvalue = Assign::RVal;
-  if (enter_fn) { enter_fn->lrvalue_check(); }
+  enter_fn->lrvalue_check();
 }
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
 void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }

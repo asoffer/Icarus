@@ -377,7 +377,11 @@ void Block::dump() {
   std::cerr << "  " << block_name << ":\n";
   for (auto c : cmds) { c.dump(4); }
 
-  exit->dump(4);
+  if (exit) {
+    exit->dump(4);
+  } else {
+    std::cerr << "    EXIT NOT YET DEFINED\n";
+  }
 }
 
 namespace Exit {

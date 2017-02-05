@@ -171,12 +171,9 @@ void ScopeLiteral::assign_scope() {
   scope_ = CurrentScope();
 
   // TODO internals are at their own scope
-  // ScopeStack.push(internal);
-  if (enter_fn) {
-    assert(enter_fn);
-    enter_fn->assign_scope();
-  }
-  // ScopeStack.pop();
+  ScopeStack.push(body_scope);
+  enter_fn->assign_scope();
+  ScopeStack.pop();
 }
 } // namespace AST
 #undef ITERATE_OR_SKIP

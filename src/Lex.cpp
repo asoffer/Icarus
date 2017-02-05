@@ -74,8 +74,11 @@ NNT NextWord(Cursor &cursor) {
     }
   }
 
-  if (token == "true" || token == "false") {
-    RETURN_TERMINAL(True, Bool, IR::Value::Bool(token == "true"));
+  if (token == "true") {
+    RETURN_TERMINAL(True, Bool, IR::Value::Bool(true));
+
+  } else if (token == "false") {
+    RETURN_TERMINAL(False, Bool, IR::Value::Bool(false));
 
   } else if (token == "null") {
     RETURN_TERMINAL(Null, NullPtr, IR::Value::None());

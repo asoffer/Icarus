@@ -428,6 +428,7 @@ struct ScopeLiteral : public Expression {
   EXPR_FNS(ScopeLiteral, scope);
 
   Declaration *enter_fn = nullptr;
+  Scope *body_scope     = nullptr;
   ScopeLiteral(const Cursor &cursor);
 };
 

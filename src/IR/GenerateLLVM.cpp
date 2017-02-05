@@ -46,7 +46,6 @@ extern llvm::Constant *null_pointer(Type *t);
 namespace IR {
 static llvm::Value *IR_to_LLVM(IR::Func *ir_fn, IR::Value cmd_arg,
                                const std::vector<llvm::Value *> &registers) {
-
   switch (cmd_arg.flag) {
   case ValType::Val: return cmd_arg.as_val->llvm();
   case ValType::Loc: return cmd_arg.as_loc->llvm(ir_fn, registers);
@@ -109,7 +108,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
   assert(llvm_block);
 
   builder.SetInsertPoint(llvm_block);
-
   // NOTE this is larger than necessary but definitely big enough.
   // TODO get the size just right when we know it.
   {
@@ -270,7 +268,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       std::vector<llvm::Value *> args(cmd.args.size(), nullptr);
       for (size_t i = 0; i < cmd.args.size(); ++i) {
         args[i] = IR_to_LLVM(ir_fn, cmd.args[i], registers);
-        if (!args[i]) { assert(false); }
+        assert(args[i]);
       }
 
       switch (cmd.op_code) {
@@ -569,7 +567,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
      }
     }
   }
-
   exit->GenerateLLVM(ir_fn, registers);
   return llvm_block;
 }

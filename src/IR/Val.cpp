@@ -2,6 +2,7 @@
 #include "Type/Type.h"
 
 extern std::string Escape(char c);
+extern llvm::IRBuilder<> builder;
 
 namespace data {
 extern llvm::Constant *null(const Type *t);
@@ -38,7 +39,10 @@ llvm::Constant *UintVal::llvm() { return data::const_uint(val); }
 llvm::Constant *FuncVal::llvm() {
   // The field 'val' could be null, representing a default-initialized function.
   if (!val) { return data::null_pointer(Char); }
+  auto ip = builder.saveIP();
   val->GenerateLLVM();
+  builder.restoreIP(ip);
+
   assert(val->llvm_fn);
   return val->llvm_fn;
 }
@@ -68,7 +72,7 @@ std::string FuncVal::to_string() const {
   }
   return ss.str();
 }
-std::string ScopeVal::to_string() const { NOT_YET; }
+std::string ScopeVal::to_string() const { return "scope"; }
 
 Order ArbitraryOrdering(const Val *lhs, const Val *rhs) {
 #define VAL_MACRO(TypeName, type_name, cpp_type)                               \

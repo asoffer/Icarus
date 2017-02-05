@@ -25,7 +25,10 @@ DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   value = IR::Value::Type(t);
 }
 
-ScopeLiteral::ScopeLiteral(const Cursor &cursor) { loc = cursor; }
+ScopeLiteral::ScopeLiteral(const Cursor &cursor) : body_scope(new Scope) {
+  loc   = cursor;
+  value = IR::Value::Scope(this);
+}
 
 Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;

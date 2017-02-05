@@ -367,8 +367,8 @@ static Type *EvalWithVars(Type *type,
 
 #define VERIFY_AND_RETURN_ON_ERROR(expr)                                       \
   do {                                                                         \
-    expr->verify_types();                                                      \
-    if (expr->type == Err) {                                                   \
+    (expr)->verify_types();                                                    \
+    if ((expr)->type == Err) {                                                 \
       type = Err;                                                              \
       return;                                                                  \
     }                                                                          \
@@ -1625,13 +1625,16 @@ void ScopeNode::verify_types() {
   //     return;
   //   }
   // }
-  type = (Type*)0x1;
+  type = Void; // TODO make this an actual expression
 }
 
 void ScopeLiteral::verify_types() {
   STARTING_CHECK;
-  type = ScopeType(Void);
-  // TODO internals
+  VERIFY_AND_RETURN_ON_ERROR(enter_fn);
+  if (!enter_fn->type->is_function()) {
+    // TODO error must be a function
+  }
+  type = ScopeType(((Function *)enter_fn->type)->input);
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

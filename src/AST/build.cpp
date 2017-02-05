@@ -77,8 +77,22 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
 }
 
 static Node *BuildScopeLiteral(NPtrVec &&nodes) {
+  auto scope_lit = new ScopeLiteral(nodes[0]->loc);
+
   // TODO take arguments as well
-  return new ScopeLiteral(nodes[0]->loc);
+  assert(nodes[1]->is_statements());
+  for (auto &&n : ((Statements *)nodes[1])->statements) {
+    if (!n->is_declaration()) { continue; } // TODO leaking
+    auto d = (Declaration*)n;
+    if (d->identifier->token != "enter") {continue; } // TODO leaking
+    scope_lit->enter_fn = steal<Declaration>(n);
+  }
+
+  if (!scope_lit->enter_fn) {
+    // log an error
+  }
+
+  return scope_lit;
 }
 
 static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
@@ -853,7 +867,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
     return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
 
   } else if (strcmp(tk, "scope") == 0) {
-    return AST::BuildScopeLiteral(std::forward<NPtrVec&&>(nodes));
+    return AST::BuildScopeLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
   UNREACHABLE;

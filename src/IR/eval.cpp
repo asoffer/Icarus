@@ -278,9 +278,12 @@ void Cmd::Execute(StackFrame& frame) {
         } else {
           frame.reg[result.reg] = Value::StackAddr(ptr_as_uint);
         }
-      } else {
+      } else if (result.type->is_function()) {
         frame.reg[result.reg] =
             Value::Func(*(Func **)(frame.stack->allocs + offset));
+      } else {
+        frame.reg[result.reg] =
+            Value::Scope(*(AST::ScopeLiteral **)(frame.stack->allocs + offset));
       }
     } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
 

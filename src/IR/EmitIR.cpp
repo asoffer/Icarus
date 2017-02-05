@@ -786,24 +786,18 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   assert(type->is_function());
   ir_func = new IR::Func((Function *)type, should_gen);
-
   fn_scope->entry_block = ir_func->entry();
   fn_scope->exit_block  = ir_func->exit();
-
   assert(type);
   assert(type->is_function());
 
   fn_scope->ret_val =
       IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
   fn_scope->exit_flag = IR::Value::FrameAddr(ir_func->PushSpace(Char));
-
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
-
   statements->verify_types();
-
   for (auto decl : fn_scope->DeclRegistry) { decl->AllocateLocally(ir_func); }
-
   for (auto scope : fn_scope->innards_) {
     if (!scope->is_block_scope() || scope->is_function_scope()) { continue; }
     for (auto decl : scope->DeclRegistry) {
@@ -815,15 +809,11 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       decl->AllocateLocally(ir_func);
     }
   }
-
   IR::Block::Current->SetUnconditional(fn_scope->entry_block);
-
   IR::Block::Current = fn_scope->entry_block;
   statements->EmitIR();
-
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
   fn_scope->InsertDestroy();
-
   if (((Function *)type)->output == Void ||
       ((Function *)type)->output->is_big()) {
     IR::Block::Current->SetReturnVoid();
@@ -831,7 +821,6 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
     IR::Block::Current->SetReturn(
         IR::Load(((Function *)type)->output, fn_scope->ret_val));
   }
-
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
 
@@ -939,7 +928,6 @@ IR::Value ArrayType::EmitIR() {
 
 IR::Value Declaration::EmitIR() {
   ENSURE_VERIFIED;
-    std::cerr << *type;
   if (IsUninitialized()) {
     return IR::Value::None();
 
@@ -1455,24 +1443,27 @@ IR::Value DummyTypeExpr::EmitIR() {
 
 IR::Value ScopeNode::EmitIR() {
   ENSURE_VERIFIED;
-  auto body_block = IR::Func::Current->AddBlock("scope-body");
-  auto land_block = IR::Func::Current->AddBlock("scope-land");
 
+  assert(!internal->entry_block);
+  assert(!internal->exit_block);
   internal->entry_block = IR::Func::Current->AddBlock("scope-entry");
   internal->exit_block  = IR::Func::Current->AddBlock("scope-exit");
 
-  // Do something with scope_expr
-  if (expr) {
-    auto expr_block = IR::Func::Current->AddBlock("scope-expr");
-    IR::Block::Current->SetUnconditional(expr_block);
-    IR::Block::Current = expr_block;
-    expr->EmitIR();
-  }
+  auto body_block = IR::Func::Current->AddBlock("scope-body");
+  auto land_block = IR::Func::Current->AddBlock("scope-land");
 
   IR::Block::Current->SetUnconditional(internal->entry_block);
   IR::Block::Current = internal->entry_block;
 
-  IR::Block::Current->SetUnconditional(body_block);
+  auto enter_fn = ((IR::ScopeVal *)Evaluate(scope_expr).as_val)->val->enter_fn;
+  auto fn_lit   = GetFunctionLiteral(enter_fn);
+
+  IR::Block::Current->SetConditional(
+      IR::Call(Bool, fn_lit->EmitIR(),
+               (expr ? std::vector<IR::Value>{expr->EmitIR()}
+                     : std::vector<IR::Value>{})),
+      body_block, land_block);
+
   IR::Block::Current = body_block;
   stmts->EmitIR();
 
@@ -1483,7 +1474,6 @@ IR::Value ScopeNode::EmitIR() {
 
   IR::Block::Current->SetUnconditional(land_block);
   IR::Block::Current = land_block;
-
   return IR::Value::None();
 }
 
