@@ -2,9 +2,9 @@
 #define ICARUS_ERROR_LOG_H
 
 namespace AST {
-  struct Unop;
-  struct Case;
-}// namespace AST
+struct Unop;
+struct Case;
+} // namespace AST
 
 namespace ErrorLog {
 extern size_t num_errs_;
@@ -16,8 +16,8 @@ void LogGeneric(const Cursor &loc, const std::string &msg);
 void TooManyDots(const Cursor &loc, size_t num_dots);
 void NonWhitespaceAfterNewlineEscape(const Cursor &loc, size_t dist);
 void RunawayMultilineComment();
-void UndeclaredIdentifier(const Cursor &loc, const char *token);
-void AmbiguousIdentifier(const Cursor &loc, const char *token);
+void UndeclaredIdentifier(const Cursor &loc, const std::string &token);
+void AmbiguousIdentifier(const Cursor &loc, const std::string &token);
 void InvalidCapture(const Cursor &loc, const AST::Declaration *decl);
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void InvalidAddress(const Cursor &loc, Assign mode);
@@ -39,8 +39,8 @@ void NonGraphicCharInSrc(const Cursor &loc);
 void GlobalNonDecl(const Cursor &loc);
 void EmptyFile(const Cursor &loc);
 
-void NotBinary(const Cursor &loc, const char *token);
-void Reserved(const Cursor &loc, const char *token);
+void NotBinary(const Cursor &loc, const std::string &token);
+void Reserved(const Cursor &loc, const std::string &token);
 
 void InvalidCast(const Cursor &loc, const Type *from, const Type *to);
 void AssignmentTypeMismatch(const Cursor &loc, const Type *lhs,
@@ -48,10 +48,10 @@ void AssignmentTypeMismatch(const Cursor &loc, const Type *lhs,
 void InvalidRangeTypes(const Cursor &loc, const Type *lhs, const Type *rhs);
 void InitWithNull(const Cursor &loc, const Type *lhs, const Type *rhs);
 
-void AlreadyFoundMatch(const Cursor &loc, const char *op_symbol,
+void AlreadyFoundMatch(const Cursor &loc, const std::string &op_symbol,
                        const Type *lhs, const Type *rhs);
-void NoKnownOverload(const Cursor &loc, const char *op_symbol, const Type *lhs,
-                     const Type *rhs);
+void NoKnownOverload(const Cursor &loc, const std::string &op_symbol,
+                     const Type *lhs, const Type *rhs);
 
 void AssignmentArrayLength(const Cursor &loc, size_t len);
 void NonBinaryAssignment(const Cursor &loc, size_t len);

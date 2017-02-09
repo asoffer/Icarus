@@ -132,9 +132,9 @@ struct TokenNode : public Node {
 
   virtual ~TokenNode() {}
 
-  TokenNode(const Cursor &cursor = Cursor(), const char *str_lit = "");
+  TokenNode(const Cursor &cursor = Cursor(), std::string str = "");
 
-  const char *token;
+  std::string token;
   Language::Operator op;
 };
 

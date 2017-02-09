@@ -2,6 +2,10 @@
 #include "Type/Type.h"
 #endif
 
+NNT::NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt)
+    : node(new AST::TokenNode(Cursor::Behind(cursor, token.size()), token)),
+      node_type(nt) {}
+
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
@@ -39,17 +43,13 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
   do {                                                                         \
-    auto term_ptr           = new AST::Terminal;                               \
+    auto term_ptr           = make_unique<AST::Terminal>();                    \
     term_ptr->loc           = cursor;                                          \
     term_ptr->terminal_type = Language::Terminal::term_type;                   \
     term_ptr->type          = ty;                                              \
     term_ptr->value = val;                                                     \
-    return NNT(term_ptr, Language::expr);                                      \
+    return NNT(std::move(term_ptr), Language::expr);                           \
   } while (false)
-
-#define RETURN_NNT(tk, nt, tk_len)                                             \
-  return NNT(new AST::TokenNode(Cursor::Behind(cursor, tk_len), tk),           \
-             Language::nt)
 
 extern std::map<const char *, Type *> PrimitiveTypes;
 
@@ -90,43 +90,34 @@ NNT NextWord(Cursor &cursor) {
     RETURN_TERMINAL(ASCII, Func(Uint, Char), IR::Value::None());
 
   } else if (token == "else") {
-    auto term_ptr           = new AST::Terminal;
+    auto term_ptr           = make_unique<AST::Terminal>();
     Cursor loc              = cursor;
     loc.offset              = starting_offset;
     term_ptr->loc           = loc;
     term_ptr->terminal_type = Language::Terminal::Else;
     term_ptr->type          = Bool;
 
-    return NNT(term_ptr, Language::kw_else);
+    return NNT(std::move(term_ptr), Language::kw_else);
   }
 
-#define CASE_RETURN_NNT(str, op, len)                                          \
-  do {                                                                         \
-    if (strcmp(token_cstr, str) == 0) { RETURN_NNT(str, op, len); }            \
-  } while (false)
-
-  auto token_cstr = token.c_str();
-
-  CASE_RETURN_NNT("in", op_b, 2);
-  CASE_RETURN_NNT("print", op_l, 5);
-  CASE_RETURN_NNT("import", op_l, 6);
-  CASE_RETURN_NNT("free", op_l, 4);
-  CASE_RETURN_NNT("for", kw_expr_block, 3);
-  CASE_RETURN_NNT("case", kw_block, 4);
-  CASE_RETURN_NNT("enum", kw_block, 4);
-  CASE_RETURN_NNT("struct", kw_struct, 6);
-  CASE_RETURN_NNT("return", op_lt, 6);
-  CASE_RETURN_NNT("continue", op_lt, 8);
-  CASE_RETURN_NNT("break", op_lt, 5);
-  CASE_RETURN_NNT("repeat", op_lt, 6);
-  CASE_RETURN_NNT("restart", op_lt, 7);
-  CASE_RETURN_NNT("scope", kw_struct, 5);
-
-#undef CASE_RETURN_NNT
+  if (token == "in") { return NNT(cursor, "in", Language::op_b); }
+  if (token == "print") { return NNT(cursor, "print", Language::op_l); }
+  if (token == "import") { return NNT(cursor, "import", Language::op_l); }
+  if (token == "free") { return NNT(cursor, "free", Language::op_l); }
+  if (token == "for") { return NNT(cursor, "for", Language::kw_expr_block); }
+  if (token == "case") { return NNT(cursor, "case", Language::kw_block); }
+  if (token == "enum") { return NNT(cursor, "enum", Language::kw_block); }
+  if (token == "struct") { return NNT(cursor, "struct", Language::kw_struct); }
+  if (token == "return") { return NNT(cursor, "return", Language::op_lt); }
+  if (token == "continue") { return NNT(cursor, "continue", Language::op_lt); }
+  if (token == "break") { return NNT(cursor, "break", Language::op_lt); }
+  if (token == "repeat") { return NNT(cursor, "repeat", Language::op_lt); }
+  if (token == "restart") { return NNT(cursor, "restart", Language::op_lt); }
+  if (token == "scope") { return NNT(cursor, "scope", Language::kw_struct); }
 
   Cursor loc = cursor;
   loc.offset = starting_offset;
-  return NNT(new AST::Identifier(loc, token), Language::expr);
+  return NNT(make_unique<AST::Identifier>(loc, token), Language::expr);
 }
 
 // Precondition: Output parameter points to a value of zero.
@@ -304,30 +295,30 @@ static NNT NextCharLiteral(Cursor &cursor) {
 
 static NNT NextOperator(Cursor &cursor) {
   switch (*cursor) {
-  case '@': cursor.Increment(); RETURN_NNT("@", op_l, 1);
-  case ',': cursor.Increment(); RETURN_NNT(",", comma, 1);
-  case ';': cursor.Increment(); RETURN_NNT(";", semicolon, 1);
-  case '(': cursor.Increment(); RETURN_NNT("(", l_paren, 1);
-  case ')': cursor.Increment(); RETURN_NNT(")", r_paren, 1);
-  case '[': cursor.Increment(); RETURN_NNT("[", l_bracket, 1);
-  case ']': cursor.Increment(); RETURN_NNT("]", r_bracket, 1);
-  case '$': cursor.Increment(); RETURN_NNT("$", op_l, 1);
+  case '@': cursor.Increment(); return NNT(cursor, "@", Language::op_l);
+  case ',': cursor.Increment(); return NNT(cursor, ",", Language::comma);
+  case ';': cursor.Increment(); return NNT(cursor, ";", Language::semicolon);
+  case '(': cursor.Increment(); return NNT(cursor, "(", Language::l_paren);
+  case ')': cursor.Increment(); return NNT(cursor, ")", Language::r_paren);
+  case '[': cursor.Increment(); return NNT(cursor, "[", Language::l_bracket);
+  case ']': cursor.Increment(); return NNT(cursor, "]", Language::r_bracket);
+  case '$': cursor.Increment(); return NNT(cursor, "$", Language::op_l);
 
   case '{': {
     cursor.Increment();
     if (*cursor =='{') {
       cursor.Increment();
-      RETURN_NNT("{{", l_double_brace, 2);
+      return NNT(cursor, "{{", Language::l_double_brace);
     }
-    RETURN_NNT("{", l_brace, 1);
+    return NNT(cursor, "{", Language::l_brace);
   }
   case '}': {
     cursor.Increment();
     if (*cursor =='}') {
       cursor.Increment();
-      RETURN_NNT("}}", r_double_brace, 2);
+      return NNT(cursor, "}}", Language::r_double_brace);
     }
-    RETURN_NNT("}", r_brace, 1);
+    return NNT(cursor, "}", Language::r_brace);
   }
             
   case '.': {
@@ -341,10 +332,10 @@ static NNT NextOperator(Cursor &cursor) {
         cursor.BackUp();
         return NextNumberInBase<10>(cursor);
       }
-      RETURN_NNT(".", op_b, 1);
+      return NNT(cursor, ".", Language::op_b);
     } else {
       if (num_dots > 2) { ErrorLog::TooManyDots(cursor_copy, num_dots); }
-      RETURN_NNT("..", dots, 2);
+      return NNT(cursor, "..", Language::dots);
     }
   } break;
 
@@ -357,7 +348,7 @@ static NNT NextOperator(Cursor &cursor) {
     switch (*cursor) {
     case '\\':
       cursor.Increment();
-      RETURN_NNT("", newline, 0);
+      return NNT(cursor, "", Language::newline);
       break;
     case '\0':
       // Ignore the following newline and retry
@@ -399,12 +390,10 @@ static NNT NextOperator(Cursor &cursor) {
     char old_char       = *cursor;
     *cursor             = '\0';
     const char *tag_ref = cursor.line.ptr + cursor_copy.offset;
-    size_t tag_len      = strlen(tag_ref);
-    char *tag = new char[tag_len + 1];
-    strcpy(tag, tag_ref);
-    *cursor = old_char;
+    std::string tag     = tag_ref;
+    *cursor             = old_char;
 
-    RETURN_NNT(tag, hashtag, tag_len + 1);
+    return NNT(cursor, tag, Language::hashtag);
   } break;
 
   case '+':
@@ -416,17 +405,15 @@ static NNT NextOperator(Cursor &cursor) {
     char first_char = *cursor;
     cursor.Increment();
 
-    char *token = new char[3];
+    std::string token = "X=";
     token[0] = first_char;
     if (*cursor == '=') {
       cursor.Increment();
-      token[1] = '=';
     } else {
-      token[1] = '\0';
+      token = std::string(1, first_char);
     }
-    token[2] = '\0';
 
-    RETURN_NNT(token, op_b, strlen(token));
+    return NNT(cursor, token, Language::op_b);
   } break;
 
   case '*':
@@ -437,25 +424,25 @@ static NNT NextOperator(Cursor &cursor) {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
         cursor.BackUp();
-        RETURN_NNT("*", op_b, 1);
+        return NNT(cursor, "*", Language::op_b);
       } else {
         ErrorLog::NotInMultilineComment(Cursor::Behind(cursor, 2));
         return NNT::Invalid();
       }
     } else if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT("*=", op_b, 2);
+      return NNT(cursor, "*=", Language::op_b);
     } else {
-      RETURN_NNT("*", op_b, 1);
+      return NNT(cursor, "*", Language::op_b);
     }
 
   case '&': {
     cursor.Increment();
     if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT("&=", op_b, 2);
+      return NNT(cursor, "&=", Language::op_b);
     } else {
-      RETURN_NNT("&", op_bl, 1);
+      return NNT(cursor, "&", Language::op_bl);
     }
   } break;
 
@@ -464,14 +451,14 @@ static NNT NextOperator(Cursor &cursor) {
 
     if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT(":=", op_b, 2);
+      return NNT(cursor, ":=", Language::op_b);
 
     } else if (*cursor == '>') {
       cursor.Increment();
-      RETURN_NNT(":>", op_b, 2);
+      return NNT(cursor, ":>", Language::op_b);
 
     } else {
-      RETURN_NNT(":", colon, 1);
+      return NNT(cursor, ":", Language::colon);
     }
   } break;
 
@@ -479,9 +466,9 @@ static NNT NextOperator(Cursor &cursor) {
     cursor.Increment();
     if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT("!=", op_b, 2);
+      return NNT(cursor, "!=", Language::op_b);
     } else {
-      RETURN_NNT("!", op_l, 1);
+      return NNT(cursor, "!", Language::op_l);
     }
   } break;
 
@@ -489,20 +476,20 @@ static NNT NextOperator(Cursor &cursor) {
     cursor.Increment();
     if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT("-=", op_b, 2);
+      return NNT(cursor, "-=", Language::op_b);
 
     } else if (*cursor == '>') {
       cursor.Increment();
-      auto nptr = new AST::TokenNode(cursor, "->");
+      auto nptr = make_unique<AST::TokenNode>(cursor, "->");
       nptr->op = Language::Operator::Arrow;
-      return NNT(nptr, Language::fn_arrow);
+      return NNT(std::move(nptr), Language::fn_arrow);
 
     } else if (*cursor == '-') {
       cursor.Increment();
       RETURN_TERMINAL(Hole, Unknown, IR::Value::None());
 
     } else {
-      RETURN_NNT("-", op_bl, 1);
+      return NNT(cursor, "-", Language::op_bl);
     }
   } break;
 
@@ -510,14 +497,14 @@ static NNT NextOperator(Cursor &cursor) {
     cursor.Increment();
     if (*cursor == '=') {
       cursor.Increment();
-      RETURN_NNT("==", op_b, 2);
+      return NNT(cursor, "==", Language::op_b);
 
     } else if (*cursor == '>') {
       cursor.Increment();
-      RETURN_NNT("=>", op_b, 2);
+      return NNT(cursor, "=>", Language::op_b);
 
     } else {
-      RETURN_NNT("=", eq, 1);
+      return NNT(cursor, "=", Language::eq);
     }
   } break;
   case '?':
@@ -528,7 +515,7 @@ static NNT NextOperator(Cursor &cursor) {
     ErrorLog::InvalidCharTilde(cursor);
     cursor.Increment();
     return NNT::Invalid();
-  case '\'': cursor.Increment(); RETURN_NNT("'", op_bl, 1);
+  case '\'': cursor.Increment(); return NNT(cursor, "'", Language::op_bl);
   case '_': UNREACHABLE;
   default: UNREACHABLE;
   }
@@ -549,7 +536,7 @@ NNT NextSlashInitiatedToken(Cursor &cursor) {
     while (comment_layer != 0) {
       if (cursor.source_file->ifs.eof()) {
         ErrorLog::RunawayMultilineComment();
-        RETURN_NNT("", eof, 0);
+        return NNT(cursor, "", Language::eof);
 
       } else if (back_one == '/' && *cursor == '*') {
         ++comment_layer;
@@ -563,8 +550,8 @@ NNT NextSlashInitiatedToken(Cursor &cursor) {
     }
     return NNT::Invalid();
   }
-  case '=': cursor.Increment(); RETURN_NNT("/=", op_b, 2);
-  default: RETURN_NNT("/", op_b, 1);
+  case '=': cursor.Increment(); return NNT(cursor, "/=", Language::op_b);
+  default: return NNT(cursor, "/", Language::op_b);
   }
 }
 
@@ -572,7 +559,7 @@ NNT NextToken(Cursor &cursor) {
 restart:
   // Delegate based on the next character in the file stream
   if (cursor.source_file->ifs.eof()) {
-    RETURN_NNT("", eof, 0);
+    return NNT(cursor, "", Language::eof);
   } else if (IsAlphaOrUnderscore(*cursor)) {
     return NextWord(cursor);
   } else if (IsNonZeroDigit(*cursor)) {
@@ -587,11 +574,10 @@ restart:
   case '/': nnt = NextSlashInitiatedToken(cursor); break;
   case '\t':
   case ' ': cursor.Increment(); goto restart; // Skip whitespace
-  case '\0': cursor.Increment(); RETURN_NNT("", newline, 0);
+  case '\0': cursor.Increment(); return NNT(cursor, "", Language::newline);
   default: nnt = NextOperator(cursor); break;
   }
   if (nnt == NNT::Invalid()) { goto restart; }
   return nnt;
 }
-#undef RETURN_NNT
 #undef RETURN_TERMINAL

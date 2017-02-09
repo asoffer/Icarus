@@ -73,7 +73,7 @@ static Node *BuildScopeLiteral(NPtrVec &&nodes) {
   assert(nodes[1]->is_statements());
   for (auto &&n : ((Statements *)nodes[1])->statements) {
     if (!n->is_declaration()) { continue; } // TODO leaking
-    auto d = (Declaration*)n;
+    auto d = (Declaration *)n;
     if (d->identifier->token == "enter") {
       scope_lit->enter_fn = steal<Declaration>(n);
     } else if (d->identifier->token == "exit") {
@@ -238,7 +238,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->operand = steal<Expression>(nodes[1]);
   unop_ptr->loc     = nodes[0]->loc;
 
-  if (strcmp(tk, "import") == 0) {
+  if (tk == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
@@ -255,44 +255,44 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
     unop_ptr->op = Language::Operator::Import;
 
-  } else if (strcmp(tk, "return") == 0) {
+  } else if (tk == "return") {
     unop_ptr->op = Language::Operator::Return;
 
-  } else if (strcmp(tk, "break") == 0) {
+  } else if (tk == "break") {
     unop_ptr->op = Language::Operator::Break;
     goto id_check;
 
-  } else if (strcmp(tk, "continue") == 0) {
+  } else if (tk == "continue") {
     unop_ptr->op = Language::Operator::Continue;
     goto id_check;
 
-  } else if (strcmp(tk, "restart") == 0) {
+  } else if (tk == "restart") {
     unop_ptr->op = Language::Operator::Restart;
     goto id_check;
 
-  } else if (strcmp(tk, "repeat") == 0) {
+  } else if (tk == "repeat") {
     unop_ptr->op = Language::Operator::Repeat;
     goto id_check;
 
-  } else if (strcmp(tk, "free") == 0) {
+  } else if (tk == "free") {
     unop_ptr->op = Language::Operator::Free;
 
-  } else if (strcmp(tk, "print") == 0) {
+  } else if (tk == "print") {
     unop_ptr->op = Language::Operator::Print;
 
-  } else if (strcmp(tk, "&") == 0) {
+  } else if (tk == "&") {
     unop_ptr->op = Language::Operator::And;
 
-  } else if (strcmp(tk, "-") == 0) {
+  } else if (tk == "-") {
     unop_ptr->op = Language::Operator::Sub;
 
-  } else if (strcmp(tk, "!") == 0) {
+  } else if (tk == "!") {
     unop_ptr->op = Language::Operator::Not;
 
-  } else if (strcmp(tk, "@") == 0) {
+  } else if (tk == "@") {
     unop_ptr->op = Language::Operator::At;
 
-  } else if (strcmp(tk, "$") == 0) {
+  } else if (tk == "$") {
     unop_ptr->op = Language::Operator::Eval;
 
   } else {
@@ -332,8 +332,7 @@ Node *ChainOp::Build(NPtrVec &&nodes) {
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
   bool use_old_chain_op =
-      nodes[0]->is_chain_op() &&
-      ((ChainOp *)nodes[0])->precedence == op_prec;
+      nodes[0]->is_chain_op() && ((ChainOp *)nodes[0])->precedence == op_prec;
 
   if (use_old_chain_op) {
     chain_ptr = steal<ChainOp>(nodes[0]);
@@ -440,9 +439,9 @@ Node *Unop::BuildDots(NPtrVec &&nodes) {
 
   // We intentionally do not delete tk_node becasue we only want to read from
   // it. The apply() call will take care of its deletion.
-  auto tk_node        = (TokenNode *)nodes[1];
-  unop_ptr->loc       = tk_node->loc;
-  unop_ptr->op        = tk_node->op;
+  auto tk_node  = (TokenNode *)nodes[1];
+  unop_ptr->loc = tk_node->loc;
+  unop_ptr->op  = tk_node->op;
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
   return unop_ptr;
@@ -493,7 +492,7 @@ Node *ArrayType::build(NPtrVec &&nodes) {
 
 Node *Expression::AddHashtag(NPtrVec &&nodes) {
   assert(nodes[0]->is_expression());
-  auto expr= steal<Expression>(nodes[0]);
+  auto expr = steal<Expression>(nodes[0]);
   assert(nodes[1]->is_token_node());
   expr->hashtag_indices.push_back(Hashtag::Get(((TokenNode *)nodes[1])->token));
 
@@ -522,7 +521,7 @@ Node *Declaration::Build(NPtrVec &&nodes) {
   if (op == Language::Operator::Colon) {
     decl_ptr->type_expr = steal<Expression>(nodes[2]);
   } else {
-    decl_ptr->init_val  = steal<Expression>(nodes[2]);
+    decl_ptr->init_val = steal<Expression>(nodes[2]);
   }
 
   assert(nodes[0]->is_identifier());
@@ -600,19 +599,19 @@ Node *Jump::build(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk   = ((TokenNode *)nodes[0])->token;
   Jump *jmp = nullptr;
-  if (strcmp(tk, "break") == 0) {
+  if (tk == "break") {
     jmp = new Jump(nodes[0]->loc, JumpType::Break);
 
-  } else if (strcmp(tk, "continue") == 0) {
+  } else if (tk == "continue") {
     jmp = new Jump(nodes[0]->loc, JumpType::Continue);
 
-  } else if (strcmp(tk, "return") == 0) {
+  } else if (tk == "return") {
     jmp = new Jump(nodes[0]->loc, JumpType::Return);
 
-  } else if (strcmp(tk, "repeat") == 0) {
+  } else if (tk == "repeat") {
     jmp = new Jump(nodes[0]->loc, JumpType::Repeat);
 
-  } else if (strcmp(tk, "restart") == 0) {
+  } else if (tk == "restart") {
     jmp = new Jump(nodes[0]->loc, JumpType::Restart);
   }
   assert(jmp);
@@ -624,7 +623,7 @@ Node *Jump::build(NPtrVec &&nodes) {
 }
 
 Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
-                     Statements *stmt_node) {
+                                Statements *stmt_node) {
   auto scope_node        = new ScopeNode;
   scope_node->loc        = scope_name->loc;
   scope_node->scope_expr = scope_name;
@@ -657,8 +656,8 @@ AST::Node *BracedStatements(NPtrVec &&nodes) {
 }
 
 AST::Node *OneBracedStatement(NPtrVec &&nodes) {
-  auto stmts = new AST::Statements;
-  stmts->loc = nodes[0]->loc;
+  auto stmts       = new AST::Statements;
+  stmts->loc       = nodes[0]->loc;
   auto single_stmt = steal<AST::Node>(nodes[1]);
   stmts->statements.push_back(single_stmt);
   return stmts;
@@ -704,20 +703,20 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     }
   }
 
-  if (strcmp(tk, ".") == 0) {
+  if (tk == ".") {
     return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, ":") == 0 || strcmp(tk, ":=") == 0) {
+  } else if (tk == ":" || tk == ":=") {
     return AST::Declaration::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "in") == 0) {
+  } else if (tk == "in") {
     return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "`") == 0) {
+  } else if (tk == "`") {
     return AST::Generic::Build(std::forward<NPtrVec &&>(nodes));
   }
 
-  if (strcmp(tk, "=") == 0) {
+  if (tk == "=") {
     if (nodes[0]->is_declaration()) {
       if (((AST::Declaration *)nodes[0])->IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
@@ -748,14 +747,14 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
   binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
 
-  if (strcmp(tk, "'") == 0) {
+  if (tk == "'") {
     std::swap(binop_ptr->lhs, binop_ptr->rhs);
     tk = "(";
   }
 
 #define LOOKUP_SYMBOL(sym, name)                                               \
   do {                                                                         \
-    if (strcmp(tk, sym) == 0) {                                                \
+    if (tk == sym) {                                                           \
       binop_ptr->op = Language::Operator::name;                                \
       goto end;                                                                \
     }                                                                          \
@@ -791,16 +790,16 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
-  if (strcmp(tk, "case") == 0) {
+  if (tk == "case") {
     return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "enum") == 0) {
+  } else if (tk == "enum") {
     return AST::BuildEnumLiteral(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "struct") == 0) {
+  } else if (tk == "struct") {
     return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "scope") == 0) {
+  } else if (tk == "scope") {
     return AST::BuildScopeLiteral(std::forward<NPtrVec &&>(nodes));
   }
 
@@ -811,10 +810,10 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   assert(nodes[0]->is_token_node());
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
-  if (strcmp(tk, "for") == 0) {
+  if (tk == "for") {
     return AST::For::Build(std::forward<NPtrVec &&>(nodes));
 
-  } else if (strcmp(tk, "struct") == 0) {
+  } else if (tk == "struct") {
     return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));
   }
 

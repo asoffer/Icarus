@@ -3,10 +3,10 @@
 #endif
 
 namespace AST {
-TokenNode::TokenNode(const Cursor &loc, const char *str_lit)
-    : Node(loc), token(str_lit) {
+TokenNode::TokenNode(const Cursor &loc, std::string str)
+    : Node(loc), token(std::move(str)) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  if (strcmp(token, symbol) == 0) {                                            \
+  if (token == symbol) {                                                       \
     op = Language::Operator::name;                                             \
     return;                                                                    \
   }

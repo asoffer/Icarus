@@ -11,6 +11,7 @@
 #include <stack>
 #include <sstream>
 #include <fstream>
+#include <memory>
 
 // TODO Figure out what you need from this.
 #include "llvm/ADT/STLExtras.h"
@@ -52,6 +53,9 @@ extern bool ct_eval;
 #define AT(access) [(access)]
 #endif
 
+template <typename T, typename... Args> std::unique_ptr<T> make_unique(Args&&... args) {
+  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
 
 namespace llvm {
 class Value;
@@ -322,18 +326,21 @@ inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
 
 struct NNT {
   NNT() = default;
-  AST::Node *node              = nullptr;
+  std::unique_ptr<AST::Node> node = nullptr;
   Language::NodeType node_type = Language::bof;
-  NNT(AST::Node *n, Language::NodeType nt) : node(n), node_type(nt) {}
+  NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt);
+
+  NNT(std::unique_ptr<AST::Node> n, Language::NodeType nt)
+      : node(std::move(n)), node_type(nt) {}
   static NNT Invalid() {
     // Name of this function is clearer than just using default constructor
     return NNT();
   }
 };
-inline bool operator==(NNT lhs, NNT rhs) {
-  return lhs.node == rhs.node && lhs.node_type == rhs.node_type;
+inline bool operator==(const NNT& lhs, const NNT& rhs) {
+  return lhs.node.get() == rhs.node.get() && lhs.node_type == rhs.node_type;
 }
-inline bool operator!=(NNT lhs, NNT rhs) { return (lhs == rhs); }
+inline bool operator!=(const NNT& lhs, const NNT& rhs) { return (lhs == rhs); }
 
 #include "IR/IR.h"
 #include "AST/AST.h"

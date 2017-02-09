@@ -12,10 +12,8 @@ struct ParseState {
   NNT lookahead_;
 
   ParseState(const Cursor &c) : lookahead_(nullptr, Language::bof) {
-    lookahead_.node = new AST::TokenNode(c);
+    lookahead_.node.reset(new AST::TokenNode(c));
   }
-
-  ~ParseState() { delete lookahead_.node; }
 
   template <size_t N> inline Language::NodeType get_type() const {
     return node_type_stack_[node_type_stack_.size() - N];
@@ -41,7 +39,7 @@ static void Debug(ParseState *ps) {
 
 static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
-  ps->node_stack_.push_back(ps->lookahead_.node);
+  ps->node_stack_.push_back(ps->lookahead_.node.release());
   ps->lookahead_ = NextToken(*c);
 }
 
@@ -97,7 +95,8 @@ static bool ShouldShift(ParseState *ps) {
     auto left_prec = precedence(((AST::TokenNode *)ps->get<2>())->op);
     size_t right_prec;
     if (ps->lookahead_.node_type & OP_) {
-      right_prec = precedence(((AST::TokenNode *)ps->lookahead_.node)->op);
+      right_prec = precedence(
+          static_cast<AST::TokenNode *>(ps->lookahead_.node.get())->op);
 
     } else if (ps->lookahead_.node_type == l_paren) {
       right_prec = precedence(Operator::Call);

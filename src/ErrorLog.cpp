@@ -37,13 +37,14 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-static inline std::string NumTimes(size_t n, const char *numeric_prefix, bool capitalize) {
+static inline std::string NumTimes(size_t n, const char *numeric_prefix,
+                                   bool capitalize) {
   if (n == 1) { return capitalize ? "Once" : "once"; }
   if (n == 2) { return capitalize ? "Twice" : "twice"; }
   if (numeric_prefix) {
-  return numeric_prefix + std::to_string(n) + " times";
+    return numeric_prefix + std::to_string(n) + " times";
   } else {
-  return std::to_string(n) + " times";
+    return std::to_string(n) + " times";
   }
 }
 
@@ -216,8 +217,9 @@ void ErrorLog::Dump() {
   std::cerr << " found." << std::endl;
 }
 
-static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
-                           const Cursor &loc, size_t underline_length) {
+static void DisplayErrorMessage(const char *msg_head,
+                                const char *msg_foot, const Cursor &loc,
+                                size_t underline_length) {
   pstr line = source_map AT(loc.file_name())->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 6;
@@ -456,7 +458,7 @@ void AssignmentArrayLength(const Cursor &loc, size_t len) {
   free(msg_head);
 }
 
-void AlreadyFoundMatch(const Cursor &loc, const char *op_symbol,
+void AlreadyFoundMatch(const Cursor &loc, const std::string &op_symbol,
                        const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt =
@@ -464,15 +466,15 @@ void AlreadyFoundMatch(const Cursor &loc, const char *op_symbol,
   std::string lhs_str = lhs->to_string();
   std::string rhs_str = rhs->to_string();
 
-  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + strlen(op_symbol) +
+  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + op_symbol.size() +
                                  lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, op_symbol, lhs_str.c_str(), rhs_str.c_str());
+  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(), rhs_str.c_str());
   // TODO undeline length is incorrect?
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
 }
 
-void NoKnownOverload(const Cursor &loc, const char *op_symbol, const Type *lhs,
+void NoKnownOverload(const Cursor &loc, const std::string&op_symbol, const Type *lhs,
                      const Type *rhs) {
   ++num_errs_;
   const char *head_fmt =
@@ -480,9 +482,10 @@ void NoKnownOverload(const Cursor &loc, const char *op_symbol, const Type *lhs,
   std::string lhs_str = lhs->to_string();
   std::string rhs_str = rhs->to_string();
 
-  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + strlen(op_symbol) +
+  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + op_symbol.size() +
                                  lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, op_symbol, lhs_str.c_str(), rhs_str.c_str());
+  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
+          rhs_str.c_str());
   // TODO undeline length is incorrect?
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
@@ -591,20 +594,20 @@ void InvalidScope(const Cursor &loc, const Type *t) {
   free(msg_head);
 }
 
-void NotBinary(const Cursor &loc, const char *token) {
+void NotBinary(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Operator '%s' is not a binary operator";
-  auto msg_head = (char *)malloc(strlen(token) + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, token);
+  auto msg_head = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, token.c_str());
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
 }
 
-void Reserved(const Cursor &loc, const char *token) {
+void Reserved(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
-  auto msg_head = (char *)malloc(strlen(token) + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, token);
+  auto msg_head = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
+  sprintf(msg_head, msg_fmt, token.c_str());
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
 }
@@ -701,7 +704,7 @@ void UnknownParserError(const std::string &file_name,
   DisplayLines(lines);
 }
 
-void UndeclaredIdentifier(const Cursor &loc, const char *token) {
+void UndeclaredIdentifier(const Cursor &loc, const std::string&token) {
   ++num_errs_;
   undeclared_identifiers[token][loc.file_name().c_str()][loc.line_num]
       .push_back(loc.offset);
@@ -713,7 +716,7 @@ void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
       loc.offset);
 }
 
-void AmbiguousIdentifier(const Cursor &loc, const char *token) {
+void AmbiguousIdentifier(const Cursor &loc, const std::string&token) {
   ++num_errs_;
   ambiguous_identifiers[token][loc.file_name().c_str()][loc.line_num].push_back(
       loc.offset);
