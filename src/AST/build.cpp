@@ -684,6 +684,14 @@ AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes) {
   return stmts;
 }
 
+AST::Node *AST::CodeBlock::BuildEmpty(NPtrVec &&nodes) {
+  auto block = new CodeBlock;
+  // TODO block->value
+  block->loc   = nodes[0]->loc;
+  block->stmts = new Statements;
+  return block;
+}
+
 AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   static const std::map<std::string, Language::Operator> chain_ops = {
       {",", Language::Operator::Comma}, {"==", Language::Operator::EQ},

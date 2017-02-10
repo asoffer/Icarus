@@ -23,6 +23,7 @@ Node *Expression::clone(LOOKUP_ARGS) { UNREACHABLE; }
 Node *TokenNode::clone(LOOKUP_ARGS) { UNREACHABLE; }
 Node *Node::clone(LOOKUP_ARGS) { UNREACHABLE; }
 
+Node *CodeBlock::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *ScopeNode::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *Jump::clone(LOOKUP_ARGS) { NOT_YET; }
 Node *ScopeLiteral::clone(LOOKUP_ARGS) { NOT_YET; }

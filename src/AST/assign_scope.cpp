@@ -108,6 +108,8 @@ void FunctionLiteral::assign_scope() {
 
 void Jump::assign_scope() { scope_ = CurrentScope(); }
 
+void CodeBlock::assign_scope() { scope_ = CurrentScope(); }
+
 void DummyTypeExpr::assign_scope() {
   scope_ = CurrentScope();
   if (value.as_val->GetType()->is_parametric_struct()) {

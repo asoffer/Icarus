@@ -10,7 +10,6 @@
 std::map<const char *, Type *> PrimitiveTypes{
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   { #name, GlobalName },
-
 #include "../config/primitive.conf"
 #undef PRIMITIVE_MACRO
 };

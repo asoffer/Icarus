@@ -28,7 +28,7 @@ struct ParseState {
 static void Debug(ParseState *ps) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
-  for (auto x : ps->node_type_stack_) { fprintf(stderr, "%llu, ", x); }
+  for (auto x : ps->node_type_stack_) { fprintf(stderr, "%u, ", x); }
   fputs("", stderr);
 
   for (const auto &node_ptr : ps->node_stack_) {

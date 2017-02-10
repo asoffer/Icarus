@@ -206,6 +206,8 @@ std::string ScopeNode::to_string(size_t n) const {
   return ss.str();
 }
 
+std::string CodeBlock::to_string(size_t n) const { return tabs(n) + "<...>\n"; }
+
 std::string DummyTypeExpr::to_string(size_t n) const {
   assert(value.as_val && value.as_val->is_type());
   return tabs(n) + "<" + value.as_val->to_string() + ">\n";

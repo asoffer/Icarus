@@ -9,6 +9,7 @@ IR::Value Primitive::EmitInitialValue() const {
   case PrimType::Type: return IR::Value::Type(Void);
   case PrimType::Void: UNREACHABLE;
   case PrimType::NullPtr: UNREACHABLE;
+  case PrimType::Code: UNREACHABLE;
   case PrimType::Bool: return IR::Value::Bool(false);
   case PrimType::Char: return IR::Value::Char('\0');
   case PrimType::Int: return IR::Value::Int(0l);

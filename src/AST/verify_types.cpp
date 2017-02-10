@@ -1571,6 +1571,8 @@ void Jump::verify_types() {
   UNREACHABLE;
 }
 
+void CodeBlock::verify_types() { type = Code_; }
+
 void DummyTypeExpr::verify_types() {
   if (value.as_val->GetType()->is_parametric_struct()) {
     auto ps = (ParamStruct *)value.as_val->GetType();

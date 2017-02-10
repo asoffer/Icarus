@@ -8,8 +8,8 @@ extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
-extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Type_, *Uint, *Void,
-    *NullPtr, *RawPtr, *String, *U16, *U32;
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
+    *Void, *NullPtr, *RawPtr, *String, *U16, *U32;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
@@ -106,8 +106,10 @@ public:
 #undef ENDING
 #define ENDING
 
-enum class PrimType{
-  Err, Unknown, Bool, Char, Int, Real, Type, Uint, Void, NullPtr, U16, U32, String
+enum class PrimType : char {
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name) EnumName,
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
 };
 
 struct Primitive : public Type {

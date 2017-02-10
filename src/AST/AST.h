@@ -53,6 +53,7 @@ struct Node {
   virtual bool is_access() const { return false; }
   virtual bool is_comma_list() const { return false; }
   virtual bool is_in_decl() const { return false; }
+  virtual bool is_code_block() const { return false; }
   virtual bool is_declaration() const { return false; }
   virtual bool is_indecl() const { return false; }
   virtual bool is_array_type() const { return false; }
@@ -246,6 +247,12 @@ struct Statements : public Node {
   virtual ~Statements();
 
   std::vector<AST::Node *> statements;
+};
+
+struct CodeBlock : public Expression {
+  EXPR_FNS(CodeBlock, code_block);
+  Statements* stmts = nullptr;
+  static Node *BuildEmpty(NPtrVec &&nodes);
 };
 
 struct Unop : public Expression {

@@ -280,7 +280,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value);
 namespace Language {
 extern size_t precedence(Operator op);
 
-enum NodeType : u64 {
+enum NodeType : u32 {
   bof            = 1ull << 0,
   eof            = 1ull << 1,
   newline        = 1ull << 3,
@@ -301,8 +301,8 @@ enum NodeType : u64 {
   kw_else        = 1ull << 18,
   kw_block       = 1ull << 19,
   kw_struct      = 1ull << 20,
-  l_double_brace = 1ull << 32,
-  r_double_brace = 1ull << 33,
+  l_double_brace = 1ull << 21,
+  r_double_brace = 1ull << 22,
 
   op_l     = 1ull << 23,
   op_b     = 1ull << 24,

@@ -84,8 +84,9 @@ ScopeLiteral::~ScopeLiteral() {
   DELETE(exit_fn);
 }
 
+CodeBlock::~CodeBlock() { DELETE(stmts); }
+
 Jump::~Jump() {}
 DummyTypeExpr::~DummyTypeExpr() {}
-
 } // namespace AST
 #undef DELETE

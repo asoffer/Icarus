@@ -82,6 +82,7 @@ std::string Primitive::to_string() const {
   case PrimType::Unknown: return "???";
   case PrimType::Bool: return "bool";
   case PrimType::Char: return "char";
+  case PrimType::Code: return "code";
   case PrimType::Int: return "int";
   case PrimType::Real: return "real";
   case PrimType::Type: return "type";

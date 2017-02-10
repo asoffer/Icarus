@@ -117,6 +117,7 @@ void Statements::lrvalue_check() {
 }
 
 void Jump::lrvalue_check() {}
+void CodeBlock::lrvalue_check() {}
 
 void For::lrvalue_check() {
   statements->lrvalue_check();

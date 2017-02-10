@@ -26,6 +26,7 @@ IR::Value Binop::EmitLVal() {
   }
 }
 
+
 IR::Value Unop::EmitLVal() {
   // TODO EmitIR or EmitLVal?
   if (op == Language::Operator::At) { return operand->EmitIR(); }
@@ -78,6 +79,7 @@ IR::Value Access::EmitLVal() {
                    struct_type->field_name_to_num AT(member_name));
 }
 
+IR::Value CodeBlock::EmitLVal() { UNREACHABLE; }
 IR::Value Terminal::EmitLVal() { UNREACHABLE; }
 IR::Value Declaration::EmitLVal() { UNREACHABLE; }
 IR::Value FunctionLiteral::EmitLVal() { UNREACHABLE; }

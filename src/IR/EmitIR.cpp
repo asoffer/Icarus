@@ -1346,6 +1346,8 @@ IR::Value DummyTypeExpr::EmitIR() {
   return IR::Value::Type(value.as_val->GetType());
 }
 
+IR::Value CodeBlock::EmitIR() { NOT_YET; }
+
 IR::Value ScopeNode::EmitIR() {
   ENSURE_VERIFIED;
 
