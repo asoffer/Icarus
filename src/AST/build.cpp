@@ -752,37 +752,21 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
     tk = "(";
   }
 
-#define LOOKUP_SYMBOL(sym, name)                                               \
-  do {                                                                         \
-    if (tk == sym) {                                                           \
-      binop_ptr->op = Language::Operator::name;                                \
-      goto end;                                                                \
-    }                                                                          \
-  } while (false)
+  static const std::map<std::string, Language::Operator> symbols = {
+      {"=>", Language::Operator::Rocket}, {":>", Language::Operator::Cast},
+      {"->", Language::Operator::Arrow},  {"|=", Language::Operator::OrEq},
+      {"&=", Language::Operator::AndEq},  {"^=", Language::Operator::XorEq},
+      {"+=", Language::Operator::AddEq},  {"-=", Language::Operator::SubEq},
+      {"*=", Language::Operator::MulEq},  {"/=", Language::Operator::DivEq},
+      {"%=", Language::Operator::ModEq},  {"..", Language::Operator::Dots},
+      {"+", Language::Operator::Add},     {"-", Language::Operator::Sub},
+      {"*", Language::Operator::Mul},     {"/", Language::Operator::Div},
+      {"%", Language::Operator::Mod},     {"[", Language::Operator::Index},
+      {"(", Language::Operator::Call}};
+  auto iter = symbols.find(tk);
+  if (iter != symbols.end()) { binop_ptr->op = iter->second; }
 
-  LOOKUP_SYMBOL("=>", Rocket);
-  LOOKUP_SYMBOL(":>", Cast);
-  LOOKUP_SYMBOL("->", Arrow);
-  LOOKUP_SYMBOL("|=", OrEq);
-  LOOKUP_SYMBOL("&=", AndEq);
-  LOOKUP_SYMBOL("^=", XorEq);
-  LOOKUP_SYMBOL("+=", AddEq);
-  LOOKUP_SYMBOL("-=", SubEq);
-  LOOKUP_SYMBOL("*=", MulEq);
-  LOOKUP_SYMBOL("/=", DivEq);
-  LOOKUP_SYMBOL("%=", ModEq);
-  LOOKUP_SYMBOL("..", Dots);
-  LOOKUP_SYMBOL("+", Add);
-  LOOKUP_SYMBOL("-", Sub);
-  LOOKUP_SYMBOL("*", Mul);
-  LOOKUP_SYMBOL("/", Div);
-  LOOKUP_SYMBOL("%", Mod);
-  LOOKUP_SYMBOL("[", Index);
-  LOOKUP_SYMBOL("(", Call);
-#undef LOOKUP_SYMBOL
-end:
   binop_ptr->precedence = Language::precedence(binop_ptr->op);
-
   return binop_ptr;
 }
 
