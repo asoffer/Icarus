@@ -205,14 +205,15 @@ static const std::vector<Rule> Rules = {
     Rule(0x00, braced_stmts, {l_brace, r_brace}, EmptyBraces),
     Rule(0x00, braced_stmts, {l_brace, (expr | fn_expr), r_brace},
          OneBracedStatement),
-    //    TODO
-    //    Rule(0x00, expr,
-    //         {l_double_brace, stmts, stmts | expr | fn_expr, r_double_brace},
-    //         DoubleBracedStatementsSameLineEnd),
-    //    Rule(0x00, expr, {l_double_brace, stmts, r_double_brace},
-    //         DoubleBracedStatements),
+    Rule(0x00, expr,
+         {l_double_brace, stmts, stmts | expr | fn_expr, r_double_brace},
+         AST::CodeBlock::BuildFromStatementsSameLineEnd),
+    Rule(0x00, expr, {l_double_brace, stmts, r_double_brace},
+         AST::CodeBlock::BuildFromStatements),
     Rule(0x00, expr, {l_double_brace, r_double_brace},
          AST::CodeBlock::BuildEmpty),
+    Rule(0x00, expr, {l_double_brace, (expr | fn_expr), r_double_brace},
+         AST::CodeBlock::BuildFromOneStatement),
 
     Rule(0x00, expr, {fn_expr, braced_stmts}, AST::FunctionLiteral::build),
 

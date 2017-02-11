@@ -252,7 +252,10 @@ struct Statements : public Node {
 struct CodeBlock : public Expression {
   EXPR_FNS(CodeBlock, code_block);
   Statements* stmts = nullptr;
+  static Node *BuildFromStatementsSameLineEnd(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
+  static Node *BuildFromStatements(NPtrVec &&nodes);
+  static Node *BuildFromOneStatement(NPtrVec &&nodes);
 };
 
 struct Unop : public Expression {

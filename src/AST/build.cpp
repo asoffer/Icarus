@@ -637,14 +637,12 @@ Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
 }
 
 AST::Node *ScopeNode::Build(NPtrVec &&nodes) {
-  assert(nodes[2]->is_statements());
   return BuildScopeNode(steal<Expression>(nodes[0]),
                         steal<Expression>(nodes[1]),
                         steal<Statements>(nodes[2]));
 }
 
 AST::Node *ScopeNode::BuildVoid(NPtrVec &&nodes) {
-  assert(nodes[1]->is_statements());
   return BuildScopeNode(steal<Expression>(nodes[0]), nullptr,
                         steal<Statements>(nodes[1]));
 }
@@ -655,6 +653,14 @@ AST::Node *BracedStatements(NPtrVec &&nodes) {
   return steal<AST::Node>(nodes[1]);
 }
 
+AST::Node *AST::CodeBlock::BuildFromStatements(NPtrVec &&nodes) {
+  auto block = new CodeBlock;
+  // TODO block->value
+  block->loc = nodes[0]->loc;
+  block->stmts = steal<AST::Statements>(nodes[1]);
+  return block;
+}
+
 AST::Node *OneBracedStatement(NPtrVec &&nodes) {
   auto stmts       = new AST::Statements;
   stmts->loc       = nodes[0]->loc;
@@ -663,14 +669,7 @@ AST::Node *OneBracedStatement(NPtrVec &&nodes) {
   return stmts;
 }
 
-AST::Node *EmptyBraces(NPtrVec &&nodes) {
-  auto stmts = new AST::Statements;
-  stmts->loc = nodes[0]->loc;
-  return stmts;
-}
-
 AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes) {
-  assert(nodes[1]->is_statements());
   auto stmts = steal<AST::Statements>(nodes[1]);
   stmts->loc = nodes[0]->loc;
   if (nodes[2]->is_statements()) {
@@ -684,11 +683,36 @@ AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes) {
   return stmts;
 }
 
+AST::Node *AST::CodeBlock::BuildFromStatementsSameLineEnd(NPtrVec &&nodes) {
+  auto block = new CodeBlock;
+  // TODO block->value
+  block->loc   = nodes[0]->loc;
+  block->stmts = static_cast<AST::Statements *>(
+      BracedStatementsSameLineEnd(std::forward<NPtrVec &&>(nodes)));
+  return block;
+}
+
+AST::Node *AST::CodeBlock::BuildFromOneStatement(NPtrVec &&nodes) {
+  auto block = new CodeBlock;
+  // TODO block->value
+  block->loc   = nodes[0]->loc;
+  block->stmts = static_cast<AST::Statements *>(
+      OneBracedStatement(std::forward<NPtrVec &&>(nodes)));
+  return block;
+}
+
+AST::Node *EmptyBraces(NPtrVec &&nodes) {
+  auto stmts = new AST::Statements;
+  stmts->loc = nodes[0]->loc;
+  return stmts;
+}
+
 AST::Node *AST::CodeBlock::BuildEmpty(NPtrVec &&nodes) {
   auto block = new CodeBlock;
   // TODO block->value
   block->loc   = nodes[0]->loc;
-  block->stmts = new Statements;
+  block->stmts = static_cast<AST::Statements *>(
+      EmptyBraces(std::forward<NPtrVec &&>(nodes)));
   return block;
 }
 
