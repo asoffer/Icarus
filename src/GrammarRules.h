@@ -221,8 +221,8 @@ static const std::vector<Rule> Rules = {
 
     Rule(0x02, expr, {kw_struct, EXPR, braced_stmts}, BuildKWExprBlock),
 
-    Rule(0x03, stmts, {EXPR, EXPR, braced_stmts}, AST::ScopeNode::Build),
-    Rule(0x04, stmts, {EXPR, braced_stmts}, AST::ScopeNode::BuildVoid),
+    Rule(0x03, expr, {EXPR, EXPR, braced_stmts}, AST::ScopeNode::Build),
+    Rule(0x04, expr, {EXPR, braced_stmts}, AST::ScopeNode::BuildVoid),
 
     Rule(0x01, expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 };

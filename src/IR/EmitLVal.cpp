@@ -35,6 +35,7 @@ IR::Value Unop::EmitLVal() {
 IR::Value ChainOp::EmitLVal() { NOT_YET; }
 IR::Value Generic::EmitLVal() { NOT_YET; }
 IR::Value InDecl::EmitLVal() { NOT_YET; }
+IR::Value ScopeNode::EmitLVal() { NOT_YET; }
 
 IR::Value Access::EmitLVal() {
   // Automatically pass through pointers

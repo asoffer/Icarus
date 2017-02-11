@@ -629,11 +629,8 @@ Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
   scope_node->scope_expr = scope_name;
   scope_node->expr       = arg_expr;
   scope_node->stmts      = stmt_node;
-
-  auto stmts = new Statements;
-  stmts->loc = scope_node->loc;
-  stmts->statements.push_back(scope_node);
-  return stmts;
+  scope_node->internal   = new BlockScope(ScopeEnum::Standard);
+  return scope_node;
 }
 
 AST::Node *ScopeNode::Build(NPtrVec &&nodes) {

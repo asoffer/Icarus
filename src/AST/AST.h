@@ -43,6 +43,7 @@ struct Node {
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
   virtual bool is_expression() const { return false; }
+  virtual bool is_scope_node() const { return false; }
   virtual bool is_binop() const { return false; }
   virtual bool is_generic() const { return false; }
   virtual bool is_function_literal() const { return false; }
@@ -377,10 +378,8 @@ struct Jump : public Node {
   JumpType jump_type;
 };
 
-struct ScopeNode : public Node {
-  ScopeNode();
-  virtual ~ScopeNode();
-  VIRTUAL_METHODS_FOR_NODES;
+struct ScopeNode : public Expression {
+  EXPR_FNS(ScopeNode, scope_node);
 
   static Node *Build(NPtrVec &&nodes);
   static Node *BuildVoid(NPtrVec &&nodes);
@@ -390,11 +389,6 @@ struct ScopeNode : public Node {
   Expression *expr       = nullptr; // If the scope takes an argument, this is it
   Statements *stmts      = nullptr;
   BlockScope *internal   = nullptr;
-
-  // Member variable 'type' exists only so we can have this set to Unknown, Err,
-  // or some value (0x1) indicating that we have successfully passed type
-  // verification.
-  Type *type = nullptr;
 };
 
 struct ScopeLiteral : public Expression {

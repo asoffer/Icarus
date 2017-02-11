@@ -1606,7 +1606,7 @@ void ScopeNode::verify_types() {
   //     return;
   //   }
   // }
-  type = Void; // TODO make this an actual expression
+  type = Void;
 }
 
 void ScopeLiteral::verify_types() {
