@@ -1302,12 +1302,12 @@ void Declaration::verify_types() {
     }
 
   } else if (IsCustomInitialized()) {
-    type   = type_expr->VerifyTypeForDeclaration(identifier->token);
-    auto t = init_val->VerifyValueForDeclaration(identifier->token);
+    type               = type_expr->VerifyTypeForDeclaration(identifier->token);
+    auto init_val_type = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == Err) {
-      type             = t;
-    } else if (t == NullPtr) {
+      type = init_val_type;
+    } else if (init_val_type == NullPtr) {
       if (type->is_pointer()) {
         init_val->type   = type;
       } else {
@@ -1316,6 +1316,8 @@ void Declaration::verify_types() {
         type             = new_type;
         init_val->type   = new_type;
       }
+    } else if (type != init_val_type) {
+      ErrorLog::AssignmentTypeMismatch(loc, type, init_val_type);
     }
 
   } else if (IsUninitialized()) {

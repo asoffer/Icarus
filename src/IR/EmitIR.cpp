@@ -22,7 +22,6 @@ extern FileType file_type;
 
 static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   expr->verify_types();
-  if (ErrorLog::num_errs_ > 0) { return nullptr; }
 
   auto fn_ptr = new AST::FunctionLiteral;
 
@@ -54,6 +53,7 @@ IR::Value Evaluate(AST::Expression *expr) {
   auto old_block = IR::Block::Current;
 
   auto fn_ptr = WrapExprIntoFunction(expr);
+
   if (!fn_ptr) { return IR::Value::Error(); }
 
   auto local_stack = new IR::LocalStack;
@@ -74,6 +74,7 @@ IR::Value Evaluate(AST::Expression *expr) {
     assert(ret->is_unop() && ((AST::Unop *)ret)->op == Language::Operator::Return);
     ((AST::Unop *)ret)->operand = nullptr;
   }
+
   delete fn_ptr;
 
   return result;

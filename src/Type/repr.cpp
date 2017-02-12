@@ -23,7 +23,7 @@ void Primitive::EmitRepr(IR::Value val) {
   if (this == Bool) {
     IR::Print(IR::Value::Type(Bool), val);
   } else if (this == Char) {
-    IR::Print(IR::Value::Type(Char), IR::Value::Char('\''));
+    IR::Print(IR::Value::Type(Char), IR::Value::Char('`'));
 
     auto land_block = IR::Func::Current->AddBlock("land");
     AddSpecialCharacter(val, '\a', 'a', land_block);
@@ -36,7 +36,6 @@ void Primitive::EmitRepr(IR::Value val) {
     IR::Print(IR::Value::Type(Char), val);
     IR::Block::Current->SetUnconditional(land_block);
     IR::Block::Current = land_block;
-    IR::Print(IR::Value::Type(Char), IR::Value::Char('\''));
 
   } else if (this == Int) {
     IR::Print(IR::Value::Type(Int), val);
