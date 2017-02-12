@@ -43,6 +43,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Free: ss << "Free"; break;
   case Language::Operator::And: ss << "And"; break;
   case Language::Operator::Sub: ss << "Sub"; break;
+  case Language::Operator::Generate: ss << "Generate"; break;
   case Language::Operator::Not: ss << "Not"; break;
   case Language::Operator::At: ss << "At"; break;
   case Language::Operator::Eval: ss << "Eval"; break;

@@ -238,6 +238,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->operand = steal<Expression>(nodes[1]);
   unop_ptr->loc     = nodes[0]->loc;
 
+  bool check_id = false;
   if (tk == "import") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
@@ -255,65 +256,39 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
 
     unop_ptr->op = Language::Operator::Import;
 
-  } else if (tk == "return") {
-    unop_ptr->op = Language::Operator::Return;
-
-  } else if (tk == "break") {
-    unop_ptr->op = Language::Operator::Break;
-    goto id_check;
-
-  } else if (tk == "continue") {
-    unop_ptr->op = Language::Operator::Continue;
-    goto id_check;
-
-  } else if (tk == "restart") {
-    unop_ptr->op = Language::Operator::Restart;
-    goto id_check;
-
-  } else if (tk == "repeat") {
-    unop_ptr->op = Language::Operator::Repeat;
-    goto id_check;
-
-  } else if (tk == "free") {
-    unop_ptr->op = Language::Operator::Free;
-
-  } else if (tk == "print") {
-    unop_ptr->op = Language::Operator::Print;
-
-  } else if (tk == "&") {
-    unop_ptr->op = Language::Operator::And;
-
-  } else if (tk == "-") {
-    unop_ptr->op = Language::Operator::Sub;
-
-  } else if (tk == "!") {
-    unop_ptr->op = Language::Operator::Not;
-
-  } else if (tk == "@") {
-    unop_ptr->op = Language::Operator::At;
-
-  } else if (tk == "$") {
-    unop_ptr->op = Language::Operator::Eval;
-
   } else {
-    UNREACHABLE;
+    const static std::map<std::string, std::pair<Language::Operator, bool>>
+        UnopMap = {{"return", {Language::Operator::Return, false}},
+                   {"break", {Language::Operator::Break, true}},
+                   {"continue", {Language::Operator::Continue, true}},
+                   {"restart", {Language::Operator::Restart, true}},
+                   {"repeat", {Language::Operator::Repeat, true}},
+                   {"free", {Language::Operator::Free, false}},
+                   {"generate", {Language::Operator::Generate, false}},
+                   {"print", {Language::Operator::Print, false}},
+                   {"&", {Language::Operator::And, false}},
+                   {"-", {Language::Operator::Sub, false}},
+                   {"!", {Language::Operator::Not, false}},
+                   {"@", {Language::Operator::At, false}},
+                   {"$", {Language::Operator::Eval, false}}};
+    auto iter = UnopMap.find(tk);
+    assert(iter != UnopMap.end());
+    std::tie(unop_ptr->op, check_id) = iter->second;
   }
 
   unop_ptr->precedence = Language::precedence(unop_ptr->op);
 
-  if (unop_ptr->operand->is_declaration()) {
-    auto decl = (Declaration *)unop_ptr->operand;
-    // TODO clean up this error message
-    ErrorLog::InvalidDecl(decl->loc);
-  }
-
-  return unop_ptr;
-
-id_check:
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-  if (!unop_ptr->operand->is_identifier()) {
-    // TODO clean up error message
-    ErrorLog::NonIdJumpOperand(unop_ptr->operand->loc);
+  if (check_id) {
+    if (!unop_ptr->operand->is_identifier()) {
+      // TODO clean up error message
+      ErrorLog::NonIdJumpOperand(unop_ptr->operand->loc);
+    }
+  } else {
+    if (unop_ptr->operand->is_declaration()) {
+      auto decl = (Declaration *)unop_ptr->operand;
+      // TODO clean up this error message
+      ErrorLog::InvalidDecl(decl->loc);
+    }
   }
   return unop_ptr;
 }

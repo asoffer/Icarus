@@ -48,6 +48,7 @@ size_t Primitive::alignment() const {
   case PrimType::Real: return 8;
   case PrimType::Void: return 1;
   case PrimType::Type: return 8;
+  case PrimType::Code: return 8;
   case PrimType::String: return 8;
   // TODO There's a difference between what we want when we use this at
   // compile-time and when we want the value at run-time
@@ -68,7 +69,8 @@ size_t Primitive::bytes() const {
   case PrimType::Void: return 0;
   case PrimType::Type: return 8;
   case PrimType::String: return 8;
-
+  case PrimType::Code: return 8;
+                       
   // TODO There's a difference between what we want when we use this at
   // compile-time and when we want the value at run-time
 

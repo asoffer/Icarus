@@ -72,6 +72,7 @@ struct Binop;
 struct Statements;
 struct FunctionLiteral;
 struct ScopeLiteral;
+struct CodeBlock;
 } // namespace AST
 
 struct Type;

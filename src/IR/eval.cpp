@@ -269,7 +269,7 @@ void Cmd::Execute(StackFrame& frame) {
 
 #undef DO_LOAD
       assert(result.type->is_pointer() || result.type->is_function() ||
-             result.type->is_scope_type());
+             result.type->is_scope_type() || result.type->is_code_block());
       if (result.type->is_pointer()) {
         // TODO how do we determine if it's heap or stack?
         auto ptr_as_uint = *(size_t *)(frame.stack->allocs + offset);
@@ -281,9 +281,12 @@ void Cmd::Execute(StackFrame& frame) {
       } else if (result.type->is_function()) {
         frame.reg[result.reg] =
             Value::Func(*(Func **)(frame.stack->allocs + offset));
-      } else {
+      } else if (result.type->is_scope_type()) {
         frame.reg[result.reg] =
             Value::Scope(*(AST::ScopeLiteral **)(frame.stack->allocs + offset));
+      } else {
+        frame.reg[result.reg] =
+            Value::Code(*(AST::CodeBlock **)(frame.stack->allocs + offset));
       }
     } else if (cmd_inputs[0].flag == ValType::HeapAddr) {
 

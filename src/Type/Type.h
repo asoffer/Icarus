@@ -87,6 +87,7 @@ public:
   virtual bool is_range() const { return false; }
   virtual bool is_slice() const { return false; }
   virtual bool is_scope_type() const { return false; }
+  virtual bool is_code_block() const { return this == Code_; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;

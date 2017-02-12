@@ -544,6 +544,9 @@ void Unop::verify_types() {
   case Operator::Import: {
     type = Void;
   } break;
+  case Operator::Generate: {
+    type = Void;
+  } break;
   default: UNREACHABLE;
   }
 }

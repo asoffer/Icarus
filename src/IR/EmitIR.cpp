@@ -291,6 +291,13 @@ IR::Value Unop::EmitIR() {
     }
   } break;
   case Language::Operator::At: return PtrCallFix(type, operand->EmitIR());
+  case Language::Operator::Generate: {
+    auto stmts =
+        Evaluate(operand).as_val->GetCode()->stmts->clone(0, nullptr, nullptr);
+    stmts->EmitIR();
+    delete stmts;
+    return IR::Value::None();
+  } break;
   default: UNREACHABLE;
   }
 }
@@ -1346,7 +1353,7 @@ IR::Value DummyTypeExpr::EmitIR() {
   return IR::Value::Type(value.as_val->GetType());
 }
 
-IR::Value CodeBlock::EmitIR() { NOT_YET; }
+IR::Value CodeBlock::EmitIR() { return IR::Value::Code(this); }
 
 IR::Value ScopeNode::EmitIR() {
   ENSURE_VERIFIED;

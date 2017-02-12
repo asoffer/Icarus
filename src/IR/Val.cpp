@@ -48,6 +48,7 @@ llvm::Constant *FuncVal::llvm() {
 }
 llvm::Constant *NullVal::llvm() { return data::null(val); }
 llvm::Constant *ScopeVal::llvm() { UNREACHABLE; }
+llvm::Constant *CodeVal::llvm() { UNREACHABLE; }
 
 std::string BoolVal::to_string() const { return val ? "true" : "false"; }
 std::string CharVal::to_string() const { return "'" + Escape(val) + "'"; }
@@ -73,6 +74,7 @@ std::string FuncVal::to_string() const {
   return ss.str();
 }
 std::string ScopeVal::to_string() const { return "scope"; }
+std::string CodeVal::to_string() const { return "code"; }
 
 Order ArbitraryOrdering(const Val *lhs, const Val *rhs) {
 #define VAL_MACRO(TypeName, type_name, cpp_type)                               \

@@ -100,20 +100,18 @@ NNT NextWord(Cursor &cursor) {
     return NNT(std::move(term_ptr), Language::kw_else);
   }
 
-  if (token == "in") { return NNT(cursor, "in", Language::op_b); }
-  if (token == "print") { return NNT(cursor, "print", Language::op_l); }
-  if (token == "import") { return NNT(cursor, "import", Language::op_l); }
-  if (token == "free") { return NNT(cursor, "free", Language::op_l); }
-  if (token == "for") { return NNT(cursor, "for", Language::kw_expr_block); }
-  if (token == "case") { return NNT(cursor, "case", Language::kw_block); }
-  if (token == "enum") { return NNT(cursor, "enum", Language::kw_block); }
-  if (token == "struct") { return NNT(cursor, "struct", Language::kw_struct); }
-  if (token == "return") { return NNT(cursor, "return", Language::op_lt); }
-  if (token == "continue") { return NNT(cursor, "continue", Language::op_lt); }
-  if (token == "break") { return NNT(cursor, "break", Language::op_lt); }
-  if (token == "repeat") { return NNT(cursor, "repeat", Language::op_lt); }
-  if (token == "restart") { return NNT(cursor, "restart", Language::op_lt); }
-  if (token == "scope") { return NNT(cursor, "scope", Language::kw_struct); }
+  static const std::map<std::string, Language::NodeType> KeywordMap = {
+      {"in", Language::op_b},           {"print", Language::op_l},
+      {"import", Language::op_l},       {"free", Language::op_l},
+      {"for", Language::kw_expr_block}, {"case", Language::kw_block},
+      {"enum", Language::kw_block},     {"generate", Language::op_l},
+      {"struct", Language::kw_struct},  {"return", Language::op_lt},
+      {"continue", Language::op_lt},    {"break", Language::op_lt},
+      {"repeat", Language::op_lt},      {"restart", Language::op_lt},
+      {"scope", Language::kw_struct}};
+  for (const auto& kv : KeywordMap) {
+    if (token == kv.first) { return NNT(cursor, kv.first, kv.second); }
+  }
 
   Cursor loc = cursor;
   loc.offset = starting_offset;
