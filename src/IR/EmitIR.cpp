@@ -803,6 +803,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   fn_scope->exit_flag = IR::Value::FrameAddr(ir_func->PushSpace(Char));
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
+  IR::Store(Char, NORMAL_FLAG, fn_scope->exit_flag);
 
   statements->verify_types();
   for (auto decl : fn_scope->DeclRegistry) { decl->AllocateLocally(ir_func); }
@@ -824,6 +825,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   statements->EmitIR();
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
 
+  IR::Block::Current = fn_scope->exit_block;
   fn_scope->InsertDestroy();
   if (((Function *)type)->output == Void ||
       ((Function *)type)->output->is_big()) {
@@ -1361,17 +1363,17 @@ IR::Value CodeBlock::EmitIR() { return IR::Value::Code(this); }
 
 IR::Value ScopeNode::EmitIR() {
   ENSURE_VERIFIED;
-
   assert(!internal->entry_block);
   assert(!internal->exit_block);
-  internal->entry_block = IR::Func::Current->AddBlock("scope-entry");
+
+  auto scope_entry_test = IR::Func::Current->AddBlock("scope-entry-test");
+  internal->entry_block = IR::Func::Current->AddBlock("scope-ilv");
   internal->exit_block  = IR::Func::Current->AddBlock("scope-exit");
+  auto jump_back_block  = IR::Func::Current->AddBlock("scope-jump");
+  auto land_block       = IR::Func::Current->AddBlock("scope-land");
 
-  auto body_block = IR::Func::Current->AddBlock("scope-body");
-  auto land_block = IR::Func::Current->AddBlock("scope-land");
-
-  IR::Block::Current->SetUnconditional(internal->entry_block);
-  IR::Block::Current = internal->entry_block;
+  IR::Block::Current->SetUnconditional(scope_entry_test);
+  IR::Block::Current = scope_entry_test;
 
   auto scope_lit_scope =
       ((IR::ScopeVal *)Evaluate(scope_expr).as_val)->val->body_scope;
@@ -1380,21 +1382,33 @@ IR::Value ScopeNode::EmitIR() {
   auto exit_fn =
       GetFuncReferencedIn(scope_lit_scope, "exit", Func(Void, Bool));
 
-
   std::vector<IR::Value> enter_args;
   if (expr) { enter_args = {expr->EmitIR()}; }
-
-  IR::Block::Current->SetConditional(IR::Call(Bool, enter_fn, enter_args),
-                                     body_block, land_block);
-  IR::Block::Current = body_block;
+  auto entry_fn_result = IR::Call(Bool, enter_fn, enter_args);
+  IR::Block::Current->SetConditional(entry_fn_result, internal->entry_block,
+                                     land_block);
+  IR::Block::Current = internal->entry_block;
   stmts->EmitIR();
 
-  // TODO Destroy
-
   IR::Block::Current->SetUnconditional(internal->exit_block);
+
+  assert(stmts->scope_->is_block_scope());
+  assert(stmts->scope_ == internal);
   IR::Block::Current = internal->exit_block;
-  IR::Block::Current->SetConditional(IR::Call(Bool, exit_fn, {}),
-                                     internal->entry_block, land_block);
+  static_cast<BlockScope *>(stmts->scope_)->InsertDestroy();
+  auto exit_fn_result = IR::Call(Bool, exit_fn, {});
+
+  IR::Block::Current->SetSwitch(
+      IR::Load(Char, internal->GetFnScope()->exit_flag), jump_back_block);
+  IR::Exit::Switch *exit_switch =
+      (IR::Exit::Switch *)IR::Block::Current->exit;
+  // TODO are break/continue/etc defined?
+  exit_switch->AddEntry(RETURN_FLAG,
+                        ((BlockScope *)internal->parent)->exit_block);
+
+  IR::Block::Current = jump_back_block;
+  IR::Block::Current->SetConditional(exit_fn_result, scope_entry_test,
+                                     land_block);
 
   IR::Block::Current = land_block;
   return IR::Value::None();
@@ -1409,4 +1423,4 @@ IR::Value ScopeLiteral::EmitIR() {
   return value;
 }
 } // namespace AST
-#undef ENSURE_VERIFIED                                                        \
+#undef ENSURE_VERIFIED

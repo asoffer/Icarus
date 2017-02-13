@@ -152,7 +152,6 @@ struct Terminal : public Expression {
   virtual bool is_hole() const override {
     return terminal_type == Language::Terminal::Hole;
   }
-
 };
 
 struct Identifier : public Terminal {

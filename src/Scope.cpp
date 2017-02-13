@@ -79,8 +79,7 @@ void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
 
 void BlockScope::InsertDestroy() {
   assert(exit_block);
-
-  IR::Block::Current = exit_block;
+  assert(IR::Block::Current == exit_block);
 
   for (auto decl : DeclRegistry) {
     if (decl->arg_val || decl->is_in_decl() ||
