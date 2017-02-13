@@ -37,8 +37,8 @@ main := void -> void {
 
   v3.x += 0.1
 
-  print v1 == v2 == v3 == v4, '\n'
-  print v1 != v2, '\n'
+  print v1 == v2 == v3 == v4, `n
+  print v1 != v2, `n
   v1.x = 3.0
   v1.y = 4.0
   v1.z = 12.0
@@ -51,7 +51,7 @@ main := void -> void {
   print "\nv2 = ", v2
   v2 = v1 - v3
   print "\nv2 = ", v2
-  print "\n<v1, v2> = ", v1 * v2, '\n'
+  print "\n<v1, v2> = ", v1 * v2, `n
 }
 
   __ne__ := (lhs: vec, rhs: vec) -> bool {

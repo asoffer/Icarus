@@ -1,11 +1,11 @@
 f := (n: int) -> void {
   print n
-  print '\n'
+  print `n
 }
 
 f := (r: real) -> void {
   print r
-  print '\n'
+  print `n
 }
 
 main := void -> void {

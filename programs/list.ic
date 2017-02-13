@@ -71,23 +71,23 @@ __print__ := (l: list(list(char))) -> void {
 main := void -> void {
   l: list(int)
   l.add(3).add(5).add(7)
-  print l, '\n'
+  print l, `n
 
   emptylist: list(int)
-  print emptylist, '\n'
+  print emptylist, `n
 
   l1: list(char)
   l1.add('o').add('l').add('l').add('e').add('h')
-  print l1, '\n'
+  print l1, `n
 
   l2: list(char)
   l2.add('d').add('l').add('r').add('o').add('w')
-  print l2, '\n'
+  print l2, `n
 
   LLC := list(list(char))
   ll: LLC
   ll.add(l2).add(l1)
-  print ll, '\n'
+  print ll, `n
 }
 
 add := (this: &list(Any`T), n: T) -> &list(T) {

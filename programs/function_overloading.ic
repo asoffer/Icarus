@@ -7,22 +7,22 @@ main := void -> void {
 
 f := (n: int) -> void {
   print n
-  print '\n'
+  print `n
 }
 
 f := (c: char) -> void {
   print c
-  print '\n'
+  print `n
 }
 
 f := (s: string) -> void {
   print '"'
   print s
   print '"'
-  print '\n'
+  print `n
 }
 
 f := (r: real) -> void {
   print r
-  print '\n'
+  print `n
 }

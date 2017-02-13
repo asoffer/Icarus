@@ -5,7 +5,7 @@ _ZX3fooF6squarei: int -> int #cstdlib
 
 main := void -> void {
   print _ZX3fooF6squarei(17)
-  print '\n'
+  print `n
 }
 
 foo := void -> void {

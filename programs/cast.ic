@@ -1,15 +1,15 @@
 main := void -> void {
   print 3 :> real
-  print '\n'
+  print `\n
   
   print true :> int
-  print '\n'
+  print `\n
   
   print true :> real
-  print '\n'
+  print `\n
   
   print false :> real
-  print '\n'
+  print `\n
   
   print true :> int :> real
 }

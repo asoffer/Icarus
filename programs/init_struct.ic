@@ -5,7 +5,7 @@ triple := struct {
 }
 
 __print__ := (t: triple) -> void {
-  print '(', t.x, ',', t.y, ',', t.z, ')'
+  print `(, t.x, `,, t.y, `,, t.z, `)
 }
 
 square := (n: int) -> int {
@@ -19,8 +19,8 @@ main := void -> void {
 
   t: triple
   f: foo
-  print t, '\n'
-  print f, '\n'
+  print t, `n
+  print f, `n
 
   foo := struct {
     n := func(5)

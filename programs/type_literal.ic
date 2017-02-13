@@ -7,7 +7,7 @@ main := void -> void {
   foo.n = 17
   foo.r = 3.14
   print foo.n
-  print '\n'
+  print `n
   print foo.r
-  print '\n'
+  print `n
 }

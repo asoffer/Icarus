@@ -44,6 +44,6 @@ main := void -> void {
     print 3
   }
   
-  print '\n'
+  print `n
 
 }

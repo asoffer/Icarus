@@ -14,7 +14,7 @@ main := void -> void {
   alloc(&nptr)
   @nptr = 17
   print nptr
-  print '\n'
+  print `n
   print @nptr
-  print '\n'
+  print `n
 }

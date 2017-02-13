@@ -1,3 +1,4 @@
+import "prelude.ic"
 FILE := struct {}
 
 File     := struct { _handle: &FILE }

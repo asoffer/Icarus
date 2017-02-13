@@ -13,19 +13,19 @@ make_point := void -> point {
 }
 
 __print__ := (p: point) -> void {
-  print '('
+  print `(
   print p.x
-  print ','
-  print ' '
+  print `,
+  print " "
   print p.y
-  print ','
-  print ' '
+  print `,
+  print " "
   print p.z
-  print ')'
+  print `)
 }
 
 main := void -> void {
   q := make_point()
   print q
-  print '\n'
+  print `n
 }

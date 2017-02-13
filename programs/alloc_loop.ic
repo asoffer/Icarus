@@ -1,5 +1,7 @@
+import "prelude.ic"
+
 main := void -> void {
   while true {
-    b : [5; int]
+    b: [5; int]
   }
 }

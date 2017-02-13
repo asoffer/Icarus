@@ -8,6 +8,6 @@ main := void -> void {
 
   a := [2]
   for x in a {
-    print '\n'
+    print `n
   }
 }

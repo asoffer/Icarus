@@ -3,11 +3,11 @@ main := void -> void {
 
   print map((n: int) -> int { return n * n }, a)
 
-  print '\n'
+  print `n
 
-  print three, '\n'
-  print three(), '\n'
-  print three()(), '\n'
+  print three, `n
+  print three(), `n
+  print three()(), `n
 }
 
 map := (f: A -> A, data: [--; Any`A]) -> [--; A] {

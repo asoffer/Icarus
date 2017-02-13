@@ -2,41 +2,41 @@ import "type_traits.ic"
 
 main := void -> void {
   print $(Any(bool))
-  print '\n'
+  print `n
   print $(IsNumeric(char))
-  print '\n'
+  print `n
   print $(IsNumeric(real))
-  print '\n'
+  print `n
 
   print $(num_bytes(bool))
-  print ','
+  print `,
   print $(num_bytes(char))
-  print ','
+  print `,
   print $(num_bytes(int))
-  print ','
+  print `,
   print $(num_bytes(real))
-  print ','
+  print `,
   print $(num_bytes(uint))
-  print ','
+  print `,
   print $(num_bytes(type))
-  print ','
+  print `,
   print $(num_bytes(void))
-  print '\n'
+  print `n
 
   print $(IsBig(bool))
-  print ','
+  print `,
   print $(IsBig(char))
-  print ','
+  print `,
   print $(IsBig(int))
-  print ','
+  print `,
   print $(IsBig(real))
-  print ','
+  print `,
   print $(IsBig(uint))
-  print ','
+  print `,
   print $(IsBig(type))
-  print ','
+  print `,
   print $(IsBig(void))
-  print '\n'
+  print `n
 
 }
 

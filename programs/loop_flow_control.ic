@@ -8,17 +8,17 @@ main := void -> void {
       break
     }
     print i
-    print ','
+    print `,
     print j
     if i == 3 {
       print " and countdown is "
       print countdown
-      print '\n'
+      print `n
       countdown -= 1
       restart
     }
 
-    print '\n'
+    print `n
   }
 
   print "REPEAT:\n"
@@ -29,17 +29,17 @@ main := void -> void {
       break
     }
     print i
-    print ','
+    print `,
     print j
     if i == 3 {
       print " and countdown is "
       print countdown
-      print '\n'
+      print `n
       countdown -= 1
       repeat
     }
 
-    print '\n'
+    print `n
   }
 
   print "CONTINUE:\n"
@@ -50,16 +50,16 @@ main := void -> void {
       break
     }
     print i
-    print ','
+    print `,
     print j
     if i >= 3 {
       print " and countdown is "
       print countdown
-      print '\n'
+      print `n
       countdown -= 1
       continue
     }
 
-    print '\n'
+    print `n
   }
 }

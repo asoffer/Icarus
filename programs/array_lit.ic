@@ -1,3 +1,5 @@
+import "prelude.ic"
+
 main := void -> void {
   print [1, 2, 3; int]
   array_lit : [5; int]

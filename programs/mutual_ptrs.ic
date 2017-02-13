@@ -12,8 +12,8 @@ main := void -> void {
   f.x = &b
   b.y = &f
   print &f
-  print '\n'
+  print `n
   baz := @(f.x)
   print baz.y
-  print '\n'
+  print `n
 }

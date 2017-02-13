@@ -6,19 +6,19 @@ a2 : [2, 2; int]
 a3 : [3, 3; int]
 a4 : [4, 4; int]
 print a0
-print '\n'
+print `n
 
 print a1
-print '\n'
+print `n
 
 print a2
-print '\n'
+print `n
 
 print a3
-print '\n'
+print `n
 
 print a4
-print '\n'
+print `n
 
 table : [10, 5; int]
 counter := 0
@@ -36,7 +36,7 @@ while i < 10 {
 i = 0
 while i < 10 {
   print table[i]
-  print '\n'
+  print `n
   i += 1
 }
 }

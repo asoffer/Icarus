@@ -73,33 +73,33 @@ main := void -> void {
 
   print "    z = "
   print z
-  print '\n'
+  print `n
 
   print "   -z = "
   print -z
-  print '\n'
+  print `n
 
   print "    w = "
   print w
-  print '\n'
+  print `n
 
   print "z + w = "
   print z + w
-  print '\n'
+  print `n
 
   print "z - w = "
   print z - w
-  print '\n'
+  print `n
   
   print "z * w = "
   print z * w
-  print '\n'
+  print `n
 
   print "conjugate(z) = "
   print conjugate(z)
-  print '\n'
+  print `n
 
   print "square_norm(z) = "
   print square_norm(z)
-  print '\n'
+  print `n
 }

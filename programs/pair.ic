@@ -11,7 +11,7 @@ main := void -> void {
   ic.key = 3
   ii.key = ic.key
   ii.val = ic.key
-  ic.val = 'x'
+  ic.val = `x
 
   rr: pair(real, real)
   rr2: pair(real, real)

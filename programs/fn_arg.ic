@@ -4,9 +4,9 @@ square := (n: int) -> int {
 
 main := void -> void {
  print &@&@&square
- print '\n'
+ print `n
  print CallThree(square)
- print '\n'
+ print `n
 }
 
 CallThree := (f: int -> int) -> int {

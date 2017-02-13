@@ -12,25 +12,25 @@ main := void -> void {
   y : &char = null
  
   print x
-  print '\n'
+  print `n
   alloc(&x)
   print x
-  print '\n'
+  print `n
   @x = 17
   print @x
-  print '\n'
+  print `n
   free x
   print x
   print "\n============================\n"
   print y
-  print '\n'
+  print `n
   alloc(&y)
   print y
-  print '\n'
+  print `n
   @y = ascii(65u)
   print @y
-  print '\n'
+  print `n
   free y
   print y
-  print '\n'
+  print `n
 }

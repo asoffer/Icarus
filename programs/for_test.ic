@@ -42,10 +42,10 @@ main := void -> void {
   for c in A {
     print c
   }
-  print '\n'
+  print `n
 
   for c in a {
     print c
   }
-  print '\n'
+  print `n
 }

@@ -9,5 +9,5 @@ while x < max {
   print x
   print '\t'
 }
-print '\n'
+print `n
 }

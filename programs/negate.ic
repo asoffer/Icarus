@@ -6,9 +6,9 @@ b := -n
 x := 3.14
 c := -(-(-(-(-x)))) // TODO fix lexing bug
 print a
-print '\n'
+print `n
 print b
-print '\n'
+print `n
 print c
-print '\n'
+print `n
 }

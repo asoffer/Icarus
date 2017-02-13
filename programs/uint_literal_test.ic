@@ -2,21 +2,21 @@ main := void -> void {
 a : int = 5
 b : int = 6
 print a - b
-print '\n'
+print `n
 print b - a
-print '\n'
+print `n
 
 c : uint = 5u
 d : uint = 6U
 print c - d
-print '\n'
+print `n
 print d - c
-print '\n'
+print `n
 
 e := 5u
 f := 6U
 print e - f
-print '\n'
+print `n
 print f - e
-print '\n'
+print `n
 }

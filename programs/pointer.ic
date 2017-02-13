@@ -6,9 +6,9 @@ main := void -> void {
   x *= x
 
   print xptr
-  print '\n'
+  print `n
   print @xptr
-  print '\n'
+  print `n
   print &x
-  print '\n'
+  print `n
 }

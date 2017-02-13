@@ -4,16 +4,16 @@ main := void -> void {
   } else {
     print -1
   }
-    print '\n'
+    print `n
   
   if int != uint {
     print 2
-    print '\n'
+    print `n
   }
   
   if [3; int] == [5; int] {
     print 3
-    print '\n'
+    print `n
   }
   
   a := struct {
@@ -23,5 +23,5 @@ main := void -> void {
     n: int
   }
   print a == b  // false
-  print '\n'
+  print `n
 }

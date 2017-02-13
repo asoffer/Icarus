@@ -12,10 +12,10 @@ main := void -> void {
   for n in 0 .. 6283 {
     x := (n :> real) / 1000.0
     print sin2(x) + cos2(x)
-    print '\n'
+    print `n
   }
 
   log_of_exp := log * exp
 
-  print '\n'
+  print `n
 }

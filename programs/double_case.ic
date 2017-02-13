@@ -6,9 +6,9 @@ main := void -> void {
   
     print i
     print ':' 
-    print ' '
+    print " "
     print mod_four(i)
-    print '\n'
+    print `n
     i += 1
   }
   

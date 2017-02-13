@@ -13,7 +13,7 @@ main := void -> void {
 
   array := [true, false] 
   for x in array {
-  print x, '\n'
-  print !x, '\n'
+    print x, `\n
+    print !x, `\n
   }
 }

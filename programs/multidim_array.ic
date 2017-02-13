@@ -3,7 +3,7 @@ main := void -> void {
 width := 5
 height := 5
 print height
-print '\n'
+print `n
 array : [5, 5; int]
 i := 0
 while i < height {
@@ -20,10 +20,10 @@ while i < height {
   j := 0
   while j < width {
     print array[i][j]
-    print ' '
+    print " "
     j += 1
   }
-  print '\n'
+  print `n
   i += 1
 }
 }

@@ -1,5 +1,5 @@
 hi := void -> void {
-  print  'H', 'i', '\n'
+  print  'H', 'i', `n
 } #const
 
 fibonacci := (n: int) -> int {
@@ -14,6 +14,6 @@ fib_of_20 := void -> int { return fibonacci(20) } #const
 main := void -> void {
 
   $(hi())
-  $print fib_of_20(), '\n'
+  $print fib_of_20(), `n
   print $(fib_of_20())
 }

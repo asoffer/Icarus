@@ -1,0 +1,91 @@
+import "prelude.ic"
+
+main := void -> void {}
+
+initial_value_inferred := void -> void {
+  a := true
+  b := `x
+  // c := {{ print "hello" }}
+  d := 17
+  e := 3.14
+  // f:= void
+  // g: uint
+  h := "hello"
+  i := &d
+  b_ptr := &b
+  j := &b_ptr
+  k := initial_value
+  l := (n: int) -> void -> &int {
+    return void -> &int {
+      ptr: &int
+      return ptr
+    }
+  }
+  m := [1, 2, 3]
+  n := [[[[`a]], [[`\n]]]]
+  o := [[[[i]]]]
+  // p := [[[0.0, 0.0]], [[0.0, 0.0]]]
+}
+
+initial_value := void -> void {
+  a: bool = true
+  b: char = `x
+  // c: code = {{ print "hello" }}
+  d: int = 17
+  e: real = 3.14
+  // f: type = void
+  // g: uint
+  h: string = "hello"
+  i: &int = &d
+  b_ptr := &b
+  j: &&char = &b_ptr
+  k: void -> void = initial_value
+  l: int -> void -> &int = (n: int) -> void -> &int {
+    return void -> &int {
+      ptr: &int
+      return ptr
+    }
+  }
+  m: [3; int] = [1, 2, 3]
+  n: [1, 2, 1, 1; char] = [[[[`a]], [[`\n]]]]
+  o: [1; [1, 1, 1; &int]] = [[[[i]]]]
+  // p: [2, --, 2; real] = [[[0.0, 0.0]], [[0.0, 0.0]]]
+}
+
+uninitialized_value := void -> void {
+  a: bool = --
+  b: char = --
+  c: code = --
+  d: int = --
+  e: real = --
+  f: type = --
+  g: uint = --
+  h: string = --
+  i: &int = --
+  j: &&char = --
+  k: int -> void = --
+  l: int -> void -> &int = --
+  m: [3; int] = --
+  n: [1, 2, 1, 1; char] = --
+  o: [1; [1, 1, 1; &int]] = --
+  p: [2, --, 2; real] = --
+}
+
+default_initial_value := void -> void {
+  a: bool
+  b: char
+  // c: code
+  d: int
+  e: real
+  // f: type
+  g: uint
+  h: string
+  i: &int
+  j: &&char
+  k: int -> void
+  l: int -> void -> &int
+  m: [3; int]
+  n: [1, 2, 1, 1; char]
+  o: [1; [1, 1, 1; &int]]
+  p: [2, --, 2; real]
+}

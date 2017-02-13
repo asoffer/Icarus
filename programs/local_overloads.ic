@@ -1,17 +1,17 @@
 main := void -> void {
   q: pt
   print q
-  print '\n'
+  print `n
 
   foo()
 
   __print__ := (p: pt) -> void {
-    print '('
+    print `(
     print p.x
-    print ','
-    print ' '
+    print `,
+    print " "
     print p.y
-    print ')'
+    print `)
   }
 
 }
@@ -26,14 +26,14 @@ pt := struct {
 foo := void -> void {
   q: pt
   print q
-  print '\n'
+  print `n
 
   __print__ := (p: pt) -> void {
-    print '<'
+    print `<
     print p.x
-    print ','
-    print ' '
+    print `,
+    print " "
     print p.y
-    print '>'
+    print `>
   }
 }

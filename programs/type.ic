@@ -10,24 +10,24 @@ point3d := struct {
 }
 
 show2d := (pt : point2d) -> void {
-  print '('
+  print `(
   print pt.x
-  print ','
-  print ' '
+  print `,
+  print " "
   print pt.y
-  print ')'
+  print `)
 }
 
 __print__ := (pt: point3d) -> void {
-  print '('
+  print `(
   print pt.x
-  print ','
-  print ' '
+  print `,
+  print " "
   print pt.y
-  print ','
-  print ' '
+  print `,
+  print " "
   print pt.z
-  print ')'
+  print `)
 }
 
 square_dist := (pt1: point3d, pt2: point3d) -> real {
@@ -51,13 +51,13 @@ main := void -> void {
   p2.z = 13.0
   
   show2d(q)
-  print ' '
+  print " "
   print p1
-  print ' '
+  print " "
   print p2
-  print '\n'
+  print `n
   print square_dist(p1, p2)
-  print '\n'
+  print `n
   
   circle := struct {
     radius : real
@@ -74,15 +74,15 @@ main := void -> void {
   }
 
   print c.radius
-  print '!'
-  print '\n'
+  print `!
+  print `n
   print c.center.x
-  print ','
-  print ' '
+  print `,
+  print " "
   print c.center.y
-  print '\n'
+  print `n
   print area(c)
-  print '\n'
+  print `n
 
 
 }

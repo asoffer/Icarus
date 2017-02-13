@@ -6,7 +6,6 @@
 #define ENSURE_VERIFIED                                                        \
   do {                                                                         \
     verify_types();                                                            \
-    if (ErrorLog::num_errs_ > 0) { return IR::Value::Error(); }                \
   } while (false)
 
 extern llvm::IRBuilder<> builder;
@@ -804,6 +803,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   fn_scope->exit_flag = IR::Value::FrameAddr(ir_func->PushSpace(Char));
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
+
   statements->verify_types();
   for (auto decl : fn_scope->DeclRegistry) { decl->AllocateLocally(ir_func); }
   for (auto scope : fn_scope->innards_) {
@@ -817,10 +817,13 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
       decl->AllocateLocally(ir_func);
     }
   }
+
   IR::Block::Current->SetUnconditional(fn_scope->entry_block);
   IR::Block::Current = fn_scope->entry_block;
+
   statements->EmitIR();
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
+
   fn_scope->InsertDestroy();
   if (((Function *)type)->output == Void ||
       ((Function *)type)->output->is_big()) {

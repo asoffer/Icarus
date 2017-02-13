@@ -1,5 +1,5 @@
 main := void -> void {
-  print ['x', 'y', 'z', '\\', '\n', '\t', '\r']
+  print [`x, `y, `z, `\\, `\n, `\t, `\r]
   char_array : [256; char]
   
   i := 0
@@ -9,5 +9,5 @@ main := void -> void {
   }
   
   print char_array
-  print '\n'
+  print `\n
 }

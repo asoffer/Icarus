@@ -29,30 +29,30 @@ marshmallow := enum {
 main := void -> void {
   s := suit.diamond
   print s
-  print '\n'
+  print `n
   print marshmallow.rainbow
-  print '\n'
+  print `n
   s = suit.spade
   print s
-  print '\n'
+  print `n
   print get_color(s)
-  print '\n'
+  print `n
   s = suit.diamond
   print get_color(s)
-  print '\n'
+  print `n
   print get_color(suit.spade)
-  print '\n'
+  print `n
 
   for m in marshmallow {
     print m
-    print '\n'
+    print `n
   }
 
   for x in suit {
     print x
-    print ' '
+    print " "
   }
-  print '\n'
+  print `n
 }
 
 color := enum {

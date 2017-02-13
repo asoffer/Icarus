@@ -10,7 +10,7 @@ main := void -> void {
   
  
   print a
-  print '\n'
+  print `n
   print b
-  print '\n'
+  print `n
 }

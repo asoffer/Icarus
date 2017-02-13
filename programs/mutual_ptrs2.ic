@@ -12,7 +12,7 @@ main := void -> void {
   f.x = &b
   b.y = &f
   print f.x.y.x.y.x
-  print '\n'
+  print `n
 
   a1: foo1
   a2: foo2
@@ -21,11 +21,11 @@ main := void -> void {
   a2.x = &a3
   a3.x = &a1
   print a1.x.x.x.x.x.x.x.x.x.x.x
-  print '\n'
+  print `n
   print a1.x.x.x.x.x.x.x.x.x.x.x.x
-  print '\n'
+  print `n
   print a1.x.x.x.x.x.x.x.x.x.x.x.x.x
-  print '\n'
+  print `n
 }
 
 foo1 := struct {

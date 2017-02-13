@@ -24,7 +24,7 @@ main := void -> void {
     }
 
     print x
-    print '\n'
+    print `n
   }
 
   print "Who do we appreciate?\n"

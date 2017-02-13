@@ -10,7 +10,6 @@
   do {                                                                         \
     if (ErrorLog::NumErrors() != 0) {                                          \
       ErrorLog::Dump();                                                        \
-      if (debug::ct_eval) { endwin(); }                                        \
       return -1;                                                               \
     }                                                                          \
   } while (false)
@@ -209,6 +208,16 @@ void AST::Declaration::EmitLLVMGlobal() {
   return;
 }
 
+struct NCursesScopeGuard{
+  NCursesScopeGuard() {
+    if (debug::ct_eval) { initscr(); }
+  }
+
+  ~NCursesScopeGuard() {
+    if (debug::ct_eval) { endwin(); }
+  }
+};
+
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
@@ -218,7 +227,8 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  if (debug::ct_eval) { initscr(); }
+  NCursesScopeGuard ncurses_scope_guard;
+
   if (file_type != FileType::None) { InitializeLLVM(); }
 
   ParseAllFiles();
@@ -284,36 +294,34 @@ int main(int argc, char *argv[]) {
     CHECK_FOR_ERRORS;
   }
 
-  CHECK_FOR_ERRORS; // NOTE: The only reason we check for errors here is because
-                    // we want to stop due to finding a global array or pointer.
-                    // Once we allow global arrays, we don't need this check
-                    // anymore.
+  if (file_type == FileType::None) { return 0; }
 
-  if (file_type != FileType::None) {
-    RUN(timer, "Code-gen") {
-      for (auto decl : Scope::Global->DeclRegistry) { decl->EmitLLVMGlobal(); }
+  RUN(timer, "Code-gen") {
+    for (auto decl : Scope::Global->DeclRegistry) { decl->EmitLLVMGlobal(); }
 
-      // Generate all the functions
-      if (file_type != FileType::None) {
-        for (auto f : implicit_functions) {
-          if (f->generated == IR::Func::Gen::ToLink) { continue; }
-          f->GenerateLLVM();
-        }
+    // Generate all the functions
+    if (file_type != FileType::None) {
+      for (auto f : implicit_functions) {
+        if (f->generated == IR::Func::Gen::ToLink) { continue; }
+        f->GenerateLLVM();
       }
-      llvm::FunctionType *ft = *Func(Void, Void);
-      // TODO this looks fishy
-      llvm::Function *fn =
-          (llvm::Function *)global_module->getOrInsertFunction("main", ft);
-      auto block = make_block("entry", fn);
-
-      assert(main_fn);
-      builder.SetInsertPoint(block);
-      builder.CreateCall(builder.CreateLoad(main_fn), {});
-      builder.CreateRetVoid();
     }
+    llvm::FunctionType *ft = *Func(Void, Void);
+    // TODO this looks fishy
+    llvm::Function *fn =
+        (llvm::Function *)global_module->getOrInsertFunction("main", ft);
+    auto block = make_block("entry", fn);
+
+    assert(main_fn);
+    builder.SetInsertPoint(block);
+    builder.CreateCall(builder.CreateLoad(main_fn), {});
+    builder.CreateRetVoid();
   }
 
   switch (file_type) {
+  case FileType::None: UNREACHABLE;
+  case FileType::Nat: WriteObjectFile(output_file_name); break;
+
   case FileType::IR: {
     RUN(timer, "Writing IR") {
       std::ofstream output_file_stream(output_file_name);
@@ -322,27 +330,17 @@ int main(int argc, char *argv[]) {
     }
   } break;
 
-  case FileType::Nat: {
-    WriteObjectFile(output_file_name);
-  } break;
 
   case FileType::Bin: {
     WriteObjectFile("obj.o");
 
     RUN(timer, "Link/system") {
-      int buff_size  = (int)(strlen(output_file_name) + 24);
-      char *link_str = new char[buff_size];
-      int num_bytes_written =
-          sprintf(link_str, "gcc obj.o -o %s; rm obj.o", output_file_name);
-      assert(buff_size = num_bytes_written + 1);
-      system(link_str);
-      delete[] link_str;
+      std::string link_str =
+          "gcc obj.o -o " + std::string(output_file_name) + "; rm obj.o";
+      system(link_str.c_str());
     }
   } break;
-
-  case FileType::None: /* Do nothing, just exit */ break;
   }
 
-  if (debug::ct_eval) { endwin(); }
   return 0;
 }

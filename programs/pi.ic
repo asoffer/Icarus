@@ -1,9 +1,9 @@
 main := void -> void {
 print 3.14159265358979323846
-print '\n'
+print `n
 
 print approximate_pi(10000)
-print '\n'
+print `n
 }
 approximate_pi := (iters : int) -> real {
   return case {
