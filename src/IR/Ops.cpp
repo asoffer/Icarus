@@ -288,10 +288,41 @@ Value ZExt(Value val) {
 
 Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
   Cmd cmd(Op::PtrIncr, true);
-  cmd.args = {IR::Value::Type(ptr_type), ptr, incr};
+  cmd.args        = {IR::Value::Type(ptr_type), ptr, incr};
   cmd.result.type = ptr_type;
   Block::Current->push(cmd);
   return Value::Reg(cmd.result.reg);
+}
+
+Value Add(Type *t, Value v1, Value v2) {
+  if (t == Int) { return IAdd(v1, v2); }
+  if (t == Uint) { return UAdd(v1, v2); }
+  if (t == Char) { return CAdd(v1, v2); }
+  if (t == Real) { return FAdd(v1, v2); }
+  UNREACHABLE;
+}
+
+Value GT(Type *t, Value v1, Value v2) {
+  if (t == Int) { return IGT(v1, v2); }
+  if (t == Uint) { return UGT(v1, v2); }
+  if (t == Char) { return CGT(v1, v2); }
+  if (t == Real) { return FGT(v1, v2); }
+  UNREACHABLE;
+}
+
+Value Unit(Type *t) {
+  if (t == Int) { return Value::Int(1l); }
+  if (t == Uint) { return Value::Uint(1ul); }
+  if (t == Char) { return Value::Char('\01'); }
+  if (t == Real) { return Value::Real(1.0); }
+  UNREACHABLE;
+}
+
+Value Increment(Type *t, Value v1) {
+  if (t->is_pointer()) {
+    return PtrIncr(static_cast<Pointer*>(t), v1, Unit(Uint));
+  }
+  return Add(t, v1, Unit(t));
 }
 
 Cmd NOp() {

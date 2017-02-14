@@ -1148,11 +1148,7 @@ IR::Value For::EmitIR() {
       ComputeAndStoreRangeValues(range, start_offset, end_offset);
       assert(((Binop *)range)->rhs->type == Int ||
              ((Binop *)range)->rhs->type == Uint);
-      if (((Binop *)range)->rhs->type == Int) {
-        end_offset = IR::UAdd(end_offset, IR::Value::Uint(1ul));
-      } else {
-        end_offset = IR::IAdd(end_offset, IR::Value::Uint(1l));
-      }
+      end_offset = IR::Increment(((Binop *)range)->rhs->type, end_offset);
 
       start_vals[i] =
           IR::PtrIncr(Ptr(array_type->data_type), head_ptr, start_offset);
@@ -1178,9 +1174,7 @@ IR::Value For::EmitIR() {
 
   // Fill in the phi values later.
   std::vector<IR::Value> phi_vals;
-  for (size_t i = 0; i < num_iters; ++i) {
-    auto iter = iterators[i];
-
+  for (auto iter : iterators) {
     Type *phi_type = nullptr;
     if (iter->container->type->is_array() ||
         iter->container->type->is_slice()) {
@@ -1196,7 +1190,11 @@ IR::Value For::EmitIR() {
     auto phi = IR::Phi(phi_type);
     phi_block->push(phi);
     phi_vals.push_back(IR::Value::Reg(phi.result.reg));
-    iter->addr = IR::Value::Reg(phi.result.reg);
+  }
+
+  for (size_t i = 0; i < num_iters; ++i) {
+    auto iter  = iterators[i];
+    iter->addr = phi_vals[i];
     if (iter->container->type->is_array() ||
         iter->container->type->is_slice()) {
       iter->addr = PtrCallFix(iter->type, iter->addr);
@@ -1212,19 +1210,9 @@ IR::Value For::EmitIR() {
       result = IR::PtrEQ(phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_range()) {
-      if(iter->container->is_unop()) {
-        result = IR::Value::Bool(false);
-      } else {
-        if (iter->type == Int) {
-          result = IR::IGT(phi_vals[i], end_vals[i]);
-        } else if (iter->type == Uint) {
-          result = IR::UGT(phi_vals[i], end_vals[i]);
-        } else if (iter->type == Char) {
-          result = IR::CGT(phi_vals[i], end_vals[i]);
-        } else {
-          UNREACHABLE;
-        }
-      }
+      result = (iter->container->is_unop())
+                   ? IR::Value::Bool(false)
+                   : IR::GT(iter->type, phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_slice()) {
       result = IR::PtrEQ(phi_vals[i], end_vals[i]);
@@ -1273,32 +1261,19 @@ IR::Value For::EmitIR() {
   for (size_t i = 0; i < num_iters; ++i) {
     auto iter = iterators[i];
 
+    Type* incr_type = nullptr;
     if (iter->container->type->is_array()) {
       auto array_type = (Array *)iter->container->type;
-      incr_vals.push_back(
-          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value::Uint(1ul)));
-
+      incr_type = Ptr(array_type->data_type);
     } else if (iter->container->type->is_slice()) {
       auto array_type = (Array *)((Binop *)iter->container)->lhs->type;
-      incr_vals.push_back(
-          IR::PtrIncr(Ptr(array_type->data_type), phi_vals[i], IR::Value::Uint(1ul)));
-
+      incr_type = Ptr(array_type->data_type);
     } else if (iter->container->type->is_range()) {
-      if (iter->type == Int) {
-        incr_vals.push_back(IR::IAdd(phi_vals[i], IR::Value::Int(1l)));
-      } else if (iter->type == Uint) {
-        incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value::Uint(1ul)));
-      } else if (iter->type == Char) {
-        incr_vals.push_back(IR::CAdd(phi_vals[i], IR::Value::Char('\01')));
-      } else {
-        UNREACHABLE;
-      }
+      incr_type = iter->type;
     } else if (iter->container->type == Type_) {
-      incr_vals.push_back(IR::UAdd(phi_vals[i], IR::Value::Uint(1ul)));
-
-    } else {
-      UNREACHABLE;
+      incr_type = Uint;
     }
+    incr_vals.push_back(IR::Increment(incr_type, phi_vals[i]));
   }
   IR::Block::Current->SetUnconditional(phi_block);
 

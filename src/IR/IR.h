@@ -234,6 +234,11 @@ Value PushField(Value fields, const char *name, Value ty, Value init);
 Value InitFieldVec(size_t num_decls);
 Value TC_Tup(const std::vector<IR::Value> &vals);
 
+Value Add(Type *t, Value v1, Value v2);
+Value GT(Type *t, Value v1, Value v2);
+Value Unit(Type *t);
+Value Increment(Type *t, Value v1);
+
 Cmd Phi(Type *ret_type);
 Cmd NOp();
 
