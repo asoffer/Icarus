@@ -66,9 +66,7 @@ struct Node {
   virtual bool is_jump() const { return false; }
   virtual bool is_hole() const { return false; }
 
-  Node(Cursor cursor = Cursor())
-      : scope_(nullptr), loc(cursor), time_(Time::error) {}
-
+  Node(Cursor cursor = Cursor()) : scope_(nullptr), loc(cursor) {}
   virtual ~Node() {}
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
@@ -76,9 +74,7 @@ struct Node {
   }
 
   Scope *scope_;
-
   Cursor loc;
-  Time::Eval time_;
 };
 
 struct Expression : public Node {

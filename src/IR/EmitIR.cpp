@@ -760,14 +760,11 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
     AddInitialGlobal(addr.as_loc->GetGlobalAddr(), IR::Value::ExtFn(cstr));
 
     if (file_type != FileType::None) {
-      auto ptype = Ptr(type);
-      ptype->generate_llvm();
-
       // TODO assuming a function type
       llvm::FunctionType *ft = *(Function *)type;
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
           /*  isConstant = */ true,
           /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
           /* Initializer = */ global_module->getOrInsertFunction(

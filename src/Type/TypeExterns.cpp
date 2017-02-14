@@ -23,14 +23,6 @@ static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<Array *, SliceType *> slices_;
 static std::map<Type *, Scope_Type *> scopes_;
 
-// TODO Not sure this is necessary
-void GenerateLLVMTypes() {
-  for (auto t : array_types_) { t->generate_llvm(); }
-  for (auto t : tuple_types_) { t->generate_llvm(); }
-  for (auto t : pointer_types_) { t->generate_llvm(); }
-  for (auto t : fn_types_) { t->generate_llvm(); }
-}
-
 Array *Arr(Type *t, size_t len) {
   for (auto arr : array_types_){
     if (arr->fixed_length && arr->len == len && arr->data_type == t) {

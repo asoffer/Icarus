@@ -32,7 +32,6 @@ extern std::stack<Scope *> ScopeStack;
 extern Timer timer;
 extern llvm::Module *global_module;
 extern llvm::TargetMachine *target_machine;
-extern void GenerateLLVMTypes();
 
 extern IR::Value GetInitialGlobal(size_t global_addr);
 extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
@@ -69,15 +68,12 @@ void AST::Declaration::AllocateGlobal() {
   if (file_type != FileType::None) {
     if (type->time() == Time::compile) { return; }
 
-    auto ptype = Ptr(type);
-    ptype->generate_llvm();
-
     if (HasHashtag("cstdlib")) {
       // TODO assuming a function type
       llvm::FunctionType *ft = *(Function *)type;
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
           /*  isConstant = */ true,
           /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
           /* Initializer = */ global_module->getOrInsertFunction(
@@ -86,7 +82,7 @@ void AST::Declaration::AllocateGlobal() {
     } else {
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? ptype : type),
+          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
           /*  isConstant = */ false, // TODO HasHashtag("const"),
           /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
           /* Initializer = */ nullptr,
@@ -282,10 +278,6 @@ int main(int argc, char *argv[]) {
     CompletelyVerify(global_statements);
     VerifyDeclBeforeUsage();
     CHECK_FOR_ERRORS;
-  }
-
-  if (file_type != FileType::None) {
-    RUN(timer, "Generate LLVM types") { GenerateLLVMTypes(); }
   }
 
   // TODO needs to be earlier/ part of type verification
