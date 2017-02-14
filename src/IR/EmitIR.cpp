@@ -1082,15 +1082,16 @@ static void ComputeAndStoreRangeValues(Expression *range, IR::Value &left,
 
 static void ComputeAndStoreArrayBounds(Array *array_type,
                                        IR::Value container_val,
-                                       IR::Value &head_ptr,
-                                       IR::Value &len_val) {
+                                       IR::Value *head_ptr,
+                                       IR::Value *len_val) {
   if (array_type->fixed_length) {
-    head_ptr = IR::Access(array_type->data_type, IR::Value::Uint(0ul), container_val);
-    len_val  = IR::Value::Uint(array_type->len);
+    *head_ptr =
+        IR::Access(array_type->data_type, IR::Value::Uint(0ul), container_val);
+    *len_val = IR::Value::Uint(array_type->len);
   } else {
-    head_ptr = IR::Load(Ptr(array_type->data_type),
-                        IR::ArrayData(array_type, container_val));
-    len_val = IR::Load(Uint, IR::ArrayLength(container_val));
+    *head_ptr = IR::Load(Ptr(array_type->data_type),
+                         IR::ArrayData(array_type, container_val));
+    *len_val = IR::Load(Uint, IR::ArrayLength(container_val));
   }
 }
 
@@ -1098,7 +1099,16 @@ IR::Value For::EmitIR() {
   ENSURE_VERIFIED;
   auto num_iters = iterators.size();
 
-  auto init_block = IR::Func::Current->AddBlock("for-init");
+  assert(!for_scope->entry_block);
+  assert(!for_scope->exit_block);
+
+  auto init_block        = IR::Func::Current->AddBlock("for-init");
+  auto phi_block         = IR::Func::Current->AddBlock("for-phi");
+  for_scope->entry_block = IR::Func::Current->AddBlock("for-ilv");
+  for_scope->exit_block  = IR::Func::Current->AddBlock("for-exit");
+  auto incr_block        = IR::Func::Current->AddBlock("for-incr");
+  auto land_block        = IR::Func::Current->AddBlock("for-land");
+
   IR::Block::Current->SetUnconditional(init_block);
   IR::Block::Current = init_block;
 
@@ -1113,8 +1123,8 @@ IR::Value For::EmitIR() {
       auto array_type    = (Array *)iter->container->type;
 
       IR::Value head_ptr, len_val;
-      ComputeAndStoreArrayBounds(array_type, container_val, head_ptr, len_val);
-
+      ComputeAndStoreArrayBounds(array_type, container_val, &head_ptr,
+                                 &len_val);
       start_vals[i] =
           IR::PtrIncr(Ptr(array_type->data_type), head_ptr, IR::Value::Uint(0ul));
       end_vals[i] = IR::PtrIncr(Ptr(array_type->data_type), head_ptr, len_val);
@@ -1133,7 +1143,8 @@ IR::Value For::EmitIR() {
       IR::Value head_ptr, len_val, start_offset, end_offset;
 
       auto range = ((Binop *)iter->container)->rhs;
-      ComputeAndStoreArrayBounds(array_type, container_val, head_ptr, len_val);
+      ComputeAndStoreArrayBounds(array_type, container_val, &head_ptr,
+                                 &len_val);
       ComputeAndStoreRangeValues(range, start_offset, end_offset);
       assert(((Binop *)range)->rhs->type == Int ||
              ((Binop *)range)->rhs->type == Uint);
@@ -1162,7 +1173,6 @@ IR::Value For::EmitIR() {
 
   auto end_init = IR::Block::Current;
 
-  auto phi_block = IR::Func::Current->AddBlock("for-phi");
   IR::Block::Current->SetUnconditional(phi_block);
   IR::Block::Current = phi_block;
 
@@ -1193,7 +1203,6 @@ IR::Value For::EmitIR() {
     }
   }
 
-  auto land_block = IR::Func::Current->AddBlock("for-land");
 
   for (size_t i = 0; i < num_iters; ++i) {
     auto iter = iterators[i];
@@ -1204,7 +1213,7 @@ IR::Value For::EmitIR() {
 
     } else if (iter->container->type->is_range()) {
       if(iter->container->is_unop()) {
-        result = IR::Value::Bool(true);
+        result = IR::Value::Bool(false);
       } else {
         if (iter->type == Int) {
           result = IR::IGT(phi_vals[i], end_vals[i]);
@@ -1235,21 +1244,15 @@ IR::Value For::EmitIR() {
   // Rename the last block. Use it as a jumping off point to the entry.
   IR::Block::Current->block_name = "for-cond-true";
 
-  assert(!for_scope->entry_block);
-  for_scope->entry_block = IR::Func::Current->AddBlock("for-entry");
-
-  assert(!for_scope->exit_block);
-  for_scope->exit_block = IR::Func::Current->AddBlock("for-exit");
-
   IR::Block::Current->SetUnconditional(for_scope->entry_block);
 
   IR::Block::Current = for_scope->entry_block;
   IR::Store(Char, CONTINUE_FLAG, for_scope->GetFnScope()->exit_flag);
   statements->EmitIR();
 
-  auto incr_block = IR::Func::Current->AddBlock("for-incr");
-
   IR::Block::Current->SetUnconditional(for_scope->exit_block);
+  IR::Block::Current = for_scope->exit_block;
+
   for_scope->InsertDestroy();
   IR::Block::Current->SetSwitch(
       IR::Load(Char, for_scope->GetFnScope()->exit_flag), incr_block);
