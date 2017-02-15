@@ -648,6 +648,11 @@ void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types) {
                       loc, 1);
 }
 
+void UserDefinedError(const Cursor &loc, const std::string& msg) {
+  ++num_errs_;
+  DisplayErrorMessage(msg.c_str(), "", loc, 1);
+}
+
 static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t left_space     = NumDigits(lines.back().line_num) + 2;
   std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
@@ -716,7 +721,7 @@ void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
       loc.offset);
 }
 
-void AmbiguousIdentifier(const Cursor &loc, const std::string&token) {
+void AmbiguousIdentifier(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   ambiguous_identifiers[token][loc.file_name().c_str()][loc.line_num].push_back(
       loc.offset);

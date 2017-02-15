@@ -70,6 +70,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
 void InvalidPrintDefinition(const Cursor &loc, const Type *t);
 void InvalidAssignDefinition(const Cursor &loc, const Type *t);
 void InvalidScope(const Cursor &loc, const Type *t);
+void UserDefinedError(const Cursor &loc, const std::string& msg);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const Cursor &loc);

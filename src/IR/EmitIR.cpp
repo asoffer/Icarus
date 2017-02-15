@@ -79,6 +79,32 @@ IR::Value Evaluate(AST::Expression *expr) {
   return result;
 }
 
+IR::Func *ErrorFunc() {
+  static IR::Func *error_ = nullptr;
+
+  if (error_) { return error_; }
+  error_ = new IR::Func(Func(String, Code_));
+  error_->SetName("error");
+
+  auto saved_func  = IR::Func::Current;
+  auto saved_block = IR::Block::Current;
+
+  IR::Func::Current  = error_;
+  IR::Block::Current = error_->entry();
+
+  auto code_block = new AST::CodeBlock;
+  code_block->error_message = "[TODO get user-defined error message]";
+
+  IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
+  IR::Block::Current = IR::Func::Current->exit();
+  IR::Block::Current->SetReturn(IR::Value::Code(code_block));
+
+  IR::Func::Current  = saved_func;
+  IR::Block::Current = saved_block;
+
+  return error_;
+}
+
 IR::Func *AsciiFunc() {
   static IR::Func *ascii_ = nullptr;
 
@@ -193,7 +219,7 @@ IR::Value Terminal::EmitIR() {
   ENSURE_VERIFIED;
 
   switch (terminal_type) {
-    case Language::Terminal::ASCII: return IR::Value::Func(AsciiFunc());
+  case Language::Terminal::ASCII: return IR::Value::Func(AsciiFunc());
   case Language::Terminal::Null: return IR::Value::Null(type);
   case Language::Terminal::Ord: return IR::Value::Func(OrdFunc());
   case Language::Terminal::Return:
@@ -210,6 +236,8 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Type:
   case Language::Terminal::Real:
   case Language::Terminal::Uint: return value;
+  case Language::Terminal::Error: return IR::Value::Func(ErrorFunc());
+
   default: UNREACHABLE;
   }
 }
@@ -292,10 +320,14 @@ IR::Value Unop::EmitIR() {
   } break;
   case Language::Operator::At: return PtrCallFix(type, operand->EmitIR());
   case Language::Operator::Generate: {
-    auto stmts =
-        Evaluate(operand).as_val->GetCode()->stmts->clone(0, nullptr, nullptr);
-    stmts->EmitIR();
-    delete stmts;
+    auto code_block = Evaluate(operand).as_val->GetCode();
+    if (code_block->stmts) {
+      auto stmts = code_block->stmts->clone(0, nullptr, nullptr);
+      stmts->EmitIR();
+      delete stmts;
+    } else {
+      ErrorLog::UserDefinedError(loc, code_block->error_message);
+    }
     return IR::Value::None();
   } break;
   default: UNREACHABLE;

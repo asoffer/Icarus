@@ -89,6 +89,9 @@ NNT NextWord(Cursor &cursor) {
   } else if (token == "ascii") {
     RETURN_TERMINAL(ASCII, Func(Uint, Char), IR::Value::None());
 
+  } else if (token == "error") {
+    RETURN_TERMINAL(Error, Func(String, Code_), IR::Value::None());
+
   } else if (token == "else") {
     auto term_ptr           = make_unique<AST::Terminal>();
     Cursor loc              = cursor;

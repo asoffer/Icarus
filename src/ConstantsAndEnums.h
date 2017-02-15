@@ -23,7 +23,7 @@ enum class Order { Less, Equal, Greater };
 namespace Language {
 enum class Terminal {
   ASCII, Char, Else, False, Hole, Int, Null, Ord, Real, Return, StringLiteral,
-  True, Type, Uint
+  True, Type, Uint, Error
 };
 
 enum class Operator {

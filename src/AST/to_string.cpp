@@ -120,6 +120,8 @@ std::string Terminal::to_string(size_t n) const {
   case Language::Terminal::Ord: ss << "ord"; break;
   case Language::Terminal::Return: ss << "return"; break;
   case Language::Terminal::StringLiteral: ss << value.as_cstr; break;
+  case Language::Terminal::Error: ss << "error"; break;
+
   default: ss << value.as_val->to_string(); break;
   }
 
