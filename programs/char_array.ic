@@ -1,13 +1,9 @@
+import "prelude.ic"
 main := void -> void {
   print [`x, `y, `z, `\\, `\n, `\t, `\r]
-  char_array : [256; char]
+  char_array: [256; char]
   
-  i := 0
-  while i < 256 {
-    char_array[i] = ascii(i :> uint)
-    i += 1
-  }
+  for i in (0 :> uint) .. { char_array[i] = ascii(i) }
   
-  print char_array
-  print `\n
+  print char_array, `\n
 }

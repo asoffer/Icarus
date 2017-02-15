@@ -414,6 +414,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
             builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);
         break;
       case IR::Op::Free:
+        builder.GetInsertBlock()->dump();
         builder.CreateCall(cstdlib::free(),
                            builder.CreateBitCast(args[0], *Ptr(Char)));
         break;

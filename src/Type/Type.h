@@ -125,6 +125,8 @@ public:
 
 private:
   PrimType type_;
+
+  IR::Func *repr_func = nullptr;
 };
 
 struct Array : public Type {

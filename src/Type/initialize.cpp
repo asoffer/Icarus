@@ -3,40 +3,6 @@
 #include "Scope.h"
 #endif
 
-/*
-// TODO rename? This isn't really about init-ing literals. it's more about allocating
-llvm::Value *Array::initialize_literal(llvm::Value *alloc, llvm::Value *len) {
-  auto use_calloc         = data_type->is_primitive();
-  llvm::Value *alloc_call = nullptr;
-
-  if (use_calloc) {
-    alloc_call = builder.CreateBitCast(
-        builder.CreateCall(cstdlib::calloc(),
-                           {len, data::const_uint(data_type->bytes())}),
-        *Ptr(data_type));
-
-  } else {
-    auto bytes_to_alloc =
-        builder.CreateMul(len, data::const_uint(data_type->bytes()));
-
-    alloc_call = builder.CreateBitCast(
-        builder.CreateCall(cstdlib::malloc(), {bytes_to_alloc}),
-        *Ptr(data_type));
-
-  }
-
-  // TODO allocate this in the right place
-  builder.CreateStore(len, builder.CreateGEP(alloc, {data::const_uint(0),
-                                                     data::const_uint(0)}));
-
-  builder.CreateStore(
-      alloc_call,
-      builder.CreateGEP(alloc, {data::const_uint(0), data::const_uint(1)}));
-
-  return alloc;
-}
-*/
-
 void Primitive::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
@@ -46,6 +12,7 @@ void Enum::EmitInit(IR::Value id_val) {
 void Function::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);
 }
+
 void Array::EmitInit(IR::Value id_val) {
   if (!init_func) {
     auto saved_func  = IR::Func::Current;
@@ -53,27 +20,56 @@ void Array::EmitInit(IR::Value id_val) {
 
     init_func = new IR::Func(Func(Ptr(this), Void));
     init_func->SetName("init." + Mangle(this));
-    implicit_functions.push_back(init_func);
 
+    implicit_functions.push_back(init_func);
     IR::Func::Current  = init_func;
     IR::Block::Current = init_func->entry();
 
-    IR::Value val;
+    IR::Value ptr, length_var;
     if (fixed_length) {
-      val = IR::Value::Arg(0);
+      ptr        = IR::Access(data_type, IR::Value::Uint(0), IR::Value::Arg(0));
+      length_var = IR::Value::Uint(len);
     } else {
-      auto len_ptr = IR::ArrayLength(IR::Value::Arg(0));
-      IR::Store(Uint, IR::Value::Uint(0ul), len_ptr);
-      auto ptr = IR::ArrayData(this, IR::Value::Arg(0));
-      IR::Store(Ptr(data_type), IR::Malloc(data_type, IR::Value::Uint(0ul)), ptr);
-      val = IR::Load(Ptr(data_type), ptr);
-    }
+      auto ptr_to_data_cell = IR::ArrayData(this, IR::Value::Arg(0));
+      IR::Store(Ptr(data_type), IR::Malloc(data_type, IR::Value::Uint(0ul)),
+                ptr_to_data_cell);
 
-    for (size_t i = 0; i < len; ++i) {
-      data_type->EmitInit(IR::Access(data_type, IR::Value::Uint(i), val));
+      ptr        = IR::Load(Ptr(data_type), ptr_to_data_cell);
+      length_var = IR::Load(Uint, IR::ArrayLength(IR::Value::Arg(0)));
     }
+    auto end_ptr = IR::PtrIncr(Ptr(data_type), ptr, length_var);
 
-    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
+    auto loop_phi  = IR::Func::Current->AddBlock("loop-phi");
+    auto loop_cond = IR::Func::Current->AddBlock("loop-cond");
+    auto loop_body = IR::Func::Current->AddBlock("loop-body");
+
+    auto init_block = IR::Block::Current;
+    IR::Block::Current->SetUnconditional(loop_phi);
+    IR::Block::Current = loop_phi;
+
+    auto phi = IR::Phi(Ptr(data_type));
+    phi.args.emplace_back(init_block);
+    phi.args.emplace_back(ptr);
+
+    auto phi_reg = IR::Value::Reg(phi.result.reg);
+
+    loop_phi->SetUnconditional(loop_cond);
+    IR::Block::Current = loop_cond;
+
+    auto cond = IR::PtrEQ(phi_reg, end_ptr);
+    IR::Block::Current->SetConditional(cond, IR::Func::Current->exit(),
+                                       loop_body);
+    IR::Block::Current = loop_body;
+
+    data_type->EmitInit(phi_reg);
+
+    auto elem_ptr = IR::Increment(Ptr(data_type), phi_reg);
+    phi.args.emplace_back(IR::Block::Current);
+    phi.args.emplace_back(elem_ptr);
+
+    IR::Block::Current->SetUnconditional(loop_phi);
+    loop_phi->push(phi);
+
     IR::Block::Current = IR::Func::Current->exit();
     IR::Block::Current->SetReturnVoid();
 

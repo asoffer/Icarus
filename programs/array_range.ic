@@ -15,9 +15,9 @@ main := void -> void {
 
   print "\n\n\n"
 
-  for i in 0u .. a.size - 3u {
-    for subrow in a[i .. i + 2u] {
-      for entry in subrow[i .. i + 2u] {
+  for i in (0:>uint) .. a.size - (3:>uint) {
+    for subrow in a[i .. i + (2:>uint)] {
+      for entry in subrow[i .. i + (2:>uint)] {
         print entry, ", "
       }
       print "\n"
