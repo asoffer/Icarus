@@ -1,39 +1,15 @@
-import "prelude.ic"
-FILE := struct {}
+import "lib/prelude.ic"
+import "lib/file.ic"
 
-File     := struct { _handle: &FILE }
-FileMode := enum { Read \\ Write }
-
-fopen: (string, string) -> &FILE #cstdlib
-open := (name: &string, m: FileMode) -> &FILE {
-
-  return fopen(@name, case {
-    m == FileMode.Read  => "r"
-    else                => "w"
-  })
-}
-
-fgetc: &FILE -> uint #cstdlib
-Next := (this: &File) -> char {
-  EOF := 4294967295u
-
-  n := this._handle.fgetc()
-
-  return ascii(case {
-    n == EOF  =>  0u
-    else      =>  n
-  })
-}
+u := (n: int) -> uint { return n :> uint }
 
 main := void -> void { 
-  name := "programs/cheating_quine.ic"
-
   f: File
-  f._handle = name.open(FileMode.Read)
+  f._handle = open("programs/cheating_quine.ic", FileMode.Read)
 
-  c := f.Next()
-  while c != ascii(0u) {
+  c := (&f)'Next
+  while c != 0'u'ascii {
     print c
-    c = f.Next()
+    c = (&f)'Next
   }
 }

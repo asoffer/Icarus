@@ -1,4 +1,4 @@
-import "prelude.ic"
+import "lib/prelude.ic"
 
 main := void -> void {
   n : [--; int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0]

@@ -1,4 +1,4 @@
-import "prelude.ic"
+import "lib/prelude.ic"
 
 main := void -> void {
   while true {

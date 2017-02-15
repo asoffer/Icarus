@@ -1,4 +1,4 @@
-import "prelude.ic"
+import "lib/prelude.ic"
 main := void -> void {
   print [`x, `y, `z, `\\, `\n, `\t, `\r]
   char_array: [256; char]
