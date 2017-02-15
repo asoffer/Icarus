@@ -2,8 +2,6 @@ import "fibonacci.ic"
 import "factorial.ic"
 
 main := void -> void {
-  print fib(10)
-  print `n
-  print factorial(6)
-  print `n
+  print fib(10), `\n
+  print 6'factorial, `\n
 }

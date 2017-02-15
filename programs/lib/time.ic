@@ -1,0 +1,17 @@
+clock: void -> uint #cstdlib
+time: &uint -> void #cstdlib
+sleep: int -> void #cstdlib
+
+Time := struct {
+  _val: uint
+}
+
+Duration := struct {
+  _val: uint
+}
+
+Now := void -> Time {
+  result: Time = --
+  result._val = clock()
+  return result
+}

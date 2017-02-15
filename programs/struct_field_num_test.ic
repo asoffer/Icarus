@@ -1,14 +1,20 @@
-// Test that the field numbers for llvm are properly generated. Even though
-// n is the third field here, it should be the first field in the generated
-// llvm because f and g do not get stored.
 foo := struct {
-  f : void -> bool
-  g :              = void -> bool { return true }
-  n :              = 17
+  f: void -> bool
+  g:              = void -> bool { return true }
+  c:              = `x
+  d:              = `y
+  n:              = 17
 }
 
 main := void -> void {
   f: foo
   g := &f
   print (&g).n
+  print &f, `\n
+  print &f.f, `\n
+  print &f.g, `\n
+  print &f.c, `\n
+  print &f.d, `\n
+  print &f.n, `\n
+  print foo.bytes
 }
