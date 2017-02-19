@@ -105,7 +105,7 @@ NNT NextWord(Cursor &cursor) {
 
   static const std::map<std::string, Language::NodeType> KeywordMap = {
       {"in", Language::op_b},           {"print", Language::op_l},
-      {"require", Language::op_l},       {"free", Language::op_l},
+      {"require", Language::op_l},      {"free", Language::op_l},
       {"for", Language::kw_expr_block}, {"case", Language::kw_block},
       {"enum", Language::kw_block},     {"generate", Language::op_l},
       {"struct", Language::kw_struct},  {"return", Language::op_lt},

@@ -7,7 +7,7 @@ extern IR::Value PtrCallFix(Type *t, IR::Value v);
 
 static void AddSpecialCharacter(IR::Value val, char c, char vis,
                                 IR::Block *land) {
-  auto eq            = IR::CEQ(val, IR::Value::Char(c));
+  auto eq            = IR::EQ(Char, val, IR::Value::Char(c));
   auto special_block = IR::Func::Current->AddBlock("special");
   auto next_block    = IR::Func::Current->AddBlock("next");
 
@@ -111,7 +111,7 @@ void Array::EmitRepr(IR::Value val) {
     auto land       = IR::Func::Current->AddBlock("land");
 
     IR::Block::Current->SetConditional(
-        IR::UEQ(length_var, IR::Value::Uint(0ul)), land, init_block);
+        IR::EQ(Uint,length_var, IR::Value::Uint(0ul)), land, init_block);
 
     IR::Block::Current = init_block;
     data_type->EmitRepr(PtrCallFix(data_type, ptr));
@@ -135,7 +135,7 @@ void Array::EmitRepr(IR::Value val) {
     IR::Block::Current = loop_cond;
 
     auto elem_ptr = IR::Increment(Ptr(data_type), phi_reg);
-    auto cond = IR::PtrEQ(elem_ptr, end_ptr);
+    auto cond = IR::EQ(Ptr(data_type), elem_ptr, end_ptr);
     IR::Block::Current->SetConditional(cond, land, loop_body);
     IR::Block::Current = loop_body;
 

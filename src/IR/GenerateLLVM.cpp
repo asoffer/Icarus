@@ -272,143 +272,101 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       }
 
       switch (cmd.op_code) {
-      case IR::Op::BNot:
+      case IR::Op::Not: {
         registers[cmd.result.reg] = builder.CreateNot(args[0]);
-        break;
-      case IR::Op::INeg:
-        registers[cmd.result.reg] = builder.CreateNeg(args[0]);
-        break;
-      case IR::Op::FNeg:
-        registers[cmd.result.reg] = builder.CreateFNeg(args[0]);
-        break;
-
-      case IR::Op::CAdd:
-      case IR::Op::IAdd:
-      case IR::Op::UAdd:
-        registers[cmd.result.reg] = builder.CreateAdd(args[0], args[1]);
-        break;
-
-      case IR::Op::FAdd:
-        registers[cmd.result.reg] = builder.CreateFAdd(args[0], args[1]);
-        break;
-
-      case IR::Op::ISub:
-      case IR::Op::USub:
-        registers[cmd.result.reg] = builder.CreateSub(args[0], args[1]);
-        break;
-      case IR::Op::FSub:
-        registers[cmd.result.reg] = builder.CreateFSub(args[0], args[1]);
-        break;
-
-      case IR::Op::IMul:
-      case IR::Op::UMul:
-        registers[cmd.result.reg] = builder.CreateMul(args[0], args[1]);
-        break;
-      case IR::Op::FMul:
-        registers[cmd.result.reg] = builder.CreateFMul(args[0], args[1]);
-        break;
-
-      case IR::Op::IDiv:
-        registers[cmd.result.reg] = builder.CreateSDiv(args[0], args[1]);
-        break;
-      case IR::Op::UDiv:
-        registers[cmd.result.reg] = builder.CreateUDiv(args[0], args[1]);
-        break;
-      case IR::Op::FDiv:
-        registers[cmd.result.reg] = builder.CreateFDiv(args[0], args[1]);
-        break;
-
-      case IR::Op::IMod:
-        registers[cmd.result.reg] = builder.CreateSRem(args[0], args[1]);
-        break;
-      case IR::Op::UMod:
-        registers[cmd.result.reg] = builder.CreateURem(args[0], args[1]);
-        break;
-      case IR::Op::FMod:
-        registers[cmd.result.reg] = builder.CreateFRem(args[0], args[1]);
-        break;
-
-      case IR::Op::BOr:
+      } break;
+      case IR::Op::Neg: {
+        registers[cmd.result.reg] = (cmd.result.type == Real)
+                                        ? builder.CreateFNeg(args[0])
+                                        : builder.CreateNeg(args[0]);
+      } break;
+      case IR::Op::Add: {
+        registers[cmd.result.reg] = (cmd.result.type == Real)
+                                        ? builder.CreateFAdd(args[0], args[1])
+                                        : builder.CreateAdd(args[0], args[1]);
+      } break;
+      case IR::Op::Sub: {
+        registers[cmd.result.reg] = (cmd.result.type == Real)
+                                        ? builder.CreateFSub(args[0], args[1])
+                                        : builder.CreateFSub(args[0], args[1]);
+      } break;
+      case IR::Op::Mul: {
+        registers[cmd.result.reg] = (cmd.result.type == Real)
+                                        ? builder.CreateFMul(args[0], args[1])
+                                        : builder.CreateMul(args[0], args[1]);
+      } break;
+      case IR::Op::Div: {
+        registers[cmd.result.reg] =
+            (cmd.result.type == Int)  ? builder.CreateSDiv(args[0], args[1])
+          : (cmd.result.type == Uint) ? builder.CreateUDiv(args[0], args[1])
+          : /* else */                  builder.CreateFDiv(args[0], args[1]);
+      } break;
+      case IR::Op::Mod: {
+        registers[cmd.result.reg] =
+            (cmd.result.type == Int)  ? builder.CreateSRem(args[0], args[1])
+          : (cmd.result.type == Uint) ? builder.CreateURem(args[0], args[1])
+          : /* else */                  builder.CreateFRem(args[0], args[1]);
+      } break;
+      case IR::Op::Or: {
         registers[cmd.result.reg] = builder.CreateOr(args[0], args[1]);
-        break;
-      case IR::Op::BXor:
+      } break;
+      case IR::Op::Xor: {
         registers[cmd.result.reg] = builder.CreateXor(args[0], args[1]);
-        break;
-
-      case IR::Op::ILT:
-        registers[cmd.result.reg] = builder.CreateICmpSLT(args[0], args[1]);
-        break;
-      case IR::Op::ULT:
-        registers[cmd.result.reg] = builder.CreateICmpULT(args[0], args[1]);
-        break;
-      case IR::Op::FLT:
-        registers[cmd.result.reg] = builder.CreateFCmpOLT(args[0], args[1]);
-        break;
-      case IR::Op::ILE:
-        registers[cmd.result.reg] = builder.CreateICmpSLE(args[0], args[1]);
-        break;
-      case IR::Op::ULE:
-        registers[cmd.result.reg] = builder.CreateICmpULE(args[0], args[1]);
-        break;
-      case IR::Op::FLE:
-        registers[cmd.result.reg] = builder.CreateFCmpOLE(args[0], args[1]);
-        break;
-
-      case IR::Op::TEQ:
+      } break;
+      case IR::Op::LT: {
+        auto type = reinterpret_cast<Type*>(args[0]);
         registers[cmd.result.reg] =
-            data::const_bool(reinterpret_cast<Type *>(args[0]) ==
-                             reinterpret_cast<Type *>(args[1]));
-        break;
-      case IR::Op::FnEQ: NOT_YET;
-
-      case IR::Op::UEQ:
-      case IR::Op::IEQ:
-      case IR::Op::CEQ:
-      case IR::Op::BEQ:
-      case IR::Op::PtrEQ:
-        registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
-        break;
-      case IR::Op::FEQ:
-        registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
-        break;
-
-      case IR::Op::TNE:
+            (type == Int)  ? builder.CreateICmpSLT(args[1], args[2])
+          : (type == Uint) ? builder.CreateICmpULT(args[1], args[2])
+          : /* else */       builder.CreateFCmpOLT(args[1], args[2]);
+      } break;
+      case IR::Op::LE: {
+        auto type = reinterpret_cast<Type*>(args[0]);
         registers[cmd.result.reg] =
-            data::const_bool(reinterpret_cast<Type *>(args[0]) !=
-                             reinterpret_cast<Type *>(args[1]));
-        break;
-      case IR::Op::FnNE: NOT_YET;
-
-      case IR::Op::BNE:
-      case IR::Op::CNE:
-      case IR::Op::INE:
-      case IR::Op::UNE:
-        registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
-        break;
-      case IR::Op::FNE:
-        registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
-        break;
-
-      case IR::Op::IGE:
-        registers[cmd.result.reg] = builder.CreateICmpSGE(args[0], args[1]);
-        break;
-      case IR::Op::UGE:
-        registers[cmd.result.reg] = builder.CreateICmpUGE(args[0], args[1]);
-        break;
-      case IR::Op::FGE:
-        registers[cmd.result.reg] = builder.CreateFCmpOGE(args[0], args[1]);
-        break;
-      case IR::Op::CGT:
-      case IR::Op::IGT:
-        registers[cmd.result.reg] = builder.CreateICmpSGT(args[0], args[1]);
-        break;
-      case IR::Op::UGT:
-        registers[cmd.result.reg] = builder.CreateICmpUGT(args[0], args[1]);
-        break;
-      case IR::Op::FGT:
-        registers[cmd.result.reg] = builder.CreateFCmpOGT(args[0], args[1]);
-        break;
-
+            (type == Int)  ? builder.CreateICmpSLE(args[1], args[2])
+          : (type == Uint) ? builder.CreateICmpULE(args[1], args[2])
+          : /* else */       builder.CreateFCmpOLE(args[1], args[2]);
+      } break;
+      case IR::Op::EQ: {
+        auto type = reinterpret_cast<Type *>(args[0]);
+        if (type->is_function()) { NOT_YET; }
+        if (type == Real) {
+          registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
+        } else if (type == Type_) {
+          registers[cmd.result.reg] =
+              data::const_bool(reinterpret_cast<Type *>(args[0]) ==
+                               reinterpret_cast<Type *>(args[1]));
+        } else {
+          registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
+        }
+      } break;
+      case IR::Op::NE: {
+        auto type = reinterpret_cast<Type *>(args[0]);
+        if (type->is_function()) { NOT_YET; }
+        if (type == Real) {
+          registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
+        } else if (type == Type_) {
+          registers[cmd.result.reg] =
+              data::const_bool(reinterpret_cast<Type *>(args[0]) !=
+                               reinterpret_cast<Type *>(args[1]));
+        } else {
+          registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
+        }
+      } break;
+      case IR::Op::GE: {
+        auto type = reinterpret_cast<Type *>(args[0]);
+        registers[cmd.result.reg] =
+            (type == Int)  ? builder.CreateICmpSGE(args[1], args[2])
+          : (type == Uint) ? builder.CreateICmpUGE(args[1], args[2])
+          : /* else */       builder.CreateFCmpOGE(args[1], args[2]);
+      } break;
+      case IR::Op::GT: {
+        auto type = reinterpret_cast<Type *>(args[0]);
+        registers[cmd.result.reg] =
+            (type == Int || type == Char) ? builder.CreateICmpSGT(args[1], args[2])
+          : (type == Uint)                ? builder.CreateICmpUGT(args[1], args[2])
+          :                                 builder.CreateFCmpOGT(args[1], args[2]);
+      } break;
       case IR::Op::Malloc:
         registers[cmd.result.reg] = builder.CreateBitCast(
             builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);

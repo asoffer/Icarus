@@ -132,14 +132,13 @@ void Cmd::Execute(StackFrame& frame) {
   }
 
   switch (op_code) {
-  case Op::BNot: {
+  case Op::Not: {
     frame.reg[result.reg] = Value::Bool(!cmd_inputs[0].as_val->GetBool());
   } break;
-  case Op::INeg: {
-    frame.reg[result.reg] = Value::Int(-cmd_inputs[0].as_val->GetInt());
-  } break;
-  case Op::FNeg: {
-    frame.reg[result.reg] = Value::Real(-cmd_inputs[0].as_val->GetReal());
+  case Op::Neg: {
+    frame.reg[result.reg] = (result.type == Int)
+                                ? Value::Int(-cmd_inputs[0].as_val->GetInt())
+                                : Value::Real(-cmd_inputs[0].as_val->GetReal());
   } break;
   case Op::Call: {
     // Need to load the right address.
@@ -515,193 +514,179 @@ void Cmd::Execute(StackFrame& frame) {
     assert(false && "No selection made from phi block");
   exit_successfully:;
   } break;
-  case Op::CAdd: {
-    frame.reg[result.reg] =
-        Value::Char((char)(cmd_inputs[0].as_val->GetChar() +
-                           cmd_inputs[1].as_val->GetChar()));
+  case Op::Add: {
+    if (result.type == Char) {
+      frame.reg[result.reg] = Value::Char(cmd_inputs[0].as_val->GetChar() +
+                                          cmd_inputs[1].as_val->GetChar());
+    } else if (result.type == Int) {
+      frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() +
+                                         cmd_inputs[1].as_val->GetInt());
+    } else if (result.type == Uint) {
+      frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() +
+                                          cmd_inputs[1].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() +
+                                          cmd_inputs[1].as_val->GetReal());
+    }
   } break;
-  case Op::IAdd: {
-    frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() +
-                                       cmd_inputs[1].as_val->GetInt());
+  case Op::Sub: {
+    if (result.type == Int) {
+      frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() -
+                                         cmd_inputs[1].as_val->GetInt());
+    } else if (result.type == Uint) {
+      frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() -
+                                          cmd_inputs[1].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() -
+                                          cmd_inputs[1].as_val->GetReal());
+    }
   } break;
-  case Op::UAdd: {
-    frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() +
-                                        cmd_inputs[1].as_val->GetUint());
+  case Op::Mul: {
+    if (result.type == Int) {
+      frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() *
+                                         cmd_inputs[1].as_val->GetInt());
+    } else if (result.type == Uint) {
+      frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() *
+                                          cmd_inputs[1].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() *
+                                          cmd_inputs[1].as_val->GetReal());
+    }
   } break;
-  case Op::FAdd: {
-    frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() +
-                                        cmd_inputs[1].as_val->GetReal());
+  case Op::Div: {
+    if (result.type == Int) {
+      frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() /
+                                         cmd_inputs[1].as_val->GetInt());
+    } else if (result.type == Uint) {
+      frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() /
+                                          cmd_inputs[1].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() /
+                                          cmd_inputs[1].as_val->GetReal());
+    }
   } break;
-  case Op::ISub: {
-    frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() -
-                                       cmd_inputs[1].as_val->GetInt());
+  case Op::Mod: {
+    if (result.type == Int) {
+      frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() %
+                                         cmd_inputs[1].as_val->GetInt());
+    } else if (result.type == Uint) {
+      frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() %
+                                          cmd_inputs[1].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Real(fmod(
+          cmd_inputs[0].as_val->GetReal(), cmd_inputs[1].as_val->GetReal()));
+    }
   } break;
-  case Op::USub: {
-    frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() -
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FSub: {
-    frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() -
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
-  case Op::IMul: {
-    frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() *
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UMul: {
-    frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() *
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FMul: {
-    frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() *
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
-  case Op::IDiv: {
-    frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() /
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UDiv: {
-    frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() /
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FDiv: {
-    frame.reg[result.reg] = Value::Real(cmd_inputs[0].as_val->GetReal() /
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
-  case Op::IMod: {
-    frame.reg[result.reg] = Value::Int(cmd_inputs[0].as_val->GetInt() %
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UMod: {
-    frame.reg[result.reg] = Value::Uint(cmd_inputs[0].as_val->GetUint() %
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FMod: {
-    frame.reg[result.reg] = Value::Real(
-        fmod(cmd_inputs[0].as_val->GetReal(), cmd_inputs[1].as_val->GetReal()));
-  } break;
-  case Op::BOr: {
+  case Op::Or: {
     frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetBool() ||
                                         cmd_inputs[1].as_val->GetBool());
   } break;
-  case Op::BXor: {
+  case Op::Xor: {
     frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetBool() !=
                                         cmd_inputs[1].as_val->GetBool());
   } break;
-  case Op::ILT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() <
-                                       cmd_inputs[1].as_val->GetInt());
+  case Op::LT: {
+    if (cmd_inputs[0].as_val->GetType() == Int) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() <
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() <
+                                          cmd_inputs[2].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() <
+                                          cmd_inputs[2].as_val->GetReal());
+    }
   } break;
-  case Op::ULT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetUint() <
-                                        cmd_inputs[1].as_val->GetUint());
+  case Op::LE: {
+    if (cmd_inputs[0].as_val->GetType() == Int) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() <=
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() <=
+                                          cmd_inputs[2].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() <=
+                                          cmd_inputs[2].as_val->GetReal());
+    }
   } break;
-  case Op::FLT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetReal() <
-                                        cmd_inputs[1].as_val->GetReal());
+  case Op::EQ: {
+    if (cmd_inputs[0].as_val->GetType() == Int) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() ==
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() ==
+                                          cmd_inputs[2].as_val->GetUint());
+    } else if (cmd_inputs[0].as_val->GetType() == Real) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() ==
+                                          cmd_inputs[2].as_val->GetReal());
+    } else if (cmd_inputs[0].as_val->GetType() == Bool) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetBool() ==
+                                          cmd_inputs[2].as_val->GetBool());
+    } else if (cmd_inputs[0].as_val->GetType() == Char) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetChar() ==
+                                          cmd_inputs[2].as_val->GetChar());
+    } else if (cmd_inputs[0].as_val->GetType() == Type_) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetType() ==
+                                          cmd_inputs[2].as_val->GetType());
+    } else if (cmd_inputs[0].as_val->GetType()->is_function()) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetFunc() ==
+                                          cmd_inputs[2].as_val->GetFunc());
+    } else if (cmd_inputs[0].as_val->GetType()->is_pointer()) {
+      // TODO Fix the types here
+      frame.reg[result.reg] =
+          Value::Bool(cmd_inputs[1].flag == cmd_inputs[2].flag &&
+                      cmd_inputs[1].as_heap_addr == cmd_inputs[2].as_heap_addr);
+    }
   } break;
-  case Op::ILE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() <=
-                                       cmd_inputs[1].as_val->GetInt());
+  case Op::NE: {
+    if (cmd_inputs[0].as_val->GetType() == Int) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() !=
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() !=
+                                          cmd_inputs[2].as_val->GetUint());
+    } else if (cmd_inputs[0].as_val->GetType() == Real) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() !=
+                                          cmd_inputs[2].as_val->GetReal());
+    } else if (cmd_inputs[0].as_val->GetType() == Bool) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetBool() !=
+                                          cmd_inputs[2].as_val->GetBool());
+    } else if (cmd_inputs[0].as_val->GetType() == Char) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetChar() !=
+                                          cmd_inputs[2].as_val->GetChar());
+    } else if (cmd_inputs[0].as_val->GetType() == Type_) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetType() !=
+                                          cmd_inputs[2].as_val->GetType());
+    } else if (cmd_inputs[0].as_val->GetType()->is_function()) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetFunc() !=
+                                          cmd_inputs[2].as_val->GetFunc());
+    }
   } break;
-  case Op::ULE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetUint() <=
-                                        cmd_inputs[1].as_val->GetUint());
+  case Op::GE: {
+    if (cmd_inputs[0].as_val->GetType() == Int) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() >=
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() >=
+                                          cmd_inputs[2].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() >=
+                                          cmd_inputs[2].as_val->GetReal());
+    }
   } break;
-  case Op::FLE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetReal() <=
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
-  case Op::IEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() ==
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UEQ: {
-    frame.reg[result.reg] =
-        Value::Bool(cmd_inputs[0].as_val->GetUint() == cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetChar() ==
-                                        cmd_inputs[1].as_val->GetChar());
-  } break;
-  case Op::PtrEQ: {
-    // TODO Fix the types here
-    frame.reg[result.reg] =
-        Value::Bool(cmd_inputs[0].flag == cmd_inputs[1].flag &&
-                    cmd_inputs[0].as_heap_addr == cmd_inputs[1].as_heap_addr);
-  } break;
-  case Op::BEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetBool() ==
-                                        cmd_inputs[1].as_val->GetBool());
-  } break;
-  case Op::CEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetChar() ==
-                                        cmd_inputs[1].as_val->GetChar());
-  } break;
-  case Op::TEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetType() ==
-                                        cmd_inputs[1].as_val->GetType());
-  } break;
-  case Op::FnEQ: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetFunc() ==
-                                        cmd_inputs[1].as_val->GetFunc());
-  } break;
-  case Op::INE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() !=
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetUint() !=
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetChar() !=
-                                        cmd_inputs[1].as_val->GetChar());
-  } break;
-  case Op::BNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetBool() !=
-                                        cmd_inputs[1].as_val->GetBool());
-  } break;
-  case Op::CNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetChar() !=
-                                        cmd_inputs[1].as_val->GetChar());
-  } break;
-  case Op::TNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetType() !=
-                                        cmd_inputs[1].as_val->GetType());
-  } break;
-  case Op::FnNE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetFunc() !=
-                                        cmd_inputs[1].as_val->GetFunc());
-  } break;
-  case Op::IGE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() >=
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UGE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetUint() >=
-                                        cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FGE: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetReal() >=
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
-  case Op::CGT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetChar() >
-                                        cmd_inputs[1].as_val->GetChar());
-  } break;
-  case Op::IGT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetInt() >
-                                       cmd_inputs[1].as_val->GetInt());
-  } break;
-  case Op::UGT: {
-    frame.reg[result.reg] =
-        Value::Bool(cmd_inputs[0].as_val->GetUint() > cmd_inputs[1].as_val->GetUint());
-  } break;
-  case Op::FGT: {
-    frame.reg[result.reg] = Value::Bool(cmd_inputs[0].as_val->GetReal() >
-                                        cmd_inputs[1].as_val->GetReal());
-  } break;
+  case Op::GT: {
+    if (cmd_inputs[0].as_val->GetType() == Int ||
+        cmd_inputs[0].as_val->GetType() == Char) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetInt() >
+                                          cmd_inputs[2].as_val->GetInt());
+    } else if (cmd_inputs[0].as_val->GetType() == Uint) {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetUint() >
+                                          cmd_inputs[2].as_val->GetUint());
+    } else {
+      frame.reg[result.reg] = Value::Bool(cmd_inputs[1].as_val->GetReal() >
+                                          cmd_inputs[2].as_val->GetReal());
+    }
+  }
   case Op::NOp: break;
   case Op::Print: {
     if (cmd_inputs[0].as_val->GetType() == Bool) {

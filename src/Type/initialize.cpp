@@ -56,7 +56,7 @@ void Array::EmitInit(IR::Value id_val) {
     loop_phi->SetUnconditional(loop_cond);
     IR::Block::Current = loop_cond;
 
-    auto cond = IR::PtrEQ(phi_reg, end_ptr);
+    auto cond = IR::EQ(Ptr(data_type), phi_reg, end_ptr);
     IR::Block::Current->SetConditional(cond, IR::Func::Current->exit(),
                                        loop_body);
     IR::Block::Current = loop_body;

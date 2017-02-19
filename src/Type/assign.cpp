@@ -42,10 +42,10 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
       lhs_ptr = IR::Access(lhs_array_type->data_type, IR::Value::Uint(0ul), to_var);
     } else {
       // TODO delete first time. currently just delete
-      auto rhs_bytes =
-          IR::UMul(rhs_len,
-                   IR::Value::Uint(lhs_array_type->data_type
-                                 ->bytes())); // TODO round up for alignment?
+      auto rhs_bytes = IR::Mul(
+          Uint, rhs_len,
+          IR::Value::Uint(lhs_array_type->data_type
+                              ->bytes())); // TODO round up for alignment?
       auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
       auto array_data = IR::ArrayData(lhs_array_type, to_var);
       IR::Store(Ptr(lhs_array_type->data_type), ptr, array_data);
@@ -75,7 +75,8 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     loop_phi->SetUnconditional(loop_cond);
     IR::Block::Current = loop_cond;
 
-    auto cond = IR::PtrEQ(rhs_phi_reg, rhs_end_ptr);
+    auto cond =
+        IR::EQ(Ptr(rhs_array_type->data_type), rhs_phi_reg, rhs_end_ptr);
     IR::Block::Current->SetConditional(cond, land, loop_body);
     IR::Block::Current = loop_body;
 

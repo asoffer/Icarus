@@ -235,10 +235,22 @@ Value InitFieldVec(size_t num_decls);
 Value TC_Tup(const std::vector<IR::Value> &vals);
 
 Value Add(Type *t, Value v1, Value v2);
+Value Sub(Type *t, Value v1, Value v2);
+Value Mul(Type *t, Value v1, Value v2);
+Value Div(Type *t, Value v1, Value v2);
+Value Mod(Type *t, Value v1, Value v2);
+
+Value LT(Type *t, Value v1, Value v2);
+Value LE(Type *t, Value v1, Value v2);
+Value EQ(Type *t, Value v1, Value v2);
+Value NE(Type *t, Value v1, Value v2);
+Value GE(Type *t, Value v1, Value v2);
 Value GT(Type *t, Value v1, Value v2);
+
 Value Unit(Type *t);
 Value Increment(Type *t, Value v1);
 
+Value Neg(Type *t, Value v1);
 Cmd Phi(Type *ret_type);
 Cmd NOp();
 

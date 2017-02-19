@@ -286,6 +286,14 @@ Value ZExt(Value val) {
   return Value::Reg(cmd.result.reg);
 }
 
+Value Neg(Type *t, Value val) {
+  Cmd cmd(Op::Neg, true);
+  cmd.args        = {val};
+  cmd.result.type = t;
+  Block::Current->push(cmd);
+  return Value::Reg(cmd.result.reg);
+}
+
 Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
   Cmd cmd(Op::PtrIncr, true);
   cmd.args        = {IR::Value::Type(ptr_type), ptr, incr};
@@ -294,21 +302,36 @@ Value PtrIncr(Pointer *ptr_type, Value ptr, Value incr) {
   return Value::Reg(cmd.result.reg);
 }
 
-Value Add(Type *t, Value v1, Value v2) {
-  if (t == Int) { return IAdd(v1, v2); }
-  if (t == Uint) { return UAdd(v1, v2); }
-  if (t == Char) { return CAdd(v1, v2); }
-  if (t == Real) { return FAdd(v1, v2); }
-  UNREACHABLE;
-}
+#define MAKE_OPERATOR(name)                                                    \
+  Value name(Type *t, Value v1, Value v2) {                                    \
+    Cmd cmd(Op::name, true);                                                   \
+    cmd.args        = {v1, v2};                                                \
+    cmd.result.type = t;                                                       \
+    Block::Current->push(cmd);                                                 \
+    return Value::Reg(cmd.result.reg);                                         \
+  }
+MAKE_OPERATOR(Add)
+MAKE_OPERATOR(Sub)
+MAKE_OPERATOR(Mul)
+MAKE_OPERATOR(Div)
+MAKE_OPERATOR(Mod)
+#undef MAKE_OPERATOR
 
-Value GT(Type *t, Value v1, Value v2) {
-  if (t == Int) { return IGT(v1, v2); }
-  if (t == Uint) { return UGT(v1, v2); }
-  if (t == Char) { return CGT(v1, v2); }
-  if (t == Real) { return FGT(v1, v2); }
-  UNREACHABLE;
-}
+#define MAKE_OPERATOR(name)                                                    \
+  Value name(Type *t, Value v1, Value v2) {                                    \
+    Cmd cmd(Op::LT, true);                                                     \
+    cmd.args        = {Value::Type(t), v1, v2};                                \
+    cmd.result.type = Bool;                                                    \
+    Block::Current->push(cmd);                                                 \
+    return Value::Reg(cmd.result.reg);                                         \
+  }
+MAKE_OPERATOR(LT)
+MAKE_OPERATOR(LE)
+MAKE_OPERATOR(EQ)
+MAKE_OPERATOR(NE)
+MAKE_OPERATOR(GE)
+MAKE_OPERATOR(GT)
+#undef MAKE_OPERATOR
 
 Value Unit(Type *t) {
   if (t == Int) { return Value::Int(1l); }
@@ -484,5 +507,4 @@ Block *Func::AddBlock(const char *block_name) {
   blocks.push_back(result);
   return result;
 }
-
 } // namespace IR

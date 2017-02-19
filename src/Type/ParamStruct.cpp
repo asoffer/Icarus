@@ -28,7 +28,7 @@ IR::Func *ParamStruct::IRFunc() {
   auto not_found_block = IR::Func::Current->AddBlock("not-found-rhs");
 
   auto cached_val = IR::GetFromCache(IR::Value::Type(this));
-  auto found = IR::TEQ(cached_val, IR::Value::Type(Err));
+  auto found = IR::EQ(Type_, cached_val, IR::Value::Type(Err));
   IR::Block::Current->SetConditional(found, not_found_block, found_block);
 
   found_block->SetReturn(cached_val);

@@ -298,25 +298,19 @@ IR::Value Unop::EmitIR() {
                                     : operand->EmitLVal();
   case Language::Operator::Sub: {
     auto val = operand->EmitIR();
-    if (operand->type == Int) {
-      return IR::INeg(val);
-    } else if (operand->type == Real) {
-      return IR::FNeg(val);
-    } else {
-      auto fn =
-          GetFuncReferencedIn(scope_, "__neg__", Func(operand->type, type));
-      return IR::Call(type, fn, {val});
-    }
+    return (operand->type == Int || operand->type == Real)
+               ? IR::Neg(operand->type, val)
+               : IR::Call(type, GetFuncReferencedIn(scope_, "__neg__",
+                                                    Func(operand->type, type)),
+                          {val});
   } break;
   case Language::Operator::Not: {
     auto val = operand->EmitIR();
-    if (operand->type == Bool) {
-      return IR::BNot(val);
-    } else {
-      auto fn =
-          GetFuncReferencedIn(scope_, "__not__", Func(operand->type, type));
-      return IR::Call(type, fn, {val});
-    }
+    return (operand->type == Bool)
+               ? IR::Not(val)
+               : IR::Call(type, GetFuncReferencedIn(scope_, "__not__",
+                                                    Func(operand->type, type)),
+                          {val});
   } break;
   case Language::Operator::At: return PtrCallFix(type, operand->EmitIR());
   case Language::Operator::Generate: {
@@ -384,7 +378,7 @@ IR::Value Binop::EmitIR() {
     auto rhs_val = rhs->EmitIR();
 
     if (lhs->type == Bool && rhs->type == Bool) {
-      return IR::Store(Bool, IR::BXor(lhs_val, rhs_val), lval);
+      return IR::Store(Bool, IR::Xor(lhs_val, rhs_val), lval);
     } else {
       auto fn = GetFuncReferencedIn(scope_, "__xor_eq__",
                                     Func(Tup({lhs->type, rhs->type}), type));
@@ -398,39 +392,30 @@ IR::Value Binop::EmitIR() {
     auto lhs_val = IR::Load(lhs->type, lval);                                  \
     auto rhs_val = rhs->EmitIR();                                              \
                                                                                \
-    if (lhs->type == Int && rhs->type == Int) {                                \
-      return IR::Store(Int, IR::I##Op(lhs_val, rhs_val), lval);                \
+    if (lhs->type == rhs->type &&                                              \
+        (lhs->type == Int || lhs->type == Uint || lhs->type == Real)) {        \
+      return IR::Store(lhs->type, IR::Op(lhs->type, lhs_val, rhs_val), lval);  \
     }                                                                          \
-    if (lhs->type == Uint && rhs->type == Uint) {                              \
-      return IR::Store(Uint, IR::U##Op(lhs_val, rhs_val), lval);               \
-    }                                                                          \
-    if (lhs->type == Real && rhs->type == Real) {                              \
-      return IR::Store(Real, IR::F##Op(lhs_val, rhs_val), lval);               \
-    }                                                                          \
+                                                                               \
     auto fn = GetFuncReferencedIn(                                             \
         scope_, op_str, Func(Tup({Ptr(lhs->type), rhs->type}), type));         \
     return IR::Call(type, fn, {lhs->EmitIR(), rhs->EmitIR()});                 \
   } break
 
-    ARITHMETIC_EQ_CASE(Add, "__add__");
-    ARITHMETIC_EQ_CASE(Sub, "__sub__");
-    ARITHMETIC_EQ_CASE(Mul, "__mul__");
-    ARITHMETIC_EQ_CASE(Div, "__div__");
-    ARITHMETIC_EQ_CASE(Mod, "__mod__");
+    ARITHMETIC_EQ_CASE(Add, "__add_eq__");
+    ARITHMETIC_EQ_CASE(Sub, "__sub_eq__");
+    ARITHMETIC_EQ_CASE(Mul, "__mul_eq__");
+    ARITHMETIC_EQ_CASE(Div, "__div_eq__");
+    ARITHMETIC_EQ_CASE(Mod, "__mod_eq__");
 #undef ARITHMETIC_EQ_CASE
 
 #define ARITHMETIC_CASE(Op, op_str)                                            \
   case Language::Operator::Op: {                                               \
     auto lhs_val = lhs->EmitIR();                                              \
     auto rhs_val = rhs->EmitIR();                                              \
-    if (lhs->type == Int && rhs->type == Int) {                                \
-      return IR::I##Op(lhs_val, rhs_val);                                      \
-    }                                                                          \
-    if (lhs->type == Uint && rhs->type == Uint) {                              \
-      return IR::U##Op(lhs_val, rhs_val);                                      \
-    }                                                                          \
-    if (lhs->type == Real && rhs->type == Real) {                              \
-      return IR::F##Op(lhs_val, rhs_val);                                      \
+    if (lhs->type == rhs->type &&                                              \
+        (lhs->type == Int || lhs->type == Uint || lhs->type == Real)) {        \
+      return IR::Op(type, lhs_val, rhs_val);                                   \
     }                                                                          \
     auto fn = GetFuncReferencedIn(scope_, op_str,                              \
                                   Func(Tup({lhs->type, rhs->type}), type));    \
@@ -446,14 +431,9 @@ IR::Value Binop::EmitIR() {
   case Language::Operator::Mul: {
     auto lhs_val = lhs->EmitIR();
     auto rhs_val = rhs->EmitIR();
-    if (lhs->type == Int && rhs->type == Int) {
-      return IR::IMul(lhs_val, rhs_val);
-    }
-    if (lhs->type == Uint && rhs->type == Uint) {
-      return IR::UMul(lhs_val, rhs_val);
-    }
-    if (lhs->type == Real && rhs->type == Real) {
-      return IR::FMul(lhs_val, rhs_val);
+    if (lhs->type == rhs->type &&
+        (lhs->type == Int || lhs->type == Uint || rhs->type == Real)) {
+      return IR::Mul(lhs->type, lhs_val, rhs_val);
     }
     if (lhs->type->is_function() && rhs->type->is_function() &&
         ((Function *)lhs)->input == ((Function *)lhs)->input) {
@@ -548,74 +528,51 @@ static IR::Value EmitComparison(Scope *scope, Type *op_type,
                                 Language::Operator op, IR::Value lhs,
                                 IR::Value rhs) {
   // TODO pass in lhs and rhs types and output type
-  if (op == Language::Operator::LT) {
-    if (op_type == Int) { return ILT(lhs, rhs); }
-    if (op_type == Real) { return FLT(lhs, rhs); }
-    if (op_type == Uint) { return ULT(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__lt__",
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-
-  } else if (op == Language::Operator::LE) {
-    if (op_type == Int) { return ILE(lhs, rhs); }
-    if (op_type == Real) { return FLE(lhs, rhs); }
-    if (op_type == Uint) { return ULE(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__le__",
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-
-  } else if (op == Language::Operator::EQ) {
-    if (op_type == Bool) { return BEQ(lhs, rhs); }
-    if (op_type == Char) { return CEQ(lhs, rhs); }
-    if (op_type == Int) { return IEQ(lhs, rhs); }
-    if (op_type == Real) { return FEQ(lhs, rhs); }
-    if (op_type == Uint) { return UEQ(lhs, rhs); }
-    if (op_type->is_enum()) { return UEQ(lhs, rhs); }
-    if (op_type == Type_) { return TEQ(lhs, rhs); }
-    if (op_type->is_pointer()) { return PtrEQ(lhs, rhs); }
-    if (op_type->is_function()) { return FnEQ(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__eq__",
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-
-  } else if (op == Language::Operator::NE) {
-    if (op_type == Bool) { return BNE(lhs, rhs); }
-    if (op_type == Char) { return CNE(lhs, rhs); }
-    if (op_type == Int) { return INE(lhs, rhs); }
-    if (op_type == Real) { return FNE(lhs, rhs); }
-    if (op_type == Uint) { return UNE(lhs, rhs); }
-    if (op_type->is_enum()) { return UNE(lhs, rhs); }
-    if (op_type == Type_) { return TNE(lhs, rhs); }
-    if (op_type->is_pointer()) { return PtrEQ(lhs, rhs); }
-    if (op_type->is_function()) { return FnNE(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__ne__",
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-
-  } else if (op == Language::Operator::GE) {
-    if (op_type == Int) { return IGE(lhs, rhs); }
-    if (op_type == Real) { return FGE(lhs, rhs); }
-    if (op_type == Uint) { return UGE(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__ge__",
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-
-  } else if (op == Language::Operator::GT) {
-    if (op_type == Int) { return IGT(lhs, rhs); }
-    if (op_type == Real) { return FGT(lhs, rhs); }
-    if (op_type == Uint) { return UGT(lhs, rhs); }
-
-    auto fn = GetFuncReferencedIn(scope, "__gt__",
+  if (op_type == Bool || op_type == Char || op_type == Int || op_type == Real ||
+      op_type == Uint || op_type->is_enum() || op_type == Type_ ||
+      op_type->is_pointer() || op_type->is_function()) {
+    if (op == Language::Operator::EQ) {
+      return EQ(op_type, lhs, rhs);
+    } else if (op == Language::Operator::NE) {
+      return NE(op_type, lhs, rhs);
+    } else {
+      UNREACHABLE;
+    }
+  } else {
+    std::string fn_name;
+    if (op == Language::Operator::EQ) {
+      fn_name = "__eq__";
+    } else if (op == Language::Operator::NE) {
+      fn_name = "__ne__";
+    } else {
+      UNREACHABLE;
+    }
+    auto fn = GetFuncReferencedIn(scope, fn_name,
                                   Func(Tup({op_type, op_type}), Bool));
     return IR::Call(Bool, fn, {lhs, rhs});
   }
 
-  UNREACHABLE;
+  if (op_type == Int || op_type == Real || op_type == Uint) {
+    switch (op) {
+    case Language::Operator::LT: return LT(op_type, lhs, rhs);
+    case Language::Operator::LE: return LE(op_type, lhs, rhs);
+    case Language::Operator::GT: return GT(op_type, lhs, rhs);
+    case Language::Operator::GE: return GE(op_type, lhs, rhs);
+    default: UNREACHABLE;
+    }
+  } else {
+    std::string fn_name;
+    switch (op) {
+      case Language::Operator::LT: fn_name = "__lt__"; break;
+      case Language::Operator::LE: fn_name = "__le__"; break;
+      case Language::Operator::GT: fn_name = "__gt__"; break;
+      case Language::Operator::GE: fn_name = "__ge__"; break;
+      default: UNREACHABLE;
+    }
+    auto fn = GetFuncReferencedIn(scope, fn_name,
+                                  Func(Tup({op_type, op_type}), Bool));
+    return IR::Call(Bool, fn, {lhs, rhs});
+  }
 }
 
 IR::Value ChainOp::EmitIR() {
@@ -628,7 +585,7 @@ IR::Value ChainOp::EmitIR() {
     for (auto e : exprs) { vals.push_back(e->EmitIR()); }
 
     IR::Value v = vals[0];
-    for (size_t i = 1; i < vals.size(); ++i) { v = IR::BXor(v, vals[i]); }
+    for (size_t i = 1; i < vals.size(); ++i) { v = IR::Xor(v, vals[i]); }
     return v;
   } break;
   case Language::Operator::And:
@@ -853,7 +810,7 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   statements->EmitIR();
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
-
+  if (should_gen) { ir_func->dump(); }
   IR::Block::Current = fn_scope->exit_block;
   fn_scope->InsertDestroy();
   if (((Function *)type)->output == Void ||
@@ -1236,7 +1193,7 @@ IR::Value For::EmitIR() {
     IR::Value result;
 
     if (iter->container->type->is_array()) {
-      result = IR::PtrEQ(phi_vals[i], end_vals[i]);
+      result = IR::EQ(Ptr(iter->type), phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_range()) {
       result = (iter->container->is_unop())
@@ -1244,10 +1201,10 @@ IR::Value For::EmitIR() {
                    : IR::GT(iter->type, phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type->is_slice()) {
-      result = IR::PtrEQ(phi_vals[i], end_vals[i]);
+      result = IR::EQ(Ptr(iter->type), phi_vals[i], end_vals[i]);
 
     } else if (iter->container->type == Type_) {
-      result = IR::UEQ(phi_vals[i], end_vals[i]);
+      result = IR::EQ(Uint, phi_vals[i], end_vals[i]);
 
     } else {
       UNREACHABLE;
