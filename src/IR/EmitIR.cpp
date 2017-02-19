@@ -513,7 +513,7 @@ IR::Value Binop::EmitIR() {
         if (out->is_array()) { NOT_YET; }
         auto addr = IR::Value::FrameAddr(IR::Func::Current->PushSpace(out));
         args.push_back(addr);
-        return IR::Call(type, lhs->EmitIR(), args);
+        IR::Call(Void, lhs->EmitIR(), args);
         return addr;
       }
     } else {
@@ -810,11 +810,17 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   statements->EmitIR();
   IR::Block::Current->SetUnconditional(fn_scope->exit_block);
-  if (should_gen) { ir_func->dump(); }
+
   IR::Block::Current = fn_scope->exit_block;
   fn_scope->InsertDestroy();
-  if (((Function *)type)->output == Void ||
-      ((Function *)type)->output->is_big()) {
+  if (((Function *)type)->output == Void) {
+    IR::Block::Current->SetReturnVoid();
+  } else if (((Function *)type)->output->is_big()) {
+    // TODO are these types both correct?
+    Type::CallAssignment(fn_scope, ((Function *)type)->output,
+                         ((Function *)type)->output,
+                         fn_scope->ret_val,
+                         IR::Value::Arg(inputs.size()));
     IR::Block::Current->SetReturnVoid();
   } else {
     IR::Block::Current->SetReturn(
@@ -822,7 +828,6 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   }
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;
-
   return IR::Value::Func(ir_func);
 }
 
