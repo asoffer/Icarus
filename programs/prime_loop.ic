@@ -1,4 +1,4 @@
-import "lib/prelude.ic"
+require "lib/prelude.ic"
 
 main := void -> void {
   i := 2

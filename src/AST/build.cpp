@@ -239,7 +239,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
   unop_ptr->loc     = nodes[0]->loc;
 
   bool check_id = false;
-  if (tk == "import") {
+  if (tk == "require") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
@@ -251,10 +251,10 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
                                      1)); // NOTE: + 1 because we prefix our
                                           // strings. Probably should fix this.
     } else {
-      ErrorLog::InvalidImport(unop_ptr->operand->loc);
+      ErrorLog::InvalidRequirement(unop_ptr->operand->loc);
     }
 
-    unop_ptr->op = Language::Operator::Import;
+    unop_ptr->op = Language::Operator::Require;
 
   } else {
     const static std::map<std::string, std::pair<Language::Operator, bool>>

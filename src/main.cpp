@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
           } else {
             ErrorLog::GlobalNonDecl(stmt->loc);
           }
-        case Language::Operator::Import: break;
+        case Language::Operator::Require: break;
         default: ErrorLog::GlobalNonDecl(stmt->loc); break;
         }
 

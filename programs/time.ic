@@ -3,7 +3,7 @@ now := void -> uint {
   return clock()
 }
 
-import "fibonacci.ic"
+require  "fibonacci.ic"
 
 main := void -> void {
   n := 30

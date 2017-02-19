@@ -263,11 +263,11 @@ IR::Value Unop::EmitIR() {
   ENSURE_VERIFIED;
 
   switch (op) {
-  // NOTE: Not sure if Import will always be disallowed (in which case we need
+  // NOTE: Not sure if Require will always be disallowed (in which case we need
   // TODO stricter checking earlier) or if we allow it to some degree
   // (hopefully, but details need to be worked out). For now it is deemed
   // illegal.
-  case Language::Operator::Import: UNREACHABLE;
+  case Language::Operator::Require: UNREACHABLE;
   case Language::Operator::Return: {
     // Note: Because we're loading the current block, and the EmitIR call can
     // change that, we must first compute the ret then set the return. The order

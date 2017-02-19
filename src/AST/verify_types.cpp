@@ -541,7 +541,7 @@ void Unop::verify_types() {
       type = Err;
     }
   } break;
-  case Operator::Import: {
+  case Operator::Require: {
     type = Void;
   } break;
   case Operator::Generate: {

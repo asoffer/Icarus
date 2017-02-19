@@ -1,4 +1,4 @@
-import "math.ic"
+require "math.ic"
 
 main := void -> void {
   sin2 := (x: real) -> real {

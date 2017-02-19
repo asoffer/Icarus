@@ -206,6 +206,8 @@ void ErrorLog::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
   GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
+
+  // TODO fix this repsonse regarding imports.
   GatherAndDisplay("Found %lu non-declaration statement%s at the top level. "
                    "All top-level statements must either be declarations, "
                    "imports, or void compile-time evaluations.",

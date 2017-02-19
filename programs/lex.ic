@@ -1,5 +1,5 @@
-import "lib/prelude.ic"
-import "lib/file.ic"
+require "lib/prelude.ic"
+require "lib/file.ic"
 
 NodeType := enum {
   EOF
