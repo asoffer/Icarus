@@ -5,10 +5,10 @@
 
 extern std::map<std::string, SourceFile *> source_map;
 
-typedef size_t LineNum;
-typedef size_t LineOffset;
-typedef const char *FileName;
-typedef std::string Token;
+using LineNum    = size_t;
+using LineOffset = size_t;
+using FileName   = std::string;
+using Token      = std::string;
 
 typedef std::map<Token,
                  std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
@@ -81,7 +81,9 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      fprintf(stderr, "  %s in '%s':\n", NumTimes(num_uses_in_file, "Used ", true).c_str(), file_and_locs.first);
+      fprintf(stderr, "  %s in '%s':\n",
+              NumTimes(num_uses_in_file, "Used ", true).c_str(),
+              file_and_locs.first.c_str());
 
       for (const auto &line_and_offsets : file_and_locs.second) {
         pstr line = source_map AT(file_and_locs.first)
@@ -132,7 +134,9 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      fprintf(stderr, "  %s in '%s':\n", NumTimes(num_uses_in_file, "Used ", true).c_str(), file_and_locs.first);
+      fprintf(stderr, "  %s in '%s':\n",
+              NumTimes(num_uses_in_file, "Used ", true).c_str(),
+              file_and_locs.first.c_str());
 
       size_t max_line_num = 0;
       for (const auto &line_and_offsets : file_and_locs.second) {
@@ -173,7 +177,7 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
 
   for (const auto &kv : log) {
     fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
-            kv.second.size() == 1 ? "s" : "", kv.first);
+            kv.second.size() == 1 ? "s" : "", kv.first.c_str());
 
     int line_num_width   = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
@@ -713,19 +717,19 @@ void UnknownParserError(const std::string &file_name,
 
 void UndeclaredIdentifier(const Cursor &loc, const std::string &token) {
   ++num_errs_;
-  undeclared_identifiers[token][loc.file_name().c_str()][loc.line_num]
+  undeclared_identifiers[token][loc.file_name()][loc.line_num]
       .push_back(loc.offset);
 }
 
 void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
   ++num_errs_;
-  invalid_capture[decl][loc.file_name().c_str()][loc.line_num].push_back(
+  invalid_capture[decl][loc.file_name()][loc.line_num].push_back(
       loc.offset);
 }
 
 void AmbiguousIdentifier(const Cursor &loc, const std::string &token) {
   ++num_errs_;
-  ambiguous_identifiers[token][loc.file_name().c_str()][loc.line_num].push_back(
+  ambiguous_identifiers[token][loc.file_name()][loc.line_num].push_back(
       loc.offset);
 }
 

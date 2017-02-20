@@ -104,6 +104,6 @@ void BlockScope::InsertDestroy() {
   }
 }
 
-FnScope::FnScope()
-    : BlockScope(ScopeEnum::Function), fn_type(nullptr),
+FnScope::FnScope(AST::FunctionLiteral *lit)
+    : BlockScope(ScopeEnum::Function), fn_type(nullptr), fn_lit(lit),
       exit_flag(NORMAL_FLAG) {}

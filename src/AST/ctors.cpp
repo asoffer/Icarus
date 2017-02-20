@@ -41,6 +41,6 @@ Identifier::Identifier(const Cursor &new_loc, const std::string &token_string) {
   loc        = new_loc;
 }
 
-FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope) {}
+FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope(this)) {}
 For::For() : for_scope(new BlockScope(ScopeEnum::For)) {}
 } // namespace AST

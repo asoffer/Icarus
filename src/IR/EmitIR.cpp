@@ -765,15 +765,15 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   auto saved_func  = IR::Func::Current;
   auto saved_block = IR::Block::Current;
 
-  assert(type->is_function());
-  ir_func = new IR::Func((Function *)type, should_gen);
-  fn_scope->entry_block = ir_func->entry();
-  fn_scope->exit_block  = ir_func->exit();
   assert(type);
   assert(type->is_function());
+  auto func_type = static_cast<Function *>(type);
+  auto func_out_type = func_type->output;
+  ir_func = new IR::Func(func_type, should_gen);
+  fn_scope->entry_block = ir_func->entry();
+  fn_scope->exit_block  = ir_func->exit();
 
-  fn_scope->ret_val =
-      IR::Value::FrameAddr(ir_func->PushSpace(((Function *)type)->output));
+  fn_scope->ret_val   = IR::Value::FrameAddr(ir_func->PushSpace(func_out_type));
   fn_scope->exit_flag = IR::Value::FrameAddr(ir_func->PushSpace(Char));
   IR::Func::Current  = ir_func;
   IR::Block::Current = ir_func->entry();
@@ -801,18 +801,15 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
 
   IR::Block::Current = fn_scope->exit_block;
   fn_scope->InsertDestroy();
-  if (((Function *)type)->output == Void) {
+  if (func_out_type == Void) {
     IR::Block::Current->SetReturnVoid();
-  } else if (((Function *)type)->output->is_big()) {
+  } else if (func_out_type->is_big()) {
     // TODO are these types both correct?
-    Type::CallAssignment(fn_scope, ((Function *)type)->output,
-                         ((Function *)type)->output,
-                         fn_scope->ret_val,
-                         IR::Value::Arg(inputs.size()));
+    Type::CallAssignment(fn_scope, func_out_type, func_out_type,
+                         fn_scope->ret_val, IR::Value::Arg(inputs.size()));
     IR::Block::Current->SetReturnVoid();
   } else {
-    IR::Block::Current->SetReturn(
-        IR::Load(((Function *)type)->output, fn_scope->ret_val));
+    IR::Block::Current->SetReturn(IR::Load(func_out_type, fn_scope->ret_val));
   }
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;

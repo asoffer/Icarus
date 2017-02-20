@@ -65,13 +65,13 @@ struct BlockScope : public Scope {
 };
 
 struct FnScope : public BlockScope {
-  FnScope();
+  FnScope(AST::FunctionLiteral *lit);
   virtual bool is_function_scope() { return true; }
   virtual ~FnScope() {}
 
-  Function *fn_type;
+  Function *fn_type            = nullptr;
+  AST::FunctionLiteral *fn_lit = nullptr;
   std::set<Scope *> innards_;
-
   IR::Value exit_flag, ret_val;
 };
 

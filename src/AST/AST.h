@@ -166,12 +166,11 @@ struct Binop : public Expression {
   static Node *BuildIndexOperator(NPtrVec &&nodes);
 
   bool is_assignment() const {
-    using Language::Operator;
-    return op == Operator::Assign || op == Operator::OrEq ||
-           op == Operator::XorEq || op == Operator::AndEq ||
-           op == Operator::AddEq || op == Operator::SubEq ||
-           op == Operator::MulEq || op == Operator::DivEq ||
-           op == Operator::ModEq;
+    return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
+           op == Language::Operator::XorEq || op == Language::Operator::AndEq ||
+           op == Language::Operator::AddEq || op == Language::Operator::SubEq ||
+           op == Language::Operator::MulEq || op == Language::Operator::DivEq ||
+           op == Language::Operator::ModEq;
   }
 
   Language::Operator op;
@@ -325,6 +324,8 @@ struct FunctionLiteral : public Expression {
   inline IR::Value EmitAnonymousIR() { return Emit(false); }
 
   IR::Func *ir_func = nullptr;
+
+  std::set<Declaration *> captures;
 
   std::map<Type *, Declaration *> cache;
 

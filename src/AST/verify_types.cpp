@@ -411,10 +411,14 @@ void Identifier::verify_types() {
   // For everything else we iterate from the scope of this identifier up to the
   // scope in which it was declared checking that along the way that it's a
   // block scope.
+
   for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr = scope_ptr->parent) {
-    // Note: not a block scope is hack for being a type scope
-    if (scope_ptr->is_function_scope() || !scope_ptr->is_block_scope()) {
+    if (scope_ptr->is_function_scope()) {
+      static_cast<FnScope *>(scope_ptr)->fn_lit->captures.insert(decl);
+    } else if (scope_ptr->is_block_scope()) {
+      continue;
+    } else {
       ErrorLog::InvalidCapture(loc, decl);
       return;
     }
