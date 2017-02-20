@@ -747,9 +747,10 @@ void Binop::verify_types() {
       } else {
         assert(lhs->type == Type_ &&
                "Should have caught the bad-type of lhs earlier");
+        auto lhs_as_type = lhs->value.as_val->GetType();
 
-        if (lhs->value.as_val->GetType()->is_parametric_struct()) {
-          auto param_struct_type = (ParamStruct *)lhs->value.as_val->GetType();
+        if (lhs_as_type->is_parametric_struct()) {
+          auto param_struct_type = static_cast<ParamStruct *>(lhs_as_type);
 
           // Get the types of parameter entries
           std::vector<Type *> param_type_vec;
@@ -782,7 +783,26 @@ void Binop::verify_types() {
             return;
           }
         } else {
-          ErrorLog::NotCallable(loc);
+          // Cast
+          op = Language::Operator::Cast;
+          type = lhs_as_type;
+          if (type == Err) { return; }
+          assert(rhs);
+          assert(type && "cast to nullptr?");
+
+          if (rhs->type == lhs_as_type ||
+              (rhs->type == Bool &&
+               (type == Int || lhs_as_type == Uint || lhs_as_type == Real)) ||
+              (rhs->type == Int && lhs_as_type == Real) ||
+              (rhs->type == Int && lhs_as_type == Uint) ||
+              (rhs->type == Uint && lhs_as_type == Real) ||
+              (rhs->type == Uint && lhs_as_type == Int)) {
+            return;
+          }
+
+          if (lhs->type->is_pointer() && type->is_pointer()) { return; }
+          ErrorLog::InvalidCast(loc, lhs->type, type);
+
           if (rhs) { rhs->verify_types(); }
           type = Err;
         }
@@ -927,24 +947,6 @@ void Binop::verify_types() {
       ErrorLog::NonIntegralArrayIndex(loc, rhs->type);
     }
     return;
-  case Operator::Cast: {
-    type = Evaluate(rhs).as_val->GetType();
-    if (type == Err) { return; }
-    assert(type && "cast to nullptr?");
-
-    if (lhs->type == type ||
-        (lhs->type == Bool && (type == Int || type == Uint || type == Real)) ||
-        (lhs->type == Int && type == Real) ||
-        (lhs->type == Int && type == Uint) ||
-        (lhs->type == Uint && type == Real) ||
-        (lhs->type == Uint && type == Int)) {
-      return;
-    }
-
-    if (lhs->type->is_pointer() && type->is_pointer()) { return; }
-
-    ErrorLog::InvalidCast(loc, lhs->type, type);
-  } break;
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
       type = Range(Int);

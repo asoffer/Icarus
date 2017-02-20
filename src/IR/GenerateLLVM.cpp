@@ -288,7 +288,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::Sub: {
         registers[cmd.result.reg] = (cmd.result.type == Real)
                                         ? builder.CreateFSub(args[0], args[1])
-                                        : builder.CreateFSub(args[0], args[1]);
+                                        : builder.CreateSub(args[0], args[1]);
       } break;
       case IR::Op::Mul: {
         registers[cmd.result.reg] = (cmd.result.type == Real)

@@ -338,7 +338,7 @@ IR::Value Binop::EmitIR() {
     return IR::Value::None();
   } break;
   case Language::Operator::Cast: {
-    return IR::Cast(lhs->type, Evaluate(rhs).as_val->GetType(), lhs->EmitIR());
+    return IR::Cast(rhs->type, Evaluate(lhs).as_val->GetType(), rhs->EmitIR());
   };
   case Language::Operator::Arrow: {
     return IR::TC_Arrow(lhs->EmitIR(), rhs->EmitIR());
@@ -683,6 +683,7 @@ IR::Value ChainOp::EmitIR() {
 
     lhs = rhs;
     rhs = exprs.back()->EmitIR();
+    std::cerr << *this << std::endl;
     auto last_result =
         EmitComparison(scope_, exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->SetUnconditional(landing_block);

@@ -102,9 +102,7 @@ std::string ArrayType::to_string(size_t n) const {
 
 std::string ChainOp::to_string(size_t n) const {
   std::string output = tabs(n) + "<Chain: " + TYPE_OR("") + ">\n";
-
-  for (const auto &expr : exprs) { output += expr->to_string(n + 1); }
-
+  for (auto expr : exprs) { output += expr->to_string(n + 1); }
   return output;
 }
 

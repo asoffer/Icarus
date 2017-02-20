@@ -757,7 +757,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   }
 
   static const std::map<std::string, Language::Operator> symbols = {
-      {"=>", Language::Operator::Rocket}, {":>", Language::Operator::Cast},
+      {"=>", Language::Operator::Rocket}, {"", Language::Operator::Cast},
       {"->", Language::Operator::Arrow},  {"|=", Language::Operator::OrEq},
       {"&=", Language::Operator::AndEq},  {"^=", Language::Operator::XorEq},
       {"+=", Language::Operator::AddEq},  {"-=", Language::Operator::SubEq},
