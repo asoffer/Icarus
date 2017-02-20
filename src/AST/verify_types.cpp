@@ -1197,7 +1197,7 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
                              {"__assign__", ErrorLog::NonFunctionAssign}};
 
     auto iter = error_log_to_call.find(magic_method_name);
-    if (iter == error_log_to_call.end()) { UNREACHABLE; }
+    if (iter == error_log_to_call.end()) { return; }
     iter->second(loc);
   }
 

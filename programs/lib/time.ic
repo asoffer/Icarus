@@ -1,13 +1,12 @@
 clock: void -> uint #cstdlib
-time: &uint -> void #cstdlib
 sleep: int -> void #cstdlib
 
 Time := struct {
-  _val: uint
+  _val: uint // In nanoseconds
 }
 
 Duration := struct {
-  _val: uint
+  _val: uint // In nanoseconds
 }
 
 Now := void -> Time {
@@ -15,3 +14,12 @@ Now := void -> Time {
   result._val = clock()
   return result
 }
+
+__sub__ := (lhs: Time, rhs: Time) -> Duration {
+  result: Duration = --
+  result._val = lhs._val - rhs._val
+  return result
+}
+
+__print__ := (t: Time) -> void { print t._val, "ns time" }
+__print__ := (d: Duration) -> void { print d._val, "ns" }

@@ -319,7 +319,7 @@ MAKE_OPERATOR(Mod)
 
 #define MAKE_OPERATOR(name)                                                    \
   Value name(Type *t, Value v1, Value v2) {                                    \
-    Cmd cmd(Op::LT, true);                                                     \
+    Cmd cmd(Op::name, true);                                                   \
     cmd.args        = {Value::Type(t), v1, v2};                                \
     cmd.result.type = Bool;                                                    \
     Block::Current->push(cmd);                                                 \
@@ -333,7 +333,7 @@ MAKE_OPERATOR(GE)
 MAKE_OPERATOR(GT)
 #undef MAKE_OPERATOR
 
-Value Unit(Type *t) {
+static Value Unit(Type *t) {
   if (t == Int) { return Value::Int(1l); }
   if (t == Uint) { return Value::Uint(1ul); }
   if (t == Char) { return Value::Char('\01'); }
@@ -342,10 +342,9 @@ Value Unit(Type *t) {
 }
 
 Value Increment(Type *t, Value v1) {
-  if (t->is_pointer()) {
-    return PtrIncr(static_cast<Pointer*>(t), v1, Unit(Uint));
-  }
-  return Add(t, v1, Unit(t));
+  return (t->is_pointer())
+             ? PtrIncr(static_cast<Pointer *>(t), v1, Value::Uint(1ul))
+             : Add(t, v1, Unit(t));
 }
 
 Cmd NOp() {

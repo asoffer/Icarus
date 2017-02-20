@@ -18,12 +18,6 @@ std::vector<IR::Func *> implicit_functions;
 
 extern IR::Value Evaluate(AST::Expression *expr);
 
-namespace data {
-extern llvm::Constant *null(const Type *t);
-extern llvm::ConstantInt *const_uint(size_t n);
-extern llvm::ConstantInt *const_int(long n);
-} // namespace data
-
 extern void VerifyDeclBeforeUsage();
 extern void CompletelyVerify(AST::Node *node);
 extern void Parse(SourceFile *sf);

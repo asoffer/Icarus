@@ -524,47 +524,37 @@ IR::Value Binop::EmitIR() {
   }
 }
 
+// TODO pass in lhs and rhs types and output type
 static IR::Value EmitComparison(Scope *scope, Type *op_type,
                                 Language::Operator op, IR::Value lhs,
                                 IR::Value rhs) {
-  // TODO pass in lhs and rhs types and output type
-  if (op_type == Bool || op_type == Char || op_type == Int || op_type == Real ||
-      op_type == Uint || op_type->is_enum() || op_type == Type_ ||
-      op_type->is_pointer() || op_type->is_function()) {
-    if (op == Language::Operator::EQ) {
-      return EQ(op_type, lhs, rhs);
-    } else if (op == Language::Operator::NE) {
-      return NE(op_type, lhs, rhs);
-    } else {
-      UNREACHABLE;
-    }
-  } else {
-    std::string fn_name;
-    if (op == Language::Operator::EQ) {
-      fn_name = "__eq__";
-    } else if (op == Language::Operator::NE) {
-      fn_name = "__ne__";
-    } else {
-      UNREACHABLE;
-    }
-    auto fn = GetFuncReferencedIn(scope, fn_name,
-                                  Func(Tup({op_type, op_type}), Bool));
-    return IR::Call(Bool, fn, {lhs, rhs});
-  }
-
   if (op_type == Int || op_type == Real || op_type == Uint) {
     switch (op) {
     case Language::Operator::LT: return LT(op_type, lhs, rhs);
     case Language::Operator::LE: return LE(op_type, lhs, rhs);
+    case Language::Operator::EQ: return EQ(op_type, lhs, rhs);
+    case Language::Operator::NE: return NE(op_type, lhs, rhs);
     case Language::Operator::GT: return GT(op_type, lhs, rhs);
     case Language::Operator::GE: return GE(op_type, lhs, rhs);
     default: UNREACHABLE;
     }
   } else {
+    if (op_type == Bool || op_type == Char || op_type->is_enum() ||
+        op_type == Type_ || op_type->is_pointer() || op_type->is_function()) {
+      if (op == Language::Operator::EQ) {
+        return EQ(op_type, lhs, rhs);
+      } else if (op == Language::Operator::NE) {
+        return NE(op_type, lhs, rhs);
+      } else {
+        UNREACHABLE;
+      }
+    }
     std::string fn_name;
     switch (op) {
       case Language::Operator::LT: fn_name = "__lt__"; break;
       case Language::Operator::LE: fn_name = "__le__"; break;
+      case Language::Operator::EQ: fn_name = "__eq__"; break;
+      case Language::Operator::NE: fn_name = "__ne__"; break;
       case Language::Operator::GT: fn_name = "__gt__"; break;
       case Language::Operator::GE: fn_name = "__ge__"; break;
       default: UNREACHABLE;
@@ -655,12 +645,10 @@ IR::Value ChainOp::EmitIR() {
   case Language::Operator::NE:
   case Language::Operator::GE:
   case Language::Operator::GT: {
-    // Operators here can be <, <=, ==, !=, >=, or >.
     std::vector<IR::Block *> blocks(exprs.size() - 1, nullptr);
+    for (auto &b : blocks) { b = IR::Func::Current->AddBlock("cmp-block"); }
 
-    for (auto &b : blocks) { b = IR::Func::Current->AddBlock("eq-block"); }
-
-    IR::Block *landing_block = IR::Func::Current->AddBlock("eq-land");
+    IR::Block *landing_block = IR::Func::Current->AddBlock("cmp-land");
     auto phi                 = IR::Phi(Bool);
 
     IR::Value result, lhs;
@@ -683,7 +671,7 @@ IR::Value ChainOp::EmitIR() {
 
     lhs = rhs;
     rhs = exprs.back()->EmitIR();
-    std::cerr << *this << std::endl;
+
     auto last_result =
         EmitComparison(scope_, exprs.back()->type, ops.back(), lhs, rhs);
     IR::Block::Current->SetUnconditional(landing_block);

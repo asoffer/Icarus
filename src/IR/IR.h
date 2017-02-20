@@ -247,7 +247,6 @@ Value NE(Type *t, Value v1, Value v2);
 Value GE(Type *t, Value v1, Value v2);
 Value GT(Type *t, Value v1, Value v2);
 
-Value Unit(Type *t);
 Value Increment(Type *t, Value v1);
 
 Value Neg(Type *t, Value v1);

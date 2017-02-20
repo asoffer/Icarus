@@ -36,7 +36,7 @@ is_alphanumeric_or_underscore := (c: char) -> bool {
   return c'is_alphanumeric | c == `_
 }
 is_whitespace := (c: char) -> bool {
-  c == (0x20 :> uint)'ascii |  c == `\t | c == `\n | c == `\r
+  c == 0x20'uint'ascii |  c == `\t | c == `\n | c == `\r
 }
 
 
@@ -48,15 +48,14 @@ NextToken := (f: &File) -> Token {
   if c'is_nonzero_digit { return NextNumberInBase10(f) }
 
   return case {
-    c == (0 :> uint) 'ascii  =>  CreateToken(NodeType.EOF)
-    c == `0                  =>  NextZeroInitiatedNumber(f)
-    c == ``                  =>  NextCharLiteral(f)
-    c == `"                  =>  NextStringLiteral(f)
-    c == `/                  =>  NextSlashInitiatedToken(f)
-    c == `\t | c == (0x20 :> uint)'ascii                                       \
-                             =>  NextToken(f)
-    c == `\n                 =>  CreateToken(NodeType.Newline)
-    else                     =>  NextOperator(f)
+    c == 0'uint'ascii                =>  CreateToken(NodeType.EOF)
+    c == `0                          =>  NextZeroInitiatedNumber(f)
+    c == ``                          =>  NextCharLiteral(f)
+    c == `"                          =>  NextStringLiteral(f)
+    c == `/                          =>  NextSlashInitiatedToken(f)
+    c == `\t | c == 0x20'uint'ascii  =>  NextToken(f)
+    c == `\n                         =>  CreateToken(NodeType.Newline)
+    else                             =>  NextOperator(f)
   }
 }
 
