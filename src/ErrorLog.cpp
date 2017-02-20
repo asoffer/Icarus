@@ -711,7 +711,7 @@ void UnknownParserError(const std::string &file_name,
   DisplayLines(lines);
 }
 
-void UndeclaredIdentifier(const Cursor &loc, const std::string&token) {
+void UndeclaredIdentifier(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   undeclared_identifiers[token][loc.file_name().c_str()][loc.line_num]
       .push_back(loc.offset);

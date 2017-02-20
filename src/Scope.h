@@ -36,6 +36,8 @@ struct Scope {
   AST::Declaration *DeclReferencedOrNull(const std::string &name,
                                          Type *declared_type);
 
+  std::vector<AST::Declaration *> AllDeclsWithId(const std::string &id);
+
   Scope();
   Scope(const Scope &) = delete;
   Scope(Scope &&) = delete;

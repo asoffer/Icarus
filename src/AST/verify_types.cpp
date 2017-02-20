@@ -377,55 +377,40 @@ static Type *EvalWithVars(Type *type,
 namespace AST {
 void Terminal::verify_types() {}
 
-#define LOOP_OVER_DECLS_FROM(s, d)                                             \
-  for (auto scope_ptr = s; scope_ptr; scope_ptr = scope_ptr->parent)           \
-    for (auto d : scope_ptr->DeclRegistry)
-
-static std::vector<Declaration *> AllDeclsInScopeWithId(Scope *scope,
-                                                        const std::string &id) {
-  std::vector<Declaration *> matching_decls;
-  LOOP_OVER_DECLS_FROM(scope, d) {
-    if (d->identifier->token != id) { continue; }
-    d->verify_types();
-    if (d->type == Err) { continue; }
-    matching_decls.push_back(d);
-  }
-  return matching_decls;
-}
-
 void Identifier::verify_types() {
   STARTING_CHECK;
-  all_ids.push_back(this);
 
-  if (!decl) {
-    auto potential_decls = AllDeclsInScopeWithId(scope_, token);
+  all_ids.push_back(this); // Save this identifier for later checks (see
+                           // VerifyDeclBeforeUsage)
 
-    if (potential_decls.empty()) {
+  // 'decl' is the (non-owning) pointer to the declaration node representing
+  // where this identifier was declared. If it's null, that means we haven't yet
+  // determined where this was declared.
+  if (decl == nullptr) {
+    auto potential_decls = scope_->AllDeclsWithId(token);
+    if (potential_decls.size() == 1) {
+      decl = potential_decls[0];
+    } else {
       type = Err;
-      // TODO somehow this catches items which have an invalid declaration. Not
-      // ideal, but passable for now.
-      ErrorLog::UndeclaredIdentifier(loc, token.c_str());
+      // Call the appropriate error message.
+      (potential_decls.empty() ? ErrorLog::UndeclaredIdentifier
+                               : ErrorLog::AmbiguousIdentifier)(loc, token);
       return;
     }
-
-    if (potential_decls.size() > 1) {
-      type = Err;
-      ErrorLog::AmbiguousIdentifier(loc, token.c_str());
-      return;
-    }
-
-    decl = potential_decls[0];
-    decl->verify_types();
   }
+
   type = decl->type;
 
-  // You are allowed to capture, globals, and const objects
-  // TODO what about #const pointers?
+  // Verify capturing. You can capture globlas, type definitions and
+  // compile-time constants.
   if (type == Type_ || decl->scope_ == Scope::Global ||
       decl->HasHashtag("const")) {
     return;
   }
 
+  // For everything else we iterate from the scope of this identifier up to the
+  // scope in which it was declared checking that along the way that it's a
+  // block scope.
   for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr = scope_ptr->parent) {
     // Note: not a block scope is hack for being a type scope
@@ -438,14 +423,13 @@ void Identifier::verify_types() {
 
 void Unop::verify_types() {
   STARTING_CHECK;
-
   VERIFY_AND_RETURN_ON_ERROR(operand);
 
   using Language::Operator;
   switch (op) {
-  case Operator::Eval: {
-    type = operand->type;
-  } break;
+  case Operator::Eval: type     = operand->type; break;
+  case Operator::Require: type  = Void; break;
+  case Operator::Generate: type = Void; break;
   case Operator::Free: {
     if (!operand->type->is_pointer()) {
       std::string msg = "Attempting to free an object of type `" +
@@ -489,11 +473,8 @@ void Unop::verify_types() {
           "Attempting to negate an unsigned integer (uint).", this);
       type = Int;
 
-    } else if (operand->type == Int) {
-      type = Int;
-
-    } else if (operand->type == Real) {
-      type = Real;
+    } else if (operand->type == Int || operand->type == Real) {
+      type = operand->type;
 
     } else if (operand->type->is_struct()) {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
@@ -525,7 +506,6 @@ void Unop::verify_types() {
         operand->type == Char) {
       type = Range(operand->type);
     } else {
-
       ErrorLog::InvalidRangeType(loc, type);
       type = Err;
     }
@@ -541,90 +521,58 @@ void Unop::verify_types() {
       type = Err;
     }
   } break;
-  case Operator::Require: {
-    type = Void;
-  } break;
-  case Operator::Generate: {
-    type = Void;
-  } break;
   default: UNREACHABLE;
   }
 }
 
-void Access::verify_types() {
-  STARTING_CHECK;
-  Verify(true);
+static Type *DereferenceAll(Type *t) {
+  while (t->is_pointer()) { t = static_cast<Pointer *>(t)->pointee; }
+  return t;
 }
 
-void Access::Verify(bool emit_errors) {
-  operand->verify_types();
+void Access::verify_types() {
+  STARTING_CHECK;
   VERIFY_AND_RETURN_ON_ERROR(operand);
-  auto base_type = operand->type;
 
-  // Access passes through pointers
-  while (base_type->is_pointer()) {
-    base_type = ((Pointer *)base_type)->pointee;
-  }
-
+  auto base_type = DereferenceAll(operand->type);
   if (base_type->is_array()) {
     if (member_name == "size") {
       type = Uint;
-      return;
-    } else if (member_name == "resize") {
-      auto array_base_type = (Array *)base_type;
-
-      if (array_base_type->fixed_length) {
-        ErrorLog::ResizingFixedArray(loc);
-      }
-
-      // TODO Can we have this without a member?
-      type = Void;
-      return;
+    } else {
+      ErrorLog::MissingMember(loc, member_name, base_type);
+      type = Err;
     }
   } else if (base_type == Type_) {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
-      return;
-    }
-
-    auto evaled_type = Evaluate(operand).as_val->GetType();
-    if (evaled_type->is_enum()) {
-      auto enum_type = (Enum *)evaled_type;
-      // If you can get the value,
-      if (enum_type->IndexOrFail(member_name) != FAIL) {
-        type = Evaluate(operand).as_val->GetType();
-
-      } else {
-        ErrorLog::MissingMember(loc, member_name, evaled_type);
-        type = Err;
+    } else {
+      Type *evaled_type = Evaluate(operand).as_val->GetType();
+      if (evaled_type->is_enum()) {
+        // Regardless of whether we can get the value, it's clear that this is
+        // supposed to be a member so we should emit an error but carry on
+        // assuming that this is an element of that enum type.
+        type = evaled_type;
+        if (((Enum *)evaled_type)->IndexOrFail(member_name) == FAIL) {
+          ErrorLog::MissingMember(loc, member_name, evaled_type);
+        }
       }
-      return;
     }
-  }
-
-  if (base_type->is_struct()) {
-    auto struct_type = (Struct *)base_type;
+  } else if (base_type->is_struct()) {
+    auto struct_type = static_cast<Struct *>(base_type);
     struct_type->CompleteDefinition();
 
     auto member_type = struct_type->field(member_name);
-    if (member_type) {
+    if (member_type != nullptr) {
       type = member_type;
 
     } else {
-      if (emit_errors) {
-        ErrorLog::MissingMember(loc, member_name, base_type);
-      }
+      ErrorLog::MissingMember(loc, member_name, base_type);
       type = Err;
     }
-  }
-
-  if (base_type->is_primitive() || base_type->is_array() ||
-      base_type->is_function()) {
-    if (emit_errors) { ErrorLog::MissingMember(loc, member_name, base_type); }
+  } else if (base_type->is_primitive() || base_type->is_function()) {
+    ErrorLog::MissingMember(loc, member_name, base_type);
     type = Err;
-    return;
   }
-
   assert(type && "type is nullptr in access");
 }
 
@@ -637,7 +585,7 @@ void Binop::verify_types() {
 
     if (lhs->is_identifier()) {
       auto lhs_id = (Identifier *)lhs;
-      auto matching_decls = AllDeclsInScopeWithId(scope_, lhs_id->token);
+      auto matching_decls = scope_->AllDeclsWithId(lhs_id->token);
       if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       // Look for valid matches by looking at any declaration which has a
@@ -997,10 +945,13 @@ void Binop::verify_types() {
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
-      LOOP_OVER_DECLS_FROM(scope_, decl) {                                     \
-        if (decl->identifier->token == "__" op_name "__") {                    \
-          decl->verify_types();                                                \
-          matched_op_name.push_back(decl);                                     \
+      for (auto scope_ptr = scope_; scope_ptr;                                 \
+           scope_ptr = scope_ptr->parent) {                                    \
+        for (auto decl : scope_ptr->DeclRegistry) {                            \
+          if (decl->identifier->token == "__" op_name "__") {                  \
+            decl->verify_types();                                              \
+            matched_op_name.push_back(decl);                                   \
+          }                                                                    \
         }                                                                      \
       }                                                                        \
                                                                                \
@@ -1013,7 +964,7 @@ void Binop::verify_types() {
          * TODO if there is more than one, log them all and give a good        \
          * *error message. For now, we just fail */                            \
         if (correct_decl) {                                                    \
-          ErrorLog::AlreadyFoundMatch(loc, symbol, lhs->type, rhs->type);    \
+          ErrorLog::AlreadyFoundMatch(loc, symbol, lhs->type, rhs->type);      \
           type = Err;                                                          \
         } else {                                                               \
           correct_decl = decl;                                                 \
@@ -1021,7 +972,7 @@ void Binop::verify_types() {
       }                                                                        \
       if (!correct_decl) {                                                     \
         type = Err;                                                            \
-        ErrorLog::NoKnownOverload(loc, symbol, lhs->type, rhs->type);        \
+        ErrorLog::NoKnownOverload(loc, symbol, lhs->type, rhs->type);          \
       } else if (type != Err) {                                                \
         type = ((Function *)correct_decl->type)->output;                       \
       }                                                                        \
@@ -1238,38 +1189,38 @@ Type *Expression::VerifyValueForDeclaration(const std::string &id_tok) {
   return type;
 }
 
-static void VerifyDeclarationForMagicPrint(Type *type, const Cursor &loc) {
+static void VerifyDeclarationForMagic(const std::string &magic_method_name,
+                                      Type *type, const Cursor &loc) {
   if (!type->is_function()) {
-    ErrorLog::NonFunctionPrint(loc);
-    return;
+    const static std::map<std::string, void (*)(const Cursor &)>
+        error_log_to_call = {{"__print__", ErrorLog::NonFunctionPrint},
+                             {"__assign__", ErrorLog::NonFunctionAssign}};
+
+    auto iter = error_log_to_call.find(magic_method_name);
+    if (iter == error_log_to_call.end()) { UNREACHABLE; }
+    iter->second(loc);
   }
 
-  auto fn_type = (Function *)type;
-  if (!fn_type->input->is_struct()) {
-    ErrorLog::InvalidPrintDefinition(loc, fn_type->input);
-  }
-
-  if (fn_type->output != Void) { ErrorLog::NonVoidPrintReturn(loc); }
-}
-
-static void VerifyDeclarationForMagicAssign(Type *type, const Cursor &loc) {
-  if (!type->is_function()) {
-    ErrorLog::NonFunctionAssign(loc);
-    return;
-  }
-
-  auto fn_type = (Function *)type;
-  if (!fn_type->input->is_tuple()) {
-    ErrorLog::InvalidAssignDefinition(loc, fn_type->input);
-  } else {
-    auto in = (Tuple *)(fn_type->input);
-    if (in->entries.size() != 2) {
-      ErrorLog::NonBinaryAssignment(loc, in->entries.size());
+  auto fn_type = static_cast<Function *>(type);
+  if (magic_method_name == "__print__") {
+    if (!fn_type->input->is_struct()) {
+      ErrorLog::InvalidPrintDefinition(loc, fn_type->input);
     }
-    // TODO more checking.
-  }
 
-  if (fn_type->output != Void) { ErrorLog::NonVoidAssignReturn(loc); }
+    if (fn_type->output != Void) { ErrorLog::NonVoidPrintReturn(loc); }
+  } else if (magic_method_name == "__assign__") {
+    if (!fn_type->input->is_tuple()) {
+      ErrorLog::InvalidAssignDefinition(loc, fn_type->input);
+    } else {
+      auto in = static_cast<Tuple *>(fn_type->input);
+      if (in->entries.size() != 2) {
+        ErrorLog::NonBinaryAssignment(loc, in->entries.size());
+      }
+      // TODO more checking.
+    }
+
+    if (fn_type->output != Void) { ErrorLog::NonVoidAssignReturn(loc); }
+  }
 }
 
 // TODO Declaration is responsible for the type verification of it's identifier?
@@ -1279,9 +1230,6 @@ void Declaration::verify_types() {
 
   if (type_expr) { type_expr->verify_types(); }
   if (init_val) { init_val->verify_types(); }
-
-  // TODO figure out what's going on with this.
-  assert(scope_);
 
   // There are four cases for the form of a declaration.
   //   1. I: T
@@ -1311,20 +1259,20 @@ void Declaration::verify_types() {
       type = init_val_type;
     } else if (init_val_type == NullPtr) {
       if (type->is_pointer()) {
-        init_val->type   = type;
+        init_val->type = type;
       } else {
         auto new_type = Ptr(type);
         ErrorLog::InitWithNull(loc, type, new_type);
-        type             = new_type;
-        init_val->type   = new_type;
+        type           = new_type;
+        init_val->type = new_type;
       }
     } else if (type != init_val_type) {
       ErrorLog::AssignmentTypeMismatch(loc, type, init_val_type);
     }
 
   } else if (IsUninitialized()) {
-    type             = type_expr->VerifyTypeForDeclaration(identifier->token);
-    init_val->type   = type;
+    type           = type_expr->VerifyTypeForDeclaration(identifier->token);
+    init_val->type = type;
 
   } else {
     UNREACHABLE;
@@ -1351,7 +1299,7 @@ void Declaration::verify_types() {
       } else if (t->is_enum()) {
         name_ptr = &((Enum *)t)->bound_name;
       } else if (t->is_scope_type()) {
-        name_ptr = &((Scope_Type*)t)->bound_name;
+        name_ptr = &((Scope_Type *)t)->bound_name;
       }
 
       // TODO mangle the name correctly (Where should this be done?)
@@ -1373,13 +1321,7 @@ void Declaration::verify_types() {
 
   // If you get here, you can be assured that the type is valid. So we add it to
   // the identifier.
-
-  if (identifier->token == "__print__") {
-    VerifyDeclarationForMagicPrint(type, loc);
-
-  } else if (identifier->token == "__assign__") {
-    VerifyDeclarationForMagicAssign(type, loc);
-  }
+  VerifyDeclarationForMagic(identifier->token, type, loc);
 }
 
 void ArrayType::verify_types() {
@@ -1406,12 +1348,15 @@ void ArrayLiteral::verify_types() {
   STARTING_CHECK;
   for (auto e : elems) { e->verify_types(); }
 
+  // TODO this should be allowed in the same vein as 'null'?
   if (elems.empty()) {
     type = Err;
     ErrorLog::EmptyArrayLit(loc);
     return;
   }
 
+  // TODO create a collection of all the types in the array literal. go on if
+  // there's only one otherwise, attempt to determine where the mistakes are.
   auto type_to_match = elems.front()->type;
   assert(type_to_match && "type to match is nullptr");
   if (type_to_match == Err) {
@@ -1578,6 +1523,7 @@ void Jump::verify_types() {
   UNREACHABLE;
 }
 
+// Intentionally do not verify anything internal
 void CodeBlock::verify_types() { type = Code_; }
 
 void DummyTypeExpr::verify_types() {
@@ -1671,5 +1617,4 @@ void CompletelyVerify(AST::Node *node) {
 }
 
 #undef VERIFY_AND_RETURN_ON_ERROR
-#undef LOOP_OVER_DECLS_FROM
 #undef STARTING_CHECK

@@ -44,6 +44,20 @@ AST::Identifier *Scope::IdentifierBeingReferencedOrNull(const std::string &name)
   return nullptr;
 }
 
+std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
+  std::vector<AST::Declaration *> matching_decls;
+  for (auto scope_ptr = this; scope_ptr != nullptr;
+       scope_ptr = scope_ptr->parent) {
+    for (auto decl : scope_ptr->DeclRegistry) {
+      if (decl->identifier->token != id) { continue; }
+      decl->verify_types();
+      if (decl->type == Err) { continue; }
+      matching_decls.push_back(decl);
+    }
+  }
+  return matching_decls;
+}
+
 // Set pointer to the parent scope. This is an independent concept from LLVM's
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.

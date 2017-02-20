@@ -14,15 +14,12 @@ open := (name: string, m: FileMode) -> &opaque {
 }
 
 Next := (this: &File) -> char {
-
-  EOF := 4294967295 :> uint #const
+  EOF := 0xffffffff'uint #const
 
   n := fgetc(this._handle)
 
   return ascii(case {
-    n == EOF  =>  0 :> uint
+    n == EOF  =>  0'uint
     else      =>  n
   })
 }
-
-
