@@ -43,7 +43,7 @@ main := void -> void {
   print `n
   // arrays
   print [`H, `e, `l, `l, `o]  // literal
-  world : [6; char] = [`w, `o, `r, `l, `d]  // longhand definition
+  world : [5; char] = [`w, `o, `r, `l, `d]  // longhand definition
   print world
   exclamation := [`!, `n]  // shorthand definition
   print exclamation
@@ -68,7 +68,7 @@ main := void -> void {
    
  
   plus_half : int -> real = (x: int) -> real {  // longhand
-    return (x :> real) + 0.5
+    return x'real + 0.5
   }
   
   zero_or_three := (bb: bool) -> int {  // shorthand

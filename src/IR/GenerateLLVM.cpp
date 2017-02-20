@@ -331,26 +331,26 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         auto type = reinterpret_cast<Type *>(args[0]);
         if (type->is_function()) { NOT_YET; }
         if (type == Real) {
-          registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[0], args[1]);
+          registers[cmd.result.reg] = builder.CreateFCmpOEQ(args[1], args[2]);
         } else if (type == Type_) {
           registers[cmd.result.reg] =
-              data::const_bool(reinterpret_cast<Type *>(args[0]) ==
-                               reinterpret_cast<Type *>(args[1]));
+              data::const_bool(reinterpret_cast<Type *>(args[1]) ==
+                               reinterpret_cast<Type *>(args[2]));
         } else {
-          registers[cmd.result.reg] = builder.CreateICmpEQ(args[0], args[1]);
+          registers[cmd.result.reg] = builder.CreateICmpEQ(args[1], args[2]);
         }
       } break;
       case IR::Op::NE: {
         auto type = reinterpret_cast<Type *>(args[0]);
         if (type->is_function()) { NOT_YET; }
         if (type == Real) {
-          registers[cmd.result.reg] = builder.CreateFCmpONE(args[0], args[1]);
+          registers[cmd.result.reg] = builder.CreateFCmpONE(args[1], args[2]);
         } else if (type == Type_) {
           registers[cmd.result.reg] =
-              data::const_bool(reinterpret_cast<Type *>(args[0]) !=
-                               reinterpret_cast<Type *>(args[1]));
+              data::const_bool(reinterpret_cast<Type *>(args[1]) !=
+                               reinterpret_cast<Type *>(args[2]));
         } else {
-          registers[cmd.result.reg] = builder.CreateICmpNE(args[0], args[1]);
+          registers[cmd.result.reg] = builder.CreateICmpNE(args[1], args[2]);
         }
       } break;
       case IR::Op::GE: {

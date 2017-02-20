@@ -1,25 +1,52 @@
-clock: void -> uint #cstdlib
-sleep: int -> void #cstdlib
-
-Time := struct {
-  _val: uint // In nanoseconds
-}
+require "lib/prelude.ic"
 
 Duration := struct {
-  _val: uint // In nanoseconds
+  _val: int // In nanoseconds
 }
 
-Now := void -> Time {
-  result: Time = --
-  result._val = clock()
-  return result
-}
-
-__sub__ := (lhs: Time, rhs: Time) -> Duration {
+nanoseconds := (n: int) -> Duration {
   result: Duration = --
-  result._val = lhs._val - rhs._val
+  result._val = n
   return result
 }
 
-__print__ := (t: Time) -> void { print t._val, "ns time" }
-__print__ := (d: Duration) -> void { print d._val, "ns" }
+microseconds := (n: int) -> Duration {
+  result: Duration = --
+  result._val = n * 1_000
+  return result
+}
+
+milliseconds := (n: int) -> Duration {
+  result: Duration = --
+  result._val = n * 1_000_000
+  return result
+}
+
+seconds := (n: int) -> Duration {
+  result: Duration = --
+  result._val = n * 1_000_000_000
+  return result
+}
+
+timespec := struct {
+  tv_sec: int
+  tv_ns: int
+}
+
+nanosleep: (&timespec, &timespec) -> int #cstdlib
+SleepFor := (d: Duration) -> void {
+  request: timespec = --
+  remainder: timespec = --
+  remainder.tv_sec = d._val / 1_000_000_000
+  remainder.tv_ns  = d._val % 1_000_000_000
+
+  result := -1
+  while result != 0 {
+   request = remainder
+   result = nanosleep(&request, &remainder)
+  }
+}
+clock: void -> uint #cstdlib
+Now := void -> int {
+  return clock()'int
+}

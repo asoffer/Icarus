@@ -237,7 +237,6 @@ IR::Value Terminal::EmitIR() {
   case Language::Terminal::Real:
   case Language::Terminal::Uint: return value;
   case Language::Terminal::Error: return IR::Value::Func(ErrorFunc());
-
   default: UNREACHABLE;
   }
 }

@@ -230,21 +230,9 @@ struct Value {
   static Value FrameAddr(size_t n);
 
 };
-inline size_t to_num(ValType v) {
-  switch (v) {
-  case ValType::Val: return 0;
-  case ValType::CStr: return 1;
-  case ValType::Block: return 2;
-  case ValType::Loc: return 3;
-  case ValType::HeapAddr: return 4;
-  case ValType::ExtFn: return 5;
-  case ValType::GlobalCStr: return 6;
-  case ValType::Error: return 7;
-  case ValType::None: return 8;
-  }
-}
+
 inline bool operator<(const Value &lhs, const Value &rhs) {
-  if (lhs.flag != rhs.flag) { return to_num(lhs.flag) < to_num(rhs.flag); }
+  if (lhs.flag != rhs.flag) { return static_cast<int>(lhs.flag) < static_cast<int>(rhs.flag); }
   switch (lhs.flag) {
   case ValType::Val:
     return ArbitraryOrdering(lhs.as_val, rhs.as_val) == Order::Less;
