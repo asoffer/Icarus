@@ -31,6 +31,7 @@ llvm::Constant *CharVal::llvm() { return data::const_char(val); }
 llvm::Constant *RealVal::llvm() { return data::const_real(val); }
 llvm::Constant *U16Val::llvm() { return data::const_u16(val); }
 llvm::Constant *U32Val::llvm() { return data::const_u32(val); }
+llvm::Constant *StringVal::llvm() { NOT_YET; }
 llvm::Constant *TypeVal::llvm() {
   return reinterpret_cast<llvm::Constant *>(val);
 }
@@ -57,6 +58,7 @@ std::string U16Val::to_string() const { return std::to_string(val) + "u16"; }
 std::string U32Val::to_string() const { return std::to_string(val) + "u32"; }
 std::string TypeVal::to_string() const { return val->to_string(); }
 std::string IntVal::to_string() const { return std::to_string(val); }
+std::string StringVal::to_string() const { return val; }
 std::string NullVal::to_string() const {
   return "null(" + val->to_string() + ")";
 }

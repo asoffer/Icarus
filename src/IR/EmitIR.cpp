@@ -92,12 +92,12 @@ IR::Func *ErrorFunc() {
   IR::Func::Current  = error_;
   IR::Block::Current = error_->entry();
 
-  auto code_block = new AST::CodeBlock;
-  code_block->error_message = "[TODO get user-defined error message]";
+  auto code_block = IR::Value::Code(new AST::CodeBlock);
+  IR::WriteErr(IR::Value::Arg(0), code_block);
 
   IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
   IR::Block::Current = IR::Func::Current->exit();
-  IR::Block::Current->SetReturn(IR::Value::Code(code_block));
+  IR::Block::Current->SetReturn(code_block);
 
   IR::Func::Current  = saved_func;
   IR::Block::Current = saved_block;

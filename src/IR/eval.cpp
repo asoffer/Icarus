@@ -514,6 +514,11 @@ void Cmd::Execute(StackFrame& frame) {
     assert(false && "No selection made from phi block");
   exit_successfully:;
   } break;
+  case Op::WriteErr: {
+    assert(cmd_inputs[0].flag == ValType::GlobalCStr);
+    cmd_inputs[1].as_val->GetCode()->error_message =
+        GetGlobalStringNumbered(cmd_inputs[0].as_global_cstr);
+  } break;
   case Op::Add: {
     if (result.type == Char) {
       frame.reg[result.reg] = Value::Char(cmd_inputs[0].as_val->GetChar() +

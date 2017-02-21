@@ -213,6 +213,14 @@ Value PushField(Value fields, const char *name, Value ty, Value init) {
   return Value::None();
 }
 
+Value WriteErr(Value err_msg, Value code_block) {
+  Cmd cmd(Op::WriteErr, false);
+  cmd.args        = {err_msg, code_block};
+  cmd.result.type = Void;
+  Block::Current->push(cmd);
+  return Value::None();
+}
+
 Value InitFieldVec(size_t num_decls) {
   Cmd cmd(Op::InitFieldVec, true);
   cmd.args        = {Value::Uint(num_decls)};

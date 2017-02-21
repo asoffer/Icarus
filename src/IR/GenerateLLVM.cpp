@@ -520,6 +520,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
       case IR::Op::TC_Arr2: UNREACHABLE;
       case IR::Op::Bytes: UNREACHABLE;
       case IR::Op::Alignment: UNREACHABLE;
+      case IR::Op::WriteErr: UNREACHABLE;
 
       case IR::Op::Trunc:
         registers[cmd.result.reg] = builder.CreateTrunc(args[0], *Char);
