@@ -812,5 +812,15 @@ AST::Node *Parenthesize(NPtrVec &&nodes) {
   auto expr_ptr = steal<AST::Expression>(nodes[1]);
   expr_ptr->precedence =
       Language::precedence(Language::Operator::NotAnOperator);
-  return expr_ptr;
+  if (static_cast<AST::TokenNode *>(nodes[0])->token != "\\(") {
+    return expr_ptr;
+  }
+
+  // Assert expr is an identifier
+
+  auto unop_ptr     = new AST::Unop;
+  unop_ptr->operand = expr_ptr;
+  unop_ptr->loc     = nodes[0]->loc;
+  unop_ptr->op      = Language::Operator::Ref;
+  return unop_ptr;
 }

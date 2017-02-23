@@ -351,6 +351,10 @@ static NNT NextOperator(Cursor &cursor) {
       cursor.Increment();
       return NNT(cursor, "", Language::newline);
       break;
+    case '(':
+      cursor.Increment();
+      return NNT(cursor, "\\(", Language::l_ref);
+      break;
     case '\0':
       // Ignore the following newline and retry
       cursor.Increment();

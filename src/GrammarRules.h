@@ -75,11 +75,11 @@ AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
 }
 } // namespace ErrMsg
 namespace Language {
-static constexpr unsigned int OP_B  = op_b | comma | dots | colon | eq;
-static constexpr unsigned int OP_LT = op_lt | kw_else;
-static constexpr unsigned int EXPR  = expr | fn_expr | kw_else;
+static constexpr u64 OP_B  = op_b | comma | dots | colon | eq;
+static constexpr u64 OP_LT = op_lt | kw_else;
+static constexpr u64 EXPR  = expr | fn_expr | kw_else;
 // Used in error productions only!
-static constexpr unsigned int RESERVED =
+static constexpr u64 RESERVED =
     kw_expr_block | kw_else | kw_block | kw_struct | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
@@ -140,7 +140,7 @@ static const std::vector<Rule> Rules = {
          ErrMsg::Reserved<0, 2>),
 
     // Parenthesization and bracketing (array literals)
-    Rule(0x01, expr, {l_paren, EXPR, r_paren}, Parenthesize),
+    Rule(0x01, expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
     Rule(0x01, expr, {l_bracket, EXPR, r_bracket}, AST::ArrayLiteral::build),
     Rule(0x00, expr, {l_bracket, r_bracket}, AST::ArrayLiteral::BuildEmpty),
 

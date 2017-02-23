@@ -269,7 +269,7 @@ std::ostream &operator<<(std::ostream &os, const Value &value);
 namespace Language {
 extern size_t precedence(Operator op);
 
-enum NodeType : u32 {
+enum NodeType : u64 {
   bof            = 1ull << 0,
   eof            = 1ull << 1,
   newline        = 1ull << 3,
@@ -284,27 +284,28 @@ enum NodeType : u32 {
   r_bracket      = 1ull << 12,
   l_brace        = 1ull << 13,
   r_brace        = 1ull << 14,
-  semicolon      = 1ull << 15,
-  hashtag        = 1ull << 16,
-  kw_expr_block  = 1ull << 17,
-  kw_else        = 1ull << 18,
-  kw_block       = 1ull << 19,
-  kw_struct      = 1ull << 20,
-  l_double_brace = 1ull << 21,
-  r_double_brace = 1ull << 22,
+  l_ref          = 1ull << 15,
+  semicolon      = 1ull << 16,
+  hashtag        = 1ull << 17,
+  kw_expr_block  = 1ull << 18,
+  kw_else        = 1ull << 19,
+  kw_block       = 1ull << 20,
+  kw_struct      = 1ull << 21,
+  l_double_brace = 1ull << 22,
+  r_double_brace = 1ull << 23,
 
-  op_l     = 1ull << 23,
-  op_b     = 1ull << 24,
-  colon    = 1ull << 25,
-  eq       = 1ull << 26,
-  comma    = 1ull << 27,
-  op_bl    = 1ull << 28,
-  dots     = 1ull << 29,
-  op_lt    = 1ull << 30,
-  fn_arrow = 1ull << 31,
+  op_l     = 1ull << 24,
+  op_b     = 1ull << 25,
+  colon    = 1ull << 26,
+  eq       = 1ull << 27,
+  comma    = 1ull << 28,
+  op_bl    = 1ull << 29,
+  dots     = 1ull << 30,
+  op_lt    = 1ull << 31,
+  fn_arrow = 1ull << 32,
 };
 
-constexpr unsigned int OP_ =
+constexpr u64 OP_ =
     op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
 
 } // namespace Language

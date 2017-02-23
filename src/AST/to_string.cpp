@@ -49,6 +49,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Eval: ss << "Eval"; break;
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Require: ss << "Require"; break;
+  case Language::Operator::Ref: ss << "Ref"; break;
 
   default: { assert(false && "Not a unary operator"); }
   }
