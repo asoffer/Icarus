@@ -2,87 +2,62 @@ require "lib/prelude.ic"
 require "lib/file.ic"
 
 NodeType := enum {
-  EOF
-  Newline
-  OpB
-  Invalid
+  Identifier
+  Number
+  Unop
+  Unknown
 }
 
-Token := struct {
-  nt: NodeType
-  tk: string
+main := void -> void { 
+  f: File
+  f._handle = open("programs/cheating_quine.ic", FileMode.Read)
+
+  c := Peek(&f)
+  while c != 0'uint'ascii {
+    print case {
+      c'IsAlphaOrUnderscore  =>  IdentifierFn(&f)
+      c == `0                =>  ZeroInitiatedNumber(&f)
+      else                   =>  NodeType.Unknown
+    }, `\n
+    c = (&f)'Next
+  }
 }
 
-CreateToken := (nt: NodeType) -> Token { return CreateToken(nt, "") }
-CreateToken := (nt: NodeType, tk: string) -> Token {
-  result: Token
-  result.nt = nt
-  result.tk = tk
-  return result
-}
-
-// TODO should be definable as a constant with $
-InvalidToken := void -> Token { return CreateToken(NodeType.Invalid) }
-
-
-is_lower := (c: char) -> bool { return `a'ord <= c'ord <= `z'ord }
-is_upper := (c: char) -> bool { return `A'ord <= c'ord <= `Z'ord }
-is_nonzero_digit := (c: char) -> bool { return `1'ord <= c'ord <= `9'ord }
-is_digit := (c: char) -> bool { return `0'ord <= c'ord <= `9'ord }
-is_alpha := (c: char) -> bool { return c'is_lower | c'is_upper }
-is_alpha_or_underscore := (c: char) -> bool { return c'is_alpha | c == `_ }
-is_alphanumeric := (c: char) -> bool { return c'is_alpha | c'is_digit }
-is_alphanumeric_or_underscore := (c: char) -> bool {
-  return c'is_alphanumeric | c == `_
-}
-is_whitespace := (c: char) -> bool {
-  c == 0x20'uint'ascii |  c == `\t | c == `\n | c == `\r
-}
-
-
-NextToken := (f: &File) -> Token {
-  result: Token
+IdentifierFn := (f: &File) -> NodeType {
   c := f'Next
+  while c'IsAlphaNumericOrUnderscore { c = f'Next }
+  return NodeType.Identifier
+}
 
-  if c'is_alpha_or_underscore { return NextWord(f) }
-  if c'is_nonzero_digit { return NextNumberInBase10(f) }
 
+ZeroInitiatedNumber := (f: &File) -> NodeType {
+  f'Next  // zero
+  c := f'Next
   return case {
-    c == 0'uint'ascii                =>  CreateToken(NodeType.EOF)
-    c == `0                          =>  NextZeroInitiatedNumber(f)
-    c == ``                          =>  NextCharLiteral(f)
-    c == `"                          =>  NextStringLiteral(f)
-    c == `/                          =>  NextSlashInitiatedToken(f)
-    c == `\t | c == 0x20'uint'ascii  =>  NextToken(f)
-    c == `\n                         =>  CreateToken(NodeType.Newline)
-    else                             =>  NextOperator(f)
+    c == `b    =>  f'BinaryNumber
+    c == `c    =>  f'OctalNumber
+    c == `d    =>  f'DecimalNumber
+    c == `x    =>  f'HexadecimalNumber
+    c'IsDigit  =>  f'DecimalNumber
+    else       =>  NodeType.Unknown
   }
 }
 
-NextSlashInitiatedToken := (f: &File) -> Token {
-  c := f'Next
-
-  if c == `/ {
-    f'SkipToEndOfLine
-    return InvalidToken()
-  }
-
-  if c == `* {
-    // TODO
-  }
-
-  if c == `= {
-    f'Next
-    return CreateToken(NodeType.OpB, "/=")
-  }
-
-  return CreateToken(NodeType.OpB, "/")
+BinaryNumber := OctalNumber
+DecimalNumber := OctalNumber
+HexadecimalNumber := OctalNumber
+OctalNumber := (f: &File) -> NodeType {
+  return NodeType.Number
 }
 
-SkipToEndOfLine: &File -> void #cstdlib
-NextWord: &File -> Token #cstdlib
-NextNumberInBase10: &File -> Token #cstdlib
-NextZeroInitiatedNumber: &File -> Token #cstdlib
-NextCharLiteral: &File -> Token #cstdlib
-NextStringLiteral: &File -> Token #cstdlib
-NextOperator: &File -> Token #cstdlib
+IsAlphaOrUnderscore := (c: char) -> bool {
+  return c'IsLower | c'IsUpper | c == `_
+}
+
+IsAlphaNumericOrUnderscore := (c: char) -> bool {
+  return c'IsAlphaOrUnderscore | c'IsDigit
+} 
+
+IsLower := (c: char) -> bool { return ord(`a) <= ord(c) <= ord(`z) }
+IsUpper := (c: char) -> bool { return ord(`A) <= ord(c) <= ord(`Z) }
+IsDigit := (c: char) -> bool { return ord(`0) <= ord(c) <= ord(`9) }

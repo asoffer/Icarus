@@ -1,6 +1,6 @@
 require "lib/prelude.ic"
 require "lib/file.ic"
-
+01234
 u := (n: int) -> uint { return n :> uint }
 
 main := void -> void { 

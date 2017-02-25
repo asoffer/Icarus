@@ -5,6 +5,7 @@ FileMode := enum { Read \\ Write }
 
 fopen: (string, string) -> &opaque #cstdlib
 fgetc: &opaque -> uint #cstdlib
+ungetc: (uint, &opaque) -> void #cstdlib
 
 open := (name: string, m: FileMode) -> &opaque {
   return fopen(name, case {
@@ -17,6 +18,18 @@ Next := (this: &File) -> char {
   EOF := 0xffffffff'uint #const
 
   n := fgetc(this._handle)
+
+  return ascii(case {
+    n == EOF  =>  0'uint
+    else      =>  n
+  })
+}
+
+Peek := (this: &File) -> char {
+  EOF := 0xffffffff'uint #const
+
+  n := fgetc(this._handle)
+  ungetc(n, this._handle)
 
   return ascii(case {
     n == EOF  =>  0'uint
