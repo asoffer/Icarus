@@ -104,3 +104,12 @@ void Struct::insert_field(const std::string &name, Type *ty,
 }
 
 std::string Struct::to_string() const { return bound_name; }
+
+Struct Struct::Anon(const std::set<AST::Declaration *> &declarations) {
+  static int counter = 0;
+  Struct result("anon.struct." + std::to_string(counter++));
+  for (auto decl : declarations) {
+    result.insert_field(decl->identifier->token, decl->type, nullptr);
+  }
+  return result;
+}

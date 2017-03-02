@@ -191,6 +191,7 @@ struct Struct : public Type {
   TYPE_FNS(Struct, struct);
 
   Struct(const std::string &name);
+  static Struct Anon(const std::set<AST::Declaration *> &declarations);
 
   void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
 

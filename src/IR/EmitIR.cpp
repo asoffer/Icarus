@@ -758,7 +758,6 @@ IR::Value FunctionLiteral::EmitIR() { return Emit(true); }
 IR::Value FunctionLiteral::Emit(bool should_gen) {
   ENSURE_VERIFIED;
   // TODO Also verify internals
-
   if (ir_func) { return IR::Value::Func(ir_func); } // Cache
   if (type->has_vars()) { return IR::Value::None(); }
 
@@ -780,7 +779,15 @@ IR::Value FunctionLiteral::Emit(bool should_gen) {
   IR::Store(Char, NORMAL_FLAG, fn_scope->exit_flag);
 
   statements->verify_types();
-  for (auto decl : fn_scope->DeclRegistry) { decl->AllocateLocally(ir_func); }
+
+  Struct capt_struct = Struct::Anon(captures);
+
+  for (auto decl : fn_scope->DeclRegistry) {
+    auto iter = captures.find(decl);
+    if (iter != captures.end()) { continue; }
+    decl->AllocateLocally(ir_func);
+  }
+
   for (auto scope : fn_scope->innards_) {
     if (!scope->is_block_scope() || scope->is_function_scope()) { continue; }
     for (auto decl : scope->DeclRegistry) {
