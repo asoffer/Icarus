@@ -23,7 +23,8 @@ llvm::Value *Arg::llvm(IR::Func *ir_fn,
                        const std::vector<llvm::Value *> &registers) const {
   auto arg_num = loc;
   auto iter = ir_fn->llvm_fn->args().begin();
-  while (arg_num-- > 0) { iter++; }
+  ++iter; // Skip the first implicit capture field
+  while (arg_num-- > 0) { ++iter; }
   return iter;
 }
 

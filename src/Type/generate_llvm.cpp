@@ -52,8 +52,9 @@ void Function::generate_llvm() {
   if (time() == Time::compile || time() == Time::mixed || llvm_type) return;
   input->generate_llvm();
   output->generate_llvm();
-  std::vector<llvm::Type *> llvm_in;
-  llvm::Type *llvm_out = *Void;
+  // TODO change ptr(char) to opaque pointer
+  std::vector<llvm::Type *> llvm_in = {*Ptr(Char)};
+  llvm::Type *llvm_out              = *Void;
 
   if (input->is_tuple()) {
     auto in_tup = (Tuple *)input;
@@ -86,6 +87,14 @@ void Function::generate_llvm() {
   } else {
     llvm_type = llvm::FunctionType::get(llvm_out, llvm_in, false);
   }
+
+  auto struct_type = llvm::StructType::create(global_module->getContext());
+  // TODO change ptr(char) to opaque pointer
+  struct_type->setBody({*Ptr(Char), llvm::PointerType::getUnqual(llvm_type)},
+                       /* isPacked = */ false);
+  struct_type->setName(Mangle(this));
+  llvm_type = struct_type;
+  llvm_type->dump();
 }
 
 void Tuple::generate_llvm() {

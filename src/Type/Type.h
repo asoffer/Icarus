@@ -9,7 +9,7 @@ extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
-    *Void, *NullPtr, *RawPtr, *String, *U16, *U32;
+    *Void, *NullPtr, *String, *U16, *U32;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
@@ -51,7 +51,7 @@ public:
   virtual ~Type() {}
   BASIC_METHODS;
 
-  virtual operator llvm::Type *();
+  operator llvm::Type *();
 
   size_t SpaceInArray() const {
     return MoveForwardToAlignment(bytes(), alignment());
@@ -166,8 +166,6 @@ struct Pointer : public Type {
 
 struct Function : public Type {
   TYPE_FNS(Function, function);
-
-  operator llvm::FunctionType *();
 
   Function(Type *in, Type *out);
   Type *input, *output;

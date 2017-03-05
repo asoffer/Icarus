@@ -165,6 +165,7 @@ struct Func {
   std::vector<Value *> args;
   Function *fn_type;
   llvm::Function *llvm_fn;
+  llvm::Value *fn_wrapper;
   llvm::BasicBlock *alloc_block;
 
   Block *entry() { return blocks.front(); }
@@ -178,7 +179,8 @@ struct Func {
 
   Value Call(LocalStack *, const std::vector<Value> &);
 
-  size_t num_cmds, frame_size;
+  size_t num_cmds   = 0;
+  size_t frame_size = 0;
 
   size_t PushSpace(Type *t);
 

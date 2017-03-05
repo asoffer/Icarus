@@ -174,8 +174,7 @@ size_t IR::Func::PushSpace(Type *t) {
     auto ip = builder.saveIP();
     builder.SetInsertPoint(alloc_block);
     if (t != Void && t->time() != Time::compile) {
-      frame_map[result] =
-          builder.CreateAlloca(*(t->is_function() ? Ptr(t) : t));
+      frame_map[result] = builder.CreateAlloca(*t);
     }
 
     builder.restoreIP(ip);
@@ -738,10 +737,11 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
 
     if (file_type != FileType::None) {
       // TODO assuming a function type
-      llvm::FunctionType *ft = *(Function *)type;
+      llvm::Type *llvm_type = *type;
+      auto ft = static_cast<llvm::FunctionType *>(llvm_type);
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
+          /*        Type = */ *type,
           /*  isConstant = */ true,
           /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
           /* Initializer = */ global_module->getOrInsertFunction(

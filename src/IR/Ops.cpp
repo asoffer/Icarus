@@ -164,17 +164,20 @@ Value::~Value() {
 #undef CMD_WITH_2_ARGS
 
 Func::Func(Function *fn_type, bool should_gen)
-    : fn_type(fn_type), llvm_fn(nullptr), alloc_block(nullptr), num_cmds(0),
-      frame_size(0), generated(Gen::NotYet) {
+    : fn_type(fn_type), generated(Gen::NotYet) {
 
   if (!fn_type->has_vars()) {
     should_gen &=
         (fn_type->time() == Time::run || fn_type->time() == Time::either);
 
     if (should_gen && file_type != FileType::None) {
-      llvm::FunctionType *llvm_fn_type = *fn_type;
-      llvm_fn = (llvm::Function *)global_module->getOrInsertFunction(
-          name, llvm_fn_type);
+      llvm::Type *struct_type = *fn_type;
+      auto llvm_fn_ptr_type = static_cast<llvm::PointerType *>(
+          static_cast<llvm::StructType *>(struct_type)->getElementType(1));
+      auto llvm_fn_type =
+          static_cast<llvm::FunctionType *>(llvm_fn_ptr_type->getElementType());
+      llvm_fn = static_cast<llvm::Function *>(
+          global_module->getOrInsertFunction(name, llvm_fn_type));
       implicit_functions.push_back(this);
     }
 

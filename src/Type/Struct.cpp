@@ -111,5 +111,6 @@ Struct Struct::Anon(const std::set<AST::Declaration *> &declarations) {
   for (auto decl : declarations) {
     result.insert_field(decl->identifier->token, decl->type, nullptr);
   }
+  result.CompleteDefinition();
   return result;
 }

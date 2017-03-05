@@ -125,6 +125,7 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         } else {
           UNREACHABLE;
         }
+
         registers[cmd.result.reg] =
             builder.CreateGEP(IR_to_LLVM(ir_fn, cmd.args[1], registers),
                               {data::const_u32(0), val});
@@ -372,7 +373,6 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
             builder.CreateCall(cstdlib::malloc(), args[0]), *cmd.result.type);
         break;
       case IR::Op::Free:
-        builder.GetInsertBlock()->dump();
         builder.CreateCall(cstdlib::free(),
                            builder.CreateBitCast(args[0], *Ptr(Char)));
         break;
@@ -380,12 +380,10 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         registers[cmd.result.reg] = builder.CreateGEP(
             args[0], {data::const_u32(0), data::const_u32(0)});
         break;
-
       case IR::Op::ArrayData:
         registers[cmd.result.reg] = builder.CreateGEP(
             args[1], {data::const_u32(0), data::const_u32(1)});
         break;
-
       case IR::Op::Print: {
         auto print_type = reinterpret_cast<Type *>(args[0]);
         if (print_type == Bool) {
@@ -430,16 +428,18 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         }
       } break;
       case IR::Op::Call: {
-        auto fn = args[0];
-        args.erase(args.begin());
-
+        auto fn_obj = args[0];
+        args[0] =
+            builder.CreateGEP(fn_obj, {data::const_u32(0), data::const_u32(0)});
+        auto fn_ptr =
+            builder.CreateGEP(fn_obj, {data::const_u32(0), data::const_u32(1)});
         auto ret_type = cmd.result.type;
 
         if (ret_type == Void) {
-          builder.CreateCall(fn, args);
+          builder.CreateCall(fn_ptr, args);
         } else if (ret_type->is_primitive() || ret_type->is_pointer() ||
                    ret_type->is_enum() || ret_type->is_function()) {
-          registers[cmd.result.reg] = builder.CreateCall(fn, args);
+          registers[cmd.result.reg] = builder.CreateCall(fn_ptr, args);
         } else if (ret_type->is_tuple()) {
             NOT_YET;
         } else {
@@ -462,12 +462,17 @@ Block::GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
         // TODO or do we want to actually do the store (it'll be easily
         // optimized out)
         if (reinterpret_cast<Type *>(args[0]) == Type_) { break; }
-        if (reinterpret_cast<Type *>(args[0])->is_function() &&
-            args[1] == data::null_pointer(Char)) {
-          args[1] = data::null_pointer(reinterpret_cast<Type *>(args[0]));
-        }
+        if (reinterpret_cast<Type *>(args[0])->is_function()) {
+          if (args[1] == data::null_pointer(Char)) {
+            args[1] = data::null_pointer(reinterpret_cast<Type *>(args[0]));
+          }
 
-        builder.CreateStore(args[1], args[2]);
+          auto raw_fn_ptr = builder.CreateGEP(
+              args[2], {data::const_u32(0), data::const_u32(1)});
+          builder.CreateStore(args[1], raw_fn_ptr);
+        } else {
+          builder.CreateStore(args[1], args[2]);
+        }
       } break;
       case IR::Op::Cast: {
         auto from_type = reinterpret_cast<Type *>(args[0]);

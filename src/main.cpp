@@ -34,6 +34,11 @@ namespace IR {
 extern std::vector<llvm::Constant *> LLVMGlobals;
 } // namespace IR
 
+namespace data {
+extern llvm::ConstantInt *const_u32(uint32_t n);
+extern llvm::Constant *null_pointer(Type *t);
+} // namespace data
+
 llvm::Value *main_fn = nullptr;
 extern llvm::IRBuilder<> builder;
 extern llvm::BasicBlock *make_block(const std::string &name,
@@ -64,7 +69,8 @@ void AST::Declaration::AllocateGlobal() {
 
     if (HasHashtag("cstdlib")) {
       // TODO assuming a function type
-      llvm::FunctionType *ft = *(Function *)type;
+      llvm::Type *llvm_type = *type;
+      auto ft = static_cast<llvm::FunctionType *>(llvm_type);
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
           /*        Type = */ *(type->is_function() ? Ptr(type) : type),
@@ -76,7 +82,7 @@ void AST::Declaration::AllocateGlobal() {
     } else {
       IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
           /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
+          /*        Type = */ *type,
           /*  isConstant = */ false, // TODO HasHashtag("const"),
           /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
           /* Initializer = */ nullptr,
@@ -128,6 +134,7 @@ void AST::Declaration::EmitGlobal() {
 
   if (file_type != FileType::None) {
     if (identifier->token == "main") {
+      std::cerr << *identifier << std::endl;
       main_fn = IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()];
     }
   }
@@ -177,25 +184,39 @@ void AST::Declaration::EmitLLVMGlobal() {
   }
 
   auto ir_val = GetInitialGlobal(addr.as_loc->GetGlobalAddr());
-  llvm::Constant *llvm_val = nullptr;
   switch (ir_val.flag) {
-  case IR::ValType::Val: llvm_val = ir_val.as_val->llvm(); break;
+  case IR::ValType::Val:
+    if (type->is_function()) {
+      llvm::Type *llvm_type = *type;
+      auto struct_type = static_cast<llvm::StructType *>(llvm_type);
+      static_cast<llvm::GlobalVariable *>(
+          IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
+          ->setInitializer(llvm::ConstantStruct::get(
+              struct_type, {data::null_pointer(Char), ir_val.as_val->llvm()}));
+    } else {
+      static_cast<llvm::GlobalVariable *>(
+          IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
+          ->setInitializer(ir_val.as_val->llvm());
+    }
+    break;
   case IR::ValType::Loc:
     if (ir_val.as_loc->is_global_addr()) {
-      llvm_val = IR::LLVMGlobals[ir_val.as_loc->GetGlobalAddr()];
+      static_cast<llvm::GlobalVariable *>(
+          IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
+          ->setInitializer(IR::LLVMGlobals[ir_val.as_loc->GetGlobalAddr()]);
     } else {
       std::cerr << ir_val << std::endl;
       NOT_YET;
     }
     break;
-  case IR::ValType::ExtFn: global_module->getFunction(ir_val.as_ext_fn); break;
+  case IR::ValType::ExtFn:
+    global_module->getFunction(ir_val.as_ext_fn);
+    static_cast<llvm::GlobalVariable *>(
+        IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
+        ->setInitializer(nullptr);
+    break;
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
-
-  ((llvm::GlobalVariable *)IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()])
-      ->setInitializer(llvm_val);
-
-  return;
 }
 
 struct NCursesScopeGuard{
@@ -292,15 +313,17 @@ int main(int argc, char *argv[]) {
         f->GenerateLLVM();
       }
     }
-    llvm::FunctionType *ft = *Func(Void, Void);
-    // TODO this looks fishy
-    llvm::Function *fn =
-        (llvm::Function *)global_module->getOrInsertFunction("main", ft);
+
+    llvm::Function *fn = (llvm::Function *)global_module->getOrInsertFunction(
+        "main", llvm::FunctionType::get(*Void, false));
     auto block = make_block("entry", fn);
 
     assert(main_fn);
     builder.SetInsertPoint(block);
-    builder.CreateCall(builder.CreateLoad(main_fn), {});
+    auto main_ptr =
+        builder.CreateGEP(main_fn, {data::const_u32(0), data::const_u32(1)});
+    builder.CreateCall(builder.CreateLoad(main_ptr),
+                       {data::null_pointer(Char)});
     builder.CreateRetVoid();
   }
 
