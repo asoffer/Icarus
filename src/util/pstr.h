@@ -1,6 +1,6 @@
 #ifndef ICARUS_UTIL_PSTR_H
 #define ICARUS_UTIL_PSTR_H
-
+#include <string>
 // permanent strings
 struct pstr {
   char *ptr;

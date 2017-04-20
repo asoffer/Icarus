@@ -1,10 +1,9 @@
-#ifndef ICARUS_UNITY
 #include "Type/Type.h"
 #include "Scope.h"
 #include "IR/IR.h"
+#include "util/timer.h"
 #include "util/command_line_args.h"
 #include <ncurses.h>
-#endif
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
@@ -218,6 +217,11 @@ void AST::Declaration::EmitLLVMGlobal() {
   default: std::cerr << ir_val << std::endl; NOT_YET;
   }
 }
+namespace debug {
+extern bool timer;
+extern bool parser;
+extern bool ct_eval;
+} // namespace debug
 
 struct NCursesScopeGuard{
   NCursesScopeGuard() {

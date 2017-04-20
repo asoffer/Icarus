@@ -1,18 +1,17 @@
-MAKEFLAGS += -j
+#MAKEFLAGS += -j
 
 TARGET  := bin/$(shell basename `pwd`)
 
-PRECOMP := src/Precompiled.h
-SOURCES := $(shell find src -name *.cpp 2>/dev/null)
-OBJECTS := $(patsubst src/%.cpp,build/%.o,$(SOURCES))
-DEPENDS := $(SOURCES:src/%.cpp=build/%.d)
+PRECOMP := src/precompiled.h
+SOURCES := $(shell find src -name *.cc 2>/dev/null)
+OBJECTS := $(patsubst src/%.cc,build/%.o,$(SOURCES))
 
-COMPILER := clang++
+COMPILER := g++
 BUILD_FLAGS := -g -O0 -D DEBUG
 LINK_FLAGS := -lncurses
 STDS = -std=c++1z
-WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic -Weffc++
-OPTS = -iquote$(shell pwd)/src -include-pch bin/Precompiled.h.pch
+WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
+OPTS = -iquote$(shell pwd)/src
 LLVM_CXX = $(shell llvm-config --cxxflags)
 LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs)
 
@@ -22,24 +21,19 @@ all: $(TARGET)
 release: BUILD_FLAGS := -O3
 release: $(TARGET)
 
-build/%.o: src/%.cpp
-	@mkdir -p $(@D)
-	@$(COMPILER) -MM $(STDS) $(OPTS) $(LLVM_CXX) src/$*.cpp -MF build/$*.d
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM_CXX) -c src/$*.cpp -o build/$*.o
-
--include $(DEPENDS)
+build/%.o: src/%.cc
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM_CXX) -c src/$*.cc -o build/$*.o
 
 $(TARGET): $(OBJECTS)
+	@echo -n Linking...
 	@$(COMPILER) $(LLVM_LINK) $(LINK_FLAGS) $(OBJECTS) -o $@
+	@echo Done.
 
 header:
-	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(LLVM_CXX) $(PRECOMP) -o bin/Precompiled.h.pch
-
-unity:
-	@$(COMPILER) $(STDS) $(WARN) $(BUILD_FLAGS) $(OPTS) $(LLVM_CXX) $(LLVM_LINK) $(LINK_FLAGS) src/unity.cc -o $(TARGET)
+	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(LLVM_CXX) $(PRECOMP) -o src/precompiled.h.gch
 
 rules:
-	@touch ~/icarus/src/Parse.cpp
+	@touch ~/icarus/src/Parse.cc
 	@make
 
 rebuild:
@@ -48,7 +42,7 @@ rebuild:
 	@make unity
 
 clean:
-	@rm -f $(TARGET) $(OBJECTS) $(DEPENDS) bin/Precompiled.h.pch
+	@rm -f $(TARGET) $(OBJECTS) src/precompiled.h.gch
 
 help:
 	@echo "TARGET  : $(TARGET)"
