@@ -2,8 +2,9 @@
 #include "util/pstr.h"
 #include "ast/ast.h"
 #include "type/type.h"
+#include "base/file.h"
 
-extern std::map<std::string, SourceFile *> source_map;
+extern std::map<std::string, File *> source_map;
 
 using LineNum    = size_t;
 using LineOffset = size_t;

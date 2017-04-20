@@ -1,6 +1,13 @@
 #ifndef ICARUS_CLARGS_H
 #define ICARUS_CLARGS_H
 
+#include <queue>
+
+namespace debug {
+extern bool parser;
+extern bool ct_eval;
+} // namespace debug
+
 enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
 
 FileType file_type = FileType::Bin;

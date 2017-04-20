@@ -1,4 +1,5 @@
 #include "type.h"
+#include "../ir/ir.h"
 #include "../scope.h"
 
 extern IR::Value GetFuncReferencedIn(Scope *scope, const std::string &fn_name,

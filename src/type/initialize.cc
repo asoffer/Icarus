@@ -1,6 +1,7 @@
 #include "type.h"
 #include "scope.h"
 #include "../ast/ast.h"
+#include "../ir/ir.h"
 
 void Primitive::EmitInit(IR::Value id_val) {
   IR::Store(this, EmitInitialValue(), id_val);

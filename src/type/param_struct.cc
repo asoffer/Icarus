@@ -1,4 +1,5 @@
 #include "type.h"
+#include "../ir/ir.h"
 #include "../ast/ast.h"
 
 ParamStruct::ParamStruct(

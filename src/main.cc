@@ -1,9 +1,15 @@
-#include "Type/Type.h"
-#include "Scope.h"
-#include "IR/IR.h"
+#include "type/type.h"
+#include "scope.h"
+#include "error_log.h"
+#include "ir/ir.h"
+#include "ir/loc.h"
+#include "ir/val.h"
+#include "ast/ast.h"
 #include "util/timer.h"
 #include "util/command_line_args.h"
+#include "base/file.h"
 #include <ncurses.h>
+#include <vector>
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
@@ -19,7 +25,7 @@ extern IR::Value Evaluate(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
 extern void CompletelyVerify(AST::Node *node);
-extern void Parse(SourceFile *sf);
+extern void Parse(File *sf);
 extern void ParseAllFiles();
 extern std::stack<Scope *> ScopeStack;
 extern Timer timer;
@@ -43,7 +49,7 @@ extern llvm::IRBuilder<> builder;
 extern llvm::BasicBlock *make_block(const std::string &name,
                                     llvm::Function *fn);
 
-std::map<std::string, SourceFile *> source_map;
+std::map<std::string, File *> source_map;
 AST::Statements *global_statements;
 
 #include "tools.h"
@@ -64,32 +70,32 @@ void AST::Declaration::AllocateGlobal() {
   addr = IR::Value::CreateGlobal();
 
   if (file_type != FileType::None) {
-    if (type->time() == Time::compile) { return; }
+    // if (type->time() == Time::compile) { return; }
 
-    if (HasHashtag("cstdlib")) {
-      // TODO assuming a function type
-      llvm::Type *llvm_type = *type;
-      auto ft = static_cast<llvm::FunctionType *>(llvm_type);
-      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
-          /*      Module = */ *global_module,
-          /*        Type = */ *(type->is_function() ? Ptr(type) : type),
-          /*  isConstant = */ true,
-          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-          /* Initializer = */ global_module->getOrInsertFunction(
-              identifier->token, ft),
-          /*        Name = */ identifier->token);
-    } else {
-      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
-          /*      Module = */ *global_module,
-          /*        Type = */ *type,
-          /*  isConstant = */ false, // TODO HasHashtag("const"),
-          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-          /* Initializer = */ nullptr,
-          /*        Name = */ type->is_function()
-              ? Mangle((Function *)type, identifier, Scope::Global)
-              : identifier->token);
-      // TODO fix mangler to take any types not just functions
-    }
+    // if (HasHashtag("cstdlib")) {
+    //   // TODO assuming a function type
+    //   llvm::Type *llvm_type = *type;
+    //   auto ft = static_cast<llvm::FunctionType *>(llvm_type);
+    //   IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
+    //       /*      Module = */ *global_module,
+    //       /*        Type = */ *(type->is_function() ? Ptr(type) : type),
+    //       /*  isConstant = */ true,
+    //       /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+    //       /* Initializer = */ global_module->getOrInsertFunction(
+    //           identifier->token, ft),
+    //       /*        Name = */ identifier->token);
+    // } else {
+    //   IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
+    //       /*      Module = */ *global_module,
+    //       /*        Type = */ *type,
+    //       /*  isConstant = */ false, // TODO HasHashtag("const"),
+    //       /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
+    //       /* Initializer = */ nullptr,
+    //       /*        Name = */ type->is_function()
+    //           ? Mangle((Function *)type, identifier, Scope::Global)
+    //           : identifier->token);
+    //   // TODO fix mangler to take any types not just functions
+    // }
   }
 }
 

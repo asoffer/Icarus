@@ -1,5 +1,6 @@
 #include "type.h"
 #include "../scope.h"
+#include "../ir/ir.h"
 
 extern IR::Value PtrCallFix(Type *t, IR::Value v);
 

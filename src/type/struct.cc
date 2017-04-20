@@ -1,5 +1,6 @@
 #include "type.h"
 #include "../ast/ast.h"
+#include "../ir/val.h"
 
 extern IR::Value Evaluate(AST::Expression *expr);
 

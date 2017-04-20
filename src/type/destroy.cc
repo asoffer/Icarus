@@ -1,4 +1,5 @@
 #include "type.h"
+#include "../ir/ir.h"
 #include "../scope.h"
 
 void Primitive::EmitDestroy(IR::Value id_val) {}

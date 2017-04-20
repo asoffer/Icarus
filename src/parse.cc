@@ -156,7 +156,7 @@ static bool Reduce(ParseState *ps) {
   return true;
 }
 
-void Parse(SourceFile *source) {
+void Parse(File *source) {
   // Start the lookahead with a bof token. This is a simple way to ensure proper
   // initialization, because the newline will essentially be ignored.
   Cursor cursor;
@@ -220,7 +220,7 @@ void Parse(SourceFile *source) {
 }
 
 extern Timer timer;
-extern std::map<std::string, SourceFile *> source_map;
+extern std::map<std::string, File *> source_map;
 extern std::queue<std::string> file_queue;
 void ParseAllFiles() {
   while (!file_queue.empty()) {
@@ -229,7 +229,7 @@ void ParseAllFiles() {
     if (source_map.find(file_name) != source_map.end()) { continue; }
 
     RUN(timer, "Parsing a file") {
-      auto source_file      = new SourceFile(file_name);
+      auto source_file      = new File(file_name);
       source_map[file_name] = source_file;
       Parse(source_file);
     }

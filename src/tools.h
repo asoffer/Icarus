@@ -3,13 +3,17 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/raw_os_ostream.h"
 
+#include "llvm/ADT/STLExtras.h"
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Verifier.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/LLVMContext.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Support/TargetSelect.h"
-#include "llvm/MC/SubTargetFeature.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/IR/LegacyPassManager.h"
 
 void WriteObjectFile(const char *out_file) {
   RUN(timer, "LLVM") {
@@ -32,6 +36,7 @@ void WriteObjectFile(const char *out_file) {
 // TODO this initialization can be done asynchronosly. We don't touch LLVM
 // initially.
 void InitializeLLVM() {
+/*
   RUN(timer, "LLVM initialization") {
     // TODO Assuming X86 architecture. If a command-line arg says otherwise,
     // load the appropriate tools
@@ -71,4 +76,5 @@ void InitializeLLVM() {
     global_module = new llvm::Module("global_module", llvm::getGlobalContext());
     global_module->setDataLayout(target_machine->createDataLayout());
   }
+  */
 }
