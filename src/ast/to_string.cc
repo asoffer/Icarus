@@ -1,6 +1,6 @@
 #include "../type/type.h"
 #include "ast.h"
-#include "../ir/val.h"
+#include "../ir/ir.h"
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
@@ -50,7 +50,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Require: ss << "Require"; break;
   case Language::Operator::Ref: ss << "Ref"; break;
-  default: { assert(false && "Not a unary operator"); }
+  default: { UNREACHABLE; }
   }
   
   ss << ">\n" << operand->to_string(n + 1);
@@ -87,7 +87,7 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::In: ss << "In"; break;
     case Language::Operator::Tick: ss << "Tick"; break;
     case Language::Operator::Rocket: ss << "Rocket"; break;
-    default: assert(false && "Not a binary operator");
+    default: UNREACHABLE;
     }
   }
   ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
@@ -95,7 +95,7 @@ std::string Binop::to_string(size_t n) const {
 }
 
 std::string ArrayType::to_string(size_t n) const {
-  assert(length);
+  ASSERT(length, "");
   std::string output = tabs(n) + "<ArrayType>\n";
   return output + length->to_string(n + 1) + data_type->to_string(n + 1);
 }
@@ -120,7 +120,7 @@ std::string Terminal::to_string(size_t n) const {
   case Language::Terminal::StringLiteral: ss << value.as_cstr; break;
   case Language::Terminal::Error: ss << "error"; break;
 
-  default: ss << value.as_val->to_string(); break;
+  default: ss << value.to_string(); break;
   }
 
   ss << ">\n";
@@ -211,8 +211,8 @@ std::string ScopeNode::to_string(size_t n) const {
 std::string CodeBlock::to_string(size_t n) const { return tabs(n) + "<...>\n"; }
 
 std::string DummyTypeExpr::to_string(size_t n) const {
-  assert(value.as_val && value.as_val->is_type());
-  return tabs(n) + "<" + value.as_val->to_string() + ">\n";
+  ASSERT(value.as_type, "");
+  return tabs(n) + "<" + value.as_type->to_string() + ">\n";
 }
 
 std::string ScopeLiteral::to_string(size_t n) const {

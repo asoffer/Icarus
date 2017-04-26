@@ -1,6 +1,7 @@
 #include "scope.h"
-#include "ir/ir.h"
+
 #include "ast/ast.h"
+#include "type/type.h"
 
 static size_t scope_num_counter = 0;
 BlockScope *Scope::Global       = new BlockScope(ScopeEnum::Global);
@@ -61,8 +62,8 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
 // "parent". For us, functions can be declared in local scopes, so we will
 // likely need this structure.
 void Scope::set_parent(Scope *new_parent) {
-  assert(new_parent && "Setting scope's parent to be a nullptr.");
-  assert(new_parent != this && "Setting parent as self");
+  ASSERT(new_parent, "Setting scope's parent to be a nullptr.");
+  ASSERT(new_parent != this, "Setting parent as self");
 
   if (parent && parent->containing_function_) {
     parent->containing_function_->innards_.erase(this);
@@ -80,20 +81,18 @@ void Scope::set_parent(Scope *new_parent) {
 BlockScope::BlockScope(ScopeEnum st)
     : type(st), entry_block(nullptr), exit_block(nullptr) {}
 
-void BlockScope::MakeReturn(Type *ret_type, IR::Value val) {
+void BlockScope::MakeReturn(Type *ret_type, IR::Val val) {
   // TODO actual returned type (second type arg) may be different
   Type::CallAssignment(this, ret_type, ret_type, val, GetFnScope()->ret_val);
 
-  IR::Store(Char, RETURN_FLAG, GetFnScope()->exit_flag);
-  IR::Block::Current->SetUnconditional(exit_block);
+  IR::Store(RETURN_FLAG, GetFnScope()->exit_flag);
+  IR::Jump::Unconditional(IR::BlockIndex{1}); // TODO make this index correct
+
   // TODO set current block to be unreachable. access to it should trigger an
   // error that no code there will ever be executed.
 }
 
 void BlockScope::InsertDestroy() {
-  assert(exit_block);
-  assert(IR::Block::Current == exit_block);
-
   for (auto decl : DeclRegistry) {
     if (decl->arg_val || decl->is_in_decl() ||
         decl->type->time() == Time::compile) {
@@ -105,4 +104,4 @@ void BlockScope::InsertDestroy() {
 
 FnScope::FnScope(AST::FunctionLiteral *lit)
     : BlockScope(ScopeEnum::Function), fn_type(nullptr), fn_lit(lit),
-      exit_flag(NORMAL_FLAG) {}
+      exit_flag(NORMAL_FLAG), ret_val(IR::Val::None()) {}

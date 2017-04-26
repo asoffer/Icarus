@@ -1,275 +1,244 @@
 #ifndef ICARUS_IR_IR_H
 #define ICARUS_IR_IR_H
 
-#include "value.h"
-#include "../type/type.h"
-#include "base/debug.h"
+#include <string>
+#include <vector>
 
-namespace llvm {
-class Value;
-class Function;
-} // namespace llvm
+#include "../base/debug.h"
+#include "../base/types.h"
+
+struct Type;
 
 namespace IR {
 struct StackFrame;
-struct Value;
+struct Func;
+
+struct BlockIndex {
+  i32 value = -2;
+  bool is_none() { return value == -1; }
+};
+
+struct RegIndex {
+  BlockIndex block_index;
+  size_t instr_index;
+};
+
+struct Val {
+  enum class Kind : u8 { None, Arg, Reg, Frame, Heap, Global, Const } kind;
+  ::Type *type;
+  union {
+    u64 as_arg;
+    RegIndex as_reg;
+    u64 as_frame_addr;
+    u64 as_heap_addr;
+    u64 as_global_addr;
+    bool as_bool;
+    char as_char;
+    double as_real;
+    u16 as_u16;
+    u32 as_u32;
+    i64 as_int; // TODO pick the right type here
+    u64 as_uint; // TODO pick the right type here
+    ::Type *as_type;
+    ::IR::Func *as_func;
+    BlockIndex as_block;
+    char *as_cstr;
+  };
+
+  static Val Arg(Type *t, u64 n);
+  static Val Reg(RegIndex r, Type *t);
+  static Val FrameAddr(u64 n, Type *t);
+  static Val HeapAddr(u64 n, Type *t);
+  static Val GlobalAddr(u64 n, Type *t);
+  static Val Bool(bool b);
+  static Val Char(char c);
+  static Val Real(double r);
+  static Val U16(u16 n);
+  static Val U32(u32 n);
+  static Val Int(i64 n);
+  static Val Uint(u64 n);
+  static Val Type(::Type *t);
+  static Val Func(::IR::Func *fn);
+  static Val Void();
+  static Val Block(BlockIndex bi);
+  static Val Null(::Type *t);
+  static Val StrLit(const char *cstr);
+  static Val None();
+
+  std::string to_string() const;
+};
+
+bool operator==(const Val& lhs, const Val& rhs) {
+  return lhs.kind == rhs.kind && lhs.type == rhs.type; // TODO check the right thing.
+}
+bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
 
 enum class Op : char {
-#define IR_MACRO(OpCode, op_code_str, num_args, out_type) OpCode,
-#include "../config/IR.conf"
-#undef IR_MACRO
+  Neg, // ! for bool, - for numeric types
+  Add, Sub, Mul, Div, Mod, // numeric types only
+  Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
+  And, Or, Xor, // bool only
+  Print, Malloc, Free,
+  Load, Store,
+  ArrayLength, ArrayData,
+  PtrIncr,
+  Phi, Field, Access,
+  Call,
+  Nop
+};
+
+struct Func;
+struct Block;
+struct Cmd;
+
+struct ExecContext {
+  ExecContext() = delete;
+  ExecContext(const IR::Func *fn);
+
+  const Func *current_fn;
+  BlockIndex current_block;
+  u64 frame_offset = 0;
+
+  BlockIndex ExecuteBlock();
+  Val ExecuteCmd(const Cmd&);
+  void Resolve(Val* v) const;
+
+  Val reg(RegIndex index) const {
+    return regs_[index.block_index.value][index.instr_index];
+  }
+
+  Val arg(u64 n) const { return args_[n]; }
+
+  Val stack_from_frame(const Val& v) const {
+    // TODO!
+    return v;
+  }
+
+  // Indexed first by block then by instruction number
+  std::vector<std::vector<Val>> regs_;
+  std::vector<Val> args_;
+
 };
 
 struct Cmd {
-  std::vector<Value> args;
+  Cmd() : op_code(Op::Nop), result(IR::Val::None()) {}
+  std::vector<Val> args;
   Op op_code;
 
-  struct Result {
-    Type *type;
-    size_t reg;
-  } result;
-
-  Cmd(Op op_code, bool has_ret);
+  Val result; // Will always be of Kind::Reg.
 
   void dump(size_t indent);
-
-  void Execute(StackFrame &frame);
 };
 
-namespace Exit {
-struct Strategy {
-  virtual void dump(size_t indent) = 0;
-  virtual void ShowExit(int &row) = 0;
-  virtual Block *JumpBlock(StackFrame &fr) = 0;
-  virtual void GenerateLLVM(Func *fn,
-                            const std::vector<llvm::Value *> &registers) = 0;
-  virtual ~Strategy() {}
+Val Neg(Val v);
+Val Add(Val v1, Val v2);
+Val Sub(Val v1, Val v2);
+Val Mul(Val v1, Val v2);
+Val Div(Val v1, Val v2);
+Val Mod(Val v1, Val v2);
+Val Lt(Val v1, Val v2);
+Val Le(Val v1, Val v2);
+Val Eq(Val v1, Val v2);
+Val Ne(Val v1, Val v2);
+Val Ge(Val v1, Val v2);
+Val Gt(Val v1, Val v2);
+Val And(Val v1, Val v2);
+Val Or(Val v1, Val v2);
+Val Xor(Val v1, Val v2);
+Val Print(Val v);
+Val Call(Val fn, std::vector<Val> vals);
+Val Access(Val index, Val val);
+Val Load(Val v);
+Val Store(Val val, Val loc);
+Val ArrayLength(Val v);
+Val ArrayData(Val v);
+Val PtrIncr(Val v1, Val v2);
+Val Malloc(Type *t, Val v);
+Val Free(Val v);
+Val Phi(Type *t);
+Val Field(Val v, size_t n);
 
-  virtual bool is_conditional() { return false; }
-  virtual bool is_return() { return false; }
+struct Jump {
+  static Jump Unconditional(BlockIndex index);
+  static Jump Conditional(Val cond, BlockIndex true_index,
+                          BlockIndex false_index);
+  static Jump Return();
+
+  Jump() : type(Type::Uncond) {}
+  ~Jump() {}
+  struct CondData {
+    Val cond;
+    BlockIndex true_block;
+    BlockIndex false_block;
+  };
+
+  enum class Type : u8 { Uncond, Cond, Ret } type;
+  union {
+    BlockIndex block_index; // for unconditional jump
+    CondData cond_data; // value and block indices to jump for conditional jump.
+  };
 };
-
-struct Switch : public Strategy {
-  Switch(Value val, Block *default_block)
-      : cond(val), default_block(default_block) {}
-  Switch(const Switch &) = delete;
-  ~Switch() {}
-
-  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
-  Block *JumpBlock(StackFrame &fr);
-  void ShowExit(int &row);
-  void dump(size_t indent);
-  inline void AddEntry(Value v, Block *b) { table.emplace_back(v, b); }
-
-  Value cond;
-  Block *default_block;
-  std::vector<std::pair<Value, Block *>> table;
-};
-
-struct ReturnVoid : public Strategy {
-  ReturnVoid() {}
-  ReturnVoid(const ReturnVoid &) = delete;
-  ~ReturnVoid() {}
-
-  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
-  Block *JumpBlock(StackFrame &fr);
-  void ShowExit(int &row);
-  void dump(size_t indent);
-};
-
-struct Return : public Strategy {
-  Return() = delete;
-  Return(const Return &) = delete;
-  ~Return() {}
-  Return(Value v) : ret_val(v) {}
-
-  bool is_return() { return true; }
-
-  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
-  Block *JumpBlock(StackFrame &fr);
-  void ShowExit(int &row);
-  void dump(size_t indent);
-  Value ret_val;
-};
-
-struct Conditional : public Strategy {
-  bool is_conditional() { return true; }
-  Conditional() = delete;
-  Conditional(const Conditional &) = delete;
-  ~Conditional() {}
-  Conditional(Value v, Block *t, Block *f)
-      : cond(v), true_block(t), false_block(f) {}
-
-  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
-  Block *JumpBlock(StackFrame &fr);
-  void ShowExit(int &row);
-  void dump(size_t indent);
-  Value cond;
-  Block *true_block, *false_block;
-};
-
-struct Unconditional : public Strategy {
-  Unconditional() = delete;
-  Unconditional(const Unconditional &) = delete;
-  ~Unconditional() {}
-  Unconditional(Block *b) : block(b) {}
-
-  void GenerateLLVM(Func *fn, const std::vector<llvm::Value *> &registers);
-  Block *JumpBlock(StackFrame &fr);
-  void ShowExit(int &row);
-  void dump(size_t indent);
-  Block *block;
-};
-} // namespace Exit
 
 struct Block {
-  static Block *Current;
+  static BlockIndex Current;
+  Block() = delete;
+  Block(Func* fn) : fn_(fn) {}
 
-  // Passing a char into the condition to trigger it's type to be C. We don't
-  // care that it's C specifically, so long as it isn't B, Arg, or Ref.
-  Block() : block_name("unnamed-block"), exit(nullptr) {}
-  ~Block() {}
-
-  void push(const Cmd &cmd) { cmds.push_back(cmd); }
-
-  llvm::BasicBlock *
-  GenerateLLVM(IR::Func *ir_fn, std::vector<llvm::Value *> &registers,
-               std::vector<std::pair<IR::Block *, size_t>> &phis);
-
-  const char *block_name;
-  std::vector<Cmd> cmds;
-
-  llvm::BasicBlock *llvm_block;
-
-  Exit::Strategy *exit;
-
-  inline void SetReturnVoid() {
-    delete exit;
-    exit = new Exit::ReturnVoid;
-  }
-  inline void SetReturn(Value v) {
-    delete exit;
-    exit = new Exit::Return(v);
-  }
-  inline void SetUnconditional(Block *b) {
-    delete exit;
-    exit = new Exit::Unconditional(b);
-  }
-  inline void SetConditional(Value v, Block *t, Block *f) {
-    delete exit;
-    exit = new Exit::Conditional(v, t, f);
-  }
-  inline void SetSwitch(Value cond, Block *default_block) {
-    delete exit;
-    exit = new Exit::Switch(cond, default_block);
-  }
-
-  void dump();
+  Func *fn_; // Containing function
+  std::vector<Cmd> cmds_;
+  Jump jmp_;
 };
 
 struct Func {
   static Func *Current;
-  std::map<size_t, llvm::Value *> frame_map;
+  Func(::Type *t) : type(t) {}
 
-  std::vector<Block *> blocks;
-  std::vector<Value *> args;
-  Function *fn_type;
-  llvm::Function *llvm_fn;
-  llvm::Value *fn_wrapper;
-  llvm::BasicBlock *alloc_block;
+  static BlockIndex AddBlock() {
 
-  Block *entry() { return blocks.front(); }
-  Block *exit() { return blocks AT(1); }
-
-  void SetName(const std::string &new_name) {
-    name = new_name;
-    if (llvm_fn) { llvm_fn->setName(name); }
-  }
-  const std::string &GetName() const { return name; }
-
-  Value Call(LocalStack *, const std::vector<Value> &);
-
-  size_t num_cmds   = 0;
-  size_t frame_size = 0;
-
-  size_t PushSpace(Type *t);
-
-  // NotYet - Should generate the code to this function but have not yet.
-  // ToLink - This is just a stub. It should never have it's code generated
-  //   Done - Code has been generated
-  enum class Gen : char { NotYet, ToLink, Done };
-  Gen generated;
-
-  void GenerateLLVM();
-
-  void PushLocal(AST::Declaration *decl);
-  Block *AddBlock(const char *block_name);
-
-  Func(Function *fn_type, bool should_gen = true);
-
-  ~Func() {
-    for (auto b : blocks) { delete b; }
+    BlockIndex index;
+    index.value =
+        static_cast<decltype(index.value)>(IR::Func::Current->blocks_.size());
+    IR::Func::Current->blocks_.emplace_back(IR::Func::Current);
+    return index;
   }
 
-  void dump();
+  BlockIndex entry() const {
+    BlockIndex index;
+    index.value = 0;
+    return index;
+  }
 
-private:
+  BlockIndex exit() const {
+    BlockIndex index;
+    index.value = 1;
+    return index;
+  }
+
+  std::vector<Val> Execute(std::vector<Val> args) const;
+
+  Type *type;
   std::string name;
+  std::vector<Block> blocks_;
 };
 
-#define CMD_WITH_1_ARGS(name, out_type) Value name(Value);
+struct FuncResetter {
+  FuncResetter(Func *fn)
+      : old_fn_(IR::Func::Current), old_block_(IR::Block::Current) {
+    IR::Func::Current = fn;
+  }
+  ~FuncResetter() {
+    IR::Func::Current = old_fn_;
+    IR::Block::Current = old_block_;
+  }
 
-#define CMD_WITH_2_ARGS(name, out_type) Value name(Value, Value);
+  Func *old_fn_;
+  BlockIndex old_block_;
+  bool cond_ = true;
+};
 
-// Intentionally empty. Must be hand implemented
-#define CMD_WITH_NA_ARGS(name, out_type)
-
-#define IR_MACRO(OpCode, op_code_str, num_args, out_type)                      \
-  CMD_WITH_##num_args##_ARGS(OpCode, out_type)
-#include "../config/IR.conf"
-#undef IR_MACRO
-
-Value Call(Type *out, Value, const std::vector<Value> &);
-Value Store(Type *rhs_type, Value, Value);
-Value Load(Type *load_type, Value);
-Value Cast(Type *in, Type *out, Value);
-Value Field(Struct *struct_type, Value ptr, size_t field_num);
-Value Access(Type *type, Value index, Value ptr);
-Value ArrayData(Array *type, Value array_ptr);
-Value Malloc(Type *type, Value num);
-Value Free(Value val);
-Value Memcpy(Value dest, Value source, Value num_bytes);
-Value PtrIncr(Pointer *type, Value ptr, Value incr);
-Value Trunc(Value val);
-Value ZExt(Value val);
-Value PushField(Value fields, const char *name, Value ty, Value init);
-Value InitFieldVec(size_t num_decls);
-Value TC_Tup(const std::vector<IR::Value> &vals);
-
-Value Add(Type *t, Value v1, Value v2);
-Value Sub(Type *t, Value v1, Value v2);
-Value Mul(Type *t, Value v1, Value v2);
-Value Div(Type *t, Value v1, Value v2);
-Value Mod(Type *t, Value v1, Value v2);
-
-Value LT(Type *t, Value v1, Value v2);
-Value LE(Type *t, Value v1, Value v2);
-Value EQ(Type *t, Value v1, Value v2);
-Value NE(Type *t, Value v1, Value v2);
-Value GE(Type *t, Value v1, Value v2);
-Value GT(Type *t, Value v1, Value v2);
-
-Value WriteErr(Value err_msg, Value code_block);
-
-Value Increment(Type *t, Value v1);
-
-Value Neg(Type *t, Value v1);
-Cmd Phi(Type *ret_type);
-Cmd NOp();
-
-#undef CMD_WITH_V_ARGS
-#undef CMD_WITH_1_ARGS
-#undef CMD_WITH_2_ARGS
+#define CURRENT_FUNC(fn)                                                       \
+  for (auto resetter = ::IR::FuncResetter(fn); resetter.cond_;                 \
+       resetter.cond_ = false)
 } // namespace IR
 
 #endif // ICARUS_IR_IR_H

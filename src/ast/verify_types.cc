@@ -2,12 +2,11 @@
 #include "ast.h"
 #include "../type/type.h"
 #include "../error_log.h"
-#include "../ir/val.h"
-#include "../ir/stack.h"
+#include "../ir/ir.h"
 
 //TODO catch functions that don't return along all paths.
 
-extern IR::Value Evaluate(AST::Expression *expr);
+extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
 extern Type *GetFunctionTypeReferencedIn(Scope *scope,
@@ -58,10 +57,10 @@ GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
     ++i;
   }
 
-  auto cloned_func = (AST::FunctionLiteral *)fn_lit->clone(
-      num_matches, lookup_key, lookup_val);
+  AST::FunctionLiteral *cloned_func =
+      nullptr; // TODO (AST::FunctionLiteral *)fn_lit->clone(
+               // num_matches, lookup_key, lookup_val);
 
-  auto old_stack_size = ScopeStack.size();
   ScopeStack.push(scope ? scope : fn_lit->scope_);
 
   auto new_id      = new AST::Identifier(fn_lit->loc, name);
@@ -73,7 +72,7 @@ GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
   decl->scope_     = scope ? scope : fn_lit->scope_;
   decl->identifier = new_id;
   decl->init_val   = cloned_func;
-  decl->addr       = IR::Value::None();
+  decl->addr       = IR::Val::None();
   decl->arg_val    = nullptr;
 
   // We don't want to run decl->assign_scope() because that automatically adds
@@ -88,7 +87,7 @@ GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
   decl->verify_types();
 
   ScopeStack.pop();
-  assert(ScopeStack.size() == old_stack_size);
+  
 
   delete[] lookup_key;
   delete[] lookup_val;
@@ -136,20 +135,19 @@ static bool MatchCall(Type *lhs, Type *rhs,
   }
 
   if (lhs->is_type_variable()) {
-    auto lhs_var = (TypeVariable *)lhs;
-    assert(lhs_var->test);
-    assert(lhs_var->test->type == Func(Type_, Bool));
+   //  auto lhs_var = (TypeVariable *)lhs;
 
     // Do a function call
+    /*
     auto f = Evaluate(lhs_var->test);
     auto local_stack = new IR::LocalStack;
-    assert(f.flag == IR::ValType::Val);
+    
     auto test_result =
-        f.as_val->GetFunc()->Call(local_stack, {IR::Value::Type(rhs)});
+        f.as_func->Call(local_stack, {IR::Val::Type(rhs)});
     delete local_stack;
 
-    assert(test_result.flag == IR::ValType::Val);
-    if (test_result.as_val->GetBool()) {
+    
+    if (test_result.as_bool) {
       auto iter = matches.find(lhs_var);
       if (iter == matches.end()) {
         matches[lhs_var] = rhs;
@@ -177,6 +175,8 @@ static bool MatchCall(Type *lhs, Type *rhs,
       error_message += "\n";
       return false;
     }
+    */
+    NOT_YET;
   }
 
   if (lhs->is_pointer()) {
@@ -238,12 +238,12 @@ static bool MatchCall(Type *lhs, Type *rhs,
     // this test means that these are instances of the same parametric struct.
     if (lhs_struct->creator != rhs_struct->creator) { return false; }
 
-    assert(lhs_struct->creator);
-    assert(lhs_struct->creator->reverse_cache.find(lhs_struct) !=
-           lhs_struct->creator->reverse_cache.end());
-    assert(rhs_struct->creator);
-    assert(rhs_struct->creator->reverse_cache.find(rhs_struct) !=
-           rhs_struct->creator->reverse_cache.end());
+    
+    ASSERT(lhs_struct->creator->reverse_cache.find(lhs_struct) !=
+           lhs_struct->creator->reverse_cache.end(), "");
+    
+    ASSERT(rhs_struct->creator->reverse_cache.find(rhs_struct) !=
+           rhs_struct->creator->reverse_cache.end(), "");
 
     auto lhs_params =
         lhs_struct->creator->reverse_cache[lhs_struct];
@@ -256,7 +256,7 @@ static bool MatchCall(Type *lhs, Type *rhs,
     for (size_t i = 0; i < num_params; ++i) {
       // TODO what if params aren't types
       coherent_matches &= MatchCall(
-          lhs_params[i].as_val->GetType(), rhs_params[i].as_val->GetType(), matches, error_message);
+          lhs_params[i].as_type, rhs_params[i].as_type, matches, error_message);
     }
     return coherent_matches;
   }
@@ -331,17 +331,18 @@ static Type *EvalWithVars(Type *type,
   }
 
   if (type->is_struct()) {
-    ParamStruct *ps = ((Struct *)type)->creator;
-    assert(ps);
+    // ParamStruct *ps = ((Struct *)type)->creator;
+    
+    /*
     auto local_stack = new IR::LocalStack;
-    std::vector<IR::Value> param_vals;
+    std::vector<IR::Val> param_vals;
 
     for (auto p : ps->params) { 
       // TODO this is hacky and surely incorrect, and doesn't do everything
-      assert(p->type == Type_);
+      
       for (auto kv : lookup) {
         if (kv.first->identifier->token != p->identifier->token) { continue; }
-        param_vals.emplace_back(IR::Value::Type(kv.second));
+        param_vals.emplace_back(IR::Val::Type(kv.second));
         goto next_param;
       }
       UNREACHABLE;
@@ -350,8 +351,10 @@ static Type *EvalWithVars(Type *type,
 
     auto result = ps->IRFunc()->Call(local_stack, param_vals);
     delete local_stack;
-    assert(result.flag == IR::ValType::Val);
-    return result.as_val->GetType();
+    
+    return result.as_type;
+    */
+    NOT_YET;
   }
 
   std::cerr << *type << std::endl;
@@ -470,7 +473,7 @@ void Unop::verify_types() {
   } break;
   case Operator::And: {
     type = (operand->type == Type_) ? Type_ : Ptr(operand->type);
-    assert(type && "&type is null");
+    
   } break;
   case Operator::Sub: {
     if (operand->type == Uint) {
@@ -551,7 +554,7 @@ void Access::verify_types() {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
     } else {
-      Type *evaled_type = Evaluate(operand).as_val->GetType();
+      Type *evaled_type = Evaluate(operand).as_type;
       if (evaled_type->is_enum()) {
         // Regardless of whether we can get the value, it's clear that this is
         // supposed to be a member so we should emit an error but carry on
@@ -578,7 +581,7 @@ void Access::verify_types() {
     ErrorLog::MissingMember(loc, member_name, base_type);
     type = Err;
   }
-  assert(type && "type is nullptr in access");
+  
 }
 
 void Binop::verify_types() {
@@ -606,31 +609,31 @@ void Binop::verify_types() {
             valid_matches.emplace_back(decl);
           }
         } else {
-          assert(decl->type == Type_);
+          
 
           if (decl->IsInferred() || decl->IsCustomInitialized()) {
             if (decl->init_val->type->is_function()) {
               UNREACHABLE; // TODO WTF??? HOW DID THIS EVEN COMPILE?
-              // decl->value = IR::Value(decl->init_val);
+              // decl->value = IR::Val(decl->init_val);
             } else {
               decl->value =
-                  IR::Value::Type(Evaluate(decl->init_val).as_val->GetType());
+                  IR::Val::Type(Evaluate(decl->init_val).as_type);
 
               if (decl->init_val->is_dummy()) {
-                auto t = decl->init_val->value.as_val->GetType();
+                auto t = decl->init_val->value.as_type;
                 if (t->is_struct()) {
-                  assert(decl->identifier->value.as_val->GetType()->is_struct());
-                  ((Struct *)decl->identifier->value.as_val->GetType())->bound_name =
+                  
+                  ((Struct *)decl->identifier->value.as_type)->bound_name =
                       decl->identifier->token;
                 } else if (t->is_parametric_struct()) {
-                  assert(
-                      decl->identifier->value.as_val->GetType()->is_parametric_struct());
-                  ((ParamStruct *)decl->identifier->value.as_val->GetType())->bound_name =
+                  ASSERT(
+                      decl->identifier->value.as_type->is_parametric_struct(), "");
+                  ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
                       decl->identifier->token;
 
                 } else if (t->is_enum()) {
-                  assert(decl->identifier->value.as_val->GetType()->is_enum());
-                  ((Enum *)(decl->identifier->value.as_val->GetType()))->bound_name =
+                  
+                  ((Enum *)(decl->identifier->value.as_type))->bound_name =
                       decl->identifier->token;
                 }
               }
@@ -640,7 +643,7 @@ void Binop::verify_types() {
             NOT_YET;
           }
 
-          auto decl_type = decl->value.as_val->GetType();
+          auto decl_type = decl->value.as_type;
 
           if (!decl_type->is_parametric_struct()) { continue; }
           auto param_struct_type = (ParamStruct *)decl_type;
@@ -698,9 +701,9 @@ void Binop::verify_types() {
           return;
         }
       } else {
-        assert(lhs->type == Type_ &&
+        ASSERT(lhs->type == Type_,
                "Should have caught the bad-type of lhs earlier");
-        auto lhs_as_type = lhs->value.as_val->GetType();
+        auto lhs_as_type = lhs->value.as_type;
 
         if (lhs_as_type->is_parametric_struct()) {
           auto param_struct_type = static_cast<ParamStruct *>(lhs_as_type);
@@ -740,8 +743,8 @@ void Binop::verify_types() {
           op = Language::Operator::Cast;
           type = lhs_as_type;
           if (type == Err) { return; }
-          assert(rhs);
-          assert(type && "cast to nullptr?");
+          
+          
 
           if (rhs->type == lhs_as_type ||
               (rhs->type == Bool &&
@@ -786,7 +789,7 @@ void Binop::verify_types() {
         }
 
         // If you have variables, the input cannot be void.
-        assert(rhs);
+        
 
         // If you can't find it in the cache, generate it.
         if (lhs->is_identifier()) {
@@ -806,18 +809,18 @@ void Binop::verify_types() {
       }
 
     } else {
-      assert(lhs->type == Type_ &&
+      ASSERT(lhs->type == Type_,
              "Should have caught the bad-type of lhs earlier");
 
       type = EvalWithVars(lhs->type, matches);
     }
 
-    assert(type);
-    assert(type != Unknown);
+    
+    
     return;
   }
 
-  assert(rhs);
+  
   lhs->verify_types();
   rhs->verify_types();
   if (lhs->type == Err || rhs->type == Err) { type = Err; return; }
@@ -857,7 +860,7 @@ void Binop::verify_types() {
         } else if (lhs_array_type->fixed_length) {
           ErrorLog::AssignmentArrayLength(loc, lhs_array_type->len);
         } else {
-          assert(rhs_array_type->fixed_length);
+          
           return;
         }
 
@@ -894,7 +897,7 @@ void Binop::verify_types() {
       break;
     } else {
       type = ((Array *)lhs->type)->data_type;
-      assert(type && "array data type is nullptr");
+      
       // TODO allow slice indexing
       if (rhs->type == Int || rhs->type == Uint) { break; }
       ErrorLog::NonIntegralArrayIndex(loc, rhs->type);
@@ -1068,7 +1071,7 @@ void ChainOp::verify_types() {
       ++position;
     }
     type = all_types ? Type_ : Tup(type_vec);
-    assert(type && "tuple yields nullptr");
+    
     return;
   }
 
@@ -1143,7 +1146,7 @@ void InDecl::verify_types() {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container).as_val->GetType();
+    auto t = Evaluate(container).as_type;
     if (t->is_enum()) { type = t; }
 
   } else {
@@ -1155,14 +1158,14 @@ void InDecl::verify_types() {
 }
 
 Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
-  assert(type && type != Unknown);
+  
 
   if (type != Type_) {
     ErrorLog::NotAType(loc, id_tok);
     return Err;
   }
 
-  Type *t = Evaluate(this).as_val->GetType();
+  Type *t = Evaluate(this).as_type;
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(loc, id_tok);
@@ -1179,9 +1182,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
 
 // TODO refactor this and VerifyTypeForDeclaration because they have extreme
 // commonalities.
-Type *Expression::VerifyValueForDeclaration(const std::string &id_tok) {
-  assert(type && type != Unknown);
-
+Type *Expression::VerifyValueForDeclaration(const std::string &) {
   if (type == Void) {
     ErrorLog::VoidDeclaration(loc);
     return Err;
@@ -1286,7 +1287,7 @@ void Declaration::verify_types() {
   identifier->verify_types();
 
   if (type == Err) {
-    assert(identifier->type == Err);
+    
     return;
   }
 
@@ -1294,7 +1295,7 @@ void Declaration::verify_types() {
 
   if (type == Type_ && IsInferred()) {
     if (init_val->is_dummy()) {
-      auto t = init_val->value.as_val->GetType();
+      auto t = init_val->value.as_type;
 
       std::string *name_ptr = nullptr;
       if (t->is_struct()) {
@@ -1334,7 +1335,7 @@ void ArrayType::verify_types() {
   length->verify_types();
   data_type->verify_types();
 
-  assert(length && data_type->type == Type_);
+  
   type = Type_;
 
   // TODO have a Hole type primitive.
@@ -1363,7 +1364,7 @@ void ArrayLiteral::verify_types() {
   // TODO create a collection of all the types in the array literal. go on if
   // there's only one otherwise, attempt to determine where the mistakes are.
   auto type_to_match = elems.front()->type;
-  assert(type_to_match && "type to match is nullptr");
+  
   if (type_to_match == Err) {
     type = Err;
     return;
@@ -1398,21 +1399,20 @@ void FunctionLiteral::verify_types() {
   auto ret_type_val = Evaluate(return_type_expr);
 
   // TODO must this really be undeclared?
-  if (ret_type_val == IR::Value::Error()) {
+  if (ret_type_val == IR::Val::None() /* TODO Error() */) {
     ErrorLog::IndeterminantType(return_type_expr);
     type = Err;
-  } else if (ret_type_val.flag != IR::ValType::Val ||
-             !ret_type_val.as_val->is_type()) {
+  } else if (ret_type_val.type != Type_) {
     ErrorLog::NotAType(return_type_expr, return_type_expr->type);
     type = Err;
     return;
-  } else if (ret_type_val.as_val->GetType() == Err) {
+  } else if (ret_type_val.as_type == Err) {
     type = Err;
     return;
   }
 
-  Type *ret_type = ret_type_val.as_val->GetType();
-  assert(ret_type && "Return type is a nullptr");
+  Type *ret_type = ret_type_val.as_type;
+  
   Type *input_type;
   size_t num_inputs = inputs.size();
   if (num_inputs == 0) {
@@ -1434,7 +1434,7 @@ void FunctionLiteral::verify_types() {
 
   // TODO generics?
   type = Func(input_type, ret_type);
-  assert(type && "FunctionLiteral type is nullptr");
+  
 }
 
 void Case::verify_types() {
@@ -1463,7 +1463,7 @@ void Case::verify_types() {
   }
 
   if (value_types.size() != 1) {
-    assert(!value_types.empty());
+    
 
     // In order to give a message saying that a particular type is incorrect, we
     // need either
@@ -1510,7 +1510,7 @@ void For::verify_types() {
 void Jump::verify_types() {
   auto scope_ptr = scope_;
   while (scope_ptr) {
-    assert(scope_ptr->is_block_scope());
+    
     auto block_scope_ptr = (BlockScope *)scope_ptr;
     if (block_scope_ptr->type == ScopeEnum::Function) {
       if (jump_type != JumpType::Return) { ErrorLog::JumpOutsideLoop(loc); }
@@ -1532,11 +1532,11 @@ void Jump::verify_types() {
 void CodeBlock::verify_types() { type = Code_; }
 
 void DummyTypeExpr::verify_types() {
-  if (value.as_val->GetType()->is_parametric_struct()) {
-    auto ps = (ParamStruct *)value.as_val->GetType();
+  if (value.as_type->is_parametric_struct()) {
+    auto ps = (ParamStruct *)value.as_type;
     for (auto p : ps->params) { p->verify_types(); }
-  } else if (value.as_val->GetType()->is_struct()) {
-    auto s = (Struct *)value.as_val->GetType();
+  } else if (value.as_type->is_struct()) {
+    auto s = (Struct *)value.as_type;
     for (auto d : s->decls) { VerificationQueue.push(d); }
   }
 }
@@ -1556,7 +1556,7 @@ void ScopeNode::verify_types() {
 
   // TODO verify it uses the fields correctly
   //
-  // ScopeLiteral *lit = Evaluate(scope_expr).as_val->GetScope();
+  // ScopeLiteral *lit = Evaluate(scope_expr).as_scope;
   // if (!type->is_scope_type()) {
   //   if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
   //     ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);

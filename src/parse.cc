@@ -135,9 +135,9 @@ static bool Reduce(ParseState *ps) {
         std::cerr << debug_counter << ", " << debug_match << std::endl;
       }
 
-      assert((matched_rule_ptr == nullptr ||
-              rule.prec != matched_rule_ptr->prec) &&
-             "Two rules matched with the same precedence");
+      ASSERT(
+          (matched_rule_ptr == nullptr || rule.prec != matched_rule_ptr->prec),
+          "Two rules matched with the same precedence");
 
       debug_match = debug_counter;
       // Extract a pointer to the rule. It's safe to take a pointer here,
@@ -174,7 +174,7 @@ void Parse(File *source) {
   Shift(&state, &cursor);
 
   while (state.lookahead_.node_type != Language::eof) {
-    assert(state.node_type_stack_.size() == state.node_stack_.size());
+    ASSERT(state.node_type_stack_.size() == state.node_stack_.size(), "");
     // Shift if you are supposed to, or if you are unable to reduce.
     if (ShouldShift(&state) || !Reduce(&state)) { Shift(&state, &cursor); }
 
@@ -190,7 +190,7 @@ void Parse(File *source) {
 
   // Shift EOF
   Shift(&state, &cursor); // Shift on the EOF token
-  assert(state.get_type<1>() == Language::eof);
+  ASSERT(state.get_type<1>() == Language::eof, "");
 
   // Reduce what you can again
   while (Reduce(&state)) {

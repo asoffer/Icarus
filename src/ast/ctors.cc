@@ -17,17 +17,17 @@ TokenNode::TokenNode(const Cursor &loc, std::string str)
 
 Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(Assign::Unset), type(nullptr), value(IR::Value::None()) {}
+      lvalue(Assign::Unset), type(nullptr), value(IR::Val::None()) {}
 
 DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   loc   = new_loc;
   type  = Type_;
-  value = IR::Value::Type(t);
+  value = IR::Val::Type(t);
 }
 
 ScopeLiteral::ScopeLiteral(const Cursor &cursor) : body_scope(new Scope) {
   loc   = cursor;
-  value = IR::Value::Scope(this);
+  value = IR::Val::None(); // TODO Scope(this);
 }
 
 Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {

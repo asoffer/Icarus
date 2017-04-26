@@ -1,6 +1,7 @@
 #ifndef ICARUS_TYPE_TYPE_H
 #define ICARUS_TYPE_TYPE_H
 
+struct Type;
 struct Struct;
 struct Array;
 struct Pointer;
@@ -11,23 +12,23 @@ struct RangeType;
 struct SliceType;
 struct Scope_Type;
 
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
+    *Void, *NullPtr, *String, *U16, *U32;
+
+struct Scope;
+
 #include <vector>
 #include <string>
 #include "../base/types.h"
-#include "../scope.h"
 #include "../base/debug.h"
 #include "../precompiled.h"
+#include "../ir/ir.h"
 
 namespace AST {
 struct Declaration;
 struct Expression;
 struct Identifier;
 } // namespace AST
-
-namespace IR {
-struct Block;
-struct Func;
-} // namespace IR
 
 #include "constants_and_enums.h"
 
@@ -36,9 +37,6 @@ extern std::vector<IR::Func *> implicit_functions;
 extern std::string Mangle(const Type *t, bool prefix = true);
 extern std::string Mangle(const Function *f, AST::Expression *expr,
                           Scope *starting_scope = nullptr);
-
-extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
-    *Void, *NullPtr, *String, *U16, *U32;
 
 extern Pointer *Ptr(Type *t);
 extern Array *Arr(Type *t);
@@ -59,11 +57,10 @@ extern Scope_Type *ScopeType(Type *t);
 #define BASIC_METHODS                                                          \
   virtual std::string to_string() const ENDING;                                \
   virtual Time::Eval time() ENDING;                                            \
-  virtual void generate_llvm() ENDING;                                         \
-  virtual void EmitInit(IR::Value id_val) ENDING;                              \
-  virtual void EmitDestroy(IR::Value id_val) ENDING;                           \
-  virtual IR::Value EmitInitialValue() const ENDING;                           \
-  virtual void EmitRepr(IR::Value id_val) ENDING;                              \
+  virtual void EmitInit(IR::Val id_val) ENDING;                                \
+  virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
+  virtual IR::Val EmitInitialValue() const ENDING;                             \
+  virtual void EmitRepr(IR::Val id_val) ENDING;                                \
   virtual size_t bytes() const ENDING;                                         \
   virtual size_t alignment() const ENDING;                                     \
   virtual bool private_has_vars() ENDING
@@ -76,11 +73,9 @@ extern Scope_Type *ScopeType(Type *t);
 
 struct Type {
 public:
-  Type() : llvm_type(nullptr), var_check(false) {}
+  Type() : var_check(false) {}
   virtual ~Type() {}
   BASIC_METHODS;
-
-  operator llvm::Type *();
 
   size_t SpaceInArray() const {
     return MoveForwardToAlignment(bytes(), alignment());
@@ -91,7 +86,7 @@ public:
   // this will either simply be a store operation or a call to the assignment
   // function.
   static void CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
-                             IR::Value from_val, IR::Value to_var);
+                             IR::Val from_val, IR::Val to_var);
 
   // Note: this one is special. It functions identically to the rest, but it's
   // special in that it will return nullptr if you haven't imported the string
@@ -121,7 +116,6 @@ public:
   virtual bool is_big() const;
   virtual bool stores_data() const;
 
-  mutable llvm::Type *llvm_type;
   mutable bool var_check;
 
   inline bool has_vars() {
@@ -161,9 +155,6 @@ private:
 struct Array : public Type {
   TYPE_FNS(Array, array);
   Array(Type *t, size_t l);
-
-  llvm::Function *initialize();
-  llvm::Value *initialize_literal(llvm::Value *alloc, llvm::Value *len);
 
   IR::Func *init_func, *repr_func, *destroy_func;
 
@@ -206,12 +197,11 @@ struct Enum : public Type {
 
   size_t IndexOrFail(const std::string &str) const;
   Type *ProxyType() const;
-  IR::Value EmitLiteral(const std::string &member_name) const;
+  IR::Val EmitLiteral(const std::string &member_name) const;
 
   std::string bound_name;
   std::vector<std::string> members;
   std::map<std::string, size_t> int_values;
-  llvm::GlobalVariable *string_data;
 };
 
 struct Struct : public Type {
@@ -220,7 +210,7 @@ struct Struct : public Type {
   Struct(const std::string &name);
   static Struct Anon(const std::set<AST::Declaration *> &declarations);
 
-  void EmitDefaultAssign(IR::Value to_var, IR::Value from_val);
+  void EmitDefaultAssign(IR::Val to_var, IR::Val from_val);
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Type *field(const std::string &name) const;
@@ -263,8 +253,8 @@ struct ParamStruct : public Type {
   std::string bound_name;
   Scope *type_scope;
   std::vector<AST::Declaration *> params, decls;
-  std::map<std::vector<IR::Value>, Struct *> cache;
-  std::map<Struct *, std::vector<IR::Value>> reverse_cache;
+  std::map<std::vector<IR::Val>, Struct *> cache;
+  std::map<Struct *, std::vector<IR::Val>> reverse_cache;
 
 private:
   IR::Func *ir_func;

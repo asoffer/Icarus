@@ -18,7 +18,7 @@ struct Function;
 
 #include <vector>
 #include <set>
-#include "ir/value.h"
+#include "ir/ir.h"
 
 enum class ScopeEnum { For, Function, Global, Type, Standard };
 
@@ -76,7 +76,7 @@ struct BlockScope : public Scope {
 
   void InsertDestroy();
 
-  void MakeReturn(Type *ret_type, IR::Value val);
+  void MakeReturn(Type *ret_type, IR::Val val);
 
   ScopeEnum type;
   IR::Block *entry_block, *exit_block;
@@ -90,7 +90,7 @@ struct FnScope : public BlockScope {
   Function *fn_type            = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
   std::set<Scope *> innards_;
-  IR::Value exit_flag, ret_val;
+  IR::Val exit_flag, ret_val;
 };
 
 inline bool Scope::is_loop_scope() {

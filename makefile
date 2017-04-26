@@ -12,8 +12,8 @@ LINK_FLAGS := -lncurses
 STDS = -std=c++1z
 WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
 OPTS = -iquote$(shell pwd)/src
-LLVM_CXX = $(shell llvm-config --cxxflags)
-LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs)
+# LLVM_CXX = $(shell llvm-config --cxxflags)
+# LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs)
 
 all: $(TARGET)
 
@@ -22,15 +22,15 @@ release: BUILD_FLAGS := -O3
 release: $(TARGET)
 
 build/%.o: src/%.cc
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) $(LLVM_CXX) -c src/$*.cc -o build/$*.o
+	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
 
 $(TARGET): $(OBJECTS)
 	@echo -n Linking...
-	@$(COMPILER) $(LLVM_LINK) $(LINK_FLAGS) $(OBJECTS) -o $@
+	@$(COMPILER) $(LINK_FLAGS) $(OBJECTS) -o $@
 	@echo Done.
 
-header:
-	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(LLVM_CXX) $(PRECOMP) -o src/precompiled.h.gch
+#header:
+#	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(PRECOMP) -o src/precompiled.h.gch
 
 rules:
 	@touch ~/icarus/src/Parse.cc
@@ -49,8 +49,8 @@ help:
 	@echo "SOURCES : $(SOURCES)"
 	@echo "OBJECTS : $(OBJECTS)"
 	@echo "DEPENDS : $(DEPENDS)"
-	@echo "LLVM_CXX : $(LLVM_CXX)"
-	@echo "LLVM_LINK : $(LLVM_LINK)"
+#	@echo "LLVM_CXX : $(LLVM_CXX)"
+#	@echo "LLVM_LINK : $(LLVM_LINK)"
 
 wc:
 	@wc src/*.* src/*/*.*

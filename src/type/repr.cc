@@ -1,172 +1,142 @@
 #include "type.h"
-#include "../scope.h"
 #include "../ir/ir.h"
+#include "../scope.h"
 
-extern IR::Value PtrCallFix(Type *t, IR::Value v);
+extern IR::Val PtrCallFix(IR::Val v);
 
-static void AddSpecialCharacter(IR::Value val, char c, char vis,
-                                IR::Block *land) {
-  auto eq            = IR::EQ(Char, val, IR::Value::Char(c));
-  auto special_block = IR::Func::Current->AddBlock("special");
-  auto next_block    = IR::Func::Current->AddBlock("next");
-
-  IR::Block::Current->SetConditional(eq, special_block, next_block);
-  IR::Block::Current = special_block;
-  IR::Print(IR::Value::Type(Char), IR::Value::Char('\\'));
-  IR::Print(IR::Value::Type(Char), IR::Value::Char(vis));
-  IR::Block::Current->SetUnconditional(land);
-  IR::Block::Current = next_block;
-}
-
-void Primitive::EmitRepr(IR::Value val) {
-  if (this == Bool) {
-    IR::Print(IR::Value::Type(Bool), val);
-  } else if (this == Char) {
+void Primitive::EmitRepr(IR::Val val) {
+  if (this == Char) {
     if (!repr_func) {
-      auto saved_func  = IR::Func::Current;
-      auto saved_block = IR::Block::Current;
-
       repr_func = new IR::Func(Func(this, Void));
       implicit_functions.push_back(repr_func);
-      IR::Func::Current  = repr_func;
-      IR::Block::Current = repr_func->entry();
-      repr_func->SetName("repr." + Mangle(this));
 
-      IR::Print(IR::Value::Type(Char), IR::Value::Char('`'));
+      CURRENT_FUNC(repr_func) {
+        IR::Block::Current = repr_func->entry();
+        repr_func->name = "repr." + Mangle(this);
 
-      auto land_block = IR::Func::Current->AddBlock("land");
-      AddSpecialCharacter(IR::Value::Arg(0), '\a', 'a', land_block);
-      AddSpecialCharacter(IR::Value::Arg(0), '\b', 'b', land_block);
-      AddSpecialCharacter(IR::Value::Arg(0), '\n', 'n', land_block);
-      AddSpecialCharacter(IR::Value::Arg(0), '\r', 'r', land_block);
-      AddSpecialCharacter(IR::Value::Arg(0), '\t', 't', land_block);
-      AddSpecialCharacter(IR::Value::Arg(0), '\v', 'v', land_block);
+        IR::Print(IR::Val::Char('`'));
 
-      IR::Print(IR::Value::Type(Char), IR::Value::Arg(0));
-      IR::Block::Current->SetUnconditional(land_block);
-      IR::Block::Current = land_block;
+        for (auto pair :
+             {std::make_pair('\a', 'a'), std::make_pair('\b', 'b'),
+              std::make_pair('\n', 'n'), std::make_pair('\r', 'r'),
+              std::make_pair('\t', 't'), std::make_pair('\v', 'v')}) {
+          auto special_block = repr_func->AddBlock();
+          auto next_block = repr_func->AddBlock();
 
-      IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
-      IR::Block::Current = IR::Func::Current->exit();
-      IR::Block::Current->SetReturnVoid();
+          IR::Jump::Conditional(
+              IR::Eq(IR::Val::Arg(Char, 0), IR::Val::Char(pair.first)),
+              special_block, next_block);
 
-      IR::Func::Current  = saved_func;
-      IR::Block::Current = saved_block;
+          IR::Block::Current = special_block;
+          IR::Print(IR::Val::Char('\\'));
+          IR::Print(IR::Val::Char(pair.second));
+          IR::Jump::Unconditional(repr_func->exit());
+
+          IR::Block::Current = next_block;
+        }
+
+        IR::Print(IR::Val::Arg(Char, 0));
+        IR::Jump::Unconditional(repr_func->exit());
+
+        IR::Block::Current = repr_func->exit();
+        IR::Jump::Return();
+      }
     }
-    assert(repr_func);
 
-    IR::Call(Void, IR::Value::Func(repr_func), {val});
-  } else if (this == Int) {
-    IR::Print(IR::Value::Type(Int), val);
+    IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 
-  } else if (this == Uint) {
-    IR::Print(IR::Value::Type(Uint), val);
-    IR::Print(IR::Value::Type(Char), IR::Value::Char('u'));
-
-  } else if (this == Real) {
-    IR::Print(IR::Value::Type(Real), val);
-
-  } else if (this == Type_) {
-    NOT_YET;
+  } else if (this == Bool || this == Int || this == Real || this == Uint) {
+    IR::Print(val);
 
   } else {
     NOT_YET;
   }
 }
 
-void Function::EmitRepr(IR::Value) {
-  IR::Print(IR::Value::Type(Char), IR::Value::Char('{'));
-  IR::Print(IR::Value::Type(Type_), IR::Value::Type(this));
-  IR::Print(IR::Value::Type(Char), IR::Value::Char('}'));
+void Function::EmitRepr(IR::Val) {
+  IR::Print(IR::Val::Char('{'));
+  IR::Print(IR::Val::Type(this));
+  IR::Print(IR::Val::Char('}'));
 }
 
-void Enum::EmitRepr(IR::Value val) { NOT_YET; }
-void Pointer::EmitRepr(IR::Value val) { NOT_YET; }
+void Enum::EmitRepr(IR::Val) { NOT_YET; }
+void Pointer::EmitRepr(IR::Val) { NOT_YET; }
 
-void Array::EmitRepr(IR::Value val) {
-  if (!repr_func) {
-    auto saved_func  = IR::Func::Current;
-    auto saved_block = IR::Block::Current;
-
-    repr_func          = new IR::Func(Func(this, Void));
-    repr_func->SetName("repr." + Mangle(this));
-
-    implicit_functions.push_back(repr_func);
-    IR::Func::Current  = repr_func;
-    IR::Block::Current = repr_func->entry();
-
-    IR::Print(IR::Value::Type(Char), IR::Value::Char('['));
-    // TODO length == 1 special case (don't print extra ,)
-    IR::Value ptr, length_var;
-    if (fixed_length) {
-      ptr        = IR::Access(data_type, IR::Value::Uint(0), IR::Value::Arg(0));
-      length_var = IR::Value::Uint(len);
-    } else {
-      ptr        = IR::Load(Ptr(data_type), IR::ArrayData(this, IR::Value::Arg(0)));
-      length_var = IR::Load(Uint, IR::ArrayLength(IR::Value::Arg(0)));
+void Array::EmitRepr(IR::Val val) {
+  if (fixed_length) {
+    IR::Print(IR::Val::Char('['));
+    if (len == 1) {
+      data_type->EmitRepr(
+          PtrCallFix(IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0))));
     }
-
-    auto init_block = IR::Func::Current->AddBlock("loop-init");
-    auto land       = IR::Func::Current->AddBlock("land");
-
-    IR::Block::Current->SetConditional(
-        IR::EQ(Uint,length_var, IR::Value::Uint(0ul)), land, init_block);
-
-    IR::Block::Current = init_block;
-    data_type->EmitRepr(PtrCallFix(data_type, ptr));
-
-    auto end_ptr = IR::PtrIncr(Ptr(data_type), ptr, length_var);
-
-    auto loop_phi  = IR::Func::Current->AddBlock("loop-phi");
-    auto loop_cond = IR::Func::Current->AddBlock("loop-cond");
-    auto loop_body = IR::Func::Current->AddBlock("loop-body");
-
-    IR::Block::Current->SetUnconditional(loop_phi);
-    IR::Block::Current = loop_phi;
-
-    auto phi = IR::Phi(Ptr(data_type));
-    phi.args.emplace_back(init_block);
-    phi.args.emplace_back(ptr);
-
-    auto phi_reg = IR::Value::Reg(phi.result.reg);
-
-    loop_phi->SetUnconditional(loop_cond);
-    IR::Block::Current = loop_cond;
-
-    auto elem_ptr = IR::Increment(Ptr(data_type), phi_reg);
-    auto cond = IR::EQ(Ptr(data_type), elem_ptr, end_ptr);
-    IR::Block::Current->SetConditional(cond, land, loop_body);
-    IR::Block::Current = loop_body;
-
-    IR::Print(IR::Value::Type(Char), IR::Value::Char(','));
-    IR::Print(IR::Value::Type(Char), IR::Value::Char(' '));
-    data_type->EmitRepr(PtrCallFix(data_type, elem_ptr));
-
-    phi.args.emplace_back(IR::Block::Current);
-    phi.args.emplace_back(elem_ptr);
-
-    IR::Block::Current->SetUnconditional(loop_phi);
-    loop_phi->push(phi);
-
-    IR::Block::Current = land;
-
-    IR::Print(IR::Value::Type(Char), IR::Value::Char(']'));
-
-    IR::Block::Current->SetUnconditional(IR::Func::Current->exit());
-    IR::Block::Current = IR::Func::Current->exit();
-    IR::Block::Current->SetReturnVoid();
-
-    IR::Func::Current  = saved_func;
-    IR::Block::Current = saved_block;
+    IR::Print(IR::Val::Char(']'));
+    return;
   }
-  assert(repr_func);
 
-  IR::Call(Void, IR::Value::Func(repr_func), {val});
+  if (!repr_func) {
+    repr_func = new IR::Func(Func(this, Void));
+    repr_func->name = "repr." + Mangle(this);
+    implicit_functions.push_back(repr_func);
+
+    CURRENT_FUNC(repr_func) {
+      IR::Block::Current = repr_func->entry();
+
+      auto init_block = repr_func->AddBlock();
+
+      IR::Print(IR::Val::Char('['));
+
+      IR::Val ptr = IR::Val::None();
+      IR::Val length_var = IR::Val::None();
+      if (fixed_length) {
+        // Can assume length is not zero or one because these are handled above.
+        length_var = IR::Val::Uint(len);
+        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0));
+        IR::Jump::Unconditional(init_block);
+      } else {
+        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Uint, 0)));
+        ptr = IR::Load(IR::ArrayData(IR::Val::Arg(this, 0)));
+        IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
+                              repr_func->exit(), init_block);
+      }
+
+      auto end_ptr = IR::PtrIncr(ptr, length_var);
+
+      auto loop_phi = repr_func->AddBlock();
+      auto loop_body = repr_func->AddBlock();
+
+      data_type->EmitRepr(PtrCallFix(ptr));
+      IR::PtrIncr(ptr, length_var);
+      IR::Jump::Unconditional(loop_phi);
+
+      IR::Block::Current = loop_phi;
+      auto phi = IR::Phi(Ptr(data_type));
+      auto elem_ptr = IR::PtrIncr(phi, IR::Val::Uint(1));
+      IR::Jump::Conditional(IR::Eq(elem_ptr, end_ptr), repr_func->exit(),
+                            loop_body);
+
+      IR::Block::Current = loop_body;
+      IR::Print(IR::Val::Char(','));
+      IR::Print(IR::Val::Char(' '));
+      data_type->EmitRepr(PtrCallFix(elem_ptr));
+      IR::Jump::Unconditional(loop_phi);
+
+      // TODO FIXME XXX THIS IS HACKY!
+      IR::Func::Current->blocks_[phi.as_reg.block_index.value]
+          .cmds_[phi.as_reg.instr_index]
+          .args = {IR::Val::Block(init_block), ptr,
+                   IR::Val::Block(IR::Block::Current), elem_ptr};
+
+      IR::Block::Current = repr_func->exit();
+      IR::Print(IR::Val::Char(']'));
+      IR::Jump::Return();
+    }
+  }
+  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 }
 
-void Tuple::EmitRepr(IR::Value val) { NOT_YET; }
-void Struct::EmitRepr(IR::Value val) { NOT_YET; }
-void TypeVariable::EmitRepr(IR::Value val) { NOT_YET; }
-void RangeType::EmitRepr(IR::Value val) { NOT_YET; }
-void SliceType::EmitRepr(IR::Value val) { NOT_YET; }
-void Scope_Type::EmitRepr(IR::Value id_val) { NOT_YET; }
+void Tuple::EmitRepr(IR::Val) { NOT_YET; }
+void Struct::EmitRepr(IR::Val) { NOT_YET; }
+void TypeVariable::EmitRepr(IR::Val) { NOT_YET; }
+void RangeType::EmitRepr(IR::Val) { NOT_YET; }
+void SliceType::EmitRepr(IR::Val) { NOT_YET; }
+void Scope_Type::EmitRepr(IR::Val) { NOT_YET; }

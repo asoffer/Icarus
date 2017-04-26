@@ -13,25 +13,9 @@
 #include <fstream>
 #include <memory>
 
-// TODO Figure out what you need from this.
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/LLVMContext.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Verifier.h"
-
 #include "constants_and_enums.h"
 #include "base/types.h"
 #include "util/pstr.h"
-
-template <typename T, typename... Args> std::unique_ptr<T> make_unique(Args&&... args) {
-  return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
-}
-
-namespace llvm {
-class Value;
-class Function;
-} // namespace llvm
 
 namespace AST {
 struct Node;

@@ -1,8 +1,12 @@
 #include "error_log.h"
-#include "util/pstr.h"
+
+#include <cstring>
+
 #include "ast/ast.h"
-#include "type/type.h"
 #include "base/file.h"
+#include "cursor.h"
+#include "type/type.h"
+#include "util/pstr.h"
 
 extern std::map<std::string, File *> source_map;
 
@@ -267,7 +271,7 @@ void NonGraphicCharInSrc(const Cursor &loc) {
   ++num_errs_;
 }
 
-void LogGeneric(const Cursor &loc, const std::string &msg) {
+void LogGeneric(const Cursor &, const std::string &msg) {
   ++num_errs_;
   fprintf(stderr, "%s", msg.c_str());
 }
@@ -403,7 +407,7 @@ void InvalidAssignment(const Cursor &loc, Assign mode) {
   }
 }
 
-void CaseLHSBool(const Cursor &case_loc, const Cursor &loc, const Type *t) {
+void CaseLHSBool(const Cursor &, const Cursor &loc, const Type *t) {
   std::string msg_head = "In a case statement, the lefthand-side of a case "
                          "must have type bool. However, the expression has "
                          "type " +

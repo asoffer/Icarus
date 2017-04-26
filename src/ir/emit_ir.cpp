@@ -3,20 +3,11 @@
 #include "../scope.h"
 #include "stack.h"
 
-#define ENSURE_VERIFIED                                                        \
-  do {                                                                         \
-    verify_types();                                                            \
-  } while (false)
+#define ENSURE_VERIFIED verify_types()
 
-extern llvm::IRBuilder<> builder;
 extern void AddInitialGlobal(size_t global_addr, IR::Value initial_val);
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
-namespace IR {
-extern std::vector<llvm::Constant *> LLVMGlobals;
-} // namespace IR
-
-extern llvm::Module *global_module;
 extern FileType file_type;
 
 static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
@@ -314,9 +305,9 @@ IR::Value Unop::EmitIR() {
   case Language::Operator::Generate: {
     auto code_block = Evaluate(operand).as_val->GetCode();
     if (code_block->stmts) {
-      auto stmts = code_block->stmts->clone(0, nullptr, nullptr);
-      stmts->EmitIR();
-      delete stmts;
+      // TODO auto stmts = code_block->stmts->clone(0, nullptr, nullptr);
+      // stmts->EmitIR();
+      // delete stmts;
     } else {
       ErrorLog::UserDefinedError(loc, code_block->error_message);
     }
@@ -734,21 +725,6 @@ void AST::Declaration::AllocateLocally(IR::Func *fn) {
     auto cstr = new char[identifier->token.size() + 1];
     strcpy(cstr, identifier->token.c_str());
     AddInitialGlobal(addr.as_loc->GetGlobalAddr(), IR::Value::ExtFn(cstr));
-
-    if (file_type != FileType::None) {
-      // TODO assuming a function type
-      llvm::Type *llvm_type = *type;
-      auto ft = static_cast<llvm::FunctionType *>(llvm_type);
-      IR::LLVMGlobals[addr.as_loc->GetGlobalAddr()] = new llvm::GlobalVariable(
-          /*      Module = */ *global_module,
-          /*        Type = */ *type,
-          /*  isConstant = */ true,
-          /*     Linkage = */ llvm::GlobalValue::ExternalLinkage,
-          /* Initializer = */ global_module->getOrInsertFunction(
-              identifier->token, ft),
-          /*        Name = */ identifier->token);
-    }
-
   } else {
     fn->PushLocal(this);
   }

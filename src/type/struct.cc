@@ -1,8 +1,10 @@
 #include "type.h"
-#include "../ast/ast.h"
-#include "../ir/val.h"
 
-extern IR::Value Evaluate(AST::Expression *expr);
+#include "../ast/ast.h"
+#include "../ir/ir.h"
+#include "scope.h"
+
+extern IR::Val Evaluate(AST::Expression *expr);
 
 Struct::Struct(const std::string &name)
     : type_scope(new Scope), bound_name(name), field_offsets(1, 0),
@@ -23,7 +25,7 @@ void Struct::CompleteDefinition() {
           decls[i]->type_expr->type->is_parametric_struct()) {
         decl_type = Err;
       } else {
-        decl_type = Evaluate(decls[i]->type_expr).as_val->GetType();
+        decl_type = Evaluate(decls[i]->type_expr).as_type;
       }
     } else {
       decl_type = decls[i]->init_val->type;
@@ -71,7 +73,7 @@ Type *Struct::field(const std::string &name) const {
 
 size_t Struct::field_num(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
-  assert(iter != field_name_to_num.end());
+  ASSERT(iter != field_name_to_num.end(), "");
   return iter->second;
 }
 
@@ -95,7 +97,7 @@ void Struct::insert_field(const std::string &name, Type *ty,
     size_t size1 = field_name_to_num.size();
     size_t size2 = field_num_to_name.size();
     size_t size3 = field_type.size();
-    assert(size1 == size2 && size2 == size3 &&
+    ASSERT(size1 == size2 && size2 == size3,
            "Size mismatch in struct database");
   }
 

@@ -11,14 +11,14 @@ extern std::queue<std::string> file_queue;
 
 template <typename T> static T *steal(AST::Expression *&n) {
   auto temp = (T *)n;
-  assert(temp && "stolen pointer is null");
+  ASSERT(temp, "stolen pointer is null");
   n = nullptr;
   return temp;
 }
 
 template <typename T> static T *steal(AST::Node *&n) {
   auto temp = (T *)n;
-  assert(temp && "stolen pointer is null");
+  ASSERT(temp, "stolen pointer is null");
   n = nullptr;
   return temp;
 }
@@ -53,7 +53,7 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
 
   auto struct_type =
       new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
-  assert(nodes[1]->is_statements());
+  ASSERT(nodes[1]->is_statements(), "");
   for (auto &&n : ((Statements *)nodes[1])->statements) {
     if (n->is_declaration()) {
       struct_type->decls.push_back(steal<Declaration>(n));
@@ -70,7 +70,7 @@ static Node *BuildScopeLiteral(NPtrVec &&nodes) {
   auto scope_lit = new ScopeLiteral(nodes[0]->loc);
 
   // TODO take arguments as well
-  assert(nodes[1]->is_statements());
+  ASSERT(nodes[1]->is_statements(), "");
   for (auto &&n : ((Statements *)nodes[1])->statements) {
     if (!n->is_declaration()) { continue; } // TODO leaking
     auto d = (Declaration *)n;
@@ -162,7 +162,7 @@ Node *Case::Build(NPtrVec &&nodes) {
   auto case_ptr = new Case;
   case_ptr->loc = nodes[0]->loc;
 
-  assert(nodes[1]->is_statements());
+  ASSERT(nodes[1]->is_statements(), "");
   auto stmts     = (Statements *)nodes[1];
   auto num_stmts = stmts->statements.size();
   for (size_t i = 0; i < num_stmts; ++i) {
@@ -231,7 +231,7 @@ Node *For::Build(NPtrVec &&nodes) {
 // Operand cannot be a declaration.
 // Operand cannot be an assignment of any kind.
 Node *Unop::BuildLeft(NPtrVec &&nodes) {
-  assert(nodes[0]->is_token_node());
+  ASSERT(nodes[0]->is_token_node(), "");
   auto tk = ((TokenNode *)nodes[0])->token;
 
   auto unop_ptr     = new AST::Unop;
@@ -272,7 +272,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
                    {"@", {Language::Operator::At, false}},
                    {"$", {Language::Operator::Eval, false}}};
     auto iter = UnopMap.find(tk);
-    assert(iter != UnopMap.end());
+    ASSERT(iter != UnopMap.end(), "");
     std::tie(unop_ptr->op, check_id) = iter->second;
   }
 
@@ -350,8 +350,7 @@ Node *Access::Build(NPtrVec &&nodes) {
   return access_ptr;
 }
 
-static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
-                           Language::NodeType nt) {
+static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class) {
   auto binop_ptr = new Binop;
   binop_ptr->loc = nodes[1]->loc;
 
@@ -380,7 +379,7 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class,
 // RHS is not a declaration
 Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
   return BuildOperator(std::forward<NPtrVec &&>(nodes),
-                       Language::Operator::Call, Language::op_b);
+                       Language::Operator::Call);
 }
 
 // Input guarantees
@@ -391,7 +390,7 @@ Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
 // RHS is not a declaration
 Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
   return BuildOperator(std::forward<NPtrVec &&>(nodes),
-                       Language::Operator::Index, Language::op_b);
+                       Language::Operator::Index);
 }
 
 // Input guarantee:
@@ -466,9 +465,9 @@ Node *ArrayType::build(NPtrVec &&nodes) {
 }
 
 Node *Expression::AddHashtag(NPtrVec &&nodes) {
-  assert(nodes[0]->is_expression());
+  ASSERT(nodes[0]->is_expression(), "");
   auto expr = steal<Expression>(nodes[0]);
-  assert(nodes[1]->is_token_node());
+  ASSERT(nodes[1]->is_token_node(), "");
   expr->hashtag_indices.push_back(Hashtag::Get(((TokenNode *)nodes[1])->token));
 
   return expr;
@@ -476,7 +475,7 @@ Node *Expression::AddHashtag(NPtrVec &&nodes) {
 
 Node *InDecl::Build(NPtrVec &&nodes) {
   auto op = ((AST::TokenNode *)(nodes[1]))->op;
-  assert(op == Language::Operator::In);
+  ASSERT(op == Language::Operator::In, "");
 
   auto in_decl_ptr              = new InDecl;
   in_decl_ptr->loc              = nodes[0]->loc;
@@ -499,7 +498,7 @@ Node *Declaration::Build(NPtrVec &&nodes) {
     decl_ptr->init_val = steal<Expression>(nodes[2]);
   }
 
-  assert(nodes[0]->is_identifier());
+  ASSERT(nodes[0]->is_identifier(), "");
   decl_ptr->identifier       = steal<Identifier>(nodes[0]);
   decl_ptr->identifier->decl = decl_ptr;
 
@@ -512,7 +511,7 @@ Node *Generic::Build(NPtrVec &&nodes) {
   generic->test_fn    = steal<Expression>(nodes[0]);
   generic->precedence = Language::precedence(Language::Operator::Tick);
 
-  assert(nodes[2]->is_identifier());
+  ASSERT(nodes[2]->is_identifier(), "");
   generic->identifier       = steal<Identifier>(nodes[2]);
   generic->identifier->decl = generic;
 
@@ -523,7 +522,7 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
   auto fn_lit = new FunctionLiteral;
   fn_lit->loc = nodes[0]->loc;
 
-  assert(nodes[1]->is_statements());
+  ASSERT(nodes[1]->is_statements(), "");
   fn_lit->statements = steal<Statements>(nodes[1]);
 
   auto binop_ptr = (Binop *)nodes[0];
@@ -543,7 +542,7 @@ Node *FunctionLiteral::build(NPtrVec &&nodes) {
 
     size_t index = 0;
     for (auto &&expr : decl_list->exprs) {
-      assert(expr->is_declaration());
+      ASSERT(expr->is_declaration(), "");
       fn_lit->inputs[index] = steal<Declaration>(expr);
       ((Declaration *)fn_lit->inputs[index])->arg_val = fn_lit;
       ++index;
@@ -571,7 +570,7 @@ Node *Statements::build_more(NPtrVec &&nodes) {
 }
 
 Node *Jump::build(NPtrVec &&nodes) {
-  assert(nodes[0]->is_token_node());
+  ASSERT(nodes[0]->is_token_node(), "");
   auto tk   = ((TokenNode *)nodes[0])->token;
   Jump *jmp = nullptr;
   if (tk == "break") {
@@ -589,7 +588,7 @@ Node *Jump::build(NPtrVec &&nodes) {
   } else if (tk == "restart") {
     jmp = new Jump(nodes[0]->loc, JumpType::Restart);
   }
-  assert(jmp);
+  ASSERT(jmp, "");
 
   auto stmts = new Statements;
   stmts->loc = jmp->loc;
@@ -621,7 +620,7 @@ AST::Node *ScopeNode::BuildVoid(NPtrVec &&nodes) {
 } // namespace AST
 
 AST::Node *BracedStatements(NPtrVec &&nodes) {
-  assert(nodes[1]->is_statements());
+  ASSERT(nodes[1]->is_statements(), "");
   return steal<AST::Node>(nodes[1]);
 }
 
@@ -697,7 +696,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 
-  assert(nodes[1]->is_token_node());
+  ASSERT(nodes[1]->is_token_node(), "");
   auto tk = ((AST::TokenNode *)nodes[1])->token;
 
   for (auto op : chain_ops) {
@@ -775,7 +774,7 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
 }
 
 AST::Node *BuildKWBlock(NPtrVec &&nodes) {
-  assert(nodes[0]->is_token_node());
+  ASSERT(nodes[0]->is_token_node(), "");
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "case") {
@@ -795,7 +794,7 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
 }
 
 AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
-  assert(nodes[0]->is_token_node());
+  ASSERT(nodes[0]->is_token_node(), "");
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "for") {

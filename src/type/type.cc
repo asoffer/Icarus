@@ -1,11 +1,5 @@
 #include "type.h"
-
-#include "../ir/ir.h"
-
-namespace cstdlib {
-extern llvm::Constant *malloc();
-extern llvm::Constant *free();
-} // namespace cstdlib
+#include "../scope.h"
 
 // TODO make bytes() and alignment() platform specific
 size_t Pointer::bytes() const { return 8; }
@@ -79,11 +73,6 @@ bool Function::private_has_vars() { return input->has_vars() || output->has_vars
 
 std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
-}
-
-Type::operator llvm::Type *() {
-  generate_llvm();
-  return llvm_type;
 }
 
 bool Type::is_big() const { return is_array() || is_struct(); }

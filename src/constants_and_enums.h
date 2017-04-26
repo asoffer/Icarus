@@ -41,12 +41,12 @@ enum class Operator {
 
 enum class Assign : char { Unset, Const, LVal, RVal };
 
-#define NORMAL_FLAG IR::Value::Char('\0')
-#define RESTART_FLAG IR::Value::Char('\1')
-#define CONTINUE_FLAG IR::Value::Char('\2')
-#define REPEAT_FLAG IR::Value::Char('\3')
-#define BREAK_FLAG IR::Value::Char('\4')
-#define RETURN_FLAG IR::Value::Char('\5')
+#define NORMAL_FLAG IR::Val::Char('\0')
+#define RESTART_FLAG IR::Val::Char('\1')
+#define CONTINUE_FLAG IR::Val::Char('\2')
+#define REPEAT_FLAG IR::Val::Char('\3')
+#define BREAK_FLAG IR::Val::Char('\4')
+#define RETURN_FLAG IR::Val::Char('\5')
 
 namespace Language {
 extern size_t precedence(Operator op);

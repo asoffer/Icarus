@@ -1,9 +1,10 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
-#include "../ir/value.h"
+#include "../ir/ir.h"
 #include "../precompiled.h"
 #include "../cursor.h"
+#include "../base/debug.h"
 
 namespace Hashtag {
 size_t GetOrFailValue(const std::string &tag);
@@ -18,9 +19,7 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual IR::Value EmitIR() ENDING;                                           \
-  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
-                      Type **lookup_val) ENDING
+  virtual IR::Val EmitIR() ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   virtual ~name();                                                             \
@@ -28,11 +27,9 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
-  virtual IR::Value EmitIR() ENDING;                                           \
-  virtual IR::Value EmitLVal() ENDING;                                         \
-  virtual void verify_types() ENDING;                                          \
-  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,           \
-                      Type **lookup_val) ENDING
+  virtual IR::Val EmitIR() ENDING;                                             \
+  virtual IR::Val EmitLVal() ENDING;                                           \
+  virtual void verify_types() ENDING
 
 struct Node {
   virtual std::string to_string(size_t n) const = 0;
@@ -40,9 +37,7 @@ struct Node {
   virtual void assign_scope() {}
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
-  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
-                      Type **lookup_val);
-  virtual IR::Value EmitIR() = 0;
+  virtual IR::Val EmitIR() = 0;
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
@@ -119,16 +114,13 @@ struct Expression : public Node {
   size_t precedence;
   Assign lvalue;
   Type *type;
-  IR::Value value;
+  IR::Val value;
 };
 
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  virtual Node *clone(size_t num_entries, TypeVariable **lookup_key,
-                      Type **lookup_val);
-
-  virtual IR::Value EmitIR() { assert(false); }
+  virtual IR::Val EmitIR() { NOT_YET; }
 
   virtual bool is_token_node() const { return true; }
 
@@ -187,14 +179,13 @@ struct Declaration : public Expression {
 
   void AllocateGlobal();
   void EmitGlobal();
-  void EmitLLVMGlobal();
 
   void AllocateLocally(IR::Func *fn);
 
   Identifier *identifier = nullptr;
   Expression *type_expr  = nullptr;
   Expression *init_val   = nullptr;
-  IR::Value addr = IR::Value::None();
+  IR::Val addr = IR::Val::None();
 
   // If it's an argument, this points to the function/parametric-struct for
   // which it's an argument. Otherwise this field is null.
@@ -322,10 +313,9 @@ struct FunctionLiteral : public Expression {
   Expression *return_type_expr = nullptr;
 
   std::vector<Declaration *> inputs;
-  llvm::Function *llvm_fn = nullptr;
   Statements *statements  = nullptr;
 
-  inline IR::Value EmitAnonymousIR() { return Emit(false); }
+  inline IR::Val EmitAnonymousIR() { return Emit(false); }
 
   IR::Func *ir_func = nullptr;
 
@@ -334,7 +324,7 @@ struct FunctionLiteral : public Expression {
   std::map<Type *, Declaration *> cache;
 
 private:
-  IR::Value Emit(bool should_gen);
+  IR::Val Emit(bool should_gen);
 
 };
 

@@ -1,39 +1,39 @@
 #include "type.h"
 #include "../ast/ast.h"
 
-IR::Value Primitive::EmitInitialValue() const {
+IR::Val Primitive::EmitInitialValue() const {
   switch (type_) {
   case PrimType::Err: UNREACHABLE;
   case PrimType::Unknown: UNREACHABLE;
-  case PrimType::Type: return IR::Value::Type(Void);
+  case PrimType::Type: return IR::Val::Type(Void);
   case PrimType::Void: UNREACHABLE;
   case PrimType::NullPtr: UNREACHABLE;
   case PrimType::Code: UNREACHABLE;
-  case PrimType::Bool: return IR::Value::Bool(false);
-  case PrimType::Char: return IR::Value::Char('\0');
-  case PrimType::Int: return IR::Value::Int(0l);
-  case PrimType::Real: return IR::Value::Real(0.0);
-  case PrimType::Uint: return IR::Value::Uint(0ul);
-  case PrimType::U16: return IR::Value::U16((uint16_t)0);
-  case PrimType::U32: return IR::Value::U32((uint32_t)0);
-  case PrimType::String: return IR::Value(const_cast<char *>("\0"));
+  case PrimType::Bool: return IR::Val::Bool(false);
+  case PrimType::Char: return IR::Val::Char('\0');
+  case PrimType::Int: return IR::Val::Int(0l);
+  case PrimType::Real: return IR::Val::Real(0.0);
+  case PrimType::Uint: return IR::Val::Uint(0ul);
+  case PrimType::U16: return IR::Val::U16((uint16_t)0);
+  case PrimType::U32: return IR::Val::U32((uint32_t)0);
+  case PrimType::String: NOT_YET; //return IR::Val(const_cast<char *>("\0"));
   default: UNREACHABLE;
   }
 }
 
 // TODO ugly const_cast
-IR::Value Pointer::EmitInitialValue() const {
-  return IR::Value::Null(const_cast<Pointer *>(this));
+IR::Val Pointer::EmitInitialValue() const {
+  return IR::Val::Null(const_cast<Pointer *>(this));
 }
 
-IR::Value Function::EmitInitialValue() const {
-  return IR::Value::Func((IR::Func *)nullptr);
+IR::Val Function::EmitInitialValue() const {
+  return IR::Val::Func((IR::Func *)nullptr);
 }
 
-IR::Value Array::EmitInitialValue() const { NOT_YET; }
-IR::Value Tuple::EmitInitialValue() const { NOT_YET; }
-IR::Value Struct::EmitInitialValue() const { NOT_YET; }
-IR::Value TypeVariable::EmitInitialValue() const { NOT_YET; }
-IR::Value RangeType::EmitInitialValue() const { NOT_YET; }
-IR::Value SliceType::EmitInitialValue() const { NOT_YET; }
-IR::Value Scope_Type::EmitInitialValue() const { NOT_YET; }
+IR::Val Array::EmitInitialValue() const { NOT_YET; }
+IR::Val Tuple::EmitInitialValue() const { NOT_YET; }
+IR::Val Struct::EmitInitialValue() const { NOT_YET; }
+IR::Val TypeVariable::EmitInitialValue() const { NOT_YET; }
+IR::Val RangeType::EmitInitialValue() const { NOT_YET; }
+IR::Val SliceType::EmitInitialValue() const { NOT_YET; }
+IR::Val Scope_Type::EmitInitialValue() const { NOT_YET; }

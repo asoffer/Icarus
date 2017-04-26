@@ -1,41 +1,6 @@
 #include "type.h"
 
-extern llvm::LLVMContext GlobalContext;
-
-Primitive::Primitive(PrimType pt) : type_(pt) {
-  switch (type_) {
-  case PrimType::Bool:
-    llvm_type = llvm::Type::getInt1Ty(GlobalContext);
-    break;
-  case PrimType::Char:
-    llvm_type = llvm::Type::getInt8Ty(GlobalContext);
-    break;
-  case PrimType::Int:
-    llvm_type = llvm::Type::getInt64Ty(GlobalContext);
-    break;
-  case PrimType::Real:
-    llvm_type = llvm::Type::getDoubleTy(GlobalContext);
-    break;
-  case PrimType::U16:
-    llvm_type = llvm::Type::getInt16Ty(GlobalContext);
-    break;
-  case PrimType::U32:
-    llvm_type = llvm::Type::getInt32Ty(GlobalContext);
-    break;
-  case PrimType::Uint:
-    llvm_type = llvm::Type::getInt64Ty(GlobalContext);
-    break;
-  case PrimType::Void:
-    llvm_type = llvm::Type::getVoidTy(GlobalContext);
-    break;
-  case PrimType::String:
-    llvm_type =
-        llvm::PointerType::getUnqual(llvm::Type::getInt8Ty(GlobalContext));
-    break;
-
-  default: llvm_type = nullptr;
-  }
-}
+Primitive::Primitive(PrimType pt) : type_(pt) {}
 
 size_t Primitive::alignment() const {
   switch (type_) {

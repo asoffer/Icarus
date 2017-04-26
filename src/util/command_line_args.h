@@ -6,6 +6,7 @@
 namespace debug {
 extern bool parser;
 extern bool ct_eval;
+extern bool timer;
 } // namespace debug
 
 enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
@@ -17,21 +18,28 @@ std::queue<std::string> file_queue;
 static void
 ShowUsage(char *argv0) {
   fprintf(stderr,
-          "Usage: %s [options] input_file... -o output_file\n\n"
-          "  -o output_file                 Default is a.out\n\n"
-          "  -e, --eval                     Run compile-time evaluator step-by-step (debug).\n\n"
-          "  --file-type=[ir|nat|bin|none]  Output a file of the specified type:\n"
-          "                                   ir   - LLVM intermediate representation\n"
-          "                                   nat  - Output a native object file\n"
-          "                                   bin  - Output a single native object file and\n"
-          "                                          link it (requires gcc)\n"
-          "                                   none - Do not write any files (debug)\n"
-          "                                          This is the default option.\n\n"
-          "  -h, --help                     Display this usage message.\n\n"
-          "  -p, --parser                   Display step-by-step file parsing (debug).\n\n"
-          "  -t, --timer                    Display timing information for each of the\n"
-          "                                 compilation steps (debug).\n\n"
-          "\n",
+          R"(Usage: %s [options] input_file... -o output_file
+
+  -o output_file                 Default is a.out
+
+  -e, --eval                     Run compile-time evaluator step-by-step (debug).
+
+  --file-type=[ir|nat|bin|none]  Output a file of the specified type:
+                                   ir   - LLVM intermediate representation
+                                   nat  - Output a native object file
+                                   bin  - Output a single native object file and
+                                          link it (requires gcc)
+                                   none - Do not write any files (debug)
+                                          This is the default option.
+
+  -h, --help                     Display this usage message.
+
+  -p, --parser                   Display step-by-step file parsing (debug).
+
+  -t, --timer                    Display timing information for each of the
+                                 compilation steps (debug).
+
+)",
           argv0);
 }
 
