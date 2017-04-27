@@ -19,7 +19,7 @@ namespace AST {
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
-  virtual IR::Val EmitIR() ENDING
+  virtual IR::Val EmitIR() { NOT_YET; }
 
 #define EXPR_FNS(name, checkname)                                              \
   virtual ~name();                                                             \
@@ -27,8 +27,8 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
-  virtual IR::Val EmitIR() ENDING;                                             \
-  virtual IR::Val EmitLVal() ENDING;                                           \
+  virtual IR::Val EmitIR() { NOT_YET; }                                        \
+  virtual IR::Val EmitLVal() { NOT_YET; }                                      \
   virtual void verify_types() ENDING
 
 struct Node {

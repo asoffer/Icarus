@@ -1,8 +1,10 @@
 #include "ir.h"
 
 #include "../type/type.h"
-
 namespace IR {
+BlockIndex Block::Current;
+Func *Func::Current;
+
 Val Malloc(Type *t, Val v) {
   ASSERT(v.type == ::Uint, "");
   Cmd cmd;

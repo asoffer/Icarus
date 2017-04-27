@@ -30,8 +30,8 @@ extern void ParseAllFiles();
 extern std::stack<Scope *> ScopeStack;
 extern Timer timer;
 
-extern IR::Val GetInitialGlobal(size_t global_addr);
-extern void AddInitialGlobal(size_t global_addr, IR::Val initial_val);
+// extern IR::Val GetInitialGlobal(size_t global_addr);
+// extern void AddInitialGlobal(size_t global_addr, IR::Val initial_val);
 
 std::map<std::string, File *> source_map;
 AST::Statements *global_statements;
@@ -58,8 +58,8 @@ void AST::Declaration::EmitGlobal() {
   verify_types();
   if (type == Err) { return; }
 
-  if (addr == IR::Val::None() ||
-      GetInitialGlobal(addr.as_global_addr) != IR::Val::None()) {
+  if (addr == IR::Val::None() /*|| TODO
+      GetInitialGlobal(addr.as_global_addr) != IR::Val::None() */) {
     return;
   }
   ASSERT(!arg_val, "");
@@ -81,9 +81,10 @@ void AST::Declaration::EmitGlobal() {
       }
       return;
     } else {
-      auto eval_value = Evaluate(init_val);
+      // auto eval_value = Evaluate(init_val);
       // if (eval_value == IR::Val::Error()) { return; }
-      AddInitialGlobal(addr.as_global_addr, eval_value);
+      NOT_YET;
+      // AddInitialGlobal(addr.as_global_addr, eval_value);
     }
   } else if (HasHashtag("cstdlib")) {
     auto cstr = new char[identifier->token.size() + 1];
@@ -91,7 +92,8 @@ void AST::Declaration::EmitGlobal() {
     NOT_YET;
     // AddInitialGlobal(addr.as_global_addr, IR::Val::ExtFn(cstr));
   } else {
-    AddInitialGlobal(addr.as_global_addr, type->EmitInitialValue());
+    NOT_YET;
+    // AddInitialGlobal(addr.as_global_addr, type->EmitInitialValue());
   }
 }
 
@@ -101,6 +103,7 @@ extern bool parser;
 extern bool ct_eval;
 } // namespace debug
 
+/*
 struct NCursesScopeGuard{
   NCursesScopeGuard() {
     if (debug::ct_eval) { initscr(); }
@@ -110,7 +113,7 @@ struct NCursesScopeGuard{
     if (debug::ct_eval) { endwin(); }
   }
 };
-
+*/
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
@@ -120,7 +123,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  NCursesScopeGuard ncurses_scope_guard;
+  // NCursesScopeGuard ncurses_scope_guard;
 
   ParseAllFiles();
   CHECK_FOR_ERRORS;

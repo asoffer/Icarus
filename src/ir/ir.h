@@ -68,10 +68,10 @@ struct Val {
   std::string to_string() const;
 };
 
-bool operator==(const Val& lhs, const Val& rhs) {
+inline bool operator==(const Val& lhs, const Val& rhs) {
   return lhs.kind == rhs.kind && lhs.type == rhs.type; // TODO check the right thing.
 }
-bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
+inline bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
 
 enum class Op : char {
   Neg, // ! for bool, - for numeric types

@@ -248,7 +248,8 @@ static NNT NextStringLiteral(Cursor &cursor) {
   char *cstr = new char[str_lit.size() + 2];
   strcpy(cstr + 1, str_lit.c_str());
   cstr[0] = '\1';
-  RETURN_TERMINAL(StringLiteral, String, IR::Val::StrLit(cstr));
+  // TODO StrLit
+  RETURN_TERMINAL(StringLiteral, String, IR::Val::None());
 }
 
 static NNT NextCharLiteral(Cursor &cursor) {

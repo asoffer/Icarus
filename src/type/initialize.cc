@@ -19,9 +19,6 @@ void Array::EmitInit(IR::Val id_val) {
     init_func->name = "init." + Mangle(this);
     implicit_functions.push_back(init_func);
     CURRENT_FUNC(init_func) {
-      IR::Func::Current = init_func;
-      IR::Block::Current = init_func->entry();
-
       auto ptr = IR::Val::None();
       auto length_var = IR::Val::None();
       if (fixed_length) {

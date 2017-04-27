@@ -6,7 +6,7 @@
 extern IR::Val GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
                                    Function *fn_type);
 
-extern IR::Val PtrCallFix(Type *t, IR::Val v);
+extern IR::Val PtrCallFix(IR::Val v);
 
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                           IR::Val from_val, IR::Val to_var) {
@@ -72,7 +72,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Block::Current = loop_body;
     // TODO Are these the right types?
     CallAssignment(scope, lhs_array_type->data_type, lhs_array_type->data_type,
-                   PtrCallFix(rhs_array_type->data_type, rhs_phi), lhs_phi);
+                   PtrCallFix(rhs_phi), lhs_phi);
     auto next_lhs = IR::PtrIncr(lhs_phi, IR::Val::Uint(1ul));
     auto next_rhs = IR::PtrIncr(rhs_phi, IR::Val::Uint(1ul));
 
