@@ -1,11 +1,18 @@
 #ifndef ICARUS_BASE_DEBUG_H
 #define ICARUS_BASE_DEBUG_H
 
+#include <string>
+
+namespace debug {
+std::string to_string(const char *s);
+std::string to_string(std::string s);
+}
+
 #define ASSERT(cond, msg)                                                      \
   do {                                                                         \
     if (!(cond)) {                                                             \
       fprintf(stderr, "%s(%d): Assertion failed in %s.\n  %s\n%s\n", __FILE__, \
-              __LINE__, __func__, #cond, msg);                                 \
+              __LINE__, __func__, #cond, debug::to_string(msg).c_str());       \
       abort();                                                                 \
     }                                                                          \
   } while (false)

@@ -36,6 +36,8 @@ ShowUsage(char *argv0) {
 
   -p, --parser                   Display step-by-step file parsing (debug).
 
+  -r, --repl                     Invoke Icarus Read-Eval-Print-Loop
+
   -t, --timer                    Display timing information for each of the
                                  compilation steps (debug).
 
@@ -43,6 +45,7 @@ ShowUsage(char *argv0) {
           argv0);
 }
 
+bool repl = false;
 static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
   for (int arg_num = 1; arg_num < argc; ++arg_num) {
     auto arg = argv[arg_num];
@@ -121,6 +124,10 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
             debug::timer = true;
             goto next_arg;
 
+          } else if (strcmp(arg + 2, "repl") == 0) {
+            repl = true;
+            goto next_arg;
+
           } else {
             ShowUsage(argv[0]);
             return CLArgFlag::QuitWithFailure;
@@ -134,6 +141,7 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
           case 'h': ShowUsage(argv[0]); return CLArgFlag::QuitSuccessfully;
           case 'e': debug::ct_eval           = true; break;
           case 'p': debug::parser            = true; break;
+          case 'r': repl                     = true; break;
           case 't': debug::timer             = true; break;
           case '\0': goto next_arg;
           default: ShowUsage(argv[0]); return CLArgFlag::QuitWithFailure;
@@ -148,7 +156,7 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
   next_arg:;
   }
 
-  if (file_queue.empty()) {
+  if (file_queue.empty() && !repl) {
     ShowUsage(argv[0]);
     return CLArgFlag::QuitWithFailure;
   }

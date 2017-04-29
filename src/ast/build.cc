@@ -272,7 +272,8 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
                    {"@", {Language::Operator::At, false}},
                    {"$", {Language::Operator::Eval, false}}};
     auto iter = UnopMap.find(tk);
-    ASSERT(iter != UnopMap.end(), "");
+    ASSERT(iter != UnopMap.end(),
+           std::string("Failed to match token: \"") + tk + "\"");
     std::tie(unop_ptr->op, check_id) = iter->second;
   }
 

@@ -102,6 +102,126 @@ extern bool parser;
 extern bool ct_eval;
 } // namespace debug
 
+int GenerateCode() {
+  std::vector<AST::Statements *> stmts_by_file =
+      ParseAllFiles(std::move(file_queue));
+
+  CHECK_FOR_ERRORS;
+
+  RUN(timer, "AST Setup") {
+    global_statements = AST::Statements::Merge(std::move(stmts_by_file));
+    WITH_SCOPE(Scope::Global) { global_statements->assign_scope(); }
+  }
+
+  RUN(timer, "Verify and Emit") {
+    for (auto stmt : global_statements->statements) {
+      std::cerr << stmt->to_string(0) << std::endl;
+    }
+  }
+
+  /*
+    RUN(timer, "Verify and Emit") {
+      for (auto stmt : global_statements->statements) {
+        if (!stmt->is_declaration()) { continue; }
+        ((AST::Declaration *)stmt)->AllocateGlobal();
+      }
+
+      for (auto stmt : global_statements->statements) {
+        if (stmt->is_declaration()) {
+          ((AST::Declaration *)stmt)->EmitGlobal();
+
+        } else if (stmt->is_unop()) {
+          switch (((AST::Unop *)stmt)->op) {
+          case Language::Operator::Eval:
+            stmt->verify_types();
+            if (ErrorLog::num_errs_ > 0) { continue; }
+
+            if (((AST::Unop *)stmt)->type == Void) {
+              Evaluate(((AST::Unop *)stmt)->operand);
+            } else {
+              ErrorLog::GlobalNonDecl(stmt->loc);
+            }
+          case Language::Operator::Require: break;
+          default: ErrorLog::GlobalNonDecl(stmt->loc); break;
+          }
+
+        } else {
+          ErrorLog::GlobalNonDecl(stmt->loc);
+        }
+      }
+    }
+
+    RUN(timer, "Type verification") {
+      CompletelyVerify(global_statements);
+      VerifyDeclBeforeUsage();
+      CHECK_FOR_ERRORS;
+    }
+
+    // TODO needs to be earlier/ part of type verification
+    RUN(timer, "(L/R)value checking") {
+      global_statements->lrvalue_check();
+      CHECK_FOR_ERRORS;
+    }
+
+    if (file_type == FileType::None) { return 0; }
+
+   //  RUN(timer, "Code-gen") {
+   //    // Generate all the functions
+   //    if (file_type != FileType::None) {
+   //      for (auto f : implicit_functions) {
+   //        if (f->generated == IR::Func::Gen::ToLink) { continue; }
+   //      }
+   //    }
+   //  }
+
+    switch (file_type) {
+    case FileType::None: UNREACHABLE;
+    case FileType::Nat: UNREACHABLE;
+    case FileType::IR: UNREACHABLE;
+    case FileType::Bin: UNREACHABLE;
+    }
+  */
+  return 0;
+}
+
+int RunRepl() {
+  std::cout << "Icarus REPL (v0.1)" << std::endl;
+
+  while (true) {
+    // Read
+    bool continue_to_next_line;
+    std::string aggregated_input;
+    std::string line_feed = "> ";
+
+    do {
+      std::cout << line_feed;
+      std::string input;
+      std::getline(std::cin, input);
+      continue_to_next_line = false;
+      for (int i = static_cast<int>(input.size()); i >= 0; --i) {
+        if (input[i] == ' ' || input[i] == '\t') { continue; }
+        if (input[i] == '\\') {
+          continue_to_next_line = i == 0 || input[i - 1] != '\\';
+          break;
+        }
+      }
+
+      aggregated_input += input + "\n";
+      line_feed = "  ";
+    } while (continue_to_next_line);
+
+    // TODO get rid of pstr. They were a bad idea.
+    auto s = pstr(aggregated_input.c_str());
+
+    // Eval
+    // TODO
+
+    // Print
+    // TODO
+  }
+  return 0;
+}
+
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
@@ -111,77 +231,5 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  std::vector<AST::Statements *> stmts_by_file =
-      ParseAllFiles(std::move(file_queue));
-
-  CHECK_FOR_ERRORS;
-
-  RUN(timer, "AST Setup") {
-    global_statements = AST::Statements::Merge(std::move(stmts_by_file));
-
-    WITH_SCOPE(Scope::Global) { global_statements->assign_scope(); }
-  }
-/*
-  RUN(timer, "Verify and Emit") {
-    for (auto stmt : global_statements->statements) {
-      if (!stmt->is_declaration()) { continue; }
-      ((AST::Declaration *)stmt)->AllocateGlobal();
-    }
-
-    for (auto stmt : global_statements->statements) {
-      if (stmt->is_declaration()) {
-        ((AST::Declaration *)stmt)->EmitGlobal();
-
-      } else if (stmt->is_unop()) {
-        switch (((AST::Unop *)stmt)->op) {
-        case Language::Operator::Eval:
-          stmt->verify_types();
-          if (ErrorLog::num_errs_ > 0) { continue; }
-
-          if (((AST::Unop *)stmt)->type == Void) {
-            Evaluate(((AST::Unop *)stmt)->operand);
-          } else {
-            ErrorLog::GlobalNonDecl(stmt->loc);
-          }
-        case Language::Operator::Require: break;
-        default: ErrorLog::GlobalNonDecl(stmt->loc); break;
-        }
-
-      } else {
-        ErrorLog::GlobalNonDecl(stmt->loc);
-      }
-    }
-  }
-
-  RUN(timer, "Type verification") {
-    CompletelyVerify(global_statements);
-    VerifyDeclBeforeUsage();
-    CHECK_FOR_ERRORS;
-  }
-
-  // TODO needs to be earlier/ part of type verification
-  RUN(timer, "(L/R)value checking") {
-    global_statements->lrvalue_check();
-    CHECK_FOR_ERRORS;
-  }
-
-  if (file_type == FileType::None) { return 0; }
-
- //  RUN(timer, "Code-gen") {
- //    // Generate all the functions
- //    if (file_type != FileType::None) {
- //      for (auto f : implicit_functions) {
- //        if (f->generated == IR::Func::Gen::ToLink) { continue; }
- //      }
- //    }
- //  }
-
-  switch (file_type) {
-  case FileType::None: UNREACHABLE;
-  case FileType::Nat: UNREACHABLE;
-  case FileType::IR: UNREACHABLE;
-  case FileType::Bin: UNREACHABLE;
-  }
-*/
-  return 0;
+  return repl ? RunRepl() : GenerateCode();
 }
