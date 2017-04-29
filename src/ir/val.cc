@@ -42,8 +42,8 @@ Val Val::Block(BlockIndex bi) {
   MAKE_AND_RETURN(Kind::Const, ::Uint, as_block, bi);
 }
 
-// Using 'as_bool' for convenience. That field should never be used.
-Val Val::None() { MAKE_AND_RETURN(Kind::Const, ::Void, as_bool, false); }
+Val Val::None() { return Val(); }
+
 // Using 'as_bool' for convenience. That field should never be used.
 Val Val::Null(::Type *t) {
   MAKE_AND_RETURN(Kind::Const, Ptr(t), as_bool, false);
@@ -63,7 +63,9 @@ std::string Val::to_string() const {
   case Kind::Heap:
     return type->to_string() + "h." + std::to_string(as_heap_addr);
   case Kind::Const:
-    if (type == ::Bool) {
+    if (type == nullptr) {
+      return "--";
+    } else if (type == ::Bool) {
       return as_bool ? "true" : "false";
     } else if (type == ::Char) {
       // TODO print the actual character if that's useful.
@@ -72,6 +74,8 @@ std::string Val::to_string() const {
       return std::to_string(as_u16) + "_u16";
     } else if (type == ::U32) {
       return std::to_string(as_u32) + "_u32";
+    } else if (type == ::Int) {
+      return std::to_string(as_int);
     } else if (type == ::Real) {
       return std::to_string(as_real) + "_r";
     } else if (type == ::Type_) {

@@ -25,15 +25,14 @@ extern IR::Val Evaluate(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
 extern void CompletelyVerify(AST::Node *node);
-extern void Parse(File *sf);
-extern void ParseAllFiles();
+extern std::vector<AST::Statements *>
+ParseAllFiles(std::queue<std::string> file_names);
 extern std::stack<Scope *> ScopeStack;
 extern Timer timer;
 
 // extern IR::Val GetInitialGlobal(size_t global_addr);
 // extern void AddInitialGlobal(size_t global_addr, IR::Val initial_val);
 
-std::map<std::string, File *> source_map;
 AST::Statements *global_statements;
 
 static u64 global_counter = 0;
@@ -103,17 +102,6 @@ extern bool parser;
 extern bool ct_eval;
 } // namespace debug
 
-/*
-struct NCursesScopeGuard{
-  NCursesScopeGuard() {
-    if (debug::ct_eval) { initscr(); }
-  }
-
-  ~NCursesScopeGuard() {
-    if (debug::ct_eval) { endwin(); }
-  }
-};
-*/
 int main(int argc, char *argv[]) {
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
@@ -123,24 +111,17 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  // NCursesScopeGuard ncurses_scope_guard;
+  std::vector<AST::Statements *> stmts_by_file =
+      ParseAllFiles(std::move(file_queue));
 
-  ParseAllFiles();
   CHECK_FOR_ERRORS;
 
   RUN(timer, "AST Setup") {
-    size_t num_stmts = 0;
-    for (const auto &kv : source_map) { num_stmts += kv.second->ast->size(); }
+    global_statements = AST::Statements::Merge(std::move(stmts_by_file));
 
-    global_statements = new AST::Statements;
-    global_statements->statements.reserve(num_stmts);
-    for (auto &kv : source_map) { global_statements->add(kv.second->ast); }
-
-    ScopeStack.push(Scope::Global);
-    global_statements->assign_scope();
-    ScopeStack.pop();
+    WITH_SCOPE(Scope::Global) { global_statements->assign_scope(); }
   }
-
+/*
   RUN(timer, "Verify and Emit") {
     for (auto stmt : global_statements->statements) {
       if (!stmt->is_declaration()) { continue; }
@@ -201,6 +182,6 @@ int main(int argc, char *argv[]) {
   case FileType::IR: UNREACHABLE;
   case FileType::Bin: UNREACHABLE;
   }
-
+*/
   return 0;
 }

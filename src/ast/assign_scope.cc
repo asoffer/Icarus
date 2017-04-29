@@ -10,7 +10,6 @@
     ptr->assign_scope();                                                       \
   }
 
-
 std::stack<Scope *> ScopeStack;
 static Scope *CurrentScope() {
   return ScopeStack.empty() ? nullptr : ScopeStack.top();
@@ -39,12 +38,12 @@ void For::assign_scope() {
   scope_ = CurrentScope();
   for_scope->set_parent(CurrentScope());
 
-  ScopeStack.push(for_scope);
-
-  for (auto iter : iterators) { iter->assign_scope(); }
-  statements->assign_scope();
-
-  ScopeStack.pop();
+  WITH_SCOPE(for_scope) {
+    for (auto it : iterators) {
+      it->assign_scope();
+    }
+    statements->assign_scope();
+  }
 }
 
 void ArrayLiteral::assign_scope() {
@@ -101,11 +100,13 @@ void Statements::assign_scope() {
 void FunctionLiteral::assign_scope() {
   scope_ = CurrentScope();
   fn_scope->set_parent(CurrentScope());
-  ScopeStack.push(fn_scope);
-  return_type_expr->assign_scope();
-  for (auto &in : inputs) { in->assign_scope(); }
-  statements->assign_scope();
-  ScopeStack.pop();
+  WITH_SCOPE(fn_scope) {
+    return_type_expr->assign_scope();
+    for (auto &in : inputs) {
+      in->assign_scope();
+    }
+    statements->assign_scope();
+  }
 }
 
 void Jump::assign_scope() { scope_ = CurrentScope(); }
@@ -118,17 +119,23 @@ void DummyTypeExpr::assign_scope() {
     auto ps = (ParamStruct *)value.as_type;
     ps->type_scope->set_parent(CurrentScope());
 
-    ScopeStack.push(ps->type_scope);
-    for (auto p : ps->params) { p->assign_scope(); }
-    for (auto d : ps->decls) { d->assign_scope(); }
-    ScopeStack.pop();
+    WITH_SCOPE(ps->type_scope) {
+      for (auto p : ps->params) {
+        p->assign_scope();
+      }
+      for (auto d : ps->decls) {
+        d->assign_scope();
+      }
+    }
   } else if (value.as_type->is_struct()) {
     auto s = (Struct *)value.as_type;
     s->type_scope->set_parent(CurrentScope());
 
-    ScopeStack.push(s->type_scope);
-    for (auto d : s->decls) { d->assign_scope(); }
-    ScopeStack.pop();
+    WITH_SCOPE(s->type_scope) {
+      for (auto d : s->decls) {
+        d->assign_scope();
+      }
+    }
   }
 }
 
@@ -139,19 +146,17 @@ void ScopeNode::assign_scope() {
   scope_expr->assign_scope();
   if (expr) { expr->assign_scope(); }
 
-  ScopeStack.push(internal);
-  stmts->assign_scope();
-  ScopeStack.pop();
+  WITH_SCOPE(internal) { stmts->assign_scope(); }
 }
 
 void ScopeLiteral::assign_scope() {
   scope_ = CurrentScope();
 
   // TODO internals are at their own scope
-  ScopeStack.push(body_scope);
-  enter_fn->assign_scope();
-  exit_fn->assign_scope();
-  ScopeStack.pop();
+  WITH_SCOPE(body_scope) {
+    enter_fn->assign_scope();
+    exit_fn->assign_scope();
+  }
 }
 } // namespace AST
 #undef ITERATE_OR_SKIP

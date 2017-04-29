@@ -62,33 +62,35 @@ GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
       nullptr; // TODO (AST::FunctionLiteral *)fn_lit->clone(
                // num_matches, lookup_key, lookup_val);
 
-  ScopeStack.push(scope ? scope : fn_lit->scope_);
+  AST::Declaration* decl;
+  WITH_SCOPE(scope ? scope : fn_lit->scope_) {
+    auto new_id = new AST::Identifier(fn_lit->loc, name);
+    decl = new AST::Declaration;
+    new_id->decl = decl;
+    new_id->type = cloned_func->type;
+    new_id->scope_ = scope ? scope : fn_lit->scope_;
+    decl->loc = fn_lit->loc;
+    decl->scope_ = scope ? scope : fn_lit->scope_;
+    decl->identifier = new_id;
+    decl->init_val = cloned_func;
+    decl->addr = IR::Val::None();
+    decl->arg_val = nullptr;
 
-  auto new_id      = new AST::Identifier(fn_lit->loc, name);
-  auto decl        = new AST::Declaration;
-  new_id->decl     = decl;
-  new_id->type     = cloned_func->type;
-  new_id->scope_   = scope ? scope : fn_lit->scope_;
-  decl->loc        = fn_lit->loc;
-  decl->scope_     = scope ? scope : fn_lit->scope_;
-  decl->identifier = new_id;
-  decl->init_val   = cloned_func;
-  decl->addr       = IR::Val::None();
-  decl->arg_val    = nullptr;
+    // We don't want to run decl->assign_scope() because that automatically adds
+    // it to the scopes DeclRegistry. This will mean it can be looked up in type
+    // verification. We want this function to be matched by its generic form and
+    // then looked up in the cache rather than matching outright.
 
-  // We don't want to run decl->assign_scope() because that automatically adds
-  // it to the scopes DeclRegistry. This will mean it can be looked up in type
-  // verification. We want this function to be matched by its generic form and
-  // then looked up in the cache rather than matching outright.
-
-  decl->scope_= CurrentScope();
-  decl->identifier->assign_scope();
-  if (decl->type_expr) { decl->type_expr->assign_scope(); }
-  if (decl->init_val) { decl->init_val->assign_scope(); }
-  decl->verify_types();
-
-  ScopeStack.pop();
-  
+    decl->scope_ = CurrentScope();
+    decl->identifier->assign_scope();
+    if (decl->type_expr) {
+      decl->type_expr->assign_scope();
+    }
+    if (decl->init_val) {
+      decl->init_val->assign_scope();
+    }
+    decl->verify_types();
+  }
 
   delete[] lookup_key;
   delete[] lookup_val;

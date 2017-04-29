@@ -1,6 +1,12 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
+#define WITH_SCOPE(scope)                                                      \
+  for (bool SCOPE_FLAG = true; SCOPE_FLAG && (ScopeStack.push(scope), true);   \
+       ScopeStack.pop(), SCOPE_FLAG = false)
+
+#include <algorithm>
+
 #include "../ir/ir.h"
 #include "../precompiled.h"
 #include "../cursor.h"
@@ -229,8 +235,21 @@ struct Statements : public Node {
 
   bool is_statements() const override { return true; }
 
-  void add(Statements *stmts) {
-    for (const auto &stmt : stmts->statements) { statements.push_back(stmt); }
+  static AST::Statements *Merge(std::vector<AST::Statements *> stmts_vec) {
+    size_t num_stmts = 0;
+    for (const auto stmts : stmts_vec) {
+      num_stmts += stmts->size();
+    }
+
+    auto result = new AST::Statements;
+    result->statements.reserve(num_stmts);
+
+    for (auto &stmts : stmts_vec) {
+      std::move(stmts->statements.begin(), stmts->statements.end(),
+                std::back_inserter(result->statements));
+    }
+
+    return result;
   }
 
   Statements() {}

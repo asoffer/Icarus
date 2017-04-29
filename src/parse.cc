@@ -156,7 +156,7 @@ static bool Reduce(ParseState *ps) {
   return true;
 }
 
-void Parse(File *source) {
+AST::Statements *Parse(File *source) {
   // Start the lookahead with a bof token. This is a simple way to ensure proper
   // initialization, because the newline will essentially be ignored.
   Cursor cursor;
@@ -216,22 +216,25 @@ void Parse(File *source) {
     ErrorLog::UnknownParserError(source->name, lines);
   }
 
-  source->ast = (AST::Statements *)state.node_stack_.back();
+  return (AST::Statements *)state.node_stack_.back();
 }
 
 extern Timer timer;
-extern std::map<std::string, File *> source_map;
-extern std::queue<std::string> file_queue;
-void ParseAllFiles() {
-  while (!file_queue.empty()) {
-    std::string file_name = file_queue.front();
-    file_queue.pop();
+std::map<std::string, File *> source_map;
+std::vector<AST::Statements *>
+ParseAllFiles(std::queue<std::string> file_names) {
+  std::vector<AST::Statements *> stmts;
+  while (!file_names.empty()) {
+    std::string file_name = file_names.front();
+    file_names.pop();
+
     if (source_map.find(file_name) != source_map.end()) { continue; }
 
     RUN(timer, "Parsing a file") {
       auto source_file      = new File(file_name);
       source_map[file_name] = source_file;
-      Parse(source_file);
+      stmts.push_back(Parse(source_file));
     }
   }
+  return stmts;
 }

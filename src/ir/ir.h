@@ -37,7 +37,7 @@ struct Val {
     double as_real;
     u16 as_u16;
     u32 as_u32;
-    i64 as_int; // TODO pick the right type here
+    i64 as_int;  // TODO pick the right type here
     u64 as_uint; // TODO pick the right type here
     ::Type *as_type;
     ::IR::Func *as_func;
@@ -66,6 +66,9 @@ struct Val {
   static Val None();
 
   std::string to_string() const;
+
+private:
+  Val() : kind(Kind::Const), type(nullptr), as_bool(false) {}
 };
 
 inline bool operator==(const Val& lhs, const Val& rhs) {
