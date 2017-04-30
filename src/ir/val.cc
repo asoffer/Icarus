@@ -76,6 +76,8 @@ std::string Val::to_string() const {
       return std::to_string(as_u32) + "_u32";
     } else if (type == ::Int) {
       return std::to_string(as_int);
+    } else if (type == ::Uint) {
+      return std::to_string(as_uint) + "_u";
     } else if (type == ::Real) {
       return std::to_string(as_real) + "_r";
     } else if (type == ::Type_) {

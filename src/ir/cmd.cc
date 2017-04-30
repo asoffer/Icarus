@@ -1,6 +1,7 @@
 #include "ir.h"
 
 #include "../type/type.h"
+
 namespace IR {
 BlockIndex Block::Current;
 Func *Func::Current;
@@ -24,6 +25,19 @@ Val Free(Val v) {
   cmd.result.type = Void;
   cmd.op_code = Op::Free;
   cmd.args = {std::move(v)};
+  RegIndex reg;
+  reg.block_index = IR::Block::Current;
+  reg.instr_index =
+      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
+  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  return IR::Val::Reg(reg, cmd.result.type);
+}
+
+Val SetReturn(size_t n, Val v) {
+  Cmd cmd;
+  cmd.result.type = Void;
+  cmd.op_code = Op::SetReturn;
+  cmd.args = {IR::Val::Uint(n), std::move(v)};
   RegIndex reg;
   reg.block_index = IR::Block::Current;
   reg.instr_index =
@@ -252,6 +266,7 @@ void Cmd::dump(size_t indent) {
     case Op::Access: std::cerr << "access"; break;
     case Op::Nop: std::cerr << "nop"; break;
     case Op::Call: std::cerr << "call"; break;
+    case Op::SetReturn: std::cerr << "ret"; break;
   }
 
   if (args.empty()) { return; }

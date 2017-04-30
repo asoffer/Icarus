@@ -3,7 +3,7 @@
 #include <vector>
 
 #include "ast/ast.h"
-#include "base/file.h"
+#include "base/source.h"
 #include "error_log.h"
 #include "ir/ir.h"
 #include "scope.h"
@@ -25,6 +25,7 @@ extern IR::Val Evaluate(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
 extern void CompletelyVerify(AST::Node *node);
+extern AST::Statements *Parse(Source *source);
 extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
 extern std::stack<Scope *> ScopeStack;
@@ -190,7 +191,7 @@ int RunRepl() {
   while (true) {
     // Read
     bool continue_to_next_line;
-    std::string aggregated_input;
+    std::vector<std::string> input_lines;
     std::string line_feed = "> ";
 
     do {
@@ -206,15 +207,20 @@ int RunRepl() {
         }
       }
 
-      aggregated_input += input + "\n";
+      input_lines.push_back(std::move(input));
       line_feed = "  ";
     } while (continue_to_next_line);
 
-    // TODO get rid of pstr. They were a bad idea.
-    auto s = pstr(aggregated_input.c_str());
+    ReplSource src(std::move(input_lines));
+    auto stmts = Parse(&src);
 
     // Eval
-    // TODO
+    for (auto stmt : stmts->statements) {
+      if (stmt->is_expression()) {
+        std::cerr << Evaluate(static_cast<AST::Expression *>(stmt)).to_string()
+                  << std::endl;
+      }
+    }
 
     // Print
     // TODO

@@ -538,7 +538,7 @@ NNT NextSlashInitiatedToken(Cursor &cursor) {
 
     u64 comment_layer = 1;
     while (comment_layer != 0) {
-      if (cursor.source_file->ifs.eof()) {
+      if (cursor.seen_eof_) {
         ErrorLog::RunawayMultilineComment();
         return NNT(cursor, "", Language::eof);
 
@@ -562,7 +562,7 @@ NNT NextSlashInitiatedToken(Cursor &cursor) {
 NNT NextToken(Cursor &cursor) {
 restart:
   // Delegate based on the next character in the file stream
-  if (cursor.source_file->ifs.eof()) {
+  if (cursor.seen_eof_) {
     return NNT(cursor, "", Language::eof);
   } else if (IsAlphaOrUnderscore(*cursor)) {
     return NextWord(cursor);

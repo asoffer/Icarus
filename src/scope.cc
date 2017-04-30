@@ -81,13 +81,17 @@ void Scope::set_parent(Scope *new_parent) {
 BlockScope::BlockScope(ScopeEnum st)
     : type(st), entry_block(nullptr), exit_block(nullptr) {}
 
-void BlockScope::MakeReturn(Type *ret_type, IR::Val val) {
+void BlockScope::MakeReturn(IR::Val val) {
   // TODO actual returned type (second type arg) may be different
-  Type::CallAssignment(this, ret_type, ret_type, val, GetFnScope()->ret_val);
 
-  IR::Store(RETURN_FLAG, GetFnScope()->exit_flag);
-  IR::Jump::Unconditional(IR::BlockIndex{1}); // TODO make this index correct
 
+  if (val.type == Void) {
+    IR::Jump::Unconditional(IR::BlockIndex{1});
+  } else if (val.type->is_primitive()) {
+    // TODO IR::Store(RETURN_FLAG, GetFnScope()->exit_flag);
+    IR::SetReturn(0, val);
+    IR::Jump::Unconditional(IR::BlockIndex{1}); // TODO make this index correct
+  }
   // TODO set current block to be unreachable. access to it should trigger an
   // error that no code there will ever be executed.
 }

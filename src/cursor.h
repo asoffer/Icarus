@@ -3,8 +3,7 @@
 
 #include "base/types.h"
 #include "base/debug.h"
-#include "base/file.h"
-#include "util/pstr.h"
+#include "base/source.h"
 
 #include <vector>
 #include <string>
@@ -15,14 +14,14 @@ struct Cursor {
   pstr line;
   size_t offset = 0;
   size_t line_num = 0;
-  File *source_file = nullptr;
+  Source *source_file = nullptr;
 
   std::string file_name() const { return source_file->name; }
 
   // Get the character that the cursor is currently pointing to
   char &operator*(void)const { return *(line.ptr + offset); }
 
-  void MoveToNextLine();
+  bool MoveToNextLine();
 
   static Cursor Behind(const Cursor &cursor, u64 dist);
 
@@ -45,6 +44,8 @@ struct Cursor {
       MoveToNextLine();
     }
   }
+
+  bool seen_eof_ = false;
 };
 
 #endif // ICARUS_CURSOR_H

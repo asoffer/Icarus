@@ -10,7 +10,6 @@
 struct Type;
 
 namespace IR {
-struct StackFrame;
 struct Func;
 
 struct BlockIndex {
@@ -87,7 +86,7 @@ enum class Op : char {
   PtrIncr,
   Phi, Field, Access,
   Call,
-  Nop
+  Nop, SetReturn,
 };
 
 struct Func;
@@ -120,7 +119,7 @@ struct ExecContext {
   // Indexed first by block then by instruction number
   std::vector<std::vector<Val>> regs_;
   std::vector<Val> args_;
-
+  std::vector<Val> rets_;
 };
 
 struct Cmd {
@@ -150,6 +149,7 @@ Val Or(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Print(Val v);
 Val Call(Val fn, std::vector<Val> vals);
+Val SetReturn(size_t n, Val v);
 Val Access(Val index, Val val);
 Val Load(Val v);
 Val Store(Val val, Val loc);
@@ -192,9 +192,14 @@ struct Block {
   Jump jmp_;
 };
 
+struct LocalStack {
+  std::vector<Val> locals_;
+};
+
+
 struct Func {
   static Func *Current;
-  Func(::Type *t) : type(t) {}
+  Func(::Type *t) : type(t), blocks_(2, Block(this)) {}
 
   static BlockIndex AddBlock() {
 
@@ -217,7 +222,7 @@ struct Func {
     return index;
   }
 
-  std::vector<Val> Execute(std::vector<Val> args) const;
+  std::vector<Val> Execute(LocalStack *stack, std::vector<Val> args) const;
 
   Type *type;
   std::string name;

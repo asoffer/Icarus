@@ -24,8 +24,7 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void assign_scope() ENDING;                                          \
   virtual void lrvalue_check() ENDING;                                         \
-  virtual void verify_types() ENDING;                                          \
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual void verify_types() ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   virtual ~name();                                                             \
@@ -33,7 +32,6 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope() ENDING;                                          \
-  virtual IR::Val EmitIR() { NOT_YET; }                                        \
   virtual IR::Val EmitLVal() { NOT_YET; }                                      \
   virtual void verify_types() ENDING
 
@@ -43,7 +41,7 @@ struct Node {
   virtual void assign_scope() {}
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
-  virtual IR::Val EmitIR() = 0;
+  virtual IR::Val EmitIR() { NOT_YET; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
@@ -88,6 +86,8 @@ struct Expression : public Node {
   static Node *AddHashtag(NPtrVec &&nodes);
 
   virtual void VerifyReturnTypes(Type *) {}
+
+  virtual IR::Val EmitIR() { NOT_YET; }
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -146,6 +146,7 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
   Language::Terminal terminal_type;
+  virtual IR::Val EmitIR();
 
   virtual bool is_hole() const override {
     return terminal_type == Language::Terminal::Hole;
@@ -229,7 +230,8 @@ struct Statements : public Node {
   static Node *build_more(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
-  virtual void VerifyReturnTypes(Type *ret_val) override;
+  void VerifyReturnTypes(Type *ret_val) override;
+  IR::Val EmitIR() override;
 
   inline size_t size() { return statements.size(); }
 
@@ -273,6 +275,7 @@ struct Unop : public Expression {
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
   virtual void VerifyReturnTypes(Type *ret_val) override;
+  virtual IR::Val EmitIR();
 
   Expression *operand = nullptr;
   Language::Operator op;

@@ -19,7 +19,6 @@ extern std::stack<Scope *> ScopeStack;
 static Scope *CurrentScope() {
   return ScopeStack.empty() ? nullptr : ScopeStack.top();
 }
-IR::Val Evaluate(AST::Expression*) { NOT_YET; }
 
 enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
 static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {

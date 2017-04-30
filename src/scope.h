@@ -76,7 +76,7 @@ struct BlockScope : public Scope {
 
   void InsertDestroy();
 
-  void MakeReturn(Type *ret_type, IR::Val val);
+  void MakeReturn(IR::Val val);
 
   ScopeEnum type;
   IR::Block *entry_block, *exit_block;

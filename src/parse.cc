@@ -156,7 +156,7 @@ static bool Reduce(ParseState *ps) {
   return true;
 }
 
-AST::Statements *Parse(File *source) {
+AST::Statements *Parse(Source *source) {
   // Start the lookahead with a bof token. This is a simple way to ensure proper
   // initialization, because the newline will essentially be ignored.
   Cursor cursor;

@@ -3,6 +3,55 @@
 #include <cmath>
 
 #include "../type/type.h"
+#include "../ast/ast.h"
+#include "../scope.h"
+
+static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
+  expr->verify_types();
+  auto fn_ptr = new AST::FunctionLiteral;
+
+  fn_ptr->type               = Func(Void, expr->type);
+  fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
+  fn_ptr->scope_             = expr->scope_;
+  fn_ptr->statements         = new AST::Statements;
+  fn_ptr->statements->scope_ = fn_ptr->fn_scope;
+  fn_ptr->return_type_expr   = new AST::DummyTypeExpr(expr->loc, expr->type);
+  AST::Unop *ret             = nullptr;
+
+  if (expr->type != Void) {
+    ret             = new AST::Unop;
+    ret->scope_     = fn_ptr->fn_scope;
+    ret->operand    = expr;
+    ret->op         = Language::Operator::Return;
+    ret->precedence = Language::precedence(Language::Operator::Return);
+    fn_ptr->statements->statements.push_back(ret);
+  } else {
+    fn_ptr->statements->statements.push_back(expr);
+  }
+
+  return fn_ptr;
+}
+
+IR::Val Evaluate(AST::Expression *expr) {
+  IR::Func *fn = nullptr;
+  auto fn_ptr = WrapExprIntoFunction(expr);
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitAnonymousIR().as_func; }
+
+  IR::LocalStack stack;
+  auto result = fn->Execute(&stack, {});
+
+  if (expr->type == Void) {
+    fn_ptr->statements->statements[0] = nullptr;
+  } else {
+    auto ret = fn_ptr->statements->statements.front();
+    ASSERT(ret->is_unop(), "");
+    auto unop = static_cast<AST::Unop *>(ret);
+    ASSERT(unop->op == Language::Operator::Return, "");
+    unop->operand = nullptr;
+  }
+  delete fn_ptr;
+  return result[0]; // TODO multiple outputs?
+}
 
 namespace IR {
 ExecContext::ExecContext(const Func *fn) : current_fn(fn), current_block{0} {}
@@ -213,11 +262,20 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else {
       UNREACHABLE;
     }
+  case Op::SetReturn: {
+    while (rets_.size() <= resolved[0].as_uint) {
+      rets_.push_back(IR::Val::None());
+    }
+
+    rets_[resolved[0].as_uint] = resolved[1];
+    std::cerr << resolved[1].to_string();
+    return IR::Val::None();
+  }
   default: NOT_YET;
   }
 }
 
-std::vector<Val> Func::Execute(std::vector<Val>) const {
+std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val>) const {
   auto ctx = ExecContext(this);
   // TODO args
   while (true) {
