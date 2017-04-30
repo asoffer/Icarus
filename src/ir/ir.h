@@ -89,7 +89,6 @@ enum class Op : char {
   Nop, SetReturn,
 };
 
-struct Func;
 struct Block;
 struct Cmd;
 
@@ -106,6 +105,11 @@ struct ExecContext {
   void Resolve(Val* v) const;
 
   Val reg(RegIndex index) const {
+    return regs_[index.block_index.value][index.instr_index];
+  }
+
+
+  Val &reg(RegIndex index) {
     return regs_[index.block_index.value][index.instr_index];
   }
 
@@ -129,7 +133,7 @@ struct Cmd {
 
   Val result; // Will always be of Kind::Reg.
 
-  void dump(size_t indent);
+  void dump(size_t indent) const;
 };
 
 Val Neg(Val v);
@@ -162,10 +166,12 @@ Val Phi(Type *t);
 Val Field(Val v, size_t n);
 
 struct Jump {
-  static Jump Unconditional(BlockIndex index);
-  static Jump Conditional(Val cond, BlockIndex true_index,
+  static void Unconditional(BlockIndex index);
+  static void Conditional(Val cond, BlockIndex true_index,
                           BlockIndex false_index);
-  static Jump Return();
+  static void Return();
+
+  void dump(size_t indent) const;
 
   Jump() : type(Type::Uncond) {}
   ~Jump() {}
@@ -187,6 +193,8 @@ struct Block {
   Block() = delete;
   Block(Func* fn) : fn_(fn) {}
 
+  void dump(size_t indent) const;
+
   Func *fn_; // Containing function
   std::vector<Cmd> cmds_;
   Jump jmp_;
@@ -200,6 +208,8 @@ struct LocalStack {
 struct Func {
   static Func *Current;
   Func(::Type *t) : type(t), blocks_(2, Block(this)) {}
+
+  void dump() const;
 
   static BlockIndex AddBlock() {
 

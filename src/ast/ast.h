@@ -168,6 +168,8 @@ struct Binop : public Expression {
   static Node *BuildCallOperator(NPtrVec &&nodes);
   static Node *BuildIndexOperator(NPtrVec &&nodes);
 
+  virtual IR::Val EmitIR();
+
   bool is_assignment() const {
     return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
            op == Language::Operator::XorEq || op == Language::Operator::AndEq ||

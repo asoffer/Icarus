@@ -53,15 +53,15 @@ std::string Val::to_string() const {
   std::stringstream ss;
   switch (kind) {
   case Kind::Arg:
-    return type->to_string() + "a." + std::to_string(as_arg);
+    return type->to_string() + " a." + std::to_string(as_arg);
   case Kind::Reg:
-    return type->to_string() + "r." +  std::to_string(as_reg.block_index.value);
+    return type->to_string() + " r." +  std::to_string(as_reg.block_index.value);
   case Kind::Frame:
-    return type->to_string() + "f." + std::to_string(as_frame_addr);
+    return type->to_string() + " f." + std::to_string(as_frame_addr);
   case Kind::Global:
-    return type->to_string() + "g." + std::to_string(as_global_addr);
+    return type->to_string() + " g." + std::to_string(as_global_addr);
   case Kind::Heap:
-    return type->to_string() + "h." + std::to_string(as_heap_addr);
+    return type->to_string() + " h." + std::to_string(as_heap_addr);
   case Kind::Const:
     if (type == nullptr) {
       return "--";
@@ -93,31 +93,29 @@ std::string Val::to_string() const {
   UNREACHABLE;
 }
 
-Jump Jump::Conditional(Val cond, BlockIndex true_index,
+void Jump::Conditional(Val cond, BlockIndex true_index,
                        BlockIndex false_index) {
-  Jump result;
+  Jump &jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
   if (cond.kind == Val::Kind::Const) {
-    result.type = Type::Uncond;
+    jmp.type = Type::Uncond;
     ASSERT(cond.type == Bool, "");
-    result.block_index = (cond.as_bool ? true_index : false_index);
+    jmp.block_index = (cond.as_bool ? true_index : false_index);
   } else {
-    result.type = Type::Cond;
-    result.cond_data.cond = cond;
-    result.cond_data.true_block = true_index;
-    result.cond_data.false_block = false_index;
+    jmp.type = Type::Cond;
+    jmp.cond_data.cond = cond;
+    jmp.cond_data.true_block = true_index;
+    jmp.cond_data.false_block = false_index;
   }
-  return result;
 }
 
-Jump Jump::Return() {
-  Jump result;
-  result.type = Type::Ret;
-  return result;
+void Jump::Return() {
+  Jump &jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
+  jmp.type = Type::Ret;
 }
 
-Jump Jump::Unconditional(BlockIndex index) {
-  Jump result;
-  result.block_index = index;
-  return result;
+void Jump::Unconditional(BlockIndex index) {
+  Jump& jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
+  jmp.block_index = index;
+  jmp.type = Type::Uncond;
 }
 } // namespace IR

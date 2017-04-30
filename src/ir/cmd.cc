@@ -65,15 +65,15 @@ Val Field(Val v, size_t n) {
 
 Val Neg(Val v) {
   Cmd cmd;
-  cmd.result.type = v.type;
   cmd.op_code = Op::Neg;
   cmd.args = {std::move(v)};
   RegIndex reg;
   reg.block_index = IR::Block::Current;
   reg.instr_index =
       IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
+  cmd.result = IR::Val::Reg(reg, v.type);
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  return cmd.result;
 }
 
 Val Print(Val v) {
@@ -174,15 +174,15 @@ Val Phi(Type *t) {
 
 #define MAKE_AND_RETURN(name, v1, v2, result_type)                             \
   Cmd cmd;                                                                     \
-  cmd.result.type = result_type;                                               \
   cmd.op_code = Op::name;                                                      \
   cmd.args = {std::move(v1), std::move(v2)};                                   \
   RegIndex reg;                                                                \
   reg.block_index = IR::Block::Current;                                        \
   reg.instr_index =                                                            \
       IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();       \
+  cmd.result = IR::Val::Reg(reg, result_type);                                 \
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
-  return IR::Val::Reg(reg, cmd.result.type)
+  return cmd.result;
 
 #define MAKE_AND_RETURN_BOOL_OP(name, v1, v2)                                  \
   ASSERT(v1.type == ::Bool && v2.type == Bool, "");                            \
@@ -235,7 +235,7 @@ Val Call(Val fn, std::vector<Val> vals) {
   return IR::Val::Reg(reg, cmd.result.type);
 }
 
-void Cmd::dump(size_t indent) {
+void Cmd::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ');
   switch (op_code) {
     case Op::Malloc: std::cerr << "malloc"; break;
@@ -266,7 +266,7 @@ void Cmd::dump(size_t indent) {
     case Op::Access: std::cerr << "access"; break;
     case Op::Nop: std::cerr << "nop"; break;
     case Op::Call: std::cerr << "call"; break;
-    case Op::SetReturn: std::cerr << "ret"; break;
+    case Op::SetReturn: std::cerr << "set-ret"; break;
   }
 
   if (args.empty()) { return; }
@@ -274,5 +274,37 @@ void Cmd::dump(size_t indent) {
   for (size_t i = 1; i < args.size(); ++i) {
     std::cerr << ", " << args[i].to_string();
   }
+  std::cerr << std::endl;
 }
+
+void Block::dump(size_t indent) const {
+  for (const auto& cmd : cmds_) { cmd.dump(indent); }
+  jmp_.dump(indent);
+}
+
+void Jump::dump(size_t indent) const {
+  std::cerr << std::string(indent, ' ');
+  switch (type) {
+  case Type::Uncond:
+    std::cerr << "jmp #" << block_index.value << std::endl;
+    break;
+  case Type::Cond:
+    std::cerr << "cond " << cond_data.cond.to_string() << std::endl
+              << "T => #" << cond_data.true_block.value << "F => #"
+              << cond_data.false_block.value << std::endl;
+    break;
+  case Type::Ret:
+    std::cerr << "return." << std::endl;
+    break;
+  }
+}
+
+void Func::dump() const {
+  std::cerr << (name == "" ? "(anon)" : name) << ": " << *type;
+  for (size_t i = 0; i < blocks_.size(); ++i) {
+    std::cerr << "\n block #" << i << std::endl;
+    blocks_[i].dump(2);
+  }
+}
+
 } // namespace IR

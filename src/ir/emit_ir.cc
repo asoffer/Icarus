@@ -22,8 +22,16 @@ IR::Val AST::Unop::EmitIR() {
   switch (op) {
   case Language::Operator::Sub: return IR::Neg(operand->EmitIR());
   case Language::Operator::Return: {
+    auto val = operand->EmitIR();
+    IR::SetReturn(0, val);
+
     ASSERT(scope_->is_block_scope(), "");
-    static_cast<BlockScope *>(scope_)->MakeReturn(operand->EmitIR());
+    // static_cast<BlockScope *>(scope_)->MakeReturn(operand->EmitIR());
+    IR::Jump::Unconditional(IR::BlockIndex{1});
+
+    // TODO this is the right number but not implemented correctly.
+    IR::Block::Current = IR::BlockIndex{1};
+    IR::Jump::Return();
     return IR::Val::None();
   }
 
@@ -31,13 +39,23 @@ IR::Val AST::Unop::EmitIR() {
   }
 }
 
+IR::Val AST::Binop::EmitIR() {
+  verify_types();
+  switch (op) {
+  case Language::Operator::Add: {
+    auto lhs_ir = lhs->EmitIR();
+    auto rhs_ir = rhs->EmitIR();
+    return IR::Add(lhs_ir, rhs_ir);
+  }
+  default: { UNREACHABLE; }
+  }
+}
+
 IR::Val AST::FunctionLiteral::Emit(bool) {
   verify_types();
 
-  ir_func = new IR::Func(type);
-
-  CURRENT_FUNC(ir_func) {
-    IR::Block::Current = ir_func->entry();
+  CURRENT_FUNC(ir_func = new IR::Func(type)) {
+    IR::Block::Current = IR::BlockIndex{0};
     statements->EmitIR();
   }
 

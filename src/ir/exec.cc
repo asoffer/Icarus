@@ -50,6 +50,7 @@ IR::Val Evaluate(AST::Expression *expr) {
     unop->operand = nullptr;
   }
   delete fn_ptr;
+  ASSERT(!result.empty(), "");
   return result[0]; // TODO multiple outputs?
 }
 
@@ -58,7 +59,11 @@ ExecContext::ExecContext(const Func *fn) : current_fn(fn), current_block{0} {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
-    ExecuteCmd(cmd);
+    if (cmd.result.kind == Val::Kind::Reg) {
+      this->reg(cmd.result.as_reg) = ExecuteCmd(cmd);
+    } else {
+      ExecuteCmd(cmd);
+    }
   }
 
   switch (current_fn->blocks_[current_block.value].jmp_.type) {
@@ -95,7 +100,7 @@ void ExecContext::Resolve(Val* v) const {
 
 Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   std::vector<Val> resolved = cmd.args;
-  for (auto& a : args_) { Resolve(&a); }
+  for (auto& r : resolved) { Resolve(&r); }
 
   switch (cmd.op_code) {
   case Op::Neg:
@@ -263,12 +268,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       UNREACHABLE;
     }
   case Op::SetReturn: {
-    while (rets_.size() <= resolved[0].as_uint) {
-      rets_.push_back(IR::Val::None());
-    }
-
     rets_[resolved[0].as_uint] = resolved[1];
-    std::cerr << resolved[1].to_string();
     return IR::Val::None();
   }
   default: NOT_YET;
@@ -277,11 +277,20 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
 
 std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val>) const {
   auto ctx = ExecContext(this);
+  // Type *output_type = static_cast<Function *>(type)->output;
+  // tuples for output returns?
+  // TODO these should be in the ctor
+  ctx.rets_.resize(1, IR::Val::None()); // 1 for now beacuse not handling tuples
+  ctx.regs_.resize(blocks_.size());
+  for (size_t i = 0; i < blocks_.size(); ++i) {
+    ctx.regs_[i].resize(blocks_[i].cmds_.size(), IR::Val::None());
+  }
+
   // TODO args
   while (true) {
     auto block_index = ctx.ExecuteBlock();
     if (block_index.is_none()) {
-      return {}; // std::move(ctx.outputs);
+      return std::move(ctx.rets_);
     } else if (block_index.value >= 0) {
       ctx.current_block = block_index;
     } else {
