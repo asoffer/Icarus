@@ -211,6 +211,13 @@ int RunRepl() {
       line_feed = "  ";
     } while (continue_to_next_line);
 
+    if (input_lines.size() > 1) { goto non_trivial_expr; }
+    for (char c : input_lines[0]) {
+      if (c != ' ' && c != '\t') { goto non_trivial_expr; }
+    }
+    continue; // trivial_expr:
+
+  non_trivial_expr:
     ReplSource src(std::move(input_lines));
     auto stmts = Parse(&src);
 
@@ -218,6 +225,7 @@ int RunRepl() {
     for (auto stmt : stmts->statements) {
       if (stmt->is_expression()) {
         std::cerr << Evaluate(static_cast<AST::Expression *>(stmt)).to_string()
+                  << std::endl
                   << std::endl;
       }
     }
