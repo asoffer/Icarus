@@ -63,10 +63,8 @@ NNT NextWord(Cursor &cursor) {
 
   do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
-  char old_char     = *cursor;
-  *cursor           = '\0';
-  std::string token = cursor.line.ptr + starting_offset;
-  *cursor           = old_char;
+  std::string token =
+      cursor.line.substr(starting_offset, cursor.offset - starting_offset);
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
@@ -395,12 +393,8 @@ static NNT NextOperator(Cursor &cursor) {
       ErrorLog::InvalidHashtag(cursor_copy);
     }
 
-    char old_char       = *cursor;
-    *cursor             = '\0';
-    const char *tag_ref = cursor.line.ptr + cursor_copy.offset;
-    std::string tag     = tag_ref;
-    *cursor             = old_char;
-
+    std::string tag = cursor.line.substr(cursor_copy.offset,
+                                         cursor.offset - cursor_copy.offset);
     return NNT(cursor, tag, Language::hashtag);
   } break;
 

@@ -42,31 +42,18 @@ IR::Val AST::Unop::EmitIR() {
 IR::Val AST::Binop::EmitIR() {
   verify_types();
   switch (op) {
-  case Language::Operator::Add: {
-    auto lhs_ir = lhs->EmitIR();
-    auto rhs_ir = rhs->EmitIR();
-    return IR::Add(lhs_ir, rhs_ir);
-  }
-  case Language::Operator::Sub: {
-    auto lhs_ir = lhs->EmitIR();
-    auto rhs_ir = rhs->EmitIR();
-    return IR::Sub(lhs_ir, rhs_ir);
-  }
-  case Language::Operator::Mul: {
-    auto lhs_ir = lhs->EmitIR();
-    auto rhs_ir = rhs->EmitIR();
-    return IR::Mul(lhs_ir, rhs_ir);
-  }
-  case Language::Operator::Div: {
-    auto lhs_ir = lhs->EmitIR();
-    auto rhs_ir = rhs->EmitIR();
-    return IR::Div(lhs_ir, rhs_ir);
-  }
-  case Language::Operator::Mod: {
-    auto lhs_ir = lhs->EmitIR();
-    auto rhs_ir = rhs->EmitIR();
-    return IR::Mod(lhs_ir, rhs_ir);
-  }
+#define CASE(op_name)                                                          \
+  case Language::Operator::op_name: {                                          \
+    auto lhs_ir = lhs->EmitIR();                                               \
+    auto rhs_ir = rhs->EmitIR();                                               \
+    return IR::op_name(lhs_ir, rhs_ir);                                        \
+  } break
+    CASE(Add);
+    CASE(Sub);
+    CASE(Mul);
+    CASE(Div);
+    CASE(Mod);
+#undef CASE
   default: { UNREACHABLE; }
   }
 }

@@ -11,7 +11,7 @@
 struct Cursor {
   Cursor() {}
 
-  pstr line;
+  std::string line;
   size_t offset = 0;
   size_t line_num = 0;
   Source *source_file = nullptr;
@@ -19,7 +19,7 @@ struct Cursor {
   std::string file_name() const { return source_file->name; }
 
   // Get the character that the cursor is currently pointing to
-  char &operator*(void)const { return *(line.ptr + offset); }
+  char &operator*(void) { return line[offset]; }
 
   bool MoveToNextLine();
 

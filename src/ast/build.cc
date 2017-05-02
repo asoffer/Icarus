@@ -690,10 +690,10 @@ AST::Node *AST::CodeBlock::BuildEmpty(NPtrVec &&nodes) {
 
 AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   static const std::map<std::string, Language::Operator> chain_ops = {
-      {",", Language::Operator::Comma}, {"==", Language::Operator::EQ},
-      {"!=", Language::Operator::NE},   {"<", Language::Operator::LT},
-      {">", Language::Operator::GT},    {"<=", Language::Operator::LE},
-      {">=", Language::Operator::GE},   {"&", Language::Operator::And},
+      {",", Language::Operator::Comma}, {"==", Language::Operator::Eq},
+      {"!=", Language::Operator::Ne},   {"<", Language::Operator::Lt},
+      {">", Language::Operator::Gt},    {"<=", Language::Operator::Le},
+      {">=", Language::Operator::Ge},   {"&", Language::Operator::And},
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 

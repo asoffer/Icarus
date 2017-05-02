@@ -1,8 +1,6 @@
 #ifndef ICARUS_BASE_SOURCE_H
 #define ICARUS_BASE_SOURCE_H
 
-#include "../util/pstr.h"
-
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -17,7 +15,7 @@ struct Source {
   virtual std::pair<bool, std::string> NextLine() = 0;
 
   std::string name;
-  std::vector<pstr> lines;
+  std::vector<std::string> lines;
 };
 
 struct ReplSource : public Source {

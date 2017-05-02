@@ -1,7 +1,6 @@
 #include "rule.h"
 #include "nnt.h"
 #include "grammar_rules.h"
-#include "util/pstr.h"
 #include "util/timer.h"
 #include <iostream>
 
@@ -161,8 +160,7 @@ AST::Statements *Parse(Source *source) {
   // initialization, because the newline will essentially be ignored.
   Cursor cursor;
   cursor.source_file = source;
-  pstr temp_blank; // Blank line since we 1-index.
-  cursor.source_file->lines.push_back(temp_blank);
+  cursor.source_file->lines.emplace_back(); // Blank line since we 1-index.
   cursor.MoveToNextLine();
 
   ParseState state(cursor);

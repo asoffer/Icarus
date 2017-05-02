@@ -5,8 +5,6 @@
 #include <string>
 #include <vector>
 
-#include "util/pstr.h"
-
 namespace AST {
 struct Statements;
 } // namespace AST
@@ -17,7 +15,7 @@ struct File {
   ~File() { ifs.close(); }
 
   std::string name;
-  std::vector<pstr> lines;
+  std::vector<std::string> lines;
   AST::Statements *ast;
   std::ifstream ifs;
 };

@@ -6,7 +6,6 @@
 #include "base/source.h"
 #include "cursor.h"
 #include "type/type.h"
-#include "util/pstr.h"
 
 extern std::map<std::string, Source*> source_map;
 
@@ -91,11 +90,11 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
               file_and_locs.first.c_str());
 
       for (const auto &line_and_offsets : file_and_locs.second) {
-        pstr line = source_map AT(file_and_locs.first)
+        auto line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
         size_t left_border_width = line_num_width + 6;
-        size_t line_length       = strlen(line) + 1;
+        size_t line_length       = line.size() + 1;
         char *underline          = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
         memset(underline, ' ', left_border_width + line_length);
@@ -106,7 +105,7 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
 
         fprintf(stderr, "    %*lu| %s\n"
                         "%s\n",
-                (int)line_num_width, line_and_offsets.first, line.ptr,
+                (int)line_num_width, line_and_offsets.first, line.c_str(),
                 underline);
         delete[] underline;
       }
@@ -150,11 +149,11 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
       size_t line_num_width = NumDigits(max_line_num);
 
       for (const auto &line_and_offsets : file_and_locs.second) {
-        pstr line = source_map AT(file_and_locs.first)
+        auto line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
         size_t left_border_width                   = line_num_width + 6;
-        size_t line_length                         = strlen(line) + 1;
+        size_t line_length                         = line.size() + 1;
         char *underline                            = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
         memset(underline, ' ', left_border_width + line_length);
@@ -165,7 +164,7 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
 
         fprintf(stderr, "    %*lu| %s\n"
                         "%s\n",
-                (int)line_num_width, line_and_offsets.first, line.ptr, underline);
+                (int)line_num_width, line_and_offsets.first, line.c_str(), underline);
         delete[] underline;
       }
     }
@@ -184,28 +183,28 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
     fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
             kv.second.size() == 1 ? "s" : "", kv.first.c_str());
 
-    int line_num_width   = (int)NumDigits(kv.second.back());
+    int line_num_width = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
     for (auto line_num : kv.second) {
       if (line_num - last_line_num == 2) {
-        pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
+        auto line = source_map AT(kv.first)->lines AT(line_num - 1);
         fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
-                line.ptr);
+                line.c_str());
       } else if (line_num - last_line_num == 3) {
-        pstr line = source_map AT(kv.first)->lines AT(line_num - 1);
+        auto line = source_map AT(kv.first)->lines AT(line_num - 1);
         fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
-                line.ptr);
+                line.c_str());
 
         line = source_map AT(kv.first)->lines AT(line_num - 2);
         fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 2,
-                line.ptr);
+                line.c_str());
       } else if (line_num - last_line_num > 3) {
         fprintf(stderr, "%s...|\n",
                 std::string((size_t)line_num_width + 1, ' ').c_str());
       }
 
-      pstr line = source_map AT(kv.first)->lines AT(line_num);
-      fprintf(stderr, ">   %*lu| %s\n", line_num_width, line_num, line.ptr);
+      auto line = source_map AT(kv.first)->lines AT(line_num);
+      fprintf(stderr, ">   %*lu| %s\n", line_num_width, line_num, line.c_str());
       last_line_num = line_num;
     }
   }
@@ -231,12 +230,12 @@ void ErrorLog::Dump() {
 static void DisplayErrorMessage(const char *msg_head,
                                 const char *msg_foot, const Cursor &loc,
                                 size_t underline_length) {
-  pstr line = source_map AT(loc.file_name())->lines AT(loc.line_num);
+  auto line = source_map AT(loc.file_name())->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 6;
 
   // Extra + 1 at the end because we might point after the end of the line.
-  std::string underline(strlen(line.ptr) + left_border_width + 1, ' ');
+  std::string underline(line.size() + left_border_width + 1, ' ');
   for (size_t i = left_border_width + loc.offset;
        i < left_border_width + loc.offset + underline_length; ++i) {
     underline[i] = '^';
@@ -245,7 +244,7 @@ static void DisplayErrorMessage(const char *msg_head,
   fprintf(stderr, "%s\n\n"
                   "    %lu| %s\n"
                   "%s\n",
-          msg_head, loc.line_num, line.ptr, underline.c_str());
+          msg_head, loc.line_num, line.c_str(), underline.c_str());
 
   if (msg_foot) {
     fprintf(stderr, "%s\n\n", msg_foot);
@@ -647,7 +646,7 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
                          "Expected return type: " +
                          correct->to_string();
   DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), loc,
-                      strlen(loc.line.ptr) - loc.offset);
+                      strlen(loc.line.c_str()) - loc.offset);
 }
 
 void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types) {
@@ -671,7 +670,7 @@ static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t last_line_num = lines[0].line_num - 1;
   for (auto loc : lines) {
     if (loc.line_num != last_line_num + 1) { fputs(space_fmt.c_str(), stderr); }
-    fprintf(stderr, "%*lu| %s\n", (int)left_space, loc.line_num, loc.line.ptr);
+    fprintf(stderr, "%*lu| %s\n", (int)left_space, loc.line_num, loc.line.c_str());
     last_line_num = loc.line_num;
   }
 

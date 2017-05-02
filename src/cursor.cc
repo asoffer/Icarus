@@ -9,7 +9,7 @@ bool Cursor::MoveToNextLine() {
     seen_eof_ = true;
     return false;
   }
-  line = pstr(next.second.c_str());
+  line = next.second;
   source_file->lines.push_back(line);
   offset = 0;
   ++line_num;
