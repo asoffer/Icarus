@@ -87,6 +87,7 @@ enum class Op : char {
   Phi, Field, Access,
   Call,
   Nop, SetReturn,
+  Arrow, Array,
 };
 
 struct Block;
@@ -164,6 +165,8 @@ Val Malloc(Type *t, Val v);
 Val Free(Val v);
 Val Phi(Type *t);
 Val Field(Val v, size_t n);
+Val Arrow(Val v1, Val v2);
+Val Array(Val v1, Val v2);
 
 struct Jump {
   static void Unconditional(BlockIndex index);

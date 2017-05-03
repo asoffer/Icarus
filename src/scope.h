@@ -25,6 +25,7 @@ enum class ScopeEnum { For, Function, Global, Type, Standard };
 struct BlockScope;
 struct FnScope;
 
+
 struct Scope {
   static BlockScope *Global; // TODO Should this be it's own type
 
@@ -65,7 +66,7 @@ struct Scope {
 
   Scope *parent;
   FnScope *containing_function_;
-  std::string name;
+  // std::string name;
 };
 
 struct BlockScope : public Scope {

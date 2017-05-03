@@ -20,6 +20,7 @@ IR::Val AST::Terminal::EmitIR() {
 IR::Val AST::Unop::EmitIR() {
   verify_types();
   switch (op) {
+  case Language::Operator::Not:
   case Language::Operator::Sub: return IR::Neg(operand->EmitIR());
   case Language::Operator::Return: {
     auto val = operand->EmitIR();
@@ -53,9 +54,15 @@ IR::Val AST::Binop::EmitIR() {
     CASE(Mul);
     CASE(Div);
     CASE(Mod);
+    CASE(Arrow);
 #undef CASE
   default: { UNREACHABLE; }
   }
+}
+
+IR::Val AST::ArrayType::EmitIR(){
+  verify_types();
+  return IR::Array(length->EmitIR(), data_type->EmitIR());
 }
 
 IR::Val AST::ChainOp::EmitIR(){

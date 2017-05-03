@@ -43,8 +43,7 @@ std::string Mangle(const Type *t, bool prefix) {
 }
 
 // TODO Mangle could just take a declaration and the type could be pulled out.
-std::string Mangle(const Function *f, AST::Expression *expr,
-                   Scope *starting_scope) {
+std::string Mangle(const Function *f, AST::Expression *expr, Scope *) {
   std::string name =
       expr->is_identifier() ? ((AST::Identifier *)expr)->token : "";
 
@@ -55,17 +54,6 @@ std::string Mangle(const Function *f, AST::Expression *expr,
 
   std::stringstream ss;
   ss << "_Z";
-
-  // Use scopes in name mangling.
-  // For now we're just concatenating pointers to the scopes which is really
-  // ugly and makes the ABI impossible. But for now it uniques things correctly.
-  // TODO To fix this, we need a way to assign names to scopes.
-  auto scope = starting_scope ? starting_scope : expr->scope_;
-
-  while (scope != Scope::Global) {
-    ss << "X" << scope->name.size() << scope->name;
-    scope = scope->parent;
-  }
 
   ss << "F" << name.size() << name;
   ss << Mangle(f->input, false);

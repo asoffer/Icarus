@@ -318,6 +318,7 @@ struct ArrayLiteral : public Expression {
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
   static Node *build(NPtrVec &&nodes);
+  virtual IR::Val EmitIR();
 
   Expression *length    = nullptr;
   Expression *data_type = nullptr;

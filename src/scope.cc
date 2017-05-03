@@ -3,12 +3,9 @@
 #include "ast/ast.h"
 #include "type/type.h"
 
-static size_t scope_num_counter = 0;
-BlockScope *Scope::Global       = new BlockScope(ScopeEnum::Global);
+BlockScope *Scope::Global = new BlockScope(ScopeEnum::Global);
 
-Scope::Scope()
-    : parent(Scope::Global), containing_function_(nullptr),
-      name("anon" + std::to_string(scope_num_counter++)) {}
+Scope::Scope() : parent(Scope::Global), containing_function_(nullptr) {}
 
 AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
                                         Type *declared_type) {

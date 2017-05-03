@@ -118,7 +118,7 @@ Val Store(Val val, Val loc) {
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<Array *>(v.type)->fixed_length, "");
+  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length, "");
   Cmd cmd;
   cmd.result.type = Ptr(Uint);
   cmd.op_code = Op::ArrayLength;
@@ -132,9 +132,9 @@ Val ArrayLength(Val v) {
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<Array *>(v.type)->fixed_length, "");
+  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length, "");
   Cmd cmd;
-  cmd.result.type = Ptr(static_cast<Array *>(v.type)->data_type);
+  cmd.result.type = Ptr(static_cast<::Array *>(v.type)->data_type);
   cmd.op_code = Op::ArrayData;
   cmd.args = {std::move(v)};
   RegIndex reg;
@@ -200,11 +200,18 @@ Val Sub(Val v1, Val v2) { MAKE_AND_RETURN_OP(Sub, v1, v2); }
 Val Mul(Val v1, Val v2) { MAKE_AND_RETURN_OP(Mul, v1, v2); }
 Val Div(Val v1, Val v2) { MAKE_AND_RETURN_OP(Div, v1, v2); }
 Val Mod(Val v1, Val v2) { MAKE_AND_RETURN_OP(Mod, v1, v2); }
+Val Arrow(Val v1, Val v2) { MAKE_AND_RETURN_OP(Arrow, v1, v2); }
 #undef MAKE_AND_RETURN_OP
+
+Val Array(Val v1, Val v2) {
+  // TODO decide if Int vs Uint is allowed
+  ASSERT((v1.type == Uint || v1.type == Int) && v2.type == Type_, "");
+  MAKE_AND_RETURN(Array, v1, v2, Type_);
+}
 
 Val Access(Val index, Val val) {
   ASSERT(val.type->is_array(), "");
-  auto ptr_type = Ptr(static_cast<Array *>(val.type)->data_type);
+  auto ptr_type = Ptr(static_cast<::Array *>(val.type)->data_type);
   MAKE_AND_RETURN(Access, index, val, ptr_type);
 }
 
@@ -267,6 +274,8 @@ void Cmd::dump(size_t indent) const {
     case Op::Nop: std::cerr << "nop"; break;
     case Op::Call: std::cerr << "call"; break;
     case Op::SetReturn: std::cerr << "set-ret"; break;
+    case Op::Arrow: std::cerr << "arrow"; break;
+    case Op::Array: std::cerr << "array"; break;
   }
 
   if (args.empty()) { return; }

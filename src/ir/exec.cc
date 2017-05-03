@@ -169,6 +169,22 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else {
       UNREACHABLE;
     }
+  case Op::Arrow:
+    if (resolved[0].type == Type_) {
+      return Val::Type(::Func(resolved[0].as_type, resolved[1].as_type));
+    } else {
+      UNREACHABLE;
+    }
+  case Op::Array:
+    if (resolved[0].type == Uint) {
+      return Val::Type(
+          ::Arr(resolved[1].as_type, static_cast<size_t>(resolved[0].as_uint)));
+    } else if (resolved[0].type == Int) {
+      return Val::Type(
+          ::Arr(resolved[1].as_type, static_cast<size_t>(resolved[0].as_int)));
+    } else {
+      UNREACHABLE;
+    }
   case Op::And:
     if (resolved[0].type == Bool) {
       return Val::Bool(resolved[0].as_bool & resolved[1].as_bool);
