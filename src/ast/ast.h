@@ -87,7 +87,10 @@ struct Expression : public Node {
 
   virtual void VerifyReturnTypes(Type *) {}
 
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual IR::Val EmitIR() {
+    std::cerr << *this << std::endl;
+    NOT_YET;
+  }
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -294,6 +297,7 @@ struct Access : public Expression {
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
   static Node *Build(NPtrVec &&nodes);
+  virtual IR::Val EmitIR();
 
   virtual bool is_comma_list() const override {
     return ops.front() == Language::Operator::Comma;

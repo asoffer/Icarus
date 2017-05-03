@@ -189,7 +189,6 @@ int RunRepl() {
   std::cout << "Icarus REPL (v0.1)" << std::endl;
 
   while (true) {
-    // Read
     bool continue_to_next_line;
     std::vector<std::string> input_lines;
     std::string line_feed = "> ";
@@ -221,7 +220,6 @@ int RunRepl() {
     ReplSource src(std::move(input_lines));
     auto stmts = Parse(&src);
 
-    // Eval
     for (auto stmt : stmts->statements) {
       if (stmt->is_expression()) {
         std::cerr << Evaluate(static_cast<AST::Expression *>(stmt)).to_string()
@@ -230,8 +228,6 @@ int RunRepl() {
       }
     }
 
-    // Print
-    // TODO
   }
   return 0;
 }

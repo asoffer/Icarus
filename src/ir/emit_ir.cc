@@ -58,6 +58,17 @@ IR::Val AST::Binop::EmitIR() {
   }
 }
 
+IR::Val AST::ChainOp::EmitIR(){
+  verify_types();
+  if (ops[0] == Language::Operator::Xor) {
+    return std::accumulate(exprs.begin(), exprs.end(), IR::Val::Bool(false),
+                           [](IR::Val lhs, AST::Expression *expr) {
+                             return IR::Xor(lhs, expr->EmitIR());
+                           });
+  }
+  NOT_YET;
+}
+
 IR::Val AST::FunctionLiteral::Emit(bool) {
   verify_types();
 
