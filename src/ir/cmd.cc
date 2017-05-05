@@ -6,44 +6,19 @@ namespace IR {
 BlockIndex Block::Current;
 Func *Func::Current;
 
-Val Malloc(Type *t, Val v) {
-  ASSERT(v.type == ::Uint, "");
-  Cmd cmd;
-  cmd.result.type = t;
-  cmd.op_code = Op::Malloc;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index = IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
-}
-
-Val Free(Val v) {
-  ASSERT(v.type->is_pointer(), "");
-  Cmd cmd;
-  cmd.result.type = Void;
-  cmd.op_code = Op::Free;
-  cmd.args = {std::move(v)};
+Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
+    : args(std::move(args)), op_code(op) {
   RegIndex reg;
   reg.block_index = IR::Block::Current;
   reg.instr_index =
       IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  result = IR::Val::Reg(reg, t);
 }
 
 Val SetReturn(size_t n, Val v) {
-  Cmd cmd;
-  cmd.result.type = Void;
-  cmd.op_code = Op::SetReturn;
-  cmd.args = {IR::Val::Uint(n), std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
+  Cmd cmd(Void, Op::SetReturn, {IR::Val::Uint(n), std::move(v)});
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  return cmd.result;
 }
 
 Val Field(Val v, size_t n) {
@@ -51,114 +26,101 @@ Val Field(Val v, size_t n) {
   auto ptee_type = static_cast<Pointer *>(v.type)->pointee;
   ASSERT(ptee_type->is_struct(), "");
 
-  Cmd cmd;
-  cmd.result.type = Ptr(static_cast<Struct *>(ptee_type)->field_type[n]);
-  cmd.op_code = Op::Field;
-  cmd.args = {std::move(v), IR::Val::Uint(n)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
-}
-
-Val Neg(Val v) {
-  Cmd cmd;
-  cmd.op_code = Op::Neg;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  cmd.result = IR::Val::Reg(reg, v.type);
+  Cmd cmd(Ptr(static_cast<Struct *>(ptee_type)->field_type[n]), Op::Field,
+          {std::move(v), IR::Val::Uint(n)});
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
-Val Print(Val v) {
-  Cmd cmd;
-  cmd.result.type = Void;
-  cmd.op_code = Op::Print;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+#define MAKE_AND_RETURN(type, op)                                              \
+  Cmd cmd(type, op, {std::move(v)});                                           \
+  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
+  return cmd.result
+
+#define MAKE_AND_RETURN2(type, op)                                             \
+  Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
+  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
+  return cmd.result
+
+Val Malloc(Type *t, Val v) {
+  ASSERT(v.type == ::Uint, "");
+  MAKE_AND_RETURN(t, Op::Malloc);
+}
+
+Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
+Val Print(Val v) { MAKE_AND_RETURN(Void, Op::Print); }
+Val Free(Val v) {
+  ASSERT(v.type->is_pointer(), "");
+  MAKE_AND_RETURN(Void, Op::Free);
 }
 
 Val Load(Val v) {
   ASSERT(v.type->is_pointer(), "");
-  Cmd cmd;
-  cmd.result.type = static_cast<Pointer *>(v.type)->pointee;
-  cmd.op_code = Op::Load;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
-}
-
-Val Store(Val val, Val loc) {
-  ASSERT(loc.type->is_pointer(), "");
-  Cmd cmd;
-  cmd.result.type = static_cast<Pointer *>(val.type)->pointee;
-  cmd.op_code = Op::Store;
-  cmd.args = {std::move(val), std::move(loc)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  MAKE_AND_RETURN(static_cast<Pointer *>(v.type)->pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length, "");
-  Cmd cmd;
-  cmd.result.type = Ptr(Uint);
-  cmd.op_code = Op::ArrayLength;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length,
+         "");
+  MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length, "");
-  Cmd cmd;
-  cmd.result.type = Ptr(static_cast<::Array *>(v.type)->data_type);
-  cmd.op_code = Op::ArrayData;
-  cmd.args = {std::move(v)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length,
+         "");
+  MAKE_AND_RETURN(Ptr(static_cast<::Array *>(v.type)->data_type),
+                  Op::ArrayData);
+}
+
+Val Store(Val v1, Val v2) {
+  ASSERT(v2.type->is_pointer(), "");
+  MAKE_AND_RETURN2(static_cast<Pointer *>(v1.type)->pointee, Op::Store);
 }
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT(v1.type->is_pointer(), "");
   ASSERT(v2.type == ::Uint, "");
-  Cmd cmd;
-  cmd.result.type = v1.type;
-  cmd.op_code = Op::PtrIncr;
-  cmd.args = {std::move(v1), std::move(v2)};
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
+
+Val And(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::And); }
+Val Or(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Or); }
+Val Xor(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Xor); }
+
+Val Add(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Add); }
+Val Sub(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Sub); }
+Val Mul(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Mul); }
+Val Div(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Div); }
+Val Mod(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Mod); }
+Val Arrow(Val v1, Val v2) { MAKE_AND_RETURN2(Type_, Op::Arrow); }
+
+Val Array(Val v1, Val v2) {
+  // TODO decide if Int vs Uint is allowed
+  ASSERT((v1.type == Uint || v1.type == Int) && v2.type == Type_, "");
+  MAKE_AND_RETURN2(Type_, Op::Array);
+}
+
+Val Access(Val v1, Val v2) {
+  // v1 = index, v2 = val
+  ASSERT(v2.type->is_array(), "");
+  MAKE_AND_RETURN2(Ptr(static_cast<::Array *>(v2.type)->data_type), Op::Access);
+}
+
+Val Lt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Lt); }
+Val Le(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Le); }
+Val Eq(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Eq); }
+Val Ne(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ne); }
+Val Ge(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ge); }
+Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
+
+Val Cast(Val v1, Val v2) {
+  // v1 = result_type, v2 = val
+  ASSERT(v1.type == Type_, "");
+  MAKE_AND_RETURN2(v1.as_type, Op::Cast);
+}
+
+#undef MAKE_AND_RETURN2
+#undef MAKE_AND_RETURN
 
 Val Phi(Type *t) {
   Cmd cmd;
@@ -172,68 +134,14 @@ Val Phi(Type *t) {
   return IR::Val::Reg(reg, cmd.result.type);
 }
 
-#define MAKE_AND_RETURN(name, v1, v2, result_type)                             \
-  Cmd cmd;                                                                     \
-  cmd.op_code = Op::name;                                                      \
-  cmd.args = {std::move(v1), std::move(v2)};                                   \
-  RegIndex reg;                                                                \
-  reg.block_index = IR::Block::Current;                                        \
-  reg.instr_index =                                                            \
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();       \
-  cmd.result = IR::Val::Reg(reg, result_type);                                 \
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
-  return cmd.result;
-
-#define MAKE_AND_RETURN_BOOL_OP(name, v1, v2)                                  \
-  ASSERT(v1.type == ::Bool && v2.type == Bool, "");                            \
-  MAKE_AND_RETURN(name, v1, v2, Bool)
-Val And(Val v1, Val v2) { MAKE_AND_RETURN_BOOL_OP(And, v1, v2); }
-Val Or(Val v1, Val v2) { MAKE_AND_RETURN_BOOL_OP(Or, v1, v2); }
-Val Xor(Val v1, Val v2) { MAKE_AND_RETURN_BOOL_OP(Xor, v1, v2); }
-#undef MAKE_AND_RETURN_BOOL_OP
-
-#define MAKE_AND_RETURN_OP(name, v1, v2)                                       \
-  ASSERT(v1.type == v2.type, "");                                              \
-  MAKE_AND_RETURN(name, v1, v2, (v1).type)
-Val Add(Val v1, Val v2) { MAKE_AND_RETURN_OP(Add, v1, v2); }
-Val Sub(Val v1, Val v2) { MAKE_AND_RETURN_OP(Sub, v1, v2); }
-Val Mul(Val v1, Val v2) { MAKE_AND_RETURN_OP(Mul, v1, v2); }
-Val Div(Val v1, Val v2) { MAKE_AND_RETURN_OP(Div, v1, v2); }
-Val Mod(Val v1, Val v2) { MAKE_AND_RETURN_OP(Mod, v1, v2); }
-Val Arrow(Val v1, Val v2) { MAKE_AND_RETURN_OP(Arrow, v1, v2); }
-#undef MAKE_AND_RETURN_OP
-
-Val Array(Val v1, Val v2) {
-  // TODO decide if Int vs Uint is allowed
-  ASSERT((v1.type == Uint || v1.type == Int) && v2.type == Type_, "");
-  MAKE_AND_RETURN(Array, v1, v2, Type_);
-}
-
-Val Access(Val index, Val val) {
-  ASSERT(val.type->is_array(), "");
-  auto ptr_type = Ptr(static_cast<::Array *>(val.type)->data_type);
-  MAKE_AND_RETURN(Access, index, val, ptr_type);
-}
-
-#define MAKE_AND_RETURN_CMP(name, v1, v2)                                      \
-  ASSERT(v1.type == v2.type, "");                                              \
-  MAKE_AND_RETURN(name, v1, v2, Bool)
-Val Lt(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Lt, v1, v2); }
-Val Le(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Le, v1, v2); }
-Val Eq(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Eq, v1, v2); }
-Val Ne(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Ne, v1, v2); }
-Val Ge(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Ge, v1, v2); }
-Val Gt(Val v1, Val v2) { MAKE_AND_RETURN_CMP(Gt, v1, v2); }
-#undef MAKE_AND_RETURN_CMP
-#undef MAKE_AND_RETURN
-
 Val Call(Val fn, std::vector<Val> vals) {
   // TODO non-void functions?
   ASSERT(fn.type->is_function(), "");
   Cmd cmd;
-  cmd.result.type = fn.type;
+  cmd.result.type = fn.type; // TODO this is wrong
   cmd.op_code = Op::Call;
   cmd.args = std::move(vals);
+  cmd.args.push_back(fn);
   RegIndex reg;
   reg.block_index = IR::Block::Current;
   reg.instr_index =
@@ -243,7 +151,7 @@ Val Call(Val fn, std::vector<Val> vals) {
 }
 
 void Cmd::dump(size_t indent) const {
-  std::cerr << std::string(indent, ' ');
+  std::cerr << std::string(indent, ' ') << result.to_string() << " = ";
   switch (op_code) {
     case Op::Malloc: std::cerr << "malloc"; break;
     case Op::Free: std::cerr << "free"; break;
@@ -273,9 +181,10 @@ void Cmd::dump(size_t indent) const {
     case Op::Access: std::cerr << "access"; break;
     case Op::Nop: std::cerr << "nop"; break;
     case Op::Call: std::cerr << "call"; break;
+    case Op::Cast: std::cerr << "cast"; break;
     case Op::SetReturn: std::cerr << "set-ret"; break;
     case Op::Arrow: std::cerr << "arrow"; break;
-    case Op::Array: std::cerr << "array"; break;
+    case Op::Array: std::cerr << "array-type"; break;
   }
 
   if (args.empty()) { return; }

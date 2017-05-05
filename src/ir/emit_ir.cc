@@ -56,7 +56,26 @@ IR::Val AST::Binop::EmitIR() {
     CASE(Mod);
     CASE(Arrow);
 #undef CASE
-  default: { UNREACHABLE; }
+  case Language::Operator::Cast: {
+    ASSERT (!rhs->is_comma_list(), "");
+    auto lhs_ir = lhs->EmitIR();
+    auto rhs_ir = rhs->EmitIR();
+    return IR::Cast(lhs_ir, rhs_ir);
+  } break;
+  case Language::Operator::Call: {
+    auto lhs_ir = lhs->EmitIR();
+    std::vector<IR::Val> args;
+    if (rhs->is_comma_list()) {
+      NOT_YET;
+    } else {
+      args.push_back(rhs->EmitIR());
+    }
+    return IR::Call(lhs_ir, std::move(args));
+  } break;
+  default: {
+    std::cerr << *this << std::endl;
+    UNREACHABLE;
+  }
   }
 }
 

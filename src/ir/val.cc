@@ -42,8 +42,6 @@ Val Val::Block(BlockIndex bi) {
   MAKE_AND_RETURN(Kind::Const, ::Uint, as_block, bi);
 }
 
-Val Val::None() { return Val(); }
-
 // Using 'as_bool' for convenience. That field should never be used.
 Val Val::Null(::Type *t) {
   MAKE_AND_RETURN(Kind::Const, Ptr(t), as_bool, false);
@@ -55,7 +53,9 @@ std::string Val::to_string() const {
   case Kind::Arg:
     return type->to_string() + " a." + std::to_string(as_arg);
   case Kind::Reg:
-    return type->to_string() + " r." +  std::to_string(as_reg.block_index.value);
+    return type->to_string() + " r." +
+           std::to_string(as_reg.block_index.value) + "." +
+           std::to_string(as_reg.instr_index);
   case Kind::Frame:
     return type->to_string() + " f." + std::to_string(as_frame_addr);
   case Kind::Global:

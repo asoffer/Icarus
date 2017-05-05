@@ -62,11 +62,10 @@ struct Val {
   static Val Block(BlockIndex bi);
   static Val Null(::Type *t);
   static Val StrLit(const char *cstr);
-  static Val None();
+  static Val None() { return Val(); }
 
   std::string to_string() const;
 
-private:
   Val() : kind(Kind::Const), type(nullptr), as_bool(false) {}
 };
 
@@ -85,7 +84,7 @@ enum class Op : char {
   ArrayLength, ArrayData,
   PtrIncr,
   Phi, Field, Access,
-  Call,
+  Call, Cast,
   Nop, SetReturn,
   Arrow, Array,
 };
@@ -129,6 +128,7 @@ struct ExecContext {
 
 struct Cmd {
   Cmd() : op_code(Op::Nop), result(IR::Val::None()) {}
+  Cmd(Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code;
 
@@ -153,6 +153,7 @@ Val And(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Print(Val v);
+Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals);
 Val SetReturn(size_t n, Val v);
 Val Access(Val index, Val val);

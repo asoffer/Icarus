@@ -59,10 +59,9 @@ ExecContext::ExecContext(const Func *fn) : current_fn(fn), current_block{0} {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
+    auto result = ExecuteCmd(cmd);
     if (cmd.result.kind == Val::Kind::Reg) {
-      this->reg(cmd.result.as_reg) = ExecuteCmd(cmd);
-    } else {
-      ExecuteCmd(cmd);
+      this->reg(cmd.result.as_reg) = result;
     }
   }
 
@@ -184,6 +183,30 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
           ::Arr(resolved[1].as_type, static_cast<size_t>(resolved[0].as_int)));
     } else {
       UNREACHABLE;
+    }
+  case Op::Cast:
+    if (resolved[1].type == Int) {
+      if (resolved[0].as_type == Int) {
+        return resolved[1];
+      } else if (resolved[0].as_type == Uint) {
+        return IR::Val::Uint(static_cast<u64>(resolved[1].as_int));
+      } else if (resolved[0].as_type == Real) {
+        return IR::Val::Real(static_cast<double>(resolved[1].as_int));
+      } else {
+        NOT_YET;
+      }
+    } else if (resolved[1].type == Uint) {
+      if (resolved[0].as_type == Uint) {
+        return resolved[1];
+      } else if (resolved[0].as_type == Int) {
+        return IR::Val::Uint(static_cast<i64>(resolved[1].as_uint));
+      } else if (resolved[0].as_type == Real) {
+        return IR::Val::Real(static_cast<double>(resolved[1].as_uint));
+      } else {
+        NOT_YET;
+      }
+    } else {
+      NOT_YET;
     }
   case Op::And:
     if (resolved[0].type == Bool) {
