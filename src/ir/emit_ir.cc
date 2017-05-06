@@ -56,6 +56,11 @@ IR::Val AST::Terminal::EmitIR() {
   }
 }
 
+IR::Val AST::Identifier::EmitIR() {
+  verify_types();
+  NOT_YET;
+}
+
 IR::Val AST::Unop::EmitIR() {
   verify_types();
   switch (op) {
@@ -65,7 +70,7 @@ IR::Val AST::Unop::EmitIR() {
     auto val = operand->EmitIR();
     IR::SetReturn(0, val);
 
-    ASSERT(scope_->is_block_scope(), "");
+    ASSERT(scope_->is_exec(), "");
     // static_cast<BlockScope *>(scope_)->MakeReturn(operand->EmitIR());
     IR::Jump::Unconditional(IR::BlockIndex{1});
 

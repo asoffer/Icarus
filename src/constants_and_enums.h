@@ -14,15 +14,6 @@ enum class FileType { Bin, IR, Nat, None };
 
 constexpr size_t FAIL = ~0ul;
 
-namespace Time {
-  using Eval = int;
-  constexpr Eval either  = 0x0;
-  constexpr Eval compile = 0x1;
-  constexpr Eval run     = 0x2;
-  constexpr Eval mixed   = 0x3;
-  constexpr Eval error   = 0x7;
-}  // namespace Time
-
 enum class Order { Less, Equal, Greater };
 
 namespace Language {

@@ -8,7 +8,6 @@
 #include <set>
 #include <vector>
 #include <queue>
-#include <stack>
 #include <sstream>
 #include <fstream>
 #include <memory>
@@ -44,7 +43,6 @@ struct SliceType;
 struct Scope_Type;
 
 struct Scope;
-struct BlockScope;
 struct FnScope;
 
 using NPtrVec = std::vector<AST::Node *>;

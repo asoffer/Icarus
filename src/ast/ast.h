@@ -1,16 +1,15 @@
 #ifndef ICARUS_AST_AST_H
 #define ICARUS_AST_AST_H
 
-#define WITH_SCOPE(scope)                                                      \
-  for (bool SCOPE_FLAG = true; SCOPE_FLAG && (ScopeStack.push(scope), true);   \
-       ScopeStack.pop(), SCOPE_FLAG = false)
-
 #include <algorithm>
 
+#include "../scope.h"
 #include "../ir/ir.h"
 #include "../precompiled.h"
 #include "../cursor.h"
 #include "../base/debug.h"
+
+struct Scope;
 
 namespace Hashtag {
 size_t GetOrFailValue(const std::string &tag);
@@ -22,7 +21,7 @@ namespace AST {
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
-  virtual void assign_scope() ENDING;                                          \
+  virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING
 
@@ -31,14 +30,14 @@ namespace AST {
   virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
-  virtual void assign_scope() ENDING;                                          \
+  virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual IR::Val EmitLVal() { NOT_YET; }                                      \
   virtual void verify_types() ENDING
 
 struct Node {
   virtual std::string to_string(size_t n) const = 0;
   virtual void lrvalue_check() {}
-  virtual void assign_scope() {}
+  virtual void assign_scope(Scope *) {}
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
   virtual IR::Val EmitIR() { NOT_YET; }
@@ -160,6 +159,7 @@ struct Identifier : public Terminal {
   Identifier() = delete;
   EXPR_FNS(Identifier, identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
+  virtual IR::Val EmitIR();
 
   std::string token;
   Declaration *decl = nullptr;
@@ -332,7 +332,7 @@ struct Case : public Expression {
 };
 
 struct FunctionLiteral : public Expression {
-  FunctionLiteral();
+  FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral, function_literal);
   static Node *build(NPtrVec &&nodes);
   static Node *BuildOneLiner(NPtrVec &&nodes);
@@ -358,7 +358,6 @@ private:
 };
 
 struct For : public Node {
-  For();
   virtual ~For();
   VIRTUAL_METHODS_FOR_NODES;
 
@@ -369,7 +368,7 @@ struct For : public Node {
   std::vector<InDecl *> iterators;
   Statements *statements;
 
-  BlockScope *for_scope;
+  ExecScope *for_scope = nullptr;
 };
 
 struct DummyTypeExpr : public Expression {
@@ -393,7 +392,7 @@ struct Jump : public Node {
 
   Jump(const Cursor &new_cursor, JumpType jump_type);
 
-  BlockScope *scope;
+  ExecScope *scope;
   JumpType jump_type;
 };
 
@@ -407,7 +406,7 @@ struct ScopeNode : public Expression {
   Expression *scope_expr = nullptr;
   Expression *expr       = nullptr; // If the scope takes an argument, this is it
   Statements *stmts      = nullptr;
-  BlockScope *internal   = nullptr;
+  ExecScope *internal    = nullptr;
 };
 
 struct ScopeLiteral : public Expression {
@@ -416,7 +415,7 @@ struct ScopeLiteral : public Expression {
 
   Declaration *enter_fn = nullptr;
   Declaration *exit_fn  = nullptr;
-  Scope *body_scope = nullptr;
+  Scope *body_scope     = nullptr;
   ScopeLiteral(const Cursor &cursor);
 };
 

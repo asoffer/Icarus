@@ -63,65 +63,6 @@ size_t Get(const std::string &tag) {
 
 IR::Val PtrCallFix(IR::Val v) { return v.type->is_big() ? v : IR::Load(v); }
 
-Type *GetFunctionTypeReferencedIn(Scope *scope, const std::string &fn_name,
-                                  Type *input_type) {
-  for (auto scope_ptr = scope; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto id_ptr = scope_ptr->IdentifierHereOrNull(fn_name);
-    if (!id_ptr) { continue; }
-
-    if (!id_ptr->type) {
-      // NOTE: IdentifierHereOrNull always returns the identifier bound to the
-      // declaration, so if the type isn't specified, we need to actually verify
-      // the type of it's declaration.
-      ASSERT(id_ptr->decl, "");
-      id_ptr->decl->verify_types();
-      ASSERT(id_ptr->type, "");
-    }
-
-    if (id_ptr->type->is_function()) {
-      auto fn_type = (Function *)id_ptr->type;
-      if (fn_type->input == input_type) { return fn_type; }
-
-    } else {
-      UNREACHABLE;
-    }
-  }
-  return nullptr;
-}
-
-IR::Val GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
-                              Function *fn_type) {
-  Scope *scope_ptr = scope;
-  AST::Declaration *decl;
-
-  decl = scope->DeclReferencedOrNull(fn_name, fn_type);
-
-  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
-    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
-    if (decl) { break; }
-  }
-
-  if (!decl) { return IR::Val::None(); }
-
-  if(decl->addr == IR::Val::None()) {
-    if (decl->init_val->is_function_literal()) {
-      auto old_func = IR::Func::Current;
-      auto old_block = IR::Block::Current;
-
-      decl->addr = decl->init_val->EmitIR();
-      decl->addr.as_func->name = Mangle(fn_type, decl->identifier, scope_ptr);
-
-      IR::Func::Current  = old_func;
-      IR::Block::Current = old_block;
-    } else {
-      NOT_YET;
-    }
-  }
-
-  ASSERT(decl->addr != IR::Val::None(), "");
-  return IR::Load(decl->addr);
-}
-
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   if (expr->is_function_literal()) {
     return (AST::FunctionLiteral *)expr;

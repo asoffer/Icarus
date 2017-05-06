@@ -25,7 +25,7 @@ DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
   value = IR::Val::Type(t);
 }
 
-ScopeLiteral::ScopeLiteral(const Cursor &cursor) : body_scope(new Scope) {
+ScopeLiteral::ScopeLiteral(const Cursor &cursor) {
   loc   = cursor;
   value = IR::Val::None(); // TODO Scope(this);
 }
@@ -40,7 +40,4 @@ Identifier::Identifier(const Cursor &new_loc, const std::string &token_string) {
   precedence = Language::precedence(Language::Operator::NotAnOperator);
   loc        = new_loc;
 }
-
-FunctionLiteral::FunctionLiteral() : fn_scope(new FnScope(this)) {}
-For::For() : for_scope(new BlockScope(ScopeEnum::For)) {}
 } // namespace AST

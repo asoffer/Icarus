@@ -3,9 +3,6 @@
 #include "../ir/ir.h"
 #include "../scope.h"
 
-extern IR::Val GetFuncReferencedIn(Scope *scope, const std::string &fn_name,
-                                   Function *fn_type);
-
 extern IR::Val PtrCallFix(IR::Val v);
 
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
@@ -93,8 +90,8 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Store(from_val, to_var);
 
   } else {
-    auto fn = GetFuncReferencedIn(scope, "__assign__",
-                                  Func(Tup({Ptr(lhs_type), rhs_type}), Void));
+    auto fn = scope->FuncHereOrNull("__assign__",
+                                    Func(Tup({Ptr(lhs_type), rhs_type}), Void));
     if (fn != IR::Val::None()) {
       IR::Call(fn, {to_var, from_val});
     } else {

@@ -7,9 +7,9 @@
 extern IR::Val Evaluate(AST::Expression *expr);
 
 Struct::Struct(const std::string &name)
-    : type_scope(new Scope), bound_name(name), field_offsets(1, 0),
-      creator(nullptr), init_func(nullptr), assign_func(nullptr),
-      destroy_func(nullptr), completed_(false) {}
+    : bound_name(name), field_offsets(1, 0), creator(nullptr),
+      init_func(nullptr), assign_func(nullptr), destroy_func(nullptr),
+      completed_(false) {}
 
 void Struct::CompleteDefinition() {
   if (completed_) { return; }

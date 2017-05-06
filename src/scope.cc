@@ -3,13 +3,11 @@
 #include "ast/ast.h"
 #include "type/type.h"
 
-BlockScope *Scope::Global = new BlockScope(ScopeEnum::Global);
-
-Scope::Scope() : parent(Scope::Global), containing_function_(nullptr) {}
+DeclScope *Scope::Global = new DeclScope(nullptr);
 
 AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
                                         Type *declared_type) {
-  for (auto decl : DeclRegistry) {
+  for (auto decl : decls_) {
     if (decl->type == declared_type && decl->identifier->token == name) {
       return decl;
     }
@@ -26,26 +24,79 @@ AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
   return nullptr;
 }
 
-AST::Identifier *Scope::IdentifierHereOrNull(const std::string &name) {
-  for (auto decl : DeclRegistry) {
+AST::Identifier *Scope::IdHereOrNull(const std::string &name) {
+  for (auto decl : decls_) {
     if (decl->identifier->token == name) { return decl->identifier; }
   }
   return nullptr;
 }
 
-AST::Identifier *Scope::IdentifierBeingReferencedOrNull(const std::string &name) {
+AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
-    auto ptr  = scope_ptr->IdentifierHereOrNull(name);
+    auto ptr = scope_ptr->IdHereOrNull(name);
     if (ptr) { return ptr; }
   }
   return nullptr;
 }
 
+Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
+                                          Type *input_type) {
+  for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
+    auto id_ptr = scope_ptr->IdHereOrNull(fn_name);
+    if (!id_ptr) { continue; }
+
+    if (!id_ptr->type) {
+      // NOTE: IdHereOrNull always returns the identifier bound to the
+      // declaration, so if the type isn't specified, we need to actually verify
+      // the type of it's declaration.
+      ASSERT(id_ptr->decl, "");
+      id_ptr->decl->verify_types();
+      ASSERT(id_ptr->type, "");
+    }
+
+    ASSERT(id_ptr->type->is_function(), "");
+    auto fn_type = (Function *)id_ptr->type;
+    if (fn_type->input == input_type) { return fn_type; }
+  }
+  return nullptr;
+}
+
+IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
+  Scope *scope_ptr = this;
+  AST::Declaration *decl;
+
+  decl = DeclReferencedOrNull(fn_name, fn_type);
+  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
+    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
+    if (decl) { break; }
+  }
+
+  if (!decl) { return IR::Val::None(); }
+
+  if (decl->addr == IR::Val::None()) {
+    if (decl->init_val->is_function_literal()) {
+      auto old_func  = IR::Func::Current;
+      auto old_block = IR::Block::Current;
+
+      decl->addr               = decl->init_val->EmitIR();
+      decl->addr.as_func->name = Mangle(fn_type, decl->identifier, scope_ptr);
+
+      IR::Func::Current  = old_func;
+      IR::Block::Current = old_block;
+    } else {
+      NOT_YET;
+    }
+  }
+
+  ASSERT(decl->addr != IR::Val::None(), "");
+  return IR::Load(decl->addr);
+}
+
 std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
   std::vector<AST::Declaration *> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
-       scope_ptr = scope_ptr->parent) {
-    for (auto decl : scope_ptr->DeclRegistry) {
+       scope_ptr      = scope_ptr->parent) {
+    for (auto decl : scope_ptr->decls_) {
       if (decl->identifier->token != id) { continue; }
       decl->verify_types();
       if (decl->type == Err) { continue; }
@@ -54,55 +105,3 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
   }
   return matching_decls;
 }
-
-// Set pointer to the parent scope. This is an independent concept from LLVM's
-// "parent". For us, functions can be declared in local scopes, so we will
-// likely need this structure.
-void Scope::set_parent(Scope *new_parent) {
-  ASSERT(new_parent, "Setting scope's parent to be a nullptr.");
-  ASSERT(new_parent != this, "Setting parent as self");
-
-  if (parent && parent->containing_function_) {
-    parent->containing_function_->innards_.erase(this);
-  }
-
-  parent = new_parent;
-
-  containing_function_ = new_parent->is_function_scope()
-                             ? (FnScope *)parent
-                             : parent->containing_function_;
-
-  if (containing_function_) { containing_function_->innards_.insert(this); }
-}
-
-BlockScope::BlockScope(ScopeEnum st)
-    : type(st), entry_block(nullptr), exit_block(nullptr) {}
-
-void BlockScope::MakeReturn(IR::Val val) {
-  // TODO actual returned type (second type arg) may be different
-
-
-  if (val.type == Void) {
-    IR::Jump::Unconditional(IR::BlockIndex{1});
-  } else if (val.type->is_primitive()) {
-    // TODO IR::Store(RETURN_FLAG, GetFnScope()->exit_flag);
-    IR::SetReturn(0, val);
-    IR::Jump::Unconditional(IR::BlockIndex{1}); // TODO make this index correct
-  }
-  // TODO set current block to be unreachable. access to it should trigger an
-  // error that no code there will ever be executed.
-}
-
-void BlockScope::InsertDestroy() {
-  for (auto decl : DeclRegistry) {
-    if (decl->arg_val || decl->is_in_decl() ||
-        decl->type->time() == Time::compile) {
-      continue;
-    }
-    decl->type->EmitDestroy(decl->identifier->EmitLVal());
-  }
-}
-
-FnScope::FnScope(AST::FunctionLiteral *lit)
-    : BlockScope(ScopeEnum::Function), fn_type(nullptr), fn_lit(lit),
-      exit_flag(NORMAL_FLAG), ret_val(IR::Val::None()) {}

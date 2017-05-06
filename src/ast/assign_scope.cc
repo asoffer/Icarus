@@ -1,162 +1,127 @@
-#include "../scope.h"
-#include "../ir/ir.h"
-#include "../type/type.h"
 #include "ast.h"
-#include <stack>
 
-#define ITERATE_OR_SKIP(container)                                             \
-  for (auto ptr : container) {                                                 \
-    if (!ptr) { continue; }                                                    \
-    ptr->assign_scope();                                                       \
-  }
-
-std::stack<Scope *> ScopeStack;
-static Scope *CurrentScope() {
-  return ScopeStack.empty() ? nullptr : ScopeStack.top();
-}
+#include "../ir/ir.h"
+#include "../scope.h"
+#include "../type/type.h"
 
 namespace AST {
-void Unop::assign_scope() {
-  scope_ = CurrentScope();
-  operand->assign_scope();
-}
-void Access::assign_scope() {
-  scope_ = CurrentScope();
-  operand->assign_scope();
+void Unop::assign_scope(Scope *scope) {
+  scope_ = scope;
+  operand->assign_scope(scope);
 }
 
-void Identifier::assign_scope() { scope_ = CurrentScope(); }
-void Terminal::assign_scope() { scope_ = CurrentScope(); }
-
-void ArrayType::assign_scope() {
-  scope_ = CurrentScope();
-  length->assign_scope();
-  data_type->assign_scope();
+void Access::assign_scope(Scope *scope) {
+  scope_ = scope;
+  operand->assign_scope(scope);
 }
 
-void For::assign_scope() {
-  scope_ = CurrentScope();
-  for_scope->set_parent(CurrentScope());
+void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
+void Terminal::assign_scope(Scope *scope) { scope_ = scope; }
 
-  WITH_SCOPE(for_scope) {
-    for (auto it : iterators) {
-      it->assign_scope();
-    }
-    statements->assign_scope();
-  }
+void ArrayType::assign_scope(Scope *scope) {
+  scope_ = scope;
+  length->assign_scope(scope);
+  data_type->assign_scope(scope);
 }
 
-void ArrayLiteral::assign_scope() {
-  scope_ = CurrentScope();
-  for (auto &el : elems) { el->assign_scope(); }
+void For::assign_scope(Scope *scope) {
+  if (!for_scope) { for_scope = scope->add_child<ExecScope>(); }
+  for_scope->can_jump = true;
+  for (auto it : iterators) { it->assign_scope(for_scope); }
+  statements->assign_scope(for_scope);
 }
 
-void Binop::assign_scope() {
-  scope_ = CurrentScope();
-  lhs->assign_scope();
-  if (rhs) { rhs->assign_scope(); }
+void ArrayLiteral::assign_scope(Scope *scope) {
+  scope_ = scope;
+  for (auto &el : elems) { el->assign_scope(scope); }
 }
 
-void Generic::assign_scope() {
-  scope_ = CurrentScope();
-  scope_->DeclRegistry.push_back(this);
-  identifier->assign_scope();
-  test_fn->assign_scope();
+void Binop::assign_scope(Scope *scope) {
+  scope_ = scope;
+  lhs->assign_scope(scope);
+  if (rhs) { rhs->assign_scope(scope); }
 }
 
-void InDecl::assign_scope() {
-  scope_ = CurrentScope();
-  scope_->DeclRegistry.push_back(this);
-  identifier->assign_scope();
-  container->assign_scope();
+void Generic::assign_scope(Scope *scope) {
+  scope_ = scope;
+  scope_->decls_.push_back(this);
+  identifier->assign_scope(scope);
+  test_fn->assign_scope(scope);
 }
 
-void Declaration::assign_scope() {
-  scope_ = CurrentScope();
-  scope_->DeclRegistry.push_back(this);
-  identifier->assign_scope();
-  if (type_expr) { type_expr->assign_scope(); }
-  if (init_val) { init_val->assign_scope(); }
+void InDecl::assign_scope(Scope *scope) {
+  scope_ = scope;
+  scope_->decls_.push_back(this);
+  identifier->assign_scope(scope);
+  container->assign_scope(scope);
 }
 
-void ChainOp::assign_scope() {
-  scope_ = CurrentScope();
-  for (auto &expr : exprs) { expr->assign_scope(); }
+void Declaration::assign_scope(Scope *scope) {
+  scope_ = scope;
+  scope_->decls_.push_back(this);
+  identifier->assign_scope(scope);
+  if (type_expr) { type_expr->assign_scope(scope); }
+  if (init_val) { init_val->assign_scope(scope); }
 }
 
-void Case::assign_scope() {
-  scope_ = CurrentScope();
+void ChainOp::assign_scope(Scope *scope) {
+  scope_ = scope;
+  for (auto &expr : exprs) { expr->assign_scope(scope); }
+}
+
+void Case::assign_scope(Scope *scope) {
+  scope_ = scope;
   for (auto &kv : key_vals) {
-    kv.first->assign_scope();
-    kv.second->assign_scope();
+    kv.first->assign_scope(scope);
+    kv.second->assign_scope(scope);
   }
 }
 
-void Statements::assign_scope() {
-  scope_ = CurrentScope();
-  for (auto &nptr : statements) { nptr->assign_scope(); }
+void Statements::assign_scope(Scope *scope) {
+  scope_ = scope;
+  for (auto nptr : statements) { nptr->assign_scope(scope); }
 }
 
-void FunctionLiteral::assign_scope() {
-  scope_ = CurrentScope();
-  fn_scope->set_parent(CurrentScope());
-  WITH_SCOPE(fn_scope) {
-    return_type_expr->assign_scope();
-    for (auto &in : inputs) {
-      in->assign_scope();
-    }
-    statements->assign_scope();
+void FunctionLiteral::assign_scope(Scope *scope) {
+  if (!fn_scope) {
+    fn_scope         = scope->add_child<FnScope>();
+    fn_scope->fn_lit = this;
   }
+
+  return_type_expr->assign_scope(fn_scope);
+  for (auto &in : inputs) { in->assign_scope(fn_scope); }
+  statements->assign_scope(fn_scope);
 }
 
-void Jump::assign_scope() { scope_ = CurrentScope(); }
-
-void CodeBlock::assign_scope() { scope_ = CurrentScope(); }
-
-void DummyTypeExpr::assign_scope() {
-  scope_ = CurrentScope();
+void Jump::assign_scope(Scope *scope) { scope_ = scope; }
+void CodeBlock::assign_scope(Scope *scope) { scope_ = scope; }
+void DummyTypeExpr::assign_scope(Scope *scope) {
+  scope_ = scope;
   if (value.as_type->is_parametric_struct()) {
-    auto ps = (ParamStruct *)value.as_type;
-    ps->type_scope->set_parent(CurrentScope());
+    auto ps = static_cast<ParamStruct *>(value.as_type);
+    if (!ps->type_scope) { ps->type_scope = scope->add_child<DeclScope>(); }
 
-    WITH_SCOPE(ps->type_scope) {
-      for (auto p : ps->params) {
-        p->assign_scope();
-      }
-      for (auto d : ps->decls) {
-        d->assign_scope();
-      }
-    }
+    for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
+    for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
+
   } else if (value.as_type->is_struct()) {
-    auto s = (Struct *)value.as_type;
-    s->type_scope->set_parent(CurrentScope());
-
-    WITH_SCOPE(s->type_scope) {
-      for (auto d : s->decls) {
-        d->assign_scope();
-      }
-    }
+    auto s = static_cast<Struct *>(value.as_type);
+    if (!s->type_scope) { s->type_scope = scope->add_child<DeclScope>(); }
+    for (auto d : s->decls) { d->assign_scope(s->type_scope); }
   }
 }
 
-void ScopeNode::assign_scope() {
-  scope_ = CurrentScope();
-  internal->set_parent(CurrentScope());
-
-  scope_expr->assign_scope();
-  if (expr) { expr->assign_scope(); }
-
-  WITH_SCOPE(internal) { stmts->assign_scope(); }
+void ScopeNode::assign_scope(Scope *scope) {
+  scope_ = scope;
+  if (!internal) { internal = scope_->add_child<ExecScope>(); }
+  scope_expr->assign_scope(scope);
+  if (expr) { expr->assign_scope(scope); }
+  stmts->assign_scope(internal);
 }
 
-void ScopeLiteral::assign_scope() {
-  scope_ = CurrentScope();
-
-  // TODO internals are at their own scope
-  WITH_SCOPE(body_scope) {
-    enter_fn->assign_scope();
-    exit_fn->assign_scope();
-  }
+void ScopeLiteral::assign_scope(Scope *scope) {
+  scope_ = scope;
+  enter_fn->assign_scope(body_scope);
+  exit_fn->assign_scope(body_scope);
 }
 } // namespace AST
-#undef ITERATE_OR_SKIP

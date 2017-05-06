@@ -1,5 +1,6 @@
-#include "../scope.h"
 #include "ast.h"
+
+#include "../scope.h"
 #include "../type/type.h"
 #include "../error_log.h"
 #include "../ir/ir.h"
@@ -9,16 +10,8 @@
 extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
-extern Type *GetFunctionTypeReferencedIn(Scope *scope,
-                                         const std::string &fn_name,
-                                         Type *input_type);
 
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
-extern std::stack<Scope *> ScopeStack;
-
-static Scope *CurrentScope() {
-  return ScopeStack.empty() ? nullptr : ScopeStack.top();
-}
 
 enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
 static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
@@ -61,35 +54,30 @@ GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
       nullptr; // TODO (AST::FunctionLiteral *)fn_lit->clone(
                // num_matches, lookup_key, lookup_val);
 
-  AST::Declaration* decl;
-  WITH_SCOPE(scope ? scope : fn_lit->scope_) {
-    auto new_id = new AST::Identifier(fn_lit->loc, name);
-    decl = new AST::Declaration;
-    new_id->decl = decl;
-    new_id->type = cloned_func->type;
-    new_id->scope_ = scope ? scope : fn_lit->scope_;
-    decl->loc = fn_lit->loc;
-    decl->scope_ = scope ? scope : fn_lit->scope_;
-    decl->identifier = new_id;
-    decl->init_val = cloned_func;
-    decl->addr = IR::Val::None();
-    decl->arg_val = nullptr;
+  AST::Declaration *decl;
+  auto decl_scope   = scope ? scope : fn_lit->scope_;
+  auto new_id      = new AST::Identifier(fn_lit->loc, name);
+  decl             = new AST::Declaration;
+  new_id->decl     = decl;
+  new_id->type     = cloned_func->type;
+  new_id->scope_   = scope ? scope : fn_lit->scope_;
+  decl->loc        = fn_lit->loc;
+  decl->scope_     = scope ? scope : fn_lit->scope_;
+  decl->identifier = new_id;
+  decl->init_val   = cloned_func;
+  decl->addr       = IR::Val::None();
+  decl->arg_val    = nullptr;
 
-    // We don't want to run decl->assign_scope() because that automatically adds
-    // it to the scopes DeclRegistry. This will mean it can be looked up in type
-    // verification. We want this function to be matched by its generic form and
-    // then looked up in the cache rather than matching outright.
+  // We don't want to run decl->assign_scope() because that automatically adds
+  // it to the scopes decls_. This will mean it can be looked up in type
+  // verification. We want this function to be matched by its generic form and
+  // then looked up in the cache rather than matching outright.
 
-    decl->scope_ = CurrentScope();
-    decl->identifier->assign_scope();
-    if (decl->type_expr) {
-      decl->type_expr->assign_scope();
-    }
-    if (decl->init_val) {
-      decl->init_val->assign_scope();
-    }
-    decl->verify_types();
-  }
+  decl->scope_ = decl_scope;
+  decl->identifier->assign_scope(decl_scope);
+  if (decl->type_expr) { decl->type_expr->assign_scope(decl_scope); }
+  if (decl->init_val) { decl->init_val->assign_scope(decl_scope); }
+  decl->verify_types();
 
   delete[] lookup_key;
   delete[] lookup_val;
@@ -420,9 +408,9 @@ void Identifier::verify_types() {
 
   for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr = scope_ptr->parent) {
-    if (scope_ptr->is_function_scope()) {
+    if (scope_ptr->is_fn()) {
       static_cast<FnScope *>(scope_ptr)->fn_lit->captures.insert(decl);
-    } else if (scope_ptr->is_block_scope()) {
+    } else if (scope_ptr->is_exec()) {
       continue;
     } else {
       ErrorLog::InvalidCapture(loc, decl);
@@ -488,13 +476,13 @@ void Unop::verify_types() {
 
     } else if (operand->type->is_struct()) {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__neg__");
+        auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
         if (!id_ptr) { continue; }
 
         id_ptr->verify_types();
       }
 
-      auto t = GetFunctionTypeReferencedIn(scope_, "__neg__", operand->type);
+      auto t = scope_->FunctionTypeReferencedOrNull("__neg__", operand->type);
       if (t) {
         type = ((Function *)t)->output;
       } else {
@@ -956,8 +944,8 @@ void Binop::verify_types() {
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
       for (auto scope_ptr = scope_; scope_ptr;                                 \
-           scope_ptr = scope_ptr->parent) {                                    \
-        for (auto decl : scope_ptr->DeclRegistry) {                            \
+           scope_ptr      = scope_ptr->parent) {                               \
+        for (auto decl : scope_ptr->decls_) {                                  \
           if (decl->identifier->token == "__" op_name "__") {                  \
             decl->verify_types();                                              \
             matched_op_name.push_back(decl);                                   \
@@ -1021,14 +1009,14 @@ void Binop::verify_types() {
 
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdentifierHereOrNull("__mul__");
+        auto id_ptr = scope_ptr->IdHereOrNull("__mul__");
         if (!id_ptr) { continue; }
 
         // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
       }
 
-      auto fn_type = GetFunctionTypeReferencedIn(scope_, "__mul__",
-                                                 Tup({lhs->type, rhs->type}));
+      auto fn_type = scope_->FunctionTypeReferencedOrNull(
+          "__mul__", Tup({lhs->type, rhs->type}));
       if (fn_type) {
         type = ((Function *)fn_type)->output;
       } else {
@@ -1510,24 +1498,17 @@ void For::verify_types() {
 }
 
 void Jump::verify_types() {
+  // TODO made this slightly wrong
   auto scope_ptr = scope_;
-  while (scope_ptr) {
-    
-    auto block_scope_ptr = (BlockScope *)scope_ptr;
-    if (block_scope_ptr->type == ScopeEnum::Function) {
-      if (jump_type != JumpType::Return) { ErrorLog::JumpOutsideLoop(loc); }
+  while (scope_ptr && scope_ptr->is_exec()) {
+    auto exec_scope_ptr = static_cast<ExecScope *>(scope_ptr);
+    if (exec_scope_ptr->can_jump) {
+      scope = exec_scope_ptr;
       return;
     }
-
-    if (block_scope_ptr->is_loop_scope()) {
-      scope = block_scope_ptr;
-      return;
-    }
-
-    scope_ptr = block_scope_ptr->parent;
+    scope_ptr = exec_scope_ptr->parent;
   }
-
-  UNREACHABLE;
+  ErrorLog::JumpOutsideLoop(loc);
 }
 
 // Intentionally do not verify anything internal

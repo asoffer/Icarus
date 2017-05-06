@@ -604,7 +604,6 @@ Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
   scope_node->scope_expr = scope_name;
   scope_node->expr       = arg_expr;
   scope_node->stmts      = stmt_node;
-  scope_node->internal   = new BlockScope(ScopeEnum::Standard);
   return scope_node;
 }
 

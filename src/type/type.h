@@ -56,7 +56,6 @@ extern Scope_Type *ScopeType(Type *t);
 
 #define BASIC_METHODS                                                          \
   virtual std::string to_string() const ENDING;                                \
-  virtual Time::Eval time() ENDING;                                            \
   virtual void EmitInit(IR::Val id_val) ENDING;                                \
   virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
@@ -219,7 +218,7 @@ struct Struct : public Type {
 
   void CompleteDefinition();
 
-  Scope *type_scope;
+  Scope *type_scope = nullptr;
   std::vector<AST::Declaration *> decls;
 
   std::string bound_name;
@@ -251,7 +250,7 @@ struct ParamStruct : public Type {
   IR::Func *IRFunc();
 
   std::string bound_name;
-  Scope *type_scope;
+  Scope *type_scope = nullptr;
   std::vector<AST::Declaration *> params, decls;
   std::map<std::vector<IR::Val>, Struct *> cache;
   std::map<Struct *, std::vector<IR::Val>> reverse_cache;

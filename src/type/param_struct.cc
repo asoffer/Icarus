@@ -7,8 +7,7 @@
 ParamStruct::ParamStruct(const std::string &name,
                          const std::vector<AST::Declaration *> params,
                          const std::vector<AST::Declaration *> decls)
-    : bound_name(name), type_scope(new Scope), params(params), decls(decls),
-      ir_func(nullptr) {}
+    : bound_name(name), params(params), decls(decls), ir_func(nullptr) {}
 
 IR::Func *ParamStruct::IRFunc() {
   NOT_YET;

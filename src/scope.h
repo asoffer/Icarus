@@ -16,38 +16,42 @@ struct Func;
 struct Type;
 struct Function;
 
-#include <vector>
-#include <set>
 #include "ir/ir.h"
+#include <vector>
 
-enum class ScopeEnum { For, Function, Global, Type, Standard };
-
-struct BlockScope;
+struct DeclScope;
+struct ExecScope;
 struct FnScope;
 
-
 struct Scope {
-  static BlockScope *Global; // TODO Should this be it's own type
+  Scope() = delete;
+  Scope(Scope *parent) : parent(parent) {}
+  virtual ~Scope() {}
 
-  void set_parent(Scope *parent);
+  static DeclScope *Global;
 
-  FnScope *GetFnScope() {
-    return is_function_scope() ? (FnScope *)this : containing_function_;
+  virtual bool is_decl() { return false; }
+  virtual bool is_exec() { return false; }
+  virtual bool is_fn() { return false; }
+
+  template <typename ScopeType> ScopeType *add_child() {
+    return new ScopeType(this);
   }
-
-  virtual bool is_block_scope() { return false; }
-  virtual bool is_function_scope() { return false; }
-  bool is_loop_scope();
 
   // Returns an identifier pointer if there is a declaration of this identifier
   // in this scope. Otherwise it returns nullptr. It does *not* look in parent
   // scopes.
-  AST::Identifier *IdentifierHereOrNull(const std::string &name);
+  AST::Identifier *IdHereOrNull(const std::string &name);
 
   // Returns the identifier pointer being referenced by this string name, going
   // up the chaing of scopes as necessary. It returns nullptr if no such
   // identifier can be found.
-  AST::Identifier *IdentifierBeingReferencedOrNull(const std::string &name);
+  AST::Identifier *IdReferencedOrNull(const std::string &name);
+
+  Type *FunctionTypeReferencedOrNull(const std::string &fn_name,
+                                     Type *input_type);
+
+  IR::Val FuncHereOrNull(const std::string &fn_name, Function *fn_type);
 
   AST::Declaration *DeclHereOrNull(const std::string &name,
                                    Type *declared_type);
@@ -57,45 +61,40 @@ struct Scope {
 
   std::vector<AST::Declaration *> AllDeclsWithId(const std::string &id);
 
-  Scope();
-  Scope(const Scope &) = delete;
-  Scope(Scope &&) = delete;
-  virtual ~Scope() {}
-
-  std::vector<AST::Declaration *> DeclRegistry;
-
-  Scope *parent;
-  FnScope *containing_function_;
-  // std::string name;
+  std::vector<AST::Declaration *> decls_;
+  Scope *parent = nullptr;
 };
 
-struct BlockScope : public Scope {
-  BlockScope() = delete;
-  BlockScope(ScopeEnum st);
-  virtual ~BlockScope() {}
-  virtual bool is_block_scope() { return true; }
-
-  void InsertDestroy();
-
-  void MakeReturn(IR::Val val);
-
-  ScopeEnum type;
-  IR::Block *entry_block, *exit_block;
+struct DeclScope : public Scope {
+ DeclScope(Scope *parent) : Scope(parent) {}
+ ~DeclScope() override {}
+ bool is_decl() final { return true; }
 };
 
-struct FnScope : public BlockScope {
-  FnScope(AST::FunctionLiteral *lit);
-  virtual bool is_function_scope() { return true; }
-  virtual ~FnScope() {}
+struct ExecScope : public Scope {
+  ExecScope(Scope *parent) : Scope(parent) {}
+  ~ExecScope() override {}
+  bool is_exec() final { return true; }
+
+  bool can_jump = false;
+
+  FnScope *ContainingFnScope();
+};
+
+struct FnScope : public ExecScope {
+  FnScope(Scope *parent) : ExecScope(parent) {}
+  ~FnScope() final {}
+  bool is_fn() final { return true; }
 
   Function *fn_type            = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
-  std::set<Scope *> innards_;
-  IR::Val exit_flag, ret_val;
 };
 
-inline bool Scope::is_loop_scope() {
-  return is_block_scope() && ((BlockScope *)this)->type == ScopeEnum::For;
+inline FnScope *ExecScope::ContainingFnScope() {
+  Scope *scope = this;
+  while (scope && !scope->is_fn()) {
+    scope = scope->parent;
+  }
+  return static_cast<FnScope*>(scope);
 }
-
 #endif // ICARUS_SCOPE_H

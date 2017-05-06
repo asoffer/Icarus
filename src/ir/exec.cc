@@ -10,7 +10,9 @@ static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   expr->verify_types();
   auto fn_ptr = new AST::FunctionLiteral;
 
+  // TODO should these be at global scope? or a separate REPL scope?
   fn_ptr->type               = Func(Void, expr->type);
+  fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
   fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
   fn_ptr->scope_             = expr->scope_;
   fn_ptr->statements         = new AST::Statements;

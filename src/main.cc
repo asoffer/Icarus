@@ -28,7 +28,6 @@ extern void CompletelyVerify(AST::Node *node);
 extern AST::Statements *Parse(Source *source);
 extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
-extern std::stack<Scope *> ScopeStack;
 extern Timer timer;
 
 // extern IR::Val GetInitialGlobal(size_t global_addr);
@@ -111,7 +110,7 @@ int GenerateCode() {
 
   RUN(timer, "AST Setup") {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));
-    WITH_SCOPE(Scope::Global) { global_statements->assign_scope(); }
+    global_statements->assign_scope(Scope::Global);
   }
 
   RUN(timer, "Verify and Emit") {
