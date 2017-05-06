@@ -84,6 +84,10 @@ std::string Val::to_string() const {
       return as_type->to_string();
     } else if (type == ::Void) {
       return "<void>";
+    } else if (type->is_function()) {
+      std::stringstream ss;
+      ss << "fn." << as_func;
+      return ss.str();
     } else {
       UNREACHABLE;
     }

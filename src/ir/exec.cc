@@ -101,6 +101,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   std::vector<Val> resolved = cmd.args;
   for (auto& r : resolved) { Resolve(&r); }
 
+cmd.dump(10);
   switch (cmd.op_code) {
   case Op::Neg:
     if (resolved[0].type == Bool) {
@@ -310,12 +311,25 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     rets_[resolved[0].as_uint] = resolved[1];
     return IR::Val::None();
   }
-  default: NOT_YET;
+  case Op::Extend:
+    return Val::Uint(static_cast<u64>(resolved[0].as_char));
+  case Op::Trunc:
+    return Val::Char(static_cast<char>(resolved[0].as_uint));
+  case Op::Call: {
+    IR::Val fn = resolved.back();
+    resolved.pop_back();
+    // TODO local stack? multiple returns?
+    return fn.as_func->Execute(nullptr, std::move(resolved))[0];
+  } break;
+  default:
+    NOT_YET;
   }
+  UNREACHABLE;
 }
 
-std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val>) const {
+std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val> arguments) const {
   auto ctx = ExecContext(this);
+  ctx.args_ = std::move(arguments);
   // Type *output_type = static_cast<Function *>(type)->output;
   // tuples for output returns?
   // TODO these should be in the ctor
@@ -324,7 +338,6 @@ std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val>) const {
   for (size_t i = 0; i < blocks_.size(); ++i) {
     ctx.regs_[i].resize(blocks_[i].cmds_.size(), IR::Val::None());
   }
-
   // TODO args
   while (true) {
     auto block_index = ctx.ExecuteBlock();

@@ -75,6 +75,7 @@ inline bool operator==(const Val& lhs, const Val& rhs) {
 inline bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
 
 enum class Op : char {
+  Trunc, Extend,
   Neg, // ! for bool, - for numeric types
   Add, Sub, Mul, Div, Mod, // numeric types only
   Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
@@ -138,6 +139,8 @@ struct Cmd {
 };
 
 Val Neg(Val v);
+Val Trunc(Val v);
+Val Extend(Val v);
 Val Add(Val v1, Val v2);
 Val Sub(Val v1, Val v2);
 Val Mul(Val v1, Val v2);

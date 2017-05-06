@@ -1,6 +1,40 @@
 #include "ir.h"
+
 #include "../ast/ast.h"
 #include "../scope.h"
+#include "../type/type.h"
+
+static IR::Val AsciiFunc() {
+  static IR::Func *ascii_func_ = []() {
+    auto fn = new IR::Func(Func(Uint, Char));
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+      IR::SetReturn(0, IR::Trunc(IR::Val::Arg(::Uint, 0)));
+      IR::Jump::Unconditional(fn->exit());
+
+      IR::Block::Current = fn->exit();
+      IR::Jump::Return();
+    }
+    return fn;
+  }();
+  return IR::Val::Func(ascii_func_);
+}
+
+static IR::Val OrdFunc() {
+  static IR::Func *ord_func_ = []() {
+    auto fn = new IR::Func(Func(Char, Uint));
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+      IR::SetReturn(0, IR::Extend(IR::Val::Arg(::Uint, 0)));
+      IR::Jump::Unconditional(fn->exit());
+
+      IR::Block::Current = fn->exit();
+      IR::Jump::Return();
+    }
+    return fn;
+  }();
+  return IR::Val::Func(ord_func_);
+}
 
 IR::Val AST::Terminal::EmitIR() {
   verify_types();
@@ -13,6 +47,11 @@ IR::Val AST::Terminal::EmitIR() {
   case Language::Terminal::Uint:
   case Language::Terminal::True:
   case Language::Terminal::False: return value;
+  case Language::Terminal::ASCII: return AsciiFunc();
+  case Language::Terminal::Ord: return OrdFunc();
+  case Language::Terminal::Return:
+    IR::Jump::Return();
+    return IR::Val::None();
   default: NOT_YET;
   }
 }

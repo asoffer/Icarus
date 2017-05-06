@@ -47,6 +47,8 @@ Val Malloc(Type *t, Val v) {
   MAKE_AND_RETURN(t, Op::Malloc);
 }
 
+Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
+Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
 Val Print(Val v) { MAKE_AND_RETURN(Void, Op::Print); }
 Val Free(Val v) {
@@ -135,19 +137,11 @@ Val Phi(Type *t) {
 }
 
 Val Call(Val fn, std::vector<Val> vals) {
-  // TODO non-void functions?
   ASSERT(fn.type->is_function(), "");
-  Cmd cmd;
-  cmd.result.type = fn.type; // TODO this is wrong
-  cmd.op_code = Op::Call;
-  cmd.args = std::move(vals);
-  cmd.args.push_back(fn);
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
+  vals.push_back(fn);
+  Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  return cmd.result;
 }
 
 void Cmd::dump(size_t indent) const {
@@ -155,6 +149,8 @@ void Cmd::dump(size_t indent) const {
   switch (op_code) {
     case Op::Malloc: std::cerr << "malloc"; break;
     case Op::Free: std::cerr << "free"; break;
+    case Op::Extend: std::cerr << "extend"; break;
+    case Op::Trunc: std::cerr << "trunc"; break;
     case Op::Neg: std::cerr << "neg"; break;
     case Op::Add: std::cerr << "add"; break;
     case Op::Sub: std::cerr << "sub"; break;
