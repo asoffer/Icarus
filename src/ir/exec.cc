@@ -7,7 +7,8 @@
 #include "../scope.h"
 
 static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
-  expr->verify_types();
+  std::vector<Error> errors;
+  expr->verify_types(&errors);
   auto fn_ptr = new AST::FunctionLiteral;
 
   // TODO should these be at global scope? or a separate REPL scope?
@@ -34,10 +35,30 @@ static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   return fn_ptr;
 }
 
+void ReplEval(AST::Expression *expr) {
+  auto fn = std::make_unique<IR::Func>(Func(Void, Void));
+  CURRENT_FUNC(fn.get()) {
+    IR::Block::Current = fn->entry();
+    std::vector<Error> errors;
+    auto expr_val = expr->EmitIR(&errors);
+    if (!errors.empty()) {
+      std::cerr << "There were " << errors.size() << " errors.";
+      return;
+    }
+
+    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
+    IR::Jump::Return();
+  }
+
+  IR::LocalStack stack;
+  fn->Execute(&stack, {});
+}
+
 IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
   auto fn_ptr = WrapExprIntoFunction(expr);
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitAnonymousIR().as_func; }
+  std::vector<Error> errors;
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitAnonymousIR(&errors).as_func; }
 
   IR::LocalStack stack;
   auto result = fn->Execute(&stack, {});
@@ -103,7 +124,6 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   std::vector<Val> resolved = cmd.args;
   for (auto& r : resolved) { Resolve(&r); }
 
-cmd.dump(10);
   switch (cmd.op_code) {
   case Op::Neg:
     if (resolved[0].type == Bool) {
@@ -323,6 +343,23 @@ cmd.dump(10);
     // TODO local stack? multiple returns?
     return fn.as_func->Execute(nullptr, std::move(resolved))[0];
   } break;
+  case Op::Print:
+    if (resolved[0].type == Int) {
+      std::cerr << resolved[0].as_int;
+    } else if (resolved[0].type == Uint) {
+      std::cerr << resolved[0].as_uint;
+    } else if (resolved[0].type == Bool) {
+      std::cerr << (resolved[0].as_bool ? "true" : "false!");
+    } else if (resolved[0].type == Char) {
+      std::cerr << resolved[0].as_char;
+    } else if (resolved[0].type == Real) {
+      std::cerr << resolved[0].as_real;
+    } else if (resolved[0].type == Type_) {
+      std::cerr << resolved[0].as_type->to_string();
+    } else {
+      NOT_YET;
+    }
+    return IR::Val::None();
   default:
     NOT_YET;
   }

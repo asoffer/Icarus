@@ -91,8 +91,10 @@ void Struct::EmitInit(IR::Val id_val) {
     for (size_t i = 0; i < field_type.size(); ++i) {
       if (init_values[i]) {
         if (init_values[i]->is_hole()) { continue; }
+        std::vector<Error> errors;
         Type::CallAssignment(init_values[i]->scope_, field_type[i],
-                             init_values[i]->type, init_values[i]->EmitIR(),
+                             init_values[i]->type,
+                             init_values[i]->EmitIR(&errors),
                              IR::Field(IR::Val::Arg(this, 0), i));
       } else {
         field_type[i]->EmitInit(IR::Field(IR::Val::Arg(this, 0), i));

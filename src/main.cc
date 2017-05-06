@@ -21,10 +21,9 @@
 
 std::vector<IR::Func *> implicit_functions;
 
-extern IR::Val Evaluate(AST::Expression *expr);
+extern void ReplEval(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
-extern void CompletelyVerify(AST::Node *node);
 extern AST::Statements *Parse(Source *source);
 extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
@@ -40,7 +39,8 @@ static u64 global_counter = 0;
 void AST::Declaration::AllocateGlobal() {
   if (addr != IR::Val::None()) { return; }
 
-  verify_types();
+  std::vector<Error> errors;
+  verify_types(&errors);
   if (ErrorLog::num_errs_ > 0) { return; }
 
   if (type->has_vars() && init_val->is_function_literal()) {
@@ -54,7 +54,8 @@ void AST::Declaration::AllocateGlobal() {
 }
 
 void AST::Declaration::EmitGlobal() {
-  verify_types();
+  std::vector<Error> errors;
+  verify_types(&errors);
   if (type == Err) { return; }
 
   if (addr == IR::Val::None() /*|| TODO
@@ -62,7 +63,7 @@ void AST::Declaration::EmitGlobal() {
     return;
   }
   ASSERT(!arg_val, "");
-  verify_types();
+  verify_types(&errors);
   if (ErrorLog::num_errs_ > 0) { return; }
 
   if (type->is_pointer()) {
@@ -221,9 +222,8 @@ int RunRepl() {
 
     for (auto stmt : stmts->statements) {
       if (stmt->is_expression()) {
-        std::cerr << Evaluate(static_cast<AST::Expression *>(stmt)).to_string()
-                  << std::endl
-                  << std::endl;
+        ReplEval(static_cast<AST::Expression *>(stmt));
+        std::cerr << std::endl;
       }
     }
 

@@ -20,6 +20,52 @@ struct Unop;
 
 #include "constants_and_enums.h"
 
+struct Error {
+  enum class Code : char {
+    Other, // This is awful. It should never be used! TODO Remove it!
+    CyclicDependency,
+    UndeclaredId,
+    AmbiguousId,
+    InvalidCapture,
+    FreeNonPtr,
+    PrintVoid,
+    ReturnVoid,
+    DerefNonPtr,
+    UnsignedNegation,
+    MissingOperator,
+    InvalidRangeType,
+    LogicalNegationOfNonBool,
+    MissingMember,
+    NoCallMatches,
+    AmbiguousCall,
+    InvalidCast,
+    ArrayAssignmentDifferentLengths,
+    AssignmentArrayLength,
+    AssignmentTypeMismatch,
+    InvalidStringIndexType,
+    SlicingNonArray,
+    IndexingNonArray,
+    NonIntegralArrayIndex,
+    InvalidRangeTypes,
+    NonBooleanLogicalAssignemnt,
+    AlreadyFoundMatch, // Probably can resue overload resolution instead of
+                       // this?
+    NoKnownOverload,   // same goes for tihs
+    NonComposableFns,
+    NonTypeFnInput,
+    NonTypeFnOutput,
+    ChainTypeMismatch,
+    TypeIteration,
+    IndeterminantType,
+    NotAType,
+    VoidDeclaration,
+  };
+
+  Error(Error::Code c) : code_(c) {}
+  Error::Code code_;
+  // TODO hold metadata too
+};
+
 namespace ErrorLog {
 extern size_t num_errs_;
 

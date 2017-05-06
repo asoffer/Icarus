@@ -8,6 +8,7 @@
 #include "../precompiled.h"
 #include "../cursor.h"
 #include "../base/debug.h"
+#include "../error_log.h"
 
 struct Scope;
 
@@ -23,7 +24,7 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void lrvalue_check() ENDING;                                         \
-  virtual void verify_types() ENDING
+  virtual void verify_types(std::vector<Error>*) ENDING
 
 #define EXPR_FNS(name, checkname)                                              \
   virtual ~name();                                                             \
@@ -32,15 +33,15 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual IR::Val EmitLVal() { NOT_YET; }                                      \
-  virtual void verify_types() ENDING
+  virtual void verify_types(std::vector<Error> *) ENDING
 
 struct Node {
   virtual std::string to_string(size_t n) const = 0;
   virtual void lrvalue_check() {}
   virtual void assign_scope(Scope *) {}
-  virtual void verify_types() {}
-  virtual void VerifyReturnTypes(Type *) {}
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual void verify_types(std::vector<Error> *) {}
+  virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
+  virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
@@ -84,9 +85,9 @@ struct Expression : public Node {
   EXPR_FNS(Expression, expression);
   static Node *AddHashtag(NPtrVec &&nodes);
 
-  virtual void VerifyReturnTypes(Type *) {}
+  virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
 
-  virtual IR::Val EmitIR() {
+  virtual IR::Val EmitIR(std::vector<Error> *) {
     std::cerr << *this << std::endl;
     NOT_YET;
   }
@@ -99,7 +100,8 @@ struct Expression : public Node {
   // returns the type it represents (or Error if the type is invalid). An
   // expression could be invalid if it doesn't represent a type or it represnts
   // void or parametric struct.
-  Type *VerifyTypeForDeclaration(const std::string &id_tok);
+  Type *VerifyTypeForDeclaration(const std::string &id_tok,
+                                 std::vector<Error> *errors);
 
   // VerifyValueForDeclaration verifies that the expression's type can be used
   // for a declaration. In practice, it is typically used on initial values for
@@ -107,7 +109,8 @@ struct Expression : public Node {
   // of bar is valid. This function has the same return characteristics as
   // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
   // type is invalid.
-  Type *VerifyValueForDeclaration(const std::string &id_tok);
+  Type *VerifyValueForDeclaration(const std::string &id_tok,
+                                  std::vector<Error> *errors);
 
   std::vector<size_t> hashtag_indices;
   inline bool HasHashtag(const std::string &str) const {
@@ -128,7 +131,7 @@ struct Expression : public Node {
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
   virtual bool is_token_node() const { return true; }
 
@@ -148,7 +151,7 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal, terminal);
   Language::Terminal terminal_type;
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   virtual bool is_hole() const override {
     return terminal_type == Language::Terminal::Hole;
@@ -159,7 +162,7 @@ struct Identifier : public Terminal {
   Identifier() = delete;
   EXPR_FNS(Identifier, identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   std::string token;
   Declaration *decl = nullptr;
@@ -171,7 +174,7 @@ struct Binop : public Expression {
   static Node *BuildCallOperator(NPtrVec &&nodes);
   static Node *BuildIndexOperator(NPtrVec &&nodes);
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   bool is_assignment() const {
     return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
@@ -235,8 +238,8 @@ struct Statements : public Node {
   static Node *build_more(NPtrVec &&nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
-  void VerifyReturnTypes(Type *ret_val) override;
-  IR::Val EmitIR() override;
+  void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
+  IR::Val EmitIR(std::vector<Error> *errors) override;
 
   inline size_t size() { return statements.size(); }
 
@@ -279,8 +282,8 @@ struct Unop : public Expression {
   EXPR_FNS(Unop, unop);
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
-  virtual void VerifyReturnTypes(Type *ret_val) override;
-  virtual IR::Val EmitIR();
+  virtual void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   Expression *operand = nullptr;
   Language::Operator op;
@@ -297,7 +300,7 @@ struct Access : public Expression {
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
   static Node *Build(NPtrVec &&nodes);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   virtual bool is_comma_list() const override {
     return ops.front() == Language::Operator::Comma;
@@ -318,7 +321,7 @@ struct ArrayLiteral : public Expression {
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
   static Node *build(NPtrVec &&nodes);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   Expression *length    = nullptr;
   Expression *data_type = nullptr;
@@ -344,7 +347,9 @@ struct FunctionLiteral : public Expression {
   std::vector<Declaration *> inputs;
   Statements *statements  = nullptr;
 
-  inline IR::Val EmitAnonymousIR() { return Emit(false); }
+  inline IR::Val EmitAnonymousIR(std::vector<Error> *errors) {
+    return Emit(false, errors);
+  }
 
   IR::Func *ir_func = nullptr;
 
@@ -353,8 +358,7 @@ struct FunctionLiteral : public Expression {
   std::map<Type *, Declaration *> cache;
 
 private:
-  IR::Val Emit(bool should_gen);
-
+  IR::Val Emit(bool should_gen, std::vector<Error> *errors);
 };
 
 struct For : public Node {
@@ -363,7 +367,7 @@ struct For : public Node {
 
   static Node *Build(NPtrVec &&nodes);
 
-  virtual void VerifyReturnTypes(Type *ret_val) override;
+  virtual void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
 
   std::vector<InDecl *> iterators;
   Statements *statements;
@@ -383,7 +387,7 @@ struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
   virtual bool is_jump() const override { return true; }
 
-  virtual void VerifyReturnTypes(Type *ret_val) override;
+  virtual void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
 
   static Node *build(NPtrVec &&nodes);
   virtual ~Jump();
