@@ -1,7 +1,10 @@
 #include "ast.h"
+
 #include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
+
+#include <queue>
 
 namespace Hashtag {
 size_t Get(const std::string &tag);

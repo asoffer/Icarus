@@ -2,13 +2,18 @@
 #define ICARUS_AST_AST_H
 
 #include <algorithm>
+#include <vector>
+#include <map>
+#include <queue>
 
-#include "../scope.h"
-#include "../ir/ir.h"
-#include "../precompiled.h"
-#include "../cursor.h"
 #include "../base/debug.h"
+#include "../cursor.h"
 #include "../error_log.h"
+#include "../ir/ir.h"
+#include "../scope.h"
+#include "../type/type.h"
+
+using NPtrVec = std::vector<AST::Node *>;
 
 struct Scope;
 

@@ -3,6 +3,7 @@
 #include "grammar_rules.h"
 #include "util/timer.h"
 #include <iostream>
+#include <queue>
 
 extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
 

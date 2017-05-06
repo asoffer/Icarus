@@ -11,18 +11,21 @@ struct TypeVariable;
 struct RangeType;
 struct SliceType;
 struct Scope_Type;
+struct ParamStruct;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
     *Void, *NullPtr, *String, *U16, *U32;
 
 struct Scope;
 
-#include <vector>
-#include <string>
-#include "../base/types.h"
+#include "../ast/ast.h"
 #include "../base/debug.h"
-#include "../precompiled.h"
+#include "../base/types.h"
 #include "../ir/ir.h"
+#include <string>
+#include <vector>
+#include <map>
+#include <sstream>
 
 namespace AST {
 struct Declaration;
@@ -31,6 +34,10 @@ struct Identifier;
 } // namespace AST
 
 #include "constants_and_enums.h"
+
+inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
+  return ((ptr - 1) | (alignment - 1)) + 1;
+}
 
 extern std::vector<IR::Func *> implicit_functions;
 // TODO this is not the right API for mangling.

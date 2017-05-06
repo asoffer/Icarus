@@ -1,6 +1,7 @@
 #include "ir.h"
 
 #include <cmath>
+#include <memory>
 
 #include "../type/type.h"
 #include "../ast/ast.h"

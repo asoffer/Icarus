@@ -2,13 +2,11 @@
 
 TARGET  := bin/$(shell basename `pwd`)
 
-PRECOMP := src/precompiled.h
 SOURCES := $(shell find src -name *.cc 2>/dev/null)
 OBJECTS := $(patsubst src/%.cc,build/%.o,$(SOURCES))
 
 COMPILER := g++
 BUILD_FLAGS := -g -O0 -D DEBUG
-LINK_FLAGS := -lncurses
 STDS = -std=c++1z
 WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
 OPTS = -iquote$(shell pwd)/src
@@ -29,9 +27,6 @@ $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(LINK_FLAGS) $(OBJECTS) -o $@
 	@echo Done.
 
-#header:
-#	@$(COMPILER) $(STDS) $(WARN) -fno-exceptions -fno-rtti -x c++-header $(PRECOMP) -o src/precompiled.h.gch
-
 rules:
 	@touch ~/icarus/src/Parse.cc
 	@make
@@ -42,7 +37,7 @@ rebuild:
 	@make unity
 
 clean:
-	@rm -f $(TARGET) $(OBJECTS) src/precompiled.h.gch
+	@rm -f $(TARGET) $(OBJECTS)
 
 help:
 	@echo "TARGET  : $(TARGET)"
