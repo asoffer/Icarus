@@ -1,5 +1,6 @@
-#include "../scope.h"
 #include "ast.h"
+
+#include "../scope.h"
 #include "../type/type.h"
 
 namespace AST {

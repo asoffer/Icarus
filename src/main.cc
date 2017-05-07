@@ -34,23 +34,28 @@ extern Timer timer;
 
 AST::Statements *global_statements;
 
-static u64 global_counter = 0;
-
+extern std::vector<IR::Val> global_vals;
 void AST::Declaration::AllocateGlobal() {
   if (addr != IR::Val::None()) { return; }
 
   std::vector<Error> errors;
   verify_types(&errors);
-  if (ErrorLog::num_errs_ > 0) { return; }
+  if (!errors.empty()) { return; }
 
-  if (type->has_vars() && init_val->is_function_literal()) {
-    for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
-      kv.second->AllocateGlobal();
-    }
-    return;
+  addr = IR::Val::GlobalAddr(global_vals.size(), type);
+  // TODO these checks actually overlap and could be simplified.
+  if (IsUninitialized()) {
+    global_vals.emplace_back();
+  } else if (IsCustomInitialized()) {
+    NOT_YET;
+  } else if (IsDefaultInitialized()) {
+    // TODO if EmitInitialValue requires generating code, that would be bad.
+    global_vals.push_back(type->EmitInitialValue());
+  } else if (IsInferred()) {
+    NOT_YET;
+  } else {
+    UNREACHABLE;
   }
-
-  addr = IR::Val::GlobalAddr(global_counter++, type);
 }
 
 void AST::Declaration::EmitGlobal() {
@@ -221,9 +226,18 @@ int RunRepl() {
     auto stmts = Parse(&src);
 
     for (auto stmt : stmts->statements) {
-      if (stmt->is_expression()) {
-        ReplEval(static_cast<AST::Expression *>(stmt));
+      if (stmt->is_declaration()) {
+        auto decl = static_cast<AST::Declaration*>(stmt);
+        decl->assign_scope(Scope::Global);
+        decl->AllocateGlobal();
+
+      } else if (stmt->is_expression()) {
+        auto expr = static_cast<AST::Expression *>(stmt);
+        expr->assign_scope(Scope::Global);
+        ReplEval(expr);
         std::cerr << std::endl;
+      } else {
+        NOT_YET;
       }
     }
 

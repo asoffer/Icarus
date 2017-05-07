@@ -4,6 +4,12 @@
 #include "../scope.h"
 #include "../type/type.h"
 
+#define VERIFY_OR_EXIT_EARLY                                                   \
+  do {                                                                         \
+    verify_types(errors);                                                      \
+    if (!errors->empty()) { return IR::Val::None(); }                          \
+  } while (false)
+
 static IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
     auto fn = new IR::Func(Func(Uint, Char));
@@ -37,7 +43,7 @@ static IR::Val OrdFunc() {
 }
 
 IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
 
   switch (terminal_type) {
   case Language::Terminal::Char:
@@ -61,12 +67,14 @@ IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
-  NOT_YET;
+  VERIFY_OR_EXIT_EARLY;
+  ASSERT(decl, "");
+  ASSERT(decl->addr != IR::Val::None(), "");
+  return IR::Load(decl->addr);
 }
 
 IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub:
@@ -90,7 +98,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
@@ -129,12 +137,12 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::ArrayType::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
   return IR::Array(length->EmitIR(errors), data_type->EmitIR(errors));
 }
 
 IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
   if (ops[0] == Language::Operator::Xor) {
     return std::accumulate(exprs.begin(), exprs.end(), IR::Val::Bool(false),
                            [errors](IR::Val lhs, AST::Expression *expr) {
@@ -145,7 +153,7 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
-  verify_types(errors);
+  VERIFY_OR_EXIT_EARLY;
 
   CURRENT_FUNC(ir_func = new IR::Func(type)) {
     IR::Block::Current = IR::BlockIndex{0};

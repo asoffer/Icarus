@@ -4,8 +4,6 @@
 #include "../scope.h"
 #include "../type/type.h"
 
-#include <queue>
-
 namespace Hashtag {
 size_t Get(const std::string &tag);
 } // namespace Hashtag

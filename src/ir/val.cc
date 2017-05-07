@@ -21,7 +21,7 @@ Val Val::HeapAddr(u64 n, ::Type *t) {
   MAKE_AND_RETURN(Kind::Heap, t, as_heap_addr, n);
 }
 Val Val::GlobalAddr(u64 n, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Global, t, as_global_addr, n);
+  MAKE_AND_RETURN(Kind::Global, Ptr(t), as_global_addr, n);
 }
 Val Val::Bool(bool b) { MAKE_AND_RETURN(Kind::Const, ::Bool, as_bool, b); }
 Val Val::Char(char c) { MAKE_AND_RETURN(Kind::Const, ::Char, as_char, c); }

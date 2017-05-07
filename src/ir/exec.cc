@@ -7,6 +7,8 @@
 #include "../ast/ast.h"
 #include "../scope.h"
 
+std::vector<IR::Val> global_vals;
+
 static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   std::vector<Error> errors;
   expr->verify_types(&errors);
@@ -114,7 +116,7 @@ void ExecContext::Resolve(Val* v) const {
   case Val::Kind::Arg: *v = arg(v->as_arg); return;
   case Val::Kind::Reg: *v = reg(v->as_reg); return;
   case Val::Kind::Frame: *v = stack_from_frame(*v); return;
-  case Val::Kind::Global: return; // TODO is this correct? unlikely
+  case Val::Kind::Global: return;
   case Val::Kind::Heap: return;
   case Val::Kind::Const: return;
   case Val::Kind::None: return;
@@ -361,6 +363,11 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       NOT_YET;
     }
     return IR::Val::None();
+  case Op::Load:
+    if (resolved[0].kind == Val::Kind::Global) {
+      return global_vals[resolved[0].as_global_addr];
+    }
+    NOT_YET;
   default:
     NOT_YET;
   }
