@@ -352,7 +352,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else if (resolved[0].type == Uint) {
       std::cerr << resolved[0].as_uint;
     } else if (resolved[0].type == Bool) {
-      std::cerr << (resolved[0].as_bool ? "true" : "false!");
+      std::cerr << (resolved[0].as_bool ? "true" : "false");
     } else if (resolved[0].type == Char) {
       std::cerr << resolved[0].as_char;
     } else if (resolved[0].type == Real) {
@@ -366,8 +366,16 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   case Op::Load:
     if (resolved[0].kind == Val::Kind::Global) {
       return global_vals[resolved[0].as_global_addr];
+    } else {
+      NOT_YET;
     }
-    NOT_YET;
+  case Op::Store:
+    if (resolved[1].kind == Val::Kind::Global) {
+      return global_vals[resolved[1].as_global_addr] = resolved[0];
+      std::cerr << resolved[0].to_string();
+    } else {
+      NOT_YET;
+    }
   default:
     NOT_YET;
   }

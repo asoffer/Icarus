@@ -37,7 +37,6 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
-  virtual IR::Val EmitLVal() { NOT_YET; }                                      \
   virtual void verify_types(std::vector<Error> *) ENDING
 
 struct Node {
@@ -93,6 +92,10 @@ struct Expression : public Node {
   virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
 
   virtual IR::Val EmitIR(std::vector<Error> *) {
+    std::cerr << *this << std::endl;
+    NOT_YET;
+  }
+  virtual IR::Val EmitLVal(std::vector<Error> *) {
     std::cerr << *this << std::endl;
     NOT_YET;
   }
@@ -168,6 +171,7 @@ struct Identifier : public Terminal {
   EXPR_FNS(Identifier, identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
+  virtual IR::Val EmitLVal(std::vector<Error> *errors);
 
   std::string token;
   Declaration *decl = nullptr;

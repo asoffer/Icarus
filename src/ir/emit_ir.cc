@@ -67,10 +67,8 @@ IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
-  VERIFY_OR_EXIT_EARLY;
-  ASSERT(decl, "");
-  ASSERT(decl->addr != IR::Val::None(), "");
-  return IR::Load(decl->addr);
+  auto lval = EmitLVal(errors);
+  return lval == IR::Val::None() ? IR::Val::None() : IR::Load(lval);
 }
 
 IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
@@ -129,6 +127,30 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     }
     return IR::Call(lhs_ir, std::move(args));
   } break;
+  case Language::Operator::Assign: {
+    auto lhs_lval = lhs->EmitLVal(errors);
+    auto rhs_ir = rhs->EmitIR(errors);
+    return IR::Store(rhs_ir, lhs_lval);
+  } break;
+  case Language::Operator::OrEq: {
+    NOT_YET;
+  } break;
+  case Language::Operator::AndEq: {
+    NOT_YET;
+  } break;
+#define CASE_ASSIGN_EQ(op_name)                                                \
+  case Language::Operator::op_name##Eq: {                                      \
+    auto lhs_lval = lhs->EmitLVal(errors);                                     \
+    auto rhs_ir   = rhs->EmitIR(errors);                                       \
+    return IR::Store(IR::op_name(IR::Load(lhs_lval), rhs_ir), lhs_lval);       \
+  } break
+    CASE_ASSIGN_EQ(Xor);
+    CASE_ASSIGN_EQ(Add);
+    CASE_ASSIGN_EQ(Sub);
+    CASE_ASSIGN_EQ(Mul);
+    CASE_ASSIGN_EQ(Div);
+    CASE_ASSIGN_EQ(Mod);
+#undef CASE_ASSIGN_EQ
   default: {
     std::cerr << *this << std::endl;
     UNREACHABLE;
@@ -168,3 +190,9 @@ IR::Val AST::Statements::EmitIR(std::vector<Error> *errors) {
   return IR::Val::None();
 }
 
+IR::Val AST::Identifier::EmitLVal(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT_EARLY;
+  ASSERT(decl, "");
+  ASSERT(decl->addr != IR::Val::None(), "");
+  return decl->addr;
+}
