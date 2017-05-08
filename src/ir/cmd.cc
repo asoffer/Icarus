@@ -57,7 +57,7 @@ Val Free(Val v) {
 }
 
 Val Load(Val v) {
-  ASSERT(v.type->is_pointer(), "");
+  ASSERT(v.type->is_pointer(), v.to_string());
   MAKE_AND_RETURN(static_cast<Pointer *>(v.type)->pointee, Op::Load);
 }
 
@@ -125,15 +125,9 @@ Val Cast(Val v1, Val v2) {
 #undef MAKE_AND_RETURN
 
 Val Phi(Type *t) {
-  Cmd cmd;
-  cmd.result.type = t;
-  cmd.op_code = Op::Phi;
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
+  Cmd cmd(t, Op::Phi, {});
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
-  return IR::Val::Reg(reg, cmd.result.type);
+  return cmd.result;
 }
 
 Val Call(Val fn, std::vector<Val> vals) {

@@ -29,9 +29,6 @@ extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
 extern Timer timer;
 
-// extern IR::Val GetInitialGlobal(size_t global_addr);
-// extern void AddInitialGlobal(size_t global_addr, IR::Val initial_val);
-
 AST::Statements *global_statements;
 
 extern std::vector<IR::Val> global_vals;
@@ -40,65 +37,26 @@ void AST::Declaration::AllocateGlobal() {
 
   std::vector<Error> errors;
   verify_types(&errors);
-  if (!errors.empty()) { return; }
 
-  addr = IR::Val::GlobalAddr(global_vals.size(), type);
   // TODO these checks actually overlap and could be simplified.
   if (IsUninitialized()) {
+    addr = IR::Val::GlobalAddr(global_vals.size(), type);
     global_vals.emplace_back();
+    global_vals.back().type = type;
   } else if (IsCustomInitialized()) {
-    NOT_YET;
+    auto init_ir_val = init_val->EmitIR(&errors);
+    if (!errors.empty()) { return; }
+    addr = IR::Val::GlobalAddr(global_vals.size(), type);
+    global_vals.push_back(init_ir_val);
   } else if (IsDefaultInitialized()) {
+    addr = IR::Val::GlobalAddr(global_vals.size(), type);
     // TODO if EmitInitialValue requires generating code, that would be bad.
     global_vals.push_back(type->EmitInitialValue());
   } else if (IsInferred()) {
+    addr = IR::Val::GlobalAddr(global_vals.size(), type);
     NOT_YET;
   } else {
     UNREACHABLE;
-  }
-}
-
-void AST::Declaration::EmitGlobal() {
-  std::vector<Error> errors;
-  verify_types(&errors);
-  if (type == Err) { return; }
-
-  if (addr == IR::Val::None() /*|| TODO
-      GetInitialGlobal(addr.as_global_addr) != IR::Val::None() */) {
-    return;
-  }
-  ASSERT(!arg_val, "");
-  verify_types(&errors);
-  if (ErrorLog::num_errs_ > 0) { return; }
-
-  if (type->is_pointer()) {
-    NOT_YET;
-    // addr = IR::Val::Error();
-    // ErrorLog::GlobalPointerUnsupported(loc);
-    // return;
-  }
-
-  if (!IsDefaultInitialized()) {
-    ASSERT(init_val, "");
-    if (type->has_vars() && init_val->is_function_literal()) {
-      for (auto kv : ((AST::FunctionLiteral *)init_val)->cache) {
-        kv.second->EmitGlobal();
-      }
-      return;
-    } else {
-      // auto eval_value = Evaluate(init_val);
-      // if (eval_value == IR::Val::Error()) { return; }
-      NOT_YET;
-      // AddInitialGlobal(addr.as_global_addr, eval_value);
-    }
-  } else if (HasHashtag("cstdlib")) {
-    auto cstr = new char[identifier->token.size() + 1];
-    strcpy(cstr, identifier->token.c_str());
-    NOT_YET;
-    // AddInitialGlobal(addr.as_global_addr, IR::Val::ExtFn(cstr));
-  } else {
-    NOT_YET;
-    // AddInitialGlobal(addr.as_global_addr, type->EmitInitialValue());
   }
 }
 

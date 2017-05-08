@@ -16,6 +16,9 @@ struct BlockIndex {
   i32 value = -2;
   bool is_none() { return value == -1; }
 };
+inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
+  return lhs.value == rhs.value;
+}
 
 struct RegIndex {
   BlockIndex block_index;
@@ -99,6 +102,7 @@ struct ExecContext {
 
   const Func *current_fn;
   BlockIndex current_block;
+  BlockIndex prev_block;
   u64 frame_offset = 0;
 
   BlockIndex ExecuteBlock();

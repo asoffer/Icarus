@@ -376,7 +376,15 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else {
       NOT_YET;
     }
+  case Op::Phi:
+    for (size_t i = 0; i < resolved.size(); i += 2) {
+      if (prev_block == resolved[i].as_block) {
+        return resolved[i + 1];
+      }
+    }
+    UNREACHABLE;
   default:
+    cmd.dump(10);
     NOT_YET;
   }
   UNREACHABLE;
@@ -399,6 +407,7 @@ std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val> argument
     if (block_index.is_none()) {
       return std::move(ctx.rets_);
     } else if (block_index.value >= 0) {
+      ctx.prev_block = ctx.current_block;
       ctx.current_block = block_index;
     } else {
       UNREACHABLE;

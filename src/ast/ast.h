@@ -202,8 +202,6 @@ struct Declaration : public Expression {
   static Node *Build(NPtrVec &&nodes);
 
   void AllocateGlobal();
-  void EmitGlobal();
-
   void AllocateLocally(IR::Func *fn);
 
   Identifier *identifier = nullptr;
@@ -349,6 +347,10 @@ struct FunctionLiteral : public Expression {
   static Node *build(NPtrVec &&nodes);
   static Node *BuildOneLiner(NPtrVec &&nodes);
   static Node *BuildNoLiner(NPtrVec &&nodes);
+
+  virtual IR::Val EmitIR(std::vector<Error> *errors) {
+    return Emit(true, errors);
+  }
 
   FnScope *fn_scope            = nullptr;
   Expression *return_type_expr = nullptr;

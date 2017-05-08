@@ -83,6 +83,7 @@ void Statements::assign_scope(Scope *scope) {
 }
 
 void FunctionLiteral::assign_scope(Scope *scope) {
+  scope_ = scope;
   if (!fn_scope) {
     fn_scope         = scope->add_child<FnScope>();
     fn_scope->fn_lit = this;
