@@ -53,8 +53,7 @@ void ReplEval(AST::Expression *expr) {
     IR::Jump::Return();
   }
 
-  IR::LocalStack stack;
-  fn->Execute(&stack, {});
+  fn->Execute({});
 }
 
 IR::Val Evaluate(AST::Expression *expr) {
@@ -63,8 +62,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<Error> errors;
   CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitAnonymousIR(&errors).as_func; }
 
-  IR::LocalStack stack;
-  auto result = fn->Execute(&stack, {});
+  auto result = fn->Execute({});
 
   if (expr->type == Void) {
     fn_ptr->statements->statements[0] = nullptr;
@@ -81,7 +79,8 @@ IR::Val Evaluate(AST::Expression *expr) {
 }
 
 namespace IR {
-ExecContext::ExecContext(const Func *fn) : current_fn(fn), current_block{0} {}
+ExecContext::ExecContext(const Func *fn)
+    : current_fn(fn), current_block{0}, stack_(1) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
@@ -343,8 +342,10 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   case Op::Call: {
     IR::Val fn = resolved.back();
     resolved.pop_back();
-    // TODO local stack? multiple returns?
-    return fn.as_func->Execute(nullptr, std::move(resolved))[0];
+    // TODO multiple returns?
+    auto results = fn.as_func->Execute(std::move(resolved));
+    ASSERT(!results.empty(), "");
+    return results[0];
   } break;
   case Op::Print:
     if (resolved[0].type == Int) {
@@ -364,16 +365,38 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     }
     return IR::Val::None();
   case Op::Load:
-    if (resolved[0].kind == Val::Kind::Global) {
+    switch (resolved[0].kind) {
+    case Val::Kind::Global:
       return global_vals[resolved[0].as_global_addr];
-    } else {
+    case Val::Kind::Frame: {
+      StackEntry& entry = stack_.back().locals_[resolved[0].as_frame_addr];
+      if (entry.type == Int) {
+        return IR::Val::Int(*static_cast<int *>(entry.data));
+      } else {
+        NOT_YET;
+      }
+    }
+    default:
       NOT_YET;
     }
   case Op::Store:
-    if (resolved[1].kind == Val::Kind::Global) {
-      return global_vals[resolved[1].as_global_addr] = resolved[0];
-      std::cerr << resolved[0].to_string();
-    } else {
+    switch (resolved[1].kind) {
+    case Val::Kind::Global:
+      global_vals[resolved[1].as_global_addr] = resolved[0];
+      return IR::Val::None();
+    case Val::Kind::Frame: {
+      ASSERT(stack_.back().locals_.size() > resolved[1].as_frame_addr, "");
+      StackEntry& entry = stack_.back().locals_[resolved[1].as_frame_addr];
+      if (entry.type == Int) {
+        *static_cast<i64 *>(entry.data) = resolved[0].as_int;
+      } else {
+        cmd.dump(0);
+        std::cerr << *entry.type << std::endl;
+        NOT_YET;
+      }
+    }
+      return IR::Val::None();
+    default:
       NOT_YET;
     }
   case Op::Phi:
@@ -383,6 +406,14 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       }
     }
     UNREACHABLE;
+  case Op::Alloca: {
+    auto val =
+        IR::Val::FrameAddr(stack_.back().locals_.size(), cmd.result.type);
+    ASSERT(cmd.result.type->is_pointer(), "");
+    stack_.back().locals_.emplace_back(
+        static_cast<Pointer *>(cmd.result.type)->pointee);
+    return val;
+  }
   default:
     cmd.dump(10);
     NOT_YET;
@@ -390,7 +421,9 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   UNREACHABLE;
 }
 
-std::vector<Val> Func::Execute(LocalStack * /*stack*/, std::vector<Val> arguments) const {
+StackEntry::StackEntry(Type *t) : type(t) { data = malloc(t->bytes()); }
+
+std::vector<Val> Func::Execute(std::vector<Val> arguments) const {
   auto ctx = ExecContext(this);
   ctx.args_ = std::move(arguments);
   // Type *output_type = static_cast<Function *>(type)->output;

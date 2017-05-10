@@ -46,6 +46,7 @@ Val Val::Block(BlockIndex bi) {
 Val Val::Null(::Type *t) {
   MAKE_AND_RETURN(Kind::Const, Ptr(t), as_bool, false);
 }
+#undef MAKE_AND_RETURN
 
 std::string Val::to_string() const {
   std::stringstream ss;

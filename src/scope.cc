@@ -108,3 +108,9 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
   }
   return matching_decls;
 }
+
+ExecScope::ExecScope(Scope *parent) : Scope(parent) {
+  // If this scope is a FnScope it will be handled by the FnScope constructor.
+  auto containing_fn_scope = parent->ContainingFnScope();
+  if (containing_fn_scope) { containing_fn_scope->innards_.push_back(this); }
+}

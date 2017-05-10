@@ -78,6 +78,47 @@ IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   }
 }
 
+extern std::vector<IR::Val> global_vals;
+IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT_EARLY;
+
+  if (scope_ == Scope::Global) {
+    ASSERT(addr == IR::Val::None(), "");
+    // TODO these checks actually overlap and could be simplified.
+    if (IsUninitialized()) {
+      addr = IR::Val::GlobalAddr(global_vals.size(), type);
+      global_vals.emplace_back();
+      global_vals.back().type = type;
+    } else if (IsCustomInitialized()) {
+      auto init_ir_val = init_val->EmitIR(errors);
+      addr = IR::Val::GlobalAddr(global_vals.size(), type);
+      global_vals.push_back(init_ir_val);
+    } else if (IsDefaultInitialized()) {
+      addr = IR::Val::GlobalAddr(global_vals.size(), type);
+      // TODO if EmitInitialValue requires generating code, that would be bad.
+      global_vals.push_back(type->EmitInitialValue());
+    } else if (IsInferred()) {
+      addr = IR::Val::GlobalAddr(global_vals.size(), type);
+      NOT_YET;
+    } else {
+      UNREACHABLE;
+    }
+    return IR::Val::None();
+  } else {
+    // For local variables the declaration determines where the initial value is
+    // set, but the allocation has to be done much earlier. We do the allocation
+    // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
+    // value.
+    ASSERT(addr != IR::Val::None(), "");
+    ASSERT(scope_->ContainingFnScope(), "");
+    // TODO these checks actually overlap and could be simplified.
+    if (IsUninitialized()) { return IR::Val::None(); }
+    auto ir_init_val = IsCustomInitialized() ? init_val->EmitIR(errors)
+                                             : type->EmitInitialValue();
+    return IR::Store(ir_init_val, addr);
+  }
+}
+
 IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
   switch (op) {
@@ -235,14 +276,26 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
+  statements->verify_types(errors);
+  if (!errors->empty()) { return IR::Val::None(); }
+  // TODO also verify that the return type matches the input type
 
   CURRENT_FUNC(ir_func = new IR::Func(type)) {
-    IR::Block::Current = IR::BlockIndex{0};
+    IR::Block::Current = ir_func->entry();
+
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto arg = inputs[i];
       ASSERT(arg->addr == IR::Val::None(), "");
       arg->addr = IR::Val::Arg(
           arg->type, i); // This whole loop can be done on construction!
+    }
+
+    for (auto scope : fn_scope->innards_) {
+      for (auto decl : scope->decls_) {
+        if (decl->arg_val) { continue; }
+        ASSERT(decl->type, "");
+        decl->addr = IR::Alloca(decl->type);
+      }
     }
 
     statements->EmitIR(errors);

@@ -132,7 +132,7 @@ struct Expression : public Node {
 
   size_t precedence;
   Assign lvalue;
-  Type *type;
+  Type *type = nullptr;
   IR::Val value;
 };
 
@@ -200,9 +200,7 @@ struct Binop : public Expression {
 struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
   static Node *Build(NPtrVec &&nodes);
-
-  void AllocateGlobal();
-  void AllocateLocally(IR::Func *fn);
+  IR::Val EmitIR(std::vector<Error> *errors) override;
 
   Identifier *identifier = nullptr;
   Expression *type_expr  = nullptr;

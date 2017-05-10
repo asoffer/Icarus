@@ -31,35 +31,6 @@ extern Timer timer;
 
 AST::Statements *global_statements;
 
-extern std::vector<IR::Val> global_vals;
-void AST::Declaration::AllocateGlobal() {
-  if (addr != IR::Val::None()) { return; }
-
-  std::vector<Error> errors;
-  verify_types(&errors);
-
-  // TODO these checks actually overlap and could be simplified.
-  if (IsUninitialized()) {
-    addr = IR::Val::GlobalAddr(global_vals.size(), type);
-    global_vals.emplace_back();
-    global_vals.back().type = type;
-  } else if (IsCustomInitialized()) {
-    auto init_ir_val = init_val->EmitIR(&errors);
-    if (!errors.empty()) { return; }
-    addr = IR::Val::GlobalAddr(global_vals.size(), type);
-    global_vals.push_back(init_ir_val);
-  } else if (IsDefaultInitialized()) {
-    addr = IR::Val::GlobalAddr(global_vals.size(), type);
-    // TODO if EmitInitialValue requires generating code, that would be bad.
-    global_vals.push_back(type->EmitInitialValue());
-  } else if (IsInferred()) {
-    addr = IR::Val::GlobalAddr(global_vals.size(), type);
-    NOT_YET;
-  } else {
-    UNREACHABLE;
-  }
-}
-
 namespace debug {
 extern bool timer;
 extern bool parser;
@@ -187,7 +158,8 @@ int RunRepl() {
       if (stmt->is_declaration()) {
         auto decl = static_cast<AST::Declaration*>(stmt);
         decl->assign_scope(Scope::Global);
-        decl->AllocateGlobal();
+        std::vector<Error> errors;
+        decl->EmitIR(&errors);
 
       } else if (stmt->is_expression()) {
         auto expr = static_cast<AST::Expression *>(stmt);

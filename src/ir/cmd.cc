@@ -56,6 +56,13 @@ Val Free(Val v) {
   MAKE_AND_RETURN(Void, Op::Free);
 }
 
+Val Alloca(Type *t) {
+  ASSERT(t != ::Void, "");
+  Cmd cmd(Ptr(t), Op::Alloca, {});
+  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  return cmd.result;
+}
+
 Val Load(Val v) {
   ASSERT(v.type->is_pointer(), v.to_string());
   MAKE_AND_RETURN(static_cast<Pointer *>(v.type)->pointee, Op::Load);
@@ -76,7 +83,7 @@ Val ArrayData(Val v) {
 
 Val Store(Val v1, Val v2) {
   ASSERT(v2.type->is_pointer(), "");
-  MAKE_AND_RETURN2(static_cast<Pointer *>(v1.type)->pointee, Op::Store);
+  MAKE_AND_RETURN2(Void, Op::Store);
 }
 
 Val PtrIncr(Val v1, Val v2) {
@@ -175,6 +182,7 @@ void Cmd::dump(size_t indent) const {
     case Op::SetReturn: std::cerr << "set-ret"; break;
     case Op::Arrow: std::cerr << "arrow"; break;
     case Op::Array: std::cerr << "array-type"; break;
+    case Op::Alloca: std::cerr << "alloca"; break;
   }
 
   if (args.empty()) { return; }

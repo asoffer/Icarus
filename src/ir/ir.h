@@ -91,10 +91,22 @@ enum class Op : char {
   Call, Cast,
   Nop, SetReturn,
   Arrow, Array,
+  Alloca,
 };
 
 struct Block;
 struct Cmd;
+
+struct StackEntry {
+  StackEntry(Type *t);
+  ~StackEntry() { free(data); }
+  Type *type; 
+  void *data = nullptr;
+};
+
+struct StackFrame {
+  std::vector<StackEntry> locals_;
+};
 
 struct ExecContext {
   ExecContext() = delete;
@@ -129,6 +141,7 @@ struct ExecContext {
   std::vector<std::vector<Val>> regs_;
   std::vector<Val> args_;
   std::vector<Val> rets_;
+  std::vector<StackFrame> stack_;
 };
 
 struct Cmd {
@@ -175,6 +188,7 @@ Val Phi(Type *t);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
+Val Alloca(Type *t);
 
 struct Jump {
   static void Unconditional(BlockIndex index);
@@ -211,11 +225,6 @@ struct Block {
   Jump jmp_;
 };
 
-struct LocalStack {
-  std::vector<Val> locals_;
-};
-
-
 struct Func {
   static Func *Current;
   Func(::Type *t) : type(t), blocks_(2, Block(this)) {}
@@ -243,7 +252,7 @@ struct Func {
     return index;
   }
 
-  std::vector<Val> Execute(LocalStack *stack, std::vector<Val> args) const;
+  std::vector<Val> Execute(std::vector<Val> args) const;
 
   Type *type;
   std::string name;

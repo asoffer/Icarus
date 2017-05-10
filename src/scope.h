@@ -18,6 +18,7 @@ struct Function;
 
 #include "ir/ir.h"
 #include <vector>
+#include <iostream>
 
 struct DeclScope;
 struct ExecScope;
@@ -61,24 +62,24 @@ struct Scope {
 
   std::vector<AST::Declaration *> AllDeclsWithId(const std::string &id);
 
+  FnScope *ContainingFnScope();
+
   std::vector<AST::Declaration *> decls_;
   Scope *parent = nullptr;
 };
 
 struct DeclScope : public Scope {
- DeclScope(Scope *parent) : Scope(parent) {}
- ~DeclScope() override {}
- bool is_decl() final { return true; }
+  DeclScope(Scope *parent) : Scope(parent) {}
+  ~DeclScope() override {}
+  bool is_decl() final { return true; }
 };
 
 struct ExecScope : public Scope {
-  ExecScope(Scope *parent) : Scope(parent) {}
+  ExecScope(Scope *parent);
   ~ExecScope() override {}
   bool is_exec() final { return true; }
 
   bool can_jump = false;
-
-  FnScope *ContainingFnScope();
 };
 
 struct FnScope : public ExecScope {
@@ -88,13 +89,12 @@ struct FnScope : public ExecScope {
 
   Function *fn_type            = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
+  std::vector<ExecScope*> innards_{1, this};
 };
 
-inline FnScope *ExecScope::ContainingFnScope() {
+inline FnScope *Scope::ContainingFnScope() {
   Scope *scope = this;
-  while (scope && !scope->is_fn()) {
-    scope = scope->parent;
-  }
-  return static_cast<FnScope*>(scope);
+  while (scope && !scope->is_fn()) { scope = scope->parent; }
+  return static_cast<FnScope *>(scope);
 }
 #endif // ICARUS_SCOPE_H
