@@ -178,11 +178,12 @@ auto Rules = std::vector<Rule>{
     Rule(0x00, expr, {l_bracket, RESERVED, semicolon, RESERVED, r_bracket},
          ErrMsg::BothReserved<0, 1, 3>),
 
+    Rule(0x00, bof, {bof, newline}, drop_all_but<0>),
     Rule(0x00, prog, {bof, eof}, ErrMsg::EmptyFile),
     Rule(0x00, prog, {bof, stmts, eof}, drop_all_but<1>),
 
     Rule(0x03, stmts, {op_lt}, AST::Jump::build),
-    Rule(0x02, stmts, {(expr | fn_expr | kw_else), newline},
+    Rule(0x02, stmts, {(expr | fn_expr | kw_else), (newline | eof)},
          AST::Statements::build_one),
     Rule(0x01, stmts, {stmts, (expr | fn_expr | stmts), newline},
          AST::Statements::build_more),

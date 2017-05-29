@@ -5,11 +5,11 @@
 bool Cursor::MoveToNextLine() {
   ASSERT(source_file, "");
   auto next = source_file->NextLine();
-  if (!next.first) {
+  if (next.eof) {
     seen_eof_ = true;
     return false;
   }
-  line = next.second;
+  line = next.text;
   source_file->lines.push_back(line);
   offset = 0;
   ++line_num;

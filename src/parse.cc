@@ -7,6 +7,20 @@
 
 extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
 
+enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
+std::ostream& operator<<(std::ostream& os, ShiftState s) {
+  switch (s) {
+  case ShiftState::NeedMore:
+    return os << "NeedMore";
+  case ShiftState::EndOfExpr:
+    return os << "EndOfExpr";
+  case ShiftState::MustReduce:
+    return os << "MustReduce";
+  default:
+    UNREACHABLE;
+  }
+}
+
 struct ParseState {
   std::vector<Language::NodeType> node_type_stack_;
   NPtrVec node_stack_;
@@ -23,13 +37,79 @@ struct ParseState {
   template <size_t N> inline AST::Node *get() const {
     return node_stack_[node_stack_.size() - N];
   }
+
+  ShiftState shift_state() const {
+    using namespace Language;
+    // If the size is just 1, no rule will match so don't bother checking.
+    if (node_stack_.size() < 2) { return ShiftState::NeedMore; }
+
+    if (lookahead_.node_type == expr) { return ShiftState::NeedMore; }
+
+    if (lookahead_.node_type == newline) {
+      // TODO it's much more complicated than this. (braces?)
+      return ShiftState::EndOfExpr;
+    }
+
+    if (get_type<1>() == dots) {
+      return (lookahead_.node_type &
+              (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket))
+                 ? ShiftState::NeedMore
+                 : ShiftState::MustReduce;
+    }
+
+    if (lookahead_.node_type == l_brace && get_type<1>() == fn_expr &&
+        get_type<2>() == fn_arrow) {
+      return ShiftState::MustReduce;
+    }
+
+    if (lookahead_.node_type == l_brace &&
+        (get_type<1>() & (fn_expr | kw_struct | kw_block))) {
+      return ShiftState::NeedMore;
+    }
+
+    if (get_type<1>() == newline && get_type<2>() == comma) {
+      return ShiftState::MustReduce;
+    }
+
+    // We require struct params to be in parentheses.
+    if (lookahead_.node_type == l_paren && get_type<1>() == kw_struct) {
+      return ShiftState::NeedMore;
+    }
+
+    if (get_type<1>() == op_lt && lookahead_.node_type != newline) {
+      return ShiftState::NeedMore;
+    }
+
+    if (get_type<1>() == kw_block && lookahead_.node_type == newline) {
+      return ShiftState::NeedMore;
+    }
+
+    if (get_type<2>() == kw_block && get_type<1>() == newline) {
+      return ShiftState::NeedMore;
+    }
+
+    if (node_stack_.size() > 2 && get_type<3>() == kw_expr_block &&
+        get_type<2>() == expr && get_type<1>() == newline) {
+      return ShiftState::NeedMore;
+    }
+
+    if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
+
+    return ShiftState::MustReduce;
+  }
 };
 
 // Print out the debug information for the parse stack, and pause.
-static void Debug(ParseState *ps) {
+static void Debug(ParseState *ps, Cursor* cursor = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
+  if (cursor) {
+    fprintf(stderr, "%s\n", cursor->line.c_str());
+    fprintf(stderr, "%*s^\n(offset = %lu)\n\n",
+            static_cast<int>(cursor->offset), "", cursor->offset);
+  }
   for (auto x : ps->node_type_stack_) { fprintf(stderr, "%lu, ", x); }
+  fprintf(stderr, " -> %lu", ps->lookahead_.node_type);
   fputs("", stderr);
 
   for (const auto &node_ptr : ps->node_stack_) {
@@ -42,78 +122,6 @@ static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
   ps->node_stack_.push_back(ps->lookahead_.node.release());
   ps->lookahead_ = NextToken(*c);
-}
-
-static bool ShouldShift(ParseState *ps) {
-  using namespace Language;
-  // If the size is just 1, no rule will match so don't bother checking.
-  if (ps->node_stack_.size() < 2) { return true; }
-
-  if (ps->get_type<1>() == dots) {
-    return ps->lookahead_.node_type &
-           (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket);
-  }
-
-  if (ps->lookahead_.node_type == l_brace && ps->get_type<1>() == fn_expr &&
-      ps->get_type<2>() == fn_arrow) {
-    return false;
-  }
-
-  if (ps->lookahead_.node_type == l_brace &&
-      (ps->get_type<1>() & (fn_expr | kw_struct | kw_block))) {
-    return true;
-  }
-
-  if (ps->get_type<1>() == newline && ps->get_type<2>() == comma) {
-    return false;
-  }
-
-  // We require struct params to be in parentheses.
-  if (ps->lookahead_.node_type == l_paren && ps->get_type<1>() == kw_struct) {
-    return true;
-  }
-
-  if (ps->get_type<1>() == op_lt && ps->lookahead_.node_type != newline) {
-    return true;
-  }
-
-  if (ps->get_type<1>() == kw_block && ps->lookahead_.node_type == newline) {
-    return true;
-  }
-
-  if (ps->get_type<2>() == kw_block && ps->get_type<1>() == newline) {
-    return true;
-  }
-
-  if (ps->node_stack_.size() > 2 && ps->get_type<3>() == kw_expr_block &&
-      ps->get_type<2>() == expr && ps->get_type<1>() == newline) {
-    return true;
-  }
-
-  if (ps->lookahead_.node_type == r_paren) { return false; }
-
-  if (ps->get_type<2>() & OP_) {
-    auto left_prec = precedence(((AST::TokenNode *)ps->get<2>())->op);
-    size_t right_prec;
-    if (ps->lookahead_.node_type & OP_) {
-      right_prec = precedence(
-          static_cast<AST::TokenNode *>(ps->lookahead_.node.get())->op);
-
-    } else if (ps->lookahead_.node_type == l_paren) {
-      right_prec = precedence(Operator::Call);
-
-    } else if (ps->lookahead_.node_type == l_bracket) {
-      right_prec = precedence(Operator::Index);
-
-    } else {
-      return false;
-    }
-
-    return (left_prec < right_prec) ||
-           (left_prec == right_prec && (left_prec & assoc_mask) == right_assoc);
-  }
-
-  return false;
 }
 
 static bool Reduce(ParseState *ps) {
@@ -156,45 +164,71 @@ static bool Reduce(ParseState *ps) {
   return true;
 }
 
-AST::Statements *Parse(Source *source) {
-  // Start the lookahead with a bof token. This is a simple way to ensure proper
-  // initialization, because the newline will essentially be ignored.
+void CleanUpReduction(ParseState* state, Cursor* cursor) {
+  // Reduce what you can
+  while (Reduce(state)) {
+    if (debug::parser) { Debug(state, cursor); }
+  }
+
+  state->node_type_stack_.push_back(Language::eof);
+  state->node_stack_.push_back(new AST::TokenNode(*cursor, ""));
+  state->lookahead_ =
+      NNT(std::unique_ptr<AST::Node>(new AST::TokenNode(*cursor, "")),
+          Language::eof);
+
+  // Reduce what you can again
+  while (Reduce(state)) {
+    if (debug::parser) { Debug(state, cursor); }
+  }
+  if (debug::parser) { Debug(state, cursor); }
+}
+
+AST::Statements *Repl::Parse() {
   Cursor cursor;
-  cursor.source_file = source;
-  cursor.source_file->lines.emplace_back(); // Blank line since we 1-index.
-  cursor.MoveToNextLine();
+  cursor.source_file = this;
 
-  ParseState state(cursor);
+  auto state = ParseState(cursor);
+  Shift(&state, &cursor);
 
-  // Any valid program will clean this up eventually. Therefore, shifting on the
-  // bof will not hurt us. The benefit of shifting is that we have now enforced
-  // the invariant that the stack is never empty. This means we do not need to
-  // check for an empty stack in the ShouldShift method.
+  while (true) {
+    auto shift_state = state.shift_state();
+    switch (shift_state) {
+    case ShiftState::NeedMore:
+      Shift(&state, &cursor);
+      if (debug::parser) { Debug(&state, &cursor); }
+      continue;
+    case ShiftState:: EndOfExpr:
+      goto done_with_expr;
+    case ShiftState::MustReduce:
+      Reduce(&state) || (Shift(&state, &cursor), true);
+      if (debug::parser) { Debug(&state, &cursor); }
+    }
+  }
+
+done_with_expr:
+  CleanUpReduction(&state, &cursor);
+  return (AST::Statements *)state.node_stack_.back();
+}
+
+AST::Statements *File::Parse() {
+  Cursor cursor ;
+  cursor.source_file = this;
+
+  auto state = ParseState(cursor);
   Shift(&state, &cursor);
 
   while (state.lookahead_.node_type != Language::eof) {
     ASSERT(state.node_type_stack_.size() == state.node_stack_.size(), "");
     // Shift if you are supposed to, or if you are unable to reduce.
-    if (ShouldShift(&state) || !Reduce(&state)) { Shift(&state, &cursor); }
+    if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
+      Shift(&state, &cursor);
+    }
 
     if (debug::parser) { Debug(&state); }
   }
 
   // Cleanup
-
-  // Reduce what you can
-  while (Reduce(&state)) {
-    if (debug::parser) { Debug(&state); }
-  }
-
-  // Shift EOF
-  Shift(&state, &cursor); // Shift on the EOF token
-  ASSERT(state.get_type<1>() == Language::eof, "");
-
-  // Reduce what you can again
-  while (Reduce(&state)) {
-    if (debug::parser) { Debug(&state); }
-  }
+  CleanUpReduction(&state, &cursor);
 
   // Finish
   if (state.node_stack_.size() > 1) {
@@ -212,7 +246,7 @@ AST::Statements *Parse(Source *source) {
         last_chosen_line = state.node_stack_[i]->loc.line_num;
       }
     }
-    ErrorLog::UnknownParserError(source->name, lines);
+    ErrorLog::UnknownParserError(name, lines);
   }
 
   return (AST::Statements *)state.node_stack_.back();
@@ -232,7 +266,7 @@ ParseAllFiles(std::queue<std::string> file_names) {
     RUN(timer, "Parsing a file") {
       auto source_file      = new File(file_name);
       source_map[file_name] = source_file;
-      stmts.push_back(Parse(source_file));
+      stmts.push_back(source_file->Parse());
     }
   }
   return stmts;

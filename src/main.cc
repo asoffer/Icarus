@@ -24,7 +24,6 @@ std::vector<IR::Func *> implicit_functions;
 extern void ReplEval(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
-extern AST::Statements *Parse(Source *source);
 extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
 extern Timer timer;
@@ -122,41 +121,12 @@ int GenerateCode() {
 int RunRepl() {
   std::cout << "Icarus REPL (v0.1)" << std::endl;
 
+  Repl repl;
   while (true) {
-    bool continue_to_next_line;
-    std::vector<std::string> input_lines;
-    std::string line_feed = "> ";
-
-    do {
-      std::cout << line_feed;
-      std::string input;
-      std::getline(std::cin, input);
-      continue_to_next_line = false;
-      for (int i = static_cast<int>(input.size()); i >= 0; --i) {
-        if (input[i] == ' ' || input[i] == '\t') { continue; }
-        if (input[i] == '\\') {
-          continue_to_next_line = i == 0 || input[i - 1] != '\\';
-          break;
-        }
-      }
-
-      input_lines.push_back(std::move(input));
-      line_feed = "  ";
-    } while (continue_to_next_line);
-
-    if (input_lines.size() > 1) { goto non_trivial_expr; }
-    for (char c : input_lines[0]) {
-      if (c != ' ' && c != '\t') { goto non_trivial_expr; }
-    }
-    continue; // trivial_expr:
-
-  non_trivial_expr:
-    ReplSource src(std::move(input_lines));
-    auto stmts = Parse(&src);
-
+    auto stmts = repl.Parse();
     for (auto stmt : stmts->statements) {
       if (stmt->is_declaration()) {
-        auto decl = static_cast<AST::Declaration*>(stmt);
+        auto decl = static_cast<AST::Declaration *>(stmt);
         decl->assign_scope(Scope::Global);
         std::vector<Error> errors;
         decl->EmitIR(&errors);
@@ -170,7 +140,6 @@ int RunRepl() {
         NOT_YET;
       }
     }
-
   }
   return 0;
 }

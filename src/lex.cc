@@ -515,7 +515,9 @@ static NNT NextOperator(Cursor &cursor) {
     return NNT::Invalid();
   case '\'': cursor.Increment(); return NNT(cursor, "'", Language::op_bl);
   case '_': UNREACHABLE;
-  default: UNREACHABLE;
+  default:
+    std::cerr << "----> " << static_cast<int>(*cursor) << std::endl;
+    UNREACHABLE;
   }
 }
 
@@ -572,6 +574,7 @@ restart:
   case '/': nnt = NextSlashInitiatedToken(cursor); break;
   case '\t':
   case ' ': cursor.Increment(); goto restart; // Skip whitespace
+  case '\n':
   case '\0': cursor.Increment(); return NNT(cursor, "", Language::newline);
   default: nnt = NextOperator(cursor); break;
   }

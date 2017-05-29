@@ -1,9 +1,10 @@
 #include "source.h"
 
 #include "../error_log.h"
+#include "../ast/ast.h"
 
-std::pair<bool, std::string> File::NextLine() {
-  if (ifs.eof()) { return std::make_pair(false, ""); }
+Source::Line File::NextLine() {
+  if (ifs.eof()) { Line{"", true}; }
 
   std::string temp;
   std::getline(ifs, temp);
@@ -22,11 +23,13 @@ std::pair<bool, std::string> File::NextLine() {
     }
   }
   */
-  return std::make_pair(true, temp);
+  return Line{std::move(temp), false};
 }
 
-std::pair<bool, std::string> ReplSource::NextLine() {
-  if (index_ == lines_.size()) { return std::make_pair(false, ""); }
-  return std::make_pair(true, lines_[index_++]);
+Source::Line Repl::NextLine() {
+  std::cout << "> ";
+  std::string input;
+  std::getline(std::cin, input);
+  input += '\n';
+  return Line{input, false};
 }
-

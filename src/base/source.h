@@ -11,23 +11,28 @@ struct Statements;
 }
 
 struct Source {
+  struct Line {
+    std::string text;
+    bool eof = false;
+  };
+
   virtual ~Source() {}
-  virtual std::pair<bool, std::string> NextLine() = 0;
+  virtual Line NextLine() = 0;
+  virtual AST::Statements *Parse() = 0;
 
   std::string name;
-  std::vector<std::string> lines;
+  std::vector<std::string> lines{1}; // Start with one blank line because line
+                                     // numbers are 1-indexed not 0-indexed.
+  // TODO this is a hacky way to do it and you should just shift the counter by
+  // one.
 };
 
-struct ReplSource : public Source {
-  ~ReplSource() final {}
-  ReplSource(std::vector<std::string> lines) : lines_(std::move(lines)) {
-    name = "<<REPL>>";
-  }
+struct Repl: public Source {
+  ~Repl() final {}
+  Repl() { name = "<<REPL>>"; }
 
-  std::pair<bool, std::string> NextLine() final;
-
-  size_t index_ = 0;
-  std::vector<std::string> lines_;
+  Source::Line NextLine() final;
+  AST::Statements *Parse() final;
 };
 
 struct File : Source {
@@ -36,7 +41,9 @@ struct File : Source {
   }
   ~File() final { ifs.close(); }
 
-  std::pair<bool, std::string> NextLine() final;
+  Source::Line NextLine() final;
+  AST::Statements *Parse() final;
+
   AST::Statements *ast = nullptr;
   std::ifstream ifs;
 };
