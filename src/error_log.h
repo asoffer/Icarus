@@ -97,7 +97,6 @@ void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id);
 void NullCharInSrc(const Cursor &loc);
 void NonGraphicCharInSrc(const Cursor &loc);
 void GlobalNonDecl(const Cursor &loc);
-void EmptyFile(const Cursor &loc);
 
 void NotBinary(const Cursor &loc, const std::string &token);
 void Reserved(const Cursor &loc, const std::string &token);

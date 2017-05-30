@@ -622,11 +622,6 @@ void Reserved(const Cursor &loc, const std::string &token) {
   free(msg_head);
 }
 
-void EmptyFile(const Cursor &loc) {
-  ++num_errs_;
-  fprintf(stderr, "File '%s' is empty.", loc.file_name().c_str());
-}
-
 // TODO better error message for repeated enum name
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const Cursor &loc) {                                            \

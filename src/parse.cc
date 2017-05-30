@@ -5,6 +5,14 @@
 #include <iostream>
 #include <queue>
 
+#define PAUSE(dbg)                                                             \
+  do {                                                                         \
+    if (dbg) {                                                                 \
+      std::cerr << "Paused in " << __func__ << " at line " << __LINE__;        \
+      fgetc(stdin);                                                            \
+    }                                                                          \
+  } while (false)
+
 extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
@@ -43,14 +51,13 @@ struct ParseState {
     // If the size is just 1, no rule will match so don't bother checking.
     if (node_stack_.size() < 2) { return ShiftState::NeedMore; }
 
-    if (lookahead_.node_type == expr) { return ShiftState::NeedMore; }
-
     if (lookahead_.node_type == newline) {
       // TODO it's much more complicated than this. (braces?)
       return ShiftState::EndOfExpr;
     }
 
     if (get_type<1>() == dots) {
+      PAUSE(debug::parser);
       return (lookahead_.node_type &
               (op_bl | op_l | op_lt | expr | fn_expr | l_paren | l_bracket))
                  ? ShiftState::NeedMore
@@ -59,42 +66,75 @@ struct ParseState {
 
     if (lookahead_.node_type == l_brace && get_type<1>() == fn_expr &&
         get_type<2>() == fn_arrow) {
+      PAUSE(debug::parser);
       return ShiftState::MustReduce;
     }
 
     if (lookahead_.node_type == l_brace &&
         (get_type<1>() & (fn_expr | kw_struct | kw_block))) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
     if (get_type<1>() == newline && get_type<2>() == comma) {
+      PAUSE(debug::parser);
       return ShiftState::MustReduce;
     }
 
     // We require struct params to be in parentheses.
     if (lookahead_.node_type == l_paren && get_type<1>() == kw_struct) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
     if (get_type<1>() == op_lt && lookahead_.node_type != newline) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
     if (get_type<1>() == kw_block && lookahead_.node_type == newline) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
     if (get_type<2>() == kw_block && get_type<1>() == newline) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
     if (node_stack_.size() > 2 && get_type<3>() == kw_expr_block &&
         get_type<2>() == expr && get_type<1>() == newline) {
+      PAUSE(debug::parser);
       return ShiftState::NeedMore;
     }
 
-    if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
+    if (lookahead_.node_type == r_paren) {
 
+      PAUSE(debug::parser);
+      return ShiftState::MustReduce;
+    }
+
+    if (get_type<2>() & OP_) {
+      auto left_prec = precedence(((AST::TokenNode *)get<2>())->op);
+      size_t right_prec;
+      if (lookahead_.node_type & OP_) {
+        right_prec = precedence(
+            static_cast<AST::TokenNode *>(lookahead_.node.get())->op);
+      } else if (lookahead_.node_type == l_paren) {
+        right_prec = precedence(Operator::Call);
+      } else {
+        PAUSE(debug::parser);
+        return ShiftState::MustReduce;
+      }
+
+      PAUSE(debug::parser);
+      return (left_prec < right_prec) ||
+                     (left_prec == right_prec &&
+                      (left_prec & assoc_mask) == right_assoc)
+                 ? ShiftState::NeedMore
+                 : ShiftState::MustReduce;
+    }
+    PAUSE(debug::parser);
     return ShiftState::MustReduce;
   }
 };
@@ -104,7 +144,7 @@ static void Debug(ParseState *ps, Cursor* cursor = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (cursor) {
-    fprintf(stderr, "%s\n", cursor->line.c_str());
+    fprintf(stderr, "%s", cursor->line.c_str());
     fprintf(stderr, "%*s^\n(offset = %lu)\n\n",
             static_cast<int>(cursor->offset), "", cursor->offset);
   }

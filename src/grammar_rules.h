@@ -38,12 +38,13 @@ static AST::Node *CombineColonEq(NPtrVec &&nodes) {
   return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
 }
 
-namespace ErrMsg {
 AST::Node *EmptyFile(NPtrVec &&nodes) {
-  ErrorLog::EmptyFile(nodes[0]->loc);
-  return drop_all_but<0>(std::forward<NPtrVec &&>(nodes));
+  auto stmts = new AST::Statements;
+  stmts->loc = nodes[0]->loc;
+  return stmts;
 }
 
+namespace ErrMsg {
 template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
   ErrorLog::MissingComma(nodes[PrevIndex]->loc);
   auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
@@ -179,7 +180,7 @@ auto Rules = std::vector<Rule>{
          ErrMsg::BothReserved<0, 1, 3>),
 
     Rule(0x00, bof, {bof, newline}, drop_all_but<0>),
-    Rule(0x00, prog, {bof, eof}, ErrMsg::EmptyFile),
+    Rule(0x00, prog, {bof, eof}, EmptyFile),
     Rule(0x00, prog, {bof, stmts, eof}, drop_all_but<1>),
 
     Rule(0x03, stmts, {op_lt}, AST::Jump::build),

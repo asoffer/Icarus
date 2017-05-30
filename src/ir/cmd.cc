@@ -33,6 +33,7 @@ Val Field(Val v, size_t n) {
 }
 
 #define MAKE_AND_RETURN(type, op)                                              \
+  ASSERT(IR::Func::Current, "");                                               \
   Cmd cmd(type, op, {std::move(v)});                                           \
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
   return cmd.result

@@ -45,7 +45,7 @@ void Primitive::EmitRepr(IR::Val val) {
 
     IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 
-  } else if (this == Bool || this == Int || this == Real || this == Uint) {
+  } else if (this == Bool || this == Int || this == Real || this == Uint || this == Type_) {
     IR::Print(val);
 
   } else {
@@ -60,7 +60,11 @@ void Function::EmitRepr(IR::Val) {
 }
 
 void Enum::EmitRepr(IR::Val) { NOT_YET; }
-void Pointer::EmitRepr(IR::Val) { NOT_YET; }
+
+void Pointer::EmitRepr(IR::Val val) { 
+  std::cerr << val.to_string();
+  NOT_YET;
+}
 
 void Array::EmitRepr(IR::Val val) {
   if (fixed_length) {

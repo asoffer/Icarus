@@ -78,28 +78,31 @@ IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   }
 }
 
+extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
+
 IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
 
   if (scope_ == Scope::Global) {
     ASSERT(addr == IR::Val::None(), "");
     // TODO these checks actually overlap and could be simplified.
+
+    addr = IR::Val::GlobalAddr(global_vals.size(), type);
     if (IsUninitialized()) {
-      addr = IR::Val::GlobalAddr(global_vals.size(), type);
       global_vals.emplace_back();
       global_vals.back().type = type;
+
     } else if (IsCustomInitialized()) {
-      auto init_ir_val = init_val->EmitIR(errors);
-      addr = IR::Val::GlobalAddr(global_vals.size(), type);
-      global_vals.push_back(init_ir_val);
+      global_vals.push_back(Evaluate(init_val));
+
     } else if (IsDefaultInitialized()) {
-      addr = IR::Val::GlobalAddr(global_vals.size(), type);
       // TODO if EmitInitialValue requires generating code, that would be bad.
       global_vals.push_back(type->EmitInitialValue());
+
     } else if (IsInferred()) {
-      addr = IR::Val::GlobalAddr(global_vals.size(), type);
       NOT_YET;
+
     } else {
       UNREACHABLE;
     }
@@ -140,6 +143,9 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   }
   case Language::Operator::Print: {
     return IR::Print(operand->EmitIR(errors));
+  } break;
+  case Language::Operator::And: {
+    return operand->EmitLVal(errors);
   } break;
   default: { UNREACHABLE; }
   }
