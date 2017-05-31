@@ -21,8 +21,6 @@ struct Cursor {
   // Get the character that the cursor is currently pointing to
   char &operator*(void) { return line[offset]; }
 
-  bool MoveToNextLine();
-
   static Cursor Behind(const Cursor &cursor, u64 dist);
 
   void SkipToEndOfLine() {
@@ -37,13 +35,7 @@ struct Cursor {
     --offset;
   }
 
-  void Increment() {
-    if (**this != '\0') {
-      ++offset;
-    } else {
-      MoveToNextLine();
-    }
-  }
+  void Increment();
 
   bool seen_eof_ = false;
 };

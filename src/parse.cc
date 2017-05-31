@@ -30,10 +30,6 @@ std::ostream& operator<<(std::ostream& os, ShiftState s) {
 }
 
 struct ParseState {
-  std::vector<Language::NodeType> node_type_stack_;
-  NPtrVec node_stack_;
-  NNT lookahead_;
-
   ParseState(const Cursor &c) : lookahead_(nullptr, Language::bof) {
     lookahead_.node.reset(new AST::TokenNode(c));
   }
@@ -53,7 +49,8 @@ struct ParseState {
 
     if (lookahead_.node_type == newline) {
       // TODO it's much more complicated than this. (braces?)
-      return ShiftState::EndOfExpr;
+      PAUSE(debug::parser);
+      return brace_count == 0 ? ShiftState::EndOfExpr : ShiftState::NeedMore;
     }
 
     if (get_type<1>() == dots) {
@@ -137,6 +134,17 @@ struct ParseState {
     PAUSE(debug::parser);
     return ShiftState::MustReduce;
   }
+
+
+  std::vector<Language::NodeType> node_type_stack_;
+  NPtrVec node_stack_;
+  NNT lookahead_;
+
+  // We actually don't care about mathing braces. That is, we can count {[) as 1
+  // open, because we are only using this to determine for the REPL if we should
+  // prompt for further input. If it's wrong, we won't be able to to parse
+  // anyway, so it only needs to be the correct value when the braces match.
+  int brace_count = 0;
 };
 
 // Print out the debug information for the parse stack, and pause.
@@ -162,6 +170,14 @@ static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
   ps->node_stack_.push_back(ps->lookahead_.node.release());
   ps->lookahead_ = NextToken(*c);
+  if (ps->lookahead_.node_type & (Language::l_paren | Language::l_bracket |
+                              Language::l_brace | Language::l_double_brace)) {
+    ++ps->brace_count;
+  } else if (ps->lookahead_.node_type &
+             (Language::r_paren | Language::r_bracket | Language::r_brace |
+              Language::r_double_brace)) {
+    --ps->brace_count;
+  }
 }
 
 static bool Reduce(ParseState *ps) {
@@ -224,6 +240,8 @@ void CleanUpReduction(ParseState* state, Cursor* cursor) {
 }
 
 AST::Statements *Repl::Parse() {
+  first_entry = true; // Show '>> ' the first time.
+
   Cursor cursor;
   cursor.source_file = this;
 
@@ -235,19 +253,19 @@ AST::Statements *Repl::Parse() {
     switch (shift_state) {
     case ShiftState::NeedMore:
       Shift(&state, &cursor);
-      if (debug::parser) { Debug(&state, &cursor); }
+
+      if (debug::parser) {
+        Debug(&state, &cursor);
+      }
       continue;
-    case ShiftState:: EndOfExpr:
-      goto done_with_expr;
+    case ShiftState::EndOfExpr:
+      CleanUpReduction(&state, &cursor);
+      return (AST::Statements *)state.node_stack_.back();
     case ShiftState::MustReduce:
       Reduce(&state) || (Shift(&state, &cursor), true);
       if (debug::parser) { Debug(&state, &cursor); }
     }
   }
-
-done_with_expr:
-  CleanUpReduction(&state, &cursor);
-  return (AST::Statements *)state.node_stack_.back();
 }
 
 AST::Statements *File::Parse() {

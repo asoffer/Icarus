@@ -33,6 +33,8 @@ struct Repl: public Source {
 
   Source::Line NextLine() final;
   AST::Statements *Parse() final;
+
+  bool first_entry = true;
 };
 
 struct File : Source {

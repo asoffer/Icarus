@@ -27,7 +27,8 @@ Source::Line File::NextLine() {
 }
 
 Source::Line Repl::NextLine() {
-  std::cout << "> ";
+  std::cout << (first_entry ? "\n>> " : ".. ");
+  first_entry = false;
   std::string input;
   std::getline(std::cin, input);
   input += '\n';

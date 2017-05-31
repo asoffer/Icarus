@@ -2,18 +2,21 @@
 #include "error_log.h"
 #include "base/debug.h"
 
-bool Cursor::MoveToNextLine() {
-  ASSERT(source_file, "");
-  auto next = source_file->NextLine();
-  if (next.eof) {
-    seen_eof_ = true;
-    return false;
+void Cursor::Increment() {
+  if (**this != '\0') {
+    ++offset;
+  } else {
+    ASSERT(source_file, "");
+    auto next = source_file->NextLine();
+    if (next.eof) {
+      seen_eof_ = true;
+    } else {
+      line = next.text;
+      source_file->lines.push_back(line);
+      offset = 0;
+      ++line_num;
+    }
   }
-  line = next.text;
-  source_file->lines.push_back(line);
-  offset = 0;
-  ++line_num;
-  return true;
 }
 
 Cursor Cursor::Behind(const Cursor &cursor, u64 dist) {
