@@ -136,6 +136,7 @@ int RunRepl() {
         ReplEval(expr);
         std::cerr << std::endl;
       } else {
+        std::cerr << *stmt << std::endl;
         NOT_YET;
       }
     }

@@ -198,6 +198,43 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   return IR::Val::None();
 }
 
+IR::Val AST::Case::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT_EARLY;
+  auto land = IR::Func::Current->AddBlock();
+
+  ASSERT(!key_vals.empty(), "");
+  std::vector<IR::Val> phi_args;
+  phi_args.reserve(2 * key_vals.size());
+  for (size_t i = 0; i < key_vals.size() - 1; ++i) {
+    auto compute = IR::Func::Current->AddBlock();
+    auto next    = IR::Func::Current->AddBlock();
+
+    auto val = key_vals[i].first->EmitIR(errors);
+    IR::Jump::Conditional(val, compute, next);
+
+    IR::Block::Current = compute;
+    phi_args.push_back(IR::Val::Block(IR::Block::Current));
+    auto result = key_vals[i].second->EmitIR(errors);
+    phi_args.push_back(result);
+    IR::Jump::Unconditional(land);
+
+    IR::Block::Current = next;
+  }
+
+  // Last entry 
+  phi_args.push_back(IR::Val::Block(IR::Block::Current));
+  auto result = key_vals.back().second->EmitIR(errors);
+  phi_args.push_back(result);
+  IR::Jump::Unconditional(land);
+
+  IR::Block::Current = land;
+  auto phi = IR::Phi(Bool);
+  // TODO FIXME XXX THIS IS HACKY!
+  IR::Func::Current->blocks_[land.value].cmds_[phi.as_reg.instr_index].args =
+      phi_args;
+  return phi;
+}
+
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 

@@ -336,6 +336,7 @@ struct ArrayType : public Expression {
 struct Case : public Expression {
   EXPR_FNS(Case, case);
   static Node *Build(NPtrVec &&nodes);
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   std::vector<std::pair<Expression *, Expression *>> key_vals;
 };
