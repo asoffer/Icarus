@@ -268,6 +268,8 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Bool(resolved[0].as_uint <= resolved[1].as_uint);
     } else if (resolved[0].type == Real) {
       return Val::Bool(resolved[0].as_real <= resolved[1].as_real);
+    } else if (resolved[0].type == Char) {
+      return Val::Bool(resolved[0].as_char <= resolved[1].as_char);
     } else {
       UNREACHABLE;
     }
@@ -371,7 +373,9 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     case Val::Kind::Frame: {
       StackEntry& entry = stack_.back().locals_[resolved[0].as_frame_addr];
       if (entry.type == Int) {
-        return IR::Val::Int(*static_cast<int *>(entry.data));
+        return IR::Val::Int(*static_cast<i64 *>(entry.data));
+      } else if (entry.type == Bool) {
+        return IR::Val::Bool(*static_cast<bool *>(entry.data));
       } else {
         NOT_YET;
       }
@@ -389,6 +393,8 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       StackEntry& entry = stack_.back().locals_[resolved[1].as_frame_addr];
       if (entry.type == Int) {
         *static_cast<i64 *>(entry.data) = resolved[0].as_int;
+      } else if (entry.type == Bool) {
+        *static_cast<bool *>(entry.data) = resolved[0].as_bool;
       } else {
         cmd.dump(0);
         std::cerr << *entry.type << std::endl;
@@ -422,6 +428,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
 }
 
 StackEntry::StackEntry(Type *t) : type(t) { data = malloc(t->bytes()); }
+StackEntry::~StackEntry() { free(data); }
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments) const {
   auto ctx = ExecContext(this);

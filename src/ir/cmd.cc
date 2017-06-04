@@ -186,7 +186,10 @@ void Cmd::dump(size_t indent) const {
     case Op::Alloca: std::cerr << "alloca"; break;
   }
 
-  if (args.empty()) { return; }
+  if (args.empty()) {
+    std::cerr << std::endl;
+    return;
+  }
   std::cerr << ": " << args[0].to_string();
   for (size_t i = 1; i < args.size(); ++i) {
     std::cerr << ", " << args[i].to_string();

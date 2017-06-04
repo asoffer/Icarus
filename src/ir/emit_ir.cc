@@ -71,11 +71,131 @@ IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
 IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
   ASSERT(decl, "");
-  if (decl->arg_val) {
+  if (decl->arg_val || decl->is_in_decl()) {
     return decl->addr;
   } else {
     return PtrCallFix(EmitLVal(errors));
   }
+}
+
+IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT_EARLY;
+
+  auto init       = IR::Func::Current->AddBlock();
+  auto incr       = IR::Func::Current->AddBlock();
+  auto phi        = IR::Func::Current->AddBlock();
+  auto cond       = IR::Func::Current->AddBlock();
+  auto body_entry = IR::Func::Current->AddBlock();
+  auto exit       = IR::Func::Current->AddBlock();
+
+  IR::Jump::Unconditional(init);
+
+  std::vector<IR::Val> init_vals;
+  init_vals.reserve(iterators.size());
+  { // Init block
+    IR::Block::Current = init;
+    for (auto decl : iterators) {
+      if (decl->container->type->is_range()) {
+        if (decl->container->is_binop()) {
+          init_vals.push_back(
+              static_cast<Binop *>(decl->container)->lhs->EmitIR(errors));
+        } else if (decl->container->is_unop()) {
+          init_vals.push_back(
+              static_cast<Unop *>(decl->container)->operand->EmitIR(errors));
+        } else {
+          NOT_YET;
+        }
+      } else {
+        NOT_YET;
+      }
+    }
+    IR::Jump::Unconditional(phi);
+  }
+
+  std::vector<IR::Val> phis;
+  phis.reserve(iterators.size());
+  { // Phi block
+    IR::Block::Current = phi;
+    for (auto decl : iterators) { phis.push_back(IR::Phi(decl->type)); }
+    IR::Jump::Unconditional(cond);
+  }
+
+  std::vector<IR::Val> incr_vals;
+  incr_vals.reserve(iterators.size());
+  { // Incr block
+    IR::Block::Current = incr;
+    for (auto iter : phis) {
+      if (iter.type == Int) {
+        incr_vals.push_back(IR::Add(iter, IR::Val::Int(1)));
+      } else if (iter.type == Uint) {
+        incr_vals.push_back(IR::Add(iter, IR::Val::Uint(1)));
+      } else if (iter.type == Char) {
+        incr_vals.push_back(IR::Add(iter, IR::Val::Char(1)));
+      } else {
+        NOT_YET;
+      }
+    }
+    IR::Jump::Unconditional(phi);
+  }
+
+  { // Complete phi definition
+    for (size_t i = 0; i < iterators.size(); ++i) {
+      // TODO FIXME XXX THIS IS HACKY!
+      auto init_block = IR::Val::Block(init);
+      auto incr_block = IR::Val::Block(incr);
+      IR::Func::Current->blocks_[phi.value]
+          .cmds_[phis[i].as_reg.instr_index]
+          .args = {init_block, init_vals[i], incr_block, incr_vals[i]};
+
+      iterators[i]->addr = phis[i];
+    }
+  }
+
+  { // Cond block
+    IR::Block::Current = cond;
+    for (size_t i = 0; i < iterators.size(); ++i) {
+      auto decl = iterators[i];
+      auto reg  = phis[i];
+      auto next = IR::Func::Current->AddBlock();
+      IR::Val cmp;
+      if (decl->container->type->is_range()) {
+        if (decl->container->is_binop()) {
+          auto rhs_val =
+              static_cast<Binop *>(decl->container)->rhs->EmitIR(errors);
+          cmp = IR::Le(reg, rhs_val);
+        } else if (decl->container->is_unop()) {
+          // TODO we should optimize this here rather then generate suboptimal
+          // code and trust optimizations later on.
+          cmp = IR::Val::Bool(true);
+        } else {
+          NOT_YET;
+        }
+      } else {
+        NOT_YET;
+      }
+
+      IR::Jump::Conditional(cmp, next, exit);
+      IR::Block::Current = next;
+    }
+    IR::Jump::Unconditional(body_entry);
+  }
+
+  { // Body
+    IR::Block::Current = body_entry;
+    for (auto decl : for_scope->decls_) {
+      (void)decl;
+      // TODO initialize all decls
+    }
+
+    statements->EmitIR(errors);
+
+    // TODO destruct all decls
+    IR::Jump::Unconditional(incr);
+  }
+
+  IR::Block::Current = exit;
+  IR::Func::Current->dump();
+  return IR::Val::None();
 }
 
 extern IR::Val Evaluate(AST::Expression *expr);
@@ -290,6 +410,10 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
 
+  // Verifying 'this' only verifies the declared functions type not the
+  // internals. We need to do that here.
+  statements->verify_types(errors);
+  if (!errors->empty()) { return IR::Val::None(); }
   // TODO also verify that the return type matches the input type
 
   CURRENT_FUNC(ir_func = new IR::Func(type)) {
@@ -304,7 +428,9 @@ IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
 
     for (auto scope : fn_scope->innards_) {
       for (auto decl : scope->decls_) {
-        if (decl->arg_val) { continue; }
+        // TODO arg_val seems to go along with in_decl a lot. Is there some
+        // reason for this that *should* be abstracted?
+        if (decl->arg_val || decl->is_in_decl()) { continue; }
         ASSERT(decl->type, "");
         decl->addr = IR::Alloca(decl->type);
       }

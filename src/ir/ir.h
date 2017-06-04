@@ -99,7 +99,11 @@ struct Cmd;
 
 struct StackEntry {
   StackEntry(Type *t);
-  ~StackEntry() { free(data); }
+  StackEntry(const StackEntry&) = delete;
+  StackEntry(StackEntry &&entry) : type(entry.type), data(entry.data) {
+    entry.data = nullptr;
+  }
+  ~StackEntry();
   Type *type; 
   void *data = nullptr;
 };

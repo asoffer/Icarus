@@ -277,6 +277,7 @@ struct CodeBlock : public Expression {
   EXPR_FNS(CodeBlock, code_block);
   Statements* stmts = nullptr;
   std::string error_message; // To be used if stmts == nullptr
+
   static Node *BuildFromStatementsSameLineEnd(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
   static Node *BuildFromStatements(NPtrVec &&nodes);
@@ -373,6 +374,8 @@ private:
 struct For : public Node {
   virtual ~For();
   VIRTUAL_METHODS_FOR_NODES;
+
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   static Node *Build(NPtrVec &&nodes);
 

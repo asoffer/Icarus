@@ -8,11 +8,6 @@ struct Identifier;
 struct FunctionLiteral;
 } // namespace AST
 
-namespace IR {
-struct Block;
-struct Func;
-} // namespace IR
-
 struct Type;
 struct Function;
 
