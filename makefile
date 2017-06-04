@@ -27,10 +27,6 @@ $(TARGET): $(OBJECTS)
 	@$(COMPILER) $(LINK_FLAGS) $(OBJECTS) -o $@
 	@echo Done.
 
-rules:
-	@touch ~/icarus/src/Parse.cc
-	@make
-
 rebuild:
 	@make clean
 	@make header

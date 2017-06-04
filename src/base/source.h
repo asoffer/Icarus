@@ -38,7 +38,8 @@ struct Repl: public Source {
 };
 
 struct File : Source {
-  File(const std::string &file_name = "") : ifs(name, std::ifstream::in) {
+  File(const std::string &file_name = "")
+      : ifs(file_name, std::ifstream::in) {
     name = file_name;
   }
   ~File() final { ifs.close(); }

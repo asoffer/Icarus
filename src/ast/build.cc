@@ -111,7 +111,7 @@ static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
   }
 
   static size_t anon_param_struct_counter = 0;
-  auto param_struct_type = new ParamStruct(
+  auto param_struct_type                  = new ParamStruct(
       "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
       params, decls);
 
@@ -380,8 +380,7 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class) {
 // LHS is not a declaration
 // RHS is not a declaration
 Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
-  return BuildOperator(std::forward<NPtrVec &&>(nodes),
-                       Language::Operator::Call);
+  return BuildOperator(std::move(nodes), Language::Operator::Call);
 }
 
 // Input guarantees
@@ -391,8 +390,7 @@ Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
 // LHS is not a declaration
 // RHS is not a declaration
 Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
-  return BuildOperator(std::forward<NPtrVec &&>(nodes),
-                       Language::Operator::Index);
+  return BuildOperator(std::move(nodes), Language::Operator::Index);
 }
 
 // Input guarantee:
@@ -628,7 +626,7 @@ AST::Node *BracedStatements(NPtrVec &&nodes) {
 AST::Node *AST::CodeBlock::BuildFromStatements(NPtrVec &&nodes) {
   auto block = new CodeBlock;
   // TODO block->value
-  block->loc = nodes[0]->loc;
+  block->loc   = nodes[0]->loc;
   block->stmts = steal<AST::Statements>(nodes[1]);
   return block;
 }
@@ -660,16 +658,16 @@ AST::Node *AST::CodeBlock::BuildFromStatementsSameLineEnd(NPtrVec &&nodes) {
   // TODO block->value
   block->loc   = nodes[0]->loc;
   block->stmts = static_cast<AST::Statements *>(
-      BracedStatementsSameLineEnd(std::forward<NPtrVec &&>(nodes)));
+      BracedStatementsSameLineEnd(std::move(nodes)));
   return block;
 }
 
 AST::Node *AST::CodeBlock::BuildFromOneStatement(NPtrVec &&nodes) {
   auto block = new CodeBlock;
   // TODO block->value
-  block->loc   = nodes[0]->loc;
-  block->stmts = static_cast<AST::Statements *>(
-      OneBracedStatement(std::forward<NPtrVec &&>(nodes)));
+  block->loc = nodes[0]->loc;
+  block->stmts =
+      static_cast<AST::Statements *>(OneBracedStatement(std::move(nodes)));
   return block;
 }
 
@@ -683,8 +681,7 @@ AST::Node *AST::CodeBlock::BuildEmpty(NPtrVec &&nodes) {
   auto block = new CodeBlock;
   // TODO block->value
   block->loc   = nodes[0]->loc;
-  block->stmts = static_cast<AST::Statements *>(
-      EmptyBraces(std::forward<NPtrVec &&>(nodes)));
+  block->stmts = static_cast<AST::Statements *>(EmptyBraces(std::move(nodes)));
   return block;
 }
 
@@ -703,21 +700,21 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
   for (auto op : chain_ops) {
     if (tk == op.first) {
       ((AST::TokenNode *)nodes[1])->op = op.second;
-      return AST::ChainOp::Build(std::forward<NPtrVec &&>(nodes));
+      return AST::ChainOp::Build(std::move(nodes));
     }
   }
 
   if (tk == ".") {
-    return AST::Access::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::Access::Build(std::move(nodes));
 
   } else if (tk == ":" || tk == ":=") {
-    return AST::Declaration::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::Declaration::Build(std::move(nodes));
 
   } else if (tk == "in") {
-    return AST::InDecl::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::InDecl::Build(std::move(nodes));
 
   } else if (tk == "`") {
-    return AST::Generic::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::Generic::Build(std::move(nodes));
   }
 
   if (tk == "=") {
@@ -779,16 +776,16 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "case") {
-    return AST::Case::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::Case::Build(std::move(nodes));
 
   } else if (tk == "enum") {
-    return AST::BuildEnumLiteral(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildEnumLiteral(std::move(nodes));
 
   } else if (tk == "struct") {
-    return AST::BuildStructLiteral(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildStructLiteral(std::move(nodes));
 
   } else if (tk == "scope") {
-    return AST::BuildScopeLiteral(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildScopeLiteral(std::move(nodes));
   }
 
   UNREACHABLE;
@@ -799,10 +796,10 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   auto tk = ((AST::TokenNode *)nodes[0])->token;
 
   if (tk == "for") {
-    return AST::For::Build(std::forward<NPtrVec &&>(nodes));
+    return AST::For::Build(std::move(nodes));
 
   } else if (tk == "struct") {
-    return AST::BuildParametricStructLiteral(std::forward<NPtrVec &&>(nodes));
+    return AST::BuildParametricStructLiteral(std::move(nodes));
   }
 
   UNREACHABLE;

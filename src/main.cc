@@ -49,72 +49,71 @@ int GenerateCode() {
 
   RUN(timer, "Verify and Emit") {
     for (auto stmt : global_statements->statements) {
-      std::cerr << stmt->to_string(0) << std::endl;
+      if (!stmt->is_declaration()) { continue; }
+      auto decl = static_cast<AST::Declaration *>(stmt);
+      std::vector<Error> errors;
+      decl->EmitIR(&errors);
+    }
+  }
+/*
+    for (auto stmt : global_statements->statements) {
+      if (stmt->is_declaration()) {
+        ((AST::Declaration *)stmt)->EmitGlobal();
+
+      } else if (stmt->is_unop()) {
+        switch (((AST::Unop *)stmt)->op) {
+        case Language::Operator::Eval:
+          stmt->verify_types();
+          if (ErrorLog::num_errs_ > 0) { continue; }
+
+          if (((AST::Unop *)stmt)->type == Void) {
+            Evaluate(((AST::Unop *)stmt)->operand);
+          } else {
+            ErrorLog::GlobalNonDecl(stmt->loc);
+          }
+        case Language::Operator::Require:
+          break;
+        default:
+          ErrorLog::GlobalNonDecl(stmt->loc);
+          break;
+        }
+
+      } else {
+        ErrorLog::GlobalNonDecl(stmt->loc);
+      }
     }
   }
 
-  /*
-    RUN(timer, "Verify and Emit") {
-      for (auto stmt : global_statements->statements) {
-        if (!stmt->is_declaration()) { continue; }
-        ((AST::Declaration *)stmt)->AllocateGlobal();
+      RUN(timer, "Type verification") {
+        CompletelyVerify(global_statements);
+        VerifyDeclBeforeUsage();
+        CHECK_FOR_ERRORS;
       }
 
-      for (auto stmt : global_statements->statements) {
-        if (stmt->is_declaration()) {
-          ((AST::Declaration *)stmt)->EmitGlobal();
-
-        } else if (stmt->is_unop()) {
-          switch (((AST::Unop *)stmt)->op) {
-          case Language::Operator::Eval:
-            stmt->verify_types();
-            if (ErrorLog::num_errs_ > 0) { continue; }
-
-            if (((AST::Unop *)stmt)->type == Void) {
-              Evaluate(((AST::Unop *)stmt)->operand);
-            } else {
-              ErrorLog::GlobalNonDecl(stmt->loc);
-            }
-          case Language::Operator::Require: break;
-          default: ErrorLog::GlobalNonDecl(stmt->loc); break;
-          }
-
-        } else {
-          ErrorLog::GlobalNonDecl(stmt->loc);
-        }
+      // TODO needs to be earlier/ part of type verification
+      RUN(timer, "(L/R)value checking") {
+        global_statements->lrvalue_check();
+        CHECK_FOR_ERRORS;
       }
-    }
 
-    RUN(timer, "Type verification") {
-      CompletelyVerify(global_statements);
-      VerifyDeclBeforeUsage();
-      CHECK_FOR_ERRORS;
-    }
+      if (file_type == FileType::None) { return 0; }
 
-    // TODO needs to be earlier/ part of type verification
-    RUN(timer, "(L/R)value checking") {
-      global_statements->lrvalue_check();
-      CHECK_FOR_ERRORS;
-    }
+     //  RUN(timer, "Code-gen") {
+     //    // Generate all the functions
+     //    if (file_type != FileType::None) {
+     //      for (auto f : implicit_functions) {
+     //        if (f->generated == IR::Func::Gen::ToLink) { continue; }
+     //      }
+     //    }
+     //  }
 
-    if (file_type == FileType::None) { return 0; }
-
-   //  RUN(timer, "Code-gen") {
-   //    // Generate all the functions
-   //    if (file_type != FileType::None) {
-   //      for (auto f : implicit_functions) {
-   //        if (f->generated == IR::Func::Gen::ToLink) { continue; }
-   //      }
-   //    }
-   //  }
-
-    switch (file_type) {
-    case FileType::None: UNREACHABLE;
-    case FileType::Nat: UNREACHABLE;
-    case FileType::IR: UNREACHABLE;
-    case FileType::Bin: UNREACHABLE;
-    }
-  */
+      switch (file_type) {
+      case FileType::None: UNREACHABLE;
+      case FileType::Nat: UNREACHABLE;
+      case FileType::IR: UNREACHABLE;
+      case FileType::Bin: UNREACHABLE;
+      }
+    */
   return 0;
 }
 

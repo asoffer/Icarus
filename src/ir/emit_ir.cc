@@ -126,7 +126,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
   switch (op) {
   case Language::Operator::Not:
-  case Language::Operator::Sub:{
+  case Language::Operator::Sub: {
     return IR::Neg(operand->EmitIR(errors));
   } break;
   case Language::Operator::Return: {
@@ -147,7 +147,14 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   case Language::Operator::And: {
     return operand->EmitLVal(errors);
   } break;
-  default: { UNREACHABLE; }
+  case Language::Operator::Eval: {
+    // TODO what if there's an error during evaluation?
+    return Evaluate(operand);
+  }
+  default: {
+    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
+    UNREACHABLE;
+  }
   }
 }
 
@@ -175,13 +182,13 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
   } break;
   case Language::Operator::Call: {
     auto lhs_ir = lhs->EmitIR(errors);
-    std::vector<IR::Val> args;
-    if (rhs->is_comma_list()) {
+    if (!rhs) {
+      return IR::Call(lhs_ir, {});
+    } else if (rhs->is_comma_list()) {
       NOT_YET;
     } else {
-      args.push_back(rhs->EmitIR(errors));
+      return IR::Call(lhs_ir, {rhs->EmitIR(errors)});
     }
-    return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
     auto lhs_lval = lhs->EmitLVal(errors);
@@ -282,8 +289,7 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
-  statements->verify_types(errors);
-  if (!errors->empty()) { return IR::Val::None(); }
+
   // TODO also verify that the return type matches the input type
 
   CURRENT_FUNC(ir_func = new IR::Func(type)) {
@@ -305,6 +311,10 @@ IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
     }
 
     statements->EmitIR(errors);
+    IR::Jump::Unconditional(ir_func->exit());
+
+    IR::Block::Current = ir_func->exit();
+    IR::Jump::Return();
   }
 
   return IR::Val::Func(ir_func);
