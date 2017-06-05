@@ -70,7 +70,7 @@ IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
-  ASSERT(decl, "");
+  ASSERT(decl, "No decl for identifier \"" + token + "\"");
   if (decl->arg_val || decl->is_in_decl()) {
     return decl->addr;
   } else {
@@ -339,13 +339,19 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
   } break;
   case Language::Operator::Call: {
     auto lhs_ir = lhs->EmitIR(errors);
+    std::vector<IR::Val> args;
     if (!rhs) {
-      return IR::Call(lhs_ir, {});
+      ;
     } else if (rhs->is_comma_list()) {
-      NOT_YET;
+      auto rhs_comma_list = static_cast<ChainOp *>(rhs);
+      args.reserve(rhs_comma_list->exprs.size());
+      for (auto expr : rhs_comma_list->exprs) {
+        args.push_back(expr->EmitIR(errors));
+      }
     } else {
-      return IR::Call(lhs_ir, {rhs->EmitIR(errors)});
+      args.push_back(rhs->EmitIR(errors));
     }
+    return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
     auto lhs_lval = lhs->EmitLVal(errors);
@@ -385,6 +391,7 @@ IR::Val AST::ArrayType::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
+  ASSERT(!is_comma_list(), "");
   if (ops[0] == Language::Operator::Xor) {
     return std::accumulate(exprs.begin(), exprs.end(), IR::Val::Bool(false),
                            [errors](IR::Val lhs, AST::Expression *expr) {
@@ -444,7 +451,7 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
   NOT_YET;
 }
 
-IR::Val AST::FunctionLiteral::Emit(bool, std::vector<Error> *errors) {
+IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT_EARLY;
 
   // Verifying 'this' only verifies the declared functions type not the

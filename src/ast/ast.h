@@ -348,9 +348,7 @@ struct FunctionLiteral : public Expression {
   static Node *BuildOneLiner(NPtrVec &&nodes);
   static Node *BuildNoLiner(NPtrVec &&nodes);
 
-  virtual IR::Val EmitIR(std::vector<Error> *errors) {
-    return Emit(true, errors);
-  }
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   FnScope *fn_scope            = nullptr;
   Expression *return_type_expr = nullptr;
@@ -358,18 +356,11 @@ struct FunctionLiteral : public Expression {
   std::vector<Declaration *> inputs;
   Statements *statements  = nullptr;
 
-  inline IR::Val EmitAnonymousIR(std::vector<Error> *errors) {
-    return Emit(false, errors);
-  }
-
   IR::Func *ir_func = nullptr;
 
   std::set<Declaration *> captures;
 
   std::map<Type *, Declaration *> cache;
-
-private:
-  IR::Val Emit(bool should_gen, std::vector<Error> *errors);
 };
 
 struct For : public Node {

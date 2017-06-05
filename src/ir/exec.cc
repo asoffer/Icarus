@@ -60,7 +60,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
   auto fn_ptr = WrapExprIntoFunction(expr);
   std::vector<Error> errors;
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitAnonymousIR(&errors).as_func; }
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
 
   auto result = fn->Execute({});
 
@@ -112,7 +112,10 @@ BlockIndex ExecContext::ExecuteBlock() {
 
 void ExecContext::Resolve(Val* v) const {
   switch (v->kind) {
-  case Val::Kind::Arg: *v = arg(v->as_arg); return;
+  case Val::Kind::Arg:
+    ASSERT(args_.size() > v->as_arg, "");
+    *v = arg(v->as_arg);
+    return;
   case Val::Kind::Reg: *v = reg(v->as_reg); return;
   case Val::Kind::Frame: *v = stack_from_frame(*v); return;
   case Val::Kind::Global: return;
@@ -148,6 +151,8 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real + resolved[1].as_real);
     } else {
+      cmd.dump(0);
+      for (auto &r : resolved) { std::cerr << r.to_string() << std::endl; }
       UNREACHABLE;
     }
   case Op::Sub:
