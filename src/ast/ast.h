@@ -421,6 +421,8 @@ struct ScopeLiteral : public Expression {
   ScopeLiteral() = delete;
   EXPR_FNS(ScopeLiteral, scope);
 
+  IR::Val EmitIR(std::vector<Error> *errors) override;
+
   Declaration *enter_fn = nullptr;
   Declaration *exit_fn  = nullptr;
   Scope *body_scope     = nullptr;

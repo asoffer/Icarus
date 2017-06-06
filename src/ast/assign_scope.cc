@@ -57,6 +57,7 @@ void InDecl::assign_scope(Scope *scope) {
 }
 
 void Declaration::assign_scope(Scope *scope) {
+  ASSERT(scope, "");
   scope_ = scope;
   scope_->decls_.push_back(this);
   identifier->assign_scope(scope);
@@ -122,6 +123,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 
 void ScopeLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
+  body_scope = scope->add_child<ExecScope>();
   enter_fn->assign_scope(body_scope);
   exit_fn->assign_scope(body_scope);
 }

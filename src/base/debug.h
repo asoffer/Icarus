@@ -26,4 +26,14 @@ std::string to_string(std::string s);
 #define AT(access) [(access)]
 #endif
 
+template <typename To, typename From> To *ptr_cast(From* ptr) {
+#ifdef DEBUG
+  auto result = dynamic_cast<To*>(ptr);
+  ASSERT(result, "Failed to convert");
+  return result;
+#else
+  return static_cast<To*>(ptr);
+#endif
+}
+
 #endif // ICARUS_BASE_DEBUG_H

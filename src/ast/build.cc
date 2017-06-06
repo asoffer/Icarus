@@ -71,14 +71,16 @@ static Node *BuildScopeLiteral(NPtrVec &&nodes) {
   auto scope_lit = new ScopeLiteral(nodes[0]->loc);
 
   // TODO take arguments as well
-  ASSERT(nodes[1]->is_statements(), "");
-  for (auto &&n : ((Statements *)nodes[1])->statements) {
-    if (!n->is_declaration()) { continue; } // TODO leaking
-    auto d = (Declaration *)n;
-    if (d->identifier->token == "enter") {
-      scope_lit->enter_fn = steal<Declaration>(n);
-    } else if (d->identifier->token == "exit") {
-      scope_lit->exit_fn = steal<Declaration>(n);
+  if (nodes.size() > 1) {
+    ASSERT(nodes[1]->is_statements(), "");
+    for (auto &&n : ((Statements *)nodes[1])->statements) {
+      if (!n->is_declaration()) { continue; } // TODO leaking
+      auto d = (Declaration *)n;
+      if (d->identifier->token == "enter") {
+        scope_lit->enter_fn = steal<Declaration>(n);
+      } else if (d->identifier->token == "exit") {
+        scope_lit->exit_fn = steal<Declaration>(n);
+      }
     }
   }
 

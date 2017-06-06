@@ -50,7 +50,7 @@ int GenerateCode() {
   RUN(timer, "Verify and Emit") {
     for (auto stmt : global_statements->statements) {
       if (!stmt->is_declaration()) { continue; }
-      auto decl = static_cast<AST::Declaration *>(stmt);
+      auto decl = ptr_cast<AST::Declaration>(stmt);
       std::vector<Error> errors;
       decl->EmitIR(&errors);
     }
@@ -125,13 +125,13 @@ int RunRepl() {
     auto stmts = repl.Parse();
     for (auto stmt : stmts->statements) {
       if (stmt->is_declaration()) {
-        auto decl = static_cast<AST::Declaration *>(stmt);
+        auto decl = ptr_cast<AST::Declaration>(stmt);
         decl->assign_scope(Scope::Global);
         std::vector<Error> errors;
         decl->EmitIR(&errors);
 
       } else if (stmt->is_expression()) {
-        auto expr = static_cast<AST::Expression *>(stmt);
+        auto expr = ptr_cast<AST::Expression>(stmt);
         expr->assign_scope(Scope::Global);
         ReplEval(expr);
         std::cerr << std::endl;

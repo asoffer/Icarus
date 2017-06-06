@@ -98,10 +98,10 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
       if (decl->container->type->is_range()) {
         if (decl->container->is_binop()) {
           init_vals.push_back(
-              static_cast<Binop *>(decl->container)->lhs->EmitIR(errors));
+              ptr_cast<Binop>(decl->container)->lhs->EmitIR(errors));
         } else if (decl->container->is_unop()) {
           init_vals.push_back(
-              static_cast<Unop *>(decl->container)->operand->EmitIR(errors));
+              ptr_cast<Unop>(decl->container)->operand->EmitIR(errors));
         } else {
           NOT_YET;
         }
@@ -161,7 +161,7 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
       if (decl->container->type->is_range()) {
         if (decl->container->is_binop()) {
           auto rhs_val =
-              static_cast<Binop *>(decl->container)->rhs->EmitIR(errors);
+              ptr_cast<Binop>(decl->container)->rhs->EmitIR(errors);
           cmp = IR::Le(reg, rhs_val);
         } else if (decl->container->is_unop()) {
           // TODO we should optimize this here rather then generate suboptimal
@@ -235,6 +235,12 @@ IR::Val AST::Case::EmitIR(std::vector<Error> *errors) {
   return phi;
 }
 
+IR::Val AST::ScopeLiteral::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT_EARLY;
+  return IR::Val::None();
+}
+
+
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 
@@ -290,7 +296,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     IR::SetReturn(0, operand->EmitIR(errors));
 
     ASSERT(scope_->is_exec(), "");
-    // static_cast<BlockScope *>(scope_)->MakeReturn(operand->EmitIR(errors));
+    // ptr_cast<BlockScope>(scope_)->MakeReturn(operand->EmitIR(errors));
     IR::Jump::Unconditional(IR::BlockIndex{1});
 
     // TODO this is the right number but not implemented correctly.
@@ -343,7 +349,7 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     if (!rhs) {
       ;
     } else if (rhs->is_comma_list()) {
-      auto rhs_comma_list = static_cast<ChainOp *>(rhs);
+      auto rhs_comma_list = ptr_cast<ChainOp>(rhs);
       args.reserve(rhs_comma_list->exprs.size());
       for (auto expr : rhs_comma_list->exprs) {
         args.push_back(expr->EmitIR(errors));
