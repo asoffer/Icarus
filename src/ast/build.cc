@@ -64,7 +64,8 @@ static Node *BuildStructLiteral(NPtrVec &&nodes) {
       ErrorLog::NonDeclInStructDecl(n->loc);
     }
   }
-  return new DummyTypeExpr(nodes[0]->loc, struct_type);
+  return new Terminal(nodes[0]->loc, Language::Terminal::Type, Type_,
+                      IR::Val::Type(struct_type));
 }
 
 static Node *BuildScopeLiteral(NPtrVec &&nodes) {
@@ -117,9 +118,10 @@ static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
       "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
       params, decls);
 
-  auto dummy = new DummyTypeExpr(nodes[0]->loc, param_struct_type);
-  for (auto param : params) { param->arg_val = dummy; }
-  return dummy;
+  auto type_node = new Terminal(nodes[0]->loc, Language::Terminal::Type, Type_,
+                                IR::Val::Type(param_struct_type));
+  for (auto param : params) { param->arg_val = type_node; }
+  return type_node;
 }
 
 // Input guarantees:
@@ -150,9 +152,11 @@ static Node *BuildEnumLiteral(NPtrVec &&nodes) {
   }
 
   static size_t anon_enum_counter = 0;
-  return new DummyTypeExpr(
-      nodes[0]->loc,
-      new Enum("__anon.enum" + std::to_string(anon_enum_counter++), members));
+  // Almost surely this is leaking
+  return new Terminal(
+      nodes[0]->loc, Language::Terminal::Type, Type_,
+      IR::Val::Type(new Enum(
+          "__anon.enum" + std::to_string(anon_enum_counter++), members)));
 }
 
 // Input guarantees:

@@ -16,7 +16,23 @@ void Access::assign_scope(Scope *scope) {
 }
 
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
-void Terminal::assign_scope(Scope *scope) { scope_ = scope; }
+void Terminal::assign_scope(Scope *scope) { 
+  scope_ = scope;
+  if (type != Type_) { return; }
+  if (value.as_type->is_parametric_struct()) {
+    auto ps = static_cast<ParamStruct *>(value.as_type);
+    if (!ps->type_scope) { ps->type_scope = scope->add_child<DeclScope>(); }
+
+    for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
+    for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
+
+  } else if (value.as_type->is_struct()) {
+    auto s = static_cast<Struct *>(value.as_type);
+    if (!s->type_scope) { s->type_scope = scope->add_child<DeclScope>(); }
+    for (auto d : s->decls) { d->assign_scope(s->type_scope); }
+  }
+  // TODO enum type?
+}
 
 void ArrayType::assign_scope(Scope *scope) {
   scope_ = scope;
@@ -97,21 +113,6 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 
 void Jump::assign_scope(Scope *scope) { scope_ = scope; }
 void CodeBlock::assign_scope(Scope *scope) { scope_ = scope; }
-void DummyTypeExpr::assign_scope(Scope *scope) {
-  scope_ = scope;
-  if (value.as_type->is_parametric_struct()) {
-    auto ps = static_cast<ParamStruct *>(value.as_type);
-    if (!ps->type_scope) { ps->type_scope = scope->add_child<DeclScope>(); }
-
-    for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
-    for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
-
-  } else if (value.as_type->is_struct()) {
-    auto s = static_cast<Struct *>(value.as_type);
-    if (!s->type_scope) { s->type_scope = scope->add_child<DeclScope>(); }
-    for (auto d : s->decls) { d->assign_scope(s->type_scope); }
-  }
-}
 
 void ScopeNode::assign_scope(Scope *scope) {
   scope_ = scope;

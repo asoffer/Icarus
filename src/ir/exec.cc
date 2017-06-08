@@ -21,7 +21,8 @@ static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
   fn_ptr->scope_             = expr->scope_;
   fn_ptr->statements         = new AST::Statements;
   fn_ptr->statements->scope_ = fn_ptr->fn_scope;
-  fn_ptr->return_type_expr   = new AST::DummyTypeExpr(expr->loc, expr->type);
+  fn_ptr->return_type_expr   = new AST::Terminal(
+      expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
   AST::Unop *ret             = nullptr;
 
   if (expr->type != Void) {
@@ -43,7 +44,7 @@ void ReplEval(AST::Expression *expr) {
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
     std::vector<Error> errors;
-    auto expr_val = expr->EmitIR(&errors);
+    auto expr_val = expr->VerifyAndEmitIR(&errors);
     if (!errors.empty()) {
       std::cerr << "There were " << errors.size() << " errors.";
       return;
@@ -60,7 +61,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
   auto fn_ptr = WrapExprIntoFunction(expr);
   std::vector<Error> errors;
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->VerifyAndEmitIR(&errors).as_func; }
 
   auto result = fn->Execute({});
 

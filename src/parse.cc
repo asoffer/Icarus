@@ -455,8 +455,7 @@ void CleanUpReduction(ParseState* state, Cursor* cursor) {
   state->node_type_stack_.push_back(Language::eof);
   state->node_stack_.push_back(new AST::TokenNode(*cursor, ""));
   state->lookahead_ =
-      NNT(std::unique_ptr<AST::Node>(new AST::TokenNode(*cursor, "")),
-          Language::eof);
+      NNT(std::make_unique<AST::TokenNode>(*cursor, ""), Language::eof);
 
   // Reduce what you can again
   while (Reduce(state)) {

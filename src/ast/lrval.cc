@@ -136,5 +136,4 @@ void ScopeLiteral::lrvalue_check() {
   exit_fn->lrvalue_check();
 }
 void Terminal::lrvalue_check() { lvalue = Assign::RVal; }
-void DummyTypeExpr::lrvalue_check() { lvalue = Assign::RVal; }
 } // namespace AST

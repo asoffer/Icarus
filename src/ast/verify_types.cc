@@ -635,7 +635,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
             } else {
               decl->value = IR::Val::Type(Evaluate(decl->init_val).as_type);
 
-              if (decl->init_val->is_dummy()) {
+              if (decl->init_val->is_terminal()) {
                 auto t = decl->init_val->value.as_type;
                 if (t->is_struct()) {
 
@@ -1356,7 +1356,7 @@ void Declaration::verify_types(std::vector<Error> *errors) {
   if (type->is_struct()) { ((Struct *)type)->CompleteDefinition(); }
 
   if (type == Type_ && IsInferred()) {
-    if (init_val->is_dummy()) {
+    if (init_val->is_terminal()) {
       auto t = init_val->value.as_type;
 
       std::string *name_ptr = nullptr;
@@ -1590,16 +1590,6 @@ void Jump::verify_types(std::vector<Error> *errors) {
 
 // Intentionally do not verify anything internal
 void CodeBlock::verify_types(std::vector<Error> *) { type = Code_; }
-
-void DummyTypeExpr::verify_types(std::vector<Error> *errors) {
-  if (value.as_type->is_parametric_struct()) {
-    auto ps = (ParamStruct *)value.as_type;
-    for (auto p : ps->params) { p->verify_types(errors); }
-  } else if (value.as_type->is_struct()) {
-    auto s = (Struct *)value.as_type;
-    for (auto d : s->decls) { VerificationQueue.push(d); }
-  }
-}
 
 void ScopeNode::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;

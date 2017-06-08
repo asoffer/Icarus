@@ -45,12 +45,9 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
 
 #define RETURN_TERMINAL(term_type, ty, val)                                    \
   do {                                                                         \
-    auto term_ptr = std::make_unique<AST::Terminal>();                         \
-    term_ptr->loc = cursor;                                                    \
-    term_ptr->terminal_type = Language::Terminal::term_type;                   \
-    term_ptr->type = ty;                                                       \
-    term_ptr->value = val;                                                     \
-    return NNT(std::move(term_ptr), Language::expr);                           \
+    return NNT(std::make_unique<AST::Terminal>(                                \
+                   cursor, Language::Terminal::term_type, ty, val),            \
+               Language::expr);                                                \
   } while (false)
 
 extern std::map<const char *, Type *> PrimitiveTypes;

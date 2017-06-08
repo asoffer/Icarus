@@ -20,10 +20,13 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(Assign::Unset), type(nullptr), value(IR::Val::None()) {}
 
-DummyTypeExpr::DummyTypeExpr(const Cursor &new_loc, Type *t) {
-  loc   = new_loc;
-  type  = Type_;
-  value = IR::Val::Type(t);
+Terminal::Terminal(const Cursor &cursor, Language::Terminal term_type, Type *t,
+                   IR::Val val) {
+  type          = t;
+  terminal_type = term_type;
+  precedence    = Language::precedence(Language::Operator::NotAnOperator);
+  loc           = cursor;
+  value         = val;
 }
 
 ScopeLiteral::ScopeLiteral(const Cursor &cursor) {
