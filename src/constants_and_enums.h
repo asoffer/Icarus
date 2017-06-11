@@ -76,6 +76,7 @@ enum NodeType : u64 {
   dots     = 1ull << 30,
   op_lt    = 1ull << 31,
   fn_arrow = 1ull << 32,
+  id       = 1ull << 33,
 };
 
 constexpr u64 OP_ =

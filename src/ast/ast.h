@@ -152,7 +152,8 @@ struct TokenNode : public Node {
   TokenNode(const Cursor &cursor = Cursor(), std::string str = "");
 
   std::string token;
-  Language::Operator op;
+  IR::Val value;
+  Language::Operator op; // TODO Do I still need this? It's rarely set.
 };
 
 #undef ENDING

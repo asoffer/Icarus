@@ -6,7 +6,7 @@
 
 extern IR::Val PtrCallFix(IR::Val v);
 
-static IR::Val AsciiFunc() {
+IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
     auto fn = new IR::Func(Func(Uint, Char));
     CURRENT_FUNC(fn) {
@@ -22,7 +22,7 @@ static IR::Val AsciiFunc() {
   return IR::Val::Func(ascii_func_);
 }
 
-static IR::Val OrdFunc() {
+IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
     auto fn = new IR::Func(Func(Char, Uint));
     CURRENT_FUNC(fn) {
