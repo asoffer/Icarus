@@ -85,43 +85,6 @@ namespace debug {
 extern bool parser;
 } // namespace debug
 
-static AST::Terminal *ProcessTerminal(std::unique_ptr<AST::TokenNode> node) {
-  auto type = node->value.type;
-  Language::Terminal term_type;
-
-  if (type == Type_) {
-    term_type = Language::Terminal::Type;
-  } else if (type == Bool) {
-    term_type = node->value.as_bool ? Language::Terminal::True
-                                    : Language::Terminal::False;
-  } else if (type == Func(Char, Uint)) {
-    term_type = Language::Terminal::Ord;
-  } else if (type == Func(Uint, Char)) {
-    term_type = Language::Terminal::ASCII;
-  } else if (type == Func(String, Code_)) {
-    // TODO not yet implemented in lexer
-    term_type = Language::Terminal::Error;
-  } else if (type == Int) {
-    term_type = Language::Terminal::Int;
-  } else if (type == Char) {
-    term_type = Language::Terminal::Char;
-  } else if (type == Real) {
-    term_type = Language::Terminal::Real;
-  } else if (type == String) {
-    // TODO not yet implemented in lexer
-    term_type = Language::Terminal::StringLiteral;
-  } else if (type == Unknown) {
-    term_type = Language::Terminal::Hole;
-  } else if (type == NullPtr) {
-    // TODO not yet implemented in lexer
-    term_type = Language::Terminal::Null;
-  } else {
-    UNREACHABLE;
-  }
-
-  return new AST::Terminal(node->loc, term_type, type, node->value);
-}
-
 extern AST::Node *BuildBinaryOperator(NPtrVec &&nodes);
 extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
 extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
@@ -400,11 +363,11 @@ struct ParseState {
     }
 
     if (get_type<2>() & OP_) {
-      auto left_prec = precedence(ptr_cast<AST::TokenNode>(get<2>())->op);
+      auto left_prec = precedence(((AST::TokenNode *)get<2>())->op);
       size_t right_prec;
       if (lookahead_.node_type & OP_) {
         right_prec = precedence(
-            ptr_cast<AST::TokenNode>(lookahead_.node.get())->op);
+            static_cast<AST::TokenNode *>(lookahead_.node.get())->op);
       } else if (lookahead_.node_type == l_paren) {
         right_prec = precedence(Operator::Call);
       } else {
@@ -453,16 +416,7 @@ static void Debug(ParseState *ps, Cursor* cursor = nullptr) {
 
 static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
-  if (ps->lookahead_.node.get()->value != IR::Val::None()) {
-    ps->node_stack_.push_back(ProcessTerminal(std::move(ps->lookahead_.node)));
-  } else if (ps->lookahead_.node_type == Language::id) {
-    ps->node_type_stack_.back() = Language::expr;
-    ps->node_stack_.push_back(new AST::Identifier(
-        ps->lookahead_.node->loc, ps->lookahead_.node.get()->token));
-    ps->lookahead_.node.release();
-  } else {
-    ps->node_stack_.push_back(ps->lookahead_.node.release());
-  }
+  ps->node_stack_.push_back(ps->lookahead_.node.release());
   ps->lookahead_ = NextToken(*c);
   if (ps->lookahead_.node_type & (Language::l_paren | Language::l_bracket |
                               Language::l_brace | Language::l_double_brace)) {
