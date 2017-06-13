@@ -287,6 +287,7 @@ struct CodeBlock : public Expression {
   Statements* stmts = nullptr;
   std::string error_message; // To be used if stmts == nullptr
 
+  virtual IR::Val EmitIR();
   static Node *BuildFromStatementsSameLineEnd(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
   static Node *BuildFromStatements(NPtrVec &&nodes);
@@ -329,6 +330,8 @@ struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral, array_literal);
   static Node *build(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
+
+  virtual IR::Val EmitIR();
 
   std::vector<Expression *> elems;
 };

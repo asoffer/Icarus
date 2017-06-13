@@ -368,6 +368,8 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       std::cerr << resolved[0].as_real;
     } else if (resolved[0].type == Type_) {
       std::cerr << resolved[0].as_type->to_string();
+    } else if (resolved[0].type == Code_) {
+      std::cerr << *resolved[0].as_code;
     } else {
       NOT_YET;
     }

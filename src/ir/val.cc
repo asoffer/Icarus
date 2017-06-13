@@ -1,5 +1,6 @@
 #include "ir.h"
 
+#include "../ast/ast.h"
 #include "../type/type.h"
 
 namespace IR {
@@ -31,6 +32,10 @@ Val Val::U32(u32 n) { MAKE_AND_RETURN(Kind::Const, ::U32, as_u32, n); }
 Val Val::Uint(u64 n) { MAKE_AND_RETURN(Kind::Const, ::Uint, as_uint, n); }
 Val Val::Int(i64 n) { MAKE_AND_RETURN(Kind::Const, ::Int, as_int, n); }
 Val Val::Type(::Type *t) { MAKE_AND_RETURN(Kind::Const, ::Type_, as_type, t); }
+Val Val::CodeBlock(AST::CodeBlock *block) {
+  MAKE_AND_RETURN(Kind::Const, ::Code_, as_code, block);
+}
+
 Val Val::Func(::IR::Func *fn) {
   MAKE_AND_RETURN(Kind::Const, fn->type, as_func, fn);
 }

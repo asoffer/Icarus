@@ -9,6 +9,10 @@
 
 struct Type;
 
+namespace AST {
+struct CodeBlock;
+} // namespace AST
+
 namespace IR {
 struct Func;
 
@@ -43,6 +47,7 @@ struct Val {
     u64 as_uint; // TODO pick the right type here
     ::Type *as_type;
     ::IR::Func *as_func;
+    AST::CodeBlock *as_code;
     BlockIndex as_block;
     char *as_cstr;
   };
@@ -60,6 +65,7 @@ struct Val {
   static Val Int(i64 n);
   static Val Uint(u64 n);
   static Val Type(::Type *t);
+  static Val CodeBlock(AST::CodeBlock *block);
   static Val Func(::IR::Func *fn);
   static Val Void();
   static Val Block(BlockIndex bi);

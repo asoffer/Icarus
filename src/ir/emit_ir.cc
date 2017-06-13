@@ -69,6 +69,8 @@ IR::Val AST::Identifier::EmitIR() {
   }
 }
 
+IR::Val AST::ArrayLiteral::EmitIR() { return IR::Val::None(); }
+
 IR::Val AST::For::EmitIR() {
   auto init       = IR::Func::Current->AddBlock();
   auto incr       = IR::Func::Current->AddBlock();
@@ -290,15 +292,23 @@ IR::Val AST::Unop::EmitIR() {
     return IR::Val::None();
   }
   case Language::Operator::Print: {
-    return IR::Print(operand->EmitIR());
+    if (operand->is_comma_list()) {
+      for (auto expr : ptr_cast<AST::ChainOp>(operand)->exprs) {
+        IR::Print(expr->EmitIR());
+      }
+    } else {
+      IR::Print(operand->EmitIR());
+    }
+    return IR::Val::None();
   } break;
   case Language::Operator::And: {
     return operand->EmitLVal();
   } break;
-  case Language::Operator::Eval: {
+  case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
     return Evaluate(operand);
-  }
+  case Language::Operator::Generate:
+    NOT_YET;
   default: {
     std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
     UNREACHABLE;
@@ -474,6 +484,8 @@ IR::Val AST::Statements::EmitIR() {
   for (auto stmt : statements) { stmt->EmitIR(); }
   return IR::Val::None();
 }
+
+IR::Val AST::CodeBlock::EmitIR() { return IR::Val::CodeBlock(this); }
 
 IR::Val AST::Identifier::EmitLVal() {
   ASSERT(decl, "");

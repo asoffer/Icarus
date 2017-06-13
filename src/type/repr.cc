@@ -5,14 +5,15 @@
 extern IR::Val PtrCallFix(IR::Val v);
 
 void Primitive::EmitRepr(IR::Val val) {
-  if (this == Char) {
+  switch (type_) {
+  case PrimType::Char: {
     if (!repr_func) {
       repr_func = new IR::Func(Func(this, Void));
       implicit_functions.push_back(repr_func);
 
       CURRENT_FUNC(repr_func) {
         IR::Block::Current = repr_func->entry();
-        repr_func->name = "repr." + Mangle(this);
+        repr_func->name    = "repr." + Mangle(this);
 
         IR::Print(IR::Val::Char('`'));
 
@@ -21,7 +22,7 @@ void Primitive::EmitRepr(IR::Val val) {
               std::make_pair('\n', 'n'), std::make_pair('\r', 'r'),
               std::make_pair('\t', 't'), std::make_pair('\v', 'v')}) {
           auto special_block = repr_func->AddBlock();
-          auto next_block = repr_func->AddBlock();
+          auto next_block    = repr_func->AddBlock();
 
           IR::Jump::Conditional(
               IR::Eq(IR::Val::Arg(Char, 0), IR::Val::Char(pair.first)),
@@ -44,12 +45,26 @@ void Primitive::EmitRepr(IR::Val val) {
     }
 
     IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
+  } break;
 
-  } else if (this == Bool || this == Int || this == Real || this == Uint || this == Type_) {
+  case PrimType::Bool:
+  case PrimType::Int:
+  case PrimType::Uint:
+  case PrimType::Real:
+  case PrimType::Type:
+  case PrimType::Code: {
     IR::Print(val);
-
-  } else {
+  } break;
+  case PrimType::U16:
+  case PrimType::U32:
+  case PrimType::Void:
+  case PrimType::NullPtr:
+  case PrimType::Err:
+  case PrimType::String: {
     NOT_YET;
+  } break;
+  case PrimType::Unknown:
+    UNREACHABLE;
   }
 }
 
