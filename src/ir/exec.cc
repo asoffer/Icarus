@@ -44,7 +44,7 @@ void ReplEval(AST::Expression *expr) {
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
     std::vector<Error> errors;
-    auto expr_val = expr->VerifyAndEmitIR(&errors);
+    auto expr_val = expr->EmitIR(&errors);
     if (!errors.empty()) {
       std::cerr << "There were " << errors.size() << " errors.";
       return;
@@ -61,9 +61,9 @@ IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
   auto fn_ptr = WrapExprIntoFunction(expr);
   std::vector<Error> errors;
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->VerifyAndEmitIR(&errors).as_func; }
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
 
-  auto result = fn->Execute({});
+  auto results = fn->Execute({});
 
   if (expr->type == Void) {
     fn_ptr->statements->statements[0] = nullptr;
@@ -75,8 +75,8 @@ IR::Val Evaluate(AST::Expression *expr) {
     unop->operand = nullptr;
   }
   delete fn_ptr;
-  ASSERT(!result.empty(), "");
-  return result[0]; // TODO multiple outputs?
+  ASSERT(!results.empty(), "");
+  return results[0]; // TODO multiple outputs?
 }
 
 namespace IR {

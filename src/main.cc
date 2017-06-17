@@ -52,7 +52,7 @@ int GenerateCode() {
       if (!stmt->is_declaration()) { continue; }
       auto decl = ptr_cast<AST::Declaration>(stmt);
       std::vector<Error> errors;
-      decl->VerifyAndEmitIR(&errors);
+      decl->EmitIR(&errors);
     }
   }
 /*
@@ -128,7 +128,7 @@ int RunRepl() {
         auto decl = ptr_cast<AST::Declaration>(stmt);
         decl->assign_scope(Scope::Global);
         std::vector<Error> errors;
-        decl->VerifyAndEmitIR(&errors);
+        decl->EmitIR(&errors);
 
       } else if (stmt->is_expression()) {
         auto expr = ptr_cast<AST::Expression>(stmt);

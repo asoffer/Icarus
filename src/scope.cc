@@ -79,7 +79,9 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
       auto old_func  = IR::Func::Current;
       auto old_block = IR::Block::Current;
 
-      decl->addr               = decl->init_val->EmitIR();
+      // TODO errors passed through?
+      std::vector<Error> errors;
+      decl->addr               = decl->init_val->EmitIR(&errors);
       decl->addr.as_func->name = Mangle(fn_type, decl->identifier, scope_ptr);
 
       IR::Func::Current  = old_func;

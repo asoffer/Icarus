@@ -45,12 +45,7 @@ struct Node {
   virtual void assign_scope(Scope *) {}
   virtual void verify_types(std::vector<Error> *) {}
   virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
-  virtual IR::Val VerifyAndEmitIR(std::vector<Error> *errors) {
-    verify_types(errors);
-    if (!errors->empty()) { return IR::Val::None(); }
-    return EmitIR();
-  }
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
   virtual bool is_identifier() const { return false; }
   virtual bool is_terminal() const { return false; }
@@ -95,11 +90,11 @@ struct Expression : public Node {
 
   virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
 
-  virtual IR::Val EmitIR() {
+  virtual IR::Val EmitIR(std::vector<Error> *) {
     std::cerr << *this << std::endl;
     NOT_YET;
   }
-  virtual IR::Val EmitLVal() {
+  virtual IR::Val EmitLVal(std::vector<Error> *) {
     std::cerr << *this << std::endl;
     NOT_YET;
   }
@@ -143,7 +138,7 @@ struct Expression : public Node {
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
   virtual bool is_token_node() const { return true; }
 
@@ -166,7 +161,7 @@ struct Terminal : public Expression {
   Terminal(const Cursor &cursor, Language::Terminal term_type, Type *type,
            IR::Val val);
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   virtual bool is_hole() const override {
     return terminal_type == Language::Terminal::Hole;
@@ -179,8 +174,8 @@ struct Identifier : public Terminal {
   Identifier() = delete;
   EXPR_FNS(Identifier, identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
-  virtual IR::Val EmitIR();
-  virtual IR::Val EmitLVal();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
+  virtual IR::Val EmitLVal(std::vector<Error> *errors);
 
   std::string token;
   Declaration *decl = nullptr;
@@ -192,7 +187,7 @@ struct Binop : public Expression {
   static Node *BuildCallOperator(NPtrVec &&nodes);
   static Node *BuildIndexOperator(NPtrVec &&nodes);
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   bool is_assignment() const {
     return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
@@ -209,7 +204,7 @@ struct Binop : public Expression {
 struct Declaration : public Expression {
   EXPR_FNS(Declaration, declaration);
   static Node *Build(NPtrVec &&nodes);
-  IR::Val EmitIR() override;
+  IR::Val EmitIR(std::vector<Error> *errors) override;
 
   Identifier *identifier = nullptr;
   Expression *type_expr  = nullptr;
@@ -253,7 +248,7 @@ struct Statements : public Node {
 
   VIRTUAL_METHODS_FOR_NODES;
   void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
-  IR::Val EmitIR() override;
+  IR::Val EmitIR(std::vector<Error> *errors) override;
 
   inline size_t size() { return statements.size(); }
 
@@ -287,7 +282,7 @@ struct CodeBlock : public Expression {
   Statements* stmts = nullptr;
   std::string error_message; // To be used if stmts == nullptr
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
   static Node *BuildFromStatementsSameLineEnd(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
   static Node *BuildFromStatements(NPtrVec &&nodes);
@@ -299,7 +294,7 @@ struct Unop : public Expression {
   static Node *BuildLeft(NPtrVec &&nodes);
   static Node *BuildDots(NPtrVec &&nodes);
   virtual void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   Expression *operand = nullptr;
   Language::Operator op;
@@ -316,7 +311,7 @@ struct Access : public Expression {
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp, chain_op);
   static Node *Build(NPtrVec &&nodes);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   virtual bool is_comma_list() const override {
     return ops.front() == Language::Operator::Comma;
@@ -331,7 +326,7 @@ struct ArrayLiteral : public Expression {
   static Node *build(NPtrVec &&nodes);
   static Node *BuildEmpty(NPtrVec &&nodes);
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   std::vector<Expression *> elems;
 };
@@ -339,7 +334,7 @@ struct ArrayLiteral : public Expression {
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType, array_type);
   static Node *build(NPtrVec &&nodes);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   Expression *length    = nullptr;
   Expression *data_type = nullptr;
@@ -348,7 +343,7 @@ struct ArrayType : public Expression {
 struct Case : public Expression {
   EXPR_FNS(Case, case);
   static Node *Build(NPtrVec &&nodes);
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   std::vector<std::pair<Expression *, Expression *>> key_vals;
 };
@@ -360,20 +355,7 @@ struct FunctionLiteral : public Expression {
   static Node *BuildOneLiner(NPtrVec &&nodes);
   static Node *BuildNoLiner(NPtrVec &&nodes);
 
-  virtual IR::Val VerifyAndEmitIR(std::vector<Error> *errors) {
-    verify_types(errors);
-    if (!errors->empty()) { return IR::Val::None(); }
-
-    // Verifying 'this' only verifies the declared functions type not the
-    // internals. We need to do that here.
-    statements->verify_types(errors);
-    if (!errors->empty()) { return IR::Val::None(); }
-
-    // TODO also verify that the return type matches the input type
-    return EmitIR();
-  }
-
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   FnScope *fn_scope            = nullptr;
   Expression *return_type_expr = nullptr;
@@ -392,7 +374,7 @@ struct For : public Node {
   virtual ~For();
   VIRTUAL_METHODS_FOR_NODES;
 
-  virtual IR::Val EmitIR();
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   static Node *Build(NPtrVec &&nodes);
 
@@ -438,7 +420,7 @@ struct ScopeLiteral : public Expression {
   ScopeLiteral() = delete;
   EXPR_FNS(ScopeLiteral, scope);
 
-  IR::Val EmitIR() override;
+  IR::Val EmitIR(std::vector<Error> *errors) override;
 
   Declaration *enter_fn = nullptr;
   Declaration *exit_fn  = nullptr;
