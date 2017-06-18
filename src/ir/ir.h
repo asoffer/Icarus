@@ -30,12 +30,12 @@ struct RegIndex {
 };
 
 struct Val {
-  enum class Kind : u8 { None, Arg, Reg, Frame, Heap, Global, Const } kind;
+  enum class Kind : u8 { None, Arg, Reg, Stack, Heap, Global, Const } kind;
   ::Type *type;
   union {
     u64 as_arg;
     RegIndex as_reg;
-    u64 as_frame_addr;
+    u64 as_stack_addr;
     u64 as_heap_addr;
     u64 as_global_addr;
     bool as_bool;
@@ -54,7 +54,7 @@ struct Val {
 
   static Val Arg(Type *t, u64 n);
   static Val Reg(RegIndex r, Type *t);
-  static Val FrameAddr(u64 n, Type *t);
+  static Val StackAddr(u64 n, Type *t);
   static Val HeapAddr(u64 n, Type *t);
   static Val GlobalAddr(u64 n, Type *t);
   static Val Bool(bool b);
@@ -103,19 +103,36 @@ enum class Op : char {
 struct Block;
 struct Cmd;
 
-struct StackEntry {
-  StackEntry(Type *t);
-  StackEntry(const StackEntry&) = delete;
-  StackEntry(StackEntry &&entry) : type(entry.type), data(entry.data) {
-    entry.data = nullptr;
+struct Stack {
+  Stack() = delete;
+  Stack(size_t cap) : capacity_(cap), stack_(malloc(capacity_)) {}
+  Stack(const Stack&) = delete;
+  Stack(Stack&& other) {
+    free(stack_);
+    stack_ = other.stack_;
+    other.stack_ = nullptr;
+    other.capacity_ = other.size_ = 0;
   }
-  ~StackEntry();
-  Type *type; 
-  void *data = nullptr;
-};
+  ~Stack() { free(stack_); }
 
-struct StackFrame {
-  std::vector<StackEntry> locals_;
+  void *location(size_t index) {
+    ASSERT(index < capacity_, "");
+    return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
+  }
+
+  template <typename T> T Load(size_t index) {
+    return *reinterpret_cast<T *>(this->location(index));
+  }
+
+  template <typename T> void Store(T val, size_t index) {
+    *reinterpret_cast<T *>(this->location(index)) = val;
+  }
+
+  IR::Val Push(Type *t);
+
+  size_t capacity_ = 0;
+  size_t size_     = 0;
+  void *stack_     = nullptr;
 };
 
 struct ExecContext {
@@ -151,7 +168,7 @@ struct ExecContext {
   std::vector<std::vector<Val>> regs_;
   std::vector<Val> args_;
   std::vector<Val> rets_;
-  std::vector<StackFrame> stack_;
+  Stack stack_;
 };
 
 struct Cmd {

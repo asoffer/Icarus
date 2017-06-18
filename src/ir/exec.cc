@@ -81,7 +81,7 @@ IR::Val Evaluate(AST::Expression *expr) {
 
 namespace IR {
 ExecContext::ExecContext(const Func *fn)
-    : current_fn(fn), current_block{0}, stack_(1) {}
+    : current_fn(fn), current_block{0}, stack_(30) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
@@ -111,6 +111,16 @@ BlockIndex ExecContext::ExecuteBlock() {
   UNREACHABLE;
 }
 
+IR::Val Stack::Push(Type *t) {
+  // TODO bytes/alignment depends on architecture
+  size_     = MoveForwardToAlignment(size_, t->alignment());
+  auto addr = size_;
+  size_ += t->bytes();
+  ASSERT(size_ <= capacity_, ""); // TODO expand stack
+  ASSERT(t->is_pointer(), ""); // TODO just pass in a 'Pointer'?
+  return IR::Val::StackAddr(addr, ptr_cast<Pointer>(t)->pointee);
+}
+
 void ExecContext::Resolve(Val* v) const {
   switch (v->kind) {
   case Val::Kind::Arg:
@@ -118,7 +128,7 @@ void ExecContext::Resolve(Val* v) const {
     *v = arg(v->as_arg);
     return;
   case Val::Kind::Reg: *v = reg(v->as_reg); return;
-  case Val::Kind::Frame: *v = stack_from_frame(*v); return;
+  case Val::Kind::Stack: return;
   case Val::Kind::Global: return;
   case Val::Kind::Heap: return;
   case Val::Kind::Const: return;
@@ -384,18 +394,24 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     switch (resolved[0].kind) {
     case Val::Kind::Global:
       return global_vals[resolved[0].as_global_addr];
-    case Val::Kind::Frame: {
-      StackEntry& entry = stack_.back().locals_[resolved[0].as_frame_addr];
-      if (entry.type == Int) {
-        return IR::Val::Int(*static_cast<i64 *>(entry.data));
-      } else if (entry.type == Bool) {
-        return IR::Val::Bool(*static_cast<bool *>(entry.data));
-      } else if (entry.type->is_pointer()) {
-        return IR::Val::Uint(*static_cast<u64 *>(entry.data));
+    case Val::Kind::Stack: {
+      if (cmd.result.type == Bool) {
+        return IR::Val::Bool(stack_.Load<bool>(resolved[0].as_stack_addr));
+      } else if (cmd.result.type == Char) {
+        return IR::Val::Char(stack_.Load<char>(resolved[0].as_stack_addr));
+      } else if (cmd.result.type == Int) {
+        return IR::Val::Int(stack_.Load<i64>(resolved[0].as_stack_addr));
+      } else if (cmd.result.type == Uint) {
+        return IR::Val::Uint(stack_.Load<u64>(resolved[0].as_stack_addr));
+      } else if (cmd.result.type == Real) {
+        return IR::Val::Real(stack_.Load<double>(resolved[0].as_stack_addr));
+      } else if (cmd.result.type->is_pointer()) {
+        NOT_YET;
       } else {
+        std::cerr << *cmd.result.type << std::endl;
         NOT_YET;
       }
-    }
+    } break;
     default:
       std::cerr << resolved[0].to_string() << std::endl;;
       NOT_YET;
@@ -405,20 +421,23 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     case Val::Kind::Global:
       global_vals[resolved[1].as_global_addr] = resolved[0];
       return IR::Val::None();
-    case Val::Kind::Frame: {
-      ASSERT(stack_.back().locals_.size() > resolved[1].as_frame_addr, "");
-      StackEntry& entry = stack_.back().locals_[resolved[1].as_frame_addr];
-      if (entry.type == Int) {
-        *static_cast<i64 *>(entry.data) = resolved[0].as_int;
-      } else if (entry.type == Bool) {
-        *static_cast<bool *>(entry.data) = resolved[0].as_bool;
-      } else if (entry.type->is_pointer()) {
-        *static_cast<u64 *>(entry.data) = resolved[0].as_heap_addr;
+    case Val::Kind::Stack:
+      if (resolved[0].type == Bool) {
+        stack_.Store(resolved[0].as_bool, resolved[1].as_stack_addr);
+      } else if (resolved[0].type == Char) {
+        stack_.Store(resolved[0].as_char, resolved[1].as_stack_addr);
+      } else if (resolved[0].type == Int) {
+        stack_.Store(resolved[0].as_int, resolved[1].as_stack_addr);
+      } else if (resolved[0].type == Uint) {
+        stack_.Store(resolved[0].as_uint, resolved[1].as_stack_addr);
+      } else if (resolved[0].type == Real) {
+        stack_.Store(resolved[0].as_real, resolved[1].as_stack_addr);
+      } else if (resolved[0].type->is_pointer()) {
+        NOT_YET;
       } else {
-        cmd.dump(0);
         NOT_YET;
       }
-    }
+
       return IR::Val::None();
     default:
       NOT_YET;
@@ -430,23 +449,14 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       }
     }
     UNREACHABLE;
-  case Op::Alloca: {
-    auto val =
-        IR::Val::FrameAddr(stack_.back().locals_.size(), cmd.result.type);
-    ASSERT(cmd.result.type->is_pointer(), "");
-    stack_.back().locals_.emplace_back(
-        static_cast<Pointer *>(cmd.result.type)->pointee);
-    return val;
-  }
+  case Op::Alloca:
+    return stack_.Push(cmd.result.type);
   default:
     cmd.dump(10);
     NOT_YET;
   }
   UNREACHABLE;
 }
-
-StackEntry::StackEntry(Type *t) : type(t) { data = malloc(t->bytes()); }
-StackEntry::~StackEntry() { free(data); }
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments) const {
   auto ctx = ExecContext(this);

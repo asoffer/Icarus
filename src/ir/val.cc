@@ -15,8 +15,8 @@ Val Val::Arg(::Type *t, u64 n) { MAKE_AND_RETURN(Kind::Arg, t, as_arg, n); }
 Val Val::Reg(RegIndex r, ::Type *t) {
   MAKE_AND_RETURN(Kind::Reg, t, as_reg, r);
 }
-Val Val::FrameAddr(u64 n, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Frame, t, as_frame_addr, n);
+Val Val::StackAddr(u64 n, ::Type *t) {
+  MAKE_AND_RETURN(Kind::Stack, Ptr(t), as_stack_addr, n);
 }
 Val Val::HeapAddr(u64 n, ::Type *t) {
   MAKE_AND_RETURN(Kind::Heap, t, as_heap_addr, n);
@@ -61,8 +61,8 @@ std::string Val::to_string() const {
     return type->to_string() + " r." +
            std::to_string(as_reg.block_index.value) + "." +
            std::to_string(as_reg.instr_index);
-  case Kind::Frame:
-    return type->to_string() + " f." + std::to_string(as_frame_addr);
+  case Kind::Stack:
+    return type->to_string() + " s." + std::to_string(as_stack_addr);
   case Kind::Global:
     return type->to_string() + " g." + std::to_string(as_global_addr);
   case Kind::Heap:
