@@ -96,7 +96,7 @@ enum class Op : char {
   Phi, Field, Access,
   Call, Cast,
   Nop, SetReturn,
-  Arrow, Array,
+  Arrow, Array, Ptr,
   Alloca,
 };
 
@@ -198,6 +198,7 @@ Val Phi(Type *t);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
+Val Ptr(Val v1);
 Val Alloca(Type *t);
 
 struct Jump {

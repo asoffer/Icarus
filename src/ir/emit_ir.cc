@@ -315,7 +315,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   }
   case Language::Operator::Print: {
     auto print = +[](AST::Expression *expr, std::vector<Error> *errors) {
-      if (expr->type->is_primitive()) {
+      if (expr->type->is_primitive() || expr->type->is_pointer()) {
         IR::Print(expr->EmitIR(errors));
       } else {
         expr->type->EmitRepr(expr->EmitIR(errors));
@@ -329,16 +329,20 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     } else {
       print(operand, errors);
     }
+    IR::Func::Current->dump();
     return IR::Val::None();
   } break;
-  case Language::Operator::And: {
+  case Language::Operator::And:
     return operand->EmitLVal(errors);
-  } break;
   case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
     return Evaluate(operand);
   case Language::Operator::Generate:
     NOT_YET;
+  case Language::Operator::Mul:
+    return IR::Ptr(operand->EmitIR(errors));
+  case Language::Operator::At:
+    return PtrCallFix(operand->EmitIR(errors));
   default: {
     std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
     UNREACHABLE;
@@ -351,8 +355,8 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR(errors);                                               \
-    auto rhs_ir = rhs->EmitIR(errors);                                               \
+    auto lhs_ir = lhs->EmitIR(errors);                                         \
+    auto rhs_ir = rhs->EmitIR(errors);                                         \
     return IR::op_name(lhs_ir, rhs_ir);                                        \
   } break
     CASE(Add);

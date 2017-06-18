@@ -481,8 +481,14 @@ void Unop::verify_types(std::vector<Error> *errors) {
     }
   } break;
   case Operator::And: {
-    type = (operand->type == Type_) ? Type_ : Ptr(operand->type);
-
+    type = Ptr(operand->type);
+  } break;
+  case Operator::Mul: {
+    if (operand->type != Type_) {
+      errors->emplace_back(Error::Code::Other); // TODO correct error code
+    } else {
+      type = Type_;
+    }
   } break;
   case Operator::Sub: {
     if (operand->type == Uint) {

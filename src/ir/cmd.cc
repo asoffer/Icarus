@@ -93,6 +93,11 @@ Val PtrIncr(Val v1, Val v2) {
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
+Val Ptr(Val v) {
+  ASSERT(v.type == Type_, "");
+  MAKE_AND_RETURN(Type_, Op::Ptr);
+}
+
 Val And(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::And); }
 Val Or(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Or); }
 Val Xor(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Xor); }
@@ -171,9 +176,10 @@ void Cmd::dump(size_t indent) const {
     case Op::Print: std::cerr << "print"; break;
     case Op::Load: std::cerr << "load"; break;
     case Op::Store: std::cerr << "store"; break;
-    case Op::ArrayLength: std::cerr << "array_length"; break;
-    case Op::ArrayData: std::cerr << "array_data"; break;
-    case Op::PtrIncr: std::cerr << "ptr_incr"; break;
+    case Op::ArrayLength: std::cerr << "array-length"; break;
+    case Op::ArrayData: std::cerr << "array-data"; break;
+    case Op::PtrIncr: std::cerr << "ptr-incr"; break;
+    case Op::Ptr: std::cerr << "ptr"; break;
     case Op::Phi: std::cerr << "phi"; break;
     case Op::Field: std::cerr << "field"; break;
     case Op::Access: std::cerr << "access"; break;

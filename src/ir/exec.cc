@@ -370,10 +370,16 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       std::cerr << resolved[0].as_type->to_string();
     } else if (resolved[0].type == Code_) {
       std::cerr << *resolved[0].as_code;
+    } else if (resolved[0].type->is_pointer()) {
+      // TODO what if it's not a heap address
+      std::cerr << "0x" << resolved[0].as_heap_addr;
+
     } else {
       NOT_YET;
     }
     return IR::Val::None();
+  case Op::Ptr:
+    return Val::Type(::Ptr(resolved[0].as_type));
   case Op::Load:
     switch (resolved[0].kind) {
     case Val::Kind::Global:
@@ -384,11 +390,14 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         return IR::Val::Int(*static_cast<i64 *>(entry.data));
       } else if (entry.type == Bool) {
         return IR::Val::Bool(*static_cast<bool *>(entry.data));
+      } else if (entry.type->is_pointer()) {
+        return IR::Val::Uint(*static_cast<u64 *>(entry.data));
       } else {
         NOT_YET;
       }
     }
     default:
+      std::cerr << resolved[0].to_string() << std::endl;;
       NOT_YET;
     }
   case Op::Store:
@@ -403,9 +412,10 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         *static_cast<i64 *>(entry.data) = resolved[0].as_int;
       } else if (entry.type == Bool) {
         *static_cast<bool *>(entry.data) = resolved[0].as_bool;
+      } else if (entry.type->is_pointer()) {
+        *static_cast<u64 *>(entry.data) = resolved[0].as_heap_addr;
       } else {
         cmd.dump(0);
-        std::cerr << *entry.type << std::endl;
         NOT_YET;
       }
     }

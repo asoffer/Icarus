@@ -273,6 +273,7 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
                    {"free", {Language::Operator::Free, false}},
                    {"generate", {Language::Operator::Generate, false}},
                    {"print", {Language::Operator::Print, false}},
+                   {"*", {Language::Operator::Mul, false}},
                    {"&", {Language::Operator::And, false}},
                    {"-", {Language::Operator::Sub, false}},
                    {"!", {Language::Operator::Not, false}},

@@ -76,10 +76,7 @@ void Function::EmitRepr(IR::Val) {
 
 void Enum::EmitRepr(IR::Val) { NOT_YET; }
 
-void Pointer::EmitRepr(IR::Val val) { 
-  std::cerr << val.to_string();
-  NOT_YET;
-}
+void Pointer::EmitRepr(IR::Val) { UNREACHABLE; }
 
 void Array::EmitRepr(IR::Val val) {
   if (fixed_length) {

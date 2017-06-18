@@ -47,9 +47,8 @@ Val Val::Block(BlockIndex bi) {
   MAKE_AND_RETURN(Kind::Const, ::Uint, as_block, bi);
 }
 
-// Using 'as_bool' for convenience. That field should never be used.
 Val Val::Null(::Type *t) {
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_bool, false);
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_heap_addr, 0);
 }
 #undef MAKE_AND_RETURN
 
@@ -94,7 +93,10 @@ std::string Val::to_string() const {
       std::stringstream ss;
       ss << "fn." << as_func;
       return ss.str();
+    } else if (type->is_pointer()) {
+      return "0p" + std::to_string(as_heap_addr);
     } else {
+      std::cerr << *type << std::endl;
       UNREACHABLE;
     }
   case Kind::None:

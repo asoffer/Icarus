@@ -41,6 +41,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Restart: ss << "Restart"; break;
   case Language::Operator::Print: ss << "Print"; break;
   case Language::Operator::Free: ss << "Free"; break;
+  case Language::Operator::Mul: ss << "Mul"; break;
   case Language::Operator::And: ss << "And"; break;
   case Language::Operator::Sub: ss << "Sub"; break;
   case Language::Operator::Generate: ss << "Generate"; break;
