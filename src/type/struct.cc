@@ -37,14 +37,6 @@ void Struct::CompleteDefinition() {
   completed_ = true;
 }
 
-bool Struct::private_has_vars() {
-  CompleteDefinition();
-  for (auto ft: field_type) {
-    if (ft->has_vars()) { return true; }
-  }
-  return false;
-}
-
 size_t Struct::bytes() const {
   const_cast<Struct *>(this)->CompleteDefinition();
   size_t num_bytes = 0;

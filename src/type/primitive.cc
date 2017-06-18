@@ -62,5 +62,3 @@ std::string Primitive::to_string() const {
   default: UNREACHABLE;
   }
 }
-
-bool Primitive::private_has_vars() { return false; }

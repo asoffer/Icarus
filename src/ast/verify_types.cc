@@ -35,322 +35,6 @@ void VerifyDeclBeforeUsage() {
   }
 }
 
-static AST::Declaration *
-GenerateSpecifiedFunctionDecl(Scope *scope, const std::string &name,
-                              AST::FunctionLiteral *fn_lit,
-                              const std::map<TypeVariable *, Type *> &matches,
-                              std::vector<Error> *errors) {
-  auto num_matches = matches.size();
-  auto lookup_key  = new TypeVariable *[num_matches];
-  auto lookup_val  = new Type *[num_matches];
-
-  size_t i = 0;
-  for (auto kv : matches) {
-    lookup_key[i] = kv.first;
-    lookup_val[i] = kv.second;
-    ++i;
-  }
-
-  AST::FunctionLiteral *cloned_func =
-      nullptr; // TODO (AST::FunctionLiteral *)fn_lit->clone(
-               // num_matches, lookup_key, lookup_val);
-
-  AST::Declaration *decl;
-  auto decl_scope  = scope ? scope : fn_lit->scope_;
-  auto new_id      = new AST::Identifier(fn_lit->loc, name);
-  decl             = new AST::Declaration;
-  new_id->decl     = decl;
-  new_id->type     = cloned_func->type;
-  new_id->scope_   = scope ? scope : fn_lit->scope_;
-  decl->loc        = fn_lit->loc;
-  decl->scope_     = scope ? scope : fn_lit->scope_;
-  decl->identifier = new_id;
-  decl->init_val   = cloned_func;
-  decl->addr       = IR::Val::None();
-  decl->arg_val    = nullptr;
-
-  // We don't want to run decl->assign_scope() because that automatically adds
-  // it to the scopes decls_. This will mean it can be looked up in type
-  // verification. We want this function to be matched by its generic form and
-  // then looked up in the cache rather than matching outright.
-
-  decl->scope_ = decl_scope;
-  decl->identifier->assign_scope(decl_scope);
-  if (decl->type_expr) { decl->type_expr->assign_scope(decl_scope); }
-  if (decl->init_val) { decl->init_val->assign_scope(decl_scope); }
-  decl->verify_types(errors);
-
-  delete[] lookup_key;
-  delete[] lookup_val;
-
-  return decl;
-}
-
-// TODO:
-//  * Send back error messages to be logged if not exactly one match occurs
-//  * Log locations?
-
-// This function is handed two types. The left-hand side argument is the input
-// to a function, and the right-hand side argument is the arguments a function
-// is called with. This function attempts to match the inputs to determine if
-// this particular call is possible.
-//
-// This function is not concerned with overload resolution. Rather, for each
-// possible overload, this function is called and is used to determine whether a
-// particular option is viable. At another place in the code, we ensure that
-// exactly one overload is viable.
-//
-// Instead, this function is tasked with attempting to match the arguments
-// provided to a potential overload. While at first glance, it seems like we
-// could just test for the equality of the types, this is more complicated for
-// two reasons.
-//
-// First, to give good error messages, we need to know why the
-// match failed. For example, we want to know if we provided a pointer instead
-// of a value, or if we provided an array with a run-time length instead of a
-// fixed-length array.
-//
-// Second, with generic declarations (the ` operator), we need to (if a match
-// exists) log a map for how to match provided argument types to the generic
-// ones.
-static bool MatchCall(Type *lhs, Type *rhs,
-                      std::map<TypeVariable *, Type *> &matches,
-                      std::string &error_message) {
-
-  // std::cerr << *lhs << " vs " << *rhs << std::endl;
-  if (!lhs->has_vars()) {
-    if (lhs == rhs) { return true; }
-    error_message +=
-        rhs->to_string() + " does not match " + lhs->to_string() + ".\n";
-    return false;
-  }
-
-  if (lhs->is_type_variable()) {
-    //  auto lhs_var = (TypeVariable *)lhs;
-
-    // Do a function call
-    /*
-    auto f = Evaluate(lhs_var->test);
-    auto local_stack = new IR::LocalStack;
-
-    auto test_result =
-        f.as_func->Call(local_stack, {IR::Val::Type(rhs)});
-    delete local_stack;
-
-
-    if (test_result.as_bool) {
-      auto iter = matches.find(lhs_var);
-      if (iter == matches.end()) {
-        matches[lhs_var] = rhs;
-        return true;
-
-      } else if (iter->second == rhs) {
-        return true;
-      } else {
-        // TODO better message. Log locations of other options and explain that
-        // those positions are wrong because this one is authoritative.
-        error_message +=
-            "Failure to match parameter " + lhs_var->to_string() + ".\n";
-        return false;
-      }
-    } else {
-      // Test result failed
-      error_message += "Type " + rhs->to_string() + " failed test for " +
-                       lhs_var->identifier->token + ".";
-
-      if (lhs_var->test->is_identifier()) {
-        auto id_test = (AST::Identifier *)(lhs_var->test);
-        error_message +=
-            " (See line " + std::to_string(id_test->decl->loc.line_num) + ")";
-      }
-      error_message += "\n";
-      return false;
-    }
-    */
-    NOT_YET;
-  }
-
-  if (lhs->is_pointer()) {
-    if (!rhs->is_pointer()) {
-      error_message +=
-          "Expected pointer, but received " + rhs->to_string() + ".\n";
-      return false;
-    }
-
-    return MatchCall(((Pointer *)lhs)->pointee, ((Pointer *)rhs)->pointee,
-                     matches, error_message);
-  }
-
-  if (lhs->is_array()) {
-    if (!rhs->is_array()) {
-      error_message +=
-          "Expected array, but received" + rhs->to_string() + ".\n";
-      return false;
-    }
-
-    auto lhs_array = (Array *)lhs;
-    auto rhs_array = (Array *)rhs;
-
-    if (lhs_array->fixed_length != rhs_array->fixed_length) { return false; }
-
-    if (lhs_array->fixed_length) {
-      return (lhs_array->len == rhs_array->len) &&
-             MatchCall(lhs_array->data_type, rhs_array->data_type, matches,
-                       error_message);
-    } else {
-      return MatchCall(lhs_array->data_type, rhs_array->data_type, matches,
-                       error_message);
-    }
-  }
-
-  if (lhs->is_function()) {
-    if (!rhs->is_function()) {
-      error_message +=
-          "Expected function, but received" + rhs->to_string() + ".\n";
-      return false;
-    }
-
-    auto lhs_in  = ((Function *)lhs)->input;
-    auto rhs_in  = ((Function *)rhs)->input;
-    auto lhs_out = ((Function *)lhs)->output;
-    auto rhs_out = ((Function *)rhs)->output;
-
-    return MatchCall(lhs_in, rhs_in, matches, error_message) &&
-           MatchCall(lhs_out, rhs_out, matches, error_message);
-  }
-
-  if (lhs->is_struct()) {
-    if (!rhs->is_struct()) { return false; }
-
-    auto lhs_struct = (Struct *)lhs;
-    auto rhs_struct = (Struct *)rhs;
-
-    // We know that LHS has a creator because it has variables. Thus, passing
-    // this test means that these are instances of the same parametric struct.
-    if (lhs_struct->creator != rhs_struct->creator) { return false; }
-
-    ASSERT(lhs_struct->creator->reverse_cache.find(lhs_struct) !=
-               lhs_struct->creator->reverse_cache.end(),
-           "");
-
-    ASSERT(rhs_struct->creator->reverse_cache.find(rhs_struct) !=
-               rhs_struct->creator->reverse_cache.end(),
-           "");
-
-    auto lhs_params = lhs_struct->creator->reverse_cache[lhs_struct];
-    auto rhs_params = rhs_struct->creator->reverse_cache[rhs_struct];
-    if (lhs_params.size() != rhs_params.size()) { return false; }
-
-    auto num_params       = lhs_params.size();
-    bool coherent_matches = true;
-    for (size_t i = 0; i < num_params; ++i) {
-      // TODO what if params aren't types
-      coherent_matches &= MatchCall(
-          lhs_params[i].as_type, rhs_params[i].as_type, matches, error_message);
-    }
-    return coherent_matches;
-  }
-
-  if (lhs->is_tuple()) {
-    auto lhs_tuple = (Tuple *)lhs;
-    auto rhs_tuple = (Tuple *)rhs;
-    if (lhs_tuple->entries.size() != rhs_tuple->entries.size()) {
-      return false;
-    }
-
-    size_t num_entries = lhs_tuple->entries.size();
-
-    for (size_t i = 0; i < num_entries; ++i) {
-      if (!MatchCall(lhs_tuple->entries[i], rhs_tuple->entries[i], matches,
-                     error_message)) {
-        return false;
-      }
-    }
-    return true;
-  }
-
-  UNREACHABLE;
-}
-
-static Type *EvalWithVars(Type *type,
-                          const std::map<TypeVariable *, Type *> &lookup) {
-
-  // std::cerr << *type << " with: " << type->has_vars() << "\n";
-  // for (const auto &kv : lookup) {
-  //  std::cerr << "    " << *kv.first << " => " << *kv.second << std::endl;
-  //}
-  // std::cerr << "-\n";
-
-  if (!type->has_vars()) { return type; }
-
-  if (type->is_type_variable()) {
-    auto iter = lookup.find((TypeVariable *)type);
-    return (iter == lookup.end()) ? type : iter->second;
-  }
-
-  if (type->is_pointer()) {
-    auto ptr_type = (Pointer *)type;
-    return Ptr(EvalWithVars(ptr_type->pointee, lookup));
-  }
-
-  if (type->is_array()) {
-    auto array_type = (Array *)type;
-    if (array_type->fixed_length) {
-      return Arr(EvalWithVars(array_type->data_type, lookup), array_type->len);
-    } else {
-      return Arr(EvalWithVars(array_type->data_type, lookup));
-    }
-  }
-
-  if (type->is_function()) {
-    auto func_type = (Function *)type;
-    return Func(EvalWithVars(func_type->input, lookup),
-                EvalWithVars(func_type->output, lookup));
-  }
-
-  if (type->is_tuple()) {
-    auto tup_type = (Tuple *)type;
-    std::vector<Type *> entries;
-    entries.reserve(tup_type->entries.size());
-
-    for (auto entry : tup_type->entries) {
-      entries.push_back(EvalWithVars(entry, lookup));
-    }
-
-    return Tup(entries);
-  }
-
-  if (type->is_struct()) {
-    // ParamStruct *ps = ((Struct *)type)->creator;
-
-    /*
-    auto local_stack = new IR::LocalStack;
-    std::vector<IR::Val> param_vals;
-
-    for (auto p : ps->params) {
-      // TODO this is hacky and surely incorrect, and doesn't do everything
-
-      for (auto kv : lookup) {
-        if (kv.first->identifier->token != p->identifier->token) { continue; }
-        param_vals.emplace_back(IR::Val::Type(kv.second));
-        goto next_param;
-      }
-      UNREACHABLE;
-    next_param:;
-    }
-
-    auto result = ps->IRFunc()->Call(local_stack, param_vals);
-    delete local_stack;
-
-    return result.as_type;
-    */
-    NOT_YET;
-  }
-
-  std::cerr << *type << std::endl;
-  UNREACHABLE;
-}
-
 #define STARTING_CHECK                                                         \
   ASSERT(scope_, "Need to first call assign_scope()");                         \
   if (type == Unknown) {                                                       \
@@ -612,8 +296,6 @@ void Binop::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
 
   if (op == Language::Operator::Call) {
-    std::string err_msg; // TODO for now we mostly ignore this.
-    std::map<TypeVariable *, Type *> matches;
 
     if (lhs->is_identifier()) {
       auto lhs_id         = (Identifier *)lhs;
@@ -625,11 +307,10 @@ void Binop::verify_types(std::vector<Error> *errors) {
       std::vector<Declaration *> valid_matches;
       for (auto decl : matching_decls) {
         if (decl->type->is_function()) {
-          auto fn_type = (Function *)decl->type;
+          auto fn_type = ptr_cast<Function>(decl->type);
           // If there is no input, and the function takes Void as its input, or
           // if the types just match, then add it to your list of matches.
-          if ((!rhs && fn_type->input == Void) ||
-              MatchCall(fn_type->input, rhs->type, matches, err_msg)) {
+          if (!rhs && fn_type->input == Void) {
             valid_matches.emplace_back(decl);
           }
         } else {
@@ -668,32 +349,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
 
           auto decl_type = decl->value.as_type;
 
-          if (!decl_type->is_parametric_struct()) { continue; }
-          auto param_struct_type = (ParamStruct *)decl_type;
-
-          // Get the types of parameter entries
-          std::vector<Type *> param_types;
-          for (auto p : param_struct_type->params) {
-            param_types.push_back(p->type);
-          }
-          Type *param_type =
-              param_types.size() == 1 ? param_types[0] : Tup(param_types);
-
-          // Get the input types we're trying to match
-          std::vector<Type *> input_type_vec;
-          Type *input_type = nullptr;
-          if (rhs->is_chain_op()) {
-            for (auto elem : ((ChainOp *)rhs)->exprs) {
-              input_type_vec.push_back(elem->type);
-            }
-            input_type = Tup(input_type_vec);
-          } else {
-            input_type = rhs->type;
-          }
-
-          if (MatchCall(param_type, input_type, matches, err_msg)) {
-            valid_matches.emplace_back(decl);
-          }
+          if (decl_type->is_parametric_struct()) { NOT_YET; }
         }
       } // End of decl loop
 
@@ -718,8 +374,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
       if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       if (lhs->type->is_function()) {
-        if (!MatchCall(((Function *)lhs->type)->input, (rhs ? rhs->type : Void),
-                       matches, err_msg)) {
+        if (ptr_cast<Function>(lhs->type)->input == (rhs ? rhs->type : Void)) {
           errors->emplace_back(Error::Code::Other);
           // ErrorLog::LogGeneric(loc, err_msg);
           type      = Err;
@@ -732,39 +387,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
         auto lhs_as_type = lhs->value.as_type;
 
         if (lhs_as_type->is_parametric_struct()) {
-          auto param_struct_type = static_cast<ParamStruct *>(lhs_as_type);
-
-          // Get the types of parameter entries
-          std::vector<Type *> param_type_vec;
-          for (auto p : param_struct_type->params) {
-            param_type_vec.push_back(p->type);
-          }
-          Type *param_type = param_type_vec.size() == 1 ? param_type_vec[0]
-                                                        : Tup(param_type_vec);
-
-          VERIFY_AND_RETURN_ON_ERROR(rhs);
-
-          // TODO can you have a parametric struct taking no arguments? If so,
-          // rhs could be empty and we have a bug!
-
-          // Get the input types we're trying to match
-          std::vector<Type *> input_type_vec;
-          Type *input_type = nullptr;
-          if (rhs->is_chain_op()) {
-            for (auto elem : ((ChainOp *)rhs)->exprs) {
-              input_type_vec.push_back(elem->type);
-            }
-            input_type = Tup(input_type_vec);
-          }
-          input_type = rhs->type;
-
-          if (!MatchCall(param_type, input_type, matches, err_msg)) {
-            errors->emplace_back(Error::Code::Other);
-            // ErrorLog::LogGeneric(loc, err_msg);
-            type      = Err;
-            lhs->type = Err;
-            return;
-          }
+          NOT_YET;
         } else {
           // Cast
           op   = Language::Operator::Cast;
@@ -796,47 +419,13 @@ void Binop::verify_types(std::vector<Error> *errors) {
     // If you get here, you know the types all match. We just need to compute
     // the type of the call.
     if (lhs->type->is_function()) {
-      auto evaled_type = EvalWithVars(lhs->type, matches);
-      type             = ((Function *)evaled_type)->output;
-
-      // Generate if you need to
-      if (lhs->type->has_vars()) {
-        auto fn_expr = GetFunctionLiteral(lhs);
-
-        auto in_type = ((Function *)evaled_type)->input;
-        for (auto &cached_fn : fn_expr->cache) {
-          if (cached_fn.first != in_type) { continue; }
-          if (lhs->is_identifier()) {
-            auto lhs_id  = (Identifier *)lhs;
-            lhs_id->decl = cached_fn.second;
-            lhs_id->type = lhs_id->decl->type;
-          }
-          return;
-        }
-
-        // If you have variables, the input cannot be void.
-
-        // If you can't find it in the cache, generate it.
-        if (lhs->is_identifier()) {
-          auto lhs_id  = (Identifier *)lhs;
-          lhs_id->decl = fn_expr->cache[rhs->type] =
-              GenerateSpecifiedFunctionDecl(lhs_id->decl->scope_, lhs_id->token,
-                                            fn_expr, matches, errors);
-          lhs_id->type = lhs_id->decl->type; // TODO I need to do something like
-                                             // this, but maybe this needs to be
-                                             // done more generally?
-        } else {
-          // TODO fix this null scope here.
-          fn_expr->cache[rhs->type] = GenerateSpecifiedFunctionDecl(
-              nullptr, "anon-fn", fn_expr, matches, errors);
-        }
-      }
+      type = ptr_cast<Function>(lhs->type)->output;
 
     } else {
       ASSERT(lhs->type == Type_,
              "Should have caught the bad-type of lhs earlier");
 
-      type = EvalWithVars(lhs->type, matches);
+      type = lhs->type;
     }
 
     return;
@@ -1452,13 +1041,7 @@ void ArrayLiteral::verify_types(std::vector<Error> *errors) {
 void FunctionLiteral::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
 
-  bool input_has_vars = false;
-  for (auto in : inputs) {
-    in->verify_types(errors);
-    input_has_vars |= in->type->has_vars();
-  }
-
-  if (!input_has_vars) { VerificationQueue.push(statements); }
+  VerificationQueue.push(statements);
 
   return_type_expr->verify_types(errors);
   if (ErrorLog::num_errs_ > 0) {
@@ -1500,9 +1083,7 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
     input_type = Tup(input_type_vec);
   }
 
-  if (!input_has_vars) {
-    FuncInnardsVerificationQueue.emplace(ret_type, statements);
-  }
+  FuncInnardsVerificationQueue.emplace(ret_type, statements);
 
   // TODO generics?
   type = Func(input_type, ret_type);

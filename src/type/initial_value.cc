@@ -33,7 +33,6 @@ IR::Val Function::EmitInitialValue() const {
 IR::Val Array::EmitInitialValue() const { NOT_YET; }
 IR::Val Tuple::EmitInitialValue() const { NOT_YET; }
 IR::Val Struct::EmitInitialValue() const { NOT_YET; }
-IR::Val TypeVariable::EmitInitialValue() const { NOT_YET; }
 IR::Val RangeType::EmitInitialValue() const { NOT_YET; }
 IR::Val SliceType::EmitInitialValue() const { NOT_YET; }
 IR::Val Scope_Type::EmitInitialValue() const { NOT_YET; }

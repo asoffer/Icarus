@@ -80,5 +80,4 @@ void Struct::EmitDestroy(IR::Val id_val) {
 void Tuple::EmitDestroy(IR::Val) { NOT_YET; }
 void RangeType::EmitDestroy(IR::Val) { UNREACHABLE; }
 void SliceType::EmitDestroy(IR::Val) { UNREACHABLE; }
-void TypeVariable::EmitDestroy(IR::Val) { UNREACHABLE; }
 void Scope_Type::EmitDestroy(IR::Val) { UNREACHABLE; }

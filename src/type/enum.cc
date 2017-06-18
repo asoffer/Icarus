@@ -56,5 +56,3 @@ IR::Val Enum::EmitLiteral(const std::string &member_name) const {
 }
 
 std::string Enum::to_string() const { return bound_name; }
-bool Enum::private_has_vars() { return false; }
-

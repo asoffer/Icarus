@@ -114,5 +114,4 @@ void Struct::EmitInit(IR::Val id_val) {
 void Tuple::EmitInit(IR::Val) { NOT_YET; }
 void RangeType::EmitInit(IR::Val) { UNREACHABLE; }
 void SliceType::EmitInit(IR::Val) { UNREACHABLE; }
-void TypeVariable::EmitInit(IR::Val) { UNREACHABLE; }
 void Scope_Type::EmitInit(IR::Val) { UNREACHABLE; }

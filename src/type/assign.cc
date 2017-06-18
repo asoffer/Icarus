@@ -8,10 +8,8 @@ extern IR::Val PtrCallFix(IR::Val v);
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                           IR::Val from_val, IR::Val to_var) {
   ASSERT(scope, "");
-  if (lhs_type->has_vars() || rhs_type->has_vars()) {
-    return;
-  } else if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-             lhs_type->is_function()) {
+  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
+      lhs_type->is_function()) {
     ASSERT(lhs_type == rhs_type, "");
 
     IR::Store(from_val, to_var);

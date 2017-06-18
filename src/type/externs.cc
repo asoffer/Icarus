@@ -17,7 +17,6 @@ static std::vector<Tuple *> tuple_types_;
 static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
 static std::map<Type *, RangeType *> ranges_;
-static std::map<AST::Identifier *, TypeVariable *> vars_;
 static std::map<Array *, SliceType *> slices_;
 static std::map<Type *, Scope_Type *> scopes_;
 
@@ -98,14 +97,6 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
   case 1: return Func(in.front(), out);
   default: return Func(Tup(in), out);
   }
-}
-
-TypeVariable *TypeVar(AST::Identifier *id, AST::Expression *test) {
-  // These won't be leaked, but they aren't uniqued.
-  auto iter = vars_.find(id);
-  if (iter != vars_.end()) return iter->second;
-
-  return vars_[id] = new TypeVariable(id, test);
 }
 
 RangeType *Range(Type *t) {

@@ -7,7 +7,6 @@ struct Array;
 struct Pointer;
 struct Tuple;
 struct Function;
-struct TypeVariable;
 struct RangeType;
 struct SliceType;
 struct Scope_Type;
@@ -53,8 +52,6 @@ extern Function *Func(Type *in, Type *out);
 extern Function *Func(std::vector<Type *> in, Type *out);
 extern Function *Func(Type *in, std::vector<Type *> out);
 extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
-extern TypeVariable *TypeVar(AST::Identifier *id,
-                             AST::Expression *test = nullptr);
 extern RangeType *Range(Type *t);
 extern SliceType *Slice(Array *a);
 extern Scope_Type *ScopeType(Type *t);
@@ -68,8 +65,7 @@ extern Scope_Type *ScopeType(Type *t);
   virtual IR::Val EmitInitialValue() const ENDING;                             \
   virtual void EmitRepr(IR::Val id_val) ENDING;                                \
   virtual size_t bytes() const ENDING;                                         \
-  virtual size_t alignment() const ENDING;                                     \
-  virtual bool private_has_vars() ENDING
+  virtual size_t alignment() const ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -79,7 +75,7 @@ extern Scope_Type *ScopeType(Type *t);
 
 struct Type {
 public:
-  Type() : var_check(false) {}
+  Type() {}
   virtual ~Type() {}
   BASIC_METHODS;
 
@@ -121,16 +117,6 @@ public:
 
   virtual bool is_big() const;
   virtual bool stores_data() const;
-
-  mutable bool var_check;
-
-  inline bool has_vars() {
-    if (var_check) { return false; }
-    var_check = true;
-    bool result = private_has_vars();
-    var_check = false;
-    return result;
-  }
 };
 
 #undef ENDING
@@ -264,16 +250,6 @@ struct ParamStruct : public Type {
 
 private:
   IR::Func *ir_func;
-};
-
-struct TypeVariable : public Type {
-  TYPE_FNS(TypeVariable, type_variable);
-
-  TypeVariable(AST::Identifier *id, AST::Expression *test)
-      : identifier(id), test(test) {}
-
-  AST::Identifier *identifier;
-  AST::Expression *test;
 };
 
 struct RangeType : public Type {

@@ -66,7 +66,6 @@ IR::Func *ParamStruct::IRFunc() {
   */
 }
 
-bool ParamStruct::private_has_vars() { return false; }
 size_t ParamStruct::bytes() const { NOT_YET; }
 size_t ParamStruct::alignment() const { NOT_YET; }
 
