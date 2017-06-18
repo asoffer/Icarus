@@ -394,10 +394,50 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     return IR::Store(rhs_ir, lhs_lval);
   } break;
   case Language::Operator::OrEq: {
-    NOT_YET;
+    auto land_block = IR::Func::Current->AddBlock();
+    auto more_block = IR::Func::Current->AddBlock();
+
+    auto lhs_val       = lhs->EmitIR(errors);
+    auto lhs_end_block = IR::Block::Current;
+    IR::Jump::Conditional(lhs_val, land_block, more_block);
+
+    IR::Block::Current = more_block;
+    auto rhs_val       = rhs->EmitIR(errors);
+    auto rhs_end_block = IR::Block::Current;
+    IR::Jump::Unconditional(land_block);
+
+    IR::Block::Current = land_block;
+
+    auto phi = IR::Phi(Bool);
+    // TODO FIXME XXX THIS IS HACKY!
+    IR::Func::Current->blocks_[phi.as_reg.block_index.value]
+        .cmds_[phi.as_reg.instr_index]
+        .args = {IR::Val::Block(lhs_end_block), IR::Val::Bool(true),
+                 IR::Val::Block(rhs_end_block), rhs_val};
+    return phi;
   } break;
   case Language::Operator::AndEq: {
-    NOT_YET;
+    auto land_block = IR::Func::Current->AddBlock();
+    auto more_block = IR::Func::Current->AddBlock();
+
+    auto lhs_val       = lhs->EmitIR(errors);
+    auto lhs_end_block = IR::Block::Current;
+    IR::Jump::Conditional(lhs_val, more_block, land_block);
+
+    IR::Block::Current = more_block;
+    auto rhs_val       = rhs->EmitIR(errors);
+    auto rhs_end_block = IR::Block::Current;
+    IR::Jump::Unconditional(land_block);
+
+    IR::Block::Current = land_block;
+
+    auto phi = IR::Phi(Bool);
+    // TODO FIXME XXX THIS IS HACKY!
+    IR::Func::Current->blocks_[phi.as_reg.block_index.value]
+        .cmds_[phi.as_reg.instr_index]
+        .args = {IR::Val::Block(lhs_end_block), IR::Val::Bool(false),
+                 IR::Val::Block(rhs_end_block), rhs_val};
+    return phi;
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
@@ -465,6 +505,9 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
       case Language::Operator::Gt:
         cmp = IR::Gt(lhs_ir, rhs_ir);
         break;
+      case Language::Operator::And: {
+        cmp = lhs_ir;
+      } break;
       default:
         std::cerr << *this << std::endl;
         UNREACHABLE;
