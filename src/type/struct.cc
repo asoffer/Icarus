@@ -1,5 +1,6 @@
 #include "type.h"
 
+#include "../architecture.h"
 #include "../ast/ast.h"
 #include "../ir/ir.h"
 #include "scope.h"
@@ -37,27 +38,6 @@ void Struct::CompleteDefinition() {
   completed_ = true;
 }
 
-size_t Struct::bytes() const {
-  const_cast<Struct *>(this)->CompleteDefinition();
-  size_t num_bytes = 0;
-  for (auto ft : field_type) {
-    num_bytes += ft->bytes();
-    num_bytes = MoveForwardToAlignment(num_bytes, ft->alignment());
-  }
-
-  return MoveForwardToAlignment(num_bytes, alignment());
-}
-
-size_t Struct::alignment() const {
-  const_cast<Struct *>(this)->CompleteDefinition();
-  size_t alignment_val = 0;
-  for (auto ft : field_type) {
-    auto a = ft->alignment();
-    if (alignment_val <= a) { alignment_val = a; }
-  }
-  return alignment_val;
-}
-
 Type *Struct::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
   return (iter == field_name_to_num.end()) ? nullptr
@@ -72,12 +52,10 @@ size_t Struct::field_num(const std::string &name) const {
 
 void Struct::insert_field(const std::string &name, Type *ty,
                              AST::Expression *init_val) {
-
-  // TODO what if ty->alignment() == 0?
+  // TODO make architecture dependent
   size_t last_field_offset = field_offsets.back();
-  size_t next_offset = MoveForwardToAlignment(
-      last_field_offset + (field_type.empty() ? 0 : field_type.back()->bytes()),
-      ty->alignment());
+  size_t next_offset = Architecture::CompilingMachine().MoveForwardToAlignment(
+      ty, last_field_offset);
   field_offsets.push_back(next_offset);
 
 

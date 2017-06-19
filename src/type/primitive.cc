@@ -2,46 +2,6 @@
 
 Primitive::Primitive(PrimType pt) : type_(pt) {}
 
-size_t Primitive::alignment() const {
-  switch (type_) {
-  case PrimType::Bool:
-  case PrimType::Char: return 1;
-  case PrimType::U16: return 2;
-  case PrimType::U32: return 4;
-  case PrimType::Int:
-  case PrimType::Uint:
-  case PrimType::Real: return 8;
-  case PrimType::Void: return 1;
-  case PrimType::Type: return 8;
-  case PrimType::Code: return 8;
-  case PrimType::String: return 8;
-  // TODO There's a difference between what we want when we use this at
-  // compile-time and when we want the value at run-time
-
-  default: UNREACHABLE;
-  }
-}
-
-size_t Primitive::bytes() const {
-  switch (type_) {
-  case PrimType::Bool:
-  case PrimType::Char: return 1;
-  case PrimType::U16: return 2;
-  case PrimType::U32: return 4;
-  case PrimType::Int:
-  case PrimType::Uint:
-  case PrimType::Real: return 8;
-  case PrimType::Void: return 0;
-  case PrimType::Type: return 8;
-  case PrimType::String: return 8;
-  case PrimType::Code: return 8;
-                       
-  // TODO There's a difference between what we want when we use this at
-  // compile-time and when we want the value at run-time
-
-  default: UNREACHABLE;
-  }
-}
 
 std::string Primitive::to_string() const {
   switch (type_) {

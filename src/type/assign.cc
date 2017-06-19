@@ -1,5 +1,6 @@
 #include "type.h"
 
+#include "../architecture.h"
 #include "../ir/ir.h"
 #include "../scope.h"
 
@@ -41,10 +42,11 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
           IR::Access(IR::Val::Uint(0ul), to_var);
     } else {
       // TODO delete first time. currently just delete
-      auto rhs_bytes =
-          IR::Mul(rhs_len,
-                  IR::Val::Uint(lhs_array_type->data_type
-                                    ->bytes())); // TODO round up for alignment?
+      // TODO Architecture dependence?
+      // TODO size in array? You can get away with not rounding up the last section.
+
+      auto rhs_bytes = Architecture::CompilingMachine().ComputeArrayLength(
+          rhs_len, lhs_array_type->data_type);
       auto ptr = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
       auto array_data = IR::ArrayData(to_var);
       IR::Store(ptr, array_data);

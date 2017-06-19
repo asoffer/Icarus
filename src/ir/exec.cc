@@ -3,6 +3,7 @@
 #include <cmath>
 #include <memory>
 
+#include "../architecture.h"
 #include "../type/type.h"
 #include "../ast/ast.h"
 #include "../scope.h"
@@ -112,10 +113,9 @@ BlockIndex ExecContext::ExecuteBlock() {
 }
 
 IR::Val Stack::Push(Type *t) {
-  // TODO bytes/alignment depends on architecture
-  size_     = MoveForwardToAlignment(size_, t->alignment());
+  size_     = Architecture::CompilingMachine().MoveForwardToAlignment(t, size_);
   auto addr = size_;
-  size_ += t->bytes();
+  size_ += Architecture::CompilingMachine().bytes(t);
   ASSERT(size_ <= capacity_, ""); // TODO expand stack
   ASSERT(t->is_pointer(), ""); // TODO just pass in a 'Pointer'?
   return IR::Val::StackAddr(addr, ptr_cast<Pointer>(t)->pointee);

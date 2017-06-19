@@ -66,9 +66,6 @@ IR::Func *ParamStruct::IRFunc() {
   */
 }
 
-size_t ParamStruct::bytes() const { NOT_YET; }
-size_t ParamStruct::alignment() const { NOT_YET; }
-
 void ParamStruct::EmitInit(IR::Val) { UNREACHABLE; }
 void ParamStruct::EmitDestroy(IR::Val) { UNREACHABLE; }
 void ParamStruct::EmitRepr(IR::Val) { UNREACHABLE; }

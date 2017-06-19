@@ -34,10 +34,6 @@ struct Identifier;
 
 #include "constants_and_enums.h"
 
-inline size_t MoveForwardToAlignment(size_t ptr, size_t alignment) {
-  return ((ptr - 1) | (alignment - 1)) + 1;
-}
-
 extern std::vector<IR::Func *> implicit_functions;
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);
@@ -63,9 +59,7 @@ extern Scope_Type *ScopeType(Type *t);
   virtual void EmitInit(IR::Val id_val) ENDING;                                \
   virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
-  virtual void EmitRepr(IR::Val id_val) ENDING;                                \
-  virtual size_t bytes() const ENDING;                                         \
-  virtual size_t alignment() const ENDING
+  virtual void EmitRepr(IR::Val id_val) ENDING
 
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
@@ -78,10 +72,6 @@ public:
   Type() {}
   virtual ~Type() {}
   BASIC_METHODS;
-
-  size_t SpaceInArray() const {
-    return MoveForwardToAlignment(bytes(), alignment());
-  }
 
   // Assigns val to var. We need this to dispatch based on both the lhs and rhs
   // types. Assume that the types match appropriately. Depending on the types,
@@ -109,7 +99,6 @@ public:
   virtual bool is_struct() const { return false; }
   virtual bool is_parametric_struct() const { return false; }
   virtual bool is_enum() const { return false; }
-  virtual bool is_type_variable() const { return false; }
   virtual bool is_range() const { return false; }
   virtual bool is_slice() const { return false; }
   virtual bool is_scope_type() const { return false; }
@@ -139,6 +128,7 @@ public:
 #undef PRIMITIVE_MACRO
 
 private:
+  friend class Architecture;
   PrimType type_;
 
   IR::Func *repr_func = nullptr;
@@ -148,7 +138,7 @@ struct Array : public Type {
   TYPE_FNS(Array, array);
   Array(Type *t, size_t l);
 
-  IR::Func *init_func, *repr_func, *destroy_func;
+  IR::Func *init_func = nullptr, *repr_func = nullptr, *destroy_func = nullptr;
 
   Type *data_type;
   size_t len;
@@ -229,7 +219,8 @@ struct Struct : public Type {
   ParamStruct *creator;
 
 private:
-  IR::Func *init_func, *assign_func, *destroy_func;
+  IR::Func *init_func = nullptr, *assign_func = nullptr,
+           *destroy_func = nullptr;
   bool completed_;
 };
 

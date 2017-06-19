@@ -1,4 +1,5 @@
 #include "type.h"
+#include "../architecture.h"
 
 extern FileType file_type;
 
@@ -13,20 +14,9 @@ size_t Enum::IndexOrFail(const std::string &str) const {
   return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
-static size_t BytesAndAlignment(const Enum *e) {
-  auto num_members = e->members.size();
-  if (num_members < (1ul << (1ul << 3ul))) { return 1; }
-  if (num_members < (1ul << (1ul << 4ul))) { return 2; }
-  if (num_members < (1ul << (1ul << 5ul))) { return 4; }
-  // TODO Error message if you have too many members
-  return 8;
-}
-
-size_t Enum::bytes() const { return BytesAndAlignment(this); }
-size_t Enum::alignment() const { return BytesAndAlignment(this); }
-
 Type *Enum::ProxyType() const {
-  switch (BytesAndAlignment(this)) {
+  // TODO architecture dependence
+  switch (Architecture::CompilingMachine().bytes(this)) {
   case 1: return Char;
   case 2: return U16;
   case 4: return U32;
@@ -36,17 +26,12 @@ Type *Enum::ProxyType() const {
 }
 
 IR::Val Enum::EmitInitialValue() const {
-  switch (BytesAndAlignment(this)) {
-  case 1: return IR::Val::Char('\0');
-  case 2: return IR::Val::U16((uint16_t)0);
-  case 4: return IR::Val::U32((uint32_t)0);
-  case 8: return IR::Val::Uint(0ul);
-  default: UNREACHABLE;
-  }
+  return ProxyType()->EmitInitialValue();
 }
 
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
-  switch (BytesAndAlignment(this)) {
+  // TODO architecture dependence
+  switch (Architecture::CompilingMachine().bytes(this)) {
   case 1: return IR::Val::Char((char)int_values.at(member_name));
   case 2: return IR::Val::U16((uint16_t)int_values.at(member_name));
   case 4: return IR::Val::U32((uint32_t)int_values.at(member_name));
