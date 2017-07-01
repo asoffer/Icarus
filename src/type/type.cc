@@ -7,11 +7,11 @@
 #undef PRIMITIVE_MACRO
 
 Array::Array(Type *t) : data_type(t), len(0), fixed_length(false) {
-  dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
+  dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
 }
 
 Array::Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {
-  dimension = data_type->is_array() ? 1 + ((Array *)data_type)->dimension : 1;
+  dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
 }
 
 Tuple::Tuple(const std::vector<Type *> &entries) : entries(entries) {}
@@ -24,7 +24,7 @@ std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
 
-bool Type::is_big() const { return is_array() || is_struct(); }
-bool Type::stores_data() const { return this != Type_ && !is_function(); }
+bool Type::is_big() const { return is<Array>() || is<Struct>(); }
+bool Type::stores_data() const { return this != Type_ && !is<Function>(); }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }

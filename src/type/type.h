@@ -18,6 +18,7 @@ extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
 struct Scope;
 
 #include "../ast/ast.h"
+#include "../base/cast.h"
 #include "../base/debug.h"
 #include "../base/types.h"
 #include "../ir/ir.h"
@@ -64,10 +65,9 @@ extern Scope_Type *ScopeType(Type *t);
 #define TYPE_FNS(name, checkname)                                              \
   name() = delete;                                                             \
   virtual ~name() {}                                                           \
-  virtual bool is_##checkname() const { return true; }                         \
   BASIC_METHODS
 
-struct Type {
+struct Type : public base::Cast<Type> {
 public:
   Type() {}
   virtual ~Type() {}
@@ -86,23 +86,11 @@ public:
   // string literal, and using a string literal should import strings.
   static Type *get_string();
 
-  virtual bool is_primitive() const { return false; }
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   virtual bool is_##name() const { return false; }
 #include "../config/primitive.conf"
 #undef PRIMITIVE_MACRO
 
-  virtual bool is_array() const { return false; }
-  virtual bool is_tuple() const { return false; }
-  virtual bool is_pointer() const { return false; }
-  virtual bool is_function() const { return false; }
-  virtual bool is_struct() const { return false; }
-  virtual bool is_parametric_struct() const { return false; }
-  virtual bool is_enum() const { return false; }
-  virtual bool is_range() const { return false; }
-  virtual bool is_slice() const { return false; }
-  virtual bool is_scope_type() const { return false; }
-  virtual bool is_code_block() const { return this == Code_; }
 
   virtual bool is_big() const;
   virtual bool stores_data() const;

@@ -9,23 +9,23 @@ extern IR::Val PtrCallFix(IR::Val v);
 void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                           IR::Val from_val, IR::Val to_var) {
   ASSERT(scope, "");
-  if (lhs_type->is_primitive() || lhs_type->is_pointer() ||
-      lhs_type->is_function()) {
+  if (lhs_type->is<Primitive>() || lhs_type->is<Pointer>() ||
+      lhs_type->is<Function>()) {
     ASSERT(lhs_type == rhs_type, "");
 
     IR::Store(from_val, to_var);
-  } else if (lhs_type->is_enum()) {
+  } else if (lhs_type->is<Enum>()) {
     ASSERT(lhs_type == rhs_type, "");
     IR::Store(from_val, to_var);
 
-  } else if (lhs_type->is_array()) {
-    ASSERT(rhs_type->is_array(), "");
+  } else if (lhs_type->is<Array>()) {
+    ASSERT(rhs_type->is<Array>(), "");
     auto lhs_array_type = (Array *)lhs_type;
     auto rhs_array_type = (Array *)rhs_type;
 
-    IR::Val lhs_ptr = IR::Val::None();
-    IR::Val rhs_ptr = IR::Val::None();
-    IR::Val rhs_len = IR::Val::None();
+    IR::Val lhs_ptr     = IR::Val::None();
+    IR::Val rhs_ptr     = IR::Val::None();
+    IR::Val rhs_len     = IR::Val::None();
     IR::Val rhs_end_ptr = IR::Val::None();
 
     if (rhs_array_type->fixed_length) {
@@ -38,16 +38,16 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     rhs_end_ptr = IR::PtrIncr(rhs_ptr, rhs_len);
 
     if (lhs_array_type->fixed_length) {
-      lhs_ptr =
-          IR::Access(IR::Val::Uint(0ul), to_var);
+      lhs_ptr = IR::Access(IR::Val::Uint(0ul), to_var);
     } else {
       // TODO delete first time. currently just delete
       // TODO Architecture dependence?
-      // TODO size in array? You can get away with not rounding up the last section.
+      // TODO size in array? You can get away with not rounding up the last
+      // section.
 
       auto rhs_bytes = Architecture::CompilingMachine().ComputeArrayLength(
           rhs_len, lhs_array_type->data_type);
-      auto ptr = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
+      auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
       auto array_data = IR::ArrayData(to_var);
       IR::Store(ptr, array_data);
       lhs_ptr = IR::Load(array_data);
@@ -56,14 +56,14 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     }
 
     auto init_block = IR::Block::Current;
-    auto loop_phi = IR::Func::Current->AddBlock();
-    auto loop_body = IR::Func::Current->AddBlock();
-    auto land = IR::Func::Current->AddBlock();
+    auto loop_phi   = IR::Func::Current->AddBlock();
+    auto loop_body  = IR::Func::Current->AddBlock();
+    auto land       = IR::Func::Current->AddBlock();
     IR::Jump::Unconditional(loop_phi);
 
     IR::Block::Current = loop_phi;
-    auto lhs_phi = IR::Phi(Ptr(lhs_array_type->data_type));
-    auto rhs_phi = IR::Phi(Ptr(rhs_array_type->data_type));
+    auto lhs_phi       = IR::Phi(Ptr(lhs_array_type->data_type));
+    auto rhs_phi       = IR::Phi(Ptr(rhs_array_type->data_type));
     IR::Jump::Conditional(IR::Eq(rhs_phi, rhs_end_ptr), land, loop_body);
 
     IR::Block::Current = loop_body;
@@ -85,7 +85,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Jump::Unconditional(loop_phi);
 
     IR::Block::Current = land;
-  } else if (lhs_type->is_scope_type() && rhs_type->is_scope_type()) {
+  } else if (lhs_type->is<Scope_Type>() && rhs_type->is<Scope_Type>()) {
     ASSERT(lhs_type == rhs_type, "");
     IR::Store(from_val, to_var);
 
@@ -102,7 +102,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
 
 void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
   if (!assign_func) {
-    assign_func = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
+    assign_func       = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
     assign_func->name = "assign." + Mangle(this);
 
     CURRENT_FUNC(assign_func) {
@@ -112,13 +112,11 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
 
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);
-        auto field_val = IR::Field(val, i);
-        auto field_var = IR::Field(var, i);
+        auto field_val      = IR::Field(val, i);
+        auto field_var      = IR::Field(var, i);
 
         // TODO ptr call fix?
-        if (!the_field_type->is_big()) {
-          field_val = IR::Load(field_val);
-        }
+        if (!the_field_type->is_big()) { field_val = IR::Load(field_val); }
 
         // TODO is that the right scope?
         Type::CallAssignment(type_scope, the_field_type, the_field_type,

@@ -70,7 +70,7 @@ IR::Val Evaluate(AST::Expression *expr) {
     fn_ptr->statements->statements[0] = nullptr;
   } else {
     auto ret = fn_ptr->statements->statements.front();
-    ASSERT(ret->is_unop(), "");
+    ASSERT(ret->is<AST::Unop>(), "");
     auto unop = static_cast<AST::Unop *>(ret);
     ASSERT(unop->op == Language::Operator::Return, "");
     unop->operand = nullptr;
@@ -117,7 +117,7 @@ IR::Val Stack::Push(Type *t) {
   auto addr = size_;
   size_ += Architecture::CompilingMachine().bytes(t);
   ASSERT(size_ <= capacity_, ""); // TODO expand stack
-  ASSERT(t->is_pointer(), ""); // TODO just pass in a 'Pointer'?
+  ASSERT(t->is<Pointer>(), ""); // TODO just pass in a 'Pointer'?
   return IR::Val::StackAddr(addr, ptr_cast<Pointer>(t)->pointee);
 }
 
@@ -380,7 +380,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       std::cerr << resolved[0].as_type->to_string();
     } else if (resolved[0].type == Code_) {
       std::cerr << *resolved[0].as_code;
-    } else if (resolved[0].type->is_pointer()) {
+    } else if (resolved[0].type->is<Pointer>()) {
       // TODO what if it's not a heap address
       std::cerr << "0x" << resolved[0].as_heap_addr;
 
@@ -405,7 +405,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         return IR::Val::Uint(stack_.Load<u64>(resolved[0].as_stack_addr));
       } else if (cmd.result.type == Real) {
         return IR::Val::Real(stack_.Load<double>(resolved[0].as_stack_addr));
-      } else if (cmd.result.type->is_pointer()) {
+      } else if (cmd.result.type->is<Pointer>()) {
         NOT_YET;
       } else {
         std::cerr << *cmd.result.type << std::endl;
@@ -432,7 +432,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         stack_.Store(resolved[0].as_uint, resolved[1].as_stack_addr);
       } else if (resolved[0].type == Real) {
         stack_.Store(resolved[0].as_real, resolved[1].as_stack_addr);
-      } else if (resolved[0].type->is_pointer()) {
+      } else if (resolved[0].type->is<Pointer>()) {
         NOT_YET;
       } else {
         NOT_YET;

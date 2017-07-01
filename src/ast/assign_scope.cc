@@ -19,14 +19,14 @@ void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 void Terminal::assign_scope(Scope *scope) { 
   scope_ = scope;
   if (type != Type_) { return; }
-  if (value.as_type->is_parametric_struct()) {
+  if (value.as_type->is<ParamStruct>()) {
     auto ps = static_cast<ParamStruct *>(value.as_type);
     if (!ps->type_scope) { ps->type_scope = scope->add_child<DeclScope>(); }
 
     for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
     for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
 
-  } else if (value.as_type->is_struct()) {
+  } else if (value.as_type->is<Struct>()) {
     auto s = static_cast<Struct *>(value.as_type);
     if (!s->type_scope) { s->type_scope = scope->add_child<DeclScope>(); }
     for (auto d : s->decls) { d->assign_scope(s->type_scope); }

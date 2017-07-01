@@ -11,24 +11,21 @@ struct FunctionLiteral;
 struct Type;
 struct Function;
 
+#include "base/cast.h"
 #include "ir/ir.h"
-#include <vector>
 #include <iostream>
+#include <vector>
 
 struct DeclScope;
 struct ExecScope;
 struct FnScope;
 
-struct Scope {
+struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
 
   static DeclScope *Global;
-
-  virtual bool is_decl() { return false; }
-  virtual bool is_exec() { return false; }
-  virtual bool is_fn() { return false; }
 
   template <typename ScopeType> ScopeType *add_child() {
     return new ScopeType(this);
@@ -66,13 +63,11 @@ struct Scope {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
-  bool is_decl() final { return true; }
 };
 
 struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
-  bool is_exec() final { return true; }
 
   bool can_jump = false;
 };
@@ -80,16 +75,15 @@ struct ExecScope : public Scope {
 struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() final {}
-  bool is_fn() final { return true; }
 
   Function *fn_type            = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
-  std::vector<ExecScope*> innards_{1, this};
+  std::vector<ExecScope *> innards_{1, this};
 };
 
 inline FnScope *Scope::ContainingFnScope() {
   Scope *scope = this;
-  while (scope && !scope->is_fn()) { scope = scope->parent; }
+  while (scope && !scope->is<FnScope>()) { scope = scope->parent; }
   return static_cast<FnScope *>(scope);
 }
 #endif // ICARUS_SCOPE_H

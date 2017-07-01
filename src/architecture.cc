@@ -1,7 +1,7 @@
 #include "architecture.h"
 
 size_t Architecture::alignment(const Type *t) const {
-  if (t->is_primitive()) {
+  if (t->is<Primitive>()) {
     switch (ptr_cast<const Primitive>(t)->type_) {
     case PrimType::Err: NOT_YET;
     case PrimType::Unknown: UNREACHABLE;
@@ -18,13 +18,13 @@ size_t Architecture::alignment(const Type *t) const {
     case PrimType::Code: return 8;
     case PrimType::String: return 8;
     }
-  } else if (t->is_pointer()) {
+  } else if (t->is<Pointer>()) {
     return ptr_bytes_;
-  } else if (t->is_array()) {
+  } else if (t->is<Array>()) {
     auto array_type = ptr_cast<const Array>(t);
     return array_type->fixed_length ? this->alignment(array_type->data_type)
                                     : ptr_align_;
-  } else if (t->is_struct()) {
+  } else if (t->is<Struct>()) {
     auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));
     struct_type->CompleteDefinition();
     size_t alignment_val = 1;
@@ -33,11 +33,11 @@ size_t Architecture::alignment(const Type *t) const {
       if (alignment_val <= a) { alignment_val = a; }
     }
     return alignment_val;
-  } else if (t->is_function()) {
+  } else if (t->is<Function>()) {
     return  ptr_align_;
-  } else if (t->is_enum()) {
+  } else if (t->is<Enum>()) {
     return this->alignment(ptr_cast<const Enum>(t)->ProxyType());
-  } else if (t->is_scope_type()) {
+  } else if (t->is<Scope_Type>()) {
     return 1;
   } else {
     NOT_YET;
@@ -46,7 +46,7 @@ size_t Architecture::alignment(const Type *t) const {
 }
 
 size_t Architecture::bytes(const Type *t) const {
-  if (t->is_primitive()) {
+  if (t->is<Primitive>()) {
     switch (ptr_cast<const Primitive>(t)->type_) {
     case PrimType::Err: NOT_YET;
     case PrimType::Unknown: UNREACHABLE;
@@ -63,9 +63,9 @@ size_t Architecture::bytes(const Type *t) const {
     case PrimType::Code: return 8;
     case PrimType::String: return 8;
     }
-  } else if (t->is_pointer()) {
+  } else if (t->is<Pointer>()) {
     return ptr_bytes_;
-  } else if (t->is_array()) {
+  } else if (t->is<Array>()) {
     auto array_type = ptr_cast<const Array>(t);
     if (array_type->fixed_length) {
       // TODO previously there was an issue where we needed to force arrays to
@@ -79,7 +79,7 @@ size_t Architecture::bytes(const Type *t) const {
     } else {
       return 16;
     }
-  } else if (t->is_struct()) {
+  } else if (t->is<Struct>()) {
     auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));
     struct_type->CompleteDefinition();
     size_t num_bytes     = 0;
@@ -89,11 +89,11 @@ size_t Architecture::bytes(const Type *t) const {
     }
 
     return MoveForwardToAlignment(struct_type, num_bytes);
-  } else if (t->is_function()) {
+  } else if (t->is<Function>()) {
     return 2 * ptr_bytes_;
-  } else if (t->is_enum()) {
+  } else if (t->is<Enum>()) {
     return this->bytes(ptr_cast<const Enum>(t)->ProxyType());
-  } else if (t->is_scope_type()) {
+  } else if (t->is<Scope_Type>()) {
     return 0;
   } else {
     NOT_YET;

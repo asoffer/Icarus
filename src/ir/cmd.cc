@@ -22,9 +22,9 @@ Val SetReturn(size_t n, Val v) {
 }
 
 Val Field(Val v, size_t n) {
-  ASSERT(v.type->is_pointer(), "");
+  ASSERT(v.type->is<Pointer>(), "");
   auto ptee_type = static_cast<Pointer *>(v.type)->pointee;
-  ASSERT(ptee_type->is_struct(), "");
+  ASSERT(ptee_type->is<Struct>(), "");
 
   Cmd cmd(Ptr(static_cast<Struct *>(ptee_type)->field_type[n]), Op::Field,
           {std::move(v), IR::Val::Uint(n)});
@@ -53,7 +53,7 @@ Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
 Val Print(Val v) { MAKE_AND_RETURN(Void, Op::Print); }
 Val Free(Val v) {
-  ASSERT(v.type->is_pointer(), "");
+  ASSERT(v.type->is<Pointer>(), "");
   MAKE_AND_RETURN(Void, Op::Free);
 }
 
@@ -65,30 +65,30 @@ Val Alloca(Type *t) {
 }
 
 Val Load(Val v) {
-  ASSERT(v.type->is_pointer(), v.to_string());
+  ASSERT(v.type->is<Pointer>(), v.to_string());
   MAKE_AND_RETURN(static_cast<Pointer *>(v.type)->pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length,
+  ASSERT(v.type->is<::Array>() && !static_cast<::Array *>(v.type)->fixed_length,
          "");
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is_array() && !static_cast<::Array *>(v.type)->fixed_length,
+  ASSERT(v.type->is<::Array>() && !static_cast<::Array *>(v.type)->fixed_length,
          "");
   MAKE_AND_RETURN(Ptr(static_cast<::Array *>(v.type)->data_type),
                   Op::ArrayData);
 }
 
 Val Store(Val v1, Val v2) {
-  ASSERT(v2.type->is_pointer(), "");
+  ASSERT(v2.type->is<Pointer>(), "");
   MAKE_AND_RETURN2(Void, Op::Store);
 }
 
 Val PtrIncr(Val v1, Val v2) {
-  ASSERT(v1.type->is_pointer(), "");
+  ASSERT(v1.type->is<Pointer>(), "");
   ASSERT(v2.type == ::Uint, "");
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
@@ -117,7 +117,7 @@ Val Array(Val v1, Val v2) {
 
 Val Access(Val v1, Val v2) {
   // v1 = index, v2 = val
-  ASSERT(v2.type->is_array(), "");
+  ASSERT(v2.type->is<::Array>(), "");
   MAKE_AND_RETURN2(Ptr(static_cast<::Array *>(v2.type)->data_type), Op::Access);
 }
 
@@ -144,7 +144,7 @@ Val Phi(Type *t) {
 }
 
 Val Call(Val fn, std::vector<Val> vals) {
-  ASSERT(fn.type->is_function(), "");
+  ASSERT(fn.type->is<Function>(), "");
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
@@ -154,42 +154,42 @@ Val Call(Val fn, std::vector<Val> vals) {
 void Cmd::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ') << result.to_string() << " = ";
   switch (op_code) {
-    case Op::Malloc: std::cerr << "malloc"; break;
-    case Op::Free: std::cerr << "free"; break;
-    case Op::Extend: std::cerr << "extend"; break;
-    case Op::Trunc: std::cerr << "trunc"; break;
-    case Op::Neg: std::cerr << "neg"; break;
-    case Op::Add: std::cerr << "add"; break;
-    case Op::Sub: std::cerr << "sub"; break;
-    case Op::Mul: std::cerr << "mul"; break;
-    case Op::Div: std::cerr << "div"; break;
-    case Op::Mod: std::cerr << "mod"; break;
-    case Op::Lt: std::cerr << "lt"; break;
-    case Op::Le: std::cerr << "le"; break;
-    case Op::Eq: std::cerr << "eq"; break;
-    case Op::Ne: std::cerr << "ne"; break;
-    case Op::Ge: std::cerr << "ge"; break;
-    case Op::Gt: std::cerr << "gt"; break;
-    case Op::And: std::cerr << "and"; break;
-    case Op::Or: std::cerr << "or"; break;
-    case Op::Xor: std::cerr << "xor"; break;
-    case Op::Print: std::cerr << "print"; break;
-    case Op::Load: std::cerr << "load"; break;
-    case Op::Store: std::cerr << "store"; break;
-    case Op::ArrayLength: std::cerr << "array-length"; break;
-    case Op::ArrayData: std::cerr << "array-data"; break;
-    case Op::PtrIncr: std::cerr << "ptr-incr"; break;
-    case Op::Ptr: std::cerr << "ptr"; break;
-    case Op::Phi: std::cerr << "phi"; break;
-    case Op::Field: std::cerr << "field"; break;
-    case Op::Access: std::cerr << "access"; break;
-    case Op::Nop: std::cerr << "nop"; break;
-    case Op::Call: std::cerr << "call"; break;
-    case Op::Cast: std::cerr << "cast"; break;
-    case Op::SetReturn: std::cerr << "set-ret"; break;
-    case Op::Arrow: std::cerr << "arrow"; break;
-    case Op::Array: std::cerr << "array-type"; break;
-    case Op::Alloca: std::cerr << "alloca"; break;
+  case Op::Malloc: std::cerr << "malloc"; break;
+  case Op::Free: std::cerr << "free"; break;
+  case Op::Extend: std::cerr << "extend"; break;
+  case Op::Trunc: std::cerr << "trunc"; break;
+  case Op::Neg: std::cerr << "neg"; break;
+  case Op::Add: std::cerr << "add"; break;
+  case Op::Sub: std::cerr << "sub"; break;
+  case Op::Mul: std::cerr << "mul"; break;
+  case Op::Div: std::cerr << "div"; break;
+  case Op::Mod: std::cerr << "mod"; break;
+  case Op::Lt: std::cerr << "lt"; break;
+  case Op::Le: std::cerr << "le"; break;
+  case Op::Eq: std::cerr << "eq"; break;
+  case Op::Ne: std::cerr << "ne"; break;
+  case Op::Ge: std::cerr << "ge"; break;
+  case Op::Gt: std::cerr << "gt"; break;
+  case Op::And: std::cerr << "and"; break;
+  case Op::Or: std::cerr << "or"; break;
+  case Op::Xor: std::cerr << "xor"; break;
+  case Op::Print: std::cerr << "print"; break;
+  case Op::Load: std::cerr << "load"; break;
+  case Op::Store: std::cerr << "store"; break;
+  case Op::ArrayLength: std::cerr << "array-length"; break;
+  case Op::ArrayData: std::cerr << "array-data"; break;
+  case Op::PtrIncr: std::cerr << "ptr-incr"; break;
+  case Op::Ptr: std::cerr << "ptr"; break;
+  case Op::Phi: std::cerr << "phi"; break;
+  case Op::Field: std::cerr << "field"; break;
+  case Op::Access: std::cerr << "access"; break;
+  case Op::Nop: std::cerr << "nop"; break;
+  case Op::Call: std::cerr << "call"; break;
+  case Op::Cast: std::cerr << "cast"; break;
+  case Op::SetReturn: std::cerr << "set-ret"; break;
+  case Op::Arrow: std::cerr << "arrow"; break;
+  case Op::Array: std::cerr << "array-type"; break;
+  case Op::Alloca: std::cerr << "alloca"; break;
   }
 
   if (args.empty()) {
@@ -204,7 +204,7 @@ void Cmd::dump(size_t indent) const {
 }
 
 void Block::dump(size_t indent) const {
-  for (const auto& cmd : cmds_) { cmd.dump(indent); }
+  for (const auto &cmd : cmds_) { cmd.dump(indent); }
   jmp_.dump(indent);
 }
 
@@ -219,9 +219,7 @@ void Jump::dump(size_t indent) const {
               << "T => #" << cond_data.true_block.value << "F => #"
               << cond_data.false_block.value << std::endl;
     break;
-  case Type::Ret:
-    std::cerr << "return." << std::endl;
-    break;
+  case Type::Ret: std::cerr << "return." << std::endl; break;
   }
 }
 

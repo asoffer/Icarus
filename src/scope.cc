@@ -55,7 +55,7 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       ASSERT(id_ptr->type, "");
     }
 
-    ASSERT(id_ptr->type->is_function(), "");
+    ASSERT(id_ptr->type->is<Function>(), "");
     auto fn_type = (Function *)id_ptr->type;
     if (fn_type->input == input_type) { return fn_type; }
   }
@@ -75,7 +75,7 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
   if (!decl) { return IR::Val::None(); }
 
   if (decl->addr == IR::Val::None()) {
-    if (decl->init_val->is_function_literal()) {
+    if (decl->init_val->is<AST::FunctionLiteral>()) {
       auto old_func  = IR::Func::Current;
       auto old_block = IR::Block::Current;
 

@@ -49,7 +49,7 @@ int GenerateCode() {
 
   RUN(timer, "Verify and Emit") {
     for (auto stmt : global_statements->statements) {
-      if (!stmt->is_declaration()) { continue; }
+      if (!stmt->is<AST::Declaration>()) { continue; }
       auto decl = ptr_cast<AST::Declaration>(stmt);
       std::vector<Error> errors;
       decl->EmitIR(&errors);
@@ -57,10 +57,10 @@ int GenerateCode() {
   }
 /*
     for (auto stmt : global_statements->statements) {
-      if (stmt->is_declaration()) {
+      if (stmt->is<AST::Declaration>()) {
         ((AST::Declaration *)stmt)->EmitGlobal();
 
-      } else if (stmt->is_unop()) {
+      } else if (stmt->is<AST::Unop>()) {
         switch (((AST::Unop *)stmt)->op) {
         case Language::Operator::Eval:
           stmt->verify_types();
@@ -124,13 +124,13 @@ int RunRepl() {
   while (true) {
     auto stmts = repl.Parse();
     for (auto stmt : stmts->statements) {
-      if (stmt->is_declaration()) {
+      if (stmt->is<AST::Declaration>()) {
         auto decl = ptr_cast<AST::Declaration>(stmt);
         decl->assign_scope(Scope::Global);
         std::vector<Error> errors;
         decl->EmitIR(&errors);
 
-      } else if (stmt->is_expression()) {
+      } else if (stmt->is<AST::Expression>()) {
         auto expr = ptr_cast<AST::Expression>(stmt);
         expr->assign_scope(Scope::Global);
         ReplEval(expr);

@@ -64,19 +64,19 @@ size_t Get(const std::string &tag) {
 IR::Val PtrCallFix(IR::Val v) { return v.type->is_big() ? v : IR::Load(v); }
 
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
-  if (expr->is_function_literal()) {
+  if (expr->is<AST::FunctionLiteral>()) {
     return (AST::FunctionLiteral *)expr;
 
-  } else if (expr->is_identifier()) {
+  } else if (expr->is<AST::Identifier>()) {
     auto id = (AST::Identifier *)expr;
     ASSERT(id->decl->IsInferred(), "");
     return GetFunctionLiteral(id->decl->init_val);
 
-  } else if (expr->is_declaration()) {
+  } else if (expr->is<AST::Declaration>()) {
     auto decl = (AST::Declaration *)expr;
     ASSERT(decl->IsInferred(), "");
     return GetFunctionLiteral(decl->init_val);
-  } else if (expr->is_binop()) {
+  } else if (expr->is<AST::Binop>()) {
     NOT_YET;
   } else {
     UNREACHABLE;

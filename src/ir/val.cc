@@ -92,11 +92,11 @@ std::string Val::to_string() const {
       return as_type->to_string();
     } else if (type == ::Void) {
       return "<void>";
-    } else if (type->is_function()) {
+    } else if (type->is<Function>()) {
       std::stringstream ss;
       ss << "fn." << as_func;
       return ss.str();
-    } else if (type->is_pointer()) {
+    } else if (type->is<Pointer>()) {
       return "0p" + std::to_string(as_heap_addr);
     } else {
       std::cerr << *type << std::endl;

@@ -24,7 +24,7 @@ void Struct::CompleteDefinition() {
     if (decls[i]->type_expr) {
       if (decls[i]->type_expr->type == Err ||
           decls[i]->type_expr->type == Void ||
-          decls[i]->type_expr->type->is_parametric_struct()) {
+          decls[i]->type_expr->type->is<ParamStruct>()) {
         decl_type = Err;
       } else {
         decl_type = Evaluate(decls[i]->type_expr).as_type;

@@ -11,7 +11,7 @@ std::string Array::to_string() const {
   }
   Type *const *type_ptr_ptr = &data_type;
 
-  while ((*type_ptr_ptr)->is_array()) {
+  while ((*type_ptr_ptr)->is<Array>()) {
     auto array_ptr = (const Array *)*type_ptr_ptr;
     ss << ", ";
     if (array_ptr->fixed_length) {
@@ -29,7 +29,7 @@ std::string Array::to_string() const {
 
 std::string Function::to_string() const {
   std::stringstream ss;
-  if (input->is_function()) {
+  if (input->is<Function>()) {
     ss << "(" << *input << ")";
 
   } else {
@@ -42,7 +42,7 @@ std::string Function::to_string() const {
 
 std::string Pointer::to_string() const {
   std::stringstream ss;
-  if (pointee->is_function()) {
+  if (pointee->is<Function>()) {
     ss << "&(" << *pointee << ")";
   } else {
     ss << "&" << *pointee;

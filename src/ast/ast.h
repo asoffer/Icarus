@@ -6,6 +6,7 @@
 #include <map>
 #include <queue>
 
+#include "../base/cast.h"
 #include "../base/debug.h"
 #include "../cursor.h"
 #include "../error_log.h"
@@ -33,13 +34,12 @@ namespace AST {
 
 #define EXPR_FNS(name, checkname)                                              \
   virtual ~name();                                                             \
-  virtual bool is_##checkname() const OVERRIDE { return true; }                \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void verify_types(std::vector<Error> *) ENDING
 
-struct Node {
+struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
   virtual void lrvalue_check() {}
   virtual void assign_scope(Scope *) {}
@@ -47,30 +47,8 @@ struct Node {
   virtual void VerifyReturnTypes(Type *, std::vector<Error> *) {}
   virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
-  virtual bool is_identifier() const { return false; }
-  virtual bool is_terminal() const { return false; }
-  virtual bool is_expression() const { return false; }
-  virtual bool is_scope_node() const { return false; }
-  virtual bool is_binop() const { return false; }
-  virtual bool is_generic() const { return false; }
-  virtual bool is_function_literal() const { return false; }
-  virtual bool is_chain_op() const { return false; }
-  virtual bool is_case() const { return false; }
-  virtual bool is_eval() const { return true; }
-  virtual bool is_unop() const { return false; }
-  virtual bool is_access() const { return false; }
-  virtual bool is_comma_list() const { return false; }
-  virtual bool is_in_decl() const { return false; }
-  virtual bool is_code_block() const { return false; }
-  virtual bool is_declaration() const { return false; }
-  virtual bool is_indecl() const { return false; }
-  virtual bool is_array_type() const { return false; }
-  virtual bool is_statements() const { return false; }
-  virtual bool is_scope() const { return false; }
-  virtual bool is_array_literal() const { return false; }
-  virtual bool is_token_node() const { return false; }
-  virtual bool is_jump() const { return false; }
   virtual bool is_hole() const { return false; }
+  virtual bool is_comma_list() const { return false; }
 
   Node(Cursor cursor = Cursor()) : scope_(nullptr), loc(cursor) {}
   virtual ~Node() {}
@@ -139,8 +117,6 @@ struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
   virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
-
-  virtual bool is_token_node() const { return true; }
 
   virtual ~TokenNode() {}
 
@@ -229,7 +205,6 @@ struct Generic : public Declaration {
   EXPR_FNS(Generic, generic);
   static Node *Build(NPtrVec &&nodes);
 
-  virtual bool is_declaration() const override { return false; }
   Expression *test_fn = nullptr;
 };
 
@@ -237,8 +212,6 @@ struct InDecl : public Declaration {
   EXPR_FNS(InDecl, in_decl);
   static Node *Build(NPtrVec &&nodes);
 
-  virtual bool is_indecl() const override { return true; }
-  virtual bool is_declaration() const override { return false; }
   Expression *container = nullptr;
 };
 
@@ -251,8 +224,6 @@ struct Statements : public Node {
   IR::Val EmitIR(std::vector<Error> *errors) override;
 
   inline size_t size() { return statements.size(); }
-
-  bool is_statements() const override { return true; }
 
   static AST::Statements *Merge(std::vector<AST::Statements *> stmts_vec) {
     size_t num_stmts = 0;
@@ -388,7 +359,6 @@ struct For : public Node {
 
 struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
-  virtual bool is_jump() const override { return true; }
 
   virtual void VerifyReturnTypes(Type *ret_val, std::vector<Error> *errors) override;
 

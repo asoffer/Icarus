@@ -30,9 +30,8 @@ void Access::lrvalue_check() {
   if (operand->type == Type_ &&
       (member_name == "bytes" || member_name == "alignment")) {
     lvalue = Assign::Const;
-  } else if (operand->type->is_array() &&
-             ((Array *)operand->type)->fixed_length &&
-             member_name == "size") {
+  } else if (operand->type->is<Array>() &&
+             ((Array *)operand->type)->fixed_length && member_name == "size") {
     lvalue = Assign::Const;
   } else {
     lvalue = operand->lvalue;

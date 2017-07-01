@@ -72,7 +72,7 @@ IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
 IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
-  if (decl->arg_val || decl->is_in_decl()) {
+  if (decl->arg_val || decl->is<InDecl>()) {
     return decl->addr;
   } else {
     return PtrCallFix(EmitLVal(errors));
@@ -101,10 +101,10 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   { // Init block
     IR::Block::Current = init;
     for (auto decl : iterators) {
-      if (decl->container->type->is_range()) {
-        if (decl->container->is_binop()) {
+      if (decl->container->type->is<RangeType>()) {
+        if (decl->container->is<Binop>()) {
           init_vals.push_back(ptr_cast<Binop>(decl->container)->lhs->EmitIR(errors));
-        } else if (decl->container->is_unop()) {
+        } else if (decl->container->is<Unop>()) {
           init_vals.push_back(
               ptr_cast<Unop>(decl->container)->operand->EmitIR(errors));
         } else {
@@ -163,11 +163,11 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
       auto reg  = phis[i];
       auto next = IR::Func::Current->AddBlock();
       IR::Val cmp;
-      if (decl->container->type->is_range()) {
-        if (decl->container->is_binop()) {
+      if (decl->container->type->is<RangeType>()) {
+        if (decl->container->is<Binop>()) {
           auto rhs_val = ptr_cast<Binop>(decl->container)->rhs->EmitIR(errors);
           cmp          = IR::Le(reg, rhs_val);
-        } else if (decl->container->is_unop()) {
+        } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
           // code and trust optimizations later on.
           cmp = IR::Val::Bool(true);
@@ -249,7 +249,7 @@ extern std::vector<IR::Val> global_vals;
 IR::Val AST::ScopeNode::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
   IR::Val scope_expr_val = Evaluate(scope_expr);
-  ASSERT(scope_expr_val.type->is_scope_type(), "");
+  ASSERT(scope_expr_val.type->is<Scope_Type>(), "");
 
   auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR(errors);
   ASSERT(enter_fn != IR::Val::None(), "");
@@ -331,7 +331,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
       IR::SetReturn(0, operand->EmitIR(errors));
     }
 
-    ASSERT(scope_->is_exec(), "");
+    ASSERT(scope_->is<ExecScope>(), "");
     // ptr_cast<BlockScope>(scope_)->MakeReturn(operand->EmitIR(errors));
     IR::Jump::Unconditional(IR::BlockIndex{1});
 
@@ -342,7 +342,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   }
   case Language::Operator::Print: {
     auto print = +[](AST::Expression *expr, std::vector<Error> *errors) {
-      if (expr->type->is_primitive() || expr->type->is_pointer()) {
+      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
         IR::Print(expr->EmitIR(errors));
       } else {
         expr->type->EmitRepr(expr->EmitIR(errors));
@@ -588,7 +588,7 @@ IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
      for (auto decl : scope->decls_) {
        // TODO arg_val seems to go along with in_decl a lot. Is there some
        // reason for this that *should* be abstracted?
-       if (decl->arg_val || decl->is_in_decl()) { continue; }
+       if (decl->arg_val || decl->is<InDecl>()) { continue; }
        ASSERT(decl->type, "");
        decl->addr = IR::Alloca(decl->type);
      }
