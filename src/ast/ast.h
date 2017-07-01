@@ -410,6 +410,8 @@ struct ScopeNode : public Expression {
   static Node *BuildVoid(NPtrVec &&nodes);
   static Node *BuildScopeNode(Expression *scope_name, Expression *arg_expr,
                               Statements *stmt_node);
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
+ 
   Expression *scope_expr = nullptr;
   Expression *expr       = nullptr; // If the scope takes an argument, this is it
   Statements *stmts      = nullptr;

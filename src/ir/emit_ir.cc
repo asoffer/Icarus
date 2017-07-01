@@ -240,12 +240,39 @@ IR::Val AST::Case::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::ScopeLiteral::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
-  // TODO
-  return IR::Val::None();
+  return IR::Val::Scope(this);
 }
 
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
+
+IR::Val AST::ScopeNode::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT;
+  IR::Val scope_expr_val = Evaluate(scope_expr);
+  ASSERT(scope_expr_val.type->is_scope_type(), "");
+
+  auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR(errors);
+  ASSERT(enter_fn != IR::Val::None(), "");
+  auto exit_fn = scope_expr_val.as_scope->exit_fn->init_val->EmitIR(errors);
+  ASSERT(exit_fn != IR::Val::None(), "");
+
+  auto call_enter_result = (expr == nullptr)
+                               ? IR::Call(enter_fn, {})
+                               : IR::Call(enter_fn, {expr->EmitIR(errors)});
+  auto land_block  = IR::Func::Current->AddBlock();
+  auto enter_block = IR::Func::Current->AddBlock();
+
+  IR::Jump::Conditional(call_enter_result, enter_block, land_block);
+
+  IR::Block::Current = enter_block;
+  stmts->EmitIR(errors);
+
+  auto call_exit_result = IR::Call(exit_fn, {});
+  IR::Jump::Conditional(call_exit_result, enter_block, land_block);
+
+  IR::Block::Current = land_block;
+  return IR::Val::None();
+}
 
 IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
@@ -329,7 +356,6 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     } else {
       print(operand, errors);
     }
-    IR::Func::Current->dump();
     return IR::Val::None();
   } break;
   case Language::Operator::And:
@@ -542,37 +568,37 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
-  VERIFY_OR_EXIT;
-  // Verifying 'this' only verifies the declared functions type not the
-  // internals. We need to do that here.
-  statements->verify_types(errors);
-  if (!errors->empty()) { return IR::Val::None(); }
+ VERIFY_OR_EXIT;
+ // Verifying 'this' only verifies the declared functions type not the
+ // internals. We need to do that here.
+ statements->verify_types(errors);
+ if (!errors->empty()) { return IR::Val::None(); }
 
-  CURRENT_FUNC(ir_func = new IR::Func(type)) {
-    IR::Block::Current = ir_func->entry();
+ CURRENT_FUNC(ir_func = new IR::Func(type)) {
+   IR::Block::Current = ir_func->entry();
 
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      auto arg = inputs[i];
-      ASSERT(arg->addr == IR::Val::None(), "");
-      arg->addr = IR::Val::Arg(
-          arg->type, i); // This whole loop can be done on construction!
-    }
+   for (size_t i = 0; i < inputs.size(); ++i) {
+     auto arg = inputs[i];
+     ASSERT(arg->addr == IR::Val::None(), "");
+     arg->addr = IR::Val::Arg(
+         arg->type, i); // This whole loop can be done on construction!
+   }
 
-    for (auto scope : fn_scope->innards_) {
-      for (auto decl : scope->decls_) {
-        // TODO arg_val seems to go along with in_decl a lot. Is there some
-        // reason for this that *should* be abstracted?
-        if (decl->arg_val || decl->is_in_decl()) { continue; }
-        ASSERT(decl->type, "");
-        decl->addr = IR::Alloca(decl->type);
-      }
-    }
+   for (auto scope : fn_scope->innards_) {
+     for (auto decl : scope->decls_) {
+       // TODO arg_val seems to go along with in_decl a lot. Is there some
+       // reason for this that *should* be abstracted?
+       if (decl->arg_val || decl->is_in_decl()) { continue; }
+       ASSERT(decl->type, "");
+       decl->addr = IR::Alloca(decl->type);
+     }
+   }
 
-    statements->EmitIR(errors);
-    IR::Jump::Unconditional(ir_func->exit());
+   statements->EmitIR(errors);
+   IR::Jump::Unconditional(ir_func->exit());
 
-    IR::Block::Current = ir_func->exit();
-    IR::Jump::Return();
+   IR::Block::Current = ir_func->exit();
+   IR::Jump::Return();
   }
 
   return IR::Val::Func(ir_func);

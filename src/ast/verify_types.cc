@@ -1066,8 +1066,11 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
     return;
   }
 
-  Type *ret_type = ret_type_val.as_type;
+  for (auto input : inputs) { input->verify_types(errors); }
 
+  // TODO don't do early exists on input or return type errors.
+
+  Type *ret_type = ret_type_val.as_type;
   Type *input_type;
   size_t num_inputs = inputs.size();
   if (num_inputs == 0) {
@@ -1208,12 +1211,35 @@ void ScopeNode::verify_types(std::vector<Error> *errors) {
 
 void ScopeLiteral::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
+  bool cannot_proceed_due_to_errors = false;
+  if (enter_fn == nullptr) {
+    cannot_proceed_due_to_errors = true;
+    errors->emplace_back(Error::Code::Other);
+  }
+
+  if (exit_fn == nullptr) {
+    cannot_proceed_due_to_errors = true;
+    errors->emplace_back(Error::Code::Other);
+  }
+
+  if (cannot_proceed_due_to_errors) { return; }
+
   VERIFY_AND_RETURN_ON_ERROR(enter_fn);
   VERIFY_AND_RETURN_ON_ERROR(exit_fn);
+
   if (!enter_fn->type->is_function()) {
-    // TODO error must be a function
+    cannot_proceed_due_to_errors = true;
+    errors->emplace_back(Error::Code::Other);
   }
-  type = ScopeType(((Function *)enter_fn->type)->input);
+
+  if (!exit_fn->type->is_function()) {
+    cannot_proceed_due_to_errors = true;
+    errors->emplace_back(Error::Code::Other);
+  }
+
+  if (cannot_proceed_due_to_errors) { return; }
+
+  type = ScopeType(ptr_cast<Function>(enter_fn->type)->input);
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type, std::vector<Error> *errors) {

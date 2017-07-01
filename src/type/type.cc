@@ -25,8 +25,6 @@ std::ostream &operator<<(std::ostream &os, const Type &t) {
 }
 
 bool Type::is_big() const { return is_array() || is_struct(); }
-bool Type::stores_data() const {
-  return this != Type_ && !is_function() && !is_type_variable();
-}
+bool Type::stores_data() const { return this != Type_ && !is_function(); }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }

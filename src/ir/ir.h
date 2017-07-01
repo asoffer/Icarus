@@ -11,6 +11,7 @@ struct Type;
 
 namespace AST {
 struct CodeBlock;
+struct ScopeLiteral;
 } // namespace AST
 
 namespace IR {
@@ -47,6 +48,7 @@ struct Val {
     u64 as_uint; // TODO pick the right type here
     ::Type *as_type;
     ::IR::Func *as_func;
+    AST::ScopeLiteral *as_scope;
     AST::CodeBlock *as_code;
     BlockIndex as_block;
     char *as_cstr;
@@ -72,6 +74,7 @@ struct Val {
   static Val Null(::Type *t);
   static Val StrLit(const char *cstr);
   static Val None() { return Val(); }
+  static Val Scope(AST::ScopeLiteral *scope_lit);
 
   std::string to_string() const;
 
