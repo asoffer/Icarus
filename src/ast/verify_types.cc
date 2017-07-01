@@ -117,8 +117,8 @@ void Unop::verify_types(std::vector<Error> *errors) {
 
   using Language::Operator;
   switch (op) {
-  case Operator::Eval: type = operand->type; break;
-  case Operator::Require: type = Void; break;
+  case Operator::Eval: type     = operand->type; break;
+  case Operator::Require: type  = Void; break;
   case Operator::Generate: type = Void; break;
   case Operator::Free: {
     if (!operand->type->is<Pointer>()) {
@@ -171,8 +171,9 @@ void Unop::verify_types(std::vector<Error> *errors) {
   case Operator::Sub: {
     if (operand->type == Uint) {
       errors->emplace_back(Error::Code::UnsignedNegation);
-      // ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
-         //                    this);
+      // ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer
+      // (uint).",
+      //                    this);
       type = Int;
 
     } else if (operand->type == Int || operand->type == Real) {
@@ -192,16 +193,16 @@ void Unop::verify_types(std::vector<Error> *errors) {
       } else {
         errors->emplace_back(Error::Code::MissingOperator);
         // ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-           //                        "` has no unary negation operator.",
-            //                   this);
+        //                        "` has no unary negation operator.",
+        //                   this);
         type = Err;
       }
 
     } else {
       errors->emplace_back(Error::Code::MissingOperator);
       // ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-         //                        "` has no unary negation operator.",
-          //                   this);
+      //                        "` has no unary negation operator.",
+      //                   this);
       type = Err;
     }
   } break;
@@ -221,14 +222,13 @@ void Unop::verify_types(std::vector<Error> *errors) {
     } else {
       errors->emplace_back(Error::Code::LogicalNegationOfNonBool);
       // ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
-         //                    "operator (!) to an expression of type `" +
-          //                       operand->type->to_string() + "`.",
-           //                  this);
+      //                    "operator (!) to an expression of type `" +
+      //                       operand->type->to_string() + "`.",
+      //                  this);
       type = Err;
     }
   } break;
-  default:
-    UNREACHABLE;
+  default: UNREACHABLE;
   }
 }
 
@@ -583,7 +583,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
       for (auto decl : matched_op_name) {                                      \
-        if (!decl->type->is<Function>()) { continue; }                          \
+        if (!decl->type->is<Function>()) { continue; }                         \
         auto fn_type = (Function *)decl->type;                                 \
         if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
         /* If you get here, you've found a match. Hope there is only one       \
@@ -673,8 +673,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
     if (type != Err) { type = Type_; }
 
   } break;
-  default:
-    UNREACHABLE;
+  default: UNREACHABLE;
   }
 }
 

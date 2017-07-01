@@ -262,6 +262,11 @@ struct Func {
 
   void dump() const;
 
+  void SetArgs(IR::RegIndex reg, std::vector<IR::Val> args) {
+    blocks_[reg.block_index.value].cmds_[reg.instr_index].args =
+        std::move(args);
+  }
+
   static BlockIndex AddBlock() {
 
     BlockIndex index;

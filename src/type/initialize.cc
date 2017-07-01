@@ -53,13 +53,11 @@ void Array::EmitInit(IR::Val id_val) {
       IR::Block::Current = loop_body;
       data_type->EmitInit(phi);
 
-      auto elem_ptr = IR::PtrIncr(phi, IR::Val::Uint(1));
+      IR::Func::Current->SetArgs(phi.as_reg,
+                                 {IR::Val::Block(init_block), ptr,
+                                  IR::Val::Block(IR::Block::Current),
+                                  IR::PtrIncr(phi, IR::Val::Uint(1))});
 
-      // TODO FIXME XXX THIS IS HACKY!
-      IR::Func::Current->blocks_[phi.as_reg.block_index.value]
-          .cmds_[phi.as_reg.instr_index]
-          .args = {IR::Val::Block(init_block), ptr,
-                   IR::Val::Block(IR::Block::Current), elem_ptr};
       IR::Jump::Unconditional(loop_phi);
 
       IR::Block::Current = IR::Func::Current->exit();

@@ -70,18 +70,15 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     // TODO Are these the right types?
     CallAssignment(scope, lhs_array_type->data_type, lhs_array_type->data_type,
                    PtrCallFix(rhs_phi), lhs_phi);
-    auto next_lhs = IR::PtrIncr(lhs_phi, IR::Val::Uint(1ul));
-    auto next_rhs = IR::PtrIncr(rhs_phi, IR::Val::Uint(1ul));
 
-    // TODO FIXME XXX THIS IS HACKY!
-    IR::Func::Current->blocks_[lhs_phi.as_reg.block_index.value]
-        .cmds_[lhs_phi.as_reg.instr_index]
-        .args = {IR::Val::Block(init_block), lhs_ptr,
-                 IR::Val::Block(IR::Block::Current), next_lhs};
-    IR::Func::Current->blocks_[rhs_phi.as_reg.block_index.value]
-        .cmds_[rhs_phi.as_reg.instr_index]
-        .args = {IR::Val::Block(init_block), rhs_ptr,
-                 IR::Val::Block(IR::Block::Current), next_rhs};
+    IR::Func::Current->SetArgs(lhs_phi.as_reg,
+                               {IR::Val::Block(init_block), lhs_ptr,
+                                IR::Val::Block(IR::Block::Current),
+                                IR::PtrIncr(lhs_phi, IR::Val::Uint(1ul))});
+    IR::Func::Current->SetArgs(rhs_phi.as_reg,
+                               {IR::Val::Block(init_block), rhs_ptr,
+                                IR::Val::Block(IR::Block::Current),
+                                IR::PtrIncr(rhs_phi, IR::Val::Uint(1ul))});
     IR::Jump::Unconditional(loop_phi);
 
     IR::Block::Current = land;

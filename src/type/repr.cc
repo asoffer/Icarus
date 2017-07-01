@@ -136,11 +136,9 @@ void Array::EmitRepr(IR::Val val) {
       data_type->EmitRepr(PtrCallFix(elem_ptr));
       IR::Jump::Unconditional(loop_phi);
 
-      // TODO FIXME XXX THIS IS HACKY!
-      IR::Func::Current->blocks_[phi.as_reg.block_index.value]
-          .cmds_[phi.as_reg.instr_index]
-          .args = {IR::Val::Block(init_block), ptr,
-                   IR::Val::Block(IR::Block::Current), elem_ptr};
+      IR::Func::Current->SetArgs(
+          phi.as_reg, {IR::Val::Block(init_block), ptr,
+                       IR::Val::Block(IR::Block::Current), elem_ptr});
 
       IR::Block::Current = repr_func->exit();
       IR::Print(IR::Val::Char(']'));
