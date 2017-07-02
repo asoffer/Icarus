@@ -27,8 +27,6 @@ Val Val::GlobalAddr(u64 n, ::Type *t) {
 Val Val::Bool(bool b) { MAKE_AND_RETURN(Kind::Const, ::Bool, as_bool, b); }
 Val Val::Char(char c) { MAKE_AND_RETURN(Kind::Const, ::Char, as_char, c); }
 Val Val::Real(double r) { MAKE_AND_RETURN(Kind::Const, ::Real, as_real, r); }
-Val Val::U16(u16 n) { MAKE_AND_RETURN(Kind::Const, ::U16, as_u16, n); }
-Val Val::U32(u32 n) { MAKE_AND_RETURN(Kind::Const, ::U32, as_u32, n); }
 Val Val::Uint(u64 n) { MAKE_AND_RETURN(Kind::Const, ::Uint, as_uint, n); }
 Val Val::Int(i64 n) { MAKE_AND_RETURN(Kind::Const, ::Int, as_int, n); }
 Val Val::Type(::Type *t) { MAKE_AND_RETURN(Kind::Const, ::Type_, as_type, t); }
@@ -37,6 +35,9 @@ Val Val::CodeBlock(AST::CodeBlock *block) {
 }
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   MAKE_AND_RETURN(Kind::Const, scope_lit->type, as_scope, scope_lit);
+}
+Val Val::Enum(::Enum *enum_type, size_t integral_val) {
+  MAKE_AND_RETURN(Kind::Const, enum_type, as_enum, integral_val);
 }
 
 Val Val::Func(::IR::Func *fn) {
@@ -78,10 +79,6 @@ std::string Val::to_string() const {
     } else if (type == ::Char) {
       // TODO print the actual character if that's useful.
       return std::to_string(static_cast<i32>(as_char)) + "_c";
-    } else if (type == ::U16) {
-      return std::to_string(as_u16) + "_u16";
-    } else if (type == ::U32) {
-      return std::to_string(as_u32) + "_u32";
     } else if (type == ::Int) {
       return std::to_string(as_int);
     } else if (type == ::Uint) {

@@ -14,8 +14,6 @@ IR::Val Primitive::EmitInitialValue() const {
   case PrimType::Int: return IR::Val::Int(0l);
   case PrimType::Real: return IR::Val::Real(0.0);
   case PrimType::Uint: return IR::Val::Uint(0ul);
-  case PrimType::U16: return IR::Val::U16((uint16_t)0);
-  case PrimType::U32: return IR::Val::U32((uint32_t)0);
   case PrimType::String: NOT_YET; //return IR::Val(const_cast<char *>("\0"));
   default: UNREACHABLE;
   }

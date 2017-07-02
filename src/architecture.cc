@@ -8,8 +8,6 @@ size_t Architecture::alignment(const Type *t) const {
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;
-    case PrimType::U16: return 2;
-    case PrimType::U32: return 4;
     case PrimType::Int:
     case PrimType::Uint:
     case PrimType::Real:
@@ -36,7 +34,8 @@ size_t Architecture::alignment(const Type *t) const {
   } else if (t->is<Function>()) {
     return  ptr_align_;
   } else if (t->is<Enum>()) {
-    return this->alignment(ptr_cast<const Enum>(t)->ProxyType());
+    // TODO
+    return 8;
   } else if (t->is<Scope_Type>()) {
     return 1;
   } else {
@@ -53,8 +52,6 @@ size_t Architecture::bytes(const Type *t) const {
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;
-    case PrimType::U16: return 2;
-    case PrimType::U32: return 4;
     case PrimType::Int:
     case PrimType::Uint:
     case PrimType::Real:
@@ -92,7 +89,8 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Function>()) {
     return 2 * ptr_bytes_;
   } else if (t->is<Enum>()) {
-    return this->bytes(ptr_cast<const Enum>(t)->ProxyType());
+    // TODO
+    return 8;
   } else if (t->is<Scope_Type>()) {
     return 0;
   } else {

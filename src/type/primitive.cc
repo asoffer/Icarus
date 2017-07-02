@@ -16,8 +16,6 @@ std::string Primitive::to_string() const {
   case PrimType::Uint: return "uint";
   case PrimType::Void: return "void";
   case PrimType::NullPtr: return "null";
-  case PrimType::U16: return "uint16";
-  case PrimType::U32: return "uint32";
   case PrimType::String: return "string";
   default: UNREACHABLE;
   }

@@ -64,7 +64,7 @@ BuildScopeLiteral(std::vector<std::unique_ptr<Node>> nodes) {
   // TODO take arguments as well
   if (nodes.size() > 1) {
     for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
-      if (!stmt->is<Declaration>()) { continue; } // TODO leaking
+      if (!stmt->is<Declaration>()) { continue; }
       auto decl = base::move<Declaration>(stmt);
       if (decl->identifier->token == "enter") {
         scope_lit->enter_fn = std::move(decl);
@@ -152,7 +152,6 @@ BuildEnumLiteral(std::vector<std::unique_ptr<Node>> nodes) {
   }
 
   static size_t anon_enum_counter = 0;
-  // TODO Almost surely this is leaking
   return std::make_unique<Terminal>(
       nodes[0]->loc, Language::Terminal::Type, Type_,
       IR::Val::Type(new Enum(
@@ -300,20 +299,20 @@ Unop::BuildLeft(std::vector<std::unique_ptr<Node>> nodes) {
 // Internal checks: None
 std::unique_ptr<Node> ChainOp::Build(std::vector<std::unique_ptr<Node>> nodes) {
   // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
-  auto op_node = base::move<TokenNode>(nodes[1]);
+  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
   auto op_prec = Language::precedence(op_node->op);
-
   std::unique_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
   if (nodes[0]->is<ChainOp>() &&
       ptr_cast<ChainOp>(nodes[0].get())->precedence == op_prec) {
+
     chain = base::move<ChainOp>(nodes[0]);
 
   } else {
     chain      = std::make_unique<ChainOp>();
-    chain->loc = nodes[1]->loc;
+    chain->loc = op_node->loc;
 
     chain->exprs.push_back(base::move<Expression>(nodes[0]));
     chain->precedence = op_prec;

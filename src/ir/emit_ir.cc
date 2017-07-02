@@ -44,6 +44,19 @@ static IR::Val OrdFunc() {
   return IR::Val::Func(ord_func_);
 }
 
+IR::Val AST::Access::EmitIR(std::vector<Error> *errors) {
+  VERIFY_OR_EXIT;
+
+  if (type->is<Enum>()) {
+    return ptr_cast<Enum>(type)->EmitLiteral(member_name);
+  } else if (type->is<Struct>()) {
+    NOT_YET;
+  } else {
+    NOT_YET;
+  }
+  return IR::Val::None();
+}
+
 IR::Val AST::Terminal::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
   switch (terminal_type) {

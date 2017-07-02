@@ -13,8 +13,7 @@ struct Scope_Type;
 struct ParamStruct;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
-    *Void, *NullPtr, *String, *U16, *U32;
-
+    *Void, *NullPtr, *String;
 struct Scope;
 
 #include "../ast/ast.h"
@@ -25,6 +24,7 @@ struct Scope;
 #include <string>
 #include <vector>
 #include <map>
+#include <unordered_map>
 #include <sstream>
 
 namespace AST {
@@ -166,12 +166,11 @@ struct Enum : public Type {
   Enum(const std::string &name, const std::vector<std::string> &members);
 
   size_t IndexOrFail(const std::string &str) const;
-  Type *ProxyType() const;
   IR::Val EmitLiteral(const std::string &member_name) const;
 
   std::string bound_name;
   std::vector<std::string> members;
-  std::map<std::string, size_t> int_values;
+  std::unordered_map<std::string, size_t> int_values;
 };
 
 struct Struct : public Type {
@@ -198,7 +197,7 @@ struct Struct : public Type {
                     AST::Expression *init_val);
 
   // Field database info
-  std::map<std::string, size_t> field_name_to_num;
+  std::unordered_map<std::string, size_t> field_name_to_num;
   std::vector<std::string> field_num_to_name;
   std::vector<Type *> field_type;
   std::vector<size_t> field_offsets;
@@ -225,7 +224,7 @@ struct ParamStruct : public Type {
   Scope *type_scope = nullptr;
   std::vector<AST::Declaration *> params, decls;
   std::map<std::vector<IR::Val>, Struct *> cache;
-  std::map<Struct *, std::vector<IR::Val>> reverse_cache;
+  std::unordered_map<Struct *, std::vector<IR::Val>> reverse_cache;
 
 private:
   IR::Func *ir_func = nullptr;

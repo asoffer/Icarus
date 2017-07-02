@@ -289,6 +289,7 @@ struct Access : public Expression {
   EXPR_FNS(Access, access);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
 
   std::string member_name;
   std::unique_ptr<Expression> operand;

@@ -8,6 +8,7 @@
 #include "../base/types.h"
 
 struct Type;
+struct Enum;
 
 namespace AST {
 struct CodeBlock;
@@ -42,10 +43,9 @@ struct Val {
     bool as_bool;
     char as_char;
     double as_real;
-    u16 as_u16;
-    u32 as_u32;
     i64 as_int;  // TODO pick the right type here
     u64 as_uint; // TODO pick the right type here
+    size_t as_enum;
     ::Type *as_type;
     ::IR::Func *as_func;
     AST::ScopeLiteral *as_scope;
@@ -62,10 +62,9 @@ struct Val {
   static Val Bool(bool b);
   static Val Char(char c);
   static Val Real(double r);
-  static Val U16(u16 n);
-  static Val U32(u32 n);
   static Val Int(i64 n);
   static Val Uint(u64 n);
+  static Val Enum(::Enum* enum_type, size_t integral_val);
   static Val Type(::Type *t);
   static Val CodeBlock(AST::CodeBlock *block);
   static Val Func(::IR::Func *fn);

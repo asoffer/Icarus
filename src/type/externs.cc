@@ -16,9 +16,9 @@ static std::vector<Array *> array_types_;
 static std::vector<Tuple *> tuple_types_;
 static std::vector<Pointer *> pointer_types_;
 static std::vector<Function *> fn_types_;
-static std::map<Type *, RangeType *> ranges_;
-static std::map<Array *, SliceType *> slices_;
-static std::map<Type *, Scope_Type *> scopes_;
+static std::unordered_map<Type *, RangeType *> ranges_;
+static std::unordered_map<Array *, SliceType *> slices_;
+static std::unordered_map<Type *, Scope_Type *> scopes_;
 
 Array *Arr(Type *t, size_t len) {
   for (auto arr : array_types_){

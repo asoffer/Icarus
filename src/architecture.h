@@ -10,12 +10,12 @@ struct Architecture {
   size_t alignment(const Type *t) const;
   size_t bytes(const Type *t) const;
 
-  size_t MoveForwardToAlignment(Type *t, size_t index) const {
+  size_t MoveForwardToAlignment(const Type *t, size_t index) const {
     return ((index - 1) | (alignment(t) - 1)) + 1;
   }
 
   // TODO skip the last alignment requirement?
-  IR::Val ComputeArrayLength(IR::Val len, Type *t) const {
+  IR::Val ComputeArrayLength(IR::Val len, const Type *t) const {
     auto space_in_array = MoveForwardToAlignment(t, bytes(t));
     return IR::Mul(len, IR::Val::Uint(space_in_array));
   }

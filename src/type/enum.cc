@@ -14,30 +14,14 @@ size_t Enum::IndexOrFail(const std::string &str) const {
   return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
-Type *Enum::ProxyType() const {
-  // TODO architecture dependence
-  switch (Architecture::CompilingMachine().bytes(this)) {
-  case 1: return Char;
-  case 2: return U16;
-  case 4: return U32;
-  case 8: return Uint;
-  default: UNREACHABLE;
-  }
-}
-
 IR::Val Enum::EmitInitialValue() const {
-  return ProxyType()->EmitInitialValue();
+  // TODO Is const correctness worth the pain?
+  return IR::Val::Enum(const_cast<Enum *>(this), 0);
 }
 
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
-  // TODO architecture dependence
-  switch (Architecture::CompilingMachine().bytes(this)) {
-  case 1: return IR::Val::Char((char)int_values.at(member_name));
-  case 2: return IR::Val::U16((uint16_t)int_values.at(member_name));
-  case 4: return IR::Val::U32((uint32_t)int_values.at(member_name));
-  case 8: return IR::Val::Uint((size_t)int_values.at(member_name));
-  default: UNREACHABLE;
-  }
+  // TODO Is const correctness worth the pain?
+  return IR::Val::Enum(const_cast<Enum *>(this), int_values.at(member_name));
 }
 
 std::string Enum::to_string() const { return bound_name; }

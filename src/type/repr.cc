@@ -55,8 +55,6 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::Code: {
     IR::Print(val);
   } break;
-  case PrimType::U16:
-  case PrimType::U32:
   case PrimType::Void:
   case PrimType::NullPtr:
   case PrimType::Err:
@@ -74,7 +72,8 @@ void Function::EmitRepr(IR::Val) {
   IR::Print(IR::Val::Char('}'));
 }
 
-void Enum::EmitRepr(IR::Val) { NOT_YET; }
+// TODO print something friendlier
+void Enum::EmitRepr(IR::Val val) { IR::Print(val); }
 
 void Pointer::EmitRepr(IR::Val) { UNREACHABLE; }
 

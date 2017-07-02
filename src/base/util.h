@@ -1,5 +1,5 @@
-#ifndef ICARUS_BASE_UTIL_TOOLS_H
-#define ICARUS_BASE_UTIL_TOOLS_H
+#ifndef ICARUS_BASE_UTIL_H
+#define ICARUS_BASE_UTIL_H
 
 #include <type_traits>
 #include <memory>
@@ -43,4 +43,4 @@ std::unique_ptr<To> move(std::unique_ptr<From> &ptr) {
 
 } // namespace base
 
-#endif // ICARUS_BASE_UTIL_TOOLS_H
+#endif // ICARUS_BASE_UTIL_H

@@ -288,10 +288,6 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Bool(resolved[0].as_bool == resolved[1].as_bool);
     } else if (resolved[0].type == Char) {
       return Val::Bool(resolved[0].as_char == resolved[1].as_char);
-    } else if (resolved[0].type == U16) {
-      return Val::Bool(resolved[0].as_u16 == resolved[1].as_u16);
-    } else if (resolved[0].type == U32) {
-      return Val::Bool(resolved[0].as_u32 == resolved[1].as_u32);
     } else if (resolved[0].type == Int) {
       return Val::Bool(resolved[0].as_int == resolved[1].as_int);
     } else if (resolved[0].type == Uint) {
@@ -308,10 +304,6 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Bool(resolved[0].as_bool != resolved[1].as_bool);
     } else if (resolved[0].type == Char) {
       return Val::Bool(resolved[0].as_char != resolved[1].as_char);
-    } else if (resolved[0].type == U16) {
-      return Val::Bool(resolved[0].as_u16 != resolved[1].as_u16);
-    } else if (resolved[0].type == U32) {
-      return Val::Bool(resolved[0].as_u32 != resolved[1].as_u32);
     } else if (resolved[0].type == Int) {
       return Val::Bool(resolved[0].as_int != resolved[1].as_int);
     } else if (resolved[0].type == Uint) {
@@ -377,7 +369,9 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     } else if (resolved[0].type->is<Pointer>()) {
       // TODO what if it's not a heap address
       std::cerr << "0x" << resolved[0].as_heap_addr;
-
+    } else if (resolved[0].type->is<Enum>()) {
+      std::cerr
+          << ptr_cast<Enum>(resolved[0].type)->members[resolved[0].as_enum];
     } else {
       NOT_YET;
     }
@@ -401,8 +395,12 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         return IR::Val::Real(stack_.Load<double>(resolved[0].as_stack_addr));
       } else if (cmd.result.type->is<Pointer>()) {
         NOT_YET;
+      } else if (cmd.result.type->is<Enum>()) {
+        return IR::Val::Enum(ptr_cast<Enum>(cmd.result.type),
+                             stack_.Load<size_t>(resolved[0].as_stack_addr));
       } else {
-        std::cerr << *cmd.result.type << std::endl;
+        std::cerr << "Don't know how to load type: " << *cmd.result.type
+                  << std::endl;
         NOT_YET;
       }
     } break;
@@ -428,7 +426,11 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
         stack_.Store(resolved[0].as_real, resolved[1].as_stack_addr);
       } else if (resolved[0].type->is<Pointer>()) {
         NOT_YET;
+      } else if (resolved[0].type->is<Enum>()) {
+        stack_.Store(resolved[0].as_enum, resolved[1].as_stack_addr);
       } else {
+        std::cerr << "Don't know how to store type: " << *cmd.result.type
+                  << std::endl;
         NOT_YET;
       }
 
