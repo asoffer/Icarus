@@ -678,7 +678,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
             case_ptr->loc.line_num, case_ptr->loc.file_name().c_str());
 
     std::vector<Cursor> locs;
-    for (auto kv : case_ptr->key_vals) {
+    for (auto& kv : case_ptr->key_vals) {
       ++num_errs_;
       if (kv.second->type == Err || kv.second->type == correct) { continue; }
       locs.push_back(kv.second->loc);

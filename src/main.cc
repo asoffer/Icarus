@@ -28,7 +28,7 @@ extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
 extern Timer timer;
 
-AST::Statements *global_statements;
+std::unique_ptr<AST::Statements> global_statements;
 
 namespace debug {
 extern bool timer;
@@ -37,8 +37,7 @@ extern bool ct_eval;
 } // namespace debug
 
 int GenerateCode() {
-  std::vector<AST::Statements *> stmts_by_file =
-      ParseAllFiles(std::move(file_queue));
+  auto stmts_by_file = ParseAllFiles(std::move(file_queue));
 
   CHECK_FOR_ERRORS;
 
@@ -48,9 +47,9 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify and Emit") {
-    for (auto stmt : global_statements->statements) {
+    for (auto& stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
-      auto decl = ptr_cast<AST::Declaration>(stmt);
+      auto *decl = ptr_cast<AST::Declaration>(stmt.get());
       std::vector<Error> errors;
       decl->EmitIR(&errors);
     }
@@ -123,15 +122,15 @@ int RunRepl() {
   Repl repl;
   while (true) {
     auto stmts = repl.Parse();
-    for (auto stmt : stmts->statements) {
+    for (auto& stmt : stmts->statements) {
       if (stmt->is<AST::Declaration>()) {
-        auto decl = ptr_cast<AST::Declaration>(stmt);
+        auto* decl = ptr_cast<AST::Declaration>(stmt.get());
         decl->assign_scope(Scope::Global);
         std::vector<Error> errors;
         decl->EmitIR(&errors);
 
       } else if (stmt->is<AST::Expression>()) {
-        auto expr = ptr_cast<AST::Expression>(stmt);
+        auto* expr = ptr_cast<AST::Expression>(stmt.get());
         expr->assign_scope(Scope::Global);
         ReplEval(expr);
         std::cerr << std::endl;

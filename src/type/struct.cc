@@ -27,13 +27,13 @@ void Struct::CompleteDefinition() {
           decls[i]->type_expr->type->is<ParamStruct>()) {
         decl_type = Err;
       } else {
-        decl_type = Evaluate(decls[i]->type_expr).as_type;
+        decl_type = Evaluate(decls[i]->type_expr.get()).as_type;
       }
     } else {
       decl_type = decls[i]->init_val->type;
     }
 
-    insert_field(decls[i]->identifier->token, decl_type, decls[i]->init_val);
+    insert_field(decls[i]->identifier->token, decl_type, decls[i]->init_val.get());
   }
   completed_ = true;
 }

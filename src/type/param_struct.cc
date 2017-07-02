@@ -5,9 +5,9 @@
 #include "scope.h"
 
 ParamStruct::ParamStruct(const std::string &name,
-                         const std::vector<AST::Declaration *> params,
-                         const std::vector<AST::Declaration *> decls)
-    : bound_name(name), params(params), decls(decls), ir_func(nullptr) {}
+                         std::vector<AST::Declaration *> params,
+                         std::vector<AST::Declaration *> decls)
+    : bound_name(name), params(std::move(params)), decls(std::move(decls)) {}
 
 IR::Func *ParamStruct::IRFunc() {
   NOT_YET;

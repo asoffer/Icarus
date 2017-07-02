@@ -70,12 +70,12 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   } else if (expr->is<AST::Identifier>()) {
     auto id = (AST::Identifier *)expr;
     ASSERT(id->decl->IsInferred(), "");
-    return GetFunctionLiteral(id->decl->init_val);
+    return GetFunctionLiteral(id->decl->init_val.get());
 
   } else if (expr->is<AST::Declaration>()) {
     auto decl = (AST::Declaration *)expr;
     ASSERT(decl->IsInferred(), "");
-    return GetFunctionLiteral(decl->init_val);
+    return GetFunctionLiteral(decl->init_val.get());
   } else if (expr->is<AST::Binop>()) {
     NOT_YET;
   } else {

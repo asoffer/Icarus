@@ -13,12 +13,11 @@ namespace AST {
 struct Node;
 } // namespace AST
 
-using NPtrVec = std::vector<AST::Node *>;
-
 class Rule {
 public:
   using OptVec = std::vector<u64>;
-  using fnptr = AST::Node *(*)(NPtrVec &&);
+  using fnptr =
+      std::unique_ptr<AST::Node> (*)(std::vector<std::unique_ptr<AST::Node>>);
 
   Rule(Language::NodeType output, const OptVec &input, fnptr fn)
       : output_(output), input_(input), fn_(fn) {}
@@ -44,35 +43,22 @@ public:
     return true;
   }
 
-  void apply(NPtrVec &node_stack,
-             std::vector<Language::NodeType> &node_type_stack) const {
+  void apply(std::vector<std::unique_ptr<AST::Node>> *node_stack,
+             std::vector<Language::NodeType> *node_type_stack) const {
     // Make a vector for the rule function to take as input. It will begin with
     // size() shared_ptrs.
-    NPtrVec nodes_to_reduce(size());
-
-    // A rule's size cannot be empty, so the int value for i will always start
-    // at
-    // a non-negative integer. We use an int so we can condition on i >= 0.
-    // (unsigned values always satisfy that condition).
-    for (int i = (int)size() - 1; i >= 0; --i) {
-      // We need an unsigned value to index nodes_to_reduce. This is why we cast
-      // back to size_t.
-      nodes_to_reduce[(size_t)i] = std::move(node_stack.back());
-
-      node_type_stack.pop_back();
-      node_stack.pop_back();
+    std::vector<std::unique_ptr<AST::Node>>nodes_to_reduce;
+    nodes_to_reduce.reserve(this->size());
+    for (auto i = node_stack->size() - this->size(); i < node_stack->size();
+         ++i) {
+      nodes_to_reduce.push_back(std::move((*node_stack)[i]));
     }
+    node_type_stack->resize(node_stack->size() - this->size());
+    node_stack->resize(node_stack->size() - this->size());
 
-    auto new_ptr = fn_(std::move(nodes_to_reduce));
-
-    for (auto &ptr : nodes_to_reduce) {
-      delete ptr;
-      ptr = nullptr;
-    }
-
-    node_stack.push_back(std::move(new_ptr));
-    node_type_stack.push_back(output_);
-}
+    node_stack->push_back(fn_(std::move(nodes_to_reduce)));
+    node_type_stack->push_back(output_);
+  }
 
 private:
   Language::NodeType output_;
@@ -80,86 +66,80 @@ private:
   fnptr fn_;
 };
 
-
 namespace debug {
 extern bool parser;
 } // namespace debug
 
-extern AST::Node *BuildBinaryOperator(NPtrVec &&nodes);
-extern AST::Node *BuildKWExprBlock(NPtrVec &&nodes);
-extern AST::Node *BuildKWBlock(NPtrVec &&nodes);
-extern AST::Node *Parenthesize(NPtrVec &&nodes);
-extern AST::Node *BuildEmptyParen(NPtrVec &&nodes);
-extern AST::Node *BracedStatements(NPtrVec &&nodes);
-extern AST::Node *OneBracedStatement(NPtrVec &&nodes);
-extern AST::Node *EmptyBraces(NPtrVec &&nodes);
-extern AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes);
+extern std::unique_ptr<AST::Node> BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> BuildKWExprBlock(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> BuildKWBlock(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> Parenthesize(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> BuildEmptyParen(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> BracedStatements(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> OneBracedStatement(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> EmptyBraces(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern std::unique_ptr<AST::Node> BracedStatementsSameLineEnd(std::vector<std::unique_ptr<AST::Node>>nodes);
 
-template <size_t N> static AST::Node *drop_all_but(NPtrVec &&nodes) {
-  auto temp = nodes[N];
-  ASSERT(temp, "stolen pointer is null");
-  nodes[N] = nullptr;
-  return temp;
+template <size_t N>
+static std::unique_ptr<AST::Node> drop_all_but(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  return std::move(nodes[N]);
 }
 
-template <typename T> static T *steal_node(AST::Node *&n) {
-  auto temp = (T *)n;
-  ASSERT(temp, "stolen pointer is null");
-  n = nullptr;
-  return temp;
-}
-
-static AST::Node *CombineColonEq(NPtrVec &&nodes) {
-  auto tk_node   = (AST::TokenNode *)nodes[0];
+static std::unique_ptr<AST::Node> CombineColonEq(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  auto tk_node   = ptr_cast<AST::TokenNode>(nodes[0].get());
   tk_node->token = ":=";
   tk_node->op    = Language::Operator::ColonEq;
 
   return drop_all_but<0>(std::move(nodes));
 }
 
-AST::Node *EmptyFile(NPtrVec &&nodes) {
-  auto stmts = new AST::Statements;
+std::unique_ptr<AST::Node> EmptyFile(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  auto stmts = std::make_unique<AST::Statements>();
   stmts->loc = nodes[0]->loc;
   return stmts;
 }
 
 namespace ErrMsg {
-template <size_t PrevIndex> AST::Node *MaybeMissingComma(NPtrVec &&nodes) {
-  ErrorLog::MissingComma(nodes[PrevIndex]->loc);
-  auto tk_node = new AST::TokenNode(nodes[PrevIndex]->loc, ",");
-  return BuildBinaryOperator({steal_node<AST::Node>(nodes[PrevIndex]), tk_node,
-                              steal_node<AST::Node>(nodes[PrevIndex + 1])});
-}
+template <size_t RTN, size_t RES>
+std::unique_ptr<AST::Node> Reserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  ErrorLog::Reserved(nodes[RES]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
 
-template <size_t RTN, size_t RES> AST::Node *Reserved(NPtrVec &&nodes) {
-  ErrorLog::Reserved(nodes[RES]->loc, ((AST::TokenNode *)nodes[RES])->token);
-
-  return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
+  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
-AST::Node *BothReserved(NPtrVec &&nodes) {
-  ErrorLog::Reserved(nodes[RES1]->loc, ((AST::TokenNode *)nodes[RES1])->token);
-  ErrorLog::Reserved(nodes[RES2]->loc, ((AST::TokenNode *)nodes[RES2])->token);
-  return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
+std::unique_ptr<AST::Node> BothReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  ErrorLog::Reserved(nodes[RES1]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[RES1].get())->token);
+  ErrorLog::Reserved(nodes[RES2]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[RES2].get())->token);
+  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
-AST::Node *NonBinop(NPtrVec &&nodes) {
-  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
-  return new AST::Identifier(nodes[1]->loc, "invalid_node");
+std::unique_ptr<AST::Node> NonBinop(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  ErrorLog::NotBinary(nodes[1]->loc,
+                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
+  return std::make_unique<AST::Identifier>(nodes[1]->loc, "invalid_node");
 }
 
-template <size_t RTN, size_t RES> AST::Node *NonBinopReserved(NPtrVec &&nodes) {
-  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
-  ErrorLog::Reserved(nodes[RES]->loc, ((AST::TokenNode *)nodes[RES])->token);
-  return new AST::Identifier(nodes[RTN]->loc, "invalid_node");
+template <size_t RTN, size_t RES>
+std::unique_ptr<AST::Node> NonBinopReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  ErrorLog::NotBinary(nodes[1]->loc,
+                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
+  ErrorLog::Reserved(nodes[RES]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
+  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
-AST::Node *NonBinopBothReserved(NPtrVec &&nodes) {
-  ErrorLog::Reserved(nodes[0]->loc, ((AST::TokenNode *)nodes[0])->token);
-  ErrorLog::NotBinary(nodes[1]->loc, ((AST::TokenNode *)nodes[1])->token);
-  ErrorLog::Reserved(nodes[2]->loc, ((AST::TokenNode *)nodes[2])->token);
-  return new AST::Identifier(nodes[1]->loc, "invalid_node");
+std::unique_ptr<AST::Node> NonBinopBothReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+  ErrorLog::Reserved(nodes[0]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[0].get())->token);
+  ErrorLog::NotBinary(nodes[1]->loc,
+                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
+  ErrorLog::Reserved(nodes[2]->loc,
+                     ptr_cast<AST::TokenNode>(nodes[2].get())->token);
+  return std::make_unique<AST::Identifier>(nodes[1]->loc, "invalid_node");
 }
 } // namespace ErrMsg
 namespace Language {
@@ -194,11 +174,6 @@ auto Rules = std::vector<Rule>{
          AST::Binop::BuildIndexOperator),
     Rule(expr, {l_bracket, r_bracket}, AST::ArrayLiteral::BuildEmpty),
     Rule(expr, {EXPR, hashtag}, AST::Expression::AddHashtag),
-    Rule(expr, {l_paren, EXPR, EXPR, r_paren}, ErrMsg::MaybeMissingComma<1>),
-    Rule(expr, {l_bracket, EXPR, EXPR, r_bracket},
-         ErrMsg::MaybeMissingComma<1>),
-    Rule(expr, {EXPR, l_bracket, EXPR, EXPR, r_bracket},
-         ErrMsg::MaybeMissingComma<2>),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
          AST::ArrayType::build),
     Rule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
@@ -279,22 +254,18 @@ auto Rules = std::vector<Rule>{
 extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
-std::ostream& operator<<(std::ostream& os, ShiftState s) {
+std::ostream &operator<<(std::ostream &os, ShiftState s) {
   switch (s) {
-  case ShiftState::NeedMore:
-    return os << "NeedMore";
-  case ShiftState::EndOfExpr:
-    return os << "EndOfExpr";
-  case ShiftState::MustReduce:
-    return os << "MustReduce";
-  default:
-    UNREACHABLE;
+  case ShiftState::NeedMore: return os << "NeedMore";
+  case ShiftState::EndOfExpr: return os << "EndOfExpr";
+  case ShiftState::MustReduce: return os << "MustReduce";
+  default: UNREACHABLE;
   }
 }
 
 struct ParseState {
   ParseState(const Cursor &c) : lookahead_(nullptr, Language::bof) {
-    lookahead_.node.reset(new AST::TokenNode(c));
+    lookahead_.node = std::make_unique<AST::TokenNode>(c);
   }
 
   template <size_t N> inline Language::NodeType get_type() const {
@@ -302,7 +273,7 @@ struct ParseState {
   }
 
   template <size_t N> inline AST::Node *get() const {
-    return node_stack_[node_stack_.size() - N];
+    return node_stack_[node_stack_.size() - N].get();
   }
 
   ShiftState shift_state() const {
@@ -358,9 +329,7 @@ struct ParseState {
       return ShiftState::NeedMore;
     }
 
-    if (lookahead_.node_type == r_paren) {
-      return ShiftState::MustReduce;
-    }
+    if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
 
     if (get_type<2>() & OP_) {
       auto left_prec = precedence(((AST::TokenNode *)get<2>())->op);
@@ -383,9 +352,8 @@ struct ParseState {
     return ShiftState::MustReduce;
   }
 
-
   std::vector<Language::NodeType> node_type_stack_;
-  NPtrVec node_stack_;
+  std::vector<std::unique_ptr<AST::Node>>node_stack_;
   NNT lookahead_;
 
   // We actually don't care about mathing braces. That is, we can count {[) as 1
@@ -396,7 +364,7 @@ struct ParseState {
 };
 
 // Print out the debug information for the parse stack, and pause.
-static void Debug(ParseState *ps, Cursor* cursor = nullptr) {
+static void Debug(ParseState *ps, Cursor *cursor = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (cursor) {
@@ -416,10 +384,11 @@ static void Debug(ParseState *ps, Cursor* cursor = nullptr) {
 
 static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
-  ps->node_stack_.push_back(ps->lookahead_.node.release());
+  ps->node_stack_.push_back(std::move(ps->lookahead_.node));
   ps->lookahead_ = NextToken(*c);
-  if (ps->lookahead_.node_type & (Language::l_paren | Language::l_bracket |
-                              Language::l_brace | Language::l_double_brace)) {
+  if (ps->lookahead_.node_type &
+      (Language::l_paren | Language::l_bracket | Language::l_brace |
+       Language::l_double_brace)) {
     ++ps->brace_count;
   } else if (ps->lookahead_.node_type &
              (Language::r_paren | Language::r_bracket | Language::r_brace |
@@ -441,19 +410,19 @@ static bool Reduce(ParseState *ps) {
   // return false
   if (matched_rule_ptr == nullptr) { return false; }
 
-  matched_rule_ptr->apply(ps->node_stack_, ps->node_type_stack_);
+  matched_rule_ptr->apply(&ps->node_stack_, &ps->node_type_stack_);
 
   return true;
 }
 
-void CleanUpReduction(ParseState* state, Cursor* cursor) {
+void CleanUpReduction(ParseState *state, Cursor *cursor) {
   // Reduce what you can
   while (Reduce(state)) {
     if (debug::parser) { Debug(state, cursor); }
   }
 
   state->node_type_stack_.push_back(Language::eof);
-  state->node_stack_.push_back(new AST::TokenNode(*cursor, ""));
+  state->node_stack_.push_back(std::make_unique<AST::TokenNode>(*cursor, ""));
   state->lookahead_ =
       NNT(std::make_unique<AST::TokenNode>(*cursor, ""), Language::eof);
 
@@ -464,7 +433,7 @@ void CleanUpReduction(ParseState* state, Cursor* cursor) {
   if (debug::parser) { Debug(state, cursor); }
 }
 
-AST::Statements *Repl::Parse() {
+std::unique_ptr<AST::Statements> Repl::Parse() {
   first_entry = true; // Show '>> ' the first time.
 
   Cursor cursor;
@@ -479,13 +448,11 @@ AST::Statements *Repl::Parse() {
     case ShiftState::NeedMore:
       Shift(&state, &cursor);
 
-      if (debug::parser) {
-        Debug(&state, &cursor);
-      }
+      if (debug::parser) { Debug(&state, &cursor); }
       continue;
     case ShiftState::EndOfExpr:
       CleanUpReduction(&state, &cursor);
-      return (AST::Statements *)state.node_stack_.back();
+      return base::move<AST::Statements>(state.node_stack_.back());
     case ShiftState::MustReduce:
       Reduce(&state) || (Shift(&state, &cursor), true);
       if (debug::parser) { Debug(&state, &cursor); }
@@ -493,8 +460,8 @@ AST::Statements *Repl::Parse() {
   }
 }
 
-AST::Statements *File::Parse() {
-  Cursor cursor ;
+std::unique_ptr<AST::Statements> File::Parse() {
+  Cursor cursor;
   cursor.source_file = this;
 
   auto state = ParseState(cursor);
@@ -532,14 +499,15 @@ AST::Statements *File::Parse() {
     ErrorLog::UnknownParserError(name, lines);
   }
 
-  return (AST::Statements *)state.node_stack_.back();
+
+  return base::move<AST::Statements>(state.node_stack_.back());
 }
 
 extern Timer timer;
 std::map<std::string, File *> source_map;
-std::vector<AST::Statements *>
+std::vector<std::unique_ptr<AST::Statements>>
 ParseAllFiles(std::queue<std::string> file_names) {
-  std::vector<AST::Statements *> stmts;
+  std::vector<std::unique_ptr<AST::Statements>> stmts;
   while (!file_names.empty()) {
     std::string file_name = file_names.front();
     file_names.pop();

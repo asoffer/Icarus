@@ -18,7 +18,7 @@ extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
 struct Scope;
 
 #include "../ast/ast.h"
-#include "../base/cast.h"
+#include "../base/util.h"
 #include "../base/debug.h"
 #include "../base/types.h"
 #include "../ir/ir.h"
@@ -216,8 +216,8 @@ struct ParamStruct : public Type {
   TYPE_FNS(ParamStruct, parametric_struct);
 
   ParamStruct(const std::string &name,
-                      const std::vector<AST::Declaration *> params,
-                      const std::vector<AST::Declaration *> decls);
+                      std::vector<AST::Declaration *> params,
+                      std::vector<AST::Declaration *> decls);
 
   IR::Func *IRFunc();
 
@@ -228,7 +228,7 @@ struct ParamStruct : public Type {
   std::map<Struct *, std::vector<IR::Val>> reverse_cache;
 
 private:
-  IR::Func *ir_func;
+  IR::Func *ir_func = nullptr;
 };
 
 struct RangeType : public Type {

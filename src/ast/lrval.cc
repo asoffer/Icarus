@@ -54,7 +54,7 @@ void Binop::lrvalue_check() {
 
 void ChainOp::lrvalue_check() {
   lvalue = Assign::RVal;
-  for (auto e : exprs) { e->lrvalue_check(); }
+  for (auto& expr : exprs) { expr->lrvalue_check(); }
 }
 
 void FunctionLiteral::lrvalue_check() {
@@ -90,21 +90,21 @@ void ArrayType::lrvalue_check() {
 
 void ArrayLiteral::lrvalue_check() {
   lvalue = Assign::RVal;
-  for (auto e : elems) {
-    e->lrvalue_check();
+  for (auto& elem : elems) {
+    elem->lrvalue_check();
   }
 }
 
 void Case::lrvalue_check() {
   lvalue = Assign::RVal;
-  for (auto kv : key_vals) {
+  for (auto& kv : key_vals) {
     kv.first->lrvalue_check();
     kv.second->lrvalue_check();
   }
 }
 
 void Statements::lrvalue_check() {
-  for (auto stmt : statements) {
+  for (auto& stmt : statements) {
     stmt->lrvalue_check();
   }
 }
@@ -114,7 +114,7 @@ void CodeBlock::lrvalue_check() {}
 
 void For::lrvalue_check() {
   statements->lrvalue_check();
-  for (auto decl : iterators) { decl->lrvalue_check(); }
+  for (auto& decl : iterators) { decl->lrvalue_check(); }
 }
 
 void ScopeNode::lrvalue_check(){

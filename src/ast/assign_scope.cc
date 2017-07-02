@@ -21,14 +21,20 @@ void Terminal::assign_scope(Scope *scope) {
   if (type != Type_) { return; }
   if (value.as_type->is<ParamStruct>()) {
     auto ps = static_cast<ParamStruct *>(value.as_type);
-    if (!ps->type_scope) { ps->type_scope = scope->add_child<DeclScope>(); }
+    if (!ps->type_scope) {
+      // TODO make unique
+      ps->type_scope = scope->add_child<DeclScope>().release();
+    }
 
     for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
     for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
 
   } else if (value.as_type->is<Struct>()) {
     auto s = static_cast<Struct *>(value.as_type);
-    if (!s->type_scope) { s->type_scope = scope->add_child<DeclScope>(); }
+    if (!s->type_scope) {
+      // TODO make unique
+      s->type_scope = scope->add_child<DeclScope>().release();
+    }
     for (auto d : s->decls) { d->assign_scope(s->type_scope); }
   }
   // TODO enum type?
@@ -43,8 +49,8 @@ void ArrayType::assign_scope(Scope *scope) {
 void For::assign_scope(Scope *scope) {
   if (!for_scope) { for_scope = scope->add_child<ExecScope>(); }
   for_scope->can_jump = true;
-  for (auto it : iterators) { it->assign_scope(for_scope); }
-  statements->assign_scope(for_scope);
+  for (auto &iter : iterators) { iter->assign_scope(for_scope.get()); }
+  statements->assign_scope(for_scope.get());
 }
 
 void ArrayLiteral::assign_scope(Scope *scope) {
@@ -96,7 +102,7 @@ void Case::assign_scope(Scope *scope) {
 
 void Statements::assign_scope(Scope *scope) {
   scope_ = scope;
-  for (auto nptr : statements) { nptr->assign_scope(scope); }
+  for (auto &stmt : statements) { stmt->assign_scope(scope); }
 }
 
 void FunctionLiteral::assign_scope(Scope *scope) {
@@ -106,9 +112,9 @@ void FunctionLiteral::assign_scope(Scope *scope) {
     fn_scope->fn_lit = this;
   }
 
-  return_type_expr->assign_scope(fn_scope);
-  for (auto &in : inputs) { in->assign_scope(fn_scope); }
-  statements->assign_scope(fn_scope);
+  return_type_expr->assign_scope(fn_scope.get());
+  for (auto &in : inputs) { in->assign_scope(fn_scope.get()); }
+  statements->assign_scope(fn_scope.get());
 }
 
 void Jump::assign_scope(Scope *scope) { scope_ = scope; }
@@ -119,13 +125,13 @@ void ScopeNode::assign_scope(Scope *scope) {
   if (!internal) { internal = scope_->add_child<ExecScope>(); }
   scope_expr->assign_scope(scope);
   if (expr) { expr->assign_scope(scope); }
-  stmts->assign_scope(internal);
+  stmts->assign_scope(internal.get());
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
   body_scope = scope->add_child<ExecScope>();
-  if (enter_fn != nullptr) { enter_fn->assign_scope(body_scope); }
-  if (exit_fn != nullptr) { exit_fn->assign_scope(body_scope); }
+  if (enter_fn != nullptr) { enter_fn->assign_scope(body_scope.get()); }
+  if (exit_fn != nullptr) { exit_fn->assign_scope(body_scope.get()); }
 }
 } // namespace AST

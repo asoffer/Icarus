@@ -92,14 +92,14 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   init_vals.reserve(iterators.size());
   { // Init block
     IR::Block::Current = init;
-    for (auto decl : iterators) {
+    for (auto& decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
           init_vals.push_back(
-              ptr_cast<Binop>(decl->container)->lhs->EmitIR(errors));
+              ptr_cast<Binop>(decl->container.get())->lhs->EmitIR(errors));
         } else if (decl->container->is<Unop>()) {
           init_vals.push_back(
-              ptr_cast<Unop>(decl->container)->operand->EmitIR(errors));
+              ptr_cast<Unop>(decl->container.get())->operand->EmitIR(errors));
         } else {
           NOT_YET;
         }
@@ -114,7 +114,7 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   phis.reserve(iterators.size());
   { // Phi block
     IR::Block::Current = phi;
-    for (auto decl : iterators) { phis.push_back(IR::Phi(decl->type)); }
+    for (auto& decl : iterators) { phis.push_back(IR::Phi(decl->type)); }
     IR::Jump::Unconditional(cond);
   }
 
@@ -148,14 +148,15 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   { // Cond block
     IR::Block::Current = cond;
     for (size_t i = 0; i < iterators.size(); ++i) {
-      auto decl = iterators[i];
+      auto* decl = iterators[i].get();
       auto reg  = phis[i];
       auto next = IR::Func::Current->AddBlock();
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val = ptr_cast<Binop>(decl->container)->rhs->EmitIR(errors);
-          cmp          = IR::Le(reg, rhs_val);
+          auto rhs_val =
+              ptr_cast<Binop>(decl->container.get())->rhs->EmitIR(errors);
+          cmp = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
           // code and trust optimizations later on.
@@ -175,7 +176,7 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
 
   { // Body
     IR::Block::Current = body_entry;
-    for (auto decl : for_scope->decls_) {
+    for (auto& decl : for_scope->decls_) {
       (void)decl;
       // TODO initialize all decls
     }
@@ -235,7 +236,7 @@ extern std::vector<IR::Val> global_vals;
 
 IR::Val AST::ScopeNode::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
-  IR::Val scope_expr_val = Evaluate(scope_expr);
+  IR::Val scope_expr_val = Evaluate(scope_expr.get());
   ASSERT(scope_expr_val.type->is<Scope_Type>(), "");
 
   auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR(errors);
@@ -273,7 +274,7 @@ IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
       global_vals.back().type = type;
 
     } else if (IsCustomInitialized()) {
-      global_vals.push_back(Evaluate(init_val));
+      global_vals.push_back(Evaluate(init_val.get()));
 
     } else if (IsDefaultInitialized()) {
       // TODO if EmitInitialValue requires generating code, that would be bad.
@@ -310,7 +311,7 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   } break;
   case Language::Operator::Return: {
     if (operand->is_comma_list()) {
-      auto exprs = ptr_cast<AST::ChainOp>(operand)->exprs;
+      const auto &exprs = ptr_cast<AST::ChainOp>(operand.get())->exprs;
       for (size_t i = 0; i < exprs.size(); ++i) {
         IR::SetReturn(i, exprs[i]->EmitIR(errors));
       }
@@ -337,18 +338,18 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     };
 
     if (operand->is_comma_list()) {
-      for (auto expr : ptr_cast<AST::ChainOp>(operand)->exprs) {
-        print(expr, errors);
+      for (auto &expr : ptr_cast<AST::ChainOp>(operand.get())->exprs) {
+        print(expr.get(), errors);
       }
     } else {
-      print(operand, errors);
+      print(operand.get(), errors);
     }
     return IR::Val::None();
   } break;
   case Language::Operator::And: return operand->EmitLVal(errors);
   case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
-    return Evaluate(operand);
+    return Evaluate(operand.get());
   case Language::Operator::Generate: NOT_YET;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(errors));
   case Language::Operator::At: return PtrCallFix(operand->EmitIR(errors));
@@ -387,9 +388,9 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     if (!rhs) {
       ;
     } else if (rhs->is_comma_list()) {
-      auto rhs_comma_list = ptr_cast<ChainOp>(rhs);
+      auto rhs_comma_list = ptr_cast<ChainOp>(rhs.get());
       args.reserve(rhs_comma_list->exprs.size());
-      for (auto expr : rhs_comma_list->exprs) {
+      for (auto& expr : rhs_comma_list->exprs) {
         args.push_back(expr->EmitIR(errors));
       }
     } else {
@@ -473,10 +474,11 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
   ASSERT(!is_comma_list(), "");
   if (ops[0] == Language::Operator::Xor) {
-    return std::accumulate(exprs.begin(), exprs.end(), IR::Val::Bool(false),
-                           [errors](IR::Val lhs, AST::Expression *expr) {
-                             return IR::Xor(lhs, expr->EmitIR(errors));
-                           });
+    auto val = IR::Val::Bool(false);
+    for (const auto &expr : exprs) {
+      val = IR::Xor(val, expr->EmitIR(errors));
+    }
+    return val;
   } else {
     std::vector<IR::BlockIndex> blocks;
     blocks.reserve(exprs.size());
@@ -539,14 +541,14 @@ IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
     IR::Block::Current = ir_func->entry();
 
     for (size_t i = 0; i < inputs.size(); ++i) {
-      auto arg = inputs[i];
+      auto& arg = inputs[i];
       ASSERT(arg->addr == IR::Val::None(), "");
-      arg->addr = IR::Val::Arg(
-          arg->type, i); // This whole loop can be done on construction!
+      // This whole loop can be done on construction!
+      arg->addr = IR::Val::Arg(arg->type, i);
     }
 
     for (auto scope : fn_scope->innards_) {
-      for (auto decl : scope->decls_) {
+      for (auto& decl : scope->decls_) {
         // TODO arg_val seems to go along with in_decl a lot. Is there some
         // reason for this that *should* be abstracted?
         if (decl->arg_val || decl->is<InDecl>()) { continue; }
@@ -567,7 +569,7 @@ IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::Statements::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
-  for (auto stmt : statements) { stmt->EmitIR(errors); }
+  for (auto &stmt : statements) { stmt->EmitIR(errors); }
   return IR::Val::None();
 }
 

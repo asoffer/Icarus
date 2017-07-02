@@ -1,5 +1,7 @@
 #include "ast.h"
 
+#include <queue>
+
 #include "../error_log.h"
 #include "../ir/ir.h"
 #include "../scope.h"
@@ -25,7 +27,7 @@ static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
 
 static std::vector<AST::Identifier *> all_ids;
 void VerifyDeclBeforeUsage() {
-  for (auto id : all_ids) {
+  for (auto& id : all_ids) {
     if (id->type == Err || id->type == Type_) { continue; }
     if (id->decl->scope_ == Scope::Global) { continue; }
     if (id->decl->HasHashtag("const")) { continue; }
@@ -254,7 +256,7 @@ void Access::verify_types(std::vector<Error> *errors) {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
     } else {
-      Type *evaled_type = Evaluate(operand).as_type;
+      Type *evaled_type = Evaluate(operand.get()).as_type;
       if (evaled_type->is<Enum>()) {
         // Regardless of whether we can get the value, it's clear that this is
         // supposed to be a member so we should emit an error but carry on
@@ -292,14 +294,14 @@ void Binop::verify_types(std::vector<Error> *errors) {
   if (op == Language::Operator::Call) {
 
     if (lhs->is<Identifier>()) {
-      auto lhs_id         = (Identifier *)lhs;
+      auto lhs_id         = ptr_cast<Identifier>(lhs.get());
       auto matching_decls = scope_->AllDeclsWithId(lhs_id->token);
       if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       // Look for valid matches by looking at any declaration which has a
       // matching token.
       std::vector<Declaration *> valid_matches;
-      for (auto decl : matching_decls) {
+      for (auto& decl : matching_decls) {
         if (decl->type->is<Function>()) {
           auto fn_type = ptr_cast<Function>(decl->type);
           // If there is no input, and the function takes Void as its input, or
@@ -314,7 +316,8 @@ void Binop::verify_types(std::vector<Error> *errors) {
               UNREACHABLE; // TODO WTF??? HOW DID THIS EVEN COMPILE?
               // decl->value = IR::Val(decl->init_val);
             } else {
-              decl->value = IR::Val::Type(Evaluate(decl->init_val).as_type);
+              decl->value =
+                  IR::Val::Type(Evaluate(decl->init_val.get()).as_type);
 
               if (decl->init_val->is<Terminal>()) {
                 auto t = decl->init_val->value.as_type;
@@ -435,7 +438,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
   // TODO if lhs is reserved?
   if (op == Language::Operator::Assign) {
     if (rhs->is<Terminal>()) {
-      auto term = (Terminal *)rhs;
+      auto term = ptr_cast<Terminal>(rhs.get());
       if (term->terminal_type == Language::Terminal::Null) {
         term->type = lhs->type;
         type       = Void;
@@ -573,7 +576,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
       /* TODO this linear search is probably not ideal.   */                   \
       for (auto scope_ptr = scope_; scope_ptr;                                 \
            scope_ptr      = scope_ptr->parent) {                               \
-        for (auto decl : scope_ptr->decls_) {                                  \
+        for (auto& decl : scope_ptr->decls_) {                                  \
           if (decl->identifier->token == "__" op_name "__") {                  \
             decl->verify_types(errors);                                        \
             matched_op_name.push_back(decl);                                   \
@@ -582,7 +585,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
       }                                                                        \
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
-      for (auto decl : matched_op_name) {                                      \
+      for (auto& decl : matched_op_name) {                                      \
         if (!decl->type->is<Function>()) { continue; }                         \
         auto fn_type = (Function *)decl->type;                                 \
         if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
@@ -679,7 +682,7 @@ void Binop::verify_types(std::vector<Error> *errors) {
 
 void ChainOp::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
-  for (auto e : exprs) { e->verify_types(errors); }
+  for (auto& expr : exprs) { expr->verify_types(errors); }
 
   if (is_comma_list()) {
     // If the tuple consists of a list of types, it should be interpretted as a
@@ -776,7 +779,7 @@ void InDecl::verify_types(std::vector<Error> *errors) {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container).as_type;
+    auto t = Evaluate(container.get()).as_type;
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -988,7 +991,8 @@ void ArrayType::verify_types(std::vector<Error> *errors) {
 
   // TODO have a Hole type primitive.
   if (length->is<Terminal>() &&
-      ((Terminal *)length)->terminal_type == Language::Terminal::Hole) {
+      ptr_cast<Terminal>(length.get())->terminal_type ==
+          Language::Terminal::Hole) {
     return;
   }
 
@@ -1001,7 +1005,7 @@ void ArrayType::verify_types(std::vector<Error> *errors) {
 
 void ArrayLiteral::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
-  for (auto e : elems) { e->verify_types(errors); }
+  for (auto& elem : elems) { elem->verify_types(errors); }
 
   // TODO this should be allowed in the same vein as 'null'?
   if (elems.empty()) {
@@ -1033,7 +1037,7 @@ void ArrayLiteral::verify_types(std::vector<Error> *errors) {
 void FunctionLiteral::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
 
-  VerificationQueue.push(statements);
+  VerificationQueue.push(statements.get());
 
   return_type_expr->verify_types(errors);
   if (ErrorLog::num_errs_ > 0) {
@@ -1041,7 +1045,7 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
     return;
   }
 
-  auto ret_type_val = Evaluate(return_type_expr);
+  auto ret_type_val = Evaluate(return_type_expr.get());
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
@@ -1058,7 +1062,7 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
     return;
   }
 
-  for (auto input : inputs) { input->verify_types(errors); }
+  for (auto& input : inputs) { input->verify_types(errors); }
 
   // TODO don't do early exists on input or return type errors.
 
@@ -1078,7 +1082,7 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
     input_type = Tup(input_type_vec);
   }
 
-  FuncInnardsVerificationQueue.emplace(ret_type, statements);
+  FuncInnardsVerificationQueue.emplace(ret_type, statements.get());
 
   // TODO generics?
   type = Func(input_type, ret_type);
@@ -1086,7 +1090,7 @@ void FunctionLiteral::verify_types(std::vector<Error> *errors) {
 
 void Case::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
-  for (auto kv : key_vals) {
+  for (auto& kv : key_vals) {
     kv.first->verify_types(errors);
     kv.second->verify_types(errors);
   }
@@ -1147,11 +1151,11 @@ void Case::verify_types(std::vector<Error> *errors) {
 }
 
 void Statements::verify_types(std::vector<Error> *errors) {
-  for (auto stmt : statements) { stmt->verify_types(errors); }
+  for (auto& stmt : statements) { stmt->verify_types(errors); }
 }
 
 void For::verify_types(std::vector<Error> *errors) {
-  for (auto iter : iterators) { iter->verify_types(errors); }
+  for (auto& iter : iterators) { iter->verify_types(errors); }
   statements->verify_types(errors);
 }
 
@@ -1247,7 +1251,7 @@ void Unop::VerifyReturnTypes(Type *ret_type, std::vector<Error> *errors) {
 }
 
 void Statements::VerifyReturnTypes(Type *ret_type, std::vector<Error> *errors) {
-  for (auto stmt : statements) { stmt->VerifyReturnTypes(ret_type, errors); }
+  for (auto& stmt : statements) { stmt->VerifyReturnTypes(ret_type, errors); }
 }
 
 void Jump::VerifyReturnTypes(Type *ret_type, std::vector<Error> *errors) {

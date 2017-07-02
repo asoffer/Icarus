@@ -26,7 +26,7 @@ AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
 
 AST::Identifier *Scope::IdHereOrNull(const std::string &name) {
   for (auto decl : decls_) {
-    if (decl->identifier->token == name) { return decl->identifier; }
+    if (decl->identifier->token == name) { return decl->identifier.get(); }
   }
   return nullptr;
 }
@@ -81,8 +81,9 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
 
       // TODO errors passed through?
       std::vector<Error> errors;
-      decl->addr               = decl->init_val->EmitIR(&errors);
-      decl->addr.as_func->name = Mangle(fn_type, decl->identifier, scope_ptr);
+      decl->addr = decl->init_val->EmitIR(&errors);
+      decl->addr.as_func->name =
+          Mangle(fn_type, decl->identifier.get(), scope_ptr);
 
       IR::Func::Current  = old_func;
       IR::Block::Current = old_block;

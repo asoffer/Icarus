@@ -11,7 +11,7 @@ struct FunctionLiteral;
 struct Type;
 struct Function;
 
-#include "base/cast.h"
+#include "base/util.h"
 #include "ir/ir.h"
 #include <iostream>
 #include <vector>
@@ -27,8 +27,8 @@ struct Scope : public base::Cast<Scope> {
 
   static DeclScope *Global;
 
-  template <typename ScopeType> ScopeType *add_child() {
-    return new ScopeType(this);
+  template <typename ScopeType> std::unique_ptr<ScopeType> add_child() {
+    return std::make_unique<ScopeType>(this);
   }
 
   // Returns an identifier pointer if there is a declaration of this identifier

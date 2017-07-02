@@ -5,6 +5,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <memory>
 
 namespace AST {
 struct Statements;
@@ -18,7 +19,7 @@ struct Source {
 
   virtual ~Source() {}
   virtual Line NextLine() = 0;
-  virtual AST::Statements *Parse() = 0;
+  virtual std::unique_ptr<AST::Statements> Parse() = 0;
 
   std::string name;
   std::vector<std::string> lines{1}; // Start with one blank line because line
@@ -32,7 +33,7 @@ struct Repl: public Source {
   Repl() { name = "<<REPL>>"; }
 
   Source::Line NextLine() final;
-  AST::Statements *Parse() final;
+  std::unique_ptr<AST::Statements> Parse() final;
 
   bool first_entry = true;
 };
@@ -45,7 +46,7 @@ struct File : Source {
   ~File() final { ifs.close(); }
 
   Source::Line NextLine() final;
-  AST::Statements *Parse() final;
+  std::unique_ptr<AST::Statements> Parse() final;
 
   AST::Statements *ast = nullptr;
   std::ifstream ifs;

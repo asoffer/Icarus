@@ -25,7 +25,7 @@ std::string ArrayLiteral::to_string(size_t n) const {
 std::string For::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<For>\n";
-  for (auto iter : iterators) { ss << iter->to_string(n + 1); }
+  for (auto& iter : iterators) { ss << iter->to_string(n + 1); }
   ss << statements->to_string(n + 1);
   return ss.str();
 }
@@ -103,7 +103,7 @@ std::string ArrayType::to_string(size_t n) const {
 
 std::string ChainOp::to_string(size_t n) const {
   std::string output = tabs(n) + "<Chain: " + TYPE_OR("") + ">\n";
-  for (auto expr : exprs) { output += expr->to_string(n + 1); }
+  for (auto& expr : exprs) { output += expr->to_string(n + 1); }
   return output;
 }
 

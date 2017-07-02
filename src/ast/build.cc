@@ -1,5 +1,8 @@
 #include "ast.h"
 
+#include <queue>
+#include <unordered_map>
+
 #include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
@@ -10,37 +13,23 @@ size_t Get(const std::string &tag);
 
 extern std::queue<std::string> file_queue;
 
-template <typename T> static T *steal(AST::Expression *&n) {
-  auto temp = (T *)n;
-  ASSERT(temp, "stolen pointer is null");
-  n = nullptr;
-  return temp;
-}
-
-template <typename T> static T *steal(AST::Node *&n) {
-  auto temp = (T *)n;
-  ASSERT(temp, "stolen pointer is null");
-  n = nullptr;
-  return temp;
-}
-
 // Input guarantees:
 // [expr] [l_paren] [r_paren]
 //
 // Internal checks:
 // Operand is not a declaration
-AST::Node *BuildEmptyParen(NPtrVec &&nodes) {
-  auto binop_ptr        = new AST::Binop;
-  binop_ptr->loc        = nodes[1]->loc;
-  binop_ptr->lhs        = steal<AST::Expression>(nodes[0]);
-  binop_ptr->rhs        = nullptr;
-  binop_ptr->op         = Language::Operator::Call;
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
+std::unique_ptr<AST::Node>
+BuildEmptyParen(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto binop        = std::make_unique<AST::Binop>();
+  binop->loc        = nodes[1]->loc;
+  binop->lhs        = base::move<AST::Expression>(nodes[0]);
+  binop->op         = Language::Operator::Call;
+  binop->precedence = Language::precedence(binop->op);
 
-  if (binop_ptr->lhs->is<AST::Declaration>()) {
-    ErrorLog::CallingDeclaration(binop_ptr->lhs->loc);
+  if (binop->lhs->is<AST::Declaration>()) {
+    ErrorLog::CallingDeclaration(binop->lhs->loc);
   }
-  return binop_ptr;
+  return binop;
 }
 
 namespace AST {
@@ -49,38 +38,38 @@ namespace AST {
 //
 // Internal checks:
 // Each statement is a valid declaration
-static Node *BuildStructLiteral(NPtrVec &&nodes) {
+static std::unique_ptr<Node>
+BuildStructLiteral(std::vector<std::unique_ptr<Node>> nodes) {
   static size_t anon_struct_counter = 0;
 
   auto struct_type =
       new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
-  ASSERT(nodes[1]->is<Statements>(), "");
-  for (auto &&n : ((Statements *)nodes[1])->statements) {
-    if (n->is<Declaration>()) {
-      struct_type->decls.push_back(steal<Declaration>(n));
+  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+    if (stmt->is<Declaration>()) {
+      struct_type->decls.push_back(ptr_cast<Declaration>(stmt.release()));
     } else {
       // TODO show the entire struct declaration and point to the problematic
       // lines.
-      ErrorLog::NonDeclInStructDecl(n->loc);
+      ErrorLog::NonDeclInStructDecl(stmt->loc);
     }
   }
-  return new Terminal(nodes[0]->loc, Language::Terminal::Type, Type_,
-                      IR::Val::Type(struct_type));
+  return std::make_unique<Terminal>(nodes[0]->loc, Language::Terminal::Type,
+                                    Type_, IR::Val::Type(struct_type));
 }
 
-static Node *BuildScopeLiteral(NPtrVec &&nodes) {
-  auto scope_lit = new ScopeLiteral(nodes[0]->loc);
+static std::unique_ptr<Node>
+BuildScopeLiteral(std::vector<std::unique_ptr<Node>> nodes) {
+  auto scope_lit = std::make_unique<ScopeLiteral>(nodes[0]->loc);
 
   // TODO take arguments as well
   if (nodes.size() > 1) {
-    ASSERT(nodes[1]->is<Statements>(), "");
-    for (auto &&n : ((Statements *)nodes[1])->statements) {
-      if (!n->is<Declaration>()) { continue; } // TODO leaking
-      auto d = (Declaration *)n;
-      if (d->identifier->token == "enter") {
-        scope_lit->enter_fn = steal<Declaration>(n);
-      } else if (d->identifier->token == "exit") {
-        scope_lit->exit_fn = steal<Declaration>(n);
+    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+      if (!stmt->is<Declaration>()) { continue; } // TODO leaking
+      auto decl = base::move<Declaration>(stmt);
+      if (decl->identifier->token == "enter") {
+        scope_lit->enter_fn = std::move(decl);
+      } else if (decl->identifier->token == "exit") {
+        scope_lit->exit_fn = std::move(decl);
       }
     }
   }
@@ -96,31 +85,40 @@ static Node *BuildScopeLiteral(NPtrVec &&nodes) {
   return scope_lit;
 }
 
-static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
-  std::vector<Declaration *> params, decls;
+static std::unique_ptr<Node>
+BuildParametricStructLiteral(std::vector<std::unique_ptr<Node>> nodes) {
+  std::vector<Declaration*> params, decls;
   if (nodes[1]->is<Declaration>()) {
-    params.push_back(steal<Declaration>(nodes[1]));
+    params.push_back(base::move<Declaration>(nodes[1]).release());
 
   } else if (nodes[1]->is_comma_list()) {
-    auto expr_vec = steal<ChainOp>(nodes[1])->exprs;
-    for (auto &&e : expr_vec) {
-      AST::Node *n = (AST::Node *)e;
-      params.push_back(steal<Declaration>(n));
+    for (auto &expr : ptr_cast<ChainOp>(nodes[1].get())->exprs) {
+      if (expr->is<Declaration>()) {
+        params.push_back(base::move<Declaration>(expr).release());
+      } else {
+        // TODO is ths guaranteed to not happen? I don't think so
+        // Log an error
+      }
     }
   }
 
-  for (auto &&node : ((Statements *)nodes[2])->statements) {
-    decls.push_back(steal<Declaration>(node));
+  for (auto &stmt : ptr_cast<Statements>(nodes[2].get())->statements) {
+    // TODO check that these actually are declarations. I'm not sure it's
+    // guaranteed.
+    decls.push_back(base::move<Declaration>(stmt).release());
   }
 
   static size_t anon_param_struct_counter = 0;
   auto param_struct_type                  = new ParamStruct(
       "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
-      params, decls);
+      std::move(params), std::move(decls));
 
-  auto type_node = new Terminal(nodes[0]->loc, Language::Terminal::Type, Type_,
-                                IR::Val::Type(param_struct_type));
-  for (auto param : params) { param->arg_val = type_node; }
+  auto type_node =
+      std::make_unique<Terminal>(nodes[0]->loc, Language::Terminal::Type, Type_,
+                                 IR::Val::Type(param_struct_type));
+  for (auto &param : param_struct_type->params) {
+    param->arg_val = type_node.release();
+  }
   return type_node;
 }
 
@@ -129,31 +127,33 @@ static Node *BuildParametricStructLiteral(NPtrVec &&nodes) {
 //
 // Internal checks:
 // Each statement is an identifier. No identifier is repeated.
-static Node *BuildEnumLiteral(NPtrVec &&nodes) {
+static std::unique_ptr<Node>
+BuildEnumLiteral(std::vector<std::unique_ptr<Node>> nodes) {
   std::vector<std::string> members;
   if (nodes[1]->is<Statements>()) {
-    auto stmts = (Statements *)nodes[1];
-    for (auto &&stmt : stmts->statements) {
-      if (!stmt->is<Identifier>()) {
-        ErrorLog::EnumNeedsIds(stmt->loc);
-      } else {
-        const std::string &val_name = ((Identifier *)stmt)->token;
-        for (const auto mem : members) {
-          if (mem == val_name) {
+    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+      if (stmt->is<Identifier>()) {
+        // Quadratic but we need it as a vector eventually anyway because we do
+        // care about the order the user put it in.
+        auto token = std::move(ptr_cast<Identifier>(stmt.get())->token);
+        for (const auto &member : members) {
+          if (member == token) {
             ErrorLog::RepeatedEnumName(stmt->loc);
             goto skip_adding_member;
           }
         }
+        members.push_back(std::move(token));
 
-        members.push_back(std::move(val_name));
+      } else {
+        ErrorLog::EnumNeedsIds(stmt->loc);
       }
     skip_adding_member:;
     }
   }
 
   static size_t anon_enum_counter = 0;
-  // Almost surely this is leaking
-  return new Terminal(
+  // TODO Almost surely this is leaking
+  return std::make_unique<Terminal>(
       nodes[0]->loc, Language::Terminal::Type, Type_,
       IR::Val::Type(new Enum(
           "__anon.enum" + std::to_string(anon_enum_counter++), members)));
@@ -163,38 +163,34 @@ static Node *BuildEnumLiteral(NPtrVec &&nodes) {
 // [case] [braced_statements]
 //
 // Internal checks:
-// Each statement is a binary operator using '=>'. The last one has a left-hand
+// Each statement is a binary operator using '=>'. The last one has a
+// left-hand
 // side of 'else'
-Node *Case::Build(NPtrVec &&nodes) {
-  auto case_ptr = new Case;
+std::unique_ptr<Node> Case::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto case_ptr = std::make_unique<Case>();
   case_ptr->loc = nodes[0]->loc;
 
-  ASSERT(nodes[1]->is<Statements>(), "");
-  auto stmts     = (Statements *)nodes[1];
-  auto num_stmts = stmts->statements.size();
-  for (size_t i = 0; i < num_stmts; ++i) {
-    auto stmt = stmts->statements[i];
-    if (!stmt->is<Binop>() ||
-        ((Binop *)stmt)->op != Language::Operator::Rocket) {
+  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+    if (stmt->is<Binop>() &&
+        ptr_cast<Binop>(stmt.get())->op == Language::Operator::Rocket) {
+      auto *binop = ptr_cast<Binop>(stmt.get());
+      // TODO check for 'else' and make sure it's the last one.
+      case_ptr->key_vals.emplace_back(std::move(binop->lhs),
+                                      std::move(binop->rhs));
+    } else {
       ErrorLog::NonKVInCase(stmt->loc);
-      continue;
     }
-
-    auto binop = (Binop *)stmt;
-
-    // TODO check for 'else' and make sure it's the last one.
-    case_ptr->key_vals.emplace_back(steal<Expression>(binop->lhs),
-                                    steal<Expression>(binop->rhs));
   }
   return case_ptr;
 }
 
-static void CheckForLoopDeclaration(Expression *maybe_decl,
-                                    std::vector<InDecl *> &iters) {
+static void
+CheckForLoopDeclaration(std::unique_ptr<Expression> maybe_decl,
+                        std::vector<std::unique_ptr<InDecl>> *iters) {
   if (!maybe_decl->is<InDecl>()) {
     ErrorLog::NonInDeclInForLoop(maybe_decl->loc);
   } else {
-    iters.push_back((InDecl *)maybe_decl);
+    iters->push_back(base::move<InDecl>(maybe_decl));
   }
 }
 
@@ -203,31 +199,27 @@ static void CheckForLoopDeclaration(Expression *maybe_decl,
 //
 // Internal checks:
 // [expression] is either an in-declaration or a list of in-declarations
-Node *For::Build(NPtrVec &&nodes) {
-  auto for_stmt        = new For;
+std::unique_ptr<Node> For::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto for_stmt        = std::make_unique<For>();
   for_stmt->loc        = nodes[0]->loc;
-  for_stmt->statements = steal<Statements>(nodes[2]);
+  for_stmt->statements = base::move<Statements>(nodes[2]);
 
-  auto iter = steal<Expression>(nodes[1]);
-
+  auto iter = ptr_cast<Expression>(nodes[1].get());
   if (iter->is_comma_list()) {
-    auto iter_list = (ChainOp *)iter;
+    auto iter_list = ptr_cast<ChainOp>(iter);
     for_stmt->iterators.reserve(iter_list->exprs.size());
 
-    for (auto &ex : iter_list->exprs) {
-      CheckForLoopDeclaration(ex, for_stmt->iterators);
-
-      ex = nullptr;
+    for (auto &expr : iter_list->exprs) {
+      CheckForLoopDeclaration(std::move(expr), &for_stmt->iterators);
     }
-    delete iter_list;
-
   } else {
-    CheckForLoopDeclaration(iter, for_stmt->iterators);
+    CheckForLoopDeclaration(base::move<Expression>(nodes[1]),
+                            &for_stmt->iterators);
   }
 
-  auto stmts = new AST::Statements;
+  auto stmts = std::make_unique<Statements>();
   stmts->loc = for_stmt->loc;
-  stmts->statements.push_back(for_stmt);
+  stmts->statements.push_back(std::move(for_stmt));
   return stmts;
 }
 
@@ -237,34 +229,35 @@ Node *For::Build(NPtrVec &&nodes) {
 // Internal checks:
 // Operand cannot be a declaration.
 // Operand cannot be an assignment of any kind.
-Node *Unop::BuildLeft(NPtrVec &&nodes) {
-  ASSERT(nodes[0]->is<TokenNode>(), "");
-  auto tk = ((TokenNode *)nodes[0])->token;
+std::unique_ptr<Node>
+Unop::BuildLeft(std::vector<std::unique_ptr<Node>> nodes) {
+  const std::string &tk = ptr_cast<TokenNode>(nodes[0].get())->token;
 
-  auto unop_ptr     = new AST::Unop;
-  unop_ptr->operand = steal<Expression>(nodes[1]);
-  unop_ptr->loc     = nodes[0]->loc;
+  auto unop     = std::make_unique<Unop>();
+  unop->operand = base::move<Expression>(nodes[1]);
+  unop->loc     = nodes[0]->loc;
 
   bool check_id = false;
   if (tk == "require") {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
-    if (unop_ptr->operand->is<Terminal>() &&
-        ((Terminal *)unop_ptr->operand)->terminal_type ==
+    if (unop->operand->is<Terminal>() &&
+        ptr_cast<Terminal>(unop->operand.get())->terminal_type ==
             Language::Terminal::StringLiteral) {
       file_queue.emplace(std::string("programs/") +
-                         std::string(unop_ptr->operand->value.as_cstr +
+                         std::string(unop->operand->value.as_cstr +
                                      1)); // NOTE: + 1 because we prefix our
-                                          // strings. Probably should fix this.
+      // strings. Probably should fix this.
     } else {
-      ErrorLog::InvalidRequirement(unop_ptr->operand->loc);
+      ErrorLog::InvalidRequirement(unop->operand->loc);
     }
 
-    unop_ptr->op = Language::Operator::Require;
+    unop->op = Language::Operator::Require;
 
   } else {
-    const static std::map<std::string, std::pair<Language::Operator, bool>>
+    const static std::unordered_map<std::string,
+                                    std::pair<Language::Operator, bool>>
         UnopMap = {{"return", {Language::Operator::Return, false}},
                    {"break", {Language::Operator::Break, true}},
                    {"continue", {Language::Operator::Continue, true}},
@@ -282,58 +275,54 @@ Node *Unop::BuildLeft(NPtrVec &&nodes) {
     auto iter = UnopMap.find(tk);
     ASSERT(iter != UnopMap.end(),
            std::string("Failed to match token: \"") + tk + "\"");
-    std::tie(unop_ptr->op, check_id) = iter->second;
+    std::tie(unop->op, check_id) = iter->second;
   }
 
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
+  unop->precedence = Language::precedence(unop->op);
 
   if (check_id) {
-    if (!unop_ptr->operand->is<Identifier>()) {
+    if (!unop->operand->is<Identifier>()) {
       // TODO clean up error message
-      ErrorLog::NonIdJumpOperand(unop_ptr->operand->loc);
+      ErrorLog::NonIdJumpOperand(unop->operand->loc);
     }
   } else {
-    if (unop_ptr->operand->is<Declaration>()) {
-      auto decl = (Declaration *)unop_ptr->operand;
+    if (unop->operand->is<Declaration>()) {
       // TODO clean up this error message
-      ErrorLog::InvalidDecl(decl->loc);
+      ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->loc);
     }
   }
-  return unop_ptr;
+  return unop;
 }
 
 // Input guarantees
 // [expr] [chainop] [expr]
 //
 // Internal checks: None
-Node *ChainOp::Build(NPtrVec &&nodes) {
+std::unique_ptr<Node> ChainOp::Build(std::vector<std::unique_ptr<Node>> nodes) {
   // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
-  auto op_node = (TokenNode *)nodes[1];
+  auto op_node = base::move<TokenNode>(nodes[1]);
   auto op_prec = Language::precedence(op_node->op);
 
-  ChainOp *chain_ptr = nullptr;
+  std::unique_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
-  bool use_old_chain_op =
-      nodes[0]->is<ChainOp>() && ((ChainOp *)nodes[0])->precedence == op_prec;
-
-  if (use_old_chain_op) {
-    chain_ptr = steal<ChainOp>(nodes[0]);
+  if (nodes[0]->is<ChainOp>() &&
+      ptr_cast<ChainOp>(nodes[0].get())->precedence == op_prec) {
+    chain = base::move<ChainOp>(nodes[0]);
 
   } else {
-    chain_ptr      = new ChainOp;
-    chain_ptr->loc = nodes[1]->loc;
+    chain      = std::make_unique<ChainOp>();
+    chain->loc = nodes[1]->loc;
 
-    chain_ptr->exprs.push_back(steal<Expression>(nodes[0]));
-    nodes[0]              = nullptr;
-    chain_ptr->precedence = op_prec;
+    chain->exprs.push_back(base::move<Expression>(nodes[0]));
+    chain->precedence = op_prec;
   }
 
-  chain_ptr->ops.push_back(op_node->op);
-  chain_ptr->exprs.push_back(steal<Expression>(nodes[2]));
+  chain->ops.push_back(op_node->op);
+  chain->exprs.push_back(base::move<Expression>(nodes[2]));
 
-  return chain_ptr;
+  return chain;
 }
 
 // Input guarantees
@@ -342,42 +331,43 @@ Node *ChainOp::Build(NPtrVec &&nodes) {
 // Internal checks:
 // LHS is not a declaration
 // RHS is an identifier
-Node *Access::Build(NPtrVec &&nodes) {
-  auto access_ptr     = new Access;
-  access_ptr->loc     = nodes[0]->loc;
-  access_ptr->operand = steal<Expression>(nodes[0]);
+std::unique_ptr<Node> Access::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto access     = std::make_unique<Access>();
+  access->loc     = nodes[0]->loc;
+  access->operand = base::move<Expression>(nodes[0]);
 
-  if (access_ptr->operand->is<Declaration>()) {
-    ErrorLog::LHSDecl(access_ptr->operand->loc);
+  if (access->operand->is<Declaration>()) {
+    ErrorLog::LHSDecl(access->operand->loc);
   }
 
   if (!nodes[2]->is<Identifier>()) {
     ErrorLog::RHSNonIdInAccess(nodes[2]->loc);
   } else {
-    access_ptr->member_name = ((Identifier *)nodes[2])->token;
+    access->member_name =
+        std::move(ptr_cast<Identifier>(nodes[2].get())->token);
   }
-  return access_ptr;
+  return access;
 }
 
-static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class) {
-  auto binop_ptr = new Binop;
-  binop_ptr->loc = nodes[1]->loc;
+static std::unique_ptr<Node>
+BuildOperator(std::vector<std::unique_ptr<Node>> nodes,
+              Language::Operator op_class) {
+  auto binop = std::make_unique<Binop>();
+  binop->loc = nodes[1]->loc;
 
-  binop_ptr->lhs = steal<Expression>(nodes[0]);
-  binop_ptr->rhs = steal<Expression>(nodes[2]);
-  binop_ptr->op  = op_class;
+  binop->lhs = base::move<Expression>(nodes[0]);
+  binop->rhs = base::move<Expression>(nodes[2]);
+  binop->op  = op_class;
 
-  if (binop_ptr->lhs->is<Declaration>()) {
-    ErrorLog::LHSDecl(binop_ptr->lhs->loc);
+  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->loc); }
+
+  if (binop->rhs->is<Declaration>()) {
+    ErrorLog::RHSNonTickDecl(binop->rhs->loc);
   }
 
-  if (binop_ptr->rhs->is<Declaration>()) {
-    ErrorLog::RHSNonTickDecl(binop_ptr->rhs->loc);
-  }
+  binop->precedence = Language::precedence(binop->op);
 
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
-
-  return binop_ptr;
+  return binop;
 }
 
 // Input guarantees
@@ -386,7 +376,8 @@ static Node *BuildOperator(NPtrVec &&nodes, Language::Operator op_class) {
 // Internal checks: (checked in BuildOperator)
 // LHS is not a declaration
 // RHS is not a declaration
-Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
+std::unique_ptr<Node>
+Binop::BuildCallOperator(std::vector<std::unique_ptr<Node>> nodes) {
   return BuildOperator(std::move(nodes), Language::Operator::Call);
 }
 
@@ -396,7 +387,8 @@ Node *Binop::BuildCallOperator(NPtrVec &&nodes) {
 // Internal checks: (checked in BuildOperator)
 // LHS is not a declaration
 // RHS is not a declaration
-Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
+std::unique_ptr<Node>
+Binop::BuildIndexOperator(std::vector<std::unique_ptr<Node>> nodes) {
   return BuildOperator(std::move(nodes), Language::Operator::Index);
 }
 
@@ -404,296 +396,274 @@ Node *Binop::BuildIndexOperator(NPtrVec &&nodes) {
 // [expression] [l_bracket] [r_bracket]
 //
 // Internal checks: None
-Node *ArrayLiteral::BuildEmpty(NPtrVec &&nodes) {
-  auto array_lit_ptr = new ArrayLiteral;
-  array_lit_ptr->loc = nodes[0]->loc;
-  return array_lit_ptr;
+std::unique_ptr<Node>
+ArrayLiteral::BuildEmpty(std::vector<std::unique_ptr<Node>> nodes) {
+  auto array_lit = std::make_unique<ArrayLiteral>();
+  array_lit->loc = nodes[0]->loc;
+  return array_lit;
 }
 
 // Input guarantee:
 // [expression] [dots]
 //
 // Internal checks: None
-Node *Unop::BuildDots(NPtrVec &&nodes) {
-  auto unop_ptr     = new Unop;
-  unop_ptr->operand = steal<Expression>(nodes[0]);
-
-  // We intentionally do not delete tk_node becasue we only want to read from
-  // it. The apply() call will take care of its deletion.
-  auto tk_node  = (TokenNode *)nodes[1];
-  unop_ptr->loc = tk_node->loc;
-  unop_ptr->op  = tk_node->op;
-
-  unop_ptr->precedence = Language::precedence(unop_ptr->op);
-  return unop_ptr;
+std::unique_ptr<Node>
+Unop::BuildDots(std::vector<std::unique_ptr<Node>> nodes) {
+  auto unop        = std::make_unique<Unop>();
+  unop->operand    = base::move<Expression>(nodes[0]);
+  unop->loc        = ptr_cast<TokenNode>(nodes[1].get())->loc;
+  unop->op         = ptr_cast<TokenNode>(nodes[1].get())->op;
+  unop->precedence = Language::precedence(unop->op);
+  return unop;
 }
 
-Node *ArrayLiteral::build(NPtrVec &&nodes) {
-  auto array_lit_ptr = new ArrayLiteral;
-  array_lit_ptr->loc = nodes[0]->loc;
+std::unique_ptr<Node>
+ArrayLiteral::build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto array_lit = std::make_unique<ArrayLiteral>();
+  array_lit->loc = nodes[0]->loc;
 
   if (nodes[1]->is_comma_list()) {
-    using std::swap;
-    swap(array_lit_ptr->elems, ((ChainOp *)nodes[1])->exprs);
-
+    array_lit->elems = std::move(ptr_cast<ChainOp>(nodes[1].get())->exprs);
   } else {
-    array_lit_ptr->elems.push_back(steal<Expression>(nodes[1]));
+    array_lit->elems.push_back(base::move<Expression>(nodes[1]));
   }
 
-  return array_lit_ptr;
+  return array_lit;
 }
 
-Node *ArrayType::build(NPtrVec &&nodes) {
+std::unique_ptr<Node>
+ArrayType::build(std::vector<std::unique_ptr<Node>> nodes) {
   if (nodes[1]->is_comma_list()) {
-    auto length_chain = steal<ChainOp>(nodes[1]);
-    auto iter         = length_chain->exprs.rbegin();
-    auto prev         = steal<Expression>(nodes[3]);
+    auto *length_chain = ptr_cast<ChainOp>(nodes[1].get());
+    int i              = static_cast<int>(length_chain->exprs.size() - 1);
+    auto prev          = base::move<Expression>(nodes[3]);
 
-    while (iter != length_chain->exprs.rend()) {
-      auto array_type_ptr       = new ArrayType;
-      array_type_ptr->loc       = (*iter)->loc;
-      array_type_ptr->length    = *iter;
-      *iter                     = nullptr;
-      array_type_ptr->data_type = prev;
-      prev                      = array_type_ptr;
-      ++iter;
+    while (i >= 0) {
+      auto array_type       = std::make_unique<ArrayType>();
+      array_type->loc       = length_chain->exprs[i]->loc;
+      array_type->length    = std::move(length_chain->exprs[i]);
+      array_type->data_type = std::move(prev);
+      prev                  = std::move(array_type);
+      i -= 1;
     }
-    delete length_chain;
     return prev;
 
   } else {
-    auto array_type_ptr       = new ArrayType;
-    array_type_ptr->loc       = nodes[0]->loc;
-    array_type_ptr->length    = steal<Expression>(nodes[1]);
-    array_type_ptr->data_type = steal<Expression>(nodes[3]);
+    auto array_type       = std::make_unique<ArrayType>();
+    array_type->loc       = nodes[0]->loc;
+    array_type->length    = base::move<Expression>(nodes[1]);
+    array_type->data_type = base::move<Expression>(nodes[3]);
 
-    return array_type_ptr;
+    return array_type;
   }
 }
 
-Node *Expression::AddHashtag(NPtrVec &&nodes) {
-  ASSERT(nodes[0]->is<Expression>(), "");
-  auto expr = steal<Expression>(nodes[0]);
-  ASSERT(nodes[1]->is<TokenNode>(), "");
-  expr->hashtag_indices.push_back(Hashtag::Get(((TokenNode *)nodes[1])->token));
-
+std::unique_ptr<Node>
+Expression::AddHashtag(std::vector<std::unique_ptr<Node>> nodes) {
+  auto expr = base::move<Expression>(nodes[0]);
+  expr->hashtag_indices.push_back(
+      Hashtag::Get(ptr_cast<TokenNode>(nodes[1].get())->token));
   return expr;
 }
 
-Node *InDecl::Build(NPtrVec &&nodes) {
-  auto op = ((AST::TokenNode *)(nodes[1]))->op;
-  ASSERT(op == Language::Operator::In, "");
-
-  auto in_decl_ptr              = new InDecl;
-  in_decl_ptr->loc              = nodes[0]->loc;
-  in_decl_ptr->identifier       = steal<Identifier>(nodes[0]);
-  in_decl_ptr->identifier->decl = in_decl_ptr;
-  in_decl_ptr->container        = steal<Expression>(nodes[2]);
-  in_decl_ptr->precedence       = Language::precedence(Language::Operator::In);
-  return in_decl_ptr;
+std::unique_ptr<Node> InDecl::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  ASSERT(ptr_cast<TokenNode>(nodes[1].get())->op == Language::Operator::In, "");
+  auto in_decl              = std::make_unique<InDecl>();
+  in_decl->loc              = nodes[0]->loc;
+  in_decl->identifier       = base::move<Identifier>(nodes[0]);
+  in_decl->identifier->decl = in_decl.get();
+  in_decl->container        = base::move<Expression>(nodes[2]);
+  in_decl->precedence       = Language::precedence(Language::Operator::In);
+  return in_decl;
 }
 
-Node *Declaration::Build(NPtrVec &&nodes) {
-  auto op              = ((AST::TokenNode *)(nodes[1]))->op;
-  auto decl_ptr        = new Declaration;
-  decl_ptr->loc        = nodes[0]->loc;
-  decl_ptr->precedence = Language::precedence(op);
+std::unique_ptr<Node>
+Declaration::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto op                = ptr_cast<TokenNode>(nodes[1].get())->op;
+  auto decl              = std::make_unique<Declaration>();
+  decl->loc              = nodes[0]->loc;
+  decl->precedence       = Language::precedence(op);
+  decl->identifier       = base::move<Identifier>(nodes[0]);
+  decl->identifier->decl = decl.get();
 
   if (op == Language::Operator::Colon) {
-    decl_ptr->type_expr = steal<Expression>(nodes[2]);
+    decl->type_expr = base::move<Expression>(nodes[2]);
   } else {
-    decl_ptr->init_val = steal<Expression>(nodes[2]);
+    decl->init_val = base::move<Expression>(nodes[2]);
   }
 
-  ASSERT(nodes[0]->is<Identifier>(), "");
-  decl_ptr->identifier       = steal<Identifier>(nodes[0]);
-  decl_ptr->identifier->decl = decl_ptr;
-
-  return decl_ptr;
+  return decl;
 }
 
-Node *Generic::Build(NPtrVec &&nodes) {
-  auto generic        = new Generic;
-  generic->loc        = nodes[0]->loc;
-  generic->test_fn    = steal<Expression>(nodes[0]);
-  generic->precedence = Language::precedence(Language::Operator::Tick);
-
-  ASSERT(nodes[2]->is<Identifier>(), "");
-  generic->identifier       = steal<Identifier>(nodes[2]);
-  generic->identifier->decl = generic;
-
+std::unique_ptr<Node> Generic::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto generic              = std::make_unique<Generic>();
+  generic->loc              = nodes[0]->loc;
+  generic->test_fn          = base::move<Expression>(nodes[0]);
+  generic->precedence       = Language::precedence(Language::Operator::Tick);
+  generic->identifier       = base::move<Identifier>(nodes[2]);
+  generic->identifier->decl = generic.get();
   return generic;
 }
 
-Node *FunctionLiteral::build(NPtrVec &&nodes) {
-  auto fn_lit = new FunctionLiteral;
-  fn_lit->loc = nodes[0]->loc;
+std::unique_ptr<Node>
+FunctionLiteral::build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto fn_lit        = std::make_unique<FunctionLiteral>();
+  fn_lit->loc        = nodes[0]->loc;
+  fn_lit->statements = base::move<Statements>(nodes[1]);
 
-  ASSERT(nodes[1]->is<Statements>(), "");
-  fn_lit->statements = steal<Statements>(nodes[1]);
+  auto binop               = ptr_cast<Binop>(nodes[0].get());
+  fn_lit->return_type_expr = base::move<Expression>(binop->rhs);
 
-  auto binop_ptr = (Binop *)nodes[0];
+  if (binop->lhs->is<Declaration>()) {
+    fn_lit->inputs.push_back(base::move<Declaration>(binop->lhs));
+    fn_lit->inputs.back()->arg_val = fn_lit.get();
 
-  fn_lit->return_type_expr = steal<Expression>(binop_ptr->rhs);
-  auto input_args          = steal<Expression>(binop_ptr->lhs);
+  } else if (binop->lhs->is_comma_list()) {
+    auto decls = ptr_cast<ChainOp>(binop->lhs.get());
+    fn_lit->inputs.reserve(decls->exprs.size());
 
-  if (input_args->is<Declaration>()) {
-    fn_lit->inputs.push_back((Declaration *)input_args);
-    ((Declaration *)input_args)->arg_val = fn_lit;
-
-  } else if (input_args->is_comma_list()) {
-    auto decl_list = steal<ChainOp>(input_args);
-
-    // resize the input arg list
-    fn_lit->inputs.resize(decl_list->exprs.size(), nullptr);
-
-    size_t index = 0;
-    for (auto &&expr : decl_list->exprs) {
-      ASSERT(expr->is<Declaration>(), "");
-      fn_lit->inputs[index] = steal<Declaration>(expr);
-      ((Declaration *)fn_lit->inputs[index])->arg_val = fn_lit;
-      ++index;
+    for (auto &expr : decls->exprs) {
+      fn_lit->inputs.push_back(base::move<Declaration>(expr));
+      fn_lit->inputs.back()->arg_val = fn_lit.get();
     }
-    delete input_args;
-    input_args = nullptr;
   }
 
   return fn_lit;
 }
 
-Node *Statements::build_one(NPtrVec &&nodes) {
-  auto output = new Statements;
-  output->loc = nodes[0]->loc;
-  output->statements.push_back(steal<Node>(nodes[0]));
-
-  return output;
-}
-
-Node *Statements::build_more(NPtrVec &&nodes) {
-  auto output = steal<Statements>(nodes[0]);
-  output->statements.push_back(steal<Node>(nodes[1]));
-
-  return output;
-}
-
-Node *Jump::build(NPtrVec &&nodes) {
-  ASSERT(nodes[0]->is<TokenNode>(), "");
-  auto tk   = ((TokenNode *)nodes[0])->token;
-  Jump *jmp = nullptr;
-  if (tk == "break") {
-    jmp = new Jump(nodes[0]->loc, JumpType::Break);
-
-  } else if (tk == "continue") {
-    jmp = new Jump(nodes[0]->loc, JumpType::Continue);
-
-  } else if (tk == "return") {
-    jmp = new Jump(nodes[0]->loc, JumpType::Return);
-
-  } else if (tk == "repeat") {
-    jmp = new Jump(nodes[0]->loc, JumpType::Repeat);
-
-  } else if (tk == "restart") {
-    jmp = new Jump(nodes[0]->loc, JumpType::Restart);
-  }
-  ASSERT(jmp, "");
-
-  auto stmts = new Statements;
-  stmts->loc = jmp->loc;
-  stmts->statements.push_back(jmp);
+std::unique_ptr<Node>
+Statements::build_one(std::vector<std::unique_ptr<Node>> nodes) {
+  auto stmts = std::make_unique<Statements>();
+  stmts->loc = nodes[0]->loc;
+  stmts->statements.push_back(std::move(nodes[0]));
   return stmts;
 }
 
-Node *ScopeNode::BuildScopeNode(Expression *scope_name, Expression *arg_expr,
-                                Statements *stmt_node) {
-  auto scope_node        = new ScopeNode;
+std::unique_ptr<Node>
+Statements::build_more(std::vector<std::unique_ptr<Node>> nodes) {
+  auto stmts = base::move<Statements>(nodes[0]);
+  stmts->statements.push_back(std::move(nodes[1]));
+  return stmts;
+}
+
+std::unique_ptr<Node> Jump::build(std::vector<std::unique_ptr<Node>> nodes) {
+  const static std::unordered_map<std::string, JumpType> JumpTypeMap = {
+      {"break", JumpType::Break},     {"continue", JumpType::Continue},
+      {"return", JumpType::Return},   {"repeat", JumpType::Repeat},
+      {"restart", JumpType::Restart},
+  };
+  auto iter = JumpTypeMap.find(ptr_cast<TokenNode>(nodes[0].get())->token);
+  ASSERT(iter != JumpTypeMap.end(), "");
+
+  auto stmts = std::make_unique<Statements>();
+  stmts->loc = nodes[0]->loc;
+  stmts->statements.push_back(
+      std::make_unique<Jump>(nodes[0]->loc, iter->second));
+  return stmts;
+}
+
+std::unique_ptr<Node>
+ScopeNode::BuildScopeNode(std::unique_ptr<Expression> scope_name,
+                          std::unique_ptr<Expression> arg_expr,
+                          std::unique_ptr<Statements> stmt_node) {
+  auto scope_node        = std::make_unique<ScopeNode>();
   scope_node->loc        = scope_name->loc;
-  scope_node->scope_expr = scope_name;
-  scope_node->expr       = arg_expr;
-  scope_node->stmts      = stmt_node;
+  scope_node->scope_expr = std::move(scope_name);
+  scope_node->expr       = std::move(arg_expr);
+  scope_node->stmts      = std::move(stmt_node);
   return scope_node;
 }
 
-AST::Node *ScopeNode::Build(NPtrVec &&nodes) {
-  return BuildScopeNode(steal<Expression>(nodes[0]),
-                        steal<Expression>(nodes[1]),
-                        steal<Statements>(nodes[2]));
+std::unique_ptr<Node>
+ScopeNode::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  return BuildScopeNode(base::move<Expression>(nodes[0]),
+                        base::move<Expression>(nodes[1]),
+                        base::move<Statements>(nodes[2]));
 }
 
-AST::Node *ScopeNode::BuildVoid(NPtrVec &&nodes) {
-  return BuildScopeNode(steal<Expression>(nodes[0]), nullptr,
-                        steal<Statements>(nodes[1]));
+std::unique_ptr<Node>
+ScopeNode::BuildVoid(std::vector<std::unique_ptr<Node>> nodes) {
+  return BuildScopeNode(base::move<Expression>(nodes[0]), nullptr,
+                        base::move<Statements>(nodes[1]));
 }
 } // namespace AST
 
-AST::Node *BracedStatements(NPtrVec &&nodes) {
+std::unique_ptr<AST::Node>
+BracedStatements(std::vector<std::unique_ptr<AST::Node>> nodes) {
   ASSERT(nodes[1]->is<AST::Statements>(), "");
-  return steal<AST::Node>(nodes[1]);
+  return std::move(nodes[1]);
 }
 
-AST::Node *AST::CodeBlock::BuildFromStatements(NPtrVec &&nodes) {
-  auto block = new CodeBlock;
+std::unique_ptr<AST::Node> AST::CodeBlock::BuildFromStatements(
+    std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto block = std::make_unique<CodeBlock>();
   // TODO block->value
   block->loc   = nodes[0]->loc;
-  block->stmts = steal<AST::Statements>(nodes[1]);
+  block->stmts = base::move<AST::Statements>(nodes[1]);
   return block;
 }
 
-AST::Node *OneBracedStatement(NPtrVec &&nodes) {
-  auto stmts       = new AST::Statements;
-  stmts->loc       = nodes[0]->loc;
-  auto single_stmt = steal<AST::Node>(nodes[1]);
-  stmts->statements.push_back(single_stmt);
+std::unique_ptr<AST::Node>
+OneBracedStatement(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto stmts = std::make_unique<AST::Statements>();
+  stmts->loc = nodes[0]->loc;
+  stmts->statements.push_back(std::move(nodes[1]));
   return stmts;
 }
 
-AST::Node *BracedStatementsSameLineEnd(NPtrVec &&nodes) {
-  auto stmts = steal<AST::Statements>(nodes[1]);
+std::unique_ptr<AST::Node>
+BracedStatementsSameLineEnd(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto stmts = base::move<AST::Statements>(nodes[1]);
   stmts->loc = nodes[0]->loc;
   if (nodes[2]->is<AST::Statements>()) {
-    auto second_stmts = (AST::Statements *)nodes[2];
-    for (auto s : second_stmts->statements) {
-      stmts->statements.push_back(steal<AST::Node>(s));
+    for (auto &stmt : ptr_cast<AST::Statements>(nodes[2].get())->statements) {
+      stmts->statements.push_back(std::move(stmt));
     }
   } else {
-    stmts->statements.push_back(steal<AST::Node>(nodes[2]));
+    stmts->statements.push_back(std::move(nodes[2]));
   }
   return stmts;
 }
 
-AST::Node *AST::CodeBlock::BuildFromStatementsSameLineEnd(NPtrVec &&nodes) {
-  auto block = new CodeBlock;
+std::unique_ptr<AST::Node> AST::CodeBlock::BuildFromStatementsSameLineEnd(
+    std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto block = std::make_unique<CodeBlock>();
   // TODO block->value
   block->loc   = nodes[0]->loc;
-  block->stmts = static_cast<AST::Statements *>(
+  block->stmts = base::move<AST::Statements>(
       BracedStatementsSameLineEnd(std::move(nodes)));
   return block;
 }
 
-AST::Node *AST::CodeBlock::BuildFromOneStatement(NPtrVec &&nodes) {
-  auto block = new CodeBlock;
+std::unique_ptr<AST::Node> AST::CodeBlock::BuildFromOneStatement(
+    std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto block = std::make_unique<CodeBlock>();
   // TODO block->value
   block->loc = nodes[0]->loc;
   block->stmts =
-      static_cast<AST::Statements *>(OneBracedStatement(std::move(nodes)));
+      base::move<AST::Statements>(OneBracedStatement(std::move(nodes)));
   return block;
 }
 
-AST::Node *EmptyBraces(NPtrVec &&nodes) {
-  auto stmts = new AST::Statements;
+std::unique_ptr<AST::Node>
+EmptyBraces(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto stmts = std::make_unique<AST::Statements>();
   stmts->loc = nodes[0]->loc;
   return stmts;
 }
 
-AST::Node *AST::CodeBlock::BuildEmpty(NPtrVec &&nodes) {
-  auto block = new CodeBlock;
+std::unique_ptr<AST::Node>
+AST::CodeBlock::BuildEmpty(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto block = std::make_unique<CodeBlock>();
   // TODO block->value
   block->loc   = nodes[0]->loc;
-  block->stmts = static_cast<AST::Statements *>(EmptyBraces(std::move(nodes)));
+  block->stmts = base::move<AST::Statements>(EmptyBraces(std::move(nodes)));
   return block;
 }
 
-AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
-  static const std::map<std::string, Language::Operator> chain_ops = {
+std::unique_ptr<AST::Node>
+BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  static const std::unordered_map<std::string, Language::Operator> chain_ops = {
       {",", Language::Operator::Comma}, {"==", Language::Operator::Eq},
       {"!=", Language::Operator::Ne},   {"<", Language::Operator::Lt},
       {">", Language::Operator::Gt},    {"<=", Language::Operator::Le},
@@ -701,12 +671,11 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 
-  ASSERT(nodes[1]->is<AST::TokenNode>(), "");
-  auto tk = ((AST::TokenNode *)nodes[1])->token;
-
-  for (auto op : chain_ops) {
-    if (tk == op.first) {
-      ((AST::TokenNode *)nodes[1])->op = op.second;
+  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[1].get())->token;
+  {
+    auto iter = chain_ops.find(tk);
+    if (iter != chain_ops.end()) {
+      ptr_cast<AST::TokenNode>(nodes[1].get())->op = iter->second;
       return AST::ChainOp::Build(std::move(nodes));
     }
   }
@@ -726,41 +695,39 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
 
   if (tk == "=") {
     if (nodes[0]->is<AST::Declaration>()) {
-      if (((AST::Declaration *)nodes[0])->IsInferred()) {
+      if (ptr_cast<AST::Declaration>(nodes[0].get())->IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
         ErrorLog::DoubleDeclAssignment(nodes[0]->loc, nodes[2]->loc);
-        return steal<AST::Declaration>(nodes[0]);
+        return base::move<AST::Declaration>(nodes[0]);
       }
 
-      auto decl      = steal<AST::Declaration>(nodes[0]);
-      decl->init_val = steal<AST::Expression>(nodes[2]);
+      auto decl      = base::move<AST::Declaration>(nodes[0]);
+      decl->init_val = base::move<AST::Expression>(nodes[2]);
       return decl;
+
     } else {
-      auto binop_ptr = new AST::Binop;
-      binop_ptr->loc = nodes[0]->loc;
+      auto binop = std::make_unique<AST::Binop>();
+      binop->loc = nodes[0]->loc;
 
-      binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
-      binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
+      binop->lhs = base::move<AST::Expression>(nodes[0]);
+      binop->rhs = base::move<AST::Expression>(nodes[2]);
 
-      binop_ptr->op         = Language::Operator::Assign;
-      binop_ptr->precedence = Language::precedence(binop_ptr->op);
-      return binop_ptr;
+      binop->op         = Language::Operator::Assign;
+      binop->precedence = Language::precedence(binop->op);
+      return binop;
     }
   }
 
-  auto binop_ptr = new AST::Binop;
-  binop_ptr->loc = nodes[0]->loc;
+  auto binop = std::make_unique<AST::Binop>();
+  binop->loc = nodes[0]->loc;
 
-  binop_ptr->lhs = steal<AST::Expression>(nodes[0]);
-  binop_ptr->rhs = steal<AST::Expression>(nodes[2]);
+  binop->lhs = base::move<AST::Expression>(nodes[0]);
+  binop->rhs = base::move<AST::Expression>(nodes[2]);
 
-  if (tk == "'") {
-    std::swap(binop_ptr->lhs, binop_ptr->rhs);
-    tk = "(";
-  }
+  if (tk == "'") { std::swap(binop->lhs, binop->rhs); }
 
-  static const std::map<std::string, Language::Operator> symbols = {
+  static const std::unordered_map<std::string, Language::Operator> symbols = {
       {"=>", Language::Operator::Rocket}, {"", Language::Operator::Cast},
       {"->", Language::Operator::Arrow},  {"|=", Language::Operator::OrEq},
       {"&=", Language::Operator::AndEq},  {"^=", Language::Operator::XorEq},
@@ -770,17 +737,19 @@ AST::Node *BuildBinaryOperator(NPtrVec &&nodes) {
       {"+", Language::Operator::Add},     {"-", Language::Operator::Sub},
       {"*", Language::Operator::Mul},     {"/", Language::Operator::Div},
       {"%", Language::Operator::Mod},     {"[", Language::Operator::Index},
-      {"(", Language::Operator::Call}};
-  auto iter = symbols.find(tk);
-  if (iter != symbols.end()) { binop_ptr->op = iter->second; }
+      {"'", Language::Operator::Call},    {"(", Language::Operator::Call}};
+  {
+    auto iter = symbols.find(tk);
+    if (iter != symbols.end()) { binop->op = iter->second; }
 
-  binop_ptr->precedence = Language::precedence(binop_ptr->op);
-  return binop_ptr;
+    binop->precedence = Language::precedence(binop->op);
+    return binop;
+  }
 }
 
-AST::Node *BuildKWBlock(NPtrVec &&nodes) {
-  ASSERT(nodes[0]->is<AST::TokenNode>(), "");
-  auto tk = ((AST::TokenNode *)nodes[0])->token;
+std::unique_ptr<AST::Node>
+BuildKWBlock(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[0].get())->token;
 
   if (tk == "case") {
     return AST::Case::Build(std::move(nodes));
@@ -798,9 +767,9 @@ AST::Node *BuildKWBlock(NPtrVec &&nodes) {
   UNREACHABLE;
 }
 
-AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
-  ASSERT(nodes[0]->is<AST::TokenNode>(), "");
-  auto tk = ((AST::TokenNode *)nodes[0])->token;
+std::unique_ptr<AST::Node>
+BuildKWExprBlock(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[0].get())->token;
 
   if (tk == "for") {
     return AST::For::Build(std::move(nodes));
@@ -812,19 +781,18 @@ AST::Node *BuildKWExprBlock(NPtrVec &&nodes) {
   UNREACHABLE;
 }
 
-AST::Node *Parenthesize(NPtrVec &&nodes) {
-  auto expr_ptr = steal<AST::Expression>(nodes[1]);
-  expr_ptr->precedence =
-      Language::precedence(Language::Operator::NotAnOperator);
-  if (static_cast<AST::TokenNode *>(nodes[0])->token != "\\(") {
-    return expr_ptr;
+std::unique_ptr<AST::Node>
+Parenthesize(std::vector<std::unique_ptr<AST::Node>> nodes) {
+  auto expr        = base::move<AST::Expression>(nodes[1]);
+  expr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+  if (ptr_cast<AST::TokenNode>(nodes[0].get())->token != "\\(") {
+    return expr;
+
+  } else {
+    auto unop     = std::make_unique<AST::Unop>();
+    unop->operand = std::move(expr);
+    unop->loc     = nodes[0]->loc;
+    unop->op      = Language::Operator::Ref;
+    return unop;
   }
-
-  // Assert expr is an identifier
-
-  auto unop_ptr     = new AST::Unop;
-  unop_ptr->operand = expr_ptr;
-  unop_ptr->loc     = nodes[0]->loc;
-  unop_ptr->op      = Language::Operator::Ref;
-  return unop_ptr;
 }

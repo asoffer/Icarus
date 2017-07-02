@@ -4,41 +4,12 @@
 #include <memory>
 
 #include "../architecture.h"
-#include "../type/type.h"
 #include "../ast/ast.h"
+#include "../base/util.h"
 #include "../scope.h"
+#include "../type/type.h"
 
 std::vector<IR::Val> global_vals;
-
-static AST::FunctionLiteral *WrapExprIntoFunction(AST::Expression *expr) {
-  std::vector<Error> errors;
-  expr->verify_types(&errors);
-  auto fn_ptr = new AST::FunctionLiteral;
-
-  // TODO should these be at global scope? or a separate REPL scope?
-  fn_ptr->type               = Func(Void, expr->type);
-  fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
-  fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
-  fn_ptr->scope_             = expr->scope_;
-  fn_ptr->statements         = new AST::Statements;
-  fn_ptr->statements->scope_ = fn_ptr->fn_scope;
-  fn_ptr->return_type_expr   = new AST::Terminal(
-      expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
-  AST::Unop *ret             = nullptr;
-
-  if (expr->type != Void) {
-    ret             = new AST::Unop;
-    ret->scope_     = fn_ptr->fn_scope;
-    ret->operand    = expr;
-    ret->op         = Language::Operator::Return;
-    ret->precedence = Language::precedence(Language::Operator::Return);
-    fn_ptr->statements->statements.push_back(ret);
-  } else {
-    fn_ptr->statements->statements.push_back(expr);
-  }
-
-  return fn_ptr;
-}
 
 void ReplEval(AST::Expression *expr) {
   auto fn = std::make_unique<IR::Func>(Func(Void, Void));
@@ -60,23 +31,46 @@ void ReplEval(AST::Expression *expr) {
 
 IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
-  auto fn_ptr = WrapExprIntoFunction(expr);
+
+  auto fn_ptr  = std::make_unique<AST::FunctionLiteral>();
+  std::unique_ptr<AST::Node>* to_release = nullptr;
+  { // Wrap expression into function
+    std::vector<Error> errors;
+    expr->verify_types(&errors);
+
+    // TODO should these be at global scope? or a separate REPL scope?
+    // Is the scope cleaned up?
+    fn_ptr->type               = Func(Void, expr->type);
+    fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
+    fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
+    fn_ptr->scope_             = expr->scope_;
+    fn_ptr->statements         = std::make_unique<AST::Statements>();
+    fn_ptr->statements->scope_ = fn_ptr->fn_scope.get();
+    fn_ptr->return_type_expr   = std::make_unique<AST::Terminal>(
+        expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
+    if (expr->type != Void) {
+      auto ret        = std::make_unique<AST::Unop>();
+      ret->scope_     = fn_ptr->fn_scope.get();
+      ret->operand    = base::wrap_unique(expr);
+      to_release =
+          reinterpret_cast<std::unique_ptr<AST::Node> *>(&ret->operand);
+      ret->op         = Language::Operator::Return;
+      ret->precedence = Language::precedence(Language::Operator::Return);
+      fn_ptr->statements->statements.push_back(std::move(ret));
+    } else {
+      fn_ptr->statements->statements.push_back(base::wrap_unique(expr));
+      // This vector cannot change in size: there is no way code gen can add
+      // statements here. Thus, it is safe to save a pointer to this last element.
+      to_release = &fn_ptr->statements->statements.back();
+    }
+  }
+
   std::vector<Error> errors;
   CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
 
   auto results = fn->Execute({});
-
-  if (expr->type == Void) {
-    fn_ptr->statements->statements[0] = nullptr;
-  } else {
-    auto ret = fn_ptr->statements->statements.front();
-    ASSERT(ret->is<AST::Unop>(), "");
-    auto unop = static_cast<AST::Unop *>(ret);
-    ASSERT(unop->op == Language::Operator::Return, "");
-    unop->operand = nullptr;
-  }
-  delete fn_ptr;
   ASSERT(!results.empty(), "");
+  to_release->release();
   return results[0]; // TODO multiple outputs?
 }
 
