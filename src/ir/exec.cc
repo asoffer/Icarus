@@ -155,6 +155,9 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Uint(resolved[0].as_uint + resolved[1].as_uint);
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real + resolved[1].as_real);
+    } else if (resolved[0].type ->is<Enum>()) {
+      return Val::Enum(ptr_cast<Enum>(resolved[0].type),
+                       resolved[0].as_enum + resolved[1].as_enum);
     } else {
       cmd.dump(0);
       for (auto &r : resolved) { std::cerr << r.to_string() << std::endl; }
@@ -280,6 +283,8 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Bool(resolved[0].as_real <= resolved[1].as_real);
     } else if (resolved[0].type == Char) {
       return Val::Bool(resolved[0].as_char <= resolved[1].as_char);
+    } else if (resolved[0].type->is<Enum>()) {
+      return Val::Bool(resolved[0].as_enum <= resolved[1].as_enum);
     } else {
       UNREACHABLE;
     }

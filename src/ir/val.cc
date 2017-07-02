@@ -95,6 +95,10 @@ std::string Val::to_string() const {
       return ss.str();
     } else if (type->is<Pointer>()) {
       return "0p" + std::to_string(as_heap_addr);
+    } else if (type->is<::Enum>()) {
+      return as_enum >= ptr_cast<::Enum>(type)->members.size()
+                 ? ptr_cast<::Enum>(type)->to_string() + ":END"
+                 : ptr_cast<::Enum>(type)->members.at(as_enum);
     } else {
       std::cerr << *type << std::endl;
       UNREACHABLE;

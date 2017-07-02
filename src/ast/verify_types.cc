@@ -1,6 +1,7 @@
 #include "ast.h"
 
 #include <queue>
+#include <unordered_set>
 
 #include "../error_log.h"
 #include "../ir/ir.h"
@@ -682,7 +683,15 @@ void Binop::verify_types(std::vector<Error> *errors) {
 
 void ChainOp::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;
-  for (auto& expr : exprs) { expr->verify_types(errors); }
+  bool found_err = false;
+  for (auto &expr : exprs) {
+    expr->verify_types(errors);
+    if (expr->type == Err) { found_err = true; }
+  }
+  if (found_err) {
+    type = Err;
+    return;
+  }
 
   if (is_comma_list()) {
     // If the tuple consists of a list of types, it should be interpretted as a
@@ -698,6 +707,7 @@ void ChainOp::verify_types(std::vector<Error> *errors) {
       all_types &= (eptr->type == Type_);
       ++position;
     }
+    // TODO got to have a better way to make tuple types i think
     type = all_types ? Type_ : Tup(type_vec);
 
     return;
@@ -705,11 +715,29 @@ void ChainOp::verify_types(std::vector<Error> *errors) {
 
   // All other chain ops need to take arguments of the same type and the
   // type is that one type
-  std::set<Type *> expr_types;
-
+  std::unordered_set<Type *> expr_types;
   for (const auto &expr : exprs) { expr_types.insert(expr->type); }
 
   if (expr_types.size() == 1) {
+    Type* single_type = *expr_types.begin();
+    if (single_type->is<Enum>()) {
+      int num_errors = 0;
+
+      // Emit an error for each <, <=, >, >= you see
+      for (auto op : ops) {
+        if (op == Language::Operator::Lt || op == Language::Operator::Le ||
+            op == Language::Operator::Gt || op == Language::Operator::Ge) {
+          errors->emplace_back(Error::Code::Other);
+          ++num_errors;
+        }
+
+      }
+      if (num_errors != 0) {
+        type = Err;
+        return;
+      }
+    }
+
     // TODO must it always be bool?
     type = Bool;
 

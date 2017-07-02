@@ -11,6 +11,8 @@
   } while (false)
 
 extern IR::Val PtrCallFix(IR::Val v);
+extern IR::Val Evaluate(AST::Expression *expr);
+extern std::vector<IR::Val> global_vals;
 
 static IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
@@ -92,6 +94,7 @@ IR::Val AST::ArrayLiteral::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
+
   auto init       = IR::Func::Current->AddBlock();
   auto incr       = IR::Func::Current->AddBlock();
   auto phi        = IR::Func::Current->AddBlock();
@@ -113,6 +116,14 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
         } else if (decl->container->is<Unop>()) {
           init_vals.push_back(
               ptr_cast<Unop>(decl->container.get())->operand->EmitIR(errors));
+        } else {
+          NOT_YET;
+        }
+      } else if (decl->container->type->is<Type>()) {
+        IR::Val container_val = Evaluate(decl->container.get());
+        if (container_val.as_type->is<Enum>()) {
+          auto* enum_type = ptr_cast<Enum>(container_val.as_type);
+          init_vals.push_back(enum_type->EmitInitialValue());
         } else {
           NOT_YET;
         }
@@ -142,6 +153,9 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
         incr_vals.push_back(IR::Add(iter, IR::Val::Uint(1)));
       } else if (iter.type == Char) {
         incr_vals.push_back(IR::Add(iter, IR::Val::Char(1)));
+      } else if (iter.type->is<Enum>()) {
+        incr_vals.push_back(
+            IR::Add(iter, IR::Val::Enum(ptr_cast<Enum>(iter.type), 1)));
       } else {
         NOT_YET;
       }
@@ -174,6 +188,16 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
           // TODO we should optimize this here rather then generate suboptimal
           // code and trust optimizations later on.
           cmp = IR::Val::Bool(true);
+        } else {
+          NOT_YET;
+        }
+      } else if (decl->container->type->is<Type>()) {
+        IR::Val container_val = Evaluate(decl->container.get());
+        if (container_val.as_type->is<Enum>()) {
+          // TODO I should not have to recalculate this here.
+          auto* enum_type = ptr_cast<Enum>(container_val.as_type);
+          cmp             = IR::Le(reg,
+                       IR::Val::Enum(enum_type, enum_type->members.size() - 1));
         } else {
           NOT_YET;
         }
@@ -243,9 +267,6 @@ IR::Val AST::ScopeLiteral::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
   return IR::Val::Scope(this);
 }
-
-extern IR::Val Evaluate(AST::Expression *expr);
-extern std::vector<IR::Val> global_vals;
 
 IR::Val AST::ScopeNode::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
@@ -317,6 +338,7 @@ IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
+
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
