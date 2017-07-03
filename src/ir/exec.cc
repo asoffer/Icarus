@@ -2,6 +2,7 @@
 
 #include <cmath>
 #include <memory>
+#include <cstring>
 
 #include "../architecture.h"
 #include "../ast/ast.h"
@@ -73,7 +74,7 @@ IR::Val Evaluate(AST::Expression *expr) {
 
 namespace IR {
 ExecContext::ExecContext(const Func *fn)
-    : current_fn(fn), current_block{0}, stack_(50) {}
+    : current_fn(fn), current_block{0}, stack_(500) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
@@ -110,7 +111,15 @@ IR::Val Stack::Push(Pointer *ptr) {
   size_ += ptr->pointee->is<Pointer>()
                ? sizeof(Addr)
                : Architecture::CompilingMachine().bytes(ptr->pointee);
-  ASSERT(size_ <= capacity_, ""); // TODO expand stack
+  if (size_ > capacity_) {
+    auto old_capacity = capacity_;
+    capacity_         = 2 * size_;
+    void *new_stack   = malloc(capacity_);
+    memcpy(new_stack, stack_, old_capacity);
+    free(stack_);
+    stack_ = new_stack;
+  }
+  ASSERT(size_ <= capacity_, "");
   return IR::Val::StackAddr(addr, ptr->pointee);
 }
 

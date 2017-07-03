@@ -128,11 +128,13 @@ struct Stack {
   ~Stack() { free(stack_); }
 
   void *location(size_t index) {
-    ASSERT(index < capacity_, "");
+    ASSERT(index < capacity_,
+           std::to_string(index) + " !< " + std::to_string(capacity_));
     return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
   }
 
   template <typename T> T Load(size_t index) {
+    ASSERT((index & (alignof(T) - 1)) == 0, "Alignment error");
     return *reinterpret_cast<T *>(this->location(index));
   }
 
@@ -170,11 +172,6 @@ struct ExecContext {
   }
 
   Val arg(u64 n) const { return args_[n]; }
-
-  Val stack_from_frame(const Val& v) const {
-    // TODO!
-    return v;
-  }
 
   // Indexed first by block then by instruction number
   std::vector<std::vector<Val>> regs_;
