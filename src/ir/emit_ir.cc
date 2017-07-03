@@ -124,6 +124,7 @@ IR::Val AST::For::EmitIR(std::vector<Error> *errors) {
           NOT_YET;
         }
       } else if (decl->container->type->is<Type>()) {
+        // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get());
         if (container_val.as_type->is<Enum>()) {
           auto* enum_type = ptr_cast<Enum>(container_val.as_type);

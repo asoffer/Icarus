@@ -1,8 +1,8 @@
 #include "ir.h"
 
 #include <cmath>
-#include <memory>
 #include <cstring>
+#include <memory>
 
 #include "../architecture.h"
 #include "../ast/ast.h"
@@ -27,14 +27,15 @@ void ReplEval(AST::Expression *expr) {
     IR::Jump::Return();
   }
 
-  fn->Execute({});
+  IR::ExecContext ctx;
+  fn->Execute({}, &ctx);
 }
 
 IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
 
-  auto fn_ptr  = std::make_unique<AST::FunctionLiteral>();
-  std::unique_ptr<AST::Node>* to_release = nullptr;
+  auto fn_ptr = std::make_unique<AST::FunctionLiteral>();
+  std::unique_ptr<AST::Node> *to_release = nullptr;
   { // Wrap expression into function
     // TODO should these be at global scope? or a separate REPL scope?
     // Is the scope cleaned up?
@@ -47,9 +48,9 @@ IR::Val Evaluate(AST::Expression *expr) {
     fn_ptr->return_type_expr   = std::make_unique<AST::Terminal>(
         expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
     if (expr->type != Void) {
-      auto ret        = std::make_unique<AST::Unop>();
-      ret->scope_     = fn_ptr->fn_scope.get();
-      ret->operand    = base::wrap_unique(expr);
+      auto ret     = std::make_unique<AST::Unop>();
+      ret->scope_  = fn_ptr->fn_scope.get();
+      ret->operand = base::wrap_unique(expr);
       to_release =
           reinterpret_cast<std::unique_ptr<AST::Node> *>(&ret->operand);
       ret->op         = Language::Operator::Return;
@@ -58,7 +59,8 @@ IR::Val Evaluate(AST::Expression *expr) {
     } else {
       fn_ptr->statements->statements.push_back(base::wrap_unique(expr));
       // This vector cannot change in size: there is no way code gen can add
-      // statements here. Thus, it is safe to save a pointer to this last element.
+      // statements here. Thus, it is safe to save a pointer to this last
+      // element.
       to_release = &fn_ptr->statements->statements.back();
     }
   }
@@ -66,40 +68,37 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<Error> errors;
   CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
 
-  auto results = fn->Execute({});
-  ASSERT(!results.empty(), "");
+  IR::ExecContext ctx;
+  auto results = fn->Execute({}, &ctx);
+
   to_release->release();
-  return results[0]; // TODO multiple outputs?
+  // TODO multiple outputs?
+  return results.empty() ? IR::Val::None() : results[0];
 }
 
 namespace IR {
-ExecContext::ExecContext(const Func *fn)
-    : current_fn(fn), current_block{0}, stack_(500) {}
+ExecContext::ExecContext() : stack_(50) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
-  for (const auto &cmd : current_fn->blocks_[current_block.value].cmds_) {
+  const auto &curr_block =
+      call_stack.top().fn_->blocks_[call_stack.top().current_.value];
+  for (const auto &cmd : curr_block.cmds_) {
     auto result = ExecuteCmd(cmd);
     if (cmd.result.kind == Val::Kind::Reg) {
       this->reg(cmd.result.as_reg) = result;
     }
   }
 
-  switch (current_fn->blocks_[current_block.value].jmp_.type) {
-  case Jump::Type::Uncond:
-    return current_fn->blocks_[current_block.value].jmp_.block_index;
+  switch (curr_block.jmp_.type) {
+  case Jump::Type::Uncond: return curr_block.jmp_.block_index;
   case Jump::Type::Cond: {
-    Val cond_val =
-        current_fn->blocks_[current_block.value].jmp_.cond_data.cond;
+    Val cond_val = curr_block.jmp_.cond_data.cond;
     ASSERT(cond_val.type == Bool, "");
     Resolve(&cond_val);
-    return cond_val.as_bool
-               ? current_fn->blocks_[current_block.value]
-                     .jmp_.cond_data.true_block
-               : current_fn->blocks_[current_block.value]
-                     .jmp_.cond_data.false_block;
+    return cond_val.as_bool ? curr_block.jmp_.cond_data.true_block
+                            : curr_block.jmp_.cond_data.false_block;
   } break;
-  case Jump::Type::Ret:
-    return BlockIndex{-1};
+  case Jump::Type::Ret: return BlockIndex{-1};
   }
   UNREACHABLE;
 }
@@ -123,10 +122,10 @@ IR::Val Stack::Push(Pointer *ptr) {
   return IR::Val::StackAddr(addr, ptr->pointee);
 }
 
-void ExecContext::Resolve(Val* v) const {
+void ExecContext::Resolve(Val *v) const {
   switch (v->kind) {
   case Val::Kind::Arg:
-    ASSERT(args_.size() > v->as_arg, "");
+    ASSERT(call_stack.top().args_.size() > v->as_arg, "");
     *v = arg(v->as_arg);
     return;
   case Val::Kind::Reg: *v = reg(v->as_reg); return;
@@ -135,9 +134,9 @@ void ExecContext::Resolve(Val* v) const {
   }
 }
 
-Val ExecContext::ExecuteCmd(const Cmd& cmd) {
+Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   std::vector<Val> resolved = cmd.args;
-  for (auto& r : resolved) { Resolve(&r); }
+  for (auto &r : resolved) { Resolve(&r); }
 
   switch (cmd.op_code) {
   case Op::Neg:
@@ -160,7 +159,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Uint(resolved[0].as_uint + resolved[1].as_uint);
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real + resolved[1].as_real);
-    } else if (resolved[0].type ->is<Enum>()) {
+    } else if (resolved[0].type->is<Enum>()) {
       return Val::Enum(ptr_cast<Enum>(resolved[0].type),
                        resolved[0].as_enum + resolved[1].as_enum);
     } else {
@@ -349,20 +348,18 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       UNREACHABLE;
     }
   case Op::SetReturn: {
-    rets_[resolved[0].as_uint] = resolved[1];
+    call_stack.top().rets_[resolved[0].as_uint] = resolved[1];
     return IR::Val::None();
   }
-  case Op::Extend:
-    return Val::Uint(static_cast<u64>(resolved[0].as_char));
-  case Op::Trunc:
-    return Val::Char(static_cast<char>(resolved[0].as_uint));
+  case Op::Extend: return Val::Uint(static_cast<u64>(resolved[0].as_char));
+  case Op::Trunc: return Val::Char(static_cast<char>(resolved[0].as_uint));
   case Op::Call: {
-    IR::Val fn = resolved.back();
+    auto fn = resolved.back().as_func;
     resolved.pop_back();
+    auto results = fn->Execute(std::move(resolved), this);
+
     // TODO multiple returns?
-    auto results = fn.as_func->Execute(std::move(resolved));
-    ASSERT(!results.empty(), "");
-    return results[0];
+    return results.empty() ? IR::Val::None() : results[0];
   } break;
   case Op::Print:
     if (resolved[0].type == Int) {
@@ -388,8 +385,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       NOT_YET;
     }
     return IR::Val::None();
-  case Op::Ptr:
-    return Val::Type(::Ptr(resolved[0].as_type));
+  case Op::Ptr: return Val::Type(::Ptr(resolved[0].as_type));
   case Op::Load:
     switch (resolved[0].as_addr.kind) {
     case Addr::Kind::Global: return global_vals[resolved[0].as_addr.as_global];
@@ -448,10 +444,13 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     }
   case Op::Phi:
     for (size_t i = 0; i < resolved.size(); i += 2) {
-      if (prev_block == resolved[i].as_block) {
+      if (call_stack.top().prev_ == resolved[i].as_block) {
         return resolved[i + 1];
       }
     }
+    std::cerr << "Previous block was "
+              << Val::Block(call_stack.top().prev_).to_string() << std::endl;
+    cmd.dump(0);
     UNREACHABLE;
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
   case Op::Access:
@@ -473,32 +472,37 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       NOT_YET;
     }
 
-  default:
-    cmd.dump(10);
-    NOT_YET;
+  default: cmd.dump(10); NOT_YET;
   }
   UNREACHABLE;
 }
 
-std::vector<Val> Func::Execute(std::vector<Val> arguments) const {
-  auto ctx = ExecContext(this);
-  ctx.args_ = std::move(arguments);
+std::vector<Val> Func::Execute(std::vector<Val> arguments,
+                               ExecContext *ctx) const {
+  ctx->call_stack.push(
+      ExecContext::ExecLocation{this, this->entry(), this->entry()});
+  ctx->call_stack.top().args_ = std::move(arguments);
   // Type *output_type = static_cast<Function *>(type)->output;
   // tuples for output returns?
   // TODO these should be in the ctor
-  ctx.rets_.resize(1, IR::Val::None()); // 1 for now beacuse not handling tuples
-  ctx.regs_.resize(blocks_.size());
+  ctx->call_stack.top().rets_.resize(
+      1,
+      IR::Val::None()); // 1 for now beacuse not handling tuples
+  ctx->call_stack.top().regs_.resize(blocks_.size());
   for (size_t i = 0; i < blocks_.size(); ++i) {
-    ctx.regs_[i].resize(blocks_[i].cmds_.size(), IR::Val::None());
+    ctx->call_stack.top().regs_[i].resize(blocks_[i].cmds_.size(),
+                                          IR::Val::None());
   }
   // TODO args
   while (true) {
-    auto block_index = ctx.ExecuteBlock();
+    auto block_index = ctx->ExecuteBlock();
     if (block_index.is_none()) {
-      return std::move(ctx.rets_);
+      auto rets = std::move(ctx->call_stack.top().rets_);
+      ctx->call_stack.pop();
+      return rets;
     } else if (block_index.value >= 0) {
-      ctx.prev_block = ctx.current_block;
-      ctx.current_block = block_index;
+      ctx->call_stack.top().prev_ = ctx->call_stack.top().current_;
+      ctx->call_stack.top().current_ = block_index;
     } else {
       UNREACHABLE;
     }

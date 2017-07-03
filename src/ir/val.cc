@@ -49,9 +49,10 @@ Val Val::Func(::IR::Func *fn) {
 // Using 'as_bool' for convenience. That field should never be used.
 Val Val::Void() { MAKE_AND_RETURN(Kind::Const, ::Void, as_bool, false); }
 
-// Type here is sort of nonsense but that doesn't matter
+// Using the nonsense type Ptr(Void) to indicate that this is a block.
+// TODO FIXME
 Val Val::Block(BlockIndex bi) {
-  MAKE_AND_RETURN(Kind::Const, ::Uint, as_block, bi);
+  MAKE_AND_RETURN(Kind::Const, Ptr(::Void), as_block, bi);
 }
 
 Val Val::Null(::Type *t) {
@@ -87,6 +88,8 @@ std::string Val::to_string() const {
       return as_type->to_string();
     } else if (type == ::Void) {
       return "<void>";
+    } else if (type == Ptr(::Void)) {
+      return "block #" + std::to_string(as_block.value);
     } else if (type->is<Function>()) {
       std::stringstream ss;
       ss << "fn." << as_func;

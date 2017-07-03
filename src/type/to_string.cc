@@ -42,6 +42,7 @@ std::string Function::to_string() const {
 
 std::string Pointer::to_string() const {
   std::stringstream ss;
+
   if (pointee->is<Function>()) {
     ss << "&(" << *pointee << ")";
   } else {

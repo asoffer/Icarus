@@ -3,6 +3,7 @@
 
 #include <string>
 #include <vector>
+#include <stack>
 
 #include "../base/debug.h"
 #include "../base/types.h"
@@ -127,12 +128,6 @@ struct Stack {
   }
   ~Stack() { free(stack_); }
 
-  void *location(size_t index) {
-    ASSERT(index < capacity_,
-           std::to_string(index) + " !< " + std::to_string(capacity_));
-    return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
-  }
-
   template <typename T> T Load(size_t index) {
     ASSERT((index & (alignof(T) - 1)) == 0, "Alignment error");
     return *reinterpret_cast<T *>(this->location(index));
@@ -147,36 +142,44 @@ struct Stack {
   size_t capacity_ = 0;
   size_t size_     = 0;
   void *stack_     = nullptr;
+
+private:
+  void *location(size_t index) {
+    ASSERT(index < capacity_,
+           std::to_string(index) + " !< " + std::to_string(capacity_));
+    return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
+  }
 };
 
 struct ExecContext {
-  ExecContext() = delete;
-  ExecContext(const IR::Func *fn);
+  ExecContext();
 
-  const Func *current_fn;
-  BlockIndex current_block;
-  BlockIndex prev_block;
-  u64 frame_offset = 0;
+  struct ExecLocation {
+    const Func *fn_;
+    BlockIndex current_;
+    BlockIndex prev_;
+
+    // Indexed first by block then by instruction number
+    std::vector<std::vector<Val>> regs_ = {};
+    std::vector<Val> args_              = {};
+    std::vector<Val> rets_              = {};
+  };
+  std::stack<ExecLocation> call_stack;
 
   BlockIndex ExecuteBlock();
-  Val ExecuteCmd(const Cmd&);
-  void Resolve(Val* v) const;
+  Val ExecuteCmd(const Cmd &);
+  void Resolve(Val *v) const;
 
   Val reg(RegIndex index) const {
-    return regs_[index.block_index.value][index.instr_index];
+    return call_stack.top().regs_[index.block_index.value][index.instr_index];
   }
-
 
   Val &reg(RegIndex index) {
-    return regs_[index.block_index.value][index.instr_index];
+    return call_stack.top().regs_[index.block_index.value][index.instr_index];
   }
 
-  Val arg(u64 n) const { return args_[n]; }
+  Val arg(u64 n) const { return call_stack.top().args_[n]; }
 
-  // Indexed first by block then by instruction number
-  std::vector<std::vector<Val>> regs_;
-  std::vector<Val> args_;
-  std::vector<Val> rets_;
   Stack stack_;
 };
 
@@ -294,7 +297,7 @@ struct Func {
     return index;
   }
 
-  std::vector<Val> Execute(std::vector<Val> args) const;
+  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx) const;
 
   Type *type;
   std::string name;

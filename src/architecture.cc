@@ -70,10 +70,12 @@ size_t Architecture::bytes(const Type *t) const {
       // was because we indexed allocations by their stack location. So if an
       // array took no space it would be indexed identically to the element that
       // preceded it. This is likely no longer an issue but requires further thought.
-      auto size = MoveForwardToAlignment(array_type->data_type, alignment(t)) *
-                  array_type->len;
+      auto size = array_type->len *
+                  MoveForwardToAlignment(array_type->data_type,
+                                         bytes(array_type->data_type));
       return size ? size : 1;
     } else {
+      // TODO architecture dependence?
       return 16;
     }
   } else if (t->is<Struct>()) {

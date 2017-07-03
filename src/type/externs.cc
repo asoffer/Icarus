@@ -54,8 +54,8 @@ Tuple *Tup(const std::vector<Type *> &types) {
 }
 
 Pointer *Ptr(Type *t) {
-  for (const auto &ptr : pointer_types_) {
-    if (ptr->pointee == t) return ptr;
+  for (auto ptr : pointer_types_) {
+    if (ptr->pointee == t) { return ptr; }
   }
 
   auto ptr_type = new Pointer(t);
