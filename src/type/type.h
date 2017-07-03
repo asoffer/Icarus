@@ -206,7 +206,7 @@ struct Struct : public Type {
 
 private:
   IR::Func *init_func = nullptr, *assign_func = nullptr,
-           *destroy_func = nullptr;
+           *destroy_func = nullptr, *repr_func = nullptr;
   bool completed_ = false;
 };
 

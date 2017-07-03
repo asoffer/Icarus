@@ -38,7 +38,7 @@ void Struct::CompleteDefinition() {
 Type *Struct::field(const std::string &name) const {
   auto iter = field_name_to_num.find(name);
   return (iter == field_name_to_num.end()) ? nullptr
-                                           : field_type.at(iter->second);
+                                           : field_type AT(iter->second);
 }
 
 size_t Struct::field_num(const std::string &name) const {

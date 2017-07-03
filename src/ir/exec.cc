@@ -104,12 +104,12 @@ BlockIndex ExecContext::ExecuteBlock() {
 }
 
 IR::Val Stack::Push(Pointer *ptr) {
-  size_ = Architecture::CompilingMachine().MoveForwardToAlignment(ptr->pointee,
-                                                                  size_);
+  size_ = Architecture::InterprettingMachine().MoveForwardToAlignment(
+      ptr->pointee, size_);
   auto addr = size_;
   size_ += ptr->pointee->is<Pointer>()
                ? sizeof(Addr)
-               : Architecture::CompilingMachine().bytes(ptr->pointee);
+               : Architecture::InterprettingMachine().bytes(ptr->pointee);
   if (size_ > capacity_) {
     auto old_capacity = capacity_;
     capacity_         = 2 * size_;
@@ -377,7 +377,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Code_) {
       std::cerr << *resolved[0].as_code;
     } else if (resolved[0].type->is<Pointer>()) {
-      NOT_YET;
+      std::cerr << resolved[0].as_addr.to_string();
     } else if (resolved[0].type->is<Enum>()) {
       std::cerr
           << ptr_cast<Enum>(resolved[0].type)->members[resolved[0].as_enum];
@@ -388,6 +388,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Ptr: return Val::Type(::Ptr(resolved[0].as_type));
   case Op::Load:
     switch (resolved[0].as_addr.kind) {
+    case Addr::Kind::Null:
+      // TODO compile-time failure. dump the stack trace and abort.
+      UNREACHABLE;
     case Addr::Kind::Global: return global_vals[resolved[0].as_addr.as_global];
     case Addr::Kind::Stack: {
       if (cmd.result.type == Bool) {
@@ -416,6 +419,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
   case Op::Store:
     switch (resolved[1].as_addr.kind) {
+    case Addr::Kind::Null:
+      // TODO compile-time failure. dump the stack trace and abort.
+      UNREACHABLE;
     case Addr::Kind::Global:
       global_vals[resolved[1].as_addr.as_global] = resolved[0];
       return IR::Val::None();
@@ -455,7 +461,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
   case Op::Access:
     if (resolved[1].as_addr.kind == Addr::Kind::Stack) {
-      auto bytes_fwd = Architecture::CompilingMachine().ComputeArrayLength(
+      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[0].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::StackAddr(resolved[1].as_addr.as_stack + bytes_fwd,
                             cmd.result.type);
@@ -464,7 +470,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
   case Op::PtrIncr:
     if (resolved[0].as_addr.kind == Addr::Kind::Stack) {
-      auto bytes_fwd = Architecture::CompilingMachine().ComputeArrayLength(
+      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::StackAddr(resolved[0].as_addr.as_stack + bytes_fwd,
                             cmd.result.type);
@@ -479,8 +485,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     for (u64 i = 0; i < resolved[1].as_uint; ++i) {
       auto field_type = struct_type->field_type AT(i);
 
-      offset = Architecture::CompilingMachine().bytes(field_type) +
-               Architecture::CompilingMachine().MoveForwardToAlignment(
+      offset = Architecture::InterprettingMachine().bytes(field_type) +
+               Architecture::InterprettingMachine().MoveForwardToAlignment(
                    field_type, offset);
     }
 
@@ -503,9 +509,8 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments,
   // Type *output_type = static_cast<Function *>(type)->output;
   // tuples for output returns?
   // TODO these should be in the ctor
-  ctx->call_stack.top().rets_.resize(
-      1,
-      IR::Val::None()); // 1 for now beacuse not handling tuples
+  // resize to 1 for now beacuse not handling tuples
+  ctx->call_stack.top().rets_.resize(1, IR::Val::None());
   ctx->call_stack.top().regs_.resize(blocks_.size());
   for (size_t i = 0; i < blocks_.size(); ++i) {
     ctx->call_stack.top().regs_[i].resize(blocks_[i].cmds_.size(),
@@ -519,7 +524,7 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments,
       ctx->call_stack.pop();
       return rets;
     } else if (block_index.value >= 0) {
-      ctx->call_stack.top().prev_ = ctx->call_stack.top().current_;
+      ctx->call_stack.top().prev_    = ctx->call_stack.top().current_;
       ctx->call_stack.top().current_ = block_index;
     } else {
       UNREACHABLE;

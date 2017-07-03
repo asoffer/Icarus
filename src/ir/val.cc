@@ -56,8 +56,8 @@ Val Val::Block(BlockIndex bi) {
 }
 
 Val Val::Null(::Type *t) {
-  // TODO make this it's own kind
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr.as_stack, 0);
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr,
+                  (IR::Addr{Addr::Kind::Null, 0}));
 }
 #undef MAKE_AND_RETURN
 
@@ -138,6 +138,7 @@ void Jump::Unconditional(BlockIndex index) {
 
 std::string Addr::to_string() const {
   switch (kind) {
+  case Addr::Kind::Null: return "null";
   case Kind::Global: return "g." + std::to_string(as_global);
   case Kind::Stack: return "s." + std::to_string(as_stack);
   }
@@ -147,6 +148,7 @@ std::string Addr::to_string() const {
 bool operator==(Addr lhs, Addr rhs) {
   if (lhs.kind != rhs.kind) { return false; }
   switch (lhs.kind) {
+  case Addr::Kind::Null: return true;
   case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
   case Addr::Kind::Global: return lhs.as_global == rhs.as_global;
   }

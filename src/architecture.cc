@@ -75,8 +75,7 @@ size_t Architecture::bytes(const Type *t) const {
                                          bytes(array_type->data_type));
       return size ? size : 1;
     } else {
-      // TODO architecture dependence?
-      return 16;
+      return 2 * ptr_bytes_;
     }
   } else if (t->is<Struct>()) {
     auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));

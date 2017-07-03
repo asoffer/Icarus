@@ -1,6 +1,7 @@
 #ifndef ICARUS_ARCHITECTURE_H
 #define ICARUS_ARCHITECTURE_H
 
+#include "ir/ir.h"
 #include "type/type.h"
 #include <cstddef>
 
@@ -22,6 +23,10 @@ struct Architecture {
 
   u64 ComputeArrayLength(u64 len, const Type *t) const {
     return len * MoveForwardToAlignment(t, bytes(t));
+  }
+
+  static constexpr Architecture InterprettingMachine() {
+    return Architecture{sizeof(IR::Addr), alignof(IR::Addr)};
   }
 
   static constexpr Architecture CompilingMachine() {

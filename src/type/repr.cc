@@ -74,8 +74,7 @@ void Function::EmitRepr(IR::Val) {
 
 // TODO print something friendlier
 void Enum::EmitRepr(IR::Val val) { IR::Print(val); }
-
-void Pointer::EmitRepr(IR::Val) { UNREACHABLE; }
+void Pointer::EmitRepr(IR::Val val) { IR::Print(val); }
 
 void Array::EmitRepr(IR::Val val) {
   if (fixed_length) {
@@ -149,6 +148,9 @@ void Array::EmitRepr(IR::Val val) {
 
       IR::Block::Current = repr_func->exit();
       IR::Print(IR::Val::Char(']'));
+      IR::Jump::Unconditional(repr_func->exit());
+
+      IR::Block::Current = repr_func->exit();
       IR::Jump::Return();
     }
   }
@@ -156,13 +158,27 @@ void Array::EmitRepr(IR::Val val) {
 }
 
 void Struct::EmitRepr(IR::Val val) {
-  IR::Print(IR::Val::Char('{'));
-  IR::Print(IR::Val::Char(' '));
-  for (size_t i = 0; i < field_type.size(); ++i) {
-    field_type AT(i)->EmitRepr(PtrCallFix(IR::Field(val, i)));
-    IR::Print(IR::Val::Char(' '));
+  if (!repr_func) {
+    repr_func       = new IR::Func(Func(this, Void));
+    repr_func->name = "repr." + Mangle(this);
+    implicit_functions.push_back(repr_func);
+
+    CURRENT_FUNC(repr_func) {
+      IR::Print(IR::Val::Char('{'));
+      IR::Print(IR::Val::Char(' '));
+      for (size_t i = 0; i < field_type.size(); ++i) {
+        field_type AT(i)->EmitRepr(
+            PtrCallFix(IR::Field(IR::Val::Arg(Ptr(this), 0), i)));
+        IR::Print(IR::Val::Char(' '));
+      }
+      IR::Print(IR::Val::Char('}'));
+      IR::Jump::Unconditional(repr_func->exit());
+
+      IR::Block::Current = repr_func->exit();
+      IR::Jump::Return();
+    }
   }
-  IR::Print(IR::Val::Char('}'));
+  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 }
 
 void Tuple::EmitRepr(IR::Val) { NOT_YET; }

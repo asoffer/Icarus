@@ -34,7 +34,7 @@ struct RegIndex {
 };
 
 struct Addr {
-  enum class Kind : u8 { Global, Stack } kind;
+  enum class Kind : u8 { Null, Global, Stack } kind;
   union {
     u64 as_global;
     u64 as_stack;
