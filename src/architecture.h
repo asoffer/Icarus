@@ -20,6 +20,10 @@ struct Architecture {
     return IR::Mul(len, IR::Val::Uint(space_in_array));
   }
 
+  u64 ComputeArrayLength(u64 len, const Type *t) const {
+    return len * MoveForwardToAlignment(t, bytes(t));
+  }
+
   static constexpr Architecture CompilingMachine() {
     return Architecture{sizeof(void *), alignof(void *)};
   }

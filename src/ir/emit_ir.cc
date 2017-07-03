@@ -81,6 +81,10 @@ IR::Val AST::Identifier::EmitIR(std::vector<Error> *errors) {
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
   if (decl->arg_val || decl->is<InDecl>()) {
     return decl->addr;
+  } else if (type == Type_) {
+    // TODO this is a hack and not entirely correct because perhaps types are
+    // not const.
+    return Evaluate(decl->init_val.get());
   } else {
     return PtrCallFix(EmitLVal(errors));
   }
@@ -303,6 +307,7 @@ IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
     // TODO these checks actually overlap and could be simplified.
 
     addr = IR::Val::GlobalAddr(global_vals.size(), type);
+
     if (IsUninitialized()) {
       global_vals.emplace_back();
       global_vals.back().type = type;

@@ -35,9 +35,6 @@ IR::Val Evaluate(AST::Expression *expr) {
   auto fn_ptr  = std::make_unique<AST::FunctionLiteral>();
   std::unique_ptr<AST::Node>* to_release = nullptr;
   { // Wrap expression into function
-    std::vector<Error> errors;
-    expr->verify_types(&errors);
-
     // TODO should these be at global scope? or a separate REPL scope?
     // Is the scope cleaned up?
     fn_ptr->type               = Func(Void, expr->type);
@@ -301,7 +298,17 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       return Val::Bool(resolved[0].as_real == resolved[1].as_real);
     } else if (resolved[0].type == Type_) {
       return Val::Bool(resolved[0].as_type == resolved[1].as_type);
+    } else if (resolved[0].type->is<Pointer>()) {
+      if (resolved[0].kind != resolved[1].kind) { return Val::Bool(false); }
+      if (resolved[0].kind == Val::Kind::Stack) {
+        return Val::Bool(resolved[0].as_stack_addr ==
+                         resolved[1].as_stack_addr);
+      } else {
+        NOT_YET;
+      }
     } else {
+      cmd.dump(0);
+      for (auto &r : resolved) { std::cerr << r.to_string() << std::endl; }
       UNREACHABLE;
     }
   case Op::Ne:
@@ -430,6 +437,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
       } else if (resolved[0].type == Real) {
         stack_.Store(resolved[0].as_real, resolved[1].as_stack_addr);
       } else if (resolved[0].type->is<Pointer>()) {
+        cmd.dump(0);
         NOT_YET;
       } else if (resolved[0].type->is<Enum>()) {
         stack_.Store(resolved[0].as_enum, resolved[1].as_stack_addr);
@@ -452,6 +460,25 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
     UNREACHABLE;
   case Op::Alloca:
     return stack_.Push(cmd.result.type);
+  case Op::Access:
+    if (resolved[1].kind == Val::Kind::Stack) {
+      auto bytes_fwd = Architecture::CompilingMachine().ComputeArrayLength(
+          resolved[0].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
+      return Val::StackAddr(resolved[1].as_stack_addr + bytes_fwd,
+                            cmd.result.type);
+    } else {
+      NOT_YET;
+    }
+  case Op::PtrIncr:
+    if (resolved[0].kind == Val::Kind::Stack) {
+      auto bytes_fwd = Architecture::CompilingMachine().ComputeArrayLength(
+          resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
+      return Val::StackAddr(resolved[0].as_stack_addr + bytes_fwd,
+                            cmd.result.type);
+    } else {
+      NOT_YET;
+    }
+
   default:
     cmd.dump(10);
     NOT_YET;
