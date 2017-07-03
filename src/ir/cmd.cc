@@ -22,11 +22,11 @@ Val SetReturn(size_t n, Val v) {
 }
 
 Val Field(Val v, size_t n) {
-  ASSERT(v.type->is<Pointer>(), "");
-  auto ptee_type = static_cast<Pointer *>(v.type)->pointee;
+  ASSERT(v.type->is<Pointer>(), v.type->to_string());
+  auto ptee_type = ptr_cast<Pointer>(v.type)->pointee;
   ASSERT(ptee_type->is<Struct>(), "");
 
-  Cmd cmd(Ptr(static_cast<Struct *>(ptee_type)->field_type[n]), Op::Field,
+  Cmd cmd(Ptr(ptr_cast<Struct>(ptee_type)->field_type[n]), Op::Field,
           {std::move(v), IR::Val::Uint(n)});
   IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;

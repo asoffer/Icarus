@@ -200,15 +200,14 @@ struct Struct : public Type {
   std::unordered_map<std::string, size_t> field_name_to_num;
   std::vector<std::string> field_num_to_name;
   std::vector<Type *> field_type;
-  std::vector<size_t> field_offsets;
 
   std::vector<AST::Expression *> init_values;
-  ParamStruct *creator;
+  ParamStruct *creator = nullptr;
 
 private:
   IR::Func *init_func = nullptr, *assign_func = nullptr,
            *destroy_func = nullptr;
-  bool completed_;
+  bool completed_ = false;
 };
 
 struct ParamStruct : public Type {

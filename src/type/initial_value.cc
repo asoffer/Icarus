@@ -39,8 +39,18 @@ IR::Val Array::EmitInitialValue() const {
   return temp_allocation;
 }
 
+IR::Val Struct::EmitInitialValue() const {
+  auto current_block   = IR::Block::Current;
+  IR::Block::Current   = IR::Func::Current->entry();
+  auto temp_allocation = IR::Alloca(const_cast<Struct *>(this));
+  IR::Block::Current   = current_block;
+
+  // TODO must remember to destroy
+  const_cast<Struct *>(this)->EmitInit(temp_allocation);
+  return temp_allocation;
+}
+
 IR::Val Tuple::EmitInitialValue() const { NOT_YET; }
-IR::Val Struct::EmitInitialValue() const { NOT_YET; }
 IR::Val RangeType::EmitInitialValue() const { NOT_YET; }
 IR::Val SliceType::EmitInitialValue() const { NOT_YET; }
 IR::Val Scope_Type::EmitInitialValue() const { NOT_YET; }

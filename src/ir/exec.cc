@@ -471,7 +471,25 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else {
       NOT_YET;
     }
+  case Op::Field: {
+    auto struct_type =
+        ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);
+    // This can probably be precomputed.
+    u64 offset = 0;
+    for (u64 i = 0; i < resolved[1].as_uint; ++i) {
+      auto field_type = struct_type->field_type AT(i);
 
+      offset = Architecture::CompilingMachine().bytes(field_type) +
+               Architecture::CompilingMachine().MoveForwardToAlignment(
+                   field_type, offset);
+    }
+
+    if (resolved[0].as_addr.kind == Addr::Kind::Stack) {
+      return Val::StackAddr(resolved[0].as_addr.as_stack + offset,
+                            cmd.result.type);
+    }
+
+  } break;
   default: cmd.dump(10); NOT_YET;
   }
   UNREACHABLE;

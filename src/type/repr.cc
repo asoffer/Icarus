@@ -155,8 +155,17 @@ void Array::EmitRepr(IR::Val val) {
   IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 }
 
+void Struct::EmitRepr(IR::Val val) {
+  IR::Print(IR::Val::Char('{'));
+  IR::Print(IR::Val::Char(' '));
+  for (size_t i = 0; i < field_type.size(); ++i) {
+    field_type AT(i)->EmitRepr(PtrCallFix(IR::Field(val, i)));
+    IR::Print(IR::Val::Char(' '));
+  }
+  IR::Print(IR::Val::Char('}'));
+}
+
 void Tuple::EmitRepr(IR::Val) { NOT_YET; }
-void Struct::EmitRepr(IR::Val) { NOT_YET; }
 void RangeType::EmitRepr(IR::Val) { NOT_YET; }
 void SliceType::EmitRepr(IR::Val) { NOT_YET; }
 void Scope_Type::EmitRepr(IR::Val) { NOT_YET; }

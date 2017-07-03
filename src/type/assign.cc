@@ -103,9 +103,8 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
     assign_func->name = "assign." + Mangle(this);
 
     CURRENT_FUNC(assign_func) {
-
-      auto var = IR::Val::Arg(this, 0);
-      auto val = IR::Val::Arg(this, 1);
+      auto var = IR::Val::Arg(Ptr(this), 0);
+      auto val = IR::Val::Arg(Ptr(this), 1);
 
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);

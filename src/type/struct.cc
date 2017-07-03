@@ -7,10 +7,7 @@
 
 extern IR::Val Evaluate(AST::Expression *expr);
 
-Struct::Struct(const std::string &name)
-    : bound_name(name), field_offsets(1, 0), creator(nullptr),
-      init_func(nullptr), assign_func(nullptr), destroy_func(nullptr),
-      completed_(false) {}
+Struct::Struct(const std::string &name) : bound_name(name) {}
 
 void Struct::CompleteDefinition() {
   if (completed_) { return; }
@@ -52,13 +49,6 @@ size_t Struct::field_num(const std::string &name) const {
 
 void Struct::insert_field(const std::string &name, Type *ty,
                              AST::Expression *init_val) {
-  // TODO make architecture dependent
-  size_t last_field_offset = field_offsets.back();
-  size_t next_offset = Architecture::CompilingMachine().MoveForwardToAlignment(
-      ty, last_field_offset);
-  field_offsets.push_back(next_offset);
-
-
   auto next_num           = field_num_to_name.size();
   field_name_to_num[name] = next_num;
   field_num_to_name.push_back(name);

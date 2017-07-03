@@ -69,36 +69,31 @@ void Pointer::EmitInit(IR::Val id_val) {
 
 void Struct::EmitInit(IR::Val id_val) {
   if (!init_func) {
-    auto saved_func  = IR::Func::Current;
-    auto saved_block = IR::Block::Current;
-
-    init_func = new IR::Func(Func(Ptr(this), Void));
+    init_func       = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
     implicit_functions.push_back(init_func);
 
-    IR::Func::Current  = init_func;
-    IR::Block::Current = init_func->entry();
+    CURRENT_FUNC(init_func) {
+      IR::Block::Current = init_func->entry();
 
-    // TODO init expressions? Do these need to be verfied too?
-    std::vector<Error> errors;
-    for (size_t i = 0; i < field_type.size(); ++i) {
-      if (init_values[i]) {
-        if (init_values[i]->is_hole()) { continue; }
-        Type::CallAssignment(init_values[i]->scope_, field_type[i],
-                             init_values[i]->type,
-                             init_values[i]->EmitIR(&errors),
-                             IR::Field(IR::Val::Arg(this, 0), i));
-      } else {
-        field_type[i]->EmitInit(IR::Field(IR::Val::Arg(this, 0), i));
+      // TODO init expressions? Do these need to be verfied too?
+      std::vector<Error> errors;
+      for (size_t i = 0; i < field_type.size(); ++i) {
+        if (init_values[i]) {
+          if (init_values[i]->is_hole()) { continue; }
+          Type::CallAssignment(init_values[i]->scope_, field_type[i],
+                               init_values[i]->type,
+                               init_values[i]->EmitIR(&errors),
+                               IR::Field(IR::Val::Arg(Ptr(this), 0), i));
+        } else {
+          field_type[i]->EmitInit(IR::Field(IR::Val::Arg(Ptr(this), 0), i));
+        }
       }
+
+      IR::Jump::Unconditional(IR::Func::Current->exit());
+      IR::Block::Current = IR::Func::Current->exit();
+      IR::Jump::Return();
     }
-
-    IR::Jump::Unconditional(IR::Func::Current->exit());
-    IR::Block::Current = IR::Func::Current->exit();
-    IR::Jump::Return();
-
-    IR::Func::Current  = saved_func;
-    IR::Block::Current = saved_block;
   }
 
   IR::Call(IR::Val::Func(init_func), {id_val});
