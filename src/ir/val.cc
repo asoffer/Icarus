@@ -15,15 +15,18 @@ Val Val::Arg(::Type *t, u64 n) { MAKE_AND_RETURN(Kind::Arg, t, as_arg, n); }
 Val Val::Reg(RegIndex r, ::Type *t) {
   MAKE_AND_RETURN(Kind::Reg, t, as_reg, r);
 }
-Val Val::StackAddr(u64 n, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Stack, Ptr(t), as_stack_addr, n);
+Val Val::StackAddr(u64 addr, ::Type *t) {
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr,
+                  (IR::Addr{Addr::Kind::Stack, addr}));
 }
-Val Val::HeapAddr(u64 n, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Heap, t, as_heap_addr, n);
+Val Val::GlobalAddr(u64 addr, ::Type *t) {
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr,
+                  (IR::Addr{Addr::Kind::Global, addr}));
 }
-Val Val::GlobalAddr(u64 n, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Global, Ptr(t), as_global_addr, n);
+Val Val::Addr(IR::Addr addr, ::Type *t) {
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr, addr);
 }
+
 Val Val::Bool(bool b) { MAKE_AND_RETURN(Kind::Const, ::Bool, as_bool, b); }
 Val Val::Char(char c) { MAKE_AND_RETURN(Kind::Const, ::Char, as_char, c); }
 Val Val::Real(double r) { MAKE_AND_RETURN(Kind::Const, ::Real, as_real, r); }
@@ -52,7 +55,8 @@ Val Val::Block(BlockIndex bi) {
 }
 
 Val Val::Null(::Type *t) {
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_heap_addr, 0);
+  // TODO make this it's own kind
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr.as_stack, 0);
 }
 #undef MAKE_AND_RETURN
 
@@ -65,12 +69,6 @@ std::string Val::to_string() const {
     return type->to_string() + " r." +
            std::to_string(as_reg.block_index.value) + "." +
            std::to_string(as_reg.instr_index);
-  case Kind::Stack:
-    return type->to_string() + " s." + std::to_string(as_stack_addr);
-  case Kind::Global:
-    return type->to_string() + " g." + std::to_string(as_global_addr);
-  case Kind::Heap:
-    return type->to_string() + " h." + std::to_string(as_heap_addr);
   case Kind::Const:
     if (type == nullptr) {
       return "--";
@@ -94,7 +92,7 @@ std::string Val::to_string() const {
       ss << "fn." << as_func;
       return ss.str();
     } else if (type->is<Pointer>()) {
-      return "0p" + std::to_string(as_heap_addr);
+      return as_addr.to_string();
     } else if (type->is<::Enum>()) {
       return as_enum >= ptr_cast<::Enum>(type)->members.size()
                  ? ptr_cast<::Enum>(type)->to_string() + ":END"
@@ -134,4 +132,22 @@ void Jump::Unconditional(BlockIndex index) {
   jmp.block_index = index;
   jmp.type = Type::Uncond;
 }
+
+std::string Addr::to_string() const {
+  switch (kind) {
+  case Kind::Global: return "g." + std::to_string(as_global);
+  case Kind::Stack: return "s." + std::to_string(as_stack);
+  }
+  UNREACHABLE;
+}
+
+bool operator==(Addr lhs, Addr rhs) {
+  if (lhs.kind != rhs.kind) { return false; }
+  switch (lhs.kind) {
+  case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
+  case Addr::Kind::Global: return lhs.as_global == rhs.as_global;
+  }
+  UNREACHABLE;
+}
+
 } // namespace IR

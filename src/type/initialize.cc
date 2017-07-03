@@ -23,14 +23,14 @@ void Array::EmitInit(IR::Val id_val) {
       auto ptr = IR::Val::None();
       auto length_var = IR::Val::None();
       if (fixed_length) {
-        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0));
+        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(Ptr(this), 0));
         length_var = IR::Val::Uint(len);
       } else {
-        auto ptr_to_data_cell = IR::ArrayData(IR::Val::Arg(this, 0));
+        auto ptr_to_data_cell = IR::ArrayData(IR::Val::Arg(Ptr(this), 0));
         IR::Store(IR::Malloc(data_type, IR::Val::Uint(0ul)), ptr_to_data_cell);
 
         ptr = IR::Load(ptr_to_data_cell);
-        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(this, 0)));
+        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
       }
       auto end_ptr = IR::PtrIncr(ptr, length_var);
 

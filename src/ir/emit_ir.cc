@@ -337,7 +337,11 @@ IR::Val AST::Declaration::EmitIR(std::vector<Error> *errors) {
     if (IsUninitialized()) { return IR::Val::None(); }
     auto ir_init_val = IsCustomInitialized() ? init_val->EmitIR(errors)
                                              : type->EmitInitialValue();
-    return IR::Store(ir_init_val, addr);
+    // TODO these types do not always have to match. For example:
+    // arr: [--; int] = [1, 4, 9]
+    // Would indicate we want a dynamic array starting at size 3.
+    Type::CallAssignment(scope_, type, type, ir_init_val, addr);
+    return IR::Val::None();
   }
 }
 

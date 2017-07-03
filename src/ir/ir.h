@@ -9,6 +9,7 @@
 
 struct Type;
 struct Enum;
+struct Pointer;
 
 namespace AST {
 struct CodeBlock;
@@ -31,15 +32,24 @@ struct RegIndex {
   size_t instr_index;
 };
 
+struct Addr {
+  enum class Kind : u8 { Global, Stack } kind;
+  union {
+    u64 as_global;
+    u64 as_stack;
+  };
+
+  std::string to_string() const;
+};
+bool operator==(Addr lhs, Addr rhs);
+
 struct Val {
-  enum class Kind : u8 { None, Arg, Reg, Stack, Heap, Global, Const } kind;
-  ::Type *type;
+  enum class Kind : u8 { None, Arg, Reg, Const } kind;
+  ::Type *type = nullptr;
   union {
     u64 as_arg;
     RegIndex as_reg;
-    u64 as_stack_addr;
-    u64 as_heap_addr;
-    u64 as_global_addr;
+    Addr as_addr;
     bool as_bool;
     char as_char;
     double as_real;
@@ -56,9 +66,9 @@ struct Val {
 
   static Val Arg(Type *t, u64 n);
   static Val Reg(RegIndex r, Type *t);
-  static Val StackAddr(u64 n, Type *t);
-  static Val HeapAddr(u64 n, Type *t);
-  static Val GlobalAddr(u64 n, Type *t);
+  static Val Addr(Addr addr, Type *t);
+  static Val StackAddr(u64 addr, Type *t);
+  static Val GlobalAddr(u64 addr, Type *t);
   static Val Bool(bool b);
   static Val Char(char c);
   static Val Real(double r);
@@ -77,7 +87,7 @@ struct Val {
 
   std::string to_string() const;
 
-  Val() : kind(Kind::Const), type(nullptr), as_bool(false) {}
+  Val() : kind(Kind::Const), as_bool(false) {}
 };
 
 inline bool operator==(const Val& lhs, const Val& rhs) {
@@ -130,7 +140,7 @@ struct Stack {
     *reinterpret_cast<T *>(this->location(index)) = val;
   }
 
-  IR::Val Push(Type *t);
+  IR::Val Push(Pointer *ptr);
 
   size_t capacity_ = 0;
   size_t size_     = 0;

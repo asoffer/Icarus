@@ -117,8 +117,10 @@ Val Array(Val v1, Val v2) {
 
 Val Access(Val v1, Val v2) {
   // v1 = index, v2 = val
-  ASSERT(v2.type->is<::Array>(), "");
-  MAKE_AND_RETURN2(Ptr(ptr_cast<::Array>(v2.type)->data_type), Op::Access);
+  ASSERT(v2.type->is<Pointer>(), "");
+  ASSERT(ptr_cast<Pointer>(v2.type)->pointee->is<::Array>(), "");
+  auto* array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v2.type)->pointee);
+  MAKE_AND_RETURN2(Ptr(array_type->data_type), Op::Access);
 }
 
 Val Lt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Lt); }

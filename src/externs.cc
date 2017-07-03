@@ -61,8 +61,14 @@ size_t Get(const std::string &tag) {
 }
 } // namespace Hashtag
 
-IR::Val PtrCallFix(IR::Val v) { return v.type->is_big() ? v : IR::Load(v); }
-
+IR::Val PtrCallFix(IR::Val v) {
+  ASSERT(v.type->is<Pointer>(), "");
+  if (ptr_cast<Pointer>(v.type)->pointee->is_big()) {
+    return v;
+ } else {
+   return IR::Load(v);
+ }
+}
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   if (expr->is<AST::FunctionLiteral>()) {
     return (AST::FunctionLiteral *)expr;

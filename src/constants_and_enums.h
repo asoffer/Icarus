@@ -82,12 +82,4 @@ constexpr u64 OP_ =
     op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
 
 } // namespace Language
-
-namespace IR {
-enum class ValType : char {
-  Val, CStr, Block, Loc,  HeapAddr, ExtFn, GlobalCStr, Error, None
-};
-} // namespace IR
-
-
 #endif // ICARUS_CONSTANTS_AND_ENUMS_H

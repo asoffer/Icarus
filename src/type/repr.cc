@@ -80,10 +80,18 @@ void Pointer::EmitRepr(IR::Val) { UNREACHABLE; }
 void Array::EmitRepr(IR::Val val) {
   if (fixed_length) {
     IR::Print(IR::Val::Char('['));
-    if (len == 1) {
-      data_type->EmitRepr(
-          PtrCallFix(IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0))));
+    if (len >= 1) {
+      data_type->EmitRepr(PtrCallFix(IR::Access(IR::Val::Uint(0), val)));
     }
+
+    // TODO This might generate way too much code. Loop in generated code
+    // instead.
+    for (decltype(len) i = 1; i < len; ++i) {
+      IR::Print(IR::Val::Char(','));
+      IR::Print(IR::Val::Char(' '));
+      data_type->EmitRepr(PtrCallFix(IR::Access(IR::Val::Uint(i), val)));
+    }
+
     IR::Print(IR::Val::Char(']'));
     return;
   }
