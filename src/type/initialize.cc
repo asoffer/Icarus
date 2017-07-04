@@ -68,6 +68,8 @@ void Pointer::EmitInit(IR::Val id_val) {
 }
 
 void Struct::EmitInit(IR::Val id_val) {
+  CompleteDefinition();
+
   if (!init_func) {
     init_func       = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
