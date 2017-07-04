@@ -84,7 +84,11 @@ BlockIndex ExecContext::ExecuteBlock() {
       call_stack.top().fn_->blocks_[call_stack.top().current_.value];
   for (const auto &cmd : curr_block.cmds_) {
     auto result = ExecuteCmd(cmd);
-    if (cmd.result.kind == Val::Kind::Reg) {
+    if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
+      ASSERT(result.type == cmd.result.type,
+             (cmd.dump(0), "Type mismatch:\n  was: " +
+                               result.type->to_string() + "\n  expected: " +
+                               cmd.result.type->to_string()));
       this->reg(cmd.result.as_reg) = result;
     }
   }
@@ -357,11 +361,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // call_stack.top().fn_->dump();
     auto fn = resolved.back().as_func;
     resolved.pop_back();
-    // std::cerr << fn << fn->name << "  " << *fn->type << "{ ";
-    // for (auto a : resolved) {
-    //   std::cerr << a.to_string() << ": " << *a.type << ", ";
-    // }
-    // std::cerr << "}\n";
     auto results = fn->Execute(std::move(resolved), this);
 
     // TODO multiple returns?
@@ -411,7 +410,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return IR::Val::Real(stack_.Load<double>(resolved[0].as_addr.as_stack));
       } else if (cmd.result.type->is<Pointer>()) {
         return IR::Val::Addr(stack_.Load<Addr>(resolved[0].as_addr.as_stack),
-                             cmd.result.type);
+                             ptr_cast<Pointer>(cmd.result.type)->pointee);
       } else if (cmd.result.type->is<Enum>()) {
         return IR::Val::Enum(ptr_cast<Enum>(cmd.result.type),
                              stack_.Load<size_t>(resolved[0].as_addr.as_stack));
