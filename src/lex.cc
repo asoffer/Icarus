@@ -87,7 +87,7 @@ NNT NextWord(Cursor &cursor) {
     RETURN_TERMINAL(ASCII, Func(Uint, Char), IR::Val::None());
 
   } else if (token == "error") {
-    RETURN_TERMINAL(Error, Func(String, Code_), IR::Val::None());
+    RETURN_TERMINAL(Error, Func(String, Code), IR::Val::None());
 
   } else if (token == "else") {
     auto term_ptr           = std::make_unique<AST::Terminal>();

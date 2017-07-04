@@ -12,7 +12,7 @@ struct SliceType;
 struct Scope_Type;
 struct ParamStruct;
 
-extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code_, *Type_, *Uint,
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
     *Void, *NullPtr, *String;
 struct Scope;
 

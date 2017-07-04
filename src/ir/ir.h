@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_IR_H
 #define ICARUS_IR_IR_H
 
+#include <unordered_map>
 #include <string>
 #include <vector>
 #include <stack>
@@ -29,10 +30,23 @@ inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
 }
 
 struct RegIndex {
-  BlockIndex block_index;
-  size_t instr_index;
+  i32 index = -1;
 };
 
+inline bool operator==(RegIndex lhs, RegIndex rhs) {
+  return lhs.index == rhs.index;
+}
+} // namespace IR
+
+namespace std {
+template <> struct hash<IR::RegIndex> {
+  decltype(auto) operator()(IR::RegIndex r) const noexcept {
+    return std::hash<i32>{}(r.index);
+  }
+};
+} // namespace std
+
+namespace IR {
 struct Addr {
   enum class Kind : u8 { Null, Global, Stack } kind;
   union {
@@ -45,7 +59,7 @@ struct Addr {
 bool operator==(Addr lhs, Addr rhs);
 
 struct Val {
-  enum class Kind : u8 { None, Arg, Reg, Const } kind;
+  enum class Kind : u8 { None, Arg, Reg, Const } kind = Kind::None;
   ::Type *type = nullptr;
   union {
     u64 as_arg;
@@ -111,6 +125,7 @@ enum class Op : char {
   Nop, SetReturn,
   Arrow, Array, Ptr,
   Alloca,
+  Generate,
 };
 
 struct Block;
@@ -154,30 +169,27 @@ private:
 struct ExecContext {
   ExecContext();
 
-  struct ExecLocation {
-    const Func *fn_;
+  struct Frame {
+    Frame() = delete;
+    Frame(Func *fn, std::vector<Val> arguments);
+
+    Func *fn_ = nullptr;
     BlockIndex current_;
     BlockIndex prev_;
 
     // Indexed first by block then by instruction number
-    std::vector<std::vector<Val>> regs_ = {};
-    std::vector<Val> args_              = {};
-    std::vector<Val> rets_              = {};
+    std::vector<Val> regs_ = {};
+    std::vector<Val> args_ = {};
+    std::vector<Val> rets_ = {};
   };
-  std::stack<ExecLocation> call_stack;
+  std::stack<Frame> call_stack;
 
   BlockIndex ExecuteBlock();
-  Val ExecuteCmd(const Cmd &);
+  Val ExecuteCmd(size_t cmd_index);
   void Resolve(Val *v) const;
 
-  Val reg(RegIndex index) const {
-    return call_stack.top().regs_[index.block_index.value][index.instr_index];
-  }
-
-  Val &reg(RegIndex index) {
-    return call_stack.top().regs_[index.block_index.value][index.instr_index];
-  }
-
+  Val reg(RegIndex r) const { return call_stack.top().regs_[r.index]; }
+  Val &reg(RegIndex r) { return call_stack.top().regs_[r.index]; }
   Val arg(u64 n) const { return call_stack.top().args_[n]; }
 
   Stack stack_;
@@ -229,6 +241,7 @@ Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
+Val Generate(Val val);
 
 struct Jump {
   static void Unconditional(BlockIndex index);
@@ -271,10 +284,8 @@ struct Func {
 
   void dump() const;
 
-  void SetArgs(IR::RegIndex reg, std::vector<IR::Val> args) {
-    blocks_[reg.block_index.value].cmds_[reg.instr_index].args =
-        std::move(args);
-  }
+  Cmd &Command(RegIndex reg);
+  void SetArgs(RegIndex reg, std::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
 
@@ -297,11 +308,13 @@ struct Func {
     return index;
   }
 
-  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx) const;
+  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx);
 
-  Type *type;
+  Type *type = nullptr;
+  i32 num_cmds_ = 0;
   std::string name;
   std::vector<Block> blocks_;
+  std::unordered_map<RegIndex, std::pair<BlockIndex, int>> reg_map_;
 };
 
 struct FuncResetter {

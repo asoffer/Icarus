@@ -1203,7 +1203,7 @@ void Jump::verify_types(std::vector<Error> *errors) {
 }
 
 // Intentionally do not verify anything internal
-void CodeBlock::verify_types(std::vector<Error> *) { type = Code_; }
+void CodeBlock::verify_types(std::vector<Error> *) { type = Code; }
 
 void ScopeNode::verify_types(std::vector<Error> *errors) {
   STARTING_CHECK;

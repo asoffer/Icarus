@@ -34,7 +34,7 @@ Val Val::Uint(u64 n) { MAKE_AND_RETURN(Kind::Const, ::Uint, as_uint, n); }
 Val Val::Int(i64 n) { MAKE_AND_RETURN(Kind::Const, ::Int, as_int, n); }
 Val Val::Type(::Type *t) { MAKE_AND_RETURN(Kind::Const, ::Type_, as_type, t); }
 Val Val::CodeBlock(AST::CodeBlock *block) {
-  MAKE_AND_RETURN(Kind::Const, ::Code_, as_code, block);
+  MAKE_AND_RETURN(Kind::Const, ::Code, as_code, block);
 }
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   MAKE_AND_RETURN(Kind::Const, scope_lit->type, as_scope, scope_lit);
@@ -62,14 +62,11 @@ Val Val::Null(::Type *t) {
 #undef MAKE_AND_RETURN
 
 std::string Val::to_string() const {
-  std::stringstream ss;
   switch (kind) {
   case Kind::Arg:
     return type->to_string() + " a." + std::to_string(as_arg);
   case Kind::Reg:
-    return type->to_string() + " r." +
-           std::to_string(as_reg.block_index.value) + "." +
-           std::to_string(as_reg.instr_index);
+    return type->to_string() + " r." + std::to_string(as_reg.index);
   case Kind::Const:
     if (type == nullptr) {
       return "--";
@@ -104,9 +101,11 @@ std::string Val::to_string() const {
       std::cerr << *type << std::endl;
       UNREACHABLE;
     }
+    return "";
   case Kind::None:
     return "---";
   }
+  std::cerr << "Kind had value of " << static_cast<int>(kind) << std::endl;
   UNREACHABLE;
 }
 

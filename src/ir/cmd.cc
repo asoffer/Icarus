@@ -8,16 +8,16 @@ Func *Func::Current;
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
-  RegIndex reg;
-  reg.block_index = IR::Block::Current;
-  reg.instr_index =
-      IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.size();
-  result = IR::Val::Reg(reg, t);
+  auto reg_index = RegIndex{Func::Current->num_cmds_++};
+  Func::Current->reg_map_[reg_index] =
+      std::make_pair(Block::Current,
+                     Func::Current->blocks_[Block::Current.value].cmds_.size());
+  result = Val::Reg(reg_index, t);
 }
 
 Val SetReturn(size_t n, Val v) {
-  Cmd cmd(Void, Op::SetReturn, {IR::Val::Uint(n), std::move(v)});
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  Cmd cmd(Void, Op::SetReturn, {Val::Uint(n), std::move(v)});
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
@@ -25,20 +25,20 @@ Val Field(Val v, size_t n) {
   ASSERT(v.type->is<Pointer>(), v.type->to_string());
   auto ptee_type = ptr_cast<Pointer>(v.type)->pointee;
   Cmd cmd(Ptr(ptr_cast<Struct>(ptee_type)->field_type[n]), Op::Field,
-          {std::move(v), IR::Val::Uint(n)});
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+          {std::move(v), Val::Uint(n)});
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
 #define MAKE_AND_RETURN(type, op)                                              \
-  ASSERT(IR::Func::Current, "");                                               \
+  ASSERT(Func::Current, "");                                                   \
   Cmd cmd(type, op, {std::move(v)});                                           \
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);           \
   return cmd.result
 
 #define MAKE_AND_RETURN2(type, op)                                             \
   Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);   \
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);           \
   return cmd.result
 
 Val Malloc(Type *t, Val v) {
@@ -46,6 +46,7 @@ Val Malloc(Type *t, Val v) {
   MAKE_AND_RETURN(t, Op::Malloc);
 }
 
+Val Generate(Val v) { MAKE_AND_RETURN(Void, Op::Generate); }
 Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
 Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
@@ -58,7 +59,7 @@ Val Free(Val v) {
 Val Alloca(Type *t) {
   ASSERT(t != ::Void, "");
   Cmd cmd(Ptr(t), Op::Alloca, {});
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
@@ -117,7 +118,7 @@ Val Access(Val v1, Val v2) {
   // v1 = index, v2 = val
   ASSERT(v2.type->is<Pointer>(), "");
   ASSERT(ptr_cast<Pointer>(v2.type)->pointee->is<::Array>(), "");
-  auto* array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v2.type)->pointee);
+  auto *array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v2.type)->pointee);
   MAKE_AND_RETURN2(Ptr(array_type->data_type), Op::Access);
 }
 
@@ -139,7 +140,7 @@ Val Cast(Val v1, Val v2) {
 
 Val Phi(Type *t) {
   Cmd cmd(t, Op::Phi, {});
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
@@ -147,7 +148,7 @@ Val Call(Val fn, std::vector<Val> vals) {
   ASSERT(fn.type->is<Function>(), "");
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
-  IR::Func::Current->blocks_[IR::Block::Current.value].cmds_.push_back(cmd);
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
 }
 
@@ -190,6 +191,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Arrow: std::cerr << "arrow"; break;
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
+  case Op::Generate: std::cerr << "generate"; break;
   }
 
   if (args.empty()) {
@@ -229,6 +231,22 @@ void Func::dump() const {
     std::cerr << "\n block #" << i << std::endl;
     blocks_[i].dump(2);
   }
+}
+
+ExecContext::Frame::Frame(Func *fn, std::vector<Val> arguments)
+    : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
+      regs_(fn_->num_cmds_, IR::Val::None()), args_(std::move(arguments)),
+      rets_(1, IR::Val::None()) {}
+
+Cmd &Func::Command(RegIndex reg) {
+  auto iter = reg_map_.find(reg);
+  ASSERT(iter != reg_map_.end(), "");
+  auto &block_and_index = iter->second;
+  return blocks_[block_and_index.first.value].cmds_[block_and_index.second];
+}
+
+void Func::SetArgs(RegIndex reg, std::vector<IR::Val> args) {
+  Command(reg).args = std::move(args);
 }
 
 } // namespace IR

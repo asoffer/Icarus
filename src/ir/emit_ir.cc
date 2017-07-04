@@ -413,7 +413,8 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
     return Evaluate(operand.get());
-  case Language::Operator::Generate: NOT_YET;
+  case Language::Operator::Generate:
+    return IR::Generate(operand->EmitIR(errors));
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(errors));
   case Language::Operator::At: return PtrCallFix(operand->EmitIR(errors));
   default: {
