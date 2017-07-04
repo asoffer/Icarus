@@ -113,6 +113,7 @@ BlockIndex ExecContext::ExecuteBlock() {
                             : curr_block.jmp_.cond_data.false_block;
   } break;
   case Jump::Type::Ret: return BlockIndex{-1};
+  case Jump::Type::None: UNREACHABLE;
   }
   UNREACHABLE;
 }
@@ -400,7 +401,10 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
     } else if (resolved[0].type->is<Enum>()) {
       std::cerr
           << ptr_cast<Enum>(resolved[0].type)->members[resolved[0].as_enum];
+    } else if (resolved[0].type->is<Function>()) {
+      std::cerr << "{" << resolved[0].type->to_string() << "}";
     } else {
+      std::cerr << *resolved[0].type;
       NOT_YET;
     }
     return IR::Val::None();
@@ -540,7 +544,7 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
       curr_block.jmp_.type        = Jump::Type::Uncond;
       curr_block.jmp_.block_index = gen_index;
 
-      IR::Block::Current = gen_index;
+      Block::Current = gen_index;
 
       std::vector<Error> errors;
 
@@ -550,7 +554,14 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
       auto *code_block = resolved[0].as_code;
       code_block->stmts->assign_scope(code_block->scope_);
       code_block->stmts->EmitIR(&errors);
-      Jump::Unconditional(second_half_block_index);
+
+      if (Func::Current->blocks_[Block::Current.value].jmp_.type ==
+          Jump::Type::None) {
+        // Only want to set the end to jump unconditionally if it hasn't been
+        // set yet. For instance, if we have a return statement in the generated
+        // code, we don't want to overwrite it with a jump.
+        Jump::Unconditional(second_half_block_index);
+      }
       return Val::None();
     }
   } break;

@@ -222,6 +222,7 @@ void Jump::dump(size_t indent) const {
               << cond_data.false_block.value << std::endl;
     break;
   case Type::Ret: std::cerr << "return." << std::endl; break;
+  case Type::None: std::cerr << "none." << std::endl; break;
   }
 }
 

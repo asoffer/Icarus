@@ -87,9 +87,11 @@ std::string Val::to_string() const {
       return "<void>";
     } else if (type == Ptr(::Void)) {
       return "block #" + std::to_string(as_block.value);
+    } else if (type == ::Code) {
+      return "<...>";
     } else if (type->is<Function>()) {
       std::stringstream ss;
-      ss << "fn." << as_func;
+      ss << "fn." << as_func->name;
       return ss.str();
     } else if (type->is<Pointer>()) {
       return as_addr.to_string();

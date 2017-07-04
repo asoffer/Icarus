@@ -251,7 +251,7 @@ struct Jump {
 
   void dump(size_t indent) const;
 
-  Jump() : type(Type::Uncond) {}
+  Jump() {}
   ~Jump() {}
   struct CondData {
     Val cond;
@@ -259,7 +259,7 @@ struct Jump {
     BlockIndex false_block;
   };
 
-  enum class Type : u8 { Uncond, Cond, Ret } type;
+  enum class Type : u8 { None, Uncond, Cond, Ret } type = Type::None;
   union {
     BlockIndex block_index; // for unconditional jump
     CondData cond_data; // value and block indices to jump for conditional jump.
