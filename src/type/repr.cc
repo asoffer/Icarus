@@ -158,12 +158,15 @@ void Array::EmitRepr(IR::Val val) {
 }
 
 void Struct::EmitRepr(IR::Val val) {
+  CompleteDefinition();
   if (!repr_func) {
     repr_func       = new IR::Func(Func(this, Void));
     repr_func->name = "repr." + Mangle(this);
     implicit_functions.push_back(repr_func);
 
     CURRENT_FUNC(repr_func) {
+      IR::Block::Current = repr_func->entry();
+
       IR::Print(IR::Val::Char('{'));
       IR::Print(IR::Val::Char(' '));
       for (size_t i = 0; i < field_type.size(); ++i) {

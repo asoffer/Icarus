@@ -92,17 +92,20 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     if (fn != IR::Val::None()) {
       IR::Call(fn, {to_var, from_val});
     } else {
-      ((Struct *)lhs_type)->EmitDefaultAssign(to_var, from_val);
+      ptr_cast<Struct>(lhs_type)->EmitDefaultAssign(to_var, from_val);
     }
   }
 }
 
 void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
+  CompleteDefinition();
   if (!assign_func) {
-    assign_func       = new IR::Func(Func({Ptr(this), Ptr(this)}, Void));
+    assign_func       = new IR::Func(Func({this, Ptr(this)}, Void));
     assign_func->name = "assign." + Mangle(this);
 
     CURRENT_FUNC(assign_func) {
+      IR::Block::Current = assign_func->entry();
+
       auto var = IR::Val::Arg(Ptr(this), 0);
       auto val = IR::Val::Arg(Ptr(this), 1);
 

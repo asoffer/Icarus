@@ -354,8 +354,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Extend: return Val::Uint(static_cast<u64>(resolved[0].as_char));
   case Op::Trunc: return Val::Char(static_cast<char>(resolved[0].as_uint));
   case Op::Call: {
+    // call_stack.top().fn_->dump();
     auto fn = resolved.back().as_func;
     resolved.pop_back();
+    // std::cerr << fn << fn->name << "  " << *fn->type << "{ ";
+    // for (auto a : resolved) {
+    //   std::cerr << a.to_string() << ": " << *a.type << ", ";
+    // }
+    // std::cerr << "}\n";
     auto results = fn->Execute(std::move(resolved), this);
 
     // TODO multiple returns?
@@ -461,10 +467,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
   case Op::Access:
     if (resolved[1].as_addr.kind == Addr::Kind::Stack) {
+      auto data_type = ptr_cast<Pointer>(cmd.result.type)->pointee;
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolved[0].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
+          resolved[0].as_uint, data_type);
       return Val::StackAddr(resolved[1].as_addr.as_stack + bytes_fwd,
-                            cmd.result.type);
+                            data_type);
     } else {
       NOT_YET;
     }
@@ -473,7 +480,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::StackAddr(resolved[0].as_addr.as_stack + bytes_fwd,
-                            cmd.result.type);
+                            ptr_cast<Pointer>(cmd.result.type)->pointee);
     } else {
       NOT_YET;
     }
@@ -492,7 +499,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
     if (resolved[0].as_addr.kind == Addr::Kind::Stack) {
       return Val::StackAddr(resolved[0].as_addr.as_stack + offset,
-                            cmd.result.type);
+                            ptr_cast<Pointer>(cmd.result.type)->pointee);
     }
 
   } break;
@@ -505,6 +512,7 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments,
                                ExecContext *ctx) const {
   ctx->call_stack.push(
       ExecContext::ExecLocation{this, this->entry(), this->entry()});
+
   ctx->call_stack.top().args_ = std::move(arguments);
   // Type *output_type = static_cast<Function *>(type)->output;
   // tuples for output returns?
