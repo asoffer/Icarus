@@ -367,13 +367,12 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
       UNREACHABLE;
     }
   case Op::SetReturn: {
-    call_stack.top().rets_[resolved[0].as_uint] = resolved[1];
+    call_stack.top().rets_ AT(resolved[0].as_uint) = resolved[1];
     return IR::Val::None();
   }
   case Op::Extend: return Val::Uint(static_cast<u64>(resolved[0].as_char));
   case Op::Trunc: return Val::Char(static_cast<char>(resolved[0].as_uint));
   case Op::Call: {
-    // call_stack.top().fn_->dump();
     auto fn = resolved.back().as_func;
     resolved.pop_back();
     auto results = fn->Execute(std::move(resolved), this);
@@ -576,9 +575,8 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments,
                                ExecContext *ctx) {
+
   ctx->call_stack.emplace(this, std::move(arguments));
-  // Type *output_type = static_cast<Function *>(type)->output;
-  // tuples for output returns?
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_none()) {

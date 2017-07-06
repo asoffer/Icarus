@@ -10,6 +10,7 @@
 #include "../base/types.h"
 
 struct Type;
+struct Function;
 struct Enum;
 struct Pointer;
 
@@ -280,7 +281,7 @@ struct Block {
 
 struct Func {
   static Func *Current;
-  Func(::Type *t) : type(t), blocks_(2, Block(this)) {}
+  Func(::Function *fn_type) : type(fn_type), blocks_(2, Block(this)) {}
 
   void dump() const;
 
@@ -310,7 +311,7 @@ struct Func {
 
   std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx);
 
-  Type *type = nullptr;
+  ::Function *type = nullptr;
   i32 num_cmds_ = 0;
   std::string name;
   std::vector<Block> blocks_;

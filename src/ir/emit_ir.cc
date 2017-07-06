@@ -386,9 +386,25 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     return IR::Neg(operand->EmitIR(errors));
   } break;
   case Language::Operator::Return: {
-    ForEachExpr(operand.get(), [errors](size_t index, AST::Expression *expr) {
-      IR::SetReturn(index, expr->EmitIR(errors));
-    });
+    if (operand->is<AST::CommaList>()) {
+      bool all_types = true;
+      std::vector<IR::Val> vals;
+      for (const auto &expr : ptr_cast<AST::CommaList>(operand.get())->exprs) {
+        vals.push_back(expr->EmitIR(errors));
+        if (expr->type != Type_) { all_types = false; }
+      }
+
+      if (all_types) {
+        std::vector<Type*> types;
+        for (const auto &val : vals) { types.push_back(val.as_type); }
+        IR::SetReturn(0, IR::Val::Type(Tup(types)));
+      } else {
+        size_t i = 0;
+        for (auto &val : vals) { IR::SetReturn(i++, std::move(val)); }
+      }
+    } else {
+      IR::SetReturn(0, operand->EmitIR(errors));
+    }
 
     ASSERT(scope_->is<ExecScope>(), "");
     // ptr_cast<BlockScope>(scope_)->MakeReturn(operand->EmitIR(errors));
@@ -610,7 +626,7 @@ IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
   statements->verify_types(errors);
   if (!errors->empty()) { return IR::Val::None(); }
 
-  CURRENT_FUNC(ir_func = new IR::Func(type)) {
+  CURRENT_FUNC(ir_func = new IR::Func(ptr_cast<Function>(type))) {
     IR::Block::Current = ir_func->entry();
 
     for (size_t i = 0; i < inputs.size(); ++i) {
