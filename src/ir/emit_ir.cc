@@ -401,7 +401,11 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   }
   case Language::Operator::Print: {
     ForEachExpr(operand.get(), [&errors](size_t, AST::Expression *expr) {
-      expr->type->EmitRepr(expr->EmitIR(errors));
+      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
+        IR::Print(expr->EmitIR(errors));
+      } else {
+        expr->type->EmitRepr(expr->EmitIR(errors));
+      }
     });
 
     return IR::Val::None();
@@ -454,9 +458,21 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
-    auto lhs_lval = lhs->EmitLVal(errors);
-    auto rhs_ir   = rhs->EmitIR(errors);
-    return IR::Store(rhs_ir, lhs_lval);
+    std::vector<IR::Val> rhs_vals;
+    ForEachExpr(rhs.get(), [errors, &rhs_vals](size_t, AST::Expression *expr) {
+      rhs_vals.push_back(expr->EmitIR(errors));
+    });
+
+    std::vector<IR::Val> lhs_lvals;
+    ForEachExpr(lhs.get(), [errors, &lhs_lvals](size_t, AST::Expression *expr) {
+      lhs_lvals.push_back(expr->EmitLVal(errors));
+    });
+
+    ASSERT(lhs_lvals.size() == rhs_vals.size(), "");
+    for (size_t i = 0;i < lhs_lvals.size(); ++i) {
+      IR::Store(rhs_vals[i], lhs_lvals[i]);
+    }
+    return IR::Val::None();
   } break;
   case Language::Operator::OrEq: {
     auto land_block = IR::Func::Current->AddBlock();
@@ -585,6 +601,7 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 }
 
 IR::Val AST::CommaList::EmitIR(std::vector<Error> *) { UNREACHABLE; }
+IR::Val AST::CommaList::EmitLVal(std::vector<Error> *) { NOT_YET; }
 
 IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;

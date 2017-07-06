@@ -312,6 +312,7 @@ struct CommaList: public Expression {
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
+  virtual IR::Val EmitLVal(std::vector<Error> *);
 
   std::vector<std::unique_ptr<Expression>> exprs;
 };
