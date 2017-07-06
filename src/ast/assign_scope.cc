@@ -92,6 +92,11 @@ void ChainOp::assign_scope(Scope *scope) {
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
+void CommaList::assign_scope(Scope *scope) {
+  scope_ = scope;
+  for (auto &expr : exprs) { expr->assign_scope(scope); }
+}
+
 void Case::assign_scope(Scope *scope) {
   scope_ = scope;
   for (auto &kv : key_vals) {

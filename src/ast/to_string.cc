@@ -107,6 +107,12 @@ std::string ChainOp::to_string(size_t n) const {
   return output;
 }
 
+std::string CommaList::to_string(size_t n) const {
+  std::string output = tabs(n) + "<CommaList: " + TYPE_OR("") + ">\n";
+  for (auto& expr : exprs) { output += expr->to_string(n + 1); }
+  return output;
+}
+
 std::string Terminal::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Terminal " << TYPE_OR("") << ": ";

@@ -91,7 +91,7 @@ BuildParametricStructLiteral(std::vector<std::unique_ptr<Node>> nodes) {
   if (nodes[1]->is<Declaration>()) {
     params.push_back(base::move<Declaration>(nodes[1]).release());
 
-  } else if (nodes[1]->is_comma_list()) {
+  } else if (nodes[1]->is<CommaList>()) {
     for (auto &expr : ptr_cast<ChainOp>(nodes[1].get())->exprs) {
       if (expr->is<Declaration>()) {
         params.push_back(base::move<Declaration>(expr).release());
@@ -204,7 +204,7 @@ std::unique_ptr<Node> For::Build(std::vector<std::unique_ptr<Node>> nodes) {
   for_stmt->statements = base::move<Statements>(nodes[2]);
 
   auto iter = ptr_cast<Expression>(nodes[1].get());
-  if (iter->is_comma_list()) {
+  if (iter->is<CommaList>()) {
     auto iter_list = ptr_cast<ChainOp>(iter);
     for_stmt->iterators.reserve(iter_list->exprs.size());
 
@@ -298,9 +298,8 @@ Unop::BuildLeft(std::vector<std::unique_ptr<Node>> nodes) {
 //
 // Internal checks: None
 std::unique_ptr<Node> ChainOp::Build(std::vector<std::unique_ptr<Node>> nodes) {
-  // We do not take ownership of op_node. Thus, we don't set nodes[1] to null.
   auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
-  auto op_prec = Language::precedence(op_node->op);
+  auto op_prec  = Language::precedence(op_node->op);
   std::unique_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
@@ -322,6 +321,24 @@ std::unique_ptr<Node> ChainOp::Build(std::vector<std::unique_ptr<Node>> nodes) {
   chain->exprs.push_back(base::move<Expression>(nodes[2]));
 
   return chain;
+}
+
+std::unique_ptr<Node>
+CommaList::Build(std::vector<std::unique_ptr<Node>> nodes) {
+  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
+  std::unique_ptr<CommaList> comma_list;
+
+  if (nodes[0]->is<CommaList>()) {
+    comma_list = base::move<CommaList>(nodes[0]);
+  } else {
+    comma_list      = std::make_unique<CommaList>();
+    comma_list->loc = op_node->loc;
+    comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
+  }
+
+  comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
+
+  return comma_list;
 }
 
 // Input guarantees
@@ -421,7 +438,7 @@ ArrayLiteral::build(std::vector<std::unique_ptr<Node>> nodes) {
   auto array_lit = std::make_unique<ArrayLiteral>();
   array_lit->loc = nodes[0]->loc;
 
-  if (nodes[1]->is_comma_list()) {
+  if (nodes[1]->is<CommaList>()) {
     array_lit->elems = std::move(ptr_cast<ChainOp>(nodes[1].get())->exprs);
   } else {
     array_lit->elems.push_back(base::move<Expression>(nodes[1]));
@@ -432,7 +449,7 @@ ArrayLiteral::build(std::vector<std::unique_ptr<Node>> nodes) {
 
 std::unique_ptr<Node>
 ArrayType::build(std::vector<std::unique_ptr<Node>> nodes) {
-  if (nodes[1]->is_comma_list()) {
+  if (nodes[1]->is<CommaList>()) {
     auto *length_chain = ptr_cast<ChainOp>(nodes[1].get());
     int i              = static_cast<int>(length_chain->exprs.size() - 1);
     auto prev          = base::move<Expression>(nodes[3]);
@@ -517,7 +534,7 @@ FunctionLiteral::build(std::vector<std::unique_ptr<Node>> nodes) {
     fn_lit->inputs.push_back(base::move<Declaration>(binop->lhs));
     fn_lit->inputs.back()->arg_val = fn_lit.get();
 
-  } else if (binop->lhs->is_comma_list()) {
+  } else if (binop->lhs->is<CommaList>()) {
     auto decls = ptr_cast<ChainOp>(binop->lhs.get());
     fn_lit->inputs.reserve(decls->exprs.size());
 
@@ -675,7 +692,9 @@ BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>> nodes) {
     auto iter = chain_ops.find(tk);
     if (iter != chain_ops.end()) {
       ptr_cast<AST::TokenNode>(nodes[1].get())->op = iter->second;
-      return AST::ChainOp::Build(std::move(nodes));
+      return (iter->second == Language::Operator::Comma)
+                 ? AST::CommaList::Build(std::move(nodes))
+                 : AST::ChainOp::Build(std::move(nodes));
     }
   }
 

@@ -30,7 +30,7 @@ namespace AST {
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types(std::vector<Error> *) ENDING
 
-#define EXPR_FNS(name, checkname)                                              \
+#define EXPR_FNS(name)                                                         \
   virtual ~name(){};                                                           \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
@@ -46,22 +46,21 @@ struct Node : public base::Cast<Node> {
   virtual IR::Val EmitIR(std::vector<Error> *) { NOT_YET; }
 
   virtual bool is_hole() const { return false; }
-  virtual bool is_comma_list() const { return false; }
 
-  Node(Cursor cursor = Cursor()) : scope_(nullptr), loc(cursor) {}
+  Node(Cursor cursor = Cursor()) : loc(cursor) {}
   virtual ~Node() {}
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
     return os << node.to_string(0);
   }
 
-  Scope *scope_;
+  Scope *scope_ = nullptr;
   Cursor loc;
 };
 
 struct Expression : public Node {
   Expression();
-  EXPR_FNS(Expression, expression);
+  EXPR_FNS(Expression);
   static std::unique_ptr<Node>
   AddHashtag(std::vector<std::unique_ptr<AST::Node>> nodes);
 
@@ -131,7 +130,7 @@ struct TokenNode : public Node {
 #define OVERRIDE override
 
 struct Terminal : public Expression {
-  EXPR_FNS(Terminal, terminal);
+  EXPR_FNS(Terminal);
   Terminal() = default;
   Terminal(const Cursor &cursor, Language::Terminal term_type, Type *type,
            IR::Val val);
@@ -147,7 +146,7 @@ struct Terminal : public Expression {
 
 struct Identifier : public Terminal {
   Identifier() = delete;
-  EXPR_FNS(Identifier, identifier);
+  EXPR_FNS(Identifier);
   Identifier(const Cursor &cursor, const std::string &token_string);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
   virtual IR::Val EmitLVal(std::vector<Error> *errors);
@@ -157,7 +156,7 @@ struct Identifier : public Terminal {
 };
 
 struct Binop : public Expression {
-  EXPR_FNS(Binop, binop);
+  EXPR_FNS(Binop);
   static std::unique_ptr<Node>
   BuildElseRocket(std::vector<std::unique_ptr<AST::Node>> nodes);
   static std::unique_ptr<Node>
@@ -180,7 +179,7 @@ struct Binop : public Expression {
 };
 
 struct Declaration : public Expression {
-  EXPR_FNS(Declaration, declaration);
+  EXPR_FNS(Declaration);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
   IR::Val EmitIR(std::vector<Error> *errors) override;
@@ -205,7 +204,7 @@ struct Declaration : public Expression {
 };
 
 struct Generic : public Declaration {
-  EXPR_FNS(Generic, generic);
+  EXPR_FNS(Generic);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
 
@@ -213,7 +212,7 @@ struct Generic : public Declaration {
 };
 
 struct InDecl : public Declaration {
-  EXPR_FNS(InDecl, in_decl);
+  EXPR_FNS(InDecl);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
 
@@ -256,7 +255,7 @@ struct Statements : public Node {
 };
 
 struct CodeBlock : public Expression {
-  EXPR_FNS(CodeBlock, code_block);
+  EXPR_FNS(CodeBlock);
   std::unique_ptr<Statements> stmts;
   std::string error_message; // To be used if stmts == nullptr
 
@@ -272,7 +271,7 @@ struct CodeBlock : public Expression {
 };
 
 struct Unop : public Expression {
-  EXPR_FNS(Unop, unop);
+  EXPR_FNS(Unop);
   static std::unique_ptr<Node>
   BuildLeft(std::vector<std::unique_ptr<AST::Node>> nodes);
   static std::unique_ptr<Node>
@@ -286,7 +285,7 @@ struct Unop : public Expression {
 };
 
 struct Access : public Expression {
-  EXPR_FNS(Access, access);
+  EXPR_FNS(Access);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
@@ -297,21 +296,29 @@ struct Access : public Expression {
 };
 
 struct ChainOp : public Expression {
-  EXPR_FNS(ChainOp, chain_op);
+  EXPR_FNS(ChainOp);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
-
-  virtual bool is_comma_list() const override {
-    return ops.front() == Language::Operator::Comma;
-  }
 
   std::vector<Language::Operator> ops;
   std::vector<std::unique_ptr<Expression>> exprs;
 };
 
+struct CommaList: public Expression {
+  CommaList();
+  EXPR_FNS(CommaList);
+
+  static std::unique_ptr<Node>
+  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  virtual IR::Val EmitIR(std::vector<Error> *errors);
+
+  std::vector<std::unique_ptr<Expression>> exprs;
+};
+
+
 struct ArrayLiteral : public Expression {
-  EXPR_FNS(ArrayLiteral, array_literal);
+  EXPR_FNS(ArrayLiteral);
   static std::unique_ptr<Node>
   build(std::vector<std::unique_ptr<AST::Node>> nodes);
   static std::unique_ptr<Node>
@@ -323,7 +330,7 @@ struct ArrayLiteral : public Expression {
 };
 
 struct ArrayType : public Expression {
-  EXPR_FNS(ArrayType, array_type);
+  EXPR_FNS(ArrayType);
   static std::unique_ptr<Node>
   build(std::vector<std::unique_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
@@ -333,7 +340,7 @@ struct ArrayType : public Expression {
 };
 
 struct Case : public Expression {
-  EXPR_FNS(Case, case);
+  EXPR_FNS(Case);
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(std::vector<Error> *errors);
@@ -345,7 +352,7 @@ struct Case : public Expression {
 
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
-  EXPR_FNS(FunctionLiteral, function_literal);
+  EXPR_FNS(FunctionLiteral);
   static std::unique_ptr<Node>
   build(std::vector<std::unique_ptr<AST::Node>> nodes);
   static std::unique_ptr<Node>
@@ -404,7 +411,7 @@ struct Jump : public Node {
 };
 
 struct ScopeNode : public Expression {
-  EXPR_FNS(ScopeNode, scope_node);
+  EXPR_FNS(ScopeNode);
 
   static std::unique_ptr<Node>
   Build(std::vector<std::unique_ptr<AST::Node>> nodes);
@@ -425,7 +432,7 @@ struct ScopeNode : public Expression {
 
 struct ScopeLiteral : public Expression {
   ScopeLiteral() = delete;
-  EXPR_FNS(ScopeLiteral, scope);
+  EXPR_FNS(ScopeLiteral);
 
   IR::Val EmitIR(std::vector<Error> *errors) override;
 

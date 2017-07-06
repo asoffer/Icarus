@@ -38,6 +38,10 @@ Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;
 }
 
+CommaList::CommaList() {
+  precedence = Language::precedence(Language::Operator::Comma);
+}
+
 Identifier::Identifier(const Cursor &new_loc, const std::string &token_string) {
   token      = token_string;
   type       = nullptr;

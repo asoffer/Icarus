@@ -57,6 +57,11 @@ void ChainOp::lrvalue_check() {
   for (auto& expr : exprs) { expr->lrvalue_check(); }
 }
 
+void CommaList::lrvalue_check() {
+  lvalue = Assign::RVal;
+  for (auto& expr : exprs) { expr->lrvalue_check(); }
+}
+
 void FunctionLiteral::lrvalue_check() {
   lvalue = Assign::RVal;
   return_type_expr->lrvalue_check();

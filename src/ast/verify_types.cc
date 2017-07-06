@@ -693,26 +693,6 @@ void ChainOp::verify_types(std::vector<Error> *errors) {
     return;
   }
 
-  if (is_comma_list()) {
-    // If the tuple consists of a list of types, it should be interpretted as a
-    // type itself rather than a tuple. This is a limitation in your support of
-    // full tuples.
-    bool all_types = true;
-
-    std::vector<Type *> type_vec(exprs.size(), nullptr);
-
-    size_t position = 0;
-    for (const auto &eptr : exprs) {
-      type_vec[position] = eptr->type;
-      all_types &= (eptr->type == Type_);
-      ++position;
-    }
-    // TODO got to have a better way to make tuple types i think
-    type = all_types ? Type_ : Tup(type_vec);
-
-    return;
-  }
-
   // All other chain ops need to take arguments of the same type and the
   // type is that one type
   std::unordered_set<Type *> expr_types;
@@ -747,6 +727,35 @@ void ChainOp::verify_types(std::vector<Error> *errors) {
     // ErrorLog::ChainTypeMismatch(loc, expr_types);
     type = Err;
   }
+}
+
+void CommaList::verify_types(std::vector<Error> *errors) {
+  STARTING_CHECK;
+  bool found_err = false;
+  for (auto &expr : exprs) {
+    expr->verify_types(errors);
+    if (expr->type == Err) { found_err = true; }
+  }
+  if (found_err) {
+    type = Err;
+    return;
+  }
+
+  // TODO this is probably not a good way to do it.  If the tuple consists of a
+  // list of types, it should be interpretted as a
+  // type itself rather than a tuple. This is a limitation in your support of
+  // full tuples.
+  bool all_types = true;
+  std::vector<Type *> type_vec(exprs.size(), nullptr);
+
+  size_t position = 0;
+  for (const auto &expr : exprs) {
+    type_vec[position] = expr->type;
+    all_types &= (expr->type == Type_);
+    ++position;
+  }
+  // TODO got to have a better way to make tuple types i think
+  type = all_types ? Type_ : Tup(type_vec);
 }
 
 void Generic::verify_types(std::vector<Error> *errors) {

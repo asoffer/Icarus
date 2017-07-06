@@ -14,6 +14,19 @@ extern IR::Val PtrCallFix(IR::Val v);
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 
+// If the expression is a CommaList, apply the function to each expr. Otherwise
+// call it on the expression itself.
+static void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn) {
+  if (expr->is<AST::CommaList>()) {
+    const auto &exprs = ptr_cast<AST::CommaList>(expr)->exprs;
+    for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
+  } else {
+    fn(0, expr);
+  }
+}
+
+
 static IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
     auto fn = new IR::Func(Func(Uint, Char));
@@ -373,14 +386,9 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     return IR::Neg(operand->EmitIR(errors));
   } break;
   case Language::Operator::Return: {
-    if (operand->is_comma_list()) {
-      const auto &exprs = ptr_cast<AST::ChainOp>(operand.get())->exprs;
-      for (size_t i = 0; i < exprs.size(); ++i) {
-        IR::SetReturn(i, exprs[i]->EmitIR(errors));
-      }
-    } else {
-      IR::SetReturn(0, operand->EmitIR(errors));
-    }
+    ForEachExpr(operand.get(), [errors](size_t index, AST::Expression *expr) {
+      IR::SetReturn(index, expr->EmitIR(errors));
+    });
 
     ASSERT(scope_->is<ExecScope>(), "");
     // ptr_cast<BlockScope>(scope_)->MakeReturn(operand->EmitIR(errors));
@@ -392,21 +400,10 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
     return IR::Val::None();
   }
   case Language::Operator::Print: {
-    auto print = +[](AST::Expression *expr, std::vector<Error> *errors) {
-      if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
-        IR::Print(expr->EmitIR(errors));
-      } else {
-        expr->type->EmitRepr(expr->EmitIR(errors));
-      }
-    };
+    ForEachExpr(operand.get(), [&errors](size_t, AST::Expression *expr) {
+      expr->type->EmitRepr(expr->EmitIR(errors));
+    });
 
-    if (operand->is_comma_list()) {
-      for (auto &expr : ptr_cast<AST::ChainOp>(operand.get())->exprs) {
-        print(expr.get(), errors);
-      }
-    } else {
-      print(operand.get(), errors);
-    }
     return IR::Val::None();
   } break;
   case Language::Operator::And: return operand->EmitLVal(errors);
@@ -441,7 +438,7 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
     CASE(Arrow);
 #undef CASE
   case Language::Operator::Cast: {
-    ASSERT(!rhs->is_comma_list(), "");
+    ASSERT(!rhs->is<AST::CommaList>(), "");
     auto lhs_ir = lhs->EmitIR(errors);
     auto rhs_ir = rhs->EmitIR(errors);
     return IR::Cast(lhs_ir, rhs_ir);
@@ -449,16 +446,10 @@ IR::Val AST::Binop::EmitIR(std::vector<Error> *errors) {
   case Language::Operator::Call: {
     auto lhs_ir = lhs->EmitIR(errors);
     std::vector<IR::Val> args;
-    if (!rhs) {
-      ;
-    } else if (rhs->is_comma_list()) {
-      auto rhs_comma_list = ptr_cast<ChainOp>(rhs.get());
-      args.reserve(rhs_comma_list->exprs.size());
-      for (auto& expr : rhs_comma_list->exprs) {
+    if (rhs != nullptr) {
+      ForEachExpr(rhs.get(), [&args, errors](size_t, AST::Expression *expr) {
         args.push_back(expr->EmitIR(errors));
-      }
-    } else {
-      args.push_back(rhs->EmitIR(errors));
+      });
     }
     return IR::Call(lhs_ir, std::move(args));
   } break;
@@ -536,7 +527,6 @@ IR::Val AST::ArrayType::EmitIR(std::vector<Error> *errors) {
 
 IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
-  ASSERT(!is_comma_list(), "");
   if (ops[0] == Language::Operator::Xor) {
     auto val = IR::Val::Bool(false);
     for (const auto &expr : exprs) {
@@ -593,6 +583,8 @@ IR::Val AST::ChainOp::EmitIR(std::vector<Error> *errors) {
 
   NOT_YET;
 }
+
+IR::Val AST::CommaList::EmitIR(std::vector<Error> *) { UNREACHABLE; }
 
 IR::Val AST::FunctionLiteral::EmitIR(std::vector<Error> *errors) {
   VERIFY_OR_EXIT;
