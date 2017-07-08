@@ -11,13 +11,13 @@
 #include "../type/type.h"
 
 std::vector<IR::Val> global_vals;
+extern std::vector<Error> errors;
 
 void ReplEval(AST::Expression *expr) {
   auto fn = std::make_unique<IR::Func>(Func(Void, Void));
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    std::vector<Error> errors;
-    auto expr_val = expr->EmitIR(&errors);
+    auto expr_val = expr->EmitIR();
     if (!errors.empty()) {
       std::cerr << "There were " << errors.size() << " errors.";
       return;
@@ -65,8 +65,7 @@ IR::Val Evaluate(AST::Expression *expr) {
     }
   }
 
-  std::vector<Error> errors;
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR(&errors).as_func; }
+  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR().as_func; }
 
   IR::ExecContext ctx;
   auto results = fn->Execute({}, &ctx);

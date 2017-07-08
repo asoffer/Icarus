@@ -50,8 +50,7 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       // declaration, so if the type isn't specified, we need to actually verify
       // the type of it's declaration.
       ASSERT(id_ptr->decl, "");
-      std::vector<Error> errors;
-      id_ptr->decl->verify_types(&errors);
+      id_ptr->decl->verify_types();
       ASSERT(id_ptr->type, "");
     }
 
@@ -79,9 +78,7 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
       auto old_func  = IR::Func::Current;
       auto old_block = IR::Block::Current;
 
-      // TODO errors passed through?
-      std::vector<Error> errors;
-      decl->addr = decl->init_val->EmitIR(&errors);
+      decl->addr = decl->init_val->EmitIR();
       decl->addr.as_func->name =
           Mangle(fn_type, decl->identifier.get(), scope_ptr);
 
@@ -102,8 +99,7 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
        scope_ptr      = scope_ptr->parent) {
     for (auto decl : scope_ptr->decls_) {
       if (decl->identifier->token != id) { continue; }
-      std::vector<Error> errors;
-      decl->verify_types(&errors);
+      decl->verify_types();
       if (decl->type == Err) { continue; }
       matching_decls.push_back(decl);
     }

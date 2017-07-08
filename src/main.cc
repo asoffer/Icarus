@@ -50,8 +50,7 @@ int GenerateCode() {
     for (auto& stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
       auto *decl = ptr_cast<AST::Declaration>(stmt.get());
-      std::vector<Error> errors;
-      decl->EmitIR(&errors);
+      decl->EmitIR();
     }
   }
 /*
@@ -126,8 +125,7 @@ int RunRepl() {
       if (stmt->is<AST::Declaration>()) {
         auto* decl = ptr_cast<AST::Declaration>(stmt.get());
         decl->assign_scope(Scope::Global);
-        std::vector<Error> errors;
-        decl->EmitIR(&errors);
+        decl->EmitIR();
 
       } else if (stmt->is<AST::Expression>()) {
         auto* expr = ptr_cast<AST::Expression>(stmt.get());
