@@ -46,7 +46,6 @@ Val Malloc(Type *t, Val v) {
   MAKE_AND_RETURN(t, Op::Malloc);
 }
 
-Val Generate(Val v) { MAKE_AND_RETURN(Void, Op::Generate); }
 Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
 Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
@@ -191,7 +190,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Arrow: std::cerr << "arrow"; break;
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
-  case Op::Generate: std::cerr << "generate"; break;
   }
 
   if (args.empty()) {

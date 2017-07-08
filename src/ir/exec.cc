@@ -80,28 +80,20 @@ namespace IR {
 ExecContext::ExecContext() : stack_(50) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
-  for (size_t i = 0; i < call_stack.top()
-                             .fn_->blocks_[call_stack.top().current_.value]
-                             .cmds_.size();
-       ++i) {
-    // Must save cmd result type and kind beforehand because vector could move
-    // and references could become invalidated.
-    Val cmd_result = call_stack.top()
-                         .fn_->blocks_[call_stack.top().current_.value]
-                         .cmds_[i]
-                         .result;
-
-    auto result = ExecuteCmd(i);
-    if (cmd_result.kind == Val::Kind::Reg && cmd_result.type != Void) {
-      ASSERT(result.type == cmd_result.type,
-             "Type mismatch:\n  was: " + result.type->to_string() +
-                 "\n  expected: " + cmd_result.type->to_string());
-      this->reg(cmd_result.as_reg) = result;
-    }
-  }
-
   const auto &curr_block =
       call_stack.top().fn_->blocks_[call_stack.top().current_.value];
+  for (const auto &cmd : curr_block.cmds_) {
+    auto result = ExecuteCmd(cmd);
+
+    if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
+      ASSERT(result.type != nullptr, "");
+      ASSERT(result.type != nullptr, "");
+      ASSERT(result.type == cmd.result.type,"");
+             //"Type mismatch:\n  was: " + result.type->to_string() +
+              //   "\n  expected: " + cmd.result.type->to_string());
+      this->reg(cmd.result.as_reg) = result;
+    }
+  }
 
   switch (curr_block.jmp_.type) {
   case Jump::Type::Uncond: return curr_block.jmp_.block_index;
@@ -149,11 +141,7 @@ void ExecContext::Resolve(Val *v) const {
   }
 }
 
-Val ExecContext::ExecuteCmd(size_t cmd_index) {
-  const Cmd &cmd = call_stack.top()
-                       .fn_->blocks_[call_stack.top().current_.value]
-                       .cmds_[cmd_index];
-
+Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   std::vector<Val> resolved = cmd.args;
   for (auto &r : resolved) { Resolve(&r); }
 
@@ -523,45 +511,6 @@ Val ExecContext::ExecuteCmd(size_t cmd_index) {
                             ptr_cast<Pointer>(cmd.result.type)->pointee);
     } else {
       NOT_YET;
-    }
-  } break;
-  case Op::Generate: {
-    // TODO there are a lot of tricky parts here: Alloca calls
-    CURRENT_FUNC(call_stack.top().fn_) {
-      Block::Current = call_stack.top().current_;
-      auto second_half_block_index = Func::Current->AddBlock();
-      auto gen_index               = Func::Current->AddBlock();
-      auto &curr_block = Func::Current->blocks_[Block::Current.value];
-      auto &second_half_block =
-          Func::Current->blocks_[second_half_block_index.value];
-
-      for(size_t i = cmd_index + 1; i < curr_block.cmds_.size(); ++i) {
-        second_half_block.cmds_.push_back(std::move(curr_block.cmds_[i]));
-      }
-      curr_block.cmds_.resize(cmd_index);
-      second_half_block.jmp_      = curr_block.jmp_;
-      curr_block.jmp_.type        = Jump::Type::Uncond;
-      curr_block.jmp_.block_index = gen_index;
-
-      Block::Current = gen_index;
-
-      std::vector<Error> errors;
-
-      // TODO really we need to copy these statements so that if we copy this
-      // block more than once the type assignments and scope assignments work
-      // correctly.
-      auto *code_block = resolved[0].as_code;
-      code_block->stmts->assign_scope(code_block->scope_);
-      code_block->stmts->EmitIR(&errors);
-
-      if (Func::Current->blocks_[Block::Current.value].jmp_.type ==
-          Jump::Type::None) {
-        // Only want to set the end to jump unconditionally if it hasn't been
-        // set yet. For instance, if we have a return statement in the generated
-        // code, we don't want to overwrite it with a jump.
-        Jump::Unconditional(second_half_block_index);
-      }
-      return Val::None();
     }
   } break;
   case Op::Nop: return Val::None();

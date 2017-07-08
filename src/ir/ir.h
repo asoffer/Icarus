@@ -126,7 +126,6 @@ enum class Op : char {
   Nop, SetReturn,
   Arrow, Array, Ptr,
   Alloca,
-  Generate,
 };
 
 struct Block;
@@ -186,7 +185,7 @@ struct ExecContext {
   std::stack<Frame> call_stack;
 
   BlockIndex ExecuteBlock();
-  Val ExecuteCmd(size_t cmd_index);
+  Val ExecuteCmd(const Cmd& cmd);
   void Resolve(Val *v) const;
 
   Val reg(RegIndex r) const { return call_stack.top().regs_[r.index]; }
@@ -242,7 +241,6 @@ Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
-Val Generate(Val val);
 
 struct Jump {
   static void Unconditional(BlockIndex index);

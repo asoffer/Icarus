@@ -403,7 +403,9 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
         for (auto &val : vals) { IR::SetReturn(i++, std::move(val)); }
       }
     } else {
-      IR::SetReturn(0, operand->EmitIR(errors));
+      auto val = operand->EmitIR(errors);
+      ASSERT(errors->empty(), "");
+      IR::SetReturn(0, val);
     }
 
     ASSERT(scope_->is<ExecScope>(), "");
@@ -430,8 +432,15 @@ IR::Val AST::Unop::EmitIR(std::vector<Error> *errors) {
   case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
     return Evaluate(operand.get());
-  case Language::Operator::Generate:
-    return IR::Generate(operand->EmitIR(errors));
+  case Language::Operator::Generate: {
+    auto val= Evaluate(operand.get());
+    ASSERT(val.type == Code, "");
+    for (const auto &stmt : val.as_code->stmts->statements) {
+      stmt->assign_scope(scope_);
+      stmt->EmitIR(errors);
+    }
+    return IR::Val::None();
+  } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(errors));
   case Language::Operator::At: return PtrCallFix(operand->EmitIR(errors));
   default: {
