@@ -28,7 +28,7 @@ extern std::vector<AST::Statements *>
 ParseAllFiles(std::queue<std::string> file_names);
 extern Timer timer;
 
-std::unique_ptr<AST::Statements> global_statements;
+base::owned_ptr<AST::Statements> global_statements;
 
 namespace debug {
 extern bool timer;

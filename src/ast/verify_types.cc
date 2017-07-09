@@ -1240,12 +1240,12 @@ void ScopeNode::verify_types() {
 void ScopeLiteral::verify_types() {
   STARTING_CHECK;
   bool cannot_proceed_due_to_errors = false;
-  if (enter_fn == nullptr) {
+  if (!enter_fn) {
     cannot_proceed_due_to_errors = true;
     errors.emplace_back(Error::Code::Other);
   }
 
-  if (exit_fn == nullptr) {
+  if (!exit_fn) {
     cannot_proceed_due_to_errors = true;
     errors.emplace_back(Error::Code::Other);
   }

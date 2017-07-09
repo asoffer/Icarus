@@ -30,17 +30,6 @@ template <typename Base> struct Cast {
 template <typename T> std::unique_ptr<T> wrap_unique(T *ptr) {
   return std::unique_ptr<T>(ptr);
 }
-
-template <typename To, typename From>
-std::unique_ptr<To> move(std::unique_ptr<From> &&ptr) {
-  return wrap_unique(ptr_cast<To>(ptr.release()));
-}
-
-template <typename To, typename From>
-std::unique_ptr<To> move(std::unique_ptr<From> &ptr) {
-  return wrap_unique(ptr_cast<To>(ptr.release()));
-}
-
 } // namespace base
 
 #endif // ICARUS_BASE_UTIL_H

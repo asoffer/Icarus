@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "../base/debug.h"
+#include "../base/owned_ptr.h"
 #include "../base/util.h"
 #include "../cursor.h"
 #include "../error_log.h"
@@ -61,8 +62,8 @@ struct Node : public base::Cast<Node> {
 struct Expression : public Node {
   Expression();
   EXPR_FNS(Expression);
-  static std::unique_ptr<Node>
-  AddHashtag(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  AddHashtag(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual void VerifyReturnTypes(Type *) {}
 
@@ -96,9 +97,9 @@ struct Expression : public Node {
   std::vector<size_t> hashtag_indices;
   inline bool HasHashtag(const std::string &str) const {
     size_t idx = Hashtag::GetOrFailValue(str);
-    if (idx == FAIL) return false;
+    if (idx == FAIL) { return false; }
     for (const auto &tag_index : hashtag_indices) {
-      if (tag_index == idx) return true;
+      if (tag_index == idx) { return true; }
     }
     return false;
   }
@@ -155,12 +156,12 @@ struct Identifier : public Terminal {
 
 struct Binop : public Expression {
   EXPR_FNS(Binop);
-  static std::unique_ptr<Node>
-  BuildElseRocket(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildCallOperator(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildIndexOperator(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildElseRocket(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildCallOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildIndexOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual IR::Val EmitIR();
 
@@ -173,18 +174,18 @@ struct Binop : public Expression {
   }
 
   Language::Operator op;
-  std::unique_ptr<Expression> lhs, rhs;
+  base::owned_ptr<Expression> lhs, rhs;
 };
 
 struct Declaration : public Expression {
   EXPR_FNS(Declaration);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   IR::Val EmitIR() override;
 
-  std::unique_ptr<Identifier> identifier;
-  std::unique_ptr<Expression> type_expr;
-  std::unique_ptr<Expression> init_val;
+  base::owned_ptr<Identifier> identifier;
+  base::owned_ptr<Expression> type_expr;
+  base::owned_ptr<Expression> init_val;
   IR::Val addr = IR::Val::None();
 
   // If it's an argument, this points to the function/parametric-struct for
@@ -203,25 +204,25 @@ struct Declaration : public Expression {
 
 struct Generic : public Declaration {
   EXPR_FNS(Generic);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
-  std::unique_ptr<Expression> test_fn;
+  base::owned_ptr<Expression> test_fn;
 };
 
 struct InDecl : public Declaration {
   EXPR_FNS(InDecl);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
-  std::unique_ptr<Expression> container;
+  base::owned_ptr<Expression> container;
 };
 
 struct Statements : public Node {
-  static std::unique_ptr<Node>
-  build_one(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  build_more(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build_one(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build_more(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
   void VerifyReturnTypes(Type *ret_val) override;
@@ -229,12 +230,12 @@ struct Statements : public Node {
 
   inline size_t size() { return statements.size(); }
 
-  static std::unique_ptr<AST::Statements>
+  static base::owned_ptr<AST::Statements>
   Merge(std::vector<AST::Statements *> stmts_vec) {
     size_t num_stmts = 0;
     for (const auto stmts : stmts_vec) { num_stmts += stmts->size(); }
 
-    auto result = std::make_unique<AST::Statements>();
+    auto result = base::make_owned<AST::Statements>();
     result->statements.reserve(num_stmts);
 
     for (auto &stmts : stmts_vec) {
@@ -249,121 +250,121 @@ struct Statements : public Node {
   Statements() {}
   virtual ~Statements() {}
 
-  std::vector<std::unique_ptr<AST::Node>> statements;
+  std::vector<base::owned_ptr<AST::Node>> statements;
 };
 
 struct CodeBlock : public Expression {
   EXPR_FNS(CodeBlock);
-  std::unique_ptr<Statements> stmts;
+  base::owned_ptr<Statements> stmts;
   std::string error_message; // To be used if stmts == nullptr
 
   virtual IR::Val EmitIR();
-  static std::unique_ptr<Node>
-  BuildFromStatementsSameLineEnd(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildEmpty(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildFromStatements(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildFromOneStatement(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildFromStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildEmpty(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildFromStatements(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildFromOneStatement(std::vector<base::owned_ptr<AST::Node>> nodes);
 };
 
 struct Unop : public Expression {
   EXPR_FNS(Unop);
-  static std::unique_ptr<Node>
-  BuildLeft(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildDots(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildLeft(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildDots(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual void VerifyReturnTypes(Type *ret_val) override;
   virtual IR::Val EmitIR();
 
-  std::unique_ptr<Expression> operand;
+  base::owned_ptr<Expression> operand;
   Language::Operator op;
 };
 
 struct Access : public Expression {
   EXPR_FNS(Access);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
 
   std::string member_name;
-  std::unique_ptr<Expression> operand;
+  base::owned_ptr<Expression> operand;
 };
 
 struct ChainOp : public Expression {
   EXPR_FNS(ChainOp);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
 
   std::vector<Language::Operator> ops;
-  std::vector<std::unique_ptr<Expression>> exprs;
+  std::vector<base::owned_ptr<Expression>> exprs;
 };
 
 struct CommaList : public Expression {
   CommaList();
   EXPR_FNS(CommaList);
 
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
 
-  std::vector<std::unique_ptr<Expression>> exprs;
+  std::vector<base::owned_ptr<Expression>> exprs;
 };
 
 struct ArrayLiteral : public Expression {
   EXPR_FNS(ArrayLiteral);
-  static std::unique_ptr<Node>
-  build(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildEmpty(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildEmpty(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual IR::Val EmitIR();
 
-  std::vector<std::unique_ptr<Expression>> elems;
+  std::vector<base::owned_ptr<Expression>> elems;
 };
 
 struct ArrayType : public Expression {
   EXPR_FNS(ArrayType);
-  static std::unique_ptr<Node>
-  build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
 
-  std::unique_ptr<Expression> length;
-  std::unique_ptr<Expression> data_type;
+  base::owned_ptr<Expression> length;
+  base::owned_ptr<Expression> data_type;
 };
 
 struct Case : public Expression {
   EXPR_FNS(Case);
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
 
   std::vector<
-      std::pair<std::unique_ptr<Expression>, std::unique_ptr<Expression>>>
+      std::pair<base::owned_ptr<Expression>, base::owned_ptr<Expression>>>
       key_vals;
 };
 
 struct FunctionLiteral : public Expression {
   FunctionLiteral() {}
   EXPR_FNS(FunctionLiteral);
-  static std::unique_ptr<Node>
-  build(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildOneLiner(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildNoLiner(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildOneLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildNoLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual IR::Val EmitIR();
 
-  std::unique_ptr<FnScope> fn_scope;
-  std::unique_ptr<Expression> return_type_expr;
+  base::owned_ptr<FnScope> fn_scope;
+  base::owned_ptr<Expression> return_type_expr;
 
-  std::vector<std::unique_ptr<Declaration>> inputs;
-  std::unique_ptr<Statements> statements;
+  std::vector<base::owned_ptr<Declaration>> inputs;
+  base::owned_ptr<Statements> statements;
 
   IR::Func *ir_func = nullptr;
 
@@ -378,14 +379,14 @@ struct For : public Node {
 
   virtual IR::Val EmitIR();
 
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual void VerifyReturnTypes(Type *ret_val) override;
 
-  std::vector<std::unique_ptr<InDecl>> iterators;
-  std::unique_ptr<Statements> statements;
-  std::unique_ptr<ExecScope> for_scope;
+  std::vector<base::owned_ptr<InDecl>> iterators;
+  base::owned_ptr<Statements> statements;
+  base::owned_ptr<ExecScope> for_scope;
 };
 
 struct Jump : public Node {
@@ -393,8 +394,8 @@ struct Jump : public Node {
 
   virtual void VerifyReturnTypes(Type *ret_val) override;
 
-  static std::unique_ptr<Node>
-  build(std::vector<std::unique_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual ~Jump() {}
 
   VIRTUAL_METHODS_FOR_NODES;
@@ -408,21 +409,21 @@ struct Jump : public Node {
 struct ScopeNode : public Expression {
   EXPR_FNS(ScopeNode);
 
-  static std::unique_ptr<Node>
-  Build(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildVoid(std::vector<std::unique_ptr<AST::Node>> nodes);
-  static std::unique_ptr<Node>
-  BuildScopeNode(std::unique_ptr<Expression> scope_name,
-                 std::unique_ptr<Expression> arg_expr,
-                 std::unique_ptr<Statements> stmt_node);
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildVoid(std::vector<base::owned_ptr<AST::Node>> nodes);
+  static base::owned_ptr<Node>
+  BuildScopeNode(base::owned_ptr<Expression> scope_name,
+                 base::owned_ptr<Expression> arg_expr,
+                 base::owned_ptr<Statements> stmt_node);
   virtual IR::Val EmitIR();
 
   // If the scope takes an argument, 'expr' is it. Otherwise 'expr' is null
-  std::unique_ptr<Expression> expr;
-  std::unique_ptr<Expression> scope_expr;
-  std::unique_ptr<Statements> stmts;
-  std::unique_ptr<ExecScope> internal;
+  base::owned_ptr<Expression> expr;
+  base::owned_ptr<Expression> scope_expr;
+  base::owned_ptr<Statements> stmts;
+  base::owned_ptr<ExecScope> internal;
 };
 
 struct ScopeLiteral : public Expression {
@@ -431,9 +432,9 @@ struct ScopeLiteral : public Expression {
 
   IR::Val EmitIR() override;
 
-  std::unique_ptr<Declaration> enter_fn;
-  std::unique_ptr<Declaration> exit_fn;
-  std::unique_ptr<Scope> body_scope;
+  base::owned_ptr<Declaration> enter_fn;
+  base::owned_ptr<Declaration> exit_fn;
+  base::owned_ptr<Scope> body_scope;
   ScopeLiteral(const Cursor &cursor);
 };
 

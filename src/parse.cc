@@ -17,7 +17,7 @@ class Rule {
 public:
   using OptVec = std::vector<u64>;
   using fnptr =
-      std::unique_ptr<AST::Node> (*)(std::vector<std::unique_ptr<AST::Node>>);
+      base::owned_ptr<AST::Node> (*)(std::vector<base::owned_ptr<AST::Node>>);
 
   Rule(Language::NodeType output, const OptVec &input, fnptr fn)
       : output_(output), input_(input), fn_(fn) {}
@@ -43,11 +43,11 @@ public:
     return true;
   }
 
-  void apply(std::vector<std::unique_ptr<AST::Node>> *node_stack,
+  void apply(std::vector<base::owned_ptr<AST::Node>> *node_stack,
              std::vector<Language::NodeType> *node_type_stack) const {
     // Make a vector for the rule function to take as input. It will begin with
     // size() shared_ptrs.
-    std::vector<std::unique_ptr<AST::Node>>nodes_to_reduce;
+    std::vector<base::owned_ptr<AST::Node>> nodes_to_reduce;
     nodes_to_reduce.reserve(this->size());
     for (auto i = node_stack->size() - this->size(); i < node_stack->size();
          ++i) {
@@ -70,22 +70,33 @@ namespace debug {
 extern bool parser;
 } // namespace debug
 
-extern std::unique_ptr<AST::Node> BuildBinaryOperator(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> BuildKWExprBlock(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> BuildKWBlock(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> Parenthesize(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> BuildEmptyParen(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> BracedStatements(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> OneBracedStatement(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> EmptyBraces(std::vector<std::unique_ptr<AST::Node>>nodes);
-extern std::unique_ptr<AST::Node> BracedStatementsSameLineEnd(std::vector<std::unique_ptr<AST::Node>>nodes);
+extern base::owned_ptr<AST::Node>
+BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+BracedStatements(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+EmptyBraces(std::vector<base::owned_ptr<AST::Node>> nodes);
+extern base::owned_ptr<AST::Node>
+BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes);
 
 template <size_t N>
-static std::unique_ptr<AST::Node> drop_all_but(std::vector<std::unique_ptr<AST::Node>>nodes) {
+static base::owned_ptr<AST::Node>
+drop_all_but(std::vector<base::owned_ptr<AST::Node>> nodes) {
   return std::move(nodes[N]);
 }
 
-static std::unique_ptr<AST::Node> CombineColonEq(std::vector<std::unique_ptr<AST::Node>>nodes) {
+static base::owned_ptr<AST::Node>
+CombineColonEq(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto tk_node   = ptr_cast<AST::TokenNode>(nodes[0].get());
   tk_node->token = ":=";
   tk_node->op    = Language::Operator::ColonEq;
@@ -93,53 +104,59 @@ static std::unique_ptr<AST::Node> CombineColonEq(std::vector<std::unique_ptr<AST
   return drop_all_but<0>(std::move(nodes));
 }
 
-std::unique_ptr<AST::Node> EmptyFile(std::vector<std::unique_ptr<AST::Node>>nodes) {
-  auto stmts = std::make_unique<AST::Statements>();
+base::owned_ptr<AST::Node>
+EmptyFile(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto stmts = base::make_owned<AST::Statements>();
   stmts->loc = nodes[0]->loc;
   return stmts;
 }
 
 namespace ErrMsg {
 template <size_t RTN, size_t RES>
-std::unique_ptr<AST::Node> Reserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+base::owned_ptr<AST::Node>
+Reserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::Reserved(nodes[RES]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
 
-  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
-std::unique_ptr<AST::Node> BothReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+base::owned_ptr<AST::Node>
+BothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::Reserved(nodes[RES1]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES1].get())->token);
   ErrorLog::Reserved(nodes[RES2]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES2].get())->token);
-  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
-std::unique_ptr<AST::Node> NonBinop(std::vector<std::unique_ptr<AST::Node>>nodes) {
+base::owned_ptr<AST::Node>
+NonBinop(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::NotBinary(nodes[1]->loc,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  return std::make_unique<AST::Identifier>(nodes[1]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->loc, "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
-std::unique_ptr<AST::Node> NonBinopReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+base::owned_ptr<AST::Node>
+NonBinopReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::NotBinary(nodes[1]->loc,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
   ErrorLog::Reserved(nodes[RES]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
-  return std::make_unique<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
 }
 
-std::unique_ptr<AST::Node> NonBinopBothReserved(std::vector<std::unique_ptr<AST::Node>>nodes) {
+base::owned_ptr<AST::Node>
+NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::Reserved(nodes[0]->loc,
                      ptr_cast<AST::TokenNode>(nodes[0].get())->token);
   ErrorLog::NotBinary(nodes[1]->loc,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
   ErrorLog::Reserved(nodes[2]->loc,
                      ptr_cast<AST::TokenNode>(nodes[2].get())->token);
-  return std::make_unique<AST::Identifier>(nodes[1]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->loc, "invalid_node");
 }
 } // namespace ErrMsg
 namespace Language {
@@ -353,7 +370,7 @@ struct ParseState {
   }
 
   std::vector<Language::NodeType> node_type_stack_;
-  std::vector<std::unique_ptr<AST::Node>>node_stack_;
+  std::vector<base::owned_ptr<AST::Node>> node_stack_;
   NNT lookahead_;
 
   // We actually don't care about mathing braces. That is, we can count {[) as 1
@@ -384,7 +401,7 @@ static void Debug(ParseState *ps, Cursor *cursor = nullptr) {
 
 static void Shift(ParseState *ps, Cursor *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
-  ps->node_stack_.push_back(std::move(ps->lookahead_.node));
+  ps->node_stack_.push_back(base::own(ps->lookahead_.node.release()));
   ps->lookahead_ = NextToken(*c);
   if (ps->lookahead_.node_type &
       (Language::l_paren | Language::l_bracket | Language::l_brace |
@@ -422,7 +439,7 @@ void CleanUpReduction(ParseState *state, Cursor *cursor) {
   }
 
   state->node_type_stack_.push_back(Language::eof);
-  state->node_stack_.push_back(std::make_unique<AST::TokenNode>(*cursor, ""));
+  state->node_stack_.push_back(base::make_owned<AST::TokenNode>(*cursor, ""));
   state->lookahead_ =
       NNT(std::make_unique<AST::TokenNode>(*cursor, ""), Language::eof);
 
@@ -433,7 +450,7 @@ void CleanUpReduction(ParseState *state, Cursor *cursor) {
   if (debug::parser) { Debug(state, cursor); }
 }
 
-std::unique_ptr<AST::Statements> Repl::Parse() {
+base::owned_ptr<AST::Statements> Repl::Parse() {
   first_entry = true; // Show '>> ' the first time.
 
   Cursor cursor;
@@ -460,7 +477,7 @@ std::unique_ptr<AST::Statements> Repl::Parse() {
   }
 }
 
-std::unique_ptr<AST::Statements> File::Parse() {
+base::owned_ptr<AST::Statements> File::Parse() {
   Cursor cursor;
   cursor.source_file = this;
 
@@ -499,15 +516,14 @@ std::unique_ptr<AST::Statements> File::Parse() {
     ErrorLog::UnknownParserError(name, lines);
   }
 
-
   return base::move<AST::Statements>(state.node_stack_.back());
 }
 
 extern Timer timer;
 std::map<std::string, File *> source_map;
-std::vector<std::unique_ptr<AST::Statements>>
+std::vector<base::owned_ptr<AST::Statements>>
 ParseAllFiles(std::queue<std::string> file_names) {
-  std::vector<std::unique_ptr<AST::Statements>> stmts;
+  std::vector<base::owned_ptr<AST::Statements>> stmts;
   while (!file_names.empty()) {
     std::string file_name = file_names.front();
     file_names.pop();

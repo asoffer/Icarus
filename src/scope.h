@@ -11,6 +11,7 @@ struct FunctionLiteral;
 struct Type;
 struct Function;
 
+#include "base/owned_ptr.h"
 #include "base/util.h"
 #include "ir/ir.h"
 #include <iostream>
@@ -27,8 +28,8 @@ struct Scope : public base::Cast<Scope> {
 
   static DeclScope *Global;
 
-  template <typename ScopeType> std::unique_ptr<ScopeType> add_child() {
-    return std::make_unique<ScopeType>(this);
+  template <typename ScopeType> base::owned_ptr<ScopeType> add_child() {
+    return base::make_owned<ScopeType>(this);
   }
 
   // Returns an identifier pointer if there is a declaration of this identifier

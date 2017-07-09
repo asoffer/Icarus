@@ -136,7 +136,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 void ScopeLiteral::assign_scope(Scope *scope) {
   scope_ = scope;
   body_scope = scope->add_child<ExecScope>();
-  if (enter_fn != nullptr) { enter_fn->assign_scope(body_scope.get()); }
-  if (exit_fn != nullptr) { exit_fn->assign_scope(body_scope.get()); }
+  if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
+  if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
 }
 } // namespace AST

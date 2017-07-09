@@ -316,9 +316,9 @@ IR::Val AST::ScopeNode::EmitIR() {
   auto exit_fn = scope_expr_val.as_scope->exit_fn->init_val->EmitIR();
   ASSERT(exit_fn != IR::Val::None(), "");
 
-  auto call_enter_result = (expr == nullptr)
-                               ? IR::Call(enter_fn, {})
-                               : IR::Call(enter_fn, {expr->EmitIR()});
+  auto call_enter_result =
+      IR::Call(enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR()}
+                              : std::vector<IR::Val>{});
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
 
@@ -477,7 +477,7 @@ IR::Val AST::Binop::EmitIR() {
   case Language::Operator::Call: {
     auto lhs_ir = lhs->EmitIR();
     std::vector<IR::Val> args;
-    if (rhs != nullptr) {
+    if (rhs) {
       ForEachExpr(rhs.get(), [&args](size_t, AST::Expression *expr) {
         args.push_back(expr->EmitIR());
       });

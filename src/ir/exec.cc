@@ -14,10 +14,10 @@ std::vector<IR::Val> global_vals;
 extern std::vector<Error> errors;
 
 void ReplEval(AST::Expression *expr) {
-  auto fn = std::make_unique<IR::Func>(Func(Void, Void));
+  auto fn = base::make_owned<IR::Func>(Func(Void, Void));
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    auto expr_val = expr->EmitIR();
+    auto expr_val      = expr->EmitIR();
     if (!errors.empty()) {
       std::cerr << "There were " << errors.size() << " errors.";
       return;
@@ -34,8 +34,8 @@ void ReplEval(AST::Expression *expr) {
 IR::Val Evaluate(AST::Expression *expr) {
   IR::Func *fn = nullptr;
 
-  auto fn_ptr = std::make_unique<AST::FunctionLiteral>();
-  std::unique_ptr<AST::Node> *to_release = nullptr;
+  auto fn_ptr = base::make_owned<AST::FunctionLiteral>();
+  base::owned_ptr<AST::Node> *to_release = nullptr;
   { // Wrap expression into function
     // TODO should these be at global scope? or a separate REPL scope?
     // Is the scope cleaned up?
@@ -43,21 +43,21 @@ IR::Val Evaluate(AST::Expression *expr) {
     fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
     fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
     fn_ptr->scope_             = expr->scope_;
-    fn_ptr->statements         = std::make_unique<AST::Statements>();
+    fn_ptr->statements         = base::make_owned<AST::Statements>();
     fn_ptr->statements->scope_ = fn_ptr->fn_scope.get();
-    fn_ptr->return_type_expr   = std::make_unique<AST::Terminal>(
+    fn_ptr->return_type_expr   = base::make_owned<AST::Terminal>(
         expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
     if (expr->type != Void) {
-      auto ret     = std::make_unique<AST::Unop>();
+      auto ret     = base::make_owned<AST::Unop>();
       ret->scope_  = fn_ptr->fn_scope.get();
-      ret->operand = base::wrap_unique(expr);
+      ret->operand = base::own(expr);
       to_release =
-          reinterpret_cast<std::unique_ptr<AST::Node> *>(&ret->operand);
+          reinterpret_cast<base::owned_ptr<AST::Node> *>(&ret->operand);
       ret->op         = Language::Operator::Return;
       ret->precedence = Language::precedence(Language::Operator::Return);
       fn_ptr->statements->statements.push_back(std::move(ret));
     } else {
-      fn_ptr->statements->statements.push_back(base::wrap_unique(expr));
+      fn_ptr->statements->statements.push_back(base::own(expr));
       // This vector cannot change in size: there is no way code gen can add
       // statements here. Thus, it is safe to save a pointer to this last
       // element.
@@ -87,9 +87,9 @@ BlockIndex ExecContext::ExecuteBlock() {
     if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
       ASSERT(result.type != nullptr, "");
       ASSERT(result.type != nullptr, "");
-      ASSERT(result.type == cmd.result.type,"");
-             //"Type mismatch:\n  was: " + result.type->to_string() +
-              //   "\n  expected: " + cmd.result.type->to_string());
+      ASSERT(result.type == cmd.result.type, "");
+      //"Type mismatch:\n  was: " + result.type->to_string() +
+      //   "\n  expected: " + cmd.result.type->to_string());
       this->reg(cmd.result.as_reg) = result;
     }
   }
@@ -140,7 +140,7 @@ void ExecContext::Resolve(Val *v) const {
   }
 }
 
-Val ExecContext::ExecuteCmd(const Cmd& cmd) {
+Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   std::vector<Val> resolved = cmd.args;
   for (auto &r : resolved) { Resolve(&r); }
 
@@ -521,8 +521,7 @@ Val ExecContext::ExecuteCmd(const Cmd& cmd) {
   UNREACHABLE;
 }
 
-std::vector<Val> Func::Execute(std::vector<Val> arguments,
-                               ExecContext *ctx) {
+std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
 
   ctx->call_stack.emplace(this, std::move(arguments));
   while (true) {
