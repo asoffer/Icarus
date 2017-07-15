@@ -62,22 +62,27 @@ Val Alloca(Type *t) {
   return cmd.result;
 }
 
+Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
+  ASSERT(code != nullptr, "");
+  args.push_back(IR::Val::CodeBlock(code));
+  Cmd cmd(::Code, Op::Contextualize, std::move(args));
+  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
+  return cmd.result;
+}
+
 Val Load(Val v) {
   ASSERT(v.type->is<Pointer>(), v.to_string());
-  MAKE_AND_RETURN(static_cast<Pointer *>(v.type)->pointee, Op::Load);
+  MAKE_AND_RETURN(ptr_cast<Pointer>(v.type)->pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is<::Array>() && !static_cast<::Array *>(v.type)->fixed_length,
-         "");
+  ASSERT(v.type->is<::Array>() && !ptr_cast<::Array>(v.type)->fixed_length, "");
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is<::Array>() && !static_cast<::Array *>(v.type)->fixed_length,
-         "");
-  MAKE_AND_RETURN(Ptr(static_cast<::Array *>(v.type)->data_type),
-                  Op::ArrayData);
+  ASSERT(v.type->is<::Array>() && !ptr_cast<::Array>(v.type)->fixed_length, "");
+  MAKE_AND_RETURN(Ptr(ptr_cast<::Array>(v.type)->data_type), Op::ArrayData);
 }
 
 Val Store(Val v1, Val v2) {
@@ -190,6 +195,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Arrow: std::cerr << "arrow"; break;
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
+  case Op::Contextualize: std::cerr << "contextualize"; break;
   }
 
   if (args.empty()) {

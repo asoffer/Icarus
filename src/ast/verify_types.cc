@@ -231,7 +231,7 @@ void Unop::verify_types() {
       type = Err;
     }
   } break;
-  default: UNREACHABLE;
+  default: std::cerr << *this << std::endl; UNREACHABLE;
   }
 }
 
@@ -308,6 +308,8 @@ void Binop::verify_types() {
           // If there is no input, and the function takes Void as its input, or
           // if the types just match, then add it to your list of matches.
           if (!rhs && fn_type->input == Void) {
+            valid_matches.emplace_back(decl);
+          } else if (rhs && rhs->type == fn_type->input) {
             valid_matches.emplace_back(decl);
           }
         } else {

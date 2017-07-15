@@ -15,6 +15,7 @@ struct Enum;
 struct Pointer;
 
 namespace AST {
+struct Expression;
 struct CodeBlock;
 struct ScopeLiteral;
 } // namespace AST
@@ -76,6 +77,7 @@ struct Val {
     ::IR::Func *as_func;
     AST::ScopeLiteral *as_scope;
     AST::CodeBlock *as_code;
+    AST::Expression *as_expr;
     BlockIndex as_block;
     char *as_cstr;
   };
@@ -98,6 +100,8 @@ struct Val {
   static Val Block(BlockIndex bi);
   static Val Null(::Type *t);
   static Val StrLit(const char *cstr);
+  static Val Ref(AST::Expression *expr);
+
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
 
@@ -126,6 +130,7 @@ enum class Op : char {
   Nop, SetReturn,
   Arrow, Array, Ptr,
   Alloca,
+  Contextualize,
 };
 
 struct Block;
@@ -241,6 +246,7 @@ Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
+Val Contextualize(AST::CodeBlock* code, std::vector<IR::Val> args);
 
 struct Jump {
   static void Unconditional(BlockIndex index);

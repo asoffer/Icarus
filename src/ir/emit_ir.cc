@@ -437,10 +437,8 @@ IR::Val AST::Unop::EmitIR() {
   case Language::Operator::Generate: {
     auto val= Evaluate(operand.get());
     ASSERT(val.type == Code, "");
-    for (const auto &stmt : val.as_code->stmts->statements) {
-      stmt->assign_scope(scope_);
-      stmt->EmitIR();
-    }
+    val.as_code->stmts->assign_scope(scope_);
+    val.as_code->stmts->EmitIR();
     return IR::Val::None();
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR());
@@ -457,8 +455,8 @@ IR::Val AST::Binop::EmitIR() {
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR();                                         \
-    auto rhs_ir = rhs->EmitIR();                                         \
+    auto lhs_ir = lhs->EmitIR();                                               \
+    auto rhs_ir = rhs->EmitIR();                                               \
     return IR::op_name(lhs_ir, rhs_ir);                                        \
   } break
     CASE(Add);
@@ -675,7 +673,9 @@ IR::Val AST::Statements::EmitIR() {
 
 IR::Val AST::CodeBlock::EmitIR() {
   VERIFY_OR_EXIT;
-  return IR::Val::CodeBlock(this);
+  std::vector<IR::Val> args;
+  stmts->contextualize(scope_, &args);
+  return IR::Contextualize(this, std::move(args));
 }
 
 IR::Val AST::Identifier::EmitLVal() {

@@ -67,8 +67,9 @@ IR::Val Evaluate(AST::Expression *expr) {
 
   CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR().as_func; }
 
-  IR::ExecContext ctx;
-  auto results = fn->Execute({}, &ctx);
+  std::vector<IR::Val> results;
+  IR::ExecContext context;
+  results = fn->Execute({}, &context);
 
   to_release->release();
   // TODO multiple outputs?
@@ -85,7 +86,6 @@ BlockIndex ExecContext::ExecuteBlock() {
     auto result = ExecuteCmd(cmd);
 
     if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
-      ASSERT(result.type != nullptr, "");
       ASSERT(result.type != nullptr, "");
       ASSERT(result.type == cmd.result.type, "");
       //"Type mismatch:\n  was: " + result.type->to_string() +
@@ -512,6 +512,24 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       NOT_YET;
     }
   } break;
+  case Op::Contextualize: {
+    // TODO this is probably the right way to encode it rather than a vector of
+    // alternating entries. Same for PHI nodes.
+    std::unordered_map<const AST::Expression *, IR::Val> replacements;
+
+    for (size_t i = 0; i < resolved.size() - 1; i += 2) {
+      replacements[resolved[i + 1].as_expr] = resolved[i];
+    }
+
+    ASSERT(resolved.back().type == ::Code, "");
+    auto stmts = resolved.back().as_code->stmts->contextualize(replacements);
+    auto code_block =
+        base::move<AST::CodeBlock>(resolved.back().as_code->copy_stub());
+    code_block->stmts = base::move<AST::Statements>(stmts);
+
+    // TODO LEAK!
+    return IR::Val::CodeBlock(std::move(code_block).release());
+  }
   case Op::Nop: return Val::None();
   case Op::Malloc: NOT_YET;
   case Op::Free: NOT_YET;

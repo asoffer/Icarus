@@ -29,14 +29,21 @@ namespace AST {
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void lrvalue_check() ENDING;                                         \
-  virtual void verify_types() ENDING
+  virtual void verify_types() ENDING;                                          \
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) ENDING; \
+  virtual base::owned_ptr<AST::Node> contextualize(                            \
+      const std::unordered_map<const Expression *, IR::Val> &) const ENDING
 
 #define EXPR_FNS(name)                                                         \
   virtual ~name(){};                                                           \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
-  virtual void verify_types() ENDING
+  virtual void verify_types() ENDING;                                          \
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) ENDING; \
+  virtual base::owned_ptr<AST::Node> contextualize(                            \
+      const std::unordered_map<const Expression *, IR::Val> &) const ENDING;   \
+  base::owned_ptr<name> copy_stub() const
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
@@ -45,6 +52,9 @@ struct Node : public base::Cast<Node> {
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
   virtual IR::Val EmitIR() { NOT_YET; }
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+  virtual base::owned_ptr<AST::Node> contextualize(
+      const std::unordered_map<const Expression *, IR::Val> &) const = 0;
 
   virtual bool is_hole() const { return false; }
 
@@ -61,7 +71,14 @@ struct Node : public base::Cast<Node> {
 
 struct Expression : public Node {
   Expression();
-  EXPR_FNS(Expression);
+  virtual ~Expression(){};
+  virtual std::string to_string(size_t n) const = 0;
+  virtual void lrvalue_check()                  = 0;
+  virtual void assign_scope(Scope *scope)       = 0;
+  virtual void verify_types()                   = 0;
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+  virtual base::owned_ptr<AST::Node> contextualize(
+      const std::unordered_map<const Expression *, IR::Val> &) const = 0;
   static base::owned_ptr<Node>
   AddHashtag(std::vector<base::owned_ptr<AST::Node>> nodes);
 
@@ -113,7 +130,14 @@ struct Expression : public Node {
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  virtual IR::Val EmitIR() { NOT_YET; }
+  void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE; }
+
+  virtual base::owned_ptr<Node>
+  contextualize(const std::unordered_map<const Expression *, IR::Val> &) const {
+    UNREACHABLE;
+  }
+
+  virtual IR::Val EmitIR() { UNREACHABLE; }
 
   virtual ~TokenNode() {}
 
@@ -225,6 +249,7 @@ struct Statements : public Node {
   build_more(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   VIRTUAL_METHODS_FOR_NODES;
+  base::owned_ptr<Statements> copy_stub() const;
   void VerifyReturnTypes(Type *ret_val) override;
   IR::Val EmitIR() override;
 
@@ -376,6 +401,7 @@ struct FunctionLiteral : public Expression {
 struct For : public Node {
   virtual ~For() {}
   VIRTUAL_METHODS_FOR_NODES;
+  base::owned_ptr<For> copy_stub() const;
 
   virtual IR::Val EmitIR();
 
@@ -399,6 +425,7 @@ struct Jump : public Node {
   virtual ~Jump() {}
 
   VIRTUAL_METHODS_FOR_NODES;
+  base::owned_ptr<Jump> copy_stub() const;
 
   Jump(const Cursor &new_cursor, JumpType jump_type);
 

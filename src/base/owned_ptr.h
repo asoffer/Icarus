@@ -13,9 +13,6 @@ template <typename T> struct owned_ptr {
 public:
   owned_ptr(T* ptr = nullptr) : value_(ptr) {}
 
-  template <typename D>
-  owned_ptr(const owned_ptr<D> &ptr)
-      : value_(ptr ? nullptr : new T(*ptr.get())) {}
   template <typename D> owned_ptr(owned_ptr<D> &&ptr) : value_(ptr.release()) {}
 
   ~owned_ptr() { delete value_; }

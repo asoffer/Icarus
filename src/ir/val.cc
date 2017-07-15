@@ -36,6 +36,10 @@ Val Val::Type(::Type *t) { MAKE_AND_RETURN(Kind::Const, ::Type_, as_type, t); }
 Val Val::CodeBlock(AST::CodeBlock *block) {
   MAKE_AND_RETURN(Kind::Const, ::Code, as_code, block);
 }
+Val Val::Ref(AST::Expression *expr) {
+  MAKE_AND_RETURN(Kind::Const, expr->type, as_expr, expr);
+}
+
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   MAKE_AND_RETURN(Kind::Const, scope_lit->type, as_scope, scope_lit);
 }
