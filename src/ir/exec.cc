@@ -87,9 +87,8 @@ BlockIndex ExecContext::ExecuteBlock() {
 
     if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
       ASSERT(result.type != nullptr, "");
-      ASSERT(result.type == cmd.result.type, "");
-      //"Type mismatch:\n  was: " + result.type->to_string() +
-      //   "\n  expected: " + cmd.result.type->to_string());
+      ASSERT_EQ(result.type, cmd.result.type);
+
       this->reg(cmd.result.as_reg) = result;
     }
   }
@@ -98,7 +97,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   case Jump::Type::Uncond: return curr_block.jmp_.block_index;
   case Jump::Type::Cond: {
     Val cond_val = curr_block.jmp_.cond_data.cond;
-    ASSERT(cond_val.type == Bool, "");
+    ASSERT_EQ(cond_val.type, Bool);
     Resolve(&cond_val);
     return cond_val.as_bool ? curr_block.jmp_.cond_data.true_block
                             : curr_block.jmp_.cond_data.false_block;
@@ -521,7 +520,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       replacements[resolved[i + 1].as_expr] = resolved[i];
     }
 
-    ASSERT(resolved.back().type == ::Code, "");
+    ASSERT_EQ(resolved.back().type, ::Code);
     auto stmts = resolved.back().as_code->stmts->contextualize(replacements);
     auto code_block =
         base::move<AST::CodeBlock>(resolved.back().as_code->copy_stub());

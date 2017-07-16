@@ -260,4 +260,10 @@ std::ostream &operator<<(std::ostream &os, const Type &t);
 #undef BASIC_METHODS
 #undef ENDING
 
+namespace debug {
+inline std::string to_string(const Type *t) {
+  return t == nullptr ? "0x0" : t->to_string();
+}
+} // namespace debug
+
 #endif // ICARUS_TYPE_TYPE_H

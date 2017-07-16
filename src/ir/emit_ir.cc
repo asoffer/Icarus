@@ -312,9 +312,9 @@ IR::Val AST::ScopeNode::EmitIR() {
   ASSERT(scope_expr_val.type->is<Scope_Type>(), "");
 
   auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR();
-  ASSERT(enter_fn != IR::Val::None(), "");
+  ASSERT_NE(enter_fn, IR::Val::None());
   auto exit_fn = scope_expr_val.as_scope->exit_fn->init_val->EmitIR();
-  ASSERT(exit_fn != IR::Val::None(), "");
+  ASSERT_NE(exit_fn, IR::Val::None());
 
   auto call_enter_result =
       IR::Call(enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR()}
@@ -337,21 +337,21 @@ IR::Val AST::ScopeNode::EmitIR() {
 IR::Val AST::Declaration::EmitIR() {
   VERIFY_OR_EXIT;
   if (scope_ == Scope::Global) {
-    ASSERT(addr == IR::Val::None(), "");
+    if (addr != IR::Val::None()) { return IR::Val::None(); }
+
     // TODO these checks actually overlap and could be simplified.
-
-    addr = IR::Val::GlobalAddr(global_vals.size(), type);
-
     if (IsUninitialized()) {
       global_vals.emplace_back();
       global_vals.back().type = type;
-
+      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
     } else if (IsCustomInitialized()) {
       global_vals.push_back(Evaluate(init_val.get()));
+      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsDefaultInitialized()) {
       // TODO if EmitInitialValue requires generating code, that would be bad.
       global_vals.push_back(type->EmitInitialValue());
+      addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsInferred()) {
       NOT_YET;
@@ -365,7 +365,7 @@ IR::Val AST::Declaration::EmitIR() {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
     // value.
-    ASSERT(addr != IR::Val::None(), "");
+    ASSERT_NE(addr, IR::Val::None());
     ASSERT(scope_->ContainingFnScope(), "");
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
@@ -436,7 +436,7 @@ IR::Val AST::Unop::EmitIR() {
     return Evaluate(operand.get());
   case Language::Operator::Generate: {
     auto val= Evaluate(operand.get());
-    ASSERT(val.type == Code, "");
+    ASSERT_EQ(val.type, Code);
     val.as_code->stmts->assign_scope(scope_);
     val.as_code->stmts->EmitIR();
     return IR::Val::None();
@@ -493,7 +493,7 @@ IR::Val AST::Binop::EmitIR() {
       lhs_lvals.push_back(expr->EmitLVal());
     });
 
-    ASSERT(lhs_lvals.size() == rhs_vals.size(), "");
+    ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0;i < lhs_lvals.size(); ++i) {
       IR::Store(rhs_vals[i], lhs_lvals[i]);
     }
@@ -640,7 +640,7 @@ IR::Val AST::FunctionLiteral::EmitIR() {
 
     for (size_t i = 0; i < inputs.size(); ++i) {
       auto& arg = inputs[i];
-      ASSERT(arg->addr == IR::Val::None(), "");
+      ASSERT_EQ(arg->addr, IR::Val::None());
       // This whole loop can be done on construction!
       arg->addr = IR::Val::Arg(arg->type, i);
     }
@@ -681,6 +681,7 @@ IR::Val AST::CodeBlock::EmitIR() {
 IR::Val AST::Identifier::EmitLVal() {
   VERIFY_OR_EXIT;
   ASSERT(decl, "");
-  ASSERT(decl->addr != IR::Val::None(), decl->to_string(0));
+
+  if (decl->addr == IR::Val::None()) { decl->EmitIR(); }
   return decl->addr;
 }

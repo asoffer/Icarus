@@ -342,4 +342,10 @@ struct FuncResetter {
        resetter.cond_ = false)
 } // namespace IR
 
+namespace debug {
+inline std::string to_string(const IR::Val &val) { return val.to_string(); }
+} // namespace debug
+
+
+
 #endif // ICARUS_IR_IR_H

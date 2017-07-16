@@ -535,7 +535,7 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     fn_lit->inputs.back()->arg_val = fn_lit.get();
 
   } else if (binop->lhs->is<CommaList>()) {
-    auto decls = ptr_cast<ChainOp>(binop->lhs.get());
+    auto decls = ptr_cast<CommaList>(binop->lhs.get());
     fn_lit->inputs.reserve(decls->exprs.size());
 
     for (auto &expr : decls->exprs) {
