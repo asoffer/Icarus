@@ -53,65 +53,7 @@ int GenerateCode() {
       decl->EmitIR();
     }
   }
-/*
-    for (auto stmt : global_statements->statements) {
-      if (stmt->is<AST::Declaration>()) {
-        ((AST::Declaration *)stmt)->EmitGlobal();
 
-      } else if (stmt->is<AST::Unop>()) {
-        switch (((AST::Unop *)stmt)->op) {
-        case Language::Operator::Eval:
-          stmt->verify_types();
-          if (ErrorLog::num_errs_ > 0) { continue; }
-
-          if (((AST::Unop *)stmt)->type == Void) {
-            Evaluate(((AST::Unop *)stmt)->operand);
-          } else {
-            ErrorLog::GlobalNonDecl(stmt->loc);
-          }
-        case Language::Operator::Require:
-          break;
-        default:
-          ErrorLog::GlobalNonDecl(stmt->loc);
-          break;
-        }
-
-      } else {
-        ErrorLog::GlobalNonDecl(stmt->loc);
-      }
-    }
-  }
-
-      RUN(timer, "Type verification") {
-        CompletelyVerify(global_statements);
-        VerifyDeclBeforeUsage();
-        CHECK_FOR_ERRORS;
-      }
-
-      // TODO needs to be earlier/ part of type verification
-      RUN(timer, "(L/R)value checking") {
-        global_statements->lrvalue_check();
-        CHECK_FOR_ERRORS;
-      }
-
-      if (file_type == FileType::None) { return 0; }
-
-     //  RUN(timer, "Code-gen") {
-     //    // Generate all the functions
-     //    if (file_type != FileType::None) {
-     //      for (auto f : implicit_functions) {
-     //        if (f->generated == IR::Func::Gen::ToLink) { continue; }
-     //      }
-     //    }
-     //  }
-
-      switch (file_type) {
-      case FileType::None: UNREACHABLE;
-      case FileType::Nat: UNREACHABLE;
-      case FileType::IR: UNREACHABLE;
-      case FileType::Bin: UNREACHABLE;
-      }
-    */
   return 0;
 }
 
