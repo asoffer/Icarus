@@ -33,6 +33,9 @@ Val Val::Real(double r) { MAKE_AND_RETURN(Kind::Const, ::Real, as_real, r); }
 Val Val::Uint(u64 n) { MAKE_AND_RETURN(Kind::Const, ::Uint, as_uint, n); }
 Val Val::Int(i64 n) { MAKE_AND_RETURN(Kind::Const, ::Int, as_int, n); }
 Val Val::Type(::Type *t) { MAKE_AND_RETURN(Kind::Const, ::Type_, as_type, t); }
+Val Val::StrLit(char *cstr) {
+  MAKE_AND_RETURN(Kind::Const, ::String, as_cstr, cstr);
+}
 Val Val::CodeBlock(AST::CodeBlock *block) {
   MAKE_AND_RETURN(Kind::Const, ::Code, as_code, block);
 }

@@ -86,7 +86,7 @@ BlockIndex ExecContext::ExecuteBlock() {
     auto result = ExecuteCmd(cmd);
 
     if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
-      ASSERT(result.type != nullptr, "");
+      ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.result.type);
 
       this->reg(cmd.result.as_reg) = result;
@@ -381,6 +381,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       std::cerr << resolved[0].as_type->to_string();
     } else if (resolved[0].type == Code) {
       std::cerr << *resolved[0].as_code;
+    } else if (resolved[0].type == String) {
+      std::cerr << resolved[0].as_cstr;
     } else if (resolved[0].type->is<Pointer>()) {
       std::cerr << resolved[0].as_addr.to_string();
     } else if (resolved[0].type->is<Enum>()) {
@@ -389,7 +391,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type->is<Function>()) {
       std::cerr << "{" << resolved[0].type->to_string() << "}";
     } else {
-      std::cerr << *resolved[0].type;
+      std::cerr << *resolved[0].type << std::endl;
       NOT_YET;
     }
     return IR::Val::None();

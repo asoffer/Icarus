@@ -63,6 +63,7 @@ bool operator==(Addr lhs, Addr rhs);
 struct Val {
   enum class Kind : u8 { None, Arg, Reg, Const } kind = Kind::None;
   ::Type *type = nullptr;
+
   union {
     u64 as_arg;
     RegIndex as_reg;
@@ -99,7 +100,7 @@ struct Val {
   static Val Void();
   static Val Block(BlockIndex bi);
   static Val Null(::Type *t);
-  static Val StrLit(const char *cstr);
+  static Val StrLit(char *cstr);
   static Val Ref(AST::Expression *expr);
 
   static Val None() { return Val(); }

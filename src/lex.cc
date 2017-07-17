@@ -239,12 +239,11 @@ static NNT NextStringLiteral(Cursor &cursor) {
     cursor.Increment();
   }
 
-  // Not leaked. It's owned by a terminal which is persistent.
-  char *cstr = new char[str_lit.size() + 2];
-  strcpy(cstr + 1, str_lit.c_str());
-  cstr[0] = '\1';
-  // TODO StrLit
-  RETURN_TERMINAL(StringLiteral, String, IR::Val::None());
+  // TODO leaked? owned by terminal which should be persistent, so probably
+  // okay.
+  char *cstr = new char[str_lit.size() + 1];
+  strcpy(cstr, str_lit.c_str());
+  RETURN_TERMINAL(StringLiteral, String, IR::Val::StrLit(cstr));
 }
 
 static NNT NextCharLiteral(Cursor &cursor) {

@@ -101,11 +101,12 @@ IR::Val AST::Terminal::EmitIR() {
   case Language::Terminal::Type:
   case Language::Terminal::Uint:
   case Language::Terminal::True:
-  case Language::Terminal::False: return value;
+  case Language::Terminal::False:
+  case Language::Terminal::StringLiteral: return value;
   case Language::Terminal::ASCII: return AsciiFunc();
   case Language::Terminal::Ord: return OrdFunc();
   case Language::Terminal::Return: IR::Jump::Return(); return IR::Val::None();
-  default: NOT_YET;
+  default: std::cerr << *this; NOT_YET;
   }
 }
 
