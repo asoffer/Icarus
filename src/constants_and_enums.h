@@ -17,10 +17,6 @@ constexpr size_t FAIL = ~0ul;
 enum class Order { Less, Equal, Greater };
 
 namespace Language {
-enum class Terminal {
-  ASCII, Char, Else, False, Hole, Int, Null, Ord, Real, Return, StringLiteral,
-  True, Type, Uint, Error
-};
 
 enum class Operator {
 #define OPERATOR_MACRO(name, symbol, prec, assoc) name,
@@ -31,13 +27,6 @@ enum class Operator {
 } // namespace Language
 
 enum class Assign : char { Unset, Const, LVal, RVal };
-
-#define NORMAL_FLAG IR::Val::Char('\0')
-#define RESTART_FLAG IR::Val::Char('\1')
-#define CONTINUE_FLAG IR::Val::Char('\2')
-#define REPEAT_FLAG IR::Val::Char('\3')
-#define BREAK_FLAG IR::Val::Char('\4')
-#define RETURN_FLAG IR::Val::Char('\5')
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -61,21 +50,20 @@ enum NodeType : u64 {
   semicolon      = 1ull << 16,
   hashtag        = 1ull << 17,
   kw_expr_block  = 1ull << 18,
-  kw_else        = 1ull << 19,
-  kw_block       = 1ull << 20,
-  kw_struct      = 1ull << 21,
-  l_double_brace = 1ull << 22,
-  r_double_brace = 1ull << 23,
+  kw_block       = 1ull << 19,
+  kw_struct      = 1ull << 20,
+  l_double_brace = 1ull << 21,
+  r_double_brace = 1ull << 22,
 
-  op_l     = 1ull << 24,
-  op_b     = 1ull << 25,
-  colon    = 1ull << 26,
-  eq       = 1ull << 27,
-  comma    = 1ull << 28,
-  op_bl    = 1ull << 29,
-  dots     = 1ull << 30,
-  op_lt    = 1ull << 31,
-  fn_arrow = 1ull << 32,
+  op_l     = 1ull << 23,
+  op_b     = 1ull << 24,
+  colon    = 1ull << 25,
+  eq       = 1ull << 26,
+  comma    = 1ull << 27,
+  op_bl    = 1ull << 28,
+  dots     = 1ull << 29,
+  op_lt    = 1ull << 30,
+  fn_arrow = 1ull << 31,
 };
 
 constexpr u64 OP_ =

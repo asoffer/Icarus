@@ -1,17 +1,21 @@
-#include "type/type.h"
 #include "ast/ast.h"
 #include "error_log.h"
 #include "nnt.h"
+#include "type/type.h"
 #include <cstring>
 
 NNT::NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt)
     : node(new AST::TokenNode(Cursor::Behind(cursor, token.size()), token)),
       node_type(nt) {}
 
+extern IR::Val ErrorFunc();
+extern IR::Val AsciiFunc();
+extern IR::Val OrdFunc();
+
 static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
 static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
 static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
-static inline bool IsDigit(char c){ return ('0' <= c && c <= '9'); }
+static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 
 template <int Base> static inline i32 DigitInBase(char c);
 template <> i32 DigitInBase<10>(char c) {
@@ -43,12 +47,8 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
-#define RETURN_TERMINAL(term_type, ty, val)                                    \
-  do {                                                                         \
-    return NNT(std::make_unique<AST::Terminal>(                                \
-                   cursor, Language::Terminal::term_type, ty, val),            \
-               Language::expr);                                                \
-  } while (false)
+#define RETURN_TERMINAL(ty, val)                                               \
+  return NNT(std::make_unique<AST::Terminal>(cursor, ty, val), Language::expr)
 
 extern std::map<const char *, Type *> PrimitiveTypes;
 
@@ -67,37 +67,28 @@ NNT NextWord(Cursor &cursor) {
   // appropriate Node.
   for (const auto &type_lit : PrimitiveTypes) {
     if (type_lit.first == token) {
-      RETURN_TERMINAL(Type, Type_, IR::Val::Type(type_lit.second));
+      RETURN_TERMINAL(Type_, IR::Val::Type(type_lit.second));
     }
   }
 
   if (token == "true") {
-    RETURN_TERMINAL(True, Bool, IR::Val::Bool(true));
+    RETURN_TERMINAL(Bool, IR::Val::Bool(true));
 
   } else if (token == "false") {
-    RETURN_TERMINAL(False, Bool, IR::Val::Bool(false));
+    RETURN_TERMINAL(Bool, IR::Val::Bool(false));
 
   } else if (token == "null") {
-    RETURN_TERMINAL(Null, NullPtr, IR::Val::None());
+    // Use Null(Void) to reprelent 'null' literal only
+    RETURN_TERMINAL(NullPtr, IR::Val::Null(Void));
 
   } else if (token == "ord") {
-    RETURN_TERMINAL(Ord, Func(Char, Uint), IR::Val::None());
+    RETURN_TERMINAL(Func(Char, Uint), OrdFunc());
 
   } else if (token == "ascii") {
-    RETURN_TERMINAL(ASCII, Func(Uint, Char), IR::Val::None());
+    RETURN_TERMINAL(Func(Uint, Char), AsciiFunc());
 
   } else if (token == "error") {
-    RETURN_TERMINAL(Error, Func(String, Code), IR::Val::None());
-
-  } else if (token == "else") {
-    auto term_ptr           = std::make_unique<AST::Terminal>();
-    Cursor loc              = cursor;
-    loc.offset              = starting_offset;
-    term_ptr->loc           = loc;
-    term_ptr->terminal_type = Language::Terminal::Else;
-    term_ptr->type          = Bool;
-
-    return NNT(std::move(term_ptr), Language::kw_else);
+    RETURN_TERMINAL(Func(String, Code), ErrorFunc());
   }
 
   static const std::map<std::string, Language::NodeType> KeywordMap = {
@@ -109,7 +100,7 @@ NNT NextWord(Cursor &cursor) {
       {"continue", Language::op_lt},    {"break", Language::op_lt},
       {"repeat", Language::op_lt},      {"restart", Language::op_lt},
       {"scope", Language::kw_struct}};
-  for (const auto& kv : KeywordMap) {
+  for (const auto &kv : KeywordMap) {
     if (token == kv.first) { return NNT(cursor, kv.first, kv.second); }
   }
 
@@ -126,8 +117,7 @@ NNT NextWord(Cursor &cursor) {
 // parsed value, and the number of digit characters read is returned. Otherwise,
 // -1 is returned and there are no constraints on the value of the output
 // parameter.
-template<int Base>
-static i32 ConsumeIntegerInBase(Cursor &cursor, i64 *val) {
+template <int Base> static i32 ConsumeIntegerInBase(Cursor &cursor, i64 *val) {
   i32 chars_read = 0;
 start:
   if (*cursor == '_') {
@@ -165,26 +155,26 @@ template <int Base> static NNT NextNumberInBase(Cursor &cursor) {
   if (int_digits == -1) {
     // TODO log an error
     // TODO Check for '.' and continue reading?
-    RETURN_TERMINAL(Int, Int, IR::Val::Int(0));
+    RETURN_TERMINAL(Int, IR::Val::Int(0));
   }
 
-  if (*cursor != '.') { RETURN_TERMINAL(Int, Int, IR::Val::Int(int_part)); }
+  if (*cursor != '.') { RETURN_TERMINAL(Int, IR::Val::Int(int_part)); }
 
   cursor.Increment();
   if (*cursor == '.') { // Looking at "..", not a fraction
     cursor.BackUp();
-    RETURN_TERMINAL(Int, Int, IR::Val::Int(int_part));
+    RETURN_TERMINAL(Int, IR::Val::Int(int_part));
   }
 
   i32 frac_digits = ConsumeIntegerInBase<Base>(cursor, &frac_part);
   if (frac_digits == -1) {
     // TODO log an error
-    RETURN_TERMINAL(Real, Real, IR::Val::Real(0));
+    RETURN_TERMINAL(Real, IR::Val::Real(0));
   }
 
   double val = static_cast<double>(int_part) +
                (static_cast<double>(frac_part) / pow<Base>(frac_digits));
-  RETURN_TERMINAL(Real, Real, IR::Val::Real(val));
+  RETURN_TERMINAL(Real, IR::Val::Real(val));
 }
 
 static NNT NextZeroInitiatedNumber(Cursor &cursor) {
@@ -202,7 +192,8 @@ static NNT NextZeroInitiatedNumber(Cursor &cursor) {
 static NNT NextStringLiteral(Cursor &cursor) {
   cursor.Increment();
 
-  // TODO we assign to this repeatedly which is untenable perf-wise in the long-run.
+  // TODO we assign to this repeatedly which is untenable perf-wise in the
+  // long-run.
   std::string str_lit = "";
 
   for (; *cursor != '"' && *cursor != '\0'; cursor.Increment()) {
@@ -243,7 +234,7 @@ static NNT NextStringLiteral(Cursor &cursor) {
   // okay.
   char *cstr = new char[str_lit.size() + 1];
   strcpy(cstr, str_lit.c_str());
-  RETURN_TERMINAL(StringLiteral, String, IR::Val::StrLit(cstr));
+  RETURN_TERMINAL(String, IR::Val::StrLit(cstr));
 }
 
 static NNT NextCharLiteral(Cursor &cursor) {
@@ -261,12 +252,12 @@ static NNT NextCharLiteral(Cursor &cursor) {
     break;
   case '\0':
     ErrorLog::RunawayCharLit(cursor);
-    RETURN_TERMINAL(Char, Char, IR::Val::Char('\0'));
+    RETURN_TERMINAL(Char, IR::Val::Char('\0'));
   case '\\': {
     cursor.Increment();
     switch (*cursor) {
     case '\"': {
-      result             = '"';
+      result = '"';
       ErrorLog::EscapedDoubleQuoteInCharLit(Cursor::Behind(cursor, 1));
       cursor.Increment();
     } break;
@@ -288,7 +279,7 @@ static NNT NextCharLiteral(Cursor &cursor) {
   default: { result = *cursor; } break;
   }
   cursor.Increment();
-  RETURN_TERMINAL(Char, Char, IR::Val::Char(result));
+  RETURN_TERMINAL(Char, IR::Val::Char(result));
 }
 
 static NNT NextOperator(Cursor &cursor) {
@@ -304,7 +295,7 @@ static NNT NextOperator(Cursor &cursor) {
 
   case '{': {
     cursor.Increment();
-    if (*cursor =='{') {
+    if (*cursor == '{') {
       cursor.Increment();
       return NNT(cursor, "{{", Language::l_double_brace);
     }
@@ -312,13 +303,13 @@ static NNT NextOperator(Cursor &cursor) {
   }
   case '}': {
     cursor.Increment();
-    if (*cursor =='}') {
+    if (*cursor == '}') {
       cursor.Increment();
       return NNT(cursor, "}}", Language::r_double_brace);
     }
     return NNT(cursor, "}", Language::r_brace);
   }
-            
+
   case '.': {
     Cursor cursor_copy = cursor;
 
@@ -404,7 +395,7 @@ static NNT NextOperator(Cursor &cursor) {
     cursor.Increment();
 
     std::string token = "X=";
-    token[0] = first_char;
+    token[0]          = first_char;
     if (*cursor == '=') {
       cursor.Increment();
     } else {
@@ -475,12 +466,12 @@ static NNT NextOperator(Cursor &cursor) {
     } else if (*cursor == '>') {
       cursor.Increment();
       auto nptr = std::make_unique<AST::TokenNode>(cursor, "->");
-      nptr->op = Language::Operator::Arrow;
+      nptr->op  = Language::Operator::Arrow;
       return NNT(std::move(nptr), Language::fn_arrow);
 
     } else if (*cursor == '-') {
       cursor.Increment();
-      RETURN_TERMINAL(Hole, Unknown, IR::Val::None());
+      RETURN_TERMINAL(Unknown, IR::Val::None());
 
     } else {
       return NNT(cursor, "-", Language::op_bl);
@@ -569,7 +560,9 @@ restart:
   case '"': nnt = NextStringLiteral(cursor); break;
   case '/': nnt = NextSlashInitiatedToken(cursor); break;
   case '\t':
-  case ' ': cursor.Increment(); goto restart; // Skip whitespace
+  case ' ':
+    cursor.Increment();
+    goto restart; // Skip whitespace
   case '\n':
   case '\0': cursor.Increment(); return NNT(cursor, "", Language::newline);
   default: nnt = NextOperator(cursor); break;

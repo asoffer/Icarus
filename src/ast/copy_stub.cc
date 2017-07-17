@@ -18,7 +18,6 @@ namespace AST {
 base::owned_ptr<Terminal> Terminal::copy_stub() const {
   auto result = base::own(new Terminal);
   copy_fields(this, result.get());
-  result->terminal_type = terminal_type;
   return result;
 }
 

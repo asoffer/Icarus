@@ -20,10 +20,8 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(Assign::Unset), type(nullptr), value(IR::Val::None()) {}
 
-Terminal::Terminal(const Cursor &cursor, Language::Terminal term_type, Type *t,
-                   IR::Val val) {
+Terminal::Terminal(const Cursor &cursor, Type *t, IR::Val val) {
   type          = t;
-  terminal_type = term_type;
   precedence    = Language::precedence(Language::Operator::NotAnOperator);
   loc           = cursor;
   value         = val;

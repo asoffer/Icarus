@@ -162,7 +162,6 @@ base::owned_ptr<Node> Unop::contextualize(
     terminal->lvalue        = lvalue; // TODO????
     terminal->type          = Int;
     terminal->value         = iter->second;
-    terminal->terminal_type = Language::Terminal::Int;
     return terminal;
   } else {
     auto result = copy_stub();

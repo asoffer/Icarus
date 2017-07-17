@@ -115,22 +115,8 @@ std::string CommaList::to_string(size_t n) const {
 
 std::string Terminal::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<Terminal " << TYPE_OR("") << ": ";
-
-  switch (terminal_type) {
-  case Language::Terminal::ASCII: ss << "ascii"; break;
-  case Language::Terminal::Else: ss << "else"; break;
-  case Language::Terminal::Hole: ss << "--"; break;
-  case Language::Terminal::Null: ss << "null"; break;
-  case Language::Terminal::Ord: ss << "ord"; break;
-  case Language::Terminal::Return: ss << "return"; break;
-  case Language::Terminal::StringLiteral: ss << value.as_cstr; break;
-  case Language::Terminal::Error: ss << "error"; break;
-
-  default: ss << value.to_string(); break;
-  }
-
-  ss << ">\n";
+  ss << tabs(n) << "<Terminal " << TYPE_OR("") << ": " << value.to_string()
+     << ">\n";
   return ss.str();
 }
 

@@ -155,16 +155,10 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
   Terminal() = default;
-  Terminal(const Cursor &cursor, Language::Terminal term_type, Type *type,
-           IR::Val val);
+  Terminal(const Cursor &cursor, Type *type, IR::Val val);
 
   virtual IR::Val EmitIR();
-
-  virtual bool is_hole() const override {
-    return terminal_type == Language::Terminal::Hole;
-  }
-
-  Language::Terminal terminal_type;
+  virtual bool is_hole() const override { return value == IR::Val::None(); }
 };
 
 struct Identifier : public Terminal {
@@ -180,8 +174,6 @@ struct Identifier : public Terminal {
 
 struct Binop : public Expression {
   EXPR_FNS(Binop);
-  static base::owned_ptr<Node>
-  BuildElseRocket(std::vector<base::owned_ptr<AST::Node>> nodes);
   static base::owned_ptr<Node>
   BuildCallOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
   static base::owned_ptr<Node>

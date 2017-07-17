@@ -442,13 +442,13 @@ void Binop::verify_types() {
   if (op == Language::Operator::Assign) {
     if (rhs->is<Terminal>()) {
       auto term = ptr_cast<Terminal>(rhs.get());
-      if (term->terminal_type == Language::Terminal::Null) {
+      if (term->value == IR::Val::Null(Void)) {
         term->type = lhs->type;
         type       = Void;
         return;
       }
 
-      if (term->terminal_type == Language::Terminal::Hole) {
+      if (term->is_hole()) {
         // TODO this should become a noop
         term->type = lhs->type;
         type       = Void;
@@ -1023,12 +1023,7 @@ void ArrayType::verify_types() {
 
   type = Type_;
 
-  // TODO have a Hole type primitive.
-  if (length->is<Terminal>() &&
-      ptr_cast<Terminal>(length.get())->terminal_type ==
-          Language::Terminal::Hole) {
-    return;
-  }
+  if (length->is_hole()) { return; }
 
   // TODO change this to just uint
   if (length->type != Int && length->type != Uint) {

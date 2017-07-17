@@ -46,7 +46,7 @@ IR::Val Evaluate(AST::Expression *expr) {
     fn_ptr->statements         = base::make_owned<AST::Statements>();
     fn_ptr->statements->scope_ = fn_ptr->fn_scope.get();
     fn_ptr->return_type_expr   = base::make_owned<AST::Terminal>(
-        expr->loc, Language::Terminal::Type, Type_, IR::Val::Type(expr->type));
+        expr->loc, Type_, IR::Val::Type(expr->type));
     if (expr->type != Void) {
       auto ret     = base::make_owned<AST::Unop>();
       ret->scope_  = fn_ptr->fn_scope.get();

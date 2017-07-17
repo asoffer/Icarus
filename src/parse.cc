@@ -161,11 +161,9 @@ NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
 } // namespace ErrMsg
 namespace Language {
 static constexpr u64 OP_B  = op_b | comma | dots | colon | eq;
-static constexpr u64 OP_LT = op_lt | kw_else;
-static constexpr u64 EXPR  = expr | fn_expr | kw_else;
+static constexpr u64 EXPR  = expr | fn_expr;
 // Used in error productions only!
-static constexpr u64 RESERVED =
-    kw_expr_block | kw_else | kw_block | kw_struct | op_lt;
+static constexpr u64 RESERVED = kw_expr_block | kw_block | kw_struct | op_lt;
 
 // Here are the definitions for all rules in the langugae. For a rule to be
 // applied, the node types on the top of the stack must match those given in the
@@ -235,7 +233,7 @@ auto Rules = std::vector<Rule>{
     Rule(expr, {EXPR, l_paren, RESERVED, r_paren}, ErrMsg::Reserved<0, 2>),
     Rule(expr, {EXPR, l_bracket, RESERVED, r_bracket}, ErrMsg::Reserved<0, 2>),
 
-    Rule(expr, {(op_l | op_bl | OP_LT), EXPR}, AST::Unop::BuildLeft),
+    Rule(expr, {(op_l | op_bl | op_lt), EXPR}, AST::Unop::BuildLeft),
     Rule(expr, {RESERVED, (OP_B | op_bl), EXPR}, ErrMsg::Reserved<1, 0>),
     Rule(expr, {EXPR, dots}, AST::Unop::BuildDots),
     Rule(expr, {l_paren | l_ref, EXPR, r_paren}, Parenthesize),
@@ -247,9 +245,9 @@ auto Rules = std::vector<Rule>{
     Rule(expr, {(kw_block | kw_struct), braced_stmts}, BuildKWBlock),
 
     Rule(expr, {RESERVED, dots}, ErrMsg::Reserved<1, 0>),
-    Rule(expr, {(op_l | op_bl | OP_LT), RESERVED}, ErrMsg::Reserved<0, 1>),
+    Rule(expr, {(op_l | op_bl | op_lt), RESERVED}, ErrMsg::Reserved<0, 1>),
     Rule(expr, {RESERVED, op_l, EXPR}, ErrMsg::NonBinopReserved<1, 0>),
-    Rule(stmts, {(expr | fn_expr | kw_else), (newline | eof)},
+    Rule(stmts, {(expr | fn_expr), (newline | eof)},
          AST::Statements::build_one),
     Rule(comma, {comma, newline}, drop_all_but<0>),
     Rule(l_paren, {l_paren, newline}, drop_all_but<0>),

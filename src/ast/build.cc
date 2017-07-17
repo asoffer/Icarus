@@ -53,8 +53,8 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       ErrorLog::NonDeclInStructDecl(stmt->loc);
     }
   }
-  return base::make_owned<Terminal>(nodes[0]->loc, Language::Terminal::Type,
-                                    Type_, IR::Val::Type(struct_type));
+  return base::make_owned<Terminal>(nodes[0]->loc, Type_,
+                                    IR::Val::Type(struct_type));
 }
 
 static base::owned_ptr<Node>
@@ -113,9 +113,8 @@ BuildParametricStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
       std::move(params), std::move(decls));
 
-  auto type_node =
-      base::make_owned<Terminal>(nodes[0]->loc, Language::Terminal::Type, Type_,
-                                 IR::Val::Type(param_struct_type));
+  auto type_node = base::make_owned<Terminal>(nodes[0]->loc, Type_,
+                                              IR::Val::Type(param_struct_type));
   for (auto &param : param_struct_type->params) {
     param->arg_val = type_node.release();
   }
@@ -153,7 +152,7 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   static size_t anon_enum_counter = 0;
   return base::make_owned<Terminal>(
-      nodes[0]->loc, Language::Terminal::Type, Type_,
+      nodes[0]->loc, Type_,
       IR::Val::Type(new Enum(
           "__anon.enum" + std::to_string(anon_enum_counter++), members)));
 }
@@ -241,13 +240,9 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
     // TODO we can't have a '/' character, and since all our programs are in
     // the programs/ directory for now, we hard-code that. This needs to be
     // removed.
-    if (unop->operand->is<Terminal>() &&
-        ptr_cast<Terminal>(unop->operand.get())->terminal_type ==
-            Language::Terminal::StringLiteral) {
+    if (unop->operand->is<Terminal>()) {
       file_queue.emplace(std::string("programs/") +
-                         std::string(unop->operand->value.as_cstr +
-                                     1)); // NOTE: + 1 because we prefix our
-      // strings. Probably should fix this.
+                         std::string(unop->operand->value.as_cstr));
     } else {
       ErrorLog::InvalidRequirement(unop->operand->loc);
     }

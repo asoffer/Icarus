@@ -28,8 +28,25 @@ static void ForEachExpr(AST::Expression *expr,
   }
 }
 
+IR::Val ErrorFunc() {
+  static IR::Func *ascii_func_ = []() {
+    auto fn = new IR::Func(Func(String, Code));
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+      // TODO
+      IR::SetReturn(0, IR::Val::CodeBlock(nullptr));
+      IR::Jump::Unconditional(fn->exit());
 
-static IR::Val AsciiFunc() {
+      IR::Block::Current = fn->exit();
+      IR::Jump::Return();
+    }
+    fn->name = "ascii";
+    return fn;
+  }();
+  return IR::Val::Func(ascii_func_);
+}
+
+IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
     auto fn = new IR::Func(Func(Uint, Char));
     CURRENT_FUNC(fn) {
@@ -40,12 +57,13 @@ static IR::Val AsciiFunc() {
       IR::Block::Current = fn->exit();
       IR::Jump::Return();
     }
+    fn->name = "ascii";
     return fn;
   }();
   return IR::Val::Func(ascii_func_);
 }
 
-static IR::Val OrdFunc() {
+IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
     auto fn = new IR::Func(Func(Char, Uint));
     CURRENT_FUNC(fn) {
@@ -56,6 +74,7 @@ static IR::Val OrdFunc() {
       IR::Block::Current = fn->exit();
       IR::Jump::Return();
     }
+    fn->name = "ord";
     return fn;
   }();
   return IR::Val::Func(ord_func_);
@@ -94,20 +113,7 @@ IR::Val AST::Access::EmitIR() {
 
 IR::Val AST::Terminal::EmitIR() {
   VERIFY_OR_EXIT;
-  switch (terminal_type) {
-  case Language::Terminal::Char:
-  case Language::Terminal::Int:
-  case Language::Terminal::Real:
-  case Language::Terminal::Type:
-  case Language::Terminal::Uint:
-  case Language::Terminal::True:
-  case Language::Terminal::False:
-  case Language::Terminal::StringLiteral: return value;
-  case Language::Terminal::ASCII: return AsciiFunc();
-  case Language::Terminal::Ord: return OrdFunc();
-  case Language::Terminal::Return: IR::Jump::Return(); return IR::Val::None();
-  default: std::cerr << *this; NOT_YET;
-  }
+  return value;
 }
 
 IR::Val AST::Identifier::EmitIR() {
