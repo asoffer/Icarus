@@ -8,6 +8,11 @@ struct NNT {
   NNT() = default;
   std::unique_ptr<AST::Node> node = nullptr;
   Language::NodeType node_type = Language::bof;
+
+  static NNT TerminalExpression(const Cursor &loc, IR::Val val) {
+    return NNT(std::make_unique<AST::Terminal>(loc, val), Language::expr);
+  }
+
   NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt);
 
   NNT(std::unique_ptr<AST::Node> n, Language::NodeType nt)

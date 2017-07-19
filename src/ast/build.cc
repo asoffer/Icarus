@@ -53,8 +53,7 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       ErrorLog::NonDeclInStructDecl(stmt->loc);
     }
   }
-  return base::make_owned<Terminal>(nodes[0]->loc, Type_,
-                                    IR::Val::Type(struct_type));
+  return base::make_owned<Terminal>(nodes[0]->loc, IR::Val::Type(struct_type));
 }
 
 static base::owned_ptr<Node>
@@ -113,7 +112,7 @@ BuildParametricStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
       std::move(params), std::move(decls));
 
-  auto type_node = base::make_owned<Terminal>(nodes[0]->loc, Type_,
+  auto type_node = base::make_owned<Terminal>(nodes[0]->loc,
                                               IR::Val::Type(param_struct_type));
   for (auto &param : param_struct_type->params) {
     param->arg_val = type_node.release();
@@ -152,7 +151,7 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   static size_t anon_enum_counter = 0;
   return base::make_owned<Terminal>(
-      nodes[0]->loc, Type_,
+      nodes[0]->loc,
       IR::Val::Type(new Enum(
           "__anon.enum" + std::to_string(anon_enum_counter++), members)));
 }

@@ -303,7 +303,7 @@ IR::Val AST::Case::EmitIR() {
   IR::Jump::Unconditional(land);
 
   IR::Block::Current = land;
-  auto phi           = IR::Phi(Bool);
+  auto phi           = IR::Phi(type);
   IR::Func::Current->SetArgs(phi.as_reg, std::move(phi_args));
   return phi;
 }

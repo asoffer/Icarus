@@ -16,6 +16,7 @@ void Access::assign_scope(Scope *scope) {
 }
 
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
+
 void Terminal::assign_scope(Scope *scope) { 
   scope_ = scope;
   if (type != Type_) { return; }

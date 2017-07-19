@@ -154,13 +154,12 @@ base::owned_ptr<Node> Unop::contextualize(
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(this);
     ASSERT(iter != replacements.end(), "");
-    // TODO this is not right. only good for ints at the moment
     auto terminal           = base::own(new Terminal);
     terminal->scope_        = scope_; // TODO Eh? Do I care?
     terminal->loc           = loc;
     terminal->precedence    = precedence;
     terminal->lvalue        = lvalue; // TODO????
-    terminal->type          = Int;
+    terminal->type          = iter->second.type;
     terminal->value         = iter->second;
     return terminal;
   } else {

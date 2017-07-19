@@ -155,7 +155,7 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
   Terminal() = default;
-  Terminal(const Cursor &cursor, Type *type, IR::Val val);
+  Terminal(const Cursor &cursor, IR::Val val);
 
   virtual IR::Val EmitIR();
   virtual bool is_hole() const override { return value == IR::Val::None(); }

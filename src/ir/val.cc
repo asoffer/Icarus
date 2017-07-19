@@ -94,6 +94,8 @@ std::string Val::to_string() const {
       return "<void>";
     } else if (type == Ptr(::Void)) {
       return "block #" + std::to_string(as_block.value);
+    } else if (type == ::String) {
+      return std::string("string \"") + as_cstr + "\"";
     } else if (type == ::Code) {
       return "<...>";
     } else if (type->is<Function>()) {
