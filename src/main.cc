@@ -25,7 +25,7 @@ extern void ReplEval(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
 extern std::vector<AST::Statements *>
-ParseAllFiles(std::queue<std::string> file_names);
+ParseAllFiles();
 extern Timer timer;
 
 base::owned_ptr<AST::Statements> global_statements;
@@ -37,7 +37,7 @@ extern bool ct_eval;
 } // namespace debug
 
 int GenerateCode() {
-  auto stmts_by_file = ParseAllFiles(std::move(file_queue));
+  auto stmts_by_file = ParseAllFiles();
 
   CHECK_FOR_ERRORS;
 

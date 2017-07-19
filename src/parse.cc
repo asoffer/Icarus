@@ -518,13 +518,14 @@ base::owned_ptr<AST::Statements> File::Parse() {
 }
 
 extern Timer timer;
+extern std::queue<std::string> file_queue;
 std::map<std::string, File *> source_map;
 std::vector<base::owned_ptr<AST::Statements>>
-ParseAllFiles(std::queue<std::string> file_names) {
+ParseAllFiles() {
   std::vector<base::owned_ptr<AST::Statements>> stmts;
-  while (!file_names.empty()) {
-    std::string file_name = file_names.front();
-    file_names.pop();
+  while (!file_queue.empty()) {
+    std::string file_name = file_queue.front();
+    file_queue.pop();
 
     if (source_map.find(file_name) != source_map.end()) { continue; }
 

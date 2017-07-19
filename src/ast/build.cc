@@ -236,12 +236,8 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
 
   bool check_id = false;
   if (tk == "require") {
-    // TODO we can't have a '/' character, and since all our programs are in
-    // the programs/ directory for now, we hard-code that. This needs to be
-    // removed.
     if (unop->operand->is<Terminal>()) {
-      file_queue.emplace(std::string("programs/") +
-                         std::string(unop->operand->value.as_cstr));
+      file_queue.emplace(unop->operand->value.as_cstr);
     } else {
       ErrorLog::InvalidRequirement(unop->operand->loc);
     }
