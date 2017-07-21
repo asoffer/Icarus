@@ -180,6 +180,7 @@ struct Binop : public Expression {
   BuildIndexOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual IR::Val EmitIR();
+  virtual IR::Val EmitLVal();
 
   bool is_assignment() const {
     return op == Language::Operator::Assign || op == Language::Operator::OrEq ||
@@ -294,6 +295,7 @@ struct Unop : public Expression {
   BuildDots(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual void VerifyReturnTypes(Type *ret_val) override;
   virtual IR::Val EmitIR();
+  virtual IR::Val EmitLVal();
 
   base::owned_ptr<Expression> operand;
   Language::Operator op;

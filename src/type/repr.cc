@@ -72,29 +72,12 @@ void Function::EmitRepr(IR::Val) {
   IR::Print(IR::Val::Char('}'));
 }
 
-// TODO print something friendlier
 void Enum::EmitRepr(IR::Val val) { IR::Print(val); }
+
+// TODO print something friendlier
 void Pointer::EmitRepr(IR::Val val) { IR::Print(val); }
 
 void Array::EmitRepr(IR::Val val) {
-  if (fixed_length) {
-    IR::Print(IR::Val::Char('['));
-    if (len >= 1) {
-      data_type->EmitRepr(PtrCallFix(IR::Access(IR::Val::Uint(0), val)));
-    }
-
-    // TODO This might generate way too much code. Loop in generated code
-    // instead.
-    for (decltype(len) i = 1; i < len; ++i) {
-      IR::Print(IR::Val::Char(','));
-      IR::Print(IR::Val::Char(' '));
-      data_type->EmitRepr(PtrCallFix(IR::Access(IR::Val::Uint(i), val)));
-    }
-
-    IR::Print(IR::Val::Char(']'));
-    return;
-  }
-
   if (!repr_func) {
     repr_func = new IR::Func(Func(this, Void));
     repr_func->name = "repr." + Mangle(this);
@@ -112,7 +95,7 @@ void Array::EmitRepr(IR::Val val) {
       if (fixed_length) {
         // Can assume length is not zero or one because these are handled above.
         length_var = IR::Val::Uint(len);
-        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0));
+        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(Ptr(this), 0));
         IR::Jump::Unconditional(init_block);
       } else {
         length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Uint, 0)));
@@ -120,7 +103,7 @@ void Array::EmitRepr(IR::Val val) {
         IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
                               repr_func->exit(), init_block);
       }
-
+      IR::Block::Current = init_block;
       auto end_ptr = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi = repr_func->AddBlock();

@@ -92,7 +92,7 @@ Val Store(Val v1, Val v2) {
 
 Val PtrIncr(Val v1, Val v2) {
   ASSERT(v1.type->is<Pointer>(), "");
-  ASSERT(v2.type == ::Uint, "");
+  ASSERT_EQ(v2.type, ::Uint);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 

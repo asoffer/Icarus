@@ -561,6 +561,7 @@ IR::Val AST::Binop::EmitIR() {
     CASE_ASSIGN_EQ(Div);
     CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
+  case Language::Operator::Index: return PtrCallFix(EmitLVal());
   default: {
     std::cerr << *this << std::endl;
     UNREACHABLE;
@@ -691,4 +692,26 @@ IR::Val AST::Identifier::EmitLVal() {
 
   if (decl->addr == IR::Val::None()) { decl->EmitIR(); }
   return decl->addr;
+}
+
+IR::Val AST::Unop::EmitLVal() {
+  switch (op) {
+  case Language::Operator::At:
+    return operand->EmitIR();
+  default: {
+    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
+    UNREACHABLE;
+  }
+  }
+}
+
+IR::Val AST::Binop::EmitLVal() {
+  switch (op) {
+  case Language::Operator::Index:
+    return IR::PtrIncr(lhs->EmitLVal(), rhs->EmitIR());
+  default: {
+    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
+    UNREACHABLE;
+  }
+  }
 }

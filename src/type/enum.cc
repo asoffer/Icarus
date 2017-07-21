@@ -14,14 +14,10 @@ size_t Enum::IndexOrFail(const std::string &str) const {
   return (iter == int_values.end()) ? FAIL : iter->second;
 }
 
-IR::Val Enum::EmitInitialValue() const {
-  // TODO Is const correctness worth the pain?
-  return IR::Val::Enum(const_cast<Enum *>(this), 0);
-}
+IR::Val Enum::EmitInitialValue() const { return IR::Val::Enum(this, 0); }
 
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
-  // TODO Is const correctness worth the pain?
-  return IR::Val::Enum(const_cast<Enum *>(this), int_values.at(member_name));
+  return IR::Val::Enum(this, int_values.at(member_name));
 }
 
 std::string Enum::to_string() const { return bound_name; }

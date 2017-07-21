@@ -93,7 +93,7 @@ struct Val {
   static Val Real(double r);
   static Val Int(i64 n);
   static Val Uint(u64 n);
-  static Val Enum(::Enum* enum_type, size_t integral_val);
+  static Val Enum(const ::Enum* enum_type, size_t integral_val);
   static Val Type(::Type *t);
   static Val CodeBlock(AST::CodeBlock *block);
   static Val Func(::IR::Func *fn);

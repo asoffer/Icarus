@@ -46,8 +46,9 @@ Val Val::Ref(AST::Expression *expr) {
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
   MAKE_AND_RETURN(Kind::Const, scope_lit->type, as_scope, scope_lit);
 }
-Val Val::Enum(::Enum *enum_type, size_t integral_val) {
-  MAKE_AND_RETURN(Kind::Const, enum_type, as_enum, integral_val);
+Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
+  MAKE_AND_RETURN(Kind::Const, const_cast<::Enum *>(enum_type), as_enum,
+                  integral_val);
 }
 
 Val Val::Func(::IR::Func *fn) {
