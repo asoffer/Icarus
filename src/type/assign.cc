@@ -29,7 +29,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Val rhs_end_ptr = IR::Val::None();
 
     if (rhs_array_type->fixed_length) {
-      rhs_ptr = IR::Access(IR::Val::Uint(0ul), from_val);
+      rhs_ptr = IR::Index(from_val, IR::Val::Uint(0ul));
       rhs_len = IR::Val::Uint(rhs_array_type->len);
     } else {
       rhs_ptr = IR::Load(IR::ArrayData(from_val));

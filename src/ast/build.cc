@@ -8,7 +8,7 @@
 #include "../type/type.h"
 
 namespace Hashtag {
-size_t Get(const std::string &tag);
+  size_t Get(const std::string &tag);
 } // namespace Hashtag
 
 extern std::queue<std::string> file_queue;
@@ -33,376 +33,376 @@ BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
 }
 
 namespace AST {
-// Input guarantees:
-// [struct] [braced_statements]
-//
-// Internal checks:
-// Each statement is a valid declaration
-static base::owned_ptr<Node>
-BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  static size_t anon_struct_counter = 0;
+  // Input guarantees:
+  // [struct] [braced_statements]
+  //
+  // Internal checks:
+  // Each statement is a valid declaration
+  static base::owned_ptr<Node>
+    BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+      static size_t anon_struct_counter = 0;
 
-  auto struct_type =
-      new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
-  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
-    if (stmt->is<Declaration>()) {
-      struct_type->decls.push_back(ptr_cast<Declaration>(stmt.release()));
-    } else {
-      // TODO show the entire struct declaration and point to the problematic
-      // lines.
-      ErrorLog::NonDeclInStructDecl(stmt->loc);
-    }
-  }
-  return base::make_owned<Terminal>(nodes[0]->loc, IR::Val::Type(struct_type));
-}
-
-static base::owned_ptr<Node>
-BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  auto scope_lit = base::make_owned<ScopeLiteral>(nodes[0]->loc);
-
-  // TODO take arguments as well
-  if (nodes.size() > 1) {
-    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
-      if (!stmt->is<Declaration>()) { continue; }
-      auto decl = base::move<Declaration>(stmt);
-      if (decl->identifier->token == "enter") {
-        scope_lit->enter_fn = std::move(decl);
-      } else if (decl->identifier->token == "exit") {
-        scope_lit->exit_fn = std::move(decl);
+      auto struct_type =
+        new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
+      for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+        if (stmt->is<Declaration>()) {
+          struct_type->decls.push_back(ptr_cast<Declaration>(stmt.release()));
+        } else {
+          // TODO show the entire struct declaration and point to the problematic
+          // lines.
+          ErrorLog::NonDeclInStructDecl(stmt->loc);
+        }
       }
+      return base::make_owned<Terminal>(nodes[0]->loc, IR::Val::Type(struct_type));
     }
-  }
 
-  if (!scope_lit->enter_fn) {
-    // TODO log an error
-  }
+  static base::owned_ptr<Node>
+    BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+      auto scope_lit = base::make_owned<ScopeLiteral>(nodes[0]->loc);
 
-  if (!scope_lit->exit_fn) {
-    // TODO log an error
-  }
-
-  return scope_lit;
-}
-
-static base::owned_ptr<Node>
-BuildParametricStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  std::vector<Declaration *> params, decls;
-  if (nodes[1]->is<Declaration>()) {
-    params.push_back(base::move<Declaration>(nodes[1]).release());
-
-  } else if (nodes[1]->is<CommaList>()) {
-    for (auto &expr : ptr_cast<ChainOp>(nodes[1].get())->exprs) {
-      if (expr->is<Declaration>()) {
-        params.push_back(base::move<Declaration>(expr).release());
-      } else {
-        // TODO is ths guaranteed to not happen? I don't think so
-        // Log an error
-      }
-    }
-  }
-
-  for (auto &stmt : ptr_cast<Statements>(nodes[2].get())->statements) {
-    // TODO check that these actually are declarations. I'm not sure it's
-    // guaranteed.
-    decls.push_back(base::move<Declaration>(stmt).release());
-  }
-
-  static size_t anon_param_struct_counter = 0;
-  auto param_struct_type                  = new ParamStruct(
-      "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
-      std::move(params), std::move(decls));
-
-  auto type_node = base::make_owned<Terminal>(nodes[0]->loc,
-                                              IR::Val::Type(param_struct_type));
-  for (auto &param : param_struct_type->params) {
-    param->arg_val = type_node.release();
-  }
-  return type_node;
-}
-
-// Input guarantees:
-// [enum] [braced_statements]
-//
-// Internal checks:
-// Each statement is an identifier. No identifier is repeated.
-static base::owned_ptr<Node>
-BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  std::vector<std::string> members;
-  if (nodes[1]->is<Statements>()) {
-    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
-      if (stmt->is<Identifier>()) {
-        // Quadratic but we need it as a vector eventually anyway because we do
-        // care about the order the user put it in.
-        auto token = std::move(ptr_cast<Identifier>(stmt.get())->token);
-        for (const auto &member : members) {
-          if (member == token) {
-            ErrorLog::RepeatedEnumName(stmt->loc);
-            goto skip_adding_member;
+      // TODO take arguments as well
+      if (nodes.size() > 1) {
+        for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+          if (!stmt->is<Declaration>()) { continue; }
+          auto decl = base::move<Declaration>(stmt);
+          if (decl->identifier->token == "enter") {
+            scope_lit->enter_fn = std::move(decl);
+          } else if (decl->identifier->token == "exit") {
+            scope_lit->exit_fn = std::move(decl);
           }
         }
-        members.push_back(std::move(token));
+      }
+
+      if (!scope_lit->enter_fn) {
+        // TODO log an error
+      }
+
+      if (!scope_lit->exit_fn) {
+        // TODO log an error
+      }
+
+      return scope_lit;
+    }
+
+  static base::owned_ptr<Node>
+    BuildParametricStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+      std::vector<Declaration *> params, decls;
+      if (nodes[1]->is<Declaration>()) {
+        params.push_back(base::move<Declaration>(nodes[1]).release());
+
+      } else if (nodes[1]->is<CommaList>()) {
+        for (auto &expr : ptr_cast<ChainOp>(nodes[1].get())->exprs) {
+          if (expr->is<Declaration>()) {
+            params.push_back(base::move<Declaration>(expr).release());
+          } else {
+            // TODO is ths guaranteed to not happen? I don't think so
+            // Log an error
+          }
+        }
+      }
+
+      for (auto &stmt : ptr_cast<Statements>(nodes[2].get())->statements) {
+        // TODO check that these actually are declarations. I'm not sure it's
+        // guaranteed.
+        decls.push_back(base::move<Declaration>(stmt).release());
+      }
+
+      static size_t anon_param_struct_counter = 0;
+      auto param_struct_type                  = new ParamStruct(
+          "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
+          std::move(params), std::move(decls));
+
+      auto type_node = base::make_owned<Terminal>(nodes[0]->loc,
+          IR::Val::Type(param_struct_type));
+      for (auto &param : param_struct_type->params) {
+        param->arg_val = type_node.release();
+      }
+      return type_node;
+    }
+
+  // Input guarantees:
+  // [enum] [braced_statements]
+  //
+  // Internal checks:
+  // Each statement is an identifier. No identifier is repeated.
+  static base::owned_ptr<Node>
+    BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
+      std::vector<std::string> members;
+      if (nodes[1]->is<Statements>()) {
+        for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+          if (stmt->is<Identifier>()) {
+            // Quadratic but we need it as a vector eventually anyway because we do
+            // care about the order the user put it in.
+            auto token = std::move(ptr_cast<Identifier>(stmt.get())->token);
+            for (const auto &member : members) {
+              if (member == token) {
+                ErrorLog::RepeatedEnumName(stmt->loc);
+                goto skip_adding_member;
+              }
+            }
+            members.push_back(std::move(token));
+
+          } else {
+            ErrorLog::EnumNeedsIds(stmt->loc);
+          }
+skip_adding_member:;
+        }
+      }
+
+      static size_t anon_enum_counter = 0;
+      return base::make_owned<Terminal>(
+          nodes[0]->loc,
+          IR::Val::Type(new Enum(
+              "__anon.enum" + std::to_string(anon_enum_counter++), members)));
+    }
+
+  // Input guarantees:
+  // [case] [braced_statements]
+  //
+  // Internal checks:
+  // Each statement is a binary operator using '=>'. The last one has a
+  // left-hand
+  // side of 'else'
+  base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
+    auto case_ptr = base::make_owned<Case>();
+    case_ptr->loc = nodes[0]->loc;
+
+    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+      if (stmt->is<Binop>() &&
+          ptr_cast<Binop>(stmt.get())->op == Language::Operator::Rocket) {
+        auto *binop = ptr_cast<Binop>(stmt.get());
+        // TODO check for 'else' and make sure it's the last one.
+        case_ptr->key_vals.emplace_back(std::move(binop->lhs),
+            std::move(binop->rhs));
+      } else {
+        ErrorLog::NonKVInCase(stmt->loc);
+      }
+    }
+    return case_ptr;
+  }
+
+  static void
+    CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
+        std::vector<base::owned_ptr<InDecl>> *iters) {
+      if (!maybe_decl->is<InDecl>()) {
+        ErrorLog::NonInDeclInForLoop(maybe_decl->loc);
+      } else {
+        iters->push_back(base::move<InDecl>(maybe_decl));
+      }
+    }
+
+  // Input guarantees:
+  // [for] [expression] [braced_statements]
+  //
+  // Internal checks:
+  // [expression] is either an in-declaration or a list of in-declarations
+  base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
+    auto for_stmt        = base::make_owned<For>();
+    for_stmt->loc        = nodes[0]->loc;
+    for_stmt->statements = base::move<Statements>(nodes[2]);
+
+    auto iter = ptr_cast<Expression>(nodes[1].get());
+    if (iter->is<CommaList>()) {
+      auto iter_list = ptr_cast<ChainOp>(iter);
+      for_stmt->iterators.reserve(iter_list->exprs.size());
+
+      for (auto &expr : iter_list->exprs) {
+        CheckForLoopDeclaration(std::move(expr), &for_stmt->iterators);
+      }
+    } else {
+      CheckForLoopDeclaration(base::move<Expression>(nodes[1]),
+          &for_stmt->iterators);
+    }
+
+    auto stmts = base::make_owned<Statements>();
+    stmts->loc = for_stmt->loc;
+    stmts->statements.push_back(std::move(for_stmt));
+    return stmts;
+  }
+
+  // Input guarantees:
+  // [unop] [expression]
+  //
+  // Internal checks:
+  // Operand cannot be a declaration.
+  // Operand cannot be an assignment of any kind.
+  base::owned_ptr<Node>
+    Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
+      const std::string &tk = ptr_cast<TokenNode>(nodes[0].get())->token;
+
+      auto unop     = base::make_owned<Unop>();
+      unop->operand = base::move<Expression>(nodes[1]);
+      unop->loc     = nodes[0]->loc;
+
+      bool check_id = false;
+      if (tk == "require") {
+        if (unop->operand->is<Terminal>()) {
+          file_queue.emplace(unop->operand->value.as_cstr);
+        } else {
+          ErrorLog::InvalidRequirement(unop->operand->loc);
+        }
+
+        unop->op = Language::Operator::Require;
 
       } else {
-        ErrorLog::EnumNeedsIds(stmt->loc);
+        const static std::unordered_map<std::string,
+              std::pair<Language::Operator, bool>>
+                UnopMap = {{"return", {Language::Operator::Return, false}},
+                  {"break", {Language::Operator::Break, true}},
+                  {"continue", {Language::Operator::Continue, true}},
+                  {"restart", {Language::Operator::Restart, true}},
+                  {"repeat", {Language::Operator::Repeat, true}},
+                  {"free", {Language::Operator::Free, false}},
+                  {"generate", {Language::Operator::Generate, false}},
+                  {"print", {Language::Operator::Print, false}},
+                  {"*", {Language::Operator::Mul, false}},
+                  {"&", {Language::Operator::And, false}},
+                  {"-", {Language::Operator::Sub, false}},
+                  {"!", {Language::Operator::Not, false}},
+                  {"@", {Language::Operator::At, false}},
+                  {"$", {Language::Operator::Eval, false}}};
+        auto iter = UnopMap.find(tk);
+        ASSERT(iter != UnopMap.end(),
+            std::string("Failed to match token: \"") + tk + "\"");
+        std::tie(unop->op, check_id) = iter->second;
       }
-    skip_adding_member:;
+
+      unop->precedence = Language::precedence(unop->op);
+
+      if (check_id) {
+        if (!unop->operand->is<Identifier>()) {
+          // TODO clean up error message
+          ErrorLog::NonIdJumpOperand(unop->operand->loc);
+        }
+      } else {
+        if (unop->operand->is<Declaration>()) {
+          // TODO clean up this error message
+          ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->loc);
+        }
+      }
+      return unop;
     }
-  }
 
-  static size_t anon_enum_counter = 0;
-  return base::make_owned<Terminal>(
-      nodes[0]->loc,
-      IR::Val::Type(new Enum(
-          "__anon.enum" + std::to_string(anon_enum_counter++), members)));
-}
+  // Input guarantees
+  // [expr] [chainop] [expr]
+  //
+  // Internal checks: None
+  base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
+    auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
+    auto op_prec  = Language::precedence(op_node->op);
+    base::owned_ptr<ChainOp> chain;
 
-// Input guarantees:
-// [case] [braced_statements]
-//
-// Internal checks:
-// Each statement is a binary operator using '=>'. The last one has a
-// left-hand
-// side of 'else'
-base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto case_ptr = base::make_owned<Case>();
-  case_ptr->loc = nodes[0]->loc;
+    // Add to a chain so long as the precedence levels match. The only thing at
+    // that precedence level should be the operators which can be chained.
+    if (nodes[0]->is<ChainOp>() &&
+        ptr_cast<ChainOp>(nodes[0].get())->precedence == op_prec) {
 
-  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
-    if (stmt->is<Binop>() &&
-        ptr_cast<Binop>(stmt.get())->op == Language::Operator::Rocket) {
-      auto *binop = ptr_cast<Binop>(stmt.get());
-      // TODO check for 'else' and make sure it's the last one.
-      case_ptr->key_vals.emplace_back(std::move(binop->lhs),
-                                      std::move(binop->rhs));
+      chain = base::move<ChainOp>(nodes[0]);
+
     } else {
-      ErrorLog::NonKVInCase(stmt->loc);
+      chain      = base::make_owned<ChainOp>();
+      chain->loc = op_node->loc;
+
+      chain->exprs.push_back(base::move<Expression>(nodes[0]));
+      chain->precedence = op_prec;
     }
+
+    chain->ops.push_back(op_node->op);
+    chain->exprs.push_back(base::move<Expression>(nodes[2]));
+
+    return chain;
   }
-  return case_ptr;
-}
 
-static void
-CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
-                        std::vector<base::owned_ptr<InDecl>> *iters) {
-  if (!maybe_decl->is<InDecl>()) {
-    ErrorLog::NonInDeclInForLoop(maybe_decl->loc);
-  } else {
-    iters->push_back(base::move<InDecl>(maybe_decl));
-  }
-}
+  base::owned_ptr<Node>
+    CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
+      auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
+      base::owned_ptr<CommaList> comma_list;
 
-// Input guarantees:
-// [for] [expression] [braced_statements]
-//
-// Internal checks:
-// [expression] is either an in-declaration or a list of in-declarations
-base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto for_stmt        = base::make_owned<For>();
-  for_stmt->loc        = nodes[0]->loc;
-  for_stmt->statements = base::move<Statements>(nodes[2]);
+      if (nodes[0]->is<CommaList>()) {
+        comma_list = base::move<CommaList>(nodes[0]);
+      } else {
+        comma_list      = base::make_owned<CommaList>();
+        comma_list->loc = op_node->loc;
+        comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
+      }
 
-  auto iter = ptr_cast<Expression>(nodes[1].get());
-  if (iter->is<CommaList>()) {
-    auto iter_list = ptr_cast<ChainOp>(iter);
-    for_stmt->iterators.reserve(iter_list->exprs.size());
+      comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
 
-    for (auto &expr : iter_list->exprs) {
-      CheckForLoopDeclaration(std::move(expr), &for_stmt->iterators);
+      return comma_list;
     }
-  } else {
-    CheckForLoopDeclaration(base::move<Expression>(nodes[1]),
-                            &for_stmt->iterators);
-  }
 
-  auto stmts = base::make_owned<Statements>();
-  stmts->loc = for_stmt->loc;
-  stmts->statements.push_back(std::move(for_stmt));
-  return stmts;
-}
+  // Input guarantees
+  // [expr] [dot] [expr]
+  //
+  // Internal checks:
+  // LHS is not a declaration
+  // RHS is an identifier
+  base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
+    auto access     = base::make_owned<Access>();
+    access->loc     = nodes[0]->loc;
+    access->operand = base::move<Expression>(nodes[0]);
 
-// Input guarantees:
-// [unop] [expression]
-//
-// Internal checks:
-// Operand cannot be a declaration.
-// Operand cannot be an assignment of any kind.
-base::owned_ptr<Node>
-Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
-  const std::string &tk = ptr_cast<TokenNode>(nodes[0].get())->token;
+    if (access->operand->is<Declaration>()) {
+      ErrorLog::LHSDecl(access->operand->loc);
+    }
 
-  auto unop     = base::make_owned<Unop>();
-  unop->operand = base::move<Expression>(nodes[1]);
-  unop->loc     = nodes[0]->loc;
-
-  bool check_id = false;
-  if (tk == "require") {
-    if (unop->operand->is<Terminal>()) {
-      file_queue.emplace(unop->operand->value.as_cstr);
+    if (!nodes[2]->is<Identifier>()) {
+      ErrorLog::RHSNonIdInAccess(nodes[2]->loc);
     } else {
-      ErrorLog::InvalidRequirement(unop->operand->loc);
-    }
-
-    unop->op = Language::Operator::Require;
-
-  } else {
-    const static std::unordered_map<std::string,
-                                    std::pair<Language::Operator, bool>>
-        UnopMap = {{"return", {Language::Operator::Return, false}},
-                   {"break", {Language::Operator::Break, true}},
-                   {"continue", {Language::Operator::Continue, true}},
-                   {"restart", {Language::Operator::Restart, true}},
-                   {"repeat", {Language::Operator::Repeat, true}},
-                   {"free", {Language::Operator::Free, false}},
-                   {"generate", {Language::Operator::Generate, false}},
-                   {"print", {Language::Operator::Print, false}},
-                   {"*", {Language::Operator::Mul, false}},
-                   {"&", {Language::Operator::And, false}},
-                   {"-", {Language::Operator::Sub, false}},
-                   {"!", {Language::Operator::Not, false}},
-                   {"@", {Language::Operator::At, false}},
-                   {"$", {Language::Operator::Eval, false}}};
-    auto iter = UnopMap.find(tk);
-    ASSERT(iter != UnopMap.end(),
-           std::string("Failed to match token: \"") + tk + "\"");
-    std::tie(unop->op, check_id) = iter->second;
-  }
-
-  unop->precedence = Language::precedence(unop->op);
-
-  if (check_id) {
-    if (!unop->operand->is<Identifier>()) {
-      // TODO clean up error message
-      ErrorLog::NonIdJumpOperand(unop->operand->loc);
-    }
-  } else {
-    if (unop->operand->is<Declaration>()) {
-      // TODO clean up this error message
-      ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->loc);
-    }
-  }
-  return unop;
-}
-
-// Input guarantees
-// [expr] [chainop] [expr]
-//
-// Internal checks: None
-base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
-  auto op_prec  = Language::precedence(op_node->op);
-  base::owned_ptr<ChainOp> chain;
-
-  // Add to a chain so long as the precedence levels match. The only thing at
-  // that precedence level should be the operators which can be chained.
-  if (nodes[0]->is<ChainOp>() &&
-      ptr_cast<ChainOp>(nodes[0].get())->precedence == op_prec) {
-
-    chain = base::move<ChainOp>(nodes[0]);
-
-  } else {
-    chain      = base::make_owned<ChainOp>();
-    chain->loc = op_node->loc;
-
-    chain->exprs.push_back(base::move<Expression>(nodes[0]));
-    chain->precedence = op_prec;
-  }
-
-  chain->ops.push_back(op_node->op);
-  chain->exprs.push_back(base::move<Expression>(nodes[2]));
-
-  return chain;
-}
-
-base::owned_ptr<Node>
-CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
-  base::owned_ptr<CommaList> comma_list;
-
-  if (nodes[0]->is<CommaList>()) {
-    comma_list = base::move<CommaList>(nodes[0]);
-  } else {
-    comma_list      = base::make_owned<CommaList>();
-    comma_list->loc = op_node->loc;
-    comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
-  }
-
-  comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
-
-  return comma_list;
-}
-
-// Input guarantees
-// [expr] [dot] [expr]
-//
-// Internal checks:
-// LHS is not a declaration
-// RHS is an identifier
-base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto access     = base::make_owned<Access>();
-  access->loc     = nodes[0]->loc;
-  access->operand = base::move<Expression>(nodes[0]);
-
-  if (access->operand->is<Declaration>()) {
-    ErrorLog::LHSDecl(access->operand->loc);
-  }
-
-  if (!nodes[2]->is<Identifier>()) {
-    ErrorLog::RHSNonIdInAccess(nodes[2]->loc);
-  } else {
-    access->member_name =
+      access->member_name =
         std::move(ptr_cast<Identifier>(nodes[2].get())->token);
-  }
-  return access;
-}
-
-static base::owned_ptr<Node>
-BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
-              Language::Operator op_class) {
-  auto binop = base::make_owned<Binop>();
-  binop->loc = nodes[1]->loc;
-
-  binop->lhs = base::move<Expression>(nodes[0]);
-  binop->rhs = base::move<Expression>(nodes[2]);
-  binop->op  = op_class;
-
-  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->loc); }
-
-  if (binop->rhs->is<Declaration>()) {
-    ErrorLog::RHSNonTickDecl(binop->rhs->loc);
+    }
+    return access;
   }
 
-  binop->precedence = Language::precedence(binop->op);
+  static base::owned_ptr<Node>
+    BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
+        Language::Operator op_class) {
+      auto binop = base::make_owned<Binop>();
+      binop->loc = nodes[1]->loc;
 
-  return binop;
-}
+      binop->lhs = base::move<Expression>(nodes[0]);
+      binop->rhs = base::move<Expression>(nodes[2]);
+      binop->op  = op_class;
 
-// Input guarantees
-// [expr] [l_paren] [expr] [r_paren]
-//
-// Internal checks: (checked in BuildOperator)
-// LHS is not a declaration
-// RHS is not a declaration
-base::owned_ptr<Node>
-Binop::BuildCallOperator(std::vector<base::owned_ptr<Node>> nodes) {
-  return BuildOperator(std::move(nodes), Language::Operator::Call);
-}
+      if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->loc); }
 
-// Input guarantees
-// [expr] [l_bracket] [expr] [r_bracket]
-//
-// Internal checks: (checked in BuildOperator)
-// LHS is not a declaration
-// RHS is not a declaration
-base::owned_ptr<Node>
-Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
-  return BuildOperator(std::move(nodes), Language::Operator::Index);
-}
+      if (binop->rhs->is<Declaration>()) {
+        ErrorLog::RHSNonTickDecl(binop->rhs->loc);
+      }
 
-// Input guarantee:
-// [expression] [l_bracket] [r_bracket]
-//
-// Internal checks: None
-base::owned_ptr<Node>
+      binop->precedence = Language::precedence(binop->op);
+
+      return binop;
+    }
+
+  // Input guarantees
+  // [expr] [l_paren] [expr] [r_paren]
+  //
+  // Internal checks: (checked in BuildOperator)
+  // LHS is not a declaration
+  // RHS is not a declaration
+  base::owned_ptr<Node>
+    Binop::BuildCallOperator(std::vector<base::owned_ptr<Node>> nodes) {
+      return BuildOperator(std::move(nodes), Language::Operator::Call);
+    }
+
+  // Input guarantees
+  // [expr] [l_bracket] [expr] [r_bracket]
+  //
+  // Internal checks: (checked in BuildOperator)
+  // LHS is not a declaration
+  // RHS is not a declaration
+  base::owned_ptr<Node>
+    Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
+      return BuildOperator(std::move(nodes), Language::Operator::Index);
+    }
+
+  // Input guarantee:
+  // [expression] [l_bracket] [r_bracket]
+  //
+  // Internal checks: None
+  base::owned_ptr<Node>
 ArrayLiteral::BuildEmpty(std::vector<base::owned_ptr<Node>> nodes) {
   auto array_lit = base::make_owned<ArrayLiteral>();
   array_lit->loc = nodes[0]->loc;
@@ -429,7 +429,7 @@ ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   array_lit->loc = nodes[0]->loc;
 
   if (nodes[1]->is<CommaList>()) {
-    array_lit->elems = std::move(ptr_cast<ChainOp>(nodes[1].get())->exprs);
+    array_lit->elems = std::move(ptr_cast<CommaList>(nodes[1].get())->exprs);
   } else {
     array_lit->elems.push_back(base::move<Expression>(nodes[1]));
   }

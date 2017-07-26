@@ -130,10 +130,16 @@ IR::Val AST::Identifier::EmitIR() {
   }
 }
 
-// TODO
 IR::Val AST::ArrayLiteral::EmitIR() {
   VERIFY_OR_EXIT;
-  return IR::Val::None();
+  auto array_val = IR::Alloca(type);
+  auto* data_type = ptr_cast<Array>(type)->data_type;
+  for (size_t i = 0; i < elems.size(); ++i) {
+    auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
+    Type::CallAssignment(scope_, data_type, data_type, elems[i]->EmitIR(),
+                         elem_i);
+  }
+  return array_val;
 }
 
 IR::Val AST::For::EmitIR() {
