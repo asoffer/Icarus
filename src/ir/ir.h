@@ -125,7 +125,7 @@ enum class Op : char {
   Print, Malloc, Free,
   Load, Store,
   ArrayLength, ArrayData,
-  PtrIncr,
+  PtrIncr, Index,
   Phi, Field, Access,
   Call, Cast,
   Nop, SetReturn,
@@ -230,6 +230,7 @@ Val And(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Print(Val v);
+Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals);
 Val SetReturn(size_t n, Val v);

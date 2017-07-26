@@ -485,6 +485,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       NOT_YET;
     }
   case Op::PtrIncr:
+  case Op::Index:
     if (resolved[0].as_addr.kind == Addr::Kind::Stack) {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);

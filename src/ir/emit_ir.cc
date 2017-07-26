@@ -708,7 +708,7 @@ IR::Val AST::Unop::EmitLVal() {
 IR::Val AST::Binop::EmitLVal() {
   switch (op) {
   case Language::Operator::Index:
-    return IR::PtrIncr(lhs->EmitLVal(), rhs->EmitIR());
+    return IR::Index(lhs->EmitLVal(), rhs->EmitIR());
   default: {
     std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
     UNREACHABLE;

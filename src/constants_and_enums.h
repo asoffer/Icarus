@@ -66,8 +66,5 @@ enum NodeType : u64 {
   fn_arrow = 1ull << 31,
 };
 
-constexpr u64 OP_ =
-    op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
-
 } // namespace Language
 #endif // ICARUS_CONSTANTS_AND_ENUMS_H

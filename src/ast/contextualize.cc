@@ -13,8 +13,8 @@ void Binop::contextualize(Scope *scope, std::vector<IR::Val> *args) {
 
 void Declaration::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   identifier->contextualize(scope, args);
-  type_expr->contextualize(scope, args);
-  init_val->contextualize(scope, args);
+  if (type_expr) { type_expr->contextualize(scope, args); }
+  if (init_val) { init_val->contextualize(scope, args); }
 }
 
 void Generic::contextualize(Scope *, std::vector<IR::Val> *) { NOT_YET; }
@@ -119,10 +119,14 @@ base::owned_ptr<Node> Declaration::contextualize(
   auto result = copy_stub();
   result->identifier =
       base::move<Identifier>(identifier->contextualize(replacements));
-  result->type_expr =
-      base::move<Expression>(type_expr->contextualize(replacements));
-  result->init_val =
-      base::move<Expression>(init_val->contextualize(replacements));
+  if (type_expr) {
+    result->type_expr =
+        base::move<Expression>(type_expr->contextualize(replacements));
+  }
+  if (init_val) {
+    result->init_val =
+        base::move<Expression>(init_val->contextualize(replacements));
+  }
   return result;
 }
 

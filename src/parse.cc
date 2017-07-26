@@ -346,12 +346,17 @@ struct ParseState {
 
     if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
 
+    constexpr u64 OP_ = op_l | op_b | colon | eq | comma | op_bl | dots |
+                        op_lt | fn_arrow;
     if (get_type<2>() & OP_) {
-      auto left_prec = precedence(((AST::TokenNode *)get<2>())->op);
+      auto left_prec = precedence(ptr_cast<AST::TokenNode>(get<2>())->op);
       size_t right_prec;
       if (lookahead_.node_type & OP_) {
-        right_prec = precedence(
-            static_cast<AST::TokenNode *>(lookahead_.node.get())->op);
+        right_prec =
+            precedence(ptr_cast<AST::TokenNode>(lookahead_.node.get())->op);
+      } else if (lookahead_.node_type == l_bracket) {
+        right_prec = precedence(Operator::Index);
+
       } else if (lookahead_.node_type == l_paren) {
         right_prec = precedence(Operator::Call);
       } else {
