@@ -33,8 +33,6 @@ struct Expression;
 struct Identifier;
 } // namespace AST
 
-#include "constants_and_enums.h"
-
 extern std::vector<IR::Func *> implicit_functions;
 // TODO this is not the right API for mangling.
 extern std::string Mangle(const Type *t, bool prefix = true);

@@ -306,8 +306,8 @@ void Binop::verify_types() {
           auto fn_type = ptr_cast<Function>(decl->type);
           // If there is no input, and the function takes Void as its input, or
           // if the types just match, then add it to your list of matches.
-          if ((rhs == nullptr && fn_type->input == Void) ||
-              (rhs != nullptr && rhs->type == fn_type->input)) {
+          if ((rhs.get() == nullptr && fn_type->input == Void) ||
+              (rhs.get() != nullptr && rhs->type == fn_type->input)) {
             valid_matches.push_back(decl);
           }
         } else {
