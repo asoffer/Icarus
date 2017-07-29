@@ -440,7 +440,7 @@ ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node>
 ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
   if (nodes[1]->is<CommaList>()) {
-    auto *length_chain = ptr_cast<ChainOp>(nodes[1].get());
+    auto *length_chain = ptr_cast<CommaList>(nodes[1].get());
     int i              = static_cast<int>(length_chain->exprs.size() - 1);
     auto prev          = base::move<Expression>(nodes[3]);
 

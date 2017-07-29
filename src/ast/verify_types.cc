@@ -293,27 +293,24 @@ void Binop::verify_types() {
   STARTING_CHECK;
 
   if (op == Language::Operator::Call) {
+    if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
     if (lhs->is<Identifier>()) {
-      auto lhs_id         = ptr_cast<Identifier>(lhs.get());
-      auto matching_decls = scope_->AllDeclsWithId(lhs_id->token);
-      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
+      auto *lhs_id = ptr_cast<Identifier>(lhs.get());
 
       // Look for valid matches by looking at any declaration which has a
       // matching token.
       std::vector<Declaration *> valid_matches;
-      for (auto &decl : matching_decls) {
+      for (auto &decl : scope_->AllDeclsWithId(lhs_id->token)) {
         if (decl->type->is<Function>()) {
           auto fn_type = ptr_cast<Function>(decl->type);
           // If there is no input, and the function takes Void as its input, or
           // if the types just match, then add it to your list of matches.
-          if (!rhs && fn_type->input == Void) {
-            valid_matches.emplace_back(decl);
-          } else if (rhs && rhs->type == fn_type->input) {
-            valid_matches.emplace_back(decl);
+          if ((rhs == nullptr && fn_type->input == Void) ||
+              (rhs != nullptr && rhs->type == fn_type->input)) {
+            valid_matches.push_back(decl);
           }
         } else {
-
           if (decl->IsInferred() || decl->IsCustomInitialized()) {
             if (decl->init_val->type->is<Function>()) {
               UNREACHABLE; // TODO WTF??? HOW DID THIS EVEN COMPILE?
@@ -370,7 +367,6 @@ void Binop::verify_types() {
 
     } else {
       VERIFY_AND_RETURN_ON_ERROR(lhs);
-      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
 
       if (lhs->type->is<Function>()) {
         if (ptr_cast<Function>(lhs->type)->input == (rhs ? rhs->type : Void)) {

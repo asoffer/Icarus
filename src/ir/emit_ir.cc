@@ -132,6 +132,8 @@ IR::Val AST::Identifier::EmitIR() {
 
 IR::Val AST::ArrayLiteral::EmitIR() {
   VERIFY_OR_EXIT;
+  // TODO this allocation needs to be handled appropriately (in the entry block
+  // perhaps).
   auto array_val = IR::Alloca(type);
   auto* data_type = ptr_cast<Array>(type)->data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
