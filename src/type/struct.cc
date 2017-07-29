@@ -67,7 +67,8 @@ void Struct::insert_field(const std::string &name, Type *ty,
 
 std::string Struct::to_string() const { return bound_name; }
 
-Struct Struct::Anon(const std::set<AST::Declaration *> &declarations) {
+Struct
+Struct::Anon(const std::unordered_set<AST::Declaration *> &declarations) {
   static int counter = 0;
   Struct result("anon.struct." + std::to_string(counter++));
   for (auto decl : declarations) {

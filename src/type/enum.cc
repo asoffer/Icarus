@@ -1,8 +1,6 @@
 #include "type.h"
 #include "../architecture.h"
 
-extern FileType file_type;
-
 Enum::Enum(const std::string &name, const std::vector<std::string> &members)
     : bound_name(name), members(members) {
   auto num_members = members.size();

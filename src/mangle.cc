@@ -47,10 +47,10 @@ std::string Mangle(const Function *f, AST::Expression *expr, Scope *) {
   std::string name =
       expr->is<AST::Identifier>() ? ((AST::Identifier *)expr)->token : "";
 
-  if (expr->is<AST::Identifier>()) {
-    auto id = (AST::Identifier *)expr;
-    if (id->decl->HasHashtag("cstdlib")) { return name; }
-  }
+  // if (expr->is<AST::Identifier>()) {
+  //   auto id = (AST::Identifier *)expr;
+  //   if (id->decl->HasHashtag("cstdlib")) { return name; }
+  // }
 
   std::stringstream ss;
   ss << "_Z";

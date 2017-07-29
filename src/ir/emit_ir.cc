@@ -3,6 +3,9 @@
 #include "../ast/ast.h"
 #include "../scope.h"
 #include "../type/type.h"
+#include "../error_log.h"
+
+#include <vector>
 
 extern std::vector<Error> errors;
 

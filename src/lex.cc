@@ -365,6 +365,8 @@ static NNT NextOperator(Cursor &cursor) {
   } break;
 
   case '#': {
+    NOT_YET;
+    /*
     cursor.Increment();
     Cursor cursor_copy = cursor;
 
@@ -382,6 +384,7 @@ static NNT NextOperator(Cursor &cursor) {
     std::string tag = cursor.line.substr(cursor_copy.offset,
                                          cursor.offset - cursor_copy.offset);
     return NNT(cursor, tag, Language::hashtag);
+    */
   } break;
 
   case '+':
@@ -412,7 +415,7 @@ static NNT NextOperator(Cursor &cursor) {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
         cursor.BackUp();
-        return NNT(cursor, "*", Language::op_b);
+    return NNT(cursor, "*", Language::op_b);
       } else {
         ErrorLog::NotInMultilineComment(Cursor::Behind(cursor, 2));
         return NNT::Invalid();

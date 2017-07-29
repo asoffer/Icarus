@@ -7,11 +7,11 @@
 #include "../scope.h"
 #include "../type/type.h"
 
-namespace Hashtag {
-  size_t Get(const std::string &tag);
-} // namespace Hashtag
-
 extern std::queue<std::string> file_queue;
+
+namespace Language {
+extern size_t precedence(Operator op);
+} // namespace Language
 
 // Input guarantees:
 // [expr] [l_paren] [r_paren]
@@ -462,14 +462,6 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
 
     return array_type;
   }
-}
-
-base::owned_ptr<Node>
-Expression::AddHashtag(std::vector<base::owned_ptr<Node>> nodes) {
-  auto expr = base::move<Expression>(nodes[0]);
-  expr->hashtag_indices.push_back(
-      Hashtag::Get(ptr_cast<TokenNode>(nodes[1].get())->token));
-  return expr;
 }
 
 base::owned_ptr<Node> InDecl::Build(std::vector<base::owned_ptr<Node>> nodes) {

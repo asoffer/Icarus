@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <memory>
+#include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
@@ -10,16 +11,14 @@
 #include "../base/owned_ptr.h"
 #include "../base/util.h"
 #include "../cursor.h"
-#include "../error_log.h"
+#include "operators.h"
 #include "../ir/ir.h"
 #include "../scope.h"
 #include "../type/type.h"
 
 struct Scope;
 
-namespace Hashtag {
-size_t GetOrFailValue(const std::string &tag);
-} // namespace Hashtag
+enum class Assign : char { Unset, Const, LVal, RVal };
 
 namespace AST {
 
@@ -79,8 +78,6 @@ struct Expression : public Node {
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
-  static base::owned_ptr<Node>
-  AddHashtag(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual void VerifyReturnTypes(Type *) {}
 
@@ -110,16 +107,6 @@ struct Expression : public Node {
   // VerifyTypeForDeclaration. Specifically, it returns the type or Error if the
   // type is invalid.
   Type *VerifyValueForDeclaration(const std::string &id_tok);
-
-  std::vector<size_t> hashtag_indices;
-  inline bool HasHashtag(const std::string &str) const {
-    size_t idx = Hashtag::GetOrFailValue(str);
-    if (idx == FAIL) { return false; }
-    for (const auto &tag_index : hashtag_indices) {
-      if (tag_index == idx) { return true; }
-    }
-    return false;
-  }
 
   size_t precedence;
   Assign lvalue;
@@ -387,7 +374,7 @@ struct FunctionLiteral : public Expression {
 
   IR::Func *ir_func = nullptr;
 
-  std::set<Declaration *> captures;
+  std::unordered_set<Declaration *> captures;
 
   std::unordered_map<Type *, Declaration *> cache;
 };

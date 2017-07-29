@@ -6,19 +6,6 @@
 #include <cstring>
 Timer timer;
 
-namespace Language {
-// Associativity stored in the lowest two bits.
-size_t precedence(Operator op) {
-  switch (op) {
-#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
-  case Operator::name: return (((prec) << 2) + (assoc));
-#include "config/operator.conf"
-#undef OPERATOR_MACRO
-  default: UNREACHABLE;
-  }
-}
-} // namespace Language
-
 // Debug flags and their default values
 namespace debug {
 bool parser  = false;
@@ -33,33 +20,6 @@ std::string Escape(char c) {
   if (c < 32) { return "\\" + std::to_string(c); }
   return std::string(1, c);
 }
-
-namespace Hashtag {
-static std::vector<const char *> table = {"const"};
-
-size_t GetOrFailValue(const std::string &tag) {
-  for (size_t i = 0; i < table.size(); ++i) {
-    if (tag == table[i]) { return i; }
-  }
-
-  return FAIL;
-}
-
-size_t Get(const std::string &tag) {
-  for (size_t i = 0; i < table.size(); ++i) {
-    if (tag == table[i]) { return i; }
-  }
-
-  size_t result = table.size();
-  char *new_tag = new char[tag.size() + 1];
-  strcpy(new_tag, tag.c_str());
-  table.push_back(new_tag);
-
-  ASSERT(table[result] == new_tag, "");
-
-  return result;
-}
-} // namespace Hashtag
 
 IR::Val PtrCallFix(IR::Val v) {
   ASSERT(v.type->is<Pointer>(), "");

@@ -3,6 +3,8 @@
 
 #include <queue>
 
+enum class FileType { Bin, IR, Nat, None };
+
 namespace debug {
 extern bool parser;
 extern bool ct_eval;

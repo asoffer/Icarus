@@ -18,7 +18,8 @@ struct Node;
 struct Unop;
 } // namespace AST
 
-#include "constants_and_enums.h"
+#include "ast/ast.h"
+#include "type/type.h"
 
 struct Error {
   enum class Code : char {

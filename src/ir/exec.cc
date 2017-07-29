@@ -7,11 +7,16 @@
 #include "../architecture.h"
 #include "../ast/ast.h"
 #include "../base/util.h"
+#include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
 
 std::vector<IR::Val> global_vals;
 extern std::vector<Error> errors;
+
+namespace Language {
+extern size_t precedence(Operator op);
+} // namespace Language
 
 void ReplEval(AST::Expression *expr) {
   auto fn = base::make_owned<IR::Func>(Func(Void, Void));

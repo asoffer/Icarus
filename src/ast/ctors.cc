@@ -3,6 +3,10 @@
 #include "../scope.h"
 #include "../type/type.h"
 
+namespace Language {
+extern size_t precedence(Operator op);
+} // namespace Language
+
 namespace AST {
 TokenNode::TokenNode(const Cursor &loc, std::string str)
     : Node(loc), token(std::move(str)) {

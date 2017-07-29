@@ -21,11 +21,15 @@ struct Scope;
 #include "../base/debug.h"
 #include "../base/types.h"
 #include "../ir/ir.h"
+
 #include <string>
 #include <vector>
 #include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <sstream>
+
+constexpr size_t FAIL = ~0ul;
 
 namespace AST {
 struct Declaration;
@@ -175,7 +179,8 @@ struct Struct : public Type {
   TYPE_FNS(Struct, struct);
 
   Struct(const std::string &name);
-  static Struct Anon(const std::set<AST::Declaration *> &declarations);
+  static Struct
+  Anon(const std::unordered_set<AST::Declaration *> &declarations);
 
   void EmitDefaultAssign(IR::Val to_var, IR::Val from_val);
 

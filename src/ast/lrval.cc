@@ -3,9 +3,8 @@
 #include "../error_log.h"
 
 namespace AST {
-void Identifier::lrvalue_check() {
-  lvalue = decl->HasHashtag("const") ? Assign::Const : Assign::LVal;
-}
+// TODO constants?
+void Identifier::lrvalue_check() { lvalue = Assign::LVal; }
 
 void Unop::lrvalue_check() {
   operand->lrvalue_check();

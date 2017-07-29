@@ -1,7 +1,7 @@
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/types.h"
-#include "constants_and_enums.h"
+#include "operators.h"
 #include "error_log.h"
 #include "nnt.h"
 #include "util/timer.h"
@@ -12,6 +12,20 @@
 namespace AST {
 struct Node;
 } // namespace AST
+
+
+namespace Language {
+size_t precedence(Operator op) {
+  switch (op) {
+#define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
+  case Operator::name:                                                         \
+    return (((prec) << 2) + (assoc));
+#include "config/operator.conf"
+#undef OPERATOR_MACRO
+  default: UNREACHABLE;
+  }
+}
+} // namespace Language
 
 class Rule {
 public:
@@ -188,7 +202,6 @@ auto Rules = std::vector<Rule>{
     Rule(expr, {EXPR, l_bracket, EXPR, r_bracket},
          AST::Binop::BuildIndexOperator),
     Rule(expr, {l_bracket, r_bracket}, AST::ArrayLiteral::BuildEmpty),
-    Rule(expr, {EXPR, hashtag}, AST::Expression::AddHashtag),
     Rule(expr, {l_bracket, EXPR, semicolon, EXPR, r_bracket},
          AST::ArrayType::build),
     Rule(expr, {l_bracket, EXPR, semicolon, RESERVED, r_bracket},
@@ -510,8 +523,8 @@ base::owned_ptr<AST::Statements> File::Parse() {
       if (state.node_type_stack_[i] &
           (Language::braced_stmts | Language::l_paren | Language::r_paren |
            Language::l_bracket | Language::r_bracket | Language::l_brace |
-           Language::r_brace | Language::semicolon | Language::hashtag |
-           Language::fn_arrow | Language::expr)) {
+           Language::r_brace | Language::semicolon | Language::fn_arrow |
+           Language::expr)) {
         lines.push_back(state.node_stack_[i]->loc);
         last_chosen_line = state.node_stack_[i]->loc.line_num;
       }

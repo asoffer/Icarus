@@ -31,7 +31,6 @@ void VerifyDeclBeforeUsage() {
   for (auto &id : all_ids) {
     if (id->type == Err || id->type == Type_) { continue; }
     if (id->decl->scope_ == Scope::Global) { continue; }
-    if (id->decl->HasHashtag("const")) { continue; }
     if (GetOrder(id->decl->loc, id->loc) == CursorOrder::OutOfOrder) {
       // ErrorLog::DeclOutOfOrder(id->decl, id);
     }
@@ -91,10 +90,7 @@ void Identifier::verify_types() {
 
   // Verify capturing. You can capture globlas, type definitions and
   // compile-time constants.
-  if (type == Type_ || decl->scope_ == Scope::Global ||
-      decl->HasHashtag("const")) {
-    return;
-  }
+  if (type == Type_ || decl->scope_ == Scope::Global) { return; }
 
   // For everything else we iterate from the scope of this identifier up to the
   // scope in which it was declared checking that along the way that it's a
