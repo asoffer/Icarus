@@ -169,6 +169,20 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::Uint(resolved[0].as_uint + resolved[1].as_uint);
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real + resolved[1].as_real);
+    } else if (resolved[0].type == Code) {
+      // TODO leaks
+      // Contextualize is definitely wrong and probably not safe. We really want
+      // a copy. All Refs should be resolved by this point already.
+
+      auto block = base::make_owned<AST::CodeBlock>();
+      block->stmts = base::move<AST::Statements>(AST::Statements::Merge({
+          ptr_cast<AST::Statements>(
+              resolved[0].as_code->stmts->contextualize({}).release()),
+          ptr_cast<AST::Statements>(
+              resolved[1].as_code->stmts->contextualize({}).release()),
+      }));
+
+      return Val::CodeBlock(block.release());
     } else if (resolved[0].type->is<Enum>()) {
       return Val::Enum(ptr_cast<Enum>(resolved[0].type),
                        resolved[0].as_enum + resolved[1].as_enum);

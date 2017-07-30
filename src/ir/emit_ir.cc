@@ -43,7 +43,7 @@ IR::Val ErrorFunc() {
       IR::Block::Current = fn->exit();
       IR::Jump::Return();
     }
-    fn->name = "ascii";
+    fn->name = "error";
     return fn;
   }();
   return IR::Val::Func(ascii_func_);

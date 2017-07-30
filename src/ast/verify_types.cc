@@ -562,7 +562,9 @@ void Binop::verify_types() {
   case Language::Operator::OpName: {                                           \
     if ((lhs->type == Int && rhs->type == Int) ||                              \
         (lhs->type == Uint && rhs->type == Uint) ||                            \
-        (lhs->type == Real && rhs->type == Real)) {                            \
+        (lhs->type == Real && rhs->type == Real) ||                            \
+        (lhs->type == Code && rhs->type == Code)) {                            \
+      /* TODO Code should only be valid for Add, not Sub, etc */               \
       type = ret_type;                                                         \
     } else {                                                                   \
       /* Store a vector containing the valid matches */                        \
