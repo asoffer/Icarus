@@ -3,6 +3,18 @@
 #include "nnt.h"
 #include "type/type.h"
 #include <cstring>
+#include <unordered_map>
+
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  Type *GlobalName = new Primitive(PrimType::EnumName);
+#include "config/primitive.conf"
+#undef PRIMITIVE_MACRO
+
+static std::unordered_map<std::string, Type *> PrimitiveTypes{
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name) {#name, GlobalName},
+#include "config/primitive.conf"
+#undef PRIMITIVE_MACRO
+};
 
 NNT::NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt)
     : node(new AST::TokenNode(Cursor::Behind(cursor, token.size()), token)),
@@ -46,8 +58,6 @@ static inline bool IsAlphaOrUnderscore(char c) {
 static inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
-
-extern std::map<const char *, Type *> PrimitiveTypes;
 
 NNT NextWord(Cursor &cursor) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*

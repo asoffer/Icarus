@@ -154,6 +154,7 @@ struct Identifier : public Terminal {
   Identifier(const Cursor &cursor, const std::string &token_string);
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
+  virtual bool is_hole() const override { return false; }
 
   std::string token;
   Declaration *decl = nullptr;

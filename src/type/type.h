@@ -37,24 +37,6 @@ struct Expression;
 struct Identifier;
 } // namespace AST
 
-extern std::vector<IR::Func *> implicit_functions;
-// TODO this is not the right API for mangling.
-extern std::string Mangle(const Type *t, bool prefix = true);
-extern std::string Mangle(const Function *f, AST::Expression *expr,
-                          Scope *starting_scope = nullptr);
-
-extern Pointer *Ptr(Type *t);
-extern Array *Arr(Type *t);
-extern Array *Arr(Type *t, size_t len);
-extern Tuple *Tup(const std::vector<Type *> &t);
-extern Function *Func(Type *in, Type *out);
-extern Function *Func(std::vector<Type *> in, Type *out);
-extern Function *Func(Type *in, std::vector<Type *> out);
-extern Function *Func(std::vector<Type *> in, std::vector<Type *> out);
-extern RangeType *Range(Type *t);
-extern SliceType *Slice(Array *a);
-extern Scope_Type *ScopeType(Type *t);
-
 #define ENDING = 0
 
 #define BASIC_METHODS                                                          \
@@ -144,7 +126,7 @@ struct Array : public Type {
 struct Tuple : public Type {
   TYPE_FNS(Tuple, tuple);
 
-  Tuple(const std::vector<Type *> &types);
+  Tuple(std::vector<Type *> types);
 
   std::vector<Type *> entries;
 };
@@ -268,5 +250,24 @@ inline std::string to_string(const Type *t) {
   return t == nullptr ? "0x0" : t->to_string();
 }
 } // namespace debug
+
+extern std::vector<IR::Func *> implicit_functions;
+// TODO this is not the right API for mangling.
+std::string Mangle(const Type *t, bool prefix = true);
+std::string Mangle(const Function *f, AST::Expression *expr,
+                   Scope *starting_scope = nullptr);
+
+Pointer *Ptr(Type *t);
+Array *Arr(Type *t);
+Array *Arr(Type *t, size_t len);
+Type *Tup(std::vector<Type *> types);
+Function *Func(Type *in, Type *out);
+Function *Func(std::vector<Type *> in, Type *out);
+Function *Func(Type *in, std::vector<Type *> out);
+Function *Func(std::vector<Type *> in, std::vector<Type *> out);
+RangeType *Range(Type *t);
+SliceType *Slice(Array *a);
+Scope_Type *ScopeType(Type *t);
+
 
 #endif // ICARUS_TYPE_TYPE_H

@@ -354,6 +354,7 @@ IR::Val AST::ScopeNode::EmitIR() {
 
 IR::Val AST::Declaration::EmitIR() {
   VERIFY_OR_EXIT;
+
   if (scope_ == Scope::Global) {
     if (addr != IR::Val::None()) { return IR::Val::None(); }
 
@@ -385,6 +386,7 @@ IR::Val AST::Declaration::EmitIR() {
     // value.
     ASSERT_NE(addr, IR::Val::None());
     ASSERT(scope_->ContainingFnScope(), "");
+
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
     auto ir_init_val = IsCustomInitialized() ? init_val->EmitIR()
