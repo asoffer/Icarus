@@ -1,5 +1,4 @@
 #include <cstring>
-#include <ncurses.h>
 #include <vector>
 
 #include "ast/ast.h"

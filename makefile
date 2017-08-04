@@ -1,4 +1,4 @@
-#MAKEFLAGS += -j
+MAKEFLAGS += -j
 
 TARGET  := bin/$(shell basename `pwd`)
 

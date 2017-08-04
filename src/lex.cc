@@ -17,7 +17,7 @@ static std::unordered_map<std::string, Type *> PrimitiveTypes{
 };
 
 NNT::NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt)
-    : node(new AST::TokenNode(Cursor::Behind(cursor, token.size()), token)),
+    : node(std::make_unique<AST::TokenNode>(Cursor::Behind(cursor, token.size()), token)),
       node_type(nt) {}
 
 extern IR::Val ErrorFunc();
