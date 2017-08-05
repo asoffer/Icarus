@@ -92,14 +92,11 @@ IR::Val AST::Access::EmitLVal() {
     val = IR::Load(val);
   }
 
-  if (val.type->is<Pointer>() &&
-      ptr_cast<Pointer>(val.type)->pointee->is<Struct>()) {
-    auto struct_type = ptr_cast<Struct>(ptr_cast<Pointer>(val.type)->pointee);
-    return IR::Field(val, struct_type->field_name_to_num AT(member_name));
+  ASSERT(val.type->is<Pointer>());
+  ASSERT(ptr_cast<Pointer>(val.type)->pointee->is<Struct>());
 
-  } else {
-    NOT_YET(*this);
-  }
+  auto struct_type = ptr_cast<Struct>(ptr_cast<Pointer>(val.type)->pointee);
+  return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 }
 
 IR::Val AST::Access::EmitIR() {
@@ -656,7 +653,8 @@ IR::Val AST::FunctionLiteral::EmitIR() {
       auto& arg = inputs[i];
       ASSERT_EQ(arg->addr, IR::Val::None());
       // This whole loop can be done on construction!
-      arg->addr = IR::Val::Arg(arg->type, i);
+      arg->addr =
+          IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type, i);
     }
 
     for (auto scope : fn_scope->innards_) {
