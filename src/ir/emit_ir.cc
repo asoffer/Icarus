@@ -92,8 +92,8 @@ IR::Val AST::Access::EmitLVal() {
     val = IR::Load(val);
   }
 
-  ASSERT(val.type->is<Pointer>());
-  ASSERT(ptr_cast<Pointer>(val.type)->pointee->is<Struct>());
+  ASSERT(val.type->is<Pointer>(), "");
+  ASSERT(ptr_cast<Pointer>(val.type)->pointee->is<Struct>(), "");
 
   auto struct_type = ptr_cast<Struct>(ptr_cast<Pointer>(val.type)->pointee);
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));

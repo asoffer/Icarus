@@ -1,10 +1,24 @@
 #include "type.h"
 #include "../scope.h"
 
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  bool Primitive::is_##name() const { return type_ == PrimType::EnumName; }
-#include "../config/primitive.conf"
-#undef PRIMITIVE_MACRO
+std::string Primitive::to_string() const {
+  const char *str;
+  switch (type_) {
+  case PrimType::Err: str     = "Err"; break;
+  case PrimType::Unknown: str = "???"; break;
+  case PrimType::Bool: str    = "bool"; break;
+  case PrimType::Char: str    = "char"; break;
+  case PrimType::Code: str    = "code"; break;
+  case PrimType::Int: str     = "int"; break;
+  case PrimType::Real: str    = "real"; break;
+  case PrimType::Type: str    = "type"; break;
+  case PrimType::Uint: str    = "uint"; break;
+  case PrimType::Void: str    = "void"; break;
+  case PrimType::NullPtr: str = "null"; break;
+  case PrimType::String: str  = "string"; break;
+  }
+  return str;
+}
 
 Array::Array(Type *t) : data_type(t), len(0), fixed_length(false) {
   dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
@@ -23,9 +37,6 @@ Function::Function(Type *in, Type *out) : input(in), output(out) {}
 std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
-
-bool Type::is_big() const { return is<Array>() || is<Struct>(); }
-bool Type::stores_data() const { return this != Type_ && !is<Function>(); }
 
 std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }
 

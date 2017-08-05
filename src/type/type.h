@@ -64,20 +64,8 @@ public:
   static void CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
                              IR::Val from_val, IR::Val to_var);
 
-  // Note: this one is special. It functions identically to the rest, but it's
-  // special in that it will return nullptr if you haven't imported the string
-  // library. This should never come up, because it's only used to add type to a
-  // string literal, and using a string literal should import strings.
-  static Type *get_string();
-
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  virtual bool is_##name() const { return false; }
-#include "../config/primitive.conf"
-#undef PRIMITIVE_MACRO
-
-
-  virtual bool is_big() const;
-  virtual bool stores_data() const;
+  bool is_big() const { return is<Array>() || is<Struct>(); }
+  bool stores_data() const { return this != Type_ && !is<Function>(); }
 };
 
 #undef ENDING
@@ -92,12 +80,7 @@ enum class PrimType : char {
 struct Primitive : public Type {
 public:
   TYPE_FNS(Primitive, primitive);
-  Primitive(PrimType pt);
-
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  virtual bool is_##name() const;
-#include "../config/primitive.conf"
-#undef PRIMITIVE_MACRO
+  Primitive(PrimType pt) : type_(pt) {}
 
 private:
   friend class Architecture;
