@@ -18,7 +18,7 @@ void Unop::lrvalue_check() {
     case Assign::Const: // Intentionally falling through
     case Assign::RVal: ErrorLog::InvalidAddress(loc, operand->lvalue); break;
     case Assign::LVal: break;
-    case Assign::Unset: UNREACHABLE;
+    case Assign::Unset: UNREACHABLE();
     }
   }
   lvalue = (op == Language::Operator::At) ? Assign::LVal : Assign::RVal;

@@ -110,15 +110,14 @@ std::string Val::to_string() const {
                  ? ptr_cast<::Enum>(type)->to_string() + ":END"
                  : ptr_cast<::Enum>(type)->members.at(as_enum);
     } else {
-      std::cerr << *type << std::endl;
-      UNREACHABLE;
+      UNREACHABLE(*type);
     }
     return "";
   case Kind::None:
     return "---";
   }
-  std::cerr << "Kind had value of " << static_cast<int>(kind) << std::endl;
-  UNREACHABLE;
+
+  UNREACHABLE("Kind had value of ", static_cast<int>(kind));
 }
 
 void Jump::Conditional(Val cond, BlockIndex true_index,
@@ -153,7 +152,7 @@ std::string Addr::to_string() const {
   case Kind::Global: return "g." + std::to_string(as_global);
   case Kind::Stack: return "s." + std::to_string(as_stack);
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 bool operator==(Addr lhs, Addr rhs) {
@@ -163,7 +162,7 @@ bool operator==(Addr lhs, Addr rhs) {
   case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
   case Addr::Kind::Global: return lhs.as_global == rhs.as_global;
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 } // namespace IR

@@ -53,13 +53,8 @@ void Struct::insert_field(const std::string &name, Type *ty,
   field_num_to_name.push_back(name);
   field_type.push_back(ty);
 
-  { // Check sizes align
-    size_t size1 = field_name_to_num.size();
-    size_t size2 = field_num_to_name.size();
-    size_t size3 = field_type.size();
-    ASSERT(size1 == size2 && size2 == size3,
-           "Size mismatch in struct database");
-  }
+  ASSERT_EQ(field_name_to_num.size(), field_num_to_name.size());
+  ASSERT_EQ(field_num_to_name.size(), field_type.size());
 
   // By default, init_val is nullptr;
   init_values.emplace_back(init_val);

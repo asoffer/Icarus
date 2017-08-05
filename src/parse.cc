@@ -22,7 +22,7 @@ size_t precedence(Operator op) {
     return (((prec) << 2) + (assoc));
 #include "config/operator.conf"
 #undef OPERATOR_MACRO
-  default: UNREACHABLE;
+  default: UNREACHABLE();
   }
 }
 } // namespace Language
@@ -287,7 +287,7 @@ std::ostream &operator<<(std::ostream &os, ShiftState s) {
   case ShiftState::NeedMore: return os << "NeedMore";
   case ShiftState::EndOfExpr: return os << "EndOfExpr";
   case ShiftState::MustReduce: return os << "MustReduce";
-  default: UNREACHABLE;
+  default: UNREACHABLE();
   }
 }
 
@@ -501,7 +501,7 @@ base::owned_ptr<AST::Statements> File::Parse() {
   Shift(&state, &cursor);
 
   while (state.lookahead_.node_type != Language::eof) {
-    ASSERT(state.node_type_stack_.size() == state.node_stack_.size(), "");
+    ASSERT_EQ(state.node_type_stack_.size(), state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
       Shift(&state, &cursor);

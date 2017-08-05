@@ -375,7 +375,7 @@ static NNT NextOperator(Cursor &cursor) {
   } break;
 
   case '#': {
-    NOT_YET;
+    NOT_YET();
     /*
     cursor.Increment();
     Cursor cursor_copy = cursor;
@@ -513,10 +513,10 @@ static NNT NextOperator(Cursor &cursor) {
     cursor.Increment();
     return NNT::Invalid();
   case '\'': cursor.Increment(); return NNT(cursor, "'", Language::op_bl);
-  case '_': UNREACHABLE;
+  case '_': UNREACHABLE();
   default:
-    std::cerr << "----> " << static_cast<int>(*cursor) << std::endl;
-    UNREACHABLE;
+    UNREACHABLE("Encountered character whose value is ",
+                static_cast<int>(*cursor));
   }
 }
 

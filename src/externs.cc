@@ -43,8 +43,8 @@ AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
     ASSERT(decl->IsInferred(), "");
     return GetFunctionLiteral(decl->init_val.get());
   } else if (expr->is<AST::Binop>()) {
-    NOT_YET;
+    NOT_YET();
   } else {
-    UNREACHABLE;
+    UNREACHABLE();
   }
 }

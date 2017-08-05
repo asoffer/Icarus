@@ -227,7 +227,7 @@ void Unop::verify_types() {
       type = Err;
     }
   } break;
-  default: std::cerr << *this << std::endl; UNREACHABLE;
+  default: UNREACHABLE(*this);
   }
 }
 
@@ -309,7 +309,7 @@ void Binop::verify_types() {
         } else {
           if (decl->IsInferred() || decl->IsCustomInitialized()) {
             if (decl->init_val->type->is<Function>()) {
-              UNREACHABLE; // TODO WTF??? HOW DID THIS EVEN COMPILE?
+              UNREACHABLE(); // TODO WTF??? HOW DID THIS EVEN COMPILE?
               // decl->value = IR::Val(decl->init_val);
             } else {
               decl->value =
@@ -336,12 +336,12 @@ void Binop::verify_types() {
             }
 
           } else if (decl->IsUninitialized()) {
-            NOT_YET;
+            NOT_YET();
           }
 
           auto decl_type = decl->value.as_type;
 
-          if (decl_type->is<ParamStruct>()) { NOT_YET; }
+          if (decl_type->is<ParamStruct>()) { NOT_YET(); }
         }
       } // End of decl loop
 
@@ -373,12 +373,12 @@ void Binop::verify_types() {
           return;
         }
       } else {
-        ASSERT(lhs->type == Type_,
-               "Should have caught the bad-type of lhs earlier");
+        ASSERT_EQ(lhs->type, Type_);
+
         auto lhs_as_type = lhs->value.as_type;
 
         if (lhs_as_type->is<ParamStruct>()) {
-          NOT_YET;
+          NOT_YET();
         } else {
           // Cast
           op   = Language::Operator::Cast;
@@ -413,9 +413,7 @@ void Binop::verify_types() {
       type = ptr_cast<Function>(lhs->type)->output;
 
     } else {
-      ASSERT(lhs->type == Type_,
-             "Should have caught the bad-type of lhs earlier");
-
+      ASSERT_EQ(lhs->type, Type_);
       type = lhs->type;
     }
 
@@ -483,7 +481,7 @@ void Binop::verify_types() {
   switch (op) {
   case Operator::Rocket: {
     // TODO rocket encountered outside case statement.
-    UNREACHABLE;
+    UNREACHABLE();
   } break;
   case Operator::Index:
     type = Err;
@@ -673,7 +671,7 @@ void Binop::verify_types() {
     if (type != Err) { type = Type_; }
 
   } break;
-  default: UNREACHABLE;
+  default: UNREACHABLE();
   }
 }
 
@@ -964,7 +962,7 @@ void Declaration::verify_types() {
     init_val->type = type;
 
   } else {
-    UNREACHABLE;
+    UNREACHABLE();
   }
 
   identifier->verify_types();

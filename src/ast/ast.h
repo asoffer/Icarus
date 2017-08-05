@@ -3,18 +3,18 @@
 
 #include <algorithm>
 #include <memory>
-#include <unordered_set>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../base/debug.h"
 #include "../base/owned_ptr.h"
 #include "../base/util.h"
 #include "../cursor.h"
-#include "operators.h"
 #include "../ir/ir.h"
 #include "../scope.h"
 #include "../type/type.h"
+#include "operators.h"
 
 struct Scope;
 
@@ -50,7 +50,7 @@ struct Node : public base::Cast<Node> {
   virtual void assign_scope(Scope *) {}
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
-  virtual IR::Val EmitIR() { NOT_YET; }
+  virtual IR::Val EmitIR() { NOT_YET(); }
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
@@ -81,14 +81,8 @@ struct Expression : public Node {
 
   virtual void VerifyReturnTypes(Type *) {}
 
-  virtual IR::Val EmitIR() {
-    std::cerr << *this << std::endl;
-    NOT_YET;
-  }
-  virtual IR::Val EmitLVal() {
-    std::cerr << *this << std::endl;
-    NOT_YET;
-  }
+  virtual IR::Val EmitIR() { NOT_YET(*this); }
+  virtual IR::Val EmitLVal() { NOT_YET(*this); }
 
   // Use these two functions to verify that an identifier can be declared using
   // these expressions. We pass in a string representing the identifier being
@@ -117,14 +111,14 @@ struct Expression : public Node {
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE; }
+  void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
 
   virtual base::owned_ptr<Node>
   contextualize(const std::unordered_map<const Expression *, IR::Val> &) const {
-    UNREACHABLE;
+    UNREACHABLE();
   }
 
-  virtual IR::Val EmitIR() { UNREACHABLE; }
+  virtual IR::Val EmitIR() { UNREACHABLE(); }
 
   virtual ~TokenNode() {}
 

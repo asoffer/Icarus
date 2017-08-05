@@ -150,7 +150,7 @@ struct Stack {
   ~Stack() { free(stack_); }
 
   template <typename T> T Load(size_t index) {
-    ASSERT((index & (alignof(T) - 1)) == 0, "Alignment error");
+    ASSERT_EQ(index & (alignof(T) - 1), 0); // Alignment error
     return *reinterpret_cast<T *>(this->location(index));
   }
 
@@ -166,8 +166,7 @@ struct Stack {
 
 private:
   void *location(size_t index) {
-    ASSERT(index < capacity_,
-           std::to_string(index) + " !< " + std::to_string(capacity_));
+    ASSERT_LT(index, capacity_);
     return reinterpret_cast<void *>(reinterpret_cast<char *>(stack_) + index);
   }
 };

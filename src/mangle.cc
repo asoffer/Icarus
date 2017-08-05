@@ -12,8 +12,7 @@ std::string Mangle(const Type *t, bool prefix) {
     if (t == Void) { return "v"; }
     if (t == Type_) { return "t"; }
     if (t == String) { return "s"; }
-    std::cerr << *t << std::endl;
-    UNREACHABLE;
+    UNREACHABLE(*t);
   }
 
   std::stringstream ss;

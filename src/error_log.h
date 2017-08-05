@@ -8,6 +8,7 @@
 struct Type;
 
 #include "cursor.h"
+#include "base/debug.h"
 
 namespace AST {
 struct Case;

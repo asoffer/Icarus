@@ -385,7 +385,7 @@ void InvalidAddress(const Cursor &loc, Assign mode) {
         "Attempting to take the address of a temporary expression.", nullptr, loc,
         1);
   } else {
-    UNREACHABLE;
+    UNREACHABLE();
   }
 }
 
@@ -402,7 +402,7 @@ void InvalidAssignment(const Cursor &loc, Assign mode) {
         "Attempting to assign to a temporary expression.", nullptr, loc,
         1);
   } else {
-    UNREACHABLE;
+    UNREACHABLE();
   }
 }
 
@@ -562,7 +562,7 @@ void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc) {
                         "has an initial value.",
                         nullptr, decl_loc, 1);
   } else {
-    NOT_YET;
+    NOT_YET();
   }
 }
 void InvalidPrintDefinition(const Cursor &loc, const Type *t) {

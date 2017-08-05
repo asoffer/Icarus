@@ -56,7 +56,7 @@ base::owned_ptr<Declaration> Declaration::copy_stub() const {
   return result;
 }
 
-base::owned_ptr<Generic> Generic::copy_stub() const { NOT_YET; }
+base::owned_ptr<Generic> Generic::copy_stub() const { NOT_YET(); }
 
 base::owned_ptr<InDecl> InDecl::copy_stub() const {
   auto result = base::own(new InDecl);

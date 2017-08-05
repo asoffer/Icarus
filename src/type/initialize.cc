@@ -100,7 +100,7 @@ void Struct::EmitInit(IR::Val id_val) {
   IR::Call(IR::Val::Func(init_func), {id_val});
 }
 
-void Tuple::EmitInit(IR::Val) { NOT_YET; }
-void RangeType::EmitInit(IR::Val) { UNREACHABLE; }
-void SliceType::EmitInit(IR::Val) { UNREACHABLE; }
-void Scope_Type::EmitInit(IR::Val) { UNREACHABLE; }
+void Tuple::EmitInit(IR::Val) { NOT_YET(); }
+void RangeType::EmitInit(IR::Val) { UNREACHABLE(); }
+void SliceType::EmitInit(IR::Val) { UNREACHABLE(); }
+void Scope_Type::EmitInit(IR::Val) { UNREACHABLE(); }

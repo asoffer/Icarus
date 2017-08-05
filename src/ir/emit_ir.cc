@@ -98,8 +98,7 @@ IR::Val AST::Access::EmitLVal() {
     return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 
   } else {
-    std::cerr << *this;
-    NOT_YET;
+    NOT_YET(*this);
   }
 }
 
@@ -172,7 +171,7 @@ IR::Val AST::For::EmitIR() {
           init_vals.push_back(
               ptr_cast<Unop>(decl->container.get())->operand->EmitIR());
         } else {
-          NOT_YET;
+          NOT_YET();
         }
       } else if (decl->container->type->is<Type>()) {
         // TODO this conditional check on the line above is wrong
@@ -181,10 +180,10 @@ IR::Val AST::For::EmitIR() {
           auto* enum_type = ptr_cast<Enum>(container_val.as_type);
           init_vals.push_back(enum_type->EmitInitialValue());
         } else {
-          NOT_YET;
+          NOT_YET();
         }
       } else {
-        NOT_YET;
+        NOT_YET();
       }
     }
     IR::Jump::Unconditional(phi);
@@ -213,7 +212,7 @@ IR::Val AST::For::EmitIR() {
         incr_vals.push_back(
             IR::Add(iter, IR::Val::Enum(ptr_cast<Enum>(iter.type), 1)));
       } else {
-        NOT_YET;
+        NOT_YET();
       }
     }
     IR::Jump::Unconditional(phi);
@@ -245,7 +244,7 @@ IR::Val AST::For::EmitIR() {
           // code and trust optimizations later on.
           cmp = IR::Val::Bool(true);
         } else {
-          NOT_YET;
+          NOT_YET();
         }
       } else if (decl->container->type->is<Type>()) {
         IR::Val container_val = Evaluate(decl->container.get());
@@ -255,10 +254,10 @@ IR::Val AST::For::EmitIR() {
           cmp             = IR::Le(reg,
                        IR::Val::Enum(enum_type, enum_type->members.size() - 1));
         } else {
-          NOT_YET;
+          NOT_YET();
         }
       } else {
-        NOT_YET;
+        NOT_YET();
       }
 
       IR::Jump::Conditional(cmp, next, exit);
@@ -373,10 +372,10 @@ IR::Val AST::Declaration::EmitIR() {
       addr = IR::Val::GlobalAddr(global_vals.size() - 1, type);
 
     } else if (IsInferred()) {
-      NOT_YET;
+      NOT_YET();
 
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
     return IR::Val::None();
   } else {
@@ -463,10 +462,7 @@ IR::Val AST::Unop::EmitIR() {
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR());
   case Language::Operator::At: return PtrCallFix(operand->EmitIR());
-  default: {
-    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
-    UNREACHABLE;
-  }
+  default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
@@ -575,10 +571,7 @@ IR::Val AST::Binop::EmitIR() {
     CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
   case Language::Operator::Index: return PtrCallFix(EmitLVal());
-  default: {
-    std::cerr << *this << std::endl;
-    UNREACHABLE;
-  }
+  default: UNREACHABLE(*this);
   }
 }
 
@@ -619,7 +612,7 @@ IR::Val AST::ChainOp::EmitIR() {
       case Language::Operator::And: {
         cmp = lhs_ir;
       } break;
-      default: std::cerr << *this << std::endl; UNREACHABLE;
+      default: UNREACHABLE(*this);
       }
       IR::Jump::Conditional(cmp, blocks[i], land_block);
       IR::Block::Current = blocks[i];
@@ -643,11 +636,11 @@ IR::Val AST::ChainOp::EmitIR() {
     return phi;
   }
 
-  NOT_YET;
+  NOT_YET();
 }
 
-IR::Val AST::CommaList::EmitIR() { UNREACHABLE; }
-IR::Val AST::CommaList::EmitLVal() { NOT_YET; }
+IR::Val AST::CommaList::EmitIR() { UNREACHABLE(); }
+IR::Val AST::CommaList::EmitLVal() { NOT_YET(); }
 
 IR::Val AST::FunctionLiteral::EmitIR() {
   VERIFY_OR_EXIT;
@@ -701,7 +694,7 @@ IR::Val AST::CodeBlock::EmitIR() {
 
 IR::Val AST::Identifier::EmitLVal() {
   VERIFY_OR_EXIT;
-  ASSERT(decl, "");
+  ASSERT(decl != nullptr, "");
 
   if (decl->addr == IR::Val::None()) { decl->EmitIR(); }
   return decl->addr;
@@ -711,10 +704,7 @@ IR::Val AST::Unop::EmitLVal() {
   switch (op) {
   case Language::Operator::At:
     return operand->EmitIR();
-  default: {
-    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
-    UNREACHABLE;
-  }
+  default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
@@ -722,9 +712,6 @@ IR::Val AST::Binop::EmitLVal() {
   switch (op) {
   case Language::Operator::Index:
     return IR::Index(lhs->EmitLVal(), rhs->EmitIR());
-  default: {
-    std::cerr << "Operator is " << static_cast<int>(op) << std::endl;
-    UNREACHABLE;
-  }
+  default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

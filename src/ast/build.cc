@@ -263,7 +263,7 @@ skip_adding_member:;
                   {"$", {Language::Operator::Eval, false}}};
         auto iter = UnopMap.find(tk);
         ASSERT(iter != UnopMap.end(),
-            std::string("Failed to match token: \"") + tk + "\"");
+               std::string("Failed to match token: \"") + tk + "\"");
         std::tie(unop->op, check_id) = iter->second;
       }
 
@@ -764,7 +764,7 @@ BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
     return AST::BuildScopeLiteral(std::move(nodes));
   }
 
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 base::owned_ptr<AST::Node>
@@ -778,7 +778,7 @@ BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
     return AST::BuildParametricStructLiteral(std::move(nodes));
   }
 
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 base::owned_ptr<AST::Node>

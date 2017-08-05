@@ -17,7 +17,7 @@ void Declaration::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   if (init_val) { init_val->contextualize(scope, args); }
 }
 
-void Generic::contextualize(Scope *, std::vector<IR::Val> *) { NOT_YET; }
+void Generic::contextualize(Scope *, std::vector<IR::Val> *) { NOT_YET(); }
 void InDecl::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   container->contextualize(scope, args);
 }
@@ -132,7 +132,7 @@ base::owned_ptr<Node> Declaration::contextualize(
 
 base::owned_ptr<Node> Generic::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &) const {
-  NOT_YET;
+  NOT_YET();
 }
 
 base::owned_ptr<Node> InDecl::contextualize(

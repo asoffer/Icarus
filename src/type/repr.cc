@@ -59,10 +59,10 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::NullPtr:
   case PrimType::Err:
   case PrimType::String: {
-    NOT_YET;
+    NOT_YET();
   } break;
   case PrimType::Unknown:
-    UNREACHABLE;
+    UNREACHABLE();
   }
 }
 
@@ -167,7 +167,7 @@ void Struct::EmitRepr(IR::Val val) {
   IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
 }
 
-void Tuple::EmitRepr(IR::Val) { NOT_YET; }
-void RangeType::EmitRepr(IR::Val) { NOT_YET; }
-void SliceType::EmitRepr(IR::Val) { NOT_YET; }
-void Scope_Type::EmitRepr(IR::Val) { NOT_YET; }
+void Tuple::EmitRepr(IR::Val) { NOT_YET(); }
+void RangeType::EmitRepr(IR::Val) { NOT_YET(); }
+void SliceType::EmitRepr(IR::Val) { NOT_YET(); }
+void Scope_Type::EmitRepr(IR::Val) { NOT_YET(); }

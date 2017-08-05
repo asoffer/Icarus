@@ -17,6 +17,6 @@ std::string Primitive::to_string() const {
   case PrimType::Void: return "void";
   case PrimType::NullPtr: return "null";
   case PrimType::String: return "string";
-  default: UNREACHABLE;
+  default: UNREACHABLE();
   }
 }

@@ -85,7 +85,7 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
       IR::Func::Current  = old_func;
       IR::Block::Current = old_block;
     } else {
-      NOT_YET;
+      NOT_YET();
     }
   }
 

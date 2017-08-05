@@ -10,7 +10,7 @@ ParamStruct::ParamStruct(const std::string &name,
     : bound_name(name), params(std::move(params)), decls(std::move(decls)) {}
 
 IR::Func *ParamStruct::IRFunc() {
-  NOT_YET;
+  NOT_YET();
   /*
   if (ir_func) { return ir_func; } // Cache
   for (auto p : params) { p->verify_types(); }
@@ -66,8 +66,8 @@ IR::Func *ParamStruct::IRFunc() {
   */
 }
 
-void ParamStruct::EmitInit(IR::Val) { UNREACHABLE; }
-void ParamStruct::EmitDestroy(IR::Val) { UNREACHABLE; }
-void ParamStruct::EmitRepr(IR::Val) { UNREACHABLE; }
-IR::Val ParamStruct::EmitInitialValue() const { UNREACHABLE; }
+void ParamStruct::EmitInit(IR::Val) { UNREACHABLE(); }
+void ParamStruct::EmitDestroy(IR::Val) { UNREACHABLE(); }
+void ParamStruct::EmitRepr(IR::Val) { UNREACHABLE(); }
+IR::Val ParamStruct::EmitInitialValue() const { UNREACHABLE(); }
 std::string ParamStruct::to_string() const { return bound_name; }

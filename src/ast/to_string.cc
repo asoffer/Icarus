@@ -51,7 +51,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Dots: ss << "Dots"; break;
   case Language::Operator::Require: ss << "Require"; break;
   case Language::Operator::Ref: ss << "Ref"; break;
-  default: { UNREACHABLE; }
+  default: { UNREACHABLE(); }
   }
   
   ss << ">\n" << operand->to_string(n + 1);
@@ -88,7 +88,7 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::In: ss << "In"; break;
     case Language::Operator::Tick: ss << "Tick"; break;
     case Language::Operator::Rocket: ss << "Rocket"; break;
-    default: UNREACHABLE;
+    default: UNREACHABLE();
     }
   }
   ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
@@ -187,7 +187,7 @@ std::string Jump::to_string(size_t n) const {
   case JumpType::Repeat: return tabs(n) + "<Repeat>\n";
   case JumpType::Break: return tabs(n) + "<Break>\n";
   case JumpType::Return: return tabs(n) + "<Return>\n";
-  default: UNREACHABLE;
+  default: UNREACHABLE();
   }
 }
 

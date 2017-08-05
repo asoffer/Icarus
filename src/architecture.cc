@@ -3,8 +3,8 @@
 size_t Architecture::alignment(const Type *t) const {
   if (t->is<Primitive>()) {
     switch (ptr_cast<const Primitive>(t)->type_) {
-    case PrimType::Err: NOT_YET;
-    case PrimType::Unknown: UNREACHABLE;
+    case PrimType::Err: NOT_YET();
+    case PrimType::Unknown: UNREACHABLE();
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;
@@ -39,16 +39,16 @@ size_t Architecture::alignment(const Type *t) const {
   } else if (t->is<Scope_Type>()) {
     return 1;
   } else {
-    NOT_YET;
+    NOT_YET();
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 size_t Architecture::bytes(const Type *t) const {
   if (t->is<Primitive>()) {
     switch (ptr_cast<const Primitive>(t)->type_) {
-    case PrimType::Err: NOT_YET;
-    case PrimType::Unknown: UNREACHABLE;
+    case PrimType::Err: NOT_YET();
+    case PrimType::Unknown: UNREACHABLE();
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;
@@ -95,7 +95,7 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Scope_Type>()) {
     return 0;
   } else {
-    NOT_YET;
+    NOT_YET();
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }

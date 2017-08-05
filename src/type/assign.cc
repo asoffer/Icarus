@@ -11,11 +11,11 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
   ASSERT(scope, "");
   if (lhs_type->is<Primitive>() || lhs_type->is<Pointer>() ||
       lhs_type->is<Function>()) {
-    ASSERT(lhs_type == rhs_type, "");
+    ASSERT_EQ(lhs_type, rhs_type);
 
     IR::Store(from_val, to_var);
   } else if (lhs_type->is<Enum>()) {
-    ASSERT(lhs_type == rhs_type, "");
+    ASSERT_EQ(lhs_type, rhs_type);
     IR::Store(from_val, to_var);
 
   } else if (lhs_type->is<Array>()) {
@@ -83,7 +83,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
 
     IR::Block::Current = land;
   } else if (lhs_type->is<Scope_Type>() && rhs_type->is<Scope_Type>()) {
-    ASSERT(lhs_type == rhs_type, "");
+    ASSERT_EQ(lhs_type, rhs_type);
     IR::Store(from_val, to_var);
 
   } else {

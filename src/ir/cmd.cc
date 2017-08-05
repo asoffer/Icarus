@@ -42,7 +42,7 @@ Val Field(Val v, size_t n) {
   return cmd.result
 
 Val Malloc(Type *t, Val v) {
-  ASSERT(v.type == ::Uint, "");
+  ASSERT_EQ(v.type, ::Uint);
   MAKE_AND_RETURN(t, Op::Malloc);
 }
 
@@ -56,7 +56,7 @@ Val Free(Val v) {
 }
 
 Val Alloca(Type *t) {
-  ASSERT(t != ::Void, "");
+  ASSERT_NE(t, ::Void);
   Cmd cmd(Ptr(t), Op::Alloca, {});
   Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
   return cmd.result;
@@ -76,12 +76,14 @@ Val Load(Val v) {
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is<::Array>() && !ptr_cast<::Array>(v.type)->fixed_length, "");
+  ASSERT(v.type->is<::Array>(), "");
+  ASSERT(!ptr_cast<::Array>(v.type)->fixed_length, "");
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is<::Array>() && !ptr_cast<::Array>(v.type)->fixed_length, "");
+  ASSERT(v.type->is<::Array>(), "");
+  ASSERT(!ptr_cast<::Array>(v.type)->fixed_length, "");
   MAKE_AND_RETURN(Ptr(ptr_cast<::Array>(v.type)->data_type), Op::ArrayData);
 }
 
@@ -106,7 +108,7 @@ Val Index(Val v1, Val v2) {
 }
 
 Val Ptr(Val v) {
-  ASSERT(v.type == Type_, "");
+  ASSERT_EQ(v.type, Type_);
   MAKE_AND_RETURN(Type_, Op::Ptr);
 }
 
@@ -123,7 +125,8 @@ Val Arrow(Val v1, Val v2) { MAKE_AND_RETURN2(Type_, Op::Arrow); }
 
 Val Array(Val v1, Val v2) {
   // TODO decide if Int vs Uint is allowed
-  ASSERT((v1.type == Uint || v1.type == Int) && v2.type == Type_, "");
+  ASSERT((v1.type == Uint || v1.type == Int), "");
+  ASSERT_EQ(v2.type, Type_);
   MAKE_AND_RETURN2(Type_, Op::Array);
 }
 

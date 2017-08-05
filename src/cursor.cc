@@ -20,7 +20,7 @@ void Cursor::Increment() {
 }
 
 Cursor Cursor::Behind(const Cursor &cursor, u64 dist) {
-  ASSERT(cursor.offset >= dist, "");
+  ASSERT_GE(cursor.offset, dist);
   Cursor result = cursor;
   result.offset -= dist;
   return result;

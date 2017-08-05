@@ -31,7 +31,7 @@ struct Cursor {
 
   void BackUp() {
     // You can't back up to a previous line.
-    ASSERT(offset > 0, "offset is negative.");
+    ASSERT_GT(offset, 0);
     --offset;
   }
 

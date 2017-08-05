@@ -108,9 +108,9 @@ BlockIndex ExecContext::ExecuteBlock() {
                             : curr_block.jmp_.cond_data.false_block;
   } break;
   case Jump::Type::Ret: return BlockIndex{-1};
-  case Jump::Type::None: UNREACHABLE;
+  case Jump::Type::None: UNREACHABLE();
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 IR::Val Stack::Push(Pointer *ptr) {
@@ -128,14 +128,14 @@ IR::Val Stack::Push(Pointer *ptr) {
     free(stack_);
     stack_ = new_stack;
   }
-  ASSERT(size_ <= capacity_, "");
+  ASSERT_LE(size_, capacity_);
   return IR::Val::StackAddr(addr, ptr->pointee);
 }
 
 void ExecContext::Resolve(Val *v) const {
   switch (v->kind) {
   case Val::Kind::Arg:
-    ASSERT(call_stack.top().args_.size() > v->as_arg, "");
+    ASSERT_GT(call_stack.top().args_.size(), v->as_arg);
     *v = arg(v->as_arg);
     return;
   case Val::Kind::Reg: *v = reg(v->as_reg); return;
@@ -157,7 +157,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(-resolved[0].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Add:
     if (resolved[0].type == Char) {
@@ -189,7 +189,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else {
       cmd.dump(0);
       for (auto &r : resolved) { std::cerr << r.to_string() << std::endl; }
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Sub:
     if (resolved[0].type == Char) {
@@ -202,7 +202,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real - resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Mul:
     if (resolved[0].type == Int) {
@@ -212,7 +212,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real * resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Div:
     if (resolved[0].type == Int) {
@@ -222,7 +222,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(resolved[0].as_real / resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Mod:
     if (resolved[0].type == Int) {
@@ -232,13 +232,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Real(fmod(resolved[0].as_real, resolved[1].as_real));
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Arrow:
     if (resolved[0].type == Type_) {
       return Val::Type(::Func(resolved[0].as_type, resolved[1].as_type));
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Array:
     if (resolved[0].type == Uint) {
@@ -248,7 +248,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::Type(
           ::Arr(resolved[1].as_type, static_cast<size_t>(resolved[0].as_int)));
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Cast:
     if (resolved[1].type == Int) {
@@ -259,7 +259,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].as_type == Real) {
         return IR::Val::Real(static_cast<double>(resolved[1].as_int));
       } else {
-        NOT_YET;
+        NOT_YET();
       }
     } else if (resolved[1].type == Uint) {
       if (resolved[0].as_type == Uint) {
@@ -269,28 +269,28 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].as_type == Real) {
         return IR::Val::Real(static_cast<double>(resolved[1].as_uint));
       } else {
-        NOT_YET;
+        NOT_YET();
       }
     } else {
-      NOT_YET;
+      NOT_YET();
     }
   case Op::And:
     if (resolved[0].type == Bool) {
       return Val::Bool(resolved[0].as_bool & resolved[1].as_bool);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Or:
     if (resolved[0].type == Bool) {
       return Val::Bool(resolved[0].as_bool | resolved[1].as_bool);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Xor:
     if (resolved[0].type == Bool) {
       return Val::Bool(resolved[0].as_bool ^ resolved[1].as_bool);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Lt:
     if (resolved[0].type == Int) {
@@ -300,7 +300,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Bool(resolved[0].as_real < resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Le:
     if (resolved[0].type == Int) {
@@ -314,7 +314,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type->is<Enum>()) {
       return Val::Bool(resolved[0].as_enum <= resolved[1].as_enum);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Eq:
     if (resolved[0].type == Bool) {
@@ -333,7 +333,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::Bool(resolved[0].as_addr == resolved[1].as_addr);
     } else {
       cmd.dump(0);
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Ne:
     if (resolved[0].type == Bool) {
@@ -349,7 +349,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Type_) {
       return Val::Bool(resolved[0].as_type != resolved[1].as_type);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Ge:
     if (resolved[0].type == Int) {
@@ -359,7 +359,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Bool(resolved[0].as_real >= resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::Gt:
     if (resolved[0].type == Int) {
@@ -369,7 +369,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Real) {
       return Val::Bool(resolved[0].as_real > resolved[1].as_real);
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   case Op::SetReturn: {
     call_stack.top().rets_ AT(resolved[0].as_uint) = resolved[1];
@@ -410,8 +410,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type->is<Function>()) {
       std::cerr << "{" << resolved[0].type->to_string() << "}";
     } else {
-      std::cerr << *resolved[0].type << std::endl;
-      NOT_YET;
+      NOT_YET(*resolved[0].type);
     }
     return IR::Val::None();
   case Op::Ptr: return Val::Type(::Ptr(resolved[0].as_type));
@@ -419,7 +418,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     switch (resolved[0].as_addr.kind) {
     case Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
-      UNREACHABLE;
+      UNREACHABLE();
     case Addr::Kind::Global: return global_vals[resolved[0].as_addr.as_global];
     case Addr::Kind::Stack: {
       if (cmd.result.type == Bool) {
@@ -443,9 +442,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return IR::Val::Enum(ptr_cast<Enum>(cmd.result.type),
                              stack_.Load<size_t>(resolved[0].as_addr.as_stack));
       } else {
-        std::cerr << "Don't know how to load type: " << *cmd.result.type
-                  << std::endl;
-        NOT_YET;
+        NOT_YET("Don't know how to load type: ", *cmd.result.type);
       }
     } break;
     }
@@ -453,7 +450,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     switch (resolved[1].as_addr.kind) {
     case Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
-      UNREACHABLE;
+      UNREACHABLE();
     case Addr::Kind::Global:
       global_vals[resolved[1].as_addr.as_global] = resolved[0];
       return IR::Val::None();
@@ -475,9 +472,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Code) {
         stack_.Store(resolved[0].as_code, resolved[1].as_addr.as_stack);
       } else {
-        std::cerr << "Don't know how to store type: " << *cmd.result.type
-                  << std::endl;
-        NOT_YET;
+        NOT_YET("Don't know how to store type: ", *cmd.result.type);
       }
 
       return IR::Val::None();
@@ -488,10 +483,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return resolved[i + 1];
       }
     }
-    std::cerr << "Previous block was "
-              << Val::Block(call_stack.top().prev_).to_string() << std::endl;
     cmd.dump(0);
-    UNREACHABLE;
+    UNREACHABLE("Previous block was ",
+                Val::Block(call_stack.top().prev_).to_string());
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
   case Op::Access:
     if (resolved[1].as_addr.kind == Addr::Kind::Stack) {
@@ -501,7 +495,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::StackAddr(resolved[1].as_addr.as_stack + bytes_fwd,
                             data_type);
     } else {
-      NOT_YET;
+      NOT_YET();
     }
   case Op::PtrIncr:
   case Op::Index:
@@ -511,7 +505,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::StackAddr(resolved[0].as_addr.as_stack + bytes_fwd,
                             ptr_cast<Pointer>(cmd.result.type)->pointee);
     } else {
-      NOT_YET;
+      NOT_YET();
     }
   case Op::Field: {
     auto struct_type =
@@ -530,7 +524,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::StackAddr(resolved[0].as_addr.as_stack + offset,
                             ptr_cast<Pointer>(cmd.result.type)->pointee);
     } else {
-      NOT_YET;
+      NOT_YET();
     }
   } break;
   case Op::Contextualize: {
@@ -552,12 +546,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::CodeBlock(std::move(code_block).release());
   }
   case Op::Nop: return Val::None();
-  case Op::Malloc: NOT_YET;
-  case Op::Free: NOT_YET;
-  case Op::ArrayLength: NOT_YET;
-  case Op::ArrayData: NOT_YET;
+  case Op::Malloc: NOT_YET();
+  case Op::Free: NOT_YET();
+  case Op::ArrayLength: NOT_YET();
+  case Op::ArrayData: NOT_YET();
   }
-  UNREACHABLE;
+  UNREACHABLE();
 }
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
@@ -573,7 +567,7 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
       ctx->call_stack.top().prev_    = ctx->call_stack.top().current_;
       ctx->call_stack.top().current_ = block_index;
     } else {
-      UNREACHABLE;
+      UNREACHABLE();
     }
   }
 }
