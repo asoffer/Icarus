@@ -38,7 +38,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     rhs_end_ptr = IR::PtrIncr(rhs_ptr, rhs_len);
 
     if (lhs_array_type->fixed_length) {
-      lhs_ptr = IR::Access(IR::Val::Uint(0ul), to_var);
+      lhs_ptr = IR::Index(to_var, IR::Val::Uint(0));
     } else {
       // TODO delete first time. currently just delete
       // TODO Architecture dependence?

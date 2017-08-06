@@ -127,7 +127,7 @@ enum class Op : char {
   Load, Store,
   ArrayLength, ArrayData,
   PtrIncr, Index,
-  Phi, Field, Access,
+  Phi, Field,
   Call, Cast,
   Nop, SetReturn,
   Arrow, Array, Ptr,
@@ -234,7 +234,6 @@ Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals);
 Val SetReturn(size_t n, Val v);
-Val Access(Val index, Val val);
 Val Load(Val v);
 Val Store(Val val, Val loc);
 Val ArrayLength(Val v);

@@ -491,16 +491,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Previous block was ",
                 Val::Block(call_stack.top().prev_).to_string());
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
-  case Op::Access:
-    if (resolved[1].as_addr.kind == Addr::Kind::Stack) {
-      auto data_type = ptr_cast<Pointer>(cmd.result.type)->pointee;
-      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolved[0].as_uint, data_type);
-      return Val::StackAddr(resolved[1].as_addr.as_stack + bytes_fwd,
-                            data_type);
-    } else {
-      NOT_YET();
-    }
   case Op::PtrIncr:
   case Op::Index:
     if (resolved[0].as_addr.kind == Addr::Kind::Stack) {

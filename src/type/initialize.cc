@@ -25,7 +25,7 @@ void Array::EmitInit(IR::Val id_val) {
       auto ptr = IR::Val::None();
       auto length_var = IR::Val::None();
       if (fixed_length) {
-        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(Ptr(this), 0));
+        ptr = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
         length_var = IR::Val::Uint(len);
       } else {
         auto ptr_to_data_cell = IR::ArrayData(IR::Val::Arg(Ptr(this), 0));

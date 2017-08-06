@@ -95,7 +95,7 @@ void Array::EmitRepr(IR::Val val) {
       if (fixed_length) {
         // Can assume length is not zero or one because these are handled above.
         length_var = IR::Val::Uint(len);
-        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(Ptr(this), 0));
+        ptr = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
         IR::Jump::Unconditional(init_block);
       } else {
         length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));

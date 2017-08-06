@@ -103,15 +103,6 @@ Val PtrIncr(Val v1, Val v2) {
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
 
-Val Index(Val v1, Val v2) {
-  ASSERT(v1.type->is<::Pointer>(), "");
-  ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(), "");
-  ASSERT_EQ(v2.type, ::Uint);
-  MAKE_AND_RETURN2(
-      Ptr(ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee)->data_type),
-      Op::Index);
-}
-
 Val Ptr(Val v) {
   ASSERT_EQ(v.type, Type_);
   MAKE_AND_RETURN(Type_, Op::Ptr);
@@ -135,12 +126,13 @@ Val Array(Val v1, Val v2) {
   MAKE_AND_RETURN2(Type_, Op::Array);
 }
 
-Val Access(Val v1, Val v2) {
-  // v1 = index, v2 = val
-  ASSERT(v2.type->is<Pointer>(), "");
-  ASSERT(ptr_cast<Pointer>(v2.type)->pointee->is<::Array>(), "");
-  auto *array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v2.type)->pointee);
-  MAKE_AND_RETURN2(Ptr(array_type->data_type), Op::Access);
+Val Index(Val v1, Val v2) {
+  ASSERT(v1.type->is<::Pointer>(), "");
+  ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(), "");
+  ASSERT_EQ(v2.type, ::Uint);
+  MAKE_AND_RETURN2(
+      Ptr(ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee)->data_type),
+      Op::Index);
 }
 
 Val Lt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Lt); }
@@ -205,7 +197,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Ptr: std::cerr << "ptr"; break;
   case Op::Phi: std::cerr << "phi"; break;
   case Op::Field: std::cerr << "field"; break;
-  case Op::Access: std::cerr << "access"; break;
   case Op::Nop: std::cerr << "nop"; break;
   case Op::Call: std::cerr << "call"; break;
   case Op::Cast: std::cerr << "cast"; break;

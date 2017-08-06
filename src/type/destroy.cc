@@ -21,7 +21,7 @@ void Array::EmitDestroy(IR::Val id_val) {
       IR::Val ptr = IR::Val::None();
       IR::Val length_var = IR::Val::None();
       if (fixed_length) {
-        ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(this, 0));
+        ptr        = IR::Index(IR::Val::Arg(this, 0), IR::Val::Uint(0));
         length_var = IR::Val::Uint(len);
       } else {
         ptr = IR::Load(IR::ArrayData(IR::Val::Arg(this, 0)));
