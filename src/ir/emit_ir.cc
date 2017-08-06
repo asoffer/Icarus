@@ -118,8 +118,16 @@ IR::Val AST::Terminal::EmitIR() {
 IR::Val AST::Identifier::EmitIR() {
   VERIFY_OR_EXIT;
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
-  if (decl->arg_val || decl->is<InDecl>()) {
+  if (decl->arg_val) {
     return decl->addr;
+  } else if (decl->is<InDecl>()) {
+    auto* in_decl = ptr_cast<InDecl>(decl);
+    if (in_decl->container->type->is<Array>()) {
+      return PtrCallFix(EmitLVal());
+    } else {
+      return decl->addr;
+    }
+
   } else if (type == Type_) {
     // TODO this is a hack and not entirely correct because perhaps types are
     // not const.
@@ -170,7 +178,16 @@ IR::Val AST::For::EmitIR() {
         } else {
           NOT_YET();
         }
-      } else if (decl->container->type->is<Type>()) {
+      } else if (decl->container->type->is<Array>()) {
+        auto* array_type = ptr_cast<Array>(decl->container->type);
+        if (array_type->fixed_length) {
+          init_vals.push_back(
+              IR::Index(decl->container->EmitLVal(), IR::Val::Uint(0)));
+        } else {
+          NOT_YET();
+        }
+
+      } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get());
         if (container_val.as_type->is<Enum>()) {
@@ -190,7 +207,17 @@ IR::Val AST::For::EmitIR() {
   phis.reserve(iterators.size());
   { // Phi block
     IR::Block::Current = phi;
-    for (auto& decl : iterators) { phis.push_back(IR::Phi(decl->type)); }
+    for (auto &decl : iterators) {
+      if (decl->container->type == Type_) {
+        NOT_YET();
+      } else if (decl->container->type->is<RangeType>()) {
+        phis.push_back(
+            IR::Phi(ptr_cast<RangeType>(decl->container->type)->end_type));
+      } else if (decl->container->type->is<Array>()) {
+        phis.push_back(
+            IR::Phi(Ptr(ptr_cast<Array>(decl->container->type)->data_type)));
+      }
+    }
     IR::Jump::Unconditional(cond);
   }
 
@@ -208,6 +235,8 @@ IR::Val AST::For::EmitIR() {
       } else if (iter.type->is<Enum>()) {
         incr_vals.push_back(
             IR::Add(iter, IR::Val::Enum(ptr_cast<Enum>(iter.type), 1)));
+      } else if (iter.type->is<Pointer>()) {
+        incr_vals.push_back(IR::PtrIncr(iter, IR::Val::Uint(1)));
       } else {
         NOT_YET();
       }
@@ -242,13 +271,22 @@ IR::Val AST::For::EmitIR() {
           cmp = IR::Val::Bool(true);
         } else {
           NOT_YET();
+       }
+      } else if (decl->container->type->is<Array>()) {
+        auto* array_type = ptr_cast<Array>(decl->container->type);
+        if (array_type->fixed_length) {
+          cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(),
+                                      IR::Val::Uint(array_type->len)));
+        } else {
+          NOT_YET();
         }
-      } else if (decl->container->type->is<Type>()) {
+      } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
         if (container_val.as_type->is<Enum>()) {
           // TODO I should not have to recalculate this here.
           auto* enum_type = ptr_cast<Enum>(container_val.as_type);
-          cmp             = IR::Le(reg,
+
+          cmp = IR::Le(reg,
                        IR::Val::Enum(enum_type, enum_type->members.size() - 1));
         } else {
           NOT_YET();

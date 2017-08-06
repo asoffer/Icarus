@@ -348,6 +348,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::Bool(resolved[0].as_real != resolved[1].as_real);
     } else if (resolved[0].type == Type_) {
       return Val::Bool(resolved[0].as_type != resolved[1].as_type);
+    } else if (resolved[0].type->is<Pointer>()) {
+      return Val::Bool(resolved[0].as_addr != resolved[1].as_addr);
     } else {
       UNREACHABLE();
     }

@@ -59,6 +59,7 @@ struct Addr {
   std::string to_string() const;
 };
 bool operator==(Addr lhs, Addr rhs);
+inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   enum class Kind : u8 { None, Arg, Reg, Const } kind = Kind::None;

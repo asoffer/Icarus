@@ -125,7 +125,7 @@ void Jump::Conditional(Val cond, BlockIndex true_index,
   Jump &jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
   if (cond.kind == Val::Kind::Const) {
     jmp.type = Type::Uncond;
-    ASSERT(cond.type == Bool, "");
+    ASSERT_EQ(cond.type, Bool);
     jmp.block_index = (cond.as_bool ? true_index : false_index);
   } else {
     jmp.type = Type::Cond;
@@ -164,5 +164,4 @@ bool operator==(Addr lhs, Addr rhs) {
   }
   UNREACHABLE();
 }
-
 } // namespace IR
