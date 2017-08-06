@@ -500,6 +500,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Char) {
         stack_.Store(resolved[0].as_char, resolved[1].as_addr.as_stack);
       } else if (resolved[0].type == Int) {
+        LOG << resolved[0].to_string();
+        LOG << resolved[1].to_string();
         stack_.Store(resolved[0].as_int, resolved[1].as_addr.as_stack);
       } else if (resolved[0].type == Uint) {
         stack_.Store(resolved[0].as_uint, resolved[1].as_addr.as_stack);
@@ -549,7 +551,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Previous block was ",
                 Val::Block(call_stack.top().prev_).to_string());
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
-  case Op::Index: // Fallthrough intended
   case Op::PtrIncr:
     switch (resolved[0].as_addr.kind) {
     case Addr::Kind::Stack: {

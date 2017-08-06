@@ -128,7 +128,7 @@ enum class Op : char {
   Print, Malloc, Free,
   Load, Store,
   ArrayLength, ArrayData,
-  PtrIncr, Index,
+  PtrIncr,
   Phi, Field,
   Call, Cast,
   Nop, SetReturn,
