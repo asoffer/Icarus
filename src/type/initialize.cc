@@ -26,37 +26,38 @@ void Array::EmitInit(IR::Val id_val) {
       auto length_var = IR::Val::None();
       if (fixed_length) {
         ptr = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
-        length_var = IR::Val::Uint(len);
+        length_var     = IR::Val::Uint(len);
+        auto end_ptr   = IR::PtrIncr(ptr, length_var);
+
+        auto loop_phi  = IR::Func::Current->AddBlock();
+        auto loop_body = IR::Func::Current->AddBlock();
+
+        IR::Jump::Unconditional(loop_phi);
+
+        IR::Block::Current = loop_phi;
+        auto phi           = IR::Phi(Ptr(data_type));
+        IR::Jump::Conditional(IR::Eq(phi, end_ptr), IR::Func::Current->exit(),
+                              loop_body);
+
+        IR::Block::Current = loop_body;
+        data_type->EmitInit(phi);
+        auto incr = IR::PtrIncr(phi, IR::Val::Uint(1));
+        IR::Jump::Unconditional(loop_phi);
+
+        IR::Block::Current = IR::Func::Current->exit();
+        IR::Jump::Return();
+
+        IR::Func::Current->SetArgs(phi.as_reg,
+                                   {IR::Val::Block(init_func->entry()), ptr,
+                                    IR::Val::Block(loop_body), incr});
+
       } else {
-        auto ptr_to_data_cell = IR::ArrayData(IR::Val::Arg(Ptr(this), 0));
-        IR::Store(IR::Malloc(data_type, IR::Val::Uint(0ul)), ptr_to_data_cell);
-
-        ptr = IR::Load(ptr_to_data_cell);
-        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
+        IR::Store(IR::Val::Uint(0),
+                  IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
+        IR::Store(IR::Malloc(data_type, IR::Val::Uint(0ul)),
+                 IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
+        IR::Jump::Return();
       }
-      auto end_ptr = IR::PtrIncr(ptr, length_var);
-
-      auto loop_phi = IR::Func::Current->AddBlock();
-      auto loop_body = IR::Func::Current->AddBlock();
-
-      IR::Jump::Unconditional(loop_phi);
-
-      IR::Block::Current = loop_phi;
-      auto phi = IR::Phi(Ptr(data_type));
-      IR::Jump::Conditional(IR::Eq(phi, end_ptr), IR::Func::Current->exit(),
-                            loop_body);
-
-      IR::Block::Current = loop_body;
-      data_type->EmitInit(phi);
-      auto incr = IR::PtrIncr(phi, IR::Val::Uint(1));
-      IR::Jump::Unconditional(loop_phi);
-
-      IR::Block::Current = IR::Func::Current->exit();
-      IR::Jump::Return();
-
-      IR::Func::Current->SetArgs(phi.as_reg,
-                                 {IR::Val::Block(init_func->entry()), ptr,
-                                  IR::Val::Block(loop_body), incr});
     }
   }
 

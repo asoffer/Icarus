@@ -20,8 +20,8 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
 
   } else if (lhs_type->is<Array>()) {
     ASSERT(rhs_type->is<Array>(), "");
-    auto lhs_array_type = (Array *)lhs_type;
-    auto rhs_array_type = (Array *)rhs_type;
+    auto *lhs_array_type = ptr_cast<Array>(lhs_type);
+    auto *rhs_array_type = ptr_cast<Array>(rhs_type);
 
     IR::Val lhs_ptr     = IR::Val::None();
     IR::Val rhs_ptr     = IR::Val::None();
@@ -42,10 +42,7 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     } else {
       // TODO delete first time. currently just delete
       // TODO Architecture dependence?
-      // TODO size in array? You can get away with not rounding up the last
-      // section.
-
-      auto rhs_bytes = Architecture::CompilingMachine().ComputeArrayLength(
+      auto rhs_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
           rhs_len, lhs_array_type->data_type);
       auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
       auto array_data = IR::ArrayData(to_var);

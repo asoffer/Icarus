@@ -424,6 +424,33 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       // TODO compile-time failure. dump the stack trace and abort.
       UNREACHABLE();
     case Addr::Kind::Global: return global_vals[resolved[0].as_addr.as_global];
+    case Addr::Kind::Heap: {
+      if (cmd.result.type == Bool) {
+        return IR::Val::Bool(*static_cast<bool *>(resolved[0].as_addr.as_heap));
+      } else if (cmd.result.type == Char) {
+        return IR::Val::Char(*static_cast<char *>(resolved[0].as_addr.as_heap));
+      } else if (cmd.result.type == Int) {
+        return IR::Val::Int(*static_cast<i64 *>(resolved[0].as_addr.as_heap));
+      } else if (cmd.result.type == Uint) {
+        return IR::Val::Uint(*static_cast<u64 *>(resolved[0].as_addr.as_heap));
+      } else if (cmd.result.type == Real) {
+        return IR::Val::Real(
+            *static_cast<double *>(resolved[0].as_addr.as_heap));
+      } else if (cmd.result.type == Code) {
+        return IR::Val::CodeBlock(
+            static_cast<AST::CodeBlock *>(resolved[0].as_addr.as_heap));
+
+      } else if (cmd.result.type->is<Pointer>()) {
+        return IR::Val::Addr(*static_cast<Addr *>(resolved[0].as_addr.as_heap),
+                             ptr_cast<Pointer>(cmd.result.type)->pointee);
+      } else if (cmd.result.type->is<Enum>()) {
+        return IR::Val::Enum(
+            ptr_cast<Enum>(cmd.result.type),
+            *static_cast<size_t *>(resolved[0].as_addr.as_heap));
+      } else {
+        NOT_YET("Don't know how to load type: ", *cmd.result.type);
+      }
+    } break;
     case Addr::Kind::Stack: {
       if (cmd.result.type == Bool) {
         return IR::Val::Bool(stack_.Load<bool>(resolved[0].as_addr.as_stack));
@@ -480,6 +507,28 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       }
 
       return IR::Val::None();
+    case Addr::Kind::Heap:
+      if (resolved[0].type == Bool) {
+        *static_cast<bool *>(resolved[1].as_addr.as_heap) = resolved[0].as_bool;
+      } else if (resolved[0].type == Char) {
+        *static_cast<char *>(resolved[1].as_addr.as_heap) = resolved[0].as_char;
+      } else if (resolved[0].type == Int) {
+        *static_cast<i64 *>(resolved[1].as_addr.as_heap) = resolved[0].as_int;
+      } else if (resolved[0].type == Uint) {
+        *static_cast<u64 *>(resolved[1].as_addr.as_heap) = resolved[0].as_uint;
+      } else if (resolved[0].type == Real) {
+        *static_cast<double *>(resolved[1].as_addr.as_heap) =
+            resolved[0].as_real;
+      } else if (resolved[0].type->is<Pointer>()) {
+        NOT_YET();
+      } else if (resolved[0].type->is<Enum>()) {
+        NOT_YET();
+      } else if (resolved[0].type == Code) {
+        NOT_YET();
+      } else {
+        NOT_YET("Don't know how to store type: ", *cmd.result.type);
+      }
+      return IR::Val::None();
     }
   case Op::Phi:
     for (size_t i = 0; i < resolved.size(); i += 2) {
@@ -498,6 +547,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::StackAddr(resolved[0].as_addr.as_stack + bytes_fwd,
                             ptr_cast<Pointer>(cmd.result.type)->pointee);
+    } else if (resolved[0].as_addr.kind == Addr::Kind::Heap) {
+      auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
+          resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
+      return Val::HeapAddr(
+          static_cast<void *>(static_cast<char *>(resolved[0].as_addr.as_heap) +
+                              bytes_fwd),
+          ptr_cast<Pointer>(cmd.result.type)->pointee);
     } else {
       NOT_YET();
     }
@@ -540,18 +596,33 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::CodeBlock(std::move(code_block).release());
   }
   case Op::Nop: return Val::None();
-  case Op::Malloc: NOT_YET();
+  case Op::Malloc:
+    ASSERT(cmd.result.type->is<Pointer>(), "");
+    return IR::Val::HeapAddr(malloc(resolved[0].as_uint),
+                             ptr_cast<Pointer>(cmd.result.type)->pointee);
   case Op::Free: NOT_YET();
   case Op::ArrayLength: return IR::Val::Addr(resolved[0].as_addr, Uint);
   case Op::ArrayData:
-    return IR::Val::Addr(resolved[0].as_addr,
-                         ptr_cast<Pointer>(cmd.result.type)->pointee);
+    switch (resolved[0].as_addr.kind) {
+    case Addr::Kind::Null: UNREACHABLE();
+    case Addr::Kind::Global: NOT_YET();
+    case Addr::Kind::Stack:
+      return IR::Val::StackAddr(
+          resolved[0].as_addr.as_stack +
+              Architecture::InterprettingMachine().bytes(Uint),
+          ptr_cast<Pointer>(cmd.result.type)->pointee);
+
+    case Addr::Kind::Heap:
+      return IR::Val::HeapAddr(
+          static_cast<void *>(static_cast<char *>(resolved[0].as_addr.as_heap) +
+                              Architecture::InterprettingMachine().bytes(Uint)),
+          ptr_cast<Pointer>(cmd.result.type)->pointee);
+    }
   }
   UNREACHABLE();
 }
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
-
   ctx->call_stack.emplace(this, std::move(arguments));
   while (true) {
     auto block_index = ctx->ExecuteBlock();

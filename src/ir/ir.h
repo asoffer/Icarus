@@ -50,10 +50,11 @@ template <> struct hash<IR::RegIndex> {
 
 namespace IR {
 struct Addr {
-  enum class Kind : u8 { Null, Global, Stack } kind;
+  enum class Kind : u8 { Null, Global, Stack, Heap } kind;
   union {
     u64 as_global;
     u64 as_stack;
+    void *as_heap;
   };
 
   std::string to_string() const;
@@ -88,6 +89,7 @@ struct Val {
   static Val Reg(RegIndex r, Type *t);
   static Val Addr(Addr addr, Type *t);
   static Val StackAddr(u64 addr, Type *t);
+  static Val HeapAddr(void *addr, Type *t);
   static Val GlobalAddr(u64 addr, Type *t);
   static Val Bool(bool b);
   static Val Char(char c);

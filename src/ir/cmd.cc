@@ -43,7 +43,7 @@ Val Field(Val v, size_t n) {
 
 Val Malloc(Type *t, Val v) {
   ASSERT_EQ(v.type, ::Uint);
-  MAKE_AND_RETURN(t, Op::Malloc);
+  MAKE_AND_RETURN(Ptr(t), Op::Malloc);
 }
 
 Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }

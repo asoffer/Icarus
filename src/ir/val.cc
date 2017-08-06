@@ -2,6 +2,7 @@
 
 #include "../ast/ast.h"
 #include "../type/type.h"
+#include <sstream>
 
 namespace IR {
 #define MAKE_AND_RETURN(k, t, name, v)                                         \
@@ -16,12 +17,22 @@ Val Val::Reg(RegIndex r, ::Type *t) {
   MAKE_AND_RETURN(Kind::Reg, t, as_reg, r);
 }
 Val Val::StackAddr(u64 addr, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr,
-                  (IR::Addr{Addr::Kind::Stack, addr}));
+  IR::Addr a;
+  a.kind     = Addr::Kind::Stack;
+  a.as_stack = addr;
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr, a);
+}
+Val Val::HeapAddr(void *addr, ::Type *t) {
+  IR::Addr a;
+  a.kind    = Addr::Kind::Heap;
+  a.as_heap = addr;
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr, a);
 }
 Val Val::GlobalAddr(u64 addr, ::Type *t) {
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr,
-                  (IR::Addr{Addr::Kind::Global, addr}));
+  IR::Addr a;
+  a.kind      = Addr::Kind::Global;
+  a.as_global = addr;
+  MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr, a);
 }
 Val Val::Addr(IR::Addr addr, ::Type *t) {
   MAKE_AND_RETURN(Kind::Const, Ptr(t), as_addr, addr);
@@ -147,12 +158,14 @@ void Jump::Unconditional(BlockIndex index) {
 }
 
 std::string Addr::to_string() const {
+  std::stringstream ss;
   switch (kind) {
-  case Addr::Kind::Null: return "null";
-  case Kind::Global: return "g." + std::to_string(as_global);
-  case Kind::Stack: return "s." + std::to_string(as_stack);
+  case Kind::Null: ss << "null"; break;
+  case Kind::Global: ss << "g." << as_global; break;
+  case Kind::Stack: ss << "s." << as_stack; break;
+  case Kind::Heap: ss << "h." << as_heap; break;
   }
-  UNREACHABLE();
+  return ss.str();
 }
 
 bool operator==(Addr lhs, Addr rhs) {
@@ -161,6 +174,7 @@ bool operator==(Addr lhs, Addr rhs) {
   case Addr::Kind::Null: return true;
   case Addr::Kind::Stack: return lhs.as_stack == rhs.as_stack;
   case Addr::Kind::Global: return lhs.as_global == rhs.as_global;
+  case Addr::Kind::Heap: return lhs.as_heap == rhs.as_heap;
   }
   UNREACHABLE();
 }
