@@ -28,6 +28,89 @@ Array::Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {
   dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
 }
 
+
+//TODO better to hash pair of Array*
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>> eq_funcs;
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>> ne_funcs;
+IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
+                       IR::Val rhs_ir, bool equality) {
+  auto &funcs = equality ? eq_funcs : ne_funcs;
+
+  auto insertion = funcs[lhs_type].emplace(
+      rhs_type, IR::Func(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool)));
+  IR::Func *fn = &insertion.first->second;
+  if (insertion.second) {
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+
+      auto lhs_len =
+          lhs_type->fixed_length
+              ? IR::Val::Uint(lhs_type->len)
+              : IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(lhs_type), 0)));
+
+      auto rhs_len =
+          rhs_type->fixed_length
+              ? IR::Val::Uint(rhs_type->len)
+              : IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(rhs_type), 1)));
+
+      auto len_cmp = IR::Eq(lhs_len, rhs_len);
+
+      auto equal_len_block = IR::Func::Current->AddBlock();
+      auto true_block      = IR::Func::Current->AddBlock();
+      auto false_block     = IR::Func::Current->AddBlock();
+      auto phi_block       = IR::Func::Current->AddBlock();
+      auto body_block      = IR::Func::Current->AddBlock();
+      auto incr_block      = IR::Func::Current->AddBlock();
+
+      IR::Jump::Conditional(len_cmp, equal_len_block, false_block);
+
+      IR::Block::Current = true_block;
+      IR::SetReturn(0, IR::Val::Bool(true));
+      IR::Jump::Return();
+
+      IR::Block::Current = false_block;
+      IR::SetReturn(0, IR::Val::Bool(false));
+      IR::Jump::Return();
+
+      IR::Block::Current = equal_len_block;
+      auto lhs_start =
+          lhs_type->fixed_length
+              ? IR::Index(IR::Val::Arg(Ptr(lhs_type), 0), IR::Val::Uint(0))
+              : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(lhs_type), 0)));
+      auto rhs_start =
+          rhs_type->fixed_length
+              ? IR::Index(IR::Val::Arg(Ptr(rhs_type), 1), IR::Val::Uint(0))
+              : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(rhs_type), 1)));
+      auto lhs_end = IR::PtrIncr(lhs_start, lhs_len);
+      IR::Jump::Unconditional(phi_block);
+
+      IR::Block::Current = phi_block;
+      auto lhs_phi       = IR::Phi(Ptr(lhs_type->data_type));
+      auto rhs_phi       = IR::Phi(Ptr(rhs_type->data_type));
+      IR::Jump::Conditional(IR::Eq(lhs_phi, lhs_end), true_block, body_block);
+
+      IR::Block::Current = body_block;
+      // TODO what if data type is an array?
+      IR::Jump::Conditional(IR::Eq(IR::Load(lhs_phi), IR::Load(rhs_phi)),
+                            incr_block, false_block);
+
+      IR::Block::Current = incr_block;
+      auto lhs_incr      = IR::PtrIncr(lhs_phi, IR::Val::Uint(1));
+      auto rhs_incr      = IR::PtrIncr(rhs_phi, IR::Val::Uint(1));
+      IR::Jump::Unconditional(phi_block);
+
+      IR::Func::Current->SetArgs(lhs_phi.as_reg,
+                                 {IR::Val::Block(equal_len_block), lhs_start,
+                                  IR::Val::Block(incr_block), lhs_incr});
+      IR::Func::Current->SetArgs(rhs_phi.as_reg,
+                                 {IR::Val::Block(equal_len_block), rhs_start,
+                                  IR::Val::Block(incr_block), rhs_incr});
+    }
+  }
+
+  return IR::Call(IR::Val::Func(fn), {lhs_ir, rhs_ir});
+}
+
 Tuple::Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}
 
 Pointer::Pointer(Type *t) : pointee(t) {}

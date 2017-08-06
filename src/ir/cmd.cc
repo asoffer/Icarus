@@ -76,10 +76,11 @@ Val Load(Val v) {
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is<Pointer>(), "");
+  ASSERT(v.type->is<Pointer>(), "Type is " + v.type->to_string());
   auto *ptee = ptr_cast<Pointer>(v.type)->pointee;
-  ASSERT(ptee->is<::Array>(), "");
-  ASSERT(!ptr_cast<::Array>(ptee)->fixed_length, "");
+  ASSERT(ptee->is<::Array>(), "Pointee type is " + ptee->to_string());
+  ASSERT(!ptr_cast<::Array>(ptee)->fixed_length,
+         "Pointee type is " + ptee->to_string());
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
@@ -128,7 +129,8 @@ Val Array(Val v1, Val v2) {
 
 Val Index(Val v1, Val v2) {
   ASSERT(v1.type->is<::Pointer>(), "");
-  ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(), "");
+  ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(),
+         "Pointee is " + ptr_cast<Pointer>(v1.type)->pointee->to_string());
   ASSERT_EQ(v2.type, ::Uint);
   MAKE_AND_RETURN2(
       Ptr(ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee)->data_type),

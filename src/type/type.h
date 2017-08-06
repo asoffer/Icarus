@@ -93,6 +93,9 @@ struct Array : public Type {
   TYPE_FNS(Array, array);
   Array(Type *t, size_t l);
 
+  static IR::Val Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
+                         IR::Val rhs_ir, bool equality);
+
   IR::Func *init_func = nullptr, *repr_func = nullptr, *destroy_func = nullptr;
 
   Type *data_type;

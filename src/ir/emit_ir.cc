@@ -637,17 +637,27 @@ IR::Val AST::ChainOp::EmitIR() {
     for (size_t i = 0; i < ops.size(); ++i) {
       auto rhs_ir = exprs[i + 1]->EmitIR();
       IR::Val cmp;
-      switch (ops[i]) {
-      case Language::Operator::Lt: cmp = IR::Lt(lhs_ir, rhs_ir); break;
-      case Language::Operator::Le: cmp = IR::Le(lhs_ir, rhs_ir); break;
-      case Language::Operator::Eq: cmp = IR::Eq(lhs_ir, rhs_ir); break;
-      case Language::Operator::Ne: cmp = IR::Ne(lhs_ir, rhs_ir); break;
-      case Language::Operator::Ge: cmp = IR::Ge(lhs_ir, rhs_ir); break;
-      case Language::Operator::Gt: cmp = IR::Gt(lhs_ir, rhs_ir); break;
-      case Language::Operator::And: {
-        cmp = lhs_ir;
-      } break;
-      default: UNREACHABLE(*this);
+      if (exprs[i]->type->is<Array>() && exprs[i + 1]->type->is<Array>()) {
+        ASSERT(ops[i] == Language::Operator::Eq ||
+                   ops[i] == Language::Operator::Ne,
+               "");
+        cmp = Array::Compare(ptr_cast<Array>(exprs[i]->type), lhs_ir,
+                             ptr_cast<Array>(exprs[i + 1]->type), rhs_ir,
+                             ops[i] == Language::Operator::Eq);
+
+      } else {
+        switch (ops[i]) {
+        case Language::Operator::Lt: cmp = IR::Lt(lhs_ir, rhs_ir); break;
+        case Language::Operator::Le: cmp = IR::Le(lhs_ir, rhs_ir); break;
+        case Language::Operator::Eq: cmp = IR::Eq(lhs_ir, rhs_ir); break;
+        case Language::Operator::Ne: cmp = IR::Ne(lhs_ir, rhs_ir); break;
+        case Language::Operator::Ge: cmp = IR::Ge(lhs_ir, rhs_ir); break;
+        case Language::Operator::Gt: cmp = IR::Gt(lhs_ir, rhs_ir); break;
+        case Language::Operator::And: {
+          cmp = lhs_ir;
+        } break;
+        default: UNREACHABLE(*this);
+        }
       }
       IR::Jump::Conditional(cmp, blocks[i], land_block);
       IR::Block::Current = blocks[i];

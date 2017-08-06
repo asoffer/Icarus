@@ -675,6 +675,96 @@ void Binop::verify_types() {
   }
 }
 
+static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
+                                   Type *rhs_type) {
+  ASSERT(op == Language::Operator::Lt || op == Language::Operator::Le ||
+             op == Language::Operator::Eq || op == Language::Operator::Ne ||
+             op == Language::Operator::Ge || op == Language::Operator::Gt,
+         "Expecting a ChainOp operator type.");
+
+  if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>()) {
+    if (lhs_type != rhs_type) {
+      // TODO Log a better error
+      errors.emplace_back(Error::Code::Other);
+      return false;
+    }
+
+    if (lhs_type == Int || lhs_type == Uint || lhs_type == Real) { return true; }
+
+    if (lhs_type == Code || lhs_type == Void) { return false; }
+    // TODO NullPtr, String types?
+
+    if (lhs_type == Bool || lhs_type == Char || lhs_type == Type_) {
+      if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
+        return true;
+      } else {
+        // TODO Log a better error
+        errors.emplace_back(Error::Code::Other);
+        return false;
+      }
+    }
+  }
+
+  if (lhs_type->is<Enum>() || lhs_type->is<Pointer>()) {
+    if (lhs_type != rhs_type) {
+      // TODO Log a better error
+      errors.emplace_back(Error::Code::Other);
+      return false;
+    } else if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
+      // TODO Log a better error
+      errors.emplace_back(Error::Code::Other);
+      return false;
+    } else {
+      return true;
+    }
+  }
+
+  // TODO there are many errors that might occur here and we should export all
+  // of them. For instance, I might try to compare two arrays of differing fixed
+  // lengths with '<'. We should not exit early, but rather say that you can't
+  // use '<' and that the lengths are different.
+  if (lhs_type->is<Array>()) {
+    if (rhs_type->is<Array>()) {
+      if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
+        // TODO Log a better error
+        errors.emplace_back(Error::Code::Other);
+        return false;
+      }
+
+      Array *lhs_array = ptr_cast<Array>(lhs_type);
+      Array *rhs_array = ptr_cast<Array>(rhs_type);
+
+      // TODO what if data types are equality comparable but not equal?
+      if (lhs_array->data_type != rhs_array->data_type) {
+        // TODO Log a better error
+        errors.emplace_back(Error::Code::Other);
+        return false;
+      }
+
+      if (lhs_array->fixed_length && rhs_array->fixed_length) {
+        if (lhs_array->len == rhs_array->len) {
+          return true;
+        } else {
+          // TODO Log a better error
+          errors.emplace_back(Error::Code::Other);
+          return false;
+        }
+      } else {
+        return true; // If at least one array length is variable, we should be
+                     // allowed to compare them.
+      }
+    } else {
+      // TODO Log a better error
+      errors.emplace_back(Error::Code::Other);
+      return false;
+    }
+  }
+
+  // TODO Log a better error
+  errors.emplace_back(Error::Code::Other);
+  return false;
+}
+
 void ChainOp::verify_types() {
   STARTING_CHECK;
   bool found_err = false;
@@ -687,38 +777,13 @@ void ChainOp::verify_types() {
     return;
   }
 
-  // All other chain ops need to take arguments of the same type and the
-  // type is that one type
-  std::unordered_set<Type *> expr_types;
-  for (const auto &expr : exprs) { expr_types.insert(expr->type); }
-
-  if (expr_types.size() == 1) {
-    Type *single_type = *expr_types.begin();
-    if (single_type->is<Enum>()) {
-      int num_errors = 0;
-
-      // Emit an error for each <, <=, >, >= you see
-      for (auto op : ops) {
-        if (op == Language::Operator::Lt || op == Language::Operator::Le ||
-            op == Language::Operator::Gt || op == Language::Operator::Ge) {
-          errors.emplace_back(Error::Code::Other);
-          ++num_errors;
-        }
-      }
-      if (num_errors != 0) {
-        type = Err;
-        return;
-      }
+  // TODO if some expressions have type errors we can and should still do some
+  // validation here
+  type = Bool;
+  for (size_t i = 0; i < exprs.size() - 1; ++i) {
+    if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
+      type = Err; // Errors exported by ValidateComparisonType
     }
-
-    // TODO must it always be bool?
-    type = Bool;
-
-  } else {
-    // TODO guess what type was intended
-    errors.emplace_back(Error::Code::ChainTypeMismatch);
-    // ErrorLog::ChainTypeMismatch(loc, expr_types);
-    type = Err;
   }
 }
 

@@ -90,20 +90,16 @@ void Array::EmitRepr(IR::Val val) {
 
       IR::Print(IR::Val::Char('['));
 
-      IR::Val ptr = IR::Val::None();
-      IR::Val length_var = IR::Val::None();
-      if (fixed_length) {
-        // Can assume length is not zero or one because these are handled above.
-        length_var = IR::Val::Uint(len);
-        ptr = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
-        IR::Jump::Unconditional(init_block);
-      } else {
-        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
-        ptr = IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
-        IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
-                              repr_func->exit(), init_block);
-      }
+      auto length_var = fixed_length
+                       ? IR::Val::Uint(len)
+                       : IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
+      IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
+                            repr_func->exit(), init_block);
+
       IR::Block::Current = init_block;
+      auto ptr = fixed_length
+                     ? IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0))
+                     : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
       auto end_ptr = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi = repr_func->AddBlock();
