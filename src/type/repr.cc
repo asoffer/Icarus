@@ -98,8 +98,8 @@ void Array::EmitRepr(IR::Val val) {
         ptr = IR::Access(IR::Val::Uint(0), IR::Val::Arg(Ptr(this), 0));
         IR::Jump::Unconditional(init_block);
       } else {
-        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Uint, 0)));
-        ptr = IR::Load(IR::ArrayData(IR::Val::Arg(this, 0)));
+        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
+        ptr = IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
         IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
                               repr_func->exit(), init_block);
       }

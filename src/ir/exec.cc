@@ -247,6 +247,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type == Int) {
       return Val::Type(
           ::Arr(resolved[1].as_type, static_cast<size_t>(resolved[0].as_int)));
+    } else if (resolved[0].type == nullptr) {
+      return Val::Type(::Arr(resolved[1].as_type));
     } else {
       UNREACHABLE();
     }
@@ -550,8 +552,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Nop: return Val::None();
   case Op::Malloc: NOT_YET();
   case Op::Free: NOT_YET();
-  case Op::ArrayLength: NOT_YET();
-  case Op::ArrayData: NOT_YET();
+  case Op::ArrayLength: return IR::Val::Addr(resolved[0].as_addr, Uint);
+  case Op::ArrayData:
+    return IR::Val::Addr(resolved[0].as_addr,
+                         ptr_cast<Pointer>(cmd.result.type)->pointee);
   }
   UNREACHABLE();
 }
