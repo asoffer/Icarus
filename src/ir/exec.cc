@@ -451,9 +451,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         NOT_YET("Don't know how to load type: ", *cmd.result.type);
       }
     } break;
-    case Addr::Kind::Stack: {
-      if (cmd.result.type == Bool) {
-        return IR::Val::Bool(stack_.Load<bool>(resolved[0].as_addr.as_stack));
+   case Addr::Kind::Stack: {
+     if (cmd.result.type == Bool) {
+       return IR::Val::Bool(stack_.Load<bool>(resolved[0].as_addr.as_stack));
       } else if (cmd.result.type == Char) {
         return IR::Val::Char(stack_.Load<char>(resolved[0].as_addr.as_stack));
       } else if (cmd.result.type == Int) {
@@ -467,8 +467,17 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             stack_.Load<AST::CodeBlock *>(resolved[0].as_addr.as_stack));
 
       } else if (cmd.result.type->is<Pointer>()) {
-        return IR::Val::Addr(stack_.Load<Addr>(resolved[0].as_addr.as_stack),
-                             ptr_cast<Pointer>(cmd.result.type)->pointee);
+        switch (resolved[0].as_addr.kind) {
+        case Addr::Kind::Stack:
+          return IR::Val::Addr(stack_.Load<Addr>(resolved[0].as_addr.as_stack),
+                               ptr_cast<Pointer>(cmd.result.type)->pointee);
+        case Addr::Kind::Heap:
+          return IR::Val::Addr(
+              *static_cast<Addr *>(resolved[0].as_addr.as_heap),
+              ptr_cast<Pointer>(cmd.result.type)->pointee);
+        case Addr::Kind::Global: NOT_YET();
+        case Addr::Kind::Null: NOT_YET();
+        }
       } else if (cmd.result.type->is<Enum>()) {
         return IR::Val::Enum(ptr_cast<Enum>(cmd.result.type),
                              stack_.Load<size_t>(resolved[0].as_addr.as_stack));
@@ -476,7 +485,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         NOT_YET("Don't know how to load type: ", *cmd.result.type);
       }
     } break;
-    }
+    } break;
   case Op::Store:
     switch (resolved[1].as_addr.kind) {
     case Addr::Kind::Null:
@@ -540,23 +549,27 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Previous block was ",
                 Val::Block(call_stack.top().prev_).to_string());
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.result.type));
+  case Op::Index: // Fallthrough intended
   case Op::PtrIncr:
-  case Op::Index:
-    if (resolved[0].as_addr.kind == Addr::Kind::Stack) {
+    switch (resolved[0].as_addr.kind) {
+    case Addr::Kind::Stack: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::StackAddr(resolved[0].as_addr.as_stack + bytes_fwd,
                             ptr_cast<Pointer>(cmd.result.type)->pointee);
-    } else if (resolved[0].as_addr.kind == Addr::Kind::Heap) {
+    }
+    case Addr::Kind::Heap: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
           resolved[1].as_uint, ptr_cast<Pointer>(cmd.result.type)->pointee);
       return Val::HeapAddr(
           static_cast<void *>(static_cast<char *>(resolved[0].as_addr.as_heap) +
                               bytes_fwd),
           ptr_cast<Pointer>(cmd.result.type)->pointee);
-    } else {
-      NOT_YET();
     }
+    case Addr::Kind::Global: NOT_YET();
+    case Addr::Kind::Null: NOT_YET();
+    }
+    UNREACHABLE();
   case Op::Field: {
     auto struct_type =
         ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);

@@ -94,7 +94,7 @@ Val ArrayData(Val v) {
 }
 
 Val Store(Val v1, Val v2) {
-  ASSERT(v2.type->is<Pointer>(), "");
+  ASSERT(v2.type->is<Pointer>(), "Type is " + v2.type->to_string());
   MAKE_AND_RETURN2(Void, Op::Store);
 }
 
@@ -132,9 +132,14 @@ Val Index(Val v1, Val v2) {
   ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(),
          "Pointee is " + ptr_cast<Pointer>(v1.type)->pointee->to_string());
   ASSERT_EQ(v2.type, ::Uint);
-  MAKE_AND_RETURN2(
-      Ptr(ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee)->data_type),
-      Op::Index);
+  auto *array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee);
+  if (array_type->fixed_length) {
+    MAKE_AND_RETURN2(
+        Ptr(ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee)->data_type),
+        Op::Index);
+ } else {
+   return IR::PtrIncr(IR::Load(IR::ArrayData(v1)), v2);
+  }
 }
 
 Val Lt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Lt); }

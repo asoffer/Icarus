@@ -450,8 +450,8 @@ void Binop::verify_types() {
 
     if (lhs->type != rhs->type) {
       if (lhs->type->is<Array>() && rhs->type->is<Array>()) {
-        auto lhs_array_type = (Array *)lhs->type;
-        auto rhs_array_type = (Array *)rhs->type;
+        auto lhs_array_type = ptr_cast<Array>(lhs->type);
+        auto rhs_array_type = ptr_cast<Array>(rhs->type);
         if (lhs_array_type->data_type != rhs_array_type->data_type) {
           errors.emplace_back(Error::Code::ArrayAssignmentDifferentLengths);
           // ErrorLog::InvalidArrayAssignmentDifferentLengths(loc);
@@ -466,6 +466,7 @@ void Binop::verify_types() {
           // ErrorLog::AssignmentArrayLength(loc, lhs_array_type->len);
 
         } else {
+          type = Void;
           return;
         }
 

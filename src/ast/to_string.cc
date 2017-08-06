@@ -16,7 +16,7 @@ std::string TokenNode::to_string(size_t n) const {
 }
 
 std::string ArrayLiteral::to_string(size_t n) const {
-  std::string output = tabs(n) + "<ArrayLiteral>\n";
+  std::string output = tabs(n) + "<ArrayLiteral " + TYPE_OR("") + " >\n ";
   for (const auto &el : elems) { output += el->to_string(n + 1); }
 
   return output;

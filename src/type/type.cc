@@ -74,13 +74,9 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
 
       IR::Block::Current = equal_len_block;
       auto lhs_start =
-          lhs_type->fixed_length
-              ? IR::Index(IR::Val::Arg(Ptr(lhs_type), 0), IR::Val::Uint(0))
-              : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(lhs_type), 0)));
+          IR::Index(IR::Val::Arg(Ptr(lhs_type), 0), IR::Val::Uint(0));
       auto rhs_start =
-          rhs_type->fixed_length
-              ? IR::Index(IR::Val::Arg(Ptr(rhs_type), 1), IR::Val::Uint(0))
-              : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(rhs_type), 1)));
+          IR::Index(IR::Val::Arg(Ptr(rhs_type), 1), IR::Val::Uint(0));
       auto lhs_end = IR::PtrIncr(lhs_start, lhs_len);
       IR::Jump::Unconditional(phi_block);
 

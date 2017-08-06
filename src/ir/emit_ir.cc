@@ -179,13 +179,8 @@ IR::Val AST::For::EmitIR() {
           NOT_YET();
         }
       } else if (decl->container->type->is<Array>()) {
-        auto* array_type = ptr_cast<Array>(decl->container->type);
-        if (array_type->fixed_length) {
-          init_vals.push_back(
-              IR::Index(decl->container->EmitLVal(), IR::Val::Uint(0)));
-        } else {
-          NOT_YET();
-        }
+        init_vals.push_back(
+            IR::Index(decl->container->EmitLVal(), IR::Val::Uint(0)));
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
@@ -273,13 +268,9 @@ IR::Val AST::For::EmitIR() {
           NOT_YET();
        }
       } else if (decl->container->type->is<Array>()) {
-        auto* array_type = ptr_cast<Array>(decl->container->type);
-        if (array_type->fixed_length) {
-          cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(),
-                                      IR::Val::Uint(array_type->len)));
-        } else {
-          NOT_YET();
-        }
+        auto *array_type = ptr_cast<Array>(decl->container->type);
+        cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(),
+                                    IR::Val::Uint(array_type->len)));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
         if (container_val.as_type->is<Enum>()) {
@@ -423,12 +414,29 @@ IR::Val AST::Declaration::EmitIR() {
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
-    auto ir_init_val = IsCustomInitialized() ? init_val->EmitIR()
-                                             : type->EmitInitialValue();
-    // TODO these types do not always have to match. For example:
-    // arr: [--; int] = [1, 4, 9]
-    // Would indicate we want a dynamic array starting at size 3.
-    Type::CallAssignment(scope_, type, type, ir_init_val, addr);
+
+    if (type->is_big()) {
+      if (type->is<Array>()) {
+        auto *array_type = ptr_cast<Array>(type);
+        if (array_type->fixed_length) {
+          NOT_YET();
+        } else {
+          IR::Store(IR::Val::Uint(0), IR::ArrayLength(addr));
+          IR::Store(IR::Malloc(array_type->data_type, IR::Val::Uint(0)),
+                    IR::ArrayData(addr));
+        }
+      } else {
+        NOT_YET();
+      }
+    } else {
+      auto ir_init_val =
+          IsCustomInitialized() ? init_val->EmitIR() : type->EmitInitialValue();
+
+      // TODO these types do not always have to match. For example:
+      // arr: [--; int] = [1, 4, 9]
+      // Would indicate we want a dynamic array starting at size 3.
+      Type::CallAssignment(scope_, type, type, ir_init_val, addr);
+    }
     return IR::Val::None();
   }
 }
@@ -534,19 +542,23 @@ IR::Val AST::Binop::EmitIR() {
     return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
+    std::vector<Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
-    ForEachExpr(rhs.get(), [&rhs_vals](size_t, AST::Expression *expr) {
+    ForEachExpr(rhs.get(), [&rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
       rhs_vals.push_back(expr->EmitIR());
+      rhs_types.push_back(expr->type);
     });
 
     std::vector<IR::Val> lhs_lvals;
-    ForEachExpr(lhs.get(), [&lhs_lvals](size_t, AST::Expression *expr) {
+    ForEachExpr(lhs.get(), [&lhs_lvals, &lhs_types](size_t, AST::Expression *expr) {
       lhs_lvals.push_back(expr->EmitLVal());
+      lhs_types.push_back(expr->type);
     });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0;i < lhs_lvals.size(); ++i) {
-      IR::Store(rhs_vals[i], lhs_lvals[i]);
+      Type::CallAssignment(scope_, rhs_types[i], lhs_types[i], rhs_vals[i],
+                           lhs_lvals[i]);
     }
     return IR::Val::None();
   } break;
@@ -757,7 +769,9 @@ IR::Val AST::Unop::EmitLVal() {
 IR::Val AST::Binop::EmitLVal() {
   switch (op) {
   case Language::Operator::Index:
-    return IR::Index(lhs->EmitLVal(), rhs->EmitIR());
+    if (lhs->type->is<::Array>()) {
+      return IR::Index(lhs->EmitLVal(), rhs->EmitIR());
+    }
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

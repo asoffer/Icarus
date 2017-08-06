@@ -97,9 +97,7 @@ void Array::EmitRepr(IR::Val val) {
                             repr_func->exit(), init_block);
 
       IR::Block::Current = init_block;
-      auto ptr = fixed_length
-                     ? IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0))
-                     : IR::Load(IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
+      auto ptr     = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
       auto end_ptr = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi = repr_func->AddBlock();

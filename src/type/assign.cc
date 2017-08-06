@@ -6,51 +6,40 @@
 
 extern IR::Val PtrCallFix(IR::Val v);
 
-void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
+void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
                           IR::Val from_val, IR::Val to_var) {
   ASSERT(scope, "");
-  if (lhs_type->is<Primitive>() || lhs_type->is<Pointer>() ||
-      lhs_type->is<Function>()) {
-    ASSERT_EQ(lhs_type, rhs_type);
-
-    IR::Store(from_val, to_var);
-  } else if (lhs_type->is<Enum>()) {
-    ASSERT_EQ(lhs_type, rhs_type);
+  if (from_type->is<Primitive>() || from_type->is<Pointer>() ||
+      from_type->is<Function>()) {
+    ASSERT_EQ(from_type, to_type);
     IR::Store(from_val, to_var);
 
-  } else if (lhs_type->is<Array>()) {
-    ASSERT(rhs_type->is<Array>(), "");
-    auto *lhs_array_type = ptr_cast<Array>(lhs_type);
-    auto *rhs_array_type = ptr_cast<Array>(rhs_type);
+  } else if (from_type->is<Enum>()) {
+    ASSERT_EQ(from_type, to_type);
+    IR::Store(from_val, to_var);
 
-    IR::Val lhs_ptr     = IR::Val::None();
-    IR::Val rhs_ptr     = IR::Val::None();
-    IR::Val rhs_len     = IR::Val::None();
-    IR::Val rhs_end_ptr = IR::Val::None();
+  } else if (to_type->is<Array>()) {
+    ASSERT(from_type->is<Array>(), "");
+    auto *from_array_type = ptr_cast<Array>(from_type);
+    auto *to_array_type   = ptr_cast<Array>(to_type);
 
-    if (rhs_array_type->fixed_length) {
-      rhs_ptr = IR::Index(from_val, IR::Val::Uint(0ul));
-      rhs_len = IR::Val::Uint(rhs_array_type->len);
-    } else {
-      rhs_ptr = IR::Load(IR::ArrayData(from_val));
-      rhs_len = IR::Load(IR::ArrayLength(from_val));
-    }
-    rhs_end_ptr = IR::PtrIncr(rhs_ptr, rhs_len);
+    IR::Val from_ptr = IR::Index(from_val, IR::Val::Uint(0));
+    IR::Val len      = from_array_type->fixed_length
+                      ? IR::Val::Uint(from_array_type->len)
+                      : IR::Load(IR::ArrayLength(from_val));
+    IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
-    if (lhs_array_type->fixed_length) {
-      lhs_ptr = IR::Index(to_var, IR::Val::Uint(0));
-    } else {
+    if (!to_array_type->fixed_length) {
       // TODO delete first time. currently just delete
       // TODO Architecture dependence?
-      auto rhs_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
-          rhs_len, lhs_array_type->data_type);
-      auto ptr        = IR::Malloc(lhs_array_type->data_type, rhs_bytes);
-      auto array_data = IR::ArrayData(to_var);
-      IR::Store(ptr, array_data);
-      lhs_ptr = IR::Load(array_data);
-
-      IR::Store(rhs_len, IR::ArrayLength(to_var));
+      auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
+          len, from_array_type->data_type);
+      auto ptr = IR::Malloc(from_array_type->data_type, to_bytes);
+      IR::Store(len, IR::ArrayLength(to_var));
+      IR::Store(ptr, IR::ArrayData(to_var));
     }
+
+    IR::Val to_ptr = IR::Index(to_var, IR::Val::Uint(0));
 
     auto init_block = IR::Block::Current;
     auto loop_phi   = IR::Func::Current->AddBlock();
@@ -59,37 +48,37 @@ void Type::CallAssignment(Scope *scope, Type *lhs_type, Type *rhs_type,
     IR::Jump::Unconditional(loop_phi);
 
     IR::Block::Current = loop_phi;
-    auto lhs_phi       = IR::Phi(Ptr(lhs_array_type->data_type));
-    auto rhs_phi       = IR::Phi(Ptr(rhs_array_type->data_type));
-    IR::Jump::Conditional(IR::Eq(rhs_phi, rhs_end_ptr), land, loop_body);
+    auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
+    auto to_phi        = IR::Phi(Ptr(to_array_type->data_type));
+    IR::Jump::Conditional(IR::Eq(from_phi, from_end_ptr), land, loop_body);
 
     IR::Block::Current = loop_body;
     // TODO Are these the right types?
-    CallAssignment(scope, lhs_array_type->data_type, lhs_array_type->data_type,
-                   PtrCallFix(rhs_phi), lhs_phi);
+    CallAssignment(scope, from_array_type->data_type, to_array_type->data_type,
+                   PtrCallFix(from_phi), to_phi);
 
-    IR::Func::Current->SetArgs(lhs_phi.as_reg,
-                               {IR::Val::Block(init_block), lhs_ptr,
+    IR::Func::Current->SetArgs(from_phi.as_reg,
+                               {IR::Val::Block(init_block), from_ptr,
                                 IR::Val::Block(IR::Block::Current),
-                                IR::PtrIncr(lhs_phi, IR::Val::Uint(1ul))});
-    IR::Func::Current->SetArgs(rhs_phi.as_reg,
-                               {IR::Val::Block(init_block), rhs_ptr,
+                                IR::PtrIncr(from_phi, IR::Val::Uint(1ul))});
+    IR::Func::Current->SetArgs(to_phi.as_reg,
+                               {IR::Val::Block(init_block), to_ptr,
                                 IR::Val::Block(IR::Block::Current),
-                                IR::PtrIncr(rhs_phi, IR::Val::Uint(1ul))});
+                                IR::PtrIncr(to_phi, IR::Val::Uint(1ul))});
     IR::Jump::Unconditional(loop_phi);
 
     IR::Block::Current = land;
-  } else if (lhs_type->is<Scope_Type>() && rhs_type->is<Scope_Type>()) {
-    ASSERT_EQ(lhs_type, rhs_type);
+  } else if (from_type->is<Scope_Type>() && to_type->is<Scope_Type>()) {
+    ASSERT_EQ(from_type, to_type);
     IR::Store(from_val, to_var);
 
   } else {
     auto fn = scope->FuncHereOrNull("__assign__",
-                                    Func(Tup({Ptr(lhs_type), rhs_type}), Void));
+                                    Func(Tup({Ptr(to_type), from_type}), Void));
     if (fn != IR::Val::None()) {
       IR::Call(fn, {to_var, from_val});
     } else {
-      ptr_cast<Struct>(lhs_type)->EmitDefaultAssign(to_var, from_val);
+      ptr_cast<Struct>(from_type)->EmitDefaultAssign(to_var, from_val);
     }
   }
 }
