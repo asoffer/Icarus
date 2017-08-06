@@ -34,9 +34,11 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
       // TODO Architecture dependence?
       auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
           len, from_array_type->data_type);
-      auto ptr = IR::Malloc(from_array_type->data_type, to_bytes);
+      auto ptr        = IR::Malloc(from_array_type->data_type, to_bytes);
+      auto array_data = IR::ArrayData(to_var);
+      IR::Free(IR::Load(array_data));
       IR::Store(len, IR::ArrayLength(to_var));
-      IR::Store(ptr, IR::ArrayData(to_var));
+      IR::Store(ptr, array_data);
     }
 
     IR::Val to_ptr = IR::Index(to_var, IR::Val::Uint(0));

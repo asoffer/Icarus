@@ -15,6 +15,12 @@ void Function::EmitInit(IR::Val id_val) {
 }
 
 void Array::EmitInit(IR::Val id_val) {
+  if (!fixed_length) {
+    IR::Store(IR::Val::Uint(0), IR::ArrayLength(id_val));
+    IR::Store(IR::Malloc(data_type, IR::Val::Uint(0)), IR::ArrayData(id_val));
+    return;
+  }
+
   if (!init_func) {
     init_func = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
@@ -22,42 +28,31 @@ void Array::EmitInit(IR::Val id_val) {
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();
 
-      auto ptr = IR::Val::None();
-      auto length_var = IR::Val::None();
-      if (fixed_length) {
-        ptr = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
-        length_var     = IR::Val::Uint(len);
-        auto end_ptr   = IR::PtrIncr(ptr, length_var);
+      auto loop_phi  = IR::Func::Current->AddBlock();
+      auto loop_body = IR::Func::Current->AddBlock();
 
-        auto loop_phi  = IR::Func::Current->AddBlock();
-        auto loop_body = IR::Func::Current->AddBlock();
 
-        IR::Jump::Unconditional(loop_phi);
+      auto ptr        = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
+      auto length_var = IR::Val::Uint(len);
+      auto end_ptr    = IR::PtrIncr(ptr, length_var);
+      IR::Jump::Unconditional(loop_phi);
 
-        IR::Block::Current = loop_phi;
-        auto phi           = IR::Phi(Ptr(data_type));
-        IR::Jump::Conditional(IR::Eq(phi, end_ptr), IR::Func::Current->exit(),
-                              loop_body);
+      IR::Block::Current = loop_phi;
+      auto phi           = IR::Phi(Ptr(data_type));
+      IR::Jump::Conditional(IR::Eq(phi, end_ptr), IR::Func::Current->exit(),
+                            loop_body);
 
-        IR::Block::Current = loop_body;
-        data_type->EmitInit(phi);
-        auto incr = IR::PtrIncr(phi, IR::Val::Uint(1));
-        IR::Jump::Unconditional(loop_phi);
+      IR::Block::Current = loop_body;
+      data_type->EmitInit(phi);
+      auto incr = IR::PtrIncr(phi, IR::Val::Uint(1));
+      IR::Jump::Unconditional(loop_phi);
 
-        IR::Block::Current = IR::Func::Current->exit();
-        IR::Jump::Return();
+      IR::Block::Current = IR::Func::Current->exit();
+      IR::Jump::Return();
 
-        IR::Func::Current->SetArgs(phi.as_reg,
-                                   {IR::Val::Block(init_func->entry()), ptr,
-                                    IR::Val::Block(loop_body), incr});
-
-      } else {
-        IR::Store(IR::Val::Uint(0),
-                  IR::ArrayLength(IR::Val::Arg(Ptr(this), 0)));
-        IR::Store(IR::Malloc(data_type, IR::Val::Uint(0ul)),
-                 IR::ArrayData(IR::Val::Arg(Ptr(this), 0)));
-        IR::Jump::Return();
-      }
+      IR::Func::Current->SetArgs(phi.as_reg,
+                                 {IR::Val::Block(init_func->entry()), ptr,
+                                  IR::Val::Block(loop_body), incr});
     }
   }
 

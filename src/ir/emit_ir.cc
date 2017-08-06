@@ -415,27 +415,11 @@ IR::Val AST::Declaration::EmitIR() {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
 
-    if (type->is_big()) {
-      if (type->is<Array>()) {
-        auto *array_type = ptr_cast<Array>(type);
-        if (array_type->fixed_length) {
-          NOT_YET();
-        } else {
-          IR::Store(IR::Val::Uint(0), IR::ArrayLength(addr));
-          IR::Store(IR::Malloc(array_type->data_type, IR::Val::Uint(0)),
-                    IR::ArrayData(addr));
-        }
-      } else {
-        NOT_YET();
-      }
+    if (IsCustomInitialized()) {
+      // TODO Does this assume already in an initialized state?
+      Type::CallAssignment(scope_, type, type, init_val->EmitIR(), addr);
     } else {
-      auto ir_init_val =
-          IsCustomInitialized() ? init_val->EmitIR() : type->EmitInitialValue();
-
-      // TODO these types do not always have to match. For example:
-      // arr: [--; int] = [1, 4, 9]
-      // Would indicate we want a dynamic array starting at size 3.
-      Type::CallAssignment(scope_, type, type, ir_init_val, addr);
+      type->EmitInit(addr);
     }
     return IR::Val::None();
   }
