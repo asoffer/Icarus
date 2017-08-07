@@ -10,9 +10,7 @@ extern IR::Val PtrCallFix(IR::Val v);
 void Primitive::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }
-void Enum::EmitInit(IR::Val id_val) {
-  IR::Store(EmitInitialValue(), id_val);
-}
+void Enum::EmitInit(IR::Val id_val) { IR::Store(EmitInitialValue(), id_val); }
 void Function::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }
@@ -25,7 +23,7 @@ void Array::EmitInit(IR::Val id_val) {
   }
 
   if (!init_func) {
-    init_func = new IR::Func(Func(Ptr(this), Void));
+    init_func       = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
     implicit_functions.push_back(init_func);
     CURRENT_FUNC(init_func) {
@@ -33,7 +31,6 @@ void Array::EmitInit(IR::Val id_val) {
 
       auto loop_phi  = IR::Func::Current->AddBlock();
       auto loop_body = IR::Func::Current->AddBlock();
-
 
       auto ptr        = IR::Index(IR::Val::Arg(Ptr(this), 0), IR::Val::Uint(0));
       auto length_var = IR::Val::Uint(len);
@@ -82,8 +79,7 @@ void Struct::EmitInit(IR::Val id_val) {
         if (init_values[i]) {
           if (init_values[i]->is_hole()) { continue; }
           Type::CallAssignment(init_values[i]->scope_, field_type[i],
-                               init_values[i]->type,
-                               init_values[i]->EmitIR(),
+                               init_values[i]->type, init_values[i]->EmitIR(),
                                IR::Field(IR::Val::Arg(Ptr(this), 0), i));
         } else {
           field_type[i]->EmitInit(IR::Field(IR::Val::Arg(Ptr(this), 0), i));
@@ -104,71 +100,100 @@ void RangeType::EmitInit(IR::Val) { UNREACHABLE(); }
 void SliceType::EmitInit(IR::Val) { UNREACHABLE(); }
 void Scope_Type::EmitInit(IR::Val) { UNREACHABLE(); }
 
-static std::unordered_map<Type *, std::unordered_map<Type *, IR::Func>>
-    move_init_fns;
+using InitFnType = void (*)(Type *, Type *, IR::Val, IR::Val);
+template <InitFnType InitFn>
+static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
+  static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>>
+      init_fns;
+
+  auto insertion = init_fns[to_type].emplace(
+      from_type, IR::Func(Func({from_type, Ptr(to_type)}, Void)));
+  IR::Func *fn = &insertion.first->second;
+  if (insertion.second) {
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+      auto from_arg      = IR::Val::Arg(Ptr(from_type), 0);
+      auto to_arg        = IR::Val::Arg(Ptr(to_type), 1);
+      auto body_block    = IR::Func::Current->AddBlock();
+
+      auto from_len = from_type->fixed_length
+                          ? IR::Val::Uint(from_type->len)
+                          : IR::Load(IR::ArrayLength(from_arg));
+
+      if (!to_type->fixed_length) {
+        // TODO Architecture dependence?
+        auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
+            from_len, from_type->data_type);
+
+        IR::Store(from_len, IR::ArrayLength(to_arg));
+        IR::Store(IR::Malloc(from_type->data_type, to_bytes),
+                  IR::ArrayData(to_arg));
+      }
+
+      auto from_start = IR::Index(from_arg, IR::Val::Uint(0));
+      auto to_start   = IR::Index(to_arg, IR::Val::Uint(0));
+      auto from_end   = IR::PtrIncr(from_start, from_len);
+      IR::Jump::Unconditional(body_block);
+
+      IR::Block::Current = body_block;
+      auto from_phi      = IR::Phi(Ptr(from_type->data_type));
+      auto to_phi        = IR::Phi(Ptr(to_type->data_type));
+      InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi),
+             to_phi);
+
+      auto from_incr = IR::PtrIncr(from_phi, IR::Val::Uint(1));
+      auto to_incr   = IR::PtrIncr(to_phi, IR::Val::Uint(1));
+      IR::Jump::Conditional(IR::Eq(from_incr, from_end), fn->exit(),
+                            body_block);
+
+      fn->SetArgs(from_phi.as_reg, {IR::Val::Block(fn->entry()), from_start,
+                                    IR::Val::Block(body_block), from_incr});
+      fn->SetArgs(to_phi.as_reg, {IR::Val::Block(fn->entry()), to_start,
+                                  IR::Val::Block(body_block), to_incr});
+
+      IR::Block::Current = IR::Func::Current->exit();
+      IR::Jump::Return();
+    }
+  }
+  return IR::Val::Func(fn);
+}
+
+template <InitFnType InitFn>
+static IR::Val StructInitializationWith(Struct *struct_type) {
+  static std::unordered_map<Struct *, IR::Func> struct_init_fns;
+  auto insertion = struct_init_fns.emplace(
+      struct_type, IR::Func(Func({struct_type, Ptr(struct_type)}, Void)));
+  IR::Func *fn = &insertion.first->second;
+  if (insertion.second) {
+    CURRENT_FUNC(fn) {
+      for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
+        InitFn(struct_type->field_type[i], struct_type->field_type[i],
+               PtrCallFix(IR::Field(IR::Val::Arg(Ptr(struct_type), 0), i)),
+               IR::Field(IR::Val::Arg(Ptr(struct_type), 1), i));
+      }
+
+      IR::Block::Current = IR::Func::Current->exit();
+      IR::Jump::Return();
+    }
+  }
+  return IR::Val::Func(fn);
+}
+
 void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
                         IR::Val to_var) {
-  if (to_type->is<Primitive>() || to_type->is<Enum>()|| to_type->is<Pointer>()) {
+  if (to_type->is<Primitive>() || to_type->is<Enum>() ||
+      to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);
     IR::Store(from_val, to_var);
 
   } else if (to_type->is<Array>()) {
-    auto *to_array_type = ptr_cast<Array>(to_type);
+    auto *to_array_type   = ptr_cast<Array>(to_type);
     auto *from_array_type = ptr_cast<Array>(from_type);
 
     if (to_array_type->fixed_length || from_array_type->fixed_length) {
-      auto insertion = move_init_fns[to_array_type].emplace(
-          from_array_type,
-          IR::Func(Func({from_array_type, Ptr(to_array_type)}, Void)));
-      IR::Func *fn = &insertion.first->second;
-      if (insertion.second) {
-        CURRENT_FUNC(fn) {
-          IR::Block::Current = fn->entry();
-          auto from_arg      = IR::Val::Arg(Ptr(from_type), 0);
-          auto to_arg        = IR::Val::Arg(Ptr(to_type), 1);
-          auto body_block    = IR::Func::Current->AddBlock();
-
-          auto from_len = from_array_type->fixed_length
-                              ? IR::Val::Uint(from_array_type->len)
-                              : IR::Load(IR::ArrayLength(from_arg));
-
-          if (!to_array_type->fixed_length) {
-            // TODO Architecture dependence?
-            auto to_bytes =
-                Architecture::InterprettingMachine().ComputeArrayLength(
-                    from_len, from_array_type->data_type);
-
-            IR::Store(from_len, IR::ArrayLength(to_arg));
-            IR::Store(IR::Malloc(from_array_type->data_type, to_bytes),
-                      IR::ArrayData(to_arg));
-          }
-
-          auto from_start = IR::Index(from_arg, IR::Val::Uint(0));
-          auto to_start   = IR::Index(to_arg, IR::Val::Uint(0));
-          auto from_end   = IR::PtrIncr(from_start, from_len);
-          IR::Jump::Unconditional(body_block);
-
-          IR::Block::Current = body_block;
-          auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
-          auto to_phi        = IR::Phi(Ptr(to_array_type->data_type));
-          EmitMoveInit(from_array_type->data_type, to_array_type->data_type,
-                       PtrCallFix(from_phi), to_phi);
-
-          auto from_incr = IR::PtrIncr(from_phi, IR::Val::Uint(1));
-          auto to_incr   = IR::PtrIncr(to_phi, IR::Val::Uint(1));
-          IR::Jump::Conditional(IR::Eq(from_incr, from_end), fn->exit(),
-                                body_block);
-
-          fn->SetArgs(from_phi.as_reg, {IR::Val::Block(fn->entry()), from_start,
-                                        IR::Val::Block(body_block), from_incr});
-          fn->SetArgs(to_phi.as_reg, {IR::Val::Block(fn->entry()), to_start,
-                                      IR::Val::Block(body_block), to_incr});
-
-          IR::Block::Current = IR::Func::Current->exit();
-          IR::Jump::Return();
-        }
-      }
-      IR::Call(IR::Val::Func(fn), {from_val, to_var});
+      IR::Call(
+          ArrayInitializationWith<EmitMoveInit>(from_array_type, to_array_type),
+          {from_val, to_var});
 
     } else {
       IR::Store(IR::Load(IR::ArrayLength(from_val)), IR::ArrayLength(to_var));
@@ -181,26 +206,9 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
     }
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    auto* struct_type = ptr_cast<Struct>(to_type);
-    // TODO could use a different lookup table that has a simpler keying
-    // structure bucause to_type must be the same as from_type.
-    auto insertion = move_init_fns[struct_type].emplace(
-        struct_type, IR::Func(Func({struct_type, Ptr(struct_type)}, Void)));
-    IR::Func *fn = &insertion.first->second;
-    if (insertion.second) {
-      CURRENT_FUNC(fn) {
-        for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
-          EmitMoveInit(struct_type->field_type[i], struct_type->field_type[i],
-                       PtrCallFix(IR::Field(from_val, i)),
-                       IR::Field(to_var, i));
-        }
+    IR::Call(StructInitializationWith<EmitMoveInit>(ptr_cast<Struct>(to_type)),
+             {from_val, to_var});
 
-        IR::Block::Current = IR::Func::Current->exit();
-        IR::Jump::Return();
-      }
-    }
-
-    IR::Call(IR::Val::Func(fn), {from_val, to_var});
   } else if (to_type->is<Function>()) {
     NOT_YET();
   } else if (to_type->is<Tuple>()) {
@@ -214,33 +222,22 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
   }
 }
 
-void Type::EmitCopyInit( Type *from_type, Type *to_type,
-                        IR::Val from_val, IR::Val to_var) {
-  if (to_type->is<Primitive>() || to_type->is<Enum>()|| to_type->is<Pointer>()) {
+void Type::EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
+                        IR::Val to_var) {
+  if (to_type->is<Primitive>() || to_type->is<Enum>() ||
+      to_type->is<Pointer>()) {
     ASSERT_EQ(to_type, from_type);
     IR::Store(from_val, to_var);
   } else if (to_type->is<Array>()) {
-    auto *to_array_type = ptr_cast<Array>(to_type);
-    auto *from_array_type = ptr_cast<Array>(from_type);
-    if (to_array_type->fixed_length) {
-      NOT_YET();
-    } else {
-      // TODO wrap this in a function call probably.
+    IR::Call(ArrayInitializationWith<EmitCopyInit>(ptr_cast<Array>(from_type),
+                                                   ptr_cast<Array>(to_type)),
+             {from_val, to_var});
 
-      auto len = from_array_type->fixed_length
-                     ? IR::Val::Uint(from_array_type->len)
-                     : IR::Load(IR::ArrayLength(from_val));
-      IR::Store(len, IR::ArrayLength(to_var));
-      IR::Malloc(to_array_type->data_type, len);
-    }
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    // TODO wrap in function call probably
-    auto* struct_type = ptr_cast<Struct>(to_type);
-    for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
-      EmitCopyInit(struct_type->field_type[i], struct_type->field_type[i],
-                   PtrCallFix(IR::Field(from_val, i)), IR::Field(to_var, i));
-    }
+    IR::Call(StructInitializationWith<EmitCopyInit>(ptr_cast<Struct>(to_type)),
+             {from_val, to_var});
+
   } else if (to_type->is<Function>()) {
     NOT_YET();
   } else if (to_type->is<Tuple>()) {
