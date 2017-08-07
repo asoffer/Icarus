@@ -78,9 +78,11 @@ void Struct::EmitInit(IR::Val id_val) {
       for (size_t i = 0; i < field_type.size(); ++i) {
         if (init_values[i]) {
           if (init_values[i]->is_hole()) { continue; }
-          Type::CallAssignment(init_values[i]->scope_, field_type[i],
-                               init_values[i]->type, init_values[i]->EmitIR(),
-                               IR::Field(IR::Val::Arg(Ptr(this), 0), i));
+          EmitCopyInit(
+              /* from_type = */ init_values[i]->type,
+              /*   to_type = */ field_type[i],
+              /*  from_val = */ init_values[i]->EmitIR(),
+              /*    to_var = */ IR::Field(IR::Val::Arg(Ptr(this), 0), i));
         } else {
           field_type[i]->EmitInit(IR::Field(IR::Val::Arg(Ptr(this), 0), i));
         }
