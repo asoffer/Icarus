@@ -529,7 +529,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         *static_cast<double *>(resolved[1].as_addr.as_heap) =
             resolved[0].as_real;
       } else if (resolved[0].type->is<Pointer>()) {
-        NOT_YET();
+        *static_cast<Addr *>(resolved[1].as_addr.as_heap) = resolved[0].as_addr;
       } else if (resolved[0].type->is<Enum>()) {
         NOT_YET();
       } else if (resolved[0].type == Code) {
@@ -568,7 +568,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Addr::Kind::Global: NOT_YET();
     case Addr::Kind::Null: NOT_YET();
     }
-    UNREACHABLE();
+    UNREACHABLE("Invalid address kind");
   case Op::Field: {
     auto struct_type =
         ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);

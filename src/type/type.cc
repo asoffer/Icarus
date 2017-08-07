@@ -95,12 +95,10 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       auto rhs_incr      = IR::PtrIncr(rhs_phi, IR::Val::Uint(1));
       IR::Jump::Unconditional(phi_block);
 
-      IR::Func::Current->SetArgs(lhs_phi.as_reg,
-                                 {IR::Val::Block(equal_len_block), lhs_start,
-                                  IR::Val::Block(incr_block), lhs_incr});
-      IR::Func::Current->SetArgs(rhs_phi.as_reg,
-                                 {IR::Val::Block(equal_len_block), rhs_start,
-                                  IR::Val::Block(incr_block), rhs_incr});
+      fn->SetArgs(lhs_phi.as_reg, {IR::Val::Block(equal_len_block), lhs_start,
+                                   IR::Val::Block(incr_block), lhs_incr});
+      fn->SetArgs(rhs_phi.as_reg, {IR::Val::Block(equal_len_block), rhs_start,
+                                   IR::Val::Block(incr_block), rhs_incr});
     }
   }
 

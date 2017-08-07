@@ -37,6 +37,23 @@ void VerifyDeclBeforeUsage() {
   }
 }
 
+static bool CanCastImplicitly(Type* from, Type* to) {
+  if (from == to || (from == NullPtr && to->is<Pointer>())) { return true; }
+
+  if (from->is<Array>() && to->is<Array>()) {
+    auto *array_from = ptr_cast<Array>(from);
+    auto *array_to   = ptr_cast<Array>(to);
+
+    if (array_to->fixed_length &&
+        (!array_from->fixed_length || array_to->len != array_from->len)) {
+      return false;
+    }
+    return CanCastImplicitly(array_from->data_type, array_to->data_type);
+  }
+
+  return false;
+}
+
 #define STARTING_CHECK                                                         \
   ASSERT(scope_, "Need to first call assign_scope()");                         \
   if (type == Unknown) {                                                       \
@@ -1008,17 +1025,7 @@ void Declaration::verify_types() {
 
     if (type == Err) {
       type = init_val_type;
-    } else if (init_val_type == NullPtr) {
-      if (type->is<Pointer>()) {
-        init_val->type = type;
-      } else {
-        auto new_type = Ptr(type);
-        errors.emplace_back(Error::Code::Other);
-        // ErrorLog::InitWithNull(loc, type, new_type);
-        type           = new_type;
-        init_val->type = new_type;
-      }
-    } else if (type != init_val_type) {
+    } else if (!CanCastImplicitly(init_val_type, type)) {
       errors.emplace_back(Error::Code::Other);
       // ErrorLog::AssignmentTypeMismatch(loc, type, init_val_type);
     }

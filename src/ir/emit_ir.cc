@@ -416,8 +416,12 @@ IR::Val AST::Declaration::EmitIR() {
     if (IsUninitialized()) { return IR::Val::None(); }
 
     if (IsCustomInitialized()) {
-      // TODO Does this assume already in an initialized state?
-      Type::CallAssignment(scope_, type, type, init_val->EmitIR(), addr);
+      lrvalue_check();
+      if (init_val->lvalue == Assign::RVal) {
+        Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(), addr);
+      } else {
+        Type::EmitCopyInit(init_val->type, type, init_val->EmitIR(), addr);
+      }
     } else {
       type->EmitInit(addr);
     }

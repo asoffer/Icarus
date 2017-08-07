@@ -64,6 +64,11 @@ public:
   static void CallAssignment(Scope *scope, Type *from_type, Type *to_type,
                              IR::Val from_val, IR::Val to_var);
 
+  static void EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
+                           IR::Val to_var);
+  static void EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
+                           IR::Val to_var);
+
   bool is_big() const { return is<Array>() || is<Struct>(); }
   bool stores_data() const { return this != Type_ && !is<Function>(); }
 };

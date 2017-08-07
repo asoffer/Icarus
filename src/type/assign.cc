@@ -36,6 +36,7 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
           len, from_array_type->data_type);
       auto ptr        = IR::Malloc(from_array_type->data_type, to_bytes);
       auto array_data = IR::ArrayData(to_var);
+      // TODO what if members need to be destructed too?
       IR::Free(IR::Load(array_data));
       IR::Store(len, IR::ArrayLength(to_var));
       IR::Store(ptr, array_data);
