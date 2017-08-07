@@ -18,15 +18,10 @@ void Array::EmitDestroy(IR::Val id_val) {
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
 
-      IR::Val ptr = IR::Val::None();
-      IR::Val length_var = IR::Val::None();
-      if (fixed_length) {
-        ptr        = IR::Index(IR::Val::Arg(this, 0), IR::Val::Uint(0));
-        length_var = IR::Val::Uint(len);
-      } else {
-        ptr = IR::Load(IR::ArrayData(IR::Val::Arg(this, 0)));
-        length_var = IR::Load(IR::ArrayLength(IR::Val::Arg(this, 0)));
-      }
+      IR::Val ptr = IR::Index(IR::Val::Arg(this, 0), IR::Val::Uint(0));
+      IR::Val length_var =
+          fixed_length ? IR::Val::Uint(len)
+                       : IR::Load(IR::ArrayLength(IR::Val::Arg(this, 0)));
       auto end_ptr = IR::PtrIncr(ptr, length_var);
 
       auto loop_phi = IR::Func::Current->AddBlock();

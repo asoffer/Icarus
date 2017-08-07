@@ -116,6 +116,7 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       IR::Block::Current = fn->entry();
       auto from_arg      = IR::Val::Arg(Ptr(from_type), 0);
       auto to_arg        = IR::Val::Arg(Ptr(to_type), 1);
+      auto phi_block     = IR::Func::Current->AddBlock();
       auto body_block    = IR::Func::Current->AddBlock();
 
       auto from_len = from_type->fixed_length
@@ -135,18 +136,19 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       auto from_start = IR::Index(from_arg, IR::Val::Uint(0));
       auto to_start   = IR::Index(to_arg, IR::Val::Uint(0));
       auto from_end   = IR::PtrIncr(from_start, from_len);
-      IR::Jump::Unconditional(body_block);
+      IR::Jump::Unconditional(phi_block);
 
-      IR::Block::Current = body_block;
+      IR::Block::Current = phi_block;
       auto from_phi      = IR::Phi(Ptr(from_type->data_type));
       auto to_phi        = IR::Phi(Ptr(to_type->data_type));
+      IR::Jump::Conditional(IR::Ne(from_phi, from_end), body_block, fn->exit());
+
+      IR::Block::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi),
              to_phi);
-
       auto from_incr = IR::PtrIncr(from_phi, IR::Val::Uint(1));
       auto to_incr   = IR::PtrIncr(to_phi, IR::Val::Uint(1));
-      IR::Jump::Conditional(IR::Eq(from_incr, from_end), fn->exit(),
-                            body_block);
+      IR::Jump::Unconditional(phi_block);
 
       fn->SetArgs(from_phi.as_reg, {IR::Val::Block(fn->entry()), from_start,
                                     IR::Val::Block(body_block), from_incr});

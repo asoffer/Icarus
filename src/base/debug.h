@@ -48,6 +48,16 @@ template <typename T> std::string to_string(const T *ptr) {
 #define ASSERT_LT(lhs, rhs) ASSERT_SYM(lhs, rhs, <)
 #define ASSERT_LE(lhs, rhs) ASSERT_SYM(lhs, rhs, <=)
 
+#define ASSERT_TYPE(type, val)                                                 \
+  do {                                                                         \
+    if (!(val)->is<type>()) {                                                  \
+      LOG << "Assertion failed.\n"                                             \
+             "  Expected type: "                                               \
+          << #type << "\n"                                                     \
+          << "  Actual type: " << val->to_string();                            \
+    }                                                                          \
+  } while (false)
+
 #define NOT_YET(...)                                                           \
   LOG << "Not yet implemented.\n", ##__VA_ARGS__;                              \
   abort()

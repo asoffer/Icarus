@@ -609,7 +609,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   }
   case Op::Nop: return Val::None();
   case Op::Malloc:
-    ASSERT(cmd.result.type->is<Pointer>(), "");
+    ASSERT_TYPE(Pointer, cmd.result.type);
     return IR::Val::HeapAddr(malloc(resolved[0].as_uint),
                              ptr_cast<Pointer>(cmd.result.type)->pointee);
   case Op::Free: free(resolved[0].as_addr.as_heap); return Val::None();

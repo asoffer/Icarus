@@ -92,8 +92,8 @@ IR::Val AST::Access::EmitLVal() {
     val = IR::Load(val);
   }
 
-  ASSERT(val.type->is<Pointer>(), "");
-  ASSERT(ptr_cast<Pointer>(val.type)->pointee->is<Struct>(), "");
+  ASSERT_TYPE(Pointer, val.type);
+  ASSERT_TYPE(Struct, ptr_cast<Pointer>(val.type)->pointee);
 
   auto struct_type = ptr_cast<Struct>(ptr_cast<Pointer>(val.type)->pointee);
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
@@ -352,7 +352,7 @@ IR::Val AST::ScopeLiteral::EmitIR() {
 IR::Val AST::ScopeNode::EmitIR() {
   VERIFY_OR_EXIT;
   IR::Val scope_expr_val = Evaluate(scope_expr.get());
-  ASSERT(scope_expr_val.type->is<Scope_Type>(), "");
+  ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
   auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR();
   ASSERT_NE(enter_fn, IR::Val::None());

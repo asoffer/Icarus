@@ -339,8 +339,7 @@ void Binop::verify_types() {
                   ((Struct *)decl->identifier->value.as_type)->bound_name =
                       decl->identifier->token;
                 } else if (t->is<ParamStruct>()) {
-                  ASSERT(decl->identifier->value.as_type->is<ParamStruct>(),
-                         "");
+                  ASSERT_TYPE(ParamStruct, decl->identifier->value.as_type);
                   ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
                       decl->identifier->token;
 

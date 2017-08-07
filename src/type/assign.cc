@@ -19,7 +19,7 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
     IR::Store(from_val, to_var);
 
   } else if (to_type->is<Array>()) {
-    ASSERT(from_type->is<Array>(), "");
+    ASSERT_TYPE(Array, from_type);
     auto *from_array_type = ptr_cast<Array>(from_type);
     auto *to_array_type   = ptr_cast<Array>(to_type);
 
@@ -30,13 +30,13 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
     IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
     if (!to_array_type->fixed_length) {
+      to_array_type->EmitDestroy(to_var);
       // TODO delete first time. currently just delete
       // TODO Architecture dependence?
       auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
           len, from_array_type->data_type);
       auto ptr        = IR::Malloc(from_array_type->data_type, to_bytes);
       auto array_data = IR::ArrayData(to_var);
-      // TODO what if members need to be destructed too?
       IR::Free(IR::Load(array_data));
       IR::Store(len, IR::ArrayLength(to_var));
       IR::Store(ptr, array_data);
