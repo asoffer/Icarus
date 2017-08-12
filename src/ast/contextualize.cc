@@ -111,7 +111,7 @@ base::owned_ptr<Node> Binop::contextualize(
   auto result = copy_stub();
   result->lhs = base::move<Expression>(lhs->contextualize(replacements));
   result->rhs = base::move<Expression>(rhs->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> Declaration::contextualize(
@@ -127,7 +127,7 @@ base::owned_ptr<Node> Declaration::contextualize(
     result->init_val =
         base::move<Expression>(init_val->contextualize(replacements));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> Generic::contextualize(
@@ -140,7 +140,7 @@ base::owned_ptr<Node> InDecl::contextualize(
   auto result = copy_stub();
   result->container =
       base::move<Expression>(container->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> Statements::contextualize(
@@ -150,7 +150,7 @@ base::owned_ptr<Node> Statements::contextualize(
   for (auto &stmt : statements) {
     result->statements.push_back(stmt->contextualize(replacements));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> Unop::contextualize(
@@ -165,12 +165,12 @@ base::owned_ptr<Node> Unop::contextualize(
     terminal->lvalue        = lvalue; // TODO????
     terminal->type          = iter->second.type;
     terminal->value         = iter->second;
-    return terminal;
+    return std::move(terminal);
   } else {
     auto result = copy_stub();
     result->operand =
         base::move<Expression>(operand->contextualize(replacements));
-    return result;
+    return std::move(result);
   }
 }
 
@@ -179,7 +179,7 @@ base::owned_ptr<Node> Access::contextualize(
   auto result = copy_stub();
   result->operand =
       base::move<Expression>(operand->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> ChainOp::contextualize(
@@ -190,7 +190,7 @@ base::owned_ptr<Node> ChainOp::contextualize(
     result->exprs.push_back(
         base::move<Expression>(expr->contextualize(replacements)));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> CommaList::contextualize(
@@ -201,7 +201,7 @@ base::owned_ptr<Node> CommaList::contextualize(
     result->exprs.push_back(
         base::move<Expression>(expr->contextualize(replacements)));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> ArrayLiteral::contextualize(
@@ -212,7 +212,7 @@ base::owned_ptr<Node> ArrayLiteral::contextualize(
     result->elems.push_back(
         base::move<Expression>(elem->contextualize(replacements)));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> ArrayType::contextualize(
@@ -221,7 +221,7 @@ base::owned_ptr<Node> ArrayType::contextualize(
   result->length = base::move<Expression>(length->contextualize(replacements));
   result->data_type =
       base::move<Expression>(data_type->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> Case::contextualize(
@@ -232,7 +232,7 @@ base::owned_ptr<Node> Case::contextualize(
         base::move<Expression>(kv.first->contextualize(replacements)),
         base::move<Expression>(kv.second->contextualize(replacements))));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> FunctionLiteral::contextualize(
@@ -247,7 +247,7 @@ base::owned_ptr<Node> FunctionLiteral::contextualize(
   }
   result->statements =
       base::move<Statements>(statements->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> For::contextualize(
@@ -260,7 +260,7 @@ base::owned_ptr<Node> For::contextualize(
     result->iterators.push_back(
         base::move<InDecl>(iter->contextualize(replacements)));
   }
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> ScopeNode::contextualize(
@@ -270,7 +270,7 @@ base::owned_ptr<Node> ScopeNode::contextualize(
   result->scope_expr =
       base::move<Expression>(scope_expr->contextualize(replacements));
   result->stmts = base::move<Statements>(stmts->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 base::owned_ptr<Node> ScopeLiteral::contextualize(
@@ -280,7 +280,7 @@ base::owned_ptr<Node> ScopeLiteral::contextualize(
       base::move<Declaration>(enter_fn->contextualize(replacements));
   result->exit_fn =
       base::move<Declaration>(exit_fn->contextualize(replacements));
-  return result;
+  return std::move(result);
 }
 
 } // namespace AST

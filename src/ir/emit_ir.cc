@@ -145,8 +145,7 @@ IR::Val AST::ArrayLiteral::EmitIR() {
   auto* data_type = ptr_cast<Array>(type)->data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
-    Type::CallAssignment(scope_, data_type, data_type, elems[i]->EmitIR(),
-                         elem_i);
+    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(), elem_i);
   }
   return array_val;
 }
@@ -544,7 +543,7 @@ IR::Val AST::Binop::EmitIR() {
     });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
-    for (size_t i = 0;i < lhs_lvals.size(); ++i) {
+    for (size_t i = 0; i < lhs_lvals.size(); ++i) {
       Type::CallAssignment(scope_, rhs_types[i], lhs_types[i], rhs_vals[i],
                            lhs_lvals[i]);
     }

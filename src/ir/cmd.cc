@@ -22,7 +22,7 @@ Val SetReturn(size_t n, Val v) {
 }
 
 Val Field(Val v, size_t n) {
-  ASSERT(v.type->is<Pointer>(), v.type->to_string());
+  ASSERT_TYPE(Pointer, v.type);
   auto ptee_type = ptr_cast<Pointer>(v.type)->pointee;
   Cmd cmd(Ptr(ptr_cast<Struct>(ptee_type)->field_type[n]), Op::Field,
           {std::move(v), Val::Uint(n)});
@@ -51,7 +51,7 @@ Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
 Val Print(Val v) { MAKE_AND_RETURN(Void, Op::Print); }
 Val Free(Val v) {
-  ASSERT(v.type->is<Pointer>(), "");
+  ASSERT_TYPE(Pointer, v.type);
   MAKE_AND_RETURN(Void, Op::Free);
 }
 
@@ -71,35 +71,35 @@ Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
 }
 
 Val Load(Val v) {
-  ASSERT(v.type->is<Pointer>(), v.to_string());
+  ASSERT_TYPE(Pointer, v.type);
   MAKE_AND_RETURN(ptr_cast<Pointer>(v.type)->pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
-  ASSERT(v.type->is<Pointer>(), "Type is " + v.type->to_string());
+  ASSERT_TYPE(Pointer, v.type);
   auto *ptee = ptr_cast<Pointer>(v.type)->pointee;
-  ASSERT(ptee->is<::Array>(), "Pointee type is " + ptee->to_string());
+  ASSERT_TYPE(::Array, ptee);
   ASSERT(!ptr_cast<::Array>(ptee)->fixed_length,
          "Pointee type is " + ptee->to_string());
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
-  ASSERT(v.type->is<Pointer>(), "");
+  ASSERT_TYPE(Pointer, v.type);
   auto *ptee = ptr_cast<Pointer>(v.type)->pointee;
-  ASSERT(ptee->is<::Array>(), "");
+  ASSERT_TYPE(::Array, ptee);
   auto *array_type = ptr_cast<::Array>(ptee);
   ASSERT(!array_type->fixed_length, "");
   MAKE_AND_RETURN(Ptr(Ptr(array_type->data_type)), Op::ArrayData);
 }
 
 Val Store(Val v1, Val v2) {
-  ASSERT(v2.type->is<Pointer>(), "Type is " + v2.type->to_string());
+  ASSERT_TYPE(Pointer, v2.type);
   MAKE_AND_RETURN2(Void, Op::Store);
 }
 
 Val PtrIncr(Val v1, Val v2) {
-  ASSERT(v1.type->is<Pointer>(), "");
+  ASSERT_TYPE(Pointer, v1.type);
   ASSERT_EQ(v2.type, ::Uint);
   MAKE_AND_RETURN2(v1.type, Op::PtrIncr);
 }
@@ -128,11 +128,12 @@ Val Array(Val v1, Val v2) {
 }
 
 Val Index(Val v1, Val v2) {
-  ASSERT(v1.type->is<::Pointer>(), "");
-  ASSERT(ptr_cast<Pointer>(v1.type)->pointee->is<::Array>(),
-         "Pointee is " + ptr_cast<Pointer>(v1.type)->pointee->to_string());
+  ASSERT_TYPE(Pointer, v1.type);
+  auto *ptee = ptr_cast<Pointer>(v1.type)->pointee;
+  ASSERT_TYPE(::Array, ptee);
   ASSERT_EQ(v2.type, ::Uint);
-  auto *array_type = ptr_cast<::Array>(ptr_cast<Pointer>(v1.type)->pointee);
+  auto *array_type = ptr_cast<::Array>(ptee);
+
   IR::Val ptr      = array_type->fixed_length ? v1 : Load(ArrayData(v1));
   ptr.type         = Ptr(array_type->data_type);
   return PtrIncr(ptr, v2);
@@ -147,7 +148,7 @@ Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
 
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
-  ASSERT(v1.type == Type_, "");
+  ASSERT_EQ(v1.type, Type_);
   MAKE_AND_RETURN2(v1.as_type, Op::Cast);
 }
 
@@ -161,7 +162,7 @@ Val Phi(Type *t) {
 }
 
 Val Call(Val fn, std::vector<Val> vals) {
-  ASSERT(fn.type->is<Function>(), "");
+  ASSERT_TYPE(Function, fn.type);
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);

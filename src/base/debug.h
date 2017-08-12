@@ -8,7 +8,7 @@
 
 namespace debug {
 inline std::string to_string(const char *s) { return std::string(s); }
-inline std::string to_string(std::string s) { return std::move(s); }
+inline std::string to_string(std::string s) { return s; }
 inline std::string to_string(std::nullptr_t) { return "nullptr"; }
 inline std::string to_string(i64 n) { return std::to_string(n); }
 inline std::string to_string(u64 n) { return std::to_string(n); }

@@ -446,52 +446,11 @@ void Binop::verify_types() {
   using Language::Operator;
   // TODO if lhs is reserved?
   if (op == Language::Operator::Assign) {
-    if (rhs->is<Terminal>()) {
-      auto term = ptr_cast<Terminal>(rhs.get());
-      if (term->value == IR::Val::Null(Void)) {
-        term->type = lhs->type;
-        type       = Void;
-        return;
-      }
-
-      if (term->is_hole()) {
-        // TODO this should become a noop
-        term->type = lhs->type;
-        type       = Void;
-        // if (lhs->is<Declaration>()) { ((Declaration *)lhs)->init = false; }
-
-        return;
-      }
+    if (CanCastImplicitly(rhs->type, lhs->type)) {
+      type = Void;
+    } else {
+      errors.emplace_back(Error::Code::Other);
     }
-
-    if (lhs->type != rhs->type) {
-      if (lhs->type->is<Array>() && rhs->type->is<Array>()) {
-        auto lhs_array_type = ptr_cast<Array>(lhs->type);
-        auto rhs_array_type = ptr_cast<Array>(rhs->type);
-        if (lhs_array_type->data_type != rhs_array_type->data_type) {
-          errors.emplace_back(Error::Code::ArrayAssignmentDifferentLengths);
-          // ErrorLog::InvalidArrayAssignmentDifferentLengths(loc);
-
-        } else if (lhs_array_type->fixed_length &&
-                   rhs_array_type->fixed_length) {
-          errors.emplace_back(Error::Code::ArrayAssignmentDifferentLengths);
-          // ErrorLog::InvalidArrayAssignmentDifferentLengths(loc);
-
-        } else if (lhs_array_type->fixed_length) {
-          errors.emplace_back(Error::Code::AssignmentArrayLength);
-          // ErrorLog::AssignmentArrayLength(loc, lhs_array_type->len);
-
-        } else {
-          type = Void;
-          return;
-        }
-
-      } else {
-        errors.emplace_back(Error::Code::AssignmentTypeMismatch);
-        // ErrorLog::AssignmentTypeMismatch(loc, lhs->type, rhs->type);
-      }
-    }
-    type = Void;
     return;
   }
 

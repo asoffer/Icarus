@@ -25,7 +25,7 @@ void Array::EmitInit(IR::Val id_val) {
   if (!init_func) {
     init_func       = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
-    implicit_functions.push_back(init_func);
+
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();
 
@@ -60,7 +60,7 @@ void Array::EmitInit(IR::Val id_val) {
 }
 
 void Pointer::EmitInit(IR::Val id_val) {
-  IR::Store(IR::Val::Null(this), id_val);
+  IR::Store(EmitInitialValue(), id_val);
 }
 
 void Struct::EmitInit(IR::Val id_val) {
@@ -69,7 +69,6 @@ void Struct::EmitInit(IR::Val id_val) {
   if (!init_func) {
     init_func       = new IR::Func(Func(Ptr(this), Void));
     init_func->name = "init." + Mangle(this);
-    implicit_functions.push_back(init_func);
 
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();

@@ -18,8 +18,6 @@
     }                                                                          \
   } while (false)
 
-std::vector<IR::Func *> implicit_functions;
-
 extern void ReplEval(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();

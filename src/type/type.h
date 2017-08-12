@@ -1,6 +1,13 @@
 #ifndef ICARUS_TYPE_TYPE_H
 #define ICARUS_TYPE_TYPE_H
 
+#define PRINT(m)                                                               \
+  do {                                                                         \
+    const char *msg = m "\n";                                                  \
+    do { IR::Print(IR::Val::Char(*msg)); } while ((*msg++) != '\n');           \
+  } while (false)
+
+
 struct Type;
 struct Struct;
 struct Array;
@@ -71,6 +78,7 @@ public:
 
   bool is_big() const { return is<Array>() || is<Struct>(); }
   bool stores_data() const { return this != Type_ && !is<Function>(); }
+  virtual bool needs_destroy() const { return false; }
 };
 
 #undef ENDING
@@ -101,6 +109,10 @@ struct Array : public Type {
   static IR::Val Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                          IR::Val rhs_ir, bool equality);
 
+  virtual bool needs_destroy() const {
+    return !fixed_length || data_type->needs_destroy();
+  }
+
   IR::Func *init_func = nullptr, *repr_func = nullptr, *destroy_func = nullptr;
 
   Type *data_type;
@@ -119,6 +131,14 @@ struct Tuple : public Type {
 
   Tuple(std::vector<Type *> types);
 
+  virtual bool needs_destroy() const {
+    for (Type *t : entries) {
+      if (t->needs_destroy()) { return true; }
+    }
+    return false;
+  }
+
+
   std::vector<Type *> entries;
 };
 
@@ -131,6 +151,8 @@ struct Pointer : public Type {
 
 struct Function : public Type {
   TYPE_FNS(Function, function);
+
+  // TODO needs destroy for captures?
 
   Function(Type *in, Type *out);
   Type *input, *output;
@@ -163,6 +185,13 @@ struct Struct : public Type {
   size_t field_num(const std::string &name) const;
 
   void CompleteDefinition();
+
+  virtual bool needs_destroy() const {
+    for (Type *t : field_type) {
+      if (t->needs_destroy()) { return true; }
+    }
+    return false;
+  }
 
   Scope *type_scope = nullptr;
   std::vector<AST::Declaration *> decls;
@@ -242,7 +271,6 @@ inline std::string to_string(const Type *t) {
 }
 } // namespace debug
 
-extern std::vector<IR::Func *> implicit_functions;
 // TODO this is not the right API for mangling.
 std::string Mangle(const Type *t, bool prefix = true);
 std::string Mangle(const Function *f, AST::Expression *expr,

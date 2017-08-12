@@ -568,7 +568,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Addr::Kind::Global: NOT_YET();
     case Addr::Kind::Null: NOT_YET();
     }
-    UNREACHABLE("Invalid address kind");
+    UNREACHABLE("Invalid address kind: ",
+                static_cast<int>(resolved[0].as_addr.kind));
   case Op::Field: {
     auto struct_type =
         ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);
@@ -626,7 +627,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
     case Addr::Kind::Heap:
       return IR::Val::HeapAddr(
-          static_cast<void *>(static_cast<char *>(resolved[0].as_addr.as_heap) +
+          static_cast<void *>(static_cast<u8 *>(resolved[0].as_addr.as_heap) +
                               Architecture::InterprettingMachine().bytes(Uint)),
           ptr_cast<Pointer>(cmd.result.type)->pointee);
     }
@@ -636,6 +637,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
   ctx->call_stack.emplace(this, std::move(arguments));
+
   while (true) {
     auto block_index = ctx->ExecuteBlock();
     if (block_index.is_none()) {

@@ -122,7 +122,7 @@ base::owned_ptr<AST::Node>
 EmptyFile(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts = base::make_owned<AST::Statements>();
   stmts->loc = nodes[0]->loc;
-  return stmts;
+  return std::move(stmts);
 }
 
 namespace ErrMsg {

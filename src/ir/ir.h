@@ -196,8 +196,14 @@ struct ExecContext {
   Val ExecuteCmd(const Cmd& cmd);
   void Resolve(Val *v) const;
 
-  Val reg(RegIndex r) const { return call_stack.top().regs_[r.index]; }
-  Val &reg(RegIndex r) { return call_stack.top().regs_[r.index]; }
+  Val reg(RegIndex r) const {
+    ASSERT_GE(r.index, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.index)];
+  }
+ Val &reg(RegIndex r) {
+   ASSERT_GE(r.index, 0);
+   return call_stack.top().regs_[static_cast<u32>(r.index)];
+  }
   Val arg(u64 n) const { return call_stack.top().args_[n]; }
 
   Stack stack_;

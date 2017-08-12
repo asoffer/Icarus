@@ -10,43 +10,41 @@ void Function::EmitDestroy(IR::Val) {}
 extern IR::Val PtrCallFix(Type *t, IR::Val v);
 
 void Array::EmitDestroy(IR::Val id_val) {
-  if (!destroy_func) {
+  if (destroy_func == nullptr) {
+    if (!needs_destroy()) { return; }
+
     destroy_func = new IR::Func(Func(Ptr(this), Void));
     destroy_func->name = "destroy." + Mangle(this);
 
-    implicit_functions.push_back(destroy_func);
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
 
-      IR::Val ptr = IR::Index(IR::Val::Arg(this, 0), IR::Val::Uint(0));
-      IR::Val length_var =
-          fixed_length ? IR::Val::Uint(len)
-                       : IR::Load(IR::ArrayLength(IR::Val::Arg(this, 0)));
-      auto end_ptr = IR::PtrIncr(ptr, length_var);
-
+      auto arg = IR::Val::Arg(Ptr(this), 0);
       auto loop_phi = IR::Func::Current->AddBlock();
       auto loop_body = IR::Func::Current->AddBlock();
+
+      IR::Val ptr = IR::Index(arg, IR::Val::Uint(0));
+      auto end_ptr =
+          IR::PtrIncr(ptr, fixed_length ? IR::Val::Uint(len)
+                                        : IR::Load(IR::ArrayLength(arg)));
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Block::Current = loop_phi;
+     IR::Block::Current = loop_phi;
       auto phi = IR::Phi(Ptr(data_type));
-      IR::Jump::Conditional(IR::Eq(phi, end_ptr), IR::Func::Current->exit(),
+      IR::Jump::Conditional(IR::Eq(phi, end_ptr), destroy_func->exit(),
                             loop_body);
 
       IR::Block::Current = loop_body;
       data_type->EmitDestroy(phi);
-
-      IR::Func::Current->SetArgs(phi.as_reg,
-                                 {IR::Val::Block(destroy_func->entry()), ptr,
-                                  IR::Val::Block(IR::Block::Current),
-                                  IR::PtrIncr(phi, IR::Val::Uint(1))});
-
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Block::Current = IR::Func::Current->exit();
-      if (!fixed_length) {
-        IR::Free(IR::Load(IR::ArrayData(IR::Val::Arg(this, 0))));
-      }
+      destroy_func->SetArgs(phi.as_reg, {IR::Val::Block(destroy_func->entry()),
+                                         ptr, IR::Val::Block(loop_body),
+                                         IR::PtrIncr(phi, IR::Val::Uint(1))});
+
+      IR::Block::Current = destroy_func->exit();
+      if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
+
       IR::Jump::Return();
     }
   }
@@ -57,7 +55,6 @@ void Struct::EmitDestroy(IR::Val id_val) {
   if (!destroy_func) {
     destroy_func = new IR::Func(Func(Ptr(this), Void));
     destroy_func->name = "destroy." + Mangle(this);
-    implicit_functions.push_back(destroy_func);
 
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
