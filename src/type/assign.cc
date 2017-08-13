@@ -41,8 +41,6 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 
       if (!to_array_type->fixed_length) {
         to_array_type->EmitDestroy(var);
-
-        // TODO delete first time. currently just delete
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
             len, to_array_type->data_type);
@@ -114,15 +112,9 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
 
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);
-        auto field_val      = IR::Field(val, i);
-        auto field_var      = IR::Field(var, i);
-
-        // TODO ptr call fix?
-        if (!the_field_type->is_big()) { field_val = IR::Load(field_val); }
-
         // TODO is that the right scope?
         Type::CallAssignment(type_scope, the_field_type, the_field_type,
-                             field_val, field_var);
+                             PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
       }
 
       IR::Jump::Return();

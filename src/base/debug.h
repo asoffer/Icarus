@@ -55,6 +55,7 @@ template <typename T> std::string to_string(const T *ptr) {
              "  Expected type: "                                               \
           << #type << "\n"                                                     \
           << "  Actual type: " << val->to_string();                            \
+      abort();                                                                 \
     }                                                                          \
   } while (false)
 

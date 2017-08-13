@@ -203,7 +203,7 @@ base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
 
   auto iter = ptr_cast<Expression>(nodes[1].get());
   if (iter->is<CommaList>()) {
-    auto iter_list = ptr_cast<ChainOp>(iter);
+    auto iter_list = ptr_cast<CommaList>(iter);
     for_stmt->iterators.reserve(iter_list->exprs.size());
 
     for (auto &expr : iter_list->exprs) {

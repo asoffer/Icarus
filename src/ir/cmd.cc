@@ -58,7 +58,7 @@ Val Free(Val v) {
 Val Alloca(Type *t) {
   ASSERT_NE(t, ::Void);
   Cmd cmd(Ptr(t), Op::Alloca, {});
-  Func::Current->blocks_[Block::Current.value].cmds_.push_back(cmd);
+  Func::Current->blocks_[Func::Current->entry().value].cmds_.push_back(cmd);
   return cmd.result;
 }
 

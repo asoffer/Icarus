@@ -490,6 +490,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     switch (resolved[1].as_addr.kind) {
     case Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
+      cmd.dump(0);
       UNREACHABLE();
     case Addr::Kind::Global:
       global_vals[resolved[1].as_addr.as_global] = resolved[0];

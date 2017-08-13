@@ -112,3 +112,13 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
   auto containing_fn_scope = parent->ContainingFnScope();
   if (containing_fn_scope) { containing_fn_scope->innards_.push_back(this); }
 }
+
+void ExecScope::Enter() const {
+  for (auto *decl : decls_) {
+    if (decl->is<AST::InDecl>()) { continue; }
+    decl->EmitIR();
+  }
+}
+void ExecScope::Exit() const {
+  for (auto *decl : decls_) { decl->type->EmitDestroy(decl->addr); }
+}

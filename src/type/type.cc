@@ -2,22 +2,21 @@
 #include "../scope.h"
 
 std::string Primitive::to_string() const {
-  const char *str;
   switch (type_) {
-  case PrimType::Err: str     = "Err"; break;
-  case PrimType::Unknown: str = "???"; break;
-  case PrimType::Bool: str    = "bool"; break;
-  case PrimType::Char: str    = "char"; break;
-  case PrimType::Code: str    = "code"; break;
-  case PrimType::Int: str     = "int"; break;
-  case PrimType::Real: str    = "real"; break;
-  case PrimType::Type: str    = "type"; break;
-  case PrimType::Uint: str    = "uint"; break;
-  case PrimType::Void: str    = "void"; break;
-  case PrimType::NullPtr: str = "null"; break;
-  case PrimType::String: str  = "string"; break;
+  case PrimType::Err: return "Err";
+  case PrimType::Unknown: return "???";
+  case PrimType::Bool: return "bool";
+  case PrimType::Char: return "char";
+  case PrimType::Code: return "code";
+  case PrimType::Int: return "int";
+  case PrimType::Real: return "real";
+  case PrimType::Type: return "type";
+  case PrimType::Uint: return "uint";
+  case PrimType::Void: return "void";
+  case PrimType::NullPtr: return "null";
+  case PrimType::String: return "string";
+  default: UNREACHABLE();
   }
-  return str;
 }
 
 Array::Array(Type *t) : data_type(t), len(0), fixed_length(false) {

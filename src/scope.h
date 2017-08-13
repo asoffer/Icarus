@@ -70,6 +70,10 @@ struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
 
+  // TODO Enter()
+  void Enter() const;
+  void Exit() const;
+
   bool can_jump = false;
 };
 

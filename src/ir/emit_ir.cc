@@ -139,9 +139,7 @@ IR::Val AST::Identifier::EmitIR() {
 
 IR::Val AST::ArrayLiteral::EmitIR() {
   VERIFY_OR_EXIT;
-  // TODO this allocation needs to be handled appropriately (in the entry block
-  // perhaps).
-  auto array_val = IR::Alloca(type);
+  auto array_val  = IR::Alloca(type);
   auto* data_type = ptr_cast<Array>(type)->data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
@@ -203,13 +201,20 @@ IR::Val AST::For::EmitIR() {
     IR::Block::Current = phi;
     for (auto &decl : iterators) {
       if (decl->container->type == Type_) {
-        NOT_YET();
+        IR::Val container_val = Evaluate(decl->container.get());
+        if (container_val.as_type->is<Enum>()) {
+          phis.push_back(IR::Phi(ptr_cast<Enum>(container_val.as_type)));
+        } else {
+          NOT_YET();
+        }
       } else if (decl->container->type->is<RangeType>()) {
         phis.push_back(
             IR::Phi(ptr_cast<RangeType>(decl->container->type)->end_type));
       } else if (decl->container->type->is<Array>()) {
         phis.push_back(
             IR::Phi(Ptr(ptr_cast<Array>(decl->container->type)->data_type)));
+      } else {
+        NOT_YET(*decl->container->type);
       }
     }
     IR::Jump::Unconditional(cond);
@@ -293,14 +298,11 @@ IR::Val AST::For::EmitIR() {
 
   { // Body
     IR::Block::Current = body_entry;
-    for (auto& decl : for_scope->decls_) {
-      (void)decl;
-      // TODO initialize all decls
-    }
 
+    for_scope->Enter();
     statements->EmitIR();
+    for_scope->Exit();
 
-    // TODO destruct all decls
     IR::Jump::Unconditional(incr);
   }
 
