@@ -24,6 +24,7 @@ void ReplEval(AST::Expression *expr) {
     IR::Block::Current = fn->entry();
     auto expr_val      = expr->EmitIR();
     if (!errors.empty()) {
+      ErrorLog::Dump();
       std::cerr << "There were " << errors.size() << " errors.";
       return;
     }

@@ -209,9 +209,9 @@ struct ExecContext {
     ASSERT_GE(r.index, 0);
     return call_stack.top().regs_[static_cast<u32>(r.index)];
   }
- Val &reg(RegIndex r) {
-   ASSERT_GE(r.index, 0);
-   return call_stack.top().regs_[static_cast<u32>(r.index)];
+  Val &reg(RegIndex r) {
+    ASSERT_GE(r.index, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.index)];
   }
   Val arg(u64 n) const { return call_stack.top().args_[n]; }
 
@@ -320,11 +320,9 @@ struct Func {
   void SetArgs(RegIndex reg, std::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
-
     BlockIndex index;
-    index.value =
-        static_cast<decltype(index.value)>(IR::Func::Current->blocks_.size());
-    IR::Func::Current->blocks_.emplace_back(IR::Func::Current);
+    index.value = static_cast<decltype(index.value)>(Current->blocks_.size());
+    Current->blocks_.emplace_back(Current);
     return index;
   }
 
@@ -351,12 +349,12 @@ struct Func {
 
 struct FuncResetter {
   FuncResetter(Func *fn)
-      : old_fn_(IR::Func::Current), old_block_(IR::Block::Current) {
-    IR::Func::Current = fn;
+      : old_fn_(Func::Current), old_block_(Block::Current) {
+    Func::Current = fn;
   }
   ~FuncResetter() {
-    IR::Func::Current = old_fn_;
-    IR::Block::Current = old_block_;
+    Func::Current  = old_fn_;
+    Block::Current = old_block_;
   }
 
   Func *old_fn_;
@@ -365,7 +363,7 @@ struct FuncResetter {
 };
 
 #define CURRENT_FUNC(fn)                                                       \
-  for (auto resetter = ::IR::FuncResetter(fn); resetter.cond_;                 \
+  for (auto resetter  = ::IR::FuncResetter(fn); resetter.cond_;                \
        resetter.cond_ = false)
 } // namespace IR
 
