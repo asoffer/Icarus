@@ -133,10 +133,10 @@ std::string Val::to_string() const {
 
 void Jump::Conditional(Val cond, BlockIndex true_index,
                        BlockIndex false_index) {
-  Jump &jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
+  Jump &jmp = Jump::Current();
   if (cond.kind == Val::Kind::Const) {
-    jmp.type = Type::Uncond;
     ASSERT_EQ(cond.type, Bool);
+    jmp.type = Type::Uncond;
     jmp.block_index = (cond.as_bool ? true_index : false_index);
   } else {
     jmp.type = Type::Cond;
@@ -146,16 +146,7 @@ void Jump::Conditional(Val cond, BlockIndex true_index,
   }
 }
 
-void Jump::Return() {
-  Jump &jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
-  jmp.type = Type::Ret;
-}
-
-void Jump::Unconditional(BlockIndex index) {
-  Jump& jmp = IR::Func::Current->blocks_[IR::Block::Current.value].jmp_;
-  jmp.block_index = index;
-  jmp.type = Type::Uncond;
-}
+Jump &Jump::Current() { return Func::Current->block(IR::Block::Current).jmp_; }
 
 std::string Addr::to_string() const {
   std::stringstream ss;
@@ -178,4 +169,9 @@ bool operator==(Addr lhs, Addr rhs) {
   }
   UNREACHABLE();
 }
+
+Block &ExecContext::current_block() {
+  return call_stack.top().fn_->block(call_stack.top().current_);
+}
+
 } // namespace IR

@@ -85,9 +85,7 @@ namespace IR {
 ExecContext::ExecContext() : stack_(50) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
-  const auto &curr_block =
-      call_stack.top().fn_->blocks_[call_stack.top().current_.value];
-  for (const auto &cmd : curr_block.cmds_) {
+  for (const auto &cmd : current_block().cmds_) {
     auto result = ExecuteCmd(cmd);
 
     if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
@@ -98,14 +96,14 @@ BlockIndex ExecContext::ExecuteBlock() {
     }
   }
 
-  switch (curr_block.jmp_.type) {
-  case Jump::Type::Uncond: return curr_block.jmp_.block_index;
+  switch (current_block().jmp_.type) {
+  case Jump::Type::Uncond: return current_block().jmp_.block_index;
   case Jump::Type::Cond: {
-    Val cond_val = curr_block.jmp_.cond_data.cond;
+    Val cond_val = current_block().jmp_.cond_data.cond;
     ASSERT_EQ(cond_val.type, Bool);
     Resolve(&cond_val);
-    return cond_val.as_bool ? curr_block.jmp_.cond_data.true_block
-                            : curr_block.jmp_.cond_data.false_block;
+    return cond_val.as_bool ? current_block().jmp_.cond_data.true_block
+                            : current_block().jmp_.cond_data.false_block;
   } break;
   case Jump::Type::Ret: return BlockIndex{-1};
   case Jump::Type::None: UNREACHABLE();
@@ -645,11 +643,8 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
       auto rets = std::move(ctx->call_stack.top().rets_);
       ctx->call_stack.pop();
       return rets;
-    } else if (block_index.value >= 0) {
-      ctx->call_stack.top().prev_    = ctx->call_stack.top().current_;
-      ctx->call_stack.top().current_ = block_index;
     } else {
-      UNREACHABLE();
+      ctx->call_stack.top().MoveTo(block_index);
     }
   }
 }

@@ -181,6 +181,12 @@ struct ExecContext {
     Frame() = delete;
     Frame(Func *fn, std::vector<Val> arguments);
 
+    void MoveTo(BlockIndex block_index) {
+      ASSERT_GE(block_index.value, 0);
+      prev_    = current_;
+      current_ = block_index;
+    }
+
     Func *fn_ = nullptr;
     BlockIndex current_;
     BlockIndex prev_;
@@ -190,6 +196,9 @@ struct ExecContext {
     std::vector<Val> args_ = {};
     std::vector<Val> rets_ = {};
   };
+
+  Block &current_block();
+
   std::stack<Frame> call_stack;
 
   BlockIndex ExecuteBlock();
@@ -258,10 +267,18 @@ Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock* code, std::vector<IR::Val> args);
 
 struct Jump {
-  static void Unconditional(BlockIndex index);
+  static Jump &Current();
+
+  static void Unconditional(BlockIndex index) {
+    Jump &jmp       = Current();
+    jmp.block_index = index;
+    jmp.type        = Type::Uncond;
+  }
+
   static void Conditional(Val cond, BlockIndex true_index,
                           BlockIndex false_index);
-  static void Return();
+
+  static void Return() { Current().type = Type::Ret; }
 
   void dump(size_t indent) const;
 
@@ -298,6 +315,7 @@ struct Func {
 
   void dump() const;
 
+  Block &block(BlockIndex index) { return blocks_[index.value]; }
   Cmd &Command(RegIndex reg);
   void SetArgs(RegIndex reg, std::vector<IR::Val> args);
 
