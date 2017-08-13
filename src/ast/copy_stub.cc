@@ -50,7 +50,7 @@ base::owned_ptr<Binop> Binop::copy_stub() const {
 }
 
 base::owned_ptr<Declaration> Declaration::copy_stub() const {
-  auto result = base::own(new Declaration);
+  auto result = base::own(new Declaration(const_));
   copy_fields(this, result.get());
   // TODO addr and arg_val
   return result;

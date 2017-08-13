@@ -21,8 +21,7 @@
 extern void ReplEval(AST::Expression *expr);
 
 extern void VerifyDeclBeforeUsage();
-extern std::vector<AST::Statements *>
-ParseAllFiles();
+extern std::vector<AST::Statements *> ParseAllFiles();
 extern Timer timer;
 
 base::owned_ptr<AST::Statements> global_statements;

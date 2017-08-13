@@ -454,6 +454,15 @@ static NNT NextOperator(Cursor &cursor) {
       cursor.Increment();
       return NNT(cursor, ":=", Language::op_b);
 
+    } else if (*cursor == ':') {
+      cursor.Increment();
+
+      if (*cursor == '=') {
+        cursor.Increment();
+        return NNT(cursor, "::=", Language::op_b);
+      } else {
+        return NNT(cursor, "::", Language::colon);
+      }
     } else {
       return NNT(cursor, ":", Language::colon);
     }

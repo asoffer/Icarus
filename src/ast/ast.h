@@ -178,14 +178,18 @@ struct Binop : public Expression {
 
 struct Declaration : public Expression {
   EXPR_FNS(Declaration);
+  Declaration(bool is_const = false) : const_(is_const) {}
+
   static base::owned_ptr<Node>
-  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes, bool is_const);
   IR::Val EmitIR() override;
 
   base::owned_ptr<Identifier> identifier;
   base::owned_ptr<Expression> type_expr;
   base::owned_ptr<Expression> init_val;
   IR::Val addr = IR::Val::None();
+
+  bool const_ = false;
 
   // If it's an argument, this points to the function/parametric-struct for
   // which it's an argument. Otherwise this field is null.

@@ -7,7 +7,7 @@
 #include "cursor.h"
 #include "type/type.h"
 
-extern std::map<std::string, Source*> source_map;
+extern std::map<std::string, File *> source_map;
 
 using LineNum    = size_t;
 using LineOffset = size_t;

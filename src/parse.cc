@@ -112,9 +112,8 @@ drop_all_but(std::vector<base::owned_ptr<AST::Node>> nodes) {
 static base::owned_ptr<AST::Node>
 CombineColonEq(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto tk_node   = ptr_cast<AST::TokenNode>(nodes[0].get());
-  tk_node->token = ":=";
+  tk_node->token += "="; // Change : to := and :: to ::=
   tk_node->op    = Language::Operator::ColonEq;
-
   return drop_all_but<0>(std::move(nodes));
 }
 
@@ -359,8 +358,8 @@ struct ParseState {
 
     if (lookahead_.node_type == r_paren) { return ShiftState::MustReduce; }
 
-    constexpr u64 OP_ = op_l | op_b | colon | eq | comma | op_bl | dots |
-                        op_lt | fn_arrow;
+    constexpr u64 OP_ =
+        op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
     if (get_type<2>() & OP_) {
       auto left_prec = precedence(ptr_cast<AST::TokenNode>(get<2>())->op);
       size_t right_prec;
@@ -538,9 +537,8 @@ base::owned_ptr<AST::Statements> File::Parse() {
 extern Timer timer;
 extern std::queue<std::string> file_queue;
 std::map<std::string, File *> source_map;
-std::vector<base::owned_ptr<AST::Statements>>
-ParseAllFiles() {
-  std::vector<base::owned_ptr<AST::Statements>> stmts;
+std::vector<AST::Statements *> ParseAllFiles() {
+  std::vector<AST::Statements *> stmts;
   while (!file_queue.empty()) {
     std::string file_name = file_queue.front();
     file_queue.pop();
@@ -550,7 +548,7 @@ ParseAllFiles() {
     RUN(timer, "Parsing a file") {
       auto source_file      = new File(file_name);
       source_map[file_name] = source_file;
-      stmts.push_back(source_file->Parse());
+      stmts.push_back(source_file->Parse().release());
     }
   }
   return stmts;

@@ -476,9 +476,9 @@ base::owned_ptr<Node> InDecl::Build(std::vector<base::owned_ptr<Node>> nodes) {
 }
 
 base::owned_ptr<Node>
-Declaration::Build(std::vector<base::owned_ptr<Node>> nodes) {
+Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
   auto op                = ptr_cast<TokenNode>(nodes[1].get())->op;
-  auto decl              = base::make_owned<Declaration>();
+  auto decl              = base::make_owned<Declaration>(is_const);
   decl->loc              = nodes[0]->loc;
   decl->precedence       = Language::precedence(op);
   decl->identifier       = base::move<Identifier>(nodes[0]);
@@ -684,7 +684,10 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     return AST::Access::Build(std::move(nodes));
 
   } else if (tk == ":" || tk == ":=") {
-    return AST::Declaration::Build(std::move(nodes));
+    return AST::Declaration::Build(std::move(nodes), /* const = */ false);
+
+  } else if (tk == "::" || tk == "::=") {
+    return AST::Declaration::Build(std::move(nodes), /* const = */ true);
 
   } else if (tk == "in") {
     return AST::InDecl::Build(std::move(nodes));

@@ -4,7 +4,10 @@
 
 namespace AST {
 // TODO constants?
-void Identifier::lrvalue_check() { lvalue = Assign::LVal; }
+void Identifier::lrvalue_check() {
+  LOG << *decl << decl->const_;
+  lvalue = decl->const_ ? Assign::Const : Assign::LVal;
+}
 
 void Unop::lrvalue_check() {
   operand->lrvalue_check();
