@@ -26,9 +26,9 @@ struct Error {
   enum class Code : char {
     Other, // This is awful. It should never be used! TODO Remove it!
     CyclicDependency,
-    UndeclaredId,
-    AmbiguousId,
-    InvalidCapture,
+    UndeclaredIdentifier,
+    AmbiguousIdentifier,
+    ImplicitCapture,
     FreeNonPtr,
     PrintVoid,
     ReturnVoid,
@@ -68,6 +68,12 @@ struct Error {
   // TODO hold metadata too
 };
 
+namespace LogError {
+void UndeclaredIdentifier(AST::Identifier *id);
+void AmbiguousIdentifier(AST::Identifier *id);
+void ImplicitCapture(AST::Identifier *id);
+} // namespace LogError
+
 namespace ErrorLog {
 extern size_t num_errs_;
 
@@ -78,9 +84,6 @@ void LogGeneric(const Cursor &loc, const std::string &msg);
 void TooManyDots(const Cursor &loc, size_t num_dots);
 void NonWhitespaceAfterNewlineEscape(const Cursor &loc, size_t dist);
 void RunawayMultilineComment();
-void UndeclaredIdentifier(const Cursor &loc, const std::string &token);
-void AmbiguousIdentifier(const Cursor &loc, const std::string &token);
-void InvalidCapture(const Cursor &loc, const AST::Declaration *decl);
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop);
 void InvalidAddress(const Cursor &loc, Assign mode);
 void InvalidAssignment(const Cursor &loc, Assign mode);

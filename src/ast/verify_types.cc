@@ -13,7 +13,7 @@
 extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
-std::vector<Error> errors;
+extern std::vector<Error> errors;
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
@@ -81,47 +81,45 @@ void Identifier::verify_types() {
 
   all_ids.push_back(this); // Save this identifier for later checks (see
                            // VerifyDeclBeforeUsage)
+  // TODO is it true that decl==nullptr if and only if we haven't yet called
+  // verify_types on this identifier? That would make my life much easier
 
   // 'decl' is the (non-owning) pointer to the declaration node representing
   // where this identifier was declared. If it's null, that means we haven't yet
   // determined where this was declared.
   if (decl == nullptr) {
     auto potential_decls = scope_->AllDeclsWithId(token);
-    if (potential_decls.size() == 1) {
-      decl = potential_decls[0];
-    } else {
+    switch (potential_decls.size()) {
+    case 1: decl = potential_decls[0]; break;
+    case 0:
+      LogError::UndeclaredIdentifier(this);
       type = Err;
-      // Call the appropriate error message.
-      if (potential_decls.empty()) {
-        errors.emplace_back(Error::Code::UndeclaredId);
-        // ErrorLog::UndeclaredIdentifier(loc, token);
-      } else {
-        errors.emplace_back(Error::Code::AmbiguousId);
-        // ErrorLog::AmbiguousIdentifier(loc, token);
-      }
+      return;
+    default:
+      LogError::AmbiguousIdentifier(this);
+      type = Err;
       return;
     }
   }
 
   type = decl->type;
 
-  // Verify capturing. You can capture globlas, type definitions and
-  // compile-time constants.
-  if (type == Type_ || decl->scope_ == Scope::Global) { return; }
+  // Verify whether or not this identifier was captured validly.
+
+  // Compile-time constants may be captured implicitly.
+  if (decl->const_) { return; }
 
   // For everything else we iterate from the scope of this identifier up to the
   // scope in which it was declared checking that along the way that it's a
   // block scope.
-
   for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr      = scope_ptr->parent) {
     if (scope_ptr->is<FnScope>()) {
-      static_cast<FnScope *>(scope_ptr)->fn_lit->captures.insert(decl);
+      ptr_cast<FnScope>(scope_ptr)->fn_lit->captures.insert(decl);
     } else if (scope_ptr->is<ExecScope>()) {
       continue;
     } else {
-      errors.emplace_back(Error::Code::InvalidCapture);
-      // ErrorLog::InvalidCapture(loc, decl);
+      LogError::ImplicitCapture(this);
       return;
     }
   }

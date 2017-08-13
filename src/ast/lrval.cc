@@ -3,9 +3,7 @@
 #include "../error_log.h"
 
 namespace AST {
-// TODO constants?
 void Identifier::lrvalue_check() {
-  LOG << *decl << decl->const_;
   lvalue = decl->const_ ? Assign::Const : Assign::LVal;
 }
 

@@ -7,6 +7,8 @@
 #include "cursor.h"
 #include "type/type.h"
 
+std::vector<Error> errors;
+
 extern std::map<std::string, File *> source_map;
 
 using LineNum    = size_t;
@@ -25,7 +27,7 @@ typedef std::map<Cursor, std::map<LineNum, std::vector<LineOffset>>>
     LocToErrorMap;
 
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
-static DeclToErrorMap invalid_capture;
+static DeclToErrorMap implicit_capture;
 static LocToErrorMap case_errors;
 static FileToLineNumMap global_non_decl;
 
@@ -213,7 +215,7 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
 void ErrorLog::Dump() {
   GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
   GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
-  GatherAndDisplay("Invalid capture of identifier '%s'", invalid_capture);
+  GatherAndDisplay("Invalid capture of identifier '%s'", implicit_capture);
 
   // TODO fix this repsonse regarding imports.
   GatherAndDisplay("Found %lu non-declaration statement%s at the top level. "
@@ -713,23 +715,26 @@ void UnknownParserError(const std::string &file_name,
 
   DisplayLines(lines);
 }
-
-void UndeclaredIdentifier(const Cursor &loc, const std::string &token) {
-  ++num_errs_;
-  undeclared_identifiers[token][loc.file_name()][loc.line_num]
-      .push_back(loc.offset);
-}
-
-void InvalidCapture(const Cursor &loc, const AST::Declaration *decl) {
-  ++num_errs_;
-  invalid_capture[decl][loc.file_name()][loc.line_num].push_back(
-      loc.offset);
-}
-
-void AmbiguousIdentifier(const Cursor &loc, const std::string &token) {
-  ++num_errs_;
-  ambiguous_identifiers[token][loc.file_name()][loc.line_num].push_back(
-      loc.offset);
-}
-
 } // namespace ErrorLog
+
+namespace LogError {
+void UndeclaredIdentifier(AST::Identifier *id) {
+  errors.push_back(Error::Code::UndeclaredIdentifier);
+  undeclared_identifiers[id->token][id->loc.file_name()][id->loc.line_num]
+      .push_back(id->loc.offset);
+}
+
+void AmbiguousIdentifier(AST::Identifier *id) {
+  errors.push_back(Error::Code::AmbiguousIdentifier);
+  ambiguous_identifiers[id->token][id->loc.file_name()][id->loc.line_num]
+      .push_back(id->loc.offset);
+}
+
+void ImplicitCapture(AST::Identifier *id) {
+  errors.push_back(Error::Code::ImplicitCapture);
+  implicit_capture[id->decl][id->loc.file_name()][id->loc.line_num].push_back(
+      id->loc.offset);
+}
+} // namespace LogError
+
+

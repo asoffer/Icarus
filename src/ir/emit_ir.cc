@@ -457,7 +457,7 @@ IR::Val AST::Unop::EmitIR() {
       }
     } else {
       auto val = operand->EmitIR();
-      ASSERT(errors.empty(), "Errors in " + operand->to_string(0));
+      if (!errors.empty()) { return IR::Val::None(); }
       IR::SetReturn(0, val);
     }
 
