@@ -148,7 +148,7 @@ Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
   ASSERT_EQ(v1.type, Type_);
-  MAKE_AND_RETURN2(v1.as_type, Op::Cast);
+  MAKE_AND_RETURN2(v1.value.as<::Type *>(), Op::Cast);
 }
 
 #undef MAKE_AND_RETURN2

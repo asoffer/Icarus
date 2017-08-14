@@ -239,11 +239,7 @@ static NNT NextStringLiteral(Cursor &cursor) {
     cursor.Increment();
   }
 
-  // TODO leaked? owned by terminal which should be persistent, so probably
-  // okay.
-  char *cstr = new char[str_lit.size() + 1];
-  strcpy(cstr, str_lit.c_str());
-  return NNT::TerminalExpression(cursor, IR::Val::StrLit(cstr));
+  return NNT::TerminalExpression(cursor, IR::Val::StrLit(str_lit));
 }
 
 static NNT NextCharLiteral(Cursor &cursor) {

@@ -69,11 +69,11 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Func::Current->SetArgs(from_phi.as_reg,
+      IR::Func::Current->SetArgs(from_phi.value.as<IR::RegIndex>(),
                                  {IR::Val::Block(init_block), from_ptr,
                                   IR::Val::Block(IR::Block::Current),
                                   IR::PtrIncr(from_phi, IR::Val::Uint(1ul))});
-      IR::Func::Current->SetArgs(to_phi.as_reg,
+      IR::Func::Current->SetArgs(to_phi.value.as<IR::RegIndex>(),
                                  {IR::Val::Block(init_block), to_ptr,
                                   IR::Val::Block(IR::Block::Current),
                                   IR::PtrIncr(to_phi, IR::Val::Uint(1ul))});

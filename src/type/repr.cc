@@ -117,9 +117,10 @@ void Array::EmitRepr(IR::Val val) {
       data_type->EmitRepr(PtrCallFix(elem_ptr));
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Func::Current->SetArgs(
-          phi.as_reg, {IR::Val::Block(init_block), ptr,
-                       IR::Val::Block(IR::Block::Current), elem_ptr});
+      IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
+                                 {IR::Val::Block(init_block), ptr,
+                                  IR::Val::Block(IR::Block::Current),
+                                  elem_ptr});
 
       IR::Block::Current = repr_func->exit();
       IR::Print(IR::Val::Char(']'));

@@ -8,11 +8,15 @@
 
 #include "../base/debug.h"
 #include "../base/types.h"
+#include "../base/variant.h"
 
 struct Type;
 struct Function;
 struct Enum;
 struct Pointer;
+
+extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
+    *Void, *NullPtr, *String;
 
 namespace AST {
 struct Expression;
@@ -59,6 +63,15 @@ struct Addr {
 
   std::string to_string() const;
 };
+
+struct Argument {
+  u64 value;
+};
+
+struct EnumVal {
+  size_t value;
+};
+
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
@@ -66,52 +79,46 @@ struct Val {
   enum class Kind : u8 { None, Arg, Reg, Const } kind = Kind::None;
   ::Type *type = nullptr;
 
-  union {
-    u64 as_arg;
-    RegIndex as_reg;
-    Addr as_addr;
-    bool as_bool;
-    char as_char;
-    double as_real;
-    i64 as_int;  // TODO pick the right type here
-    u64 as_uint; // TODO pick the right type here
-    size_t as_enum;
-    ::Type *as_type;
-    ::IR::Func *as_func;
-    AST::ScopeLiteral *as_scope;
-    AST::CodeBlock *as_code;
-    AST::Expression *as_expr;
-    BlockIndex as_block;
-    char *as_cstr;
-  };
+  // TODO arg should be it's own type
+  base::variant<Argument, RegIndex, ::IR::Addr, bool, char, double, i64, u64,
+                EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
+                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
+      value;
 
-  static Val Arg(Type *t, u64 n);
-  static Val Reg(RegIndex r, Type *t);
-  static Val Addr(Addr addr, Type *t);
-  static Val StackAddr(u64 addr, Type *t);
-  static Val HeapAddr(void *addr, Type *t);
-  static Val GlobalAddr(u64 addr, Type *t);
-  static Val Bool(bool b);
-  static Val Char(char c);
-  static Val Real(double r);
-  static Val Int(i64 n);
-  static Val Uint(u64 n);
-  static Val Enum(const ::Enum* enum_type, size_t integral_val);
-  static Val Type(::Type *t);
-  static Val CodeBlock(AST::CodeBlock *block);
+  static Val Arg(Type *t, u64 n) { return Val(Kind::Arg, t, Argument{n}); }
+  static Val Reg(RegIndex r, ::Type *t) { return Val(Kind::Reg, t, r); }
+  static Val Addr(Addr addr, ::Type *t) { return Val(Kind::Const, t, addr); }
+  static Val GlobalAddr(u64 addr, ::Type *t);
+  static Val HeapAddr(void *addr, ::Type *t);
+  static Val StackAddr(u64 addr, ::Type *t);
+  static Val Bool(bool b) { return Val(Kind::Const, ::Bool, b); }
+  static Val Char(char c) { return Val(Kind::Const, ::Char, c); }
+  static Val Real(double r) { return Val(Kind::Const, ::Real, r); }
+  static Val Int(i64 n) { return Val(Kind::Const, ::Int, n); }
+  static Val Uint(u64 n) { return Val(Kind::Const, ::Uint, n); }
+  static Val Enum(const ::Enum *enum_type, size_t integral_val);
+  static Val Type(::Type *t) { return Val(Kind::Const, ::Type_, t); }
+  static Val CodeBlock(AST::CodeBlock *block) {
+    return Val(Kind::Const, ::Code, block);
+  }
   static Val Func(::IR::Func *fn);
   static Val Void();
   static Val Block(BlockIndex bi);
   static Val Null(::Type *t);
-  static Val StrLit(char *cstr);
+  static Val StrLit(std::string str) {
+    return Val(Kind::Const, ::String, std::move(str));
+  }
   static Val Ref(AST::Expression *expr);
-
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
 
   std::string to_string() const;
 
-  Val() : kind(Kind::Const), as_bool(false) {}
+  Val() : kind(Kind::Const), value(false) {}
+
+private:
+  template <typename T>
+  Val(Kind k, ::Type *t, T val) : kind(k), type(t), value(val) {}
 };
 
 inline bool operator==(const Val& lhs, const Val& rhs) {
@@ -213,7 +220,7 @@ struct ExecContext {
     ASSERT_GE(r.index, 0);
     return call_stack.top().regs_[static_cast<u32>(r.index)];
   }
-  Val arg(u64 n) const { return call_stack.top().args_[n]; }
+  Val arg(Argument a) const { return call_stack.top().args_[a.value]; }
 
   Stack stack_;
 };
@@ -291,10 +298,10 @@ struct Jump {
   };
 
   enum class Type : u8 { None, Uncond, Cond, Ret } type = Type::None;
-  union {
-    BlockIndex block_index; // for unconditional jump
-    CondData cond_data; // value and block indices to jump for conditional jump.
-  };
+
+  // TODO reintroduce these as a union.
+  BlockIndex block_index; // for unconditional jump
+  CondData cond_data; // value and block indices to jump for conditional jump.
 };
 
 struct Block {

@@ -38,9 +38,10 @@ void Array::EmitDestroy(IR::Val id_val) {
       data_type->EmitDestroy(phi);
       IR::Jump::Unconditional(loop_phi);
 
-      destroy_func->SetArgs(phi.as_reg, {IR::Val::Block(destroy_func->entry()),
-                                         ptr, IR::Val::Block(loop_body),
-                                         IR::PtrIncr(phi, IR::Val::Uint(1))});
+      destroy_func->SetArgs(phi.value.as<IR::RegIndex>(),
+                            {IR::Val::Block(destroy_func->entry()), ptr,
+                             IR::Val::Block(loop_body),
+                             IR::PtrIncr(phi, IR::Val::Uint(1))});
 
       IR::Block::Current = destroy_func->exit();
       if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }

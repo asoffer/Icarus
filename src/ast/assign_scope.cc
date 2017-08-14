@@ -17,11 +17,11 @@ void Access::assign_scope(Scope *scope) {
 
 void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 
-void Terminal::assign_scope(Scope *scope) { 
+void Terminal::assign_scope(Scope *scope) {
   scope_ = scope;
   if (type != Type_) { return; }
-  if (value.as_type->is<ParamStruct>()) {
-    auto ps = static_cast<ParamStruct *>(value.as_type);
+  if (value.value.as<Type *>()->is<ParamStruct>()) {
+    auto ps = static_cast<ParamStruct *>(value.value.as<Type *>());
     if (!ps->type_scope) {
       // TODO make unique
       ps->type_scope = scope->add_child<DeclScope>().release();
@@ -30,8 +30,8 @@ void Terminal::assign_scope(Scope *scope) {
     for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
     for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
 
-  } else if (value.as_type->is<Struct>()) {
-    auto s = static_cast<Struct *>(value.as_type);
+  } else if (value.value.as<Type *>()->is<Struct>()) {
+    auto s = static_cast<Struct *>(value.value.as<Type *>());
     if (!s->type_scope) {
       // TODO make unique
       s->type_scope = scope->add_child<DeclScope>().release();
@@ -135,7 +135,7 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {
-  scope_ = scope;
+  scope_     = scope;
   body_scope = scope->add_child<ExecScope>();
   if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
   if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }

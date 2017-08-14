@@ -237,7 +237,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
   bool check_id = false;
   if (tk == "require") {
     if (unop->operand->is<Terminal>()) {
-      file_queue.emplace(unop->operand->value.as_cstr);
+      file_queue.emplace(unop->operand->value.value.as<std::string>());
     } else {
       ErrorLog::InvalidRequirement(unop->operand->loc);
     }

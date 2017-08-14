@@ -37,7 +37,7 @@ void VerifyDeclBeforeUsage() {
   }
 }
 
-static bool CanCastImplicitly(Type* from, Type* to) {
+static bool CanCastImplicitly(Type *from, Type *to) {
   if (from == to || (from == NullPtr && to->is<Pointer>())) { return true; }
 
   if (from->is<Array>() && to->is<Array>()) {
@@ -268,7 +268,7 @@ void Access::verify_types() {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
     } else {
-      Type *evaled_type = Evaluate(operand.get()).as_type;
+      Type *evaled_type = Evaluate(operand.get()).value.as<::Type *>();
       if (evaled_type->is<Enum>()) {
         // Regardless of whether we can get the value, it's clear that this is
         // supposed to be a member so we should emit an error but carry on
@@ -327,24 +327,25 @@ void Binop::verify_types() {
               UNREACHABLE(); // TODO WTF??? HOW DID THIS EVEN COMPILE?
               // decl->value = IR::Val(decl->init_val);
             } else {
-              decl->value =
-                  IR::Val::Type(Evaluate(decl->init_val.get()).as_type);
+              decl->value = IR::Val::Type(
+                  Evaluate(decl->init_val.get()).value.as<::Type *>());
 
               if (decl->init_val->is<Terminal>()) {
-                auto t = decl->init_val->value.as_type;
+                auto t = decl->init_val->value.value.as<::Type *>();
                 if (t->is<Struct>()) {
 
-                  ((Struct *)decl->identifier->value.as_type)->bound_name =
-                      decl->identifier->token;
+                  ((Struct *)decl->identifier->value.value.as<::Type *>())
+                      ->bound_name = decl->identifier->token;
                 } else if (t->is<ParamStruct>()) {
-                  ASSERT_TYPE(ParamStruct, decl->identifier->value.as_type);
-                  ((ParamStruct *)decl->identifier->value.as_type)->bound_name =
-                      decl->identifier->token;
+                  ASSERT_TYPE(ParamStruct,
+                              decl->identifier->value.value.as<::Type *>());
+                  ((ParamStruct *)decl->identifier->value.value.as<::Type *>())
+                      ->bound_name = decl->identifier->token;
 
                 } else if (t->is<Enum>()) {
 
-                  ((Enum *)(decl->identifier->value.as_type))->bound_name =
-                      decl->identifier->token;
+                  ((Enum *)(decl->identifier->value.value.as<::Type *>()))
+                      ->bound_name = decl->identifier->token;
                 }
               }
             }
@@ -353,7 +354,7 @@ void Binop::verify_types() {
             NOT_YET();
           }
 
-          auto decl_type = decl->value.as_type;
+          auto decl_type = decl->value.value.as<::Type *>();
 
           if (decl_type->is<ParamStruct>()) { NOT_YET(); }
         }
@@ -389,7 +390,7 @@ void Binop::verify_types() {
       } else {
         ASSERT_EQ(lhs->type, Type_);
 
-        auto lhs_as_type = lhs->value.as_type;
+        auto lhs_as_type = lhs->value.value.as<Type *>();
 
         if (lhs_as_type->is<ParamStruct>()) {
           NOT_YET();
@@ -663,7 +664,9 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
       return false;
     }
 
-    if (lhs_type == Int || lhs_type == Uint || lhs_type == Real) { return true; }
+    if (lhs_type == Int || lhs_type == Uint || lhs_type == Real) {
+      return true;
+    }
 
     if (lhs_type == Code || lhs_type == Void) { return false; }
     // TODO NullPtr, String types?
@@ -848,7 +851,7 @@ void InDecl::verify_types() {
     type = ((RangeType *)container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container.get()).as_type;
+    auto t = Evaluate(container.get()).value.as<::Type *>();
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -868,7 +871,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string & /*id_tok*/) {
     return Err;
   }
 
-  Type *t = Evaluate(this).as_type;
+  Type *t = Evaluate(this).value.as<::Type *>();
 
   if (t == Void) {
     errors.emplace_back(Error::Code::VoidDeclaration);
@@ -1002,7 +1005,7 @@ void Declaration::verify_types() {
 
   if (type == Type_ && IsInferred()) {
     if (init_val->is<Terminal>()) {
-      auto t = init_val->value.as_type;
+      auto t = init_val->value.value.as<::Type *>();
 
       std::string *name_ptr = nullptr;
       if (t->is<Struct>()) {
@@ -1107,7 +1110,7 @@ void FunctionLiteral::verify_types() {
     // ErrorLog::NotAType(return_type_expr, return_type_expr->type);
     type = Err;
     return;
-  } else if (ret_type_val.as_type == Err) {
+  } else if (ret_type_val.value.as<::Type *>() == Err) {
     type = Err;
     return;
   }
@@ -1116,7 +1119,7 @@ void FunctionLiteral::verify_types() {
 
   // TODO don't do early exists on input or return type errors.
 
-  Type *ret_type = ret_type_val.as_type;
+  Type *ret_type = ret_type_val.value.as<::Type *>();
   Type *input_type;
   size_t num_inputs = inputs.size();
   if (num_inputs == 0) {

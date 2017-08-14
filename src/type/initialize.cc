@@ -50,7 +50,7 @@ void Array::EmitInit(IR::Val id_val) {
       IR::Block::Current = IR::Func::Current->exit();
       IR::Jump::Return();
 
-      IR::Func::Current->SetArgs(phi.as_reg,
+      IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
                                  {IR::Val::Block(init_func->entry()), ptr,
                                   IR::Val::Block(loop_body), incr});
     }
@@ -149,10 +149,12 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       auto to_incr   = IR::PtrIncr(to_phi, IR::Val::Uint(1));
       IR::Jump::Unconditional(phi_block);
 
-      fn->SetArgs(from_phi.as_reg, {IR::Val::Block(fn->entry()), from_start,
-                                    IR::Val::Block(body_block), from_incr});
-      fn->SetArgs(to_phi.as_reg, {IR::Val::Block(fn->entry()), to_start,
-                                  IR::Val::Block(body_block), to_incr});
+      fn->SetArgs(from_phi.value.as<IR::RegIndex>(),
+                  {IR::Val::Block(fn->entry()), from_start,
+                   IR::Val::Block(body_block), from_incr});
+      fn->SetArgs(to_phi.value.as<IR::RegIndex>(),
+                  {IR::Val::Block(fn->entry()), to_start,
+                   IR::Val::Block(body_block), to_incr});
 
       IR::Block::Current = IR::Func::Current->exit();
       IR::Jump::Return();

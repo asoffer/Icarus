@@ -1,9 +1,9 @@
 #include "ir.h"
 
 #include "../ast/ast.h"
+#include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
-#include "../error_log.h"
 
 #include <vector>
 
@@ -21,8 +21,9 @@ extern std::vector<IR::Val> global_vals;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
-static void ForEachExpr(AST::Expression *expr,
-                 const std::function<void(size_t, AST::Expression *)> &fn) {
+static void
+ForEachExpr(AST::Expression *expr,
+            const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
     const auto &exprs = ptr_cast<AST::CommaList>(expr)->exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
@@ -121,7 +122,7 @@ IR::Val AST::Identifier::EmitIR() {
   if (decl->arg_val) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
-    auto* in_decl = ptr_cast<InDecl>(decl);
+    auto *in_decl = ptr_cast<InDecl>(decl);
     if (in_decl->container->type->is<Array>()) {
       return PtrCallFix(EmitLVal());
     } else {
@@ -140,7 +141,7 @@ IR::Val AST::Identifier::EmitIR() {
 IR::Val AST::ArrayLiteral::EmitIR() {
   VERIFY_OR_EXIT;
   auto array_val  = IR::Alloca(type);
-  auto* data_type = ptr_cast<Array>(type)->data_type;
+  auto *data_type = ptr_cast<Array>(type)->data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
     Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(), elem_i);
@@ -164,7 +165,7 @@ IR::Val AST::For::EmitIR() {
   init_vals.reserve(iterators.size());
   { // Init block
     IR::Block::Current = init;
-    for (auto& decl : iterators) {
+    for (auto &decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
           init_vals.push_back(
@@ -182,8 +183,8 @@ IR::Val AST::For::EmitIR() {
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.as_type->is<Enum>()) {
-          auto* enum_type = ptr_cast<Enum>(container_val.as_type);
+        if (container_val.value.as<::Type *>()->is<Enum>()) {
+          auto *enum_type = ptr_cast<Enum>(container_val.value.as<::Type *>());
           init_vals.push_back(enum_type->EmitInitialValue());
         } else {
           NOT_YET();
@@ -202,8 +203,9 @@ IR::Val AST::For::EmitIR() {
     for (auto &decl : iterators) {
       if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.as_type->is<Enum>()) {
-          phis.push_back(IR::Phi(ptr_cast<Enum>(container_val.as_type)));
+        if (container_val.value.as<::Type *>()->is<Enum>()) {
+          phis.push_back(
+              IR::Phi(ptr_cast<Enum>(container_val.value.as<::Type *>())));
         } else {
           NOT_YET();
         }
@@ -245,7 +247,7 @@ IR::Val AST::For::EmitIR() {
 
   { // Complete phi definition
     for (size_t i = 0; i < iterators.size(); ++i) {
-      IR::Func::Current->SetArgs(phis[i].as_reg,
+      IR::Func::Current->SetArgs(phis[i].value.as<IR::RegIndex>(),
                                  {IR::Val::Block(init), init_vals[i],
                                   IR::Val::Block(incr), incr_vals[i]});
       iterators[i]->addr = phis[i];
@@ -255,31 +257,30 @@ IR::Val AST::For::EmitIR() {
   { // Cond block
     IR::Block::Current = cond;
     for (size_t i = 0; i < iterators.size(); ++i) {
-      auto* decl = iterators[i].get();
-      auto reg  = phis[i];
-      auto next = IR::Func::Current->AddBlock();
+      auto *decl = iterators[i].get();
+      auto reg   = phis[i];
+      auto next  = IR::Func::Current->AddBlock();
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val =
-              ptr_cast<Binop>(decl->container.get())->rhs->EmitIR();
-          cmp = IR::Le(reg, rhs_val);
+          auto rhs_val = ptr_cast<Binop>(decl->container.get())->rhs->EmitIR();
+          cmp          = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
           // code and trust optimizations later on.
           cmp = IR::Val::Bool(true);
         } else {
           NOT_YET();
-       }
+        }
       } else if (decl->container->type->is<Array>()) {
         auto *array_type = ptr_cast<Array>(decl->container->type);
-        cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(),
+        cmp              = IR::Ne(reg, IR::Index(decl->container->EmitLVal(),
                                     IR::Val::Uint(array_type->len)));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.as_type->is<Enum>()) {
+        if (container_val.value.as<::Type *>()->is<Enum>()) {
           // TODO I should not have to recalculate this here.
-          auto* enum_type = ptr_cast<Enum>(container_val.as_type);
+          auto *enum_type = ptr_cast<Enum>(container_val.value.as<::Type *>());
 
           cmp = IR::Le(reg,
                        IR::Val::Enum(enum_type, enum_type->members.size() - 1));
@@ -341,7 +342,7 @@ IR::Val AST::Case::EmitIR() {
 
   IR::Block::Current = land;
   auto phi           = IR::Phi(type);
-  IR::Func::Current->SetArgs(phi.as_reg, std::move(phi_args));
+  IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(), std::move(phi_args));
   return phi;
 }
 
@@ -355,9 +356,11 @@ IR::Val AST::ScopeNode::EmitIR() {
   IR::Val scope_expr_val = Evaluate(scope_expr.get());
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
-  auto enter_fn = scope_expr_val.as_scope->enter_fn->init_val->EmitIR();
+  auto enter_fn = scope_expr_val.value.as<AST::ScopeLiteral *>()
+                      ->enter_fn->init_val->EmitIR();
   ASSERT_NE(enter_fn, IR::Val::None());
-  auto exit_fn = scope_expr_val.as_scope->exit_fn->init_val->EmitIR();
+  auto exit_fn = scope_expr_val.value.as<AST::ScopeLiteral *>()
+                     ->exit_fn->init_val->EmitIR();
   ASSERT_NE(exit_fn, IR::Val::None());
 
   auto call_enter_result =
@@ -448,8 +451,10 @@ IR::Val AST::Unop::EmitIR() {
       }
 
       if (all_types) {
-        std::vector<Type*> types;
-        for (const auto &val : vals) { types.push_back(val.as_type); }
+        std::vector<Type *> types;
+        for (const auto &val : vals) {
+          types.push_back(val.value.as<::Type *>());
+        }
         IR::SetReturn(0, IR::Val::Type(Tup(types)));
       } else {
         size_t i = 0;
@@ -486,10 +491,10 @@ IR::Val AST::Unop::EmitIR() {
     // TODO what if there's an error during evaluation?
     return Evaluate(operand.get());
   case Language::Operator::Generate: {
-    auto val= Evaluate(operand.get());
+    auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
-    val.as_code->stmts->assign_scope(scope_);
-    val.as_code->stmts->EmitIR();
+    val.value.as<AST::CodeBlock *>()->stmts->assign_scope(scope_);
+    val.value.as<AST::CodeBlock *>()->stmts->EmitIR();
     return IR::Val::None();
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR());
@@ -533,16 +538,18 @@ IR::Val AST::Binop::EmitIR() {
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
-    ForEachExpr(rhs.get(), [&rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
-      rhs_vals.push_back(expr->EmitIR());
-      rhs_types.push_back(expr->type);
-    });
+    ForEachExpr(rhs.get(),
+                [&rhs_vals, &rhs_types](size_t, AST::Expression *expr) {
+                  rhs_vals.push_back(expr->EmitIR());
+                  rhs_types.push_back(expr->type);
+                });
 
     std::vector<IR::Val> lhs_lvals;
-    ForEachExpr(lhs.get(), [&lhs_lvals, &lhs_types](size_t, AST::Expression *expr) {
-      lhs_lvals.push_back(expr->EmitLVal());
-      lhs_types.push_back(expr->type);
-    });
+    ForEachExpr(lhs.get(),
+                [&lhs_lvals, &lhs_types](size_t, AST::Expression *expr) {
+                  lhs_lvals.push_back(expr->EmitLVal());
+                  lhs_types.push_back(expr->type);
+                });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
@@ -567,9 +574,10 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(
-        phi.as_reg, {IR::Val::Block(lhs_end_block), IR::Val::Bool(true),
-                     IR::Val::Block(rhs_end_block), rhs_val});
+    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
+                               {IR::Val::Block(lhs_end_block),
+                                IR::Val::Bool(true),
+                                IR::Val::Block(rhs_end_block), rhs_val});
     return phi;
   } break;
   case Language::Operator::AndEq: {
@@ -588,9 +596,10 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(
-        phi.as_reg, {IR::Val::Block(lhs_end_block), IR::Val::Bool(false),
-                     IR::Val::Block(rhs_end_block), rhs_val});
+    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
+                               {IR::Val::Block(lhs_end_block),
+                                IR::Val::Bool(false),
+                                IR::Val::Block(rhs_end_block), rhs_val});
     return phi;
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
@@ -620,9 +629,7 @@ IR::Val AST::ChainOp::EmitIR() {
   VERIFY_OR_EXIT;
   if (ops[0] == Language::Operator::Xor) {
     auto val = IR::Val::Bool(false);
-    for (const auto &expr : exprs) {
-      val = IR::Xor(val, expr->EmitIR());
-    }
+    for (const auto &expr : exprs) { val = IR::Xor(val, expr->EmitIR()); }
     return val;
   } else {
     std::vector<IR::BlockIndex> blocks;
@@ -678,7 +685,7 @@ IR::Val AST::ChainOp::EmitIR() {
     phi_args.push_back(IR::Val::Bool(true));
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.as_reg, std::move(phi_args));
+    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(), std::move(phi_args));
     return phi;
   }
 
@@ -699,7 +706,7 @@ IR::Val AST::FunctionLiteral::EmitIR() {
     IR::Block::Current = ir_func->entry();
 
     for (size_t i = 0; i < inputs.size(); ++i) {
-      auto& arg = inputs[i];
+      auto &arg = inputs[i];
       ASSERT_EQ(arg->addr, IR::Val::None());
       // This whole loop can be done on construction!
       arg->addr =
@@ -707,7 +714,7 @@ IR::Val AST::FunctionLiteral::EmitIR() {
     }
 
     for (auto scope : fn_scope->innards_) {
-      for (auto& decl : scope->decls_) {
+      for (auto &decl : scope->decls_) {
         // TODO arg_val seems to go along with in_decl a lot. Is there some
         // reason for this that *should* be abstracted?
         if (decl->arg_val || decl->is<InDecl>()) { continue; }
@@ -749,8 +756,7 @@ IR::Val AST::Identifier::EmitLVal() {
 
 IR::Val AST::Unop::EmitLVal() {
   switch (op) {
-  case Language::Operator::At:
-    return operand->EmitIR();
+  case Language::Operator::At: return operand->EmitIR();
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
