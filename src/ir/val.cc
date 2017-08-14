@@ -5,119 +5,95 @@
 #include <sstream>
 
 namespace IR {
-#define MAKE_AND_RETURN(k, t, v)                                               \
-  Val val   = IR::Val::None();                                                 \
-  val.kind  = (k);                                                             \
-  val.type  = (t);                                                             \
-  val.value = (v);                                                             \
-  return val
-
 Val Val::StackAddr(u64 addr, ::Type *t) {
   IR::Addr a;
   a.kind     = Addr::Kind::Stack;
   a.as_stack = addr;
-  return Val(Kind::Const, Ptr(t), a);
+  return Val(Ptr(t), a);
 }
 
 Val Val::HeapAddr(void *addr, ::Type *t) {
   IR::Addr a;
   a.kind    = Addr::Kind::Heap;
   a.as_heap = addr;
-  return Val(Kind::Const, Ptr(t), a);
+  return Val(Ptr(t), a);
 }
 
 Val Val::GlobalAddr(u64 addr, ::Type *t) {
   IR::Addr a;
   a.kind      = Addr::Kind::Global;
   a.as_global = addr;
-  return Val(Kind::Const, Ptr(t), a);
+  return Val(Ptr(t), a);
 }
 
-Val Val::Ref(AST::Expression *expr) {
-  MAKE_AND_RETURN(Kind::Const, expr->type,  expr);
-}
+Val Val::Ref(AST::Expression *expr) { return Val(expr->type, expr); }
 
 Val Val::Scope(AST::ScopeLiteral *scope_lit) {
-  MAKE_AND_RETURN(Kind::Const, scope_lit->type, scope_lit);
+  return Val(scope_lit->type, scope_lit);
 }
 Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
-  MAKE_AND_RETURN(Kind::Const, const_cast<::Enum *>(enum_type),
-                  EnumVal{integral_val});
+  return Val(const_cast<::Enum *>(enum_type), EnumVal{integral_val});
 }
 
-// TODO FIXME Make this a real type?
-Val Val::Block(BlockIndex bi) { MAKE_AND_RETURN(Kind::Const, Ptr(::Void), bi); }
-Val Val::Func(::IR::Func *fn) { MAKE_AND_RETURN(Kind::Const, fn->type, fn); }
-Val Val::Void() { MAKE_AND_RETURN(Kind::Const, ::Void, false); }
+Val Val::Func(::IR::Func *fn) { return Val(fn->type, fn); }
 
 Val Val::Null(::Type *t) {
-  MAKE_AND_RETURN(Kind::Const, Ptr(t), (IR::Addr{Addr::Kind::Null, 0}));
+  return Val(Ptr(t), (IR::Addr{Addr::Kind::Null, 0}));
 }
-#undef MAKE_AND_RETURN
 
 std::string Val::to_string() const {
-  switch (kind) {
-  case Kind::Arg:
-    return type->to_string() + " a." + std::to_string(value.as<Argument>().value);
-  case Kind::Reg:
-    return type->to_string() + " r." + std::to_string(value.as<RegIndex>().index);
-  case Kind::Const:
-    if (type == nullptr) {
-      return "--";
-    } else if (type == ::Bool) {
-      return value.as<bool>() ? "true" : "false";
-    } else if (type == ::Char) {
-      // TODO print the actual character if that's useful.
-      return std::to_string(static_cast<i32>(value.as<char>())) + "_c";
-    } else if (type == ::Int) {
-      return std::to_string(value.as<i64>());
-    } else if (type == ::Uint) {
-      return std::to_string(value.as<u64>()) + "_u";
-    } else if (type == ::Real) {
-      return std::to_string(value.as<double>()) + "_r";
-    } else if (type == ::Type_) {
-      return value.as<::Type *>()->to_string();
-    } else if (type == ::Void) {
-      return "<void>";
-    } else if (type == Ptr(::Void)) {
-      return "block #" + std::to_string(value.as<IR::BlockIndex>().value);
-    } else if (type == ::String) {
-      return "string \"" + value.as<std::string>() + "\"";
-    } else if (type == ::Code) {
-      return "<...>";
-    } else if (type->is<Function>()) {
-      std::stringstream ss;
-      ss << "fn." << value.as<IR::Func *>()->name;
-      return ss.str();
-    } else if (type->is<Pointer>()) {
-      return value.as<::IR::Addr>().to_string();
-    } else if (type->is<::Enum>()) {
-      return value.as<EnumVal>().value >= ptr_cast<::Enum>(type)->members.size()
-                 ? ptr_cast<::Enum>(type)->to_string() + ":END"
-                 : ptr_cast<::Enum>(type)->members.at(
-                       value.as<EnumVal>().value);
-    } else {
-      UNREACHABLE(*type);
-    }
-    return "";
-  case Kind::None:
-    return "---";
+  // TODO switch on the variant kind flag?
+  if (value.is<Argument>()) {
+    return type->to_string() + " a." +
+           std::to_string(value.as<Argument>().value);
+  } else if (value.is<RegIndex>()) {
+    return type->to_string() + " r." +
+           std::to_string(value.as<RegIndex>().index);
+  } else if (value.is<::IR::Addr>()) {
+    return value.as<::IR::Addr>().to_string();
+  } else if (value.is<bool>()) {
+    return value.as<bool>() ? "true" : "false";
+  } else if (value.is<char>()) {
+    return std::to_string(static_cast<i32>(value.as<char>())) + "_c";
+  } else if (value.is<double>()) {
+    return std::to_string(value.as<double>()) + "_r";
+  } else if (value.is<i64>()) {
+    return std::to_string(value.as<i64>());
+  } else if (value.is<u64>()) {
+    return std::to_string(value.as<u64>()) + "_u";
+  } else if (value.is<EnumVal>()) {
+    return value.as<EnumVal>().value >= ptr_cast<::Enum>(type)->members.size()
+               ? ptr_cast<::Enum>(type)->to_string() + ":END"
+               : ptr_cast<::Enum>(type)->members.at(value.as<EnumVal>().value);
+  } else if (value.is<::Type *>()) {
+    return value.as<::Type *>()->to_string();
+  } else if (value.is<::IR::Func *>()) {
+    return "fn." + value.as<IR::Func *>()->name;
+  } else if (value.is<AST::ScopeLiteral *>()) {
+    NOT_YET();
+  } else if (value.is<AST::CodeBlock *>()) {
+    return "<...>";
+  } else if (value.is<AST::Expression *>()) {
+    NOT_YET();
+  } else if (value.is<BlockIndex>()) {
+    return "block #" + std::to_string(value.as<IR::BlockIndex>().value);
+  } else if (value.is<std::string>()) {
+    return "string \"" + value.as<std::string>() + "\"";
+  } else {
+    UNREACHABLE();
   }
-
-  UNREACHABLE("Kind had value of ", static_cast<int>(kind));
 }
 
 void Jump::Conditional(Val cond, BlockIndex true_index,
                        BlockIndex false_index) {
   Jump &jmp = Jump::Current();
-  if (cond.kind == Val::Kind::Const) {
-    ASSERT_EQ(cond.type, Bool);
-    jmp.type = Type::Uncond;
+  if (cond.value.is<bool>()) {
+    jmp.type        = Type::Uncond;
     jmp.block_index = (cond.value.as<bool>() ? true_index : false_index);
   } else {
-    jmp.type = Type::Cond;
-    jmp.cond_data.cond = cond;
-    jmp.cond_data.true_block = true_index;
+    jmp.type                  = Type::Cond;
+    jmp.cond_data.cond        = cond;
+    jmp.cond_data.true_block  = true_index;
     jmp.cond_data.false_block = false_index;
   }
 }

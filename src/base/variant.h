@@ -14,6 +14,9 @@ template <typename T> void Move(void *from, void *to) {
   new (reinterpret_cast<T *>(to)) T(std::move(*reinterpret_cast<T *>(from)));
 }
 
+template <typename T> bool Equal(const void *lhs, const void *rhs) {
+  return *reinterpret_cast<const T *>(lhs) == *reinterpret_cast<const T *>(rhs);
+}
 
 inline constexpr size_t max(size_t lhs, size_t rhs) {
   return lhs < rhs ? rhs : lhs;
@@ -86,6 +89,13 @@ public:
     move_[kind_](&val.data_, &data_);
   }
 
+  bool operator==(const variant& that) const {
+    return this->kind_ == that.kind_ &&
+           equality_[this->kind_](&this->data_, &that.data_);
+  }
+
+  bool operator!=(const variant &that) { return !(*this == that); }
+
   template <typename T> void operator=(const T &val) {
     using BasicT            = typename std::remove_reference<T>::type;
     constexpr u8 type_index = IndexOf<BasicT, Ts...>::value;
@@ -94,6 +104,12 @@ public:
     destroy_[kind_](&data_);
     kind_ = type_index;
     new (&data_) BasicT(val);
+  }
+
+  template <typename T> bool is() const {
+    constexpr u8 type_index = IndexOf<T, Ts...>::value;
+    static_assert(type_index < sizeof...(Ts), "");
+    return type_index == kind_;
   }
 
   template <typename T> const T &as() const {
@@ -124,6 +140,9 @@ private:
       copy_{{Copy<Ts>...}};
   static constexpr std::array<void (*)(void *, void *), sizeof...(Ts)> move_{
       {Move<Ts>...}};
+  static constexpr std::array<bool (*)(const void *, const void *),
+                              sizeof...(Ts)>
+      equality_{{Equal<Ts>...}};
 };
 
 template <typename... Ts>
@@ -136,6 +155,10 @@ constexpr std::array<void (*)(const void *, void *), sizeof...(Ts)>
 template <typename... Ts>
 constexpr std::array<void (*)(void *, void *), sizeof...(Ts)>
     variant<Ts...>::move_;
+
+template <typename... Ts>
+constexpr std::array<bool (*)(const void *, const void *), sizeof...(Ts)>
+    variant<Ts...>::equality_;
 
 } // namespace base
 #endif // ICARUS_BASE_VARIANT_H

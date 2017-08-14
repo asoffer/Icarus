@@ -64,65 +64,61 @@ struct Addr {
   std::string to_string() const;
 };
 
-struct Argument {
-  u64 value;
-};
+#define INT_TYPE(base_type, Ty)                                                \
+  struct Ty {                                                                  \
+    base_type value;                                                           \
+  };                                                                           \
+  inline bool operator==(Ty lhs, Ty rhs) { return lhs.value == rhs.value; }    \
+  inline bool operator!=(Ty lhs, Ty rhs) { return !(lhs == rhs); }             \
+  /* This only exists so we can add a semicolon after the macro */             \
+  struct Ty
 
-struct EnumVal {
-  size_t value;
-};
+INT_TYPE(u64, Argument);
+INT_TYPE(size_t, EnumVal);
 
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
-  enum class Kind : u8 { None, Arg, Reg, Const } kind = Kind::None;
   ::Type *type = nullptr;
-
-  // TODO arg should be it's own type
   base::variant<Argument, RegIndex, ::IR::Addr, bool, char, double, i64, u64,
                 EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
                 AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
-      value;
+      value{false};
 
-  static Val Arg(Type *t, u64 n) { return Val(Kind::Arg, t, Argument{n}); }
-  static Val Reg(RegIndex r, ::Type *t) { return Val(Kind::Reg, t, r); }
-  static Val Addr(Addr addr, ::Type *t) { return Val(Kind::Const, t, addr); }
+  static Val Arg(Type *t, u64 n) { return Val(t, Argument{n}); }
+  static Val Reg(RegIndex r, ::Type *t) { return Val(t, r); }
+  static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
   static Val GlobalAddr(u64 addr, ::Type *t);
   static Val HeapAddr(void *addr, ::Type *t);
   static Val StackAddr(u64 addr, ::Type *t);
-  static Val Bool(bool b) { return Val(Kind::Const, ::Bool, b); }
-  static Val Char(char c) { return Val(Kind::Const, ::Char, c); }
-  static Val Real(double r) { return Val(Kind::Const, ::Real, r); }
-  static Val Int(i64 n) { return Val(Kind::Const, ::Int, n); }
-  static Val Uint(u64 n) { return Val(Kind::Const, ::Uint, n); }
+  static Val Bool(bool b) { return Val(::Bool, b); }
+  static Val Char(char c) { return Val( ::Char, c); }
+  static Val Real(double r) { return Val( ::Real, r); }
+  static Val Int(i64 n) { return Val( ::Int, n); }
+  static Val Uint(u64 n) { return Val( ::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
-  static Val Type(::Type *t) { return Val(Kind::Const, ::Type_, t); }
-  static Val CodeBlock(AST::CodeBlock *block) {
-    return Val(Kind::Const, ::Code, block);
-  }
+  static Val Type(::Type *t) { return Val( ::Type_, t); }
+  static Val CodeBlock(AST::CodeBlock *block) { return Val(::Code, block); }
   static Val Func(::IR::Func *fn);
-  static Val Void();
-  static Val Block(BlockIndex bi);
+  static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
+  static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);
-  static Val StrLit(std::string str) {
-    return Val(Kind::Const, ::String, std::move(str));
-  }
+  static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
 
   std::string to_string() const;
 
-  Val() : kind(Kind::Const), value(false) {}
+  Val() : type(nullptr), value(false) {}
 
 private:
-  template <typename T>
-  Val(Kind k, ::Type *t, T val) : kind(k), type(t), value(val) {}
+  template <typename T> Val(::Type *t, T val) : type(t), value(val) {}
 };
 
 inline bool operator==(const Val& lhs, const Val& rhs) {
-  return lhs.kind == rhs.kind && lhs.type == rhs.type; // TODO check the right thing.
+  return lhs.type == rhs.type && lhs.value == rhs.value;
 }
 inline bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
 

@@ -89,7 +89,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_block().cmds_) {
     auto result = ExecuteCmd(cmd);
 
-    if (cmd.result.kind == Val::Kind::Reg && cmd.result.type != Void) {
+    if (cmd.result.value.is<RegIndex>() && cmd.result.type != Void) {
       ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.result.type);
 
@@ -133,14 +133,11 @@ IR::Val Stack::Push(Pointer *ptr) {
 }
 
 void ExecContext::Resolve(Val *v) const {
-  switch (v->kind) {
-  case Val::Kind::Arg:
+  if (v->value.is<Argument>()) {
     ASSERT_GT(call_stack.top().args_.size(), v->value.as<Argument>().value);
     *v = arg(v->value.as<Argument>());
-    return;
-  case Val::Kind::Reg: *v = reg(v->value.as<RegIndex>()); return;
-  case Val::Kind::Const: return;
-  case Val::Kind::None: return;
+  } else if (v->value.is<RegIndex>()) {
+    *v = reg(v->value.as<RegIndex>());
   }
 }
 
