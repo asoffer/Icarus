@@ -89,11 +89,11 @@ BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_block().cmds_) {
     auto result = ExecuteCmd(cmd);
 
-    if (cmd.result.value.is<RegIndex>() && cmd.result.type != Void) {
+    if (cmd.result.value.is<Register>() && cmd.result.type != Void) {
       ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.result.type);
 
-      this->reg(cmd.result.value.as<RegIndex>()) = result;
+      this->reg(cmd.result.value.as<Register>()) = result;
     }
   }
 
@@ -136,8 +136,8 @@ void ExecContext::Resolve(Val *v) const {
   if (v->value.is<Argument>()) {
     ASSERT_GT(call_stack.top().args_.size(), v->value.as<Argument>().value);
     *v = arg(v->value.as<Argument>());
-  } else if (v->value.is<RegIndex>()) {
-    *v = reg(v->value.as<RegIndex>());
+  } else if (v->value.is<Register>()) {
+    *v = reg(v->value.as<Register>());
   }
 }
 

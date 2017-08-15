@@ -46,9 +46,9 @@ std::string Val::to_string() const {
   if (value.is<Argument>()) {
     return type->to_string() + " a." +
            std::to_string(value.as<Argument>().value);
-  } else if (value.is<RegIndex>()) {
+  } else if (value.is<Register>()) {
     return type->to_string() + " r." +
-           std::to_string(value.as<RegIndex>().index);
+           std::to_string(value.as<Register>().index);
   } else if (value.is<::IR::Addr>()) {
     return value.as<::IR::Addr>().to_string();
   } else if (value.is<bool>()) {

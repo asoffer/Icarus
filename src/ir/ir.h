@@ -35,18 +35,18 @@ inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
   return lhs.value == rhs.value;
 }
 
-struct RegIndex {
+struct Register {
   i32 index = -1;
 };
 
-inline bool operator==(RegIndex lhs, RegIndex rhs) {
+inline bool operator==(Register lhs, Register rhs) {
   return lhs.index == rhs.index;
 }
 } // namespace IR
 
 namespace std {
-template <> struct hash<IR::RegIndex> {
-  decltype(auto) operator()(IR::RegIndex r) const noexcept {
+template <> struct hash<IR::Register> {
+  decltype(auto) operator()(IR::Register r) const noexcept {
     return std::hash<i32>{}(r.index);
   }
 };
@@ -81,13 +81,13 @@ inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   ::Type *type = nullptr;
-  base::variant<Argument, RegIndex, ::IR::Addr, bool, char, double, i64, u64,
+  base::variant<Argument, Register, ::IR::Addr, bool, char, double, i64, u64,
                 EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
                 AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Arg(Type *t, u64 n) { return Val(t, Argument{n}); }
-  static Val Reg(RegIndex r, ::Type *t) { return Val(t, r); }
+  static Val Reg(Register r, ::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
   static Val GlobalAddr(u64 addr, ::Type *t);
   static Val HeapAddr(void *addr, ::Type *t);
@@ -208,11 +208,11 @@ struct ExecContext {
   Val ExecuteCmd(const Cmd& cmd);
   void Resolve(Val *v) const;
 
-  Val reg(RegIndex r) const {
+  Val reg(Register r) const {
     ASSERT_GE(r.index, 0);
     return call_stack.top().regs_[static_cast<u32>(r.index)];
   }
-  Val &reg(RegIndex r) {
+  Val &reg(Register r) {
     ASSERT_GE(r.index, 0);
     return call_stack.top().regs_[static_cast<u32>(r.index)];
   }
@@ -319,8 +319,8 @@ struct Func {
   void dump() const;
 
   Block &block(BlockIndex index) { return blocks_[index.value]; }
-  Cmd &Command(RegIndex reg);
-  void SetArgs(RegIndex reg, std::vector<IR::Val> args);
+  Cmd &Command(Register reg);
+  void SetArgs(Register reg, std::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
     BlockIndex index;
@@ -347,7 +347,7 @@ struct Func {
   i32 num_cmds_ = 0;
   std::string name;
   std::vector<Block> blocks_;
-  std::unordered_map<RegIndex, std::pair<BlockIndex, int>> reg_map_;
+  std::unordered_map<Register, std::pair<BlockIndex, int>> reg_map_;
 };
 
 struct FuncResetter {

@@ -1,6 +1,6 @@
-#include "type.h"
 #include "../ir/ir.h"
 #include "../scope.h"
+#include "type.h"
 
 void Primitive::EmitDestroy(IR::Val) {}
 void Pointer::EmitDestroy(IR::Val) {}
@@ -13,14 +13,14 @@ void Array::EmitDestroy(IR::Val id_val) {
   if (destroy_func == nullptr) {
     if (!needs_destroy()) { return; }
 
-    destroy_func = new IR::Func(Func(Ptr(this), Void));
+    destroy_func       = new IR::Func(Func(Ptr(this), Void));
     destroy_func->name = "destroy." + Mangle(this);
 
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
 
-      auto arg = IR::Val::Arg(Ptr(this), 0);
-      auto loop_phi = IR::Func::Current->AddBlock();
+      auto arg       = IR::Val::Arg(Ptr(this), 0);
+      auto loop_phi  = IR::Func::Current->AddBlock();
       auto loop_body = IR::Func::Current->AddBlock();
 
       IR::Val ptr = IR::Index(arg, IR::Val::Uint(0));
@@ -29,8 +29,8 @@ void Array::EmitDestroy(IR::Val id_val) {
                                         : IR::Load(IR::ArrayLength(arg)));
       IR::Jump::Unconditional(loop_phi);
 
-     IR::Block::Current = loop_phi;
-      auto phi = IR::Phi(Ptr(data_type));
+      IR::Block::Current = loop_phi;
+      auto phi           = IR::Phi(Ptr(data_type));
       IR::Jump::Conditional(IR::Eq(phi, end_ptr), destroy_func->exit(),
                             loop_body);
 
@@ -38,7 +38,7 @@ void Array::EmitDestroy(IR::Val id_val) {
       data_type->EmitDestroy(phi);
       IR::Jump::Unconditional(loop_phi);
 
-      destroy_func->SetArgs(phi.value.as<IR::RegIndex>(),
+      destroy_func->SetArgs(phi.value.as<IR::Register>(),
                             {IR::Val::Block(destroy_func->entry()), ptr,
                              IR::Val::Block(loop_body),
                              IR::PtrIncr(phi, IR::Val::Uint(1))});
@@ -54,7 +54,7 @@ void Array::EmitDestroy(IR::Val id_val) {
 
 void Struct::EmitDestroy(IR::Val id_val) {
   if (!destroy_func) {
-    destroy_func = new IR::Func(Func(Ptr(this), Void));
+    destroy_func       = new IR::Func(Func(Ptr(this), Void));
     destroy_func->name = "destroy." + Mangle(this);
 
     CURRENT_FUNC(destroy_func) {

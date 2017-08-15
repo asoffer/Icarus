@@ -27,10 +27,11 @@ Array::Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {
   dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
 }
 
-
-//TODO better to hash pair of Array*
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>> eq_funcs;
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>> ne_funcs;
+// TODO better to hash pair of Array*
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>>
+    eq_funcs;
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>>
+    ne_funcs;
 IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                        IR::Val rhs_ir, bool equality) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
@@ -94,10 +95,10 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       auto rhs_incr      = IR::PtrIncr(rhs_phi, IR::Val::Uint(1));
       IR::Jump::Unconditional(phi_block);
 
-      fn->SetArgs(lhs_phi.value.as<IR::RegIndex>(),
+      fn->SetArgs(lhs_phi.value.as<IR::Register>(),
                   {IR::Val::Block(equal_len_block), lhs_start,
                    IR::Val::Block(incr_block), lhs_incr});
-      fn->SetArgs(rhs_phi.value.as<IR::RegIndex>(),
+      fn->SetArgs(rhs_phi.value.as<IR::Register>(),
                   {IR::Val::Block(equal_len_block), rhs_start,
                    IR::Val::Block(incr_block), rhs_incr});
     }
@@ -123,21 +124,21 @@ std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }
 template <typename Key, typename Val>
 using TypeContainer = std::unordered_map<Key, Val>;
 
-static TypeContainer<Type*, std::unordered_map<size_t, Array>> fixed_arrays_;
+static TypeContainer<Type *, std::unordered_map<size_t, Array>> fixed_arrays_;
 Array *Arr(Type *t, size_t len) {
   return &fixed_arrays_[t].emplace(len, Array(t, len)).first->second;
 }
-static TypeContainer<Type*, Array> arrays_;
+static TypeContainer<Type *, Array> arrays_;
 Array *Arr(Type *t) { return &arrays_.emplace(t, Array(t)).first->second; }
 
-static std::map<std::vector<Type*>, Tuple> tuples_;
+static std::map<std::vector<Type *>, Tuple> tuples_;
 Type *Tup(std::vector<Type *> types) {
   if (types.empty()) { return Void; }
   if (types.size() == 1) { return types.front(); }
   return &tuples_.emplace(types, Tuple(types)).first->second;
 }
 
-static TypeContainer<Type*, Pointer> pointers_;
+static TypeContainer<Type *, Pointer> pointers_;
 Pointer *Ptr(Type *t) {
   return &pointers_.emplace(t, Pointer(t)).first->second;
 }
@@ -157,17 +158,17 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
   return Func(Tup(std::move(in)), Tup(std::move(out)));
 }
 
-static TypeContainer<Type*, RangeType> ranges_;
+static TypeContainer<Type *, RangeType> ranges_;
 RangeType *Range(Type *t) {
   return &ranges_.emplace(t, RangeType(t)).first->second;
 }
 
-static TypeContainer<Array*, SliceType> slices_;
+static TypeContainer<Array *, SliceType> slices_;
 SliceType *Slice(Array *a) {
   return &slices_.emplace(a, SliceType(a)).first->second;
 }
 
-static TypeContainer<Type*, Scope_Type> scopes_;
+static TypeContainer<Type *, Scope_Type> scopes_;
 Scope_Type *ScopeType(Type *t) {
   return &scopes_.emplace(t, Scope_Type(t)).first->second;
 }

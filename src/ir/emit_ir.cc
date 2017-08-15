@@ -247,7 +247,7 @@ IR::Val AST::For::EmitIR() {
 
   { // Complete phi definition
     for (size_t i = 0; i < iterators.size(); ++i) {
-      IR::Func::Current->SetArgs(phis[i].value.as<IR::RegIndex>(),
+      IR::Func::Current->SetArgs(phis[i].value.as<IR::Register>(),
                                  {IR::Val::Block(init), init_vals[i],
                                   IR::Val::Block(incr), incr_vals[i]});
       iterators[i]->addr = phis[i];
@@ -342,7 +342,7 @@ IR::Val AST::Case::EmitIR() {
 
   IR::Block::Current = land;
   auto phi           = IR::Phi(type);
-  IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(), std::move(phi_args));
+  IR::Func::Current->SetArgs(phi.value.as<IR::Register>(), std::move(phi_args));
   return phi;
 }
 
@@ -574,7 +574,7 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
+    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(),
                                {IR::Val::Block(lhs_end_block),
                                 IR::Val::Bool(true),
                                 IR::Val::Block(rhs_end_block), rhs_val});
@@ -596,7 +596,7 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(),
+    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(),
                                {IR::Val::Block(lhs_end_block),
                                 IR::Val::Bool(false),
                                 IR::Val::Block(rhs_end_block), rhs_val});
@@ -685,7 +685,7 @@ IR::Val AST::ChainOp::EmitIR() {
     phi_args.push_back(IR::Val::Bool(true));
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::RegIndex>(), std::move(phi_args));
+    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(), std::move(phi_args));
     return phi;
   }
 

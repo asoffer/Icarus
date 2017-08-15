@@ -31,9 +31,9 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 
     CURRENT_FUNC(assign_func) {
       IR::Block::Current = assign_func->entry();
-      auto val = IR::Val::Arg(Ptr(from_type), 0);
-      auto var = IR::Val::Arg(Ptr(to_type), 1);
-      IR::Val len = from_array_type->fixed_length
+      auto val           = IR::Val::Arg(Ptr(from_type), 0);
+      auto var           = IR::Val::Arg(Ptr(to_type), 1);
+      IR::Val len        = from_array_type->fixed_length
                         ? IR::Val::Uint(from_array_type->len)
                         : IR::Load(IR::ArrayLength(val));
       IR::Val from_ptr     = IR::Index(val, IR::Val::Uint(0));
@@ -69,11 +69,11 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Func::Current->SetArgs(from_phi.value.as<IR::RegIndex>(),
+      IR::Func::Current->SetArgs(from_phi.value.as<IR::Register>(),
                                  {IR::Val::Block(init_block), from_ptr,
                                   IR::Val::Block(IR::Block::Current),
                                   IR::PtrIncr(from_phi, IR::Val::Uint(1ul))});
-      IR::Func::Current->SetArgs(to_phi.value.as<IR::RegIndex>(),
+      IR::Func::Current->SetArgs(to_phi.value.as<IR::Register>(),
                                  {IR::Val::Block(init_block), to_ptr,
                                   IR::Val::Block(IR::Block::Current),
                                   IR::PtrIncr(to_phi, IR::Val::Uint(1ul))});

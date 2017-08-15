@@ -8,7 +8,7 @@ Func *Func::Current;
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
-  auto reg_index = RegIndex{Func::Current->num_cmds_++};
+  auto reg_index = Register{Func::Current->num_cmds_++};
   Func::Current->reg_map_[reg_index] = std::make_pair(
       Block::Current, Func::Current->block(Block::Current).cmds_.size());
   result = Val::Reg(reg_index, t);
@@ -254,14 +254,14 @@ ExecContext::Frame::Frame(Func *fn, std::vector<Val> arguments)
       regs_(fn_->num_cmds_, IR::Val::None()), args_(std::move(arguments)),
       rets_(1, IR::Val::None()) {}
 
-Cmd &Func::Command(RegIndex reg) {
+Cmd &Func::Command(Register reg) {
   auto iter = reg_map_.find(reg);
   ASSERT(iter != reg_map_.end(), "");
   auto &block_and_index = iter->second;
   return blocks_[block_and_index.first.value].cmds_[block_and_index.second];
 }
 
-void Func::SetArgs(RegIndex reg, std::vector<IR::Val> args) {
+void Func::SetArgs(Register reg, std::vector<IR::Val> args) {
   Command(reg).args = std::move(args);
 }
 
