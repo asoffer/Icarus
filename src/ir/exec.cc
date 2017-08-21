@@ -134,7 +134,8 @@ IR::Val Stack::Push(Pointer *ptr) {
 
 void ExecContext::Resolve(Val *v) const {
   if (v->value.is<Argument>()) {
-    ASSERT_GT(call_stack.top().args_.size(), v->value.as<Argument>().value);
+    ASSERT_GT(static_cast<i64>(call_stack.top().args_.size()),
+              v->value.as<Argument>().value);
     *v = arg(v->value.as<Argument>());
   } else if (v->value.is<Register>()) {
     *v = reg(v->value.as<Register>());

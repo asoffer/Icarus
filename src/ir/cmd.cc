@@ -8,7 +8,7 @@ Func *Func::Current;
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
-  auto reg_index = Register{Func::Current->num_cmds_++};
+  auto reg_index = Register(Func::Current->num_cmds_++);
   Func::Current->reg_map_[reg_index] = std::make_pair(
       Block::Current, Func::Current->block(Block::Current).cmds_.size());
   result = Val::Reg(reg_index, t);

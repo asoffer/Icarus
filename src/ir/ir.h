@@ -1,13 +1,16 @@
 #ifndef ICARUS_IR_IR_H
 #define ICARUS_IR_IR_H
 
-#include <unordered_map>
-#include <string>
-#include <vector>
+#include <limits>
+#include <memory>
 #include <stack>
+#include <string>
+#include <unordered_map>
+#include <vector>
 
 #include "../base/debug.h"
 #include "../base/types.h"
+#include "../base/util.h"
 #include "../base/variant.h"
 
 struct Type;
@@ -35,19 +38,61 @@ inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
   return lhs.value == rhs.value;
 }
 
+struct Property {};
+
+template <typename T> struct UpperBound : public Property {
+  UpperBound(T val = std::numeric_limits<T>::max()) : max_(val) {}
+
+  static UpperBound<T> Merge(const std::vector<UpperBound<T>> &props) {
+    UpperBound<T> result = std::numeric_limits<T>::min();
+    for (const auto &prop : props) {
+      result.max_ = std::max(result.max_, prop.max_);
+    }
+    return result;
+  }
+
+  T max_;
+};
+
 struct Register {
-  i32 index = -1;
+
+  Register(i32 index) : index(index) {}
+  Register(const Register &reg)
+      : index(reg.index) /*, prop_(base::wrap_unique(reg.prop_->clone()))*/ {}
+
+  i32 index                       = -1;
+  std::unique_ptr<Property> prop_ = nullptr;
 };
 
 inline bool operator==(Register lhs, Register rhs) {
   return lhs.index == rhs.index;
 }
+
+struct Argument {
+
+  Argument(i32 value) : value(value) {}
+  Argument(const Argument &arg)
+      : value(arg.value) /*, prop_(base::wrap_unique(reg.prop_->clone()))*/ {}
+
+  i32 value                       = -1;
+  std::unique_ptr<Property> prop_ = nullptr;
+};
+
+inline bool operator==(Argument lhs, Argument rhs) {
+  return lhs.value == rhs.value;
+}
+
 } // namespace IR
 
 namespace std {
 template <> struct hash<IR::Register> {
   decltype(auto) operator()(IR::Register r) const noexcept {
     return std::hash<i32>{}(r.index);
+  }
+};
+template <> struct hash<IR::Argument> {
+  decltype(auto) operator()(IR::Argument a) const noexcept {
+    return std::hash<i32>{}(a.value);
   }
 };
 } // namespace std
@@ -61,7 +106,7 @@ struct Addr {
     void *as_heap;
   };
 
-  std::string to_string() const;
+ std::string to_string() const;
 };
 
 #define INT_TYPE(base_type, Ty)                                                \
@@ -73,7 +118,6 @@ struct Addr {
   /* This only exists so we can add a semicolon after the macro */             \
   struct Ty
 
-INT_TYPE(u64, Argument);
 INT_TYPE(size_t, EnumVal);
 
 bool operator==(Addr lhs, Addr rhs);
@@ -86,7 +130,7 @@ struct Val {
                 AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
       value{false};
 
-  static Val Arg(Type *t, u64 n) { return Val(t, Argument{n}); }
+  static Val Arg(Type *t, i32 n) { return Val(t, Argument{n}); }
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
   static Val GlobalAddr(u64 addr, ::Type *t);

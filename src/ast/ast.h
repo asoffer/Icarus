@@ -76,6 +76,10 @@ struct Expression : public Node {
   virtual void assign_scope(Scope *scope)       = 0;
   virtual void verify_types()                   = 0;
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+
+  // TOD make this method pure abstract
+  virtual void GenerateRequirements() const { NOT_YET(); }
+
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
 
@@ -112,6 +116,7 @@ struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
   void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
+  virtual void GenerateRequirements() const { UNREACHABLE(); }
 
   virtual base::owned_ptr<Node>
   contextualize(const std::unordered_map<const Expression *, IR::Val> &) const {
@@ -139,6 +144,7 @@ struct Terminal : public Expression {
   Terminal(const Cursor &cursor, IR::Val val);
 
   virtual IR::Val EmitIR();
+  virtual void GenerateRequirements() const {}
   virtual bool is_hole() const override { return value == IR::Val::None(); }
 };
 
@@ -149,6 +155,7 @@ struct Identifier : public Terminal {
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
   virtual bool is_hole() const override { return false; }
+  virtual void GenerateRequirements() const {}
 
   std::string token;
   Declaration *decl = nullptr;
@@ -303,6 +310,8 @@ struct ChainOp : public Expression {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
+
+  virtual void GenerateRequirements() const;
 
   std::vector<Language::Operator> ops;
   std::vector<base::owned_ptr<Expression>> exprs;

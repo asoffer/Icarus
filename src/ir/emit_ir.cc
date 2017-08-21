@@ -499,6 +499,11 @@ IR::Val AST::Unop::EmitIR() {
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR());
   case Language::Operator::At: return PtrCallFix(operand->EmitIR());
+  case Language::Operator::Needs: {
+    // TODO validate requirements are well-formed?
+    operand->GenerateRequirements();
+    return IR::Val::None();
+  } break;
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
@@ -709,8 +714,8 @@ IR::Val AST::FunctionLiteral::EmitIR() {
       auto &arg = inputs[i];
       ASSERT_EQ(arg->addr, IR::Val::None());
       // This whole loop can be done on construction!
-      arg->addr =
-          IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type, i);
+      arg->addr = IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type,
+                               static_cast<i32>(i));
     }
 
     for (auto scope : fn_scope->innards_) {

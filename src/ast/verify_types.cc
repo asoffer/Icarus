@@ -242,6 +242,9 @@ void Unop::verify_types() {
       type = Err;
     }
   } break;
+  case Operator::Needs: {
+    type = Void;
+  } break;
   default: UNREACHABLE(*this);
   }
 }

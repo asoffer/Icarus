@@ -255,6 +255,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
                    {"free", {Language::Operator::Free, false}},
                    {"generate", {Language::Operator::Generate, false}},
                    {"print", {Language::Operator::Print, false}},
+                   {"needs", {Language::Operator::Needs, false}},
                    {"*", {Language::Operator::Mul, false}},
                    {"&", {Language::Operator::And, false}},
                    {"-", {Language::Operator::Sub, false}},
