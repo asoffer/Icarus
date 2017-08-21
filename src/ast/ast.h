@@ -194,6 +194,10 @@ struct Declaration : public Expression {
   base::owned_ptr<Identifier> identifier;
   base::owned_ptr<Expression> type_expr;
   base::owned_ptr<Expression> init_val;
+
+  // For non-const declarations, holds the address at which the value is being
+  // stored. For const values (declared with :: or ::=), holds the actual
+  // constant value.
   IR::Val addr = IR::Val::None();
 
   bool const_ = false;
@@ -380,7 +384,7 @@ struct FunctionLiteral : public Expression {
   std::vector<base::owned_ptr<Declaration>> inputs;
   base::owned_ptr<Statements> statements;
 
-  IR::Func *ir_func = nullptr;
+  IR::Func ir_func;
 
   std::unordered_set<Declaration *> captures;
 

@@ -119,7 +119,7 @@ IR::Val AST::Terminal::EmitIR() {
 IR::Val AST::Identifier::EmitIR() {
   VERIFY_OR_EXIT;
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
-  if (decl->arg_val) {
+  if (decl->const_ || decl->arg_val) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
     auto *in_decl = ptr_cast<InDecl>(decl);
@@ -383,10 +383,21 @@ IR::Val AST::ScopeNode::EmitIR() {
 
 IR::Val AST::Declaration::EmitIR() {
   VERIFY_OR_EXIT;
+  if (addr != IR::Val::None()) { return IR::Val::None(); }
 
-  if (scope_ == Scope::Global) {
-    if (addr != IR::Val::None()) { return IR::Val::None(); }
-
+  if (const_) {
+    // TODO it's custom or default initialized. cannot be uninitialized. This
+    // should be verified by the type system.
+    if (IsCustomInitialized()) {
+      addr = Evaluate(init_val.get());
+    } else if (IsDefaultInitialized()) {
+      // TODO if EmitInitialValue requires generating code, that would be bad.
+      addr = type->EmitInitialValue();
+    } else {
+      UNREACHABLE();
+    }
+    return IR::Val::None();
+  } else if (scope_ == Scope::Global) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) {
       global_vals.emplace_back();
@@ -538,6 +549,7 @@ IR::Val AST::Binop::EmitIR() {
         args.push_back(expr->EmitIR());
       });
     }
+    // TODO validate checks.
     return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
@@ -707,35 +719,39 @@ IR::Val AST::FunctionLiteral::EmitIR() {
   statements->verify_types();
   if (!errors.empty()) { return IR::Val::None(); }
 
-  CURRENT_FUNC(ir_func = new IR::Func(ptr_cast<Function>(type))) {
-    IR::Block::Current = ir_func->entry();
+  if (!ir_func.initialized()) {
+    ir_func = IR::Func(ptr_cast<Function>(type));
+    CURRENT_FUNC(&ir_func) {
+      IR::Block::Current = ir_func.entry();
 
-    for (size_t i = 0; i < inputs.size(); ++i) {
-      auto &arg = inputs[i];
-      ASSERT_EQ(arg->addr, IR::Val::None());
-      // This whole loop can be done on construction!
-      arg->addr = IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type,
-                               static_cast<i32>(i));
-    }
-
-    for (auto scope : fn_scope->innards_) {
-      for (auto &decl : scope->decls_) {
-        // TODO arg_val seems to go along with in_decl a lot. Is there some
-        // reason for this that *should* be abstracted?
-        if (decl->arg_val || decl->is<InDecl>()) { continue; }
-        ASSERT(decl->type, "");
-        decl->addr = IR::Alloca(decl->type);
+      for (size_t i = 0; i < inputs.size(); ++i) {
+        auto &arg = inputs[i];
+        ASSERT_EQ(arg->addr, IR::Val::None());
+        // This whole loop can be done on construction!
+        arg->addr =
+            IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type,
+                         static_cast<i32>(i));
       }
+
+      for (auto scope : fn_scope->innards_) {
+        for (auto &decl : scope->decls_) {
+          // TODO arg_val seems to go along with in_decl a lot. Is there some
+          // reason for this that *should* be abstracted?
+          if (decl->arg_val || decl->is<InDecl>()) { continue; }
+          ASSERT(decl->type, "");
+          decl->addr = IR::Alloca(decl->type);
+        }
+      }
+
+      statements->EmitIR();
+      IR::Jump::Unconditional(ir_func.exit());
+
+      IR::Block::Current = ir_func.exit();
+      IR::Jump::Return();
     }
-
-    statements->EmitIR();
-    IR::Jump::Unconditional(ir_func->exit());
-
-    IR::Block::Current = ir_func->exit();
-    IR::Jump::Return();
   }
 
-  return IR::Val::Func(ir_func);
+  return IR::Val::Func(&ir_func);
 }
 
 IR::Val AST::Statements::EmitIR() {

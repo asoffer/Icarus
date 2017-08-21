@@ -162,6 +162,12 @@ Val Phi(Type *t) {
 
 Val Call(Val fn, std::vector<Val> vals) {
   ASSERT_TYPE(Function, fn.type);
+  for (const auto &precondtion : fn.value.as<Func *>()->preconditions_) {
+    // TODO it's probably more correct to do these verifications in a separate
+    // pass.
+    LOG << &precondtion;
+  }
+
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);

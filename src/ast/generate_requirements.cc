@@ -4,6 +4,9 @@ extern IR::Val Evaluate(AST::Expression *expr);
 
 namespace AST {
 void ChainOp::GenerateRequirements() const {
+  // TODO should there be a more direct way to compute this?
+  auto *containing_function = &scope_->ContainingFnScope()->fn_lit->ir_func;
+
   // TODO something generic
   // This is just a test. Probably needs a full rewrite
   ASSERT_EQ(2, exprs.size());
@@ -16,8 +19,9 @@ void ChainOp::GenerateRequirements() const {
         // argument.
         auto upper_bound = Evaluate(exprs[1].get());
         if (upper_bound.value.is<i64>()) {
-          id_addr->value.as<IR::Argument>().prop_ =
-              std::make_unique<IR::UpperBound<i64>>(upper_bound.value.as<i64>());
+          containing_function->preconditions_[id_addr->value.is<IR::Argument>()]
+              .push_back(std::make_unique<IR::UpperBound<i64>>(
+                  upper_bound.value.as<i64>()));
         }
       } break;
       case Language::Operator::Le: NOT_YET();

@@ -358,9 +358,12 @@ struct Block {
 
 struct Func {
   static Func *Current;
-  Func(::Function *fn_type) : type(fn_type), blocks_(2, Block(this)) {}
+  Func(::Function *fn_type = nullptr)
+      : type(fn_type), blocks_(2, Block(this)) {}
 
   void dump() const;
+
+  bool initialized() const { return type != nullptr; }
 
   Block &block(BlockIndex index) { return blocks_[index.value]; }
   Cmd &Command(Register reg);
@@ -387,11 +390,19 @@ struct Func {
 
   std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx);
 
-  ::Function *type = nullptr;
+  // Is this needed? Or can it be determined from the containing FunctionLiteral
+  // object?
+  ::Function *type = nullptr; 
   i32 num_cmds_ = 0;
   std::string name;
   std::vector<Block> blocks_;
   std::unordered_map<Register, std::pair<BlockIndex, int>> reg_map_;
+
+  // TODO Probably a better container here. One that consolidates preconditions
+  // (what about tracing errors?) and since we know how many arguments we'll
+  // have ahead of time, probably a flat map or really just a vector.
+  std::unordered_map<Argument, std::vector<std::unique_ptr<Property>>>
+      preconditions_;
 };
 
 struct FuncResetter {
