@@ -28,18 +28,19 @@ Array::Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {
 }
 
 // TODO better to hash pair of Array*
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>>
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
     eq_funcs;
-static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func>>
+static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
     ne_funcs;
 IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                        IR::Val rhs_ir, bool equality) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
 
-  auto insertion = funcs[lhs_type].emplace(
-      rhs_type, IR::Func(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool)));
-  IR::Func *fn = &insertion.first->second;
+  auto insertion = funcs[lhs_type].emplace(rhs_type, nullptr);
   if (insertion.second) {
+    IR::Func::All.push_back(
+        std::make_unique<IR::Func>(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool)));
+    auto *fn = insertion.first->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
 
@@ -104,7 +105,7 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
     }
   }
 
-  return IR::Call(IR::Val::Func(fn), {lhs_ir, rhs_ir});
+  return IR::Call(IR::Val::Func(insertion.first->second), {lhs_ir, rhs_ir});
 }
 
 Tuple::Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}

@@ -5,7 +5,7 @@ extern IR::Val Evaluate(AST::Expression *expr);
 namespace AST {
 void ChainOp::GenerateRequirements() const {
   // TODO should there be a more direct way to compute this?
-  auto *containing_function = &scope_->ContainingFnScope()->fn_lit->ir_func;
+  auto *containing_function = scope_->ContainingFnScope()->fn_lit->ir_func;
 
   // TODO something generic
   // This is just a test. Probably needs a full rewrite

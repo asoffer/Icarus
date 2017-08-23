@@ -8,7 +8,8 @@ void Primitive::EmitRepr(IR::Val val) {
   switch (type_) {
   case PrimType::Char: {
     if (!repr_func) {
-      repr_func = new IR::Func(Func(this, Void));
+      IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+      repr_func = IR::Func::All.back().get();
 
       CURRENT_FUNC(repr_func) {
         IR::Block::Current = repr_func->entry();
@@ -78,7 +79,8 @@ void Pointer::EmitRepr(IR::Val val) { IR::Print(val); }
 
 void Array::EmitRepr(IR::Val val) {
   if (!repr_func) {
-    repr_func = new IR::Func(Func(this, Void));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+    repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 
     CURRENT_FUNC(repr_func) {
@@ -136,7 +138,8 @@ void Array::EmitRepr(IR::Val val) {
 void Struct::EmitRepr(IR::Val val) {
   CompleteDefinition();
   if (!repr_func) {
-    repr_func       = new IR::Func(Func(this, Void));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+    repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 
     CURRENT_FUNC(repr_func) {

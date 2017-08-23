@@ -719,10 +719,12 @@ IR::Val AST::FunctionLiteral::EmitIR() {
   statements->verify_types();
   if (!errors.empty()) { return IR::Val::None(); }
 
-  if (!ir_func.initialized()) {
-    ir_func = IR::Func(ptr_cast<Function>(type));
-    CURRENT_FUNC(&ir_func) {
-      IR::Block::Current = ir_func.entry();
+  if (!ir_func) {
+    IR::Func::All.push_back(
+        std::make_unique<IR::Func>(ptr_cast<Function>(type)));
+    ir_func = IR::Func::All.back().get();
+    CURRENT_FUNC(ir_func) {
+      IR::Block::Current = ir_func->entry();
 
       for (size_t i = 0; i < inputs.size(); ++i) {
         auto &arg = inputs[i];
@@ -744,14 +746,14 @@ IR::Val AST::FunctionLiteral::EmitIR() {
       }
 
       statements->EmitIR();
-      IR::Jump::Unconditional(ir_func.exit());
+      IR::Jump::Unconditional(ir_func->exit());
 
-      IR::Block::Current = ir_func.exit();
+      IR::Block::Current = ir_func->exit();
       IR::Jump::Return();
     }
   }
 
-  return IR::Val::Func(&ir_func);
+  return IR::Val::Func(ir_func);
 }
 
 IR::Val AST::Statements::EmitIR() {

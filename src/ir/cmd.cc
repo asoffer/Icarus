@@ -145,6 +145,11 @@ Val Ne(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ne); }
 Val Ge(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ge); }
 Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
 
+Val Validate(Val v1,
+             const std::vector<std::unique_ptr<Property>> *precondition) {
+  auto v2 = Val::Precondition(precondition);
+  MAKE_AND_RETURN2(::Void, Op::Validate); }
+
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
   ASSERT_EQ(v1.type, Type_);
@@ -162,10 +167,9 @@ Val Phi(Type *t) {
 
 Val Call(Val fn, std::vector<Val> vals) {
   ASSERT_TYPE(Function, fn.type);
-  for (const auto &precondtion : fn.value.as<Func *>()->preconditions_) {
-    // TODO it's probably more correct to do these verifications in a separate
-    // pass.
-    LOG << &precondtion;
+  size_t i = 0;
+  for (const auto &precondition : fn.value.as<Func *>()->preconditions_) {
+    Validate(vals[i++], &precondition.second);
   }
 
   vals.push_back(fn);
@@ -213,6 +217,7 @@ void Cmd::dump(size_t indent) const {
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
   case Op::Contextualize: std::cerr << "contextualize"; break;
+  case Op::Validate: std::cerr << "validate"; break;
   }
 
   if (args.empty()) {

@@ -50,6 +50,11 @@ int GenerateCode() {
     }
   }
 
+  RUN(timer, "Verify preconditions") {
+    for (auto &fn : IR::Func::All) { 
+      fn->ValidateCalls(); }
+  }
+
   return 0;
 }
 

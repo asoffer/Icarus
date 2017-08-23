@@ -720,6 +720,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               Architecture::InterprettingMachine().bytes(Uint)),
           ptr_cast<Pointer>(cmd.result.type)->pointee);
     }
+  case Op::Validate:
+    // Either validate here or skip it? I'm not sure what makes sense.
+    return IR::Val::None();
   }
   UNREACHABLE();
 }

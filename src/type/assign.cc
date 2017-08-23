@@ -25,8 +25,9 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
     auto *from_array_type = ptr_cast<Array>(from_type);
     auto *to_array_type   = ptr_cast<Array>(to_type);
 
-    auto *assign_func =
-        new IR::Func(Func({Ptr(from_type), Ptr(to_type)}, Void));
+    IR::Func::All.push_back(
+        std::make_unique<IR::Func>(Func({Ptr(from_type), Ptr(to_type)}, Void)));
+    auto *assign_func = IR::Func::All.back().get(); // TODO cache this
     assign_func->name = "assign." + Mangle(from_type) + Mangle(to_type);
 
     CURRENT_FUNC(assign_func) {
@@ -101,7 +102,9 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
   CompleteDefinition();
   if (!assign_func) {
-    assign_func       = new IR::Func(Func({this, Ptr(this)}, Void));
+    IR::Func::All.push_back(
+        std::make_unique<IR::Func>(Func({this, Ptr(this)}, Void)));
+    assign_func       = IR::Func::All.back().get();
     assign_func->name = "assign." + Mangle(this);
 
     CURRENT_FUNC(assign_func) {

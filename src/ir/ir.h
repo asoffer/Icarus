@@ -127,7 +127,8 @@ struct Val {
   ::Type *type = nullptr;
   base::variant<Argument, Register, ::IR::Addr, bool, char, double, i64, u64,
                 EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
-                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
+                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string,
+                const std::vector<std::unique_ptr<Property>> *>
       value{false};
 
   static Val Arg(Type *t, i32 n) { return Val(t, Argument{n}); }
@@ -149,6 +150,7 @@ struct Val {
   static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
+  static Val Precondition(const std::vector<std::unique_ptr<Property>> *precondition);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
@@ -182,6 +184,7 @@ enum class Op : char {
   Arrow, Array, Ptr,
   Alloca,
   Contextualize,
+  Validate,
 };
 
 struct Block;
@@ -312,6 +315,8 @@ Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock* code, std::vector<IR::Val> args);
+Val Validate(Val v1,
+             const std::vector<std::unique_ptr<Property>> *precondition);
 
 struct Jump {
   static Jump &Current();
@@ -349,6 +354,7 @@ struct Block {
   Block() = delete;
   Block(Func* fn) : fn_(fn) {}
 
+  void ValidateCalls();
   void dump(size_t indent) const;
 
   Func *fn_; // Containing function
@@ -358,12 +364,14 @@ struct Block {
 
 struct Func {
   static Func *Current;
+  static std::vector<std::unique_ptr<Func>> All;
+
   Func(::Function *fn_type = nullptr)
       : type(fn_type), blocks_(2, Block(this)) {}
 
   void dump() const;
 
-  bool initialized() const { return type != nullptr; }
+  void ValidateCalls();
 
   Block &block(BlockIndex index) { return blocks_[index.value]; }
   Cmd &Command(Register reg);

@@ -384,7 +384,7 @@ struct FunctionLiteral : public Expression {
   std::vector<base::owned_ptr<Declaration>> inputs;
   base::owned_ptr<Statements> statements;
 
-  IR::Func ir_func;
+  IR::Func* ir_func = nullptr;
 
   std::unordered_set<Declaration *> captures;
 

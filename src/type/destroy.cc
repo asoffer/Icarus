@@ -13,7 +13,8 @@ void Array::EmitDestroy(IR::Val id_val) {
   if (destroy_func == nullptr) {
     if (!needs_destroy()) { return; }
 
-    destroy_func       = new IR::Func(Func(Ptr(this), Void));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(Ptr(this), Void)));
+    destroy_func       = IR::Func::All.back().get();
     destroy_func->name = "destroy." + Mangle(this);
 
     CURRENT_FUNC(destroy_func) {
@@ -54,7 +55,8 @@ void Array::EmitDestroy(IR::Val id_val) {
 
 void Struct::EmitDestroy(IR::Val id_val) {
   if (!destroy_func) {
-    destroy_func       = new IR::Func(Func(Ptr(this), Void));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(Ptr(this), Void)));
+    destroy_func       = IR::Func::All.back().get();
     destroy_func->name = "destroy." + Mangle(this);
 
     CURRENT_FUNC(destroy_func) {
