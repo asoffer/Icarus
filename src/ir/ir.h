@@ -28,6 +28,7 @@ struct ScopeLiteral;
 } // namespace AST
 
 namespace IR {
+struct Val;
 struct Func;
 
 struct BlockIndex {
@@ -38,10 +39,19 @@ inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
   return lhs.value == rhs.value;
 }
 
-struct Property {};
+enum class Validity : char { Always, MaybeNot, Unknown, Never };
+
+struct Property {
+  Property() {}
+  virtual ~Property() {}
+  virtual Validity Validate(const Val& val) const = 0;
+};
 
 template <typename T> struct UpperBound : public Property {
+  ~UpperBound() override {}
   UpperBound(T val = std::numeric_limits<T>::max()) : max_(val) {}
+
+  Validity Validate(const Val &val) const override;
 
   static UpperBound<T> Merge(const std::vector<UpperBound<T>> &props) {
     UpperBound<T> result = std::numeric_limits<T>::min();
@@ -359,6 +369,7 @@ struct Block {
 
   Func *fn_; // Containing function
   std::vector<Cmd> cmds_;
+
   Jump jmp_;
 };
 
@@ -411,7 +422,14 @@ struct Func {
   // have ahead of time, probably a flat map or really just a vector.
   std::unordered_map<Argument, std::vector<std::unique_ptr<Property>>>
       preconditions_;
+  bool has_been_validated_ = false;
 };
+
+template <typename T>
+Validity UpperBound<T>::Validate(const Val &val) const {
+  return (val.value.template as<T>() < max_) ? Validity::Always
+                                             : Validity::Never;
+}
 
 struct FuncResetter {
   FuncResetter(Func *fn)
@@ -436,7 +454,5 @@ struct FuncResetter {
 namespace debug {
 inline std::string to_string(const IR::Val &val) { return val.to_string(); }
 } // namespace debug
-
-
 
 #endif // ICARUS_IR_IR_H

@@ -728,6 +728,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 }
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
+  // TODO check whether errors were generated and exit early if they were.
+  ValidateCalls();
+
   ctx->call_stack.emplace(this, std::move(arguments));
 
   while (true) {
