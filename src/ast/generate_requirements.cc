@@ -21,7 +21,7 @@ void ChainOp::GenerateRequirements() const {
         if (upper_bound.value.is<i64>()) {
           containing_function->preconditions_[id_addr->value.is<IR::Argument>()]
               .push_back(std::make_unique<IR::UpperBound<i64>>(
-                  upper_bound.value.as<i64>()));
+                  loc, upper_bound.value.as<i64>()));
         }
       } break;
       case Language::Operator::Le: NOT_YET();

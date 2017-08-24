@@ -34,7 +34,8 @@ void ReplEval(AST::Expression *expr) {
   }
 
   IR::ExecContext ctx;
-  fn->Execute({}, &ctx);
+  bool were_errors;
+  fn->Execute({}, &ctx, &were_errors);
 }
 
 IR::Val Evaluate(AST::Expression *expr) {
@@ -75,7 +76,10 @@ IR::Val Evaluate(AST::Expression *expr) {
 
   std::vector<IR::Val> results;
   IR::ExecContext context;
-  results = fn->Execute({}, &context);
+  bool were_errors;
+  results = fn->Execute({}, &context, &were_errors);
+  // TODO wire through errors. Currently we just return IR::Val::None() if there
+  // were errors
 
   to_release->release();
   // TODO multiple outputs?
@@ -436,7 +440,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Call: {
     auto fn = resolved.back().value.as<IR::Func *>();
     resolved.pop_back();
-    auto results = fn->Execute(std::move(resolved), this);
+    // There's no need to do validation here, because by virtue of executing
+    // this function, we know we've already validated all functions that could
+    // be called.
+    auto results = fn->Execute(std::move(resolved), this, nullptr);
 
     // TODO multiple returns?
     return results.empty() ? IR::Val::None() : results[0];
@@ -727,9 +734,24 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   UNREACHABLE();
 }
 
-std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx) {
-  // TODO check whether errors were generated and exit early if they were.
-  ValidateCalls();
+std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx,
+                               bool *were_errors) {
+
+  if (were_errors != nullptr) {
+    int num_errors = 0;
+    std::queue<IR::Func *> validation_queue ;
+    validation_queue.push(this);
+    while (!validation_queue.empty()) {
+      auto* fn = validation_queue.front();
+      validation_queue.pop();
+      num_errors += fn->ValidateCalls(&validation_queue);
+    }
+
+    if (num_errors > 0) {
+      *were_errors = true;
+      return {};
+    }
+  }
 
   ctx->call_stack.emplace(this, std::move(arguments));
 

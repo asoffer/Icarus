@@ -1,11 +1,17 @@
 #include "ir.h"
 
+#include "../error_log.h"
+
 namespace IR {
-void Block::ValidateCalls() {
+int Block::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
+  int num_errors = 0;
   // TODO track data in registers
   for (auto &cmd : cmds_) {
     switch (cmd.op_code) {
     case Op::Print: break;
+    case Op::Call:
+      validation_queue->push(cmd.args.back().value.as<IR::Func *>());
+      break;
     case Op::Validate:
       if (cmd.args[0].value.is<Register>()) {
       } else if (cmd.args[0].value.is<Argument>()) {
@@ -15,21 +21,27 @@ void Block::ValidateCalls() {
                   .value.as<const std::vector<std::unique_ptr<Property>> *>()) {
           switch (property->Validate(cmd.args[0])) {
           case Validity::Always: continue;
-          default: LOG << "Error!";
+          default:
+            ++num_errors;
+            LogError::FailedPrecondition(*property);
+            break;
           }
         }
       }
     default:; // TODO
     }
   }
+  return num_errors;
 }
 
-void Func::ValidateCalls() {
-  if (has_been_validated_) { return; }
-  // Do this immediately to avoid recursive validation.
-  has_been_validated_ = true;
+int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
+  if (num_errors_ >= 0) { return num_errors_; }
 
   // TODO track data across blocks
-  for (auto &block : blocks_) { block.ValidateCalls(); }
+  num_errors_ = 0;
+  for (auto &block : blocks_) {
+    num_errors_ += block.ValidateCalls(validation_queue);
+  }
+  return num_errors_;
 }
 } // namespace IR

@@ -3,11 +3,13 @@
 
 #include <limits>
 #include <memory>
+#include <queue>
 #include <stack>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include "../cursor.h"
 #include "../base/debug.h"
 #include "../base/types.h"
 #include "../base/util.h"
@@ -42,14 +44,17 @@ inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
 struct Property {
-  Property() {}
+  Property(const Cursor &loc) : loc(loc) {}
   virtual ~Property() {}
   virtual Validity Validate(const Val& val) const = 0;
+
+  Cursor loc;
 };
 
 template <typename T> struct UpperBound : public Property {
   ~UpperBound() override {}
-  UpperBound(T val = std::numeric_limits<T>::max()) : max_(val) {}
+  UpperBound(const Cursor &loc, T val = std::numeric_limits<T>::max())
+      : Property(loc), max_(val) {}
 
   Validity Validate(const Val &val) const override;
 
@@ -362,9 +367,9 @@ struct Jump {
 struct Block {
   static BlockIndex Current;
   Block() = delete;
-  Block(Func* fn) : fn_(fn) {}
+  Block(Func *fn) : fn_(fn) {}
 
-  void ValidateCalls();
+  int ValidateCalls(std::queue<IR::Func *> *validation_queue);
   void dump(size_t indent) const;
 
   Func *fn_; // Containing function
@@ -382,7 +387,7 @@ struct Func {
 
   void dump() const;
 
-  void ValidateCalls();
+  int ValidateCalls(std::queue<IR::Func *> *validation_queue);
 
   Block &block(BlockIndex index) { return blocks_[index.value]; }
   Cmd &Command(Register reg);
@@ -407,7 +412,8 @@ struct Func {
     return index;
   }
 
-  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx);
+  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx,
+                           bool *were_errors);
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
@@ -422,7 +428,7 @@ struct Func {
   // have ahead of time, probably a flat map or really just a vector.
   std::unordered_map<Argument, std::vector<std::unique_ptr<Property>>>
       preconditions_;
-  bool has_been_validated_ = false;
+  int num_errors_ = -1; // -1 indicates not yet validated
 };
 
 template <typename T>

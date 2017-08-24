@@ -51,8 +51,15 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify preconditions") {
-    for (auto &fn : IR::Func::All) { 
-      fn->ValidateCalls(); }
+    std::queue<IR::Func*> validation_queue;
+    for (const auto &fn : IR::Func::All) { validation_queue.push(fn.get()); }
+
+    int num_errors = 0;
+    while (!validation_queue.empty()) {
+      auto* fn = validation_queue.front();
+      validation_queue.pop();
+      num_errors += fn->ValidateCalls(&validation_queue);
+    }
   }
 
   return 0;

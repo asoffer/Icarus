@@ -735,6 +735,10 @@ void ImplicitCapture(AST::Identifier *id) {
   implicit_capture[id->decl][id->loc.file_name()][id->loc.line_num].push_back(
       id->loc.offset);
 }
+
+void FailedPrecondition(const IR::Property &property) {
+  DisplayErrorMessage("Precondition failed.", nullptr, property.loc, 1);
+}
 } // namespace LogError
 
 

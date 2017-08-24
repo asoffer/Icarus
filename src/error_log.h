@@ -72,6 +72,7 @@ namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id);
 void AmbiguousIdentifier(AST::Identifier *id);
 void ImplicitCapture(AST::Identifier *id);
+void FailedPrecondition(const IR::Property& property);
 } // namespace LogError
 
 namespace ErrorLog {
