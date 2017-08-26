@@ -239,13 +239,11 @@ void Block::dump(size_t indent) const {
 void Jump::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ');
   switch (type) {
-  case Type::Uncond:
-    std::cerr << "jmp #" << block_index.value << std::endl;
-    break;
+  case Type::Uncond: std::cerr << "jmp #" << block_index << std::endl; break;
   case Type::Cond:
     std::cerr << "cond " << cond_data.cond.to_string() << std::endl
-              << "T => #" << cond_data.true_block.value << "F => #"
-              << cond_data.false_block.value << std::endl;
+              << "T => #" << cond_data.true_block << "F => #"
+              << cond_data.false_block << std::endl;
     break;
   case Type::Ret: std::cerr << "return." << std::endl; break;
   case Type::None: std::cerr << "none." << std::endl; break;

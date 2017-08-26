@@ -9,11 +9,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "../cursor.h"
 #include "../base/debug.h"
 #include "../base/types.h"
 #include "../base/util.h"
 #include "../base/variant.h"
+#include "../cursor.h"
 
 struct Type;
 struct Function;
@@ -33,20 +33,12 @@ namespace IR {
 struct Val;
 struct Func;
 
-struct BlockIndex {
-  i32 value = -2;
-  bool is_none() { return value == -1; }
-};
-inline bool operator==(BlockIndex lhs, BlockIndex rhs) {
-  return lhs.value == rhs.value;
-}
-
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
 struct Property {
   Property(const Cursor &loc) : loc(loc) {}
   virtual ~Property() {}
-  virtual Validity Validate(const Val& val) const = 0;
+  virtual Validity Validate(const Val &val) const = 0;
 
   Cursor loc;
 };
@@ -69,48 +61,15 @@ template <typename T> struct UpperBound : public Property {
   T max_;
 };
 
-struct Register {
-
-  Register(i32 index) : index(index) {}
-  Register(const Register &reg)
-      : index(reg.index) /*, prop_(base::wrap_unique(reg.prop_->clone()))*/ {}
-
-  i32 index                       = -1;
-  std::unique_ptr<Property> prop_ = nullptr;
-};
-
-inline bool operator==(Register lhs, Register rhs) {
-  return lhs.index == rhs.index;
-}
-
-struct Argument {
-
-  Argument(i32 value) : value(value) {}
-  Argument(const Argument &arg)
-      : value(arg.value) /*, prop_(base::wrap_unique(reg.prop_->clone()))*/ {}
-
-  i32 value                       = -1;
-  std::unique_ptr<Property> prop_ = nullptr;
-};
-
-inline bool operator==(Argument lhs, Argument rhs) {
-  return lhs.value == rhs.value;
-}
-
+DEFINE_STRONG_INT(Register, i32, -1);
+DEFINE_STRONG_INT(Argument, i32, -1);
+DEFINE_STRONG_INT(BlockIndex, i32, -1);
+DEFINE_STRONG_INT(EnumVal, size_t, 0);
 } // namespace IR
 
-namespace std {
-template <> struct hash<IR::Register> {
-  decltype(auto) operator()(IR::Register r) const noexcept {
-    return std::hash<i32>{}(r.index);
-  }
-};
-template <> struct hash<IR::Argument> {
-  decltype(auto) operator()(IR::Argument a) const noexcept {
-    return std::hash<i32>{}(a.value);
-  }
-};
-} // namespace std
+DEFINE_STRONG_INT_HASH(IR::Register);
+DEFINE_STRONG_INT_HASH(IR::Argument);
+DEFINE_STRONG_INT_HASH(IR::BlockIndex);
 
 namespace IR {
 struct Addr {
@@ -121,19 +80,8 @@ struct Addr {
     void *as_heap;
   };
 
- std::string to_string() const;
+  std::string to_string() const;
 };
-
-#define INT_TYPE(base_type, Ty)                                                \
-  struct Ty {                                                                  \
-    base_type value;                                                           \
-  };                                                                           \
-  inline bool operator==(Ty lhs, Ty rhs) { return lhs.value == rhs.value; }    \
-  inline bool operator!=(Ty lhs, Ty rhs) { return !(lhs == rhs); }             \
-  /* This only exists so we can add a semicolon after the macro */             \
-  struct Ty
-
-INT_TYPE(size_t, EnumVal);
 
 bool operator==(Addr lhs, Addr rhs);
 inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
@@ -153,19 +101,20 @@ struct Val {
   static Val HeapAddr(void *addr, ::Type *t);
   static Val StackAddr(u64 addr, ::Type *t);
   static Val Bool(bool b) { return Val(::Bool, b); }
-  static Val Char(char c) { return Val( ::Char, c); }
-  static Val Real(double r) { return Val( ::Real, r); }
-  static Val Int(i64 n) { return Val( ::Int, n); }
-  static Val Uint(u64 n) { return Val( ::Uint, n); }
+  static Val Char(char c) { return Val(::Char, c); }
+  static Val Real(double r) { return Val(::Real, r); }
+  static Val Int(i64 n) { return Val(::Int, n); }
+  static Val Uint(u64 n) { return Val(::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
-  static Val Type(::Type *t) { return Val( ::Type_, t); }
+  static Val Type(::Type *t) { return Val(::Type_, t); }
   static Val CodeBlock(AST::CodeBlock *block) { return Val(::Code, block); }
   static Val Func(::IR::Func *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
-  static Val Precondition(const std::vector<std::unique_ptr<Property>> *precondition);
+  static Val
+  Precondition(const std::vector<std::unique_ptr<Property>> *precondition);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
@@ -178,25 +127,46 @@ private:
   template <typename T> Val(::Type *t, T val) : type(t), value(val) {}
 };
 
-inline bool operator==(const Val& lhs, const Val& rhs) {
+inline bool operator==(const Val &lhs, const Val &rhs) {
   return lhs.type == rhs.type && lhs.value == rhs.value;
 }
-inline bool operator!= (const Val& lhs, const Val& rhs) { return !(lhs == rhs); }
+inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
 
 enum class Op : char {
-  Trunc, Extend,
+  Trunc,
+  Extend,
   Neg, // ! for bool, - for numeric types
-  Add, Sub, Mul, Div, Mod, // numeric types only
-  Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
-  And, Or, Xor, // bool only
-  Print, Malloc, Free,
-  Load, Store,
-  ArrayLength, ArrayData,
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Mod, // numeric types only
+  Lt,
+  Le,
+  Eq,
+  Ne,
+  Gt,
+  Ge, // numeric types only
+  And,
+  Or,
+  Xor, // bool only
+  Print,
+  Malloc,
+  Free,
+  Load,
+  Store,
+  ArrayLength,
+  ArrayData,
   PtrIncr,
-  Phi, Field,
-  Call, Cast,
-  Nop, SetReturn,
-  Arrow, Array, Ptr,
+  Phi,
+  Field,
+  Call,
+  Cast,
+  Nop,
+  SetReturn,
+  Arrow,
+  Array,
+  Ptr,
   Alloca,
   Contextualize,
   Validate,
@@ -208,11 +178,11 @@ struct Cmd;
 struct Stack {
   Stack() = delete;
   Stack(size_t cap) : capacity_(cap), stack_(malloc(capacity_)) {}
-  Stack(const Stack&) = delete;
-  Stack(Stack&& other) {
+  Stack(const Stack &) = delete;
+  Stack(Stack &&other) {
     free(stack_);
-    stack_ = other.stack_;
-    other.stack_ = nullptr;
+    stack_          = other.stack_;
+    other.stack_    = nullptr;
     other.capacity_ = other.size_ = 0;
   }
   ~Stack() { free(stack_); }
@@ -267,16 +237,16 @@ struct ExecContext {
   std::stack<Frame> call_stack;
 
   BlockIndex ExecuteBlock();
-  Val ExecuteCmd(const Cmd& cmd);
+  Val ExecuteCmd(const Cmd &cmd);
   void Resolve(Val *v) const;
 
   Val reg(Register r) const {
-    ASSERT_GE(r.index, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.index)];
+    ASSERT_GE(r.value, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
   Val &reg(Register r) {
-    ASSERT_GE(r.index, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.index)];
+    ASSERT_GE(r.value, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
   Val arg(Argument a) const { return call_stack.top().args_[a.value]; }
 
@@ -329,7 +299,7 @@ Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
-Val Contextualize(AST::CodeBlock* code, std::vector<IR::Val> args);
+Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
 Val Validate(Val v1,
              const std::vector<std::unique_ptr<Property>> *precondition);
 
@@ -400,25 +370,16 @@ struct Func {
     return index;
   }
 
-  BlockIndex entry() const {
-    BlockIndex index;
-    index.value = 0;
-    return index;
-  }
-
-  BlockIndex exit() const {
-    BlockIndex index;
-    index.value = 1;
-    return index;
-  }
+  BlockIndex entry() const { return BlockIndex(0); }
+  BlockIndex exit() const { return BlockIndex(1); }
 
   std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx,
                            bool *were_errors);
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
-  ::Function *type = nullptr; 
-  i32 num_cmds_ = 0;
+  ::Function *type = nullptr;
+  i32 num_cmds_    = 0;
   std::string name;
   std::vector<Block> blocks_;
   std::unordered_map<Register, std::pair<BlockIndex, int>> reg_map_;
@@ -431,15 +392,13 @@ struct Func {
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 
-template <typename T>
-Validity UpperBound<T>::Validate(const Val &val) const {
+template <typename T> Validity UpperBound<T>::Validate(const Val &val) const {
   return (val.value.template as<T>() < max_) ? Validity::Always
                                              : Validity::Never;
 }
 
 struct FuncResetter {
-  FuncResetter(Func *fn)
-      : old_fn_(Func::Current), old_block_(Block::Current) {
+  FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(Block::Current) {
     Func::Current = fn;
   }
   ~FuncResetter() {

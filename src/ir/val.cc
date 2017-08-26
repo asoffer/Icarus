@@ -47,11 +47,9 @@ Val Val::Precondition(
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
   if (value.is<Argument>()) {
-    return type->to_string() + " a." +
-           std::to_string(value.as<Argument>().value);
+    return type->to_string() + " a." + std::to_string(value.as<Argument>());
   } else if (value.is<Register>()) {
-    return type->to_string() + " r." +
-           std::to_string(value.as<Register>().index);
+    return type->to_string() + " r." + std::to_string(value.as<Register>());
   } else if (value.is<::IR::Addr>()) {
     return value.as<::IR::Addr>().to_string();
   } else if (value.is<bool>()) {
@@ -79,7 +77,7 @@ std::string Val::to_string() const {
   } else if (value.is<AST::Expression *>()) {
     NOT_YET();
   } else if (value.is<BlockIndex>()) {
-    return "block #" + std::to_string(value.as<IR::BlockIndex>().value);
+    return "block #" + std::to_string(value.as<IR::BlockIndex>());
   } else if (value.is<std::string>()) {
     return "string \"" + value.as<std::string>() + "\"";
   } else if (value.is<const std::vector<std::unique_ptr<Property>>*>()) {

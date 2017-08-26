@@ -757,7 +757,7 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx,
 
   while (true) {
     auto block_index = ctx->ExecuteBlock();
-    if (block_index.is_none()) {
+    if (block_index.is_default()) {
       auto rets = std::move(ctx->call_stack.top().rets_);
       ctx->call_stack.pop();
       return rets;
