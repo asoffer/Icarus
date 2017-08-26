@@ -3,10 +3,24 @@
 #include "../error_log.h"
 
 namespace IR {
-int Block::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
-  int num_errors = 0;
-  // TODO track data in registers
-  for (auto &cmd : cmds_) {
+int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
+  if (num_errors_ >= 0) { return num_errors_; }
+
+  std::queue<Register> register_validation_queue;
+  for (const auto& kv : reg_map_) {
+    register_validation_queue.push(kv.first);
+  }
+
+  while (!register_validation_queue.empty()) {
+    Register curr_reg = register_validation_queue.front();
+    const auto &cmd   = Command(curr_reg);
+    register_validation_queue.pop();
+
+    // TODO only do this if there's an update.
+    for (auto reg : reg_references_[curr_reg]) {
+      register_validation_queue.push(reg);
+    }
+
     switch (cmd.op_code) {
     case Op::Print: break;
     case Op::Call:
@@ -14,7 +28,9 @@ int Block::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
       break;
     case Op::Validate:
       if (cmd.args[0].value.is<Register>()) {
+        LOG << cmd.args[0].value.as<Register>();
       } else if (cmd.args[0].value.is<Argument>()) {
+        LOG << cmd.args[0].value.as<Argument>();
       } else {
         for (const auto &property :
              *cmd.args[1]
@@ -22,7 +38,7 @@ int Block::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
           switch (property->Validate(cmd.args[0])) {
           case Validity::Always: continue;
           default:
-            ++num_errors;
+            ++num_errors_;
             LogError::FailedPrecondition(*property);
             break;
           }
@@ -31,17 +47,7 @@ int Block::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
     default:; // TODO
     }
   }
-  return num_errors;
-}
 
-int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
-  if (num_errors_ >= 0) { return num_errors_; }
-
-  // TODO track data across blocks
-  num_errors_ = 0;
-  for (auto &block : blocks_) {
-    num_errors_ += block.ValidateCalls(validation_queue);
-  }
   return num_errors_;
 }
 } // namespace IR

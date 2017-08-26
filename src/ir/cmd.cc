@@ -9,9 +9,20 @@ Func *Func::Current;
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
   auto reg_index = Register(Func::Current->num_cmds_++);
+  result         = Val::Reg(reg_index, t);
+
+  for (const auto &fn_arg : args) {
+    if (fn_arg.value.is<Argument>()) {
+      Func::Current->arg_references_[fn_arg.value.as<Argument>()].push_back(
+          result.value.as<Register>());
+    } else if (fn_arg.value.is<Register>()) {
+      Func::Current->reg_references_[fn_arg.value.as<Register>()].push_back(
+          result.value.as<Register>());
+    }
+  }
+
   Func::Current->reg_map_[reg_index] = std::make_pair(
       Block::Current, Func::Current->block(Block::Current).cmds_.size());
-  result = Val::Reg(reg_index, t);
 }
 
 Val SetReturn(size_t n, Val v) {

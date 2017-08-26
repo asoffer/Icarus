@@ -133,40 +133,18 @@ inline bool operator==(const Val &lhs, const Val &rhs) {
 inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
 
 enum class Op : char {
-  Trunc,
-  Extend,
+  Trunc, Extend,
   Neg, // ! for bool, - for numeric types
-  Add,
-  Sub,
-  Mul,
-  Div,
-  Mod, // numeric types only
-  Lt,
-  Le,
-  Eq,
-  Ne,
-  Gt,
-  Ge, // numeric types only
-  And,
-  Or,
-  Xor, // bool only
+  Add, Sub, Mul, Div, Mod, // numeric types only
+  Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
+  And, Or, Xor, // bool only
   Print,
-  Malloc,
-  Free,
-  Load,
-  Store,
-  ArrayLength,
-  ArrayData,
-  PtrIncr,
-  Phi,
-  Field,
-  Call,
-  Cast,
+  Malloc, Free,
+  Load, Store,
+  ArrayLength, ArrayData, PtrIncr,
+  Phi, Field, Call, Cast,
   Nop,
-  SetReturn,
-  Arrow,
-  Array,
-  Ptr,
+  SetReturn, Arrow, Array, Ptr,
   Alloca,
   Contextualize,
   Validate,
@@ -339,7 +317,6 @@ struct Block {
   Block() = delete;
   Block(Func *fn) : fn_(fn) {}
 
-  int ValidateCalls(std::queue<IR::Func *> *validation_queue);
   void dump(size_t indent) const;
 
   Func *fn_; // Containing function
@@ -382,6 +359,10 @@ struct Func {
   i32 num_cmds_    = 0;
   std::string name;
   std::vector<Block> blocks_;
+  // TODO many of these maps could and should be vectors except they're keyed on
+  // strong ints. Consider adding a strong int vector.
+  std::unordered_map<Argument, std::vector<Register>> arg_references_;
+  std::unordered_map<Register, std::vector<Register>> reg_references_;
   std::unordered_map<Register, std::pair<BlockIndex, int>> reg_map_;
 
   // TODO Probably a better container here. One that consolidates preconditions
