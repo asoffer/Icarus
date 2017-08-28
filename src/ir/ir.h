@@ -259,26 +259,27 @@ Val Gt(Val v1, Val v2);
 Val And(Val v1, Val v2);
 Val Or(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
-Val Print(Val v);
 Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals);
-Val SetReturn(size_t n, Val v);
 Val Load(Val v);
-Val Store(Val val, Val loc);
 Val ArrayLength(Val v);
 Val ArrayData(Val v);
 Val PtrIncr(Val v1, Val v2);
 Val Malloc(Type *t, Val v);
-Val Free(Val v);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
-Val Validate(Val v1,
-             const std::vector<std::unique_ptr<Property>> *precondition);
+
+void SetReturn(size_t n, Val v2);
+void Print(Val v);
+void Store(Val val, Val loc);
+void Free(Val v);
+void Validate(Val v1,
+              const std::vector<std::unique_ptr<Property>> *precondition);
 
 CmdIndex Phi(Type *t);
 
@@ -366,7 +367,7 @@ struct Func {
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
   std::vector<CmdIndex> no_dependencies_;
-  std::unordered_map<Register, std::vector<CmdIndex>> reg_references_;
+  std::unordered_map<Register, std::vector<CmdIndex>> references_;
 
   // TODO Probably a better container here. One that consolidates preconditions
   // (what about tracing errors?) and since we know how many arguments we'll

@@ -8,7 +8,8 @@ Func *Func::Current;
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
-  result = Val::Reg(Register(Func::Current->num_cmds_++), t);
+  result = (t == nullptr) ? Val::None()
+                          : Val::Reg(Register(Func::Current->num_cmds_++), t);
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
@@ -21,19 +22,13 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
   for (const auto &fn_arg : args) {
     if (fn_arg.value.is<Register>()) {
       has_dependencies = true;
-      Func::Current->reg_references_[fn_arg.value.as<Register>()].push_back(
+      Func::Current->references_[fn_arg.value.as<Register>()].push_back(
           cmd_index);
     }
   }
   if (!has_dependencies) {
     IR::Func::Current->no_dependencies_.push_back(cmd_index);
   }
-}
-
-Val SetReturn(size_t n, Val v) {
-  Cmd cmd(Void, Op::SetReturn, {Val::Uint(n), std::move(v)});
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.result;
 }
 
 Val Field(Val v, size_t n) {
@@ -44,6 +39,16 @@ Val Field(Val v, size_t n) {
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
   return cmd.result;
 }
+
+#define MAKE_VOID(op)                                                          \
+  ASSERT(Func::Current, "");                                                   \
+  Cmd cmd(nullptr, op, {std::move(v)});                                        \
+  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+
+#define MAKE_VOID2(op)                                                         \
+  ASSERT(Func::Current, "");                                                   \
+  Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
+  Func::Current->block(Block::Current).cmds_.push_back(cmd);
 
 #define MAKE_AND_RETURN(type, op)                                              \
   ASSERT(Func::Current, "");                                                   \
@@ -64,10 +69,10 @@ Val Malloc(Type *t, Val v) {
 Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
 Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
 Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
-Val Print(Val v) { MAKE_AND_RETURN(Void, Op::Print); }
-Val Free(Val v) {
+void Print(Val v) { MAKE_VOID(Op::Print); }
+void Free(Val v) {
   ASSERT_TYPE(Pointer, v.type);
-  MAKE_AND_RETURN(Void, Op::Free);
+  MAKE_VOID(Op::Free);
 }
 
 Val Alloca(Type *t) {
@@ -108,9 +113,16 @@ Val ArrayData(Val v) {
   MAKE_AND_RETURN(Ptr(Ptr(array_type->data_type)), Op::ArrayData);
 }
 
-Val Store(Val v1, Val v2) {
+void SetReturn(size_t n, Val v2) {
+  auto v1 = Val::Uint(n);
+  MAKE_VOID2(Op::SetReturn);
+}
+
+
+
+void Store(Val v1, Val v2) {
   ASSERT_TYPE(Pointer, v2.type);
-  MAKE_AND_RETURN2(Void, Op::Store);
+  MAKE_VOID2(Op::Store);
 }
 
 Val PtrIncr(Val v1, Val v2) {
@@ -161,10 +173,11 @@ Val Ne(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ne); }
 Val Ge(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ge); }
 Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
 
-Val Validate(Val v1,
+void Validate(Val v1,
              const std::vector<std::unique_ptr<Property>> *precondition) {
   auto v2 = Val::Precondition(precondition);
-  MAKE_AND_RETURN2(::Void, Op::Validate); }
+  MAKE_VOID2(Op::Validate);
+}
 
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
@@ -174,6 +187,9 @@ Val Cast(Val v1, Val v2) {
 
 #undef MAKE_AND_RETURN2
 #undef MAKE_AND_RETURN
+#undef MAKE_VOID2
+#undef MAKE_VOID
+
 
 CmdIndex Phi(Type *t) {
   CmdIndex cmd_index{
@@ -200,7 +216,8 @@ Val Call(Val fn, std::vector<Val> vals) {
 }
 
 void Cmd::dump(size_t indent) const {
-  std::cerr << std::string(indent, ' ') << result.to_string() << " = ";
+  std::cerr << std::string(indent, ' ');
+  if (result.type != nullptr) { std::cerr << result.to_string() << " = "; }
   switch (op_code) {
   case Op::Malloc: std::cerr << "malloc"; break;
   case Op::Free: std::cerr << "free"; break;

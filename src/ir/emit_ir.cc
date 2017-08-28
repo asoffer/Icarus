@@ -621,7 +621,8 @@ IR::Val AST::Binop::EmitIR() {
   case Language::Operator::op_name##Eq: {                                      \
     auto lhs_lval = lhs->EmitLVal();                                           \
     auto rhs_ir   = rhs->EmitIR();                                             \
-    return IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);     \
+    IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
+    return IR::Val::None();                                                    \
   } break
     CASE_ASSIGN_EQ(Xor);
     CASE_ASSIGN_EQ(Add);
