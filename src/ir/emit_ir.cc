@@ -55,7 +55,7 @@ IR::Val AsciiFunc() {
     auto fn = new IR::Func(Func(Uint, Char));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
-      IR::SetReturn(0, IR::Trunc(IR::Val::Arg(::Uint, 0)));
+      IR::SetReturn(0, IR::Trunc(fn->Argument(0)));
       IR::Jump::Unconditional(fn->exit());
 
       IR::Block::Current = fn->exit();
@@ -72,7 +72,7 @@ IR::Val OrdFunc() {
     auto fn = new IR::Func(Func(Char, Uint));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
-      IR::SetReturn(0, IR::Extend(IR::Val::Arg(::Uint, 0)));
+      IR::SetReturn(0, IR::Extend(fn->Argument(0)));
       IR::Jump::Unconditional(fn->exit());
 
       IR::Block::Current = fn->exit();
@@ -196,7 +196,7 @@ IR::Val AST::For::EmitIR() {
     IR::Jump::Unconditional(phi);
   }
 
-  std::vector<IR::Val> phis;
+  std::vector<IR::CmdIndex> phis;
   phis.reserve(iterators.size());
   { // Phi block
     IR::Block::Current = phi;
@@ -227,17 +227,18 @@ IR::Val AST::For::EmitIR() {
   { // Incr block
     IR::Block::Current = incr;
     for (auto iter : phis) {
-      if (iter.type == Int) {
-        incr_vals.push_back(IR::Add(iter, IR::Val::Int(1)));
-      } else if (iter.type == Uint) {
-        incr_vals.push_back(IR::Add(iter, IR::Val::Uint(1)));
-      } else if (iter.type == Char) {
-        incr_vals.push_back(IR::Add(iter, IR::Val::Char(1)));
-      } else if (iter.type->is<Enum>()) {
+      auto phi_reg = IR::Func::Current->Command(iter).result;
+      if (phi_reg.type == Int) {
+        incr_vals.push_back(IR::Add(phi_reg, IR::Val::Int(1)));
+      } else if (phi_reg.type == Uint) {
+        incr_vals.push_back(IR::Add(phi_reg, IR::Val::Uint(1)));
+      } else if (phi_reg.type == Char) {
+        incr_vals.push_back(IR::Add(phi_reg, IR::Val::Char(1)));
+      } else if (phi_reg.type->is<Enum>()) {
         incr_vals.push_back(
-            IR::Add(iter, IR::Val::Enum(ptr_cast<Enum>(iter.type), 1)));
-      } else if (iter.type->is<Pointer>()) {
-        incr_vals.push_back(IR::PtrIncr(iter, IR::Val::Uint(1)));
+            IR::Add(phi_reg, IR::Val::Enum(ptr_cast<Enum>(phi_reg.type), 1)));
+      } else if (phi_reg.type->is<Pointer>()) {
+        incr_vals.push_back(IR::PtrIncr(phi_reg, IR::Val::Uint(1)));
       } else {
         NOT_YET();
       }
@@ -247,10 +248,9 @@ IR::Val AST::For::EmitIR() {
 
   { // Complete phi definition
     for (size_t i = 0; i < iterators.size(); ++i) {
-      IR::Func::Current->SetArgs(phis[i].value.as<IR::Register>(),
-                                 {IR::Val::Block(init), init_vals[i],
-                                  IR::Val::Block(incr), incr_vals[i]});
-      iterators[i]->addr = phis[i];
+      IR::Func::Current->SetArgs(phis[i], {IR::Val::Block(init), init_vals[i],
+                                           IR::Val::Block(incr), incr_vals[i]});
+      iterators[i]->addr = IR::Func::Current->Command(phis[i]).result;
     }
   }
 
@@ -258,7 +258,7 @@ IR::Val AST::For::EmitIR() {
     IR::Block::Current = cond;
     for (size_t i = 0; i < iterators.size(); ++i) {
       auto *decl = iterators[i].get();
-      auto reg   = phis[i];
+      auto reg   = IR::Func::Current->Command(phis[i]).result;
       auto next  = IR::Func::Current->AddBlock();
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
@@ -342,8 +342,8 @@ IR::Val AST::Case::EmitIR() {
 
   IR::Block::Current = land;
   auto phi           = IR::Phi(type);
-  IR::Func::Current->SetArgs(phi.value.as<IR::Register>(), std::move(phi_args));
-  return phi;
+  IR::Func::Current->SetArgs(phi, std::move(phi_args));
+  return IR::Func::Current->Command(phi).result;
 }
 
 IR::Val AST::ScopeLiteral::EmitIR() {
@@ -591,11 +591,10 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(),
-                               {IR::Val::Block(lhs_end_block),
-                                IR::Val::Bool(true),
-                                IR::Val::Block(rhs_end_block), rhs_val});
-    return phi;
+    IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
+                                     IR::Val::Bool(true),
+                                     IR::Val::Block(rhs_end_block), rhs_val});
+    return IR::Func::Current->Command(phi).result;
   } break;
   case Language::Operator::AndEq: {
     auto land_block = IR::Func::Current->AddBlock();
@@ -613,11 +612,10 @@ IR::Val AST::Binop::EmitIR() {
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(),
-                               {IR::Val::Block(lhs_end_block),
-                                IR::Val::Bool(false),
-                                IR::Val::Block(rhs_end_block), rhs_val});
-    return phi;
+    IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
+                                     IR::Val::Bool(false),
+                                    IR::Val::Block(rhs_end_block), rhs_val});
+    return IR::Func::Current->Command(phi).result;
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
@@ -702,9 +700,10 @@ IR::Val AST::ChainOp::EmitIR() {
     phi_args.push_back(IR::Val::Bool(true));
 
     auto phi = IR::Phi(Bool);
-    IR::Func::Current->SetArgs(phi.value.as<IR::Register>(), std::move(phi_args));
-    return phi;
+    IR::Func::Current->SetArgs(phi, std::move(phi_args));
+    return IR::Func::Current->Command(phi).result;
   }
+
 
   NOT_YET();
 }
@@ -730,9 +729,7 @@ IR::Val AST::FunctionLiteral::EmitIR() {
         auto &arg = inputs[i];
         ASSERT_EQ(arg->addr, IR::Val::None());
         // This whole loop can be done on construction!
-        arg->addr =
-            IR::Val::Arg(arg->type->is_big() ? Ptr(arg->type) : arg->type,
-                         static_cast<i32>(i));
+        arg->addr = IR::Func::Current->Argument(static_cast<i32>(i));
       }
 
       for (auto scope : fn_scope->innards_) {

@@ -12,14 +12,14 @@ void ChainOp::GenerateRequirements() const {
   ASSERT_EQ(2, exprs.size());
   if (exprs[0]->is<Identifier>()) {
     auto *id_addr = &ptr_cast<Identifier>(exprs[0].get())->decl->addr;
-    if (id_addr->value.is<IR::Argument>()) {
+    if (id_addr->value.is<IR::Register>()) {
       switch (ops[0]) {
       case Language::Operator::Lt: {
         // TODO actually, bound this by the upper bound for the evaluated
         // argument.
         auto upper_bound = Evaluate(exprs[1].get());
         if (upper_bound.value.is<i64>()) {
-          containing_function->preconditions_[id_addr->value.is<IR::Argument>()]
+          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
               .push_back(std::make_unique<IR::UpperBound<i64>>(
                   loc, upper_bound.value.as<i64>()));
         }

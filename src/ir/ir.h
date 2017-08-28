@@ -62,13 +62,16 @@ template <typename T> struct UpperBound : public Property {
 };
 
 DEFINE_STRONG_INT(Register, i32, -1);
-DEFINE_STRONG_INT(Argument, i32, -1);
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
+
+struct CmdIndex {
+  BlockIndex block;
+  i32 cmd;
+};
 } // namespace IR
 
 DEFINE_STRONG_INT_HASH(IR::Register);
-DEFINE_STRONG_INT_HASH(IR::Argument);
 DEFINE_STRONG_INT_HASH(IR::BlockIndex);
 
 namespace IR {
@@ -88,13 +91,12 @@ inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   ::Type *type = nullptr;
-  base::variant<Argument, Register, ::IR::Addr, bool, char, double, i64, u64,
-                EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
-                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string,
+  base::variant<Register, ::IR::Addr, bool, char, double, i64, u64, EnumVal,
+                ::Type *, ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock *,
+                AST::Expression *, BlockIndex, std::string,
                 const std::vector<std::unique_ptr<Property>> *>
       value{false};
 
-  static Val Arg(Type *t, i32 n) { return Val(t, Argument{n}); }
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
   static Val GlobalAddr(u64 addr, ::Type *t);
@@ -192,7 +194,7 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(Func *fn, std::vector<Val> arguments);
+    Frame(Func *fn, const std::vector<Val>& arguments);
 
     void MoveTo(BlockIndex block_index) {
       ASSERT_GE(block_index.value, 0);
@@ -206,7 +208,6 @@ struct ExecContext {
 
     // Indexed first by block then by instruction number
     std::vector<Val> regs_ = {};
-    std::vector<Val> args_ = {};
     std::vector<Val> rets_ = {};
   };
 
@@ -226,7 +227,6 @@ struct ExecContext {
     ASSERT_GE(r.value, 0);
     return call_stack.top().regs_[static_cast<u32>(r.value)];
   }
-  Val arg(Argument a) const { return call_stack.top().args_[a.value]; }
 
   Stack stack_;
 };
@@ -271,7 +271,6 @@ Val ArrayData(Val v);
 Val PtrIncr(Val v1, Val v2);
 Val Malloc(Type *t, Val v);
 Val Free(Val v);
-Val Phi(Type *t);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
 Val Array(Val v1, Val v2);
@@ -280,6 +279,8 @@ Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
 Val Validate(Val v1,
              const std::vector<std::unique_ptr<Property>> *precondition);
+
+CmdIndex Phi(Type *t);
 
 struct Jump {
   static Jump &Current();
@@ -333,12 +334,15 @@ struct Func {
       : type(fn_type), blocks_(2, Block(this)) {}
 
   void dump() const;
+  Val Argument(u32 n);
 
   int ValidateCalls(std::queue<IR::Func *> *validation_queue);
 
   Block &block(BlockIndex index) { return blocks_[index.value]; }
-  Cmd &Command(Register reg);
-  void SetArgs(Register reg, std::vector<IR::Val> args);
+  Cmd &Command(CmdIndex cmd_index) {
+    return blocks_[cmd_index.block.value].cmds_[cmd_index.cmd];
+  }
+  void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
     BlockIndex index;
@@ -361,14 +365,13 @@ struct Func {
   std::vector<Block> blocks_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
-  std::unordered_map<Argument, std::vector<Register>> arg_references_;
-  std::unordered_map<Register, std::vector<Register>> reg_references_;
-  std::unordered_map<Register, std::pair<BlockIndex, int>> reg_map_;
+  std::vector<CmdIndex> no_dependencies_;
+  std::unordered_map<Register, std::vector<CmdIndex>> reg_references_;
 
   // TODO Probably a better container here. One that consolidates preconditions
   // (what about tracing errors?) and since we know how many arguments we'll
   // have ahead of time, probably a flat map or really just a vector.
-  std::unordered_map<Argument, std::vector<std::unique_ptr<Property>>>
+  std::unordered_map<Register, std::vector<std::unique_ptr<Property>>>
       preconditions_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };

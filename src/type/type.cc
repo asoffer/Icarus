@@ -44,15 +44,13 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
 
-      auto lhs_len =
-          lhs_type->fixed_length
-              ? IR::Val::Uint(lhs_type->len)
-              : IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(lhs_type), 0)));
+      auto lhs_len = lhs_type->fixed_length
+                         ? IR::Val::Uint(lhs_type->len)
+                         : IR::Load(IR::ArrayLength(fn->Argument(0)));
 
-      auto rhs_len =
-          rhs_type->fixed_length
-              ? IR::Val::Uint(rhs_type->len)
-              : IR::Load(IR::ArrayLength(IR::Val::Arg(Ptr(rhs_type), 1)));
+      auto rhs_len = rhs_type->fixed_length
+                         ? IR::Val::Uint(rhs_type->len)
+                         : IR::Load(IR::ArrayLength(fn->Argument(1)));
 
       auto len_cmp = IR::Eq(lhs_len, rhs_len);
 
@@ -74,34 +72,32 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::Jump::Return();
 
       IR::Block::Current = equal_len_block;
-      auto lhs_start =
-          IR::Index(IR::Val::Arg(Ptr(lhs_type), 0), IR::Val::Uint(0));
-      auto rhs_start =
-          IR::Index(IR::Val::Arg(Ptr(rhs_type), 1), IR::Val::Uint(0));
+      auto lhs_start     = IR::Index(fn->Argument(0), IR::Val::Uint(0));
+      auto rhs_start     = IR::Index(fn->Argument(1), IR::Val::Uint(0));
       auto lhs_end = IR::PtrIncr(lhs_start, lhs_len);
       IR::Jump::Unconditional(phi_block);
 
       IR::Block::Current = phi_block;
       auto lhs_phi       = IR::Phi(Ptr(lhs_type->data_type));
       auto rhs_phi       = IR::Phi(Ptr(rhs_type->data_type));
-      IR::Jump::Conditional(IR::Eq(lhs_phi, lhs_end), true_block, body_block);
+      auto lhs_phi_reg   = IR::Func::Current->Command(lhs_phi).result;
+      auto rhs_phi_reg   = IR::Func::Current->Command(rhs_phi).result;
+      IR::Jump::Conditional(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
 
       IR::Block::Current = body_block;
       // TODO what if data type is an array?
-      IR::Jump::Conditional(IR::Eq(IR::Load(lhs_phi), IR::Load(rhs_phi)),
+      IR::Jump::Conditional(IR::Eq(IR::Load(lhs_phi_reg), IR::Load(rhs_phi_reg)),
                             incr_block, false_block);
 
       IR::Block::Current = incr_block;
-      auto lhs_incr      = IR::PtrIncr(lhs_phi, IR::Val::Uint(1));
-      auto rhs_incr      = IR::PtrIncr(rhs_phi, IR::Val::Uint(1));
+      auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Uint(1));
+      auto rhs_incr      = IR::PtrIncr(rhs_phi_reg, IR::Val::Uint(1));
       IR::Jump::Unconditional(phi_block);
 
-      fn->SetArgs(lhs_phi.value.as<IR::Register>(),
-                  {IR::Val::Block(equal_len_block), lhs_start,
-                   IR::Val::Block(incr_block), lhs_incr});
-      fn->SetArgs(rhs_phi.value.as<IR::Register>(),
-                  {IR::Val::Block(equal_len_block), rhs_start,
-                   IR::Val::Block(incr_block), rhs_incr});
+      fn->SetArgs(lhs_phi, {IR::Val::Block(equal_len_block), lhs_start,
+                            IR::Val::Block(incr_block), lhs_incr});
+      fn->SetArgs(rhs_phi, {IR::Val::Block(equal_len_block), rhs_start,
+                            IR::Val::Block(incr_block), rhs_incr});
     }
   }
 

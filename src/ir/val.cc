@@ -46,9 +46,7 @@ Val Val::Precondition(
 
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
-  if (value.is<Argument>()) {
-    return type->to_string() + " a." + std::to_string(value.as<Argument>());
-  } else if (value.is<Register>()) {
+  if (value.is<Register>()) {
     return type->to_string() + " r." + std::to_string(value.as<Register>());
   } else if (value.is<::IR::Addr>()) {
     return value.as<::IR::Addr>().to_string();
@@ -127,6 +125,18 @@ bool operator==(Addr lhs, Addr rhs) {
 
 Block &ExecContext::current_block() {
   return call_stack.top().fn_->block(call_stack.top().current_);
+}
+
+Val Func::Argument(u32 n) {
+  Type *arg_type = nullptr;
+  if (type->input->is<Tuple>()) {
+    arg_type = ptr_cast<Tuple>(type->input)->entries AT(n);
+    if (arg_type->is_big()) { arg_type = Ptr(arg_type); }
+  } else {
+    ASSERT_EQ(n, 0);
+    arg_type = type->input;
+  }
+  return Val::Reg(Register(n), arg_type);
 }
 
 std::vector<std::unique_ptr<Func>> Func::All;

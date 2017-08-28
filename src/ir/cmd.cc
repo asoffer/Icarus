@@ -8,21 +8,26 @@ Func *Func::Current;
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
-  auto reg_index = Register(Func::Current->num_cmds_++);
-  result         = Val::Reg(reg_index, t);
+  result = Val::Reg(Register(Func::Current->num_cmds_++), t);
+  CmdIndex cmd_index{
+      Block::Current,
+      static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
+
+  bool has_dependencies = false;
+
+  // TODO deal with specialness of phi-nodes
+  if (op == Op::Phi) { has_dependencies = true; }
 
   for (const auto &fn_arg : args) {
-    if (fn_arg.value.is<Argument>()) {
-      Func::Current->arg_references_[fn_arg.value.as<Argument>()].push_back(
-          result.value.as<Register>());
-    } else if (fn_arg.value.is<Register>()) {
+    if (fn_arg.value.is<Register>()) {
+      has_dependencies = true;
       Func::Current->reg_references_[fn_arg.value.as<Register>()].push_back(
-          result.value.as<Register>());
+          cmd_index);
     }
   }
-
-  Func::Current->reg_map_[reg_index] = std::make_pair(
-      Block::Current, Func::Current->block(Block::Current).cmds_.size());
+  if (!has_dependencies) {
+    IR::Func::Current->no_dependencies_.push_back(cmd_index);
+  }
 }
 
 Val SetReturn(size_t n, Val v) {
@@ -170,10 +175,15 @@ Val Cast(Val v1, Val v2) {
 #undef MAKE_AND_RETURN2
 #undef MAKE_AND_RETURN
 
-Val Phi(Type *t) {
+CmdIndex Phi(Type *t) {
+  CmdIndex cmd_index{
+      Block::Current,
+      static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
+
   Cmd cmd(t, Op::Phi, {});
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.result;
+
+  return cmd_index;
 }
 
 Val Call(Val fn, std::vector<Val> vals) {
@@ -269,20 +279,17 @@ void Func::dump() const {
   }
 }
 
-ExecContext::Frame::Frame(Func *fn, std::vector<Val> arguments)
+ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
-      regs_(fn_->num_cmds_, IR::Val::None()), args_(std::move(arguments)),
-      rets_(1, IR::Val::None()) {}
-
-Cmd &Func::Command(Register reg) {
-  auto iter = reg_map_.find(reg);
-  ASSERT(iter != reg_map_.end(), "");
-  auto &block_and_index = iter->second;
-  return blocks_[block_and_index.first.value].cmds_[block_and_index.second];
+      regs_(fn_->num_cmds_, Val::None()), rets_(1, Val::None()) {
+  for (decltype(arguments.size()) i = 0; i < arguments.size(); ++i) {
+    regs_[i] = arguments[i];
+  }
 }
 
-void Func::SetArgs(Register reg, std::vector<IR::Val> args) {
-  Command(reg).args = std::move(args);
+void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
+  // TODO this should only be called for phi nodes
+  // TODO recompute dependencies.
+  Command(cmd_index).args = std::move(args);
 }
-
 } // namespace IR

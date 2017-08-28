@@ -20,7 +20,7 @@ void Array::EmitDestroy(IR::Val id_val) {
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
 
-      auto arg       = IR::Val::Arg(Ptr(this), 0);
+      auto arg       = destroy_func->Argument(0);
       auto loop_phi  = IR::Func::Current->AddBlock();
       auto loop_body = IR::Func::Current->AddBlock();
 
@@ -32,17 +32,17 @@ void Array::EmitDestroy(IR::Val id_val) {
 
       IR::Block::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
-      IR::Jump::Conditional(IR::Eq(phi, end_ptr), destroy_func->exit(),
+      auto phi_reg = IR::Func::Current->Command(phi).result;
+      IR::Jump::Conditional(IR::Eq(phi_reg, end_ptr), destroy_func->exit(),
                             loop_body);
 
       IR::Block::Current = loop_body;
-      data_type->EmitDestroy(phi);
+      data_type->EmitDestroy(phi_reg);
       IR::Jump::Unconditional(loop_phi);
 
-      destroy_func->SetArgs(phi.value.as<IR::Register>(),
-                            {IR::Val::Block(destroy_func->entry()), ptr,
-                             IR::Val::Block(loop_body),
-                             IR::PtrIncr(phi, IR::Val::Uint(1))});
+      destroy_func->SetArgs(phi, {IR::Val::Block(destroy_func->entry()), ptr,
+                                  IR::Val::Block(loop_body),
+                                  IR::PtrIncr(phi_reg, IR::Val::Uint(1))});
 
       IR::Block::Current = destroy_func->exit();
       if (!fixed_length) { IR::Free(IR::Load(IR::ArrayData(arg))); }
@@ -62,7 +62,7 @@ void Struct::EmitDestroy(IR::Val id_val) {
     CURRENT_FUNC(destroy_func) {
       IR::Block::Current = destroy_func->entry();
       for (size_t i = 0; i < field_type.size(); ++i) {
-        field_type[i]->EmitDestroy(IR::Field(IR::Val::Arg(this, 0), i));
+        field_type[i]->EmitDestroy(IR::Field(destroy_func->Argument(0), i));
       }
       IR::Jump::Return();
     }

@@ -32,8 +32,8 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
 
     CURRENT_FUNC(assign_func) {
       IR::Block::Current = assign_func->entry();
-      auto val           = IR::Val::Arg(Ptr(from_type), 0);
-      auto var           = IR::Val::Arg(Ptr(to_type), 1);
+      auto val           = assign_func->Argument(0);
+      auto var           = assign_func->Argument(1);
       IR::Val len        = from_array_type->fixed_length
                         ? IR::Val::Uint(from_array_type->len)
                         : IR::Load(IR::ArrayLength(val));
@@ -60,24 +60,26 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
       IR::Block::Current = loop_phi;
       auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
       auto to_phi        = IR::Phi(Ptr(to_array_type->data_type));
+      auto from_phi_reg  = IR::Func::Current->Command(from_phi).result;
+      auto to_phi_reg    = IR::Func::Current->Command(to_phi).result;
 
-      IR::Jump::Conditional(IR::Eq(from_phi, from_end_ptr), assign_func->exit(),
-                            loop_body);
+      IR::Jump::Conditional(IR::Eq(from_phi_reg, from_end_ptr),
+                            assign_func->exit(), loop_body);
 
       IR::Block::Current = loop_body;
       EmitCopyInit(from_array_type->data_type, to_array_type->data_type,
-                   PtrCallFix(from_phi), to_phi);
+                   PtrCallFix(from_phi_reg), to_phi_reg);
 
       IR::Jump::Unconditional(loop_phi);
 
-      IR::Func::Current->SetArgs(from_phi.value.as<IR::Register>(),
-                                 {IR::Val::Block(init_block), from_ptr,
-                                  IR::Val::Block(IR::Block::Current),
-                                  IR::PtrIncr(from_phi, IR::Val::Uint(1ul))});
-      IR::Func::Current->SetArgs(to_phi.value.as<IR::Register>(),
+      IR::Func::Current->SetArgs(
+          from_phi, {IR::Val::Block(init_block), from_ptr,
+                     IR::Val::Block(IR::Block::Current),
+                     IR::PtrIncr(from_phi_reg, IR::Val::Uint(1ul))});
+      IR::Func::Current->SetArgs(to_phi,
                                  {IR::Val::Block(init_block), to_ptr,
                                   IR::Val::Block(IR::Block::Current),
-                                  IR::PtrIncr(to_phi, IR::Val::Uint(1ul))});
+                                  IR::PtrIncr(to_phi_reg, IR::Val::Uint(1ul))});
 
       IR::Block::Current = IR::Func::Current->exit();
       IR::Jump::Return();
@@ -109,9 +111,8 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
 
     CURRENT_FUNC(assign_func) {
       IR::Block::Current = assign_func->entry();
-
-      auto var = IR::Val::Arg(Ptr(this), 0);
-      auto val = IR::Val::Arg(Ptr(this), 1);
+      auto val           = assign_func->Argument(0);
+      auto var           = assign_func->Argument(1);
 
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);
