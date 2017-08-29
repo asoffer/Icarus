@@ -93,7 +93,7 @@ BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_block().cmds_) {
     auto result = ExecuteCmd(cmd);
 
-    if (cmd.result.value.is<Register>() && cmd.result.type != Void) {
+    if (cmd.result.type != nullptr && cmd.result.type != Void) {
       ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.result.type);
 

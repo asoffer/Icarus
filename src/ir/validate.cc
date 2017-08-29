@@ -14,7 +14,6 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
   while (!cmd_validation_queue.empty()) {
     const auto &cmd = Command(cmd_validation_queue.front());
     cmd_validation_queue.pop();
-    cmd.dump(0);
 /*
     // TODO only do this if there's an update.
     for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
@@ -22,13 +21,6 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
     }
 */
     switch (cmd.op_code) {
-    case Op::Add: {
-      if (cmd.result.type == Int) {
-LOG<<"Got here";
-      } else {
-        NOT_YET();
-      }
-    } break;
     case Op::Print: break;
     case Op::Call:
       validation_queue->push(cmd.args.back().value.as<IR::Func *>());

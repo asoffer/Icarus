@@ -331,8 +331,7 @@ struct Func {
   static Func *Current;
   static std::vector<std::unique_ptr<Func>> All;
 
-  Func(::Function *fn_type = nullptr)
-      : type(fn_type), blocks_(2, Block(this)) {}
+  Func(::Function *fn_type);
 
   void dump() const;
   Val Argument(u32 n);
@@ -361,7 +360,7 @@ struct Func {
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
   ::Function *type = nullptr;
-  i32 num_cmds_    = 0;
+  i32 num_regs_    = 0;
   std::string name;
   std::vector<Block> blocks_;
   // TODO many of these maps could and should be vectors except they're keyed on

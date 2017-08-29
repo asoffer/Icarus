@@ -9,7 +9,7 @@ Func *Func::Current;
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
   result = (t == nullptr) ? Val::None()
-                          : Val::Reg(Register(Func::Current->num_cmds_++), t);
+                          : Val::Reg(Register(Func::Current->num_regs_++), t);
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
@@ -298,10 +298,8 @@ void Func::dump() const {
 
 ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
-      regs_(fn_->num_cmds_, Val::None()), rets_(1, Val::None()) {
-  for (decltype(arguments.size()) i = 0; i < arguments.size(); ++i) {
-    regs_[i] = arguments[i];
-  }
+      regs_(fn->num_regs_, Val::None()), rets_(1, Val::None()) {
+  for (size_t i = 0; i < arguments.size(); ++i) { regs_[i] = arguments[i]; }
 }
 
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
