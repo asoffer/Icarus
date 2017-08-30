@@ -1,6 +1,5 @@
 #include "ir.h"
 
-#include <cmath>
 #include <cstring>
 #include <memory>
 
@@ -145,130 +144,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   for (auto &r : resolved) { Resolve(&r); }
 
   switch (cmd.op_code) {
-  case Op::Neg:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(!resolved[0].value.as<bool>());
-    } else if (resolved[0].type == Int) {
-      return Val::Int(-resolved[0].value.as<i64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(-resolved[0].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Add:
-    if (resolved[0].type == Char) {
-      return Val::Char(static_cast<char>(resolved[0].value.as<char>() +
-                                         resolved[1].value.as<char>()));
-    } else if (resolved[0].type == Int) {
-      return Val::Int(resolved[0].value.as<i64>() +
-                      resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Uint(resolved[0].value.as<u64>() +
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(resolved[0].value.as<double>() +
-                       resolved[1].value.as<double>());
-    } else if (resolved[0].type == Code) {
-      // TODO leaks
-      // Contextualize is definitely wrong and probably not safe. We really want
-      // a copy. All Refs should be resolved by this point already.
-
-      auto block   = base::make_owned<AST::CodeBlock>();
-      block->stmts = base::move<AST::Statements>(AST::Statements::Merge({
-          ptr_cast<AST::Statements>(resolved[0]
-                                        .value.as<AST::CodeBlock *>()
-                                        ->stmts->contextualize({})
-                                        .release()),
-          ptr_cast<AST::Statements>(resolved[1]
-                                        .value.as<AST::CodeBlock *>()
-                                        ->stmts->contextualize({})
-                                        .release()),
-      }));
-
-      return Val::CodeBlock(block.release());
-    } else if (resolved[0].type->is<Enum>()) {
-      return Val::Enum(ptr_cast<Enum>(resolved[0].type),
-                       resolved[0].value.as<EnumVal>().value +
-                           resolved[1].value.as<EnumVal>().value);
-    } else {
-      cmd.dump(0);
-      for (auto &r : resolved) { std::cerr << r.to_string() << std::endl; }
-      UNREACHABLE();
-    }
-  case Op::Sub:
-    if (resolved[0].type == Char) {
-      return Val::Char(static_cast<char>(resolved[0].value.as<char>() -
-                                         resolved[1].value.as<char>()));
-    } else if (resolved[0].type == Int) {
-      return Val::Int(resolved[0].value.as<i64>() -
-                      resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Uint(resolved[0].value.as<u64>() -
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(resolved[0].value.as<double>() -
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Mul:
-    if (resolved[0].type == Int) {
-      return Val::Int(resolved[0].value.as<i64>() *
-                      resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Uint(resolved[0].value.as<u64>() *
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(resolved[0].value.as<double>() *
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Div:
-    if (resolved[0].type == Int) {
-      return Val::Int(resolved[0].value.as<i64>() /
-                      resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Uint(resolved[0].value.as<u64>() /
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(resolved[0].value.as<double>() /
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Mod:
-    if (resolved[0].type == Int) {
-      return Val::Int(resolved[0].value.as<i64>() %
-                      resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Uint(resolved[0].value.as<u64>() %
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Real(
-          fmod(resolved[0].value.as<double>(), resolved[1].value.as<double>()));
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Arrow:
-    if (resolved[0].type == Type_) {
-      return Val::Type(::Func(resolved[0].value.as<Type *>(),
-                              resolved[1].value.as<Type *>()));
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Array:
-    if (resolved[0].type == Uint) {
-      return Val::Type(::Arr(resolved[1].value.as<Type *>(),
-                             static_cast<size_t>(resolved[0].value.as<u64>())));
-    } else if (resolved[0].type == Int) {
-      return Val::Type(::Arr(resolved[1].value.as<Type *>(),
-                             static_cast<size_t>(resolved[0].value.as<i64>())));
-    } else if (resolved[0].type == nullptr) {
-      return Val::Type(::Arr(resolved[1].value.as<Type *>()));
-    } else {
-      UNREACHABLE();
-    }
+  case Op::Neg: return Neg(resolved[0]);
+  case Op::Add: return Add(resolved[0], resolved[1]);
+  case Op::Sub:return Sub(resolved[0], resolved[1]);
+  case Op::Mul: return Mul(resolved[0], resolved[1]);
+  case Op::Div: return Div(resolved[0], resolved[1]);
+  case Op::Mod: return Mod(resolved[0], resolved[1]);
+  case Op::Arrow: return Arrow(resolved[0], resolved[1]);
+  case Op::Array: return Array(resolved[0], resolved[1]);
   case Op::Cast:
     if (resolved[1].type == Int) {
       if (resolved[0].value.as<Type *>() == Int) {
@@ -293,59 +176,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else {
       NOT_YET();
     }
-  case Op::And:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(resolved[0].value.as<bool>() &
-                       resolved[1].value.as<bool>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Or:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(resolved[0].value.as<bool>() |
-                       resolved[1].value.as<bool>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Xor:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(resolved[0].value.as<bool>() ^
-                       resolved[1].value.as<bool>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Lt:
-    if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() <
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() <
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() <
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Le:
-    if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() <=
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() <=
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() <=
-                       resolved[1].value.as<double>());
-    } else if (resolved[0].type == Char) {
-      return Val::Bool(resolved[0].value.as<char>() <=
-                       resolved[1].value.as<char>());
-    } else if (resolved[0].type->is<Enum>()) {
-      return Val::Bool(resolved[0].value.as<EnumVal>().value <=
-                       resolved[1].value.as<EnumVal>().value);
-    } else {
-      UNREACHABLE();
-    }
+  case Op::And: return And(resolved[0], resolved[1]);
+  case Op::Or: return Or(resolved[0], resolved[1]);
+  case Op::Xor: return Xor(resolved[0], resolved[1]);
+  case Op::Lt: return Lt(resolved[0], resolved[1]);
+  case Op::Le:return Le(resolved[0], resolved[1]);
   case Op::Eq:
     if (resolved[0].type == Bool) {
       return Val::Bool(resolved[0].value.as<bool>() ==
@@ -397,32 +232,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else {
       UNREACHABLE();
     }
-  case Op::Ge:
-    if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() >=
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() >=
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() >=
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Gt:
-    if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() >
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() >
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() >
-                       resolved[1].value.as<double>());
-    } else {
-      UNREACHABLE();
-    }
+  case Op::Ge:return Ge(resolved[0], resolved[1]);
+  case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
     call_stack.top().rets_ AT(resolved[0].value.as<u64>()) = resolved[1];
     return IR::Val::None();

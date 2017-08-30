@@ -1,5 +1,6 @@
 #include "ir.h"
 
+#include <cmath>
 #include "../type/type.h"
 
 namespace IR {
@@ -68,7 +69,19 @@ Val Malloc(Type *t, Val v) {
 
 Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
 Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
-Val Neg(Val v) { MAKE_AND_RETURN(v.type, Op::Neg); }
+
+Val Neg(Val v) {
+  if (v.value.is<bool>()) {
+    return Val::Bool(!v.value.as<bool>());
+  } else if (v.value.is<i64>()) {
+    return Val::Int(-v.value.as<i64>());
+  } else if (v.value.is<double>()) {
+    return Val::Real(-v.value.as<double>());
+  } else {
+    MAKE_AND_RETURN(v.type, Op::Neg);
+  }
+}
+
 void Print(Val v) { MAKE_VOID(Op::Print); }
 void Free(Val v) {
   ASSERT_TYPE(Pointer, v.type);
@@ -118,8 +131,6 @@ void SetReturn(size_t n, Val v2) {
   MAKE_VOID2(Op::SetReturn);
 }
 
-
-
 void Store(Val v1, Val v2) {
   ASSERT_TYPE(Pointer, v2.type);
   MAKE_VOID2(Op::Store);
@@ -136,22 +147,138 @@ Val Ptr(Val v) {
   MAKE_AND_RETURN(Type_, Op::Ptr);
 }
 
-Val And(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::And); }
-Val Or(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Or); }
-Val Xor(Val v1, Val v2) { MAKE_AND_RETURN2(Bool, Op::Xor); }
+Val And(Val v1, Val v2) {
+  if (v1.value.is<bool>() && v2.value.is<bool>()) {
+    return Val::Bool(v1.value.as<bool>() & v2.value.as<bool>());
+  } else {
+    MAKE_AND_RETURN2(Bool, Op::And);
+  }
+}
 
-Val Add(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Add); }
-Val Sub(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Sub); }
-Val Mul(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Mul); }
-Val Div(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Div); }
-Val Mod(Val v1, Val v2) { MAKE_AND_RETURN2(v1.type, Op::Mod); }
-Val Arrow(Val v1, Val v2) { MAKE_AND_RETURN2(Type_, Op::Arrow); }
+Val Or(Val v1, Val v2) {
+  if (v1.value.is<bool>() && v2.value.is<bool>()) {
+    return Val::Bool(v1.value.as<bool>() | v2.value.as<bool>());
+  } else {
+    MAKE_AND_RETURN2(Bool, Op::Or);
+  }
+}
+
+Val Xor(Val v1, Val v2) {
+  if (v1.value.is<bool>() && v2.value.is<bool>()) {
+    return Val::Bool(v1.value.as<bool>() ^ v2.value.as<bool>());
+  } else {
+    MAKE_AND_RETURN2(Bool, Op::Xor);
+  }
+}
+
+Val Add(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Int(v1.value.as<i64>() + v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Uint(v1.value.as<u64>() + v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Real(v1.value.as<double>() + v2.value.as<double>());
+  } else if (v1.value.is<char>() && v2.value.is<char>()) {
+    return Val::Char(
+        static_cast<char>(v1.value.as<char>() + v2.value.as<char>()));
+  } else if (v1.value.is<AST::CodeBlock *>() &&
+             v2.value.is<AST::CodeBlock *>()) {
+    // TODO leaks
+    // Contextualize is definitely wrong and probably not safe. We really want
+    // a copy. All Refs should be resolved by this point already.
+
+    auto block   = base::make_owned<AST::CodeBlock>();
+    block->stmts = base::move<AST::Statements>(AST::Statements::Merge({
+        ptr_cast<AST::Statements>(v1.value.as<AST::CodeBlock *>()
+                                      ->stmts->contextualize({})
+                                      .release()),
+        ptr_cast<AST::Statements>(v2.value.as<AST::CodeBlock *>()
+                                      ->stmts->contextualize({})
+                                      .release()),
+    }));
+
+    return Val::CodeBlock(block.release());
+  } else if (v1.type->is<Enum>()) {
+    return Val::Enum(ptr_cast<Enum>(v1.type), v1.value.as<EnumVal>().value +
+                                                  v2.value.as<EnumVal>().value);
+  } else {
+    MAKE_AND_RETURN2(v1.type, Op::Add);
+  }
+}
+
+Val Sub(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Int(v1.value.as<i64>() - v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Uint(v1.value.as<u64>() - v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Real(v1.value.as<double>() - v2.value.as<double>());
+  } else if (v1.value.is<char>() && v2.value.is<char>()) {
+    return Val::Char(
+        static_cast<char>(v1.value.as<char>() - v1.value.as<char>()));
+  } else {
+    MAKE_AND_RETURN2(v1.type, Op::Sub);
+  }
+}
+
+Val Mul(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Int(v1.value.as<i64>() * v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Uint(v1.value.as<u64>() * v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Real(v1.value.as<double>() * v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(v1.type, Op::Mul);
+  }
+}
+
+Val Div(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Int(v1.value.as<i64>() / v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Uint(v1.value.as<u64>() / v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Real(v1.value.as<double>() / v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(v1.type, Op::Div);
+  }
+}
+
+Val Mod(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Int(v1.value.as<i64>() % v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Uint(v1.value.as<u64>() % v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Real(fmod(v1.value.as<double>() , v2.value.as<double>()));
+  } else {
+    MAKE_AND_RETURN2(v1.type, Op::Mod);
+  }
+}
+
+Val Arrow(Val v1, Val v2) {
+  if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
+    return Val::Type(::Func(v1.value.as<Type *>(), v2.value.as<Type *>()));
+  } else {
+    MAKE_AND_RETURN2(Type_, Op::Arrow);
+  }
+}
 
 Val Array(Val v1, Val v2) {
-  // TODO decide if Int vs Uint is allowed
   ASSERT(v1.type == nullptr || v1.type == Uint || v1.type == Int, "");
   ASSERT_EQ(v2.type, Type_);
-  MAKE_AND_RETURN2(Type_, Op::Array);
+
+  if (v2.value.is<Type *>() && v1.value.is<u64>()) {
+    return Val::Type(::Arr(v2.value.as<Type *>(), v1.value.as<u64>()));
+  } else if (v2.value.is<Type *>() && v1.value.is<i64>()) {
+    return Val::Type(::Arr(v2.value.as<Type *>(), v1.value.as<i64>()));
+  } else if (v2.value.is<Type *>() && v1 == Val::None()) {
+    return Val::Type(::Arr(v2.value.as<Type *>()));
+  } else {
+    // TODO decide if Int vs Uint is allowed
+    MAKE_AND_RETURN2(Type_, Op::Array);
+  }
 }
 
 Val Index(Val v1, Val v2) {
@@ -166,12 +293,56 @@ Val Index(Val v1, Val v2) {
   return PtrIncr(ptr, v2);
 }
 
-Val Lt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Lt); }
-Val Le(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Le); }
+Val Lt(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() < v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() < v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() < v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Lt);
+  }
+}
+
+Val Le(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() <= v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() <= v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() <= v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Le);
+  }
+}
+
+Val Gt(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() > v2.value.as<i64>());
+  } else if (v1.value.is<u64>()&& v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() > v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() > v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Lt);
+  }
+}
+
+Val Ge(Val v1, Val v2) {
+  if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() >= v2.value.as<i64>());
+  } else if (v1.value.is<u64>()&& v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() >= v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() >= v2.value.as<double>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Le);
+  }
+}
+
 Val Eq(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Eq); }
 Val Ne(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ne); }
-Val Ge(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ge); }
-Val Gt(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Gt); }
 
 void Validate(Val v1,
              const std::vector<std::unique_ptr<Property>> *precondition) {

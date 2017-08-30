@@ -14,6 +14,7 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
   while (!cmd_validation_queue.empty()) {
     const auto &cmd = Command(cmd_validation_queue.front());
     cmd_validation_queue.pop();
+    cmd.dump(0);
 /*
     // TODO only do this if there's an update.
     for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
