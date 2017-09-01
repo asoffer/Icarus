@@ -146,7 +146,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   switch (cmd.op_code) {
   case Op::Neg: return Neg(resolved[0]);
   case Op::Add: return Add(resolved[0], resolved[1]);
-  case Op::Sub:return Sub(resolved[0], resolved[1]);
+  case Op::Sub: return Sub(resolved[0], resolved[1]);
   case Op::Mul: return Mul(resolved[0], resolved[1]);
   case Op::Div: return Div(resolved[0], resolved[1]);
   case Op::Mod: return Mod(resolved[0], resolved[1]);
@@ -180,68 +180,17 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Or: return Or(resolved[0], resolved[1]);
   case Op::Xor: return Xor(resolved[0], resolved[1]);
   case Op::Lt: return Lt(resolved[0], resolved[1]);
-  case Op::Le:return Le(resolved[0], resolved[1]);
-  case Op::Eq:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(resolved[0].value.as<bool>() ==
-                       resolved[1].value.as<bool>());
-    } else if (resolved[0].type == Char) {
-      return Val::Bool(resolved[0].value.as<char>() ==
-                       resolved[1].value.as<char>());
-    } else if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() ==
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() ==
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() ==
-                       resolved[1].value.as<double>());
-    } else if (resolved[0].type == Type_) {
-      return Val::Bool(resolved[0].value.as<Type *>() ==
-                       resolved[1].value.as<Type *>());
-    } else if (resolved[0].type->is<Pointer>()) {
-      return Val::Bool(resolved[0].value.as<Addr>() ==
-                       resolved[1].value.as<Addr>());
-    } else {
-      cmd.dump(0);
-      UNREACHABLE();
-    }
-  case Op::Ne:
-    if (resolved[0].type == Bool) {
-      return Val::Bool(resolved[0].value.as<bool>() !=
-                       resolved[1].value.as<bool>());
-    } else if (resolved[0].type == Char) {
-      return Val::Bool(resolved[0].value.as<char>() !=
-                       resolved[1].value.as<char>());
-    } else if (resolved[0].type == Int) {
-      return Val::Bool(resolved[0].value.as<i64>() !=
-                       resolved[1].value.as<i64>());
-    } else if (resolved[0].type == Uint) {
-      return Val::Bool(resolved[0].value.as<u64>() !=
-                       resolved[1].value.as<u64>());
-    } else if (resolved[0].type == Real) {
-      return Val::Bool(resolved[0].value.as<double>() !=
-                       resolved[1].value.as<double>());
-    } else if (resolved[0].type == Type_) {
-      return Val::Bool(resolved[0].value.as<Type *>() !=
-                       resolved[1].value.as<Type *>());
-    } else if (resolved[0].type->is<Pointer>()) {
-      return Val::Bool(resolved[0].value.as<Addr>() !=
-                       resolved[1].value.as<Addr>());
-    } else {
-      UNREACHABLE();
-    }
-  case Op::Ge:return Ge(resolved[0], resolved[1]);
+  case Op::Le: return Le(resolved[0], resolved[1]);
+  case Op::Eq: return Eq(resolved[0], resolved[1]);
+  case Op::Ne: return Ne(resolved[0], resolved[1]);
+  case Op::Ge: return Ge(resolved[0], resolved[1]);
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
     call_stack.top().rets_ AT(resolved[0].value.as<u64>()) = resolved[1];
     return IR::Val::None();
   }
-  case Op::Extend:
-    return Val::Uint(static_cast<u64>(resolved[0].value.as<char>()));
-  case Op::Trunc:
-    return Val::Char(static_cast<char>(resolved[0].value.as<u64>()));
+  case Op::Extend: return Extend(resolved[0]);
+  case Op::Trunc: return Trunc(resolved[0]);
   case Op::Call: {
     auto fn = resolved.back().value.as<IR::Func *>();
     resolved.pop_back();
@@ -281,7 +230,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       NOT_YET(*resolved[0].type);
     }
     return IR::Val::None();
-  case Op::Ptr: return Val::Type(::Ptr(resolved[0].value.as<Type *>()));
+  case Op::Ptr: return Ptr(resolved[0]);
   case Op::Load:
     switch (resolved[0].value.as<Addr>().kind) {
     case Addr::Kind::Null:
@@ -532,9 +481,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               Architecture::InterprettingMachine().bytes(Uint)),
           ptr_cast<Pointer>(cmd.result.type)->pointee);
     }
-  case Op::Validate:
-    // Either validate here or skip it? I'm not sure what makes sense.
-    return IR::Val::None();
   }
   UNREACHABLE();
 }

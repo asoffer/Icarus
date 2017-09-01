@@ -549,7 +549,6 @@ IR::Val AST::Binop::EmitIR() {
         args.push_back(expr->EmitIR());
       });
     }
-    // TODO validate checks.
     return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {

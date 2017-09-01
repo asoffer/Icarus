@@ -67,8 +67,21 @@ Val Malloc(Type *t, Val v) {
   MAKE_AND_RETURN(Ptr(t), Op::Malloc);
 }
 
-Val Extend(Val v) { MAKE_AND_RETURN(Char, Op::Extend); }
-Val Trunc(Val v) { MAKE_AND_RETURN(Char, Op::Trunc); }
+Val Extend(Val v) {
+  if (v.value.is<char>()) {
+    return Val::Uint(static_cast<u64>(v.value.as<char>()));
+  } else {
+    MAKE_AND_RETURN(Char, Op::Extend);
+  }
+}
+
+Val Trunc(Val v) {
+  if (v.value.is<u64>()) {
+    return Val::Char(static_cast<char>(v.value.as<u64>()));
+  } else {
+    MAKE_AND_RETURN(Char, Op::Trunc);
+  }
+}
 
 Val Neg(Val v) {
   if (v.value.is<bool>()) {
@@ -144,28 +157,38 @@ Val PtrIncr(Val v1, Val v2) {
 
 Val Ptr(Val v) {
   ASSERT_EQ(v.type, Type_);
-  MAKE_AND_RETURN(Type_, Op::Ptr);
+  if (v.value.is<Type *>()) {
+    return Val::Type(::Ptr(v.value.as<Type *>()));
+  } else {
+    MAKE_AND_RETURN(Type_, Op::Ptr);
+  }
 }
 
 Val And(Val v1, Val v2) {
-  if (v1.value.is<bool>() && v2.value.is<bool>()) {
-    return Val::Bool(v1.value.as<bool>() & v2.value.as<bool>());
+  if (v1.value.is<bool>()) {
+    return v1.value.as<bool>() ? v2 : Val::Bool(false);
+  } else if (v2.value.is<bool>()) {
+    return v2.value.as<bool>() ? v1 : Val::Bool(false);
   } else {
     MAKE_AND_RETURN2(Bool, Op::And);
   }
 }
 
 Val Or(Val v1, Val v2) {
-  if (v1.value.is<bool>() && v2.value.is<bool>()) {
-    return Val::Bool(v1.value.as<bool>() | v2.value.as<bool>());
+  if (v1.value.is<bool>()) {
+    return v1.value.as<bool>() ? Val::Bool(true) : v2;
+  } else if (v2.value.is<bool>()) {
+    return v2.value.as<bool>() ? Val::Bool(true) : v1;
   } else {
     MAKE_AND_RETURN2(Bool, Op::Or);
   }
 }
 
 Val Xor(Val v1, Val v2) {
-  if (v1.value.is<bool>() && v2.value.is<bool>()) {
-    return Val::Bool(v1.value.as<bool>() ^ v2.value.as<bool>());
+  if (v1.value.is<bool>()) {
+    return v1.value.as<bool>() ? Neg(v2) : v2;
+  } else if (v2.value.is<bool>()) {
+    return v2.value.as<bool>() ? Neg(v1) : v1;
   } else {
     MAKE_AND_RETURN2(Bool, Op::Xor);
   }
@@ -341,13 +364,48 @@ Val Ge(Val v1, Val v2) {
   }
 }
 
-Val Eq(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Eq); }
-Val Ne(Val v1, Val v2) { MAKE_AND_RETURN2(::Bool, Op::Ne); }
+Val Eq(Val v1, Val v2) {
+  if (v1.value.is<bool>()) {
+    return v1.value.as<bool>() ? v2 : Neg(v2);
+  } else if (v2.value.is<bool>()) {
+    return v2.value.as<bool>() ? v1 : Neg(v1);
+  } else if (v1.value.is<char>() && v2.value.is<char>()) {
+    return Val::Bool(v1.value.as<char>() == v2.value.as<char>());
+  } else if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() == v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() == v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() == v2.value.as<double>());
+  } else if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
+    return Val::Bool(v1.value.as<Type *>() == v2.value.as<Type *>());
+  } else if (v1.value.is<Addr>() && v2.value.is<Addr>()) {
+    return Val::Bool(v1.value.as<Addr>() == v2.value.as<Addr>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Eq);
+  }
+}
 
-void Validate(Val v1,
-             const std::vector<std::unique_ptr<Property>> *precondition) {
-  auto v2 = Val::Precondition(precondition);
-  MAKE_VOID2(Op::Validate);
+Val Ne(Val v1, Val v2) {
+  if (v1.value.is<bool>()) {
+    return v1.value.as<bool>() ? Neg(v2) : v2;
+  } else if (v2.value.is<bool>()) {
+    return v2.value.as<bool>() ? Neg(v1) : v1;
+  } else if (v1.value.is<char>() && v2.value.is<char>()) {
+    return Val::Bool(v1.value.as<char>() != v2.value.as<char>());
+  } else if (v1.value.is<i64>() && v2.value.is<i64>()) {
+    return Val::Bool(v1.value.as<i64>() != v2.value.as<i64>());
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
+    return Val::Bool(v1.value.as<u64>() != v2.value.as<u64>());
+  } else if (v1.value.is<double>() && v2.value.is<double>()) {
+    return Val::Bool(v1.value.as<double>() != v2.value.as<double>());
+  } else if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
+    return Val::Bool(v1.value.as<Type *>() != v2.value.as<Type *>());
+  } else if (v1.value.is<Addr>() && v2.value.is<Addr>()) {
+    return Val::Bool(v1.value.as<Addr>() != v2.value.as<Addr>());
+  } else {
+    MAKE_AND_RETURN2(::Bool, Op::Ne);
+  }
 }
 
 Val Cast(Val v1, Val v2) {
@@ -375,11 +433,6 @@ CmdIndex Phi(Type *t) {
 
 Val Call(Val fn, std::vector<Val> vals) {
   ASSERT_TYPE(Function, fn.type);
-  size_t i = 0;
-  for (const auto &precondition : fn.value.as<Func *>()->preconditions_) {
-    Validate(vals[i++], &precondition.second);
-  }
-
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
@@ -426,7 +479,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
   case Op::Contextualize: std::cerr << "contextualize"; break;
-  case Op::Validate: std::cerr << "validate"; break;
   }
 
   if (args.empty()) {

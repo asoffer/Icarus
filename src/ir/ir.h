@@ -40,6 +40,8 @@ struct Property {
   virtual ~Property() {}
   virtual Validity Validate(const Val &val) const = 0;
 
+  virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
+
   Cursor loc;
 };
 
@@ -149,7 +151,6 @@ enum class Op : char {
   SetReturn, Arrow, Array, Ptr,
   Alloca,
   Contextualize,
-  Validate,
 };
 
 struct Block;
@@ -278,8 +279,6 @@ void SetReturn(size_t n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);
 void Free(Val v);
-void Validate(Val v1,
-              const std::vector<std::unique_ptr<Property>> *precondition);
 
 CmdIndex Phi(Type *t);
 
