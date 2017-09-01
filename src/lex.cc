@@ -370,29 +370,6 @@ static NNT NextOperator(Cursor &cursor) {
     }
   } break;
 
-  case '#': {
-    NOT_YET();
-    /*
-    cursor.Increment();
-    Cursor cursor_copy = cursor;
-
-    if (!IsAlpha(*cursor)) {
-      ErrorLog::InvalidHashtag(cursor_copy);
-      return NNT::Invalid();
-    }
-
-    do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
-
-    if (cursor.offset - cursor_copy.offset == 0) {
-      ErrorLog::InvalidHashtag(cursor_copy);
-    }
-
-    std::string tag = cursor.line.substr(cursor_copy.offset,
-                                         cursor.offset - cursor_copy.offset);
-    return NNT(cursor, tag, Language::hashtag);
-    */
-  } break;
-
   case '+':
   case '%':
   case '<':
