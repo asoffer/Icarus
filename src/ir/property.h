@@ -6,9 +6,9 @@
 namespace IR {
 struct IntProperty : public Property {
   // TODO deal with overflow
-  IntProperty(const Cursor &loc, i32 min_val = std::numeric_limits<i32>::min(),
+  IntProperty(i32 min_val = std::numeric_limits<i32>::min(),
               i32 max_val = std::numeric_limits<i32>::max())
-      : Property(loc), min_(min_val), max_(max_val) {}
+      : min_(min_val), max_(max_val) {}
   ~IntProperty() override {}
 
   Validity Validate(const Val &val) const override {
@@ -29,13 +29,13 @@ struct IntProperty : public Property {
 
   std::unique_ptr<Property> Add(const Val &val) const override {
     if (!val.value.is<i32>()) { return nullptr; }
-    return std::make_unique<IntProperty>(Cursor{}, min_ + val.value.as<i32>(),
+    return std::make_unique<IntProperty>(min_ + val.value.as<i32>(),
                                          max_ + val.value.as<i32>());
   }
 
   std::unique_ptr<Property> Sub(const Val &val) const override {
     if (!val.value.is<i32>()) { return nullptr; }
-    return std::make_unique<IntProperty>(Cursor{}, min_ - val.value.as<i32>(),
+    return std::make_unique<IntProperty>(min_ - val.value.as<i32>(),
                                          max_ - val.value.as<i32>());
   }
 
@@ -43,8 +43,7 @@ struct IntProperty : public Property {
     if (!val.value.is<i32>()) { return nullptr; }
     auto scaled_min = min_ * val.value.as<i32>();
     auto scaled_max = max_ * val.value.as<i32>();
-    return std::make_unique<IntProperty>(Cursor{},
-                                         std::min(scaled_min, scaled_max),
+    return std::make_unique<IntProperty>(std::min(scaled_min, scaled_max),
                                          std::max(scaled_min, scaled_max));
   }
   // Inclusive bounds

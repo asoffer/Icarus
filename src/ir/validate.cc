@@ -33,7 +33,9 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
           }
 
           ++num_errors_;
+          LOG << *property.get();
           LogError::FailedPrecondition(*property);
+          LOG << *property.get();
 
         } else {
           switch (property->Validate(arg)) {

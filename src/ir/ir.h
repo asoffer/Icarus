@@ -36,7 +36,7 @@ struct Func;
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
 struct Property : public base::Cast<Property> {
-  Property(const Cursor &loc) : loc(loc) {}
+  Property() {}
   virtual ~Property() {}
   virtual Validity Validate(const Val &val) const = 0;
   virtual void WriteTo(std::ostream& os) const = 0;
@@ -45,8 +45,6 @@ struct Property : public base::Cast<Property> {
   virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
   virtual std::unique_ptr<Property> Sub(const Val &) const { return nullptr; }
   virtual std::unique_ptr<Property> Mul(const Val &) const { return nullptr; }
-
-  Cursor loc;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Property &prop) {

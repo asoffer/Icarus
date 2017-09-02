@@ -736,8 +736,8 @@ void ImplicitCapture(AST::Identifier *id) {
       id->loc.offset);
 }
 
-void FailedPrecondition(const IR::Property &property) {
-  DisplayErrorMessage("Precondition failed.", nullptr, property.loc, 1);
+void FailedPrecondition(const IR::Property &) {
+  fprintf(stderr, "Precondition failed.\n");
 }
 } // namespace LogError
 

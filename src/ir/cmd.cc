@@ -537,7 +537,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
   case Op::Add: {
     if (result.type == Int) {
       // TODO not just for integers
-      auto prop = std::make_unique<IntProperty>(Cursor{}, 0, 0);
+      auto prop = std::make_unique<IntProperty>( 0, 0);
       using IntType         = decltype(prop->min_);
       constexpr auto MinInt = std::numeric_limits<IntType>::min();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
@@ -573,7 +573,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
   case Op::Sub: {
     if (result.type == Int) {
       // TODO not just for integers
-      auto prop = std::make_unique<IntProperty>(Cursor{}, 0, 0);
+      auto prop = std::make_unique<IntProperty>( 0, 0);
       using IntType         = decltype(prop->min_);
       constexpr auto MinInt = std::numeric_limits<IntType>::min();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
@@ -616,7 +616,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
   case Op::Mul: {
     if (result.type == Int) {
       // TODO not just for integers
-      auto prop             = std::make_unique<IntProperty>(Cursor{}, 1, 1);
+      auto prop             = std::make_unique<IntProperty>(1, 1);
       using IntType         = decltype(prop->min_);
       constexpr auto MinInt = std::numeric_limits<IntType>::min();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
@@ -634,7 +634,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
                 static_cast<i64>(prop->max_) *
                     static_cast<i64>(arg_prop.max_)}) {
             std::tie(new_min, new_max) =
-               std::make_pair(std::min(new_min, val), std::max(new_max, val));
+                std::make_pair(std::min(new_min, val), std::max(new_max, val));
           }
           prop->min_ = (new_min < static_cast<i64>(MinInt))
                            ? MinInt
@@ -652,9 +652,17 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
     } else {
     }
   } break;
-
+  case Op::Neg: {
+    if (result.type == Int) {
+      // TODO not just for integers
+      const auto &prop =
+          fn->properties_[args[0].value.as<Register>()]->as<IntProperty>();
+      return std::make_unique<IntProperty>(-prop.max_, -prop.min_);
+    } else {
+    }
+  } break;
   case Op::Print: return nullptr;
-  default: NOT_YET();
+  default: dump(0); NOT_YET();
   }
   return nullptr;
 }
