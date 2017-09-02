@@ -43,6 +43,8 @@ struct Property : public base::Cast<Property> {
   virtual bool Implies(const Property *prop) const = 0;
 
   virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
+  virtual std::unique_ptr<Property> Sub(const Val &) const { return nullptr; }
+  virtual std::unique_ptr<Property> Mul(const Val &) const { return nullptr; }
 
   Cursor loc;
 };

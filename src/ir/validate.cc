@@ -42,6 +42,60 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
         }
       }
     } break;
+    case Op::Sub: {
+      auto &preconditions = preconditions_[cmd.result.value.as<Register>()];
+      std::vector<std::unique_ptr<Property>> updated_preconditions;
+
+      if (cmd.args[0].value.is<Register>()) {
+        if (cmd.args[1].value.is<Register>()) {
+          NOT_YET();
+        } else {
+          for (const auto &prop :
+               preconditions_[cmd.args[0].value.as<Register>()]) {
+            auto new_prop = prop->Sub(cmd.args[1]);
+            if (new_prop != nullptr) {
+              updated_preconditions.push_back(std::move(new_prop));
+            }
+          }
+        }
+      }
+
+      // TODO this equality check is not correct.
+      if (updated_preconditions != preconditions) {
+        preconditions = std::move(updated_preconditions);
+        for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
+          cmd_validation_queue.push(cmd_index);
+        }
+      }
+    } break;
+    case Op::Mul: {
+      auto &preconditions = preconditions_[cmd.result.value.as<Register>()];
+      std::vector<std::unique_ptr<Property>> updated_preconditions;
+
+      if (cmd.args[0].value.is<Register>()) {
+        if (cmd.args[1].value.is<Register>()) {
+          cmd.dump(0);
+          NOT_YET();
+        } else {
+          for (const auto &prop :
+               preconditions_[cmd.args[0].value.as<Register>()]) {
+            auto new_prop = prop->Mul(cmd.args[1]);
+            if (new_prop != nullptr) {
+              updated_preconditions.push_back(std::move(new_prop));
+            }
+          }
+        }
+      }
+
+      // TODO this equality check is not correct.
+      if (updated_preconditions != preconditions) {
+        preconditions = std::move(updated_preconditions);
+        for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
+          cmd_validation_queue.push(cmd_index);
+        }
+      }
+    } break;
+
     case Op::Print: break;
     case Op::Call: {
       Function *fn_type = cmd.args.back().value.as<Func *>()->type;
