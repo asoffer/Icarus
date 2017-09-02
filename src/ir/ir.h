@@ -35,15 +35,23 @@ struct Func;
 
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
-struct Property {
+struct Property : public base::Cast<Property> {
   Property(const Cursor &loc) : loc(loc) {}
   virtual ~Property() {}
   virtual Validity Validate(const Val &val) const = 0;
+  virtual void WriteTo(std::ostream& os) const = 0;
+  virtual bool Implies(const Property *prop) const = 0;
 
   virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
 
+
   Cursor loc;
 };
+
+inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
+  prop.WriteTo(os);
+  return os;
+}
 
 template <typename T> struct UpperBound : public Property {
   ~UpperBound() override {}
@@ -52,6 +60,15 @@ template <typename T> struct UpperBound : public Property {
 
   Validity Validate(const Val &val) const override;
 
+  void WriteTo(std::ostream &os) const override {
+    os << "Upper bound of " << max_;
+  }
+
+  bool Implies(const Property *prop) const override {
+    return prop->template is<UpperBound<T>>() &&
+           ptr_cast<UpperBound<T>>(prop)->max_ >= max_;
+  }
+
   static UpperBound<T> Merge(const std::vector<UpperBound<T>> &props) {
     UpperBound<T> result = std::numeric_limits<T>::min();
     for (const auto &prop : props) {
@@ -59,6 +76,8 @@ template <typename T> struct UpperBound : public Property {
     }
     return result;
   }
+
+  std::unique_ptr<Property> Add(const Val &) const override;
 
   T max_;
 };
@@ -375,9 +394,16 @@ struct Func {
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 
+template <typename T>
+std::unique_ptr<Property> UpperBound<T>::Add(const Val &val) const {
+  if (!val.value.template is<T>()) { return nullptr; }
+  // TODO overflow?
+  return std::make_unique<UpperBound<T>>(Cursor{}, max_ + val.value.as<T>());
+}
+
 template <typename T> Validity UpperBound<T>::Validate(const Val &val) const {
-  return (val.value.template as<T>() < max_) ? Validity::Always
-                                             : Validity::Never;
+  return (val.value.template as<T>() <= max_) ? Validity::Always
+                                              : Validity::Never;
 }
 
 struct FuncResetter {

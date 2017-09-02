@@ -16,6 +16,16 @@ template <typename To, typename From> To *ptr_cast(From* ptr) {
 #endif
 }
 
+template <typename To, typename From> const To *ptr_cast(const From* ptr) {
+#ifdef DEBUG
+  const auto result = dynamic_cast<const To*>(ptr);
+  ASSERT(result, "Failed to convert");
+  return result;
+#else
+  return static_cast<const To*>(ptr);
+#endif
+}
+
 namespace base {
 template <typename Base> struct Cast {
   template <typename T> bool is() const {

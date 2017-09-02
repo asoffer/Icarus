@@ -21,10 +21,19 @@ void ChainOp::GenerateRequirements() const {
         if (upper_bound.value.is<i64>()) {
           containing_function->preconditions_[id_addr->value.as<IR::Register>()]
               .push_back(std::make_unique<IR::UpperBound<i64>>(
+                  loc, upper_bound.value.as<i64>() - 1));
+        }
+      } break;
+      case Language::Operator::Le: {
+        // TODO actually, bound this by the upper bound for the evaluated
+        // argument.
+        auto upper_bound = Evaluate(exprs[1].get());
+        if (upper_bound.value.is<i64>()) {
+          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
+              .push_back(std::make_unique<IR::UpperBound<i64>>(
                   loc, upper_bound.value.as<i64>()));
         }
       } break;
-      case Language::Operator::Le: NOT_YET();
       case Language::Operator::Eq: NOT_YET();
       case Language::Operator::Ne: NOT_YET();
       case Language::Operator::Ge: NOT_YET();
