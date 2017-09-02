@@ -24,7 +24,7 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
         const auto &arg = cmd.args[i];
 
         const auto &property =
-            cmd.args.back().value.as<Func *>()->properties_[Register(i)];
+           cmd.args.back().value.as<Func *>()->properties_[Register(i)];
         if (property == nullptr) { continue; }
 
         if (arg.value.is<Register>()) {

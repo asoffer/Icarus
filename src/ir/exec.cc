@@ -157,9 +157,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       if (resolved[0].value.as<Type *>() == Int) {
         return resolved[1];
       } else if (resolved[0].value.as<Type *>() == Uint) {
-        return IR::Val::Uint(static_cast<u64>(resolved[1].value.as<i64>()));
+        return IR::Val::Uint(static_cast<u64>(resolved[1].value.as<i32>()));
       } else if (resolved[0].value.as<Type *>() == Real) {
-        return IR::Val::Real(static_cast<double>(resolved[1].value.as<i64>()));
+        return IR::Val::Real(static_cast<double>(resolved[1].value.as<i32>()));
       } else {
         NOT_YET();
       }
@@ -167,7 +167,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       if (resolved[0].value.as<Type *>() == Uint) {
         return resolved[1];
       } else if (resolved[0].value.as<Type *>() == Int) {
-        return IR::Val::Uint(static_cast<i64>(resolved[1].value.as<u64>()));
+        return IR::Val::Uint(static_cast<i32>(resolved[1].value.as<u64>()));
       } else if (resolved[0].value.as<Type *>() == Real) {
         return IR::Val::Real(static_cast<double>(resolved[1].value.as<u64>()));
       } else {
@@ -204,7 +204,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   } break;
   case Op::Print:
     if (resolved[0].type == Int) {
-      std::cerr << resolved[0].value.as<i64>();
+      std::cerr << resolved[0].value.as<i32>();
     } else if (resolved[0].type == Uint) {
       std::cerr << resolved[0].value.as<u64>();
     } else if (resolved[0].type == Bool) {
@@ -247,7 +247,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             *static_cast<char *>(resolved[0].value.as<Addr>().as_heap));
       } else if (cmd.result.type == Int) {
         return IR::Val::Int(
-            *static_cast<i64 *>(resolved[0].value.as<Addr>().as_heap));
+            *static_cast<i32 *>(resolved[0].value.as<Addr>().as_heap));
       } else if (cmd.result.type == Uint) {
         return IR::Val::Uint(
             *static_cast<u64 *>(resolved[0].value.as<Addr>().as_heap));
@@ -281,7 +281,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             stack_.Load<char>(resolved[0].value.as<Addr>().as_stack));
       } else if (cmd.result.type == Int) {
         return IR::Val::Int(
-            stack_.Load<i64>(resolved[0].value.as<Addr>().as_stack));
+            stack_.Load<i32>(resolved[0].value.as<Addr>().as_stack));
       } else if (cmd.result.type == Uint) {
         return IR::Val::Uint(
             stack_.Load<u64>(resolved[0].value.as<Addr>().as_stack));
@@ -332,7 +332,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         stack_.Store(resolved[0].value.as<char>(),
                      resolved[1].value.as<Addr>().as_stack);
       } else if (resolved[0].type == Int) {
-        stack_.Store(resolved[0].value.as<i64>(),
+        stack_.Store(resolved[0].value.as<i32>(),
                      resolved[1].value.as<Addr>().as_stack);
       } else if (resolved[0].type == Uint) {
         stack_.Store(resolved[0].value.as<u64>(),
@@ -362,8 +362,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         *static_cast<char *>(resolved[1].value.as<Addr>().as_heap) =
             resolved[0].value.as<char>();
       } else if (resolved[0].type == Int) {
-        *static_cast<i64 *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<i64>();
+        *static_cast<i32 *>(resolved[1].value.as<Addr>().as_heap) =
+            resolved[0].value.as<i32>();
       } else if (resolved[0].type == Uint) {
         *static_cast<u64 *>(resolved[1].value.as<Addr>().as_heap) =
             resolved[0].value.as<u64>();

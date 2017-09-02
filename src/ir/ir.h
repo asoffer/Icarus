@@ -84,7 +84,7 @@ inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   ::Type *type = nullptr;
-  base::variant<Register, ::IR::Addr, bool, char, double, i64, u64, EnumVal,
+  base::variant<Register, ::IR::Addr, bool, char, double, i32, u64, EnumVal,
                 ::Type *, ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock *,
                 AST::Expression *, BlockIndex, std::string>
       value{false};
@@ -97,7 +97,7 @@ struct Val {
   static Val Bool(bool b) { return Val(::Bool, b); }
   static Val Char(char c) { return Val(::Char, c); }
   static Val Real(double r) { return Val(::Real, r); }
-  static Val Int(i64 n) { return Val(::Int, n); }
+  static Val Int(i32 n) { return Val(::Int, n); }
   static Val Uint(u64 n) { return Val(::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
   static Val Type(::Type *t) { return Val(::Type_, t); }

@@ -124,7 +124,7 @@ NNT NextWord(Cursor &cursor) {
 // parsed value, and the number of digit characters read is returned. Otherwise,
 // -1 is returned and there are no constraints on the value of the output
 // parameter.
-template <int Base> static i32 ConsumeIntegerInBase(Cursor &cursor, i64 *val) {
+template <int Base> static i32 ConsumeIntegerInBase(Cursor &cursor, i32 *val) {
   i32 chars_read = 0;
 start:
   if (*cursor == '_') {
@@ -157,8 +157,8 @@ template <int Base> static inline int pow(i32 num) {
 
 template <int Base> static NNT NextNumberInBase(Cursor &cursor) {
   // TODO deal with bits_needed
-  i64 int_part   = 0;
-  i64 frac_part  = 0;
+  i32 int_part   = 0;
+  i32 frac_part  = 0;
   i32 int_digits = ConsumeIntegerInBase<Base>(cursor, &int_part);
   if (int_digits == -1) {
     // TODO log an error

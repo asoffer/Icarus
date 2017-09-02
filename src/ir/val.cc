@@ -50,8 +50,8 @@ std::string Val::to_string() const {
     return std::to_string(static_cast<i32>(value.as<char>())) + "_c";
   } else if (value.is<double>()) {
     return std::to_string(value.as<double>()) + "_r";
-  } else if (value.is<i64>()) {
-    return std::to_string(value.as<i64>());
+  } else if (value.is<i32>()) {
+    return std::to_string(value.as<i32>());
   } else if (value.is<u64>()) {
     return std::to_string(value.as<u64>()) + "_u";
   } else if (value.is<EnumVal>()) {
