@@ -38,12 +38,6 @@ Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
 Val Val::Func(::IR::Func *fn) { return Val(fn->type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 
-Val Val::Precondition(
-    const std::vector<std::unique_ptr<Property>> *precondition) {
-  // I don't care about the type here.
-  return Val(::Void, precondition);
-}
-
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
   if (value.is<Register>()) {
@@ -78,8 +72,6 @@ std::string Val::to_string() const {
     return "block #" + std::to_string(value.as<IR::BlockIndex>());
   } else if (value.is<std::string>()) {
     return "string \"" + value.as<std::string>() + "\"";
-  } else if (value.is<const std::vector<std::unique_ptr<Property>>*>()) {
-    return "precondition";
   } else {
     UNREACHABLE();
   }

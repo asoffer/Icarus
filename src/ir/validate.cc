@@ -15,123 +15,51 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
     const auto &cmd = Command(cmd_validation_queue.front());
     cmd_validation_queue.pop();
 
-    switch (cmd.op_code) {
-    case Op::Add: {
-      auto &preconditions = preconditions_[cmd.result.value.as<Register>()];
-      std::vector<std::unique_ptr<Property>> updated_preconditions;
-
-      if (cmd.args[0].value.is<Register>()) {
-        if (cmd.args[1].value.is<Register>()) {
-          NOT_YET();
-        } else {
-          for (const auto &prop :
-               preconditions_[cmd.args[0].value.as<Register>()]) {
-            auto new_prop = prop->Add(cmd.args[1]);
-            if (new_prop != nullptr) {
-              updated_preconditions.push_back(std::move(new_prop));
-            }
-          }
-        }
-      }
-
-      // TODO this equality check is not correct.
-      if (updated_preconditions != preconditions) {
-        preconditions = std::move(updated_preconditions);
-        for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
-          cmd_validation_queue.push(cmd_index);
-        }
-      }
-    } break;
-    case Op::Sub: {
-      auto &preconditions = preconditions_[cmd.result.value.as<Register>()];
-      std::vector<std::unique_ptr<Property>> updated_preconditions;
-
-      if (cmd.args[0].value.is<Register>()) {
-        if (cmd.args[1].value.is<Register>()) {
-          NOT_YET();
-        } else {
-          for (const auto &prop :
-               preconditions_[cmd.args[0].value.as<Register>()]) {
-            auto new_prop = prop->Sub(cmd.args[1]);
-            if (new_prop != nullptr) {
-              updated_preconditions.push_back(std::move(new_prop));
-            }
-          }
-        }
-      }
-
-      // TODO this equality check is not correct.
-      if (updated_preconditions != preconditions) {
-        preconditions = std::move(updated_preconditions);
-        for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
-          cmd_validation_queue.push(cmd_index);
-        }
-      }
-    } break;
-    case Op::Mul: {
-      auto &preconditions = preconditions_[cmd.result.value.as<Register>()];
-      std::vector<std::unique_ptr<Property>> updated_preconditions;
-
-      if (cmd.args[0].value.is<Register>()) {
-        if (cmd.args[1].value.is<Register>()) {
-          cmd.dump(0);
-          NOT_YET();
-        } else {
-          for (const auto &prop :
-               preconditions_[cmd.args[0].value.as<Register>()]) {
-            auto new_prop = prop->Mul(cmd.args[1]);
-            if (new_prop != nullptr) {
-              updated_preconditions.push_back(std::move(new_prop));
-            }
-          }
-        }
-      }
-
-      // TODO this equality check is not correct.
-      if (updated_preconditions != preconditions) {
-        preconditions = std::move(updated_preconditions);
-        for (auto cmd_index : references_[cmd.result.value.as<Register>()]) {
-          cmd_validation_queue.push(cmd_index);
-        }
-      }
-    } break;
-
-    case Op::Print: break;
-    case Op::Call: {
+    if (cmd.op_code == Op::Call) {
       Function *fn_type = cmd.args.back().value.as<Func *>()->type;
-      size_t num_fn_args =
-          fn_type->is<Tuple>() ? ptr_cast<Tuple>(fn_type)->entries.size() : 1;
+      i32 num_fn_args   = static_cast<i32>(
+          fn_type->is<Tuple>() ? ptr_cast<Tuple>(fn_type)->entries.size() : 1);
 
-      for (size_t i = 0; i < num_fn_args; ++i) {
+      for (i32 i = 0; i < num_fn_args; ++i) {
         const auto &arg = cmd.args[i];
 
-        for (const auto &property : cmd.args.back()
-                                        .value.as<Func *>()
-                                        ->preconditions_[static_cast<i32>(i)]) {
-          if (arg.value.is<Register>()) {
-            for (const auto &known_prop :
-                 preconditions_[arg.value.as<Register>()]) {
-              if (known_prop->Implies(property.get())) { goto next_prop; }
-            }
+        const auto &property =
+            cmd.args.back().value.as<Func *>()->properties_[Register(i)];
+        if (property == nullptr) { continue; }
+
+        if (arg.value.is<Register>()) {
+          if (properties_[arg.value.as<Register>()]->Implies(property.get())) {
+            goto next_prop;
+          }
+
+          ++num_errors_;
+          LogError::FailedPrecondition(*property);
+
+        } else {
+          switch (property->Validate(arg)) {
+          case Validity::Always: continue;
+          default:
             ++num_errors_;
             LogError::FailedPrecondition(*property);
-
-          } else {
-            switch (property->Validate(arg)) {
-            case Validity::Always: continue;
-            default:
-              ++num_errors_;
-              LogError::FailedPrecondition(*property);
-              break;
-            }
+            break;
           }
-        next_prop:;
         }
+      next_prop:;
       }
 
       validation_queue->push(cmd.args.back().value.as<IR::Func *>());
-    } break;
-    default:;
+    } else if (!cmd.result.value.is<Register>()) {
+      continue;
+    } else {
+      auto &property = properties_[cmd.result.value.as<Register>()];
+      auto new_prop  = cmd.MakeProperty(this);
+      // TODO this equality check is not correct.
+      if (new_prop != property) {
+        property = std::move(new_prop);
+        for (auto index : references_[cmd.result.value.as<Register>()]) {
+          cmd_validation_queue.push(index);
+        }
+      }
     }
   }
 

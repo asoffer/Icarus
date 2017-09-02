@@ -19,19 +19,19 @@ void ChainOp::GenerateRequirements() const {
       case Language::Operator::Lt: {
         auto upper_bound = Evaluate(exprs[1].get());
         if (upper_bound.value.is<i64>()) {
-          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
-              .push_back(std::make_unique<IR::IntProperty>(
+          containing_function->properties_[id_addr->value.as<IR::Register>()] =
+              std::make_unique<IR::IntProperty>(
                   loc, std::numeric_limits<i64>::min(),
-                  upper_bound.value.as<i64>() - 1));
+                  upper_bound.value.as<i64>() - 1);
         }
       } break;
       case Language::Operator::Le: {
         auto upper_bound = Evaluate(exprs[1].get());
         if (upper_bound.value.is<i64>()) {
-          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
-              .push_back(std::make_unique<IR::IntProperty>(
-                  loc, std::numeric_limits<i64>::min(),
-                  upper_bound.value.as<i64>()));
+          containing_function->properties_[id_addr->value.as<IR::Register>()] =
+              std::make_unique<IR::IntProperty>(loc,
+                                                std::numeric_limits<i64>::min(),
+                                                upper_bound.value.as<i64>());
         }
       } break;
       case Language::Operator::Eq: NOT_YET();
@@ -39,19 +39,19 @@ void ChainOp::GenerateRequirements() const {
       case Language::Operator::Ge: {
         auto lower_bound = Evaluate(exprs[1].get());
         if (lower_bound.value.is<i64>()) {
-          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
-              .push_back(std::make_unique<IR::IntProperty>(
+          containing_function->properties_[id_addr->value.as<IR::Register>()] =
+              std::make_unique<IR::IntProperty>(
                   loc, lower_bound.value.as<i64>(),
-                  std::numeric_limits<i64>::max()));
+                  std::numeric_limits<i64>::max());
         }
       } break;
       case Language::Operator::Gt: {
         auto lower_bound = Evaluate(exprs[1].get());
         if (lower_bound.value.is<i64>()) {
-          containing_function->preconditions_[id_addr->value.as<IR::Register>()]
-              .push_back(std::make_unique<IR::IntProperty>(
+          containing_function->properties_[id_addr->value.as<IR::Register>()] =
+              std::make_unique<IR::IntProperty>(
                   loc, lower_bound.value.as<i64>() + 1,
-                  std::numeric_limits<i64>::max()));
+                  std::numeric_limits<i64>::max());
         }
       } break;
       default: UNREACHABLE();

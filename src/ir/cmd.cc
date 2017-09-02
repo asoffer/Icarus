@@ -530,4 +530,40 @@ void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   // TODO recompute dependencies.
   Command(cmd_index).args = std::move(args);
 }
+
+std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
+  switch (op_code) {
+  case Op::Add: {
+    if (args[0].value.is<Register>()) {
+      if (args[1].value.is<Register>()) {
+        NOT_YET();
+      } else {
+        return fn->properties_[args[0].value.as<Register>()]->Add(args[1]);
+      }
+    }
+  } break;
+  case Op::Sub: {
+    if (args[0].value.is<Register>()) {
+      if (args[1].value.is<Register>()) {
+        NOT_YET();
+      } else {
+        return fn->properties_[args[0].value.as<Register>()]->Sub(args[1]);
+      }
+    }
+  } break;
+  case Op::Mul: {
+    if (args[0].value.is<Register>()) {
+      if (args[1].value.is<Register>()) {
+        NOT_YET();
+      } else {
+        return fn->properties_[args[0].value.as<Register>()]->Mul(args[1]);
+      }
+    }
+  } break;
+  case Op::Print: return nullptr;
+  default: NOT_YET();
+  }
+  return nullptr;
+}
+
 } // namespace IR

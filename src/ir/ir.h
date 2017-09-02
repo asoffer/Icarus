@@ -86,8 +86,7 @@ struct Val {
   ::Type *type = nullptr;
   base::variant<Register, ::IR::Addr, bool, char, double, i64, u64, EnumVal,
                 ::Type *, ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock *,
-                AST::Expression *, BlockIndex, std::string,
-                const std::vector<std::unique_ptr<Property>> *>
+                AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
@@ -108,8 +107,6 @@ struct Val {
   static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
-  static Val
-  Precondition(const std::vector<std::unique_ptr<Property>> *precondition);
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }
   static Val Scope(AST::ScopeLiteral *scope_lit);
@@ -228,6 +225,8 @@ struct Cmd {
   Cmd(Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code;
+
+  std::unique_ptr<Property> MakeProperty(IR::Func *fn) const;
 
   Val result; // Will always be of Kind::Reg.
 
@@ -361,8 +360,7 @@ struct Func {
   // TODO Probably a better container here. One that consolidates preconditions
   // (what about tracing errors?) and since we know how many arguments we'll
   // have ahead of time, probably a flat map or really just a vector.
-  std::unordered_map<Register, std::vector<std::unique_ptr<Property>>>
-      preconditions_;
+  std::unordered_map<Register, std::unique_ptr<Property>> properties_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 

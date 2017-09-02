@@ -149,6 +149,7 @@ start:
 }
 
 template <int Base> static inline int pow(i32 num) {
+  // TODO repeated squaring
   int result = 1;
   for (int i = 0; i < num; ++i) { result *= Base; }
   return result;
