@@ -44,7 +44,6 @@ struct Property : public base::Cast<Property> {
 
   virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
 
-
   Cursor loc;
 };
 
@@ -52,35 +51,6 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   prop.WriteTo(os);
   return os;
 }
-
-template <typename T> struct UpperBound : public Property {
-  ~UpperBound() override {}
-  UpperBound(const Cursor &loc, T val = std::numeric_limits<T>::max())
-      : Property(loc), max_(val) {}
-
-  Validity Validate(const Val &val) const override;
-
-  void WriteTo(std::ostream &os) const override {
-    os << "Upper bound of " << max_;
-  }
-
-  bool Implies(const Property *prop) const override {
-    return prop->template is<UpperBound<T>>() &&
-           ptr_cast<UpperBound<T>>(prop)->max_ >= max_;
-  }
-
-  static UpperBound<T> Merge(const std::vector<UpperBound<T>> &props) {
-    UpperBound<T> result = std::numeric_limits<T>::min();
-    for (const auto &prop : props) {
-      result.max_ = std::max(result.max_, prop.max_);
-    }
-    return result;
-  }
-
-  std::unique_ptr<Property> Add(const Val &) const override;
-
-  T max_;
-};
 
 DEFINE_STRONG_INT(Register, i32, -1);
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
@@ -393,18 +363,6 @@ struct Func {
       preconditions_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };
-
-template <typename T>
-std::unique_ptr<Property> UpperBound<T>::Add(const Val &val) const {
-  if (!val.value.template is<T>()) { return nullptr; }
-  // TODO overflow?
-  return std::make_unique<UpperBound<T>>(Cursor{}, max_ + val.value.as<T>());
-}
-
-template <typename T> Validity UpperBound<T>::Validate(const Val &val) const {
-  return (val.value.template as<T>() <= max_) ? Validity::Always
-                                              : Validity::Never;
-}
 
 struct FuncResetter {
   FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(Block::Current) {
