@@ -4,6 +4,16 @@
 
 extern IR::Val Evaluate(AST::Expression *expr);
 
+static void AddBound(std::unique_ptr<IR::Property> *prop, double low, double hi) {
+  if (*prop == nullptr) {
+    *prop = std::make_unique<IR::RealProperty>(low, hi);
+  } else if ((*prop)->is<IR::RealProperty>()) {
+    auto *real_prop = &(*prop)->as<IR::RealProperty>();
+    real_prop->min_ = std::max(real_prop->min_, low);
+    real_prop->max_ = std::min(real_prop->max_, hi);
+  }
+}
+
 static void AddBound(std::unique_ptr<IR::Property> *prop, i32 low, i32 hi) {
   if (*prop == nullptr) {
     *prop = std::make_unique<IR::IntProperty>(low, hi);
@@ -34,19 +44,28 @@ void ChainOp::GenerateRequirements() const {
         switch (ops[i]) {
         case Language::Operator::Lt: {
           if (val.value.is<i32>()) {
-            AddBound(entry, std::numeric_limits<i32>::min(),
+            AddBound(entry, std::numeric_limits<i32>::lowest(),
                      val.value.as<i32>() - 1);
+          } else if (val.value.is<double>()) {
+            // Previous double "- 1"
+            AddBound(entry, std::numeric_limits<double>::lowest(),
+                     val.value.as<double>());
           }
         } break;
         case Language::Operator::Le: {
           if (val.value.is<i32>()) {
-            AddBound(entry, std::numeric_limits<i32>::min(),
+            AddBound(entry, std::numeric_limits<i32>::lowest(),
                      val.value.as<i32>());
+           } else if (val.value.is<double>()) {
+             AddBound(entry, std::numeric_limits<double>::lowest(),
+                      val.value.as<double>());
           }
         } break;
         case Language::Operator::Eq: {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>(), val.value.as<i32>());
+          } else if (val.value.is<double>()) {
+            AddBound(entry, val.value.as<double>(), val.value.as<double>());
           }
         } break;
         case Language::Operator::Ne: NOT_YET();
@@ -54,12 +73,19 @@ void ChainOp::GenerateRequirements() const {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>(),
                      std::numeric_limits<i32>::max());
+          } else if (val.value.is<double>()) {
+            AddBound(entry, val.value.as<double>(),
+                     std::numeric_limits<double>::max());
           }
         } break;
         case Language::Operator::Gt: {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>() + 1,
                      std::numeric_limits<i32>::max());
+          } else if (val.value.is<double>()) {
+            // Next double "+ 1"
+            AddBound(entry, val.value.as<double>(),
+                     std::numeric_limits<double>::max());
           }
         } break;
         default: UNREACHABLE();
@@ -77,30 +103,46 @@ void ChainOp::GenerateRequirements() const {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>() + 1,
                      std::numeric_limits<i32>::max());
+          } else if (val.value.is<double>()) {
+            // Next double "+ 1"
+            AddBound(entry, val.value.as<double>(),
+                     std::numeric_limits<double>::max());
           }
         } break;
         case Language::Operator::Le: {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>(),
                      std::numeric_limits<i32>::max());
+          } else if (val.value.is<double>()) {
+            AddBound(entry, val.value.as<double>(),
+                     std::numeric_limits<double>::max());
           }
         } break;
         case Language::Operator::Eq: {
           if (val.value.is<i32>()) {
             AddBound(entry, val.value.as<i32>(), val.value.as<i32>());
+          } else if (val.value.is<double>()) {
+            AddBound(entry, val.value.as<double>(), val.value.as<double>());
           }
         } break;
         case Language::Operator::Ne: NOT_YET();
         case Language::Operator::Ge: {
           if (val.value.is<i32>()) {
-            AddBound(entry, std::numeric_limits<i32>::min(),
+            AddBound(entry, std::numeric_limits<i32>::lowest(),
                      val.value.as<i32>());
+          } else if (val.value.is<double>()) {
+            AddBound(entry, std::numeric_limits<double>::lowest(),
+                     val.value.as<double>());
           }
         } break;
         case Language::Operator::Gt: {
           if (val.value.is<i32>()) {
-            AddBound(entry, std::numeric_limits<i32>::min(),
+            AddBound(entry, std::numeric_limits<i32>::lowest(),
                      val.value.as<i32>() - 1);
+          } else if (val.value.is<double>()) {
+            // Previous double "- 1"
+            AddBound(entry, std::numeric_limits<double>::lowest(),
+                     val.value.as<double>());
           }
         } break;
         default: UNREACHABLE();

@@ -5,8 +5,7 @@
 
 namespace IR {
 struct IntProperty : public Property {
-  // TODO deal with overflow
-  IntProperty(i32 min_val = std::numeric_limits<i32>::min(),
+  IntProperty(i32 min_val = std::numeric_limits<i32>::lowest(),
               i32 max_val = std::numeric_limits<i32>::max())
       : min_(min_val), max_(max_val) {}
   ~IntProperty() override {}
@@ -27,28 +26,38 @@ struct IntProperty : public Property {
     return min_ >= int_prop.min_ && max_ <= int_prop.max_;
   }
 
-  std::unique_ptr<Property> Add(const Val &val) const override {
-    if (!val.value.is<i32>()) { return nullptr; }
-    return std::make_unique<IntProperty>(min_ + val.value.as<i32>(),
-                                         max_ + val.value.as<i32>());
-  }
-
-  std::unique_ptr<Property> Sub(const Val &val) const override {
-    if (!val.value.is<i32>()) { return nullptr; }
-    return std::make_unique<IntProperty>(min_ - val.value.as<i32>(),
-                                         max_ - val.value.as<i32>());
-  }
-
-  std::unique_ptr<Property> Mul(const Val &val) const override {
-    if (!val.value.is<i32>()) { return nullptr; }
-    auto scaled_min = min_ * val.value.as<i32>();
-    auto scaled_max = max_ * val.value.as<i32>();
-    return std::make_unique<IntProperty>(std::min(scaled_min, scaled_max),
-                                         std::max(scaled_min, scaled_max));
-  }
   // Inclusive bounds
-  i32 min_ = std::numeric_limits<i32>::min();
+  i32 min_ = std::numeric_limits<i32>::lowest();
   i32 max_ = std::numeric_limits<i32>::max();
+};
+
+struct RealProperty : public Property {
+  // TODO deal with overflow
+  RealProperty(double min_val = std::numeric_limits<double>::lowest(),
+              double max_val = std::numeric_limits<double>::max())
+      : min_(min_val), max_(max_val) {}
+  ~RealProperty() override {}
+
+  Validity Validate(const Val &val) const override {
+    LOG << min_ << " <= " << val.value.as<double>() << " <= " << max_;
+    return min_ <= val.value.as<double>() && val.value.as<double>() <= max_
+               ? Validity::Always
+               : Validity::Never;
+  }
+
+  void WriteTo(std::ostream &os) const override {
+    os << "Range[" << min_ << ", " << max_ << "]";
+  }
+
+  virtual bool Implies(const Property *prop) const {
+    if (!prop->is<RealProperty>()) { return false; }
+    const auto &real_prop = prop->as<RealProperty>();
+    return min_ >= real_prop.min_ && max_ <= real_prop.max_;
+  }
+
+  // Inclusive bounds
+  double min_ = std::numeric_limits<double>::lowest();
+  double max_ = std::numeric_limits<double>::max();
 };
 
 } // namespace IR

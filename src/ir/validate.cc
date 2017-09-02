@@ -5,6 +5,7 @@
 namespace IR {
 int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
   if (num_errors_ >= 0) { return num_errors_; }
+  num_errors_ = 0;
 
   std::queue<CmdIndex> cmd_validation_queue;
   for (auto cmd_index : no_dependencies_) {
@@ -33,9 +34,7 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
           }
 
           ++num_errors_;
-          LOG << *property.get();
           LogError::FailedPrecondition(*property);
-          LOG << *property.get();
 
         } else {
           switch (property->Validate(arg)) {

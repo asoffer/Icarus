@@ -275,7 +275,7 @@ Val Mod(Val v1, Val v2) {
   } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
     return Val::Uint(v1.value.as<u64>() % v2.value.as<u64>());
   } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(fmod(v1.value.as<double>() , v2.value.as<double>()));
+    return Val::Real(fmod(v1.value.as<double>(), v2.value.as<double>()));
   } else {
     MAKE_AND_RETURN2(v1.type, Op::Mod);
   }
@@ -312,8 +312,8 @@ Val Index(Val v1, Val v2) {
   ASSERT_EQ(v2.type, ::Uint);
   auto *array_type = ptr_cast<::Array>(ptee);
 
-  IR::Val ptr      = array_type->fixed_length ? v1 : Load(ArrayData(v1));
-  ptr.type         = Ptr(array_type->data_type);
+  IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
+  ptr.type    = Ptr(array_type->data_type);
   return PtrIncr(ptr, v2);
 }
 
@@ -344,7 +344,7 @@ Val Le(Val v1, Val v2) {
 Val Gt(Val v1, Val v2) {
   if (v1.value.is<i32>() && v2.value.is<i32>()) {
     return Val::Bool(v1.value.as<i32>() > v2.value.as<i32>());
-  } else if (v1.value.is<u64>()&& v2.value.is<u64>()) {
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
     return Val::Bool(v1.value.as<u64>() > v2.value.as<u64>());
   } else if (v1.value.is<double>() && v2.value.is<double>()) {
     return Val::Bool(v1.value.as<double>() > v2.value.as<double>());
@@ -356,7 +356,7 @@ Val Gt(Val v1, Val v2) {
 Val Ge(Val v1, Val v2) {
   if (v1.value.is<i32>() && v2.value.is<i32>()) {
     return Val::Bool(v1.value.as<i32>() >= v2.value.as<i32>());
-  } else if (v1.value.is<u64>()&& v2.value.is<u64>()) {
+  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
     return Val::Bool(v1.value.as<u64>() >= v2.value.as<u64>());
   } else if (v1.value.is<double>() && v2.value.is<double>()) {
     return Val::Bool(v1.value.as<double>() >= v2.value.as<double>());
@@ -419,7 +419,6 @@ Val Cast(Val v1, Val v2) {
 #undef MAKE_AND_RETURN
 #undef MAKE_VOID2
 #undef MAKE_VOID
-
 
 CmdIndex Phi(Type *t) {
   CmdIndex cmd_index{
@@ -537,13 +536,13 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
   case Op::Add: {
     if (result.type == Int) {
       // TODO not just for integers
-      auto prop = std::make_unique<IntProperty>( 0, 0);
+      auto prop             = std::make_unique<IntProperty>(0, 0);
       using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::min();
+      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
 
       i64 new_min, new_max;
-      for (const auto& arg : args) {
+      for (const auto &arg : args) {
         if (arg.value.is<Register>()) {
           const auto &arg_prop =
               fn->properties_[arg.value.as<Register>()]->as<IntProperty>();
@@ -566,16 +565,31 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
                          : static_cast<IntType>(new_max);
       }
       return prop;
+    } else if (result.type == Real) {
+      // TODO not just for integers
+      auto prop              = std::make_unique<RealProperty>(0, 0);
+      for (const auto &arg : args) {
+        if (arg.value.is<Register>()) {
+          const auto &arg_prop =
+              fn->properties_[arg.value.as<Register>()]->as<RealProperty>();
+          prop->min_ += arg_prop.min_;
+          prop->max_ += arg_prop.max_;
+        } else {
+          prop->min_ += arg.value.as<double>();
+          prop->max_ += arg.value.as<double>();
+        }
+      }
+      return prop;
     } else {
-      
+      NOT_YET();
     }
   } break;
   case Op::Sub: {
     if (result.type == Int) {
       // TODO not just for integers
-      auto prop = std::make_unique<IntProperty>( 0, 0);
+      auto prop             = std::make_unique<IntProperty>(0, 0);
       using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::min();
+      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
 
       if (args[0].value.is<Register>()) {
@@ -610,7 +624,29 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
                        : static_cast<IntType>(new_max);
 
       return prop;
+    } else if (result.type == Real) {
+      auto prop = std::make_unique<RealProperty>(0, 0);
+      if (args[0].value.is<Register>()) {
+        const auto &arg_prop =
+            fn->properties_[args[0].value.as<Register>()]->as<RealProperty>();
+        prop->min_ = arg_prop.min_;
+        prop->max_ = arg_prop.max_;
+      } else {
+        prop->min_ = args[0].value.as<double>();
+        prop->max_ = args[0].value.as<double>();
+      }
+      if (args[1].value.is<Register>()) {
+        const auto &arg_prop =
+            fn->properties_[args[1].value.as<Register>()]->as<RealProperty>();
+        prop->min_ -= arg_prop.min_;
+        prop->max_ -= arg_prop.max_;
+      } else {
+        prop->min_ -= args[1].value.as<double>();
+        prop->max_ -= args[1].value.as<double>();
+      }
+      return prop;
     } else {
+      NOT_YET();
     }
   } break;
   case Op::Mul: {
@@ -618,7 +654,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
       // TODO not just for integers
       auto prop             = std::make_unique<IntProperty>(1, 1);
       using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::min();
+      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
       constexpr auto MaxInt = std::numeric_limits<IntType>::max();
 
       for (const auto &arg : args) {
@@ -649,7 +685,32 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
         }
       }
       return prop;
+    } else if (result.type == Real) {
+      // TODO not just for integers
+      auto prop = std::make_unique<RealProperty>(1, 1);
+      for (const auto &arg : args) {
+        if (arg.value.is<Register>()) {
+          const auto &arg_prop =
+              fn->properties_[arg.value.as<Register>()]->as<RealProperty>();
+          double new_min, new_max;
+          new_min = new_max = prop->min_ * arg_prop.min_;
+          for (double val :
+               {prop->min_ * arg_prop.max_, prop->max_ * arg_prop.min_,
+                prop->max_ * arg_prop.max_}) {
+            std::tie(new_min, new_max) =
+                std::make_pair(std::min(new_min, val), std::max(new_max, val));
+          }
+          prop->min_ = new_min;
+          prop->max_ = new_max;
+        } else {
+          prop->min_ *= arg.value.as<i32>();
+          prop->max_ *= arg.value.as<i32>();
+          if (prop->min_ > prop->max_) { std::swap(prop->min_, prop->max_); }
+        }
+      }
+      return prop;
     } else {
+      NOT_YET();
     }
   } break;
   case Op::Neg: {

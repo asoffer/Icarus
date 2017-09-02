@@ -41,10 +41,6 @@ struct Property : public base::Cast<Property> {
   virtual Validity Validate(const Val &val) const = 0;
   virtual void WriteTo(std::ostream& os) const = 0;
   virtual bool Implies(const Property *prop) const = 0;
-
-  virtual std::unique_ptr<Property> Add(const Val &) const { return nullptr; }
-  virtual std::unique_ptr<Property> Sub(const Val &) const { return nullptr; }
-  virtual std::unique_ptr<Property> Mul(const Val &) const { return nullptr; }
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
