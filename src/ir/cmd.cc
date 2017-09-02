@@ -533,22 +533,37 @@ void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
 }
 
 std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
-  // TODO deal with overflow
   switch (op_code) {
   case Op::Add: {
     if (result.type == Int) {
       // TODO not just for integers
       auto prop = std::make_unique<IntProperty>(Cursor{}, 0, 0);
+      using IntType         = decltype(prop->min_);
+      constexpr auto MinInt = std::numeric_limits<IntType>::min();
+      constexpr auto MaxInt = std::numeric_limits<IntType>::max();
+
+      i64 new_min, new_max;
       for (const auto& arg : args) {
         if (arg.value.is<Register>()) {
           const auto &arg_prop =
               fn->properties_[arg.value.as<Register>()]->as<IntProperty>();
-          prop->min_ += arg_prop.min_;
-          prop->max_ += arg_prop.max_;
+          new_min =
+              static_cast<i64>(prop->min_) + static_cast<i64>(arg_prop.min_);
+          new_max =
+              static_cast<i64>(prop->max_) + static_cast<i64>(arg_prop.max_);
         } else {
-          prop->min_ += arg.value.as<i32>();
-          prop->max_ += arg.value.as<i32>();
+          new_min = static_cast<i64>(prop->min_) +
+                    static_cast<i64>(arg.value.as<i32>());
+          new_max = static_cast<i64>(prop->max_) +
+                    static_cast<i64>(arg.value.as<i32>());
         }
+
+        prop->min_ = (new_min < static_cast<i64>(MinInt))
+                         ? MinInt
+                         : static_cast<IntType>(new_min);
+        prop->max_ = (new_max > static_cast<i64>(MaxInt))
+                         ? MaxInt
+                         : static_cast<IntType>(new_max);
       }
       return prop;
     } else {
@@ -559,6 +574,10 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
     if (result.type == Int) {
       // TODO not just for integers
       auto prop = std::make_unique<IntProperty>(Cursor{}, 0, 0);
+      using IntType         = decltype(prop->min_);
+      constexpr auto MinInt = std::numeric_limits<IntType>::min();
+      constexpr auto MaxInt = std::numeric_limits<IntType>::max();
+
       if (args[0].value.is<Register>()) {
         const auto &arg_prop =
             fn->properties_[args[0].value.as<Register>()]->as<IntProperty>();
@@ -568,15 +587,27 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
         prop->min_ = args[0].value.as<i32>();
         prop->max_ = args[0].value.as<i32>();
       }
+      i64 new_min, new_max;
       if (args[1].value.is<Register>()) {
         const auto &arg_prop =
             fn->properties_[args[1].value.as<Register>()]->as<IntProperty>();
-        prop->min_ -= arg_prop.min_;
-        prop->max_ -= arg_prop.max_;
+        new_min =
+            static_cast<i64>(prop->min_) - static_cast<i64>(arg_prop.min_);
+        new_max =
+            static_cast<i64>(prop->max_) - static_cast<i64>(arg_prop.max_);
       } else {
-        prop->min_ -= args[1].value.as<i32>();
-        prop->max_ -= args[1].value.as<i32>();
+        new_min = static_cast<i64>(prop->min_) -
+                  static_cast<i64>(args[1].value.as<i32>());
+        new_max = static_cast<i64>(prop->max_) -
+                  static_cast<i64>(args[1].value.as<i32>());
       }
+
+      prop->min_ = (new_min < static_cast<i64>(MinInt))
+                       ? MinInt
+                       : static_cast<IntType>(new_min);
+      prop->max_ = (new_max > static_cast<i64>(MaxInt))
+                       ? MaxInt
+                       : static_cast<IntType>(new_max);
 
       return prop;
     } else {
@@ -615,7 +646,7 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
           prop->min_ *= arg.value.as<i32>();
           prop->max_ *= arg.value.as<i32>();
           if (prop->min_ > prop->max_) { std::swap(prop->min_, prop->max_); }
-       }
+        }
       }
       return prop;
     } else {
