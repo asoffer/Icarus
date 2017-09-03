@@ -6,8 +6,7 @@
 
 namespace IR {
 BlockIndex Block::Current;
-Func *Func::Current;
-
+Func *Func::Current; 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
   result = (t == nullptr) ? Val::None()
@@ -535,190 +534,46 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
   switch (op_code) {
   case Op::Add: {
     if (result.type == Int) {
-      // TODO not just for integers
-      auto prop             = std::make_unique<IntProperty>(0, 0);
-      using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
-      constexpr auto MaxInt = std::numeric_limits<IntType>::max();
-
-      i64 new_min, new_max;
-      for (const auto &arg : args) {
-        if (arg.value.is<Register>()) {
-          const auto &arg_prop =
-              fn->properties_[arg.value.as<Register>()]->as<IntProperty>();
-          new_min =
-              static_cast<i64>(prop->min_) + static_cast<i64>(arg_prop.min_);
-          new_max =
-              static_cast<i64>(prop->max_) + static_cast<i64>(arg_prop.max_);
-        } else {
-          new_min = static_cast<i64>(prop->min_) +
-                    static_cast<i64>(arg.value.as<i32>());
-          new_max = static_cast<i64>(prop->max_) +
-                    static_cast<i64>(arg.value.as<i32>());
-        }
-
-        prop->min_ = (new_min < static_cast<i64>(MinInt))
-                         ? MinInt
-                         : static_cast<IntType>(new_min);
-        prop->max_ = (new_max > static_cast<i64>(MaxInt))
-                         ? MaxInt
-                         : static_cast<IntType>(new_max);
-      }
-      return prop;
+      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) +
+                                           IntProperty::Get(fn, args[1]));
     } else if (result.type == Real) {
-      // TODO not just for integers
-      auto prop              = std::make_unique<RealProperty>(0, 0);
-      for (const auto &arg : args) {
-        if (arg.value.is<Register>()) {
-          const auto &arg_prop =
-              fn->properties_[arg.value.as<Register>()]->as<RealProperty>();
-          prop->min_ += arg_prop.min_;
-          prop->max_ += arg_prop.max_;
-        } else {
-          prop->min_ += arg.value.as<double>();
-          prop->max_ += arg.value.as<double>();
-        }
-      }
-      return prop;
+      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) +
+                                            RealProperty::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Sub: {
     if (result.type == Int) {
-      // TODO not just for integers
-      auto prop             = std::make_unique<IntProperty>(0, 0);
-      using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
-      constexpr auto MaxInt = std::numeric_limits<IntType>::max();
-
-      if (args[0].value.is<Register>()) {
-        const auto &arg_prop =
-            fn->properties_[args[0].value.as<Register>()]->as<IntProperty>();
-        prop->min_ = arg_prop.min_;
-        prop->max_ = arg_prop.max_;
-      } else {
-        prop->min_ = args[0].value.as<i32>();
-        prop->max_ = args[0].value.as<i32>();
-      }
-      i64 new_min, new_max;
-      if (args[1].value.is<Register>()) {
-        const auto &arg_prop =
-            fn->properties_[args[1].value.as<Register>()]->as<IntProperty>();
-        new_min =
-            static_cast<i64>(prop->min_) - static_cast<i64>(arg_prop.min_);
-        new_max =
-            static_cast<i64>(prop->max_) - static_cast<i64>(arg_prop.max_);
-      } else {
-        new_min = static_cast<i64>(prop->min_) -
-                  static_cast<i64>(args[1].value.as<i32>());
-        new_max = static_cast<i64>(prop->max_) -
-                  static_cast<i64>(args[1].value.as<i32>());
-      }
-
-      prop->min_ = (new_min < static_cast<i64>(MinInt))
-                       ? MinInt
-                       : static_cast<IntType>(new_min);
-      prop->max_ = (new_max > static_cast<i64>(MaxInt))
-                       ? MaxInt
-                       : static_cast<IntType>(new_max);
-
-      return prop;
+      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) -
+                                           IntProperty::Get(fn, args[1]));
     } else if (result.type == Real) {
-      auto prop = std::make_unique<RealProperty>(0, 0);
-      if (args[0].value.is<Register>()) {
-        const auto &arg_prop =
-            fn->properties_[args[0].value.as<Register>()]->as<RealProperty>();
-        prop->min_ = arg_prop.min_;
-        prop->max_ = arg_prop.max_;
-      } else {
-        prop->min_ = args[0].value.as<double>();
-        prop->max_ = args[0].value.as<double>();
-      }
-      if (args[1].value.is<Register>()) {
-        const auto &arg_prop =
-            fn->properties_[args[1].value.as<Register>()]->as<RealProperty>();
-        prop->min_ -= arg_prop.min_;
-        prop->max_ -= arg_prop.max_;
-      } else {
-        prop->min_ -= args[1].value.as<double>();
-        prop->max_ -= args[1].value.as<double>();
-      }
-      return prop;
+      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) -
+                                            RealProperty::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Mul: {
     if (result.type == Int) {
-      // TODO not just for integers
-      auto prop             = std::make_unique<IntProperty>(1, 1);
-      using IntType         = decltype(prop->min_);
-      constexpr auto MinInt = std::numeric_limits<IntType>::lowest();
-      constexpr auto MaxInt = std::numeric_limits<IntType>::max();
-
-      for (const auto &arg : args) {
-        if (arg.value.is<Register>()) {
-          const auto &arg_prop =
-              fn->properties_[arg.value.as<Register>()]->as<IntProperty>();
-          i64 new_min, new_max;
-          new_min = new_max =
-              static_cast<i64>(prop->min_) * static_cast<i64>(arg_prop.min_);
-          for (i64 val :
-               {static_cast<i64>(prop->min_) * static_cast<i64>(arg_prop.max_),
-                static_cast<i64>(prop->max_) * static_cast<i64>(arg_prop.min_),
-                static_cast<i64>(prop->max_) *
-                    static_cast<i64>(arg_prop.max_)}) {
-            std::tie(new_min, new_max) =
-                std::make_pair(std::min(new_min, val), std::max(new_max, val));
-          }
-          prop->min_ = (new_min < static_cast<i64>(MinInt))
-                           ? MinInt
-                           : static_cast<IntType>(new_min);
-          prop->max_ = (new_max > static_cast<i64>(MaxInt))
-                           ? MaxInt
-                           : static_cast<IntType>(new_max);
-        } else {
-          prop->min_ *= arg.value.as<i32>();
-          prop->max_ *= arg.value.as<i32>();
-          if (prop->min_ > prop->max_) { std::swap(prop->min_, prop->max_); }
-        }
-      }
-      return prop;
+      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) *
+                                           IntProperty::Get(fn, args[1]));
     } else if (result.type == Real) {
-      // TODO not just for integers
-      auto prop = std::make_unique<RealProperty>(1, 1);
-      for (const auto &arg : args) {
-        if (arg.value.is<Register>()) {
-          const auto &arg_prop =
-              fn->properties_[arg.value.as<Register>()]->as<RealProperty>();
-          double new_min, new_max;
-          new_min = new_max = prop->min_ * arg_prop.min_;
-          for (double val :
-               {prop->min_ * arg_prop.max_, prop->max_ * arg_prop.min_,
-                prop->max_ * arg_prop.max_}) {
-            std::tie(new_min, new_max) =
-                std::make_pair(std::min(new_min, val), std::max(new_max, val));
-          }
-          prop->min_ = new_min;
-          prop->max_ = new_max;
-        } else {
-          prop->min_ *= arg.value.as<i32>();
-          prop->max_ *= arg.value.as<i32>();
-          if (prop->min_ > prop->max_) { std::swap(prop->min_, prop->max_); }
-        }
-      }
-      return prop;
+      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) *
+                                            RealProperty::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Neg: {
     if (result.type == Int) {
-      // TODO not just for integers
       const auto &prop =
           fn->properties_[args[0].value.as<Register>()]->as<IntProperty>();
       return std::make_unique<IntProperty>(-prop.max_, -prop.min_);
+    } else if (result.type == Real) {
+      const auto &prop =
+          fn->properties_[args[0].value.as<Register>()]->as<RealProperty>();
+      return std::make_unique<RealProperty>(-prop.max_, -prop.min_);
     } else {
     }
   } break;

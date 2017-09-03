@@ -71,7 +71,11 @@ IR::Val Evaluate(AST::Expression *expr) {
     }
   }
 
-  CURRENT_FUNC(nullptr) { fn = fn_ptr->EmitIR().value.as<IR::Func *>(); }
+  CURRENT_FUNC(nullptr) {
+    auto fn_ir = fn_ptr->EmitIR();
+    if (!errors.empty()) { return IR::Val::None(); }
+    fn = fn_ptr->EmitIR().value.as<IR::Func *>();
+  }
 
   std::vector<IR::Val> results;
   IR::ExecContext context;

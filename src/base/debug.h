@@ -73,4 +73,13 @@ template <typename T> std::string to_string(const T *ptr) {
 #define AT(access) [(access)]
 #endif
 
+#define WARN_ONCE(msg)                                                         \
+  do {                                                                         \
+    static bool warned = false;                                                \
+    if (!warned) {                                                             \
+      warned = true;                                                           \
+      LOG << "Warning: " << msg;                                               \
+    }                                                                          \
+  } while (false)
+
 #endif // ICARUS_BASE_DEBUG_H

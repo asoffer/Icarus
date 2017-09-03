@@ -8,21 +8,21 @@
 
 template <typename To, typename From> To *ptr_cast(From* ptr) {
 #ifdef DEBUG
-  auto* result = dynamic_cast<To*>(ptr);
+  auto *result = dynamic_cast<To *>(ptr);
   ASSERT(result, "Failed to convert");
   return result;
 #else
-  return static_cast<To*>(ptr);
+  return reinterpret_cast<To *>(ptr);
 #endif
 }
 
-template <typename To, typename From> const To *ptr_cast(const From* ptr) {
+template <typename To, typename From> const To *ptr_cast(const From *ptr) {
 #ifdef DEBUG
-  const auto* result = dynamic_cast<const To*>(ptr);
+  const auto *result = dynamic_cast<const To *>(ptr);
   ASSERT(result, "Failed to convert");
   return result;
 #else
-  return static_cast<const To*>(ptr);
+  return reinterpret_cast<const To *>(ptr);
 #endif
 }
 

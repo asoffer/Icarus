@@ -1102,6 +1102,10 @@ void FunctionLiteral::verify_types() {
   }
 
   auto ret_type_val = Evaluate(return_type_expr.get());
+  if (ret_type_val == IR::Val::None()) {
+    type = Err;
+    return;
+  }
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
