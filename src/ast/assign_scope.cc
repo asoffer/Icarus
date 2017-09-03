@@ -20,17 +20,7 @@ void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 void Terminal::assign_scope(Scope *scope) {
   scope_ = scope;
   if (type != Type_) { return; }
-  if (value.value.as<Type *>()->is<ParamStruct>()) {
-    auto ps = static_cast<ParamStruct *>(value.value.as<Type *>());
-    if (!ps->type_scope) {
-      // TODO make unique
-      ps->type_scope = scope->add_child<DeclScope>().release();
-    }
-
-    for (auto p : ps->params) { p->assign_scope(ps->type_scope); }
-    for (auto d : ps->decls) { d->assign_scope(ps->type_scope); }
-
-  } else if (value.value.as<Type *>()->is<Struct>()) {
+  if (value.value.as<Type *>()->is<Struct>()) {
     auto s = static_cast<Struct *>(value.value.as<Type *>());
     if (!s->type_scope) {
       // TODO make unique

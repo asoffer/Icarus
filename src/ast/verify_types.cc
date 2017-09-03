@@ -162,7 +162,7 @@ void Unop::verify_types() {
   } break;
   case Operator::At: {
     if (operand->type->is<Pointer>()) {
-      type = ((Pointer *)operand->type)->pointee;
+      type = ptr_cast<Pointer>(operand->type)->pointee;
 
     } else {
       std::string msg = "Attempting to dereference an expression of type `" +
@@ -203,7 +203,7 @@ void Unop::verify_types() {
 
       auto t = scope_->FunctionTypeReferencedOrNull("__neg__", operand->type);
       if (t) {
-        type = ((Function *)t)->output;
+        type = ptr_cast<Function>(t)->output;
       } else {
         errors.emplace_back(Error::Code::MissingOperator);
         // ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
@@ -244,6 +244,7 @@ void Unop::verify_types() {
   } break;
   case Operator::Needs: {
     type = Void;
+    if (operand->type != Bool) { LogError::NeedsBool(this); }
   } break;
   default: UNREACHABLE(*this);
   }
@@ -271,13 +272,13 @@ void Access::verify_types() {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
     } else {
-      Type *evaled_type = Evaluate(operand.get()).value.as<::Type *>();
+      Type *evaled_type = Evaluate(operand.get()).value.as<Type *>();
       if (evaled_type->is<Enum>()) {
         // Regardless of whether we can get the value, it's clear that this is
         // supposed to be a member so we should emit an error but carry on
         // assuming that this is an element of that enum type.
         type = evaled_type;
-        if (((Enum *)evaled_type)->IndexOrFail(member_name) == FAIL) {
+        if (ptr_cast<Enum>(evaled_type)->IndexOrFail(member_name) == FAIL) {
           errors.emplace_back(Error::Code::MissingMember);
           // ErrorLog::MissingMember(loc, member_name, evaled_type);
         }
@@ -331,23 +332,15 @@ void Binop::verify_types() {
               // decl->value = IR::Val(decl->init_val);
             } else {
               decl->value = IR::Val::Type(
-                  Evaluate(decl->init_val.get()).value.as<::Type *>());
+                  Evaluate(decl->init_val.get()).value.as<Type *>());
 
               if (decl->init_val->is<Terminal>()) {
-                auto t = decl->init_val->value.value.as<::Type *>();
+                auto t = decl->init_val->value.value.as<Type *>();
                 if (t->is<Struct>()) {
-
-                  ((Struct *)decl->identifier->value.value.as<::Type *>())
+                  ptr_cast<Struct>(decl->identifier->value.value.as<Type *>())
                       ->bound_name = decl->identifier->token;
-                } else if (t->is<ParamStruct>()) {
-                  ASSERT_TYPE(ParamStruct,
-                              decl->identifier->value.value.as<::Type *>());
-                  ((ParamStruct *)decl->identifier->value.value.as<::Type *>())
-                      ->bound_name = decl->identifier->token;
-
                 } else if (t->is<Enum>()) {
-
-                  ((Enum *)(decl->identifier->value.value.as<::Type *>()))
+                  ptr_cast<Enum>(decl->identifier->value.value.as<Type *>())
                       ->bound_name = decl->identifier->token;
                 }
               }
@@ -356,10 +349,6 @@ void Binop::verify_types() {
           } else if (decl->IsUninitialized()) {
             NOT_YET();
           }
-
-          auto decl_type = decl->value.value.as<::Type *>();
-
-          if (decl_type->is<ParamStruct>()) { NOT_YET(); }
         }
       } // End of decl loop
 
@@ -393,33 +382,27 @@ void Binop::verify_types() {
       } else {
         ASSERT_EQ(lhs->type, Type_);
 
-        auto lhs_as_type = lhs->value.value.as<Type *>();
+        // Cast
+        op   = Language::Operator::Cast;
+        type = lhs->value.value.as<Type *>();
+        if (type == Err) { return; }
 
-        if (lhs_as_type->is<ParamStruct>()) {
-          NOT_YET();
-        } else {
-          // Cast
-          op   = Language::Operator::Cast;
-          type = lhs_as_type;
-          if (type == Err) { return; }
-
-          if (rhs->type == lhs_as_type ||
-              (rhs->type == Bool &&
-               (type == Int || lhs_as_type == Uint || lhs_as_type == Real)) ||
-              (rhs->type == Int && lhs_as_type == Real) ||
-              (rhs->type == Int && lhs_as_type == Uint) ||
-              (rhs->type == Uint && lhs_as_type == Real) ||
-              (rhs->type == Uint && lhs_as_type == Int)) {
-            return;
-          }
-
-          if (lhs->type->is<Pointer>() && type->is<Pointer>()) { return; }
-          errors.emplace_back(Error::Code::InvalidCast);
-          // ErrorLog::InvalidCast(loc, lhs->type, type);
-
-          if (rhs) { rhs->verify_types(); }
-          type = Err;
+        if (rhs->type == type ||
+            (rhs->type == Bool &&
+             (type == Int || type == Uint || type == Real)) ||
+            (rhs->type == Int && type == Real) ||
+            (rhs->type == Int && type == Uint) ||
+            (rhs->type == Uint && type == Real) ||
+            (rhs->type == Uint && type == Int)) {
+          return;
         }
+
+        if (lhs->type->is<Pointer>() && type->is<Pointer>()) { return; }
+        errors.emplace_back(Error::Code::InvalidCast);
+        // ErrorLog::InvalidCast(loc, lhs->type, type);
+
+        if (rhs) { rhs->verify_types(); }
+        type = Err;
       }
     }
 
@@ -480,10 +463,10 @@ void Binop::verify_types() {
         // ErrorLog::IndexingNonArray(loc, lhs->type);
       }
     } else if (rhs->type->is<RangeType>()) {
-      type = Slice((Array *)lhs->type);
+      type = Slice(ptr_cast<Array>(lhs->type));
       break;
     } else {
-      type = ((Array *)lhs->type)->data_type;
+      type = ptr_cast<Array>(lhs->type)->data_type;
 
       // TODO allow slice indexing
       if (rhs->type == Int || rhs->type == Uint) { break; }
@@ -560,7 +543,7 @@ void Binop::verify_types() {
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
         if (!decl->type->is<Function>()) { continue; }                         \
-        auto fn_type = (Function *)decl->type;                                 \
+        auto fn_type = ptr_cast<Function>(decl->type);                         \
         if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
         /* If you get here, you've found a match. Hope there is only one       \
          * TODO if there is more than one, log them all and give a good        \
@@ -579,7 +562,7 @@ void Binop::verify_types() {
         errors.emplace_back(Error::Code::NoKnownOverload);                     \
         /* ErrorLog::NoKnownOverload(loc, symbol, lhs->type, rhs->type); */    \
       } else if (type != Err) {                                                \
-        type = ((Function *)correct_decl->type)->output;                       \
+        type = ptr_cast<Function>(correct_decl->type)->output;                 \
       }                                                                        \
     }                                                                          \
   } break;
@@ -593,7 +576,6 @@ void Binop::verify_types() {
     CASE(MulEq, "mul_eq", "*=", Void);
     CASE(DivEq, "div_eq", "/=", Void);
     CASE(ModEq, "mod_eq", "%=", Void);
-
 #undef CASE
 
   // Mul is done separately because of the function composition
@@ -604,8 +586,8 @@ void Binop::verify_types() {
       type = lhs->type;
 
     } else if (lhs->type->is<Function>() && rhs->type->is<Function>()) {
-      auto lhs_fn = (Function *)lhs->type;
-      auto rhs_fn = (Function *)rhs->type;
+      auto lhs_fn = ptr_cast<Function>(lhs->type);
+      auto rhs_fn = ptr_cast<Function>(rhs->type);
       if (rhs_fn->output == lhs_fn->input) {
         type = Func(rhs_fn->input, lhs_fn->output);
 
@@ -626,7 +608,7 @@ void Binop::verify_types() {
       auto fn_type = scope_->FunctionTypeReferencedOrNull(
           "__mul__", Tup({lhs->type, rhs->type}));
       if (fn_type) {
-        type = ((Function *)fn_type)->output;
+        type = ptr_cast<Function>(fn_type)->output;
       } else {
         type = Err;
         errors.emplace_back(Error::Code::NoKnownOverload);
@@ -811,7 +793,7 @@ void Generic::verify_types() {
     return;
   }
 
-  auto test_func_type = (Function *)(test_fn->type);
+  auto test_func_type = ptr_cast<Function>(test_fn->type);
   if (test_func_type->output != Bool) {
     // TODO What about implicitly cast-able to bool via a user-defined cast?
     errors.emplace_back(Error::Code::Other);
@@ -845,16 +827,16 @@ void InDecl::verify_types() {
   }
 
   if (container->type->is<Array>()) {
-    type = ((Array *)container->type)->data_type;
+    type = ptr_cast<Array>(container->type)->data_type;
 
   } else if (container->type->is<SliceType>()) {
-    type = ((SliceType *)container->type)->array_type->data_type;
+    type = ptr_cast<SliceType>(container->type)->array_type->data_type;
 
   } else if (container->type->is<RangeType>()) {
-    type = ((RangeType *)container->type)->end_type;
+    type = ptr_cast<RangeType>(container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container.get()).value.as<::Type *>();
+    auto t = Evaluate(container.get()).value.as<Type *>();
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -874,17 +856,11 @@ Type *Expression::VerifyTypeForDeclaration(const std::string & /*id_tok*/) {
     return Err;
   }
 
-  Type *t = Evaluate(this).value.as<::Type *>();
+  Type *t = Evaluate(this).value.as<Type *>();
 
   if (t == Void) {
     errors.emplace_back(Error::Code::VoidDeclaration);
     // ErrorLog::DeclaredVoidType(loc, id_tok);
-    return Err;
-  }
-
-  if (t->is<ParamStruct>()) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::DeclaredParametricType(loc, id_tok);
     return Err;
   }
 
@@ -897,12 +873,6 @@ Type *Expression::VerifyValueForDeclaration(const std::string &) {
   if (type == Void) {
     errors.emplace_back(Error::Code::VoidDeclaration);
     // ErrorLog::VoidDeclaration(loc);
-    return Err;
-
-  } else if (type->is<ParamStruct>()) {
-    // TODO is this actually what we want?
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::ParametricDeclaration(loc);
     return Err;
   }
   return type;
@@ -1004,25 +974,19 @@ void Declaration::verify_types() {
 
   if (type == Err) { return; }
 
-  if (type->is<Struct>()) { ((Struct *)type)->CompleteDefinition(); }
+  if (type->is<Struct>()) { ptr_cast<Struct>(type)->CompleteDefinition(); }
 
   if (type == Type_ && IsInferred()) {
     if (init_val->is<Terminal>()) {
-      auto t = init_val->value.value.as<::Type *>();
-
-      std::string *name_ptr = nullptr;
-      if (t->is<Struct>()) {
-        name_ptr = &((Struct *)t)->bound_name;
-      } else if (t->is<ParamStruct>()) {
-        name_ptr = &((ParamStruct *)t)->bound_name;
-      } else if (t->is<Enum>()) {
-        name_ptr = &((Enum *)t)->bound_name;
-      } else if (t->is<Scope_Type>()) {
-        name_ptr = &((Scope_Type *)t)->bound_name;
-      }
-
+      auto t = init_val->value.value.as<Type *>();
       // TODO mangle the name correctly (Where should this be done?)
-      *name_ptr = identifier->token;
+      if (t->is<Struct>()) {
+        ptr_cast<Struct>(t)->bound_name = identifier->token;
+      } else if (t->is<Enum>()) {
+        ptr_cast<Enum>(t)->bound_name = identifier->token;
+      } else if (t->is<Scope_Type>()) {
+        ptr_cast<Scope_Type>(t)->bound_name = identifier->token;
+      }
     }
 
     identifier->value = init_val->value;
@@ -1117,7 +1081,7 @@ void FunctionLiteral::verify_types() {
     // ErrorLog::NotAType(return_type_expr, return_type_expr->type);
     type = Err;
     return;
-  } else if (ret_type_val.value.as<::Type *>() == Err) {
+  } else if (ret_type_val.value.as<Type *>() == Err) {
     type = Err;
     return;
   }
@@ -1126,7 +1090,7 @@ void FunctionLiteral::verify_types() {
 
   // TODO don't do early exists on input or return type errors.
 
-  Type *ret_type = ret_type_val.value.as<::Type *>();
+  Type *ret_type = ret_type_val.value.as<Type *>();
   Type *input_type;
   size_t num_inputs = inputs.size();
   if (num_inputs == 0) {

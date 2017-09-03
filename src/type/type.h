@@ -17,7 +17,6 @@ struct Function;
 struct RangeType;
 struct SliceType;
 struct Scope_Type;
-struct ParamStruct;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
     *Void, *NullPtr, *String;
@@ -207,31 +206,11 @@ struct Struct : public Type {
   std::vector<Type *> field_type;
 
   std::vector<AST::Expression *> init_values;
-  ParamStruct *creator = nullptr;
 
 private:
   IR::Func *init_func = nullptr, *assign_func = nullptr,
            *destroy_func = nullptr, *repr_func = nullptr;
   bool completed_ = false;
-};
-
-struct ParamStruct : public Type {
-  TYPE_FNS(ParamStruct, parametric_struct);
-
-  ParamStruct(const std::string &name,
-                      std::vector<AST::Declaration *> params,
-                      std::vector<AST::Declaration *> decls);
-
-  IR::Func *IRFunc();
-
-  std::string bound_name;
-  Scope *type_scope = nullptr;
-  std::vector<AST::Declaration *> params, decls;
-  std::map<std::vector<IR::Val>, Struct *> cache;
-  std::unordered_map<Struct *, std::vector<IR::Val>> reverse_cache;
-
-private:
-  IR::Func *ir_func = nullptr;
 };
 
 struct RangeType : public Type {

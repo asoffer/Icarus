@@ -739,6 +739,12 @@ void ImplicitCapture(AST::Identifier *id) {
 void FailedPrecondition(const IR::Property &) {
   fprintf(stderr, "Precondition failed.\n");
 }
+
+void NeedsBool(AST::Expression *expr) {
+  fprintf(stderr, "Function precondition must be of type bool, but you "
+                  "provided an expression of type %s.\n",
+          expr->type->to_string().c_str());
+}
 } // namespace LogError
 
 

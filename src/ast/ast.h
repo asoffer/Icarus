@@ -144,7 +144,7 @@ struct Terminal : public Expression {
   Terminal(const Cursor &cursor, IR::Val val);
 
   virtual IR::Val EmitIR();
-  virtual void GenerateRequirements() const {}
+  virtual void GenerateRequirements() const { NOT_YET(); }
   virtual bool is_hole() const override { return value == IR::Val::None(); }
 };
 

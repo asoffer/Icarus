@@ -84,42 +84,6 @@ BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
   return std::move(scope_lit);
 }
 
-static base::owned_ptr<Node>
-BuildParametricStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  std::vector<Declaration *> params, decls;
-  if (nodes[1]->is<Declaration>()) {
-    params.push_back(base::move<Declaration>(nodes[1]).release());
-
-  } else if (nodes[1]->is<CommaList>()) {
-    for (auto &expr : ptr_cast<ChainOp>(nodes[1].get())->exprs) {
-      if (expr->is<Declaration>()) {
-        params.push_back(base::move<Declaration>(expr).release());
-      } else {
-        // TODO is ths guaranteed to not happen? I don't think so
-        // Log an error
-      }
-    }
-  }
-
-  for (auto &stmt : ptr_cast<Statements>(nodes[2].get())->statements) {
-    // TODO check that these actually are declarations. I'm not sure it's
-    // guaranteed.
-    decls.push_back(base::move<Declaration>(stmt).release());
-  }
-
-  static size_t anon_param_struct_counter = 0;
-  auto param_struct_type                  = new ParamStruct(
-      "__anon.param.struct" + std::to_string(anon_param_struct_counter++),
-      std::move(params), std::move(decls));
-
-  auto type_node = base::make_owned<Terminal>(nodes[0]->loc,
-                                              IR::Val::Type(param_struct_type));
-  for (auto &param : param_struct_type->params) {
-    param->arg_val = type_node.release();
-  }
-  return std::move(type_node);
-}
-
 // Input guarantees:
 // [enum] [braced_statements]
 //
@@ -778,8 +742,9 @@ BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
   if (tk == "for") {
     return AST::For::Build(std::move(nodes));
 
-  } else if (tk == "struct") {
-    return AST::BuildParametricStructLiteral(std::move(nodes));
+  } else if (tk == "struct") { 
+    // Parmaetric struct
+    NOT_YET();
   }
 
   UNREACHABLE();

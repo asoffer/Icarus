@@ -19,8 +19,7 @@ void Struct::CompleteDefinition() {
     Type *decl_type;
     if (decls[i]->type_expr) {
       if (decls[i]->type_expr->type == Err ||
-          decls[i]->type_expr->type == Void ||
-          decls[i]->type_expr->type->is<ParamStruct>()) {
+          decls[i]->type_expr->type == Void) {
         decl_type = Err;
       } else {
         decl_type = Evaluate(decls[i]->type_expr.get()).value.as<Type *>();
