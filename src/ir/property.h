@@ -124,6 +124,45 @@ RangeProperty<Number> operator*(RangeProperty<Number> lhs,
 using IntProperty  = RangeProperty<i32>;
 using RealProperty = RangeProperty<double>;
 
+struct BoolProperty : Property {
+  BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
+
+  Validity Validate(const Val &val) const override {
+    if (val.value.as<bool>()) {
+      switch (kind) {
+      case Kind::True: return Validity::Always;
+      case Kind::False: return Validity::Never;
+      default: NOT_YET();
+      }
+    } else if (!val.value.as<bool>()) {
+      switch (kind) {
+      case Kind::True: return Validity::Never;
+      case Kind::False: return Validity::Always;
+      default: NOT_YET();
+      }
+    }
+    NOT_YET();
+  }
+
+  void WriteTo(std::ostream &os) const override {
+    switch (kind) {
+    case Kind::True: os << "bool true"; break;
+    case Kind::False: os << "bool false"; break;
+    case Kind::Register: os << "bool eq " << reg; break;
+    case Kind::NegatedRegister: os << "bool ne " << reg; break;
+    }
+  }
+
+  bool Implies(const Property *prop) const override {
+    if (!prop->is<BoolProperty>()) { return false; }
+    NOT_YET();
+  }
+
+
+  Register reg;
+  enum class Kind : char { True, False, Register, NegatedRegister } kind;
+};
+
 } // namespace IR
 
 #endif // ICARUS_IR_PROPERTY_H

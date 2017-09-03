@@ -25,6 +25,13 @@ static void AddBound(std::unique_ptr<IR::Property> *prop, i32 low, i32 hi) {
 }
 
 namespace AST {
+void Identifier::GenerateRequirements() const {
+  ASSERT_EQ(type, Bool);
+  auto &props   = scope_->ContainingFnScope()->fn_lit->ir_func->properties_;
+  props[decl->addr.value.as<IR::Register>()] =
+      std::make_unique<IR::BoolProperty>(true);
+}
+
 void ChainOp::GenerateRequirements() const {
   // TODO should there be a more direct way to compute this?
   auto &props = scope_->ContainingFnScope()->fn_lit->ir_func->properties_;

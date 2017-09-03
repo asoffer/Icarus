@@ -155,7 +155,7 @@ struct Identifier : public Terminal {
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
   virtual bool is_hole() const override { return false; }
-  virtual void GenerateRequirements() const {}
+  virtual void GenerateRequirements() const;
 
   std::string token;
   Declaration *decl = nullptr;
