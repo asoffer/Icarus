@@ -72,7 +72,8 @@ namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id);
 void AmbiguousIdentifier(AST::Identifier *id);
 void ImplicitCapture(AST::Identifier *id);
-void NeedsBool(AST::Expression* expr);
+void PreconditionNeedsBool(AST::Expression *expr);
+void EnsureNeedsBool(AST::Expression *expr);
 void FailedPrecondition(const IR::Property& property);
 } // namespace LogError
 

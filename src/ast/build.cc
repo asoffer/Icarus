@@ -220,6 +220,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
                    {"generate", {Language::Operator::Generate, false}},
                    {"print", {Language::Operator::Print, false}},
                    {"needs", {Language::Operator::Needs, false}},
+                   {"ensure", {Language::Operator::Ensure, false}},
                    {"*", {Language::Operator::Mul, false}},
                    {"&", {Language::Operator::And, false}},
                    {"-", {Language::Operator::Sub, false}},

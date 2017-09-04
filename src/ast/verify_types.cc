@@ -244,7 +244,11 @@ void Unop::verify_types() {
   } break;
   case Operator::Needs: {
     type = Void;
-    if (operand->type != Bool) { LogError::NeedsBool(this); }
+    if (operand->type != Bool) { LogError::PreconditionNeedsBool(this); }
+  } break;
+  case Operator::Ensure: {
+    type = Void;
+    if (operand->type != Bool) { LogError::EnsureNeedsBool(this); }
   } break;
   default: UNREACHABLE(*this);
   }

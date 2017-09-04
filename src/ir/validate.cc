@@ -1,6 +1,12 @@
 #include "ir.h"
 
 #include "../error_log.h"
+#include "property.h"
+
+// TODO repeated in generate_postcondition
+static IR::Register RetToReg(IR::ReturnValue v) {
+  return IR::Register{-v.value - 1};
+}
 
 namespace IR {
 int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
@@ -17,21 +23,25 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
     cmd_validation_queue.pop();
 
     if (cmd.op_code == Op::Call) {
-      Function *fn_type = cmd.args.back().value.as<Func *>()->type;
+      auto *called_fn   = cmd.args.back().value.as<Func *>();
+      Function *fn_type = called_fn->type;
       i32 num_fn_args   = static_cast<i32>(
           fn_type->is<Tuple>() ? ptr_cast<Tuple>(fn_type)->entries.size() : 1);
 
       for (i32 i = 0; i < num_fn_args; ++i) {
         const auto &arg = cmd.args[i];
 
-        const auto &property =
-           cmd.args.back().value.as<Func *>()->properties_[Register(i)];
+        const auto &property = called_fn->properties_[Register(i)];
         if (property == nullptr) { continue; }
 
         if (arg.value.is<Register>()) {
-          if (properties_[arg.value.as<Register>()]->Implies(property.get())) {
+          const auto &prop = properties_[arg.value.as<Register>()];
+          if (prop != nullptr && prop->Implies(property.get())) {
             goto next_prop;
           }
+
+          // Failure here could mean you know it's never true or that you can't
+          // prove it's true.
 
           ++num_errors_;
           LogError::FailedPrecondition(*property);
@@ -48,7 +58,29 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
       next_prop:;
       }
 
-      validation_queue->push(cmd.args.back().value.as<IR::Func *>());
+      if (fn_type->output != Void) {
+        // TODO multiple return values?
+        const auto &ensured_property = called_fn->properties_[Register(-1)];
+        if (ensured_property != nullptr) {
+          // TODO if this property has relationships to the input arguments, you
+          // need to rectify those references too.
+          // TODO make properties copyable (don't use unique_ptr). For now only
+          // support bool properties and hand-craft the copying.
+          if (ensured_property->is<BoolProperty>()) {
+            properties_[cmd.result.value.as<Register>()] =
+                std::make_unique<BoolProperty>(
+                    ensured_property->as<BoolProperty>());
+          } else {
+            NOT_YET();
+          }
+        }
+      }
+
+      validation_queue->push(called_fn);
+    } else if (cmd.op_code == Op::SetReturn) {
+      const auto &ensured_property =
+          properties_[RetToReg(cmd.args[0].value.as<ReturnValue>())];
+      if (ensured_property != nullptr) { LOG << *ensured_property; }
     } else if (!cmd.result.value.is<Register>()) {
       continue;
     } else {

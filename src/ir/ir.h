@@ -48,7 +48,7 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   return os;
 }
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
-DEFINE_STRONG_INT(Register, i32, -1);
+DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
 
@@ -60,7 +60,7 @@ struct CmdIndex {
 
 DEFINE_STRONG_INT_HASH(IR::Register);
 DEFINE_STRONG_INT_HASH(IR::BlockIndex);
-
+DEFINE_STRONG_INT_HASH(IR::ReturnValue);
 namespace IR {
 struct Addr {
   enum class Kind : u8 { Null, Global, Stack, Heap } kind;
@@ -190,7 +190,6 @@ struct ExecContext {
     BlockIndex current_;
     BlockIndex prev_;
 
-    // Indexed first by block then by instruction number
     std::vector<Val> regs_ = {};
     std::vector<Val> rets_ = {};
   };
@@ -356,6 +355,7 @@ struct Func {
   // (what about tracing errors?) and since we know how many arguments we'll
   // have ahead of time, probably a flat map or really just a vector.
   std::unordered_map<Register, std::unique_ptr<Property>> properties_;
+  std::unordered_map<ReturnValue, std::unique_ptr<Property>> postconditions_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 

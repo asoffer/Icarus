@@ -155,7 +155,14 @@ struct BoolProperty : Property {
 
   bool Implies(const Property *prop) const override {
     if (!prop->is<BoolProperty>()) { return false; }
-    NOT_YET();
+    // TODO is this really what I mean by "implies"?
+    switch (prop->as<BoolProperty>().kind) {
+      case Kind::True:
+        return kind == Kind::True;
+      case Kind::False:
+        return true;
+      default: NOT_YET();
+    }
   }
 
 

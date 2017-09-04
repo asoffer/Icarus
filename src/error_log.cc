@@ -740,7 +740,13 @@ void FailedPrecondition(const IR::Property &) {
   fprintf(stderr, "Precondition failed.\n");
 }
 
-void NeedsBool(AST::Expression *expr) {
+void EnsureNeedsBool(AST::Expression *expr) {
+  fprintf(stderr, "Function precondition must be of type bool, but you "
+                  "provided an expression of type %s.\n",
+          expr->type->to_string().c_str());
+}
+
+void PreconditionNeedsBool(AST::Expression *expr) {
   fprintf(stderr, "Function precondition must be of type bool, but you "
                   "provided an expression of type %s.\n",
           expr->type->to_string().c_str());

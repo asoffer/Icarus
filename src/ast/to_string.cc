@@ -52,6 +52,7 @@ std::string Unop::to_string(size_t n) const {
   case Language::Operator::Require: ss << "Require"; break;
   case Language::Operator::Ref: ss << "Ref"; break;
   case Language::Operator::Needs: ss << "Needs"; break;
+  case Language::Operator::Ensure: ss << "Ensure"; break;
   default: { UNREACHABLE(); }
   }
   
