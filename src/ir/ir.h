@@ -61,6 +61,7 @@ struct CmdIndex {
 DEFINE_STRONG_INT_HASH(IR::Register);
 DEFINE_STRONG_INT_HASH(IR::BlockIndex);
 DEFINE_STRONG_INT_HASH(IR::ReturnValue);
+
 namespace IR {
 struct Addr {
   enum class Kind : u8 { Null, Global, Stack, Heap } kind;
