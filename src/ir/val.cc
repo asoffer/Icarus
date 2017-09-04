@@ -42,6 +42,9 @@ std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
   if (value.is<Register>()) {
     return type->to_string() + " r." + std::to_string(value.as<Register>());
+  } else if (value.is<ReturnValue>()) {
+    return type->to_string() + " ret." +
+           std::to_string(value.as<ReturnValue>());
   } else if (value.is<::IR::Addr>()) {
     return value.as<::IR::Addr>().to_string();
   } else if (value.is<bool>()) {

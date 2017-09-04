@@ -202,8 +202,10 @@ struct Declaration : public Expression {
 
   bool const_ = false;
 
-  // If it's an argument, this points to the function/parametric-struct for
-  // which it's an argument. Otherwise this field is null.
+  // If it's an argument or return value, this points to the
+  // function/parametric-struct for which it's an argument. Otherwise this field
+  // is null.
+  // TODO rename this now that it no longer is just for function arguments
   Expression *arg_val = nullptr;
 
   inline bool IsInferred() const { return !type_expr; }

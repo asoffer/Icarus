@@ -139,14 +139,18 @@ Val ArrayData(Val v) {
   MAKE_AND_RETURN(Ptr(Ptr(array_type->data_type)), Op::ArrayData);
 }
 
-void SetReturn(size_t n, Val v2) {
-  auto v1 = Val::Uint(n);
+void SetReturn(ReturnValue r, Val v2) {
+  Val v1 = Val::Ret(r, v2.type);
   MAKE_VOID2(Op::SetReturn);
 }
 
 void Store(Val v1, Val v2) {
-  ASSERT_TYPE(Pointer, v2.type);
-  MAKE_VOID2(Op::Store);
+  if (v2.value.is<ReturnValue>()) {
+    SetReturn(v2.value.as<ReturnValue>(), v1);
+  } else {
+    ASSERT_TYPE(Pointer, v2.type);
+    MAKE_VOID2(Op::Store);
+  }
 }
 
 Val PtrIncr(Val v1, Val v2) {
@@ -578,6 +582,8 @@ std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
     }
   } break;
   case Op::Print: return nullptr;
+  case Op::Load: return nullptr; // TODO
+  case Op::Alloca: return nullptr; // TODO
   default: dump(0); NOT_YET();
   }
   return nullptr;

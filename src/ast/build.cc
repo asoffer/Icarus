@@ -491,6 +491,11 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     }
   }
 
+  if (fn_lit->return_type_expr->is<Declaration>()) {
+    fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit.get();
+  }
+
+
   return std::move(fn_lit);
 }
 

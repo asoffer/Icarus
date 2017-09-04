@@ -1065,7 +1065,16 @@ void FunctionLiteral::verify_types() {
     return;
   }
 
-  auto ret_type_val = Evaluate(return_type_expr.get());
+  // TODO should named return types be required?
+  auto ret_type_val = Evaluate([&]() {
+    if (!return_type_expr->is<Declaration>()) { return return_type_expr.get(); }
+
+    auto *decl_return = &return_type_expr->as<Declaration>();
+    if (decl_return->IsInferred()) { NOT_YET(); }
+
+    return decl_return->type_expr.get();
+  }());
+
   if (ret_type_val == IR::Val::None()) {
     type = Err;
     return;

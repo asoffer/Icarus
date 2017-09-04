@@ -190,7 +190,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Ge: return Ge(resolved[0], resolved[1]);
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
-    call_stack.top().rets_ AT(resolved[0].value.as<u64>()) = resolved[1];
+    call_stack.top().rets_ AT(resolved[0].value.as<IR::ReturnValue>().value) =
+        resolved[1];
     return IR::Val::None();
   }
   case Op::Extend: return Extend(resolved[0]);

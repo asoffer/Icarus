@@ -47,7 +47,7 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   prop.WriteTo(os);
   return os;
 }
-
+DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(Register, i32, -1);
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
@@ -78,12 +78,13 @@ inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   ::Type *type = nullptr;
-  base::variant<Register, ::IR::Addr, bool, char, double, i32, u64, EnumVal,
-                ::Type *, ::IR::Func *, AST::ScopeLiteral *, AST::CodeBlock *,
-                AST::Expression *, BlockIndex, std::string>
+  base::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32, u64,
+                EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
+                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
+  static Val Ret(ReturnValue r, ::Type *t) { return Val(t, r); }
   static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
   static Val GlobalAddr(u64 addr, ::Type *t);
   static Val HeapAddr(void *addr, ::Type *t);
@@ -259,7 +260,7 @@ Val Ptr(Val v1);
 Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
 
-void SetReturn(size_t n, Val v2);
+void SetReturn(ReturnValue n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);
 void Free(Val v);

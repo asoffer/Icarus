@@ -38,7 +38,7 @@ IR::Val ErrorFunc() {
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
-      IR::SetReturn(0, IR::Val::CodeBlock(nullptr));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Val::CodeBlock(nullptr));
       IR::Jump::Unconditional(fn->exit());
 
       IR::Block::Current = fn->exit();
@@ -55,7 +55,7 @@ IR::Val AsciiFunc() {
     auto fn = new IR::Func(Func(Uint, Char));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
-      IR::SetReturn(0, IR::Trunc(fn->Argument(0)));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
       IR::Jump::Unconditional(fn->exit());
 
       IR::Block::Current = fn->exit();
@@ -72,7 +72,7 @@ IR::Val OrdFunc() {
     auto fn = new IR::Func(Func(Char, Uint));
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
-      IR::SetReturn(0, IR::Extend(fn->Argument(0)));
+      IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
       IR::Jump::Unconditional(fn->exit());
 
       IR::Block::Current = fn->exit();
@@ -396,7 +396,6 @@ IR::Val AST::Declaration::EmitIR() {
     } else {
       UNREACHABLE();
     }
-    return IR::Val::None();
   } else if (scope_ == Scope::Global) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) {
@@ -418,12 +417,13 @@ IR::Val AST::Declaration::EmitIR() {
     } else {
       UNREACHABLE();
     }
-    return IR::Val::None();
   } else {
     // For local variables the declaration determines where the initial value is
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
     // value.
+
+    // TODO I don't think this is even callable
     ASSERT_NE(addr, IR::Val::None());
     ASSERT(scope_->ContainingFnScope(), "");
 
@@ -440,8 +440,8 @@ IR::Val AST::Declaration::EmitIR() {
     } else {
       type->EmitInit(addr);
     }
-    return IR::Val::None();
   }
+  return IR::Val::None();
 }
 
 IR::Val AST::Unop::EmitIR() {
@@ -466,15 +466,17 @@ IR::Val AST::Unop::EmitIR() {
         for (const auto &val : vals) {
           types.push_back(val.value.as<::Type *>());
         }
-        IR::SetReturn(0, IR::Val::Type(Tup(types)));
+        IR::SetReturn(IR::ReturnValue{0}, IR::Val::Type(Tup(types)));
       } else {
         size_t i = 0;
-        for (auto &val : vals) { IR::SetReturn(i++, std::move(val)); }
+        for (auto &val : vals) {
+          IR::SetReturn(IR::ReturnValue{static_cast<i32>(i++)}, std::move(val));
+        }
       }
     } else {
       auto val = operand->EmitIR();
       if (!errors.empty()) { return IR::Val::None(); }
-      IR::SetReturn(0, val);
+      IR::SetReturn(IR::ReturnValue{0}, val);
     }
 
     ASSERT(scope_->is<ExecScope>(), "");
@@ -730,6 +732,12 @@ IR::Val AST::FunctionLiteral::EmitIR() {
         ASSERT_EQ(arg->addr, IR::Val::None());
         // This whole loop can be done on construction!
         arg->addr = IR::Func::Current->Argument(static_cast<i32>(i));
+      }
+
+      // TODO multiple return types
+      if (return_type_expr->is<Declaration>()) {
+        return_type_expr->as<Declaration>().addr =
+            IR::Val::Ret(0, return_type_expr->type);
       }
 
       for (auto scope : fn_scope->innards_) {
