@@ -400,7 +400,7 @@ static void Debug(ParseState *ps, Cursor *cursor = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (cursor) {
-    fprintf(stderr, "%s", cursor->line.c_str());
+    std::cerr << cursor->line();
     fprintf(stderr, "%*s^\n(offset = %lu)\n\n",
             static_cast<int>(cursor->offset), "", cursor->offset);
   }
@@ -469,7 +469,7 @@ base::owned_ptr<AST::Statements> Repl::Parse() {
   first_entry = true; // Show '>> ' the first time.
 
   Cursor cursor;
-  cursor.source_file = this;
+  cursor.source = this;
 
   auto state = ParseState(cursor);
   Shift(&state, &cursor);
@@ -494,7 +494,7 @@ base::owned_ptr<AST::Statements> Repl::Parse() {
 
 base::owned_ptr<AST::Statements> File::Parse() {
   Cursor cursor;
-  cursor.source_file = this;
+  cursor.source = this;
 
   auto state = ParseState(cursor);
   Shift(&state, &cursor);
@@ -528,6 +528,8 @@ base::owned_ptr<AST::Statements> File::Parse() {
         last_chosen_line = state.node_stack_[i]->loc.line_num;
       }
     }
+
+    // TODO pass 'this' instead of 'name'.
     ErrorLog::UnknownParserError(name, lines);
   }
 
@@ -535,18 +537,18 @@ base::owned_ptr<AST::Statements> File::Parse() {
 }
 
 extern Timer timer;
-extern std::queue<std::string> file_queue;
-std::map<std::string, File *> source_map;
+extern std::queue<Source::Name> file_queue;
+std::unordered_map<Source::Name, File *> source_map;
 std::vector<AST::Statements *> ParseAllFiles() {
   std::vector<AST::Statements *> stmts;
   while (!file_queue.empty()) {
-    std::string file_name = file_queue.front();
+    auto file_name = std::move(file_queue.front());
     file_queue.pop();
 
     if (source_map.find(file_name) != source_map.end()) { continue; }
 
     RUN(timer, "Parsing a file") {
-      auto source_file      = new File(file_name);
+      auto source_file      = new File(std::move(file_name));
       source_map[file_name] = source_file;
       stmts.push_back(source_file->Parse().release());
     }

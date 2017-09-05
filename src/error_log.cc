@@ -9,22 +9,23 @@
 
 std::vector<Error> errors;
 
-extern std::map<std::string, File *> source_map;
+extern std::unordered_map<Source::Name, File *> source_map;
 
 using LineNum    = size_t;
 using LineOffset = size_t;
-using FileName   = std::string;
 using Token      = std::string;
 
-typedef std::map<Token,
-                 std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
-    TokenToErrorMap;
-typedef std::map<FileName, std::vector<LineNum>> FileToLineNumMap;
-typedef std::map<const AST::Declaration *,
-                 std::map<FileName, std::map<LineNum, std::vector<LineOffset>>>>
-    DeclToErrorMap;
-typedef std::map<Cursor, std::map<LineNum, std::vector<LineOffset>>>
-    LocToErrorMap;
+using TokenToErrorMap = std::unordered_map<
+    Token,
+    std::unordered_map<Source::Name,
+                       std::unordered_map<LineNum, std::vector<LineOffset>>>>;
+using FileToLineNumMap = std::unordered_map<Source::Name, std::vector<LineNum>>;
+using DeclToErrorMap   = std::unordered_map<
+    const AST::Declaration *,
+    std::unordered_map<Source::Name,
+                       std::unordered_map<LineNum, std::vector<LineOffset>>>>;
+using LocToErrorMap =
+    std::map<Cursor, std::unordered_map<LineNum, std::vector<LineOffset>>>;
 
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
 static DeclToErrorMap implicit_capture;
@@ -70,7 +71,8 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
     if (num_uses == 1) {
       fprintf(stderr, ".\n");
     } else {
-      fprintf(stderr, " used %s.\n", NumTimes(num_uses, nullptr, false).c_str());
+      fprintf(stderr, " used %s.\n",
+              NumTimes(num_uses, nullptr, false).c_str());
     }
 
     for (const auto &file_and_locs : kv.second) {
@@ -97,7 +99,7 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
 
         size_t left_border_width = line_num_width + 6;
         size_t line_length       = line.size() + 1;
-        char *underline          = new char[left_border_width + line_length + 1];
+        char *underline = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
         memset(underline, ' ', left_border_width + line_length);
 
@@ -131,7 +133,8 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
     if (num_uses == 1) {
       fprintf(stderr, ".\n");
     } else {
-      fprintf(stderr, " used %s.\n", NumTimes(num_uses, nullptr, false).c_str());
+      fprintf(stderr, " used %s.\n",
+              NumTimes(num_uses, nullptr, false).c_str());
     }
 
     for (const auto &file_and_locs : kv.second) {
@@ -146,7 +149,9 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
 
       size_t max_line_num = 0;
       for (const auto &line_and_offsets : file_and_locs.second) {
-        if (max_line_num < line_and_offsets.first) { max_line_num = line_and_offsets.first; }
+        if (max_line_num < line_and_offsets.first) {
+          max_line_num = line_and_offsets.first;
+        }
       }
       size_t line_num_width = NumDigits(max_line_num);
 
@@ -154,9 +159,9 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
         auto line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width                   = line_num_width + 6;
-        size_t line_length                         = line.size() + 1;
-        char *underline                            = new char[left_border_width + line_length + 1];
+        size_t left_border_width = line_num_width + 6;
+        size_t line_length       = line.size() + 1;
+        char *underline = new char[left_border_width + line_length + 1];
         underline[line_length + left_border_width] = '\0';
         memset(underline, ' ', left_border_width + line_length);
 
@@ -166,7 +171,8 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
 
         fprintf(stderr, "    %*lu| %s\n"
                         "%s\n",
-                (int)line_num_width, line_and_offsets.first, line.c_str(), underline);
+                (int)line_num_width, line_and_offsets.first, line.c_str(),
+                underline);
         delete[] underline;
       }
     }
@@ -185,7 +191,7 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
     fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
             kv.second.size() == 1 ? "s" : "", kv.first.c_str());
 
-    int line_num_width = (int)NumDigits(kv.second.back());
+    int line_num_width   = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
     for (auto line_num : kv.second) {
       if (line_num - last_line_num == 2) {
@@ -229,10 +235,9 @@ void ErrorLog::Dump() {
   std::cerr << " found." << std::endl;
 }
 
-static void DisplayErrorMessage(const char *msg_head,
-                                const char *msg_foot, const Cursor &loc,
-                                size_t underline_length) {
-  auto line = source_map AT(loc.file_name())->lines AT(loc.line_num);
+static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
+                                const Cursor &loc, size_t underline_length) {
+  auto line = source_map AT(loc.source->name)->lines AT(loc.line_num);
 
   size_t left_border_width = NumDigits(loc.line_num) + 6;
 
@@ -260,7 +265,7 @@ void NullCharInSrc(const Cursor &loc) {
   fprintf(stderr, "I found a null-character in your source file on line %lu. "
                   "I am ignoring it and moving on. Are you sure \"%s\" is a "
                   "source file?\n\n",
-          loc.line_num, loc.file_name().c_str());
+          loc.line_num, loc.source->name.c_str());
   ++num_errs_;
 }
 
@@ -268,7 +273,7 @@ void NonGraphicCharInSrc(const Cursor &loc) {
   fprintf(stderr, "I found a non-graphic-character in your source file on line "
                   "%lu. I am ignoring it and moving on. Are you sure \"%s\" is "
                   "a source file?\n\n",
-          loc.line_num, loc.file_name().c_str());
+          loc.line_num, loc.source->name.c_str());
   ++num_errs_;
 }
 
@@ -277,12 +282,11 @@ void LogGeneric(const Cursor &, const std::string &msg) {
   fprintf(stderr, "%s", msg.c_str());
 }
 
-
 void InvalidRangeType(const Cursor &loc, Type *t) {
   ++num_errs_;
   const char *foot_fmt = "Expected type: int, uint, or char\n"
                          "Given type: %s.";
-  std::string t_str = t->to_string();
+  std::string t_str       = t->to_string();
   size_t type_string_size = t_str.size();
   auto msg_foot = (char *)malloc(strlen(foot_fmt) + type_string_size - 1);
   sprintf(msg_foot, foot_fmt, t_str.c_str());
@@ -321,7 +325,6 @@ void InvalidStringIndex(const Cursor &loc, Type *index_type) {
                          index_type->to_string() + ".";
   ++num_errs_;
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
-
 }
 void NotAType(AST::Expression *expr, Type *t) {
   ++num_errs_;
@@ -349,9 +352,8 @@ void CyclicDependency(AST::Node *node) {
 
 void GlobalNonDecl(const Cursor &loc) {
   ++num_errs_;
-  global_non_decl[loc.file_name().c_str()].push_back(loc.line_num);
+  global_non_decl[loc.source->name].push_back(loc.line_num);
 }
-
 
 void NonIntegralArrayIndex(const Cursor &loc, const Type *index_type) {
   std::string msg_head = "Array is being indexed by an expression of type " +
@@ -384,8 +386,8 @@ void InvalidAddress(const Cursor &loc, Assign mode) {
         loc, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage(
-        "Attempting to take the address of a temporary expression.", nullptr, loc,
-        1);
+        "Attempting to take the address of a temporary expression.", nullptr,
+        loc, 1);
   } else {
     UNREACHABLE();
   }
@@ -400,9 +402,8 @@ void InvalidAssignment(const Cursor &loc, Assign mode) {
         "constant and cannot be modified at run-time.",
         loc, 1);
   } else if (mode == Assign::RVal) {
-    DisplayErrorMessage(
-        "Attempting to assign to a temporary expression.", nullptr, loc,
-        1);
+    DisplayErrorMessage("Attempting to assign to a temporary expression.",
+                        nullptr, loc, 1);
   } else {
     UNREACHABLE();
   }
@@ -420,8 +421,8 @@ void CaseLHSBool(const Cursor &, const Cursor &loc, const Type *t) {
 void MissingMember(const Cursor &loc, const std::string &member_name,
                    const Type *t) {
   ++num_errs_;
-  std::string msg_head = "Expressions of type `" + t->to_string() + "` have no member named '" +
-                         member_name + "'.";
+  std::string msg_head = "Expressions of type `" + t->to_string() +
+                         "` have no member named '" + member_name + "'.";
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
 
@@ -480,14 +481,15 @@ void AlreadyFoundMatch(const Cursor &loc, const std::string &op_symbol,
 
   auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + op_symbol.size() +
                                  lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(), rhs_str.c_str());
+  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
+          rhs_str.c_str());
   // TODO undeline length is incorrect?
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
 }
 
-void NoKnownOverload(const Cursor &loc, const std::string&op_symbol, const Type *lhs,
-                     const Type *rhs) {
+void NoKnownOverload(const Cursor &loc, const std::string &op_symbol,
+                     const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt =
       "No known operator overload for `%s` with types %s and %s.";
@@ -506,8 +508,8 @@ void NoKnownOverload(const Cursor &loc, const std::string&op_symbol, const Type 
 void InvalidRangeTypes(const Cursor &loc, const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt = "No range construction for types %s .. %s.";
-  std::string lhs_str = lhs->to_string();
-  std::string rhs_str = rhs->to_string();
+  std::string lhs_str  = lhs->to_string();
+  std::string rhs_str  = rhs->to_string();
 
   auto msg_head =
       (char *)malloc(strlen(head_fmt) - 3 + lhs_str.size() + rhs_str.size());
@@ -520,13 +522,12 @@ void InvalidRangeTypes(const Cursor &loc, const Type *lhs, const Type *rhs) {
 void AssignmentTypeMismatch(const Cursor &loc, const Type *lhs,
                             const Type *rhs) {
   ++num_errs_;
-  std::string msg_head =
-      "Invalid assignment. Left-hand side has type " + lhs->to_string() +
-      ", but right-hand side has type " + rhs->to_string() + ".";
+  std::string msg_head = "Invalid assignment. Left-hand side has type " +
+                         lhs->to_string() + ", but right-hand side has type " +
+                         rhs->to_string() + ".";
   // TODO underline isn't what it ought to be.
   DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
 }
-
 
 void InvalidCast(const Cursor &loc, const Type *from, const Type *to) {
   ++num_errs_;
@@ -559,7 +560,7 @@ void DeclaredParametricType(const Cursor &loc, const std::string &id_tok) {
 
 void DoubleDeclAssignment(const Cursor &decl_loc, const Cursor &val_loc) {
   ++num_errs_;
-  if (decl_loc.line_num == val_loc.line_num){
+  if (decl_loc.line_num == val_loc.line_num) {
     DisplayErrorMessage("Attempting to initialize an identifier that already "
                         "has an initial value.",
                         nullptr, decl_loc, 1);
@@ -598,9 +599,9 @@ void InvalidAssignDefinition(const Cursor &loc, const Type *t) {
 
 void InvalidScope(const Cursor &loc, const Type *t) {
   ++num_errs_;
-  const char*msg_fmt = "Object of type '%s' used as if it were as scope.";
+  const char *msg_fmt = "Object of type '%s' used as if it were as scope.";
   std::string t_str   = t->to_string();
-  auto msg_head = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
+  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
@@ -609,7 +610,7 @@ void InvalidScope(const Cursor &loc, const Type *t) {
 void NotBinary(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Operator '%s' is not a binary operator";
-  auto msg_head = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
+  auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
@@ -618,7 +619,7 @@ void NotBinary(const Cursor &loc, const std::string &token) {
 void Reserved(const Cursor &loc, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
-  auto msg_head = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
+  auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
   DisplayErrorMessage(msg_head, nullptr, loc, 1);
   free(msg_head);
@@ -637,13 +638,13 @@ void InvalidReturnType(const Cursor &loc, Type *given, Type *correct) {
   ++num_errs_;
   std::string msg_head = "Invalid return type on line " +
                          std::to_string(loc.line_num) + " in \"" +
-                         loc.file_name() + "\".";
+                         loc.source->name.c_str() + "\".";
   std::string msg_foot = "Given return type:    " + given->to_string() +
                          "\n"
                          "Expected return type: " +
                          correct->to_string();
   DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), loc,
-                      strlen(loc.line.c_str()) - loc.offset);
+                      loc.line().size() - loc.offset);
 }
 
 void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types) {
@@ -655,7 +656,7 @@ void ChainTypeMismatch(const Cursor &loc, std::set<Type *> types) {
                       loc, 1);
 }
 
-void UserDefinedError(const Cursor &loc, const std::string& msg) {
+void UserDefinedError(const Cursor &loc, const std::string &msg) {
   ++num_errs_;
   DisplayErrorMessage(msg.c_str(), "", loc, 1);
 }
@@ -667,7 +668,8 @@ static void DisplayLines(const std::vector<Cursor> &lines) {
   size_t last_line_num = lines[0].line_num - 1;
   for (auto loc : lines) {
     if (loc.line_num != last_line_num + 1) { fputs(space_fmt.c_str(), stderr); }
-    fprintf(stderr, "%*lu| %s\n", (int)left_space, loc.line_num, loc.line.c_str());
+    fprintf(stderr, "%*lu| %s\n", (int)left_space, loc.line_num,
+            loc.line().c_str());
     last_line_num = loc.line_num;
   }
 
@@ -677,10 +679,10 @@ static void DisplayLines(const std::vector<Cursor> &lines) {
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   if (correct) {
     fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n",
-            case_ptr->loc.line_num, case_ptr->loc.file_name().c_str());
+            case_ptr->loc.line_num, case_ptr->loc.source->name.c_str());
 
     std::vector<Cursor> locs;
-    for (auto& kv : case_ptr->key_vals) {
+    for (auto &kv : case_ptr->key_vals) {
       ++num_errs_;
       if (kv.second->type == Err || kv.second->type == correct) { continue; }
       locs.push_back(kv.second->loc);
@@ -693,25 +695,25 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
 
   } else {
     ++num_errs_;
-    fprintf(stderr, "Type mismatch in case-expression on line %lu in \"%s\".\n\n",
-            case_ptr->loc.line_num, case_ptr->loc.file_name().c_str());
+    fprintf(stderr,
+            "Type mismatch in case-expression on line %lu in \"%s\".\n\n",
+            case_ptr->loc.line_num, case_ptr->loc.source->name.c_str());
   }
 }
 
-void UnknownParserError(const std::string &file_name,
+void UnknownParserError(const Source::Name &source_name,
                         const std::vector<Cursor> &lines) {
-
   if (lines.empty()) {
     fprintf(stderr,
             "Parse errors found in \"%s\". Sorry I can't be more specific.",
-            file_name.c_str());
+            source_name.c_str());
     ++num_errs_;
     return;
   }
 
   num_errs_ += lines.size();
   fprintf(stderr, "Parse errors found in \"%s\" on the following lines:\n\n",
-          file_name.c_str());
+          source_name.c_str());
 
   DisplayLines(lines);
 }
@@ -720,19 +722,19 @@ void UnknownParserError(const std::string &file_name,
 namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id) {
   errors.push_back(Error::Code::UndeclaredIdentifier);
-  undeclared_identifiers[id->token][id->loc.file_name()][id->loc.line_num]
+  undeclared_identifiers[id->token][id->loc.source->name][id->loc.line_num]
       .push_back(id->loc.offset);
 }
 
 void AmbiguousIdentifier(AST::Identifier *id) {
   errors.push_back(Error::Code::AmbiguousIdentifier);
-  ambiguous_identifiers[id->token][id->loc.file_name()][id->loc.line_num]
+  ambiguous_identifiers[id->token][id->loc.source->name][id->loc.line_num]
       .push_back(id->loc.offset);
 }
 
 void ImplicitCapture(AST::Identifier *id) {
   errors.push_back(Error::Code::ImplicitCapture);
-  implicit_capture[id->decl][id->loc.file_name()][id->loc.line_num].push_back(
+  implicit_capture[id->decl][id->loc.source->name][id->loc.line_num].push_back(
       id->loc.offset);
 }
 
@@ -752,5 +754,4 @@ void PreconditionNeedsBool(AST::Expression *expr) {
           expr->type->to_string().c_str());
 }
 } // namespace LogError
-
 

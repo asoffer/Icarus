@@ -6,8 +6,9 @@
 #include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
+#include "../base/source.h"
 
-extern std::queue<std::string> file_queue;
+extern std::queue<Source::Name> file_queue;
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -201,7 +202,8 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
   bool check_id = false;
   if (tk == "require") {
     if (unop->operand->is<Terminal>()) {
-      file_queue.emplace(unop->operand->value.value.as<std::string>());
+      file_queue.push(Source::Name(
+          std::move(unop->operand->value.value.as<std::string>())));
     } else {
       ErrorLog::InvalidRequirement(unop->operand->loc);
     }

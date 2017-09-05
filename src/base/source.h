@@ -7,47 +7,53 @@
 #include <vector>
 #include <memory>
 
+
+#include "optional.h"
 #include "owned_ptr.h"
+#include "strong_types.h"
 
 namespace AST {
 struct Statements;
 }
 
 struct Source {
-  struct Line {
-    std::string text;
-    bool eof = false;
-  };
+  DEFINE_STRONG_STRING(Name);
+  DEFINE_STRONG_STRING(Line);
 
   virtual ~Source() {}
-  virtual Line NextLine() = 0;
+  virtual base::optional<Line> NextLine() = 0;
   virtual base::owned_ptr<AST::Statements> Parse() = 0;
 
-  std::string name;
-  std::vector<std::string> lines{1}; // Start with one blank line because line
-                                     // numbers are 1-indexed not 0-indexed.
+  std::vector<Line> lines{1}; // Start with one blank line because line numbers
+                              // are 1-indexed not 0-indexed.
   // TODO this is a hacky way to do it and you should just shift the counter by
   // one.
+
+  Name name;
+
+protected:
+  Source(Name name) : name(std::move(name)) {}
 };
+
+DEFINE_STRONG_HASH(Source::Name);
+DEFINE_STRONG_HASH(Source::Line);
 
 struct Repl: public Source {
   ~Repl() final {}
-  Repl() { name = "<<REPL>>"; }
+  Repl() : Source(Source::Name("")) {}
 
-  Source::Line NextLine() final;
+  base::optional<Source::Line> NextLine() final;
   base::owned_ptr<AST::Statements> Parse() final;
 
   bool first_entry = true;
 };
 
 struct File : Source {
-  File(const std::string &file_name = "")
-      : ifs(file_name, std::ifstream::in) {
-    name = file_name;
-  }
-  ~File() final { ifs.close(); }
+  File(Source::Name source_name)
+      : Source(std::move(source_name)), ifs(name.c_str(), std::ifstream::in) {}
+  ~File() final {}
 
-  Source::Line NextLine() final;
+  base::optional<Source::Line> NextLine() final;
   base::owned_ptr<AST::Statements> Parse() final;
 
   AST::Statements *ast = nullptr;

@@ -10,7 +10,7 @@
 #include <vector>
 
 #include "../base/debug.h"
-#include "../base/types.h"
+#include "../base/strong_types.h"
 #include "../base/util.h"
 #include "../base/variant.h"
 #include "../cursor.h"
@@ -58,9 +58,9 @@ struct CmdIndex {
 };
 } // namespace IR
 
-DEFINE_STRONG_INT_HASH(IR::Register);
-DEFINE_STRONG_INT_HASH(IR::BlockIndex);
-DEFINE_STRONG_INT_HASH(IR::ReturnValue);
+DEFINE_STRONG_HASH(IR::Register);
+DEFINE_STRONG_HASH(IR::BlockIndex);
+DEFINE_STRONG_HASH(IR::ReturnValue);
 
 namespace IR {
 struct Addr {

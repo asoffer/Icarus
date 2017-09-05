@@ -18,7 +18,7 @@ extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
 static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
-  if (lhs.file_name() != rhs.file_name()) { return CursorOrder::Unordered; }
+  if (lhs.source->name != rhs.source->name) { return CursorOrder::Unordered; }
   if (lhs.line_num < rhs.line_num) { return CursorOrder::InOrder; }
   if (lhs.line_num > rhs.line_num) { return CursorOrder::OutOfOrder; }
   if (lhs.offset < rhs.offset) { return CursorOrder::InOrder; }

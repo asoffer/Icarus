@@ -2,6 +2,7 @@
 #define ICARUS_CLARGS_H
 
 #include <queue>
+#include "base/source.h"
 
 enum class FileType { Bin, IR, Nat, None };
 
@@ -15,7 +16,7 @@ enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };
 
 FileType file_type = FileType::Bin;
 const char *output_file_name = "a.out";
-std::queue<std::string> file_queue;
+std::queue<Source::Name> file_queue;
 
 static void
 ShowUsage(char *argv0) {
@@ -152,8 +153,7 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
 
       }
     } else {
-      /* File to parse */
-      file_queue.emplace(arg);
+      file_queue.push(Source::Name(arg));
     }
   next_arg:;
   }

@@ -68,7 +68,7 @@ NNT NextWord(Cursor &cursor) {
   do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
 
   std::string token =
-      cursor.line.substr(starting_offset, cursor.offset - starting_offset);
+      cursor.line().substr(starting_offset, cursor.offset - starting_offset);
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
