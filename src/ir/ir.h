@@ -13,7 +13,7 @@
 #include "../base/strong_types.h"
 #include "../base/util.h"
 #include "../base/variant.h"
-#include "../cursor.h"
+#include "../input/cursor.h"
 
 struct Type;
 struct Function;

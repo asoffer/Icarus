@@ -131,7 +131,7 @@ Reserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::Reserved(nodes[RES]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
 
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
@@ -141,14 +141,14 @@ BothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
                      ptr_cast<AST::TokenNode>(nodes[RES1].get())->token);
   ErrorLog::Reserved(nodes[RES2]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES2].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
 NonBinop(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::NotBinary(nodes[1]->loc,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[1]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->loc.ToSpan(), "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
@@ -158,7 +158,7 @@ NonBinopReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
   ErrorLog::Reserved(nodes[RES]->loc,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
@@ -169,7 +169,7 @@ NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
   ErrorLog::Reserved(nodes[2]->loc,
                      ptr_cast<AST::TokenNode>(nodes[2].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[1]->loc, "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->loc.ToSpan(), "invalid_node");
 }
 } // namespace ErrMsg
 namespace Language {
@@ -278,7 +278,7 @@ auto Rules = std::vector<Rule>{
 };
 } // namespace Language
 
-extern NNT NextToken(Cursor &cursor); // Defined in Lexer.cpp
+extern NNT NextToken(SourceLocation &loc); // Defined in Lexer.cpp
 
 enum class ShiftState : char { NeedMore, EndOfExpr, MustReduce };
 std::ostream &operator<<(std::ostream &os, ShiftState s) {
@@ -291,7 +291,7 @@ std::ostream &operator<<(std::ostream &os, ShiftState s) {
 }
 
 struct ParseState {
-  ParseState(const Cursor &c) : lookahead_(nullptr, Language::bof) {
+  ParseState(const SourceLocation &c) : lookahead_(nullptr, Language::bof) {
     lookahead_.node = std::make_unique<AST::TokenNode>(c);
   }
 
@@ -396,13 +396,13 @@ struct ParseState {
 };
 
 // Print out the debug information for the parse stack, and pause.
-static void Debug(ParseState *ps, Cursor *cursor = nullptr) {
+static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
-  if (cursor) {
-    std::cerr << cursor->line();
-    fprintf(stderr, "%*s^\n(offset = %lu)\n\n",
-            static_cast<int>(cursor->offset), "", cursor->offset);
+  if (loc != nullptr) {
+    std::cerr << loc->line();
+    fprintf(stderr, "%*s^\n(offset = %u)\n\n", static_cast<int>(loc->cursor.offset),
+            "", loc->cursor.offset);
   }
   for (auto x : ps->node_type_stack_) { fprintf(stderr, "%lu, ", x); }
   fprintf(stderr, " -> %lu", ps->lookahead_.node_type);
@@ -414,7 +414,7 @@ static void Debug(ParseState *ps, Cursor *cursor = nullptr) {
   fgetc(stdin);
 }
 
-static void Shift(ParseState *ps, Cursor *c) {
+static void Shift(ParseState *ps, SourceLocation *c) {
   ps->node_type_stack_.push_back(ps->lookahead_.node_type);
   ps->node_stack_.push_back(base::own(ps->lookahead_.node.release()));
   ps->lookahead_ = NextToken(*c);
@@ -447,85 +447,85 @@ static bool Reduce(ParseState *ps) {
   return true;
 }
 
-void CleanUpReduction(ParseState *state, Cursor *cursor) {
+void CleanUpReduction(ParseState *state, SourceLocation *loc) {
   // Reduce what you can
   while (Reduce(state)) {
-    if (debug::parser) { Debug(state, cursor); }
+    if (debug::parser) { Debug(state, loc); }
   }
 
   state->node_type_stack_.push_back(Language::eof);
-  state->node_stack_.push_back(base::make_owned<AST::TokenNode>(*cursor, ""));
+  state->node_stack_.push_back(base::make_owned<AST::TokenNode>(*loc, ""));
   state->lookahead_ =
-      NNT(std::make_unique<AST::TokenNode>(*cursor, ""), Language::eof);
+      NNT(std::make_unique<AST::TokenNode>(*loc, ""), Language::eof);
 
   // Reduce what you can again
   while (Reduce(state)) {
-    if (debug::parser) { Debug(state, cursor); }
+    if (debug::parser) { Debug(state, loc); }
   }
-  if (debug::parser) { Debug(state, cursor); }
+  if (debug::parser) { Debug(state, loc); }
 }
 
 base::owned_ptr<AST::Statements> Repl::Parse() {
   first_entry = true; // Show '>> ' the first time.
 
-  Cursor cursor;
-  cursor.source = this;
+  SourceLocation loc;
+  loc.source = this;
 
-  auto state = ParseState(cursor);
-  Shift(&state, &cursor);
+  auto state = ParseState(loc);
+  Shift(&state, &loc);
 
   while (true) {
     auto shift_state = state.shift_state();
     switch (shift_state) {
     case ShiftState::NeedMore:
-      Shift(&state, &cursor);
+      Shift(&state, &loc);
 
-      if (debug::parser) { Debug(&state, &cursor); }
+      if (debug::parser) { Debug(&state, &loc); }
       continue;
     case ShiftState::EndOfExpr:
-      CleanUpReduction(&state, &cursor);
+      CleanUpReduction(&state, &loc);
       return base::move<AST::Statements>(state.node_stack_.back());
     case ShiftState::MustReduce:
-      Reduce(&state) || (Shift(&state, &cursor), true);
-      if (debug::parser) { Debug(&state, &cursor); }
+      Reduce(&state) || (Shift(&state, &loc), true);
+      if (debug::parser) { Debug(&state, &loc); }
     }
   }
 }
 
 base::owned_ptr<AST::Statements> File::Parse() {
-  Cursor cursor;
-  cursor.source = this;
+  SourceLocation loc;
+  loc.source = this;
 
-  auto state = ParseState(cursor);
-  Shift(&state, &cursor);
+  auto state = ParseState(loc);
+  Shift(&state, &loc);
 
   while (state.lookahead_.node_type != Language::eof) {
     ASSERT_EQ(state.node_type_stack_.size(), state.node_stack_.size());
     // Shift if you are supposed to, or if you are unable to reduce.
     if (state.shift_state() == ShiftState::NeedMore || !Reduce(&state)) {
-      Shift(&state, &cursor);
+      Shift(&state, &loc);
     }
 
     if (debug::parser) { Debug(&state); }
   }
 
   // Cleanup
-  CleanUpReduction(&state, &cursor);
+  CleanUpReduction(&state, &loc);
 
   // Finish
   if (state.node_stack_.size() > 1) {
-    std::vector<Cursor> lines;
+    std::vector<SourceLocation> lines;
 
     size_t last_chosen_line = 0;
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
-      if (state.node_stack_[i]->loc.line_num == last_chosen_line) { continue; }
+      if (state.node_stack_[i]->loc.cursor.line_num == last_chosen_line) { continue; }
       if (state.node_type_stack_[i] &
           (Language::braced_stmts | Language::l_paren | Language::r_paren |
            Language::l_bracket | Language::r_bracket | Language::l_brace |
            Language::r_brace | Language::semicolon | Language::fn_arrow |
            Language::expr)) {
         lines.push_back(state.node_stack_[i]->loc);
-        last_chosen_line = state.node_stack_[i]->loc.line_num;
+        last_chosen_line = state.node_stack_[i]->loc.cursor.line_num;
       }
     }
 

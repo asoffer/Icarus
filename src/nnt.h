@@ -2,7 +2,7 @@
 #define ICARUS_NNT
 
 #include <memory>
-#include "cursor.h"
+#include "input/cursor.h"
 
 namespace Language {
 constexpr size_t left_assoc  = 0;
@@ -54,11 +54,15 @@ struct NNT {
   std::unique_ptr<AST::Node> node = nullptr;
   Language::NodeType node_type = Language::bof;
 
-  static NNT TerminalExpression(const Cursor &loc, IR::Val val) {
+  static NNT TerminalExpression(const TextSpan &span, IR::Val val) {
+    // TODO make AST take TextSpans
+    SourceLocation loc;
+    loc.source = span.source;
+    loc.cursor = span.start;
     return NNT(std::make_unique<AST::Terminal>(loc, val), Language::expr);
   }
 
-  NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt);
+  NNT(const TextSpan &span, const std::string &token, Language::NodeType nt);
 
   NNT(std::unique_ptr<AST::Node> n, Language::NodeType nt)
       : node(std::move(n)), node_type(nt) {}

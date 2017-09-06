@@ -8,7 +8,7 @@ extern size_t precedence(Operator op);
 } // namespace Language
 
 namespace AST {
-TokenNode::TokenNode(const Cursor &loc, std::string str)
+TokenNode::TokenNode(const SourceLocation &loc, std::string str)
     : Node(loc), token(std::move(str)) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   if (token == symbol) {                                                       \
@@ -24,19 +24,19 @@ Expression::Expression()
     : precedence(Language::precedence(Language::Operator::NotAnOperator)),
       lvalue(Assign::Unset), type(nullptr), value(IR::Val::None()) {}
 
-Terminal::Terminal(const Cursor &cursor, IR::Val val) {
+Terminal::Terminal(const SourceLocation &cursor, IR::Val val) {
   type          = val.type;
   precedence    = Language::precedence(Language::Operator::NotAnOperator);
   loc           = cursor;
   value         = val;
 }
 
-ScopeLiteral::ScopeLiteral(const Cursor &cursor) {
+ScopeLiteral::ScopeLiteral(const SourceLocation &cursor) {
   loc   = cursor;
   value = IR::Val::None(); // TODO Scope(this);
 }
 
-Jump::Jump(const Cursor &new_loc, JumpType jump_type) : jump_type(jump_type) {
+Jump::Jump(const SourceLocation &new_loc, JumpType jump_type) : jump_type(jump_type) {
   loc = new_loc;
 }
 
@@ -44,10 +44,11 @@ CommaList::CommaList() {
   precedence = Language::precedence(Language::Operator::Comma);
 }
 
-Identifier::Identifier(const Cursor &new_loc, const std::string &token_string) {
+Identifier::Identifier(const TextSpan &span, const std::string &token_string) {
   token      = token_string;
   type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
-  loc        = new_loc;
+  loc.source = span.source;
+  loc.cursor = span.start;
 }
 } // namespace AST

@@ -16,8 +16,18 @@ static std::unordered_map<std::string, Type *> PrimitiveTypes{
 #undef PRIMITIVE_MACRO
 };
 
-NNT::NNT(const Cursor &cursor, const std::string &token, Language::NodeType nt)
-    : node(std::make_unique<AST::TokenNode>(Cursor::Behind(cursor, token.size()), token)),
+static SourceLocation ToSourceLocation(const TextSpan &span, u32 n) {
+  // TODO make AST take TextSpans
+  SourceLocation loc;
+  loc.source = span.source;
+  loc.cursor = span.start;
+  loc.cursor.offset -= n;
+  return loc;
+}
+
+NNT::NNT(const TextSpan &span, const std::string &token, Language::NodeType nt)
+    : node(std::make_unique<AST::TokenNode>(
+          ToSourceLocation(span, static_cast<u32>(token.size())), token)),
       node_type(nt) {}
 
 extern IR::Val ErrorFunc();
@@ -59,43 +69,37 @@ static inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
-NNT NextWord(Cursor &cursor) {
+NNT NextWord(SourceLocation &loc) {
   // Match [a-zA-Z_][a-zA-Z0-9_]*
   // We have already matched the first character
-
-  auto starting_offset = cursor.offset;
-
-  do { cursor.Increment(); } while (IsAlphaNumericOrUnderscore(*cursor));
+  auto span = loc.ToSpan();
+  do { loc.Increment(); } while (IsAlphaNumericOrUnderscore(*loc));
+  span.finish = loc.cursor;
 
   std::string token =
-      cursor.line().substr(starting_offset, cursor.offset - starting_offset);
+      loc.line().substr(span.start.offset, loc.cursor.offset - span.start.offset);
 
   // Check if the word is a type primitive/literal and if so, build the
   // appropriate Node.
   for (const auto &type_lit : PrimitiveTypes) {
     if (type_lit.first == token) {
-      return NNT::TerminalExpression(cursor, IR::Val::Type(type_lit.second));
+      return NNT::TerminalExpression(span, IR::Val::Type(type_lit.second));
     }
   }
 
   if (token == "true") {
-    return NNT::TerminalExpression(cursor, IR::Val::Bool(true));
-
+    return NNT::TerminalExpression(span, IR::Val::Bool(true));
   } else if (token == "false") {
-    return NNT::TerminalExpression(cursor, IR::Val::Bool(false));
-
+    return NNT::TerminalExpression(span, IR::Val::Bool(false));
   } else if (token == "null") {
     // Use Null(Void) to reprelent 'null' literal only
-    return NNT::TerminalExpression(cursor, IR::Val::Null(Void));
-
+    return NNT::TerminalExpression(span, IR::Val::Null(Void));
   } else if (token == "ord") {
-    return NNT::TerminalExpression(cursor, OrdFunc());
-
+    return NNT::TerminalExpression(span, OrdFunc());
   } else if (token == "ascii") {
-    return NNT::TerminalExpression(cursor, AsciiFunc());
-
+    return NNT::TerminalExpression(span, AsciiFunc());
   } else if (token == "error") {
-    return NNT::TerminalExpression(cursor, ErrorFunc());
+    return NNT::TerminalExpression(span, ErrorFunc());
   }
 
   static const std::map<std::string, Language::NodeType> KeywordMap = {
@@ -109,12 +113,11 @@ NNT NextWord(Cursor &cursor) {
       {"repeat", Language::op_lt},      {"restart", Language::op_lt},
       {"scope", Language::kw_struct}};
   for (const auto &kv : KeywordMap) {
-    if (token == kv.first) { return NNT(cursor, kv.first, kv.second); }
+    if (token == kv.first) { return NNT(loc.ToSpan(), kv.first, kv.second); }
   }
 
-  Cursor loc = cursor;
-  loc.offset = starting_offset;
-  return NNT(std::make_unique<AST::Identifier>(loc, token), Language::expr);
+  span.finish = loc.cursor;
+  return NNT(std::make_unique<AST::Identifier>(span, token), Language::expr);
 }
 
 // Precondition: Output parameter points to a value of zero.
@@ -125,7 +128,7 @@ NNT NextWord(Cursor &cursor) {
 // parsed value, and the number of digit characters read is returned. Otherwise,
 // -1 is returned and there are no constraints on the value of the output
 // parameter.
-template <int Base> static i32 ConsumeIntegerInBase(Cursor &cursor, i32 *val) {
+template <int Base> static i32 ConsumeIntegerInBase(SourceLocation &cursor, i32 *val) {
   i32 chars_read = 0;
 start:
   if (*cursor == '_') {
@@ -156,7 +159,7 @@ template <int Base> static inline int pow(i32 num) {
   return result;
 }
 
-template <int Base> static NNT NextNumberInBase(Cursor &cursor) {
+template <int Base> static NNT NextNumberInBase(SourceLocation &cursor) {
   // TODO deal with bits_needed
   i32 int_part   = 0;
   i32 frac_part  = 0;
@@ -164,31 +167,31 @@ template <int Base> static NNT NextNumberInBase(Cursor &cursor) {
   if (int_digits == -1) {
     // TODO log an error
     // TODO Check for '.' and continue reading?
-    return NNT::TerminalExpression(cursor, IR::Val::Int(0));
+    return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::Int(0));
   }
 
   if (*cursor != '.') {
-    return NNT::TerminalExpression(cursor, IR::Val::Int(int_part));
+    return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::Int(int_part));
   }
 
   cursor.Increment();
   if (*cursor == '.') { // Looking at "..", not a fraction
     cursor.BackUp();
-    return NNT::TerminalExpression(cursor, IR::Val::Int(int_part));
+    return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::Int(int_part));
   }
 
   i32 frac_digits = ConsumeIntegerInBase<Base>(cursor, &frac_part);
   if (frac_digits == -1) {
     // TODO log an error
-    return NNT::TerminalExpression(cursor, IR::Val::Real(0));
+    return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::Real(0));
   }
 
   double val = static_cast<double>(int_part) +
                (static_cast<double>(frac_part) / pow<Base>(frac_digits));
-  return NNT::TerminalExpression(cursor, IR::Val::Real(val));
+  return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::Real(val));
 }
 
-static NNT NextZeroInitiatedNumber(Cursor &cursor) {
+static NNT NextZeroInitiatedNumber(SourceLocation &cursor) {
   cursor.Increment();
 
   switch (*cursor) {
@@ -200,7 +203,7 @@ static NNT NextZeroInitiatedNumber(Cursor &cursor) {
   }
 }
 
-static NNT NextStringLiteral(Cursor &cursor) {
+static NNT NextStringLiteral(SourceLocation &cursor) {
   cursor.Increment();
 
   // TODO we assign to this repeatedly which is untenable perf-wise in the
@@ -226,9 +229,9 @@ static NNT NextStringLiteral(Cursor &cursor) {
     case 'v': str_lit += '\v'; break;
     default:
       if (*cursor == '\'') {
-        ErrorLog::EscapedSingleQuoteInStringLit(Cursor::Behind(cursor, 1));
+        ErrorLog::EscapedSingleQuoteInStringLit(SourceLocation::Behind(cursor, 1));
       } else {
-        ErrorLog::InvalidEscapeCharInStringLit(Cursor::Behind(cursor, 1));
+        ErrorLog::InvalidEscapeCharInStringLit(SourceLocation::Behind(cursor, 1));
       }
       str_lit += *cursor;
       break;
@@ -241,16 +244,16 @@ static NNT NextStringLiteral(Cursor &cursor) {
     cursor.Increment();
   }
 
-  return NNT::TerminalExpression(cursor, IR::Val::StrLit(str_lit));
+  return NNT::TerminalExpression(cursor.ToSpan(), IR::Val::StrLit(str_lit));
 }
 
-static NNT NextCharLiteral(Cursor &cursor) {
-  cursor.Increment();
+static NNT NextCharLiteral(SourceLocation &loc) {
+  loc.Increment();
   char result;
 
-  switch (*cursor) {
+  switch (*loc) {
   case '\t':
-    ErrorLog::TabInCharLit(cursor);
+    ErrorLog::TabInCharLit(loc);
     result = '\t';
     break;
   case ' ':
@@ -258,15 +261,15 @@ static NNT NextCharLiteral(Cursor &cursor) {
     result = '\0';
     break;
   case '\0':
-    ErrorLog::RunawayCharLit(cursor);
-    return NNT::TerminalExpression(cursor, IR::Val::Char('\0'));
+    ErrorLog::RunawayCharLit(loc);
+    return NNT::TerminalExpression(loc.ToSpan(), IR::Val::Char('\0'));
   case '\\': {
-    cursor.Increment();
-    switch (*cursor) {
+    loc.Increment();
+    switch (*loc) {
     case '\"': {
       result = '"';
-      ErrorLog::EscapedDoubleQuoteInCharLit(Cursor::Behind(cursor, 1));
-      cursor.Increment();
+      ErrorLog::EscapedDoubleQuoteInCharLit(SourceLocation::Behind(loc, 1));
+      loc.Increment();
     } break;
     case '\\': result = '\\'; break;
     case 'a': result  = '\a'; break;
@@ -278,96 +281,96 @@ static NNT NextCharLiteral(Cursor &cursor) {
     case 't': result  = '\t'; break;
     case 'v': result  = '\v'; break;
     default:
-      ErrorLog::InvalidEscapeCharInCharLit(Cursor::Behind(cursor, 1));
-      result = *cursor;
+      ErrorLog::InvalidEscapeCharInCharLit(SourceLocation::Behind(loc, 1));
+      result = *loc;
     }
     break;
   }
-  default: { result = *cursor; } break;
+  default: { result = *loc; } break;
   }
-  cursor.Increment();
-  return NNT::TerminalExpression(cursor, IR::Val::Char(result));
+  loc.Increment();
+  return NNT::TerminalExpression(loc.ToSpan(), IR::Val::Char(result));
 }
 
-static NNT NextOperator(Cursor &cursor) {
-  switch (*cursor) {
-  case '@': cursor.Increment(); return NNT(cursor, "@", Language::op_l);
-  case ',': cursor.Increment(); return NNT(cursor, ",", Language::comma);
-  case ';': cursor.Increment(); return NNT(cursor, ";", Language::semicolon);
-  case '(': cursor.Increment(); return NNT(cursor, "(", Language::l_paren);
-  case ')': cursor.Increment(); return NNT(cursor, ")", Language::r_paren);
-  case '[': cursor.Increment(); return NNT(cursor, "[", Language::l_bracket);
-  case ']': cursor.Increment(); return NNT(cursor, "]", Language::r_bracket);
-  case '$': cursor.Increment(); return NNT(cursor, "$", Language::op_l);
+static NNT NextOperator(SourceLocation &loc) {
+  switch (*loc) {
+  case '@': loc.Increment(); return NNT(loc.ToSpan(), "@", Language::op_l);
+  case ',': loc.Increment(); return NNT(loc.ToSpan(), ",", Language::comma);
+  case ';': loc.Increment(); return NNT(loc.ToSpan(), ";", Language::semicolon);
+  case '(': loc.Increment(); return NNT(loc.ToSpan(), "(", Language::l_paren);
+  case ')': loc.Increment(); return NNT(loc.ToSpan(), ")", Language::r_paren);
+  case '[': loc.Increment(); return NNT(loc.ToSpan(), "[", Language::l_bracket);
+  case ']': loc.Increment(); return NNT(loc.ToSpan(), "]", Language::r_bracket);
+  case '$': loc.Increment(); return NNT(loc.ToSpan(), "$", Language::op_l);
 
   case '{': {
-    cursor.Increment();
-    if (*cursor == '{') {
-      cursor.Increment();
-      return NNT(cursor, "{{", Language::l_double_brace);
+    loc.Increment();
+    if (*loc == '{') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "{{", Language::l_double_brace);
     }
-    return NNT(cursor, "{", Language::l_brace);
+    return NNT(loc.ToSpan(), "{", Language::l_brace);
   }
   case '}': {
-    cursor.Increment();
-    if (*cursor == '}') {
-      cursor.Increment();
-      return NNT(cursor, "}}", Language::r_double_brace);
+    loc.Increment();
+    if (*loc == '}') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "}}", Language::r_double_brace);
     }
-    return NNT(cursor, "}", Language::r_brace);
+    return NNT(loc.ToSpan(), "}", Language::r_brace);
   }
 
   case '.': {
-    Cursor cursor_copy = cursor;
+    SourceLocation loc_copy = loc;
 
-    while (*cursor == '.') { cursor.Increment(); }
-    size_t num_dots = cursor.offset - cursor_copy.offset;
+    while (*loc == '.') { loc.Increment(); }
+    size_t num_dots = loc.cursor.offset - loc_copy.cursor.offset;
 
     if (num_dots == 1) {
-      if (IsDigit(*cursor)) {
-        cursor.BackUp();
-        return NextNumberInBase<10>(cursor);
+      if (IsDigit(*loc)) {
+        loc.BackUp();
+        return NextNumberInBase<10>(loc);
       }
-      return NNT(cursor, ".", Language::op_b);
+      return NNT(loc.ToSpan(), ".", Language::op_b);
     } else {
-      if (num_dots > 2) { ErrorLog::TooManyDots(cursor_copy, num_dots); }
-      return NNT(cursor, "..", Language::dots);
+      if (num_dots > 2) { ErrorLog::TooManyDots(loc_copy, num_dots); }
+      return NNT(loc.ToSpan(), "..", Language::dots);
     }
   } break;
 
   case '\\': {
-    Cursor cursor_copy = cursor;
+    SourceLocation loc_copy = loc;
     size_t dist        = 1;
 
-    cursor.Increment();
+    loc.Increment();
     ++dist;
-    switch (*cursor) {
+    switch (*loc) {
     case '\\':
-      cursor.Increment();
-      return NNT(cursor, "", Language::newline);
+      loc.Increment();
+      return NNT(loc.ToSpan(), "", Language::newline);
       break;
     case '(':
-      cursor.Increment();
-      return NNT(cursor, "\\(", Language::l_ref);
+      loc.Increment();
+      return NNT(loc.ToSpan(), "\\(", Language::l_ref);
       break;
     case '\0':
       // Ignore the following newline and retry
-      cursor.Increment();
+      loc.Increment();
       return NNT::Invalid();
     case ' ':
     case '\t':
-      while (IsWhitespace(*cursor)) {
-        cursor.Increment();
+      while (IsWhitespace(*loc)) {
+        loc.Increment();
         ++dist;
       }
-      if (*cursor == '\0') {
-        cursor.Increment();
+      if (*loc == '\0') {
+        loc.Increment();
         return NNT::Invalid();
       }
 
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
-      ErrorLog::NonWhitespaceAfterNewlineEscape(cursor_copy, dist);
+      ErrorLog::NonWhitespaceAfterNewlineEscape(loc_copy, dist);
       return NNT::Invalid();
     }
   } break;
@@ -378,190 +381,190 @@ static NNT NextOperator(Cursor &cursor) {
   case '>':
   case '|':
   case '^': {
-    char first_char = *cursor;
-    cursor.Increment();
+    char first_char = *loc;
+    loc.Increment();
 
     std::string token = "X=";
     token[0]          = first_char;
-    if (*cursor == '=') {
-      cursor.Increment();
+    if (*loc == '=') {
+      loc.Increment();
     } else {
       token = std::string(1, first_char);
     }
 
-    return NNT(cursor, token, Language::op_b);
+    return NNT(loc.ToSpan(), token, Language::op_b);
   } break;
 
   case '*':
-    cursor.Increment();
-    if (*cursor == '/') {
-      cursor.Increment();
-      if (*cursor == '/') {
+    loc.Increment();
+    if (*loc == '/') {
+      loc.Increment();
+      if (*loc == '/') {
         // Looking at "*//" which should be parsed as an asterisk followed by a
         // one-line comment.
-        cursor.BackUp();
-    return NNT(cursor, "*", Language::op_b);
+        loc.BackUp();
+    return NNT(loc.ToSpan(), "*", Language::op_b);
       } else {
-        ErrorLog::NotInMultilineComment(Cursor::Behind(cursor, 2));
+        ErrorLog::NotInMultilineComment(SourceLocation::Behind(loc, 2));
         return NNT::Invalid();
       }
-    } else if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, "*=", Language::op_b);
+    } else if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "*=", Language::op_b);
     } else {
-      return NNT(cursor, "*", Language::op_bl);
+      return NNT(loc.ToSpan(), "*", Language::op_bl);
     }
 
   case '&': {
-    cursor.Increment();
-    if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, "&=", Language::op_b);
+    loc.Increment();
+    if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "&=", Language::op_b);
     } else {
-      return NNT(cursor, "&", Language::op_bl);
+      return NNT(loc.ToSpan(), "&", Language::op_bl);
     }
   } break;
 
   case ':': {
-    cursor.Increment();
+    loc.Increment();
 
-    if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, ":=", Language::op_b);
+    if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), ":=", Language::op_b);
 
-    } else if (*cursor == ':') {
-      cursor.Increment();
+    } else if (*loc == ':') {
+      loc.Increment();
 
-      if (*cursor == '=') {
-        cursor.Increment();
-        return NNT(cursor, "::=", Language::op_b);
+      if (*loc == '=') {
+        loc.Increment();
+        return NNT(loc.ToSpan(), "::=", Language::op_b);
       } else {
-        return NNT(cursor, "::", Language::colon);
+        return NNT(loc.ToSpan(), "::", Language::colon);
       }
     } else {
-      return NNT(cursor, ":", Language::colon);
+      return NNT(loc.ToSpan(), ":", Language::colon);
     }
   } break;
 
   case '!': {
-    cursor.Increment();
-    if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, "!=", Language::op_b);
+    loc.Increment();
+    if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "!=", Language::op_b);
     } else {
-      return NNT(cursor, "!", Language::op_l);
+      return NNT(loc.ToSpan(), "!", Language::op_l);
     }
   } break;
 
   case '-': {
-    cursor.Increment();
-    if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, "-=", Language::op_b);
+    loc.Increment();
+    if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "-=", Language::op_b);
 
-    } else if (*cursor == '>') {
-      cursor.Increment();
-      auto nptr = std::make_unique<AST::TokenNode>(cursor, "->");
+    } else if (*loc == '>') {
+      loc.Increment();
+      auto nptr = std::make_unique<AST::TokenNode>(loc, "->");
       nptr->op  = Language::Operator::Arrow;
       return NNT(std::move(nptr), Language::fn_arrow);
 
-    } else if (*cursor == '-') {
-      cursor.Increment();
-      return NNT::TerminalExpression(cursor, IR::Val::None());
+    } else if (*loc == '-') {
+      loc.Increment();
+      return NNT::TerminalExpression(loc.ToSpan(), IR::Val::None());
 
     } else {
-      return NNT(cursor, "-", Language::op_bl);
+      return NNT(loc.ToSpan(), "-", Language::op_bl);
     }
   } break;
 
   case '=': {
-    cursor.Increment();
-    if (*cursor == '=') {
-      cursor.Increment();
-      return NNT(cursor, "==", Language::op_b);
+    loc.Increment();
+    if (*loc == '=') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "==", Language::op_b);
 
-    } else if (*cursor == '>') {
-      cursor.Increment();
-      return NNT(cursor, "=>", Language::op_b);
+    } else if (*loc == '>') {
+      loc.Increment();
+      return NNT(loc.ToSpan(), "=>", Language::op_b);
 
     } else {
-      return NNT(cursor, "=", Language::eq);
+      return NNT(loc.ToSpan(), "=", Language::eq);
     }
   } break;
   case '?':
-    ErrorLog::InvalidCharQuestionMark(cursor);
-    cursor.Increment();
+    ErrorLog::InvalidCharQuestionMark(loc);
+    loc.Increment();
     return NNT::Invalid();
   case '~':
-    ErrorLog::InvalidCharTilde(cursor);
-    cursor.Increment();
+    ErrorLog::InvalidCharTilde(loc);
+    loc.Increment();
     return NNT::Invalid();
-  case '\'': cursor.Increment(); return NNT(cursor, "'", Language::op_bl);
+  case '\'': loc.Increment(); return NNT(loc.ToSpan(), "'", Language::op_bl);
   case '_': UNREACHABLE();
   default:
     UNREACHABLE("Encountered character whose value is ",
-                static_cast<int>(*cursor));
+                static_cast<int>(*loc));
   }
 }
 
-NNT NextSlashInitiatedToken(Cursor &cursor) {
-  cursor.Increment();
-  switch (*cursor) {
+NNT NextSlashInitiatedToken(SourceLocation &loc) {
+  loc.Increment();
+  switch (*loc) {
   case '/': // line comment
-    cursor.SkipToEndOfLine();
+    loc.SkipToEndOfLine();
     return NNT::Invalid();
   case '*': { // Multiline comment
-    cursor.Increment();
-    char back_one = *cursor;
-    cursor.Increment();
+    loc.Increment();
+    char back_one = *loc;
+    loc.Increment();
 
     u64 comment_layer = 1;
     while (comment_layer != 0) {
-      if (cursor.seen_eof_) {
+      if (loc.seen_eof_) {
         ErrorLog::RunawayMultilineComment();
-        return NNT(cursor, "", Language::eof);
+        return NNT(loc.ToSpan(), "", Language::eof);
 
-      } else if (back_one == '/' && *cursor == '*') {
+      } else if (back_one == '/' && *loc == '*') {
         ++comment_layer;
 
-      } else if (back_one == '*' && *cursor == '/') {
+      } else if (back_one == '*' && *loc == '/') {
         --comment_layer;
       }
 
-      back_one = *cursor;
-      cursor.Increment();
+      back_one = *loc;
+      loc.Increment();
     }
     return NNT::Invalid();
   }
-  case '=': cursor.Increment(); return NNT(cursor, "/=", Language::op_b);
-  default: return NNT(cursor, "/", Language::op_b);
+  case '=': loc.Increment(); return NNT(loc.ToSpan(), "/=", Language::op_b);
+  default: return NNT(loc.ToSpan(), "/", Language::op_b);
   }
 }
 
-NNT NextToken(Cursor &cursor) {
+NNT NextToken(SourceLocation &loc) {
 restart:
   // Delegate based on the next character in the file stream
-  if (cursor.seen_eof_) {
-    return NNT(cursor, "", Language::eof);
-  } else if (IsAlphaOrUnderscore(*cursor)) {
-    return NextWord(cursor);
-  } else if (IsNonZeroDigit(*cursor)) {
-    return NextNumberInBase<10>(cursor);
+  if (loc.seen_eof_) {
+    return NNT(loc.ToSpan(), "", Language::eof);
+  } else if (IsAlphaOrUnderscore(*loc)) {
+    return NextWord(loc);
+  } else if (IsNonZeroDigit(*loc)) {
+    return NextNumberInBase<10>(loc);
   }
 
   NNT nnt = NNT::Invalid();
-  switch (*cursor) {
-  case '0': nnt = NextZeroInitiatedNumber(cursor); break;
-  case '`': nnt = NextCharLiteral(cursor); break;
-  case '"': nnt = NextStringLiteral(cursor); break;
-  case '/': nnt = NextSlashInitiatedToken(cursor); break;
+  switch (*loc) {
+  case '0': nnt = NextZeroInitiatedNumber(loc); break;
+  case '`': nnt = NextCharLiteral(loc); break;
+  case '"': nnt = NextStringLiteral(loc); break;
+  case '/': nnt = NextSlashInitiatedToken(loc); break;
   case '\t':
   case ' ':
-    cursor.Increment();
+    loc.Increment();
     goto restart; // Skip whitespace
   case '\n':
-  case '\0': cursor.Increment(); return NNT(cursor, "", Language::newline);
-  default: nnt = NextOperator(cursor); break;
+  case '\0': loc.Increment(); return NNT(loc.ToSpan(), "", Language::newline);
+  default: nnt = NextOperator(loc); break;
   }
   if (nnt == NNT::Invalid()) { goto restart; }
   return nnt;

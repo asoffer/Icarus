@@ -16,14 +16,25 @@ std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
 extern std::vector<Error> errors;
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
-enum class CursorOrder { Unordered, InOrder, OutOfOrder, Same };
-static CursorOrder GetOrder(const Cursor &lhs, const Cursor &rhs) {
-  if (lhs.source->name != rhs.source->name) { return CursorOrder::Unordered; }
-  if (lhs.line_num < rhs.line_num) { return CursorOrder::InOrder; }
-  if (lhs.line_num > rhs.line_num) { return CursorOrder::OutOfOrder; }
-  if (lhs.offset < rhs.offset) { return CursorOrder::InOrder; }
-  if (lhs.offset > rhs.offset) { return CursorOrder::OutOfOrder; }
-  return CursorOrder::Same;
+enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
+static SourceLocationOrder GetOrder(const SourceLocation &lhs,
+                                    const SourceLocation &rhs) {
+  if (lhs.source->name != rhs.source->name) {
+    return SourceLocationOrder::Unordered;
+  }
+  if (lhs.cursor.line_num < rhs.cursor.line_num) {
+    return SourceLocationOrder::InOrder;
+  }
+  if (lhs.cursor.line_num > rhs.cursor.line_num) {
+    return SourceLocationOrder::OutOfOrder;
+  }
+  if (lhs.cursor.offset < rhs.cursor.offset) {
+    return SourceLocationOrder::InOrder;
+  }
+  if (lhs.cursor.offset > rhs.cursor.offset) {
+    return SourceLocationOrder::OutOfOrder;
+  }
+  return SourceLocationOrder::Same;
 }
 
 static std::vector<AST::Identifier *> all_ids;
@@ -31,7 +42,7 @@ void VerifyDeclBeforeUsage() {
   for (auto &id : all_ids) {
     if (id->type == Err || id->type == Type_) { continue; }
     if (id->decl->scope_ == Scope::Global) { continue; }
-    if (GetOrder(id->decl->loc, id->loc) == CursorOrder::OutOfOrder) {
+    if (GetOrder(id->decl->loc, id->loc) == SourceLocationOrder::OutOfOrder) {
       // ErrorLog::DeclOutOfOrder(id->decl, id);
     }
   }
@@ -883,9 +894,9 @@ Type *Expression::VerifyValueForDeclaration(const std::string &) {
 }
 
 static void VerifyDeclarationForMagic(const std::string &magic_method_name,
-                                      Type *type, const Cursor &loc) {
+                                      Type *type, const SourceLocation &loc) {
   if (!type->is<Function>()) {
-    const static std::map<std::string, void (*)(const Cursor &)>
+    const static std::map<std::string, void (*)(const SourceLocation &)>
         error_log_to_call = {{"__print__", ErrorLog::NonFunctionPrint},
                              {"__assign__", ErrorLog::NonFunctionAssign}};
 

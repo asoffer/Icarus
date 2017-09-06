@@ -10,7 +10,7 @@
 #include "../base/debug.h"
 #include "../base/owned_ptr.h"
 #include "../base/util.h"
-#include "../cursor.h"
+#include "../input/cursor.h"
 #include "../ir/ir.h"
 #include "../scope.h"
 #include "../type/type.h"
@@ -57,7 +57,7 @@ struct Node : public base::Cast<Node> {
 
   virtual bool is_hole() const { return false; }
 
-  Node(Cursor cursor = Cursor()) : loc(cursor) {}
+  Node(SourceLocation cursor = SourceLocation()) : loc(cursor) {}
   virtual ~Node() {}
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
@@ -65,7 +65,7 @@ struct Node : public base::Cast<Node> {
   }
 
   Scope *scope_ = nullptr;
-  Cursor loc;
+  SourceLocation loc;
 };
 
 struct Expression : public Node {
@@ -129,7 +129,7 @@ struct TokenNode : public Node {
 
   virtual ~TokenNode() {}
 
-  TokenNode(const Cursor &cursor = Cursor(), std::string str = "");
+  TokenNode(const SourceLocation &cursor = SourceLocation(), std::string str = "");
 
   std::string token;
   Language::Operator op;
@@ -143,7 +143,7 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
   Terminal() = default;
-  Terminal(const Cursor &cursor, IR::Val val);
+  Terminal(const SourceLocation &cursor, IR::Val val);
 
   virtual IR::Val EmitIR();
   virtual void GeneratePreconditions() const { NOT_YET(); }
@@ -154,7 +154,7 @@ struct Terminal : public Expression {
 struct Identifier : public Terminal {
   Identifier() = delete;
   EXPR_FNS(Identifier);
-  Identifier(const Cursor &cursor, const std::string &token_string);
+  Identifier(const TextSpan &span, const std::string &token_string);
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
   virtual bool is_hole() const override { return false; }
@@ -427,7 +427,7 @@ struct Jump : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   base::owned_ptr<Jump> copy_stub() const;
 
-  Jump(const Cursor &new_cursor, JumpType jump_type);
+  Jump(const SourceLocation &new_cursor, JumpType jump_type);
 
   ExecScope *scope;
   JumpType jump_type;
@@ -462,7 +462,7 @@ struct ScopeLiteral : public Expression {
   base::owned_ptr<Declaration> enter_fn;
   base::owned_ptr<Declaration> exit_fn;
   base::owned_ptr<Scope> body_scope;
-  ScopeLiteral(const Cursor &cursor);
+  ScopeLiteral(const SourceLocation &cursor);
 };
 
 } // namespace AST

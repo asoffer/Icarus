@@ -22,7 +22,7 @@ base::owned_ptr<Terminal> Terminal::copy_stub() const {
 }
 
 base::owned_ptr<Identifier> Identifier::copy_stub() const {
-  auto result = base::own(new Identifier(loc, token));
+  auto result = base::own(new Identifier(loc.ToSpan(), token));
   copy_fields(this, result.get());
   result->token = token;
   // TODO decl
