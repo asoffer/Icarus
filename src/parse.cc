@@ -550,8 +550,8 @@ std::vector<AST::Statements *> ParseAllFiles() {
     if (source_map.find(file_name) != source_map.end()) { continue; }
 
     RUN(timer, "Parsing a file") {
-      auto source_file      = new File(std::move(file_name));
-      source_map[file_name] = source_file;
+      auto source_file              = new File(std::move(file_name));
+      source_map[source_file->name] = source_file;
       stmts.push_back(source_file->Parse().release());
     }
   }
