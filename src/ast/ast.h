@@ -57,7 +57,7 @@ struct Node : public base::Cast<Node> {
 
   virtual bool is_hole() const { return false; }
 
-  Node(SourceLocation cursor = SourceLocation()) : loc(cursor) {}
+  Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
   inline friend std::ostream &operator<<(std::ostream &os, const Node &node) {
@@ -65,11 +65,11 @@ struct Node : public base::Cast<Node> {
   }
 
   Scope *scope_ = nullptr;
-  SourceLocation loc;
+  TextSpan span;
 };
 
 struct Expression : public Node {
-  Expression();
+  Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const = 0;
   virtual void lrvalue_check()                  = 0;
@@ -107,10 +107,10 @@ struct Expression : public Node {
   // type is invalid.
   Type *VerifyValueForDeclaration(const std::string &id_tok);
 
-  size_t precedence;
-  Assign lvalue;
-  Type *type = nullptr;
-  IR::Val value;
+  size_t precedence = std::numeric_limits<size_t>::max();
+  Assign lvalue     = Assign::Unset;
+  Type *type        = nullptr;
+  IR::Val value     = IR::Val::None();
 };
 
 struct TokenNode : public Node {
@@ -129,7 +129,7 @@ struct TokenNode : public Node {
 
   virtual ~TokenNode() {}
 
-  TokenNode(const SourceLocation &cursor = SourceLocation(), std::string str = "");
+  TokenNode(const TextSpan &span = TextSpan(), std::string str = "");
 
   std::string token;
   Language::Operator op;
@@ -143,7 +143,7 @@ struct TokenNode : public Node {
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
   Terminal() = default;
-  Terminal(const SourceLocation &cursor, IR::Val val);
+  Terminal(const TextSpan &span, IR::Val val);
 
   virtual IR::Val EmitIR();
   virtual void GeneratePreconditions() const { NOT_YET(); }
@@ -427,7 +427,7 @@ struct Jump : public Node {
   VIRTUAL_METHODS_FOR_NODES;
   base::owned_ptr<Jump> copy_stub() const;
 
-  Jump(const SourceLocation &new_cursor, JumpType jump_type);
+  Jump(const TextSpan &span, JumpType jump_type);
 
   ExecScope *scope;
   JumpType jump_type;
@@ -462,7 +462,7 @@ struct ScopeLiteral : public Expression {
   base::owned_ptr<Declaration> enter_fn;
   base::owned_ptr<Declaration> exit_fn;
   base::owned_ptr<Scope> body_scope;
-  ScopeLiteral(const SourceLocation &cursor);
+  ScopeLiteral(const TextSpan &span);
 };
 
 } // namespace AST

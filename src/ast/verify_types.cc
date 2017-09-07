@@ -17,21 +17,20 @@ extern std::vector<Error> errors;
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
-static SourceLocationOrder GetOrder(const SourceLocation &lhs,
-                                    const SourceLocation &rhs) {
+static SourceLocationOrder GetOrder(const TextSpan &lhs, const TextSpan &rhs) {
   if (lhs.source->name != rhs.source->name) {
     return SourceLocationOrder::Unordered;
   }
-  if (lhs.cursor.line_num < rhs.cursor.line_num) {
+  if (lhs.start.line_num < rhs.start.line_num) {
     return SourceLocationOrder::InOrder;
   }
-  if (lhs.cursor.line_num > rhs.cursor.line_num) {
+  if (lhs.start.line_num > rhs.start.line_num) {
     return SourceLocationOrder::OutOfOrder;
   }
-  if (lhs.cursor.offset < rhs.cursor.offset) {
+  if (lhs.start.offset < rhs.start.offset) {
     return SourceLocationOrder::InOrder;
   }
-  if (lhs.cursor.offset > rhs.cursor.offset) {
+  if (lhs.start.offset > rhs.start.offset) {
     return SourceLocationOrder::OutOfOrder;
   }
   return SourceLocationOrder::Same;
@@ -42,7 +41,7 @@ void VerifyDeclBeforeUsage() {
   for (auto &id : all_ids) {
     if (id->type == Err || id->type == Type_) { continue; }
     if (id->decl->scope_ == Scope::Global) { continue; }
-    if (GetOrder(id->decl->loc, id->loc) == SourceLocationOrder::OutOfOrder) {
+    if (GetOrder(id->decl->span, id->span) == SourceLocationOrder::OutOfOrder) {
       // ErrorLog::DeclOutOfOrder(id->decl, id);
     }
   }
@@ -894,45 +893,45 @@ Type *Expression::VerifyValueForDeclaration(const std::string &) {
 }
 
 static void VerifyDeclarationForMagic(const std::string &magic_method_name,
-                                      Type *type, const SourceLocation &loc) {
+                                      Type *type, const TextSpan &span) {
   if (!type->is<Function>()) {
-    const static std::map<std::string, void (*)(const SourceLocation &)>
+    const static std::map<std::string, void (*)(const TextSpan &)>
         error_log_to_call = {{"__print__", ErrorLog::NonFunctionPrint},
                              {"__assign__", ErrorLog::NonFunctionAssign}};
 
     auto iter = error_log_to_call.find(magic_method_name);
     if (iter == error_log_to_call.end()) { return; }
     errors.emplace_back(Error::Code::Other);
-    iter->second(loc);
+    iter->second(span);
   }
 
   auto fn_type = static_cast<Function *>(type);
   if (magic_method_name == "__print__") {
     if (!fn_type->input->is<Struct>()) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidPrintDefinition(loc, fn_type->input);
+      // ErrorLog::InvalidPrintDefinition(span, fn_type->input);
     }
 
     if (fn_type->output != Void) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NonVoidPrintReturn(loc);
+      // ErrorLog::NonVoidPrintReturn(span);
     }
   } else if (magic_method_name == "__assign__") {
     if (!fn_type->input->is<Tuple>()) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidAssignDefinition(loc, fn_type->input);
+      // ErrorLog::InvalidAssignDefinition(span, fn_type->input);
     } else {
       auto in = static_cast<Tuple *>(fn_type->input);
       if (in->entries.size() != 2) {
         errors.emplace_back(Error::Code::Other);
-        // ErrorLog::NonBinaryAssignment(loc, in->entries.size());
+        // ErrorLog::NonBinaryAssignment(span, in->entries.size());
       }
       // TODO more checking.
     }
 
     if (fn_type->output != Void) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NonVoidAssignReturn(loc);
+      // ErrorLog::NonVoidAssignReturn(span);
     }
   }
 }
@@ -962,7 +961,7 @@ void Declaration::verify_types() {
 
     if (type == NullPtr) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NullDeclInit(loc);
+      // ErrorLog::NullDeclInit(span);
       type = Err;
     }
 
@@ -974,7 +973,7 @@ void Declaration::verify_types() {
       type = init_val_type;
     } else if (!CanCastImplicitly(init_val_type, type)) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::AssignmentTypeMismatch(loc, type, init_val_type);
+      // ErrorLog::AssignmentTypeMismatch(span, type, init_val_type);
     }
 
   } else if (IsUninitialized()) {
@@ -1019,7 +1018,7 @@ void Declaration::verify_types() {
 
   // If you get here, you can be assured that the type is valid. So we add it to
   // the identifier.
-  VerifyDeclarationForMagic(identifier->token, type, loc);
+  VerifyDeclarationForMagic(identifier->token, type, span);
 }
 
 void ArrayType::verify_types() {
@@ -1034,7 +1033,7 @@ void ArrayType::verify_types() {
   // TODO change this to just uint
   if (length->type != Int && length->type != Uint) {
     errors.emplace_back(Error::Code::Other);
-    // ErrorLog::ArrayIndexType(loc);
+    // ErrorLog::ArrayIndexType(span);
   }
 }
 
@@ -1046,7 +1045,7 @@ void ArrayLiteral::verify_types() {
   if (elems.empty()) {
     type = Err;
     errors.emplace_back(Error::Code::Other);
-    // ErrorLog::EmptyArrayLit(loc);
+    // ErrorLog::EmptyArrayLit(span);
     return;
   }
 
@@ -1063,7 +1062,7 @@ void ArrayLiteral::verify_types() {
   for (const auto &el : elems) {
     if (el->type != type_to_match) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InconsistentArrayType(loc);
+      // ErrorLog::InconsistentArrayType(span);
       type = Err;
     }
   }
@@ -1151,7 +1150,7 @@ void Case::verify_types() {
 
     } else if (kv.first->type != Bool) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::CaseLHSBool(loc, kv.first->loc, kv.first->type);
+      // ErrorLog::CaseLHSBool(span, kv.first->span, kv.first->type);
       kv.first->type = Bool;
     }
 
@@ -1219,7 +1218,7 @@ void Jump::verify_types() {
     scope_ptr = exec_scope_ptr->parent;
   }
   errors.emplace_back(Error::Code::Other);
-  // ErrorLog::JumpOutsideLoop(loc);
+  // ErrorLog::JumpOutsideLoop(span);
 }
 
 // Intentionally do not verify anything internal
@@ -1234,7 +1233,7 @@ void ScopeNode::verify_types() {
 
   if (!scope_expr->type->is<Scope_Type>()) {
     errors.emplace_back(Error::Code::Other);
-    // ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
+    // ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
     type = Err;
     return;
   }
@@ -1245,7 +1244,7 @@ void ScopeNode::verify_types() {
   // if (!type->is<Scope_Type>()) {
   //   if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
   //     errors.emplace_back(Error::Code::Other);
-  //     // ErrorLog::InvalidScope(scope_expr->loc, scope_expr->type);
+  //     // ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
   //     type = Err;
   //     return;
   //   }
@@ -1293,7 +1292,7 @@ void Unop::VerifyReturnTypes(Type *ret_type) {
     if (operand->type == Err) { return; } // Error already logged
     if (operand->type != ret_type) {
       errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidReturnType(loc, operand->type, ret_type);
+      // ErrorLog::InvalidReturnType(span, operand->type, ret_type);
     }
   }
 }
@@ -1305,7 +1304,7 @@ void Statements::VerifyReturnTypes(Type *ret_type) {
 void Jump::VerifyReturnTypes(Type *ret_type) {
   if (jump_type == JumpType::Return && ret_type != Void) {
     errors.emplace_back(Error::Code::Other);
-    // ErrorLog::InvalidReturnType(loc, Void, ret_type);
+    // ErrorLog::InvalidReturnType(span, Void, ret_type);
   }
 }
 

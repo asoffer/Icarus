@@ -55,11 +55,7 @@ struct NNT {
   Language::NodeType node_type = Language::bof;
 
   static NNT TerminalExpression(const TextSpan &span, IR::Val val) {
-    // TODO make AST take TextSpans
-    SourceLocation loc;
-    loc.source = span.source;
-    loc.cursor = span.start;
-    return NNT(std::make_unique<AST::Terminal>(loc, val), Language::expr);
+    return NNT(std::make_unique<AST::Terminal>(span, val), Language::expr);
   }
 
   NNT(const TextSpan &span, const std::string &token, Language::NodeType nt);

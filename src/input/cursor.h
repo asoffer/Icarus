@@ -12,7 +12,13 @@ struct Cursor {
 };
 
 struct TextSpan {
+  TextSpan() {}
   TextSpan(const Cursor &s, const Cursor &f) : start(s), finish(f) {}
+
+  char last_char() const {
+    return source->lines[finish.line_num][finish.offset];
+  }
+  void Increment();
 
   Cursor start;
   Cursor finish;
@@ -43,7 +49,6 @@ struct SourceLocation {
 
   Cursor cursor;
   Source *source = nullptr;
-  bool seen_eof_ = false;
 };
 
 #endif // ICARUS_INPUT_CURSOR_H

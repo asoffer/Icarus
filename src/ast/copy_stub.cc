@@ -2,12 +2,12 @@
 
 static void copy_fields(const AST::Node *from, AST::Node *to) {
   to->scope_ = from->scope_;
-  to->loc    = from->loc;
+  to->span   = from->span;
 }
 
 static void copy_fields(const AST::Expression *from, AST::Expression *to) {
   to->scope_     = from->scope_;
-  to->loc        = from->loc;
+  to->span       = from->span;
   to->precedence = from->precedence;
   to->lvalue     = from->lvalue;
   to->type       = from->type;
@@ -22,7 +22,7 @@ base::owned_ptr<Terminal> Terminal::copy_stub() const {
 }
 
 base::owned_ptr<Identifier> Identifier::copy_stub() const {
-  auto result = base::own(new Identifier(loc.ToSpan(), token));
+  auto result = base::own(new Identifier(span, token));
   copy_fields(this, result.get());
   result->token = token;
   // TODO decl
@@ -36,7 +36,7 @@ base::owned_ptr<CodeBlock> CodeBlock::copy_stub() const {
 }
 
 base::owned_ptr<Jump> Jump::copy_stub() const {
-  auto result = base::own(new Jump(loc, jump_type));
+  auto result = base::own(new Jump(span, jump_type));
   copy_fields(this, result.get());
   // TODO execscope
   return result;
@@ -136,7 +136,7 @@ base::owned_ptr<ScopeNode> ScopeNode::copy_stub() const {
 }
 
 base::owned_ptr<ScopeLiteral> ScopeLiteral::copy_stub() const {
-  auto result = base::own(new ScopeLiteral(loc));
+  auto result = base::own(new ScopeLiteral(span));
   copy_fields(this, result.get());
   return result;
 }

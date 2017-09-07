@@ -8,8 +8,8 @@ extern size_t precedence(Operator op);
 } // namespace Language
 
 namespace AST {
-TokenNode::TokenNode(const SourceLocation &loc, std::string str)
-    : Node(loc), token(std::move(str)) {
+TokenNode::TokenNode(const TextSpan &span, std::string str)
+    : Node(span), token(std::move(str)) {
 #define OPERATOR_MACRO(name, symbol, prec, assoc)                              \
   if (token == symbol) {                                                       \
     op = Language::Operator::name;                                             \
@@ -20,35 +20,27 @@ TokenNode::TokenNode(const SourceLocation &loc, std::string str)
   op = Language::Operator::NotAnOperator;
 }
 
-Expression::Expression()
-    : precedence(Language::precedence(Language::Operator::NotAnOperator)),
-      lvalue(Assign::Unset), type(nullptr), value(IR::Val::None()) {}
-
-Terminal::Terminal(const SourceLocation &cursor, IR::Val val) {
+Terminal::Terminal(const TextSpan &span, IR::Val val) : Expression(span) {
   type          = val.type;
   precedence    = Language::precedence(Language::Operator::NotAnOperator);
-  loc           = cursor;
   value         = val;
 }
 
-ScopeLiteral::ScopeLiteral(const SourceLocation &cursor) {
-  loc   = cursor;
+ScopeLiteral::ScopeLiteral(const TextSpan &span) : Expression(span) {
   value = IR::Val::None(); // TODO Scope(this);
 }
 
-Jump::Jump(const SourceLocation &new_loc, JumpType jump_type) : jump_type(jump_type) {
-  loc = new_loc;
-}
+Jump::Jump(const TextSpan &span, JumpType jump_type)
+    : Node(span), jump_type(jump_type) {}
 
 CommaList::CommaList() {
   precedence = Language::precedence(Language::Operator::Comma);
 }
 
-Identifier::Identifier(const TextSpan &span, const std::string &token_string) {
+Identifier::Identifier(const TextSpan &id_span,
+                       const std::string &token_string) {
+  span       = id_span;
   token      = token_string;
-  type       = nullptr;
   precedence = Language::precedence(Language::Operator::NotAnOperator);
-  loc.source = span.source;
-  loc.cursor = span.start;
 }
 } // namespace AST

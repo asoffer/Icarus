@@ -1,9 +1,9 @@
 #include "ast/ast.h"
 #include "base/debug.h"
 #include "base/types.h"
-#include "operators.h"
 #include "error_log.h"
 #include "nnt.h"
+#include "operators.h"
 #include "util/timer.h"
 #include <iostream>
 #include <queue>
@@ -12,7 +12,6 @@
 namespace AST {
 struct Node;
 } // namespace AST
-
 
 namespace Language {
 size_t precedence(Operator op) {
@@ -111,16 +110,16 @@ drop_all_but(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
 static base::owned_ptr<AST::Node>
 CombineColonEq(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto tk_node   = ptr_cast<AST::TokenNode>(nodes[0].get());
+  auto tk_node = ptr_cast<AST::TokenNode>(nodes[0].get());
   tk_node->token += "="; // Change : to := and :: to ::=
-  tk_node->op    = Language::Operator::ColonEq;
+  tk_node->op = Language::Operator::ColonEq;
   return drop_all_but<0>(std::move(nodes));
 }
 
 base::owned_ptr<AST::Node>
 EmptyFile(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto stmts = base::make_owned<AST::Statements>();
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::make_owned<AST::Statements>();
+  stmts->span = nodes[0]->span;
   return std::move(stmts);
 }
 
@@ -128,53 +127,53 @@ namespace ErrMsg {
 template <size_t RTN, size_t RES>
 base::owned_ptr<AST::Node>
 Reserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::Reserved(nodes[RES]->loc,
+  ErrorLog::Reserved(nodes[RES]->span,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
 
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 template <size_t RTN, size_t RES1, size_t RES2>
 base::owned_ptr<AST::Node>
 BothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::Reserved(nodes[RES1]->loc,
+  ErrorLog::Reserved(nodes[RES1]->span,
                      ptr_cast<AST::TokenNode>(nodes[RES1].get())->token);
-  ErrorLog::Reserved(nodes[RES2]->loc,
+  ErrorLog::Reserved(nodes[RES2]->span,
                      ptr_cast<AST::TokenNode>(nodes[RES2].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
 NonBinop(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::NotBinary(nodes[1]->loc,
+  ErrorLog::NotBinary(nodes[1]->span,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[1]->loc.ToSpan(), "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
 base::owned_ptr<AST::Node>
 NonBinopReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::NotBinary(nodes[1]->loc,
+  ErrorLog::NotBinary(nodes[1]->span,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  ErrorLog::Reserved(nodes[RES]->loc,
+  ErrorLog::Reserved(nodes[RES]->span,
                      ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[RTN]->loc.ToSpan(), "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
 NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::Reserved(nodes[0]->loc,
+  ErrorLog::Reserved(nodes[0]->span,
                      ptr_cast<AST::TokenNode>(nodes[0].get())->token);
-  ErrorLog::NotBinary(nodes[1]->loc,
+  ErrorLog::NotBinary(nodes[1]->span,
                       ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  ErrorLog::Reserved(nodes[2]->loc,
+  ErrorLog::Reserved(nodes[2]->span,
                      ptr_cast<AST::TokenNode>(nodes[2].get())->token);
-  return base::make_owned<AST::Identifier>(nodes[1]->loc.ToSpan(), "invalid_node");
+  return base::make_owned<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 } // namespace ErrMsg
 namespace Language {
-static constexpr u64 OP_B  = op_b | comma | dots | colon | eq;
-static constexpr u64 EXPR  = expr | fn_expr;
+static constexpr u64 OP_B = op_b | comma | dots | colon | eq;
+static constexpr u64 EXPR = expr | fn_expr;
 // Used in error productions only!
 static constexpr u64 RESERVED = kw_expr_block | kw_block | kw_struct | op_lt;
 
@@ -292,7 +291,7 @@ std::ostream &operator<<(std::ostream &os, ShiftState s) {
 
 struct ParseState {
   ParseState(const SourceLocation &c) : lookahead_(nullptr, Language::bof) {
-    lookahead_.node = std::make_unique<AST::TokenNode>(c);
+    lookahead_.node = std::make_unique<AST::TokenNode>(c.ToSpan());
   }
 
   template <size_t N> inline Language::NodeType get_type() const {
@@ -401,8 +400,8 @@ static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (loc != nullptr) {
     std::cerr << loc->line();
-    fprintf(stderr, "%*s^\n(offset = %u)\n\n", static_cast<int>(loc->cursor.offset),
-            "", loc->cursor.offset);
+    fprintf(stderr, "%*s^\n(offset = %u)\n\n",
+            static_cast<int>(loc->cursor.offset), "", loc->cursor.offset);
   }
   for (auto x : ps->node_type_stack_) { fprintf(stderr, "%lu, ", x); }
   fprintf(stderr, " -> %lu", ps->lookahead_.node_type);
@@ -454,9 +453,10 @@ void CleanUpReduction(ParseState *state, SourceLocation *loc) {
   }
 
   state->node_type_stack_.push_back(Language::eof);
-  state->node_stack_.push_back(base::make_owned<AST::TokenNode>(*loc, ""));
+  state->node_stack_.push_back(
+      base::make_owned<AST::TokenNode>(loc->ToSpan(), ""));
   state->lookahead_ =
-      NNT(std::make_unique<AST::TokenNode>(*loc, ""), Language::eof);
+      NNT(std::make_unique<AST::TokenNode>(loc->ToSpan(), ""), Language::eof);
 
   // Reduce what you can again
   while (Reduce(state)) {
@@ -514,18 +514,20 @@ base::owned_ptr<AST::Statements> File::Parse() {
 
   // Finish
   if (state.node_stack_.size() > 1) {
-    std::vector<SourceLocation> lines;
+    std::vector<TextSpan> lines;
 
     size_t last_chosen_line = 0;
     for (size_t i = 0; i < state.node_stack_.size(); ++i) {
-      if (state.node_stack_[i]->loc.cursor.line_num == last_chosen_line) { continue; }
+      if (state.node_stack_[i]->span.start.line_num == last_chosen_line) {
+        continue;
+      }
       if (state.node_type_stack_[i] &
           (Language::braced_stmts | Language::l_paren | Language::r_paren |
            Language::l_bracket | Language::r_bracket | Language::l_brace |
            Language::r_brace | Language::semicolon | Language::fn_arrow |
            Language::expr)) {
-        lines.push_back(state.node_stack_[i]->loc);
-        last_chosen_line = state.node_stack_[i]->loc.cursor.line_num;
+        lines.push_back(state.node_stack_[i]->span);
+        last_chosen_line = state.node_stack_[i]->span.start.line_num;
       }
     }
 

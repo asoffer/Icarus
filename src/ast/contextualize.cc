@@ -160,7 +160,7 @@ base::owned_ptr<Node> Unop::contextualize(
     ASSERT(iter != replacements.end(), "");
     auto terminal           = base::own(new Terminal);
     terminal->scope_        = scope_; // TODO Eh? Do I care?
-    terminal->loc           = loc;
+    terminal->span          = span;
     terminal->precedence    = precedence;
     terminal->lvalue        = lvalue; // TODO????
     terminal->type          = iter->second.type;

@@ -17,7 +17,7 @@ void Unop::lrvalue_check() {
 
     switch (operand->lvalue) {
     case Assign::Const: // Intentionally falling through
-    case Assign::RVal: ErrorLog::InvalidAddress(loc, operand->lvalue); break;
+    case Assign::RVal: ErrorLog::InvalidAddress(span, operand->lvalue); break;
     case Assign::LVal: break;
     case Assign::Unset: UNREACHABLE();
     }
@@ -43,7 +43,7 @@ void Binop::lrvalue_check() {
   if (rhs) { rhs->lrvalue_check(); }
 
   if (is_assignment() && lhs->lvalue != Assign::LVal) {
-    ErrorLog::InvalidAssignment(loc, lhs->lvalue);
+    ErrorLog::InvalidAssignment(span, lhs->lvalue);
 
   } else {
     lvalue = (op == Language::Operator::Cast || op == Language::Operator::Index)

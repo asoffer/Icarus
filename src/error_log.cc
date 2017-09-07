@@ -23,12 +23,12 @@ using DeclToErrorMap   = std::unordered_map<
     const AST::Declaration *,
     std::unordered_map<Source::Name,
                        std::unordered_map<LineNum, std::vector<LineOffset>>>>;
-using LocToErrorMap =
-    std::map<SourceLocation, std::unordered_map<LineNum, std::vector<LineOffset>>>;
+using TextSpanToErrorMap =
+    std::map<TextSpan, std::unordered_map<LineNum, std::vector<LineOffset>>>;
 
 static TokenToErrorMap undeclared_identifiers, ambiguous_identifiers;
 static DeclToErrorMap implicit_capture;
-static LocToErrorMap case_errors;
+static TextSpanToErrorMap case_errors;
 static FileToLineNumMap global_non_decl;
 
 size_t ErrorLog::num_errs_ = 0;
@@ -235,22 +235,22 @@ void ErrorLog::Dump() {
 }
 
 static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
-                                const SourceLocation &loc, size_t underline_length) {
-  auto line = source_map AT(loc.source->name)->lines AT(loc.cursor.line_num);
+                                const TextSpan &span, size_t underline_length) {
+  auto line = source_map AT(span.source->name)->lines AT(span.start.line_num);
 
-  size_t left_border_width = NumDigits(loc.cursor.line_num) + 6;
+  size_t left_border_width = NumDigits(span.start.line_num) + 6;
 
   // Extra + 1 at the end because we might point after the end of the line.
   std::string underline(line.size() + left_border_width + 1, ' ');
-  for (size_t i = left_border_width + loc.cursor.offset;
-       i < left_border_width + loc.cursor.offset + underline_length; ++i) {
+  for (size_t i = left_border_width + span.start.offset;
+       i < left_border_width + span.start.offset + underline_length; ++i) {
     underline[i] = '^';
   }
 
   fprintf(stderr, "%s\n\n"
                   "    %u| %s\n"
                   "%s\n",
-          msg_head, loc.cursor.line_num, line.c_str(), underline.c_str());
+          msg_head, span.start.line_num, line.c_str(), underline.c_str());
 
   if (msg_foot) {
     fprintf(stderr, "%s\n\n", msg_foot);
@@ -260,28 +260,28 @@ static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
 }
 
 namespace ErrorLog {
-void NullCharInSrc(const SourceLocation &loc) {
+void NullCharInSrc(const TextSpan &span) {
   fprintf(stderr, "I found a null-character in your source file on line %u. "
                   "I am ignoring it and moving on. Are you sure \"%s\" is a "
                   "source file?\n\n",
-          loc.cursor.line_num, loc.source->name.c_str());
+          span.start.line_num, span.source->name.c_str());
   ++num_errs_;
 }
 
-void NonGraphicCharInSrc(const SourceLocation &loc) {
+void NonGraphicCharInSrc(const TextSpan &span) {
   fprintf(stderr, "I found a non-graphic-character in your source file on line "
                   "%u. I am ignoring it and moving on. Are you sure \"%s\" is "
                   "a source file?\n\n",
-          loc.cursor.line_num, loc.source->name.c_str());
+          span.start.line_num, span.source->name.c_str());
   ++num_errs_;
 }
 
-void LogGeneric(const SourceLocation &, const std::string &msg) {
+void LogGeneric(const TextSpan &, const std::string &msg) {
   ++num_errs_;
   fprintf(stderr, "%s", msg.c_str());
 }
 
-void InvalidRangeType(const SourceLocation &loc, Type *t) {
+void InvalidRangeType(const TextSpan &span, Type *t) {
   ++num_errs_;
   const char *foot_fmt = "Expected type: int, uint, or char\n"
                          "Given type: %s.";
@@ -291,18 +291,18 @@ void InvalidRangeType(const SourceLocation &loc, Type *t) {
   sprintf(msg_foot, foot_fmt, t_str.c_str());
 
   DisplayErrorMessage("Attempting to create a range with an invalid type.",
-                      msg_foot, loc, type_string_size);
+                      msg_foot, span, type_string_size);
   free(msg_foot);
 }
 
-void TooManyDots(const SourceLocation &loc, size_t num_dots) {
+void TooManyDots(const TextSpan &span, size_t num_dots) {
   const char *msg_head = "There are too many consecutive '.' characters. I am "
                          "assuming you meant \"..\".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, loc, num_dots);
+  DisplayErrorMessage(msg_head, nullptr, span, num_dots);
 }
 
-void NonWhitespaceAfterNewlineEscape(const SourceLocation &loc, size_t dist) {
+void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist) {
   const char *msg_head =
       "I found a non-whitespace character following a '\\' on the same line.";
   const char *msg_foot = "Backslashes are used to ignore line-breaks and "
@@ -310,7 +310,7 @@ void NonWhitespaceAfterNewlineEscape(const SourceLocation &loc, size_t dist) {
                          "between the backslash and the newline is okay).";
 
   ++num_errs_;
-  DisplayErrorMessage(msg_head, msg_foot, loc, dist);
+  DisplayErrorMessage(msg_head, msg_foot, span, dist);
 }
 
 void RunawayMultilineComment() {
@@ -318,12 +318,12 @@ void RunawayMultilineComment() {
   ++num_errs_;
 }
 
-void InvalidStringIndex(const SourceLocation &loc, Type *index_type) {
+void InvalidStringIndex(const TextSpan &span, Type *index_type) {
   std::string msg_head = "String indexed by an invalid type. Expected an int "
                          "or uint, but encountered a " +
                          index_type->to_string() + ".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 void NotAType(AST::Expression *expr, Type *t) {
   ++num_errs_;
@@ -333,48 +333,48 @@ void NotAType(AST::Expression *expr, Type *t) {
   char *msg_head = (char *)malloc(t_str.size() + strlen(head_fmt) - 1);
   sprintf(msg_head, head_fmt, t_str.c_str());
 
-  DisplayErrorMessage(msg_head, nullptr, expr->loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, expr->span, 1);
   free(msg_head);
 }
 
 void IndeterminantType(AST::Expression *expr) {
   ++num_errs_;
   DisplayErrorMessage("Cannot determine the type of the expression:", nullptr,
-                      expr->loc, 1);
+                      expr->span, 1);
 }
 
 void CyclicDependency(AST::Node *node) {
   ++num_errs_;
   DisplayErrorMessage("This expression's type is declared self-referentially.",
-                      nullptr, node->loc, 1);
+                      nullptr, node->span, 1);
 }
 
-void GlobalNonDecl(const SourceLocation &loc) {
+void GlobalNonDecl(const TextSpan &span) {
   ++num_errs_;
-  global_non_decl[loc.source->name].push_back(loc.cursor.line_num);
+  global_non_decl[span.source->name].push_back(span.start.line_num);
 }
 
-void NonIntegralArrayIndex(const SourceLocation &loc, const Type *index_type) {
+void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type) {
   std::string msg_head = "Array is being indexed by an expression of type " +
                          index_type->to_string() + ".";
   ++num_errs_;
   DisplayErrorMessage(
       msg_head.c_str(),
-      "Arrays must be indexed by integral types (either int or uint)", loc, 1);
+      "Arrays must be indexed by integral types (either int or uint)", span, 1);
 }
 
 void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
   std::string msg_head =
       "Identifier '" + id->token + "' used before it was declared.";
   std::string msg_foot = "Declaration can be found on line " +
-                         std::to_string(decl->loc.cursor.line_num) + ".";
+                         std::to_string(decl->span.start.line_num) + ".";
   // TODO Provide file name as well.
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), id->loc,
+  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), id->span,
                       id->token.size());
 }
 
-void InvalidAddress(const SourceLocation &loc, Assign mode) {
+void InvalidAddress(const TextSpan &span, Assign mode) {
   ++num_errs_;
   if (mode == Assign::Const) {
     DisplayErrorMessage(
@@ -382,69 +382,69 @@ void InvalidAddress(const SourceLocation &loc, Assign mode) {
         "Marking an identifier as #const means that it is a compile-time "
         "constant. The value may not actually be associated with a storage "
         "address. For this reason, it is illegal to take the address.",
-        loc, 1);
+        span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage(
         "Attempting to take the address of a temporary expression.", nullptr,
-        loc, 1);
+        span, 1);
   } else {
     UNREACHABLE();
   }
 }
 
-void InvalidAssignment(const SourceLocation &loc, Assign mode) {
+void InvalidAssignment(const TextSpan &span, Assign mode) {
   ++num_errs_;
   if (mode == Assign::Const) {
     DisplayErrorMessage(
         "Attempting to assign to an identifier marked as #const",
         "Marking an identifier as #const means that it is a compile-time "
         "constant and cannot be modified at run-time.",
-        loc, 1);
+        span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage("Attempting to assign to a temporary expression.",
-                        nullptr, loc, 1);
+                        nullptr, span, 1);
   } else {
     UNREACHABLE();
   }
 }
 
-void CaseLHSBool(const SourceLocation &, const SourceLocation &loc, const Type *t) {
+void CaseLHSBool(const TextSpan &, const TextSpan &span, const Type *t) {
   std::string msg_head = "In a case statement, the lefthand-side of a case "
                          "must have type bool. However, the expression has "
                          "type " +
                          t->to_string() + ".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void MissingMember(const SourceLocation &loc, const std::string &member_name,
+void MissingMember(const TextSpan &span, const std::string &member_name,
                    const Type *t) {
   ++num_errs_;
   std::string msg_head = "Expressions of type `" + t->to_string() +
                          "` have no member named '" + member_name + "'.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void IndexingNonArray(const SourceLocation &loc, const Type *t) {
+void IndexingNonArray(const TextSpan &span, const Type *t) {
   ++num_errs_;
   std::string msg_foot = "Indexed type is a `" + t->to_string() + "`.";
   DisplayErrorMessage("Cannot index into a non-array type.", msg_foot.c_str(),
-                      loc, 1);
+                      span, 1);
 }
 
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
   ++num_errs_;
-  DisplayErrorMessage(msg.c_str(), nullptr, unop->loc, 1);
+  DisplayErrorMessage(msg.c_str(), nullptr, unop->span, 1);
 }
 
-void SlicingNonArray(const SourceLocation &loc, const Type *t) {
+void SlicingNonArray(const TextSpan &span, const Type *t) {
   ++num_errs_;
   std::string msg_foot = "Sliced type is a `" + t->to_string() + "`.";
-  DisplayErrorMessage("Cannot slice a non-array type.", msg_foot.c_str(), loc,
+  DisplayErrorMessage("Cannot slice a non-array type.", msg_foot.c_str(), span,
                       1);
 }
 
-void NonBinaryAssignment(const SourceLocation &loc, size_t len) {
+void NonBinaryAssignment(const TextSpan &span, size_t len) {
   ++num_errs_;
   const char *head_fmt =
       "Assignment must be a binary operator, but %llu argument%s given.";
@@ -454,11 +454,11 @@ void NonBinaryAssignment(const SourceLocation &loc, size_t len) {
   auto msg_head = (char *)malloc(size_to_malloc);
   sprintf(msg_head, head_fmt, len, (len == 1 ? " was" : "s were"));
   // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void AssignmentArrayLength(const SourceLocation &loc, size_t len) {
+void AssignmentArrayLength(const TextSpan &span, size_t len) {
   ++num_errs_;
   const char *head_fmt = "Invalid assignment. Array on right-hand side has "
                          "unknown length, but lhs is known to be of "
@@ -466,11 +466,11 @@ void AssignmentArrayLength(const SourceLocation &loc, size_t len) {
   auto msg_head = (char *)malloc(strlen(head_fmt) - 3 + NumDigits(len));
   sprintf(msg_head, head_fmt, len);
   // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void AlreadyFoundMatch(const SourceLocation &loc, const std::string &op_symbol,
+void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
                        const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt =
@@ -483,11 +483,11 @@ void AlreadyFoundMatch(const SourceLocation &loc, const std::string &op_symbol,
   sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
           rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void NoKnownOverload(const SourceLocation &loc, const std::string &op_symbol,
+void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
                      const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt =
@@ -500,11 +500,11 @@ void NoKnownOverload(const SourceLocation &loc, const std::string &op_symbol,
   sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
           rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void InvalidRangeTypes(const SourceLocation &loc, const Type *lhs, const Type *rhs) {
+void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
   ++num_errs_;
   const char *head_fmt = "No range construction for types %s .. %s.";
   std::string lhs_str  = lhs->to_string();
@@ -514,162 +514,165 @@ void InvalidRangeTypes(const SourceLocation &loc, const Type *lhs, const Type *r
       (char *)malloc(strlen(head_fmt) - 3 + lhs_str.size() + rhs_str.size());
   sprintf(msg_head, head_fmt, lhs_str.c_str(), rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void AssignmentTypeMismatch(const SourceLocation &loc, const Type *lhs,
+void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
                             const Type *rhs) {
   ++num_errs_;
   std::string msg_head = "Invalid assignment. Left-hand side has type " +
                          lhs->to_string() + ", but right-hand side has type " +
                          rhs->to_string() + ".";
   // TODO underline isn't what it ought to be.
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void InvalidCast(const SourceLocation &loc, const Type *from, const Type *to) {
+void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
   ++num_errs_;
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 2);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 2);
 }
 
-void NotAType(const SourceLocation &loc, const std::string &id_tok) {
+void NotAType(const TextSpan &span, const std::string &id_tok) {
   ++num_errs_;
   std::string msg_head = "In declaration of `" + id_tok +
                          "`, the declared type is not a actually a type.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void DeclaredVoidType(const SourceLocation &loc, const std::string &id_tok) {
+void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
   ++num_errs_;
   std::string msg_head =
       "Identifier `" + id_tok + "`is declared to have type `void`.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void DeclaredParametricType(const SourceLocation &loc, const std::string &id_tok) {
+void DeclaredParametricType(const TextSpan &span, const std::string &id_tok) {
   ++num_errs_;
   std::string msg_head =
       "In declaration of `" + id_tok +
       "`, the declared type is parametric and has no parameters provided.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void DoubleDeclAssignment(const SourceLocation &decl_loc, const SourceLocation &val_loc) {
+void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
   ++num_errs_;
-  if (decl_loc.cursor.line_num == val_loc.cursor.line_num) {
+  if (decl_span.start.line_num == val_span.start.line_num) {
     DisplayErrorMessage("Attempting to initialize an identifier that already "
                         "has an initial value.",
-                        nullptr, decl_loc, 1);
+                        nullptr, decl_span, 1);
   } else {
     NOT_YET();
   }
 }
-void InvalidPrintDefinition(const SourceLocation &loc, const Type *t) {
+void InvalidPrintDefinition(const TextSpan &span, const Type *t) {
   ++num_errs_;
   const char *msg_fmt = "Cannot define print function for type %s.";
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void InitWithNull(const SourceLocation &loc, const Type *t, const Type *intended) {
+void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
   ++num_errs_;
   std::string msg_head = "Cannot initialize an identifier of type " +
                          t->to_string() +
                          " with null. Did you mean to declare it as " +
                          intended->to_string() + "?";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, loc, 1);
+  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
 }
 
-void InvalidAssignDefinition(const SourceLocation &loc, const Type *t) {
+void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
   ++num_errs_;
   const char *msg_fmt = "Cannot define assignment function for type %s.";
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void InvalidScope(const SourceLocation &loc, const Type *t) {
+void InvalidScope(const TextSpan &span, const Type *t) {
   ++num_errs_;
   const char *msg_fmt = "Object of type '%s' used as if it were as scope.";
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void NotBinary(const SourceLocation &loc, const std::string &token) {
+void NotBinary(const TextSpan &span, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Operator '%s' is not a binary operator";
   auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
-void Reserved(const SourceLocation &loc, const std::string &token) {
+void Reserved(const TextSpan &span, const std::string &token) {
   ++num_errs_;
   const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
   auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, nullptr, loc, 1);
+  DisplayErrorMessage(msg_head, nullptr, span, 1);
   free(msg_head);
 }
 
 // TODO better error message for repeated enum name
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
-  void fn_name(const SourceLocation &loc) {                                            \
+  void fn_name(const TextSpan &span) {                                         \
     ++num_errs_;                                                               \
-    DisplayErrorMessage(msg_head, msg_foot, loc, underline_length);            \
+    DisplayErrorMessage(msg_head, msg_foot, span, underline_length);           \
   }
 #include "config/error.conf"
 #undef ERROR_MACRO
 
-void InvalidReturnType(const SourceLocation &loc, Type *given, Type *correct) {
+void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
   ++num_errs_;
   std::string msg_head = "Invalid return type on line " +
-                         std::to_string(loc.cursor.line_num) + " in \"" +
-                         loc.source->name.c_str() + "\".";
+                         std::to_string(span.start.line_num) + " in \"" +
+                         span.source->name.c_str() + "\".";
   std::string msg_foot = "Given return type:    " + given->to_string() +
                          "\n"
                          "Expected return type: " +
                          correct->to_string();
-  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), loc,
-                      loc.line().size() - loc.cursor.offset);
+  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), span,
+                      span.source->lines[span.start.line_num].size() -
+                          span.start.offset);
 }
 
-void ChainTypeMismatch(const SourceLocation &loc, std::set<Type *> types) {
+void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types) {
   ++num_errs_;
   std::stringstream ss;
   ss << "Found the following types in the expression:\n";
   for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
   DisplayErrorMessage("Type do not all match in expression:", ss.str().c_str(),
-                      loc, 1);
+                      span, 1);
 }
 
-void UserDefinedError(const SourceLocation &loc, const std::string &msg) {
+void UserDefinedError(const TextSpan &span, const std::string &msg) {
   ++num_errs_;
-  DisplayErrorMessage(msg.c_str(), "", loc, 1);
+  DisplayErrorMessage(msg.c_str(), "", span, 1);
 }
 
-static void DisplayLines(const std::vector<SourceLocation> &lines) {
-  size_t left_space     = NumDigits(lines.back().cursor.line_num) + 2;
+static void DisplayLines(const std::vector<TextSpan> &lines) {
+  size_t left_space     = NumDigits(lines.back().start.line_num) + 2;
   std::string space_fmt = std::string(left_space - 3, ' ') + "...|\n";
 
-  size_t last_line_num = lines[0].cursor.line_num - 1;
-  for (auto loc : lines) {
-    if (loc.cursor.line_num != last_line_num + 1) { fputs(space_fmt.c_str(), stderr); }
-    fprintf(stderr, "%*u| %s\n", (int)left_space, loc.cursor.line_num,
-            loc.line().c_str());
-    last_line_num = loc.cursor.line_num;
+  size_t last_line_num = lines[0].start.line_num - 1;
+  for (auto span : lines) {
+    if (span.start.line_num != last_line_num + 1) {
+      fputs(space_fmt.c_str(), stderr);
+    }
+    fprintf(stderr, "%*u| %s\n", (int)left_space, span.start.line_num,
+            span.source->lines[span.start.line_num].c_str());
+    last_line_num = span.start.line_num;
   }
 
   fputc('\n', stderr);
@@ -678,13 +681,13 @@ static void DisplayLines(const std::vector<SourceLocation> &lines) {
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   if (correct) {
     fprintf(stderr, "Type mismatch in case-expression on line %u in \"%s\".\n",
-            case_ptr->loc.cursor.line_num, case_ptr->loc.source->name.c_str());
+            case_ptr->span.start.line_num, case_ptr->span.source->name.c_str());
 
-    std::vector<SourceLocation> locs;
+    std::vector<TextSpan> locs;
     for (auto &kv : case_ptr->key_vals) {
       ++num_errs_;
       if (kv.second->type == Err || kv.second->type == correct) { continue; }
-      locs.push_back(kv.second->loc);
+      locs.push_back(kv.second->span);
     }
 
     num_errs_ += locs.size();
@@ -696,12 +699,12 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
     ++num_errs_;
     fprintf(stderr,
             "Type mismatch in case-expression on line %u in \"%s\".\n\n",
-            case_ptr->loc.cursor.line_num, case_ptr->loc.source->name.c_str());
+            case_ptr->span.start.line_num, case_ptr->span.source->name.c_str());
   }
 }
 
 void UnknownParserError(const Source::Name &source_name,
-                        const std::vector<SourceLocation> &lines) {
+                        const std::vector<TextSpan> &lines) {
   if (lines.empty()) {
     fprintf(stderr,
             "Parse errors found in \"%s\". Sorry I can't be more specific.",
@@ -721,20 +724,22 @@ void UnknownParserError(const Source::Name &source_name,
 namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id) {
   errors.push_back(Error::Code::UndeclaredIdentifier);
-  undeclared_identifiers[id->token][id->loc.source->name][id->loc.cursor.line_num]
-      .push_back(id->loc.cursor.offset);
+  undeclared_identifiers[id->token][id->span.source->name]
+                        [id->span.start.line_num]
+                            .push_back(id->span.start.offset);
 }
 
 void AmbiguousIdentifier(AST::Identifier *id) {
   errors.push_back(Error::Code::AmbiguousIdentifier);
-  ambiguous_identifiers[id->token][id->loc.source->name][id->loc.cursor.line_num]
-      .push_back(id->loc.cursor.offset);
+  ambiguous_identifiers[id->token][id->span.source->name]
+                       [id->span.start.line_num]
+                           .push_back(id->span.start.offset);
 }
 
 void ImplicitCapture(AST::Identifier *id) {
   errors.push_back(Error::Code::ImplicitCapture);
-  implicit_capture[id->decl][id->loc.source->name][id->loc.cursor.line_num].push_back(
-      id->loc.cursor.offset);
+  implicit_capture[id->decl][id->span.source->name][id->span.start.line_num]
+      .push_back(id->span.start.offset);
 }
 
 void FailedPrecondition(const IR::Property &) {

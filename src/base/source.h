@@ -30,6 +30,7 @@ struct Source {
   // one.
 
   Name name;
+  bool seen_eof = false;
 
 protected:
   Source(Name name) : name(std::move(name)) {}

@@ -3,10 +3,10 @@
 #include <queue>
 #include <unordered_map>
 
+#include "../base/source.h"
 #include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
-#include "../base/source.h"
 
 extern std::queue<Source::Name> file_queue;
 
@@ -22,13 +22,13 @@ extern size_t precedence(Operator op);
 base::owned_ptr<AST::Node>
 BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto binop        = base::make_owned<AST::Binop>();
-  binop->loc        = nodes[1]->loc;
+  binop->span       = nodes[1]->span;
   binop->lhs        = base::move<AST::Expression>(nodes[0]);
   binop->op         = Language::Operator::Call;
   binop->precedence = Language::precedence(binop->op);
 
   if (binop->lhs->is<AST::Declaration>()) {
-    ErrorLog::CallingDeclaration(binop->lhs->loc);
+    ErrorLog::CallingDeclaration(binop->lhs->span);
   }
   return std::move(binop);
 }
@@ -51,15 +51,15 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
     } else {
       // TODO show the entire struct declaration and point to the problematic
       // lines.
-      ErrorLog::NonDeclInStructDecl(stmt->loc);
+      ErrorLog::NonDeclInStructDecl(stmt->span);
     }
   }
-  return base::make_owned<Terminal>(nodes[0]->loc, IR::Val::Type(struct_type));
+  return base::make_owned<Terminal>(nodes[0]->span, IR::Val::Type(struct_type));
 }
 
 static base::owned_ptr<Node>
 BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  auto scope_lit = base::make_owned<ScopeLiteral>(nodes[0]->loc);
+  auto scope_lit = base::make_owned<ScopeLiteral>(nodes[0]->span);
 
   // TODO take arguments as well
   if (nodes.size() > 1) {
@@ -101,14 +101,14 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
         auto token = std::move(ptr_cast<Identifier>(stmt.get())->token);
         for (const auto &member : members) {
           if (member == token) {
-            ErrorLog::RepeatedEnumName(stmt->loc);
+            ErrorLog::RepeatedEnumName(stmt->span);
             goto skip_adding_member;
           }
         }
         members.push_back(std::move(token));
 
       } else {
-        ErrorLog::EnumNeedsIds(stmt->loc);
+        ErrorLog::EnumNeedsIds(stmt->span);
       }
     skip_adding_member:;
     }
@@ -116,7 +116,7 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   static size_t anon_enum_counter = 0;
   return base::make_owned<Terminal>(
-      nodes[0]->loc,
+      nodes[0]->span,
       IR::Val::Type(new Enum(
           "__anon.enum" + std::to_string(anon_enum_counter++), members)));
 }
@@ -129,8 +129,8 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 // left-hand
 // side of 'else'
 base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto case_ptr = base::make_owned<Case>();
-  case_ptr->loc = nodes[0]->loc;
+  auto case_ptr  = base::make_owned<Case>();
+  case_ptr->span = nodes[0]->span;
 
   for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
     if (stmt->is<Binop>() &&
@@ -140,7 +140,7 @@ base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
       case_ptr->key_vals.emplace_back(std::move(binop->lhs),
                                       std::move(binop->rhs));
     } else {
-      ErrorLog::NonKVInCase(stmt->loc);
+      ErrorLog::NonKVInCase(stmt->span);
     }
   }
   return std::move(case_ptr);
@@ -150,7 +150,7 @@ static void
 CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
                         std::vector<base::owned_ptr<InDecl>> *iters) {
   if (!maybe_decl->is<InDecl>()) {
-    ErrorLog::NonInDeclInForLoop(maybe_decl->loc);
+    ErrorLog::NonInDeclInForLoop(maybe_decl->span);
   } else {
     iters->push_back(base::move<InDecl>(maybe_decl));
   }
@@ -163,7 +163,7 @@ CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
 // [expression] is either an in-declaration or a list of in-declarations
 base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto for_stmt        = base::make_owned<For>();
-  for_stmt->loc        = nodes[0]->loc;
+  for_stmt->span       = nodes[0]->span;
   for_stmt->statements = base::move<Statements>(nodes[2]);
 
   auto iter = ptr_cast<Expression>(nodes[1].get());
@@ -179,8 +179,8 @@ base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
                             &for_stmt->iterators);
   }
 
-  auto stmts = base::make_owned<Statements>();
-  stmts->loc = for_stmt->loc;
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = for_stmt->span;
   stmts->statements.push_back(std::move(for_stmt));
   return std::move(stmts);
 }
@@ -197,7 +197,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
 
   auto unop     = base::make_owned<Unop>();
   unop->operand = base::move<Expression>(nodes[1]);
-  unop->loc     = nodes[0]->loc;
+  unop->span    = nodes[0]->span;
 
   bool check_id = false;
   if (tk == "require") {
@@ -205,7 +205,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
       file_queue.push(Source::Name(
           std::move(unop->operand->value.value.as<std::string>())));
     } else {
-      ErrorLog::InvalidRequirement(unop->operand->loc);
+      ErrorLog::InvalidRequirement(unop->operand->span);
     }
 
     unop->op = Language::Operator::Require;
@@ -240,12 +240,12 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
   if (check_id) {
     if (!unop->operand->is<Identifier>()) {
       // TODO clean up error message
-      ErrorLog::NonIdJumpOperand(unop->operand->loc);
+      ErrorLog::NonIdJumpOperand(unop->operand->span);
     }
   } else {
     if (unop->operand->is<Declaration>()) {
       // TODO clean up this error message
-      ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->loc);
+      ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->span);
     }
   }
   return std::move(unop);
@@ -268,8 +268,8 @@ base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
     chain = base::move<ChainOp>(nodes[0]);
 
   } else {
-    chain      = base::make_owned<ChainOp>();
-    chain->loc = op_node->loc;
+    chain       = base::make_owned<ChainOp>();
+    chain->span = op_node->span;
 
     chain->exprs.push_back(base::move<Expression>(nodes[0]));
     chain->precedence = op_prec;
@@ -289,8 +289,8 @@ CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
   if (nodes[0]->is<CommaList>()) {
     comma_list = base::move<CommaList>(nodes[0]);
   } else {
-    comma_list      = base::make_owned<CommaList>();
-    comma_list->loc = op_node->loc;
+    comma_list       = base::make_owned<CommaList>();
+    comma_list->span = op_node->span;
     comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
   }
 
@@ -307,15 +307,15 @@ CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
 // RHS is an identifier
 base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto access     = base::make_owned<Access>();
-  access->loc     = nodes[0]->loc;
+  access->span    = nodes[0]->span;
   access->operand = base::move<Expression>(nodes[0]);
 
   if (access->operand->is<Declaration>()) {
-    ErrorLog::LHSDecl(access->operand->loc);
+    ErrorLog::LHSDecl(access->operand->span);
   }
 
   if (!nodes[2]->is<Identifier>()) {
-    ErrorLog::RHSNonIdInAccess(nodes[2]->loc);
+    ErrorLog::RHSNonIdInAccess(nodes[2]->span);
   } else {
     access->member_name =
         std::move(ptr_cast<Identifier>(nodes[2].get())->token);
@@ -326,17 +326,17 @@ base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
 static base::owned_ptr<Node>
 BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
               Language::Operator op_class) {
-  auto binop = base::make_owned<Binop>();
-  binop->loc = nodes[1]->loc;
+  auto binop  = base::make_owned<Binop>();
+  binop->span = nodes[1]->span;
 
   binop->lhs = base::move<Expression>(nodes[0]);
   binop->rhs = base::move<Expression>(nodes[2]);
   binop->op  = op_class;
 
-  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->loc); }
+  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
 
   if (binop->rhs->is<Declaration>()) {
-    ErrorLog::RHSNonTickDecl(binop->rhs->loc);
+    ErrorLog::RHSNonTickDecl(binop->rhs->span);
   }
 
   binop->precedence = Language::precedence(binop->op);
@@ -372,8 +372,8 @@ Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
 // Internal checks: None
 base::owned_ptr<Node>
 ArrayLiteral::BuildEmpty(std::vector<base::owned_ptr<Node>> nodes) {
-  auto array_lit = base::make_owned<ArrayLiteral>();
-  array_lit->loc = nodes[0]->loc;
+  auto array_lit  = base::make_owned<ArrayLiteral>();
+  array_lit->span = nodes[0]->span;
   return std::move(array_lit);
 }
 
@@ -385,7 +385,7 @@ base::owned_ptr<Node>
 Unop::BuildDots(std::vector<base::owned_ptr<Node>> nodes) {
   auto unop        = base::make_owned<Unop>();
   unop->operand    = base::move<Expression>(nodes[0]);
-  unop->loc        = ptr_cast<TokenNode>(nodes[1].get())->loc;
+  unop->span       = ptr_cast<TokenNode>(nodes[1].get())->span;
   unop->op         = ptr_cast<TokenNode>(nodes[1].get())->op;
   unop->precedence = Language::precedence(unop->op);
   return std::move(unop);
@@ -393,8 +393,8 @@ Unop::BuildDots(std::vector<base::owned_ptr<Node>> nodes) {
 
 base::owned_ptr<Node>
 ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto array_lit = base::make_owned<ArrayLiteral>();
-  array_lit->loc = nodes[0]->loc;
+  auto array_lit  = base::make_owned<ArrayLiteral>();
+  array_lit->span = nodes[0]->span;
 
   if (nodes[1]->is<CommaList>()) {
     array_lit->elems = std::move(ptr_cast<CommaList>(nodes[1].get())->exprs);
@@ -414,7 +414,7 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
 
     while (i >= 0) {
       auto array_type       = base::make_owned<ArrayType>();
-      array_type->loc       = length_chain->exprs[i]->loc;
+      array_type->span      = length_chain->exprs[i]->span;
       array_type->length    = std::move(length_chain->exprs[i]);
       array_type->data_type = std::move(prev);
       prev                  = std::move(array_type);
@@ -424,7 +424,7 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
 
   } else {
     auto array_type       = base::make_owned<ArrayType>();
-    array_type->loc       = nodes[0]->loc;
+    array_type->span      = nodes[0]->span;
     array_type->length    = base::move<Expression>(nodes[1]);
     array_type->data_type = base::move<Expression>(nodes[3]);
 
@@ -435,7 +435,7 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node> InDecl::Build(std::vector<base::owned_ptr<Node>> nodes) {
   ASSERT(ptr_cast<TokenNode>(nodes[1].get())->op == Language::Operator::In, "");
   auto in_decl              = base::make_owned<InDecl>();
-  in_decl->loc              = nodes[0]->loc;
+  in_decl->span             = nodes[0]->span;
   in_decl->identifier       = base::move<Identifier>(nodes[0]);
   in_decl->identifier->decl = in_decl.get();
   in_decl->container        = base::move<Expression>(nodes[2]);
@@ -447,7 +447,7 @@ base::owned_ptr<Node>
 Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
   auto op                = ptr_cast<TokenNode>(nodes[1].get())->op;
   auto decl              = base::make_owned<Declaration>(is_const);
-  decl->loc              = nodes[0]->loc;
+  decl->span             = nodes[0]->span;
   decl->precedence       = Language::precedence(op);
   decl->identifier       = base::move<Identifier>(nodes[0]);
   decl->identifier->decl = decl.get();
@@ -463,7 +463,7 @@ Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
 
 base::owned_ptr<Node> Generic::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto generic              = base::make_owned<Generic>();
-  generic->loc              = nodes[0]->loc;
+  generic->span             = nodes[0]->span;
   generic->test_fn          = base::move<Expression>(nodes[0]);
   generic->precedence       = Language::precedence(Language::Operator::Tick);
   generic->identifier       = base::move<Identifier>(nodes[2]);
@@ -474,7 +474,7 @@ base::owned_ptr<Node> Generic::Build(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node>
 FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   auto fn_lit        = base::make_owned<FunctionLiteral>();
-  fn_lit->loc        = nodes[0]->loc;
+  fn_lit->span       = nodes[0]->span;
   fn_lit->statements = base::move<Statements>(nodes[1]);
 
   auto binop               = ptr_cast<Binop>(nodes[0].get());
@@ -498,14 +498,13 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit.get();
   }
 
-
   return std::move(fn_lit);
 }
 
 base::owned_ptr<Node>
 Statements::build_one(std::vector<base::owned_ptr<Node>> nodes) {
-  auto stmts = base::make_owned<Statements>();
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = nodes[0]->span;
   stmts->statements.push_back(std::move(nodes[0]));
   return std::move(stmts);
 }
@@ -526,10 +525,10 @@ base::owned_ptr<Node> Jump::build(std::vector<base::owned_ptr<Node>> nodes) {
   auto iter = JumpTypeMap.find(ptr_cast<TokenNode>(nodes[0].get())->token);
   ASSERT(iter != JumpTypeMap.end(), "");
 
-  auto stmts = base::make_owned<Statements>();
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::make_owned<Statements>();
+  stmts->span = nodes[0]->span;
   stmts->statements.push_back(
-      base::make_owned<Jump>(nodes[0]->loc, iter->second));
+      base::make_owned<Jump>(nodes[0]->span, iter->second));
   return std::move(stmts);
 }
 
@@ -538,7 +537,7 @@ ScopeNode::BuildScopeNode(base::owned_ptr<Expression> scope_name,
                           base::owned_ptr<Expression> arg_expr,
                           base::owned_ptr<Statements> stmt_node) {
   auto scope_node        = base::make_owned<ScopeNode>();
-  scope_node->loc        = scope_name->loc;
+  scope_node->span       = scope_name->span;
   scope_node->scope_expr = std::move(scope_name);
   scope_node->expr       = std::move(arg_expr);
   scope_node->stmts      = std::move(stmt_node);
@@ -569,23 +568,23 @@ base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromStatements(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->loc   = nodes[0]->loc;
+  block->span  = nodes[0]->span;
   block->stmts = base::move<AST::Statements>(nodes[1]);
   return std::move(block);
 }
 
 base::owned_ptr<AST::Node>
 OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto stmts = base::make_owned<AST::Statements>();
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::make_owned<AST::Statements>();
+  stmts->span = nodes[0]->span;
   stmts->statements.push_back(std::move(nodes[1]));
   return std::move(stmts);
 }
 
 base::owned_ptr<AST::Node>
 BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto stmts = base::move<AST::Statements>(nodes[1]);
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::move<AST::Statements>(nodes[1]);
+  stmts->span = nodes[0]->span;
   if (nodes[2]->is<AST::Statements>()) {
     for (auto &stmt : ptr_cast<AST::Statements>(nodes[2].get())->statements) {
       stmts->statements.push_back(std::move(stmt));
@@ -600,7 +599,7 @@ base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromStatementsSameLineEnd(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->loc   = nodes[0]->loc;
+  block->span  = nodes[0]->span;
   block->stmts = base::move<AST::Statements>(
       BracedStatementsSameLineEnd(std::move(nodes)));
   return std::move(block);
@@ -610,7 +609,7 @@ base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromOneStatement(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->loc = nodes[0]->loc;
+  block->span = nodes[0]->span;
   block->stmts =
       base::move<AST::Statements>(OneBracedStatement(std::move(nodes)));
   return std::move(block);
@@ -618,8 +617,8 @@ base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromOneStatement(
 
 base::owned_ptr<AST::Node>
 EmptyBraces(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto stmts = base::make_owned<AST::Statements>();
-  stmts->loc = nodes[0]->loc;
+  auto stmts  = base::make_owned<AST::Statements>();
+  stmts->span = nodes[0]->span;
   return std::move(stmts);
 }
 
@@ -627,7 +626,7 @@ base::owned_ptr<AST::Node>
 AST::CodeBlock::BuildEmpty(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->loc   = nodes[0]->loc;
+  block->span  = nodes[0]->span;
   block->stmts = base::move<AST::Statements>(EmptyBraces(std::move(nodes)));
   return std::move(block);
 }
@@ -674,7 +673,7 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
       if (ptr_cast<AST::Declaration>(nodes[0].get())->IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
-        ErrorLog::DoubleDeclAssignment(nodes[0]->loc, nodes[2]->loc);
+        ErrorLog::DoubleDeclAssignment(nodes[0]->span, nodes[2]->span);
         return base::move<AST::Declaration>(nodes[0]);
       }
 
@@ -683,8 +682,8 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
       return std::move(decl);
 
     } else {
-      auto binop = base::make_owned<AST::Binop>();
-      binop->loc = nodes[0]->loc;
+      auto binop  = base::make_owned<AST::Binop>();
+      binop->span = nodes[0]->span;
 
       binop->lhs = base::move<AST::Expression>(nodes[0]);
       binop->rhs = base::move<AST::Expression>(nodes[2]);
@@ -695,8 +694,8 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     }
   }
 
-  auto binop = base::make_owned<AST::Binop>();
-  binop->loc = nodes[0]->loc;
+  auto binop  = base::make_owned<AST::Binop>();
+  binop->span = nodes[0]->span;
 
   binop->lhs = base::move<AST::Expression>(nodes[0]);
   binop->rhs = base::move<AST::Expression>(nodes[2]);
@@ -750,7 +749,7 @@ BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
   if (tk == "for") {
     return AST::For::Build(std::move(nodes));
 
-  } else if (tk == "struct") { 
+  } else if (tk == "struct") {
     // Parmaetric struct
     NOT_YET();
   }
@@ -768,7 +767,7 @@ Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes) {
   } else {
     auto unop     = base::make_owned<AST::Unop>();
     unop->operand = std::move(expr);
-    unop->loc     = nodes[0]->loc;
+    unop->span    = nodes[0]->span;
     unop->op      = Language::Operator::Ref;
     return std::move(unop);
   }
