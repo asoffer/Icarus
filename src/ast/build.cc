@@ -22,7 +22,7 @@ extern size_t precedence(Operator op);
 base::owned_ptr<AST::Node>
 BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto binop        = base::make_owned<AST::Binop>();
-  binop->span       = nodes[1]->span;
+  binop->span       = TextSpan(nodes[0]->span, nodes[2]->span);
   binop->lhs        = base::move<AST::Expression>(nodes[0]);
   binop->op         = Language::Operator::Call;
   binop->precedence = Language::precedence(binop->op);
@@ -30,7 +30,7 @@ BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
   if (binop->lhs->is<AST::Declaration>()) {
     ErrorLog::CallingDeclaration(binop->lhs->span);
   }
-  return std::move(binop);
+  return binop;
 }
 
 namespace AST {
@@ -54,12 +54,14 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       ErrorLog::NonDeclInStructDecl(stmt->span);
     }
   }
-  return base::make_owned<Terminal>(nodes[0]->span, IR::Val::Type(struct_type));
+  return base::make_owned<Terminal>(TextSpan(nodes[0]->span, nodes[1]->span),
+                                    IR::Val::Type(struct_type));
 }
 
 static base::owned_ptr<Node>
 BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
-  auto scope_lit = base::make_owned<ScopeLiteral>(nodes[0]->span);
+  auto scope_lit =
+      base::make_owned<ScopeLiteral>(TextSpan(nodes[0]->span, nodes[1]->span));
 
   // TODO take arguments as well
   if (nodes.size() > 1) {
@@ -82,7 +84,7 @@ BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
     // TODO log an error
   }
 
-  return std::move(scope_lit);
+  return scope_lit;
 }
 
 // Input guarantees:
@@ -116,7 +118,7 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   static size_t anon_enum_counter = 0;
   return base::make_owned<Terminal>(
-      nodes[0]->span,
+      TextSpan(nodes[0]->span, nodes[1]->span),
       IR::Val::Type(new Enum(
           "__anon.enum" + std::to_string(anon_enum_counter++), members)));
 }
@@ -130,7 +132,7 @@ BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 // side of 'else'
 base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto case_ptr  = base::make_owned<Case>();
-  case_ptr->span = nodes[0]->span;
+  case_ptr->span = TextSpan(nodes[0]->span, nodes[1]->span);
 
   for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
     if (stmt->is<Binop>() &&
@@ -143,7 +145,7 @@ base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
       ErrorLog::NonKVInCase(stmt->span);
     }
   }
-  return std::move(case_ptr);
+  return case_ptr;
 }
 
 static void
@@ -163,7 +165,7 @@ CheckForLoopDeclaration(base::owned_ptr<Expression> maybe_decl,
 // [expression] is either an in-declaration or a list of in-declarations
 base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto for_stmt        = base::make_owned<For>();
-  for_stmt->span       = nodes[0]->span;
+  for_stmt->span       = TextSpan(nodes[0]->span, nodes[2]->span);
   for_stmt->statements = base::move<Statements>(nodes[2]);
 
   auto iter = ptr_cast<Expression>(nodes[1].get());
@@ -182,7 +184,7 @@ base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto stmts  = base::make_owned<Statements>();
   stmts->span = for_stmt->span;
   stmts->statements.push_back(std::move(for_stmt));
-  return std::move(stmts);
+  return stmts;
 }
 
 // Input guarantees:
@@ -197,7 +199,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
 
   auto unop     = base::make_owned<Unop>();
   unop->operand = base::move<Expression>(nodes[1]);
-  unop->span    = nodes[0]->span;
+  unop->span    = TextSpan(nodes[0]->span, nodes[1]->span);
 
   bool check_id = false;
   if (tk == "require") {
@@ -245,10 +247,10 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
   } else {
     if (unop->operand->is<Declaration>()) {
       // TODO clean up this error message
-      ErrorLog::InvalidDecl(ptr_cast<Declaration>(unop->operand.get())->span);
+      ErrorLog::InvalidDecl(unop->operand->span);
     }
   }
-  return std::move(unop);
+  return unop;
 }
 
 // Input guarantees
@@ -256,8 +258,8 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
 //
 // Internal checks: None
 base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
-  auto op_prec  = Language::precedence(op_node->op);
+  auto op = nodes[1]->as<TokenNode>().op;
+  auto op_prec  = Language::precedence(op);
   base::owned_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
@@ -269,34 +271,33 @@ base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
 
   } else {
     chain       = base::make_owned<ChainOp>();
-    chain->span = op_node->span;
+    chain->span = TextSpan(chain->span, nodes[2]->span);
 
     chain->exprs.push_back(base::move<Expression>(nodes[0]));
     chain->precedence = op_prec;
   }
 
-  chain->ops.push_back(op_node->op);
+  chain->ops.push_back(op);
   chain->exprs.push_back(base::move<Expression>(nodes[2]));
 
-  return std::move(chain);
+  return chain;
 }
 
 base::owned_ptr<Node>
 CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto *op_node = ptr_cast<TokenNode>(nodes[1].get());
   base::owned_ptr<CommaList> comma_list;
 
   if (nodes[0]->is<CommaList>()) {
     comma_list = base::move<CommaList>(nodes[0]);
   } else {
     comma_list       = base::make_owned<CommaList>();
-    comma_list->span = op_node->span;
+    comma_list->span = TextSpan(comma_list->span, nodes[2]->span);
     comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
   }
 
   comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
 
-  return std::move(comma_list);
+  return comma_list;
 }
 
 // Input guarantees
@@ -307,7 +308,7 @@ CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
 // RHS is an identifier
 base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto access     = base::make_owned<Access>();
-  access->span    = nodes[0]->span;
+  access->span    = TextSpan(nodes[0]->span, nodes[2]->span);
   access->operand = base::move<Expression>(nodes[0]);
 
   if (access->operand->is<Declaration>()) {
@@ -320,14 +321,14 @@ base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
     access->member_name =
         std::move(ptr_cast<Identifier>(nodes[2].get())->token);
   }
-  return std::move(access);
+  return access;
 }
 
 static base::owned_ptr<Node>
 BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
               Language::Operator op_class) {
   auto binop  = base::make_owned<Binop>();
-  binop->span = nodes[1]->span;
+  binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
 
   binop->lhs = base::move<Expression>(nodes[0]);
   binop->rhs = base::move<Expression>(nodes[2]);
@@ -341,7 +342,7 @@ BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
 
   binop->precedence = Language::precedence(binop->op);
 
-  return std::move(binop);
+  return binop;
 }
 
 // Input guarantees
@@ -373,8 +374,8 @@ Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node>
 ArrayLiteral::BuildEmpty(std::vector<base::owned_ptr<Node>> nodes) {
   auto array_lit  = base::make_owned<ArrayLiteral>();
-  array_lit->span = nodes[0]->span;
-  return std::move(array_lit);
+  array_lit->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  return array_lit;
 }
 
 // Input guarantee:
@@ -385,10 +386,10 @@ base::owned_ptr<Node>
 Unop::BuildDots(std::vector<base::owned_ptr<Node>> nodes) {
   auto unop        = base::make_owned<Unop>();
   unop->operand    = base::move<Expression>(nodes[0]);
-  unop->span       = ptr_cast<TokenNode>(nodes[1].get())->span;
-  unop->op         = ptr_cast<TokenNode>(nodes[1].get())->op;
+  unop->span       = TextSpan(nodes[0]->span, nodes[1]->span);
+  unop->op         = nodes[1]->as<TokenNode>().op;
   unop->precedence = Language::precedence(unop->op);
-  return std::move(unop);
+  return unop;
 }
 
 base::owned_ptr<Node>
@@ -402,7 +403,7 @@ ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     array_lit->elems.push_back(base::move<Expression>(nodes[1]));
   }
 
-  return std::move(array_lit);
+  return array_lit;
 }
 
 base::owned_ptr<Node>
@@ -420,7 +421,7 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
       prev                  = std::move(array_type);
       i -= 1;
     }
-    return std::move(prev);
+    return prev;
 
   } else {
     auto array_type       = base::make_owned<ArrayType>();
@@ -428,26 +429,26 @@ ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
     array_type->length    = base::move<Expression>(nodes[1]);
     array_type->data_type = base::move<Expression>(nodes[3]);
 
-    return std::move(array_type);
+    return array_type;
   }
 }
 
 base::owned_ptr<Node> InDecl::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  ASSERT(ptr_cast<TokenNode>(nodes[1].get())->op == Language::Operator::In, "");
+  ASSERT(nodes[1]->as<TokenNode>().op == Language::Operator::In, "");
   auto in_decl              = base::make_owned<InDecl>();
-  in_decl->span             = nodes[0]->span;
+  in_decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   in_decl->identifier       = base::move<Identifier>(nodes[0]);
   in_decl->identifier->decl = in_decl.get();
   in_decl->container        = base::move<Expression>(nodes[2]);
   in_decl->precedence       = Language::precedence(Language::Operator::In);
-  return std::move(in_decl);
+  return in_decl;
 }
 
 base::owned_ptr<Node>
 Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
-  auto op                = ptr_cast<TokenNode>(nodes[1].get())->op;
+  auto op                = nodes[1]->as<TokenNode>().op;
   auto decl              = base::make_owned<Declaration>(is_const);
-  decl->span             = nodes[0]->span;
+  decl->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   decl->precedence       = Language::precedence(op);
   decl->identifier       = base::move<Identifier>(nodes[0]);
   decl->identifier->decl = decl.get();
@@ -458,23 +459,23 @@ Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
     decl->init_val = base::move<Expression>(nodes[2]);
   }
 
-  return std::move(decl);
+  return decl;
 }
 
 base::owned_ptr<Node> Generic::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto generic              = base::make_owned<Generic>();
-  generic->span             = nodes[0]->span;
+  generic->span             = TextSpan(nodes[0]->span, nodes[2]->span);
   generic->test_fn          = base::move<Expression>(nodes[0]);
   generic->precedence       = Language::precedence(Language::Operator::Tick);
   generic->identifier       = base::move<Identifier>(nodes[2]);
   generic->identifier->decl = generic.get();
-  return std::move(generic);
+  return generic;
 }
 
 base::owned_ptr<Node>
 FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   auto fn_lit        = base::make_owned<FunctionLiteral>();
-  fn_lit->span       = nodes[0]->span;
+  fn_lit->span       = TextSpan(nodes[0]->span, nodes[1]->span);
   fn_lit->statements = base::move<Statements>(nodes[1]);
 
   auto binop               = ptr_cast<Binop>(nodes[0].get());
@@ -498,7 +499,7 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     fn_lit->return_type_expr->as<Declaration>().arg_val = fn_lit.get();
   }
 
-  return std::move(fn_lit);
+  return fn_lit;
 }
 
 base::owned_ptr<Node>
@@ -506,14 +507,14 @@ Statements::build_one(std::vector<base::owned_ptr<Node>> nodes) {
   auto stmts  = base::make_owned<Statements>();
   stmts->span = nodes[0]->span;
   stmts->statements.push_back(std::move(nodes[0]));
-  return std::move(stmts);
+  return stmts;
 }
 
 base::owned_ptr<Node>
 Statements::build_more(std::vector<base::owned_ptr<Node>> nodes) {
   auto stmts = base::move<Statements>(nodes[0]);
   stmts->statements.push_back(std::move(nodes[1]));
-  return std::move(stmts);
+  return stmts;
 }
 
 base::owned_ptr<Node> Jump::build(std::vector<base::owned_ptr<Node>> nodes) {
@@ -529,7 +530,7 @@ base::owned_ptr<Node> Jump::build(std::vector<base::owned_ptr<Node>> nodes) {
   stmts->span = nodes[0]->span;
   stmts->statements.push_back(
       base::make_owned<Jump>(nodes[0]->span, iter->second));
-  return std::move(stmts);
+  return stmts;
 }
 
 base::owned_ptr<Node>
@@ -537,11 +538,11 @@ ScopeNode::BuildScopeNode(base::owned_ptr<Expression> scope_name,
                           base::owned_ptr<Expression> arg_expr,
                           base::owned_ptr<Statements> stmt_node) {
   auto scope_node        = base::make_owned<ScopeNode>();
-  scope_node->span       = scope_name->span;
+  scope_node->span       = TextSpan(scope_name->span, stmt_node->span);
   scope_node->scope_expr = std::move(scope_name);
   scope_node->expr       = std::move(arg_expr);
   scope_node->stmts      = std::move(stmt_node);
-  return std::move(scope_node);
+  return scope_node;
 }
 
 base::owned_ptr<Node>
@@ -568,23 +569,23 @@ base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromStatements(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->span  = nodes[0]->span;
+  block->span  = TextSpan(nodes[0]->span, nodes[2]->span);
   block->stmts = base::move<AST::Statements>(nodes[1]);
-  return std::move(block);
+  return block;
 }
 
 base::owned_ptr<AST::Node>
 OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts  = base::make_owned<AST::Statements>();
-  stmts->span = nodes[0]->span;
+  stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   stmts->statements.push_back(std::move(nodes[1]));
-  return std::move(stmts);
+  return stmts;
 }
 
 base::owned_ptr<AST::Node>
 BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts  = base::move<AST::Statements>(nodes[1]);
-  stmts->span = nodes[0]->span;
+  stmts->span = TextSpan(nodes[0]->span, nodes[3]->span);
   if (nodes[2]->is<AST::Statements>()) {
     for (auto &stmt : ptr_cast<AST::Statements>(nodes[2].get())->statements) {
       stmts->statements.push_back(std::move(stmt));
@@ -592,43 +593,43 @@ BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
   } else {
     stmts->statements.push_back(std::move(nodes[2]));
   }
-  return std::move(stmts);
+  return stmts;
 }
 
 base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromStatementsSameLineEnd(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->span  = nodes[0]->span;
+  block->span  = TextSpan(nodes[0]->span, nodes[3]->span);
   block->stmts = base::move<AST::Statements>(
       BracedStatementsSameLineEnd(std::move(nodes)));
-  return std::move(block);
+  return block;
 }
 
 base::owned_ptr<AST::Node> AST::CodeBlock::BuildFromOneStatement(
     std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->span = nodes[0]->span;
+  block->span = TextSpan(nodes[0]->span, nodes[2]->span);
   block->stmts =
       base::move<AST::Statements>(OneBracedStatement(std::move(nodes)));
-  return std::move(block);
+  return block;
 }
 
 base::owned_ptr<AST::Node>
 EmptyBraces(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts  = base::make_owned<AST::Statements>();
-  stmts->span = nodes[0]->span;
-  return std::move(stmts);
+  stmts->span = TextSpan(nodes[0]->span, nodes[1]->span);
+  return stmts;
 }
 
 base::owned_ptr<AST::Node>
 AST::CodeBlock::BuildEmpty(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto block = base::make_owned<CodeBlock>();
   // TODO block->value
-  block->span  = nodes[0]->span;
+  block->span  = TextSpan(nodes[0]->span, nodes[1]->span);
   block->stmts = base::move<AST::Statements>(EmptyBraces(std::move(nodes)));
-  return std::move(block);
+  return block;
 }
 
 base::owned_ptr<AST::Node>
@@ -679,23 +680,23 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
       auto decl      = base::move<AST::Declaration>(nodes[0]);
       decl->init_val = base::move<AST::Expression>(nodes[2]);
-      return std::move(decl);
+      return decl;
 
     } else {
       auto binop  = base::make_owned<AST::Binop>();
-      binop->span = nodes[0]->span;
+      binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
 
       binop->lhs = base::move<AST::Expression>(nodes[0]);
       binop->rhs = base::move<AST::Expression>(nodes[2]);
 
       binop->op         = Language::Operator::Assign;
       binop->precedence = Language::precedence(binop->op);
-      return std::move(binop);
+      return binop;
     }
   }
 
   auto binop  = base::make_owned<AST::Binop>();
-  binop->span = nodes[0]->span;
+  binop->span = TextSpan(nodes[0]->span, nodes[1]->span);
 
   binop->lhs = base::move<AST::Expression>(nodes[0]);
   binop->rhs = base::move<AST::Expression>(nodes[2]);
@@ -718,7 +719,7 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     if (iter != symbols.end()) { binop->op = iter->second; }
 
     binop->precedence = Language::precedence(binop->op);
-    return std::move(binop);
+    return binop;
   }
 }
 
@@ -762,13 +763,13 @@ Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto expr        = base::move<AST::Expression>(nodes[1]);
   expr->precedence = Language::precedence(Language::Operator::NotAnOperator);
   if (ptr_cast<AST::TokenNode>(nodes[0].get())->token != "\\(") {
-    return std::move(expr);
+    return expr;
 
   } else {
     auto unop     = base::make_owned<AST::Unop>();
     unop->operand = std::move(expr);
-    unop->span    = nodes[0]->span;
+    unop->span    = TextSpan(nodes[0]->span, nodes[2]->span);
     unop->op      = Language::Operator::Ref;
-    return std::move(unop);
+    return unop;
   }
 }

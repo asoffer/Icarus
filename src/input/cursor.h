@@ -14,6 +14,10 @@ struct Cursor {
 struct TextSpan {
   TextSpan() {}
   TextSpan(const Cursor &s, const Cursor &f) : start(s), finish(f) {}
+  TextSpan(const TextSpan &s, const TextSpan &f)
+      : start(s.start), finish(f.finish), source(s.source) {
+    ASSERT(s.source == f.source, "");
+  }
 
   char last_char() const {
     return source->lines[finish.line_num][finish.offset];
@@ -30,7 +34,7 @@ struct SourceLocation {
   char operator*() { return source->lines[cursor.line_num][cursor.offset]; }
   const Source::Line &line() const { return source->lines[cursor.line_num]; }
   TextSpan ToSpan() const {
-    TextSpan span(cursor, cursor);;
+    TextSpan span(cursor, cursor);
     span.source = source;
     return span;
   }
