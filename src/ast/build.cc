@@ -45,7 +45,7 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   auto struct_type =
       new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
-  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+  for (auto &stmt : nodes[1]->as<Statements>().statements) {
     if (stmt->is<Declaration>()) {
       struct_type->decls.push_back(ptr_cast<Declaration>(stmt.release()));
     } else {
@@ -65,7 +65,7 @@ BuildScopeLiteral(std::vector<base::owned_ptr<Node>> nodes) {
 
   // TODO take arguments as well
   if (nodes.size() > 1) {
-    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+    for (auto &stmt : nodes[1]->as<Statements>().statements) {
       if (!stmt->is<Declaration>()) { continue; }
       auto decl = base::move<Declaration>(stmt);
       if (decl->identifier->token == "enter") {
@@ -96,11 +96,11 @@ static base::owned_ptr<Node>
 BuildEnumLiteral(std::vector<base::owned_ptr<Node>> nodes) {
   std::vector<std::string> members;
   if (nodes[1]->is<Statements>()) {
-    for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+    for (auto &stmt : nodes[1]->as<Statements>().statements) {
       if (stmt->is<Identifier>()) {
         // Quadratic but we need it as a vector eventually anyway because we do
         // care about the order the user put it in.
-        auto token = std::move(ptr_cast<Identifier>(stmt.get())->token);
+        auto token = std::move(stmt->as<Identifier>().token);
         for (const auto &member : members) {
           if (member == token) {
             ErrorLog::RepeatedEnumName(stmt->span);
@@ -134,10 +134,10 @@ base::owned_ptr<Node> Case::Build(std::vector<base::owned_ptr<Node>> nodes) {
   auto case_ptr  = base::make_owned<Case>();
   case_ptr->span = TextSpan(nodes[0]->span, nodes[1]->span);
 
-  for (auto &stmt : ptr_cast<Statements>(nodes[1].get())->statements) {
+  for (auto &stmt : nodes[1]->as<Statements>().statements) {
     if (stmt->is<Binop>() &&
-        ptr_cast<Binop>(stmt.get())->op == Language::Operator::Rocket) {
-      auto *binop = ptr_cast<Binop>(stmt.get());
+        stmt->as<Binop>().op == Language::Operator::Rocket) {
+      auto *binop = &stmt->as<Binop>();
       // TODO check for 'else' and make sure it's the last one.
       case_ptr->key_vals.emplace_back(std::move(binop->lhs),
                                       std::move(binop->rhs));
@@ -195,11 +195,11 @@ base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
 // Operand cannot be an assignment of any kind.
 base::owned_ptr<Node>
 Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
-  const std::string &tk = ptr_cast<TokenNode>(nodes[0].get())->token;
+  const std::string &tk = nodes[0]->as<TokenNode>().token;
 
   auto unop     = base::make_owned<Unop>();
   unop->operand = base::move<Expression>(nodes[1]);
-  unop->span    = TextSpan(nodes[0]->span, nodes[1]->span);
+  unop->span    = TextSpan(nodes[0]->span, unop->operand->span);
 
   bool check_id = false;
   if (tk == "require") {
@@ -265,13 +265,13 @@ base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
   // Add to a chain so long as the precedence levels match. The only thing at
   // that precedence level should be the operators which can be chained.
   if (nodes[0]->is<ChainOp>() &&
-      ptr_cast<ChainOp>(nodes[0].get())->precedence == op_prec) {
+      nodes[0]->as<ChainOp>().precedence == op_prec) {
 
     chain = base::move<ChainOp>(nodes[0]);
 
   } else {
     chain       = base::make_owned<ChainOp>();
-    chain->span = TextSpan(chain->span, nodes[2]->span);
+    chain->span = TextSpan(nodes[0]->span, nodes[2]->span);
 
     chain->exprs.push_back(base::move<Expression>(nodes[0]));
     chain->precedence = op_prec;
@@ -291,7 +291,7 @@ CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
     comma_list = base::move<CommaList>(nodes[0]);
   } else {
     comma_list       = base::make_owned<CommaList>();
-    comma_list->span = TextSpan(comma_list->span, nodes[2]->span);
+    comma_list->span = TextSpan(nodes[0]->span, nodes[2]->span);
     comma_list->exprs.push_back(base::move<Expression>(nodes[0]));
   }
 

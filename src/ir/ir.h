@@ -35,6 +35,7 @@ struct Func;
 
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
+namespace property {
 struct Property : public base::Cast<Property> {
   Property() {}
   virtual ~Property() {}
@@ -47,6 +48,8 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   prop.WriteTo(os);
   return os;
 }
+} // namespace property
+
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
@@ -221,7 +224,7 @@ struct Cmd {
   std::vector<Val> args;
   Op op_code;
 
-  std::unique_ptr<Property> MakeProperty(IR::Func *fn) const;
+  std::unique_ptr<property::Property> MakeProperty(IR::Func *fn) const;
 
   Val result; // Will always be of Kind::Reg.
 
@@ -355,8 +358,9 @@ struct Func {
   // TODO Probably a better container here. One that consolidates preconditions
   // (what about tracing errors?) and since we know how many arguments we'll
   // have ahead of time, probably a flat map or really just a vector.
-  std::unordered_map<Register, std::unique_ptr<Property>> properties_;
-  std::unordered_map<ReturnValue, std::unique_ptr<Property>> postconditions_;
+  std::unordered_map<Register, std::unique_ptr<property::Property>> properties_;
+  std::unordered_map<ReturnValue, std::unique_ptr<property::Property>>
+      postconditions_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 

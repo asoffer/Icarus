@@ -742,7 +742,7 @@ void ImplicitCapture(AST::Identifier *id) {
       .push_back(id->span.start.offset);
 }
 
-void FailedPrecondition(const IR::Property &) {
+void FailedPrecondition(const IR::property::Property &) {
   fprintf(stderr, "Precondition failed.\n");
 }
 

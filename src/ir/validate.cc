@@ -66,10 +66,10 @@ int Func::ValidateCalls(std::queue<IR::Func *> *validation_queue) {
           // need to rectify those references too.
           // TODO make properties copyable (don't use unique_ptr). For now only
           // support bool properties and hand-craft the copying.
-          if (ensured_property->is<BoolProperty>()) {
+          if (ensured_property->is<property::BoolProperty>()) {
             properties_[cmd.result.value.as<Register>()] =
-                std::make_unique<BoolProperty>(
-                    ensured_property->as<BoolProperty>());
+                std::make_unique<property::BoolProperty>(
+                    ensured_property->as<property::BoolProperty>());
           } else {
             NOT_YET();
           }

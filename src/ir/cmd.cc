@@ -6,7 +6,7 @@
 
 namespace IR {
 BlockIndex Block::Current;
-Func *Func::Current; 
+Func *Func::Current;
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
   result = (t == nullptr) ? Val::None()
@@ -534,56 +534,64 @@ void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   Command(cmd_index).args = std::move(args);
 }
 
-std::unique_ptr<Property> Cmd::MakeProperty(IR::Func *fn) const {
+std::unique_ptr<property::Property> Cmd::MakeProperty(IR::Func *fn) const {
   switch (op_code) {
   case Op::Add: {
     if (result.type == Int) {
-      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) +
-                                           IntProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<i32>>(
+          property::Range<i32>::Get(fn, args[0]) +
+          property::Range<i32>::Get(fn, args[1]));
     } else if (result.type == Real) {
-      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) +
-                                            RealProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<double>>(
+          property::Range<double>::Get(fn, args[0]) +
+          property::Range<double>::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Sub: {
     if (result.type == Int) {
-      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) -
-                                           IntProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<i32>>(
+          property::Range<i32>::Get(fn, args[0]) -
+          property::Range<i32>::Get(fn, args[1]));
     } else if (result.type == Real) {
-      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) -
-                                            RealProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<double>>(
+          property::Range<double>::Get(fn, args[0]) -
+          property::Range<double>::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Mul: {
     if (result.type == Int) {
-      return std::make_unique<IntProperty>(IntProperty::Get(fn, args[0]) *
-                                           IntProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<i32>>(
+          property::Range<i32>::Get(fn, args[0]) *
+          property::Range<i32>::Get(fn, args[1]));
     } else if (result.type == Real) {
-      return std::make_unique<RealProperty>(RealProperty::Get(fn, args[0]) *
-                                            RealProperty::Get(fn, args[1]));
+      return std::make_unique<property::Range<double>>(
+          property::Range<double>::Get(fn, args[0]) *
+          property::Range<double>::Get(fn, args[1]));
     } else {
       NOT_YET();
     }
   } break;
   case Op::Neg: {
     if (result.type == Int) {
-      const auto &prop =
-          fn->properties_[args[0].value.as<Register>()]->as<IntProperty>();
-      return std::make_unique<IntProperty>(-prop.max_, -prop.min_);
+      const auto &prop = fn->properties_[args[0].value.as<Register>()]
+                             ->as<property::Range<i32>>();
+      return std::make_unique<property::Range<i32>>(-prop.max_, -prop.min_);
     } else if (result.type == Real) {
-      const auto &prop =
-          fn->properties_[args[0].value.as<Register>()]->as<RealProperty>();
-      return std::make_unique<RealProperty>(-prop.max_, -prop.min_);
+      const auto &prop = fn->properties_[args[0].value.as<Register>()]
+                             ->as<property::Range<double>>();
+      return std::make_unique<property::Range<double>>(-prop.max_, -prop.min_);
     } else {
     }
   } break;
   case Op::Print: return nullptr;
-  case Op::Load: return nullptr; // TODO
-  case Op::Alloca: return nullptr; // TODO
+  case Op::Load:
+    return nullptr; // TODO
+  case Op::Alloca:
+    return nullptr; // TODO
   default: dump(0); NOT_YET();
   }
   return nullptr;

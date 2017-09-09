@@ -58,17 +58,16 @@ template <> struct SafeMath<i32> {
   }
 };
 
-template <typename Number> struct RangeProperty : Property {
-  RangeProperty() {}
-  RangeProperty(Number min_val, Number max_val)
+namespace property {
+template <typename Number> struct Range : Property {
+  Range() {}
+  Range(Number min_val, Number max_val)
       : min_(min_val), max_(max_val) {}
 
-  static RangeProperty Get(Func *fn, IR::Val arg) {
+  static Range Get(Func *fn, IR::Val arg) {
     return arg.value.is<Register>()
-               ? fn->properties_[arg.value.as<Register>()]
-                     ->as<RangeProperty<Number>>()
-               : RangeProperty<Number>(arg.value.as<Number>(),
-                                       arg.value.as<Number>());
+               ? fn->properties_[arg.value.as<Register>()]->as<Range<Number>>()
+               : Range<Number>(arg.value.as<Number>(), arg.value.as<Number>());
   }
 
   Validity Validate(const Val &val) const override {
@@ -82,8 +81,8 @@ template <typename Number> struct RangeProperty : Property {
   }
 
   bool Implies(const Property *prop) const override {
-    if (!prop->is<RangeProperty<Number>>()) { return false; }
-    const auto &range_prop = prop->as<RangeProperty<Number>>();
+    if (!prop->is<Range<Number>>()) { return false; }
+    const auto &range_prop = prop->as<Range<Number>>();
     return min_ >= range_prop.min_ && max_ <= range_prop.max_;
   }
 
@@ -93,22 +92,19 @@ template <typename Number> struct RangeProperty : Property {
 };
 
 template <typename Number>
-RangeProperty<Number> operator+(const RangeProperty<Number> &lhs,
-                                const RangeProperty<Number> &rhs) {
-  return RangeProperty<Number>(SafeMath<Number>::Add(lhs.min_, rhs.min_),
-                               SafeMath<Number>::Add(lhs.max_, rhs.max_));
+Range<Number> operator+(const Range<Number> &lhs, const Range<Number> &rhs) {
+  return Range<Number>(SafeMath<Number>::Add(lhs.min_, rhs.min_),
+                       SafeMath<Number>::Add(lhs.max_, rhs.max_));
 }
 
 template <typename Number>
-RangeProperty<Number> operator-(const RangeProperty<Number> &lhs,
-                                const RangeProperty<Number> &rhs) {
-  return RangeProperty<Number>(SafeMath<Number>::Sub(lhs.min_, rhs.min_),
-                               SafeMath<Number>::Sub(lhs.max_, rhs.max_));
+Range<Number> operator-(const Range<Number> &lhs, const Range<Number> &rhs) {
+  return Range<Number>(SafeMath<Number>::Sub(lhs.min_, rhs.min_),
+                       SafeMath<Number>::Sub(lhs.max_, rhs.max_));
 }
 
 template <typename Number>
-RangeProperty<Number> operator*(RangeProperty<Number> lhs,
-                                const RangeProperty<Number> &rhs) {
+Range<Number> operator*(Range<Number> lhs, const Range<Number> &rhs) {
   auto new_min = SafeMath<Number>::Mul(lhs.min_, rhs.min_);
   auto new_max = new_min;
 
@@ -118,13 +114,10 @@ RangeProperty<Number> operator*(RangeProperty<Number> lhs,
     std::tie(new_min, new_max) =
         std::make_pair(std::min(new_min, val), std::max(new_max, val));
   }
-  return RangeProperty<Number>(new_min, new_max);
+  return Range<Number>(new_min, new_max);
 }
 
-using IntProperty  = RangeProperty<i32>;
-using RealProperty = RangeProperty<double>;
-
-struct BoolProperty : Property {
+struct BoolProperty: Property {
   BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
 
   Validity Validate(const Val &val) const override {
@@ -157,19 +150,16 @@ struct BoolProperty : Property {
     if (!prop->is<BoolProperty>()) { return false; }
     // TODO is this really what I mean by "implies"?
     switch (prop->as<BoolProperty>().kind) {
-      case Kind::True:
-        return kind == Kind::True;
-      case Kind::False:
-        return true;
-      default: NOT_YET();
+    case Kind::True: return kind == Kind::True;
+    case Kind::False: return true;
+    default: NOT_YET();
     }
   }
-
 
   Register reg;
   enum class Kind : char { True, False, Register, NegatedRegister } kind;
 };
-
+} // namespace property
 } // namespace IR
 
 #endif // ICARUS_IR_PROPERTY_H

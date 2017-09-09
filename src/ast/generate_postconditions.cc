@@ -11,7 +11,7 @@ void Identifier::GeneratePostconditions() const {
     auto &postconditions =
         scope_->ContainingFnScope()->fn_lit->ir_func->postconditions_;
     postconditions[decl->addr.value.as<IR::ReturnValue>()] =
-        std::make_unique<IR::BoolProperty>(true);
+        std::make_unique<IR::property::BoolProperty>(true);
   } else {
     NOT_YET();
     // Deal with bad case

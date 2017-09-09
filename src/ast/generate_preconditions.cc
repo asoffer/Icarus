@@ -4,21 +4,22 @@
 
 extern IR::Val Evaluate(AST::Expression *expr);
 
-static void AddBound(std::unique_ptr<IR::Property> *prop, double low, double hi) {
+static void AddBound(std::unique_ptr<IR::property::Property> *prop, double low,
+                     double hi) {
   if (*prop == nullptr) {
-    *prop = std::make_unique<IR::RealProperty>(low, hi);
-  } else if ((*prop)->is<IR::RealProperty>()) {
-    auto *real_prop = &(*prop)->as<IR::RealProperty>();
+    *prop = std::make_unique<IR::property::Range<double>>(low, hi);
+  } else if ((*prop)->is<IR::property::Range<double>>()) {
+    auto *real_prop = &(*prop)->as<IR::property::Range<double>>();
     real_prop->min_ = std::max(real_prop->min_, low);
     real_prop->max_ = std::min(real_prop->max_, hi);
   }
 }
 
-static void AddBound(std::unique_ptr<IR::Property> *prop, i32 low, i32 hi) {
+static void AddBound(std::unique_ptr<IR::property::Property> *prop, i32 low, i32 hi) {
   if (*prop == nullptr) {
-    *prop = std::make_unique<IR::IntProperty>(low, hi);
-  } else if ((*prop)->is<IR::IntProperty>()) {
-    auto *int_prop = &(*prop)->as<IR::IntProperty>();
+    *prop = std::make_unique<IR::property::Range<i32>>(low, hi);
+  } else if ((*prop)->is<IR::property::Range<i32>>()) {
+    auto *int_prop = &(*prop)->as<IR::property::Range<i32>>();
     int_prop->min_ = std::max(int_prop->min_, low);
     int_prop->max_ = std::min(int_prop->max_, hi);
   }
@@ -29,7 +30,7 @@ void Identifier::GeneratePreconditions() const {
   ASSERT_EQ(type, Bool);
   auto &props   = scope_->ContainingFnScope()->fn_lit->ir_func->properties_;
   props[decl->addr.value.as<IR::Register>()] =
-      std::make_unique<IR::BoolProperty>(true);
+      std::make_unique<IR::property::BoolProperty>(true);
 }
 
 void ChainOp::GeneratePreconditions() const {

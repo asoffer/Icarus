@@ -74,7 +74,7 @@ void AmbiguousIdentifier(AST::Identifier *id);
 void ImplicitCapture(AST::Identifier *id);
 void PreconditionNeedsBool(AST::Expression *expr);
 void EnsureNeedsBool(AST::Expression *expr);
-void FailedPrecondition(const IR::Property &property);
+void FailedPrecondition(const IR::property::Property &property);
 } // namespace LogError
 
 namespace ErrorLog {
