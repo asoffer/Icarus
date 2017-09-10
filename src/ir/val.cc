@@ -139,7 +139,7 @@ Func::Func(::Function *fn_type)
       num_regs_(fn_type->is<Tuple>()
                     ? static_cast<i32>(ptr_cast<Tuple>(fn_type)->entries.size())
                     : 1),
-      blocks_(2, Block(this)) {}
+      blocks_(1, Block(this)) {}
 
 std::vector<std::unique_ptr<Func>> Func::All;
 } // namespace IR

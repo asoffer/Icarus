@@ -31,15 +31,12 @@ void Primitive::EmitRepr(IR::Val val) {
           IR::Block::Current = special_block;
           IR::Print(IR::Val::Char('\\'));
           IR::Print(IR::Val::Char(pair.second));
-          IR::Jump::Unconditional(repr_func->exit());
+          IR::Jump::Return();
 
           IR::Block::Current = next_block;
         }
 
         IR::Print(repr_func->Argument(0));
-        IR::Jump::Unconditional(repr_func->exit());
-
-        IR::Block::Current = repr_func->exit();
         IR::Jump::Return();
       }
     }
@@ -83,25 +80,27 @@ void Array::EmitRepr(IR::Val val) {
     repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 
+
     CURRENT_FUNC(repr_func) {
       IR::Block::Current = repr_func->entry();
 
       auto init_block = repr_func->AddBlock();
+      auto exit_block = repr_func->AddBlock();
 
       IR::Print(IR::Val::Char('['));
 
       auto length_var = fixed_length
                             ? IR::Val::Uint(len)
                             : IR::Load(IR::ArrayLength(repr_func->Argument(0)));
-      IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)),
-                            repr_func->exit(), init_block);
+      IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)), exit_block,
+                            init_block);
 
       IR::Block::Current = init_block;
       auto ptr           = IR::Index(repr_func->Argument(0), IR::Val::Uint(0));
       auto end_ptr       = IR::PtrIncr(ptr, length_var);
 
-      auto loop_phi = repr_func->AddBlock();
-      auto loop_body = repr_func->AddBlock();
+      auto loop_phi   = repr_func->AddBlock();
+      auto loop_body  = repr_func->AddBlock();
 
       data_type->EmitRepr(PtrCallFix(ptr));
       IR::PtrIncr(ptr, length_var);
@@ -111,8 +110,7 @@ void Array::EmitRepr(IR::Val val) {
       auto phi = IR::Phi(Ptr(data_type));
       auto phi_reg = IR::Func::Current->Command(phi).result;
       auto elem_ptr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
-      IR::Jump::Conditional(IR::Eq(elem_ptr, end_ptr), repr_func->exit(),
-                            loop_body);
+      IR::Jump::Conditional(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
       IR::Print(IR::Val::Char(','));
@@ -124,11 +122,8 @@ void Array::EmitRepr(IR::Val val) {
                                        IR::Val::Block(IR::Block::Current),
                                        elem_ptr});
 
-      IR::Block::Current = repr_func->exit();
+      IR::Block::Current = exit_block;
       IR::Print(IR::Val::Char(']'));
-      IR::Jump::Unconditional(repr_func->exit());
-
-      IR::Block::Current = repr_func->exit();
       IR::Jump::Return();
     }
   }
@@ -153,9 +148,6 @@ void Struct::EmitRepr(IR::Val val) {
         IR::Print(IR::Val::Char(' '));
       }
       IR::Print(IR::Val::Char('}'));
-      IR::Jump::Unconditional(repr_func->exit());
-
-      IR::Block::Current = repr_func->exit();
       IR::Jump::Return();
     }
   }

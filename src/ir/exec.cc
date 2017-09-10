@@ -17,29 +17,8 @@ namespace Language {
 extern size_t precedence(Operator op);
 } // namespace Language
 
-void ReplEval(AST::Expression *expr) {
-  auto fn = base::make_owned<IR::Func>(Func(Void, Void));
-  CURRENT_FUNC(fn.get()) {
-    IR::Block::Current = fn->entry();
-    auto expr_val      = expr->EmitIR();
-    if (!errors.empty()) {
-      ErrorLog::Dump();
-      std::cerr << "There were " << errors.size() << " errors.";
-      return;
-    }
-
-    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
-    IR::Jump::Return();
-  }
-
-  IR::ExecContext ctx;
-  bool were_errors;
-  fn->Execute({}, &ctx, &were_errors);
-}
-
-IR::Val Evaluate(AST::Expression *expr) {
-  IR::Func *fn = nullptr;
-
+std::unique_ptr<IR::Func> ExprFn(AST::Expression* expr) {
+  std::unique_ptr<IR::Func> fn = nullptr;
   auto fn_ptr = base::make_owned<AST::FunctionLiteral>();
   base::owned_ptr<AST::Node> *to_release = nullptr;
   { // Wrap expression into function
@@ -73,18 +52,42 @@ IR::Val Evaluate(AST::Expression *expr) {
 
   CURRENT_FUNC(nullptr) {
     auto fn_ir = fn_ptr->EmitIR();
-    if (!errors.empty()) { return IR::Val::None(); }
-    fn = fn_ptr->EmitIR().value.as<IR::Func *>();
+    fn = base::wrap_unique(fn_ptr->EmitIR().value.as<IR::Func *>());
   }
 
+  to_release->release();
+  return fn;
+}
+
+void ReplEval(AST::Expression *expr) {
+  auto fn = base::make_owned<IR::Func>(Func(Void, Void));
+  CURRENT_FUNC(fn.get()) {
+    IR::Block::Current = fn->entry();
+    auto expr_val      = expr->EmitIR();
+    if (!errors.empty()) {
+      ErrorLog::Dump();
+      std::cerr << "There were " << errors.size() << " errors.";
+      return;
+    }
+
+    if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
+    IR::Jump::Return();
+  }
+
+  IR::ExecContext ctx;
+  bool were_errors;
+  fn->Execute({}, &ctx, &were_errors);
+}
+
+IR::Val Evaluate(AST::Expression *expr) {
   std::vector<IR::Val> results;
   IR::ExecContext context;
   bool were_errors;
-  results = fn->Execute({}, &context, &were_errors);
+  if (!errors.empty()) { return IR::Val::None(); }
+  results = ExprFn(expr)->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
 
-  to_release->release();
   // TODO multiple outputs?
   return results.empty() ? IR::Val::None() : results[0];
 }

@@ -339,7 +339,6 @@ struct Func {
   }
 
   BlockIndex entry() const { return BlockIndex(0); }
-  BlockIndex exit() const { return BlockIndex(1); }
 
   std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx,
                            bool *were_errors);
