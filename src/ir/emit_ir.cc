@@ -501,12 +501,12 @@ IR::Val AST::Unop::EmitIR() {
   case Language::Operator::At: return PtrCallFix(operand->EmitIR());
   case Language::Operator::Needs: {
     // TODO validate requirements are well-formed?
-    operand->GeneratePreconditions();
+    // operand->GeneratePreconditions();
     return IR::Val::None();
   } break;
   case Language::Operator::Ensure: {
     // TODO validate requirements are well-formed?
-    operand->GeneratePostconditions();
+    // operand->GeneratePostconditions();
     return IR::Val::None();
   } break;
   default: UNREACHABLE("Operator is ", static_cast<int>(op));

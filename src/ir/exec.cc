@@ -495,17 +495,17 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
 std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx,
                                bool *were_errors) {
-
   if (were_errors != nullptr) {
     int num_errors = 0;
-    std::queue<IR::Func *> validation_queue ;
-    validation_queue.push(this);
-    while (!validation_queue.empty()) {
-      auto* fn = validation_queue.front();
-      validation_queue.pop();
-      num_errors += fn->ValidateCalls(&validation_queue);
-    }
-
+    /*
+      std::queue<IR::Func *> validation_queue;
+      validation_queue.push(this);
+      while (!validation_queue.empty()) {
+        auto* fn = validation_queue.front();
+        validation_queue.pop();
+        num_errors += fn->ValidateCalls(&validation_queue);
+      }
+  */
     if (num_errors > 0) {
       *were_errors = true;
       return {};

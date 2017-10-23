@@ -7,6 +7,7 @@
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../base/debug.h"
@@ -33,14 +34,25 @@ namespace IR {
 struct Val;
 struct Func;
 
+DEFINE_STRONG_INT(ReturnValue, i32, -1);
+DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
+DEFINE_STRONG_INT(BlockIndex, i32, -1);
+DEFINE_STRONG_INT(EnumVal, size_t, 0);
+} // namespace IR
+
+DEFINE_STRONG_HASH(IR::Register);
+DEFINE_STRONG_HASH(IR::BlockIndex);
+DEFINE_STRONG_HASH(IR::ReturnValue);
+
+namespace IR {
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
 namespace property {
 struct Property : public base::Cast<Property> {
   Property() {}
   virtual ~Property() {}
-  virtual Validity Validate(const Val &val) const = 0;
-  virtual void WriteTo(std::ostream& os) const = 0;
+  virtual Validity Validate(const Val &val) const  = 0;
+  virtual void WriteTo(std::ostream &os) const     = 0;
   virtual bool Implies(const Property *prop) const = 0;
 };
 
@@ -48,22 +60,23 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   prop.WriteTo(os);
   return os;
 }
-} // namespace property
 
-DEFINE_STRONG_INT(ReturnValue, i32, -1);
-DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
-DEFINE_STRONG_INT(BlockIndex, i32, -1);
-DEFINE_STRONG_INT(EnumVal, size_t, 0);
+struct PropertyMap {
+  PropertyMap()                    = default;
+  PropertyMap(const PropertyMap &) = delete;
+  PropertyMap(PropertyMap &&)      = default;
+
+  std::unordered_map<Register, std::vector<std::unique_ptr<Property>>>
+      properties_;
+  std::unordered_set<Property *> stale_;
+};
+} // namespace property
 
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;
 };
 } // namespace IR
-
-DEFINE_STRONG_HASH(IR::Register);
-DEFINE_STRONG_HASH(IR::BlockIndex);
-DEFINE_STRONG_HASH(IR::ReturnValue);
 
 namespace IR {
 struct Addr {
@@ -224,8 +237,6 @@ struct Cmd {
   std::vector<Val> args;
   Op op_code;
 
-  std::unique_ptr<property::Property> MakeProperty(IR::Func *fn) const;
-
   Val result; // Will always be of Kind::Reg.
 
   void dump(size_t indent) const;
@@ -303,15 +314,21 @@ struct Jump {
 
 struct Block {
   static BlockIndex Current;
-  Block() = delete;
+  Block()               = delete;
+  Block(const Block &&) = delete;
+  Block(Block &&)       = default;
   Block(Func *fn) : fn_(fn) {}
+
+  Block &operator=(Block &&) = default;
+  Block &operator=(const Block &) = delete;
 
   void dump(size_t indent) const;
 
   Func *fn_; // Containing function
+  Jump jmp_;
   std::vector<Cmd> cmds_;
 
-  Jump jmp_;
+  property::PropertyMap property_map_;
 };
 
 struct Func {
@@ -354,12 +371,6 @@ struct Func {
   std::vector<CmdIndex> no_dependencies_;
   std::unordered_map<Register, std::vector<CmdIndex>> references_;
 
-  // TODO Probably a better container here. One that consolidates preconditions
-  // (what about tracing errors?) and since we know how many arguments we'll
-  // have ahead of time, probably a flat map or really just a vector.
-  std::unordered_map<Register, std::unique_ptr<property::Property>> properties_;
-  std::unordered_map<ReturnValue, std::unique_ptr<property::Property>>
-      postconditions_;
   int num_errors_ = -1; // -1 indicates not yet validated
 };
 

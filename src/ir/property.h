@@ -64,12 +64,6 @@ template <typename Number> struct Range : Property {
   Range(Number min_val, Number max_val)
       : min_(min_val), max_(max_val) {}
 
-  static Range Get(Func *fn, IR::Val arg) {
-    return arg.value.is<Register>()
-               ? fn->properties_[arg.value.as<Register>()]->as<Range<Number>>()
-               : Range<Number>(arg.value.as<Number>(), arg.value.as<Number>());
-  }
-
   Validity Validate(const Val &val) const override {
     return min_ <= val.value.as<Number>() && val.value.as<Number>() <= max_
                ? Validity::Always

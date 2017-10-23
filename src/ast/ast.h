@@ -158,8 +158,6 @@ struct Identifier : public Terminal {
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
   virtual bool is_hole() const override { return false; }
-  virtual void GeneratePreconditions() const;
-  virtual void GeneratePostconditions() const;
 
   std::string token;
   Declaration *decl = nullptr;
@@ -320,9 +318,6 @@ struct ChainOp : public Expression {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
-
-  virtual void GeneratePreconditions() const;
-  virtual void GeneratePostconditions() const;
 
   std::vector<Language::Operator> ops;
   std::vector<base::owned_ptr<Expression>> exprs;

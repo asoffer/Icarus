@@ -138,8 +138,9 @@ Func::Func(::Function *fn_type)
     : type(fn_type),
       num_regs_(fn_type->is<Tuple>()
                     ? static_cast<i32>(ptr_cast<Tuple>(fn_type)->entries.size())
-                    : 1),
-      blocks_(1, Block(this)) {}
+                    : 1) {
+  blocks_.push_back(std::move(Block(this)));
+}
 
 std::vector<std::unique_ptr<Func>> Func::All;
 } // namespace IR
