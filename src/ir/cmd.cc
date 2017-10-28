@@ -6,7 +6,7 @@
 
 namespace IR {
 BlockIndex Block::Current;
-Func *Func::Current;
+Func *Func::Current{nullptr};
 Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     : args(std::move(args)), op_code(op) {
   result = (t == nullptr) ? Val::None()
@@ -24,7 +24,7 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
     if (fn_arg.value.is<Register>()) {
       has_dependencies = true;
       Func::Current->references_[fn_arg.value.as<Register>()].push_back(
-          cmd_index);
+           cmd_index);
     }
   }
   if (!has_dependencies) {

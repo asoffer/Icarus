@@ -342,9 +342,9 @@ struct Func {
 
   int ValidateCalls(std::queue<IR::Func *> *validation_queue);
 
-  Block &block(BlockIndex index) { return blocks_[index.value]; }
+  Block &block(BlockIndex index) { return blocks_.at(index.value); }
   Cmd &Command(CmdIndex cmd_index) {
-    return blocks_[cmd_index.block.value].cmds_[cmd_index.cmd];
+    return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
   void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
 

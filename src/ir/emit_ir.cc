@@ -707,7 +707,10 @@ IR::Val AST::ChainOp::EmitIR() {
 IR::Val AST::CommaList::EmitIR() { UNREACHABLE(); }
 IR::Val AST::CommaList::EmitLVal() { NOT_YET(); }
 
-IR::Val AST::FunctionLiteral::EmitIR() {
+IR::Val AST::FunctionLiteral::EmitTemporaryIR() { return EmitIRAndSave(false); }
+IR::Val AST::FunctionLiteral::EmitIR() { return EmitIRAndSave(true); }
+
+IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save) {
   VERIFY_OR_EXIT;
   // Verifying 'this' only verifies the declared functions type not the
   // internals. We need to do that here.
@@ -715,9 +718,16 @@ IR::Val AST::FunctionLiteral::EmitIR() {
   if (!errors.empty()) { return IR::Val::None(); }
 
   if (!ir_func) {
-    IR::Func::All.push_back(
-        std::make_unique<IR::Func>(ptr_cast<Function>(type)));
-    ir_func = IR::Func::All.back().get();
+    if (should_save) {
+      IR::Func::All.push_back(
+          std::make_unique<IR::Func>(ptr_cast<Function>(type)));
+      ir_func = IR::Func::All.back().get();
+    } else {
+      // TODO XXX This is SUPER DANGEROUS! Depending on a bool passed in we
+      // either own or don't own?!?!?!
+      ir_func = new IR::Func(ptr_cast<Function>(type));
+    }
+
     CURRENT_FUNC(ir_func) {
       IR::Block::Current = ir_func->entry();
 

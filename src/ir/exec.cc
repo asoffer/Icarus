@@ -26,7 +26,7 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression* expr) {
     // Is the scope cleaned up?
     fn_ptr->type               = Func(Void, expr->type);
     fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
-    fn_ptr->fn_scope->fn_type  = (Function *)fn_ptr->type;
+    fn_ptr->fn_scope->fn_type  = ptr_cast<Function>(fn_ptr->type);
     fn_ptr->scope_             = expr->scope_;
     fn_ptr->statements         = base::make_owned<AST::Statements>();
     fn_ptr->statements->scope_ = fn_ptr->fn_scope.get();
@@ -51,8 +51,7 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression* expr) {
   }
 
   CURRENT_FUNC(nullptr) {
-    auto fn_ir = fn_ptr->EmitIR();
-    fn = base::wrap_unique(fn_ptr->EmitIR().value.as<IR::Func *>());
+    fn = base::wrap_unique(fn_ptr->EmitTemporaryIR().value.as<IR::Func *>());
   }
 
   to_release->release();
@@ -84,7 +83,8 @@ IR::Val Evaluate(AST::Expression *expr) {
   IR::ExecContext context;
   bool were_errors;
   if (!errors.empty()) { return IR::Val::None(); }
-  results = ExprFn(expr)->Execute({}, &context, &were_errors);
+  auto fn = ExprFn(expr);
+  results = fn->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
 

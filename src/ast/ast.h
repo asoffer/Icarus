@@ -379,6 +379,8 @@ struct FunctionLiteral : public Expression {
   BuildNoLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   virtual IR::Val EmitIR();
+  IR::Val EmitIRAndSave(bool);
+  IR::Val EmitTemporaryIR();
 
   base::owned_ptr<FnScope> fn_scope;
   base::owned_ptr<Expression> return_type_expr;
