@@ -61,8 +61,8 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
       IR::Block::Current = loop_phi;
       auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
       auto to_phi        = IR::Phi(Ptr(to_array_type->data_type));
-      auto from_phi_reg  = IR::Func::Current->Command(from_phi).result;
-      auto to_phi_reg    = IR::Func::Current->Command(to_phi).result;
+      auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
+      auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
 
       IR::Jump::Conditional(IR::Eq(from_phi_reg, from_end_ptr), exit_block,
                             loop_body);

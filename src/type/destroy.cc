@@ -33,7 +33,7 @@ void Array::EmitDestroy(IR::Val id_val) {
 
       IR::Block::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
-      auto phi_reg = IR::Func::Current->Command(phi).result;
+      auto phi_reg = IR::Func::Current->Command(phi).reg();
       IR::Jump::Conditional(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;

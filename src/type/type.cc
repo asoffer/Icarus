@@ -80,8 +80,8 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::Block::Current = phi_block;
       auto lhs_phi       = IR::Phi(Ptr(lhs_type->data_type));
       auto rhs_phi       = IR::Phi(Ptr(rhs_type->data_type));
-      auto lhs_phi_reg   = IR::Func::Current->Command(lhs_phi).result;
-      auto rhs_phi_reg   = IR::Func::Current->Command(rhs_phi).result;
+      auto lhs_phi_reg   = IR::Func::Current->Command(lhs_phi).reg();
+      auto rhs_phi_reg   = IR::Func::Current->Command(rhs_phi).reg();
       IR::Jump::Conditional(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
 
       IR::Block::Current = body_block;

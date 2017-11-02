@@ -108,7 +108,7 @@ void Array::EmitRepr(IR::Val val) {
 
       IR::Block::Current = loop_phi;
       auto phi = IR::Phi(Ptr(data_type));
-      auto phi_reg = IR::Func::Current->Command(phi).result;
+      auto phi_reg = IR::Func::Current->Command(phi).reg();
       auto elem_ptr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
       IR::Jump::Conditional(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
 

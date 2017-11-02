@@ -218,7 +218,7 @@ IR::Val AST::For::EmitIR() {
   { // Incr block
     IR::Block::Current = incr;
     for (auto iter : phis) {
-      auto phi_reg = IR::Func::Current->Command(iter).result;
+      auto phi_reg = IR::Func::Current->Command(iter).reg();
       if (phi_reg.type == Int) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Int(1)));
       } else if (phi_reg.type == Uint) {
@@ -241,7 +241,7 @@ IR::Val AST::For::EmitIR() {
     for (size_t i = 0; i < iterators.size(); ++i) {
       IR::Func::Current->SetArgs(phis[i], {IR::Val::Block(init), init_vals[i],
                                            IR::Val::Block(incr), incr_vals[i]});
-      iterators[i]->addr = IR::Func::Current->Command(phis[i]).result;
+      iterators[i]->addr = IR::Func::Current->Command(phis[i]).reg();
     }
   }
 
@@ -249,7 +249,7 @@ IR::Val AST::For::EmitIR() {
     IR::Block::Current = cond;
     for (size_t i = 0; i < iterators.size(); ++i) {
       auto *decl = iterators[i].get();
-      auto reg   = IR::Func::Current->Command(phis[i]).result;
+      auto reg   = IR::Func::Current->Command(phis[i]).reg();
       auto next  = IR::Func::Current->AddBlock();
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
@@ -334,7 +334,7 @@ IR::Val AST::Case::EmitIR() {
   IR::Block::Current = land;
   auto phi           = IR::Phi(type);
   IR::Func::Current->SetArgs(phi, std::move(phi_args));
-  return IR::Func::Current->Command(phi).result;
+  return IR::Func::Current->Command(phi).reg();
 }
 
 IR::Val AST::ScopeLiteral::EmitIR() {
@@ -587,7 +587,7 @@ IR::Val AST::Binop::EmitIR() {
     IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
                                      IR::Val::Bool(true),
                                      IR::Val::Block(rhs_end_block), rhs_val});
-    return IR::Func::Current->Command(phi).result;
+    return IR::Func::Current->Command(phi).reg();
   } break;
   case Language::Operator::AndEq: {
     auto land_block = IR::Func::Current->AddBlock();
@@ -608,7 +608,7 @@ IR::Val AST::Binop::EmitIR() {
     IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
                                      IR::Val::Bool(false),
                                     IR::Val::Block(rhs_end_block), rhs_val});
-    return IR::Func::Current->Command(phi).result;
+    return IR::Func::Current->Command(phi).reg();
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
@@ -700,7 +700,7 @@ IR::Val AST::ChainOp::EmitIR() {
     IR::Block::Current = land_block;
     auto phi           = IR::Phi(Bool);
     IR::Func::Current->SetArgs(phi, std::move(phi_args));
-    return IR::Func::Current->Command(phi).result;
+    return IR::Func::Current->Command(phi).reg();
   }
 }
 

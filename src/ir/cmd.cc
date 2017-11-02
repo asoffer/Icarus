@@ -14,11 +14,11 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
 
   if (t == nullptr) {
-    result = Val::None();
+    result = Register{std::numeric_limits<i32>::min()};
   } else {
-    auto reg      = Register(Func::Current->num_regs_++);
-    result        = Val::Reg(reg, t);
-    Func::Current->reg_map_[reg] = cmd_index;
+    result                          = Register(Func::Current->num_regs_++);
+    type                            = t;
+    Func::Current->reg_map_[result] = cmd_index;
   }
 
   bool has_dependencies = false;
@@ -44,7 +44,7 @@ Val Field(Val v, size_t n) {
   Cmd cmd(Ptr(ptr_cast<Struct>(ptee_type)->field_type[n]), Op::Field,
           {std::move(v), Val::Uint(n)});
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.result;
+  return cmd.reg();
 }
 
 #define MAKE_VOID(op)                                                          \
@@ -61,12 +61,12 @@ Val Field(Val v, size_t n) {
   ASSERT(Func::Current, "");                                                   \
   Cmd cmd(type, op, {std::move(v)});                                           \
   Func::Current->block(Block::Current).cmds_.push_back(cmd);                   \
-  return cmd.result
+  return cmd.reg()
 
 #define MAKE_AND_RETURN2(type, op)                                             \
   Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
   Func::Current->block(Block::Current).cmds_.push_back(cmd);                   \
-  return cmd.result
+  return cmd.reg()
 
 Val Malloc(Type *t, Val v) {
   ASSERT_EQ(v.type, ::Uint);
@@ -111,7 +111,7 @@ Val Alloca(Type *t) {
   ASSERT_NE(t, ::Void);
   Cmd cmd(Ptr(t), Op::Alloca, {});
   Func::Current->block(Func::Current->entry()).cmds_.push_back(cmd);
-  return cmd.result;
+  return cmd.reg();
 }
 
 Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
@@ -119,7 +119,7 @@ Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
   args.push_back(IR::Val::CodeBlock(code));
   Cmd cmd(::Code, Op::Contextualize, std::move(args));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.result;
+  return cmd.reg();
 }
 
 Val Load(Val v) {
@@ -445,12 +445,12 @@ Val Call(Val fn, std::vector<Val> vals) {
   vals.push_back(fn);
   Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.result;
+  return cmd.reg();
 }
 
 void Cmd::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ');
-  if (result.type != nullptr) { std::cerr << result.to_string() << " = "; }
+  if (type != nullptr) { std::cerr << reg().to_string() << " = "; }
   switch (op_code) {
   case Op::Malloc: std::cerr << "malloc"; break;
   case Op::Free: std::cerr << "free"; break;

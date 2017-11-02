@@ -222,13 +222,15 @@ struct ExecContext {
 };
 
 struct Cmd {
-  Cmd() : op_code(Op::Nop), result(IR::Val::None()) {}
+  Cmd() : op_code(Op::Nop) {}
   Cmd(Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
   Op op_code;
 
-  // TODO just make this a register
-  Val result; // Will always be of Kind::Reg.
+  Type* type = nullptr;
+  Register result{std::numeric_limits<i32>::min()};
+
+  Val reg() const { return Val::Reg(result, type); }
 
   void dump(size_t indent) const;
 };

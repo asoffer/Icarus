@@ -42,7 +42,7 @@ void Array::EmitInit(IR::Val id_val) {
 
       IR::Block::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
-      auto phi_reg = IR::Func::Current->Command(phi).result;
+      auto phi_reg       = IR::Func::Current->Command(phi).reg();
       IR::Jump::Conditional(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
@@ -143,9 +143,9 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
 
       IR::Block::Current = phi_block;
       auto from_phi      = IR::Phi(Ptr(from_type->data_type));
-      auto from_phi_reg  = IR::Func::Current->Command(from_phi).result;
+      auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
       auto to_phi        = IR::Phi(Ptr(to_type->data_type));
-      auto to_phi_reg    = IR::Func::Current->Command(to_phi).result;
+      auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
       IR::Jump::Conditional(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
 
       IR::Block::Current = body_block;

@@ -14,20 +14,21 @@ struct PropertyMap {
   explicit PropertyMap(const Func *fn) : fn_(fn) {}
 
   const Func *fn_;
-  Property *Get(const Block& block, const Cmd& cmd);
+  Property *Get(const Block &block, const Cmd &cmd);
 
   // TODO allow multiple properties
   std::unordered_map<
       const Block *,
       std::unordered_map<Register const *, std::unique_ptr<Property>>>
       properties_;
+  // TODO this should be unordered, but I haven't written a hash yet.
   std::set<std::pair<const Block *, Register const *const>> stale_;
 };
 
-Property* PropertyMap::Get(const Block &block, const Cmd &cmd) {
-  if (cmd.result.type == nullptr || cmd.result.type == Void) { return nullptr; }
+Property *PropertyMap::Get(const Block &block, const Cmd &cmd) {
+  if (cmd.type == nullptr || cmd.type == Void) { return nullptr; }
   auto &block_entry = properties_[&block];
-  auto iter         = block_entry.find(&cmd.result.value.as<Register>());
+  auto iter         = block_entry.find(&cmd.result);
   if (iter != block_entry.end()) { return iter->second.get(); }
   NOT_YET();
 }
@@ -48,12 +49,12 @@ MakePropertyMap(const Func *fn, std::vector<property::Property *> args,
   for (const auto &block : fn->blocks_) {
     auto &block_data = prop_map.properties_[&block];
     for (const auto &cmd : block.cmds_) {
-      if (cmd.result.type == nullptr || cmd.result.type == Void) { continue; }
-      if (cmd.result.type == Int) {
-        auto iter = block_data
-                        .emplace(&cmd.result.value.as<Register>(),
-                                 std::make_unique<property::Range<i32>>())
-                        .first;
+      if (cmd.type == nullptr || cmd.type == Void) { continue; }
+      if (cmd.type == Int) {
+        auto iter =
+            block_data
+                .emplace(&cmd.result, std::make_unique<property::Range<i32>>())
+                .first;
         prop_map.stale_.emplace(&block, iter->first);
       }
 
@@ -109,7 +110,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     switch (cmd.op_code) {
     case Op::Add: {
       property::Range<i32> arg0, arg1;
-      if (cmd.result.type == Int) {
+      if (cmd.type == Int) {
         if (cmd.args[0].value.is<Register>()) {
           // TODO handling arguments should maybe be done elsewhere.
           auto arg0_reg = cmd.args[0].value.as<Register>();
@@ -145,23 +146,22 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
         auto new_prop = arg0 + arg1;
         if (!prop->Implies(&new_prop)) {
           *prop     = std::move(new_prop);
-          auto iter = references_.find(cmd.result.value.as<Register>());
+          auto iter = references_.find(cmd.result);
           for (const auto &cmd_index : iter->second) {
             auto *stale_cmd = &Command(cmd_index);
-            prop_map.stale_.emplace(block,
-                                    &stale_cmd->result.value.as<Register>());
+            prop_map.stale_.emplace(block, &stale_cmd->result);
             switch (block->jmp_.type) {
             case Jump::Type::Uncond:
               prop_map.stale_.emplace(&this->block(block->jmp_.block_index),
-                                      &stale_cmd->result.value.as<Register>());
+                                      &stale_cmd->result);
               break;
             case Jump::Type::Cond:
               prop_map.stale_.emplace(
                   &this->block(block->jmp_.cond_data.true_block),
-                  &stale_cmd->result.value.as<Register>());
+                  &stale_cmd->result);
               prop_map.stale_.emplace(
                   &this->block(block->jmp_.cond_data.false_block),
-                  &stale_cmd->result.value.as<Register>());
+                  &stale_cmd->result);
               break;
             default: NOT_YET();
             }
@@ -176,8 +176,8 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   }
 
   for (const auto &call : calls) {
-    Func *called_fn = call.second->args.back().value.as<Func *>();
-    const Block& calling_block = *call.first;
+    Func *called_fn            = call.second->args.back().value.as<Func *>();
+    const Block &calling_block = *call.first;
 
     // Some properties already exist, such as those for registers. Others need
     // to be created such as for constants. Those already existing are already
@@ -192,7 +192,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     std::vector<property::Property *> arg_props;
     arg_props.reserve(args.size() - 1);
     for (size_t i = 0; i < args.size() - 1; ++i) {
-      const auto& argument = args[i].value;
+      const auto &argument = args[i].value;
       if (argument.is<Register>()) {
         arg_props.push_back(
             prop_map.Get(calling_block, Command(argument.as<Register>())));
