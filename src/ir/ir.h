@@ -227,8 +227,8 @@ struct Cmd {
   std::vector<Val> args;
   Op op_code;
 
-  Type* type = nullptr;
-  Register result{std::numeric_limits<i32>::min()};
+  Type *type = nullptr;
+  Register result;
 
   Val reg() const { return Val::Reg(result, type); }
 
