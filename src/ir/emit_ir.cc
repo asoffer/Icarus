@@ -501,7 +501,7 @@ IR::Val AST::Unop::EmitIR() {
   case Language::Operator::At: return PtrCallFix(operand->EmitIR());
   case Language::Operator::Needs: {
     // TODO validate requirements are well-formed?
-    // operand->GeneratePreconditions();
+    IR::Func::Current->preconditions_.push_back(operand.get());
     return IR::Val::None();
   } break;
   case Language::Operator::Ensure: {

@@ -7,13 +7,19 @@
 namespace IR {
 BlockIndex Block::Current;
 Func *Func::Current{nullptr};
-Cmd::Cmd(Type *t, Op op, std::vector<Val> args)
-    : args(std::move(args)), op_code(op) {
-  result = (t == nullptr) ? Val::None()
-                          : Val::Reg(Register(Func::Current->num_regs_++), t);
+Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
+    : args(std::move(arg_vec)), op_code(op) {
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
+
+  if (t == nullptr) {
+    result = Val::None();
+  } else {
+    auto reg      = Register(Func::Current->num_regs_++);
+    result        = Val::Reg(reg, t);
+    Func::Current->reg_map_[reg] = cmd_index;
+  }
 
   bool has_dependencies = false;
 

@@ -4,10 +4,10 @@
 #include <limits>
 #include <memory>
 #include <queue>
+#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
 #include "../base/debug.h"
@@ -33,6 +33,8 @@ struct ScopeLiteral;
 namespace IR {
 struct Val;
 struct Func;
+struct Block;
+struct Cmd;
 
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
@@ -61,15 +63,6 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   return os;
 }
 
-struct PropertyMap {
-  PropertyMap()                    = default;
-  PropertyMap(const PropertyMap &) = delete;
-  PropertyMap(PropertyMap &&)      = default;
-
-  std::unordered_map<Register, std::vector<std::unique_ptr<Property>>>
-      properties_;
-  std::unordered_set<Property *> stale_;
-};
 } // namespace property
 
 struct CmdIndex {
@@ -153,9 +146,6 @@ enum class Op : char {
   Contextualize,
 };
 
-struct Block;
-struct Cmd;
-
 struct Stack {
   Stack() = delete;
   Stack(size_t cap) : capacity_(cap), stack_(malloc(capacity_)) {}
@@ -237,6 +227,7 @@ struct Cmd {
   std::vector<Val> args;
   Op op_code;
 
+  // TODO just make this a register
   Val result; // Will always be of Kind::Reg.
 
   void dump(size_t indent) const;
@@ -327,8 +318,6 @@ struct Block {
   Func *fn_; // Containing function
   Jump jmp_;
   std::vector<Cmd> cmds_;
-
-  property::PropertyMap property_map_;
 };
 
 struct Func {
@@ -340,12 +329,27 @@ struct Func {
   void dump() const;
   Val Argument(u32 n);
 
-  int ValidateCalls(std::queue<IR::Func *> *validation_queue);
+  int ValidateCalls(std::queue<Func *> *validation_queue) const;
 
-  Block &block(BlockIndex index) { return blocks_.at(index.value); }
-  Cmd &Command(CmdIndex cmd_index) {
+  const Block &block(BlockIndex index) const { return blocks_.at(index.value); }
+  Block &block(BlockIndex index) {
+    return const_cast<Block &>(static_cast<const Func *>(this)->block(index));
+  }
+
+  const Cmd &Command(CmdIndex cmd_index) const {
     return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
+  Cmd &Command(CmdIndex cmd_index) {
+    return const_cast<Cmd &>(
+        static_cast<const Func *>(this)->Command(cmd_index));
+  }
+  const Cmd &Command(Register reg) const {
+    return Command(reg_map_.find(reg)->second);
+  }
+  Cmd &Command(Register reg) {
+    return const_cast<Cmd &>(static_cast<const Func *>(this)->Command(reg));
+  }
+
   void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
 
   static BlockIndex AddBlock() {
@@ -362,16 +366,20 @@ struct Func {
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
-  ::Function *type = nullptr;
-  i32 num_regs_    = 0;
+  ::Function *const type = nullptr;
+  const size_t num_args  = 0;
+  i32 num_regs_          = 0;
   std::string name;
   std::vector<Block> blocks_;
+  // TODO we can probably come up with a way to more closely tie Register and
+  // CmdIndex so we don't need to store this map:
+  std::unordered_map<Register, CmdIndex> reg_map_;
+  std::vector<AST::Expression *> preconditions_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
   std::vector<CmdIndex> no_dependencies_;
   std::unordered_map<Register, std::vector<CmdIndex>> references_;
-
-  int num_errors_ = -1; // -1 indicates not yet validated
+  mutable int num_errors_ = -1; // -1 indicates not yet validated
 };
 
 struct FuncResetter {
@@ -391,6 +399,7 @@ struct FuncResetter {
 #define CURRENT_FUNC(fn)                                                       \
   for (auto resetter  = ::IR::FuncResetter(fn); resetter.cond_;                \
        resetter.cond_ = false)
+
 } // namespace IR
 
 namespace debug {

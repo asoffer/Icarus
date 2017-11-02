@@ -7,7 +7,7 @@ OBJECTS := $(patsubst src/%.cc,build/%.o,$(SOURCES))
 
 COMPILER := g++
 BUILD_FLAGS := -g -O0 -D DEBUG
-STDS = -std=gnu++1z
+STDS = -std=gnu++17
 WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
 OPTS = -iquote$(shell pwd)/src
 # LLVM_CXX = $(shell llvm-config --cxxflags)
