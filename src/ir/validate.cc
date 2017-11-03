@@ -7,6 +7,15 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr);
 
 namespace IR {
 namespace property {
+struct Ordering {
+  bool operator()(const std::pair<const Block *, Register> &lhs,
+                  const std::pair<const Block *, Register> &rhs) const {
+    if (lhs.first < rhs.first) { return true; }
+    if (lhs.first > rhs.first) { return false; }
+    return lhs.second.value < rhs.second.value;
+  }
+};
+
 struct PropertyMap {
   PropertyMap()                    = delete;
   PropertyMap(const PropertyMap &) = delete;
@@ -17,18 +26,17 @@ struct PropertyMap {
   Property *Get(const Block &block, const Cmd &cmd);
 
   // TODO allow multiple properties
-  std::unordered_map<
-      const Block *,
-      std::unordered_map<Register const *, std::unique_ptr<Property>>>
+  std::unordered_map<const Block *,
+                     std::unordered_map<Register, std::unique_ptr<Property>>>
       properties_;
   // TODO this should be unordered, but I haven't written a hash yet.
-  std::set<std::pair<const Block *, Register const *const>> stale_;
+  std::set<std::pair<const Block *, Register>, Ordering> stale_;
 };
 
 Property *PropertyMap::Get(const Block &block, const Cmd &cmd) {
   if (cmd.type == nullptr || cmd.type == Void) { return nullptr; }
   auto &block_entry = properties_[&block];
-  auto iter         = block_entry.find(&cmd.result);
+  auto iter         = block_entry.find(cmd.result);
   if (iter != block_entry.end()) { return iter->second.get(); }
   NOT_YET();
 }
@@ -40,10 +48,8 @@ MakePropertyMap(const Func *fn, std::vector<property::Property *> args,
                 std::vector<std::pair<const Block *, const Cmd *>> *calls) {
   property::PropertyMap prop_map(fn);
   auto &start_block_data = prop_map.properties_[&fn->block(fn->entry())];
-  for (auto *arg_prop : args) {
+  for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
     (void)start_block_data;
-    (void)arg_prop;
-    // TODO fill in argument data.
   }
 
   for (const auto &block : fn->blocks_) {
@@ -53,7 +59,7 @@ MakePropertyMap(const Func *fn, std::vector<property::Property *> args,
       if (cmd.type == Int) {
         auto iter =
             block_data
-                .emplace(&cmd.result, std::make_unique<property::Range<i32>>())
+                .emplace(cmd.result, std::make_unique<property::Range<i32>>())
                 .first;
         prop_map.stale_.emplace(&block, iter->first);
       }
@@ -75,7 +81,7 @@ MakePropertyMap(const Func *fn, std::vector<property::Property *> args,
 }
 
 // Roughly the same as executing the function but now with more generic
-// arguments.
+// argument properties.
 static bool
 ValidatePrecondition(const Func *fn,
                      const std::vector<IR::property::Property *> &args,
@@ -101,9 +107,9 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   while (!prop_map.stale_.empty()) {
     auto iter = prop_map.stale_.begin();
     prop_map.stale_.erase(iter);
-    const Block *block       = std::get<0>(*iter);
-    const Register *reg      = std::get<1>(*iter);
-    const Cmd &cmd           = Command(*reg);
+    const Block *block       = iter->first;
+    const Register reg       = iter->second;
+    const Cmd &cmd           = Command(reg);
     property::Property *prop = prop_map.Get(*block, cmd);
     if (prop == nullptr) { continue; }
 
@@ -149,19 +155,19 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
           auto iter = references_.find(cmd.result);
           for (const auto &cmd_index : iter->second) {
             auto *stale_cmd = &Command(cmd_index);
-            prop_map.stale_.emplace(block, &stale_cmd->result);
+            prop_map.stale_.emplace(block, stale_cmd->result);
             switch (block->jmp_.type) {
             case Jump::Type::Uncond:
               prop_map.stale_.emplace(&this->block(block->jmp_.block_index),
-                                      &stale_cmd->result);
+                                      stale_cmd->result);
               break;
             case Jump::Type::Cond:
               prop_map.stale_.emplace(
                   &this->block(block->jmp_.cond_data.true_block),
-                  &stale_cmd->result);
+                  stale_cmd->result);
               prop_map.stale_.emplace(
                   &this->block(block->jmp_.cond_data.false_block),
-                  &stale_cmd->result);
+                  stale_cmd->result);
               break;
             default: NOT_YET();
             }
