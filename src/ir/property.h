@@ -63,7 +63,8 @@ template <typename Number> struct Range : Property {
   Range() {}
   Range(Number min_val, Number max_val)
       : min_(min_val), max_(max_val) {}
-
+  ~Range() override {}
+  Range<Number> *Clone() const { return new Range<Number>(*this); }
   Validity Validate(const Val &val) const override {
     return min_ <= val.value.as<Number>() && val.value.as<Number>() <= max_
                ? Validity::Always
@@ -113,7 +114,7 @@ Range<Number> operator*(Range<Number> lhs, const Range<Number> &rhs) {
 
 struct BoolProperty: Property {
   BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
-
+  BoolProperty *Clone() const { return new BoolProperty(*this); }
   Validity Validate(const Val &val) const override {
     if (val.value.as<bool>()) {
       switch (kind) {

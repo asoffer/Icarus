@@ -34,7 +34,7 @@ namespace AST {
       const std::unordered_map<const Expression *, IR::Val> &) const ENDING
 
 #define EXPR_FNS(name)                                                         \
-  virtual ~name(){};                                                           \
+  virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const ENDING;                        \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
@@ -54,7 +54,7 @@ struct Node : public base::Cast<Node> {
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
-
+  virtual Node *Clone() const = 0;
   virtual bool is_hole() const { return false; }
 
   Node(const TextSpan &span = TextSpan()) : span(span) {}
@@ -76,6 +76,8 @@ struct Expression : public Node {
   virtual void assign_scope(Scope *scope)       = 0;
   virtual void verify_types()                   = 0;
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+
+  virtual Expression *Clone() const = 0;
 
   // TOD make this method pure abstract
   virtual void GeneratePreconditions() const { NOT_YET(); }
@@ -119,6 +121,7 @@ struct TokenNode : public Node {
   void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   virtual void GeneratePreconditions() const { UNREACHABLE(); }
   virtual void GeneratePostconditions() const { UNREACHABLE(); }
+  TokenNode *Clone() const override { return new TokenNode(*this); }\
 
   virtual base::owned_ptr<Node>
   contextualize(const std::unordered_map<const Expression *, IR::Val> &) const {
@@ -145,6 +148,7 @@ struct Terminal : public Expression {
   Terminal() = default;
   Terminal(const TextSpan &span, IR::Val val);
 
+  Terminal *Clone() const override { return new Terminal(*this); }
   virtual IR::Val EmitIR();
   virtual void GeneratePreconditions() const { NOT_YET(); }
   virtual void GeneratePostconditions() const { NOT_YET(); }
@@ -155,6 +159,7 @@ struct Identifier : public Terminal {
   Identifier() = delete;
   EXPR_FNS(Identifier);
   Identifier(const TextSpan &span, const std::string &token_string);
+  Identifier *Clone() const override { return new Identifier(*this); }
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
   virtual bool is_hole() const override { return false; }
@@ -170,6 +175,7 @@ struct Binop : public Expression {
   static base::owned_ptr<Node>
   BuildIndexOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
 
+  Binop *Clone() const override { return new Binop(*this); }
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
 
@@ -189,6 +195,7 @@ struct Declaration : public Expression {
   EXPR_FNS(Declaration);
   Declaration(bool is_const = false) : const_(is_const) {}
 
+  Declaration *Clone() const override { return new Declaration(*this); }
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes, bool is_const);
   IR::Val EmitIR() override;
@@ -225,6 +232,7 @@ struct Generic : public Declaration {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
+  Generic *Clone() const override { return new Generic(*this); }
   base::owned_ptr<Expression> test_fn;
 };
 
@@ -233,6 +241,7 @@ struct InDecl : public Declaration {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
+  InDecl *Clone() const override { return new InDecl(*this); }
   base::owned_ptr<Expression> container;
 };
 
@@ -242,6 +251,7 @@ struct Statements : public Node {
   static base::owned_ptr<Node>
   build_more(std::vector<base::owned_ptr<AST::Node>> nodes);
 
+  Statements *Clone() const override { return new Statements(*this); }
   VIRTUAL_METHODS_FOR_NODES;
   base::owned_ptr<Statements> copy_stub() const;
   void VerifyReturnTypes(Type *ret_val) override;
@@ -277,6 +287,7 @@ struct CodeBlock : public Expression {
   base::owned_ptr<Statements> stmts;
   std::string error_message; // To be used if stmts == nullptr
 
+  CodeBlock *Clone() const override { return new CodeBlock(*this); }
   virtual IR::Val EmitIR();
   static base::owned_ptr<Node>
   BuildFromStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes);
@@ -298,6 +309,7 @@ struct Unop : public Expression {
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
 
+  Unop *Clone() const override { return new Unop(*this); }
   base::owned_ptr<Expression> operand;
   Language::Operator op;
 };
@@ -309,6 +321,7 @@ struct Access : public Expression {
   virtual IR::Val EmitIR();
   virtual IR::Val EmitLVal();
 
+  Access *Clone() const override { return new Access(*this); }
   std::string member_name;
   base::owned_ptr<Expression> operand;
 };
@@ -319,6 +332,7 @@ struct ChainOp : public Expression {
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
 
+  ChainOp *Clone() const override { return new ChainOp(*this); }
   std::vector<Language::Operator> ops;
   std::vector<base::owned_ptr<Expression>> exprs;
 };
@@ -327,6 +341,7 @@ struct CommaList : public Expression {
   CommaList();
   EXPR_FNS(CommaList);
 
+  CommaList *Clone() const override { return new CommaList(*this); }
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
@@ -341,6 +356,7 @@ struct ArrayLiteral : public Expression {
   build(std::vector<base::owned_ptr<AST::Node>> nodes);
   static base::owned_ptr<Node>
   BuildEmpty(std::vector<base::owned_ptr<AST::Node>> nodes);
+  ArrayLiteral *Clone() const override { return new ArrayLiteral(*this); }
 
   virtual IR::Val EmitIR();
 
@@ -352,6 +368,7 @@ struct ArrayType : public Expression {
   static base::owned_ptr<Node>
   build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
+  ArrayType *Clone() const override { return new ArrayType(*this); }
 
   base::owned_ptr<Expression> length;
   base::owned_ptr<Expression> data_type;
@@ -362,6 +379,7 @@ struct Case : public Expression {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR();
+  Case *Clone() const override { return new Case(*this); }
 
   std::vector<
       std::pair<base::owned_ptr<Expression>, base::owned_ptr<Expression>>>
@@ -377,6 +395,7 @@ struct FunctionLiteral : public Expression {
   BuildOneLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
   static base::owned_ptr<Node>
   BuildNoLiner(std::vector<base::owned_ptr<AST::Node>> nodes);
+  FunctionLiteral *Clone() const override { return new FunctionLiteral(*this); }
 
   virtual IR::Val EmitIR();
   IR::Val EmitIRAndSave(bool);
@@ -399,6 +418,7 @@ struct For : public Node {
   virtual ~For() {}
   VIRTUAL_METHODS_FOR_NODES;
   base::owned_ptr<For> copy_stub() const;
+  For *Clone() const override { return new For(*this); }
 
   virtual IR::Val EmitIR();
 
@@ -414,6 +434,7 @@ struct For : public Node {
 
 struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
+  Jump *Clone() const override { return new Jump(*this); }
 
   virtual void VerifyReturnTypes(Type *ret_val) override;
 
@@ -432,6 +453,7 @@ struct Jump : public Node {
 
 struct ScopeNode : public Expression {
   EXPR_FNS(ScopeNode);
+  ScopeNode *Clone() const override { return new ScopeNode(*this); }
 
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
@@ -453,6 +475,7 @@ struct ScopeNode : public Expression {
 struct ScopeLiteral : public Expression {
   ScopeLiteral() = delete;
   EXPR_FNS(ScopeLiteral);
+  ScopeLiteral *Clone() const override { return new ScopeLiteral(*this); }
 
   IR::Val EmitIR() override;
 

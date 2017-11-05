@@ -53,6 +53,7 @@ namespace property {
 struct Property : public base::Cast<Property> {
   Property() {}
   virtual ~Property() {}
+  virtual Property *Clone() const                  = 0;
   virtual Validity Validate(const Val &val) const  = 0;
   virtual void WriteTo(std::ostream &os) const     = 0;
   virtual bool Implies(const Property *prop) const = 0;

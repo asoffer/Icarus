@@ -25,6 +25,7 @@ struct Scope : public base::Cast<Scope> {
   Scope() = delete;
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
+  virtual Scope *Clone() const = 0;
 
   static DeclScope *Global;
 
@@ -64,12 +65,14 @@ struct Scope : public base::Cast<Scope> {
 struct DeclScope : public Scope {
   DeclScope(Scope *parent) : Scope(parent) {}
   ~DeclScope() override {}
+  DeclScope *Clone() const override { return new DeclScope(*this); }
 };
 
 struct ExecScope : public Scope {
   ExecScope(Scope *parent);
   ~ExecScope() override {}
 
+  ExecScope *Clone() const override { return new ExecScope(*this); }
   // TODO Enter()
   void Enter() const;
   void Exit() const;
@@ -81,6 +84,7 @@ struct FnScope : public ExecScope {
   FnScope(Scope *parent) : ExecScope(parent) {}
   ~FnScope() final {}
 
+  FnScope *Clone() const override { return new FnScope(*this); }
   Function *fn_type            = nullptr;
   AST::FunctionLiteral *fn_lit = nullptr;
   std::vector<ExecScope *> innards_{1, this};

@@ -4,6 +4,7 @@
 
 #include <type_traits>
 #include <memory>
+#include <cstddef>
 
 #include "debug.h"
 #include "util.h"
@@ -11,9 +12,16 @@
 namespace base {
 template <typename T> struct owned_ptr {
 public:
-  owned_ptr(T* ptr = nullptr) : value_(ptr) {}
+  owned_ptr(nullptr_t = nullptr) {}
+  explicit owned_ptr(T *ptr) : value_(ptr) {}
 
-  template <typename D> owned_ptr(owned_ptr<D> &&ptr) : value_(ptr.release()) {}
+  owned_ptr(const owned_ptr &ptr) : value_(ptr ? ptr->Clone() : nullptr) {}
+  template <typename D>
+  owned_ptr(const owned_ptr<D> &ptr) : value_(ptr ? ptr->Clone() : nullptr) {}
+
+  owned_ptr(owned_ptr &&ptr) noexcept : value_(ptr.release()) {}
+  template <typename D>
+  owned_ptr(owned_ptr<D> &&ptr) noexcept : value_(ptr.release()) {}
 
   ~owned_ptr() { delete value_; }
 
@@ -32,22 +40,14 @@ public:
         value_ = nullptr;
       }
     } else if (ptr) {
-      value_ = new T(*ptr);
+      value_ = ptr->Clone();
     }
   }
 
   template<typename D>
   void operator=(const owned_ptr<D> &ptr) {
-    if (value_) {
-      if (ptr) {
-        *value_ = *ptr;
-      } else {
-        delete value_;
-        value_ = nullptr;
-      }
-    } else if (ptr) {
-      value_ = new T(*ptr);
-    }
+    if (value_) { delete value_; }
+    value_ = ptr ? ptr->Clone() : nullptr;
   }
 
   void operator=(owned_ptr&& ptr) {
@@ -70,6 +70,10 @@ public:
     return val;
   }
 
+  operator std::unique_ptr<T>() const {
+    return std::unique_ptr<T>(value_->Clone());
+  }
+
 private:
   T *value_ = nullptr;
 };
@@ -87,6 +91,16 @@ base::owned_ptr<To> move(base::owned_ptr<From> &&ptr) {
 template <typename To, typename From>
 base::owned_ptr<To> move(base::owned_ptr<From> &ptr) {
   return own(ptr_cast<To>(ptr.release()));
+}
+
+template <typename T>
+bool operator==(const base::owned_ptr<T> &ptr, nullptr_t) {
+  return ptr.get() == nullptr;
+}
+
+template <typename T>
+bool operator==(nullptr_t, const base::owned_ptr<T> &ptr) {
+  return ptr.get() == nullptr;
 }
 } // namespace base
 
