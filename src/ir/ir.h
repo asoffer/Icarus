@@ -35,6 +35,7 @@ struct Val;
 struct Func;
 struct Block;
 struct Cmd;
+struct Func;
 
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
@@ -46,6 +47,9 @@ DEFINE_STRONG_HASH(IR::Register);
 DEFINE_STRONG_HASH(IR::BlockIndex);
 DEFINE_STRONG_HASH(IR::ReturnValue);
 
+std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr,
+                                 Type *input_type = nullptr);
+
 namespace IR {
 enum class Validity : char { Always, MaybeNot, Unknown, Never };
 
@@ -56,7 +60,7 @@ struct Property : public base::Cast<Property> {
   virtual Property *Clone() const                  = 0;
   virtual Validity Validate(const Val &val) const  = 0;
   virtual void WriteTo(std::ostream &os) const     = 0;
-  virtual bool Implies(const Property *prop) const = 0;
+  virtual bool Implies(const Property &prop) const = 0;
 };
 
 inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
@@ -278,15 +282,9 @@ CmdIndex Phi(Type *t);
 struct Jump {
   static Jump &Current();
 
-  static void Unconditional(BlockIndex index) {
-    Jump &jmp       = Current();
-    jmp.block_index = index;
-    jmp.type        = Type::Uncond;
-  }
-
+  static void Unconditional(BlockIndex index);
   static void Conditional(Val cond, BlockIndex true_index,
                           BlockIndex false_index);
-
   static void Return() { Current().type = Type::Ret; }
 
   void dump(size_t indent) const;
@@ -320,6 +318,7 @@ struct Block {
 
   Func *fn_; // Containing function
   Jump jmp_;
+  std::vector<BlockIndex> incoming_blocks_;
   std::vector<Cmd> cmds_;
 };
 

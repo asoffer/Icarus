@@ -17,41 +17,41 @@ namespace Language {
 extern size_t precedence(Operator op);
 } // namespace Language
 
-std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr) {
+std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type) {
   std::unique_ptr<IR::Func> fn = nullptr;
-  auto fn_ptr                  = base::make_owned<AST::FunctionLiteral>();
+  AST::FunctionLiteral fn_lit;
   base::owned_ptr<AST::Node> *to_release = nullptr;
   { // Wrap expression into function
     // TODO should these be at global scope? or a separate REPL scope?
     // Is the scope cleaned up?
-    fn_ptr->type               = Func(Void, expr->type);
-    fn_ptr->fn_scope           = Scope::Global->add_child<FnScope>();
-    fn_ptr->fn_scope->fn_type  = ptr_cast<Function>(fn_ptr->type);
-    fn_ptr->scope_             = expr->scope_;
-    fn_ptr->statements         = base::make_owned<AST::Statements>();
-    fn_ptr->statements->scope_ = fn_ptr->fn_scope.get();
-    fn_ptr->return_type_expr =
+    fn_lit.type = Func(input_type != nullptr ? input_type : Void, expr->type);
+    fn_lit.fn_scope           = Scope::Global->add_child<FnScope>();
+    fn_lit.fn_scope->fn_type  = ptr_cast<Function>(fn_lit.type);
+    fn_lit.scope_             = expr->scope_;
+    fn_lit.statements         = base::make_owned<AST::Statements>();
+    fn_lit.statements->scope_ = fn_lit.fn_scope.get();
+    fn_lit.return_type_expr =
         base::make_owned<AST::Terminal>(expr->span, IR::Val::Type(expr->type));
     if (expr->type != Void) {
       auto ret     = base::make_owned<AST::Unop>();
-      ret->scope_  = fn_ptr->fn_scope.get();
+      ret->scope_  = fn_lit.fn_scope.get();
       ret->operand = base::own(expr);
       to_release =
           reinterpret_cast<base::owned_ptr<AST::Node> *>(&ret->operand);
       ret->op         = Language::Operator::Return;
       ret->precedence = Language::precedence(Language::Operator::Return);
-      fn_ptr->statements->statements.push_back(std::move(ret));
+      fn_lit.statements->statements.push_back(std::move(ret));
     } else {
-      fn_ptr->statements->statements.push_back(base::own(expr));
+      fn_lit.statements->statements.push_back(base::own(expr));
       // This vector cannot change in size: there is no way code gen can add
       // statements here. Thus, it is safe to save a pointer to this last
       // element.
-      to_release = &fn_ptr->statements->statements.back();
+      to_release = &fn_lit.statements->statements.back();
     }
   }
 
   CURRENT_FUNC(nullptr) {
-    fn = base::wrap_unique(fn_ptr->EmitTemporaryIR().value.as<IR::Func *>());
+    fn = base::wrap_unique(fn_lit.EmitTemporaryIR().value.as<IR::Func *>());
   }
 
   to_release->release();

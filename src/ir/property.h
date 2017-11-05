@@ -75,9 +75,9 @@ template <typename Number> struct Range : Property {
     os << "Range[" << min_ << ", " << max_ << "]";
   }
 
-  bool Implies(const Property *prop) const override {
-    if (!prop->is<Range<Number>>()) { return false; }
-    const auto &range_prop = prop->as<Range<Number>>();
+  bool Implies(const Property &prop) const override {
+    if (!prop.is<Range<Number>>()) { return false; }
+    const auto &range_prop = prop.as<Range<Number>>();
     return min_ >= range_prop.min_ && max_ <= range_prop.max_;
   }
 
@@ -99,7 +99,7 @@ Range<Number> operator-(const Range<Number> &lhs, const Range<Number> &rhs) {
 }
 
 template <typename Number>
-Range<Number> operator*(Range<Number> lhs, const Range<Number> &rhs) {
+Range<Number> operator*(const Range<Number> &lhs, const Range<Number> &rhs) {
   auto new_min = SafeMath<Number>::Mul(lhs.min_, rhs.min_);
   auto new_max = new_min;
 
@@ -141,10 +141,10 @@ struct BoolProperty: Property {
     }
   }
 
-  bool Implies(const Property *prop) const override {
-    if (!prop->is<BoolProperty>()) { return false; }
+  bool Implies(const Property &prop) const override {
+    if (!prop.is<BoolProperty>()) { return false; }
     // TODO is this really what I mean by "implies"?
-    switch (prop->as<BoolProperty>().kind) {
+    switch (prop.as<BoolProperty>().kind) {
     case Kind::True: return kind == Kind::True;
     case Kind::False: return true;
     default: NOT_YET();
@@ -154,6 +154,15 @@ struct BoolProperty: Property {
   Register reg;
   enum class Kind : char { True, False, Register, NegatedRegister } kind;
 };
+
+template <typename Number>
+std::unique_ptr<BoolProperty> operator<(const Range<Number> &lhs,
+                                        const Range<Number> &rhs) {
+  if (lhs.max_ < rhs.min_) { return std::make_unique<BoolProperty>(true); }
+  if (rhs.max_ < lhs.min_) { return std::make_unique<BoolProperty>(false); }
+  return nullptr;
+}
+
 } // namespace property
 } // namespace IR
 

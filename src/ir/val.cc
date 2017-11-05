@@ -86,12 +86,24 @@ void Jump::Conditional(Val cond, BlockIndex true_index,
   if (cond.value.is<bool>()) {
     jmp.type        = Type::Uncond;
     jmp.block_index = (cond.value.as<bool>() ? true_index : false_index);
+    Func::Current->block(jmp.block_index)
+        .incoming_blocks_.push_back(Block::Current);
   } else {
     jmp.type                  = Type::Cond;
     jmp.cond_data.cond        = cond;
     jmp.cond_data.true_block  = true_index;
     jmp.cond_data.false_block = false_index;
+    Func::Current->block(true_index).incoming_blocks_.push_back(Block::Current);
+    Func::Current->block(false_index)
+        .incoming_blocks_.push_back(Block::Current);
   }
+}
+
+void Jump::Unconditional(BlockIndex index) {
+  Jump &jmp       = Current();
+  jmp.block_index = index;
+  jmp.type        = Type::Uncond;
+  Func::Current->block(index).incoming_blocks_.push_back(Block::Current);
 }
 
 Jump &Jump::Current() { return Func::Current->block(IR::Block::Current).jmp_; }
@@ -136,10 +148,12 @@ Val Func::Argument(u32 n) {
 
 Func::Func(::Function *fn_type)
     : type(fn_type),
-      num_args(fn_type->is<Tuple>() ? ptr_cast<Tuple>(fn_type)->entries.size()
-                                    : 1),
-      num_regs_(fn_type->is<Tuple>()
-                    ? static_cast<i32>(ptr_cast<Tuple>(fn_type)->entries.size())
+      num_args(fn_type->input->is<Tuple>()
+                   ? ptr_cast<Tuple>(fn_type->input)->entries.size()
+                   : 1),
+      num_regs_(fn_type->input->is<Tuple>()
+                    ? static_cast<i32>(
+                          ptr_cast<Tuple>(fn_type->input)->entries.size())
                     : 1) {
   blocks_.push_back(std::move(Block(this)));
 }
