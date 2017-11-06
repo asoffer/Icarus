@@ -13,11 +13,10 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
 
-  if (t != nullptr) {
-    result                          = Register(Func::Current->num_regs_++);
-    type                            = t;
-    Func::Current->reg_map_[result] = cmd_index;
-  }
+  result = Register(t != nullptr ? Func::Current->num_regs_++
+                                 : -(++Func::Current->num_voids_));
+  type                            = t;
+  Func::Current->reg_map_[result] = cmd_index;
 
   bool has_dependencies = false;
 

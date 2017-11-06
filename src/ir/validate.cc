@@ -5,15 +5,6 @@
 
 namespace IR {
 namespace property {
-struct Ordering {
-  bool operator()(const std::pair<const Block *, Register> &lhs,
-                  const std::pair<const Block *, Register> &rhs) const {
-    if (lhs.first < rhs.first) { return true; }
-    if (lhs.first > rhs.first) { return false; }
-    return lhs.second.value < rhs.second.value;
-  }
-};
-
 struct PropertyMap {
 public:
   PropertyMap(PropertyMap &&) = default;
@@ -26,6 +17,7 @@ public:
   base::owned_ptr<Property> GetProp(const Block &block, Register reg);
   void SetProp(const Block &block, const Cmd &cmd,
                base::owned_ptr<Property> prop);
+  void SetProp(ReturnValue ret, base::owned_ptr<Property> prop);
   void MarkReferencesStale(const Block &block, Register reg);
 
   Range<i32> GetIntProperty(const Block &block, Val arg);
@@ -36,10 +28,14 @@ public:
   std::unordered_map<const Block *,
                      std::unordered_map<Register, std::unique_ptr<Property>>>
       properties_;
-  std::vector<std::unique_ptr<Property>> return_properties_;
+
+  // Probably better to use a vector, but for type safety, using a map.
+  // TODO: Type safe vectors.
+  std::unordered_map<ReturnValue, base::owned_ptr<Property>> return_properties_;
 
   // TODO this should be unordered, but I haven't written a hash yet.
-  std::set<std::pair<const Block *, Register>, Ordering> stale_;
+  std::set<std::pair<const Block *, Register>> stale_;
+
 
 private:
   PropertyMap()                    = delete;
@@ -74,11 +70,15 @@ void PropertyMap::SetProp(const Block &block, const Cmd &cmd,
   MarkReferencesStale(block, cmd.result);
 }
 
+void PropertyMap::SetProp(ReturnValue ret, base::owned_ptr<Property> prop) {
+  // TODO merge these instead of just assigning
+  return_properties_[ret] = std::move(prop);
+}
+
 void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
   auto iter = fn_->references_.find(reg);
   for (const auto &cmd_index : iter->second) {
     const auto &stale_cmd = fn_->Command(cmd_index);
-    if (stale_cmd.type == nullptr || stale_cmd.type == Void) { continue; }
     stale_.emplace(&block, stale_cmd.result);
     switch (block.jmp_.type) {
     case Jump::Type::Uncond:
@@ -112,7 +112,7 @@ void PropertyMap::Compute() {
     const Block *block = iter->first;
     const Register reg = iter->second;
     // TODO think about arguments being marked as stale
-    if (reg.value < static_cast<i32>(fn_->num_args)) {
+    if (reg.is_arg(*fn_)) {
       LOG << "argument" << reg << " was marked as stale.";
       stale_.erase(iter);
       continue;
@@ -120,7 +120,6 @@ void PropertyMap::Compute() {
 
     const Cmd &cmd     = fn_->Command(reg);
     auto prop          = GetProp(*block, cmd.result);
-
     stale_.erase(iter);
 
     switch (cmd.op_code) {
@@ -149,6 +148,15 @@ void PropertyMap::Compute() {
         NOT_YET();
       }
     } break;
+    case Op::SetReturn: {
+      if (cmd.args[1].value.is<Register>()) {
+        SetProp(cmd.args[0].value.as<ReturnValue>(),
+                GetProp(*block, cmd.args[1].value.as<Register>()));
+      } else {
+        LOG << "Non-register return " << cmd.args[1].to_string();
+        NOT_YET();
+      }
+    } break;
     default:
       LOG << "Not yet handled: " << static_cast<int>(cmd.op_code);
       continue;
@@ -170,8 +178,20 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
   for (const auto &block : fn->blocks_) {
     auto &block_data = prop_map.properties_[&block];
     for (const auto &cmd : block.cmds_) {
-      if (cmd.type == nullptr || cmd.type == Void) { continue; }
-      if (cmd.type == Int) {
+      if (cmd.type == nullptr || cmd.type == Void) {
+        switch (cmd.op_code) {
+        case Op::Print: {
+        } break;
+        case Op::SetReturn: {
+          auto iter = block_data.emplace(cmd.result, nullptr).first;
+          prop_map.stale_.emplace(&block, iter->first);
+        } break;
+        default: {
+          cmd.dump(10);
+          LOG << "Not yet handled.";
+        }
+        }
+      } else if (cmd.type == Int) {
         auto iter =
             block_data
                 .emplace(cmd.result, std::make_unique<Range<i32>>())
@@ -203,7 +223,7 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
 // argument properties.
 static bool
 ValidatePrecondition(const Func *fn,
-                     std::vector<base::owned_ptr<IR::property::Property>> args,
+                     std::vector<base::owned_ptr<property::Property>> args,
                      std::queue<Func *> *validation_queue) {
   // TODO. In this case we don't care about the calls vector at all. Ideally, we
   // should template it away.
@@ -212,8 +232,9 @@ ValidatePrecondition(const Func *fn,
                                               validation_queue, &calls);
   prop_map.Compute();
 
-  // TODO verify that the return value has the property "true"
-  return true;
+  auto *bool_prop = ptr_cast<property::BoolProperty>(
+      prop_map.return_properties_[ReturnValue(0)].get());
+  return bool_prop->kind == property::BoolProperty::Kind::True;
 }
 
 int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
@@ -254,6 +275,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     for (const auto &precondition : called_fn->preconditions_) {
       auto ir_fn = ExprFn(precondition, input_type);
       if (!ValidatePrecondition(ir_fn.get(), arg_props, validation_queue)) {
+        LOG << "Failed a precondition.";
         // TODO log error
         ++num_errors_;
       }

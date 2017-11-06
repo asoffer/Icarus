@@ -54,6 +54,7 @@ template <typename Base> struct Cast {
 template <typename T> std::unique_ptr<T> wrap_unique(T *ptr) {
   return std::unique_ptr<T>(ptr);
 }
+
 } // namespace base
 
 #endif // ICARUS_BASE_UTIL_H

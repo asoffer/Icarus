@@ -40,8 +40,10 @@ Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
+  std::stringstream ss;
   if (value.is<Register>()) {
-    return type->to_string() + " r." + std::to_string(value.as<Register>());
+    ss << value.as<Register>();
+    return type->to_string() + " r." + ss.str();
   } else if (value.is<ReturnValue>()) {
     return type->to_string() + " ret." +
            std::to_string(value.as<ReturnValue>());
@@ -148,7 +150,7 @@ Val Func::Argument(u32 n) {
 
 Func::Func(::Function *fn_type)
     : type(fn_type),
-      num_args(fn_type->input->is<Tuple>()
+      num_args_(fn_type->input->is<Tuple>()
                    ? ptr_cast<Tuple>(fn_type->input)->entries.size()
                    : 1),
       num_regs_(fn_type->input->is<Tuple>()
@@ -156,6 +158,10 @@ Func::Func(::Function *fn_type)
                           ptr_cast<Tuple>(fn_type->input)->entries.size())
                     : 1) {
   blocks_.push_back(std::move(Block(this)));
+}
+
+bool Register::is_arg(const Func &fn) const {
+  return value_ >= 0 && value_ < static_cast<decltype(value_)>(fn.num_args_);
 }
 
 std::vector<std::unique_ptr<Func>> Func::All;

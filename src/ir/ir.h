@@ -36,14 +36,63 @@ struct Func;
 struct Block;
 struct Cmd;
 struct Func;
+struct Register;
+struct ExecContext;
+} // namespace IR
+
+namespace std {
+template <> struct hash<IR::Register>;
+} // namespace std
+
+namespace IR {
+struct Register {
+public:
+  Register() = default;
+  constexpr explicit Register(i32 n) : value_(n) {}
+  bool is_void() { return value_ < 0; }
+  bool is_arg(const Func &fn) const;
+
+  friend std::ostream &operator<<(std::ostream &os, Register reg);
+  friend std::hash<Register>;
+  friend bool operator==(Register, Register);
+  friend bool operator<(Register, Register);
+  friend struct ExecContext; // TODO This isn't really needed
+
+private:
+  i32 value_ = std::numeric_limits<i32>::lowest();
+};
+
+inline bool operator==(Register lhs, Register rhs) {
+  return lhs.value_ == rhs.value_;
+}
+
+inline bool operator<(Register lhs, Register rhs) {
+  return lhs.value_ < rhs.value_;
+}
+
+inline bool operator>(Register lhs, Register rhs) { return rhs < lhs; }
+inline bool operator<=(Register lhs, Register rhs) { return !(rhs < lhs); }
+inline bool operator>=(Register lhs, Register rhs) { return !(lhs < rhs); }
+inline bool operator!=(Register lhs, Register rhs) { return !(lhs == rhs); }
+
+inline std::ostream& operator<<(std::ostream& os, Register reg) {
+  return os << reg.value_;
+}
 
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
-DEFINE_STRONG_INT(Register, i32, std::numeric_limits<i32>::lowest());
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
 } // namespace IR
 
-DEFINE_STRONG_HASH(IR::Register);
+namespace std {
+template <> struct hash<IR::Register> {
+  size_t operator()(const IR::Register &reg) const noexcept {
+    return hash<i32>()(reg.value_);
+  }
+};
+} // namespace std
+
+
 DEFINE_STRONG_HASH(IR::BlockIndex);
 DEFINE_STRONG_HASH(IR::ReturnValue);
 
@@ -214,13 +263,14 @@ struct ExecContext {
   Val ExecuteCmd(const Cmd &cmd);
   void Resolve(Val *v) const;
 
+
   Val reg(Register r) const {
-    ASSERT_GE(r.value, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.value)];
+    ASSERT_GE(r.value_, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value_)];
   }
   Val &reg(Register r) {
-    ASSERT_GE(r.value, 0);
-    return call_stack.top().regs_[static_cast<u32>(r.value)];
+    ASSERT_GE(r.value_, 0);
+    return call_stack.top().regs_[static_cast<u32>(r.value_)];
   }
 
   Stack stack_;
@@ -369,8 +419,9 @@ struct Func {
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
   ::Function *const type = nullptr;
-  const size_t num_args  = 0;
+  const size_t num_args_ = 0;
   i32 num_regs_          = 0;
+  i32 num_voids_         = 0;
   std::string name;
   std::vector<Block> blocks_;
   // TODO we can probably come up with a way to more closely tie Register and

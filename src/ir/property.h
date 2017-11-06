@@ -113,7 +113,7 @@ Range<Number> operator*(const Range<Number> &lhs, const Range<Number> &rhs) {
 }
 
 struct BoolProperty: Property {
-  BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
+  explicit BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
   BoolProperty *Clone() const { return new BoolProperty(*this); }
   Validity Validate(const Val &val) const override {
     if (val.value.as<bool>()) {
