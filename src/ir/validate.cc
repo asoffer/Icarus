@@ -122,9 +122,14 @@ void PropertyMap::Compute() {
     stale_.erase(iter);
 
     switch (cmd.op_code) {
-    case Op::Call:
-      // TODO No post-conditions yet, so nothing to see here.
-      continue;
+    case Op::Neg: {
+      if (cmd.type == Int) {
+        auto new_prop = -GetIntProperty(*block, cmd.args[0]);
+        SetProp(*block, cmd, base::own(new_prop.Clone()));
+      } else {
+        NOT_YET();
+      }
+    } break;
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.type == Int) {                                                     \
@@ -146,8 +151,6 @@ void PropertyMap::Compute() {
   case Op::case_name: {                                                        \
     if (cmd.args[0].type == Int) {                                             \
       ASSERT(prop.get() == nullptr, "Why else was it stale");                  \
-      LOG << GetIntProperty(*block, cmd.args[0]);                              \
-      LOG << GetIntProperty(*block, cmd.args[1]);                              \
       auto new_prop = (GetIntProperty(*block, cmd.args[0])                     \
                            case_sym GetIntProperty(*block, cmd.args[1]));      \
       SetProp(*block, cmd, base::own(new_prop->Clone()));                      \
@@ -160,7 +163,11 @@ void PropertyMap::Compute() {
       CASE(Ge, >=);
       CASE(Gt, >);
 #undef CASE
-
+    case Op::Print: break;
+    case Op::Call:
+      // TODO No post-conditions yet, so nothing to see here.
+      continue;
+    case Op::Nop: break;
     case Op::SetReturn: {
       if (cmd.args[1].value.is<Register>()) {
         SetProp(cmd.args[0].value.as<ReturnValue>(),

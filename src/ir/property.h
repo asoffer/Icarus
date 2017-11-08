@@ -99,6 +99,11 @@ Range<Number> operator-(const Range<Number> &lhs, const Range<Number> &rhs) {
 }
 
 template <typename Number>
+Range<Number> operator-(const Range<Number>&num) {
+  return Range<Number>(-num.max_, -num.min_);
+}
+
+template <typename Number>
 Range<Number> operator*(const Range<Number> &lhs, const Range<Number> &rhs) {
   auto new_min = SafeMath<Number>::Mul(lhs.min_, rhs.min_);
   auto new_max = new_min;
