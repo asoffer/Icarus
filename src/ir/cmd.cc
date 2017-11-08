@@ -355,7 +355,7 @@ Val Gt(Val v1, Val v2) {
   } else if (v1.value.is<double>() && v2.value.is<double>()) {
     return Val::Bool(v1.value.as<double>() > v2.value.as<double>());
   } else {
-    MAKE_AND_RETURN2(::Bool, Op::Lt);
+    MAKE_AND_RETURN2(::Bool, Op::Gt);
   }
 }
 
@@ -367,7 +367,7 @@ Val Ge(Val v1, Val v2) {
   } else if (v1.value.is<double>() && v2.value.is<double>()) {
     return Val::Bool(v1.value.as<double>() >= v2.value.as<double>());
   } else {
-    MAKE_AND_RETURN2(::Bool, Op::Le);
+    MAKE_AND_RETURN2(::Bool, Op::Ge);
   }
 }
 

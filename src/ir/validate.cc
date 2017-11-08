@@ -123,31 +123,43 @@ void PropertyMap::Compute() {
     stale_.erase(iter);
 
     switch (cmd.op_code) {
-    case Op::Add: {
-      if (cmd.type == Int) {
-        auto new_prop = GetIntProperty(*block, cmd.args[0]) +
-                        GetIntProperty(*block, cmd.args[1]);
-        if (!prop->Implies(new_prop)) {
-          // TODO move instead of copy here?
-          SetProp(*block, cmd, base::own(new_prop.Clone()));
-        }
-      } else {
-        NOT_YET();
-      }
-    } break;
     case Op::Call:
       // TODO No post-conditions yet, so nothing to see here.
       continue;
-    case Op::Lt: {
-      if (cmd.args[0].type == Int) {
-        ASSERT(prop.get() == nullptr, "Why else was it stale?");
-        auto new_prop = (GetIntProperty(*block, cmd.args[0]) <
-                         GetIntProperty(*block, cmd.args[1]));
-        SetProp(*block, cmd, base::own(new_prop->Clone()));
-      } else {
-        NOT_YET();
-      }
-    } break;
+#define CASE(case_name, case_sym)                                              \
+  case Op::case_name: {                                                        \
+    if (cmd.type == Int) {                                                     \
+      auto new_prop = GetIntProperty(*block, cmd.args[0])                      \
+          case_sym GetIntProperty(*block, cmd.args[1]);                        \
+      if (!prop->Implies(new_prop)) {                                          \
+        /* TODO move instead of copy here? */                                  \
+        SetProp(*block, cmd, base::own(new_prop.Clone()));                     \
+      }                                                                        \
+    } else {                                                                   \
+      NOT_YET();                                                               \
+    }                                                                          \
+  } break
+      CASE(Add, +);
+      CASE(Sub, -);
+      CASE(Mul, *);
+#undef CASE
+#define CASE(case_name, case_sym)                                              \
+  case Op::case_name: {                                                        \
+    if (cmd.args[0].type == Int) {                                             \
+      ASSERT(prop.get() == nullptr, "Why else was it stale?");                 \
+      auto new_prop = (GetIntProperty(*block, cmd.args[0])                     \
+                           case_sym GetIntProperty(*block, cmd.args[1]));      \
+      SetProp(*block, cmd, base::own(new_prop->Clone()));                      \
+    } else {                                                                   \
+      NOT_YET();                                                               \
+    }                                                                          \
+  } break
+      CASE(Lt, <);
+      CASE(Le, <=);
+      CASE(Ge, >=);
+      CASE(Gt, >);
+#undef CASE
+
     case Op::SetReturn: {
       if (cmd.args[1].value.is<Register>()) {
         SetProp(cmd.args[0].value.as<ReturnValue>(),

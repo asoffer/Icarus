@@ -163,6 +163,29 @@ std::unique_ptr<BoolProperty> operator<(const Range<Number> &lhs,
   return nullptr;
 }
 
+template <typename Number>
+std::unique_ptr<BoolProperty> operator<=(const Range<Number> &lhs,
+                                         const Range<Number> &rhs) {
+  if (lhs.max_ <= rhs.min_) { return std::make_unique<BoolProperty>(true); }
+  if (rhs.max_ <= lhs.min_) { return std::make_unique<BoolProperty>(false); }
+  return nullptr;
+}
+
+template <typename Number>
+std::unique_ptr<BoolProperty> operator>(const Range<Number> &lhs,
+                                        const Range<Number> &rhs) {
+  if (lhs.min_ > rhs.max_) { return std::make_unique<BoolProperty>(true); }
+  if (rhs.min_ > lhs.max_) { return std::make_unique<BoolProperty>(false); }
+  return nullptr;
+}
+
+template <typename Number>
+std::unique_ptr<BoolProperty> operator>=(const Range<Number> &lhs,
+                                         const Range<Number> &rhs) {
+  if (lhs.min_ >= rhs.max_) { return std::make_unique<BoolProperty>(true); }
+  if (rhs.min_ >= lhs.max_) { return std::make_unique<BoolProperty>(false); }
+  return nullptr;
+}
 } // namespace property
 } // namespace IR
 
