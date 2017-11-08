@@ -64,9 +64,7 @@ base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
 void PropertyMap::SetProp(const Block &block, const Cmd &cmd,
                           base::owned_ptr<Property> prop) {
   if (cmd.type == nullptr || cmd.type == Void) { return; }
-  auto &block_entry       = properties_[&block];
-  block_entry[cmd.result] = std::move(prop);
-
+  properties_[&block][cmd.result] = std::move(prop);
   MarkReferencesStale(block, cmd.result);
 }
 
@@ -77,6 +75,7 @@ void PropertyMap::SetProp(ReturnValue ret, base::owned_ptr<Property> prop) {
 
 void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
   auto iter = fn_->references_.find(reg);
+
   for (const auto &cmd_index : iter->second) {
     const auto &stale_cmd = fn_->Command(cmd_index);
     stale_.emplace(&block, stale_cmd.result);
@@ -146,7 +145,9 @@ void PropertyMap::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.args[0].type == Int) {                                             \
-      ASSERT(prop.get() == nullptr, "Why else was it stale?");                 \
+      ASSERT(prop.get() == nullptr, "Why else was it stale");                  \
+      LOG << GetIntProperty(*block, cmd.args[0]);                              \
+      LOG << GetIntProperty(*block, cmd.args[1]);                              \
       auto new_prop = (GetIntProperty(*block, cmd.args[0])                     \
                            case_sym GetIntProperty(*block, cmd.args[1]));      \
       SetProp(*block, cmd, base::own(new_prop->Clone()));                      \

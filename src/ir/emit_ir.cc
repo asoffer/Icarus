@@ -665,7 +665,6 @@ IR::Val AST::ChainOp::EmitIR() {
     return val;
   }
 
-  auto lhs_ir = exprs.front()->EmitIR();
   std::vector<IR::Val> phi_args;
   if (ops.size() == 1) {
     auto lhs_ir = exprs[0]->EmitIR();
@@ -674,6 +673,7 @@ IR::Val AST::ChainOp::EmitIR() {
                            rhs_ir);
 
   } else {
+    auto lhs_ir     = exprs.front()->EmitIR();
     auto land_block = IR::Func::Current->AddBlock();
     for (size_t i = 0; i < ops.size() - 1; ++i) {
       auto rhs_ir = exprs[i + 1]->EmitIR();
