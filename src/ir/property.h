@@ -61,8 +61,7 @@ template <> struct SafeMath<i32> {
 namespace property {
 template <typename Number> struct Range : Property {
   Range() {}
-  Range(Number min_val, Number max_val)
-      : min_(min_val), max_(max_val) {}
+  Range(Number min_val, Number max_val) : min_(min_val), max_(max_val) {}
   ~Range() override {}
   Range<Number> *Clone() const { return new Range<Number>(*this); }
   Validity Validate(const Val &val) const override {
@@ -87,37 +86,48 @@ template <typename Number> struct Range : Property {
 };
 
 template <typename Number>
-Range<Number> operator+(const Range<Number> &lhs, const Range<Number> &rhs) {
-  return Range<Number>(SafeMath<Number>::Add(lhs.min_, rhs.min_),
-                       SafeMath<Number>::Add(lhs.max_, rhs.max_));
+base::owned_ptr<Range<Number>>
+operator+(base::owned_ptr<Range<Number>> lhs,
+          const base::owned_ptr<Range<Number>> &rhs) {
+  lhs->min_ = SafeMath<Number>::Add(lhs->min_, rhs->min_);
+  lhs->max_ = SafeMath<Number>::Add(lhs->max_, rhs->max_);
+  return lhs;
 }
 
 template <typename Number>
-Range<Number> operator-(const Range<Number> &lhs, const Range<Number> &rhs) {
-  return Range<Number>(SafeMath<Number>::Sub(lhs.min_, rhs.min_),
-                       SafeMath<Number>::Sub(lhs.max_, rhs.max_));
+base::owned_ptr<Range<Number>>
+operator-(base::owned_ptr<Range<Number>> lhs,
+          const base::owned_ptr<Range<Number>> &rhs) {
+  lhs->min_ = SafeMath<Number>::Sub(lhs->min_, rhs->max_);
+  lhs->max_ = SafeMath<Number>::Sub(lhs->max_, rhs->min_);
+  return lhs;
 }
 
 template <typename Number>
-Range<Number> operator-(const Range<Number>&num) {
-  return Range<Number>(-num.max_, -num.min_);
+base::owned_ptr<Range<Number>> operator-(base::owned_ptr<Range<Number>> num) {
+  auto tmp  = num->min_;
+  num->min_ = -num->max_;
+  num->max_ = -tmp;
+  return num;
 }
 
 template <typename Number>
-Range<Number> operator*(const Range<Number> &lhs, const Range<Number> &rhs) {
-  auto new_min = SafeMath<Number>::Mul(lhs.min_, rhs.min_);
+base::owned_ptr<Range<Number>>
+operator*(const base::owned_ptr<Range<Number>> &lhs,
+          const base::owned_ptr<Range<Number>> &rhs) {
+  auto new_min = SafeMath<Number>::Mul(lhs->min_, rhs->min_);
   auto new_max = new_min;
 
-  for (auto val : {SafeMath<Number>::Mul(lhs.min_, rhs.max_),
-                   SafeMath<Number>::Mul(lhs.max_, rhs.min_),
-                   SafeMath<Number>::Mul(lhs.max_, rhs.max_)}) {
+  for (auto val : {SafeMath<Number>::Mul(lhs->min_, rhs->max_),
+                   SafeMath<Number>::Mul(lhs->max_, rhs->min_),
+                   SafeMath<Number>::Mul(lhs->max_, rhs->max_)}) {
     std::tie(new_min, new_max) =
         std::make_pair(std::min(new_min, val), std::max(new_max, val));
   }
-  return Range<Number>(new_min, new_max);
+  return base::make_owned<Range<Number>>(new_min, new_max);
 }
 
-struct BoolProperty: Property {
+struct BoolProperty : Property {
   BoolProperty() : kind(Kind::Unknown) {}
   explicit BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
   BoolProperty *Clone() const { return new BoolProperty(*this); }
@@ -140,7 +150,7 @@ struct BoolProperty: Property {
 
   void WriteTo(std::ostream &os) const override {
     switch (kind) {
-    case Kind::Unknown: os << "bool unknown" << reg; break;
+    case Kind::Unknown: os << "bool unknown"; break;
     case Kind::True: os << "bool true"; break;
     case Kind::False: os << "bool false"; break;
     case Kind::Reg: os << "bool eq " << reg; break;
@@ -162,62 +172,67 @@ struct BoolProperty: Property {
   enum class Kind : char { Unknown, True, False, Reg, NegReg } kind;
 };
 
-inline BoolProperty operator!(BoolProperty val) {
-  switch (val.kind) {
+inline base::owned_ptr<BoolProperty> operator!(
+    base::owned_ptr<BoolProperty> val) {
+  switch (val->kind) {
   case BoolProperty::Kind::Unknown: break;
-  case BoolProperty::Kind::True: val.kind   = BoolProperty::Kind::False; break;
-  case BoolProperty::Kind::False: val.kind  = BoolProperty::Kind::True; break;
-  case BoolProperty::Kind::Reg: val.kind    = BoolProperty::Kind::NegReg; break;
-  case BoolProperty::Kind::NegReg: val.kind = BoolProperty::Kind::Reg; break;
+  case BoolProperty::Kind::True: val->kind  = BoolProperty::Kind::False; break;
+  case BoolProperty::Kind::False: val->kind = BoolProperty::Kind::True; break;
+  case BoolProperty::Kind::Reg: val->kind   = BoolProperty::Kind::NegReg; break;
+  case BoolProperty::Kind::NegReg: val->kind = BoolProperty::Kind::Reg; break;
   }
   return val;
 }
 
-inline BoolProperty operator^(BoolProperty lhs, const BoolProperty& rhs) {
-  switch (lhs.kind) {
+inline base::owned_ptr<BoolProperty>
+operator^(base::owned_ptr<BoolProperty> lhs,
+          const base::owned_ptr<BoolProperty> &rhs) {
+  switch (lhs->kind) {
   case BoolProperty::Kind::Unknown: return lhs;
   case BoolProperty::Kind::True: return !std::move(rhs);
   case BoolProperty::Kind::False: return rhs;
   case BoolProperty::Kind::Reg:
   case BoolProperty::Kind::NegReg: {
     // TODO Can we do better than this? Is it worth it?
-    BoolProperty result;
-    result.kind = BoolProperty::Kind::Unknown;
-    return result;
+    return base::make_owned<BoolProperty>();
   }
   }
   UNREACHABLE();
 }
 template <typename Number>
-std::unique_ptr<BoolProperty> operator<(const Range<Number> &lhs,
-                                        const Range<Number> &rhs) {
-  if (lhs.max_ < rhs.min_) { return std::make_unique<BoolProperty>(true); }
-  if (rhs.max_ <= lhs.min_) { return std::make_unique<BoolProperty>(false); }
-  return nullptr;
+base::owned_ptr<BoolProperty>
+operator<(const base::owned_ptr<Range<Number>> &lhs,
+          const base::owned_ptr<Range<Number>> &rhs) {
+  if (lhs->max_ < rhs->min_) { return base::make_owned<BoolProperty>(true); }
+  if (rhs->max_ <= lhs->min_) { return base::make_owned<BoolProperty>(false); }
+  return base::make_owned<BoolProperty>();
 }
 
 template <typename Number>
-std::unique_ptr<BoolProperty> operator<=(const Range<Number> &lhs,
-                                         const Range<Number> &rhs) {
-  if (lhs.max_ <= rhs.min_) { return std::make_unique<BoolProperty>(true); }
-  if (rhs.max_ < lhs.min_) { return std::make_unique<BoolProperty>(false); }
-  return nullptr;
+base::owned_ptr<BoolProperty>
+operator<=(const base::owned_ptr<Range<Number>> &lhs,
+           const base::owned_ptr<Range<Number>> &rhs) {
+  if (lhs->max_ <= rhs->min_) { return base::make_owned<BoolProperty>(true); }
+  if (rhs->max_ < lhs->min_) { return base::make_owned<BoolProperty>(false); }
+  return base::make_owned<BoolProperty>();
 }
 
 template <typename Number>
-std::unique_ptr<BoolProperty> operator>(const Range<Number> &lhs,
-                                        const Range<Number> &rhs) {
-  if (lhs.min_ > rhs.max_) { return std::make_unique<BoolProperty>(true); }
-  if (rhs.min_ >= lhs.max_) { return std::make_unique<BoolProperty>(false); }
-  return nullptr;
+base::owned_ptr<BoolProperty>
+operator>(const base::owned_ptr<Range<Number>> &lhs,
+          const base::owned_ptr<Range<Number>> &rhs) {
+  if (lhs->min_ > rhs->max_) { return base::make_owned<BoolProperty>(true); }
+  if (rhs->min_ >= lhs->max_) { return base::make_owned<BoolProperty>(false); }
+  return base::make_owned<BoolProperty>();
 }
 
 template <typename Number>
-std::unique_ptr<BoolProperty> operator>=(const Range<Number> &lhs,
-                                         const Range<Number> &rhs) {
-  if (lhs.min_ >= rhs.max_) { return std::make_unique<BoolProperty>(true); }
-  if (rhs.min_ > lhs.max_) { return std::make_unique<BoolProperty>(false); }
-  return nullptr;
+base::owned_ptr<BoolProperty>
+operator>=(const base::owned_ptr<Range<Number>> &lhs,
+           const base::owned_ptr<Range<Number>> &rhs) {
+  if (lhs->min_ >= rhs->max_) { return base::make_owned<BoolProperty>(true); }
+  if (rhs->min_ > lhs->max_) { return base::make_owned<BoolProperty>(false); }
+  return base::make_owned<BoolProperty>();
 }
 } // namespace property
 } // namespace IR

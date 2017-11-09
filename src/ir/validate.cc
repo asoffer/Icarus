@@ -20,14 +20,14 @@ public:
   void SetProp(ReturnValue ret, base::owned_ptr<Property> prop);
   void MarkReferencesStale(const Block &block, Register reg);
 
-  Range<i32> GetIntProperty(const Block &block, Val arg);
-  BoolProperty GetBoolProperty(const Block &block, Val arg);
+  base::owned_ptr<Range<i32>> GetIntProperty(const Block &block, Val arg);
+  base::owned_ptr<BoolProperty> GetBoolProperty(const Block &block, Val arg);
   void Compute();
 
   const Func *fn_;
   // TODO allow multiple properties
   std::unordered_map<const Block *,
-                     std::unordered_map<Register, std::unique_ptr<Property>>>
+                     std::unordered_map<Register, base::owned_ptr<Property>>>
       properties_;
 
   // Probably better to use a vector, but for type safety, using a map.
@@ -50,23 +50,17 @@ private:
 
 base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
                                                Register reg) {
-  auto &block_entry = properties_[&block];
-  auto iter         = block_entry.find(reg);
-  ASSERT(iter != block_entry.end(), "");
-  if (iter->second.get() == nullptr) {
-    return nullptr;
-  } else if (iter != block_entry.end()) {
-    return base::own(iter->second->Clone());
-  } else {
-    UNREACHABLE();
-  }
+  return properties_[&block].find(reg)->second;
 }
 
 void PropertyMap::SetProp(const Block &block, const Cmd &cmd,
-                          base::owned_ptr<Property> prop) {
+                          base::owned_ptr<Property> new_prop) {
   if (cmd.type == nullptr || cmd.type == Void) { return; }
-  properties_[&block][cmd.result] = std::move(prop);
-  MarkReferencesStale(block, cmd.result);
+  auto &old_prop = properties_[&block][cmd.result];
+  if (!old_prop->Implies(*new_prop)) {
+    old_prop = std::move(new_prop);
+    MarkReferencesStale(block, cmd.result);
+  }
 }
 
 void PropertyMap::SetProp(ReturnValue ret, base::owned_ptr<Property> prop) {
@@ -96,22 +90,25 @@ void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
   }
 }
 
-Range<i32> PropertyMap::GetIntProperty(const Block &block, Val arg) {
+base::owned_ptr<Range<i32>> PropertyMap::GetIntProperty(const Block &block,
+                                                        Val arg) {
   if (arg.value.is<Register>()) {
     auto reg = arg.value.as<Register>();
-    return *ptr_cast<Range<i32>>(GetProp(block, reg).get());
+    return GetProp(block, reg).as<Range<i32>>();
   } else if (arg.value.is<i32>()) {
-    return Range<i32>(arg.value.as<i32>(), arg.value.as<i32>());
+    return base::make_owned<Range<i32>>(arg.value.as<i32>(),
+                                        arg.value.as<i32>());
   }
   UNREACHABLE();
 }
 
-BoolProperty PropertyMap::GetBoolProperty(const Block &block, Val arg) {
+base::owned_ptr<BoolProperty> PropertyMap::GetBoolProperty(const Block &block,
+                                                           Val arg) {
   if (arg.value.is<Register>()) {
     auto reg = arg.value.as<Register>();
-    return *ptr_cast<BoolProperty>(GetProp(block, reg).get());
+    return GetProp(block, reg).as<BoolProperty>();
   } else if (arg.value.is<bool>()) {
-    return BoolProperty(arg.value.as<bool>());
+    return base::make_owned<BoolProperty>(arg.value.as<bool>());
   }
   UNREACHABLE();
 }
@@ -135,11 +132,9 @@ void PropertyMap::Compute() {
     switch (cmd.op_code) {
     case Op::Neg: {
       if (cmd.type == Int) {
-        auto new_prop = -GetIntProperty(*block, cmd.args[0]);
-        SetProp(*block, cmd, base::own(new_prop.Clone()));
+        SetProp(*block, cmd, -GetIntProperty(*block, cmd.args[0]));
       } else if (cmd.type == Bool) {
-        auto new_prop = !GetBoolProperty(*block, cmd.args[0]);
-        SetProp(*block, cmd, base::own(new_prop.Clone()));
+        SetProp(*block, cmd, !GetBoolProperty(*block, cmd.args[0]));
       } else {
         UNREACHABLE();
       }
@@ -147,12 +142,8 @@ void PropertyMap::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.type == Int) {                                                     \
-      auto new_prop = GetIntProperty(*block, cmd.args[0])                      \
-          case_sym GetIntProperty(*block, cmd.args[1]);                        \
-      if (!prop->Implies(new_prop)) {                                          \
-        /* TODO move instead of copy here? */                                  \
-        SetProp(*block, cmd, base::own(new_prop.Clone()));                     \
-      }                                                                        \
+      SetProp(*block, cmd, GetIntProperty(*block, cmd.args[0])                 \
+                               case_sym GetIntProperty(*block, cmd.args[1]));  \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -164,10 +155,8 @@ void PropertyMap::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.args[0].type == Int) {                                             \
-      ASSERT(prop.get() == nullptr, "Why else was it stale");                  \
-      auto new_prop = (GetIntProperty(*block, cmd.args[0])                     \
-                           case_sym GetIntProperty(*block, cmd.args[1]));      \
-      SetProp(*block, cmd, base::own(new_prop->Clone()));                      \
+      SetProp(*block, cmd, GetIntProperty(*block, cmd.args[0])                 \
+                               case_sym GetIntProperty(*block, cmd.args[1]));  \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -178,16 +167,16 @@ void PropertyMap::Compute() {
       CASE(Gt, >);
 #undef CASE
     case Op::Xor: {
-      auto new_prop = GetBoolProperty(*block, cmd.args[0]) ^
-                      GetBoolProperty(*block, cmd.args[1]);
-      SetProp(*block, cmd, base::own(new_prop.Clone()));
+      SetProp(*block, cmd, GetBoolProperty(*block, cmd.args[0]) ^
+                               GetBoolProperty(*block, cmd.args[1]));
+
     } break;
     case Op::Phi: {
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
         fn_->dump();
         for (size_t i = 1; i < cmd.args.size(); i += 2) {
-          props.push_back(GetBoolProperty(*block, cmd.args[i]));
+          props.push_back(*GetBoolProperty(*block, cmd.args[i]));
           LOG << props.back();
         }
       } else {
@@ -247,14 +236,13 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
         }
       } else if (cmd.type == Int) {
         auto iter =
-            block_data
-                .emplace(cmd.result, std::make_unique<Range<i32>>())
+            block_data.emplace(cmd.result, base::make_owned<Range<i32>>())
                 .first;
         prop_map.stale_.emplace(&block, iter->first);
       } else if (cmd.type == Bool) {
         auto iter =
             block_data
-                .emplace(cmd.result, std::make_unique<property::BoolProperty>())
+                .emplace(cmd.result, base::make_owned<property::BoolProperty>())
                 .first;
         prop_map.stale_.emplace(&block, iter->first);
       }

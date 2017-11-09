@@ -61,6 +61,9 @@ public:
     value_ = ptr.release();
   }
 
+  template <typename D> owned_ptr<D> as() const {
+    return owned_ptr<D>(new D(*ptr_cast<D>(value_)));
+  }
 
   T* get() const { return value_; }
 
