@@ -21,6 +21,7 @@ public:
   void MarkReferencesStale(const Block &block, Register reg);
 
   Range<i32> GetIntProperty(const Block &block, Val arg);
+  BoolProperty GetBoolProperty(const Block &block, Val arg);
   void Compute();
 
   const Func *fn_;
@@ -105,6 +106,16 @@ Range<i32> PropertyMap::GetIntProperty(const Block &block, Val arg) {
   UNREACHABLE();
 }
 
+BoolProperty PropertyMap::GetBoolProperty(const Block &block, Val arg) {
+  if (arg.value.is<Register>()) {
+    auto reg = arg.value.as<Register>();
+    return *ptr_cast<BoolProperty>(GetProp(block, reg).get());
+  } else if (arg.value.is<bool>()) {
+    return BoolProperty(arg.value.as<bool>());
+  }
+  UNREACHABLE();
+}
+
 void PropertyMap::Compute() {
   while (!stale_.empty()) {
     auto iter          = stale_.begin();
@@ -126,8 +137,11 @@ void PropertyMap::Compute() {
       if (cmd.type == Int) {
         auto new_prop = -GetIntProperty(*block, cmd.args[0]);
         SetProp(*block, cmd, base::own(new_prop.Clone()));
+      } else if (cmd.type == Bool) {
+        auto new_prop = !GetBoolProperty(*block, cmd.args[0]);
+        SetProp(*block, cmd, base::own(new_prop.Clone()));
       } else {
-        NOT_YET();
+        UNREACHABLE();
       }
     } break;
 #define CASE(case_name, case_sym)                                              \
@@ -163,6 +177,11 @@ void PropertyMap::Compute() {
       CASE(Ge, >=);
       CASE(Gt, >);
 #undef CASE
+    case Op::Xor: {
+      auto new_prop = GetBoolProperty(*block, cmd.args[0]) ^
+                      GetBoolProperty(*block, cmd.args[1]);
+      SetProp(*block, cmd, base::own(new_prop.Clone()));
+    } break;
     case Op::Print: break;
     case Op::Call:
       // TODO No post-conditions yet, so nothing to see here.
@@ -287,7 +306,11 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       } else if (argument.is<i32>()) {
         arg_props.push_back(base::make_owned<property::Range<i32>>(
             argument.as<i32>(), argument.as<i32>()));
+      } else if (argument.is<bool>()) {
+        arg_props.push_back(
+            base::make_owned<property::BoolProperty>(argument.as<bool>()));
       } else {
+        LOG << args[i].to_string();
         NOT_YET();
       }
     }

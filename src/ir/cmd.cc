@@ -171,26 +171,6 @@ Val Ptr(Val v) {
   }
 }
 
-Val And(Val v1, Val v2) {
-  if (v1.value.is<bool>()) {
-    return v1.value.as<bool>() ? v2 : Val::Bool(false);
-  } else if (v2.value.is<bool>()) {
-    return v2.value.as<bool>() ? v1 : Val::Bool(false);
-  } else {
-    MAKE_AND_RETURN2(Bool, Op::And);
-  }
-}
-
-Val Or(Val v1, Val v2) {
-  if (v1.value.is<bool>()) {
-    return v1.value.as<bool>() ? Val::Bool(true) : v2;
-  } else if (v2.value.is<bool>()) {
-    return v2.value.as<bool>() ? Val::Bool(true) : v1;
-  } else {
-    MAKE_AND_RETURN2(Bool, Op::Or);
-  }
-}
-
 Val Xor(Val v1, Val v2) {
   if (v1.value.is<bool>()) {
     return v1.value.as<bool>() ? Neg(v2) : v2;
@@ -465,8 +445,6 @@ void Cmd::dump(size_t indent) const {
   case Op::Ne: std::cerr << "ne"; break;
   case Op::Ge: std::cerr << "ge"; break;
   case Op::Gt: std::cerr << "gt"; break;
-  case Op::And: std::cerr << "and"; break;
-  case Op::Or: std::cerr << "or"; break;
   case Op::Xor: std::cerr << "xor"; break;
   case Op::Print: std::cerr << "print"; break;
   case Op::Load: std::cerr << "load"; break;

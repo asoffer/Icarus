@@ -118,6 +118,7 @@ Range<Number> operator*(const Range<Number> &lhs, const Range<Number> &rhs) {
 }
 
 struct BoolProperty: Property {
+  BoolProperty() : kind(Kind::Unknown) {}
   explicit BoolProperty(bool b) : kind(b ? Kind::True : Kind::False) {}
   BoolProperty *Clone() const { return new BoolProperty(*this); }
   Validity Validate(const Val &val) const override {
@@ -139,10 +140,11 @@ struct BoolProperty: Property {
 
   void WriteTo(std::ostream &os) const override {
     switch (kind) {
+    case Kind::Unknown: os << "bool unknown" << reg; break;
     case Kind::True: os << "bool true"; break;
     case Kind::False: os << "bool false"; break;
-    case Kind::Register: os << "bool eq " << reg; break;
-    case Kind::NegatedRegister: os << "bool ne " << reg; break;
+    case Kind::Reg: os << "bool eq " << reg; break;
+    case Kind::NegReg: os << "bool ne " << reg; break;
     }
   }
 
@@ -157,9 +159,35 @@ struct BoolProperty: Property {
   }
 
   Register reg;
-  enum class Kind : char { True, False, Register, NegatedRegister } kind;
+  enum class Kind : char { Unknown, True, False, Reg, NegReg } kind;
 };
 
+inline BoolProperty operator!(BoolProperty val) {
+  switch (val.kind) {
+  case BoolProperty::Kind::Unknown: break;
+  case BoolProperty::Kind::True: val.kind   = BoolProperty::Kind::False; break;
+  case BoolProperty::Kind::False: val.kind  = BoolProperty::Kind::True; break;
+  case BoolProperty::Kind::Reg: val.kind    = BoolProperty::Kind::NegReg; break;
+  case BoolProperty::Kind::NegReg: val.kind = BoolProperty::Kind::Reg; break;
+  }
+  return val;
+}
+
+inline BoolProperty operator^(BoolProperty lhs, const BoolProperty& rhs) {
+  switch (lhs.kind) {
+  case BoolProperty::Kind::Unknown: return lhs;
+  case BoolProperty::Kind::True: return !std::move(rhs);
+  case BoolProperty::Kind::False: return rhs;
+  case BoolProperty::Kind::Reg:
+  case BoolProperty::Kind::NegReg: {
+    // TODO Can we do better than this? Is it worth it?
+    BoolProperty result;
+    result.kind = BoolProperty::Kind::Unknown;
+    return result;
+  }
+  }
+  UNREACHABLE();
+}
 template <typename Number>
 std::unique_ptr<BoolProperty> operator<(const Range<Number> &lhs,
                                         const Range<Number> &rhs) {

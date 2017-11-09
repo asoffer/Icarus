@@ -188,7 +188,7 @@ enum class Op : char {
   Neg, // ! for bool, - for numeric types
   Add, Sub, Mul, Div, Mod, // numeric types only
   Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
-  And, Or, Xor, // bool only
+  Xor,
   Print,
   Malloc, Free,
   Load, Store,
@@ -304,8 +304,6 @@ Val Eq(Val v1, Val v2);
 Val Ne(Val v1, Val v2);
 Val Ge(Val v1, Val v2);
 Val Gt(Val v1, Val v2);
-Val And(Val v1, Val v2);
-Val Or(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);

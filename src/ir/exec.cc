@@ -183,8 +183,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else {
       NOT_YET();
     }
-  case Op::And: return And(resolved[0], resolved[1]);
-  case Op::Or: return Or(resolved[0], resolved[1]);
   case Op::Xor: return Xor(resolved[0], resolved[1]);
   case Op::Lt: return Lt(resolved[0], resolved[1]);
   case Op::Le: return Le(resolved[0], resolved[1]);
