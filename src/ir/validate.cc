@@ -52,13 +52,13 @@ base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
                                                Register reg) {
   auto &block_entry = properties_[&block];
   auto iter         = block_entry.find(reg);
+  ASSERT(iter != block_entry.end(), "");
   if (iter->second.get() == nullptr) {
     return nullptr;
   } else if (iter != block_entry.end()) {
     return base::own(iter->second->Clone());
   } else {
-    ASSERT_EQ(block.incoming_blocks_.size(), 1);
-    return GetProp(fn_->block(block.incoming_blocks_[0]), reg);
+    UNREACHABLE();
   }
 }
 
@@ -182,6 +182,18 @@ void PropertyMap::Compute() {
                       GetBoolProperty(*block, cmd.args[1]);
       SetProp(*block, cmd, base::own(new_prop.Clone()));
     } break;
+    case Op::Phi: {
+      if (cmd.type == Bool) {
+        std::vector<BoolProperty> props;
+        fn_->dump();
+        for (size_t i = 1; i < cmd.args.size(); i += 2) {
+          props.push_back(GetBoolProperty(*block, cmd.args[i]));
+          LOG << props.back();
+        }
+      } else {
+        NOT_YET();
+      }
+    } break;
     case Op::Print: break;
     case Op::Call:
       // TODO No post-conditions yet, so nothing to see here.
@@ -208,9 +220,12 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
                   std::queue<Func *> *validation_queue,
                   std::vector<std::pair<const Block *, const Cmd *>> *calls) {
   PropertyMap prop_map(fn);
-  auto &start_block_data = prop_map.properties_[&fn->block(fn->entry())];
-  for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
-    start_block_data[Register(i)] = args[i];
+
+  for (const auto &block : fn->blocks_) {
+    auto &block_data = prop_map.properties_[&block];
+    for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
+      block_data[Register(i)] = args[i];
+    }
   }
 
   // Initialize everything as stale.
@@ -237,7 +252,10 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
                 .first;
         prop_map.stale_.emplace(&block, iter->first);
       } else if (cmd.type == Bool) {
-        auto iter = block_data.emplace(cmd.result, nullptr).first;
+        auto iter =
+            block_data
+                .emplace(cmd.result, std::make_unique<property::BoolProperty>())
+                .first;
         prop_map.stale_.emplace(&block, iter->first);
       }
 
@@ -270,7 +288,6 @@ ValidatePrecondition(const Func *fn,
   auto prop_map = property::PropertyMap::Make(fn, std::move(args),
                                               validation_queue, &calls);
   prop_map.Compute();
-
   auto *bool_prop = ptr_cast<property::BoolProperty>(
       prop_map.return_properties_[ReturnValue(0)].get());
   return bool_prop->kind == property::BoolProperty::Kind::True;

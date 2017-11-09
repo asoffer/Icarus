@@ -649,23 +649,12 @@ void Binop::verify_types() {
   }
 }
 
-static bool ValidateChainedOperatorType(Language::Operator op, Type *lhs_type,
-                                        Type *rhs_type) {
-  ASSERT(op == Language::Operator::Xor || op == Language::Operator::Lt ||
-             op == Language::Operator::Le || op == Language::Operator::Eq ||
-             op == Language::Operator::Ne || op == Language::Operator::Ge ||
-             op == Language::Operator::Gt,
+static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
+                                   Type *rhs_type) {
+  ASSERT(op == Language::Operator::Lt || op == Language::Operator::Le ||
+             op == Language::Operator::Eq || op == Language::Operator::Ne ||
+             op == Language::Operator::Ge || op == Language::Operator::Gt,
          "Expecting a ChainOp operator type.");
-  if (op == Language::Operator::Xor) {
-    if (lhs_type != Bool || rhs_type != Bool) {
-      // TODO log an error. be careful about double logging because if rhs fails
-      // it will fail again on the next iteration when it is the lhs. But just
-      // only doing one will miss either the start or the end.
-      return false;
-    } else {
-      return true;
-    }
-  }
 
   if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>()) {
     if (lhs_type != rhs_type) {
@@ -768,10 +757,21 @@ void ChainOp::verify_types() {
   // validation here
   type = Bool;
 
-  for (size_t i = 0; i < exprs.size() - 1; ++i) {
-    if (!ValidateChainedOperatorType(ops[i], exprs[i]->type,
-                                     exprs[i + 1]->type)) {
-      type = Err; // Errors exported by ValidateChainedOperatorType
+  // Safe to just check first because to be on the same chain they must all have
+  // the same precedence, and ^, &, and | uniquely hold a given precedence.
+  if (ops[0] == Language::Operator::And || ops[0] == Language::Operator::Or ||
+      ops[0] == Language::Operator::Xor) {
+    for (const auto &expr : exprs) {
+      if (expr->type != Bool) {
+        // TODO log an error
+        LOG << "Type error.";
+      }
+    }
+  } else {
+    for (size_t i = 0; i < exprs.size() - 1; ++i) {
+      if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
+        type = Err; // Errors exported by ValidateComparisonType
+      }
     }
   }
 }
