@@ -56,7 +56,7 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
       auto exit_block = IR::Func::Current->AddBlock();
       auto loop_phi   = IR::Func::Current->AddBlock();
       auto loop_body  = IR::Func::Current->AddBlock();
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
       auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
@@ -64,14 +64,13 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
       auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
       auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
 
-      IR::Jump::Conditional(IR::Eq(from_phi_reg, from_end_ptr), exit_block,
-                            loop_body);
+      IR::CondJump(IR::Eq(from_phi_reg, from_end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
       EmitCopyInit(from_array_type->data_type, to_array_type->data_type,
                    PtrCallFix(from_phi_reg), to_phi_reg);
 
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Func::Current->SetArgs(
           from_phi, {IR::Val::Block(init_block), from_ptr,
@@ -83,7 +82,7 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
                                   IR::PtrIncr(to_phi_reg, IR::Val::Uint(1ul))});
 
       IR::Block::Current = exit_block;
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
     IR::Call(IR::Val::Func(assign_func), {from_val, to_var});
 
@@ -122,7 +121,7 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
                              PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
       }
 
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
   ASSERT(assign_func, "");

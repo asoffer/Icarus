@@ -21,6 +21,7 @@ struct Unop;
 
 #include "ast/ast.h"
 #include "type/type.h"
+#include "ir/property.h"
 
 struct Error {
   enum class Code : char {

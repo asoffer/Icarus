@@ -61,38 +61,38 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       auto body_block      = IR::Func::Current->AddBlock();
       auto incr_block      = IR::Func::Current->AddBlock();
 
-      IR::Jump::Conditional(len_cmp, equal_len_block, false_block);
+      IR::CondJump(len_cmp, equal_len_block, false_block);
 
       IR::Block::Current = true_block;
       IR::SetReturn(0, IR::Val::Bool(true));
-      IR::Jump::Return();
+      IR::ReturnJump();
 
       IR::Block::Current = false_block;
       IR::SetReturn(0, IR::Val::Bool(false));
-      IR::Jump::Return();
+      IR::ReturnJump();
 
       IR::Block::Current = equal_len_block;
       auto lhs_start     = IR::Index(fn->Argument(0), IR::Val::Uint(0));
       auto rhs_start     = IR::Index(fn->Argument(1), IR::Val::Uint(0));
-      auto lhs_end = IR::PtrIncr(lhs_start, lhs_len);
-      IR::Jump::Unconditional(phi_block);
+      auto lhs_end       = IR::PtrIncr(lhs_start, lhs_len);
+      IR::UncondJump(phi_block);
 
       IR::Block::Current = phi_block;
       auto lhs_phi       = IR::Phi(Ptr(lhs_type->data_type));
       auto rhs_phi       = IR::Phi(Ptr(rhs_type->data_type));
       auto lhs_phi_reg   = IR::Func::Current->Command(lhs_phi).reg();
       auto rhs_phi_reg   = IR::Func::Current->Command(rhs_phi).reg();
-      IR::Jump::Conditional(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
+      IR::CondJump(IR::Eq(lhs_phi_reg, lhs_end), true_block, body_block);
 
       IR::Block::Current = body_block;
       // TODO what if data type is an array?
-      IR::Jump::Conditional(IR::Eq(IR::Load(lhs_phi_reg), IR::Load(rhs_phi_reg)),
-                            incr_block, false_block);
+      IR::CondJump(IR::Eq(IR::Load(lhs_phi_reg), IR::Load(rhs_phi_reg)),
+                        incr_block, false_block);
 
       IR::Block::Current = incr_block;
       auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Uint(1));
       auto rhs_incr      = IR::PtrIncr(rhs_phi_reg, IR::Val::Uint(1));
-      IR::Jump::Unconditional(phi_block);
+      IR::UncondJump(phi_block);
 
       fn->SetArgs(lhs_phi, {IR::Val::Block(equal_len_block), lhs_start,
                             IR::Val::Block(incr_block), lhs_incr});

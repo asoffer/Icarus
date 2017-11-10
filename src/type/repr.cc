@@ -1,4 +1,5 @@
 #include "type.h"
+
 #include "../ir/ir.h"
 #include "../scope.h"
 
@@ -24,20 +25,20 @@ void Primitive::EmitRepr(IR::Val val) {
           auto special_block = repr_func->AddBlock();
           auto next_block    = repr_func->AddBlock();
 
-          IR::Jump::Conditional(
+          IR::CondJump(
               IR::Eq(repr_func->Argument(0), IR::Val::Char(pair.first)),
               special_block, next_block);
 
           IR::Block::Current = special_block;
           IR::Print(IR::Val::Char('\\'));
           IR::Print(IR::Val::Char(pair.second));
-          IR::Jump::Return();
+          IR::ReturnJump();
 
           IR::Block::Current = next_block;
         }
 
         IR::Print(repr_func->Argument(0));
-        IR::Jump::Return();
+        IR::ReturnJump();
       }
     }
 
@@ -92,7 +93,7 @@ void Array::EmitRepr(IR::Val val) {
       auto length_var = fixed_length
                             ? IR::Val::Uint(len)
                             : IR::Load(IR::ArrayLength(repr_func->Argument(0)));
-      IR::Jump::Conditional(IR::Eq(length_var, IR::Val::Uint(0)), exit_block,
+      IR::CondJump(IR::Eq(length_var, IR::Val::Uint(0)), exit_block,
                             init_block);
 
       IR::Block::Current = init_block;
@@ -104,19 +105,19 @@ void Array::EmitRepr(IR::Val val) {
 
       data_type->EmitRepr(PtrCallFix(ptr));
       IR::PtrIncr(ptr, length_var);
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
       auto phi = IR::Phi(Ptr(data_type));
       auto phi_reg = IR::Func::Current->Command(phi).reg();
       auto elem_ptr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
-      IR::Jump::Conditional(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
+      IR::CondJump(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
       IR::Print(IR::Val::Char(','));
       IR::Print(IR::Val::Char(' '));
       data_type->EmitRepr(PtrCallFix(elem_ptr));
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_block), ptr,
                                        IR::Val::Block(IR::Block::Current),
@@ -124,7 +125,7 @@ void Array::EmitRepr(IR::Val val) {
 
       IR::Block::Current = exit_block;
       IR::Print(IR::Val::Char(']'));
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
   IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
@@ -148,7 +149,7 @@ void Struct::EmitRepr(IR::Val val) {
         IR::Print(IR::Val::Char(' '));
       }
       IR::Print(IR::Val::Char('}'));
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
   IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});

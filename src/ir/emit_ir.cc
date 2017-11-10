@@ -39,7 +39,7 @@ IR::Val ErrorFunc() {
       IR::Block::Current = fn->entry();
       // TODO
       IR::SetReturn(IR::ReturnValue{0}, IR::Val::CodeBlock(nullptr));
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
     fn->name = "error";
     return fn;
@@ -53,7 +53,7 @@ IR::Val AsciiFunc() {
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
     fn->name = "ascii";
     return fn;
@@ -67,7 +67,7 @@ IR::Val OrdFunc() {
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
     fn->name = "ord";
     return fn;
@@ -150,7 +150,7 @@ IR::Val AST::For::EmitIR() {
   auto body_entry = IR::Func::Current->AddBlock();
   auto exit       = IR::Func::Current->AddBlock();
 
-  IR::Jump::Unconditional(init);
+  IR::UncondJump(init);
 
   std::vector<IR::Val> init_vals;
   init_vals.reserve(iterators.size());
@@ -184,7 +184,7 @@ IR::Val AST::For::EmitIR() {
         NOT_YET();
       }
     }
-    IR::Jump::Unconditional(phi);
+    IR::UncondJump(phi);
   }
 
   std::vector<IR::CmdIndex> phis;
@@ -210,7 +210,7 @@ IR::Val AST::For::EmitIR() {
         NOT_YET(*decl->container->type);
       }
     }
-    IR::Jump::Unconditional(cond);
+    IR::UncondJump(cond);
   }
 
   std::vector<IR::Val> incr_vals;
@@ -234,7 +234,7 @@ IR::Val AST::For::EmitIR() {
         NOT_YET();
       }
     }
-    IR::Jump::Unconditional(phi);
+    IR::UncondJump(phi);
   }
 
   { // Complete phi definition
@@ -282,10 +282,10 @@ IR::Val AST::For::EmitIR() {
         NOT_YET();
       }
 
-      IR::Jump::Conditional(cmp, next, exit);
+      IR::CondJump(cmp, next, exit);
       IR::Block::Current = next;
     }
-    IR::Jump::Unconditional(body_entry);
+    IR::UncondJump(body_entry);
   }
 
   { // Body
@@ -295,7 +295,7 @@ IR::Val AST::For::EmitIR() {
     statements->EmitIR();
     for_scope->Exit();
 
-    IR::Jump::Unconditional(incr);
+    IR::UncondJump(incr);
   }
 
   IR::Block::Current = exit;
@@ -314,13 +314,13 @@ IR::Val AST::Case::EmitIR() {
     auto next    = IR::Func::Current->AddBlock();
 
     auto val = key_vals[i].first->EmitIR();
-    IR::Jump::Conditional(val, compute, next);
+    IR::CondJump(val, compute, next);
 
     IR::Block::Current = compute;
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
     auto result = key_vals[i].second->EmitIR();
     phi_args.push_back(result);
-    IR::Jump::Unconditional(land);
+    IR::UncondJump(land);
 
     IR::Block::Current = next;
   }
@@ -329,7 +329,7 @@ IR::Val AST::Case::EmitIR() {
   phi_args.push_back(IR::Val::Block(IR::Block::Current));
   auto result = key_vals.back().second->EmitIR();
   phi_args.push_back(result);
-  IR::Jump::Unconditional(land);
+  IR::UncondJump(land);
 
   IR::Block::Current = land;
   auto phi           = IR::Phi(type);
@@ -360,13 +360,13 @@ IR::Val AST::ScopeNode::EmitIR() {
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
 
-  IR::Jump::Conditional(call_enter_result, enter_block, land_block);
+  IR::CondJump(call_enter_result, enter_block, land_block);
 
   IR::Block::Current = enter_block;
   stmts->EmitIR();
 
   auto call_exit_result = IR::Call(exit_fn, {});
-  IR::Jump::Conditional(call_exit_result, enter_block, land_block);
+  IR::CondJump(call_exit_result, enter_block, land_block);
 
   IR::Block::Current = land_block;
   return IR::Val::None();
@@ -458,19 +458,19 @@ IR::Val AST::Unop::EmitIR() {
           types.push_back(val.value.as<::Type *>());
         }
         IR::SetReturn(IR::ReturnValue{0}, IR::Val::Type(Tup(types)));
-       IR::Jump::Return();
+        IR::ReturnJump();
       } else {
         size_t i = 0;
         for (auto &val : vals) {
-         IR::SetReturn(IR::ReturnValue{static_cast<i32>(i++)}, std::move(val));
+          IR::SetReturn(IR::ReturnValue{static_cast<i32>(i++)}, std::move(val));
         }
-       IR::Jump::Return();
+        IR::ReturnJump();
       }
     } else {
       auto val = operand->EmitIR();
       if (!errors.empty()) { return IR::Val::None(); }
       IR::SetReturn(IR::ReturnValue{0}, val);
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
 
     return IR::Val::None();
@@ -574,12 +574,12 @@ IR::Val AST::Binop::EmitIR() {
 
     auto lhs_val       = lhs->EmitIR();
     auto lhs_end_block = IR::Block::Current;
-    IR::Jump::Conditional(lhs_val, land_block, more_block);
+    IR::CondJump(lhs_val, land_block, more_block);
 
     IR::Block::Current = more_block;
     auto rhs_val       = rhs->EmitIR();
     auto rhs_end_block = IR::Block::Current;
-    IR::Jump::Unconditional(land_block);
+    IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
 
@@ -595,19 +595,19 @@ IR::Val AST::Binop::EmitIR() {
 
     auto lhs_val       = lhs->EmitIR();
     auto lhs_end_block = IR::Block::Current;
-    IR::Jump::Conditional(lhs_val, more_block, land_block);
+    IR::CondJump(lhs_val, more_block, land_block);
 
     IR::Block::Current = more_block;
     auto rhs_val       = rhs->EmitIR();
     auto rhs_end_block = IR::Block::Current;
-    IR::Jump::Unconditional(land_block);
+    IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
 
     auto phi = IR::Phi(Bool);
     IR::Func::Current->SetArgs(phi, {IR::Val::Block(lhs_end_block),
                                      IR::Val::Bool(false),
-                                    IR::Val::Block(rhs_end_block), rhs_val});
+                                     IR::Val::Block(rhs_end_block), rhs_val});
     return IR::Func::Current->Command(phi).reg();
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
@@ -649,7 +649,8 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
     case Language::Operator::Eq: return IR::Eq(lhs_ir, rhs_ir);
     case Language::Operator::Ne: return IR::Ne(lhs_ir, rhs_ir);
     case Language::Operator::Ge: return IR::Ge(lhs_ir, rhs_ir);
-    case Language::Operator::Gt: return IR::Gt(lhs_ir, rhs_ir);
+    case Language::Operator::Gt:
+      return IR::Gt(lhs_ir, rhs_ir);
     // TODO case Language::Operator::And: cmp = lhs_ir; break;
 
     default: UNREACHABLE();
@@ -672,7 +673,7 @@ IR::Val AST::ChainOp::EmitIR() {
       auto val = exprs[i]->EmitIR();
 
       auto next_block = IR::Func::Current->AddBlock();
-      IR::Jump::Conditional(val, next_block, land_block);
+      IR::CondJump(val, next_block, land_block);
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
       phi_args.push_back(IR::Val::Bool(ops[0] == Language::Operator::Or));
 
@@ -681,7 +682,7 @@ IR::Val AST::ChainOp::EmitIR() {
 
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
     phi_args.push_back(exprs.back()->EmitIR());
-    IR::Jump::Unconditional(land_block);
+    IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
     auto phi           = IR::Phi(Bool);
@@ -707,7 +708,7 @@ IR::Val AST::ChainOp::EmitIR() {
         phi_args.push_back(IR::Val::Block(IR::Block::Current));
         phi_args.push_back(IR::Val::Bool(false));
         auto next_block = IR::Func::Current->AddBlock();
-        IR::Jump::Conditional(cmp, next_block, land_block);
+        IR::CondJump(cmp, next_block, land_block);
         IR::Block::Current = next_block;
         lhs_ir             = rhs_ir;
       }
@@ -719,7 +720,7 @@ IR::Val AST::ChainOp::EmitIR() {
                           exprs[exprs.size() - 1]->type, rhs_ir);
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
       phi_args.push_back(last_cmp);
-      IR::Jump::Unconditional(land_block);
+      IR::UncondJump(land_block);
 
       IR::Block::Current = land_block;
       auto phi           = IR::Phi(Bool);
@@ -780,7 +781,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save) {
       }
 
       statements->EmitIR();
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
 

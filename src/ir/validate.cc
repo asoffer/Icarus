@@ -74,18 +74,20 @@ void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
   for (const auto &cmd_index : iter->second) {
     const auto &stale_cmd = fn_->Command(cmd_index);
     stale_.emplace(&block, stale_cmd.result);
-    switch (block.jmp_.type) {
-    case Jump::Type::Uncond:
-      stale_.emplace(&fn_->block(block.jmp_.block_index), stale_cmd.result);
-      break;
-    case Jump::Type::Cond:
-      stale_.emplace(&fn_->block(block.jmp_.cond_data.true_block),
-                     stale_cmd.result);
-      stale_.emplace(&fn_->block(block.jmp_.cond_data.false_block),
+    const auto &last_cmd = block.cmds_.back();
+    switch (last_cmd.op_code) {
+    case Op::UncondJump:
+      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
                      stale_cmd.result);
       break;
-    case Jump::Type::Ret: /* Nothing to do */ break;
-    case Jump::Type::None: UNREACHABLE();
+    case Op::CondJump:
+      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()),
+                     stale_cmd.result);
+      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()),
+                     stale_cmd.result);
+      break;
+    case Op::ReturnJump: /* Nothing to do */ break;
+    default: UNREACHABLE();
     }
   }
 }
@@ -229,6 +231,9 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
           auto iter = block_data.emplace(cmd.result, nullptr).first;
           prop_map.stale_.emplace(&block, iter->first);
         } break;
+        case Op::ReturnJump: // I'm pretty sure nothing needs to be done for
+                             // this.
+          break;
         default: {
           cmd.dump(10);
           LOG << "Not yet handled.";

@@ -100,32 +100,11 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr,
                                  Type *input_type = nullptr);
 
 namespace IR {
-enum class Validity : char { Always, MaybeNot, Unknown, Never };
-
-namespace property {
-struct Property : public base::Cast<Property> {
-  Property() {}
-  virtual ~Property() {}
-  virtual Property *Clone() const                  = 0;
-  virtual Validity Validate(const Val &val) const  = 0;
-  virtual void WriteTo(std::ostream &os) const     = 0;
-  virtual bool Implies(const Property &prop) const = 0;
-};
-
-inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
-  prop.WriteTo(os);
-  return os;
-}
-
-} // namespace property
-
 struct CmdIndex {
   BlockIndex block;
   i32 cmd;
 };
-} // namespace IR
 
-namespace IR {
 struct Addr {
   enum class Kind : u8 { Null, Global, Stack, Heap } kind;
   union {
@@ -198,6 +177,9 @@ enum class Op : char {
   SetReturn, Arrow, Array, Ptr,
   Alloca,
   Contextualize,
+  CondJump,
+  UncondJump,
+  ReturnJump,
 };
 
 struct Stack {
@@ -324,33 +306,11 @@ void SetReturn(ReturnValue n, Val v2);
 void Print(Val v);
 void Store(Val val, Val loc);
 void Free(Val v);
+void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block);
+void UncondJump(BlockIndex block);
+void ReturnJump();
 
 CmdIndex Phi(Type *t);
-
-struct Jump {
-  static Jump &Current();
-
-  static void Unconditional(BlockIndex index);
-  static void Conditional(Val cond, BlockIndex true_index,
-                          BlockIndex false_index);
-  static void Return() { Current().type = Type::Ret; }
-
-  void dump(size_t indent) const;
-
-  Jump() {}
-  ~Jump() {}
-  struct CondData {
-    Val cond;
-    BlockIndex true_block;
-    BlockIndex false_block;
-  };
-
-  enum class Type : u8 { None, Uncond, Cond, Ret } type = Type::None;
-
-  // TODO reintroduce these as a union.
-  BlockIndex block_index; // for unconditional jump
-  CondData cond_data; // value and block indices to jump for conditional jump.
-};
 
 struct Block {
   static BlockIndex Current;
@@ -365,7 +325,6 @@ struct Block {
   void dump(size_t indent) const;
 
   Func *fn_; // Containing function
-  Jump jmp_;
   std::vector<BlockIndex> incoming_blocks_;
   std::vector<Cmd> cmds_;
 };

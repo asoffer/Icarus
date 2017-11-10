@@ -447,6 +447,9 @@ void Cmd::dump(size_t indent) const {
   case Op::Gt: std::cerr << "gt"; break;
   case Op::Xor: std::cerr << "xor"; break;
   case Op::Print: std::cerr << "print"; break;
+  case Op::CondJump: std::cerr << "cond"; break;
+  case Op::UncondJump: std::cerr << "uncond"; break;
+  case Op::ReturnJump: std::cerr << "return"; break;
   case Op::Load: std::cerr << "load"; break;
   case Op::Store: std::cerr << "store"; break;
   case Op::ArrayLength: std::cerr << "array-length"; break;
@@ -476,23 +479,25 @@ void Cmd::dump(size_t indent) const {
   std::cerr << std::endl;
 }
 
-void Block::dump(size_t indent) const {
-  for (const auto &cmd : cmds_) { cmd.dump(indent); }
-  jmp_.dump(indent);
+void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
+  ASSERT(Func::Current, "");
+  Cmd cmd(nullptr, Op::CondJump,
+          {cond, Val::Block(true_block), Val::Block(false_block)});
+  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+}
+void UncondJump(BlockIndex block) {
+  ASSERT(Func::Current, "");
+  Cmd cmd(nullptr, Op::UncondJump, {Val::Block(block)});
+  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+}
+void ReturnJump() {
+  ASSERT(Func::Current, "");
+  Cmd cmd(nullptr, Op::ReturnJump, {});
+  Func::Current->block(Block::Current).cmds_.push_back(cmd);
 }
 
-void Jump::dump(size_t indent) const {
-  std::cerr << std::string(indent, ' ');
-  switch (type) {
-  case Type::Uncond: std::cerr << "jmp #" << block_index << std::endl; break;
-  case Type::Cond:
-    std::cerr << "cond " << cond_data.cond.to_string() << std::endl
-              << "T => #" << cond_data.true_block << "F => #"
-              << cond_data.false_block << std::endl;
-    break;
-  case Type::Ret: std::cerr << "return." << std::endl; break;
-  case Type::None: std::cerr << "none." << std::endl; break;
-  }
+void Block::dump(size_t indent) const {
+  for (const auto &cmd : cmds_) { cmd.dump(indent); }
 }
 
 void Func::dump() const {

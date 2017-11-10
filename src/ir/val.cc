@@ -82,34 +82,6 @@ std::string Val::to_string() const {
   }
 }
 
-void Jump::Conditional(Val cond, BlockIndex true_index,
-                       BlockIndex false_index) {
-  Jump &jmp = Jump::Current();
-  if (cond.value.is<bool>()) {
-    jmp.type        = Type::Uncond;
-    jmp.block_index = (cond.value.as<bool>() ? true_index : false_index);
-    Func::Current->block(jmp.block_index)
-        .incoming_blocks_.push_back(Block::Current);
-  } else {
-    jmp.type                  = Type::Cond;
-    jmp.cond_data.cond        = cond;
-    jmp.cond_data.true_block  = true_index;
-    jmp.cond_data.false_block = false_index;
-    Func::Current->block(true_index).incoming_blocks_.push_back(Block::Current);
-    Func::Current->block(false_index)
-        .incoming_blocks_.push_back(Block::Current);
-  }
-}
-
-void Jump::Unconditional(BlockIndex index) {
-  Jump &jmp       = Current();
-  jmp.block_index = index;
-  jmp.type        = Type::Uncond;
-  Func::Current->block(index).incoming_blocks_.push_back(Block::Current);
-}
-
-Jump &Jump::Current() { return Func::Current->block(IR::Block::Current).jmp_; }
-
 std::string Addr::to_string() const {
   std::stringstream ss;
   switch (kind) {

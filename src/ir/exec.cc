@@ -70,7 +70,7 @@ void ReplEval(AST::Expression *expr) {
     }
 
     if (expr->type != Void) { expr->type->EmitRepr(expr_val); }
-    IR::Jump::Return();
+    IR::ReturnJump();
   }
 
   IR::ExecContext ctx;
@@ -96,9 +96,9 @@ namespace IR {
 ExecContext::ExecContext() : stack_(50) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
+  Val result;
   for (const auto &cmd : current_block().cmds_) {
-    auto result = ExecuteCmd(cmd);
-
+    result = ExecuteCmd(cmd);
     if (cmd.type != nullptr && cmd.type != Void) {
       ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.type);
@@ -107,20 +107,8 @@ BlockIndex ExecContext::ExecuteBlock() {
     }
   }
 
-  switch (current_block().jmp_.type) {
-  case Jump::Type::Uncond: return current_block().jmp_.block_index;
-  case Jump::Type::Cond: {
-    Val cond_val = current_block().jmp_.cond_data.cond;
-    ASSERT_EQ(cond_val.type, Bool);
-    Resolve(&cond_val);
-    return cond_val.value.as<bool>()
-               ? current_block().jmp_.cond_data.true_block
-               : current_block().jmp_.cond_data.false_block;
-  } break;
-  case Jump::Type::Ret: return BlockIndex{-1};
-  case Jump::Type::None: UNREACHABLE();
-  }
-  UNREACHABLE();
+  ASSERT(result.value.is<BlockIndex>(), "");
+  return result.value.as<BlockIndex>();
 }
 
 IR::Val Stack::Push(Pointer *ptr) {
@@ -485,6 +473,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               Architecture::InterprettingMachine().bytes(Uint)),
           ptr_cast<Pointer>(cmd.type)->pointee);
     }
+  case Op::CondJump: return resolved[resolved[0].value.as<bool>() ? 1 : 2];
+  case Op::UncondJump: return resolved[0];
+  case Op::ReturnJump: return Val::Block(BlockIndex{-1});
   }
   UNREACHABLE();
 }

@@ -27,7 +27,6 @@ void Array::EmitInit(IR::Val id_val) {
     init_func       = IR::Func::All.back().get();
     init_func->name = "init." + Mangle(this);
 
-
     CURRENT_FUNC(init_func) {
       IR::Block::Current = init_func->entry();
 
@@ -38,20 +37,20 @@ void Array::EmitInit(IR::Val id_val) {
       auto ptr        = IR::Index(init_func->Argument(0), IR::Val::Uint(0));
       auto length_var = IR::Val::Uint(len);
       auto end_ptr    = IR::PtrIncr(ptr, length_var);
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
       auto phi           = IR::Phi(Ptr(data_type));
       auto phi_reg       = IR::Func::Current->Command(phi).reg();
-      IR::Jump::Conditional(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
+      IR::CondJump(IR::Eq(phi_reg, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
       data_type->EmitInit(phi_reg);
       auto incr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
-      IR::Jump::Unconditional(loop_phi);
+      IR::UncondJump(loop_phi);
 
       IR::Block::Current = exit_block;
-      IR::Jump::Return();
+      IR::ReturnJump();
 
       IR::Func::Current->SetArgs(phi, {IR::Val::Block(init_func->entry()), ptr,
                                        IR::Val::Block(loop_body), incr});
@@ -90,7 +89,7 @@ void Struct::EmitInit(IR::Val id_val) {
         }
       }
 
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
 
@@ -139,21 +138,21 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       auto from_start = IR::Index(from_arg, IR::Val::Uint(0));
       auto to_start   = IR::Index(to_arg, IR::Val::Uint(0));
       auto from_end   = IR::PtrIncr(from_start, from_len);
-      IR::Jump::Unconditional(phi_block);
+      IR::UncondJump(phi_block);
 
       IR::Block::Current = phi_block;
       auto from_phi      = IR::Phi(Ptr(from_type->data_type));
       auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
       auto to_phi        = IR::Phi(Ptr(to_type->data_type));
       auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
-      IR::Jump::Conditional(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
+      IR::CondJump(IR::Ne(from_phi_reg, from_end), body_block, exit_block);
 
       IR::Block::Current = body_block;
       InitFn(from_type->data_type, to_type->data_type, PtrCallFix(from_phi_reg),
              to_phi_reg);
       auto from_incr = IR::PtrIncr(from_phi_reg, IR::Val::Uint(1));
       auto to_incr   = IR::PtrIncr(to_phi_reg, IR::Val::Uint(1));
-      IR::Jump::Unconditional(phi_block);
+      IR::UncondJump(phi_block);
 
       fn->SetArgs(from_phi, {IR::Val::Block(fn->entry()), from_start,
                              IR::Val::Block(body_block), from_incr});
@@ -161,7 +160,7 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
                            IR::Val::Block(body_block), to_incr});
 
       IR::Block::Current = exit_block;
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
   return IR::Val::Func(insertion.first->second);
@@ -182,7 +181,7 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
                PtrCallFix(IR::Field(fn->Argument(0), i)),
                IR::Field(fn->Argument(1), i));
       }
-      IR::Jump::Return();
+      IR::ReturnJump();
     }
   }
   return IR::Val::Func(insertion.first->second);

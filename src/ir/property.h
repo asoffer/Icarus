@@ -58,7 +58,23 @@ template <> struct SafeMath<i32> {
   }
 };
 
+enum class Validity : char { Always, MaybeNot, Unknown, Never };
+
 namespace property {
+struct Property : public base::Cast<Property> {
+  Property() {}
+  virtual ~Property() {}
+  virtual Property *Clone() const                  = 0;
+  virtual Validity Validate(const Val &val) const  = 0;
+  virtual void WriteTo(std::ostream &os) const     = 0;
+  virtual bool Implies(const Property &prop) const = 0;
+};
+
+inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
+  prop.WriteTo(os);
+  return os;
+}
+
 template <typename Number> struct Range : Property {
   Range() {}
   Range(Number min_val, Number max_val) : min_(min_val), max_(max_val) {}
@@ -163,9 +179,14 @@ struct BoolProperty : Property {
     // TODO is this really what I mean by "implies"?
     switch (prop.as<BoolProperty>().kind) {
     case Kind::True: return kind == Kind::True;
-    case Kind::False: return true;
-    default: NOT_YET();
+    case Kind::False: return kind == Kind::False;
+    case Kind::Reg:
+      return kind == Kind::Reg && prop.as<BoolProperty>().reg == reg;
+    case Kind::NegReg:
+      return kind == Kind::NegReg && prop.as<BoolProperty>().reg == reg;
+    case Kind::Unknown: return kind == Kind::Unknown;
     }
+    UNREACHABLE();
   }
 
   Register reg;
