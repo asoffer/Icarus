@@ -36,7 +36,8 @@ public:
 
   // TODO this should be unordered, but I haven't written a hash yet.
   std::set<std::pair<const Block *, Register>> stale_;
-
+  std::unordered_map<const Block *, std::unordered_set<const Block *>>
+      reachability_;
 
 private:
   PropertyMap()                    = delete;
@@ -45,7 +46,25 @@ private:
       : fn_(fn),
         return_properties_(fn->type->output->is<Tuple>()
                                ? fn->type->output->as<Tuple>().entries.size()
-                               : 1) {}
+                               : 1) {
+    for (const auto &block : fn_->blocks_) {
+      const auto &cmd = block.cmds_.back();
+      switch (cmd.op_code) {
+        case Op::UncondJump:
+          reachability_[&fn_->block(cmd.args[0].value.as<BlockIndex>())].insert(
+              &block);
+          break;
+        case Op::CondJump:
+          reachability_[&fn_->block(cmd.args[1].value.as<BlockIndex>())].insert(
+              &block);
+          reachability_[&fn_->block(cmd.args[2].value.as<BlockIndex>())].insert(
+              &block);
+          break;
+        case Op::ReturnJump: break;
+        default: UNREACHABLE();
+      }
+    }
+  }
 };
 
 base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
@@ -75,6 +94,11 @@ void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
     const auto &stale_cmd = fn_->Command(cmd_index);
     stale_.emplace(&block, stale_cmd.result);
     const auto &last_cmd = block.cmds_.back();
+    // TODO check properties to see if it's worth marking things stale on this
+    // block. If you can't reach those blocks, you shouldn't mark those entries
+    // as stale. Then you'll need a bidirectional reachability map. From here
+    // you'll want to know which blocks are reachable. But also from each block
+    // you'll want to know where you could have come from.
     switch (last_cmd.op_code) {
     case Op::UncondJump:
       stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
@@ -177,9 +201,21 @@ void PropertyMap::Compute() {
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
         fn_->dump();
-        for (size_t i = 1; i < cmd.args.size(); i += 2) {
-          props.push_back(*GetBoolProperty(*block, cmd.args[i]));
-          LOG << props.back();
+        for (size_t i = 0; i < cmd.args.size(); i += 2) {
+          auto *incoming_block =
+              &fn_->block(cmd.args[i].value.as<BlockIndex>());
+          auto iter = reachability_[block].find(incoming_block);
+          if (iter == reachability_[block].end()) { continue; }
+          props.push_back(*GetBoolProperty(*block, cmd.args[i + 1]));
+        }
+
+        if (props.empty()) {
+          // This block is no longer reachable!
+          for (auto &entry : reachability_) { entry.second.erase(block); }
+        } else {
+          // TODO this is not a great way to do merging because it's not genric,
+          // but it's simple for now.
+          SetProp(*block, cmd, BoolProperty::Merge(props));
         }
       } else {
         NOT_YET();
@@ -197,6 +233,25 @@ void PropertyMap::Compute() {
       } else {
         LOG << "Non-register return " << cmd.args[1].to_string();
         NOT_YET();
+      }
+    } break;
+    case Op::CondJump: {
+      auto prop = GetProp(*block, cmd.args[0].value.as<Register>());
+      if (prop == nullptr) { continue; }
+      auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
+      if (bool_prop == nullptr) { continue; }
+      auto &true_block  = fn_->block(cmd.args[1].value.as<BlockIndex>());
+      auto &false_block = fn_->block(cmd.args[2].value.as<BlockIndex>());
+
+      if (bool_prop->kind == BoolProperty::Kind::True) {
+        SetProp(true_block, cmd, base::make_owned<BoolProperty>(true));
+        reachability_[&false_block].erase(block);
+      } else if (bool_prop->kind == BoolProperty::Kind::True) {
+        SetProp(false_block, cmd, base::make_owned<BoolProperty>(false));
+        reachability_[&true_block].erase(block);
+      } else {
+        SetProp(true_block, cmd, base::make_owned<BoolProperty>(true));
+        SetProp(false_block, cmd, base::make_owned<BoolProperty>(false));
       }
     } break;
     default:
@@ -231,9 +286,12 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
           auto iter = block_data.emplace(cmd.result, nullptr).first;
           prop_map.stale_.emplace(&block, iter->first);
         } break;
-        case Op::ReturnJump: // I'm pretty sure nothing needs to be done for
-                             // this.
-          break;
+        case Op::ReturnJump: break;
+        case Op::UncondJump: break;
+        case Op::CondJump: {
+          auto iter = block_data.emplace(cmd.result, nullptr).first;
+          prop_map.stale_.emplace(&block, iter->first);
+        } break;
         default: {
           cmd.dump(10);
           LOG << "Not yet handled.";

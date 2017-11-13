@@ -189,6 +189,27 @@ struct BoolProperty : Property {
     UNREACHABLE();
   }
 
+  static base::owned_ptr<BoolProperty>
+  Merge(const std::vector<BoolProperty> &props) {
+    // TODO this is not the most efficient way to do this because there are lots
+    // of early exit criteria, but I'm lazy and this is unlikely to stick
+    // around (we need to be able to merge properties generically).
+    Kind expected_kind = props[0].kind;
+    std::unordered_set<Register> regs;
+    for (const auto &prop : props) {
+      if (prop.kind == Kind::Unknown || prop.kind != expected_kind) {
+        return base::make_owned<BoolProperty>();
+      }
+      regs.insert(prop.reg);
+    }
+
+    if (regs.size() != 1) { return base::make_owned<BoolProperty>(); }
+    auto result  = base::make_owned<BoolProperty>();
+    result->kind = expected_kind;
+    result->reg  = *regs.begin();
+    return result;
+  }
+
   Register reg;
   enum class Kind : char { Unknown, True, False, Reg, NegReg } kind;
 };
