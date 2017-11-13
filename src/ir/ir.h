@@ -387,7 +387,6 @@ struct Func {
   std::vector<AST::Expression *> preconditions_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
-  std::vector<CmdIndex> no_dependencies_;
   std::unordered_map<Register, std::vector<CmdIndex>> references_;
   mutable int num_errors_ = -1; // -1 indicates not yet validated
 };

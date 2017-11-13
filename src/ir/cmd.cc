@@ -18,20 +18,11 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
   type                            = t;
   Func::Current->reg_map_[result] = cmd_index;
 
-  bool has_dependencies = false;
-
-  // TODO deal with specialness of phi-nodes
-  if (op == Op::Phi) { has_dependencies = true; }
-
   for (const auto &fn_arg : args) {
     if (fn_arg.value.is<Register>()) {
-      has_dependencies = true;
       Func::Current->references_[fn_arg.value.as<Register>()].push_back(
-           cmd_index);
+          cmd_index);
     }
-  }
-  if (!has_dependencies) {
-    IR::Func::Current->no_dependencies_.push_back(cmd_index);
   }
 }
 
@@ -516,8 +507,14 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   // TODO this should only be called for phi nodes
-  // TODO recompute dependencies.
-  Command(cmd_index).args = std::move(args);
+  auto &cmd = Command(cmd_index);
+  cmd.args  = std::move(args);
+  for (const auto &fn_arg : cmd.args) {
+    if (fn_arg.value.is<Register>()) {
+      Func::Current->references_[fn_arg.value.as<Register>()].push_back(
+          cmd_index);
+    }
+  }
 }
 
 } // namespace IR

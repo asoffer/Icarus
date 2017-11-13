@@ -69,14 +69,35 @@ private:
 
 base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
                                                Register reg) {
-  return properties_[&block].find(reg)->second;
+  const auto &block_props = properties_[&block];
+  auto iter               = block_props.find(reg);
+  if (iter != block_props.end()) { return iter->second; }
+  const auto &reach_blocks = reachability_[&block];
+  if (reach_blocks.size() == 1) {
+    return GetProp(**reachability_[&block].begin(), reg);
+  } else if (reach_blocks.empty()) {
+    return nullptr;
+  } else {
+    auto &cmd = fn_->Command(reg);
+    if (cmd.type == Bool) {
+      std::vector<BoolProperty> props;
+      for (auto* incoming : reach_blocks) {
+        auto prop = GetProp(*incoming, reg);
+        if (prop == nullptr) { continue; }
+        props.push_back(prop->as<BoolProperty>());
+      }
+      return BoolProperty::Merge(props);
+    } else {
+      UNREACHABLE();
+    }
+  }
 }
 
 void PropertyMap::SetProp(const Block &block, const Cmd &cmd,
                           base::owned_ptr<Property> new_prop) {
   if (cmd.type == nullptr || cmd.type == Void) { return; }
   auto &old_prop = properties_[&block][cmd.result];
-  if (!old_prop->Implies(*new_prop)) {
+  if (old_prop == nullptr || !old_prop->Implies(*new_prop)) {
     old_prop = std::move(new_prop);
     MarkReferencesStale(block, cmd.result);
   }
@@ -88,7 +109,9 @@ void PropertyMap::SetProp(ReturnValue ret, base::owned_ptr<Property> prop) {
 }
 
 void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
+  if (reg.is_arg(*fn_)) { return; }
   auto iter = fn_->references_.find(reg);
+  ASSERT(iter != fn_->references_.end(), "");
 
   for (const auto &cmd_index : iter->second) {
     const auto &stale_cmd = fn_->Command(cmd_index);
@@ -200,7 +223,6 @@ void PropertyMap::Compute() {
     case Op::Phi: {
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
-        fn_->dump();
         for (size_t i = 0; i < cmd.args.size(); i += 2) {
           auto *incoming_block =
               &fn_->block(cmd.args[i].value.as<BlockIndex>());
@@ -246,7 +268,7 @@ void PropertyMap::Compute() {
       if (bool_prop->kind == BoolProperty::Kind::True) {
         SetProp(true_block, cmd, base::make_owned<BoolProperty>(true));
         reachability_[&false_block].erase(block);
-      } else if (bool_prop->kind == BoolProperty::Kind::True) {
+      } else if (bool_prop->kind == BoolProperty::Kind::False) {
         SetProp(false_block, cmd, base::make_owned<BoolProperty>(false));
         reachability_[&true_block].erase(block);
       } else {
