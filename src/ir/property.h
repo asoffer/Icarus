@@ -96,9 +96,23 @@ template <typename Number> struct Range : Property {
     return min_ >= range_prop.min_ && max_ <= range_prop.max_;
   }
 
+  static base::owned_ptr<Range<Number>>
+  Merge(const std::vector<Range<Number>> &props) {
+    // TODO this is not the most efficient way to do this because there are lots
+    // of early exit criteria, but I'm lazy and this is unlikely to stick
+    // around (we need to be able to merge properties generically).
+
+    auto result = base::make_owned<Range<Number>>(props.front());
+    for (const auto &prop : props) {
+      result->min_ = std::min(result->min_, prop.min_);
+      result->max_ = std::max(result->max_, prop.max_);
+    }
+    return result;
+  }
+
   // Inclusive bounds
-  Number min_ = std::numeric_limits<i32>::lowest();
-  Number max_ = std::numeric_limits<i32>::max();
+  Number min_ = std::numeric_limits<Number>::lowest();
+  Number max_ = std::numeric_limits<Number>::max();
 };
 
 template <typename Number>
@@ -184,7 +198,7 @@ struct BoolProperty : Property {
       return kind == Kind::Reg && prop.as<BoolProperty>().reg == reg;
     case Kind::NegReg:
       return kind == Kind::NegReg && prop.as<BoolProperty>().reg == reg;
-    case Kind::Unknown: return kind == Kind::Unknown;
+    case Kind::Unknown: return true;
     }
     UNREACHABLE();
   }

@@ -5,185 +5,247 @@
 
 namespace IR {
 namespace property {
-struct PropertyMap {
-public:
-  PropertyMap(PropertyMap &&) = default;
-
-  static PropertyMap
-  Make(const Func *fn, std::vector<base::owned_ptr<property::Property>> args,
-       std::queue<Func *> *validation_queue,
-       std::vector<std::pair<const Block *, const Cmd *>> *calls);
-
-  base::owned_ptr<Property> GetProp(const Block &block, Register reg);
-  void SetProp(const Block &block, const Cmd &cmd,
-               base::owned_ptr<Property> prop);
-  void SetProp(ReturnValue ret, base::owned_ptr<Property> prop);
-  void MarkReferencesStale(const Block &block, Register reg);
-
-  base::owned_ptr<Range<i32>> GetIntProperty(const Block &block, Val arg);
-  base::owned_ptr<BoolProperty> GetBoolProperty(const Block &block, Val arg);
-  void Compute();
-
-  const Func *fn_;
-  // TODO allow multiple properties
-  std::unordered_map<const Block *,
-                     std::unordered_map<Register, base::owned_ptr<Property>>>
-      properties_;
-
-  // Probably better to use a vector, but for type safety, using a map.
-  // TODO: Type safe vectors.
-  std::unordered_map<ReturnValue, base::owned_ptr<Property>> return_properties_;
-
-  // TODO this should be unordered, but I haven't written a hash yet.
-  std::set<std::pair<const Block *, Register>> stale_;
+struct PropView {
+  std::unordered_map<Register, base::owned_ptr<Property>> props_;
+  std::unordered_map<ReturnValue, base::owned_ptr<Property>> ret_props_;
   std::unordered_map<const Block *, std::unordered_set<const Block *>>
-      reachability_;
-
-private:
-  PropertyMap()                    = delete;
-  PropertyMap(const PropertyMap &) = delete;
-  explicit PropertyMap(const Func *fn)
-      : fn_(fn),
-        return_properties_(fn->type->output->is<Tuple>()
-                               ? fn->type->output->as<Tuple>().entries.size()
-                               : 1) {
-    for (const auto &block : fn_->blocks_) {
-      const auto &cmd = block.cmds_.back();
-      switch (cmd.op_code) {
-        case Op::UncondJump:
-          reachability_[&fn_->block(cmd.args[0].value.as<BlockIndex>())].insert(
-              &block);
-          break;
-        case Op::CondJump:
-          reachability_[&fn_->block(cmd.args[1].value.as<BlockIndex>())].insert(
-              &block);
-          reachability_[&fn_->block(cmd.args[2].value.as<BlockIndex>())].insert(
-              &block);
-          break;
-        case Op::ReturnJump: break;
-        default: UNREACHABLE();
-      }
-    }
-  }
+      incoming_;
 };
 
-base::owned_ptr<Property> PropertyMap::GetProp(const Block &block,
-                                               Register reg) {
-  const auto &block_props = properties_[&block];
-  auto iter               = block_props.find(reg);
-  if (iter != block_props.end()) { return iter->second; }
-  const auto &reach_blocks = reachability_[&block];
-  if (reach_blocks.size() == 1) {
-    return GetProp(**reachability_[&block].begin(), reg);
-  } else if (reach_blocks.empty()) {
-    return nullptr;
-  } else {
-    auto &cmd = fn_->Command(reg);
-    if (cmd.type == Bool) {
-      std::vector<BoolProperty> props;
-      for (auto* incoming : reach_blocks) {
-        auto prop = GetProp(*incoming, reg);
-        if (prop == nullptr) { continue; }
-        props.push_back(prop->as<BoolProperty>());
+static base::owned_ptr<Property> DefaultProperty(Type* t) {
+  if (t == Bool) { return base::make_owned<BoolProperty>(); }
+  if (t == Int) { return base::make_owned<Range<i32>>(); }
+  return nullptr;
+}
+
+struct PropDB {
+  PropDB(const Func *fn) : fn_(fn) {
+    // Build a generic reachability set once and copy it for each view.
+    // TODO copy-on-write
+    std::unordered_map<const Block *, std::unordered_set<const Block *>>
+        incoming;
+    for (const auto &block : fn_->blocks_) {
+      const auto &last_cmd = block.cmds_.back();
+      switch (last_cmd.op_code) {
+      case Op::UncondJump:
+        incoming[&fn_->block(last_cmd.args[0].value.as<BlockIndex>())].insert(
+            &block);
+        break;
+      case Op::CondJump:
+        incoming[&fn_->block(last_cmd.args[1].value.as<BlockIndex>())].insert(
+            &block);
+        incoming[&fn_->block(last_cmd.args[2].value.as<BlockIndex>())].insert(
+            &block);
+        break;
+      case Op::ReturnJump: /* Nothing to do */ break;
+      default: UNREACHABLE();
       }
-      return BoolProperty::Merge(props);
-    } else {
-      UNREACHABLE();
+    }
+
+    for (const auto &viewing_block : fn_->blocks_) {
+      auto &view = views_[&viewing_block];
+      if (fn_->num_args_ == 1) {
+        auto prop = DefaultProperty(fn_->type->input);
+        ASSERT(prop.get() != nullptr, "");
+        view.props_[Register(0)] = std::move(prop);
+      } else if (fn_->num_args_ > 1) {
+        for (i32 i = 0; i < static_cast<i32>(fn_->num_args_); ++i) {
+          Type *entry_type = ptr_cast<Tuple>(fn_->type->input)->entries[i];
+          auto prop        = DefaultProperty(entry_type);
+          ASSERT(prop.get() != nullptr, "");
+          view.props_[Register(i)] = std::move(prop);
+        }
+      }
+      for (const auto &block : fn_->blocks_) {
+        for (const auto &cmd : block.cmds_) {
+          auto prop = DefaultProperty(cmd.type);
+          if (prop.get() != nullptr) {
+            view.props_[cmd.result] = std::move(prop);
+          }
+        }
+      }
+      view.incoming_ = incoming;
+
+      // TODO store num_rets. (on function type), or have it computable.
+      i32 num_rets;
+      if (fn_->type->output->is<Tuple>()) {
+        num_rets =
+            static_cast<i32>(fn_->type->output->as<Tuple>().entries.size());
+      } else if (fn_->type->output == Void) {
+        num_rets = 0;
+      } else {
+        num_rets = 1;
+      }
+      // TODO should be stored on PropView to get per-block views of return
+      // values.
+      for (i32 i = 0; i < num_rets; ++i) {
+        view.ret_props_[ReturnValue(i)] = base::make_owned<BoolProperty>();
+      }
+    }
+
+    // Only mark things on the entry view and entry block as stale to begin
+    // with. All else can be propogated.
+    const auto& entry_block = fn_->blocks_[0];
+    for (const auto &cmd : entry_block.cmds_) {
+      if (cmd.type == nullptr || cmd.type == Void) { continue; }
+      MarkReferencesStale(entry_block, cmd.result);
     }
   }
-}
 
-void PropertyMap::SetProp(const Block &block, const Cmd &cmd,
-                          base::owned_ptr<Property> new_prop) {
-  if (cmd.type == nullptr || cmd.type == Void) { return; }
-  auto &old_prop = properties_[&block][cmd.result];
-  if (old_prop == nullptr || !old_prop->Implies(*new_prop)) {
-    old_prop = std::move(new_prop);
-    MarkReferencesStale(block, cmd.result);
-  }
-}
+  PropDB(PropDB &&) = default;
 
-void PropertyMap::SetProp(ReturnValue ret, base::owned_ptr<Property> prop) {
-  // TODO merge these instead of just assigning
-  return_properties_[ret] = std::move(prop);
-}
+  void MarkReferencesStale(const Block &block, Register reg) {
+    auto iter = fn_->references_.find(reg);
+    ASSERT(iter != fn_->references_.end(), "");
+    const auto &references = iter->second;
 
-void PropertyMap::MarkReferencesStale(const Block &block, Register reg) {
-  if (reg.is_arg(*fn_)) { return; }
-  auto iter = fn_->references_.find(reg);
-  ASSERT(iter != fn_->references_.end(), "");
+    for (const auto &cmd_index : references) {
+      const auto &stale_cmd = fn_->Command(cmd_index);
+      stale_.emplace(&block, stale_cmd.result);
+    }
 
-  for (const auto &cmd_index : iter->second) {
-    const auto &stale_cmd = fn_->Command(cmd_index);
-    stale_.emplace(&block, stale_cmd.result);
     const auto &last_cmd = block.cmds_.back();
-    // TODO check properties to see if it's worth marking things stale on this
-    // block. If you can't reach those blocks, you shouldn't mark those entries
-    // as stale. Then you'll need a bidirectional reachability map. From here
-    // you'll want to know which blocks are reachable. But also from each block
-    // you'll want to know where you could have come from.
     switch (last_cmd.op_code) {
     case Op::UncondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
-                     stale_cmd.result);
+      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()), reg);
       break;
     case Op::CondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()),
-                     stale_cmd.result);
-      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()),
-                     stale_cmd.result);
+      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()), reg);
+      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()), reg);
       break;
     case Op::ReturnJump: /* Nothing to do */ break;
     default: UNREACHABLE();
     }
   }
-}
 
-base::owned_ptr<Range<i32>> PropertyMap::GetIntProperty(const Block &block,
-                                                        Val arg) {
-  if (arg.value.is<Register>()) {
-    auto reg = arg.value.as<Register>();
-    return GetProp(block, reg).as<Range<i32>>();
-  } else if (arg.value.is<i32>()) {
-    return base::make_owned<Range<i32>>(arg.value.as<i32>(),
-                                        arg.value.as<i32>());
+  static PropDB Make(const Func *fn,
+                     std::vector<base::owned_ptr<Property>> args,
+                     std::queue<Func *> *validation_queue,
+                     std::vector<std::pair<const Block *, const Cmd *>> *calls);
+
+  base::owned_ptr<Property> Get(const Block &block, Register reg) {
+    return views_[&block].props_[reg];
   }
-  UNREACHABLE();
-}
 
-base::owned_ptr<BoolProperty> PropertyMap::GetBoolProperty(const Block &block,
-                                                           Val arg) {
-  if (arg.value.is<Register>()) {
-    auto reg = arg.value.as<Register>();
-    return GetProp(block, reg).as<BoolProperty>();
-  } else if (arg.value.is<bool>()) {
-    return base::make_owned<BoolProperty>(arg.value.as<bool>());
+  void Set(const Block &block, Register reg,
+           base::owned_ptr<Property> new_prop) {
+    auto &old_prop = views_[&block].props_[reg];
+    if (!old_prop->Implies(*new_prop)) {
+      block.dump(28);
+      std::cerr << "\n";
+      fn_->Command(reg).dump(28);
+      LOG << "=> " << *new_prop;
+      std::cerr << "\n";
+
+      old_prop = std::move(new_prop);
+      MarkReferencesStale(block, reg);
+    }
   }
-  UNREACHABLE();
-}
 
-void PropertyMap::Compute() {
+  void Set(const Block &block, ReturnValue ret,
+           base::owned_ptr<Property> new_prop) {
+    // TODO merge these instead of just assigning
+    auto &old_prop = views_[&block].ret_props_[ret];
+    if (!old_prop->Implies(*new_prop)) {
+      LOG << "In view " << &block << " replacing " << *old_prop << " with "
+          << *new_prop;
+      old_prop = std::move(new_prop);
+    }
+  }
+
+  void SetUnreachable(const Block &view, const Block &from, const Block &to) {
+    LOG << &from << " => " << &to << " Is now unreachable.";
+    // TODO clean up stales still referencing this blocks.
+    auto &reach_set = views_[&view].incoming_[&to];
+    reach_set.erase(&from);
+    if (!reach_set.empty()) { return; }
+
+    // TODO What about weak back-references? We don't yet handle loops.
+    const auto &last_cmd = to.cmds_.back();
+    switch (last_cmd.op_code) {
+    case Op::UncondJump:
+      SetUnreachable(view, to,
+                     fn_->block(last_cmd.args[0].value.as<BlockIndex>()));
+      break;
+    case Op::CondJump:
+      SetUnreachable(view, to,
+                     fn_->block(last_cmd.args[1].value.as<BlockIndex>()));
+      SetUnreachable(view, to,
+                     fn_->block(last_cmd.args[2].value.as<BlockIndex>()));
+
+      break;
+    case Op::ReturnJump: /* Nothing to do */ break;
+    default: UNREACHABLE();
+    }
+  }
+
+  bool Reachable(const Block &view, const Block &from, const Block &to) const {
+    auto prop_view_iter = views_.find(&view);
+    ASSERT(prop_view_iter != views_.end(), "");
+
+    const auto &incoming_map  = prop_view_iter->second.incoming_;
+    auto incoming_set_iter = incoming_map.find(&to);
+    ASSERT(incoming_set_iter != incoming_map.end(), "");
+    const auto &incoming_set = incoming_set_iter->second;
+    bool result = incoming_set.find(&from) != incoming_set.end();
+    return result;
+  }
+
+  base::owned_ptr<Range<i32>> GetIntProp(const Block &block, Val arg) {
+    if (arg.value.is<Register>()) {
+      auto reg = arg.value.as<Register>();
+      return Get(block, reg).as<Range<i32>>();
+    } else if (arg.value.is<i32>()) {
+      return base::make_owned<Range<i32>>(arg.value.as<i32>(),
+                                          arg.value.as<i32>());
+    }
+    UNREACHABLE();
+  }
+
+  base::owned_ptr<BoolProperty> GetBoolProp(const Block &block, Val arg) {
+    if (arg.value.is<Register>()) {
+      auto reg = arg.value.as<Register>();
+      return Get(block, reg).as<BoolProperty>();
+    } else if (arg.value.is<bool>()) {
+      return base::make_owned<BoolProperty>(arg.value.as<bool>());
+    }
+    UNREACHABLE();
+  }
+
+  void Compute();
+
+  const Func *fn_;
+  std::unordered_map<const Block *, PropView> views_;
+  // TODO should be an unordered_set but I haven't define an appropriate hash
+  // function for the pair yet.
+  std::set<std::pair<const Block *, Register>> stale_;
+  // TODO should be per block
+};
+
+void PropDB::Compute() {
   while (!stale_.empty()) {
     auto iter          = stale_.begin();
     const Block *block = iter->first;
     const Register reg = iter->second;
-    // TODO think about arguments being marked as stale
     if (reg.is_arg(*fn_)) {
-      LOG << "argument" << reg << " was marked as stale.";
+      // TODO arguments can be stale: viewed from a different block you might
+      // condition on them having some property and want to use that in
+      // verification. You need to handle this properly which likely just
+      // entails merging from incoming blocks.
       stale_.erase(iter);
       continue;
     }
 
-    const Cmd &cmd     = fn_->Command(reg);
-    auto prop          = GetProp(*block, cmd.result);
+    const Cmd &cmd = fn_->Command(reg);
+    auto prop      = Get(*block, cmd.result);
     stale_.erase(iter);
 
     switch (cmd.op_code) {
     case Op::Neg: {
       if (cmd.type == Int) {
-        SetProp(*block, cmd, -GetIntProperty(*block, cmd.args[0]));
+        Set(*block, cmd.result, -GetIntProp(*block, cmd.args[0]));
       } else if (cmd.type == Bool) {
-        SetProp(*block, cmd, !GetBoolProperty(*block, cmd.args[0]));
+        Set(*block, cmd.result, !GetBoolProp(*block, cmd.args[0]));
       } else {
         UNREACHABLE();
       }
@@ -191,8 +253,8 @@ void PropertyMap::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.type == Int) {                                                     \
-      SetProp(*block, cmd, GetIntProperty(*block, cmd.args[0])                 \
-                               case_sym GetIntProperty(*block, cmd.args[1]));  \
+      Set(*block, cmd.result, GetIntProp(*block, cmd.args[0])                  \
+                                  case_sym GetIntProp(*block, cmd.args[1]));   \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -204,8 +266,8 @@ void PropertyMap::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.args[0].type == Int) {                                             \
-      SetProp(*block, cmd, GetIntProperty(*block, cmd.args[0])                 \
-                               case_sym GetIntProperty(*block, cmd.args[1]));  \
+      Set(*block, cmd.result, GetIntProp(*block, cmd.args[0])                  \
+                                  case_sym GetIntProp(*block, cmd.args[1]));   \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -216,28 +278,29 @@ void PropertyMap::Compute() {
       CASE(Gt, >);
 #undef CASE
     case Op::Xor: {
-      SetProp(*block, cmd, GetBoolProperty(*block, cmd.args[0]) ^
-                               GetBoolProperty(*block, cmd.args[1]));
+      Set(*block, cmd.result,
+          GetBoolProp(*block, cmd.args[0]) ^ GetBoolProp(*block, cmd.args[1]));
 
     } break;
     case Op::Phi: {
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
         for (size_t i = 0; i < cmd.args.size(); i += 2) {
-          auto *incoming_block =
-              &fn_->block(cmd.args[i].value.as<BlockIndex>());
-          auto iter = reachability_[block].find(incoming_block);
-          if (iter == reachability_[block].end()) { continue; }
-          props.push_back(*GetBoolProperty(*block, cmd.args[i + 1]));
+          if (Reachable(
+                  /* view = */ *block,
+                  /* from = */ fn_->block(cmd.args[i].value.as<BlockIndex>()),
+                  /*   to = */ fn_->block(reg))) {
+            props.push_back(*GetBoolProp(*block, cmd.args[i + 1]));
+          }
         }
 
         if (props.empty()) {
           // This block is no longer reachable!
-          for (auto &entry : reachability_) { entry.second.erase(block); }
+          LOG << "No longer reachable";
         } else {
           // TODO this is not a great way to do merging because it's not genric,
           // but it's simple for now.
-          SetProp(*block, cmd, BoolProperty::Merge(props));
+          Set(*block, cmd.result, BoolProperty::Merge(props));
         }
       } else {
         NOT_YET();
@@ -250,30 +313,26 @@ void PropertyMap::Compute() {
     case Op::Nop: break;
     case Op::SetReturn: {
       if (cmd.args[1].value.is<Register>()) {
-        SetProp(cmd.args[0].value.as<ReturnValue>(),
-                GetProp(*block, cmd.args[1].value.as<Register>()));
+        Set(*block, cmd.args[0].value.as<ReturnValue>(),
+            Get(*block, cmd.args[1].value.as<Register>()));
       } else {
         LOG << "Non-register return " << cmd.args[1].to_string();
         NOT_YET();
       }
     } break;
     case Op::CondJump: {
-      auto prop = GetProp(*block, cmd.args[0].value.as<Register>());
-      if (prop == nullptr) { continue; }
+      auto prop       = Get(*block, cmd.args[0].value.as<Register>());
       auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
       if (bool_prop == nullptr) { continue; }
       auto &true_block  = fn_->block(cmd.args[1].value.as<BlockIndex>());
       auto &false_block = fn_->block(cmd.args[2].value.as<BlockIndex>());
 
       if (bool_prop->kind == BoolProperty::Kind::True) {
-        SetProp(true_block, cmd, base::make_owned<BoolProperty>(true));
-        reachability_[&false_block].erase(block);
+        SetUnreachable(/* view = */ *block, /* from = */ fn_->block(reg),
+                       /*   to = */ false_block);
       } else if (bool_prop->kind == BoolProperty::Kind::False) {
-        SetProp(false_block, cmd, base::make_owned<BoolProperty>(false));
-        reachability_[&true_block].erase(block);
-      } else {
-        SetProp(true_block, cmd, base::make_owned<BoolProperty>(true));
-        SetProp(false_block, cmd, base::make_owned<BoolProperty>(false));
+        SetUnreachable(/* view = */ *block, /* from = */ fn_->block(reg),
+                       /*   to = */ true_block);
       }
     } break;
     default:
@@ -283,56 +342,19 @@ void PropertyMap::Compute() {
   }
 }
 
-PropertyMap
-PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
-                  std::queue<Func *> *validation_queue,
-                  std::vector<std::pair<const Block *, const Cmd *>> *calls) {
-  PropertyMap prop_map(fn);
-
-  for (const auto &block : fn->blocks_) {
-    auto &block_data = prop_map.properties_[&block];
-    for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
-      block_data[Register(i)] = args[i];
-    }
+PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
+                    std::queue<Func *> *validation_queue,
+                    std::vector<std::pair<const Block *, const Cmd *>> *calls) {
+  PropDB db(fn);
+  const auto &entry_block = fn->blocks_[0];
+  auto &view              = db.views_[&entry_block];
+  for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
+    view.props_[Register(i)] = std::move(args[i]);
+    db.MarkReferencesStale(entry_block, Register(i));
   }
 
-  // Initialize everything as stale.
   for (const auto &block : fn->blocks_) {
-    auto &block_data = prop_map.properties_[&block];
     for (const auto &cmd : block.cmds_) {
-      if (cmd.type == nullptr || cmd.type == Void) {
-        switch (cmd.op_code) {
-        case Op::Print: {
-        } break;
-        case Op::SetReturn: {
-          auto iter = block_data.emplace(cmd.result, nullptr).first;
-          prop_map.stale_.emplace(&block, iter->first);
-        } break;
-        case Op::ReturnJump: break;
-        case Op::UncondJump: break;
-        case Op::CondJump: {
-          auto iter = block_data.emplace(cmd.result, nullptr).first;
-          prop_map.stale_.emplace(&block, iter->first);
-        } break;
-        default: {
-          cmd.dump(10);
-          LOG << "Not yet handled.";
-        }
-        }
-      } else if (cmd.type == Int) {
-        auto iter =
-            block_data.emplace(cmd.result, base::make_owned<Range<i32>>())
-                .first;
-        prop_map.stale_.emplace(&block, iter->first);
-      } else if (cmd.type == Bool) {
-        auto iter =
-            block_data
-                .emplace(cmd.result, base::make_owned<property::BoolProperty>())
-                .first;
-        prop_map.stale_.emplace(&block, iter->first);
-      }
-
-      // TODO actually, only put call in place if it needs to be verified
       if (cmd.op_code == Op::Call) {
         const auto &called_fn = cmd.args.back().value;
         if (called_fn.is<Func *>()) {
@@ -345,7 +367,8 @@ PropertyMap::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
       }
     }
   }
-  return prop_map;
+
+  return db;
 }
 } // namespace property
 
@@ -358,11 +381,14 @@ ValidatePrecondition(const Func *fn,
   // TODO. In this case we don't care about the calls vector at all. Ideally, we
   // should template it away.
   std::vector<std::pair<const Block *, const Cmd *>> calls;
-  auto prop_map = property::PropertyMap::Make(fn, std::move(args),
-                                              validation_queue, &calls);
-  prop_map.Compute();
-  auto *bool_prop = ptr_cast<property::BoolProperty>(
-      prop_map.return_properties_[ReturnValue(0)].get());
+  auto prop_db =
+      property::PropDB::Make(fn, std::move(args), validation_queue, &calls);
+  prop_db.Compute();
+  // TODO BlockIndex(1) may not be the only return!
+  auto *bool_prop =
+      ptr_cast<property::BoolProperty>(prop_db.views_[&fn->block(BlockIndex(1))]
+                                           .ret_props_[ReturnValue(0)]
+                                           .get());
   return bool_prop->kind == property::BoolProperty::Kind::True;
 }
 
@@ -371,14 +397,13 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   num_errors_ = 0;
 
   std::vector<std::pair<const Block *, const Cmd *>> calls;
-  auto prop_map =
-      property::PropertyMap::Make(this, {}, validation_queue, &calls);
+  auto prop_db = property::PropDB::Make(this, {}, validation_queue, &calls);
 
   if (calls.empty()) {
     // TODO This can be determined before even creating the property map.
     return num_errors_;
   }
-  prop_map.Compute();
+  prop_db.Compute();
 
   for (const auto &call : calls) {
     Func *called_fn            = call.second->args.back().value.as<Func *>();
@@ -392,7 +417,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       const auto &argument = args[i].value;
       if (argument.is<Register>()) {
         arg_props.push_back(
-            prop_map.GetProp(calling_block, argument.as<Register>()));
+            prop_db.Get(calling_block, argument.as<Register>()));
       } else if (argument.is<i32>()) {
         arg_props.push_back(base::make_owned<property::Range<i32>>(
             argument.as<i32>(), argument.as<i32>()));

@@ -35,7 +35,6 @@ struct Val;
 struct Func;
 struct Block;
 struct Cmd;
-struct Func;
 struct Register;
 struct ExecContext;
 } // namespace IR
@@ -343,6 +342,13 @@ struct Func {
   const Block &block(BlockIndex index) const { return blocks_.at(index.value); }
   Block &block(BlockIndex index) {
     return const_cast<Block &>(static_cast<const Func *>(this)->block(index));
+  }
+
+  const Block &block(Register reg) const {
+    return block(reg_map_.at(reg).block);
+  }
+  Block &block(Register reg) {
+    return const_cast<Block &>(static_cast<const Func *>(this)->block(reg));
   }
 
   const Cmd &Command(CmdIndex cmd_index) const {

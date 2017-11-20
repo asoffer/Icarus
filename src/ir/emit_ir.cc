@@ -669,13 +669,15 @@ IR::Val AST::ChainOp::EmitIR() {
     auto land_block = IR::Func::Current->AddBlock();
     std::vector<IR::Val> phi_args;
     phi_args.reserve(2 * exprs.size());
+    bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       auto val = exprs[i]->EmitIR();
 
       auto next_block = IR::Func::Current->AddBlock();
-      IR::CondJump(val, next_block, land_block);
+      IR::CondJump(val, is_or ? land_block : next_block,
+                   is_or ? next_block : land_block);
       phi_args.push_back(IR::Val::Block(IR::Block::Current));
-      phi_args.push_back(IR::Val::Bool(ops[0] == Language::Operator::Or));
+      phi_args.push_back(IR::Val::Bool(is_or));
 
       IR::Block::Current = next_block;
     }

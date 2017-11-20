@@ -1,5 +1,4 @@
 #ifndef ICARUS_BASE_OWNED_PTR_H
-
 #define ICARUS_BASE_OWNED_PTR_H
 
 #include <type_traits>

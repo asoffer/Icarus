@@ -122,9 +122,11 @@ Val Func::Argument(u32 n) {
 
 Func::Func(::Function *fn_type)
     : type(fn_type),
-      num_args_(fn_type->input->is<Tuple>()
-                   ? ptr_cast<Tuple>(fn_type->input)->entries.size()
-                   : 1),
+      num_args_(fn_type->input == Void
+                    ? 0
+                    : fn_type->input->is<Tuple>()
+                          ? ptr_cast<Tuple>(fn_type->input)->entries.size()
+                          : 1),
       num_regs_(fn_type->input->is<Tuple>()
                     ? static_cast<i32>(
                           ptr_cast<Tuple>(fn_type->input)->entries.size())
