@@ -506,13 +506,19 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 }
 
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
-  // TODO this should only be called for phi nodes
   auto &cmd = Command(cmd_index);
+  ASSERT(cmd.op_code == Op::Phi, "");
   cmd.args  = std::move(args);
   for (const auto &fn_arg : cmd.args) {
     if (fn_arg.value.is<Register>()) {
       Func::Current->references_[fn_arg.value.as<Register>()].push_back(
           cmd_index);
+    } else if (fn_arg.value.is<BlockIndex>()) {
+      Func::Current
+          ->references_[Func::Current->block(fn_arg.value.as<BlockIndex>())
+                            .cmds_.back()
+                            .result]
+          .push_back(cmd_index);
     }
   }
 }

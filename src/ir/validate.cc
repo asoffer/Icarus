@@ -10,6 +10,7 @@ struct PropView {
   std::unordered_map<ReturnValue, base::owned_ptr<Property>> ret_props_;
   std::unordered_map<const Block *, std::unordered_set<const Block *>>
       incoming_;
+  std::unordered_set<const Block *> unreachable_;
 };
 
 static base::owned_ptr<Property> DefaultProperty(Type* t) {
@@ -41,6 +42,8 @@ struct PropDB {
       default: UNREACHABLE();
       }
     }
+    // Hack: First entry depends on itself.
+    incoming[&fn_->block(BlockIndex{0})].insert(&fn_->block(BlockIndex{0}));
 
     for (const auto &viewing_block : fn_->blocks_) {
       auto &view = views_[&viewing_block];
@@ -96,18 +99,20 @@ struct PropDB {
 
   void MarkReferencesStale(const Block &block, Register reg) {
     auto iter = fn_->references_.find(reg);
-    ASSERT(iter != fn_->references_.end(), "");
-    const auto &references = iter->second;
+    if (iter != fn_->references_.end()) {
+      const auto &references = iter->second;
 
-    for (const auto &cmd_index : references) {
-      const auto &stale_cmd = fn_->Command(cmd_index);
-      stale_.emplace(&block, stale_cmd.result);
+      for (const auto &cmd_index : references) {
+        const auto &stale_cmd = fn_->Command(cmd_index);
+        stale_.emplace(&block, stale_cmd.result);
+      }
     }
 
     const auto &last_cmd = block.cmds_.back();
     switch (last_cmd.op_code) {
     case Op::UncondJump:
       stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()), reg);
+
       break;
     case Op::CondJump:
       stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()), reg);
@@ -127,56 +132,93 @@ struct PropDB {
     return views_[&block].props_[reg];
   }
 
-  void Set(const Block &block, Register reg,
-           base::owned_ptr<Property> new_prop) {
-    auto &old_prop = views_[&block].props_[reg];
-    if (!old_prop->Implies(*new_prop)) {
-      block.dump(28);
-      std::cerr << "\n";
-      fn_->Command(reg).dump(28);
-      LOG << "=> " << *new_prop;
-      std::cerr << "\n";
+  base::owned_ptr<Property> GetShadow(const Block &block, const Cmd &cmd) {
+    // TODO you always know if it's SetReturn at compile-time so you should pull
+    // these into two separate functions
+    Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+    const auto &incoming_set =
+        views_[&block].incoming_[&fn_->block(cmd.result)];
 
-      old_prop = std::move(new_prop);
-      MarkReferencesStale(block, reg);
+    if (type == Bool) {
+      std::vector<BoolProperty> props;
+      props.reserve(incoming_set.size());
+      for (const Block *incoming_block : incoming_set) {
+        props.push_back(
+            Get(*incoming_block, (cmd.op_code == Op::SetReturn)
+                                     ? cmd.args[1].value.as<Register>()
+                                     : cmd.result)
+                ->as<BoolProperty>());
+      }
+
+      return BoolProperty::WeakMerge(props);
+    } else if (type == Int) {
+      std::vector<Range<i32>> props;
+      props.reserve(incoming_set.size());
+      for (const Block *incoming_block : incoming_set) {
+        props.push_back(
+            Get(*incoming_block, (cmd.op_code == Op::SetReturn)
+                                     ? cmd.args[1].value.as<Register>()
+                                     : cmd.result)
+                ->as<Range<i32>>());
+      }
+      return Range<i32>::WeakMerge(props);
+    } else {
+      NOT_YET();
     }
   }
 
-  void Set(const Block &block, ReturnValue ret,
+  void Set(const Block &block, const Cmd &cmd,
            base::owned_ptr<Property> new_prop) {
-    // TODO merge these instead of just assigning
-    auto &old_prop = views_[&block].ret_props_[ret];
+    Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+    // TODO you keep checking and forgetting the types here :(
+    if (type == Bool) {
+      new_prop =
+          BoolProperty::StrongMerge(new_prop->as<BoolProperty>(),
+                                    GetShadow(block, cmd)->as<BoolProperty>());
+    } else if (type == Int) {
+      new_prop = Range<i32>::StrongMerge(
+          new_prop->as<Range<i32>>(), GetShadow(block, cmd)->as<Range<i32>>());
+    } else {
+      NOT_YET();
+    }
+
+    auto &old_prop =
+        (cmd.op_code == Op::SetReturn)
+            ? views_[&block].ret_props_[cmd.args[0].value.as<ReturnValue>()]
+            : views_[&block].props_[cmd.result];
     if (!old_prop->Implies(*new_prop)) {
-      LOG << "In view " << &block << " replacing " << *old_prop << " with "
-          << *new_prop;
       old_prop = std::move(new_prop);
+      MarkReferencesStale(block, cmd.result);
     }
   }
 
   void SetUnreachable(const Block &view, const Block &from, const Block &to) {
-    LOG << &from << " => " << &to << " Is now unreachable.";
     // TODO clean up stales still referencing this blocks.
     auto &reach_set = views_[&view].incoming_[&to];
     reach_set.erase(&from);
-    if (!reach_set.empty()) { return; }
-
-    // TODO What about weak back-references? We don't yet handle loops.
     const auto &last_cmd = to.cmds_.back();
-    switch (last_cmd.op_code) {
-    case Op::UncondJump:
-      SetUnreachable(view, to,
-                     fn_->block(last_cmd.args[0].value.as<BlockIndex>()));
-      break;
-    case Op::CondJump:
-      SetUnreachable(view, to,
-                     fn_->block(last_cmd.args[1].value.as<BlockIndex>()));
-      SetUnreachable(view, to,
-                     fn_->block(last_cmd.args[2].value.as<BlockIndex>()));
+    if (reach_set.empty()) {
+      views_[&view].unreachable_.insert(&to);
 
-      break;
-    case Op::ReturnJump: /* Nothing to do */ break;
-    default: UNREACHABLE();
+      // TODO What about weak back-references? We don't yet handle loops.
+      switch (last_cmd.op_code) {
+      case Op::UncondJump:
+        SetUnreachable(view, to,
+                       fn_->block(last_cmd.args[0].value.as<BlockIndex>()));
+
+        break;
+      case Op::CondJump:
+        SetUnreachable(view, to,
+                       fn_->block(last_cmd.args[1].value.as<BlockIndex>()));
+        SetUnreachable(view, to,
+                       fn_->block(last_cmd.args[2].value.as<BlockIndex>()));
+
+        break;
+      case Op::ReturnJump: /* Nothing to do */ break;
+      default: UNREACHABLE();
+      }
     }
+    MarkReferencesStale(view, last_cmd.result);
   }
 
   bool Reachable(const Block &view, const Block &from, const Block &to) const {
@@ -227,6 +269,7 @@ void PropDB::Compute() {
     auto iter          = stale_.begin();
     const Block *block = iter->first;
     const Register reg = iter->second;
+
     if (reg.is_arg(*fn_)) {
       // TODO arguments can be stale: viewed from a different block you might
       // condition on them having some property and want to use that in
@@ -237,15 +280,24 @@ void PropDB::Compute() {
     }
 
     const Cmd &cmd = fn_->Command(reg);
-    auto prop      = Get(*block, cmd.result);
+    // TODO optimize. Lots of redundant lookups here.
+    const Block& cmd_block = fn_->block(reg);
+    const auto& unreachable = views_[block].unreachable_;
+    if (unreachable.find(&cmd_block) != unreachable.end()) {
+      // No need to look at anything on a block that's not reachable
+      stale_.erase(iter);
+      continue;
+    }
+
+    auto prop = Get(*block, cmd.result);
     stale_.erase(iter);
 
     switch (cmd.op_code) {
     case Op::Neg: {
       if (cmd.type == Int) {
-        Set(*block, cmd.result, -GetIntProp(*block, cmd.args[0]));
+        Set(*block, cmd, -GetIntProp(*block, cmd.args[0]));
       } else if (cmd.type == Bool) {
-        Set(*block, cmd.result, !GetBoolProp(*block, cmd.args[0]));
+        Set(*block, cmd, !GetBoolProp(*block, cmd.args[0]));
       } else {
         UNREACHABLE();
       }
@@ -253,8 +305,8 @@ void PropDB::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.type == Int) {                                                     \
-      Set(*block, cmd.result, GetIntProp(*block, cmd.args[0])                  \
-                                  case_sym GetIntProp(*block, cmd.args[1]));   \
+      Set(*block, cmd, GetIntProp(*block, cmd.args[0])                         \
+                           case_sym GetIntProp(*block, cmd.args[1]));          \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -266,8 +318,8 @@ void PropDB::Compute() {
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
     if (cmd.args[0].type == Int) {                                             \
-      Set(*block, cmd.result, GetIntProp(*block, cmd.args[0])                  \
-                                  case_sym GetIntProp(*block, cmd.args[1]));   \
+      Set(*block, cmd, GetIntProp(*block, cmd.args[0])                         \
+                           case_sym GetIntProp(*block, cmd.args[1]));          \
     } else {                                                                   \
       NOT_YET();                                                               \
     }                                                                          \
@@ -278,7 +330,7 @@ void PropDB::Compute() {
       CASE(Gt, >);
 #undef CASE
     case Op::Xor: {
-      Set(*block, cmd.result,
+      Set(*block, cmd,
           GetBoolProp(*block, cmd.args[0]) ^ GetBoolProp(*block, cmd.args[1]));
 
     } break;
@@ -300,7 +352,7 @@ void PropDB::Compute() {
         } else {
           // TODO this is not a great way to do merging because it's not genric,
           // but it's simple for now.
-          Set(*block, cmd.result, BoolProperty::Merge(props));
+          Set(*block, cmd, BoolProperty::WeakMerge(props));
         }
       } else {
         NOT_YET();
@@ -313,8 +365,7 @@ void PropDB::Compute() {
     case Op::Nop: break;
     case Op::SetReturn: {
       if (cmd.args[1].value.is<Register>()) {
-        Set(*block, cmd.args[0].value.as<ReturnValue>(),
-            Get(*block, cmd.args[1].value.as<Register>()));
+        Set(*block, cmd, Get(*block, cmd.args[1].value.as<Register>()));
       } else {
         LOG << "Non-register return " << cmd.args[1].to_string();
         NOT_YET();
@@ -335,6 +386,9 @@ void PropDB::Compute() {
                        /*   to = */ true_block);
       }
     } break;
+    case Op::UncondJump: /* Nothing to do */ continue;
+    case Op::ReturnJump: /* Nothing to do */ continue;
+
     default:
       LOG << "Not yet handled: " << static_cast<int>(cmd.op_code);
       continue;

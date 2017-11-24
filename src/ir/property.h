@@ -96,8 +96,17 @@ template <typename Number> struct Range : Property {
     return min_ >= range_prop.min_ && max_ <= range_prop.max_;
   }
 
+
   static base::owned_ptr<Range<Number>>
-  Merge(const std::vector<Range<Number>> &props) {
+  StrongMerge(const Range<Number> &lhs, const Range<Number>& rhs) {
+    return base::make_owned<Range<Number>>(std::max(lhs.min_, rhs.min_),
+                                           std::min(lhs.max_, rhs.max_));
+  }
+
+  static base::owned_ptr<Range<Number>>
+  WeakMerge(const std::vector<Range<Number>> &props) {
+    if (props.empty()) { return base::make_owned<Range<Number>>(); }
+
     // TODO this is not the most efficient way to do this because there are lots
     // of early exit criteria, but I'm lazy and this is unlikely to stick
     // around (we need to be able to merge properties generically).
@@ -203,8 +212,32 @@ struct BoolProperty : Property {
     UNREACHABLE();
   }
 
+
   static base::owned_ptr<BoolProperty>
-  Merge(const std::vector<BoolProperty> &props) {
+  StrongMerge(const BoolProperty &lhs, const BoolProperty& rhs) {
+    if (lhs.kind == Kind::True || rhs.kind == Kind::True) {
+      return base::make_owned<BoolProperty>(true);
+    }
+    else if (lhs.kind == Kind::False || rhs.kind == Kind::False) { 
+      return base::make_owned<BoolProperty>(false);
+    } else if (lhs.kind == Kind::Reg && rhs.kind == Kind::Reg) {
+      auto prop = base::make_owned<BoolProperty>();
+      if (lhs.reg == rhs.reg) { prop->reg = lhs.reg; }
+      return prop;
+    } else if (lhs.kind == Kind::NegReg && rhs.kind == Kind::NegReg) {
+      auto prop = base::make_owned<BoolProperty>();
+      if (lhs.reg == rhs.reg) { prop->reg = lhs.reg; }
+      return prop;
+    } else {
+      // TODO you can do better than this, but you at least know this much.
+      // You'll do better once you can hold many bool properties at once.
+      return base::make_owned<BoolProperty>(lhs);
+    }
+  }
+
+  static base::owned_ptr<BoolProperty>
+  WeakMerge(const std::vector<BoolProperty> &props) {
+    if (props.empty()) { return base::make_owned<BoolProperty>(); }
     // TODO this is not the most efficient way to do this because there are lots
     // of early exit criteria, but I'm lazy and this is unlikely to stick
     // around (we need to be able to merge properties generically).
