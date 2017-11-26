@@ -81,12 +81,29 @@ inline std::ostream& operator<<(std::ostream& os, Register reg) {
 DEFINE_STRONG_INT(ReturnValue, i32, -1);
 DEFINE_STRONG_INT(BlockIndex, i32, -1);
 DEFINE_STRONG_INT(EnumVal, size_t, 0);
+
+struct CmdIndex {
+  BlockIndex block;
+  i32 cmd;
+};
+
+inline bool operator==(CmdIndex lhs, CmdIndex rhs) {
+  return lhs.block == rhs.block && lhs.cmd == rhs.cmd;
+}
 } // namespace IR
 
 namespace std {
 template <> struct hash<IR::Register> {
   size_t operator()(const IR::Register &reg) const noexcept {
     return hash<i32>()(reg.value_);
+  }
+};
+
+template <> struct hash<IR::CmdIndex> {
+  size_t operator()(const IR::CmdIndex &cmd_index) const noexcept {
+    u64 num = (static_cast<u64>(static_cast<u32>(cmd_index.block.value)) << 32);
+    num |= static_cast<u32>(cmd_index.cmd);
+    return hash<u64>()(num);
   }
 };
 } // namespace std
@@ -99,10 +116,12 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr,
                                  Type *input_type = nullptr);
 
 namespace IR {
-struct CmdIndex {
-  BlockIndex block;
-  i32 cmd;
-};
+
+inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
+  if (lhs.block.value < rhs.block.value) return true;
+  if (lhs.block.value > rhs.block.value) return false;
+  return lhs.cmd < rhs.cmd;
+}
 
 struct Addr {
   enum class Kind : u8 { Null, Global, Stack, Heap } kind;
@@ -344,25 +363,12 @@ struct Func {
     return const_cast<Block &>(static_cast<const Func *>(this)->block(index));
   }
 
-  const Block &block(Register reg) const {
-    return block(reg_map_.at(reg).block);
-  }
-  Block &block(Register reg) {
-    return const_cast<Block &>(static_cast<const Func *>(this)->block(reg));
-  }
-
   const Cmd &Command(CmdIndex cmd_index) const {
     return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
   }
   Cmd &Command(CmdIndex cmd_index) {
     return const_cast<Cmd &>(
         static_cast<const Func *>(this)->Command(cmd_index));
-  }
-  const Cmd &Command(Register reg) const {
-    return Command(reg_map_.find(reg)->second);
-  }
-  Cmd &Command(Register reg) {
-    return const_cast<Cmd &>(static_cast<const Func *>(this)->Command(reg));
   }
 
   void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
@@ -393,7 +399,7 @@ struct Func {
   std::vector<AST::Expression *> preconditions_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
-  std::unordered_map<Register, std::vector<CmdIndex>> references_;
+  std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;
   mutable int num_errors_ = -1; // -1 indicates not yet validated
 };
 

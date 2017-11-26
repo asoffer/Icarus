@@ -89,34 +89,38 @@ struct PropDB {
     // Only mark things on the entry view and entry block as stale to begin
     // with. All else can be propogated.
     const auto& entry_block = fn_->blocks_[0];
-    for (const auto &cmd : entry_block.cmds_) {
+    for (size_t i = 0; i < entry_block.cmds_.size(); ++i) {
+      const auto& cmd = entry_block.cmds_[i];
       if (cmd.type == nullptr || cmd.type == Void) { continue; }
-      MarkReferencesStale(entry_block, cmd.result);
+      MarkReferencesStale(entry_block, CmdIndex{0, static_cast<i32>(i)});
     }
   }
 
   PropDB(PropDB &&) = default;
 
-  void MarkReferencesStale(const Block &block, Register reg) {
-    auto iter = fn_->references_.find(reg);
-    if (iter != fn_->references_.end()) {
-      const auto &references = iter->second;
+  void MarkReferencesStale(const Block &block, CmdIndex cmd_index) {
+    {
+      auto iter = fn_->references_.find(cmd_index);
+      if (iter != fn_->references_.end()) {
+        const auto &references = iter->second;
 
-      for (const auto &cmd_index : references) {
-        const auto &stale_cmd = fn_->Command(cmd_index);
-        stale_.emplace(&block, stale_cmd.result);
+        for (const auto &cmd_index : references) {
+          stale_.emplace(&block, cmd_index);
+        }
       }
     }
-
     const auto &last_cmd = block.cmds_.back();
     switch (last_cmd.op_code) {
     case Op::UncondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()), reg);
+      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
+                     cmd_index);
 
       break;
     case Op::CondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()), reg);
-      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()), reg);
+      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()),
+                     cmd_index);
+      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()),
+                     cmd_index);
       break;
     case Op::ReturnJump: /* Nothing to do */ break;
     default: UNREACHABLE();
@@ -132,12 +136,13 @@ struct PropDB {
     return views_[&block].props_[reg];
   }
 
-  base::owned_ptr<Property> GetShadow(const Block &block, const Cmd &cmd) {
+  base::owned_ptr<Property> GetShadow(const Block &block, CmdIndex cmd_index) {
     // TODO you always know if it's SetReturn at compile-time so you should pull
     // these into two separate functions
+    const auto& cmd = fn_->Command(cmd_index);
     Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     const auto &incoming_set =
-        views_[&block].incoming_[&fn_->block(cmd.result)];
+        views_[&block].incoming_[&fn_->block(cmd_index.block)];
 
     if (type == Bool) {
       std::vector<BoolProperty> props;
@@ -167,17 +172,19 @@ struct PropDB {
     }
   }
 
-  void Set(const Block &block, const Cmd &cmd,
+  void Set(const Block &block, CmdIndex cmd_index,
            base::owned_ptr<Property> new_prop) {
+    const auto &cmd = fn_->Command(cmd_index);
     Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     // TODO you keep checking and forgetting the types here :(
     if (type == Bool) {
-      new_prop =
-          BoolProperty::StrongMerge(new_prop->as<BoolProperty>(),
-                                    GetShadow(block, cmd)->as<BoolProperty>());
+      new_prop = BoolProperty::StrongMerge(
+          new_prop->as<BoolProperty>(),
+          GetShadow(block, cmd_index)->as<BoolProperty>());
     } else if (type == Int) {
       new_prop = Range<i32>::StrongMerge(
-          new_prop->as<Range<i32>>(), GetShadow(block, cmd)->as<Range<i32>>());
+          new_prop->as<Range<i32>>(),
+          GetShadow(block, cmd_index)->as<Range<i32>>());
     } else {
       NOT_YET();
     }
@@ -188,7 +195,7 @@ struct PropDB {
             : views_[&block].props_[cmd.result];
     if (!old_prop->Implies(*new_prop)) {
       old_prop = std::move(new_prop);
-      MarkReferencesStale(block, cmd.result);
+      MarkReferencesStale(block, cmd_index);
     }
   }
 
@@ -196,6 +203,8 @@ struct PropDB {
     // TODO clean up stales still referencing this blocks.
     auto &reach_set = views_[&view].incoming_[&to];
     reach_set.erase(&from);
+    CmdIndex last_cmd_index{static_cast<i32>(&to - fn_->blocks_.data()),
+                            static_cast<i32>(to.cmds_.size() - 1)};
     const auto &last_cmd = to.cmds_.back();
     if (reach_set.empty()) {
       views_[&view].unreachable_.insert(&to);
@@ -218,7 +227,7 @@ struct PropDB {
       default: UNREACHABLE();
       }
     }
-    MarkReferencesStale(view, last_cmd.result);
+    MarkReferencesStale(view, last_cmd_index);
   }
 
   bool Reachable(const Block &view, const Block &from, const Block &to) const {
@@ -233,15 +242,18 @@ struct PropDB {
     return result;
   }
 
-  base::owned_ptr<Range<i32>> GetIntProp(const Block &block, Val arg) {
+  base::owned_ptr<Property> Get(const Block &block, Val arg) {
     if (arg.value.is<Register>()) {
-      auto reg = arg.value.as<Register>();
-      return Get(block, reg).as<Range<i32>>();
+      return Get(block, arg.value.as<Register>());
     } else if (arg.value.is<i32>()) {
       return base::make_owned<Range<i32>>(arg.value.as<i32>(),
                                           arg.value.as<i32>());
+    } else if (arg.value.is<bool>()) {
+      return base::make_owned<BoolProperty>(arg.value.as<bool>());
+    } else {
+      LOG << arg.to_string();
+      NOT_YET();
     }
-    UNREACHABLE();
   }
 
   base::owned_ptr<BoolProperty> GetBoolProp(const Block &block, Val arg) {
@@ -260,17 +272,19 @@ struct PropDB {
   std::unordered_map<const Block *, PropView> views_;
   // TODO should be an unordered_set but I haven't define an appropriate hash
   // function for the pair yet.
-  std::set<std::pair<const Block *, Register>> stale_;
+  std::set<std::pair<const Block *, CmdIndex>> stale_;
   // TODO should be per block
 };
 
 void PropDB::Compute() {
   while (!stale_.empty()) {
-    auto iter          = stale_.begin();
-    const Block *block = iter->first;
-    const Register reg = iter->second;
+    auto iter                = stale_.begin();
+    const Block *block       = iter->first;
+    const CmdIndex cmd_index = iter->second;
 
-    if (reg.is_arg(*fn_)) {
+    if (cmd_index.cmd < 0) {
+      // Is register!
+      // 
       // TODO arguments can be stale: viewed from a different block you might
       // condition on them having some property and want to use that in
       // verification. You need to handle this properly which likely just
@@ -279,9 +293,10 @@ void PropDB::Compute() {
       continue;
     }
 
-    const Cmd &cmd = fn_->Command(reg);
+    const Cmd& cmd = fn_->Command(cmd_index);
+
     // TODO optimize. Lots of redundant lookups here.
-    const Block& cmd_block = fn_->block(reg);
+    const Block& cmd_block = fn_->block(cmd_index.block);
     const auto& unreachable = views_[block].unreachable_;
     if (unreachable.find(&cmd_block) != unreachable.end()) {
       // No need to look at anything on a block that's not reachable
@@ -294,46 +309,24 @@ void PropDB::Compute() {
 
     switch (cmd.op_code) {
     case Op::Neg: {
-      if (cmd.type == Int) {
-        Set(*block, cmd, -GetIntProp(*block, cmd.args[0]));
-      } else if (cmd.type == Bool) {
-        Set(*block, cmd, !GetBoolProp(*block, cmd.args[0]));
-      } else {
-        UNREACHABLE();
-      }
+      auto prop = Get(*block, cmd.args[0]);
+      prop->Neg();
+      Set(*block, cmd_index, std::move(prop));
     } break;
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
-    if (cmd.type == Int) {                                                     \
-      Set(*block, cmd, GetIntProp(*block, cmd.args[0])                         \
-                           case_sym GetIntProp(*block, cmd.args[1]));          \
-    } else {                                                                   \
-      NOT_YET();                                                               \
-    }                                                                          \
+    Set(*block, cmd_index,                                                     \
+        Get(*block, cmd.args[0]) case_sym Get(*block, cmd.args[1]));           \
   } break
       CASE(Add, +);
       CASE(Sub, -);
       CASE(Mul, *);
-#undef CASE
-#define CASE(case_name, case_sym)                                              \
-  case Op::case_name: {                                                        \
-    if (cmd.args[0].type == Int) {                                             \
-      Set(*block, cmd, GetIntProp(*block, cmd.args[0])                         \
-                           case_sym GetIntProp(*block, cmd.args[1]));          \
-    } else {                                                                   \
-      NOT_YET();                                                               \
-    }                                                                          \
-  } break
       CASE(Lt, <);
       CASE(Le, <=);
       CASE(Ge, >=);
       CASE(Gt, >);
+      CASE(Xor, ^);
 #undef CASE
-    case Op::Xor: {
-      Set(*block, cmd,
-          GetBoolProp(*block, cmd.args[0]) ^ GetBoolProp(*block, cmd.args[1]));
-
-    } break;
     case Op::Phi: {
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
@@ -341,19 +334,15 @@ void PropDB::Compute() {
           if (Reachable(
                   /* view = */ *block,
                   /* from = */ fn_->block(cmd.args[i].value.as<BlockIndex>()),
-                  /*   to = */ fn_->block(reg))) {
+                  /*   to = */ cmd_block)) {
             props.push_back(*GetBoolProp(*block, cmd.args[i + 1]));
           }
         }
 
-        if (props.empty()) {
-          // This block is no longer reachable!
-          LOG << "No longer reachable";
-        } else {
-          // TODO this is not a great way to do merging because it's not genric,
-          // but it's simple for now.
-          Set(*block, cmd, BoolProperty::WeakMerge(props));
-        }
+        ASSERT(!props.empty(), "No longer reachable");
+        // TODO this is not a great way to do merging because it's not genric,
+        // but it's simple for now.
+        Set(*block, cmd_index, BoolProperty::WeakMerge(props));
       } else {
         NOT_YET();
       }
@@ -365,7 +354,7 @@ void PropDB::Compute() {
     case Op::Nop: break;
     case Op::SetReturn: {
       if (cmd.args[1].value.is<Register>()) {
-        Set(*block, cmd, Get(*block, cmd.args[1].value.as<Register>()));
+        Set(*block, cmd_index, Get(*block, cmd.args[1].value.as<Register>()));
       } else {
         LOG << "Non-register return " << cmd.args[1].to_string();
         NOT_YET();
@@ -379,10 +368,12 @@ void PropDB::Compute() {
       auto &false_block = fn_->block(cmd.args[2].value.as<BlockIndex>());
 
       if (bool_prop->kind == BoolProperty::Kind::True) {
-        SetUnreachable(/* view = */ *block, /* from = */ fn_->block(reg),
+        SetUnreachable(/* view = */ *block,
+                       /* from = */ cmd_block,
                        /*   to = */ false_block);
       } else if (bool_prop->kind == BoolProperty::Kind::False) {
-        SetUnreachable(/* view = */ *block, /* from = */ fn_->block(reg),
+        SetUnreachable(/* view = */ *block,
+                       /* from = */ cmd_block,
                        /*   to = */ true_block);
       }
     } break;
@@ -404,7 +395,8 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
   auto &view              = db.views_[&entry_block];
   for (i32 i = 0; i < static_cast<i32>(args.size()); ++i) {
     view.props_[Register(i)] = std::move(args[i]);
-    db.MarkReferencesStale(entry_block, Register(i));
+    db.MarkReferencesStale(entry_block,
+                           CmdIndex{0, i - static_cast<i32>(args.size())});
   }
 
   for (const auto &block : fn->blocks_) {
@@ -468,20 +460,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     std::vector<base::owned_ptr<property::Property>> arg_props;
     arg_props.reserve(args.size() - 1);
     for (size_t i = 0; i < args.size() - 1; ++i) {
-      const auto &argument = args[i].value;
-      if (argument.is<Register>()) {
-        arg_props.push_back(
-            prop_db.Get(calling_block, argument.as<Register>()));
-      } else if (argument.is<i32>()) {
-        arg_props.push_back(base::make_owned<property::Range<i32>>(
-            argument.as<i32>(), argument.as<i32>()));
-      } else if (argument.is<bool>()) {
-        arg_props.push_back(
-            base::make_owned<property::BoolProperty>(argument.as<bool>()));
-      } else {
-        LOG << args[i].to_string();
-        NOT_YET();
-      }
+      arg_props.push_back(prop_db.Get(calling_block, args[i]));
     }
     Type *input_type = called_fn->type->as<Function>().input;
     for (const auto &precondition : called_fn->preconditions_) {

@@ -7,6 +7,24 @@
 namespace IR {
 BlockIndex Block::Current;
 Func *Func::Current{nullptr};
+
+template <bool IsPhi = false>
+static void RecordReferences(Func *fn, const CmdIndex &cmd_index,
+                             const std::vector<Val> &args) {
+  for (const auto &cmd_arg : args) {
+    if (cmd_arg.value.is<Register>()) {
+      fn->references_[fn->reg_map_.at(cmd_arg.value.as<Register>())].push_back(
+          cmd_index);
+    } else if (IsPhi && cmd_arg.value.is<BlockIndex>()) {
+      auto block_index   = cmd_arg.value.as<BlockIndex>();
+      size_t num_cmds    = fn->block(block_index).cmds_.size();
+      i32 index_on_block = static_cast<i32>(num_cmds) - 1;
+      fn->references_[CmdIndex{block_index, index_on_block}].push_back(
+          cmd_index);
+    }
+  }
+}
+
 Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
     : args(std::move(arg_vec)), op_code(op) {
   CmdIndex cmd_index{
@@ -17,13 +35,7 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
                                  : -(++Func::Current->num_voids_));
   type                            = t;
   Func::Current->reg_map_[result] = cmd_index;
-
-  for (const auto &fn_arg : args) {
-    if (fn_arg.value.is<Register>()) {
-      Func::Current->references_[fn_arg.value.as<Register>()].push_back(
-          cmd_index);
-    }
-  }
+  RecordReferences(Func::Current, cmd_index, args);
 }
 
 Val Field(Val v, size_t n) {
@@ -508,19 +520,8 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   auto &cmd = Command(cmd_index);
   ASSERT(cmd.op_code == Op::Phi, "");
-  cmd.args  = std::move(args);
-  for (const auto &fn_arg : cmd.args) {
-    if (fn_arg.value.is<Register>()) {
-      Func::Current->references_[fn_arg.value.as<Register>()].push_back(
-          cmd_index);
-    } else if (fn_arg.value.is<BlockIndex>()) {
-      Func::Current
-          ->references_[Func::Current->block(fn_arg.value.as<BlockIndex>())
-                            .cmds_.back()
-                            .result]
-          .push_back(cmd_index);
-    }
-  }
+  cmd.args = std::move(args);
+  RecordReferences</* IsPhi = */ true>(Func::Current, cmd_index, cmd.args);
 }
 
 } // namespace IR

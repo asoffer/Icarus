@@ -132,6 +132,10 @@ Func::Func(::Function *fn_type)
                           ptr_cast<Tuple>(fn_type->input)->entries.size())
                     : 1) {
   blocks_.push_back(std::move(Block(this)));
+  i32 num_args = static_cast<i32>(num_args_);
+  for (i32 i = 0; i < num_args; ++i) {
+    reg_map_[Register(static_cast<i32>(i))] = CmdIndex{0, i - num_args};
+  }
 }
 
 bool Register::is_arg(const Func &fn) const {
