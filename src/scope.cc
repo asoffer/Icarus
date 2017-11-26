@@ -78,7 +78,7 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
       auto old_func  = IR::Func::Current;
       auto old_block = IR::Block::Current;
 
-      decl->addr = decl->init_val->EmitIR();
+      decl->addr = decl->init_val->EmitIR(false);
       decl->addr.value.as<IR::Func *>()->name =
           Mangle(fn_type, decl->identifier.get(), scope_ptr);
 
@@ -116,7 +116,7 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 void ExecScope::Enter() const {
   for (auto *decl : decls_) {
     if (decl->is<AST::InDecl>()) { continue; }
-    decl->EmitIR();
+    decl->EmitIR(false);
   }
 }
 void ExecScope::Exit() const {

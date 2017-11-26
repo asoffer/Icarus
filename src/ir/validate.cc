@@ -69,20 +69,14 @@ struct PropDB {
       }
       view.incoming_ = incoming;
 
-      // TODO store num_rets. (on function type), or have it computable.
-      i32 num_rets;
       if (fn_->type->output->is<Tuple>()) {
-        num_rets =
-            static_cast<i32>(fn_->type->output->as<Tuple>().entries.size());
-      } else if (fn_->type->output == Void) {
-        num_rets = 0;
-      } else {
-        num_rets = 1;
-      }
-      // TODO should be stored on PropView to get per-block views of return
-      // values.
-      for (i32 i = 0; i < num_rets; ++i) {
-        view.ret_props_[ReturnValue(i)] = base::make_owned<BoolProperty>();
+        i32 i = 0;
+        for (Type *entry : fn_->type->output->as<Tuple>().entries) {
+          view.ret_props_[ReturnValue(i)] = DefaultProperty(entry);
+          ++i;
+        }
+      } else if (fn_->type->output != Void) {
+        view.ret_props_[ReturnValue(0)] = DefaultProperty(fn_->type->output);
       }
     }
 
@@ -421,9 +415,9 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
 // Roughly the same as executing the function but now with more generic
 // argument properties.
 static bool
-ValidatePrecondition(const Func *fn,
-                     std::vector<base::owned_ptr<property::Property>> args,
-                     std::queue<Func *> *validation_queue) {
+ValidateRequirement(const Func *fn,
+                    std::vector<base::owned_ptr<property::Property>> args,
+                    std::queue<Func *> *validation_queue) {
   // TODO. In this case we don't care about the calls vector at all. Ideally, we
   // should template it away.
   std::vector<std::pair<const Block *, const Cmd *>> calls;
@@ -432,7 +426,7 @@ ValidatePrecondition(const Func *fn,
   prop_db.Compute();
   // TODO BlockIndex(1) may not be the only return!
   auto *bool_prop =
-      ptr_cast<property::BoolProperty>(prop_db.views_[&fn->block(BlockIndex(1))]
+      ptr_cast<property::BoolProperty>(prop_db.views_[&fn->block(BlockIndex(0))]
                                            .ret_props_[ReturnValue(0)]
                                            .get());
   return bool_prop->kind == property::BoolProperty::Kind::True;
@@ -445,10 +439,11 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   std::vector<std::pair<const Block *, const Cmd *>> calls;
   auto prop_db = property::PropDB::Make(this, {}, validation_queue, &calls);
 
-  if (calls.empty()) {
+  if (calls.empty() && postconditions_.empty()) {
     // TODO This can be determined before even creating the property map.
     return num_errors_;
   }
+
   prop_db.Compute();
 
   for (const auto &call : calls) {
@@ -462,10 +457,9 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     for (size_t i = 0; i < args.size() - 1; ++i) {
       arg_props.push_back(prop_db.Get(calling_block, args[i]));
     }
-    Type *input_type = called_fn->type->as<Function>().input;
     for (const auto &precondition : called_fn->preconditions_) {
-      auto ir_fn = ExprFn(precondition, input_type);
-      if (!ValidatePrecondition(ir_fn.get(), arg_props, validation_queue)) {
+      auto ir_fn = ExprFn(precondition, called_fn->type->input, false);
+      if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
         // TODO log error
         ++num_errors_;
@@ -473,7 +467,45 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     }
   }
 
-  // TODO implement me
+  for (const auto &postcondition : postconditions_) {
+    std::vector<Type *> input_types = type->input->is<Tuple>()
+                                          ? type->input->as<Tuple>().entries
+                                          : std::vector<Type *>{type->input};
+    i32 num_outs;
+    if (type->output->is<Tuple>()) {
+      auto out_tup = type->output->as<Tuple>();
+      input_types.insert(input_types.end(), out_tup.entries.begin(),
+                         out_tup.entries.end());
+      num_outs = static_cast<i32>(out_tup.entries.size());
+    } else {
+      input_types.push_back(type->output);
+      num_outs = 1;
+    }
+
+    std::vector<base::owned_ptr<property::Property>> arg_props;
+    arg_props.reserve(input_types.size());
+    const Block *exit_block = &block(BlockIndex{0});
+    for (i32 i = 0; i < static_cast<i32>(num_args_); ++i) {
+      arg_props.push_back(prop_db.views_[exit_block].props_[Register(i)]);
+    }
+    for (i32 i = 0; i < num_outs; ++i) {
+      arg_props.push_back(
+          prop_db.views_[exit_block].ret_props_[ReturnValue(i)]);
+    }
+
+    auto ir_fn = ExprFn(postcondition, Tup(input_types), true);
+    if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
+      LOG << "Failed post condition";
+    }
+
+    // TODO Build a function out of the post-condition. The function should take
+    // in as arguments all arguments and returns to this function, and return a
+    // bool. Then apply the same validation. Something like ValidateRequirement
+    // will work (maybe exactly that but just change the name). It must be that
+    // the resultant property is necessarily true, otherwise you failed a
+    // postecondition.
+  }
+
   return num_errors_;
 }
 } // namespace IR

@@ -112,8 +112,8 @@ template <> struct hash<IR::CmdIndex> {
 DEFINE_STRONG_HASH(IR::BlockIndex);
 DEFINE_STRONG_HASH(IR::ReturnValue);
 
-std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr,
-                                 Type *input_type = nullptr);
+std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
+                                 bool rets_are_args);
 
 namespace IR {
 
@@ -397,6 +397,7 @@ struct Func {
   // CmdIndex so we don't need to store this map:
   std::unordered_map<Register, CmdIndex> reg_map_;
   std::vector<AST::Expression *> preconditions_;
+  std::vector<AST::Expression *> postconditions_;
   // TODO many of these maps could and should be vectors except they're keyed on
   // strong ints. Consider adding a strong int vector.
   std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;

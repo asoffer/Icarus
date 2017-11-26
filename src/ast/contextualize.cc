@@ -30,7 +30,7 @@ void Unop::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
     assign_scope(scope);
 
-    auto val = operand->EmitIR();
+    auto val = operand->EmitIR(false);
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
   } else {
