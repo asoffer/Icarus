@@ -393,6 +393,12 @@ struct Func {
   i32 num_voids_         = 0;
   std::string name;
   std::vector<Block> blocks_;
+
+  // Indices for blocks that end in a return statement.
+  // TODO: Alternatively we could just iterate over all blocks and look at the
+  // last entry. Figure out which makes more sense.
+  std::vector<BlockIndex> return_blocks_;
+
   // TODO we can probably come up with a way to more closely tie Register and
   // CmdIndex so we don't need to store this map:
   std::unordered_map<Register, CmdIndex> reg_map_;

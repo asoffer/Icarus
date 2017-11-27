@@ -43,7 +43,7 @@ struct PropDB {
       }
     }
     // Hack: First entry depends on itself.
-    incoming[&fn_->block(BlockIndex{0})].insert(&fn_->block(BlockIndex{0}));
+    incoming[&fn_->block(fn_->entry())].insert(&fn_->block(fn_->entry()));
 
     for (const auto &viewing_block : fn_->blocks_) {
       auto &view = views_[&viewing_block];
@@ -154,11 +154,11 @@ struct PropDB {
       std::vector<Range<i32>> props;
       props.reserve(incoming_set.size());
       for (const Block *incoming_block : incoming_set) {
-        props.push_back(
-            Get(*incoming_block, (cmd.op_code == Op::SetReturn)
-                                     ? cmd.args[1].value.as<Register>()
-                                     : cmd.result)
-                ->as<Range<i32>>());
+        if (cmd.op_code == Op::SetReturn) {
+          props.push_back(Get(*incoming_block, cmd.args[1])->as<Range<i32>>());
+        } else {
+          props.push_back(Get(*incoming_block, cmd.result)->as<Range<i32>>());
+        }
       }
       return Range<i32>::WeakMerge(props);
     } else {
@@ -346,14 +346,7 @@ void PropDB::Compute() {
       // TODO No post-conditions yet, so nothing to see here.
       continue;
     case Op::Nop: break;
-    case Op::SetReturn: {
-      if (cmd.args[1].value.is<Register>()) {
-        Set(*block, cmd_index, Get(*block, cmd.args[1].value.as<Register>()));
-      } else {
-        LOG << "Non-register return " << cmd.args[1].to_string();
-        NOT_YET();
-      }
-    } break;
+    case Op::SetReturn: Set(*block, cmd_index, Get(*block, cmd.args[1])); break;
     case Op::CondJump: {
       auto prop       = Get(*block, cmd.args[0].value.as<Register>());
       auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
@@ -393,8 +386,15 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
                            CmdIndex{0, i - static_cast<i32>(args.size())});
   }
 
-  for (const auto &block : fn->blocks_) {
-    for (const auto &cmd : block.cmds_) {
+  for (i32 i = 0; i < static_cast<i32>(fn->blocks_.size()); ++i) {
+    const auto& block = fn->blocks_[i];
+    for (i32 j = 0; j < static_cast<i32>(block.cmds_.size()); ++j) {
+      const auto &cmd = block.cmds_[j];
+      // It's possible that we don't look at the arguments at all. To be safe we
+      // need to start with everything as stale.
+
+      db.stale_.emplace(&fn->block(fn->entry()), CmdIndex{BlockIndex{i}, j});
+
       if (cmd.op_code == Op::Call) {
         const auto &called_fn = cmd.args.back().value;
         if (called_fn.is<Func *>()) {
@@ -425,11 +425,14 @@ ValidateRequirement(const Func *fn,
       property::PropDB::Make(fn, std::move(args), validation_queue, &calls);
   prop_db.Compute();
   // TODO BlockIndex(1) may not be the only return!
-  auto *bool_prop =
-      ptr_cast<property::BoolProperty>(prop_db.views_[&fn->block(BlockIndex(0))]
-                                           .ret_props_[ReturnValue(0)]
-                                           .get());
-  return bool_prop->kind == property::BoolProperty::Kind::True;
+  for (BlockIndex return_block : fn->return_blocks_) {
+    auto *bool_prop = ptr_cast<property::BoolProperty>(
+        prop_db.views_[&fn->block(return_block)]
+            .ret_props_[ReturnValue(0)]
+            .get());
+    if (bool_prop->kind != property::BoolProperty::Kind::True) { return false; }
+  }
+  return true;
 }
 
 int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
@@ -484,7 +487,13 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
 
     std::vector<base::owned_ptr<property::Property>> arg_props;
     arg_props.reserve(input_types.size());
-    const Block *exit_block = &block(BlockIndex{0});
+    // TODO multiple exit blocks
+
+    if (return_blocks_.size() != 1) {
+      NOT_YET("Not a real assertion, just not handling this case yet.");
+    }
+
+    const Block *exit_block = &block(return_blocks_[0]);
     for (i32 i = 0; i < static_cast<i32>(num_args_); ++i) {
       arg_props.push_back(prop_db.views_[exit_block].props_[Register(i)]);
     }
@@ -497,13 +506,6 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
       LOG << "Failed post condition";
     }
-
-    // TODO Build a function out of the post-condition. The function should take
-    // in as arguments all arguments and returns to this function, and return a
-    // bool. Then apply the same validation. Something like ValidateRequirement
-    // will work (maybe exactly that but just change the name). It must be that
-    // the resultant property is necessarily true, otherwise you failed a
-    // postecondition.
   }
 
   return num_errors_;
