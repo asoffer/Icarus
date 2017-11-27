@@ -496,7 +496,7 @@ void UncondJump(BlockIndex block) {
 void ReturnJump() {
   ASSERT(Func::Current, "");
   Cmd cmd(nullptr, Op::ReturnJump, {});
-  Func::Current->return_blocks_.push_back(Block::Current);
+  Func::Current->return_blocks_.insert(Block::Current);
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
 }
 

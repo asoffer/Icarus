@@ -493,7 +493,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       NOT_YET("Not a real assertion, just not handling this case yet.");
     }
 
-    const Block *exit_block = &block(return_blocks_[0]);
+    const Block *exit_block = &block(*return_blocks_.begin());
     for (i32 i = 0; i < static_cast<i32>(num_args_); ++i) {
       arg_props.push_back(prop_db.views_[exit_block].props_[Register(i)]);
     }

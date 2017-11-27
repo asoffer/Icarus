@@ -3,28 +3,13 @@
 
 std::string Primitive::to_string() const {
   switch (type_) {
-  case PrimType::Err: return "Err";
-  case PrimType::Unknown: return "???";
-  case PrimType::Bool: return "bool";
-  case PrimType::Char: return "char";
-  case PrimType::Code: return "code";
-  case PrimType::Int: return "int";
-  case PrimType::Real: return "real";
-  case PrimType::Type: return "type";
-  case PrimType::Uint: return "uint";
-  case PrimType::Void: return "void";
-  case PrimType::NullPtr: return "null";
-  case PrimType::String: return "string";
+#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
+  case PrimType::EnumName:                                                     \
+    return #name;
+#include "../config/primitive.conf"
+#undef PRIMITIVE_MACRO
   default: UNREACHABLE();
   }
-}
-
-Array::Array(Type *t) : data_type(t), len(0), fixed_length(false) {
-  dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
-}
-
-Array::Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {
-  dimension = data_type->is<Array>() ? 1 + ((Array *)data_type)->dimension : 1;
 }
 
 // TODO better to hash pair of Array*
@@ -104,17 +89,9 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
   return IR::Call(IR::Val::Func(insertion.first->second), {lhs_ir, rhs_ir});
 }
 
-Tuple::Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}
-
-Pointer::Pointer(Type *t) : pointee(t) {}
-
-Function::Function(Type *in, Type *out) : input(in), output(out) {}
-
 std::ostream &operator<<(std::ostream &os, const Type &t) {
   return os << t.to_string();
 }
-
-std::ostream &operator<<(std::ostream &os, const Type *&t) { return os << *t; }
 
 // TODO mess around to see the performance characteristics. Maybe a flat map is
 // better?

@@ -1,5 +1,4 @@
 #include "type.h"
-#include "../architecture.h"
 
 Enum::Enum(const std::string &name, const std::vector<std::string> &members)
     : bound_name(name), members(members) {
@@ -9,7 +8,8 @@ Enum::Enum(const std::string &name, const std::vector<std::string> &members)
 
 size_t Enum::IndexOrFail(const std::string &str) const {
   auto iter = int_values.find(str);
-  return (iter == int_values.end()) ? FAIL : iter->second;
+  return (iter == int_values.end()) ? std::numeric_limits<size_t>::max()
+                                    : iter->second;
 }
 
 IR::Val Enum::EmitInitialValue() const { return IR::Val::Enum(this, 0); }

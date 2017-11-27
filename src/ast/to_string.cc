@@ -128,10 +128,6 @@ std::string Identifier::to_string(size_t n) const {
   return ss.str();
 }
 
-std::string Generic::to_string(size_t n) const {
-  return tabs(n) + "<"+ identifier->token + "`>\n" + test_fn->to_string(n + 1);
-}
-
 std::string InDecl::to_string(size_t n) const {
   return tabs(n) + "<" + TYPE_OR("") + " " + identifier->token + " in>\n" +
          container->to_string(n + 1);

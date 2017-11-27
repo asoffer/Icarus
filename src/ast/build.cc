@@ -462,16 +462,6 @@ Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
   return decl;
 }
 
-base::owned_ptr<Node> Generic::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto generic              = base::make_owned<Generic>();
-  generic->span             = TextSpan(nodes[0]->span, nodes[2]->span);
-  generic->test_fn          = base::move<Expression>(nodes[0]);
-  generic->precedence       = Language::precedence(Language::Operator::Tick);
-  generic->identifier       = base::move<Identifier>(nodes[2]);
-  generic->identifier->decl = generic.get();
-  return generic;
-}
-
 base::owned_ptr<Node>
 FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   auto fn_lit        = base::make_owned<FunctionLiteral>();
@@ -664,9 +654,6 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
   } else if (tk == "in") {
     return AST::InDecl::Build(std::move(nodes));
-
-  } else if (tk == "`") {
-    return AST::Generic::Build(std::move(nodes));
   }
 
   if (tk == "=") {

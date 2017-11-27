@@ -1,13 +1,10 @@
 #include "type.h"
 
-#include "../architecture.h"
 #include "../ast/ast.h"
 #include "../ir/ir.h"
 #include "scope.h"
 
 extern IR::Val Evaluate(AST::Expression *expr);
-
-Struct::Struct(const std::string &name) : bound_name(name) {}
 
 void Struct::CompleteDefinition() {
   if (completed_) { return; }
@@ -28,7 +25,8 @@ void Struct::CompleteDefinition() {
       decl_type = decls[i]->init_val->type;
     }
 
-    insert_field(decls[i]->identifier->token, decl_type, decls[i]->init_val.get());
+    insert_field(decls[i]->identifier->token, decl_type,
+                 decls[i]->init_val.get());
   }
   completed_ = true;
 }
@@ -60,14 +58,3 @@ void Struct::insert_field(const std::string &name, Type *ty,
 }
 
 std::string Struct::to_string() const { return bound_name; }
-
-Struct
-Struct::Anon(const std::unordered_set<AST::Declaration *> &declarations) {
-  static int counter = 0;
-  Struct result("anon.struct." + std::to_string(counter++));
-  for (auto decl : declarations) {
-    result.insert_field(decl->identifier->token, decl->type, nullptr);
-  }
-  result.CompleteDefinition();
-  return result;
-}

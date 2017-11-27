@@ -1,13 +1,6 @@
 #ifndef ICARUS_TYPE_TYPE_H
 #define ICARUS_TYPE_TYPE_H
 
-#define PRINT(m)                                                               \
-  do {                                                                         \
-    const char *msg = m "\n";                                                  \
-    do { IR::Print(IR::Val::Char(*msg)); } while ((*msg++) != '\n');           \
-  } while (false)
-
-
 struct Type;
 struct Struct;
 struct Array;
@@ -34,8 +27,6 @@ struct Scope;
 #include <unordered_map>
 #include <unordered_set>
 #include <sstream>
-
-constexpr size_t FAIL = ~0ul;
 
 namespace AST {
 struct Declaration;
@@ -76,7 +67,6 @@ public:
                            IR::Val to_var);
 
   bool is_big() const { return is<Array>() || is<Struct>(); }
-  bool stores_data() const { return this != Type_ && !is<Function>(); }
   virtual bool needs_destroy() const { return false; }
 };
 
@@ -103,7 +93,9 @@ private:
 
 struct Array : public Type {
   TYPE_FNS(Array, array);
-  Array(Type *t, size_t l);
+  Array(Type *t) : data_type(t), len(0), fixed_length(false) {}
+  Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {}
+
 
   static IR::Val Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                          IR::Val rhs_ir, bool equality);
@@ -117,18 +109,11 @@ struct Array : public Type {
   Type *data_type;
   size_t len;
   bool fixed_length;
-
-  // Not the length of the array, but the dimension. That is, it's how many
-  // times you can access an element.
-  size_t dimension;
-
-  Array(Type *t);
 };
 
 struct Tuple : public Type {
   TYPE_FNS(Tuple, tuple);
-
-  Tuple(std::vector<Type *> types);
+  Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}
 
   virtual bool needs_destroy() const {
     for (Type *t : entries) {
@@ -137,23 +122,20 @@ struct Tuple : public Type {
     return false;
   }
 
-
   std::vector<Type *> entries;
 };
 
 struct Pointer : public Type {
   TYPE_FNS(Pointer, pointer);
-
-  Pointer(Type *t);
+  Pointer(Type *t) : pointee(t) {}
   Type *pointee;
 };
 
 struct Function : public Type {
   TYPE_FNS(Function, function);
+  Function(Type *in, Type *out) : input(in), output(out) {}
 
   // TODO needs destroy for captures?
-
-  Function(Type *in, Type *out);
   Type *input, *output;
 };
 
@@ -172,9 +154,7 @@ struct Enum : public Type {
 struct Struct : public Type {
   TYPE_FNS(Struct, struct);
 
-  Struct(const std::string &name);
-  static Struct
-  Anon(const std::unordered_set<AST::Declaration *> &declarations);
+  Struct(std::string name) : bound_name(std::move(name)) {}
 
   void EmitDefaultAssign(IR::Val to_var, IR::Val from_val);
 
@@ -266,6 +246,5 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out);
 RangeType *Range(Type *t);
 SliceType *Slice(Array *a);
 Scope_Type *ScopeType(Type *t);
-
 
 #endif // ICARUS_TYPE_TYPE_H

@@ -227,15 +227,6 @@ struct Declaration : public Expression {
   }
 };
 
-struct Generic : public Declaration {
-  EXPR_FNS(Generic);
-  static base::owned_ptr<Node>
-  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
-
-  Generic *Clone() const override { return new Generic(*this); }
-  base::owned_ptr<Expression> test_fn;
-};
-
 struct InDecl : public Declaration {
   EXPR_FNS(InDecl);
   static base::owned_ptr<Node>

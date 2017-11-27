@@ -4,10 +4,10 @@
 #include <limits>
 #include <memory>
 #include <queue>
-#include <set>
 #include <stack>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "../base/debug.h"
@@ -397,7 +397,7 @@ struct Func {
   // Indices for blocks that end in a return statement.
   // TODO: Alternatively we could just iterate over all blocks and look at the
   // last entry. Figure out which makes more sense.
-  std::vector<BlockIndex> return_blocks_;
+  std::unordered_set<BlockIndex> return_blocks_;
 
   // TODO we can probably come up with a way to more closely tie Register and
   // CmdIndex so we don't need to store this map:

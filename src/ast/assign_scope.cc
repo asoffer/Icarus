@@ -55,13 +55,6 @@ void Binop::assign_scope(Scope *scope) {
   if (rhs) { rhs->assign_scope(scope); }
 }
 
-void Generic::assign_scope(Scope *scope) {
-  scope_ = scope;
-  scope_->decls_.push_back(this);
-  identifier->assign_scope(scope);
-  test_fn->assign_scope(scope);
-}
-
 void InDecl::assign_scope(Scope *scope) {
   scope_ = scope;
   scope_->decls_.push_back(this);

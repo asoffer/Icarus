@@ -68,12 +68,6 @@ void FunctionLiteral::lrvalue_check() {
   statements->lrvalue_check();
 }
 
-void Generic::lrvalue_check() {
-  lvalue = Assign::RVal;
-  identifier->lrvalue_check();
-  test_fn->lrvalue_check();
-}
-
 void InDecl::lrvalue_check() {
   lvalue = Assign::RVal;
   identifier->lrvalue_check();

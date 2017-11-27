@@ -1,7 +1,6 @@
 #include "ast.h"
 
 #include <queue>
-#include <unordered_set>
 
 #include "../error_log.h"
 #include "../ir/ir.h"
@@ -292,7 +291,8 @@ void Access::verify_types() {
         // supposed to be a member so we should emit an error but carry on
         // assuming that this is an element of that enum type.
         type = evaled_type;
-        if (ptr_cast<Enum>(evaled_type)->IndexOrFail(member_name) == FAIL) {
+        if (ptr_cast<Enum>(evaled_type)->IndexOrFail(member_name) ==
+            std::numeric_limits<size_t>::max()) {
           errors.emplace_back(Error::Code::MissingMember);
           // ErrorLog::MissingMember(loc, member_name, evaled_type);
         }
@@ -803,42 +803,6 @@ void CommaList::verify_types() {
   }
   // TODO got to have a better way to make tuple types i think
   type = all_types ? Type_ : Tup(type_vec);
-}
-
-void Generic::verify_types() {
-  STARTING_CHECK;
-  test_fn->verify_types();
-
-  bool has_err = false;
-
-  if (!test_fn->type->is<Function>()) {
-    // TODO Need a way better
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::NonFunctionTest(loc);
-    type             = Err;
-    identifier->type = Err;
-    return;
-  }
-
-  auto test_func_type = ptr_cast<Function>(test_fn->type);
-  if (test_func_type->output != Bool) {
-    // TODO What about implicitly cast-able to bool via a user-defined cast?
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::NonBoolTestReturn(loc);
-    type    = Err;
-    has_err = true;
-  }
-
-  if (test_func_type->input != Type_) {
-    // TODO will this always be true?
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::NonTypeTestInput(loc);
-    type    = Err;
-    has_err = true;
-  }
-
-  if (!has_err) { type = Type_; }
-  identifier->type = type;
 }
 
 void InDecl::verify_types() {
