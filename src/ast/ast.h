@@ -79,10 +79,6 @@ struct Expression : public Node {
 
   virtual Expression *Clone() const = 0;
 
-  // TOD make this method pure abstract
-  virtual void GeneratePreconditions() const { NOT_YET(); }
-  virtual void GeneratePostconditions() const { NOT_YET(); }
-
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
 
@@ -119,8 +115,6 @@ struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
   void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
-  virtual void GeneratePreconditions() const { UNREACHABLE(); }
-  virtual void GeneratePostconditions() const { UNREACHABLE(); }
   TokenNode *Clone() const override { return new TokenNode(*this); }\
 
   virtual base::owned_ptr<Node>
@@ -150,8 +144,6 @@ struct Terminal : public Expression {
 
   Terminal *Clone() const override { return new Terminal(*this); }
   virtual IR::Val EmitIR(bool);
-  virtual void GeneratePreconditions() const { NOT_YET(); }
-  virtual void GeneratePostconditions() const { NOT_YET(); }
   virtual bool is_hole() const override { return value == IR::Val::None(); }
 };
 
