@@ -112,9 +112,6 @@ template <> struct hash<IR::CmdIndex> {
 DEFINE_STRONG_HASH(IR::BlockIndex);
 DEFINE_STRONG_HASH(IR::ReturnValue);
 
-std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
-                                 bool rets_are_args);
-
 namespace IR {
 
 inline bool operator<(CmdIndex lhs, CmdIndex rhs) {
@@ -277,10 +274,18 @@ struct ExecContext {
 };
 
 struct Cmd {
-  Cmd() : op_code(Op::Nop) {}
+  // For pre/post-conditions, we generate blocks of code in the same function
+  // but which would otherwise be unreachable from the normal execution paths of
+  // that function. This enum attached to each command indicates what kind of
+  // command, so we know not to emit this during code gen or during execution if
+  // it's not 'Exec'.
+  enum class Kind : char { Exec, PreCondition, PostCondition };
+
+  Cmd() : op_code_(Op::Nop) {}
   Cmd(Type *t, Op op, std::vector<Val> args);
   std::vector<Val> args;
-  Op op_code;
+  Op op_code_;
+  Kind kind_ = Kind::Exec;
 
   Type *type = nullptr;
   Register result;
@@ -429,6 +434,9 @@ struct FuncResetter {
        resetter.cond_ = false)
 
 } // namespace IR
+
+std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
+                                 IR::Cmd::Kind);
 
 namespace debug {
 inline std::string to_string(const IR::Val &val) { return val.to_string(); }

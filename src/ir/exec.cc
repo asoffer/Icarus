@@ -18,7 +18,7 @@ extern size_t precedence(Operator op);
 } // namespace Language
 
 std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
-                                 bool rets_are_args) {
+                                 IR::Cmd::Kind kind) {
   std::unique_ptr<IR::Func> fn = nullptr;
   AST::FunctionLiteral fn_lit;
   base::owned_ptr<AST::Node> *to_release = nullptr;
@@ -52,8 +52,7 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
   }
 
   CURRENT_FUNC(nullptr) {
-    fn = base::wrap_unique(
-        fn_lit.EmitTemporaryIR(rets_are_args).value.as<IR::Func *>());
+    fn = base::wrap_unique(fn_lit.EmitTemporaryIR(kind).value.as<IR::Func *>());
   }
 
   to_release->release();
@@ -64,7 +63,7 @@ void ReplEval(AST::Expression *expr) {
   auto fn = base::make_owned<IR::Func>(Func(Void, Void));
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
-    auto expr_val      = expr->EmitIR(false);
+    auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);
     if (!errors.empty()) {
       ErrorLog::Dump();
       std::cerr << "There were " << errors.size() << " errors.";
@@ -85,7 +84,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   IR::ExecContext context;
   bool were_errors;
   if (!errors.empty()) { return IR::Val::None(); }
-  auto fn = ExprFn(expr, nullptr, false);
+  auto fn = ExprFn(expr, nullptr, IR::Cmd::Kind::Exec);
   results = fn->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
@@ -140,7 +139,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   std::vector<Val> resolved = cmd.args;
   for (auto &r : resolved) { Resolve(&r); }
 
-  switch (cmd.op_code) {
+  switch (cmd.op_code_) {
   case Op::Neg: return Neg(resolved[0]);
   case Op::Add: return Add(resolved[0], resolved[1]);
   case Op::Sub: return Sub(resolved[0], resolved[1]);

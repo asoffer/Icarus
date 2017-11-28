@@ -26,7 +26,7 @@ static void RecordReferences(Func *fn, const CmdIndex &cmd_index,
 }
 
 Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
-    : args(std::move(arg_vec)), op_code(op) {
+    : args(std::move(arg_vec)), op_code_(op) {
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
@@ -431,7 +431,7 @@ Val Call(Val fn, std::vector<Val> vals) {
 void Cmd::dump(size_t indent) const {
   std::cerr << std::string(indent, ' ');
   if (type != nullptr) { std::cerr << reg().to_string() << " = "; }
-  switch (op_code) {
+  switch (op_code_) {
   case Op::Malloc: std::cerr << "malloc"; break;
   case Op::Free: std::cerr << "free"; break;
   case Op::Extend: std::cerr << "extend"; break;
@@ -520,7 +520,7 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
 
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   auto &cmd = Command(cmd_index);
-  ASSERT(cmd.op_code == Op::Phi, "");
+  ASSERT(cmd.op_code_ == Op::Phi, "");
   cmd.args = std::move(args);
   RecordReferences</* IsPhi = */ true>(Func::Current, cmd_index, cmd.args);
 }

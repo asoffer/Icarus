@@ -27,7 +27,7 @@ struct PropDB {
         incoming;
     for (const auto &block : fn_->blocks_) {
       const auto &last_cmd = block.cmds_.back();
-      switch (last_cmd.op_code) {
+      switch (last_cmd.op_code_) {
       case Op::UncondJump:
         incoming[&fn_->block(last_cmd.args[0].value.as<BlockIndex>())].insert(
             &block);
@@ -104,7 +104,7 @@ struct PropDB {
       }
     }
     const auto &last_cmd = block.cmds_.back();
-    switch (last_cmd.op_code) {
+    switch (last_cmd.op_code_) {
     case Op::UncondJump:
       stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
                      cmd_index);
@@ -134,7 +134,7 @@ struct PropDB {
     // TODO you always know if it's SetReturn at compile-time so you should pull
     // these into two separate functions
     const auto& cmd = fn_->Command(cmd_index);
-    Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+    Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     const auto &incoming_set =
         views_[&block].incoming_[&fn_->block(cmd_index.block)];
 
@@ -143,7 +143,7 @@ struct PropDB {
       props.reserve(incoming_set.size());
       for (const Block *incoming_block : incoming_set) {
         props.push_back(
-            Get(*incoming_block, (cmd.op_code == Op::SetReturn)
+            Get(*incoming_block, (cmd.op_code_ == Op::SetReturn)
                                      ? cmd.args[1].value.as<Register>()
                                      : cmd.result)
                 ->as<BoolProperty>());
@@ -154,7 +154,7 @@ struct PropDB {
       std::vector<Range<i32>> props;
       props.reserve(incoming_set.size());
       for (const Block *incoming_block : incoming_set) {
-        if (cmd.op_code == Op::SetReturn) {
+        if (cmd.op_code_ == Op::SetReturn) {
           props.push_back(Get(*incoming_block, cmd.args[1])->as<Range<i32>>());
         } else {
           props.push_back(Get(*incoming_block, cmd.result)->as<Range<i32>>());
@@ -169,7 +169,7 @@ struct PropDB {
   void Set(const Block &block, CmdIndex cmd_index,
            base::owned_ptr<Property> new_prop) {
     const auto &cmd = fn_->Command(cmd_index);
-    Type *type = (cmd.op_code == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+    Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     // TODO you keep checking and forgetting the types here :(
     if (type == Bool) {
       new_prop = BoolProperty::StrongMerge(
@@ -184,7 +184,7 @@ struct PropDB {
     }
 
     auto &old_prop =
-        (cmd.op_code == Op::SetReturn)
+        (cmd.op_code_ == Op::SetReturn)
             ? views_[&block].ret_props_[cmd.args[0].value.as<ReturnValue>()]
             : views_[&block].props_[cmd.result];
     if (!old_prop->Implies(*new_prop)) {
@@ -204,7 +204,7 @@ struct PropDB {
       views_[&view].unreachable_.insert(&to);
 
       // TODO What about weak back-references? We don't yet handle loops.
-      switch (last_cmd.op_code) {
+      switch (last_cmd.op_code_) {
       case Op::UncondJump:
         SetUnreachable(view, to,
                        fn_->block(last_cmd.args[0].value.as<BlockIndex>()));
@@ -301,7 +301,7 @@ void PropDB::Compute() {
     auto prop = Get(*block, cmd.result);
     stale_.erase(iter);
 
-    switch (cmd.op_code) {
+    switch (cmd.op_code_) {
     case Op::Neg: {
       auto prop = Get(*block, cmd.args[0]);
       prop->Neg();
@@ -368,7 +368,7 @@ void PropDB::Compute() {
     case Op::ReturnJump: /* Nothing to do */ continue;
 
     default:
-      LOG << "Not yet handled: " << static_cast<int>(cmd.op_code);
+      LOG << "Not yet handled: " << static_cast<int>(cmd.op_code_);
       continue;
     }
   }
@@ -395,7 +395,7 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
 
       db.stale_.emplace(&fn->block(fn->entry()), CmdIndex{BlockIndex{i}, j});
 
-      if (cmd.op_code == Op::Call) {
+      if (cmd.op_code_ == Op::Call) {
         const auto &called_fn = cmd.args.back().value;
         if (called_fn.is<Func *>()) {
           validation_queue->push(called_fn.as<Func *>());
@@ -461,7 +461,8 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       arg_props.push_back(prop_db.Get(calling_block, args[i]));
     }
     for (const auto &precondition : called_fn->preconditions_) {
-      auto ir_fn = ExprFn(precondition, called_fn->type->input, false);
+      auto ir_fn =
+          ExprFn(precondition, called_fn->type->input, IR::Cmd::Kind::Exec);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
         // TODO log error
@@ -502,7 +503,8 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
           prop_db.views_[exit_block].ret_props_[ReturnValue(i)]);
     }
 
-    auto ir_fn = ExprFn(postcondition, Tup(input_types), true);
+    auto ir_fn =
+        ExprFn(postcondition, Tup(input_types), IR::Cmd::Kind::PostCondition);
     if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
       LOG << "Failed post condition";
     }

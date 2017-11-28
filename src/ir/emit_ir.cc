@@ -75,10 +75,10 @@ IR::Val OrdFunc() {
   return IR::Val::Func(ord_func_);
 }
 
-IR::Val AST::Access::EmitLVal(bool rets_are_args) {
+IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
 
-  auto val = operand->EmitLVal(rets_are_args);
+  auto val = operand->EmitLVal(kind);
   while (val.type->is<Pointer>() &&
          !ptr_cast<Pointer>(val.type)->pointee->is_big()) {
     val = IR::Load(val);
@@ -91,27 +91,28 @@ IR::Val AST::Access::EmitLVal(bool rets_are_args) {
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 }
 
-IR::Val AST::Access::EmitIR(bool rets_are_args) {
+IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
 
   if (type->is<Enum>()) {
     return ptr_cast<Enum>(type)->EmitLiteral(member_name);
   } else {
-    return PtrCallFix(EmitLVal(rets_are_args));
+    return PtrCallFix(EmitLVal(kind));
   }
   return IR::Val::None();
 }
 
-IR::Val AST::Terminal::EmitIR(bool) {
+IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) {
   VERIFY_OR_EXIT;
   return value;
 }
 
-IR::Val AST::Identifier::EmitIR(bool rets_are_args) {
+IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
 
-  if (rets_are_args && decl->addr.value.is<IR::ReturnValue>()) {
+  if (kind == IR::Cmd::Kind::PostCondition &&
+      decl->addr.value.is<IR::ReturnValue>()) {
     Type *input =
         scope_->ContainingFnScope()->fn_lit->type->as<Function>().input;
     i32 num_args = input->is<Tuple>()
@@ -129,7 +130,7 @@ IR::Val AST::Identifier::EmitIR(bool rets_are_args) {
   } else if (decl->is<InDecl>()) {
     auto *in_decl = ptr_cast<InDecl>(decl);
     if (in_decl->container->type->is<Array>()) {
-      return PtrCallFix(EmitLVal(rets_are_args));
+      return PtrCallFix(EmitLVal(kind));
     } else {
       return decl->addr;
     }
@@ -139,23 +140,22 @@ IR::Val AST::Identifier::EmitIR(bool rets_are_args) {
     // not const.
     return Evaluate(decl->init_val.get());
   } else {
-    return PtrCallFix(EmitLVal(rets_are_args));
+    return PtrCallFix(EmitLVal(kind));
   }
 }
 
-IR::Val AST::ArrayLiteral::EmitIR(bool rets_are_args) {
+IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   auto array_val  = IR::Alloca(type);
   auto *data_type = ptr_cast<Array>(type)->data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
-    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(rets_are_args),
-                       elem_i);
+    Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(kind), elem_i);
   }
   return array_val;
 }
 
-IR::Val AST::For::EmitIR(bool rets_are_args) {
+IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
 
   auto init       = IR::Func::Current->AddBlock();
@@ -174,17 +174,17 @@ IR::Val AST::For::EmitIR(bool rets_are_args) {
     for (auto &decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          init_vals.push_back(ptr_cast<Binop>(decl->container.get())
-                                  ->lhs->EmitIR(rets_are_args));
+          init_vals.push_back(
+              ptr_cast<Binop>(decl->container.get())->lhs->EmitIR(kind));
         } else if (decl->container->is<Unop>()) {
-          init_vals.push_back(ptr_cast<Unop>(decl->container.get())
-                                  ->operand->EmitIR(rets_are_args));
+          init_vals.push_back(
+              ptr_cast<Unop>(decl->container.get())->operand->EmitIR(kind));
         } else {
           NOT_YET();
         }
       } else if (decl->container->type->is<Array>()) {
-        init_vals.push_back(IR::Index(decl->container->EmitLVal(rets_are_args),
-                                      IR::Val::Uint(0)));
+        init_vals.push_back(
+            IR::Index(decl->container->EmitLVal(kind), IR::Val::Uint(0)));
 
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
@@ -269,8 +269,8 @@ IR::Val AST::For::EmitIR(bool rets_are_args) {
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val = ptr_cast<Binop>(decl->container.get())
-                             ->rhs->EmitIR(rets_are_args);
+          auto rhs_val =
+              ptr_cast<Binop>(decl->container.get())->rhs->EmitIR(kind);
           cmp = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
@@ -281,7 +281,7 @@ IR::Val AST::For::EmitIR(bool rets_are_args) {
         }
       } else if (decl->container->type->is<Array>()) {
         auto *array_type = ptr_cast<Array>(decl->container->type);
-        cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(rets_are_args),
+        cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(kind),
                                     IR::Val::Uint(array_type->len)));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
@@ -308,7 +308,7 @@ IR::Val AST::For::EmitIR(bool rets_are_args) {
     IR::Block::Current = body_entry;
 
     for_scope->Enter();
-    statements->EmitIR(rets_are_args);
+    statements->EmitIR(kind);
     for_scope->Exit();
 
     IR::UncondJump(incr);
@@ -318,7 +318,7 @@ IR::Val AST::For::EmitIR(bool rets_are_args) {
   return IR::Val::None();
 }
 
-IR::Val AST::Case::EmitIR(bool rets_are_args) {
+IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   auto land = IR::Func::Current->AddBlock();
 
@@ -329,12 +329,12 @@ IR::Val AST::Case::EmitIR(bool rets_are_args) {
     auto compute = IR::Func::Current->AddBlock();
     auto next    = IR::Func::Current->AddBlock();
 
-    auto val = key_vals[i].first->EmitIR(rets_are_args);
+    auto val = key_vals[i].first->EmitIR(kind);
     IR::CondJump(val, compute, next);
 
     IR::Block::Current = compute;
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
-    auto result = key_vals[i].second->EmitIR(rets_are_args);
+    auto result = key_vals[i].second->EmitIR(kind);
     phi_args.push_back(result);
     IR::UncondJump(land);
 
@@ -343,7 +343,7 @@ IR::Val AST::Case::EmitIR(bool rets_are_args) {
 
   // Last entry
   phi_args.push_back(IR::Val::Block(IR::Block::Current));
-  auto result = key_vals.back().second->EmitIR(rets_are_args);
+  auto result = key_vals.back().second->EmitIR(kind);
   phi_args.push_back(result);
   IR::UncondJump(land);
 
@@ -353,34 +353,34 @@ IR::Val AST::Case::EmitIR(bool rets_are_args) {
   return IR::Func::Current->Command(phi).reg();
 }
 
-IR::Val AST::ScopeLiteral::EmitIR(bool) {
+IR::Val AST::ScopeLiteral::EmitIR(IR::Cmd::Kind) {
   VERIFY_OR_EXIT;
   return IR::Val::Scope(this);
 }
 
-IR::Val AST::ScopeNode::EmitIR(bool rets_are_args) {
+IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   IR::Val scope_expr_val = Evaluate(scope_expr.get());
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
   auto enter_fn = scope_expr_val.value.as<AST::ScopeLiteral *>()
-                      ->enter_fn->init_val->EmitIR(rets_are_args);
+                      ->enter_fn->init_val->EmitIR(kind);
   ASSERT_NE(enter_fn, IR::Val::None());
   auto exit_fn =
       scope_expr_val.value.as<AST::ScopeLiteral *>()->exit_fn->init_val->EmitIR(
-          rets_are_args);
+          kind);
   ASSERT_NE(exit_fn, IR::Val::None());
 
-  auto call_enter_result = IR::Call(
-      enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR(rets_are_args)}
-                     : std::vector<IR::Val>{});
+  auto call_enter_result =
+      IR::Call(enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR(kind)}
+                              : std::vector<IR::Val>{});
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
 
   IR::CondJump(call_enter_result, enter_block, land_block);
 
   IR::Block::Current = enter_block;
-  stmts->EmitIR(rets_are_args);
+  stmts->EmitIR(kind);
 
   auto call_exit_result = IR::Call(exit_fn, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
@@ -389,7 +389,7 @@ IR::Val AST::ScopeNode::EmitIR(bool rets_are_args) {
   return IR::Val::None();
 }
 
-IR::Val AST::Declaration::EmitIR(bool rets_are_args) {
+IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   if (addr != IR::Val::None()) { return IR::Val::None(); }
 
@@ -441,11 +441,9 @@ IR::Val AST::Declaration::EmitIR(bool rets_are_args) {
     if (IsCustomInitialized()) {
       lrvalue_check();
       if (init_val->lvalue == Assign::RVal) {
-        Type::EmitMoveInit(init_val->type, type,
-                           init_val->EmitIR(rets_are_args), addr);
+        Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(kind), addr);
       } else {
-        Type::EmitCopyInit(init_val->type, type,
-                           init_val->EmitIR(rets_are_args), addr);
+        Type::EmitCopyInit(init_val->type, type, init_val->EmitIR(kind), addr);
       }
     } else {
       type->EmitInit(addr);
@@ -454,20 +452,20 @@ IR::Val AST::Declaration::EmitIR(bool rets_are_args) {
   return IR::Val::None();
 }
 
-IR::Val AST::Unop::EmitIR(bool rets_are_args) {
+IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
 
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
-    return IR::Neg(operand->EmitIR(rets_are_args));
+    return IR::Neg(operand->EmitIR(kind));
   } break;
   case Language::Operator::Return: {
     if (operand->is<AST::CommaList>()) {
       bool all_types = true;
       std::vector<IR::Val> vals;
       for (const auto &expr : ptr_cast<AST::CommaList>(operand.get())->exprs) {
-        vals.push_back(expr->EmitIR(rets_are_args));
+        vals.push_back(expr->EmitIR(kind));
         if (expr->type != Type_) { all_types = false; }
       }
 
@@ -486,7 +484,7 @@ IR::Val AST::Unop::EmitIR(bool rets_are_args) {
         IR::ReturnJump();
       }
     } else {
-      auto val = operand->EmitIR(rets_are_args);
+      auto val = operand->EmitIR(kind);
       if (!errors.empty()) { return IR::Val::None(); }
       IR::SetReturn(IR::ReturnValue{0}, val);
       IR::ReturnJump();
@@ -495,17 +493,17 @@ IR::Val AST::Unop::EmitIR(bool rets_are_args) {
     return IR::Val::None();
   }
   case Language::Operator::Print: {
-    ForEachExpr(operand.get(), [rets_are_args](size_t, AST::Expression *expr) {
+    ForEachExpr(operand.get(), [kind](size_t, AST::Expression *expr) {
       if (expr->type->is<Primitive>() || expr->type->is<Pointer>()) {
-        IR::Print(expr->EmitIR(rets_are_args));
+        IR::Print(expr->EmitIR(kind));
       } else {
-        expr->type->EmitRepr(expr->EmitIR(rets_are_args));
+        expr->type->EmitRepr(expr->EmitIR(kind));
       }
     });
 
     return IR::Val::None();
   } break;
-  case Language::Operator::And: return operand->EmitLVal(rets_are_args);
+  case Language::Operator::And: return operand->EmitLVal(kind);
   case Language::Operator::Eval:
     // TODO what if there's an error during evaluation?
     return Evaluate(operand.get());
@@ -513,12 +511,11 @@ IR::Val AST::Unop::EmitIR(bool rets_are_args) {
     auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
     val.value.as<AST::CodeBlock *>()->stmts->assign_scope(scope_);
-    val.value.as<AST::CodeBlock *>()->stmts->EmitIR(rets_are_args);
+    val.value.as<AST::CodeBlock *>()->stmts->EmitIR(kind);
     return IR::Val::None();
   } break;
-  case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(rets_are_args));
-  case Language::Operator::At:
-    return PtrCallFix(operand->EmitIR(rets_are_args));
+  case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(kind));
+  case Language::Operator::At: return PtrCallFix(operand->EmitIR(kind));
   case Language::Operator::Needs: {
     // TODO validate requirements are well-formed?
     IR::Func::Current->preconditions_.push_back(operand.get());
@@ -533,13 +530,13 @@ IR::Val AST::Unop::EmitIR(bool rets_are_args) {
   }
 }
 
-IR::Val AST::Binop::EmitIR(bool rets_are_args) {
+IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
-    auto lhs_ir = lhs->EmitIR(rets_are_args);                                  \
-    auto rhs_ir = rhs->EmitIR(rets_are_args);                                  \
+    auto lhs_ir = lhs->EmitIR(kind);                                           \
+    auto rhs_ir = rhs->EmitIR(kind);                                           \
     return IR::op_name(lhs_ir, rhs_ir);                                        \
   } break
     CASE(Add);
@@ -551,36 +548,35 @@ IR::Val AST::Binop::EmitIR(bool rets_are_args) {
 #undef CASE
   case Language::Operator::Cast: {
     ASSERT(!rhs->is<AST::CommaList>(), "");
-    auto lhs_ir = lhs->EmitIR(rets_are_args);
-    auto rhs_ir = rhs->EmitIR(rets_are_args);
+    auto lhs_ir = lhs->EmitIR(kind);
+    auto rhs_ir = rhs->EmitIR(kind);
     return IR::Cast(lhs_ir, rhs_ir);
   } break;
   case Language::Operator::Call: {
-    auto lhs_ir = lhs->EmitIR(rets_are_args);
+    auto lhs_ir = lhs->EmitIR(kind);
     std::vector<IR::Val> args;
     if (rhs) {
-      ForEachExpr(rhs.get(),
-                  [&args, rets_are_args](size_t, AST::Expression *expr) {
-                    args.push_back(expr->EmitIR(rets_are_args));
-                  });
+      ForEachExpr(rhs.get(), [&args, kind](size_t, AST::Expression *expr) {
+        args.push_back(expr->EmitIR(kind));
+      });
     }
     return IR::Call(lhs_ir, std::move(args));
   } break;
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;
     std::vector<IR::Val> rhs_vals;
-    ForEachExpr(rhs.get(), [&rhs_vals, &rhs_types,
-                            rets_are_args](size_t, AST::Expression *expr) {
-      rhs_vals.push_back(expr->EmitIR(rets_are_args));
-      rhs_types.push_back(expr->type);
-    });
+    ForEachExpr(rhs.get(),
+                [&rhs_vals, &rhs_types, kind](size_t, AST::Expression *expr) {
+                  rhs_vals.push_back(expr->EmitIR(kind));
+                  rhs_types.push_back(expr->type);
+                });
 
     std::vector<IR::Val> lhs_lvals;
-    ForEachExpr(lhs.get(), [&lhs_lvals, &lhs_types,
-                            rets_are_args](size_t, AST::Expression *expr) {
-      lhs_lvals.push_back(expr->EmitLVal(rets_are_args));
-      lhs_types.push_back(expr->type);
-    });
+    ForEachExpr(lhs.get(),
+                [&lhs_lvals, &lhs_types, kind](size_t, AST::Expression *expr) {
+                  lhs_lvals.push_back(expr->EmitLVal(kind));
+                  lhs_types.push_back(expr->type);
+                });
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
@@ -593,12 +589,12 @@ IR::Val AST::Binop::EmitIR(bool rets_are_args) {
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(rets_are_args);
+    auto lhs_val       = lhs->EmitIR(kind);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, land_block, more_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(rets_are_args);
+    auto rhs_val       = rhs->EmitIR(kind);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -614,12 +610,12 @@ IR::Val AST::Binop::EmitIR(bool rets_are_args) {
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
-    auto lhs_val       = lhs->EmitIR(rets_are_args);
+    auto lhs_val       = lhs->EmitIR(kind);
     auto lhs_end_block = IR::Block::Current;
     IR::CondJump(lhs_val, more_block, land_block);
 
     IR::Block::Current = more_block;
-    auto rhs_val       = rhs->EmitIR(rets_are_args);
+    auto rhs_val       = rhs->EmitIR(kind);
     auto rhs_end_block = IR::Block::Current;
     IR::UncondJump(land_block);
 
@@ -633,8 +629,8 @@ IR::Val AST::Binop::EmitIR(bool rets_are_args) {
   } break;
 #define CASE_ASSIGN_EQ(op_name)                                                \
   case Language::Operator::op_name##Eq: {                                      \
-    auto lhs_lval = lhs->EmitLVal(rets_are_args);                              \
-    auto rhs_ir   = rhs->EmitIR(rets_are_args);                                \
+    auto lhs_lval = lhs->EmitLVal(kind);                                       \
+    auto rhs_ir   = rhs->EmitIR(kind);                                         \
     IR::Store(IR::op_name(PtrCallFix(lhs_lval), rhs_ir), lhs_lval);            \
     return IR::Val::None();                                                    \
   } break
@@ -645,15 +641,14 @@ IR::Val AST::Binop::EmitIR(bool rets_are_args) {
     CASE_ASSIGN_EQ(Div);
     CASE_ASSIGN_EQ(Mod);
 #undef CASE_ASSIGN_EQ
-  case Language::Operator::Index: return PtrCallFix(EmitLVal(rets_are_args));
+  case Language::Operator::Index: return PtrCallFix(EmitLVal(kind));
   default: UNREACHABLE(*this);
   }
 }
 
-IR::Val AST::ArrayType::EmitIR(bool rets_are_args) {
+IR::Val AST::ArrayType::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
-  return IR::Array(length->EmitIR(rets_are_args),
-                   data_type->EmitIR(rets_are_args));
+  return IR::Array(length->EmitIR(kind), data_type->EmitIR(kind));
 }
 
 static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
@@ -680,13 +675,11 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
   }
 }
 
-IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
+IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   if (ops[0] == Language::Operator::Xor) {
     auto val = IR::Val::Bool(false);
-    for (const auto &expr : exprs) {
-      val = IR::Xor(val, expr->EmitIR(rets_are_args));
-    }
+    for (const auto &expr : exprs) { val = IR::Xor(val, expr->EmitIR(kind)); }
     return val;
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
@@ -695,7 +688,7 @@ IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
     phi_args.reserve(2 * exprs.size());
     bool is_or = (ops[0] == Language::Operator::Or);
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      auto val = exprs[i]->EmitIR(rets_are_args);
+      auto val = exprs[i]->EmitIR(kind);
 
       auto next_block = IR::Func::Current->AddBlock();
       IR::CondJump(val, is_or ? land_block : next_block,
@@ -707,7 +700,7 @@ IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
     }
 
     phi_args.push_back(IR::Val::Block(IR::Block::Current));
-    phi_args.push_back(exprs.back()->EmitIR(rets_are_args));
+    phi_args.push_back(exprs.back()->EmitIR(kind));
     IR::UncondJump(land_block);
 
     IR::Block::Current = land_block;
@@ -717,17 +710,17 @@ IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
 
   } else {
     if (ops.size() == 1) {
-      auto lhs_ir = exprs[0]->EmitIR(rets_are_args);
-      auto rhs_ir = exprs[1]->EmitIR(rets_are_args);
+      auto lhs_ir = exprs[0]->EmitIR(kind);
+      auto rhs_ir = exprs[1]->EmitIR(kind);
       return EmitChainOpPair(exprs[0]->type, lhs_ir, ops[0], exprs[1]->type,
                              rhs_ir);
 
     } else {
       std::vector<IR::Val> phi_args;
-      auto lhs_ir     = exprs.front()->EmitIR(rets_are_args);
+      auto lhs_ir     = exprs.front()->EmitIR(kind);
       auto land_block = IR::Func::Current->AddBlock();
       for (size_t i = 0; i < ops.size() - 1; ++i) {
-        auto rhs_ir = exprs[i + 1]->EmitIR(rets_are_args);
+        auto rhs_ir = exprs[i + 1]->EmitIR(kind);
         IR::Val cmp = EmitChainOpPair(exprs[i]->type, lhs_ir, ops[i],
                                       exprs[i + 1]->type, rhs_ir);
 
@@ -740,7 +733,7 @@ IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
       }
 
       // Once more for the last element, but don't do a conditional jump.
-      auto rhs_ir = exprs.back()->EmitIR(rets_are_args);
+      auto rhs_ir = exprs.back()->EmitIR(kind);
       auto last_cmp =
           EmitChainOpPair(exprs[exprs.size() - 2]->type, lhs_ir, ops.back(),
                           exprs[exprs.size() - 1]->type, rhs_ir);
@@ -756,18 +749,18 @@ IR::Val AST::ChainOp::EmitIR(bool rets_are_args) {
   }
 }
 
-IR::Val AST::CommaList::EmitIR(bool) { UNREACHABLE(); }
-IR::Val AST::CommaList::EmitLVal(bool) { NOT_YET(); }
+IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(); }
+IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind) { NOT_YET(); }
 
-IR::Val AST::FunctionLiteral::EmitTemporaryIR(bool rets_are_args) {
-  return EmitIRAndSave(false, rets_are_args);
+IR::Val AST::FunctionLiteral::EmitTemporaryIR(IR::Cmd::Kind kind) {
+  return EmitIRAndSave(false, kind);
 }
-IR::Val AST::FunctionLiteral::EmitIR(bool) {
-  return EmitIRAndSave(true, false);
+IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
+  return EmitIRAndSave(true, IR::Cmd::Kind::Exec);
 }
 
 IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
-                                            bool rets_are_args) {
+                                            IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   // Verifying 'this' only verifies the declared functions type not the
   // internals. We need to do that here.
@@ -811,7 +804,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
         }
       }
 
-      statements->EmitIR(rets_are_args);
+      statements->EmitIR(kind);
       IR::ReturnJump();
     }
   }
@@ -819,41 +812,40 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
   return IR::Val::Func(ir_func);
 }
 
-IR::Val AST::Statements::EmitIR(bool rets_are_args) {
+IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
-  for (auto &stmt : statements) { stmt->EmitIR(rets_are_args); }
+  for (auto &stmt : statements) { stmt->EmitIR(kind); }
   return IR::Val::None();
 }
 
-IR::Val AST::CodeBlock::EmitIR(bool) {
+IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
   VERIFY_OR_EXIT;
   std::vector<IR::Val> args;
   stmts->contextualize(scope_, &args);
   return IR::Contextualize(this, std::move(args));
 }
 
-IR::Val AST::Identifier::EmitLVal(bool rets_are_args) {
+IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   ASSERT(decl != nullptr, "");
 
-  if (decl->addr == IR::Val::None()) { decl->EmitIR(rets_are_args); }
-  // TODO rets_are_args???
+  if (decl->addr == IR::Val::None()) { decl->EmitIR(kind); }
+  // TODO kind???
   return decl->addr;
 }
 
-IR::Val AST::Unop::EmitLVal(bool rets_are_args) {
+IR::Val AST::Unop::EmitLVal(IR::Cmd::Kind kind) {
   switch (op) {
-  case Language::Operator::At: return operand->EmitIR(rets_are_args);
+  case Language::Operator::At: return operand->EmitIR(kind);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }
 
-IR::Val AST::Binop::EmitLVal(bool rets_are_args) {
+IR::Val AST::Binop::EmitLVal(IR::Cmd::Kind kind) {
   switch (op) {
   case Language::Operator::Index:
     if (lhs->type->is<::Array>()) {
-      return IR::Index(lhs->EmitLVal(rets_are_args),
-                       rhs->EmitIR(rets_are_args));
+      return IR::Index(lhs->EmitLVal(kind), rhs->EmitIR(kind));
     }
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
