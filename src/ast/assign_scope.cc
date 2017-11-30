@@ -109,6 +109,12 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 void Jump::assign_scope(Scope *scope) { scope_ = scope; }
 void CodeBlock::assign_scope(Scope *scope) { scope_ = scope; }
 
+void CallArgs::assign_scope(Scope *scope) {
+  scope_ = scope;
+  for (auto &num : numbered_) { num->assign_scope(scope); }
+  for (auto &kv : named_) { kv.second->assign_scope(scope); }
+}
+
 void ScopeNode::assign_scope(Scope *scope) {
   scope_ = scope;
   if (!internal) { internal = scope_->add_child<ExecScope>(); }

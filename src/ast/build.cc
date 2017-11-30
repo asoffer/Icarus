@@ -9,6 +9,7 @@
 #include "../type/type.h"
 
 extern std::queue<Source::Name> file_queue;
+extern std::vector<Error> errors;
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -24,6 +25,7 @@ BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto binop        = base::make_owned<AST::Binop>();
   binop->span       = TextSpan(nodes[0]->span, nodes[2]->span);
   binop->lhs        = base::move<AST::Expression>(nodes[0]);
+  binop->rhs        = base::make_owned<AST::CallArgs>();
   binop->op         = Language::Operator::Call;
   binop->precedence = Language::precedence(binop->op);
 
@@ -326,13 +328,46 @@ base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
 
 static base::owned_ptr<Node>
 BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
-              Language::Operator op_class) {
+              Language::Operator op) {
   auto binop  = base::make_owned<Binop>();
   binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
 
   binop->lhs = base::move<Expression>(nodes[0]);
-  binop->rhs = base::move<Expression>(nodes[2]);
-  binop->op  = op_class;
+  if (op == Language::Operator::Call) {
+    auto call_args = base::make_owned<CallArgs>();
+    if (nodes[2]->is<CommaList>()) {
+      bool seen_named = false;
+      for (auto &expr : nodes[2]->as<CommaList>().exprs) {
+        if (expr->is<Binop>() &&
+            expr->as<Binop>().op == Language::Operator::Assign) {
+          seen_named = true;
+          call_args->named_.emplace(
+              std::move(expr->as<Binop>().lhs->as<Identifier>().token),
+              std::move(expr->as<Binop>().rhs));
+        } else {
+          if (seen_named) {
+            // TODO better error message.
+            errors.emplace_back(Error::Code::Other);
+          }
+          call_args->numbered_.push_back(std::move(expr));
+        }
+      }
+    } else {
+      if (nodes[2]->is<Binop>() &&
+          nodes[2]->as<Binop>().op == Language::Operator::Assign) {
+        call_args->named_.emplace(
+            std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
+            std::move(nodes[2]->as<Binop>().rhs));
+      } else {
+        call_args->numbered_.push_back(base::move<Expression>(nodes[2]));
+      }
+    }
+    binop->rhs = std::move(call_args);
+  } else {
+    binop->rhs = base::move<Expression>(nodes[2]);
+  }
+
+  binop->op  = op;
 
   if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
 

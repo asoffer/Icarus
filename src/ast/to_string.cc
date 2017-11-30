@@ -22,6 +22,16 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return output;
 }
 
+std::string CallArgs::to_string(size_t n) const {
+  std::stringstream ss;
+  ss << tabs(n) << "<CallArgs>\n";
+  for (const auto &num : numbered_) { ss << num->to_string(n + 1); }
+  for (const auto &kv : named_) {
+    ss << tabs(n + 1) << kv.first << " =>\n" << kv.second->to_string(n + 2);
+  }
+  return ss.str();
+}
+
 std::string For::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<For>\n";

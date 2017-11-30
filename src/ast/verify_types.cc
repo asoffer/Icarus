@@ -50,14 +50,13 @@ static bool CanCastImplicitly(Type *from, Type *to) {
   if (from == to || (from == NullPtr && to->is<Pointer>())) { return true; }
 
   if (from->is<Array>() && to->is<Array>()) {
-    auto *array_from = ptr_cast<Array>(from);
-    auto *array_to   = ptr_cast<Array>(to);
-
-    if (array_to->fixed_length &&
-        (!array_from->fixed_length || array_to->len != array_from->len)) {
+    if (to->as<Array>().fixed_length &&
+        (!from->as<Array>().fixed_length ||
+         to->as<Array>().len != from->as<Array>().len)) {
       return false;
     }
-    return CanCastImplicitly(array_from->data_type, array_to->data_type);
+    return CanCastImplicitly(from->as<Array>().data_type,
+                             to->as<Array>().data_type);
   }
 
   return false;
@@ -98,23 +97,21 @@ void Identifier::verify_types() {
   // determined where this was declared.
   if (decl == nullptr) {
     auto potential_decls = scope_->AllDeclsWithId(token);
-    switch (potential_decls.size()) {
-    case 1: decl = potential_decls[0]; break;
-    case 0:
-      LogError::UndeclaredIdentifier(this);
-      type = Err;
-      return;
-    default:
-      LogError::AmbiguousIdentifier(this);
+    if (potential_decls.size() != 1) {
+      (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
+                                   : LogError::AmbiguousIdentifier)(this);
       type = Err;
       return;
     }
+
+    decl = potential_decls[0];
   }
 
   type = decl->type;
 
   // Verify whether or not this identifier was captured validly.
 
+  // TODO the code below here looks wrong to me as of 11/28/17.
   // Compile-time constants may be captured implicitly.
   if (decl->const_) { return; }
 
@@ -124,7 +121,7 @@ void Identifier::verify_types() {
   for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
        scope_ptr      = scope_ptr->parent) {
     if (scope_ptr->is<FnScope>()) {
-      ptr_cast<FnScope>(scope_ptr)->fn_lit->captures.insert(decl);
+      scope_ptr->as<FnScope>().fn_lit->captures.insert(decl);
     } else if (scope_ptr->is<ExecScope>()) {
       continue;
     } else {
@@ -318,69 +315,110 @@ void Access::verify_types() {
   }
 }
 
+std::vector<Declaration *> FindFunctionCallMatches(const Identifier &id,
+                                                   Scope *scope,
+                                                   const CallArgs &args) {
+  std::vector<Declaration *> matches;
+  size_t num_errors = 0;
+  for (auto *decl : scope->AllDeclsWithId(id.token)) {
+    if (decl->type->is<Function>()) {
+      if (!decl->const_) {
+        ++num_errors;
+        errors.emplace_back(Error::Code::Other);
+        continue;
+      }
+      // TODO if it's not a function literal, but a bound const identifier that
+      // evaluates to a function literal, this won't work. The real solution is
+      // that IR::Func objects need to know the names of their arguments. For
+      // now, this is a hack.
+      if (decl->init_val->is<FunctionLiteral>()) {
+        const auto &inputs = decl->init_val->as<FunctionLiteral>().inputs;
+        std::unordered_map<std::string, size_t> index_lookup;
+        for (size_t i = 0; i < inputs.size(); ++i) {
+          index_lookup[inputs[i]->identifier->token] = i;
+        }
+
+        std::vector<std::pair<Identifier *, Expression *>> bindings;
+
+        for (size_t i = 0; i < args.numbered_.size(); ++i) {
+          bindings.emplace_back(inputs[i]->identifier.get(),
+                                args.numbered_[i].get());
+        }
+        for (const auto& name_and_expr : args.named_) {
+          size_t index = index_lookup[name_and_expr.first];
+          if (index < args.numbered_.size()) {
+            // This might be an error, but only if it otherwise checks out.
+          }
+
+          bindings.emplace_back(inputs[index]->identifier.get(),
+                                name_and_expr.second.get());
+        }
+
+       for (const auto &pair : bindings) {
+         if (pair.first->type != pair.second->type) {
+           // No match, but not an error.
+           goto next_option;
+          }
+        }
+        matches.push_back(decl);
+      }
+    } else {
+      // TODO casts
+    }
+  next_option:;
+  }
+  return num_errors == 0 ? matches : std::vector<Declaration *>{};
+}
+
+void CallArgs::verify_types() {
+  STARTING_CHECK;
+  for (auto &num : numbered_) {
+    num->verify_types();
+    if (num->type == Err) { type = Err; }
+  }
+  for (auto &name_and_val: named_) {
+    name_and_val.second->verify_types();
+    if (name_and_val.second->type == Err) { type = Err; }
+  }
+  if (type == Err) { return; }
+
+  // We actually don't care what the type of this is and specifying it precisely
+  // is hard due to not understanding the ordering of named arguments. It just
+  // needs to be not Unknown or nullptr.
+  type = Void;
+}
 void Binop::verify_types() {
   STARTING_CHECK;
 
   if (op == Language::Operator::Call) {
-    if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
-
     if (lhs->is<Identifier>()) {
-      auto *lhs_id = ptr_cast<Identifier>(lhs.get());
-
-      // Look for valid matches by looking at any declaration which has a
-      // matching token.
+      auto& lhs_id = lhs->as<Identifier>();
+      // It suffices to find just the first match because we are guarnateed that
+      // there can only be one.
       std::vector<Declaration *> valid_matches;
-      for (auto &decl : scope_->AllDeclsWithId(lhs_id->token)) {
-        if (decl->type->is<Function>()) {
-          auto fn_type = ptr_cast<Function>(decl->type);
-          // If there is no input, and the function takes Void as its input, or
-          // if the types just match, then add it to your list of matches.
-          if ((rhs.get() == nullptr && fn_type->input == Void) ||
-              (rhs.get() != nullptr && rhs->type == fn_type->input)) {
-            valid_matches.push_back(decl);
-          }
-        } else {
-          if (decl->IsInferred() || decl->IsCustomInitialized()) {
-            if (decl->init_val->type->is<Function>()) {
-              UNREACHABLE(); // TODO WTF??? HOW DID THIS EVEN COMPILE?
-              // decl->value = IR::Val(decl->init_val);
-            } else {
-              decl->value = IR::Val::Type(
-                  Evaluate(decl->init_val.get()).value.as<Type *>());
+      if (rhs == nullptr) {
+        valid_matches = FindFunctionCallMatches(lhs_id, scope_, CallArgs{});
+      } else {
+        valid_matches =
+            FindFunctionCallMatches(lhs_id, scope_, rhs->as<CallArgs>());
+      }
 
-              if (decl->init_val->is<Terminal>()) {
-                auto t = decl->init_val->value.value.as<Type *>();
-                if (t->is<Struct>()) {
-                  ptr_cast<Struct>(decl->identifier->value.value.as<Type *>())
-                      ->bound_name = decl->identifier->token;
-                } else if (t->is<Enum>()) {
-                  ptr_cast<Enum>(decl->identifier->value.value.as<Type *>())
-                      ->bound_name = decl->identifier->token;
-                }
-              }
-            }
-
-          } else if (decl->IsUninitialized()) {
-            NOT_YET();
-          }
-        }
-      } // End of decl loop
-
-      if (valid_matches.size() != 1) {
-        // TODO provide more information
-        if (valid_matches.empty()) {
-          errors.emplace_back(Error::Code::NoCallMatches);
-          // ErrorLog::NoValidMatches(loc);
-        } else {
-          errors.emplace_back(Error::Code::AmbiguousCall);
-          // ErrorLog::AmbiguousCall(loc);
-        }
+      switch (valid_matches.size()) {
+      case 0:
+        errors.emplace_back(Error::Code::NoCallMatches);
+        // ErrorLog::NoValidMatches(loc);
+        type = lhs->type = Err;
+        return;
+      case 1:
+        lhs_id.decl = valid_matches[0];
+        lhs_id.verify_types();
+        break;
+      default:
+        errors.emplace_back(Error::Code::AmbiguousCall);
+        // ErrorLog::AmbiguousCall(loc);
         type = lhs->type = Err;
         return;
       }
-
-      lhs_id->decl = valid_matches[0];
-      lhs_id->verify_types();
 
     } else {
       VERIFY_AND_RETURN_ON_ERROR(lhs);
@@ -858,8 +896,6 @@ Type *Expression::VerifyTypeForDeclaration(const std::string & /*id_tok*/) {
   return t;
 }
 
-// TODO refactor this and VerifyTypeForDeclaration because they have extreme
-// commonalities.
 Type *Expression::VerifyValueForDeclaration(const std::string &) {
   if (type == Void) {
     errors.emplace_back(Error::Code::VoidDeclaration);
@@ -921,15 +957,22 @@ void Declaration::verify_types() {
   if (type_expr) { type_expr->verify_types(); }
   if (init_val) { init_val->verify_types(); }
 
-  // There are four cases for the form of a declaration.
-  //   1. I: T
-  //   2. I := V
-  //   3. I: T = V
-  //   4. I: T = --
+  // There are eight cases for the form of a declaration.
+  //   1a. I: T         or    1b. I :: T
+  //   2a. I := V       or    2b. I ::= V
+  //   3a. I: T = V     or    3b. I :: T = V
+  //   4a. I: T = --    or    4b. I :: T = -- (illegal)
   //
   // Here 'I' stands for "identifier". This is the identifier being declared.
   // 'T' stands for "type", the type of the identifier being declared.
   // 'V' stands for "value", the initial value of the identifier being declared.
+  // The double-colon (b) cases are those where the values being declared must
+  // be known at compile-time. The single-colon (a) cases the values being
+  // declared need only be known at run-time. In case 4a and 4b, the --
+  // indicates that the value is not specified. The only valid operations to
+  // perform on such an identifier is to assign to it. This might be useful in
+  // 4a for optimzation purposes. In the case of 4b it is outright illegal and
+  // an error is thrown by the compiler.
 
   if (IsDefaultInitialized()) {
     type = type_expr->VerifyTypeForDeclaration(identifier->token);
@@ -937,6 +980,7 @@ void Declaration::verify_types() {
     type = init_val->VerifyValueForDeclaration(identifier->token);
 
     if (type == NullPtr) {
+      // 'null' must be immediately cast to a pointer type.
       errors.emplace_back(Error::Code::Other);
       // ErrorLog::NullDeclInit(span);
       type = Err;
@@ -953,7 +997,17 @@ void Declaration::verify_types() {
       // ErrorLog::AssignmentTypeMismatch(span, type, init_val_type);
     }
 
+    if (!type->is<Pointer>() && init_val_type == NullPtr) {
+      // TODO better error message: Assigning null to a non-pointer type
+      errors.emplace_back(Error::Code::Other);
+    }
+
   } else if (IsUninitialized()) {
+    if (const_) {
+      // TODO better error message.
+      errors.emplace_back(Error::Code::Other);
+    }
+
     type           = type_expr->VerifyTypeForDeclaration(identifier->token);
     init_val->type = type;
 
@@ -965,36 +1019,31 @@ void Declaration::verify_types() {
 
   if (type == Err) { return; }
 
-  if (type->is<Struct>()) { ptr_cast<Struct>(type)->CompleteDefinition(); }
+  // TODO is this the right time to complete the struct definition?
+  if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(); }
 
   if (type == Type_ && IsInferred()) {
+    // TODO Declaring a type must be a compile-time constant? No... what if I'm
+    // writing a function that modifies a type? Something here needs fixing.
+
     if (init_val->is<Terminal>()) {
       auto t = init_val->value.value.as<Type *>();
       // TODO mangle the name correctly (Where should this be done?)
       if (t->is<Struct>()) {
-        ptr_cast<Struct>(t)->bound_name = identifier->token;
+        t->as<Struct>().bound_name = identifier->token;
       } else if (t->is<Enum>()) {
-        ptr_cast<Enum>(t)->bound_name = identifier->token;
+        t->as<Enum>().bound_name = identifier->token;
       } else if (t->is<Scope_Type>()) {
-        ptr_cast<Scope_Type>(t)->bound_name = identifier->token;
+        t->as<Scope_Type>().bound_name = identifier->token;
       }
     }
 
     identifier->value = init_val->value;
   }
 
-  // TODO determine type of null. In particular, log an error for
-  //
-  // foo := null
-  //
-  // and set the type of the null terminal for something like
-  //
-  // foo: T = null
-  //
-  // (If T is not a pointer, we should log an error in that case too).
+  // TODO Verify declaration doesn't shadow
 
-  // If you get here, you can be assured that the type is valid. So we add it to
-  // the identifier.
+  // TODO I hope this won't last very long. I don't love the syntax/approach
   VerifyDeclarationForMagic(identifier->token, type, span);
 }
 

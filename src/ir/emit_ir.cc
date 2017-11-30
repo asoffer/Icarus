@@ -21,9 +21,8 @@ extern std::vector<IR::Val> global_vals;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
-static void
-ForEachExpr(AST::Expression *expr,
-            const std::function<void(size_t, AST::Expression *)> &fn) {
+void ForEachExpr(AST::Expression *expr,
+                 const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
     const auto &exprs = ptr_cast<AST::CommaList>(expr)->exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }

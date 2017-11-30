@@ -183,6 +183,14 @@ struct Binop : public Expression {
   base::owned_ptr<Expression> lhs, rhs;
 };
 
+struct CallArgs : public Expression {
+  EXPR_FNS(CallArgs);
+  CallArgs *Clone() const override { return new CallArgs(*this); }
+
+  std::vector<base::owned_ptr<Expression>> numbered_;
+  std::unordered_map<std::string, base::owned_ptr<Expression>> named_;
+};
+
 struct Declaration : public Expression {
   EXPR_FNS(Declaration);
   Declaration(bool is_const = false) : const_(is_const) {}

@@ -21,6 +21,12 @@ void InDecl::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   container->contextualize(scope, args);
 }
 
+void CallArgs::contextualize(Scope *scope, std::vector<IR::Val> *args) {
+  for (auto &num : numbered_) { num->contextualize(scope, args); }
+  for (auto &kv : named_) { kv.second->contextualize(scope, args); }
+}
+
+
 void Statements::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &stmt : statements) { stmt->contextualize(scope, args); }
 }
@@ -275,6 +281,13 @@ base::owned_ptr<Node> ScopeLiteral::contextualize(
   result->exit_fn =
       base::move<Declaration>(exit_fn->contextualize(replacements));
   return std::move(result);
+}
+
+base::owned_ptr<Node> CallArgs::contextualize(
+    const std::unordered_map<const Expression *, IR::Val> & /* replacements */)
+    const {
+  NOT_YET();
+  return copy_stub();
 }
 
 } // namespace AST
