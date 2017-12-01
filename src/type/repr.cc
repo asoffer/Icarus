@@ -9,7 +9,8 @@ void Primitive::EmitRepr(IR::Val val) {
   switch (type_) {
   case PrimType::Char: {
     if (!repr_func) {
-      IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+      IR::Func::All.push_back(std::make_unique<IR::Func>(
+          Func(this, Void), std::vector<std::string>{"arg"}));
       repr_func = IR::Func::All.back().get();
 
       CURRENT_FUNC(repr_func) {
@@ -59,8 +60,7 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::String: {
     NOT_YET();
   } break;
-  case PrimType::Unknown:
-    UNREACHABLE();
+  case PrimType::Unknown: UNREACHABLE();
   }
 }
 
@@ -77,10 +77,10 @@ void Pointer::EmitRepr(IR::Val val) { IR::Print(val); }
 
 void Array::EmitRepr(IR::Val val) {
   if (!repr_func) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(
+        Func(this, Void), std::vector<std::string>{"arg"}));
     repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
-
 
     CURRENT_FUNC(repr_func) {
       IR::Block::Current = repr_func->entry();
@@ -94,23 +94,23 @@ void Array::EmitRepr(IR::Val val) {
                             ? IR::Val::Uint(len)
                             : IR::Load(IR::ArrayLength(repr_func->Argument(0)));
       IR::CondJump(IR::Eq(length_var, IR::Val::Uint(0)), exit_block,
-                            init_block);
+                   init_block);
 
       IR::Block::Current = init_block;
       auto ptr           = IR::Index(repr_func->Argument(0), IR::Val::Uint(0));
       auto end_ptr       = IR::PtrIncr(ptr, length_var);
 
-      auto loop_phi   = repr_func->AddBlock();
-      auto loop_body  = repr_func->AddBlock();
+      auto loop_phi  = repr_func->AddBlock();
+      auto loop_body = repr_func->AddBlock();
 
       data_type->EmitRepr(PtrCallFix(ptr));
       IR::PtrIncr(ptr, length_var);
       IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
-      auto phi = IR::Phi(Ptr(data_type));
-      auto phi_reg = IR::Func::Current->Command(phi).reg();
-      auto elem_ptr = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
+      auto phi           = IR::Phi(Ptr(data_type));
+      auto phi_reg       = IR::Func::Current->Command(phi).reg();
+      auto elem_ptr      = IR::PtrIncr(phi_reg, IR::Val::Uint(1));
       IR::CondJump(IR::Eq(elem_ptr, end_ptr), exit_block, loop_body);
 
       IR::Block::Current = loop_body;
@@ -134,7 +134,8 @@ void Array::EmitRepr(IR::Val val) {
 void Struct::EmitRepr(IR::Val val) {
   CompleteDefinition();
   if (!repr_func) {
-    IR::Func::All.push_back(std::make_unique<IR::Func>(Func(this, Void)));
+    IR::Func::All.push_back(std::make_unique<IR::Func>(
+        Func(this, Void), std::vector<std::string>{"arg"}));
     repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 

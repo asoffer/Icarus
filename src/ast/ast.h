@@ -187,8 +187,12 @@ struct CallArgs : public Expression {
   EXPR_FNS(CallArgs);
   CallArgs *Clone() const override { return new CallArgs(*this); }
 
+  IR::Val EmitIR(IR::Cmd::Kind) override;
+
   std::vector<base::owned_ptr<Expression>> numbered_;
   std::unordered_map<std::string, base::owned_ptr<Expression>> named_;
+
+  std::vector<Expression *> bindings_; // Filled in after type verification
 };
 
 struct Declaration : public Expression {

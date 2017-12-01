@@ -23,8 +23,9 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
 
   auto insertion = funcs[lhs_type].emplace(rhs_type, nullptr);
   if (insertion.second) {
-    IR::Func::All.push_back(
-        std::make_unique<IR::Func>(Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool)));
+    std::vector<std::string> args = {"lhs", "rhs"};
+    IR::Func::All.push_back(std::make_unique<IR::Func>(
+        Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool), std::move(args)));
     auto *fn = insertion.first->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();

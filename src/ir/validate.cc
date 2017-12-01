@@ -47,12 +47,12 @@ struct PropDB {
 
     for (const auto &viewing_block : fn_->blocks_) {
       auto &view = views_[&viewing_block];
-      if (fn_->num_args_ == 1) {
+      if (fn_->args_.size() == 1) {
         auto prop = DefaultProperty(fn_->type->input);
         ASSERT(prop.get() != nullptr, "");
         view.props_[Register(0)] = std::move(prop);
-      } else if (fn_->num_args_ > 1) {
-        for (i32 i = 0; i < static_cast<i32>(fn_->num_args_); ++i) {
+      } else if (fn_->args_.size() > 1) {
+        for (i32 i = 0; i < static_cast<i32>(fn_->args_.size()); ++i) {
           Type *entry_type = ptr_cast<Tuple>(fn_->type->input)->entries[i];
           auto prop        = DefaultProperty(entry_type);
           ASSERT(prop.get() != nullptr, "");
@@ -495,7 +495,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     }
 
     const Block *exit_block = &block(*return_blocks_.begin());
-    for (i32 i = 0; i < static_cast<i32>(num_args_); ++i) {
+    for (i32 i = 0; i < static_cast<i32>(args_.size()); ++i) {
       arg_props.push_back(prop_db.views_[exit_block].props_[Register(i)]);
     }
     for (i32 i = 0; i < num_outs; ++i) {

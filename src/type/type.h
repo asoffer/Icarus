@@ -36,6 +36,10 @@ struct Identifier;
 
 #define ENDING = 0
 
+// TODO names for argumentss of built-in functions (repr, assign, destroy, etc)
+// should be better? Should be necessarily unnamed? Figure it out and be
+// consistent.
+
 #define BASIC_METHODS                                                          \
   virtual std::string to_string() const ENDING;                                \
   virtual void EmitInit(IR::Val id_val) ENDING;                                \

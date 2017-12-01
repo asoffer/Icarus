@@ -315,59 +315,71 @@ void Access::verify_types() {
   }
 }
 
-std::vector<Declaration *> FindFunctionCallMatches(const Identifier &id,
-                                                   Scope *scope,
-                                                   const CallArgs &args) {
-  std::vector<Declaration *> matches;
-  size_t num_errors = 0;
+// We already know there can be at most one match (multiple matches would have
+// been caught by shadowing), so we just return a pointer to it if it exists,
+// and null otherwise.
+static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
+                                          CallArgs *args) {
   for (auto *decl : scope->AllDeclsWithId(id.token)) {
     if (decl->type->is<Function>()) {
-      if (!decl->const_) {
-        ++num_errors;
-        errors.emplace_back(Error::Code::Other);
-        continue;
+      // TODO what about const vs. non-const declarations?
+
+      auto *fn = Evaluate(decl->init_val.get()).value.as<IR::Func *>();
+
+      // Compute name -> argument number map.
+      // TODO this should be done when the function is generated instead of
+      // ad-hoc
+      std::unordered_map<std::string, size_t> index_lookup;
+      for (size_t i = 0; i < fn->args_.size(); ++i) {
+        index_lookup[fn->args_[i]] = i;
       }
-      // TODO if it's not a function literal, but a bound const identifier that
-      // evaluates to a function literal, this won't work. The real solution is
-      // that IR::Func objects need to know the names of their arguments. For
-      // now, this is a hack.
-      if (decl->init_val->is<FunctionLiteral>()) {
-        const auto &inputs = decl->init_val->as<FunctionLiteral>().inputs;
-        std::unordered_map<std::string, size_t> index_lookup;
-        for (size_t i = 0; i < inputs.size(); ++i) {
-          index_lookup[inputs[i]->identifier->token] = i;
-        }
 
-        std::vector<std::pair<Identifier *, Expression *>> bindings;
-
-        for (size_t i = 0; i < args.numbered_.size(); ++i) {
-          bindings.emplace_back(inputs[i]->identifier.get(),
-                                args.numbered_[i].get());
-        }
-        for (const auto& name_and_expr : args.named_) {
-          size_t index = index_lookup[name_and_expr.first];
-          if (index < args.numbered_.size()) {
-            // This might be an error, but only if it otherwise checks out.
-          }
-
-          bindings.emplace_back(inputs[index]->identifier.get(),
-                                name_and_expr.second.get());
-        }
-
-       for (const auto &pair : bindings) {
-         if (pair.first->type != pair.second->type) {
-           // No match, but not an error.
-           goto next_option;
-          }
-        }
-        matches.push_back(decl);
+      // Match the ordered unnamed arguments
+      std::vector<Expression *> bindings(fn->args_.size(), nullptr);
+      for (size_t i = 0; i < args->numbered_.size(); ++i) {
+        bindings[i] = args->numbered_[i].get();
       }
+
+      // Match the named arguments
+      for (const auto &name_and_expr : args->named_) {
+        auto iter = index_lookup.find(name_and_expr.first);
+        if (iter == index_lookup.end()) {
+          // TODO. Think more about this situation. You obviously need to pass
+          // on this function match because it doesn't have this named argument,
+          // but is that an error? It seems strange to be an error but also
+          // strange to pass on it silently. Maybe it's not weird because you
+          // already verify that there is some non-name-based (type-based) way
+          // to distinguish the function calls. You'll probably go with this but
+          // should write a good explanation about what it is and why it's okay.
+          // For now passing silently.
+          goto next_option;
+        } else {
+          bindings[iter->second] = name_and_expr.second.get();
+        }
+      }
+
+      std::vector<Type *> inputs = fn->type->input->is<Tuple>()
+                                       ? fn->type->input->as<Tuple>().entries
+                                       : std::vector<Type *>{fn->type->input};
+      for (size_t i = 0; i < bindings.size(); ++i) {
+        if (bindings[i] == nullptr) {
+          // TODO check if there's a valid default
+          // TODO implement defaults. for now, there are none so
+          goto next_option;
+        } else {
+          if (bindings[i]->type != inputs[i]) {
+            goto next_option; // No match, but not an error.
+          }
+        }
+      }
+      args->bindings_ = std::move(bindings);
+      return decl;
     } else {
-      // TODO casts
+      // TODO type casts can be called like functions.
     }
   next_option:;
   }
-  return num_errors == 0 ? matches : std::vector<Declaration *>{};
+  return nullptr;
 }
 
 void CallArgs::verify_types() {
@@ -387,6 +399,7 @@ void CallArgs::verify_types() {
   // needs to be not Unknown or nullptr.
   type = Void;
 }
+
 void Binop::verify_types() {
   STARTING_CHECK;
 
@@ -395,30 +408,18 @@ void Binop::verify_types() {
       auto& lhs_id = lhs->as<Identifier>();
       // It suffices to find just the first match because we are guarnateed that
       // there can only be one.
-      std::vector<Declaration *> valid_matches;
-      if (rhs == nullptr) {
-        valid_matches = FindFunctionCallMatches(lhs_id, scope_, CallArgs{});
-      } else {
-        valid_matches =
-            FindFunctionCallMatches(lhs_id, scope_, rhs->as<CallArgs>());
-      }
+      Declaration *valid_match =
+          FindFunctionCallMatch(lhs_id, scope_, &rhs->as<CallArgs>());
 
-      switch (valid_matches.size()) {
-      case 0:
+      if (valid_match == nullptr) {
         errors.emplace_back(Error::Code::NoCallMatches);
         // ErrorLog::NoValidMatches(loc);
         type = lhs->type = Err;
         return;
-      case 1:
-        lhs_id.decl = valid_matches[0];
-        lhs_id.verify_types();
-        break;
-      default:
-        errors.emplace_back(Error::Code::AmbiguousCall);
-        // ErrorLog::AmbiguousCall(loc);
-        type = lhs->type = Err;
-        return;
       }
+
+      lhs_id.decl = valid_match;
+      lhs_id.verify_types();
 
     } else {
       VERIFY_AND_RETURN_ON_ERROR(lhs);

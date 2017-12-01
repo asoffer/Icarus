@@ -60,7 +60,8 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
 }
 
 void ReplEval(AST::Expression *expr) {
-  auto fn = base::make_owned<IR::Func>(Func(Void, Void));
+  auto fn =
+      base::make_owned<IR::Func>(Func(Void, Void), std::vector<std::string>{});
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
     auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);

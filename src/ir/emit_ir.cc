@@ -33,7 +33,7 @@ void ForEachExpr(AST::Expression *expr,
 
 IR::Val ErrorFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(String, Code));
+    auto fn = new IR::Func(Func(String, Code), {""});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
@@ -48,7 +48,7 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(Uint, Char));
+    auto fn = new IR::Func(Func(Uint, Char), {""});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -62,7 +62,7 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn = new IR::Func(Func(Char, Uint));
+    auto fn = new IR::Func(Func(Char, Uint), {""});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
@@ -86,15 +86,19 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
   ASSERT_TYPE(Pointer, val.type);
   ASSERT_TYPE(Struct, ptr_cast<Pointer>(val.type)->pointee);
 
-  auto struct_type = ptr_cast<Struct>(ptr_cast<Pointer>(val.type)->pointee);
+  auto *struct_type = &val.type->as<Pointer>().pointee->as<Struct>();
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
+}
+
+IR::Val AST::CallArgs::EmitIR(IR::Cmd::Kind) {
+  UNREACHABLE("Handled at Operator::Call site explicitly");
 }
 
 IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
 
   if (type->is<Enum>()) {
-    return ptr_cast<Enum>(type)->EmitLiteral(member_name);
+    return type->as<Enum>().EmitLiteral(member_name);
   } else {
     return PtrCallFix(EmitLVal(kind));
   }
@@ -554,10 +558,10 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
   case Language::Operator::Call: {
     auto lhs_ir = lhs->EmitIR(kind);
     std::vector<IR::Val> args;
-    if (rhs) {
-      ForEachExpr(rhs.get(), [&args, kind](size_t, AST::Expression *expr) {
-        args.push_back(expr->EmitIR(kind));
-      });
+    args.reserve(rhs->as<CallArgs>().bindings_.size());
+    for (auto *expr : rhs->as<CallArgs>().bindings_) {
+      ASSERT(expr != nullptr, "");
+      args.push_back(expr->EmitIR(kind));
     }
     return IR::Call(lhs_ir, std::move(args));
   } break;
@@ -767,14 +771,20 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
   if (!errors.empty()) { return IR::Val::None(); }
 
   if (!ir_func) {
+    std::vector<std::string> args;
+    args.reserve(inputs.size());
+    for (const auto &input : inputs) {
+      args.push_back(input->as<Declaration>().identifier->token);
+    }
+
     if (should_save) {
       IR::Func::All.push_back(
-          std::make_unique<IR::Func>(ptr_cast<Function>(type)));
+          std::make_unique<IR::Func>(&type->as<Function>(), std::move(args)));
       ir_func = IR::Func::All.back().get();
     } else {
       // TODO XXX This is SUPER DANGEROUS! Depending on a bool passed in we
       // either own or don't own?!?!?!
-      ir_func = new IR::Func(ptr_cast<Function>(type));
+      ir_func = new IR::Func(&type->as<Function>(), std::move(args));
     }
 
     CURRENT_FUNC(ir_func) {

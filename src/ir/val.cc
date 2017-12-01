@@ -120,26 +120,21 @@ Val Func::Argument(u32 n) {
   return Val::Reg(Register(n), arg_type);
 }
 
-Func::Func(::Function *fn_type)
-    : type(fn_type),
-      num_args_(fn_type->input == Void
-                    ? 0
-                    : fn_type->input->is<Tuple>()
-                          ? ptr_cast<Tuple>(fn_type->input)->entries.size()
-                          : 1),
+Func::Func(::Function *fn_type, std::vector<std::string> args)
+    : type(fn_type), args_(std::move(args)),
       num_regs_(fn_type->input->is<Tuple>()
                     ? static_cast<i32>(
                           ptr_cast<Tuple>(fn_type->input)->entries.size())
                     : 1) {
   blocks_.push_back(std::move(Block(this)));
-  i32 num_args = static_cast<i32>(num_args_);
+  i32 num_args = static_cast<i32>(args_.size());
   for (i32 i = 0; i < num_args; ++i) {
     reg_map_[Register(static_cast<i32>(i))] = CmdIndex{0, i - num_args};
   }
 }
 
 bool Register::is_arg(const Func &fn) const {
-  return value_ >= 0 && value_ < static_cast<decltype(value_)>(fn.num_args_);
+  return value_ >= 0 && value_ < static_cast<decltype(value_)>(fn.args_.size());
 }
 
 std::vector<std::unique_ptr<Func>> Func::All;
