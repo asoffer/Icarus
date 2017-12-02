@@ -195,6 +195,12 @@ struct CallArgs : public Expression {
   std::vector<Expression *> bindings_; // Filled in after type verification
 };
 
+struct ArgumentMetaData {
+  Type* type;
+  std::string name;
+  bool has_default;
+};
+
 struct Declaration : public Expression {
   EXPR_FNS(Declaration);
   Declaration(bool is_const = false) : const_(is_const) {}
@@ -212,6 +218,16 @@ struct Declaration : public Expression {
   // stored. For const values (declared with :: or ::=), holds the actual
   // constant value.
   IR::Val addr = IR::Val::None();
+
+  // TODO: this is wasteful to recompute this each time. This looks like roughly
+  // the format you need, so it would be nice if a declaration just stored
+  // essentially this. The name is reachable through the identifier (do you need
+  // the identifier at all, or can it just be a string held in the declaration?)
+  // The type is already present. has_default can just be a check to see if
+  // init_val is null.
+  ArgumentMetaData meta_data() const {
+    return ArgumentMetaData{type, identifier->token, init_val != nullptr};
+  }
 
   bool const_ = false;
 

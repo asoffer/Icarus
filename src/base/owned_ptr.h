@@ -104,6 +104,17 @@ template <typename T>
 bool operator==(nullptr_t, const base::owned_ptr<T> &ptr) {
   return ptr.get() == nullptr;
 }
+
+template <typename T>
+bool operator!=(nullptr_t, const base::owned_ptr<T> &ptr) {
+  return !(ptr.get() == nullptr);
+}
+
+template <typename T>
+bool operator!=(const base::owned_ptr<T> &ptr, nullptr_t) {
+  return !(ptr.get() == nullptr);
+}
+
 } // namespace base
 
 #endif // ICARUS_BASE_OWNED_PTR_H

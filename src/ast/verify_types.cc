@@ -82,6 +82,55 @@ static bool CanCastImplicitly(Type *from, Type *to) {
   } while (false)
 
 namespace AST {
+// TODO: This algorithm is sufficiently complicated you should combine it with
+// proof of correctness and good explanation of what it does.
+static std::vector<size_t>
+IndicesWithoutForwardMatches(const std::vector<ArgumentMetaData> &data1,
+                             const std::vector<ArgumentMetaData> &data2) {
+  // TODO Don't need to reprocess this each time
+  std::unordered_map<std::string, size_t> index2;
+  for (size_t i = 0; i < data2.size(); ++i) { index2[data2[i].name] = i; }
+
+  std::vector<int> delta_fwd_matches(std::max(data1.size(), data2.size()), 0);
+  for (size_t i = 0; i < data1.size(); ++i) {
+    auto iter = index2.find(data1[i].name);
+    if (iter == index2.end()) { continue; }
+    size_t j = iter->second;
+    delta_fwd_matches[std::min(i, j)]++;
+    delta_fwd_matches[std::max(i, j)]--;
+  }
+
+  std::vector<size_t> indices = {0};
+
+  // One useful invariant here is that accumulating delta_fwd_matches always
+  // yields a non-negative integer. This is because any subtraction that occurs
+  // is always preceeded by an addition.
+  size_t accumulator = 0;
+  for (size_t i = 0; i< delta_fwd_matches.size(); ++i) {
+    if (data1[i].type != data2[i].type) { break; }
+    accumulator += delta_fwd_matches[i];
+    if (accumulator == 0) { indices.push_back(i); }
+  }
+  return indices;
+}
+
+bool Shadow(Declaration *decl1, Declaration *decl2) {
+  if (!decl1->type->is<Function>() || !decl2->type->is<Function>()) {
+    return true;
+  }
+
+  // If they're both functions, we have more work to do because we allow
+  // overloading so long as there are no ambiguous calls.
+
+  // TODO can we store the data in this format to begin with?
+  auto metadata1 = decl1->meta_data();
+  auto metadata2 = decl2->meta_data();
+
+  auto indices = IndicesWithoutForwardMatches({metadata1}, {metadata2});
+  for (auto index : indices) { LOG << index; }
+  return true;
+}
+
 void Terminal::verify_types() {}
 
 void Identifier::verify_types() {
@@ -1043,6 +1092,7 @@ void Declaration::verify_types() {
   }
 
   // TODO Verify declaration doesn't shadow
+  LOG << *this->identifier;
 
   // TODO I hope this won't last very long. I don't love the syntax/approach
   VerifyDeclarationForMagic(identifier->token, type, span);
