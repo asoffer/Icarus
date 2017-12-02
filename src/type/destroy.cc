@@ -14,7 +14,9 @@ void Array::EmitDestroy(IR::Val id_val) {
     if (!needs_destroy()) { return; }
 
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(Ptr(this), Void), std::vector<std::string>{"arg"}));
+        Func(Ptr(this), Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}}));
     destroy_func       = IR::Func::All.back().get();
     destroy_func->name = "destroy." + Mangle(this);
 
@@ -56,7 +58,9 @@ void Array::EmitDestroy(IR::Val id_val) {
 void Struct::EmitDestroy(IR::Val id_val) {
   if (!destroy_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(Ptr(this), Void), std::vector<std::string>{"arg"}));
+        Func(Ptr(this), Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}}));
     destroy_func       = IR::Func::All.back().get();
     destroy_func->name = "destroy." + Mangle(this);
 

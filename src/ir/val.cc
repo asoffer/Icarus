@@ -120,7 +120,8 @@ Val Func::Argument(u32 n) {
   return Val::Reg(Register(n), arg_type);
 }
 
-Func::Func(::Function *fn_type, std::vector<std::string> args)
+Func::Func(::Function *fn_type,
+           std::vector<std::pair<std::string, AST::Expression *>> args)
     : type(fn_type), args_(std::move(args)),
       num_regs_(fn_type->input->is<Tuple>()
                     ? static_cast<i32>(

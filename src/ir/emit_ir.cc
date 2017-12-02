@@ -33,7 +33,7 @@ void ForEachExpr(AST::Expression *expr,
 
 IR::Val ErrorFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(String, Code), {""});
+    auto fn = new IR::Func(Func(String, Code), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
@@ -48,7 +48,7 @@ IR::Val ErrorFunc() {
 
 IR::Val AsciiFunc() {
   static IR::Func *ascii_func_ = []() {
-    auto fn = new IR::Func(Func(Uint, Char), {""});
+    auto fn = new IR::Func(Func(Uint, Char), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Trunc(fn->Argument(0)));
@@ -62,7 +62,7 @@ IR::Val AsciiFunc() {
 
 IR::Val OrdFunc() {
   static IR::Func *ord_func_ = []() {
-    auto fn = new IR::Func(Func(Char, Uint), {""});
+    auto fn = new IR::Func(Func(Char, Uint), {{"", nullptr}});
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       IR::SetReturn(IR::ReturnValue{0}, IR::Extend(fn->Argument(0)));
@@ -559,9 +559,16 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     auto lhs_ir = lhs->EmitIR(kind);
     std::vector<IR::Val> args;
     args.reserve(rhs->as<CallArgs>().bindings_.size());
-    for (auto *expr : rhs->as<CallArgs>().bindings_) {
-      ASSERT(expr != nullptr, "");
-      args.push_back(expr->EmitIR(kind));
+    for (size_t i = 0; i < rhs->as<CallArgs>().bindings_.size(); ++i) {
+      auto *expr = rhs->as<CallArgs>().bindings_[i];
+      if (expr == nullptr /* Default */) {
+        // TODO what if it's not a function but something else callable (a
+        // type-cast)??
+        args.push_back(
+            lhs_ir.value.as<IR::Func *>()->args_[i].second->EmitIR(kind));
+      } else {
+        args.push_back(expr->EmitIR(kind));
+      }
     }
     return IR::Call(lhs_ir, std::move(args));
   } break;
@@ -771,10 +778,11 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
   if (!errors.empty()) { return IR::Val::None(); }
 
   if (!ir_func) {
-    std::vector<std::string> args;
+    std::vector<std::pair<std::string, AST::Expression *>> args;
     args.reserve(inputs.size());
     for (const auto &input : inputs) {
-      args.push_back(input->as<Declaration>().identifier->token);
+      args.emplace_back(input->as<Declaration>().identifier->token,
+                        input->as<Declaration>().init_val.get());
     }
 
     if (should_save) {

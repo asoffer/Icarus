@@ -331,7 +331,7 @@ static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
       // ad-hoc
       std::unordered_map<std::string, size_t> index_lookup;
       for (size_t i = 0; i < fn->args_.size(); ++i) {
-        index_lookup[fn->args_[i]] = i;
+        index_lookup[fn->args_[i].first] = i;
       }
 
       // Match the ordered unnamed arguments
@@ -363,9 +363,9 @@ static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
                                        : std::vector<Type *>{fn->type->input};
       for (size_t i = 0; i < bindings.size(); ++i) {
         if (bindings[i] == nullptr) {
-          // TODO check if there's a valid default
-          // TODO implement defaults. for now, there are none so
-          goto next_option;
+          if (fn->args_[i].second == nullptr) {
+            goto next_option; // No default for this parameter
+          }
         } else {
           if (bindings[i]->type != inputs[i]) {
             goto next_option; // No match, but not an error.

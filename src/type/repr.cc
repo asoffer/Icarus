@@ -10,7 +10,9 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::Char: {
     if (!repr_func) {
       IR::Func::All.push_back(std::make_unique<IR::Func>(
-          Func(this, Void), std::vector<std::string>{"arg"}));
+          Func(this, Void),
+          std::vector<std::pair<std::string, AST::Expression *>>{
+              {"arg", nullptr}}));
       repr_func = IR::Func::All.back().get();
 
       CURRENT_FUNC(repr_func) {
@@ -78,7 +80,9 @@ void Pointer::EmitRepr(IR::Val val) { IR::Print(val); }
 void Array::EmitRepr(IR::Val val) {
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(this, Void), std::vector<std::string>{"arg"}));
+        Func(this, Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}}));
     repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 
@@ -135,7 +139,9 @@ void Struct::EmitRepr(IR::Val val) {
   CompleteDefinition();
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(this, Void), std::vector<std::string>{"arg"}));
+        Func(this, Void),
+        std::vector<std::pair<std::string, AST::Expression *>>{
+            {"arg", nullptr}}));
     repr_func       = IR::Func::All.back().get();
     repr_func->name = "repr." + Mangle(this);
 

@@ -23,7 +23,8 @@ void Array::EmitInit(IR::Val id_val) {
   }
 
   if (!init_func) {
-    std::vector<std::string> args = {"arg"};
+    std::vector<std::pair<std::string, AST::Expression *>> args = {
+        {"arg", nullptr}};
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
     init_func       = IR::Func::All.back().get();
@@ -70,7 +71,8 @@ void Struct::EmitInit(IR::Val id_val) {
   CompleteDefinition();
 
   if (!init_func) {
-    std::vector<std::string> args = {"arg"};
+    std::vector<std::pair<std::string, AST::Expression *>> args = {
+        {"arg", nullptr}};
     IR::Func::All.push_back(
         std::make_unique<IR::Func>(Func(Ptr(this), Void), std::move(args)));
 
@@ -114,7 +116,8 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
 
   auto insertion = init_fns[to_type].emplace(from_type, nullptr);
   if (insertion.second) {
-    std::vector<std::string> args = {"arg"};
+    std::vector<std::pair<std::string, AST::Expression *>> args = {
+        {"arg", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({from_type, Ptr(to_type)}, Void), std::move(args)));
     auto *fn = insertion.first->second = IR::Func::All.back().get();
@@ -178,7 +181,8 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
   auto insertion = struct_init_fns.emplace(struct_type, nullptr);
 
   if (insertion.second) {
-    std::vector<std::string> args = {"arg"};
+    std::vector<std::pair<std::string, AST::Expression *>> args = {
+        {"arg", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({struct_type, Ptr(struct_type)}, Void), std::move(args)));
     auto *fn = insertion.first->second = IR::Func::All.back().get();

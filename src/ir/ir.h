@@ -356,7 +356,9 @@ struct Func {
   static Func *Current;
   static std::vector<std::unique_ptr<Func>> All;
 
-  Func(::Function *fn_type, std::vector<std::string> args);
+  // TODO just take a vector of declarations?
+  Func(::Function *fn_type,
+       std::vector<std::pair<std::string, AST::Expression *>> args);
 
   void dump() const;
   Val Argument(u32 n);
@@ -393,7 +395,7 @@ struct Func {
   // Is this needed? Or can it be determined from the containing FunctionLiteral
   // object?
   ::Function *const type = nullptr;
-  std::vector<std::string> args_;
+  std::vector<std::pair<std::string, AST::Expression *>> args_;
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
   std::string name;
