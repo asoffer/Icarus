@@ -109,7 +109,7 @@ IndicesWithoutForwardMatches(const std::vector<ArgumentMetaData> &data1,
   for (size_t i = 0; i< delta_fwd_matches.size(); ++i) {
     if (data1[i].type != data2[i].type) { break; }
     accumulator += delta_fwd_matches[i];
-    if (accumulator == 0) { indices.push_back(i); }
+    if (accumulator == 0) { indices.push_back(i + 1); }
   }
   return indices;
 }
@@ -123,10 +123,37 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   // overloading so long as there are no ambiguous calls.
 
   // TODO can we store the data in this format to begin with?
-  auto metadata1 = decl1->meta_data();
-  auto metadata2 = decl2->meta_data();
+  // TODO I don't need to fully generate code here, just the heading
+  // information.
+  // TODO check const-decl or not.
 
-  auto indices = IndicesWithoutForwardMatches({metadata1}, {metadata2});
+  auto *fn1 = Evaluate(decl1->init_val.get()).value.as<IR::Func *>();
+  std::vector<Type *> arg_types1 = fn1->type->input->is<Tuple>()
+                                       ? fn1->type->input->as<Tuple>().entries
+                                       : std::vector<Type *>{fn1->type->input};
+  std::vector<ArgumentMetaData> metadata1;
+  metadata1.reserve(fn1->args_.size());
+  for (size_t i = 0; i < fn1->args_.size(); ++i) {
+    metadata1.push_back(
+        ArgumentMetaData{/*        type = */ arg_types1[i],
+                         /*        name = */ fn1->args_[i].first,
+                         /* has_default = */ fn1->args_[i].second != nullptr});
+  }
+
+  auto *fn2 = Evaluate(decl2->init_val.get()).value.as<IR::Func *>();
+  std::vector<Type *> arg_types2 = fn2->type->input->is<Tuple>()
+                                       ? fn2->type->input->as<Tuple>().entries
+                                       : std::vector<Type *>{fn2->type->input};
+  std::vector<ArgumentMetaData> metadata2;
+  metadata2.reserve(fn2->args_.size());
+  for (size_t i = 0; i < fn2->args_.size(); ++i) {
+    metadata2.push_back(
+        ArgumentMetaData{/*        type = */ arg_types2[i],
+                         /*        name = */ fn2->args_[i].first,
+                         /* has_default = */ fn2->args_[i].second != nullptr});
+  }
+
+  auto indices = IndicesWithoutForwardMatches(metadata1, metadata2);
   for (auto index : indices) { LOG << index; }
   return true;
 }
@@ -1091,8 +1118,13 @@ void Declaration::verify_types() {
     identifier->value = init_val->value;
   }
 
-  // TODO Verify declaration doesn't shadow
-  LOG << *this->identifier;
+  // TODO Either guarantee that higher scopes have all declarations declared and
+  // verified first, or check both in the upwards and downwards direction for
+  // shadowing.
+  for (auto* decl : scope_->AllDeclsWithId(identifier->token)) {
+    if (decl == this) { continue; }
+    LOG << Shadow(this, decl);
+  }
 
   // TODO I hope this won't last very long. I don't love the syntax/approach
   VerifyDeclarationForMagic(identifier->token, type, span);
