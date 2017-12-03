@@ -6,8 +6,6 @@
 #include "base/source.h"
 #include "type/type.h"
 
-std::vector<Error> errors;
-
 extern std::unordered_map<Source::Name, File *> source_map;
 
 using LineNum    = size_t;
@@ -43,22 +41,14 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-static inline std::string NumTimes(size_t n, const char *numeric_prefix,
-                                   bool capitalize) {
+static inline std::string NumTimes(size_t n, bool capitalize) {
   if (n == 1) { return capitalize ? "Once" : "once"; }
   if (n == 2) { return capitalize ? "Twice" : "twice"; }
-  if (numeric_prefix) {
-    return numeric_prefix + std::to_string(n) + " times";
-  } else {
-    return std::to_string(n) + " times";
-  }
+  return std::to_string(n) + " times";
 }
-
-static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
+static void GatherAndDisplayIdentifierError(const std::string &msg,
+                                            const TokenToErrorMap &log) {
   for (const auto &kv : log) {
-    const char *token   = kv.first.c_str();
-    size_t token_length = kv.first.size();
-
     size_t num_uses = 0;
     for (const auto &file_and_locs : kv.second) {
       for (const auto &line_and_offsets : file_and_locs.second) {
@@ -66,13 +56,10 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
       }
     }
 
-    fprintf(stderr, fmt, token);
-    if (num_uses == 1) {
-      fprintf(stderr, ".\n");
-    } else {
-      fprintf(stderr, " used %s.\n",
-              NumTimes(num_uses, nullptr, false).c_str());
-    }
+    std::cerr << msg << " '" << kv.first
+              << (num_uses == 1
+                      ? std::string("'.\n")
+                      : "' used " + NumTimes(num_uses, false) + ".\n");
 
     for (const auto &file_and_locs : kv.second) {
       size_t max_line_num = 0;
@@ -88,29 +75,20 @@ static void GatherAndDisplay(const char *fmt, const TokenToErrorMap &log) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      fprintf(stderr, "  %s in '%s':\n",
-              NumTimes(num_uses_in_file, "Used ", true).c_str(),
-              file_and_locs.first.c_str());
+      std::cerr << "  Used " << NumTimes(num_uses_in_file, true) << " in '"
+                << file_and_locs.first << ":\n";
 
       for (const auto &line_and_offsets : file_and_locs.second) {
         auto line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
 
-        size_t left_border_width = line_num_width + 6;
-        size_t line_length       = line.size() + 1;
-        char *underline = new char[left_border_width + line_length + 1];
-        underline[line_length + left_border_width] = '\0';
-        memset(underline, ' ', left_border_width + line_length);
-
-        for (const auto offset : line_and_offsets.second) {
-          memset(underline + left_border_width + offset, '^', token_length);
-        }
-
-        fprintf(stderr, "    %*lu| %s\n"
-                        "%s\n",
-                (int)line_num_width, line_and_offsets.first, line.c_str(),
-                underline);
-        delete[] underline;
+        std::string underline = std::string(line_num_width + 6, ' ') +
+                                std::string(line.size() + 1, '^');
+        std::cerr << std::string(line_num_width + 4 -
+                                     NumDigits(line_and_offsets.first),
+                                 ' ')
+                  << line_and_offsets.first << "| " << line << '\n'
+                  << underline << '\n';
       }
     }
   }
@@ -133,7 +111,7 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
       fprintf(stderr, ".\n");
     } else {
       fprintf(stderr, " used %s.\n",
-              NumTimes(num_uses, nullptr, false).c_str());
+              NumTimes(num_uses, false).c_str());
     }
 
     for (const auto &file_and_locs : kv.second) {
@@ -142,8 +120,8 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      fprintf(stderr, "  %s in '%s':\n",
-              NumTimes(num_uses_in_file, "Used ", true).c_str(),
+      fprintf(stderr, "  Used %s in '%s':\n",
+              NumTimes(num_uses_in_file, true).c_str(),
               file_and_locs.first.c_str());
 
       size_t max_line_num = 0;
@@ -218,8 +196,10 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
 }
 
 void ErrorLog::Dump() {
-  GatherAndDisplay("Undeclared identifier '%s'", undeclared_identifiers);
-  GatherAndDisplay("Ambiguous identifier '%s'", ambiguous_identifiers);
+  GatherAndDisplayIdentifierError("Undeclared identifier",
+                                  undeclared_identifiers);
+  GatherAndDisplayIdentifierError("Ambiguous identifier",
+                                  ambiguous_identifiers);
   GatherAndDisplay("Invalid capture of identifier '%s'", implicit_capture);
 
   // TODO fix this repsonse regarding imports.
@@ -300,6 +280,12 @@ void TooManyDots(const TextSpan &span, size_t num_dots) {
                          "assuming you meant \"..\".";
   ++num_errs_;
   DisplayErrorMessage(msg_head, nullptr, span, num_dots);
+}
+
+void ShadowingDeclaration(const AST::Declaration &decl1,
+                          const AST::Declaration &) {
+  ++num_errs_;
+  DisplayErrorMessage("Shadowing declarations", nullptr, decl1.span, 1);
 }
 
 void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist) {
@@ -723,21 +709,18 @@ void UnknownParserError(const Source::Name &source_name,
 
 namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id) {
-  errors.push_back(Error::Code::UndeclaredIdentifier);
   undeclared_identifiers[id->token][id->span.source->name]
                         [id->span.start.line_num]
                             .push_back(id->span.start.offset);
 }
 
 void AmbiguousIdentifier(AST::Identifier *id) {
-  errors.push_back(Error::Code::AmbiguousIdentifier);
   ambiguous_identifiers[id->token][id->span.source->name]
                        [id->span.start.line_num]
                            .push_back(id->span.start.offset);
 }
 
 void ImplicitCapture(AST::Identifier *id) {
-  errors.push_back(Error::Code::ImplicitCapture);
   implicit_capture[id->decl][id->span.source->name][id->span.start.line_num]
       .push_back(id->span.start.offset);
 }

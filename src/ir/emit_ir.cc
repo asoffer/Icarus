@@ -7,12 +7,10 @@
 
 #include <vector>
 
-extern std::vector<Error> errors;
-
 #define VERIFY_OR_EXIT                                                         \
   do {                                                                         \
     verify_types();                                                            \
-    if (!errors.empty()) { return IR::Val::None(); }                           \
+    if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }                \
   } while (false)
 
 extern IR::Val PtrCallFix(IR::Val v);
@@ -488,7 +486,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
       }
     } else {
       auto val = operand->EmitIR(kind);
-      if (!errors.empty()) { return IR::Val::None(); }
+      if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }
       IR::SetReturn(IR::ReturnValue{0}, val);
       IR::ReturnJump();
     }
@@ -775,7 +773,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
   // Verifying 'this' only verifies the declared functions type not the
   // internals. We need to do that here.
   statements->verify_types();
-  if (!errors.empty()) { return IR::Val::None(); }
+  if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }
 
   if (!ir_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args;

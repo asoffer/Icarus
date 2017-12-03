@@ -23,52 +23,6 @@ struct Unop;
 #include "type/type.h"
 #include "ir/property.h"
 
-struct Error {
-  enum class Code : char {
-    Other, // This is awful. It should never be used! TODO Remove it!
-    CyclicDependency,
-    UndeclaredIdentifier,
-    AmbiguousIdentifier,
-    ImplicitCapture,
-    FreeNonPtr,
-    PrintVoid,
-    ReturnVoid,
-    DerefNonPtr,
-    UnsignedNegation,
-    MissingOperator,
-    InvalidRangeType,
-    LogicalNegationOfNonBool,
-    MissingMember,
-    NoCallMatches,
-    AmbiguousCall,
-    InvalidCast,
-    ArrayAssignmentDifferentLengths,
-    AssignmentArrayLength,
-    AssignmentTypeMismatch,
-    InvalidStringIndexType,
-    SlicingNonArray,
-    IndexingNonArray,
-    NonIntegralArrayIndex,
-    InvalidRangeTypes,
-    NonBooleanLogicalAssignemnt,
-    AlreadyFoundMatch, // Probably can resue overload resolution instead of
-                       // this?
-    NoKnownOverload,   // same goes for tihs
-    NonComposableFns,
-    NonTypeFnInput,
-    NonTypeFnOutput,
-    ChainTypeMismatch,
-    TypeIteration,
-    IndeterminantType,
-    NotAType,
-    VoidDeclaration,
-  };
-
-  Error(Error::Code c) : code_(c) {}
-  Error::Code code_;
-  // TODO hold metadata too
-};
-
 namespace LogError {
 void UndeclaredIdentifier(AST::Identifier *id);
 void AmbiguousIdentifier(AST::Identifier *id);
@@ -84,7 +38,9 @@ extern size_t num_errs_;
 void Dump();
 inline size_t NumErrors() { return num_errs_; }
 void LogGeneric(const TextSpan &span, const std::string &msg);
-
+// TODO build a graph of declarations that shadow each other and show connected components together.
+void ShadowingDeclaration(const AST::Declaration &decl1,
+                          const AST::Declaration &decl2);
 void TooManyDots(const TextSpan &span, size_t num_dots);
 void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist);
 void RunawayMultilineComment();

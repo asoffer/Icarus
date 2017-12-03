@@ -11,7 +11,6 @@
 #include "../type/type.h"
 
 std::vector<IR::Val> global_vals;
-extern std::vector<Error> errors;
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -66,9 +65,8 @@ void ReplEval(AST::Expression *expr) {
   CURRENT_FUNC(fn.get()) {
     IR::Block::Current = fn->entry();
     auto expr_val      = expr->EmitIR(IR::Cmd::Kind::Exec);
-    if (!errors.empty()) {
+    if (ErrorLog::NumErrors() != 0) {
       ErrorLog::Dump();
-      std::cerr << "There were " << errors.size() << " errors.";
       return;
     }
 
@@ -85,7 +83,10 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<IR::Val> results;
   IR::ExecContext context;
   bool were_errors;
-  if (!errors.empty()) { return IR::Val::None(); }
+  if (ErrorLog::NumErrors() != 0) {
+    ErrorLog::Dump();
+    return IR::Val::None();
+  }
   auto fn = ExprFn(expr, nullptr, IR::Cmd::Kind::Exec);
   results = fn->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there

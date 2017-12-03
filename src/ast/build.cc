@@ -9,7 +9,6 @@
 #include "../type/type.h"
 
 extern std::queue<Source::Name> file_queue;
-extern std::vector<Error> errors;
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -346,8 +345,7 @@ BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
               std::move(expr->as<Binop>().rhs));
         } else {
           if (seen_named) {
-            // TODO better error message.
-            errors.emplace_back(Error::Code::Other);
+            ErrorLog::LogGeneric(TextSpan(), "TODO");
           }
           call_args->numbered_.push_back(std::move(expr));
         }

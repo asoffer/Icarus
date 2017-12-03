@@ -12,7 +12,6 @@
 extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
-extern std::vector<Error> errors;
 extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
@@ -65,8 +64,7 @@ static bool CanCastImplicitly(Type *from, Type *to) {
 #define STARTING_CHECK                                                         \
   ASSERT(scope_, "Need to first call assign_scope()");                         \
   if (type == Unknown) {                                                       \
-    errors.emplace_back(Error::Code::CyclicDependency);                        \
-    /* ErrorLog::CyclicDependency(this); */                                    \
+    ErrorLog::CyclicDependency(this);                                          \
     type = Err;                                                                \
   }                                                                            \
   if (type) { return; }                                                        \
@@ -105,7 +103,7 @@ CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
   // yields a non-negative integer. This is because any subtraction that occurs
   // is always preceeded by an addition.
   size_t accumulator = 0;
-  for (size_t i = 0; i< delta_fwd_matches.size(); ++i) {
+  for (size_t i = 0; i < delta_fwd_matches.size(); ++i) {
     if (data1[i].type != data2[i].type) { break; }
     accumulator += delta_fwd_matches[i];
     if (accumulator == 0) { indices.push_back(i + 1); }
@@ -258,24 +256,21 @@ void Unop::verify_types() {
     if (!operand->type->is<Pointer>()) {
       std::string msg = "Attempting to free an object of type `" +
                         operand->type->to_string() + "`.";
-      errors.emplace_back(Error::Code::FreeNonPtr);
-      // ErrorLog::UnopTypeFail(msg, this);
+      ErrorLog::UnopTypeFail(msg, this);
     }
     type = Void;
   } break;
   case Operator::Print: {
     if (operand->type == Void) {
-      errors.emplace_back(Error::Code::PrintVoid);
-      // ErrorLog::UnopTypeFail(
-      // "Attempting to print an expression with type `void`.", this);
+      ErrorLog::UnopTypeFail(
+          "Attempting to print an expression with type `void`.", this);
     }
     type = Void;
   } break;
   case Operator::Return: {
     if (operand->type == Void) {
-      errors.emplace_back(Error::Code::ReturnVoid);
-      // ErrorLog::UnopTypeFail(
-      //  "Attempting to return an expression which has type `void`.", this);
+      ErrorLog::UnopTypeFail(
+          "Attempting to return an expression which has type `void`.", this);
     }
 
     type = Void;
@@ -287,8 +282,7 @@ void Unop::verify_types() {
     } else {
       std::string msg = "Attempting to dereference an expression of type `" +
                         operand->type->to_string() + "`.";
-      errors.emplace_back(Error::Code::DerefNonPtr);
-      // ErrorLog::UnopTypeFail(msg, this);
+      ErrorLog::UnopTypeFail(msg, this);
       type = Err;
     }
   } break;
@@ -297,17 +291,16 @@ void Unop::verify_types() {
   } break;
   case Operator::Mul: {
     if (operand->type != Type_) {
-      errors.emplace_back(Error::Code::Other); // TODO correct error code
+      ErrorLog::LogGeneric(this->span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
     } else {
       type = Type_;
     }
   } break;
   case Operator::Sub: {
     if (operand->type == Uint) {
-      errors.emplace_back(Error::Code::UnsignedNegation);
-      // ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer
-      // (uint).",
-      //                    this);
+      ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
+                             this);
       type = Int;
 
     } else if (operand->type == Int || operand->type == Real) {
@@ -325,18 +318,16 @@ void Unop::verify_types() {
       if (t) {
         type = ptr_cast<Function>(t)->output;
       } else {
-        errors.emplace_back(Error::Code::MissingOperator);
-        // ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-        //                        "` has no unary negation operator.",
-        //                   this);
+        ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
+                                   "` has no unary negation operator.",
+                               this);
         type = Err;
       }
 
     } else {
-      errors.emplace_back(Error::Code::MissingOperator);
-      // ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-      //                        "` has no unary negation operator.",
-      //                   this);
+      ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
+                                 "` has no unary negation operator.",
+                             this);
       type = Err;
     }
   } break;
@@ -345,8 +336,7 @@ void Unop::verify_types() {
         operand->type == Char) {
       type = Range(operand->type);
     } else {
-      errors.emplace_back(Error::Code::InvalidRangeType);
-      // ErrorLog::InvalidRangeType(loc, type);
+      ErrorLog::InvalidRangeType(span, type);
       type = Err;
     }
   } break;
@@ -354,11 +344,10 @@ void Unop::verify_types() {
     if (operand->type == Bool) {
       type = Bool;
     } else {
-      errors.emplace_back(Error::Code::LogicalNegationOfNonBool);
-      // ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
-      //                    "operator (!) to an expression of type `" +
-      //                       operand->type->to_string() + "`.",
-      //                  this);
+      ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
+                             "operator (!) to an expression of type `" +
+                                 operand->type->to_string() + "`.",
+                             this);
       type = Err;
     }
   } break;
@@ -388,8 +377,7 @@ void Access::verify_types() {
     if (member_name == "size") {
       type = Uint;
     } else {
-      errors.emplace_back(Error::Code::MissingMember);
-      // ErrorLog::MissingMember(loc, member_name, base_type);
+      ErrorLog::MissingMember(span, member_name, base_type);
       type = Err;
     }
   } else if (base_type == Type_) {
@@ -404,8 +392,7 @@ void Access::verify_types() {
         type = evaled_type;
         if (ptr_cast<Enum>(evaled_type)->IndexOrFail(member_name) ==
             std::numeric_limits<size_t>::max()) {
-          errors.emplace_back(Error::Code::MissingMember);
-          // ErrorLog::MissingMember(loc, member_name, evaled_type);
+          ErrorLog::MissingMember(span, member_name, evaled_type);
         }
       }
     }
@@ -418,13 +405,11 @@ void Access::verify_types() {
       type = member_type;
 
     } else {
-      errors.emplace_back(Error::Code::MissingMember);
-      // ErrorLog::MissingMember(loc, member_name, base_type);
+      ErrorLog::MissingMember(span, member_name, base_type);
       type = Err;
     }
   } else if (base_type->is<Primitive>() || base_type->is<Function>()) {
-    errors.emplace_back(Error::Code::MissingMember);
-    // ErrorLog::MissingMember(loc, member_name, base_type);
+    ErrorLog::MissingMember(span, member_name, base_type);
     type = Err;
   }
 }
@@ -502,7 +487,7 @@ void CallArgs::verify_types() {
     num->verify_types();
     if (num->type == Err) { type = Err; }
   }
-  for (auto &name_and_val: named_) {
+  for (auto &name_and_val : named_) {
     name_and_val.second->verify_types();
     if (name_and_val.second->type == Err) { type = Err; }
   }
@@ -519,15 +504,14 @@ void Binop::verify_types() {
 
   if (op == Language::Operator::Call) {
     if (lhs->is<Identifier>()) {
-      auto& lhs_id = lhs->as<Identifier>();
+      auto &lhs_id = lhs->as<Identifier>();
       // It suffices to find just the first match because we are guarnateed that
       // there can only be one.
       Declaration *valid_match =
           FindFunctionCallMatch(lhs_id, scope_, &rhs->as<CallArgs>());
 
       if (valid_match == nullptr) {
-        errors.emplace_back(Error::Code::NoCallMatches);
-        // ErrorLog::NoValidMatches(loc);
+        ErrorLog::NoValidMatches(span);
         type = lhs->type = Err;
         return;
       }
@@ -540,8 +524,8 @@ void Binop::verify_types() {
 
       if (lhs->type->is<Function>()) {
         if (ptr_cast<Function>(lhs->type)->input == (rhs ? rhs->type : Void)) {
-          errors.emplace_back(Error::Code::Other);
-          // ErrorLog::LogGeneric(loc, err_msg);
+          ErrorLog::LogGeneric(span,
+                               "TODO " __FILE__ ":" + std::to_string(__LINE__));
           type      = Err;
           lhs->type = Err;
           return;
@@ -565,8 +549,7 @@ void Binop::verify_types() {
         }
 
         if (lhs->type->is<Pointer>() && type->is<Pointer>()) { return; }
-        errors.emplace_back(Error::Code::InvalidCast);
-        // ErrorLog::InvalidCast(loc, lhs->type, type);
+        ErrorLog::InvalidCast(span, lhs->type, type);
 
         if (rhs) { rhs->verify_types(); }
         type = Err;
@@ -601,7 +584,8 @@ void Binop::verify_types() {
     if (CanCastImplicitly(rhs->type, lhs->type)) {
       type = Void;
     } else {
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(this->span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
     }
     return;
   }
@@ -618,16 +602,13 @@ void Binop::verify_types() {
         type = Char;
         break;
       } else {
-        errors.emplace_back(Error::Code::InvalidStringIndexType);
-        // ErrorLog::InvalidStringIndex(loc, rhs->type);
+        ErrorLog::InvalidStringIndex(span, rhs->type);
       }
     } else if (!lhs->type->is<Array>()) {
       if (rhs->type->is<RangeType>()) {
-        errors.emplace_back(Error::Code::SlicingNonArray);
-        // ErrorLog::SlicingNonArray(loc, lhs->type);
+        ErrorLog::SlicingNonArray(span, lhs->type);
       } else {
-        errors.emplace_back(Error::Code::IndexingNonArray);
-        // ErrorLog::IndexingNonArray(loc, lhs->type);
+        ErrorLog::IndexingNonArray(span, lhs->type);
       }
     } else if (rhs->type->is<RangeType>()) {
       type = Slice(ptr_cast<Array>(lhs->type));
@@ -637,8 +618,7 @@ void Binop::verify_types() {
 
       // TODO allow slice indexing
       if (rhs->type == Int || rhs->type == Uint) { break; }
-      errors.emplace_back(Error::Code::NonIntegralArrayIndex);
-      // ErrorLog::NonIntegralArrayIndex(loc, rhs->type);
+      ErrorLog::NonIntegralArrayIndex(span, rhs->type);
     }
     return;
   case Operator::Dots: {
@@ -652,8 +632,7 @@ void Binop::verify_types() {
       type = Range(Char);
 
     } else {
-      errors.emplace_back(Error::Code::InvalidRangeTypes);
-      // ErrorLog::InvalidRangeTypes(loc, lhs->type, rhs->type);
+      ErrorLog::InvalidRangeTypes(span, lhs->type, rhs->type);
     }
   } break;
   case Language::Operator::XorEq: {
@@ -661,8 +640,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Err;
-      errors.emplace_back(Error::Code::NonBooleanLogicalAssignemnt);
-      // ErrorLog::XorEqNeedsBool(loc);
+      ErrorLog::XorEqNeedsBool(span);
     }
   } break;
   case Language::Operator::AndEq: {
@@ -670,8 +648,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Err;
-      errors.emplace_back(Error::Code::NonBooleanLogicalAssignemnt);
-      // ErrorLog::AndEqNeedsBool(loc);
+      ErrorLog::AndEqNeedsBool(span);
     }
   } break;
   case Language::Operator::OrEq: {
@@ -679,8 +656,7 @@ void Binop::verify_types() {
       type = Bool;
     } else {
       type = Err;
-      errors.emplace_back(Error::Code::NonBooleanLogicalAssignemnt);
-      // ErrorLog::OrEqNeedsBool(loc);
+      ErrorLog::OrEqNeedsBool(span);
     }
   } break;
 
@@ -713,9 +689,7 @@ void Binop::verify_types() {
          * TODO if there is more than one, log them all and give a good        \
          * *error message. For now, we just fail */                            \
         if (correct_decl) {                                                    \
-          errors.emplace_back(Error::Code::AlreadyFoundMatch);                 \
-          /* ErrorLog::AlreadyFoundMatch(loc, symbol, lhs->type, rhs->type);   \
-           */                                                                  \
+          ErrorLog::AlreadyFoundMatch(span, symbol, lhs->type, rhs->type);     \
           type = Err;                                                          \
         } else {                                                               \
           correct_decl = decl;                                                 \
@@ -723,8 +697,7 @@ void Binop::verify_types() {
       }                                                                        \
       if (!correct_decl) {                                                     \
         type = Err;                                                            \
-        errors.emplace_back(Error::Code::NoKnownOverload);                     \
-        /* ErrorLog::NoKnownOverload(loc, symbol, lhs->type, rhs->type); */    \
+        ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
       } else if (type != Err) {                                                \
         type = ptr_cast<Function>(correct_decl->type)->output;                 \
       }                                                                        \
@@ -757,16 +730,13 @@ void Binop::verify_types() {
 
       } else {
         type = Err;
-        errors.emplace_back(Error::Code::NonComposableFns);
-        // ErrorLog::NonComposableFunctions(loc);
+        ErrorLog::NonComposableFunctions(span);
       }
 
     } else {
       for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
         auto id_ptr = scope_ptr->IdHereOrNull("__mul__");
         if (!id_ptr) { continue; }
-
-        // Dependency::traverse_from(Dependency::PtrWithTorV(id_ptr, false));
       }
 
       auto fn_type = scope_->FunctionTypeReferencedOrNull(
@@ -775,21 +745,18 @@ void Binop::verify_types() {
         type = ptr_cast<Function>(fn_type)->output;
       } else {
         type = Err;
-        errors.emplace_back(Error::Code::NoKnownOverload);
-        // ErrorLog::NoKnownOverload(loc, "*", lhs->type, rhs->type);
+        ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
       }
     }
   } break;
   case Operator::Arrow: {
     if (lhs->type != Type_) {
       type = Err;
-      errors.emplace_back(Error::Code::NonTypeFnInput);
-      // ErrorLog::NonTypeFunctionInput(loc);
+      ErrorLog::NonTypeFunctionInput(span);
     }
     if (rhs->type != Type_) {
       type = Err;
-      errors.emplace_back(Error::Code::NonTypeFnOutput);
-      // ErrorLog::NonTypeFunctionOutput(loc);
+      ErrorLog::NonTypeFunctionOutput(span);
     }
 
     if (type != Err) { type = Type_; }
@@ -808,8 +775,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
   if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>()) {
     if (lhs_type != rhs_type) {
-      // TODO Log a better error
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(TextSpan(),
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
       return false;
     }
 
@@ -824,8 +791,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
       if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
         return true;
       } else {
-        // TODO Log a better error
-        errors.emplace_back(Error::Code::Other);
+        ErrorLog::LogGeneric(TextSpan(),
+                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
         return false;
       }
     }
@@ -833,12 +800,12 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
   if (lhs_type->is<Enum>() || lhs_type->is<Pointer>()) {
     if (lhs_type != rhs_type) {
-      // TODO Log a better error
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(TextSpan(),
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
       return false;
     } else if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-      // TODO Log a better error
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(TextSpan(),
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
       return false;
     } else {
       return true;
@@ -852,8 +819,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   if (lhs_type->is<Array>()) {
     if (rhs_type->is<Array>()) {
       if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-        // TODO Log a better error
-        errors.emplace_back(Error::Code::Other);
+        ErrorLog::LogGeneric(TextSpan(),
+                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
         return false;
       }
 
@@ -862,8 +829,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
       // TODO what if data types are equality comparable but not equal?
       if (lhs_array->data_type != rhs_array->data_type) {
-        // TODO Log a better error
-        errors.emplace_back(Error::Code::Other);
+        ErrorLog::LogGeneric(TextSpan(),
+                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
         return false;
       }
 
@@ -871,8 +838,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
         if (lhs_array->len == rhs_array->len) {
           return true;
         } else {
-          // TODO Log a better error
-          errors.emplace_back(Error::Code::Other);
+          ErrorLog::LogGeneric(TextSpan(),
+                               "TODO " __FILE__ ":" + std::to_string(__LINE__));
           return false;
         }
       } else {
@@ -880,14 +847,14 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
                      // allowed to compare them.
       }
     } else {
-      // TODO Log a better error
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(TextSpan(),
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
       return false;
     }
   }
 
-  // TODO Log a better error
-  errors.emplace_back(Error::Code::Other);
+  ErrorLog::LogGeneric(TextSpan(),
+                       "TODO " __FILE__ ":" + std::to_string(__LINE__));
   return false;
 }
 
@@ -913,8 +880,8 @@ void ChainOp::verify_types() {
       ops[0] == Language::Operator::Xor) {
     for (const auto &expr : exprs) {
       if (expr->type != Bool) {
-        // TODO log an error
-        LOG << "Type error.";
+        ErrorLog::LogGeneric(TextSpan(),
+                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
       }
     }
   } else {
@@ -962,8 +929,7 @@ void InDecl::verify_types() {
   if (container->type == Void) {
     type             = Err;
     identifier->type = Err;
-    errors.emplace_back(Error::Code::TypeIteration);
-    // ErrorLog::TypeIteration(loc);
+    ErrorLog::TypeIteration(span);
     return;
   }
 
@@ -981,27 +947,24 @@ void InDecl::verify_types() {
     if (t->is<Enum>()) { type = t; }
 
   } else {
-    errors.emplace_back(Error::Code::IndeterminantType);
-    // ErrorLog::IndeterminantType(loc);
+    ErrorLog::IndeterminantType(span);
     type = Err;
   }
 
   identifier->type = type;
 }
 
-Type *Expression::VerifyTypeForDeclaration(const std::string & /*id_tok*/) {
+Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
 
   if (type != Type_) {
-    errors.emplace_back(Error::Code::NotAType);
-    // ErrorLog::NotAType(loc, id_tok);
+    ErrorLog::NotAType(span, id_tok);
     return Err;
   }
 
   Type *t = Evaluate(this).value.as<Type *>();
 
   if (t == Void) {
-    errors.emplace_back(Error::Code::VoidDeclaration);
-    // ErrorLog::DeclaredVoidType(loc, id_tok);
+    ErrorLog::DeclaredVoidType(span, id_tok);
     return Err;
   }
 
@@ -1010,8 +973,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string & /*id_tok*/) {
 
 Type *Expression::VerifyValueForDeclaration(const std::string &) {
   if (type == Void) {
-    errors.emplace_back(Error::Code::VoidDeclaration);
-    // ErrorLog::VoidDeclaration(loc);
+    ErrorLog::VoidDeclaration(span);
     return Err;
   }
   return type;
@@ -1026,38 +988,30 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 
     auto iter = error_log_to_call.find(magic_method_name);
     if (iter == error_log_to_call.end()) { return; }
-    errors.emplace_back(Error::Code::Other);
+    ErrorLog::LogGeneric(TextSpan(),
+                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
     iter->second(span);
   }
 
   auto fn_type = static_cast<Function *>(type);
   if (magic_method_name == "__print__") {
     if (!fn_type->input->is<Struct>()) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidPrintDefinition(span, fn_type->input);
+      ErrorLog::InvalidPrintDefinition(span, fn_type->input);
     }
 
-    if (fn_type->output != Void) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NonVoidPrintReturn(span);
-    }
+    if (fn_type->output != Void) { ErrorLog::NonVoidPrintReturn(span); }
   } else if (magic_method_name == "__assign__") {
     if (!fn_type->input->is<Tuple>()) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidAssignDefinition(span, fn_type->input);
+      ErrorLog::InvalidAssignDefinition(span, fn_type->input);
     } else {
       auto in = static_cast<Tuple *>(fn_type->input);
       if (in->entries.size() != 2) {
-        errors.emplace_back(Error::Code::Other);
-        // ErrorLog::NonBinaryAssignment(span, in->entries.size());
+        ErrorLog::NonBinaryAssignment(span, in->entries.size());
       }
       // TODO more checking.
     }
 
-    if (fn_type->output != Void) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NonVoidAssignReturn(span);
-    }
+    if (fn_type->output != Void) { ErrorLog::NonVoidAssignReturn(span); }
   }
 }
 
@@ -1093,8 +1047,7 @@ void Declaration::verify_types() {
 
     if (type == NullPtr) {
       // 'null' must be immediately cast to a pointer type.
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::NullDeclInit(span);
+      ErrorLog::NullDeclInit(span);
       type = Err;
     }
 
@@ -1105,19 +1058,18 @@ void Declaration::verify_types() {
     if (type == Err) {
       type = init_val_type;
     } else if (!CanCastImplicitly(init_val_type, type)) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::AssignmentTypeMismatch(span, type, init_val_type);
+      ErrorLog::AssignmentTypeMismatch(span, type, init_val_type);
     }
 
     if (!type->is<Pointer>() && init_val_type == NullPtr) {
-      // TODO better error message: Assigning null to a non-pointer type
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(this->span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
     }
 
   } else if (IsUninitialized()) {
     if (const_) {
-      // TODO better error message.
-      errors.emplace_back(Error::Code::Other);
+      ErrorLog::LogGeneric(this->span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
     }
 
     type           = type_expr->VerifyTypeForDeclaration(identifier->token);
@@ -1153,17 +1105,16 @@ void Declaration::verify_types() {
     identifier->value = init_val->value;
   }
 
-
   // TODO Either guarantee that higher scopes have all declarations declared and
   // verified first, or check both in the upwards and downwards direction for
   // shadowing.
-  for (auto* decl : scope_->AllDeclsWithId(identifier->token)) {
+  for (auto *decl : scope_->AllDeclsWithId(identifier->token)) {
     if (decl == this) { continue; }
     if (this < decl) {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-      if (Shadow(this, decl)) { errors.emplace_back(Error::Code::Other); }
+      if (Shadow(this, decl)) { ErrorLog::ShadowingDeclaration(*this, *decl); }
     }
   }
   auto iter = scope_->child_decls_.find(identifier->token);
@@ -1173,7 +1124,9 @@ void Declaration::verify_types() {
         // Pick one arbitrary but consistent ordering of the pair to check
         // because at each Declaration verification, we look both up and down
         // the scope tree.
-        if (Shadow(this, decl)) { errors.emplace_back(Error::Code::Other); }
+        if (Shadow(this, decl)) {
+          ErrorLog::ShadowingDeclaration(*this, *decl);
+        }
       }
     }
   }
@@ -1193,8 +1146,7 @@ void ArrayType::verify_types() {
 
   // TODO change this to just uint
   if (length->type != Int && length->type != Uint) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::ArrayIndexType(span);
+    ErrorLog::ArrayIndexType(span);
   }
 }
 
@@ -1205,8 +1157,7 @@ void ArrayLiteral::verify_types() {
   // TODO this should be allowed in the same vein as 'null'?
   if (elems.empty()) {
     type = Err;
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::EmptyArrayLit(span);
+    ErrorLog::EmptyArrayLit(span);
     return;
   }
 
@@ -1222,8 +1173,7 @@ void ArrayLiteral::verify_types() {
   type = Arr(type_to_match, elems.size());
   for (const auto &el : elems) {
     if (el->type != type_to_match) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InconsistentArrayType(span);
+      ErrorLog::InconsistentArrayType(span);
       type = Err;
     }
   }
@@ -1257,12 +1207,10 @@ void FunctionLiteral::verify_types() {
 
   // TODO must this really be undeclared?
   if (ret_type_val == IR::Val::None() /* TODO Error() */) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::IndeterminantType(return_type_expr);
+    ErrorLog::IndeterminantType(return_type_expr.get());
     type = Err;
   } else if (ret_type_val.type != Type_) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::NotAType(return_type_expr, return_type_expr->type);
+    ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
     type = Err;
     return;
   } else if (ret_type_val.value.as<Type *>() == Err) {
@@ -1310,8 +1258,7 @@ void Case::verify_types() {
       kv.first->type = Bool;
 
     } else if (kv.first->type != Bool) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::CaseLHSBool(span, kv.first->span, kv.first->type);
+      ErrorLog::CaseLHSBool(span, kv.first->span, kv.first->type);
       kv.first->type = Bool;
     }
 
@@ -1345,12 +1292,10 @@ void Case::verify_types() {
 
     if (2 * max_size > key_vals.size() ||
         (4 * max_size > key_vals.size() && 8 * min_size < key_vals.size())) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::CaseTypeMismatch(this, max_type);
+      ErrorLog::CaseTypeMismatch(this, max_type);
       type = max_type;
     } else {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::CaseTypeMismatch(this);
+      ErrorLog::CaseTypeMismatch(this);
       type = Err;
     }
   } else {
@@ -1378,8 +1323,7 @@ void Jump::verify_types() {
     }
     scope_ptr = exec_scope_ptr->parent;
   }
-  errors.emplace_back(Error::Code::Other);
-  // ErrorLog::JumpOutsideLoop(span);
+  ErrorLog::JumpOutsideLoop(span);
 }
 
 // Intentionally do not verify anything internal
@@ -1393,8 +1337,7 @@ void ScopeNode::verify_types() {
   stmts->verify_types();
 
   if (!scope_expr->type->is<Scope_Type>()) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
+    ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
     type = Err;
     return;
   }
@@ -1404,8 +1347,7 @@ void ScopeNode::verify_types() {
   // ScopeLiteral *lit = Evaluate(scope_expr).as_scope;
   // if (!type->is<Scope_Type>()) {
   //   if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
-  //     errors.emplace_back(Error::Code::Other);
-  //     // ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
+  //     ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
   //     type = Err;
   //     return;
   //   }
@@ -1418,12 +1360,14 @@ void ScopeLiteral::verify_types() {
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
     cannot_proceed_due_to_errors = true;
-    errors.emplace_back(Error::Code::Other);
+    ErrorLog::LogGeneric(this->span,
+                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
   }
 
   if (!exit_fn) {
     cannot_proceed_due_to_errors = true;
-    errors.emplace_back(Error::Code::Other);
+    ErrorLog::LogGeneric(this->span,
+                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
   }
 
   if (cannot_proceed_due_to_errors) { return; }
@@ -1433,12 +1377,14 @@ void ScopeLiteral::verify_types() {
 
   if (!enter_fn->type->is<Function>()) {
     cannot_proceed_due_to_errors = true;
-    errors.emplace_back(Error::Code::Other);
+    ErrorLog::LogGeneric(this->span,
+                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
   }
 
   if (!exit_fn->type->is<Function>()) {
     cannot_proceed_due_to_errors = true;
-    errors.emplace_back(Error::Code::Other);
+    ErrorLog::LogGeneric(this->span,
+                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
   }
 
   if (cannot_proceed_due_to_errors) { return; }
@@ -1452,8 +1398,7 @@ void Unop::VerifyReturnTypes(Type *ret_type) {
   if (op == Language::Operator::Return) {
     if (operand->type == Err) { return; } // Error already logged
     if (operand->type != ret_type) {
-      errors.emplace_back(Error::Code::Other);
-      // ErrorLog::InvalidReturnType(span, operand->type, ret_type);
+      ErrorLog::InvalidReturnType(span, operand->type, ret_type);
     }
   }
 }
@@ -1464,8 +1409,7 @@ void Statements::VerifyReturnTypes(Type *ret_type) {
 
 void Jump::VerifyReturnTypes(Type *ret_type) {
   if (jump_type == JumpType::Return && ret_type != Void) {
-    errors.emplace_back(Error::Code::Other);
-    // ErrorLog::InvalidReturnType(span, Void, ret_type);
+    ErrorLog::InvalidReturnType(span, Void, ret_type);
   }
 }
 
