@@ -6,26 +6,11 @@
 #include "types.h"
 #include "log.h"
 
-namespace debug {
-inline std::string to_string(const char *s) { return std::string(s); }
-inline std::string to_string(std::string s) { return s; }
-inline std::string to_string(std::nullptr_t) { return "nullptr"; }
-inline std::string to_string(i64 n) { return std::to_string(n); }
-inline std::string to_string(u64 n) { return std::to_string(n); }
-inline std::string to_string(i32 n) { return std::to_string(n); }
-inline std::string to_string(u32 n) { return std::to_string(n); }
-template <typename T> std::string to_string(const T *ptr) {
-  return std::to_string(ptr);
-}
-}
-
 #define ASSERT(cond, msg)                                                      \
   do {                                                                         \
     if (!(cond)) {                                                             \
-      LOG << "Assertion failed.\n"                                             \
-          << #cond << '\n'                                                     \
-          << "  " << debug::to_string(msg);                                    \
-      abort(); /* So compiler doesn't complain about missing return */         \
+      LOG << "Assertion failed.\n" << #cond << '\n' << "  " << (msg);          \
+      abort();                                                                 \
     }                                                                          \
   } while (false)
 
@@ -35,9 +20,9 @@ template <typename T> std::string to_string(const T *ptr) {
       LOG << "Assertion failed.\n"                                             \
              "  Expected: "                                                    \
           << #lhs << ' ' << #sym << ' ' << #rhs << "\n  Actual:\n"             \
-          << "    LHS = " << debug::to_string(lhs) << '\n'                     \
-          << "    RHS = " << debug::to_string(rhs) << '\n';                    \
-      abort(); /* So compiler doesn't complain about missing return */         \
+          << "    LHS = " << (lhs) << '\n'                                     \
+          << "    RHS = " << (rhs) << '\n';                                    \
+      abort();                                                                 \
     }                                                                          \
   } while (false)
 
@@ -54,7 +39,7 @@ template <typename T> std::string to_string(const T *ptr) {
       LOG << "Assertion failed.\n"                                             \
              "  Expected type: "                                               \
           << #type << "\n"                                                     \
-          << "  Actual type: " << val->to_string();                            \
+          << "  Actual type: " << val;                                         \
       abort();                                                                 \
     }                                                                          \
   } while (false)

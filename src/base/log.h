@@ -3,6 +3,7 @@
 
 #include <iostream>
 #include <functional>
+#include "string.h"
 
 namespace base {
 struct Logger {
@@ -11,7 +12,7 @@ struct Logger {
 
 template <typename T>
 const Logger &operator<<(const Logger &l, const T &t) {
-  std::cerr << t;
+  std::cerr << internal::stringify(t);
   return l;
 }
 

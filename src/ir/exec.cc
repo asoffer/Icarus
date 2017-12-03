@@ -83,6 +83,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<IR::Val> results;
   IR::ExecContext context;
   bool were_errors;
+  // TODO need to count errors locally.
   if (ErrorLog::NumErrors() != 0) {
     ErrorLog::Dump();
     return IR::Val::None();

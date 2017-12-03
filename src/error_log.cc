@@ -4,6 +4,7 @@
 
 #include "ast/ast.h"
 #include "base/source.h"
+#include "base/string.h"
 #include "type/type.h"
 
 extern std::unordered_map<Source::Name, File *> source_map;
@@ -32,7 +33,7 @@ static FileToLineNumMap global_non_decl;
 size_t ErrorLog::num_errs_ = 0;
 
 static inline size_t NumDigits(size_t n) {
-  if (n == 0) return 1;
+  if (n == 0) { return 1; }
   size_t counter = 0;
   while (n != 0) {
     n /= 10;

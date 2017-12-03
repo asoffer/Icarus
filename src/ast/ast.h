@@ -26,6 +26,7 @@ namespace AST {
 #define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const ENDING;                        \
+  std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void verify_types() ENDING;                                          \
@@ -36,6 +37,7 @@ namespace AST {
 #define EXPR_FNS(name)                                                         \
   virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const ENDING;                        \
+  std::string to_string() const { return to_string(0); }                       \
   virtual void lrvalue_check() ENDING;                                         \
   virtual void assign_scope(Scope *scope) ENDING;                              \
   virtual void verify_types() ENDING;                                          \
@@ -57,6 +59,8 @@ struct Node : public base::Cast<Node> {
   virtual Node *Clone() const = 0;
   virtual bool is_hole() const { return false; }
 
+  std::string to_string() const { return to_string(0); }
+
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
@@ -76,6 +80,7 @@ struct Expression : public Node {
   virtual void assign_scope(Scope *scope)       = 0;
   virtual void verify_types()                   = 0;
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+  std::string to_string() const { return to_string(0); }
 
   virtual Expression *Clone() const = 0;
 
