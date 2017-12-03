@@ -812,13 +812,13 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
       }
 
       for (auto scope : fn_scope->innards_) {
-        for (auto &decl : scope->decls_) {
+        scope->ForEachDeclHere(+[](Declaration *decl) {
           // TODO arg_val seems to go along with in_decl a lot. Is there some
           // reason for this that *should* be abstracted?
-          if (decl->arg_val || decl->is<InDecl>()) { continue; }
+          if (decl->arg_val || decl->is<InDecl>()) { return; }
           ASSERT(decl->type, "");
           decl->addr = IR::Alloca(decl->type);
-        }
+        });
       }
 
       statements->EmitIR(kind);

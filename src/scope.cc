@@ -7,10 +7,10 @@ DeclScope *Scope::Global = new DeclScope(nullptr);
 
 AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
                                         Type *declared_type) {
-  for (auto decl : decls_) {
-    if (decl->type == declared_type && decl->identifier->token == name) {
-      return decl;
-    }
+  auto iter = decls_.find(name);
+  if (iter == decls_.end()) { return nullptr; }
+  for (auto decl : iter->second) {
+    if (decl->type == declared_type) { return decl; }
   }
   return nullptr;
 }
@@ -19,16 +19,17 @@ AST::Declaration *Scope::DeclReferencedOrNull(const std::string &name,
                                               Type *declared_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto ptr = scope_ptr->DeclHereOrNull(name, declared_type);
-    if (ptr) { return ptr; }
+    if (ptr != nullptr) { return ptr; }
   }
   return nullptr;
 }
 
-AST::Identifier *Scope::IdHereOrNull(const std::string &name) {
-  for (auto decl : decls_) {
-    if (decl->identifier->token == name) { return decl->identifier.get(); }
-  }
-  return nullptr;
+// TODO this is dangerous
+AST::Identifier *Scope::IdHereOrNull(const std::string &name) const {
+  auto iter = decls_.find(name);
+  if (iter == decls_.end()) { return nullptr; }
+  if (iter->second.empty()) { return nullptr; }
+  return iter->second[0]->identifier.get();
 }
 
 AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
@@ -93,12 +94,22 @@ IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
   return IR::Load(decl->addr);
 }
 
+void Scope::InsertDecl(AST::Declaration *decl) {
+  decls_[decl->identifier->token].push_back(decl);
+  if (parent == nullptr) { return; }
+  for (auto *scope_ptr = parent; scope_ptr; scope_ptr = scope_ptr->parent) {
+    scope_ptr->child_decls_[decl->identifier->token].push_back(decl);
+  }
+}
+
+
 std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
   std::vector<AST::Declaration *> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;
        scope_ptr      = scope_ptr->parent) {
-    for (auto decl : scope_ptr->decls_) {
-      if (decl->identifier->token != id) { continue; }
+    auto iter = scope_ptr->decls_.find(id);
+    if (iter == scope_ptr->decls_.end()) { continue; }
+    for (const auto &decl : iter->second) {
       decl->verify_types();
       if (decl->type == Err) { continue; }
       matching_decls.push_back(decl);
@@ -114,11 +125,12 @@ ExecScope::ExecScope(Scope *parent) : Scope(parent) {
 }
 
 void ExecScope::Enter() const {
-  for (auto *decl : decls_) {
-    if (decl->is<AST::InDecl>()) { continue; }
-    decl->EmitIR(IR::Cmd::Kind::Exec);
-  }
+  ForEachDeclHere(+[](AST::Declaration *decl) {
+    if (!decl->is<AST::InDecl>()) { decl->EmitIR(IR::Cmd::Kind::Exec); }
+  });
 }
+
 void ExecScope::Exit() const {
-  for (auto *decl : decls_) { decl->type->EmitDestroy(decl->addr); }
+  ForEachDeclHere(
+      +[](AST::Declaration *decl) { decl->type->EmitDestroy(decl->addr); });
 }

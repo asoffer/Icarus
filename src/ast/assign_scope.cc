@@ -57,7 +57,7 @@ void Binop::assign_scope(Scope *scope) {
 
 void InDecl::assign_scope(Scope *scope) {
   scope_ = scope;
-  scope_->decls_.push_back(this);
+  scope_->InsertDecl(this);
   identifier->assign_scope(scope);
   container->assign_scope(scope);
 }
@@ -65,7 +65,7 @@ void InDecl::assign_scope(Scope *scope) {
 void Declaration::assign_scope(Scope *scope) {
   ASSERT(scope, "");
   scope_ = scope;
-  scope_->decls_.push_back(this);
+  scope_->InsertDecl(this);
   identifier->assign_scope(scope);
   if (type_expr) { type_expr->assign_scope(scope); }
   if (init_val) { init_val->assign_scope(scope); }

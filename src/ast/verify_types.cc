@@ -84,9 +84,9 @@ static bool CanCastImplicitly(Type *from, Type *to) {
 namespace AST {
 // TODO: This algorithm is sufficiently complicated you should combine it with
 // proof of correctness and good explanation of what it does.
-static std::vector<size_t>
-IndicesWithoutForwardMatches(const std::vector<ArgumentMetaData> &data1,
-                             const std::vector<ArgumentMetaData> &data2) {
+static bool
+CommonAmbiguousFunctionCall(const std::vector<ArgumentMetaData> &data1,
+                            const std::vector<ArgumentMetaData> &data2) {
   // TODO Don't need to reprocess this each time
   std::unordered_map<std::string, size_t> index2;
   for (size_t i = 0; i < data2.size(); ++i) { index2[data2[i].name] = i; }
@@ -101,7 +101,6 @@ IndicesWithoutForwardMatches(const std::vector<ArgumentMetaData> &data1,
   }
 
   std::vector<size_t> indices = {0};
-
   // One useful invariant here is that accumulating delta_fwd_matches always
   // yields a non-negative integer. This is because any subtraction that occurs
   // is always preceeded by an addition.
@@ -111,7 +110,48 @@ IndicesWithoutForwardMatches(const std::vector<ArgumentMetaData> &data1,
     accumulator += delta_fwd_matches[i];
     if (accumulator == 0) { indices.push_back(i + 1); }
   }
-  return indices;
+
+  // TODO working backwards through indices should allow you to avoid having to
+  // copy index2 each time and redo the same work repeatedly.
+  for (auto index : indices) {
+    // Everything after this index would have to be named or defaulted. named
+    // values that match but with different types would have to be defaulted.
+    auto index2_copy = index2;
+    for (size_t i = index; i < data1.size(); ++i) {
+      auto iter = index2_copy.find(data1[i].name);
+      if (iter == index2_copy.end()) {
+        if (!data1[i].has_default) { goto next_option; }
+      } else {
+        size_t j = iter->second;
+        // TODO not just equal but if there exists something convertible to
+        // both.
+        if (data1[i].type != data2[j].type &&
+            (!data1[i].has_default || !data2[j].has_default)) {
+          goto next_option;
+        }
+
+        // These two parameters can both be named explicitly. Remove it from
+        // index2_copy so what we're left with are all those elements in the
+        // second function which haven't been named by anything in the first.
+        index2_copy.erase(iter);
+      }
+    }
+
+    for (const auto &entry : index2) {
+      if (entry.second < index) {
+        // Ignore entries which preceed the index where we start using named
+        // arguments.
+        continue;
+      }
+      // Each of these must have a default if there's a call to both.
+      if (!data2[entry.second].has_default) { goto next_option; }
+    }
+
+    return true;
+
+  next_option:;
+  }
+  return false;
 }
 
 bool Shadow(Declaration *decl1, Declaration *decl2) {
@@ -153,9 +193,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
                          /* has_default = */ fn2->args_[i].second != nullptr});
   }
 
-  auto indices = IndicesWithoutForwardMatches(metadata1, metadata2);
-  for (auto index : indices) { LOG << index; }
-  return true;
+  return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
 
 void Terminal::verify_types() {}
@@ -659,15 +697,12 @@ void Binop::verify_types() {
       std::vector<Declaration *> matched_op_name;                              \
                                                                                \
       /* TODO this linear search is probably not ideal.   */                   \
-      for (auto scope_ptr = scope_; scope_ptr;                                 \
-           scope_ptr      = scope_ptr->parent) {                               \
-        for (auto &decl : scope_ptr->decls_) {                                 \
-          if (decl->identifier->token == "__" op_name "__") {                  \
-            decl->verify_types();                                              \
-            matched_op_name.push_back(decl);                                   \
-          }                                                                    \
+      scope_->ForEachDecl([&matched_op_name](Declaration *decl) {              \
+        if (decl->identifier->token == "__" op_name "__") {                    \
+          decl->verify_types();                                                \
+          matched_op_name.push_back(decl);                                     \
         }                                                                      \
-      }                                                                        \
+      });                                                                      \
                                                                                \
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
@@ -1118,12 +1153,29 @@ void Declaration::verify_types() {
     identifier->value = init_val->value;
   }
 
+
   // TODO Either guarantee that higher scopes have all declarations declared and
   // verified first, or check both in the upwards and downwards direction for
   // shadowing.
   for (auto* decl : scope_->AllDeclsWithId(identifier->token)) {
     if (decl == this) { continue; }
-    LOG << Shadow(this, decl);
+    if (this < decl) {
+      // Pick one arbitrary but consistent ordering of the pair to check because
+      // at each Declaration verification, we look both up and down the scope
+      // tree.
+      if (Shadow(this, decl)) { errors.emplace_back(Error::Code::Other); }
+    }
+  }
+  auto iter = scope_->child_decls_.find(identifier->token);
+  if (iter != scope_->child_decls_.end()) {
+    for (auto *decl : iter->second) {
+      if (this < decl) {
+        // Pick one arbitrary but consistent ordering of the pair to check
+        // because at each Declaration verification, we look both up and down
+        // the scope tree.
+        if (Shadow(this, decl)) { errors.emplace_back(Error::Code::Other); }
+      }
+    }
   }
 
   // TODO I hope this won't last very long. I don't love the syntax/approach
@@ -1319,7 +1371,7 @@ void Jump::verify_types() {
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
   while (scope_ptr && scope_ptr->is<ExecScope>()) {
-    auto exec_scope_ptr = static_cast<ExecScope *>(scope_ptr);
+    auto exec_scope_ptr = &scope_ptr->as<ExecScope>();
     if (exec_scope_ptr->can_jump) {
       scope = exec_scope_ptr;
       return;

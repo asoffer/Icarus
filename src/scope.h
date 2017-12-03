@@ -36,7 +36,7 @@ struct Scope : public base::Cast<Scope> {
   // Returns an identifier pointer if there is a declaration of this identifier
   // in this scope. Otherwise it returns nullptr. It does *not* look in parent
   // scopes.
-  AST::Identifier *IdHereOrNull(const std::string &name);
+  AST::Identifier *IdHereOrNull(const std::string &name) const;
 
   // Returns the identifier pointer being referenced by this string name, going
   // up the chaing of scopes as necessary. It returns nullptr if no such
@@ -56,9 +56,24 @@ struct Scope : public base::Cast<Scope> {
 
   std::vector<AST::Declaration *> AllDeclsWithId(const std::string &id);
 
-  FnScope *ContainingFnScope();
+  template <typename Fn>
+  void ForEachDeclHere(const Fn& fn) const {
+    for (const auto &kv : decls_) {
+      for (auto *decl : kv.second) { fn(decl); }
+    }
+  }
 
-  std::vector<AST::Declaration *> decls_;
+  template <typename Fn> void ForEachDecl(const Fn &fn) const {
+    for (auto *scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
+      ForEachDeclHere(fn);
+    }
+  }
+
+  void InsertDecl(AST::Declaration *decl);
+
+  FnScope *ContainingFnScope();
+  std::unordered_map<std::string, std::vector<AST::Declaration *>> decls_;
+  std::unordered_map<std::string, std::vector<AST::Declaration *>> child_decls_;
   Scope *parent = nullptr;
 };
 
