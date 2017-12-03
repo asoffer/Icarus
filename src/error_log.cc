@@ -41,11 +41,14 @@ static inline size_t NumDigits(size_t n) {
   return counter;
 }
 
-static inline std::string NumTimes(size_t n, bool capitalize) {
-  if (n == 1) { return capitalize ? "Once" : "once"; }
-  if (n == 2) { return capitalize ? "Twice" : "twice"; }
-  return std::to_string(n) + " times";
+static inline std::string NumTimes(size_t n) {
+  switch (n) {
+  case 1: return "once";
+  case 2: return "twice";
+  default: return std::to_string(n) + " times";
+  }
 }
+
 static void GatherAndDisplayIdentifierError(const std::string &msg,
                                             const TokenToErrorMap &log) {
   for (const auto &kv : log) {
@@ -56,10 +59,12 @@ static void GatherAndDisplayIdentifierError(const std::string &msg,
       }
     }
 
-    std::cerr << msg << " '" << kv.first
-              << (num_uses == 1
-                      ? std::string("'.\n")
-                      : "' used " + NumTimes(num_uses, false) + ".\n");
+    if (num_uses == 1) {
+      std::cerr << msg << " '" << kv.first << "'.\n";
+    } else {
+      std::cerr << msg << " '" << kv.first << "' used " << NumTimes(num_uses)
+                << ".\n";
+    }
 
     for (const auto &file_and_locs : kv.second) {
       size_t max_line_num = 0;
@@ -68,27 +73,31 @@ static void GatherAndDisplayIdentifierError(const std::string &msg,
           max_line_num = line_and_offsets.first;
         }
       }
-      size_t line_num_width = NumDigits(max_line_num);
+      // size_t line_num_width = NumDigits(max_line_num);
 
       size_t num_uses_in_file = 0;
       for (const auto &line_and_offsets : file_and_locs.second) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      std::cerr << "  Used " << NumTimes(num_uses_in_file, true) << " in '"
-                << file_and_locs.first << ":\n";
+      std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
+                << file_and_locs.first << "':\n";
 
       for (const auto &line_and_offsets : file_and_locs.second) {
         auto line = source_map AT(file_and_locs.first)
                         ->lines AT(line_and_offsets.first);
+        // TODO alignment
+        std::cerr << line_and_offsets.first << "| " << line << '\n'
+          << std::string(line.size() + 1,'^');
 
-        std::string underline = std::string(line_num_width + 6, ' ') +
-                                std::string(line.size() + 1, '^');
-        std::cerr << std::string(line_num_width + 4 -
-                                     NumDigits(line_and_offsets.first),
-                                 ' ')
-                  << line_and_offsets.first << "| " << line << '\n'
-                  << underline << '\n';
+        // std::cerr << base::fmt(
+        //     "{0:>{1}}| {2}\n"
+        //     "{3:>{4}}\n",
+        //     /* 0 -  line number = */ line_and_offsets.first,
+        //     /* 1 -    alignment = */ line_num_width + 4,
+        //     /* 2 - line content = */ line,
+        //     /* 3 -    underline = */ std::string(line.size() + 1, '^'),
+        //     /* 4 -    alignment = */ line_num_width + 6 + line.size() + 1);
       }
     }
   }
@@ -107,12 +116,8 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
     }
 
     fprintf(stderr, fmt_head, token);
-    if (num_uses == 1) {
-      fprintf(stderr, ".\n");
-    } else {
-      fprintf(stderr, " used %s.\n",
-              NumTimes(num_uses, false).c_str());
-    }
+    if (num_uses != 1) { std::cerr << " used " << NumTimes(num_uses); }
+    std::cerr << ".\n";
 
     for (const auto &file_and_locs : kv.second) {
       size_t num_uses_in_file = 0;
@@ -120,9 +125,8 @@ static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
         num_uses_in_file += line_and_offsets.second.size();
       }
 
-      fprintf(stderr, "  Used %s in '%s':\n",
-              NumTimes(num_uses_in_file, true).c_str(),
-              file_and_locs.first.c_str());
+      std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
+                << file_and_locs.first << "':\n";
 
       size_t max_line_num = 0;
       for (const auto &line_and_offsets : file_and_locs.second) {
@@ -165,8 +169,9 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
   fprintf(stderr, fmt, num_instances, num_instances ? "s" : "");
 
   for (const auto &kv : log) {
-    fprintf(stderr, "  Found %lu instance%s in '%s':\n", kv.second.size(),
-            kv.second.size() == 1 ? "s" : "", kv.first.c_str());
+    std::cerr << "  Found " << kv.second.size()
+              << (kv.second.size() == 1 ? " instance in '" : " instances in '")
+              << kv.first << "':\n";
 
     int line_num_width   = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
@@ -184,8 +189,8 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
         fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 2,
                 line.c_str());
       } else if (line_num - last_line_num > 3) {
-        fprintf(stderr, "%s...|\n",
-                std::string((size_t)line_num_width + 1, ' ').c_str());
+        std::cerr << std::string(static_cast<size_t>(line_num_width) + 1, ' ')
+                  << "...|\n";
       }
 
       auto line = source_map AT(kv.first)->lines AT(line_num);
@@ -214,7 +219,17 @@ void ErrorLog::Dump() {
   std::cerr << " found." << std::endl;
 }
 
-static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
+static std::string LineToDisplay(size_t line_num, const Source::Line &line,
+                                 size_t border_alignment = 0) {
+  auto num_digits = NumDigits(line_num);
+  if (border_alignment == 0) { border_alignment = num_digits; }
+  ASSERT_GE(border_alignment, num_digits);
+  return std::string(border_alignment - num_digits, ' ') +
+         std::to_string(line_num) + "| " + line.get() + "\n";
+}
+
+static void DisplayErrorMessage(const char *msg_head,
+                                const std::string &msg_foot,
                                 const TextSpan &span, size_t underline_length) {
   auto line = source_map AT(span.source->name)->lines AT(span.start.line_num);
 
@@ -227,65 +242,67 @@ static void DisplayErrorMessage(const char *msg_head, const char *msg_foot,
     underline[i] = '^';
   }
 
-  fprintf(stderr, "%s\n\n"
-                  "    %u| %s\n"
-                  "%s\n",
-          msg_head, span.start.line_num, line.c_str(), underline.c_str());
-
-  if (msg_foot) {
-    fprintf(stderr, "%s\n\n", msg_foot);
+  std::cerr << msg_head << "\n\n    "
+            << LineToDisplay(span.start.line_num, line) << underline << '\n';
+  if (msg_foot != "") {
+    std::cerr << msg_foot << "\n\n";
   } else {
-    fprintf(stderr, "\n");
+    std::cerr << '\n';
   }
 }
 
 namespace ErrorLog {
 void NullCharInSrc(const TextSpan &span) {
-  fprintf(stderr, "I found a null-character in your source file on line %u. "
-                  "I am ignoring it and moving on. Are you sure \"%s\" is a "
-                  "source file?\n\n",
-          span.start.line_num, span.source->name.c_str());
+  std::cerr << "I found a null-character in your source file on line "
+            << span.start.line_num
+            << ". I am ignoring it and moving on. Are you sure \""
+            << span.source->name << "\" is a source file?\n\n";
   ++num_errs_;
 }
 
 void NonGraphicCharInSrc(const TextSpan &span) {
-  fprintf(stderr, "I found a non-graphic-character in your source file on line "
-                  "%u. I am ignoring it and moving on. Are you sure \"%s\" is "
-                  "a source file?\n\n",
-          span.start.line_num, span.source->name.c_str());
+  std::cerr << "I found a non-graphic character in your source file on line "
+            << span.start.line_num
+            << ". I am ignoring it and moving on. Are you sure \""
+            << span.source->name << "\" is a source file?\n\n";
   ++num_errs_;
 }
 
 void LogGeneric(const TextSpan &, const std::string &msg) {
   ++num_errs_;
-  fprintf(stderr, "%s", msg.c_str());
+  std::cerr << msg;
 }
 
 void InvalidRangeType(const TextSpan &span, Type *t) {
   ++num_errs_;
-  const char *foot_fmt = "Expected type: int, uint, or char\n"
-                         "Given type: %s.";
-  std::string t_str       = t->to_string();
-  size_t type_string_size = t_str.size();
-  auto msg_foot = (char *)malloc(strlen(foot_fmt) + type_string_size - 1);
-  sprintf(msg_foot, foot_fmt, t_str.c_str());
-
+  std::string msg_foot = "Expected type: int, uint, or char\n"
+                         "Given type: " +
+                         t->to_string() + ".";
   DisplayErrorMessage("Attempting to create a range with an invalid type.",
-                      msg_foot, span, type_string_size);
-  free(msg_foot);
+                      msg_foot, span, t->to_string().size());
 }
 
 void TooManyDots(const TextSpan &span, size_t num_dots) {
   const char *msg_head = "There are too many consecutive '.' characters. I am "
                          "assuming you meant \"..\".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head, nullptr, span, num_dots);
+  DisplayErrorMessage(msg_head, "", span, num_dots);
 }
 
 void ShadowingDeclaration(const AST::Declaration &decl1,
-                          const AST::Declaration &) {
+                          const AST::Declaration &decl2) {
+  auto line1 = source_map AT(decl1.span.source->name)
+                   ->lines AT(decl1.span.start.line_num);
+  auto line2 = source_map AT(decl2.span.source->name)
+                   ->lines AT(decl2.span.start.line_num);
+  auto line_num1 = decl1.span.start.line_num;
+  auto line_num2 = decl2.span.start.line_num;
+  auto align =
+      std::max(size_t{4}, NumDigits(std::max(line_num1, line_num2)) + 2);
   ++num_errs_;
-  DisplayErrorMessage("Shadowing declarations", nullptr, decl1.span, 1);
+  std::cerr << "Ambiguous declarations:\n\n"
+            << LineToDisplay(line_num1, line1, align) << '\n'
+            << LineToDisplay(line_num2, line2, align) << '\n';
 }
 
 void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist) {
@@ -309,7 +326,7 @@ void InvalidStringIndex(const TextSpan &span, Type *index_type) {
                          "or uint, but encountered a " +
                          index_type->to_string() + ".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 void NotAType(AST::Expression *expr, Type *t) {
   ++num_errs_;
@@ -319,20 +336,20 @@ void NotAType(AST::Expression *expr, Type *t) {
   char *msg_head = (char *)malloc(t_str.size() + strlen(head_fmt) - 1);
   sprintf(msg_head, head_fmt, t_str.c_str());
 
-  DisplayErrorMessage(msg_head, nullptr, expr->span, 1);
+  DisplayErrorMessage(msg_head, "", expr->span, 1);
   free(msg_head);
 }
 
 void IndeterminantType(AST::Expression *expr) {
   ++num_errs_;
-  DisplayErrorMessage("Cannot determine the type of the expression:", nullptr,
+  DisplayErrorMessage("Cannot determine the type of the expression:", "",
                       expr->span, 1);
 }
 
 void CyclicDependency(AST::Node *node) {
   ++num_errs_;
   DisplayErrorMessage("This expression's type is declared self-referentially.",
-                      nullptr, node->span, 1);
+                      "", node->span, 1);
 }
 
 void GlobalNonDecl(const TextSpan &span) {
@@ -356,8 +373,7 @@ void DeclOutOfOrder(AST::Declaration *decl, AST::Identifier *id) {
                          std::to_string(decl->span.start.line_num) + ".";
   // TODO Provide file name as well.
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), id->span,
-                      id->token.size());
+  DisplayErrorMessage(msg_head.c_str(), msg_foot, id->span, id->token.size());
 }
 
 void InvalidAddress(const TextSpan &span, Assign mode) {
@@ -371,8 +387,8 @@ void InvalidAddress(const TextSpan &span, Assign mode) {
         span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage(
-        "Attempting to take the address of a temporary expression.", nullptr,
-        span, 1);
+        "Attempting to take the address of a temporary expression.", "", span,
+        1);
   } else {
     UNREACHABLE();
   }
@@ -388,7 +404,7 @@ void InvalidAssignment(const TextSpan &span, Assign mode) {
         span, 1);
   } else if (mode == Assign::RVal) {
     DisplayErrorMessage("Attempting to assign to a temporary expression.",
-                        nullptr, span, 1);
+                        "", span, 1);
   } else {
     UNREACHABLE();
   }
@@ -400,7 +416,7 @@ void CaseLHSBool(const TextSpan &, const TextSpan &span, const Type *t) {
                          "type " +
                          t->to_string() + ".";
   ++num_errs_;
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void MissingMember(const TextSpan &span, const std::string &member_name,
@@ -408,26 +424,24 @@ void MissingMember(const TextSpan &span, const std::string &member_name,
   ++num_errs_;
   std::string msg_head = "Expressions of type `" + t->to_string() +
                          "` have no member named '" + member_name + "'.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void IndexingNonArray(const TextSpan &span, const Type *t) {
   ++num_errs_;
-  std::string msg_foot = "Indexed type is a `" + t->to_string() + "`.";
-  DisplayErrorMessage("Cannot index into a non-array type.", msg_foot.c_str(),
-                      span, 1);
+  DisplayErrorMessage("Cannot index into a non-array type.",
+                      "Indexed type is a `" + t->to_string() + "`.", span, 1);
 }
 
 void UnopTypeFail(const std::string &msg, const AST::Unop *unop) {
   ++num_errs_;
-  DisplayErrorMessage(msg.c_str(), nullptr, unop->span, 1);
+  DisplayErrorMessage(msg.c_str(), "", unop->span, 1);
 }
 
 void SlicingNonArray(const TextSpan &span, const Type *t) {
   ++num_errs_;
-  std::string msg_foot = "Sliced type is a `" + t->to_string() + "`.";
-  DisplayErrorMessage("Cannot slice a non-array type.", msg_foot.c_str(), span,
-                      1);
+  DisplayErrorMessage("Cannot slice a non-array type.",
+                      "Sliced type is a `" + t->to_string() + "`.", span, 1);
 }
 
 void NonBinaryAssignment(const TextSpan &span, size_t len) {
@@ -440,7 +454,7 @@ void NonBinaryAssignment(const TextSpan &span, size_t len) {
   auto msg_head = (char *)malloc(size_to_malloc);
   sprintf(msg_head, head_fmt, len, (len == 1 ? " was" : "s were"));
   // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -452,7 +466,7 @@ void AssignmentArrayLength(const TextSpan &span, size_t len) {
   auto msg_head = (char *)malloc(strlen(head_fmt) - 3 + NumDigits(len));
   sprintf(msg_head, head_fmt, len);
   // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -469,7 +483,7 @@ void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
   sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
           rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -486,7 +500,7 @@ void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
   sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
           rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -500,7 +514,7 @@ void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
       (char *)malloc(strlen(head_fmt) - 3 + lhs_str.size() + rhs_str.size());
   sprintf(msg_head, head_fmt, lhs_str.c_str(), rhs_str.c_str());
   // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -511,28 +525,28 @@ void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
                          lhs->to_string() + ", but right-hand side has type " +
                          rhs->to_string() + ".";
   // TODO underline isn't what it ought to be.
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidCast(const TextSpan &span, const Type *from, const Type *to) {
   ++num_errs_;
   std::string msg_head = "No valid cast from `" + from->to_string() + "` to `" +
                          to->to_string() + "`.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 2);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 2);
 }
 
 void NotAType(const TextSpan &span, const std::string &id_tok) {
   ++num_errs_;
   std::string msg_head = "In declaration of `" + id_tok +
                          "`, the declared type is not a actually a type.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void DeclaredVoidType(const TextSpan &span, const std::string &id_tok) {
   ++num_errs_;
   std::string msg_head =
       "Identifier `" + id_tok + "`is declared to have type `void`.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void DeclaredParametricType(const TextSpan &span, const std::string &id_tok) {
@@ -540,7 +554,7 @@ void DeclaredParametricType(const TextSpan &span, const std::string &id_tok) {
   std::string msg_head =
       "In declaration of `" + id_tok +
       "`, the declared type is parametric and has no parameters provided.";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
@@ -548,7 +562,7 @@ void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
   if (decl_span.start.line_num == val_span.start.line_num) {
     DisplayErrorMessage("Attempting to initialize an identifier that already "
                         "has an initial value.",
-                        nullptr, decl_span, 1);
+                        "", decl_span, 1);
   } else {
     NOT_YET();
   }
@@ -559,7 +573,7 @@ void InvalidPrintDefinition(const TextSpan &span, const Type *t) {
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -569,7 +583,7 @@ void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
                          t->to_string() +
                          " with null. Did you mean to declare it as " +
                          intended->to_string() + "?";
-  DisplayErrorMessage(msg_head.c_str(), nullptr, span, 1);
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
@@ -578,7 +592,7 @@ void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -588,7 +602,7 @@ void InvalidScope(const TextSpan &span, const Type *t) {
   std::string t_str   = t->to_string();
   auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -597,7 +611,7 @@ void NotBinary(const TextSpan &span, const std::string &token) {
   const char *msg_fmt = "Operator '%s' is not a binary operator";
   auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -606,7 +620,7 @@ void Reserved(const TextSpan &span, const std::string &token) {
   const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
   auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
   sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, nullptr, span, 1);
+  DisplayErrorMessage(msg_head, "", span, 1);
   free(msg_head);
 }
 
@@ -628,7 +642,7 @@ void InvalidReturnType(const TextSpan &span, Type *given, Type *correct) {
                          "\n"
                          "Expected return type: " +
                          correct->to_string();
-  DisplayErrorMessage(msg_head.c_str(), msg_foot.c_str(), span,
+  DisplayErrorMessage(msg_head.c_str(), msg_foot, span,
                       span.source->lines[span.start.line_num].size() -
                           span.start.offset);
 }
@@ -638,8 +652,8 @@ void ChainTypeMismatch(const TextSpan &span, std::set<Type *> types) {
   std::stringstream ss;
   ss << "Found the following types in the expression:\n";
   for (auto t : types) { ss << "  * " << t->to_string() << "\n"; }
-  DisplayErrorMessage("Type do not all match in expression:", ss.str().c_str(),
-                      span, 1);
+  DisplayErrorMessage("Type do not all match in expression:", ss.str(), span,
+                      1);
 }
 
 void UserDefinedError(const TextSpan &span, const std::string &msg) {
