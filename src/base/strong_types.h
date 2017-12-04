@@ -38,7 +38,7 @@ public:
   explicit StrongString(const char *name = "") : value(name) {}
   explicit StrongString(std::string name) : value(std::move(name)) {}
   const char *c_str() const { return value.c_str(); }
-  const std::string& get() const { return value; }
+  const std::string& to_string() const { return value; }
   char operator[](size_t n) const {
     // Because this method is const, it is DEFINED behavior to access a const
     // reference to the character just passed the end of the string. It will

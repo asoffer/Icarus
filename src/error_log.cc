@@ -50,126 +50,78 @@ static inline std::string NumTimes(size_t n) {
   }
 }
 
-static void GatherAndDisplayIdentifierError(const std::string &msg,
-                                            const TokenToErrorMap &log) {
-  for (const auto &kv : log) {
-    size_t num_uses = 0;
-    for (const auto &file_and_locs : kv.second) {
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        num_uses += line_and_offsets.second.size();
+static size_t
+CountUses(const std::unordered_map<
+          Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
+              &map) {
+  size_t num_uses = 0;
+  for (const auto &file_and_locs : map) {
+    for (const auto &line_and_offsets : file_and_locs.second) {
+      num_uses += line_and_offsets.second.size();
+    }
+  }
+  return num_uses;
+}
+
+static void WriteMessage(const std::string &msg, const std::string &token,
+                         size_t num_uses) {
+  std::cerr << msg << " '" << token << '\'';
+  if (num_uses != 1) { std::cerr << " used " << NumTimes(num_uses); }
+  std::cerr << ".\n";
+}
+
+static void GatherAndDisplayIdentifierError(
+    const std::unordered_map<
+        Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
+        &map) {
+  for (const auto &file_and_locs : map) {
+    size_t max_line_num = 0;
+    for (const auto &line_and_offsets : file_and_locs.second) {
+      if (max_line_num < line_and_offsets.first) {
+        max_line_num = line_and_offsets.first;
       }
     }
+    // size_t line_num_width = NumDigits(max_line_num);
 
-    if (num_uses == 1) {
-      std::cerr << msg << " '" << kv.first << "'.\n";
-    } else {
-      std::cerr << msg << " '" << kv.first << "' used " << NumTimes(num_uses)
-                << ".\n";
+    size_t num_uses_in_file = 0;
+    for (const auto &line_and_offsets : file_and_locs.second) {
+      num_uses_in_file += line_and_offsets.second.size();
     }
 
-    for (const auto &file_and_locs : kv.second) {
-      size_t max_line_num = 0;
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        if (max_line_num < line_and_offsets.first) {
-          max_line_num = line_and_offsets.first;
-        }
-      }
-      // size_t line_num_width = NumDigits(max_line_num);
+    std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
+              << file_and_locs.first << "':\n";
 
-      size_t num_uses_in_file = 0;
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        num_uses_in_file += line_and_offsets.second.size();
-      }
+    for (const auto &line_and_offsets : file_and_locs.second) {
+      auto line =
+          source_map AT(file_and_locs.first)->lines AT(line_and_offsets.first);
+      // TODO alignment
+      std::cerr << line_and_offsets.first << "| " << line << '\n'
+                << std::string(line.size() + 1, '^');
 
-      std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
-                << file_and_locs.first << "':\n";
-
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        auto line = source_map AT(file_and_locs.first)
-                        ->lines AT(line_and_offsets.first);
-        // TODO alignment
-        std::cerr << line_and_offsets.first << "| " << line << '\n'
-          << std::string(line.size() + 1,'^');
-
-        // std::cerr << base::fmt(
-        //     "{0:>{1}}| {2}\n"
-        //     "{3:>{4}}\n",
-        //     /* 0 -  line number = */ line_and_offsets.first,
-        //     /* 1 -    alignment = */ line_num_width + 4,
-        //     /* 2 - line content = */ line,
-        //     /* 3 -    underline = */ std::string(line.size() + 1, '^'),
-        //     /* 4 -    alignment = */ line_num_width + 6 + line.size() + 1);
-      }
+      // std::cerr << base::fmt(
+      //     "{0:>{1}}| {2}\n"
+      //     "{3:>{4}}\n",
+      //     /* 0 -  line number = */ line_and_offsets.first,
+      //     /* 1 -    alignment = */ line_num_width + 4,
+      //     /* 2 - line content = */ line,
+      //     /* 3 -    underline = */ std::string(line.size() + 1, '^'),
+      //     /* 4 -    alignment = */ line_num_width + 6 + line.size() + 1);
     }
   }
 }
 
-static void GatherAndDisplay(const char *fmt_head, const DeclToErrorMap &log) {
-  for (const auto &kv : log) {
-    const char *token   = kv.first->identifier->token.c_str();
-    size_t token_length = kv.first->identifier->token.size();
-
-    size_t num_uses = 0;
-    for (const auto &file_and_locs : kv.second) {
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        num_uses += line_and_offsets.second.size();
-      }
-    }
-
-    fprintf(stderr, fmt_head, token);
-    if (num_uses != 1) { std::cerr << " used " << NumTimes(num_uses); }
-    std::cerr << ".\n";
-
-    for (const auto &file_and_locs : kv.second) {
-      size_t num_uses_in_file = 0;
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        num_uses_in_file += line_and_offsets.second.size();
-      }
-
-      std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
-                << file_and_locs.first << "':\n";
-
-      size_t max_line_num = 0;
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        if (max_line_num < line_and_offsets.first) {
-          max_line_num = line_and_offsets.first;
-        }
-      }
-      size_t line_num_width = NumDigits(max_line_num);
-
-      for (const auto &line_and_offsets : file_and_locs.second) {
-        auto line = source_map AT(file_and_locs.first)
-                        ->lines AT(line_and_offsets.first);
-
-        size_t left_border_width = line_num_width + 6;
-        size_t line_length       = line.size() + 1;
-        char *underline = new char[left_border_width + line_length + 1];
-        underline[line_length + left_border_width] = '\0';
-        memset(underline, ' ', left_border_width + line_length);
-
-        for (const auto offset : line_and_offsets.second) {
-          memset(underline + left_border_width + offset, '^', token_length);
-        }
-
-        fprintf(stderr, "    %*lu| %s\n"
-                        "%s\n",
-                (int)line_num_width, line_and_offsets.first, line.c_str(),
-                underline);
-        delete[] underline;
-      }
-    }
-  }
-}
-
-static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
+static void GatherAndDisplayGlobalDeclErrors() {
   if (global_non_decl.empty()) { return; }
 
   size_t num_instances = 0;
-  for (const auto &kv : log) { num_instances += kv.second.size(); }
+  for (const auto &kv : global_non_decl) { num_instances += kv.second.size(); }
 
-  fprintf(stderr, fmt, num_instances, num_instances ? "s" : "");
+  std::cerr << "Found " << num_instances << " non-declaration statement"
+            << (num_instances == 1 ? "" : "s")
+            << " at the top level. All top-level statements must either be "
+               "declarations, imports, or void compile-time evaluations.";
 
-  for (const auto &kv : log) {
+  for (const auto &kv : global_non_decl) {
     std::cerr << "  Found " << kv.second.size()
               << (kv.second.size() == 1 ? " instance in '" : " instances in '")
               << kv.first << "':\n";
@@ -177,42 +129,46 @@ static void GatherAndDisplay(const char *fmt, const FileToLineNumMap &log) {
     int line_num_width   = (int)NumDigits(kv.second.back());
     size_t last_line_num = kv.second.front();
     for (auto line_num : kv.second) {
+      // TODO alignment
       if (line_num - last_line_num == 2) {
         auto line = source_map AT(kv.first)->lines AT(line_num - 1);
-        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
-                line.c_str());
+        std::cerr << (line_num - 1) << "| " << line << '\n';
       } else if (line_num - last_line_num == 3) {
         auto line = source_map AT(kv.first)->lines AT(line_num - 1);
-        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 1,
-                line.c_str());
-
+        std::cerr << (line_num - 1) << "| " << line << '\n';
         line = source_map AT(kv.first)->lines AT(line_num - 2);
-        fprintf(stderr, "    %*lu| %s\n", line_num_width, line_num - 2,
-                line.c_str());
+        std::cerr << (line_num - 2) << "| " << line << '\n';
       } else if (line_num - last_line_num > 3) {
         std::cerr << std::string(static_cast<size_t>(line_num_width) + 1, ' ')
                   << "...|\n";
       }
 
+      // TODO alignment
       auto line = source_map AT(kv.first)->lines AT(line_num);
-      fprintf(stderr, ">   %*lu| %s\n", line_num_width, line_num, line.c_str());
+      std::cerr << ">" << line_num << "| " << line << '\n';
       last_line_num = line_num;
     }
   }
 }
 
 void ErrorLog::Dump() {
-  GatherAndDisplayIdentifierError("Undeclared identifier",
-                                  undeclared_identifiers);
-  GatherAndDisplayIdentifierError("Ambiguous identifier",
-                                  ambiguous_identifiers);
-  GatherAndDisplay("Invalid capture of identifier '%s'", implicit_capture);
+  for (const auto &kv : undeclared_identifiers) {
+    WriteMessage("Undeclared identifier", kv.first, CountUses(kv.second));
+    GatherAndDisplayIdentifierError(kv.second);
+  }
+  for (const auto &kv : ambiguous_identifiers) {
+    WriteMessage("Ambiguous identifier", kv.first, CountUses(kv.second));
+    GatherAndDisplayIdentifierError(kv.second);
+  }
+
+  for (const auto &kv : implicit_capture) {
+    WriteMessage("Invalid capture of identifier", kv.first->identifier->token,
+                 CountUses(kv.second));
+    GatherAndDisplayIdentifierError(kv.second);
+  }
 
   // TODO fix this repsonse regarding imports.
-  GatherAndDisplay("Found %lu non-declaration statement%s at the top level. "
-                   "All top-level statements must either be declarations, "
-                   "imports, or void compile-time evaluations.",
-                   global_non_decl);
+  GatherAndDisplayGlobalDeclErrors();
 
   std::cerr << num_errs_ << " error";
   if (num_errs_ != 1) { std::cerr << "s"; }
@@ -226,7 +182,7 @@ static std::string LineToDisplay(size_t line_num, const Source::Line &line,
   if (border_alignment == 0) { border_alignment = num_digits; }
   ASSERT_GE(border_alignment, num_digits);
   return std::string(border_alignment - num_digits, ' ') +
-         std::to_string(line_num) + "| " + line.get() + "\n";
+         std::to_string(line_num) + "| " + line.to_string() + "\n";
 }
 
 static void DisplayErrorMessage(const char *msg_head,
@@ -741,19 +697,18 @@ void ImplicitCapture(AST::Identifier *id) {
 }
 
 void FailedPrecondition(const IR::property::Property &) {
-  fprintf(stderr, "Precondition failed.\n");
+  std::cerr << "Precondition failed.\n";
 }
 
 void EnsureNeedsBool(AST::Expression *expr) {
-  fprintf(stderr, "Function precondition must be of type bool, but you "
-                  "provided an expression of type %s.\n",
-          expr->type->to_string().c_str());
+  std::cerr << "Function postcondition must be of type bool, but you provided "
+               "an expression of type "
+            << expr->type->to_string() << ".\n";
 }
 
 void PreconditionNeedsBool(AST::Expression *expr) {
-  fprintf(stderr, "Function precondition must be of type bool, but you "
-                  "provided an expression of type %s.\n",
-          expr->type->to_string().c_str());
+  std::cerr << "Function precondition must be of type bool, but you provided "
+               "an expression of type "
+            << expr->type->to_string() << ".\n";
 }
 } // namespace LogError
-
