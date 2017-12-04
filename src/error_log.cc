@@ -1,7 +1,5 @@
 #include "error_log.h"
 
-#include <cstring>
-
 #include "ast/ast.h"
 #include "base/source.h"
 #include "base/string.h"
@@ -97,15 +95,6 @@ static void GatherAndDisplayIdentifierError(
       // TODO alignment
       std::cerr << line_and_offsets.first << "| " << line << '\n'
                 << std::string(line.size() + 1, '^');
-
-      // std::cerr << base::fmt(
-      //     "{0:>{1}}| {2}\n"
-      //     "{3:>{4}}\n",
-      //     /* 0 -  line number = */ line_and_offsets.first,
-      //     /* 1 -    alignment = */ line_num_width + 4,
-      //     /* 2 - line content = */ line,
-      //     /* 3 -    underline = */ std::string(line.size() + 1, '^'),
-      //     /* 4 -    alignment = */ line_num_width + 6 + line.size() + 1);
     }
   }
 }
@@ -274,7 +263,7 @@ void NonWhitespaceAfterNewlineEscape(const TextSpan &span, size_t dist) {
 }
 
 void RunawayMultilineComment() {
-  fprintf(stderr, "Finished reading file during multi-line comment.\n\n");
+  std::cerr << "Finished reading file during multi-line comment.\n\n";
   ++num_errs_;
 }
 
@@ -287,14 +276,10 @@ void InvalidStringIndex(const TextSpan &span, Type *index_type) {
 }
 void NotAType(AST::Expression *expr, Type *t) {
   ++num_errs_;
-  auto t_str = t->to_string();
-  const char *head_fmt =
-      "Expression was expected to be a type, but instead it was a(n) %s.";
-  char *msg_head = (char *)malloc(t_str.size() + strlen(head_fmt) - 1);
-  sprintf(msg_head, head_fmt, t_str.c_str());
-
-  DisplayErrorMessage(msg_head, "", expr->span, 1);
-  free(msg_head);
+  std::string msg_head =
+      "Expression was expected to be a type, but instead it was a(n) " +
+      t->to_string() + ".";
+  DisplayErrorMessage(msg_head.c_str(), "", expr->span, 1);
 }
 
 void IndeterminantType(AST::Expression *expr) {
@@ -403,76 +388,49 @@ void SlicingNonArray(const TextSpan &span, const Type *t) {
 
 void NonBinaryAssignment(const TextSpan &span, size_t len) {
   ++num_errs_;
-  const char *head_fmt =
-      "Assignment must be a binary operator, but %llu argument%s given.";
-
-  size_t size_to_malloc = strlen(head_fmt) - 7 + NumDigits(len) +
-                          (len == 1 ? strlen(" was") : strlen("s were"));
-  auto msg_head = (char *)malloc(size_to_malloc);
-  sprintf(msg_head, head_fmt, len, (len == 1 ? " was" : "s were"));
-  // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "Assignment must be a binary operator, but " +
+                         std::to_string(len) + " argument" +
+                         (len == 1 ? " was" : "s were") + " given.";
+  // TODO is underline length correct?
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void AssignmentArrayLength(const TextSpan &span, size_t len) {
   ++num_errs_;
-  const char *head_fmt = "Invalid assignment. Array on right-hand side has "
-                         "unknown length, but lhs is known to be of "
-                         "length %llu.";
-  auto msg_head = (char *)malloc(strlen(head_fmt) - 3 + NumDigits(len));
-  sprintf(msg_head, head_fmt, len);
-  // TODO is undeline length correct?
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "Invalid assignment. Array on right-hand side has "
+                         "unknown length, but lhs is known to be of length " +
+                         std::to_string(len) + ".";
+  // TODO is underline length correct?
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void AlreadyFoundMatch(const TextSpan &span, const std::string &op_symbol,
                        const Type *lhs, const Type *rhs) {
   ++num_errs_;
-  const char *head_fmt =
-      "Already found a match for operator %s` with types %s and %s.";
-  std::string lhs_str = lhs->to_string();
-  std::string rhs_str = rhs->to_string();
+  std::string msg_head = "Already found a match for operator `" + op_symbol +
+                         "` with types " + lhs->to_string() + " and " +
+                         rhs->to_string() + ".";
 
-  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + op_symbol.size() +
-                                 lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
-          rhs_str.c_str());
-  // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  // TODO underline length is incorrect?
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void NoKnownOverload(const TextSpan &span, const std::string &op_symbol,
                      const Type *lhs, const Type *rhs) {
   ++num_errs_;
-  const char *head_fmt =
-      "No known operator overload for `%s` with types %s and %s.";
-  std::string lhs_str = lhs->to_string();
-  std::string rhs_str = rhs->to_string();
-
-  auto msg_head = (char *)malloc(strlen(head_fmt) - 5 + op_symbol.size() +
-                                 lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, op_symbol.c_str(), lhs_str.c_str(),
-          rhs_str.c_str());
-  // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "No known operator overload for operator `" +
+                         op_symbol + "` with types " + lhs->to_string() +
+                         " and " + rhs->to_string() + ".";
+  // TODO underline length is incorrect?
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidRangeTypes(const TextSpan &span, const Type *lhs, const Type *rhs) {
   ++num_errs_;
-  const char *head_fmt = "No range construction for types %s .. %s.";
-  std::string lhs_str  = lhs->to_string();
-  std::string rhs_str  = rhs->to_string();
-
-  auto msg_head =
-      (char *)malloc(strlen(head_fmt) - 3 + lhs_str.size() + rhs_str.size());
-  sprintf(msg_head, head_fmt, lhs_str.c_str(), rhs_str.c_str());
-  // TODO undeline length is incorrect?
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "No range construction for types " + lhs->to_string() +
+                         " .. " + rhs->to_string() + ".";
+  // TODO underline length is incorrect?
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void AssignmentTypeMismatch(const TextSpan &span, const Type *lhs,
@@ -526,12 +484,9 @@ void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
 }
 void InvalidPrintDefinition(const TextSpan &span, const Type *t) {
   ++num_errs_;
-  const char *msg_fmt = "Cannot define print function for type %s.";
-  std::string t_str   = t->to_string();
-  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head =
+      "Cannot define print function for type " + t->to_string() + ".";
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
@@ -545,40 +500,28 @@ void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
 
 void InvalidAssignDefinition(const TextSpan &span, const Type *t) {
   ++num_errs_;
-  const char *msg_fmt = "Cannot define assignment function for type %s.";
-  std::string t_str   = t->to_string();
-  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head =
+      "Cannot define assignment function for type " + t->to_string() + ".";
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void InvalidScope(const TextSpan &span, const Type *t) {
   ++num_errs_;
-  const char *msg_fmt = "Object of type '%s' used as if it were as scope.";
-  std::string t_str   = t->to_string();
-  auto msg_head       = (char *)malloc(t_str.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, t_str.c_str());
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head =
+      "Object of type '" + t->to_string() + "' used as if it were a scope.";
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void NotBinary(const TextSpan &span, const std::string &token) {
   ++num_errs_;
-  const char *msg_fmt = "Operator '%s' is not a binary operator";
-  auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "Operator '" + token + "' is not a binary operator.";
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 void Reserved(const TextSpan &span, const std::string &token) {
   ++num_errs_;
-  const char *msg_fmt = "Identifier '%s' is a reserved keyword.";
-  auto msg_head       = (char *)malloc(token.size() + strlen(msg_fmt) - 1);
-  sprintf(msg_head, msg_fmt, token.c_str());
-  DisplayErrorMessage(msg_head, "", span, 1);
-  free(msg_head);
+  std::string msg_head = "Identifier '" + token + "' is a reserved keyword.";
+  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
 }
 
 // TODO better error message for repeated enum name
@@ -625,20 +568,22 @@ static void DisplayLines(const std::vector<TextSpan> &lines) {
   size_t last_line_num = lines[0].start.line_num - 1;
   for (auto span : lines) {
     if (span.start.line_num != last_line_num + 1) {
-      fputs(space_fmt.c_str(), stderr);
+      std::cerr << space_fmt << '\n';
     }
-    fprintf(stderr, "%*u| %s\n", (int)left_space, span.start.line_num,
-            span.source->lines[span.start.line_num].c_str());
+    // TODO alignment
+    std::cerr << LineToDisplay(span.start.line_num,
+                               span.source->lines[span.start.line_num],
+                               left_space);
     last_line_num = span.start.line_num;
   }
-
-  fputc('\n', stderr);
+  std::cerr << '\n';
 }
 
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
   if (correct) {
-    fprintf(stderr, "Type mismatch in case-expression on line %u in \"%s\".\n",
-            case_ptr->span.start.line_num, case_ptr->span.source->name.c_str());
+    std::cerr << "Type mismatch in case-expression on line "
+              << case_ptr->span.start.line_num << " in \""
+              << case_ptr->span.source->name.to_string() << "\".\n";
 
     std::vector<TextSpan> locs;
     for (auto &kv : case_ptr->key_vals) {
@@ -649,31 +594,29 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
 
     num_errs_ += locs.size();
     DisplayLines(locs);
-    fprintf(stderr, "Expected an expression of type %s.\n\n",
-            correct->to_string().c_str());
+    std::cerr << "Expected an expression of type " << correct->to_string()
+              << ".\n\n";
 
   } else {
     ++num_errs_;
-    fprintf(stderr,
-            "Type mismatch in case-expression on line %u in \"%s\".\n\n",
-            case_ptr->span.start.line_num, case_ptr->span.source->name.c_str());
+    std::cerr << "Type mismatch in case-expression on line "
+              << case_ptr->span.start.line_num << " in \""
+              << case_ptr->span.source->name.to_string() << "\".\n";
   }
 }
 
 void UnknownParserError(const Source::Name &source_name,
                         const std::vector<TextSpan> &lines) {
   if (lines.empty()) {
-    fprintf(stderr,
-            "Parse errors found in \"%s\". Sorry I can't be more specific.",
-            source_name.c_str());
+    std::cerr << "Parse errors found in \"" << source_name.to_string()
+              << "\". Sorry I can't be more specific.";
     ++num_errs_;
     return;
   }
 
   num_errs_ += lines.size();
-  fprintf(stderr, "Parse errors found in \"%s\" on the following lines:\n\n",
-          source_name.c_str());
-
+  std::cerr << "Parse errors found in \"" << source_name.to_string()
+            << "\" on the following lines:\n\n";
   DisplayLines(lines);
 }
 } // namespace ErrorLog

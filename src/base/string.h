@@ -31,6 +31,14 @@ auto stringify(dispatch_rank<2>, T &&t)
 }
 
 template <typename T>
+auto stringify(dispatch_rank<1>, T c)
+    -> decltype(std::enable_if_t<std::is_same<T, char>::value>(),
+                std::string()) {
+  if (c == '\0') { return "\\0"; }
+  return std::string(1, c);
+}
+
+template <typename T>
 auto stringify(dispatch_rank<1>, T b)
     -> decltype(std::enable_if_t<std::is_same<T, bool>::value>(),
                 std::string()) {
