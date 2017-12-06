@@ -407,7 +407,7 @@ Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node>
 ArrayLiteral::BuildEmpty(std::vector<base::owned_ptr<Node>> nodes) {
   auto array_lit  = base::make_owned<ArrayLiteral>();
-  array_lit->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  array_lit->span = TextSpan(nodes[0]->span, nodes[1]->span);
   return array_lit;
 }
 

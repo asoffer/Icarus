@@ -58,6 +58,7 @@ void Primitive::EmitRepr(IR::Val val) {
   } break;
   case PrimType::Void:
   case PrimType::NullPtr:
+  case PrimType::EmptyArray:
   case PrimType::Err:
   case PrimType::String: {
     NOT_YET();

@@ -45,22 +45,6 @@ void VerifyDeclBeforeUsage() {
   }
 }
 
-static bool CanCastImplicitly(Type *from, Type *to) {
-  if (from == to || (from == NullPtr && to->is<Pointer>())) { return true; }
-
-  if (from->is<Array>() && to->is<Array>()) {
-    if (to->as<Array>().fixed_length &&
-        (!from->as<Array>().fixed_length ||
-         to->as<Array>().len != from->as<Array>().len)) {
-      return false;
-    }
-    return CanCastImplicitly(from->as<Array>().data_type,
-                             to->as<Array>().data_type);
-  }
-
-  return false;
-}
-
 #define STARTING_CHECK                                                         \
   ASSERT(scope_, "Need to first call assign_scope()");                         \
   if (type == Unknown) {                                                       \
@@ -497,6 +481,68 @@ void CallArgs::verify_types() {
   // is hard due to not understanding the ordering of named arguments. It just
   // needs to be not Unknown or nullptr.
   type = Void;
+}
+
+// TODO move this and type-related functions below into type/type.cc?
+static Type* Unify(Type* lhs, Type* rhs) {
+  if (lhs == rhs) { return lhs; }
+  if (lhs == Err) { return rhs; } // Ignore errors
+  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
+  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
+  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
+    return Unify(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
+  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+    Type *result = nullptr;
+    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
+      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result, lhs->as<Array>().len) : result;
+    } else {
+      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result) : result;
+    }
+  } else if (lhs->is<Array>() && rhs == EmptyArray &&
+             !lhs->as<Array>().fixed_length) {
+    return lhs;
+  } else if (rhs->is<Array>() && lhs == EmptyArray &&
+             !rhs->as<Array>().fixed_length) {
+    return rhs;
+  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
+    Tuple *lhs_tup = &lhs->as<Tuple>();
+    Tuple *rhs_tup = &rhs->as<Tuple>();
+    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
+    std::vector<Type*> unified;
+    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
+      Type *result = Unify(lhs_tup->entries[i], rhs_tup->entries[i]);
+      if (result == nullptr) { return nullptr; }
+      unified.push_back(result);
+    }
+  }
+  return nullptr;
+}
+
+static bool CanCastImplicitly(Type *from, Type *to) {
+  return Unify(from, to) == to;
+}
+
+static bool Inferrable(Type *t) {
+  if (t == NullPtr || t == EmptyArray) {
+    return false;
+  } else if (t->is<Array>()) {
+    return Inferrable(t->as<Array>().data_type);
+  } else if (t->is<Pointer>()) {
+    return Inferrable(t->as<Pointer>().pointee);
+  } else if (t->is<Tuple>()) {
+    for (auto *entry : t->as<Tuple>().entries) {
+      if (!Inferrable(entry)) { return false; }
+    }
+  } else if (t->is<Function>()) {
+    return Inferrable(t->as<Function>().input) &&
+           Inferrable(t->as<Function>().output);
+  }
+  // TODO higher order types?
+  return true;
 }
 
 void Binop::verify_types() {
@@ -1015,48 +1061,6 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
   }
 }
 
-static bool Inferrable(Type *t) {
-  if (t == NullPtr) {
-    return false;
-  } else if (t->is<Array>()) {
-    return Inferrable(t->as<Array>().data_type);
-  } else if (t->is<Pointer>()) {
-    return Inferrable(t->as<Pointer>().pointee);
-  } else if (t->is<Tuple>()) {
-    for (auto *entry : t->as<Tuple>().entries) {
-      if (!Inferrable(entry)) { return false; }
-    }
-  } else if (t->is<Function>()) {
-    return Inferrable(t->as<Function>().input) &&
-           Inferrable(t->as<Function>().output);
-  }
-  // TODO higher order types?
-  return true;
-}
-
-static Type* Unify(Type* lhs, Type* rhs) {
-  if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; } // Ignore errors
-  if (rhs == Err) { return lhs; } // Ignore errors
-  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
-  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
-  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
-    return Unify(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result) : result;
-    }
-  }
-  // TODO, arrays, etc.
-  return nullptr;
-}
-
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
 void Declaration::verify_types() {
@@ -1199,10 +1203,8 @@ void ArrayType::verify_types() {
 void ArrayLiteral::verify_types() {
   STARTING_CHECK;
 
-  // TODO this should be allowed in the same vein as 'null'?
   if (elems.empty()) {
-    type = Err;
-    ErrorLog::EmptyArrayLit(span);
+    type = EmptyArray;
     return;
   }
 

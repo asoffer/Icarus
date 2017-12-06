@@ -5,6 +5,7 @@ size_t Architecture::alignment(const Type *t) const {
     switch (ptr_cast<const Primitive>(t)->type_) {
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
+    case PrimType::EmptyArray:
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;
@@ -49,6 +50,7 @@ size_t Architecture::bytes(const Type *t) const {
     switch (ptr_cast<const Primitive>(t)->type_) {
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
+    case PrimType::EmptyArray:
     case PrimType::Void: return 0;
     case PrimType::Bool:
     case PrimType::Char: return 1;

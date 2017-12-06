@@ -22,7 +22,7 @@ struct Enum;
 struct Pointer;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
-    *Void, *NullPtr, *String;
+    *Void, *NullPtr, *EmptyArray, *String;
 
 namespace AST {
 struct Expression;
