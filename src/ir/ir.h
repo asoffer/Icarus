@@ -159,6 +159,7 @@ struct Val {
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
   static Val Null(::Type *t);
+  static Val NullPtr();
   static Val StrLit(std::string str) { return Val(::String, std::move(str)); }
   static Val Ref(AST::Expression *expr);
   static Val None() { return Val(); }

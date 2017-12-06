@@ -277,7 +277,7 @@ void Unop::verify_types() {
   } break;
   case Operator::At: {
     if (operand->type->is<Pointer>()) {
-      type = ptr_cast<Pointer>(operand->type)->pointee;
+      type = operand->type->as<Pointer>().pointee;
 
     } else {
       std::string msg = "Attempting to dereference an expression of type `" +
@@ -561,7 +561,7 @@ void Binop::verify_types() {
     // If you get here, you know the types all match. We just need to compute
     // the type of the call.
     if (lhs->type->is<Function>()) {
-      type = ptr_cast<Function>(lhs->type)->output;
+      type = lhs->type->as<Function>().output;
 
     } else {
       ASSERT_EQ(lhs->type, Type_);
@@ -955,7 +955,7 @@ void InDecl::verify_types() {
 }
 
 Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
-
+  ASSERT_NE(type, nullptr);
   if (type != Type_) {
     ErrorLog::NotAType(span, id_tok);
     return Err;
@@ -1015,6 +1015,48 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
   }
 }
 
+static bool Inferrable(Type *t) {
+  if (t == NullPtr) {
+    return false;
+  } else if (t->is<Array>()) {
+    return Inferrable(t->as<Array>().data_type);
+  } else if (t->is<Pointer>()) {
+    return Inferrable(t->as<Pointer>().pointee);
+  } else if (t->is<Tuple>()) {
+    for (auto *entry : t->as<Tuple>().entries) {
+      if (!Inferrable(entry)) { return false; }
+    }
+  } else if (t->is<Function>()) {
+    return Inferrable(t->as<Function>().input) &&
+           Inferrable(t->as<Function>().output);
+  }
+  // TODO higher order types?
+  return true;
+}
+
+static Type* Unify(Type* lhs, Type* rhs) {
+  if (lhs == rhs) { return lhs; }
+  if (lhs == Err) { return rhs; } // Ignore errors
+  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
+  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
+  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
+    return Unify(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
+  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+    Type *result = nullptr;
+    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
+      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result, lhs->as<Array>().len) : result;
+    } else {
+      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result) : result;
+    }
+  }
+  // TODO, arrays, etc.
+  return nullptr;
+}
+
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
 void Declaration::verify_types() {
@@ -1045,9 +1087,13 @@ void Declaration::verify_types() {
   } else if (IsInferred()) {
     type = init_val->VerifyValueForDeclaration(identifier->token);
 
-    if (type == NullPtr) {
-      // 'null' must be immediately cast to a pointer type.
-      ErrorLog::NullDeclInit(span);
+    if (!Inferrable(type)) {
+      // Some types are only present in the type-system to make handling easier
+      // for us, but really cannot be inferred. For example, almost dealing
+      // with 'null':
+      //   foo := [null, null]  // Not valid
+      //   foo: [2; &int] = [null, null] // Okay. Type explicitly stated.
+      ErrorLog::UninferrableType(span);
       type = Err;
     }
 
@@ -1152,7 +1198,6 @@ void ArrayType::verify_types() {
 
 void ArrayLiteral::verify_types() {
   STARTING_CHECK;
-  for (auto &elem : elems) { elem->verify_types(); }
 
   // TODO this should be allowed in the same vein as 'null'?
   if (elems.empty()) {
@@ -1161,21 +1206,21 @@ void ArrayLiteral::verify_types() {
     return;
   }
 
-  // TODO create a collection of all the types in the array literal. go on if
-  // there's only one otherwise, attempt to determine where the mistakes are.
-  auto type_to_match = elems.front()->type;
-
-  if (type_to_match == Err) {
-    type = Err;
-    return;
+  for (auto &elem : elems) { elem->verify_types(); }
+  Type *unified = Err;
+  for (auto &elem : elems) {
+    unified = Unify(unified, elem->type);
+    if (unified == nullptr) { break; }
   }
 
-  type = Arr(type_to_match, elems.size());
-  for (const auto &el : elems) {
-    if (el->type != type_to_match) {
-      ErrorLog::InconsistentArrayType(span);
-      type = Err;
-    }
+  if (unified == nullptr) {
+    // Types couldn't be unified. Emit an error
+    ErrorLog::InconsistentArrayType(span);
+    type = Err;
+  } else if (unified == Err) {
+    type = Err; // There were no valid types anywhere in the array
+  } else {
+    type = Arr(unified, elems.size());
   }
 }
 
@@ -1389,7 +1434,7 @@ void ScopeLiteral::verify_types() {
 
   if (cannot_proceed_due_to_errors) { return; }
 
-  type = ScopeType(ptr_cast<Function>(enter_fn->type)->input);
+  type = ScopeType(enter_fn->type->as<Function>().input);
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

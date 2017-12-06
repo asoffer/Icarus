@@ -96,6 +96,7 @@ void InvalidPrintDefinition(const TextSpan &span, const Type *t);
 void InvalidAssignDefinition(const TextSpan &span, const Type *t);
 void InvalidScope(const TextSpan &span, const Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);
+void UninferrableType(const TextSpan &span);
 
 #define ERROR_MACRO(fn_name, msg_head, msg_foot, underline_length)             \
   void fn_name(const TextSpan &loc);

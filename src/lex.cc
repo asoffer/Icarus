@@ -68,7 +68,7 @@ NNT NextWord(SourceLocation &loc) {
 #include "config/primitive.conf"
 #undef PRIMITIVE_MACRO
       {"true", IR::Val::Bool(true)}, {"false", IR::Val::Bool(false)},
-      {"null", IR::Val::Null(Void)}, {"ord", OrdFunc()},
+      {"null", IR::Val::NullPtr()},  {"ord", OrdFunc()},
       {"ascii", AsciiFunc()},        {"error", ErrorFunc()},
   };
   auto iter = Reserved.find(token);

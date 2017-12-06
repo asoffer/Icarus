@@ -619,6 +619,13 @@ void UnknownParserError(const Source::Name &source_name,
             << "\" on the following lines:\n\n";
   DisplayLines(lines);
 }
+
+void UninferrableType(const TextSpan &span) {
+  ++num_errs_;
+  DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
+}
+
+
 } // namespace ErrorLog
 
 namespace LogError {

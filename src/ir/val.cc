@@ -37,6 +37,7 @@ Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
 
 Val Val::Func(::IR::Func *fn) { return Val(fn->type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
+Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
