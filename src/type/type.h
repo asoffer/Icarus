@@ -47,7 +47,7 @@ struct Identifier;
   virtual IR::Val EmitInitialValue() const ENDING;                             \
   virtual void EmitRepr(IR::Val id_val) ENDING
 
-#define TYPE_FNS(name, checkname)                                              \
+#define TYPE_FNS(name)                                                         \
   name() = delete;                                                             \
   virtual ~name() {}                                                           \
   BASIC_METHODS
@@ -70,6 +70,7 @@ public:
   static void EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
                            IR::Val to_var);
 
+  // TODO are variants big?
   bool is_big() const { return is<Array>() || is<Struct>(); }
   virtual bool needs_destroy() const { return false; }
 };
@@ -85,7 +86,7 @@ enum class PrimType : char {
 
 struct Primitive : public Type {
 public:
-  TYPE_FNS(Primitive, primitive);
+  TYPE_FNS(Primitive);
   Primitive(PrimType pt) : type_(pt) {}
 
 private:
@@ -96,7 +97,7 @@ private:
 };
 
 struct Array : public Type {
-  TYPE_FNS(Array, array);
+  TYPE_FNS(Array);
   Array(Type *t) : data_type(t), len(0), fixed_length(false) {}
   Array(Type *t, size_t l) : data_type(t), len(l), fixed_length(true) {}
 
@@ -116,7 +117,7 @@ struct Array : public Type {
 };
 
 struct Tuple : public Type {
-  TYPE_FNS(Tuple, tuple);
+  TYPE_FNS(Tuple);
   Tuple(std::vector<Type *> entries) : entries(std::move(entries)) {}
 
   virtual bool needs_destroy() const {
@@ -130,13 +131,13 @@ struct Tuple : public Type {
 };
 
 struct Pointer : public Type {
-  TYPE_FNS(Pointer, pointer);
+  TYPE_FNS(Pointer);
   Pointer(Type *t) : pointee(t) {}
   Type *pointee;
 };
 
 struct Function : public Type {
-  TYPE_FNS(Function, function);
+  TYPE_FNS(Function);
   Function(Type *in, Type *out) : input(in), output(out) {}
 
   // TODO needs destroy for captures?
@@ -144,7 +145,7 @@ struct Function : public Type {
 };
 
 struct Enum : public Type {
-  TYPE_FNS(Enum, enum);
+  TYPE_FNS(Enum);
   Enum(const std::string &name, const std::vector<std::string> &members);
 
   size_t IndexOrFail(const std::string &str) const;
@@ -156,7 +157,7 @@ struct Enum : public Type {
 };
 
 struct Struct : public Type {
-  TYPE_FNS(Struct, struct);
+  TYPE_FNS(Struct);
 
   Struct(std::string name) : bound_name(std::move(name)) {}
 
@@ -197,8 +198,14 @@ private:
   bool completed_ = false;
 };
 
+struct Variant : public Type {
+  TYPE_FNS(Variant);
+  Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
+  std::vector<Type *> variants_;
+};
+
 struct RangeType : public Type {
-  TYPE_FNS(RangeType, range);
+  TYPE_FNS(RangeType);
 
   RangeType(Type *t) : end_type(t) {}
 
@@ -206,7 +213,7 @@ struct RangeType : public Type {
 };
 
 struct SliceType : public Type {
-  TYPE_FNS(SliceType, slice);
+  TYPE_FNS(SliceType);
 
   SliceType(Array *a) : array_type(a) {}
 
@@ -214,7 +221,7 @@ struct SliceType : public Type {
 };
 
 struct Scope_Type : public Type {
-  TYPE_FNS(Scope_Type, scope_type);
+  TYPE_FNS(Scope_Type);
 
   Scope_Type(Type *t) : type_(t) {}
   Type *type_;
@@ -250,5 +257,6 @@ Function *Func(std::vector<Type *> in, std::vector<Type *> out);
 RangeType *Range(Type *t);
 SliceType *Slice(Array *a);
 Scope_Type *ScopeType(Type *t);
+Type *Var(std::vector<Type *> variants);
 
 #endif // ICARUS_TYPE_TYPE_H

@@ -1,6 +1,18 @@
 #include "type.h"
 #include "../ast/ast.h"
 
+std::string Variant::to_string() const {
+  std::stringstream ss;
+  auto iter = variants_.begin();
+  ss << (**iter).to_string();
+  ++iter;
+  // TODO Parentheses?
+  for (; iter != variants_.end(); ++iter) {
+    ss << " | " << (**iter).to_string();
+  }
+  return ss.str();
+}
+
 std::string Array::to_string() const {
   std::stringstream ss;
   ss << "[";

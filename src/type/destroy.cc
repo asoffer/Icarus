@@ -6,6 +6,7 @@ void Primitive::EmitDestroy(IR::Val) {}
 void Pointer::EmitDestroy(IR::Val) {}
 void Enum::EmitDestroy(IR::Val) {}
 void Function::EmitDestroy(IR::Val) {}
+void Variant::EmitDestroy(IR::Val) { NOT_YET(); }
 
 extern IR::Val PtrCallFix(Type *t, IR::Val v);
 

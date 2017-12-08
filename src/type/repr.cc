@@ -167,3 +167,4 @@ void Tuple::EmitRepr(IR::Val) { NOT_YET(); }
 void RangeType::EmitRepr(IR::Val) { NOT_YET(); }
 void SliceType::EmitRepr(IR::Val) { NOT_YET(); }
 void Scope_Type::EmitRepr(IR::Val) { NOT_YET(); }
+void Variant::EmitRepr(IR::Val) { NOT_YET(); }

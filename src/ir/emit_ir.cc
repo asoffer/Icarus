@@ -689,6 +689,13 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
     auto val = IR::Val::Bool(false);
     for (const auto &expr : exprs) { val = IR::Xor(val, expr->EmitIR(kind)); }
     return val;
+  } else if (ops[0] == Language::Operator::Or && type == Type_) {
+    // TODO probably want to check that each expression is a type? What if I
+    // overload | to take my own stuff and have it return a type?
+    std::vector<IR::Val> args;
+    args.reserve(exprs.size());
+    for (const auto &expr : exprs) { args.push_back(expr->EmitIR(kind)); }
+    return IR::Variant(std::move(args));
   } else if (ops[0] == Language::Operator::And ||
              ops[0] == Language::Operator::Or) {
     auto land_block = IR::Func::Current->AddBlock();

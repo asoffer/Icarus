@@ -55,3 +55,4 @@ IR::Val Tuple::EmitInitialValue() const { NOT_YET(); }
 IR::Val RangeType::EmitInitialValue() const { NOT_YET(); }
 IR::Val SliceType::EmitInitialValue() const { NOT_YET(); }
 IR::Val Scope_Type::EmitInitialValue() const { NOT_YET(); }
+IR::Val Variant::EmitInitialValue() const { NOT_YET(); }

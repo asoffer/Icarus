@@ -151,6 +151,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Div: return Div(resolved[0], resolved[1]);
   case Op::Mod: return Mod(resolved[0], resolved[1]);
   case Op::Arrow: return Arrow(resolved[0], resolved[1]);
+  case Op::Variant: {
+    std::vector<Type *> types;
+    types.reserve(resolved.size());
+    for (const auto &val : resolved) {
+      types.push_back(val.value.as<Type *>());
+    }
+    return IR::Val::Type(Var(std::move(types)));
+  }
   case Op::Array: return Array(resolved[0], resolved[1]);
   case Op::Cast:
     if (resolved[1].type == Int) {

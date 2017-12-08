@@ -922,8 +922,21 @@ void ChainOp::verify_types() {
 
   // Safe to just check first because to be on the same chain they must all have
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
-  if (ops[0] == Language::Operator::And || ops[0] == Language::Operator::Or ||
-      ops[0] == Language::Operator::Xor) {
+  if (ops[0] == Language::Operator::Or) {
+    for (const auto &expr : exprs) {
+      if (expr->type != exprs[0]->type) {
+        ErrorLog::LogGeneric(TextSpan(),
+                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      }
+    }
+    if (exprs[0]->type != Bool && exprs[0]->type != Type_) {
+      ErrorLog::LogGeneric(TextSpan(),
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    }
+    type = exprs[0]->type;
+
+  } else if (ops[0] == Language::Operator::And ||
+             ops[0] == Language::Operator::Xor) {
     for (const auto &expr : exprs) {
       if (expr->type != Bool) {
         ErrorLog::LogGeneric(TextSpan(),

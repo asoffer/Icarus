@@ -190,7 +190,7 @@ enum class Op : char {
   ArrayLength, ArrayData, PtrIncr,
   Phi, Field, Call, Cast,
   Nop,
-  SetReturn, Arrow, Array, Ptr,
+  SetReturn, Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
   CondJump,
@@ -321,6 +321,7 @@ Val PtrIncr(Val v1, Val v2);
 Val Malloc(Type *t, Val v);
 Val Field(Val v, size_t n);
 Val Arrow(Val v1, Val v2);
+Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);

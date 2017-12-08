@@ -278,6 +278,12 @@ Val Arrow(Val v1, Val v2) {
   }
 }
 
+Val Variant(std::vector<Val> args) {
+  Cmd cmd(Type_, Op::Variant, std::move(args));
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  return cmd.reg();
+}
+
 Val Array(Val v1, Val v2) {
   ASSERT(v1.type == nullptr || v1.type == Uint || v1.type == Int, "");
   ASSERT_EQ(v2.type, Type_);
@@ -455,6 +461,7 @@ void Cmd::dump(size_t indent) const {
   case Op::ReturnJump: std::cerr << "return"; break;
   case Op::Load: std::cerr << "load"; break;
   case Op::Store: std::cerr << "store"; break;
+  case Op::Variant: std::cerr << "variant"; break;
   case Op::ArrayLength: std::cerr << "array-length"; break;
   case Op::ArrayData: std::cerr << "array-data"; break;
   case Op::PtrIncr: std::cerr << "ptr-incr"; break;

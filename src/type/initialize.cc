@@ -10,10 +10,13 @@ extern IR::Val PtrCallFix(IR::Val v);
 void Primitive::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }
+
 void Enum::EmitInit(IR::Val id_val) { IR::Store(EmitInitialValue(), id_val); }
 void Function::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }
+
+void Variant::EmitInit(IR::Val) { NOT_YET(); }
 
 void Array::EmitInit(IR::Val id_val) {
   if (!fixed_length) {
