@@ -17,5 +17,3 @@ IR::Val Enum::EmitInitialValue() const { return IR::Val::Enum(this, 0); }
 IR::Val Enum::EmitLiteral(const std::string &member_name) const {
   return IR::Val::Enum(this, int_values.at(member_name));
 }
-
-std::string Enum::to_string() const { return bound_name; }

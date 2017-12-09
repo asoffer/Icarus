@@ -7,7 +7,6 @@ extern IR::Val PtrCallFix(IR::Val v);
 
 void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
                           IR::Val to_var) {
-
   if (to_type->is<Primitive>() || to_type->is<Pointer>() ||
       to_type->is<Function>() || to_type->is<Enum>()) {
     ASSERT_EQ(from_type, to_type);
@@ -88,14 +87,17 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
   } else if (to_type->is<Variant>()) {
     // TODO this way of determining types only works for primitives.
     auto to_index_ptr = IR::Cast(IR::Val::Type(Ptr(Type_)), to_var);
+    auto to_incr      = IR::PtrIncr(to_index_ptr, IR::Val::Uint(1));
 
     // TODO from_type needs to be the right thing.
     if (from_val.type->is<Pointer>() &&
         from_val.type->as<Pointer>().pointee->is<Variant>()) {
       // TODO jump table?
+      auto landing        = IR::Func::Current->AddBlock();
+      auto from_index_ptr = IR::Cast(IR::Val::Type(Ptr(Type_)), from_val);
+      auto type           = IR::Load(from_index_ptr);
+      auto from_incr      = IR::PtrIncr(from_index_ptr, IR::Val::Uint(1));
 
-      auto landing = IR::Func::Current->AddBlock();
-      auto type    = IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), from_val));
       for (Type *v : from_type->as<Variant>().variants_) {
         auto found_block = IR::Func::Current->AddBlock();
         auto next_block  = IR::Func::Current->AddBlock();
@@ -106,9 +108,10 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
 
         IR::Block::Current = found_block;
         CallAssignment(Type_, Type_, IR::Val::Type(v), to_index_ptr);
-        auto to_data_ptr = IR::Cast(
-            IR::Val::Type(Ptr(v)), IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
-        CallAssignment(from_val.type, from_val.type, from_val, to_data_ptr);
+        auto from_val_val =
+            PtrCallFix(IR::Cast(IR::Val::Type(Ptr(v)), from_incr));
+        auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(v)), to_incr);
+        CallAssignment(v, v, from_val_val, to_data_ptr);
 
         IR::UncondJump(landing);
 
@@ -118,8 +121,7 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
       IR::Block::Current = landing;
     } else {
       CallAssignment(Type_, Type_, IR::Val::Type(from_val.type), to_index_ptr);
-      auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_val.type)),
-                                  IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
+      auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_val.type)), to_incr);
       CallAssignment(from_val.type, from_val.type, from_val, to_data_ptr);
     }
   } else {

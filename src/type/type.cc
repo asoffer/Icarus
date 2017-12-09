@@ -1,17 +1,6 @@
 #include "type.h"
 #include "../scope.h"
 
-std::string Primitive::to_string() const {
-  switch (type_) {
-#define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
-  case PrimType::EnumName:                                                     \
-    return #name;
-#include "../config/primitive.conf"
-#undef PRIMITIVE_MACRO
-  default: UNREACHABLE();
-  }
-}
-
 // TODO better to hash pair of Array*
 static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
     eq_funcs;
@@ -89,10 +78,6 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
   }
 
   return IR::Call(IR::Val::Func(insertion.first->second), {lhs_ir, rhs_ir});
-}
-
-std::ostream &operator<<(std::ostream &os, const Type &t) {
-  return os << t.to_string();
 }
 
 // TODO mess around to see the performance characteristics. Maybe a flat map is

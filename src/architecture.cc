@@ -104,9 +104,9 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Variant>()) {
     size_t num_bytes = 0;
     for (Type* type : t->as<Variant>().variants_) {
-      num_bytes = std::max(num_bytes, this->alignment(type));
+      num_bytes = std::max(num_bytes, this->bytes(type));
     }
-    return num_bytes;
+    return num_bytes + ptr_bytes_;
   } else {
     NOT_YET();
   }

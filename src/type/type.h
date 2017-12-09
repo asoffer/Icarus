@@ -42,7 +42,8 @@ struct Identifier;
 // consistent.
 
 #define BASIC_METHODS                                                          \
-  virtual std::string to_string() const ENDING;                                \
+  virtual char *WriteTo(char *buf) const ENDING;                               \
+  virtual size_t string_size() const ENDING;                                   \
   virtual void EmitInit(IR::Val id_val) ENDING;                                \
   virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
@@ -59,6 +60,12 @@ public:
   virtual ~Type() {}
   BASIC_METHODS;
 
+  std::string to_string() const {
+    std::string result(string_size() + 1 /* for null-terminator */, '\0');
+    char *end_buf = WriteTo(const_cast<char *>(result.data()));
+    ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size() - 1);
+    return result;
+  }
   // Assigns val to var. We need this to dispatch based on both the lhs and rhs
   // types. Assume that the types match appropriately. Depending on the types,
   // this will either simply be a store operation or a call to the assignment
@@ -230,17 +237,13 @@ struct Scope_Type : public Type {
   std::string bound_name;
 };
 
-std::ostream &operator<<(std::ostream &os, const Type &t);
+inline std::ostream &operator<<(std::ostream &os, const Type &t) {
+  return os << t.to_string();
+}
 
 #undef TYPE_FNS
 #undef BASIC_METHODS
 #undef ENDING
-
-namespace debug {
-inline std::string to_string(const Type *t) {
-  return t == nullptr ? "0x0" : t->to_string();
-}
-} // namespace debug
 
 // TODO this is not the right API for mangling.
 std::string Mangle(const Type *t, bool prefix = true);

@@ -56,5 +56,3 @@ void Struct::insert_field(const std::string &name, Type *ty,
   // By default, init_val is nullptr;
   init_values.emplace_back(init_val);
 }
-
-std::string Struct::to_string() const { return bound_name; }
