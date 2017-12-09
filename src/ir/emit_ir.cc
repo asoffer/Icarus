@@ -806,7 +806,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
       for (size_t i = 0; i < inputs.size(); ++i) {
         auto &arg = inputs[i];
         ASSERT_EQ(arg->addr, IR::Val::None());
-        // This whole loop can be done on construction!
+        // TODO This whole loop can be done on construction!
         arg->addr = IR::Func::Current->Argument(static_cast<i32>(i));
       }
 
@@ -817,12 +817,19 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
       }
 
       for (auto scope : fn_scope->innards_) {
-        scope->ForEachDeclHere(+[](Declaration *decl) {
+        scope->ForEachDeclHere([kind, scope](Declaration *decl) {
           // TODO arg_val seems to go along with in_decl a lot. Is there some
           // reason for this that *should* be abstracted?
           if (decl->arg_val || decl->is<InDecl>()) { return; }
           ASSERT(decl->type, "");
           decl->addr = IR::Alloca(decl->type);
+          if (decl->init_val) {
+            Type::CallAssignment(scope, decl->type, decl->type,
+                                 decl->init_val->EmitIR(kind), decl->addr);
+
+          } else {
+            decl->type->EmitInit(decl->addr);
+          }
         });
       }
 

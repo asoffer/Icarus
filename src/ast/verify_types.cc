@@ -518,6 +518,22 @@ static Type* Unify(Type* lhs, Type* rhs) {
       if (result == nullptr) { return nullptr; }
       unified.push_back(result);
     }
+  } else if (lhs->is<Variant>()) {
+    if (rhs->is<Variant>()) {
+      NOT_YET();
+    } else {
+      // TODO faster lookups? maybe not represented as a vector. at least give a
+      // better interface.
+      for (Type * v : lhs->as<Variant>().variants_) {
+        if (rhs == v) { return lhs; }
+      }
+    }
+  } else if (rhs->is<Variant>()) { // lhs is not a variant
+    // TODO faster lookups? maybe not represented as a vector. at least give a
+    // better interface.
+    for (Type *v : rhs->as<Variant>().variants_) {
+      if (lhs == v) { return rhs; }
+    }
   }
   return nullptr;
 }

@@ -181,8 +181,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else {
         NOT_YET();
       }
+    } else if (resolved[0].value.as<Type *>()->is<Pointer>() &&
+               resolved[1].type->is<Pointer>()) {
+      return Val::Addr(resolved[1].value.as<Addr>(),
+                       resolved[0].value.as<Type *>());
     } else {
-      NOT_YET();
+      NOT_YET("(", resolved[0], ", ", resolved[1], ")");
     }
   case Op::Xor: return Xor(resolved[0], resolved[1]);
   case Op::Lt: return Lt(resolved[0], resolved[1]);
@@ -264,7 +268,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (cmd.type == Code) {
         return IR::Val::CodeBlock(static_cast<AST::CodeBlock *>(
             resolved[0].value.as<Addr>().as_heap));
-
+      } else if (cmd.type == Type_) {
+        return IR::Val::Type(
+            *static_cast<::Type **>(resolved[0].value.as<Addr>().as_heap));
       } else if (cmd.type->is<Pointer>()) {
         return IR::Val::Addr(
             *static_cast<Addr *>(resolved[0].value.as<Addr>().as_heap),
@@ -298,7 +304,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (cmd.type == Code) {
         return IR::Val::CodeBlock(stack_.Load<AST::CodeBlock *>(
             resolved[0].value.as<Addr>().as_stack));
-
+      } else if (cmd.type == Type_) {
+        return IR::Val::Type(
+            stack_.Load<::Type *>(resolved[0].value.as<Addr>().as_stack));
       } else if (cmd.type->is<Pointer>()) {
         switch (resolved[0].value.as<Addr>().kind) {
         case Addr::Kind::Stack:
@@ -353,6 +361,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type->is<Enum>()) {
         stack_.Store(resolved[0].value.as<EnumVal>().value,
                      resolved[1].value.as<Addr>().as_stack);
+      } else if (resolved[0].type == Type_) {
+        stack_.Store(resolved[0].value.as<::Type *>(),
+                     resolved[1].value.as<Addr>().as_stack);
       } else if (resolved[0].type == Code) {
         stack_.Store(resolved[0].value.as<AST::CodeBlock *>(),
                      resolved[1].value.as<Addr>().as_stack);
@@ -380,6 +391,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type->is<Pointer>()) {
         *static_cast<Addr *>(resolved[1].value.as<Addr>().as_heap) =
             resolved[0].value.as<Addr>();
+      } else if (resolved[0].type == Type_) {
+        *static_cast<::Type **>(resolved[1].value.as<Addr>().as_heap) =
+            resolved[0].value.as<::Type *>();
       } else if (resolved[0].type->is<Enum>()) {
         NOT_YET();
       } else if (resolved[0].type == Code) {
@@ -403,9 +417,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     switch (resolved[0].value.as<Addr>().kind) {
     case Addr::Kind::Stack: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolved[1].value.as<u64>(), ptr_cast<Pointer>(cmd.type)->pointee);
+          resolved[1].value.as<u64>(), cmd.type->as<Pointer>().pointee);
       return Val::StackAddr(resolved[0].value.as<Addr>().as_stack + bytes_fwd,
-                            ptr_cast<Pointer>(cmd.type)->pointee);
+                            cmd.type->as<Pointer>().pointee);
     }
     case Addr::Kind::Heap: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(

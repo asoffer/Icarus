@@ -27,9 +27,8 @@ size_t Architecture::alignment(const Type *t) const {
     auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));
     struct_type->CompleteDefinition();
     size_t alignment_val = 1;
-    for (auto ft : struct_type->field_type) {
-      auto a = this->alignment(ft);
-      if (alignment_val <= a) { alignment_val = a; }
+    for (Type *ft : struct_type->field_type) {
+      alignment_val = std::max(alignment_val, this->alignment(ft));
     }
     return alignment_val;
   } else if (t->is<Function>()) {
@@ -39,6 +38,12 @@ size_t Architecture::alignment(const Type *t) const {
     return 8;
   } else if (t->is<Scope_Type>()) {
     return 1;
+  } else if (t->is<Variant>()) {
+    size_t alignment_val = 0;
+    for (Type* type : t->as<Variant>().variants_) {
+      alignment_val = std::max(alignment_val, this->alignment(type));
+    }
+    return alignment_val;
   } else {
     NOT_YET();
   }
@@ -96,6 +101,12 @@ size_t Architecture::bytes(const Type *t) const {
     return 8;
   } else if (t->is<Scope_Type>()) {
     return 0;
+  } else if (t->is<Variant>()) {
+    size_t num_bytes = 0;
+    for (Type* type : t->as<Variant>().variants_) {
+      num_bytes = std::max(num_bytes, this->alignment(type));
+    }
+    return num_bytes;
   } else {
     NOT_YET();
   }

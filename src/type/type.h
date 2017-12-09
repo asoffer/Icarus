@@ -10,6 +10,7 @@ struct Function;
 struct RangeType;
 struct SliceType;
 struct Scope_Type;
+struct Variant;
 
 extern Type *Err, *Unknown, *Bool, *Char, *Int, *Real, *Code, *Type_, *Uint,
     *Void, *NullPtr, *String, *EmptyArray;
@@ -70,8 +71,7 @@ public:
   static void EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
                            IR::Val to_var);
 
-  // TODO are variants big?
-  bool is_big() const { return is<Array>() || is<Struct>(); }
+  bool is_big() const { return is<Array>() || is<Struct>() || is<Variant>(); }
   virtual bool needs_destroy() const { return false; }
 };
 
@@ -202,6 +202,7 @@ struct Variant : public Type {
   TYPE_FNS(Variant);
   Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
   std::vector<Type *> variants_;
+  IR::Func *repr_func = nullptr;
 };
 
 struct RangeType : public Type {

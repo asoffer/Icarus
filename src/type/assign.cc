@@ -10,13 +10,8 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
                           IR::Val from_val, IR::Val to_var) {
 
   ASSERT(scope, "");
-  if (from_type->is<Primitive>() || from_type->is<Pointer>() ||
-      from_type->is<Function>()) {
-
-    ASSERT_EQ(from_type, to_type);
-    IR::Store(from_val, to_var);
-
-  } else if (from_type->is<Enum>()) {
+  if (to_type->is<Primitive>() || to_type->is<Pointer>() ||
+      to_type->is<Function>() || to_type->is<Enum>()) {
     ASSERT_EQ(from_type, to_type);
     IR::Store(from_val, to_var);
 
@@ -92,13 +87,25 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
     ASSERT_EQ(from_type, to_type);
     IR::Store(from_val, to_var);
 
+  } else if (to_type->is<Variant>()) {
+    // TODO just casting to from_type might not be right. from_type may not
+    // actually be in the variant, just castable to something in the variant.
+
+    // TODO this way of determining types only works for primitives.
+    auto to_index_ptr = IR::Cast(IR::Val::Type(Ptr(Type_)), to_var);
+    CallAssignment(scope, Type_, Type_, IR::Val::Type(from_val.type),
+                   to_index_ptr);
+    auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_type)),
+                                IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
+    CallAssignment(scope, from_val.type, from_val.type, from_val, to_data_ptr);
+    
   } else {
     auto fn = scope->FuncHereOrNull("__assign__",
                                     Func(Tup({Ptr(to_type), from_type}), Void));
     if (fn != IR::Val::None()) {
       IR::Call(fn, {to_var, from_val});
     } else {
-      ptr_cast<Struct>(from_type)->EmitDefaultAssign(to_var, from_val);
+      from_type->as<Struct>().EmitDefaultAssign(to_var, from_val);
     }
   }
 }
