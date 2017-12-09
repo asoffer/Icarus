@@ -9,6 +9,7 @@ enum class FileType { Bin, IR, Nat, None };
 namespace debug {
 extern bool parser;
 extern bool ct_eval;
+extern bool no_validation;
 extern bool timer;
 } // namespace debug
 
@@ -36,6 +37,8 @@ ShowUsage(char *argv0) {
                                           This is the default option.
 
   -h, --help                     Display this usage message.
+
+  -n, --no-validation            Do not run property validation
 
   -p, --parser                   Display step-by-step file parsing (debug).
 
@@ -119,6 +122,10 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
             ShowUsage(argv[0]);
             return CLArgFlag::QuitSuccessfully;
 
+          } else if (strcmp(arg + 2, "no-validation") == 0) {
+            debug::no_validation = true;
+            goto next_arg;
+
           } else if (strcmp(arg + 2, "parser") == 0) {
             debug::parser = true;
             goto next_arg;
@@ -143,6 +150,7 @@ static CLArgFlag ParseCLArguments(int argc, char *argv[]) {
           switch (*ptr) {
           case 'h': ShowUsage(argv[0]); return CLArgFlag::QuitSuccessfully;
           case 'e': debug::ct_eval           = true; break;
+          case 'n': debug::no_validation     = true; break;
           case 'p': debug::parser            = true; break;
           case 'r': repl                     = true; break;
           case 't': debug::timer             = true; break;

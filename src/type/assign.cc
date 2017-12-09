@@ -2,14 +2,12 @@
 
 #include "../architecture.h"
 #include "../ir/ir.h"
-#include "../scope.h"
 
 extern IR::Val PtrCallFix(IR::Val v);
 
-void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
-                          IR::Val from_val, IR::Val to_var) {
+void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
+                          IR::Val to_var) {
 
-  ASSERT(scope, "");
   if (to_type->is<Primitive>() || to_type->is<Pointer>() ||
       to_type->is<Function>() || to_type->is<Enum>()) {
     ASSERT_EQ(from_type, to_type);
@@ -88,25 +86,45 @@ void Type::CallAssignment(Scope *scope, Type *from_type, Type *to_type,
     IR::Store(from_val, to_var);
 
   } else if (to_type->is<Variant>()) {
-    // TODO just casting to from_type might not be right. from_type may not
-    // actually be in the variant, just castable to something in the variant.
-
     // TODO this way of determining types only works for primitives.
     auto to_index_ptr = IR::Cast(IR::Val::Type(Ptr(Type_)), to_var);
-    CallAssignment(scope, Type_, Type_, IR::Val::Type(from_val.type),
-                   to_index_ptr);
-    auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_type)),
-                                IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
-    CallAssignment(scope, from_val.type, from_val.type, from_val, to_data_ptr);
-    
-  } else {
-    auto fn = scope->FuncHereOrNull("__assign__",
-                                    Func(Tup({Ptr(to_type), from_type}), Void));
-    if (fn != IR::Val::None()) {
-      IR::Call(fn, {to_var, from_val});
+
+    // TODO from_type needs to be the right thing.
+    if (from_val.type->is<Pointer>() &&
+        from_val.type->as<Pointer>().pointee->is<Variant>()) {
+      // TODO jump table?
+
+      auto landing = IR::Func::Current->AddBlock();
+      auto type    = IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), from_val));
+      for (Type *v : from_type->as<Variant>().variants_) {
+        auto found_block = IR::Func::Current->AddBlock();
+        auto next_block  = IR::Func::Current->AddBlock();
+        // TODO just testing for equality may not be right. from_type may not
+        // actually be in the variant, just castable to something in the
+        // variant.
+        IR::CondJump(IR::Eq(type, IR::Val::Type(v)), found_block, next_block);
+
+        IR::Block::Current = found_block;
+        CallAssignment(Type_, Type_, IR::Val::Type(v), to_index_ptr);
+        auto to_data_ptr = IR::Cast(
+            IR::Val::Type(Ptr(v)), IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
+        CallAssignment(from_val.type, from_val.type, from_val, to_data_ptr);
+
+        IR::UncondJump(landing);
+
+        IR::Block::Current = next_block;
+      }
+      IR::UncondJump(landing);
+      IR::Block::Current = landing;
     } else {
-      from_type->as<Struct>().EmitDefaultAssign(to_var, from_val);
+      CallAssignment(Type_, Type_, IR::Val::Type(from_val.type), to_index_ptr);
+      auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_val.type)),
+                                  IR::PtrIncr(to_index_ptr, IR::Val::Uint(1)));
+      CallAssignment(from_val.type, from_val.type, from_val, to_data_ptr);
     }
+  } else {
+    // TODO change name? this is the only assignment?
+    from_type->as<Struct>().EmitDefaultAssign(to_var, from_val);
   }
 }
 
@@ -128,7 +146,7 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);
         // TODO is that the right scope?
-        Type::CallAssignment(type_scope, the_field_type, the_field_type,
+        Type::CallAssignment(the_field_type, the_field_type,
                              PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
       }
 

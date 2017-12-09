@@ -63,8 +63,8 @@ public:
   // types. Assume that the types match appropriately. Depending on the types,
   // this will either simply be a store operation or a call to the assignment
   // function.
-  static void CallAssignment(Scope *scope, Type *from_type, Type *to_type,
-                             IR::Val from_val, IR::Val to_var);
+  static void CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
+                             IR::Val to_var);
 
   static void EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
                            IR::Val to_var);

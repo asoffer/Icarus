@@ -588,7 +588,7 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-      Type::CallAssignment(scope_, rhs_types[i], lhs_types[i], rhs_vals[i],
+      Type::CallAssignment(rhs_types[i], lhs_types[i], rhs_vals[i],
                            lhs_lvals[i]);
     }
     return IR::Val::None();
@@ -824,7 +824,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
           ASSERT(decl->type, "");
           decl->addr = IR::Alloca(decl->type);
           if (decl->init_val) {
-            Type::CallAssignment(scope, decl->type, decl->type,
+            Type::CallAssignment(decl->type, decl->type,
                                  decl->init_val->EmitIR(kind), decl->addr);
 
           } else {

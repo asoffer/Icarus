@@ -8,9 +8,10 @@ Timer timer;
 
 // Debug flags and their default values
 namespace debug {
-bool parser  = false;
-bool timer   = false;
-bool ct_eval = false;
+bool parser        = false;
+bool timer         = false;
+bool ct_eval       = false;
+bool no_validation = false;
 } // namespace debug
 
 std::string Escape(char c) {

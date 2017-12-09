@@ -3,6 +3,10 @@
 #include "../error_log.h"
 #include "property.h"
 
+namespace debug {
+extern bool no_validation;
+} // namespace debug
+
 namespace IR {
 namespace property {
 struct PropView {
@@ -39,7 +43,7 @@ struct PropDB {
             &block);
         break;
       case Op::ReturnJump: /* Nothing to do */ break;
-      default: UNREACHABLE();
+      default: fn_->dump(); UNREACHABLE(static_cast<int>(last_cmd.op_code_));
       }
     }
     // Hack: First entry depends on itself.
@@ -438,6 +442,7 @@ ValidateRequirement(const Func *fn,
 int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   if (num_errors_ >= 0) { return num_errors_; }
   num_errors_ = 0;
+  if (debug::no_validation) { return num_errors_; }
 
   std::vector<std::pair<const Block *, const Cmd *>> calls;
   auto prop_db = property::PropDB::Make(this, {}, validation_queue, &calls);

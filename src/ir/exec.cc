@@ -169,7 +169,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].value.as<Type *>() == Real) {
         return IR::Val::Real(static_cast<double>(resolved[1].value.as<i32>()));
       } else {
-        NOT_YET();
+        call_stack.top().fn_->dump();
+        NOT_YET("(", resolved[0], ", ", resolved[1], ")");
       }
     } else if (resolved[1].type == Uint) {
       if (resolved[0].value.as<Type *>() == Uint) {
@@ -186,6 +187,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return Val::Addr(resolved[1].value.as<Addr>(),
                        resolved[0].value.as<Type *>());
     } else {
+      call_stack.top().fn_->dump();
       NOT_YET("(", resolved[0], ", ", resolved[1], ")");
     }
   case Op::Xor: return Xor(resolved[0], resolved[1]);

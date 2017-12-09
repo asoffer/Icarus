@@ -519,15 +519,17 @@ static Type* Unify(Type* lhs, Type* rhs) {
       unified.push_back(result);
     }
   } else if (lhs->is<Variant>()) {
+    std::vector<Type *> rhs_types;
     if (rhs->is<Variant>()) {
-      NOT_YET();
+      rhs_types = lhs->as<Variant>().variants_;
     } else {
-      // TODO faster lookups? maybe not represented as a vector. at least give a
-      // better interface.
-      for (Type * v : lhs->as<Variant>().variants_) {
-        if (rhs == v) { return lhs; }
-      }
+      rhs_types = {rhs};
     }
+
+    auto vars = lhs->as<Variant>().variants_;
+    vars.insert(vars.end(), rhs->as<Variant>().variants_.begin(),
+                rhs->as<Variant>().variants_.end());
+    return Var(std::move(vars));
   } else if (rhs->is<Variant>()) { // lhs is not a variant
     // TODO faster lookups? maybe not represented as a vector. at least give a
     // better interface.
