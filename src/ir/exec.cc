@@ -240,7 +240,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     } else if (resolved[0].type->is<Function>()) {
       std::cerr << "{" << resolved[0].type->to_string() << "}";
     } else {
-      NOT_YET(*resolved[0].type);
+      NOT_YET(resolved[0].type);
     }
     return IR::Val::None();
   case Op::Ptr: return Ptr(resolved[0]);
@@ -282,9 +282,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             ptr_cast<Enum>(cmd.type),
             *static_cast<size_t *>(resolved[0].value.as<Addr>().as_heap));
       } else {
-        call_stack.top().fn_->dump();
-        cmd.dump(0);
-        NOT_YET("Don't know how to load type: ", *cmd.type);
+        NOT_YET("Don't know how to load type: ", cmd.type);
       }
     } break;
     case Addr::Kind::Stack: {
@@ -327,7 +325,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             ptr_cast<Enum>(cmd.type),
             stack_.Load<size_t>(resolved[0].value.as<Addr>().as_stack));
       } else {
-        NOT_YET("Don't know how to load type: ", *cmd.type);
+        NOT_YET("Don't know how to load type: ", cmd.type);
       }
     } break;
     }
@@ -370,7 +368,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         stack_.Store(resolved[0].value.as<AST::CodeBlock *>(),
                      resolved[1].value.as<Addr>().as_stack);
       } else {
-        NOT_YET("Don't know how to store type: ", *cmd.type);
+        NOT_YET("Don't know how to store type: ", cmd.type);
       }
 
       return IR::Val::None();
@@ -401,7 +399,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Code) {
         NOT_YET();
       } else {
-        NOT_YET("Don't know how to store type: ", *cmd.type);
+        NOT_YET("Don't know how to store type: ", cmd.type);
       }
       return IR::Val::None();
     }

@@ -7,7 +7,7 @@ size_t Primitive::string_size() const {
   switch (type_) {
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   case PrimType::EnumName:                                                     \
-    return sizeof(#name) / sizeof((#name[0])) - 1;
+    return sizeof(#name) - 1;
 #include "../config/primitive.conf"
 #undef PRIMITIVE_MACRO
   default: UNREACHABLE();

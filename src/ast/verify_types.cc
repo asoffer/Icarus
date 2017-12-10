@@ -8,6 +8,7 @@
 #include "../type/type.h"
 
 // TODO catch functions that don't return along all paths.
+// TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
 extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
@@ -275,8 +276,8 @@ void Unop::verify_types() {
   } break;
   case Operator::Mul: {
     if (operand->type != Type_) {
-      ErrorLog::LogGeneric(this->span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
     } else {
       type = Type_;
     }
@@ -398,12 +399,176 @@ void Access::verify_types() {
   }
 }
 
+// TODO move this and type-related functions below into type/type.cc?
+static Type *TypeJoin(Type *lhs, Type *rhs) {
+  if (lhs == rhs) { return lhs; }
+  if (lhs == Err) { return rhs; } // Ignore errors
+  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
+  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
+  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
+    return TypeJoin(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
+  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+    Type *result = nullptr;
+    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
+      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+      result = TypeJoin(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result, lhs->as<Array>().len) : result;
+    } else {
+      result = TypeJoin(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result) : result;
+    }
+  } else if (lhs->is<Array>() && rhs == EmptyArray &&
+             !lhs->as<Array>().fixed_length) {
+    return lhs;
+  } else if (rhs->is<Array>() && lhs == EmptyArray &&
+             !rhs->as<Array>().fixed_length) {
+    return rhs;
+  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
+    Tuple *lhs_tup = &lhs->as<Tuple>();
+    Tuple *rhs_tup = &rhs->as<Tuple>();
+    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
+    std::vector<Type *> joined;
+    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
+      Type *result = TypeJoin(lhs_tup->entries[i], rhs_tup->entries[i]);
+      if (result == nullptr) { return nullptr; }
+      joined.push_back(result);
+    }
+    return Tup(std::move(joined));
+  } else if (lhs->is<Variant>()) {
+    std::vector<Type *> rhs_types;
+    if (rhs->is<Variant>()) {
+      rhs_types = rhs->as<Variant>().variants_;
+    } else {
+      rhs_types = {rhs};
+    }
+
+    auto vars = lhs->as<Variant>().variants_;
+    vars.insert(vars.end(), rhs_types.begin(), rhs_types.end());
+    return Var(std::move(vars));
+  } else if (rhs->is<Variant>()) { // lhs is not a variant
+    // TODO faster lookups? maybe not represented as a vector. at least give a
+    // better interface.
+    for (Type *v : rhs->as<Variant>().variants_) {
+      if (lhs == v) { return rhs; }
+    }
+    return nullptr;
+  }
+  UNREACHABLE();
+}
+
+static Type *TypeMeet(Type *lhs, Type *rhs) {
+  if (lhs == rhs) { return lhs; }
+  if (lhs == Err) { return rhs; } // Ignore errors
+  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == NullPtr || rhs == NullPtr) {
+    // TODO It's not obvious to me that this is what I want to do.
+    return nullptr;
+  }
+  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
+    return Ptr(
+        TypeMeet(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee));
+  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+    Type *result = nullptr;
+    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
+      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+      result = TypeMeet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result, lhs->as<Array>().len) : result;
+    } else {
+      result = TypeMeet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result,
+                          std::max(lhs->as<Array>().len, rhs->as<Array>().len))
+                    : result;
+    }
+  } else if (lhs->is<Array>() && rhs == EmptyArray &&
+             !lhs->as<Array>().fixed_length) {
+    return Arr(lhs->as<Array>().data_type, 0);
+  } else if (rhs->is<Array>() && lhs == EmptyArray &&
+             !rhs->as<Array>().fixed_length) {
+    return Arr(rhs->as<Array>().data_type, 0);
+  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
+    Tuple *lhs_tup = &lhs->as<Tuple>();
+    Tuple *rhs_tup = &rhs->as<Tuple>();
+    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
+    std::vector<Type *> joined;
+    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
+      Type *result = TypeMeet(lhs_tup->entries[i], rhs_tup->entries[i]);
+      if (result == nullptr) { return nullptr; }
+      joined.push_back(result);
+    }
+    return Tup(std::move(joined));
+  } else if (lhs->is<Variant>()) {
+    // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
+    std::vector<Type *> results;
+    if (rhs->is<Variant>()) {
+      for (Type* l_type : lhs->as<Variant>().variants_) {
+        for (Type *r_type : rhs->as<Variant>().variants_) {
+          Type *result = TypeMeet(l_type, r_type);
+          if (result != nullptr) { results.push_back(result); }
+        }
+      }
+    } else {
+      for (Type* t : lhs->as<Variant>().variants_) {
+        Type *result = TypeMeet(t, rhs);
+        if (result != nullptr) { results.push_back(result); }
+      }
+    }
+    return results.empty() ? nullptr : Var(std::move(results));
+  } else if (rhs->is<Variant>()) { // lhs is not a variant
+    // TODO faster lookups? maybe not represented as a vector. at least give a
+    // better interface.
+    std::vector<Type *> results;
+    for (Type *t : rhs->as<Variant>().variants_) {
+      Type *result = TypeMeet(t, lhs);
+      if (result != nullptr) { results.push_back(result); }
+   }
+   return results.empty() ? nullptr : Var(std::move(results));
+  }
+  return nullptr;
+}
+
+static bool CanCastImplicitly(Type *from, Type *to) {
+  return TypeJoin(from, to) == to;
+}
+
+static bool Inferrable(Type *t) {
+  if (t == NullPtr || t == EmptyArray) {
+    return false;
+  } else if (t->is<Array>()) {
+    return Inferrable(t->as<Array>().data_type);
+  } else if (t->is<Pointer>()) {
+    return Inferrable(t->as<Pointer>().pointee);
+  } else if (t->is<Tuple>()) {
+    for (auto *entry : t->as<Tuple>().entries) {
+      if (!Inferrable(entry)) { return false; }
+    }
+  } else if (t->is<Function>()) {
+    return Inferrable(t->as<Function>().input) &&
+           Inferrable(t->as<Function>().output);
+  }
+  // TODO higher order types?
+  return true;
+}
+
+std::string CallArgTypes::to_string() const {
+  std::string result;
+  for (Type *t : numbered_) { result += t->to_string() + ", "; }
+  for (const auto&kv : named_) {
+    result += kv.first + ": " + kv.second->to_string() + ", ";
+  }
+  return result;
+}
+
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
-                                          CallArgs *args) {
-  for (auto *decl : scope->AllDeclsWithId(id.token)) {
+static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
+                                        CallArgs *args) {
+  ASSERT(!args->numbered_.empty(), ""); // TODO empty call args?
+
+  auto expanded = args->just_types().expand_variants();
+
+  for (Declaration *decl : decls) {
     if (decl->type->is<Function>()) {
       // TODO what about const vs. non-const declarations?
 
@@ -427,14 +592,9 @@ static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
       for (const auto &name_and_expr : args->named_) {
         auto iter = index_lookup.find(name_and_expr.first);
         if (iter == index_lookup.end()) {
-          // TODO. Think more about this situation. You obviously need to pass
-          // on this function match because it doesn't have this named argument,
-          // but is that an error? It seems strange to be an error but also
-          // strange to pass on it silently. Maybe it's not weird because you
-          // already verify that there is some non-name-based (type-based) way
-          // to distinguish the function calls. You'll probably go with this but
-          // should write a good explanation about what it is and why it's okay.
-          // For now passing silently.
+          // Missing named argument so passing on to the next option. Perhaps it
+          // would be useful to generate error messages explaining why you
+          // passed on each option.
           goto next_option;
         } else {
           bindings[iter->second] = name_and_expr.second.get();
@@ -444,25 +604,48 @@ static Declaration *FindFunctionCallMatch(const Identifier &id, Scope *scope,
       std::vector<Type *> inputs = fn->type->input->is<Tuple>()
                                        ? fn->type->input->as<Tuple>().entries
                                        : std::vector<Type *>{fn->type->input};
+      CallArgTypes call_arg_types;
+      call_arg_types.numbered_.resize(args->numbered_.size(), nullptr);
       for (size_t i = 0; i < bindings.size(); ++i) {
         if (bindings[i] == nullptr) {
           if (fn->args_[i].second == nullptr) {
-            goto next_option; // No default for this parameter
+            // No match because a match would require this declaration to have a
+            // default parameter here but it doesn't have one.
+            goto next_option;
           }
         } else {
-          if (bindings[i]->type != inputs[i]) {
-            goto next_option; // No match, but not an error.
+          // Call-site really specifies an argument (either named or numbered).
+          Type *match = TypeMeet(bindings[i]->type, inputs[i]);
+          if (match == nullptr) { goto next_option; }
+          // f(bool | int) called with (int | real). match == int
+          if (i < call_arg_types.numbered_.size()) {
+            call_arg_types.numbered_[i] = match;
+          } else {
+            NOT_YET();
           }
         }
       }
-      args->bindings_ = std::move(bindings);
-      return decl;
+
+      for (const auto &expanded_call : call_arg_types.expand_variants()) {
+        auto iter = expanded.find(expanded_call.first);
+        if (iter != expanded.end()) {
+          iter->second = std::make_pair(decl, std::move(bindings));
+        }
+      }
     } else {
       // TODO type casts can be called like functions.
     }
   next_option:;
   }
-  return nullptr;
+
+  for (const auto &kv : expanded) {
+    if (kv.second.first == nullptr) {
+      LOG << "Failed to find a match for everything.";
+      return {};
+    }
+  }
+
+  return expanded;
 }
 
 void CallArgs::verify_types() {
@@ -483,84 +666,56 @@ void CallArgs::verify_types() {
   type = Void;
 }
 
-// TODO move this and type-related functions below into type/type.cc?
-static Type* Unify(Type* lhs, Type* rhs) {
-  if (lhs == rhs) { return lhs; }
-  if (lhs == Err) { return rhs; } // Ignore errors
-  if (rhs == Err) { return lhs; } // Ignore errors
-  if (lhs == NullPtr && rhs->is<Pointer>()) { return rhs; }
-  if (rhs == NullPtr && lhs->is<Pointer>()) { return lhs; }
-  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
-    return Unify(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee);
-  } else if (lhs->is<Array>() && rhs->is<Array>()) {
-    Type *result = nullptr;
-    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
-      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
-      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result, lhs->as<Array>().len) : result;
-    } else {
-      result = Unify(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
-      return result ? Arr(result) : result;
-    }
-  } else if (lhs->is<Array>() && rhs == EmptyArray &&
-             !lhs->as<Array>().fixed_length) {
-    return lhs;
-  } else if (rhs->is<Array>() && lhs == EmptyArray &&
-             !rhs->as<Array>().fixed_length) {
-    return rhs;
-  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
-    Tuple *lhs_tup = &lhs->as<Tuple>();
-    Tuple *rhs_tup = &rhs->as<Tuple>();
-    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
-    std::vector<Type*> unified;
-    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
-      Type *result = Unify(lhs_tup->entries[i], rhs_tup->entries[i]);
-      if (result == nullptr) { return nullptr; }
-      unified.push_back(result);
-    }
-  } else if (lhs->is<Variant>()) {
-    std::vector<Type *> rhs_types;
-    if (rhs->is<Variant>()) {
-      rhs_types = lhs->as<Variant>().variants_;
-    } else {
-      rhs_types = {rhs};
-    }
-
-    auto vars = lhs->as<Variant>().variants_;
-    vars.insert(vars.end(), rhs->as<Variant>().variants_.begin(),
-                rhs->as<Variant>().variants_.end());
-    return Var(std::move(vars));
-  } else if (rhs->is<Variant>()) { // lhs is not a variant
-    // TODO faster lookups? maybe not represented as a vector. at least give a
-    // better interface.
-    for (Type *v : rhs->as<Variant>().variants_) {
-      if (lhs == v) { return rhs; }
-    }
+CallArgTypes CallArgs::just_types() const {
+  ASSERT_EQ(type, Void); // Means it's been validated
+  CallArgTypes result;
+  result.numbered_.reserve(numbered_.size());
+  for (const auto &expr : numbered_) { result.numbered_.push_back(expr->type); }
+  for (const auto &kv : named_) {
+    result.named_.emplace(kv.first, kv.second->type);
   }
-  return nullptr;
+  return result;
 }
 
-static bool CanCastImplicitly(Type *from, Type *to) {
-  return Unify(from, to) == to;
+bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
+  if (lhs.numbered_.size() != rhs.numbered_.size()) {
+    return lhs.numbered_.size() < rhs.numbered_.size();
+  }
+  if (lhs.named_.size() != rhs.named_.size()) {
+    return lhs.named_.size() < rhs.named_.size();
+  }
+  if (lhs.numbered_ < rhs.numbered_) { return true; }
+  if (lhs.numbered_ > rhs.numbered_) { return false; }
+/*
+  auto l_iter = lhs.named_.begin();
+  auto r_iter = rhs.named_.begin();
+  while (*l_iter == *r_iter) {
+    ++l_iter;
+    ++r_iter;
+  }
+  if (l_iter == lhs.named_.end()) { return false; }
+  return *l_iter < *r_iter;
+  */
+  return false;
 }
 
-static bool Inferrable(Type *t) {
-  if (t == NullPtr || t == EmptyArray) {
-    return false;
-  } else if (t->is<Array>()) {
-    return Inferrable(t->as<Array>().data_type);
-  } else if (t->is<Pointer>()) {
-    return Inferrable(t->as<Pointer>().pointee);
-  } else if (t->is<Tuple>()) {
-    for (auto *entry : t->as<Tuple>().entries) {
-      if (!Inferrable(entry)) { return false; }
+CallArgMap CallArgTypes::expand_variants() const {
+  // TODO for now just dispatch on the possible types of the first numbered
+  // argument.
+  CallArgMap results;
+  ASSERT_GT(numbered_.size(), 0);
+  if (numbered_[0]->is<Variant>()) {
+    for (Type *var : numbered_[0]->as<Variant>().variants_) {
+      auto call_args         = *this;
+      call_args.numbered_[0] = var;
+      results[call_args];
     }
-  } else if (t->is<Function>()) {
-    return Inferrable(t->as<Function>().input) &&
-           Inferrable(t->as<Function>().output);
+
+  } else {
+    results[*this];
   }
-  // TODO higher order types?
-  return true;
+
+  return results;
 }
 
 void Binop::verify_types() {
@@ -571,68 +726,49 @@ void Binop::verify_types() {
       auto &lhs_id = lhs->as<Identifier>();
       // It suffices to find just the first match because we are guarnateed that
       // there can only be one.
-      Declaration *valid_match =
-          FindFunctionCallMatch(lhs_id, scope_, &rhs->as<CallArgs>());
+      // TODO handle case where rhs == nullptr
+      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
+      auto call_map = FindFunctionCallMatch(
+          scope_->AllDeclsWithId(lhs_id.token), &rhs->as<CallArgs>());
 
-      if (valid_match == nullptr) {
+      if (call_map.empty()) {
         ErrorLog::NoValidMatches(span);
         type = lhs->type = Err;
+      } else {
+        rhs->as<CallArgs>().bindings_ = std::move(call_map);
+        lhs->type = Void;
+        std::vector<Type *> out_types;
+        out_types.reserve(rhs->as<CallArgs>().bindings_.size());
+        for (const auto &kv : rhs->as<CallArgs>().bindings_) {
+          out_types.push_back(kv.second.first->type->as<Function>().output);
+        }
+        type = Var(std::move(out_types));
+      }
+
+      return;
+    } else {
+      VERIFY_AND_RETURN_ON_ERROR(lhs);
+      // TODO reimplement casts
+      ASSERT_TYPE(Function, lhs->type);
+      if (lhs->type->as<Function>().input == (rhs ? rhs->type : Void)) {
+        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
+                                       std::to_string(__LINE__) + ": ");
+        type      = Err;
+        lhs->type = Err;
         return;
       }
 
-      lhs_id.decl = valid_match;
-      lhs_id.verify_types();
-
-    } else {
-      VERIFY_AND_RETURN_ON_ERROR(lhs);
-
-      if (lhs->type->is<Function>()) {
-        if (ptr_cast<Function>(lhs->type)->input == (rhs ? rhs->type : Void)) {
-          ErrorLog::LogGeneric(span,
-                               "TODO " __FILE__ ":" + std::to_string(__LINE__));
-          type      = Err;
-          lhs->type = Err;
+      if (rhs) {
+        rhs->verify_types();
+        if (rhs->type == Err) {
+          type = Err;
           return;
         }
-      } else {
-        ASSERT_EQ(lhs->type, Type_);
-
-        // Cast
-        op   = Language::Operator::Cast;
-        type = lhs->value.value.as<Type *>();
-        if (type == Err) { return; }
-
-        if (rhs->type == type ||
-            (rhs->type == Bool &&
-             (type == Int || type == Uint || type == Real)) ||
-            (rhs->type == Int && type == Real) ||
-            (rhs->type == Int && type == Uint) ||
-            (rhs->type == Uint && type == Real) ||
-            (rhs->type == Uint && type == Int)) {
-          return;
-        }
-
-        if (lhs->type->is<Pointer>() && type->is<Pointer>()) { return; }
-        ErrorLog::InvalidCast(span, lhs->type, type);
-
-        if (rhs) { rhs->verify_types(); }
-        type = Err;
       }
-    }
 
-    if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
-
-    // If you get here, you know the types all match. We just need to compute
-    // the type of the call.
-    if (lhs->type->is<Function>()) {
       type = lhs->type->as<Function>().output;
-
-    } else {
-      ASSERT_EQ(lhs->type, Type_);
-      type = lhs->type;
+      return;
     }
-
-    return;
   }
 
   lhs->verify_types();
@@ -644,12 +780,12 @@ void Binop::verify_types() {
 
   using Language::Operator;
   // TODO if lhs is reserved?
-  if (op == Language::Operator::Assign) {
+  if (op == Operator::Assign) {
     if (CanCastImplicitly(rhs->type, lhs->type)) {
       type = Void;
     } else {
-      ErrorLog::LogGeneric(this->span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
     }
     return;
   }
@@ -839,8 +975,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
   if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>()) {
     if (lhs_type != rhs_type) {
-      ErrorLog::LogGeneric(TextSpan(),
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
       return false;
     }
 
@@ -855,8 +991,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
       if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
         return true;
       } else {
-        ErrorLog::LogGeneric(TextSpan(),
-                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
         return false;
       }
     }
@@ -864,12 +1000,12 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
   if (lhs_type->is<Enum>() || lhs_type->is<Pointer>()) {
     if (lhs_type != rhs_type) {
-      ErrorLog::LogGeneric(TextSpan(),
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
       return false;
     } else if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-      ErrorLog::LogGeneric(TextSpan(),
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
       return false;
     } else {
       return true;
@@ -883,8 +1019,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   if (lhs_type->is<Array>()) {
     if (rhs_type->is<Array>()) {
       if (op != Language::Operator::Eq && op != Language::Operator::Ne) {
-        ErrorLog::LogGeneric(TextSpan(),
-                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
         return false;
       }
 
@@ -893,8 +1029,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
 
       // TODO what if data types are equality comparable but not equal?
       if (lhs_array->data_type != rhs_array->data_type) {
-        ErrorLog::LogGeneric(TextSpan(),
-                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
         return false;
       }
 
@@ -902,8 +1038,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
         if (lhs_array->len == rhs_array->len) {
           return true;
         } else {
-          ErrorLog::LogGeneric(TextSpan(),
-                               "TODO " __FILE__ ":" + std::to_string(__LINE__));
+          ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                               std::to_string(__LINE__) + ": ");
           return false;
         }
       } else {
@@ -911,14 +1047,14 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
                      // allowed to compare them.
       }
     } else {
-      ErrorLog::LogGeneric(TextSpan(),
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
       return false;
     }
   }
 
   ErrorLog::LogGeneric(TextSpan(),
-                       "TODO " __FILE__ ":" + std::to_string(__LINE__));
+                       "TODO " __FILE__ ":" + std::to_string(__LINE__) + ": ");
   return false;
 }
 
@@ -943,13 +1079,13 @@ void ChainOp::verify_types() {
   if (ops[0] == Language::Operator::Or) {
     for (const auto &expr : exprs) {
       if (expr->type != exprs[0]->type) {
-        ErrorLog::LogGeneric(TextSpan(),
-                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
       }
     }
     if (exprs[0]->type != Bool && exprs[0]->type != Type_) {
-      ErrorLog::LogGeneric(TextSpan(),
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
     }
     type = exprs[0]->type;
 
@@ -957,8 +1093,8 @@ void ChainOp::verify_types() {
              ops[0] == Language::Operator::Xor) {
     for (const auto &expr : exprs) {
       if (expr->type != Bool) {
-        ErrorLog::LogGeneric(TextSpan(),
-                             "TODO " __FILE__ ":" + std::to_string(__LINE__));
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
       }
     }
   } else {
@@ -1065,8 +1201,8 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 
     auto iter = error_log_to_call.find(magic_method_name);
     if (iter == error_log_to_call.end()) { return; }
-    ErrorLog::LogGeneric(TextSpan(),
-                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
     iter->second(span);
   }
 
@@ -1143,14 +1279,14 @@ void Declaration::verify_types() {
     }
 
     if (!type->is<Pointer>() && init_val_type == NullPtr) {
-      ErrorLog::LogGeneric(this->span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
     }
 
   } else if (IsUninitialized()) {
     if (const_) {
-      ErrorLog::LogGeneric(this->span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
     }
 
     type           = type_expr->VerifyTypeForDeclaration(identifier->token);
@@ -1240,20 +1376,20 @@ void ArrayLiteral::verify_types() {
   }
 
   for (auto &elem : elems) { elem->verify_types(); }
-  Type *unified = Err;
+  Type *joined = Err;
   for (auto &elem : elems) {
-    unified = Unify(unified, elem->type);
-    if (unified == nullptr) { break; }
+    joined = TypeJoin(joined, elem->type);
+    if (joined == nullptr) { break; }
   }
 
-  if (unified == nullptr) {
-    // Types couldn't be unified. Emit an error
+  if (joined == nullptr) {
+    // Types couldn't be joined. Emit an error
     ErrorLog::InconsistentArrayType(span);
     type = Err;
-  } else if (unified == Err) {
+  } else if (joined == Err) {
     type = Err; // There were no valid types anywhere in the array
   } else {
-    type = Arr(unified, elems.size());
+    type = Arr(joined, elems.size());
   }
 }
 
@@ -1438,14 +1574,14 @@ void ScopeLiteral::verify_types() {
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
     cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(this->span,
-                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
   }
 
   if (!exit_fn) {
     cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(this->span,
-                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
   }
 
   if (cannot_proceed_due_to_errors) { return; }
@@ -1455,14 +1591,14 @@ void ScopeLiteral::verify_types() {
 
   if (!enter_fn->type->is<Function>()) {
     cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(this->span,
-                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
   }
 
   if (!exit_fn->type->is<Function>()) {
     cannot_proceed_due_to_errors = true;
-    ErrorLog::LogGeneric(this->span,
-                         "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
   }
 
   if (cannot_proceed_due_to_errors) { return; }

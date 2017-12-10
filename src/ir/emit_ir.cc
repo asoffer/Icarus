@@ -554,21 +554,65 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     return IR::Cast(lhs_ir, rhs_ir);
   } break;
   case Language::Operator::Call: {
-    auto lhs_ir = lhs->EmitIR(kind);
-    std::vector<IR::Val> args;
-    args.reserve(rhs->as<CallArgs>().bindings_.size());
-    for (size_t i = 0; i < rhs->as<CallArgs>().bindings_.size(); ++i) {
-      auto *expr = rhs->as<CallArgs>().bindings_[i];
-      if (expr == nullptr /* Default */) {
-        // TODO what if it's not a function but something else callable (a
-        // type-cast)??
-        args.push_back(
-            lhs_ir.value.as<IR::Func *>()->args_[i].second->EmitIR(kind));
-      } else {
-        args.push_back(expr->EmitIR(kind));
-      }
+    auto &call_args = rhs->as<CallArgs>();
+
+    // Look at all the possible calls and generate the dispatching code
+    // TODO implement this with a lookup table instead of this branching
+    // insanity.
+    auto landing_block = IR::Func::Current->AddBlock();
+
+    std::vector<IR::Val> numbered_vals;
+    numbered_vals.reserve(call_args.numbered_.size());
+    for (auto &expr : call_args.numbered_) {
+      numbered_vals.push_back(expr->EmitIR(kind));
     }
-    return IR::Call(lhs_ir, std::move(args));
+    // TODO deal with dispatching named arguments.
+
+    for (const auto &binding : rhs->as<CallArgs>().bindings_) {
+      auto next_binding = IR::Func::Current->AddBlock();
+      // Generate code that attempts to match the types on each argument (only
+      // check the ones at the call-site that could be variants.
+      for (size_t i = 0; i < call_args.numbered_.size(); ++i) {
+        if (!call_args.numbered_[i]->type->is<Variant>()) { continue; }
+
+        auto continue_check = IR::Func::Current->AddBlock();
+        auto eq_cmp = IR::Eq(
+            IR::Val::Type(binding.first.numbered_[i]),
+            IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), numbered_vals[i])));
+        IR::CondJump(eq_cmp, continue_check, next_binding);
+        
+        IR::Block::Current = continue_check;
+      }
+
+      // After the last check, if you pass, you should dispatch
+      // TODO consider named arguments as well.
+      auto fn_to_call = binding.second.first->identifier->EmitIR(kind);
+      std::vector<IR::Val> args;
+      args.reserve(numbered_vals.size());
+      for (size_t i = 0; i < call_args.numbered_.size(); ++i) {
+        if (!call_args.numbered_[i]->type->is<Variant>()) {
+          args.push_back(numbered_vals[i]);
+        } else {
+          args.push_back(PtrCallFix(IR::Cast(
+              IR::Val::Type(Ptr(binding.first.numbered_[i])),
+              IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), numbered_vals[i]),
+                          IR::Val::Uint(1)))));
+        }
+      }
+      IR::Call(fn_to_call, std::move(args));
+      IR::UncondJump(landing_block);
+
+      IR::Block::Current = next_binding;
+    }
+    // TODO this very last block is not be reachable and should never be
+    // generated.
+
+    IR::UncondJump(landing_block);
+    IR::Block::Current = landing_block;
+    return IR::Val::None(); // TODO make this work for functions that don't
+                            // return void (need to allocate a result location
+                            // which may be a variant and insert the correct
+                            // output there).
   } break;
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;

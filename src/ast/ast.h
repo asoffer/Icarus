@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <memory>
 #include <unordered_map>
+#include <map>
 #include <unordered_set>
 #include <vector>
 
@@ -188,16 +189,33 @@ struct Binop : public Expression {
   base::owned_ptr<Expression> lhs, rhs;
 };
 
+struct CallArgTypes;
+using CallArgMap =
+    std::map<CallArgTypes, std::pair<Declaration *, std::vector<Expression *>>>;
+
+struct CallArgTypes {
+  std::vector<Type *> numbered_;
+  std::map<std::string, Type *> named_;
+
+  // TODO this map data structure is getting too complicated
+  CallArgMap expand_variants() const;
+  std::string to_string() const;
+};
+bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
+
 struct CallArgs : public Expression {
   EXPR_FNS(CallArgs);
   CallArgs *Clone() const override { return new CallArgs(*this); }
 
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
+  CallArgTypes just_types() const;
+
   std::vector<base::owned_ptr<Expression>> numbered_;
   std::unordered_map<std::string, base::owned_ptr<Expression>> named_;
 
-  std::vector<Expression *> bindings_; // Filled in after type verification
+  // Filled in after type verification
+  CallArgMap bindings_;
 };
 
 struct ArgumentMetaData {

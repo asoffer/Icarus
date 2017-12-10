@@ -61,9 +61,9 @@ public:
   BASIC_METHODS;
 
   std::string to_string() const {
-    std::string result(string_size() + 1 /* for null-terminator */, '\0');
+    std::string result(string_size(), '\0');
     char *end_buf = WriteTo(const_cast<char *>(result.data()));
-    ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size() - 1);
+    ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size());
     return result;
   }
   // Assigns val to var. We need this to dispatch based on both the lhs and rhs
