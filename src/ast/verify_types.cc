@@ -700,21 +700,33 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
 }
 
 CallArgMap CallArgTypes::expand_variants() const {
-  // TODO for now just dispatch on the possible types of the first numbered
-  // argument.
   CallArgMap results;
-  ASSERT_GT(numbered_.size(), 0);
-  if (numbered_[0]->is<Variant>()) {
-    for (Type *var : numbered_[0]->as<Variant>().variants_) {
-      auto call_args         = *this;
-      call_args.numbered_[0] = var;
-      results[call_args];
+  std::queue<std::pair<size_t, std::vector<Type*>>> numbered_arg_types;
+  numbered_arg_types.emplace(0, numbered_);
+  while (!numbered_arg_types.empty()) {
+    auto index_and_vec = std::move(numbered_arg_types.front());
+    numbered_arg_types.pop();
+    if (index_and_vec.first == index_and_vec.second.size()) {
+      CallArgTypes call_arg_type;
+      call_arg_type.numbered_ = std::move(index_and_vec.second);
+      results[std::move(call_arg_type)];
+      continue;
     }
-
-  } else {
-    results[*this];
+    auto *type = index_and_vec.second[index_and_vec.first];
+    if (type->is<Variant>()) {
+      for (Type *v : type->as<Variant>().variants_) {
+        size_t i      = index_and_vec.first;
+        auto type_vec = index_and_vec.second;
+        type_vec[i]   = v;
+        numbered_arg_types.emplace(i + 1, std::move(type_vec));
+      }
+    } else {
+      ++index_and_vec.first;
+      numbered_arg_types.push(std::move(index_and_vec));
+    }
   }
 
+  // TODO named argument dispatch?
   return results;
 }
 

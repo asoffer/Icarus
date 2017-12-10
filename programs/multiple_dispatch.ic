@@ -1,0 +1,37 @@
+foo ::= (x: int, y: bool) -> void {
+  print "x is an int equal to ", x, `\n,
+        "y is a bool equal to ", y, `\n
+}
+foo ::= (x: int, y: int) -> void {
+  print "x is an int equal to ", x, `\n,
+        "y is an int equal to ", y, `\n
+}
+foo ::= (x: bool, y: bool) -> void {
+  print "x is a bool equal to ", x, `\n,
+        "y is a bool equal to ", y, `\n
+}
+foo ::= (x: bool, y: int) -> void {
+  print "x is a bool equal to ", x, `\n,
+        "y is an int equal to ", y, `\n
+}
+f ::= (xx: int) -> void {
+  x: bool | int = 999
+  y: bool | int = true
+
+  x = true
+  y = 123
+  foo(x, y)
+
+  x = true
+  y = false
+  foo(x, y)
+
+  x = 123
+  y = true
+  foo(x, y)
+
+  x = 456
+  y = 789
+  foo(x, y)
+}
+main ::= void -> void { $f(3) }
