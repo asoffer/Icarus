@@ -88,8 +88,103 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 }
 
-IR::Val AST::CallArgs::EmitIR(IR::Cmd::Kind) {
-  UNREACHABLE("Handled at Operator::Call site explicitly");
+IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
+  // Look at all the possible calls and generate the dispatching code
+  // TODO implement this with a lookup table instead of this branching
+  // insanity.
+  auto landing_block = IR::Func::Current->AddBlock();
+
+  std::unordered_map<Expression *, IR::Val *> expr_map;
+  std::vector<IR::Val> pos_vals;
+  pos_vals.reserve(pos_.size());
+  for (auto &expr : pos_) {
+    pos_vals.push_back(expr->EmitIR(kind));
+    expr_map[expr.get()] = &pos_vals.back(); // Safe because of reserve.
+  }
+
+  std::unordered_map<std::string, IR::Val> named_vals;
+  for (auto &kv : named_) {
+    auto iter = named_vals.emplace(kv.first, kv.second->EmitIR(kind)).first;
+    expr_map[kv.second.get()] = &iter->second;
+  }
+
+  // TODO deal with dispatching named arguments.
+  for (const auto &binding : bindings_) {
+    std::vector<Type*> bound_types = binding.first.pos_;
+    bound_types.resize(binding.second.second.size());
+    for (size_t i = binding.first.pos_.size(); i < bound_types.size(); ++i) {
+      for (const auto &entry : named_) {
+        if (entry.second.get() != binding.second.second[i]) { continue; }
+        for (const auto& p : binding.first.named_) {
+          if (p.first != entry.first) { continue; }
+          bound_types[i] = p.second;
+          goto next_type;
+       }
+       UNREACHABLE();
+      }
+      UNREACHABLE();
+    next_type:;
+    }
+
+    auto next_binding = IR::Func::Current->AddBlock();
+    // Generate code that attempts to match the types on each argument (only
+    // check the ones at the call-site that could be variants.
+    for (size_t i = 0; i < pos_.size(); ++i) {
+      if (!pos_[i]->type->is<Variant>()) { continue; }
+
+      auto continue_check = IR::Func::Current->AddBlock();
+      auto eq_cmp =
+          IR::Eq(IR::Val::Type(binding.first.pos_[i]),
+                 IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), pos_vals[i])));
+      IR::CondJump(eq_cmp, continue_check, next_binding);
+
+      IR::Block::Current = continue_check;
+    }
+
+    for (const auto kv : named_) {
+      for (const auto &entry : binding.first.named_) {
+        if (entry.first != kv.first) { continue; }
+        auto continue_check = IR::Func::Current->AddBlock();
+        auto eq_cmp         = IR::Eq(IR::Val::Type(entry.second),
+                             IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)),
+                                               named_vals[entry.first])));
+        IR::CondJump(eq_cmp, continue_check, next_binding);
+
+        IR::Block::Current = continue_check;
+        break;
+      }
+    }
+
+    // After the last check, if you pass, you should dispatch
+    auto fn_to_call = binding.second.first->identifier->EmitIR(kind);
+    std::vector<IR::Val> args;
+    args.resize(pos_vals.size() + named_vals.size());
+    for (size_t i = 0; i < args.size(); ++i) {
+      auto *expr = binding.second.second[i];
+      if (expr->type->is<Variant>()) {
+        args[i] = PtrCallFix(IR::Cast(
+            IR::Val::Type(Ptr(bound_types[i])),
+            IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
+                        IR::Val::Uint(1))));
+      } else {
+        args[i] = *expr_map[expr];
+      }
+    }
+
+    IR::Call(fn_to_call, std::move(args));
+    IR::UncondJump(landing_block);
+
+    IR::Block::Current = next_binding;
+  }
+  // TODO this very last block is not be reachable and should never be
+  // generated.
+
+  IR::UncondJump(landing_block);
+  IR::Block::Current = landing_block;
+  return IR::Val::None(); // TODO make this work for functions that don't
+                          // return void (need to allocate a result location
+                          // which may be a variant and insert the correct
+                          // output there).
 }
 
 IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
@@ -552,67 +647,6 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     auto lhs_ir = lhs->EmitIR(kind);
     auto rhs_ir = rhs->EmitIR(kind);
     return IR::Cast(lhs_ir, rhs_ir);
-  } break;
-  case Language::Operator::Call: {
-    auto &call_args = rhs->as<CallArgs>();
-
-    // Look at all the possible calls and generate the dispatching code
-    // TODO implement this with a lookup table instead of this branching
-    // insanity.
-    auto landing_block = IR::Func::Current->AddBlock();
-
-    std::vector<IR::Val> numbered_vals;
-    numbered_vals.reserve(call_args.numbered_.size());
-    for (auto &expr : call_args.numbered_) {
-      numbered_vals.push_back(expr->EmitIR(kind));
-    }
-    // TODO deal with dispatching named arguments.
-
-    for (const auto &binding : rhs->as<CallArgs>().bindings_) {
-      auto next_binding = IR::Func::Current->AddBlock();
-      // Generate code that attempts to match the types on each argument (only
-      // check the ones at the call-site that could be variants.
-      for (size_t i = 0; i < call_args.numbered_.size(); ++i) {
-        if (!call_args.numbered_[i]->type->is<Variant>()) { continue; }
-
-        auto continue_check = IR::Func::Current->AddBlock();
-        auto eq_cmp = IR::Eq(
-            IR::Val::Type(binding.first.numbered_[i]),
-            IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), numbered_vals[i])));
-        IR::CondJump(eq_cmp, continue_check, next_binding);
-        
-        IR::Block::Current = continue_check;
-      }
-
-      // After the last check, if you pass, you should dispatch
-      // TODO consider named arguments as well.
-      auto fn_to_call = binding.second.first->identifier->EmitIR(kind);
-      std::vector<IR::Val> args;
-      args.reserve(numbered_vals.size());
-      for (size_t i = 0; i < call_args.numbered_.size(); ++i) {
-        if (!call_args.numbered_[i]->type->is<Variant>()) {
-          args.push_back(numbered_vals[i]);
-        } else {
-          args.push_back(PtrCallFix(IR::Cast(
-              IR::Val::Type(Ptr(binding.first.numbered_[i])),
-              IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), numbered_vals[i]),
-                          IR::Val::Uint(1)))));
-        }
-      }
-      IR::Call(fn_to_call, std::move(args));
-      IR::UncondJump(landing_block);
-
-      IR::Block::Current = next_binding;
-    }
-    // TODO this very last block is not be reachable and should never be
-    // generated.
-
-    IR::UncondJump(landing_block);
-    IR::Block::Current = landing_block;
-    return IR::Val::None(); // TODO make this work for functions that don't
-                            // return void (need to allocate a result location
-                            // which may be a variant and insert the correct
-                            // output there).
   } break;
   case Language::Operator::Assign: {
     std::vector<Type *> lhs_types, rhs_types;

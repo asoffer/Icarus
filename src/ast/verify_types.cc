@@ -552,9 +552,10 @@ static bool Inferrable(Type *t) {
 
 std::string CallArgTypes::to_string() const {
   std::string result;
-  for (Type *t : numbered_) { result += t->to_string() + ", "; }
-  for (const auto&kv : named_) {
-    result += kv.first + ": " + kv.second->to_string() + ", ";
+  for (Type *t : pos_) { result += (!t ? "null" : t->to_string()) + ", "; }
+  for (const auto &kv : named_) {
+    result +=
+        kv.first + ": " + (!kv.second ? "null" : kv.second->to_string()) + ", ";
   }
   return result;
 }
@@ -562,11 +563,8 @@ std::string CallArgTypes::to_string() const {
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
-                                        CallArgs *args) {
-  ASSERT(!args->numbered_.empty(), ""); // TODO empty call args?
-
-  auto expanded = args->just_types().expand_variants();
+CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
+  auto expanded = just_types().expand_variants();
 
   for (Declaration *decl : decls) {
     if (decl->type->is<Function>()) {
@@ -584,12 +582,12 @@ static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
 
       // Match the ordered unnamed arguments
       std::vector<Expression *> bindings(fn->args_.size(), nullptr);
-      for (size_t i = 0; i < args->numbered_.size(); ++i) {
-        bindings[i] = args->numbered_[i].get();
+      for (size_t i = 0; i < pos_.size(); ++i) {
+        bindings[i] = pos_[i].get();
       }
 
       // Match the named arguments
-      for (const auto &name_and_expr : args->named_) {
+      for (const auto &name_and_expr : named_) {
         auto iter = index_lookup.find(name_and_expr.first);
         if (iter == index_lookup.end()) {
           // Missing named argument so passing on to the next option. Perhaps it
@@ -605,7 +603,13 @@ static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
                                        ? fn->type->input->as<Tuple>().entries
                                        : std::vector<Type *>{fn->type->input};
       CallArgTypes call_arg_types;
-      call_arg_types.numbered_.resize(args->numbered_.size(), nullptr);
+      call_arg_types.pos_.resize(pos_.size(), nullptr);
+      // TODO Do flat_map for real
+      for (const auto &kv : index_lookup) {
+        if (kv.second < pos_.size()) { continue; }
+        call_arg_types.named_.emplace_back(kv.first, nullptr);
+      }
+
       for (size_t i = 0; i < bindings.size(); ++i) {
         if (bindings[i] == nullptr) {
           if (fn->args_[i].second == nullptr) {
@@ -614,14 +618,22 @@ static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
             goto next_option;
           }
         } else {
-          // Call-site really specifies an argument (either named or numbered).
+          // Call-site really specifies an argument (either named or
+          // positional).
           Type *match = TypeMeet(bindings[i]->type, inputs[i]);
           if (match == nullptr) { goto next_option; }
-          // f(bool | int) called with (int | real). match == int
-          if (i < call_arg_types.numbered_.size()) {
-            call_arg_types.numbered_[i] = match;
-          } else {
-            NOT_YET();
+          if (i < call_arg_types.pos_.size()) {
+            call_arg_types.pos_[i] = match;
+          } else { // Matched a named argument
+            // TODO implement flat_map for real
+            for (auto &kv : call_arg_types.named_) {
+              if (kv.first == fn->args_[i].first) {
+                kv.second = match;
+                goto done_success;
+              }
+            }
+            UNREACHABLE("Failed to find entry in map.");
+          done_success:;
           }
         }
       }
@@ -638,21 +650,27 @@ static CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls,
   next_option:;
   }
 
+  bool missing_something = false;
   for (const auto &kv : expanded) {
     if (kv.second.first == nullptr) {
-      LOG << "Failed to find a match for everything.";
-      return {};
+      LOG << kv.first;
+      missing_something = true;
     }
+  }
+
+  if (missing_something) {
+    LOG << "Failed to find a match for everything.";
+    return {};
   }
 
   return expanded;
 }
 
-void CallArgs::verify_types() {
+void Call::verify_types() {
   STARTING_CHECK;
-  for (auto &num : numbered_) {
-    num->verify_types();
-    if (num->type == Err) { type = Err; }
+  for (auto &pos : pos_) {
+    pos->verify_types();
+    if (pos->type == Err) { type = Err; }
   }
   for (auto &name_and_val : named_) {
     name_and_val.second->verify_types();
@@ -660,56 +678,84 @@ void CallArgs::verify_types() {
   }
   if (type == Err) { return; }
 
-  // We actually don't care what the type of this is and specifying it precisely
-  // is hard due to not understanding the ordering of named arguments. It just
-  // needs to be not Unknown or nullptr.
-  type = Void;
+  if (fn_->is<Identifier>()) {
+    // When looking for a match, we know that no two matches can overlap since
+    // we have already verified there is no shadowing. However, we still need to
+    // verify that all cases involving variants are covered.
+
+    // TODO Make FindFunctionCallMatch a method of Call?
+    auto call_map = FindFunctionCallMatch(
+        scope_->AllDeclsWithId(fn_->as<Identifier>().token));
+
+    if (call_map.empty()) {
+      ErrorLog::NoValidMatches(span);
+      type = fn_->type = Err;
+    } else {
+      bindings_ = std::move(call_map);
+      // fn_'s type should never be considered beacuse it could be one of many
+      // different things. 'Void' just indicates that it has been computed
+      // (i.e., not 0x0 or Unknown) and that there was no error in doing so
+      // (i.e., not Err).
+      fn_->type = Void;
+
+      std::vector<Type *> out_types;
+      out_types.reserve(bindings_.size());
+      for (const auto &kv : bindings_) {
+        out_types.push_back(kv.second.first->type->as<Function>().output);
+      }
+      type = Var(std::move(out_types));
+    }
+  } else {
+    // TODO reimplement casts and calling functions not bound to identifiers.
+    ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    type      = Err;
+    fn_->type = Err;
+  }
 }
 
-CallArgTypes CallArgs::just_types() const {
-  ASSERT_EQ(type, Void); // Means it's been validated
+CallArgTypes Call::just_types() const {
+  ASSERT_NE(type, Err);
+  ASSERT_NE(type, nullptr);
   CallArgTypes result;
-  result.numbered_.reserve(numbered_.size());
-  for (const auto &expr : numbered_) { result.numbered_.push_back(expr->type); }
+  result.pos_.reserve(pos_.size());
+  for (const auto &expr : pos_) { result.pos_.push_back(expr->type); }
   for (const auto &kv : named_) {
-    result.named_.emplace(kv.first, kv.second->type);
+    result.named_.emplace_back(kv.first, kv.second->type);
   }
   return result;
 }
 
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
-  if (lhs.numbered_.size() != rhs.numbered_.size()) {
-    return lhs.numbered_.size() < rhs.numbered_.size();
+  if (lhs.pos_.size() != rhs.pos_.size()) {
+    return lhs.pos_.size() < rhs.pos_.size();
   }
   if (lhs.named_.size() != rhs.named_.size()) {
     return lhs.named_.size() < rhs.named_.size();
   }
-  if (lhs.numbered_ < rhs.numbered_) { return true; }
-  if (lhs.numbered_ > rhs.numbered_) { return false; }
-/*
+  if (lhs.pos_ < rhs.pos_) { return true; }
+  if (lhs.pos_ > rhs.pos_) { return false; }
+
   auto l_iter = lhs.named_.begin();
   auto r_iter = rhs.named_.begin();
-  while (*l_iter == *r_iter) {
+  while (l_iter != lhs.named_.end() && *l_iter == *r_iter) {
     ++l_iter;
     ++r_iter;
   }
   if (l_iter == lhs.named_.end()) { return false; }
   return *l_iter < *r_iter;
-  */
-  return false;
 }
 
 CallArgMap CallArgTypes::expand_variants() const {
   CallArgMap results;
-  std::queue<std::pair<size_t, std::vector<Type*>>> numbered_arg_types;
-  numbered_arg_types.emplace(0, numbered_);
-  while (!numbered_arg_types.empty()) {
-    auto index_and_vec = std::move(numbered_arg_types.front());
-    numbered_arg_types.pop();
+  std::queue<std::pair<size_t, std::vector<Type *>>> pos_arg_queue;
+  std::vector<std::vector<Type *>> expanded_pos_arg_types;
+
+  pos_arg_queue.emplace(0, pos_);
+  while (!pos_arg_queue.empty()) {
+    auto index_and_vec = std::move(pos_arg_queue.front());
+    pos_arg_queue.pop();
     if (index_and_vec.first == index_and_vec.second.size()) {
-      CallArgTypes call_arg_type;
-      call_arg_type.numbered_ = std::move(index_and_vec.second);
-      results[std::move(call_arg_type)];
+      expanded_pos_arg_types.push_back(std::move(index_and_vec.second));
       continue;
     }
     auto *type = index_and_vec.second[index_and_vec.first];
@@ -718,13 +764,49 @@ CallArgMap CallArgTypes::expand_variants() const {
         size_t i      = index_and_vec.first;
         auto type_vec = index_and_vec.second;
         type_vec[i]   = v;
-        numbered_arg_types.emplace(i + 1, std::move(type_vec));
+        pos_arg_queue.emplace(i + 1, std::move(type_vec));
       }
     } else {
       ++index_and_vec.first;
-      numbered_arg_types.push(std::move(index_and_vec));
+      pos_arg_queue.push(std::move(index_and_vec));
     }
   }
+
+  std::queue<std::pair<size_t, std::vector<std::pair<std::string, Type *>>>>
+      named_arg_queue;
+  std::vector<std::vector<std::pair<std::string, Type *>>>
+      expanded_named_arg_types;
+  named_arg_queue.emplace(0, named_);
+  while (!named_arg_queue.empty()) {
+    auto index_and_vec = std::move(named_arg_queue.front());
+    named_arg_queue.pop();
+    if (index_and_vec.first == index_and_vec.second.size()) {
+      expanded_named_arg_types.push_back(std::move(index_and_vec.second));
+      continue;
+    }
+    auto name_and_type = index_and_vec.second[index_and_vec.first];
+    if (name_and_type.second->is<Variant>()) {
+    for (Type *v : name_and_type.second->as<Variant>().variants_) {
+      size_t i           = index_and_vec.first;
+      auto type_vec      = index_and_vec.second;
+      type_vec[i].second = v;
+      named_arg_queue.emplace(i + 1, std::move(type_vec));
+      }
+    } else {
+      ++index_and_vec.first;
+      named_arg_queue.push(std::move(index_and_vec));
+    }
+  }
+
+  for (const auto &pos_arg_types : expanded_pos_arg_types) {
+    for (const auto &named_arg_types : expanded_named_arg_types) {
+      CallArgTypes call_arg_types;
+      call_arg_types.pos_   = pos_arg_types;
+      call_arg_types.named_ = named_arg_types;
+      results[std::move(call_arg_types)];
+    }
+  }
+
 
   // TODO named argument dispatch?
   return results;
@@ -732,56 +814,6 @@ CallArgMap CallArgTypes::expand_variants() const {
 
 void Binop::verify_types() {
   STARTING_CHECK;
-
-  if (op == Language::Operator::Call) {
-    if (lhs->is<Identifier>()) {
-      auto &lhs_id = lhs->as<Identifier>();
-      // It suffices to find just the first match because we are guarnateed that
-      // there can only be one.
-      // TODO handle case where rhs == nullptr
-      if (rhs) { VERIFY_AND_RETURN_ON_ERROR(rhs); }
-      auto call_map = FindFunctionCallMatch(
-          scope_->AllDeclsWithId(lhs_id.token), &rhs->as<CallArgs>());
-
-      if (call_map.empty()) {
-        ErrorLog::NoValidMatches(span);
-        type = lhs->type = Err;
-      } else {
-        rhs->as<CallArgs>().bindings_ = std::move(call_map);
-        lhs->type = Void;
-        std::vector<Type *> out_types;
-        out_types.reserve(rhs->as<CallArgs>().bindings_.size());
-        for (const auto &kv : rhs->as<CallArgs>().bindings_) {
-          out_types.push_back(kv.second.first->type->as<Function>().output);
-        }
-        type = Var(std::move(out_types));
-      }
-
-      return;
-    } else {
-      VERIFY_AND_RETURN_ON_ERROR(lhs);
-      // TODO reimplement casts
-      ASSERT_TYPE(Function, lhs->type);
-      if (lhs->type->as<Function>().input == (rhs ? rhs->type : Void)) {
-        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
-                                       std::to_string(__LINE__) + ": ");
-        type      = Err;
-        lhs->type = Err;
-        return;
-      }
-
-      if (rhs) {
-        rhs->verify_types();
-        if (rhs->type == Err) {
-          type = Err;
-          return;
-        }
-      }
-
-      type = lhs->type->as<Function>().output;
-      return;
-    }
-  }
 
   lhs->verify_types();
   rhs->verify_types();

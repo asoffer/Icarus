@@ -195,7 +195,7 @@ auto Rules = std::vector<Rule>{
          ErrMsg::BothReserved<1, 0, 2>),
     Rule(expr, {EXPR, op_l, RESERVED}, ErrMsg::NonBinopReserved<1, 2>),
     Rule(expr, {RESERVED, op_l, RESERVED}, ErrMsg::NonBinopBothReserved),
-    Rule(expr, {EXPR, l_paren, EXPR, r_paren}, AST::Binop::BuildCallOperator),
+    Rule(expr, {EXPR, l_paren, EXPR, r_paren}, AST::Call::Build),
     Rule(expr, {EXPR, l_paren, r_paren}, BuildEmptyParen),
     Rule(expr, {EXPR, l_bracket, EXPR, r_bracket},
          AST::Binop::BuildIndexOperator),

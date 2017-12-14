@@ -25,8 +25,8 @@ void Unop::lrvalue_check() {
   lvalue = (op == Language::Operator::At) ? Assign::LVal : Assign::RVal;
 }
 
-void CallArgs::lrvalue_check() {
-  for (auto &num : numbered_) { num->lrvalue_check(); }
+void Call::lrvalue_check() {
+  for (auto &pos: pos_) { pos->lrvalue_check(); }
   for (auto &kv : named_) { kv.second->lrvalue_check(); }
 }
 

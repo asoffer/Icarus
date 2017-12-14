@@ -22,10 +22,10 @@ std::string ArrayLiteral::to_string(size_t n) const {
   return output;
 }
 
-std::string CallArgs::to_string(size_t n) const {
+std::string Call::to_string(size_t n) const {
   std::stringstream ss;
-  ss << tabs(n) << "<CallArgs>\n";
-  for (const auto &num : numbered_) { ss << num->to_string(n + 1); }
+  ss << tabs(n) << "<Call " << TYPE_OR("") << ">\n" << fn_->to_string(n + 1);
+  for (const auto &pos : pos_) { ss << pos->to_string(n + 1); }
   for (const auto &kv : named_) {
     ss << tabs(n + 1) << kv.first << " =>\n" << kv.second->to_string(n + 2);
   }
@@ -95,7 +95,6 @@ std::string Binop::to_string(size_t n) const {
     case Language::Operator::Div: ss << "Div"; break;
     case Language::Operator::Mod: ss << "Mod"; break;
     case Language::Operator::Index: ss << "Index"; break;
-    case Language::Operator::Call: ss << "Call"; break;
     case Language::Operator::Dots: ss << "Dots"; break;
     case Language::Operator::In: ss << "In"; break;
     case Language::Operator::Tick: ss << "Tick"; break;
@@ -103,7 +102,9 @@ std::string Binop::to_string(size_t n) const {
     default: UNREACHABLE();
     }
   }
-  ss << ">\n" << lhs->to_string(n + 1) << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
+  ss << ">\n"
+     << lhs->to_string(n + 1)
+     << (rhs ? rhs->to_string(n + 1) : tabs(n + 1) + "0x0\n");
   return ss.str();
 }
 

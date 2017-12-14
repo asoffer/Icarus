@@ -169,8 +169,6 @@ struct Identifier : public Terminal {
 struct Binop : public Expression {
   EXPR_FNS(Binop);
   static base::owned_ptr<Node>
-  BuildCallOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
-  static base::owned_ptr<Node>
   BuildIndexOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   Binop *Clone() const override { return new Binop(*this); }
@@ -194,8 +192,10 @@ using CallArgMap =
     std::map<CallArgTypes, std::pair<Declaration *, std::vector<Expression *>>>;
 
 struct CallArgTypes {
-  std::vector<Type *> numbered_;
-  std::map<std::string, Type *> named_;
+  std::vector<Type *> pos_;
+
+  // TODO implement flat map for real
+  std::vector<std::pair<std::string, Type *>> named_;
 
   // TODO this map data structure is getting too complicated
   CallArgMap expand_variants() const;
@@ -203,19 +203,28 @@ struct CallArgTypes {
 };
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
 
-struct CallArgs : public Expression {
-  EXPR_FNS(CallArgs);
-  CallArgs *Clone() const override { return new CallArgs(*this); }
+struct Call : public Expression {
+  EXPR_FNS(Call);
+  Call *Clone() const override { return new Call(*this); }
+
+  static base::owned_ptr<Node>
+  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
   CallArgTypes just_types() const;
 
-  std::vector<base::owned_ptr<Expression>> numbered_;
-  std::unordered_map<std::string, base::owned_ptr<Expression>> named_;
+  base::owned_ptr<Expression> fn_;
+  std::vector<base::owned_ptr<Expression>> pos_;
+
+  // TODO implement flat map for real
+  std::vector<std::pair<std::string, base::owned_ptr<Expression>>> named_;
 
   // Filled in after type verification
   CallArgMap bindings_;
+
+  // Used to fill in bindings_.
+  CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls);
 };
 
 struct ArgumentMetaData {
@@ -241,16 +250,6 @@ struct Declaration : public Expression {
   // stored. For const values (declared with :: or ::=), holds the actual
   // constant value.
   IR::Val addr = IR::Val::None();
-
-  // TODO: this is wasteful to recompute this each time. This looks like roughly
-  // the format you need, so it would be nice if a declaration just stored
-  // essentially this. The name is reachable through the identifier (do you need
-  // the identifier at all, or can it just be a string held in the declaration?)
-  // The type is already present. has_default can just be a check to see if
-  // init_val is null.
-  ArgumentMetaData meta_data() const {
-    return ArgumentMetaData{type, identifier->token, init_val != nullptr};
-  }
 
   bool const_ = false;
 

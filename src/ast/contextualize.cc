@@ -21,8 +21,8 @@ void InDecl::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   container->contextualize(scope, args);
 }
 
-void CallArgs::contextualize(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &num : numbered_) { num->contextualize(scope, args); }
+void Call::contextualize(Scope *scope, std::vector<IR::Val> *args) {
+  for (auto &pos : pos_) { pos->contextualize(scope, args); }
   for (auto &kv : named_) { kv.second->contextualize(scope, args); }
 }
 
@@ -283,7 +283,7 @@ base::owned_ptr<Node> ScopeLiteral::contextualize(
   return std::move(result);
 }
 
-base::owned_ptr<Node> CallArgs::contextualize(
+base::owned_ptr<Node> Call::contextualize(
     const std::unordered_map<const Expression *, IR::Val> & /* replacements */)
     const {
   NOT_YET();

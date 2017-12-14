@@ -21,17 +21,14 @@ extern size_t precedence(Operator op);
 // Operand is not a declaration
 base::owned_ptr<AST::Node>
 BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto binop        = base::make_owned<AST::Binop>();
-  binop->span       = TextSpan(nodes[0]->span, nodes[2]->span);
-  binop->lhs        = base::move<AST::Expression>(nodes[0]);
-  binop->rhs        = base::make_owned<AST::CallArgs>();
-  binop->op         = Language::Operator::Call;
-  binop->precedence = Language::precedence(binop->op);
+  auto call  = base::make_owned<AST::Call>();
+  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->fn_  = base::move<AST::Expression>(nodes[0]);
 
-  if (binop->lhs->is<AST::Declaration>()) {
-    ErrorLog::CallingDeclaration(binop->lhs->span);
+  if (call->fn_->is<AST::Declaration>()) {
+    ErrorLog::CallingDeclaration(call->fn_->span);
   }
-  return binop;
+  return call;
 }
 
 namespace AST {
@@ -259,8 +256,8 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
 //
 // Internal checks: None
 base::owned_ptr<Node> ChainOp::Build(std::vector<base::owned_ptr<Node>> nodes) {
-  auto op = nodes[1]->as<TokenNode>().op;
-  auto op_prec  = Language::precedence(op);
+  auto op      = nodes[1]->as<TokenNode>().op;
+  auto op_prec = Language::precedence(op);
   base::owned_ptr<ChainOp> chain;
 
   // Add to a chain so long as the precedence levels match. The only thing at
@@ -325,79 +322,71 @@ base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
   return access;
 }
 
-static base::owned_ptr<Node>
-BuildOperator(std::vector<base::owned_ptr<Node>> nodes,
-              Language::Operator op) {
-  auto binop  = base::make_owned<Binop>();
-  binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
-
-  binop->lhs = base::move<Expression>(nodes[0]);
-  if (op == Language::Operator::Call) {
-    auto call_args = base::make_owned<CallArgs>();
-    if (nodes[2]->is<CommaList>()) {
-      bool seen_named = false;
-      for (auto &expr : nodes[2]->as<CommaList>().exprs) {
-        if (expr->is<Binop>() &&
-            expr->as<Binop>().op == Language::Operator::Assign) {
-          seen_named = true;
-          call_args->named_.emplace(
-              std::move(expr->as<Binop>().lhs->as<Identifier>().token),
-              std::move(expr->as<Binop>().rhs));
-        } else {
-          if (seen_named) {
-            ErrorLog::LogGeneric(TextSpan(), "TODO");
-          }
-          call_args->numbered_.push_back(std::move(expr));
-        }
-      }
-    } else {
-      if (nodes[2]->is<Binop>() &&
-          nodes[2]->as<Binop>().op == Language::Operator::Assign) {
-        call_args->named_.emplace(
-            std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
-            std::move(nodes[2]->as<Binop>().rhs));
-      } else {
-        call_args->numbered_.push_back(base::move<Expression>(nodes[2]));
-      }
-    }
-    binop->rhs = std::move(call_args);
-  } else {
-    binop->rhs = base::move<Expression>(nodes[2]);
-  }
-
-  binop->op  = op;
-
-  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
-
-  if (binop->rhs->is<Declaration>()) {
-    ErrorLog::RHSNonTickDecl(binop->rhs->span);
-  }
-
-  binop->precedence = Language::precedence(binop->op);
-
-  return binop;
-}
-
 // Input guarantees
 // [expr] [l_paren] [expr] [r_paren]
 //
-// Internal checks: (checked in BuildOperator)
+// Internal checks:
 // LHS is not a declaration
 // RHS is not a declaration
 base::owned_ptr<Node>
-Binop::BuildCallOperator(std::vector<base::owned_ptr<Node>> nodes) {
-  return BuildOperator(std::move(nodes), Language::Operator::Call);
+Call::Build(std::vector<base::owned_ptr<Node>> nodes) {
+  auto call  = base::make_owned<Call>();
+  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->fn_  = base::move<Expression>(nodes[0]);
+
+  if (nodes[2]->is<CommaList>()) {
+    bool seen_named = false;
+    for (auto &expr : nodes[2]->as<CommaList>().exprs) {
+      if (expr->is<Binop>() &&
+          expr->as<Binop>().op == Language::Operator::Assign) {
+        seen_named = true;
+        call->named_.emplace_back(
+            std::move(expr->as<Binop>().lhs->as<Identifier>().token),
+            std::move(expr->as<Binop>().rhs));
+      } else {
+        if (seen_named) { ErrorLog::LogGeneric(TextSpan(), "TODO"); }
+        call->pos_.push_back(std::move(expr));
+      }
+    }
+  } else {
+    if (nodes[2]->is<Binop>() &&
+        nodes[2]->as<Binop>().op == Language::Operator::Assign) {
+      call->named_.emplace_back(
+          std::move(nodes[2]->as<Binop>().lhs->as<Identifier>().token),
+          std::move(nodes[2]->as<Binop>().rhs));
+    } else {
+      call->pos_.push_back(base::move<Expression>(nodes[2]));
+    }
+  }
+  call->precedence = Language::precedence(Language::Operator::Call);
+
+  if (call->fn_->is<Declaration>()) { ErrorLog::LHSDecl(call->fn_->span); }
+  return call;
 }
 
 // Input guarantees
 // [expr] [l_bracket] [expr] [r_bracket]
 //
-// Internal checks: (checked in BuildOperator)
+// Internal checks:
 // LHS is not a declaration
 // RHS is not a declaration
 base::owned_ptr<Node>
 Binop::BuildIndexOperator(std::vector<base::owned_ptr<Node>> nodes) {
-  return BuildOperator(std::move(nodes), Language::Operator::Index);
+  auto binop        = base::make_owned<Binop>();
+  binop->span       = TextSpan(nodes[0]->span, nodes[2]->span);
+  binop->lhs        = base::move<Expression>(nodes[0]);
+  binop->rhs        = base::move<Expression>(nodes[2]);
+  binop->op         = Language::Operator::Index;
+  binop->precedence = Language::precedence(binop->op);
+
+  if (binop->lhs->is<Declaration>()) { ErrorLog::LHSDecl(binop->lhs->span); }
+
+  if (binop->rhs->is<Declaration>()) {
+    // TODO Tick is no longer a thing
+    ErrorLog::RHSNonTickDecl(binop->rhs->span);
+  }
+
+  return binop;
 }
 
 // Input guarantee:

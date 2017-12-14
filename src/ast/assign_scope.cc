@@ -109,9 +109,10 @@ void FunctionLiteral::assign_scope(Scope *scope) {
 void Jump::assign_scope(Scope *scope) { scope_ = scope; }
 void CodeBlock::assign_scope(Scope *scope) { scope_ = scope; }
 
-void CallArgs::assign_scope(Scope *scope) {
+void Call::assign_scope(Scope *scope) {
   scope_ = scope;
-  for (auto &num : numbered_) { num->assign_scope(scope); }
+  fn_->assign_scope(scope);
+  for (auto &num : pos_) { num->assign_scope(scope); }
   for (auto &kv : named_) { kv.second->assign_scope(scope); }
 }
 
