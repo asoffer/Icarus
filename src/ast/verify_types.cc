@@ -563,13 +563,13 @@ std::string CallArgTypes::to_string() const {
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
-  auto expanded = just_types().expand_variants();
-
-  for (Declaration *decl : decls) {
+std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
+  std::map<CallArgTypes, Binding> result;
+  u64 total_size_covered = 0;
+  for (Declaration *decl :
+       scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
     if (decl->type->is<Function>()) {
       // TODO what about const vs. non-const declarations?
-
       auto *fn = Evaluate(decl->init_val.get()).value.as<IR::Func *>();
 
       // Compute name -> argument number map.
@@ -581,9 +581,10 @@ CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
       }
 
       // Match the ordered unnamed arguments
-      std::vector<Expression *> bindings(fn->args_.size(), nullptr);
+      std::vector<std::pair<Type *, Expression *>> binding(
+          fn->args_.size(), std::pair<Type *, Expression *>(nullptr, nullptr));
       for (size_t i = 0; i < pos_.size(); ++i) {
-        bindings[i] = pos_[i].get();
+        binding[i] = std::make_pair(nullptr, pos_[i].get());
       }
 
       // Match the named arguments
@@ -595,7 +596,8 @@ CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
           // passed on each option.
           goto next_option;
         } else {
-          bindings[iter->second] = name_and_expr.second.get();
+          binding[iter->second] =
+              std::make_pair(nullptr, name_and_expr.second.get());
         }
       }
 
@@ -610,18 +612,21 @@ CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
         call_arg_types.named_.emplace_back(kv.first, nullptr);
       }
 
-      for (size_t i = 0; i < bindings.size(); ++i) {
-        if (bindings[i] == nullptr) {
+      for (size_t i = 0; i < binding.size(); ++i) {
+        if (binding[i].second == nullptr) {
           if (fn->args_[i].second == nullptr) {
             // No match because a match would require this declaration to have a
             // default parameter here but it doesn't have one.
             goto next_option;
           }
         } else {
-          // Call-site really specifies an argument (either named or
-          // positional).
-          Type *match = TypeMeet(bindings[i]->type, inputs[i]);
-          if (match == nullptr) { goto next_option; }
+          Type *match = TypeMeet(binding[i].second->type, inputs[i]);
+          if (match == nullptr) {
+            goto next_option;
+          } else {
+            binding[i].first = inputs[i];
+          }
+
           if (i < call_arg_types.pos_.size()) {
             call_arg_types.pos_[i] = match;
           } else { // Matched a named argument
@@ -638,32 +643,38 @@ CallArgMap Call::FindFunctionCallMatch(const std::vector<Declaration *> decls) {
         }
       }
 
-      for (const auto &expanded_call : call_arg_types.expand_variants()) {
-        auto iter = expanded.find(expanded_call.first);
-        if (iter != expanded.end()) {
-          iter->second = std::make_pair(decl, std::move(bindings));
+      u64 expanded_size = 1;
+      for (auto entry : binding) {
+        if (entry.first->is<Variant>()) {
+          expanded_size *= entry.first->as<Variant>().variants_.size();
         }
       }
+      total_size_covered += expanded_size;
+      result.emplace(call_arg_types, Binding{decl, std::move(binding)});
     } else {
       // TODO type casts can be called like functions.
     }
   next_option:;
   }
 
-  bool missing_something = false;
-  for (const auto &kv : expanded) {
-    if (kv.second.first == nullptr) {
-      LOG << kv.first;
-      missing_something = true;
+  u64 expanded_size = 1;
+  for (const auto &arg : pos_) {
+    if (arg->type->is<Variant>()) {
+      expanded_size *= arg->type->as<Variant>().variants_.size();
+    }
+  }
+  for (const auto &arg : named_) {
+    if (arg.second->type->is<Variant>()) {
+      expanded_size *= arg.second->type->as<Variant>().variants_.size();
     }
   }
 
-  if (missing_something) {
+  if (total_size_covered != expanded_size) {
     LOG << "Failed to find a match for everything.";
     return {};
   }
 
-  return expanded;
+  return result;
 }
 
 void Call::verify_types() {
@@ -683,9 +694,7 @@ void Call::verify_types() {
     // we have already verified there is no shadowing. However, we still need to
     // verify that all cases involving variants are covered.
 
-    // TODO Make FindFunctionCallMatch a method of Call?
-    auto call_map = FindFunctionCallMatch(
-        scope_->AllDeclsWithId(fn_->as<Identifier>().token));
+    auto call_map = FindFunctionCallMatch();
 
     if (call_map.empty()) {
       ErrorLog::NoValidMatches(span);
@@ -701,7 +710,7 @@ void Call::verify_types() {
       std::vector<Type *> out_types;
       out_types.reserve(bindings_.size());
       for (const auto &kv : bindings_) {
-        out_types.push_back(kv.second.first->type->as<Function>().output);
+        out_types.push_back(kv.second.decl_->type->as<Function>().output);
       }
       type = Var(std::move(out_types));
     }
@@ -745,8 +754,8 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
   return *l_iter < *r_iter;
 }
 
-CallArgMap CallArgTypes::expand_variants() const {
-  CallArgMap results;
+std::vector<CallArgTypes> CallArgTypes::expand_variants() const {
+  std::vector<CallArgTypes> results;
   std::queue<std::pair<size_t, std::vector<Type *>>> pos_arg_queue;
   std::vector<std::vector<Type *>> expanded_pos_arg_types;
 
@@ -803,12 +812,10 @@ CallArgMap CallArgTypes::expand_variants() const {
       CallArgTypes call_arg_types;
       call_arg_types.pos_   = pos_arg_types;
       call_arg_types.named_ = named_arg_types;
-      results[std::move(call_arg_types)];
+      results.push_back(std::move(call_arg_types));
     }
   }
 
-
-  // TODO named argument dispatch?
   return results;
 }
 

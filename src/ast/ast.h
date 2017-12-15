@@ -187,10 +187,6 @@ struct Binop : public Expression {
   base::owned_ptr<Expression> lhs, rhs;
 };
 
-struct CallArgTypes;
-using CallArgMap =
-    std::map<CallArgTypes, std::pair<Declaration *, std::vector<Expression *>>>;
-
 struct CallArgTypes {
   std::vector<Type *> pos_;
 
@@ -198,10 +194,16 @@ struct CallArgTypes {
   std::vector<std::pair<std::string, Type *>> named_;
 
   // TODO this map data structure is getting too complicated
-  CallArgMap expand_variants() const;
+  std::vector<CallArgTypes> expand_variants() const;
   std::string to_string() const;
 };
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
+
+// Represents a particular call resolution.
+struct Binding {
+  Declaration* decl_;
+  std::vector<std::pair<Type *, Expression *>> exprs_;
+};
 
 struct Call : public Expression {
   EXPR_FNS(Call);
@@ -221,10 +223,10 @@ struct Call : public Expression {
   std::vector<std::pair<std::string, base::owned_ptr<Expression>>> named_;
 
   // Filled in after type verification
-  CallArgMap bindings_;
+  std::map<CallArgTypes, Binding> bindings_;
 
   // Used to fill in bindings_.
-  CallArgMap FindFunctionCallMatch(const std::vector<Declaration *> decls);
+  std::map<CallArgTypes, Binding> FindFunctionCallMatch();
 };
 
 struct ArgumentMetaData {

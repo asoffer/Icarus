@@ -110,25 +110,9 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
 
   // TODO deal with dispatching named arguments.
   for (const auto &binding : bindings_) {
-    std::vector<Type*> bound_types = binding.first.pos_;
-    bound_types.resize(binding.second.second.size());
-    for (size_t i = binding.first.pos_.size(); i < bound_types.size(); ++i) {
-      for (const auto &entry : named_) {
-        if (entry.second.get() != binding.second.second[i]) { continue; }
-        for (const auto& p : binding.first.named_) {
-          if (p.first != entry.first) { continue; }
-          bound_types[i] = p.second;
-          goto next_type;
-       }
-       UNREACHABLE();
-      }
-      UNREACHABLE();
-    next_type:;
-    }
-
     auto next_binding = IR::Func::Current->AddBlock();
     // Generate code that attempts to match the types on each argument (only
-    // check the ones at the call-site that could be variants.
+    // check the ones at the call-site that could be variants).
     for (size_t i = 0; i < pos_.size(); ++i) {
       if (!pos_[i]->type->is<Variant>()) { continue; }
 
@@ -156,14 +140,14 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     }
 
     // After the last check, if you pass, you should dispatch
-    auto fn_to_call = binding.second.first->identifier->EmitIR(kind);
+    auto fn_to_call = binding.second.decl_->identifier->EmitIR(kind);
     std::vector<IR::Val> args;
-    args.resize(pos_vals.size() + named_vals.size());
+    args.resize(binding.second.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {
-      auto *expr = binding.second.second[i];
+      auto *expr = binding.second.exprs_[i].second;
       if (expr->type->is<Variant>()) {
         args[i] = PtrCallFix(IR::Cast(
-            IR::Val::Type(Ptr(bound_types[i])),
+            IR::Val::Type(Ptr(binding.second.exprs_[i].first)),
             IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
                         IR::Val::Uint(1))));
       } else {
