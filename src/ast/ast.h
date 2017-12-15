@@ -201,6 +201,7 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
 
 // Represents a particular call resolution.
 struct Binding {
+  bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
   Declaration* decl_;
   std::vector<std::pair<Type *, Expression *>> exprs_;
 };

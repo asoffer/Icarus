@@ -581,10 +581,12 @@ std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
       }
 
       // Match the ordered unnamed arguments
-      std::vector<std::pair<Type *, Expression *>> binding(
-          fn->args_.size(), std::pair<Type *, Expression *>(nullptr, nullptr));
+      Binding binding{decl,
+                      std::vector<std::pair<Type *, Expression *>>(
+                          fn->args_.size(),
+                          std::pair<Type *, Expression *>(nullptr, nullptr))};
       for (size_t i = 0; i < pos_.size(); ++i) {
-        binding[i] = std::make_pair(nullptr, pos_[i].get());
+        binding.exprs_[i] = std::make_pair(nullptr, pos_[i].get());
       }
 
       // Match the named arguments
@@ -596,7 +598,7 @@ std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
           // passed on each option.
           goto next_option;
         } else {
-          binding[iter->second] =
+          binding.exprs_[iter->second] =
               std::make_pair(nullptr, name_and_expr.second.get());
         }
       }
@@ -612,19 +614,19 @@ std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
         call_arg_types.named_.emplace_back(kv.first, nullptr);
       }
 
-      for (size_t i = 0; i < binding.size(); ++i) {
-        if (binding[i].second == nullptr) {
-          if (fn->args_[i].second == nullptr) {
-            // No match because a match would require this declaration to have a
-            // default parameter here but it doesn't have one.
+      for (size_t i = 0; i < binding.exprs_.size(); ++i) {
+        if (binding.defaulted(i)) {
+          if (!fn->has_default(i)) {
             goto next_option;
+          } else {
+            binding.exprs_[i].first = inputs[i];
           }
         } else {
-          Type *match = TypeMeet(binding[i].second->type, inputs[i]);
+          Type *match = TypeMeet(binding.exprs_[i].second->type, inputs[i]);
           if (match == nullptr) {
             goto next_option;
           } else {
-            binding[i].first = inputs[i];
+            binding.exprs_[i].first = inputs[i];
           }
 
           if (i < call_arg_types.pos_.size()) {
@@ -644,13 +646,13 @@ std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
       }
 
       u64 expanded_size = 1;
-      for (auto entry : binding) {
+      for (auto entry : binding.exprs_) {
         if (entry.first->is<Variant>()) {
           expanded_size *= entry.first->as<Variant>().variants_.size();
         }
       }
       total_size_covered += expanded_size;
-      result.emplace(call_arg_types, Binding{decl, std::move(binding)});
+      result.emplace(call_arg_types, std::move(binding));
     } else {
       // TODO type casts can be called like functions.
     }

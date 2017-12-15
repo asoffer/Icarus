@@ -704,13 +704,18 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
     }
   }
 
+  if (tk == "(") {  // TODO these should just generate Call::Build directly.
+    return AST::Call::Build(std::move(nodes));
+  } else if (tk == "'") {
+    std::swap(nodes[0], nodes[2]);
+    return AST::Call::Build(std::move(nodes));
+  }
+
   auto binop  = base::make_owned<AST::Binop>();
   binop->span = TextSpan(nodes[0]->span, nodes[1]->span);
 
   binop->lhs = base::move<AST::Expression>(nodes[0]);
   binop->rhs = base::move<AST::Expression>(nodes[2]);
-
-  if (tk == "'") { std::swap(binop->lhs, binop->rhs); }
 
   static const std::unordered_map<std::string, Language::Operator> symbols = {
       {"=>", Language::Operator::Rocket}, {"", Language::Operator::Cast},
@@ -721,8 +726,7 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
       {"%=", Language::Operator::ModEq},  {"..", Language::Operator::Dots},
       {"+", Language::Operator::Add},     {"-", Language::Operator::Sub},
       {"*", Language::Operator::Mul},     {"/", Language::Operator::Div},
-      {"%", Language::Operator::Mod},     {"[", Language::Operator::Index},
-      {"'", Language::Operator::Call},    {"(", Language::Operator::Call}};
+      {"%", Language::Operator::Mod},     {"[", Language::Operator::Index}};
   {
     auto iter = symbols.find(tk);
     if (iter != symbols.end()) { binop->op = iter->second; }

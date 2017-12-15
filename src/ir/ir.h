@@ -398,6 +398,7 @@ struct Func {
   // object?
   ::Function *const type = nullptr;
   std::vector<std::pair<std::string, AST::Expression *>> args_;
+  bool has_default(size_t i) const { return args_[i].second != nullptr; }
   i32 num_regs_  = 0;
   i32 num_voids_ = 0;
   std::string name;

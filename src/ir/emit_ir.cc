@@ -145,7 +145,11 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     args.resize(binding.second.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {
       auto *expr = binding.second.exprs_[i].second;
-      if (expr->type->is<Variant>()) {
+      if (expr == nullptr) {
+        ASSERT_NE(binding.second.exprs_[i].first , nullptr);
+        args[i] =
+            fn_to_call.value.as<IR::Func *>()->args_[i].second->EmitIR(kind);
+      } else if (expr->type->is<Variant>()) {
         args[i] = PtrCallFix(IR::Cast(
             IR::Val::Type(Ptr(binding.second.exprs_[i].first)),
             IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
