@@ -438,6 +438,13 @@ struct FuncResetter {
   for (auto resetter  = ::IR::FuncResetter(fn); resetter.cond_;                \
        resetter.cond_ = false)
 
+template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
+  auto continue_block = Func::Current->AddBlock();
+  CondJump(cond, B ? exit_block : continue_block,
+           B ? continue_block : exit_block);
+  return continue_block;
+}
+
 } // namespace IR
 
 std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,

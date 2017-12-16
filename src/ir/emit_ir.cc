@@ -88,6 +88,42 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
 }
 
+// TODO better name
+static IR::Val VariantMatch(const IR::Val &needles, Type *haystack) {
+  auto runtime_type = IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), needles));
+
+  if (haystack->is<Variant>()) {
+    // TODO I'm fairly confident this will work, but it's also overkill because
+    // we may already know this type matches if one variant is a subset of the
+    // other.
+    auto landing = IR::Func::Current->AddBlock();
+
+    std::vector<IR::Val> phi_args;
+    phi_args.reserve(2 * haystack->as<Variant>().size() + 2);
+    for (Type *v : haystack->as<Variant>().variants_) {
+      phi_args.push_back(IR::Val::Block(IR::Block::Current));
+      phi_args.push_back(IR::Val::Bool(true));
+
+      IR::Block::Current =
+          IR::EarlyExitOn<true>(landing, IR::Eq(IR::Val::Type(v), runtime_type));
+    }
+
+    phi_args.push_back(IR::Val::Block(IR::Block::Current));
+    phi_args.push_back(IR::Val::Bool(false));
+    IR::UncondJump(landing);
+
+    IR::Block::Current = landing;
+    auto phi           = IR::Phi(Bool);
+    IR::Func::Current->SetArgs(phi, std::move(phi_args));
+
+    return IR::Func::Current->Command(phi).reg();
+
+  } else {
+    // TODO actually just implicitly convertible to haystack
+    return IR::Eq(IR::Val::Type(haystack), runtime_type);
+  }
+}
+
 IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
@@ -98,45 +134,40 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   std::vector<IR::Val> pos_vals;
   pos_vals.reserve(pos_.size());
   for (auto &expr : pos_) {
-    pos_vals.push_back(expr->EmitIR(kind));
+    pos_vals.push_back(expr->lvalue == Assign::LVal
+                           ? PtrCallFix(expr->EmitLVal(kind))
+                           : expr->EmitIR(kind));
     expr_map[expr.get()] = &pos_vals.back(); // Safe because of reserve.
   }
 
   std::unordered_map<std::string, IR::Val> named_vals;
   for (auto &kv : named_) {
-    auto iter = named_vals.emplace(kv.first, kv.second->EmitIR(kind)).first;
+    auto iter =
+        named_vals
+            .emplace(kv.first, kv.second->lvalue == Assign::LVal
+                                   ? PtrCallFix(kv.second->EmitLVal(kind))
+                                   : kv.second->EmitIR(kind))
+            .first;
     expr_map[kv.second.get()] = &iter->second;
   }
 
   // TODO deal with dispatching named arguments.
-  for (const auto &binding : bindings_) {
+  for (const auto &binding : dispatch_table_.bindings_) {
     auto next_binding = IR::Func::Current->AddBlock();
     // Generate code that attempts to match the types on each argument (only
     // check the ones at the call-site that could be variants).
     for (size_t i = 0; i < pos_.size(); ++i) {
       if (!pos_[i]->type->is<Variant>()) { continue; }
-
-      auto continue_check = IR::Func::Current->AddBlock();
-      auto eq_cmp =
-          IR::Eq(IR::Val::Type(binding.first.pos_[i]),
-                 IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), pos_vals[i])));
-      IR::CondJump(eq_cmp, continue_check, next_binding);
-
-      IR::Block::Current = continue_check;
+      IR::Block::Current = IR::EarlyExitOn<false>(
+          next_binding, VariantMatch(pos_vals[i], binding.first.pos_[i]));
     }
 
     for (const auto kv : named_) {
-      for (const auto &entry : binding.first.named_) {
-        if (entry.first != kv.first) { continue; }
-        auto continue_check = IR::Func::Current->AddBlock();
-        auto eq_cmp         = IR::Eq(IR::Val::Type(entry.second),
-                             IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)),
-                                               named_vals[entry.first])));
-        IR::CondJump(eq_cmp, continue_check, next_binding);
-
-        IR::Block::Current = continue_check;
-        break;
-      }
+      auto iter = binding.first.find(kv.first);
+      if (iter == binding.first.named_.end()) { continue; }
+      if (!kv.second->type->is<Variant>()) { continue; }
+      IR::Block::Current = IR::EarlyExitOn<false>(
+          next_binding, VariantMatch(named_vals[iter->first], iter->second));
     }
 
     // After the last check, if you pass, you should dispatch
@@ -146,16 +177,35 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     for (size_t i = 0; i < args.size(); ++i) {
       auto *expr = binding.second.exprs_[i].second;
       if (expr == nullptr) {
-        ASSERT_NE(binding.second.exprs_[i].first , nullptr);
+        ASSERT_NE(binding.second.exprs_[i].first, nullptr);
         args[i] =
             fn_to_call.value.as<IR::Func *>()->args_[i].second->EmitIR(kind);
       } else if (expr->type->is<Variant>()) {
-        args[i] = PtrCallFix(IR::Cast(
-            IR::Val::Type(Ptr(binding.second.exprs_[i].first)),
-            IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
-                        IR::Val::Uint(1))));
+        if (binding.second.exprs_[i].first->is<Variant>()) {
+          args[i] = *expr_map[expr];
+        } else {
+          args[i] = PtrCallFix(IR::Cast(
+              IR::Val::Type(Ptr(binding.second.exprs_[i].first)),
+              IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
+                          IR::Val::Uint(1))));
+        }
       } else {
-        args[i] = *expr_map[expr];
+        if (binding.second.exprs_[i].first->is<Variant>()) {
+          // TODO don't alloca here!
+          // Note: I actually don't care what the other type is so long as it's
+          // a variant of the appropriate size
+          auto entry = IR::Alloca(binding.second.exprs_[i].first);
+          auto entry_as_type = IR::Cast(IR::Val::Type(Ptr(Type_)), entry);
+          IR::Store(IR::Val::Type(expr->type), entry_as_type);
+          auto val_ptr = IR::Cast(IR::Val::Type(Ptr(expr->type)),
+                                  IR::PtrIncr(entry_as_type, IR::Val::Uint(1)));
+          Type::CallAssignment(expr->type, expr->type, *expr_map[expr],
+                               val_ptr);
+
+          args[i] = entry;
+        } else {
+          args[i] = *expr_map[expr];
+        }
       }
     }
 
@@ -169,6 +219,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
 
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
+
   return IR::Val::None(); // TODO make this work for functions that don't
                           // return void (need to allocate a result location
                           // which may be a variant and insert the correct

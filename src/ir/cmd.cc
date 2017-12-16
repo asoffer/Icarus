@@ -525,6 +525,7 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
   for (size_t i = 0; i < arguments.size(); ++i) { regs_[i] = arguments[i]; }
 }
 
+// TODO this may not be necessary anymore? I can just make the phi later?
 void Func::SetArgs(CmdIndex cmd_index, std::vector<Val> args) {
   auto &cmd = Command(cmd_index);
   ASSERT(cmd.op_code_ == Op::Phi, "");

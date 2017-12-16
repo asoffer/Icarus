@@ -188,6 +188,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                        resolved[0].value.as<Type *>());
     } else {
       call_stack.top().fn_->dump();
+      cmd.dump(10);
       NOT_YET("(", resolved[0], ", ", resolved[1], ")");
     }
   case Op::Xor: return Xor(resolved[0], resolved[1]);

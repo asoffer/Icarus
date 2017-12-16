@@ -23,12 +23,8 @@ std::string Escape(char c) {
 }
 
 IR::Val PtrCallFix(IR::Val v) {
-  ASSERT(v.type->is<Pointer>(), "");
-  if (ptr_cast<Pointer>(v.type)->pointee->is_big()) {
-    return v;
- } else {
-   return IR::Load(v);
- }
+  ASSERT_TYPE(Pointer, v.type);
+  return (v.type->as<Pointer>().pointee->is_big()) ? v : IR::Load(v);
 }
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   if (expr->is<AST::FunctionLiteral>()) {

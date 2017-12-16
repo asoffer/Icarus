@@ -172,21 +172,21 @@ void Variant::EmitRepr(IR::Val id_val) {
   // TODO repr_func
   // TODO remove these casts in favor of something easier to track properties on
 
-  auto landing = IR::Func::Current->AddBlock();
-  auto type    = IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), id_val));
+  auto landing     = IR::Func::Current->AddBlock();
+  auto ptr_to_type = IR::Cast(IR::Val::Type(Ptr(Type_)), id_val);
+  auto type        = IR::Load(ptr_to_type);
   for (Type *v : variants_) {
+    auto old_block   = IR::Block::Current;
     auto found_block = IR::Func::Current->AddBlock();
-    auto next_block  = IR::Func::Current->AddBlock();
-    IR::CondJump(IR::Eq(type, IR::Val::Type(v)), found_block, next_block);
 
     IR::Block::Current = found_block;
-    v->EmitRepr(PtrCallFix(
-        IR::Cast(IR::Val::Type(Ptr(v)),
-                 IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), id_val),
-                             IR::Val::Uint(1)))));
+    v->EmitRepr(PtrCallFix(IR::Cast(
+        IR::Val::Type(Ptr(v)), IR::PtrIncr(ptr_to_type, IR::Val::Uint(1)))));
     IR::UncondJump(landing);
 
-    IR::Block::Current = next_block;
+    IR::Block::Current = old_block;
+    IR::Block::Current =
+        IR::EarlyExitOn<true>(found_block, IR::Eq(type, IR::Val::Type(v)));
   }
   IR::UncondJump(landing);
   IR::Block::Current = landing;

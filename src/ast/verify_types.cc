@@ -563,9 +563,9 @@ std::string CallArgTypes::to_string() const {
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
-  std::map<CallArgTypes, Binding> result;
-  u64 total_size_covered = 0;
+DispatchTable Call::ComputeDispatchTable() {
+  DispatchTable table;
+
   for (Declaration *decl :
        scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
     if (decl->type->is<Function>()) {
@@ -633,50 +633,36 @@ std::map<CallArgTypes, Binding> Call::FindFunctionCallMatch() {
             call_arg_types.pos_[i] = match;
           } else { // Matched a named argument
             // TODO implement flat_map for real
-            for (auto &kv : call_arg_types.named_) {
-              if (kv.first == fn->args_[i].first) {
-                kv.second = match;
-                goto done_success;
-              }
-            }
-            UNREACHABLE("Failed to find entry in map.");
-          done_success:;
+            auto iter = call_arg_types.find(fn->args_[i].first);
+            ASSERT(iter != call_arg_types.named_.end(), "");
+            iter->second = match;
           }
         }
       }
 
-      u64 expanded_size = 1;
-      for (auto entry : binding.exprs_) {
-        if (entry.first->is<Variant>()) {
-          expanded_size *= entry.first->as<Variant>().variants_.size();
-        }
-      }
-      total_size_covered += expanded_size;
-      result.emplace(call_arg_types, std::move(binding));
+      table.insert(std::move(call_arg_types), std::move(binding));
     } else {
       // TODO type casts can be called like functions.
     }
   next_option:;
   }
 
+  return table;
+}
+
+void DispatchTable::insert(CallArgTypes call_arg_types, Binding binding) {
   u64 expanded_size = 1;
-  for (const auto &arg : pos_) {
-    if (arg->type->is<Variant>()) {
-      expanded_size *= arg->type->as<Variant>().variants_.size();
-    }
+  for (Type *pos : call_arg_types.pos_) {
+    if (pos->is<Variant>()) { expanded_size *= pos->as<Variant>().size(); }
   }
-  for (const auto &arg : named_) {
-    if (arg.second->type->is<Variant>()) {
-      expanded_size *= arg.second->type->as<Variant>().variants_.size();
+  for (const auto &named : call_arg_types.named_) {
+    if (named.second->is<Variant>()) {
+      expanded_size *= named.second->as<Variant>().size();
     }
   }
 
-  if (total_size_covered != expanded_size) {
-    LOG << "Failed to find a match for everything.";
-    return {};
-  }
-
-  return result;
+  total_size_ += expanded_size;
+  bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
 void Call::verify_types() {
@@ -696,44 +682,44 @@ void Call::verify_types() {
     // we have already verified there is no shadowing. However, we still need to
     // verify that all cases involving variants are covered.
 
-    auto call_map = FindFunctionCallMatch();
+    dispatch_table_ = ComputeDispatchTable();
 
-    if (call_map.empty()) {
-      ErrorLog::NoValidMatches(span);
-      type = fn_->type = Err;
-    } else {
-      bindings_ = std::move(call_map);
-      // fn_'s type should never be considered beacuse it could be one of many
-      // different things. 'Void' just indicates that it has been computed
-      // (i.e., not 0x0 or Unknown) and that there was no error in doing so
-      // (i.e., not Err).
-      fn_->type = Void;
-
-      std::vector<Type *> out_types;
-      out_types.reserve(bindings_.size());
-      for (const auto &kv : bindings_) {
-        out_types.push_back(kv.second.decl_->type->as<Function>().output);
-      }
-      type = Var(std::move(out_types));
+    u64 expanded_size = 1;
+    for (const auto &arg : pos_) {
+      if (!arg->type->is<Variant>()) { continue; }
+      expanded_size *= arg->type->as<Variant>().size();
     }
+    for (const auto &arg : named_) {
+      if (!arg.second->type->is<Variant>()) { continue; }
+      expanded_size *= arg.second->type->as<Variant>().size();
+    }
+
+    if (dispatch_table_.total_size_ != expanded_size) {
+      LOG << "Failed to find a match for everything. ("
+          << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
+      type = fn_->type = Err;
+      return;
+    }
+
+    // fn_'s type should never be considered beacuse it could be one of many
+    // different things. 'Void' just indicates that it has been computed (i.e.,
+    // not 0x0 or Unknown) and that there was no error in doing so (i.e., not
+    // Err).
+    fn_->type = Void;
+
+    std::vector<Type *> out_types;
+    out_types.reserve(dispatch_table_.bindings_.size());
+    for (const auto &kv : dispatch_table_.bindings_) {
+      out_types.push_back(kv.second.decl_->type->as<Function>().output);
+    }
+    type = Var(std::move(out_types));
+
   } else {
     // TODO reimplement casts and calling functions not bound to identifiers.
     ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
     type      = Err;
     fn_->type = Err;
   }
-}
-
-CallArgTypes Call::just_types() const {
-  ASSERT_NE(type, Err);
-  ASSERT_NE(type, nullptr);
-  CallArgTypes result;
-  result.pos_.reserve(pos_.size());
-  for (const auto &expr : pos_) { result.pos_.push_back(expr->type); }
-  for (const auto &kv : named_) {
-    result.named_.emplace_back(kv.first, kv.second->type);
-  }
-  return result;
 }
 
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
@@ -754,71 +740,6 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
   }
   if (l_iter == lhs.named_.end()) { return false; }
   return *l_iter < *r_iter;
-}
-
-std::vector<CallArgTypes> CallArgTypes::expand_variants() const {
-  std::vector<CallArgTypes> results;
-  std::queue<std::pair<size_t, std::vector<Type *>>> pos_arg_queue;
-  std::vector<std::vector<Type *>> expanded_pos_arg_types;
-
-  pos_arg_queue.emplace(0, pos_);
-  while (!pos_arg_queue.empty()) {
-    auto index_and_vec = std::move(pos_arg_queue.front());
-    pos_arg_queue.pop();
-    if (index_and_vec.first == index_and_vec.second.size()) {
-      expanded_pos_arg_types.push_back(std::move(index_and_vec.second));
-      continue;
-    }
-    auto *type = index_and_vec.second[index_and_vec.first];
-    if (type->is<Variant>()) {
-      for (Type *v : type->as<Variant>().variants_) {
-        size_t i      = index_and_vec.first;
-        auto type_vec = index_and_vec.second;
-        type_vec[i]   = v;
-        pos_arg_queue.emplace(i + 1, std::move(type_vec));
-      }
-    } else {
-      ++index_and_vec.first;
-      pos_arg_queue.push(std::move(index_and_vec));
-    }
-  }
-
-  std::queue<std::pair<size_t, std::vector<std::pair<std::string, Type *>>>>
-      named_arg_queue;
-  std::vector<std::vector<std::pair<std::string, Type *>>>
-      expanded_named_arg_types;
-  named_arg_queue.emplace(0, named_);
-  while (!named_arg_queue.empty()) {
-    auto index_and_vec = std::move(named_arg_queue.front());
-    named_arg_queue.pop();
-    if (index_and_vec.first == index_and_vec.second.size()) {
-      expanded_named_arg_types.push_back(std::move(index_and_vec.second));
-      continue;
-    }
-    auto name_and_type = index_and_vec.second[index_and_vec.first];
-    if (name_and_type.second->is<Variant>()) {
-    for (Type *v : name_and_type.second->as<Variant>().variants_) {
-      size_t i           = index_and_vec.first;
-      auto type_vec      = index_and_vec.second;
-      type_vec[i].second = v;
-      named_arg_queue.emplace(i + 1, std::move(type_vec));
-      }
-    } else {
-      ++index_and_vec.first;
-      named_arg_queue.push(std::move(index_and_vec));
-    }
-  }
-
-  for (const auto &pos_arg_types : expanded_pos_arg_types) {
-    for (const auto &named_arg_types : expanded_named_arg_types) {
-      CallArgTypes call_arg_types;
-      call_arg_types.pos_   = pos_arg_types;
-      call_arg_types.named_ = named_arg_types;
-      results.push_back(std::move(call_arg_types));
-    }
-  }
-
-  return results;
 }
 
 void Binop::verify_types() {

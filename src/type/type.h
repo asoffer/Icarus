@@ -208,6 +208,7 @@ private:
 struct Variant : public Type {
   TYPE_FNS(Variant);
   Variant(std::vector<Type *> variants) : variants_(std::move(variants)) {}
+  size_t size() const { return variants_.size(); }
   std::vector<Type *> variants_;
   IR::Func *repr_func = nullptr;
 };

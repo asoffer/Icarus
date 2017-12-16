@@ -15,6 +15,7 @@
 #include "../ir/ir.h"
 #include "../scope.h"
 #include "../type/type.h"
+#include "dispatch.h"
 #include "operators.h"
 
 struct Scope;
@@ -187,25 +188,6 @@ struct Binop : public Expression {
   base::owned_ptr<Expression> lhs, rhs;
 };
 
-struct CallArgTypes {
-  std::vector<Type *> pos_;
-
-  // TODO implement flat map for real
-  std::vector<std::pair<std::string, Type *>> named_;
-
-  // TODO this map data structure is getting too complicated
-  std::vector<CallArgTypes> expand_variants() const;
-  std::string to_string() const;
-};
-bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
-
-// Represents a particular call resolution.
-struct Binding {
-  bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
-  Declaration* decl_;
-  std::vector<std::pair<Type *, Expression *>> exprs_;
-};
-
 struct Call : public Expression {
   EXPR_FNS(Call);
   Call *Clone() const override { return new Call(*this); }
@@ -215,8 +197,6 @@ struct Call : public Expression {
 
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
-  CallArgTypes just_types() const;
-
   base::owned_ptr<Expression> fn_;
   std::vector<base::owned_ptr<Expression>> pos_;
 
@@ -224,10 +204,8 @@ struct Call : public Expression {
   std::vector<std::pair<std::string, base::owned_ptr<Expression>>> named_;
 
   // Filled in after type verification
-  std::map<CallArgTypes, Binding> bindings_;
-
-  // Used to fill in bindings_.
-  std::map<CallArgTypes, Binding> FindFunctionCallMatch();
+  DispatchTable dispatch_table_;
+  DispatchTable ComputeDispatchTable();
 };
 
 struct ArgumentMetaData {
