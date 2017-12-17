@@ -31,7 +31,9 @@ struct TextSpan {
 
 struct SourceLocation {
   // Get the character that the cursor is currently pointing to
-  char operator*() { return source->lines[cursor.line_num][cursor.offset]; }
+  const char &operator*() const {
+    return source->lines[cursor.line_num][cursor.offset];
+  }
   const Source::Line &line() const { return source->lines[cursor.line_num]; }
   TextSpan ToSpan() const {
     TextSpan span(cursor, cursor);

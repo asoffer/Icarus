@@ -1,9 +1,10 @@
+#include <unordered_map>
+#include <limits>
+
 #include "ast/ast.h"
 #include "error_log.h"
 #include "nnt.h"
 #include "type/type.h"
-#include <cstring>
-#include <unordered_map>
 
 #define PRIMITIVE_MACRO(GlobalName, EnumName, name)                            \
   Type *GlobalName = new Primitive(PrimType::EnumName);
@@ -93,38 +94,6 @@ NNT NextWord(SourceLocation &loc) {
   return NNT(std::make_unique<AST::Identifier>(span, token), Language::expr);
 }
 
-// Precondition: Output parameter points to a value of zero.
-//
-// Consumes longest sequence of alpha-numeric or underscore characters. Returns
-// the number of digit characters read or -1. If the sequence consists only of
-// '_'s or digits in the approprioate base, the output parameter points to the
-// parsed value, and the number of digit characters read is returned. Otherwise,
-// -1 is returned and there are no constraints on the value of the output
-// parameter.
-template <int Base> static i32 ConsumeIntegerInBase(SourceLocation &cursor, i32 *val) {
-  i32 chars_read = 0;
-start:
-  if (*cursor == '_') {
-    cursor.Increment();
-    goto start;
-  }
-
-  int digit = DigitInBase<Base>(*cursor);
-  if (digit != -1) {
-    *val = (*val * Base) + digit;
-    ++chars_read;
-    cursor.Increment();
-    goto start;
-  }
-
-  if (IsAlphaNumeric(*cursor)) {
-    while (IsAlphaNumeric(*cursor)) { cursor.Increment(); }
-    return -1;
-  }
-
-  return chars_read;
-}
-
 template <int Base> static inline int pow(i32 num) {
   // TODO repeated squaring
   int result = 1;
@@ -132,42 +101,185 @@ template <int Base> static inline int pow(i32 num) {
   return result;
 }
 
+template <int Base> bool RepresentableAsIntInBase(const std::vector<i32> &);
+
+template <> bool RepresentableAsIntInBase<2>(const std::vector<i32> &digits) {
+  return digits.size() < 32;
+}
+
+template <> bool RepresentableAsIntInBase<8>(const std::vector<i32> &digits) {
+  return digits.size() < 11 || (digits.size() == 11 && digits[0] < 2);
+}
+
+template <> bool RepresentableAsIntInBase<16>(const std::vector<i32> &digits) {
+  return digits.size() < 8 || (digits.size() == 8 && digits[0] < 8);
+}
+
+template <> bool RepresentableAsIntInBase<10>(const std::vector<i32> &digits) {
+  return !(digits.size() > 10) &&
+         (digits.size() < 10 ||
+          digits < std::vector<i32>{2, 1, 4, 7, 4, 8, 3, 6, 4, 8});
+}
+
+template <int Base>
+static i32 RepresentationAsIntInBase(const std::vector<i32> &digits) {
+  if (!RepresentableAsIntInBase<Base>(digits)) { return -1; }
+  i32 result = 0;
+  for (i32 digit : digits) {
+    ASSERT_LT(digit, Base);
+    result = result * Base + digit;
+  }
+  return result;
+}
+
+template <int Base>
+static double RepresentationAsRealInBase(const std::vector<i32> &, i32) {
+  // TODO
+  return NAN;
+}
+
+template <>
+double RepresentationAsRealInBase<2>(const std::vector<i32> &digits,
+                                     i32 dot_offset) {
+  if (digits.size() > 52) { return NAN; }
+  if (dot_offset > 1023 || dot_offset < -1022) { return NAN; }
+  NOT_YET();
+}
+
+template <>
+double RepresentationAsRealInBase<16>(const std::vector<i32> &digits,
+                                     i32 dot_offset) {
+  if (digits.size() > 13) { return NAN; }
+  i32 exponent = dot_offset * 4 - 3;
+  if (dot_offset >= 0) { exponent += 4; }
+  if (digits[0] >= 8) { ++exponent; }
+  if (digits[0] >= 4) { ++exponent; }
+  if (digits[0] >= 2) { ++exponent; }
+
+  if (exponent > 1023 || exponent < -1022) { return NAN; }
+  NOT_YET();
+}
+
+template <>
+double RepresentationAsRealInBase<8>(const std::vector<i32> &digits,
+                                     i32 dot_offset) {
+  if (digits.size() > 13) { return NAN; }
+  i32 exponent = dot_offset * 3 - 2;
+  if (dot_offset >= 0) { exponent += 3; }
+  if (digits[0] >= 2) { ++exponent; }
+  if (digits[0] >= 4) { ++exponent; }
+
+  if (exponent > 1023 || exponent < -1022) { return NAN; }
+  NOT_YET();
+}
 template <int Base> static NNT NextNumberInBase(SourceLocation &loc) {
   auto span = loc.ToSpan();
-  // TODO deal with bits_needed
-  i32 int_part   = 0;
-  i32 frac_part  = 0;
-  i32 int_digits = ConsumeIntegerInBase<Base>(loc, &int_part);
-  span.finish = loc.cursor;
 
-  if (int_digits == -1) {
-    // TODO log an error
-    // TODO Check for '.' and continue reading?
-    return NNT::TerminalExpression(span, IR::Val::Int(0));
+  const char *start = nullptr;
+  const char *dot   = nullptr;
+  size_t num_dots   = 0; // 0 indicates int, 1 indicates real,
+                         // anything else indicates an error.
+  bool seen_zero = false;
+  std::vector<i32> digits;
+
+  while (true) {
+    switch (*loc) {
+    case '.':
+      if (num_dots++ == 0) { dot = &*loc; }
+      goto next_pre_start;
+    case '0': seen_zero = true; goto next_pre_start;
+    case '_': goto next_pre_start;
+    default: {
+      i32 digit = DigitInBase<Base>(*loc);
+      if (digit == -1) { goto done_reading; }
+      digits.push_back(digit);
+      start = &*loc;
+      goto seen_start;
+    }
+    }
+  next_pre_start:
+    loc.Increment();
   }
-
-  if (*loc!= '.') {
-    return NNT::TerminalExpression(span, IR::Val::Int(int_part));
-  }
-
+seen_start:
   loc.Increment();
-  if (*loc== '.') { // Looking at "..", not a fraction
-    loc.BackUp();
-    span.finish = loc.cursor;
-    return NNT::TerminalExpression(span, IR::Val::Int(int_part));
+
+  while (true) {
+    switch (*loc) {
+    case '.':
+      if (num_dots++ == 0) { dot = &*loc; }
+      goto next_post_start;
+    case '_': goto next_post_start;
+    default:
+      i32 digit = DigitInBase<Base>(*loc);
+      if (digit == -1) { goto done_reading; }
+      digits.push_back(digit);
+    }
+  next_post_start:
+    loc.Increment();
   }
 
-  i32 frac_digits = ConsumeIntegerInBase<Base>(loc, &frac_part);
+done_reading:
+  (void)dot;
+
   span.finish = loc.cursor;
-  if (frac_digits == -1) {
-    // TODO log an error
-    return NNT::TerminalExpression(span, IR::Val::Real(0));
+  if (start == nullptr) {
+   if (!seen_zero) {
+     ErrorLog::LogGeneric(
+         span,
+         "TODO " __FILE__ ":" + std::to_string(__LINE__) +
+             ": Found a number that has no starting digit. Treat as zero.");
+    }
+  } else {
+    switch (num_dots) {
+    default:
+      ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
+                                     std::to_string(__LINE__) +
+                                     ": Too many periods in numeric literal. "
+                                     "Ignoring all but the first.");
+      // Fallthrough to real number case.
+    case 1: {
+      i32 dot_offset = 0; // TODO compute this based on where the dot is
+      double rep = RepresentationAsRealInBase<Base>(digits, dot_offset);
+      if (std::isnan(rep)) {
+        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
+                                       std::to_string(__LINE__) +
+                                       "Number is too large to fit in a  IEEE "
+                                       "754-2008 floating point number");
+        return NNT::TerminalExpression(span, IR::Val::Real(0.0));
+      } else {
+        return NNT::TerminalExpression(span, IR::Val::Real(rep));
+      }
+    }
+    case 0: {
+      i32 rep = RepresentationAsIntInBase<Base>(digits);
+      if (rep == -1) {
+        ErrorLog::LogGeneric(
+            span, "TODO " __FILE__ ":" + std::to_string(__LINE__) +
+                      "Number is too large to fit in a 32-bit integer");
+        return NNT::TerminalExpression(span, IR::Val::Int(0));
+      } else {
+        return NNT::TerminalExpression(span, IR::Val::Int(rep));
+      }
+    } break;
+    }
   }
 
-  double val = static_cast<double>(int_part) +
-               (static_cast<double>(frac_part) / pow<Base>(frac_digits));
-  return NNT::TerminalExpression(span, IR::Val::Real(val));
+  // Also ignore any trailing alpha-numeric
+  bool found_extra_junk = false;
+  while (IsAlphaNumericOrUnderscore(*loc)) {
+    found_extra_junk = true;
+    loc.Increment();
+  }
+
+  if (found_extra_junk) {
+    ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+  }
+
+  span.finish = loc.cursor;
+  return NNT{};
 }
+
 
 static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   loc.Increment();
@@ -177,7 +289,14 @@ static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   case 'o': loc.Increment(); return NextNumberInBase<8>(loc);
   case 'd': loc.Increment(); return NextNumberInBase<10>(loc);
   case 'x': loc.Increment(); return NextNumberInBase<16>(loc);
-  default: loc.BackUp(); return NextNumberInBase<10>(loc);
+  default:
+    ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+    loc.BackUp();
+    // TODO guess the base that was intended? If it has letters a-f, it's
+    // obviously hex. If it's just 0s and 1s it's probably binary (unless it's
+    // short enough?)
+    return NextNumberInBase<10>(loc);
   }
 }
 
