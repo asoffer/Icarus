@@ -179,7 +179,7 @@ operator*(const base::owned_ptr<Property> &lhs,
                    SafeMath<i32>::Mul(lhs_int.max_, rhs_int.min_),
                    SafeMath<i32>::Mul(lhs_int.max_, rhs_int.max_)}) {
     std::tie(new_min, new_max) =
-        std::make_pair(std::min(new_min, val), std::max(new_max, val));
+        std::pair(std::min(new_min, val), std::max(new_max, val));
   }
   return base::make_owned<Range<i32>>(new_min, new_max);
 }

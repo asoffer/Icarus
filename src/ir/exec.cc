@@ -51,7 +51,8 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
   }
 
   CURRENT_FUNC(nullptr) {
-    fn = base::wrap_unique(fn_lit.EmitTemporaryIR(kind).value.as<IR::Func *>());
+    fn = base::wrap_unique(
+        std::get<IR::Func *>(fn_lit.EmitTemporaryIR(kind).value));
   }
 
   to_release->release();
@@ -112,8 +113,7 @@ BlockIndex ExecContext::ExecuteBlock() {
     }
   }
 
-  ASSERT(result.value.is<BlockIndex>(), "");
-  return result.value.as<BlockIndex>();
+  return std::get<BlockIndex>(result.value);
 }
 
 IR::Val Stack::Push(Pointer *ptr) {
@@ -136,7 +136,9 @@ IR::Val Stack::Push(Pointer *ptr) {
 }
 
 void ExecContext::Resolve(Val *v) const {
-  if (v->value.is<Register>()) { *v = reg(v->value.as<Register>()); }
+  if (auto *r = std::get_if<Register>(&v->value); r != nullptr) {
+    *v = reg(*r);
+  }
 }
 
 Val ExecContext::ExecuteCmd(const Cmd &cmd) {
@@ -155,42 +157,46 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     std::vector<Type *> types;
     types.reserve(resolved.size());
     for (const auto &val : resolved) {
-      types.push_back(val.value.as<Type *>());
+      types.push_back(std::get<Type *>(val.value));
     }
     return IR::Val::Type(Var(std::move(types)));
   }
   case Op::Array: return Array(resolved[0], resolved[1]);
   case Op::Cast:
     if (resolved[1].type == Int) {
-      if (resolved[0].value.as<Type *>() == Int) {
+      if (std::get<Type*>(resolved[0].value) == Int) {
         return resolved[1];
-      } else if (resolved[0].value.as<Type *>() == Uint) {
-        return IR::Val::Uint(static_cast<u64>(resolved[1].value.as<i32>()));
-      } else if (resolved[0].value.as<Type *>() == Real) {
-        return IR::Val::Real(static_cast<double>(resolved[1].value.as<i32>()));
+      } else if (std::get<Type*>(resolved[0].value) == Uint) {
+        return IR::Val::Uint(
+            static_cast<u64>(std::get<i32>(resolved[1].value)));
+      } else if (std::get<Type *>(resolved[0].value) == Real) {
+        return IR::Val::Real(
+            static_cast<double>(std::get<i32>(resolved[1].value)));
       } else {
         call_stack.top().fn_->dump();
         NOT_YET("(", resolved[0], ", ", resolved[1], ")");
       }
     } else if (resolved[1].type == Uint) {
-      if (resolved[0].value.as<Type *>() == Uint) {
+      if (std::get<Type *>(resolved[0].value) == Uint) {
         return resolved[1];
-      } else if (resolved[0].value.as<Type *>() == Int) {
-        return IR::Val::Uint(static_cast<i32>(resolved[1].value.as<u64>()));
-      } else if (resolved[0].value.as<Type *>() == Real) {
-        return IR::Val::Real(static_cast<double>(resolved[1].value.as<u64>()));
+      } else if (std::get<Type*>(resolved[0].value) == Int) {
+        return IR::Val::Uint(static_cast<i32>(std::get<u64>(resolved[1].value)));
+      } else if (std::get<Type*>(resolved[0].value) == Real) {
+        return IR::Val::Real(
+            static_cast<double>(std::get<u64>(resolved[1].value)));
       } else {
         NOT_YET();
       }
-    } else if (resolved[0].value.as<Type *>()->is<Pointer>() &&
+    } else if (std::get<Type*>(resolved[0].value)->is<Pointer>() &&
                resolved[1].type->is<Pointer>()) {
-      return Val::Addr(resolved[1].value.as<Addr>(),
-                       resolved[0].value.as<Type *>());
+      return Val::Addr(std::get<Addr>(resolved[1].value),
+                       std::get<Type *>(resolved[0].value));
     } else {
       call_stack.top().fn_->dump();
       cmd.dump(10);
       NOT_YET("(", resolved[0], ", ", resolved[1], ")");
     }
+    break;
   case Op::Xor: return Xor(resolved[0], resolved[1]);
   case Op::Lt: return Lt(resolved[0], resolved[1]);
   case Op::Le: return Le(resolved[0], resolved[1]);
@@ -199,14 +205,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Ge: return Ge(resolved[0], resolved[1]);
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
-    call_stack.top().rets_ AT(resolved[0].value.as<IR::ReturnValue>().value) =
-        resolved[1];
+    call_stack.top().rets_ AT(
+        std::get<IR::ReturnValue>(resolved[0].value).value) = resolved[1];
     return IR::Val::None();
   }
   case Op::Extend: return Extend(resolved[0]);
   case Op::Trunc: return Trunc(resolved[0]);
   case Op::Call: {
-    auto fn = resolved.back().value.as<IR::Func *>();
+    auto fn = std::get<IR::Func *>(resolved.back().value);
     resolved.pop_back();
     // There's no need to do validation here, because by virtue of executing
     // this function, we know we've already validated all functions that could
@@ -217,157 +223,125 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return results.empty() ? IR::Val::None() : results[0];
   } break;
   case Op::Print:
-    if (resolved[0].type == Int) {
-      std::cerr << resolved[0].value.as<i32>();
-    } else if (resolved[0].type == Uint) {
-      std::cerr << resolved[0].value.as<u64>();
-    } else if (resolved[0].type == Bool) {
-      std::cerr << (resolved[0].value.as<bool>() ? "true" : "false");
-    } else if (resolved[0].type == Char) {
-      std::cerr << resolved[0].value.as<char>();
-    } else if (resolved[0].type == Real) {
-      std::cerr << resolved[0].value.as<double>();
-    } else if (resolved[0].type == Type_) {
-      std::cerr << resolved[0].value.as<Type *>()->to_string();
-    } else if (resolved[0].type == Code) {
-      std::cerr << *resolved[0].value.as<AST::CodeBlock *>();
-    } else if (resolved[0].type == String) {
-      std::cerr << resolved[0].value.as<std::string>();
-    } else if (resolved[0].type->is<Pointer>()) {
-      std::cerr << resolved[0].value.as<Addr>().to_string();
-    } else if (resolved[0].type->is<Enum>()) {
-      std::cerr << ptr_cast<Enum>(resolved[0].type)
-                       ->members[resolved[0].value.as<EnumVal>().value];
-    } else if (resolved[0].type->is<Function>()) {
-      std::cerr << "{" << resolved[0].type->to_string() << "}";
-    } else {
-      NOT_YET(resolved[0].type);
-    }
+    std::visit(
+        base::overloaded{
+            [](i32 n) { std::cerr << n; }, //
+            [](u64 n) { std::cerr << n; },
+            [](bool b) { std::cerr << (b ? "true" : "false"); },
+            [](char c) { std::cerr << c; }, //
+            [](double d) { std::cerr << d; },
+            [](Type *t) { std::cerr << t->to_string(); },
+            [](AST::CodeBlock *cb) { std::cerr << cb->to_string(); },
+            [](const std::string &s) { std::cerr << s; },
+            [](const Addr &a) { std::cerr << a.to_string(); },
+            [&resolved](EnumVal e) {
+              std::cerr << resolved[0].type->as<Enum>().members[e.value];
+            },
+            [](IR::Func *f) {
+              std::cerr << "{" << f->type->to_string() << "}";
+            },
+            [&resolved](auto) { NOT_YET(resolved[0].type); },
+        },
+        resolved[0].value);
     return IR::Val::None();
   case Op::Ptr: return Ptr(resolved[0]);
-  case Op::Load:
-    switch (resolved[0].value.as<Addr>().kind) {
+  case Op::Load: {
+    auto &addr = std::get<Addr>(resolved[0].value);
+    switch (addr.kind) {
     case Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
       UNREACHABLE();
-    case Addr::Kind::Global:
-      return global_vals[resolved[0].value.as<Addr>().as_global];
+    case Addr::Kind::Global: return global_vals[addr.as_global];
     case Addr::Kind::Heap: {
       if (cmd.type == Bool) {
-        return IR::Val::Bool(
-            *static_cast<bool *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Bool(*static_cast<bool *>(addr.as_heap));
       } else if (cmd.type == Char) {
-        return IR::Val::Char(
-            *static_cast<char *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Char(*static_cast<char *>(addr.as_heap));
       } else if (cmd.type == Int) {
-        return IR::Val::Int(
-            *static_cast<i32 *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Int(*static_cast<i32 *>(addr.as_heap));
       } else if (cmd.type == Uint) {
-        return IR::Val::Uint(
-            *static_cast<u64 *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Uint(*static_cast<u64 *>(addr.as_heap));
       } else if (cmd.type == Real) {
-        return IR::Val::Real(
-            *static_cast<double *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Real(*static_cast<double *>(addr.as_heap));
       } else if (cmd.type == Code) {
-        return IR::Val::CodeBlock(static_cast<AST::CodeBlock *>(
-            resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::CodeBlock(static_cast<AST::CodeBlock *>(addr.as_heap));
       } else if (cmd.type == Type_) {
-        return IR::Val::Type(
-            *static_cast<::Type **>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Type(*static_cast<::Type **>(addr.as_heap));
       } else if (cmd.type->is<Pointer>()) {
-        return IR::Val::Addr(
-            *static_cast<Addr *>(resolved[0].value.as<Addr>().as_heap),
-            ptr_cast<Pointer>(cmd.type)->pointee);
+        return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
+                             cmd.type->as<Pointer>().pointee);
       } else if (cmd.type->is<Enum>()) {
-        return IR::Val::Enum(
-            ptr_cast<Enum>(cmd.type),
-            *static_cast<size_t *>(resolved[0].value.as<Addr>().as_heap));
+        return IR::Val::Enum(&cmd.type->as<Enum>(),
+                             *static_cast<size_t *>(addr.as_heap));
       } else {
         NOT_YET("Don't know how to load type: ", cmd.type);
       }
     } break;
     case Addr::Kind::Stack: {
       if (cmd.type == Bool) {
-        return IR::Val::Bool(
-            stack_.Load<bool>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Bool(stack_.Load<bool>(addr.as_stack));
       } else if (cmd.type == Char) {
-        return IR::Val::Char(
-            stack_.Load<char>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Char(stack_.Load<char>(addr.as_stack));
       } else if (cmd.type == Int) {
-        return IR::Val::Int(
-            stack_.Load<i32>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Int(stack_.Load<i32>(addr.as_stack));
       } else if (cmd.type == Uint) {
-        return IR::Val::Uint(
-            stack_.Load<u64>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Uint(stack_.Load<u64>(addr.as_stack));
       } else if (cmd.type == Real) {
-        return IR::Val::Real(
-            stack_.Load<double>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Real(stack_.Load<double>(addr.as_stack));
       } else if (cmd.type == Code) {
-        return IR::Val::CodeBlock(stack_.Load<AST::CodeBlock *>(
-            resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::CodeBlock(stack_.Load<AST::CodeBlock *>(addr.as_stack));
       } else if (cmd.type == Type_) {
-        return IR::Val::Type(
-            stack_.Load<::Type *>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Type(stack_.Load<::Type *>(addr.as_stack));
       } else if (cmd.type->is<Pointer>()) {
-        switch (resolved[0].value.as<Addr>().kind) {
+        switch (addr.kind) {
         case Addr::Kind::Stack:
-          return IR::Val::Addr(
-              stack_.Load<Addr>(resolved[0].value.as<Addr>().as_stack),
-              ptr_cast<Pointer>(cmd.type)->pointee);
+          return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
+                               cmd.type->as<Pointer>().pointee);
         case Addr::Kind::Heap:
-          return IR::Val::Addr(
-              *static_cast<Addr *>(resolved[0].value.as<Addr>().as_heap),
-              ptr_cast<Pointer>(cmd.type)->pointee);
+          return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
+                               cmd.type->as<Pointer>().pointee);
         case Addr::Kind::Global: NOT_YET();
         case Addr::Kind::Null: NOT_YET();
         }
       } else if (cmd.type->is<Enum>()) {
-        return IR::Val::Enum(
-            ptr_cast<Enum>(cmd.type),
-            stack_.Load<size_t>(resolved[0].value.as<Addr>().as_stack));
+        return IR::Val::Enum(ptr_cast<Enum>(cmd.type),
+                             stack_.Load<size_t>(addr.as_stack));
       } else {
         NOT_YET("Don't know how to load type: ", cmd.type);
       }
     } break;
     }
-    break;
-  case Op::Store:
-    switch (resolved[1].value.as<Addr>().kind) {
+  } break;
+  case Op::Store: {
+    auto &addr = std::get<Addr>(resolved[1].value);
+    switch (addr.kind) {
     case Addr::Kind::Null:
       // TODO compile-time failure. dump the stack trace and abort.
       cmd.dump(0);
       UNREACHABLE();
     case Addr::Kind::Global:
-      global_vals[resolved[1].value.as<Addr>().as_global] = resolved[0];
+      global_vals[addr.as_global] = resolved[0];
       return IR::Val::None();
     case Addr::Kind::Stack:
       if (resolved[0].type == Bool) {
-        stack_.Store(resolved[0].value.as<bool>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<bool>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Char) {
-        stack_.Store(resolved[0].value.as<char>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<char>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Int) {
-        stack_.Store(resolved[0].value.as<i32>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<i32>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Uint) {
-        stack_.Store(resolved[0].value.as<u64>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<u64>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Real) {
-        stack_.Store(resolved[0].value.as<double>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<double>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type->is<Pointer>()) {
-        stack_.Store(resolved[0].value.as<Addr>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<Addr>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type->is<Enum>()) {
-        stack_.Store(resolved[0].value.as<EnumVal>().value,
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<EnumVal>(resolved[0].value).value, addr.as_stack);
       } else if (resolved[0].type == Type_) {
-        stack_.Store(resolved[0].value.as<::Type *>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<::Type *>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Code) {
-        stack_.Store(resolved[0].value.as<AST::CodeBlock *>(),
-                     resolved[1].value.as<Addr>().as_stack);
+        stack_.Store(std::get<AST::CodeBlock *>(resolved[0].value),
+                     addr.as_stack);
       } else {
         NOT_YET("Don't know how to store type: ", cmd.type);
       }
@@ -375,26 +349,21 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::None();
     case Addr::Kind::Heap:
       if (resolved[0].type == Bool) {
-        *static_cast<bool *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<bool>();
+        *static_cast<bool *>(addr.as_heap) = std::get<bool>(resolved[0].value);
       } else if (resolved[0].type == Char) {
-        *static_cast<char *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<char>();
+        *static_cast<char *>(addr.as_heap) = std::get<char>(resolved[0].value);
       } else if (resolved[0].type == Int) {
-        *static_cast<i32 *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<i32>();
+        *static_cast<i32 *>(addr.as_heap) = std::get<i32>(resolved[0].value);
       } else if (resolved[0].type == Uint) {
-        *static_cast<u64 *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<u64>();
+        *static_cast<u64 *>(addr.as_heap) = std::get<u64>(resolved[0].value);
       } else if (resolved[0].type == Real) {
-        *static_cast<double *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<double>();
+        *static_cast<double *>(addr.as_heap) =
+            std::get<double>(resolved[0].value);
       } else if (resolved[0].type->is<Pointer>()) {
-        *static_cast<Addr *>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<Addr>();
+        *static_cast<Addr *>(addr.as_heap) = std::get<Addr>(resolved[0].value);
       } else if (resolved[0].type == Type_) {
-        *static_cast<::Type **>(resolved[1].value.as<Addr>().as_heap) =
-            resolved[0].value.as<::Type *>();
+        *static_cast<::Type **>(addr.as_heap) =
+            std::get<::Type *>(resolved[0].value);
       } else if (resolved[0].type->is<Enum>()) {
         NOT_YET();
       } else if (resolved[0].type == Code) {
@@ -404,9 +373,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       }
       return IR::Val::None();
     }
+  } break;
   case Op::Phi:
     for (size_t i = 0; i < resolved.size(); i += 2) {
-      if (call_stack.top().prev_ == resolved[i].value.as<IR::BlockIndex>()) {
+      if (call_stack.top().prev_ == std::get<IR::BlockIndex>(resolved[i].value)) {
         return resolved[i + 1];
       }
     }
@@ -415,19 +385,20 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                 Val::Block(call_stack.top().prev_).to_string());
   case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.type));
   case Op::PtrIncr:
-    switch (resolved[0].value.as<Addr>().kind) {
+    switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Stack: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolved[1].value.as<u64>(), cmd.type->as<Pointer>().pointee);
-      return Val::StackAddr(resolved[0].value.as<Addr>().as_stack + bytes_fwd,
+          std::get<u64>(resolved[1].value), cmd.type->as<Pointer>().pointee);
+      return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack +
+                                bytes_fwd,
                             cmd.type->as<Pointer>().pointee);
     }
     case Addr::Kind::Heap: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          resolved[1].value.as<u64>(), ptr_cast<Pointer>(cmd.type)->pointee);
+          std::get<u64>(resolved[1].value), ptr_cast<Pointer>(cmd.type)->pointee);
       return Val::HeapAddr(
           static_cast<void *>(
-              static_cast<char *>(resolved[0].value.as<Addr>().as_heap) +
+              static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) +
               bytes_fwd),
           ptr_cast<Pointer>(cmd.type)->pointee);
     }
@@ -435,13 +406,13 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     case Addr::Kind::Null: NOT_YET();
     }
     UNREACHABLE("Invalid address kind: ",
-                static_cast<int>(resolved[0].value.as<Addr>().kind));
+                static_cast<int>(std::get<Addr>(resolved[0].value).kind));
   case Op::Field: {
     auto struct_type =
         ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);
     // This can probably be precomputed.
     u64 offset = 0;
-    for (u64 i = 0; i < resolved[1].value.as<u64>(); ++i) {
+    for (u64 i = 0; i < std::get<u64>(resolved[1].value); ++i) {
       auto field_type = struct_type->field_type AT(i);
 
       offset = Architecture::InterprettingMachine().bytes(field_type) +
@@ -449,8 +420,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
                    field_type, offset);
     }
 
-    if (resolved[0].value.as<Addr>().kind == Addr::Kind::Stack) {
-      return Val::StackAddr(resolved[0].value.as<Addr>().as_stack + offset,
+    if (std::get<Addr>(resolved[0].value).kind == Addr::Kind::Stack) {
+      return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack + offset,
                             ptr_cast<Pointer>(cmd.type)->pointee);
     } else {
       NOT_YET();
@@ -462,46 +433,49 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     std::unordered_map<const AST::Expression *, IR::Val> replacements;
 
     for (size_t i = 0; i < resolved.size() - 1; i += 2) {
-      replacements[resolved[i + 1].value.as<AST::Expression *>()] = resolved[i];
+      replacements[std::get<AST::Expression *>(resolved[i + 1].value)] =
+          resolved[i];
     }
 
     ASSERT_EQ(resolved.back().type, ::Code);
-    auto stmts =
-        resolved.back().value.as<AST::CodeBlock *>()->stmts->contextualize(
-            replacements);
+    auto stmts = std::get<AST::CodeBlock *>(resolved.back().value)
+                     ->stmts->contextualize(replacements);
     auto code_block = base::move<AST::CodeBlock>(
-        resolved.back().value.as<AST::CodeBlock *>()->copy_stub());
+        std::get<AST::CodeBlock *>(resolved.back().value)->copy_stub());
     code_block->stmts = base::move<AST::Statements>(stmts);
 
     // TODO LEAK!
-    return IR::Val::CodeBlock(std::move(code_block).release());
-  }
+    return IR::Val::CodeBlock(code_block.release());
+  } break;
   case Op::Nop: return Val::None();
   case Op::Malloc:
     ASSERT_TYPE(Pointer, cmd.type);
-    return IR::Val::HeapAddr(malloc(resolved[0].value.as<u64>()),
+    return IR::Val::HeapAddr(malloc(std::get<u64>(resolved[0].value)),
                              ptr_cast<Pointer>(cmd.type)->pointee);
-  case Op::Free: free(resolved[0].value.as<Addr>().as_heap); return Val::None();
+  case Op::Free:
+    free(std::get<Addr>(resolved[0].value).as_heap);
+    return Val::None();
   case Op::ArrayLength:
-    return IR::Val::Addr(resolved[0].value.as<Addr>(), Uint);
+    return IR::Val::Addr(std::get<Addr>(resolved[0].value), Uint);
   case Op::ArrayData:
-    switch (resolved[0].value.as<Addr>().kind) {
+    switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Null: UNREACHABLE();
     case Addr::Kind::Global: NOT_YET();
     case Addr::Kind::Stack:
       return IR::Val::StackAddr(
-          resolved[0].value.as<Addr>().as_stack +
+          std::get<Addr>(resolved[0].value).as_stack +
               Architecture::InterprettingMachine().bytes(Uint),
           ptr_cast<Pointer>(cmd.type)->pointee);
 
     case Addr::Kind::Heap:
       return IR::Val::HeapAddr(
           static_cast<void *>(
-              static_cast<u8 *>(resolved[0].value.as<Addr>().as_heap) +
+              static_cast<u8 *>(std::get<Addr>(resolved[0].value).as_heap) +
               Architecture::InterprettingMachine().bytes(Uint)),
           ptr_cast<Pointer>(cmd.type)->pointee);
     }
-  case Op::CondJump: return resolved[resolved[0].value.as<bool>() ? 1 : 2];
+    break;
+  case Op::CondJump: return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
   case Op::UncondJump: return resolved[0];
   case Op::ReturnJump: return Val::Block(BlockIndex{-1});
   }

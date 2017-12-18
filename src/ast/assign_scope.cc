@@ -20,8 +20,8 @@ void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
 void Terminal::assign_scope(Scope *scope) {
   scope_ = scope;
   if (type != Type_) { return; }
-  if (value.value.as<Type *>()->is<Struct>()) {
-    auto s = static_cast<Struct *>(value.value.as<Type *>());
+  if (std::get<Type *>(value.value)->is<Struct>()) {
+    auto *s = &std::get<Type *>(value.value)->as<Struct>();
     if (!s->type_scope) {
       // TODO make unique
       s->type_scope = scope->add_child<DeclScope>().release();
@@ -83,9 +83,9 @@ void CommaList::assign_scope(Scope *scope) {
 
 void Case::assign_scope(Scope *scope) {
   scope_ = scope;
-  for (auto &kv : key_vals) {
-    kv.first->assign_scope(scope);
-    kv.second->assign_scope(scope);
+  for (auto &[key, val] : key_vals) {
+    key->assign_scope(scope);
+    val->assign_scope(scope);
   }
 }
 
@@ -113,7 +113,7 @@ void Call::assign_scope(Scope *scope) {
   scope_ = scope;
   fn_->assign_scope(scope);
   for (auto &num : pos_) { num->assign_scope(scope); }
-  for (auto &kv : named_) { kv.second->assign_scope(scope); }
+  for (auto & [ key, val ] : named_) { val->assign_scope(scope); }
 }
 
 void ScopeNode::assign_scope(Scope *scope) {

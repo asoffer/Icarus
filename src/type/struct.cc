@@ -19,7 +19,7 @@ void Struct::CompleteDefinition() {
           decls[i]->type_expr->type == Void) {
         decl_type = Err;
       } else {
-        decl_type = Evaluate(decls[i]->type_expr.get()).value.as<Type *>();
+        decl_type = std::get<Type *>(Evaluate(decls[i]->type_expr.get()).value);
       }
     } else {
       decl_type = decls[i]->init_val->type;

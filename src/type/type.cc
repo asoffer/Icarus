@@ -10,13 +10,13 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
                        IR::Val rhs_ir, bool equality) {
   auto &funcs = equality ? eq_funcs : ne_funcs;
 
-  auto insertion = funcs[lhs_type].emplace(rhs_type, nullptr);
-  if (insertion.second) {
+  auto[iter, success] = funcs[lhs_type].emplace(rhs_type, nullptr);
+  if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"lhs", nullptr}, {"rhs", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({Ptr(lhs_type), Ptr(rhs_type)}, Bool), std::move(args)));
-    auto *fn = insertion.first->second = IR::Func::All.back().get();
+    auto *fn = iter->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
 
@@ -77,7 +77,7 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
     }
   }
 
-  return IR::Call(IR::Val::Func(insertion.first->second), {lhs_ir, rhs_ir});
+  return IR::Call(IR::Val::Func(iter->second), {lhs_ir, rhs_ir});
 }
 
 // TODO mess around to see the performance characteristics. Maybe a flat map is

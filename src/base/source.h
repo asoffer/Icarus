@@ -6,9 +6,8 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <optional>
 
-
-#include "optional.h"
 #include "owned_ptr.h"
 #include "strong_types.h"
 
@@ -21,7 +20,7 @@ struct Source {
   DEFINE_STRONG_STRING(Line);
 
   virtual ~Source() {}
-  virtual base::optional<Line> NextLine() = 0;
+  virtual std::optional<Line> NextLine() = 0;
   virtual base::owned_ptr<AST::Statements> Parse() = 0;
 
   std::vector<Line> lines{1}; // Start with one blank line because line numbers
@@ -43,7 +42,7 @@ struct Repl: public Source {
   ~Repl() final {}
   Repl() : Source(Source::Name("")) {}
 
-  base::optional<Source::Line> NextLine() final;
+  std::optional<Source::Line> NextLine() final;
   base::owned_ptr<AST::Statements> Parse() final;
 
   bool first_entry = true;
@@ -54,7 +53,7 @@ struct File : Source {
       : Source(std::move(source_name)), ifs(name.c_str(), std::ifstream::in) {}
   ~File() final {}
 
-  base::optional<Source::Line> NextLine() final;
+  std::optional<Source::Line> NextLine() final;
   base::owned_ptr<AST::Statements> Parse() final;
 
   AST::Statements *ast = nullptr;

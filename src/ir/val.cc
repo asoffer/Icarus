@@ -1,8 +1,9 @@
 #include "ir.h"
 
+#include <sstream>
+
 #include "../ast/ast.h"
 #include "../type/type.h"
-#include <sstream>
 
 namespace IR {
 Val Val::StackAddr(u64 addr, ::Type *t) {
@@ -41,46 +42,43 @@ Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
 std::string Val::to_string() const {
   // TODO switch on the variant kind flag?
-  std::stringstream ss;
-  if (value.is<Register>()) {
-    ss << value.as<Register>();
-    return type->to_string() + " r." + ss.str();
-  } else if (value.is<ReturnValue>()) {
-    return type->to_string() + " ret." +
-           std::to_string(value.as<ReturnValue>());
-  } else if (value.is<::IR::Addr>()) {
-    return value.as<::IR::Addr>().to_string();
-  } else if (value.is<bool>()) {
-    return value.as<bool>() ? "true" : "false";
-  } else if (value.is<char>()) {
-    return std::to_string(static_cast<i32>(value.as<char>())) + "_c";
-  } else if (value.is<double>()) {
-    return std::to_string(value.as<double>()) + "_r";
-  } else if (value.is<i32>()) {
-    return std::to_string(value.as<i32>());
-  } else if (value.is<u64>()) {
-    return std::to_string(value.as<u64>()) + "_u";
-  } else if (value.is<EnumVal>()) {
-    return value.as<EnumVal>().value >= ptr_cast<::Enum>(type)->members.size()
-               ? ptr_cast<::Enum>(type)->to_string() + ":END"
-               : ptr_cast<::Enum>(type)->members.at(value.as<EnumVal>().value);
-  } else if (value.is<::Type *>()) {
-    return value.as<::Type *>()->to_string();
-  } else if (value.is<::IR::Func *>()) {
-    return "fn." + value.as<IR::Func *>()->name;
-  } else if (value.is<AST::ScopeLiteral *>()) {
-    NOT_YET();
-  } else if (value.is<AST::CodeBlock *>()) {
-    return "<...>";
-  } else if (value.is<AST::Expression *>()) {
-    NOT_YET();
-  } else if (value.is<BlockIndex>()) {
-    return "block #" + std::to_string(value.as<IR::BlockIndex>());
-  } else if (value.is<std::string>()) {
-    return "string \"" + value.as<std::string>() + "\"";
-  } else {
-    UNREACHABLE();
-  }
+  return std::visit(
+      base::overloaded{
+          [this](Register reg) -> std::string {
+            std::stringstream ss;
+            ss << reg;
+            return this->type->to_string() + " r." + ss.str();
+          },
+          [this](ReturnValue ret) -> std::string {
+            return this->type->to_string() + " ret." +
+                   std::to_string(ret.value);
+          },
+          [](IR::Addr addr) -> std::string { return addr.to_string(); },
+          [](bool b) -> std::string { return b ? "true" : "false"; },
+          [](char c) -> std::string {
+            return std::to_string(static_cast<i32>(c)) + "_c";
+          },
+          [](double d) -> std::string { return std::to_string(d) + "_r"; },
+          [](i32 n) -> std::string { return std::to_string(n); },
+          [](u64 n) -> std::string { return std::to_string(n) + "_u"; },
+          [this](EnumVal e) -> std::string {
+            return e.value >= this->type->as<::Enum>().members.size()
+                       ? this->type->as<::Enum>().to_string() + ":END"
+                       : this->type->as<::Enum>().members AT(e.value);
+          },
+          [](::Type *t) -> std::string { return t->to_string(); },
+          [](IR::Func *f) -> std::string { return "fn." + f->name; },
+          [](AST::ScopeLiteral *) -> std::string { NOT_YET(); },
+          [](AST::CodeBlock *) -> std::string { return "<...>"; },
+          [](AST::Expression *) -> std::string { NOT_YET(); },
+          [](BlockIndex b) -> std::string {
+            return "block #" + std::to_string(b);
+          },
+          [](const std::string &s) -> std::string {
+            return "string \"" + s + "\"";
+          },
+      },
+      value);
 }
 
 std::string Addr::to_string() const {

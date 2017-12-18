@@ -10,7 +10,7 @@
   do {                                                                         \
     if (!(cond)) {                                                             \
       LOG << "Assertion failed.\n" << #cond << '\n' << "  " << (msg);          \
-      abort();                                                                 \
+      std::abort();                                                            \
     }                                                                          \
   } while (false)
 
@@ -22,7 +22,7 @@
           << #lhs << ' ' << #sym << ' ' << #rhs << "\n  Actual:\n"             \
           << "    LHS = " << (lhs) << '\n'                                     \
           << "    RHS = " << (rhs) << '\n';                                    \
-      abort();                                                                 \
+      std::abort();                                                            \
     }                                                                          \
   } while (false)
 
@@ -40,17 +40,30 @@
              "  Expected type: "                                               \
           << #type << "\n"                                                     \
           << "  Actual type: " << val;                                         \
-      abort();                                                                 \
+      std::abort();                                                            \
     }                                                                          \
   } while (false)
 
 #define NOT_YET(...)                                                           \
-  LOG << "Not yet implemented.\n", ##__VA_ARGS__;                              \
-  abort()
+  do {                                                                         \
+    auto logger = LOG << "Not yet implemented.\n";                             \
+    debug::LogToStandardError(__VA_ARGS__);                                    \
+    std::abort();                                                              \
+  } while (false)
 
 #define UNREACHABLE(...)                                                       \
-  LOG << "Unreachable code-path.\n", ##__VA_ARGS__;                            \
-  abort()
+  do {                                                                         \
+    auto logger = LOG << "Unreachable code-path.\n";                           \
+    debug::LogToStandardError(__VA_ARGS__);                                    \
+    std::abort();                                                              \
+  } while (false)
+
+namespace debug {
+template <typename... Args> void LogToStandardError(Args &&... args) {
+  [[maybe_unused]] const auto &log =
+      (base::Logger{} << ... << std::forward<Args>(args));
+}
+} // namespace debug
 
 #ifdef DEBUG
 #define AT(access) .at((access))

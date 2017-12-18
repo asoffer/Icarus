@@ -141,60 +141,58 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   }
 
   std::unordered_map<std::string, IR::Val> named_vals;
-  for (auto &kv : named_) {
-    auto iter =
-        named_vals
-            .emplace(kv.first, kv.second->lvalue == Assign::LVal
-                                   ? PtrCallFix(kv.second->EmitLVal(kind))
-                                   : kv.second->EmitIR(kind))
-            .first;
-    expr_map[kv.second.get()] = &iter->second;
+  for (auto & [ name, expr ] : named_) {
+    auto[iter, success] = named_vals.emplace(
+        name, expr->lvalue == Assign::LVal ? PtrCallFix(expr->EmitLVal(kind))
+                                           : expr->EmitIR(kind));
+    expr_map[expr.get()] = &iter->second;
   }
 
   // TODO deal with dispatching named arguments.
-  for (const auto &binding : dispatch_table_.bindings_) {
+  for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
     auto next_binding = IR::Func::Current->AddBlock();
     // Generate code that attempts to match the types on each argument (only
     // check the ones at the call-site that could be variants).
     for (size_t i = 0; i < pos_.size(); ++i) {
       if (!pos_[i]->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
-          next_binding, VariantMatch(pos_vals[i], binding.first.pos_[i]));
+          next_binding, VariantMatch(pos_vals[i], call_arg_type.pos_[i]));
     }
 
-    for (const auto kv : named_) {
-      auto iter = binding.first.find(kv.first);
-      if (iter == binding.first.named_.end()) { continue; }
-      if (!kv.second->type->is<Variant>()) { continue; }
+   for (auto & [ name, expr ] : named_) {
+      auto iter = call_arg_type.find(name);
+      if (iter == call_arg_type.named_.end()) { continue; }
+      if (!expr->type->is<Variant>()) { continue; }
       IR::Block::Current = IR::EarlyExitOn<false>(
           next_binding, VariantMatch(named_vals[iter->first], iter->second));
     }
 
     // After the last check, if you pass, you should dispatch
-    auto fn_to_call = binding.second.decl_->identifier->EmitIR(kind);
+    auto fn_to_call = binding.decl_->identifier->EmitIR(kind);
     std::vector<IR::Val> args;
-    args.resize(binding.second.exprs_.size());
+    args.resize(binding.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {
-      auto *expr = binding.second.exprs_[i].second;
+      auto *expr = binding.exprs_[i].second;
       if (expr == nullptr) {
-        ASSERT_NE(binding.second.exprs_[i].first, nullptr);
-        args[i] =
-            fn_to_call.value.as<IR::Func *>()->args_[i].second->EmitIR(kind);
+        ASSERT_NE(binding.exprs_[i].first, nullptr);
+        args[i] = std::get<IR::Func *>(fn_to_call.value)
+                      ->args_[i]
+                      .second->EmitIR(kind);
       } else if (expr->type->is<Variant>()) {
-        if (binding.second.exprs_[i].first->is<Variant>()) {
+        if (binding.exprs_[i].first->is<Variant>()) {
           args[i] = *expr_map[expr];
         } else {
           args[i] = PtrCallFix(IR::Cast(
-              IR::Val::Type(Ptr(binding.second.exprs_[i].first)),
+              IR::Val::Type(Ptr(binding.exprs_[i].first)),
               IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
                           IR::Val::Uint(1))));
         }
       } else {
-        if (binding.second.exprs_[i].first->is<Variant>()) {
+        if (binding.exprs_[i].first->is<Variant>()) {
           // TODO don't alloca here!
           // Note: I actually don't care what the other type is so long as it's
           // a variant of the appropriate size
-          auto entry = IR::Alloca(binding.second.exprs_[i].first);
+          auto entry = IR::Alloca(binding.exprs_[i].first);
           auto entry_as_type = IR::Cast(IR::Val::Type(Ptr(Type_)), entry);
           IR::Store(IR::Val::Type(expr->type), entry_as_type);
           auto val_ptr = IR::Cast(IR::Val::Type(Ptr(expr->type)),
@@ -246,18 +244,15 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   ASSERT(decl, "No decl for identifier \"" + token + "\"");
 
-  if (kind == IR::Cmd::Kind::PostCondition &&
-      decl->addr.value.is<IR::ReturnValue>()) {
+  if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
+      ret && kind == IR::Cmd::Kind::PostCondition) {
     Type *input =
         scope_->ContainingFnScope()->fn_lit->type->as<Function>().input;
     i32 num_args = input->is<Tuple>()
                        ? static_cast<i32>(input->as<Tuple>().entries.size())
                        : 1;
-    return IR::Val::Reg(
-        IR::Register{
-            num_args +
-            static_cast<i32>(decl->addr.value.as<IR::ReturnValue>().value)},
-        type);
+    return IR::Val::Reg(IR::Register{num_args + static_cast<i32>(ret->value)},
+                        type);
   }
 
   if (decl->const_ || decl->arg_val) {
@@ -324,9 +319,9 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
       } else if (decl->container->type == Type_) {
         // TODO this conditional check on the line above is wrong
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.value.as<::Type *>()->is<Enum>()) {
-          auto *enum_type = ptr_cast<Enum>(container_val.value.as<::Type *>());
-          init_vals.push_back(enum_type->EmitInitialValue());
+        if (::Type *t = std::get<::Type *>(container_val.value);
+            t->is<Enum>()) {
+          init_vals.push_back(t->as<Enum>().EmitInitialValue());
         } else {
           NOT_YET();
         }
@@ -344,9 +339,9 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
     for (auto &decl : iterators) {
       if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.value.as<::Type *>()->is<Enum>()) {
-          phis.push_back(
-              IR::Phi(ptr_cast<Enum>(container_val.value.as<::Type *>())));
+        if (::Type *t = std::get<::Type *>(container_val.value);
+            t->is<Enum>()) {
+          phis.push_back(IR::Phi(&t->as<Enum>()));
         } else {
           NOT_YET();
         }
@@ -420,12 +415,10 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
                                     IR::Val::Uint(array_type->len)));
       } else if (decl->container->type == Type_) {
         IR::Val container_val = Evaluate(decl->container.get());
-        if (container_val.value.as<::Type *>()->is<Enum>()) {
-          // TODO I should not have to recalculate this here.
-          auto *enum_type = ptr_cast<Enum>(container_val.value.as<::Type *>());
-
-          cmp = IR::Le(reg,
-                       IR::Val::Enum(enum_type, enum_type->members.size() - 1));
+        if (::Type *t = std::get<::Type *>(container_val.value);
+            t->is<Enum>()) {
+          cmp = IR::Le(reg, IR::Val::Enum(&t->as<Enum>(),
+                                          t->as<Enum>().members.size() - 1));
         } else {
           NOT_YET();
         }
@@ -498,12 +491,11 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
   IR::Val scope_expr_val = Evaluate(scope_expr.get());
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
-  auto enter_fn = scope_expr_val.value.as<AST::ScopeLiteral *>()
+  auto enter_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
                       ->enter_fn->init_val->EmitIR(kind);
   ASSERT_NE(enter_fn, IR::Val::None());
-  auto exit_fn =
-      scope_expr_val.value.as<AST::ScopeLiteral *>()->exit_fn->init_val->EmitIR(
-          kind);
+  auto exit_fn = std::get<AST::ScopeLiteral *>(scope_expr_val.value)
+                     ->exit_fn->init_val->EmitIR(kind);
   ASSERT_NE(exit_fn, IR::Val::None());
 
   auto call_enter_result =
@@ -607,7 +599,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
       if (all_types) {
         std::vector<Type *> types;
         for (const auto &val : vals) {
-          types.push_back(val.value.as<::Type *>());
+          types.push_back(std::get<::Type *>(val.value));
         }
         IR::SetReturn(IR::ReturnValue{0}, IR::Val::Type(Tup(types)));
         IR::ReturnJump();
@@ -645,8 +637,8 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
   case Language::Operator::Generate: {
     auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
-    val.value.as<AST::CodeBlock *>()->stmts->assign_scope(scope_);
-    val.value.as<AST::CodeBlock *>()->stmts->EmitIR(kind);
+    std::get<AST::CodeBlock *>(val.value)->stmts->assign_scope(scope_);
+    std::get<AST::CodeBlock *>(val.value)->stmts->EmitIR(kind);
     return IR::Val::None();
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(kind));
@@ -993,6 +985,7 @@ IR::Val AST::Binop::EmitLVal(IR::Cmd::Kind kind) {
     if (lhs->type->is<::Array>()) {
       return IR::Index(lhs->EmitLVal(kind), rhs->EmitIR(kind));
     }
+    [[fallthrough]];
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

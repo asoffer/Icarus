@@ -23,7 +23,7 @@ void InDecl::contextualize(Scope *scope, std::vector<IR::Val> *args) {
 
 void Call::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &pos : pos_) { pos->contextualize(scope, args); }
-  for (auto &kv : named_) { kv.second->contextualize(scope, args); }
+  for (auto & [ name, expr ] : named_) { expr->contextualize(scope, args); }
 }
 
 
@@ -65,9 +65,9 @@ void ArrayType::contextualize(Scope *scope, std::vector<IR::Val> *args) {
 }
 
 void Case::contextualize(Scope *scope, std::vector<IR::Val> *args) {
-  for (auto &kv : key_vals) {
-    kv.first->contextualize(scope, args);
-    kv.second->contextualize(scope, args);
+  for (auto & [ key, val ] : key_vals) {
+    key->contextualize(scope, args);
+    val->contextualize(scope, args);
   }
 }
 
@@ -227,10 +227,10 @@ base::owned_ptr<Node> ArrayType::contextualize(
 base::owned_ptr<Node> Case::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
   auto result = copy_stub();
-  for (auto &kv : key_vals) {
-    result->key_vals.push_back(std::make_pair(
-        base::move<Expression>(kv.first->contextualize(replacements)),
-        base::move<Expression>(kv.second->contextualize(replacements))));
+  for (auto & [ key, val ] : key_vals) {
+    result->key_vals.push_back(
+        std::pair(base::move<Expression>(key->contextualize(replacements)),
+                  base::move<Expression>(val->contextualize(replacements))));
   }
   return std::move(result);
 }

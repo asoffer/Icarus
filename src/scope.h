@@ -58,8 +58,8 @@ struct Scope : public base::Cast<Scope> {
 
   template <typename Fn>
   void ForEachDeclHere(const Fn& fn) const {
-    for (const auto &kv : decls_) {
-      for (auto *decl : kv.second) { fn(decl); }
+    for (const auto &[key, val] : decls_) {
+      for (auto *decl : val) { fn(decl); }
     }
   }
 

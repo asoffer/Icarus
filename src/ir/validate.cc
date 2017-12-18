@@ -33,14 +33,14 @@ struct PropDB {
       const auto &last_cmd = block.cmds_.back();
       switch (last_cmd.op_code_) {
       case Op::UncondJump:
-        incoming[&fn_->block(last_cmd.args[0].value.as<BlockIndex>())].insert(
-            &block);
+        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[0].value))]
+            .insert(&block);
         break;
       case Op::CondJump:
-        incoming[&fn_->block(last_cmd.args[1].value.as<BlockIndex>())].insert(
-            &block);
-        incoming[&fn_->block(last_cmd.args[2].value.as<BlockIndex>())].insert(
-            &block);
+        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[1].value))]
+            .insert(&block);
+        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[2].value))]
+            .insert(&block);
         break;
       case Op::ReturnJump: /* Nothing to do */ break;
       default: fn_->dump(); UNREACHABLE(static_cast<int>(last_cmd.op_code_));
@@ -110,14 +110,14 @@ struct PropDB {
     const auto &last_cmd = block.cmds_.back();
     switch (last_cmd.op_code_) {
     case Op::UncondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[0].value.as<BlockIndex>()),
+      stale_.emplace(&fn_->block(std::get<BlockIndex>(last_cmd.args[0].value)),
                      cmd_index);
 
       break;
     case Op::CondJump:
-      stale_.emplace(&fn_->block(last_cmd.args[1].value.as<BlockIndex>()),
+      stale_.emplace(&fn_->block(std::get<BlockIndex>(last_cmd.args[1].value)),
                      cmd_index);
-      stale_.emplace(&fn_->block(last_cmd.args[2].value.as<BlockIndex>()),
+      stale_.emplace(&fn_->block(std::get<BlockIndex>(last_cmd.args[2].value)),
                      cmd_index);
       break;
     case Op::ReturnJump: /* Nothing to do */ break;
@@ -148,7 +148,7 @@ struct PropDB {
       for (const Block *incoming_block : incoming_set) {
         props.push_back(
             Get(*incoming_block, (cmd.op_code_ == Op::SetReturn)
-                                     ? cmd.args[1].value.as<Register>()
+                                     ? std::get<Register>(cmd.args[1].value)
                                      : cmd.result)
                 ->as<BoolProperty>());
       }
@@ -189,7 +189,8 @@ struct PropDB {
 
     auto &old_prop =
         (cmd.op_code_ == Op::SetReturn)
-            ? views_[&block].ret_props_[cmd.args[0].value.as<ReturnValue>()]
+            ? views_[&block]
+                  .ret_props_[std::get<ReturnValue>(cmd.args[0].value)]
             : views_[&block].props_[cmd.result];
     if (!old_prop->Implies(*new_prop)) {
       old_prop = std::move(new_prop);
@@ -210,15 +211,14 @@ struct PropDB {
       // TODO What about weak back-references? We don't yet handle loops.
       switch (last_cmd.op_code_) {
       case Op::UncondJump:
-        SetUnreachable(view, to,
-                       fn_->block(last_cmd.args[0].value.as<BlockIndex>()));
-
+        SetUnreachable(
+            view, to, fn_->block(std::get<BlockIndex>(last_cmd.args[0].value)));
         break;
       case Op::CondJump:
-        SetUnreachable(view, to,
-                       fn_->block(last_cmd.args[1].value.as<BlockIndex>()));
-        SetUnreachable(view, to,
-                       fn_->block(last_cmd.args[2].value.as<BlockIndex>()));
+        SetUnreachable(
+            view, to, fn_->block(std::get<BlockIndex>(last_cmd.args[1].value)));
+        SetUnreachable(
+            view, to, fn_->block(std::get<BlockIndex>(last_cmd.args[2].value)));
 
         break;
       case Op::ReturnJump: /* Nothing to do */ break;
@@ -241,27 +241,34 @@ struct PropDB {
   }
 
   base::owned_ptr<Property> Get(const Block &block, Val arg) {
-    if (arg.value.is<Register>()) {
-      return Get(block, arg.value.as<Register>());
-    } else if (arg.value.is<i32>()) {
-      return base::make_owned<Range<i32>>(arg.value.as<i32>(),
-                                          arg.value.as<i32>());
-    } else if (arg.value.is<bool>()) {
-      return base::make_owned<BoolProperty>(arg.value.as<bool>());
-    } else {
-      LOG << arg.to_string();
-      NOT_YET();
-    }
+    return std::visit(
+        base::overloaded{
+            [&block, this](Register r) -> base::owned_ptr<Property> {
+              return this->Get(block, r);
+            },
+            [](i32 n) -> base::owned_ptr<Property> {
+              return base::make_owned<Range<i32>>(n, n);
+            },
+            [](bool b) -> base::owned_ptr<Property> {
+              return base::make_owned<BoolProperty>(b);
+            },
+            [&arg](auto) -> base::owned_ptr<Property> { NOT_YET(arg); },
+        },
+        arg.value);
   }
 
   base::owned_ptr<BoolProperty> GetBoolProp(const Block &block, Val arg) {
-    if (arg.value.is<Register>()) {
-      auto reg = arg.value.as<Register>();
-      return Get(block, reg).as<BoolProperty>();
-    } else if (arg.value.is<bool>()) {
-      return base::make_owned<BoolProperty>(arg.value.as<bool>());
-    }
-    UNREACHABLE();
+    return std::visit(
+        base::overloaded{
+            [&block, this](Register r) -> base::owned_ptr<BoolProperty> {
+              return Get(block, r).as<BoolProperty>();
+            },
+            [](bool b) -> base::owned_ptr<BoolProperty> {
+              return base::make_owned<BoolProperty>(b);
+            },
+            [&arg](auto) -> base::owned_ptr<BoolProperty> { UNREACHABLE(arg); },
+        },
+        arg.value);
   }
 
   void Compute();
@@ -331,7 +338,8 @@ void PropDB::Compute() {
         for (size_t i = 0; i < cmd.args.size(); i += 2) {
           if (Reachable(
                   /* view = */ *block,
-                  /* from = */ fn_->block(cmd.args[i].value.as<BlockIndex>()),
+                  /* from = */ fn_->block(
+                      std::get<BlockIndex>(cmd.args[i].value)),
                   /*   to = */ cmd_block)) {
             props.push_back(*GetBoolProp(*block, cmd.args[i + 1]));
           }
@@ -352,11 +360,11 @@ void PropDB::Compute() {
     case Op::Nop: break;
     case Op::SetReturn: Set(*block, cmd_index, Get(*block, cmd.args[1])); break;
     case Op::CondJump: {
-      auto prop       = Get(*block, cmd.args[0].value.as<Register>());
+      auto prop       = Get(*block, std::get<Register>(cmd.args[0].value));
       auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
       if (bool_prop == nullptr) { continue; }
-      auto &true_block  = fn_->block(cmd.args[1].value.as<BlockIndex>());
-      auto &false_block = fn_->block(cmd.args[2].value.as<BlockIndex>());
+      auto &true_block  = fn_->block(std::get<BlockIndex>(cmd.args[1].value));
+      auto &false_block = fn_->block(std::get<BlockIndex>(cmd.args[2].value));
 
       if (bool_prop->kind == BoolProperty::Kind::True) {
         SetUnreachable(/* view = */ *block,
@@ -400,10 +408,9 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
       db.stale_.emplace(&fn->block(fn->entry()), CmdIndex{BlockIndex{i}, j});
 
       if (cmd.op_code_ == Op::Call) {
-        const auto &called_fn = cmd.args.back().value;
-        if (called_fn.is<Func *>()) {
-          validation_queue->push(called_fn.as<Func *>());
-          if (!called_fn.as<Func *>()->preconditions_.empty()) {
+        if (auto *func = std::get_if<Func *>(&cmd.args.back().value)) {
+          validation_queue->push(*func);
+          if (!(*func)->preconditions_.empty()) {
             // TODO only if it has precondiitons
             calls->emplace_back(&block, &cmd);
           }
@@ -454,16 +461,13 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
 
   prop_db.Compute();
 
-  for (const auto &call : calls) {
-    Func *called_fn            = call.second->args.back().value.as<Func *>();
-    const Block &calling_block = *call.first;
-
+  for (const auto & [ calling_block, cmd ] : calls) {
+    Func *called_fn = std::get<Func *>(cmd->args.back().value);
     // 'args' Also includes the function as the very last entry.
-    const auto &args = call.second->args;
     std::vector<base::owned_ptr<property::Property>> arg_props;
-    arg_props.reserve(args.size() - 1);
-    for (size_t i = 0; i < args.size() - 1; ++i) {
-      arg_props.push_back(prop_db.Get(calling_block, args[i]));
+    arg_props.reserve(cmd->args.size() - 1);
+    for (const auto& arg : cmd->args) {
+      arg_props.push_back(prop_db.Get(*calling_block, arg));
     }
     for (const auto &precondition : called_fn->preconditions_) {
       auto ir_fn =

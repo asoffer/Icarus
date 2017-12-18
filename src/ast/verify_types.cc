@@ -150,7 +150,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   // information.
   // TODO check const-decl or not.
 
-  auto *fn1 = Evaluate(decl1->init_val.get()).value.as<IR::Func *>();
+  auto *fn1 = std::get<IR::Func *>(Evaluate(decl1->init_val.get()).value);
   std::vector<Type *> arg_types1 = fn1->type->input->is<Tuple>()
                                        ? fn1->type->input->as<Tuple>().entries
                                        : std::vector<Type *>{fn1->type->input};
@@ -163,7 +163,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
                          /* has_default = */ fn1->args_[i].second != nullptr});
   }
 
-  auto *fn2 = Evaluate(decl2->init_val.get()).value.as<IR::Func *>();
+  auto *fn2 = std::get<IR::Func *>(Evaluate(decl2->init_val.get()).value);
   std::vector<Type *> arg_types2 = fn2->type->input->is<Tuple>()
                                        ? fn2->type->input->as<Tuple>().entries
                                        : std::vector<Type *>{fn2->type->input};
@@ -369,7 +369,7 @@ void Access::verify_types() {
     if (member_name == "bytes" || member_name == "alignment") {
       type = Uint;
     } else {
-      Type *evaled_type = Evaluate(operand.get()).value.as<Type *>();
+      Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
       if (evaled_type->is<Enum>()) {
         // Regardless of whether we can get the value, it's clear that this is
         // supposed to be a member so we should emit an error but carry on
@@ -553,9 +553,8 @@ static bool Inferrable(Type *t) {
 std::string CallArgTypes::to_string() const {
   std::string result;
   for (Type *t : pos_) { result += (!t ? "null" : t->to_string()) + ", "; }
-  for (const auto &kv : named_) {
-    result +=
-        kv.first + ": " + (!kv.second ? "null" : kv.second->to_string()) + ", ";
+  for (const auto &[key, val] : named_) {
+    result += key + ": " + (!val ? "null" : val->to_string()) + ", ";
   }
   return result;
 }
@@ -570,7 +569,7 @@ DispatchTable Call::ComputeDispatchTable() {
        scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
     if (decl->type->is<Function>()) {
       // TODO what about const vs. non-const declarations?
-      auto *fn = Evaluate(decl->init_val.get()).value.as<IR::Func *>();
+      auto *fn = std::get<IR::Func *>(Evaluate(decl->init_val.get()).value);
 
       // Compute name -> argument number map.
       // TODO this should be done when the function is generated instead of
@@ -586,7 +585,7 @@ DispatchTable Call::ComputeDispatchTable() {
                           fn->args_.size(),
                           std::pair<Type *, Expression *>(nullptr, nullptr))};
       for (size_t i = 0; i < pos_.size(); ++i) {
-        binding.exprs_[i] = std::make_pair(nullptr, pos_[i].get());
+        binding.exprs_[i] = std::pair(nullptr, pos_[i].get());
       }
 
       // Match the named arguments
@@ -599,7 +598,7 @@ DispatchTable Call::ComputeDispatchTable() {
           goto next_option;
         } else {
           binding.exprs_[iter->second] =
-              std::make_pair(nullptr, name_and_expr.second.get());
+              std::pair(nullptr, name_and_expr.second.get());
         }
       }
 
@@ -609,9 +608,9 @@ DispatchTable Call::ComputeDispatchTable() {
       CallArgTypes call_arg_types;
       call_arg_types.pos_.resize(pos_.size(), nullptr);
       // TODO Do flat_map for real
-      for (const auto &kv : index_lookup) {
-        if (kv.second < pos_.size()) { continue; }
-        call_arg_types.named_.emplace_back(kv.first, nullptr);
+      for (const auto &[key, val] : index_lookup) {
+        if (val < pos_.size()) { continue; }
+        call_arg_types.named_.emplace_back(key, nullptr);
       }
 
       for (size_t i = 0; i < binding.exprs_.size(); ++i) {
@@ -709,8 +708,8 @@ void Call::verify_types() {
 
     std::vector<Type *> out_types;
     out_types.reserve(dispatch_table_.bindings_.size());
-    for (const auto &kv : dispatch_table_.bindings_) {
-      out_types.push_back(kv.second.decl_->type->as<Function>().output);
+    for (const auto &[key, val] : dispatch_table_.bindings_) {
+      out_types.push_back(val.decl_->type->as<Function>().output);
     }
     type = Var(std::move(out_types));
 
@@ -1130,7 +1129,7 @@ void InDecl::verify_types() {
     type = ptr_cast<RangeType>(container->type)->end_type;
 
   } else if (container->type == Type_) {
-    auto t = Evaluate(container.get()).value.as<Type *>();
+    auto t = std::get<Type *>(Evaluate(container.get()).value);
     if (t->is<Enum>()) { type = t; }
 
   } else {
@@ -1148,7 +1147,7 @@ Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
     return Err;
   }
 
-  Type *t = Evaluate(this).value.as<Type *>();
+  Type *t = std::get<Type *>(Evaluate(this).value);
 
   if (t == Void) {
     ErrorLog::DeclaredVoidType(span, id_tok);
@@ -1282,7 +1281,7 @@ void Declaration::verify_types() {
     // writing a function that modifies a type? Something here needs fixing.
 
     if (init_val->is<Terminal>()) {
-      auto t = init_val->value.value.as<Type *>();
+      auto *t = std::get<Type *>(init_val->value.value);
       // TODO mangle the name correctly (Where should this be done?)
       if (t->is<Struct>()) {
         t->as<Struct>().bound_name = identifier->token;
@@ -1401,7 +1400,7 @@ void FunctionLiteral::verify_types() {
     ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
     type = Err;
     return;
-  } else if (ret_type_val.value.as<Type *>() == Err) {
+  } else if (std::get<Type *>(ret_type_val.value) == Err) {
     type = Err;
     return;
   }
@@ -1410,7 +1409,7 @@ void FunctionLiteral::verify_types() {
 
   // TODO don't do early exists on input or return type errors.
 
-  Type *ret_type = ret_type_val.value.as<Type *>();
+  Type *ret_type = std::get<Type *>(ret_type_val.value);
   Type *input_type;
   size_t num_inputs = inputs.size();
   if (num_inputs == 0) {
@@ -1434,27 +1433,27 @@ void FunctionLiteral::verify_types() {
 
 void Case::verify_types() {
   STARTING_CHECK;
-  for (auto &kv : key_vals) {
-    kv.first->verify_types();
-    kv.second->verify_types();
+  for (auto &[key, val] : key_vals) {
+    key->verify_types();
+    val->verify_types();
   }
 
   std::map<Type *, size_t> value_types;
 
-  for (auto &kv : key_vals) {
-    if (kv.first->type == Err) {
-      kv.first->type = Bool;
+  for (auto &[key, val] : key_vals) {
+    if (key->type == Err) {
+      key->type = Bool;
 
-    } else if (kv.first->type != Bool) {
-      ErrorLog::CaseLHSBool(span, kv.first->span, kv.first->type);
-      kv.first->type = Bool;
+    } else if (key->type != Bool) {
+      ErrorLog::CaseLHSBool(span, key->span, key->type);
+      key->type = Bool;
     }
 
-    if (kv.second->type == Err) {
+    if (val->type == Err) {
       type = Err;
       return;
     }
-    ++value_types[kv.second->type];
+    ++value_types[val->type];
   }
 
   if (value_types.size() != 1) {
@@ -1469,13 +1468,13 @@ void Case::verify_types() {
     size_t max_size = 0;
     size_t min_size = key_vals.size();
     Type *max_type  = nullptr;
-    for (const auto &kv : value_types) {
-      if (kv.second > max_size) {
-        max_size = kv.second;
-        max_type = kv.first;
+    for (const auto &[key, val] : value_types) {
+      if (val > max_size) {
+        max_size = val;
+        max_type = key;
       }
 
-      if (kv.second < min_size) { min_size = kv.second; }
+      if (val < min_size) { min_size = val; }
     }
 
     if (2 * max_size > key_vals.size() ||
@@ -1616,9 +1615,7 @@ void CompletelyVerify(AST::Node *node) {
   }
 
   while (!FuncInnardsVerificationQueue.empty()) {
-    auto pair     = FuncInnardsVerificationQueue.front();
-    auto ret_type = pair.first;
-    auto stmts    = pair.second;
+    auto[ret_type, stmts] = FuncInnardsVerificationQueue.front();
     stmts->VerifyReturnTypes(ret_type);
     FuncInnardsVerificationQueue.pop();
   }

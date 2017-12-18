@@ -1,5 +1,6 @@
 #include <unordered_map>
 #include <limits>
+#include <cmath>
 
 #include "ast/ast.h"
 #include "error_log.h"
@@ -87,8 +88,8 @@ NNT NextWord(SourceLocation &loc) {
       {"continue", Language::op_lt},    {"break", Language::op_lt},
       {"repeat", Language::op_lt},      {"restart", Language::op_lt},
       {"scope", Language::kw_struct}};
-  for (const auto &kv : KeywordMap) {
-    if (token == kv.first) { return NNT(span, kv.first, kv.second); }
+  for (const auto &[key, val] : KeywordMap) {
+    if (token == key) { return NNT(span, key, val); }
   }
 
   return NNT(std::make_unique<AST::Identifier>(span, token), Language::expr);
@@ -236,10 +237,10 @@ done_reading:
                                      std::to_string(__LINE__) +
                                      ": Too many periods in numeric literal. "
                                      "Ignoring all but the first.");
-      // Fallthrough to real number case.
+      [[fallthrough]];
     case 1: {
       i32 dot_offset = 0; // TODO compute this based on where the dot is
-      double rep = RepresentationAsRealInBase<Base>(digits, dot_offset);
+      double rep     = RepresentationAsRealInBase<Base>(digits, dot_offset);
       if (std::isnan(rep)) {
         ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
                                        std::to_string(__LINE__) +
@@ -279,7 +280,6 @@ done_reading:
   span.finish = loc.cursor;
   return NNT{};
 }
-
 
 static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   loc.Increment();
@@ -457,7 +457,7 @@ static NNT NextOperator(SourceLocation &loc) {
 
   case '.': {
     while (*loc == '.') { loc.Increment(); }
-    span.finish = loc.cursor;
+    span.finish     = loc.cursor;
     size_t num_dots = span.finish.offset - span.start.offset;
 
     if (num_dots == 1) {
@@ -468,8 +468,7 @@ static NNT NextOperator(SourceLocation &loc) {
       span.finish = loc.cursor;
       return NNT(span, ".", Language::op_b);
     } else {
-      if (num_dots > 2) { ErrorLog::TooManyDots(span, num_dots);
-      }
+      if (num_dots > 2) { ErrorLog::TooManyDots(span, num_dots); }
       span.finish = loc.cursor;
       return NNT(span, "..", Language::dots);
     }
@@ -505,7 +504,7 @@ static NNT NextOperator(SourceLocation &loc) {
         loc.Increment();
         return NNT::Invalid();
       }
-
+      [[fallthrough]];
     // Intentionally falling through. Looking at a non-whitespace after a '\'
     default:
       span.finish = loc.cursor;
@@ -545,10 +544,10 @@ static NNT NextOperator(SourceLocation &loc) {
         loc.BackUp();
         span.finish = loc.cursor;
         return NNT(span, "*", Language::op_b);
-     } else {
-       span.finish = loc.cursor;
-       ErrorLog::NotInMultilineComment(span);
-       return NNT::Invalid();
+      } else {
+        span.finish = loc.cursor;
+        ErrorLog::NotInMultilineComment(span);
+        return NNT::Invalid();
       }
     } else if (*loc == '=') {
       loc.Increment();
@@ -618,8 +617,8 @@ static NNT NextOperator(SourceLocation &loc) {
     } else if (*loc == '>') {
       loc.Increment();
       span.finish = loc.cursor;
-      auto nptr = std::make_unique<AST::TokenNode>(span, "->");
-      nptr->op  = Language::Operator::Arrow;
+      auto nptr   = std::make_unique<AST::TokenNode>(span, "->");
+      nptr->op    = Language::Operator::Arrow;
       return NNT(std::move(nptr), Language::fn_arrow);
 
     } else if (*loc == '-') {

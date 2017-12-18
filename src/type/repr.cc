@@ -21,20 +21,18 @@ void Primitive::EmitRepr(IR::Val val) {
 
         IR::Print(IR::Val::Char('`'));
 
-        for (auto pair :
-             {std::make_pair('\a', 'a'), std::make_pair('\b', 'b'),
-              std::make_pair('\n', 'n'), std::make_pair('\r', 'r'),
-              std::make_pair('\t', 't'), std::make_pair('\v', 'v')}) {
+        for (auto[c, rep] : {std::pair('\a', 'a'), std::pair('\b', 'b'),
+                             std::pair('\n', 'n'), std::pair('\r', 'r'),
+                             std::pair('\t', 't'), std::pair('\v', 'v')}) {
           auto special_block = repr_func->AddBlock();
           auto next_block    = repr_func->AddBlock();
 
-          IR::CondJump(
-              IR::Eq(repr_func->Argument(0), IR::Val::Char(pair.first)),
-              special_block, next_block);
+          IR::CondJump(IR::Eq(repr_func->Argument(0), IR::Val::Char(c)),
+                       special_block, next_block);
 
           IR::Block::Current = special_block;
           IR::Print(IR::Val::Char('\\'));
-          IR::Print(IR::Val::Char(pair.second));
+          IR::Print(IR::Val::Char(rep));
           IR::ReturnJump();
 
           IR::Block::Current = next_block;

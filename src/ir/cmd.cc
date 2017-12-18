@@ -9,19 +9,24 @@ BlockIndex Block::Current;
 Func *Func::Current{nullptr};
 
 template <bool IsPhi = false>
-static void RecordReferences(Func *fn, const CmdIndex &cmd_index,
+static void RecordReferences(Func *fn, const CmdIndex &ci,
                              const std::vector<Val> &args) {
   for (const auto &cmd_arg : args) {
-    if (cmd_arg.value.is<Register>()) {
-      fn->references_[fn->reg_map_.at(cmd_arg.value.as<Register>())].push_back(
-          cmd_index);
-    } else if (IsPhi && cmd_arg.value.is<BlockIndex>()) {
-      auto block_index   = cmd_arg.value.as<BlockIndex>();
-      size_t num_cmds    = fn->block(block_index).cmds_.size();
-      i32 index_on_block = static_cast<i32>(num_cmds) - 1;
-      fn->references_[CmdIndex{block_index, index_on_block}].push_back(
-          cmd_index);
-    }
+    std::visit(
+        base::overloaded{
+            [fn, &ci](Register reg) {
+              fn->references_[fn->reg_map_ AT(reg)].push_back(ci);
+            },
+            [fn, &ci](BlockIndex bi) {
+              if constexpr (IsPhi) {
+                size_t num_cmds    = fn->block(bi).cmds_.size();
+                i32 index_on_block = static_cast<i32>(num_cmds) - 1;
+                fn->references_[CmdIndex{bi, index_on_block}].push_back(ci);
+              }
+            },
+            [](auto) {},
+        },
+        cmd_arg.value);
   }
 }
 
@@ -74,31 +79,24 @@ Val Malloc(Type *t, Val v) {
 }
 
 Val Extend(Val v) {
-  if (v.value.is<char>()) {
-    return Val::Uint(static_cast<u64>(v.value.as<char>()));
-  } else {
-    MAKE_AND_RETURN(Char, Op::Extend);
+  if (char *c = std::get_if<char>(&v.value)) {
+    return Val::Uint(static_cast<u64>(*c));
   }
+  MAKE_AND_RETURN(Char, Op::Extend);
 }
 
 Val Trunc(Val v) {
-  if (v.value.is<u64>()) {
-    return Val::Char(static_cast<char>(v.value.as<u64>()));
-  } else {
-    MAKE_AND_RETURN(Char, Op::Trunc);
+  if (u64 *n = std::get_if<u64>(&v.value)) {
+    return Val::Char(static_cast<char>(*n));
   }
+  MAKE_AND_RETURN(Char, Op::Trunc);
 }
 
 Val Neg(Val v) {
-  if (v.value.is<bool>()) {
-    return Val::Bool(!v.value.as<bool>());
-  } else if (v.value.is<i32>()) {
-    return Val::Int(-v.value.as<i32>());
-  } else if (v.value.is<double>()) {
-    return Val::Real(-v.value.as<double>());
-  } else {
-    MAKE_AND_RETURN(v.type, Op::Neg);
-  }
+  if (bool *b = std::get_if<bool>(&v.value)) { return Val::Bool(!*b); }
+  if (i32 *n = std::get_if<i32>(&v.value)) { return Val::Int(-*n); }
+  if (double *r = std::get_if<double>(&v.value)) { return Val::Real(-*r); }
+  MAKE_AND_RETURN(v.type, Op::Neg);
 }
 
 void Print(Val v) { MAKE_VOID(Op::Print); }
@@ -151,8 +149,8 @@ void SetReturn(ReturnValue r, Val v2) {
 }
 
 void Store(Val v1, Val v2) {
-  if (v2.value.is<ReturnValue>()) {
-    SetReturn(v2.value.as<ReturnValue>(), v1);
+  if (auto *rv = std::get_if<ReturnValue>(&v2.value)) {
+    SetReturn(*rv, v1);
   } else {
     ASSERT_TYPE(Pointer, v2.type);
     MAKE_VOID2(Op::Store);
@@ -167,115 +165,116 @@ Val PtrIncr(Val v1, Val v2) {
 
 Val Ptr(Val v) {
   ASSERT_EQ(v.type, Type_);
-  if (v.value.is<Type *>()) {
-    return Val::Type(::Ptr(v.value.as<Type *>()));
-  } else {
-    MAKE_AND_RETURN(Type_, Op::Ptr);
-  }
+  if (Type **t = std::get_if<Type *>(&v.value)) { return Val::Type(::Ptr(*t)); }
+  MAKE_AND_RETURN(Type_, Op::Ptr);
 }
 
 Val Xor(Val v1, Val v2) {
-  if (v1.value.is<bool>()) {
-    return v1.value.as<bool>() ? Neg(v2) : v2;
-  } else if (v2.value.is<bool>()) {
-    return v2.value.as<bool>() ? Neg(v1) : v1;
-  } else {
-    MAKE_AND_RETURN2(Bool, Op::Xor);
-  }
+  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
+  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
+  MAKE_AND_RETURN2(Bool, Op::Xor);
 }
 
+#define CONSTANT_PROPOGATION(op)                                               \
+  do {                                                                         \
+    if (i32 *n1 = std::get_if<i32>(&v1.value),                                 \
+        *n2     = std::get_if<i32>(&v2.value);                                 \
+        n1 != nullptr && n2 != nullptr) {                                      \
+      return Val::Int(*n1 op * n2);                                            \
+    }                                                                          \
+    if (u64 *m1 = std::get_if<u64>(&v1.value),                                 \
+        *m2     = std::get_if<u64>(&v2.value);                                 \
+        m1 != nullptr && m2 != nullptr) {                                      \
+      return Val::Uint(*m1 op * m2);                                           \
+    }                                                                          \
+    if (double *r1 = std::get_if<double>(&v1.value),                           \
+        *r2        = std::get_if<double>(&v2.value);                           \
+        r1 != nullptr && r2 != nullptr) {                                      \
+      return Val::Real(*r1 op * r2);                                           \
+    }                                                                          \
+  } while (false)
+
 Val Add(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Int(v1.value.as<i32>() + v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Uint(v1.value.as<u64>() + v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(v1.value.as<double>() + v2.value.as<double>());
-  } else if (v1.value.is<char>() && v2.value.is<char>()) {
-    return Val::Char(
-        static_cast<char>(v1.value.as<char>() + v2.value.as<char>()));
-  } else if (v1.value.is<AST::CodeBlock *>() &&
-             v2.value.is<AST::CodeBlock *>()) {
+  CONSTANT_PROPOGATION(+);
+  if (char *c1 = std::get_if<char>(&v1.value),
+      *c2      = std::get_if<char>(&v2.value);
+      c1 != nullptr && c2 != nullptr) {
+    return Val::Char(static_cast<char>(*c1 + *c2));
+  }
+
+  if (AST::CodeBlock **cb1 = std::get_if<AST::CodeBlock *>(&v1.value),
+      **cb2                = std::get_if<AST::CodeBlock *>(&v2.value);
+      cb1 != nullptr && cb2 != nullptr) {
     // TODO leaks
     // Contextualize is definitely wrong and probably not safe. We really want
     // a copy. All Refs should be resolved by this point already.
 
     auto block   = base::make_owned<AST::CodeBlock>();
-    block->stmts = base::move<AST::Statements>(AST::Statements::Merge({
-        ptr_cast<AST::Statements>(v1.value.as<AST::CodeBlock *>()
-                                      ->stmts->contextualize({})
-                                      .release()),
-        ptr_cast<AST::Statements>(v2.value.as<AST::CodeBlock *>()
-                                      ->stmts->contextualize({})
-                                      .release()),
-    }));
-
+    block->stmts = base::move<
+        AST::Statements>(AST::Statements::Merge(std::vector{
+        &(*cb1)->stmts->contextualize({}).release()->as<AST::Statements>(),
+        &(*cb2)->stmts->contextualize({}).release()->as<AST::Statements>()}));
     return Val::CodeBlock(block.release());
-  } else if (v1.type->is<Enum>()) {
-    return Val::Enum(ptr_cast<Enum>(v1.type), v1.value.as<EnumVal>().value +
-                                                  v2.value.as<EnumVal>().value);
-  } else {
-    MAKE_AND_RETURN2(v1.type, Op::Add);
   }
+
+  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
+      *e2         = std::get_if<EnumVal>(&v2.value);
+      e1 != nullptr && e2 != nullptr) {
+    return Val::Enum(&v1.type->as<Enum>(), e1->value + e2->value);
+  }
+
+  MAKE_AND_RETURN2(v1.type, Op::Add);
 }
 
 Val Sub(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Int(v1.value.as<i32>() - v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Uint(v1.value.as<u64>() - v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(v1.value.as<double>() - v2.value.as<double>());
-  } else if (v1.value.is<char>() && v2.value.is<char>()) {
-    return Val::Char(
-        static_cast<char>(v1.value.as<char>() - v1.value.as<char>()));
-  } else {
-    MAKE_AND_RETURN2(v1.type, Op::Sub);
+  CONSTANT_PROPOGATION(-);
+
+  if (char *c1 = std::get_if<char>(&v1.value),
+      *c2      = std::get_if<char>(&v2.value);
+      c1 != nullptr && c2 != nullptr) {
+    return Val::Char(static_cast<char>(*c1 - *c2));
   }
+
+  MAKE_AND_RETURN2(v1.type, Op::Sub);
 }
 
 Val Mul(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Int(v1.value.as<i32>() * v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Uint(v1.value.as<u64>() * v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(v1.value.as<double>() * v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(v1.type, Op::Mul);
-  }
+  CONSTANT_PROPOGATION(*);
+  MAKE_AND_RETURN2(v1.type, Op::Mul);
 }
 
 Val Div(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Int(v1.value.as<i32>() / v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Uint(v1.value.as<u64>() / v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(v1.value.as<double>() / v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(v1.type, Op::Div);
-  }
+  CONSTANT_PROPOGATION(/);
+  MAKE_AND_RETURN2(v1.type, Op::Div);
 }
 
 Val Mod(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Int(v1.value.as<i32>() % v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Uint(v1.value.as<u64>() % v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Real(fmod(v1.value.as<double>(), v2.value.as<double>()));
-  } else {
-    MAKE_AND_RETURN2(v1.type, Op::Mod);
+  if (i32 *n1 = std::get_if<i32>(&v1.value), *n2 = std::get_if<i32>(&v2.value);
+      n1 != nullptr && n2 != nullptr) {
+    return Val::Int(*n1 % *n2);
   }
+
+  if (u64 *m1 = std::get_if<u64>(&v1.value), *m2 = std::get_if<u64>(&v2.value);
+      m1 != nullptr && m2 != nullptr) {
+    return Val::Uint(*m1 % *m2);
+  }
+
+  if (double *r1 = std::get_if<double>(&v1.value),
+      *r2        = std::get_if<double>(&v2.value);
+      r1 != nullptr && r2 != nullptr) {
+    return Val::Real(fmod(*r1, *r2));
+  }
+
+  MAKE_AND_RETURN2(v1.type, Op::Mod);
 }
 
 Val Arrow(Val v1, Val v2) {
-  if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
-    return Val::Type(::Func(v1.value.as<Type *>(), v2.value.as<Type *>()));
-  } else {
-    MAKE_AND_RETURN2(Type_, Op::Arrow);
+  if (Type **t1 = std::get_if<Type *>(&v1.value),
+      **t2      = std::get_if<Type *>(&v2.value);
+      t1 != nullptr && t2 != nullptr) {
+    return Val::Type(::Func(*t1, *t2));
   }
+  MAKE_AND_RETURN2(Type_, Op::Arrow);
 }
 
 Val Variant(std::vector<Val> args) {
@@ -288,16 +287,18 @@ Val Array(Val v1, Val v2) {
   ASSERT(v1.type == nullptr || v1.type == Uint || v1.type == Int, "");
   ASSERT_EQ(v2.type, Type_);
 
-  if (v2.value.is<Type *>() && v1.value.is<u64>()) {
-    return Val::Type(::Arr(v2.value.as<Type *>(), v1.value.as<u64>()));
-  } else if (v2.value.is<Type *>() && v1.value.is<i32>()) {
-    return Val::Type(::Arr(v2.value.as<Type *>(), v1.value.as<i32>()));
-  } else if (v2.value.is<Type *>() && v1 == Val::None()) {
-    return Val::Type(::Arr(v2.value.as<Type *>()));
-  } else {
-    // TODO decide if Int vs Uint is allowed
-    MAKE_AND_RETURN2(Type_, Op::Array);
+  if (Type **t = std::get_if<Type *>(&v2.value)) {
+    if (u64 *m = std::get_if<u64>(&v1.value)) {
+      return Val::Type(::Arr(*t, *m));
+    }
+    if (u64 *n = std::get_if<u64>(&v1.value)) {
+      return Val::Type(::Arr(*t, *n));
+    }
+    if (v1 == Val::None()) { return Val::Type(::Arr(*t)); }
   }
+
+  // TODO decide if Int vs Uint is allowed
+  MAKE_AND_RETURN2(Type_, Op::Array);
 }
 
 Val Index(Val v1, Val v2) {
@@ -311,103 +312,103 @@ Val Index(Val v1, Val v2) {
   ptr.type    = Ptr(array_type->data_type);
   return PtrIncr(ptr, v2);
 }
+#undef CONSTANT_PROPOGATION
+
+#define CONSTANT_PROPOGATION(op)                                               \
+  do {                                                                         \
+    if (i32 *n1 = std::get_if<i32>(&v1.value),                                 \
+        *n2     = std::get_if<i32>(&v2.value);                                 \
+        n1 != nullptr && n2 != nullptr) {                                      \
+      return Val::Bool(*n1 op * n2);                                           \
+    }                                                                          \
+    if (u64 *m1 = std::get_if<u64>(&v1.value),                                 \
+        *m2     = std::get_if<u64>(&v2.value);                                 \
+        m1 != nullptr && m2 != nullptr) {                                      \
+      return Val::Bool(*m1 op * m2);                                           \
+    }                                                                          \
+    if (double *r1 = std::get_if<double>(&v1.value),                           \
+        *r2        = std::get_if<double>(&v2.value);                           \
+        r1 != nullptr && r2 != nullptr) {                                      \
+      return Val::Bool(*r1 op * r2);                                           \
+    }                                                                          \
+  } while (false)
 
 Val Lt(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() < v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() < v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() < v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Lt);
-  }
+  CONSTANT_PROPOGATION(<);
+  MAKE_AND_RETURN2(::Bool, Op::Lt);
 }
 
 Val Le(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() <= v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() <= v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() <= v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Le);
-  }
+  CONSTANT_PROPOGATION(<=);
+  MAKE_AND_RETURN2(::Bool, Op::Le);
 }
 
 Val Gt(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() > v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() > v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() > v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Gt);
-  }
+  CONSTANT_PROPOGATION(>);
+  MAKE_AND_RETURN2(::Bool, Op::Gt);
 }
 
 Val Ge(Val v1, Val v2) {
-  if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() >= v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() >= v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() >= v2.value.as<double>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Ge);
-  }
+  CONSTANT_PROPOGATION(>=);
+  MAKE_AND_RETURN2(::Bool, Op::Ge);
 }
 
 Val Eq(Val v1, Val v2) {
-  if (v1.value.is<bool>()) {
-    return v1.value.as<bool>() ? v2 : Neg(v2);
-  } else if (v2.value.is<bool>()) {
-    return v2.value.as<bool>() ? v1 : Neg(v1);
-  } else if (v1.value.is<char>() && v2.value.is<char>()) {
-    return Val::Bool(v1.value.as<char>() == v2.value.as<char>());
-  } else if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() == v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() == v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() == v2.value.as<double>());
-  } else if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
-    return Val::Bool(v1.value.as<Type *>() == v2.value.as<Type *>());
-  } else if (v1.value.is<Addr>() && v2.value.is<Addr>()) {
-    return Val::Bool(v1.value.as<Addr>() == v2.value.as<Addr>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Eq);
+  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? v2 : Neg(v2); }
+  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? v1 : Neg(v1); }
+
+  if (char *c1 = std::get_if<char>(&v1.value),
+      *c2      = std::get_if<char>(&v2.value);
+      c1 != nullptr && c2 != nullptr) {
+    return Val::Bool(*c1 == *c2);
   }
+
+  CONSTANT_PROPOGATION(==);
+
+  if (Type **t1 = std::get_if<Type *>(&v1.value),
+      **t2      = std::get_if<Type *>(&v2.value);
+      t1 != nullptr && t2 != nullptr) {
+    return Val::Bool(*t1 == *t2);
+  }
+
+  if (Addr *a1 = std::get_if<Addr>(&v1.value),
+      *a2      = std::get_if<Addr>(&v2.value);
+      a1 != nullptr && a2 != nullptr) {
+    return Val::Bool(*a1 == *a2);
+  }
+
+  MAKE_AND_RETURN2(::Bool, Op::Eq);
 }
 
 Val Ne(Val v1, Val v2) {
-  if (v1.value.is<bool>()) {
-    return v1.value.as<bool>() ? Neg(v2) : v2;
-  } else if (v2.value.is<bool>()) {
-    return v2.value.as<bool>() ? Neg(v1) : v1;
-  } else if (v1.value.is<char>() && v2.value.is<char>()) {
-    return Val::Bool(v1.value.as<char>() != v2.value.as<char>());
-  } else if (v1.value.is<i32>() && v2.value.is<i32>()) {
-    return Val::Bool(v1.value.as<i32>() != v2.value.as<i32>());
-  } else if (v1.value.is<u64>() && v2.value.is<u64>()) {
-    return Val::Bool(v1.value.as<u64>() != v2.value.as<u64>());
-  } else if (v1.value.is<double>() && v2.value.is<double>()) {
-    return Val::Bool(v1.value.as<double>() != v2.value.as<double>());
-  } else if (v1.value.is<Type *>() && v2.value.is<Type *>()) {
-    return Val::Bool(v1.value.as<Type *>() != v2.value.as<Type *>());
-  } else if (v1.value.is<Addr>() && v2.value.is<Addr>()) {
-    return Val::Bool(v1.value.as<Addr>() != v2.value.as<Addr>());
-  } else {
-    MAKE_AND_RETURN2(::Bool, Op::Ne);
+  if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
+  if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
+
+  char *c1 = std::get_if<char>(&v1.value), *c2 = std::get_if<char>(&v2.value);
+  if (c1 != nullptr && c2 != nullptr) { return Val::Bool(*c1 != *c2); }
+
+  CONSTANT_PROPOGATION(!=);
+
+  if (Type **t1 = std::get_if<Type *>(&v1.value),
+      **t2      = std::get_if<Type *>(&v2.value);
+      t1 != nullptr && t2 != nullptr) {
+    return Val::Bool(*t1 != *t2);
   }
+
+  if (Addr *a1 = std::get_if<Addr>(&v1.value),
+      *a2      = std::get_if<Addr>(&v2.value);
+      a1 != nullptr && a2 != nullptr) {
+    return Val::Bool(*a1 != *a2);
+  }
+
+  MAKE_AND_RETURN2(::Bool, Op::Ne);
 }
+#undef CONSTANT_PROPOGATION
 
 Val Cast(Val v1, Val v2) {
   // v1 = result_type, v2 = val
   ASSERT_EQ(v1.type, Type_);
-  MAKE_AND_RETURN2(v1.value.as<::Type *>(), Op::Cast);
+  MAKE_AND_RETURN2(std::get<::Type *>(v1.value), Op::Cast);
 }
 
 #undef MAKE_AND_RETURN2

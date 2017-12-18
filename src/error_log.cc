@@ -53,10 +53,8 @@ CountUses(const std::unordered_map<
           Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
               &map) {
   size_t num_uses = 0;
-  for (const auto &file_and_locs : map) {
-    for (const auto &line_and_offsets : file_and_locs.second) {
-      num_uses += line_and_offsets.second.size();
-    }
+  for (const auto & [ file, locs ] : map) {
+    for (const auto & [ line, offsets ] : locs) { num_uses += offsets.size(); }
   }
   return num_uses;
 }
@@ -72,29 +70,26 @@ static void GatherAndDisplayIdentifierError(
     const std::unordered_map<
         Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
         &map) {
-  for (const auto &file_and_locs : map) {
+  for (const auto &[file, locs] : map) {
     size_t max_line_num = 0;
-    for (const auto &line_and_offsets : file_and_locs.second) {
-      if (max_line_num < line_and_offsets.first) {
-        max_line_num = line_and_offsets.first;
-      }
+    for (const auto & [ line, offsets ] : locs) {
+      if (max_line_num < line) { max_line_num = line; }
     }
     // size_t line_num_width = NumDigits(max_line_num);
 
     size_t num_uses_in_file = 0;
-    for (const auto &line_and_offsets : file_and_locs.second) {
-      num_uses_in_file += line_and_offsets.second.size();
+    for (const auto & [ line, offsets ] : locs) {
+      num_uses_in_file += offsets.size();
     }
 
-    std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '"
-              << file_and_locs.first << "':\n";
+    std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '" << file
+              << "':\n";
 
-    for (const auto &line_and_offsets : file_and_locs.second) {
-      auto line =
-          source_map AT(file_and_locs.first)->lines AT(line_and_offsets.first);
+    for (const auto &[line, offsets] : locs) {
+      auto line_text = source_map AT(file)->lines AT(line);
       // TODO alignment
-      std::cerr << line_and_offsets.first << "| " << line << '\n'
-                << std::string(line.size() + 1, '^');
+      std::cerr << line << "| " << line_text << '\n'
+                << std::string(line_text.size() + 1, '^');
     }
   }
 }
@@ -103,29 +98,29 @@ static void GatherAndDisplayGlobalDeclErrors() {
   if (global_non_decl.empty()) { return; }
 
   size_t num_instances = 0;
-  for (const auto &kv : global_non_decl) { num_instances += kv.second.size(); }
+  for (const auto &[key, val] : global_non_decl) { num_instances += val.size(); }
 
   std::cerr << "Found " << num_instances << " non-declaration statement"
             << (num_instances == 1 ? "" : "s")
             << " at the top level. All top-level statements must either be "
                "declarations, imports, or void compile-time evaluations.";
 
-  for (const auto &kv : global_non_decl) {
-    std::cerr << "  Found " << kv.second.size()
-              << (kv.second.size() == 1 ? " instance in '" : " instances in '")
-              << kv.first << "':\n";
+  for (const auto &[key, val] : global_non_decl) {
+    std::cerr << "  Found " << val.size()
+              << (val.size() == 1 ? " instance in '" : " instances in '")
+              << key << "':\n";
 
-    int line_num_width   = (int)NumDigits(kv.second.back());
-    size_t last_line_num = kv.second.front();
-    for (auto line_num : kv.second) {
+    int line_num_width   = (int)NumDigits(val.back());
+    size_t last_line_num = val.front();
+    for (auto line_num : val) {
       // TODO alignment
       if (line_num - last_line_num == 2) {
-        auto line = source_map AT(kv.first)->lines AT(line_num - 1);
+        auto line = source_map AT(key)->lines AT(line_num - 1);
         std::cerr << (line_num - 1) << "| " << line << '\n';
       } else if (line_num - last_line_num == 3) {
-        auto line = source_map AT(kv.first)->lines AT(line_num - 1);
+        auto line = source_map AT(key)->lines AT(line_num - 1);
         std::cerr << (line_num - 1) << "| " << line << '\n';
-        line = source_map AT(kv.first)->lines AT(line_num - 2);
+        line = source_map AT(key)->lines AT(line_num - 2);
         std::cerr << (line_num - 2) << "| " << line << '\n';
       } else if (line_num - last_line_num > 3) {
         std::cerr << std::string(static_cast<size_t>(line_num_width) + 1, ' ')
@@ -133,7 +128,7 @@ static void GatherAndDisplayGlobalDeclErrors() {
       }
 
       // TODO alignment
-      auto line = source_map AT(kv.first)->lines AT(line_num);
+      auto line = source_map AT(key)->lines AT(line_num);
       std::cerr << ">" << line_num << "| " << line << '\n';
       last_line_num = line_num;
     }
@@ -141,19 +136,19 @@ static void GatherAndDisplayGlobalDeclErrors() {
 }
 
 void ErrorLog::Dump() {
-  for (const auto &kv : undeclared_identifiers) {
-    WriteMessage("Undeclared identifier", kv.first, CountUses(kv.second));
-    GatherAndDisplayIdentifierError(kv.second);
+  for (const auto &[key, val] : undeclared_identifiers) {
+    WriteMessage("Undeclared identifier", key, CountUses(val));
+    GatherAndDisplayIdentifierError(val);
   }
-  for (const auto &kv : ambiguous_identifiers) {
-    WriteMessage("Ambiguous identifier", kv.first, CountUses(kv.second));
-    GatherAndDisplayIdentifierError(kv.second);
+  for (const auto &[key, val] : ambiguous_identifiers) {
+    WriteMessage("Ambiguous identifier", key, CountUses(val));
+    GatherAndDisplayIdentifierError(val);
   }
 
-  for (const auto &kv : implicit_capture) {
-    WriteMessage("Invalid capture of identifier", kv.first->identifier->token,
-                 CountUses(kv.second));
-    GatherAndDisplayIdentifierError(kv.second);
+  for (const auto &[key, val] : implicit_capture) {
+    WriteMessage("Invalid capture of identifier", key->identifier->token,
+                 CountUses(val));
+    GatherAndDisplayIdentifierError(val);
   }
 
   // TODO fix this repsonse regarding imports.
@@ -586,10 +581,10 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
               << case_ptr->span.source->name.to_string() << "\".\n";
 
     std::vector<TextSpan> locs;
-    for (auto &kv : case_ptr->key_vals) {
+    for (auto &[key, val] : case_ptr->key_vals) {
       ++num_errs_;
-      if (kv.second->type == Err || kv.second->type == correct) { continue; }
-      locs.push_back(kv.second->span);
+      if (val->type == Err || val->type == correct) { continue; }
+      locs.push_back(val->span);
     }
 
     num_errs_ += locs.size();

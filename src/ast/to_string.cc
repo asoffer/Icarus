@@ -26,8 +26,8 @@ std::string Call::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<Call " << TYPE_OR("") << ">\n" << fn_->to_string(n + 1);
   for (const auto &pos : pos_) { ss << pos->to_string(n + 1); }
-  for (const auto &kv : named_) {
-    ss << tabs(n + 1) << kv.first << " =>\n" << kv.second->to_string(n + 2);
+  for (const auto &[key, val] : named_) {
+    ss << tabs(n + 1) << key << " =>\n" << val->to_string(n + 2);
   }
   return ss.str();
 }
@@ -160,11 +160,11 @@ std::string Case::to_string(size_t n) const {
 
   size_t counter      = 0;
   size_t num_key_vals = key_vals.size();
-  for (const auto &kv : key_vals) {
+  for (const auto & [ key, val ] : key_vals) {
     ++counter;
     ss << indent << "[=> " << std::to_string(counter) << " of "
-       << std::to_string(num_key_vals) << "]\n" << kv.first->to_string(n + 1)
-       << kv.second->to_string(n + 1);
+       << std::to_string(num_key_vals) << "]\n"
+       << key->to_string(n + 1) << val->to_string(n + 1);
   }
   return ss.str();
 }
@@ -182,7 +182,7 @@ std::string FunctionLiteral::to_string(size_t n) const {
   std::stringstream ss;
   ss << tabs(n) << "<FunctionLiteral " << TYPE_OR("") << ">\n";
   ss << tabs(n + 1) << "Inputs\n";
-  for (const auto &kv : inputs) { ss << kv->to_string(n + 2); }
+  for (const auto &input : inputs) { ss << input->to_string(n + 2); }
   ss << tabs(n + 1) << "Outputs\n";
   ss << return_type_expr->to_string(n + 1) << tabs(n + 1) << "Body:\n"
      << statements->to_string(n + 2);

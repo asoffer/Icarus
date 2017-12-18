@@ -9,11 +9,11 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+#include <variant>
 
 #include "../base/debug.h"
 #include "../base/strong_types.h"
 #include "../base/util.h"
-#include "../base/variant.h"
 #include "../input/cursor.h"
 
 struct Type;
@@ -136,9 +136,9 @@ inline bool operator!=(Addr lhs, Addr rhs) { return !(lhs == rhs); }
 
 struct Val {
   ::Type *type = nullptr;
-  base::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32, u64,
-                EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
-                AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
+  std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32, u64,
+               EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
+               AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }

@@ -1,13 +1,13 @@
 #include "source.h"
 
-base::optional<Source::Line> File::NextLine() {
-  if (ifs.eof()) { return base::none; }
+std::optional<Source::Line> File::NextLine() {
+  if (ifs.eof()) { return std::nullopt; }
   std::string temp;
   std::getline(ifs, temp);
   return Line(std::move(temp));
 }
 
-base::optional<Source::Line> Repl::NextLine() {
+std::optional<Source::Line> Repl::NextLine() {
   std::cout << (first_entry ? "\n>> " : ".. ");
   first_entry = false;
   std::string input;

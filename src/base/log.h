@@ -10,8 +10,7 @@ struct Logger {
   ~Logger() { std::cerr << '\n'; }
 };
 
-template <typename T>
-const Logger &operator<<(const Logger &l, const T &t) {
+template <typename T> const Logger &operator<<(const Logger &l, const T &t) {
   std::cerr << internal::stringify(t);
   return l;
 }

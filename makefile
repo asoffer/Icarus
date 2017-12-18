@@ -5,10 +5,10 @@ TARGET  := bin/$(shell basename `pwd`)
 SOURCES := $(shell find src -name *.cc 2>/dev/null)
 OBJECTS := $(patsubst src/%.cc,build/%.o,$(SOURCES))
 
-COMPILER := g++
+COMPILER := g++-7
 BUILD_FLAGS := -g -O0 -D DEBUG
-STDS = -std=gnu++17
-WARN = -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
+STDS = -std=c++17
+WARN = -Wno-unused-but-set-parameter -Wno-unused-variable -Wall -Wextra -Wconversion -Werror -Wuninitialized -Wpedantic #-Weffc++
 OPTS = -iquote$(shell pwd)/src
 # LLVM_CXX = $(shell llvm-config --cxxflags)
 # LLVM_LINK = $(shell llvm-config --cxxflags --ldflags --system-libs --libs)

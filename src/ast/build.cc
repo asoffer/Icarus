@@ -203,7 +203,7 @@ Unop::BuildLeft(std::vector<base::owned_ptr<Node>> nodes) {
   if (tk == "require") {
     if (unop->operand->is<Terminal>()) {
       file_queue.push(Source::Name(
-          std::move(unop->operand->value.value.as<std::string>())));
+          std::move(std::get<std::string>(unop->operand->value.value))));
     } else {
       ErrorLog::InvalidRequirement(unop->operand->span);
     }

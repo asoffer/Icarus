@@ -27,7 +27,7 @@ void Unop::lrvalue_check() {
 
 void Call::lrvalue_check() {
   for (auto &pos: pos_) { pos->lrvalue_check(); }
-  for (auto &kv : named_) { kv.second->lrvalue_check(); }
+  for (auto & [ key, val ] : named_) { val->lrvalue_check(); }
 }
 
 void Access::lrvalue_check() {
@@ -101,9 +101,9 @@ void ArrayLiteral::lrvalue_check() {
 
 void Case::lrvalue_check() {
   lvalue = Assign::RVal;
-  for (auto& kv : key_vals) {
-    kv.first->lrvalue_check();
-    kv.second->lrvalue_check();
+  for (auto& [key, val] : key_vals) {
+    key->lrvalue_check();
+    val->lrvalue_check();
   }
 }
 

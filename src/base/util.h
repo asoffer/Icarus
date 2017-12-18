@@ -55,6 +55,11 @@ template <typename T> std::unique_ptr<T> wrap_unique(T *ptr) {
   return std::unique_ptr<T>(ptr);
 }
 
+template <typename... Ts> struct overloaded : Ts... {
+  using Ts::operator()...;
+};
+template <typename... Ts> overloaded(Ts...)->overloaded<Ts...>;
+
 } // namespace base
 
 #endif // ICARUS_BASE_UTIL_H

@@ -123,13 +123,14 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
   static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
       init_fns;
 
-  auto insertion = init_fns[to_type].emplace(from_type, nullptr);
-  if (insertion.second) {
+  auto[iter, success] = init_fns[to_type].emplace(from_type, nullptr);
+  if (success) {
+
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({from_type, Ptr(to_type)}, Void), std::move(args)));
-    auto *fn = insertion.first->second = IR::Func::All.back().get();
+    auto *fn = iter->second = IR::Func::All.back().get();
 
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
@@ -181,20 +182,20 @@ static IR::Val ArrayInitializationWith(Array *from_type, Array *to_type) {
       IR::ReturnJump();
     }
   }
-  return IR::Val::Func(insertion.first->second);
+  return IR::Val::Func(iter->second);
 }
 
 template <InitFnType InitFn>
 static IR::Val StructInitializationWith(Struct *struct_type) {
   static std::unordered_map<Struct *, IR::Func *> struct_init_fns;
-  auto insertion = struct_init_fns.emplace(struct_type, nullptr);
+  auto[iter, success] = struct_init_fns.emplace(struct_type, nullptr);
 
-  if (insertion.second) {
+  if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
         {"arg", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({struct_type, Ptr(struct_type)}, Void), std::move(args)));
-    auto *fn = insertion.first->second = IR::Func::All.back().get();
+    auto *fn = iter->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
       for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
         InitFn(struct_type->field_type[i], struct_type->field_type[i],
@@ -204,7 +205,7 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
       IR::ReturnJump();
     }
   }
-  return IR::Val::Func(insertion.first->second);
+  return IR::Val::Func(iter->second);
 }
 
 void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
