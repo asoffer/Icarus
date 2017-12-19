@@ -45,9 +45,8 @@ Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
 
 Val Field(Val v, size_t n) {
   ASSERT_TYPE(Pointer, v.type);
-  auto ptee_type = ptr_cast<Pointer>(v.type)->pointee;
-  Cmd cmd(Ptr(ptr_cast<Struct>(ptee_type)->field_type[n]), Op::Field,
-          {std::move(v), Val::Uint(n)});
+  Cmd cmd(Ptr(v.type->as<Pointer>().pointee->as<Struct>().field_type[n]),
+          Op::Field, {std::move(v), Val::Uint(n)});
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
   return cmd.reg();
 }
@@ -122,23 +121,23 @@ Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
 
 Val Load(Val v) {
   ASSERT_TYPE(Pointer, v.type);
-  MAKE_AND_RETURN(ptr_cast<Pointer>(v.type)->pointee, Op::Load);
+  MAKE_AND_RETURN(v.type->as<Pointer>().pointee, Op::Load);
 }
 
 Val ArrayLength(Val v) {
   ASSERT_TYPE(Pointer, v.type);
-  auto *ptee = ptr_cast<Pointer>(v.type)->pointee;
+  auto *ptee = v.type->as<Pointer>().pointee;
   ASSERT_TYPE(::Array, ptee);
-  ASSERT(!ptr_cast<::Array>(ptee)->fixed_length,
+  ASSERT(!ptee->as<::Array>().fixed_length,
          "Pointee type is " + ptee->to_string());
   MAKE_AND_RETURN(Ptr(Uint), Op::ArrayLength);
 }
 
 Val ArrayData(Val v) {
   ASSERT_TYPE(Pointer, v.type);
-  auto *ptee = ptr_cast<Pointer>(v.type)->pointee;
+  auto *ptee = v.type->as<Pointer>().pointee;
   ASSERT_TYPE(::Array, ptee);
-  auto *array_type = ptr_cast<::Array>(ptee);
+  auto *array_type = &ptee->as<::Array>();
   ASSERT(!array_type->fixed_length, "");
   MAKE_AND_RETURN(Ptr(Ptr(array_type->data_type)), Op::ArrayData);
 }
@@ -175,32 +174,20 @@ Val Xor(Val v1, Val v2) {
   MAKE_AND_RETURN2(Bool, Op::Xor);
 }
 
-#define CONSTANT_PROPOGATION(op)                                               \
+#define CONSTANT_PROPOGATION(cpp_type, fn, result_type)                        \
   do {                                                                         \
-    if (i32 *n1 = std::get_if<i32>(&v1.value),                                 \
-        *n2     = std::get_if<i32>(&v2.value);                                 \
-        n1 != nullptr && n2 != nullptr) {                                      \
-      return Val::Int(*n1 op * n2);                                            \
-    }                                                                          \
-    if (u64 *m1 = std::get_if<u64>(&v1.value),                                 \
-        *m2     = std::get_if<u64>(&v2.value);                                 \
-        m1 != nullptr && m2 != nullptr) {                                      \
-      return Val::Uint(*m1 op * m2);                                           \
-    }                                                                          \
-    if (double *r1 = std::get_if<double>(&v1.value),                           \
-        *r2        = std::get_if<double>(&v2.value);                           \
-        r1 != nullptr && r2 != nullptr) {                                      \
-      return Val::Real(*r1 op * r2);                                           \
+    cpp_type *val1 = std::get_if<cpp_type>(&v1.value);                         \
+    cpp_type *val2 = std::get_if<cpp_type>(&v2.value);                         \
+    if (val1 != nullptr && val2 != nullptr) {                                  \
+      return Val::result_type(fn(*val1, *val2));                               \
     }                                                                          \
   } while (false)
 
 Val Add(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(+);
-  if (char *c1 = std::get_if<char>(&v1.value),
-      *c2      = std::get_if<char>(&v2.value);
-      c1 != nullptr && c2 != nullptr) {
-    return Val::Char(static_cast<char>(*c1 + *c2));
-  }
+  CONSTANT_PROPOGATION(i32, std::plus<i32>{}, Int);
+  CONSTANT_PROPOGATION(u64, std::plus<u64>{}, Uint);
+  CONSTANT_PROPOGATION(double, std::plus<double>{}, Real);
+  CONSTANT_PROPOGATION(char, std::plus<char>{}, Char);
 
   if (AST::CodeBlock **cb1 = std::get_if<AST::CodeBlock *>(&v1.value),
       **cb2                = std::get_if<AST::CodeBlock *>(&v2.value);
@@ -227,53 +214,36 @@ Val Add(Val v1, Val v2) {
 }
 
 Val Sub(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(-);
-
-  if (char *c1 = std::get_if<char>(&v1.value),
-      *c2      = std::get_if<char>(&v2.value);
-      c1 != nullptr && c2 != nullptr) {
-    return Val::Char(static_cast<char>(*c1 - *c2));
-  }
-
+  CONSTANT_PROPOGATION(i32, std::minus<i32>{}, Int);
+  CONSTANT_PROPOGATION(u64, std::minus<u64>{}, Uint);
+  CONSTANT_PROPOGATION(double, std::minus<double>{}, Real);
+  CONSTANT_PROPOGATION(char, std::minus<char>{}, Char);
   MAKE_AND_RETURN2(v1.type, Op::Sub);
 }
 
 Val Mul(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(*);
+  CONSTANT_PROPOGATION(i32, std::multiplies<i32>{}, Int);
+  CONSTANT_PROPOGATION(u64, std::multiplies<u64>{}, Uint);
+  CONSTANT_PROPOGATION(double, std::multiplies<double>{}, Real);
   MAKE_AND_RETURN2(v1.type, Op::Mul);
 }
 
 Val Div(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(/);
+  CONSTANT_PROPOGATION(i32, std::divides<i32>{}, Int);
+  CONSTANT_PROPOGATION(u64, std::divides<u64>{}, Uint);
+  CONSTANT_PROPOGATION(double, std::divides<double>{}, Real);
   MAKE_AND_RETURN2(v1.type, Op::Div);
 }
 
 Val Mod(Val v1, Val v2) {
-  if (i32 *n1 = std::get_if<i32>(&v1.value), *n2 = std::get_if<i32>(&v2.value);
-      n1 != nullptr && n2 != nullptr) {
-    return Val::Int(*n1 % *n2);
-  }
-
-  if (u64 *m1 = std::get_if<u64>(&v1.value), *m2 = std::get_if<u64>(&v2.value);
-      m1 != nullptr && m2 != nullptr) {
-    return Val::Uint(*m1 % *m2);
-  }
-
-  if (double *r1 = std::get_if<double>(&v1.value),
-      *r2        = std::get_if<double>(&v2.value);
-      r1 != nullptr && r2 != nullptr) {
-    return Val::Real(fmod(*r1, *r2));
-  }
-
+  CONSTANT_PROPOGATION(i32, std::modulus<i32>{}, Int);
+  CONSTANT_PROPOGATION(u64, std::modulus<u64>{}, Uint);
+  CONSTANT_PROPOGATION(double, std::fmod, Real);
   MAKE_AND_RETURN2(v1.type, Op::Mod);
 }
 
 Val Arrow(Val v1, Val v2) {
-  if (Type **t1 = std::get_if<Type *>(&v1.value),
-      **t2      = std::get_if<Type *>(&v2.value);
-      t1 != nullptr && t2 != nullptr) {
-    return Val::Type(::Func(*t1, *t2));
-  }
+  CONSTANT_PROPOGATION(Type *, ::Func, Type);
   MAKE_AND_RETURN2(Type_, Op::Arrow);
 }
 
@@ -291,7 +261,7 @@ Val Array(Val v1, Val v2) {
     if (u64 *m = std::get_if<u64>(&v1.value)) {
       return Val::Type(::Arr(*t, *m));
     }
-    if (u64 *n = std::get_if<u64>(&v1.value)) {
+    if (i32 *n = std::get_if<i32>(&v1.value)) {
       return Val::Type(::Arr(*t, *n));
     }
     if (v1 == Val::None()) { return Val::Type(::Arr(*t)); }
@@ -303,53 +273,38 @@ Val Array(Val v1, Val v2) {
 
 Val Index(Val v1, Val v2) {
   ASSERT_TYPE(Pointer, v1.type);
-  auto *ptee = ptr_cast<Pointer>(v1.type)->pointee;
-  ASSERT_TYPE(::Array, ptee);
   ASSERT_EQ(v2.type, ::Uint);
-  auto *array_type = ptr_cast<::Array>(ptee);
-
+  auto *array_type = &v1.type->as<Pointer>().pointee->as<::Array>();
   IR::Val ptr = array_type->fixed_length ? v1 : Load(ArrayData(v1));
   ptr.type    = Ptr(array_type->data_type);
   return PtrIncr(ptr, v2);
 }
-#undef CONSTANT_PROPOGATION
-
-#define CONSTANT_PROPOGATION(op)                                               \
-  do {                                                                         \
-    if (i32 *n1 = std::get_if<i32>(&v1.value),                                 \
-        *n2     = std::get_if<i32>(&v2.value);                                 \
-        n1 != nullptr && n2 != nullptr) {                                      \
-      return Val::Bool(*n1 op * n2);                                           \
-    }                                                                          \
-    if (u64 *m1 = std::get_if<u64>(&v1.value),                                 \
-        *m2     = std::get_if<u64>(&v2.value);                                 \
-        m1 != nullptr && m2 != nullptr) {                                      \
-      return Val::Bool(*m1 op * m2);                                           \
-    }                                                                          \
-    if (double *r1 = std::get_if<double>(&v1.value),                           \
-        *r2        = std::get_if<double>(&v2.value);                           \
-        r1 != nullptr && r2 != nullptr) {                                      \
-      return Val::Bool(*r1 op * r2);                                           \
-    }                                                                          \
-  } while (false)
 
 Val Lt(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(<);
+  CONSTANT_PROPOGATION(i32, std::less<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::less<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::less<double>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Lt);
 }
 
 Val Le(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(<=);
+  CONSTANT_PROPOGATION(i32, std::less_equal<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::less_equal<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::less_equal<double>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Le);
 }
 
 Val Gt(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(>);
+  CONSTANT_PROPOGATION(i32, std::greater<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::greater<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::greater<double>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Gt);
 }
 
 Val Ge(Val v1, Val v2) {
-  CONSTANT_PROPOGATION(>=);
+  CONSTANT_PROPOGATION(i32, std::greater_equal<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::greater_equal<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::greater_equal<double>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Ge);
 }
 
@@ -357,26 +312,12 @@ Val Eq(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? v2 : Neg(v2); }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? v1 : Neg(v1); }
 
-  if (char *c1 = std::get_if<char>(&v1.value),
-      *c2      = std::get_if<char>(&v2.value);
-      c1 != nullptr && c2 != nullptr) {
-    return Val::Bool(*c1 == *c2);
-  }
-
-  CONSTANT_PROPOGATION(==);
-
-  if (Type **t1 = std::get_if<Type *>(&v1.value),
-      **t2      = std::get_if<Type *>(&v2.value);
-      t1 != nullptr && t2 != nullptr) {
-    return Val::Bool(*t1 == *t2);
-  }
-
-  if (Addr *a1 = std::get_if<Addr>(&v1.value),
-      *a2      = std::get_if<Addr>(&v2.value);
-      a1 != nullptr && a2 != nullptr) {
-    return Val::Bool(*a1 == *a2);
-  }
-
+  CONSTANT_PROPOGATION(char, std::equal_to<char>{}, Bool);
+  CONSTANT_PROPOGATION(i32, std::equal_to<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::equal_to<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
+  CONSTANT_PROPOGATION(Type *, std::equal_to<Type *>{}, Bool);
+  CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Eq);
 }
 
@@ -384,23 +325,12 @@ Val Ne(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
 
-  char *c1 = std::get_if<char>(&v1.value), *c2 = std::get_if<char>(&v2.value);
-  if (c1 != nullptr && c2 != nullptr) { return Val::Bool(*c1 != *c2); }
-
-  CONSTANT_PROPOGATION(!=);
-
-  if (Type **t1 = std::get_if<Type *>(&v1.value),
-      **t2      = std::get_if<Type *>(&v2.value);
-      t1 != nullptr && t2 != nullptr) {
-    return Val::Bool(*t1 != *t2);
-  }
-
-  if (Addr *a1 = std::get_if<Addr>(&v1.value),
-      *a2      = std::get_if<Addr>(&v2.value);
-      a1 != nullptr && a2 != nullptr) {
-    return Val::Bool(*a1 != *a2);
-  }
-
+  CONSTANT_PROPOGATION(char, std::not_equal_to<char>{}, Bool);
+  CONSTANT_PROPOGATION(i32, std::not_equal_to<i32>{}, Bool);
+  CONSTANT_PROPOGATION(u64, std::not_equal_to<u64>{}, Bool);
+  CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
+  CONSTANT_PROPOGATION(Type *, std::not_equal_to<Type *>{}, Bool);
+  CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
   MAKE_AND_RETURN2(::Bool, Op::Ne);
 }
 #undef CONSTANT_PROPOGATION

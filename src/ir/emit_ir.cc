@@ -258,17 +258,12 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
   if (decl->const_ || decl->arg_val) {
     return decl->addr;
   } else if (decl->is<InDecl>()) {
-    auto *in_decl = ptr_cast<InDecl>(decl);
-    if (in_decl->container->type->is<Array>()) {
+    if (auto &in_decl = decl->as<InDecl>();
+        in_decl.container->type->is<Array>()) {
       return PtrCallFix(EmitLVal(kind));
     } else {
       return decl->addr;
     }
-
-  } else if (type == Type_) {
-    // TODO this is a hack and not entirely correct because perhaps types are
-    // not const.
-    return Evaluate(decl->init_val.get());
   } else {
     return PtrCallFix(EmitLVal(kind));
   }
@@ -965,7 +960,7 @@ IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
 
 IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
-  ASSERT(decl != nullptr, "");
+  ASSERT_NE(decl, nullptr);
 
   if (decl->addr == IR::Val::None()) { decl->EmitIR(kind); }
   // TODO kind???
