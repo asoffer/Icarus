@@ -137,11 +137,13 @@ Scope_Type *ScopeType(Type *t) {
 static std::map<std::vector<Type *>, Variant> variants_;
 Type *Var(std::vector<Type *> variants) {
   ASSERT_NE(variants.size(), 0);
-  if (variants.size() == 1) { return variants.front(); }
   // TODO This sort order should be deterministic to allow interoperability
   // between multiple runs of the compiler.
   std::sort(variants.begin(), variants.end());
   variants.erase(std::unique(variants.begin(), variants.end()), variants.end());
+
+  if (variants.size() == 1) { return variants.front(); }
+
   Variant v(variants);
   return &variants_.emplace(std::move(variants), std::move(v)).first->second;
 }

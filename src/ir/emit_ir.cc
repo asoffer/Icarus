@@ -7,6 +7,11 @@
 
 #include <vector>
 
+// TODO Alloca adds entry in the first block. Figure out if this is being done
+// in a smart way. Something feels weird about it. Definitely it should be in
+// the first block of the function, but maybe you're being too liberal with
+// allocas?
+
 #define VERIFY_OR_EXIT                                                         \
   do {                                                                         \
     verify_types();                                                            \
@@ -148,6 +153,9 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     expr_map[expr.get()] = &iter->second;
   }
 
+  std::vector<IR::Val> results;
+  results.reserve(2 * dispatch_table_.bindings_.size());
+
   // TODO deal with dispatching named arguments.
   for (const auto & [ call_arg_type, binding ] : dispatch_table_.bindings_) {
     auto next_binding = IR::Func::Current->AddBlock();
@@ -159,7 +167,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
           next_binding, VariantMatch(pos_vals[i], call_arg_type.pos_[i]));
     }
 
-   for (auto & [ name, expr ] : named_) {
+    for (auto & [ name, expr ] : named_) {
       auto iter = call_arg_type.find(name);
       if (iter == call_arg_type.named_.end()) { continue; }
       if (!expr->type->is<Variant>()) { continue; }
@@ -189,10 +197,9 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         }
       } else {
         if (binding.exprs_[i].first->is<Variant>()) {
-          // TODO don't alloca here!
           // Note: I actually don't care what the other type is so long as it's
           // a variant of the appropriate size
-          auto entry = IR::Alloca(binding.exprs_[i].first);
+          auto entry         = IR::Alloca(binding.exprs_[i].first);
           auto entry_as_type = IR::Cast(IR::Val::Type(Ptr(Type_)), entry);
           IR::Store(IR::Val::Type(expr->type), entry_as_type);
           auto val_ptr = IR::Cast(IR::Val::Type(Ptr(expr->type)),
@@ -207,7 +214,39 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
       }
     }
 
-    IR::Call(fn_to_call, std::move(args));
+    Type *output_type_for_this_binding =
+        std::get<IR::Func *>(fn_to_call.value)->type->output;
+    if (output_type_for_this_binding->is_big()) {
+      // TODO is_big doesn't imply this is actually a variant
+      if (type->is<Variant>()) {
+        auto ret_val = IR::Alloca(type);
+        Type::CallAssignment(type, type, IR::Call(fn_to_call, std::move(args)),
+                             ret_val);
+        results.push_back(IR::Val::Block(IR::Block::Current));
+        results.push_back(ret_val);
+      } else {
+        NOT_YET();
+      }
+    } else {
+      // TODO this assignment should be part of call-assign?
+      if (type->is<Variant>()) {
+        auto ret_val = IR::Alloca(type);
+        auto ret_val_type = IR::Cast(IR::Val::Type(Ptr(Type_)), ret_val);
+        IR::Store(IR::Val::Type(output_type_for_this_binding), ret_val_type);
+        auto val_ptr =
+            IR::Cast(IR::Val::Type(Ptr(output_type_for_this_binding)),
+                     IR::PtrIncr(ret_val_type, IR::Val::Uint(1)));
+        Type::CallAssignment(output_type_for_this_binding,
+                             output_type_for_this_binding,
+                             IR::Call(fn_to_call, std::move(args)), val_ptr);
+        results.push_back(IR::Val::Block(IR::Block::Current));
+        results.push_back(ret_val);
+      } else {
+        results.push_back(IR::Val::Block(IR::Block::Current));
+        results.push_back(IR::Call(fn_to_call, std::move(args)));
+      }
+    }
+
     IR::UncondJump(landing_block);
 
     IR::Block::Current = next_binding;
@@ -218,10 +257,9 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
 
-  return IR::Val::None(); // TODO make this work for functions that don't
-                          // return void (need to allocate a result location
-                          // which may be a variant and insert the correct
-                          // output there).
+  auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
+  IR::Func::Current->SetArgs(phi, std::move(results));
+  return IR::Func::Current->Command(phi).reg();
 }
 
 IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
@@ -456,8 +494,8 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
     IR::CondJump(val, compute, next);
 
     IR::Block::Current = compute;
-    phi_args.push_back(IR::Val::Block(IR::Block::Current));
     auto result = key_vals[i].second->EmitIR(kind);
+    phi_args.push_back(IR::Val::Block(IR::Block::Current));
     phi_args.push_back(result);
     IR::UncondJump(land);
 
@@ -465,8 +503,8 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
   }
 
   // Last entry
-  phi_args.push_back(IR::Val::Block(IR::Block::Current));
   auto result = key_vals.back().second->EmitIR(kind);
+  phi_args.push_back(IR::Val::Block(IR::Block::Current));
   phi_args.push_back(result);
   IR::UncondJump(land);
 
@@ -906,6 +944,10 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
 
     CURRENT_FUNC(ir_func) {
       IR::Block::Current = ir_func->entry();
+      // Leave space for allocas that will come later (added to the entry
+      // block).
+      auto start_block   = IR::Func::Current->AddBlock();
+      IR::Block::Current = start_block;
 
       for (size_t i = 0; i < inputs.size(); ++i) {
         auto &arg = inputs[i];
@@ -939,6 +981,9 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
 
       statements->EmitIR(kind);
       IR::ReturnJump();
+
+      IR::Block::Current = ir_func->entry();
+      IR::UncondJump(start_block);
     }
   }
 

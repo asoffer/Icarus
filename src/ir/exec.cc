@@ -108,11 +108,9 @@ BlockIndex ExecContext::ExecuteBlock() {
     if (cmd.type != nullptr && cmd.type != Void) {
       ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.type);
-
       this->reg(cmd.result) = result;
     }
   }
-
   return std::get<BlockIndex>(result.value);
 }
 
