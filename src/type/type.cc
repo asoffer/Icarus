@@ -137,8 +137,25 @@ Scope_Type *ScopeType(Type *t) {
 static std::map<std::vector<Type *>, Variant> variants_;
 Type *Var(std::vector<Type *> variants) {
   ASSERT_NE(variants.size(), 0);
+  if (variants.size() == 1) { return variants[0]; }
+
+  size_t end = variants.size();
+  size_t i   = 0;
+  while (i < end) {
+    if (variants[i]->is<Variant>()) {
+      Variant* var = &variants[i]->as<Variant>();
+      variants[i] = variants.back();
+      variants.pop_back();
+      variants.insert(variants.end(), var->variants_.begin(),
+                      var->variants_.end());
+    } else {
+      ++i;
+    }
+  }
+
   // TODO This sort order should be deterministic to allow interoperability
   // between multiple runs of the compiler.
+
   std::sort(variants.begin(), variants.end());
   variants.erase(std::unique(variants.begin(), variants.end()), variants.end());
 

@@ -621,35 +621,19 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     return IR::Neg(operand->EmitIR(kind));
   } break;
   case Language::Operator::Return: {
-    if (operand->is<AST::CommaList>()) {
-      bool all_types = true;
-      std::vector<IR::Val> vals;
-      for (const auto &expr : ptr_cast<AST::CommaList>(operand.get())->exprs) {
-        vals.push_back(expr->EmitIR(kind));
-        if (expr->type != Type_) { all_types = false; }
+    ForEachExpr(operand.get(), [kind](size_t i, AST::Expression *expr) {
+      auto val = expr->EmitIR(kind);
+      Type *output = IR::Func::Current->type->output;
+      Type *out_type =
+          output->is<Tuple>() ? output->as<Tuple>().entries[i] : output;
+      if (val.type != out_type) {
+        auto to_be_casted = val;
+        val = IR::Alloca(out_type);
+        Type::CallAssignment(val.type, out_type, to_be_casted, val);
       }
-
-      if (all_types) {
-        std::vector<Type *> types;
-        for (const auto &val : vals) {
-          types.push_back(std::get<::Type *>(val.value));
-        }
-        IR::SetReturn(IR::ReturnValue{0}, IR::Val::Type(Tup(types)));
-        IR::ReturnJump();
-      } else {
-        size_t i = 0;
-        for (auto &val : vals) {
-          IR::SetReturn(IR::ReturnValue{static_cast<i32>(i++)}, std::move(val));
-        }
-        IR::ReturnJump();
-      }
-    } else {
-      auto val = operand->EmitIR(kind);
-      if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }
-      IR::SetReturn(IR::ReturnValue{0}, val);
-      IR::ReturnJump();
-    }
-
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, val);
+    });
+    IR::ReturnJump();
     return IR::Val::None();
   }
   case Language::Operator::Print: {
@@ -906,7 +890,7 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
   }
 }
 
-IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(); }
+IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(this); }
 IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind) { NOT_YET(); }
 
 IR::Val AST::FunctionLiteral::EmitTemporaryIR(IR::Cmd::Kind kind) {
