@@ -229,6 +229,18 @@ done_reading:
          span,
          "TODO " __FILE__ ":" + std::to_string(__LINE__) +
              ": Found a number that has no starting digit. Treat as zero.");
+    } else {
+      switch (num_dots) {
+      case 0:
+      return NNT::TerminalExpression(span, IR::Val::Int(0));
+      default:
+        ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
+                                       std::to_string(__LINE__) +
+                                       ": Too many periods in numeric literal. "
+                                       "Ignoring all but the first.");
+        [[fallthrough]];
+      case 1: return NNT::TerminalExpression(span, IR::Val::Real(0));
+      }
     }
   } else {
     switch (num_dots) {
@@ -246,7 +258,7 @@ done_reading:
                                        std::to_string(__LINE__) +
                                        "Number is too large to fit in a  IEEE "
                                        "754-2008 floating point number");
-        return NNT::TerminalExpression(span, IR::Val::Real(0.0));
+        return NNT::TerminalExpression(span, IR::Val::Real(0));
       } else {
         return NNT::TerminalExpression(span, IR::Val::Real(rep));
       }
@@ -290,13 +302,19 @@ static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   case 'd': loc.Increment(); return NextNumberInBase<10>(loc);
   case 'x': loc.Increment(); return NextNumberInBase<16>(loc);
   default:
-    ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-    loc.BackUp();
-    // TODO guess the base that was intended? If it has letters a-f, it's
-    // obviously hex. If it's just 0s and 1s it's probably binary (unless it's
-    // short enough?)
-    return NextNumberInBase<10>(loc);
+    if (*loc == '.') {
+      return NextNumberInBase<10>(loc);
+    } else if (IsAlphaNumericOrUnderscore(*loc)) {
+      ErrorLog::LogGeneric(loc.ToSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
+      loc.BackUp();
+      // TODO guess the base that was intended? If it has letters a-f, it's
+      // obviously hex. If it's just 0s and 1s it's probably binary (unless it's
+      // short enough?)
+      return NextNumberInBase<10>(loc);
+    } else {
+      return NNT::TerminalExpression(loc.ToSpan(), IR::Val::Int(0));
+    }
   }
 }
 
