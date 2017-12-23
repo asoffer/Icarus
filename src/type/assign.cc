@@ -14,8 +14,8 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
 
   } else if (to_type->is<Array>()) {
     ASSERT_TYPE(Array, from_type);
-    auto *from_array_type = ptr_cast<Array>(from_type);
-    auto *to_array_type   = ptr_cast<Array>(to_type);
+    auto *from_array_type = &from_type->as<Array>();
+    auto *to_array_type   = &to_type->as<Array>();
 
     IR::Func::All.push_back(std::make_unique<IR::Func>(
         Func({Ptr(from_type), Ptr(to_type)}, Void),
@@ -119,7 +119,9 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
     }
   } else {
     // TODO change name? this is the only assignment?
-    from_type->as<Struct>().EmitDefaultAssign(to_var, from_val);
+    LOG << from_type << to_type;
+    LOG << from_val << " " << to_var;
+    from_type->as<Struct>().EmitDefaultAssign(from_val, to_var);
   }
 }
 
@@ -127,7 +129,7 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
   CompleteDefinition();
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({this, Ptr(this)}, Void),
+        Func({Ptr(this), Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}}));
     assign_func       = IR::Func::All.back().get();

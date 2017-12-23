@@ -301,7 +301,7 @@ void Unop::verify_types() {
 
       auto t = scope_->FunctionTypeReferencedOrNull("__neg__", operand->type);
       if (t) {
-        type = ptr_cast<Function>(t)->output;
+        type = t->as<Function>().output;
       } else {
         ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
                                    "` has no unary negation operator.",
@@ -375,7 +375,7 @@ void Access::verify_types() {
         // supposed to be a member so we should emit an error but carry on
         // assuming that this is an element of that enum type.
         type = evaled_type;
-        if (ptr_cast<Enum>(evaled_type)->IndexOrFail(member_name) ==
+        if (evaled_type->as<Enum>().IndexOrFail(member_name) ==
             std::numeric_limits<size_t>::max()) {
           ErrorLog::MissingMember(span, member_name, evaled_type);
         }
@@ -784,10 +784,10 @@ void Binop::verify_types() {
         ErrorLog::IndexingNonArray(span, lhs->type);
       }
     } else if (rhs->type->is<RangeType>()) {
-      type = Slice(ptr_cast<Array>(lhs->type));
+      type = Slice(&lhs->type->as<Array>());
       break;
     } else {
-      type = ptr_cast<Array>(lhs->type)->data_type;
+      type = lhs->type->as<Array>().data_type;
 
       // TODO allow slice indexing
       if (rhs->type == Int || rhs->type == Uint) { break; }
@@ -856,7 +856,7 @@ void Binop::verify_types() {
       Declaration *correct_decl = nullptr;                                     \
       for (auto &decl : matched_op_name) {                                     \
         if (!decl->type->is<Function>()) { continue; }                         \
-        auto fn_type = ptr_cast<Function>(decl->type);                         \
+        auto *fn_type = &decl->type->as<Function>();                           \
         if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
         /* If you get here, you've found a match. Hope there is only one       \
          * TODO if there is more than one, log them all and give a good        \
@@ -872,7 +872,7 @@ void Binop::verify_types() {
         type = Err;                                                            \
         ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
       } else if (type != Err) {                                                \
-        type = ptr_cast<Function>(correct_decl->type)->output;                 \
+        type = correct_decl->type->as<Function>().output;                      \
       }                                                                        \
     }                                                                          \
   } break;
@@ -896,8 +896,8 @@ void Binop::verify_types() {
       type = lhs->type;
 
     } else if (lhs->type->is<Function>() && rhs->type->is<Function>()) {
-      auto lhs_fn = ptr_cast<Function>(lhs->type);
-      auto rhs_fn = ptr_cast<Function>(rhs->type);
+      auto *lhs_fn = &lhs->type->as<Function>();
+      auto *rhs_fn = &rhs->type->as<Function>();
       if (rhs_fn->output == lhs_fn->input) {
         type = Func(rhs_fn->input, lhs_fn->output);
 
@@ -915,7 +915,7 @@ void Binop::verify_types() {
       auto fn_type = scope_->FunctionTypeReferencedOrNull(
           "__mul__", Tup({lhs->type, rhs->type}));
       if (fn_type) {
-        type = ptr_cast<Function>(fn_type)->output;
+        type = fn_type->as<Function>().output;
       } else {
         type = Err;
         ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
@@ -997,8 +997,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
         return false;
       }
 
-      Array *lhs_array = ptr_cast<Array>(lhs_type);
-      Array *rhs_array = ptr_cast<Array>(rhs_type);
+      Array *lhs_array = &lhs_type->as<Array>();
+      Array *rhs_array = &lhs_type->as<Array>();
 
       // TODO what if data types are equality comparable but not equal?
       if (lhs_array->data_type != rhs_array->data_type) {
@@ -1120,13 +1120,13 @@ void InDecl::verify_types() {
   }
 
   if (container->type->is<Array>()) {
-    type = ptr_cast<Array>(container->type)->data_type;
+    type = container->type->as<Array>().data_type;
 
   } else if (container->type->is<SliceType>()) {
-    type = ptr_cast<SliceType>(container->type)->array_type->data_type;
+    type = container->type->as<SliceType>().array_type->data_type;
 
   } else if (container->type->is<RangeType>()) {
-    type = ptr_cast<RangeType>(container->type)->end_type;
+    type = container->type->as<RangeType>().end_type;
 
   } else if (container->type == Type_) {
     auto t = std::get<Type *>(Evaluate(container.get()).value);

@@ -57,7 +57,7 @@ struct PropDB {
         view.props_[Register(0)] = std::move(prop);
       } else if (fn_->args_.size() > 1) {
         for (i32 i = 0; i < static_cast<i32>(fn_->args_.size()); ++i) {
-          Type *entry_type = ptr_cast<Tuple>(fn_->type->input)->entries[i];
+          Type *entry_type = fn_->type->input->as<Tuple>().entries[i];
           auto prop        = DefaultProperty(entry_type);
           ASSERT(prop.get() != nullptr, "");
           view.props_[Register(i)] = std::move(prop);
@@ -437,10 +437,9 @@ ValidateRequirement(const Func *fn,
   prop_db.Compute();
   // TODO BlockIndex(1) may not be the only return!
   for (BlockIndex return_block : fn->return_blocks_) {
-    auto *bool_prop = ptr_cast<property::BoolProperty>(
-        prop_db.views_[&fn->block(return_block)]
-            .ret_props_[ReturnValue(0)]
-            .get());
+    auto *bool_prop = &prop_db.views_[&fn->block(return_block)]
+                           .ret_props_[ReturnValue(0)]
+                           ->as<property::BoolProperty>();
     if (bool_prop->kind != property::BoolProperty::Kind::True) { return false; }
   }
   return true;

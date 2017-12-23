@@ -110,7 +110,7 @@ Block &ExecContext::current_block() {
 Val Func::Argument(u32 n) {
   Type *arg_type = nullptr;
   if (type->input->is<Tuple>()) {
-    arg_type = ptr_cast<Tuple>(type->input)->entries AT(n);
+    arg_type = type->input->as<Tuple>().entries AT(n);
     if (arg_type->is_big()) { arg_type = Ptr(arg_type); }
   } else {
     ASSERT_EQ(n, 0);
@@ -122,10 +122,10 @@ Val Func::Argument(u32 n) {
 Func::Func(::Function *fn_type,
            std::vector<std::pair<std::string, AST::Expression *>> args)
     : type(fn_type), args_(std::move(args)),
-      num_regs_(fn_type->input->is<Tuple>()
-                    ? static_cast<i32>(
-                          ptr_cast<Tuple>(fn_type->input)->entries.size())
-                    : 1) {
+      num_regs_(
+          fn_type->input->is<Tuple>()
+              ? static_cast<i32>(fn_type->input->as<Tuple>().entries.size())
+              : 1) {
   blocks_.push_back(std::move(Block(this)));
   i32 num_args = static_cast<i32>(args_.size());
   for (i32 i = 0; i < num_args; ++i) {

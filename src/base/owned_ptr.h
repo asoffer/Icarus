@@ -61,7 +61,7 @@ public:
   }
 
   template <typename D> owned_ptr<D> as() const {
-    return owned_ptr<D>(new D(*ptr_cast<D>(value_)));
+    return owned_ptr<D>(new D(value_->template as<D>()));
   }
 
   T* get() const { return value_; }
@@ -87,12 +87,12 @@ template <typename T> owned_ptr<T> own(T *ptr) { return owned_ptr<T>(ptr); }
 
 template <typename To, typename From>
 base::owned_ptr<To> move(base::owned_ptr<From> &&ptr) {
-  return own(ptr_cast<To>(ptr.release()));
+  return own(&ptr.release()->template as<To>());
 }
 
 template <typename To, typename From>
 base::owned_ptr<To> move(base::owned_ptr<From> &ptr) {
-  return own(ptr_cast<To>(ptr.release()));
+  return own(&ptr.release()->template as<To>());
 }
 
 template <typename T>

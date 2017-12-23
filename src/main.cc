@@ -45,7 +45,7 @@ int GenerateCode() {
   RUN(timer, "Verify and Emit") {
     for (auto& stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
-      auto *decl = ptr_cast<AST::Declaration>(stmt.get());
+      auto *decl = &stmt->as<AST::Declaration>();
       decl->EmitIR(IR::Cmd::Kind::Exec);
     }
   }
@@ -71,14 +71,14 @@ int RunRepl() {
   Repl repl;
   while (true) {
     auto stmts = repl.Parse();
-    for (auto& stmt : stmts->statements) {
+    for (auto &stmt : stmts->statements) {
       if (stmt->is<AST::Declaration>()) {
-        auto* decl = ptr_cast<AST::Declaration>(stmt.get());
+        auto *decl = &stmt->as<AST::Declaration>();
         decl->assign_scope(Scope::Global);
         decl->EmitIR(IR::Cmd::Kind::Exec);
 
       } else if (stmt->is<AST::Expression>()) {
-        auto* expr = ptr_cast<AST::Expression>(stmt.get());
+        auto *expr = &stmt->as<AST::Expression>();
         expr->assign_scope(Scope::Global);
         ReplEval(expr);
         std::cerr << std::endl;

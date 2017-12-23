@@ -27,7 +27,7 @@ extern std::vector<IR::Val> global_vals;
 void ForEachExpr(AST::Expression *expr,
                  const std::function<void(size_t, AST::Expression *)> &fn) {
   if (expr->is<AST::CommaList>()) {
-    const auto &exprs = ptr_cast<AST::CommaList>(expr)->exprs;
+    const auto &exprs = expr->as<AST::CommaList>().exprs;
     for (size_t i = 0; i < exprs.size(); ++i) { fn(i, exprs[i].get()); }
   } else {
     fn(0, expr);
@@ -82,12 +82,12 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
 
   auto val = operand->EmitLVal(kind);
   while (val.type->is<Pointer>() &&
-         !ptr_cast<Pointer>(val.type)->pointee->is_big()) {
+         !val.type->as<Pointer>().pointee->is_big()) {
     val = IR::Load(val);
   }
 
   ASSERT_TYPE(Pointer, val.type);
-  ASSERT_TYPE(Struct, ptr_cast<Pointer>(val.type)->pointee);
+  ASSERT_TYPE(Struct, val.type->as<Pointer>().pointee);
 
   auto *struct_type = &val.type->as<Pointer>().pointee->as<Struct>();
   return IR::Field(val, struct_type->field_name_to_num AT(member_name));
@@ -225,7 +225,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         results.push_back(IR::Val::Block(IR::Block::Current));
         results.push_back(ret_val);
       } else {
-        NOT_YET();
+        NOT_YET(this);
       }
     } else {
       // TODO this assignment should be part of call-assign?
@@ -310,7 +310,7 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
   auto array_val  = IR::Alloca(type);
-  auto *data_type = ptr_cast<Array>(type)->data_type;
+  auto *data_type = type->as<Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
     auto elem_i = IR::Index(array_val, IR::Val::Uint(i));
     Type::EmitMoveInit(data_type, data_type, elems[i]->EmitIR(kind), elem_i);
@@ -337,11 +337,10 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
     for (auto &decl : iterators) {
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          init_vals.push_back(
-              ptr_cast<Binop>(decl->container.get())->lhs->EmitIR(kind));
+          init_vals.push_back(decl->container->as<Binop>().lhs->EmitIR(kind));
         } else if (decl->container->is<Unop>()) {
           init_vals.push_back(
-              ptr_cast<Unop>(decl->container.get())->operand->EmitIR(kind));
+              decl->container->as<Unop>().operand->EmitIR(kind));
         } else {
           NOT_YET();
         }
@@ -380,10 +379,10 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
         }
       } else if (decl->container->type->is<RangeType>()) {
         phis.push_back(
-            IR::Phi(ptr_cast<RangeType>(decl->container->type)->end_type));
+            IR::Phi(decl->container->type->as<RangeType>().end_type));
       } else if (decl->container->type->is<Array>()) {
         phis.push_back(
-            IR::Phi(Ptr(ptr_cast<Array>(decl->container->type)->data_type)));
+            IR::Phi(Ptr(decl->container->type->as<Array>().data_type)));
       } else {
         NOT_YET(*decl->container->type);
       }
@@ -405,7 +404,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
         incr_vals.push_back(IR::Add(phi_reg, IR::Val::Char(1)));
       } else if (phi_reg.type->is<Enum>()) {
         incr_vals.push_back(
-            IR::Add(phi_reg, IR::Val::Enum(ptr_cast<Enum>(phi_reg.type), 1)));
+            IR::Add(phi_reg, IR::Val::Enum(&phi_reg.type->as<Enum>(), 1)));
       } else if (phi_reg.type->is<Pointer>()) {
         incr_vals.push_back(IR::PtrIncr(phi_reg, IR::Val::Uint(1)));
       } else {
@@ -432,8 +431,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
       IR::Val cmp;
       if (decl->container->type->is<RangeType>()) {
         if (decl->container->is<Binop>()) {
-          auto rhs_val =
-              ptr_cast<Binop>(decl->container.get())->rhs->EmitIR(kind);
+          auto rhs_val = decl->container->as<Binop>().rhs->EmitIR(kind);
           cmp = IR::Le(reg, rhs_val);
         } else if (decl->container->is<Unop>()) {
           // TODO we should optimize this here rather then generate suboptimal
@@ -443,7 +441,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
           NOT_YET();
         }
       } else if (decl->container->type->is<Array>()) {
-        auto *array_type = ptr_cast<Array>(decl->container->type);
+        auto *array_type = &decl->container->type->as<Array>();
         cmp = IR::Ne(reg, IR::Index(decl->container->EmitLVal(kind),
                                     IR::Val::Uint(array_type->len)));
       } else if (decl->container->type == Type_) {
@@ -629,7 +627,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
       if (val.type != out_type) {
         auto to_be_casted = val;
         val = IR::Alloca(out_type);
-        Type::CallAssignment(val.type, out_type, to_be_casted, val);
+        Type::CallAssignment(out_type, out_type, to_be_casted, val);
       }
       IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, val);
     });

@@ -216,8 +216,8 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
     IR::Store(from_val, to_var);
 
   } else if (to_type->is<Array>()) {
-    auto *to_array_type   = ptr_cast<Array>(to_type);
-    auto *from_array_type = ptr_cast<Array>(from_type);
+    auto *to_array_type   = &to_type->as<Array>();
+    auto *from_array_type = &from_type->as<Array>();
 
     if (to_array_type->fixed_length || from_array_type->fixed_length) {
       IR::Call(
@@ -235,7 +235,7 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
     }
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    IR::Call(StructInitializationWith<EmitMoveInit>(ptr_cast<Struct>(to_type)),
+    IR::Call(StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>()),
              {from_val, to_var});
 
   } else if (to_type->is<Function>()) {
@@ -258,13 +258,13 @@ void Type::EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
     ASSERT_EQ(to_type, from_type);
     IR::Store(from_val, to_var);
   } else if (to_type->is<Array>()) {
-    IR::Call(ArrayInitializationWith<EmitCopyInit>(ptr_cast<Array>(from_type),
-                                                   ptr_cast<Array>(to_type)),
+    IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
+                                                   &to_type->as<Array>()),
              {from_val, to_var});
 
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
-    IR::Call(StructInitializationWith<EmitCopyInit>(ptr_cast<Struct>(to_type)),
+    IR::Call(StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>()),
              {from_val, to_var});
 
   } else if (to_type->is<Function>()) {

@@ -26,7 +26,7 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
     // Is the scope cleaned up?
     fn_lit.type = Func(input_type != nullptr ? input_type : Void, expr->type);
     fn_lit.fn_scope           = Scope::Global->add_child<FnScope>();
-    fn_lit.fn_scope->fn_type  = ptr_cast<Function>(fn_lit.type);
+    fn_lit.fn_scope->fn_type  = &fn_lit.type->as<Function>();
     fn_lit.scope_             = expr->scope_;
     fn_lit.statements         = base::make_owned<AST::Statements>();
     fn_lit.statements->scope_ = fn_lit.fn_scope.get();
@@ -302,7 +302,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         case Addr::Kind::Null: NOT_YET();
         }
       } else if (cmd.type->is<Enum>()) {
-        return IR::Val::Enum(ptr_cast<Enum>(cmd.type),
+        return IR::Val::Enum(&cmd.type->as<Enum>(),
                              stack_.Load<size_t>(addr.as_stack));
       } else {
         NOT_YET("Don't know how to load type: ", cmd.type);
@@ -381,7 +381,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     call_stack.top().fn_->dump();
     UNREACHABLE("Previous block was ",
                 Val::Block(call_stack.top().prev_).to_string());
-  case Op::Alloca: return stack_.Push(ptr_cast<Pointer>(cmd.type));
+  case Op::Alloca: return stack_.Push(&cmd.type->as<Pointer>());
   case Op::PtrIncr:
     switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Stack: {
@@ -393,12 +393,12 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
     case Addr::Kind::Heap: {
       auto bytes_fwd = Architecture::InterprettingMachine().ComputeArrayLength(
-          std::get<u64>(resolved[1].value), ptr_cast<Pointer>(cmd.type)->pointee);
+          std::get<u64>(resolved[1].value), cmd.type->as<Pointer>().pointee);
       return Val::HeapAddr(
           static_cast<void *>(
               static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) +
               bytes_fwd),
-          ptr_cast<Pointer>(cmd.type)->pointee);
+          cmd.type->as<Pointer>().pointee);
     }
     case Addr::Kind::Global: NOT_YET();
     case Addr::Kind::Null: NOT_YET();
@@ -406,8 +406,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     UNREACHABLE("Invalid address kind: ",
                 static_cast<int>(std::get<Addr>(resolved[0].value).kind));
   case Op::Field: {
-    auto struct_type =
-        ptr_cast<Struct>(ptr_cast<Pointer>(resolved[0].type)->pointee);
+    auto *struct_type = &resolved[0].type->as<Pointer>().pointee->as<Struct>();
     // This can probably be precomputed.
     u64 offset = 0;
     for (u64 i = 0; i < std::get<u64>(resolved[1].value); ++i) {
@@ -420,7 +419,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
 
     if (std::get<Addr>(resolved[0].value).kind == Addr::Kind::Stack) {
       return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack + offset,
-                            ptr_cast<Pointer>(cmd.type)->pointee);
+                            cmd.type->as<Pointer>().pointee);
     } else {
       NOT_YET();
     }
@@ -449,7 +448,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Malloc:
     ASSERT_TYPE(Pointer, cmd.type);
     return IR::Val::HeapAddr(malloc(std::get<u64>(resolved[0].value)),
-                             ptr_cast<Pointer>(cmd.type)->pointee);
+                            cmd.type->as<Pointer>().pointee);
   case Op::Free:
     free(std::get<Addr>(resolved[0].value).as_heap);
     return Val::None();
@@ -463,14 +462,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       return IR::Val::StackAddr(
           std::get<Addr>(resolved[0].value).as_stack +
               Architecture::InterprettingMachine().bytes(Uint),
-          ptr_cast<Pointer>(cmd.type)->pointee);
+          cmd.type->as<Pointer>().pointee);
 
     case Addr::Kind::Heap:
       return IR::Val::HeapAddr(
           static_cast<void *>(
               static_cast<u8 *>(std::get<Addr>(resolved[0].value).as_heap) +
               Architecture::InterprettingMachine().bytes(Uint)),
-          ptr_cast<Pointer>(cmd.type)->pointee);
+          cmd.type->as<Pointer>().pointee);
     }
     break;
   case Op::CondJump: return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];

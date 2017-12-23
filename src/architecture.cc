@@ -2,7 +2,7 @@
 
 size_t Architecture::alignment(const Type *t) const {
   if (t->is<Primitive>()) {
-    switch (ptr_cast<const Primitive>(t)->type_) {
+    switch (t->as<const Primitive>().type_) {
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
     case PrimType::EmptyArray:
@@ -20,11 +20,11 @@ size_t Architecture::alignment(const Type *t) const {
   } else if (t->is<Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<Array>()) {
-    auto array_type = ptr_cast<const Array>(t);
+    auto *array_type = &t->as<const Array>();
     return array_type->fixed_length ? this->alignment(array_type->data_type)
                                     : ptr_align_;
   } else if (t->is<Struct>()) {
-    auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));
+    auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
     struct_type->CompleteDefinition();
     size_t alignment_val = 1;
     for (Type *ft : struct_type->field_type) {
@@ -52,7 +52,7 @@ size_t Architecture::alignment(const Type *t) const {
 
 size_t Architecture::bytes(const Type *t) const {
   if (t->is<Primitive>()) {
-    switch (ptr_cast<const Primitive>(t)->type_) {
+    switch (t->as<const Primitive>().type_) {
     case PrimType::Err: NOT_YET();
     case PrimType::Unknown: UNREACHABLE();
     case PrimType::EmptyArray:
@@ -70,7 +70,7 @@ size_t Architecture::bytes(const Type *t) const {
   } else if (t->is<Pointer>()) {
     return ptr_bytes_;
   } else if (t->is<Array>()) {
-    auto array_type = ptr_cast<const Array>(t);
+    auto *array_type = &t->as<const Array>();
     if (array_type->fixed_length) {
       // TODO previously there was an issue where we needed to force arrays to
       // have at least one byte. This is maybe not true anymore? At the time, it
@@ -85,7 +85,7 @@ size_t Architecture::bytes(const Type *t) const {
       return 2 * ptr_bytes_;
     }
   } else if (t->is<Struct>()) {
-    auto struct_type = const_cast<Struct *>(ptr_cast<const Struct>(t));
+    auto *struct_type = const_cast<Struct *>(&t->as<const Struct>());
     struct_type->CompleteDefinition();
     size_t num_bytes     = 0;
     for (auto ft : struct_type->field_type) {

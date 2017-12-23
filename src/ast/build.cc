@@ -45,7 +45,7 @@ BuildStructLiteral(std::vector<base::owned_ptr<Node>> nodes) {
       new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
   for (auto &stmt : nodes[1]->as<Statements>().statements) {
     if (stmt->is<Declaration>()) {
-      struct_type->decls.push_back(ptr_cast<Declaration>(stmt.release()));
+      struct_type->decls.push_back(&stmt.release()->as<Declaration>());
     } else {
       // TODO show the entire struct declaration and point to the problematic
       // lines.
@@ -166,9 +166,9 @@ base::owned_ptr<Node> For::Build(std::vector<base::owned_ptr<Node>> nodes) {
   for_stmt->span       = TextSpan(nodes[0]->span, nodes[2]->span);
   for_stmt->statements = base::move<Statements>(nodes[2]);
 
-  auto iter = ptr_cast<Expression>(nodes[1].get());
+  auto iter = &nodes[1]->as<Expression>();
   if (iter->is<CommaList>()) {
-    auto iter_list = ptr_cast<CommaList>(iter);
+    auto iter_list = &iter->as<CommaList>();
     for_stmt->iterators.reserve(iter_list->exprs.size());
 
     for (auto &expr : iter_list->exprs) {
@@ -316,8 +316,7 @@ base::owned_ptr<Node> Access::Build(std::vector<base::owned_ptr<Node>> nodes) {
   if (!nodes[2]->is<Identifier>()) {
     ErrorLog::RHSNonIdInAccess(nodes[2]->span);
   } else {
-    access->member_name =
-        std::move(ptr_cast<Identifier>(nodes[2].get())->token);
+    access->member_name = std::move(nodes[2]->as<Identifier>().token);
   }
   return access;
 }
@@ -420,7 +419,7 @@ ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   array_lit->span = nodes[0]->span;
 
   if (nodes[1]->is<CommaList>()) {
-    array_lit->elems = std::move(ptr_cast<CommaList>(nodes[1].get())->exprs);
+    array_lit->elems = std::move(nodes[1]->as<CommaList>().exprs);
   } else {
     array_lit->elems.push_back(base::move<Expression>(nodes[1]));
   }
@@ -431,7 +430,7 @@ ArrayLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
 base::owned_ptr<Node>
 ArrayType::build(std::vector<base::owned_ptr<Node>> nodes) {
   if (nodes[1]->is<CommaList>()) {
-    auto *length_chain = ptr_cast<CommaList>(nodes[1].get());
+    auto *length_chain = &nodes[1]->as<CommaList>();
     int i              = static_cast<int>(length_chain->exprs.size() - 1);
     auto prev          = base::move<Expression>(nodes[3]);
 
@@ -490,7 +489,7 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
   fn_lit->span       = TextSpan(nodes[0]->span, nodes[1]->span);
   fn_lit->statements = base::move<Statements>(nodes[1]);
 
-  auto binop               = ptr_cast<Binop>(nodes[0].get());
+  auto *binop              = &nodes[0]->as<Binop>();
   fn_lit->return_type_expr = base::move<Expression>(binop->rhs);
 
   if (binop->lhs->is<Declaration>()) {
@@ -498,7 +497,7 @@ FunctionLiteral::build(std::vector<base::owned_ptr<Node>> nodes) {
     fn_lit->inputs.back()->arg_val = fn_lit.get();
 
   } else if (binop->lhs->is<CommaList>()) {
-    auto decls = ptr_cast<CommaList>(binop->lhs.get());
+    auto *decls = &binop->lhs->as<CommaList>();
     fn_lit->inputs.reserve(decls->exprs.size());
 
     for (auto &expr : decls->exprs) {
@@ -535,7 +534,7 @@ base::owned_ptr<Node> Jump::build(std::vector<base::owned_ptr<Node>> nodes) {
       {"return", JumpType::Return},   {"repeat", JumpType::Repeat},
       {"restart", JumpType::Restart},
   };
-  auto iter = JumpTypeMap.find(ptr_cast<TokenNode>(nodes[0].get())->token);
+  auto iter = JumpTypeMap.find(nodes[0]->as<TokenNode>().token);
   ASSERT(iter != JumpTypeMap.end(), "");
 
   auto stmts  = base::make_owned<Statements>();
@@ -599,7 +598,7 @@ BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts  = base::move<AST::Statements>(nodes[1]);
   stmts->span = TextSpan(nodes[0]->span, nodes[3]->span);
   if (nodes[2]->is<AST::Statements>()) {
-    for (auto &stmt : ptr_cast<AST::Statements>(nodes[2].get())->statements) {
+    for (auto &stmt : nodes[2]->as<AST::Statements>().statements) {
       stmts->statements.push_back(std::move(stmt));
     }
   } else {
@@ -654,11 +653,11 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
       {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
   };
 
-  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[1].get())->token;
+  const std::string &tk = nodes[1]->as<AST::TokenNode>().token;
   {
     auto iter = chain_ops.find(tk);
     if (iter != chain_ops.end()) {
-      ptr_cast<AST::TokenNode>(nodes[1].get())->op = iter->second;
+      nodes[1]->as<AST::TokenNode>().op = iter->second;
       return (iter->second == Language::Operator::Comma)
                  ? AST::CommaList::Build(std::move(nodes))
                  : AST::ChainOp::Build(std::move(nodes));
@@ -680,7 +679,7 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
   if (tk == "=") {
     if (nodes[0]->is<AST::Declaration>()) {
-      if (ptr_cast<AST::Declaration>(nodes[0].get())->IsInferred()) {
+      if (nodes[0]->as<AST::Declaration>().IsInferred()) {
         // NOTE: It might be that this was supposed to be a bool ==? How can we
         // give a good error message if that's what is intended?
         ErrorLog::DoubleDeclAssignment(nodes[0]->span, nodes[2]->span);
@@ -738,7 +737,7 @@ BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
 base::owned_ptr<AST::Node>
 BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[0].get())->token;
+  const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
 
   if (tk == "case") {
     return AST::Case::Build(std::move(nodes));
@@ -758,7 +757,7 @@ BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
 base::owned_ptr<AST::Node>
 BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  const std::string &tk = ptr_cast<AST::TokenNode>(nodes[0].get())->token;
+  const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
 
   if (tk == "for") {
     return AST::For::Build(std::move(nodes));
@@ -775,7 +774,7 @@ base::owned_ptr<AST::Node>
 Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto expr        = base::move<AST::Expression>(nodes[1]);
   expr->precedence = Language::precedence(Language::Operator::NotAnOperator);
-  if (ptr_cast<AST::TokenNode>(nodes[0].get())->token != "\\(") {
+  if (nodes[0]->as<AST::TokenNode>().token != "\\(") {
     return expr;
 
   } else {

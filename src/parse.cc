@@ -110,7 +110,7 @@ drop_all_but(std::vector<base::owned_ptr<AST::Node>> nodes) {
 
 static base::owned_ptr<AST::Node>
 CombineColonEq(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  auto tk_node = ptr_cast<AST::TokenNode>(nodes[0].get());
+  auto *tk_node = &nodes[0]->as<AST::TokenNode>();
   tk_node->token += "="; // Change : to := and :: to ::=
   tk_node->op = Language::Operator::ColonEq;
   return drop_all_but<0>(std::move(nodes));
@@ -127,8 +127,7 @@ namespace ErrMsg {
 template <size_t RTN, size_t RES>
 base::owned_ptr<AST::Node>
 Reserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::Reserved(nodes[RES]->span,
-                     ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
+  ErrorLog::Reserved(nodes[RES]->span, nodes[RES]->as<AST::TokenNode>().token);
 
   return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
@@ -137,37 +136,31 @@ template <size_t RTN, size_t RES1, size_t RES2>
 base::owned_ptr<AST::Node>
 BothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
   ErrorLog::Reserved(nodes[RES1]->span,
-                     ptr_cast<AST::TokenNode>(nodes[RES1].get())->token);
+                     nodes[RES1]->as<AST::TokenNode>().token);
   ErrorLog::Reserved(nodes[RES2]->span,
-                     ptr_cast<AST::TokenNode>(nodes[RES2].get())->token);
+                     nodes[RES2]->as<AST::TokenNode>().token);
   return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
 NonBinop(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::NotBinary(nodes[1]->span,
-                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
+  ErrorLog::NotBinary(nodes[1]->span, nodes[1]->as<AST::TokenNode>().token);
   return base::make_owned<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 
 template <size_t RTN, size_t RES>
 base::owned_ptr<AST::Node>
 NonBinopReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::NotBinary(nodes[1]->span,
-                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  ErrorLog::Reserved(nodes[RES]->span,
-                     ptr_cast<AST::TokenNode>(nodes[RES].get())->token);
+  ErrorLog::NotBinary(nodes[1]->span, nodes[1]->as<AST::TokenNode>().token);
+  ErrorLog::Reserved(nodes[RES]->span, nodes[RES]->as<AST::TokenNode>().token);
   return base::make_owned<AST::Identifier>(nodes[RTN]->span, "invalid_node");
 }
 
 base::owned_ptr<AST::Node>
 NonBinopBothReserved(std::vector<base::owned_ptr<AST::Node>> nodes) {
-  ErrorLog::Reserved(nodes[0]->span,
-                     ptr_cast<AST::TokenNode>(nodes[0].get())->token);
-  ErrorLog::NotBinary(nodes[1]->span,
-                      ptr_cast<AST::TokenNode>(nodes[1].get())->token);
-  ErrorLog::Reserved(nodes[2]->span,
-                     ptr_cast<AST::TokenNode>(nodes[2].get())->token);
+  ErrorLog::Reserved(nodes[0]->span, nodes[0]->as<AST::TokenNode>().token);
+  ErrorLog::NotBinary(nodes[1]->span, nodes[1]->as<AST::TokenNode>().token);
+  ErrorLog::Reserved(nodes[2]->span, nodes[2]->as<AST::TokenNode>().token);
   return base::make_owned<AST::Identifier>(nodes[1]->span, "invalid_node");
 }
 } // namespace ErrMsg
@@ -360,11 +353,10 @@ struct ParseState {
     constexpr u64 OP_ =
         op_l | op_b | colon | eq | comma | op_bl | dots | op_lt | fn_arrow;
     if (get_type<2>() & OP_) {
-      auto left_prec = precedence(ptr_cast<AST::TokenNode>(get<2>())->op);
+      auto left_prec = precedence(get<2>()->as<AST::TokenNode>().op);
       size_t right_prec;
       if (lookahead_.node_type & OP_) {
-        right_prec =
-            precedence(ptr_cast<AST::TokenNode>(lookahead_.node.get())->op);
+        right_prec = precedence(lookahead_.node->as<AST::TokenNode>().op);
       } else if (lookahead_.node_type == l_bracket) {
         right_prec = precedence(Operator::Index);
 

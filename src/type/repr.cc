@@ -138,7 +138,7 @@ void Struct::EmitRepr(IR::Val val) {
   CompleteDefinition();
   if (!repr_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func(this, Void),
+        Func(Ptr(this), Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"arg", nullptr}}));
     repr_func       = IR::Func::All.back().get();
