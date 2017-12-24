@@ -133,6 +133,10 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   // Look at all the possible calls and generate the dispatching code
   // TODO implement this with a lookup table instead of this branching
   // insanity.
+
+  // TODO an opmitimazion we can do is merging all the allocas for results into
+  // a single variant buffer, because we know we need something that big anyway,
+  // and their use cannot overlap.
   auto landing_block = IR::Func::Current->AddBlock();
 
   std::unordered_map<Expression *, IR::Val *> expr_map;
