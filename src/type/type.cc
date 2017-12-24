@@ -77,7 +77,7 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
     }
   }
 
-  return IR::Call(IR::Val::Func(iter->second), {lhs_ir, rhs_ir});
+  return IR::Call(IR::Val::Func(iter->second), {lhs_ir, rhs_ir}, {});
 }
 
 // TODO mess around to see the performance characteristics. Maybe a flat map is

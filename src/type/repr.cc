@@ -43,7 +43,7 @@ void Primitive::EmitRepr(IR::Val val) {
       }
     }
 
-    IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
+    IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val}, {});
   } break;
 
   case PrimType::Bool:
@@ -131,7 +131,7 @@ void Array::EmitRepr(IR::Val val) {
       IR::ReturnJump();
     }
   }
-  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
+  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val}, {});
 }
 
 void Struct::EmitRepr(IR::Val val) {
@@ -158,7 +158,7 @@ void Struct::EmitRepr(IR::Val val) {
       IR::ReturnJump();
     }
   }
-  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val});
+  IR::Call(IR::Val::Func(repr_func), std::vector<IR::Val>{val}, {});
 }
 
 void Tuple::EmitRepr(IR::Val) { NOT_YET(); }

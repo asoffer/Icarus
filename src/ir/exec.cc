@@ -59,6 +59,20 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
   return fn;
 }
 
+// TODO This is ugly and possibly wasteful.
+static std::unique_ptr<IR::Func> AssignmentFunction(Type *from, Type *to) {
+  auto assign_func = std::make_unique<IR::Func>(
+      Func({Ptr(from), Ptr(to)}, Void),
+      std::vector<std::pair<std::string, AST::Expression *>>{{"from", nullptr},
+                                                             {"to", nullptr}});
+  CURRENT_FUNC(assign_func.get()) {
+    IR::Block::Current = assign_func->entry();
+    to->EmitAssign(from, assign_func->Argument(0), assign_func->Argument(1));
+    IR::ReturnJump();
+  }
+  return assign_func;
+}
+
 void ReplEval(AST::Expression *expr) {
   auto fn = base::make_owned<IR::Func>(
       Func(Void, Void),
@@ -106,7 +120,6 @@ BlockIndex ExecContext::ExecuteBlock() {
   for (const auto &cmd : current_block().cmds_) {
     result = ExecuteCmd(cmd);
     if (cmd.type != nullptr && cmd.type != Void) {
-      ASSERT_NE(result.type, static_cast<Type *>(nullptr));
       ASSERT_EQ(result.type, cmd.type);
       this->reg(cmd.result) = result;
     }
@@ -203,8 +216,24 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Ge: return Ge(resolved[0], resolved[1]);
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
-    call_stack.top().rets_ AT(
-        std::get<IR::ReturnValue>(resolved[0].value).value) = resolved[1];
+    const auto &rets = call_stack.top().rets_;
+    if (call_stack.top().fn_->type->num_outputs() == 1 &&
+        !call_stack.top().fn_->type->output->is_big()) {
+      call_stack.top().rets_ AT(0) = resolved[1];
+    } else {
+      auto type_to_be_assigned =
+          rets[std::get<ReturnValue>(resolved[0].value).value]
+              .type->as<Pointer>()
+              .pointee;
+      // TODO Use the right type for the assignment. The item being returned may
+      // not actually be the same type. For instance, returning [] out of a
+      // function whose output is [--; int].
+      auto assignment_fn =
+          AssignmentFunction(type_to_be_assigned, type_to_be_assigned);
+      assignment_fn->Execute(
+          {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
+          this, nullptr);
+    }
     return IR::Val::None();
   }
   case Op::Extend: return Extend(resolved[0]);
@@ -215,7 +244,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // There's no need to do validation here, because by virtue of executing
     // this function, we know we've already validated all functions that could
     // be called.
-    auto results = fn->Execute(std::move(resolved), this, nullptr);
+    auto results = fn->Execute(resolved, this, nullptr);
 
     // TODO multiple returns?
     return results.empty() ? IR::Val::None() : results[0];
@@ -505,8 +534,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   UNREACHABLE();
 }
 
-std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx,
-                               bool *were_errors) {
+std::vector<Val> Func::Execute(const std::vector<Val> &arguments,
+                               ExecContext *ctx, bool *were_errors) {
   if (were_errors != nullptr) {
     int num_errors = 0;
     std::queue<Func *> validation_queue;
@@ -522,7 +551,7 @@ std::vector<Val> Func::Execute(std::vector<Val> arguments, ExecContext *ctx,
     }
   }
 
-  ctx->call_stack.emplace(this, std::move(arguments));
+  ctx->call_stack.emplace(this, arguments);
 
   while (true) {
     auto block_index = ctx->ExecuteBlock();

@@ -65,7 +65,7 @@ void Array::EmitInit(IR::Val id_val) {
     }
   }
 
-  IR::Call(IR::Val::Func(init_func), std::vector<IR::Val>{id_val});
+  IR::Call(IR::Val::Func(init_func), std::vector<IR::Val>{id_val}, {});
 }
 
 void Pointer::EmitInit(IR::Val id_val) {
@@ -105,7 +105,7 @@ void Struct::EmitInit(IR::Val id_val) {
     }
   }
 
-  IR::Call(IR::Val::Func(init_func), {id_val});
+  IR::Call(IR::Val::Func(init_func), {id_val}, {});
 }
 
 void Tuple::EmitInit(IR::Val) { NOT_YET(); }
@@ -218,7 +218,7 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
     if (to_array_type->fixed_length || from_array_type->fixed_length) {
       IR::Call(
           ArrayInitializationWith<EmitMoveInit>(from_array_type, to_array_type),
-          {from_val, to_var});
+          {from_val, to_var}, {});
 
     } else {
       IR::Store(IR::Load(IR::ArrayLength(from_val)), IR::ArrayLength(to_var));
@@ -232,7 +232,7 @@ void Type::EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
     IR::Call(StructInitializationWith<EmitMoveInit>(&to_type->as<Struct>()),
-             {from_val, to_var});
+             {from_val, to_var}, {});
 
   } else if (to_type->is<Function>()) {
     NOT_YET();
@@ -256,12 +256,12 @@ void Type::EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
   } else if (to_type->is<Array>()) {
     IR::Call(ArrayInitializationWith<EmitCopyInit>(&from_type->as<Array>(),
                                                    &to_type->as<Array>()),
-             {from_val, to_var});
+             {from_val, to_var}, {});
 
   } else if (to_type->is<Struct>()) {
     ASSERT_EQ(to_type, from_type);
     IR::Call(StructInitializationWith<EmitCopyInit>(&to_type->as<Struct>()),
-             {from_val, to_var});
+             {from_val, to_var}, {});
 
   } else if (to_type->is<Function>()) {
     NOT_YET();

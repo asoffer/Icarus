@@ -360,10 +360,24 @@ CmdIndex Phi(Type *t) {
   return cmd_index;
 }
 
-Val Call(Val fn, std::vector<Val> vals) {
+Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   ASSERT_TYPE(Function, fn.type);
+  vals.insert(vals.end(), std::make_move_iterator(result_locs.begin()),
+              std::make_move_iterator(result_locs.end()));
   vals.push_back(fn);
-  Cmd cmd(static_cast<Function *>(fn.type)->output, Op::Call, std::move(vals));
+
+  // TODO either fix the output type here or do it at the execution site. Not
+  // sure which makes sense. "Fix" means that if a function returns a struct or
+  // has multiple return values, we actually need to represent this internally
+  // with out-params, so a function looks like it returns something, but
+  // actually we pass in 'result_locs' which are assigned to.
+  // Long-term we should do this consistently even for small types, because for
+  // multiple return values, we really could return them in multiple registers
+  // rather than allocating stack space.
+  Type *output_type = fn.type->as<Function>().output->is_big()
+                          ? Void
+                          : fn.type->as<Function>().output;
+  Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
   return cmd.reg();
 }
@@ -457,8 +471,19 @@ void Func::dump() const {
 
 ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
-      regs_(fn->num_regs_, Val::None()), rets_(1, Val::None()) {
-  for (size_t i = 0; i < arguments.size(); ++i) { regs_[i] = arguments[i]; }
+      regs_(fn->num_regs_, Val::None()) {
+  size_t num_inputs = fn->type->num_inputs();
+  ASSERT_LE(num_inputs, arguments.size());
+  ASSERT_LE(num_inputs, regs_.size());
+  size_t i = 0;
+  for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
+  for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
+
+  if (rets_.empty() && fn->type->num_outputs() == 1) {
+    // This is the case of a simple return type (i.e., type can be held in
+    // register).
+    rets_.push_back(IR::Val::None());
+  }
 }
 
 // TODO this may not be necessary anymore? I can just make the phi later?

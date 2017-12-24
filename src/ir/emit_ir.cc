@@ -197,12 +197,8 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         if (binding.exprs_[i].first->is<Variant>()) {
           // Note: I actually don't care what the other type is so long as it's
           // a variant of the appropriate size
-          auto entry         = IR::Alloca(binding.exprs_[i].first);
-          auto entry_as_type = IR::VariantType(entry);
-          IR::Store(IR::Val::Type(expr->type), entry_as_type);
-          Type::CallAssignment(expr->type, expr->type, *expr_map[expr],
-                               IR::VariantValue(expr->type, entry));
-          args[i] = entry;
+          args[i] = IR::Alloca(binding.exprs_[i].first);
+          expr->type->EmitAssign(expr->type,*expr_map[expr], args[i]);
         } else {
           args[i] = *expr_map[expr];
         }
@@ -211,34 +207,21 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
 
     Type *output_type_for_this_binding =
         std::get<IR::Func *>(fn_to_call.value)->type->output;
+    IR::Val ret_val;
     if (output_type_for_this_binding->is_big()) {
-      // TODO is_big doesn't imply this is actually a variant
-      if (type->is<Variant>()) {
-        auto ret_val = IR::Alloca(type);
-        Type::CallAssignment(type, type, IR::Call(fn_to_call, std::move(args)),
-                             ret_val);
-        results.push_back(IR::Val::Block(IR::Block::Current));
-        results.push_back(ret_val);
-      } else {
-        NOT_YET(this);
-      }
+      ret_val = IR::Alloca(type);
+      IR::Call(fn_to_call, std::move(args), {ret_val});
     } else {
-      // TODO this assignment should be part of call-assign?
-      if (type->is<Variant>()) {
-        auto ret_val = IR::Alloca(type);
-        IR::Store(IR::Val::Type(output_type_for_this_binding),
-                  IR::VariantType(ret_val));
-        Type::CallAssignment(
-            output_type_for_this_binding, output_type_for_this_binding,
-            IR::Call(fn_to_call, std::move(args)),
-            IR::VariantValue(output_type_for_this_binding, ret_val));
-        results.push_back(IR::Val::Block(IR::Block::Current));
-        results.push_back(ret_val);
+      if (type->is_big()) {
+        ret_val = IR::Alloca(type);
+        type->EmitAssign(output_type_for_this_binding,
+                         IR::Call(fn_to_call, std::move(args), {}), ret_val);
       } else {
-        results.push_back(IR::Val::Block(IR::Block::Current));
-        results.push_back(IR::Call(fn_to_call, std::move(args)));
+        ret_val = IR::Call(fn_to_call, std::move(args), {});
       }
     }
+    results.push_back(IR::Val::Block(IR::Block::Current));
+    results.push_back(ret_val);
 
     IR::UncondJump(landing_block);
 
@@ -524,7 +507,8 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
 
   auto call_enter_result =
       IR::Call(enter_fn, expr ? std::vector<IR::Val>{expr->EmitIR(kind)}
-                              : std::vector<IR::Val>{});
+                              : std::vector<IR::Val>{},
+               {});
   auto land_block  = IR::Func::Current->AddBlock();
   auto enter_block = IR::Func::Current->AddBlock();
 
@@ -533,7 +517,7 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
   IR::Block::Current = enter_block;
   stmts->EmitIR(kind);
 
-  auto call_exit_result = IR::Call(exit_fn, {});
+  auto call_exit_result = IR::Call(exit_fn, {}, {});
   IR::CondJump(call_exit_result, enter_block, land_block);
 
   IR::Block::Current = land_block;
@@ -613,16 +597,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
   } break;
   case Language::Operator::Return: {
     ForEachExpr(operand.get(), [kind](size_t i, AST::Expression *expr) {
-      auto val = expr->EmitIR(kind);
-      Type *output = IR::Func::Current->type->output;
-      Type *out_type =
-          output->is<Tuple>() ? output->as<Tuple>().entries[i] : output;
-      if (val.type != out_type) {
-        auto to_be_casted = val;
-        val = IR::Alloca(out_type);
-        Type::CallAssignment(out_type, out_type, to_be_casted, val);
-      }
-      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, val);
+      IR::SetReturn(IR::ReturnValue{static_cast<i32>(i)}, expr->EmitIR(kind));
     });
     IR::ReturnJump();
     return IR::Val::None();
@@ -705,8 +680,7 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-      Type::CallAssignment(rhs_types[i], lhs_types[i], rhs_vals[i],
-                           lhs_lvals[i]);
+      rhs_types[i]->EmitAssign(lhs_types[i], rhs_vals[i], lhs_lvals[i]);
     }
     return IR::Val::None();
   } break;
@@ -945,9 +919,8 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
           ASSERT(decl->type, "");
           decl->addr = IR::Alloca(decl->type);
           if (decl->init_val) {
-            Type::CallAssignment(decl->type, decl->type,
-                                 decl->init_val->EmitIR(kind), decl->addr);
-
+            decl->type->EmitAssign(decl->init_val->type,
+                                   decl->init_val->EmitIR(kind), decl->addr);
           } else {
             decl->type->EmitInit(decl->addr);
           }

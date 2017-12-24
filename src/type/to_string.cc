@@ -105,7 +105,8 @@ char *Array::WriteTo(char *buf) const {
 size_t Function::string_size() const {
   return input->string_size() +
          (input->is<Struct>() || input->is<Primitive>() || input->is<Enum>() ||
-                  input->is<Pointer>() || input->is<Array>()
+                  input->is<Pointer>() || input->is<Array>() ||
+                  input->is<Tuple>()
               ? 0
               : 2) +
          4 + output->string_size() +
@@ -118,7 +119,7 @@ size_t Function::string_size() const {
 
 char *Function::WriteTo(char *buf) const {
   if (input->is<Struct>() || input->is<Primitive>() || input->is<Enum>() ||
-      input->is<Pointer>() || input->is<Array>()) {
+      input->is<Pointer>() || input->is<Array>() || input->is<Tuple>()) {
     buf = input->WriteTo(buf);
     buf = std::strcpy(buf, " -> ") + 4;
   } else {

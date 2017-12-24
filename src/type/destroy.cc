@@ -53,7 +53,7 @@ void Array::EmitDestroy(IR::Val id_val) {
       IR::ReturnJump();
     }
   }
-  IR::Call(IR::Val::Func(destroy_func), {id_val});
+  IR::Call(IR::Val::Func(destroy_func), {id_val}, {});
 }
 
 void Struct::EmitDestroy(IR::Val id_val) {
@@ -73,7 +73,7 @@ void Struct::EmitDestroy(IR::Val id_val) {
       IR::ReturnJump();
     }
   }
-  IR::Call(IR::Val::Func(destroy_func), {id_val});
+  IR::Call(IR::Val::Func(destroy_func), {id_val}, {});
 }
 
 void Tuple::EmitDestroy(IR::Val) { NOT_YET(); }

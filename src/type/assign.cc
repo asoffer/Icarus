@@ -5,63 +5,65 @@
 
 extern IR::Val PtrCallFix(IR::Val v);
 
-void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
-                          IR::Val to_var) {
-  if (to_type->is<Primitive>() || to_type->is<Pointer>() ||
-      to_type->is<Function>() || to_type->is<Enum>()) {
-    ASSERT_EQ(from_type, to_type);
-    IR::Store(from_val, to_var);
+// TODO destructor for previously held value.
 
-  } else if (to_type->is<Array>()) {
-    ASSERT_TYPE(Array, from_type);
-    auto *from_array_type = &from_type->as<Array>();
-    auto *to_array_type   = &to_type->as<Array>();
+void Primitive::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
+}
 
-    IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({Ptr(from_type), Ptr(to_type)}, Void),
+void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_TYPE(Array, from_type);
+  auto *from_array_type = &from_type->as<Array>();
+
+  auto *&fn = assign_fns_[from_array_type];
+  if (fn == nullptr) {
+    auto assign_func = std::make_unique<IR::Func>(
+        Func({Ptr(from_type), Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
-            {"from", nullptr}, {"to", nullptr}}));
-    auto *assign_func = IR::Func::All.back().get(); // TODO cache this
-    assign_func->name = "assign." + Mangle(from_type) + Mangle(to_type);
+            {"from", nullptr}, {"to", nullptr}});
+    IR::Func::All.push_back(std::move(assign_func));
+    assign_func->name = "assign." + Mangle(from_type) + Mangle(this);
+    fn                = assign_func.get();
 
-    CURRENT_FUNC(assign_func) {
-      IR::Block::Current = assign_func->entry();
-      auto val           = assign_func->Argument(0);
-      auto var           = assign_func->Argument(1);
+    CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
+      auto val           = fn->Argument(0);
+      auto var           = fn->Argument(1);
       IR::Val len        = from_array_type->fixed_length
                         ? IR::Val::Uint(from_array_type->len)
                         : IR::Load(IR::ArrayLength(val));
       IR::Val from_ptr     = IR::Index(val, IR::Val::Uint(0));
       IR::Val from_end_ptr = IR::PtrIncr(from_ptr, len);
 
-      if (!to_array_type->fixed_length) {
-        to_array_type->EmitDestroy(var);
+      if (!fixed_length) {
+        EmitDestroy(var);
         // TODO Architecture dependence?
         auto to_bytes = Architecture::InterprettingMachine().ComputeArrayLength(
-            len, to_array_type->data_type);
-        auto ptr = IR::Malloc(to_array_type->data_type, to_bytes);
+            len, data_type);
+        auto ptr = IR::Malloc(data_type, to_bytes);
         IR::Store(len, IR::ArrayLength(var));
         IR::Store(ptr, IR::ArrayData(var));
       }
 
       IR::Val to_ptr = IR::Index(var, IR::Val::Uint(0));
 
-      auto init_block = IR::Block::Current;
       auto exit_block = IR::Func::Current->AddBlock();
+      auto init_block = IR::Block::Current;
       auto loop_phi   = IR::Func::Current->AddBlock();
-      auto loop_body  = IR::Func::Current->AddBlock();
       IR::UncondJump(loop_phi);
 
       IR::Block::Current = loop_phi;
       auto from_phi      = IR::Phi(Ptr(from_array_type->data_type));
-      auto to_phi        = IR::Phi(Ptr(to_array_type->data_type));
+      auto to_phi        = IR::Phi(Ptr(data_type));
       auto from_phi_reg  = IR::Func::Current->Command(from_phi).reg();
       auto to_phi_reg    = IR::Func::Current->Command(to_phi).reg();
 
-      IR::CondJump(IR::Eq(from_phi_reg, from_end_ptr), exit_block, loop_body);
+      IR::Block::Current =
+          IR::EarlyExitOn<true>(exit_block, IR::Eq(from_phi_reg, from_end_ptr));
+      // Loop body
 
-      IR::Block::Current = loop_body;
-      EmitCopyInit(from_array_type->data_type, to_array_type->data_type,
+      EmitCopyInit(from_array_type->data_type, data_type,
                    PtrCallFix(from_phi_reg), to_phi_reg);
 
       IR::UncondJump(loop_phi);
@@ -78,50 +80,29 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
       IR::Block::Current = exit_block;
       IR::ReturnJump();
     }
-    IR::Call(IR::Val::Func(assign_func), {from_val, to_var});
-
-  } else if (from_type->is<Scope_Type>() && to_type->is<Scope_Type>()) {
-    ASSERT_EQ(from_type, to_type);
-    IR::Store(from_val, to_var);
-
-  } else if (to_type->is<Variant>()) {
-    // TODO this way of determining types only works for primitives.
-    auto to_index_ptr = IR::VariantType(to_var);
-
-    if (from_val.type->is<Variant>()) {
-      auto actual_type = IR::Load(IR::VariantType(from_val));
-      IR::Store(actual_type, to_index_ptr);
-
-      auto landing = IR::Func::Current->AddBlock();
-      for (Type *v : from_type->as<Variant>().variants_) {
-        auto next_block  = IR::Func::Current->AddBlock();
-
-        // TODO just testing for equality may not be right. from_type may not
-        // actually be in the variant, just castable to something in the
-        // variant.
-        auto found_block = IR::EarlyExitOn<false>(
-            next_block, IR::Eq(actual_type, IR::Val::Type(v)));
-        IR::Block::Current = found_block;
-        CallAssignment(v, v, IR::VariantValue(v, from_val),
-                       IR::VariantValue(v, to_var));
-        IR::UncondJump(landing);
-      }
-      IR::UncondJump(landing);
-
-    } else {
-      IR::Store(IR::Val::Type(from_val.type), to_index_ptr);
-      CallAssignment(from_val.type, from_val.type, from_val,
-                     IR::VariantValue(from_val.type, to_var));
-    }
-  } else {
-    // TODO change name? this is the only assignment?
-    LOG << from_type << to_type;
-    LOG << from_val << " " << to_var;
-    from_type->as<Struct>().EmitDefaultAssign(from_val, to_var);
   }
+  IR::Call(IR::Val::Func(fn), {from, to}, {});
 }
 
-void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
+void Tuple::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+
+void Pointer::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
+}
+
+void Function::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
+}
+
+void Enum::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
+}
+
+void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
   CompleteDefinition();
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
@@ -139,14 +120,47 @@ void Struct::EmitDefaultAssign(IR::Val to_var, IR::Val from_val) {
       for (size_t i = 0; i < field_type.size(); ++i) {
         auto the_field_type = field_type AT(i);
         // TODO is that the right scope?
-        Type::CallAssignment(the_field_type, the_field_type,
-                             PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
+        the_field_type->EmitAssign(
+            the_field_type, PtrCallFix(IR::Field(val, i)), IR::Field(var, i));
       }
 
       IR::ReturnJump();
     }
   }
   ASSERT(assign_func, "");
+  IR::Call(IR::Val::Func(assign_func), {from, to}, {});
+}
 
-  IR::Call(IR::Val::Func(assign_func), {to_var, from_val});
+void Variant::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  if (from_type->is<Variant>()) {
+    // TODO find the best match for variant types. For instance, we allow
+    // assignments like:
+    // [3; int] | [4; bool] -> [--; int] | [--; bool]
+    auto actual_type = IR::Load(IR::VariantType(from));
+    auto landing     = IR::Func::Current->AddBlock();
+    for (Type *v : from_type->as<Variant>().variants_) {
+      auto next_block  = IR::Func::Current->AddBlock();
+      auto found_block = IR::EarlyExitOn<false>(
+          next_block, IR::Eq(actual_type, IR::Val::Type(v)));
+      IR::Block::Current = found_block;
+      v->EmitAssign(v, IR::VariantValue(v, from), IR::VariantValue(v, to));
+      IR::UncondJump(landing);
+    }
+    IR::UncondJump(landing);
+    IR::Block::Current = landing;
+  } else {
+    IR::Store(IR::Val::Type(from_type), IR::VariantType(to));
+    // TODO Find the best match amongst the variants available.
+    Type *best_match = from_type;
+    best_match->EmitAssign(from_type, from, IR::VariantValue(best_match, to));
+  }
+}
+
+void RangeType::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+
+void SliceType::EmitAssign(Type *, IR::Val, IR::Val) { NOT_YET(); }
+
+void Scope_Type::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
+  ASSERT_EQ(this, from_type);
+  IR::Store(from, to);
 }

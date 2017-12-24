@@ -44,6 +44,7 @@ struct Identifier;
 #define BASIC_METHODS                                                          \
   virtual char *WriteTo(char *buf) const ENDING;                               \
   virtual size_t string_size() const ENDING;                                   \
+  virtual void EmitAssign(Type *from_type, IR::Val from, IR::Val to) ENDING;   \
   virtual void EmitInit(IR::Val id_val) ENDING;                                \
   virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
@@ -66,12 +67,6 @@ public:
     ASSERT_EQ(static_cast<size_t>(end_buf - result.data()), result.size());
     return result;
   }
-  // Assigns val to var. We need this to dispatch based on both the lhs and rhs
-  // types. Assume that the types match appropriately. Depending on the types,
-  // this will either simply be a store operation or a call to the assignment
-  // function.
-  static void CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
-                             IR::Val to_var);
 
   static void EmitMoveInit(Type *from_type, Type *to_type, IR::Val from_val,
                            IR::Val to_var);
@@ -121,6 +116,7 @@ struct Array : public Type {
   Type *data_type;
   size_t len;
   bool fixed_length;
+  std::unordered_map<Array*, IR::Func*> assign_fns_;
 };
 
 struct Tuple : public Type {
@@ -147,6 +143,16 @@ struct Function : public Type {
   TYPE_FNS(Function);
   Function(Type *in, Type *out) : input(in), output(out) {}
 
+  size_t num_inputs() const {
+    return input->is<Tuple>() ? input->as<Tuple>().entries.size()
+                              : input == Void ? 0 : 1;
+  }
+
+  size_t num_outputs() const {
+    return output->is<Tuple>() ? output->as<Tuple>().entries.size()
+                               : output == Void ? 0 : 1;
+  }
+
   // TODO needs destroy for captures?
   Type *input, *output;
 };
@@ -167,8 +173,6 @@ struct Struct : public Type {
   TYPE_FNS(Struct);
 
   Struct(std::string name) : bound_name(std::move(name)) {}
-
-  void EmitDefaultAssign(IR::Val to_var, IR::Val from_val);
 
   // Return the type of a field, or a nullptr if it doesn't exist
   Type *field(const std::string &name) const;

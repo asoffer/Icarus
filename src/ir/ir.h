@@ -238,7 +238,7 @@ struct ExecContext {
 
   struct Frame {
     Frame() = delete;
-    Frame(Func *fn, const std::vector<Val>& arguments);
+    Frame(Func *fn, const std::vector<Val> &arguments);
 
     void MoveTo(BlockIndex block_index) {
       ASSERT_GE(block_index.value, 0);
@@ -314,7 +314,7 @@ Val Gt(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
 Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);
-Val Call(Val fn, std::vector<Val> vals);
+Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs);
 Val Load(Val v);
 Val ArrayLength(Val v);
 Val ArrayData(Val v);
@@ -394,7 +394,7 @@ struct Func {
 
   BlockIndex entry() const { return BlockIndex(0); }
 
-  std::vector<Val> Execute(std::vector<Val> args, ExecContext *ctx,
+  std::vector<Val> Execute(const std::vector<Val> &args, ExecContext *ctx,
                            bool *were_errors);
 
   // Is this needed? Or can it be determined from the containing FunctionLiteral
