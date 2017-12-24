@@ -86,14 +86,10 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
 
   } else if (to_type->is<Variant>()) {
     // TODO this way of determining types only works for primitives.
-    auto to_index_ptr = IR::Cast(IR::Val::Type(Ptr(Type_)), to_var);
-    auto to_incr      = IR::PtrIncr(to_index_ptr, IR::Val::Uint(1));
+    auto to_index_ptr = IR::VariantType(to_var);
 
     if (from_val.type->is<Variant>()) {
-      auto from_index_ptr  = IR::Cast(IR::Val::Type(Ptr(Type_)), from_val);
-      auto from_incr       = IR::PtrIncr(from_index_ptr, IR::Val::Uint(1));
-      auto actual_type     = IR::Load(from_index_ptr);
-
+      auto actual_type = IR::Load(IR::VariantType(from_val));
       IR::Store(actual_type, to_index_ptr);
 
       auto landing = IR::Func::Current->AddBlock();
@@ -106,16 +102,16 @@ void Type::CallAssignment(Type *from_type, Type *to_type, IR::Val from_val,
         auto found_block = IR::EarlyExitOn<false>(
             next_block, IR::Eq(actual_type, IR::Val::Type(v)));
         IR::Block::Current = found_block;
-        CallAssignment(v, v, IR::Cast(IR::Val::Type(v), from_incr),
-                       IR::Cast(IR::Val::Type(Ptr(v)), to_incr));
+        CallAssignment(v, v, IR::VariantValue(v, from_val),
+                       IR::VariantValue(v, to_var));
         IR::UncondJump(landing);
       }
       IR::UncondJump(landing);
 
     } else {
       IR::Store(IR::Val::Type(from_val.type), to_index_ptr);
-      auto to_data_ptr = IR::Cast(IR::Val::Type(Ptr(from_val.type)), to_incr);
-      CallAssignment(from_val.type, from_val.type, from_val, to_data_ptr);
+      CallAssignment(from_val.type, from_val.type, from_val,
+                     IR::VariantValue(from_val.type, to_var));
     }
   } else {
     // TODO change name? this is the only assignment?

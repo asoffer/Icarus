@@ -193,6 +193,7 @@ enum class Op : char {
   SetReturn, Arrow, Variant, Array, Ptr,
   Alloca,
   Contextualize,
+  VariantType, VariantValue,
   CondJump,
   UncondJump,
   ReturnJump,
@@ -326,6 +327,8 @@ Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
 Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
+Val VariantType(IR::Val v1);
+Val VariantValue(Type* t, IR::Val);
 
 void SetReturn(ReturnValue n, Val v2);
 void Print(Val v);

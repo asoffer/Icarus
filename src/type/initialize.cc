@@ -16,12 +16,8 @@ void Function::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }
 
-void Variant::EmitInit(IR::Val id_val) {
-  IR::Store(IR::Val::Uint(0ul), id_val);// flag indicating which one
-  variants_.front()->EmitInit(
-      IR::Cast(IR::Val::Type(Ptr(variants_.front())),
-               IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), id_val),
-                           IR::Val::Uint(1))));
+void Variant::EmitInit(IR::Val) {
+  UNREACHABLE("Variants must be initialized.");
 }
 
 void Array::EmitInit(IR::Val id_val) {

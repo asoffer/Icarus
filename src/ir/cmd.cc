@@ -119,6 +119,9 @@ Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
   return cmd.reg();
 }
 
+Val VariantType(Val v) { MAKE_AND_RETURN(Ptr(Type_), Op::VariantType); }
+Val VariantValue(Type *t, Val v) { MAKE_AND_RETURN(Ptr(t), Op::VariantValue); }
+
 Val Load(Val v) {
   ASSERT_TYPE(Pointer, v.type);
   MAKE_AND_RETURN(v.type->as<Pointer>().pointee, Op::Load);
@@ -407,6 +410,8 @@ void Cmd::dump(size_t indent) const {
   case Op::Array: std::cerr << "array-type"; break;
   case Op::Alloca: std::cerr << "alloca"; break;
   case Op::Contextualize: std::cerr << "contextualize"; break;
+  case Op::VariantType: std::cerr << "variant-type"; break;
+  case Op::VariantValue: std::cerr << "variant-value"; break;
   }
 
   if (args.empty()) {

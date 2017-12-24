@@ -444,11 +444,37 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // TODO LEAK!
     return IR::Val::CodeBlock(code_block.release());
   } break;
+  case Op::VariantType:
+    return Val::Addr(std::get<Addr>(resolved[0].value), Ptr(Type_));
+  case Op::VariantValue: {
+    auto bytes = Architecture::InterprettingMachine().bytes(Ptr(Type_));
+    auto bytes_fwd =
+        Architecture::InterprettingMachine().MoveForwardToAlignment(Ptr(Type_),
+                                                                    bytes);
+    switch (std::get<Addr>(resolved[0].value).kind) {
+    case Addr::Kind::Stack: {
+      return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack +
+                                bytes_fwd,
+                            cmd.type->as<Pointer>().pointee);
+    }
+    case Addr::Kind::Heap: {
+      return Val::HeapAddr(
+          static_cast<void *>(
+              static_cast<char *>(std::get<Addr>(resolved[0].value).as_heap) +
+              bytes_fwd),
+          cmd.type->as<Pointer>().pointee);
+    }
+    case Addr::Kind::Global: NOT_YET();
+    case Addr::Kind::Null: NOT_YET();
+    }
+    UNREACHABLE("Invalid address kind: ",
+                static_cast<int>(std::get<Addr>(resolved[0].value).kind));
+  } break;
   case Op::Nop: return Val::None();
   case Op::Malloc:
     ASSERT_TYPE(Pointer, cmd.type);
     return IR::Val::HeapAddr(malloc(std::get<u64>(resolved[0].value)),
-                            cmd.type->as<Pointer>().pointee);
+                             cmd.type->as<Pointer>().pointee);
   case Op::Free:
     free(std::get<Addr>(resolved[0].value).as_heap);
     return Val::None();

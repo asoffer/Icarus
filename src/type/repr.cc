@@ -171,15 +171,13 @@ void Variant::EmitRepr(IR::Val id_val) {
   // TODO remove these casts in favor of something easier to track properties on
 
   auto landing     = IR::Func::Current->AddBlock();
-  auto ptr_to_type = IR::Cast(IR::Val::Type(Ptr(Type_)), id_val);
-  auto type        = IR::Load(ptr_to_type);
+  auto type        = IR::Load(IR::VariantType(id_val));
   for (Type *v : variants_) {
     auto old_block   = IR::Block::Current;
     auto found_block = IR::Func::Current->AddBlock();
 
     IR::Block::Current = found_block;
-    v->EmitRepr(PtrCallFix(IR::Cast(
-        IR::Val::Type(Ptr(v)), IR::PtrIncr(ptr_to_type, IR::Val::Uint(1)))));
+    v->EmitRepr(PtrCallFix(IR::VariantValue(v, id_val)));
     IR::UncondJump(landing);
 
     IR::Block::Current = old_block;

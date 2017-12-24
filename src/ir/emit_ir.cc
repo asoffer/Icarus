@@ -94,8 +94,8 @@ IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
 }
 
 // TODO better name
-static IR::Val VariantMatch(const IR::Val &needles, Type *haystack) {
-  auto runtime_type = IR::Load(IR::Cast(IR::Val::Type(Ptr(Type_)), needles));
+static IR::Val VariantMatch(const IR::Val &needle, Type *haystack) {
+  auto runtime_type = IR::Load(IR::VariantType(needle));
 
   if (haystack->is<Variant>()) {
     // TODO I'm fairly confident this will work, but it's also overkill because
@@ -190,23 +190,18 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
         if (binding.exprs_[i].first->is<Variant>()) {
           args[i] = *expr_map[expr];
         } else {
-          args[i] = PtrCallFix(IR::Cast(
-              IR::Val::Type(Ptr(binding.exprs_[i].first)),
-              IR::PtrIncr(IR::Cast(IR::Val::Type(Ptr(Type_)), *expr_map[expr]),
-                          IR::Val::Uint(1))));
+          args[i] = PtrCallFix(
+              IR::VariantValue(binding.exprs_[i].first, *expr_map[expr]));
         }
       } else {
         if (binding.exprs_[i].first->is<Variant>()) {
           // Note: I actually don't care what the other type is so long as it's
           // a variant of the appropriate size
           auto entry         = IR::Alloca(binding.exprs_[i].first);
-          auto entry_as_type = IR::Cast(IR::Val::Type(Ptr(Type_)), entry);
+          auto entry_as_type = IR::VariantType(entry);
           IR::Store(IR::Val::Type(expr->type), entry_as_type);
-          auto val_ptr = IR::Cast(IR::Val::Type(Ptr(expr->type)),
-                                  IR::PtrIncr(entry_as_type, IR::Val::Uint(1)));
           Type::CallAssignment(expr->type, expr->type, *expr_map[expr],
-                               val_ptr);
-
+                               IR::VariantValue(expr->type, entry));
           args[i] = entry;
         } else {
           args[i] = *expr_map[expr];
@@ -231,14 +226,12 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
       // TODO this assignment should be part of call-assign?
       if (type->is<Variant>()) {
         auto ret_val = IR::Alloca(type);
-        auto ret_val_type = IR::Cast(IR::Val::Type(Ptr(Type_)), ret_val);
-        IR::Store(IR::Val::Type(output_type_for_this_binding), ret_val_type);
-        auto val_ptr =
-            IR::Cast(IR::Val::Type(Ptr(output_type_for_this_binding)),
-                     IR::PtrIncr(ret_val_type, IR::Val::Uint(1)));
-        Type::CallAssignment(output_type_for_this_binding,
-                             output_type_for_this_binding,
-                             IR::Call(fn_to_call, std::move(args)), val_ptr);
+        IR::Store(IR::Val::Type(output_type_for_this_binding),
+                  IR::VariantType(ret_val));
+        Type::CallAssignment(
+            output_type_for_this_binding, output_type_for_this_binding,
+            IR::Call(fn_to_call, std::move(args)),
+            IR::VariantValue(output_type_for_this_binding, ret_val));
         results.push_back(IR::Val::Block(IR::Block::Current));
         results.push_back(ret_val);
       } else {
