@@ -15,11 +15,6 @@ template <typename T> const Logger &operator<<(const Logger &l, const T &t) {
   return l;
 }
 
-template <typename T> const Logger &operator,(const Logger &l, const T &t) {
-  return l << t;
-}
-
-
 } // namespace base
 
 #define LOG                                                                    \

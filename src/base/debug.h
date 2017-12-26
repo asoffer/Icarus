@@ -47,19 +47,19 @@
 #define NOT_YET(...)                                                           \
   do {                                                                         \
     auto logger = LOG << "Not yet implemented.\n";                             \
-    debug::LogToStandardError(__VA_ARGS__);                                    \
+    debug::LogArgs(__VA_ARGS__);                                    \
     std::abort();                                                              \
   } while (false)
 
 #define UNREACHABLE(...)                                                       \
   do {                                                                         \
     auto logger = LOG << "Unreachable code-path.\n";                           \
-    debug::LogToStandardError(__VA_ARGS__);                                    \
+    debug::LogArgs(__VA_ARGS__);                                               \
     std::abort();                                                              \
   } while (false)
 
 namespace debug {
-template <typename... Args> void LogToStandardError(Args &&... args) {
+template <typename... Args> void LogArgs(Args &&... args) {
   [[maybe_unused]] const auto &log =
       (base::Logger{} << ... << std::forward<Args>(args));
 }

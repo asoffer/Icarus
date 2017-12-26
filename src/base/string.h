@@ -5,12 +5,32 @@
 #include <sstream>
 
 namespace base {
-template <typename... Args> using void_t = void;
 namespace internal {
-template <typename T, typename = void> struct stringifier {};
-
 template <int N> struct dispatch_rank : public dispatch_rank<N - 1> {};
 template <> struct dispatch_rank<0> {};
+
+template <typename T> std::string stringify(T &&t);
+
+template <typename T>
+auto stringify(dispatch_rank<6>, T &&t)
+    -> decltype(std::declval<T>().begin(), std::declval<T>().end(),
+                ++std::declval<T>().begin(), *std::declval<T>().begin(),
+                std::string()) {
+  std::stringstream ss;
+  if (t.empty()) {
+    ss << "[]";
+  } else {
+    auto iter = t.begin();
+    ss << '[' << stringify(*iter);
+    ++iter;
+    while (iter != t.end()) {
+      ss << ", " << stringify(*iter);
+      ++iter;
+    }
+    ss << ']';
+  }
+  return ss.str();
+}
 
 template <typename T>
 auto stringify(dispatch_rank<5>, T &&t)
@@ -59,7 +79,7 @@ auto stringify(dispatch_rank<0>, T &&t)
 }
 
 template <typename T> std::string stringify(T &&t) {
-  return internal::stringify(internal::dispatch_rank<5>{}, std::forward<T>(t));
+  return internal::stringify(internal::dispatch_rank<6>{}, std::forward<T>(t));
 }
 } // namespace internal
 } // namespace base

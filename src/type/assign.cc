@@ -140,11 +140,11 @@ void Variant::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
     auto landing     = IR::Func::Current->AddBlock();
     for (Type *v : from_type->as<Variant>().variants_) {
       auto next_block  = IR::Func::Current->AddBlock();
-      auto found_block = IR::EarlyExitOn<false>(
+      IR::Block::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
-      IR::Block::Current = found_block;
       v->EmitAssign(v, IR::VariantValue(v, from), IR::VariantValue(v, to));
       IR::UncondJump(landing);
+      IR::Block::Current = next_block;
     }
     IR::UncondJump(landing);
     IR::Block::Current = landing;

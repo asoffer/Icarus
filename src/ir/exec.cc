@@ -229,7 +229,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       // not actually be the same type. For instance, returning [] out of a
       // function whose output is [--; int].
       auto assignment_fn =
-          AssignmentFunction(type_to_be_assigned, type_to_be_assigned);
+          AssignmentFunction(resolved[0].type, type_to_be_assigned);
       assignment_fn->Execute(
           {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
           this, nullptr);
@@ -245,7 +245,6 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // this function, we know we've already validated all functions that could
     // be called.
     auto results = fn->Execute(resolved, this, nullptr);
-
     // TODO multiple returns?
     return results.empty() ? IR::Val::None() : results[0];
   } break;
