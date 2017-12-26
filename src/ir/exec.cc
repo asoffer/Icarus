@@ -407,7 +407,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return resolved[i + 1];
       }
     }
-      call_stack.top().fn_->dump();
+    call_stack.top().fn_->dump();
     UNREACHABLE("Previous block was ", Val::Block(call_stack.top().prev_),
                 "\nCurrent block is ", Val::Block(call_stack.top().current_));
   case Op::Alloca: return stack_.Push(&cmd.type->as<Pointer>());

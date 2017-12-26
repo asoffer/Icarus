@@ -205,7 +205,8 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
           // Note: I actually don't care what the other type is so long as it's
           // a variant of the appropriate size
           args[i] = IR::Alloca(binding.exprs_[i].first);
-          expr->type->EmitAssign(expr->type,*expr_map[expr], args[i]);
+          binding.exprs_[i].first->EmitAssign(expr->type, *expr_map[expr],
+                                              args[i]);
         } else {
           args[i] = *expr_map[expr];
         }
@@ -682,7 +683,8 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
 
     ASSERT_EQ(lhs_lvals.size(), rhs_vals.size());
     for (size_t i = 0; i < lhs_lvals.size(); ++i) {
-      rhs_types[i]->EmitAssign(lhs_types[i], rhs_vals[i], lhs_lvals[i]);
+      lhs_types[i]->EmitAssign(rhs_types[i], PtrCallFix(rhs_vals[i]),
+                               lhs_lvals[i]);
     }
     return IR::Val::None();
   } break;

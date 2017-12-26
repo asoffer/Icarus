@@ -270,6 +270,9 @@ void Type::EmitCopyInit(Type *from_type, Type *to_type, IR::Val from_val,
     NOT_YET();
   } else if (to_type->is<Tuple>()) {
     NOT_YET();
+  } else if (to_type->is<Variant>()) {
+    // TODO destruction in assignment may cause problems.
+    to_type->EmitAssign(from_type, from_val, to_var);
   } else if (to_type->is<RangeType>()) {
     NOT_YET();
   } else if (to_type->is<SliceType>()) {

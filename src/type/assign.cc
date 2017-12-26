@@ -143,7 +143,8 @@ void Variant::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
       IR::Block::Current = IR::EarlyExitOn<false>(
           next_block, IR::Eq(actual_type, IR::Val::Type(v)));
       IR::Store(IR::Val::Type(v), IR::VariantType(to));
-      v->EmitAssign(v, IR::VariantValue(v, from), IR::VariantValue(v, to));
+      v->EmitAssign(v, PtrCallFix(IR::VariantValue(v, from)),
+                    IR::VariantValue(v, to));
       IR::UncondJump(landing);
       IR::Block::Current = next_block;
     }
