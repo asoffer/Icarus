@@ -12,10 +12,18 @@ template <> struct dispatch_rank<0> {};
 template <typename T> std::string stringify(T &&t);
 
 template <typename T>
-auto stringify(dispatch_rank<6>, T &&t)
-    -> decltype(std::declval<T>().begin(), std::declval<T>().end(),
-                ++std::declval<T>().begin(), *std::declval<T>().begin(),
+auto stringify(dispatch_rank<7>, const T &s)
+    -> decltype(std::enable_if_t<std::is_same<T, std::string>::value>(),
                 std::string()) {
+  return s;
+}
+
+template <typename Container>
+auto stringify(dispatch_rank<6>, const Container &t)
+    -> decltype(std::declval<Container>().begin(),
+                std::declval<Container>().end(),
+                ++std::declval<Container>().begin(),
+                *std::declval<Container>().begin(), std::string()) {
   std::stringstream ss;
   if (t.empty()) {
     ss << "[]";
@@ -33,19 +41,19 @@ auto stringify(dispatch_rank<6>, T &&t)
 }
 
 template <typename T>
-auto stringify(dispatch_rank<5>, T &&t)
+auto stringify(dispatch_rank<5>, const T &t)
     -> decltype((std::string)std::declval<T>(), std::string()) {
   return t;
 }
 
 template <typename T>
-auto stringify(dispatch_rank<4>, T &&t)
+auto stringify(dispatch_rank<4>, const T &t)
     -> decltype(std::declval<T>().to_string(), std::string()) {
   return t.to_string();
 }
 
 template <typename T>
-auto stringify(dispatch_rank<3>, T &&t)
+auto stringify(dispatch_rank<3>, const T &t)
     -> decltype(std::declval<T>() == nullptr, std::declval<T>()->to_string(),
                 std::string()) {
   return t == nullptr ? "0x0" : t->to_string();
@@ -79,7 +87,7 @@ auto stringify(dispatch_rank<0>, T &&t)
 }
 
 template <typename T> std::string stringify(T &&t) {
-  return internal::stringify(internal::dispatch_rank<6>{}, std::forward<T>(t));
+  return internal::stringify(internal::dispatch_rank<7>{}, std::forward<T>(t));
 }
 } // namespace internal
 } // namespace base

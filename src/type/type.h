@@ -61,6 +61,8 @@ public:
   virtual ~Type() {}
   BASIC_METHODS;
 
+  static Type *Meet(Type *lhs, Type *rhs);
+
   std::string to_string() const {
     std::string result(string_size(), '\0');
     char *end_buf = WriteTo(const_cast<char *>(result.data()));

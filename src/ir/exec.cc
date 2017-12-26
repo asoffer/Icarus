@@ -402,13 +402,14 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   } break;
   case Op::Phi:
     for (size_t i = 0; i < resolved.size(); i += 2) {
-      if (call_stack.top().prev_ == std::get<IR::BlockIndex>(resolved[i].value)) {
+      if (call_stack.top().prev_ ==
+          std::get<IR::BlockIndex>(resolved[i].value)) {
         return resolved[i + 1];
       }
     }
-    call_stack.top().fn_->dump();
-    UNREACHABLE("Previous block was ",
-                Val::Block(call_stack.top().prev_).to_string());
+      call_stack.top().fn_->dump();
+    UNREACHABLE("Previous block was ", Val::Block(call_stack.top().prev_),
+                "\nCurrent block is ", Val::Block(call_stack.top().current_));
   case Op::Alloca: return stack_.Push(&cmd.type->as<Pointer>());
   case Op::PtrIncr:
     switch (std::get<Addr>(resolved[0].value).kind) {

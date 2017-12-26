@@ -164,3 +164,74 @@ Type *Var(std::vector<Type *> variants) {
   Variant v(variants);
   return &variants_.emplace(std::move(variants), std::move(v)).first->second;
 }
+
+// TODO optimize (early exists. don't check lhs->is<> && rhs->is<>. If they
+// don't match you can early exit.
+Type *Type::Meet(Type *lhs, Type *rhs) {
+  if (lhs == rhs) { return lhs; }
+  if (lhs == Err) { return rhs; } // Ignore errors
+  if (rhs == Err) { return lhs; } // Ignore errors
+  if (lhs == NullPtr || rhs == NullPtr) {
+    // TODO It's not obvious to me that this is what I want to do.
+    return nullptr;
+  }
+  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
+    return Ptr(Meet(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee));
+  } else if (lhs->is<Array>() && rhs->is<Array>()) {
+    Type *result = nullptr;
+    if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
+      if (lhs->as<Array>().len != rhs->as<Array>().len) { return nullptr; }
+      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result, lhs->as<Array>().len) : result;
+    } else {
+      result = Meet(lhs->as<Array>().data_type, rhs->as<Array>().data_type);
+      return result ? Arr(result,
+                          std::max(lhs->as<Array>().len, rhs->as<Array>().len))
+                    : result;
+    }
+  } else if (lhs->is<Array>() && rhs == EmptyArray &&
+             !lhs->as<Array>().fixed_length) {
+    return Arr(lhs->as<Array>().data_type, 0);
+  } else if (rhs->is<Array>() && lhs == EmptyArray &&
+             !rhs->as<Array>().fixed_length) {
+    return Arr(rhs->as<Array>().data_type, 0);
+  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
+    Tuple *lhs_tup = &lhs->as<Tuple>();
+    Tuple *rhs_tup = &rhs->as<Tuple>();
+    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
+    std::vector<Type *> joined;
+    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
+      Type *result = Meet(lhs_tup->entries[i], rhs_tup->entries[i]);
+      if (result == nullptr) { return nullptr; }
+      joined.push_back(result);
+    }
+    return Tup(std::move(joined));
+  } else if (lhs->is<Variant>()) {
+    // TODO this feels very fishy, cf. ([3; int] | [4; int]) with [--; int]
+    std::vector<Type *> results;
+    if (rhs->is<Variant>()) {
+      for (Type *l_type : lhs->as<Variant>().variants_) {
+        for (Type *r_type : rhs->as<Variant>().variants_) {
+          Type *result = Meet(l_type, r_type);
+          if (result != nullptr) { results.push_back(result); }
+        }
+      }
+    } else {
+      for (Type *t : lhs->as<Variant>().variants_) {
+        Type *result = Meet(t, rhs);
+        if (result != nullptr) { results.push_back(result); }
+      }
+    }
+    return results.empty() ? nullptr : Var(std::move(results));
+  } else if (rhs->is<Variant>()) { // lhs is not a variant
+    // TODO faster lookups? maybe not represented as a vector. at least give a
+    // better interface.
+    std::vector<Type *> results;
+    for (Type *t : rhs->as<Variant>().variants_) {
+      Type *result = Meet(t, lhs);
+      if (result != nullptr) { results.push_back(result); }
+    }
+    return results.empty() ? nullptr : Var(std::move(results));
+  }
+  return nullptr;
+}

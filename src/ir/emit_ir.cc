@@ -191,12 +191,15 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
                       ->args_[i]
                       .second->EmitIR(kind);
       } else if (expr->type->is<Variant>()) {
-        if (binding.exprs_[i].first->is<Variant>()) {
-          args[i] = *expr_map[expr];
-        } else {
-          args[i] = PtrCallFix(
-              IR::VariantValue(binding.exprs_[i].first, *expr_map[expr]));
-        }
+        Type* meet = Type::Meet(expr->type, binding.exprs_[i].first);
+        // TODO Potentially wasteful if we don't need to worry about this copy.
+        args[i] = IR::Alloca(binding.exprs_[i].first);
+        binding.exprs_[i].first->EmitAssign(
+            /*  from_type = */ meet,
+            /* from_value =  */ meet->is<Variant>()
+                ? *expr_map[expr]
+                : PtrCallFix(IR::VariantValue(meet, *expr_map[expr])),
+            /*   to_value = */ args[i]);
       } else {
         if (binding.exprs_[i].first->is<Variant>()) {
           // Note: I actually don't care what the other type is so long as it's
@@ -530,8 +533,6 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
 
 IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
-  if (addr != IR::Val::None()) { return IR::Val::None(); }
-
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
@@ -569,14 +570,11 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     // set, but the allocation has to be done much earlier. We do the allocation
     // in FunctionLiteral::EmitIR. Declaration::EmitIR is just used to set the
     // value.
-
-    // TODO I don't think this is even callable
     ASSERT_NE(addr, IR::Val::None());
     ASSERT(scope_->ContainingFnScope(), "");
 
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
-
     if (IsCustomInitialized()) {
       lrvalue_check();
       if (init_val->lvalue == Assign::RVal) {
@@ -922,12 +920,6 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
           if (decl->arg_val || decl->is<InDecl>()) { return; }
           ASSERT(decl->type, "");
           decl->addr = IR::Alloca(decl->type);
-          if (decl->init_val) {
-            decl->type->EmitAssign(decl->init_val->type,
-                                   decl->init_val->EmitIR(kind), decl->addr);
-          } else {
-            decl->type->EmitInit(decl->addr);
-          }
         });
       }
 
