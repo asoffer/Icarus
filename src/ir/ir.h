@@ -143,7 +143,7 @@ struct Val {
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
   static Val Ret(ReturnValue r, ::Type *t) { return Val(t, r); }
-  static Val Addr(Addr addr, ::Type *t) { return Val(t, addr); }
+  static Val Addr(Addr addr, ::Type *t);
   static Val GlobalAddr(u64 addr, ::Type *t);
   static Val HeapAddr(void *addr, ::Type *t);
   static Val StackAddr(u64 addr, ::Type *t);

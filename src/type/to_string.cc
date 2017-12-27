@@ -37,14 +37,15 @@ char* Enum::WriteTo(char *buf) const {
 
 size_t Pointer::string_size() const {
   return ((pointee->is<Struct>() || pointee->is<Primitive>() ||
-           pointee->is<Enum>() || pointee->is<Array>())
+           pointee->is<Enum>() || pointee->is<Array>() ||
+           pointee->is<Pointer>())
               ? 1
               : 3) +
          pointee->string_size();
 }
 char* Pointer::WriteTo(char *buf) const {
   if (pointee->is<Struct>() || pointee->is<Primitive>() ||
-      pointee->is<Enum>() || pointee->is<Array>()) {
+      pointee->is<Enum>() || pointee->is<Array>() || pointee->is<Pointer>()) {
     buf = std::strcpy(buf, "*") + 1;
     buf = pointee->WriteTo(buf);
   } else {

@@ -198,10 +198,10 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else {
         NOT_YET();
       }
-    } else if (std::get<Type*>(resolved[0].value)->is<Pointer>() &&
-               resolved[1].type->is<Pointer>()) {
+    } else if (Type *ptr_type = std::get<Type *>(resolved[0].value);
+               ptr_type->is<Pointer>() && resolved[1].type->is<Pointer>()) {
       return Val::Addr(std::get<Addr>(resolved[1].value),
-                       std::get<Type *>(resolved[0].value));
+                       ptr_type->as<Pointer>().pointee);
     } else {
       call_stack.top().fn_->dump();
       cmd.dump(10);
@@ -475,7 +475,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     return IR::Val::CodeBlock(code_block.release());
   } break;
   case Op::VariantType:
-    return Val::Addr(std::get<Addr>(resolved[0].value), Ptr(Type_));
+    return Val::Addr(std::get<Addr>(resolved[0].value), Type_);
   case Op::VariantValue: {
     auto bytes = Architecture::InterprettingMachine().bytes(Ptr(Type_));
     auto bytes_fwd =

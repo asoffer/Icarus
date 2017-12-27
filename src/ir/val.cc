@@ -6,6 +6,8 @@
 #include "../type/type.h"
 
 namespace IR {
+Val Val::Addr(IR::Addr addr, ::Type *t) { return Val(Ptr(t), addr); }
+
 Val Val::StackAddr(u64 addr, ::Type *t) {
   IR::Addr a;
   a.kind     = Addr::Kind::Stack;
