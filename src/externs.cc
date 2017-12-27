@@ -22,6 +22,7 @@ std::string Escape(char c) {
   return std::string(1, c);
 }
 
+// TODO investigate all calls and see if this assertion can be safely removed.
 IR::Val PtrCallFix(IR::Val v) {
   ASSERT_TYPE(Pointer, v.type);
   return (v.type->as<Pointer>().pointee->is_big()) ? v : IR::Load(v);

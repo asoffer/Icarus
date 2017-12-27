@@ -143,17 +143,16 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   std::vector<IR::Val> pos_vals;
   pos_vals.reserve(pos_.size());
   for (auto &expr : pos_) {
-    pos_vals.push_back(expr->lvalue == Assign::LVal
-                           ? PtrCallFix(expr->EmitLVal(kind))
-                           : expr->EmitIR(kind));
+    pos_vals.push_back(expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
+                                            : expr->EmitIR(kind));
     expr_map[expr.get()] = &pos_vals.back(); // Safe because of reserve.
   }
 
   std::unordered_map<std::string, IR::Val> named_vals;
   for (auto & [ name, expr ] : named_) {
     auto[iter, success] = named_vals.emplace(
-        name, expr->lvalue == Assign::LVal ? PtrCallFix(expr->EmitLVal(kind))
-                                           : expr->EmitIR(kind));
+        name, expr->type->is_big() ? PtrCallFix(expr->EmitIR(kind))
+                                   : expr->EmitIR(kind));
     expr_map[expr.get()] = &iter->second;
   }
 
@@ -184,32 +183,15 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     std::vector<IR::Val> args;
     args.resize(binding.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {
-      auto *expr = binding.exprs_[i].second;
+      auto[bound_type, expr] = binding.exprs_[i];
       if (expr == nullptr) {
-        ASSERT_NE(binding.exprs_[i].first, nullptr);
-        args[i] = std::get<IR::Func *>(fn_to_call.value)
-                      ->args_[i]
-                      .second->EmitIR(kind);
-      } else if (expr->type->is<Variant>()) {
-        Type* meet = Type::Meet(expr->type, binding.exprs_[i].first);
-        // TODO Potentially wasteful if we don't need to worry about this copy.
-        args[i] = IR::Alloca(binding.exprs_[i].first);
-        binding.exprs_[i].first->EmitAssign(
-            /*  from_type = */ meet,
-            /* from_value =  */ meet->is<Variant>()
-                ? *expr_map[expr]
-                : PtrCallFix(IR::VariantValue(meet, *expr_map[expr])),
-            /*   to_value = */ args[i]);
+        ASSERT_NE(bound_type, nullptr);
+        auto default_expr =
+            std::get<IR::Func *>(fn_to_call.value)->args_[i].second;
+        args[i] = bound_type->PrepareArgument(default_expr->type,
+                                              default_expr->EmitIR(kind));
       } else {
-        if (binding.exprs_[i].first->is<Variant>()) {
-          // Note: I actually don't care what the other type is so long as it's
-          // a variant of the appropriate size
-          args[i] = IR::Alloca(binding.exprs_[i].first);
-          binding.exprs_[i].first->EmitAssign(expr->type, *expr_map[expr],
-                                              args[i]);
-        } else {
-          args[i] = *expr_map[expr];
-        }
+        args[i] = bound_type->PrepareArgument(expr->type, *expr_map[expr]);
       }
     }
 

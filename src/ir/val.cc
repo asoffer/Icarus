@@ -66,7 +66,13 @@ std::string Val::to_string() const {
                        : this->type->as<::Enum>().members AT(e.value);
           },
           [](::Type *t) -> std::string { return t->to_string(); },
-          [](IR::Func *f) -> std::string { return "fn." + f->name; },
+          [](IR::Func *f) -> std::string {
+            return "fn." +
+                   (f->name == ""
+                        ? std::to_string(reinterpret_cast<uintptr_t>(f)) + "-" +
+                              f->type->to_string()
+                        : f->name);
+          },
           [](AST::ScopeLiteral *) -> std::string { NOT_YET(); },
           [](AST::CodeBlock *) -> std::string { return "<...>"; },
           [](AST::Expression *) -> std::string { NOT_YET(); },

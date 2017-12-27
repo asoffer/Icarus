@@ -175,8 +175,10 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
     // TODO It's not obvious to me that this is what I want to do.
     return nullptr;
   }
-  if (lhs->is<Pointer>() && rhs->is<Pointer>()) {
-    return Ptr(Meet(lhs->as<Pointer>().pointee, rhs->as<Pointer>().pointee));
+  if (lhs->is<Pointer>()) {
+    return rhs->is<Pointer>() ? Ptr(Meet(lhs->as<Pointer>().pointee,
+                                         rhs->as<Pointer>().pointee))
+                              : nullptr;
   } else if (lhs->is<Array>() && rhs->is<Array>()) {
     Type *result = nullptr;
     if (lhs->as<Array>().fixed_length && rhs->as<Array>().fixed_length) {
@@ -195,15 +197,19 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
   } else if (rhs->is<Array>() && lhs == EmptyArray &&
              !rhs->as<Array>().fixed_length) {
     return Arr(rhs->as<Array>().data_type, 0);
-  } else if (lhs->is<Tuple>() && rhs->is<Tuple>()) {
-    Tuple *lhs_tup = &lhs->as<Tuple>();
-    Tuple *rhs_tup = &rhs->as<Tuple>();
-    if (lhs_tup->entries.size() != rhs_tup->entries.size()) { return nullptr; }
+  } else if (lhs->is<Tuple>()) {
+    if (!rhs->is<Tuple>() ||
+        lhs->as<Tuple>().entries.size() != rhs->as<Tuple>().entries.size()) {
+      return nullptr;
+    }
     std::vector<Type *> joined;
-    for (size_t i = 0; i < lhs_tup->entries.size(); ++i) {
-      Type *result = Meet(lhs_tup->entries[i], rhs_tup->entries[i]);
-      if (result == nullptr) { return nullptr; }
-      joined.push_back(result);
+    for (size_t i = 0; i < lhs->as<Tuple>().entries.size(); ++i) {
+      if (Type *result =
+              Meet(lhs->as<Tuple>().entries[i], rhs->as<Tuple>().entries[i])) {
+        joined.push_back(result);
+      } else {
+        return nullptr;
+      }
     }
     return Tup(std::move(joined));
   } else if (lhs->is<Variant>()) {
@@ -218,8 +224,7 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
       }
     } else {
       for (Type *t : lhs->as<Variant>().variants_) {
-        Type *result = Meet(t, rhs);
-        if (result != nullptr) { results.push_back(result); }
+        if (Type *result = Meet(t, rhs)) { results.push_back(result); }
       }
     }
     return results.empty() ? nullptr : Var(std::move(results));
@@ -228,8 +233,7 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
     // better interface.
     std::vector<Type *> results;
     for (Type *t : rhs->as<Variant>().variants_) {
-      Type *result = Meet(t, lhs);
-      if (result != nullptr) { results.push_back(result); }
+      if (Type *result = Meet(t, lhs)) { results.push_back(result); }
     }
     return results.empty() ? nullptr : Var(std::move(results));
   }

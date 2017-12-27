@@ -333,6 +333,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         return IR::Val::Enum(&cmd.type->as<Enum>(),
                              stack_.Load<size_t>(addr.as_stack));
       } else {
+        call_stack.top().fn_->dump();
         NOT_YET("Don't know how to load type: ", cmd.type);
       }
     } break;
@@ -480,6 +481,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     auto bytes_fwd =
         Architecture::InterprettingMachine().MoveForwardToAlignment(Ptr(Type_),
                                                                     bytes);
+    ASSERT(std::get_if<Addr>(&resolved[0].value) != nullptr,
+           "resolved[0] = " + resolved[0].to_string());
     switch (std::get<Addr>(resolved[0].value).kind) {
     case Addr::Kind::Stack: {
       return Val::StackAddr(std::get<Addr>(resolved[0].value).as_stack +

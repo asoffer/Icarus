@@ -48,6 +48,7 @@ struct Identifier;
   virtual void EmitInit(IR::Val id_val) ENDING;                                \
   virtual void EmitDestroy(IR::Val id_val) ENDING;                             \
   virtual IR::Val EmitInitialValue() const ENDING;                             \
+  virtual IR::Val PrepareArgument(Type *t, const IR::Val &val) const ENDING;   \
   virtual void EmitRepr(IR::Val id_val) ENDING
 
 #define TYPE_FNS(name)                                                         \
