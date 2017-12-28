@@ -1,11 +1,12 @@
 #include "ir.h"
 
+#include <vector>
+
 #include "../ast/ast.h"
 #include "../error_log.h"
 #include "../scope.h"
 #include "../type/type.h"
 
-#include <vector>
 
 // TODO Alloca adds entry in the first block. Figure out if this is being done
 // in a smart way. Something feels weird about it. Definitely it should be in

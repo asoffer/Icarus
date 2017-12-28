@@ -9,6 +9,7 @@
 #include "type/type.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
+#include "base/debug.h"
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
@@ -91,6 +92,10 @@ int RunRepl() {
 }
 
 int main(int argc, char *argv[]) {
+#ifdef DEBUG
+  signal(SIGABRT, debug::DumpStackTrace);
+#endif
+
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
       case CLArgFlag::QuitSuccessfully: return 0;
