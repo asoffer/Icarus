@@ -453,8 +453,6 @@ template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
 std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
                                  IR::Cmd::Kind);
 
-namespace debug {
-inline std::string to_string(const IR::Val &val) { return val.to_string(); }
-} // namespace debug
+IR::Val PtrCallFix(IR::Val v);
 
 #endif // ICARUS_IR_IR_H

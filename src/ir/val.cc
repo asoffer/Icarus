@@ -142,4 +142,11 @@ bool Register::is_arg(const Func &fn) const {
 }
 
 std::vector<std::unique_ptr<Func>> Func::All;
+
 } // namespace IR
+
+IR::Val PtrCallFix(IR::Val v) {
+  return !v.type->is<Pointer>() || v.type->as<Pointer>().pointee->is_big()
+             ? v
+             : IR::Load(v);
+}

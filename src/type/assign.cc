@@ -3,8 +3,6 @@
 #include "../architecture.h"
 #include "../ir/ir.h"
 
-extern IR::Val PtrCallFix(IR::Val v);
-
 // TODO destructor for previously held value.
 
 void Primitive::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {

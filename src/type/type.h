@@ -271,4 +271,6 @@ SliceType *Slice(Array *a);
 Scope_Type *ScopeType(Type *t);
 Type *Var(std::vector<Type *> variants);
 
+IR::Val PtrCallFix(IR::Val v);
+
 #endif // ICARUS_TYPE_TYPE_H

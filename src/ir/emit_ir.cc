@@ -18,7 +18,6 @@
     if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }                \
   } while (false)
 
-extern IR::Val PtrCallFix(IR::Val v);
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 

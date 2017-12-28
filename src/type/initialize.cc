@@ -5,8 +5,6 @@
 #include "../ir/ir.h"
 #include "scope.h"
 
-extern IR::Val PtrCallFix(IR::Val v);
-
 void Primitive::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);
 }

@@ -221,18 +221,15 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         !call_stack.top().fn_->type->output->is_big()) {
       call_stack.top().rets_ AT(0) = resolved[1];
     } else {
-      auto type_to_be_assigned =
-          rets[std::get<ReturnValue>(resolved[0].value).value]
-              .type->as<Pointer>()
-              .pointee;
-      // TODO Use the right type for the assignment. The item being returned may
-      // not actually be the same type. For instance, returning [] out of a
-      // function whose output is [--; int].
-      auto assignment_fn =
-          AssignmentFunction(resolved[0].type, type_to_be_assigned);
-      assignment_fn->Execute(
-          {resolved[1], rets[std::get<ReturnValue>(resolved[0].value).value]},
-          this, nullptr);
+      AssignmentFunction(resolved[0].type->is<Pointer>()
+                             ? resolved[0].type->as<Pointer>().pointee
+                             : resolved[0].type,
+                         rets[std::get<ReturnValue>(resolved[0].value).value]
+                             .type->as<Pointer>()
+                             .pointee)
+          ->Execute({resolved[1],
+                     rets[std::get<ReturnValue>(resolved[0].value).value]},
+                    this, nullptr);
     }
     return IR::Val::None();
   }
@@ -370,7 +367,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         stack_.Store(std::get<AST::CodeBlock *>(resolved[0].value),
                      addr.as_stack);
       } else {
-        NOT_YET("Don't know how to store type: ", cmd.type);
+        NOT_YET("Don't know how to store that: args = ", resolved);
       }
 
       return IR::Val::None();
@@ -396,7 +393,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Code) {
         NOT_YET();
       } else {
-        NOT_YET("Don't know how to store type: ", cmd.type);
+        NOT_YET("Don't know how to store that: args = ", resolved);
       }
       return IR::Val::None();
     }

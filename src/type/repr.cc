@@ -3,8 +3,6 @@
 #include "../ir/ir.h"
 #include "../scope.h"
 
-extern IR::Val PtrCallFix(IR::Val v);
-
 void Primitive::EmitRepr(IR::Val val) {
   switch (type_) {
   case PrimType::Char: {
@@ -51,14 +49,14 @@ void Primitive::EmitRepr(IR::Val val) {
   case PrimType::Uint:
   case PrimType::Real:
   case PrimType::Type:
+  case PrimType::String:
   case PrimType::Code: {
     IR::Print(val);
   } break;
   case PrimType::Void:
   case PrimType::NullPtr:
   case PrimType::EmptyArray:
-  case PrimType::Err:
-  case PrimType::String: {
+  case PrimType::Err: {
     NOT_YET();
   } break;
   case PrimType::Unknown: UNREACHABLE();
