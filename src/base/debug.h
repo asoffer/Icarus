@@ -111,9 +111,9 @@ inline void DumpStackTrace(int) {
       abi::__cxa_demangle(mangled.c_str(), &demangled[0], &demangled_size,
                           &status);
       if (status != 0) {
-        fprintf(stderr, "#%2d| Demangling failure (%d)\n", i - 3, status);
+        fprintf(stderr, "#%2d| %s\n", i - 3, symbol.c_str());
       } else {
-        fprintf(stderr, "#%2d| %s\n",i - 3, demangled);
+        fprintf(stderr, "#%2d| %s\n", i - 3, demangled);
       }
 
     }

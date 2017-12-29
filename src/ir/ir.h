@@ -56,6 +56,7 @@ public:
   friend bool operator==(Register, Register);
   friend bool operator<(Register, Register);
   friend struct ExecContext; // TODO This isn't really needed
+  std::string to_string() const { return "r." + std::to_string(value_); }
 
 private:
   i32 value_ = std::numeric_limits<i32>::lowest();
@@ -74,7 +75,7 @@ inline bool operator<=(Register lhs, Register rhs) { return !(rhs < lhs); }
 inline bool operator>=(Register lhs, Register rhs) { return !(lhs < rhs); }
 inline bool operator!=(Register lhs, Register rhs) { return !(lhs == rhs); }
 
-inline std::ostream& operator<<(std::ostream& os, Register reg) {
+inline std::ostream& operator<<(std::ostream& os, ::IR::Register reg) {
   return os << reg.value_;
 }
 

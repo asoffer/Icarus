@@ -24,31 +24,30 @@ static void RecordReferences(Func *fn, const CmdIndex &ci,
                 fn->references_[CmdIndex{bi, index_on_block}].push_back(ci);
               }
             },
-            [](auto) {},
+            [](auto &&) {},
         },
         cmd_arg.value);
   }
 }
-
 Cmd::Cmd(Type *t, Op op, std::vector<Val> arg_vec)
-    : args(std::move(arg_vec)), op_code_(op) {
+    : args(std::move(arg_vec)), op_code_(op), type(t) {
   CmdIndex cmd_index{
       Block::Current,
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
-
   result = Register(t != nullptr ? Func::Current->num_regs_++
                                  : -(++Func::Current->num_voids_));
-  type                            = t;
   Func::Current->reg_map_[result] = cmd_index;
   RecordReferences(Func::Current, cmd_index, args);
 }
 
 Val Field(Val v, size_t n) {
   ASSERT_TYPE(Pointer, v.type);
-  Cmd cmd(Ptr(v.type->as<Pointer>().pointee->as<Struct>().field_type[n]),
-          Op::Field, {std::move(v), Val::Uint(n)});
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.reg();
+  Type *result_type =
+      Ptr(v.type->as<Pointer>().pointee->as<Struct>().field_type AT(n));
+  Cmd cmd(result_type, Op::Field, std::vector{std::move(v), Val::Uint(n)});
+  auto reg = cmd.reg();
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
+  return reg;
 }
 
 #define MAKE_VOID(op)                                                          \

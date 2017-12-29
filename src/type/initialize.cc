@@ -186,11 +186,12 @@ static IR::Val StructInitializationWith(Struct *struct_type) {
 
   if (success) {
     std::vector<std::pair<std::string, AST::Expression *>> args = {
-        {"arg", nullptr}};
+        {"arg0", nullptr}, {"arg1", nullptr}};
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({struct_type, Ptr(struct_type)}, Void), std::move(args)));
+        Func({Ptr(struct_type), Ptr(struct_type)}, Void), std::move(args)));
     auto *fn = iter->second = IR::Func::All.back().get();
     CURRENT_FUNC(fn) {
+      IR::Block::Current = fn->entry();
       for (size_t i = 0; i < struct_type->field_type.size(); ++i) {
         InitFn(struct_type->field_type[i], struct_type->field_type[i],
                PtrCallFix(IR::Field(fn->Argument(0), i)),

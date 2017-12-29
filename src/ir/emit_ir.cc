@@ -223,9 +223,13 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   IR::UncondJump(landing_block);
   IR::Block::Current = landing_block;
 
-  auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
-  IR::Func::Current->SetArgs(phi, std::move(results));
-  return IR::Func::Current->Command(phi).reg();
+  if (results.empty()) {
+    return IR::Val::None();
+  } else {
+    auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
+    IR::Func::Current->SetArgs(phi, std::move(results));
+    return IR::Func::Current->Command(phi).reg();
+  }
 }
 
 IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
@@ -516,6 +520,7 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
 
 IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
   VERIFY_OR_EXIT;
+
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
@@ -569,6 +574,7 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
       type->EmitInit(addr);
     }
   }
+
   return IR::Val::None();
 }
 
@@ -867,14 +873,26 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
                         input->as<Declaration>().init_val.get());
     }
 
+    Function* fn_type;
+    if (type->as<Function>().input->is<Tuple>()) {
+      std::vector<Type *> input_types;
+      for (Type *in : type->as<Function>().input->as<Tuple>().entries) {
+        input_types.push_back(in->is_big() ? Ptr(in) : in);
+      }
+      fn_type = Func(std::move(input_types), type->as<Function>().output);
+    } else {
+      Type *in = type->as<Function>().input;
+      fn_type  = Func(in->is_big() ? Ptr(in) : in, type->as<Function>().output);
+    }
+
     if (should_save) {
       IR::Func::All.push_back(
-          std::make_unique<IR::Func>(&type->as<Function>(), std::move(args)));
+          std::make_unique<IR::Func>(fn_type, std::move(args)));
       ir_func = IR::Func::All.back().get();
     } else {
       // TODO XXX This is SUPER DANGEROUS! Depending on a bool passed in we
       // either own or don't own?!?!?!
-      ir_func = new IR::Func(&type->as<Function>(), std::move(args));
+      ir_func = new IR::Func(fn_type, std::move(args));
     }
 
     CURRENT_FUNC(ir_func) {
@@ -902,7 +920,7 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
           // TODO arg_val seems to go along with in_decl a lot. Is there some
           // reason for this that *should* be abstracted?
           if (decl->arg_val || decl->is<InDecl>()) { return; }
-          ASSERT(decl->type, "");
+          ASSERT_NE(decl->type, nullptr);
           decl->addr = IR::Alloca(decl->type);
         });
       }
@@ -937,6 +955,7 @@ IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {
 
   if (decl->addr == IR::Val::None()) { decl->EmitIR(kind); }
   // TODO kind???
+
   return decl->addr;
 }
 
