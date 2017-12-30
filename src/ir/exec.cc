@@ -217,8 +217,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::Gt: return Gt(resolved[0], resolved[1]);
   case Op::SetReturn: {
     const auto &rets = call_stack.top().rets_;
-    if (call_stack.top().fn_->type->num_outputs() == 1 &&
-        !call_stack.top().fn_->type->output->is_big()) {
+    // TODO: Use ir_type here?
+    if (call_stack.top().fn_->type->output.size() == 1 &&
+        !call_stack.top().fn_->type->output[0]->is_big()) {
       call_stack.top().rets_ AT(0) = resolved[1];
     } else {
       AssignmentFunction(resolved[0].type->is<Pointer>()

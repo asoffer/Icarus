@@ -104,38 +104,47 @@ char *Array::WriteTo(char *buf) const {
 }
 
 size_t Function::string_size() const {
-  return input->string_size() +
-         (input->is<Struct>() || input->is<Primitive>() || input->is<Enum>() ||
-                  input->is<Pointer>() || input->is<Array>() ||
-                  input->is<Tuple>()
-              ? 0
-              : 2) +
-         4 + output->string_size() +
-         (output->is<Struct>() || output->is<Primitive>() ||
-                  output->is<Enum>() || output->is<Pointer>() ||
-                  output->is<Array>() || output->is<Function>()
-              ? 0
-              : 2);
+  size_t acc = 0;
+  for (Type *t : input) { acc += t->string_size(); }
+  for (Type *t : output) { acc += t->string_size(); }
+  acc += 2 * (input.size() - 1) +   // space between inputs
+         (input.empty() ? 4 : 0) +  // void
+         4 +                        // " -> "
+         2 * (output.size() - 1) +   // space between outputs
+         (output.empty() ? 4 : 0) + // void
+         (input.size() == 1 && input[0]->is<Function>() ? 2 : 0); // parens
+  return acc;
 }
 
 char *Function::WriteTo(char *buf) const {
-  if (input->is<Struct>() || input->is<Primitive>() || input->is<Enum>() ||
-      input->is<Pointer>() || input->is<Array>() || input->is<Tuple>()) {
-    buf = input->WriteTo(buf);
-    buf = std::strcpy(buf, " -> ") + 4;
+  if (input.empty()) {
+    buf = std::strcpy(buf, "void");
   } else {
-    buf = std::strcpy(buf, "(") + 1;
-    buf = input->WriteTo(buf);
-    buf = std::strcpy(buf, ") -> ") + 5;
+    if (input[0]->is<Function>()) {
+      buf = std::strcpy(buf, "(");
+      buf = input[0]->WriteTo(buf);
+      buf = std::strcpy(buf, ")");
+    } else {
+      buf = input[0]->WriteTo(buf);
+    }
+    for (size_t i = 1; i < input.size(); ++i) {
+      buf = std::strcpy(buf, ", ") + 2;
+      buf = input[i]->WriteTo(buf);
+    }
   }
-  if (output->is<Struct>() || output->is<Primitive>() || output->is<Enum>() ||
-      output->is<Pointer>() || output->is<Array>() || output->is<Function>()) {
-    buf = output->WriteTo(buf);
+
+  buf = std::strcpy(buf, " -> ");
+
+  if (output.empty()) {
+    buf = std::strcpy(buf, "void");
   } else {
-    buf = std::strcpy(buf, "(") + 1;
-    buf = output->WriteTo(buf);
-    buf = std::strcpy(buf, ")") + 1;
+    buf = output[0]->WriteTo(buf);
+    for (size_t i = 1; i < output.size(); ++i) {
+      buf = std::strcpy(buf, ", ") + 2;
+      buf = output[i]->WriteTo(buf);
+    }
   }
+
   return buf;
 }
 

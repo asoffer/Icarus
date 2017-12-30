@@ -32,8 +32,8 @@ std::string Mangle(const Type *t, bool prefix) {
 
   } else if (t->is<Function>()) {
     // TODO treat as function pointer?
-    ss << "F" << Mangle(((const Function *)t)->input, false);
-
+    ss << "F" << t->as<Function>().input.size();
+    for (Type *in : t->as<Function>().input) { ss << Mangle(in, false); }
   } else {
     ss << t->to_string();
   }
@@ -49,7 +49,7 @@ std::string Mangle(const Function *f, AST::Expression *expr, Scope *) {
   std::stringstream ss;
   ss << "_Z";
 
-  ss << "F" << name.size() << name;
-  ss << Mangle(f->input, false);
+  ss << "F" << name.size() << name << f->input.size();
+  for (Type *in : f->input) { ss << Mangle(in, false); }
   return ss.str();
 }

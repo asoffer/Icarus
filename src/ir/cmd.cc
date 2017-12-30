@@ -373,9 +373,9 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
   // Long-term we should do this consistently even for small types, because for
   // multiple return values, we really could return them in multiple registers
   // rather than allocating stack space.
-  Type *output_type = fn.type->as<Function>().output->is_big()
+  Type *output_type = Tup(fn.type->as<Function>().output)->is_big()
                           ? Void
-                          : fn.type->as<Function>().output;
+                          : Tup(fn.type->as<Function>().output);
   Cmd cmd(output_type, Op::Call, std::move(vals));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
   return cmd.reg();
@@ -471,14 +471,14 @@ void Func::dump() const {
 ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
     : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
       regs_(fn->num_regs_, Val::None()) {
-  size_t num_inputs = fn->type->num_inputs();
+  size_t num_inputs = fn->ir_type->input.size();
   ASSERT_LE(num_inputs, arguments.size());
   ASSERT_LE(num_inputs, regs_.size());
   size_t i = 0;
   for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
   for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
 
-  if (rets_.empty() && fn->type->num_outputs() == 1) {
+  if (rets_.empty() && fn->type->output.size() == 1) {
     // This is the case of a simple return type (i.e., type can be held in
     // register).
     rets_.push_back(IR::Val::None());

@@ -196,7 +196,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     }
 
     Type *output_type_for_this_binding =
-        std::get<IR::Func *>(fn_to_call.value)->type->output;
+        Tup(std::get<IR::Func *>(fn_to_call.value)->type->output);
     IR::Val ret_val;
     if (output_type_for_this_binding->is_big()) {
       ret_val = IR::Alloca(type);
@@ -254,13 +254,12 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
       ret && kind == IR::Cmd::Kind::PostCondition) {
-    Type *input =
-        scope_->ContainingFnScope()->fn_lit->type->as<Function>().input;
-    i32 num_args = input->is<Tuple>()
-                       ? static_cast<i32>(input->as<Tuple>().entries.size())
-                       : 1;
-    return IR::Val::Reg(IR::Register{num_args + static_cast<i32>(ret->value)},
-                        type);
+    return IR::Val::Reg(
+        IR::Register{static_cast<i32>(scope_->ContainingFnScope()
+                                          ->fn_lit->type->as<Function>()
+                                          .input.size() +
+                                      ret->value)},
+        type);
   }
 
   if (decl->const_ || decl->arg_val) {
@@ -873,17 +872,12 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
                         input->as<Declaration>().init_val.get());
     }
 
-    Function* fn_type;
-    if (type->as<Function>().input->is<Tuple>()) {
-      std::vector<Type *> input_types;
-      for (Type *in : type->as<Function>().input->as<Tuple>().entries) {
-        input_types.push_back(in->is_big() ? Ptr(in) : in);
-      }
-      fn_type = Func(std::move(input_types), type->as<Function>().output);
-    } else {
-      Type *in = type->as<Function>().input;
-      fn_type  = Func(in->is_big() ? Ptr(in) : in, type->as<Function>().output);
+    std::vector<Type *> input_types;
+    for (Type *in : type->as<Function>().input) {
+      input_types.push_back(in->is_big() ? Ptr(in) : in);
     }
+    Function *fn_type =
+        Func(std::move(input_types), type->as<Function>().output);
 
     if (should_save) {
       IR::Func::All.push_back(

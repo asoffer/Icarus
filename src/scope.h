@@ -44,7 +44,7 @@ struct Scope : public base::Cast<Scope> {
   AST::Identifier *IdReferencedOrNull(const std::string &name);
 
   Type *FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                     Type *input_type);
+                                     std::vector<Type *> input_type);
 
   IR::Val FuncHereOrNull(const std::string &fn_name, Function *fn_type);
 

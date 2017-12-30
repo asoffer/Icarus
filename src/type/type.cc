@@ -106,17 +106,19 @@ Pointer *Ptr(Type *t) {
 
 static TypeContainer<Type *, TypeContainer<Type *, Function>> funcs_;
 Function *Func(Type *in, Type *out) {
-  return &funcs_[in].emplace(out, Function(in, out)).first->second;
+  return Func(std::vector{in}, std::vector{out});
 }
 
 Function *Func(std::vector<Type *> in, Type *out) {
-  return Func(Tup(std::move(in)), out);
+  return Func(std::move(in), std::vector{out});
 }
 Function *Func(Type *in, std::vector<Type *> out) {
-  return Func(in, Tup(std::move(out)));
+  return Func(std::vector{in}, std::move(out));
 }
 Function *Func(std::vector<Type *> in, std::vector<Type *> out) {
-  return Func(Tup(std::move(in)), Tup(std::move(out)));
+  if (in == std::vector{Void}) { in = {}; }
+  if (out == std::vector{Void}) { out = {}; }
+  return &funcs_[Tup(in)].emplace(Tup(out), Function(in, out)).first->second;
 }
 
 static TypeContainer<Type *, RangeType> ranges_;
@@ -238,4 +240,15 @@ Type *Type::Meet(Type *lhs, Type *rhs) {
     return results.empty() ? nullptr : Var(std::move(results));
   }
   return nullptr;
+}
+
+Function *Function::ToIR() const {
+  std::vector<Type *> ins;
+  ins.reserve(input.size());
+  for (Type *t : input) { ins.push_back(t->is_big() ? Ptr(t) : t); }
+
+  std::vector<Type *> outs;
+  outs.reserve(output.size());
+  for (Type *t : output) { outs.push_back(t->is_big() ? Ptr(t) : t); }
+  return Func(ins, outs);
 }

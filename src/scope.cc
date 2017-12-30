@@ -41,7 +41,7 @@ AST::Identifier *Scope::IdReferencedOrNull(const std::string &name) {
 }
 
 Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
-                                          Type *input_type) {
+                                          std::vector<Type *> input_type) {
   for (auto scope_ptr = this; scope_ptr; scope_ptr = scope_ptr->parent) {
     auto id_ptr = scope_ptr->IdHereOrNull(fn_name);
     if (!id_ptr) { continue; }
@@ -55,9 +55,10 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       ASSERT(id_ptr->type, "");
     }
 
-    ASSERT(id_ptr->type->is<Function>(), "");
-    auto fn_type = (Function *)id_ptr->type;
-    if (fn_type->input == input_type) { return fn_type; }
+    ASSERT_TYPE(Function, id_ptr->type);
+    if (id_ptr->type->as<Function>().input == input_type) {
+      return id_ptr->type;
+    }
   }
   return nullptr;
 }

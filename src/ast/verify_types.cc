@@ -151,27 +151,21 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   // TODO check const-decl or not.
 
   auto *fn1 = std::get<IR::Func *>(Evaluate(decl1->init_val.get()).value);
-  std::vector<Type *> arg_types1 = fn1->type->input->is<Tuple>()
-                                       ? fn1->type->input->as<Tuple>().entries
-                                       : std::vector<Type *>{fn1->type->input};
   std::vector<ArgumentMetaData> metadata1;
   metadata1.reserve(fn1->args_.size());
   for (size_t i = 0; i < fn1->args_.size(); ++i) {
     metadata1.push_back(
-        ArgumentMetaData{/*        type = */ arg_types1[i],
+        ArgumentMetaData{/*        type = */ fn1->type->input[i],
                          /*        name = */ fn1->args_[i].first,
                          /* has_default = */ fn1->args_[i].second != nullptr});
   }
 
   auto *fn2 = std::get<IR::Func *>(Evaluate(decl2->init_val.get()).value);
-  std::vector<Type *> arg_types2 = fn2->type->input->is<Tuple>()
-                                       ? fn2->type->input->as<Tuple>().entries
-                                       : std::vector<Type *>{fn2->type->input};
   std::vector<ArgumentMetaData> metadata2;
   metadata2.reserve(fn2->args_.size());
   for (size_t i = 0; i < fn2->args_.size(); ++i) {
     metadata2.push_back(
-        ArgumentMetaData{/*        type = */ arg_types2[i],
+        ArgumentMetaData{/*        type = */ fn2->type->input[i],
                          /*        name = */ fn2->args_[i].first,
                          /* has_default = */ fn2->args_[i].second != nullptr});
   }
@@ -299,9 +293,10 @@ void Unop::verify_types() {
         id_ptr->verify_types();
       }
 
-      auto t = scope_->FunctionTypeReferencedOrNull("__neg__", operand->type);
+      auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
+                                                    std::vector{operand->type});
       if (t) {
-        type = t->as<Function>().output;
+        type = Tup(t->as<Function>().output);
       } else {
         ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
                                    "` has no unary negation operator.",
@@ -473,8 +468,8 @@ static bool Inferrable(Type *t) {
       if (!Inferrable(entry)) { return false; }
     }
   } else if (t->is<Function>()) {
-    return Inferrable(t->as<Function>().input) &&
-           Inferrable(t->as<Function>().output);
+    return Inferrable(Tup(t->as<Function>().input)) &&
+           Inferrable(Tup(t->as<Function>().output));
   }
   // TODO higher order types?
   return true;
@@ -532,9 +527,6 @@ DispatchTable Call::ComputeDispatchTable() {
         }
       }
 
-      std::vector<Type *> inputs = fn->type->input->is<Tuple>()
-                                       ? fn->type->input->as<Tuple>().entries
-                                       : std::vector<Type *>{fn->type->input};
       CallArgTypes call_arg_types;
       call_arg_types.pos_.resize(pos_.size(), nullptr);
       // TODO Do flat_map for real
@@ -548,14 +540,15 @@ DispatchTable Call::ComputeDispatchTable() {
           if (!fn->has_default(i)) {
             goto next_option;
           } else {
-            binding.exprs_[i].first = inputs[i];
+            binding.exprs_[i].first = fn->type->input[i];
           }
         } else {
-          Type *match = Type::Meet(binding.exprs_[i].second->type, inputs[i]);
+          Type *match =
+              Type::Meet(binding.exprs_[i].second->type, fn->type->input[i]);
           if (match == nullptr) {
             goto next_option;
           } else {
-            binding.exprs_[i].first = inputs[i];
+            binding.exprs_[i].first = fn->type->input[i];
           }
 
           if (i < call_arg_types.pos_.size()) {
@@ -639,7 +632,9 @@ void Call::verify_types() {
     std::vector<Type *> out_types;
     out_types.reserve(dispatch_table_.bindings_.size());
     for (const auto &[key, val] : dispatch_table_.bindings_) {
-      out_types.push_back(val.decl_->type->as<Function>().output);
+      auto &outs = val.decl_->type->as<Function>().output;
+      ASSERT_LE(outs.size(), 1);
+      out_types.push_back(outs.empty() ? Void : outs[0]);
     }
     type = Var(std::move(out_types));
 
@@ -787,7 +782,7 @@ void Binop::verify_types() {
       for (auto &decl : matched_op_name) {                                     \
         if (!decl->type->is<Function>()) { continue; }                         \
         auto *fn_type = &decl->type->as<Function>();                           \
-        if (fn_type->input != Tup({lhs->type, rhs->type})) { continue; }       \
+        if (fn_type->input != std::vector{lhs->type, rhs->type}) { continue; } \
         /* If you get here, you've found a match. Hope there is only one       \
          * TODO if there is more than one, log them all and give a good        \
          * *error message. For now, we just fail */                            \
@@ -802,7 +797,7 @@ void Binop::verify_types() {
         type = Err;                                                            \
         ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
       } else if (type != Err) {                                                \
-        type = correct_decl->type->as<Function>().output;                      \
+        type = Tup(correct_decl->type->as<Function>().output);                 \
       }                                                                        \
     }                                                                          \
   } break;
@@ -843,9 +838,9 @@ void Binop::verify_types() {
       }
 
       auto fn_type = scope_->FunctionTypeReferencedOrNull(
-          "__mul__", Tup({lhs->type, rhs->type}));
+          "__mul__", {lhs->type, rhs->type});
       if (fn_type) {
-        type = fn_type->as<Function>().output;
+        type = Tup(fn_type->as<Function>().output);
       } else {
         type = Err;
         ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
@@ -1111,23 +1106,18 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 
   auto fn_type = static_cast<Function *>(type);
   if (magic_method_name == "__print__") {
-    if (!fn_type->input->is<Struct>()) {
-      ErrorLog::InvalidPrintDefinition(span, fn_type->input);
+    if (!(fn_type->input.size() == 1 && fn_type->input[0]->is<Struct>())) {
+      ErrorLog::InvalidPrintDefinition(span, fn_type->input[0]);
     }
 
-    if (fn_type->output != Void) { ErrorLog::NonVoidPrintReturn(span); }
+    if (!fn_type->output.empty()) { ErrorLog::NonVoidPrintReturn(span); }
   } else if (magic_method_name == "__assign__") {
-    if (!fn_type->input->is<Tuple>()) {
-      ErrorLog::InvalidAssignDefinition(span, fn_type->input);
-    } else {
-      auto in = static_cast<Tuple *>(fn_type->input);
-      if (in->entries.size() != 2) {
-        ErrorLog::NonBinaryAssignment(span, in->entries.size());
-      }
-      // TODO more checking.
+    if (fn_type->input.size() != 2) {
+      ErrorLog::NonBinaryAssignment(span, fn_type->input.size());
     }
+    // TODO more checking.
 
-    if (fn_type->output != Void) { ErrorLog::NonVoidAssignReturn(span); }
+    if (!fn_type->output.empty()) { ErrorLog::NonVoidAssignReturn(span); }
   }
 }
 
@@ -1339,26 +1329,15 @@ void FunctionLiteral::verify_types() {
 
   // TODO don't do early exists on input or return type errors.
 
-  Type *ret_type = std::get<Type *>(ret_type_val.value);
-  Type *input_type;
+  Type *ret_type    = std::get<Type *>(ret_type_val.value);
   size_t num_inputs = inputs.size();
-  if (num_inputs == 0) {
-    input_type = Void;
-
-  } else if (num_inputs == 1) {
-    input_type = inputs.front()->type;
-
-  } else {
-    std::vector<Type *> input_type_vec;
-    for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
-
-    input_type = Tup(input_type_vec);
-  }
-
+  std::vector<Type *> input_type_vec;
+  input_type_vec.reserve(inputs.size());
+  for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
   FuncInnardsVerificationQueue.emplace(ret_type, statements.get());
 
   // TODO generics?
-  type = Func(input_type, ret_type);
+  type = Func(input_type_vec, ret_type);
 }
 
 void Case::verify_types() {
@@ -1506,7 +1485,7 @@ void ScopeLiteral::verify_types() {
 
   if (cannot_proceed_due_to_errors) { return; }
 
-  type = ScopeType(enter_fn->type->as<Function>().input);
+  type = ScopeType(Tup(enter_fn->type->as<Function>().input));
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

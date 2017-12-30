@@ -144,20 +144,13 @@ struct Pointer : public Type {
 
 struct Function : public Type {
   TYPE_FNS(Function);
-  Function(Type *in, Type *out) : input(in), output(out) {}
+  Function(std::vector<Type *> in, std::vector<Type *> out)
+      : input(in), output(out) {}
 
-  size_t num_inputs() const {
-    return input->is<Tuple>() ? input->as<Tuple>().entries.size()
-                              : input == Void ? 0 : 1;
-  }
-
-  size_t num_outputs() const {
-    return output->is<Tuple>() ? output->as<Tuple>().entries.size()
-                               : output == Void ? 0 : 1;
-  }
+  Function* ToIR() const;
 
   // TODO needs destroy for captures?
-  Type *input, *output;
+  std::vector<Type *> input, output;
 };
 
 struct Enum : public Type {
