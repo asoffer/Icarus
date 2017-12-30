@@ -52,13 +52,13 @@ struct PropDB {
     for (const auto &viewing_block : fn_->blocks_) {
       auto &view = views_[&viewing_block];
       if (fn_->args_.size() == 1) {
-        ASSERT_EQ(fn_->type->input.size(), 1);
-        auto prop = DefaultProperty(fn_->type->input[0]);
+        ASSERT_EQ(fn_->ir_type->input.size(), 1);
+        auto prop = DefaultProperty(fn_->ir_type->input[0]);
         ASSERT_NE(prop.get(), nullptr);
         view.props_[Register(0)] = std::move(prop);
       } else if (fn_->args_.size() > 1) {
         for (i32 i = 0; i < static_cast<i32>(fn_->args_.size()); ++i) {
-          Type *entry_type = fn_->type->input[i];
+          Type *entry_type = fn_->ir_type->input[i];
           auto prop        = DefaultProperty(entry_type);
           ASSERT(prop.get() != nullptr, "");
           view.props_[Register(i)] = std::move(prop);
@@ -75,7 +75,7 @@ struct PropDB {
       view.incoming_ = incoming;
 
       i32 i = 0;
-      for (Type *entry : fn_->type->output) {
+      for (Type *entry : fn_->ir_type->output) {
         view.ret_props_[ReturnValue(i)] = DefaultProperty(entry);
         ++i;
       }
@@ -466,9 +466,9 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       arg_props.push_back(prop_db.Get(*calling_block, arg));
     }
     for (const auto &precondition : called_fn->preconditions_) {
-      ASSERT_EQ(called_fn->type->input.size(), 1);
+      ASSERT_EQ(called_fn->type_->input.size(), 1);
       auto ir_fn =
-          ExprFn(precondition, called_fn->type->input[0], IR::Cmd::Kind::Exec);
+          ExprFn(precondition, called_fn->type_->input[0], IR::Cmd::Kind::Exec);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
         // TODO log error
@@ -478,10 +478,10 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   }
 
   for (const auto &postcondition : postconditions_) {
-    std::vector<Type *> input_types = type->input;
-    input_types.insert(input_types.end(), type->output.begin(),
-                       type->output.end());
-    i32 num_outs = static_cast<i32>(type->output.size());
+    std::vector<Type *> input_types = ir_type->input;
+    input_types.insert(input_types.end(), type_->output.begin(),
+                       type_->output.end());
+    i32 num_outs = static_cast<i32>(type_->output.size());
 
     std::vector<base::owned_ptr<property::Property>> arg_props;
     arg_props.reserve(input_types.size());

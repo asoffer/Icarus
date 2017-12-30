@@ -38,7 +38,7 @@ Val Val::Enum(const ::Enum *enum_type, size_t integral_val) {
   return Val(const_cast<::Enum *>(enum_type), EnumVal{integral_val});
 }
 
-Val Val::Func(::IR::Func *fn) { return Val(fn->type, fn); }
+Val Val::Func(::IR::Func *fn) { return Val(fn->ir_type, fn); }
 Val Val::Null(::Type *t) { return Val(Ptr(t), IR::Addr{Addr::Kind::Null, 0}); }
 Val Val::NullPtr() { return Val(::NullPtr, IR::Addr{Addr::Kind::Null, 0}); }
 
@@ -70,7 +70,7 @@ std::string Val::to_string() const {
             return "fn." +
                    (f->name == ""
                         ? std::to_string(reinterpret_cast<uintptr_t>(f)) + "-" +
-                              f->type->to_string()
+                              f->type_->to_string()
                         : f->name);
           },
           [](AST::ScopeLiteral *) -> std::string { NOT_YET(); },
@@ -118,7 +118,7 @@ Val Func::Argument(u32 n) {
 
 Func::Func(::Function *fn_type,
            std::vector<std::pair<std::string, AST::Expression *>> args)
-    : type(fn_type), ir_type(fn_type->ToIR()), args_(std::move(args)),
+    : type_(fn_type), ir_type(fn_type->ToIR()), args_(std::move(args)),
       num_regs_(static_cast<i32>(fn_type->input.size())) {
   ASSERT_EQ(args_.size(), fn_type->input.size());
   blocks_.push_back(std::move(Block(this)));

@@ -17,7 +17,7 @@ void Array::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   auto *&fn = assign_fns_[from_array_type];
   if (fn == nullptr) {
     auto assign_func = std::make_unique<IR::Func>(
-        Func({Ptr(from_type), Ptr(this)}, Void),
+        Func({from_type, Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}});
     IR::Func::All.push_back(std::move(assign_func));
@@ -104,7 +104,7 @@ void Struct::EmitAssign(Type *from_type, IR::Val from, IR::Val to) {
   CompleteDefinition();
   if (!assign_func) {
     IR::Func::All.push_back(std::make_unique<IR::Func>(
-        Func({Ptr(this), Ptr(this)}, Void),
+        Func({this, Ptr(this)}, Void),
         std::vector<std::pair<std::string, AST::Expression *>>{
             {"from", nullptr}, {"to", nullptr}}));
     assign_func       = IR::Func::All.back().get();

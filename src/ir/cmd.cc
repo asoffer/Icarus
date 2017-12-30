@@ -461,7 +461,7 @@ void Block::dump(size_t indent) const {
 }
 
 void Func::dump() const {
-  std::cerr << (name == "" ? "(anon)" : name) << ": " << *type;
+  std::cerr << (name == "" ? "(anon)" : name) << ": " << *type_;
   for (size_t i = 0; i < blocks_.size(); ++i) {
     std::cerr << "\n block #" << i << std::endl;
     blocks_[i].dump(2);
@@ -478,7 +478,7 @@ ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
   for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
   for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
 
-  if (rets_.empty() && fn->type->output.size() == 1) {
+  if (rets_.empty() && fn->type_->output.size() == 1) {
     // This is the case of a simple return type (i.e., type can be held in
     // register).
     rets_.push_back(IR::Val::None());

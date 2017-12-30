@@ -218,8 +218,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
   case Op::SetReturn: {
     const auto &rets = call_stack.top().rets_;
     // TODO: Use ir_type here?
-    if (call_stack.top().fn_->type->output.size() == 1 &&
-        !call_stack.top().fn_->type->output[0]->is_big()) {
+    if (call_stack.top().fn_->type_->output.size() == 1 &&
+        !call_stack.top().fn_->type_->output[0]->is_big()) {
       call_stack.top().rets_ AT(0) = resolved[1];
     } else {
       AssignmentFunction(resolved[0].type->is<Pointer>()
@@ -262,7 +262,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
               std::cerr << resolved[0].type->as<Enum>().members[e.value];
             },
             [](IR::Func *f) {
-              std::cerr << "{" << f->type->to_string() << "}";
+              std::cerr << "{" << f->type_->to_string() << "}";
             },
             [&resolved](auto) { NOT_YET(resolved[0].type); },
         },

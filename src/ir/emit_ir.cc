@@ -196,7 +196,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     }
 
     Type *output_type_for_this_binding =
-        Tup(std::get<IR::Func *>(fn_to_call.value)->type->output);
+        Tup(std::get<IR::Func *>(fn_to_call.value)->type_->output);
     IR::Val ret_val;
     if (output_type_for_this_binding->is_big()) {
       ret_val = IR::Alloca(type);

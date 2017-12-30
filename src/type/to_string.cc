@@ -107,42 +107,46 @@ size_t Function::string_size() const {
   size_t acc = 0;
   for (Type *t : input) { acc += t->string_size(); }
   for (Type *t : output) { acc += t->string_size(); }
-  acc += 2 * (input.size() - 1) +   // space between inputs
-         (input.empty() ? 4 : 0) +  // void
-         4 +                        // " -> "
-         2 * (output.size() - 1) +   // space between outputs
-         (output.empty() ? 4 : 0) + // void
+  acc += 2 * (input.size() - 1) +       // space between inputs
+         (input.size() == 1 ? 0 : 2) +  // Parens
+         (input.empty() ? 4 : 0) +      // void
+         4 +                            // " -> "
+         2 * (output.size() - 1) +      // space between outputs
+         (output.size() == 1 ? 0 : 2) + // Parens
+         (output.empty() ? 4 : 0) +     // void
          (input.size() == 1 && input[0]->is<Function>() ? 2 : 0); // parens
   return acc;
 }
 
 char *Function::WriteTo(char *buf) const {
   if (input.empty()) {
-    buf = std::strcpy(buf, "void");
+    buf = std::strcpy(buf, "void") + 4;
+  } else if (input.size() == 1 && !input[0]->is<Function>()) {
+      buf = input[0]->WriteTo(buf);
   } else {
-    if (input[0]->is<Function>()) {
-      buf = std::strcpy(buf, "(");
-      buf = input[0]->WriteTo(buf);
-      buf = std::strcpy(buf, ")");
-    } else {
-      buf = input[0]->WriteTo(buf);
-    }
+    buf = std::strcpy(buf, "(") + 1;
+    buf = input[0]->WriteTo(buf);
     for (size_t i = 1; i < input.size(); ++i) {
       buf = std::strcpy(buf, ", ") + 2;
       buf = input[i]->WriteTo(buf);
     }
+    buf = std::strcpy(buf, ")") + 1;
   }
 
-  buf = std::strcpy(buf, " -> ");
+  buf = std::strcpy(buf, " -> ") + 4;
 
   if (output.empty()) {
-    buf = std::strcpy(buf, "void");
+    buf = std::strcpy(buf, "void") + 4;
+  } else if (output.size() == 1) {
+    buf = output[0]->WriteTo(buf);
   } else {
+    buf = std::strcpy(buf, "(") + 1;
     buf = output[0]->WriteTo(buf);
     for (size_t i = 1; i < output.size(); ++i) {
       buf = std::strcpy(buf, ", ") + 2;
       buf = output[i]->WriteTo(buf);
     }
+    buf = std::strcpy(buf, ")") + 1;
   }
 
   return buf;

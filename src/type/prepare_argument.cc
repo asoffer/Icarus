@@ -33,9 +33,13 @@ IR::Val Enum::PrepareArgument(Type *from, const IR::Val &val) const {
   return val;
 }
 
-IR::Val Struct::PrepareArgument(Type *from, const IR::Val &) const {
-  NOT_YET(this, from);
+IR::Val Struct::PrepareArgument(Type *from, const IR::Val &val) const {
+  ASSERT_EQ(from, this);
+  auto arg = IR::Alloca(const_cast<Struct *>(this));
+  const_cast<Struct *>(this)->EmitAssign(from, val, arg);
+  return arg;
 }
+
 IR::Val Variant::PrepareArgument(Type *from, const IR::Val &val) const {
   if (this == from) { return val; }
   auto arg = IR::Alloca(const_cast<Variant*>(this));

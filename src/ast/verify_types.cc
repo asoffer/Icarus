@@ -155,7 +155,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   metadata1.reserve(fn1->args_.size());
   for (size_t i = 0; i < fn1->args_.size(); ++i) {
     metadata1.push_back(
-        ArgumentMetaData{/*        type = */ fn1->type->input[i],
+        ArgumentMetaData{/*        type = */ fn1->type_->input[i],
                          /*        name = */ fn1->args_[i].first,
                          /* has_default = */ fn1->args_[i].second != nullptr});
   }
@@ -165,7 +165,7 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   metadata2.reserve(fn2->args_.size());
   for (size_t i = 0; i < fn2->args_.size(); ++i) {
     metadata2.push_back(
-        ArgumentMetaData{/*        type = */ fn2->type->input[i],
+        ArgumentMetaData{/*        type = */ fn2->type_->input[i],
                          /*        name = */ fn2->args_[i].first,
                          /* has_default = */ fn2->args_[i].second != nullptr});
   }
@@ -540,15 +540,16 @@ DispatchTable Call::ComputeDispatchTable() {
           if (!fn->has_default(i)) {
             goto next_option;
           } else {
-            binding.exprs_[i].first = fn->type->input[i];
+            binding.exprs_[i].first = decl->type->as<Function>().input[i];
           }
         } else {
-          Type *match =
-              Type::Meet(binding.exprs_[i].second->type, fn->type->input[i]);
+          Type *match = Type::Meet(binding.exprs_[i].second->type,
+                                   decl->type->as<Function>().input[i]);
           if (match == nullptr) {
+            LOG << binding.exprs_[i].second->type << " " << decl->type;
             goto next_option;
           } else {
-            binding.exprs_[i].first = fn->type->input[i];
+            binding.exprs_[i].first = decl->type->as<Function>().input[i];
           }
 
           if (i < call_arg_types.pos_.size()) {
