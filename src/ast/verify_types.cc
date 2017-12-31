@@ -546,7 +546,6 @@ DispatchTable Call::ComputeDispatchTable() {
           Type *match = Type::Meet(binding.exprs_[i].second->type,
                                    decl->type->as<Function>().input[i]);
           if (match == nullptr) {
-            LOG << binding.exprs_[i].second->type << " " << decl->type;
             goto next_option;
           } else {
             binding.exprs_[i].first = decl->type->as<Function>().input[i];

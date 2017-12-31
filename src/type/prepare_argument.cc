@@ -34,9 +34,16 @@ IR::Val Enum::PrepareArgument(Type *from, const IR::Val &val) const {
 }
 
 IR::Val Struct::PrepareArgument(Type *from, const IR::Val &val) const {
-  ASSERT_EQ(from, this);
   auto arg = IR::Alloca(const_cast<Struct *>(this));
-  const_cast<Struct *>(this)->EmitAssign(from, val, arg);
+  if (from->is<Variant>()) {
+    const_cast<Struct *>(this)->EmitAssign(
+        const_cast<Struct *>(this),
+        IR::VariantValue(const_cast<Struct *>(this), val), arg);
+  } else if (this == from) {
+    const_cast<Struct *>(this)->EmitAssign(from, val, arg);
+  } else {
+    UNREACHABLE(from);
+  }
   return arg;
 }
 

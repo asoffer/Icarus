@@ -7,12 +7,6 @@
 #include "../scope.h"
 #include "../type/type.h"
 
-
-// TODO Alloca adds entry in the first block. Figure out if this is being done
-// in a smart way. Something feels weird about it. Definitely it should be in
-// the first block of the function, but maybe you're being too liberal with
-// allocas?
-
 #define VERIFY_OR_EXIT                                                         \
   do {                                                                         \
     verify_types();                                                            \

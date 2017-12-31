@@ -474,7 +474,8 @@ Declaration::Build(std::vector<base::owned_ptr<Node>> nodes, bool is_const) {
   decl->identifier       = base::move<Identifier>(nodes[0]);
   decl->identifier->decl = decl.get();
 
-  if (op == Language::Operator::Colon) {
+  if (op == Language::Operator::Colon ||
+      op == Language::Operator::DoubleColon) {
     decl->type_expr = base::move<Expression>(nodes[2]);
   } else {
     decl->init_val = base::move<Expression>(nodes[2]);
