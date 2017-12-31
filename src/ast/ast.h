@@ -58,7 +58,6 @@ struct Node : public base::Cast<Node> {
   virtual base::owned_ptr<AST::Node> contextualize(
       const std::unordered_map<const Expression *, IR::Val> &) const = 0;
   virtual Node *Clone() const = 0;
-  virtual bool is_hole() const { return false; }
 
   std::string to_string() const { return to_string(0); }
 
@@ -150,7 +149,6 @@ struct Terminal : public Expression {
 
   Terminal *Clone() const override { return new Terminal(*this); }
   virtual IR::Val EmitIR(IR::Cmd::Kind);
-  virtual bool is_hole() const override { return value == IR::Val::None(); }
 };
 
 struct Identifier : public Terminal {
@@ -160,10 +158,18 @@ struct Identifier : public Terminal {
   Identifier *Clone() const override { return new Identifier(*this); }
   virtual IR::Val EmitIR(IR::Cmd::Kind);
   virtual IR::Val EmitLVal(IR::Cmd::Kind);
-  virtual bool is_hole() const override { return false; }
 
   std::string token;
   Declaration *decl = nullptr;
+};
+
+struct Hole : public Terminal {
+  Hole() = delete;
+  EXPR_FNS(Hole);
+  Hole(const TextSpan &span) : Terminal(span, IR::Val::None()) {}
+  Hole *Clone() const override { return new Hole(*this); }
+  IR::Val EmitIR(IR::Cmd::Kind) override { return IR::Val::None(); }
+  IR::Val EmitLVal(IR::Cmd::Kind) override { return IR::Val::None(); }
 };
 
 struct Binop : public Expression {
@@ -242,10 +248,10 @@ struct Declaration : public Expression {
   inline bool IsInferred() const { return !type_expr; }
   inline bool IsDefaultInitialized() const { return !init_val; }
   inline bool IsCustomInitialized() const {
-    return init_val && !init_val->is_hole();
+    return init_val && !init_val->is<Hole>();
   }
   inline bool IsUninitialized() const {
-    return init_val && init_val->is_hole();
+    return init_val && init_val->is<Hole>();
   }
 };
 

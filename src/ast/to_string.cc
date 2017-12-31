@@ -4,8 +4,6 @@
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 
-extern std::string Escape(char c);
-
 namespace AST {
 static std::string tabs(size_t n) { return std::string(n << 1, ' '); }
 
@@ -211,6 +209,7 @@ std::string ScopeNode::to_string(size_t n) const {
 }
 
 std::string CodeBlock::to_string(size_t n) const { return tabs(n) + "<...>\n"; }
+std::string Hole::to_string(size_t n) const { return tabs(n) + "<-->\n"; }
 
 std::string ScopeLiteral::to_string(size_t n) const {
   std::stringstream ss;

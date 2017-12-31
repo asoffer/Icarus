@@ -130,4 +130,6 @@ void ScopeLiteral::assign_scope(Scope *scope) {
   if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
   if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
 }
+
+void Hole::assign_scope(Scope *scope) { scope_ = scope; }
 } // namespace AST

@@ -1245,6 +1245,8 @@ void Declaration::verify_types() {
   VerifyDeclarationForMagic(identifier->token, type, span);
 }
 
+void Hole::verify_types() {}
+
 void ArrayType::verify_types() {
   STARTING_CHECK;
   length->verify_types();
@@ -1252,7 +1254,7 @@ void ArrayType::verify_types() {
 
   type = Type_;
 
-  if (length->is_hole()) { return; }
+  if (length->is<Hole>()) { return; }
 
   // TODO change this to just uint
   if (length->type != Int && length->type != Uint) {

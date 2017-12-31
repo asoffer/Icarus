@@ -5,6 +5,7 @@ void Terminal::contextualize(Scope *, std::vector<IR::Val> *) {}
 void Identifier::contextualize(Scope *, std::vector<IR::Val> *) {}
 void CodeBlock::contextualize(Scope *, std::vector<IR::Val> *) {}
 void Jump::contextualize(Scope *, std::vector<IR::Val> *) {}
+void Hole::contextualize(Scope *, std::vector<IR::Val> *) {}
 
 void Binop::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   lhs->contextualize(scope, args);
@@ -287,6 +288,12 @@ base::owned_ptr<Node> Call::contextualize(
     const {
   NOT_YET();
   return base::own(Clone());
+}
+
+base::owned_ptr<Node> Hole::contextualize(
+    const std::unordered_map<const Expression *, IR::Val> & /* replacements */)
+    const {
+  return nullptr;
 }
 
 } // namespace AST

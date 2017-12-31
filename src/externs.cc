@@ -14,14 +14,6 @@ bool ct_eval       = false;
 bool no_validation = false;
 } // namespace debug
 
-std::string Escape(char c) {
-  if (c == '\n') { return "\\n"; }
-  if (c == '\r') { return "\\r"; }
-  if (c == '\t') { return "\\t"; }
-  if (c < 32) { return "\\" + std::to_string(c); }
-  return std::string(1, c);
-}
-
 AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr) {
   if (expr->is<AST::FunctionLiteral>()) {
     return (AST::FunctionLiteral *)expr;

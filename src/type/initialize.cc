@@ -88,7 +88,7 @@ void Struct::EmitInit(IR::Val id_val) {
       // TODO init expressions? Do these need to be verfied too?
       for (size_t i = 0; i < field_type.size(); ++i) {
         if (init_values[i]) {
-          if (init_values[i]->is_hole()) { continue; }
+          if (init_values[i]->is<AST::Hole>()) { continue; }
           EmitCopyInit(
               /* from_type = */ init_values[i]->type,
               /*   to_type = */ field_type[i],
