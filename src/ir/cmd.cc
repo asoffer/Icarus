@@ -110,9 +110,10 @@ Val Alloca(Type *t) {
   return cmd.reg();
 }
 
-Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args) {
+Val Contextualize(base::owned_ptr<AST::CodeBlock> code,
+                  std::vector<IR::Val> args) {
   ASSERT(code != nullptr, "");
-  args.push_back(IR::Val::CodeBlock(code));
+  args.push_back(IR::Val::CodeBlock(std::move(code)));
   Cmd cmd(::Code, Op::Contextualize, std::move(args));
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
   return cmd.reg();
@@ -191,19 +192,16 @@ Val Add(Val v1, Val v2) {
   CONSTANT_PROPOGATION(double, std::plus<double>{}, Real);
   CONSTANT_PROPOGATION(char, std::plus<char>{}, Char);
 
-  if (AST::CodeBlock **cb1 = std::get_if<AST::CodeBlock *>(&v1.value),
-      **cb2                = std::get_if<AST::CodeBlock *>(&v2.value);
+  if (base::owned_ptr<AST::CodeBlock> *cb1 =
+          std::get_if<base::owned_ptr<AST::CodeBlock>>(&v1.value),
+      *cb2 = std::get_if<base::owned_ptr<AST::CodeBlock>>(&v2.value);
       cb1 != nullptr && cb2 != nullptr) {
-    // TODO leaks
-    // Contextualize is definitely wrong and probably not safe. We really want
-    // a copy. All Refs should be resolved by this point already.
-
     auto block   = base::make_owned<AST::CodeBlock>();
     block->stmts = base::move<
         AST::Statements>(AST::Statements::Merge(std::vector{
         &(*cb1)->stmts->contextualize({}).release()->as<AST::Statements>(),
         &(*cb2)->stmts->contextualize({}).release()->as<AST::Statements>()}));
-    return Val::CodeBlock(block.release());
+    return Val::CodeBlock(std::move(block));
   }
 
   if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),

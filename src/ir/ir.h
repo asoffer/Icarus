@@ -139,7 +139,8 @@ struct Val {
   ::Type *type = nullptr;
   std::variant<Register, ReturnValue, ::IR::Addr, bool, char, double, i32, u64,
                EnumVal, ::Type *, ::IR::Func *, AST::ScopeLiteral *,
-               AST::CodeBlock *, AST::Expression *, BlockIndex, std::string>
+               base::owned_ptr<AST::CodeBlock>, AST::Expression *, BlockIndex,
+               std::string>
       value{false};
 
   static Val Reg(Register r, ::Type *t) { return Val(t, r); }
@@ -155,7 +156,9 @@ struct Val {
   static Val Uint(u64 n) { return Val(::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
   static Val Type(::Type *t) { return Val(::Type_, t); }
-  static Val CodeBlock(AST::CodeBlock *block) { return Val(::Code, block); }
+  static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block) {
+    return Val(::Code, std::move(block));
+  }
   static Val Func(::IR::Func *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
@@ -327,7 +330,8 @@ Val Variant(std::vector<Val> vals);
 Val Array(Val v1, Val v2);
 Val Ptr(Val v1);
 Val Alloca(Type *t);
-Val Contextualize(AST::CodeBlock *code, std::vector<IR::Val> args);
+Val Contextualize(base::owned_ptr<AST::CodeBlock> code,
+                  std::vector<IR::Val> args);
 Val VariantType(IR::Val v1);
 Val VariantValue(Type* t, IR::Val);
 

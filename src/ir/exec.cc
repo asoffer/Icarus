@@ -255,7 +255,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](char c) { std::cerr << c; }, //
             [](double d) { std::cerr << d; },
             [](Type *t) { std::cerr << t->to_string(); },
-            [](AST::CodeBlock *cb) { std::cerr << cb->to_string(); },
+            [](const base::owned_ptr<AST::CodeBlock> &cb) {
+              std::cerr << cb->to_string();
+            },
             [](const std::string &s) { std::cerr << s; },
             [](const Addr &a) { std::cerr << a.to_string(); },
             [&resolved](EnumVal e) {
@@ -277,21 +279,18 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       UNREACHABLE();
     case Addr::Kind::Global: return global_vals[addr.as_global];
     case Addr::Kind::Heap: {
-      if (cmd.type == Bool) {
-        return IR::Val::Bool(*static_cast<bool *>(addr.as_heap));
-      } else if (cmd.type == Char) {
-        return IR::Val::Char(*static_cast<char *>(addr.as_heap));
-      } else if (cmd.type == Int) {
-        return IR::Val::Int(*static_cast<i32 *>(addr.as_heap));
-      } else if (cmd.type == Uint) {
-        return IR::Val::Uint(*static_cast<u64 *>(addr.as_heap));
-      } else if (cmd.type == Real) {
-        return IR::Val::Real(*static_cast<double *>(addr.as_heap));
-      } else if (cmd.type == Code) {
-        return IR::Val::CodeBlock(static_cast<AST::CodeBlock *>(addr.as_heap));
-      } else if (cmd.type == Type_) {
-        return IR::Val::Type(*static_cast<::Type **>(addr.as_heap));
-      } else if (cmd.type->is<Pointer>()) {
+#define LOAD_FROM_HEAP(lang_type, ctor, cpp_type)                              \
+  if (cmd.type == lang_type) {                                                 \
+    return IR::Val::ctor(*static_cast<cpp_type *>(addr.as_heap));              \
+  }
+      LOAD_FROM_HEAP(Bool, Bool, bool);
+      LOAD_FROM_HEAP(Char, Char, char);
+      LOAD_FROM_HEAP(Int, Int, i32);
+      LOAD_FROM_HEAP(Uint, Uint, u64);
+      LOAD_FROM_HEAP(Real, Real, double);
+      LOAD_FROM_HEAP(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
+      LOAD_FROM_HEAP(Type_, Type, ::Type *);
+      if (cmd.type->is<Pointer>()) {
         return IR::Val::Addr(*static_cast<Addr *>(addr.as_heap),
                              cmd.type->as<Pointer>().pointee);
       } else if (cmd.type->is<Enum>()) {
@@ -300,23 +299,21 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else {
         NOT_YET("Don't know how to load type: ", cmd.type);
       }
+#undef LOAD_FROM_HEAP
     } break;
     case Addr::Kind::Stack: {
-      if (cmd.type == Bool) {
-        return IR::Val::Bool(stack_.Load<bool>(addr.as_stack));
-      } else if (cmd.type == Char) {
-        return IR::Val::Char(stack_.Load<char>(addr.as_stack));
-      } else if (cmd.type == Int) {
-        return IR::Val::Int(stack_.Load<i32>(addr.as_stack));
-      } else if (cmd.type == Uint) {
-        return IR::Val::Uint(stack_.Load<u64>(addr.as_stack));
-      } else if (cmd.type == Real) {
-        return IR::Val::Real(stack_.Load<double>(addr.as_stack));
-      } else if (cmd.type == Code) {
-        return IR::Val::CodeBlock(stack_.Load<AST::CodeBlock *>(addr.as_stack));
-      } else if (cmd.type == Type_) {
-        return IR::Val::Type(stack_.Load<::Type *>(addr.as_stack));
-      } else if (cmd.type->is<Pointer>()) {
+#define LOAD_FROM_STACK(lang_type, ctor, cpp_type)                             \
+  if (cmd.type == lang_type) {                                                 \
+    return IR::Val::ctor(stack_.Load<cpp_type>(addr.as_stack));                \
+  }
+      LOAD_FROM_STACK(Bool, Bool, bool);
+      LOAD_FROM_STACK(Char, Char, char);
+      LOAD_FROM_STACK(Int, Int, i32);
+      LOAD_FROM_STACK(Uint, Uint, u64);
+      LOAD_FROM_STACK(Real, Real, double);
+      LOAD_FROM_STACK(Code, CodeBlock, base::owned_ptr<AST::CodeBlock>);
+      LOAD_FROM_STACK(Type_, Type, ::Type *);
+      if (cmd.type->is<Pointer>()) {
         switch (addr.kind) {
         case Addr::Kind::Stack:
           return IR::Val::Addr(stack_.Load<Addr>(addr.as_stack),
@@ -334,6 +331,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
         call_stack.top().fn_->dump();
         NOT_YET("Don't know how to load type: ", cmd.type);
       }
+#undef LOAD_FROM_STACK
     } break;
     }
   } break;
@@ -365,8 +363,9 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
       } else if (resolved[0].type == Type_) {
         stack_.Store(std::get<::Type *>(resolved[0].value), addr.as_stack);
       } else if (resolved[0].type == Code) {
-        stack_.Store(std::get<AST::CodeBlock *>(resolved[0].value),
-                     addr.as_stack);
+        stack_.Store(
+            std::get<base::owned_ptr<AST::CodeBlock>>(resolved[0].value),
+            addr.as_stack);
       } else {
         NOT_YET("Don't know how to store that: args = ", resolved);
       }
@@ -463,14 +462,11 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
 
     ASSERT_EQ(resolved.back().type, ::Code);
-    auto stmts = std::get<AST::CodeBlock *>(resolved.back().value)
-                     ->stmts->contextualize(replacements);
-    auto code_block = base::move<AST::CodeBlock>(
-        std::get<AST::CodeBlock *>(resolved.back().value)->copy_stub());
-    code_block->stmts = base::move<AST::Statements>(stmts);
-
-    // TODO LEAK!
-    return IR::Val::CodeBlock(code_block.release());
+    auto code_block = std::get<base::owned_ptr<AST::CodeBlock>>(
+        std::move(resolved.back().value));
+    code_block->stmts = base::move<AST::Statements>(
+        code_block->stmts->contextualize(replacements));
+    return IR::Val::CodeBlock(std::move(code_block));
   } break;
   case Op::VariantType:
     return Val::Addr(std::get<Addr>(resolved[0].value), Type_);

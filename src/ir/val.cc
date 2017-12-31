@@ -74,7 +74,9 @@ std::string Val::to_string() const {
                         : f->name);
           },
           [](AST::ScopeLiteral *) -> std::string { NOT_YET(); },
-          [](AST::CodeBlock *) -> std::string { return "<...>"; },
+          [](const base::owned_ptr<AST::CodeBlock> &) -> std::string {
+            return "<...>";
+          },
           [](AST::Expression *) -> std::string { NOT_YET(); },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);

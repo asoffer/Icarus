@@ -45,8 +45,7 @@ namespace AST {
   virtual void verify_types() ENDING;                                          \
   virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) ENDING; \
   virtual base::owned_ptr<AST::Node> contextualize(                            \
-      const std::unordered_map<const Expression *, IR::Val> &) const ENDING;   \
-  base::owned_ptr<name> copy_stub() const
+      const std::unordered_map<const Expression *, IR::Val> &) const ENDING
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
@@ -267,7 +266,6 @@ struct Statements : public Node {
 
   Statements *Clone() const override { return new Statements(*this); }
   VIRTUAL_METHODS_FOR_NODES;
-  base::owned_ptr<Statements> copy_stub() const;
   void VerifyReturnTypes(Type *ret_val) override;
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
@@ -433,7 +431,6 @@ struct FunctionLiteral : public Expression {
 struct For : public Node {
   virtual ~For() {}
   VIRTUAL_METHODS_FOR_NODES;
-  base::owned_ptr<For> copy_stub() const;
   For *Clone() const override { return new For(*this); }
 
   virtual IR::Val EmitIR(IR::Cmd::Kind);
@@ -459,7 +456,6 @@ struct Jump : public Node {
   virtual ~Jump() {}
 
   VIRTUAL_METHODS_FOR_NODES;
-  base::owned_ptr<Jump> copy_stub() const;
 
   Jump(const TextSpan &span, JumpType jump_type);
 

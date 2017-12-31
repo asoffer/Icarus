@@ -34,7 +34,8 @@ IR::Val ErrorFunc() {
     CURRENT_FUNC(fn) {
       IR::Block::Current = fn->entry();
       // TODO
-      IR::SetReturn(IR::ReturnValue{0}, IR::Val::CodeBlock(nullptr));
+      IR::SetReturn(IR::ReturnValue{0},
+                    IR::Val::CodeBlock(base::make_owned<AST::CodeBlock>()));
       IR::ReturnJump();
     }
     fn->name = "error";
@@ -604,8 +605,9 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
   case Language::Operator::Generate: {
     auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
-    std::get<AST::CodeBlock *>(val.value)->stmts->assign_scope(scope_);
-    std::get<AST::CodeBlock *>(val.value)->stmts->EmitIR(kind);
+    std::get<base::owned_ptr<AST::CodeBlock>>(val.value)->stmts->assign_scope(
+        scope_);
+    std::get<base::owned_ptr<AST::CodeBlock>>(val.value)->stmts->EmitIR(kind);
     return IR::Val::None();
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(kind));
@@ -934,7 +936,7 @@ IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
   VERIFY_OR_EXIT;
   std::vector<IR::Val> args;
   stmts->contextualize(scope_, &args);
-  return IR::Contextualize(this, std::move(args));
+  return IR::Contextualize(base::own(this->Clone()), std::move(args));
 }
 
 IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {

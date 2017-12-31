@@ -26,7 +26,6 @@ void Call::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   for (auto & [ name, expr ] : named_) { expr->contextualize(scope, args); }
 }
 
-
 void Statements::contextualize(Scope *scope, std::vector<IR::Val> *args) {
   for (auto &stmt : statements) { stmt->contextualize(scope, args); }
 }
@@ -96,24 +95,24 @@ void ScopeLiteral::contextualize(Scope *scope, std::vector<IR::Val> *args) {
 ////////////////////////////////////////////////
 base::owned_ptr<Node> Terminal::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &) const {
-  return copy_stub();
+  return base::own(Clone());
 }
 base::owned_ptr<Node> Identifier::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &) const {
-  return copy_stub();
+  return base::own(Clone());
 }
 base::owned_ptr<Node> CodeBlock::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &) const {
-  return copy_stub();
+  return base::own(Clone());
 }
 base::owned_ptr<Node> Jump::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &) const {
-  return copy_stub();
+  return base::own(Clone());
 }
 
 base::owned_ptr<Node> Binop::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->lhs = base::move<Expression>(lhs->contextualize(replacements));
   result->rhs = base::move<Expression>(rhs->contextualize(replacements));
   return std::move(result);
@@ -121,7 +120,7 @@ base::owned_ptr<Node> Binop::contextualize(
 
 base::owned_ptr<Node> Declaration::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->identifier =
       base::move<Identifier>(identifier->contextualize(replacements));
   if (type_expr) {
@@ -137,7 +136,7 @@ base::owned_ptr<Node> Declaration::contextualize(
 
 base::owned_ptr<Node> InDecl::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->container =
       base::move<Expression>(container->contextualize(replacements));
   return std::move(result);
@@ -145,7 +144,7 @@ base::owned_ptr<Node> InDecl::contextualize(
 
 base::owned_ptr<Node> Statements::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->statements.reserve(statements.size());
   for (auto &stmt : statements) {
     result->statements.push_back(stmt->contextualize(replacements));
@@ -158,16 +157,16 @@ base::owned_ptr<Node> Unop::contextualize(
   if (op == Language::Operator::Ref) {
     auto iter = replacements.find(this);
     ASSERT(iter != replacements.end(), "");
-    auto terminal           = base::own(new Terminal);
-    terminal->scope_        = scope_; // TODO Eh? Do I care?
-    terminal->span          = span;
-    terminal->precedence    = precedence;
-    terminal->lvalue        = lvalue; // TODO????
-    terminal->type          = iter->second.type;
-    terminal->value         = iter->second;
+    auto terminal        = base::own(new Terminal);
+    terminal->scope_     = scope_; // TODO Eh? Do I care?
+    terminal->span       = span;
+    terminal->precedence = precedence;
+    terminal->lvalue     = lvalue; // TODO????
+    terminal->type       = iter->second.type;
+    terminal->value      = iter->second;
     return std::move(terminal);
   } else {
-    auto result = copy_stub();
+    auto result = base::own(Clone());
     result->operand =
         base::move<Expression>(operand->contextualize(replacements));
     return std::move(result);
@@ -176,7 +175,7 @@ base::owned_ptr<Node> Unop::contextualize(
 
 base::owned_ptr<Node> Access::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->operand =
       base::move<Expression>(operand->contextualize(replacements));
   return std::move(result);
@@ -184,7 +183,7 @@ base::owned_ptr<Node> Access::contextualize(
 
 base::owned_ptr<Node> ChainOp::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->exprs.reserve(exprs.size());
   for (const auto &expr : exprs) {
     result->exprs.push_back(
@@ -195,7 +194,7 @@ base::owned_ptr<Node> ChainOp::contextualize(
 
 base::owned_ptr<Node> CommaList::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->exprs.reserve(exprs.size());
   for (const auto &expr : exprs) {
     result->exprs.push_back(
@@ -206,7 +205,7 @@ base::owned_ptr<Node> CommaList::contextualize(
 
 base::owned_ptr<Node> ArrayLiteral::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->elems.reserve(elems.size());
   for (const auto &elem : elems) {
     result->elems.push_back(
@@ -217,7 +216,7 @@ base::owned_ptr<Node> ArrayLiteral::contextualize(
 
 base::owned_ptr<Node> ArrayType::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result    = copy_stub();
+  auto result    = base::own(Clone());
   result->length = base::move<Expression>(length->contextualize(replacements));
   result->data_type =
       base::move<Expression>(data_type->contextualize(replacements));
@@ -226,7 +225,7 @@ base::owned_ptr<Node> ArrayType::contextualize(
 
 base::owned_ptr<Node> Case::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   for (auto & [ key, val ] : key_vals) {
     result->key_vals.push_back(
         std::pair(base::move<Expression>(key->contextualize(replacements)),
@@ -237,7 +236,7 @@ base::owned_ptr<Node> Case::contextualize(
 
 base::owned_ptr<Node> FunctionLiteral::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->return_type_expr =
       base::move<Expression>(return_type_expr->contextualize(replacements));
   result->inputs.reserve(inputs.size());
@@ -252,7 +251,7 @@ base::owned_ptr<Node> FunctionLiteral::contextualize(
 
 base::owned_ptr<Node> For::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->statements =
       base::move<Statements>(statements->contextualize(replacements));
   result->iterators.reserve(iterators.size());
@@ -265,7 +264,7 @@ base::owned_ptr<Node> For::contextualize(
 
 base::owned_ptr<Node> ScopeNode::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result  = copy_stub();
+  auto result  = base::own(Clone());
   result->expr = base::move<Expression>(expr->contextualize(replacements));
   result->scope_expr =
       base::move<Expression>(scope_expr->contextualize(replacements));
@@ -275,7 +274,7 @@ base::owned_ptr<Node> ScopeNode::contextualize(
 
 base::owned_ptr<Node> ScopeLiteral::contextualize(
     const std::unordered_map<const Expression *, IR::Val> &replacements) const {
-  auto result = copy_stub();
+  auto result = base::own(Clone());
   result->enter_fn =
       base::move<Declaration>(enter_fn->contextualize(replacements));
   result->exit_fn =
@@ -287,7 +286,7 @@ base::owned_ptr<Node> Call::contextualize(
     const std::unordered_map<const Expression *, IR::Val> & /* replacements */)
     const {
   NOT_YET();
-  return copy_stub();
+  return base::own(Clone());
 }
 
 } // namespace AST
