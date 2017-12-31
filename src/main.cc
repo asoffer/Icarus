@@ -11,6 +11,8 @@
 #include "util/timer.h"
 #include "base/debug.h"
 
+Timer timer;
+
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
     if (ErrorLog::NumErrors() != 0) {                                          \

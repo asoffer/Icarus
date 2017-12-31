@@ -6,11 +6,12 @@
 
 enum class FileType { Bin, IR, Nat, None };
 
+// Debug flags and their default values
 namespace debug {
-extern bool parser;
-extern bool ct_eval;
-extern bool no_validation;
-extern bool timer;
+inline bool parser        = false;
+inline bool timer         = false;
+inline bool ct_eval       = false;
+inline bool no_validation = false;
 } // namespace debug
 
 enum class CLArgFlag { QuitSuccessfully, QuitWithFailure, Continue };

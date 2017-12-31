@@ -13,7 +13,6 @@
 extern IR::Val Evaluate(AST::Expression *expr);
 std::queue<AST::Node *> VerificationQueue;
 std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
-extern AST::FunctionLiteral *GetFunctionLiteral(AST::Expression *expr);
 
 enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
 static SourceLocationOrder GetOrder(const TextSpan &lhs, const TextSpan &rhs) {
