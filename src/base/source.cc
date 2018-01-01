@@ -1,4 +1,5 @@
 #include "source.h"
+#include <iostream>
 
 std::optional<Source::Line> File::NextLine() {
   if (ifs.eof()) { return std::nullopt; }

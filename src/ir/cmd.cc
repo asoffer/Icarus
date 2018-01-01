@@ -3,6 +3,7 @@
 #include "../type/type.h"
 #include "property.h"
 #include <cmath>
+#include <iostream>
 
 namespace IR {
 BlockIndex Block::Current;

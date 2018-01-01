@@ -22,12 +22,12 @@ struct Scope;
 #include "../base/types.h"
 #include "../ir/ir.h"
 
-#include <string>
-#include <vector>
+#include <iosfwd>
 #include <map>
+#include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <sstream>
+#include <vector>
 
 namespace AST {
 struct Declaration;

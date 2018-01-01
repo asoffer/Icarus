@@ -1,8 +1,9 @@
 #include "error_log.h"
 
+#include <iostream>
+
 #include "ast/ast.h"
 #include "base/source.h"
-#include "base/string.h"
 #include "type/type.h"
 
 extern std::unordered_map<Source::Name, File *> source_map;

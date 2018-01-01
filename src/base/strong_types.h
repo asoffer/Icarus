@@ -3,6 +3,7 @@
 
 #include "debug.h"
 #include <cstdint>
+#include <iosfwd>
 #include <string>
 
 #define DEFINE_STRONG_INT(type_name, base_type, default_value)                 \

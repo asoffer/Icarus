@@ -5,9 +5,10 @@
 #include "nnt.h"
 #include "operators.h"
 #include "util/timer.h"
-#include <iostream>
+#include <cstdio>
 #include <queue>
 #include <vector>
+#include <iosfwd>
 
 namespace AST {
 struct Node;
@@ -83,18 +84,259 @@ namespace debug {
 extern bool parser;
 } // namespace debug
 
-extern base::owned_ptr<AST::Node>
-BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes);
-extern base::owned_ptr<AST::Node>
-BracedStatements(std::vector<base::owned_ptr<AST::Node>> nodes);
+static base::owned_ptr<AST::Node>
+BuildBinaryOperator(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  static const std::unordered_map<std::string, Language::Operator> chain_ops = {
+      {",", Language::Operator::Comma}, {"==", Language::Operator::Eq},
+      {"!=", Language::Operator::Ne},   {"<", Language::Operator::Lt},
+      {">", Language::Operator::Gt},    {"<=", Language::Operator::Le},
+      {">=", Language::Operator::Ge},   {"&", Language::Operator::And},
+      {"|", Language::Operator::Or},    {"^", Language::Operator::Xor},
+  };
+
+  const std::string &tk = nodes[1]->as<AST::TokenNode>().token;
+  {
+    auto iter = chain_ops.find(tk);
+    if (iter != chain_ops.end()) {
+      nodes[1]->as<AST::TokenNode>().op = iter->second;
+      return (iter->second == Language::Operator::Comma)
+                 ? AST::CommaList::Build(std::move(nodes))
+                 : AST::ChainOp::Build(std::move(nodes));
+    }
+  }
+
+  if (tk == ".") {
+    return AST::Access::Build(std::move(nodes));
+
+  } else if (tk == ":" || tk == ":=") {
+    return AST::Declaration::Build(std::move(nodes), /* const = */ false);
+
+  } else if (tk == "::" || tk == "::=") {
+    return AST::Declaration::Build(std::move(nodes), /* const = */ true);
+
+  } else if (tk == "in") {
+    return AST::InDecl::Build(std::move(nodes));
+  }
+
+  if (tk == "=") {
+    if (nodes[0]->is<AST::Declaration>()) {
+      if (nodes[0]->as<AST::Declaration>().IsInferred()) {
+        // NOTE: It might be that this was supposed to be a bool ==? How can we
+        // give a good error message if that's what is intended?
+        ErrorLog::DoubleDeclAssignment(nodes[0]->span, nodes[2]->span);
+        return base::move<AST::Declaration>(nodes[0]);
+      }
+
+      auto decl      = base::move<AST::Declaration>(nodes[0]);
+      decl->init_val = base::move<AST::Expression>(nodes[2]);
+      return decl;
+
+    } else {
+      auto binop  = base::make_owned<AST::Binop>();
+      binop->span = TextSpan(nodes[0]->span, nodes[2]->span);
+
+      binop->lhs = base::move<AST::Expression>(nodes[0]);
+      binop->rhs = base::move<AST::Expression>(nodes[2]);
+
+      binop->op         = Language::Operator::Assign;
+      binop->precedence = Language::precedence(binop->op);
+      return binop;
+    }
+  }
+
+  if (tk == "(") { // TODO these should just generate Call::Build directly.
+    return AST::Call::Build(std::move(nodes));
+  } else if (tk == "'") {
+    std::swap(nodes[0], nodes[2]);
+    return AST::Call::Build(std::move(nodes));
+  }
+
+  auto binop  = base::make_owned<AST::Binop>();
+  binop->span = TextSpan(nodes[0]->span, nodes[1]->span);
+
+  binop->lhs = base::move<AST::Expression>(nodes[0]);
+  binop->rhs = base::move<AST::Expression>(nodes[2]);
+
+  static const std::unordered_map<std::string, Language::Operator> symbols = {
+      {"=>", Language::Operator::Rocket}, {"", Language::Operator::Cast},
+      {"->", Language::Operator::Arrow},  {"|=", Language::Operator::OrEq},
+      {"&=", Language::Operator::AndEq},  {"^=", Language::Operator::XorEq},
+      {"+=", Language::Operator::AddEq},  {"-=", Language::Operator::SubEq},
+      {"*=", Language::Operator::MulEq},  {"/=", Language::Operator::DivEq},
+      {"%=", Language::Operator::ModEq},  {"..", Language::Operator::Dots},
+      {"+", Language::Operator::Add},     {"-", Language::Operator::Sub},
+      {"*", Language::Operator::Mul},     {"/", Language::Operator::Div},
+      {"%", Language::Operator::Mod},     {"[", Language::Operator::Index}};
+  {
+    auto iter = symbols.find(tk);
+    if (iter != symbols.end()) { binop->op = iter->second; }
+
+    binop->precedence = Language::precedence(binop->op);
+    return binop;
+  }
+}
+
+static base::owned_ptr<AST::Node>
+BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
+
+  if (tk == "for") {
+    return AST::For::Build(std::move(nodes));
+
+  } else if (tk == "struct") {
+    // Parmaetric struct
+    NOT_YET();
+  }
+
+  UNREACHABLE();
+}
+
+static base::owned_ptr<AST::Node>
+BuildEnumLiteral(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  std::vector<std::string> members;
+  if (nodes[1]->is<AST::Statements>()) {
+    for (auto &stmt : nodes[1]->as<AST::Statements>().statements) {
+      if (stmt->is<AST::Identifier>()) {
+        // Quadratic but we need it as a vector eventually anyway because we do
+        // care about the order the user put it in.
+        auto token = std::move(stmt->as<AST::Identifier>().token);
+        for (const auto &member : members) {
+          if (member == token) {
+            ErrorLog::RepeatedEnumName(stmt->span);
+            goto skip_adding_member;
+          }
+        }
+        members.push_back(std::move(token));
+
+      } else {
+        ErrorLog::EnumNeedsIds(stmt->span);
+      }
+    skip_adding_member:;
+    }
+  }
+
+  static size_t anon_enum_counter = 0;
+  return base::make_owned<AST::Terminal>(
+      TextSpan(nodes[0]->span, nodes[1]->span),
+      IR::Val::Type(new Enum(
+          "__anon.enum" + std::to_string(anon_enum_counter++), members)));
+}
+
+static base::owned_ptr<AST::Node>
+BuildStructLiteral(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  static size_t anon_struct_counter = 0;
+
+  auto struct_type =
+      new Struct("__anon.struct" + std::to_string(anon_struct_counter++));
+  for (auto &stmt : nodes[1]->as<AST::Statements>().statements) {
+    if (stmt->is<AST::Declaration>()) {
+      struct_type->decls.push_back(&stmt.release()->as<AST::Declaration>());
+    } else {
+      // TODO show the entire struct declaration and point to the problematic
+      // lines.
+      ErrorLog::NonDeclInStructDecl(stmt->span);
+    }
+  }
+  return base::make_owned<AST::Terminal>(
+      TextSpan(nodes[0]->span, nodes[1]->span), IR::Val::Type(struct_type));
+}
+
+static base::owned_ptr<AST::Node>
+BuildScopeLiteral(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto scope_lit = base::make_owned<AST::ScopeLiteral>(
+      TextSpan(nodes[0]->span, nodes[1]->span));
+
+  // TODO take arguments as well
+  if (nodes.size() > 1) {
+    for (auto &stmt : nodes[1]->as<AST::Statements>().statements) {
+      if (!stmt->is<AST::Declaration>()) { continue; }
+      auto decl = base::move<AST::Declaration>(stmt);
+      if (decl->identifier->token == "enter") {
+        scope_lit->enter_fn = std::move(decl);
+      } else if (decl->identifier->token == "exit") {
+        scope_lit->exit_fn = std::move(decl);
+      }
+    }
+  }
+
+  if (!scope_lit->enter_fn) {
+    // TODO log an error
+  }
+
+  if (!scope_lit->exit_fn) {
+    // TODO log an error
+  }
+
+  return scope_lit;
+}
+
+static base::owned_ptr<AST::Node>
+BuildCase(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto case_ptr  = base::make_owned<AST::Case>();
+  case_ptr->span = TextSpan(nodes[0]->span, nodes[1]->span);
+
+  for (auto &stmt : nodes[1]->as<AST::Statements>().statements) {
+    if (stmt->is<AST::Binop>() &&
+        stmt->as<AST::Binop>().op == Language::Operator::Rocket) {
+      auto *binop = &stmt->as<AST::Binop>();
+      // TODO check for 'else' and make sure it's the last one.
+      case_ptr->key_vals.emplace_back(std::move(binop->lhs),
+                                      std::move(binop->rhs));
+    } else {
+      ErrorLog::NonKVInCase(stmt->span);
+    }
+  }
+  return case_ptr;
+}
+
+static base::owned_ptr<AST::Node>
+BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  const std::string &tk = nodes[0]->as<AST::TokenNode>().token;
+
+  if (tk == "case") {
+    return BuildCase(std::move(nodes));
+
+  } else if (tk == "enum") {
+    return BuildEnumLiteral(std::move(nodes));
+
+  } else if (tk == "struct") {
+    return BuildStructLiteral(std::move(nodes));
+
+  } else if (tk == "scope") {
+    return BuildScopeLiteral(std::move(nodes));
+  }
+
+  UNREACHABLE();
+}
+
+static base::owned_ptr<AST::Node>
+Parenthesize(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto expr        = base::move<AST::Expression>(nodes[1]);
+  expr->precedence = Language::precedence(Language::Operator::NotAnOperator);
+  if (nodes[0]->as<AST::TokenNode>().token != "\\(") {
+    return expr;
+
+  } else {
+    auto unop     = base::make_owned<AST::Unop>();
+    unop->operand = std::move(expr);
+    unop->span    = TextSpan(nodes[0]->span, nodes[2]->span);
+    unop->op      = Language::Operator::Ref;
+    return unop;
+  }
+}
+
+static base::owned_ptr<AST::Node>
+BuildEmptyParen(std::vector<base::owned_ptr<AST::Node>> nodes) {
+  auto call  = base::make_owned<AST::Call>();
+  call->span = TextSpan(nodes[0]->span, nodes[2]->span);
+  call->fn_  = base::move<AST::Expression>(nodes[0]);
+
+  if (call->fn_->is<AST::Declaration>()) {
+    ErrorLog::CallingDeclaration(call->fn_->span);
+  }
+  return call;
+}
+
 extern base::owned_ptr<AST::Node>
 OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes);
 extern base::owned_ptr<AST::Node>
@@ -218,7 +460,7 @@ auto Rules = std::vector<Rule>{
     Rule(r_double_brace, {r_double_brace, newline}, drop_all_but<0>),
     Rule(braced_stmts, {l_brace, stmts, stmts | expr | fn_expr, r_brace},
          BracedStatementsSameLineEnd),
-    Rule(braced_stmts, {l_brace, stmts, r_brace}, BracedStatements),
+    Rule(braced_stmts, {l_brace, stmts, r_brace}, drop_all_but<1>),
     Rule(braced_stmts, {l_brace, r_brace}, EmptyBraces),
     Rule(braced_stmts, {l_brace, (expr | fn_expr), r_brace},
          OneBracedStatement),
@@ -391,7 +633,7 @@ static void Debug(ParseState *ps, SourceLocation *loc = nullptr) {
   // Clear the screen
   fprintf(stderr, "\033[2J\033[1;1H\n");
   if (loc != nullptr) {
-    std::cerr << loc->line();
+    fprintf(stderr, "%s", loc->line().c_str());
     fprintf(stderr, "%*s^\n(offset = %u)\n\n",
             static_cast<int>(loc->cursor.offset), "", loc->cursor.offset);
   }

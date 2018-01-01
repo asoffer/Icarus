@@ -24,28 +24,28 @@ enum class Assign : char { Unset, Const, LVal, RVal };
 
 namespace AST {
 
-#define ENDING = 0
-#define OVERRIDE
 #define VIRTUAL_METHODS_FOR_NODES                                              \
-  virtual std::string to_string(size_t n) const ENDING;                        \
+  virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
-  virtual void assign_scope(Scope *scope) ENDING;                              \
-  virtual void lrvalue_check() ENDING;                                         \
-  virtual void verify_types() ENDING;                                          \
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) ENDING; \
+  virtual void assign_scope(Scope *scope) override;                            \
+  virtual void lrvalue_check() override;                                       \
+  virtual void verify_types() override;                                        \
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args)         \
+      override;                                                                \
   virtual base::owned_ptr<AST::Node> contextualize(                            \
-      const std::unordered_map<const Expression *, IR::Val> &) const ENDING
+      const std::unordered_map<const Expression *, IR::Val> &) const override
 
 #define EXPR_FNS(name)                                                         \
   virtual ~name() {}                                                           \
-  virtual std::string to_string(size_t n) const ENDING;                        \
+  virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
-  virtual void lrvalue_check() ENDING;                                         \
-  virtual void assign_scope(Scope *scope) ENDING;                              \
-  virtual void verify_types() ENDING;                                          \
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) ENDING; \
+  virtual void lrvalue_check() override;                                       \
+  virtual void assign_scope(Scope *scope) override;                            \
+  virtual void verify_types() override;                                        \
+  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args)         \
+      override;                                                                \
   virtual base::owned_ptr<AST::Node> contextualize(                            \
-      const std::unordered_map<const Expression *, IR::Val> &) const ENDING
+      const std::unordered_map<const Expression *, IR::Val> &) const override
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
@@ -136,11 +136,6 @@ struct TokenNode : public Node {
   std::string token;
   Language::Operator op;
 };
-
-#undef ENDING
-#define ENDING override
-#undef OVERRIDE
-#define OVERRIDE override
 
 struct Terminal : public Expression {
   EXPR_FNS(Terminal);
@@ -394,8 +389,6 @@ struct ArrayType : public Expression {
 
 struct Case : public Expression {
   EXPR_FNS(Case);
-  static base::owned_ptr<Node>
-  Build(std::vector<base::owned_ptr<AST::Node>> nodes);
   virtual IR::Val EmitIR(IR::Cmd::Kind);
   Case *Clone() const override { return new Case(*this); }
 
@@ -507,7 +500,5 @@ struct ScopeLiteral : public Expression {
 
 #undef VIRTUAL_METHODS_FOR_NODES
 #undef EXPR_FNS
-#undef ENDING
-#undef OVERRIDE
 
 #endif // ICARUS_AST_AST_H

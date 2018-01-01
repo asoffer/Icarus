@@ -1,17 +1,17 @@
 #ifndef ICARUS_BASE_LOG_H
 #define ICARUS_BASE_LOG_H
 
-#include <iostream>
+#include <cstdio>
 #include <functional>
 #include "string.h"
 
 namespace base {
 struct Logger {
-  ~Logger() { std::cerr << '\n'; }
+  ~Logger() { fprintf(stderr, "\n"); }
 };
 
 template <typename T> const Logger &operator<<(const Logger &l, const T &t) {
-  std::cerr << internal::stringify(t);
+  fprintf(stderr, "%s", internal::stringify(t).c_str());
   return l;
 }
 

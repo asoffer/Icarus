@@ -14,7 +14,7 @@ struct Function;
 #include "base/owned_ptr.h"
 #include "base/util.h"
 #include "ir/ir.h"
-#include <iostream>
+#include <iosfwd>
 #include <vector>
 
 struct DeclScope;

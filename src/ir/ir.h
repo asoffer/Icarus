@@ -1,6 +1,7 @@
 #ifndef ICARUS_IR_IR_H
 #define ICARUS_IR_IR_H
 
+#include <iosfwd>
 #include <limits>
 #include <memory>
 #include <queue>
@@ -8,8 +9,8 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
-#include <vector>
 #include <variant>
+#include <vector>
 
 #include "../base/debug.h"
 #include "../base/strong_types.h"

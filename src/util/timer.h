@@ -12,7 +12,6 @@ namespace debug {
 extern bool timer;
 } // namespace debug
 
-
 struct Timer {
   Timer() = default;
 

@@ -23,17 +23,10 @@ Timer timer;
 
 extern void ReplEval(AST::Expression *expr);
 
-extern void VerifyDeclBeforeUsage();
 extern std::vector<AST::Statements *> ParseAllFiles();
 extern Timer timer;
 
 base::owned_ptr<AST::Statements> global_statements;
-
-namespace debug {
-extern bool timer;
-extern bool parser;
-extern bool ct_eval;
-} // namespace debug
 
 int GenerateCode() {
   auto stmts_by_file = ParseAllFiles();
@@ -69,7 +62,7 @@ int GenerateCode() {
 }
 
 int RunRepl() {
-  std::cout << "Icarus REPL (v0.1)" << std::endl;
+  std::puts("Icarus REPL (v0.1)");
 
   Repl repl;
   while (true) {
@@ -84,7 +77,7 @@ int RunRepl() {
         auto *expr = &stmt->as<AST::Expression>();
         expr->assign_scope(Scope::Global);
         ReplEval(expr);
-        std::cerr << std::endl;
+        fprintf(stderr, "\n");
       } else {
         NOT_YET(*stmt);
       }

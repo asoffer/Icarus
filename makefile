@@ -1,4 +1,4 @@
-MAKEFLAGS += -j
+MAKEFLAGS += --jobs=4
 
 TARGET  := bin/$(shell basename `pwd`)
 
@@ -21,7 +21,8 @@ release: BUILD_FLAGS := -O3
 release: $(TARGET)
 
 build/%.o: src/%.cc
-	@$(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
+	@time $(COMPILER) $(STDS) $(OPTS) $(WARN) $(BUILD_FLAGS) -c src/$*.cc -o build/$*.o
+	@echo "Above time is for: " $< "\n"
 
 $(TARGET): $(OBJECTS)
 	@echo -n Linking...

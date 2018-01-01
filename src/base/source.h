@@ -1,7 +1,6 @@
 #ifndef ICARUS_BASE_SOURCE_H
 #define ICARUS_BASE_SOURCE_H
 
-#include <iostream>
 #include <fstream>
 #include <string>
 #include <vector>

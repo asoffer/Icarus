@@ -2,6 +2,7 @@
 
 #include <cstring>
 #include <memory>
+#include <iostream>
 
 #include "../architecture.h"
 #include "../ast/ast.h"
