@@ -1,5 +1,4 @@
 #include <unordered_map>
-#include <limits>
 #include <cmath>
 
 #include "ast/ast.h"
@@ -15,16 +14,17 @@
 NNT::NNT(const TextSpan &span, const std::string &token, Language::NodeType nt)
     : node(std::make_unique<AST::TokenNode>(span, token)), node_type(nt) {}
 
-extern IR::Val ErrorFunc();
-extern IR::Val AsciiFunc();
-extern IR::Val OrdFunc();
+IR::Val ErrorFunc();
+IR::Val AsciiFunc();
+IR::Val OrdFunc();
 
-static inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
-static inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
-static inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
-static inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
+namespace {
+inline bool IsLower(char c) { return ('a' <= c && c <= 'z'); }
+inline bool IsUpper(char c) { return ('A' <= c && c <= 'Z'); }
+inline bool IsNonZeroDigit(char c) { return ('1' <= c && c <= '9'); }
+inline bool IsDigit(char c) { return ('0' <= c && c <= '9'); }
 
-template <int Base> static inline i32 DigitInBase(char c);
+template <int Base> inline i32 DigitInBase(char c);
 template <> i32 DigitInBase<10>(char c) {
   return ('0' <= c && c <= '9') ? (c - '0') : -1;
 }
@@ -42,15 +42,13 @@ template <> i32 DigitInBase<16>(char c) {
   return -1;
 }
 
-static inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
-static inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
-static inline bool IsWhitespace(char c) {
+inline bool IsAlpha(char c) { return IsLower(c) || IsUpper(c); }
+inline bool IsAlphaNumeric(char c) { return IsAlpha(c) || IsDigit(c); }
+inline bool IsWhitespace(char c) {
   return c == ' ' || c == '\t' || c == '\n' || c == '\r';
 }
-static inline bool IsAlphaOrUnderscore(char c) {
-  return IsAlpha(c) || (c == '_');
-}
-static inline bool IsAlphaNumericOrUnderscore(char c) {
+inline bool IsAlphaOrUnderscore(char c) { return IsAlpha(c) || (c == '_'); }
+inline bool IsAlphaNumericOrUnderscore(char c) {
   return IsAlphaNumeric(c) || (c == '_');
 }
 
@@ -78,24 +76,24 @@ NNT NextWord(SourceLocation &loc) {
     return NNT::TerminalExpression(span, iter->second);
   }
 
-  static const std::map<std::string, Language::NodeType> KeywordMap = {
-      {"in", Language::op_b},           {"print", Language::op_l},
-      {"ensure", Language::op_l},       {"needs", Language::op_l},
-      {"require", Language::op_l},      {"free", Language::op_l},
-      {"for", Language::kw_expr_block}, {"case", Language::kw_block},
-      {"enum", Language::kw_block},     {"generate", Language::op_l},
-      {"struct", Language::kw_struct},  {"return", Language::op_lt},
-      {"continue", Language::op_lt},    {"break", Language::op_lt},
-      {"repeat", Language::op_lt},      {"restart", Language::op_lt},
-      {"scope", Language::kw_struct}};
-  for (const auto &[key, val] : KeywordMap) {
+  static const std::unordered_map<std::string, Language::NodeType> KeywordMap =
+      {{"in", Language::op_b},           {"print", Language::op_l},
+       {"ensure", Language::op_l},       {"needs", Language::op_l},
+       {"require", Language::op_l},      {"free", Language::op_l},
+       {"for", Language::kw_expr_block}, {"case", Language::kw_block},
+       {"enum", Language::kw_block},     {"generate", Language::op_l},
+       {"struct", Language::kw_struct},  {"return", Language::op_lt},
+       {"continue", Language::op_lt},    {"break", Language::op_lt},
+       {"repeat", Language::op_lt},      {"restart", Language::op_lt},
+       {"scope", Language::kw_struct}};
+  for (const auto & [ key, val ] : KeywordMap) {
     if (token == key) { return NNT(span, key, val); }
   }
 
   return NNT(std::make_unique<AST::Identifier>(span, token), Language::expr);
 }
 
-template <int Base> static inline int pow(i32 num) {
+template <int Base> inline int pow(i32 num) {
   // TODO repeated squaring
   int result = 1;
   for (int i = 0; i < num; ++i) { result *= Base; }
@@ -123,7 +121,7 @@ template <> bool RepresentableAsIntInBase<10>(const std::vector<i32> &digits) {
 }
 
 template <int Base>
-static i32 RepresentationAsIntInBase(const std::vector<i32> &digits) {
+i32 RepresentationAsIntInBase(const std::vector<i32> &digits) {
   if (!RepresentableAsIntInBase<Base>(digits)) { return -1; }
   i32 result = 0;
   for (i32 digit : digits) {
@@ -134,7 +132,7 @@ static i32 RepresentationAsIntInBase(const std::vector<i32> &digits) {
 }
 
 template <int Base>
-static double RepresentationAsRealInBase(const std::vector<i32> &, i32) {
+double RepresentationAsRealInBase(const std::vector<i32> &, i32) {
   // TODO
   return NAN;
 }
@@ -149,7 +147,7 @@ double RepresentationAsRealInBase<2>(const std::vector<i32> &digits,
 
 template <>
 double RepresentationAsRealInBase<16>(const std::vector<i32> &digits,
-                                     i32 dot_offset) {
+                                      i32 dot_offset) {
   if (digits.size() > 13) { return NAN; }
   i32 exponent = dot_offset * 4 - 3;
   if (dot_offset >= 0) { exponent += 4; }
@@ -173,7 +171,7 @@ double RepresentationAsRealInBase<8>(const std::vector<i32> &digits,
   if (exponent > 1023 || exponent < -1022) { return NAN; }
   NOT_YET();
 }
-template <int Base> static NNT NextNumberInBase(SourceLocation &loc) {
+template <int Base> NNT NextNumberInBase(SourceLocation &loc) {
   auto span = loc.ToSpan();
 
   const char *start = nullptr;
@@ -224,15 +222,14 @@ done_reading:
 
   span.finish = loc.cursor;
   if (start == nullptr) {
-   if (!seen_zero) {
-     ErrorLog::LogGeneric(
-         span,
-         "TODO " __FILE__ ":" + std::to_string(__LINE__) +
-             ": Found a number that has no starting digit. Treat as zero.");
+    if (!seen_zero) {
+      ErrorLog::LogGeneric(
+          span,
+          "TODO " __FILE__ ":" + std::to_string(__LINE__) +
+              ": Found a number that has no starting digit. Treat as zero.");
     } else {
       switch (num_dots) {
-      case 0:
-      return NNT::TerminalExpression(span, IR::Val::Int(0));
+      case 0: return NNT::TerminalExpression(span, IR::Val::Int(0));
       default:
         ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" +
                                        std::to_string(__LINE__) +
@@ -293,7 +290,7 @@ done_reading:
   return NNT{};
 }
 
-static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
+NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   loc.Increment();
 
   switch (*loc) {
@@ -318,7 +315,7 @@ static NNT NextZeroInitiatedNumber(SourceLocation &loc) {
   }
 }
 
-static NNT NextStringLiteral(SourceLocation &loc) {
+NNT NextStringLiteral(SourceLocation &loc) {
   auto span = loc.ToSpan();
   loc.Increment();
 
@@ -365,7 +362,7 @@ static NNT NextStringLiteral(SourceLocation &loc) {
   return NNT::TerminalExpression(span, IR::Val::StrLit(str_lit));
 }
 
-static NNT NextCharLiteral(SourceLocation &loc) {
+NNT NextCharLiteral(SourceLocation &loc) {
   auto span = loc.ToSpan();
   loc.Increment();
   span.finish = loc.cursor;
@@ -416,7 +413,7 @@ static NNT NextCharLiteral(SourceLocation &loc) {
   return NNT::TerminalExpression(span, IR::Val::Char(result));
 }
 
-static NNT NextOperator(SourceLocation &loc) {
+NNT NextOperator(SourceLocation &loc) {
   auto span = loc.ToSpan();
   switch (*loc) {
   case '@':
@@ -726,6 +723,7 @@ NNT NextSlashInitiatedToken(SourceLocation &loc) {
   default: span.finish = loc.cursor; return NNT(span, "/", Language::op_b);
   }
 }
+} // namespace
 
 NNT NextToken(SourceLocation &loc) {
 restart:
