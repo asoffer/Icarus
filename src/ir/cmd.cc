@@ -52,17 +52,17 @@ Val Field(Val v, size_t n) {
 }
 
 #define MAKE_VOID(op)                                                          \
-  ASSERT(Func::Current, "");                                                   \
+  ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v)});                                        \
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
 
 #define MAKE_VOID2(op)                                                         \
-  ASSERT(Func::Current, "");                                                   \
+  ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
   Func::Current->block(Block::Current).cmds_.push_back(cmd);
 
 #define MAKE_AND_RETURN(type, op)                                              \
-  ASSERT(Func::Current, "");                                                   \
+  ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(type, op, {std::move(v)});                                           \
   Func::Current->block(Block::Current).cmds_.push_back(cmd);                   \
   return cmd.reg()
@@ -112,12 +112,10 @@ Val Alloca(Type *t) {
 }
 
 Val Contextualize(base::owned_ptr<AST::CodeBlock> code,
-                  std::vector<IR::Val> args) {
-  ASSERT(code != nullptr, "");
-  args.push_back(IR::Val::CodeBlock(std::move(code)));
-  Cmd cmd(::Code, Op::Contextualize, std::move(args));
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
-  return cmd.reg();
+                  std::vector<IR::Val> v) {
+  ASSERT_NE(code, nullptr);
+  v.push_back(IR::Val::CodeBlock(std::move(code)));
+  MAKE_AND_RETURN(::Code, Op::Contextualize);
 }
 
 Val VariantType(Val v) { MAKE_AND_RETURN(Ptr(Type_), Op::VariantType); }
@@ -198,10 +196,8 @@ Val Add(Val v1, Val v2) {
       *cb2 = std::get_if<base::owned_ptr<AST::CodeBlock>>(&v2.value);
       cb1 != nullptr && cb2 != nullptr) {
     auto block   = base::make_owned<AST::CodeBlock>();
-    block->stmts = base::move<
-        AST::Statements>(AST::Statements::Merge(std::vector{
-        &(*cb1)->stmts->contextualize({}).release()->as<AST::Statements>(),
-        &(*cb2)->stmts->contextualize({}).release()->as<AST::Statements>()}));
+    block->stmts = AST::Statements::Merge(
+        std::vector{std::move((*cb1)->stmts), std::move((*cb2)->stmts)});
     return Val::CodeBlock(std::move(block));
   }
 

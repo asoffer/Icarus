@@ -465,8 +465,7 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     ASSERT_EQ(resolved.back().type, ::Code);
     auto code_block = std::get<base::owned_ptr<AST::CodeBlock>>(
         std::move(resolved.back().value));
-    code_block->stmts = base::move<AST::Statements>(
-        code_block->stmts->contextualize(replacements));
+    code_block->stmts->contextualize(replacements);
     return IR::Val::CodeBlock(std::move(code_block));
   } break;
   case Op::VariantType:

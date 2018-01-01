@@ -775,8 +775,8 @@ base::owned_ptr<AST::Statements> File::Parse() {
 extern Timer timer;
 extern std::queue<Source::Name> file_queue;
 std::unordered_map<Source::Name, File *> source_map;
-std::vector<AST::Statements *> ParseAllFiles() {
-  std::vector<AST::Statements *> stmts;
+std::vector<base::owned_ptr<AST::Statements>> ParseAllFiles() {
+  std::vector<base::owned_ptr<AST::Statements>> stmts;
   while (!file_queue.empty()) {
     auto file_name = std::move(file_queue.front());
     file_queue.pop();
@@ -786,7 +786,7 @@ std::vector<AST::Statements *> ParseAllFiles() {
     RUN(timer, "Parsing a file") {
       auto source_file              = new File(std::move(file_name));
       source_map[source_file->name] = source_file;
-      stmts.push_back(source_file->Parse().release());
+      stmts.push_back(source_file->Parse());
     }
   }
   return stmts;

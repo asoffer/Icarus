@@ -157,9 +157,7 @@ struct Val {
   static Val Uint(u64 n) { return Val(::Uint, n); }
   static Val Enum(const ::Enum *enum_type, size_t integral_val);
   static Val Type(::Type *t) { return Val(::Type_, t); }
-  static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block) {
-    return Val(::Code, std::move(block));
-  }
+  static Val CodeBlock(base::owned_ptr<AST::CodeBlock> block);
   static Val Func(::IR::Func *fn);
   static Val Block(BlockIndex bi) { return Val(nullptr, bi); }
   static Val Void() { return Val(::Void, false); }
@@ -172,10 +170,15 @@ struct Val {
 
   std::string to_string() const;
 
-  Val() : type(nullptr), value(false) {}
+  Val()                = default;
+  Val(const Val &)     = default;
+  Val(Val &&) noexcept = default;
+  Val &operator=(const Val &) = default;
+  Val &operator=(Val &&) noexcept = default;
 
 private:
-  template <typename T> Val(::Type *t, T val) : type(t), value(val) {}
+  template <typename T>
+  Val(::Type *t, T val) : type(t), value(std::move(val)) {}
 };
 
 inline bool operator==(const Val &lhs, const Val &rhs) {

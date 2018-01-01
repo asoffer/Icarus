@@ -6,6 +6,10 @@
 #include "../type/type.h"
 
 namespace IR {
+Val Val::CodeBlock(base::owned_ptr<AST::CodeBlock> block) {
+  return Val(::Code, std::move(block));
+}
+
 Val Val::Addr(IR::Addr addr, ::Type *t) { return Val(Ptr(t), addr); }
 
 Val Val::StackAddr(u64 addr, ::Type *t) {
@@ -77,7 +81,7 @@ std::string Val::to_string() const {
           [](const base::owned_ptr<AST::CodeBlock> &) -> std::string {
             return "<...>";
           },
-          [](AST::Expression *) -> std::string { NOT_YET(); },
+          [](AST::Expression *) -> std::string { return "<expr>"; },
           [](BlockIndex b) -> std::string {
             return "block #" + std::to_string(b);
           },

@@ -23,7 +23,7 @@ Timer timer;
 
 extern void ReplEval(AST::Expression *expr);
 
-extern std::vector<AST::Statements *> ParseAllFiles();
+extern std::vector<base::owned_ptr<AST::Statements>> ParseAllFiles();
 extern Timer timer;
 
 base::owned_ptr<AST::Statements> global_statements;

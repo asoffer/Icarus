@@ -30,10 +30,10 @@ namespace AST {
   virtual void assign_scope(Scope *scope) override;                            \
   virtual void lrvalue_check() override;                                       \
   virtual void verify_types() override;                                        \
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args)         \
+  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
-  virtual base::owned_ptr<AST::Node> contextualize(                            \
-      const std::unordered_map<const Expression *, IR::Val> &) const override
+  virtual void contextualize(                                                  \
+      const std::unordered_map<const Expression *, IR::Val> &) override
 
 #define EXPR_FNS(name)                                                         \
   virtual ~name() {}                                                           \
@@ -42,10 +42,10 @@ namespace AST {
   virtual void lrvalue_check() override;                                       \
   virtual void assign_scope(Scope *scope) override;                            \
   virtual void verify_types() override;                                        \
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args)         \
+  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
-  virtual base::owned_ptr<AST::Node> contextualize(                            \
-      const std::unordered_map<const Expression *, IR::Val> &) const override
+  virtual void contextualize(                                                  \
+      const std::unordered_map<const Expression *, IR::Val> &) override
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
@@ -54,9 +54,9 @@ struct Node : public base::Cast<Node> {
   virtual void verify_types() {}
   virtual void VerifyReturnTypes(Type *) {}
   virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(); }
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
-  virtual base::owned_ptr<AST::Node> contextualize(
-      const std::unordered_map<const Expression *, IR::Val> &) const = 0;
+  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
+  virtual void
+  contextualize(const std::unordered_map<const Expression *, IR::Val> &) = 0;
   virtual Node *Clone() const = 0;
 
   std::string to_string() const { return to_string(0); }
@@ -79,13 +79,13 @@ struct Expression : public Node {
   virtual void lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *scope)       = 0;
   virtual void verify_types()                   = 0;
-  virtual void contextualize(Scope *scope, std::vector<IR::Val> *args) = 0;
+  virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
   virtual Expression *Clone() const = 0;
 
-  virtual base::owned_ptr<AST::Node> contextualize(
-      const std::unordered_map<const Expression *, IR::Val> &) const = 0;
+  virtual void
+  contextualize(const std::unordered_map<const Expression *, IR::Val> &) = 0;
 
   virtual void VerifyReturnTypes(Type *) {}
 
@@ -119,13 +119,11 @@ struct Expression : public Node {
 struct TokenNode : public Node {
   virtual std::string to_string(size_t n) const;
 
-  void contextualize(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
-  TokenNode *Clone() const override { return new TokenNode(*this); }\
+  void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
+  TokenNode *Clone() const override { return new TokenNode(*this); }
 
-  virtual base::owned_ptr<Node>
-  contextualize(const std::unordered_map<const Expression *, IR::Val> &) const {
-    UNREACHABLE();
-  }
+  virtual void
+  contextualize(const std::unordered_map<const Expression *, IR::Val> &);
 
   virtual IR::Val EmitIR(IR::Cmd::Kind) { UNREACHABLE(); }
 
@@ -273,7 +271,7 @@ struct Statements : public Node {
   inline size_t size() { return statements.size(); }
 
   static base::owned_ptr<AST::Statements>
-  Merge(std::vector<AST::Statements *> stmts_vec) {
+  Merge(std::vector<base::owned_ptr<AST::Statements>> &&stmts_vec) {
     size_t num_stmts = 0;
     for (const auto stmts : stmts_vec) { num_stmts += stmts->size(); }
 
