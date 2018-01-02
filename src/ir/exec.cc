@@ -154,8 +154,18 @@ void ExecContext::Resolve(Val *v) const {
 }
 
 Val ExecContext::ExecuteCmd(const Cmd &cmd) {
-  std::vector<Val> resolved = cmd.args;
-  for (auto &r : resolved) { Resolve(&r); }
+  std::vector<Val> resolved;
+  resolved.reserve(cmd.args.size());
+  for (const auto& arg : cmd.args) {
+    if (auto *r = std::get_if<Register>(&arg.value)) {
+      resolved.push_back(reg(*r));
+    } else if (std::get_if<base::owned_ptr<AST::CodeBlock>>(&arg.value)) {
+      // Don't need to copy codeblocks.
+      resolved.push_back(IR::Val::None());
+    } else {
+      resolved.push_back(arg);
+    }
+  }
 
   switch (cmd.op_code_) {
   case Op::Neg: return Neg(resolved[0]);
@@ -456,17 +466,17 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     // TODO this is probably the right way to encode it rather than a vector of
     // alternating entries. Same for PHI nodes.
     std::unordered_map<const AST::Expression *, IR::Val> replacements;
-
     for (size_t i = 0; i < resolved.size() - 1; i += 2) {
       replacements[std::get<AST::Expression *>(resolved[i + 1].value)] =
           resolved[i];
     }
 
-    ASSERT_EQ(resolved.back().type, ::Code);
-    auto code_block = std::get<base::owned_ptr<AST::CodeBlock>>(
-        std::move(resolved.back().value));
-    code_block->stmts->contextualize(replacements);
-    return IR::Val::CodeBlock(std::move(code_block));
+    ASSERT_EQ(cmd.args.back().type, ::Code);
+    const auto &code_block =
+        std::get<base::owned_ptr<AST::CodeBlock>>(cmd.args.back().value);
+    auto copied_block = base::own(code_block->Clone());
+    copied_block->stmts->contextualize(code_block->stmts.get(), replacements);
+    return IR::Val::CodeBlock(std::move(copied_block));
   } break;
   case Op::VariantType:
     return Val::Addr(std::get<Addr>(resolved[0].value), Type_);

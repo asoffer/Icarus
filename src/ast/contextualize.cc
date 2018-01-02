@@ -93,40 +93,48 @@ void ScopeLiteral::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   exit_fn->SaveReferences(scope, args);
 }
 
+#define CONTEXTUALIZE(thing)                                                   \
+  (thing)->contextualize(                                                      \
+      correspondant->as<std::decay_t<decltype(*this)>>().thing.get(),          \
+      replacements)
+
 using RefMap = std::unordered_map<const Expression *, IR::Val>;
-void Terminal::contextualize(const RefMap &) {}
-void Identifier::contextualize(const RefMap &) {}
-void CodeBlock::contextualize(const RefMap &) {}
-void Jump::contextualize(const RefMap &) {}
-void Hole::contextualize(const RefMap &) {}
-void TokenNode::contextualize(const RefMap &) { UNREACHABLE(); }
+void Terminal::contextualize(const Node *, const RefMap &) {}
+void Identifier::contextualize(const Node *, const RefMap &) {}
+void CodeBlock::contextualize(const Node *, const RefMap &) {}
+void Jump::contextualize(const Node *, const RefMap &) {}
+void Hole::contextualize(const Node *, const RefMap &) {}
+void TokenNode::contextualize(const Node *, const RefMap &) { UNREACHABLE(); }
 
-void Binop::contextualize(const RefMap &replacements) {
-  lhs->contextualize(replacements);
-  rhs->contextualize(replacements);
+void Binop::contextualize(const Node *correspondant,
+                          const RefMap &replacements) {
+  CONTEXTUALIZE(lhs);
+  CONTEXTUALIZE(rhs);
 }
 
-void Declaration::contextualize(const RefMap &replacements) {
-  identifier->contextualize(replacements);
-  if (type_expr) { type_expr->contextualize(replacements); }
-  if (init_val) { init_val->contextualize(replacements); }
+void Declaration::contextualize(const Node *correspondant,
+                                const RefMap &replacements) {
+  CONTEXTUALIZE(identifier);
+  if (type_expr) { CONTEXTUALIZE(type_expr); }
+  if (init_val) { CONTEXTUALIZE(init_val); }
 }
 
-void InDecl::contextualize(const RefMap &replacements) {
-  container->contextualize(replacements);
+void InDecl::contextualize(const Node *correspondant,
+                           const RefMap &replacements) {
+  CONTEXTUALIZE(container);
 }
 
-void Statements::contextualize(const RefMap &replacements) {
-  for (auto &stmt : statements) { stmt->contextualize(replacements); }
+void Statements::contextualize(const Node *correspondant,
+                               const RefMap &replacements) {
+  for (size_t i = 0; i < statements.size(); ++i) {
+    CONTEXTUALIZE(statements[i]);
+  }
 }
 
-void Unop::contextualize(const RefMap &replacements) {
+void Unop::contextualize(const Node *correspondant,
+                         const RefMap &replacements) {
   if (op == Language::Operator::Ref) {
-    auto iter = replacements.find(this);
-    LOG << "(" << (uintptr_t) this << ")" << this;
-    for (const auto& [k,v] : replacements) {
-      LOG << "(" << (uintptr_t)k << ")" << k << " => " << v;
-    }
+    auto iter = replacements.find(&correspondant->as<Unop>());
     ASSERT(iter != replacements.end(), "");
     auto terminal        = base::make_owned<Terminal>();
     terminal->scope_     = scope_; // TODO Eh? Do I care?
@@ -136,62 +144,73 @@ void Unop::contextualize(const RefMap &replacements) {
     terminal->type       = iter->second.type;
     terminal->value      = iter->second;
     operand              = std::move(terminal);
-    op                   = Language::Operator::Nop;
+    op                   = Language::Operator::Pass;
   } else {
-    operand->contextualize(replacements);
+    CONTEXTUALIZE(operand);
   }
 }
 
-void Access::contextualize(const RefMap &replacements) {
-  operand->contextualize(replacements);
+void Access::contextualize(const Node *correspondant,
+                           const RefMap &replacements) {
+  CONTEXTUALIZE(operand);
 }
 
-void ChainOp::contextualize(const RefMap &replacements) {
-  for (const auto &expr : exprs) { expr->contextualize(replacements); }
+void ChainOp::contextualize(const Node *correspondant,
+                            const RefMap &replacements) {
+  for (size_t i = 0; i < exprs.size(); ++i) { CONTEXTUALIZE(exprs[i]); }
 }
 
-void CommaList::contextualize(const RefMap &replacements) {
-  for (const auto &expr : exprs) { expr->contextualize(replacements); }
+void CommaList::contextualize(const Node *correspondant,
+                              const RefMap &replacements) {
+  for (size_t i = 0; i < exprs.size(); ++i) { CONTEXTUALIZE(exprs[i]); }
 }
 
-void ArrayLiteral::contextualize(const RefMap &replacements) {
-  for (const auto &elem : elems) { elem->contextualize(replacements); }
+void ArrayLiteral::contextualize(const Node *correspondant,
+                                 const RefMap &replacements) {
+  for (size_t i = 0; i < elems.size(); ++i) { CONTEXTUALIZE(elems[i]); }
 }
 
-void ArrayType::contextualize(const RefMap &replacements) {
-  length->contextualize(replacements);
-  data_type->contextualize(replacements);
+void ArrayType::contextualize(const Node *correspondant,
+                              const RefMap &replacements) {
+  CONTEXTUALIZE(length);
+  CONTEXTUALIZE(data_type);
 }
 
-void Case::contextualize(const RefMap &replacements) {
-  for (auto & [ key, val ] : key_vals) {
-    key->contextualize(replacements);
-    val->contextualize(replacements);
+void Case::contextualize(const Node *correspondant,
+                         const RefMap &replacements) {
+  for (size_t i = 0; i < key_vals.size(); ++i) {
+    CONTEXTUALIZE(key_vals[i].first);
+    CONTEXTUALIZE(key_vals[i].second);
   }
 }
 
-void FunctionLiteral::contextualize(const RefMap &replacements) {
-  return_type_expr->contextualize(replacements);
-  for (auto &input : inputs) { input->contextualize(replacements); }
-  statements->contextualize(replacements);
+void FunctionLiteral::contextualize(const Node *correspondant,
+                                    const RefMap &replacements) {
+  CONTEXTUALIZE(return_type_expr);
+  for (size_t i = 0; i < inputs.size(); ++i) { CONTEXTUALIZE(inputs[i]); }
+  CONTEXTUALIZE(statements);
 }
 
-void For::contextualize(const RefMap &replacements) {
-  statements->contextualize(replacements);
-  for (auto &iter : iterators) { iter->contextualize(replacements); }
+void For::contextualize(const Node *correspondant, const RefMap &replacements) {
+  CONTEXTUALIZE(statements);
+  for (size_t i = 0; i < iterators.size(); ++i) { CONTEXTUALIZE(iterators[i]); }
 }
 
-void ScopeNode::contextualize(const RefMap &replacements) {
-  expr->contextualize(replacements);
-  scope_expr->contextualize(replacements);
-  stmts->contextualize(replacements);
+void ScopeNode::contextualize(const Node *correspondant,
+                              const RefMap &replacements) {
+  CONTEXTUALIZE(expr);
+  CONTEXTUALIZE(scope_expr);
+  CONTEXTUALIZE(stmts);
 }
 
-void ScopeLiteral::contextualize(const RefMap &replacements) {
-  enter_fn->contextualize(replacements);
-  exit_fn->contextualize(replacements);
+void ScopeLiteral::contextualize(const Node *correspondant,
+                                 const RefMap &replacements) {
+  CONTEXTUALIZE(enter_fn);
+  CONTEXTUALIZE(exit_fn);
 }
 
-void Call::contextualize(const RefMap & /* replacements */) { NOT_YET(); }
-
+void Call::contextualize(const Node *, const RefMap &) {
+  NOT_YET();
+}
+#undef CONTEXTUALIZE
 } // namespace AST

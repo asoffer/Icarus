@@ -622,6 +622,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     IR::Func::Current->postconditions_.push_back(operand.get());
     return IR::Val::None();
   } break;
+  case Language::Operator::Pass: return operand->EmitIR(kind);
   default: UNREACHABLE("Operator is ", static_cast<int>(op));
   }
 }

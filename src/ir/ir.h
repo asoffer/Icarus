@@ -171,6 +171,7 @@ struct Val {
   std::string to_string() const;
 
   Val()                = default;
+  ~Val() noexcept      = default;
   Val(const Val &)     = default;
   Val(Val &&) noexcept = default;
   Val &operator=(const Val &) = default;
@@ -178,7 +179,7 @@ struct Val {
 
 private:
   template <typename T>
-  Val(::Type *t, T val) : type(t), value(std::move(val)) {}
+  Val(::Type *t, T &&val) : type(t), value(std::forward<T>(val)) {}
 };
 
 inline bool operator==(const Val &lhs, const Val &rhs) {

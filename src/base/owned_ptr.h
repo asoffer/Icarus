@@ -22,10 +22,7 @@ public:
   template <typename D>
   owned_ptr(owned_ptr<D> &&ptr) noexcept : value_(ptr.release()) {}
 
-  ~owned_ptr() {
-    if (value_) { LOG << "Destroying " << (uintptr_t)value_; }
-    delete value_;
-  }
+  ~owned_ptr() { delete value_; }
 
   operator bool() const { return value_ != nullptr; }
 

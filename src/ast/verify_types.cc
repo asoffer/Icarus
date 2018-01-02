@@ -338,6 +338,7 @@ void Unop::verify_types() {
     type = Void;
     if (operand->type != Bool) { LogError::EnsureNeedsBool(this); }
   } break;
+  case Operator::Pass: type = operand->type; break;
   default: UNREACHABLE(*this);
   }
 }

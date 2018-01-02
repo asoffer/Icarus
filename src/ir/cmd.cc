@@ -54,22 +54,22 @@ Val Field(Val v, size_t n) {
 #define MAKE_VOID(op)                                                          \
   ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v)});                                        \
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_VOID2(op)                                                         \
   ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(nullptr, op, {std::move(v1), std::move(v2)});                        \
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 
 #define MAKE_AND_RETURN(type, op)                                              \
   ASSERT_NE(Func::Current, nullptr);                                           \
   Cmd cmd(type, op, {std::move(v)});                                           \
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);                   \
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
 #define MAKE_AND_RETURN2(type, op)                                             \
   Cmd cmd(type, op, {std::move(v1), std::move(v2)});                           \
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);                   \
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));        \
   return cmd.reg()
 
 Val Malloc(Type *t, Val v) {
@@ -107,7 +107,7 @@ void Free(Val v) {
 Val Alloca(Type *t) {
   ASSERT_NE(t, ::Void);
   Cmd cmd(Ptr(t), Op::Alloca, {});
-  Func::Current->block(Func::Current->entry()).cmds_.push_back(cmd);
+  Func::Current->block(Func::Current->entry()).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
@@ -349,7 +349,7 @@ CmdIndex Phi(Type *t) {
       static_cast<i32>(Func::Current->block(Block::Current).cmds_.size())};
 
   Cmd cmd(t, Op::Phi, {});
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 
   return cmd_index;
 }
@@ -372,7 +372,7 @@ Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs) {
                           ? Void
                           : Tup(fn.type->as<Function>().output);
   Cmd cmd(output_type, Op::Call, std::move(vals));
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
   return cmd.reg();
 }
 
@@ -437,18 +437,18 @@ void CondJump(Val cond, BlockIndex true_block, BlockIndex false_block) {
   ASSERT(Func::Current, "");
   Cmd cmd(nullptr, Op::CondJump,
           {cond, Val::Block(true_block), Val::Block(false_block)});
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void UncondJump(BlockIndex block) {
   ASSERT(Func::Current, "");
   Cmd cmd(nullptr, Op::UncondJump, {Val::Block(block)});
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 void ReturnJump() {
   ASSERT(Func::Current, "");
   Cmd cmd(nullptr, Op::ReturnJump, {});
   Func::Current->return_blocks_.insert(Block::Current);
-  Func::Current->block(Block::Current).cmds_.push_back(cmd);
+  Func::Current->block(Block::Current).cmds_.push_back(std::move(cmd));
 }
 
 void Block::dump(size_t indent) const {
