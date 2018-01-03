@@ -11,8 +11,6 @@
 // TODO Join/Meet for EmptyArray <-> [0; T] (explicitly empty)? Why!?
 
 extern IR::Val Evaluate(AST::Expression *expr);
-std::queue<AST::Node *> VerificationQueue;
-std::queue<std::pair<Type *, AST::Statements *>> FuncInnardsVerificationQueue;
 
 enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
 static SourceLocationOrder GetOrder(const TextSpan &lhs, const TextSpan &rhs) {
@@ -177,6 +175,7 @@ void Terminal::verify_types() {}
 void Identifier::verify_types() {
   STARTING_CHECK;
 
+  // TODO This can be done in Identifiers constructor.
   all_ids.push_back(this); // Save this identifier for later checks (see
                            // VerifyDeclBeforeUsage)
   // TODO is it true that decl==nullptr if and only if we haven't yet called
@@ -1291,8 +1290,6 @@ void ArrayLiteral::verify_types() {
 void FunctionLiteral::verify_types() {
   STARTING_CHECK;
 
-  VerificationQueue.push(statements.get());
-
   return_type_expr->verify_types();
   if (ErrorLog::num_errs_ > 0) {
     type = Err;
@@ -1336,7 +1333,6 @@ void FunctionLiteral::verify_types() {
   std::vector<Type *> input_type_vec;
   input_type_vec.reserve(inputs.size());
   for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
-  FuncInnardsVerificationQueue.emplace(ret_type, statements.get());
 
   // TODO generics?
   type = Func(input_type_vec, ret_type);
@@ -1515,22 +1511,6 @@ void For::VerifyReturnTypes(Type *ret_type) {
   statements->VerifyReturnTypes(ret_type);
 }
 } // namespace AST
-
-void CompletelyVerify(AST::Node *node) {
-  VerificationQueue.push(node);
-
-  while (!VerificationQueue.empty()) {
-    auto node_to_verify = VerificationQueue.front();
-    node_to_verify->verify_types();
-    VerificationQueue.pop();
-  }
-
-  while (!FuncInnardsVerificationQueue.empty()) {
-    auto[ret_type, stmts] = FuncInnardsVerificationQueue.front();
-    stmts->VerifyReturnTypes(ret_type);
-    FuncInnardsVerificationQueue.pop();
-  }
-}
 
 #undef VERIFY_AND_RETURN_ON_ERROR
 #undef STARTING_CHECK

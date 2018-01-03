@@ -4,6 +4,7 @@
 
 namespace AST {
 void Identifier::lrvalue_check() {
+  ASSERT_NE(decl, nullptr);
   lvalue = decl->const_ ? Assign::Const : Assign::LVal;
 }
 
@@ -70,7 +71,6 @@ void CommaList::lrvalue_check() {
 void FunctionLiteral::lrvalue_check() {
   lvalue = Assign::RVal;
   return_type_expr->lrvalue_check();
-  statements->lrvalue_check();
 }
 
 void InDecl::lrvalue_check() {

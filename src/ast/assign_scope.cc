@@ -5,6 +5,7 @@
 #include "../type/type.h"
 
 namespace AST {
+
 void Unop::assign_scope(Scope *scope) {
   scope_ = scope;
   operand->assign_scope(scope);

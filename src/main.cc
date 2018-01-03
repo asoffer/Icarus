@@ -35,14 +35,13 @@ int GenerateCode() {
 
   RUN(timer, "AST Setup") {
     global_statements = AST::Statements::Merge(std::move(stmts_by_file));
-    global_statements->assign_scope(Scope::Global);
   }
 
   RUN(timer, "Verify and Emit") {
-    for (auto& stmt : global_statements->statements) {
+    AST::DoStages<0, 2>(global_statements.get(), Scope::Global);
+    for (auto &stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
-      auto *decl = &stmt->as<AST::Declaration>();
-      decl->EmitIR(IR::Cmd::Kind::Exec);
+      stmt->as<AST::Declaration>().EmitIR(IR::Cmd::Kind::Exec);
     }
   }
 
@@ -70,12 +69,11 @@ int RunRepl() {
     for (auto &stmt : stmts->statements) {
       if (stmt->is<AST::Declaration>()) {
         auto *decl = &stmt->as<AST::Declaration>();
-        decl->assign_scope(Scope::Global);
-        decl->EmitIR(IR::Cmd::Kind::Exec);
+        AST::DoStages<0, 3>(decl, Scope::Global);
 
       } else if (stmt->is<AST::Expression>()) {
         auto *expr = &stmt->as<AST::Expression>();
-        expr->assign_scope(Scope::Global);
+        AST::DoStages<0, 0>(expr, Scope::Global);
         ReplEval(expr);
         fprintf(stderr, "\n");
       } else {

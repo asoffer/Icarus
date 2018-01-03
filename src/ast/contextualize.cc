@@ -33,9 +33,7 @@ void Statements::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
 
 void Unop::SaveReferences(Scope *scope, std::vector<IR::Val> *args) {
   if (op == Language::Operator::Ref) {
-    assign_scope(scope);
-
-    auto val = operand->EmitIR(IR::Cmd::Kind::Exec);
+    auto val = DoStages<0, 3>(this, scope);
     args->push_back(val);
     args->push_back(IR::Val::Ref(this));
   } else {

@@ -23,7 +23,6 @@ struct Scope;
 enum class Assign : char { Unset, Const, LVal, RVal };
 
 namespace AST {
-
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
@@ -501,6 +500,34 @@ struct ScopeLiteral : public Expression {
   ScopeLiteral(const TextSpan &span);
 };
 
+template <int N> decltype(auto) DoStage(Node *node, Scope *scope);
+template <> inline decltype(auto) DoStage<0>(Node *node, Scope *scope) {
+  node->assign_scope(scope);
+}
+template <> inline decltype(auto) DoStage<1>(Node *node, Scope *) {
+  node->verify_types();
+}
+template <> inline decltype(auto) DoStage<2>(Node *node, Scope *) {
+  node->lrvalue_check();
+}
+template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
+  return node->EmitIR(IR::Cmd::Kind::Exec);
+}
+
+template <int Low, int High> struct StageRange {
+  decltype(auto) operator()(Node *node, Scope *scope) const {
+    DoStage<Low>(node, scope);
+    return StageRange<Low + 1, High>{}(node, scope);
+  }
+};
+template <int N> struct StageRange<N, N> {
+  decltype(auto) operator()(Node *node, Scope *scope) const {
+    return DoStage<N>(node, scope);
+  }
+};
+template <int Low, int High> decltype(auto) DoStages(Node *node, Scope *scope) {
+  return StageRange<Low, High>{}(node, scope);
+}
 } // namespace AST
 
 #undef VIRTUAL_METHODS_FOR_NODES

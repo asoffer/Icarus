@@ -7,12 +7,6 @@
 #include "../scope.h"
 #include "../type/type.h"
 
-#define VERIFY_OR_EXIT                                                         \
-  do {                                                                         \
-    verify_types();                                                            \
-    if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }                \
-  } while (false)
-
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 
@@ -73,8 +67,6 @@ IR::Val OrdFunc() {
 }
 
 IR::Val AST::Access::EmitLVal(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-
   auto val = operand->EmitLVal(kind);
   while (val.type->is<Pointer>() &&
          !val.type->as<Pointer>().pointee->is_big()) {
@@ -228,8 +220,6 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-
   if (type->is<Enum>()) {
     return type->as<Enum>().EmitLiteral(member_name);
   } else {
@@ -238,14 +228,10 @@ IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
   return IR::Val::None();
 }
 
-IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) {
-  VERIFY_OR_EXIT;
-  return value;
-}
+IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-  ASSERT(decl, "No decl for identifier \"" + token + "\"");
+  if (decl->scope_ == Scope::Global) { decl->EmitIR(kind); }
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
       ret && kind == IR::Cmd::Kind::PostCondition) {
@@ -272,7 +258,6 @@ IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   auto array_val  = IR::Alloca(type);
   auto *data_type = type->as<Array>().data_type;
   for (size_t i = 0; i < elems.size(); ++i) {
@@ -283,8 +268,6 @@ IR::Val AST::ArrayLiteral::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-
   auto init       = IR::Func::Current->AddBlock();
   auto incr       = IR::Func::Current->AddBlock();
   auto phi        = IR::Func::Current->AddBlock();
@@ -442,7 +425,6 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   auto land = IR::Func::Current->AddBlock();
 
   ASSERT(!key_vals.empty(), "");
@@ -477,12 +459,10 @@ IR::Val AST::Case::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::ScopeLiteral::EmitIR(IR::Cmd::Kind) {
-  VERIFY_OR_EXIT;
   return IR::Val::Scope(this);
 }
 
 IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   IR::Val scope_expr_val = Evaluate(scope_expr.get());
   ASSERT_TYPE(Scope_Type, scope_expr_val.type);
 
@@ -513,8 +493,6 @@ IR::Val AST::ScopeNode::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-
   if (const_) {
     // TODO it's custom or default initialized. cannot be uninitialized. This
     // should be verified by the type system.
@@ -558,7 +536,6 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) { return IR::Val::None(); }
     if (IsCustomInitialized()) {
-      lrvalue_check();
       if (init_val->lvalue == Assign::RVal) {
         Type::EmitMoveInit(init_val->type, type, init_val->EmitIR(kind), addr);
       } else {
@@ -573,8 +550,6 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-
   switch (op) {
   case Language::Operator::Not:
   case Language::Operator::Sub: {
@@ -606,7 +581,7 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
     auto block = std::get<base::owned_ptr<AST::CodeBlock>>(val.value);
-    block->stmts->assign_scope(scope_);
+    AST::DoStages<0, 2>(block->stmts.get(), scope_);
     block->stmts->EmitIR(kind);
     return IR::Val::None();
   } break;
@@ -628,7 +603,6 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   switch (op) {
 #define CASE(op_name)                                                          \
   case Language::Operator::op_name: {                                          \
@@ -734,7 +708,6 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
 }
 
 IR::Val AST::ArrayType::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   return IR::Array(length->EmitIR(kind), data_type->EmitIR(kind));
 }
 
@@ -763,7 +736,6 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
 }
 
 IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   if (ops[0] == Language::Operator::Xor) {
     auto val = IR::Val::Bool(false);
     for (const auto &expr : exprs) { val = IR::Xor(val, expr->EmitIR(kind)); }
@@ -855,10 +827,7 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
 
 IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
                                             IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
-  // Verifying 'this' only verifies the declared functions type not the
-  // internals. We need to do that here.
-  statements->verify_types();
+  AST::DoStages<1, 2>(statements.get(), fn_scope.get());
   if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }
 
   if (!ir_func) {
@@ -928,13 +897,11 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
 }
 
 IR::Val AST::Statements::EmitIR(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   for (auto &stmt : statements) { stmt->EmitIR(kind); }
   return IR::Val::None();
 }
 
 IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
-  VERIFY_OR_EXIT;
   std::vector<IR::Val> args;
   auto result = base::own(this->Clone());
   result->stmts->SaveReferences(scope_, &args);
@@ -942,9 +909,7 @@ IR::Val AST::CodeBlock::EmitIR(IR::Cmd::Kind) {
 }
 
 IR::Val AST::Identifier::EmitLVal(IR::Cmd::Kind kind) {
-  VERIFY_OR_EXIT;
   ASSERT_NE(decl, nullptr);
-
   if (decl->addr == IR::Val::None()) { decl->EmitIR(kind); }
   // TODO kind???
 
