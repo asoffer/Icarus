@@ -12,37 +12,6 @@
 
 extern IR::Val Evaluate(AST::Expression *expr);
 
-enum class SourceLocationOrder { Unordered, InOrder, OutOfOrder, Same };
-static SourceLocationOrder GetOrder(const TextSpan &lhs, const TextSpan &rhs) {
-  if (lhs.source->name != rhs.source->name) {
-    return SourceLocationOrder::Unordered;
-  }
-  if (lhs.start.line_num < rhs.start.line_num) {
-    return SourceLocationOrder::InOrder;
-  }
-  if (lhs.start.line_num > rhs.start.line_num) {
-    return SourceLocationOrder::OutOfOrder;
-  }
-  if (lhs.start.offset < rhs.start.offset) {
-    return SourceLocationOrder::InOrder;
-  }
-  if (lhs.start.offset > rhs.start.offset) {
-    return SourceLocationOrder::OutOfOrder;
-  }
-  return SourceLocationOrder::Same;
-}
-
-static std::vector<AST::Identifier *> all_ids;
-void VerifyDeclBeforeUsage() {
-  for (auto &id : all_ids) {
-    if (id->type == Err || id->type == Type_) { continue; }
-    if (id->decl->scope_ == Scope::Global) { continue; }
-    if (GetOrder(id->decl->span, id->span) == SourceLocationOrder::OutOfOrder) {
-      // ErrorLog::DeclOutOfOrder(id->decl, id);
-    }
-  }
-}
-
 #define STARTING_CHECK                                                         \
   ASSERT(scope_, "Need to first call assign_scope()");                         \
   if (type == Unknown) {                                                       \
@@ -175,9 +144,6 @@ void Terminal::verify_types() {}
 void Identifier::verify_types() {
   STARTING_CHECK;
 
-  // TODO This can be done in Identifiers constructor.
-  all_ids.push_back(this); // Save this identifier for later checks (see
-                           // VerifyDeclBeforeUsage)
   // TODO is it true that decl==nullptr if and only if we haven't yet called
   // verify_types on this identifier? That would make my life much easier
 
