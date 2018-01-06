@@ -118,13 +118,16 @@ ExecContext::ExecContext() : stack_(50) {}
 
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;
-  for (const auto &cmd : current_block().cmds_) {
-    result = ExecuteCmd(cmd);
-    if (cmd.type != nullptr && cmd.type != Void) {
-      ASSERT_EQ(result.type, cmd.type);
-      this->reg(cmd.result) = result;
+  auto cmd_iter = current_block().cmds_.begin();
+  do {
+    result = ExecuteCmd(*cmd_iter);
+    if (cmd_iter->type != nullptr && cmd_iter->type != Void) {
+      ASSERT_EQ(result.type, cmd_iter->type);
+      this->reg(cmd_iter->result) = result;
     }
-  }
+    ++cmd_iter;
+  } while (!std::holds_alternative<BlockIndex>(result.value));
+
   return std::get<BlockIndex>(result.value);
 }
 

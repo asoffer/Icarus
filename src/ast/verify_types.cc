@@ -326,19 +326,15 @@ void Access::verify_types() {
       type = Err;
     }
   } else if (base_type == Type_) {
-    if (member_name == "bytes" || member_name == "alignment") {
-      type = Uint;
-    } else {
-      Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
-      if (evaled_type->is<Enum>()) {
-        // Regardless of whether we can get the value, it's clear that this is
-        // supposed to be a member so we should emit an error but carry on
-        // assuming that this is an element of that enum type.
-        type = evaled_type;
-        if (evaled_type->as<Enum>().IndexOrFail(member_name) ==
-            std::numeric_limits<size_t>::max()) {
-          ErrorLog::MissingMember(span, member_name, evaled_type);
-        }
+    Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
+    if (evaled_type->is<Enum>()) {
+      // Regardless of whether we can get the value, it's clear that this is
+      // supposed to be a member so we should emit an error but carry on
+      // assuming that this is an element of that enum type.
+      type = evaled_type;
+      if (evaled_type->as<Enum>().IndexOrFail(member_name) ==
+          std::numeric_limits<size_t>::max()) {
+        ErrorLog::MissingMember(span, member_name, evaled_type);
       }
     }
   } else if (base_type->is<Struct>()) {

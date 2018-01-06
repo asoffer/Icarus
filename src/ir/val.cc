@@ -77,7 +77,10 @@ std::string Val::to_string() const {
                               f->type_->to_string()
                         : f->name);
           },
-          [](AST::ScopeLiteral *) -> std::string { NOT_YET(); },
+          [](AST::ScopeLiteral *s) -> std::string {
+            return "scope(" + std::to_string(reinterpret_cast<uintptr_t>(s)) +
+                   ")";
+          },
           [](const base::owned_ptr<AST::CodeBlock> &) -> std::string {
             return "<...>";
           },
