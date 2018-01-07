@@ -844,7 +844,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
              op == Language::Operator::Ge || op == Language::Operator::Gt,
          "Expecting a ChainOp operator type.");
 
-  if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>()) {
+  if (lhs_type->is<Primitive>() || rhs_type->is<Primitive>() ||
+      lhs_type->is<Enum>() || rhs_type->is<Enum>()) {
     if (lhs_type != rhs_type) {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
@@ -858,7 +859,8 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
     if (lhs_type == Code || lhs_type == Void) { return false; }
     // TODO NullPtr, String types?
 
-    if (lhs_type == Bool || lhs_type == Char || lhs_type == Type_) {
+    if (lhs_type == Bool || lhs_type == Char || lhs_type == Type_ ||
+        (lhs_type->is<Enum>() && lhs_type->as<Enum>().is_enum_)) {
       if (op == Language::Operator::Eq || op == Language::Operator::Ne) {
         return true;
       } else {
@@ -866,10 +868,12 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
                                              std::to_string(__LINE__) + ": ");
         return false;
       }
+    } else if (lhs_type->is<Enum>() && !lhs_type->as<Enum>().is_enum_) {
+      return true;
     }
   }
 
-  if (lhs_type->is<Enum>() || lhs_type->is<Pointer>()) {
+  if (lhs_type->is<Pointer>()) {
     if (lhs_type != rhs_type) {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");

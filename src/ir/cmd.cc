@@ -304,6 +304,12 @@ Val Lt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less<i32>{}, Bool);
   CONSTANT_PROPOGATION(u64, std::less<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less<double>{}, Bool);
+  CONSTANT_PROPOGATION(EnumVal,
+                       [](EnumVal lhs, EnumVal rhs) {
+                         return lhs.value != rhs.value &&
+                                ((lhs.value | rhs.value) == rhs.value);
+                       },
+                       Bool);
   MAKE_AND_RETURN2(::Bool, Op::Lt);
 }
 
@@ -311,6 +317,11 @@ Val Le(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::less_equal<i32>{}, Bool);
   CONSTANT_PROPOGATION(u64, std::less_equal<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::less_equal<double>{}, Bool);
+  CONSTANT_PROPOGATION(EnumVal,
+                       [](EnumVal lhs, EnumVal rhs) {
+                         return (lhs.value | rhs.value) == rhs.value;
+                       },
+                       Bool);
   MAKE_AND_RETURN2(::Bool, Op::Le);
 }
 
@@ -318,6 +329,12 @@ Val Gt(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater<i32>{}, Bool);
   CONSTANT_PROPOGATION(u64, std::greater<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater<double>{}, Bool);
+  CONSTANT_PROPOGATION(EnumVal,
+                       [](EnumVal lhs, EnumVal rhs) {
+                         return lhs.value != rhs.value &&
+                                ((lhs.value | rhs.value) == lhs.value);
+                       },
+                       Bool);
   MAKE_AND_RETURN2(::Bool, Op::Gt);
 }
 
@@ -325,6 +342,11 @@ Val Ge(Val v1, Val v2) {
   CONSTANT_PROPOGATION(i32, std::greater_equal<i32>{}, Bool);
   CONSTANT_PROPOGATION(u64, std::greater_equal<u64>{}, Bool);
   CONSTANT_PROPOGATION(double, std::greater_equal<double>{}, Bool);
+  CONSTANT_PROPOGATION(EnumVal,
+                       [](EnumVal lhs, EnumVal rhs) {
+                         return (lhs.value | rhs.value) == rhs.value;
+                       },
+                       Bool);
   MAKE_AND_RETURN2(::Bool, Op::Ge);
 }
 
@@ -338,6 +360,9 @@ Val Eq(Val v1, Val v2) {
   CONSTANT_PROPOGATION(double, std::equal_to<double>{}, Bool);
   CONSTANT_PROPOGATION(Type *, std::equal_to<Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::equal_to<Addr>{}, Bool);
+  CONSTANT_PROPOGATION(
+      EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value == rhs.value; },
+      Bool);
   MAKE_AND_RETURN2(::Bool, Op::Eq);
 }
 
@@ -351,6 +376,9 @@ Val Ne(Val v1, Val v2) {
   CONSTANT_PROPOGATION(double, std::not_equal_to<double>{}, Bool);
   CONSTANT_PROPOGATION(Type *, std::not_equal_to<Type *>{}, Bool);
   CONSTANT_PROPOGATION(Addr, std::not_equal_to<Addr>{}, Bool);
+  CONSTANT_PROPOGATION(
+      EnumVal, [](EnumVal lhs, EnumVal rhs) { return lhs.value != rhs.value; },
+      Bool);
   MAKE_AND_RETURN2(::Bool, Op::Ne);
 }
 #undef CONSTANT_PROPOGATION
