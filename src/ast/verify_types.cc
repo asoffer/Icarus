@@ -18,7 +18,7 @@ extern IR::Val Evaluate(AST::Expression *expr);
     ErrorLog::CyclicDependency(this);                                          \
     type = Err;                                                                \
   }                                                                            \
-  if (type) { return; }                                                        \
+  if (type) { return type != Err; }                                            \
   type = Unknown
 
 #define VERIFY_AND_RETURN_ON_ERROR(expr)                                       \
@@ -26,7 +26,7 @@ extern IR::Val Evaluate(AST::Expression *expr);
     (expr)->verify_types();                                                    \
     if ((expr)->type == Err) {                                                 \
       type = Err;                                                              \
-      return;                                                                  \
+      return false;                                                            \
     }                                                                          \
   } while (false)
 
@@ -139,9 +139,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
 
-void Terminal::verify_types() {}
+bool Terminal::verify_types() { return true; }
 
-void Identifier::verify_types() {
+bool Identifier::verify_types() {
   STARTING_CHECK;
 
   // TODO is it true that decl==nullptr if and only if we haven't yet called
@@ -156,7 +156,7 @@ void Identifier::verify_types() {
       (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
                                    : LogError::AmbiguousIdentifier)(this);
       type = Err;
-      return;
+      return false;
     }
 
     decl = potential_decls[0];
@@ -168,7 +168,7 @@ void Identifier::verify_types() {
 
   // TODO the code below here looks wrong to me as of 11/28/17.
   // Compile-time constants may be captured implicitly.
-  if (decl->const_) { return; }
+  if (decl->const_) { return true; }
 
   // For everything else we iterate from the scope of this identifier up to the
   // scope in which it was declared checking that along the way that it's a
@@ -181,12 +181,13 @@ void Identifier::verify_types() {
       continue;
     } else {
       LogError::ImplicitCapture(this);
-      return;
+      return false;
     }
   }
+  return true;
 }
 
-void Unop::verify_types() {
+bool Unop::verify_types() {
   STARTING_CHECK;
   VERIFY_AND_RETURN_ON_ERROR(operand);
 
@@ -200,6 +201,7 @@ void Unop::verify_types() {
       std::string msg = "Attempting to free an object of type `" +
                         operand->type->to_string() + "`.";
       ErrorLog::UnopTypeFail(msg, this);
+      return false;
     }
     type = Void;
   } break;
@@ -207,6 +209,7 @@ void Unop::verify_types() {
     if (operand->type == Void) {
       ErrorLog::UnopTypeFail(
           "Attempting to print an expression with type `void`.", this);
+      return false;
     }
     type = Void;
   } break;
@@ -214,6 +217,7 @@ void Unop::verify_types() {
     if (operand->type == Void) {
       ErrorLog::UnopTypeFail(
           "Attempting to return an expression which has type `void`.", this);
+      return false;
     }
 
     type = Void;
@@ -227,6 +231,7 @@ void Unop::verify_types() {
                         operand->type->to_string() + "`.";
       ErrorLog::UnopTypeFail(msg, this);
       type = Err;
+      return false;
     }
   } break;
   case Operator::And: {
@@ -236,6 +241,7 @@ void Unop::verify_types() {
     if (operand->type != Type_) {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
+      return false;
     } else {
       type = Type_;
     }
@@ -245,6 +251,7 @@ void Unop::verify_types() {
       ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
                              this);
       type = Int;
+      return false;
 
     } else if (operand->type == Int || operand->type == Real) {
       type = operand->type;
@@ -266,6 +273,7 @@ void Unop::verify_types() {
                                    "` has no unary negation operator.",
                                this);
         type = Err;
+        return false;
       }
 
     } else {
@@ -273,6 +281,7 @@ void Unop::verify_types() {
                                  "` has no unary negation operator.",
                              this);
       type = Err;
+      return false;
     }
   } break;
   case Operator::Dots: {
@@ -282,6 +291,7 @@ void Unop::verify_types() {
     } else {
       ErrorLog::InvalidRangeType(span, type);
       type = Err;
+      return false;
     }
   } break;
   case Operator::Not: {
@@ -293,19 +303,27 @@ void Unop::verify_types() {
                                  operand->type->to_string() + "`.",
                              this);
       type = Err;
+      return false;
     }
   } break;
   case Operator::Needs: {
     type = Void;
-    if (operand->type != Bool) { LogError::PreconditionNeedsBool(this); }
+    if (operand->type != Bool) {
+      LogError::PreconditionNeedsBool(this);
+      return false;
+    }
   } break;
   case Operator::Ensure: {
     type = Void;
-    if (operand->type != Bool) { LogError::EnsureNeedsBool(this); }
+    if (operand->type != Bool) {
+      LogError::EnsureNeedsBool(this);
+      return false;
+    }
   } break;
   case Operator::Pass: type = operand->type; break;
   default: UNREACHABLE(*this);
   }
+  return true;
 }
 
 static Type *DereferenceAll(Type *t) {
@@ -313,7 +331,7 @@ static Type *DereferenceAll(Type *t) {
   return t;
 }
 
-void Access::verify_types() {
+bool Access::verify_types() {
   STARTING_CHECK;
   VERIFY_AND_RETURN_ON_ERROR(operand);
 
@@ -324,6 +342,7 @@ void Access::verify_types() {
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
       type = Err;
+      return false;
     }
   } else if (base_type == Type_) {
     Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
@@ -335,6 +354,7 @@ void Access::verify_types() {
       if (evaled_type->as<Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ErrorLog::MissingMember(span, member_name, evaled_type);
+      return false;
       }
     }
   } else if (base_type->is<Struct>()) {
@@ -348,11 +368,14 @@ void Access::verify_types() {
     } else {
       ErrorLog::MissingMember(span, member_name, base_type);
       type = Err;
+      return false;
     }
   } else if (base_type->is<Primitive>() || base_type->is<Function>()) {
     ErrorLog::MissingMember(span, member_name, base_type);
     type = Err;
+    return false;
   }
+  return true;
 }
 
 // TODO move this and type-related functions below into type/type.cc?
@@ -548,7 +571,7 @@ void DispatchTable::insert(CallArgTypes call_arg_types, Binding binding) {
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-void Call::verify_types() {
+bool Call::verify_types() {
   STARTING_CHECK;
   for (auto &pos : pos_) {
     pos->verify_types();
@@ -558,7 +581,7 @@ void Call::verify_types() {
     name_and_val.second->verify_types();
     if (name_and_val.second->type == Err) { type = Err; }
   }
-  if (type == Err) { return; }
+  if (type == Err) { return false; }
 
   if (fn_->is<Identifier>()) {
     // When looking for a match, we know that no two matches can overlap since
@@ -581,7 +604,7 @@ void Call::verify_types() {
       LOG << "Failed to find a match for everything. ("
           << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
       type = fn_->type = Err;
-      return;
+      return false;
     }
 
     // fn_'s type should never be considered beacuse it could be one of many
@@ -604,7 +627,9 @@ void Call::verify_types() {
     ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
     type      = Err;
     fn_->type = Err;
+    return false;
   }
+  return true;
 }
 
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
@@ -627,14 +652,14 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
   return *l_iter < *r_iter;
 }
 
-void Binop::verify_types() {
+bool Binop::verify_types() {
   STARTING_CHECK;
 
   lhs->verify_types();
   rhs->verify_types();
   if (lhs->type == Err || rhs->type == Err) {
     type = Err;
-    return;
+    return false;
   }
 
   using Language::Operator;
@@ -646,7 +671,7 @@ void Binop::verify_types() {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
     }
-    return;
+    return false;
   }
 
   switch (op) {
@@ -654,7 +679,7 @@ void Binop::verify_types() {
     // TODO rocket encountered outside case statement.
     UNREACHABLE();
   } break;
-  case Operator::Index:
+  case Operator::Index: {
     type = Err;
     if (lhs->type == String) {
       if (rhs->type == Int || rhs->type == Uint) {
@@ -662,6 +687,7 @@ void Binop::verify_types() {
         break;
       } else {
         ErrorLog::InvalidStringIndex(span, rhs->type);
+        return false;
       }
     } else if (!lhs->type->is<Array>()) {
       if (rhs->type->is<RangeType>()) {
@@ -669,6 +695,7 @@ void Binop::verify_types() {
       } else {
         ErrorLog::IndexingNonArray(span, lhs->type);
       }
+      return false;
     } else if (rhs->type->is<RangeType>()) {
       type = Slice(&lhs->type->as<Array>());
       break;
@@ -678,8 +705,9 @@ void Binop::verify_types() {
       // TODO allow slice indexing
       if (rhs->type == Int || rhs->type == Uint) { break; }
       ErrorLog::NonIntegralArrayIndex(span, rhs->type);
+      return false;
     }
-    return;
+  } break;
   case Operator::Dots: {
     if (lhs->type == Int && rhs->type == Int) {
       type = Range(Int);
@@ -692,6 +720,7 @@ void Binop::verify_types() {
 
     } else {
       ErrorLog::InvalidRangeTypes(span, lhs->type, rhs->type);
+      return false;
     }
   } break;
   case Language::Operator::XorEq: {
@@ -704,6 +733,7 @@ void Binop::verify_types() {
       type = Err;
       // TODO could be bool or enum.
       ErrorLog::XorEqNeedsBool(span);
+      return false;
     }
   } break;
   case Language::Operator::AndEq: {
@@ -716,6 +746,7 @@ void Binop::verify_types() {
       type = Err;
       // TODO could be bool or enum.
       ErrorLog::AndEqNeedsBool(span);
+      return false;
     }
   } break;
   case Language::Operator::OrEq: {
@@ -728,6 +759,7 @@ void Binop::verify_types() {
       type = Err;
       // TODO could be bool or enum.
       ErrorLog::OrEqNeedsBool(span);
+      return false;
     }
   } break;
 
@@ -769,6 +801,7 @@ void Binop::verify_types() {
       if (!correct_decl) {                                                     \
         type = Err;                                                            \
         ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
+        return false;                                                          \
       } else if (type != Err) {                                                \
         type = Tup(correct_decl->type->as<Function>().output);                 \
       }                                                                        \
@@ -802,6 +835,7 @@ void Binop::verify_types() {
       } else {
         type = Err;
         ErrorLog::NonComposableFunctions(span);
+        return false;
       }
 
     } else {
@@ -817,6 +851,7 @@ void Binop::verify_types() {
       } else {
         type = Err;
         ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
+        return false;
       }
     }
   } break;
@@ -824,10 +859,12 @@ void Binop::verify_types() {
     if (lhs->type != Type_) {
       type = Err;
       ErrorLog::NonTypeFunctionInput(span);
+      return false;
     }
     if (rhs->type != Type_) {
       type = Err;
       ErrorLog::NonTypeFunctionOutput(span);
+      return false;
     }
 
     if (type != Err) { type = Type_; }
@@ -835,6 +872,7 @@ void Binop::verify_types() {
   } break;
   default: UNREACHABLE();
   }
+  return true;
 }
 
 static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
@@ -933,7 +971,7 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   return false;
 }
 
-void ChainOp::verify_types() {
+bool ChainOp::verify_types() {
   STARTING_CHECK;
   bool found_err = false;
   for (auto &expr : exprs) {
@@ -942,7 +980,7 @@ void ChainOp::verify_types() {
   }
   if (found_err) {
     type = Err;
-    return;
+    return false;
   }
 
   // TODO Can we recover from errors here? Should we?
@@ -951,31 +989,37 @@ void ChainOp::verify_types() {
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
   if (ops[0] == Language::Operator::Or || ops[0] == Language::Operator::And ||
       ops[0] == Language::Operator::Xor) {
+    bool failed = false;
     for (const auto &expr : exprs) {
       if (expr->type != exprs[0]->type) {
         ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                              std::to_string(__LINE__) + ": ");
+        failed = true;
       }
     }
+
+    type = exprs[0]->type;
 
     if (exprs[0]->type != Bool &&
         !(exprs[0]->type == Type_ && ops[0] == Language::Operator::Or) &&
         (!exprs[0]->type->is<Enum>() || exprs[0]->type->as<Enum>().is_enum_)) {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
+      if (failed) { return false; }
     }
 
-    type = exprs[0]->type;
   } else {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
         type = Err; // Errors exported by ValidateComparisonType
       }
     }
+    type = Bool;
   }
+  return true;
 }
 
-void CommaList::verify_types() {
+bool CommaList::verify_types() {
   STARTING_CHECK;
   bool found_err = false;
   for (auto &expr : exprs) {
@@ -984,7 +1028,7 @@ void CommaList::verify_types() {
   }
   if (found_err) {
     type = Err;
-    return;
+    return false;
   }
 
   // TODO this is probably not a good way to do it.  If the tuple consists of a
@@ -1002,9 +1046,10 @@ void CommaList::verify_types() {
   }
   // TODO got to have a better way to make tuple types i think
   type = all_types ? Type_ : Tup(type_vec);
+  return false;
 }
 
-void InDecl::verify_types() {
+bool InDecl::verify_types() {
   STARTING_CHECK;
   container->verify_types();
 
@@ -1012,7 +1057,7 @@ void InDecl::verify_types() {
     type             = Err;
     identifier->type = Err;
     ErrorLog::TypeIteration(span);
-    return;
+    return false;
   }
 
   if (container->type->is<Array>()) {
@@ -1034,6 +1079,7 @@ void InDecl::verify_types() {
   }
 
   identifier->type = type;
+  return type == Err;
 }
 
 Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
@@ -1094,7 +1140,7 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
-void Declaration::verify_types() {
+bool Declaration::verify_types() {
   STARTING_CHECK;
 
   if (type_expr) { type_expr->verify_types(); }
@@ -1162,7 +1208,7 @@ void Declaration::verify_types() {
 
   identifier->verify_types();
 
-  if (type == Err) { return; }
+  if (type == Err) { return false; }
 
   // TODO is this the right time to complete the struct definition?
   if (type->is<Struct>()) { type->as<Struct>().CompleteDefinition(); }
@@ -1214,31 +1260,34 @@ void Declaration::verify_types() {
 
   // TODO I hope this won't last very long. I don't love the syntax/approach
   VerifyDeclarationForMagic(identifier->token, type, span);
+  return true;
 }
 
-void Hole::verify_types() {}
+bool Hole::verify_types() { return true; }
 
-void ArrayType::verify_types() {
+bool ArrayType::verify_types() {
   STARTING_CHECK;
   length->verify_types();
   data_type->verify_types();
 
   type = Type_;
 
-  if (length->is<Hole>()) { return; }
+  if (length->is<Hole>()) { return true; }
 
   // TODO change this to just uint
   if (length->type != Int && length->type != Uint) {
     ErrorLog::ArrayIndexType(span);
+    return false;
   }
+  return true;
 }
 
-void ArrayLiteral::verify_types() {
+bool ArrayLiteral::verify_types() {
   STARTING_CHECK;
 
   if (elems.empty()) {
     type = EmptyArray;
-    return;
+    return true;
   }
 
   for (auto &elem : elems) { elem->verify_types(); }
@@ -1252,20 +1301,23 @@ void ArrayLiteral::verify_types() {
     // Types couldn't be joined. Emit an error
     ErrorLog::InconsistentArrayType(span);
     type = Err;
+    return false;
   } else if (joined == Err) {
     type = Err; // There were no valid types anywhere in the array
+    return false;
   } else {
     type = Arr(joined, elems.size());
+    return true;
   }
 }
 
-void FunctionLiteral::verify_types() {
+bool FunctionLiteral::verify_types() {
   STARTING_CHECK;
 
   return_type_expr->verify_types();
   if (ErrorLog::num_errs_ > 0) {
     type = Err;
-    return;
+    return false;
   }
 
   // TODO should named return types be required?
@@ -1280,7 +1332,7 @@ void FunctionLiteral::verify_types() {
 
   if (ret_type_val == IR::Val::None()) {
     type = Err;
-    return;
+    return false;
   }
 
   // TODO must this really be undeclared?
@@ -1290,10 +1342,10 @@ void FunctionLiteral::verify_types() {
   } else if (ret_type_val.type != Type_) {
     ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
     type = Err;
-    return;
+    return false;
   } else if (std::get<Type *>(ret_type_val.value) == Err) {
     type = Err;
-    return;
+    return false;
   }
 
   for (auto &input : inputs) { input->verify_types(); }
@@ -1308,9 +1360,10 @@ void FunctionLiteral::verify_types() {
 
   // TODO generics?
   type = Func(input_type_vec, ret_type);
+  return true;
 }
 
-void Case::verify_types() {
+bool Case::verify_types() {
   STARTING_CHECK;
   for (auto &[key, val] : key_vals) {
     key->verify_types();
@@ -1330,7 +1383,7 @@ void Case::verify_types() {
 
     if (val->type == Err) {
       type = Err;
-      return;
+      return false;
     }
     ++value_types[val->type];
   }
@@ -1360,52 +1413,64 @@ void Case::verify_types() {
         (4 * max_size > key_vals.size() && 8 * min_size < key_vals.size())) {
       ErrorLog::CaseTypeMismatch(this, max_type);
       type = max_type;
+      return true;
     } else {
       ErrorLog::CaseTypeMismatch(this);
       type = Err;
+      return false;
     }
   } else {
     type = value_types.begin()->first;
+    return true;
   }
 }
 
-void Statements::verify_types() {
-  for (auto &stmt : statements) { stmt->verify_types(); }
+bool Statements::verify_types() {
+  bool result = true;
+  for (auto &stmt : statements) { result &= stmt->verify_types(); }
+  return result;
 }
 
-void For::verify_types() {
-  for (auto &iter : iterators) { iter->verify_types(); }
-  statements->verify_types();
+bool For::verify_types() {
+  bool result = true;
+  for (auto &iter : iterators) { result &= iter->verify_types(); }
+  result &= statements->verify_types();
+  return result;
 }
 
-void Jump::verify_types() {
+bool Jump::verify_types() {
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
   while (scope_ptr && scope_ptr->is<ExecScope>()) {
     auto exec_scope_ptr = &scope_ptr->as<ExecScope>();
     if (exec_scope_ptr->can_jump) {
       scope = exec_scope_ptr;
-      return;
+      return true;
     }
     scope_ptr = exec_scope_ptr->parent;
   }
   ErrorLog::JumpOutsideLoop(span);
+  return false;
 }
 
 // Intentionally do not verify anything internal
-void CodeBlock::verify_types() { type = Code; }
+bool CodeBlock::verify_types() {
+  type = Code;
+  return true;
+}
 
-void ScopeNode::verify_types() {
+bool ScopeNode::verify_types() {
   STARTING_CHECK;
 
-  scope_expr->verify_types();
-  if (expr) { expr->verify_types(); }
-  stmts->verify_types();
+  bool result = true;
+  result &= scope_expr->verify_types();
+  if (expr) { result &= expr->verify_types(); }
+  result &= stmts->verify_types();
 
   if (!scope_expr->type->is<Scope_Type>()) {
     ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
     type = Err;
-    return;
+    return false;
   }
 
   // TODO verify it uses the fields correctly
@@ -1419,9 +1484,10 @@ void ScopeNode::verify_types() {
   //   }
   // }
   type = Void;
+  return true;
 }
 
-void ScopeLiteral::verify_types() {
+bool ScopeLiteral::verify_types() {
   STARTING_CHECK;
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
@@ -1436,7 +1502,7 @@ void ScopeLiteral::verify_types() {
                                          std::to_string(__LINE__) + ": ");
   }
 
-  if (cannot_proceed_due_to_errors) { return; }
+  if (cannot_proceed_due_to_errors) { return false; }
 
   VERIFY_AND_RETURN_ON_ERROR(enter_fn);
   VERIFY_AND_RETURN_ON_ERROR(exit_fn);
@@ -1453,9 +1519,10 @@ void ScopeLiteral::verify_types() {
                                          std::to_string(__LINE__) + ": ");
   }
 
-  if (cannot_proceed_due_to_errors) { return; }
+  if (cannot_proceed_due_to_errors) { return false; }
 
   type = ScopeType(Tup(enter_fn->type->as<Function>().input));
+  return true;
 }
 
 void Unop::VerifyReturnTypes(Type *ret_type) {

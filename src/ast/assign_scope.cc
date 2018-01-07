@@ -29,7 +29,6 @@ void Terminal::assign_scope(Scope *scope) {
     }
     for (auto d : s->decls) { d->assign_scope(s->type_scope); }
   }
-  // TODO enum type?
 }
 
 void ArrayType::assign_scope(Scope *scope) {

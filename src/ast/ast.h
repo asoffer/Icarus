@@ -27,8 +27,8 @@ namespace AST {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void lrvalue_check() override;                                       \
-  virtual void verify_types() override;                                        \
+  virtual bool lrvalue_check() override;                                       \
+  virtual bool verify_types() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -39,9 +39,9 @@ namespace AST {
   virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
-  virtual void lrvalue_check() override;                                       \
+  virtual bool lrvalue_check() override;                                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void verify_types() override;                                        \
+  virtual bool verify_types() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -50,9 +50,9 @@ namespace AST {
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
-  virtual void lrvalue_check() {}
+  virtual bool lrvalue_check() { return true; }
   virtual void assign_scope(Scope *) {}
-  virtual void verify_types() {}
+  virtual bool verify_types() { return true; }
   virtual void VerifyReturnTypes(Type *) {}
   virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(); }
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
@@ -78,9 +78,9 @@ struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const = 0;
-  virtual void lrvalue_check()                  = 0;
+  virtual bool lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *scope)       = 0;
-  virtual void verify_types()                   = 0;
+  virtual bool verify_types()                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -505,10 +505,10 @@ template <> inline decltype(auto) DoStage<0>(Node *node, Scope *scope) {
   node->assign_scope(scope);
 }
 template <> inline decltype(auto) DoStage<1>(Node *node, Scope *) {
-  node->verify_types();
+  return node->verify_types();
 }
 template <> inline decltype(auto) DoStage<2>(Node *node, Scope *) {
-  node->lrvalue_check();
+  return node->lrvalue_check();
 }
 template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
   return node->EmitIR(IR::Cmd::Kind::Exec);
@@ -516,8 +516,25 @@ template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
 
 template <int Low, int High> struct StageRange {
   decltype(auto) operator()(Node *node, Scope *scope) const {
-    DoStage<Low>(node, scope);
-    return StageRange<Low + 1, High>{}(node, scope);
+    using LowStageType  = decltype(DoStage<Low>(node, scope));
+    using HighStageType = decltype(DoStage<High>(node, scope));
+    if constexpr (std::is_same<LowStageType, void>::value) {
+      DoStage<Low>(node, scope);
+      return StageRange<Low + 1, High>{}(node, scope);
+    } else if constexpr (std::is_same<LowStageType, bool>::value) {
+        if constexpr(std::is_same<HighStageType, void>::value) {
+            if (DoStage<Low>(node, scope)) {
+              StageRange<Low + 1, High>{}(node, scope);
+            }
+          } else {
+        if (DoStage<Low>(node, scope)) {
+          return StageRange<Low + 1, High>{}(node, scope);
+        } else {
+          decltype(DoStage<High>(node, scope)) default_value{};
+          return default_value;
+        }
+      }
+    }
   }
 };
 template <int N> struct StageRange<N, N> {

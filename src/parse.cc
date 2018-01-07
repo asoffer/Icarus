@@ -7,6 +7,7 @@
 #include "util/timer.h"
 #include <cstdio>
 #include <queue>
+#include <array>
 #include <vector>
 #include <iosfwd>
 
@@ -418,7 +419,7 @@ static constexpr u64 RESERVED = kw_expr_block | kw_block | kw_struct | op_lt;
 // list (second line of each rule). If so, then the function given in the third
 // line of each rule is applied, replacing the matched nodes. Lastly, the new
 // nodes type is set to the given type in the first line.
-auto Rules = std::vector<Rule>{
+auto Rules = std::array{
     Rule(fn_expr, {EXPR, fn_arrow, EXPR}, BuildBinaryOperator),
     Rule(expr, {EXPR, (op_bl | OP_B), EXPR}, BuildBinaryOperator),
     Rule(op_b, {colon, eq}, CombineColonEq),
