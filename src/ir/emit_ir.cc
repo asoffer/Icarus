@@ -396,7 +396,7 @@ IR::Val AST::For::EmitIR(IR::Cmd::Kind kind) {
         if (::Type *t = std::get<::Type *>(container_val.value);
             t->is<Enum>()) {
           cmp = IR::Le(reg, IR::Val::Enum(&t->as<Enum>(),
-                                          t->as<Enum>().members.size() - 1));
+                                          t->as<Enum>().members_.size() - 1));
         } else {
           NOT_YET();
         }
@@ -737,8 +737,25 @@ static IR::Val EmitChainOpPair(Type *lhs_type, const IR::Val &lhs_ir,
 
 IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
   if (ops[0] == Language::Operator::Xor) {
-    auto val = IR::Val::Bool(false);
-    for (const auto &expr : exprs) { val = IR::Xor(val, expr->EmitIR(kind)); }
+    auto iter = exprs.begin();
+    auto val  = (*iter)->EmitIR(kind);
+    while (++iter != exprs.end()) {
+      val = IR::Xor(std::move(val), (*iter)->EmitIR(kind));
+    }
+    return val;
+  } else if (ops[0] == Language::Operator::Or && type->is<Enum>()) {
+    auto iter = exprs.begin();
+    auto val  = (*iter)->EmitIR(kind);
+    while (++iter != exprs.end()) {
+      val = IR::Or(std::move(val), (*iter)->EmitIR(kind));
+    }
+    return val;
+  } else if (ops[0] == Language::Operator::And && type->is<Enum>()) {
+    auto iter = exprs.begin();
+    auto val  = (*iter)->EmitIR(kind);
+    while (++iter != exprs.end()) {
+      val = IR::And(std::move(val), (*iter)->EmitIR(kind));
+    }
     return val;
   } else if (ops[0] == Language::Operator::Or && type == Type_) {
     // TODO probably want to check that each expression is a type? What if I

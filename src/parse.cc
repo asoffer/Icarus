@@ -192,14 +192,14 @@ BuildKWExprBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
 }
 
 static base::owned_ptr<AST::Node>
-BuildEnumLiteral(std::vector<base::owned_ptr<AST::Node>> nodes) {
+BuildEnumLiteral(std::vector<base::owned_ptr<AST::Node>> nodes, bool is_enum) {
   std::vector<std::string> members;
   if (nodes[1]->is<AST::Statements>()) {
     for (auto &stmt : nodes[1]->as<AST::Statements>().statements) {
       if (stmt->is<AST::Identifier>()) {
         // Quadratic but we need it as a vector eventually anyway because we do
         // care about the order the user put it in.
-        auto token = std::move(stmt->as<AST::Identifier>().token);
+        auto &token = stmt->as<AST::Identifier>().token;
         for (const auto &member : members) {
           if (member == token) {
             ErrorLog::RepeatedEnumName(stmt->span);
@@ -218,8 +218,9 @@ BuildEnumLiteral(std::vector<base::owned_ptr<AST::Node>> nodes) {
   static size_t anon_enum_counter = 0;
   return base::make_owned<AST::Terminal>(
       TextSpan(nodes[0]->span, nodes[1]->span),
-      IR::Val::Type(new Enum(
-          "__anon.enum" + std::to_string(anon_enum_counter++), members)));
+      IR::Val::Type(
+          new Enum("__anon.enum" + std::to_string(anon_enum_counter++),
+                   std::move(members), is_enum)));
 }
 
 static base::owned_ptr<AST::Node>
@@ -296,8 +297,8 @@ BuildKWBlock(std::vector<base::owned_ptr<AST::Node>> nodes) {
   if (tk == "case") {
     return BuildCase(std::move(nodes));
 
-  } else if (tk == "enum") {
-    return BuildEnumLiteral(std::move(nodes));
+  } else if (bool is_enum = (tk == "enum"); is_enum || tk == "flags") {
+    return BuildEnumLiteral(std::move(nodes), is_enum);
 
   } else if (tk == "struct") {
     return BuildStructLiteral(std::move(nodes));

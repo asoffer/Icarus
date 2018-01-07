@@ -173,7 +173,30 @@ Val Ptr(Val v) {
 Val Xor(Val v1, Val v2) {
   if (bool *b = std::get_if<bool>(&v1.value)) { return *b ? Neg(v2) : v2; }
   if (bool *b = std::get_if<bool>(&v2.value)) { return *b ? Neg(v1) : v1; }
-  MAKE_AND_RETURN2(Bool, Op::Xor);
+  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
+      *e2         = std::get_if<EnumVal>(&v2.value);
+      e1 != nullptr && e2 != nullptr) {
+    return Val::Enum(&v1.type->as<Enum>(), e1->value ^ e2->value);
+  }
+  MAKE_AND_RETURN2(v1.type, Op::Xor);
+}
+
+Val Or(Val v1, Val v2) {
+  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
+      *e2         = std::get_if<EnumVal>(&v2.value);
+      e1 != nullptr && e2 != nullptr) {
+    return Val::Enum(&v1.type->as<Enum>(), e1->value | e2->value);
+  }
+  MAKE_AND_RETURN2(v1.type, Op::Or);
+}
+
+Val And(Val v1, Val v2) {
+  if (EnumVal *e1 = std::get_if<EnumVal>(&v1.value),
+      *e2         = std::get_if<EnumVal>(&v2.value);
+      e1 != nullptr && e2 != nullptr) {
+    return Val::Enum(&v1.type->as<Enum>(), e1->value & e2->value);
+  }
+  MAKE_AND_RETURN2(v1.type, Op::And);
 }
 
 #define CONSTANT_PROPOGATION(cpp_type, fn, result_type)                        \
@@ -397,6 +420,8 @@ void Cmd::dump(size_t indent) const {
   case Op::Ge: std::cerr << "ge"; break;
   case Op::Gt: std::cerr << "gt"; break;
   case Op::Xor: std::cerr << "xor"; break;
+  case Op::Or: std::cerr << "or"; break;
+  case Op::And: std::cerr << "and"; break;
   case Op::Print: std::cerr << "print"; break;
   case Op::CondJump: std::cerr << "cond"; break;
   case Op::UncondJump: std::cerr << "uncond"; break;

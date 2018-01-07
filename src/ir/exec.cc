@@ -223,6 +223,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
     }
     break;
   case Op::Xor: return Xor(resolved[0], resolved[1]);
+  case Op::Or: return Or(resolved[0], resolved[1]);
+  case Op::And: return And(resolved[0], resolved[1]);
   case Op::Lt: return Lt(resolved[0], resolved[1]);
   case Op::Le: return Le(resolved[0], resolved[1]);
   case Op::Eq: return Eq(resolved[0], resolved[1]);
@@ -275,7 +277,28 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
             [](const std::string &s) { std::cerr << s; },
             [](const Addr &a) { std::cerr << a.to_string(); },
             [&resolved](EnumVal e) {
-              std::cerr << resolved[0].type->as<Enum>().members[e.value];
+              if (resolved[0].type->as<Enum>().is_enum_) {
+                std::cerr << resolved[0].type->as<Enum>().members_[e.value];
+              } else {
+                size_t val = e.value;
+                std::vector<std::string> vals;
+                const auto &members = resolved[0].type->as<Enum>().members_;
+                size_t i = 0;
+                size_t pow = 1;
+                while (pow <= val) {
+                  if (val & pow) { vals.push_back(members[i]); }
+                  ++i;
+                  pow <<= 1;
+                }
+                if (vals.empty()) {
+                  // TODO print something smart.
+                  std::cerr << "(empty)";
+                } else {
+                  auto iter = vals.begin();
+                  std::cerr << *iter++;
+                  while (iter != vals.end()) { std::cerr << " | " << *iter++; }
+                }
+              }
             },
             [](IR::Func *f) {
               std::cerr << "{" << f->type_->to_string() << "}";
@@ -537,7 +560,8 @@ Val ExecContext::ExecuteCmd(const Cmd &cmd) {
           cmd.type->as<Pointer>().pointee);
     }
     break;
-  case Op::CondJump: return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
+  case Op::CondJump:
+    return resolved[std::get<bool>(resolved[0].value) ? 1 : 2];
   case Op::UncondJump: return resolved[0];
   case Op::ReturnJump: return Val::Block(BlockIndex{-1});
   }

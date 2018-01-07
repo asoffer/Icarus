@@ -190,6 +190,7 @@ inline bool operator!=(const Val &lhs, const Val &rhs) { return !(lhs == rhs); }
 enum class Op : char {
   Trunc, Extend,
   Neg, // ! for bool, - for numeric types
+  Or, And,
   Add, Sub, Mul, Div, Mod, // numeric types only
   Lt, Le, Eq, Ne, Gt, Ge, // numeric types only
   Xor,
@@ -321,6 +322,8 @@ Val Ne(Val v1, Val v2);
 Val Ge(Val v1, Val v2);
 Val Gt(Val v1, Val v2);
 Val Xor(Val v1, Val v2);
+Val Or(Val v1, Val v2);
+Val And(Val v1, Val v2);
 Val Index(Val v1, Val v2);
 Val Cast(Val result_type, Val val);
 Val Call(Val fn, std::vector<Val> vals, std::vector<Val> result_locs);

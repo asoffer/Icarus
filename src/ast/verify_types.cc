@@ -332,7 +332,7 @@ void Access::verify_types() {
       // supposed to be a member so we should emit an error but carry on
       // assuming that this is an element of that enum type.
       type = evaled_type;
-      if (evaled_type->as<Enum>().IndexOrFail(member_name) ==
+      if (evaled_type->as<Enum>().IntValueOrFail(member_name) ==
           std::numeric_limits<size_t>::max()) {
         ErrorLog::MissingMember(span, member_name, evaled_type);
       }
@@ -697,24 +697,36 @@ void Binop::verify_types() {
   case Language::Operator::XorEq: {
     if (lhs->type == Bool && rhs->type == Bool) {
       type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
     } else {
       type = Err;
+      // TODO could be bool or enum.
       ErrorLog::XorEqNeedsBool(span);
     }
   } break;
   case Language::Operator::AndEq: {
     if (lhs->type == Bool && rhs->type == Bool) {
       type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
     } else {
       type = Err;
+      // TODO could be bool or enum.
       ErrorLog::AndEqNeedsBool(span);
     }
   } break;
   case Language::Operator::OrEq: {
     if (lhs->type == Bool && rhs->type == Bool) {
       type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
     } else {
       type = Err;
+      // TODO could be bool or enum.
       ErrorLog::OrEqNeedsBool(span);
     }
   } break;
@@ -929,33 +941,27 @@ void ChainOp::verify_types() {
     return;
   }
 
-  // TODO if some expressions have type errors we can and should still do some
-  // validation here
-  type = Bool;
+  // TODO Can we recover from errors here? Should we?
 
   // Safe to just check first because to be on the same chain they must all have
   // the same precedence, and ^, &, and | uniquely hold a given precedence.
-  if (ops[0] == Language::Operator::Or) {
+  if (ops[0] == Language::Operator::Or || ops[0] == Language::Operator::And ||
+      ops[0] == Language::Operator::Xor) {
     for (const auto &expr : exprs) {
       if (expr->type != exprs[0]->type) {
         ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                              std::to_string(__LINE__) + ": ");
       }
     }
-    if (exprs[0]->type != Bool && exprs[0]->type != Type_) {
+
+    if (exprs[0]->type != Bool &&
+        !(exprs[0]->type == Type_ && ops[0] == Language::Operator::Or) &&
+        (!exprs[0]->type->is<Enum>() || exprs[0]->type->as<Enum>().is_enum_)) {
       ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + ": ");
     }
-    type = exprs[0]->type;
 
-  } else if (ops[0] == Language::Operator::And ||
-             ops[0] == Language::Operator::Xor) {
-    for (const auto &expr : exprs) {
-      if (expr->type != Bool) {
-        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-      }
-    }
+    type = exprs[0]->type;
   } else {
     for (size_t i = 0; i < exprs.size() - 1; ++i) {
       if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
