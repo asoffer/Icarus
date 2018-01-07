@@ -647,6 +647,11 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     return IR::Val::None();
   } break;
   case Language::Operator::OrEq: {
+    if (type->is<Enum>()) {
+      auto lhs_lval = lhs->EmitLVal(kind);
+      IR::Store(IR::Or(IR::Load(lhs_lval), rhs->EmitIR(kind)), lhs_lval);
+      return IR::Val::None();
+    }
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
@@ -668,6 +673,12 @@ IR::Val AST::Binop::EmitIR(IR::Cmd::Kind kind) {
     return IR::Func::Current->Command(phi).reg();
   } break;
   case Language::Operator::AndEq: {
+    if (type->is<Enum>()) {
+      auto lhs_lval = lhs->EmitLVal(kind);
+      IR::Store(IR::And(IR::Load(lhs_lval), rhs->EmitIR(kind)), lhs_lval);
+      return IR::Val::None();
+    }
+
     auto land_block = IR::Func::Current->AddBlock();
     auto more_block = IR::Func::Current->AddBlock();
 
