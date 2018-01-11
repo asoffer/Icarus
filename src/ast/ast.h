@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <map>
 #include <memory>
+#include <optional>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -209,7 +210,7 @@ struct Call : public Expression {
 
   // Filled in after type verification
   DispatchTable dispatch_table_;
-  DispatchTable ComputeDispatchTable();
+  std::optional<DispatchTable> ComputeDispatchTable();
 };
 
 struct ArgumentMetaData {

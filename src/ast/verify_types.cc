@@ -471,27 +471,33 @@ std::string CallArgTypes::to_string() const {
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-DispatchTable Call::ComputeDispatchTable() {
+std::optional<DispatchTable> Call::ComputeDispatchTable() {
   DispatchTable table;
-
   for (Declaration *decl :
        scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
+    // TODO what about const vs. non-const declarations? For now just
+    // ignore non-const declarations.
+
+    if (!decl->const_) { continue; }
+    decl->verify_types();
+
     if (decl->type->is<Function>()) {
-      // TODO what about const vs. non-const declarations?
-      auto *fn = std::get<IR::Func *>(Evaluate(decl->init_val.get()).value);
+      auto fn_val = Evaluate(decl->init_val.get()).value;
+      auto **fn = std::get_if<IR::Func *>(&fn_val);
+      if (fn == nullptr) { return std::nullopt; }
 
       // Compute name -> argument number map.
       // TODO this should be done when the function is generated instead of
       // ad-hoc
       std::unordered_map<std::string, size_t> index_lookup;
-      for (size_t i = 0; i < fn->args_.size(); ++i) {
-        index_lookup[fn->args_[i].first] = i;
+      for (size_t i = 0; i < (*fn)->args_.size(); ++i) {
+        index_lookup[(*fn)->args_[i].first] = i;
       }
 
       // Match the ordered unnamed arguments
       Binding binding{decl,
                       std::vector<std::pair<Type *, Expression *>>(
-                          fn->args_.size(),
+                          (*fn)->args_.size(),
                           std::pair<Type *, Expression *>(nullptr, nullptr))};
       for (size_t i = 0; i < pos_.size(); ++i) {
         binding.exprs_[i] = std::pair(nullptr, pos_[i].get());
@@ -521,7 +527,7 @@ DispatchTable Call::ComputeDispatchTable() {
 
       for (size_t i = 0; i < binding.exprs_.size(); ++i) {
         if (binding.defaulted(i)) {
-          if (!fn->has_default(i)) {
+          if (!(*fn)->has_default(i)) {
             goto next_option;
           } else {
             binding.exprs_[i].first = decl->type->as<Function>().input[i];
@@ -539,7 +545,7 @@ DispatchTable Call::ComputeDispatchTable() {
             call_arg_types.pos_[i] = match;
           } else { // Matched a named argument
             // TODO implement flat_map for real
-            auto iter = call_arg_types.find(fn->args_[i].first);
+            auto iter = call_arg_types.find((*fn)->args_[i].first);
             ASSERT(iter != call_arg_types.named_.end(), "");
             iter->second = match;
           }
@@ -553,7 +559,7 @@ DispatchTable Call::ComputeDispatchTable() {
   next_option:;
   }
 
-  return table;
+  return std::move(table);
 }
 
 void DispatchTable::insert(CallArgTypes call_arg_types, Binding binding) {
@@ -584,11 +590,26 @@ bool Call::verify_types() {
   if (type == Err) { return false; }
 
   if (fn_->is<Identifier>()) {
+    for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+      if (scope_ptr->shadowed_decls_.find(fn_->as<Identifier>().token) !=
+          scope_ptr->shadowed_decls_.end()) {
+        type = Err;
+        return false;
+      }
+    }
+
     // When looking for a match, we know that no two matches can overlap since
     // we have already verified there is no shadowing. However, we still need to
     // verify that all cases involving variants are covered.
 
-    dispatch_table_ = ComputeDispatchTable();
+    auto maybe_table = ComputeDispatchTable();
+    if (!maybe_table.has_value()) {
+      // Failure because we can't emit IR for the function so the error was
+      // previously logged.
+      type = Err;
+      return false;
+    }
+    dispatch_table_ = std::move(maybe_table.value());
 
     u64 expanded_size = 1;
     for (const auto &arg : pos_) {
@@ -621,7 +642,6 @@ bool Call::verify_types() {
       out_types.push_back(outs.empty() ? Void : outs[0]);
     }
     type = Var(std::move(out_types));
-
   } else {
     // TODO reimplement casts and calling functions not bound to identifiers.
     ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
@@ -1143,8 +1163,13 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 bool Declaration::verify_types() {
   STARTING_CHECK;
 
-  if (type_expr) { type_expr->verify_types(); }
-  if (init_val) { init_val->verify_types(); }
+  bool can_continue = true;
+  if (type_expr) { can_continue &= type_expr->verify_types(); }
+  if (init_val) { can_continue &= init_val->verify_types(); }
+  if (!can_continue) {
+    type = type_expr ? type_expr->type : Err;
+    return false;
+  }
 
   // There are eight cases for the form of a declaration.
   //   1a. I: T         or    1b. I :: T
@@ -1235,13 +1260,17 @@ bool Declaration::verify_types() {
   // TODO Either guarantee that higher scopes have all declarations declared and
   // verified first, or check both in the upwards and downwards direction for
   // shadowing.
+  bool failed_shadowing = false;
   for (auto *decl : scope_->AllDeclsWithId(identifier->token)) {
     if (decl == this) { continue; }
     if (this < decl) {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-      if (Shadow(this, decl)) { ErrorLog::ShadowingDeclaration(*this, *decl); }
+     if (Shadow(this, decl)) {
+       failed_shadowing = true;
+       ErrorLog::ShadowingDeclaration(*this, *decl);
+      }
     }
   }
   auto iter = scope_->child_decls_.find(identifier->token);
@@ -1252,12 +1281,21 @@ bool Declaration::verify_types() {
         // because at each Declaration verification, we look both up and down
         // the scope tree.
         if (Shadow(this, decl)) {
+          failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
         }
       }
     }
   }
 
+  if (failed_shadowing) {
+    // TODO This may actually overshoot what we want. It may declare the
+    // higher-up-the-scope-tree identifier as the shadow when something else on
+    // a different branch could find it unambiguously. It's also just a hack
+    // from the get-go so maybe we should just do it the right way.
+    scope_->shadowed_decls_.insert(identifier->token);
+    return false;
+  }
   // TODO I hope this won't last very long. I don't love the syntax/approach
   VerifyDeclarationForMagic(identifier->token, type, span);
   return true;

@@ -103,7 +103,6 @@ void Scope::InsertDecl(AST::Declaration *decl) {
   }
 }
 
-
 std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
   std::vector<AST::Declaration *> matching_decls;
   for (auto scope_ptr = this; scope_ptr != nullptr;

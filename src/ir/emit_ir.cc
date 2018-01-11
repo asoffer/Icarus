@@ -581,9 +581,8 @@ IR::Val AST::Unop::EmitIR(IR::Cmd::Kind kind) {
     auto val = Evaluate(operand.get());
     ASSERT_EQ(val.type, Code);
     auto block = std::get<base::owned_ptr<AST::CodeBlock>>(val.value);
-    AST::DoStages<0, 2>(block->stmts.get(), scope_);
-    block->stmts->EmitIR(kind);
-    return IR::Val::None();
+    // TODO you forced kind to be exec by doing EmitIR with DoStages.
+    return AST::DoStages<0, 3>(block->stmts.get(), scope_);
   } break;
   case Language::Operator::Mul: return IR::Ptr(operand->EmitIR(kind));
   case Language::Operator::At: return PtrCallFix(operand->EmitIR(kind));
@@ -855,8 +854,9 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
 
 IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
                                             IR::Cmd::Kind kind) {
-  AST::DoStages<1, 2>(statements.get(), fn_scope.get());
-  if (ErrorLog::NumErrors() != 0) { return IR::Val::None(); }
+  if (!AST::DoStages<1, 2>(statements.get(), fn_scope.get())) {
+    return IR::Val::None();
+  }
 
   if (!ir_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args;

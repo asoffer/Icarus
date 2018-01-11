@@ -3,8 +3,8 @@
 
 IR::Val Primitive::EmitInitialValue() const {
   switch (type_) {
-  case PrimType::Err: UNREACHABLE();
-  case PrimType::Unknown: UNREACHABLE();
+  case PrimType::Err: UNREACHABLE(this, ": Err");
+  case PrimType::Unknown: UNREACHABLE(this, ": Unknown");
   case PrimType::Type: return IR::Val::Type(Void);
   case PrimType::Void: UNREACHABLE();
   case PrimType::NullPtr: UNREACHABLE();

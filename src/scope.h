@@ -72,6 +72,7 @@ struct Scope : public base::Cast<Scope> {
   void InsertDecl(AST::Declaration *decl);
 
   FnScope *ContainingFnScope();
+  std::unordered_set<std::string> shadowed_decls_;
   std::unordered_map<std::string, std::vector<AST::Declaration *>> decls_;
   std::unordered_map<std::string, std::vector<AST::Declaration *>> child_decls_;
   Scope *parent = nullptr;

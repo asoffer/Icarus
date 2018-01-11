@@ -52,8 +52,9 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
   }
 
   CURRENT_FUNC(nullptr) {
-    fn = base::wrap_unique(
-        std::get<IR::Func *>(fn_lit.EmitTemporaryIR(kind).value));
+    auto result = fn_lit.EmitTemporaryIR(kind);
+    ASSERT_NE(result, IR::Val::None());
+    fn = base::wrap_unique(std::get<IR::Func *>(result.value));
   }
 
   to_release->release();
@@ -99,13 +100,8 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<IR::Val> results;
   IR::ExecContext context;
   bool were_errors;
-  // TODO need to count errors locally.
-  if (ErrorLog::NumErrors() != 0) {
-    ErrorLog::Dump();
-    return IR::Val::None();
-  }
-  auto fn = ExprFn(expr, nullptr, IR::Cmd::Kind::Exec);
-  results = fn->Execute({}, &context, &were_errors);
+  results = ExprFn(expr, nullptr, IR::Cmd::Kind::Exec)
+                ->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
 
