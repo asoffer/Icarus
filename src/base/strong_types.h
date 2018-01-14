@@ -97,6 +97,12 @@ inline bool operator!=(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
                        StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
   return !(lhs == rhs);
 }
+
+template <typename IndexType, typename BaseType, BaseType DefaultValue>
+inline bool operator<(StrongIndex<IndexType, BaseType, DefaultValue> lhs,
+                      StrongIndex<IndexType, BaseType, DefaultValue> rhs) {
+  return lhs.value < rhs.value;
+}
 } // namespace base
 
 namespace std {

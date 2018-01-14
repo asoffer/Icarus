@@ -519,15 +519,15 @@ template <int Low, int High> struct StageRange {
   decltype(auto) operator()(Node *node, Scope *scope) const {
     using LowStageType  = decltype(DoStage<Low>(node, scope));
     using HighStageType = decltype(DoStage<High>(node, scope));
-    if constexpr (std::is_same<LowStageType, void>::value) {
+    if constexpr (std::is_same_v<LowStageType, void>) {
       DoStage<Low>(node, scope);
       return StageRange<Low + 1, High>{}(node, scope);
-    } else if constexpr (std::is_same<LowStageType, bool>::value) {
-        if constexpr(std::is_same<HighStageType, void>::value) {
-            if (DoStage<Low>(node, scope)) {
-              StageRange<Low + 1, High>{}(node, scope);
-            }
-          } else {
+    } else if constexpr (std::is_same_v<LowStageType, bool>) {
+      if constexpr (std::is_same_v<HighStageType, void>) {
+        if (DoStage<Low>(node, scope)) {
+          StageRange<Low + 1, High>{}(node, scope);
+        }
+      } else {
         if (DoStage<Low>(node, scope)) {
           return StageRange<Low + 1, High>{}(node, scope);
         } else {

@@ -1,8 +1,8 @@
 #ifndef ICARUS_BASE_STRING_H
 #define ICARUS_BASE_STRING_H
 
-#include <string>
 #include <sstream>
+#include <string>
 
 namespace base {
 namespace internal {
@@ -13,7 +13,7 @@ template <typename T> std::string stringify(T &&t);
 
 template <typename T>
 auto stringify(dispatch_rank<7>, const T &s)
-    -> decltype(std::enable_if_t<std::is_same<T, std::string>::value>(),
+    -> decltype(std::enable_if_t<std::is_same_v<T, std::string>>(),
                 std::string()) {
   return s;
 }
@@ -61,16 +61,14 @@ auto stringify(dispatch_rank<3>, const T &t)
 
 template <typename T>
 auto stringify(dispatch_rank<2>, T c)
-    -> decltype(std::enable_if_t<std::is_same<T, char>::value>(),
-                std::string()) {
+    -> decltype(std::enable_if_t<std::is_same_v<T, char>>(), std::string()) {
   if (c == '\0') { return "\\0"; }
   return std::string(1, c);
 }
 
 template <typename T>
 auto stringify(dispatch_rank<2>, T b)
-    -> decltype(std::enable_if_t<std::is_same<T, bool>::value>(),
-                std::string()) {
+    -> decltype(std::enable_if_t<std::is_same_v<T, bool>>(), std::string()) {
   return b ? "true" : "false";
 }
 
