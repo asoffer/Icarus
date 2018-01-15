@@ -47,7 +47,7 @@ struct SourceLocation {
 
   void BackUp() {
     // You can't back up to a previous line.
-    ASSERT_GT(cursor.offset, 0);
+    ASSERT_GT(cursor.offset, 0u);
     --cursor.offset;
   }
 

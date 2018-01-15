@@ -138,7 +138,7 @@ Scope_Type *ScopeType(Type *t) {
 
 static std::map<std::vector<Type *>, Variant> variants_;
 Type *Var(std::vector<Type *> variants) {
-  ASSERT_NE(variants.size(), 0);
+  ASSERT_NE(variants.size(), 0u);
   if (variants.size() == 1) { return variants[0]; }
 
   size_t end = variants.size();

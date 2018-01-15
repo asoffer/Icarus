@@ -222,7 +222,7 @@ struct Stack {
   ~Stack() { free(stack_); }
 
   template <typename T> T Load(size_t index) {
-    ASSERT_EQ(index & (alignof(T) - 1), 0); // Alignment error
+    ASSERT_EQ(index & (alignof(T) - 1), 0u); // Alignment error
     return *reinterpret_cast<T *>(this->location(index));
   }
 

@@ -19,12 +19,14 @@
 
 #define ASSERT_SYM(lhs, rhs, sym)                                              \
   do {                                                                         \
-    if (!((lhs)sym(rhs))) {                                                    \
+    auto lhs_val = (lhs);                                                      \
+    auto rhs_val = (rhs);                                                      \
+    if (!(lhs_val sym rhs_val)) {                                              \
       LOG << "Assertion failed.\n"                                             \
              "  Expected: "                                                    \
           << #lhs << ' ' << #sym << ' ' << #rhs << "\n  Actual:\n"             \
-          << "    LHS = " << (lhs) << '\n'                                     \
-          << "    RHS = " << (rhs) << '\n';                                    \
+          << "    LHS = " << lhs_val << '\n'                                   \
+          << "    RHS = " << rhs_val << '\n';                                  \
       std::abort();                                                            \
     }                                                                          \
   } while (false)

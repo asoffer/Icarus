@@ -1,65 +1,75 @@
 #include "ast.h"
-#include "../type/type.h"
-#include "../error_log.h"
 
+#include "../error_log.h"
+#include "../type/type.h"
+
+static constexpr int ThisStage() { return 2; }
 namespace AST {
-bool Identifier::lrvalue_check() {
+void Identifier::lrvalue_check() {
+  STAGE_CHECK;
   ASSERT_NE(decl, nullptr);
   lvalue = decl->const_ ? Assign::Const : Assign::LVal;
-  return true;
 }
 
-bool Unop::lrvalue_check() {
-  bool result = operand->lrvalue_check();
+void Unop::lrvalue_check() {
+  STAGE_CHECK;
+  operand->lrvalue_check();
+  limit_to(operand);
   switch (op) {
-    case Language::Operator::And:
-      switch (operand->lvalue) {
-      case Assign::Const: [[fallthrough]];
-      case Assign::RVal:
-        ErrorLog::InvalidAddress(span, operand->lvalue);
-        lvalue = Assign::RVal;
-        return false;
-      case Assign::LVal: break;
-      case Assign::Unset: UNREACHABLE();
-      }
-      return result;
-    case Language::Operator::At: lvalue = Assign::LVal; return true;
-    default:
-      lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
-      return true;
+  case Language::Operator::And:
+    switch (operand->lvalue) {
+    case Assign::Const: [[fallthrough]];
+    case Assign::RVal:
+      ErrorLog::InvalidAddress(span, operand->lvalue);
+      lvalue = Assign::RVal;
+      break;
+    case Assign::LVal: break;
+    case Assign::Unset: UNREACHABLE();
+    }
+    break;
+  case Language::Operator::At: lvalue = Assign::LVal; break;
+  default:
+    lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
+    break;
   }
 }
 
-bool Call::lrvalue_check() {
-  bool result = true;
+void Call::lrvalue_check() {
+  STAGE_CHECK;
   bool all_const = true;
   for (auto &pos : pos_) {
-    result &= pos->lrvalue_check();
+    pos->lrvalue_check();
+    limit_to(pos);
     all_const &= pos->lvalue == Assign::Const;
   }
   for (auto & [ key, val ] : named_) {
-    result &= val->lrvalue_check();
+    val->lrvalue_check();
+    limit_to(val);
     all_const &= val->lvalue == Assign::Const;
   }
   lvalue = all_const ? Assign::Const : Assign::RVal;
-  return result;
 }
 
-bool Access::lrvalue_check() {
-  bool result = operand->lrvalue_check();
+void Access::lrvalue_check() {
+  STAGE_CHECK;
+  operand->lrvalue_check();
+  limit_to(operand);
   lvalue = (operand->type->is<Array>() &&
             operand->type->as<Array>().fixed_length && member_name == "size")
                ? Assign::Const
                : operand->lvalue;
-  return result;
 }
 
-bool Binop::lrvalue_check() {
-  bool result = lhs->lrvalue_check() & rhs->lrvalue_check();
+void Binop::lrvalue_check() {
+  STAGE_CHECK;
+  lhs->lrvalue_check();
+  rhs->lrvalue_check();
+  limit_to(lhs);
+  limit_to(lhs);
 
   if (is_assignment() && lhs->lvalue != Assign::LVal) {
     ErrorLog::InvalidAssignment(span, lhs->lvalue);
-    result = false;
+    limit_to(StageRange::Nothing());
 
   } else if (op == Language::Operator::Cast ||
              op == Language::Operator::Index) {
@@ -69,121 +79,150 @@ bool Binop::lrvalue_check() {
   } else {
     lvalue = Assign::RVal;
   }
-  return result;
 }
 
-bool ChainOp::lrvalue_check() {
+void ChainOp::lrvalue_check() {
+  STAGE_CHECK;
   bool result = true;
   lvalue      = Assign::Const;
   for (auto &expr : exprs) {
-    result &= expr->lrvalue_check();
+    expr->lrvalue_check();
+    limit_to(expr);
     if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
-  return result;
 }
 
-bool CommaList::lrvalue_check() {
-  bool result = true;
-  lvalue      = Assign::Const;
-  for (auto &expr : exprs) {
-    result &= expr->lrvalue_check();
-    if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
-  }
-  return result;
-}
-
-bool FunctionLiteral::lrvalue_check() {
+void CommaList::lrvalue_check() {
+  STAGE_CHECK;
   lvalue = Assign::Const;
-  return return_type_expr->lrvalue_check();
+  for (auto &expr : exprs) {
+    expr->lrvalue_check();
+    limit_to(expr);
+    if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
+  }
 }
 
-bool InDecl::lrvalue_check() {
+void FunctionLiteral::lrvalue_check() {
+  STAGE_CHECK;
+  lvalue = Assign::Const;
+  return_type_expr->lrvalue_check();
+  limit_to(return_type_expr);
+}
+
+void InDecl::lrvalue_check() {
+  STAGE_CHECK;
   lvalue = Assign::RVal;
-  return identifier->lrvalue_check() & container->lrvalue_check();
+  identifier->lrvalue_check();
+  container->lrvalue_check();
+  limit_to(identifier);
+  limit_to(container);
 }
 
-bool Declaration::lrvalue_check() {
-  bool result = true;
-  lvalue      = const_ ? Assign::Const : Assign::RVal;
-  result &= identifier->lrvalue_check();
-  if (type_expr) { result &= type_expr->lrvalue_check(); }
+void Declaration::lrvalue_check() {
+  STAGE_CHECK;
+  lvalue = const_ ? Assign::Const : Assign::RVal;
+  identifier->lrvalue_check();
+  limit_to(identifier);
+  if (type_expr) {
+    type_expr->lrvalue_check();
+    limit_to(type_expr);
+  }
   if (init_val) {
-    result &= init_val->lrvalue_check();
+    init_val->lrvalue_check();
+    limit_to(init_val);
     if (init_val->lvalue != Assign::Const && const_) {
       ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
                                            std::to_string(__LINE__) + "\n");
-      result = false;
+      limit_to(StageRange::Nothing());
     }
   }
-  return result;
 }
 
-bool ArrayType::lrvalue_check() {
-  bool result = true;
+void ArrayType::lrvalue_check() {
+  STAGE_CHECK;
   lvalue = Assign::Const;
-  if (length) {
-    result &= length->lrvalue_check();
+  if (length != nullptr) {
+    length->lrvalue_check();
+    limit_to(length);
     if (length->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
-  result &= data_type->lrvalue_check();
+  data_type->lrvalue_check();
+  limit_to(data_type);
   if (data_type->lvalue != Assign::Const) { lvalue = Assign::RVal; }
-  return result;
 }
 
-bool ArrayLiteral::lrvalue_check() {
-  bool result = true;
-  lvalue      = Assign::Const;
-  for (auto &elem : elems) { 
-    result &= elem->lrvalue_check();
+void ArrayLiteral::lrvalue_check() {
+  STAGE_CHECK;
+  lvalue = Assign::Const;
+  for (auto &elem : elems) {
+    elem->lrvalue_check();
+    limit_to(elem);
     if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
   }
-  return result;
 }
 
-bool Case::lrvalue_check() {
-  bool result = true;
-  lvalue      = Assign::Const;
+void Case::lrvalue_check() {
+  STAGE_CHECK;
+  lvalue = Assign::Const;
   for (auto & [ key, val ] : key_vals) {
-   result &= key->lrvalue_check() & val->lrvalue_check();
-   // TODO do you want case-statements to be usable as lvalues? Currently they
-   // are not.
-   if (key->lvalue != Assign::Const || val->lvalue != Assign::Const) {
-     lvalue = Assign::RVal;
-   }
+    key->lrvalue_check();
+    val->lrvalue_check();
+    limit_to(key);
+    limit_to(val);
+
+    // TODO do you want case-statements to be usable as lvalues? Currently they
+    // are not.
+    if (key->lvalue != Assign::Const || val->lvalue != Assign::Const) {
+      lvalue = Assign::RVal;
+    }
   }
-  return result;
 }
 
-bool Statements::lrvalue_check() {
-  bool result =true;
-  for (auto &stmt : statements) { result &= stmt->lrvalue_check(); }
-  return result;
+void Statements::lrvalue_check() {
+  STAGE_CHECK;
+  for (auto &stmt : statements) {
+    stmt->lrvalue_check();
+    limit_to(stmt);
+  }
 }
 
-bool Jump::lrvalue_check() { return true; }
-bool CodeBlock::lrvalue_check() { return true; }
-bool Hole::lrvalue_check() { return true; }
+void Jump::lrvalue_check() { STAGE_CHECK; }
+void CodeBlock::lrvalue_check() { STAGE_CHECK; }
+void Hole::lrvalue_check() { STAGE_CHECK; }
 
-bool For::lrvalue_check() {
-  bool result = statements->lrvalue_check();
-  for (auto &decl : iterators) { result &= decl->lrvalue_check(); }
-  return result;
+void For::lrvalue_check() {
+  STAGE_CHECK;
+  statements->lrvalue_check();
+  limit_to(statements);
+  for (auto &decl : iterators) {
+    decl->lrvalue_check();
+    limit_to(decl);
+  }
 }
 
-bool ScopeNode::lrvalue_check(){
-  bool result = scope_expr->lrvalue_check();
-  if (expr) { result &= expr->lrvalue_check(); }
+void ScopeNode::lrvalue_check() {
+  STAGE_CHECK;
+  scope_expr->lrvalue_check();
+  if (expr != nullptr) {
+    expr->lrvalue_check();
+    limit_to(expr);
+  }
   lvalue = Assign::RVal;
   // TODO Support better constant-ness.
-  return result & stmts->lrvalue_check();
+  stmts->lrvalue_check();
+  limit_to(stmts);
 }
 
-bool ScopeLiteral::lrvalue_check() {
+void ScopeLiteral::lrvalue_check() {
+  STAGE_CHECK;
   lvalue = Assign::Const;
-  return enter_fn->lrvalue_check() & exit_fn->lrvalue_check();
+  enter_fn->lrvalue_check();
+  exit_fn->lrvalue_check();
+  limit_to(enter_fn);
+  limit_to(exit_fn);
 }
-bool Terminal::lrvalue_check() {
+void Terminal::lrvalue_check() {
+  STAGE_CHECK;
   lvalue = Assign::Const;
-  return true;
 }
 } // namespace AST

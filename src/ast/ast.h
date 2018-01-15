@@ -24,12 +24,28 @@ struct Scope;
 enum class Assign : char { Unset, Const, LVal, RVal };
 
 namespace AST {
+struct StageRange {
+  // Last stage completed so far.
+  int low = -1;
+  // Last stage you can safely compute.
+  int high = std::numeric_limits<int>::max();
+  static constexpr int Nothing() { return -1; }
+  static constexpr int NoEmitIR() { return 2; }
+};
+
+#define STAGE_CHECK                                                            \
+  do {                                                                         \
+    if (stage_range_.high < ThisStage()) { return; }                           \
+    if (stage_range_.low >= ThisStage()) { return; }                           \
+    stage_range_.low++;                                                        \
+  } while (false)
+
 #define VIRTUAL_METHODS_FOR_NODES                                              \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual bool lrvalue_check() override;                                       \
-  virtual bool verify_types() override;                                        \
+  virtual void lrvalue_check() override;                                       \
+  virtual void verify_types() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -40,9 +56,9 @@ namespace AST {
   virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
-  virtual bool lrvalue_check() override;                                       \
+  virtual void lrvalue_check() override;                                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual bool verify_types() override;                                        \
+  virtual void verify_types() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -51,10 +67,10 @@ namespace AST {
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
-  virtual bool lrvalue_check() { return true; }
+  virtual void lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *) {}
-  virtual bool verify_types() { return true; }
-  virtual void VerifyReturnTypes(Type *) {}
+  virtual void verify_types() = 0;
+
   virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(); }
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   virtual void
@@ -64,6 +80,15 @@ struct Node : public base::Cast<Node> {
 
   std::string to_string() const { return to_string(0); }
 
+  template <typename T> void limit_to(T &&t) {
+    if constexpr (std::is_same_v<std::decay_t<T>, int>) {
+      stage_range_.high = t;
+    } else {
+      stage_range_.high =
+          std::min(stage_range_.high, std::forward<T>(t)->stage_range_.high);
+    }
+  }
+
   Node(const TextSpan &span = TextSpan()) : span(span) {}
   virtual ~Node() {}
 
@@ -72,6 +97,7 @@ struct Node : public base::Cast<Node> {
   }
 
   Scope *scope_ = nullptr;
+  StageRange stage_range_;
   TextSpan span;
 };
 
@@ -79,9 +105,9 @@ struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const = 0;
-  virtual bool lrvalue_check()                  = 0;
+  virtual void lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *scope)       = 0;
-  virtual bool verify_types()                   = 0;
+  virtual void verify_types()                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -90,8 +116,6 @@ struct Expression : public Node {
   virtual void
   contextualize(const Node *correspondant,
                 const std::unordered_map<const Expression *, IR::Val> &) = 0;
-
-  virtual void VerifyReturnTypes(Type *) {}
 
   virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(*this); }
   virtual IR::Val EmitLVal(IR::Cmd::Kind) { NOT_YET(*this); }
@@ -125,6 +149,8 @@ struct TokenNode : public Node {
 
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
+  virtual void verify_types() {}
+  virtual void lrvalue_check() {}
 
   virtual void
   contextualize(const Node *correspondant,
@@ -272,7 +298,6 @@ struct Statements : public Node {
 
   Statements *Clone() const override;
   VIRTUAL_METHODS_FOR_NODES;
-  void VerifyReturnTypes(Type *ret_val) override;
   IR::Val EmitIR(IR::Cmd::Kind) override;
 
   inline size_t size() { return statements.size(); }
@@ -323,7 +348,6 @@ struct Unop : public Expression {
   BuildLeft(std::vector<base::owned_ptr<AST::Node>> nodes);
   static base::owned_ptr<Node>
   BuildDots(std::vector<base::owned_ptr<AST::Node>> nodes);
-  virtual void VerifyReturnTypes(Type *ret_val) override;
   virtual IR::Val EmitIR(IR::Cmd::Kind);
   virtual IR::Val EmitLVal(IR::Cmd::Kind);
 
@@ -442,8 +466,6 @@ struct For : public Node {
   static base::owned_ptr<Node>
   Build(std::vector<base::owned_ptr<AST::Node>> nodes);
 
-  virtual void VerifyReturnTypes(Type *ret_val) override;
-
   std::vector<base::owned_ptr<InDecl>> iterators;
   base::owned_ptr<Statements> statements;
   base::owned_ptr<ExecScope> for_scope;
@@ -452,8 +474,6 @@ struct For : public Node {
 struct Jump : public Node {
   enum class JumpType { Restart, Continue, Repeat, Break, Return };
   Jump *Clone() const override;
-
-  virtual void VerifyReturnTypes(Type *ret_val) override;
 
   static base::owned_ptr<Node>
   build(std::vector<base::owned_ptr<AST::Node>> nodes);
@@ -506,45 +526,28 @@ template <> inline decltype(auto) DoStage<0>(Node *node, Scope *scope) {
   node->assign_scope(scope);
 }
 template <> inline decltype(auto) DoStage<1>(Node *node, Scope *) {
-  return node->verify_types();
+  node->verify_types();
 }
 template <> inline decltype(auto) DoStage<2>(Node *node, Scope *) {
-  return node->lrvalue_check();
+  node->lrvalue_check();
 }
 template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
   return node->EmitIR(IR::Cmd::Kind::Exec);
 }
 
-template <int Low, int High> struct StageRange {
+template <int Low, int High> struct ApplyStageRange {
   decltype(auto) operator()(Node *node, Scope *scope) const {
-    using LowStageType  = decltype(DoStage<Low>(node, scope));
-    using HighStageType = decltype(DoStage<High>(node, scope));
-    if constexpr (std::is_same_v<LowStageType, void>) {
-      DoStage<Low>(node, scope);
-      return StageRange<Low + 1, High>{}(node, scope);
-    } else if constexpr (std::is_same_v<LowStageType, bool>) {
-      if constexpr (std::is_same_v<HighStageType, void>) {
-        if (DoStage<Low>(node, scope)) {
-          StageRange<Low + 1, High>{}(node, scope);
-        }
-      } else {
-        if (DoStage<Low>(node, scope)) {
-          return StageRange<Low + 1, High>{}(node, scope);
-        } else {
-          decltype(DoStage<High>(node, scope)) default_value{};
-          return default_value;
-        }
-      }
-    }
+    DoStage<Low>(node, scope);
+    return ApplyStageRange<Low + 1, High>{}(node, scope);
   }
 };
-template <int N> struct StageRange<N, N> {
+template <int N> struct ApplyStageRange<N, N> {
   decltype(auto) operator()(Node *node, Scope *scope) const {
     return DoStage<N>(node, scope);
   }
 };
 template <int Low, int High> decltype(auto) DoStages(Node *node, Scope *scope) {
-  return StageRange<Low, High>{}(node, scope);
+  return ApplyStageRange<Low, High>{}(node, scope);
 }
 } // namespace AST
 

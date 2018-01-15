@@ -7,6 +7,7 @@
 #include "../scope.h"
 #include "../type/type.h"
 
+static constexpr int ThisStage() { return 3; }
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
 
@@ -854,9 +855,8 @@ IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
 
 IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
                                             IR::Cmd::Kind kind) {
-  if (!AST::DoStages<1, 2>(statements.get(), fn_scope.get())) {
-    return IR::Val::None();
-  }
+  AST::DoStages<1, 2>(statements.get(), fn_scope.get());
+  if (statements->stage_range_.high < ThisStage()) { return IR::Val::None(); }
 
   if (!ir_func) {
     std::vector<std::pair<std::string, AST::Expression *>> args;

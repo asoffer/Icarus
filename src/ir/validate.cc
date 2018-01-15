@@ -52,7 +52,7 @@ struct PropDB {
     for (const auto &viewing_block : fn_->blocks_) {
       auto &view = views_[&viewing_block];
       if (fn_->args_.size() == 1) {
-        ASSERT_EQ(fn_->ir_type->input.size(), 1);
+        ASSERT_EQ(fn_->ir_type->input.size(), 1u);
         auto prop = DefaultProperty(fn_->ir_type->input[0]);
         ASSERT_NE(prop.get(), nullptr);
         view.props_[Register(0)] = std::move(prop);
@@ -466,7 +466,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
       arg_props.push_back(prop_db.Get(*calling_block, arg));
     }
     for (const auto &precondition : called_fn->preconditions_) {
-      ASSERT_EQ(called_fn->type_->input.size(), 1);
+      ASSERT_EQ(called_fn->type_->input.size(), 1u);
       auto ir_fn =
           ExprFn(precondition, called_fn->type_->input[0], IR::Cmd::Kind::Exec);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
@@ -500,7 +500,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
           prop_db.views_[exit_block].ret_props_[ReturnValue(i)]);
     }
 
-    ASSERT_EQ(input_types.size(), 1);
+    ASSERT_EQ(input_types.size(), 1u);
     auto ir_fn =
         ExprFn(postcondition, input_types[0], IR::Cmd::Kind::PostCondition);
     if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {

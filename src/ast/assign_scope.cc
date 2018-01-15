@@ -5,20 +5,27 @@
 #include "../type/type.h"
 
 namespace AST {
+static constexpr int ThisStage() { return 0; }
 
 void Unop::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   operand->assign_scope(scope);
 }
 
 void Access::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   operand->assign_scope(scope);
 }
 
-void Identifier::assign_scope(Scope *scope) { scope_ = scope; }
+void Identifier::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_ = scope;
+}
 
 void Terminal::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   if (type != Type_) { return; }
   if (std::get<Type *>(value.value)->is<Struct>()) {
@@ -32,12 +39,14 @@ void Terminal::assign_scope(Scope *scope) {
 }
 
 void ArrayType::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   length->assign_scope(scope);
   data_type->assign_scope(scope);
 }
 
 void For::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   if (!for_scope) { for_scope = scope->add_child<ExecScope>(); }
   for_scope->can_jump = true;
   for (auto &iter : iterators) { iter->assign_scope(for_scope.get()); }
@@ -45,17 +54,20 @@ void For::assign_scope(Scope *scope) {
 }
 
 void ArrayLiteral::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   for (auto &el : elems) { el->assign_scope(scope); }
 }
 
 void Binop::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   lhs->assign_scope(scope);
   if (rhs) { rhs->assign_scope(scope); }
 }
 
 void InDecl::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   scope_->InsertDecl(this);
   identifier->assign_scope(scope);
@@ -63,6 +75,7 @@ void InDecl::assign_scope(Scope *scope) {
 }
 
 void Declaration::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   ASSERT(scope, "");
   scope_ = scope;
   scope_->InsertDecl(this);
@@ -72,29 +85,34 @@ void Declaration::assign_scope(Scope *scope) {
 }
 
 void ChainOp::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
 void CommaList::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   for (auto &expr : exprs) { expr->assign_scope(scope); }
 }
 
 void Case::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
-  for (auto &[key, val] : key_vals) {
+  for (auto & [ key, val ] : key_vals) {
     key->assign_scope(scope);
     val->assign_scope(scope);
   }
 }
 
 void Statements::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   for (auto &stmt : statements) { stmt->assign_scope(scope); }
 }
 
 void FunctionLiteral::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   if (!fn_scope) {
     fn_scope         = scope->add_child<FnScope>();
@@ -106,10 +124,17 @@ void FunctionLiteral::assign_scope(Scope *scope) {
   statements->assign_scope(fn_scope.get());
 }
 
-void Jump::assign_scope(Scope *scope) { scope_ = scope; }
-void CodeBlock::assign_scope(Scope *scope) { scope_ = scope; }
+void Jump::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_ = scope;
+}
+void CodeBlock::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_ = scope;
+}
 
 void Call::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   fn_->assign_scope(scope);
   for (auto &num : pos_) { num->assign_scope(scope); }
@@ -117,6 +142,7 @@ void Call::assign_scope(Scope *scope) {
 }
 
 void ScopeNode::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_ = scope;
   if (!internal) { internal = scope_->add_child<ExecScope>(); }
   scope_expr->assign_scope(scope);
@@ -125,11 +151,15 @@ void ScopeNode::assign_scope(Scope *scope) {
 }
 
 void ScopeLiteral::assign_scope(Scope *scope) {
+  STAGE_CHECK;
   scope_     = scope;
   body_scope = scope->add_child<ExecScope>();
   if (enter_fn) { enter_fn->assign_scope(body_scope.get()); }
   if (exit_fn) { exit_fn->assign_scope(body_scope.get()); }
 }
 
-void Hole::assign_scope(Scope *scope) { scope_ = scope; }
+void Hole::assign_scope(Scope *scope) {
+  STAGE_CHECK;
+  scope_ = scope;
+}
 } // namespace AST
