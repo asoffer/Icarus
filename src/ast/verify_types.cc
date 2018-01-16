@@ -485,6 +485,7 @@ std::string CallArgTypes::to_string() const {
 // and null otherwise.
 std::optional<DispatchTable> Call::ComputeDispatchTable() {
   DispatchTable table;
+
   for (Declaration *decl :
        scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
     // TODO what about const vs. non-const declarations? For now just
@@ -605,10 +606,22 @@ void Call::verify_types() {
     return;
   }
 
+  // Identifiers need special handling due to overloading. compile-time
+  // constants need special handling because they admit named arguments. These
+  // concepts should be orthogonal.
+
   if (fn_->is<Identifier>()) {
     for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
       if (scope_ptr->shadowed_decls_.find(fn_->as<Identifier>().token) !=
           scope_ptr->shadowed_decls_.end()) {
+        // The declaration of this identifier is shadowed so it will be
+        // difficult to give meaningful error messages. Bailing out.
+        // TODO Come up with a good way to give decent error messages anyway (at
+        // least in some circumstances. For instance, there may be overlap here,
+        // but it may not be relevant to the function call at hand. If, for
+        // example, one call takes an A | B and the other takes a B | C, but
+        // here we wish to validate a call for just a C, it's safe to do so
+        // here.
         type = Err;
         limit_to(StageRange::Nothing());
         return;
@@ -662,6 +675,19 @@ void Call::verify_types() {
     }
     type = Var(std::move(out_types));
   } else {
+    VERIFY_AND_RETURN_ON_ERROR(fn_);
+    if (dispatch_table_.bindings_.size() != 1) {
+      ErrorLog::LogGeneric(span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      type = Err;
+      limit_to(StageRange::Nothing());
+      return;
+    }
+
+    const auto & [ call_arg_type, binding ] =
+        *dispatch_table_.bindings_.begin();
+
+    LOG << fn_->type;
     // TODO reimplement casts and calling functions not bound to identifiers.
     ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
     type      = Err;
@@ -1077,14 +1103,13 @@ void ChainOp::verify_types() {
 }
 
 void CommaList::verify_types() {
+  STAGE_CHECK;
   STARTING_CHECK;
-  bool found_err = false;
   for (auto &expr : exprs) {
     expr->verify_types();
-    if (expr->type == Err) { found_err = true; }
+    if (expr->type == Err) { type = Err; }
   }
-  if (found_err) {
-    type = Err;
+  if (type == Err) {
     limit_to(StageRange::Nothing());
     return;
   }
@@ -1104,7 +1129,6 @@ void CommaList::verify_types() {
   }
   // TODO got to have a better way to make tuple types i think
   type = all_types ? Type_ : Tup(type_vec);
-  limit_to(StageRange::NoEmitIR());
 }
 
 void InDecl::verify_types() {
@@ -1201,16 +1225,17 @@ static void VerifyDeclarationForMagic(const std::string &magic_method_name,
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
 void Declaration::verify_types() {
+  STAGE_CHECK;
   STARTING_CHECK;
 
   if (type_expr) {
     type_expr->verify_types();
-    type = Err;
+    if (type_expr->type == Err) { type = Err; };
     limit_to(type_expr);
   }
   if (init_val) {
     init_val->verify_types();
-    type = Err;
+    if (init_val->type == Err) { type = Err; };
     limit_to(init_val);
   }
   if (type == Err) {
@@ -1320,9 +1345,10 @@ void Declaration::verify_types() {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-     if (Shadow(this, decl)) {
-       failed_shadowing = true;
-       ErrorLog::ShadowingDeclaration(*this, *decl);
+      decl->verify_types();
+      if (Shadow(this, decl)) {
+        failed_shadowing = true;
+        ErrorLog::ShadowingDeclaration(*this, *decl);
       }
     }
   }
@@ -1333,6 +1359,7 @@ void Declaration::verify_types() {
         // Pick one arbitrary but consistent ordering of the pair to check
         // because at each Declaration verification, we look both up and down
         // the scope tree.
+        decl->verify_types();
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1354,7 +1381,7 @@ void Declaration::verify_types() {
   VerifyDeclarationForMagic(identifier->token, type, span);
 }
 
-void Hole::verify_types() {}
+void Hole::verify_types() { STAGE_CHECK;}
 
 void ArrayType::verify_types() {
   STAGE_CHECK;
@@ -1522,6 +1549,7 @@ void Case::verify_types() {
 }
 
 void Statements::verify_types() {
+  STAGE_CHECK;
   for (auto &stmt : statements) {
     stmt->verify_types();
     limit_to(stmt);
@@ -1529,6 +1557,7 @@ void Statements::verify_types() {
 }
 
 void For::verify_types() {
+  STAGE_CHECK;
   for (auto &iter : iterators) {
     iter->verify_types();
     limit_to(iter);

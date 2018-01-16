@@ -37,7 +37,7 @@ struct StageRange {
   do {                                                                         \
     if (stage_range_.high < ThisStage()) { return; }                           \
     if (stage_range_.low >= ThisStage()) { return; }                           \
-    stage_range_.low++;                                                        \
+    stage_range_.low = ThisStage();                                            \
   } while (false)
 
 #define VIRTUAL_METHODS_FOR_NODES                                              \

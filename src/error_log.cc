@@ -71,7 +71,7 @@ static void GatherAndDisplayIdentifierError(
     const std::unordered_map<
         Source::Name, std::unordered_map<LineNum, std::vector<LineOffset>>>
         &map) {
-  for (const auto &[file, locs] : map) {
+  for (const auto & [ file, locs ] : map) {
     size_t max_line_num = 0;
     for (const auto & [ line, offsets ] : locs) {
       if (max_line_num < line) { max_line_num = line; }
@@ -86,7 +86,7 @@ static void GatherAndDisplayIdentifierError(
     std::cerr << "  Used " << NumTimes(num_uses_in_file) << " in '" << file
               << "':\n";
 
-    for (const auto &[line, offsets] : locs) {
+    for (const auto & [ line, offsets ] : locs) {
       auto line_text = source_map AT(file)->lines AT(line);
       // TODO alignment
       std::cerr << line << "| " << line_text << '\n'
@@ -99,17 +99,19 @@ static void GatherAndDisplayGlobalDeclErrors() {
   if (global_non_decl.empty()) { return; }
 
   size_t num_instances = 0;
-  for (const auto &[key, val] : global_non_decl) { num_instances += val.size(); }
+  for (const auto & [ key, val ] : global_non_decl) {
+    num_instances += val.size();
+  }
 
   std::cerr << "Found " << num_instances << " non-declaration statement"
             << (num_instances == 1 ? "" : "s")
             << " at the top level. All top-level statements must either be "
                "declarations, imports, or void compile-time evaluations.";
 
-  for (const auto &[key, val] : global_non_decl) {
+  for (const auto & [ key, val ] : global_non_decl) {
     std::cerr << "  Found " << val.size()
-              << (val.size() == 1 ? " instance in '" : " instances in '")
-              << key << "':\n";
+              << (val.size() == 1 ? " instance in '" : " instances in '") << key
+              << "':\n";
 
     int line_num_width   = (int)NumDigits(val.back());
     size_t last_line_num = val.front();
@@ -137,16 +139,16 @@ static void GatherAndDisplayGlobalDeclErrors() {
 }
 
 void ErrorLog::Dump() {
-  for (const auto &[key, val] : undeclared_identifiers) {
+  for (const auto & [ key, val ] : undeclared_identifiers) {
     WriteMessage("Undeclared identifier", key, CountUses(val));
     GatherAndDisplayIdentifierError(val);
   }
-  for (const auto &[key, val] : ambiguous_identifiers) {
+  for (const auto & [ key, val ] : ambiguous_identifiers) {
     WriteMessage("Ambiguous identifier", key, CountUses(val));
     GatherAndDisplayIdentifierError(val);
   }
 
-  for (const auto &[key, val] : implicit_capture) {
+  for (const auto & [ key, val ] : implicit_capture) {
     WriteMessage("Invalid capture of identifier", key->identifier->token,
                  CountUses(val));
     GatherAndDisplayIdentifierError(val);
@@ -341,8 +343,8 @@ void InvalidAssignment(const TextSpan &span, Assign mode) {
         "constant and cannot be modified at run-time.",
         span, 1);
   } else if (mode == Assign::RVal) {
-    DisplayErrorMessage("Attempting to assign to a temporary expression.",
-                        "", span, 1);
+    DisplayErrorMessage("Attempting to assign to a temporary expression.", "",
+                        span, 1);
   } else {
     UNREACHABLE();
   }
@@ -582,7 +584,7 @@ void CaseTypeMismatch(AST::Case *case_ptr, Type *correct) {
               << case_ptr->span.source->name.to_string() << "\".\n";
 
     std::vector<TextSpan> locs;
-    for (auto &[key, val] : case_ptr->key_vals) {
+    for (auto & [ key, val ] : case_ptr->key_vals) {
       ++num_errs_;
       if (val->type == Err || val->type == correct) { continue; }
       locs.push_back(val->span);
@@ -620,7 +622,6 @@ void UninferrableType(const TextSpan &span) {
   ++num_errs_;
   DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
 }
-
 
 } // namespace ErrorLog
 
