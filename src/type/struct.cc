@@ -11,7 +11,7 @@ void Struct::CompleteDefinition() {
   if (!field_num_to_name.empty()) { return; }
 
   for (size_t i = 0; i < decls.size(); ++i) {
-    decls[i]->verify_types();
+    decls[i]->Validate();
 
     Type *decl_type;
     if (decls[i]->type_expr) {

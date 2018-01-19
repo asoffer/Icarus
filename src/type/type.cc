@@ -1,6 +1,8 @@
 #include "type.h"
 #include "../scope.h"
 
+#include <map>
+
 // TODO better to hash pair of Array*
 static std::unordered_map<Array *, std::unordered_map<Array *, IR::Func *>>
     eq_funcs;
@@ -63,7 +65,7 @@ IR::Val Array::Compare(Array *lhs_type, IR::Val lhs_ir, Array *rhs_type,
       IR::Block::Current = body_block;
       // TODO what if data type is an array?
       IR::CondJump(IR::Eq(IR::Load(lhs_phi_reg), IR::Load(rhs_phi_reg)),
-                        incr_block, false_block);
+                   incr_block, false_block);
 
       IR::Block::Current = incr_block;
       auto lhs_incr      = IR::PtrIncr(lhs_phi_reg, IR::Val::Uint(1));
@@ -145,8 +147,8 @@ Type *Var(std::vector<Type *> variants) {
   size_t i   = 0;
   while (i < end) {
     if (variants[i]->is<Variant>()) {
-      Variant* var = &variants[i]->as<Variant>();
-      variants[i] = variants.back();
+      Variant *var = &variants[i]->as<Variant>();
+      variants[i]  = variants.back();
       variants.pop_back();
       variants.insert(variants.end(), var->variants_.begin(),
                       var->variants_.end());

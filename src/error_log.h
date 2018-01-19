@@ -92,7 +92,6 @@ void NonIntegralArrayIndex(const TextSpan &span, const Type *index_type);
 void IndexingNonArray(const TextSpan &span, const Type *t);
 void SlicingNonArray(const TextSpan &span, const Type *t);
 void CaseTypeMismatch(AST::Case *case_ptr, Type *correct = nullptr);
-void InvalidPrintDefinition(const TextSpan &span, const Type *t);
 void InvalidAssignDefinition(const TextSpan &span, const Type *t);
 void InvalidScope(const TextSpan &span, const Type *t);
 void UserDefinedError(const TextSpan &span, const std::string &msg);

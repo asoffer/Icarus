@@ -40,7 +40,7 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs);
 struct Binding {
   bool defaulted(size_t i) const { return exprs_[i].second == nullptr; }
 
-  Declaration *decl_;
+  Expression *fn_expr_;
   std::vector<std::pair<Type *, Expression *>> exprs_;
 };
 

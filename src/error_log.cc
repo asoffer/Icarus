@@ -384,15 +384,6 @@ void SlicingNonArray(const TextSpan &span, const Type *t) {
                       "Sliced type is a `" + t->to_string() + "`.", span, 1);
 }
 
-void NonBinaryAssignment(const TextSpan &span, size_t len) {
-  ++num_errs_;
-  std::string msg_head = "Assignment must be a binary operator, but " +
-                         std::to_string(len) + " argument" +
-                         (len == 1 ? " was" : "s were") + " given.";
-  // TODO is underline length correct?
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void AssignmentArrayLength(const TextSpan &span, size_t len) {
   ++num_errs_;
   std::string msg_head = "Invalid assignment. Array on right-hand side has "
@@ -480,13 +471,6 @@ void DoubleDeclAssignment(const TextSpan &decl_span, const TextSpan &val_span) {
     NOT_YET();
   }
 }
-void InvalidPrintDefinition(const TextSpan &span, const Type *t) {
-  ++num_errs_;
-  std::string msg_head =
-      "Cannot define print function for type " + t->to_string() + ".";
-  DisplayErrorMessage(msg_head.c_str(), "", span, 1);
-}
-
 void InitWithNull(const TextSpan &span, const Type *t, const Type *intended) {
   ++num_errs_;
   std::string msg_head = "Cannot initialize an identifier of type " +

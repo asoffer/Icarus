@@ -167,7 +167,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     }
 
     // After the last check, if you pass, you should dispatch
-    auto fn_to_call = binding.decl_->identifier->EmitIR(kind);
+    auto fn_to_call = binding.fn_expr_->EmitIR(kind);
     std::vector<IR::Val> args;
     args.resize(binding.exprs_.size());
     for (size_t i = 0; i < args.size(); ++i) {

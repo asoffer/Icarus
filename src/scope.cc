@@ -51,7 +51,7 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
       // declaration, so if the type isn't specified, we need to actually verify
       // the type of it's declaration.
       ASSERT(id_ptr->decl, "");
-      id_ptr->decl->verify_types();
+      id_ptr->decl->Validate();
       ASSERT(id_ptr->type, "");
     }
 
@@ -110,7 +110,7 @@ std::vector<AST::Declaration *> Scope::AllDeclsWithId(const std::string &id) {
     auto iter = scope_ptr->decls_.find(id);
     if (iter == scope_ptr->decls_.end()) { continue; }
     for (const auto &decl : iter->second) {
-      decl->verify_types();
+      decl->Validate();
       if (decl->type == Err) { continue; }
       matching_decls.push_back(decl);
     }

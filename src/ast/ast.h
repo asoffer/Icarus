@@ -44,8 +44,7 @@ struct StageRange {
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void lrvalue_check() override;                                       \
-  virtual void verify_types() override;                                        \
+  virtual void Validate() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -56,9 +55,8 @@ struct StageRange {
   virtual ~name() {}                                                           \
   virtual std::string to_string(size_t n) const override;                      \
   std::string to_string() const { return to_string(0); }                       \
-  virtual void lrvalue_check() override;                                       \
   virtual void assign_scope(Scope *scope) override;                            \
-  virtual void verify_types() override;                                        \
+  virtual void Validate() override;                                        \
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args)        \
       override;                                                                \
   virtual void contextualize(                                                  \
@@ -67,9 +65,8 @@ struct StageRange {
 
 struct Node : public base::Cast<Node> {
   virtual std::string to_string(size_t n) const = 0;
-  virtual void lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *) {}
-  virtual void verify_types() = 0;
+  virtual void Validate() = 0;
 
   virtual IR::Val EmitIR(IR::Cmd::Kind) { NOT_YET(); }
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
@@ -105,9 +102,8 @@ struct Expression : public Node {
   Expression(const TextSpan &span = TextSpan()) : Node(span) {}
   virtual ~Expression(){};
   virtual std::string to_string(size_t n) const = 0;
-  virtual void lrvalue_check()                  = 0;
   virtual void assign_scope(Scope *scope)       = 0;
-  virtual void verify_types()                   = 0;
+  virtual void Validate()                   = 0;
   virtual void SaveReferences(Scope *scope, std::vector<IR::Val> *args) = 0;
   std::string to_string() const { return to_string(0); }
 
@@ -149,8 +145,7 @@ struct TokenNode : public Node {
 
   void SaveReferences(Scope *, std::vector<IR::Val> *) { UNREACHABLE(); }
   TokenNode *Clone() const override;
-  virtual void verify_types() {}
-  virtual void lrvalue_check() {}
+  virtual void Validate() {}
 
   virtual void
   contextualize(const Node *correspondant,
@@ -526,10 +521,10 @@ template <> inline decltype(auto) DoStage<0>(Node *node, Scope *scope) {
   node->assign_scope(scope);
 }
 template <> inline decltype(auto) DoStage<1>(Node *node, Scope *) {
-  node->verify_types();
+  node->Validate();
 }
-template <> inline decltype(auto) DoStage<2>(Node *node, Scope *) {
-  node->lrvalue_check();
+template <> inline decltype(auto) DoStage<2>(Node *, Scope *) {
+  // TODO get rid of this empty thing
 }
 template <> inline decltype(auto) DoStage<3>(Node *node, Scope *) {
   return node->EmitIR(IR::Cmd::Kind::Exec);

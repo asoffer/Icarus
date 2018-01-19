@@ -1,7 +1,5 @@
 #include "ast.h"
 
-#include <queue>
-
 #include "../error_log.h"
 #include "../ir/ir.h"
 #include "../scope.h"
@@ -14,25 +12,26 @@ extern IR::Val Evaluate(AST::Expression *expr);
 
 static constexpr int ThisStage() { return 1; }
 
+
 #define STARTING_CHECK                                                         \
   do {                                                                         \
     ASSERT(scope_, "Need to first call assign_scope()");                       \
     if (type == Unknown) {                                                     \
       ErrorLog::CyclicDependency(this);                                        \
       type = Err;                                                              \
-      limit_to(StageRange::Nothing());                                  \
+      limit_to(StageRange::Nothing());                                         \
     }                                                                          \
     if (type != nullptr) { return; }                                           \
     type = Unknown;                                                            \
   } while (false)
 
-#define VERIFY_AND_RETURN_ON_ERROR(expr)                                       \
+#define VALIDATE_AND_RETURN_ON_ERROR(expr)                                     \
   do {                                                                         \
-    expr->verify_types();                                                      \
+    expr->Validate();                                                          \
     if (expr->type == Err) {                                                   \
       type = Err;                                                              \
       /* TODO Maybe this should be Nothing() */                                \
-      limit_to(expr->stage_range_.high);                                \
+      limit_to(expr->stage_range_.high);                                       \
       return;                                                                  \
     }                                                                          \
   } while (false)
@@ -146,248 +145,9 @@ bool Shadow(Declaration *decl1, Declaration *decl2) {
   return CommonAmbiguousFunctionCall(metadata1, metadata2);
 }
 
-void Terminal::verify_types() {
-  STAGE_CHECK;
-  return;
-}
-
-void Identifier::verify_types() {
-  STAGE_CHECK;
-  STARTING_CHECK;
-
-  // TODO is it true that decl==nullptr if and only if we haven't yet called
-  // verify_types on this identifier? That would make my life much easier
-
-  // 'decl' is the (non-owning) pointer to the declaration node representing
-  // where this identifier was declared. If it's null, that means we haven't yet
-  // determined where this was declared.
-  if (decl == nullptr) {
-    auto potential_decls = scope_->AllDeclsWithId(token);
-    if (potential_decls.size() != 1) {
-      (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
-                                   : LogError::AmbiguousIdentifier)(this);
-      type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    decl = potential_decls[0];
-  }
-
-  type = decl->type;
-
-  // Verify whether or not this identifier was captured validly.
-
-  // TODO the code below here looks wrong to me as of 11/28/17.
-  // Compile-time constants may be captured implicitly.
-  if (decl->const_) { return; }
-
-  // For everything else we iterate from the scope of this identifier up to the
-  // scope in which it was declared checking that along the way that it's a
-  // block scope.
-  for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
-       scope_ptr      = scope_ptr->parent) {
-    if (scope_ptr->is<FnScope>()) {
-      scope_ptr->as<FnScope>().fn_lit->captures.insert(decl);
-    } else if (scope_ptr->is<ExecScope>()) {
-      continue;
-    } else {
-      LogError::ImplicitCapture(this);
-      limit_to(StageRange::NoEmitIR());
-      return;
-    }
-  }
-}
-
-void Unop::verify_types() {
-  STAGE_CHECK;
-  STARTING_CHECK;
-  VERIFY_AND_RETURN_ON_ERROR(operand);
-
-  using Language::Operator;
-  switch (op) {
-  case Operator::Eval: type     = operand->type; break;
-  case Operator::Require: type  = Void; break;
-  case Operator::Generate: type = Void; break;
-  case Operator::Free: {
-    if (!operand->type->is<Pointer>()) {
-      ErrorLog::UnopTypeFail("Attempting to free an object of type `" +
-                                 operand->type->to_string() + "`.",
-                             this);
-      limit_to(StageRange::NoEmitIR());
-    }
-    type = Void;
-  } break;
-  case Operator::Print: {
-    if (operand->type == Void) {
-      ErrorLog::UnopTypeFail(
-          "Attempting to print an expression with type `void`.", this);
-      limit_to(StageRange::NoEmitIR());
-    }
-    type = Void;
-  } break;
-  case Operator::Return: {
-    if (operand->type == Void) {
-      ErrorLog::UnopTypeFail(
-          "Attempting to return an expression which has type `void`.", this);
-      limit_to(StageRange::NoEmitIR());
-    }
-    type = Void;
-  } break;
-  case Operator::At: {
-    if (operand->type->is<Pointer>()) {
-      type = operand->type->as<Pointer>().pointee;
-
-    } else {
-      ErrorLog::UnopTypeFail(
-          "Attempting to dereference an expression of type `" +
-              operand->type->to_string() + "`.",
-          this);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } break;
-  case Operator::And: {
-    type = Ptr(operand->type);
-  } break;
-  case Operator::Mul: {
-    if (operand->type != Type_) {
-      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      type = Err;
-      limit_to(StageRange::Nothing());
-    } else {
-      type = Type_;
-    }
-  } break;
-  case Operator::Sub: {
-    if (operand->type == Uint) {
-      ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
-                             this);
-      type = Int;
-      limit_to(StageRange::NoEmitIR());
-
-    } else if (operand->type == Int || operand->type == Real) {
-      type = operand->type;
-
-    } else if (operand->type->is<Struct>()) {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
-        if (!id_ptr) { continue; }
-
-        id_ptr->verify_types();
-      }
-
-      auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
-                                                    std::vector{operand->type});
-      if (t) {
-        type = Tup(t->as<Function>().output);
-      } else {
-        ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-                                   "` has no unary negation operator.",
-                               this);
-        type = Err;
-        limit_to(StageRange::Nothing());
-      }
-    } else {
-      ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
-                                 "` has no unary negation operator.",
-                             this);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } break;
-  case Operator::Dots: {
-    if (operand->type == Uint || operand->type == Int ||
-        operand->type == Char) {
-      type = Range(operand->type);
-    } else {
-      ErrorLog::InvalidRangeType(span, type);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } break;
-  case Operator::Not: {
-    if (operand->type == Bool) {
-      type = Bool;
-    } else {
-      ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
-                             "operator (!) to an expression of type `" +
-                                 operand->type->to_string() + "`.",
-                             this);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } break;
-  case Operator::Needs: {
-    type = Void;
-    if (operand->type != Bool) {
-     LogError::PreconditionNeedsBool(this);
-     limit_to(StageRange::NoEmitIR());
-    }
-  } break;
-  case Operator::Ensure: {
-    type = Void;
-    if (operand->type != Bool) {
-      LogError::EnsureNeedsBool(this);
-      limit_to(StageRange::NoEmitIR());
-    }
-  } break;
-  case Operator::Pass: type = operand->type; break;
-  default: UNREACHABLE(*this);
-  }
-}
-
 static Type *DereferenceAll(Type *t) {
   while (t->is<Pointer>()) { t = static_cast<Pointer *>(t)->pointee; }
   return t;
-}
-
-void Access::verify_types() {
-  STAGE_CHECK;
-  STARTING_CHECK;
-  VERIFY_AND_RETURN_ON_ERROR(operand);
-
-  auto base_type = DereferenceAll(operand->type);
-  if (base_type->is<Array>()) {
-    if (member_name == "size") {
-      type = Uint;
-    } else {
-      ErrorLog::MissingMember(span, member_name, base_type);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } else if (base_type == Type_) {
-    Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
-    if (evaled_type->is<Enum>()) {
-      // Regardless of whether we can get the value, it's clear that this is
-      // supposed to be a member so we should emit an error but carry on
-      // assuming that this is an element of that enum type.
-      type = evaled_type;
-      if (evaled_type->as<Enum>().IntValueOrFail(member_name) ==
-          std::numeric_limits<size_t>::max()) {
-        ErrorLog::MissingMember(span, member_name, evaled_type);
-        limit_to(StageRange::NoEmitIR());
-      }
-    }
-  } else if (base_type->is<Struct>()) {
-    auto struct_type = static_cast<Struct *>(base_type);
-    struct_type->CompleteDefinition();
-
-    auto member_type = struct_type->field(member_name);
-    if (member_type != nullptr) {
-      type = member_type;
-
-    } else {
-      ErrorLog::MissingMember(span, member_name, base_type);
-      type = Err;
-      limit_to(StageRange::Nothing());
-    }
-  } else if (base_type->is<Primitive>() || base_type->is<Function>()) {
-    ErrorLog::MissingMember(span, member_name, base_type);
-    type = Err;
-    limit_to(StageRange::Nothing());
-  }
 }
 
 // TODO move this and type-related functions below into type/type.cc?
@@ -492,7 +252,6 @@ std::optional<DispatchTable> Call::ComputeDispatchTable() {
     // ignore non-const declarations.
 
     if (!decl->const_) { continue; }
-    decl->verify_types();
 
     if (decl->type->is<Function>()) {
       auto fn_val = Evaluate(decl->init_val.get()).value;
@@ -508,7 +267,7 @@ std::optional<DispatchTable> Call::ComputeDispatchTable() {
       }
 
       // Match the ordered unnamed arguments
-      Binding binding{decl,
+      Binding binding{decl->identifier.get(),
                       std::vector<std::pair<Type *, Expression *>>(
                           (*fn)->args_.size(),
                           std::pair<Type *, Expression *>(nullptr, nullptr))};
@@ -590,112 +349,6 @@ void DispatchTable::insert(CallArgTypes call_arg_types, Binding binding) {
   bindings_.emplace(std::move(call_arg_types), std::move(binding));
 }
 
-void Call::verify_types() {
-  STAGE_CHECK;
-  STARTING_CHECK;
-  for (auto &pos : pos_) {
-    pos->verify_types();
-    if (pos->type == Err) { type = Err; }
-  }
-  for (auto &name_and_val : named_) {
-    name_and_val.second->verify_types();
-    if (name_and_val.second->type == Err) { type = Err; }
-  }
-  if (type == Err) {
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  // Identifiers need special handling due to overloading. compile-time
-  // constants need special handling because they admit named arguments. These
-  // concepts should be orthogonal.
-
-  if (fn_->is<Identifier>()) {
-    for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-      if (scope_ptr->shadowed_decls_.find(fn_->as<Identifier>().token) !=
-          scope_ptr->shadowed_decls_.end()) {
-        // The declaration of this identifier is shadowed so it will be
-        // difficult to give meaningful error messages. Bailing out.
-        // TODO Come up with a good way to give decent error messages anyway (at
-        // least in some circumstances. For instance, there may be overlap here,
-        // but it may not be relevant to the function call at hand. If, for
-        // example, one call takes an A | B and the other takes a B | C, but
-        // here we wish to validate a call for just a C, it's safe to do so
-        // here.
-        type = Err;
-        limit_to(StageRange::Nothing());
-        return;
-      }
-    }
-
-    // When looking for a match, we know that no two matches can overlap since
-    // we have already verified there is no shadowing. However, we still need to
-    // verify that all cases involving variants are covered.
-
-    auto maybe_table = ComputeDispatchTable();
-    if (!maybe_table.has_value()) {
-      // Failure because we can't emit IR for the function so the error was
-      // previously logged.
-      type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-    dispatch_table_ = std::move(maybe_table.value());
-
-    u64 expanded_size = 1;
-    for (const auto &arg : pos_) {
-      if (!arg->type->is<Variant>()) { continue; }
-      expanded_size *= arg->type->as<Variant>().size();
-    }
-    for (const auto &arg : named_) {
-      if (!arg.second->type->is<Variant>()) { continue; }
-      expanded_size *= arg.second->type->as<Variant>().size();
-    }
-
-    if (dispatch_table_.total_size_ != expanded_size) {
-      LOG << "Failed to find a match for everything. ("
-          << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
-      type = fn_->type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    // fn_'s type should never be considered beacuse it could be one of many
-    // different things. 'Void' just indicates that it has been computed (i.e.,
-    // not 0x0 or Unknown) and that there was no error in doing so (i.e., not
-    // Err).
-    fn_->type = Void;
-
-    std::vector<Type *> out_types;
-    out_types.reserve(dispatch_table_.bindings_.size());
-    for (const auto &[key, val] : dispatch_table_.bindings_) {
-      auto &outs = val.decl_->type->as<Function>().output;
-      ASSERT_LE(outs.size(), 1u);
-      out_types.push_back(outs.empty() ? Void : outs[0]);
-    }
-    type = Var(std::move(out_types));
-  } else {
-    VERIFY_AND_RETURN_ON_ERROR(fn_);
-    if (dispatch_table_.bindings_.size() != 1) {
-      ErrorLog::LogGeneric(span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
-      type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    const auto & [ call_arg_type, binding ] =
-        *dispatch_table_.bindings_.begin();
-
-    LOG << fn_->type;
-    // TODO reimplement casts and calling functions not bound to identifiers.
-    ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
-    type      = Err;
-    fn_->type = Err;
-    limit_to(StageRange::Nothing());
-  }
-}
-
 bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
   if (lhs.pos_.size() != rhs.pos_.size()) {
     return lhs.pos_.size() < rhs.pos_.size();
@@ -716,242 +369,29 @@ bool operator<(const CallArgTypes &lhs, const CallArgTypes &rhs) {
   return *l_iter < *r_iter;
 }
 
-void Binop::verify_types() {
-  STARTING_CHECK;
-
-  lhs->verify_types();
-  rhs->verify_types();
-  if (lhs->type == Err || rhs->type == Err) {
-    type = Err;
-    limit_to(lhs);
-    limit_to(rhs);
-    return;
+Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
+  ASSERT_NE(type, nullptr);
+  if (type != Type_) {
+    ErrorLog::NotAType(span, id_tok);
+    return Err;
   }
 
-  using Language::Operator;
-  // TODO if lhs is reserved?
-  if (op == Operator::Assign) {
-    if (CanCastImplicitly(rhs->type, lhs->type)) {
-      type = Void;
-    } else {
-      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      type = Err;
-      limit_to(StageRange::NoEmitIR());
-    }
-    return;
+  Type *t = std::get<Type *>(Evaluate(this).value);
+
+  if (t == Void) {
+    ErrorLog::DeclaredVoidType(span, id_tok);
+    return Err;
   }
 
-  switch (op) {
-  case Operator::Rocket: {
-    // TODO rocket encountered outside case statement.
-    UNREACHABLE();
-  } break;
-  case Operator::Index: {
-    type = Err;
-    if (lhs->type == String) {
-      if (rhs->type == Int || rhs->type == Uint) {
-        type = Char;
-        break;
-      } else {
-        ErrorLog::InvalidStringIndex(span, rhs->type);
-        limit_to(StageRange::NoEmitIR());
-        return;
-      }
-    } else if (!lhs->type->is<Array>()) {
-      if (rhs->type->is<RangeType>()) {
-        ErrorLog::SlicingNonArray(span, lhs->type);
-      } else {
-        ErrorLog::IndexingNonArray(span, lhs->type);
-      }
-      limit_to(StageRange::NoEmitIR());
-      return;
-    } else if (rhs->type->is<RangeType>()) {
-      type = Slice(&lhs->type->as<Array>());
-      break;
-    } else {
-      type = lhs->type->as<Array>().data_type;
+  return t;
+}
 
-      // TODO allow slice indexing
-      if (rhs->type == Int || rhs->type == Uint) { break; }
-      ErrorLog::NonIntegralArrayIndex(span, rhs->type);
-      limit_to(StageRange::NoEmitIR());
-      return;
-    }
-  } break;
-  case Operator::Dots: {
-    if (lhs->type == Int && rhs->type == Int) {
-      type = Range(Int);
-
-    } else if (lhs->type == Uint && rhs->type == Uint) {
-      type = Range(Uint);
-
-    } else if (lhs->type == Char && rhs->type == Char) {
-      type = Range(Char);
-
-    } else {
-      ErrorLog::InvalidRangeTypes(span, lhs->type, rhs->type);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-  } break;
-  case Language::Operator::XorEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
-    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
-               !lhs->type->as<Enum>().is_enum_) {
-      type = lhs->type;
-    } else {
-      type = Err;
-      // TODO could be bool or enum.
-      ErrorLog::XorEqNeedsBool(span);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-  } break;
-  case Language::Operator::AndEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
-    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
-               !lhs->type->as<Enum>().is_enum_) {
-      type = lhs->type;
-    } else {
-      type = Err;
-      // TODO could be bool or enum.
-      ErrorLog::AndEqNeedsBool(span);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-  } break;
-  case Language::Operator::OrEq: {
-    if (lhs->type == Bool && rhs->type == Bool) {
-      type = Bool;
-    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
-               !lhs->type->as<Enum>().is_enum_) {
-      type = lhs->type;
-    } else {
-      type = Err;
-      // TODO could be bool or enum.
-      ErrorLog::OrEqNeedsBool(span);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-  } break;
-
-#define CASE(OpName, op_name, symbol, ret_type)                                \
-  case Language::Operator::OpName: {                                           \
-    if ((lhs->type == Int && rhs->type == Int) ||                              \
-        (lhs->type == Uint && rhs->type == Uint) ||                            \
-        (lhs->type == Real && rhs->type == Real) ||                            \
-        (lhs->type == Code && rhs->type == Code)) {                            \
-      /* TODO Code should only be valid for Add, not Sub, etc */               \
-      type = ret_type;                                                         \
-    } else {                                                                   \
-      /* Store a vector containing the valid matches */                        \
-      std::vector<Declaration *> matched_op_name;                              \
-                                                                               \
-      /* TODO this linear search is probably not ideal.   */                   \
-      scope_->ForEachDecl([&matched_op_name](Declaration *decl) {              \
-        if (decl->identifier->token == "__" op_name "__") {                    \
-          decl->verify_types();                                                \
-          matched_op_name.push_back(decl);                                     \
-        }                                                                      \
-      });                                                                      \
-                                                                               \
-      Declaration *correct_decl = nullptr;                                     \
-      for (auto &decl : matched_op_name) {                                     \
-        if (!decl->type->is<Function>()) { continue; }                         \
-        auto *fn_type = &decl->type->as<Function>();                           \
-        if (fn_type->input != std::vector{lhs->type, rhs->type}) { continue; } \
-        /* If you get here, you've found a match. Hope there is only one       \
-         * TODO if there is more than one, log them all and give a good        \
-         * *error message. For now, we just fail */                            \
-        if (correct_decl) {                                                    \
-          ErrorLog::AlreadyFoundMatch(span, symbol, lhs->type, rhs->type);     \
-          type = Err;                                                          \
-        } else {                                                               \
-          correct_decl = decl;                                                 \
-        }                                                                      \
-      }                                                                        \
-      if (!correct_decl) {                                                     \
-        type = Err;                                                            \
-        ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
-        limit_to(StageRange::Nothing());                                \
-        return;                                                                \
-      } else if (type != Err) {                                                \
-        type = Tup(correct_decl->type->as<Function>().output);                 \
-      }                                                                        \
-    }                                                                          \
-  } break;
-
-    CASE(Add, "add", "+", lhs->type);
-    CASE(Sub, "sub", "-", lhs->type);
-    CASE(Div, "div", "/", lhs->type);
-    CASE(Mod, "mod", "%", lhs->type);
-    CASE(AddEq, "add_eq", "+=", Void);
-    CASE(SubEq, "sub_eq", "-=", Void);
-    CASE(MulEq, "mul_eq", "*=", Void);
-    CASE(DivEq, "div_eq", "/=", Void);
-    CASE(ModEq, "mod_eq", "%=", Void);
-#undef CASE
-
-  // Mul is done separately because of the function composition
-  case Operator::Mul: {
-    if ((lhs->type == Int && rhs->type == Int) ||
-        (lhs->type == Uint && rhs->type == Uint) ||
-        (lhs->type == Real && rhs->type == Real)) {
-      type = lhs->type;
-
-    } else if (lhs->type->is<Function>() && rhs->type->is<Function>()) {
-      auto *lhs_fn = &lhs->type->as<Function>();
-      auto *rhs_fn = &rhs->type->as<Function>();
-      if (rhs_fn->output == lhs_fn->input) {
-        type = Func(rhs_fn->input, lhs_fn->output);
-
-      } else {
-        type = Err;
-        ErrorLog::NonComposableFunctions(span);
-        limit_to(StageRange::Nothing());
-        return;
-      }
-
-    } else {
-      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-        auto id_ptr = scope_ptr->IdHereOrNull("__mul__");
-        if (!id_ptr) { continue; }
-      }
-
-      auto fn_type = scope_->FunctionTypeReferencedOrNull(
-          "__mul__", {lhs->type, rhs->type});
-      if (fn_type) {
-        type = Tup(fn_type->as<Function>().output);
-      } else {
-        type = Err;
-        ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
-        limit_to(StageRange::Nothing());
-        return;
-      }
-    }
-  } break;
-  case Operator::Arrow: {
-    if (lhs->type != Type_) {
-      type = Err;
-      ErrorLog::NonTypeFunctionInput(span);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-    if (rhs->type != Type_) {
-      type = Err;
-      ErrorLog::NonTypeFunctionOutput(span);
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    if (type != Err) { type = Type_; }
-
-  } break;
-  default: UNREACHABLE();
+Type *Expression::VerifyValueForDeclaration(const std::string &) {
+  if (type == Void) {
+    ErrorLog::VoidDeclaration(span);
+    return Err;
   }
+  return type;
 }
 
 static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
@@ -1050,198 +490,448 @@ static bool ValidateComparisonType(Language::Operator op, Type *lhs_type,
   return false;
 }
 
-void ChainOp::verify_types() {
+void Terminal::Validate() {
+  STAGE_CHECK;
+  lvalue = Assign::Const;
+}
+
+void Identifier::Validate() {
+  STAGE_CHECK;
   STARTING_CHECK;
-  bool found_err = false;
-  for (auto &expr : exprs) {
-    expr->verify_types();
-    if (expr->type == Err) { found_err = true; }
+
+  if (decl == nullptr) {
+    auto potential_decls = scope_->AllDeclsWithId(token);
+    if (potential_decls.size() != 1) {
+      (potential_decls.size() == 0 ? LogError::UndeclaredIdentifier
+                                   : LogError::AmbiguousIdentifier)(this);
+      type = Err;
+      limit_to(StageRange::Nothing());
+      return;
+    }
+
+    decl = potential_decls[0];
   }
-  if (found_err) {
+
+  type   = decl->type;
+  lvalue = decl->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
+
+  if (lvalue != Assign::Const) {
+    // For everything else we iterate from the scope of this identifier up to
+    // the scope in which it was declared checking that along the way that it's
+    // a block scope.
+    for (auto scope_ptr = scope_; scope_ptr != decl->scope_;
+         scope_ptr      = scope_ptr->parent) {
+      if (scope_ptr->is<FnScope>()) {
+        scope_ptr->as<FnScope>().fn_lit->captures.insert(decl);
+      } else if (scope_ptr->is<ExecScope>()) {
+        continue;
+      } else {
+        LogError::ImplicitCapture(this);
+        limit_to(StageRange::NoEmitIR());
+        return;
+      }
+    }
+  }
+}
+
+void Hole::Validate() {
+  STAGE_CHECK;
+  lvalue = Assign::Const;
+}
+
+void Binop::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+
+  lhs->Validate();
+  rhs->Validate();
+  if (lhs->type == Err || rhs->type == Err) {
     type = Err;
+    limit_to(lhs);
+    limit_to(rhs);
+    return;
+  }
+
+  using Language::Operator;
+  if (is_assignment() && lhs->lvalue != Assign::LVal) {
+    ErrorLog::InvalidAssignment(span, lhs->lvalue);
+    limit_to(StageRange::Nothing());
+
+  } else if (op == Operator::Cast || op == Operator::Index) {
+    lvalue = rhs->lvalue;
+  } else if (lhs->lvalue == Assign::Const && rhs->lvalue == Assign::Const) {
+    lvalue = Assign::Const;
+  } else {
+    lvalue = Assign::RVal;
+  }
+
+  // TODO if lhs is reserved?
+  if (op == Operator::Assign) {
+    if (CanCastImplicitly(rhs->type, lhs->type)) {
+      type = Void;
+    } else {
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+      type = Err;
+      limit_to(StageRange::NoEmitIR());
+    }
+    return;
+  }
+
+  switch (op) {
+  case Operator::Rocket: {
+    // TODO rocket encountered outside case statement.
+    UNREACHABLE();
+  } break;
+  case Operator::Index: {
+    type = Err;
+    if (lhs->type == String) {
+      if (rhs->type == Int || rhs->type == Uint) {
+        type = Char;
+        break;
+      } else {
+        ErrorLog::InvalidStringIndex(span, rhs->type);
+        limit_to(StageRange::NoEmitIR());
+        return;
+      }
+    } else if (!lhs->type->is<Array>()) {
+      if (rhs->type->is<RangeType>()) {
+        ErrorLog::SlicingNonArray(span, lhs->type);
+      } else {
+        ErrorLog::IndexingNonArray(span, lhs->type);
+      }
+      limit_to(StageRange::NoEmitIR());
+      return;
+    } else if (rhs->type->is<RangeType>()) {
+      type = Slice(&lhs->type->as<Array>());
+      break;
+    } else {
+      type = lhs->type->as<Array>().data_type;
+
+      // TODO allow slice indexing
+      if (rhs->type == Int || rhs->type == Uint) { break; }
+      ErrorLog::NonIntegralArrayIndex(span, rhs->type);
+      limit_to(StageRange::NoEmitIR());
+      return;
+    }
+  } break;
+  case Operator::Dots: {
+    if (lhs->type == Int && rhs->type == Int) {
+      type = Range(Int);
+
+    } else if (lhs->type == Uint && rhs->type == Uint) {
+      type = Range(Uint);
+
+    } else if (lhs->type == Char && rhs->type == Char) {
+      type = Range(Char);
+
+    } else {
+      ErrorLog::InvalidRangeTypes(span, lhs->type, rhs->type);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+  } break;
+  case Operator::XorEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
+    } else {
+      type = Err;
+      // TODO could be bool or enum.
+      ErrorLog::XorEqNeedsBool(span);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+  } break;
+  case Operator::AndEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
+    } else {
+      type = Err;
+      // TODO could be bool or enum.
+      ErrorLog::AndEqNeedsBool(span);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+  } break;
+  case Operator::OrEq: {
+    if (lhs->type == Bool && rhs->type == Bool) {
+      type = Bool;
+    } else if (lhs->type->is<Enum>() && rhs->type == lhs->type &&
+               !lhs->type->as<Enum>().is_enum_) {
+      type = lhs->type;
+    } else {
+      type = Err;
+      // TODO could be bool or enum.
+      ErrorLog::OrEqNeedsBool(span);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+  } break;
+
+#define CASE(OpName, op_name, symbol, ret_type)                                \
+  case Operator::OpName: {                                                     \
+    if ((lhs->type == Int && rhs->type == Int) ||                              \
+        (lhs->type == Uint && rhs->type == Uint) ||                            \
+        (lhs->type == Real && rhs->type == Real) ||                            \
+        (lhs->type == Code && rhs->type == Code)) {                            \
+      /* TODO Code should only be valid for Add, not Sub, etc */               \
+      type = ret_type;                                                         \
+    } else {                                                                   \
+      /* Store a vector containing the valid matches */                        \
+      std::vector<Declaration *> matched_op_name;                              \
+                                                                               \
+      /* TODO this linear search is probably not ideal.   */                   \
+      scope_->ForEachDecl([&matched_op_name](Declaration *decl) {              \
+        if (decl->identifier->token == "__" op_name "__") {                    \
+          decl->Validate();                                                    \
+          matched_op_name.push_back(decl);                                     \
+        }                                                                      \
+      });                                                                      \
+                                                                               \
+      Declaration *correct_decl = nullptr;                                     \
+      for (auto &decl : matched_op_name) {                                     \
+        if (!decl->type->is<Function>()) { continue; }                         \
+        auto *fn_type = &decl->type->as<Function>();                           \
+        if (fn_type->input != std::vector{lhs->type, rhs->type}) { continue; } \
+        /* If you get here, you've found a match. Hope there is only one       \
+         * TODO if there is more than one, log them all and give a good        \
+         * *error message. For now, we just fail */                            \
+        if (correct_decl) {                                                    \
+          ErrorLog::AlreadyFoundMatch(span, symbol, lhs->type, rhs->type);     \
+          type = Err;                                                          \
+        } else {                                                               \
+          correct_decl = decl;                                                 \
+        }                                                                      \
+      }                                                                        \
+      if (!correct_decl) {                                                     \
+        type = Err;                                                            \
+        ErrorLog::NoKnownOverload(span, symbol, lhs->type, rhs->type);         \
+        limit_to(StageRange::Nothing());                                       \
+        return;                                                                \
+      } else if (type != Err) {                                                \
+        type = Tup(correct_decl->type->as<Function>().output);                 \
+      }                                                                        \
+    }                                                                          \
+  } break;
+
+    CASE(Add, "add", "+", lhs->type);
+    CASE(Sub, "sub", "-", lhs->type);
+    CASE(Div, "div", "/", lhs->type);
+    CASE(Mod, "mod", "%", lhs->type);
+    CASE(AddEq, "add_eq", "+=", Void);
+    CASE(SubEq, "sub_eq", "-=", Void);
+    CASE(MulEq, "mul_eq", "*=", Void);
+    CASE(DivEq, "div_eq", "/=", Void);
+    CASE(ModEq, "mod_eq", "%=", Void);
+#undef CASE
+
+  // Mul is done separately because of the function composition
+  case Operator::Mul: {
+    if ((lhs->type == Int && rhs->type == Int) ||
+        (lhs->type == Uint && rhs->type == Uint) ||
+        (lhs->type == Real && rhs->type == Real)) {
+      type = lhs->type;
+
+    } else if (lhs->type->is<Function>() && rhs->type->is<Function>()) {
+      auto *lhs_fn = &lhs->type->as<Function>();
+      auto *rhs_fn = &rhs->type->as<Function>();
+      if (rhs_fn->output == lhs_fn->input) {
+        type = Func(rhs_fn->input, lhs_fn->output);
+
+      } else {
+        type = Err;
+        ErrorLog::NonComposableFunctions(span);
+        limit_to(StageRange::Nothing());
+        return;
+      }
+
+    } else {
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto id_ptr = scope_ptr->IdHereOrNull("__mul__");
+        if (!id_ptr) { continue; }
+      }
+
+      auto fn_type = scope_->FunctionTypeReferencedOrNull(
+          "__mul__", {lhs->type, rhs->type});
+      if (fn_type) {
+        type = Tup(fn_type->as<Function>().output);
+      } else {
+        type = Err;
+        ErrorLog::NoKnownOverload(span, "*", lhs->type, rhs->type);
+        limit_to(StageRange::Nothing());
+        return;
+      }
+    }
+  } break;
+  case Operator::Arrow: {
+    if (lhs->type != Type_) {
+      type = Err;
+      ErrorLog::NonTypeFunctionInput(span);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+    if (rhs->type != Type_) {
+      type = Err;
+      ErrorLog::NonTypeFunctionOutput(span);
+      limit_to(StageRange::Nothing());
+      return;
+    }
+
+    if (type != Err) { type = Type_; }
+
+  } break;
+  default: UNREACHABLE();
+  }
+}
+
+void Call::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+
+  bool all_const = true;
+  for (auto &pos : pos_) {
+    pos->Validate();
+    if (pos->type == Err) { type = Err; }
+    all_const &= pos->lvalue == Assign::Const;
+  }
+  for (auto & [ name, val ] : named_) {
+    val->Validate();
+    if (val->type == Err) { type = Err; }
+    all_const &= val->lvalue == Assign::Const;
+  }
+
+  lvalue = all_const ? Assign::Const : Assign::RVal;
+  if (type == Err) {
     limit_to(StageRange::Nothing());
     return;
   }
 
-  // TODO Can we recover from errors here? Should we?
-
-  // Safe to just check first because to be on the same chain they must all have
-  // the same precedence, and ^, &, and | uniquely hold a given precedence.
-  if (ops[0] == Language::Operator::Or || ops[0] == Language::Operator::And ||
-      ops[0] == Language::Operator::Xor) {
-    bool failed = false;
-    for (const auto &expr : exprs) {
-      if (expr->type != exprs[0]->type) {
-        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                             std::to_string(__LINE__) + ": ");
-        failed = true;
-      }
-    }
-
-    type = exprs[0]->type;
-
-    if (exprs[0]->type != Bool &&
-        !(exprs[0]->type == Type_ && ops[0] == Language::Operator::Or) &&
-        (!exprs[0]->type->is<Enum>() || exprs[0]->type->as<Enum>().is_enum_)) {
-      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                           std::to_string(__LINE__) + ": ");
-      if (failed) {
+  // Identifiers need special handling due to overloading. compile-time
+  // constants need special handling because they admit named arguments. These
+  // concepts should be orthogonal.
+  if (fn_->is<Identifier>()) {
+    for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+      if (scope_ptr->shadowed_decls_.find(fn_->as<Identifier>().token) !=
+          scope_ptr->shadowed_decls_.end()) {
+        // The declaration of this identifier is shadowed so it will be
+        // difficult to give meaningful error messages. Bailing out.
+        // TODO Come up with a good way to give decent error messages anyway (at
+        // least in some circumstances. For instance, there may be overlap here,
+        // but it may not be relevant to the function call at hand. If, for
+        // example, one call takes an A | B and the other takes a B | C, but
+        // here we wish to validate a call for just a C, it's safe to do so
+        // here.
+        type = Err;
         limit_to(StageRange::Nothing());
         return;
       }
     }
 
+    // When looking for a match, we know that no two matches can overlap since
+    // we have already verified there is no shadowing. However, we still need to
+    // verify that all cases involving variants are covered.
+
+    auto maybe_table = ComputeDispatchTable();
+    if (!maybe_table.has_value()) {
+      // Failure because we can't emit IR for the function so the error was
+      // previously logged.
+      type = Err;
+      limit_to(StageRange::Nothing());
+      return;
+    }
+    dispatch_table_ = std::move(maybe_table.value());
+
+    u64 expanded_size = 1;
+    for (const auto &arg : pos_) {
+      if (!arg->type->is<Variant>()) { continue; }
+      expanded_size *= arg->type->as<Variant>().size();
+    }
+    for (const auto &arg : named_) {
+      if (!arg.second->type->is<Variant>()) { continue; }
+      expanded_size *= arg.second->type->as<Variant>().size();
+    }
+
+    if (dispatch_table_.total_size_ != expanded_size) {
+      LOG << "Failed to find a match for everything. ("
+          << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
+      type = fn_->type = Err;
+      limit_to(StageRange::Nothing());
+      return;
+    }
+
+    // fn_'s type should never be considered beacuse it could be one of many
+    // different things. 'Void' just indicates that it has been computed (i.e.,
+    // not 0x0 or Unknown) and that there was no error in doing so (i.e., not
+    // Err).
+    fn_->type = Void;
+
+    std::vector<Type *> out_types;
+    out_types.reserve(dispatch_table_.bindings_.size());
+    for (const auto & [ key, val ] : dispatch_table_.bindings_) {
+      auto &outs = val.fn_expr_->type->as<Function>().output;
+      ASSERT_LE(outs.size(), 1u);
+      out_types.push_back(outs.empty() ? Void : outs[0]);
+    }
+    type = Var(std::move(out_types));
   } else {
-    for (size_t i = 0; i < exprs.size() - 1; ++i) {
-      if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
-        type = Err; // Errors exported by ValidateComparisonType
-      }
-    }
-    if (type == Err) { limit_to(StageRange::Nothing()); }
-    type = Bool;
-  }
-}
-
-void CommaList::verify_types() {
-  STAGE_CHECK;
-  STARTING_CHECK;
-  for (auto &expr : exprs) {
-    expr->verify_types();
-    if (expr->type == Err) { type = Err; }
-  }
-  if (type == Err) {
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  // TODO this is probably not a good way to do it.  If the tuple consists of a
-  // list of types, it should be interpretted as a
-  // type itself rather than a tuple. This is a limitation in your support of
-  // full tuples.
-  bool all_types = true;
-  std::vector<Type *> type_vec(exprs.size(), nullptr);
-
-  size_t position = 0;
-  for (const auto &expr : exprs) {
-    type_vec[position] = expr->type;
-    all_types &= (expr->type == Type_);
-    ++position;
-  }
-  // TODO got to have a better way to make tuple types i think
-  type = all_types ? Type_ : Tup(type_vec);
-}
-
-void InDecl::verify_types() {
-  STARTING_CHECK;
-  container->verify_types();
-
-  if (container->type == Void) {
-    type             = Err;
-    identifier->type = Err;
-    ErrorLog::TypeIteration(span);
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  if (container->type->is<Array>()) {
-    type = container->type->as<Array>().data_type;
-
-  } else if (container->type->is<SliceType>()) {
-    type = container->type->as<SliceType>().array_type->data_type;
-
-  } else if (container->type->is<RangeType>()) {
-    type = container->type->as<RangeType>().end_type;
-
-  } else if (container->type == Type_) {
-    auto t = std::get<Type *>(Evaluate(container.get()).value);
-    if (t->is<Enum>()) { type = t; }
-
-  } else {
-    ErrorLog::IndeterminantType(span);
-    type = Err;
-    limit_to(StageRange::Nothing());
-  }
-
-  identifier->type = type;
-  return;
-}
-
-Type *Expression::VerifyTypeForDeclaration(const std::string &id_tok) {
-  ASSERT_NE(type, nullptr);
-  if (type != Type_) {
-    ErrorLog::NotAType(span, id_tok);
-    return Err;
-  }
-
-  Type *t = std::get<Type *>(Evaluate(this).value);
-
-  if (t == Void) {
-    ErrorLog::DeclaredVoidType(span, id_tok);
-    return Err;
-  }
-
-  return t;
-}
-
-Type *Expression::VerifyValueForDeclaration(const std::string &) {
-  if (type == Void) {
-    ErrorLog::VoidDeclaration(span);
-    return Err;
-  }
-  return type;
-}
-
-static void VerifyDeclarationForMagic(const std::string &magic_method_name,
-                                      Type *type, const TextSpan &span) {
-  if (!type->is<Function>()) {
-    const static std::map<std::string, void (*)(const TextSpan &)>
-        error_log_to_call = {{"__print__", ErrorLog::NonFunctionPrint},
-                             {"__assign__", ErrorLog::NonFunctionAssign}};
-
-    auto iter = error_log_to_call.find(magic_method_name);
-    if (iter == error_log_to_call.end()) { return; }
-    ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                         std::to_string(__LINE__) + ": ");
-    iter->second(span);
-  }
-
-  auto fn_type = static_cast<Function *>(type);
-  if (magic_method_name == "__print__") {
-    if (!(fn_type->input.size() == 1 && fn_type->input[0]->is<Struct>())) {
-      ErrorLog::InvalidPrintDefinition(span, fn_type->input[0]);
+    VALIDATE_AND_RETURN_ON_ERROR(fn_);
+    if (dispatch_table_.bindings_.size() != 1) {
+      ErrorLog::LogGeneric(span,
+                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
+      type = Err;
+      limit_to(StageRange::Nothing());
+      return;
     }
 
-    if (!fn_type->output.empty()) { ErrorLog::NonVoidPrintReturn(span); }
-  } else if (magic_method_name == "__assign__") {
-    if (fn_type->input.size() != 2) {
-      ErrorLog::NonBinaryAssignment(span, fn_type->input.size());
-    }
-    // TODO more checking.
+    const auto & [ call_arg_type, binding ] =
+        *dispatch_table_.bindings_.begin();
 
-    if (!fn_type->output.empty()) { ErrorLog::NonVoidAssignReturn(span); }
+    LOG << fn_->type;
+    // TODO reimplement casts and calling functions not bound to identifiers.
+    ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
+    type      = Err;
+    fn_->type = Err;
+    limit_to(StageRange::Nothing());
   }
 }
 
 // TODO Declaration is responsible for the type verification of it's identifier?
 // TODO rewrite/simplify
-void Declaration::verify_types() {
+void Declaration::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
 
   if (type_expr) {
-    type_expr->verify_types();
-    if (type_expr->type == Err) { type = Err; };
+    type_expr->Validate();
+    if (type_expr->type == Err) { type = Err; }
     limit_to(type_expr);
   }
   if (init_val) {
-    init_val->verify_types();
-    if (init_val->type == Err) { type = Err; };
-    limit_to(init_val);
+    init_val->Validate();
+    if (init_val->type == Err) {
+      type = Err;
+    } else {
+      if (init_val->lvalue != Assign::Const && const_) {
+        ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + "\n");
+        limit_to(StageRange::Nothing());
+      } else {
+        limit_to(init_val);
+      }
+    }
   }
   if (type == Err) {
     type = type_expr ? type_expr->type : Err;
     return;
   }
+  lvalue = const_ ? Assign::Const : Assign::RVal;
+
 
   // There are eight cases for the form of a declaration.
   //   1a. I: T         or    1b. I :: T
@@ -1306,7 +996,8 @@ void Declaration::verify_types() {
     UNREACHABLE();
   }
 
-  identifier->verify_types();
+  identifier->Validate();
+  limit_to(identifier);
 
   if (type == Err) {
     limit_to(StageRange::Nothing());
@@ -1345,7 +1036,7 @@ void Declaration::verify_types() {
       // Pick one arbitrary but consistent ordering of the pair to check because
       // at each Declaration verification, we look both up and down the scope
       // tree.
-      decl->verify_types();
+      decl->Validate();
       if (Shadow(this, decl)) {
         failed_shadowing = true;
         ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1359,7 +1050,7 @@ void Declaration::verify_types() {
         // Pick one arbitrary but consistent ordering of the pair to check
         // because at each Declaration verification, we look both up and down
         // the scope tree.
-        decl->verify_types();
+        decl->Validate();
         if (Shadow(this, decl)) {
           failed_shadowing = true;
           ErrorLog::ShadowingDeclaration(*this, *decl);
@@ -1377,39 +1068,371 @@ void Declaration::verify_types() {
     limit_to(StageRange::Nothing());
     return;
   }
-  // TODO I hope this won't last very long. I don't love the syntax/approach
-  VerifyDeclarationForMagic(identifier->token, type, span);
 }
 
-void Hole::verify_types() { STAGE_CHECK;}
-
-void ArrayType::verify_types() {
+void InDecl::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
-  length->verify_types();
-  data_type->verify_types();
+  container->Validate();
+  limit_to(container);
 
-  type = Type_;
+  lvalue = Assign::RVal;
 
-  if (length->is<Hole>()) { return; }
+  if (container->type == Void) {
+    type             = Err;
+    identifier->type = Err;
+    ErrorLog::TypeIteration(span);
+    limit_to(StageRange::Nothing());
+    return;
+  }
 
-  // TODO change this to just uint
-  if (length->type != Int && length->type != Uint) {
-    ErrorLog::ArrayIndexType(span);
-    limit_to(StageRange::NoEmitIR());
+  if (container->type->is<Array>()) {
+    type = container->type->as<Array>().data_type;
+
+  } else if (container->type->is<SliceType>()) {
+    type = container->type->as<SliceType>().array_type->data_type;
+
+  } else if (container->type->is<RangeType>()) {
+    type = container->type->as<RangeType>().end_type;
+
+  } else if (container->type == Type_) {
+    auto t = std::get<Type *>(Evaluate(container.get()).value);
+    if (t->is<Enum>()) { type = t; }
+
+  } else {
+    ErrorLog::IndeterminantType(span);
+    type = Err;
+    limit_to(StageRange::Nothing());
+  }
+
+  identifier->type = type;
+  identifier->Validate();
+}
+
+void Statements::Validate() {
+  STAGE_CHECK;
+  for (auto &stmt : statements) {
+    stmt->Validate();
+    limit_to(stmt);
   }
 }
 
-void ArrayLiteral::verify_types() {
+void CodeBlock::Validate() {
+  STAGE_CHECK;
+  type = Code;
+}
+
+void Unop::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+  VALIDATE_AND_RETURN_ON_ERROR(operand);
+
+  using Language::Operator;
+
+  if (op != Operator::At && op != Operator::And) {
+    lvalue = operand->lvalue == Assign::Const ? Assign::Const : Assign::LVal;
+  }
+
+  switch (op) {
+  case Operator::Eval: type = operand->type; break;
+  case Operator::Require: type = Void; break;
+  case Operator::Generate: type = Void; break;
+  case Operator::Free: {
+    if (!operand->type->is<Pointer>()) {
+      ErrorLog::UnopTypeFail("Attempting to free an object of type `" +
+                                 operand->type->to_string() + "`.",
+                             this);
+      limit_to(StageRange::NoEmitIR());
+    }
+    type = Void;
+  } break;
+  case Operator::Print: {
+    if (operand->type == Void) {
+      ErrorLog::UnopTypeFail(
+          "Attempting to print an expression with type `void`.", this);
+      limit_to(StageRange::NoEmitIR());
+    }
+    type = Void;
+  } break;
+  case Operator::Return: {
+    if (operand->type == Void) {
+      ErrorLog::UnopTypeFail(
+          "Attempting to return an expression which has type `void`.", this);
+      limit_to(StageRange::NoEmitIR());
+    }
+    type = Void;
+  } break;
+  case Operator::At: {
+    lvalue = Assign::LVal;
+    if (operand->type->is<Pointer>()) {
+      type = operand->type->as<Pointer>().pointee;
+
+    } else {
+      ErrorLog::UnopTypeFail(
+          "Attempting to dereference an expression of type `" +
+              operand->type->to_string() + "`.",
+          this);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } break;
+  case Operator::And: {
+    switch (operand->lvalue) {
+    case Assign::Const: [[fallthrough]];
+    case Assign::RVal:
+      ErrorLog::InvalidAddress(span, operand->lvalue);
+      lvalue = Assign::RVal;
+      break;
+    case Assign::LVal: break;
+    case Assign::Unset: UNREACHABLE();
+    }
+    type = Ptr(operand->type);
+  } break;
+  case Operator::Mul: {
+    if (operand->type != Type_) {
+      ErrorLog::LogGeneric(this->span, "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+      type = Err;
+      limit_to(StageRange::Nothing());
+    } else {
+      type = Type_;
+    }
+  } break;
+  case Operator::Sub: {
+    if (operand->type == Uint) {
+      ErrorLog::UnopTypeFail("Attempting to negate an unsigned integer (uint).",
+                             this);
+      type = Int;
+      limit_to(StageRange::NoEmitIR());
+
+    } else if (operand->type == Int || operand->type == Real) {
+      type = operand->type;
+
+    } else if (operand->type->is<Struct>()) {
+      for (auto scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
+        auto id_ptr = scope_ptr->IdHereOrNull("__neg__");
+        if (!id_ptr) { continue; }
+
+        id_ptr->Validate();
+      }
+
+      auto t = scope_->FunctionTypeReferencedOrNull("__neg__",
+                                                    std::vector{operand->type});
+      if (t) {
+        type = Tup(t->as<Function>().output);
+      } else {
+        ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
+                                   "` has no unary negation operator.",
+                               this);
+        type = Err;
+        limit_to(StageRange::Nothing());
+      }
+    } else {
+      ErrorLog::UnopTypeFail("Type `" + operand->type->to_string() +
+                                 "` has no unary negation operator.",
+                             this);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } break;
+  case Operator::Dots: {
+    if (operand->type == Uint || operand->type == Int ||
+        operand->type == Char) {
+      type = Range(operand->type);
+    } else {
+      ErrorLog::InvalidRangeType(span, type);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } break;
+  case Operator::Not: {
+    if (operand->type == Bool) {
+      type = Bool;
+    } else {
+      ErrorLog::UnopTypeFail("Attempting to apply the logical negation "
+                             "operator (!) to an expression of type `" +
+                                 operand->type->to_string() + "`.",
+                             this);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } break;
+  case Operator::Needs: {
+    type = Void;
+    if (operand->type != Bool) {
+      LogError::PreconditionNeedsBool(this);
+      limit_to(StageRange::NoEmitIR());
+    }
+  } break;
+  case Operator::Ensure: {
+    type = Void;
+    if (operand->type != Bool) {
+      LogError::EnsureNeedsBool(this);
+      limit_to(StageRange::NoEmitIR());
+    }
+  } break;
+  case Operator::Pass: type = operand->type; break;
+  default: UNREACHABLE(*this);
+  }
+}
+
+void Access::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+  VALIDATE_AND_RETURN_ON_ERROR(operand);
+  lvalue = (operand->type->is<Array>() &&
+            operand->type->as<Array>().fixed_length && member_name == "size")
+               ? Assign::Const
+               : operand->lvalue;
+
+  auto base_type = DereferenceAll(operand->type);
+  if (base_type->is<Array>()) {
+    if (member_name == "size") {
+      type = Uint;
+    } else {
+      ErrorLog::MissingMember(span, member_name, base_type);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } else if (base_type == Type_) {
+    Type *evaled_type = std::get<Type *>(Evaluate(operand.get()).value);
+    if (evaled_type->is<Enum>()) {
+      // Regardless of whether we can get the value, it's clear that this is
+      // supposed to be a member so we should emit an error but carry on
+      // assuming that this is an element of that enum type.
+      type = evaled_type;
+      if (evaled_type->as<Enum>().IntValueOrFail(member_name) ==
+          std::numeric_limits<size_t>::max()) {
+        ErrorLog::MissingMember(span, member_name, evaled_type);
+        limit_to(StageRange::NoEmitIR());
+      }
+    }
+  } else if (base_type->is<Struct>()) {
+    auto struct_type = static_cast<Struct *>(base_type);
+    struct_type->CompleteDefinition();
+
+    auto member_type = struct_type->field(member_name);
+    if (member_type != nullptr) {
+      type = member_type;
+
+    } else {
+      ErrorLog::MissingMember(span, member_name, base_type);
+      type = Err;
+      limit_to(StageRange::Nothing());
+    }
+  } else if (base_type->is<Primitive>() || base_type->is<Function>()) {
+    ErrorLog::MissingMember(span, member_name, base_type);
+    type = Err;
+    limit_to(StageRange::Nothing());
+  }
+
+}
+
+void ChainOp::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+  bool found_err = false;
+
+  lvalue = Assign::Const;
+  for (auto &expr : exprs) {
+    expr->Validate();
+    limit_to(expr);
+    if (expr->type == Err) { found_err = true; }
+    if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
+  }
+  if (found_err) {
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
+
+  // TODO Can we recover from errors here? Should we?
+
+  // Safe to just check first because to be on the same chain they must all have
+  // the same precedence, and ^, &, and | uniquely hold a given precedence.
+  if (ops[0] == Language::Operator::Or || ops[0] == Language::Operator::And ||
+      ops[0] == Language::Operator::Xor) {
+    bool failed = false;
+    for (const auto &expr : exprs) {
+      if (expr->type != exprs[0]->type) {
+        ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                             std::to_string(__LINE__) + ": ");
+        failed = true;
+      }
+    }
+
+    type = exprs[0]->type;
+
+    if (exprs[0]->type != Bool &&
+        !(exprs[0]->type == Type_ && ops[0] == Language::Operator::Or) &&
+        (!exprs[0]->type->is<Enum>() || exprs[0]->type->as<Enum>().is_enum_)) {
+      ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                           std::to_string(__LINE__) + ": ");
+      if (failed) {
+        limit_to(StageRange::Nothing());
+        return;
+      }
+    }
+
+  } else {
+    for (size_t i = 0; i < exprs.size() - 1; ++i) {
+      if (!ValidateComparisonType(ops[i], exprs[i]->type, exprs[i + 1]->type)) {
+        type = Err; // Errors exported by ValidateComparisonType
+      }
+    }
+    if (type == Err) { limit_to(StageRange::Nothing()); }
+    type = Bool;
+  }
+}
+
+void CommaList::Validate() {
+  STAGE_CHECK;
+  STARTING_CHECK;
+  lvalue = Assign::Const;
+  for (auto &expr : exprs) {
+    expr->Validate();
+    limit_to(expr);
+    if (expr->type == Err) { type = Err; }
+    if (expr->lvalue != Assign::Const) { lvalue = Assign::RVal; }
+  }
+  if (type == Err) {
+    limit_to(StageRange::Nothing());
+    return;
+  }
+
+  // TODO this is probably not a good way to do it.  If the tuple consists of a
+  // list of types, it should be interpretted as a
+  // type itself rather than a tuple. This is a limitation in your support of
+  // full tuples.
+  bool all_types = true;
+  std::vector<Type *> type_vec(exprs.size(), nullptr);
+
+  size_t position = 0;
+  for (const auto &expr : exprs) {
+    type_vec[position] = expr->type;
+    all_types &= (expr->type == Type_);
+    ++position;
+  }
+  // TODO got to have a better way to make tuple types i think
+  type = all_types ? Type_ : Tup(type_vec);
+}
+
+void ArrayLiteral::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
 
+  lvalue = Assign::Const;
   if (elems.empty()) {
     type = EmptyArray;
     return;
   }
 
-  for (auto &elem : elems) { elem->verify_types(); }
+  for (auto &elem : elems) {
+    elem->Validate();
+    limit_to(elem);
+    if (elem->lvalue != Assign::Const) { lvalue = Assign::RVal; }
+  }
+
   Type *joined = Err;
   for (auto &elem : elems) {
     joined = TypeJoin(joined, elem->type);
@@ -1429,69 +1452,44 @@ void ArrayLiteral::verify_types() {
   }
 }
 
-void FunctionLiteral::verify_types() {
+void ArrayType::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
+  lvalue = Assign::Const;
 
-  return_type_expr->verify_types();
-  if (ErrorLog::num_errs_ > 0) {
-    type = Err;
-    limit_to(StageRange::Nothing());
-    return;
+  length->Validate();
+  limit_to(length);
+  data_type->Validate();
+  limit_to(data_type);
+
+  type = Type_;
+
+  if (length->is<Hole>()) { return; }
+  if (length->lvalue != Assign::Const || data_type->lvalue != Assign::Const) {
+    lvalue = Assign::RVal;
   }
 
-  // TODO should named return types be required?
-  auto ret_type_val = Evaluate([&]() {
-    if (!return_type_expr->is<Declaration>()) { return return_type_expr.get(); }
-
-    auto *decl_return = &return_type_expr->as<Declaration>();
-    if (decl_return->IsInferred()) { NOT_YET(); }
-
-    return decl_return->type_expr.get();
-  }());
-
-  if (ret_type_val == IR::Val::None()) {
-    type = Err;
-    limit_to(StageRange::Nothing());
-    return;
+  // TODO change this to just uint
+  if (length->type != Int && length->type != Uint) {
+    ErrorLog::ArrayIndexType(span);
+    limit_to(StageRange::NoEmitIR());
   }
-
-  // TODO must this really be undeclared?
-  if (ret_type_val == IR::Val::None() /* TODO Error() */) {
-    ErrorLog::IndeterminantType(return_type_expr.get());
-    type = Err;
-    limit_to(StageRange::Nothing());
-  } else if (ret_type_val.type != Type_) {
-    ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
-    type = Err;
-    limit_to(StageRange::Nothing());
-    return;
-  } else if (std::get<Type *>(ret_type_val.value) == Err) {
-    type = Err;
-    limit_to(StageRange::Nothing());
-    return;
-  }
-
-  for (auto &input : inputs) { input->verify_types(); }
-
-  // TODO poison on input Err?
-
-  Type *ret_type    = std::get<Type *>(ret_type_val.value);
-  size_t num_inputs = inputs.size();
-  std::vector<Type *> input_type_vec;
-  input_type_vec.reserve(inputs.size());
-  for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
-
-  // TODO generics?
-  type = Func(input_type_vec, ret_type);
 }
 
-void Case::verify_types() {
+void Case::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
   for (auto & [ key, val ] : key_vals) {
-    key->verify_types();
-    val->verify_types();
+    key->Validate();
+    val->Validate();
+    limit_to(key);
+    limit_to(val);
+
+    // TODO do you want case-statements to be usable as lvalues? Currently they
+    // are not.
+    if (key->lvalue != Assign::Const || val->lvalue != Assign::Const) {
+      lvalue = Assign::RVal;
+    }
   }
 
   std::unordered_map<Type *, size_t> value_types;
@@ -1548,25 +1546,77 @@ void Case::verify_types() {
   }
 }
 
-void Statements::verify_types() {
+void FunctionLiteral::Validate() {
   STAGE_CHECK;
-  for (auto &stmt : statements) {
-    stmt->verify_types();
-    limit_to(stmt);
+  STARTING_CHECK;
+
+  lvalue = Assign::Const;
+  return_type_expr->Validate();
+  limit_to(return_type_expr);
+
+  if (ErrorLog::num_errs_ > 0) {
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
   }
+
+  // TODO should named return types be required?
+  auto ret_type_val = Evaluate([&]() {
+    if (!return_type_expr->is<Declaration>()) { return return_type_expr.get(); }
+
+    auto *decl_return = &return_type_expr->as<Declaration>();
+    if (decl_return->IsInferred()) { NOT_YET(); }
+
+    return decl_return->type_expr.get();
+  }());
+
+  if (ret_type_val == IR::Val::None()) {
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
+
+  // TODO must this really be undeclared?
+  if (ret_type_val == IR::Val::None() /* TODO Error() */) {
+    ErrorLog::IndeterminantType(return_type_expr.get());
+    type = Err;
+    limit_to(StageRange::Nothing());
+  } else if (ret_type_val.type != Type_) {
+    ErrorLog::NotAType(return_type_expr.get(), return_type_expr->type);
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  } else if (std::get<Type *>(ret_type_val.value) == Err) {
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
+
+  for (auto &input : inputs) { input->Validate(); }
+
+  // TODO poison on input Err?
+
+  Type *ret_type    = std::get<Type *>(ret_type_val.value);
+  size_t num_inputs = inputs.size();
+  std::vector<Type *> input_type_vec;
+  input_type_vec.reserve(inputs.size());
+  for (const auto &input : inputs) { input_type_vec.push_back(input->type); }
+
+  // TODO generics?
+  type = Func(input_type_vec, ret_type);
 }
 
-void For::verify_types() {
+void For::Validate() {
   STAGE_CHECK;
   for (auto &iter : iterators) {
-    iter->verify_types();
+    iter->Validate();
     limit_to(iter);
   }
-  statements->verify_types();
+  statements->Validate();
   limit_to(statements);
 }
 
-void Jump::verify_types() {
+void Jump::Validate() {
   STAGE_CHECK;
   // TODO made this slightly wrong
   auto scope_ptr = scope_;
@@ -1582,23 +1632,19 @@ void Jump::verify_types() {
   limit_to(StageRange::NoEmitIR());
 }
 
-// Intentionally do not verify anything internal
-void CodeBlock::verify_types() {
-  STAGE_CHECK;
-  type = Code;
-}
-
-void ScopeNode::verify_types() {
+void ScopeNode::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
 
-  scope_expr->verify_types();
+  lvalue = Assign::RVal;
+
+  scope_expr->Validate();
   limit_to(scope_expr);
   if (expr != nullptr) {
-    expr->verify_types();
+    expr->Validate();
     limit_to(expr);
   }
-  stmts->verify_types();
+  stmts->Validate();
   limit_to(stmts);
 
   if (!scope_expr->type->is<Scope_Type>()) {
@@ -1609,21 +1655,13 @@ void ScopeNode::verify_types() {
   }
 
   // TODO verify it uses the fields correctly
-  //
-  // ScopeLiteral *lit = Evaluate(scope_expr).as_scope;
-  // if (!type->is<Scope_Type>()) {
-  //   if (scope_expr->type != ScopeType(expr ? expr->type : Void)) {
-  //     ErrorLog::InvalidScope(scope_expr->span, scope_expr->type);
-  //     type = Err;
-  //     return;
-  //   }
-  // }
-  type = Void;
+  type = Void; // TODO can this evaluate to anything?
 }
 
-void ScopeLiteral::verify_types() {
+void ScopeLiteral::Validate() {
   STAGE_CHECK;
   STARTING_CHECK;
+  lvalue = Assign::Const;
   bool cannot_proceed_due_to_errors = false;
   if (!enter_fn) {
     cannot_proceed_due_to_errors = true;
@@ -1642,8 +1680,8 @@ void ScopeLiteral::verify_types() {
     return;
   }
 
-  VERIFY_AND_RETURN_ON_ERROR(enter_fn);
-  VERIFY_AND_RETURN_ON_ERROR(exit_fn);
+  VALIDATE_AND_RETURN_ON_ERROR(enter_fn);
+  VALIDATE_AND_RETURN_ON_ERROR(exit_fn);
 
   if (!enter_fn->type->is<Function>()) {
     cannot_proceed_due_to_errors = true;
@@ -1665,5 +1703,5 @@ void ScopeLiteral::verify_types() {
 }
 } // namespace AST
 
-#undef VERIFY_AND_RETURN_ON_ERROR
+#undef VALIDATE_AND_RETURN_ON_ERROR
 #undef STARTING_CHECK
