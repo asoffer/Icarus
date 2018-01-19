@@ -243,34 +243,36 @@ std::string CallArgTypes::to_string() const {
 // We already know there can be at most one match (multiple matches would have
 // been caught by shadowing), so we just return a pointer to it if it exists,
 // and null otherwise.
-std::optional<DispatchTable> Call::ComputeDispatchTable() {
+std::optional<DispatchTable>
+Call::ComputeDispatchTable(std::vector<Expression *> fn_options) {
   DispatchTable table;
+  for (Expression *fn_option : fn_options) {
+    // TODO expression is constant?
+    if (fn_option->type->is<Function>()) {
+      auto fn_val = Evaluate(fn_option->is<Declaration>()
+                                 ? fn_option->as<Declaration>().init_val.get()
+                                 : fn_option)
+                        .value;
 
-  for (Declaration *decl :
-       scope_->AllDeclsWithId(fn_->as<Identifier>().token)) {
-    // TODO what about const vs. non-const declarations? For now just
-    // ignore non-const declarations.
-
-    if (!decl->const_) { continue; }
-
-    if (decl->type->is<Function>()) {
-      auto fn_val = Evaluate(decl->init_val.get()).value;
-      auto **fn = std::get_if<IR::Func *>(&fn_val);
-      if (fn == nullptr) { return std::nullopt; }
+      auto **fn_ptr = std::get_if<IR::Func *>(&fn_val);
+      if (fn_ptr == nullptr) { return std::nullopt; }
+      auto *fn = *fn_ptr;
 
       // Compute name -> argument number map.
       // TODO this should be done when the function is generated instead of
       // ad-hoc
       std::unordered_map<std::string, size_t> index_lookup;
-      for (size_t i = 0; i < (*fn)->args_.size(); ++i) {
-        index_lookup[(*fn)->args_[i].first] = i;
+      for (size_t i = 0; i < fn->args_.size(); ++i) {
+        index_lookup[fn->args_[i].first] = i;
       }
 
       // Match the ordered unnamed arguments
-      Binding binding{decl->identifier.get(),
-                      std::vector<std::pair<Type *, Expression *>>(
-                          (*fn)->args_.size(),
-                          std::pair<Type *, Expression *>(nullptr, nullptr))};
+      auto *fn_expr = fn_option->is<Declaration>()
+                          ? fn_option->as<Declaration>().identifier.get()
+                          : fn_option;
+      Binding binding{fn_expr, std::vector(fn->args_.size(),
+                                           std::pair<Type *, Expression *>(
+                                               nullptr, nullptr))};
       for (size_t i = 0; i < pos_.size(); ++i) {
         binding.exprs_[i] = std::pair(nullptr, pos_[i].get());
       }
@@ -292,32 +294,32 @@ std::optional<DispatchTable> Call::ComputeDispatchTable() {
       CallArgTypes call_arg_types;
       call_arg_types.pos_.resize(pos_.size(), nullptr);
       // TODO Do flat_map for real
-      for (const auto &[key, val] : index_lookup) {
+      for (const auto & [ key, val ] : index_lookup) {
         if (val < pos_.size()) { continue; }
         call_arg_types.named_.emplace_back(key, nullptr);
       }
 
       for (size_t i = 0; i < binding.exprs_.size(); ++i) {
         if (binding.defaulted(i)) {
-          if (!(*fn)->has_default(i)) {
+          if (!fn->has_default(i)) {
             goto next_option;
           } else {
-            binding.exprs_[i].first = decl->type->as<Function>().input[i];
+            binding.exprs_[i].first = fn_option->type->as<Function>().input[i];
           }
         } else {
           Type *match = Type::Meet(binding.exprs_[i].second->type,
-                                   decl->type->as<Function>().input[i]);
-          if (match == nullptr) {
+                                   fn_option->type->as<Function>().input[i]);
+         if (match == nullptr) {
             goto next_option;
           } else {
-            binding.exprs_[i].first = decl->type->as<Function>().input[i];
+            binding.exprs_[i].first = fn_option->type->as<Function>().input[i];
           }
 
           if (i < call_arg_types.pos_.size()) {
             call_arg_types.pos_[i] = match;
           } else { // Matched a named argument
             // TODO implement flat_map for real
-            auto iter = call_arg_types.find((*fn)->args_[i].first);
+            auto iter = call_arg_types.find(fn->args_[i].first);
             ASSERT(iter != call_arg_types.named_.end(), "");
             iter->second = match;
           }
@@ -330,7 +332,6 @@ std::optional<DispatchTable> Call::ComputeDispatchTable() {
     }
   next_option:;
   }
-
   return std::move(table);
 }
 
@@ -815,9 +816,11 @@ void Call::Validate() {
   // Identifiers need special handling due to overloading. compile-time
   // constants need special handling because they admit named arguments. These
   // concepts should be orthogonal.
+  std::vector<Expression *> fn_options;
   if (fn_->is<Identifier>()) {
+    const auto &token = fn_->as<Identifier>().token;
     for (auto *scope_ptr = scope_; scope_ptr; scope_ptr = scope_ptr->parent) {
-      if (scope_ptr->shadowed_decls_.find(fn_->as<Identifier>().token) !=
+      if (scope_ptr->shadowed_decls_.find(token) !=
           scope_ptr->shadowed_decls_.end()) {
         // The declaration of this identifier is shadowed so it will be
         // difficult to give meaningful error messages. Bailing out.
@@ -831,74 +834,67 @@ void Call::Validate() {
         limit_to(StageRange::Nothing());
         return;
       }
-    }
 
-    // When looking for a match, we know that no two matches can overlap since
-    // we have already verified there is no shadowing. However, we still need to
-    // verify that all cases involving variants are covered.
-
-    auto maybe_table = ComputeDispatchTable();
-    if (!maybe_table.has_value()) {
-      // Failure because we can't emit IR for the function so the error was
-      // previously logged.
-      type = Err;
-      limit_to(StageRange::Nothing());
-      return;
+      auto iter = scope_ptr->decls_.find(token);
+      if (iter == scope_ptr->decls_.end()) { continue; }
+      for (const auto &decl : iter->second) {
+        decl->Validate();
+        if (decl->type == Err) {
+          limit_to(decl->stage_range_.high);
+          return;
+        }
+        fn_options.push_back(decl);
+      }
     }
+  } else {
+    fn_->Validate();
+    fn_options.push_back(fn_.get());
+  }
+
+  if (auto maybe_table = ComputeDispatchTable(std::move(fn_options))) {
     dispatch_table_ = std::move(maybe_table.value());
+  } else {
+    // Failure because we can't emit IR for the function so the error was
+    // previously logged.
+    type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
 
-    u64 expanded_size = 1;
-    for (const auto &arg : pos_) {
-      if (!arg->type->is<Variant>()) { continue; }
-      expanded_size *= arg->type->as<Variant>().size();
-    }
-    for (const auto &arg : named_) {
-      if (!arg.second->type->is<Variant>()) { continue; }
-      expanded_size *= arg.second->type->as<Variant>().size();
-    }
+  u64 expanded_size = 1;
+  for (const auto &arg : pos_) {
+    if (!arg->type->is<Variant>()) { continue; }
+    expanded_size *= arg->type->as<Variant>().size();
+  }
+  for (const auto &arg : named_) {
+    if (!arg.second->type->is<Variant>()) { continue; }
+    expanded_size *= arg.second->type->as<Variant>().size();
+  }
 
-    if (dispatch_table_.total_size_ != expanded_size) {
-      LOG << "Failed to find a match for everything. ("
-          << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
-      type = fn_->type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
+  if (dispatch_table_.total_size_ != expanded_size) {
+    LOG << "Failed to find a match for everything. ("
+        << dispatch_table_.total_size_ << " vs " << expanded_size << ")";
+    type = fn_->type = Err;
+    limit_to(StageRange::Nothing());
+    return;
+  }
 
+  if (fn_->is<Identifier>()) {
     // fn_'s type should never be considered beacuse it could be one of many
     // different things. 'Void' just indicates that it has been computed (i.e.,
     // not 0x0 or Unknown) and that there was no error in doing so (i.e., not
     // Err).
     fn_->type = Void;
-
-    std::vector<Type *> out_types;
-    out_types.reserve(dispatch_table_.bindings_.size());
-    for (const auto & [ key, val ] : dispatch_table_.bindings_) {
-      auto &outs = val.fn_expr_->type->as<Function>().output;
-      ASSERT_LE(outs.size(), 1u);
-      out_types.push_back(outs.empty() ? Void : outs[0]);
-    }
-    type = Var(std::move(out_types));
-  } else {
-    VALIDATE_AND_RETURN_ON_ERROR(fn_);
-    if (dispatch_table_.bindings_.size() != 1) {
-      ErrorLog::LogGeneric(span,
-                           "TODO " __FILE__ ":" + std::to_string(__LINE__));
-      type = Err;
-      limit_to(StageRange::Nothing());
-      return;
-    }
-
-    const auto & [ call_arg_type, binding ] =
-        *dispatch_table_.bindings_.begin();
-
-    LOG << fn_->type;
-    // TODO reimplement casts and calling functions not bound to identifiers.
-    ErrorLog::LogGeneric(span, "TODO " __FILE__ ":" + std::to_string(__LINE__));
-    type      = Err;
-    fn_->type = Err;
-    limit_to(StageRange::Nothing());
   }
+
+  std::vector<Type *> out_types;
+  out_types.reserve(dispatch_table_.bindings_.size());
+  for (const auto & [ key, val ] : dispatch_table_.bindings_) {
+    auto &outs = val.fn_expr_->type->as<Function>().output;
+    ASSERT_LE(outs.size(), 1u);
+    out_types.push_back(outs.empty() ? Void : outs[0]);
+  }
+  type = Var(std::move(out_types));
 }
 
 // TODO Declaration is responsible for the type verification of it's identifier?

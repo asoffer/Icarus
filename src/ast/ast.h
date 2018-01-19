@@ -231,7 +231,8 @@ struct Call : public Expression {
 
   // Filled in after type verification
   DispatchTable dispatch_table_;
-  std::optional<DispatchTable> ComputeDispatchTable();
+  std::optional<DispatchTable>
+  ComputeDispatchTable(std::vector<Expression *> fn_options);
 };
 
 struct ArgumentMetaData {
