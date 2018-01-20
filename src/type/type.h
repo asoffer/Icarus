@@ -20,7 +20,6 @@ struct Scope;
 #include "../base/util.h"
 #include "../base/debug.h"
 #include "../base/types.h"
-#include "../ir/ir.h"
 
 #include <iosfwd>
 #include <string>

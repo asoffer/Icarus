@@ -2,16 +2,18 @@
 #include <vector>
 
 #include "ast/ast.h"
+#include "base/debug.h"
 #include "base/source.h"
 #include "error_log.h"
-#include "ir/ir.h"
-#include "scope.h"
+#include "ir/func.h"
 #include "type/type.h"
 #include "util/command_line_args.h"
 #include "util/timer.h"
-#include "base/debug.h"
 
 Timer timer;
+
+struct Scope;
+extern Scope *GlobalScope;
 
 #define CHECK_FOR_ERRORS                                                       \
   do {                                                                         \
@@ -38,7 +40,7 @@ int GenerateCode() {
   }
 
   RUN(timer, "Verify and Emit") {
-    AST::DoStages<0, 2>(global_statements.get(), Scope::Global);
+    AST::DoStages<0, 2>(global_statements.get(), GlobalScope);
     for (auto &stmt : global_statements->statements) {
       if (!stmt->is<AST::Declaration>()) { continue; }
       stmt->as<AST::Declaration>().EmitIR(IR::Cmd::Kind::Exec);
@@ -69,11 +71,11 @@ int RunRepl() {
     for (auto &stmt : stmts->statements) {
       if (stmt->is<AST::Declaration>()) {
         auto *decl = &stmt->as<AST::Declaration>();
-        AST::DoStages<0, 3>(decl, Scope::Global);
+        AST::DoStages<0, 3>(decl, GlobalScope);
 
       } else if (stmt->is<AST::Expression>()) {
         auto *expr = &stmt->as<AST::Expression>();
-        AST::DoStages<0, 0>(expr, Scope::Global);
+        AST::DoStages<0, 0>(expr, GlobalScope);
         ReplEval(expr);
         fprintf(stderr, "\n");
       } else {
@@ -91,9 +93,9 @@ int main(int argc, char *argv[]) {
 
   RUN(timer, "Argument parsing") {
     switch (ParseCLArguments(argc, argv)) {
-      case CLArgFlag::QuitSuccessfully: return 0;
-      case CLArgFlag::QuitWithFailure: return -1;
-      case CLArgFlag::Continue:;
+    case CLArgFlag::QuitSuccessfully: return 0;
+    case CLArgFlag::QuitWithFailure: return -1;
+    case CLArgFlag::Continue:;
     }
   }
 

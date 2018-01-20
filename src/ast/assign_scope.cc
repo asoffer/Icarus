@@ -1,9 +1,5 @@
 #include "ast.h"
 
-#include "../ir/ir.h"
-#include "../scope.h"
-#include "../type/type.h"
-
 namespace AST {
 static constexpr int ThisStage() { return 0; }
 

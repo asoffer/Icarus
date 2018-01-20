@@ -1,13 +1,14 @@
-#include "ir.h"
+#include "cmd.h"
 
-#include "../type/type.h"
-#include "property.h"
 #include <cmath>
 #include <iostream>
 
+#include "../type/type.h"
+#include "func.h"
+#include "property.h"
+
 namespace IR {
 BlockIndex Block::Current;
-Func *Func::Current{nullptr};
 
 template <bool IsPhi = false>
 static void RecordReferences(Func *fn, const CmdIndex &ci,
@@ -513,23 +514,6 @@ void Func::dump() const {
   for (size_t i = 0; i < blocks_.size(); ++i) {
     std::cerr << "\n block #" << i << std::endl;
     blocks_[i].dump(2);
-  }
-}
-
-ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
-    : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
-      regs_(fn->num_regs_, Val::None()) {
-  size_t num_inputs = fn->ir_type->input.size();
-  ASSERT_LE(num_inputs, arguments.size());
-  ASSERT_LE(num_inputs, regs_.size());
-  size_t i = 0;
-  for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
-  for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
-
-  if (rets_.empty() && fn->type_->output.size() == 1) {
-    // This is the case of a simple return type (i.e., type can be held in
-    // register).
-    rets_.push_back(IR::Val::None());
   }
 }
 

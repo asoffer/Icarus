@@ -1,4 +1,4 @@
-#include "ir.h"
+#include "exec.h"
 
 #include <cstring>
 #include <memory>
@@ -8,10 +8,12 @@
 #include "../ast/ast.h"
 #include "../base/util.h"
 #include "../error_log.h"
-#include "../scope.h"
 #include "../type/type.h"
+#include "func.h"
 
 std::vector<IR::Val> global_vals;
+struct Scope;
+extern Scope *GlobalScope;
 
 namespace Language {
 extern size_t precedence(Operator op);
@@ -26,7 +28,7 @@ std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
     // TODO should these be at global scope? or a separate REPL scope?
     // Is the scope cleaned up?
     fn_lit.type = Func(input_type != nullptr ? input_type : Void, expr->type);
-    fn_lit.fn_scope           = Scope::Global->add_child<FnScope>();
+    fn_lit.fn_scope = GlobalScope->add_child<FnScope>();
     fn_lit.fn_scope->fn_type  = &fn_lit.type->as<Function>();
     fn_lit.scope_             = expr->scope_;
     fn_lit.statements         = base::make_owned<AST::Statements>();
@@ -110,7 +112,28 @@ IR::Val Evaluate(AST::Expression *expr) {
 }
 
 namespace IR {
-ExecContext::ExecContext() : stack_(50) {}
+ExecContext::ExecContext() : stack_(50u) {}
+
+Block &ExecContext::current_block() {
+  return call_stack.top().fn_->block(call_stack.top().current_);
+}
+
+ExecContext::Frame::Frame(Func *fn, const std::vector<Val> &arguments)
+    : fn_(fn), current_(fn_->entry()), prev_(fn_->entry()),
+      regs_(fn->num_regs_, Val::None()) {
+  size_t num_inputs = fn->ir_type->input.size();
+  ASSERT_LE(num_inputs, arguments.size());
+  ASSERT_LE(num_inputs, regs_.size());
+  size_t i = 0;
+  for (; i < num_inputs; ++i) { regs_[i] = arguments[i]; }
+  for (; i < arguments.size(); ++i) { rets_.push_back(arguments[i]); }
+
+  if (rets_.empty() && fn->type_->output.size() == 1) {
+    // This is the case of a simple return type (i.e., type can be held in
+    // register).
+    rets_.push_back(IR::Val::None());
+  }
+}
 
 BlockIndex ExecContext::ExecuteBlock() {
   Val result;

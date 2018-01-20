@@ -1,9 +1,10 @@
-#include "ir.h"
+#include "val.h"
 
 #include <sstream>
 
 #include "../ast/ast.h"
 #include "../type/type.h"
+#include "func.h"
 
 namespace IR {
 Val Val::CodeBlock(base::owned_ptr<AST::CodeBlock> block) {
@@ -117,31 +118,9 @@ bool operator==(Addr lhs, Addr rhs) {
   UNREACHABLE();
 }
 
-Block &ExecContext::current_block() {
-  return call_stack.top().fn_->block(call_stack.top().current_);
-}
-
-Val Func::Argument(u32 n) {
-  return Val::Reg(Register(n), ir_type->input AT(n));
-}
-
-Func::Func(::Function *fn_type,
-           std::vector<std::pair<std::string, AST::Expression *>> args)
-    : type_(fn_type), ir_type(fn_type->ToIR()), args_(std::move(args)),
-      num_regs_(static_cast<i32>(fn_type->input.size())) {
-  ASSERT_EQ(args_.size(), fn_type->input.size());
-  blocks_.push_back(std::move(Block(this)));
-  i32 num_args = static_cast<i32>(args_.size());
-  for (i32 i = 0; i < num_args; ++i) {
-    reg_map_[Register(static_cast<i32>(i))] = CmdIndex{0, i - num_args};
-  }
-}
-
 bool Register::is_arg(const Func &fn) const {
   return value_ >= 0 && value_ < static_cast<decltype(value_)>(fn.args_.size());
 }
-
-std::vector<std::unique_ptr<Func>> Func::All;
 
 } // namespace IR
 

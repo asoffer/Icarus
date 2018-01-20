@@ -1,6 +1,5 @@
 #include "../type/type.h"
 #include "ast.h"
-#include "../ir/ir.h"
 
 #define TYPE_OR(other) (type ? type->to_string() : (other))
 

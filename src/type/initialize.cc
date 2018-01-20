@@ -2,8 +2,7 @@
 
 #include "../architecture.h"
 #include "../ast/ast.h"
-#include "../ir/ir.h"
-#include "scope.h"
+#include "../ir/func.h"
 
 void Primitive::EmitInit(IR::Val id_val) {
   IR::Store(EmitInitialValue(), id_val);

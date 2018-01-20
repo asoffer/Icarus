@@ -1,9 +1,12 @@
 #ifndef ICARUS_ARCHITECTURE_H
 #define ICARUS_ARCHITECTURE_H
 
-#include "ir/ir.h"
 #include "type/type.h"
 #include <cstddef>
+
+namespace IR {
+struct Val;
+} // namespace IR
 
 // We only support architectures on which a byte is 8 bits, and assume all
 // alignments are powers of two.
@@ -16,10 +19,7 @@ struct Architecture {
   }
 
   // TODO skip the last alignment requirement?
-  IR::Val ComputeArrayLength(IR::Val len, const Type *t) const {
-    auto space_in_array = MoveForwardToAlignment(t, bytes(t));
-    return IR::Mul(len, IR::Val::Uint(space_in_array));
-  }
+  IR::Val ComputeArrayLength(const IR::Val &len, const Type *t) const;
 
   u64 ComputeArrayLength(u64 len, const Type *t) const {
     return len * MoveForwardToAlignment(t, bytes(t));

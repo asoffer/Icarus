@@ -1,6 +1,7 @@
 #include "type/type.h"
-#include "scope.h"
 #include "ast/ast.h"
+
+struct Scope;
 
 std::string Mangle(const Type *t, bool prefix) {
   if (t->is<Primitive>()) {
@@ -38,18 +39,5 @@ std::string Mangle(const Type *t, bool prefix) {
     ss << t->to_string();
   }
 
-  return ss.str();
-}
-
-// TODO Mangle could just take a declaration and the type could be pulled out.
-std::string Mangle(const Function *f, AST::Expression *expr, Scope *) {
-  std::string name =
-      expr->is<AST::Identifier>() ? ((AST::Identifier *)expr)->token : "";
-
-  std::stringstream ss;
-  ss << "_Z";
-
-  ss << "F" << name.size() << name << f->input.size();
-  for (Type *in : f->input) { ss << Mangle(in, false); }
   return ss.str();
 }

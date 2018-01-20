@@ -1,6 +1,5 @@
 #include "ast.h"
 
-#include "../scope.h"
 #include "../type/type.h"
 
 namespace Language {

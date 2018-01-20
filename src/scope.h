@@ -1,6 +1,19 @@
 #ifndef ICARUS_SCOPE_H
 #define ICARUS_SCOPE_H
 
+#include <iosfwd>
+#include <vector>
+#include <unordered_set>
+#include <unordered_map>
+
+#include "base/owned_ptr.h"
+#include "base/util.h"
+
+
+namespace IR {
+struct Val;
+} // namespace IR
+
 namespace AST {
 struct Declaration;
 struct Expression;
@@ -10,13 +23,6 @@ struct FunctionLiteral;
 
 struct Type;
 struct Function;
-
-#include "base/owned_ptr.h"
-#include "base/util.h"
-#include "ir/ir.h"
-#include <iosfwd>
-#include <vector>
-
 struct DeclScope;
 struct ExecScope;
 struct FnScope;
@@ -26,8 +32,6 @@ struct Scope : public base::Cast<Scope> {
   Scope(Scope *parent) : parent(parent) {}
   virtual ~Scope() {}
   virtual Scope *Clone() const = 0;
-
-  static DeclScope *Global;
 
   template <typename ScopeType> base::owned_ptr<ScopeType> add_child() {
     return base::make_owned<ScopeType>(this);
@@ -45,8 +49,6 @@ struct Scope : public base::Cast<Scope> {
 
   Type *FunctionTypeReferencedOrNull(const std::string &fn_name,
                                      std::vector<Type *> input_type);
-
-  IR::Val FuncHereOrNull(const std::string &fn_name, Function *fn_type);
 
   AST::Declaration *DeclHereOrNull(const std::string &name,
                                    Type *declared_type);

@@ -1,15 +1,15 @@
-#include "ir.h"
-
-#include <vector>
+#include "func.h"
 
 #include "../ast/ast.h"
 #include "../error_log.h"
-#include "../scope.h"
 #include "../type/type.h"
 
 static constexpr int ThisStage() { return 3; }
 extern IR::Val Evaluate(AST::Expression *expr);
 extern std::vector<IR::Val> global_vals;
+
+struct Scope;
+extern Scope *GlobalScope;
 
 // If the expression is a CommaList, apply the function to each expr. Otherwise
 // call it on the expression itself.
@@ -232,7 +232,7 @@ IR::Val AST::Access::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::Terminal::EmitIR(IR::Cmd::Kind) { return value; }
 
 IR::Val AST::Identifier::EmitIR(IR::Cmd::Kind kind) {
-  if (decl->scope_ == Scope::Global) { decl->EmitIR(kind); }
+  if (decl->scope_ == GlobalScope) { decl->EmitIR(kind); }
 
   if (auto *ret = std::get_if<IR::ReturnValue>(&decl->addr.value);
       ret && kind == IR::Cmd::Kind::PostCondition) {
@@ -505,7 +505,7 @@ IR::Val AST::Declaration::EmitIR(IR::Cmd::Kind kind) {
     } else {
       UNREACHABLE();
     }
-  } else if (scope_ == Scope::Global) {
+  } else if (scope_ == GlobalScope) {
     // TODO these checks actually overlap and could be simplified.
     if (IsUninitialized()) {
       global_vals.emplace_back();

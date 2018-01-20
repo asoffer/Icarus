@@ -1,7 +1,6 @@
 #include "type.h"
 
-#include "../ir/ir.h"
-#include "../scope.h"
+#include "../ir/func.h"
 
 void Primitive::EmitRepr(IR::Val val) {
   switch (type_) {

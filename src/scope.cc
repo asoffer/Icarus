@@ -1,9 +1,10 @@
 #include "scope.h"
 
 #include "ast/ast.h"
+#include "ir/func.h"
 #include "type/type.h"
 
-DeclScope *Scope::Global = new DeclScope(nullptr);
+DeclScope *GlobalScope = new DeclScope(nullptr);
 
 AST::Declaration *Scope::DeclHereOrNull(const std::string &name,
                                         Type *declared_type) {
@@ -61,38 +62,6 @@ Type *Scope::FunctionTypeReferencedOrNull(const std::string &fn_name,
     }
   }
   return nullptr;
-}
-
-IR::Val Scope::FuncHereOrNull(const std::string &fn_name, Function *fn_type) {
-  Scope *scope_ptr = this;
-  AST::Declaration *decl;
-
-  decl = DeclReferencedOrNull(fn_name, fn_type);
-  for (; scope_ptr; scope_ptr = scope_ptr->parent) {
-    decl = scope_ptr->DeclHereOrNull(fn_name, fn_type);
-    if (decl) { break; }
-  }
-
-  if (!decl) { return IR::Val::None(); }
-
-  if (decl->addr == IR::Val::None()) {
-    if (decl->init_val->is<AST::FunctionLiteral>()) {
-      auto old_func  = IR::Func::Current;
-      auto old_block = IR::Block::Current;
-
-      decl->addr = decl->init_val->EmitIR(IR::Cmd::Kind::Exec);
-      std::get<IR::Func *>(decl->addr.value)->name =
-          Mangle(fn_type, decl->identifier.get(), scope_ptr);
-
-      IR::Func::Current  = old_func;
-      IR::Block::Current = old_block;
-    } else {
-      NOT_YET();
-    }
-  }
-
-  ASSERT(decl->addr != IR::Val::None(), "");
-  return IR::Load(decl->addr);
 }
 
 void Scope::InsertDecl(AST::Declaration *decl) {

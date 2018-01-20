@@ -1,5 +1,5 @@
 #include "type.h"
-#include "../scope.h"
+#include "../ir/func.h"
 
 #include <map>
 

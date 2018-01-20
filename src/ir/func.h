@@ -1,0 +1,117 @@
+#ifndef ICARUS_IR_FUNC_H
+#define ICARUS_IR_FUNC_H
+
+#include <unordered_map>
+#include <unordered_set>
+#include <queue>
+#include <vector>
+
+#include "block.h"
+
+struct Function;
+struct ExecContext;
+
+namespace IR {
+struct Func {
+  static Func *Current;
+  static std::vector<std::unique_ptr<Func>> All;
+
+  // TODO just take a vector of declarations?
+  Func(::Function *fn_type,
+       std::vector<std::pair<std::string, AST::Expression *>> args);
+
+  void dump() const;
+  Val Argument(u32 n);
+
+  int ValidateCalls(std::queue<Func *> *validation_queue) const;
+
+  const Block &block(BlockIndex index) const { return blocks_.at(index.value); }
+  Block &block(BlockIndex index) {
+    return const_cast<Block &>(static_cast<const Func *>(this)->block(index));
+  }
+
+  const Cmd &Command(CmdIndex cmd_index) const {
+    return blocks_.at(cmd_index.block.value).cmds_.at(cmd_index.cmd);
+  }
+  Cmd &Command(CmdIndex cmd_index) {
+    return const_cast<Cmd &>(
+        static_cast<const Func *>(this)->Command(cmd_index));
+  }
+
+  void SetArgs(CmdIndex cmd_index, std::vector<IR::Val> args);
+
+  static BlockIndex AddBlock() {
+    BlockIndex index;
+    index.value = static_cast<decltype(index.value)>(Current->blocks_.size());
+    Current->blocks_.emplace_back(Current);
+    return index;
+  }
+
+  BlockIndex entry() const { return BlockIndex(0); }
+
+  std::vector<Val> Execute(const std::vector<Val> &args, ExecContext *ctx,
+                           bool *were_errors);
+
+  // Is this needed? Or can it be determined from the containing FunctionLiteral
+  // object?
+  ::Function *const type_   = nullptr;
+  ::Function *const ir_type = nullptr;
+  std::vector<std::pair<std::string, AST::Expression *>> args_;
+  bool has_default(size_t i) const { return args_[i].second != nullptr; }
+  i32 num_regs_  = 0;
+  i32 num_voids_ = 0;
+  std::string name;
+  std::vector<Block> blocks_;
+
+  // Indices for blocks that end in a return statement.
+  // TODO: Alternatively we could just iterate over all blocks and look at the
+  // last entry. Figure out which makes more sense.
+  std::unordered_set<BlockIndex> return_blocks_;
+
+  // TODO we can probably come up with a way to more closely tie Register and
+  // CmdIndex so we don't need to store this map:
+  std::unordered_map<Register, CmdIndex> reg_map_;
+  std::vector<AST::Expression *> preconditions_;
+  std::vector<AST::Expression *> postconditions_;
+  // TODO many of these maps could and should be vectors except they're keyed on
+  // strong ints. Consider adding a strong int vector.
+  std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;
+
+  // This is a map from blocks to the set of blocks that could precede the key
+  // block. Because we're passing pointers around which may be invalidated if a
+  // block is moved (say, by a vector resizing, this should only be filled once
+  // after this object has been otherwise finalized.
+  std::unordered_map<const Block *, std::unordered_set<const Block *>>
+      incoming_;
+
+  mutable int num_errors_ = -1; // -1 indicates not yet validated
+};
+
+struct FuncResetter {
+  FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(Block::Current) {
+    Func::Current = fn;
+  }
+  ~FuncResetter() {
+    Func::Current  = old_fn_;
+    Block::Current = old_block_;
+  }
+
+  Func *old_fn_;
+  BlockIndex old_block_;
+  bool cond_ = true;
+};
+
+template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
+  auto continue_block = Func::Current->AddBlock();
+  CondJump(cond, B ? exit_block : continue_block,
+           B ? continue_block : exit_block);
+  return continue_block;
+}
+} // namespace IR
+
+#define CURRENT_FUNC(fn)                                                       \
+  for (auto resetter  = ::IR::FuncResetter(fn); resetter.cond_;                \
+       resetter.cond_ = false)
+
+
+#endif // ICARUS_IR_FUNC_H

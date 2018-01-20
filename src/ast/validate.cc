@@ -1,8 +1,7 @@
 #include "ast.h"
 
 #include "../error_log.h"
-#include "../ir/ir.h"
-#include "../scope.h"
+#include "../ir/func.h"
 #include "../type/type.h"
 
 // TODO catch functions that don't return along all paths.

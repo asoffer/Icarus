@@ -2,7 +2,6 @@
 #define ICARUS_AST_AST_H
 
 #include <algorithm>
-#include <map>
 #include <memory>
 #include <optional>
 #include <unordered_map>
@@ -13,15 +12,17 @@
 #include "../base/owned_ptr.h"
 #include "../base/util.h"
 #include "../input/cursor.h"
-#include "../ir/ir.h"
+#include "../ir/cmd.h"
 #include "../scope.h"
 #include "../type/type.h"
 #include "dispatch.h"
 #include "operators.h"
 
-struct Scope;
-
 enum class Assign : char { Unset, Const, LVal, RVal };
+
+namespace IR {
+struct Func;
+} // namespace IR
 
 namespace AST {
 struct StageRange {

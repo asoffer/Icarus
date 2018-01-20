@@ -1,5 +1,13 @@
 #include "architecture.h"
 
+#include "ir/val.h"
+
+IR::Val Architecture::ComputeArrayLength(const IR::Val &len,
+                                         const Type *t) const {
+  auto space_in_array = MoveForwardToAlignment(t, bytes(t));
+  return IR::Mul(len, IR::Val::Uint(space_in_array));
+}
+
 size_t Architecture::alignment(const Type *t) const {
   if (t->is<Primitive>()) {
     switch (t->as<const Primitive>().type_) {

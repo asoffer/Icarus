@@ -1,5 +1,7 @@
 #include "type.h"
+
 #include "../ast/ast.h"
+#include "../ir/func.h"
 
 IR::Val Primitive::EmitInitialValue() const {
   switch (type_) {

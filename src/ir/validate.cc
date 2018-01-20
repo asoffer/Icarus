@@ -1,11 +1,15 @@
-#include "ir.h"
+#include <queue>
 
 #include "../error_log.h"
+#include "func.h"
 #include "property.h"
 
 namespace debug {
 extern bool no_validation;
 } // namespace debug
+
+std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
+                                 IR::Cmd::Kind);
 
 namespace IR {
 namespace property {

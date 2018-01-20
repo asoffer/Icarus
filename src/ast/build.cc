@@ -5,7 +5,6 @@
 
 #include "../base/source.h"
 #include "../error_log.h"
-#include "../scope.h"
 #include "../type/type.h"
 
 extern std::queue<Source::Name> file_queue;

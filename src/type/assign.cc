@@ -1,7 +1,7 @@
 #include "type.h"
 
 #include "../architecture.h"
-#include "../ir/ir.h"
+#include "../ir/func.h"
 
 // TODO destructor for previously held value.
 
