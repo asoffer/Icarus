@@ -435,10 +435,6 @@ struct FunctionLiteral : public Expression {
   FunctionLiteral *Clone() const override;
 
   virtual IR::Val EmitIR(IR::Cmd::Kind);
-  IR::Val EmitIRAndSave(bool, IR::Cmd::Kind);
-
-  // TODO the value of this flag can be passed as a template argument.
-  IR::Val EmitTemporaryIR(IR::Cmd::Kind kind);
 
   base::owned_ptr<FnScope> fn_scope;
   base::owned_ptr<Expression> return_type_expr;

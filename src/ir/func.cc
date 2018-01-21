@@ -3,6 +3,8 @@
 #include "../type/type.h"
 
 namespace IR {
+Func *Func::Current{nullptr};
+
 std::vector<std::unique_ptr<Func>> Func::All;
 Val Func::Argument(u32 n) {
   return Val::Reg(Register(n), ir_type->input AT(n));
@@ -20,5 +22,26 @@ Func::Func(::Function *fn_type,
   }
 }
 
-Func *Func::Current{nullptr};
+std::unordered_map<const Block *, std::unordered_set<const Block *>>
+Func::GetIncoming() const {
+  std::unordered_map<const Block *, std::unordered_set<const Block *>> incoming;
+  for (const auto &b : blocks_) {
+    const auto &last = b.cmds_.back();
+    switch (last.op_code_) {
+    case Op::UncondJump:
+      incoming[&block(std::get<BlockIndex>(last.args[0].value))].insert(&b);
+      break;
+    case Op::CondJump:
+      incoming[&block(std::get<BlockIndex>(last.args[1].value))].insert(&b);
+      incoming[&block(std::get<BlockIndex>(last.args[2].value))].insert(&b);
+      break;
+    case Op::ReturnJump: /* Nothing to do */ break;
+    default: dump(); UNREACHABLE(static_cast<int>(last.op_code_));
+    }
+  }
+  // Hack: First entry depends on itself.
+  incoming[&block(entry())].insert(&block(entry()));
+  return incoming;
+}
+
 } // namespace IR

@@ -8,12 +8,53 @@ namespace debug {
 extern bool no_validation;
 } // namespace debug
 
-std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
-                                 IR::Cmd::Kind);
+std::unique_ptr<IR::Func>
+ExprFn(AST::Expression *expr, Type *input,
+       const std::vector<std::pair<std::string, AST::Expression *>> args,
+       IR::Cmd::Kind kind);
 
 namespace IR {
 namespace property {
+static base::owned_ptr<Property> DefaultProperty(Type* t) {
+  if (t == Bool) { return base::make_owned<BoolProperty>(); }
+  if (t == Int) { return base::make_owned<Range<i32>>(); }
+  return nullptr;
+}
+
 struct PropView {
+  PropView(
+      const Func *fn,
+      const std::unordered_map<const Block *, std::unordered_set<const Block *>>
+          &incoming) {
+    if (fn->args_.size() == 1) {
+      ASSERT_EQ(fn->ir_type->input.size(), 1u);
+      auto prop = DefaultProperty(fn->ir_type->input[0]);
+      ASSERT_NE(prop.get(), nullptr);
+      props_[Register(0)] = std::move(prop);
+    } else if (fn->args_.size() > 1) {
+      for (i32 i = 0; i < static_cast<i32>(fn->args_.size()); ++i) {
+        Type *entry_type = fn->ir_type->input[i];
+        auto prop        = DefaultProperty(entry_type);
+        ASSERT(prop.get() != nullptr, "");
+        props_[Register(i)] = std::move(prop);
+      }
+    }
+
+    for (const auto &block : fn->blocks_) {
+      for (const auto &cmd : block.cmds_) {
+        auto prop = DefaultProperty(cmd.type);
+        if (prop.get() != nullptr) { props_[cmd.result] = std::move(prop); }
+      }
+    }
+    incoming_ = incoming;
+
+    i32 i = 0;
+    for (Type *entry : fn->ir_type->output) {
+      ret_props_[ReturnValue(i++)] = DefaultProperty(entry);
+    }
+  }
+  PropView() {}
+
   std::unordered_map<Register, base::owned_ptr<Property>> props_;
   std::unordered_map<ReturnValue, base::owned_ptr<Property>> ret_props_;
   std::unordered_map<const Block *, std::unordered_set<const Block *>>
@@ -21,68 +62,14 @@ struct PropView {
   std::unordered_set<const Block *> unreachable_;
 };
 
-static base::owned_ptr<Property> DefaultProperty(Type* t) {
-  if (t == Bool) { return base::make_owned<BoolProperty>(); }
-  if (t == Int) { return base::make_owned<Range<i32>>(); }
-  return nullptr;
-}
-
 struct PropDB {
   PropDB(const Func *fn) : fn_(fn) {
-    // Build a generic reachability set once and copy it for each view.
-    // TODO copy-on-write
-    std::unordered_map<const Block *, std::unordered_set<const Block *>>
-        incoming;
-    for (const auto &block : fn_->blocks_) {
-      const auto &last_cmd = block.cmds_.back();
-      switch (last_cmd.op_code_) {
-      case Op::UncondJump:
-        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[0].value))]
-            .insert(&block);
-        break;
-      case Op::CondJump:
-        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[1].value))]
-            .insert(&block);
-        incoming[&fn_->block(std::get<BlockIndex>(last_cmd.args[2].value))]
-            .insert(&block);
-        break;
-      case Op::ReturnJump: /* Nothing to do */ break;
-      default: fn_->dump(); UNREACHABLE(static_cast<int>(last_cmd.op_code_));
-      }
-    }
-    // Hack: First entry depends on itself.
-    incoming[&fn_->block(fn_->entry())].insert(&fn_->block(fn_->entry()));
+    auto incoming = fn_->GetIncoming();
 
     for (const auto &viewing_block : fn_->blocks_) {
-      auto &view = views_[&viewing_block];
-      if (fn_->args_.size() == 1) {
-        ASSERT_EQ(fn_->ir_type->input.size(), 1u);
-        auto prop = DefaultProperty(fn_->ir_type->input[0]);
-        ASSERT_NE(prop.get(), nullptr);
-        view.props_[Register(0)] = std::move(prop);
-      } else if (fn_->args_.size() > 1) {
-        for (i32 i = 0; i < static_cast<i32>(fn_->args_.size()); ++i) {
-          Type *entry_type = fn_->ir_type->input[i];
-          auto prop        = DefaultProperty(entry_type);
-          ASSERT(prop.get() != nullptr, "");
-          view.props_[Register(i)] = std::move(prop);
-        }
-      }
-      for (const auto &block : fn_->blocks_) {
-        for (const auto &cmd : block.cmds_) {
-          auto prop = DefaultProperty(cmd.type);
-          if (prop.get() != nullptr) {
-            view.props_[cmd.result] = std::move(prop);
-          }
-        }
-      }
-      view.incoming_ = incoming;
-
-      i32 i = 0;
-      for (Type *entry : fn_->ir_type->output) {
-        view.ret_props_[ReturnValue(i)] = DefaultProperty(entry);
-        ++i;
-      }
+      views_.emplace(std::piecewise_construct,
+                     std::forward_as_tuple(&viewing_block),
+                     std::forward_as_tuple(fn, incoming));
     }
 
     // Only mark things on the entry view and entry block as stale to begin
@@ -334,6 +321,7 @@ void PropDB::Compute() {
       CASE(Xor, ^);
 #undef CASE
     case Op::Phi: {
+                    fn_->dump();
       if (cmd.type == Bool) {
         std::vector<BoolProperty> props;
         for (size_t i = 0; i < cmd.args.size(); i += 2) {
@@ -466,13 +454,12 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     // 'args' Also includes the function as the very last entry.
     std::vector<base::owned_ptr<property::Property>> arg_props;
     arg_props.reserve(cmd->args.size() - 1);
-    for (const auto& arg : cmd->args) {
-      arg_props.push_back(prop_db.Get(*calling_block, arg));
+    for (size_t i = 0; i < cmd->args.size() - 1; ++i) {
+      arg_props.push_back(prop_db.Get(*calling_block, cmd->args[i]));
     }
     for (const auto &precondition : called_fn->preconditions_) {
-      ASSERT_EQ(called_fn->type_->input.size(), 1u);
-      auto ir_fn =
-          ExprFn(precondition, called_fn->type_->input[0], IR::Cmd::Kind::Exec);
+      auto ir_fn = ExprFn(precondition, Tup(called_fn->type_->input),
+                          called_fn->args_, IR::Cmd::Kind::Exec);
       if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
         LOG << "Failed a precondition.";
         // TODO log error
@@ -504,9 +491,8 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
           prop_db.views_[exit_block].ret_props_[ReturnValue(i)]);
     }
 
-    ASSERT_EQ(input_types.size(), 1u);
-    auto ir_fn =
-        ExprFn(postcondition, input_types[0], IR::Cmd::Kind::PostCondition);
+    auto ir_fn = ExprFn(postcondition, Tup(input_types), args_,
+                        IR::Cmd::Kind::PostCondition);
     if (!ValidateRequirement(ir_fn.get(), arg_props, validation_queue)) {
       LOG << "Failed post condition";
     }

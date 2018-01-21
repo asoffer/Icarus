@@ -19,47 +19,32 @@ namespace Language {
 extern size_t precedence(Operator op);
 } // namespace Language
 
-std::unique_ptr<IR::Func> ExprFn(AST::Expression *expr, Type *input_type,
-                                 IR::Cmd::Kind kind) {
-  std::unique_ptr<IR::Func> fn = nullptr;
-  AST::FunctionLiteral fn_lit;
-  base::owned_ptr<AST::Node> *to_release = nullptr;
-  { // Wrap expression into function
-    // TODO should these be at global scope? or a separate REPL scope?
-    // Is the scope cleaned up?
-    fn_lit.type = Func(input_type != nullptr ? input_type : Void, expr->type);
-    fn_lit.fn_scope = GlobalScope->add_child<FnScope>();
-    fn_lit.fn_scope->fn_type  = &fn_lit.type->as<Function>();
-    fn_lit.scope_             = expr->scope_;
-    fn_lit.statements         = base::make_owned<AST::Statements>();
-    fn_lit.statements->scope_ = fn_lit.fn_scope.get();
-    fn_lit.return_type_expr =
-        base::make_owned<AST::Terminal>(expr->span, IR::Val::Type(expr->type));
+std::unique_ptr<IR::Func>
+ExprFn(AST::Expression *expr, Type *input,
+       const std::vector<std::pair<std::string, AST::Expression *>> args = {},
+       IR::Cmd::Kind kind = IR::Cmd::Kind::Exec) {
+  auto fn = std::make_unique<IR::Func>(::Func(input, expr->type), args);
+  CURRENT_FUNC(fn.get()) {
+    // TODO this is essentially a copy of the body of FunctionLiteral::EmitIR.
+    // Factor these out together.
+    IR::Block::Current = fn->entry();
+    // Leave space for allocas that will come later (added to the entry
+    // block).
+
+    // TODO iterate up the scope chain and call alloca appropriately.
+
+    auto start_block   = IR::Func::Current->AddBlock();
+    IR::Block::Current = start_block;
+    auto result = expr->EmitIR(kind);
+
     if (expr->type != Void) {
-      auto ret     = base::make_owned<AST::Unop>();
-      ret->scope_  = fn_lit.fn_scope.get();
-      ret->operand = base::own(expr);
-      to_release =
-          reinterpret_cast<base::owned_ptr<AST::Node> *>(&ret->operand);
-      ret->op         = Language::Operator::Return;
-      ret->precedence = Language::precedence(Language::Operator::Return);
-      fn_lit.statements->statements.push_back(std::move(ret));
-    } else {
-      fn_lit.statements->statements.push_back(base::own(expr));
-      // This vector cannot change in size: there is no way code gen can add
-      // statements here. Thus, it is safe to save a pointer to this last
-      // element.
-      to_release = &fn_lit.statements->statements.back();
+      IR::SetReturn(IR::ReturnValue{0}, std::move(result));
     }
-  }
+    IR::ReturnJump();
 
-  CURRENT_FUNC(nullptr) {
-    auto result = fn_lit.EmitTemporaryIR(kind);
-    ASSERT_NE(result, IR::Val::None());
-    fn = base::wrap_unique(std::get<IR::Func *>(result.value));
+    IR::Block::Current = fn->entry();
+    IR::UncondJump(start_block);
   }
-
-  to_release->release();
   return fn;
 }
 
@@ -102,8 +87,7 @@ IR::Val Evaluate(AST::Expression *expr) {
   std::vector<IR::Val> results;
   IR::ExecContext context;
   bool were_errors;
-  results = ExprFn(expr, nullptr, IR::Cmd::Kind::Exec)
-                ->Execute({}, &context, &were_errors);
+  results = ExprFn(expr, Void)->Execute({}, &context, &were_errors);
   // TODO wire through errors. Currently we just return IR::Val::None() if there
   // were errors
 

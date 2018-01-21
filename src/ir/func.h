@@ -16,7 +16,6 @@ struct Func {
   static Func *Current;
   static std::vector<std::unique_ptr<Func>> All;
 
-  // TODO just take a vector of declarations?
   Func(::Function *fn_type,
        std::vector<std::pair<std::string, AST::Expression *>> args);
 
@@ -77,16 +76,20 @@ struct Func {
   // strong ints. Consider adding a strong int vector.
   std::unordered_map<CmdIndex, std::vector<CmdIndex>> references_;
 
-  // This is a map from blocks to the set of blocks that could precede the key
-  // block. Because we're passing pointers around which may be invalidated if a
-  // block is moved (say, by a vector resizing, this should only be filled once
-  // after this object has been otherwise finalized.
-  std::unordered_map<const Block *, std::unordered_set<const Block *>>
-      incoming_;
-
   mutable int num_errors_ = -1; // -1 indicates not yet validated
+
+  std::unordered_map<const Block *, std::unordered_set<const Block *>>
+  GetIncoming() const;
 };
 
+template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
+  auto continue_block = Func::Current->AddBlock();
+  CondJump(cond, B ? exit_block : continue_block,
+           B ? continue_block : exit_block);
+  return continue_block;
+}
+
+namespace internal {
 struct FuncResetter {
   FuncResetter(Func *fn) : old_fn_(Func::Current), old_block_(Block::Current) {
     Func::Current = fn;
@@ -98,20 +101,10 @@ struct FuncResetter {
 
   Func *old_fn_;
   BlockIndex old_block_;
-  bool cond_ = true;
 };
-
-template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
-  auto continue_block = Func::Current->AddBlock();
-  CondJump(cond, B ? exit_block : continue_block,
-           B ? continue_block : exit_block);
-  return continue_block;
-}
+} // namespace internal 
 } // namespace IR
 
-#define CURRENT_FUNC(fn)                                                       \
-  for (auto resetter  = ::IR::FuncResetter(fn); resetter.cond_;                \
-       resetter.cond_ = false)
-
+#define CURRENT_FUNC(fn) if (::IR::internal::FuncResetter resetter(fn); true)
 
 #endif // ICARUS_IR_FUNC_H

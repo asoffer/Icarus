@@ -214,9 +214,13 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
   if (results.empty()) {
     return IR::Val::None();
   } else {
-    auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
-    IR::Func::Current->SetArgs(phi, std::move(results));
-    return IR::Func::Current->Command(phi).reg();
+    if (results.size() == 2) {
+      return IR::Val::None();
+    } else {
+      auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
+      IR::Func::Current->SetArgs(phi, std::move(results));
+      return IR::Func::Current->Command(phi).reg();
+    }
   }
 }
 
@@ -846,15 +850,8 @@ IR::Val AST::ChainOp::EmitIR(IR::Cmd::Kind kind) {
 IR::Val AST::CommaList::EmitIR(IR::Cmd::Kind) { UNREACHABLE(this); }
 IR::Val AST::CommaList::EmitLVal(IR::Cmd::Kind) { NOT_YET(); }
 
-IR::Val AST::FunctionLiteral::EmitTemporaryIR(IR::Cmd::Kind kind) {
-  return EmitIRAndSave(false, kind);
-}
-IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind) {
-  return EmitIRAndSave(true, IR::Cmd::Kind::Exec);
-}
 
-IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
-                                            IR::Cmd::Kind kind) {
+IR::Val AST::FunctionLiteral::EmitIR(IR::Cmd::Kind kind) {
   AST::DoStages<1, 2>(statements.get(), fn_scope.get());
   if (statements->stage_range_.high < ThisStage()) { return IR::Val::None(); }
 
@@ -873,15 +870,9 @@ IR::Val AST::FunctionLiteral::EmitIRAndSave(bool should_save,
     Function *fn_type =
         Func(std::move(input_types), type->as<Function>().output);
 
-    if (should_save) {
-      IR::Func::All.push_back(
-          std::make_unique<IR::Func>(fn_type, std::move(args)));
-      ir_func = IR::Func::All.back().get();
-    } else {
-      // TODO XXX This is SUPER DANGEROUS! Depending on a bool passed in we
-      // either own or don't own?!?!?!
-      ir_func = new IR::Func(fn_type, std::move(args));
-    }
+    IR::Func::All.push_back(
+        std::make_unique<IR::Func>(fn_type, std::move(args)));
+    ir_func = IR::Func::All.back().get();
 
     CURRENT_FUNC(ir_func) {
       IR::Block::Current = ir_func->entry();
