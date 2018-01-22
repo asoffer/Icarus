@@ -64,7 +64,7 @@ struct PropView {
 
 struct PropDB {
   PropDB(const Func *fn) : fn_(fn) {
-    auto incoming = fn_->GetIncoming();
+    auto incoming = fn_->GetIncomingBlocks();
 
     for (const auto &viewing_block : fn_->blocks_) {
       views_.emplace(std::piecewise_construct,

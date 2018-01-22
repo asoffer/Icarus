@@ -23,9 +23,10 @@ Func::Func(::Function *fn_type,
 }
 
 std::unordered_map<const Block *, std::unordered_set<const Block *>>
-Func::GetIncoming() const {
+Func::GetIncomingBlocks() const {
   std::unordered_map<const Block *, std::unordered_set<const Block *>> incoming;
   for (const auto &b : blocks_) {
+    ASSERT_GT(b.cmds_.size(), 0u);
     const auto &last = b.cmds_.back();
     switch (last.op_code_) {
     case Op::UncondJump:

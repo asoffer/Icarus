@@ -205,6 +205,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
 
     IR::Block::Current = next_binding;
   }
+
   // TODO this very last block is not be reachable and should never be
   // generated.
 
@@ -215,7 +216,7 @@ IR::Val AST::Call::EmitIR(IR::Cmd::Kind kind) {
     return IR::Val::None();
   } else {
     if (results.size() == 2) {
-      return IR::Val::None();
+      return results[1];
     } else {
       auto phi = IR::Phi(type->is_big() ? Ptr(type) : type);
       IR::Func::Current->SetArgs(phi, std::move(results));

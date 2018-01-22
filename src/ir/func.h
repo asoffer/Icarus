@@ -79,7 +79,7 @@ struct Func {
   mutable int num_errors_ = -1; // -1 indicates not yet validated
 
   std::unordered_map<const Block *, std::unordered_set<const Block *>>
-  GetIncoming() const;
+  GetIncomingBlocks() const;
 };
 
 template <bool B> BlockIndex EarlyExitOn(BlockIndex exit_block, Val cond) {
