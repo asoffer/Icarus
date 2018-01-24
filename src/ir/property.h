@@ -79,6 +79,27 @@ inline std::ostream &operator<<(std::ostream &os, const Property &prop) {
   return os;
 }
 
+/*
+enum class BoundType : char { Lt, Le, Ge, Gt };
+template <typename Number> struct Bound : Property {
+  BoundType type_;
+  Number num_;
+
+  Bound()              = delete;
+  Bound(Bound &&)      = default;
+  Bound(const Bound &) = default;
+  Bound(Bound::Type type, Number num) : type_(type), num_(std::move(num)) {}
+};
+*/
+
+struct PropertySet {
+  static PropertySet WeakMerge(const std::vector<const PropertySet *> &props);
+  static PropertySet StrongMerge(const std::vector<const PropertySet *> &props);
+  bool Implies(const PropertySet &props) const;
+
+  std::vector<base::owned_ptr<Property>> props_;
+};
+
 template <typename Number> struct Range : Property {
   Range() {}
   Range(Number min_val, Number max_val) : min_(min_val), max_(max_val) {}
@@ -102,28 +123,6 @@ template <typename Number> struct Range : Property {
     max_ = -max_;
     // TODO what about handling the fact that you can express lower negative
     // numbers than positive?
-  }
-
-  static base::owned_ptr<Range<Number>> StrongMerge(const Range<Number> &lhs,
-                                                    const Range<Number> &rhs) {
-    return base::make_owned<Range<Number>>(std::max(lhs.min_, rhs.min_),
-                                           std::min(lhs.max_, rhs.max_));
-  }
-
-  static base::owned_ptr<Range<Number>>
-  WeakMerge(const std::vector<Range<Number>> &props) {
-    if (props.empty()) { return base::make_owned<Range<Number>>(); }
-
-    // TODO this is not the most efficient way to do this because there are lots
-    // of early exit criteria, but I'm lazy and this is unlikely to stick
-    // around (we need to be able to merge properties generically).
-
-    auto result = base::make_owned<Range<Number>>(props.front());
-    for (const auto &prop : props) {
-      result->min_ = std::min(result->min_, prop.min_);
-      result->max_ = std::max(result->max_, prop.max_);
-    }
-    return result;
   }
 
   // Inclusive bounds
@@ -211,49 +210,6 @@ struct BoolProperty : Property {
     case Kind::Unknown: return true;
     }
     UNREACHABLE();
-  }
-
-  static base::owned_ptr<BoolProperty> StrongMerge(const BoolProperty &lhs,
-                                                   const BoolProperty &rhs) {
-    if (lhs.kind == Kind::True || rhs.kind == Kind::True) {
-      return base::make_owned<BoolProperty>(true);
-    } else if (lhs.kind == Kind::False || rhs.kind == Kind::False) {
-      return base::make_owned<BoolProperty>(false);
-    } else if (lhs.kind == Kind::Reg && rhs.kind == Kind::Reg) {
-      auto prop = base::make_owned<BoolProperty>();
-      if (lhs.reg == rhs.reg) { prop->reg = lhs.reg; }
-      return prop;
-    } else if (lhs.kind == Kind::NegReg && rhs.kind == Kind::NegReg) {
-      auto prop = base::make_owned<BoolProperty>();
-      if (lhs.reg == rhs.reg) { prop->reg = lhs.reg; }
-      return prop;
-    } else {
-      // TODO you can do better than this, but you at least know this much.
-      // You'll do better once you can hold many bool properties at once.
-      return base::make_owned<BoolProperty>(lhs);
-    }
-  }
-
-  static base::owned_ptr<BoolProperty>
-  WeakMerge(const std::vector<BoolProperty> &props) {
-    if (props.empty()) { return base::make_owned<BoolProperty>(); }
-    // TODO this is not the most efficient way to do this because there are lots
-    // of early exit criteria, but I'm lazy and this is unlikely to stick
-    // around (we need to be able to merge properties generically).
-    Kind expected_kind = props[0].kind;
-    std::unordered_set<Register> regs;
-    for (const auto &prop : props) {
-      if (prop.kind == Kind::Unknown || prop.kind != expected_kind) {
-        return base::make_owned<BoolProperty>();
-      }
-      regs.insert(prop.reg);
-    }
-
-    if (regs.size() != 1) { return base::make_owned<BoolProperty>(); }
-    auto result  = base::make_owned<BoolProperty>();
-    result->kind = expected_kind;
-    result->reg  = *regs.begin();
-    return result;
   }
 
   virtual void Neg() {

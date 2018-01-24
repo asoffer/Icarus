@@ -15,48 +15,15 @@ ExprFn(AST::Expression *expr, Type *input,
 
 namespace IR {
 namespace property {
-static base::owned_ptr<Property> DefaultProperty(Type* t) {
-  if (t == Bool) { return base::make_owned<BoolProperty>(); }
-  if (t == Int) { return base::make_owned<Range<i32>>(); }
-  return nullptr;
-}
-
 struct PropView {
+  PropView() = default;
   PropView(
-      const Func *fn,
       const std::unordered_map<const Block *, std::unordered_set<const Block *>>
-          &incoming) {
-    if (fn->args_.size() == 1) {
-      ASSERT_EQ(fn->ir_type->input.size(), 1u);
-      auto prop = DefaultProperty(fn->ir_type->input[0]);
-      ASSERT_NE(prop.get(), nullptr);
-      props_[Register(0)] = std::move(prop);
-    } else if (fn->args_.size() > 1) {
-      for (i32 i = 0; i < static_cast<i32>(fn->args_.size()); ++i) {
-        Type *entry_type = fn->ir_type->input[i];
-        auto prop        = DefaultProperty(entry_type);
-        ASSERT(prop.get() != nullptr, "");
-        props_[Register(i)] = std::move(prop);
-      }
-    }
+          &incoming)
+      : incoming_(incoming) {}
 
-    for (const auto &block : fn->blocks_) {
-      for (const auto &cmd : block.cmds_) {
-        auto prop = DefaultProperty(cmd.type);
-        if (prop.get() != nullptr) { props_[cmd.result] = std::move(prop); }
-      }
-    }
-    incoming_ = incoming;
-
-    i32 i = 0;
-    for (Type *entry : fn->ir_type->output) {
-      ret_props_[ReturnValue(i++)] = DefaultProperty(entry);
-    }
-  }
-  PropView() {}
-
-  std::unordered_map<Register, base::owned_ptr<Property>> props_;
-  std::unordered_map<ReturnValue, base::owned_ptr<Property>> ret_props_;
+  std::unordered_map<Register, PropertySet> props_;
+  std::unordered_map<ReturnValue, PropertySet> ret_props_;
   std::unordered_map<const Block *, std::unordered_set<const Block *>>
       incoming_;
   std::unordered_set<const Block *> unreachable_;
@@ -67,9 +34,7 @@ struct PropDB {
     auto incoming = fn_->GetIncomingBlocks();
 
     for (const auto &viewing_block : fn_->blocks_) {
-      views_.emplace(std::piecewise_construct,
-                     std::forward_as_tuple(&viewing_block),
-                     std::forward_as_tuple(fn, incoming));
+      views_.emplace(&viewing_block, incoming);
     }
 
     // Only mark things on the entry view and entry block as stale to begin
@@ -113,79 +78,52 @@ struct PropDB {
     }
   }
 
-  static PropDB Make(const Func *fn,
-                     std::vector<base::owned_ptr<Property>> args,
+  static PropDB Make(const Func *fn, std::vector<PropertySet> args,
                      std::queue<Func *> *validation_queue,
                      std::vector<std::pair<const Block *, const Cmd *>> *calls);
 
-  base::owned_ptr<Property> Get(const Block &block, Register reg) {
-    return views_[&block].props_[reg];
+  const PropertySet &Get(const Block &block, Register reg) const {
+    return views_.find(&block)->second.props_.find(reg)->second;
   }
 
-  base::owned_ptr<Property> GetShadow(const Block &block, CmdIndex cmd_index) {
+  /*
+  PropertySet GetShadow(const Block &block, CmdIndex cmd_index) {
     // TODO you always know if it's SetReturn at compile-time so you should pull
     // these into two separate functions
-    const auto& cmd = fn_->Command(cmd_index);
+    const auto &cmd = fn_->Command(cmd_index);
     Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
     const auto &incoming_set =
         views_[&block].incoming_[&fn_->block(cmd_index.block)];
 
-    if (type == Bool) {
-      std::vector<BoolProperty> props;
-      props.reserve(incoming_set.size());
-      for (const Block *incoming_block : incoming_set) {
-        props.push_back(
-            Get(*incoming_block, (cmd.op_code_ == Op::SetReturn)
-                                     ? std::get<Register>(cmd.args[1].value)
-                                     : cmd.result)
-                ->as<BoolProperty>());
-      }
-
-      return BoolProperty::WeakMerge(props);
-    } else if (type == Int) {
-      std::vector<Range<i32>> props;
-      props.reserve(incoming_set.size());
-      for (const Block *incoming_block : incoming_set) {
-        if (cmd.op_code_ == Op::SetReturn) {
-          props.push_back(Get(*incoming_block, cmd.args[1])->as<Range<i32>>());
-        } else {
-          props.push_back(Get(*incoming_block, cmd.result)->as<Range<i32>>());
-        }
-      }
-      return Range<i32>::WeakMerge(props);
-    } else {
-      NOT_YET();
+    std::vector<const PropertySet *> prop_sets;
+    prop_sets.reserve(incoming_set.size());
+    for (const Block *incoming_block : incoming_set) {
+      prop_sets.push_back(
+          &Get(*incoming_block, (cmd.op_code_ == Op::SetReturn)
+                                    ? std::get<Register>(cmd.args[1].value)
+                                    : cmd.result));
     }
+    return PropertySet::WeakMerge(prop_sets);
   }
 
-  void Set(const Block &block, CmdIndex cmd_index,
-           base::owned_ptr<Property> new_prop) {
+  void Set(const Block &block, CmdIndex cmd_index, PropertySet new_prop_set) {
     const auto &cmd = fn_->Command(cmd_index);
-    Type *type = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
-    // TODO you keep checking and forgetting the types here :(
-    if (type == Bool) {
-      new_prop = BoolProperty::StrongMerge(
-          new_prop->as<BoolProperty>(),
-          GetShadow(block, cmd_index)->as<BoolProperty>());
-    } else if (type == Int) {
-      new_prop = Range<i32>::StrongMerge(
-          new_prop->as<Range<i32>>(),
-          GetShadow(block, cmd_index)->as<Range<i32>>());
-    } else {
-      NOT_YET();
-    }
+    Type *type  = (cmd.op_code_ == Op::SetReturn) ? cmd.args[1].type : cmd.type;
+    auto shadow = GetShadow(block, cmd_index);
+    new_prop_set = PropertySet::StrongMerge(
+        std::vector<const PropertySet *>{&new_prop_set, &shadow});
 
-    auto &old_prop =
+    auto &old_prop_set =
         (cmd.op_code_ == Op::SetReturn)
             ? views_[&block]
                   .ret_props_[std::get<ReturnValue>(cmd.args[0].value)]
             : views_[&block].props_[cmd.result];
-    if (!old_prop->Implies(*new_prop)) {
-      old_prop = std::move(new_prop);
+    if (!old_prop_set.Implies(new_prop_set)) {
+      old_prop_set = std::move(new_prop_set);
       MarkReferencesStale(block, cmd_index);
     }
   }
-
+*/
   void SetUnreachable(const Block &view, const Block &from, const Block &to) {
     // TODO clean up stales still referencing this blocks.
     auto &reach_set = views_[&view].incoming_[&to];
@@ -228,6 +166,8 @@ struct PropDB {
     return result;
   }
 
+  PropertySet Get(const Block &block, Val arg);
+  /*
   base::owned_ptr<Property> Get(const Block &block, Val arg) {
     return std::visit(
         base::overloaded{
@@ -243,21 +183,7 @@ struct PropDB {
             [&arg](auto) -> base::owned_ptr<Property> { NOT_YET(arg); },
         },
         arg.value);
-  }
-
-  base::owned_ptr<BoolProperty> GetBoolProp(const Block &block, Val arg) {
-    return std::visit(
-        base::overloaded{
-            [&block, this](Register r) -> base::owned_ptr<BoolProperty> {
-              return Get(block, r).as<BoolProperty>();
-            },
-            [](bool b) -> base::owned_ptr<BoolProperty> {
-              return base::make_owned<BoolProperty>(b);
-            },
-            [&arg](auto) -> base::owned_ptr<BoolProperty> { UNREACHABLE(arg); },
-        },
-        arg.value);
-  }
+  }*/
 
   void Compute();
 
@@ -302,15 +228,17 @@ void PropDB::Compute() {
 
     switch (cmd.op_code_) {
     case Op::Neg: {
-      auto prop = Get(*block, cmd.args[0]);
-      prop->Neg();
-      Set(*block, cmd_index, std::move(prop));
+      NOT_YET();
+      // auto prop = Get(*block, cmd.args[0]);
+      // prop.Neg();
+      // Set(*block, cmd_index, std::move(prop));
     } break;
 #define CASE(case_name, case_sym)                                              \
   case Op::case_name: {                                                        \
-    Set(*block, cmd_index,                                                     \
+    NOT_YET();                                                                 \
+    /*Set(*block, cmd_index,                                                   \
         Get(*block, cmd.args[0]) case_sym Get(*block, cmd.args[1]));           \
-  } break
+  */} break
       CASE(Add, +);
       CASE(Sub, -);
       CASE(Mul, *);
@@ -320,50 +248,31 @@ void PropDB::Compute() {
       CASE(Gt, >);
       CASE(Xor, ^);
 #undef CASE
-    case Op::Phi: {
-                    fn_->dump();
-      if (cmd.type == Bool) {
-        std::vector<BoolProperty> props;
-        for (size_t i = 0; i < cmd.args.size(); i += 2) {
-          if (Reachable(
-                  /* view = */ *block,
-                  /* from = */ fn_->block(
-                      std::get<BlockIndex>(cmd.args[i].value)),
-                  /*   to = */ cmd_block)) {
-            props.push_back(*GetBoolProp(*block, cmd.args[i + 1]));
-          }
-        }
-
-        ASSERT(!props.empty(), "No longer reachable");
-        // TODO this is not a great way to do merging because it's not genric,
-        // but it's simple for now.
-        Set(*block, cmd_index, BoolProperty::WeakMerge(props));
-      } else {
-        NOT_YET();
-      }
-    } break;
+    case Op::Phi: NOT_YET();
     case Op::Print: break;
     case Op::Call:
       // TODO No post-conditions yet, so nothing to see here.
       continue;
     case Op::Nop: break;
-    case Op::SetReturn: Set(*block, cmd_index, Get(*block, cmd.args[1])); break;
+    case Op::SetReturn:
+      NOT_YET(); // Set(*block, cmd_index, Get(*block, cmd.args[1])); break;
     case Op::CondJump: {
-      auto prop       = Get(*block, std::get<Register>(cmd.args[0].value));
-      auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
-      if (bool_prop == nullptr) { continue; }
-      auto &true_block  = fn_->block(std::get<BlockIndex>(cmd.args[1].value));
-      auto &false_block = fn_->block(std::get<BlockIndex>(cmd.args[2].value));
+      NOT_YET();
+      // auto prop       = Get(*block, std::get<Register>(cmd.args[0].value));
+      // auto *bool_prop = dynamic_cast<BoolProperty *>(prop.get());
+      // if (bool_prop == nullptr) { continue; }
+      // auto &true_block  = fn_->block(std::get<BlockIndex>(cmd.args[1].value));
+      // auto &false_block = fn_->block(std::get<BlockIndex>(cmd.args[2].value));
 
-      if (bool_prop->kind == BoolProperty::Kind::True) {
-        SetUnreachable(/* view = */ *block,
-                       /* from = */ cmd_block,
-                       /*   to = */ false_block);
-      } else if (bool_prop->kind == BoolProperty::Kind::False) {
-        SetUnreachable(/* view = */ *block,
-                       /* from = */ cmd_block,
-                       /*   to = */ true_block);
-      }
+      // if (bool_prop->kind == BoolProperty::Kind::True) {
+      //   SetUnreachable(/* view = */ *block,
+      //                  /* from = */ cmd_block,
+      //                  /*   to = */ false_block);
+      // } else if (bool_prop->kind == BoolProperty::Kind::False) {
+      //   SetUnreachable(/* view = */ *block,
+      //                  /* from = */ cmd_block,
+      //                  /*   to = */ true_block);
+      // }
     } break;
     case Op::UncondJump: /* Nothing to do */ continue;
     case Op::ReturnJump: /* Nothing to do */ continue;
@@ -375,7 +284,7 @@ void PropDB::Compute() {
   }
 }
 
-PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
+PropDB PropDB::Make(const Func *fn, std::vector<PropertySet> args,
                     std::queue<Func *> *validation_queue,
                     std::vector<std::pair<const Block *, const Cmd *>> *calls) {
   PropDB db(fn);
@@ -414,10 +323,10 @@ PropDB PropDB::Make(const Func *fn, std::vector<base::owned_ptr<Property>> args,
 
 // Roughly the same as executing the function but now with more generic
 // argument properties.
-static bool
-ValidateRequirement(const Func *fn,
-                    std::vector<base::owned_ptr<property::Property>> args,
-                    std::queue<Func *> *validation_queue) {
+/*
+static bool ValidateRequirement(const Func *fn,
+                                std::vector<property::PropertySet> args,
+                                std::queue<Func *> *validation_queue) {
   // TODO. In this case we don't care about the calls vector at all. Ideally, we
   // should template it away.
   std::vector<std::pair<const Block *, const Cmd *>> calls;
@@ -425,6 +334,7 @@ ValidateRequirement(const Func *fn,
       property::PropDB::Make(fn, std::move(args), validation_queue, &calls);
   prop_db.Compute();
   // TODO BlockIndex(1) may not be the only return!
+  // TODO
   for (BlockIndex return_block : fn->return_blocks_) {
     auto *bool_prop = &prop_db.views_[&fn->block(return_block)]
                            .ret_props_[ReturnValue(0)]
@@ -433,11 +343,13 @@ ValidateRequirement(const Func *fn,
   }
   return true;
 }
+*/
 
-int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
+int Func::ValidateCalls(std::queue<Func *> * /*validation_queue*/) const {
   if (num_errors_ >= 0) { return num_errors_; }
   num_errors_ = 0;
   if (debug::no_validation) { return num_errors_; }
+  /*
 
   std::vector<std::pair<const Block *, const Cmd *>> calls;
   auto prop_db = property::PropDB::Make(this, {}, validation_queue, &calls);
@@ -452,7 +364,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
   for (const auto & [ calling_block, cmd ] : calls) {
     Func *called_fn = std::get<Func *>(cmd->args.back().value);
     // 'args' Also includes the function as the very last entry.
-    std::vector<base::owned_ptr<property::Property>> arg_props;
+    std::vector<property::PropertySet> arg_props;
     arg_props.reserve(cmd->args.size() - 1);
     for (size_t i = 0; i < cmd->args.size() - 1; ++i) {
       arg_props.push_back(prop_db.Get(*calling_block, cmd->args[i]));
@@ -474,7 +386,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
                        type_->output.end());
     i32 num_outs = static_cast<i32>(type_->output.size());
 
-    std::vector<base::owned_ptr<property::Property>> arg_props;
+    std::vector<property::PropertySet> arg_props;
     arg_props.reserve(input_types.size());
     // TODO multiple exit blocks
 
@@ -498,6 +410,7 @@ int Func::ValidateCalls(std::queue<Func *> *validation_queue) const {
     }
   }
 
+  */
   return num_errors_;
 }
 } // namespace IR
