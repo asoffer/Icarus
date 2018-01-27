@@ -9,6 +9,14 @@
 
 extern std::queue<Source::Name> file_queue;
 
+static void ValidateStatementSyntax(AST::Node *node) {
+  if (node->is<AST::CommaList>()) {
+    ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
+                                         std::to_string(__LINE__) + ": ");
+    node->limit_to(AST::StageRange::NoEmitIR());
+  }
+}
+
 namespace Language {
 extern size_t precedence(Operator op);
 } // namespace Language
@@ -387,6 +395,7 @@ Statements::build_one(std::vector<base::owned_ptr<Node>> nodes) {
   auto stmts  = base::make_owned<Statements>();
   stmts->span = nodes[0]->span;
   stmts->statements.push_back(std::move(nodes[0]));
+  ValidateStatementSyntax(stmts->statements.back().get());
   return stmts;
 }
 
@@ -394,6 +403,7 @@ base::owned_ptr<Node>
 Statements::build_more(std::vector<base::owned_ptr<Node>> nodes) {
   auto stmts = base::move<Statements>(nodes[0]);
   stmts->statements.push_back(std::move(nodes[1]));
+  ValidateStatementSyntax(stmts->statements.back().get());
   return stmts;
 }
 
@@ -453,6 +463,7 @@ OneBracedStatement(std::vector<base::owned_ptr<AST::Node>> nodes) {
   auto stmts  = base::make_owned<AST::Statements>();
   stmts->span = TextSpan(nodes[0]->span, nodes[2]->span);
   stmts->statements.push_back(std::move(nodes[1]));
+  ValidateStatementSyntax(stmts->statements.back().get());
   return stmts;
 }
 
@@ -462,10 +473,12 @@ BracedStatementsSameLineEnd(std::vector<base::owned_ptr<AST::Node>> nodes) {
   stmts->span = TextSpan(nodes[0]->span, nodes[3]->span);
   if (nodes[2]->is<AST::Statements>()) {
     for (auto &stmt : nodes[2]->as<AST::Statements>().statements) {
-      stmts->statements.push_back(std::move(stmt));
+     stmts->statements.push_back(std::move(stmt));
+     ValidateStatementSyntax(stmts->statements.back().get());
     }
   } else {
     stmts->statements.push_back(std::move(nodes[2]));
+    ValidateStatementSyntax(stmts->statements.back().get());
   }
   return stmts;
 }
