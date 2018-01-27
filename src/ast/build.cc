@@ -11,8 +11,7 @@ extern std::queue<Source::Name> file_queue;
 
 static void ValidateStatementSyntax(AST::Node *node) {
   if (node->is<AST::CommaList>()) {
-    ErrorLog::LogGeneric(TextSpan(), "TODO " __FILE__ ":" +
-                                         std::to_string(__LINE__) + ": ");
+    ErrorLog::CommaListStatement(node->as<AST::CommaList>().span);
     node->limit_to(AST::StageRange::NoEmitIR());
   }
 }
@@ -170,6 +169,7 @@ CommaList::Build(std::vector<base::owned_ptr<Node>> nodes) {
   }
 
   comma_list->exprs.push_back(base::move<Expression>(nodes[2]));
+  comma_list->span.finish = comma_list->exprs.back()->span.finish;
 
   return comma_list;
 }

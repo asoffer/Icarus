@@ -607,6 +607,11 @@ void UninferrableType(const TextSpan &span) {
   DisplayErrorMessage("Expression cannot have it's type inferred", "", span, 1);
 }
 
+void CommaListStatement(const TextSpan &span) {
+  ++num_errs_;
+  DisplayErrorMessage("Comma-separated lists are not allowed as statements", "",
+                      span, span.finish.offset - span.start.offset);
+}
 } // namespace ErrorLog
 
 namespace LogError {
